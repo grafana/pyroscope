@@ -2,7 +2,6 @@ package storage
 
 import (
 	"encoding/binary"
-	"errors"
 	"regexp"
 	"strings"
 
@@ -22,25 +21,75 @@ func init() {
 	nameParser = regexp.MustCompile("^(.+)\\{(.+)\\}.*$")
 }
 
+type ParserState int
+
+const (
+	nameParserState ParserState = iota
+	tagKeyParserState
+	tagValueParserState
+	doneParserState
+)
+
 // TODO: should rewrite this at some point to not rely on regular expressions & splits
 func ParseKey(name string) (*Key, error) {
-	res := nameParser.FindStringSubmatch(name)
-	if len(res) != 3 {
-		return nil, errors.New("invalid key")
+	k := &Key{
+		labels: make(map[string]string),
 	}
-	labels := make(map[string]string)
-	labels["__name__"] = strings.TrimSpace(res[1])
-	for _, v := range strings.Split(res[2], ",") {
-		arr := strings.Split(v, "=")
-		if len(arr) != 2 {
-			return nil, errors.New("invalid key")
-		}
 
-		labels[strings.TrimSpace(arr[0])] = strings.TrimSpace(arr[1])
+	state := nameParserState
+
+	key := ""
+	value := ""
+
+	for _, r := range name {
+		switch state {
+		case nameParserState:
+			switch r {
+			case '{':
+				state = tagKeyParserState
+				k.labels["__name__"] = strings.TrimSpace(value)
+			default:
+				value += string(r)
+			}
+		case tagKeyParserState:
+			switch r {
+			case '}':
+				state = doneParserState
+			case '=':
+				state = tagValueParserState
+				value = ""
+			default:
+				key += string(r)
+			}
+		case tagValueParserState:
+			switch r {
+			case ',', '}':
+				state = tagKeyParserState
+				k.labels[strings.TrimSpace(key)] = strings.TrimSpace(value)
+				key = ""
+			default:
+				value += string(r)
+			}
+		}
 	}
-	return &Key{
-		labels: labels,
-	}, nil
+	// res := nameParser.FindStringSubmatch(name)
+	// if len(res) != 3 {
+	// 	return nil, errors.New("invalid key")
+	// }
+	// labels := make(map[string]string)
+	// labels["__name__"] = strings.TrimSpace(res[1])
+	// for _, v := range strings.Split(res[2], ",") {
+	// 	arr := strings.Split(v, "=")
+	// 	if len(arr) != 2 {
+	// 		return nil, errors.New("invalid key")
+	// 	}
+
+	// 	labels[strings.TrimSpace(arr[0])] = strings.TrimSpace(arr[1])
+	// }
+	// return &Key{
+	// 	labels: labels,
+	// }, nil
+	return k, nil
 }
 
 func (k *Key) Normalized() string {

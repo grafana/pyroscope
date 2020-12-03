@@ -20,6 +20,7 @@ import (
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
 	"github.com/petethepig/pyroscope/pkg/structs/merge"
 	"github.com/petethepig/pyroscope/pkg/timing"
+	"github.com/sirupsen/logrus"
 )
 
 type Storage struct {
@@ -108,9 +109,9 @@ func New(cfg *config.Config) (*Storage, error) {
 	return s, nil
 }
 
-func treeKey(key *Key, depth int, t time.Time) string {
+func treeKey(sk segment.Key, depth int, t time.Time) string {
 	b := make([]byte, 32)
-	copy(b[:16], key.Hashed())
+	copy(b[:16], sk)
 	binary.BigEndian.PutUint64(b[16:24], uint64(depth))
 	binary.BigEndian.PutUint64(b[24:32], uint64(t.Unix()))
 	b2 := make([]byte, 64)
@@ -126,9 +127,15 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) (*
 	}
 
 	sk := segment.Key(key.Normalized())
+
+	for k, v := range key.labels {
+		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
+		d.Insert(sk)
+	}
+
 	st := s.segments.Get(string(sk)).(*segment.Segment)
 	st.Put(startTime, endTime, func(depth int, t time.Time, m, d int) {
-		tk := treeKey(key, depth, t)
+		tk := treeKey(sk, depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
 		val = val.Clone(m, d)
 		if existingTree != nil {
@@ -145,17 +152,30 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) (*
 
 func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, error) {
 	triesToMerge := []merge.Merger{}
-	sk := segment.Key(key.Normalized())
-	st := s.segments.Get(string(sk)).(*segment.Segment)
-	if st == nil {
-		return nil, nil
+
+	dimensions := []*dimension.Dimension{}
+	for k, v := range key.labels {
+		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
+		logrus.Debugf("keys: %q %q %q", k, v, d.Bytes())
+		dimensions = append(dimensions, d)
 	}
 
-	st.Get(startTime, endTime, func(d int, t time.Time) {
-		k := treeKey(key, d, t)
-		tr := s.trees.Get(k).(*tree.Tree)
-		triesToMerge = append(triesToMerge, merge.Merger(tr))
-	})
+	segmentKeys := dimension.Intersection(dimensions...)
+
+	for _, sk := range segmentKeys {
+		logrus.Debug("sk", sk)
+		st := s.segments.Get(string(sk)).(*segment.Segment)
+		if st == nil {
+			continue
+		}
+
+		st.Get(startTime, endTime, func(d int, t time.Time) {
+			k := treeKey(sk, d, t)
+			tr := s.trees.Get(k).(*tree.Tree)
+			triesToMerge = append(triesToMerge, merge.Merger(tr))
+		})
+	}
+
 	resultTrie := merge.MergeTriesConcurrently(runtime.NumCPU(), triesToMerge...)
 	if resultTrie == nil {
 		return nil, nil
