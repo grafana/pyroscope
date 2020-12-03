@@ -14,6 +14,7 @@ import (
 	"github.com/petethepig/pyroscope/pkg/config"
 	"github.com/petethepig/pyroscope/pkg/storage/cache"
 	"github.com/petethepig/pyroscope/pkg/storage/dict"
+	"github.com/petethepig/pyroscope/pkg/storage/dimension"
 	"github.com/petethepig/pyroscope/pkg/storage/labels"
 	"github.com/petethepig/pyroscope/pkg/storage/segment"
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
@@ -25,9 +26,10 @@ type Storage struct {
 	cfg      *config.Config
 	segments *cache.Cache
 
-	dicts  *cache.Cache
-	trees  *cache.Cache
-	labels *labels.Labels
+	dimensions *cache.Cache
+	dicts      *cache.Cache
+	trees      *cache.Cache
+	labels     *labels.Labels
 
 	db *badger.DB
 }
@@ -53,6 +55,17 @@ func New(cfg *config.Config) (*Storage, error) {
 		cfg:    cfg,
 		labels: labels.New(cfg, db),
 		db:     db,
+	}
+
+	s.dimensions = cache.New(db, cfg.Server.CacheSegmentSize, "d:")
+	s.dimensions.Bytes = func(v interface{}) []byte {
+		return v.(*dimension.Dimension).Bytes()
+	}
+	s.dimensions.FromBytes = func(v []byte) interface{} {
+		return dimension.FromBytes(v)
+	}
+	s.dimensions.New = func() interface{} {
+		return dimension.New()
 	}
 
 	s.segments = cache.New(db, cfg.Server.CacheSegmentSize, "s:")
@@ -165,7 +178,8 @@ func (s *Storage) GetValues(key string, cb func(v string) bool) {
 
 func (s *Storage) Cleanup() {
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(3)
+	go func() { s.dimensions.Flush(); wg.Done() }()
 	go func() { s.segments.Flush(); wg.Done() }()
 	go func() { s.trees.Flush(); wg.Done() }()
 	wg.Wait()

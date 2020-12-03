@@ -3,7 +3,8 @@ package agent
 import (
 	"time"
 
-	// revive:disable:blank-imports Depending on configuration these packages may or may not be used. That's why we do a blank import here and then packages themselves register with the rest of the code.
+	// revive:disable:blank-imports Depending on configuration these packages may or may not be used.
+	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
 	_ "github.com/petethepig/pyroscope/pkg/agent/pyspy"
 	_ "github.com/petethepig/pyroscope/pkg/agent/rbspy"
 
