@@ -1,0 +1,7 @@
+---
+foo: "test-val-1"
+foos:
+  - "test-val-2"
+  - "test-val-3"
+bar: 123
+baz: "10h"

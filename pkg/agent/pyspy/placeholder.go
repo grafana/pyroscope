@@ -1,0 +1,3 @@
+// +build !pyspy
+
+package pyspy

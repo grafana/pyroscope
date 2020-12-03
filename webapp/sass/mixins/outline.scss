@@ -1,0 +1,10 @@
+@mixin outline {
+  outline: none;
+  &:focus {
+    // outline: 1px auto rgba(59, 153, 252, 0.65);
+    outline: none;
+  }
+  &:focus:active {
+    outline: none;
+  }
+}

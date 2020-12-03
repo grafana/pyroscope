@@ -1,0 +1,65 @@
+@use "../variables" as *;
+@use "../mixins/outline" as *;
+
+
+.drp-container {
+  position: relative;
+  svg {
+    margin-right: 5px;
+  }
+
+  .drp-dropdown {
+    background-color: #212124;
+    display: none;
+    position: absolute;
+    top: 55px;
+    right: 5px;
+    width: 400px;
+    padding: 20px 20px 20px 20px;
+    border: 1px solid  rgb(75, 75, 75);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.9);
+    border-radius: 4px;
+  }
+
+  h4:nth-child(1), h5:nth-child(1) {
+    margin-top: 0;
+  }
+
+  h4, h5 {
+    margin: 10px 0;
+  }
+
+  .drp-presets {
+    display: flex;
+    flex-direction: row;
+    .drp-preset-column {
+      flex: 1;
+      display: flex;
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+
+  .drp-preset {
+    @include outline;
+
+    border: none;
+    text-align: left;
+    padding: 2px 0;
+    color: rgba(255,255,255,0.66);
+
+    &:hover, &.active {
+      color: rgba(255,255,255,1);
+    }
+  }
+
+  &.opened {
+    .drp-dropdown {
+      display: block;
+    }
+  }
+
+  .drp-calendar-input-group {
+    margin-top: 15px;
+  }
+}

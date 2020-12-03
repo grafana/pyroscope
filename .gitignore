@@ -1,0 +1,8 @@
+tmp
+node_modules
+/webapp/public
+/bin
+/third_party/*/lib*.a
+pkged.go
+.DS_Store
+/Icon*

@@ -1,0 +1,70 @@
+@use "../variables" as *;
+@use "../mixins/outline" as *;
+
+.labels {
+  margin-left: 30px;
+  .label {
+    display: inline-block;
+
+    // @include outline;
+    // height: 30px;
+    // line-height: 30px;
+    border: 1px solid $btn-border-color;
+    border-radius: 4px;
+    background: $btn-color;
+    padding: 0 6px;
+    margin-right: 10px;
+    line-height: 1.6;
+    &:hover{
+      background: $btn-hover-color;
+    }
+    .label-name {
+      font-weight: 400;
+
+      &:after {
+        content: ':\202f';
+        display: inline;
+      }
+    }
+    .label-value {
+
+    }
+    .label-delete-btn {
+      border: none;
+      padding: 0px;
+      position: relative;
+      cursor: pointer;
+
+      &::after {
+        content: '×';
+        display: block;
+        position: absolute;
+        font-weight: 400;
+
+        top: -30px;
+        right: -16px;
+        background: #FF4136;
+        padding: 5px;
+        line-height: 0.65;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        opacity: 0;
+      }
+    }
+    &:hover .label-delete-btn::after {
+      opacity: 1;
+    }
+  }
+}
+
+.labels-new-label {
+  .labels-new-input {
+    border-radius: 4px;
+    margin-right: 10px;
+  }
+  .labels-new-btn {
+
+  }
+}
+

@@ -1,0 +1,3 @@
+air: air
+air-test: air -c .air-test.conf
+webpack: $(yarn bin)/webpack --config scripts/webpack/webpack.dev.js --watch
