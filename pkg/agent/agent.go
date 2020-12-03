@@ -56,12 +56,11 @@ func (a *Agent) callback(req *csock.Request) *csock.Response {
 	case "stop":
 		if sess, ok := a.activeProfiles[req.ProfileID]; ok {
 			t := sess.stop()
+			// TODO: these should be passed from integrations
 			metadata := map[string]string{
-				"labels[host]":   "localhost",
-				"labels[metric]": "cpu",
-				"labels[agent]":  "rbspy",
-				"from":           strconv.Itoa(int(sess.startTime.Unix())),
-				"until":          strconv.Itoa(int(sess.stopTime.Unix())),
+				"name":  "testapp.cpu{}",
+				"from":  strconv.Itoa(int(sess.startTime.Unix())),
+				"until": strconv.Itoa(int(sess.stopTime.Unix())),
 			}
 			a.upstream.Upload(metadata, t)
 		} else {

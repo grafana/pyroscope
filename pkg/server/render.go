@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/petethepig/pyroscope/pkg/attime"
+	"github.com/petethepig/pyroscope/pkg/storage"
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
 	"github.com/petethepig/pyroscope/pkg/timing"
 	log "github.com/sirupsen/logrus"
@@ -24,13 +25,16 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		startTime := attime.Parse(q.Get("from"))
 		endTime := attime.Parse(q.Get("until"))
-		labelsKey := normalizeLabels(q)
-		var resultTrie *tree.Tree
+		var err error
+		storageKey, err := storage.ParseKey(q.Get("name"))
+		if err != nil {
+			panic(err) // TODO: handle
+		}
 
-		log.Debug("labels", labelsKey)
+		log.Debug("storageKey", storageKey.Normalized())
 		samplesEntries := []*samplesEntry{}
 
-		resultTrie, err := ctrl.s.Get(startTime, endTime, labelsKey)
+		resultTrie, err := ctrl.s.Get(startTime, endTime, storageKey)
 		if err != nil {
 			panic(err) // TODO: handle
 		}

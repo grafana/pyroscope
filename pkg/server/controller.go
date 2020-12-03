@@ -53,18 +53,6 @@ func labels(queryMap url.Values) *sortedmap.SortedMap {
 	return sortedMap
 }
 
-func normalizeLabels(queryMap url.Values) string {
-	normalizedString := ""
-	sortedMap := labels(queryMap)
-	for _, k := range sortedMap.Keys() {
-		normalizedString += k
-		normalizedString += "="
-		normalizedString += queryMap.Get("labels[" + k + "]")
-		normalizedString += ";"
-	}
-	return normalizedString
-}
-
 func (ctrl *Controller) Start() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ingest", ctrl.ingestHandler)

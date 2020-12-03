@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
@@ -20,7 +19,6 @@ import (
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
 	"github.com/petethepig/pyroscope/pkg/structs/merge"
 	"github.com/petethepig/pyroscope/pkg/timing"
-	"github.com/spaolacci/murmur3"
 )
 
 type Storage struct {
@@ -97,12 +95,9 @@ func New(cfg *config.Config) (*Storage, error) {
 	return s, nil
 }
 
-func treeKey(normalizedLabelsString string, depth int, t time.Time) string {
-	u1, u2 := murmur3.Sum128WithSeed([]byte(normalizedLabelsString), 6231912)
-
+func treeKey(key *Key, depth int, t time.Time) string {
 	b := make([]byte, 32)
-	binary.LittleEndian.PutUint64(b[:8], u1)
-	binary.LittleEndian.PutUint64(b[8:16], u2)
+	copy(b[:16], key.Hashed())
 	binary.BigEndian.PutUint64(b[16:24], uint64(depth))
 	binary.BigEndian.PutUint64(b[24:32], uint64(t.Unix()))
 	b2 := make([]byte, 64)
@@ -110,17 +105,14 @@ func treeKey(normalizedLabelsString string, depth int, t time.Time) string {
 	return string(b2)
 }
 
-func (s *Storage) Put(startTime, endTime time.Time, key string, val *tree.Tree) (*timing.Timer, error) {
+func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) (*timing.Timer, error) {
 	timer := timing.New()
 
-	for _, pair := range strings.Split(key, ";") {
-		arr := strings.Split(pair, "=")
-		if len(arr) == 2 {
-			s.labels.Put(arr[0], arr[1])
-		}
+	for k, v := range key.labels {
+		s.labels.Put(k, v)
 	}
 
-	sk := segment.Key(key)
+	sk := segment.Key(key.Normalized())
 	st := s.segments.Get(string(sk)).(*segment.Segment)
 	st.Put(startTime, endTime, func(depth int, t time.Time, m, d int) {
 		tk := treeKey(key, depth, t)
@@ -138,9 +130,9 @@ func (s *Storage) Put(startTime, endTime time.Time, key string, val *tree.Tree) 
 	return timer, nil
 }
 
-func (s *Storage) Get(startTime, endTime time.Time, key string) (*tree.Tree, error) {
+func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, error) {
 	triesToMerge := []merge.Merger{}
-	sk := segment.Key(key)
+	sk := segment.Key(key.Normalized())
 	st := s.segments.Get(string(sk)).(*segment.Segment)
 	if st == nil {
 		return nil, nil

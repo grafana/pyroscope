@@ -39,7 +39,14 @@ class SVGRenderer extends React.Component {
   renderURL(format="svg") {
     let width = document.body.clientWidth - 30;
     let url = `/render?format=${format}&from=${encodeURIComponent(this.props.from)}&until=${encodeURIComponent(this.props.until)}&width=${width}`;
-    url += this.props.labels.map(x => `&labels[${x.name}]=${x.value}`).join("")
+    let nameLabel = this.props.labels.find(x => x.name == "__name__");
+    if (nameLabel) {
+      url += "&name="+nameLabel.value+"{";
+    } else {
+      url += "&name=unknown{";
+    }
+    url += this.props.labels.filter(x => x.name != "__name__").map(x => `${x.name}=${x.value}`).join(",");
+    url += "}";
     return url;
   }
 

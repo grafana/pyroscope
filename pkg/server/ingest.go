@@ -5,15 +5,17 @@ import (
 	"time"
 
 	"github.com/petethepig/pyroscope/pkg/attime"
+	"github.com/petethepig/pyroscope/pkg/storage"
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
 	"github.com/petethepig/pyroscope/pkg/testing"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
 type ingestParams struct {
 	grouped           bool
 	format            string
-	labels            string
+	storageKey        *storage.Key
 	samplingFrequency int
 	modifiers         []string
 	from              time.Time
@@ -37,7 +39,12 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 		ip.until = time.Now()
 	}
 
-	ip.labels = normalizeLabels(q)
+	var err error
+	ip.storageKey, err = storage.ParseKey(q.Get("name"))
+	if err != nil {
+		// TODO: handle
+		logrus.Error("parsing error:", err)
+	}
 
 	return ip
 }
@@ -53,11 +60,12 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		parserFunc = parseTrie
 	}
 
+	logrus.Debug("ip.storageKey", ip.storageKey.Normalized())
+
 	t := tree.New()
 
 	samples := 0
 	i := 0
-	log.Debugf("inserting into bucket %s", ip.labels)
 	testing.Profile("put-"+r.URL.Query().Get("from"), func() {
 		parserFunc(r.Body, func(k []byte, v int) {
 			samples += v * globalMultiplier
@@ -66,7 +74,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		log.Debug("lines", i)
 
-		timer, err := ctrl.s.Put(ip.from, ip.until, ip.labels, t)
+		timer, err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t)
 		if err != nil {
 			log.Fatal(err)
 		}
