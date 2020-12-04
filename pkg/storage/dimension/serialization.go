@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"io"
 
+	"github.com/petethepig/pyroscope/pkg/storage/segment"
 	"github.com/petethepig/pyroscope/pkg/util/varint"
 )
 
@@ -35,6 +36,8 @@ func Deserialize(r io.Reader) (*Dimension, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		s.keys = append(s.keys, segment.Key(keyBuf))
 	}
 
 	return s, nil

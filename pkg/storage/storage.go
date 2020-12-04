@@ -137,12 +137,12 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) (*
 	st.Put(startTime, endTime, func(depth int, t time.Time, m, d int) {
 		tk := treeKey(sk, depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
-		val = val.Clone(m, d)
+		treeClone = val.Clone(m, d)
 		if existingTree != nil {
-			existingTree.Merge(val)
+			existingTree.Merge(treeClone)
 			s.trees.Put(tk, existingTree)
 		} else {
-			s.trees.Put(tk, val)
+			s.trees.Put(tk, treeClone)
 		}
 	})
 	s.segments.Put(string(sk), st)
@@ -206,4 +206,5 @@ func (s *Storage) Cleanup() {
 	// dictionary has to flush last because trees write to dictionaries
 	s.dicts.Flush()
 	s.db.Close()
+	time.Sleep(5 * time.Second)
 }
