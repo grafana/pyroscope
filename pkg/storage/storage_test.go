@@ -50,7 +50,7 @@ var _ = Describe("storage package", func() {
 			st2 := testing.ParseTime("0001-01-01-00:00:00")
 			et2 := testing.ParseTime("0001-01-01-00:00:30")
 			key, _ := ParseKey("foo")
-			_, err := s.Put(st, et, key, tree)
+			err := s.Put(st, et, key, tree)
 			Expect(err).ToNot(HaveOccurred())
 
 			t2, err := s.Get(st2, et2, key)
