@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/petethepig/pyroscope/pkg/attime"
 	"github.com/petethepig/pyroscope/pkg/storage"
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
 	"github.com/petethepig/pyroscope/pkg/testing"
+	"github.com/petethepig/pyroscope/pkg/util/attime"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
@@ -68,7 +68,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	i := 0
 	testing.Profile("put-"+r.URL.Query().Get("from"), func() {
 		parserFunc(r.Body, func(k []byte, v int) {
-			samples += v * globalMultiplier
+			samples += v
 			i++
 			t.Insert(k, uint64(v))
 		})

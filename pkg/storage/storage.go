@@ -137,7 +137,7 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) (*
 	st.Put(startTime, endTime, func(depth int, t time.Time, m, d int) {
 		tk := treeKey(sk, depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
-		treeClone = val.Clone(m, d)
+		treeClone := val.Clone(m, d)
 		if existingTree != nil {
 			existingTree.Merge(treeClone)
 			s.trees.Put(tk, existingTree)

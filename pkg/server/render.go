@@ -7,10 +7,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/petethepig/pyroscope/pkg/attime"
 	"github.com/petethepig/pyroscope/pkg/storage"
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
 	"github.com/petethepig/pyroscope/pkg/timing"
+	"github.com/petethepig/pyroscope/pkg/util/attime"
 	log "github.com/sirupsen/logrus"
 )
 

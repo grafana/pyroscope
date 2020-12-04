@@ -90,7 +90,7 @@ func colorSelf(label []byte, self float64, childrenCount int) string {
 
 func colorChildren(label []byte, self float64, childrenCount int) string {
 	r := 255
-	childrenCount -= 1
+	childrenCount--
 	self = 1.0 - float64(childrenCount)/10
 	if self < 0 {
 		self = 0.0

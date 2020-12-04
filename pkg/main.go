@@ -3,8 +3,6 @@ package pkg
 import (
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/petethepig/pyroscope/pkg/agent"
@@ -12,6 +10,7 @@ import (
 	"github.com/petethepig/pyroscope/pkg/config"
 	"github.com/petethepig/pyroscope/pkg/server"
 	"github.com/petethepig/pyroscope/pkg/storage"
+	"github.com/petethepig/pyroscope/pkg/util/atexit"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -49,20 +48,8 @@ func startServer(cfg *config.Config) {
 	if err != nil {
 		panic(err)
 	}
-	atExit(storage.Cleanup)
+	atexit.Register(storage.Cleanup)
 	c := server.New(cfg, storage)
 	c.Start()
 	time.Sleep(time.Second)
-}
-
-func atExit(cb func()) {
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		sig := <-signalChan
-		log.Info("start atExit callback", sig)
-		cb()
-		log.Info("stop atExit callback")
-		os.Exit(0)
-	}()
 }

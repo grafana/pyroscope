@@ -7,7 +7,6 @@ import (
 
 	"github.com/petethepig/pyroscope/pkg/storage/dict"
 	"github.com/petethepig/pyroscope/pkg/structs/merge"
-	log "github.com/sirupsen/logrus"
 )
 
 type treeNode struct {
@@ -20,9 +19,9 @@ type treeNode struct {
 
 func (n *treeNode) clone(m, d uint64) *treeNode {
 	// TODO: figure out why this happens
-	if d == 0 {
-		d = 1
-	}
+	// if d == 0 {
+	// 	d = 1
+	// }
 	newNode := &treeNode{
 		name: n.name,
 		cum:  n.cum * m / d,
@@ -161,7 +160,6 @@ func (t *Tree) Iterate(d *dict.Dict, cb func(key []byte, val uint64)) {
 
 func (t *Tree) IterateWithCum(cb func(cum uint64) bool) {
 	nodes := []*treeNode{t.root}
-	// minVal := t.c.MinValue()
 	i := 0
 	for len(nodes) > 0 {
 		node := nodes[0]
@@ -171,7 +169,6 @@ func (t *Tree) IterateWithCum(cb func(cum uint64) bool) {
 			nodes = append(node.childrenNodes, nodes...)
 		}
 	}
-	log.Debugf("walked over %d nodes", i)
 }
 
 func (t *Tree) Clone(m, d int) *Tree {

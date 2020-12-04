@@ -77,10 +77,9 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 		if err != nil {
 			return nil, err
 		}
-		// TODO: insert into parent
 		nameBuf, ok := d.Get(labelLinkBuf)
 		if !ok {
-			// these strings has to be at least slightly different, hence ranString
+			// these strings has to be at least slightly different, hence base64 addition
 			nameBuf = []byte("label not found " + base64.URLEncoding.EncodeToString(labelLinkBuf))
 		}
 		tn := parent.node.insert(nameBuf)

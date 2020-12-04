@@ -26,20 +26,20 @@ func (fl *FakeListener) Provide(conn net.Conn) error {
 	defer fl.mutex.Unlock()
 
 	if fl.closed {
-		return errors.New("use of closed network connection")
-	} else {
-		fl.ch <- conn
-		return nil
+		return errors.New("connection closed")
 	}
+
+	fl.ch <- conn
+	return nil
 }
 
 func (fl *FakeListener) Accept() (net.Conn, error) {
 	conn, more := <-fl.ch
 	if more {
 		return conn, nil
-	} else {
-		return nil, errors.New("use of closed network connection")
 	}
+
+	return nil, errors.New("connection closed")
 }
 
 func (fl *FakeListener) Close() error {
@@ -47,15 +47,15 @@ func (fl *FakeListener) Close() error {
 	defer fl.mutex.Unlock()
 
 	if fl.closed {
-		return errors.New("use of closed network connection")
-	} else {
-		fl.closed = true
-		close(fl.ch)
-		return nil
+		return errors.New("connection closed")
 	}
+
+	fl.closed = true
+	close(fl.ch)
+	return nil
 }
 
-func (fl *FakeListener) Addr() net.Addr {
-	a, _ := net.ResolveTCPAddr("tcp", "127.0.0.1:1234")
+func (*FakeListener) Addr() net.Addr {
+	a, _ := net.ResolveTCPAddr("tcp", "fake-listener:1111")
 	return a
 }
