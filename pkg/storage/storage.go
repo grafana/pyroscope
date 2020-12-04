@@ -19,7 +19,6 @@ import (
 	"github.com/petethepig/pyroscope/pkg/storage/segment"
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
 	"github.com/petethepig/pyroscope/pkg/structs/merge"
-	"github.com/petethepig/pyroscope/pkg/timing"
 	"github.com/sirupsen/logrus"
 )
 
@@ -58,7 +57,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		db:     db,
 	}
 
-	s.dimensions = cache.New(db, cfg.Server.CacheSegmentSize, "d:")
+	s.dimensions = cache.New(db, cfg.Server.CacheDimensionSize, "i:")
 	s.dimensions.Bytes = func(v interface{}) []byte {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -80,7 +79,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		return segment.New(s.cfg.Server.MinResolution, s.cfg.Server.Multiplier)
 	}
 
-	s.dicts = cache.New(db, cfg.Server.CacheSegmentSize, "d:")
+	s.dicts = cache.New(db, cfg.Server.CacheDictionarySize, "d:")
 	s.dicts.Bytes = func(v interface{}) []byte {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -119,9 +118,7 @@ func treeKey(sk segment.Key, depth int, t time.Time) string {
 	return string(b2)
 }
 
-func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) (*timing.Timer, error) {
-	timer := timing.New()
-
+func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) error {
 	for k, v := range key.labels {
 		s.labels.Put(k, v)
 	}
@@ -147,7 +144,7 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) (*
 	})
 	s.segments.Put(string(sk), st)
 
-	return timer, nil
+	return nil
 }
 
 func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, error) {
@@ -206,5 +203,4 @@ func (s *Storage) Cleanup() {
 	// dictionary has to flush last because trees write to dictionaries
 	s.dicts.Flush()
 	s.db.Close()
-	time.Sleep(5 * time.Second)
 }

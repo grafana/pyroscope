@@ -1,6 +1,7 @@
 package server
 
 import (
+	golog "log"
 	"net/http"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/petethepig/pyroscope/pkg/build"
 	"github.com/petethepig/pyroscope/pkg/config"
 	"github.com/petethepig/pyroscope/pkg/storage"
+	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -42,13 +44,17 @@ func (ctrl *Controller) Start() {
 		fs = http.FileServer(http.Dir("./webapp/public"))
 	}
 	mux.HandleFunc("/", fs.ServeHTTP)
+
+	logger := log.New()
+	w := logger.Writer()
+	defer w.Close()
 	s := &http.Server{
 		Addr:           ctrl.cfg.Server.ApiBindAddr,
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
-		// ErrorLog:       log.Error.Dup(log.NewLogContext("HTTP", 1)).GoLogger(),
+		ErrorLog:       golog.New(w, "", 0),
 	}
 	s.ListenAndServe()
 }

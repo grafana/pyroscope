@@ -7,7 +7,6 @@ import (
 	"github.com/petethepig/pyroscope/pkg/storage/dict"
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
 	"github.com/petethepig/pyroscope/pkg/testing"
-	log "github.com/sirupsen/logrus"
 )
 
 // 21:22:08      air |  (time.Duration) 10s,
@@ -46,7 +45,6 @@ var _ = Describe("storage package", func() {
 			tree := tree.New()
 			tree.Insert([]byte("a;b"), uint64(1))
 			tree.Insert([]byte("a;c"), uint64(2))
-			// Put(startTime Time, endTime Time, key string, val Trie, samples uint16) (*Timer, error)
 			st := testing.ParseTime("0001-01-01-00:00:10")
 			et := testing.ParseTime("0001-01-01-00:00:19")
 			st2 := testing.ParseTime("0001-01-01-00:00:00")
@@ -59,7 +57,6 @@ var _ = Describe("storage package", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(t2).ToNot(BeNil())
 
-			log.Debug(t2.String(d))
 			Expect(t2.String(d)).To(Equal(tree.String(d)))
 
 			Expect(s.Close()).ToNot(HaveOccurred())
@@ -70,7 +67,6 @@ var _ = Describe("storage package", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(t3).ToNot(BeNil())
 
-			log.Debug(t3.String(d))
 			Expect(t3.String(d)).To(Equal(tree.String(d)))
 
 			Expect(nil).ToNot(BeNil())

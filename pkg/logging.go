@@ -10,7 +10,7 @@ import (
 func init() {
 	golog.SetFlags(golog.Lshortfile | golog.Ldate | golog.Ltime)
 
-	// log.SetFormatter(&log.JSONFormatter{})
+	log.SetFormatter(&log.TextFormatter{})
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.DebugLevel)
 }

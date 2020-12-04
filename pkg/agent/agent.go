@@ -34,8 +34,7 @@ func (a *Agent) Start() {
 
 	a.upstream.Start()
 
-	controlSocketAddr := cs.CanonicalAddr()
-	log.Debug("controlSocketAddr: ", controlSocketAddr)
+	log.WithField("addr", cs.CanonicalAddr()).Info("Starting control socket")
 	cs.Start()
 }
 

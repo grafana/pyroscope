@@ -23,8 +23,10 @@ type Server struct {
 	StoragePath string `def:"tmp/pyroscope-storage"`
 	ApiBindAddr string `def:":8080"`
 
-	CacheSegmentSize int `def:"1000"`
-	CacheTreeSize    int `def:"1000"`
+	CacheDimensionSize  int `def:"1000"`
+	CacheDictionarySize int `def:"1000"`
+	CacheSegmentSize    int `def:"1000"`
+	CacheTreeSize       int `def:"1000"`
 
 	Multiplier      int           `def:"10"`
 	MinResolution   time.Duration `def:"10s"`

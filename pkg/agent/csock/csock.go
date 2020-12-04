@@ -54,7 +54,7 @@ func commandFromRequest(r *http.Request) string {
 func (c *CSock) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	buf, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Debug(err) // TODO: handle
+		log.Error(err) // TODO: handle
 	}
 	req := &Request{}
 	json.Unmarshal(buf, &req)
@@ -63,7 +63,7 @@ func (c *CSock) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(200)
 	b, err := json.Marshal(resp)
 	if err != nil {
-		log.Debug(err) // TODO: handle
+		log.Error(err) // TODO: handle
 	}
 	rw.Write(b)
 }

@@ -77,8 +77,10 @@ func (u *Upstream) uploadProfile(j *uploadJob) {
 		log.Error("Error happened when uploading a profile:", err)
 	}
 	if resp != nil {
-		b, err2 := ioutil.ReadAll(resp.Body)
-		log.Debug("log:", b, err, err2)
+		_, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Error("Error happened while reading server response:", err)
+		}
 	}
 }
 

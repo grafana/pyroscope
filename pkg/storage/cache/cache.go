@@ -72,7 +72,6 @@ func (cache *Cache) saveToDisk(key string, val interface{}) {
 }
 
 func (cache *Cache) Flush() {
-	log.Debug("cache.lfu.Len()", cache.lfu.Len())
 	cache.lfu.Evict(cache.lfu.Len())
 	close(cache.lfu.EvictionChannel)
 	<-cache.cleanupDone
@@ -80,16 +79,16 @@ func (cache *Cache) Flush() {
 
 func (cache *Cache) Get(key string) interface{} {
 	key = cache.prefix + key
+	lg := log.WithField("key", key)
 	if cache.lfu.UpperBound > 0 {
 		fromLfu := cache.lfu.Get(key)
 		if fromLfu != nil {
-			log.Debug(cache.prefix, "lfu hit")
 			return fromLfu
 		}
 	} else {
-		log.Debug("lfu is not used, only use this during debugging")
+		log.Warn("lfu is not used, only use this during debugging")
 	}
-	log.Debug(cache.prefix, "lfu miss")
+	lg.Debug("lfu miss")
 
 	var valCopy []byte
 	err := cache.db.View(func(txn *badger.Txn) error {
@@ -115,7 +114,7 @@ func (cache *Cache) Get(key string) interface{} {
 	})
 
 	if valCopy == nil {
-		log.Debug(cache.prefix, "storage miss")
+		lg.Debug("storage miss")
 		if cache.New == nil {
 			return nil
 		}
@@ -136,6 +135,6 @@ func (cache *Cache) Get(key string) interface{} {
 		panic(err)
 	}
 
-	log.Debug(cache.prefix, "storage hit")
+	lg.Debug("storage hit")
 	return val
 }

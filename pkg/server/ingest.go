@@ -42,7 +42,6 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 	var err error
 	ip.storageKey, err = storage.ParseKey(q.Get("name"))
 	if err != nil {
-		// TODO: handle
 		logrus.Error("parsing error:", err)
 	}
 
@@ -60,8 +59,6 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		parserFunc = parseTrie
 	}
 
-	logrus.Debug("ip.storageKey", ip.storageKey.Normalized())
-
 	t := tree.New()
 
 	samples := 0
@@ -72,13 +69,11 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 			i++
 			t.Insert(k, uint64(v))
 		})
-		log.Debug("lines", i)
 
-		timer, err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t)
+		err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t)
 		if err != nil {
 			log.Fatal(err)
 		}
 		w.WriteHeader(200)
-		w.Write(timer.Marshal())
 	})
 }
