@@ -3,7 +3,6 @@ package dimension
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"io"
 
 	"github.com/petethepig/pyroscope/pkg/storage/segment"
@@ -24,7 +23,7 @@ func Deserialize(r io.Reader) (*Dimension, error) {
 	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
 
 	for {
-		keyLen, err := binary.ReadUvarint(br)
+		keyLen, err := varint.Read(br)
 		if err != nil {
 			if err == io.EOF {
 				break

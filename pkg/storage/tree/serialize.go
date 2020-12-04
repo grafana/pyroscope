@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
-	"encoding/binary"
 	"io"
 
 	"github.com/petethepig/pyroscope/pkg/storage/dict"
@@ -68,7 +67,7 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 		parent := parents[0]
 		parents = parents[1:]
 
-		labelLen, err := binary.ReadUvarint(br)
+		labelLen, err := varint.Read(br)
 		// if err == io.EOF {
 		// 	return t, nil
 		// }
@@ -84,7 +83,7 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 		}
 		tn := parent.node.insert(nameBuf)
 
-		tn.self, err = binary.ReadUvarint(br)
+		tn.self, err = varint.Read(br)
 		tn.cum = tn.self
 		if err != nil {
 			return nil, err
@@ -96,7 +95,7 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 			pn = pn.parent
 		}
 
-		childrenLen, err := binary.ReadUvarint(br)
+		childrenLen, err := varint.Read(br)
 		if err != nil {
 			return nil, err
 		}

@@ -3,7 +3,6 @@ package segment
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"io"
 	"time"
 
@@ -48,15 +47,15 @@ func Deserialize(resolution time.Duration, multiplier int, r io.Reader) (*Segmen
 
 	parents := []*streeNode{nil}
 	for len(parents) > 0 {
-		depth, err := binary.ReadUvarint(br)
+		depth, err := varint.Read(br)
 		if err != nil {
 			return nil, err
 		}
-		timeVal, err := binary.ReadUvarint(br)
+		timeVal, err := varint.Read(br)
 		if err != nil {
 			return nil, err
 		}
-		presentVal, err := binary.ReadUvarint(br)
+		presentVal, err := varint.Read(br)
 		if err != nil {
 			return nil, err
 		}
@@ -73,7 +72,7 @@ func Deserialize(resolution time.Duration, multiplier int, r io.Reader) (*Segmen
 		if parent != nil {
 			parent.replace(node)
 		}
-		childrenLen, err := binary.ReadUvarint(br)
+		childrenLen, err := varint.Read(br)
 		if err != nil {
 			return nil, err
 		}

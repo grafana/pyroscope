@@ -2,7 +2,8 @@ package dict
 
 import (
 	"bytes"
-	"encoding/binary"
+
+	"github.com/petethepig/pyroscope/pkg/util/varint"
 )
 
 type Key []byte
@@ -23,7 +24,7 @@ func (td *Dict) Get(key Key) (Value, bool) {
 	tn := td.root
 	labelBuf := []byte{}
 	for {
-		v, err := binary.ReadUvarint(r)
+		v, err := varint.Read(r)
 		if err != nil {
 			return Value(labelBuf), true
 		}
@@ -35,7 +36,7 @@ func (td *Dict) Get(key Key) (Value, bool) {
 		labelBuf = append(labelBuf, label...)
 		tn = tn.children[v]
 
-		expectedLen, err := binary.ReadUvarint(r)
+		expectedLen, err := varint.Read(r)
 		for len(label) < int(expectedLen) {
 			label2 := tn.children[0].label
 			labelBuf = append(labelBuf, label2...)

@@ -3,7 +3,6 @@ package transporttrie
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"io"
 
 	"github.com/petethepig/pyroscope/pkg/util/varint"
@@ -52,7 +51,7 @@ func Deserialize(r io.Reader) (*Trie, error) {
 		parent := parents[0]
 		parents = parents[1:]
 
-		nameLen, err := binary.ReadUvarint(br)
+		nameLen, err := varint.Read(br)
 		// if err == io.EOF {
 		// 	return t, nil
 		// }
@@ -67,12 +66,12 @@ func Deserialize(r io.Reader) (*Trie, error) {
 		// TODO: insert into parent
 		parent.insert(tn)
 
-		tn.value, err = binary.ReadUvarint(br)
+		tn.value, err = varint.Read(br)
 		if err != nil {
 			return nil, err
 		}
 
-		childrenLen, err := binary.ReadUvarint(br)
+		childrenLen, err := varint.Read(br)
 		if err != nil {
 			return nil, err
 		}

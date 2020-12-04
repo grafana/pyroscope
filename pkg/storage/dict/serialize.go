@@ -3,7 +3,6 @@ package dict
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"io"
 
 	"github.com/petethepig/pyroscope/pkg/util/varint"
@@ -44,7 +43,7 @@ func Deserialize(r io.Reader) (*Dict, error) {
 		parent := parents[0]
 		parents = parents[1:]
 
-		nameLen, err := binary.ReadUvarint(br)
+		nameLen, err := varint.Read(br)
 		nameBuf := make([]byte, nameLen) // TODO: maybe there are better ways to do this?
 		_, err = io.ReadAtLeast(br, nameBuf, int(nameLen))
 		if err != nil {
@@ -53,7 +52,7 @@ func Deserialize(r io.Reader) (*Dict, error) {
 		tn := newTrieNode(nameBuf)
 		parent.insert(tn)
 
-		childrenLen, err := binary.ReadUvarint(br)
+		childrenLen, err := varint.Read(br)
 		if err != nil {
 			return nil, err
 		}
