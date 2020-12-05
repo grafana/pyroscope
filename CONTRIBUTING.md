@@ -4,15 +4,7 @@ Thank you for your interest in contributing to Pyroscope! We welcome all people 
 
 This document is a guide to help you through the process of contributing to Pyroscope.
 
-
 ## Where do I start
 
-* Set up your [development environment](contribute/developer-guide.md).
-* Read the [style guides](contribute/style-guides) we use.
-
-
-### Go Project Structure
-
-https://github.com/golang-standards/project-layout
-
-
+* Set up your [development environment](/contribute/developer-guide.md).
+* Read the [style guides](/contribute/style-guides) we use.
