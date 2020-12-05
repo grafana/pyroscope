@@ -14,5 +14,5 @@ We use [golang-standards/project-layout](https://github.com/golang-standards/pro
 
 ## Linting
 
-We use [revive](https://github.com/mgechev/revive) for linting. We recommend that you use an editor integration. You can find more on that [here](/contribute/developer-guide.md#Text%20Editors)
+We use [revive](https://github.com/mgechev/revive) for linting. We recommend that you use an editor integration. You can find more on that [here](/contribute/developer-guide.md#text-editors)
 
