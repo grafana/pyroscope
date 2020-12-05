@@ -72,6 +72,10 @@ func (c *CSock) CanonicalAddr() string {
 	return c.listener.Addr().String()
 }
 
-func (c *CSock) Start() {
-	http.Serve(c.listener, c)
+func (c *CSock) Start() error {
+	return http.Serve(c.listener, c)
+}
+
+func (c *CSock) Stop() error {
+	return c.listener.Close()
 }

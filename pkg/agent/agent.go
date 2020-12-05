@@ -15,6 +15,7 @@ import (
 type Agent struct {
 	cfg            *config.Config
 	upstream       *upstream.Upstream
+	cs             *csock.CSock
 	activeProfiles map[int]*profileSession
 	id             id.ID
 }
@@ -33,12 +34,17 @@ func (a *Agent) Start() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	a.cs = cs
 	defer os.Remove(sockPath)
 
 	a.upstream.Start()
 
 	log.WithField("addr", cs.CanonicalAddr()).Info("Starting control socket")
 	cs.Start()
+}
+
+func (a *Agent) Stop() {
+	a.cs.Stop()
 }
 
 func (a *Agent) callback(req *csock.Request) *csock.Response {

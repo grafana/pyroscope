@@ -148,7 +148,9 @@ func Start(cfg *config.Config) error {
 	}
 
 	agentCmd.Exec = func(_ context.Context, args []string) error {
-		agent.New(cfg).Start()
+		a := agent.New(cfg)
+		atexit.Register(a.Stop)
+		a.Start()
 		return nil
 	}
 	serverCmd.Exec = func(_ context.Context, args []string) error {
@@ -176,7 +178,7 @@ func startServer(cfg *config.Config) {
 	if err != nil {
 		panic(err)
 	}
-	atexit.Register(s.Cleanup)
+	atexit.Register(func() { s.Close() })
 	c := server.New(cfg, s)
 	c.Start()
 	time.Sleep(time.Second)

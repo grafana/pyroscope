@@ -181,7 +181,14 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, error
 }
 
 func (s *Storage) Close() error {
-	s.Cleanup()
+	wg := sync.WaitGroup{}
+	wg.Add(3)
+	go func() { s.dimensions.Flush(); wg.Done() }()
+	go func() { s.segments.Flush(); wg.Done() }()
+	go func() { s.trees.Flush(); wg.Done() }()
+	wg.Wait()
+	// dictionary has to flush last because trees write to dictionaries
+	s.dicts.Flush()
 	return s.db.Close()
 }
 
@@ -194,13 +201,5 @@ func (s *Storage) GetValues(key string, cb func(v string) bool) {
 }
 
 func (s *Storage) Cleanup() {
-	wg := sync.WaitGroup{}
-	wg.Add(3)
-	go func() { s.dimensions.Flush(); wg.Done() }()
-	go func() { s.segments.Flush(); wg.Done() }()
-	go func() { s.trees.Flush(); wg.Done() }()
-	wg.Wait()
-	// dictionary has to flush last because trees write to dictionaries
-	s.dicts.Flush()
-	s.db.Close()
+
 }
