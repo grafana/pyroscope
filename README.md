@@ -6,24 +6,15 @@
 
 # What is Pyroscope?
 
-Pyroscope is an open source continuous profiling platform. It profiles your backend applications 24/7 allowing you to see where your programs spend time.
-
-Pyroscope is designed around a few key requirements:
-* low CPU overhead for the profiling targets
+Pyroscope is an open source continuous profiling platform. It profiles your backend applications 24/7 allowing you to see where your programs spend time. Pyroscope is designed around a few key requirements:
+* low CPU overhead
 * low disk space requirements
 * snappy UI
 
 
-## Demo
-
-TODO
-
-
 ## Architecture
 
-![Architecture Diagram](.github/markdown-images/architecture.svg)]
-
-Currently the agent communicates with the target application via a UNIX socket. Agent Co
+![Architecture Diagram](.github/markdown-images/architecture.svg)
 
 ## Currently Available Integrations
 

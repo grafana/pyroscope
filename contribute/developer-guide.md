@@ -28,11 +28,11 @@ npm install -g yarn
 
 ### VS Code
 
-We use `revive` for linting. Add `--config=${workspaceFolder}/revive.toml` to `Go: Lint Flags` section in VS Code settings.
-
 #### Go
 
 If you're using VS Code we would recommend the official [Go extension from Google](https://marketplace.visualstudio.com/items?itemName=golang.Go).
+
+We use `revive` for linting. Add `--config=${workspaceFolder}/revive.toml` to `Go: Lint Flags` section in VS Code settings.
 
 
 ## Style Guides
