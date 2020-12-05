@@ -1,4 +1,4 @@
-package config
+package cli
 
 import (
 	"strings"
@@ -34,14 +34,14 @@ func gradient(start, end int, offset int, progress float64) uint8 {
 	return uint8(start + int(float64(end-start)*progress))
 }
 
-func MaybeGradientBanner() string {
+func maybeGradientBanner() string {
 	if color.NoColor {
 		return banner + "\n"
 	}
-	return GradientBanner()
+	return gradientBanner()
 }
 
-func GradientBanner() string {
+func gradientBanner() string {
 	str := ""
 	arr := strings.Split(banner, "\n")
 	l := len(arr)

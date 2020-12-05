@@ -1,4 +1,4 @@
-package config_test
+package cli_test
 
 import (
 	"testing"

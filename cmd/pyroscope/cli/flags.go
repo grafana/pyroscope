@@ -1,14 +1,22 @@
-package config
+package cli
 
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/petethepig/pyroscope/pkg/agent"
+	"github.com/petethepig/pyroscope/pkg/build"
+	"github.com/petethepig/pyroscope/pkg/config"
+	"github.com/petethepig/pyroscope/pkg/server"
+	"github.com/petethepig/pyroscope/pkg/storage"
+	"github.com/petethepig/pyroscope/pkg/util/atexit"
+	"github.com/petethepig/pyroscope/pkg/util/debug"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/iancoleman/strcase"
@@ -92,14 +100,10 @@ func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
 }
 
 func printUsage(c *ffcli.Command) string {
-	return MaybeGradientBanner() + "\n" + DefaultUsageFunc(c)
+	return maybeGradientBanner() + "\n" + DefaultUsageFunc(c)
 }
 
-func (cfg *Config) Usage() string {
-	return DefaultUsageFunc(cfg.ffCommand)
-}
-
-func (cfg *Config) Load() error {
+func Start(cfg *config.Config) error {
 	var (
 		rootFlagSet   = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 		agentFlagSet  = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
@@ -117,7 +121,7 @@ func (cfg *Config) Load() error {
 		ff.WithConfigFileFlag("config"),
 	}
 
-	agent := &ffcli.Command{
+	agentCmd := &ffcli.Command{
 		UsageFunc:  printUsage,
 		Options:    options,
 		Name:       "agent",
@@ -126,7 +130,7 @@ func (cfg *Config) Load() error {
 		FlagSet:    agentFlagSet,
 	}
 
-	server := &ffcli.Command{
+	serverCmd := &ffcli.Command{
 		UsageFunc:  printUsage,
 		Options:    options,
 		Name:       "server",
@@ -135,29 +139,55 @@ func (cfg *Config) Load() error {
 		FlagSet:    serverFlagSet,
 	}
 
-	root := &ffcli.Command{
+	rootCmd := &ffcli.Command{
 		UsageFunc:   printUsage,
 		Options:     options,
 		ShortUsage:  "pyroscope [flags] <subcommand>",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{agent, server},
+		Subcommands: []*ffcli.Command{agentCmd, serverCmd},
 	}
 
-	agent.Exec = func(_ context.Context, args []string) error {
-		cfg.ffCommand = agent
-		cfg.Subcommand = "agent"
+	agentCmd.Exec = func(_ context.Context, args []string) error {
+		agent.New(cfg).Start()
 		return nil
 	}
-	server.Exec = func(_ context.Context, args []string) error {
-		cfg.ffCommand = server
-		cfg.Subcommand = "server"
+	serverCmd.Exec = func(_ context.Context, args []string) error {
+		go debugRAMUsage()
+		startServer(cfg)
 		return nil
 	}
-	root.Exec = func(_ context.Context, args []string) error {
-		cfg.ffCommand = root
-		cfg.Subcommand = "main"
+	rootCmd.Exec = func(_ context.Context, args []string) error {
+		if cfg.Version || args[0] == "version" {
+			fmt.Println(maybeGradientBanner())
+			fmt.Println(build.Summary())
+			fmt.Println("")
+		} else {
+			fmt.Println(maybeGradientBanner())
+			fmt.Println(DefaultUsageFunc(rootCmd))
+		}
 		return nil
 	}
 
-	return root.ParseAndRun(context.Background(), os.Args[1:])
+	return rootCmd.ParseAndRun(context.Background(), os.Args[1:])
+}
+
+func startServer(cfg *config.Config) {
+	s, err := storage.New(cfg)
+	if err != nil {
+		panic(err)
+	}
+	atexit.Register(s.Cleanup)
+	c := server.New(cfg, s)
+	c.Start()
+	time.Sleep(time.Second)
+}
+
+func debugRAMUsage() {
+	t := time.NewTicker(30 * time.Second)
+	for {
+		<-t.C
+		if log.IsLevelEnabled(log.DebugLevel) {
+			debug.PrintMemUsage()
+		}
+	}
 }

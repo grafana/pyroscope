@@ -35,3 +35,6 @@ We use `revive` for linting. Add `--config=${workspaceFolder}/revive.toml` to `G
 If you're using VS Code we would recommend the official [Go extension from Google](https://marketplace.visualstudio.com/items?itemName=golang.Go).
 
 
+## Style Guides
+
+Please checkout out the [style guides](/contribute/style-guides) we use.

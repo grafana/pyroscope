@@ -1,9 +1,15 @@
 package main
 
 import (
-	"github.com/petethepig/pyroscope/pkg"
+	"github.com/petethepig/pyroscope/cmd/pyroscope/cli"
+	"github.com/petethepig/pyroscope/pkg/config"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	pkg.Main()
+	cfg := config.New()
+	err := cli.Start(cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
