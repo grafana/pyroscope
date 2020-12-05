@@ -1,5 +1,6 @@
 import {
   SET_DATE_RANGE,
+  REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
   RECEIVE_DATA,
@@ -7,6 +8,7 @@ import {
 } from "../actionTypes";
 
 import uniqBy from "lodash/fp/uniqBy";
+import { random } from "core-js/fn/number";
 
 const initialState = {
   from: "now-1h",
@@ -22,6 +24,11 @@ export default function(state = initialState, action) {
         ...state,
         from: action.payload.from,
         until: action.payload.until
+      }
+    case REFRESH:
+      return {
+        ...state,
+        refreshToken: Math.random(),
       }
     case ADD_LABEL:
       return {...state, labels: uniqBy("name", [action.payload].concat(state.labels)) }

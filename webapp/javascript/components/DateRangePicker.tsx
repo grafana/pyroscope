@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { setDateRange } from "../redux/actions";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClock } from '@fortawesome/free-solid-svg-icons'
+import { faClock, faSyncAlt } from '@fortawesome/free-solid-svg-icons'
 
 import OutsideClickHandler from 'react-outside-click-handler';
 
@@ -103,10 +103,10 @@ class DateRangePicker extends React.Component {
   render() {
     return <div className={this.state.opened ? "drp-container opened" : "drp-container"}>
       <OutsideClickHandler onOutsideClick={this.hideDropdown}>
-      <button className="drp-button btn" onClick={this.showDropdown}>
-        <FontAwesomeIcon icon={faClock} />
-        <span>{this.humanReadableRange()}</span>
-      </button>
+        <button className="drp-button btn" onClick={this.showDropdown}>
+          <FontAwesomeIcon icon={faClock} />
+          <span>{this.humanReadableRange()}</span>
+        </button>
         <div className="drp-dropdown">
           <h4>Quick Presets</h4>
           <div className="drp-presets">

@@ -45,8 +45,12 @@ class SVGRenderer extends React.Component {
     } else {
       url += "&name=unknown{";
     }
+
     url += this.props.labels.filter(x => x.name != "__name__").map(x => `${x.name}=${x.value}`).join(",");
     url += "}";
+    if(this.props.refreshToken){
+      url += `&refreshToken=${this.props.refreshToken}`
+    }
     return url;
   }
 

@@ -68,7 +68,7 @@ clear-storage:
 	rm -rf tmp/pyroscope-storage
 
 .PHONY: dev
-dev: install-dev-tools
+dev:
 	goreman -exit-on-error -f scripts/dev-procfile start
 
 .PHONY: godoc

@@ -1,5 +1,6 @@
 import {
   SET_DATE_RANGE,
+  REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
   REQUEST_DATA,
@@ -8,6 +9,9 @@ import {
 
 export const setDateRange = (from, until) => {
   return { type: SET_DATE_RANGE, payload: { from, until } }
+};
+export const refresh = () => {
+  return { type: REFRESH, payload: { } }
 };
 export const addLabel = (name, value) => {
   return { type: ADD_LABEL, payload: { name, value } }
