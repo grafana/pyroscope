@@ -100,7 +100,7 @@ func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
 }
 
 func printUsage(c *ffcli.Command) string {
-	return maybeGradientBanner() + "\n" + DefaultUsageFunc(c)
+	return gradientBanner() + "\n" + DefaultUsageFunc(c)
 }
 
 func Start(cfg *config.Config) error {
@@ -158,11 +158,11 @@ func Start(cfg *config.Config) error {
 	}
 	rootCmd.Exec = func(_ context.Context, args []string) error {
 		if cfg.Version || args[0] == "version" {
-			fmt.Println(maybeGradientBanner())
+			fmt.Println(gradientBanner())
 			fmt.Println(build.Summary())
 			fmt.Println("")
 		} else {
-			fmt.Println(maybeGradientBanner())
+			fmt.Println(gradientBanner())
 			fmt.Println(DefaultUsageFunc(rootCmd))
 		}
 		return nil

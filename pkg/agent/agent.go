@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"os"
 	"strconv"
 
 	log "github.com/sirupsen/logrus"
@@ -27,10 +28,12 @@ func New(cfg *config.Config) *Agent {
 }
 
 func (a *Agent) Start() {
-	cs, err := csock.NewUnixCSock("/tmp/pyroscope-socket", a.callback)
+	sockPath := a.cfg.Agent.UNIXSocketPath
+	cs, err := csock.NewUnixCSock(sockPath, a.callback)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer os.Remove(sockPath)
 
 	a.upstream.Start()
 

@@ -34,14 +34,11 @@ func gradient(start, end int, offset int, progress float64) uint8 {
 	return uint8(start + int(float64(end-start)*progress))
 }
 
-func maybeGradientBanner() string {
+func gradientBanner() string {
 	if color.NoColor {
 		return banner + "\n"
 	}
-	return gradientBanner()
-}
 
-func gradientBanner() string {
 	str := ""
 	arr := strings.Split(banner, "\n")
 	l := len(arr)

@@ -21,6 +21,7 @@ type Agent struct {
 	UpstreamAddress        string        `def:"http://localhost:8080" desc:"address of the pyroscope server"`
 	UpstreamThreads        int           `def:"4"`
 	UpstreamRequestTimeout time.Duration `def:"10s"`
+	UNIXSocketPath         string        `def:"/tmp/pyroscope-socket"`
 }
 
 type Server struct {
