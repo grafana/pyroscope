@@ -3,8 +3,10 @@ import {
   REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
-  REQUEST_DATA,
-  RECEIVE_DATA,
+  REQUEST_SVG,
+  RECEIVE_SVG,
+  REQUEST_NAMES,
+  RECEIVE_NAMES,
 } from "./actionTypes";
 
 export const setDateRange = (from, until) => {
@@ -19,25 +21,47 @@ export const addLabel = (name, value) => {
 export const removeLabel = (name) => {
   return { type: REMOVE_LABEL, payload: { name } }
 };
-export const requestData = (url) => {
-  return { type: REQUEST_DATA, payload: { url } }
+export const requestSVG = (url) => {
+  return { type: REQUEST_SVG, payload: { url } }
 };
-const receiveData = (data) => {
-  return { type: RECEIVE_DATA, payload: { data } }
+const receiveSVG = (data) => {
+  return { type: RECEIVE_SVG, payload: { data } }
+};
+
+export const requestNames = () => {
+  return { type: REQUEST_NAMES, payload: {} }
+};
+const receiveNames = (names) => {
+  return { type: RECEIVE_NAMES, payload: { names } }
 };
 
 
-let currentController = null;
-export function fetchData(url) {
+let currentSVGController = null;
+export function fetchSVG(url) {
   return dispatch => {
-    if (currentController) {
-      currentController.abort();
+    if (currentSVGController) {
+      currentSVGController.abort();
     }
-    currentController = new AbortController();
-    dispatch(requestData(url))
-    return fetch(url, {signal: currentController.signal})
+    currentSVGController = new AbortController();
+    dispatch(requestSVG(url))
+    return fetch(url, {signal: currentSVGController.signal})
       .then(response => response.text())
-      .then(data => dispatch(receiveData(data)))
+      .then(data => dispatch(receiveSVG(data)))
+      .finally()
+  }
+}
+
+let currentNamesController = null;
+export function fetchNames() {
+  return dispatch => {
+    if (currentNamesController) {
+      currentNamesController.abort();
+    }
+    currentNamesController = new AbortController();
+    dispatch(requestNames())
+    return fetch("/label-values?label=__name__", {signal: currentNamesController.signal})
+      .then(response => response.json())
+      .then(data => dispatch(receiveNames(data)))
       .finally()
   }
 }

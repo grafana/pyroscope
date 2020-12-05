@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -38,7 +39,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		resultTree = tree.New()
 	}
 
-	w.WriteHeader(200)
 	if q.Get("format") == "frontend" {
 		w.Header().Set("Content-Type", "text/plain+pyroscope")
 		encoder := json.NewEncoder(w)
@@ -46,6 +46,13 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	} else if q.Get("format") == "svg" {
 		w.Header().Set("Content-Type", "image/svg+xml")
 	}
+
+	filename := q.Get("download-filename")
+	log.WithField("filename", filename).Debug("filename")
+	if filename != "" {
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	}
+	w.WriteHeader(200)
 
 	minVal := uint64(0)
 	log.Debug("minVal", minVal)

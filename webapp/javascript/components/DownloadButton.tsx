@@ -1,24 +1,24 @@
 import React from 'react';
 import { connect } from "react-redux";
-import { refresh } from "../redux/actions";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faSyncAlt } from '@fortawesome/free-solid-svg-icons'
+import { faDownload } from '@fortawesome/free-solid-svg-icons'
 
 class RefreshButton extends React.Component {
   constructor(props) {
     super(props);
   }
 
-  refresh = () => {
-    this.props.refresh();
+  download = () => {
+    window.document.location.href = this.props.renderURL;
+    // window.open();
   };
 
   render() {
     return <div>
-      <button className="drp-button btn" onClick={this.refresh}>
+      <button className="drp-button btn" onClick={this.download}>
         &nbsp;
-        <FontAwesomeIcon icon={faSyncAlt} />
+        <FontAwesomeIcon icon={faDownload} />
         &nbsp;
       </button>
     </div>
@@ -27,5 +27,4 @@ class RefreshButton extends React.Component {
 
 export default connect(
   (x) => x,
-  { refresh }
 )(RefreshButton);

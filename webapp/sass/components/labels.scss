@@ -3,6 +3,15 @@
 
 .labels {
   margin-left: 30px;
+  .label-select {
+    display: inline-block;
+    position: relative;
+    border-radius: 4px;
+    margin-right: 10px;
+    &:not([multiple]):not([size]){
+      background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+    }
+  }
   .label {
     display: inline-block;
 
@@ -60,6 +69,7 @@
 
 .labels-new-label {
   .labels-new-input {
+    width: 100px;
     border-radius: 4px;
     margin-right: 10px;
   }

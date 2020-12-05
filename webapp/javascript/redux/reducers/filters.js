@@ -3,8 +3,10 @@ import {
   REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
-  RECEIVE_DATA,
-  REQUEST_DATA,
+  RECEIVE_SVG,
+  REQUEST_SVG,
+  RECEIVE_NAMES,
+  REQUEST_NAMES,
 } from "../actionTypes";
 
 import uniqBy from "lodash/fp/uniqBy";
@@ -36,18 +38,33 @@ export default function(state = initialState, action) {
       return {...state,
         labels: state.labels.filter((x) => x.name !== action.payload.name)
       }
-    case REQUEST_DATA:
+    case REQUEST_SVG:
       return {...state,
-        isDataLoading: true,
+        isSVGLoading: true,
       }
-    case RECEIVE_DATA:
+    case RECEIVE_SVG:
       // console.log("RECEIVE_DATA", action)
       // let [samples, svg] = action.payload.data.split("\n", 2)
       let i = action.payload.data.indexOf("\n");
       return {...state,
         samples: JSON.parse(action.payload.data.substring(0, i)),
         svg: action.payload.data.substring(i+1),
-        isDataLoading: false,
+        isSVGLoading: false,
+      }
+    case REQUEST_NAMES:
+      return {...state,
+        areNamesLoading: true,
+      }
+    case RECEIVE_NAMES:
+      let labels = state.labels;
+      let firstName = action.payload.names[0] || "none";
+      if (labels.filter((x) => x.name == "__name__").length == 0){
+        labels = labels.concat([{name: "__name__", value: firstName}])
+      }
+      return {...state,
+        names: action.payload.names,
+        areNamesLoading: false,
+        labels: labels,
       }
     default:
     return state;

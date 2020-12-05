@@ -2,16 +2,16 @@ import React, {useEffect} from 'react';
 import {connect} from 'react-redux';
 
 import Label from './Label';
-import {fetchData} from '../redux/actions';
+import {fetchSVG} from '../redux/actions';
 
 class SVGRenderer extends React.Component {
 
   componentDidMount() {
-    this.maybeFetchData();
+    this.maybeFetchSVG();
   }
 
   componentDidUpdate(prevProps) {
-    this.maybeFetchData()
+    this.maybeFetchSVG()
     if (window.init) {
       try {
         window.init();
@@ -28,30 +28,12 @@ class SVGRenderer extends React.Component {
     }
   }
 
-  maybeFetchData(){
-    let url = this.renderURL("frontend")
+  maybeFetchSVG(){
+    let url = this.props.renderURL;
     if(this.lastRequestedURL != url) {
       this.lastRequestedURL = url
-      this.props.fetchData(url);
+      this.props.fetchSVG(url);
     }
-  }
-
-  renderURL(format="svg") {
-    let width = document.body.clientWidth - 30;
-    let url = `/render?format=${format}&from=${encodeURIComponent(this.props.from)}&until=${encodeURIComponent(this.props.until)}&width=${width}`;
-    let nameLabel = this.props.labels.find(x => x.name == "__name__");
-    if (nameLabel) {
-      url += "&name="+nameLabel.value+"{";
-    } else {
-      url += "&name=unknown{";
-    }
-
-    url += this.props.labels.filter(x => x.name != "__name__").map(x => `${x.name}=${x.value}`).join(",");
-    url += "}";
-    if(this.props.refreshToken){
-      url += `&refreshToken=${this.props.refreshToken}`
-    }
-    return url;
   }
 
   render() {
@@ -73,6 +55,6 @@ class SVGRenderer extends React.Component {
 
 export default connect(
   (x) => x,
-  { fetchData }
+  { fetchSVG }
 )(SVGRenderer);
 
