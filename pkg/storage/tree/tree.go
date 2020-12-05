@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/petethepig/pyroscope/pkg/storage/dict"
 	"github.com/petethepig/pyroscope/pkg/structs/merge"
 )
 
@@ -78,9 +77,9 @@ func (dstTrie *Tree) Merge(srcTrieI merge.Merger) {
 	}
 }
 
-func (t *Tree) String(d *dict.Dict) string {
+func (t *Tree) String() string {
 	res := ""
-	t.Iterate(d, func(k []byte, v uint64) {
+	t.iterate(func(k []byte, v uint64) {
 		if v > 0 {
 			res += fmt.Sprintf("%q %d\n", k, v)
 		}
@@ -131,7 +130,7 @@ func fixLabel(v []byte) []byte {
 	return v
 }
 
-func (t *Tree) Iterate(d *dict.Dict, cb func(key []byte, val uint64)) {
+func (t *Tree) iterate(cb func(key []byte, val uint64)) {
 	nodes := []*treeNode{t.root}
 	prefixes := make([][]byte, 1)
 	prefixes[0] = make([]byte, 0)
@@ -158,7 +157,7 @@ func (t *Tree) Iterate(d *dict.Dict, cb func(key []byte, val uint64)) {
 	}
 }
 
-func (t *Tree) IterateWithCum(cb func(cum uint64) bool) {
+func (t *Tree) iterateWithCum(cb func(cum uint64) bool) {
 	nodes := []*treeNode{t.root}
 	i := 0
 	for len(nodes) > 0 {

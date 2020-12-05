@@ -15,11 +15,11 @@ type Cache struct {
 	cleanupDone chan struct{}
 
 	// Bytes serializes objects before they go into storage. Users are required to define this one
-	Bytes func(v interface{}) []byte
+	Bytes func(k string, v interface{}) []byte
 	// FromBytes deserializes object coming from storage. Users are required to define this one
-	FromBytes func(v []byte) interface{}
+	FromBytes func(k string, v []byte) interface{}
 	// New creates a new object when there's no object in cache or storage. Optional
-	New func() interface{}
+	New func(k string) interface{}
 }
 
 func New(db *badger.DB, bound int, prefix string) *Cache {
@@ -59,11 +59,9 @@ func (cache *Cache) Put(key string, val interface{}) {
 }
 
 func (cache *Cache) saveToDisk(key string, val interface{}) {
-	log.Debugf("save to disk %q %q", key, val)
+	buf := cache.Bytes(key, val)
 	err := cache.db.Update(func(txn *badger.Txn) error {
-		val := cache.Bytes(val)
-		log.Debug("val size", len(val))
-		return txn.SetEntry(badger.NewEntry([]byte(key), val))
+		return txn.SetEntry(badger.NewEntry([]byte(cache.prefix+key), buf))
 	})
 	if err != nil {
 		// TODO: handle
@@ -78,7 +76,6 @@ func (cache *Cache) Flush() {
 }
 
 func (cache *Cache) Get(key string) interface{} {
-	key = cache.prefix + key
 	lg := log.WithField("key", key)
 	if cache.lfu.UpperBound > 0 {
 		fromLfu := cache.lfu.Get(key)
@@ -92,7 +89,7 @@ func (cache *Cache) Get(key string) interface{} {
 
 	var valCopy []byte
 	err := cache.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
+		item, err := txn.Get([]byte(cache.prefix + key))
 
 		if err != nil {
 			// TODO: handle
@@ -118,12 +115,12 @@ func (cache *Cache) Get(key string) interface{} {
 		if cache.New == nil {
 			return nil
 		}
-		newStruct := cache.New()
+		newStruct := cache.New(key)
 		cache.lfu.Set(key, newStruct)
 		return newStruct
 	}
 
-	val := cache.FromBytes(valCopy)
+	val := cache.FromBytes(key, valCopy)
 
 	cache.lfu.Set(key, val)
 	if cache.alwaysSave {

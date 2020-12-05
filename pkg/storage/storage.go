@@ -58,50 +58,50 @@ func New(cfg *config.Config) (*Storage, error) {
 	}
 
 	s.dimensions = cache.New(db, cfg.Server.CacheDimensionSize, "i:")
-	s.dimensions.Bytes = func(v interface{}) []byte {
+	s.dimensions.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*dimension.Dimension).Bytes()
 	}
-	s.dimensions.FromBytes = func(v []byte) interface{} {
+	s.dimensions.FromBytes = func(_k string, v []byte) interface{} {
 		return dimension.FromBytes(v)
 	}
-	s.dimensions.New = func() interface{} {
+	s.dimensions.New = func(_k string) interface{} {
 		return dimension.New()
 	}
 
 	s.segments = cache.New(db, cfg.Server.CacheSegmentSize, "s:")
-	s.segments.Bytes = func(v interface{}) []byte {
+	s.segments.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*segment.Segment).Bytes()
 	}
-	s.segments.FromBytes = func(v []byte) interface{} {
+	s.segments.FromBytes = func(_k string, v []byte) interface{} {
+		// TODO:
+		//   these configuration params should be saved in db when it initializes
 		return segment.FromBytes(cfg.Server.MinResolution, cfg.Server.Multiplier, v)
 	}
-	s.segments.New = func() interface{} {
+	s.segments.New = func(_k string) interface{} {
 		return segment.New(s.cfg.Server.MinResolution, s.cfg.Server.Multiplier)
 	}
 
 	s.dicts = cache.New(db, cfg.Server.CacheDictionarySize, "d:")
-	s.dicts.Bytes = func(v interface{}) []byte {
+	s.dicts.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*dict.Dict).Bytes()
 	}
-	s.dicts.FromBytes = func(v []byte) interface{} {
+	s.dicts.FromBytes = func(_k string, v []byte) interface{} {
 		return dict.FromBytes(v)
 	}
-	s.dicts.New = func() interface{} {
+	s.dicts.New = func(_k string) interface{} {
 		return dict.New()
 	}
 
-	// for now there's just one Dict, I think going forward we could have different ones for different
-	//   types of profiles
-	d := s.dicts.Get("main-dict").(*dict.Dict)
-
 	s.trees = cache.New(db, cfg.Server.CacheSegmentSize, "t:")
-	s.trees.Bytes = func(v interface{}) []byte {
+	s.trees.Bytes = func(k string, v interface{}) []byte {
+		d := s.dicts.Get(k[:32]).(*dict.Dict)
 		return v.(*tree.Tree).Bytes(d)
 	}
-	s.trees.FromBytes = func(v []byte) interface{} {
+	s.trees.FromBytes = func(k string, v []byte) interface{} {
+		d := s.dicts.Get(k[:32]).(*dict.Dict)
 		return tree.FromBytes(d, v)
 	}
-	s.trees.New = func() interface{} {
+	s.trees.New = func(_k string) interface{} {
 		return tree.New()
 	}
 
@@ -185,7 +185,7 @@ func (s *Storage) Close() error {
 	return s.db.Close()
 }
 
-func (s *Storage) GetKeys(cb func(k string) bool) {
+func (s *Storage) GetKeys(cb func(_k string) bool) {
 	s.labels.GetKeys(cb)
 }
 

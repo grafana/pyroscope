@@ -75,7 +75,7 @@ func (n *treeNode) maxDepth(startDepth int, minSamples uint64) int {
 
 func (t *Tree) minValue(maxNodes int) uint64 {
 	c := cappedarr.New(maxNodes)
-	t.IterateWithCum(func(cum uint64) bool {
+	t.iterateWithCum(func(cum uint64) bool {
 		return c.Push(cum)
 	})
 	return c.MinValue()

@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/petethepig/pyroscope/pkg/config"
-	"github.com/petethepig/pyroscope/pkg/storage/dict"
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
 	"github.com/petethepig/pyroscope/pkg/testing"
 )
@@ -41,7 +40,6 @@ var _ = Describe("storage package", func() {
 
 	Context("Storage", func() {
 		XIt("works", func() {
-			d := dict.New()
 			tree := tree.New()
 			tree.Insert([]byte("a;b"), uint64(1))
 			tree.Insert([]byte("a;c"), uint64(2))
@@ -57,7 +55,7 @@ var _ = Describe("storage package", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(t2).ToNot(BeNil())
 
-			Expect(t2.String(d)).To(Equal(tree.String(d)))
+			Expect(t2.String()).To(Equal(tree.String()))
 
 			Expect(s.Close()).ToNot(HaveOccurred())
 
@@ -67,7 +65,7 @@ var _ = Describe("storage package", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(t3).ToNot(BeNil())
 
-			Expect(t3.String(d)).To(Equal(tree.String(d)))
+			Expect(t3.String()).To(Equal(tree.String()))
 
 			Expect(nil).ToNot(BeNil())
 		})

@@ -54,7 +54,7 @@ var _ = Describe("tree package", func() {
 			r := bytes.NewReader(serializationExample)
 			t, err := Deserialize(d, r)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(t.String(d)).ToNot(Equal("test"))
+			Expect(t.String()).ToNot(Equal("test"))
 		})
 	})
 
@@ -72,9 +72,9 @@ var _ = Describe("tree package", func() {
 			Expect(b).To(Equal(serializationExample))
 			t2 := FromBytes(d2, b)
 
-			log.Debug("tree", tree.String(d))
-			log.Debug("t2", t2.String(d))
-			Expect(tree.String(d)).To(Equal(t2.String(d)))
+			log.Debug("tree", tree.String())
+			log.Debug("t2", t2.String())
+			Expect(tree.String()).To(Equal(t2.String()))
 			Expect(nil).ToNot(BeNil())
 		})
 	})
