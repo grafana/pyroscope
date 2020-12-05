@@ -1,7 +1,7 @@
 # Pyroscope
 
-[![Tests Status](https://github.com/pyroscope-io/pyroscope/workflows/Tests/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions)
-[![Release Status](https://github.com/pyroscope-io/pyroscope/workflows/Release/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions)
+[![Tests Status](https://github.com/pyroscope-io/pyroscope/workflows/Tests/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3ATests)
+[![Release Status](https://github.com/pyroscope-io/pyroscope/workflows/Release/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3ARelease)
 
 
 # What is Pyroscope?
