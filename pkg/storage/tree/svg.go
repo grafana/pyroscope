@@ -9,7 +9,7 @@ import (
 	"github.com/petethepig/pyroscope/pkg/svg"
 )
 
-func (tn2 *treeNode) svg2(w io.Writer, maxDepth, minVal uint64, totalCum float64, width int) {
+func (tn2 *treeNode) svg(w io.Writer, maxDepth, minVal uint64, totalCum float64, width int) {
 	nodes := []*treeNode{tn2}
 	xOffsets := []float64{0.0}
 	levels := []uint64{0}
@@ -84,17 +84,21 @@ func (t *Tree) minValue(maxNodes int) uint64 {
 func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int) {
 	minSamples := t.minValue(int(maxNodes))
 
-	if t.root != nil {
-		maxDepth := t.root.maxDepth(0, minSamples)
-		h := svg.Header{
-			Width:  width,
-			TitleX: width / 2,
-			Height: maxDepth*int(svg.Hd+1) + 70,
-			LabelY: maxDepth*int(svg.Hd+1) + 101 - 48,
-		}
-		log.Debug("SVG maxDepth", maxDepth)
-		svg.HeaderTmplt.Execute(w, h)
-		t.root.svg2(w, uint64(maxDepth), minSamples, float64(t.root.cum), width)
+	maxDepth := t.root.maxDepth(0, minSamples)
+	h := svg.Header{
+		Width:  width,
+		TitleX: width / 2,
+		Height: maxDepth*int(svg.Hd+1) + 70,
+		LabelY: maxDepth*int(svg.Hd+1) + 101 - 48,
 	}
+	log.Debug("SVG maxDepth", maxDepth)
+	svg.HeaderTmplt.Execute(w, h)
+
+	if t.root.cum == 0 {
+		svg.EmptyTmplt.Execute(w, h)
+	} else {
+		t.root.svg(w, uint64(maxDepth), minSamples, float64(t.root.cum), width)
+	}
+
 	w.Write([]byte(svg.FooterStr))
 }

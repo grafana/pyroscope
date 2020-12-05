@@ -33,6 +33,7 @@ type Box struct {
 
 var BoxTmplt *htmlTemplate.Template
 var HeaderTmplt *template.Template
+var EmptyTmplt *htmlTemplate.Template
 
 func init() {
 	BoxTmplt, _ = htmlTemplate.New("box").Parse(`
@@ -42,6 +43,9 @@ func init() {
 	</g>
 	`)
 	HeaderTmplt, _ = template.New("header").Parse(HeaderStr)
+	EmptyTmplt, _ = htmlTemplate.New("empty").Parse(`
+	<text text-anchor="middle" x="{{ .TitleX }}" y="35" font-size="18" alignment-baseline="middle" font-family="system-ui, -apple-system, 'Segoe UI', 'Roboto', 'Ubuntu', 'Cantarell', 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'" fill="#fff">No profiling data available for selected query / date range</text>
+	`)
 }
 
 var Hd = float64(53 - 37)

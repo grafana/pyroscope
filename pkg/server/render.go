@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,28 +27,15 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err) // TODO: handle
 	}
 
-	log.Debug("storageKey", storageKey.Normalized())
 	samplesEntries := []*samplesEntry{}
 
-	resultTrie, err := ctrl.s.Get(startTime, endTime, storageKey)
+	resultTree, err := ctrl.s.Get(startTime, endTime, storageKey)
 	if err != nil {
 		panic(err) // TODO: handle
 	}
 
-	if resultTrie == nil {
-		resultTrie = tree.New()
-	}
-
-	cb := func(tr *tree.Tree, w2 io.Writer) {
-		minVal := uint64(0)
-		log.Debug("minVal", minVal)
-
-		width := 1200
-		if newVal, err := strconv.Atoi(q.Get("width")); err == nil && newVal > 0 {
-			width = newVal
-		}
-
-		tr.SVG(w2, 1024, width)
+	if resultTree == nil {
+		resultTree = tree.New()
 	}
 
 	w.WriteHeader(200)
@@ -57,11 +43,17 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain+pyroscope")
 		encoder := json.NewEncoder(w)
 		encoder.Encode(samplesEntries)
-		cb(resultTrie, w)
 	} else if q.Get("format") == "svg" {
 		w.Header().Set("Content-Type", "image/svg+xml")
-		cb(resultTrie, w)
-	} else {
-		cb(resultTrie, w)
 	}
+
+	minVal := uint64(0)
+	log.Debug("minVal", minVal)
+
+	width := 1200
+	if newVal, err := strconv.Atoi(q.Get("width")); err == nil && newVal > 0 {
+		width = newVal
+	}
+
+	resultTree.SVG(w, 1024, width)
 }
