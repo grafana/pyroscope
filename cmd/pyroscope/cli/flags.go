@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/petethepig/pyroscope/pkg/agent"
+	"github.com/petethepig/pyroscope/pkg/agent/upstream/direct"
 	"github.com/petethepig/pyroscope/pkg/build"
 	"github.com/petethepig/pyroscope/pkg/config"
 	"github.com/petethepig/pyroscope/pkg/server"
@@ -155,7 +156,6 @@ func Start(cfg *config.Config) error {
 	}
 	serverCmd.Exec = func(_ context.Context, args []string) error {
 		go debugRAMUsage()
-		go startSelfAgent(cfg)
 		startServer(cfg)
 		return nil
 	}
@@ -179,6 +179,8 @@ func startServer(cfg *config.Config) {
 	if err != nil {
 		panic(err)
 	}
+	u := direct.New(cfg, s)
+	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}")
 	atexit.Register(func() { s.Close() })
 	c := server.New(cfg, s)
 	c.Start()
@@ -193,9 +195,4 @@ func debugRAMUsage() {
 			debug.PrintMemUsage()
 		}
 	}
-}
-
-func startSelfAgent(cfg *config.Config) {
-	a := agent.New(cfg)
-	a.Start()
 }

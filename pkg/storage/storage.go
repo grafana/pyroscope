@@ -119,6 +119,11 @@ func treeKey(sk segment.Key, depth int, t time.Time) string {
 }
 
 func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) error {
+	logrus.WithFields(logrus.Fields{
+		"startTime": startTime.String(),
+		"endTime":   endTime.String(),
+		"key":       key.Normalized(),
+	}).Info("storage.Put")
 	for k, v := range key.labels {
 		s.labels.Put(k, v)
 	}
@@ -148,6 +153,11 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) er
 }
 
 func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, error) {
+	logrus.WithFields(logrus.Fields{
+		"startTime": startTime.String(),
+		"endTime":   endTime.String(),
+		"key":       key.Normalized(),
+	}).Info("storage.Get")
 	triesToMerge := []merge.Merger{}
 
 	dimensions := []*dimension.Dimension{}
