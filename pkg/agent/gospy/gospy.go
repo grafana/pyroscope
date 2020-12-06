@@ -44,7 +44,7 @@ func (s *GoSpy) Snapshot(cb func([]byte, error)) {
 	} else {
 		for _, stack := range s.stacks[0:n] {
 			stackStr := stackToString(&stack)
-			if !strings.HasSuffix(stackStr, "gopark") {
+			if !strings.HasSuffix(stackStr, "gopark") && !strings.HasSuffix(stackStr, "GoroutineProfile") && !strings.HasSuffix(stackStr, "sigNoteSleep") {
 				cb([]byte(stackStr), nil)
 			}
 		}
