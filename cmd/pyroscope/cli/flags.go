@@ -155,6 +155,7 @@ func Start(cfg *config.Config) error {
 	}
 	serverCmd.Exec = func(_ context.Context, args []string) error {
 		go debugRAMUsage()
+		go startSelfAgent(cfg)
 		startServer(cfg)
 		return nil
 	}
@@ -192,4 +193,9 @@ func debugRAMUsage() {
 			debug.PrintMemUsage()
 		}
 	}
+}
+
+func startSelfAgent(cfg *config.Config) {
+	a := agent.New(cfg)
+	a.Start()
 }

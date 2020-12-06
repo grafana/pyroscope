@@ -3,6 +3,7 @@ package agent
 import (
 	"os"
 	"strconv"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -18,6 +19,25 @@ type Agent struct {
 	cs             *csock.CSock
 	activeProfiles map[int]*profileSession
 	id             id.ID
+}
+
+func (a *Agent) selfProfile() {
+	for {
+		s := newSession("gospy", 0)
+		err := s.start()
+		time.Sleep(10 * time.Second)
+		if err != nil {
+			continue
+		}
+		tt := s.stop()
+		metadata := map[string]string{
+			"name":  "testapp.cpu{}",
+			"from":  strconv.Itoa(int(s.startTime.Unix())),
+			"until": strconv.Itoa(int(s.stopTime.Unix())),
+		}
+		log.Debug("upload")
+		a.upstream.Upload(metadata, tt)
+	}
 }
 
 func New(cfg *config.Config) *Agent {
@@ -38,6 +58,7 @@ func (a *Agent) Start() {
 	defer os.Remove(sockPath)
 
 	a.upstream.Start()
+	go a.selfProfile()
 
 	log.WithField("addr", cs.CanonicalAddr()).Info("Starting control socket")
 	cs.Start()

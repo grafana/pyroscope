@@ -15,8 +15,8 @@ func (ctrl *Controller) labelsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err) // TODO: handle
 	}
-	w.Write(b)
 	w.WriteHeader(200)
+	w.Write(b)
 }
 
 func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, r *http.Request) {
@@ -29,6 +29,6 @@ func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		panic(err) // TODO: handle
 	}
-	w.Write(b)
 	w.WriteHeader(200)
+	w.Write(b)
 }

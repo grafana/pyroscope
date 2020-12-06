@@ -5,6 +5,7 @@ import (
 
 	// revive:disable:blank-imports Depending on configuration these packages may or may not be used.
 	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
+	_ "github.com/petethepig/pyroscope/pkg/agent/gospy"
 	_ "github.com/petethepig/pyroscope/pkg/agent/pyspy"
 	_ "github.com/petethepig/pyroscope/pkg/agent/rbspy"
 
@@ -33,7 +34,7 @@ func newSession(spyName string, pid int) *profileSession {
 }
 
 func (ps *profileSession) takeSnapshots(s spy.Spy) {
-	t := time.NewTicker(time.Second / 100)
+	t := time.NewTicker(time.Second / 20)
 	for {
 		select {
 		case <-t.C:

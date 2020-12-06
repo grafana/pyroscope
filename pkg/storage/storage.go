@@ -169,7 +169,9 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, error
 		st.Get(startTime, endTime, func(d int, t time.Time) {
 			k := treeKey(sk, d, t)
 			tr := s.trees.Get(k).(*tree.Tree)
-			triesToMerge = append(triesToMerge, merge.Merger(tr))
+			// TODO: these clones are probably are not the most efficient way of doing this
+			tr2 := tr.Clone(1, 1)
+			triesToMerge = append(triesToMerge, merge.Merger(tr2))
 		})
 	}
 

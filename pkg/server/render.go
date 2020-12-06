@@ -41,8 +41,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	if q.Get("format") == "frontend" {
 		w.Header().Set("Content-Type", "text/plain+pyroscope")
-		encoder := json.NewEncoder(w)
-		encoder.Encode(samplesEntries)
 	} else if q.Get("format") == "svg" {
 		w.Header().Set("Content-Type", "image/svg+xml")
 	}
@@ -53,6 +51,11 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	}
 	w.WriteHeader(200)
+
+	if q.Get("format") == "frontend" {
+		encoder := json.NewEncoder(w)
+		encoder.Encode(samplesEntries)
+	}
 
 	minVal := uint64(0)
 	log.Debug("minVal", minVal)
