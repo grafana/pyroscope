@@ -47,19 +47,15 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 		nodes = nodes[1:]
 
 		rel := sn.relationship(st, et)
-		if rel == match || rel == contain {
-			// TODO: if has children and not present need to merge with a child
-			// TODO: if has children need to write to children too
-			cb(sn, sn.depth, sn.time)
-			sn.present = true
-		} else if rel == inside || rel == overlap { // the one left is "outside"
+		if rel != outside {
 			childrenCount := 0
+			createNewChildren := rel == inside || rel == overlap
 			for i, v := range sn.children {
-				if v == nil { // maybe create a new child
+				if createNewChildren && v == nil { // maybe create a new child
 					childT := sn.time.Truncate(durations[sn.depth]).Add(time.Duration(i) * durations[sn.depth-1])
 
-					rel := relationship(childT, childT.Add(durations[sn.depth-1]), st, et)
-					if rel != outside {
+					rel2 := relationship(childT, childT.Add(durations[sn.depth-1]), st, et)
+					if rel2 != outside {
 						sn.children[i] = newNode(childT, sn.depth-1, 10)
 					}
 				}
@@ -69,8 +65,8 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 					nodes = append(nodes, v)
 				}
 			}
-			if childrenCount > 1 || sn.present {
-				// TODO: if has children and not present need to merge with a child
+			if rel == match || rel == contain || childrenCount > 1 || sn.present {
+				// TODO: if has children and not present need to pass child
 				cb(sn, sn.depth, sn.time)
 				sn.present = true
 			}
