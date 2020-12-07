@@ -49,9 +49,10 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 		rel := sn.relationship(st, et)
 		if rel == match || rel == contain {
 			// TODO: need to add weights here
+			// TODO: if has children and not present need to merge with a child
 			cb(sn, -1, sn.depth, sn.time)
 			sn.present = true
-		} else if rel != outside {
+		} else if rel == inside || rel == overlap { // the one left is "outside"
 			childrenCount := 0
 			for i, v := range sn.children {
 				if v != nil {
@@ -90,7 +91,7 @@ func (sn *streeNode) get(st, et time.Time, cb func(d int, t time.Time)) {
 	rel := sn.relationship(st, et)
 	if sn.present && (rel == contain || rel == match) {
 		cb(sn.depth, sn.time)
-	} else if rel != outside {
+	} else if rel == inside || rel == overlap { // same as rel != outside
 		for _, v := range sn.children {
 			if v != nil {
 				v.get(st, et, cb)
@@ -241,8 +242,6 @@ func (s *Segment) Get(st, et time.Time, cb func(d int, t time.Time)) {
 	s.root.get(st, et, func(d int, t time.Time) {
 		cb(d, t)
 	})
-	// TODO: remove this, it's temporary
-	// s.Visualize()
 }
 
 func (s *Segment) GenerateTimeline(st, et time.Time) [][]uint64 {
