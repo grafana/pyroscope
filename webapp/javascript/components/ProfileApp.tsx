@@ -1,6 +1,6 @@
 import React from 'react';
 import { connect } from "react-redux";
-import "react-dom"
+import "react-dom";
 import Spinner from "react-svg-spinner";
 import DateRangePicker from "./DateRangePicker";
 import DownloadButton from './DownloadButton';
@@ -9,6 +9,7 @@ import SVGRenderer from "./SVGRenderer";
 import LabelsFilter from "./LabelsFilter";
 import Label from "./Label";
 import NameSelector from "./NameSelector";
+import TimelineChart from "./TimelineChart";
 
 import classNames from "classnames";
 
@@ -37,6 +38,30 @@ class ProfileApp extends React.Component {
 
   render() {
     let renderURL = this.renderURL();
+    let flotOptions = {
+      margin: {
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+      },
+      selection: {
+				mode: "x"
+			},
+      grid: {
+        borderWidth: 1,
+      },
+      yaxis: {
+        show: false
+      },
+      xaxis: {
+        mode: "time"
+      },
+    };
+    let flotData = [[
+      [1607241600000, 0],
+      [1607241600000+3600*24*1000, 1]
+    ]];
     return (
       <div className="todo-app">
         <div className="navbar">
@@ -62,6 +87,7 @@ class ProfileApp extends React.Component {
           &nbsp;
           <DateRangePicker />
         </div>
+        <TimelineChart id="product-chart" options={flotOptions} data={flotData} width="100%" height="100px" />
         <SVGRenderer renderURL={renderURL+"&format=frontend"}/>
       </div>
     );

@@ -19,6 +19,8 @@
     border: 1px solid  rgb(75, 75, 75);
     box-shadow: 0 5px 20px rgba(0,0,0,0.9);
     border-radius: 4px;
+
+    z-index: 1;
   }
 
   h4:nth-child(1), h5:nth-child(1) {
