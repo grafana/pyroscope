@@ -39,9 +39,6 @@ class SVGRenderer extends React.Component {
   render() {
     return (
       <div className="svg-renderer">
-        <div className="samples">{
-          (this.props.samples || []).map((x) => <div key={x.ts}>{`${x.ts}-${x.samples}`}</div>)
-        }</div>
         <div className="svg-container" dangerouslySetInnerHTML={{__html: this.props.svg}}></div>
         {/* <img className="svg-container" src={`data:image/svg+xml;utf8,${this.props.svg}`} /> */}
         {/* {this.props.from} */}

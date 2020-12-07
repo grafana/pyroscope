@@ -51,7 +51,7 @@ var _ = Describe("storage package", func() {
 			err := s.Put(st, et, key, tree)
 			Expect(err).ToNot(HaveOccurred())
 
-			t2, err := s.Get(st2, et2, key)
+			t2, _, err := s.Get(st2, et2, key)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(t2).ToNot(BeNil())
 

@@ -52,16 +52,27 @@ class ProfileApp extends React.Component {
         borderWidth: 1,
       },
       yaxis: {
-        show: false
+        show: false,
+        min: 0,
+      },
+      points: {
+        show: true,
+        radius: 0.5
+      },
+      lines: {
+        show: true,
       },
       xaxis: {
-        mode: "time"
+        mode: "time",
+        timezone: "browser"
       },
     };
-    let flotData = [[
-      [1607241600000, 0],
-      [1607241600000+3600*24*1000, 1]
-    ]];
+    let samples = this.props.samples;
+    samples = samples || [
+      // [1607241600000, 0],
+      // [1607241600000+3600*24*1000, 1]
+    ];
+    let flotData = [samples];
     return (
       <div className="todo-app">
         <div className="navbar">

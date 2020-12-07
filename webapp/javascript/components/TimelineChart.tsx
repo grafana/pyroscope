@@ -8,7 +8,6 @@ import 'react-flot/flot/jquery.flot.time.min';
 import 'react-flot/flot/jquery.flot.selection.min';
 
 
-
 class TimelineChart extends ReactFlot {
   componentDidMount() {
     this.draw();

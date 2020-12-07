@@ -136,7 +136,8 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) er
 	}
 
 	st := s.segments.Get(string(sk)).(*segment.Segment)
-	st.Put(startTime, endTime, func(depth int, t time.Time, m, d int) {
+	samples := val.Samples()
+	st.Put(startTime, endTime, samples, func(depth int, t time.Time, m, d int) {
 		tk := treeKey(sk, depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
 		treeClone := val.Clone(m, d)
@@ -152,7 +153,7 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) er
 	return nil
 }
 
-func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, error) {
+func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, [][]uint64, error) {
 	logrus.WithFields(logrus.Fields{
 		"startTime": startTime.String(),
 		"endTime":   endTime.String(),
@@ -169,12 +170,16 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, error
 
 	segmentKeys := dimension.Intersection(dimensions...)
 
+	var tl [][]uint64
+
 	for _, sk := range segmentKeys {
 		logrus.Debug("sk", sk)
 		st := s.segments.Get(string(sk)).(*segment.Segment)
 		if st == nil {
 			continue
 		}
+
+		tl = st.GenerateTimeline(startTime, endTime)
 
 		st.Get(startTime, endTime, func(d int, t time.Time) {
 			k := treeKey(sk, d, t)
@@ -187,9 +192,9 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, error
 
 	resultTrie := merge.MergeTriesConcurrently(runtime.NumCPU(), triesToMerge...)
 	if resultTrie == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
-	return resultTrie.(*tree.Tree), nil
+	return resultTrie.(*tree.Tree), tl, nil
 }
 
 func (s *Storage) Close() error {

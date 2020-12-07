@@ -170,6 +170,10 @@ func (t *Tree) iterateWithCum(cb func(cum uint64) bool) {
 	}
 }
 
+func (t *Tree) Samples() uint64 {
+	return t.root.cum
+}
+
 func (t *Tree) Clone(m, d int) *Tree {
 	newTrie := &Tree{
 		root: t.root.clone(uint64(m), uint64(d)),

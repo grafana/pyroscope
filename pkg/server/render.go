@@ -28,9 +28,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err) // TODO: handle
 	}
 
-	samplesEntries := []*samplesEntry{}
-
-	resultTree, err := ctrl.s.Get(startTime, endTime, storageKey)
+	resultTree, tl, err := ctrl.s.Get(startTime, endTime, storageKey)
 	if err != nil {
 		panic(err) // TODO: handle
 	}
@@ -54,7 +52,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	if q.Get("format") == "frontend" {
 		encoder := json.NewEncoder(w)
-		encoder.Encode(samplesEntries)
+		encoder.Encode(tl)
 	}
 
 	minVal := uint64(0)
