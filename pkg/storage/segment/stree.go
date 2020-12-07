@@ -3,12 +3,15 @@ package segment
 import (
 	"fmt"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type streeNode struct {
 	depth    int
 	time     time.Time
 	present  bool
+	samples  uint64
 	children []*streeNode
 }
 
@@ -31,18 +34,24 @@ func calcMultiplier(m, d int) (r int) {
 	return
 }
 
-func (sn *streeNode) put(st, et time.Time, cb func(int, int, time.Time)) {
+func (sn *streeNode) relationship(st, et time.Time) rel {
+	t2 := sn.time.Add(durations[sn.depth])
+	return relationship(sn.time, t2, st, et)
+}
+
+func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode, childrenCount int, depth int, dt time.Time)) {
 	nodes := []*streeNode{sn}
 
 	for len(nodes) > 0 {
 		sn = nodes[0]
 		nodes = nodes[1:]
 
-		if isInside(sn.time, st, et, durations[sn.depth]) {
-			// TODO: merges / etc
-			cb(-1, sn.depth, sn.time)
+		rel := sn.relationship(st, et)
+		if rel == match || rel == inside {
+			// TODO: need to add weights here
+			cb(sn, -1, sn.depth, sn.time)
 			sn.present = true
-		} else if isNotOutside(sn.time, st, et, durations[sn.depth]) {
+		} else if rel != outside {
 			childrenCount := 0
 			for i, v := range sn.children {
 				if v != nil {
@@ -50,9 +59,9 @@ func (sn *streeNode) put(st, et time.Time, cb func(int, int, time.Time)) {
 					nodes = append(nodes, v)
 				} else {
 					childT := sn.time.Truncate(durations[sn.depth]).Add(time.Duration(i) * durations[sn.depth-1])
-					b := isNotOutside(childT, st, et, durations[sn.depth-1])
-					if b {
-						// TODO: pass multiplier
+
+					rel := relationship(childT, childT.Add(durations[sn.depth-1]), st, et)
+					if rel != outside {
 						sn.children[i] = newNode(childT, sn.depth-1, 10)
 						nodes = append(nodes, sn.children[i])
 						childrenCount++
@@ -60,8 +69,8 @@ func (sn *streeNode) put(st, et time.Time, cb func(int, int, time.Time)) {
 				}
 			}
 			if childrenCount > 1 {
-				// TODO: this actually requires a merge
-				cb(childrenCount, sn.depth, sn.time)
+				// TODO: need to add weights here
+				cb(sn, childrenCount, sn.depth, sn.time)
 				sn.present = true
 			}
 		}
@@ -78,7 +87,7 @@ func normalize(st, et time.Time) (time.Time, time.Time) {
 }
 
 func (sn *streeNode) get(st, et time.Time, cb func(d int, t time.Time)) {
-	rel := relationship(sn.time, sn.time.Add(durations[sn.depth]), st, et)
+	rel := sn.relationship(st, et)
 	if sn.present && (rel == inside || rel == match) {
 		cb(sn.depth, sn.time)
 	} else if rel != outside {
@@ -86,6 +95,38 @@ func (sn *streeNode) get(st, et time.Time, cb func(d int, t time.Time)) {
 			if v != nil {
 				v.get(st, et, cb)
 			}
+		}
+	}
+}
+
+func (sn *streeNode) generateTimeline(st, et time.Time, minDuration time.Duration, buf [][]uint64) {
+	rel := sn.relationship(st, et)
+	logrus.WithFields(logrus.Fields{
+		"_t0":         st.String(),
+		"_t1":         et.String(),
+		"_t2":         sn.time.String(),
+		"_sn.depth":   sn.depth,
+		"minDuration": minDuration.String(),
+		"rel":         rel,
+	}).Info("generateTimeline")
+	if rel != outside {
+		currentDuration := durations[sn.depth]
+		if len(sn.children) > 0 && currentDuration >= minDuration {
+			for _, v := range sn.children {
+				if v != nil {
+					v.generateTimeline(st, et, minDuration, buf)
+				}
+			}
+		}
+
+		i := int(sn.time.Sub(st) / minDuration)
+		rightBoundary := i + int(currentDuration/minDuration)
+		l := len(buf)
+		for i < rightBoundary {
+			if i >= 0 && i < l {
+				buf[i][1] += sn.samples
+			}
+			i++
 		}
 	}
 }
@@ -155,7 +196,9 @@ func (s *Segment) growTree(st, et time.Time) {
 	}
 
 	for {
-		if isMatchOrContain(s.root.time, st, et, s.durations[s.root.depth]) {
+		rel := s.root.relationship(st, et)
+
+		if rel == contain || rel == match {
 			break
 		}
 
@@ -169,14 +212,11 @@ func (s *Segment) growTree(st, et time.Time) {
 }
 
 // TODO: just give d+t info here
-func (s *Segment) Put(st, et time.Time, cb func(depth int, t time.Time, m, d int)) {
+func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, m, d int)) {
 	st, et = normalize(st, et)
 	s.growTree(st, et)
 	divider := int(et.Sub(st) / durations[0])
-	count := 0
-	s.root.put(st, et, func(childrenCount int, depth int, tm time.Time) {
-		count++
-
+	s.root.put(st, et, samples, func(sn *streeNode, childrenCount int, depth int, tm time.Time) {
 		extraM := 1
 		extraD := 1
 		if childrenCount != -1 && childrenCount != s.multiplier {
@@ -184,9 +224,12 @@ func (s *Segment) Put(st, et time.Time, cb func(depth int, t time.Time, m, d int
 			extraM = childrenCount
 			extraD = s.multiplier
 		}
+		m := uint64(calcMultiplier(s.multiplier, depth) * extraM)
+		d := uint64(divider * extraD)
+		sn.samples += samples * m / d
 		// case when not all children are within [st,et]
 		// TODO: maybe we need childrenCount be in durations[0] terms
-		cb(depth, tm, calcMultiplier(s.multiplier, depth)*extraM, divider*extraD)
+		cb(depth, tm, int(m), int(d))
 	})
 }
 
@@ -200,4 +243,37 @@ func (s *Segment) Get(st, et time.Time, cb func(d int, t time.Time)) {
 	})
 	// TODO: remove this, it's temporary
 	// s.Visualize()
+}
+
+func (s *Segment) GenerateTimeline(st, et time.Time) [][]uint64 {
+	st, et = normalize(st, et)
+	if s.root == nil {
+		return [][]uint64{}
+	}
+
+	totalDuration := et.Sub(st)
+	minDuration := totalDuration / time.Duration(2048/2)
+	durThreshold := s.durations[0]
+	for _, d := range s.durations {
+		if d < 0 {
+			break
+		}
+		if d < minDuration {
+			durThreshold = d
+		}
+	}
+
+	// TODO: need to figure out optimal size
+	res := make([][]uint64, totalDuration/durThreshold)
+	currentTime := st
+	for i, _ := range res {
+		// uint64(rand.Intn(100))
+		res[i] = []uint64{uint64(currentTime.Unix() * 1000), 0}
+		currentTime = currentTime.Add(durThreshold)
+	}
+	s.root.generateTimeline(st, et, durThreshold, res)
+
+	logrus.WithField("min", minDuration).WithField("threshold", durThreshold).Debug("duration")
+
+	return res
 }

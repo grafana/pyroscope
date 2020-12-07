@@ -49,27 +49,3 @@ func relationship(t1, t2, st, et time.Time) rel {
 
 	return overlap
 }
-
-// t >= st && t + dur2 <= et
-func isInside(t, st, et time.Time, dur2 time.Duration) bool {
-	t2 := t.Add(dur2)
-	rel := relationship(t, t2, st, et)
-	// log.Debug("rel", rel)
-	return rel == inside || rel == match
-}
-
-// st >= t && et <= t + dur2
-func isMatchOrContain(t, st, et time.Time, dur2 time.Duration) bool {
-	t2 := t.Add(dur2)
-	rel := relationship(t, t2, st, et)
-	// log.Debug("isMatchOrContain", t, dur2, st, et, rel)
-	return rel == contain || rel == match
-}
-
-// st >= t && et <= t + dur2
-func isNotOutside(t, st, et time.Time, dur2 time.Duration) bool {
-	t2 := t.Add(dur2)
-	rel := relationship(t, t2, st, et)
-	// log.Debug("isMatchOrContain", t, dur2, st, et, rel)
-	return rel == contain || rel == match || rel == inside || rel == overlap
-}
