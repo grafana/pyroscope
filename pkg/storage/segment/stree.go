@@ -39,7 +39,7 @@ func (sn *streeNode) relationship(st, et time.Time) rel {
 	return relationship(sn.time, t2, st, et)
 }
 
-func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode, childrenCount int, depth int, dt time.Time)) {
+func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode, depth int, dt time.Time)) {
 	nodes := []*streeNode{sn}
 
 	for len(nodes) > 0 {
@@ -48,30 +48,30 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 
 		rel := sn.relationship(st, et)
 		if rel == match || rel == contain {
-			// TODO: need to add weights here
 			// TODO: if has children and not present need to merge with a child
-			cb(sn, -1, sn.depth, sn.time)
+			// TODO: if has children need to write to children too
+			cb(sn, sn.depth, sn.time)
 			sn.present = true
 		} else if rel == inside || rel == overlap { // the one left is "outside"
 			childrenCount := 0
 			for i, v := range sn.children {
-				if v != nil {
-					childrenCount++
-					nodes = append(nodes, v)
-				} else {
+				if v == nil { // maybe create a new child
 					childT := sn.time.Truncate(durations[sn.depth]).Add(time.Duration(i) * durations[sn.depth-1])
 
 					rel := relationship(childT, childT.Add(durations[sn.depth-1]), st, et)
 					if rel != outside {
 						sn.children[i] = newNode(childT, sn.depth-1, 10)
-						nodes = append(nodes, sn.children[i])
-						childrenCount++
 					}
 				}
+
+				if sn.children[i] != nil {
+					childrenCount++
+					nodes = append(nodes, v)
+				}
 			}
-			if childrenCount > 1 {
-				// TODO: need to add weights here
-				cb(sn, childrenCount, sn.depth, sn.time)
+			if childrenCount > 1 || sn.present {
+				// TODO: if has children and not present need to merge with a child
+				cb(sn, sn.depth, sn.time)
 				sn.present = true
 			}
 		}
@@ -139,13 +139,13 @@ type Segment struct {
 	durations  []time.Duration
 }
 
-func newNode(t time.Time, d, multiplier int) *streeNode {
+func newNode(t time.Time, depth, multiplier int) *streeNode {
 	sn := &streeNode{
-		depth: d,
+		depth: depth,
 		time:  t,
 	}
-	if d > 0 {
-		sn.children = make([]*streeNode, 10)
+	if depth > 0 {
+		sn.children = make([]*streeNode, multiplier)
 	}
 	return sn
 }
@@ -217,16 +217,9 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 	st, et = normalize(st, et)
 	s.growTree(st, et)
 	divider := int(et.Sub(st) / durations[0])
-	s.root.put(st, et, samples, func(sn *streeNode, childrenCount int, depth int, tm time.Time) {
-		extraM := 1
-		extraD := 1
-		if childrenCount != -1 && childrenCount != s.multiplier {
-			// TODO: Use multiplier + divider better
-			extraM = childrenCount
-			extraD = s.multiplier
-		}
-		m := uint64(calcMultiplier(s.multiplier, depth) * extraM)
-		d := uint64(divider * extraD)
+	s.root.put(st, et, samples, func(sn *streeNode, depth int, tm time.Time) {
+		m := uint64(calcMultiplier(s.multiplier, depth))
+		d := uint64(divider)
 		sn.samples += samples * m / d
 		// case when not all children are within [st,et]
 		// TODO: maybe we need childrenCount be in durations[0] terms
