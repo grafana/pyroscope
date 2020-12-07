@@ -22,33 +22,33 @@ var _ = Describe("stree", func() {
 				).String()).To(Equal("match"))
 			})
 		})
-		Context("contain", func() {
+		Context("inside", func() {
 			Expect(relationship(
 				testing.SimpleTime(0), testing.SimpleTime(10), // t1 t2
 				testing.SimpleTime(1), testing.SimpleTime(9), // st et
-			).String()).To(Equal("contain"))
+			).String()).To(Equal("inside"))
 			Expect(relationship(
 				testing.SimpleTime(0), testing.SimpleTime(10), // t1 t2
 				testing.SimpleTime(0), testing.SimpleTime(9), // st et
-			).String()).To(Equal("contain"))
+			).String()).To(Equal("inside"))
 			Expect(relationship(
 				testing.SimpleTime(0), testing.SimpleTime(10), // t1 t2
 				testing.SimpleTime(1), testing.SimpleTime(10), // st et
-			).String()).To(Equal("contain"))
+			).String()).To(Equal("inside"))
 		})
-		Context("inside", func() {
+		Context("contain", func() {
 			Expect(relationship(
 				testing.SimpleTime(10), testing.SimpleTime(20), // t1 t2
 				testing.SimpleTime(9), testing.SimpleTime(21), // st et
-			).String()).To(Equal("inside"))
+			).String()).To(Equal("contain"))
 			Expect(relationship(
 				testing.SimpleTime(10), testing.SimpleTime(20), // t1 t2
 				testing.SimpleTime(10), testing.SimpleTime(21), // st et
-			).String()).To(Equal("inside"))
+			).String()).To(Equal("contain"))
 			Expect(relationship(
 				testing.SimpleTime(10), testing.SimpleTime(20), // t1 t2
 				testing.SimpleTime(9), testing.SimpleTime(20), // st et
-			).String()).To(Equal("inside"))
+			).String()).To(Equal("contain"))
 		})
 		Context("overlap", func() {
 			Expect(relationship(

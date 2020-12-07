@@ -47,7 +47,7 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 		nodes = nodes[1:]
 
 		rel := sn.relationship(st, et)
-		if rel == match || rel == inside {
+		if rel == match || rel == contain {
 			// TODO: need to add weights here
 			cb(sn, -1, sn.depth, sn.time)
 			sn.present = true
@@ -88,7 +88,7 @@ func normalize(st, et time.Time) (time.Time, time.Time) {
 
 func (sn *streeNode) get(st, et time.Time, cb func(d int, t time.Time)) {
 	rel := sn.relationship(st, et)
-	if sn.present && (rel == inside || rel == match) {
+	if sn.present && (rel == contain || rel == match) {
 		cb(sn.depth, sn.time)
 	} else if rel != outside {
 		for _, v := range sn.children {
@@ -198,7 +198,7 @@ func (s *Segment) growTree(st, et time.Time) {
 	for {
 		rel := s.root.relationship(st, et)
 
-		if rel == contain || rel == match {
+		if rel == inside || rel == match {
 			break
 		}
 

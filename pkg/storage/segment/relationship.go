@@ -35,10 +35,10 @@ func relationship(t1, t2, st, et time.Time) rel {
 		return match
 	}
 	if !t1.After(st) && !t2.Before(et) {
-		return contain
+		return inside
 	}
 	if !t1.Before(st) && !t2.After(et) {
-		return inside
+		return contain
 	}
 	if !t1.After(st) && !t2.After(st) {
 		return outside
