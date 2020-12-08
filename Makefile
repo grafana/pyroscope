@@ -43,6 +43,10 @@ install-web-dependencies:
 assets: install-web-dependencies
 	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js
 
+.PHONY: assets-watch
+assets-watch: install-web-dependencies
+	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js --watch
+
 .PHONY: embedded-assets
 embedded-assets: assets
 	pkger -o pkg/controller

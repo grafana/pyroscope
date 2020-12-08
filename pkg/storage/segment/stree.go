@@ -108,6 +108,8 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 	if sn.present && (rel == contain || rel == match) {
 		cb(sn, sn.depth, sn.time)
 	} else if rel != outside {
+		// TODO: for ranges that are not covered by children need to use values from this node
+		//   but add a multiplier
 		for _, v := range sn.children {
 			if v != nil {
 				v.get(st, et, cb)
@@ -137,7 +139,13 @@ func (sn *streeNode) generateTimeline(st, et time.Time, minDuration time.Duratio
 			return
 		}
 
-		i := int(sn.time.Sub(st) / minDuration)
+		nodeTime := sn.time
+		if currentDuration < minDuration {
+			currentDuration = minDuration
+			nodeTime = nodeTime.Truncate(currentDuration)
+		}
+
+		i := int(nodeTime.Sub(st) / minDuration)
 		rightBoundary := i + int(currentDuration/minDuration)
 		l := len(buf)
 		for i < rightBoundary {
@@ -257,12 +265,15 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, t time.Time, m, d int
 	if s.root == nil {
 		return
 	}
-	divider := int(et.Sub(st) / durations[0])
+	// divider := int(et.Sub(st) / durations[0])
 	v := newVis()
 	s.root.get(st, et, func(sn *streeNode, depth int, t time.Time) {
-		m := calcMultiplier(s.multiplier, depth)
-		v.add(sn, int(m), int(divider), true)
-		cb(depth, t, m, divider)
+		// TODO: pass m / d from .get() ?
+		m := 1
+		d := 1
+		v.add(sn, m, d, true)
+		cb(depth, t, m, d)
+
 	})
 	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
 }
@@ -286,6 +297,7 @@ func (s *Segment) GenerateTimeline(st, et time.Time) [][]uint64 {
 	}
 
 	// TODO: need to figure out optimal size
+	//   also move this outside of this method so that even if there's no segments it still works
 	res := make([][]uint64, totalDuration/durThreshold)
 	currentTime := st
 	for i, _ := range res {
@@ -293,6 +305,11 @@ func (s *Segment) GenerateTimeline(st, et time.Time) [][]uint64 {
 		res[i] = []uint64{uint64(currentTime.Unix() * 1000), 0}
 		currentTime = currentTime.Add(durThreshold)
 	}
+
+	// rootDuration := durations[s.root.depth]
+	// if currentDuration < minDuration {
+
+	// }
 	s.root.generateTimeline(st, et, durThreshold, res)
 
 	logrus.WithField("min", minDuration).WithField("threshold", durThreshold).Debug("duration")
