@@ -62,7 +62,7 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 
 				if sn.children[i] != nil {
 					childrenCount++
-					nodes = append(nodes, v)
+					nodes = append(nodes, sn.children[i])
 				}
 			}
 			if rel == match || rel == contain || childrenCount > 1 || sn.present {
@@ -87,7 +87,7 @@ func (sn *streeNode) get(st, et time.Time, cb func(d int, t time.Time)) {
 	rel := sn.relationship(st, et)
 	if sn.present && (rel == contain || rel == match) {
 		cb(sn.depth, sn.time)
-	} else if rel == inside || rel == overlap { // same as rel != outside
+	} else if rel != outside {
 		for _, v := range sn.children {
 			if v != nil {
 				v.get(st, et, cb)
@@ -114,6 +114,7 @@ func (sn *streeNode) generateTimeline(st, et time.Time, minDuration time.Duratio
 					v.generateTimeline(st, et, minDuration, buf)
 				}
 			}
+			return
 		}
 
 		i := int(sn.time.Sub(st) / minDuration)

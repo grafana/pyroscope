@@ -40,8 +40,8 @@ type Server struct {
 	MaxResolution   time.Duration `def:"8760h"` // 365 days
 	StorageMaxDepth int           `skip:"true"`
 
-	MaxNodesSerialization int `def:"1024"`
-	MaxNodesSVG           int `def:"1024"`
+	MaxNodesSerialization int `def:"8192"`
+	MaxNodesSVG           int `def:"2048"`
 }
 
 func calculateMaxDepth(min, max time.Duration, multiplier int) int {

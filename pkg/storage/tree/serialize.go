@@ -11,10 +11,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (t *Tree) Serialize(d *dict.Dict, w io.Writer) error {
+func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 	nodes := []*treeNode{t.root}
 	// TODO: pass config value
-	minVal := t.minValue(1024)
+	minVal := t.minValue(maxNodes)
 	j := 0
 
 	for len(nodes) > 0 {
@@ -112,9 +112,9 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 	return t, nil
 }
 
-func (t *Tree) Bytes(d *dict.Dict) []byte {
+func (t *Tree) Bytes(d *dict.Dict, maxNodes int) []byte {
 	b := bytes.Buffer{}
-	t.Serialize(d, &b)
+	t.Serialize(d, maxNodes, &b)
 	return b.Bytes()
 }
 func FromBytes(d *dict.Dict, p []byte) *Tree {

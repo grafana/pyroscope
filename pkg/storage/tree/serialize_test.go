@@ -33,16 +33,16 @@ var _ = Describe("tree package", func() {
 
 		XIt("returns correct results", func() {
 			var buf bytes.Buffer
-			tree.Serialize(d, &buf)
+			tree.Serialize(d, 1024, &buf)
 			Expect(buf.Bytes()).To(Equal(serializationExample))
 		})
 
 		Context("Ran 1000000 times", func() {
 			var buf1 bytes.Buffer
-			tree.Serialize(d, &buf1)
+			tree.Serialize(d, 1024, &buf1)
 			It("returns the same result", func() {
 				var buf2 bytes.Buffer
-				tree.Serialize(d, &buf2)
+				tree.Serialize(d, 1024, &buf2)
 				Expect(buf2).To(Equal(buf1))
 			})
 		})
@@ -67,7 +67,7 @@ var _ = Describe("tree package", func() {
 
 		XIt("deserialize returns the same trie", func() {
 			var buf bytes.Buffer
-			tree.Serialize(d, &buf)
+			tree.Serialize(d, 1024, &buf)
 			b := buf.Bytes()
 			Expect(b).To(Equal(serializationExample))
 			t2 := FromBytes(d2, b)

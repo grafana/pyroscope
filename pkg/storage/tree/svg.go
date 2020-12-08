@@ -61,7 +61,7 @@ func (tn2 *treeNode) svg(w io.Writer, maxDepth, minVal uint64, totalCum float64,
 
 func (n *treeNode) maxDepth(startDepth int, minSamples uint64) int {
 	max := startDepth
-	if n.cum >= minSamples {
+	if n.cum > minSamples {
 		for _, child := range n.childrenNodes {
 			d := child.maxDepth(startDepth+1, minSamples)
 			if d > max {
@@ -81,7 +81,7 @@ func (t *Tree) minValue(maxNodes int) uint64 {
 	return c.MinValue()
 }
 
-func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int) {
+func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int, m int) {
 	minSamples := t.minValue(int(maxNodes))
 
 	maxDepth := t.root.maxDepth(0, minSamples)
@@ -97,7 +97,7 @@ func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int) {
 	if t.root.cum == 0 {
 		svg.EmptyTmplt.Execute(w, h)
 	} else {
-		t.root.svg(w, uint64(maxDepth), minSamples, float64(t.root.cum), width)
+		t.root.svg(w, uint64(maxDepth), minSamples, float64(t.root.cum)/float64(m), width)
 	}
 
 	w.Write([]byte(svg.FooterStr))

@@ -95,7 +95,7 @@ func New(cfg *config.Config) (*Storage, error) {
 	s.trees = cache.New(db, cfg.Server.CacheSegmentSize, "t:")
 	s.trees.Bytes = func(k string, v interface{}) []byte {
 		d := s.dicts.Get(k[:32]).(*dict.Dict)
-		return v.(*tree.Tree).Bytes(d)
+		return v.(*tree.Tree).Bytes(d, cfg.Server.MaxNodesSerialization)
 	}
 	s.trees.FromBytes = func(k string, v []byte) interface{} {
 		d := s.dicts.Get(k[:32]).(*dict.Dict)

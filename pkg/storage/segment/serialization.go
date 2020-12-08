@@ -15,6 +15,7 @@ func (s *Segment) Serialize(w io.Writer) error {
 		n := nodes[0]
 		varint.Write(w, uint64(n.depth))
 		varint.Write(w, uint64(n.time.Unix()))
+		varint.Write(w, n.samples)
 		p := uint64(0)
 		if n.present {
 			p = 1
@@ -55,6 +56,10 @@ func Deserialize(resolution time.Duration, multiplier int, r io.Reader) (*Segmen
 		if err != nil {
 			return nil, err
 		}
+		samplesVal, err := varint.Read(br)
+		if err != nil {
+			return nil, err
+		}
 		presentVal, err := varint.Read(br)
 		if err != nil {
 			return nil, err
@@ -63,6 +68,7 @@ func Deserialize(resolution time.Duration, multiplier int, r io.Reader) (*Segmen
 		if presentVal == 1 {
 			node.present = true
 		}
+		node.samples = samplesVal
 		if s.root == nil {
 			s.root = node
 		}
