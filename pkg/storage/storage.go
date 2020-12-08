@@ -137,10 +137,16 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) er
 
 	st := s.segments.Get(string(sk)).(*segment.Segment)
 	samples := val.Samples()
-	st.Put(startTime, endTime, samples, func(depth int, t time.Time, m, d int) {
+	st.Put(startTime, endTime, samples, func(depth int, t time.Time, m, d int, addons []segment.Addon) {
 		tk := treeKey(sk, depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
-		treeClone := val.Clone(m, d)
+		// treeClone := val.Clone(m, d)
+		treeClone := val.Clone(1, 1)
+		for _, addon := range addons {
+			tk2 := treeKey(sk, addon.Depth, addon.T)
+			addonTree := s.trees.Get(tk2).(*tree.Tree)
+			treeClone.Merge(addonTree)
+		}
 		if existingTree != nil {
 			existingTree.Merge(treeClone)
 			s.trees.Put(tk, existingTree)
@@ -181,11 +187,12 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, [][]u
 
 		tl = st.GenerateTimeline(startTime, endTime)
 
-		st.Get(startTime, endTime, func(d int, t time.Time) {
-			k := treeKey(sk, d, t)
+		st.Get(startTime, endTime, func(depth int, t time.Time, m, d int) {
+			k := treeKey(sk, depth, t)
 			tr := s.trees.Get(k).(*tree.Tree)
 			// TODO: these clones are probably are not the most efficient way of doing this
-			tr2 := tr.Clone(1, 1)
+			//   instead this info should be passed to the merger function imo
+			tr2 := tr.Clone(1, 1) //m, d)
 			triesToMerge = append(triesToMerge, merge.Merger(tr2))
 		})
 	}

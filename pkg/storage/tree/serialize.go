@@ -78,7 +78,7 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 		}
 		nameBuf, ok := d.Get(labelLinkBuf)
 		if !ok {
-			// these strings has to be at least slightly different, hence base64 addition
+			// these strings has to be at least slightly different, hence base64 Addon
 			nameBuf = []byte("label not found " + base64.URLEncoding.EncodeToString(labelLinkBuf))
 		}
 		tn := parent.node.insert(nameBuf)

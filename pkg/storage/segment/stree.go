@@ -39,7 +39,23 @@ func (sn *streeNode) relationship(st, et time.Time) rel {
 	return relationship(sn.time, t2, st, et)
 }
 
-func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode, depth int, dt time.Time)) {
+func (sn *streeNode) findAddons() []Addon {
+	res := []Addon{}
+	if sn.present {
+		res = append(res, Addon{
+			Depth: sn.depth,
+			T:     sn.time,
+		})
+	} else {
+		for _, child := range sn.children {
+			if child != nil {
+				res = append(res, child.findAddons()...)
+			}
+		}
+	}
+	return res
+}
+func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode, depth int, dt time.Time, addons []Addon)) {
 	nodes := []*streeNode{sn}
 
 	for len(nodes) > 0 {
@@ -65,9 +81,13 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 					nodes = append(nodes, sn.children[i])
 				}
 			}
+			var addons []Addon
 			if rel == match || rel == contain || childrenCount > 1 || sn.present {
 				// TODO: if has children and not present need to pass child
-				cb(sn, sn.depth, sn.time)
+				if !sn.present {
+					addons = sn.findAddons()
+				}
+				cb(sn, sn.depth, sn.time, addons)
 				sn.present = true
 			}
 		}
@@ -83,10 +103,10 @@ func normalize(st, et time.Time) (time.Time, time.Time) {
 	return st, et2.Add(durations[0])
 }
 
-func (sn *streeNode) get(st, et time.Time, cb func(d int, t time.Time)) {
+func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.Time)) {
 	rel := sn.relationship(st, et)
 	if sn.present && (rel == contain || rel == match) {
-		cb(sn.depth, sn.time)
+		cb(sn, sn.depth, sn.time)
 	} else if rel != outside {
 		for _, v := range sn.children {
 			if v != nil {
@@ -209,29 +229,41 @@ func (s *Segment) growTree(st, et time.Time) {
 	}
 }
 
-// TODO: just give d+t info here
-func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, m, d int)) {
-	st, et = normalize(st, et)
-	s.growTree(st, et)
-	divider := int(et.Sub(st) / durations[0])
-	s.root.put(st, et, samples, func(sn *streeNode, depth int, tm time.Time) {
-		m := uint64(calcMultiplier(s.multiplier, depth))
-		d := uint64(divider)
-		sn.samples += samples * m / d
-		// case when not all children are within [st,et]
-		// TODO: maybe we need childrenCount be in durations[0] terms
-		cb(depth, tm, int(m), int(d))
-	})
+type Addon struct {
+	Depth int
+	T     time.Time
 }
 
-func (s *Segment) Get(st, et time.Time, cb func(d int, t time.Time)) {
+// TODO: just give d+t info here
+func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, m, d int, addons []Addon)) {
+	st, et = normalize(st, et)
+	s.growTree(st, et)
+	m := uint64(int(et.Sub(st) / durations[0]))
+	v := newVis()
+	s.root.put(st, et, samples, func(sn *streeNode, depth int, tm time.Time, addons []Addon) {
+		d := uint64(calcMultiplier(s.multiplier, depth))
+		sn.samples += samples
+		// case when not all children are within [st,et]
+		// TODO: maybe we need childrenCount be in durations[0] terms
+		v.add(sn, int(m), int(d), true)
+		cb(depth, tm, int(m), int(d), addons)
+	})
+	v.print(fmt.Sprintf("/tmp/0-put-%s-%s.html", st.String(), et.String()))
+}
+
+func (s *Segment) Get(st, et time.Time, cb func(depth int, t time.Time, m, d int)) {
 	st, et = normalize(st, et)
 	if s.root == nil {
 		return
 	}
-	s.root.get(st, et, func(d int, t time.Time) {
-		cb(d, t)
+	divider := int(et.Sub(st) / durations[0])
+	v := newVis()
+	s.root.get(st, et, func(sn *streeNode, depth int, t time.Time) {
+		m := calcMultiplier(s.multiplier, depth)
+		v.add(sn, int(m), int(divider), true)
+		cb(depth, t, m, divider)
 	})
+	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
 }
 
 func (s *Segment) GenerateTimeline(st, et time.Time) [][]uint64 {

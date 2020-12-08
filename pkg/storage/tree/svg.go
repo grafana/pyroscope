@@ -97,7 +97,7 @@ func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int, m int) {
 	if t.root.cum == 0 {
 		svg.EmptyTmplt.Execute(w, h)
 	} else {
-		t.root.svg(w, uint64(maxDepth), minSamples, float64(t.root.cum)/float64(m), width)
+		t.root.svg(w, uint64(maxDepth), minSamples, float64(t.root.cum), width)
 	}
 
 	w.Write([]byte(svg.FooterStr))
