@@ -224,6 +224,7 @@ func (s *Segment) growTree(st, et time.Time) {
 		newDepth := prevVal.depth + 1
 		s.root = newNode(st.Truncate(s.durations[newDepth]), newDepth, s.multiplier)
 		if prevVal != nil {
+			s.root.samples = prevVal.samples
 			s.root.replace(prevVal)
 		}
 	}
@@ -238,10 +239,10 @@ type Addon struct {
 func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, m, d int, addons []Addon)) {
 	st, et = normalize(st, et)
 	s.growTree(st, et)
-	m := uint64(int(et.Sub(st) / durations[0]))
+	d := uint64(int(et.Sub(st) / durations[0]))
 	v := newVis()
 	s.root.put(st, et, samples, func(sn *streeNode, depth int, tm time.Time, addons []Addon) {
-		d := uint64(calcMultiplier(s.multiplier, depth))
+		m := uint64(calcMultiplier(s.multiplier, depth))
 		sn.samples += samples
 		// case when not all children are within [st,et]
 		// TODO: maybe we need childrenCount be in durations[0] terms
