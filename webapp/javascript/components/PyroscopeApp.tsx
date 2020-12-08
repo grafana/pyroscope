@@ -13,7 +13,7 @@ import TimelineChart from "./TimelineChart";
 
 import classNames from "classnames";
 
-class ProfileApp extends React.Component {
+class PyroscopeApp extends React.Component {
   constructor(props) {
     super(props);
   }
@@ -38,6 +38,7 @@ class ProfileApp extends React.Component {
 
   render() {
     let renderURL = this.renderURL();
+    // See docs here: https://github.com/flot/flot/blob/master/API.md
     let flotOptions = {
       margin: {
         top: 0,
@@ -56,11 +57,12 @@ class ProfileApp extends React.Component {
         min: 0,
       },
       points: {
-        show: true,
+        show: false,
         radius: 0.5
       },
       lines: {
         show: true,
+        lineWidth: 1.0,
       },
       xaxis: {
         mode: "time",
@@ -109,4 +111,4 @@ class ProfileApp extends React.Component {
 export default connect(
   (x) => x,
   {}
-)(ProfileApp);
+)(PyroscopeApp);

@@ -4,12 +4,12 @@ import React from "react"
 import { Provider } from "react-redux";
 import store from "./redux/store";
 
-import ProfileApp from "./components/ProfileApp";
+import PyroscopeApp from "./components/PyroscopeApp";
 
 
 ReactDOM.render(
   <Provider store={store}>
-    <ProfileApp/>
+    <PyroscopeApp/>
   </Provider>,
   document.getElementById('root') as HTMLElement
 );
