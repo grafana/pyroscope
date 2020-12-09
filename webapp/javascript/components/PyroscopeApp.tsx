@@ -4,6 +4,7 @@ import "react-dom";
 import Spinner from "react-svg-spinner";
 import DateRangePicker from "./DateRangePicker";
 import DownloadButton from './DownloadButton';
+import ZoomOutButton from './ZoomOutButton';
 import RefreshButton from './RefreshButton';
 import SVGRenderer from "./SVGRenderer";
 import LabelsFilter from "./LabelsFilter";
@@ -13,9 +14,15 @@ import TimelineChart from "./TimelineChart";
 
 import classNames from "classnames";
 
+import { fetchNames } from "../redux/actions";
+
 class PyroscopeApp extends React.Component {
   constructor(props) {
     super(props);
+  }
+
+  componentDidMount = () => {
+    this.props.fetchNames();
   }
 
   renderURL() {
@@ -51,6 +58,10 @@ class PyroscopeApp extends React.Component {
 			},
       grid: {
         borderWidth: 1,
+        margin:{
+          left: 16,
+          right: 16,
+        }
       },
       yaxis: {
         show: false,
@@ -58,15 +69,21 @@ class PyroscopeApp extends React.Component {
       },
       points: {
         show: false,
-        radius: 0.5
+        radius: 0.1
       },
       lines: {
-        show: true,
+        show: false,
+        steps: true,
         lineWidth: 1.0,
+      },
+      bars: {
+        show: true,
+        fill: true
       },
       xaxis: {
         mode: "time",
-        timezone: "browser"
+        timezone: "browser",
+        reserveSpace: false
       },
     };
     let samples = this.props.samples;
@@ -74,6 +91,7 @@ class PyroscopeApp extends React.Component {
       // [1607241600000, 0],
       // [1607241600000+3600*24*1000, 1]
     ];
+    samples = samples.map((x) => [x[0], x[1] === 0 ? null : x[1]]);
     let flotData = [samples];
     return (
       <div className="todo-app">
@@ -85,7 +103,7 @@ class PyroscopeApp extends React.Component {
               return <Label key={label.name} label={label}></Label>;
             })}
           </div>
-          <LabelsFilter />
+          {/* <LabelsFilter /> */}
           <div className="navbar-space-filler"></div>
           <div className={
             classNames("navbar-spinner-container", {
@@ -96,11 +114,13 @@ class PyroscopeApp extends React.Component {
           </div>
           <DownloadButton renderURL={renderURL+"&format=svg&download-filename=flamegraph.svg"} />
           &nbsp;
-          <RefreshButton />
+          <RefreshButton/>
+          &nbsp;
+          <ZoomOutButton/>
           &nbsp;
           <DateRangePicker />
         </div>
-        <TimelineChart id="product-chart" options={flotOptions} data={flotData} width="100%" height="100px" />
+        <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
         <SVGRenderer renderURL={renderURL+"&format=frontend"}/>
       </div>
     );
@@ -110,5 +130,5 @@ class PyroscopeApp extends React.Component {
 
 export default connect(
   (x) => x,
-  {}
+  { fetchNames }
 )(PyroscopeApp);

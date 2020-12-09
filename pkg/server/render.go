@@ -52,7 +52,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	if q.Get("format") == "frontend" {
 		encoder := json.NewEncoder(w)
-		encoder.Encode(tl)
+		encoder.Encode(tl.Data())
 	}
 
 	minVal := uint64(0)

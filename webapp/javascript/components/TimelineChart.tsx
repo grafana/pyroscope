@@ -17,6 +17,7 @@ class TimelineChart extends ReactFlot {
   }
 }
 
+
 export default connect(
   (x) => x,
   {setDateRange}

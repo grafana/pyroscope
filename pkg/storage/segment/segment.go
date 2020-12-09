@@ -3,8 +3,6 @@ package segment
 import (
 	"fmt"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 type streeNode struct {
@@ -118,45 +116,6 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 	}
 }
 
-func (sn *streeNode) generateTimeline(st, et time.Time, minDuration time.Duration, buf [][]uint64) {
-	rel := sn.relationship(st, et)
-	logrus.WithFields(logrus.Fields{
-		"_t0":         st.String(),
-		"_t1":         et.String(),
-		"_t2":         sn.time.String(),
-		"_sn.depth":   sn.depth,
-		"minDuration": minDuration.String(),
-		"rel":         rel,
-	}).Info("generateTimeline")
-	if rel != outside {
-		currentDuration := durations[sn.depth]
-		if len(sn.children) > 0 && currentDuration >= minDuration {
-			for _, v := range sn.children {
-				if v != nil {
-					v.generateTimeline(st, et, minDuration, buf)
-				}
-			}
-			return
-		}
-
-		nodeTime := sn.time
-		if currentDuration < minDuration {
-			currentDuration = minDuration
-			nodeTime = nodeTime.Truncate(currentDuration)
-		}
-
-		i := int(nodeTime.Sub(st) / minDuration)
-		rightBoundary := i + int(currentDuration/minDuration)
-		l := len(buf)
-		for i < rightBoundary {
-			if i >= 0 && i < l {
-				buf[i][1] += sn.samples
-			}
-			i++
-		}
-	}
-}
-
 type Segment struct {
 	resolution time.Duration
 	multiplier int
@@ -175,15 +134,18 @@ func newNode(t time.Time, depth, multiplier int) *streeNode {
 	return sn
 }
 
-// move link to tries to strees
+// TODO: global state is not good
+func InitializeGlobalState(resolution time.Duration, multiplier int) {
+	// this is here just to initialize global duration variable
+	New(resolution, multiplier)
+}
+
 func New(resolution time.Duration, multiplier int) *Segment {
 	st := &Segment{
 		resolution: resolution,
 		multiplier: multiplier,
 		durations:  []time.Duration{},
 	}
-
-	// TODO: global state is not good
 
 	// TODO better upper boundary
 	d := resolution
@@ -276,43 +238,4 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, t time.Time, m, d int
 
 	})
 	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
-}
-
-func (s *Segment) GenerateTimeline(st, et time.Time) [][]uint64 {
-	st, et = normalize(st, et)
-	if s.root == nil {
-		return [][]uint64{}
-	}
-
-	totalDuration := et.Sub(st)
-	minDuration := totalDuration / time.Duration(2048/2)
-	durThreshold := s.durations[0]
-	for _, d := range s.durations {
-		if d < 0 {
-			break
-		}
-		if d < minDuration {
-			durThreshold = d
-		}
-	}
-
-	// TODO: need to figure out optimal size
-	//   also move this outside of this method so that even if there's no segments it still works
-	res := make([][]uint64, totalDuration/durThreshold)
-	currentTime := st
-	for i, _ := range res {
-		// uint64(rand.Intn(100))
-		res[i] = []uint64{uint64(currentTime.Unix() * 1000), 0}
-		currentTime = currentTime.Add(durThreshold)
-	}
-
-	// rootDuration := durations[s.root.depth]
-	// if currentDuration < minDuration {
-
-	// }
-	s.root.generateTimeline(st, et, durThreshold, res)
-
-	logrus.WithField("min", minDuration).WithField("threshold", durThreshold).Debug("duration")
-
-	return res
 }

@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClock, faSyncAlt } from '@fortawesome/free-solid-svg-icons'
 
 import OutsideClickHandler from 'react-outside-click-handler';
+import moment from 'moment';
 
 
 const defaultPresets = [
@@ -65,8 +66,8 @@ class DateRangePicker extends React.Component {
   };
 
   humanReadableRange = () => {
-    if (this.state.until == "now") {
-      let m = this.state.from.match(/^now-(?<number>\d+)(?<multiplier>\D+)$/)
+    if (this.props.until == "now") {
+      let m = this.props.from.match(/^now-(?<number>\d+)(?<multiplier>\D+)$/)
       if(m && multiplierMapping[m.groups.multiplier]) {
         let multiplier = multiplierMapping[m.groups.multiplier];
         if (m.groups.number > 1) {
@@ -75,7 +76,8 @@ class DateRangePicker extends React.Component {
         return `Last ${m.groups.number} ${multiplier}`
       }
     }
-    return this.state.from + " to " +this.state.until;
+    return moment(this.props.from*1000).format('lll') + " – " + moment(this.props.until*1000).format('lll');
+    // return this.props.from + " to " +this.props.until;
   };
 
   showDropdown = () => {

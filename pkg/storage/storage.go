@@ -105,6 +105,9 @@ func New(cfg *config.Config) (*Storage, error) {
 		return tree.New()
 	}
 
+	// TODO: horrible, remove soon
+	segment.InitializeGlobalState(s.cfg.Server.MinResolution, s.cfg.Server.Multiplier)
+
 	return s, nil
 }
 
@@ -159,7 +162,7 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) er
 	return nil
 }
 
-func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, [][]uint64, error) {
+func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segment.Timeline, error) {
 	logrus.WithFields(logrus.Fields{
 		"startTime": startTime.String(),
 		"endTime":   endTime.String(),
@@ -170,22 +173,19 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, [][]u
 	dimensions := []*dimension.Dimension{}
 	for k, v := range key.labels {
 		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
-		logrus.Debugf("keys: %q %q %q", k, v, d.Bytes())
 		dimensions = append(dimensions, d)
 	}
 
 	segmentKeys := dimension.Intersection(dimensions...)
 
-	var tl [][]uint64
-
+	tl := segment.GenerateTimeline(startTime, endTime)
 	for _, sk := range segmentKeys {
-		logrus.Debug("sk", sk)
 		st := s.segments.Get(string(sk)).(*segment.Segment)
 		if st == nil {
 			continue
 		}
 
-		tl = st.GenerateTimeline(startTime, endTime)
+		tl.PopulateTimeline(startTime, endTime, st)
 
 		st.Get(startTime, endTime, func(depth int, t time.Time, m, d int) {
 			k := treeKey(sk, depth, t)
@@ -199,7 +199,7 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, [][]u
 
 	resultTrie := merge.MergeTriesConcurrently(runtime.NumCPU(), triesToMerge...)
 	if resultTrie == nil {
-		return nil, nil, nil
+		return nil, tl, nil
 	}
 	return resultTrie.(*tree.Tree), tl, nil
 }

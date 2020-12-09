@@ -26,7 +26,7 @@ type Box struct {
 	Width   float64
 	Height  float64
 	Samples uint64
-	Percent float64
+	Percent string
 	Label   string
 	Color   string
 }
@@ -57,6 +57,7 @@ func RenderBlock(w io.Writer, label []byte, level, samples uint64, width, x, per
 	// templates are too slow
 	color := colorRand(label, self, childrenCount)
 	safeLabel := string(label)
+	percStr := fmt.Sprintf("%.2f", perc)
 	BoxTmplt.Execute(w, Box{
 		X:       x,
 		Y:       tm + float64(level)*Hd,
@@ -65,7 +66,7 @@ func RenderBlock(w io.Writer, label []byte, level, samples uint64, width, x, per
 		Width:   width,
 		Height:  15.0,
 		Samples: samples,
-		Percent: perc,
+		Percent: percStr,
 		Label:   safeLabel,
 		Color:   string(color),
 	})

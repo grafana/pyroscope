@@ -1,6 +1,6 @@
 import React from 'react';
 import { connect } from "react-redux";
-import { addLabel, fetchNames } from "../redux/actions";
+import { addLabel } from "../redux/actions";
 
 const initialState = {
   name: "",
@@ -10,11 +10,6 @@ class LabelsFilter extends React.Component {
   constructor(props) {
     super(props);
     this.state = initialState;
-  }
-
-  componentDidMount = () => {
-    console.log('componentDidMount');
-    this.props.fetchNames();
   }
 
   updateCurrentLabel = (name) => {
@@ -52,5 +47,5 @@ class LabelsFilter extends React.Component {
 
 export default connect(
   (x) => x,
-  { addLabel, fetchNames }
+  { addLabel }
 )(LabelsFilter);

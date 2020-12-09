@@ -18,12 +18,13 @@
 
     var details, searchbtn, matchedtxt, svg;
     function init(evt) {
-      console.log('init');
-      details = document.getElementById("details").firstChild;
-      searchbtn = document.getElementById("search");
-      matchedtxt = document.getElementById("matched");
-      svg = document.getElementById("main-svg");
-      searching = 0;
+      if(document.getElementById("details")) {
+        details = document.getElementById("details").firstChild;
+        searchbtn = document.getElementById("search");
+        matchedtxt = document.getElementById("matched");
+        svg = document.getElementById("main-svg");
+        searching = 0;
+      }
     }
 
     // mouse-over for info
@@ -146,13 +147,11 @@
       }
     }
     function zoom(node) {
-      console.log('zoom', node)
       var attr = find_child(node, "rect").attributes;
       var width = parseFloat(attr["width"].value);
       var xmin = parseFloat(attr["x"].value);
       var xmax = parseFloat(xmin + width);
       var ymin = parseFloat(attr["y"].value);
-      console.log(svg, svg.width.baseVal.value);
       var ratio = (svg.width.baseVal.value - 2*10) / width;
 
       // XXX: Workaround for JavaScript float issues (fix me)
@@ -201,6 +200,9 @@
     }
     function unzoom() {
       var unzoombtn = document.getElementById("unzoom");
+      if(!unzoombtn){
+        return
+      }
       unzoombtn.style["opacity"] = "0.0";
 
       var el = document.getElementsByTagName("g");

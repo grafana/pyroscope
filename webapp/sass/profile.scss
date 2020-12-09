@@ -75,3 +75,24 @@ body {
 body {
   min-width: 1024px;
 }
+
+// .timeline-wrapper {
+//   position: relative;
+//   width: 100%;
+//   height: 100px;
+// }
+// .timeline-container {
+//   position: absolute;
+//   top: 0;
+//   left: 0;
+//   right: 0;
+//   bottom: 0;
+// }
+
+#timeline-chart {
+  overflow: hidden;
+}
+
+.flot-tick-label.tickLabel{
+  white-space: nowrap;
+}
