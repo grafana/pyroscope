@@ -115,8 +115,8 @@ class PyroscopeApp extends React.Component {
           <DownloadButton renderURL={renderURL+"&format=svg&download-filename=flamegraph.svg"} />
           &nbsp;
           <RefreshButton/>
-          &nbsp;
-          <ZoomOutButton/>
+          {/* &nbsp; */}
+          {/* <ZoomOutButton/> */}
           &nbsp;
           <DateRangePicker />
         </div>

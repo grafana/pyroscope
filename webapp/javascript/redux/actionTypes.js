@@ -1,4 +1,7 @@
 export const SET_DATE_RANGE = "SET_DATE_RANGE";
+export const SET_FROM       = "SET_FROM";
+export const SET_UNTIL      = "SET_UNTIL";
+export const SET_LABELS     = "SET_LABELS";
 export const REFRESH        = "REFRESH";
 export const ADD_LABEL      = "ADD_LABEL";
 export const REMOVE_LABEL   = "REMOVE_LABEL";

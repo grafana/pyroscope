@@ -1,5 +1,8 @@
 import {
   SET_DATE_RANGE,
+  SET_FROM,
+  SET_UNTIL,
+  SET_LABELS,
   REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
@@ -27,11 +30,23 @@ export default function(state = initialState, action) {
         from: action.payload.from,
         until: action.payload.until
       }
+    case SET_FROM:
+      return {
+        ...state,
+        from: action.payload.from,
+      }
+    case SET_UNTIL:
+      return {
+        ...state,
+        until: action.payload.until
+      }
     case REFRESH:
       return {
         ...state,
         refreshToken: Math.random(),
       }
+    case SET_LABELS:
+      return {...state, labels: action.payload.labels }
     case ADD_LABEL:
       return {...state, labels: uniqBy("name", [action.payload].concat(state.labels)) }
     case REMOVE_LABEL:

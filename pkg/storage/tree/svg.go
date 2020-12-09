@@ -81,7 +81,7 @@ func (t *Tree) minValue(maxNodes int) uint64 {
 	return c.MinValue()
 }
 
-func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int, m int) {
+func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int) {
 	minSamples := t.minValue(int(maxNodes))
 
 	maxDepth := t.root.maxDepth(0, minSamples)

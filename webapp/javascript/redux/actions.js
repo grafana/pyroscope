@@ -1,5 +1,8 @@
 import {
   SET_DATE_RANGE,
+  SET_FROM,
+  SET_UNTIL,
+  SET_LABELS,
   REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
@@ -12,8 +15,17 @@ import {
 export const setDateRange = (from, until) => {
   return { type: SET_DATE_RANGE, payload: { from, until } }
 };
+export const setFrom = (from) => {
+  return { type: SET_FROM, payload: { from } }
+};
+export const setUntil = (until) => {
+  return { type: SET_UNTIL, payload: { until } }
+};
 export const refresh = () => {
   return { type: REFRESH, payload: { } }
+};
+export const setLabels = (labels) => {
+  return { type: SET_LABELS, payload: { labels } }
 };
 export const addLabel = (name, value) => {
   return { type: ADD_LABEL, payload: { name, value } }

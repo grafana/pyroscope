@@ -48,6 +48,7 @@
     "redux": "^4.0.5",
     "redux-devtools-extension": "^2.13.8",
     "redux-localstorage": "^0.4.1",
+    "redux-query-sync": "^0.1.10",
     "redux-thunk": "^2.3.0",
     "sanitize.css": "^11.0.1",
     "webpack-merge": "^5.0.9"

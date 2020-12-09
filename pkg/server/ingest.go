@@ -12,8 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const globalMultiplier = 100000
-
 type ingestParams struct {
 	grouped           bool
 	format            string
@@ -67,9 +65,9 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	i := 0
 	testing.Profile("put-"+r.URL.Query().Get("from"), func() {
 		parserFunc(r.Body, func(k []byte, v int) {
-			samples += v * globalMultiplier
+			samples += v
 			i++
-			t.Insert(k, uint64(v*globalMultiplier))
+			t.Insert(k, uint64(v))
 		})
 
 		err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t)

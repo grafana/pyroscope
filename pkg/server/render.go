@@ -63,5 +63,5 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		width = newVal
 	}
 
-	resultTree.SVG(w, 1024, width, globalMultiplier)
+	resultTree.SVG(w, 1024, width)
 }
