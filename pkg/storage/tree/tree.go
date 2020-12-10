@@ -3,6 +3,7 @@ package tree
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"sort"
 
 	"github.com/petethepig/pyroscope/pkg/structs/merge"
@@ -120,21 +121,10 @@ func (t *Tree) Insert(key []byte, value uint64, merge ...bool) {
 	node.cum += value
 }
 
-// TODO: remove this
-func fixLabel(v []byte) []byte {
-	for i, c := range v {
-		if c != byte(';') {
-			return v[i:]
-		}
-	}
-	return v
-}
-
 func (t *Tree) iterate(cb func(key []byte, val uint64)) {
 	nodes := []*treeNode{t.root}
 	prefixes := make([][]byte, 1)
 	prefixes[0] = make([]byte, 0)
-	// minVal := t.c.MinValue()
 	for len(nodes) > 0 {
 		node := nodes[0]
 		nodes = nodes[1:]
@@ -146,14 +136,12 @@ func (t *Tree) iterate(cb func(key []byte, val uint64)) {
 		l := node.name
 		label = append(label, l...) // byte(';'),
 
-		// if node.cum > minVal {
-		cb(fixLabel(label), node.self)
+		cb(label, node.self)
 
 		nodes = append(node.childrenNodes, nodes...)
 		for i := 0; i < len(node.childrenNodes); i++ {
 			prefixes = append([][]byte{label}, prefixes...)
 		}
-		// }
 	}
 }
 
@@ -174,9 +162,11 @@ func (t *Tree) Samples() uint64 {
 	return t.root.cum
 }
 
-func (t *Tree) Clone(m, d int) *Tree {
+func (t *Tree) Clone(r *big.Rat) *Tree {
+	m := uint64(r.Num().Int64())
+	d := uint64(r.Denom().Int64())
 	newTrie := &Tree{
-		root: t.root.clone(uint64(m), uint64(d)),
+		root: t.root.clone(m, d),
 	}
 
 	return newTrie

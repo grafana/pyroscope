@@ -9,11 +9,11 @@ import (
 	"github.com/petethepig/pyroscope/pkg/testing"
 )
 
-// 	inside  rel = iota // | S E |
-// 	match              // matching ranges
-// 	outside            // | | S E
-// 	overlap            // | S | E
-// 	contain            // S | | E
+// 	inside  rel = iota // | S E |            <1
+// 	match              // matching ranges    1/1
+// 	outside            // | | S E            0/1
+// 	overlap            // | S | E            <1
+// 	contain            // S | | E            1/1
 
 var _ = Describe("stree", func() {
 	FContext("overlap", func() {

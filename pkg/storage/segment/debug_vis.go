@@ -3,6 +3,7 @@ package segment
 import (
 	"encoding/json"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"text/template"
 	"time"
@@ -27,15 +28,15 @@ func newVis() *vis {
 	return &vis{nodes: []*visualizeNode2{}}
 }
 
-func (v *vis) add(n *streeNode, m, d int, used bool) {
+func (v *vis) add(n *streeNode, r *big.Rat, used bool) {
 	v.nodes = append(v.nodes, &visualizeNode2{
 		T1:      n.time.UTC(),
 		T2:      n.time.Add(durations[n.depth]).UTC(),
 		Depth:   n.depth,
 		HasTrie: n.present,
 		Samples: n.samples,
-		M:       m,
-		D:       d,
+		M:       int(r.Num().Int64()),
+		D:       int(r.Denom().Int64()),
 		Used:    used,
 	})
 }

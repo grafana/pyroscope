@@ -3,6 +3,7 @@ package storage
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"math/big"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -140,11 +141,10 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) er
 
 	st := s.segments.Get(string(sk)).(*segment.Segment)
 	samples := val.Samples()
-	st.Put(startTime, endTime, samples, func(depth int, t time.Time, m, d int, addons []segment.Addon) {
+	st.Put(startTime, endTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := treeKey(sk, depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
-		// treeClone := val.Clone(m, d)
-		treeClone := val.Clone(1, 1)
+		treeClone := val.Clone(big.NewRat(1, 1))
 		for _, addon := range addons {
 			tk2 := treeKey(sk, addon.Depth, addon.T)
 			addonTree := s.trees.Get(tk2).(*tree.Tree)
@@ -187,12 +187,12 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 
 		tl.PopulateTimeline(startTime, endTime, st)
 
-		st.Get(startTime, endTime, func(depth int, t time.Time, m, d int) {
+		st.Get(startTime, endTime, func(depth int, t time.Time, r *big.Rat) {
 			k := treeKey(sk, depth, t)
 			tr := s.trees.Get(k).(*tree.Tree)
 			// TODO: these clones are probably are not the most efficient way of doing this
 			//   instead this info should be passed to the merger function imo
-			tr2 := tr.Clone(1, 1) //m, d)
+			tr2 := tr.Clone(r)
 			triesToMerge = append(triesToMerge, merge.Merger(tr2))
 		})
 	}

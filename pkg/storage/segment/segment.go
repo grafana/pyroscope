@@ -2,6 +2,7 @@ package segment
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 )
 
@@ -37,6 +38,11 @@ func (sn *streeNode) relationship(st, et time.Time) rel {
 	return relationship(sn.time, t2, st, et)
 }
 
+func (sn *streeNode) overlapAmount(st, et time.Time) *big.Rat {
+	t2 := sn.time.Add(durations[sn.depth])
+	return overlapAmount(sn.time, t2, st, et, durations[0])
+}
+
 func (sn *streeNode) findAddons() []Addon {
 	res := []Addon{}
 	if sn.present {
@@ -53,7 +59,8 @@ func (sn *streeNode) findAddons() []Addon {
 	}
 	return res
 }
-func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode, depth int, dt time.Time, addons []Addon)) {
+
+func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode, depth int, dt time.Time, r *big.Rat, addons []Addon)) {
 	nodes := []*streeNode{sn}
 
 	for len(nodes) > 0 {
@@ -80,12 +87,19 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 				}
 			}
 			var addons []Addon
+			// 	inside  rel = iota // | S E |            <1
+			// 	match              // matching ranges    1/1
+			// 	outside            // | | S E            0/1
+			// 	overlap            // | S | E            <1
+			// 	contain            // S | | E            1/1
 			if rel == match || rel == contain || childrenCount > 1 || sn.present {
-				// TODO: if has children and not present need to pass child
 				if !sn.present {
 					addons = sn.findAddons()
 				}
-				cb(sn, sn.depth, sn.time, addons)
+				// TODO: calculate proper r
+				r := big.NewRat(1, 1)
+				// r := sn.overlapAmount(st, et)
+				cb(sn, sn.depth, sn.time, r, addons)
 				sn.present = true
 			}
 		}
@@ -101,16 +115,50 @@ func normalize(st, et time.Time) (time.Time, time.Time) {
 	return st, et2.Add(durations[0])
 }
 
-func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.Time)) {
+// inside  rel = iota // | S E |
+// match              // matching ranges
+// outside            // | | S E
+// overlap            // | S | E
+// contain            // S | | E
+func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.Time, r *big.Rat)) {
 	rel := sn.relationship(st, et)
 	if sn.present && (rel == contain || rel == match) {
-		cb(sn, sn.depth, sn.time)
-	} else if rel != outside {
-		// TODO: for ranges that are not covered by children need to use values from this node
-		//   but add a multiplier
-		for _, v := range sn.children {
-			if v != nil {
-				v.get(st, et, cb)
+		cb(sn, sn.depth, sn.time, big.NewRat(1, 1))
+	} else if rel != outside { // inside or overlap
+		if sn.present {
+			// in this case some of the query area might be covered by children
+			// Consider a case like this:
+			//     S                         E
+			// *_|_|_|_|_|x|x|_|_|_*_|_|_|_|_|_|_|_|_|_*
+			// ^-------sn----------^
+			// Legend:
+			// S/E - start and end time
+			// _   - children are missing
+			// x   - children present
+			// *   - current node (sn) bounds
+			//
+			// in this case uncoveredAmount = 6/10
+			// 6 because that's how many children are missing and fit between S and E
+			// 10 is how many children are in the node
+			uncoveredAmount := big.NewRat(0, 1)
+			for i, v := range sn.children {
+				if v != nil {
+					v.get(st, et, cb)
+				} else {
+					childT := sn.time.Truncate(durations[sn.depth]).Add(time.Duration(i) * durations[sn.depth-1])
+					childOverlap := overlapAmount(childT, childT.Add(durations[sn.depth-1]), st, et, durations[0])
+					uncoveredAmount.Add(uncoveredAmount, childOverlap)
+				}
+			}
+			if uncoveredAmount.Num().Int64() != 0 {
+				cb(sn, sn.depth, sn.time, uncoveredAmount)
+			}
+		} else {
+			// if current node doesn't have a tree present, defer to children
+			for _, v := range sn.children {
+				if v != nil {
+					v.get(st, et, cb)
+				}
 			}
 		}
 	}
@@ -206,36 +254,29 @@ type Addon struct {
 }
 
 // TODO: just give d+t info here
-func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, m, d int, addons []Addon)) {
+func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, r *big.Rat, addons []Addon)) {
 	st, et = normalize(st, et)
 	s.growTree(st, et)
-	d := uint64(int(et.Sub(st) / durations[0]))
 	v := newVis()
-	s.root.put(st, et, samples, func(sn *streeNode, depth int, tm time.Time, addons []Addon) {
-		m := uint64(calcMultiplier(s.multiplier, depth))
-		sn.samples += samples
-		// case when not all children are within [st,et]
-		// TODO: maybe we need childrenCount be in durations[0] terms
-		v.add(sn, int(m), int(d), true)
-		cb(depth, tm, int(m), int(d), addons)
+	s.root.put(st, et, samples, func(sn *streeNode, depth int, tm time.Time, r *big.Rat, addons []Addon) {
+		sn.samples += samples * uint64(r.Num().Int64()) / uint64(r.Denom().Int64())
+		v.add(sn, r, true)
+		cb(depth, tm, r, addons)
 	})
 	v.print(fmt.Sprintf("/tmp/0-put-%s-%s.html", st.String(), et.String()))
 }
 
-func (s *Segment) Get(st, et time.Time, cb func(depth int, t time.Time, m, d int)) {
+func (s *Segment) Get(st, et time.Time, cb func(depth int, t time.Time, r *big.Rat)) {
 	st, et = normalize(st, et)
 	if s.root == nil {
 		return
 	}
 	// divider := int(et.Sub(st) / durations[0])
 	v := newVis()
-	s.root.get(st, et, func(sn *streeNode, depth int, t time.Time) {
+	s.root.get(st, et, func(sn *streeNode, depth int, t time.Time, r *big.Rat) {
 		// TODO: pass m / d from .get() ?
-		m := 1
-		d := 1
-		v.add(sn, m, d, true)
-		cb(depth, t, m, d)
-
+		v.add(sn, r, true)
+		cb(depth, t, r)
 	})
 	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
 }
