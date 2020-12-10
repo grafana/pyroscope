@@ -30,6 +30,7 @@ func (r rel) String() string {
 	return overlapStrings[r]
 }
 
+// t1, t2 represent segment node, st, et represent the read/write query time range
 func relationship(t1, t2, st, et time.Time) rel {
 	if t1.Equal(st) && t2.Equal(et) {
 		return match

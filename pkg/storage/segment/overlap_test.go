@@ -1,6 +1,9 @@
 package segment
 
 import (
+	"math/big"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/petethepig/pyroscope/pkg/testing"
@@ -13,77 +16,90 @@ import (
 // 	contain            // S | | E
 
 var _ = Describe("stree", func() {
-	Context("relationship", func() {
+	FContext("overlap", func() {
 		Context("match", func() {
 			It("returns correct values", func() {
-				Expect(relationship(
+				Expect(overlapAmount(
 					testing.SimpleTime(0), testing.SimpleTime(100), // t1 t2
 					testing.SimpleTime(0), testing.SimpleTime(100), // st et
-				).String()).To(Equal("match"))
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(1, 1).String()))
 			})
 		})
 		Context("inside", func() {
 			It("returns correct values", func() {
-				Expect(relationship(
+				Expect(overlapAmount(
 					testing.SimpleTime(0), testing.SimpleTime(100), // t1 t2
 					testing.SimpleTime(10), testing.SimpleTime(90), // st et
-				).String()).To(Equal("inside"))
-				Expect(relationship(
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(8, 10).String()))
+				Expect(overlapAmount(
 					testing.SimpleTime(0), testing.SimpleTime(100), // t1 t2
 					testing.SimpleTime(0), testing.SimpleTime(90), // st et
-				).String()).To(Equal("inside"))
-				Expect(relationship(
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(9, 10).String()))
+				Expect(overlapAmount(
 					testing.SimpleTime(0), testing.SimpleTime(100), // t1 t2
 					testing.SimpleTime(10), testing.SimpleTime(100), // st et
-				).String()).To(Equal("inside"))
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(9, 10).String()))
 			})
 		})
 		Context("contain", func() {
 			It("returns correct values", func() {
-				Expect(relationship(
+				Expect(overlapAmount(
 					testing.SimpleTime(100), testing.SimpleTime(200), // t1 t2
 					testing.SimpleTime(90), testing.SimpleTime(210), // st et
-				).String()).To(Equal("contain"))
-				Expect(relationship(
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(1, 1).String()))
+				Expect(overlapAmount(
 					testing.SimpleTime(100), testing.SimpleTime(200), // t1 t2
 					testing.SimpleTime(100), testing.SimpleTime(210), // st et
-				).String()).To(Equal("contain"))
-				Expect(relationship(
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(1, 1).String()))
+				Expect(overlapAmount(
 					testing.SimpleTime(100), testing.SimpleTime(200), // t1 t2
 					testing.SimpleTime(90), testing.SimpleTime(200), // st et
-				).String()).To(Equal("contain"))
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(1, 1).String()))
 			})
 		})
 		Context("overlap", func() {
 			It("returns correct values", func() {
-				Expect(relationship(
+				Expect(overlapAmount(
 					testing.SimpleTime(100), testing.SimpleTime(200), // t1 t2
 					testing.SimpleTime(90), testing.SimpleTime(110), // st et
-				).String()).To(Equal("overlap"))
-				Expect(relationship(
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(1, 10).String()))
+				Expect(overlapAmount(
 					testing.SimpleTime(100), testing.SimpleTime(200), // t1 t2
 					testing.SimpleTime(190), testing.SimpleTime(210), // st et
-				).String()).To(Equal("overlap"))
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(1, 10).String()))
 			})
 		})
 		Context("outside", func() {
 			It("returns correct values", func() {
-				Expect(relationship(
+				Expect(overlapAmount(
 					testing.SimpleTime(100), testing.SimpleTime(200), // t1 t2
 					testing.SimpleTime(90), testing.SimpleTime(100), // st et
-				).String()).To(Equal("outside"))
-				Expect(relationship(
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(0, 1).String()))
+				Expect(overlapAmount(
 					testing.SimpleTime(100), testing.SimpleTime(200), // t1 t2
 					testing.SimpleTime(80), testing.SimpleTime(90), // st et
-				).String()).To(Equal("outside"))
-				Expect(relationship(
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(0, 1).String()))
+				Expect(overlapAmount(
 					testing.SimpleTime(100), testing.SimpleTime(200), // t1 t2
 					testing.SimpleTime(200), testing.SimpleTime(210), // st et
-				).String()).To(Equal("outside"))
-				Expect(relationship(
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(0, 1).String()))
+				Expect(overlapAmount(
 					testing.SimpleTime(100), testing.SimpleTime(200), // t1 t2
 					testing.SimpleTime(210), testing.SimpleTime(220), // st et
-				).String()).To(Equal("outside"))
+					10*time.Second,
+				).String()).To(Equal(big.NewRat(0, 1).String()))
 			})
 		})
 	})
