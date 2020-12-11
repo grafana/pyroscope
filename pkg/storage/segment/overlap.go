@@ -24,9 +24,23 @@ func dmax(a, b time.Duration) time.Duration {
 	return b
 }
 
-// t1, t2 represent segment node, st, et represent the read/write query time range
-func overlapAmount(t1, t2, st, et time.Time, dur time.Duration) *big.Rat {
+//  relationship                               overlap read             overlap write
+// 	inside  rel = iota   // | S E |            <1                       1/1
+// 	match                // matching ranges    1/1                      1/1
+// 	outside              // | | S E            0/1                      0/1
+// 	overlap              // | S | E            <1                       <1
+// 	contain              // S | | E            1/1                      <1
+
+// t1, t2 represent segment node, st, et represent the read query time range
+func overlapRead(t1, t2, st, et time.Time, dur time.Duration) *big.Rat {
 	m := int64(dmax(0, tmin(t2, et).Sub(tmax(t1, st))) / dur)
 	d := int64(t2.Sub(t1) / dur)
+	return big.NewRat(m, d)
+}
+
+// t1, t2 represent segment node, st, et represent the write query time range
+func overlapWrite(t1, t2, st, et time.Time, dur time.Duration) *big.Rat {
+	m := int64(dmax(0, tmin(t2, et).Sub(tmax(t1, st))) / dur)
+	d := int64(et.Sub(st) / dur)
 	return big.NewRat(m, d)
 }

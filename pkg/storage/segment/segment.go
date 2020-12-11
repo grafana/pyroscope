@@ -38,9 +38,14 @@ func (sn *streeNode) relationship(st, et time.Time) rel {
 	return relationship(sn.time, t2, st, et)
 }
 
-func (sn *streeNode) overlapAmount(st, et time.Time) *big.Rat {
+func (sn *streeNode) overlapRead(st, et time.Time) *big.Rat {
 	t2 := sn.time.Add(durations[sn.depth])
-	return overlapAmount(sn.time, t2, st, et, durations[0])
+	return overlapRead(sn.time, t2, st, et, durations[0])
+}
+
+func (sn *streeNode) overlapWrite(st, et time.Time) *big.Rat {
+	t2 := sn.time.Add(durations[sn.depth])
+	return overlapWrite(sn.time, t2, st, et, durations[0])
 }
 
 func (sn *streeNode) findAddons() []Addon {
@@ -87,18 +92,19 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 				}
 			}
 			var addons []Addon
-			// 	inside  rel = iota // | S E |            <1
-			// 	match              // matching ranges    1/1
-			// 	outside            // | | S E            0/1
-			// 	overlap            // | S | E            <1
-			// 	contain            // S | | E            1/1
+
+			//  relationship                               overlap read             overlap write
+			// 	inside  rel = iota   // | S E |            <1                       1/1
+			// 	match                // matching ranges    1/1                      1/1
+			// 	outside              // | | S E            0/1                      0/1
+			// 	overlap              // | S | E            <1                       <1
+			// 	contain              // S | | E            1/1                      <1
 			if rel == match || rel == contain || childrenCount > 1 || sn.present {
 				if !sn.present {
 					addons = sn.findAddons()
 				}
 				// TODO: calculate proper r
-				r := big.NewRat(1, 1)
-				// r := sn.overlapAmount(st, et)
+				r := sn.overlapWrite(st, et)
 				cb(sn, sn.depth, sn.time, r, addons)
 				sn.present = true
 			}
@@ -115,11 +121,12 @@ func normalize(st, et time.Time) (time.Time, time.Time) {
 	return st, et2.Add(durations[0])
 }
 
-// inside  rel = iota // | S E |
-// match              // matching ranges
-// outside            // | | S E
-// overlap            // | S | E
-// contain            // S | | E
+//  relationship                               overlap read             overlap write
+// 	inside  rel = iota   // | S E |            <1                       1/1
+// 	match                // matching ranges    1/1                      1/1
+// 	outside              // | | S E            0/1                      0/1
+// 	overlap              // | S | E            <1                       <1
+// 	contain              // S | | E            1/1                      <1
 func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.Time, r *big.Rat)) {
 	rel := sn.relationship(st, et)
 	if sn.present && (rel == contain || rel == match) {
@@ -146,7 +153,7 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 					v.get(st, et, cb)
 				} else {
 					childT := sn.time.Truncate(durations[sn.depth]).Add(time.Duration(i) * durations[sn.depth-1])
-					childOverlap := overlapAmount(childT, childT.Add(durations[sn.depth-1]), st, et, durations[0])
+					childOverlap := overlapRead(childT, childT.Add(durations[sn.depth-1]), st, et, durations[0])
 					uncoveredAmount.Add(uncoveredAmount, childOverlap)
 				}
 			}

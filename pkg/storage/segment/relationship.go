@@ -7,11 +7,12 @@ import (
 type rel int
 
 const (
-	inside  rel = iota // | S E |
-	match              // matching ranges
-	outside            // | | S E
-	overlap            // | S | E
-	contain            // S | | E
+	// relationship                          overlap read             overlap write
+	inside  rel = iota // | S E |            <1                       1/1
+	match              // matching ranges    1/1                      1/1
+	outside            // | | S E            0/1                      0/1
+	overlap            // | S | E            <1                       <1
+	contain            // S | | E            1/1                      <1
 )
 
 var overlapStrings map[rel]string

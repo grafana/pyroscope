@@ -17,6 +17,14 @@ type treeNode struct {
 	childrenNodes []*treeNode
 }
 
+// func (tn *treeNode) MarshalJSON() ([]byte, error) {
+// 	j, err := json.Marshal(jsonableTreeNode{})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return j, nil
+// }
+
 func (n *treeNode) clone(m, d uint64) *treeNode {
 	// TODO: figure out why this happens
 	// if d == 0 {
