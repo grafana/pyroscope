@@ -2,6 +2,7 @@ package tree
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"sort"
@@ -9,43 +10,36 @@ import (
 	"github.com/petethepig/pyroscope/pkg/structs/merge"
 )
 
+type jsonableSlice []byte
+
 type treeNode struct {
-	// labelLink     dict.Key
-	name          []byte
-	cum           uint64
-	self          uint64
-	childrenNodes []*treeNode
+	Name          jsonableSlice `json:"name,string"`
+	Total         uint64        `json:"total"`
+	Self          uint64        `json:"self"`
+	ChildrenNodes []*treeNode   `json:"children"`
 }
 
-// func (tn *treeNode) MarshalJSON() ([]byte, error) {
-// 	j, err := json.Marshal(jsonableTreeNode{})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return j, nil
-// }
+func (a jsonableSlice) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(a))
+}
 
 func (n *treeNode) clone(m, d uint64) *treeNode {
-	// TODO: figure out why this happens
-	// if d == 0 {
-	// 	d = 1
-	// }
 	newNode := &treeNode{
-		name: n.name,
-		cum:  n.cum * m / d,
-		self: n.self * m / d,
+		Name:  n.Name,
+		Total: n.Total * m / d,
+		Self:  n.Self * m / d,
 	}
-	newNode.childrenNodes = make([]*treeNode, len(n.childrenNodes))
-	for i, cn := range n.childrenNodes {
-		newNode.childrenNodes[i] = cn.clone(m, d)
+	newNode.ChildrenNodes = make([]*treeNode, len(n.ChildrenNodes))
+	for i, cn := range n.ChildrenNodes {
+		newNode.ChildrenNodes[i] = cn.clone(m, d)
 	}
 	return newNode
 }
 
 func newNode(label []byte) *treeNode {
 	return &treeNode{
-		name:          label,
-		childrenNodes: []*treeNode{},
+		Name:          label,
+		ChildrenNodes: []*treeNode{},
 	}
 }
 
@@ -74,11 +68,11 @@ func (dstTrie *Tree) Merge(srcTrieI merge.Merger) {
 		dt := dstNodes[0]
 		dstNodes = dstNodes[1:]
 
-		dt.self += st.self
-		dt.cum += st.cum
+		dt.Self += st.Self
+		dt.Total += st.Total
 
-		for _, srcChildNode := range st.childrenNodes {
-			dstChildNode := dt.insert(srcChildNode.name)
+		for _, srcChildNode := range st.ChildrenNodes {
+			dstChildNode := dt.insert(srcChildNode.Name)
 
 			srcNodes = append([]*treeNode{srcChildNode}, srcNodes...)
 			dstNodes = append([]*treeNode{dstChildNode}, dstNodes...)
@@ -98,17 +92,17 @@ func (t *Tree) String() string {
 }
 
 func (tn *treeNode) insert(targetLabel []byte) *treeNode {
-	i := sort.Search(len(tn.childrenNodes), func(i int) bool {
-		return bytes.Compare(tn.childrenNodes[i].name, targetLabel) >= 0
+	i := sort.Search(len(tn.ChildrenNodes), func(i int) bool {
+		return bytes.Compare(tn.ChildrenNodes[i].Name, targetLabel) >= 0
 	})
 
-	if i > len(tn.childrenNodes)-1 || !bytes.Equal(tn.childrenNodes[i].name, targetLabel) {
+	if i > len(tn.ChildrenNodes)-1 || !bytes.Equal(tn.ChildrenNodes[i].Name, targetLabel) {
 		child := newNode(targetLabel)
-		tn.childrenNodes = append(tn.childrenNodes, child)
-		copy(tn.childrenNodes[i+1:], tn.childrenNodes[i:])
-		tn.childrenNodes[i] = child
+		tn.ChildrenNodes = append(tn.ChildrenNodes, child)
+		copy(tn.ChildrenNodes[i+1:], tn.ChildrenNodes[i:])
+		tn.ChildrenNodes[i] = child
 	}
-	return tn.childrenNodes[i]
+	return tn.ChildrenNodes[i]
 }
 
 func (t *Tree) Insert(key []byte, value uint64, merge ...bool) {
@@ -122,11 +116,11 @@ func (t *Tree) Insert(key []byte, value uint64, merge ...bool) {
 
 		n := node.insert(l)
 
-		node.cum += value
+		node.Total += value
 		node = n
 	}
-	node.self += value
-	node.cum += value
+	node.Self += value
+	node.Total += value
 }
 
 func (t *Tree) iterate(cb func(key []byte, val uint64)) {
@@ -141,13 +135,13 @@ func (t *Tree) iterate(cb func(key []byte, val uint64)) {
 		prefixes = prefixes[1:]
 
 		label := append(prefix, semicolon) // byte(';'),
-		l := node.name
+		l := node.Name
 		label = append(label, l...) // byte(';'),
 
-		cb(label, node.self)
+		cb(label, node.Self)
 
-		nodes = append(node.childrenNodes, nodes...)
-		for i := 0; i < len(node.childrenNodes); i++ {
+		nodes = append(node.ChildrenNodes, nodes...)
+		for i := 0; i < len(node.ChildrenNodes); i++ {
 			prefixes = append([][]byte{label}, prefixes...)
 		}
 	}
@@ -160,14 +154,14 @@ func (t *Tree) iterateWithCum(cb func(cum uint64) bool) {
 		node := nodes[0]
 		nodes = nodes[1:]
 		i++
-		if cb(node.cum) {
-			nodes = append(node.childrenNodes, nodes...)
+		if cb(node.Total) {
+			nodes = append(node.ChildrenNodes, nodes...)
 		}
 	}
 }
 
 func (t *Tree) Samples() uint64 {
-	return t.root.cum
+	return t.root.Total
 }
 
 func (t *Tree) Clone(r *big.Rat) *Tree {
@@ -178,4 +172,8 @@ func (t *Tree) Clone(r *big.Rat) *Tree {
 	}
 
 	return newTrie
+}
+
+func (t *Tree) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.root)
 }

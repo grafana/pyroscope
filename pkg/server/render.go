@@ -37,10 +37,17 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		resultTree = tree.New()
 	}
 
-	if q.Get("format") == "frontend" {
+	switch q.Get("format") {
+	case "frontend":
 		w.Header().Set("Content-Type", "text/plain+pyroscope")
-	} else if q.Get("format") == "svg" {
+	case "svg":
 		w.Header().Set("Content-Type", "image/svg+xml")
+	case "json":
+		w.Header().Set("Content-Type", "application/json")
+
+		encoder := json.NewEncoder(w)
+		encoder.Encode(resultTree)
+		return
 	}
 
 	filename := q.Get("download-filename")

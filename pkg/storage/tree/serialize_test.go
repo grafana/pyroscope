@@ -20,7 +20,7 @@ var _ = Describe("tree package", func() {
 		tree.Insert([]byte("a;c"), uint64(2))
 
 		It("returns correct results", func() {
-			Expect(tree.root.childrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
 		})
 
 	})

@@ -22,7 +22,7 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 		tn := nodes[0]
 		nodes = nodes[1:]
 
-		labelLink := d.Put(tn.name)
+		labelLink := d.Put([]byte(tn.Name))
 		_, err := varint.Write(w, uint64(len(labelLink)))
 		if err != nil {
 			return err
@@ -32,15 +32,15 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 			return err
 		}
 
-		val := tn.self
+		val := tn.Self
 		_, err = varint.Write(w, uint64(val))
 		if err != nil {
 			return err
 		}
 		var cnl = uint64(0)
-		if tn.cum > minVal {
-			cnl = uint64(len(tn.childrenNodes))
-			nodes = append(tn.childrenNodes, nodes...)
+		if tn.Total > minVal {
+			cnl = uint64(len(tn.ChildrenNodes))
+			nodes = append(tn.ChildrenNodes, nodes...)
 		}
 		_, err = varint.Write(w, cnl)
 		if err != nil {
@@ -83,15 +83,15 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 		}
 		tn := parent.node.insert(nameBuf)
 
-		tn.self, err = varint.Read(br)
-		tn.cum = tn.self
+		tn.Self, err = varint.Read(br)
+		tn.Total = tn.Self
 		if err != nil {
 			return nil, err
 		}
 
 		pn := parent
 		for pn != nil {
-			pn.node.cum += tn.self
+			pn.node.Total += tn.Self
 			pn = pn.parent
 		}
 
@@ -107,7 +107,7 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 
 	log.Debug("deserialize node count", j)
 
-	t.root = t.root.childrenNodes[0]
+	t.root = t.root.ChildrenNodes[0]
 
 	return t, nil
 }

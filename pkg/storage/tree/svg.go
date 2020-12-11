@@ -23,24 +23,24 @@ func (tn2 *treeNode) svg(w io.Writer, maxDepth, minVal uint64, totalCum float64,
 		l := levels[0]
 		levels = levels[1:]
 
-		wk := float64(tn.cum) / totalCum
+		wk := float64(tn.Total) / totalCum
 		w2 := (float64(width) - svg.Margin*2)
 		wwk := wk * w2
-		if tn.cum > minVal {
-			label := tn.name
-			svg.RenderBlock(w, label, maxDepth-l, tn.cum, wwk, xOffset+svg.Margin, wk*100, float64(tn.self)/totalCum, len(tn.childrenNodes))
+		if tn.Total > minVal {
+			label := tn.Name
+			svg.RenderBlock(w, label, maxDepth-l, tn.Total, wwk, xOffset+svg.Margin, wk*100, float64(tn.Self)/totalCum, len(tn.ChildrenNodes))
 
-			xOffset += float64(tn.self) / totalCum * w2
+			xOffset += float64(tn.Self) / totalCum * w2
 			childrenCum := uint64(0)
-			for _, n := range tn.childrenNodes {
-				if n.cum > minVal {
+			for _, n := range tn.ChildrenNodes {
+				if n.Total > minVal {
 					// n.svg(w, l+1, maxDepth, minVal, totalCum, xOffset)
 					xOffsets = append([]float64{xOffset}, xOffsets...)
 					levels = append([]uint64{l + 1}, levels...)
 					nodes = append([]*treeNode{n}, nodes...)
-					xOffset += float64(n.cum) / totalCum * w2
+					xOffset += float64(n.Total) / totalCum * w2
 				} else {
-					childrenCum += n.cum
+					childrenCum += n.Total
 				}
 			}
 			// TODO: add other node
@@ -61,8 +61,8 @@ func (tn2 *treeNode) svg(w io.Writer, maxDepth, minVal uint64, totalCum float64,
 
 func (n *treeNode) maxDepth(startDepth int, minSamples uint64) int {
 	max := startDepth
-	if n.cum > minSamples {
-		for _, child := range n.childrenNodes {
+	if n.Total > minSamples {
+		for _, child := range n.ChildrenNodes {
 			d := child.maxDepth(startDepth+1, minSamples)
 			if d > max {
 				max = d
@@ -83,6 +83,7 @@ func (t *Tree) minValue(maxNodes int) uint64 {
 
 func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int) {
 	minSamples := t.minValue(int(maxNodes))
+	// minSamples := uint64(0)
 
 	maxDepth := t.root.maxDepth(0, minSamples)
 	h := svg.Header{
@@ -94,10 +95,10 @@ func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int) {
 	log.Debug("SVG maxDepth", maxDepth)
 	svg.HeaderTmplt.Execute(w, h)
 
-	if t.root.cum == 0 {
+	if t.root.Total == 0 {
 		svg.EmptyTmplt.Execute(w, h)
 	} else {
-		t.root.svg(w, uint64(maxDepth), minSamples, float64(t.root.cum), width)
+		t.root.svg(w, uint64(maxDepth), minSamples, float64(t.root.Total), width)
 	}
 
 	w.Write([]byte(svg.FooterStr))
