@@ -3,6 +3,7 @@ package segment
 import (
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 )
 
@@ -172,6 +173,7 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 }
 
 type Segment struct {
+	m          sync.RWMutex
 	resolution time.Duration
 	multiplier int
 	root       *streeNode
@@ -262,6 +264,9 @@ type Addon struct {
 
 // TODO: just give d+t info here
 func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, r *big.Rat, addons []Addon)) {
+	s.m.Lock()
+	defer s.m.Unlock()
+
 	st, et = normalize(st, et)
 	s.growTree(st, et)
 	v := newVis()
@@ -274,6 +279,9 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 }
 
 func (s *Segment) Get(st, et time.Time, cb func(depth int, t time.Time, r *big.Rat)) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+
 	st, et = normalize(st, et)
 	if s.root == nil {
 		return

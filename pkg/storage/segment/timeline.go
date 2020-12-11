@@ -57,14 +57,6 @@ func (tl *Timeline) PopulateTimeline(st, et time.Time, s *Segment) {
 
 func (sn *streeNode) populateTimeline(st, et time.Time, minDuration time.Duration, buf [][]uint64) {
 	rel := sn.relationship(st, et)
-	logrus.WithFields(logrus.Fields{
-		"_t0":         st.String(),
-		"_t1":         et.String(),
-		"_t2":         sn.time.String(),
-		"_sn.depth":   sn.depth,
-		"minDuration": minDuration.String(),
-		"rel":         rel,
-	}).Info("populateTimeline")
 	if rel != outside {
 		currentDuration := durations[sn.depth]
 		if len(sn.children) > 0 && currentDuration >= minDuration {
@@ -81,33 +73,24 @@ func (sn *streeNode) populateTimeline(st, et time.Time, minDuration time.Duratio
 			currentDuration = minDuration
 			nodeTime = nodeTime.Truncate(currentDuration)
 		}
-		logrus.WithFields(logrus.Fields{
-			"sn.time":             sn.time,
-			"currentDuration":     currentDuration,
-			"durations[sn.depth]": durations[sn.depth],
-			"minDuration":         minDuration,
-			"nodeTime":            nodeTime,
-		}).Info("dur")
 
 		i := int(nodeTime.Sub(st) / minDuration)
 		rightBoundary := i + int(currentDuration/minDuration)
 
 		l := len(buf)
-		logrus.WithFields(logrus.Fields{
-			"i":             i,
-			"rightBoundary": rightBoundary,
-			"l":             l,
-		}).Info("i l")
 		for i < rightBoundary {
-
 			if i >= 0 && i < l {
 				logrus.WithFields(logrus.Fields{
 					"sn.samples": sn.samples,
 				}).Info("sn.samples")
-				buf[i][1] += sn.samples
 				if buf[i][1] == 0 {
 					buf[i][1] = 1
 				}
+				buf[i][1] += sn.samples
+
+				// if buf[i][1] == 0 {
+				// 	buf[i][1] = 1
+				// }
 			}
 			i++
 		}

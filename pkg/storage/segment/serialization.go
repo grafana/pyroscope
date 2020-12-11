@@ -10,6 +10,9 @@ import (
 )
 
 func (s *Segment) Serialize(w io.Writer) error {
+	s.m.RLock()
+	defer s.m.RUnlock()
+
 	nodes := []*streeNode{s.root}
 	for len(nodes) > 0 {
 		n := nodes[0]

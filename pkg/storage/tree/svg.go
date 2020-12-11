@@ -82,6 +82,9 @@ func (t *Tree) minValue(maxNodes int) uint64 {
 }
 
 func (t *Tree) SVG(w io.Writer, maxNodes uint64, width int) {
+	t.m.RLock()
+	defer t.m.RUnlock()
+
 	minSamples := t.minValue(int(maxNodes))
 	// minSamples := uint64(0)
 

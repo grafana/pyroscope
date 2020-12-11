@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"sync"
 
 	"github.com/petethepig/pyroscope/pkg/structs/merge"
 )
@@ -47,6 +48,7 @@ var placeholderTreeNode = &treeNode{}
 var semicolon = byte(';')
 
 type Tree struct {
+	m    sync.RWMutex
 	root *treeNode
 }
 
@@ -60,6 +62,11 @@ func (dstTrie *Tree) Merge(srcTrieI merge.Merger) {
 	srcTrie := srcTrieI.(*Tree)
 	srcNodes := []*treeNode{srcTrie.root}
 	dstNodes := []*treeNode{dstTrie.root}
+
+	srcTrie.m.RLock()
+	defer srcTrie.m.RUnlock()
+	dstTrie.m.Lock()
+	defer dstTrie.m.Unlock()
 
 	for len(srcNodes) > 0 {
 		st := srcNodes[0]
@@ -81,6 +88,9 @@ func (dstTrie *Tree) Merge(srcTrieI merge.Merger) {
 }
 
 func (t *Tree) String() string {
+	t.m.RLock()
+	defer t.m.RUnlock()
+
 	res := ""
 	t.iterate(func(k []byte, v uint64) {
 		if v > 0 {
@@ -106,6 +116,9 @@ func (tn *treeNode) insert(targetLabel []byte) *treeNode {
 }
 
 func (t *Tree) Insert(key []byte, value uint64, merge ...bool) {
+	t.m.Lock()
+	defer t.m.Unlock()
+
 	// TODO: can optimize this, split is not necessary?
 	labels := bytes.Split(key, []byte(";"))
 	node := t.root
@@ -165,6 +178,9 @@ func (t *Tree) Samples() uint64 {
 }
 
 func (t *Tree) Clone(r *big.Rat) *Tree {
+	t.m.RLock()
+	defer t.m.RUnlock()
+
 	m := uint64(r.Num().Int64())
 	d := uint64(r.Denom().Int64())
 	newTrie := &Tree{
@@ -175,5 +191,8 @@ func (t *Tree) Clone(r *big.Rat) *Tree {
 }
 
 func (t *Tree) MarshalJSON() ([]byte, error) {
+	t.m.RLock()
+	defer t.m.RUnlock()
+
 	return json.Marshal(t.root)
 }

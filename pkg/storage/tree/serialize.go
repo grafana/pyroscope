@@ -12,6 +12,9 @@ import (
 )
 
 func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
+	t.m.RLock()
+	defer t.m.RUnlock()
+
 	nodes := []*treeNode{t.root}
 	// TODO: pass config value
 	minVal := t.minValue(maxNodes)

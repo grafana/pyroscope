@@ -91,7 +91,7 @@ class PyroscopeApp extends React.Component {
       // [1607241600000, 0],
       // [1607241600000+3600*24*1000, 1]
     ];
-    samples = samples.map((x) => [x[0], x[1] === 0 ? null : x[1]]);
+    samples = samples.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1]);
     let flotData = [samples];
     return (
       <div className="todo-app">

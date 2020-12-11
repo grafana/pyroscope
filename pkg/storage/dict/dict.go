@@ -2,6 +2,7 @@ package dict
 
 import (
 	"bytes"
+	"sync"
 
 	"github.com/petethepig/pyroscope/pkg/util/varint"
 )
@@ -16,10 +17,14 @@ func New() *Dict {
 }
 
 type Dict struct {
+	m    sync.RWMutex
 	root *trieNode
 }
 
 func (td *Dict) Get(key Key) (Value, bool) {
+	td.m.RLock()
+	defer td.m.RUnlock()
+
 	r := bytes.NewReader(key)
 	tn := td.root
 	labelBuf := []byte{}
@@ -50,6 +55,9 @@ func (td *Dict) Get(key Key) (Value, bool) {
 }
 
 func (td *Dict) Put(val Value) Key {
+	td.m.Lock()
+	defer td.m.Unlock()
+
 	buf := &bytes.Buffer{}
 	td.root.findNodeAt(val, buf)
 	return Key(buf.Bytes())

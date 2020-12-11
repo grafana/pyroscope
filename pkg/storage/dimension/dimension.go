@@ -3,11 +3,13 @@ package dimension
 import (
 	"bytes"
 	"sort"
+	"sync"
 
 	"github.com/petethepig/pyroscope/pkg/storage/segment"
 )
 
 type Dimension struct {
+	m sync.RWMutex
 	// keys are sorted
 	keys []segment.Key
 }
@@ -19,6 +21,9 @@ func New() *Dimension {
 }
 
 func (d *Dimension) Insert(key segment.Key) {
+	d.m.Lock()
+	defer d.m.Unlock()
+
 	i := sort.Search(len(d.keys), func(i int) bool {
 		return bytes.Compare(d.keys[i], key) >= 0
 	})
@@ -96,6 +101,10 @@ func Intersection(input ...*Dimension) []segment.Key {
 		if len(v.keys) == 0 {
 			return []segment.Key{}
 		}
+		// kinda ugly imo
+		v.m.RLock()
+		defer v.m.RUnlock()
+
 		dims = append(dims, &sortableDim{
 			keys: v.keys,
 			i:    0,
