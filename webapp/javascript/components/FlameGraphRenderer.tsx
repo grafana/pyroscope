@@ -4,8 +4,13 @@ import {connect} from 'react-redux';
 import Label from './Label';
 import {fetchJSON} from '../redux/actions';
 import render from '../flamebearer';
+import MaxNodesSelector from "./MaxNodesSelector";
+import clsx from "clsx";
 
 class FlameGraphRenderer extends React.Component {
+  constructor (){
+    super();
+  }
 
   componentDidMount() {
     this.maybeFetchSVG();
@@ -40,22 +45,26 @@ class FlameGraphRenderer extends React.Component {
     }
   }
 
+  handleSearchChange = (e) => {
+    this.setState({searchValue: e.target.value})
+  }
+
   render() {
     return (
       <div className="canvas-renderer">
         <div className="canvas-container">
+          <div className="navbar-2">
+            <input id="search" name="flamegraph-search" placeholder="Search..." />
+            &nbsp;
+            <button className={clsx('btn')} style={{visibility:'hidden'}} id="reset">Reset View</button>
+            <div className="navbar-space-filler"></div>
+            <MaxNodesSelector />
+          </div>
           <canvas id="flamegraph-canvas" height="0"></canvas>
         </div>
 
-        <div id="header">
-          <div id="controls">
-            <input id="search" placeholder="Search..." />
-            <button id="reset">Reset view</button>
-          </div>
-        </div>
         <div id="highlight"></div>
         <div id="tooltip"></div>
-        <div id="intro"></div>
       </div>
     );
   }

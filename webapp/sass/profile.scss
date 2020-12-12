@@ -1,11 +1,14 @@
-@use "variables" as *;
-@use "mixins/outline" as *;
+@use "variables"as *;
+@use "mixins/outline"as *;
 @use "components/drp";
 @use "components/labels";
 
 @import '~sanitize.css';
 @import '~sanitize.css/forms.css';
 @import '~sanitize.css/typography.css';
+
+
+@import 'flamebearer.scss';
 
 body {
   font: 300 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
@@ -15,11 +18,19 @@ body {
 }
 
 
+.navbar-2 {
+  display: flex;
+  padding: 0 0 10px 0;
+  height: 60px;
+  align-items: center;
+}
+
 .navbar {
   display: flex;
   padding: 0 15px 0 12px;
   height: 60px;
   align-items: center;
+
   // box-shadow: 0px 1px #fff;
   .navbar-spinner-container {
     margin: 0 10px;
@@ -37,7 +48,7 @@ body {
   font-weight: 400;
 }
 
-.logo::before{
+.logo::before {
   content: '🔥 Pyroscope';
 }
 
@@ -56,16 +67,60 @@ body {
   border: 1px solid $btn-border-color;
   border-radius: 4px;
   background: $btn-color;
-  &:hover{
+
+  &:hover {
     background: $btn-hover-color;
   }
 }
 
-.svg-renderer, .canvas-renderer {
+select {
+  @include outline;
+  display: inline-block;
+  position: relative;
+  border-radius: 4px;
+  background-color: $btn-color;
+  border: 1px solid $btn-border-color;
+
+  &:not([multiple]):not([size]) {
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' fill='white' height='4'%3E%3Cpath d='M4 0h6L7 4'/%3E%3C/svg%3E");
+  }
+}
+
+input {
+  @include outline;
+  display: inline-block;
+  position: relative;
+  border-radius: 4px;
+  background-color: $btn-color;
+  border: 1px solid $btn-border-color;
+}
+
+.followed-by-btn {
+  border-radius: 4px 0 0 4px;
+}
+
+.followed-by-btn+.btn {
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+}
+
+.btn.btn-active {
+  background-color: #999;
+  border-color: #999;
+  // font-weight: 500;
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+.svg-renderer,
+.canvas-renderer {
   padding: 0 15px;
 }
 
-.svg-container, .canvas-container {
+.svg-container,
+.canvas-container {
   border-radius: 4px;
   // box-shadow: 0 1px 2px rgba(0,0,0,0.33);
   background-color: #212124;
@@ -97,10 +152,12 @@ body {
   overflow: hidden;
 }
 
-.flot-tick-label.tickLabel{
+.flot-tick-label.tickLabel {
   white-space: nowrap;
 }
 
 #flamegraph-canvas {
   width: 100%;
 }
+
+

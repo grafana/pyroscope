@@ -127,6 +127,7 @@ class DateRangePicker extends React.Component {
           <h4>Custom Date Range</h4>
           <div className="drp-calendar-input-group">
             <input
+              className="followed-by-btn"
               onChange={(e) => this.updateFrom(e.target.value)}
               onBlur={this.updateData}
               value={this.state.from}
@@ -137,6 +138,7 @@ class DateRangePicker extends React.Component {
           </div>
           <div className="drp-calendar-input-group">
             <input
+              className="followed-by-btn"
               onChange={(e) => this.updateUntil(e.target.value)}
               onBlur={this.updateData}
               value={this.state.until}

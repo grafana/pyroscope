@@ -15,6 +15,7 @@
 // THIS SOFTWARE.
 
 import murmurhash3_32_gc from './murmur3';
+import {numberWithCommas} from './util/format';
 
 export function deltaDiff(levels) {
   for (const level of levels) {
@@ -32,6 +33,7 @@ export default function render(flamebearerData) {
   const highlightEl = document.getElementById('highlight');
   const tooltipEl = document.getElementById('tooltip');
   const canvas = document.getElementById('flamegraph-canvas');
+  const resetBtn = document.getElementById('reset');
   const ctx = canvas.getContext('2d');
 
   let { names, levels, numTicks } = flamebearerData;
@@ -64,7 +66,7 @@ export default function render(flamebearerData) {
     render();
     removeHover();
   };
-  document.getElementById('reset').onclick = () => {
+  resetBtn.onclick = () => {
     searchEl.value = query = '';
     updateZoom(0, 0);
     render();
@@ -97,6 +99,10 @@ export default function render(flamebearerData) {
   function render() {
     if (!levels) return;
 
+
+   resetBtn.style.visibility = selectedLevel === 0 ? 'hidden' : 'visible';
+
+
     graphWidth = canvas.width = canvas.clientWidth;
     canvas.height = pxPerLevel * (levels.length - topLevel);
     canvas.style.height = canvas.height + 'px';
@@ -111,7 +117,6 @@ export default function render(flamebearerData) {
 
     ctx.textBaseline = 'middle';
     ctx.font = '300 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
-    //   ctx.strokeStyle = '#333';
 
     for (let i = 0; i < levels.length - topLevel; i++) {
       const level = levels[topLevel + i];
@@ -160,7 +165,7 @@ export default function render(flamebearerData) {
         if (!collapsed && sw >= labelThreshold) {
 
           const percent = Math.round(10000 * ratio) / 100;
-          const name = `${names[level[j + 2]]} (${percent}%, ${numBarTicks} samples)`;
+          const name = `${names[level[j + 2]]} (${percent}%, ${numberWithCommas(numBarTicks)} samples)`;
 
           ctx.save();
           ctx.clip();
@@ -233,21 +238,24 @@ export default function render(flamebearerData) {
     canvas.style.cursor = 'pointer';
 
     const level = levels[i];
-    const x = tickToX(level[j]);
+    const x = Math.max(tickToX(level[j]), 0);
     const y = (i - topLevel) * pxPerLevel;
-    const sw = tickToX(level[j] + level[j + 1]) - x;
+    const sw = Math.min(tickToX(level[j] + level[j + 1]) - x, graphWidth);
+
 
     highlightEl.style.display = 'block';
-    highlightEl.style.left = x + 'px';
+    highlightEl.style.left = (canvas.offsetLeft + x) + 'px';
     highlightEl.style.top = (canvas.offsetTop + y) + 'px';
     highlightEl.style.width = sw + 'px';
 
     const numBarTicks = level[j + 1];
     const percent = Math.round(10000 * numBarTicks / numTicks) / 100;
-    const time = `<span class="time">(${percent}%, ${numBarTicks} samples)</span>`;
-    let content = names[level[j + 2]];
-    if (content[0] !== '(') content = content.replace(' ', ` ${time}<br><span class="path">`) + '</span>';
-    else content += ` ${time}`;
+    const time = `<div class="time">${percent}%, ${numberWithCommas(numBarTicks)} samples</div>`;
+    // let content = names[level[j + 2]];
+    let content = `<div class="name">${names[level[j + 2]]}</div>`;
+    content += ` ${time}`
+    // if (content[0] !== '(') content = content.replace(' ', ` ${time}<br><span class="path">`) + '</span>';
+    // else ;
 
     tooltipEl.innerHTML = content;
     tooltipEl.style.display = 'block';

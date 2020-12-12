@@ -93,7 +93,7 @@ class PyroscopeApp extends React.Component {
     timeline = timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1]);
     let flotData = [timeline];
     return (
-      <div className="todo-app">
+      <div>
         <div className="navbar">
           <h1 className="logo"></h1>
           <div className="labels">
@@ -111,7 +111,6 @@ class PyroscopeApp extends React.Component {
           }>
             <Spinner color="rgba(255,255,255,0.6)" size="20px"/>
           </div>
-          <MaxNodesSelector />
           <DownloadButton renderURL={renderURL+"&format=svg&download-filename=flamegraph.svg"} />
           &nbsp;
           <RefreshButton/>

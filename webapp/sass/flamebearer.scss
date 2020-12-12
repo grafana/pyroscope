@@ -1,0 +1,65 @@
+// ISC License
+
+// Copyright (c) 2018, Mapbox
+
+// Permission to use, copy, modify, and/or distribute this software for any purpose
+// with or without fee is hereby granted, provided that the above copyright notice
+// and this permission notice appear in all copies.
+
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+// REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+// FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+// INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+// OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+// THIS SOFTWARE.
+
+
+.name {
+  font-weight: 500;
+}
+
+#highlight {
+  position: absolute;
+  pointer-events: none;
+  background: #ffffff40;
+}
+
+.loaded #intro {
+  display: none;
+}
+
+.loaded #header {
+  display: flex;
+  align-items: center;
+  flex-flow: row wrap;
+  padding: 7px 10px;
+}
+
+.loaded h1 {
+  font-size: 22px;
+  margin: 0 auto 0 0;
+  flex-shrink: 0;
+}
+
+.loaded #fire-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.loaded #controls {
+  display: block;
+  flex-shrink: 0;
+}
+
+#tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: #ffffff;
+  white-space: nowrap;
+  box-shadow: 1px 2px 4px 0px rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+  padding: 3px 5px;
+  color: #333;
+  font-size: 12px;
+}
