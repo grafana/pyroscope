@@ -37,6 +37,11 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		resultTree = tree.New()
 	}
 
+	maxNodes := ctrl.cfg.Server.MaxNodesRender
+	if mn, err := strconv.Atoi(q.Get("max-nodes")); err == nil && mn > 0 {
+		maxNodes = mn
+	}
+
 	switch q.Get("format") {
 	case "frontend":
 		w.Header().Set("Content-Type", "text/plain+pyroscope")
@@ -46,8 +51,8 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		res := map[string]interface{}{
-			"timeline":   tl.Data(),
-			"flamegraph": resultTree,
+			"timeline":    tl,
+			"flamebearer": resultTree.FlamebearerStruct(maxNodes),
 		}
 		encoder := json.NewEncoder(w)
 		encoder.Encode(res)
@@ -63,7 +68,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	if q.Get("format") == "frontend" {
 		encoder := json.NewEncoder(w)
-		encoder.Encode(tl.Data())
+		encoder.Encode(tl)
 	}
 
 	minVal := uint64(0)
@@ -74,11 +79,5 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		width = w
 	}
 
-	maxNodes := ctrl.cfg.Server.MaxNodesSVG
-	if mn, err := strconv.Atoi(q.Get("max-nodes")); err == nil && mn > 0 {
-		maxNodes = mn
-	}
-
-	log.Info("svg", maxNodes)
 	resultTree.SVG(w, uint64(maxNodes), width)
 }

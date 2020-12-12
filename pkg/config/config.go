@@ -46,7 +46,7 @@ type Server struct {
 	StorageMaxDepth int           `skip:"true"`
 
 	MaxNodesSerialization int `def:"2048"`
-	MaxNodesSVG           int `def:"2048"`
+	MaxNodesRender        int `def:"2048"`
 }
 
 type Convert struct {

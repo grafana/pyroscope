@@ -5,8 +5,10 @@ import (
 )
 
 type Timeline struct {
-	data         [][]uint64
-	durThreshold time.Duration
+	StartTime     int64    `json:"startTime"`
+	Samples       []uint64 `json:"samples"`
+	durationDelta time.Duration
+	DurationDelta int64 `json:"durationDelta"`
 }
 
 func GenerateTimeline(st, et time.Time) *Timeline {
@@ -14,33 +16,31 @@ func GenerateTimeline(st, et time.Time) *Timeline {
 
 	totalDuration := et.Sub(st)
 	minDuration := totalDuration / time.Duration(2048/2)
-	durThreshold := durations[0]
+	delta := durations[0]
 	for _, d := range durations {
 		if d < 0 {
 			break
 		}
 		if d < minDuration {
-			durThreshold = d
+			delta = d
 		}
 	}
 
 	// TODO: need to figure out optimal size
 	//   also move this outside of this method so that even if there's no segments it still works
-	res := make([][]uint64, totalDuration/durThreshold)
-	currentTime := st
-	for i := range res {
-		// uint64(rand.Intn(100))
-		res[i] = []uint64{uint64(currentTime.Unix() * 1000), 0}
-		currentTime = currentTime.Add(durThreshold)
-	}
+	res := make([]uint64, totalDuration/delta)
+	// TODO: can encode it more efficiently
+	// for i := range res {
+	// 	// uint64(rand.Intn(100))
+	// 	res[i] = []uint64{uint64(currentTime.Unix() * 1000), 0}
+	// 	currentTime = currentTime.Add(delta)
+	// }
 	return &Timeline{
-		data:         res,
-		durThreshold: durThreshold,
+		StartTime:     st.Unix(),
+		Samples:       res,
+		durationDelta: delta,
+		DurationDelta: int64(delta / time.Second),
 	}
-}
-
-func (tl *Timeline) Data() [][]uint64 {
-	return tl.data
 }
 
 func (tl *Timeline) PopulateTimeline(st, et time.Time, s *Segment) {
@@ -50,10 +50,10 @@ func (tl *Timeline) PopulateTimeline(st, et time.Time, s *Segment) {
 		return
 	}
 
-	s.root.populateTimeline(st, et, tl.durThreshold, tl.data)
+	s.root.populateTimeline(st, et, tl.durationDelta, tl.Samples)
 }
 
-func (sn *streeNode) populateTimeline(st, et time.Time, minDuration time.Duration, buf [][]uint64) {
+func (sn *streeNode) populateTimeline(st, et time.Time, minDuration time.Duration, buf []uint64) {
 	rel := sn.relationship(st, et)
 	if rel != outside {
 		currentDuration := durations[sn.depth]
@@ -78,10 +78,10 @@ func (sn *streeNode) populateTimeline(st, et time.Time, minDuration time.Duratio
 		l := len(buf)
 		for i < rightBoundary {
 			if i >= 0 && i < l {
-				if buf[i][1] == 0 {
-					buf[i][1] = 1
+				if buf[i] == 0 {
+					buf[i] = 1
 				}
-				buf[i][1] += sn.samples
+				buf[i] += sn.samples
 			}
 			i++
 		}

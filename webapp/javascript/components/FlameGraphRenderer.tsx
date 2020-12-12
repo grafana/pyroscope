@@ -9,7 +9,6 @@ class FlameGraphRenderer extends React.Component {
 
   componentDidMount() {
     this.maybeFetchSVG();
-    render();
   }
 
   componentDidUpdate(prevProps) {
@@ -28,6 +27,9 @@ class FlameGraphRenderer extends React.Component {
         console.log(e);
       }
     }
+    if(this.props.flamebearer) {
+      render(this.props.flamebearer);
+    }
   }
 
   maybeFetchSVG(){
@@ -41,7 +43,9 @@ class FlameGraphRenderer extends React.Component {
   render() {
     return (
       <div className="canvas-renderer">
-        <canvas id="flamegraph-canvas" height="0"></canvas>
+        <div className="canvas-container">
+          <canvas id="flamegraph-canvas" height="0"></canvas>
+        </div>
 
         <div id="header">
           <div id="controls">

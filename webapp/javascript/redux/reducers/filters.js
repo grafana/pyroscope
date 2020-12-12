@@ -15,7 +15,7 @@ import {
 } from "../actionTypes";
 
 import uniqBy from "lodash/fp/uniqBy";
-import { random } from "core-js/fn/number";
+import {deltaDiff} from "../../flamebearer";
 
 const initialState = {
   from: "now-1h",
@@ -62,7 +62,7 @@ export default function(state = initialState, action) {
     case RECEIVE_SVG:
       let i = action.payload.data.indexOf("\n");
       return {...state,
-        timeline: JSON.parse(action.payload.data.substring(0, i)),
+        timeline: decodeTimelineData(JSON.parse(action.payload.data.substring(0, i))),
         svg: action.payload.data.substring(i+1),
         isSVGLoading: false,
       }
@@ -71,9 +71,10 @@ export default function(state = initialState, action) {
         isJSONLoading: true,
       }
     case RECEIVE_JSON:
+      deltaDiff(action.payload.flamebearer.levels);
       return {...state,
-        timeline: action.payload.timeline,
-        flamegraph: action.payload.flamegraph,
+        timeline: decodeTimelineData(action.payload.timeline),
+        flamebearer: action.payload.flamebearer,
         isJSONLoading: false,
       }
     case REQUEST_NAMES:
@@ -94,4 +95,17 @@ export default function(state = initialState, action) {
     default:
     return state;
   }
+}
+
+function decodeTimelineData(timelineData){
+  if(!timelineData) {
+    return [];
+  }
+  const res = [];
+  let time = timelineData.startTime;
+  return timelineData.samples.map((x) => {
+    const res = [time*1000, x];
+    time += timelineData.durationDelta;
+    return res;
+  });
 }

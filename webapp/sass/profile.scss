@@ -65,11 +65,15 @@ body {
   padding: 0 15px;
 }
 
-.svg-container {
+.svg-container, .canvas-container {
   border-radius: 4px;
   // box-shadow: 0 1px 2px rgba(0,0,0,0.33);
   background-color: #212124;
   border: 1px solid #141414;
+}
+
+.canvas-container {
+  padding: 10px;
 }
 
 body {

@@ -41,6 +41,7 @@ class PyroscopeApp extends React.Component {
     if(this.props.refreshToken){
       url += `&refreshToken=${this.props.refreshToken}`
     }
+    url += `&max-nodes=200000`
     return url;
   }
 
@@ -118,8 +119,8 @@ class PyroscopeApp extends React.Component {
           <DateRangePicker />
         </div>
         <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
-        <SVGRenderer renderURL={renderURL+"&format=frontend"}/>
-        {/* <FlameGraphRenderer renderURL={renderURL+"&format=json"}/> */}
+        {/* <SVGRenderer renderURL={renderURL+"&format=frontend"}/> */}
+        <FlameGraphRenderer renderURL={renderURL+"&format=json"}/>
       </div>
     );
   }

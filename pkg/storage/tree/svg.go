@@ -33,6 +33,7 @@ func (tn2 *treeNode) svg(w io.Writer, maxDepth, minVal uint64, totalCum float64,
 			xOffset += float64(tn.Self) / totalCum * w2
 			childrenCum := uint64(0)
 			for _, n := range tn.ChildrenNodes {
+				// TODO: not sure if this condition is required
 				if n.Total > minVal {
 					// n.svg(w, l+1, maxDepth, minVal, totalCum, xOffset)
 					xOffsets = append([]float64{xOffset}, xOffsets...)
