@@ -2,6 +2,7 @@ import {
   SET_DATE_RANGE,
   SET_FROM,
   SET_UNTIL,
+  SET_MAX_NODES,
   SET_LABELS,
   REFRESH,
   ADD_LABEL,
@@ -41,6 +42,11 @@ export default function(state = initialState, action) {
       return {
         ...state,
         until: action.payload.until
+      }
+    case SET_MAX_NODES:
+      return {
+        ...state,
+        maxNodes: action.payload.maxNodes
       }
     case REFRESH:
       return {

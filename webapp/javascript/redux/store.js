@@ -7,7 +7,7 @@ import { composeWithDevTools } from 'redux-devtools-extension';
 import ReduxQuerySync from 'redux-query-sync'
 
 import rootReducer from "./reducers";
-import {setFrom, setUntil, setLabels} from "./actions";
+import {setFrom, setUntil, setLabels, setMaxNodes} from "./actions";
 
 import {parseLabels, encodeLabels} from "../util/key.js";
 
@@ -46,6 +46,13 @@ ReduxQuerySync({
       action: (v) => {
         return setLabels(parseLabels(v));
       },
+    },
+    maxNodes: {
+      defaultValue: "1024",
+      selector: state => {
+        return state.maxNodes;
+      },
+      action: setMaxNodes,
     },
   },
   initialTruth: 'location',

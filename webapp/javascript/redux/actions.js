@@ -2,6 +2,7 @@ import {
   SET_DATE_RANGE,
   SET_FROM,
   SET_UNTIL,
+  SET_MAX_NODES,
   SET_LABELS,
   REFRESH,
   ADD_LABEL,
@@ -22,6 +23,9 @@ export const setFrom = (from) => {
 };
 export const setUntil = (until) => {
   return { type: SET_UNTIL, payload: { until } }
+};
+export const setMaxNodes = (maxNodes) => {
+  return { type: SET_MAX_NODES, payload: { maxNodes } }
 };
 export const refresh = () => {
   return { type: REFRESH, payload: { } }

@@ -1,10 +1,5 @@
 package tree
 
-import (
-	"sort"
-	"strings"
-)
-
 type Flamebearer struct {
 	Names    []string `json:"names"`
 	Levels   [][]int  `json:"levels"`
@@ -25,6 +20,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 	xOffsets := []int{0}
 	levels := []int{0}
 	minVal := t.minValue(maxNodes)
+	nameLocationCache := map[string]int{}
 
 	for len(nodes) > 0 {
 		tn := nodes[0]
@@ -37,18 +33,16 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 		levels = levels[1:]
 
 		name := string(tn.Name)
+		if tn.Total > minVal || name == "other" {
 
-		i := sort.Search(len(res.Names), func(i int) bool {
-			return strings.Compare(res.Names[i], name) >= 0
-		})
+			var i int
+			var ok bool
+			if i, ok = nameLocationCache[name]; !ok {
+				i = len(res.Names)
+				nameLocationCache[name] = i
+				res.Names = append(res.Names, name)
+			}
 
-		if i == len(res.Names) || res.Names[i] != name {
-			res.Names = append(res.Names, "")
-			copy(res.Names[i+1:len(res.Names)], res.Names[i:len(res.Names)])
-			res.Names[i] = name
-		}
-
-		if tn.Total > minVal {
 			if level == len(res.Levels) {
 				res.Levels = append(res.Levels, []int{})
 			}
@@ -64,15 +58,28 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			res.Levels[level] = append([]int{xOffset, int(tn.Total), i}, res.Levels[level]...)
 
 			xOffset += int(tn.Self)
+			otherTotal := uint64(0)
 
 			for _, n := range tn.ChildrenNodes {
-				// TODO: not sure if this condition is required
 				if n.Total > minVal {
 					xOffsets = append([]int{xOffset}, xOffsets...)
 					levels = append([]int{level + 1}, levels...)
 					nodes = append([]*treeNode{n}, nodes...)
 					xOffset += int(n.Total)
+				} else {
+					otherTotal += n.Total
 				}
+			}
+			if otherTotal != 0 {
+				n := &treeNode{
+					Name:  jsonableSlice("other"),
+					Total: otherTotal,
+					Self:  otherTotal,
+				}
+				xOffsets = append([]int{xOffset}, xOffsets...)
+				levels = append([]int{level + 1}, levels...)
+				nodes = append([]*treeNode{n}, nodes...)
+				xOffset += int(n.Total)
 			}
 		}
 	}

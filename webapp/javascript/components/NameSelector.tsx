@@ -15,19 +15,22 @@ class NameSelector extends React.Component {
     let names = this.props.names || [];
     let selectedName = this.props.labels.filter(x => x.name == "__name__")[0];
     selectedName = selectedName ? selectedName.value : "none";
-    return <select className="label-select" value={selectedName} onChange={this.select}>
-      <option
-        disabled
-        key="Select an app..."
-        value="Select an app..."
-      >Select an app...</option>
-      {names.map(function(name) {
-        return <option
-          key={name}
-          value={name}
-        >{name}</option>;
-      })}
-    </select>
+    return <span>
+      Profile:&nbsp;
+      <select className="label-select" value={selectedName} onChange={this.select}>
+        <option
+          disabled
+          key="Select an app..."
+          value="Select an app..."
+        >Select an app...</option>
+        {names.map(function(name) {
+          return <option
+            key={name}
+            value={name}
+          >{name}</option>;
+        })}
+      </select>
+    </span>
   }
 }
 

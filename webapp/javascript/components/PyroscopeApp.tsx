@@ -11,6 +11,7 @@ import FlameGraphRenderer from "./FlameGraphRenderer";
 import LabelsFilter from "./LabelsFilter";
 import Label from "./Label";
 import NameSelector from "./NameSelector";
+import MaxNodesSelector from "./MaxNodesSelector";
 import TimelineChart from "./TimelineChart";
 
 import classNames from "classnames";
@@ -41,7 +42,7 @@ class PyroscopeApp extends React.Component {
     if(this.props.refreshToken){
       url += `&refreshToken=${this.props.refreshToken}`
     }
-    url += `&max-nodes=200000`
+    url += `&max-nodes=${this.props.maxNodes}`
     return url;
   }
 
@@ -110,6 +111,7 @@ class PyroscopeApp extends React.Component {
           }>
             <Spinner color="rgba(255,255,255,0.6)" size="20px"/>
           </div>
+          <MaxNodesSelector />
           <DownloadButton renderURL={renderURL+"&format=svg&download-filename=flamegraph.svg"} />
           &nbsp;
           <RefreshButton/>
