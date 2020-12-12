@@ -7,6 +7,7 @@ import DownloadButton from './DownloadButton';
 import ZoomOutButton from './ZoomOutButton';
 import RefreshButton from './RefreshButton';
 import SVGRenderer from "./SVGRenderer";
+import FlameGraphRenderer from "./FlameGraphRenderer";
 import LabelsFilter from "./LabelsFilter";
 import Label from "./Label";
 import NameSelector from "./NameSelector";
@@ -86,13 +87,9 @@ class PyroscopeApp extends React.Component {
         reserveSpace: false
       },
     };
-    let samples = this.props.samples;
-    samples = samples || [
-      // [1607241600000, 0],
-      // [1607241600000+3600*24*1000, 1]
-    ];
-    samples = samples.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1]);
-    let flotData = [samples];
+    let timeline = this.props.timeline || [];
+    timeline = timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1]);
+    let flotData = [timeline];
     return (
       <div className="todo-app">
         <div className="navbar">
@@ -122,6 +119,7 @@ class PyroscopeApp extends React.Component {
         </div>
         <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
         <SVGRenderer renderURL={renderURL+"&format=frontend"}/>
+        {/* <FlameGraphRenderer renderURL={renderURL+"&format=json"}/> */}
       </div>
     );
   }

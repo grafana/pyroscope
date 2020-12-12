@@ -8,6 +8,8 @@ import {
   REMOVE_LABEL,
   RECEIVE_SVG,
   REQUEST_SVG,
+  RECEIVE_JSON,
+  REQUEST_JSON,
   RECEIVE_NAMES,
   REQUEST_NAMES,
 } from "../actionTypes";
@@ -58,13 +60,21 @@ export default function(state = initialState, action) {
         isSVGLoading: true,
       }
     case RECEIVE_SVG:
-      // console.log("RECEIVE_DATA", action)
-      // let [samples, svg] = action.payload.data.split("\n", 2)
       let i = action.payload.data.indexOf("\n");
       return {...state,
-        samples: JSON.parse(action.payload.data.substring(0, i)),
+        timeline: JSON.parse(action.payload.data.substring(0, i)),
         svg: action.payload.data.substring(i+1),
         isSVGLoading: false,
+      }
+    case REQUEST_JSON:
+      return {...state,
+        isJSONLoading: true,
+      }
+    case RECEIVE_JSON:
+      return {...state,
+        timeline: action.payload.timeline,
+        flamegraph: action.payload.flamegraph,
+        isJSONLoading: false,
       }
     case REQUEST_NAMES:
       return {...state,

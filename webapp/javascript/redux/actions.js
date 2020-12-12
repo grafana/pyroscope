@@ -8,6 +8,8 @@ import {
   REMOVE_LABEL,
   REQUEST_SVG,
   RECEIVE_SVG,
+  REQUEST_JSON,
+  RECEIVE_JSON,
   REQUEST_NAMES,
   RECEIVE_NAMES,
 } from "./actionTypes";
@@ -39,6 +41,12 @@ export const requestSVG = (url) => {
 const receiveSVG = (data) => {
   return { type: RECEIVE_SVG, payload: { data } }
 };
+export const requestJSON = (url) => {
+  return { type: REQUEST_JSON, payload: { url } }
+};
+const receiveJSON = (data) => {
+  return { type: RECEIVE_JSON, payload: data }
+};
 
 export const requestNames = () => {
   return { type: REQUEST_NAMES, payload: {} }
@@ -55,10 +63,25 @@ export function fetchSVG(url) {
       currentSVGController.abort();
     }
     currentSVGController = new AbortController();
-    dispatch(requestSVG(url))
+    dispatch(requestSVG(url));
     return fetch(url, {signal: currentSVGController.signal})
       .then(response => response.text())
       .then(data => dispatch(receiveSVG(data)))
+      .finally()
+  }
+}
+
+let currentJSONController = null;
+export function fetchJSON(url) {
+  return dispatch => {
+    if (currentJSONController) {
+      currentJSONController.abort();
+    }
+    currentJSONController = new AbortController();
+    dispatch(requestJSON(url));
+    return fetch(url, {signal: currentJSONController.signal})
+      .then(response => response.json())
+      .then(data => dispatch(receiveJSON(data)))
       .finally()
   }
 }
@@ -70,7 +93,7 @@ export function fetchNames() {
       currentNamesController.abort();
     }
     currentNamesController = new AbortController();
-    dispatch(requestNames())
+    dispatch(requestNames());
     return fetch("/label-values?label=__name__", {signal: currentNamesController.signal})
       .then(response => response.json())
       .then(data => dispatch(receiveNames(data)))

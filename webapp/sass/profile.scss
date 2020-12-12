@@ -61,7 +61,7 @@ body {
   }
 }
 
-.svg-renderer {
+.svg-renderer, .canvas-renderer {
   padding: 0 15px;
 }
 
@@ -95,4 +95,8 @@ body {
 
 .flot-tick-label.tickLabel{
   white-space: nowrap;
+}
+
+#flamegraph-canvas {
+  width: 100%;
 }

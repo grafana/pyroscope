@@ -45,8 +45,12 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
 
+		res := map[string]interface{}{
+			"timeline":   tl.Data(),
+			"flamegraph": resultTree,
+		}
 		encoder := json.NewEncoder(w)
-		encoder.Encode(resultTree)
+		encoder.Encode(res)
 		return
 	}
 

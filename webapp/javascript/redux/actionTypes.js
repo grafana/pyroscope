@@ -7,5 +7,7 @@ export const ADD_LABEL      = "ADD_LABEL";
 export const REMOVE_LABEL   = "REMOVE_LABEL";
 export const REQUEST_SVG    = "REQUEST_SVG";
 export const RECEIVE_SVG    = "RECEIVE_SVG";
+export const REQUEST_JSON    = "REQUEST_JSON";
+export const RECEIVE_JSON    = "RECEIVE_JSON";
 export const REQUEST_NAMES  = "REQUEST_NAMES";
 export const RECEIVE_NAMES  = "RECEIVE_NAMES";
