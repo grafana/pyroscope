@@ -1,8 +1,7 @@
 package storage
 
 import (
-	"encoding/binary"
-	"encoding/hex"
+	"errors"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -23,7 +22,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var closingErr = errors.New("the db is in closing state")
+
 type Storage struct {
+	closingMutex sync.Mutex
+	closing      bool
+
 	cfg      *config.Config
 	segments *cache.Cache
 
@@ -32,33 +36,80 @@ type Storage struct {
 	trees      *cache.Cache
 	labels     *labels.Labels
 
-	db *badger.DB
+	db           *badger.DB
+	dbTrees      *badger.DB
+	dbDicts      *badger.DB
+	dbDimensions *badger.DB
+	dbSegments   *badger.DB
 }
 
-func New(cfg *config.Config) (*Storage, error) {
-	// spew.Dump(cfg)
-	badgerPath := filepath.Join(cfg.Server.StoragePath, "badger")
+func badgerGC(db *badger.DB) {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+	again:
+		err := db.RunValueLogGC(0.7)
+		if err == nil {
+			goto again
+		}
+	}
+}
+func newBadger(cfg *config.Config, name string) (*badger.DB, error) {
+	badgerPath := filepath.Join(cfg.Server.StoragePath, name)
 	err := os.MkdirAll(badgerPath, 0755)
 	if err != nil {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
-	badgerOptions = badgerOptions.WithTruncate(true)
+	badgerOptions = badgerOptions.WithTruncate(false)
+	badgerOptions = badgerOptions.WithSyncWrites(false)
 	badgerOptions = badgerOptions.WithCompression(options.ZSTD)
-	badgerOptions = badgerOptions.WithLogger(badgerLogger{})
-	// badgerOptions = badgerOptions.WithSyncWrites(true)
+	badgerLevel := logrus.ErrorLevel
+	if l, err := logrus.ParseLevel(cfg.Server.BadgerLogLevel); err == nil {
+		badgerLevel = l
+	}
+	badgerOptions = badgerOptions.WithLogger(badgerLogger{name: name, logLevel: badgerLevel})
+
 	db, err := badger.Open(badgerOptions)
+	if err == nil {
+		go badgerGC(db)
+	}
+	return db, err
+}
+
+func New(cfg *config.Config) (*Storage, error) {
+	db, err := newBadger(cfg, "main")
+	if err != nil {
+		return nil, err
+	}
+	dbTrees, err := newBadger(cfg, "trees")
+	if err != nil {
+		return nil, err
+	}
+	dbDicts, err := newBadger(cfg, "dicts")
+	if err != nil {
+		return nil, err
+	}
+	dbDimensions, err := newBadger(cfg, "dimensions")
+	if err != nil {
+		return nil, err
+	}
+	dbSegments, err := newBadger(cfg, "segments")
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Storage{
-		cfg:    cfg,
-		labels: labels.New(cfg, db),
-		db:     db,
+		cfg:          cfg,
+		labels:       labels.New(cfg, db),
+		db:           db,
+		dbTrees:      dbTrees,
+		dbDicts:      dbDicts,
+		dbDimensions: dbDimensions,
+		dbSegments:   dbSegments,
 	}
 
-	s.dimensions = cache.New(db, cfg.Server.CacheDimensionSize, "i:")
+	s.dimensions = cache.New(dbDimensions, cfg.Server.CacheDimensionSize, "i:")
 	s.dimensions.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -69,7 +120,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		return dimension.New()
 	}
 
-	s.segments = cache.New(db, cfg.Server.CacheSegmentSize, "s:")
+	s.segments = cache.New(dbSegments, cfg.Server.CacheSegmentSize, "s:")
 	s.segments.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*segment.Segment).Bytes()
 	}
@@ -82,7 +133,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		return segment.New(s.cfg.Server.MinResolution, s.cfg.Server.Multiplier)
 	}
 
-	s.dicts = cache.New(db, cfg.Server.CacheDictionarySize, "d:")
+	s.dicts = cache.New(dbDicts, cfg.Server.CacheDictionarySize, "d:")
 	s.dicts.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -93,13 +144,13 @@ func New(cfg *config.Config) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(db, cfg.Server.CacheSegmentSize, "t:")
+	s.trees = cache.New(dbTrees, cfg.Server.CacheSegmentSize, "t:")
 	s.trees.Bytes = func(k string, v interface{}) []byte {
-		d := s.dicts.Get(k[:32]).(*dict.Dict)
+		d := s.dicts.Get(FromTreeToMainKey(k)).(*dict.Dict)
 		return v.(*tree.Tree).Bytes(d, cfg.Server.MaxNodesSerialization)
 	}
 	s.trees.FromBytes = func(k string, v []byte) interface{} {
-		d := s.dicts.Get(k[:32]).(*dict.Dict)
+		d := s.dicts.Get(FromTreeToMainKey(k)).(*dict.Dict)
 		return tree.FromBytes(d, v)
 	}
 	s.trees.New = func(_k string) interface{} {
@@ -112,41 +163,37 @@ func New(cfg *config.Config) (*Storage, error) {
 	return s, nil
 }
 
-func treeKey(sk segment.Key, depth int, t time.Time) string {
-	b := make([]byte, 32)
-	copy(b[:16], sk)
-	binary.BigEndian.PutUint64(b[16:24], uint64(depth))
-	binary.BigEndian.PutUint64(b[24:32], uint64(t.Unix()))
-	b2 := make([]byte, 64)
-	hex.Encode(b2, b)
-	return string(b2)
-}
-
 func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) error {
+	s.closingMutex.Lock()
+	defer s.closingMutex.Unlock()
+
+	if s.closing {
+		return closingErr
+	}
 	logrus.WithFields(logrus.Fields{
 		"startTime": startTime.String(),
 		"endTime":   endTime.String(),
 		"key":       key.Normalized(),
+		"samples":   val.Samples(),
 	}).Info("storage.Put")
 	for k, v := range key.labels {
 		s.labels.Put(k, v)
 	}
 
-	sk := segment.Key(key.Normalized())
-
+	sk := key.SegmentKey()
 	for k, v := range key.labels {
 		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
-		d.Insert(sk)
+		d.Insert([]byte(sk))
 	}
 
-	st := s.segments.Get(string(sk)).(*segment.Segment)
+	st := s.segments.Get(sk).(*segment.Segment)
 	samples := val.Samples()
 	st.Put(startTime, endTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
-		tk := treeKey(sk, depth, t)
+		tk := key.TreeKey(depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
 		treeClone := val.Clone(big.NewRat(1, 1))
 		for _, addon := range addons {
-			tk2 := treeKey(sk, addon.Depth, addon.T)
+			tk2 := key.TreeKey(addon.Depth, addon.T)
 			addonTree := s.trees.Get(tk2).(*tree.Tree)
 			treeClone.Merge(addonTree)
 		}
@@ -163,6 +210,13 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) er
 }
 
 func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segment.Timeline, error) {
+	s.closingMutex.Lock()
+	defer s.closingMutex.Unlock()
+
+	if s.closing {
+		return nil, nil, closingErr
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"startTime": startTime.String(),
 		"endTime":   endTime.String(),
@@ -180,7 +234,9 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 
 	tl := segment.GenerateTimeline(startTime, endTime)
 	for _, sk := range segmentKeys {
-		st := s.segments.Get(string(sk)).(*segment.Segment)
+		// TODO: refactor, store `Key`s in dimensions
+		skk, _ := ParseKey(string(sk))
+		st := s.segments.Get(skk.SegmentKey()).(*segment.Segment)
 		if st == nil {
 			continue
 		}
@@ -188,7 +244,7 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 		tl.PopulateTimeline(startTime, endTime, st)
 
 		st.Get(startTime, endTime, func(depth int, t time.Time, r *big.Rat) {
-			k := treeKey(sk, depth, t)
+			k := skk.TreeKey(depth, t)
 			tr := s.trees.Get(k).(*tree.Tree)
 			// TODO: these clones are probably are not the most efficient way of doing this
 			//   instead this info should be passed to the merger function imo
@@ -205,6 +261,10 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 }
 
 func (s *Storage) Close() error {
+	s.closingMutex.Lock()
+	s.closing = true
+	s.closingMutex.Unlock()
+
 	wg := sync.WaitGroup{}
 	wg.Add(3)
 	go func() { s.dimensions.Flush(); wg.Done() }()
@@ -213,6 +273,10 @@ func (s *Storage) Close() error {
 	wg.Wait()
 	// dictionary has to flush last because trees write to dictionaries
 	s.dicts.Flush()
+	s.dbTrees.Close()
+	s.dbDicts.Close()
+	s.dbDimensions.Close()
+	s.dbSegments.Close()
 	return s.db.Close()
 }
 

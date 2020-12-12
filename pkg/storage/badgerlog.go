@@ -1,21 +1,36 @@
 package storage
 
-import log "github.com/sirupsen/logrus"
+import "github.com/sirupsen/logrus"
 
-type badgerLogger struct{}
+type badgerLogger struct {
+	name     string
+	logLevel logrus.Level
+}
 
 func (b badgerLogger) Errorf(firstArg string, args ...interface{}) {
-	log.WithField("context", "badger").Errorf(firstArg, args...)
+	if b.logLevel > logrus.ErrorLevel {
+		return
+	}
+	logrus.WithField("badger", b.name).Errorf(firstArg, args...)
 }
 
 func (b badgerLogger) Warningf(firstArg string, args ...interface{}) {
-	log.WithField("context", "badger").Warningf(firstArg, args...)
+	if b.logLevel > logrus.WarnLevel {
+		return
+	}
+	logrus.WithField("badger", b.name).Warningf(firstArg, args...)
 }
 
 func (b badgerLogger) Infof(firstArg string, args ...interface{}) {
-	log.WithField("context", "badger").Infof(firstArg, args...)
+	if b.logLevel > logrus.InfoLevel {
+		return
+	}
+	logrus.WithField("badger", b.name).Infof(firstArg, args...)
 }
 
 func (b badgerLogger) Debugf(firstArg string, args ...interface{}) {
-	log.WithField("context", "badger").Debugf(firstArg, args...)
+	if b.logLevel > logrus.DebugLevel {
+		return
+	}
+	logrus.WithField("badger", b.name).Debugf(firstArg, args...)
 }

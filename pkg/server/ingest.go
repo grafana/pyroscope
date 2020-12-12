@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/petethepig/pyroscope/pkg/convert"
 	"github.com/petethepig/pyroscope/pkg/storage"
 	"github.com/petethepig/pyroscope/pkg/storage/tree"
-	"github.com/petethepig/pyroscope/pkg/testing"
 	"github.com/petethepig/pyroscope/pkg/util/attime"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -50,30 +50,35 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 
 func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	ip := ingestParamsFromRequest(r)
-	parserFunc := parseIndividualLines
-	if ip.grouped {
-		parserFunc = parseGroups
-	}
 
-	if r.Header.Get("Content-Type") == "binary/octet-stream+trie" {
-		parserFunc = parseTrie
-	}
-
-	t := tree.New()
-
-	samples := 0
-	i := 0
-	testing.Profile("put-"+r.URL.Query().Get("from"), func() {
-		parserFunc(r.Body, func(k []byte, v int) {
-			samples += v
-			i++
-			t.Insert(k, uint64(v))
-		})
-
-		err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t)
+	var t *tree.Tree
+	if r.Header.Get("Content-Type") == "binary/octet-stream+tree" {
+		logrus.Info("ingest format = tree")
+		var err error
+		t, err = tree.DeserializeNoDict(r.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
-		w.WriteHeader(200)
-	})
+	} else {
+		parserFunc := convert.ParseIndividualLines
+		if ip.grouped {
+			parserFunc = convert.ParseGroups
+			logrus.Info("ingest format = groups")
+		}
+
+		if r.Header.Get("Content-Type") == "binary/octet-stream+trie" {
+			logrus.Info("ingest format = trie")
+			parserFunc = convert.ParseTrie
+		}
+		t = tree.New()
+		parserFunc(r.Body, func(k []byte, v int) {
+			t.Insert(k, uint64(v))
+		})
+	}
+
+	err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t)
+	if err != nil {
+		log.Fatal(err)
+	}
+	w.WriteHeader(200)
 }

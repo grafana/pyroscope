@@ -66,9 +66,15 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	log.Debug("minVal", minVal)
 
 	width := 1200
-	if newVal, err := strconv.Atoi(q.Get("width")); err == nil && newVal > 0 {
-		width = newVal
+	if w, err := strconv.Atoi(q.Get("width")); err == nil && w > 0 {
+		width = w
 	}
 
-	resultTree.SVG(w, 1024, width)
+	maxNodes := ctrl.cfg.Server.MaxNodesSVG
+	if mn, err := strconv.Atoi(q.Get("max-nodes")); err == nil && mn > 0 {
+		maxNodes = mn
+	}
+
+	log.Info("svg", maxNodes)
+	resultTree.SVG(w, uint64(maxNodes), width)
 }

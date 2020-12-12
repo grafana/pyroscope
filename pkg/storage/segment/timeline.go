@@ -2,8 +2,6 @@ package segment
 
 import (
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 type Timeline struct {
@@ -80,17 +78,10 @@ func (sn *streeNode) populateTimeline(st, et time.Time, minDuration time.Duratio
 		l := len(buf)
 		for i < rightBoundary {
 			if i >= 0 && i < l {
-				logrus.WithFields(logrus.Fields{
-					"sn.samples": sn.samples,
-				}).Info("sn.samples")
 				if buf[i][1] == 0 {
 					buf[i][1] = 1
 				}
 				buf[i][1] += sn.samples
-
-				// if buf[i][1] == 0 {
-				// 	buf[i][1] = 1
-				// }
 			}
 			i++
 		}

@@ -7,12 +7,15 @@ import (
 type Config struct {
 	Version bool
 
-	Agent  Agent  `skip:"true"`
-	Server Server `skip:"true"`
+	Agent   Agent   `skip:"true"`
+	Server  Server  `skip:"true"`
+	Convert Convert `skip:"true"`
+	Exec    Exec    `skip:"true"`
 }
 
 type Agent struct {
-	Config string `def:"/etc/pyroscope/agent.yml" desc:"location of config file"`
+	Config   string `def:"/etc/pyroscope/agent.yml" desc:"location of config file"`
+	LogLevel string `def:"info", desc:"debug|info|warn|error"`
 
 	// AgentCMD           []string
 	AgentSpyName           string        `desc:"name of the spy you want to use"` // TODO: add options
@@ -25,7 +28,9 @@ type Agent struct {
 }
 
 type Server struct {
-	Config string `def:"/etc/pyroscope/server.yml" desc:"location of config file"`
+	Config         string `def:"/etc/pyroscope/server.yml" desc:"location of config file"`
+	LogLevel       string `def:"info", desc:"debug|info|warn|error"`
+	BadgerLogLevel string `def:"error", desc:"debug|info|warn|error"`
 
 	StoragePath string `def:"tmp/pyroscope-storage"`
 	ApiBindAddr string `def:":8080"`
@@ -33,15 +38,25 @@ type Server struct {
 	CacheDimensionSize  int `def:"1000"`
 	CacheDictionarySize int `def:"1000"`
 	CacheSegmentSize    int `def:"1000"`
-	CacheTreeSize       int `def:"1000"`
+	CacheTreeSize       int `def:"10000"`
 
 	Multiplier      int           `def:"10"`
 	MinResolution   time.Duration `def:"10s"`
 	MaxResolution   time.Duration `def:"8760h"` // 365 days
 	StorageMaxDepth int           `skip:"true"`
 
-	MaxNodesSerialization int `def:"8192"`
+	MaxNodesSerialization int `def:"2048"`
 	MaxNodesSVG           int `def:"2048"`
+}
+
+type Convert struct {
+	Format string `def:"tree"`
+}
+
+type Exec struct {
+	SpyName            string `def:"auto"`
+	UploadName         string `def:"testapp.cpu{}"`
+	DetectSubprocesses bool   `def:"true"`
 }
 
 func calculateMaxDepth(min, max time.Duration, multiplier int) int {

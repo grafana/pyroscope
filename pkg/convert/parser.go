@@ -1,4 +1,4 @@
-package server
+package convert
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 )
 
 // format is a Serialized trie (see transporttrie.Serialize implementation)
-func parseTrie(r io.Reader, cb func(name []byte, val int)) error {
+func ParseTrie(r io.Reader, cb func(name []byte, val int)) error {
 	t, _ := transporttrie.Deserialize(r)
 	t.Iterate(func(name []byte, val uint64) {
 		cb(name, int(val))
@@ -21,7 +21,7 @@ func parseTrie(r io.Reader, cb func(name []byte, val int)) error {
 // format:
 // stack-trace-foo 1
 // stack-trace-bar 2
-func parseGroups(r io.Reader, cb func(name []byte, val int)) error {
+func ParseGroups(r io.Reader, cb func(name []byte, val int)) error {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		if err := scanner.Err(); err != nil {
@@ -52,7 +52,7 @@ func parseGroups(r io.Reader, cb func(name []byte, val int)) error {
 // stack-trace-foo
 // stack-trace-bar
 // stack-trace-bar
-func parseIndividualLines(r io.Reader, cb func(name []byte, val int)) error {
+func ParseIndividualLines(r io.Reader, cb func(name []byte, val int)) error {
 	groups := make(map[string]int)
 	scanner := bufio.NewScanner(r)
 	// scanner.Buffer(make([]byte, bufio.MaxScanTokenSize*100), bufio.MaxScanTokenSize*100)

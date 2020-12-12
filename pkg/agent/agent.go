@@ -19,7 +19,7 @@ type Agent struct {
 func New(cfg *config.Config) *Agent {
 	return &Agent{
 		cfg:  cfg,
-		ctrl: newController(cfg, remote.New(cfg)),
+		ctrl: NewController(cfg, remote.New(cfg)),
 	}
 }
 

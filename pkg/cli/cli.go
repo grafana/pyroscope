@@ -14,10 +14,13 @@ import (
 	"github.com/petethepig/pyroscope/pkg/agent/upstream/direct"
 	"github.com/petethepig/pyroscope/pkg/build"
 	"github.com/petethepig/pyroscope/pkg/config"
+	"github.com/petethepig/pyroscope/pkg/convert"
+	"github.com/petethepig/pyroscope/pkg/exec"
 	"github.com/petethepig/pyroscope/pkg/server"
 	"github.com/petethepig/pyroscope/pkg/storage"
 	"github.com/petethepig/pyroscope/pkg/util/atexit"
 	"github.com/petethepig/pyroscope/pkg/util/debug"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/iancoleman/strcase"
@@ -106,14 +109,18 @@ func printUsage(c *ffcli.Command) string {
 
 func Start(cfg *config.Config) error {
 	var (
-		rootFlagSet   = flag.NewFlagSet("pyroscope", flag.ExitOnError)
-		agentFlagSet  = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
-		serverFlagSet = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
+		rootFlagSet    = flag.NewFlagSet("pyroscope", flag.ExitOnError)
+		agentFlagSet   = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
+		serverFlagSet  = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
+		convertFlagSet = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
+		execFlagSet    = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
 	)
 
 	populateFlagSet(cfg, rootFlagSet)
 	populateFlagSet(&cfg.Agent, agentFlagSet)
 	populateFlagSet(&cfg.Server, serverFlagSet)
+	populateFlagSet(&cfg.Convert, convertFlagSet)
+	populateFlagSet(&cfg.Exec, execFlagSet)
 
 	options := []ff.Option{
 		ff.WithConfigFileParser(ffyaml.Parser),
@@ -140,27 +147,58 @@ func Start(cfg *config.Config) error {
 		FlagSet:    serverFlagSet,
 	}
 
+	convertCmd := &ffcli.Command{
+		UsageFunc:  printUsage,
+		Options:    options,
+		Name:       "convert",
+		ShortUsage: "pyroscope convert [flags] <input-file>",
+		ShortHelp:  "converts between different profiling formats",
+		FlagSet:    convertFlagSet,
+	}
+
+	execCmd := &ffcli.Command{
+		UsageFunc:  printUsage,
+		Options:    options,
+		Name:       "exec",
+		ShortUsage: "pyroscope exec [flags] args",
+		ShortHelp:  "executes a command",
+		FlagSet:    execFlagSet,
+	}
+
 	rootCmd := &ffcli.Command{
 		UsageFunc:   printUsage,
 		Options:     options,
 		ShortUsage:  "pyroscope [flags] <subcommand>",
 		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{agentCmd, serverCmd},
+		Subcommands: []*ffcli.Command{agentCmd, serverCmd, convertCmd, execCmd},
 	}
 
 	agentCmd.Exec = func(_ context.Context, args []string) error {
+		if l, err := logrus.ParseLevel(cfg.Agent.LogLevel); err == nil {
+			logrus.SetLevel(l)
+		}
 		a := agent.New(cfg)
 		atexit.Register(a.Stop)
 		a.Start()
 		return nil
 	}
 	serverCmd.Exec = func(_ context.Context, args []string) error {
-		go debugRAMUsage()
+		if l, err := logrus.ParseLevel(cfg.Server.LogLevel); err == nil {
+			logrus.SetLevel(l)
+		}
+		go printRAMUsage()
+		go printDiskUsage(cfg)
 		startServer(cfg)
 		return nil
 	}
+	convertCmd.Exec = func(_ context.Context, args []string) error {
+		return convert.Cli(cfg, args)
+	}
+	execCmd.Exec = func(_ context.Context, args []string) error {
+		return exec.Cli(cfg, args)
+	}
 	rootCmd.Exec = func(_ context.Context, args []string) error {
-		if cfg.Version || args[0] == "version" {
+		if cfg.Version || len(args) > 0 && args[0] == "version" {
 			fmt.Println(gradientBanner())
 			fmt.Println(build.Summary())
 			fmt.Println("")
@@ -187,12 +225,22 @@ func startServer(cfg *config.Config) {
 	time.Sleep(time.Second)
 }
 
-func debugRAMUsage() {
+func printRAMUsage() {
 	t := time.NewTicker(30 * time.Second)
 	for {
 		<-t.C
 		if log.IsLevelEnabled(log.DebugLevel) {
 			debug.PrintMemUsage()
+		}
+	}
+}
+
+func printDiskUsage(cfg *config.Config) {
+	t := time.NewTicker(30 * time.Second)
+	for {
+		<-t.C
+		if log.IsLevelEnabled(log.DebugLevel) {
+			debug.PrintDiskUsage(cfg.Server.StoragePath)
 		}
 	}
 }

@@ -29,7 +29,7 @@ test:
 
 .PHONY: server
 server:
-	bin/pyroscope server
+	bin/pyroscope server --log-level debug --badger-log-level error
 
 .PHONY: agent
 agent:

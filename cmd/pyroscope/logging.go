@@ -1,16 +1,16 @@
 package main
 
 import (
-	golog "log"
+	"log"
 	"os"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func init() {
-	golog.SetFlags(golog.Lshortfile | golog.Ldate | golog.Ltime)
+	log.SetFlags(log.Lshortfile | log.Ldate | log.Ltime)
 
-	log.SetFormatter(&log.TextFormatter{})
-	log.SetOutput(os.Stdout)
-	log.SetLevel(log.DebugLevel)
+	logrus.SetFormatter(&logrus.TextFormatter{})
+	logrus.SetOutput(os.Stdout)
+	logrus.SetLevel(logrus.DebugLevel)
 }

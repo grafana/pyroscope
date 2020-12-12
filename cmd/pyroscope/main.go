@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/petethepig/pyroscope/cmd/pyroscope/cli"
+	"github.com/petethepig/pyroscope/pkg/cli"
 	"github.com/petethepig/pyroscope/pkg/config"
 	log "github.com/sirupsen/logrus"
 )

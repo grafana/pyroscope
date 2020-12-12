@@ -4,23 +4,23 @@ import (
 	"bytes"
 	"sort"
 	"sync"
-
-	"github.com/petethepig/pyroscope/pkg/storage/segment"
 )
+
+type key []byte
 
 type Dimension struct {
 	m sync.RWMutex
 	// keys are sorted
-	keys []segment.Key
+	keys []key
 }
 
 func New() *Dimension {
 	return &Dimension{
-		keys: []segment.Key{},
+		keys: []key{},
 	}
 }
 
-func (d *Dimension) Insert(key segment.Key) {
+func (d *Dimension) Insert(key key) {
 	d.m.Lock()
 	defer d.m.Unlock()
 
@@ -48,16 +48,16 @@ const (
 )
 
 type sortableDim struct {
-	keys []segment.Key
+	keys []key
 	i    int
 	l    int
 }
 
-func (sd *sortableDim) current() segment.Key {
+func (sd *sortableDim) current() key {
 	return sd.keys[sd.i]
 }
 
-func (sd *sortableDim) advance(cmp segment.Key) advanceResult {
+func (sd *sortableDim) advance(cmp key) advanceResult {
 	for {
 		v := bytes.Compare(sd.current(), cmp)
 		switch v {
@@ -86,20 +86,20 @@ func (s sortableDims) Swap(i, j int) {
 }
 
 // finds keys that are present in all dimensions
-func Intersection(input ...*Dimension) []segment.Key {
+func Intersection(input ...*Dimension) []key {
 	if len(input) == 0 {
-		return []segment.Key{}
+		return []key{}
 	} else if len(input) == 1 {
 		return input[0].keys
 	}
 
-	result := []segment.Key{}
+	result := []key{}
 
 	dims := []*sortableDim{}
 
 	for _, v := range input {
 		if len(v.keys) == 0 {
-			return []segment.Key{}
+			return []key{}
 		}
 		// kinda ugly imo
 		v.m.RLock()

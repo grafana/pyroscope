@@ -26,7 +26,7 @@ func New(db *badger.DB, bound int, prefix string) *Cache {
 	l := lfu.New()
 	// TODO: figure out how to set these
 	l.UpperBound = bound
-	l.LowerBound = bound - 1
+	l.LowerBound = bound - bound/10
 	ech := make(chan lfu.Eviction, 1)
 	l.EvictionChannel = ech
 	cache := &Cache{
@@ -59,6 +59,10 @@ func (cache *Cache) Put(key string, val interface{}) {
 }
 
 func (cache *Cache) saveToDisk(key string, val interface{}) {
+	log.WithFields(log.Fields{
+		"prefix": cache.prefix,
+		"key":    key,
+	}).Info("saving to disk")
 	buf := cache.Bytes(key, val)
 	err := cache.db.Update(func(txn *badger.Txn) error {
 		return txn.SetEntry(badger.NewEntry([]byte(cache.prefix+key), buf))

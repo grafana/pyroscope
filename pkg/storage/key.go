@@ -3,7 +3,9 @@ package storage
 import (
 	"encoding/binary"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/petethepig/pyroscope/pkg/structs/sortedmap"
 	"github.com/spaolacci/murmur3"
@@ -72,24 +74,25 @@ func ParseKey(name string) (*Key, error) {
 			}
 		}
 	}
-	// res := nameParser.FindStringSubmatch(name)
-	// if len(res) != 3 {
-	// 	return nil, errors.New("invalid key")
-	// }
-	// labels := make(map[string]string)
-	// labels["__name__"] = strings.TrimSpace(res[1])
-	// for _, v := range strings.Split(res[2], ",") {
-	// 	arr := strings.Split(v, "=")
-	// 	if len(arr) != 2 {
-	// 		return nil, errors.New("invalid key")
-	// 	}
-
-	// 	labels[strings.TrimSpace(arr[0])] = strings.TrimSpace(arr[1])
-	// }
-	// return &Key{
-	// 	labels: labels,
-	// }, nil
 	return k, nil
+}
+
+func (k *Key) SegmentKey() string {
+	return k.Normalized()
+}
+
+func (k *Key) TreeKey(depth int, t time.Time) string {
+	return k.Normalized() + ":" + strconv.Itoa(depth) + ":" + strconv.Itoa(int(t.Unix()))
+}
+
+func (k *Key) DictKey() string {
+	return k.Normalized()
+}
+
+func FromTreeToMainKey(k string) string {
+	i := strings.LastIndex(k, ":")
+	i = strings.LastIndex(k[:i-1], ":")
+	return k[:i]
 }
 
 func (k *Key) Normalized() string {

@@ -12,7 +12,7 @@ import (
 	"github.com/felixge/fgprof"
 )
 
-func Profile(name string, cb func()) time.Duration {
+func FProfile(name string, cb func()) time.Duration {
 	t := time.Now()
 	path := "/tmp/profile-" + name + ".folded"
 	pathSVG := "/tmp/profile-" + name + ".svg"
@@ -31,7 +31,7 @@ func Profile(name string, cb func()) time.Duration {
 	return d
 }
 
-func SProfile(name string, cb func()) time.Duration {
+func Profile(name string, cb func()) time.Duration {
 	t := time.Now()
 	cb()
 	d := time.Now().Sub(t)
