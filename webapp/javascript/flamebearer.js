@@ -97,12 +97,7 @@ export default function render(flamebearerData) {
   }
 
   function render() {
-    if (!levels) return;
-
-
-   resetBtn.style.visibility = selectedLevel === 0 ? 'hidden' : 'visible';
-
-
+    resetBtn.style.visibility = selectedLevel === 0 ? 'hidden' : 'visible';
     graphWidth = canvas.width = canvas.clientWidth;
     canvas.height = pxPerLevel * (levels.length - topLevel);
     canvas.style.height = canvas.height + 'px';
@@ -156,9 +151,9 @@ export default function render(flamebearerData) {
 
         const a = selectedLevel > i ? 0.33 : 1;
         if (!collapsed) {
-          ctx.fillStyle = inQuery ? 'lightgreen' : colorBasedOnName(names[level[j + 2]], a);
+          ctx.fillStyle = inQuery ? '#48CE73' : colorBasedOnName(names[level[j + 2]], a);
         } else {
-          ctx.fillStyle = inQuery ? 'lightgreen' : colorGreyscale(200, 0.66);
+          ctx.fillStyle = inQuery ? '#48CE73' : colorGreyscale(200, 0.66);
         }
         ctx.fill();
 
@@ -178,11 +173,18 @@ export default function render(flamebearerData) {
   }
 
   function colorBasedOnName(name, a){
-    const rand = murmurhash3_32_gc(name);
-    const r = Math.round(205 + rand % 50);
-    const g = Math.round(100 + rand % 70);
-    const b = Math.round(0 + rand % 55);
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
+    const rand = (murmurhash3_32_gc(name) & 100) / 100;
+    const m = 20; //20;
+    const h = 40 + (rand - 0.5) * m;
+    const s = 90;
+    const l = 60;
+    return `hsla(${h}, ${s}%, ${l}%, ${a})`;
+    // return "#48CE73";
+    return "#FEBD46";
+    return "#E3B340";
+    return "#facf5a";
+    return "#f9813a";
+    return "#ffac41";
   }
 
   function colorGreyscale(v, a){

@@ -63,8 +63,8 @@ class FlameGraphRenderer extends React.Component {
           <canvas id="flamegraph-canvas" height="0"></canvas>
         </div>
 
-        <div id="highlight"></div>
-        <div id="tooltip"></div>
+        <div id="highlight" style={{display:"none"}}></div>
+        <div id="tooltip" style={{display:"none"}}></div>
       </div>
     );
   }
