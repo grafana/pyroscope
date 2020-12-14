@@ -30,6 +30,9 @@ import clsx from "clsx";
 import murmurhash3_32_gc from '../murmur3';
 import {numberWithCommas} from '../util/format';
 
+
+import { withShortcut, ShortcutProvider, ShortcutConsumer } from 'react-keybind'
+
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
 const HIDE_THRESHOLD = 0.5;
@@ -108,6 +111,8 @@ class FlameGraphRenderer extends React.Component {
     this.query = "";
 
     window.addEventListener('resize', this.resizeHandler);
+
+    this.props.shortcut.registerShortcut(this.reset, ['escape'], 'Reset', 'Reset Flamegraph View');
   }
 
   componentDidUpdate(prevProps) {
@@ -377,4 +382,4 @@ class FlameGraphRenderer extends React.Component {
 export default connect(
   (x) => x,
   { fetchJSON }
-)(FlameGraphRenderer);
+)(withShortcut(FlameGraphRenderer));

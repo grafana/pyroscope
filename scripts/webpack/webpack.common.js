@@ -3,7 +3,12 @@ const webpack = require('webpack');
 
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+
 // const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+
+let buildFlags = require('child_process')
+  .execSync('scripts/generate-build-flags.sh ')
+  .toString();
 
 console.log(path.resolve());
 module.exports = {
@@ -44,6 +49,9 @@ module.exports = {
     new webpack.ProvidePlugin({
       $: 'jquery',
       jQuery: 'jquery',
+    }),
+    new webpack.DefinePlugin({
+      BUILD_FLAGS: JSON.stringify(buildFlags),
     }),
     new CleanWebpackPlugin(),
   ],

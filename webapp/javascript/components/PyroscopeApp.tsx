@@ -1,7 +1,11 @@
 import React from 'react';
 import { connect } from "react-redux";
 import "react-dom";
+
+import Modal from "react-modal";
+import {withShortcut} from "react-keybind";
 import Spinner from "react-svg-spinner";
+
 import DateRangePicker from "./DateRangePicker";
 import DownloadButton from './DownloadButton';
 import ZoomOutButton from './ZoomOutButton';
@@ -13,18 +17,42 @@ import Label from "./Label";
 import NameSelector from "./NameSelector";
 import MaxNodesSelector from "./MaxNodesSelector";
 import TimelineChart from "./TimelineChart";
+import ShortcutsModal from "./ShortcutsModal";
+import Footer from "./Footer";
 
 import classNames from "classnames";
 
 import { fetchNames } from "../redux/actions";
 
+const modalStyle = {
+  overlay: {
+    backgroundColor: 'rgba(0,0,0,0.75)',
+  },
+  content: {
+    background: '#222',
+    border: '1px solid #111',
+  },
+};
+
 class PyroscopeApp extends React.Component {
   constructor(props) {
     super(props);
+    this.state = {
+      shortcutsModalOpen: false
+    };
   }
 
   componentDidMount = () => {
     this.props.fetchNames();
+    this.props.shortcut.registerShortcut(this.showShortcutsModal, ['shift+?'], 'Shortcuts', 'Show Keyboard Shortcuts Modal');
+  }
+
+  showShortcutsModal = () => {
+    this.setState({shortcutsModalOpen: true})
+  }
+
+  closeShortcutsModal = () => {
+    this.setState({shortcutsModalOpen: false});
   }
 
   renderURL() {
@@ -122,13 +150,22 @@ class PyroscopeApp extends React.Component {
         <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
         {/* <SVGRenderer renderURL={renderURL+"&format=frontend"}/> */}
         <FlameGraphRenderer renderURL={renderURL+"&format=json"}/>
+
+        <Modal
+          isOpen={this.state.shortcutsModalOpen}
+          style={modalStyle}
+          appElement={document.getElementById('root')}
+        >
+          <div className="modal-close-btn" onClick={this.closeShortcutsModal}></div>
+          <ShortcutsModal closeModal={this.closeShortcutsModal}/>
+        </Modal>
+        <Footer/>
       </div>
     );
   }
 }
 
-
 export default connect(
   (x) => x,
   { fetchNames }
-)(PyroscopeApp);
+)(withShortcut(PyroscopeApp));

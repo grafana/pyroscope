@@ -17,6 +17,18 @@ body {
   color: white;
 }
 
+pre, code, tt {
+  font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
+  font-size: 14px;
+}
+
+tt {
+  border-radius: 3px;
+  border: 1px solid #aaa;
+  padding: 2px 4px;
+  background-color: rgba(255,255,255,0.3);
+}
+
 
 .navbar-2 {
   display: flex;
@@ -158,6 +170,55 @@ body {
 
 .flamegraph-canvas {
   width: 100%;
+}
+
+.modal-close-btn {
+  position: absolute;
+  display: block;
+  top: 20px;
+  right: 20px;
+  cursor: pointer;
+  &:after {
+    content: '✕';
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: block;
+    text-align: center;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+  }
+  // hit-area
+  &:before {
+    content: '';
+    cursor: pointer;
+    top: -20px;
+    right: -20px;
+    display: block;
+    position: absolute;
+
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+  }
+}
+
+.footer {
+  display: block;
+  // display: flex;
+  margin: 20px 15px;
+  text-align: center;
+  .footer-space-filler {
+    // flex-grow: 1;
+  }
+  a {
+    color: #ffae00;
+    // color: #e68828;
+    &:hover{
+      cursor: default;
+    }
+  }
 }
 
 
