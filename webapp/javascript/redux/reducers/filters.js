@@ -16,7 +16,7 @@ import {
 } from "../actionTypes";
 
 import uniqBy from "lodash/fp/uniqBy";
-import {deltaDiff} from "../../flamebearer";
+import {deltaDiff} from "../../components/FlameGraphRenderer";
 
 const initialState = {
   from: "now-1h",

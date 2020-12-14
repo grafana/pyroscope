@@ -15,44 +15,9 @@
 // THIS SOFTWARE.
 
 
-.name {
-  font-weight: 500;
-}
+.flamegraph-tooltip {
+  max-width: 80%;
 
-#highlight {
-  position: absolute;
-  pointer-events: none;
-  background: #ffffff40;
-}
-
-.loaded #intro {
-  display: none;
-}
-
-.loaded #header {
-  display: flex;
-  align-items: center;
-  flex-flow: row wrap;
-  padding: 7px 10px;
-}
-
-.loaded h1 {
-  font-size: 22px;
-  margin: 0 auto 0 0;
-  flex-shrink: 0;
-}
-
-.loaded #fire-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.loaded #controls {
-  display: block;
-  flex-shrink: 0;
-}
-
-#tooltip {
   position: absolute;
   pointer-events: none;
   background: #ffffff;
@@ -62,4 +27,24 @@
   padding: 3px 5px;
   color: #333;
   font-size: 12px;
+}
+
+.flamegraph-tooltip-name {
+  font-weight: 500;
+
+
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#highlight {
+  position: absolute;
+  pointer-events: none;
+  background: #ffffff40;
+}
+
+#tooltip {
+
 }
