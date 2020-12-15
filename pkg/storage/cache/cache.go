@@ -51,7 +51,6 @@ func New(db *badger.DB, bound int, prefix string) *Cache {
 }
 
 func (cache *Cache) Put(key string, val interface{}) {
-	key = cache.prefix + key
 	cache.lfu.Set(key, val)
 	if cache.alwaysSave {
 		cache.saveToDisk(key, val)

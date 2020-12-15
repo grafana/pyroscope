@@ -354,15 +354,6 @@ class FlameGraphRenderer extends React.Component {
       tooltipText1: this.names[level[j + 2]],
       tooltipText2: `${percent}%, ${numberWithCommas(numBarTicks)} samples`,
     });
-
-    // const time = `<div class="time">${percent}%, ${numberWithCommas(numBarTicks)} samples</div>`;
-    // // let content = names[level[j + 2]];
-    // let content = `<div class="name">${names[level[j + 2]]}</div>`;
-    // content += ` ${time}`
-    // // if (content[0] !== '(') content = content.replace(' ', ` ${time}<br><span class="path">`) + '</span>';
-    // // else ;
-
-    // tooltipEl.innerHTML = content;
   }
 
   mouseOutHandler = () => {
