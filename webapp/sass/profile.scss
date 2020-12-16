@@ -58,10 +58,16 @@ tt {
   margin: 0;
   padding: 0;
   font-weight: 400;
+  background-image: url('../images/logo-v2-small.png');
+  background-size: 40px 40px;
+  background-position: 0px 8px;
+  background-repeat: no-repeat;
 }
 
-.logo::before {
-  content: '🔥 Pyroscope';
+.logo::after {
+  content: 'Pyroscope';
+  font-weight: 400;
+  padding-left: 48px;
 }
 
 .navbar-space-filler {
@@ -212,13 +218,15 @@ body {
   .footer-space-filler {
     // flex-grow: 1;
   }
+}
+
+
+.navbar, .footer {
   a {
     color: #ffae00;
-    // color: #e68828;
     &:hover{
+      color: #ffc13a;
       cursor: default;
     }
   }
 }
-
-

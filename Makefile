@@ -41,11 +41,11 @@ install-web-dependencies:
 
 .PHONY: assets
 assets: install-web-dependencies
-	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js
+	$(shell yarn bin webpack) --config scripts/webpack/webpack.js
 
 .PHONY: assets-watch
 assets-watch: install-web-dependencies
-	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js --watch
+	$(shell yarn bin webpack) --config scripts/webpack/webpack.js --watch
 
 .PHONY: embedded-assets
 embedded-assets: assets

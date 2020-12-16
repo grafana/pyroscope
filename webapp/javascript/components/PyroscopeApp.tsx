@@ -4,23 +4,12 @@ import "react-dom";
 
 import Modal from "react-modal";
 import {withShortcut} from "react-keybind";
-import Spinner from "react-svg-spinner";
 
-import DateRangePicker from "./DateRangePicker";
-import DownloadButton from './DownloadButton';
-import ZoomOutButton from './ZoomOutButton';
-import RefreshButton from './RefreshButton';
-import SVGRenderer from "./SVGRenderer";
 import FlameGraphRenderer from "./FlameGraphRenderer";
-import LabelsFilter from "./LabelsFilter";
-import Label from "./Label";
-import NameSelector from "./NameSelector";
-import MaxNodesSelector from "./MaxNodesSelector";
 import TimelineChart from "./TimelineChart";
 import ShortcutsModal from "./ShortcutsModal";
+import Header from "./Header";
 import Footer from "./Footer";
-
-import classNames from "classnames";
 
 import { fetchNames } from "../redux/actions";
 
@@ -122,35 +111,9 @@ class PyroscopeApp extends React.Component {
     let flotData = [timeline];
     return (
       <div>
-        <div className="navbar">
-          <h1 className="logo"></h1>
-          <div className="labels">
-            <NameSelector/>
-            {this.props.labels.filter(x => x.name !== "__name__").map(function(label) {
-              return <Label key={label.name} label={label}></Label>;
-            })}
-          </div>
-          {/* <LabelsFilter /> */}
-          <div className="navbar-space-filler"></div>
-          <div className={
-            classNames("navbar-spinner-container", {
-              visible: this.props.isSVGLoading
-            })
-          }>
-            <Spinner color="rgba(255,255,255,0.6)" size="20px"/>
-          </div>
-          <DownloadButton renderURL={renderURL+"&format=svg&download-filename=flamegraph.svg"} />
-          &nbsp;
-          <RefreshButton/>
-          {/* &nbsp; */}
-          {/* <ZoomOutButton/> */}
-          &nbsp;
-          <DateRangePicker />
-        </div>
+        <Header renderURL={renderURL}/>
         <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
-        {/* <SVGRenderer renderURL={renderURL+"&format=frontend"}/> */}
         <FlameGraphRenderer renderURL={renderURL+"&format=json"}/>
-
         <Modal
           isOpen={this.state.shortcutsModalOpen}
           style={modalStyle}

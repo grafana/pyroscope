@@ -4,6 +4,13 @@
 
 .labels {
   margin-left: 30px;
+  min-width: 400px;
+  visibility: none;
+
+
+  &.visible {
+    visibility: block;
+  }
 
   select {
     margin-right: 10px;
