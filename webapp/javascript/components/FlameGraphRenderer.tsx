@@ -39,19 +39,57 @@ const HIDE_THRESHOLD = 0.5;
 const LABEL_THRESHOLD = 20;
 
 
-function colorBasedOnName(name, a){
-  const rand = (murmurhash3_32_gc(name) & 100) / 100;
-  const m = 20; //20;
-  const h = 40 + (rand - 0.5) * m;
-  const s = 90;
-  const l = 60;
-  return `hsla(${h}, ${s}%, ${l}%, ${a})`;
-  // return "#48CE73";
-  return "#FEBD46";
-  return "#E3B340";
-  return "#facf5a";
-  return "#f9813a";
-  return "#ffac41";
+function colorBasedOnName(name, filenames, a){
+  // const rand = (murmurhash3_32_gc(name) & 100) / 100;
+  // const m = 20; //20;
+  // const h = 40 + (rand - 0.5) * m;
+  // const s = 90;
+  // const l = 60;
+
+  // const m = 20; //20;
+  // const h = 50 + (rand - 0.5) * m;
+  // const s = 35;
+  // const l = 41;
+
+  console.log(`color based on name: ${name}`)
+  console.log(filenames)
+
+  const purple = `hsla(246, 40%, 65%, ${a})` //Purple:
+  const blueDark = `hsla(211, 48%, 60%, ${a})` //BlueDark:
+  const blueCyan = `hsla(194, 52%, 61%, ${a})` //CyanBlue:
+  const yellow = `hsla(34, 65%, 65%, ${a})` //Yellow:
+  const green = `hsla(163, 45%, 55%, ${a})` //Green:
+  const orange = `hsla(24, 69%, 60%, ${a})` //Orange:
+  const red = `hsla(3, 62%, 67%, ${a})` // Red:
+  const grey = `hsla(225, 2%, 51%, ${a})` //Grey:
+
+  const items = [
+    // red,
+    orange,
+    yellow,
+    green,
+    blueCyan,
+    blueDark,
+    purple,
+  ]
+
+  if(name.indexOf('.py') >= 0) {
+    let i = filenames.indexOf(name);
+    // return items[Math.floor(Math.random() * items.length)];
+    return items[filenames.length % i];
+  } else {
+    return grey
+  }
+
+
+  // return `hsla(${h}, ${s}%, ${l}%, ${a})`;
+  // return `hsla(191, 35%, 41%, 1)`
+  // // return "#48CE73";
+  // return "#FEBD46";
+  // return "#E3B340";
+  // return "#facf5a";
+  // return "#f9813a";
+  // return "#ffac41";
 }
 
 function colorGreyscale(v, a){
@@ -97,6 +135,7 @@ class FlameGraphRenderer extends React.Component {
     };
     this.canvasRef = React.createRef();
     this.tooltipRef = React.createRef();
+    this.getFilenameFromStackTrace = this.getFilenameFromStackTrace.bind(this);
   }
 
   componentDidMount() {
@@ -144,6 +183,19 @@ class FlameGraphRenderer extends React.Component {
     this.renderCanvas();
   }
 
+  getFilenameFromStackTrace = (stackTrace) => {
+    if(stackTrace.length == 0) {
+      return stackTrace
+    } else {
+      let fullStackGroups = stackTrace.match(/^(?<path>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/)
+      if(fullStackGroups) {
+        return fullStackGroups.groups.filename
+      } else {
+        return stackTrace
+      }
+    }
+  }
+
   render() {
     return (
       <div className="canvas-renderer">
@@ -189,6 +241,10 @@ class FlameGraphRenderer extends React.Component {
   updateData(data) {
     let { names, levels, numTicks } = data;
     this.names = names;
+    let allFilenames = this.names.map((stackTrace) => {
+      return this.getFilenameFromStackTrace(stackTrace)
+    })
+    this.filenames = [...new Set(allFilenames)];
     this.levels = levels;
     this.numTicks = numTicks;
     this.renderCanvas();
@@ -300,7 +356,7 @@ class FlameGraphRenderer extends React.Component {
 
         const a = this.selectedLevel > i ? 0.33 : 1;
         if (!collapsed) {
-          this.ctx.fillStyle = inQuery ? '#48CE73' : colorBasedOnName(names[level[j + 2]], a);
+          this.ctx.fillStyle = inQuery ? '#48CE73' : colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), this.filenames, a);
         } else {
           this.ctx.fillStyle = inQuery ? '#48CE73' : colorGreyscale(200, 0.66);
         }
