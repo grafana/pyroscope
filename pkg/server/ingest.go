@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/petethepig/pyroscope/pkg/convert"
-	"github.com/petethepig/pyroscope/pkg/storage"
-	"github.com/petethepig/pyroscope/pkg/storage/tree"
-	"github.com/petethepig/pyroscope/pkg/util/attime"
+	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )

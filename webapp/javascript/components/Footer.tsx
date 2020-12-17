@@ -16,7 +16,7 @@ class Footer extends React.Component {
   }
 
   render() {
-    // let flags = BUILD_FLAGS.split("\n").map(x => x.replace("-X github.com/petethepig/pyroscope/pkg/build.", ""));
+    // let flags = BUILD_FLAGS.split("\n").map(x => x.replace("-X github.com/pyroscope-io/pyroscope/pkg/build.", ""));
     // console.log(flags);
     return <div className="footer">
       <span>© Pyroscope {copyrightYears(START_YEAR, new Date().getFullYear())}</span>

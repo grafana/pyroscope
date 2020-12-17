@@ -9,10 +9,10 @@ import (
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/petethepig/pyroscope/pkg/agent/csock"
-	"github.com/petethepig/pyroscope/pkg/agent/upstream"
-	"github.com/petethepig/pyroscope/pkg/config"
-	"github.com/petethepig/pyroscope/pkg/util/id"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/csock"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/util/id"
 )
 
 type Controller struct {

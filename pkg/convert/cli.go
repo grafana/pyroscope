@@ -5,9 +5,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/petethepig/pyroscope/pkg/config"
-	"github.com/petethepig/pyroscope/pkg/storage/tree"
-	"github.com/petethepig/pyroscope/pkg/structs/transporttrie"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/sirupsen/logrus"
 )
 

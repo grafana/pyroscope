@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/petethepig/pyroscope/pkg/structs/merge"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	log "github.com/sirupsen/logrus"
 
 	. "github.com/onsi/ginkgo"

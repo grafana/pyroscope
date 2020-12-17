@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/petethepig/pyroscope/pkg/util/varint"
+	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
 // this implementation is a copy of another trie implementation in this repo

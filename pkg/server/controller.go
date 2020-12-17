@@ -8,9 +8,9 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/markbates/pkger"
-	"github.com/petethepig/pyroscope/pkg/build"
-	"github.com/petethepig/pyroscope/pkg/config"
-	"github.com/petethepig/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	log "github.com/sirupsen/logrus"
 )
 

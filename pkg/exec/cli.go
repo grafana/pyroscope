@@ -5,9 +5,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/petethepig/pyroscope/pkg/agent"
-	"github.com/petethepig/pyroscope/pkg/agent/upstream/remote"
-	"github.com/petethepig/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/sirupsen/logrus"
 )
 

@@ -166,7 +166,7 @@ module.exports = (env = {}) => {
         BUILD_FLAGS: JSON.stringify(buildFlags),
       }),
       new CleanWebpackPlugin({
-        cleanStaleWebpackAssets: false
+        // cleanStaleWebpackAssets: false
       }),
       new HtmlWebpackPlugin({
         filename: path.resolve(__dirname, '../../webapp/public/index.html'),

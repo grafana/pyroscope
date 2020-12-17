@@ -10,8 +10,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/petethepig/pyroscope/pkg/config"
-	"github.com/petethepig/pyroscope/pkg/structs/transporttrie"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
 type uploadJob struct {

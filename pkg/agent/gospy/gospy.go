@@ -4,7 +4,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/petethepig/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 )
 
 // TODO: make this configurable

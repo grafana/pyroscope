@@ -6,7 +6,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/petethepig/pyroscope/pkg/util/varint"
+	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
 func (s *Segment) Serialize(w io.Writer) error {

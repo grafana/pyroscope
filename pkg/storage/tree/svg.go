@@ -5,8 +5,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/petethepig/pyroscope/pkg/structs/cappedarr"
-	"github.com/petethepig/pyroscope/pkg/svg"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/cappedarr"
+	"github.com/pyroscope-io/pyroscope/pkg/svg"
 )
 
 func (tn2 *treeNode) svg(w io.Writer, maxDepth, minVal uint64, totalCum float64, width int) {

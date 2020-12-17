@@ -5,9 +5,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/petethepig/pyroscope/pkg/agent/csock"
-	"github.com/petethepig/pyroscope/pkg/agent/upstream/remote"
-	"github.com/petethepig/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/csock"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
 type Agent struct {

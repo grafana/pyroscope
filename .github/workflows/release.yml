@@ -39,7 +39,7 @@ jobs:
         run: mkdir build
 
       - name: Build
-        run: go build -o build/pyroscope ./cmd/pyroscope
+        run: make build-release
 
       - name: List Assets
         run: ls build/
@@ -76,10 +76,10 @@ jobs:
         run: "sudo gem install fpm"
 
       - name: Create rpm package
-        run: "fpm -s dir -t rpm -n pyroscope --iteration ${{ steps.iteration.outputs.iteration }} --architecture x86_64 -v ${GITHUB_REF#refs/*/v} --description 'pyroscope is continuous profiling software' -p ${{ steps.rpm_name.outputs.rpm_name }} ./package-build"
+        run: "fpm -s dir -t rpm -n pyroscope --iteration ${{ steps.iteration.outputs.iteration }} --architecture x86_64 -v ${GITHUB_REF#refs/*/v} --description 'pyroscope is open source continuous profiling software' -p ${{ steps.rpm_name.outputs.rpm_name }} ./package-build"
 
       - name: Create deb package
-        run: "fpm -s dir -t deb -n pyroscope --iteration ${{ steps.iteration.outputs.iteration }} --architecture x86_64 -v ${GITHUB_REF#refs/*/v} --description 'pyroscope is continuous profiling software' -p ${{ steps.rpm_name.outputs.deb_name }} ./package-build"
+        run: "fpm -s dir -t deb -n pyroscope --iteration ${{ steps.iteration.outputs.iteration }} --architecture x86_64 -v ${GITHUB_REF#refs/*/v} --description 'pyroscope is open source continuous profiling software' -p ${{ steps.deb_name.outputs.deb_name }} ./package-build"
 
       - name: Archive Assets
         run: tar czf ${{ steps.file_name.outputs.file_name }} build/*

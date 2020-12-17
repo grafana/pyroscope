@@ -2,8 +2,16 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 GOBUILD=go build -trimpath
 ENABLED_SPIES ?= "rbspy,pyspy"
+EMBEDDED_ASSETS_DEPS ?= "assets"
 EMBEDDED_ASSETS ?= ""
+DOCKER_ARCHES ?= "linux/amd64,linux/arm64"
 GODEBUG=asyncpreemptoff=1
+DOCKER_TAG ?= "dev"
+
+ifndef $(GOPATH)
+	GOPATH=$(shell go env GOPATH)
+	export GOPATH
+endif
 
 .PHONY: all
 all: build
@@ -47,14 +55,6 @@ assets: install-web-dependencies
 assets-watch: install-web-dependencies
 	$(shell yarn bin webpack) --config scripts/webpack/webpack.js --watch
 
-.PHONY: embedded-assets
-embedded-assets: assets
-	pkger -o pkg/controller
-
-.PHONY: build-release
-build-release: embedded-assets
-	EMBEDDED_ASSETS=true $(MAKE) build
-
 .PHONY: lint
 lint:
 	revive -config revive.toml -formatter stylish ./...
@@ -77,7 +77,7 @@ dev:
 
 .PHONY: godoc
 godoc:
-	sleep 5 && open http://localhost:8090/pkg/github.com/petethepig/pyroscope/ &
+	sleep 5 && open http://localhost:8090/pkg/github.com/pyroscope-io/pyroscope/ &
 	godoc -http :8090
 
 .PHONY: go-deps-graph
@@ -92,3 +92,30 @@ clean:
 .PHONY: update-contributors
 update-contributors:
 	$(shell yarn bin contributor-faces) .
+
+# Release-related tasks:
+
+.PHONY: embedded-assets
+embedded-assets: install-dev-tools $(EMBEDDED_ASSETS_DEPS)
+	pkger -o pkg/server
+
+.PHONY: build-release
+build-release: embedded-assets
+	EMBEDDED_ASSETS=true $(MAKE) build
+
+.PHONY: docker-build
+docker-build:
+	docker build .
+
+.PHONY: docker-build-x-setup
+docker-build-x-setup:
+	docker buildx create --use
+
+.PHONY: docker-build-all-arches
+docker-build-all-arches:
+	docker buildx build \
+		--tag pyroscope/pyroscope:$(DOCKER_TAG) \
+		--push \
+		--platform $(DOCKER_ARCHES) \
+		.
+

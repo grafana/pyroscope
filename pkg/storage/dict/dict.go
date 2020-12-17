@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"sync"
 
-	"github.com/petethepig/pyroscope/pkg/util/varint"
+	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
 type Key []byte

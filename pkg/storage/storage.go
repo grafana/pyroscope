@@ -11,14 +11,14 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
-	"github.com/petethepig/pyroscope/pkg/config"
-	"github.com/petethepig/pyroscope/pkg/storage/cache"
-	"github.com/petethepig/pyroscope/pkg/storage/dict"
-	"github.com/petethepig/pyroscope/pkg/storage/dimension"
-	"github.com/petethepig/pyroscope/pkg/storage/labels"
-	"github.com/petethepig/pyroscope/pkg/storage/segment"
-	"github.com/petethepig/pyroscope/pkg/storage/tree"
-	"github.com/petethepig/pyroscope/pkg/structs/merge"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	"github.com/sirupsen/logrus"
 )
 

@@ -3,7 +3,7 @@ package upstream
 import (
 	"time"
 
-	"github.com/petethepig/pyroscope/pkg/structs/transporttrie"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
 type Upstream interface {

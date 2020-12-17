@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/petethepig/pyroscope/pkg/util/varint"
+	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
 func (s *Dimension) Serialize(w io.Writer) error {

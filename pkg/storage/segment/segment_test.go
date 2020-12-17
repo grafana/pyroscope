@@ -13,8 +13,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/petethepig/pyroscope/pkg/structs/merge"
-	"github.com/petethepig/pyroscope/pkg/testing"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
+	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
 func getTries(s *Segment, st, et time.Time) []merge.Merger {

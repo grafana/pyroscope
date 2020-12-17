@@ -5,14 +5,14 @@ import (
 
 	// revive:disable:blank-imports Depending on configuration these packages may or may not be used.
 	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
-	_ "github.com/petethepig/pyroscope/pkg/agent/gospy"
-	_ "github.com/petethepig/pyroscope/pkg/agent/pyspy"
-	_ "github.com/petethepig/pyroscope/pkg/agent/rbspy"
+	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
+	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
+	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 
 	// revive:enable:blank-imports
 
-	"github.com/petethepig/pyroscope/pkg/agent/spy"
-	"github.com/petethepig/pyroscope/pkg/structs/transporttrie"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
 type profileSession struct {

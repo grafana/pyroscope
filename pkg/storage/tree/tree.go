@@ -8,7 +8,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/petethepig/pyroscope/pkg/structs/merge"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 )
 
 type jsonableSlice []byte

@@ -6,8 +6,8 @@ import (
 	"encoding/base64"
 	"io"
 
-	"github.com/petethepig/pyroscope/pkg/storage/dict"
-	"github.com/petethepig/pyroscope/pkg/util/varint"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
+	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
 func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {

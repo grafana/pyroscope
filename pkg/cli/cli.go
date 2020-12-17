@@ -10,16 +10,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/petethepig/pyroscope/pkg/agent"
-	"github.com/petethepig/pyroscope/pkg/agent/upstream/direct"
-	"github.com/petethepig/pyroscope/pkg/build"
-	"github.com/petethepig/pyroscope/pkg/config"
-	"github.com/petethepig/pyroscope/pkg/convert"
-	"github.com/petethepig/pyroscope/pkg/exec"
-	"github.com/petethepig/pyroscope/pkg/server"
-	"github.com/petethepig/pyroscope/pkg/storage"
-	"github.com/petethepig/pyroscope/pkg/util/atexit"
-	"github.com/petethepig/pyroscope/pkg/util/debug"
+	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
+	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/exec"
+	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
+	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
@@ -221,8 +221,8 @@ func startServer(cfg *config.Config) {
 	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}")
 	atexit.Register(func() { s.Close() })
 	c := server.New(cfg, s)
+	log.Info("starting HTTP server")
 	c.Start()
-	time.Sleep(time.Second)
 }
 
 func printRAMUsage() {
