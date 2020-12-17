@@ -207,20 +207,20 @@ build-arch: print-build-vars
 		-c "cat /usr/bin/pyroscope" \
 		> $(DIR)/usr/bin/pyroscope
 
-	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(shell echo $(FPM_ARCH) | tr '/' '-').tar.gz")
+	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(shell echo $(FPM_ARCH) | tr '/' '-')-source.tar.gz")
 	tar czf $(OUTPUT) $(DIR)/usr/bin/*
 	gh release upload v$(VERSION) $(OUTPUT)
 
 	cp scripts/packages/server.yml $(DIR)/etc/pyroscope/server.yml
 
 	for PACKAGE_FORMAT in $(shell echo $(PACKAGE_TYPES)); do \
-		FPM_FORMAT=$$PACKAGE_FORMAT make build-package ; \
+		DIR=$(DIR) FPM_FORMAT=$$PACKAGE_FORMAT make build-package ; \
 	done
 
 .PHONY: build-all-arches
 build-all-arches: install-fpm
 	for ARCH in $(shell echo $(DOCKER_ARCHES) | tr ',' ' '); do \
-		ARCH=$$ARCH make build-arch ; \
+		FPM_ARCH=$$ARCH make build-arch ; \
 	done
 
 .PHONY: github-make-release
