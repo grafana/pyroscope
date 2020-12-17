@@ -1,12 +1,39 @@
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 GOBUILD=go build -trimpath
+GODEBUG=asyncpreemptoff=1
+
 ENABLED_SPIES ?= "rbspy,pyspy"
 EMBEDDED_ASSETS_DEPS ?= "assets"
 EMBEDDED_ASSETS ?= ""
+
+
+ifeq ("$(FPM_ARCH)", "linux/arm64")
+	LINUX_ARCH = "aarch64"
+endif
+ifeq ("$(FPM_ARCH)", "linux/amd64")
+	LINUX_ARCH = "x64_84"
+endif
+
+
+# packaging
 DOCKER_ARCHES ?= "linux/amd64,linux/arm64"
-GODEBUG=asyncpreemptoff=1
-DOCKER_TAG ?= "dev"
+PACKAGE_TYPES ?= "deb rpm"
+VERSION ?= $(shell git tag --points-at HEAD | grep '^v' | sort | tail -n 1 | tr -d 'v')
+DOCKER_TAG ?= $(VERSION)
+ifeq ("$(DOCKER_TAG)", "")
+	DOCKER_TAG = "dev"
+endif
+ifeq ("$(VERSION)", "")
+	VERSION = "0.0.1"
+endif
+
+ITERATION ?= "0"
+VENDOR = "Pyroscope"
+URL = "https://pyroscope.io"
+LICENSE = "Apache 2"
+MAINTAINER = "contact@pyroscope.io"
+DESCRIPTION = "pyroscope is open source continuous profiling software"
 
 ifndef $(GOPATH)
 	GOPATH=$(shell go env GOPATH)
@@ -95,6 +122,17 @@ update-contributors:
 
 # Release-related tasks:
 
+.PHONY: print-build-vars
+print-build-vars:
+	@echo ""
+	@echo "VERSION:    $(VERSION)"
+	@echo "DOCKER_TAG: $(DOCKER_TAG)"
+	@echo "ITERATION:  $(ITERATION)"
+	@echo "FPM_ARCH:   $(FPM_ARCH)"
+	@echo "LINUX_ARCH: $(LINUX_ARCH)"
+	@echo "FPM_FORMAT: $(FPM_FORMAT)"
+	@echo ""
+
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(EMBEDDED_ASSETS_DEPS)
 	pkger -o pkg/server
@@ -118,4 +156,94 @@ docker-build-all-arches:
 		--push \
 		--platform $(DOCKER_ARCHES) \
 		.
+
+install-fpm:
+	which fpm || gem install fpm
+
+.PHONY: build-package
+build-package:
+	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(shell echo $(FPM_ARCH) | tr '/' '-').$(FPM_FORMAT)")
+	fpm -f -s dir --log error \
+		--architecture $(FPM_ARCH) \
+		--vendor $(VENDOR) \
+		--url $(URL) \
+		--config-files /etc/pyroscope/server.yml \
+		--after-install scripts/packages/post-install.sh \
+		--after-remove scripts/packages/post-uninstall.sh \
+		--license $(LICENSE) \
+		--maintainer $(MAINTAINER) \
+		--description $(DESCRIPTION) \
+		--directories /var/log/pyroscope \
+		--directories /var/lib/pyroscope \
+		--name pyroscope \
+		-a $(LINUX_ARCH) \
+		-t $(FPM_FORMAT) \
+		--version $(VERSION) \
+		--iteration $(ITERATION) \
+		-C $(DIR) \
+		-p $(OUTPUT)
+	gh release upload v$(VERSION) $(OUTPUT)
+
+
+.PHONY: build-arch
+build-arch: print-build-vars
+	$(eval DIR := "tmp/$(shell echo $(FPM_ARCH) | tr '/' '-')")
+
+	rm -rf $(DIR)
+	mkdir -p $(DIR)/usr/bin
+	mkdir -p $(DIR)/etc/pyroscope
+	mkdir -p $(DIR)/var/log/pyroscope
+	mkdir -p $(DIR)/var/lib/pyroscope
+	mkdir -p $(DIR)/usr/lib/pyroscope/scripts
+
+	docker pull \
+		--platform $(FPM_ARCH) \
+		pyroscope/pyroscope:$(shell echo $(DOCKER_TAG))
+	docker run \
+		--platform $(FPM_ARCH) \
+		--rm \
+		--entrypoint /bin/sh \
+		pyroscope/pyroscope:$(shell echo $(DOCKER_TAG)) \
+		-c "cat /usr/bin/pyroscope" \
+		> $(DIR)/usr/bin/pyroscope
+
+	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(shell echo $(FPM_ARCH) | tr '/' '-').tar.gz")
+	tar czf $(OUTPUT) $(DIR)/usr/bin/*
+	gh release upload v$(VERSION) $(OUTPUT)
+
+	cp scripts/packages/server.yml $(DIR)/etc/pyroscope/server.yml
+
+	for PACKAGE_FORMAT in $(shell echo $(PACKAGE_TYPES)); do \
+		FPM_FORMAT=$$PACKAGE_FORMAT make build-package ; \
+	done
+
+.PHONY: build-all-arches
+build-all-arches: install-fpm
+	for ARCH in $(shell echo $(DOCKER_ARCHES) | tr ',' ' '); do \
+		ARCH=$$ARCH make build-arch ; \
+	done
+
+.PHONY: github-make-release
+github-make-release:
+	gh release create v$(VERSION) --title '' --notes ''
+
+.PHONY: print-versions
+print-versions:
+	@echo "current versions:"
+	@echo $(shell git tag | grep '^v' | sort | tr -d 'v')
+	@echo ""
+
+update-brew-package:
+	brew bump-formula-pr --url https://github.com/pyroscope-io/pyroscope/archive/0.0.3.tar.gz pyroscope-io/brew/pyroscope
+
+.PHONY: new-version-release
+new-version-release: print-versions
+	$(eval VERSION := $(shell read -p 'enter new version (without v):' ver; echo $$ver))
+
+	@echo "Buidling version $(VERSION)"
+
+	VERSION=$(VERSION) make github-make-release || true
+	VERSION=$(VERSION) make docker-build-all-arches
+	VERSION=$(VERSION) make build-all-arches
+
 

@@ -1,0 +1,14 @@
+[Unit]
+Description=Open source continuous profiling software
+Documentation="https://pyroscope.io/"
+After=network-online.target
+
+[Service]
+User=pyroscope
+Group=pyroscope
+EnvironmentFile=-/etc/default/pyroscope
+ExecStart=/usr/bin/pyroscope
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

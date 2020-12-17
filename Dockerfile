@@ -10,8 +10,7 @@ COPY package.json package-lock.json .babelrc Makefile ./
 COPY scripts ./scripts
 COPY webapp ./webapp
 
-# RUN make assets
-RUN echo 1
+RUN make assets
 
 # go build
 
@@ -39,43 +38,31 @@ FROM alpine:3.12
 
 LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 
-ARG PS_UID="472"
-ARG PS_GID="0"
-
-ENV PATH="/opt/pyroscope/bin:$PATH" \
-    PS_PATHS_CONFIG="/etc/pyroscope/" \
-    PS_PATHS_DATA="/var/lib/pyroscope" \
-    PS_PATHS_HOME="/opt/pyroscope" \
-    PS_PATHS_LOGS="/var/log/pyroscope"
-
 WORKDIR $PS_PATHS_HOME
 
 RUN apk add --no-cache ca-certificates bash tzdata && \
     apk add --no-cache openssl musl-utils
 
-COPY conf ./conf
+RUN addgroup -S pyroscope && adduser -S pyroscope -G pyroscope
 
-RUN if [ ! $(getent group "$PS_GID") ]; then \
-      addgroup -S -g $PS_GID pyroscope; \
-    fi
-
-RUN export PS_GID_NAME=$(getent group $PS_GID | cut -d':' -f1) && \
-    mkdir -p "$PS_PATHS_HOME/.aws" && \
-    adduser -S -u $PS_UID -G "$PS_GID_NAME" pyroscope && \
-    mkdir -p "$PS_PATHS_LOGS" \
-             "$PS_PATHS_CONFIG" \
-             "$PS_PATHS_DATA" \
-             && \
-    mv "$PS_PATHS_HOME/conf/server.yml" "$PS_PATHS_CONFIG" && \
-    chown -R "pyroscope:$PS_GID_NAME" \
-        "$PS_PATHS_DATA" \
-        "$PS_PATHS_HOME" \
-        "$PS_PATHS_LOGS" \
-        "$PS_PATHS_CONFIG" \
+RUN mkdir -p \
+        "/var/lib/pyroscope" \
+        "/var/log/pyroscope" \
+        "/etc/pyroscope" \
         && \
-    chmod -R 777 "$PS_PATHS_DATA" "$PS_PATHS_HOME" "$PS_PATHS_LOGS" "$PS_PATHS_CONFIG"
+    chown -R "pyroscope:pyroscope" \
+        "/var/lib/pyroscope" \
+        "/var/log/pyroscope" \
+        "/etc/pyroscope" \
+        && \
+    chmod -R 777 \
+        "/var/lib/pyroscope" \
+        "/var/log/pyroscope" \
+        "/etc/pyroscope"
 
-COPY --from=go-builder /opt/pyroscope/bin/pyroscope ./bin/pyroscope
+COPY scripts/packages/server.yml "/etc/pyroscope/server.yml"
+COPY --from=go-builder /opt/pyroscope/bin/pyroscope /usr/bin/pyroscope
+RUN chmod 777 /usr/bin/pyroscope
 
 USER pyroscope
 EXPOSE 8080/tcp
