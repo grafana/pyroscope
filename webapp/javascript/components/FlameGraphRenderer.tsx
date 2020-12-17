@@ -106,24 +106,6 @@ export function deltaDiff(levels) {
   }
 }
 
-function roundRect(ctx, x, y, w, h, radius) {
-  radius = Math.min(w/2, radius);
-  if (radius < 1) {
-    return ctx.rect(x,y,w,h);
-  }
-  var r = x + w;
-  var b = y + h;
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(r - radius, y);
-  ctx.quadraticCurveTo(r, y, r, y + radius);
-  ctx.lineTo(r, y + h - radius);
-  ctx.quadraticCurveTo(r, b, r - radius, b);
-  ctx.lineTo(x + radius, b);
-  ctx.quadraticCurveTo(x, b, x, b - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
-}
 
 class FlameGraphRenderer extends React.Component {
   constructor (){
@@ -135,7 +117,7 @@ class FlameGraphRenderer extends React.Component {
     };
     this.canvasRef = React.createRef();
     this.tooltipRef = React.createRef();
-    this.getFilenameFromStackTrace = this.getFilenameFromStackTrace.bind(this);
+    // this.getFilenameFromStackTrace = this.getFilenameFromStackTrace.bind(this);
   }
 
   componentDidMount() {
@@ -169,58 +151,23 @@ class FlameGraphRenderer extends React.Component {
     }
   }
 
-  updateResetStyle = () => {
-    // const emptyQuery = this.query === "";
-    const topLevelSelected = this.selectedLevel === 0;
-    this.setState({
-      resetStyle: { visibility: topLevelSelected ? 'hidden' : 'visible' }
-    })
-  }
-
-  handleSearchChange = (e) => {
-    this.query = e.target.value;
-    this.updateResetStyle();
-    this.renderCanvas();
-  }
-
-  getFilenameFromStackTrace = (stackTrace) => {
-    if(stackTrace.length == 0) {
-      return stackTrace
-    } else {
-      let fullStackGroups = stackTrace.match(/^(?<path>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/)
-      if(fullStackGroups) {
-        return fullStackGroups.groups.filename
-      } else {
-        return stackTrace
-      }
+  roundRect(ctx, x, y, w, h, radius) {
+    radius = Math.min(w/2, radius);
+    if (radius < 1) {
+      return ctx.rect(x,y,w,h);
     }
-  }
-
-  render() {
-    return (
-      <div className="canvas-renderer">
-        <div className="canvas-container">
-          <div className="navbar-2">
-            <input name="flamegraph-search" placeholder="Search..." onChange={this.handleSearchChange} />
-            &nbsp;
-            <button className={clsx('btn')} style={this.state.resetStyle} id="reset" onClick={this.reset}>Reset View</button>
-            <div className="navbar-space-filler"></div>
-            <MaxNodesSelector />
-          </div>
-          <canvas className="flamegraph-canvas" height="0" ref={this.canvasRef} onClick={this.clickHandler} onMouseMove={this.mouseMoveHandler} onMouseOut={this.mouseOutHandler}></canvas>
-        </div>
-        <div style={this.state.highlightStyle}></div>
-        <div className="flamegraph-tooltip" ref={this.tooltipRef} style={this.state.tooltipStyle}>
-          <div className="flamegraph-tooltip-name">{this.state.tooltipText1}</div>
-          <div>{this.state.tooltipText2}</div>
-        </div>
-      </div>
-    );
-  }
-
-  reset = () => {
-    this.updateZoom(0, 0);
-    this.renderCanvas();
+    var r = x + w;
+    var b = y + h;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(r - radius, y);
+    ctx.quadraticCurveTo(r, y, r, y + radius);
+    ctx.lineTo(r, y + h - radius);
+    ctx.quadraticCurveTo(r, b, r - radius, b);
+    ctx.lineTo(x + radius, b);
+    ctx.quadraticCurveTo(x, b, x, b - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
   }
 
   updateZoom(i, j) {
@@ -250,15 +197,6 @@ class FlameGraphRenderer extends React.Component {
     this.renderCanvas();
   }
 
-  xyToBar = (x, y) => {
-    const i = Math.floor(y / PX_PER_LEVEL) + this.topLevel;
-    if(i >= 0 && i < this.levels.length) {
-      const j = this.binarySearchLevel(x, this.levels[i]);
-      return { i, j };
-    }
-    return {i:0,j:0};
-  }
-
   // binary search of a block in a stack level
   binarySearchLevel(x, level) {
     let i = 0;
@@ -277,6 +215,47 @@ class FlameGraphRenderer extends React.Component {
       }
     }
     return -1;
+  }
+
+  getFilenameFromStackTrace(stackTrace) {
+    if(stackTrace.length == 0) {
+      return stackTrace
+    } else {
+      let fullStackGroups = stackTrace.match(/^(?<path>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/)
+      if(fullStackGroups) {
+        return fullStackGroups.groups.filename
+      } else {
+        return stackTrace
+      }
+    }
+  }
+
+  updateResetStyle = () => {
+    // const emptyQuery = this.query === "";
+    const topLevelSelected = this.selectedLevel === 0;
+    this.setState({
+      resetStyle: { visibility: topLevelSelected ? 'hidden' : 'visible' }
+    })
+  }
+
+  handleSearchChange = (e) => {
+    this.query = e.target.value;
+    this.updateResetStyle();
+    this.renderCanvas();
+  }
+
+  reset = () => {
+    this.updateZoom(0, 0);
+    this.renderCanvas();
+  }
+
+  xyToBar = (x, y) => {
+    const i = Math.floor(y / PX_PER_LEVEL) + this.topLevel;
+    if(i >= 0 && i < this.levels.length) {
+      const j = this.binarySearchLevel(x, this.levels[i]);
+      return { i, j };
+    }
+    return {i:0,j:0};
   }
 
   clickHandler = (e) => {
@@ -350,7 +329,7 @@ class FlameGraphRenderer extends React.Component {
         // if (x < -1 || x + sw > this.graphWidth + 1 || sw < HIDE_THRESHOLD) continue;
 
         this.ctx.beginPath();
-        roundRect(this.ctx, x, y, sw, sh, 3);
+        this.roundRect(this.ctx, x, y, sw, sh, 3);
 
         const ratio = numBarTicks / numTicks;
 
@@ -422,6 +401,28 @@ class FlameGraphRenderer extends React.Component {
         display: 'none',
       }
     })
+  }
+
+  render() {
+    return (
+      <div className="canvas-renderer">
+        <div className="canvas-container">
+          <div className="navbar-2">
+            <input name="flamegraph-search" placeholder="Search..." onChange={this.handleSearchChange} />
+            &nbsp;
+            <button className={clsx('btn')} style={this.state.resetStyle} id="reset" onClick={this.reset}>Reset View</button>
+            <div className="navbar-space-filler"></div>
+            <MaxNodesSelector />
+          </div>
+          <canvas className="flamegraph-canvas" height="0" ref={this.canvasRef} onClick={this.clickHandler} onMouseMove={this.mouseMoveHandler} onMouseOut={this.mouseOutHandler}></canvas>
+        </div>
+        <div style={this.state.highlightStyle}></div>
+        <div className="flamegraph-tooltip" ref={this.tooltipRef} style={this.state.tooltipStyle}>
+          <div className="flamegraph-tooltip-name">{this.state.tooltipText1}</div>
+          <div>{this.state.tooltipText2}</div>
+        </div>
+      </div>
+    );
   }
 
 }
