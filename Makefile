@@ -150,7 +150,7 @@ print-build-vars:
 	@echo ""
 
 .PHONY: embedded-assets
-embedded-assets: install-dev-tools $(EMBEDDED_ASSETS_DEPS)
+embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS))
 	pkger -o pkg/server
 
 .PHONY: build-release
