@@ -75,6 +75,7 @@ elif [[ -f /etc/os-release ]]; then
   source /etc/os-release
   if [[ $ID = "amzn" ]]; then
     # Amazon Linux logic
+    which systemctl &>/dev/null
     if [[ $? -eq 0 ]]; then
       install_systemd
     else

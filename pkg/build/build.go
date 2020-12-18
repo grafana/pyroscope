@@ -3,6 +3,7 @@ package build
 
 import (
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -29,6 +30,8 @@ func init() {
 
 const tmplt = `
 GENERAL
+  GOARCH:             %s
+  GOOS:               %s
   Version:            %s
   Build ID:           %s
   Build Time:         %s
@@ -42,6 +45,8 @@ AGENT
 
 func Summary() string {
 	return fmt.Sprintf(strings.TrimSpace(tmplt),
+		runtime.GOARCH,
+		runtime.GOOS,
 		Version,
 		ID,
 		Time,

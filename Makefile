@@ -6,13 +6,29 @@ GODEBUG=asyncpreemptoff=1
 ENABLED_SPIES ?= "rbspy,pyspy"
 EMBEDDED_ASSETS_DEPS ?= "assets"
 EMBEDDED_ASSETS ?= ""
+EXTRA_LDFLAGS ?= ""
 
 
 ifeq ("$(FPM_ARCH)", "linux/arm64")
-	LINUX_ARCH = "aarch64"
+	ifeq ("$(FPM_FORMAT)", "deb")
+		LINUX_ARCH = "arm64"
+	else
+		LINUX_ARCH = "aarch64"
+	endif
 endif
 ifeq ("$(FPM_ARCH)", "linux/amd64")
-	LINUX_ARCH = "x64_84"
+	ifeq ("$(FPM_FORMAT)", "deb")
+		LINUX_ARCH = "amd64"
+	else
+		LINUX_ARCH = "x86_64"
+	endif
+endif
+
+ifeq ("$(FPM_FORMAT)", "deb")
+	PACKAGE_DEPENDENCIES = ""
+endif
+ifeq ("$(FPM_FORMAT)", "rpm")
+	PACKAGE_DEPENDENCIES = "--rpm-os linux"
 endif
 
 
@@ -45,7 +61,7 @@ all: build
 
 .PHONY: build
 build:
-	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(shell scripts/generate-build-flags.sh $EMBEDDED_ASSETS)" -o ./bin/pyroscope ./cmd/pyroscope
+	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $EMBEDDED_ASSETS)" -o ./bin/pyroscope ./cmd/pyroscope
 
 third_party/rbspy/librbspy.a:
 	cd ../rbspy/ && make build
@@ -153,6 +169,7 @@ docker-build-x-setup:
 docker-build-all-arches:
 	docker buildx build \
 		--tag pyroscope/pyroscope:$(DOCKER_TAG) \
+		--tag pyroscope/pyroscope:latest \
 		--push \
 		--platform $(DOCKER_ARCHES) \
 		.
@@ -164,7 +181,6 @@ install-fpm:
 build-package:
 	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(shell echo $(FPM_ARCH) | tr '/' '-').$(FPM_FORMAT)")
 	fpm -f -s dir --log error \
-		--architecture $(FPM_ARCH) \
 		--vendor $(VENDOR) \
 		--url $(URL) \
 		--config-files /etc/pyroscope/server.yml \
@@ -175,6 +191,7 @@ build-package:
 		--description $(DESCRIPTION) \
 		--directories /var/log/pyroscope \
 		--directories /var/lib/pyroscope \
+		$(shell echo $(PACKAGE_DEPENDENCIES))\
 		--name pyroscope \
 		-a $(LINUX_ARCH) \
 		-t $(FPM_FORMAT) \
@@ -182,7 +199,12 @@ build-package:
 		--iteration $(ITERATION) \
 		-C $(DIR) \
 		-p $(OUTPUT)
-	gh release upload v$(VERSION) $(OUTPUT)
+	# gh release upload v$(VERSION) --clobber $(OUTPUT)
+
+
+ifeq ("$(FPM_FORMAT)", "rpm")
+	scripts/packages/sign-rpm $(OUTPUT) || true
+endif
 
 
 .PHONY: build-arch
@@ -195,10 +217,25 @@ build-arch: print-build-vars
 	mkdir -p $(DIR)/var/log/pyroscope
 	mkdir -p $(DIR)/var/lib/pyroscope
 	mkdir -p $(DIR)/usr/lib/pyroscope/scripts
+	chmod -R 755 $(DIR)
+
+	@echo "FPM_ARCH: $(FPM_ARCH) $(DIR)"
 
 	docker pull \
 		--platform $(FPM_ARCH) \
 		pyroscope/pyroscope:$(shell echo $(DOCKER_TAG))
+	# docker run \
+	# 	--platform $(FPM_ARCH) \
+	# 	--rm \
+	# 	--entrypoint /bin/sh \
+	# 	pyroscope/pyroscope:$(shell echo $(DOCKER_TAG)) \
+	# 	-c "/usr/bin/pyroscope"
+	# docker run \
+	# 	--platform $(FPM_ARCH) \
+	# 	--rm \
+	# 	--entrypoint /bin/sh \
+	# 	pyroscope/pyroscope:$(shell echo $(DOCKER_TAG)) \
+	# 	-c "uname -a"
 	docker run \
 		--platform $(FPM_ARCH) \
 		--rm \
@@ -209,9 +246,16 @@ build-arch: print-build-vars
 
 	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(shell echo $(FPM_ARCH) | tr '/' '-')-source.tar.gz")
 	tar czf $(OUTPUT) $(DIR)/usr/bin/*
-	gh release upload v$(VERSION) $(OUTPUT)
+	chmod 755 $(DIR)/usr/bin/pyroscope
+
+	# gh release upload v$(VERSION) --clobber $(OUTPUT)
 
 	cp scripts/packages/server.yml $(DIR)/etc/pyroscope/server.yml
+	cp scripts/packages/init.sh $(DIR)/usr/lib/pyroscope/scripts/init.sh
+	cp scripts/packages/pyroscope-server.service $(DIR)/usr/lib/pyroscope/scripts/pyroscope-server.service
+	chmod 644 $(DIR)/etc/pyroscope/server.yml
+	chmod 644 $(DIR)/usr/lib/pyroscope/scripts/init.sh
+	chmod 644 $(DIR)/usr/lib/pyroscope/scripts/pyroscope-server.service
 
 	for PACKAGE_FORMAT in $(shell echo $(PACKAGE_TYPES)); do \
 		DIR=$(DIR) FPM_FORMAT=$$PACKAGE_FORMAT make build-package ; \
@@ -238,8 +282,9 @@ update-brew-package:
 
 .PHONY: new-version-release
 new-version-release: print-versions
+	# ifeq ($(VERSION), "")
 	$(eval VERSION := $(shell read -p 'enter new version (without v):' ver; echo $$ver))
-
+	# endif
 	@echo "Buidling version $(VERSION)"
 
 	VERSION=$(VERSION) make github-make-release || true

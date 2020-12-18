@@ -15,15 +15,15 @@ SCRIPT="/usr/bin/pyroscope"
 
 # Options to pass to the script on startup
 . /etc/default/pyroscope
-SCRIPT_OPTS="${pyroscope_OPTS}"
+SCRIPT_OPTS="server"
 
 # User to run the process under
 RUNAS=pyroscope
 
 # PID file for process
-PIDFILE=/var/run/pyroscope.pid
+PIDFILE=/var/run/pyroscope-server.pid
 # Where to redirect logging to
-LOGFILE=/var/log/pyroscope/pyroscope.log
+LOGFILE=/var/log/pyroscope/server.log
 
 start() {
     if [[ -f $PIDFILE ]]; then

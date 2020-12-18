@@ -7,7 +7,7 @@ After=network-online.target
 User=pyroscope
 Group=pyroscope
 EnvironmentFile=-/etc/default/pyroscope
-ExecStart=/usr/bin/pyroscope
+ExecStart=/usr/bin/pyroscope server
 Restart=on-failure
 
 [Install]

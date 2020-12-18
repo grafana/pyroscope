@@ -1,6 +1,6 @@
 # assets build
 
-FROM --platform=$BUILDPLATFORM node:14.15.1-alpine3.12 as js-builder
+FROM node:14.15.1-alpine3.12 as js-builder
 
 RUN apk add --no-cache make
 
@@ -14,7 +14,7 @@ RUN make assets
 
 # go build
 
-FROM --platform=$BUILDPLATFORM golang:1.15.1-alpine3.12 as go-builder
+FROM golang:1.15.1-alpine3.12 as go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev
 
@@ -30,7 +30,7 @@ COPY scripts ./scripts
 COPY go.mod go.sum pyroscope.go ./
 COPY Makefile ./
 
-RUN EMBEDDED_ASSETS_DEPS="" make build-release
+RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags \"-static\"" make build-release
 
 # final image
 
