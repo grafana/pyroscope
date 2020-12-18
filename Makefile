@@ -151,7 +151,7 @@ print-build-vars:
 
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS))
-	pkger -o pkg/server
+	$(GOPATH)/bin/pkger -o pkg/server
 
 .PHONY: build-release
 build-release: embedded-assets
@@ -277,9 +277,6 @@ print-versions:
 	@echo $(shell git tag | grep '^v' | sort | tr -d 'v')
 	@echo ""
 
-update-brew-package:
-	brew bump-formula-pr --url https://github.com/pyroscope-io/pyroscope/archive/0.0.3.tar.gz pyroscope-io/brew/pyroscope
-
 .PHONY: new-version-release
 new-version-release: print-versions
 	# ifeq ($(VERSION), "")
@@ -291,4 +288,12 @@ new-version-release: print-versions
 	VERSION=$(VERSION) make docker-build-all-arches
 	VERSION=$(VERSION) make build-all-arches
 
+.PHONY: git-archive
+git-archive:
+	git archive --format tar.gz --output tmp/pyroscope.tar.gz HEAD
+	cp tmp/pyroscope.tar.gz /Users/dmitry/Library/Caches/Homebrew/downloads/abc93b5985f47d8af95b6ef78548f8f8c748e704a0ea70ac53857ca8db10b7e8--pyroscope-0.0.8.tar.gz
+	sha256sum tmp/pyroscope.tar.gz
 
+.PHONY: update-brew-package
+update-brew-package:
+	brew bump-formula-pr --url https://github.com/pyroscope-io/pyroscope/archive/0.0.3.tar.gz pyroscope-io/brew/pyroscope
