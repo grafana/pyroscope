@@ -26,8 +26,8 @@ import clsx from "clsx";
 import { withShortcut, ShortcutConsumer } from 'react-keybind'
 
 class ShortcutsModal extends React.Component {
-  constructor (){
-    super();
+  constructor (props){
+    super(props);
   }
 
   componentDidMount = () => {

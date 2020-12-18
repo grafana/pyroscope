@@ -23,7 +23,7 @@ import React from 'react';
 import {connect} from 'react-redux';
 
 import {fetchJSON} from '../redux/actions';
-import {FlameBearer} from '../flamebearer';
+// import {FlameBearer} from '../flamebearer';
 import MaxNodesSelector from "./MaxNodesSelector";
 import clsx from "clsx";
 
@@ -73,10 +73,26 @@ function colorBasedOnName(name, filenames, a){
     purple,
   ]
 
+  // const darkGreen = `hsla(160, 40%, 21%, ${a})` //Dark green:
+  // const darkPurple = `hsla(240, 30%, 29%, ${a})` //puprple:
+  // const darkBlue = `hsla(226, 36%, 26%, ${a})` //Dark blue:
+  // const darkPink = `hsla(315, 40%, 24%, ${a})` //Pink:
+  // const darkYellow = `hsla(62, 29%, 22%, ${a})` //Yellow/mustard:
+  // const darkRed = `hsla(10, 41%, 23%, ${a})` //Red:
+  //
+  // const items = [
+  //   darkGreen,
+  //   darkPurple,
+  //   darkBlue,
+  //   darkPink,
+  //   darkYellow,
+  //   darkRed,
+  // ]
+
   if(name.indexOf('.py') >= 0) {
     let i = filenames.indexOf(name);
     // return items[Math.floor(Math.random() * items.length)];
-    return items[filenames.length % i];
+    return items[murmurhash3_32_gc(name) % items.length];
   } else {
     return grey
   }
@@ -96,6 +112,7 @@ function colorGreyscale(v, a){
   return `rgba(${v}, ${v}, ${v}, ${a})`;
 }
 
+// Don't move this is FlameBearer
 export function deltaDiff(levels) {
   for (const level of levels) {
     let prev = 0;
@@ -125,7 +142,7 @@ class FlameGraphRenderer extends React.Component {
 
     this.canvas = this.canvasRef.current;
     this.ctx = this.canvas.getContext('2d');
-    this.topLevel = 0;
+    this.topLevel = 0; //Todo: could be a constant
     this.selectedLevel = 0;
     this.rangeMin = 0;
     this.rangeMax = 1;
@@ -297,15 +314,22 @@ class FlameGraphRenderer extends React.Component {
     this.ctx.textBaseline = 'middle';
     this.ctx.font = '300 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
+    // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
 
+
       for (let j = 0; j < level.length; j += 3) {
+        // j = 0: x start of bar
+        // j = 1: width of bar
+        // j = 2: position in the main index
+
         const barIndex = level[j];
         const x = this.tickToX(barIndex);
         const y = i * PX_PER_LEVEL;
         let numBarTicks = level[j + 1];
 
+        // For this particular bar, there is a match
         const inQuery = this.query && (names[level[j + 2]].indexOf(this.query) >= 0) || false;
 
         // merge very small blocks into big "collapsed" ones for performance
@@ -322,7 +346,7 @@ class FlameGraphRenderer extends React.Component {
                 numBarTicks += level[j + 1];
             }
         }
-
+        // ticks are samples
         const sw = numBarTicks * this.pxPerTick - (collapsed ? 0 : 0.5);
         const sh = PX_PER_LEVEL - 0.5;
 

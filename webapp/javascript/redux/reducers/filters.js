@@ -21,7 +21,10 @@ import {deltaDiff} from "../../components/FlameGraphRenderer";
 const initialState = {
   from: "now-1h",
   until: "now",
-  labels: []
+  labels: [],
+  timeline: null,
+  flamebearer: null,
+  isJSONLoading: false,
 };
 window.uniqBy = uniqBy;
 
