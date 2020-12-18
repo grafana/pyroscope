@@ -199,7 +199,7 @@ build-package:
 		--iteration $(ITERATION) \
 		-C $(DIR) \
 		-p $(OUTPUT)
-	# gh release upload v$(VERSION) --clobber $(OUTPUT)
+	gh release upload v$(VERSION) --clobber $(OUTPUT)
 
 
 ifeq ("$(FPM_FORMAT)", "rpm")
@@ -248,7 +248,7 @@ build-arch: print-build-vars
 	tar czf $(OUTPUT) $(DIR)/usr/bin/*
 	chmod 755 $(DIR)/usr/bin/pyroscope
 
-	# gh release upload v$(VERSION) --clobber $(OUTPUT)
+	gh release upload v$(VERSION) --clobber $(OUTPUT)
 
 	cp scripts/packages/server.yml $(DIR)/etc/pyroscope/server.yml
 	cp scripts/packages/init.sh $(DIR)/usr/lib/pyroscope/scripts/init.sh
