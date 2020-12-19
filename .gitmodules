@@ -1,0 +1,6 @@
+[submodule "third_party/rbspy"]
+	path = third_party/rbspy
+	url = git@github.com:pyroscope-io/rbspy.git
+[submodule "third_party/pyspy"]
+	path = third_party/pyspy
+	url = git@github.com:pyroscope-io/py-spy.git
