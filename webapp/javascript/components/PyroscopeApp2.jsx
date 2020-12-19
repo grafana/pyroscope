@@ -14,7 +14,9 @@ import Header from "./Header";
 import Footer from "./Footer";
 
 import { receiveJSON, fetchNames } from "../redux/actions";
-import {bindActionCreators} from "redux";
+import { bindActionCreators } from "redux";
+import { buildRenderURL, fetchJSON } from '../util/update_requests';
+
 
 const modalStyle = {
   overlay: {
@@ -33,6 +35,10 @@ let currentJSONController = null;
 class PyroscopeApp extends React.Component {
   constructor(props) {
     super(props);
+
+    this.fetchJSON = fetchJSON.bind(this);
+    this.buildRenderURL = buildRenderURL.bind(this);
+
     this.state = {
       shortcutsModalOpen: false
     };
@@ -51,44 +57,6 @@ class PyroscopeApp extends React.Component {
 
   closeShortcutsModal = () => {
     this.setState({shortcutsModalOpen: false});
-  }
-
-  fetchJSON(url) {
-    console.log('fetching json', url);
-    if (currentJSONController) {
-      currentJSONController.abort();
-    }
-    currentJSONController = new AbortController();
-    fetch(url, {signal: currentJSONController.signal})
-      .then((response) => {
-        return response.json()
-      })
-      .then((data) => {
-        console.log('data:', data);
-        console.log('this: ', this);
-        console.dir(this);
-        this.props.actions.receiveJSON(data)
-      })
-      .finally();
-  }
-
-  buildRenderURL() {
-    let width = document.body.clientWidth - 30;
-    let url = `/render?from=${encodeURIComponent(this.props.from)}&until=${encodeURIComponent(this.props.until)}&width=${width}`;
-    let nameLabel = this.props.labels.find(x => x.name == "__name__");
-    if (nameLabel) {
-      url += "&name="+nameLabel.value+"{";
-    } else {
-      url += "&name=unknown{";
-    }
-
-    url += this.props.labels.filter(x => x.name != "__name__").map(x => `${x.name}=${x.value}`).join(",");
-    url += "}";
-    if(this.props.refreshToken){
-      url += `&refreshToken=${this.props.refreshToken}`
-    }
-    url += `&max-nodes=${this.props.maxNodes}`
-    return url;
   }
 
   render() {
