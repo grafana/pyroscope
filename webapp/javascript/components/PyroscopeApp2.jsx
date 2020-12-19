@@ -46,7 +46,7 @@ class PyroscopeApp extends React.Component {
 
   componentDidMount = () => {
     let renderURL = this.buildRenderURL();
-    this.fetchJSON(renderURL + '&format=json');
+    this.fetchJSON(renderURL);
     // this.props.fetchNames();
     // this.props.shortcut.registerShortcut(this.showShortcutsModal, ['shift+?'], 'Shortcuts', 'Show Keyboard Shortcuts Modal');
   }

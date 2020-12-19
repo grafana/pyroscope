@@ -25,7 +25,7 @@ class TimelineChart extends ReactFlot {
       console.log('setting date range:', this);
       this.props.actions.setDateRange(Math.round(ranges.xaxis.from / 1000), Math.round(ranges.xaxis.to / 1000))
       let renderURL = this.buildRenderURL();
-      this.fetchJSON(renderURL + '&format=json');
+      this.fetchJSON(renderURL);
     });
   }
 }

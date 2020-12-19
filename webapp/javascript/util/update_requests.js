@@ -22,13 +22,15 @@ export function buildRenderURL() {
 // Note: Bind this to the component that calls it
 
 export function fetchJSON(url) {
-  console.log('fetching json', url);
+  let formattedUrl = url + '&format=json'
+
+  console.log('fetching json', formattedUrl);
   if (this.currentJSONController) {
     this.currentJSONController.abort();
   }
 
   this.currentJSONController = new AbortController();
-  fetch(url, { signal: this.currentJSONController.signal })
+  fetch(formattedUrl, { signal: this.currentJSONController.signal })
     .then((response) => {
       return response.json()
     })
@@ -40,3 +42,5 @@ export function fetchJSON(url) {
     })
     .finally();
 }
+
+
