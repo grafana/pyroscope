@@ -1,12 +1,15 @@
 import React from 'react';
 import { connect } from "react-redux";
-import { setDateRange } from "../redux/actions";
+import { setDateRange, receiveJSON } from "../redux/actions";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClock, faSyncAlt } from '@fortawesome/free-solid-svg-icons'
 
 import OutsideClickHandler from 'react-outside-click-handler';
 import moment from 'moment';
+import { bindActionCreators } from "redux";
+import { buildRenderURL, fetchJSON } from '../util/update_requests';
+import { createSemicolonClassElement } from 'typescript';
 
 
 const defaultPresets = [
@@ -45,6 +48,10 @@ const multiplierMapping = {
 class DateRangePicker extends React.Component {
   constructor(props) {
     super(props);
+
+    this.buildRenderURL = buildRenderURL.bind(this);
+    this.fetchJSON = fetchJSON.bind(this);
+
     this.presets = defaultPresets;
     this.state = {
       from: props.from,
@@ -61,8 +68,12 @@ class DateRangePicker extends React.Component {
     this.setState({ until });
   };
 
-  updateData = () => {
-    this.props.setDateRange(this.state.from, this.state.until);
+  updateDateRange = () => {
+    this.props.actions.setDateRange(this.state.from, this.state.until);
+    let renderURL = this.buildRenderURL(this.state.from, this.state.until);
+    console.log('updateDateRange in date picker: ', this);
+    console.log('updateDateRange in date picker: ', renderURL);
+    this.fetchJSON(renderURL);
   };
 
   humanReadableRange = () => {
@@ -90,9 +101,15 @@ class DateRangePicker extends React.Component {
     this.setState({
       from,
       until
-    }, () => {
-      this.updateData();
-    });
+    },  () => {
+      console.log('select preset callback', this);
+      this.updateDateRange();
+    })
+
+    console.log('selecting preset', label, from, until);
+    console.log('state: ', this.state);
+
+    
     this.hideDropdown();
   };
 
@@ -117,7 +134,7 @@ class DateRangePicker extends React.Component {
                 return <div key={i} className="drp-preset-column">
                   {
                     arr.map( (x) => {
-                      return <button className={`drp-preset ${x.label == this.humanReadableRange() ? "active" : ""}`} key={x.label} onClick={() => {this.selectPreset(x)}}>{x.label}</button>;
+                      return <button className={`drp-preset ${x.label == this.humanReadableRange() ? "active" : ""}`} key={x.label} onClick={ () => this.selectPreset(x) }>{x.label}</button>;
                     })
                   }
                 </div>
@@ -129,7 +146,7 @@ class DateRangePicker extends React.Component {
             <input
               className="followed-by-btn"
               onChange={(e) => this.updateFrom(e.target.value)}
-              onBlur={this.updateData}
+              onBlur={this.updateDateRange}
               value={this.state.from}
             /><button className="drp-calendar-btn btn">
               <FontAwesomeIcon icon={faClock} />
@@ -140,7 +157,7 @@ class DateRangePicker extends React.Component {
             <input
               className="followed-by-btn"
               onChange={(e) => this.updateUntil(e.target.value)}
-              onBlur={this.updateData}
+              onBlur={this.updateDateRange}
               value={this.state.until}
             /><button className="drp-calendar-btn btn">
               <FontAwesomeIcon icon={faClock} />
@@ -153,7 +170,21 @@ class DateRangePicker extends React.Component {
   }
 }
 
+const mapStateToProps = state => ({
+  ...state,
+});
+
+const mapDispatchToProps = dispatch => ({
+  actions: bindActionCreators(
+    {
+      setDateRange,
+      receiveJSON,
+    },
+    dispatch,
+  ),
+});
+
 export default connect(
-  (x) => x,
-  { setDateRange }
+  mapStateToProps,
+  mapDispatchToProps,
 )(DateRangePicker);

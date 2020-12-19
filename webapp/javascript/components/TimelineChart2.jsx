@@ -15,8 +15,8 @@ class TimelineChart extends ReactFlot {
   constructor(props) {
     super(props);
 
-    this.fetchJSON = fetchJSON.bind(this);
     this.buildRenderURL = buildRenderURL.bind(this);
+    this.fetchJSON = fetchJSON.bind(this);
   }
 
   componentDidMount() {

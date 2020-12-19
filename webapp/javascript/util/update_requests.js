@@ -1,8 +1,9 @@
 // Note: Bind this to the component that calls it
 
-export function buildRenderURL() {
+export function buildRenderURL(from, until) {
   let width = document.body.clientWidth - 30;
-  let url = `/render?from=${encodeURIComponent(this.props.from)}&until=${encodeURIComponent(this.props.until)}&width=${width}`;
+  
+  let url = `/render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}&width=${width}`;
   let nameLabel = this.props.labels.find(x => x.name == "__name__");
   if (nameLabel) {
     url += "&name=" + nameLabel.value + "{";
@@ -10,6 +11,7 @@ export function buildRenderURL() {
     url += "&name=unknown{";
   }
 
+  // TODO: replace this so this is a real utility function
   url += this.props.labels.filter(x => x.name != "__name__").map(x => `${x.name}=${x.value}`).join(",");
   url += "}";
   if (this.props.refreshToken) {
