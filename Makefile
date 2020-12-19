@@ -4,57 +4,23 @@ GOBUILD=go build -trimpath
 GODEBUG=asyncpreemptoff=1
 
 ENABLED_SPIES ?= "rbspy,pyspy"
-EMBEDDED_ASSETS_DEPS ?= "assets"
 EMBEDDED_ASSETS ?= ""
 EXTRA_LDFLAGS ?= ""
-
-
-ifeq ("$(FPM_ARCH)", "linux/arm64")
-	ifeq ("$(FPM_FORMAT)", "deb")
-		LINUX_ARCH = "arm64"
-	else
-		LINUX_ARCH = "aarch64"
-	endif
-endif
-ifeq ("$(FPM_ARCH)", "linux/amd64")
-	ifeq ("$(FPM_FORMAT)", "deb")
-		LINUX_ARCH = "amd64"
-	else
-		LINUX_ARCH = "x86_64"
-	endif
-endif
-
-ifeq ("$(FPM_FORMAT)", "deb")
-	PACKAGE_DEPENDENCIES = ""
-endif
-ifeq ("$(FPM_FORMAT)", "rpm")
-	PACKAGE_DEPENDENCIES = "--rpm-os linux"
-endif
-
-
-# packaging
-DOCKER_ARCHES ?= "linux/amd64,linux/arm64"
-PACKAGE_TYPES ?= "deb rpm"
-VERSION ?= $(shell git tag --points-at HEAD | grep '^v' | sort | tail -n 1 | tr -d 'v')
-DOCKER_TAG ?= $(VERSION)
-ifeq ("$(DOCKER_TAG)", "")
-	DOCKER_TAG = "dev"
-endif
-ifeq ("$(VERSION)", "")
-	VERSION = "0.0.1"
-endif
-
-ITERATION ?= "0"
-VENDOR = "Pyroscope"
-URL = "https://pyroscope.io"
-LICENSE = "Apache 2"
-MAINTAINER = "contact@pyroscope.io"
-DESCRIPTION = "pyroscope is open source continuous profiling software"
 
 ifndef $(GOPATH)
 	GOPATH=$(shell go env GOPATH)
 	export GOPATH
 endif
+
+#
+#     ____                 __                                 __
+#    / __ \___ _   _____  / /___  ____  ____ ___  ___  ____  / /_
+#   / / / / _ \ | / / _ \/ / __ \/ __ \/ __ `__ \/ _ \/ __ \/ __/
+#  / /_/ /  __/ |/ /  __/ / /_/ / /_/ / / / / / /  __/ / / / /_
+# /_____/\___/|___/\___/_/\____/ .___/_/ /_/ /_/\___/_/ /_/\__/
+#                             /_/
+#
+
 
 .PHONY: all
 all: build
@@ -136,7 +102,58 @@ clean:
 update-contributors:
 	$(shell yarn bin contributor-faces) .
 
-# Release-related tasks:
+
+#
+#     ____             __
+#    / __ \____ ______/ /______ _____ ____  _____
+#   / /_/ / __ `/ ___/ //_/ __ `/ __ `/ _ \/ ___/
+#  / ____/ /_/ / /__/ ,< / /_/ / /_/ /  __(__  )
+# /_/    \__,_/\___/_/|_|\__,_/\__, /\___/____/
+#                             /____/
+#
+# TODO: I think long term a good chunk of this logic should be in a ruby script instead, too many subroutines
+
+EMBEDDED_ASSETS_DEPS ?= "assets"
+DOCKER_ARCHES ?= "linux/amd64,linux/arm64"
+PACKAGE_TYPES ?= "deb rpm"
+VERSION ?= $(shell git tag --points-at HEAD | grep '^v' | sort | tail -n 1 | tr -d 'v')
+DOCKER_TAG ?= $(VERSION)
+ifeq ("$(DOCKER_TAG)", "")
+	DOCKER_TAG = "dev"
+endif
+ifeq ("$(VERSION)", "")
+	VERSION = "0.0.1"
+endif
+
+ifeq ("$(FPM_ARCH)", "linux/arm64")
+	ifeq ("$(FPM_FORMAT)", "deb")
+		LINUX_ARCH = "arm64"
+	else
+		LINUX_ARCH = "aarch64"
+	endif
+endif
+ifeq ("$(FPM_ARCH)", "linux/amd64")
+	ifeq ("$(FPM_FORMAT)", "deb")
+		LINUX_ARCH = "amd64"
+	else
+		LINUX_ARCH = "x86_64"
+	endif
+endif
+
+ifeq ("$(FPM_FORMAT)", "deb")
+	PACKAGE_DEPENDENCIES = ""
+endif
+ifeq ("$(FPM_FORMAT)", "rpm")
+	PACKAGE_DEPENDENCIES = "--rpm-os linux"
+endif
+
+ITERATION ?= "1"
+VENDOR = "Pyroscope"
+URL = "https://pyroscope.io"
+LICENSE = "Apache 2"
+MAINTAINER = "contact@pyroscope.io"
+DESCRIPTION = "pyroscope is open source continuous profiling software"
+
 
 .PHONY: print-build-vars
 print-build-vars:
@@ -177,9 +194,20 @@ docker-build-all-arches:
 install-fpm:
 	which fpm || gem install fpm
 
+.PHONY: upload-asset
+upload-asset:
+	$(eval SHA256 := $(shell sha256sum $(OUTPUT) | cut -d " " -f 1))
+	@echo $(SHA256)
+	gh release upload v$(VERSION) --clobber $(OUTPUT)
+	aws s3 cp --metadata sha256=$(SHA256) --acl public-read $(OUTPUT) s3://dl.pyroscope.io/release/$(shell basename $(OUTPUT))
+
 .PHONY: build-package
 build-package:
-	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(shell echo $(FPM_ARCH) | tr '/' '-').$(FPM_FORMAT)")
+ifeq ("$(FPM_FORMAT)", "rpm")
+	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(ITERATION)-$(LINUX_ARCH).$(FPM_FORMAT)")
+else
+	$(eval OUTPUT := "tmp/pyroscope_$(VERSION)_$(LINUX_ARCH).$(FPM_FORMAT)")
+endif
 	fpm -f -s dir --log error \
 		--vendor $(VENDOR) \
 		--url $(URL) \
@@ -199,13 +227,11 @@ build-package:
 		--iteration $(ITERATION) \
 		-C $(DIR) \
 		-p $(OUTPUT)
-	gh release upload v$(VERSION) --clobber $(OUTPUT)
-
+	VERSION=$(VERSION) OUTPUT=$(OUTPUT) make upload-asset
 
 ifeq ("$(FPM_FORMAT)", "rpm")
 	scripts/packages/sign-rpm $(OUTPUT) || true
 endif
-
 
 .PHONY: build-arch
 build-arch: print-build-vars
@@ -244,11 +270,11 @@ build-arch: print-build-vars
 		-c "cat /usr/bin/pyroscope" \
 		> $(DIR)/usr/bin/pyroscope
 
-	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(shell echo $(FPM_ARCH) | tr '/' '-')-source.tar.gz")
+	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-$(shell echo $(FPM_ARCH) | tr '/' '-').tar.gz")
 	tar czf $(OUTPUT) $(DIR)/usr/bin/*
 	chmod 755 $(DIR)/usr/bin/pyroscope
 
-	gh release upload v$(VERSION) --clobber $(OUTPUT)
+	VERSION=$(VERSION) OUTPUT=$(OUTPUT) make upload-asset
 
 	cp scripts/packages/server.yml $(DIR)/etc/pyroscope/server.yml
 	cp scripts/packages/init.sh $(DIR)/usr/lib/pyroscope/scripts/init.sh
@@ -271,12 +297,19 @@ build-all-arches: install-fpm
 github-make-release:
 	gh release create v$(VERSION) --title '' --notes ''
 
+.PHONY: upload-source
+upload-source:
+	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-source.tar.gz")
+	git archive --format tar.gz --output $(OUTPUT) HEAD
+	VERSION=$(VERSION) OUTPUT=$(OUTPUT) make upload-asset
+
 .PHONY: print-versions
 print-versions:
 	@echo "current versions:"
 	@echo $(shell git tag | grep '^v' | sort | tr -d 'v')
 	@echo ""
 
+# Run this one when releasing a new version:
 .PHONY: new-version-release
 new-version-release: print-versions
 	# ifeq ($(VERSION), "")
@@ -285,8 +318,10 @@ new-version-release: print-versions
 	@echo "Buidling version $(VERSION)"
 
 	VERSION=$(VERSION) make github-make-release || true
-	VERSION=$(VERSION) make docker-build-all-arches
+	VERSION=$(VERSION) make upload-source
+	# VERSION=$(VERSION) make docker-build-all-arches
 	VERSION=$(VERSION) make build-all-arches
+	VERSION=$(VERSION) make generate-packages-manifest
 
 .PHONY: git-archive
 git-archive:
@@ -297,3 +332,9 @@ git-archive:
 .PHONY: update-brew-package
 update-brew-package:
 	brew bump-formula-pr --url https://github.com/pyroscope-io/pyroscope/archive/0.0.3.tar.gz pyroscope-io/brew/pyroscope
+
+.PHONY: generate-packages-manifest
+generate-packages-manifest:
+	scripts/packages/generate-packages-manifest.rb
+	cp scripts/packages/packages.manifest.json ../pyroscope.io/packages.manifest.json
+

@@ -9,3 +9,4 @@ pkged.go
 /scripts/packages/rpm-password.txt
 /scripts/packages/sign-rpm
 /scripts/packages/rpmmacros
+/scripts/packages/packages.manifest.json
