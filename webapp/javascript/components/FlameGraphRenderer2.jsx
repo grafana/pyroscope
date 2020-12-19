@@ -29,6 +29,7 @@ import clsx from "clsx";
 
 import murmurhash3_32_gc from '../murmur3';
 import {numberWithCommas} from '../util/format';
+import {bindActionCreators} from "redux";
 
 
 import { withShortcut, ShortcutProvider, ShortcutConsumer } from 'react-keybind'
@@ -149,8 +150,6 @@ class FlameGraphRenderer extends React.Component {
     this.query = "";
 
     window.addEventListener('resize', this.resizeHandler);
-
-    this.props.shortcut.registerShortcut(this.reset, ['escape'], 'Reset', 'Reset Flamegraph View');
   }
 
   componentDidUpdate(prevProps) {
@@ -205,6 +204,10 @@ class FlameGraphRenderer extends React.Component {
 
   updateData() {
     if (!this.props.flamebearer) { return };
+
+    if(this.props.shortcut) {
+      this.props.shortcut.registerShortcut(this.reset, ['escape'], 'Reset', 'Reset Flamegraph View');
+    }
 
     let { names, levels, numTicks } = this.props.flamebearer;
     this.names = names;
@@ -456,7 +459,23 @@ class FlameGraphRenderer extends React.Component {
 
 }
 
+const mapStateToProps = state => ({
+  ...state,
+});
+
+// const mapDispatchToProps = dispatch => ({
+//   actions: bindActionCreators(
+//       {
+//         fetchNames,
+//         receiveJSON,
+//       },
+//       dispatch,
+//   ),
+// });
+
 export default connect(
-  (x) => x,
-  { fetchJSON }
-)(withShortcut(FlameGraphRenderer));
+  mapStateToProps,
+  // mapDispatchToProps,
+)(FlameGraphRenderer);
+
+
