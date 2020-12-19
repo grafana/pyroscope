@@ -91,8 +91,6 @@ function colorBasedOnName(name, filenames, a){
   // ]
 
   if(name.indexOf('.py') >= 0) {
-    let i = filenames.indexOf(name);
-    // return items[Math.floor(Math.random() * items.length)];
     return items[murmurhash3_32_gc(name) % items.length];
   } else {
     return grey

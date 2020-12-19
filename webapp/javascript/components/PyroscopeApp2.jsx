@@ -7,7 +7,8 @@ import {withShortcut} from "react-keybind";
 
 // import FlameGraphRenderer from "./FlameGraphRenderer";
 import FlameGraphRenderer2 from "./FlameGraphRenderer2";
-import TimelineChart from "./TimelineChart";
+// import TimelineChart from "./TimelineChart";
+import TimelineChart2 from "./TimelineChart2";
 import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -139,7 +140,7 @@ class PyroscopeApp extends React.Component {
     return (
       <div>
         <Header renderURL={renderURL}/>
-        <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
+        <TimelineChart2 id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
         <FlameGraphRenderer2 />
         <Modal
           isOpen={this.state.shortcutsModalOpen}
