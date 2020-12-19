@@ -3,8 +3,8 @@
 // Package pyspy is a wrapper around this library called pyspy written in Rust
 package pyspy
 
-// #cgo LDFLAGS: -L../../../third_party/pyspy -lpyspy
-// #include "../../../third_party/pyspy/pyspy.h"
+// #cgo LDFLAGS: -L../../../third_party/pyspy/lib -lpyspy -ldl -lrt
+// #include "../../../third_party/pyspy/lib/pyspy.h"
 import "C"
 import (
 	"fmt"

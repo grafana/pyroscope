@@ -3,9 +3,17 @@ GOARCH ?= $(shell go env GOARCH)
 GOBUILD=go build -trimpath
 GODEBUG=asyncpreemptoff=1
 
-ENABLED_SPIES ?= "rbspy,pyspy"
+ifeq ("$(shell go env GOARCH)", "arm64")
+	ENABLED_SPIES ?= "pyspy"
+else
+	ENABLED_SPIES ?= "rbspy,pyspy"
+endif
+
 EMBEDDED_ASSETS ?= ""
 EXTRA_LDFLAGS ?= ""
+
+RBSPY_LOCATION ?= "third_party/rbspy"
+PYSPY_LOCATION ?= "third_party/pyspy"
 
 ifndef $(GOPATH)
 	GOPATH=$(shell go env GOPATH)
@@ -29,16 +37,16 @@ all: build
 build:
 	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
 
-third_party/rbspy/librbspy.a:
-	cd ../rbspy/ && make build
-	cp ../rbspy/target/release/librbspy.a third_party/rbspy/librbspy.a
+third_party/rbspy/lib/librbspy.a:
+	cd $(RBSPY_LOCATION) && make build
+	cp $(RBSPY_LOCATION)/target/release/librbspy.a third_party/rbspy/lib/librbspy.a
 
-third_party/pyspy/libpyspy.a:
-	cd ../py-spy/ && make build
-	cp ../py-spy/target/release/libpy_spy.a third_party/pyspy/libpyspy.a
+third_party/pyspy/lib/libpyspy.a:
+	cd $(PYSPY_LOCATION) && make build
+	cp $(PYSPY_LOCATION)/target/release/libpy_spy.a third_party/pyspy/lib/libpyspy.a
 
 .PHONY: build-rust-dependencies
-build-rust-dependencies: third_party/rbspy/librbspy.a third_party/pyspy/libpyspy.a
+build-rust-dependencies: third_party/rbspy/lib/librbspy.a third_party/pyspy/lib/libpyspy.a
 
 .PHONY: test
 test:
@@ -309,17 +317,23 @@ print-versions:
 	@echo $(shell git tag | grep '^v' | sort | tr -d 'v')
 	@echo ""
 
+.PHONY: ensure-no-dirty-files
+ensure-no-dirty-files:
+ifneq ("$(shell git diff --no-ext-diff 2> /dev/null | wc -l)", "0")
+	@echo "dirty files detected, exiting"
+	# exit 1
+endif
+
+
 # Run this one when releasing a new version:
-.PHONY: new-version-release
-new-version-release: print-versions
-	# ifeq ($(VERSION), "")
+.PHONY: release
+release: ensure-no-dirty-files print-versions
 	$(eval VERSION := $(shell read -p 'enter new version (without v):' ver; echo $$ver))
-	# endif
 	@echo "Buidling version $(VERSION)"
 
 	VERSION=$(VERSION) make github-make-release || true
 	VERSION=$(VERSION) make upload-source
-	# VERSION=$(VERSION) make docker-build-all-arches
+	VERSION=$(VERSION) make docker-build-all-arches
 	VERSION=$(VERSION) make build-all-arches
 	VERSION=$(VERSION) make generate-packages-manifest
 
@@ -337,4 +351,3 @@ update-brew-package:
 generate-packages-manifest:
 	scripts/packages/generate-packages-manifest.rb
 	cp scripts/packages/packages.manifest.json ../pyroscope.io/packages.manifest.json
-
