@@ -27,7 +27,7 @@ all: build
 
 .PHONY: build
 build:
-	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $EMBEDDED_ASSETS)" -o ./bin/pyroscope ./cmd/pyroscope
+	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
 
 third_party/rbspy/librbspy.a:
 	cd ../rbspy/ && make build
