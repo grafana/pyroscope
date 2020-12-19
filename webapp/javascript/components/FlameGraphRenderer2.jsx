@@ -138,7 +138,7 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidMount() {
-    this.maybeFetchJSON();
+    // this.maybeFetchJSON();
 
     this.canvas = this.canvasRef.current;
     this.ctx = this.canvas.getContext('2d');
@@ -154,19 +154,20 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    this.maybeFetchJSON()
-    if(this.props.flamebearer && prevProps.flamebearer != this.props.flamebearer) {
-      this.updateData(this.props.flamebearer);
-    }
+
+    // this.maybeFetchJSON()
+    // if(this.props.flamebearer && prevProps.flamebearer != this.props.flamebearer) {
+    //   this.updateData(this.props.flamebearer);
+    // }
   }
 
-  maybeFetchJSON(){
-    let url = this.props.renderURL;
-    if(this.lastRequestedURL != url) {
-      this.lastRequestedURL = url
-      this.props.fetchJSON(url);
-    }
-  }
+  // maybeFetchJSON(){
+  //   let url = this.props.renderURL;
+  //   if(this.lastRequestedURL != url) {
+  //     this.lastRequestedURL = url
+  //     this.props.fetchJSON(url);
+  //   }
+  // }
 
   roundRect(ctx, x, y, w, h, radius) {
     radius = Math.min(w/2, radius);
@@ -202,8 +203,10 @@ class FlameGraphRenderer extends React.Component {
     this.updateResetStyle();
   }
 
-  updateData(data) {
-    let { names, levels, numTicks } = data;
+  updateData() {
+    if (!this.props.flamebearer) { return };
+
+    let { names, levels, numTicks } = this.props.flamebearer;
     this.names = names;
     let allFilenames = this.names.map((stackTrace) => {
       return this.getFilenameFromStackTrace(stackTrace)
@@ -428,6 +431,8 @@ class FlameGraphRenderer extends React.Component {
   }
 
   render() {
+    this.updateData();
+
     return (
       <div className="canvas-renderer">
         <div className="canvas-container">

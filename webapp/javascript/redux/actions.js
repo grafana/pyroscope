@@ -48,7 +48,8 @@ const receiveSVG = (data) => {
 export const requestJSON = (url) => {
   return { type: REQUEST_JSON, payload: { url } }
 };
-const receiveJSON = (data) => {
+
+export const receiveJSON = (data) => {
   return { type: RECEIVE_JSON, payload: data }
 };
 
@@ -59,6 +60,10 @@ const receiveNames = (names) => {
   return { type: RECEIVE_NAMES, payload: { names } }
 };
 
+export const requestJSON2 = (url) => ({
+  type: REQUEST_JSON,
+  payload: url,
+})
 
 let currentSVGController = null;
 export function fetchSVG(url) {
@@ -104,3 +109,5 @@ export function fetchNames() {
       .finally()
   }
 }
+
+
