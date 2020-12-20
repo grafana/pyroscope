@@ -37,8 +37,17 @@ export const refresh = () => {
 export const setLabels = (labels) => {
   return { type: SET_LABELS, payload: { labels } }
 };
+
+// return Promise.resolve({
+//   type: SET_DATE_RANGE,
+//   payload: { from, until }
+// })
+
 export const addLabel = (name, value) => {
-  return { type: ADD_LABEL, payload: { name, value } }
+  return Promise.resolve({
+    type: ADD_LABEL,
+    payload:  { name, value } 
+  })
 };
 export const removeLabel = (name) => {
   return { type: REMOVE_LABEL, payload: { name } }

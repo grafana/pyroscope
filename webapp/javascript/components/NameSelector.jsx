@@ -1,14 +1,24 @@
 import React from 'react';
 import { connect } from "react-redux";
-import { addLabel } from "../redux/actions";
+import { addLabel, receiveJSON} from "../redux/actions";
+import { bindActionCreators } from "redux";
+import { buildRenderURL, fetchJSON } from '../util/update_requests';
+
 
 class NameSelector extends React.Component {
   constructor(props) {
     super(props);
+
+    this.fetchJSON = fetchJSON.bind(this);
+    this.buildRenderURL = buildRenderURL.bind(this);
   }
 
-  select = (event) =>{
-    this.props.addLabel("__name__", event.target.value);
+  selectName = (event) =>{
+    this.props.actions.addLabel("__name__", event.target.value)
+    .then(() => {
+      let renderURL = this.buildRenderURL();
+      this.fetchJSON(renderURL);
+    })
   }
 
   render() {
@@ -17,7 +27,7 @@ class NameSelector extends React.Component {
     selectedName = selectedName ? selectedName.value : "none";
     return <span>
       Metric:&nbsp;
-      <select className="label-select" value={selectedName} onChange={this.select}>
+      <select className="label-select" value={selectedName} onChange={this.selectName}>
         <option
           disabled
           key="Select an app..."
@@ -34,7 +44,21 @@ class NameSelector extends React.Component {
   }
 }
 
+const mapStateToProps = state => ({
+  ...state,
+});
+
+const mapDispatchToProps = dispatch => ({
+  actions: bindActionCreators(
+    {
+      receiveJSON,
+      addLabel,
+    },
+    dispatch,
+  ),
+});
+
 export default connect(
-  (x) => x,
-  { addLabel }
+  mapStateToProps,
+  mapDispatchToProps,
 )(NameSelector);

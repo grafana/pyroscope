@@ -71,8 +71,7 @@ class DateRangePicker extends React.Component {
   }
 
   updateDateRange = () => {
-    let { from, until } = this.props;
-    let renderURL = this.buildRenderURL(from, until);
+    let renderURL = this.buildRenderURL();
     console.log('updateDateRange in date picker: ', this);
     console.log('updateDateRange in date picker: ', renderURL);
     this.fetchJSON(renderURL);
