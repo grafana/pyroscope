@@ -315,7 +315,7 @@ print-versions:
 ensure-no-dirty-files:
 ifneq ("$(shell git diff --no-ext-diff 2> /dev/null | wc -l)", "0")
 	@echo "dirty files detected, exiting"
-	# exit 1
+	exit 1
 endif
 
 

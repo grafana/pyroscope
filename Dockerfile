@@ -61,7 +61,7 @@ LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 WORKDIR /var/lib/pyroscope
 
 # RUN apk add --no-cache ca-certificates bash tzdata openssl musl-utils
-RUN apt-get update && apt-get install -y ca-certificates bash tzdata openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates bash tzdata openssl libunwind8 && rm -rf /var/lib/apt/lists/*
 
 RUN addgroup --system pyroscope && adduser --system pyroscope && adduser pyroscope pyroscope
 
