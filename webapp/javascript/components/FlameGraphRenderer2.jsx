@@ -36,6 +36,7 @@ const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
 const HIDE_THRESHOLD = 0.5;
 const LABEL_THRESHOLD = 20;
+const HIGHLIGHT_NODE_COLOR = '#48CE73' // green
 
 
 class FlameGraphRenderer extends React.Component {
@@ -251,9 +252,9 @@ class FlameGraphRenderer extends React.Component {
         // For this particular bar, there is a match
         let queryExists = this.query.length > 0;
         let nodeIsInQuery = this.query && (names[level[j + 2]].indexOf(this.query) >= 0) || false;
-
         // merge very small blocks into big "collapsed" ones for performance
-        const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
+        let collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
+
         // const collapsed = false;
         if (collapsed) {
             while (
@@ -279,16 +280,18 @@ class FlameGraphRenderer extends React.Component {
 
         const a = this.selectedLevel > i ? 0.33 : 1;
 
-        // TODO: Clean this up
-        if (!collapsed) {
-          if (queryExists) {
-            this.ctx.fillStyle = nodeIsInQuery ? '#48CE73' : colorGreyscale(200, 0.66);
-          } else {
-            this.ctx.fillStyle = nodeIsInQuery ? '#48CE73' : colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), a);
-          }
+        let nodeColor;
+        if (collapsed) {
+          nodeColor = colorGreyscale(200, 0.66);
+        } else if (queryExists && nodeIsInQuery) {
+          nodeColor = HIGHLIGHT_NODE_COLOR;
+        } else if (queryExists && !nodeIsInQuery) {
+          nodeColor = colorGreyscale(200, 0.66);
         } else {
-          this.ctx.fillStyle = nodeIsInQuery ? '#48CE73' : colorGreyscale(200, 0.66);
+          nodeColor = colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), a);
         }
+
+        this.ctx.fillStyle = nodeColor;
         this.ctx.fill();
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
