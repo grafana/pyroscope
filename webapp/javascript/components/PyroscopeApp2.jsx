@@ -13,9 +13,9 @@ import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
 
-import { receiveJSON, fetchNames } from "../redux/actions";
+import { receiveNames, receiveJSON } from "../redux/actions";
 import { bindActionCreators } from "redux";
-import { buildRenderURL, fetchJSON } from '../util/update_requests';
+import { buildRenderURL, fetchJSON, fetchNames } from '../util/update_requests';
 
 
 const modalStyle = {
@@ -37,6 +37,7 @@ class PyroscopeApp extends React.Component {
     super(props);
 
     this.fetchJSON = fetchJSON.bind(this);
+    this.fetchNames = fetchNames.bind(this);
     this.buildRenderURL = buildRenderURL.bind(this);
 
     this.state = {
@@ -47,7 +48,7 @@ class PyroscopeApp extends React.Component {
   componentDidMount = () => {
     let renderURL = this.buildRenderURL();
     this.fetchJSON(renderURL);
-    // this.props.fetchNames();
+    this.fetchNames()
     // this.props.shortcut.registerShortcut(this.showShortcutsModal, ['shift+?'], 'Shortcuts', 'Show Keyboard Shortcuts Modal');
   }
 
@@ -131,7 +132,7 @@ const mapStateToProps = state => ({
 const mapDispatchToProps = dispatch => ({
   actions: bindActionCreators(
       {
-        fetchNames,
+        receiveNames,
         receiveJSON,
       },
       dispatch,

@@ -60,7 +60,7 @@ export const receiveJSON = (data) => {
 export const requestNames = () => {
   return { type: REQUEST_NAMES, payload: {} }
 };
-const receiveNames = (names) => {
+export const receiveNames = (names) => {
   return { type: RECEIVE_NAMES, payload: { names } }
 };
 
@@ -84,34 +84,34 @@ export function fetchSVG(url) {
   }
 }
 
-let currentJSONController = null;
-export function fetchJSON(url) {
-  return dispatch => {
-    if (currentJSONController) {
-      currentJSONController.abort();
-    }
-    currentJSONController = new AbortController();
-    dispatch(requestJSON(url));
-    return fetch(url, {signal: currentJSONController.signal})
-      .then(response => response.json())
-      .then(data => dispatch(receiveJSON(data)))
-      .finally()
-  }
-}
+// let currentJSONController = null;
+// export function fetchJSON(url) {
+//   return dispatch => {
+//     if (currentJSONController) {
+//       currentJSONController.abort();
+//     }
+//     currentJSONController = new AbortController();
+//     dispatch(requestJSON(url));
+//     return fetch(url, {signal: currentJSONController.signal})
+//       .then(response => response.json())
+//       .then(data => dispatch(receiveJSON(data)))
+//       .finally()
+//   }
+// }
 
-let currentNamesController = null;
-export function fetchNames() {
-  return dispatch => {
-    if (currentNamesController) {
-      currentNamesController.abort();
-    }
-    currentNamesController = new AbortController();
-    dispatch(requestNames());
-    return fetch("/label-values?label=__name__", {signal: currentNamesController.signal})
-      .then(response => response.json())
-      .then(data => dispatch(receiveNames(data)))
-      .finally()
-  }
-}
+// let currentNamesController = null;
+// export function fetchNames() {
+//   return dispatch => {
+//     if (currentNamesController) {
+//       currentNamesController.abort();
+//     }
+//     currentNamesController = new AbortController();
+//     dispatch(requestNames());
+//     return fetch("/label-values?label=__name__", {signal: currentNamesController.signal})
+//       .then(response => response.json())
+//       .then(data => dispatch(receiveNames(data)))
+//       .finally()
+//   }
+// }
 
 

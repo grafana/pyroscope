@@ -37,12 +37,27 @@ export function fetchJSON(url) {
       return response.json()
     })
     .then((data) => {
-      console.log('data:', data);
-      console.log('this: ', this);
-      console.dir(this);
       this.props.actions.receiveJSON(data)
     })
     .finally();
+}
+
+export function fetchNames() {
+  if (this.currentNamesController) {
+    this.currentNamesController.abort();
+  }
+  this.currentNamesController = new AbortController();
+  // dispatch(requestNames());
+  console.log('fetching names');
+
+  fetch("/label-values?label=__name__", {signal: this.currentNamesController.signal})
+    .then((response) => {
+      return response.json()
+    })
+    .then((data) => {
+      this.props.actions.receiveNames(data)
+    })
+    .finally()
 }
 
 
