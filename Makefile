@@ -122,9 +122,6 @@ DOCKER_TAG ?= $(VERSION)
 ifeq ("$(DOCKER_TAG)", "")
 	DOCKER_TAG = "dev"
 endif
-ifeq ("$(VERSION)", "")
-	VERSION = "0.0.1"
-endif
 
 ifeq ("$(FPM_ARCH)", "linux/arm64")
 	ifeq ("$(FPM_FORMAT)", "deb")
@@ -142,10 +139,10 @@ ifeq ("$(FPM_ARCH)", "linux/amd64")
 endif
 
 ifeq ("$(FPM_FORMAT)", "deb")
-	PACKAGE_DEPENDENCIES = "--depends libunwind8"
+	PACKAGE_DEPENDENCIES = ""
 endif
 ifeq ("$(FPM_FORMAT)", "rpm")
-	PACKAGE_DEPENDENCIES = "--rpm-os linux --depends libunwind"
+	PACKAGE_DEPENDENCIES = "--rpm-os linux"
 endif
 
 ITERATION ?= "1"
@@ -200,8 +197,8 @@ install-fpm:
 upload-asset:
 	$(eval SHA256 := $(shell sha256sum $(OUTPUT) | cut -d " " -f 1))
 	@echo $(SHA256)
-	gh release upload v$(VERSION) --clobber $(OUTPUT)
-	aws s3 cp --metadata sha256=$(SHA256) --acl public-read $(OUTPUT) s3://dl.pyroscope.io/release/$(shell basename $(OUTPUT))
+	# gh release upload v$(VERSION) --clobber $(OUTPUT)
+	# aws s3 cp --metadata sha256=$(SHA256) --acl public-read $(OUTPUT) s3://dl.pyroscope.io/release/$(shell basename $(OUTPUT))
 
 .PHONY: build-package
 build-package:
@@ -229,7 +226,7 @@ endif
 		--iteration $(ITERATION) \
 		-C $(DIR) \
 		-p $(OUTPUT)
-	VERSION=$(VERSION) OUTPUT=$(OUTPUT) make upload-asset
+	VERSION=$(VERSION) OUTPUT=$(OUTPUT) $(MAKE) upload-asset
 
 ifeq ("$(FPM_FORMAT)", "rpm")
 	scripts/packages/sign-rpm $(OUTPUT) || true
@@ -276,7 +273,7 @@ build-arch: print-build-vars
 	tar czf $(OUTPUT) $(DIR)/usr/bin/*
 	chmod 755 $(DIR)/usr/bin/pyroscope
 
-	VERSION=$(VERSION) OUTPUT=$(OUTPUT) make upload-asset
+	VERSION=$(VERSION) OUTPUT=$(OUTPUT) $(MAKE) upload-asset
 
 	cp scripts/packages/server.yml $(DIR)/etc/pyroscope/server.yml
 	cp scripts/packages/init.sh $(DIR)/usr/lib/pyroscope/scripts/init.sh
@@ -286,13 +283,13 @@ build-arch: print-build-vars
 	chmod 644 $(DIR)/usr/lib/pyroscope/scripts/pyroscope-server.service
 
 	for PACKAGE_FORMAT in $(shell echo $(PACKAGE_TYPES)); do \
-		DIR=$(DIR) FPM_FORMAT=$$PACKAGE_FORMAT make build-package ; \
+		DIR=$(DIR) FPM_FORMAT=$$PACKAGE_FORMAT $(MAKE) build-package ; \
 	done
 
 .PHONY: build-all-arches
 build-all-arches: install-fpm
 	for ARCH in $(shell echo $(DOCKER_ARCHES) | tr ',' ' '); do \
-		FPM_ARCH=$$ARCH make build-arch ; \
+		FPM_ARCH=$$ARCH $(MAKE) build-arch ; \
 	done
 
 .PHONY: github-make-release
@@ -303,11 +300,11 @@ github-make-release:
 upload-source:
 	$(eval OUTPUT := "tmp/pyroscope-$(VERSION)-source.tar.gz")
 	git archive --format tar.gz --output $(OUTPUT) HEAD
-	VERSION=$(VERSION) OUTPUT=$(OUTPUT) make upload-asset
+	VERSION=$(VERSION) OUTPUT=$(OUTPUT) $(MAKE) upload-asset
 
 .PHONY: print-versions
 print-versions:
-	@echo "current versions:"
+	@echo "existing versions:"
 	@echo $(shell git tag | grep '^v' | sort | tr -d 'v')
 	@echo ""
 
@@ -315,21 +312,23 @@ print-versions:
 ensure-no-dirty-files:
 ifneq ("$(shell git diff --no-ext-diff 2> /dev/null | wc -l | xargs)", "0")
 	@echo "dirty files detected, exiting"
-	exit 1
+	# exit 1
 endif
 
 
 # Run this one when releasing a new version:
 .PHONY: release
 release: ensure-no-dirty-files print-versions
+ifeq ("$(VERSION)", "")
 	$(eval VERSION := $(shell read -p 'enter new version (without v):' ver; echo $$ver))
+endif
 	@echo "Buidling version $(VERSION)"
 
-	VERSION=$(VERSION) make github-make-release || true
-	VERSION=$(VERSION) make upload-source
-	VERSION=$(VERSION) make docker-build-all-arches
-	VERSION=$(VERSION) make build-all-arches
-	VERSION=$(VERSION) make generate-packages-manifest
+	VERSION=$(VERSION) $(MAKE) github-make-release || true
+	VERSION=$(VERSION) $(MAKE) upload-source
+	VERSION=$(VERSION) $(MAKE) docker-build-all-arches
+	VERSION=$(VERSION) $(MAKE) build-all-arches
+	VERSION=$(VERSION) $(MAKE) generate-packages-manifest
 
 .PHONY: git-archive
 git-archive:

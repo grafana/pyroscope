@@ -7,7 +7,7 @@ authors = ["Dmitry Filimonov"]
 crate-type = ["staticlib"]
 
 [dependencies]
-py-spy = { path = "../pyspy" }
+py-spy = { git = "https://github.com/pyroscope-io/py-spy", rev = "ce657cd" }
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
-rbspy = { path = "../rbspy" }
+rbspy = { git = "https://github.com/pyroscope-io/rbspy", rev = "31ebf5e" }

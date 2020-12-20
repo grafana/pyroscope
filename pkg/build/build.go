@@ -19,14 +19,6 @@ var (
 	GitDirtyStr = "-1"
 	GitDirty    int
 
-	RbSpyGitSHA      = "N/A"
-	RbSpyGitDirtyStr = "-1"
-	RbSpyGitDirty    int
-
-	PySpyGitSHA      = "N/A"
-	PySpyGitDirtyStr = "-1"
-	PySpyGitDirty    int
-
 	UseEmbeddedAssetsStr = "false"
 	UseEmbeddedAssets    bool
 )
@@ -49,10 +41,6 @@ GENERAL
 
 AGENT
   Supported Spies:    %q
-
-SPIES BUILD INFO:
-	* rbspy %s / %s / %d
-	* pyspy %s / %s / %d
 `
 
 func Summary() string {
@@ -66,11 +54,5 @@ func Summary() string {
 		GitDirty,
 		UseEmbeddedAssets,
 		spy.SupportedSpies,
-		RbSpyGitSHA,
-		RbSpyGitDirtyStr,
-		RbSpyGitDirty,
-		PySpyGitSHA,
-		PySpyGitDirtyStr,
-		PySpyGitDirty,
 	)
 }

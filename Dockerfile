@@ -1,8 +1,17 @@
 # rust deps build
 
-FROM rust:1.48.0-buster as rust-builder
+FROM alpine:3.12 as rust-builder
 
-RUN apt-get update && apt-get install -y libunwind-dev
+RUN apk update &&\
+    apk add git gcc g++ make build-base openssl-dev musl musl-dev \
+    rust cargo curl
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+RUN /root/.cargo/bin/rustup target add $(uname -m)-unknown-linux-musl
+
+RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwind-1.3.1.tar.gz
+RUN tar -zxvf libunwind-1.3.1.tar.gz
+RUN cd libunwind-1.3.1/ && ./configure --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
 
 COPY third_party/rbspy /opt/rbspy
 COPY third_party/pyspy /opt/pyspy
@@ -10,7 +19,9 @@ COPY third_party/rustdeps /opt/rustdeps
 
 WORKDIR /opt/rustdeps
 
-RUN cargo build --release
+ENV RUSTFLAGS="-C target-feature=+crt-static"
+RUN /root/.cargo/bin/cargo build --release --target $(uname -m)-unknown-linux-musl
+RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a /opt/rustdeps/librustdeps.a
 
 # assets build
 # doesn't matter what arch it is on, hence --platform
@@ -28,15 +39,15 @@ RUN make assets
 
 # go build
 
-FROM golang:1.15.1-buster as go-builder
+FROM golang:1.15.1-alpine3.12 as go-builder
 
-# RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev
-RUN apt-get update && apt-get install -y make git zstd gcc g++ libc-dev libunwind-dev && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev
+# RUN apt-get update && apt-get install -y make git zstd gcc g++ libc-dev libunwind-dev && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/pyroscope
 
 RUN mkdir -p /opt/pyroscope/third_party/rustdeps/target/release
-COPY --from=rust-builder /opt/rustdeps/target/release/librustdeps.a /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a
+COPY --from=rust-builder /opt/rustdeps/librustdeps.a /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a
 COPY --from=rust-builder /opt/rbspy/lib/rbspy.h /opt/pyroscope/third_party/rbspy/lib/
 COPY --from=rust-builder /opt/pyspy/lib/pyspy.h /opt/pyroscope/third_party/pyspy/lib/
 
@@ -48,22 +59,22 @@ COPY scripts ./scripts
 COPY go.mod go.sum pyroscope.go ./
 COPY Makefile ./
 
-# EXTRA_LDFLAGS="-linkmode external -extldflags \"-static\""
-RUN EMBEDDED_ASSETS_DEPS="" make build-release
+RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags \"-static\"" make build-release
 
 # final image
 
-# FROM alpine:3.12
-FROM debian:buster
+FROM alpine:3.12
+# FROM debian:buster
 
 LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 
 WORKDIR /var/lib/pyroscope
 
-# RUN apk add --no-cache ca-certificates bash tzdata openssl musl-utils
-RUN apt-get update && apt-get install -y ca-certificates bash tzdata openssl libunwind8 && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache ca-certificates bash tzdata openssl musl-utils
+# RUN apt-get update && apt-get install -y ca-certificates bash tzdata openssl && rm -rf /var/lib/apt/lists/*
 
-RUN addgroup --system pyroscope && adduser --system pyroscope && adduser pyroscope pyroscope
+RUN addgroup -S pyroscope && adduser -S pyroscope -G pyroscope
+# RUN addgroup --system pyroscope && adduser --system pyroscope && adduser pyroscope pyroscope
 
 RUN mkdir -p \
         "/var/lib/pyroscope" \
