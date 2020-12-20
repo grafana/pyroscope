@@ -1021,7 +1021,7 @@ dependencies = [
 [[package]]
 name = "py-spy"
 version = "0.3.3"
-source = "git+https://github.com/pyroscope-io/py-spy?rev=ce657cd#ce657cd9b4ec5f21df23f796546bb5bf892e2962"
+source = "git+https://github.com/pyroscope-io/py-spy?rev=59f80f6#59f80f6307a47d30cf4b76ee25b3b5ed02c87022"
 dependencies = [
  "clap",
  "console",
@@ -1256,7 +1256,7 @@ dependencies = [
 [[package]]
 name = "rbspy"
 version = "0.3.10"
-source = "git+https://github.com/pyroscope-io/rbspy?rev=31ebf5e#31ebf5e1a8c60eb18726341c586181ce5ae0fa71"
+source = "git+https://github.com/pyroscope-io/rbspy?rev=7e37501#7e3750100bb28beab0fc1e58333b106e61af98c4"
 dependencies = [
  "chrono",
  "clap",
@@ -1288,7 +1288,7 @@ dependencies = [
 [[package]]
 name = "rbspy-ruby-structs"
 version = "0.1.0"
-source = "git+https://github.com/pyroscope-io/rbspy?rev=31ebf5e#31ebf5e1a8c60eb18726341c586181ce5ae0fa71"
+source = "git+https://github.com/pyroscope-io/rbspy?rev=7e37501#7e3750100bb28beab0fc1e58333b106e61af98c4"
 
 [[package]]
 name = "rdrand"

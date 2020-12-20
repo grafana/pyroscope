@@ -5,7 +5,7 @@ package pyspy
 
 // #cgo darwin LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
 // #cgo linux LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
-// #include "../../../third_party/pyspy/lib/pyspy.h"
+// #include "../../../third_party/rustdeps/pyspy.h"
 import "C"
 import (
 	"fmt"

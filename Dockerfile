@@ -13,8 +13,6 @@ RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwi
 RUN tar -zxvf libunwind-1.3.1.tar.gz
 RUN cd libunwind-1.3.1/ && ./configure --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
 
-COPY third_party/rbspy /opt/rbspy
-COPY third_party/pyspy /opt/pyspy
 COPY third_party/rustdeps /opt/rustdeps
 
 WORKDIR /opt/rustdeps
@@ -48,8 +46,8 @@ WORKDIR /opt/pyroscope
 
 RUN mkdir -p /opt/pyroscope/third_party/rustdeps/target/release
 COPY --from=rust-builder /opt/rustdeps/librustdeps.a /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a
-COPY --from=rust-builder /opt/rbspy/lib/rbspy.h /opt/pyroscope/third_party/rbspy/lib/
-COPY --from=rust-builder /opt/pyspy/lib/pyspy.h /opt/pyroscope/third_party/pyspy/lib/
+COPY third_party/rustdeps/rbspy.h /opt/pyroscope/third_party/rustdeps/rbspy.h
+COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
 
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
 COPY pkg ./pkg
