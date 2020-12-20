@@ -23,12 +23,10 @@ import React from 'react';
 import {connect} from 'react-redux';
 
 import {fetchJSON} from '../redux/actions';
-// import {FlameBearer} from '../flamebearer';
 import MaxNodesSelector from "./MaxNodesSelector";
 import clsx from "clsx";
 
-import murmurhash3_32_gc from '../murmur3';
-import {numberWithCommas} from '../util/format';
+import {numberWithCommas, colorBasedOnName, colorGreyscale} from '../util/format';
 import {bindActionCreators} from "redux";
 
 
@@ -38,89 +36,6 @@ const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
 const HIDE_THRESHOLD = 0.5;
 const LABEL_THRESHOLD = 20;
-
-
-function colorBasedOnName(name, filenames, a){
-  // const rand = (murmurhash3_32_gc(name) & 100) / 100;
-  // const m = 20; //20;
-  // const h = 40 + (rand - 0.5) * m;
-  // const s = 90;
-  // const l = 60;
-
-  // const m = 20; //20;
-  // const h = 50 + (rand - 0.5) * m;
-  // const s = 35;
-  // const l = 41;
-
-  // console.log(`color based on name: ${name}`)
-  // console.log(filenames)
-
-  const purple = `hsla(246, 40%, 65%, ${a})` //Purple:
-  const blueDark = `hsla(211, 48%, 60%, ${a})` //BlueDark:
-  const blueCyan = `hsla(194, 52%, 61%, ${a})` //CyanBlue:
-  const yellow = `hsla(34, 65%, 65%, ${a})` //Yellow:
-  const green = `hsla(163, 45%, 55%, ${a})` //Green:
-  const orange = `hsla(24, 69%, 60%, ${a})` //Orange:
-  const red = `hsla(3, 62%, 67%, ${a})` // Red:
-  const grey = `hsla(225, 2%, 51%, ${a})` //Grey:
-
-  const items = [
-    // red,
-    orange,
-    yellow,
-    green,
-    blueCyan,
-    blueDark,
-    purple,
-  ]
-
-  // const darkGreen = `hsla(160, 40%, 21%, ${a})` //Dark green:
-  // const darkPurple = `hsla(240, 30%, 29%, ${a})` //puprple:
-  // const darkBlue = `hsla(226, 36%, 26%, ${a})` //Dark blue:
-  // const darkPink = `hsla(315, 40%, 24%, ${a})` //Pink:
-  // const darkYellow = `hsla(62, 29%, 22%, ${a})` //Yellow/mustard:
-  // const darkRed = `hsla(10, 41%, 23%, ${a})` //Red:
-  //
-  // const items = [
-  //   darkGreen,
-  //   darkPurple,
-  //   darkBlue,
-  //   darkPink,
-  //   darkYellow,
-  //   darkRed,
-  // ]
-
-  if(name.indexOf('.py') >= 0) {
-    return items[murmurhash3_32_gc(name) % items.length];
-  } else {
-    return grey
-  }
-
-
-  // return `hsla(${h}, ${s}%, ${l}%, ${a})`;
-  // return `hsla(191, 35%, 41%, 1)`
-  // // return "#48CE73";
-  // return "#FEBD46";
-  // return "#E3B340";
-  // return "#facf5a";
-  // return "#f9813a";
-  // return "#ffac41";
-}
-
-function colorGreyscale(v, a){
-  return `rgba(${v}, ${v}, ${v}, ${a})`;
-}
-
-// Don't move this is FlameBearer
-export function deltaDiff(levels) {
-  for (const level of levels) {
-    let prev = 0;
-    for (let i = 0; i < level.length; i += 3) {
-      level[i] += prev;
-      prev = level[i] + level[i + 1];
-    }
-  }
-}
 
 
 class FlameGraphRenderer extends React.Component {

@@ -2,7 +2,7 @@
 
 export function buildRenderURL(from, until) {
   let width = document.body.clientWidth - 30;
-  
+
   let url = `/render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}&width=${width}`;
   let nameLabel = this.props.labels.find(x => x.name == "__name__");
   if (nameLabel) {
@@ -50,7 +50,7 @@ export function fetchNames() {
   // dispatch(requestNames());
   console.log('fetching names');
 
-  fetch("/label-values?label=__name__", {signal: this.currentNamesController.signal})
+  fetch("/label-values?label=__name__", { signal: this.currentNamesController.signal })
     .then((response) => {
       return response.json()
     })
