@@ -16,9 +16,9 @@ import {
 } from "./actionTypes";
 
 export const setDateRange = (from, until) => {
-  return Promise.resolve({ 
-    type: SET_DATE_RANGE, 
-    payload: { from, until } 
+  return Promise.resolve({
+    type: SET_DATE_RANGE,
+    payload: { from, until }
   })
 };
 
@@ -32,7 +32,7 @@ export const setMaxNodes = (maxNodes) => {
   return { type: SET_MAX_NODES, payload: { maxNodes } }
 };
 export const refresh = () => {
-  return { type: REFRESH, payload: { } }
+  return { type: REFRESH, payload: {} }
 };
 export const setLabels = (labels) => {
   return { type: SET_LABELS, payload: { labels } }
@@ -60,14 +60,10 @@ export const receiveJSON = (data) => {
 export const requestNames = () => {
   return { type: REQUEST_NAMES, payload: {} }
 };
+
 export const receiveNames = (names) => {
   return { type: RECEIVE_NAMES, payload: { names } }
 };
-
-export const requestJSON2 = (url) => ({
-  type: REQUEST_JSON,
-  payload: url,
-})
 
 let currentSVGController = null;
 export function fetchSVG(url) {
@@ -77,7 +73,7 @@ export function fetchSVG(url) {
     }
     currentSVGController = new AbortController();
     dispatch(requestSVG(url));
-    return fetch(url, {signal: currentSVGController.signal})
+    return fetch(url, { signal: currentSVGController.signal })
       .then(response => response.text())
       .then(data => dispatch(receiveSVG(data)))
       .finally()
