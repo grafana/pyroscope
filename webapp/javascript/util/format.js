@@ -55,7 +55,8 @@ export function colorBasedOnName(name, a) {
   // ]
 
   if (name.indexOf('.py') >= 0) {
-    return items[murmurhash3_32_gc(name) % items.length];
+    let colorIndex = murmurhash3_32_gc(name) % items.length;
+    return items[colorIndex];
   } else {
     return grey
   }

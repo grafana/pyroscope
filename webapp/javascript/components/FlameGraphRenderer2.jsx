@@ -278,7 +278,7 @@ class FlameGraphRenderer extends React.Component {
 
         const a = this.selectedLevel > i ? 0.33 : 1;
         if (!collapsed) {
-          this.ctx.fillStyle = inQuery ? '#48CE73' : colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), this.filenames, a);
+          this.ctx.fillStyle = inQuery ? '#48CE73' : colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), a);
         } else {
           this.ctx.fillStyle = inQuery ? '#48CE73' : colorGreyscale(200, 0.66);
         }
