@@ -1,4 +1,6 @@
 import thunkMiddleware from 'redux-thunk';
+import promiseMiddleware from 'redux-promise';
+
 import { createStore, compose, applyMiddleware } from "redux";
 import persistState from 'redux-localstorage'
 import updateUrl from "./enhancers/updateUrl";
@@ -14,7 +16,7 @@ import {parseLabels, encodeLabels} from "../util/key.js";
 
 
 const enhancer = composeWithDevTools(
-  applyMiddleware(thunkMiddleware),
+  applyMiddleware(thunkMiddleware, promiseMiddleware),
   // updateUrl(["from", "until", "labels"]),
   // persistState(["from", "until", "labels"]),
 )

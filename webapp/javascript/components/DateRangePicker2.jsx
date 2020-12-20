@@ -1,6 +1,6 @@
 import React from 'react';
 import { connect } from "react-redux";
-import { setDateRange, receiveJSON } from "../redux/actions";
+import { setDateRange, receiveJSON, setFrom, setUntil} from "../redux/actions";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClock, faSyncAlt } from '@fortawesome/free-solid-svg-icons'
@@ -54,23 +54,25 @@ class DateRangePicker extends React.Component {
 
     this.presets = defaultPresets;
     this.state = {
-      from: props.from,
-      until: props.until,
       opened: false
     };
   }
 
+  componentDidMount() {
+    this.updateDateRange();
+  }
+
   updateFrom = (from) => {
-    this.setState({ from });
+    this.props.actions.setFrom(from);
   };
 
   updateUntil = (until) => {
-    this.setState({ until });
-  };
+    this.props.actions.setUntil(until);
+  }
 
   updateDateRange = () => {
-    this.props.actions.setDateRange(this.state.from, this.state.until);
-    let renderURL = this.buildRenderURL(this.state.from, this.state.until);
+    let { from, until } = this.props;
+    let renderURL = this.buildRenderURL(from, until);
     console.log('updateDateRange in date picker: ', this);
     console.log('updateDateRange in date picker: ', renderURL);
     this.fetchJSON(renderURL);
@@ -98,18 +100,13 @@ class DateRangePicker extends React.Component {
   };
 
   selectPreset = ({label, from, until }) => {
-    this.setState({
-      from,
-      until
-    },  () => {
-      console.log('select preset callback', this);
-      this.updateDateRange();
-    })
+    this.props.actions.setDateRange(from, until)
+      .then(() => {
+        console.log('selecting preset', label, from, until);
+        console.log('state: ', this.state);
+        this.updateDateRange();
+      });
 
-    console.log('selecting preset', label, from, until);
-    console.log('state: ', this.state);
-
-    
     this.hideDropdown();
   };
 
@@ -179,6 +176,8 @@ const mapDispatchToProps = dispatch => ({
     {
       setDateRange,
       receiveJSON,
+      setFrom,
+      setUntil,
     },
     dispatch,
   ),

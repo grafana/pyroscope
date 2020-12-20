@@ -16,8 +16,12 @@ import {
 } from "./actionTypes";
 
 export const setDateRange = (from, until) => {
-  return { type: SET_DATE_RANGE, payload: { from, until } }
+  return Promise.resolve({ 
+    type: SET_DATE_RANGE, 
+    payload: { from, until } 
+  })
 };
+
 export const setFrom = (from) => {
   return { type: SET_FROM, payload: { from } }
 };
