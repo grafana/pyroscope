@@ -249,7 +249,8 @@ class FlameGraphRenderer extends React.Component {
         let numBarTicks = level[j + 1];
 
         // For this particular bar, there is a match
-        const inQuery = this.query && (names[level[j + 2]].indexOf(this.query) >= 0) || false;
+        let queryExists = this.query.length > 0;
+        let nodeIsInQuery = this.query && (names[level[j + 2]].indexOf(this.query) >= 0) || false;
 
         // merge very small blocks into big "collapsed" ones for performance
         const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
@@ -259,7 +260,7 @@ class FlameGraphRenderer extends React.Component {
                 j < level.length - 3 &&
                 barIndex + numBarTicks === level[j + 3] &&
                 level[j + 4] * this.pxPerTick <= COLLAPSE_THRESHOLD &&
-                (inQuery === (this.query && (names[level[j + 5]].indexOf(this.query) >= 0) || false))
+                (nodeIsInQuery === (this.query && (names[level[j + 5]].indexOf(this.query) >= 0) || false))
             ) {
                 j += 3;
                 numBarTicks += level[j + 1];
@@ -277,10 +278,16 @@ class FlameGraphRenderer extends React.Component {
         const ratio = numBarTicks / numTicks;
 
         const a = this.selectedLevel > i ? 0.33 : 1;
+
+        // TODO: Clean this up
         if (!collapsed) {
-          this.ctx.fillStyle = inQuery ? '#48CE73' : colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), a);
+          if (queryExists) {
+            this.ctx.fillStyle = nodeIsInQuery ? '#48CE73' : colorGreyscale(200, 0.66);
+          } else {
+            this.ctx.fillStyle = nodeIsInQuery ? '#48CE73' : colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), a);
+          }
         } else {
-          this.ctx.fillStyle = inQuery ? '#48CE73' : colorGreyscale(200, 0.66);
+          this.ctx.fillStyle = nodeIsInQuery ? '#48CE73' : colorGreyscale(200, 0.66);
         }
         this.ctx.fill();
 
