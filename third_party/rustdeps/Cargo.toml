@@ -1,0 +1,13 @@
+[package]
+name = "rustdeps"
+version = "0.3.3"
+authors = ["Dmitry Filimonov"]
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+py-spy = { path = "../pyspy" }
+
+[target.'cfg(target_arch = "x86_64")'.dependencies]
+rbspy = { path = "../rbspy" }

@@ -3,7 +3,8 @@
 // Package rbspy is a wrapper around this library called rbspy written in Rust
 package rbspy
 
-// #cgo LDFLAGS: -L../../../third_party/rbspy/lib -lrbspy
+// #cgo darwin LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
+// #cgo linux LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps -ldl -lrt -lunwind -lunwind-generic -lunwind-ptrace -lm
 // #include "../../../third_party/rbspy/lib/rbspy.h"
 import "C"
 import (

@@ -37,16 +37,9 @@ all: build
 build:
 	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
 
-third_party/rbspy/lib/librbspy.a:
-	cd $(RBSPY_LOCATION) && make build
-	cp $(RBSPY_LOCATION)/target/release/librbspy.a third_party/rbspy/lib/librbspy.a
-
-third_party/pyspy/lib/libpyspy.a:
-	cd $(PYSPY_LOCATION) && make build
-	cp $(PYSPY_LOCATION)/target/release/libpy_spy.a third_party/pyspy/lib/libpyspy.a
-
 .PHONY: build-rust-dependencies
-build-rust-dependencies: third_party/rbspy/lib/librbspy.a third_party/pyspy/lib/libpyspy.a
+build-rust-dependencies:
+	cd third_party/rustdeps && cargo build --release
 
 .PHONY: test
 test:
@@ -149,10 +142,10 @@ ifeq ("$(FPM_ARCH)", "linux/amd64")
 endif
 
 ifeq ("$(FPM_FORMAT)", "deb")
-	PACKAGE_DEPENDENCIES = ""
+	PACKAGE_DEPENDENCIES = "--depends libunwind8"
 endif
 ifeq ("$(FPM_FORMAT)", "rpm")
-	PACKAGE_DEPENDENCIES = "--rpm-os linux"
+	PACKAGE_DEPENDENCIES = "--rpm-os linux --depends libunwind"
 endif
 
 ITERATION ?= "1"
@@ -188,7 +181,8 @@ docker-build:
 
 .PHONY: docker-build-x-setup
 docker-build-x-setup:
-	docker buildx create --use
+	docker buildx create --use --name pyroscopebuilder --platform linux/arm64
+	docker buildx create --append --name pyroscopebuilder eyemac --platform linux/amd64
 
 .PHONY: docker-build-all-arches
 docker-build-all-arches:
