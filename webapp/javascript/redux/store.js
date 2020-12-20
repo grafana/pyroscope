@@ -9,9 +9,9 @@ import { composeWithDevTools } from 'redux-devtools-extension';
 import ReduxQuerySync from 'redux-query-sync'
 
 import rootReducer from "./reducers";
-import {setFrom, setUntil, setLabels, setMaxNodes} from "./actions";
+import { setFrom, setUntil, setLabels, setMaxNodes } from "./actions";
 
-import {parseLabels, encodeLabels} from "../util/key.js";
+import { parseLabels, encodeLabels } from "../util/key.js";
 
 
 
@@ -41,7 +41,7 @@ ReduxQuerySync({
       action: setUntil,
     },
     name: {
-      defaultValue: "unknown{}",
+      defaultValue: "pyroscope.server.cpu{}",
       selector: state => {
         return encodeLabels(state.labels);
       },
