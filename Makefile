@@ -1,9 +1,7 @@
-GOOS ?= $(shell go env GOOS)
-GOARCH ?= $(shell go env GOARCH)
 GOBUILD=go build -trimpath
 GODEBUG=asyncpreemptoff=1
 
-ifeq ("$(shell go env GOARCH)", "arm64")
+ifeq ("$(shell go env GOARCH || true)", "arm64")
 	ENABLED_SPIES ?= "pyspy"
 else
 	ENABLED_SPIES ?= "rbspy,pyspy"
