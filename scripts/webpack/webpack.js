@@ -158,9 +158,6 @@ module.exports = (env = {}) => {
         $: 'jquery',
         jQuery: 'jquery',
       }),
-      new webpack.DefinePlugin({
-        BUILD_FLAGS: JSON.stringify(buildFlags),
-      }),
       new CleanWebpackPlugin({
         // cleanStaleWebpackAssets: false
       }),
