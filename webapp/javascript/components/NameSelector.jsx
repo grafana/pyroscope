@@ -2,22 +2,19 @@ import React from 'react';
 import { connect } from "react-redux";
 import { addLabel, receiveJSON} from "../redux/actions";
 import { bindActionCreators } from "redux";
-import { buildRenderURL, fetchJSON } from '../util/update_requests';
+import ApiConnectedComponent from "./ApiConnectedComponent";
 
 
-class NameSelector extends React.Component {
-  constructor(props) {
-    super(props);
-
-    this.fetchJSON = fetchJSON.bind(this);
-    this.buildRenderURL = buildRenderURL.bind(this);
+class NameSelector extends ApiConnectedComponent {
+  constructor() {
+    super();
+    
   }
 
   selectName = (event) =>{
     this.props.actions.addLabel("__name__", event.target.value)
     .then(() => {
-      let renderURL = this.buildRenderURL();
-      this.fetchJSON(renderURL);
+      this.refreshJson()
     })
   }
 
