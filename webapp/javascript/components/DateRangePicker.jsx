@@ -8,7 +8,6 @@ import { faClock, faSyncAlt } from '@fortawesome/free-solid-svg-icons'
 import OutsideClickHandler from 'react-outside-click-handler';
 import moment from 'moment';
 import { bindActionCreators } from "redux";
-import { buildRenderURL, fetchJSON } from '../util/update_requests';
 import ApiConnectedComponent from "./ApiConnectedComponent";
 
 import { createSemicolonClassElement } from 'typescript';

@@ -3,7 +3,6 @@ import { connect } from "react-redux";
 import "react-dom";
 
 import Modal from "react-modal";
-import {withShortcut} from "react-keybind";
 
 import FlameGraphRenderer from "./FlameGraphRenderer";
 import TimelineChart from "./TimelineChart";
@@ -14,8 +13,6 @@ import Footer from "./Footer";
 
 import { receiveNames, receiveJSON } from "../redux/actions";
 import { bindActionCreators } from "redux";
-import { buildRenderURL, fetchJSON, fetchNames } from '../util/update_requests';
-
 
 const modalStyle = {
   overlay: {
@@ -35,19 +32,14 @@ class PyroscopeApp extends ApiConnectedComponent {
   constructor() {
     super();
 
-    // this.fetchJSON = fetchJSON.bind(this);
-    // this.fetchNames = fetchNames.bind(this);
-    // this.buildRenderURL = buildRenderURL.bind(this);
-
     this.state = {
       shortcutsModalOpen: false
     };
   }
 
   componentDidMount = () => {
-    let renderURL = this.buildRenderURL();
-    this.fetchJSON(renderURL);
-    this.fetchNames()
+    this.refreshNames();
+    this.refreshJson();
   }
 
   showShortcutsModal = () => {
@@ -59,7 +51,6 @@ class PyroscopeApp extends ApiConnectedComponent {
   }
 
   render() {
-    let renderURL = this.buildRenderURL();
     // See docs here: https://github.com/flot/flot/blob/master/API.md
     let flotOptions = {
       margin: {
@@ -106,7 +97,7 @@ class PyroscopeApp extends ApiConnectedComponent {
     let flotData = [timeline];
     return (
       <div>
-        <Header renderURL={renderURL}/>
+        <Header renderURL={this.buildRenderURL()}/>
         <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
         <FlameGraphRenderer />
         <Modal
