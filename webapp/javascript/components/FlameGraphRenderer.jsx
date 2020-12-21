@@ -20,15 +20,14 @@
 
 
 import React from 'react';
-import { connect } from 'react-redux';
+import {connect} from 'react-redux';
 
-import { fetchJSON } from '../redux/actions';
-// import {FlameBearer} from '../flamebearer';
+import {fetchJSON} from '../redux/actions';
 import MaxNodesSelector from "./MaxNodesSelector";
 import clsx from "clsx";
 
-import murmurhash3_32_gc from '../murmur3';
-import { numberWithCommas } from '../util/format';
+import {numberWithCommas, colorBasedOnName, colorGreyscale} from '../util/format';
+import {bindActionCreators} from "redux";
 
 
 import { withShortcut, ShortcutProvider, ShortcutConsumer } from 'react-keybind'
@@ -37,100 +36,16 @@ const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
 const HIDE_THRESHOLD = 0.5;
 const LABEL_THRESHOLD = 20;
-
-
-function colorBasedOnName(name, filenames, a) {
-  // const rand = (murmurhash3_32_gc(name) & 100) / 100;
-  // const m = 20; //20;
-  // const h = 40 + (rand - 0.5) * m;
-  // const s = 90;
-  // const l = 60;
-
-  // const m = 20; //20;
-  // const h = 50 + (rand - 0.5) * m;
-  // const s = 35;
-  // const l = 41;
-
-  // console.log(`color based on name: ${name}`)
-  // console.log(filenames)
-
-  const purple = `hsla(246, 40%, 65%, ${a})` //Purple:
-  const blueDark = `hsla(211, 48%, 60%, ${a})` //BlueDark:
-  const blueCyan = `hsla(194, 52%, 61%, ${a})` //CyanBlue:
-  const yellow = `hsla(34, 65%, 65%, ${a})` //Yellow:
-  const green = `hsla(163, 45%, 55%, ${a})` //Green:
-  const orange = `hsla(24, 69%, 60%, ${a})` //Orange:
-  const red = `hsla(3, 62%, 67%, ${a})` // Red:
-  const grey = `hsla(225, 2%, 51%, ${a})` //Grey:
-
-  const items = [
-    // red,
-    orange,
-    yellow,
-    green,
-    blueCyan,
-    blueDark,
-    purple,
-  ]
-
-  // const darkGreen = `hsla(160, 40%, 21%, ${a})` //Dark green:
-  // const darkPurple = `hsla(240, 30%, 29%, ${a})` //puprple:
-  // const darkBlue = `hsla(226, 36%, 26%, ${a})` //Dark blue:
-  // const darkPink = `hsla(315, 40%, 24%, ${a})` //Pink:
-  // const darkYellow = `hsla(62, 29%, 22%, ${a})` //Yellow/mustard:
-  // const darkRed = `hsla(10, 41%, 23%, ${a})` //Red:
-  //
-  // const items = [
-  //   darkGreen,
-  //   darkPurple,
-  //   darkBlue,
-  //   darkPink,
-  //   darkYellow,
-  //   darkRed,
-  // ]
-
-  if (name.indexOf('.py') >= 0) {
-    let i = filenames.indexOf(name);
-    // return items[Math.floor(Math.random() * items.length)];
-    return items[murmurhash3_32_gc(name) % items.length];
-  } else {
-    return grey
-  }
-
-
-  // return `hsla(${h}, ${s}%, ${l}%, ${a})`;
-  // return `hsla(191, 35%, 41%, 1)`
-  // // return "#48CE73";
-  // return "#FEBD46";
-  // return "#E3B340";
-  // return "#facf5a";
-  // return "#f9813a";
-  // return "#ffac41";
-}
-
-function colorGreyscale(v, a) {
-  return `rgba(${v}, ${v}, ${v}, ${a})`;
-}
-
-// Don't move this is FlameBearer
-export function deltaDiff(levels) {
-  for (const level of levels) {
-    let prev = 0;
-    for (let i = 0; i < level.length; i += 3) {
-      level[i] += prev;
-      prev = level[i] + level[i + 1];
-    }
-  }
-}
+const HIGHLIGHT_NODE_COLOR = '#48CE73' // green
 
 
 class FlameGraphRenderer extends React.Component {
-  constructor(props) {
-    super(props);
+  constructor (){
+    super();
     this.state = {
-      highlightStyle: { display: 'none' },
-      tooltipStyle: { display: 'none' },
-      resetStyle: { visibility: 'hidden' },
+      highlightStyle: {display: 'none'},
+      tooltipStyle: {display: 'none'},
+      resetStyle: {visibility: 'hidden'},
     };
     this.canvasRef = React.createRef();
     this.tooltipRef = React.createRef();
@@ -138,7 +53,7 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidMount() {
-    this.maybeFetchJSON();
+    // this.maybeFetchJSON();
 
     this.canvas = this.canvasRef.current;
     this.ctx = this.canvas.getContext('2d');
@@ -149,29 +64,28 @@ class FlameGraphRenderer extends React.Component {
     this.query = "";
 
     window.addEventListener('resize', this.resizeHandler);
-
-    this.props.shortcut.registerShortcut(this.reset, ['escape'], 'Reset', 'Reset Flamegraph View');
   }
 
   componentDidUpdate(prevProps) {
-    this.maybeFetchJSON()
-    if (this.props.flamebearer && prevProps.flamebearer != this.props.flamebearer) {
-      this.updateData(this.props.flamebearer);
-    }
+
+    // this.maybeFetchJSON()
+    // if(this.props.flamebearer && prevProps.flamebearer != this.props.flamebearer) {
+    //   this.updateData(this.props.flamebearer);
+    // }
   }
 
-  maybeFetchJSON() {
-    let url = this.props.renderURL;
-    if (this.lastRequestedURL != url) {
-      this.lastRequestedURL = url
-      this.props.fetchJSON(url);
-    }
-  }
+  // maybeFetchJSON(){
+  //   let url = this.props.renderURL;
+  //   if(this.lastRequestedURL != url) {
+  //     this.lastRequestedURL = url
+  //     this.props.fetchJSON(url);
+  //   }
+  // }
 
   roundRect(ctx, x, y, w, h, radius) {
-    radius = Math.min(w / 2, radius);
+    radius = Math.min(w/2, radius);
     if (radius < 1) {
-      return ctx.rect(x, y, w, h);
+      return ctx.rect(x,y,w,h);
     }
     var r = x + w;
     var b = y + h;
@@ -202,8 +116,14 @@ class FlameGraphRenderer extends React.Component {
     this.updateResetStyle();
   }
 
-  updateData(data) {
-    let { names, levels, numTicks } = data;
+  updateData = () => {
+    if (!this.props.flamebearer) { return };
+
+    if(this.props.shortcut) {
+      this.props.shortcut.registerShortcut(this.reset, ['escape'], 'Reset', 'Reset Flamegraph View');
+    }
+
+    let { names, levels, numTicks } = this.props.flamebearer;
     this.names = names;
     let allFilenames = this.names.map((stackTrace) => {
       return this.getFilenameFromStackTrace(stackTrace)
@@ -235,11 +155,11 @@ class FlameGraphRenderer extends React.Component {
   }
 
   getFilenameFromStackTrace(stackTrace) {
-    if (stackTrace.length == 0) {
+    if(stackTrace.length == 0) {
       return stackTrace
     } else {
       let fullStackGroups = stackTrace.match(/^(?<path>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/)
-      if (fullStackGroups) {
+      if(fullStackGroups) {
         return fullStackGroups.groups.filename
       } else {
         return stackTrace
@@ -268,11 +188,11 @@ class FlameGraphRenderer extends React.Component {
 
   xyToBar = (x, y) => {
     const i = Math.floor(y / PX_PER_LEVEL) + this.topLevel;
-    if (i >= 0 && i < this.levels.length) {
+    if(i >= 0 && i < this.levels.length) {
       const j = this.binarySearchLevel(x, this.levels[i]);
       return { i, j };
     }
-    return { i: 0, j: 0 };
+    return {i:0,j:0};
   }
 
   clickHandler = (e) => {
@@ -294,7 +214,7 @@ class FlameGraphRenderer extends React.Component {
   }
 
   renderCanvas = () => {
-    if (!this.names) {
+    if(!this.names) {
       return;
     }
 
@@ -330,21 +250,22 @@ class FlameGraphRenderer extends React.Component {
         let numBarTicks = level[j + 1];
 
         // For this particular bar, there is a match
-        const inQuery = this.query && (names[level[j + 2]].indexOf(this.query) >= 0) || false;
-
+        let queryExists = this.query.length > 0;
+        let nodeIsInQuery = this.query && (names[level[j + 2]].indexOf(this.query) >= 0) || false;
         // merge very small blocks into big "collapsed" ones for performance
-        const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
+        let collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
+
         // const collapsed = false;
         if (collapsed) {
-          while (
-            j < level.length - 3 &&
-            barIndex + numBarTicks === level[j + 3] &&
-            level[j + 4] * this.pxPerTick <= COLLAPSE_THRESHOLD &&
-            (inQuery === (this.query && (names[level[j + 5]].indexOf(this.query) >= 0) || false))
-          ) {
-            j += 3;
-            numBarTicks += level[j + 1];
-          }
+            while (
+                j < level.length - 3 &&
+                barIndex + numBarTicks === level[j + 3] &&
+                level[j + 4] * this.pxPerTick <= COLLAPSE_THRESHOLD &&
+                (nodeIsInQuery === (this.query && (names[level[j + 5]].indexOf(this.query) >= 0) || false))
+            ) {
+                j += 3;
+                numBarTicks += level[j + 1];
+            }
         }
         // ticks are samples
         const sw = numBarTicks * this.pxPerTick - (collapsed ? 0 : 0.5);
@@ -358,11 +279,19 @@ class FlameGraphRenderer extends React.Component {
         const ratio = numBarTicks / numTicks;
 
         const a = this.selectedLevel > i ? 0.33 : 1;
-        if (!collapsed) {
-          this.ctx.fillStyle = inQuery ? '#48CE73' : colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), this.filenames, a);
+
+        let nodeColor;
+        if (collapsed) {
+          nodeColor = colorGreyscale(200, 0.66);
+        } else if (queryExists && nodeIsInQuery) {
+          nodeColor = HIGHLIGHT_NODE_COLOR;
+        } else if (queryExists && !nodeIsInQuery) {
+          nodeColor = colorGreyscale(200, 0.66);
         } else {
-          this.ctx.fillStyle = inQuery ? '#48CE73' : colorGreyscale(200, 0.66);
+          nodeColor = colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), a);
         }
+
+        this.ctx.fillStyle = nodeColor;
         this.ctx.fill();
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
@@ -400,10 +329,10 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       highlightStyle: {
         display: 'block',
-        left: (this.canvas.offsetLeft + x) + 'px',
-        top: (this.canvas.offsetTop + y) + 'px',
-        width: sw + 'px',
-        height: PX_PER_LEVEL + 'px',
+        left:    (this.canvas.offsetLeft + x) + 'px',
+        top:     (this.canvas.offsetTop + y) + 'px',
+        width:   sw + 'px',
+        height:  PX_PER_LEVEL + 'px',
       },
       tooltipStyle: {
         display: 'block',
@@ -418,16 +347,18 @@ class FlameGraphRenderer extends React.Component {
   mouseOutHandler = () => {
     this.canvas.style.cursor = '';
     this.setState({
-      highlightStyle: {
+      highlightStyle : {
         display: 'none',
       },
-      tooltipStyle: {
+      tooltipStyle : {
         display: 'none',
       }
     })
   }
 
   render() {
+    this.updateData();
+
     return (
       <div className="canvas-renderer">
         <div className="canvas-container">
@@ -451,7 +382,23 @@ class FlameGraphRenderer extends React.Component {
 
 }
 
+const mapStateToProps = state => ({
+  ...state,
+});
+
+// const mapDispatchToProps = dispatch => ({
+//   actions: bindActionCreators(
+//       {
+//         fetchNames,
+//         receiveJSON,
+//       },
+//       dispatch,
+//   ),
+// });
+
 export default connect(
-  (x) => x,
-  { fetchJSON }
-)(withShortcut(FlameGraphRenderer));
+  mapStateToProps,
+  // mapDispatchToProps,
+)(FlameGraphRenderer);
+
+

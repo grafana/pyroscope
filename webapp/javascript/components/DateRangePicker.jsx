@@ -1,12 +1,15 @@
 import React from 'react';
 import { connect } from "react-redux";
-import { setDateRange } from "../redux/actions";
+import { setDateRange, receiveJSON, setFrom, setUntil} from "../redux/actions";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClock, faSyncAlt } from '@fortawesome/free-solid-svg-icons'
 
 import OutsideClickHandler from 'react-outside-click-handler';
 import moment from 'moment';
+import { bindActionCreators } from "redux";
+import { buildRenderURL, fetchJSON } from '../util/update_requests';
+import { createSemicolonClassElement } from 'typescript';
 
 
 const defaultPresets = [
@@ -45,24 +48,33 @@ const multiplierMapping = {
 class DateRangePicker extends React.Component {
   constructor(props) {
     super(props);
+
+    this.buildRenderURL = buildRenderURL.bind(this);
+    this.fetchJSON = fetchJSON.bind(this);
+
     this.presets = defaultPresets;
     this.state = {
-      from: props.from,
-      until: props.until,
       opened: false
     };
   }
 
+  componentDidMount() {
+    this.refreshFlameGraphData();
+  }
+
   updateFrom = (from) => {
-    this.setState({ from });
+    this.props.actions.setFrom(from);
   };
 
   updateUntil = (until) => {
-    this.setState({ until });
-  };
+    this.props.actions.setUntil(until);
+  }
 
-  updateData = () => {
-    this.props.setDateRange(this.state.from, this.state.until);
+  refreshFlameGraphData = () => {
+    let renderURL = this.buildRenderURL();
+    console.log('refreshFlameGraphData in date picker: ', this);
+    console.log('refreshFlameGraphData in date picker: ', renderURL);
+    this.fetchJSON(renderURL);
   };
 
   humanReadableRange = () => {
@@ -87,12 +99,13 @@ class DateRangePicker extends React.Component {
   };
 
   selectPreset = ({label, from, until }) => {
-    this.setState({
-      from,
-      until
-    }, () => {
-      this.updateData();
-    });
+    this.props.actions.setDateRange(from, until)
+      .then(() => {
+        console.log('selecting preset', label, from, until);
+        console.log('state: ', this.state);
+        this.refreshFlameGraphData();
+      });
+
     this.hideDropdown();
   };
 
@@ -117,7 +130,7 @@ class DateRangePicker extends React.Component {
                 return <div key={i} className="drp-preset-column">
                   {
                     arr.map( (x) => {
-                      return <button className={`drp-preset ${x.label == this.humanReadableRange() ? "active" : ""}`} key={x.label} onClick={() => {this.selectPreset(x)}}>{x.label}</button>;
+                      return <button className={`drp-preset ${x.label == this.humanReadableRange() ? "active" : ""}`} key={x.label} onClick={ () => this.selectPreset(x) }>{x.label}</button>;
                     })
                   }
                 </div>
@@ -129,7 +142,7 @@ class DateRangePicker extends React.Component {
             <input
               className="followed-by-btn"
               onChange={(e) => this.updateFrom(e.target.value)}
-              onBlur={this.updateData}
+              onBlur={this.refreshFlameGraphData}
               value={this.state.from}
             /><button className="drp-calendar-btn btn">
               <FontAwesomeIcon icon={faClock} />
@@ -140,7 +153,7 @@ class DateRangePicker extends React.Component {
             <input
               className="followed-by-btn"
               onChange={(e) => this.updateUntil(e.target.value)}
-              onBlur={this.updateData}
+              onBlur={this.refreshFlameGraphData}
               value={this.state.until}
             /><button className="drp-calendar-btn btn">
               <FontAwesomeIcon icon={faClock} />
@@ -153,7 +166,23 @@ class DateRangePicker extends React.Component {
   }
 }
 
+const mapStateToProps = state => ({
+  ...state,
+});
+
+const mapDispatchToProps = dispatch => ({
+  actions: bindActionCreators(
+    {
+      setDateRange,
+      receiveJSON,
+      setFrom,
+      setUntil,
+    },
+    dispatch,
+  ),
+});
+
 export default connect(
-  (x) => x,
-  { setDateRange }
+  mapStateToProps,
+  mapDispatchToProps,
 )(DateRangePicker);

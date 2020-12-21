@@ -5,7 +5,6 @@ import "react-dom";
 import Spinner from "react-svg-spinner";
 
 import DateRangePicker from "./DateRangePicker";
-import DateRangePicker2 from "./DateRangePicker2";
 import DownloadButton from './DownloadButton';
 import RefreshButton from './RefreshButton';
 import Label from "./Label";
@@ -68,7 +67,7 @@ class Header extends React.Component {
       {/* &nbsp; */}
       {/* <ZoomOutButton/> */}
       &nbsp;
-      <DateRangePicker2 />
+      <DateRangePicker />
     </div>
   }
 }

@@ -6,14 +6,13 @@ import store from "./redux/store";
 
 import { ShortcutProvider } from 'react-keybind'
 
-// import PyroscopeApp from "./components/PyroscopeApp";
-import PyroscopeApp2 from "./components/PyroscopeApp2";
+import PyroscopeApp from "./components/PyroscopeApp";
 
 
 ReactDOM.render(
   <Provider store={store}>
     <ShortcutProvider>
-      <PyroscopeApp2/>
+      <PyroscopeApp/>
     </ShortcutProvider>
   </Provider>,
   document.getElementById('root')

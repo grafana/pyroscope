@@ -7,11 +7,15 @@ import {withShortcut} from "react-keybind";
 
 import FlameGraphRenderer from "./FlameGraphRenderer";
 import TimelineChart from "./TimelineChart";
+import ApiConnectedComponent from "./ApiConnectedComponent";
 import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
 
-import { fetchNames } from "../redux/actions";
+import { receiveNames, receiveJSON } from "../redux/actions";
+import { bindActionCreators } from "redux";
+import { buildRenderURL, fetchJSON, fetchNames } from '../util/update_requests';
+
 
 const modalStyle = {
   overlay: {
@@ -23,17 +27,27 @@ const modalStyle = {
   },
 };
 
-class PyroscopeApp extends React.Component {
-  constructor(props) {
-    super(props);
+
+
+let currentJSONController = null;
+
+class PyroscopeApp extends ApiConnectedComponent {
+  constructor() {
+    super();
+
+    // this.fetchJSON = fetchJSON.bind(this);
+    // this.fetchNames = fetchNames.bind(this);
+    // this.buildRenderURL = buildRenderURL.bind(this);
+
     this.state = {
       shortcutsModalOpen: false
     };
   }
 
   componentDidMount = () => {
-    this.props.fetchNames();
-    this.props.shortcut.registerShortcut(this.showShortcutsModal, ['shift+?'], 'Shortcuts', 'Show Keyboard Shortcuts Modal');
+    let renderURL = this.buildRenderURL();
+    this.fetchJSON(renderURL);
+    this.fetchNames()
   }
 
   showShortcutsModal = () => {
@@ -44,27 +58,8 @@ class PyroscopeApp extends React.Component {
     this.setState({shortcutsModalOpen: false});
   }
 
-  renderURL() {
-    let width = document.body.clientWidth - 30;
-    let url = `/render?from=${encodeURIComponent(this.props.from)}&until=${encodeURIComponent(this.props.until)}&width=${width}`;
-    let nameLabel = this.props.labels.find(x => x.name == "__name__");
-    if (nameLabel) {
-      url += "&name="+nameLabel.value+"{";
-    } else {
-      url += "&name=unknown{";
-    }
-
-    url += this.props.labels.filter(x => x.name != "__name__").map(x => `${x.name}=${x.value}`).join(",");
-    url += "}";
-    if(this.props.refreshToken){
-      url += `&refreshToken=${this.props.refreshToken}`
-    }
-    url += `&max-nodes=${this.props.maxNodes}`
-    return url;
-  }
-
   render() {
-    let renderURL = this.renderURL();
+    let renderURL = this.buildRenderURL();
     // See docs here: https://github.com/flot/flot/blob/master/API.md
     let flotOptions = {
       margin: {
@@ -113,7 +108,7 @@ class PyroscopeApp extends React.Component {
       <div>
         <Header renderURL={renderURL}/>
         <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
-        <FlameGraphRenderer renderURL={renderURL+"&format=json"}/>
+        <FlameGraphRenderer />
         <Modal
           isOpen={this.state.shortcutsModalOpen}
           style={modalStyle}
@@ -128,7 +123,21 @@ class PyroscopeApp extends React.Component {
   }
 }
 
+const mapStateToProps = state => ({
+  ...state,
+});
+
+const mapDispatchToProps = dispatch => ({
+  actions: bindActionCreators(
+      {
+        receiveNames,
+        receiveJSON,
+      },
+      dispatch,
+  ),
+});
+
 export default connect(
-  (x) => x,
-  { fetchNames }
-)(withShortcut(PyroscopeApp));
+  mapStateToProps,
+  mapDispatchToProps,
+)(PyroscopeApp);
