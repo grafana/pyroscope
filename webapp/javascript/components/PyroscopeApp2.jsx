@@ -8,6 +8,7 @@ import {withShortcut} from "react-keybind";
 // import FlameGraphRenderer from "./FlameGraphRenderer";
 import FlameGraphRenderer2 from "./FlameGraphRenderer2";
 // import TimelineChart from "./TimelineChart";
+import ApiConnectedComponent from "./ApiConnectedComponent";
 import TimelineChart2 from "./TimelineChart2";
 import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
@@ -32,13 +33,13 @@ const modalStyle = {
 
 let currentJSONController = null;
 
-class PyroscopeApp extends React.Component {
-  constructor(props) {
-    super(props);
+class PyroscopeApp extends ApiConnectedComponent {
+  constructor() {
+    super();
 
-    this.fetchJSON = fetchJSON.bind(this);
-    this.fetchNames = fetchNames.bind(this);
-    this.buildRenderURL = buildRenderURL.bind(this);
+    // this.fetchJSON = fetchJSON.bind(this);
+    // this.fetchNames = fetchNames.bind(this);
+    // this.buildRenderURL = buildRenderURL.bind(this);
 
     this.state = {
       shortcutsModalOpen: false
@@ -49,7 +50,6 @@ class PyroscopeApp extends React.Component {
     let renderURL = this.buildRenderURL();
     this.fetchJSON(renderURL);
     this.fetchNames()
-    // this.props.shortcut.registerShortcut(this.showShortcutsModal, ['shift+?'], 'Shortcuts', 'Show Keyboard Shortcuts Modal');
   }
 
   showShortcutsModal = () => {

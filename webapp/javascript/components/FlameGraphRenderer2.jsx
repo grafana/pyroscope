@@ -116,7 +116,7 @@ class FlameGraphRenderer extends React.Component {
     this.updateResetStyle();
   }
 
-  updateData() {
+  updateData = () => {
     if (!this.props.flamebearer) { return };
 
     if(this.props.shortcut) {
