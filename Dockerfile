@@ -1,4 +1,9 @@
-# rust deps build
+#                 _
+#                | |
+#  _ __ _   _ ___| |_
+# | '__| | | / __| __|
+# | |  | |_| \__ \ |_
+# |_|   \__,_|___/\__|
 
 FROM alpine:3.12 as rust-builder
 
@@ -21,7 +26,14 @@ ENV RUSTFLAGS="-C target-feature=+crt-static"
 RUN /root/.cargo/bin/cargo build --release --target $(uname -m)-unknown-linux-musl
 RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a /opt/rustdeps/librustdeps.a
 
-# assets build
+
+#                     _
+#                    | |
+#   __ _ ___ ___  ___| |_ ___
+#  / _` / __/ __|/ _ \ __/ __|
+# | (_| \__ \__ \  __/ |_\__ \
+#  \__,_|___/___/\___|\__|___/
+
 # doesn't matter what arch it is on, hence --platform
 FROM --platform=$BUILDPLATFORM node:14.15.1-alpine3.12 as js-builder
 
@@ -35,12 +47,19 @@ COPY webapp ./webapp
 
 RUN make assets
 
-# go build
+
+#              _
+#             | |
+#   __ _  ___ | | __ _ _ __   __ _
+#  / _` |/ _ \| |/ _` | '_ \ / _` |
+# | (_| | (_) | | (_| | | | | (_| |
+#  \__, |\___/|_|\__,_|_| |_|\__, |
+#   __/ |                     __/ |
+#  |___/                     |___/
 
 FROM golang:1.15.1-alpine3.12 as go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev
-# RUN apt-get update && apt-get install -y make git zstd gcc g++ libc-dev libunwind-dev && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/pyroscope
 
@@ -59,20 +78,25 @@ COPY Makefile ./
 
 RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags \"-static\"" make build-release
 
-# final image
+
+#   __ _             _   _
+#  / _(_)           | | (_)
+# | |_ _ _ __   __ _| |  _ _ __ ___   __ _  __ _  ___
+# |  _| | '_ \ / _` | | | | '_ ` _ \ / _` |/ _` |/ _ \
+# | | | | | | | (_| | | | | | | | | | (_| | (_| |  __/
+# |_| |_|_| |_|\__,_|_| |_|_| |_| |_|\__,_|\__, |\___|
+#                                           __/ |
+#                                          |___/
 
 FROM alpine:3.12
-# FROM debian:buster
 
 LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 
 WORKDIR /var/lib/pyroscope
 
 RUN apk add --no-cache ca-certificates bash tzdata openssl musl-utils
-# RUN apt-get update && apt-get install -y ca-certificates bash tzdata openssl && rm -rf /var/lib/apt/lists/*
 
 RUN addgroup -S pyroscope && adduser -S pyroscope -G pyroscope
-# RUN addgroup --system pyroscope && adduser --system pyroscope && adduser pyroscope pyroscope
 
 RUN mkdir -p \
         "/var/lib/pyroscope" \
@@ -95,4 +119,4 @@ RUN chmod 777 /usr/bin/pyroscope
 
 USER pyroscope
 EXPOSE 8080/tcp
-ENTRYPOINT [ "/usr/bin/pyroscope", "server" ]
+ENTRYPOINT [ "/usr/bin/pyroscope" ]

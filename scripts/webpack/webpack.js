@@ -7,10 +7,6 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
-let buildFlags = require('child_process')
-  .execSync('scripts/generate-build-flags.sh ')
-  .toString();
-
 module.exports = (env = {}) => {
   return {
     target: 'web',

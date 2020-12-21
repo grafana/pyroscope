@@ -10,4 +10,7 @@ pkged.go
 /scripts/packages/rpm-password.txt
 /scripts/packages/sign-rpm
 /scripts/packages/rpmmacros
+/scripts/packages/release.rb
+/scripts/packages/homebrew
+/scripts/packages/git-info
 /scripts/packages/packages.manifest.json
