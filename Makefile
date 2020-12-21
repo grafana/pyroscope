@@ -24,6 +24,10 @@ all: build
 build:
 	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
 
+.PHONY: build-release
+build-release: embedded-assets
+	EMBEDDED_ASSETS=true $(MAKE) build
+
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
 	cd third_party/rustdeps && cargo build --release
@@ -90,3 +94,4 @@ clean:
 update-contributors:
 	$(shell yarn bin contributor-faces) .
 
+scripts/generate-git-info.sh > scripts/packages/git-info
