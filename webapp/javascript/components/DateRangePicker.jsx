@@ -9,6 +9,8 @@ import OutsideClickHandler from 'react-outside-click-handler';
 import moment from 'moment';
 import { bindActionCreators } from "redux";
 import { buildRenderURL, fetchJSON } from '../util/update_requests';
+import ApiConnectedComponent from "./ApiConnectedComponent";
+
 import { createSemicolonClassElement } from 'typescript';
 
 
@@ -45,12 +47,9 @@ const multiplierMapping = {
   'y': "year",
 }
 
-class DateRangePicker extends React.Component {
+class DateRangePicker extends ApiConnectedComponent {
   constructor(props) {
     super(props);
-
-    this.buildRenderURL = buildRenderURL.bind(this);
-    this.fetchJSON = fetchJSON.bind(this);
 
     this.presets = defaultPresets;
     this.state = {
@@ -59,7 +58,7 @@ class DateRangePicker extends React.Component {
   }
 
   componentDidMount() {
-    this.refreshFlameGraphData();
+    this.refreshJson()
   }
 
   updateFrom = (from) => {
@@ -69,13 +68,6 @@ class DateRangePicker extends React.Component {
   updateUntil = (until) => {
     this.props.actions.setUntil(until);
   }
-
-  refreshFlameGraphData = () => {
-    let renderURL = this.buildRenderURL();
-    console.log('refreshFlameGraphData in date picker: ', this);
-    console.log('refreshFlameGraphData in date picker: ', renderURL);
-    this.fetchJSON(renderURL);
-  };
 
   humanReadableRange = () => {
     if (this.props.until == "now") {
@@ -103,7 +95,7 @@ class DateRangePicker extends React.Component {
       .then(() => {
         console.log('selecting preset', label, from, until);
         console.log('state: ', this.state);
-        this.refreshFlameGraphData();
+        this.refreshJson();;
       });
 
     this.hideDropdown();
@@ -142,8 +134,8 @@ class DateRangePicker extends React.Component {
             <input
               className="followed-by-btn"
               onChange={(e) => this.updateFrom(e.target.value)}
-              onBlur={this.refreshFlameGraphData}
-              value={this.state.from}
+              onBlur={this.refreshJson}
+              value={this.props.from}
             /><button className="drp-calendar-btn btn">
               <FontAwesomeIcon icon={faClock} />
               Update
@@ -153,8 +145,8 @@ class DateRangePicker extends React.Component {
             <input
               className="followed-by-btn"
               onChange={(e) => this.updateUntil(e.target.value)}
-              onBlur={this.refreshFlameGraphData}
-              value={this.state.until}
+              onBlur={this.refreshJson}
+              value={this.props.until}
             /><button className="drp-calendar-btn btn">
               <FontAwesomeIcon icon={faClock} />
               Update

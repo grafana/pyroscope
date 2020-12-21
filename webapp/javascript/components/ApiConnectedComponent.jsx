@@ -10,6 +10,15 @@ class ApiConnectedComponent extends React.Component {
     this.fetchNames = fetchNames.bind(this);
     this.buildRenderURL = buildRenderURL.bind(this);
   }
+
+  refreshNames = () => {
+    this.fetchNames()
+  }
+
+  refreshJson = () => {
+    let renderUrl = this.buildRenderURL();
+    this.fetchJSON(renderUrl);
+  }
 }
 
 
