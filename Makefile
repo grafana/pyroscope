@@ -11,7 +11,7 @@ EMBEDDED_ASSETS ?= ""
 EXTRA_LDFLAGS ?= ""
 
 ifndef $(GOPATH)
-	GOPATH=$(shell go env GOPATH)
+	GOPATH=$(shell go env GOPATH || true)
 	export GOPATH
 endif
 
@@ -91,5 +91,3 @@ clean:
 .PHONY: update-contributors
 update-contributors:
 	$(shell yarn bin contributor-faces) .
-
-scripts/generate-git-info.sh > scripts/packages/git-info
