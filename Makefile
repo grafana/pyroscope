@@ -8,6 +8,7 @@ else
 endif
 
 EMBEDDED_ASSETS ?= ""
+EMBEDDED_ASSETS_DEPS ?= "assets"
 EXTRA_LDFLAGS ?= ""
 
 ifndef $(GOPATH)
