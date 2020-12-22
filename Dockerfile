@@ -45,7 +45,7 @@ COPY package.json package-lock.json .babelrc Makefile ./
 COPY scripts ./scripts
 COPY webapp ./webapp
 
-RUN make assets
+RUN make assets-release
 
 
 #              _

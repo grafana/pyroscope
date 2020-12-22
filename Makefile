@@ -8,7 +8,7 @@ else
 endif
 
 EMBEDDED_ASSETS ?= ""
-EMBEDDED_ASSETS_DEPS ?= "assets"
+EMBEDDED_ASSETS_DEPS ?= "assets-release"
 EXTRA_LDFLAGS ?= ""
 
 ifndef $(GOPATH)
@@ -49,11 +49,15 @@ install-web-dependencies:
 
 .PHONY: assets
 assets: install-web-dependencies
-	$(shell yarn bin webpack) --config scripts/webpack/webpack.js
+	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js
 
 .PHONY: assets-watch
 assets-watch: install-web-dependencies
-	$(shell yarn bin webpack) --config scripts/webpack/webpack.js --watch
+	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js --watch
+
+.PHONY: assets
+assets-release: install-web-dependencies
+	$(shell yarn bin webpack) --config scripts/webpack/webpack.prod.js
 
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS))

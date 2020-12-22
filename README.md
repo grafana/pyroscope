@@ -12,16 +12,12 @@ Pyroscope is an open source continuous profiling platform. It profiles your back
 * snappy UI
 
 
-## Architecture
-
-![Architecture Diagram](.github/markdown-images/architecture.svg)
-
 ## Currently Available Integrations
 
 * [x] ruby / rails
-* [x] python (partially working)
+* [x] python
+* [x] golang (coming soon)
 * [ ] linux eBPF (coming soon)
-* [ ] golang (coming soon)
 
 
 ## Downloads
