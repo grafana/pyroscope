@@ -1,7 +1,7 @@
 # Pyroscope
 
 [![Tests Status](https://github.com/pyroscope-io/pyroscope/workflows/Tests/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3ATests)
-[![Release Status](https://github.com/pyroscope-io/pyroscope/workflows/Release/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3ARelease)
+[![Join us on Slack](/.github/markdown-images/join-us-on-slack.svg)](https://pyroscope.io/slack)
 
 
 # What is Pyroscope?
