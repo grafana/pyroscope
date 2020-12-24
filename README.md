@@ -1,6 +1,7 @@
 # Pyroscope
 
 [![Tests Status](https://github.com/pyroscope-io/pyroscope/workflows/Tests/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3ATests)
+
 [![Join us on Slack](/.github/markdown-images/join-us-on-slack.svg)](https://pyroscope.io/slack)
 
 
