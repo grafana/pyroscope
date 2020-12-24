@@ -30,7 +30,7 @@ import {numberWithCommas, colorBasedOnName, colorGreyscale} from '../util/format
 import {bindActionCreators} from "redux";
 
 
-import { withShortcut, ShortcutProvider, ShortcutConsumer } from 'react-keybind'
+import { withShortcut, ShortcutProvider, ShortcutConsumer } from 'react-keybind';
 
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
@@ -49,12 +49,9 @@ class FlameGraphRenderer extends React.Component {
     };
     this.canvasRef = React.createRef();
     this.tooltipRef = React.createRef();
-    // this.getFilenameFromStackTrace = this.getFilenameFromStackTrace.bind(this);
   }
 
   componentDidMount() {
-    // this.maybeFetchJSON();
-
     this.canvas = this.canvasRef.current;
     this.ctx = this.canvas.getContext('2d');
     this.topLevel = 0; //Todo: could be a constant
@@ -64,24 +61,18 @@ class FlameGraphRenderer extends React.Component {
     this.query = "";
 
     window.addEventListener('resize', this.resizeHandler);
-    window.addEventListener('focus', this.render);
+    window.addEventListener('focus', this.focusHandler);
+
+    if(this.props.shortcut) {
+      this.props.shortcut.registerShortcut(this.reset, ['escape'], 'Reset', 'Reset Flamegraph View');
+    }
   }
 
   componentDidUpdate(prevProps) {
-
-    // this.maybeFetchJSON()
-    // if(this.props.flamebearer && prevProps.flamebearer != this.props.flamebearer) {
-    //   this.updateData(this.props.flamebearer);
-    // }
+    if(this.props.flamebearer && prevProps.flamebearer != this.props.flamebearer) {
+      this.updateData(this.props.flamebearer);
+    }
   }
-
-  // maybeFetchJSON(){
-  //   let url = this.props.renderURL;
-  //   if(this.lastRequestedURL != url) {
-  //     this.lastRequestedURL = url
-  //     this.props.fetchJSON(url);
-  //   }
-  // }
 
   roundRect(ctx, x, y, w, h, radius) {
     radius = Math.min(w/2, radius);
@@ -118,12 +109,6 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateData = () => {
-    if (!this.props.flamebearer) { return };
-
-    if(this.props.shortcut) {
-      this.props.shortcut.registerShortcut(this.reset, ['escape'], 'Reset', 'Reset Flamegraph View');
-    }
-
     let { names, levels, numTicks } = this.props.flamebearer;
     this.names = names;
     let allFilenames = this.names.map((stackTrace) => {
@@ -206,8 +191,14 @@ class FlameGraphRenderer extends React.Component {
   }
 
   resizeHandler = () => {
+    // this is here to debounce resize events (see: https://css-tricks.com/debouncing-throttling-explained-examples/)
+    //   because rendering is expensive
     clearTimeout(this.resizeFinish);
-    this.resizeFinish = setTimeout(this.render, 100);
+    this.resizeFinish = setTimeout(this.renderCanvas, 100);
+  }
+
+  focusHandler = () => {
+    this.renderCanvas();
   }
 
   tickToX = (i) => {
@@ -327,6 +318,12 @@ class FlameGraphRenderer extends React.Component {
     const tooltipEl = this.tooltipRef.current;
     const numBarTicks = level[j + 1];
     const percent = Math.round(10000 * numBarTicks / this.numTicks) / 100;
+
+    // a little hacky but this is here so that we can get tooltipWidth after text is updated.
+    const tooltipTitle = this.names[level[j + 2]];
+    tooltipEl.children[0].innerText = tooltipTitle;
+    const tooltipWidth = tooltipEl.clientWidth;
+
     this.setState({
       highlightStyle: {
         display: 'block',
@@ -337,11 +334,11 @@ class FlameGraphRenderer extends React.Component {
       },
       tooltipStyle: {
         display: 'block',
-        left: (Math.min(e.nativeEvent.offsetX + 15 + tooltipEl.clientWidth, this.graphWidth) - tooltipEl.clientWidth) + 'px',
+        left: (Math.min(e.nativeEvent.offsetX + 15 + tooltipWidth, this.graphWidth) - tooltipWidth) + 'px',
         top: (this.canvas.offsetTop + e.nativeEvent.offsetY + 12) + 'px',
       },
-      tooltipText1: this.names[level[j + 2]],
-      tooltipText2: `${percent}%, ${numberWithCommas(numBarTicks)} samples`,
+      tooltipTitle:    tooltipTitle,
+      tooltipSubtitle: `${percent}%, ${numberWithCommas(numBarTicks)} samples`,
     });
   }
 
@@ -358,8 +355,6 @@ class FlameGraphRenderer extends React.Component {
   }
 
   render = () => {
-    this.updateData();
-
     return (
       <div className="canvas-renderer">
         <div className="canvas-container">
@@ -374,8 +369,8 @@ class FlameGraphRenderer extends React.Component {
         </div>
         <div className="flamegraph-highlight" style={this.state.highlightStyle}></div>
         <div className="flamegraph-tooltip" ref={this.tooltipRef} style={this.state.tooltipStyle}>
-          <div className="flamegraph-tooltip-name">{this.state.tooltipText1}</div>
-          <div>{this.state.tooltipText2}</div>
+          <div className="flamegraph-tooltip-name">{this.state.tooltipTitle}</div>
+          <div>{this.state.tooltipSubtitle}</div>
         </div>
       </div>
     );
@@ -387,19 +382,8 @@ const mapStateToProps = state => ({
   ...state,
 });
 
-// const mapDispatchToProps = dispatch => ({
-//   actions: bindActionCreators(
-//       {
-//         fetchNames,
-//         receiveJSON,
-//       },
-//       dispatch,
-//   ),
-// });
-
 export default connect(
   mapStateToProps,
-  // mapDispatchToProps,
-)(FlameGraphRenderer);
+)(withShortcut(FlameGraphRenderer));
 
 

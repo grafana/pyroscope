@@ -154,9 +154,6 @@ module.exports = {
       $: 'jquery',
       jQuery: 'jquery',
     }),
-    new CleanWebpackPlugin({
-      // cleanStaleWebpackAssets: false
-    }),
     new HtmlWebpackPlugin({
       filename: path.resolve(__dirname, '../../webapp/public/index.html'),
       template: path.resolve(__dirname, '../../webapp/templates/index.html'),

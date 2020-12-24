@@ -10,7 +10,7 @@ import ApiConnectedComponent from "./ApiConnectedComponent";
 import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
-
+import { withShortcut, ShortcutProvider, ShortcutConsumer } from 'react-keybind';
 import { receiveNames, receiveJSON } from "../redux/actions";
 import { bindActionCreators } from "redux";
 
@@ -40,6 +40,7 @@ class PyroscopeApp extends ApiConnectedComponent {
   componentDidMount = () => {
     this.refreshNames();
     this.refreshJson();
+    this.props.shortcut.registerShortcut(this.showShortcutsModal, ['shift+?'], 'Shortcuts', 'Show Keyboard Shortcuts Modal');
   }
 
   showShortcutsModal = () => {
@@ -133,4 +134,4 @@ const mapDispatchToProps = dispatch => ({
 export default connect(
   mapStateToProps,
   mapDispatchToProps,
-)(PyroscopeApp);
+)(withShortcut(PyroscopeApp));
