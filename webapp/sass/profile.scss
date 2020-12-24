@@ -150,7 +150,7 @@ input {
 }
 
 body {
-  min-width: 1024px;
+  min-width: 1430px;
 }
 
 // .timeline-wrapper {
@@ -213,13 +213,12 @@ body {
 .footer {
   display: block;
   // display: flex;
-  margin: 20px 15px;
+  padding: 20px 15px;
   text-align: center;
   .footer-space-filler {
     // flex-grow: 1;
   }
 }
-
 
 .navbar, .footer {
   a {
@@ -230,3 +229,19 @@ body {
     }
   }
 }
+
+html, body, #root, .pyroscope-app {
+  height: 100%;
+  min-height: 100%;
+}
+
+.pyroscope-app {
+  display: flex;
+  flex-direction: column;
+}
+
+.main-wrapper {
+  flex: 1 0 auto;
+}
+
+

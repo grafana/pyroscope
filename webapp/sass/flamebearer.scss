@@ -31,20 +31,13 @@
 
 .flamegraph-tooltip-name {
   font-weight: 500;
-
-
-
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-#highlight {
+.flamegraph-highlight {
   position: absolute;
   pointer-events: none;
   background: #ffffff40;
-}
-
-#tooltip {
-
 }

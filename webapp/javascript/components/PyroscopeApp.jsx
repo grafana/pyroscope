@@ -96,18 +96,20 @@ class PyroscopeApp extends ApiConnectedComponent {
     timeline = timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1]);
     let flotData = [timeline];
     return (
-      <div>
-        <Header renderURL={this.buildRenderURL()}/>
-        <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
-        <FlameGraphRenderer />
-        <Modal
-          isOpen={this.state.shortcutsModalOpen}
-          style={modalStyle}
-          appElement={document.getElementById('root')}
-        >
-          <div className="modal-close-btn" onClick={this.closeShortcutsModal}></div>
-          <ShortcutsModal closeModal={this.closeShortcutsModal}/>
-        </Modal>
+      <div className="pyroscope-app">
+        <div className="main-wrapper">
+          <Header renderURL={this.buildRenderURL()}/>
+          <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
+          <FlameGraphRenderer />
+          <Modal
+            isOpen={this.state.shortcutsModalOpen}
+            style={modalStyle}
+            appElement={document.getElementById('root')}
+          >
+            <div className="modal-close-btn" onClick={this.closeShortcutsModal}></div>
+            <ShortcutsModal closeModal={this.closeShortcutsModal}/>
+          </Modal>
+        </div>
         <Footer/>
       </div>
     );

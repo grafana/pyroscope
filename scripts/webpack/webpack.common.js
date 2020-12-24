@@ -6,6 +6,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const {BundleAnalyzerPlugin} = require('webpack-bundle-analyzer');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   target: 'web',
@@ -16,6 +17,7 @@ module.exports = {
   },
 
   output: {
+    publicPath: '',
     path: path.resolve(__dirname, '../../webapp/public/build'),
     filename: '[name].[hash].js',
   },
@@ -38,10 +40,6 @@ module.exports = {
     children: false,
     warningsFilter: /export .* was not found in/,
     source: false,
-  },
-
-  node: {
-    fs: 'empty',
   },
 
   watchOptions: {
@@ -184,5 +182,13 @@ module.exports = {
     //   analyzerPort: 8889
     // }),
     new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
+    new CopyPlugin({
+      patterns: [
+        {
+          from: 'webapp/images',
+          to: 'images'
+        }
+      ]
+    }),
   ],
 };

@@ -64,6 +64,7 @@ class FlameGraphRenderer extends React.Component {
     this.query = "";
 
     window.addEventListener('resize', this.resizeHandler);
+    window.addEventListener('focus', this.render);
   }
 
   componentDidUpdate(prevProps) {
@@ -356,7 +357,7 @@ class FlameGraphRenderer extends React.Component {
     })
   }
 
-  render() {
+  render = () => {
     this.updateData();
 
     return (
@@ -371,7 +372,7 @@ class FlameGraphRenderer extends React.Component {
           </div>
           <canvas className="flamegraph-canvas" height="0" ref={this.canvasRef} onClick={this.clickHandler} onMouseMove={this.mouseMoveHandler} onMouseOut={this.mouseOutHandler}></canvas>
         </div>
-        <div style={this.state.highlightStyle}></div>
+        <div className="flamegraph-highlight" style={this.state.highlightStyle}></div>
         <div className="flamegraph-tooltip" ref={this.tooltipRef} style={this.state.tooltipStyle}>
           <div className="flamegraph-tooltip-name">{this.state.tooltipText1}</div>
           <div>{this.state.tooltipText2}</div>
