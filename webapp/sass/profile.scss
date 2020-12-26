@@ -221,12 +221,17 @@ body {
 }
 
 .navbar, .footer {
-  a {
-    color: #ffae00;
-    &:hover{
-      color: #ffc13a;
-      cursor: default;
+  .navbar-link {
+    a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      &:hover{
+        color: #fff;
+        cursor: pointer;
+      }
     }
+    margin-left: 30px;
   }
 }
 
