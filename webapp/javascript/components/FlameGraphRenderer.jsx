@@ -67,6 +67,7 @@ class FlameGraphRenderer extends React.Component {
     if(this.props.shortcut) {
       this.props.shortcut.registerShortcut(this.reset, ['escape'], 'Reset', 'Reset Flamegraph View');
     }
+    this.props.actions.fetchJSON(this.props.renderURL);
   }
 
   componentDidUpdate(prevProps) {

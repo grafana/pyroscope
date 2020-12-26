@@ -1,9 +1,8 @@
 export function buildRenderURL(state) {
   console.log("buildRenderURL", state)
-  let width = document.body.clientWidth - 30;
   let { from, until } = state;
 
-  let url = `/render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}&width=${width}`;
+  let url = `/render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}`;
   let nameLabel = state.labels.find(x => x.name == "__name__");
 
   if (nameLabel) {
