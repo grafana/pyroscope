@@ -7,35 +7,17 @@ import ReactFlot from 'react-flot';
 import 'react-flot/flot/jquery.flot.time.min';
 import 'react-flot/flot/jquery.flot.selection.min';
 import { bindActionCreators } from "redux";
-import { buildRenderURL, fetchJSON } from '../util/update_requests';
 
 let currentJSONController = null;
 class TimelineChart extends ReactFlot {
-
   constructor(props) {
     super(props);
-
-    this.buildRenderURL = buildRenderURL.bind(this);
-    this.fetchJSON = fetchJSON.bind(this);
   }
-
-  refreshFlameGraphData = () => {
-    let renderURL = this.buildRenderURL();
-    console.log('refreshFlameGraphData in date picker: ', this);
-    console.log('refreshFlameGraphData in date picker: ', renderURL);
-    this.fetchJSON(renderURL);
-  };
 
   componentDidMount() {
     this.draw();
     $(`#${this.props.id}`).bind('plotselected', (event, ranges) => {
-      console.log('setting date range:', this);
-      this.props.actions.setDateRange(Math.round(ranges.xaxis.from / 1000), Math.round(ranges.xaxis.to / 1000))
-        .then(() => {
-          this.refreshFlameGraphData()
-        })
-      // let renderURL = this.buildRenderURL();
-      // this.fetchJSON(renderURL);
+      this.props.actions.setDateRange(Math.round(ranges.xaxis.from / 1000), Math.round(ranges.xaxis.to / 1000));
     });
   }
 }

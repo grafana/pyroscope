@@ -6,12 +6,11 @@ import Modal from "react-modal";
 
 import FlameGraphRenderer from "./FlameGraphRenderer";
 import TimelineChart from "./TimelineChart";
-import ApiConnectedComponent from "./ApiConnectedComponent";
 import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
 import { withShortcut, ShortcutProvider, ShortcutConsumer } from 'react-keybind';
-import { receiveNames, receiveJSON } from "../redux/actions";
+import { fetchNames } from "../redux/actions";
 import { bindActionCreators } from "redux";
 
 const modalStyle = {
@@ -24,11 +23,7 @@ const modalStyle = {
   },
 };
 
-
-
-let currentJSONController = null;
-
-class PyroscopeApp extends ApiConnectedComponent {
+class PyroscopeApp extends React.Component {
   constructor() {
     super();
 
@@ -38,8 +33,7 @@ class PyroscopeApp extends ApiConnectedComponent {
   }
 
   componentDidMount = () => {
-    this.refreshNames();
-    this.refreshJson();
+    this.props.actions.fetchNames();
     this.props.shortcut.registerShortcut(this.showShortcutsModal, ['shift+?'], 'Shortcuts', 'Show Keyboard Shortcuts Modal');
   }
 
@@ -99,7 +93,7 @@ class PyroscopeApp extends ApiConnectedComponent {
     return (
       <div className="pyroscope-app">
         <div className="main-wrapper">
-          <Header renderURL={this.buildRenderURL()}/>
+          <Header/>
           <TimelineChart id="timeline-chart" options={flotOptions} data={flotData} width="100%" height="100px"/>
           <FlameGraphRenderer />
           <Modal
@@ -123,11 +117,10 @@ const mapStateToProps = state => ({
 
 const mapDispatchToProps = dispatch => ({
   actions: bindActionCreators(
-      {
-        receiveNames,
-        receiveJSON,
-      },
-      dispatch,
+    {
+      fetchNames,
+    },
+    dispatch,
   ),
 });
 

@@ -8,10 +8,6 @@ import { faClock, faSyncAlt } from '@fortawesome/free-solid-svg-icons'
 import OutsideClickHandler from 'react-outside-click-handler';
 import moment from 'moment';
 import { bindActionCreators } from "redux";
-import ApiConnectedComponent from "./ApiConnectedComponent";
-
-import { createSemicolonClassElement } from 'typescript';
-
 
 const defaultPresets = [
   [
@@ -46,26 +42,33 @@ const multiplierMapping = {
   'y': "year",
 }
 
-class DateRangePicker extends ApiConnectedComponent {
+class DateRangePicker extends React.Component {
   constructor(props) {
     super(props);
 
     this.presets = defaultPresets;
     this.state = {
+      // so the idea with this is that we don't want to send from and until back to the state
+      //   until the user clicks some button. This is why these are stored in state here.
+      from: props.from,
+      until: props.until,
       opened: false
     };
   }
 
   componentDidMount() {
-    this.refreshJson()
   }
 
   updateFrom = (from) => {
-    this.props.actions.setFrom(from);
-  };
+    this.setState({ from });
+  }
 
   updateUntil = (until) => {
-    this.props.actions.setUntil(until);
+    this.setState({ until });
+  }
+
+  clickHandler = () => {
+    this.props.actions.setDateRange(this.state.from, this.state.until);
   }
 
   humanReadableRange = () => {
@@ -91,12 +94,6 @@ class DateRangePicker extends ApiConnectedComponent {
 
   selectPreset = ({label, from, until }) => {
     this.props.actions.setDateRange(from, until)
-      .then(() => {
-        console.log('selecting preset', label, from, until);
-        console.log('state: ', this.state);
-        this.refreshJson();;
-      });
-
     this.hideDropdown();
   };
 
@@ -133,9 +130,9 @@ class DateRangePicker extends ApiConnectedComponent {
             <input
               className="followed-by-btn"
               onChange={(e) => this.updateFrom(e.target.value)}
-              onBlur={this.refreshJson}
-              value={this.props.from}
-            /><button className="drp-calendar-btn btn">
+              onBlur={this.updateDateRange}
+              value={this.state.from}
+            /><button className="drp-calendar-btn btn" onClick={this.updateDateRange}>
               <FontAwesomeIcon icon={faClock} />
               Update
             </button>
@@ -144,9 +141,9 @@ class DateRangePicker extends ApiConnectedComponent {
             <input
               className="followed-by-btn"
               onChange={(e) => this.updateUntil(e.target.value)}
-              onBlur={this.refreshJson}
-              value={this.props.until}
-            /><button className="drp-calendar-btn btn">
+              onBlur={this.updateDateRange}
+              value={this.state.until}
+            /><button className="drp-calendar-btn btn" onClick={this.updateDateRange}>
               <FontAwesomeIcon icon={faClock} />
               Update
             </button>

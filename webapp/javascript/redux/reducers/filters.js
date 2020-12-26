@@ -7,8 +7,6 @@ import {
   REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
-  RECEIVE_SVG,
-  REQUEST_SVG,
   RECEIVE_JSON,
   REQUEST_JSON,
   RECEIVE_NAMES,
@@ -26,6 +24,7 @@ const initialState = {
   flamebearer: null,
   isJSONLoading: false,
 };
+
 window.uniqBy = uniqBy;
 
 export default function(state = initialState, action) {
@@ -63,17 +62,6 @@ export default function(state = initialState, action) {
     case REMOVE_LABEL:
       return {...state,
         labels: state.labels.filter((x) => x.name !== action.payload.name)
-      }
-    case REQUEST_SVG:
-      return {...state,
-        isSVGLoading: true,
-      }
-    case RECEIVE_SVG:
-      let i = action.payload.data.indexOf("\n");
-      return {...state,
-        timeline: decodeTimelineData(JSON.parse(action.payload.data.substring(0, i))),
-        svg: action.payload.data.substring(i+1),
-        isSVGLoading: false,
       }
     case REQUEST_JSON:
       return {...state,
@@ -118,3 +106,5 @@ function decodeTimelineData(timelineData){
     return res;
   });
 }
+
+

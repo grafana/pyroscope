@@ -22,13 +22,14 @@
 import React from 'react';
 import {connect} from 'react-redux';
 
-import {fetchJSON} from '../redux/actions';
 import MaxNodesSelector from "./MaxNodesSelector";
 import clsx from "clsx";
 
 import {numberWithCommas, colorBasedOnName, colorGreyscale} from '../util/format';
 import {bindActionCreators} from "redux";
 
+import { buildRenderURL } from "../util/update_requests";
+import { fetchJSON } from "../redux/actions";
 
 import { withShortcut, ShortcutProvider, ShortcutConsumer } from 'react-keybind';
 
@@ -69,6 +70,9 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
+    if(prevProps.renderURL != this.props.renderURL) {
+      this.props.actions.fetchJSON(this.props.renderURL);
+    }
     if(this.props.flamebearer && prevProps.flamebearer != this.props.flamebearer) {
       this.updateData(this.props.flamebearer);
     }
@@ -380,10 +384,21 @@ class FlameGraphRenderer extends React.Component {
 
 const mapStateToProps = state => ({
   ...state,
+  renderURL: buildRenderURL(state)
+});
+
+const mapDispatchToProps = dispatch => ({
+  actions: bindActionCreators(
+    {
+      fetchJSON,
+    },
+    dispatch,
+  ),
 });
 
 export default connect(
   mapStateToProps,
+  mapDispatchToProps,
 )(withShortcut(FlameGraphRenderer));
 
 

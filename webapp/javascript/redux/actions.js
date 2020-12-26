@@ -4,11 +4,9 @@ import {
   SET_UNTIL,
   SET_MAX_NODES,
   SET_LABELS,
-  REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
-  REQUEST_SVG,
-  RECEIVE_SVG,
+  REFRESH,
   REQUEST_JSON,
   RECEIVE_JSON,
   REQUEST_NAMES,
@@ -16,48 +14,37 @@ import {
 } from "./actionTypes";
 
 export const setDateRange = (from, until) => {
-  return Promise.resolve({
-    type: SET_DATE_RANGE,
-    payload: { from, until }
-  })
+  return { type: SET_DATE_RANGE, payload: { from, until } };
 };
 
 export const setFrom = (from) => {
   return { type: SET_FROM, payload: { from } }
 };
+
 export const setUntil = (until) => {
   return { type: SET_UNTIL, payload: { until } }
 };
+
 export const setMaxNodes = (maxNodes) => {
   return { type: SET_MAX_NODES, payload: { maxNodes } }
 };
-export const refresh = () => {
-  return { type: REFRESH, payload: {} }
-};
+
 export const setLabels = (labels) => {
   return { type: SET_LABELS, payload: { labels } }
 };
 
-// return Promise.resolve({
-//   type: SET_DATE_RANGE,
-//   payload: { from, until }
-// })
-
 export const addLabel = (name, value) => {
-  return Promise.resolve({
-    type: ADD_LABEL,
-    payload:  { name, value } 
-  })
+  return { type: ADD_LABEL, payload:  { name, value } };
 };
+
 export const removeLabel = (name) => {
   return { type: REMOVE_LABEL, payload: { name } }
 };
-export const requestSVG = (url) => {
-  return { type: REQUEST_SVG, payload: { url } }
+
+export const refresh = (url) => {
+  return { type: REFRESH, payload: { url } }
 };
-const receiveSVG = (data) => {
-  return { type: RECEIVE_SVG, payload: { data } }
-};
+
 export const requestJSON = (url) => {
   return { type: REQUEST_JSON, payload: { url } }
 };
@@ -74,49 +61,43 @@ export const receiveNames = (names) => {
   return { type: RECEIVE_NAMES, payload: { names } }
 };
 
-let currentSVGController = null;
-export function fetchSVG(url) {
+
+let currentJSONController;
+export function fetchJSON(url) {
   return dispatch => {
-    if (currentSVGController) {
-      currentSVGController.abort();
+    if (currentJSONController) {
+      currentJSONController.abort();
     }
-    currentSVGController = new AbortController();
-    dispatch(requestSVG(url));
-    return fetch(url, { signal: currentSVGController.signal })
-      .then(response => response.text())
-      .then(data => dispatch(receiveSVG(data)))
-      .finally()
+    currentJSONController = new AbortController();
+
+    dispatch(requestJSON(url));
+    return fetch(url + '&format=json', { signal: currentJSONController.signal })
+      .then((response) => {
+        return response.json()
+      })
+      .then((data) => {
+        dispatch(receiveJSON(data));
+      })
+      .finally();
   }
 }
 
-// let currentJSONController = null;
-// export function fetchJSON(url) {
-//   return dispatch => {
-//     if (currentJSONController) {
-//       currentJSONController.abort();
-//     }
-//     currentJSONController = new AbortController();
-//     dispatch(requestJSON(url));
-//     return fetch(url, {signal: currentJSONController.signal})
-//       .then(response => response.json())
-//       .then(data => dispatch(receiveJSON(data)))
-//       .finally()
-//   }
-// }
+let currentNamesController;
+export function fetchNames() {
+  return dispatch => {
+    if (currentNamesController) {
+      currentNamesController.abort();
+    }
+    currentNamesController = new AbortController();
 
-// let currentNamesController = null;
-// export function fetchNames() {
-//   return dispatch => {
-//     if (currentNamesController) {
-//       currentNamesController.abort();
-//     }
-//     currentNamesController = new AbortController();
-//     dispatch(requestNames());
-//     return fetch("/label-values?label=__name__", {signal: currentNamesController.signal})
-//       .then(response => response.json())
-//       .then(data => dispatch(receiveNames(data)))
-//       .finally()
-//   }
-// }
-
-
+    dispatch(requestNames());
+    return fetch("/label-values?label=__name__", { signal: currentNamesController.signal })
+      .then((response) => {
+        return response.json()
+      })
+      .then((data) => {
+        dispatch(receiveNames(data));
+      })
+      .finally()
+  }
+}

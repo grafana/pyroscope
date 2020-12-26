@@ -2,20 +2,16 @@ import React from 'react';
 import { connect } from "react-redux";
 import { addLabel, receiveJSON} from "../redux/actions";
 import { bindActionCreators } from "redux";
-import ApiConnectedComponent from "./ApiConnectedComponent";
 
 
-class NameSelector extends ApiConnectedComponent {
+class NameSelector extends React.Component {
   constructor() {
     super();
-    
+
   }
 
   selectName = (event) =>{
     this.props.actions.addLabel("__name__", event.target.value)
-    .then(() => {
-      this.refreshJson()
-    })
   }
 
   render() {
