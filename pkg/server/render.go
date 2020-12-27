@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
-	log "github.com/sirupsen/logrus"
 )
 
 type samplesEntry struct {
@@ -43,12 +41,9 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch q.Get("format") {
-	case "frontend":
-		w.Header().Set("Content-Type", "text/plain+pyroscope")
-	case "svg":
-		w.Header().Set("Content-Type", "image/svg+xml")
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
 
 		res := map[string]interface{}{
 			"timeline":    tl,
@@ -57,27 +52,8 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		encoder := json.NewEncoder(w)
 		encoder.Encode(res)
 		return
+	default:
+		// TODO: add handling for other cases
+		w.WriteHeader(422)
 	}
-
-	filename := q.Get("download-filename")
-	log.WithField("filename", filename).Debug("filename")
-	if filename != "" {
-		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
-	}
-	w.WriteHeader(200)
-
-	if q.Get("format") == "frontend" {
-		encoder := json.NewEncoder(w)
-		encoder.Encode(tl)
-	}
-
-	minVal := uint64(0)
-	log.Debug("minVal", minVal)
-
-	width := 1200
-	if w, err := strconv.Atoi(q.Get("width")); err == nil && w > 0 {
-		width = w
-	}
-
-	resultTree.SVG(w, uint64(maxNodes), width)
 }

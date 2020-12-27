@@ -1,5 +1,4 @@
 export function buildRenderURL(state) {
-  console.log("buildRenderURL", state)
   let { from, until } = state;
 
   let url = `/render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}`;

@@ -7,6 +7,12 @@ import (
 
 var _ = Describe("storage package", func() {
 	Context("ParseKey", func() {
+		It("no tags version works", func() {
+			k, err := ParseKey("foo")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(k.labels).To(Equal(map[string]string{"__name__": "foo"}))
+		})
+
 		It("simple values work", func() {
 			k, err := ParseKey("foo{bar=1,baz=2}")
 			Expect(err).ToNot(HaveOccurred())
@@ -22,6 +28,12 @@ var _ = Describe("storage package", func() {
 
 	Context("Key", func() {
 		Context("Normalize", func() {
+			It("no tags version works", func() {
+				k, err := ParseKey("foo")
+				Expect(err).ToNot(HaveOccurred())
+				Expect(k.Normalized()).To(Equal("foo{}"))
+			})
+
 			It("simple values work", func() {
 				k, err := ParseKey("foo{bar=1,baz=2}")
 				Expect(err).ToNot(HaveOccurred())

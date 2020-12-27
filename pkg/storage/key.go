@@ -43,7 +43,7 @@ func ParseKey(name string) (*Key, error) {
 	key := ""
 	value := ""
 
-	for _, r := range name {
+	for _, r := range name + "{" {
 		switch state {
 		case nameParserState:
 			switch r {
