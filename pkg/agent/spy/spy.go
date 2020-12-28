@@ -1,3 +1,4 @@
+// Package spy contains an interface (Spy) and functionality to register new spies
 package spy
 
 import "fmt"
@@ -12,6 +13,18 @@ type spyIntitializer func(pid int) (Spy, error)
 var supportedSpiesMap map[string]spyIntitializer
 var SupportedSpies []string
 
+var autoDetectionMapping = map[string]string{
+	"python":  "pyspy",
+	"python2": "pyspy",
+	"python3": "pyspy",
+	"uwsgi":   "pyspy",
+	"pipenv":  "pyspy",
+
+	"ruby":   "rbspy",
+	"bundle": "rbspy",
+	"rails":  "rbspy",
+}
+
 func init() {
 	supportedSpiesMap = make(map[string]spyIntitializer)
 }
@@ -25,5 +38,9 @@ func SpyFromName(name string, pid int) (Spy, error) {
 	if s, ok := supportedSpiesMap[name]; ok {
 		return s(pid)
 	}
-	return nil, fmt.Errorf("unknown spy name %s", name)
+	return nil, fmt.Errorf("unknown spy \"%s\". Make sure it's supported (run `pyroscope version` to check if your version supports it)", name)
+}
+
+func ResolveAutoName(s string) string {
+	return autoDetectionMapping[s]
 }

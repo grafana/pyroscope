@@ -46,7 +46,8 @@ func (a *Agent) Stop() {
 func (a *Agent) controlSocketHandler(req *csock.Request) *csock.Response {
 	switch req.Command {
 	case "start":
-		profileID := a.ctrl.StartProfiling(req.SpyName, req.Pid)
+		// TODO: pass withSubprocesses from somewhere
+		profileID := a.ctrl.StartProfiling(req.SpyName, req.Pid, false)
 		return &csock.Response{ProfileID: profileID}
 	case "stop":
 		// TODO: "testapp.cpu{}" should come from the client

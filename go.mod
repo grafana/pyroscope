@@ -24,6 +24,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mattn/goreman v0.3.5
 	github.com/mgechev/revive v1.0.2
+	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.14.0
 	github.com/onsi/gomega v1.10.1

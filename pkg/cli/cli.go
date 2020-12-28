@@ -113,7 +113,7 @@ func Start(cfg *config.Config) error {
 		agentFlagSet   = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
 		serverFlagSet  = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
 		convertFlagSet = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
-		execFlagSet    = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
+		execFlagSet    = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
 	)
 
 	populateFlagSet(cfg, rootFlagSet)
@@ -160,8 +160,8 @@ func Start(cfg *config.Config) error {
 		UsageFunc:  printUsage,
 		Options:    options,
 		Name:       "exec",
-		ShortUsage: "pyroscope exec [flags] args",
-		ShortHelp:  "executes a command",
+		ShortUsage: "pyroscope exec [flags] <args>",
+		ShortHelp:  "starts a new process from <args> and profiles it",
 		FlagSet:    execFlagSet,
 	}
 
@@ -195,6 +195,12 @@ func Start(cfg *config.Config) error {
 		return convert.Cli(cfg, args)
 	}
 	execCmd.Exec = func(_ context.Context, args []string) error {
+		if len(args) == 0 {
+			fmt.Println(gradientBanner())
+			fmt.Println(DefaultUsageFunc(execCmd))
+			return nil
+		}
+
 		return exec.Cli(cfg, args)
 	}
 	rootCmd.Exec = func(_ context.Context, args []string) error {

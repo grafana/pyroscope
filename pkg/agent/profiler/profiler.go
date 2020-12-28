@@ -28,7 +28,7 @@ func Start(cfg Config) (*Profiler, error) {
 	u := remote.New(globalConfig)
 	ctrl := agent.NewController(globalConfig, u)
 	ctrl.Start()
-	go ctrl.StartContinuousProfiling("gospy", cfg.ServiceName, 0)
+	go ctrl.StartContinuousProfiling("gospy", cfg.ServiceName, 0, false)
 
 	p := &Profiler{
 		ctrl: ctrl,

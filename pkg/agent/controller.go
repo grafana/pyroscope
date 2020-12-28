@@ -38,16 +38,14 @@ func (a *Controller) Start() {
 func (a *Controller) Stop() {
 }
 
-func (a *Controller) StartContinuousProfiling(spyName, metricName string, pid int) {
+func (a *Controller) StartContinuousProfiling(spyName, metricName string, pid int, withSubprocesses bool) {
 	logrus.Info("StartContinuousProfiling")
-	// TODO: This logic is not particularly great, need to change later. e.g maybe ticker
-	//   might deviate over time?
-	// I also think this logic should be in session
 	now := time.Now()
 
 	// TODO: should be configurable or even picked up from server
 	period := 10 * time.Second
 	nextPeriodStartTime := now.Truncate(period).Add(period)
+	// not sure if we really need to sleep here
 	time.Sleep(nextPeriodStartTime.Sub(now))
 
 	logrus.WithFields(logrus.Fields{
@@ -57,16 +55,15 @@ func (a *Controller) StartContinuousProfiling(spyName, metricName string, pid in
 		"now-now":             time.Now(),
 	}).Info("self profiling start")
 	t := time.NewTicker(period)
+	profileID := a.StartProfiling(spyName, pid, withSubprocesses)
 	for {
 		<-t.C
-		profileID := a.StartProfiling(spyName, pid)
-		time.Sleep(9500 * time.Millisecond) // TODO: horrible, need to fix later
-		a.StopProfiling(profileID, metricName)
+		a.resetProfiling(profileID, metricName)
 	}
 }
 
-func (a *Controller) StartProfiling(spyName string, pid int) int {
-	s := newSession(spyName, pid)
+func (a *Controller) StartProfiling(spyName string, pid int, withSubprocesses bool) int {
+	s := newSession(spyName, pid, withSubprocesses)
 	profileID := int(a.id.Next())
 	a.activeProfiles[profileID] = s
 
@@ -79,6 +76,18 @@ func (a *Controller) StartProfiling(spyName string, pid int) int {
 		printDarwinMessage()
 	}
 	return profileID
+}
+
+// the difference between stop and reset is that reset stops current session
+//   and then instantly starts a new one
+func (a *Controller) resetProfiling(profileID int, name string) {
+	if sess, ok := a.activeProfiles[profileID]; ok {
+		t := sess.reset()
+		// TODO: name should be passed from integrations
+		a.upstream.Upload(name, sess.startTime, sess.stopTime, t)
+	} else {
+		log.Debugf("failed to find spy session: %d", profileID)
+	}
 }
 
 func (a *Controller) StopProfiling(profileID int, name string) {
