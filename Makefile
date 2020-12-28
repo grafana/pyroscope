@@ -37,7 +37,7 @@ test:
 
 .PHONY: server
 server:
-	bin/pyroscope server --log-level debug --badger-log-level error
+	bin/pyroscope server --log-level debug --badger-log-level error --storage-path tmp/pyroscope-storage
 
 .PHONY: agent
 agent:

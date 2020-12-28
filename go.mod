@@ -13,6 +13,7 @@ require (
 	github.com/felixge/fgprof v0.9.1
 	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99
+	github.com/google/uuid v1.1.2 // indirect
 	github.com/iancoleman/strcase v0.1.2
 	github.com/ianlancetaylor/demangle v0.0.0-20200715173712-053cf528c12f // indirect
 	github.com/imdario/mergo v0.3.11 // indirect

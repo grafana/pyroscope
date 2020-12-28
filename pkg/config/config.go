@@ -27,11 +27,12 @@ type Agent struct {
 }
 
 type Server struct {
-	Config         string `def:"/etc/pyroscope/server.yml" desc:"location of config file"`
-	LogLevel       string `def:"info", desc:"debug|info|warn|error"`
+	Config   string `def:"/etc/pyroscope/server.yml" desc:"location of config file"`
+	LogLevel string `def:"info", desc:"debug|info|warn|error"`
+	// TODO: fix, doesn't see to work
 	BadgerLogLevel string `def:"error", desc:"debug|info|warn|error"`
 
-	StoragePath string `def:"tmp/pyroscope-storage"`
+	StoragePath string `def:"/var/lib/pyroscope"`
 	ApiBindAddr string `def:":8080"`
 
 	CacheDimensionSize  int `def:"1000"`
@@ -46,6 +47,8 @@ type Server struct {
 
 	MaxNodesSerialization int `def:"2048"`
 	MaxNodesRender        int `def:"2048"`
+
+	AnalyticsOptOut bool `def:"false" desc:"disables analytics"`
 }
 
 type Convert struct {

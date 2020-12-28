@@ -54,12 +54,11 @@ func (a *Controller) StartContinuousProfiling(spyName, metricName string, pid in
 		"dur":                 nextPeriodStartTime.Sub(now),
 		"now-now":             time.Now(),
 	}).Info("self profiling start")
-	t := time.NewTicker(period)
-	profileID := a.StartProfiling(spyName, pid, withSubprocesses)
-	for {
-		<-t.C
-		a.resetProfiling(profileID, metricName)
-	}
+	a.StartProfiling(spyName, pid, withSubprocesses)
+	// TODO: finish this
+	// for {
+	// 	a.resetProfiling(profileID, metricName)
+	// }
 }
 
 func (a *Controller) StartProfiling(spyName string, pid int, withSubprocesses bool) int {

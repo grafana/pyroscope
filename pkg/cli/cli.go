@@ -12,6 +12,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
+	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
@@ -186,8 +187,6 @@ func Start(cfg *config.Config) error {
 		if l, err := logrus.ParseLevel(cfg.Server.LogLevel); err == nil {
 			logrus.SetLevel(l)
 		}
-		go printRAMUsage()
-		go printDiskUsage(cfg)
 		startServer(cfg)
 		return nil
 	}
@@ -220,13 +219,22 @@ func Start(cfg *config.Config) error {
 
 func startServer(cfg *config.Config) {
 	s, err := storage.New(cfg)
+	atexit.Register(func() { s.Close() })
 	if err != nil {
 		panic(err)
 	}
 	u := direct.New(cfg, s)
 	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}")
-	atexit.Register(func() { s.Close() })
+	go printRAMUsage()
+	go printDiskUsage(cfg)
+	if !cfg.Server.AnalyticsOptOut {
+		analyticsService := analytics.NewService(cfg, s)
+		go analyticsService.Start()
+		atexit.Register(func() { analyticsService.Stop() })
+	}
 	c := server.New(cfg, s)
+	// if you ever change this line, make sure to update this homebrew test:
+	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
 	log.Info("starting HTTP server")
 	c.Start()
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -56,5 +57,8 @@ func (ctrl *Controller) Start() {
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
 	}
-	s.ListenAndServe()
+	err := s.ListenAndServe()
+	if err != nil {
+		logrus.Error(err)
+	}
 }

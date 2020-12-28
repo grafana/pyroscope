@@ -19,6 +19,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/sirupsen/logrus"
 )
 
@@ -289,6 +290,29 @@ func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, cb)
 }
 
-func (s *Storage) Cleanup() {
+func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
+	res := map[string]bytesize.ByteSize{
+		"main":       0,
+		"trees":      0,
+		"dicts":      0,
+		"dimensions": 0,
+		"segments":   0,
+	}
+	for k, _ := range res {
+		res[k] = dirSize(filepath.Join(s.cfg.Server.StoragePath, k))
+	}
+	return res
+}
 
+func dirSize(path string) (result bytesize.ByteSize) {
+	filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			result += bytesize.ByteSize(info.Size())
+		}
+		return nil
+	})
+	return
 }
