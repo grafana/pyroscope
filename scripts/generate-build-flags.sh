@@ -5,10 +5,9 @@ set -e
 # we don't copy .git to docker context, so in docker context we use git-info
 if [ -d ".git" ]
 then
-  scripts/generate-git-info.sh
-else
-  source scripts/packages/git-info
+  scripts/generate-git-info.sh > scripts/packages/git-info
 fi
+source scripts/packages/git-info
 
 CURRENT_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
