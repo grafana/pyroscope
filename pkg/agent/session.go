@@ -24,6 +24,7 @@ type ProfileSession struct {
 	upstream         upstream.Upstream
 	appName          string
 	spyName          string
+	sampleRate       int
 	pids             []int
 	spies            []spy.Spy
 	stopCh           chan struct{}
@@ -35,11 +36,12 @@ type ProfileSession struct {
 	stopTime  time.Time
 }
 
-func NewSession(upstream upstream.Upstream, appName string, spyName string, pid int, withSubprocesses bool) *ProfileSession {
+func NewSession(upstream upstream.Upstream, appName string, spyName string, sampleRate int, pid int, withSubprocesses bool) *ProfileSession {
 	return &ProfileSession{
 		upstream:         upstream,
 		appName:          appName,
 		spyName:          spyName,
+		sampleRate:       sampleRate,
 		pids:             []int{pid},
 		stopCh:           make(chan struct{}),
 		withSubprocesses: withSubprocesses,
@@ -48,7 +50,7 @@ func NewSession(upstream upstream.Upstream, appName string, spyName string, pid 
 
 func (ps *ProfileSession) takeSnapshots() {
 	// TODO: has to be configurable
-	ticker := time.NewTicker(time.Second / 50)
+	ticker := time.NewTicker(time.Second / time.Duration(ps.sampleRate))
 	for {
 		select {
 		case <-ticker.C:
@@ -106,7 +108,7 @@ func (ps *ProfileSession) reset() {
 
 	now := time.Now()
 	if ps.trie != nil {
-		ps.upstream.Upload(ps.appName, ps.startTime, now, ps.trie)
+		ps.upstream.Upload(ps.appName, ps.startTime, now, ps.spyName, ps.sampleRate, ps.trie)
 	}
 
 	ps.startTime = now
@@ -129,7 +131,7 @@ func (ps *ProfileSession) Stop() {
 	close(ps.stopCh)
 
 	now := time.Now()
-	ps.upstream.Upload(ps.appName, ps.startTime, now, ps.trie)
+	ps.upstream.Upload(ps.appName, ps.startTime, now, ps.spyName, ps.sampleRate, ps.trie)
 }
 
 func (ps *ProfileSession) addSubprocesses() {

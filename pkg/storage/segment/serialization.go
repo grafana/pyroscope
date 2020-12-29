@@ -6,12 +6,36 @@ import (
 	"io"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/util/serialization"
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
+
+// serialization format version. it's not very useful right now, but it will be in the future
+const currentVersion = 1
+
+func (s *Segment) populateFromMetadata(metadata map[string]interface{}) {
+	if v, ok := metadata["sampleRate"]; ok {
+		s.sampleRate = int(v.(float64))
+	}
+	if v, ok := metadata["spyName"]; ok {
+		s.spyName = v.(string)
+	}
+}
+
+func (s *Segment) generateMetadata() map[string]interface{} {
+	return map[string]interface{}{
+		"sampleRate": s.sampleRate,
+		"spyName":    s.spyName,
+	}
+}
 
 func (s *Segment) Serialize(w io.Writer) error {
 	s.m.RLock()
 	defer s.m.RUnlock()
+
+	varint.Write(w, currentVersion)
+
+	serialization.WriteMetadata(w, s.generateMetadata())
 
 	nodes := []*streeNode{s.root}
 	for len(nodes) > 0 {
@@ -48,6 +72,18 @@ func (s *Segment) Serialize(w io.Writer) error {
 func Deserialize(resolution time.Duration, multiplier int, r io.Reader) (*Segment, error) {
 	s := New(resolution, multiplier)
 	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
+
+	// reads serialization format version, see comment at the top
+	_, err := varint.Read(br)
+	if err != nil {
+		return nil, err
+	}
+
+	metadata, err := serialization.ReadMetadata(br)
+	if err != nil {
+		return nil, err
+	}
+	s.populateFromMetadata(metadata)
 
 	parents := []*streeNode{nil}
 	for len(parents) > 0 {
@@ -103,6 +139,7 @@ func (t *Segment) Bytes() []byte {
 }
 
 func FromBytes(resolution time.Duration, multiplier int, p []byte) *Segment {
+	// TODO: handle error
 	t, _ := Deserialize(resolution, multiplier, bytes.NewReader(p))
 	return t
 }

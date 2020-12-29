@@ -8,7 +8,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
+// serialization format version. it's not very useful right now, but it will be in the future
+const currentVersion = 1
+
 func (s *Dimension) Serialize(w io.Writer) error {
+	varint.Write(w, currentVersion)
+
 	for _, k := range s.keys {
 		varint.Write(w, uint64(len(k)))
 		w.Write([]byte(k))
@@ -20,6 +25,12 @@ func Deserialize(r io.Reader) (*Dimension, error) {
 	s := New()
 
 	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
+
+	// reads serialization format version, see comment at the top
+	_, err := varint.Read(br)
+	if err != nil {
+		return nil, err
+	}
 
 	for {
 		keyLen, err := varint.Read(br)

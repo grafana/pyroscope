@@ -13,10 +13,12 @@ import (
 )
 
 type uploadJob struct {
-	name      string
-	startTime time.Time
-	endTime   time.Time
-	t         *transporttrie.Trie
+	name       string
+	startTime  time.Time
+	endTime    time.Time
+	t          *transporttrie.Trie
+	spyName    string
+	sampleRate int
 }
 
 type Direct struct {
@@ -51,17 +53,17 @@ func (u *Direct) Stop() {
 }
 
 // TODO: this metadata class should be unified
-func (u *Direct) Upload(name string, startTime time.Time, endTime time.Time, t *transporttrie.Trie) {
+func (u *Direct) Upload(name string, startTime time.Time, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie) {
 	job := &uploadJob{
-		name:      name,
-		startTime: startTime,
-		endTime:   endTime,
-		t:         t,
+		name:       name,
+		startTime:  startTime,
+		endTime:    endTime,
+		t:          t,
+		spyName:    spyName,
+		sampleRate: sampleRate,
 	}
-	logrus.Debug("todo job")
 	select {
 	case u.todo <- job:
-		logrus.Debug("todo job sent")
 	default:
 		log.Error("Direct upload queue is full, dropping a profile")
 	}
@@ -79,7 +81,8 @@ func (u *Direct) uploadProfile(j *uploadJob) {
 		t.Insert(name, val, false)
 	})
 
-	u.s.Put(j.startTime, j.endTime, key, t)
+	// TODO: pass spy name and sample rate from somewhere
+	u.s.Put(j.startTime, j.endTime, key, t, j.spyName, j.sampleRate)
 }
 
 func (u *Direct) uploadLoop() {

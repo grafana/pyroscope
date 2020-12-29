@@ -178,6 +178,9 @@ type Segment struct {
 	multiplier int
 	root       *streeNode
 	durations  []time.Duration
+
+	spyName    string
+	sampleRate int
 }
 
 func newNode(t time.Time, depth, multiplier int) *streeNode {
@@ -294,4 +297,19 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, t time.Time, r *big.R
 		cb(depth, t, r)
 	})
 	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
+}
+
+// TODO: this should be refactored
+
+func (s *Segment) SetMetadata(spyName string, sampleRate int) {
+	s.spyName = spyName
+	s.sampleRate = sampleRate
+}
+
+func (s *Segment) SpyName() string {
+	return s.spyName
+}
+
+func (s *Segment) SampleRate() int {
+	return s.sampleRate
 }

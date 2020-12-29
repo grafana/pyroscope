@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
@@ -13,13 +14,14 @@ import (
 )
 
 type ingestParams struct {
-	grouped           bool
-	format            string
-	storageKey        *storage.Key
-	samplingFrequency int
-	modifiers         []string
-	from              time.Time
-	until             time.Time
+	grouped    bool
+	format     string
+	storageKey *storage.Key
+	spyName    string
+	sampleRate int
+	modifiers  []string
+	from       time.Time
+	until      time.Time
 }
 
 func ingestParamsFromRequest(r *http.Request) *ingestParams {
@@ -37,6 +39,20 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 		ip.until = attime.Parse(qt)
 	} else {
 		ip.until = time.Now()
+	}
+
+	if sr := q.Get("sampleRate"); sr != "" {
+		// TODO: error handling
+		ip.sampleRate, _ = strconv.Atoi(sr)
+	} else {
+		ip.sampleRate = 100
+	}
+
+	if sn := q.Get("spyName"); sn != "" {
+		// TODO: error handling
+		ip.spyName = sn
+	} else {
+		ip.spyName = "unknown"
 	}
 
 	var err error
@@ -76,7 +92,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t)
+	err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t, ip.spyName, ip.sampleRate)
 	if err != nil {
 		log.Fatal(err)
 	}

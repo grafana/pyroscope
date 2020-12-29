@@ -8,5 +8,6 @@ import (
 
 type Upstream interface {
 	Stop()
-	Upload(name string, startTime time.Time, endTime time.Time, t *transporttrie.Trie)
+	// TODO: too complex, fix it
+	Upload(name string, startTime time.Time, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie)
 }

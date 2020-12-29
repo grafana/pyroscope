@@ -8,7 +8,15 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
+// serialization format version. it's not very useful right now, but it will be in the future
+const currentVersion = 1
+
 func (t *Dict) Serialize(w io.Writer) error {
+	t.m.RLock()
+	defer t.m.RUnlock()
+
+	varint.Write(w, currentVersion)
+
 	nodes := []*trieNode{t.root}
 	for len(nodes) > 0 {
 		tn := nodes[0]
@@ -37,6 +45,12 @@ func (t *Dict) Serialize(w io.Writer) error {
 func Deserialize(r io.Reader) (*Dict, error) {
 	t := New()
 	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
+
+	// reads serialization format version, see comment at the top
+	_, err := varint.Read(br)
+	if err != nil {
+		return nil, err
+	}
 
 	parents := []*trieNode{t.root}
 	for len(parents) > 0 {

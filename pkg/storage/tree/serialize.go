@@ -10,9 +10,14 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
+// serialization format version. it's not very useful right now, but it will be in the future
+const currentVersion = 1
+
 func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 	t.m.RLock()
 	defer t.m.RUnlock()
+
+	varint.Write(w, currentVersion)
 
 	nodes := []*treeNode{t.root}
 	minVal := t.minValue(maxNodes)
@@ -99,6 +104,12 @@ type parentNode struct {
 func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 	t := New()
 	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
+
+	// reads serialization format version, see comment at the top
+	_, err := varint.Read(br)
+	if err != nil {
+		return nil, err
+	}
 
 	parents := []*parentNode{{t.root, nil}}
 	j := 0

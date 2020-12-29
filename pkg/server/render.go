@@ -26,7 +26,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err) // TODO: handle
 	}
 
-	resultTree, tl, err := ctrl.s.Get(startTime, endTime, storageKey)
+	resultTree, tl, spyName, sampleRate, err := ctrl.s.Get(startTime, endTime, storageKey)
 	if err != nil {
 		panic(err) // TODO: handle
 	}
@@ -48,6 +48,10 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		res := map[string]interface{}{
 			"timeline":    tl,
 			"flamebearer": resultTree.FlamebearerStruct(maxNodes),
+			"metadata": map[string]interface{}{
+				"spyName":    spyName,
+				"sampleRate": sampleRate,
+			},
 		}
 		encoder := json.NewEncoder(w)
 		encoder.Encode(res)

@@ -165,7 +165,7 @@ func New(cfg *config.Config) (*Storage, error) {
 	return s, nil
 }
 
-func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) error {
+func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree, spyName string, sampleRate int) error {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
 
@@ -189,6 +189,7 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) er
 	}
 
 	st := s.segments.Get(sk).(*segment.Segment)
+	st.SetMetadata(spyName, sampleRate)
 	samples := val.Samples()
 	st.Put(startTime, endTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := key.TreeKey(depth, t)
@@ -211,12 +212,12 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree) er
 	return nil
 }
 
-func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segment.Timeline, error) {
+func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segment.Timeline, string, int, error) {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
 
 	if s.closing {
-		return nil, nil, closingErr
+		return nil, nil, "", 100, closingErr
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -235,6 +236,7 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 	segmentKeys := dimension.Intersection(dimensions...)
 
 	tl := segment.GenerateTimeline(startTime, endTime)
+	var lastSegment *segment.Segment
 	for _, sk := range segmentKeys {
 		// TODO: refactor, store `Key`s in dimensions
 		skk, _ := ParseKey(string(sk))
@@ -242,6 +244,8 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 		if st == nil {
 			continue
 		}
+
+		lastSegment = st
 
 		tl.PopulateTimeline(startTime, endTime, st)
 
@@ -257,9 +261,9 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 
 	resultTrie := merge.MergeTriesConcurrently(runtime.NumCPU(), triesToMerge...)
 	if resultTrie == nil {
-		return nil, tl, nil
+		return nil, tl, "", 100, nil
 	}
-	return resultTrie.(*tree.Tree), tl, nil
+	return resultTrie.(*tree.Tree), tl, lastSegment.SpyName(), lastSegment.SampleRate(), nil
 }
 
 func (s *Storage) Close() error {
