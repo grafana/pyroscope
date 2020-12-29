@@ -249,4 +249,11 @@ html, body, #root, .pyroscope-app {
   flex: 1 0 auto;
 }
 
-
+.no-data-message {
+  text-align: center;
+  margin: 40px 0;
+  display: none;
+  &.visible {
+    display: block;
+  }
+}

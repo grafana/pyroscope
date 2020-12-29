@@ -371,6 +371,9 @@ class FlameGraphRenderer extends React.Component {
             <MaxNodesSelector />
           </div>
           <canvas className="flamegraph-canvas" height="0" ref={this.canvasRef} onClick={this.clickHandler} onMouseMove={this.mouseMoveHandler} onMouseOut={this.mouseOutHandler}></canvas>
+          <div className={clsx('no-data-message', {'visible': this.props.flamebearer && this.props.flamebearer.numTicks == 0})}>
+            <span>No profiling data available for this application / time range.</span>
+          </div>
         </div>
         <div className="flamegraph-highlight" style={this.state.highlightStyle}></div>
         <div className="flamegraph-tooltip" ref={this.tooltipRef} style={this.state.tooltipStyle}>
