@@ -108,6 +108,9 @@ func (ps *ProfileSession) reset() {
 
 	now := time.Now()
 	if ps.trie != nil {
+		// TODO: duration should be either taken from config or ideally passed from server
+		dur := 10 * time.Second
+		now = now.Truncate(dur)
 		ps.upstream.Upload(ps.appName, ps.startTime, now, ps.spyName, ps.sampleRate, ps.trie)
 	}
 
@@ -146,6 +149,10 @@ func (ps *ProfileSession) addSubprocesses() {
 					"pid":      newPid,
 				}).Error("failed to initialize a spy")
 			} else {
+				logrus.WithFields(logrus.Fields{
+					"spy-name": ps.spyName,
+					"pid":      newPid,
+				}).Debug("started spy for subprocess")
 				ps.spies = append(ps.spies, newSpy)
 			}
 		}
