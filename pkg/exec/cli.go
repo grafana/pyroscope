@@ -57,7 +57,7 @@ func Cli(cfg *config.Config, args []string) error {
 
 	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, cmd.Process.Pid, cfg.Exec.DetectSubprocesses)
 	sess.Start()
-	// defer sess.Stop()
+	defer sess.Stop()
 
 	cmd.Wait()
 	return nil
