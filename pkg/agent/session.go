@@ -6,9 +6,12 @@ import (
 
 	// revive:disable:blank-imports Depending on configuration these packages may or may not be used.
 	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
+
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/sirupsen/logrus"
 
 	// revive:enable:blank-imports
 
@@ -17,7 +20,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
-type profileSession struct {
+type ProfileSession struct {
+	upstream         upstream.Upstream
+	appName          string
 	spyName          string
 	pids             []int
 	spies            []spy.Spy
@@ -30,21 +35,24 @@ type profileSession struct {
 	stopTime  time.Time
 }
 
-func newSession(spyName string, pid int, withSubprocesses bool) *profileSession {
-	return &profileSession{
-		spyName: spyName,
-		pids:    []int{pid},
-		stopCh:  make(chan struct{}),
+func NewSession(upstream upstream.Upstream, appName string, spyName string, pid int, withSubprocesses bool) *ProfileSession {
+	return &ProfileSession{
+		upstream:         upstream,
+		appName:          appName,
+		spyName:          spyName,
+		pids:             []int{pid},
+		stopCh:           make(chan struct{}),
+		withSubprocesses: withSubprocesses,
 	}
 }
 
-func (ps *profileSession) takeSnapshots() {
+func (ps *ProfileSession) takeSnapshots() {
 	// TODO: has to be configurable
 	ticker := time.NewTicker(time.Second / 50)
 	for {
 		select {
 		case <-ticker.C:
-			if ps.dueForReset() {
+			if ps.isDueForReset() {
 				ps.reset()
 			}
 			for _, spy := range ps.spies {
@@ -68,19 +76,20 @@ func (ps *profileSession) takeSnapshots() {
 	}
 }
 
-func (ps *profileSession) start() error {
+func (ps *ProfileSession) Start() error {
 	ps.reset()
 
 	s, err := spy.SpyFromName(ps.spyName, ps.pids[0])
 	if err != nil {
 		return err
 	}
+
 	ps.spies = append(ps.spies, s)
 	go ps.takeSnapshots()
 	return nil
 }
 
-func (ps *profileSession) dueForReset() bool {
+func (ps *ProfileSession) isDueForReset() bool {
 	// TODO: duration should be either taken from config or ideally passed from server
 	dur := 10 * time.Second
 	now := time.Now().Truncate(dur)
@@ -91,22 +100,63 @@ func (ps *profileSession) dueForReset() bool {
 
 // the difference between stop and reset is that reset stops current session
 //   and then instantly starts a new one
-func (ps *profileSession) reset() *transporttrie.Trie {
+func (ps *ProfileSession) reset() {
 	ps.trieMutex.Lock()
 	defer ps.trieMutex.Unlock()
 
-	oldTrie := ps.trie
-	ps.startTime = time.Now()
+	now := time.Now()
+	if ps.trie != nil {
+		ps.upstream.Upload(ps.appName, ps.startTime, now, ps.trie)
+	}
+
+	ps.startTime = now
 	ps.trie = transporttrie.New()
 
-	return oldTrie
+	if ps.withSubprocesses {
+		ps.addSubprocesses()
+	}
 }
 
-func (ps *profileSession) stop() *transporttrie.Trie {
+func (ps *ProfileSession) Stop() {
+	ps.trieMutex.Lock()
+	defer ps.trieMutex.Unlock()
+
 	ps.stopTime = time.Now()
-	ps.stopCh <- struct{}{}
+	select {
+	case ps.stopCh <- struct{}{}:
+	default:
+	}
 	close(ps.stopCh)
-	return ps.trie
+
+	now := time.Now()
+	ps.upstream.Upload(ps.appName, ps.startTime, now, ps.trie)
+}
+
+func (ps *ProfileSession) addSubprocesses() {
+	newPids := findAllSubprocesses(ps.pids[0])
+	for _, newPid := range newPids {
+		if !includes(ps.pids, newPid) {
+			ps.pids = append(ps.pids, newPid)
+			newSpy, err := spy.SpyFromName(ps.spyName, newPid)
+			if err != nil {
+				logrus.WithFields(logrus.Fields{
+					"spy-name": ps.spyName,
+					"pid":      newPid,
+				}).Error("failed to initialize a spy")
+			} else {
+				ps.spies = append(ps.spies, newSpy)
+			}
+		}
+	}
+}
+
+func includes(arr []int, v int) bool {
+	for _, x := range arr {
+		if x == v {
+			return true
+		}
+	}
+	return false
 }
 
 func findAllSubprocesses(pid int) []int {
@@ -141,3 +191,18 @@ func findAllSubprocesses(pid int) []int {
 
 	return res
 }
+
+// TODO: add this check back
+
+// func isRoot() bool {
+// 	u, err := user.Current()
+// 	return err == nil && u.Username == "root"
+// }
+
+// func printDarwinMessage() {
+// 	if runtime.GOOS == "darwin" {
+// 		if !isRoot() {
+// 			log.Error("on macOS it is required to run the agent with sudo")
+// 		}
+// 	}
+// }

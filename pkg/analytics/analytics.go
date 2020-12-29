@@ -74,7 +74,10 @@ func (s *Service) Start() {
 }
 
 func (s *Service) Stop() {
-	s.stopCh <- struct{}{}
+	select {
+	case s.stopCh <- struct{}{}:
+	default:
+	}
 	close(s.stopCh)
 }
 

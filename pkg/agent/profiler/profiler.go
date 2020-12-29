@@ -9,12 +9,12 @@ import (
 )
 
 type Config struct {
-	ServiceName   string // e.g backend.purchases
-	ServerAddress string // e.g http://pyroscope.services.internal:8080
+	ApplicationName string // e.g backend.purchases
+	ServerAddress   string // e.g http://pyroscope.services.internal:8080
 }
 
 type Profiler struct {
-	ctrl *agent.Controller
+	sess *agent.ProfileSession
 }
 
 // Start starts continuously profiling go code
@@ -26,12 +26,11 @@ func Start(cfg Config) (*Profiler, error) {
 		},
 	}
 	u := remote.New(globalConfig)
-	ctrl := agent.NewController(globalConfig, u)
-	ctrl.Start()
-	go ctrl.StartContinuousProfiling("gospy", cfg.ServiceName, 0, false)
+	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 0, false)
+	sess.Start()
 
 	p := &Profiler{
-		ctrl: ctrl,
+		sess: sess,
 	}
 
 	return p, nil

@@ -1,7 +1,6 @@
 package direct
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -21,29 +20,25 @@ type uploadJob struct {
 }
 
 type Direct struct {
-	cfg    *config.Config
-	s      *storage.Storage
-	todo   chan *uploadJob
-	done   chan struct{}
-	client *http.Client
+	cfg  *config.Config
+	s    *storage.Storage
+	todo chan *uploadJob
+	done chan struct{}
 }
 
 func New(cfg *config.Config, s *storage.Storage) *Direct {
-	return &Direct{
+	d := &Direct{
 		cfg:  cfg,
 		s:    s,
 		todo: make(chan *uploadJob, 100),
 		done: make(chan struct{}, cfg.Agent.UpstreamThreads),
-		client: &http.Client{
-			Transport: &http.Transport{
-				MaxConnsPerHost: cfg.Agent.UpstreamThreads,
-			},
-			Timeout: cfg.Agent.UpstreamRequestTimeout,
-		},
 	}
+
+	go d.start()
+	return d
 }
 
-func (u *Direct) Start() {
+func (u *Direct) start() {
 	for i := 0; i < u.cfg.Agent.UpstreamThreads; i++ {
 		go u.uploadLoop()
 	}
@@ -63,8 +58,10 @@ func (u *Direct) Upload(name string, startTime time.Time, endTime time.Time, t *
 		endTime:   endTime,
 		t:         t,
 	}
+	logrus.Debug("todo job")
 	select {
 	case u.todo <- job:
+		logrus.Debug("todo job sent")
 	default:
 		log.Error("Direct upload queue is full, dropping a profile")
 	}
@@ -89,6 +86,7 @@ func (u *Direct) uploadLoop() {
 	for {
 		select {
 		case j := <-u.todo:
+			logrus.Debug("upload profile")
 			u.uploadProfile(j)
 		case <-u.done:
 			return

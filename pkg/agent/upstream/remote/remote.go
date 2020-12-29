@@ -29,7 +29,7 @@ type Remote struct {
 }
 
 func New(cfg *config.Config) *Remote {
-	return &Remote{
+	r := &Remote{
 		cfg:  cfg,
 		todo: make(chan *uploadJob, 100),
 		done: make(chan struct{}, cfg.Agent.UpstreamThreads),
@@ -40,9 +40,11 @@ func New(cfg *config.Config) *Remote {
 			Timeout: cfg.Agent.UpstreamRequestTimeout,
 		},
 	}
+	go r.start()
+	return r
 }
 
-func (u *Remote) Start() {
+func (u *Remote) start() {
 	for i := 0; i < u.cfg.Agent.UpstreamThreads; i++ {
 		go u.uploadLoop()
 	}

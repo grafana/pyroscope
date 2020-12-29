@@ -1,7 +1,9 @@
 // Package spy contains an interface (Spy) and functionality to register new spies
 package spy
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type Spy interface {
 	Stop() error

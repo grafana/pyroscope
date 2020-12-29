@@ -41,6 +41,10 @@ func Cli(cfg *config.Config, args []string) error {
 
 	logrus.Info("to disable logging from pyroscope, pass " + color.YellowString("-no-logging") + " argument to pyroscope exec")
 
+	if spyName == "gospy" {
+		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.BlueString("https://pyroscope.io/docs/"))
+	}
+
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -50,15 +54,10 @@ func Cli(cfg *config.Config, args []string) error {
 		return err
 	}
 	u := remote.New(cfg)
-	ctrl := agent.NewController(cfg, u)
-	ctrl.Start()
-	defer ctrl.Stop()
 
-	if spyName == "gospy" {
-		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.BlueString("https://pyroscope.io/docs/"))
-	}
-
-	go ctrl.StartContinuousProfiling(spyName, cfg.Exec.ApplicationName, cmd.Process.Pid, cfg.Exec.DetectSubprocesses)
+	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, cmd.Process.Pid, cfg.Exec.DetectSubprocesses)
+	sess.Start()
+	// defer sess.Stop()
 
 	cmd.Wait()
 	return nil

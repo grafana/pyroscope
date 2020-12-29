@@ -7,7 +7,6 @@ import (
 )
 
 type Upstream interface {
-	Start()
 	Stop()
 	Upload(name string, startTime time.Time, endTime time.Time, t *transporttrie.Trie)
 }
