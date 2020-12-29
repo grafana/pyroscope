@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
@@ -55,6 +56,8 @@ func Cli(cfg *config.Config, args []string) error {
 	}
 	u := remote.New(cfg)
 
+	// TODO: make configurable?
+	time.Sleep(5 * time.Second)
 	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, cmd.Process.Pid, cfg.Exec.DetectSubprocesses)
 	sess.Start()
 	defer sess.Stop()

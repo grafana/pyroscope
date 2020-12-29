@@ -1,2 +1,3 @@
 target
 third_party/*/target
+webapp/public/*

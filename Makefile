@@ -97,3 +97,7 @@ clean:
 .PHONY: update-contributors
 update-contributors:
 	$(shell yarn bin contributor-faces) .
+
+.PHONY: docker-dev
+docker-dev:
+	docker build . --tag pyroscope/pyroscope:dev
