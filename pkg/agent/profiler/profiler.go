@@ -26,7 +26,8 @@ func Start(cfg Config) (*Profiler, error) {
 		},
 	}
 	u := remote.New(globalConfig)
-	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 0, false)
+	// TODO: add sample rate
+	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 100, 0, false)
 	sess.Start()
 
 	p := &Profiler{

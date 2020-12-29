@@ -25,7 +25,7 @@ import {connect} from 'react-redux';
 import MaxNodesSelector from "./MaxNodesSelector";
 import clsx from "clsx";
 
-import {numberWithCommas, colorBasedOnName, colorGreyscale} from '../util/format';
+import {numberWithCommas, colorBasedOnPackageName, colorGreyscale} from '../util/format';
 import {bindActionCreators} from "redux";
 
 import { buildRenderURL } from "../util/update_requests";
@@ -39,6 +39,13 @@ const HIDE_THRESHOLD = 0.5;
 const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = '#48CE73' // green
 
+// TODO: actually make sure these make sense
+const regexpLookup = {
+  "pyspy": /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
+  "rbspy": /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+  "gospy": /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+  "default": /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+}
 
 class FlameGraphRenderer extends React.Component {
   constructor (){
@@ -116,10 +123,6 @@ class FlameGraphRenderer extends React.Component {
   updateData = () => {
     let { names, levels, numTicks } = this.props.flamebearer;
     this.names = names;
-    let allFilenames = this.names.map((stackTrace) => {
-      return this.getFilenameFromStackTrace(stackTrace)
-    })
-    this.filenames = [...new Set(allFilenames)];
     this.levels = levels;
     this.numTicks = numTicks;
     this.renderCanvas();
@@ -145,15 +148,16 @@ class FlameGraphRenderer extends React.Component {
     return -1;
   }
 
-  getFilenameFromStackTrace(stackTrace) {
+  getPackageNameFromStackTrace(spyName, stackTrace) {
     if(stackTrace.length == 0) {
-      return stackTrace
+      return stackTrace;
     } else {
-      let fullStackGroups = stackTrace.match(/^(?<path>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/)
+      const regexp = regexpLookup[spyName] || regexpLookup['default'];
+      let fullStackGroups = stackTrace.match(regexp);
       if(fullStackGroups) {
-        return fullStackGroups.groups.filename
+        return fullStackGroups.groups.packageName;
       } else {
-        return stackTrace
+        return stackTrace;
       }
     }
   }
@@ -277,6 +281,8 @@ class FlameGraphRenderer extends React.Component {
 
         const a = this.selectedLevel > i ? 0.33 : 1;
 
+        const spyName = this.props.flamebearer.spyName;
+
         let nodeColor;
         if (collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
@@ -285,7 +291,7 @@ class FlameGraphRenderer extends React.Component {
         } else if (queryExists && !nodeIsInQuery) {
           nodeColor = colorGreyscale(200, 0.66);
         } else {
-          nodeColor = colorBasedOnName(this.getFilenameFromStackTrace(names[level[j + 2]]), a);
+          nodeColor = colorBasedOnPackageName(this.getPackageNameFromStackTrace(spyName, names[level[j + 2]]), a);
         }
 
         this.ctx.fillStyle = nodeColor;

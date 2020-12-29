@@ -4,21 +4,7 @@ export function numberWithCommas(x) {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-export function colorBasedOnName(name, a) {
-  // const rand = (murmurhash3_32_gc(name) & 100) / 100;
-  // const m = 20; //20;
-  // const h = 40 + (rand - 0.5) * m;
-  // const s = 90;
-  // const l = 60;
-
-  // const m = 20; //20;
-  // const h = 50 + (rand - 0.5) * m;
-  // const s = 35;
-  // const l = 41;
-
-  // console.log(`color based on name: ${name}`)
-  // console.log(filenames)
-
+export function colorBasedOnPackageName(name, a) {
   const purple = `hsla(246, 40%, 65%, ${a})` //Purple:
   const blueDark = `hsla(211, 48%, 60%, ${a})` //BlueDark:
   const blueCyan = `hsla(194, 52%, 61%, ${a})` //CyanBlue:
@@ -54,12 +40,8 @@ export function colorBasedOnName(name, a) {
   //   darkRed,
   // ]
 
-  if (name.indexOf('.py') >= 0) {
-    let colorIndex = murmurhash3_32_gc(name) % items.length;
-    return items[colorIndex];
-  } else {
-    return grey
-  }
+  let colorIndex = murmurhash3_32_gc(name) % items.length;
+  return items[colorIndex];
 }
 
 export function colorGreyscale(v, a) {

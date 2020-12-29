@@ -52,7 +52,8 @@ func (a *Agent) controlSocketHandler(req *csock.Request) *csock.Response {
 		profileID := int(a.id.Next())
 		// TODO: pass withSubprocesses from somewhere
 		// TODO: pass appName from somewhere
-		s := NewSession(a.u, "testapp.cpu", "gospy", 0, false)
+		// TODO: add sample rate
+		s := NewSession(a.u, "testapp.cpu", "gospy", 100, 0, false)
 		a.activeProfiles[profileID] = s
 		s.Start()
 		return &csock.Response{ProfileID: profileID}

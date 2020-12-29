@@ -8,7 +8,8 @@ import (
 )
 
 func SelfProfile(cfg *config.Config, u upstream.Upstream, appName string) {
-	s := NewSession(u, appName, "gospy", 0, false)
+	// TODO: add sample rate
+	s := NewSession(u, appName, "gospy", 100, 0, false)
 	err := s.Start()
 
 	if err != nil {

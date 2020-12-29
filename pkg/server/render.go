@@ -45,9 +45,12 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 
+		fs := resultTree.FlamebearerStruct(maxNodes)
+		fs.SpyName = spyName
+		fs.SampleRate = sampleRate
 		res := map[string]interface{}{
 			"timeline":    tl,
-			"flamebearer": resultTree.FlamebearerStruct(maxNodes),
+			"flamebearer": fs,
 			"metadata": map[string]interface{}{
 				"spyName":    spyName,
 				"sampleRate": sampleRate,

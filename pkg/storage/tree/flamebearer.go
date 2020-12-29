@@ -1,9 +1,11 @@
 package tree
 
 type Flamebearer struct {
-	Names    []string `json:"names"`
-	Levels   [][]int  `json:"levels"`
-	NumTicks int      `json:"numTicks"`
+	Names      []string `json:"names"`
+	Levels     [][]int  `json:"levels"`
+	NumTicks   int      `json:"numTicks"`
+	SpyName    string   `json:"spyName"`
+	SampleRate int      `json:"sampleRate"`
 }
 
 func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {

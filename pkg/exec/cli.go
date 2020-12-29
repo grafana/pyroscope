@@ -58,7 +58,8 @@ func Cli(cfg *config.Config, args []string) error {
 
 	// TODO: make configurable?
 	time.Sleep(5 * time.Second)
-	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, cmd.Process.Pid, cfg.Exec.DetectSubprocesses)
+	// TODO: add sample rate
+	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, 100, cmd.Process.Pid, cfg.Exec.DetectSubprocesses)
 	sess.Start()
 	defer sess.Stop()
 
