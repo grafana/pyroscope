@@ -10,7 +10,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
@@ -24,22 +23,28 @@ type uploadJob struct {
 }
 
 type Remote struct {
-	cfg    *config.Config
+	cfg    RemoteConfig
 	todo   chan *uploadJob
 	done   chan struct{}
 	client *http.Client
 }
 
-func New(cfg *config.Config) *Remote {
+type RemoteConfig struct {
+	UpstreamThreads        int
+	UpstreamAddress        string
+	UpstreamRequestTimeout time.Duration
+}
+
+func New(cfg RemoteConfig) *Remote {
 	r := &Remote{
 		cfg:  cfg,
 		todo: make(chan *uploadJob, 100),
-		done: make(chan struct{}, cfg.Agent.UpstreamThreads),
+		done: make(chan struct{}, cfg.UpstreamThreads),
 		client: &http.Client{
 			Transport: &http.Transport{
-				MaxConnsPerHost: cfg.Agent.UpstreamThreads,
+				MaxConnsPerHost: cfg.UpstreamThreads,
 			},
-			Timeout: cfg.Agent.UpstreamRequestTimeout,
+			Timeout: cfg.UpstreamRequestTimeout,
 		},
 	}
 	go r.start()
@@ -47,13 +52,13 @@ func New(cfg *config.Config) *Remote {
 }
 
 func (u *Remote) start() {
-	for i := 0; i < u.cfg.Agent.UpstreamThreads; i++ {
+	for i := 0; i < u.cfg.UpstreamThreads; i++ {
 		go u.uploadLoop()
 	}
 }
 
 func (u *Remote) Stop() {
-	for i := 0; i < u.cfg.Agent.UpstreamThreads; i++ {
+	for i := 0; i < u.cfg.UpstreamThreads; i++ {
 		u.done <- struct{}{}
 	}
 }
@@ -76,7 +81,7 @@ func (u *Remote) Upload(name string, startTime time.Time, endTime time.Time, spy
 }
 
 func (u *Remote) uploadProfile(j *uploadJob) {
-	urlObj, _ := url.Parse(u.cfg.Agent.UpstreamAddress)
+	urlObj, _ := url.Parse(u.cfg.UpstreamAddress)
 	q := urlObj.Query()
 
 	q.Set("name", j.name)

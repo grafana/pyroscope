@@ -3,9 +3,10 @@
 package profiler
 
 import (
+	"time"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
 type Config struct {
@@ -19,13 +20,11 @@ type Profiler struct {
 
 // Start starts continuously profiling go code
 func Start(cfg Config) (*Profiler, error) {
-	globalConfig := &config.Config{
-		Agent: config.Agent{
-			UpstreamAddress: cfg.ServerAddress,
-			UpstreamThreads: 4,
-		},
-	}
-	u := remote.New(globalConfig)
+	u := remote.New(remote.RemoteConfig{
+		UpstreamAddress:        cfg.ServerAddress,
+		UpstreamThreads:        4,
+		UpstreamRequestTimeout: 30 * time.Second,
+	})
 	// TODO: add sample rate
 	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 100, 0, false)
 	sess.Start()

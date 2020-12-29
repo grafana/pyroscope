@@ -24,7 +24,11 @@ func New(cfg *config.Config) *Agent {
 	return &Agent{
 		cfg:            cfg,
 		activeProfiles: make(map[int]*ProfileSession),
-		u:              remote.New(cfg),
+		u: remote.New(remote.RemoteConfig{
+			UpstreamThreads:        cfg.Agent.UpstreamThreads,
+			UpstreamAddress:        cfg.Agent.UpstreamAddress,
+			UpstreamRequestTimeout: cfg.Agent.UpstreamRequestTimeout,
+		}),
 	}
 }
 

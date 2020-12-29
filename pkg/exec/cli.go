@@ -54,7 +54,11 @@ func Cli(cfg *config.Config, args []string) error {
 	if err != nil {
 		return err
 	}
-	u := remote.New(cfg)
+	u := remote.New(remote.RemoteConfig{
+		UpstreamAddress:        cfg.Exec.UpstreamAddress,
+		UpstreamThreads:        cfg.Exec.UpstreamThreads,
+		UpstreamRequestTimeout: cfg.Exec.UpstreamRequestTimeout,
+	})
 
 	// TODO: make configurable?
 	time.Sleep(5 * time.Second)
