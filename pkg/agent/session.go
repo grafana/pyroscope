@@ -59,7 +59,7 @@ func (ps *ProfileSession) takeSnapshots() {
 			}
 			for _, spy := range ps.spies {
 				spy.Snapshot(func(stack []byte, err error) {
-					if stack != nil {
+					if stack != nil && len(stack) > 0 {
 						ps.trieMutex.Lock()
 						defer ps.trieMutex.Unlock()
 
