@@ -11,6 +11,13 @@ import (
 // TODO: pass lower level structures between go and rust?
 var bufferLength = 1024 * 64
 
+var excludes = []string{
+	"gopark",
+	"GoroutineProfile",
+	"sigNoteSleep",
+	"notetsleepg",
+}
+
 type GoSpy struct {
 	stacks    []runtime.StackRecord
 	selfFrame *runtime.Frame
@@ -44,7 +51,14 @@ func (s *GoSpy) Snapshot(cb func([]byte, error)) {
 	} else {
 		for _, stack := range s.stacks[0:n] {
 			stackStr := stackToString(&stack)
-			if !strings.HasSuffix(stackStr, "gopark") && !strings.HasSuffix(stackStr, "GoroutineProfile") && !strings.HasSuffix(stackStr, "sigNoteSleep") {
+			shouldExclude := false
+			for _, suffix := range excludes {
+				if strings.HasSuffix(stackStr, suffix) {
+					shouldExclude = true
+					break
+				}
+			}
+			if !shouldExclude {
 				cb([]byte(stackStr), nil)
 			}
 		}
