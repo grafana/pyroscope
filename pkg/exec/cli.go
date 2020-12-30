@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -45,6 +47,17 @@ func Cli(cfg *config.Config, args []string) error {
 	if spyName == "gospy" {
 		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.BlueString("https://pyroscope.io/docs/"))
 	}
+
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGCHLD)
+
+		// Block until a signal is received.
+		for {
+			s := <-c
+			logrus.Debug("received signal: ", s)
+		}
+	}()
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stderr = os.Stderr
