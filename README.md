@@ -4,7 +4,9 @@
 [![GoDoc](https://godoc.org/github.com/pyroscope-io/pyroscope?status.svg)](https://godoc.org/github.com/pyroscope-io/pyroscope)
 
 
-[![Join us on Slack](/.github/markdown-images/join-us-on-slack.svg)](https://pyroscope.io/slack)
+[![Join us on Slack](.github/markdown-images/join-us-on-slack.svg)](https://pyroscope.io/slack)
+
+[![Schedule a set up call](.github/markdown-images/schedule-setup-call.svg)](https://pyroscope.io/setup-call)
 
 
 # What is Pyroscope?
@@ -19,12 +21,19 @@ Pyroscope is an open source continuous profiling platform. It profiles your back
 
 * [x] ruby / rails
 * [x] python
-* [x] golang (coming soon)
+* [x] golang
 * [ ] linux eBPF (coming soon)
+
+Let us know what other integrations you want to see in [our slack](https://pyroscope.io/slack).
+
+## Documentation
+
+* [Getting Started](https://pyroscope.io/docs/)
+* [Deployment Guide](https://pyroscope.io/docs/deployment)
 
 
 ## Downloads
 
-You can download the latest version of pyroscope from our GitHub [Releases page](https://github.com/pyroscope-io/pyroscope/releases/latest).
+You can download the latest version of pyroscope for macOS, linux and Docker from our [Downloads page](https://pyroscope.io/downloads/).
 
 [//]: contributor-faces

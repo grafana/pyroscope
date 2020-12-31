@@ -6,5 +6,6 @@ This document is a guide to help you through the process of contributing to Pyro
 
 ## Where do I start
 
-* Set up your [development environment](/contribute/developer-guide.md).
-* Read the [style guides](/contribute/style-guides) we use.
+* Set up your [development environment](https://pyroscope.io/docs/developer-guide).
+* Read the [style guides](https://pyroscope.io/docs/style-guide) we use.
+* Check out the list of [good first issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
