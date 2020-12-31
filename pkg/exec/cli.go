@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/mitchellh/go-ps"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
@@ -48,21 +49,14 @@ func Cli(cfg *config.Config, args []string) error {
 		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.BlueString("https://pyroscope.io/docs/"))
 	}
 
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGCHLD)
-
-		// Block until a signal is received.
-		for {
-			s := <-c
-			logrus.Debug("received signal: ", s)
-		}
-	}()
+	signal.Ignore(syscall.SIGCHLD)
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Setpgid = true
 	err := cmd.Start()
 	if err != nil {
 		return err
@@ -80,7 +74,16 @@ func Cli(cfg *config.Config, args []string) error {
 	sess.Start()
 	defer sess.Stop()
 
-	cmd.Wait()
+	// TODO: very hacky, at some point we'll need to make wait work
+	// cmd.Wait()
+
+	for {
+		time.Sleep(time.Second)
+		p, err := ps.FindProcess(cmd.Process.Pid)
+		if p == nil || err != nil {
+			break
+		}
+	}
 	return nil
 }
 
