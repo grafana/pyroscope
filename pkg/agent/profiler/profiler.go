@@ -38,6 +38,6 @@ func Start(cfg Config) (*Profiler, error) {
 
 // Stop stops continious profiling session
 func (p *Profiler) Stop() error {
-	p.ctrl.Stop()
+	p.sess.Stop()
 	return nil
 }
