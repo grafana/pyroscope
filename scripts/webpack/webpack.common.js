@@ -12,7 +12,7 @@ module.exports = {
   target: 'web',
 
   entry: {
-    app: './webapp/javascript/index.tsx',
+    app: './webapp/javascript/index.jsx',
     styles: './webapp/sass/profile.scss',
   },
 
@@ -23,7 +23,7 @@ module.exports = {
   },
 
   resolve: {
-    extensions: ['.ts', '.tsx', '.es6', '.js', '.json', '.svg'],
+    extensions: ['.ts', '.tsx', '.es6', '.js', '.jsx', '.json', '.svg'],
     alias: {
       // rc-trigger uses babel-runtime which has internal dependency to core-js@2
       // this alias maps that dependency to core-js@t3
@@ -50,7 +50,7 @@ module.exports = {
     // Note: order is bottom-to-top and/or right-to-left
     rules: [
       {
-        test: /\.tsx?$/,
+        test: /\.jsx?$/,
         exclude: /node_modules/,
         use: [
           {
