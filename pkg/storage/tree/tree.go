@@ -94,7 +94,7 @@ func (t *Tree) String() string {
 	res := ""
 	t.iterate(func(k []byte, v uint64) {
 		if v > 0 {
-			res += fmt.Sprintf("%q %d\n", k, v)
+			res += fmt.Sprintf("%q %d\n", k[2:], v)
 		}
 	})
 

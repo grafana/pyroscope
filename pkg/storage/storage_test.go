@@ -48,10 +48,10 @@ var _ = Describe("storage package", func() {
 			st2 := testing.ParseTime("0001-01-01-00:00:00")
 			et2 := testing.ParseTime("0001-01-01-00:00:30")
 			key, _ := ParseKey("foo")
-			err := s.Put(st, et, key, tree)
+			err := s.Put(st, et, key, tree, "testspy", 100)
 			Expect(err).ToNot(HaveOccurred())
 
-			t2, _, err := s.Get(st2, et2, key)
+			t2, _, _, _, err := s.Get(st2, et2, key)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(t2).ToNot(BeNil())
 
@@ -61,7 +61,7 @@ var _ = Describe("storage package", func() {
 
 			s2, err = New(cfg)
 
-			t3, _, err := s2.Get(st2, et2, key)
+			t3, _, _, _, err := s2.Get(st2, et2, key)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(t3).ToNot(BeNil())
 
