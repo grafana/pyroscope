@@ -40,4 +40,6 @@
   position: absolute;
   pointer-events: none;
   background: #ffffff40;
+  // this makes it so that text doesn't get dimmer
+  mix-blend-mode: overlay;
 }
