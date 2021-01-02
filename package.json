@@ -3,7 +3,10 @@
   "private": true,
   "name": "pyroscope",
   "version": "0.0.1",
-  "repository": "github:pyroscope-io/pyroscope",
+  "repository": {
+    "type" : "git",
+    "url" : "https://github.com/pyroscope-io/pyroscope.git"
+  },
   "scripts": {
     "dev": "webpack --progress --colors --config scripts/webpack/webpack.dev.js"
   },
