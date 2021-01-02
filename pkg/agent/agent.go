@@ -26,7 +26,7 @@ func New(cfg *config.Config) *Agent {
 		activeProfiles: make(map[int]*ProfileSession),
 		u: remote.New(remote.RemoteConfig{
 			UpstreamThreads:        cfg.Agent.UpstreamThreads,
-			UpstreamAddress:        cfg.Agent.UpstreamAddress,
+			UpstreamAddress:        cfg.Agent.ServerAddress,
 			UpstreamRequestTimeout: cfg.Agent.UpstreamRequestTimeout,
 		}),
 	}

@@ -62,7 +62,7 @@ func Cli(cfg *config.Config, args []string) error {
 		return err
 	}
 	u := remote.New(remote.RemoteConfig{
-		UpstreamAddress:        cfg.Exec.UpstreamAddress,
+		UpstreamAddress:        cfg.Exec.ServerAddress,
 		UpstreamThreads:        cfg.Exec.UpstreamThreads,
 		UpstreamRequestTimeout: cfg.Exec.UpstreamRequestTimeout,
 	})

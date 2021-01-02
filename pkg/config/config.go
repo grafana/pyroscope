@@ -20,7 +20,7 @@ type Agent struct {
 	// AgentCMD           []string
 	AgentSpyName           string        `desc:"name of the spy you want to use"` // TODO: add options
 	AgentPID               int           `def:"-1" desc:"pid of the process you want to spy on"`
-	UpstreamAddress        string        `def:"http://localhost:8080" desc:"address of the pyroscope server"`
+	ServerAddress          string        `def:"http://localhost:8080" desc:"address of the pyroscope server"`
 	UpstreamThreads        int           `def:"4"`
 	UpstreamRequestTimeout time.Duration `def:"10s"`
 	UNIXSocketPath         string        `def:"/var/run/pyroscope-agent.sock" desc:"path to a UNIX socket file"`
@@ -59,7 +59,7 @@ type Exec struct {
 	SpyName                string        `def:"auto"`
 	ApplicationName        string        `def:"" desc:"application name used when uploading profiling data"`
 	DetectSubprocesses     bool          `def:"true"`
-	UpstreamAddress        string        `def:"http://localhost:8080" desc:"address of the pyroscope server"`
+	ServerAddress          string        `def:"http://localhost:8080" desc:"address of the pyroscope server"`
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
 	UpstreamRequestTimeout time.Duration `def:"10s"`
 	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`
