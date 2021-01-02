@@ -4,9 +4,8 @@
 [![GoDoc](https://godoc.org/github.com/pyroscope-io/pyroscope?status.svg)](https://godoc.org/github.com/pyroscope-io/pyroscope)
 
 
-[![Join us on Slack](.github/markdown-images/join-us-on-slack.svg)](https://pyroscope.io/slack)
+[![Join us on Slack](.github/markdown-images/join-us-on-slack.svg)](https://pyroscope.io/slack) [![Schedule a set up call](.github/markdown-images/schedule-setup-call.svg)](https://pyroscope.io/setup-call)
 
-[![Schedule a set up call](.github/markdown-images/schedule-setup-call.svg)](https://pyroscope.io/setup-call)
 
 
 # What is Pyroscope?
@@ -15,6 +14,10 @@ Pyroscope is an open source continuous profiling platform. It profiles your back
 * low CPU overhead
 * low disk space requirements
 * snappy UI
+
+# Live Demo
+
+[🔥 Pyroscope Live Demo 🔥](https://demo.pyroscope.io/)
 
 
 ## Currently Available Integrations
