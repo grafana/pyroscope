@@ -60,7 +60,7 @@ assets-watch: install-web-dependencies
 .PHONY: assets
 assets-release: install-web-dependencies
 	rm -rf /webapp/public
-	$(shell yarn bin webpack) --config scripts/webpack/webpack.prod.js
+	NODE_ENV=production $(shell yarn bin webpack) --config scripts/webpack/webpack.prod.js
 
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS))
