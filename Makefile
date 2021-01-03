@@ -100,6 +100,10 @@ clean:
 update-contributors:
 	$(shell yarn bin contributor-faces) .
 
+.PHONY: update-changelog
+update-changelog:
+	$(shell yarn bin conventional-changelog) -p angular -i CHANGELOG.md -s
+
 .PHONY: docker-dev
 docker-dev:
 	docker build . --tag pyroscope/pyroscope:dev
