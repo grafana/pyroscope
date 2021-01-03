@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/sirupsen/logrus"
@@ -43,6 +44,7 @@ type Service struct {
 type metrics struct {
 	InstallID        string    `json:"install_id"`
 	RunID            string    `json:"run_id"`
+	Version          string    `json:"version"`
 	Timestamp        time.Time `json:"timestamp"`
 	UploadIndex      int       `json:"upload_index"`
 	GOOS             string    `json:"goos"`
@@ -90,6 +92,7 @@ func (s *Service) sendReport() {
 	m := metrics{
 		InstallID:        s.s.InstallID(),
 		RunID:            uuid.New().String(),
+		Version:          build.Version,
 		Timestamp:        time.Now(),
 		UploadIndex:      s.uploads,
 		GOOS:             runtime.GOOS,
