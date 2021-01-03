@@ -102,7 +102,7 @@ update-contributors:
 
 .PHONY: update-changelog
 update-changelog:
-	$(shell yarn bin conventional-changelog) -p angular -i CHANGELOG.md -s
+	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -s
 
 .PHONY: docker-dev
 docker-dev:
