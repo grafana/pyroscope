@@ -7,6 +7,7 @@ const {BundleAnalyzerPlugin} = require('webpack-bundle-analyzer');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
+const fs = require('fs');
 
 module.exports = {
   target: 'web',
@@ -161,6 +162,7 @@ module.exports = {
       chunksSortMode: 'none',
       templateParameters: (compilation, assets, options) => {
         return ({
+          extra_metadata: process.env.EXTRA_METADATA ? fs.readFileSync(process.env.EXTRA_METADATA) : "",
           mode: process.env.NODE_ENV,
           webpack: compilation.getStats().toJson(),
           compilation: compilation,

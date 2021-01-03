@@ -45,7 +45,8 @@ COPY package.json package-lock.json .babelrc Makefile ./
 COPY scripts ./scripts
 COPY webapp ./webapp
 
-RUN make assets-release
+ARG EXTRA_METADATA=""
+RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 
 
 #              _
