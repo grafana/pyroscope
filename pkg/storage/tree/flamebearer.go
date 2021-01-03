@@ -92,8 +92,11 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			prev += l[i] + l[i+1]
 		}
 	}
-	if len(res.Levels) > 0 {
-		res.Levels = res.Levels[1:]
-	}
+	// TODO: we used to drop the first level, because it's always an empty node
+	//   but that didn't work because flamebearer doesn't work with more
+	//   than one root element. Long term we should fix it on flamebearer side
+	// if len(res.Levels) > 0 {
+	// 	res.Levels = res.Levels[1:]
+	// }
 	return &res
 }
