@@ -39,10 +39,10 @@ const HIDE_THRESHOLD = 0.5;
 const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = '#48CE73' // green
 
-// TODO: actually make sure these make sense
+// TODO: actually make sure these make sense and add tests
 const regexpLookup = {
   "pyspy": /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
-  "rbspy": /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+  "rbspy": /^(?<func>.+? - )?(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
   "gospy": /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
   "default": /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
 }
@@ -373,8 +373,6 @@ class FlameGraphRenderer extends React.Component {
             <input name="flamegraph-search" placeholder="Search..." onChange={this.handleSearchChange} />
             &nbsp;
             <button className={clsx('btn')} style={this.state.resetStyle} id="reset" onClick={this.reset}>Reset View</button>
-            <div className="navbar-space-filler"></div>
-            <MaxNodesSelector />
           </div>
           <canvas className="flamegraph-canvas" height="0" ref={this.canvasRef} onClick={this.clickHandler} onMouseMove={this.mouseMoveHandler} onMouseOut={this.mouseOutHandler}></canvas>
           <div className={clsx('no-data-message', {'visible': this.props.flamebearer && this.props.flamebearer.numTicks == 0})}>
