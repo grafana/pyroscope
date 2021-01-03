@@ -19,7 +19,7 @@ class NameSelector extends React.Component {
     let selectedName = this.props.labels.filter(x => x.name == "__name__")[0];
     selectedName = selectedName ? selectedName.value : "none";
     return <span>
-      Metric:&nbsp;
+      Application:&nbsp;
       <select className="label-select" value={selectedName} onChange={this.selectName}>
         <option
           disabled
