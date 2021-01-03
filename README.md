@@ -7,27 +7,24 @@
 [![Join us on Slack](.github/markdown-images/join-us-on-slack.svg)](https://pyroscope.io/slack) [![Schedule a set up call](.github/markdown-images/schedule-setup-call.svg)](https://pyroscope.io/setup-call)
 
 
+Pyroscope is an open source continuous profiling platform.
 
-# What is Pyroscope?
+It is currently in active development and is a little rough around the edges. Give it a try and join [our Slack](https://pyroscope.io/slack) — we'd love to get some feedback and/or help you get started.
 
-Pyroscope is an open source continuous profiling platform. It profiles your backend applications 24/7 allowing you to see where your programs spend time. Pyroscope is designed around a few key requirements:
-* low CPU overhead
-* low disk space requirements
-* snappy UI
-
-# Live Demo
+## Live Demo
 
 [🔥 Pyroscope Live Demo 🔥](https://demo.pyroscope.io/)
 
+![Pyroscope GIF Demo](https://pyroscope-public.s3.amazonaws.com/demo-v1.gif )
 
-## Currently Available Integrations
 
-* [x] ruby / rails
-* [x] python
-* [x] golang
-* [ ] linux eBPF (coming soon)
+## Features
 
-Let us know what other integrations you want to see in [our slack](https://pyroscope.io/slack).
+* can store years of profiling data from multiple applications
+* you can look at years of data at a time or zoom in on specific events
+* low CPU overhead
+* efficient compression, low disk space requirements
+* snappy UI
 
 ## Documentation
 
@@ -38,5 +35,19 @@ Let us know what other integrations you want to see in [our slack](https://pyros
 ## Downloads
 
 You can download the latest version of pyroscope for macOS, linux and Docker from our [Downloads page](https://pyroscope.io/downloads/).
+
+## Supported Integrations
+
+* [x] ruby
+* [x] python
+* [x] golang
+* [ ] linux eBPF (coming soon)
+
+Let us know what other integrations you want to see in [our slack](https://pyroscope.io/slack).
+
+## Contributing
+
+To start contributing, check out our [Contributing Guide](/CONTRIBUTING.md)
+
 
 [//]: contributor-faces
