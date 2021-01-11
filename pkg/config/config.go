@@ -48,6 +48,8 @@ type Server struct {
 	MaxNodesSerialization int `def:"2048"`
 	MaxNodesRender        int `def:"2048"`
 
+	HideApplications []string `def:""`
+
 	AnalyticsOptOut bool `def:"false" desc:"disables analytics"`
 }
 
