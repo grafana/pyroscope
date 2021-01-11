@@ -10,6 +10,10 @@ function copyrightYears(start, end) {
   return start == end ? start : `${start} – ${end}`;
 }
 
+function version(){
+  return 'v'+PYROSCOPE_VERSION;
+}
+
 class Footer extends React.Component {
   constructor(props) {
     super(props);
@@ -19,7 +23,7 @@ class Footer extends React.Component {
     // let flags = BUILD_FLAGS.split("\n").map(x => x.replace("-X github.com/pyroscope-io/pyroscope/pkg/build.", ""));
     // console.log(flags);
     return <div className="footer">
-      <span>© Pyroscope {copyrightYears(START_YEAR, new Date().getFullYear())}</span>
+      <span title={version()}>© Pyroscope {copyrightYears(START_YEAR, new Date().getFullYear())}</span>
     </div>
   }
 }

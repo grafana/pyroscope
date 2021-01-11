@@ -177,9 +177,9 @@ module.exports = {
     new MiniCssExtractPlugin({
       filename: '[name].[hash].css',
     }),
-    // new BundleAnalyzerPlugin({
-    //   analyzerPort: 8889
-    // }),
+    new webpack.DefinePlugin({
+      PYROSCOPE_VERSION: JSON.stringify(require("../../package.json").version)
+    }),
     new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
     new CopyPlugin({
       patterns: [
