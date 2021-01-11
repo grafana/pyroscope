@@ -29,7 +29,7 @@ It is currently in active development and is a little rough around the edges. Gi
 
 [🔥 Pyroscope Live Demo 🔥](https://demo.pyroscope.io/)
 
-[![Pyroscope GIF Demo](https://user-images.githubusercontent.com/662636/103474522-a0322100-4d59-11eb-85f8-6eee7071a3e0.gif)](https://demo.pyroscope.io/)
+[![Pyroscope GIF Demo](https://user-images.githubusercontent.com/662636/104229606-5902fa80-5401-11eb-9294-5feea35c97ff.gif)](https://demo.pyroscope.io/)
 
 
 ## Features
