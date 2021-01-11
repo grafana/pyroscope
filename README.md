@@ -17,7 +17,11 @@
   <a href="https://demo.pyroscope.io//slack">Slack</a>
 </h2>
 
-Pyroscope is an open source continuous profiling platform.
+Pyroscope is an open source continuous profiling platform. It will help you:
+* Find bottlenecks in your code
+* Resolve issues with high CPU utilization
+* Understand the call tree of your application
+* Track changes over time
 
 It is currently in active development and is a little rough around the edges. Give it a try and join [our Slack](https://pyroscope.io/slack) — we'd love to get some feedback and/or help you get started.
 
@@ -30,11 +34,11 @@ It is currently in active development and is a little rough around the edges. Gi
 
 ## Features
 
-* can store years of profiling data from multiple applications
-* you can look at years of data at a time or zoom in on specific events
-* low CPU overhead
-* efficient compression, low disk space requirements
-* snappy UI
+* Can store years of profiling data from multiple applications
+* You can look at years of data at a time or zoom in on specific events
+* Low CPU overhead
+* Efficient compression, low disk space requirements
+* Snappy UI
 
 ## Documentation
 
