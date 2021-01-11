@@ -1,6 +1,6 @@
 @use "variables"as *;
 @use "mixins/outline"as *;
-@use "components/drp";
+@use "components/daterangepicker";
 @use "components/labels";
 
 @import '~sanitize.css';
@@ -80,6 +80,11 @@ tt {
 
 .btn {
   @include outline;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
   // height: 30px;
   // line-height: 30px;
   border: 1px solid $btn-border-color;
@@ -150,7 +155,26 @@ input {
 }
 
 body {
-  min-width: 1430px;
+  // this is the width of GitHub README page. so we're targeting this width so that it looks good for demo gif
+  min-width: 838px;
+}
+
+// see previous comment about min-width
+@media only screen and (max-width: 1440px) {
+  .navbar-links {
+    display: none;
+  }
+}
+@media only screen and (max-width: 1024px) {
+  .logo::after {
+    content: '';
+  }
+  .labels {
+    margin-left: 5px;
+  }
+  .drp-button {
+    max-width: 375px;
+  }
 }
 
 // .timeline-wrapper {
@@ -257,3 +281,4 @@ html, body, #root, .pyroscope-app {
     display: block;
   }
 }
+

@@ -106,7 +106,7 @@ class DateRangePicker extends React.Component {
   render() {
     return <div className={this.state.opened ? "drp-container opened" : "drp-container"}>
       <OutsideClickHandler onOutsideClick={this.hideDropdown}>
-        <button className="drp-button btn" onClick={this.showDropdown}>
+        <button className="btn drp-button" onClick={this.showDropdown}>
           <FontAwesomeIcon icon={faClock} />
           <span>{this.humanReadableRange()}</span>
         </button>

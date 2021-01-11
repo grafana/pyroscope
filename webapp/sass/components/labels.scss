@@ -4,7 +4,7 @@
 
 .labels {
   margin-left: 30px;
-  min-width: 400px;
+  min-width: 350px;
   visibility: none;
 
 
@@ -14,6 +14,10 @@
 
   select {
     margin-right: 10px;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .label {

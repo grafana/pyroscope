@@ -16,10 +16,8 @@ class RefreshButton extends React.Component {
 
   render() {
     return <div>
-      <button className="drp-button btn" onClick={this.refresh}>
-        &nbsp;
+      <button className="btn refresh-btn" onClick={this.refresh}>
         <FontAwesomeIcon icon={faSyncAlt} />
-        &nbsp;
       </button>
     </div>
   }

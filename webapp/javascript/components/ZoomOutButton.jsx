@@ -18,7 +18,7 @@ class ZoomOutButton extends React.Component {
 
   render() {
     return <div>
-      <button className="drp-button btn" onClick={this.zoomOut}>
+      <button className="btn" onClick={this.zoomOut}>
         &nbsp;
         <FontAwesomeIcon icon={faSearchMinus} />
         &nbsp;

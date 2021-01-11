@@ -46,7 +46,7 @@ class Header extends React.Component {
       </div> */}
       {/* <LabelsFilter /> */}
       <div className="navbar-space-filler"></div>
-      <div>
+      <div className="navbar-links">
         <span className="navbar-link"><FontAwesomeIcon icon={faFile} />&nbsp;<a target="_blank" href="https://pyroscope.io/docs">Docs</a></span>
         <span className="navbar-link"><SlackIcon/>&nbsp;<a target="_blank" href="https://pyroscope.io/slack">Slack</a></span>
         <span className="navbar-link"><FontAwesomeIcon icon={faGithub} />&nbsp;<a target="_blank" href="https://github.com/pyroscope-io/pyroscope">GitHub</a></span>
@@ -60,8 +60,6 @@ class Header extends React.Component {
       </div>
       &nbsp;
       <RefreshButton/>
-      {/* &nbsp; */}
-      {/* <ZoomOutButton/> */}
       &nbsp;
       <DateRangePicker />
     </div>
