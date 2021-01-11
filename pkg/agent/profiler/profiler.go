@@ -11,7 +11,7 @@ import (
 
 type Config struct {
 	ApplicationName string // e.g backend.purchases
-	ServerAddress   string // e.g http://pyroscope.services.internal:8080
+	ServerAddress   string // e.g http://pyroscope.services.internal:4040
 }
 
 type Profiler struct {
