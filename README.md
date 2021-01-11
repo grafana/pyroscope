@@ -5,9 +5,17 @@
 [![Latest release](https://img.shields.io/github/release/pyroscope-io/pyroscope.svg)](https://github.com/pyroscope-io/pyroscope/releases)
 [![GoDoc](https://godoc.org/github.com/pyroscope-io/pyroscope?status.svg)](https://godoc.org/github.com/pyroscope-io/pyroscope)
 
-
-[![Join us on Slack](.github/markdown-images/join-us-on-slack.svg)](https://pyroscope.io/slack) [![Schedule a set up call](.github/markdown-images/schedule-setup-call.svg)](https://pyroscope.io/setup-call)
-
+<h2>
+  <a href="https://pyroscope.io/">Website</a>
+  <span> • </span>
+  <a href="https://pyroscope.io/docs">Docs</a>
+  <span> • </span>
+  <a href="https://demo.pyroscope.io/">Demo</a>
+  <span> • </span>
+  <a href="/examples">Examples</a>
+  <span> • </span>
+  <a href="https://demo.pyroscope.io//slack">Slack</a>
+</h2>
 
 Pyroscope is an open source continuous profiling platform.
 
