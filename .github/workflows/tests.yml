@@ -22,5 +22,5 @@ jobs:
     - name: Run Go tests
       run: go test ./...
     - name: Run Webapp tests
-      run: yarn run test
+      run: yarn install && yarn run test
       
