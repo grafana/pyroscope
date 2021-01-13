@@ -41,7 +41,7 @@ RUN apk add --no-cache make
 
 WORKDIR /opt/pyroscope
 
-COPY package.json yarn.lock .babelrc Makefile ./
+COPY package.json yarn.lock babel.config.js Makefile ./
 COPY scripts ./scripts
 COPY webapp ./webapp
 
