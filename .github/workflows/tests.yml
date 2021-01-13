@@ -19,5 +19,8 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: |
           ${{ runner.os }}-go-
-    - name: Run tests
+    - name: Run Go tests
       run: go test ./...
+    - name: Run Webapp tests
+      run: yarn run test
+      
