@@ -63,7 +63,7 @@ Let us know what other integrations you want to see in [our slack](https://pyros
 
 To start contributing, check out our [Contributing Guide](/CONTRIBUTING.md)
 
-### Thanks to the contributors!
+### Thanks to the contributors of Pyroscope!
 
 [//]: contributor-faces
 <a href="https://github.com/petethepig"><img src="https://avatars3.githubusercontent.com/u/662636?v=4" title="petethepig" width="80" height="80"></a>
