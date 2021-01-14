@@ -1,3 +1,19 @@
+## <small>0.0.12 (2021-01-11)</small>
+
+* adds ability to hide certain apps on the frontend ([02a505f](https://github.com/pyroscope-io/pyroscope/commit/02a505f))
+* adds docker-compose examples for python, ruby and go ([d0572a5](https://github.com/pyroscope-io/pyroscope/commit/d0572a5))
+* adds more badges ([86c58ef](https://github.com/pyroscope-io/pyroscope/commit/86c58ef))
+* adds version to copyright on hover ([b16e11e](https://github.com/pyroscope-io/pyroscope/commit/b16e11e))
+* allows UI to resize below 1430px width ([e38f649](https://github.com/pyroscope-io/pyroscope/commit/e38f649))
+* bumps up version to 0.0.12 ([21d8597](https://github.com/pyroscope-io/pyroscope/commit/21d8597))
+* changes port from 8080 to 4040 ([cd36317](https://github.com/pyroscope-io/pyroscope/commit/cd36317))
+* fixes the condition from > to >= for "other" blocks ([3e74f2c](https://github.com/pyroscope-io/pyroscope/commit/3e74f2c))
+* updates README with a clearer value proposition ([58cdb4e](https://github.com/pyroscope-io/pyroscope/commit/58cdb4e))
+* updates README with more links ([c20a00f](https://github.com/pyroscope-io/pyroscope/commit/c20a00f))
+* docker: changes package-lock.json to yarn.lock ([f321857](https://github.com/pyroscope-io/pyroscope/commit/f321857))
+
+
+
 ## <small>0.0.11 (2021-01-03)</small>
 
 * changelog: better format ([c5bbb68](https://github.com/pyroscope-io/pyroscope/commit/c5bbb68))
