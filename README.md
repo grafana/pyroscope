@@ -42,6 +42,18 @@ It is currently in active development and is a little rough around the edges. Gi
 
 ## Documentation
 
+To install pyroscope on a mac:
+```shell
+brew install pyroscope-io/brew/pyroscope
+```
+
+To install the docker image:
+```shell
+docker pull pyroscope/pyroscope:latest
+```
+
+For information on how to install it on Linux or use it in production environment check out our documentation:
+
 * [Getting Started](https://pyroscope.io/docs/)
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
 
