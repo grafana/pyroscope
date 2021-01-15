@@ -23,7 +23,6 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 * Understand the call tree of your application
 * Track changes over time
 
-It is currently in active development and is a little rough around the edges. Give it a try and join [our Slack](https://pyroscope.io/slack) — we'd love to get some feedback and/or help you get started.
 
 ## Live Demo
 
