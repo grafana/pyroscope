@@ -2,28 +2,28 @@
 export function parseLabels(v) {
   const res = [];
   if (v) {
-    let [a, b] = v.split("{");
-    b = b.split("}")[0];
-    res.push({ name: "__name__", value: a });
-    b.split(",").forEach((x) => {
+    let [a, b] = v.split('{');
+    b = b.split('}')[0];
+    res.push({ name: '__name__', value: a });
+    b.split(',').forEach((x) => {
       if (x) {
-        let [k, v] = x.split('=');
+        const [k, v] = x.split('=');
         res.push({ name: k, value: v });
       }
-    })
+    });
   }
-  return res
+  return res;
 }
 
 export function encodeLabels(v) {
   let res = '';
-  let nameLabel = v.find(x => x.name == "__name__");
+  const nameLabel = v.find((x) => x.name == '__name__');
   if (nameLabel) {
-    res += nameLabel.value + "{";
+    res += `${nameLabel.value}{`;
   } else {
-    res += "unknown{";
+    res += 'unknown{';
   }
-  res += v.filter(x => x.name !== "__name__").map((x) => `${x.name}=${x.value}`).join(",")
-  res += "}"
-  return res
+  res += v.filter((x) => x.name !== '__name__').map((x) => `${x.name}=${x.value}`).join(',');
+  res += '}';
+  return res;
 }
