@@ -198,8 +198,101 @@ body {
   white-space: nowrap;
 }
 
+$pane-width: 6px;
+
+.panes-wrapper {
+  margin: 0 -$pane-width;
+  display: flex;
+
+  .pane {
+    flex: 1;
+    margin: 0 $pane-width;
+    width: 50%;
+  }
+}
+
+
+.flamegraph-table,
 .flamegraph-canvas {
   width: 100%;
+}
+
+.flamegraph-table {
+  font-size: 14px;
+  th, td {
+    text-align: right;
+    padding: 0px 10px;
+
+    border-left: 1px solid #333;
+    border-bottom: 1px solid #333;
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+
+    &.sortable {
+      cursor: pointer;
+    }
+
+    .sort-arrow {
+      display: inline-block;
+      border: 5px solid transparent;
+      border-top-color: rgba(255,255,255,0.1);
+      top: 3px;
+      position: relative;
+      margin-left: 7px;
+      &.asc {
+        border-bottom-color: white;
+        top: -2px;
+      }
+      &.desc {
+        border-top-color: white;
+        top: 3px;
+      }
+    }
+
+    span {
+      // mix-blend-mode: exclusion;
+      text-shadow: 0 0 2px rgba(0,0,0,0.33);
+    }
+
+    &:first-child {
+      border-left: none;
+      text-align: left;
+
+
+      width: auto;
+      min-width: auto;
+      max-width: auto;
+
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+  th {
+    padding: 6px 10px;
+  }
+  tr th,
+  tr:nth-child(2n) td {
+    background: rgba(255,255,255,0.05)
+  }
+}
+
+.color-reference {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+.flamegraph-search {
+  background: rgba(255,255,255,0.8);
+  color: #333;
+  transition: background-color ease-out 0.1s;
+  &:focus {
+    background: rgba(255,255,255,1);
+  }
 }
 
 .modal-close-btn {
@@ -282,3 +375,40 @@ html, body, #root, .pyroscope-app {
   }
 }
 
+// used to generate gifs with no scrollbars
+.demo-mode {
+  body{
+    overflow: hidden;
+  }
+
+  .root{
+    width: 100%;
+    height: 100%;
+    overflow-y: scroll;
+    padding-right: 17px;
+    margin-right: -17px;
+    box-sizing: content-box;
+  }
+}
+
+.btn-group {
+  display: flex;
+  .btn {
+    border-radius: 0;
+    border-left: none;
+    &:first-child {
+      border-left: 1px solid $btn-border-color;
+      border-radius: 4px 0 0 4px;
+    }
+    &:last-child {
+      border-radius: 0 4px 4px 0;
+    }
+  }
+}
+
+.viz-switch {
+  .btn {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}

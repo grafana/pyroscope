@@ -25,7 +25,8 @@ import {connect} from 'react-redux';
 import MaxNodesSelector from "./MaxNodesSelector";
 import clsx from "clsx";
 
-import {numberWithCommas, colorBasedOnPackageName, colorGreyscale} from '../util/format';
+import {colorBasedOnPackageName, colorGreyscale} from '../util/color';
+import {numberWithCommas, shortNumber, formatPercent, formatDuration, formatDurationLong} from '../util/format';
 import {bindActionCreators} from "redux";
 
 import { buildRenderURL } from "../util/update_requests";
@@ -33,11 +34,27 @@ import { fetchJSON } from "../redux/actions";
 
 import { withShortcut, ShortcutProvider, ShortcutConsumer } from 'react-keybind';
 
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  faBorderAll,
+  faAlignCenter,
+  faAlignJustify,
+  faThList,
+  faIcicles,
+  faColumns,
+  faBars,
+  faStream,
+  faList,
+} from '@fortawesome/free-solid-svg-icons';
+import { faMix } from '@fortawesome/free-brands-svg-icons';
+
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
 const HIDE_THRESHOLD = 0.5;
 const LABEL_THRESHOLD = 20;
-const HIGHLIGHT_NODE_COLOR = '#48CE73' // green
+const HIGHLIGHT_NODE_COLOR = '#48CE73'; // green
+const GAP = 0.5;
 
 // TODO: actually make sure these make sense and add tests
 const regexpLookup = {
@@ -51,9 +68,11 @@ class FlameGraphRenderer extends React.Component {
   constructor (){
     super();
     this.state = {
-      highlightStyle: {display: 'none'},
-      tooltipStyle: {display: 'none'},
-      resetStyle: {visibility: 'hidden'},
+      highlightStyle:  {display: 'none'},
+      tooltipStyle:    {display: 'none'},
+      resetStyle:      {visibility: 'hidden'},
+      sortBy:          'self',
+      sortByDirection: 'desc',
     };
     this.canvasRef = React.createRef();
     this.tooltipRef = React.createRef();
@@ -86,11 +105,15 @@ class FlameGraphRenderer extends React.Component {
     }
   }
 
+  rect(ctx, x, y, w, h, radius) {
+    return ctx.rect(x, y, w, h);
+  }
+
   roundRect(ctx, x, y, w, h, radius) {
-    radius = Math.min(w/2, radius);
-    if (radius < 1) {
-      return ctx.rect(x,y,w,h);
+    if (radius >= w/2) {
+      return this.rect(ctx, x, y, w, h, radius);
     }
+    radius = Math.min(w/2, radius);
     var r = x + w;
     var b = y + h;
     ctx.beginPath();
@@ -121,28 +144,29 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateData = () => {
-    let { names, levels, numTicks } = this.props.flamebearer;
+    let { names, levels, numTicks, sampleRate } = this.props.flamebearer;
     this.names = names;
     this.levels = levels;
     this.numTicks = numTicks;
+    this.sampleRate = sampleRate;
     this.renderCanvas();
   }
 
   // binary search of a block in a stack level
   binarySearchLevel(x, level) {
     let i = 0;
-    let j = level.length - 3;
+    let j = level.length - 4;
     while (i <= j) {
-      const m = 3 * ((i / 3 + j / 3) >> 1);
+      const m = 4 * ((i / 4 + j / 4) >> 1);
       const x0 = this.tickToX(level[m]);
       const x1 = this.tickToX(level[m] + level[m + 1]);
       if (x0 <= x && x1 >= x) {
         return x1 - x0 > COLLAPSE_THRESHOLD ? m : -1;
       }
       if (x0 > x) {
-        j = m - 3;
+        j = m - 4;
       } else {
-        i = m + 3;
+        i = m + 4;
       }
     }
     return -1;
@@ -219,7 +243,7 @@ class FlameGraphRenderer extends React.Component {
       return;
     }
 
-    let { names, levels, numTicks } = this;
+    let { names, levels, numTicks, sampleRate } = this;
     this.graphWidth = this.canvas.width = this.canvas.clientWidth;
     this.pxPerTick = this.graphWidth / numTicks / (this.rangeMax - this.rangeMin);
     this.canvas.height = PX_PER_LEVEL * (levels.length - this.topLevel);
@@ -240,7 +264,7 @@ class FlameGraphRenderer extends React.Component {
       const level = levels[this.topLevel + i];
 
 
-      for (let j = 0; j < level.length; j += 3) {
+      for (let j = 0; j < level.length; j += 4) {
         // j = 0: x start of bar
         // j = 1: width of bar
         // j = 2: position in the main index
@@ -252,7 +276,7 @@ class FlameGraphRenderer extends React.Component {
 
         // For this particular bar, there is a match
         let queryExists = this.query.length > 0;
-        let nodeIsInQuery = this.query && (names[level[j + 2]].indexOf(this.query) >= 0) || false;
+        let nodeIsInQuery = this.query && (names[level[j + 3]].indexOf(this.query) >= 0) || false;
         // merge very small blocks into big "collapsed" ones for performance
         let collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
 
@@ -264,18 +288,18 @@ class FlameGraphRenderer extends React.Component {
                 level[j + 4] * this.pxPerTick <= COLLAPSE_THRESHOLD &&
                 (nodeIsInQuery === (this.query && (names[level[j + 5]].indexOf(this.query) >= 0) || false))
             ) {
-                j += 3;
+                j += 4;
                 numBarTicks += level[j + 1];
             }
         }
         // ticks are samples
-        const sw = numBarTicks * this.pxPerTick - (collapsed ? 0 : 0.5);
-        const sh = PX_PER_LEVEL - 0.5;
+        const sw = numBarTicks * this.pxPerTick - (collapsed ? 0 : GAP);
+        const sh = PX_PER_LEVEL - GAP;
 
         // if (x < -1 || x + sw > this.graphWidth + 1 || sw < HIDE_THRESHOLD) continue;
 
         this.ctx.beginPath();
-        this.roundRect(this.ctx, x, y, sw, sh, 3);
+        this.rect(this.ctx, x, y, sw, sh, 3);
 
         const ratio = numBarTicks / numTicks;
 
@@ -291,16 +315,15 @@ class FlameGraphRenderer extends React.Component {
         } else if (queryExists && !nodeIsInQuery) {
           nodeColor = colorGreyscale(200, 0.66);
         } else {
-          nodeColor = colorBasedOnPackageName(this.getPackageNameFromStackTrace(spyName, names[level[j + 2]]), a);
+          nodeColor = colorBasedOnPackageName(this.getPackageNameFromStackTrace(spyName, names[level[j + 3]]), a);
         }
 
         this.ctx.fillStyle = nodeColor;
         this.ctx.fill();
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
-
-          const percent = Math.round(10000 * ratio) / 100;
-          const name = `${names[level[j + 2]]} (${percent}%, ${numberWithCommas(numBarTicks)} samples)`;
+          const percent = formatPercent(ratio);
+          const name = `${names[level[j + 3]]} (${percent}, ${shortNumber(numBarTicks)} samples ${formatDuration(numBarTicks, sampleRate)})`;
 
           this.ctx.save();
           this.ctx.clip();
@@ -328,10 +351,10 @@ class FlameGraphRenderer extends React.Component {
 
     const tooltipEl = this.tooltipRef.current;
     const numBarTicks = level[j + 1];
-    const percent = Math.round(10000 * numBarTicks / this.numTicks) / 100;
+    const percent = formatPercent(numBarTicks / this.numTicks);
 
     // a little hacky but this is here so that we can get tooltipWidth after text is updated.
-    const tooltipTitle = this.names[level[j + 2]];
+    const tooltipTitle = this.names[level[j + 3]];
     tooltipEl.children[0].innerText = tooltipTitle;
     const tooltipWidth = tooltipEl.clientWidth;
 
@@ -345,11 +368,11 @@ class FlameGraphRenderer extends React.Component {
       },
       tooltipStyle: {
         display: 'block',
-        left: (Math.min(e.nativeEvent.offsetX + 15 + tooltipWidth, this.graphWidth) - tooltipWidth) + 'px',
+        left: (Math.min(this.canvas.offsetLeft + e.nativeEvent.offsetX + 15 + tooltipWidth, this.canvas.offsetLeft + this.graphWidth) - tooltipWidth) + 'px',
         top: (this.canvas.offsetTop + e.nativeEvent.offsetY + 12) + 'px',
       },
       tooltipTitle:    tooltipTitle,
-      tooltipSubtitle: `${percent}%, ${numberWithCommas(numBarTicks)} samples`,
+      tooltipSubtitle: `${percent}, ${numberWithCommas(numBarTicks)} samples, ${formatDuration(x.self, this.sampleRate)}`,
     });
   }
 
@@ -365,16 +388,116 @@ class FlameGraphRenderer extends React.Component {
     })
   }
 
+  renderTable = () => {
+    if (!this.props.flamebearer) {
+      return [];
+    }
+
+    if(this.props.flamebearer.numTicks == 0) {
+      return [];
+    }
+
+    return <table className="flamegraph-table">
+      <thead>
+        <tr>
+          <th className="sortable" onClick={() => this.updateSortBy('name')} >
+            Location
+            <span className={clsx('sort-arrow', {[this.state.sortByDirection]: this.state.sortBy == 'name'})}></span>
+          </th>
+          <th className="sortable" onClick={() => this.updateSortBy('self')} >
+            Self
+            <span className={clsx('sort-arrow', {[this.state.sortByDirection]: this.state.sortBy == 'self'})}></span>
+          </th>
+          <th className="sortable" onClick={() => this.updateSortBy('total')} >
+            Total
+            <span className={clsx('sort-arrow', {[this.state.sortByDirection]: this.state.sortBy == 'total'})}></span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {this.renderTableBody()}
+      </tbody>
+    </table>
+  }
+
+  updateSortBy = (newSortBy) => {
+    let dir = this.state.sortByDirection;
+    if(this.state.sortBy == newSortBy) {
+      dir = dir == 'asc' ? 'desc' : 'asc';
+    } else {
+      dir = 'desc';
+    }
+    this.setState({
+      sortBy: newSortBy,
+      sortByDirection: dir,
+    })
+  }
+
+  renderTableBody = () => {
+    const { numTicks, maxSelf, sampleRate, spyName } = this.props.flamebearer;
+
+    const table = generateTable(this.props.flamebearer).sort((a, b) => {
+      return b.total - a.total;
+    });
+
+    const {sortBy, sortByDirection} = this.state;
+    const m = sortByDirection == 'asc' ? 1 : -1;
+    let sorted;
+    if(sortBy == 'name') {
+      sorted = table.sort((a, b) => m * a[sortBy].localeCompare(b[sortBy]));
+    } else {
+      sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
+    }
+
+    return sorted.map((x) => {
+      const pn = this.getPackageNameFromStackTrace(spyName, x.name);
+      const color = colorBasedOnPackageName(pn, 1);
+      const style = {
+        backgroundColor: color
+      };
+      return <tr key={x.name}>
+        <td>
+          <span className="color-reference" style={style}></span>
+          <span>{ x.name }</span>
+        </td>
+        <td style={ backgroundImageStyle(x.self, maxSelf, color) }>
+          {/* <span>{ formatPercent(x.self / numTicks) }</span>
+          &nbsp;
+          <span>{ shortNumber(x.self) }</span>
+          &nbsp; */}
+          <span title={formatDurationLong(x.self, sampleRate)}>{ formatDuration(x.self, sampleRate) }</span>
+        </td>
+        <td style={ backgroundImageStyle(x.total, numTicks, color) }>
+          {/* <span>{ formatPercent(x.total / numTicks) }</span>
+          &nbsp;
+          <span>{ shortNumber(x.total) }</span>
+          &nbsp; */}
+          <span title={formatDuration(x.total, sampleRate)}>{ formatDuration(x.total, sampleRate) }</span>
+        </td>
+      </tr>;
+    });
+  }
   render = () => {
     return (
       <div className="canvas-renderer">
         <div className="canvas-container">
           <div className="navbar-2">
-            <input name="flamegraph-search" placeholder="Search..." onChange={this.handleSearchChange} />
+            <input className="flamegraph-search" name="flamegraph-search" placeholder="Search functions…" onChange={this.handleSearchChange} />
             &nbsp;
             <button className={clsx('btn')} style={this.state.resetStyle} id="reset" onClick={this.reset}>Reset View</button>
+            <div className="navbar-space-filler"></div>
+            <div className="btn-group viz-switch">
+              <button className={clsx('btn')} onClick={this.reset}><FontAwesomeIcon icon={faBars} />&nbsp;&thinsp;Table</button>
+              <button className={clsx('btn')} onClick={this.reset}><FontAwesomeIcon icon={faColumns} />&nbsp;&thinsp;Both</button>
+              <button className={clsx('btn')} onClick={this.reset}><FontAwesomeIcon icon={faIcicles} />&nbsp;&thinsp;Flamegraph</button>
+            </div>
           </div>
-          <canvas className="flamegraph-canvas" height="0" ref={this.canvasRef} onClick={this.clickHandler} onMouseMove={this.mouseMoveHandler} onMouseOut={this.mouseOutHandler}></canvas>
+          <div className="flamegraph-container panes-wrapper">
+            <div className="pane">{this.renderTable()}</div>
+            <div className="pane">
+              <canvas className="flamegraph-canvas" height="0" ref={this.canvasRef} onClick={this.clickHandler} onMouseMove={this.mouseMoveHandler} onMouseOut={this.mouseOutHandler}></canvas>
+            </div>
+          </div>
           <div className={clsx('no-data-message', {'visible': this.props.flamebearer && this.props.flamebearer.numTicks == 0})}>
             <span>No profiling data available for this application / time range.</span>
           </div>
@@ -387,7 +510,6 @@ class FlameGraphRenderer extends React.Component {
       </div>
     );
   }
-
 }
 
 const mapStateToProps = state => ({
@@ -403,6 +525,42 @@ const mapDispatchToProps = dispatch => ({
     dispatch,
   ),
 });
+
+const backgroundImageStyle = (a, b, color) => {
+  const w = 148;
+  const k = w - a / b * w;
+  const clr = color.alpha(1.0);
+  return {
+    // backgroundColor: 'transparent',
+    backgroundImage: `linear-gradient(${clr}, ${clr})`,
+    backgroundPosition: `-${k}px 0px`,
+    backgroundRepeat: 'no-repeat',
+  }
+}
+
+// generates a table from data in flamebearer format
+const generateTable = (data) => {
+  const table = [];
+  if (!data) {
+    return table;
+  }
+  const { names, levels } = data;
+  const hash = {};
+  for(let i = 0; i < levels.length; i++) {
+    for(let j = 0; j < levels[i].length; j += 4) {
+      const key = levels[i][j+3];
+      const name = names[key];
+      hash[name] = hash[name] || {
+        name: name || "<empty>",
+        self: 0,
+        total: 0,
+      };
+      hash[name].total += levels[i][j+1];
+      hash[name].self += levels[i][j+2];
+    }
+  }
+  return Object.values(hash);
+}
 
 export default connect(
   mapStateToProps,
