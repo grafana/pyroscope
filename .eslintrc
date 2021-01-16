@@ -5,5 +5,9 @@
   "rules": {
     "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
     "prettier/prettier": ["error"]
+  },
+  "env": {
+    "browser": true,
+    "node": true
   }
 }
