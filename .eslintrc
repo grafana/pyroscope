@@ -5,7 +5,12 @@
   "rules": {
     "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
     "no-unused-vars": ["warn"],
-    "prettier/prettier": ["error"]
+    "prettier/prettier": ["error"],
+    "no-param-reassign": ["warn"],
+    "no-shadow": ["warn"],
+    "no-case-declarations": ["warn"],
+    "no-use-before-define": ["warn"],
+    "no-restricted-globals": ["warn"]
   },
   "env": {
     "browser": true,
