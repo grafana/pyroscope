@@ -2,25 +2,28 @@ name: Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Cache go mod directories
-      uses: actions/cache@v2
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Run Go tests
-      run: go test ./...
-    - name: Run Webapp tests
-      run: yarn install && yarn run test
-      
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache go mod directories
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run Go tests
+        run: go test ./...
+      - name: Install Webapp dependencies
+        run: yarn install
+      - name: Run Webapp tests
+        run: yarn run test
+      - name: Run Webapp lints
+        run: yarn lint
