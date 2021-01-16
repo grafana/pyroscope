@@ -4,6 +4,7 @@
   "extends": ["airbnb", "prettier"],
   "rules": {
     "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
+    "no-unused-vars": ["warn"],
     "prettier/prettier": ["error"]
   },
   "env": {
