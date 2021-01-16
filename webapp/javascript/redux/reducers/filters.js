@@ -1,4 +1,4 @@
-import uniqBy from 'lodash/fp/uniqBy';
+import uniqBy from "lodash/fp/uniqBy";
 import {
   SET_DATE_RANGE,
   SET_FROM,
@@ -12,13 +12,13 @@ import {
   REQUEST_JSON,
   RECEIVE_NAMES,
   REQUEST_NAMES,
-} from '../actionTypes';
+} from "../actionTypes";
 
-import { deltaDiff } from '../../util/flamebearer';
+import { deltaDiff } from "../../util/flamebearer";
 
 const initialState = {
-  from: 'now-1h',
-  until: 'now',
+  from: "now-1h",
+  until: "now",
   labels: [],
   timeline: null,
   flamebearer: null,
@@ -58,7 +58,10 @@ export default function (state = initialState, action) {
     case SET_LABELS:
       return { ...state, labels: action.payload.labels };
     case ADD_LABEL:
-      return { ...state, labels: uniqBy('name', [action.payload].concat(state.labels)) };
+      return {
+        ...state,
+        labels: uniqBy("name", [action.payload].concat(state.labels)),
+      };
     case REMOVE_LABEL:
       return {
         ...state,
@@ -84,9 +87,9 @@ export default function (state = initialState, action) {
       };
     case RECEIVE_NAMES:
       let { labels } = state;
-      const firstName = action.payload.names[0] || 'none';
-      if (labels.filter((x) => x.name == '__name__').length == 0) {
-        labels = labels.concat([{ name: '__name__', value: firstName }]);
+      const firstName = action.payload.names[0] || "none";
+      if (labels.filter((x) => x.name === "__name__").length === 0) {
+        labels = labels.concat([{ name: "__name__", value: firstName }]);
       }
       return {
         ...state,

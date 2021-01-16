@@ -65,6 +65,7 @@
     "classnames": "^2.2.6",
     "clsx": "^1.1.1",
     "file-loader": "^6.2.0",
+    "lodash": "^4.17.20",
     "moment": "^2.27.0",
     "normalize.css": "^8.0.1",
     "react": "16.12.0",
