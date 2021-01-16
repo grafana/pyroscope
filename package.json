@@ -9,13 +9,15 @@
   },
   "scripts": {
     "dev": "webpack --progress --colors --config scripts/webpack/webpack.dev.js",
-    "test": "jest"
+    "test": "jest",
+    "lint": "eslint ./ --ext .js --cache"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "7.8.3",
     "autoprefixer": "^9.8.5",
+    "babel-eslint": "^10.1.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "clean-webpack-plugin": "^3.0.0",
     "contributor-faces": "^1.1.0",
@@ -24,6 +26,13 @@
     "css-loader": "^4.0.0",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.15.5",
+    "eslint": "7.2.0",
+    "eslint-config-airbnb": "18.2.1",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-jsx-a11y": "^6.4.1",
+    "eslint-plugin-react": "^7.21.5",
+    "eslint-plugin-react-hooks": "4.0.0",
+    "eslint-webpack-plugin": "^2.4.1",
     "html-webpack-plugin": "^4.3.0",
     "jest": "^26.6.3",
     "mini-css-extract-plugin": "^0.9.0",
