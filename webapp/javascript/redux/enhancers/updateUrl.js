@@ -1,5 +1,5 @@
-import createSlicer from 'redux-localstorage/lib/createSlicer.js'
-import mergeState from 'redux-localstorage/lib/util/mergeState.js'
+import createSlicer from 'redux-localstorage/lib/createSlicer.js';
+import mergeState from 'redux-localstorage/lib/util/mergeState.js';
 
 export default function updateUrl(paths, config) {
   const cfg = {
@@ -7,64 +7,64 @@ export default function updateUrl(paths, config) {
     slicer: createSlicer,
     serialize: JSON.stringify,
     deserialize: JSON.parse,
-    ...config
-  }
+    ...config,
+  };
 
   const {
     merge,
     slicer,
     serialize,
-    deserialize
-  } = cfg
+    deserialize,
+  } = cfg;
 
-  return next => (reducer, initialState, enhancer) => {
+  return (next) => (reducer, initialState, enhancer) => {
     if (typeof initialState === 'function' && typeof enhancer === 'undefined') {
-      enhancer = initialState
-      initialState = undefined
+      enhancer = initialState;
+      initialState = undefined;
     }
 
-    let persistedState
-    let finalInitialState
+    let persistedState;
+    let finalInitialState;
 
     try {
       const queryString = window.location.search;
       const urlParams = new URLSearchParams(queryString);
-      const persistedState = {}
+      const persistedState = {};
 
-      paths.forEach(x => {
+      paths.forEach((x) => {
         const val = urlParams.get(x);
         if (val) {
-          persistedState[x] = val.startsWith("json:") ? JSON.parse(val.replace("json:", "")) : val;
+          persistedState[x] = val.startsWith('json:') ? JSON.parse(val.replace('json:', '')) : val;
         }
       });
 
-      finalInitialState = merge(initialState, persistedState)
+      finalInitialState = merge(initialState, persistedState);
     } catch (e) {
-      console.warn('Failed to retrieve initialize state from URL:', e)
+      console.warn('Failed to retrieve initialize state from URL:', e);
     }
 
-    const store = next(reducer, finalInitialState, enhancer)
-    const slicerFn = slicer(paths)
+    const store = next(reducer, finalInitialState, enhancer);
+    const slicerFn = slicer(paths);
 
-    store.subscribe(function () {
-      const state = store.getState()
-      const subset = slicerFn(state)
+    store.subscribe(() => {
+      const state = store.getState();
+      const subset = slicerFn(state);
 
       try {
         const queryString = window.location.search;
         const urlParams = new URLSearchParams(queryString);
-        paths.forEach(x => {
-          if(state[x]) {
-            const val = typeof state[x] === 'string' ? state[x] : "json:" + JSON.stringify(state[x]);
+        paths.forEach((x) => {
+          if (state[x]) {
+            const val = typeof state[x] === 'string' ? state[x] : `json:${JSON.stringify(state[x])}`;
             urlParams.set(x, val);
           }
         });
-        history.pushState({}, "title", "/?"+urlParams.toString())
+        history.pushState({}, 'title', `/?${urlParams.toString()}`);
       } catch (e) {
-        console.warn('Unable to persist state to URL:', e)
+        console.warn('Unable to persist state to URL:', e);
       }
-    })
+    });
 
-    return store
-  }
+    return store;
+  };
 }
