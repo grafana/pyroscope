@@ -55,6 +55,7 @@ For information on how to install it on Linux or use it in production environmen
 
 * [Getting Started](https://pyroscope.io/docs/)
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
+* [Developer Guide](https://pyroscope.io/docs/developer-guide)
 
 
 ## Downloads
