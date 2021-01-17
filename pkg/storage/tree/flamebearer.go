@@ -4,6 +4,7 @@ type Flamebearer struct {
 	Names      []string `json:"names"`
 	Levels     [][]int  `json:"levels"`
 	NumTicks   int      `json:"numTicks"`
+	MaxSelf    int      `json:"maxSelf"`
 	SpyName    string   `json:"spyName"`
 	SampleRate int      `json:"sampleRate"`
 }
@@ -16,6 +17,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 		Names:    []string{},
 		Levels:   [][]int{},
 		NumTicks: int(t.Samples()),
+		MaxSelf:  int(0),
 	}
 
 	nodes := []*treeNode{t.root}
@@ -41,6 +43,9 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			if i, ok = nameLocationCache[name]; !ok {
 				i = len(res.Names)
 				nameLocationCache[name] = i
+				if i == 0 {
+					name = "total"
+				}
 				res.Names = append(res.Names, name)
 			}
 
@@ -56,7 +61,10 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			// 	prevW := res.Levels[level][len(res.Levels[level])-2]
 			// 	barIndex -= prevX + prevW
 			// }
-			res.Levels[level] = append([]int{xOffset, int(tn.Total), i}, res.Levels[level]...)
+			if res.MaxSelf < int(tn.Self) {
+				res.MaxSelf = int(tn.Self)
+			}
+			res.Levels[level] = append([]int{xOffset, int(tn.Total), int(tn.Self), i}, res.Levels[level]...)
 
 			xOffset += int(tn.Self)
 			otherTotal := uint64(0)
@@ -85,7 +93,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 	}
 	for _, l := range res.Levels {
 		prev := 0
-		for i := 0; i < len(l); i += 3 {
+		for i := 0; i < len(l); i += 4 {
 			l[i] -= prev
 			prev += l[i] + l[i+1]
 		}

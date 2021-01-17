@@ -20,7 +20,7 @@
 export function deltaDiff(levels) {
   for (const level of levels) {
     let prev = 0;
-    for (let i = 0; i < level.length; i += 3) {
+    for (let i = 0; i < level.length; i += 4) {
       level[i] += prev;
       prev = level[i] + level[i + 1];
     }
