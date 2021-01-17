@@ -498,7 +498,7 @@ class FlameGraphRenderer extends React.Component {
             <div className="btn-group viz-switch">
               <button className={clsx('btn', {'active': this.state.view == 'table'})} onClick={() => this.updateView('table')}><FontAwesomeIcon icon={faBars} />&nbsp;&thinsp;Table</button>
               <button className={clsx('btn', {'active': this.state.view == 'both'})} onClick={() => this.updateView('both')}><FontAwesomeIcon icon={faColumns} />&nbsp;&thinsp;Both</button>
-              <button className={clsx('btn', {'active': this.state.view == 'icicle'})} onClick={() => this.updateView('icicle')}><FontAwesomeIcon icon={faIcicles} />&nbsp;&thinsp;Icicle Chart</button>
+              <button className={clsx('btn', {'active': this.state.view == 'icicle'})} onClick={() => this.updateView('icicle')}><FontAwesomeIcon icon={faIcicles} />&nbsp;&thinsp;Flamegraph</button>
             </div>
           </div>
           <div className="flamegraph-container panes-wrapper">
