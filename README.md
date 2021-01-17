@@ -14,7 +14,7 @@
   <span> • </span>
   <a href="/examples">Examples</a>
   <span> • </span>
-  <a href="https://demo.pyroscope.io//slack">Slack</a>
+  <a href="https://pyroscope.io/slack">Slack</a>
 </h2>
 
 Pyroscope is an open source continuous profiling platform. It will help you:
