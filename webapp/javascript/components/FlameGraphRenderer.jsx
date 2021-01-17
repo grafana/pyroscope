@@ -73,6 +73,7 @@ class FlameGraphRenderer extends React.Component {
       resetStyle:      {visibility: 'hidden'},
       sortBy:          'self',
       sortByDirection: 'desc',
+      view:            'both',
     };
     this.canvasRef = React.createRef();
     this.tooltipRef = React.createRef();
@@ -238,6 +239,14 @@ class FlameGraphRenderer extends React.Component {
     return (i - this.numTicks * this.rangeMin) * this.pxPerTick;
   }
 
+  updateView = (newView) => {
+    this.setState({
+      view: newView,
+    });
+    // console.log('render-canvas');
+    setTimeout(this.renderCanvas, 0)
+  }
+
   renderCanvas = () => {
     if(!this.names) {
       return;
@@ -257,7 +266,7 @@ class FlameGraphRenderer extends React.Component {
 
 
     this.ctx.textBaseline = 'middle';
-    this.ctx.font = '300 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
+    this.ctx.font = '400 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
@@ -323,7 +332,7 @@ class FlameGraphRenderer extends React.Component {
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
           const percent = formatPercent(ratio);
-          const name = `${names[level[j + 3]]} (${percent}, ${shortNumber(numBarTicks)} samples ${formatDuration(numBarTicks, sampleRate)})`;
+          const name = `${names[level[j + 3]]} (${percent}, ${formatDuration(numBarTicks, sampleRate)})`;
 
           this.ctx.save();
           this.ctx.clip();
@@ -372,7 +381,7 @@ class FlameGraphRenderer extends React.Component {
         top: (this.canvas.offsetTop + e.nativeEvent.offsetY + 12) + 'px',
       },
       tooltipTitle:    tooltipTitle,
-      tooltipSubtitle: `${percent}, ${numberWithCommas(numBarTicks)} samples, ${formatDuration(x.self, this.sampleRate)}`,
+      tooltipSubtitle: `${percent}, ${numberWithCommas(numBarTicks)} samples, ${formatDuration(numBarTicks, this.sampleRate)}`,
     });
   }
 
@@ -482,19 +491,19 @@ class FlameGraphRenderer extends React.Component {
       <div className="canvas-renderer">
         <div className="canvas-container">
           <div className="navbar-2">
-            <input className="flamegraph-search" name="flamegraph-search" placeholder="Search functions…" onChange={this.handleSearchChange} />
+            <input className="flamegraph-search" name="flamegraph-search" placeholder="Search…" onChange={this.handleSearchChange} />
             &nbsp;
             <button className={clsx('btn')} style={this.state.resetStyle} id="reset" onClick={this.reset}>Reset View</button>
             <div className="navbar-space-filler"></div>
             <div className="btn-group viz-switch">
-              <button className={clsx('btn')} onClick={this.reset}><FontAwesomeIcon icon={faBars} />&nbsp;&thinsp;Table</button>
-              <button className={clsx('btn')} onClick={this.reset}><FontAwesomeIcon icon={faColumns} />&nbsp;&thinsp;Both</button>
-              <button className={clsx('btn')} onClick={this.reset}><FontAwesomeIcon icon={faIcicles} />&nbsp;&thinsp;Flamegraph</button>
+              <button className={clsx('btn', {'active': this.state.view == 'table'})} onClick={() => this.updateView('table')}><FontAwesomeIcon icon={faBars} />&nbsp;&thinsp;Table</button>
+              <button className={clsx('btn', {'active': this.state.view == 'both'})} onClick={() => this.updateView('both')}><FontAwesomeIcon icon={faColumns} />&nbsp;&thinsp;Both</button>
+              <button className={clsx('btn', {'active': this.state.view == 'icicle'})} onClick={() => this.updateView('icicle')}><FontAwesomeIcon icon={faIcicles} />&nbsp;&thinsp;Icicle Chart</button>
             </div>
           </div>
           <div className="flamegraph-container panes-wrapper">
-            <div className="pane">{this.renderTable()}</div>
-            <div className="pane">
+            <div className={clsx("pane", {hidden: this.state.view == 'icicle'})}>{this.renderTable()}</div>
+            <div className={clsx("pane", {hidden: this.state.view == 'table'})}>
               <canvas className="flamegraph-canvas" height="0" ref={this.canvasRef} onClick={this.clickHandler} onMouseMove={this.mouseMoveHandler} onMouseOut={this.mouseOutHandler}></canvas>
             </div>
           </div>
