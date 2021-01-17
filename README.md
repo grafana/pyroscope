@@ -23,7 +23,6 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 * Understand the call tree of your application
 * Track changes over time
 
-It is currently in active development and is a little rough around the edges. Give it a try and join [our Slack](https://pyroscope.io/slack) — we'd love to get some feedback and/or help you get started.
 
 ## Live Demo
 
@@ -41,6 +40,18 @@ It is currently in active development and is a little rough around the edges. Gi
 * Snappy UI
 
 ## Documentation
+
+To install pyroscope on a mac:
+```shell
+brew install pyroscope-io/brew/pyroscope
+```
+
+To install the docker image:
+```shell
+docker pull pyroscope/pyroscope:latest
+```
+
+For information on how to install it on Linux or use it in production environment check out our documentation:
 
 * [Getting Started](https://pyroscope.io/docs/)
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
