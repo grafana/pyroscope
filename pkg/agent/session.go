@@ -201,18 +201,3 @@ func findAllSubprocesses(pid int) []int {
 
 	return res
 }
-
-// TODO: add this check back
-
-// func isRoot() bool {
-// 	u, err := user.Current()
-// 	return err == nil && u.Username == "root"
-// }
-
-// func printDarwinMessage() {
-// 	if runtime.GOOS == "darwin" {
-// 		if !isRoot() {
-// 			log.Error("on macOS it is required to run the agent with sudo")
-// 		}
-// 	}
-// }
