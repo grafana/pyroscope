@@ -51,6 +51,12 @@ To install the docker image:
 docker pull pyroscope/pyroscope:latest
 ```
 
+After pyroscope is installed, you just need to:
+1. Start the pyroscope server
+2. Run your application with the right agent (see image below)
+
+![pyroscope_diagram_no_logo-01](https://user-images.githubusercontent.com/23323466/104868724-1194d680-58f9-11eb-96da-c5a4922a95d5.png)
+
 For information on how to install it on Linux or use it in production environment check out our documentation:
 
 * [Getting Started](https://pyroscope.io/docs/)
