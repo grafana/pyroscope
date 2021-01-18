@@ -34,8 +34,7 @@ RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a
 # | (_| \__ \__ \  __/ |_\__ \
 #  \__,_|___/___/\___|\__|___/
 
-# doesn't matter what arch it is on, hence --platform
-FROM --platform=$BUILDPLATFORM node:14.15.1-alpine3.12 as js-builder
+FROM node:14.15.1-alpine3.12 as js-builder
 
 RUN apk add --no-cache make
 
