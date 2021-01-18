@@ -167,11 +167,17 @@ func Start(cfg *config.Config) error {
 	}
 
 	rootCmd := &ffcli.Command{
-		UsageFunc:   printUsage,
-		Options:     options,
-		ShortUsage:  "pyroscope [flags] <subcommand>",
-		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{agentCmd, serverCmd, convertCmd, execCmd},
+		UsageFunc:  printUsage,
+		Options:    options,
+		ShortUsage: "pyroscope [flags] <subcommand>",
+		FlagSet:    rootFlagSet,
+		Subcommands: []*ffcli.Command{
+			// disabled these commands for now, they are not documented and confuse people
+			// agentCmd,
+			// convertCmd,
+			serverCmd,
+			execCmd,
+		},
 	}
 
 	agentCmd.Exec = func(_ context.Context, args []string) error {
