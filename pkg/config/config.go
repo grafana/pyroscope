@@ -14,7 +14,7 @@ type Config struct {
 }
 
 type Agent struct {
-	Config   string `def:"/etc/pyroscope/agent.yml" desc:"location of config file"`
+	Config   string `def:"<installPrefix>/etc/pyroscope/agent.yml" desc:"location of config file"`
 	LogLevel string `def:"info", desc:"debug|info|warn|error"`
 
 	// AgentCMD           []string
@@ -23,16 +23,16 @@ type Agent struct {
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`
 	UpstreamThreads        int           `def:"4"`
 	UpstreamRequestTimeout time.Duration `def:"10s"`
-	UNIXSocketPath         string        `def:"/var/run/pyroscope-agent.sock" desc:"path to a UNIX socket file"`
+	UNIXSocketPath         string        `def:"<installPrefix>/var/run/pyroscope-agent.sock" desc:"path to a UNIX socket file"`
 }
 
 type Server struct {
-	Config   string `def:"/etc/pyroscope/server.yml" desc:"location of config file"`
+	Config   string `def:"<installPrefix>/etc/pyroscope/server.yml" desc:"location of config file"`
 	LogLevel string `def:"info", desc:"debug|info|warn|error"`
 	// TODO: fix, doesn't see to work
 	BadgerLogLevel string `def:"error", desc:"debug|info|warn|error"`
 
-	StoragePath string `def:"/var/lib/pyroscope"`
+	StoragePath string `def:"<installPrefix>/var/lib/pyroscope"`
 	ApiBindAddr string `def:":4040"`
 
 	CacheDimensionSize  int `def:"1000"`

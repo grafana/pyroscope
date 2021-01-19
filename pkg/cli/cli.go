@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -47,6 +49,8 @@ func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
 	t := reflect.TypeOf(v.Interface())
 	num := t.NumField()
 
+	installPrefix := getInstallPrefix()
+
 	for i := 0; i < num; i++ {
 		field := t.Field(i)
 		fieldV := v.Field(i)
@@ -68,6 +72,7 @@ func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
 			flagSet.Var(val2, nameVal, descVal)
 		case reflect.TypeOf(""):
 			val := fieldV.Addr().Interface().(*string)
+			defaultValStr := strings.ReplaceAll(defaultValStr, "<installPrefix>", installPrefix)
 			flagSet.StringVar(val, nameVal, defaultValStr, descVal)
 		case reflect.TypeOf(true):
 			val := fieldV.Addr().Interface().(*bool)
@@ -102,6 +107,35 @@ func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
 			log.Fatalf("type %s is not supported", field.Type)
 		}
 	}
+}
+
+// on mac pyroscope is usually installed via homebrew. homebrew installs under a prefix
+//   this is logic to figure out what prefix it is
+func getInstallPrefix() string {
+	if runtime.GOOS != "darwin" {
+		return ""
+	}
+
+	executablePath, err := os.Executable()
+	if err != nil {
+		// TODO: figure out what kind of errors might happen, handle it
+		return ""
+	}
+	cellarPath := filepath.Clean(filepath.Join(resolvePath(executablePath), "../../../.."))
+
+	if !strings.HasSuffix(cellarPath, "Cellar") {
+		// looks like it's not installed via homebrew
+		return ""
+	}
+
+	return filepath.Clean(filepath.Join(cellarPath, "../"))
+}
+
+func resolvePath(path string) string {
+	if res, err := filepath.EvalSymlinks(path); err == nil {
+		return res
+	}
+	return path
 }
 
 func printUsage(c *ffcli.Command) string {
@@ -167,11 +201,17 @@ func Start(cfg *config.Config) error {
 	}
 
 	rootCmd := &ffcli.Command{
-		UsageFunc:   printUsage,
-		Options:     options,
-		ShortUsage:  "pyroscope [flags] <subcommand>",
-		FlagSet:     rootFlagSet,
-		Subcommands: []*ffcli.Command{agentCmd, serverCmd, convertCmd, execCmd},
+		UsageFunc:  printUsage,
+		Options:    options,
+		ShortUsage: "pyroscope [flags] <subcommand>",
+		FlagSet:    rootFlagSet,
+		Subcommands: []*ffcli.Command{
+			// disabled these commands for now, they are not documented and confuse people
+			// agentCmd,
+			// convertCmd,
+			serverCmd,
+			execCmd,
+		},
 	}
 
 	agentCmd.Exec = func(_ context.Context, args []string) error {
@@ -227,12 +267,12 @@ func startServer(cfg *config.Config) {
 	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}")
 	go printRAMUsage()
 	go printDiskUsage(cfg)
+	c := server.New(cfg, s)
 	if !cfg.Server.AnalyticsOptOut {
-		analyticsService := analytics.NewService(cfg, s)
+		analyticsService := analytics.NewService(cfg, s, c)
 		go analyticsService.Start()
 		atexit.Register(func() { analyticsService.Stop() })
 	}
-	c := server.New(cfg, s)
 	// if you ever change this line, make sure to update this homebrew test:
 	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
 	log.Info("starting HTTP server")

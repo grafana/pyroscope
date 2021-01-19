@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
 	"path"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -33,11 +35,12 @@ func Cli(cfg *config.Config, args []string) error {
 			supportedSpies := supportedSpiesWithoutGospy()
 			suggestedCommand := fmt.Sprintf("pyroscope exec -spy-name %s %s", supportedSpies[0], strings.Join(args, " "))
 			return fmt.Errorf(
-				"could not automatically find a spy for program \"%s\". Pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\n\nIf you believe this is a mistake, please submit an issue at %s",
+				"could not automatically find a spy for program \"%s\". Pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\n%s\nIf you believe this is a mistake, please submit an issue at %s",
 				baseName,
 				color.YellowString("-spy-name"),
 				color.YellowString(suggestedCommand),
 				strings.Join(supportedSpies, ","),
+				armMessage(),
 				color.BlueString("https://github.com/pyroscope-io/pyroscope/issues"),
 			)
 		}
@@ -45,8 +48,8 @@ func Cli(cfg *config.Config, args []string) error {
 
 	logrus.Info("to disable logging from pyroscope, pass " + color.YellowString("-no-logging") + " argument to pyroscope exec")
 
-	if spyName == "gospy" {
-		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.BlueString("https://pyroscope.io/docs/"))
+	if err := performChecks(spyName); err != nil {
+		return err
 	}
 
 	signal.Ignore(syscall.SIGCHLD)
@@ -96,4 +99,49 @@ func supportedSpiesWithoutGospy() []string {
 	}
 
 	return supportedSpies
+}
+
+func performChecks(spyName string) error {
+	if spyName == "gospy" {
+		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.BlueString("https://pyroscope.io/docs/"))
+	}
+
+	if runtime.GOOS == "darwin" {
+		if !isRoot() {
+			logrus.Error("on macOS you're required to run the agent with sudo")
+		}
+	}
+
+	if stringsContains(spy.SupportedSpies, spyName) {
+		supportedSpies := supportedSpiesWithoutGospy()
+		return fmt.Errorf(
+			"Spy \"%s\" is not supported. Available spies are: %s\n%s",
+			color.BlueString("spyName"),
+			strings.Join(supportedSpies, ","),
+			armMessage(),
+		)
+	}
+
+	return nil
+}
+
+func stringsContains(arr []string, element string) bool {
+	for _, v := range arr {
+		if v == element {
+			return true
+		}
+	}
+	return false
+}
+
+func isRoot() bool {
+	u, err := user.Current()
+	return err == nil && u.Username == "root"
+}
+
+func armMessage() string {
+	if runtime.GOARCH == "arm64" {
+		return "Note that rbspy is not available on arm64 platform"
+	}
+	return ""
 }

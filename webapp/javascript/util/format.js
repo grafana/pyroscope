@@ -2,14 +2,12 @@ export function numberWithCommas(x) {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-import humanizeDuration from "humanize-duration";
-
 const suffixes = [
   "K",
   "M",
   "G",
   "T",
-]
+];
 
 export function shortNumber(x) {
   let suffix = '';
@@ -27,29 +25,37 @@ export function formatPercent(ratio) {
   return percent+'%';
 }
 
-const shortEnglishHumanizer = humanizeDuration.humanizer({
-  language: "shortEn",
-  languages: {
-    shortEn: {
-      y: () => "y",
-      mo: () => "mo",
-      w: () => "w",
-      d: () => "d",
-      h: () => "h",
-      m: () => "m",
-      s: () => "s",
-      ms: () => "ms",
-    },
-  },
-});
+const durations = [
+  [60, "minute"],
+  [60, "hour"],
+  [24, "day"],
+  [30, "month"],
+  [12, "year"],
+];
 
+// this is a class and not a function because we can save some time by
+//   precalculating divider and suffix and not doing it on each iteration
+export class DurationFormater {
+  constructor(maxDur) {
+    this.divider = 1;
+    this.suffix = 'second';
+    for(var i = 0; i < durations.length; i++) {
+      if (maxDur >= durations[i][0]) {
+        this.divider *= durations[i][0];
+        maxDur /= durations[i][0];
+        this.suffix = durations[i][1];
+      } else {
+        break;
+      }
+    }
+  }
 
-export function formatDuration(v, sampleRate) {
-  const rounded = v * (1 / sampleRate) * 1000;
-  return humanizeDuration(rounded, { largest: 1, maxDecimalPoints: 2 });
-}
-
-export function formatDurationLong(v, sampleRate) {
-  const rounded = v * (1 / sampleRate) * 1000;
-  return humanizeDuration(rounded, { maxDecimalPoints: 2 });
+  format(seconds) {
+    let number = seconds / this.divider;
+    number = Math.round(number * 100)/100;
+    if (number < 0.01) {
+      number = '< 0.01';
+    }
+    return `${number} ${this.suffix}` + (number == 1 ? '' : 's');
+  }
 }

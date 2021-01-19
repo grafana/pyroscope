@@ -3,10 +3,12 @@ package server
 import (
 	golog "log"
 	"net/http"
+	"sync"
 	"time"
 
 	_ "net/http/pprof"
 
+	"github.com/clarkduvall/hyperloglog"
 	"github.com/markbates/pkger"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -22,12 +24,20 @@ func init() {
 type Controller struct {
 	cfg *config.Config
 	s   *storage.Storage
+
+	statsMutex sync.Mutex
+	stats      map[string]int
+
+	appStats *hyperloglog.HyperLogLogPlus
 }
 
 func New(cfg *config.Config, s *storage.Storage) *Controller {
+	appStats, _ := hyperloglog.NewPlus(uint8(18))
 	return &Controller{
-		cfg: cfg,
-		s:   s,
+		cfg:      cfg,
+		s:        s,
+		stats:    make(map[string]int),
+		appStats: appStats,
 	}
 }
 
@@ -44,7 +54,10 @@ func (ctrl *Controller) Start() {
 	} else {
 		fs = http.FileServer(http.Dir("./webapp/public"))
 	}
-	mux.HandleFunc("/", fs.ServeHTTP)
+	mux.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
+		ctrl.statsInc("index")
+		fs.ServeHTTP(rw, r)
+	})
 
 	logger := log.New()
 	w := logger.Writer()

@@ -26,7 +26,7 @@ import MaxNodesSelector from "./MaxNodesSelector";
 import clsx from "clsx";
 
 import {colorBasedOnPackageName, colorGreyscale} from '../util/color';
-import {numberWithCommas, shortNumber, formatPercent, formatDuration, formatDurationLong} from '../util/format';
+import {numberWithCommas, shortNumber, formatPercent, DurationFormater} from '../util/format';
 import {bindActionCreators} from "redux";
 
 import { buildRenderURL } from "../util/update_requests";
@@ -268,6 +268,7 @@ class FlameGraphRenderer extends React.Component {
     this.ctx.textBaseline = 'middle';
     this.ctx.font = '400 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
+    const df = new DurationFormater(this.numTicks / this.sampleRate);
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
@@ -332,7 +333,7 @@ class FlameGraphRenderer extends React.Component {
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
           const percent = formatPercent(ratio);
-          const name = `${names[level[j + 3]]} (${percent}, ${formatDuration(numBarTicks, sampleRate)})`;
+          const name = `${names[level[j + 3]]} (${percent}, ${df.format(numBarTicks / sampleRate)})`;
 
           this.ctx.save();
           this.ctx.clip();
@@ -367,6 +368,8 @@ class FlameGraphRenderer extends React.Component {
     tooltipEl.children[0].innerText = tooltipTitle;
     const tooltipWidth = tooltipEl.clientWidth;
 
+    const df = new DurationFormater(this.numTicks / this.sampleRate);
+
     this.setState({
       highlightStyle: {
         display: 'block',
@@ -381,7 +384,7 @@ class FlameGraphRenderer extends React.Component {
         top: (this.canvas.offsetTop + e.nativeEvent.offsetY + 12) + 'px',
       },
       tooltipTitle:    tooltipTitle,
-      tooltipSubtitle: `${percent}, ${numberWithCommas(numBarTicks)} samples, ${formatDuration(numBarTicks, this.sampleRate)}`,
+      tooltipSubtitle: `${percent}, ${numberWithCommas(numBarTicks)} samples, ${df.format(numBarTicks / this.sampleRate)}`,
     });
   }
 
@@ -458,6 +461,8 @@ class FlameGraphRenderer extends React.Component {
       sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
     }
 
+    const df = new DurationFormater(this.numTicks / this.sampleRate);
+
     return sorted.map((x) => {
       const pn = this.getPackageNameFromStackTrace(spyName, x.name);
       const color = colorBasedOnPackageName(pn, 1);
@@ -474,14 +479,14 @@ class FlameGraphRenderer extends React.Component {
           &nbsp;
           <span>{ shortNumber(x.self) }</span>
           &nbsp; */}
-          <span title={formatDurationLong(x.self, sampleRate)}>{ formatDuration(x.self, sampleRate) }</span>
+          <span title={df.format(x.self / sampleRate)}>{ df.format(x.self / sampleRate) }</span>
         </td>
         <td style={ backgroundImageStyle(x.total, numTicks, color) }>
           {/* <span>{ formatPercent(x.total / numTicks) }</span>
           &nbsp;
           <span>{ shortNumber(x.total) }</span>
           &nbsp; */}
-          <span title={formatDuration(x.total, sampleRate)}>{ formatDuration(x.total, sampleRate) }</span>
+          <span title={df.format(x.total / sampleRate)}>{ df.format(x.total / sampleRate) }</span>
         </td>
       </tr>;
     });

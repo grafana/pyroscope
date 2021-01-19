@@ -5,3 +5,4 @@ foos:
   - "test-val-3"
 bar: 123
 baz: "10h"
+foo-bar: "test-val-4"

@@ -34,8 +34,6 @@ func New(db *badger.DB, bound int, prefix string) *Cache {
 		lfu:         l,
 		prefix:      prefix,
 		cleanupDone: make(chan struct{}),
-		// TODO: fix this, should work without this thing
-		// alwaysSave: true,
 	}
 	go func() {
 		for {
