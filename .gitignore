@@ -8,3 +8,4 @@ pkged.go
 .DS_Store
 /Icon*
 /scripts/packages/
+.eslintcache
