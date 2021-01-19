@@ -1,3 +1,9 @@
+## <small>0.0.14 (2021-01-19)</small>
+
+* fixes a bug where pyroscope thinks a spy is not supported when it is ([0a9da1c](https://github.com/pyroscope-io/pyroscope/commit/0a9da1c))
+
+
+
 ## <small>0.0.13 (2021-01-19)</small>
 
 * Add a few more colors and remove extra comment ([44dfb62](https://github.com/pyroscope-io/pyroscope/commit/44dfb62))
