@@ -133,36 +133,12 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 	if sn.present && (rel == contain || rel == match) {
 		cb(sn, sn.depth, sn.time, big.NewRat(1, 1))
 	} else if rel != outside { // inside or overlap
-		if sn.present {
-			// in this case some of the query area might be covered by children
-			// Consider a case like this:
-			//     S                         E
-			// *_|_|_|_|_|x|x|_|_|_*_|_|_|_|_|_|_|_|_|_*
-			// ^-------sn----------^
-			// Legend:
-			// S/E - start and end time
-			// _   - children are missing
-			// x   - children present
-			// *   - current node (sn) bounds
-			//
-			// in this case uncoveredAmount = 6/10
-			// 6 because that's how many children are missing and fit between S and E
-			// 10 is how many children are in the node
-			uncoveredAmount := big.NewRat(0, 1)
-			for i, v := range sn.children {
-				if v != nil {
-					v.get(st, et, cb)
-				} else {
-					childT := sn.time.Truncate(durations[sn.depth]).Add(time.Duration(i) * durations[sn.depth-1])
-					childOverlap := overlapRead(childT, childT.Add(durations[sn.depth-1]), st, et, durations[0])
-					uncoveredAmount.Add(uncoveredAmount, childOverlap)
-				}
-			}
-			if uncoveredAmount.Num().Int64() != 0 {
-				cb(sn, sn.depth, sn.time, uncoveredAmount)
-			}
+		if sn.present && len(sn.children) == 0 {
+			// TODO: I did not test this logic as extensively as I would love to.
+			//   See https://github.com/pyroscope-io/pyroscope/issues/28 for more context and ideas on what to do
+			cb(sn, sn.depth, sn.time, sn.overlapRead(st, et))
 		} else {
-			// if current node doesn't have a tree present, defer to children
+			// if current node doesn't have a tree present or has children, defer to children
 			for _, v := range sn.children {
 				if v != nil {
 					v.get(st, et, cb)
