@@ -27,6 +27,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resultTree, tl, spyName, sampleRate, err := ctrl.s.Get(startTime, endTime, storageKey)
+	ctrl.statsInc("render")
 	if err != nil {
 		panic(err) // TODO: handle
 	}

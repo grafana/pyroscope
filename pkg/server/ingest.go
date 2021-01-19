@@ -96,5 +96,9 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	ctrl.statsInc("ingest")
+	ctrl.statsInc("ingest:" + ip.spyName)
+	k := *ip.storageKey
+	ctrl.appStats.Add(hashString(k.AppName()))
 	w.WriteHeader(200)
 }

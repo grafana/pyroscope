@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/sirupsen/logrus"
 )
@@ -19,10 +20,11 @@ const url = "https://analytics.pyroscope.io/api/events"
 const gracePeriod = 5 * time.Minute
 const uploadFrequency = 24 * time.Hour
 
-func NewService(cfg *config.Config, s *storage.Storage) *Service {
+func NewService(cfg *config.Config, s *storage.Storage, c *server.Controller) *Service {
 	return &Service{
 		cfg: cfg,
 		s:   s,
+		c:   c,
 		httpClient: &http.Client{
 			Transport: &http.Transport{
 				MaxConnsPerHost: 1,
@@ -36,6 +38,7 @@ func NewService(cfg *config.Config, s *storage.Storage) *Service {
 type Service struct {
 	cfg        *config.Config
 	s          *storage.Storage
+	c          *server.Controller
 	httpClient *http.Client
 	uploads    int
 	stopCh     chan struct{}
@@ -58,6 +61,13 @@ type metrics struct {
 	BadgerDicts      int       `json:"badger_dicts"`
 	BadgerDimensions int       `json:"badger_dimensions"`
 	BadgerSegments   int       `json:"badger_segments"`
+	ControllerIndex  int       `json:"controller_index"`
+	ControllerIngest int       `json:"controller_ingest"`
+	ControllerRender int       `json:"controller_render"`
+	SpyRbspy         int       `json:"spy_rbspy"`
+	SpyPyspy         int       `json:"spy_pyspy"`
+	SpyGospy         int       `json:"spy_gospy"`
+	AppsCount        int       `json:"apps_count"`
 }
 
 func (s *Service) Start() {
@@ -89,6 +99,8 @@ func (s *Service) sendReport() {
 	runtime.ReadMemStats(&ms)
 	du := s.s.DiskUsage()
 
+	controllerStats := s.c.Stats()
+
 	m := metrics{
 		InstallID:        s.s.InstallID(),
 		RunID:            uuid.New().String(),
@@ -106,6 +118,13 @@ func (s *Service) sendReport() {
 		BadgerDicts:      int(du["dicts"]),
 		BadgerDimensions: int(du["dimensions"]),
 		BadgerSegments:   int(du["segments"]),
+		ControllerIndex:  controllerStats["index"],
+		ControllerIngest: controllerStats["ingest"],
+		ControllerRender: controllerStats["render"],
+		SpyRbspy:         controllerStats["ingest:rbspy"],
+		SpyPyspy:         controllerStats["ingest:pyspy"],
+		SpyGospy:         controllerStats["ingest:gospy"],
+		AppsCount:        s.c.AppsCount(),
 	}
 
 	buf, err := json.Marshal(m)

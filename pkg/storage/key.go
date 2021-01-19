@@ -130,3 +130,7 @@ func (k *Key) Hashed() []byte {
 	binary.LittleEndian.PutUint64(b[8:16], u2)
 	return b
 }
+
+func (k *Key) AppName() string {
+	return k.labels["__name__"]
+}

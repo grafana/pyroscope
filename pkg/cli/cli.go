@@ -267,12 +267,12 @@ func startServer(cfg *config.Config) {
 	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}")
 	go printRAMUsage()
 	go printDiskUsage(cfg)
+	c := server.New(cfg, s)
 	if !cfg.Server.AnalyticsOptOut {
-		analyticsService := analytics.NewService(cfg, s)
+		analyticsService := analytics.NewService(cfg, s, c)
 		go analyticsService.Start()
 		atexit.Register(func() { analyticsService.Stop() })
 	}
-	c := server.New(cfg, s)
 	// if you ever change this line, make sure to update this homebrew test:
 	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
 	log.Info("starting HTTP server")
