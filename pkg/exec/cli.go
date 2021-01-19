@@ -112,11 +112,11 @@ func performChecks(spyName string) error {
 		}
 	}
 
-	if stringsContains(spy.SupportedSpies, spyName) {
+	if !stringsContains(spy.SupportedSpies, spyName) {
 		supportedSpies := supportedSpiesWithoutGospy()
 		return fmt.Errorf(
 			"Spy \"%s\" is not supported. Available spies are: %s\n%s",
-			color.BlueString("spyName"),
+			color.BlueString(spyName),
 			strings.Join(supportedSpies, ","),
 			armMessage(),
 		)
