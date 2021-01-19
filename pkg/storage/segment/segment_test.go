@@ -13,13 +13,15 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
-func getTries(s *Segment, st, et time.Time) []merge.Merger {
-	tries := []merge.Merger{}
-	return tries
+func doGet(s *Segment, st, et time.Time) []time.Time {
+	res := []time.Time{}
+	s.Get(st, et, func(d int, t time.Time, r *big.Rat) {
+		res = append(res, t)
+	})
+	return res
 }
 
 func strip(val string) string {
@@ -74,7 +76,7 @@ var _ = Describe("stree", func() {
 		})
 	})
 
-	XContext("Put", func() {
+	Context("Put", func() {
 		Context("When empty", func() {
 			It("sets root properly", func() {
 				s := New(r, m)
@@ -149,7 +151,7 @@ var _ = Describe("stree", func() {
 
 				spew.Dump(s.root)
 
-				Expect(getTries(s, testing.SimpleTime(0), testing.SimpleTime(39))).To(HaveLen(3))
+				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(39))).To(HaveLen(3))
 			})
 
 			It("works with 3 mins", func() {
@@ -161,7 +163,7 @@ var _ = Describe("stree", func() {
 
 				spew.Dump(s.root)
 
-				// Expect(getTries(s, testing.SimpleTime(20, testing.SimpleTime(49))).To(HaveLen(3))
+				// Expect(doGet(s, testing.SimpleTime(20, testing.SimpleTime(49))).To(HaveLen(3))
 			})
 
 			It("sets trie properly, gets work", func() {
@@ -176,75 +178,23 @@ var _ = Describe("stree", func() {
 				spew.Dump(s.root)
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(2))
-				Expect(s.root.present).ToNot(BeTrue())
+				Expect(s.root.present).To(BeTrue())
 				Expect(s.root.children[0]).ToNot(BeNil())
-				Expect(s.root.children[0].present).To(BeTrue())
+				Expect(s.root.children[0].present).ToNot(BeTrue())
 				Expect(s.root.children[1]).ToNot(BeNil())
-				Expect(s.root.children[1].present).To(BeTrue())
-				Expect(s.root.children[0].children[0].present).ToNot(BeTrue())
-				Expect(s.root.children[1].children[0].present).ToNot(BeTrue())
+				Expect(s.root.children[1].present).ToNot(BeTrue())
+				Expect(s.root.children[0].children[0].present).To(BeTrue())
+				Expect(s.root.children[1].children[0].present).To(BeTrue())
 
-				Expect(getTries(s, testing.SimpleTime(0), testing.SimpleTime(9))).To(HaveLen(1))
-				Expect(getTries(s, testing.SimpleTime(10), testing.SimpleTime(19))).To(HaveLen(0))
-				Expect(getTries(s, testing.SimpleTime(100), testing.SimpleTime(109))).To(HaveLen(1))
-				Expect(getTries(s, testing.SimpleTime(0), testing.SimpleTime(109))).To(HaveLen(2))
-				Expect(getTries(s, testing.SimpleTime(0), testing.SimpleTime(999))).To(HaveLen(1))
-				Expect(getTries(s, testing.SimpleTime(0), testing.SimpleTime(1000))).To(HaveLen(1))
-				Expect(getTries(s, testing.SimpleTime(0), testing.SimpleTime(1001))).To(HaveLen(1))
-				Expect(getTries(s, testing.SimpleTime(0), testing.SimpleTime(989))).To(HaveLen(2))
+				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(9))).To(HaveLen(1))
+				Expect(doGet(s, testing.SimpleTime(10), testing.SimpleTime(19))).To(HaveLen(0))
+				Expect(doGet(s, testing.SimpleTime(100), testing.SimpleTime(109))).To(HaveLen(1))
+				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(109))).To(HaveLen(2))
+				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(999))).To(HaveLen(1))
+				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(1000))).To(HaveLen(1))
+				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(1001))).To(HaveLen(1))
+				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(989))).To(HaveLen(2))
 			})
-
-			// It("sets trie properly, gets work", func() {
-			// 	s := New(r, m)
-
-			// 	t1 := tree.New()
-			// 	t1.Insert([]byte("foo"), 90)
-			// 	t1.Insert([]byte("bar"), 180)
-
-			// 	s.Put(testing.SimpleTime(0), testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat,a []Addon) {})
-			// 	tries := getTries(s, testing.SimpleTime(0), testing.SimpleTime(9))
-			// 	t := merge.MergeTriesConcurrently(1, tries...).(*tree.Tree)
-			// 	Expect(t.String()).To(Equal(strip(`
-			// 		";;bar" 180 180
-			// 		";;foo" 90 90
-			// 	`)))
-			// })
-
-			// It("sets trie properly, gets work", func() {
-			// 	s := New(r, m)
-
-			// 	t1 := tree.New()
-			// 	t1.Insert([]byte("foo"), 90)
-			// 	t1.Insert([]byte("bar"), 180)
-
-			// 	s.Put(testing.SimpleTime(0), testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat,a []Addon) {})
-			// 	tries := getTries(s, testing.SimpleTime(0), testing.SimpleTime(9))
-			// 	t := merge.MergeTriesConcurrently(1, tries...).(*tree.Tree)
-			// 	// treee := tree.New(t)
-			// 	Expect(t.String()).To(Equal(strip(`
-			// 		";;" 1 1
-			// 		";;bar" 90 90
-			// 		";;foo" 45 45
-			// 	`)))
-			// })
-
-			// It("sets trie properly, gets work", func() {
-			// 	s := New(r, m)
-
-			// 	t1 := tree.New()
-			// 	t1.Insert([]byte("foo"), 90)
-			// 	t1.Insert([]byte("bar"), 180)
-
-			// 	s.Put(testing.SimpleTime(90), testing.SimpleTime(109), 1, func(de int, t time.Time, r *big.Rat,a []Addon) {})
-			// 	tries := getTries(s, testing.SimpleTime(0), testing.SimpleTime(109))
-			// 	t := merge.MergeTriesConcurrently(1, tries...).(*tree.Tree)
-			// 	// treee := tree.New(t)
-			// 	Expect(t.String()).To(Equal(strip(`
-			// 		";;" 1 1
-			// 		";;bar" 180 180
-			// 		";;foo" 90 90
-			// 	`)))
-			// })
 		})
 	})
 })
