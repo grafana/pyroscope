@@ -58,7 +58,7 @@ tt {
   margin: 0;
   padding: 0;
   font-weight: 400;
-  background-image: url('../images/logo-v2-small.png');
+  background-image: url('../images/logo-v3-small.png');
   background-size: 40px 40px;
   background-position: 0px 8px;
   background-repeat: no-repeat;
@@ -67,7 +67,9 @@ tt {
 .logo::after {
   content: 'Pyroscope';
   font-weight: 400;
-  padding-left: 48px;
+  padding-left: 44px;
+  font-size: 25px;
+  vertical-align: text-top;
 }
 
 .navbar-space-filler {
