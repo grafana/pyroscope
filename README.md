@@ -1,4 +1,4 @@
-<p align="center"><img alt="Pyroscope" src="https://user-images.githubusercontent.com/662636/105129037-11334180-5a99-11eb-8951-1d4aaaed50de.png" width="500px"/></center></p>
+<p align="center"><img alt="Pyroscope" src="https://user-images.githubusercontent.com/662636/105129037-11334180-5a99-11eb-8951-1d4aaaed50de.png" width="500px"/></p>
 
 
 [![Tests Status](https://github.com/pyroscope-io/pyroscope/workflows/Tests/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3ATests)
@@ -53,8 +53,8 @@ docker pull pyroscope/pyroscope:latest
 ```
 
 After pyroscope is installed, you just need to:
-1. Start the pyroscope server
-2. Run your application with the right agent (see image below)
+1. Start the pyroscope server (`pyroscope server` or `docker run -it pyroscope/pyroscope:latest server`)
+2. Run your application with the right agent (see image below). For more info on this, see our [Getting Started guide](https://pyroscope.io/docs/#profile-your-applications).
 
 ![pyroscope_diagram_no_logo-01](https://user-images.githubusercontent.com/23323466/104868724-1194d680-58f9-11eb-96da-c5a4922a95d5.png)
 
