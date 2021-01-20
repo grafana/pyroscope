@@ -1,3 +1,11 @@
+## <small>0.0.15 (2021-01-20)</small>
+
+* implements #29 ([a42a241](https://github.com/pyroscope-io/pyroscope/commit/a42a241)), closes [#29](https://github.com/pyroscope-io/pyroscope/issues/29)
+* new logo ([a22b529](https://github.com/pyroscope-io/pyroscope/commit/a22b529))
+* Update README.md ([fa51d9d](https://github.com/pyroscope-io/pyroscope/commit/fa51d9d))
+
+
+
 ## <small>0.0.14 (2021-01-19)</small>
 
 * fixes a bug where pyroscope thinks a spy is not supported when it is ([0a9da1c](https://github.com/pyroscope-io/pyroscope/commit/0a9da1c))
