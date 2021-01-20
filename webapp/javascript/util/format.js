@@ -52,9 +52,10 @@ export class DurationFormater {
 
   format(seconds) {
     let number = seconds / this.divider;
-    number = Math.round(number * 100)/100;
     if (number < 0.01) {
       number = '< 0.01';
+    } else {
+      number = number.toFixed(2);
     }
     return `${number} ${this.suffix}` + (number == 1 ? '' : 's');
   }
