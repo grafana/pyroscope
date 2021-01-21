@@ -1,6 +1,6 @@
 # Examples
 
-These are example projects we set up with pyroscope for you to try out. You'll need `docker` + `docker-compose` to run them:
+We set up these examples to help you try out Pyroscope. You'll need `docker` + `docker-compose` to run them:
 
 ```shell
 cd golang
