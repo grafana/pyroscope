@@ -8,3 +8,6 @@ docker-compose up --build
 ```
 
 These are very simple projects where the application is basically one `while true` loop and inside that loop it calls a slow function and a fast function. Slow function takes about 80% of the time and the fast one takes about 20%.
+
+
+Text
