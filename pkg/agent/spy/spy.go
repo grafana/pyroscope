@@ -25,6 +25,7 @@ var autoDetectionMapping = map[string]string{
 	"ruby":   "rbspy",
 	"bundle": "rbspy",
 	"rails":  "rbspy",
+	"rake":   "rbspy",
 }
 
 func init() {
@@ -45,4 +46,15 @@ func SpyFromName(name string, pid int) (Spy, error) {
 
 func ResolveAutoName(s string) string {
 	return autoDetectionMapping[s]
+}
+
+func SupportedExecSpies() []string {
+	supportedSpies := []string{}
+	for _, s := range SupportedSpies {
+		if s != "gospy" {
+			supportedSpies = append(supportedSpies, s)
+		}
+	}
+
+	return supportedSpies
 }

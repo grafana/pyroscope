@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -25,7 +26,7 @@ type uploadJob struct {
 type Remote struct {
 	cfg    RemoteConfig
 	todo   chan *uploadJob
-	done   chan struct{}
+	done   chan *sync.WaitGroup
 	client *http.Client
 }
 
@@ -39,7 +40,7 @@ func New(cfg RemoteConfig) *Remote {
 	r := &Remote{
 		cfg:  cfg,
 		todo: make(chan *uploadJob, 100),
-		done: make(chan struct{}, cfg.UpstreamThreads),
+		done: make(chan *sync.WaitGroup, cfg.UpstreamThreads),
 		client: &http.Client{
 			Transport: &http.Transport{
 				MaxConnsPerHost: cfg.UpstreamThreads,
@@ -58,9 +59,12 @@ func (u *Remote) start() {
 }
 
 func (u *Remote) Stop() {
+	wg := sync.WaitGroup{}
+	wg.Add(u.cfg.UpstreamThreads)
 	for i := 0; i < u.cfg.UpstreamThreads; i++ {
-		u.done <- struct{}{}
+		u.done <- &wg
 	}
+	wg.Wait()
 }
 
 // TODO: this metadata class should be unified
@@ -112,7 +116,8 @@ func (u *Remote) uploadLoop() {
 		select {
 		case j := <-u.todo:
 			u.uploadProfile(j)
-		case <-u.done:
+		case wg := <-u.done:
+			wg.Done()
 			return
 		}
 	}
