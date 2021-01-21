@@ -16,7 +16,6 @@ func init() {
 		for _, cb := range callbacks {
 			cb()
 		}
-		os.Exit(0)
 	}()
 }
 
