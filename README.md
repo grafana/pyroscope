@@ -86,8 +86,9 @@ To start contributing, check out our [Contributing Guide](/CONTRIBUTING.md)
 ### Thanks to the contributors of Pyroscope!
 
 [//]: contributor-faces
-<a href="https://github.com/petethepig"><img src="https://avatars3.githubusercontent.com/u/662636?v=4" title="petethepig" width="80" height="80"></a>
-<a href="https://github.com/Rperry2174"><img src="https://avatars2.githubusercontent.com/u/23323466?v=4" title="Rperry2174" width="80" height="80"></a>
-<a href="https://github.com/LouisInFlow"><img src="https://avatars2.githubusercontent.com/u/73438887?v=4" title="LouisInFlow" width="80" height="80"></a>
+<a href="https://github.com/petethepig"><img src="https://avatars.githubusercontent.com/u/662636?v=4" title="petethepig" width="80" height="80"></a>
+<a href="https://github.com/Rperry2174"><img src="https://avatars.githubusercontent.com/u/23323466?v=4" title="Rperry2174" width="80" height="80"></a>
+<a href="https://github.com/LouisInFlow"><img src="https://avatars.githubusercontent.com/u/73438887?v=4" title="LouisInFlow" width="80" height="80"></a>
+<a href="https://github.com/ekpatrice"><img src="https://avatars.githubusercontent.com/u/77462462?v=4" title="ekpatrice" width="80" height="80"></a>
 
 [//]: contributor-faces
