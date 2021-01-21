@@ -1,7 +1,7 @@
 import time
 import threading
-from fast_package.fast_file import fast_function
-from slow_module.slow_file import slow_function
+from a_module.fast_file import fast_function
+from b_module.slow_file import slow_function
 
 DURATION = 60 * 10 # ten minutes
 
