@@ -56,7 +56,7 @@ After pyroscope is installed, you just need to:
 1. Start the pyroscope server (`pyroscope server` or `docker run -it pyroscope/pyroscope:latest server`)
 2. Run your application with the right agent (see image below). For more information on this, see our [Getting Started guide](https://pyroscope.io/docs/#profile-your-applications).
 
-![pyroscope_diagram_no_logo-01](https://user-images.githubusercontent.com/23323466/104868724-1194d680-58f9-11eb-96da-c5a4922a95d5.png)
+![pyroscope_diagram_with_logo_01](https://user-images.githubusercontent.com/23323466/105389455-b864c580-5bcc-11eb-9357-a42dd0e9947b.png)
 
 For information on how to install it on Linux or use it in production environment check out our documentation:
 
