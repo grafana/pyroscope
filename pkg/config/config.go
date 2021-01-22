@@ -52,7 +52,7 @@ type Server struct {
 	MaxNodesRender        int `def:"2048" desc:"max number of nodes used to display data on the frontend"`
 
 	// current only used in our demo app
-	HideApplications []string `def:"" skip:"true"`
+	HideApplications []string `def:""`
 
 	AnalyticsOptOut bool `def:"false" desc:"disables analytics"`
 }
