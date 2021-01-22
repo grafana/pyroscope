@@ -10,7 +10,10 @@
     "no-shadow": ["warn"],
     "no-case-declarations": ["warn"],
     "no-use-before-define": ["warn"],
-    "no-restricted-globals": ["warn"]
+    "no-restricted-globals": ["warn"],
+    "react/button-has-type": ["warn"],
+    "react/prop-types": ["warn"],
+    "jsx-a11y/heading-has-content": ["warn"]
   },
   "env": {
     "browser": true,
