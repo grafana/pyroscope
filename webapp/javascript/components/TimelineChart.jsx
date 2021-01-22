@@ -1,42 +1,36 @@
-import React from 'react';
+import { bindActionCreators } from "redux";
 import { connect } from "react-redux";
+import ReactFlot from "react-flot";
 import { setDateRange, receiveJSON } from "../redux/actions";
 import "react-dom";
 
-import ReactFlot from 'react-flot';
-import 'react-flot/flot/jquery.flot.time.min';
-import 'react-flot/flot/jquery.flot.selection.min';
-import { bindActionCreators } from "redux";
+import "react-flot/flot/jquery.flot.time.min";
+import "react-flot/flot/jquery.flot.selection.min";
 
-let currentJSONController = null;
 class TimelineChart extends ReactFlot {
-  constructor(props) {
-    super(props);
-  }
-
   componentDidMount() {
     this.draw();
-    $(`#${this.props.id}`).bind('plotselected', (event, ranges) => {
-      this.props.actions.setDateRange(Math.round(ranges.xaxis.from / 1000), Math.round(ranges.xaxis.to / 1000));
+    $(`#${this.props.id}`).bind("plotselected", (event, ranges) => {
+      this.props.actions.setDateRange(
+        Math.round(ranges.xaxis.from / 1000),
+        Math.round(ranges.xaxis.to / 1000)
+      );
     });
   }
 }
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   ...state,
 });
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
       setDateRange,
       receiveJSON,
     },
-    dispatch,
+    dispatch
   ),
 });
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(TimelineChart);
+export default connect(mapStateToProps, mapDispatchToProps)(TimelineChart);
