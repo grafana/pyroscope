@@ -14,7 +14,9 @@
     "react/button-has-type": ["warn"],
     "react/prop-types": ["warn"],
     "jsx-a11y/heading-has-content": ["warn"],
-    "jsx-a11y/control-has-associated-label": ["warn"]
+    "jsx-a11y/control-has-associated-label": ["warn"],
+    "no-undef": ["warn"],
+    "react/jsx-one-expression-per-line": ["warn"]
   },
   "env": {
     "browser": true,
