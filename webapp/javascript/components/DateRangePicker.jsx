@@ -1,138 +1,140 @@
-import React from 'react';
+import React, { useState } from "react";
 import { connect } from "react-redux";
-import { setDateRange, receiveJSON, setFrom, setUntil} from "../redux/actions";
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClock, faSyncAlt } from '@fortawesome/free-solid-svg-icons'
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faClock } from "@fortawesome/free-solid-svg-icons";
 
-import OutsideClickHandler from 'react-outside-click-handler';
-import moment from 'moment';
+import OutsideClickHandler from "react-outside-click-handler";
+import moment from "moment";
 import { bindActionCreators } from "redux";
+import { setDateRange, receiveJSON, setFrom, setUntil } from "../redux/actions";
 
 const defaultPresets = [
   [
-    { label: 'Last 5 minutes', from: 'now-5m', until: 'now'},
-    { label: 'Last 15 minutes', from: 'now-15m', until: 'now'},
-    { label: 'Last 30 minutes', from: 'now-30m', until: 'now'},
-    { label: 'Last 1 hour', from: 'now-1h', until: 'now'},
-    { label: 'Last 3 hours', from: 'now-3h', until: 'now'},
-    { label: 'Last 6 hours', from: 'now-6h', until: 'now'},
-    { label: 'Last 12 hours', from: 'now-12h', until: 'now'},
-    { label: 'Last 24 hours', from: 'now-24h', until: 'now'},
+    { label: "Last 5 minutes", from: "now-5m", until: "now" },
+    { label: "Last 15 minutes", from: "now-15m", until: "now" },
+    { label: "Last 30 minutes", from: "now-30m", until: "now" },
+    { label: "Last 1 hour", from: "now-1h", until: "now" },
+    { label: "Last 3 hours", from: "now-3h", until: "now" },
+    { label: "Last 6 hours", from: "now-6h", until: "now" },
+    { label: "Last 12 hours", from: "now-12h", until: "now" },
+    { label: "Last 24 hours", from: "now-24h", until: "now" },
   ],
   [
-    { label: 'Last 2 days', from: 'now-2d', until: 'now'},
-    { label: 'Last 7 days', from: 'now-7d', until: 'now'},
-    { label: 'Last 30 days', from: 'now-30d', until: 'now'},
-    { label: 'Last 90 days', from: 'now-90d', until: 'now'},
-    { label: 'Last 6 months', from: 'now-6M', until: 'now'},
-    { label: 'Last 1 year', from: 'now-1y', until: 'now'},
-    { label: 'Last 2 years', from: 'now-2y', until: 'now'},
-    { label: 'Last 5 years', from: 'now-5y', until: 'now'},
-  ]
+    { label: "Last 2 days", from: "now-2d", until: "now" },
+    { label: "Last 7 days", from: "now-7d", until: "now" },
+    { label: "Last 30 days", from: "now-30d", until: "now" },
+    { label: "Last 90 days", from: "now-90d", until: "now" },
+    { label: "Last 6 months", from: "now-6M", until: "now" },
+    { label: "Last 1 year", from: "now-1y", until: "now" },
+    { label: "Last 2 years", from: "now-2y", until: "now" },
+    { label: "Last 5 years", from: "now-5y", until: "now" },
+  ],
 ];
 
 const multiplierMapping = {
-  's': "second",
-  'm': "minute",
-  'h': "hour",
-  'd': "day",
-  'w': "week",
-  'M': "month",
-  'y': "year",
-}
+  s: "second",
+  m: "minute",
+  h: "hour",
+  d: "day",
+  w: "week",
+  M: "month",
+  y: "year",
+};
 
-class DateRangePicker extends React.Component {
-  constructor(props) {
-    super(props);
+function DateRangePicker(props) {
+  const { from, until, actions } = props;
+  const initialState = {
+    // so the idea with this is that we don't want to send from and until back to the state
+    //   until the user clicks some button. This is why these are stored in state here.
+    from,
+    until,
+    opened: false,
+  };
+  const [state, setState] = useState(initialState);
+  const [presets, setPresets] = useState(defaultPresets);
 
-    this.presets = defaultPresets;
-    this.state = {
-      // so the idea with this is that we don't want to send from and until back to the state
-      //   until the user clicks some button. This is why these are stored in state here.
-      from: props.from,
-      until: props.until,
-      opened: false
-    };
-  }
+  const updateFrom = (from) => {
+    setState({ from });
+  };
 
-  componentDidMount() {
-  }
+  const updateUntil = (until) => {
+    setState({ until });
+  };
 
-  updateFrom = (from) => {
-    this.setState({ from });
-  }
+  const updateDateRange = () => {
+    actions.setDateRange(state.from, state.until);
+  };
 
-  updateUntil = (until) => {
-    this.setState({ until });
-  }
-
-  clickHandler = () => {
-    this.props.actions.setDateRange(this.state.from, this.state.until);
-  }
-
-  humanReadableRange = () => {
-    if (this.props.until == "now") {
-      let m = this.props.from.match(/^now-(?<number>\d+)(?<multiplier>\D+)$/)
-      if(m && multiplierMapping[m.groups.multiplier]) {
+  const humanReadableRange = () => {
+    if (until === "now") {
+      const m = from.match(/^now-(?<number>\d+)(?<multiplier>\D+)$/);
+      if (m && multiplierMapping[m.groups.multiplier]) {
         let multiplier = multiplierMapping[m.groups.multiplier];
         if (m.groups.number > 1) {
-          multiplier+="s"
+          multiplier += "s";
         }
-        return `Last ${m.groups.number} ${multiplier}`
+        return `Last ${m.groups.number} ${multiplier}`;
       }
     }
-    return moment(this.props.from*1000).format('lll') + " – " + moment(this.props.until*1000).format('lll');
-    // return this.props.from + " to " +this.props.until;
+    return `${moment(from * 1000).format("lll")} – ${moment(
+      until * 1000
+    ).format("lll")}`;
+    // return from + " to " +until;
   };
 
-  showDropdown = () => {
-    this.setState({
-      opened: !this.state.opened
-    })
+  const showDropdown = () => {
+    setState({
+      opened: !state.opened,
+    });
   };
 
-  selectPreset = ({label, from, until }) => {
-    this.props.actions.setDateRange(from, until)
-    this.hideDropdown();
+  const selectPreset = ({ from, until }) => {
+    actions.setDateRange(from, until);
+    hideDropdown();
   };
 
-  hideDropdown = () => {
-    this.setState({
-      opened: false
-    })
+  const hideDropdown = () => {
+    setState({
+      opened: false,
+    });
   };
 
-  render() {
-    return <div className={this.state.opened ? "drp-container opened" : "drp-container"}>
-      <OutsideClickHandler onOutsideClick={this.hideDropdown}>
-        <button className="btn drp-button" onClick={this.showDropdown}>
+  return (
+    <div className={state.opened ? "drp-container opened" : "drp-container"}>
+      <OutsideClickHandler onOutsideClick={hideDropdown}>
+        <button className="btn drp-button" onClick={showDropdown}>
           <FontAwesomeIcon icon={faClock} />
-          <span>{this.humanReadableRange()}</span>
+          <span>{humanReadableRange()}</span>
         </button>
         <div className="drp-dropdown">
           <h4>Quick Presets</h4>
           <div className="drp-presets">
-            {
-              this.presets.map( (arr, i) => {
-                return <div key={i} className="drp-preset-column">
-                  {
-                    arr.map( (x) => {
-                      return <button className={`drp-preset ${x.label == this.humanReadableRange() ? "active" : ""}`} key={x.label} onClick={ () => this.selectPreset(x) }>{x.label}</button>;
-                    })
-                  }
-                </div>
-              })
-            }
+            {presets.map((arr, i) => (
+              <div key={`preset-${i + 1}`} className="drp-preset-column">
+                {arr.map((x) => (
+                  <button
+                    className={`drp-preset ${
+                      x.label == humanReadableRange() ? "active" : ""
+                    }`}
+                    key={x.label}
+                    onClick={() => selectPreset(x)}
+                  >
+                    {x.label}
+                  </button>
+                ))}
+              </div>
+            ))}
           </div>
           <h4>Custom Date Range</h4>
           <div className="drp-calendar-input-group">
             <input
               className="followed-by-btn"
-              onChange={(e) => this.updateFrom(e.target.value)}
-              onBlur={this.updateDateRange}
-              value={this.state.from}
-            /><button className="drp-calendar-btn btn" onClick={this.updateDateRange}>
+              onChange={(e) => updateFrom(e.target.value)}
+              onBlur={updateDateRange}
+              value={state.from}
+            />
+            <button className="drp-calendar-btn btn" onClick={updateDateRange}>
               <FontAwesomeIcon icon={faClock} />
               Update
             </button>
@@ -140,10 +142,11 @@ class DateRangePicker extends React.Component {
           <div className="drp-calendar-input-group">
             <input
               className="followed-by-btn"
-              onChange={(e) => this.updateUntil(e.target.value)}
-              onBlur={this.updateDateRange}
-              value={this.state.until}
-            /><button className="drp-calendar-btn btn" onClick={this.updateDateRange}>
+              onChange={(e) => updateUntil(e.target.value)}
+              onBlur={updateDateRange}
+              value={state.until}
+            />
+            <button className="drp-calendar-btn btn" onClick={updateDateRange}>
               <FontAwesomeIcon icon={faClock} />
               Update
             </button>
@@ -151,14 +154,14 @@ class DateRangePicker extends React.Component {
         </div>
       </OutsideClickHandler>
     </div>
-  }
+  );
 }
 
-const mapStateToProps = state => ({
+const mapStateToProps = (state) => ({
   ...state,
 });
 
-const mapDispatchToProps = dispatch => ({
+const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
       setDateRange,
@@ -166,11 +169,8 @@ const mapDispatchToProps = dispatch => ({
       setFrom,
       setUntil,
     },
-    dispatch,
+    dispatch
   ),
 });
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(DateRangePicker);
+export default connect(mapStateToProps, mapDispatchToProps)(DateRangePicker);
