@@ -13,7 +13,8 @@
     "no-restricted-globals": ["warn"],
     "react/button-has-type": ["warn"],
     "react/prop-types": ["warn"],
-    "jsx-a11y/heading-has-content": ["warn"]
+    "jsx-a11y/heading-has-content": ["warn"],
+    "jsx-a11y/control-has-associated-label": ["warn"]
   },
   "env": {
     "browser": true,

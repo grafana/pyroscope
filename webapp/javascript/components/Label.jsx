@@ -1,26 +1,20 @@
-import React from 'react';
+import React from "react";
 import { connect } from "react-redux";
 import { removeLabel } from "../redux/actions";
 
-class Label extends React.Component {
-  constructor(props) {
-    super(props);
-  }
+function Label(props) {
+  const { label, removeLabel } = props;
 
-  removeLabel = () => {
-    this.props.removeLabel(this.props.label.name);
-  };
-
-  render() {
-    return <div className="label">
-      <span className="label-name">{this.props.label.name}</span>
-      <span className="label-value">{this.props.label.value}</span>
-      <button className="label-delete-btn" onClick={this.removeLabel}></button>
+  return (
+    <div className="label">
+      <span className="label-name">{label.name}</span>
+      <span className="label-value">{label.value}</span>
+      <button
+        className="label-delete-btn"
+        onClick={() => removeLabel(label.name)}
+      />
     </div>
-  }
+  );
 }
 
-export default connect(
-  (x) => x,
-  { removeLabel }
-)(Label);
+export default connect((x) => x, { removeLabel })(Label);
