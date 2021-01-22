@@ -27,28 +27,32 @@ type Agent struct {
 }
 
 type Server struct {
-	Config   string `def:"<installPrefix>/etc/pyroscope/server.yml" desc:"location of config file"`
-	LogLevel string `def:"info", desc:"debug|info|warn|error"`
-	// TODO: fix, doesn't see to work
+	Config         string `def:"<installPrefix>/etc/pyroscope/server.yml" desc:"location of config file"`
+	LogLevel       string `def:"info", desc:"debug|info|warn|error"`
 	BadgerLogLevel string `def:"error", desc:"debug|info|warn|error"`
 
-	StoragePath string `def:"<installPrefix>/var/lib/pyroscope"`
-	ApiBindAddr string `def:":4040"`
+	StoragePath string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
+	ApiBindAddr string `def:":4040" desc:"port for the HTTP server used for data ingestion and web UI"`
 
-	CacheDimensionSize  int `def:"1000"`
-	CacheDictionarySize int `def:"1000"`
-	CacheSegmentSize    int `def:"1000"`
-	CacheTreeSize       int `def:"10000"`
+	// These will eventually be replaced by some sort of a system that keeps track of RAM
+	//   and updates
+	CacheDimensionSize  int `def:"1000" desc:"max number of elements in LRU cache for dimensions"`
+	CacheDictionarySize int `def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
+	CacheSegmentSize    int `def:"1000" desc:"max number of elements in LRU cache for segments"`
+	CacheTreeSize       int `def:"10000" desc:"max number of elements in LRU cache for trees"`
 
-	Multiplier      int           `def:"10"`
-	MinResolution   time.Duration `def:"10s"`
-	MaxResolution   time.Duration `def:"8760h"` // 365 days
+	// TODO: I don't think a lot of people will change these values.
+	//   I think these should just be constants.
+	Multiplier      int           `skip:"true" def:"10"`
+	MinResolution   time.Duration `skip:"true" def:"10s"`
+	MaxResolution   time.Duration `skip:"true" def:"8760h"` // 365 days
 	StorageMaxDepth int           `skip:"true"`
 
-	MaxNodesSerialization int `def:"2048"`
-	MaxNodesRender        int `def:"2048"`
+	MaxNodesSerialization int `def:"2048" desc:"max number of nodes used when saving profiles to disk"`
+	MaxNodesRender        int `def:"2048" desc:"max number of nodes used to display data on the frontend"`
 
-	HideApplications []string `def:""`
+	// current only used in our demo app
+	HideApplications []string `def:"" skip:"true"`
 
 	AnalyticsOptOut bool `def:"false" desc:"disables analytics"`
 }
@@ -58,12 +62,13 @@ type Convert struct {
 }
 
 type Exec struct {
-	SpyName                string        `def:"auto"`
+	SpyName                string        `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>"`
 	ApplicationName        string        `def:"" desc:"application name used when uploading profiling data"`
-	DetectSubprocesses     bool          `def:"true"`
+	DetectSubprocesses     bool          `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
+	LogLevel               string        `def:"info", desc:"debug|info|warn|error"`
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
-	UpstreamRequestTimeout time.Duration `def:"10s"`
+	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
 	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`
 }
 

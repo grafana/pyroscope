@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
@@ -50,6 +51,7 @@ func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
 	num := t.NumField()
 
 	installPrefix := getInstallPrefix()
+	supportedSpies := strings.Join(spy.SupportedExecSpies(), ", ")
 
 	for i := 0; i < num; i++ {
 		field := t.Field(i)
@@ -64,6 +66,7 @@ func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
 		}
+		descVal = strings.ReplaceAll(descVal, "<supportedProfilers>", supportedSpies)
 
 		switch field.Type {
 		case reflect.TypeOf([]string{}):
@@ -234,6 +237,9 @@ func Start(cfg *config.Config) error {
 		return convert.Cli(cfg, args)
 	}
 	execCmd.Exec = func(_ context.Context, args []string) error {
+		if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
+			logrus.SetLevel(l)
+		}
 		if len(args) == 0 {
 			fmt.Println(gradientBanner())
 			fmt.Println(DefaultUsageFunc(execCmd))
