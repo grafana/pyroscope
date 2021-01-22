@@ -38,7 +38,7 @@ function ShortcutsModal(props) {
     return function cleanup() {
       window.document.removeEventListener("keydown", handleKeyDown);
     };
-  });
+  }, []);
 
   return (
     <ShortcutConsumer>

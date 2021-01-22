@@ -1,11 +1,12 @@
-import { bindActionCreators } from "redux";
+import React from "react";
 import { connect } from "react-redux";
-import ReactFlot from "react-flot";
-import { setDateRange, receiveJSON } from "../redux/actions";
 import "react-dom";
 
+import ReactFlot from "react-flot";
 import "react-flot/flot/jquery.flot.time.min";
 import "react-flot/flot/jquery.flot.selection.min";
+import { bindActionCreators } from "redux";
+import { setDateRange, receiveJSON } from "../redux/actions";
 
 class TimelineChart extends ReactFlot {
   componentDidMount() {

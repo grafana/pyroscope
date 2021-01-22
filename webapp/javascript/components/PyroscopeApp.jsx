@@ -80,7 +80,7 @@ function PyroscopeApp(props) {
       "Shortcuts",
       "Show Keyboard Shortcuts Modal"
     );
-  });
+  }, []);
 
   const showShortcutsModal = () => {
     setState({ shortcutsModalOpen: true });
@@ -91,7 +91,7 @@ function PyroscopeApp(props) {
   };
 
   const flotData = timeline
-    ? timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])
+    ? [timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
     : [];
 
   return (
