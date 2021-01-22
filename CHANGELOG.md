@@ -1,3 +1,22 @@
+## <small>0.0.16 (2021-01-22)</small>
+
+* Add node.js to upcoming integrations ([ad95f96](https://github.com/pyroscope-io/pyroscope/commit/ad95f96))
+* brings back hide-applications option ([63693c1](https://github.com/pyroscope-io/pyroscope/commit/63693c1))
+* changes ([a0cf5fd](https://github.com/pyroscope-io/pyroscope/commit/a0cf5fd))
+* improves documentation for config options ([ec9a1f9](https://github.com/pyroscope-io/pyroscope/commit/ec9a1f9))
+* improves exec child process handling ([ab18dd3](https://github.com/pyroscope-io/pyroscope/commit/ab18dd3))
+* improves styles a little bit ([604ab00](https://github.com/pyroscope-io/pyroscope/commit/604ab00))
+* Readme examples changes ([2105963](https://github.com/pyroscope-io/pyroscope/commit/2105963))
+* update readme ([21f71e8](https://github.com/pyroscope-io/pyroscope/commit/21f71e8))
+* Update Readme with new logo ([f3addba](https://github.com/pyroscope-io/pyroscope/commit/f3addba))
+* Update README.md ([94fc945](https://github.com/pyroscope-io/pyroscope/commit/94fc945))
+* Update README.md ([51c3273](https://github.com/pyroscope-io/pyroscope/commit/51c3273))
+* Update README.md ([f1b7a17](https://github.com/pyroscope-io/pyroscope/commit/f1b7a17))
+* Update README.md ([ce55733](https://github.com/pyroscope-io/pyroscope/commit/ce55733))
+* updates our contributors list ([89349d6](https://github.com/pyroscope-io/pyroscope/commit/89349d6))
+
+
+
 ## <small>0.0.15 (2021-01-20)</small>
 
 * implements #29 ([a42a241](https://github.com/pyroscope-io/pyroscope/commit/a42a241)), closes [#29](https://github.com/pyroscope-io/pyroscope/issues/29)
