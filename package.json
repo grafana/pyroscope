@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "webpack --progress --colors --config scripts/webpack/webpack.dev.js",
     "test": "jest",
-    "lint": "eslint ./ --ext .js --cache --fix"
+    "lint": "eslint ./ --ext .js,.jsx --cache --fix"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",

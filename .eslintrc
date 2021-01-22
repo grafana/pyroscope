@@ -16,7 +16,10 @@
     "jsx-a11y/heading-has-content": ["warn"],
     "jsx-a11y/control-has-associated-label": ["warn"],
     "no-undef": ["warn"],
-    "react/jsx-one-expression-per-line": ["warn"]
+    "react/jsx-one-expression-per-line": ["warn"],
+    "jsx-a11y/mouse-events-have-key-events": ["warn"],
+    "jsx-a11y/click-events-have-key-events": ["warn"],
+    "jsx-a11y/no-static-element-interactions": ["warn"]
   },
   "env": {
     "browser": true,

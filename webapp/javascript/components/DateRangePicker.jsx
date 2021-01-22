@@ -115,7 +115,7 @@ function DateRangePicker(props) {
                 {arr.map((x) => (
                   <button
                     className={`drp-preset ${
-                      x.label == humanReadableRange() ? "active" : ""
+                      x.label === humanReadableRange() ? "active" : ""
                     }`}
                     key={x.label}
                     onClick={() => selectPreset(x)}
