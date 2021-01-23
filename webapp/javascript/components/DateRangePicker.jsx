@@ -46,22 +46,15 @@ function DateRangePicker() {
   const from = useSelector((state) => state.from);
   const until = useSelector((state) => state.until);
 
-  const initialState = {
-    // so the idea with this is that we don't want to send from and until back to the state
-    //   until the user clicks some button. This is why these are stored in state here.
-    from,
-    until,
-    opened: false,
-  };
-  const [state, setState] = useState(initialState);
+  const [opened, setOpened] = useState(false);
   const [presets, setPresets] = useState(defaultPresets);
 
   const updateFrom = (from) => {
-    setState({ from });
+    dispatch(setDateRange(from, until));
   };
 
   const updateUntil = (until) => {
-    setState({ until });
+    dispatch(setDateRange(from, until));
   };
 
   const updateDateRange = () => {
@@ -85,27 +78,23 @@ function DateRangePicker() {
     // return from + " to " +until;
   };
 
-  const showDropdown = () => {
-    setState({
-      opened: !state.opened,
-    });
+  const toggleDropdown = () => {
+    setOpened(!opened);
+  };
+
+  const hideDropdown = () => {
+    setOpened(false);
   };
 
   const selectPreset = ({ from, until }) => {
     dispatch(setDateRange(from, until));
-    hideDropdown();
-  };
-
-  const hideDropdown = () => {
-    setState({
-      opened: false,
-    });
+    setOpened(false);
   };
 
   return (
-    <div className={state.opened ? "drp-container opened" : "drp-container"}>
+    <div className={opened ? "drp-container opened" : "drp-container"}>
       <OutsideClickHandler onOutsideClick={hideDropdown}>
-        <button className="btn drp-button" onClick={showDropdown}>
+        <button className="btn drp-button" onClick={toggleDropdown}>
           <FontAwesomeIcon icon={faClock} />
           <span>{humanReadableRange()}</span>
         </button>
