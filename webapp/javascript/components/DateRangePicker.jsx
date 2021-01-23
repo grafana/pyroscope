@@ -1,13 +1,12 @@
 import React, { useState } from "react";
-import { connect } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 
 import OutsideClickHandler from "react-outside-click-handler";
 import moment from "moment";
-import { bindActionCreators } from "redux";
-import { setDateRange, receiveJSON, setFrom, setUntil } from "../redux/actions";
+import { setDateRange } from "../redux/actions";
 
 const defaultPresets = [
   [
@@ -42,8 +41,11 @@ const multiplierMapping = {
   y: "year",
 };
 
-function DateRangePicker(props) {
-  const { from, until, actions } = props;
+function DateRangePicker() {
+  const dispatch = useDispatch();
+  const from = useSelector((state) => state.from);
+  const until = useSelector((state) => state.until);
+
   const initialState = {
     // so the idea with this is that we don't want to send from and until back to the state
     //   until the user clicks some button. This is why these are stored in state here.
@@ -63,7 +65,7 @@ function DateRangePicker(props) {
   };
 
   const updateDateRange = () => {
-    actions.setDateRange(state.from, state.until);
+    dispatch(setDateRange(from, until));
   };
 
   const humanReadableRange = () => {
@@ -90,7 +92,7 @@ function DateRangePicker(props) {
   };
 
   const selectPreset = ({ from, until }) => {
-    actions.setDateRange(from, until);
+    dispatch(setDateRange(from, until));
     hideDropdown();
   };
 
@@ -132,7 +134,7 @@ function DateRangePicker(props) {
               className="followed-by-btn"
               onChange={(e) => updateFrom(e.target.value)}
               onBlur={updateDateRange}
-              value={state.from}
+              value={from}
             />
             <button className="drp-calendar-btn btn" onClick={updateDateRange}>
               <FontAwesomeIcon icon={faClock} />
@@ -144,7 +146,7 @@ function DateRangePicker(props) {
               className="followed-by-btn"
               onChange={(e) => updateUntil(e.target.value)}
               onBlur={updateDateRange}
-              value={state.until}
+              value={until}
             />
             <button className="drp-calendar-btn btn" onClick={updateDateRange}>
               <FontAwesomeIcon icon={faClock} />
@@ -157,20 +159,4 @@ function DateRangePicker(props) {
   );
 }
 
-const mapStateToProps = (state) => ({
-  ...state,
-});
-
-const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      setDateRange,
-      receiveJSON,
-      setFrom,
-      setUntil,
-    },
-    dispatch
-  ),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(DateRangePicker);
+export default DateRangePicker;
