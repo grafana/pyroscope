@@ -1,51 +1,47 @@
-import React from 'react';
+import React, { useState } from "react";
 import { connect } from "react-redux";
 import { addLabel } from "../redux/actions";
 
 const initialState = {
   name: "",
-  value: ""
-}
-class LabelsFilter extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = initialState;
-  }
+  value: "",
+};
 
-  updateCurrentLabel = (name) => {
-    this.setState({ name });
+function LabelsFilter() {
+  const [state, setState] = useState(initialState);
+  const updateCurrentLabel = (name) => {
+    setState({ name });
+  };
+  const updateCurrentValue = (value) => {
+    setState({ value });
   };
 
-  updateCurrentValue = (value) => {
-    this.setState({ value });
-  };
-
-  addLabel = (e) => {
-    this.props.addLabel(this.state.name, this.state.value);
-    this.setState(initialState);
-    e.preventDefault();
-  };
-
-  render() {
-    return <form className="labels-new-label" onSubmit={this.addLabel}>
+  return (
+    <form className="labels-new-label" onSubmit={addLabel}>
       <input
         className="labels-new-input"
-        onChange={(e) => this.updateCurrentLabel(e.target.value)}
+        onChange={(e) => updateCurrentLabel(e.target.value)}
         placeholder="Name"
-        value={this.state.name}
+        value={state.name}
       />
       <input
         className="labels-new-input"
-        onChange={(e) => this.updateCurrentValue(e.target.value)}
+        onChange={(e) => updateCurrentValue(e.target.value)}
         placeholder="Value"
-        value={this.state.value}
+        value={state.value}
       />
-      <button className="btn labels-new-btn" onClick={this.addLabel}>Add</button>
+      <button
+        className="btn labels-new-btn"
+        onClick={(e) => {
+          addLabel(state.name, state.value);
+          setState(initialState);
+          e.preventDefault();
+        }}
+      >
+        Add
+      </button>
     </form>
-  }
+  );
 }
 
-export default connect(
-  (x) => x,
-  { addLabel }
-)(LabelsFilter);
+export default connect((x) => x, { addLabel })(LabelsFilter);

@@ -1,19 +1,17 @@
-import ReactDOM from "react-dom"
-import React from "react"
+import ReactDOM from "react-dom";
+import React from "react";
 
 import { Provider } from "react-redux";
+import { ShortcutProvider } from "react-keybind";
 import store from "./redux/store";
 
-import { ShortcutProvider } from 'react-keybind'
-
 import PyroscopeApp from "./components/PyroscopeApp";
-
 
 ReactDOM.render(
   <Provider store={store}>
     <ShortcutProvider>
-      <PyroscopeApp/>
+      <PyroscopeApp />
     </ShortcutProvider>
   </Provider>,
-  document.getElementById('root')
+  document.getElementById("root")
 );

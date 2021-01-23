@@ -14,64 +14,57 @@
 // TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 // THIS SOFTWARE.
 
-
 // This component is based on flamebearer project
 //   https://github.com/mapbox/flamebearer
 
+import React, { useEffect } from "react";
+import { connect } from "react-redux";
 
-import React from 'react';
-import {connect} from 'react-redux';
-import clsx from "clsx";
+import { withShortcut, ShortcutConsumer } from "react-keybind";
 
-import { withShortcut, ShortcutConsumer } from 'react-keybind'
-
-class ShortcutsModal extends React.Component {
-  constructor (props){
-    super(props);
-  }
-
-  componentDidMount = () => {
-    window.document.addEventListener('keydown', this.handleKeyDown);
-  }
-
-  componentWillUnMount = () => {
-    window.document.removeEventListener('keydown', this.handleKeyDown);
-  }
+function ShortcutsModal(props) {
+  const { closeModal } = props;
 
   // react-keybind doesn't work with modals
-  handleKeyDown = (event) => {
-    if (event.keyCode == 27) { // esc
-      this.props.closeModal();
+  const handleKeyDown = (event) => {
+    if (event.keyCode === 27) {
+      // esc
+      closeModal();
     }
-  }
+  };
 
+  useEffect(() => {
+    window.document.addEventListener("keydown", handleKeyDown);
+    return function cleanup() {
+      window.document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
-  closeModal = () => {
-    this.props.closeModal();
-  }
-
-  render() {
-    return <ShortcutConsumer>
+  return (
+    <ShortcutConsumer>
       {({ shortcuts }) => (
         <div>
-          <h2 style={{marginTop:0}}>🔥 Keyboard Shortcuts</h2>
+          <h2 style={{ marginTop: 0 }}>🔥 Keyboard Shortcuts</h2>
           <table className="shortcuts">
             <tbody>
-              {shortcuts.filter(x => x.title !== "Skip").map((x) => {
-                return <tr key={x.id} className="shortcut">
-                  <td style={{paddingRight: '20px'}}><tt>{x.keys}</tt></td>
-                  <td><span>{x.description}</span></td>
-                </tr>
-              })}
+              {shortcuts
+                .filter((x) => x.title !== "Skip")
+                .map((x) => (
+                  <tr key={x.id} className="shortcut">
+                    <td style={{ paddingRight: "20px" }}>
+                      <tt>{x.keys}</tt>
+                    </td>
+                    <td>
+                      <span>{x.description}</span>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
       )}
-    </ShortcutConsumer>;
-  }
+    </ShortcutConsumer>
+  );
 }
 
-export default connect(
-  (x) => x,
-  { }
-)(withShortcut(ShortcutsModal));
+export default connect((x) => x, {})(withShortcut(ShortcutsModal));

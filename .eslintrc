@@ -10,7 +10,16 @@
     "no-shadow": ["warn"],
     "no-case-declarations": ["warn"],
     "no-use-before-define": ["warn"],
-    "no-restricted-globals": ["warn"]
+    "no-restricted-globals": ["warn"],
+    "react/button-has-type": ["warn"],
+    "react/prop-types": ["warn"],
+    "jsx-a11y/heading-has-content": ["warn"],
+    "jsx-a11y/control-has-associated-label": ["warn"],
+    "no-undef": ["warn"],
+    "react/jsx-one-expression-per-line": ["warn"],
+    "jsx-a11y/mouse-events-have-key-events": ["warn"],
+    "jsx-a11y/click-events-have-key-events": ["warn"],
+    "jsx-a11y/no-static-element-interactions": ["warn"]
   },
   "env": {
     "browser": true,
