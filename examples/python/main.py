@@ -1,15 +1,24 @@
-def work(n):
-  i = 0
-  while i < n:
-    i += 1
+import time
+import threading
+from a_module.foo import foo
+from b_module.bar import bar
 
-def fast_function():
-  work(20000)
-
-def slow_function():
-  work(80000)
+ITERATIONS = 200000
 
 if __name__ == "__main__":
-  while True:
-    fast_function()
-    slow_function()
+
+  print(f'yoyoy Application 1 started')
+  for i in range(ITERATIONS):
+    foo(75000)
+    bar(25000)
+  print(f'yoyoy Application 1 ended')
+
+  print(f'Switching fast and slow around.....')
+  time.sleep(20)
+  print(f'Switching fast and slow around.....')
+
+  print(f'yoyoy Application 2 started')
+  for i in range(ITERATIONS):
+    bar(25000)
+    foo(8000)
+  print(f'yoyoy Application 2 ended')
