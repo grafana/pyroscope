@@ -7,7 +7,7 @@ cd python
 docker-compose up --build
 ```
 
-These are very simple projects where the application is basically one `while true` loop and inside that loop it calls a slow function and a fast function. Slow function takes about 75% of the time and the fast one takes about 25%. See [how_to_debug_python.md](https://github.com/pyroscope-io/pyroscope/blob/main/examples/how_to_debug_python.md) for a full example of how improving one function can decrease overall CPU utilization and ultimately save cut server costs by 66%!
+These are very simple projects where the application is basically one `while true` loop and inside that loop it calls a slow function and a fast function. Slow function takes about 75% of the time and the fast one takes about 25%. See [debug_python_with_pyroscope.md](https://github.com/pyroscope-io/pyroscope/blob/main/examples/how_to_debug_python.md) for a full example of how improving one function can decrease overall CPU utilization and ultimately save cut server costs by 66%!
 
 
 # How Pyroscope works
