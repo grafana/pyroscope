@@ -19,7 +19,7 @@
 </h2>
 
 Pyroscope is an open source continuous profiling platform. It will help you:
-* Find bottlenecks in your code
+* Find performance issues in your code
 * Resolve issues with high CPU utilization
 * Understand the call tree of your application
 * Track changes over time
