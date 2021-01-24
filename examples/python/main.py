@@ -1,15 +1,16 @@
 import time
 import threading
-from a_module.fast_file import fast_function
-from b_module.slow_file import slow_function
+from a_module.foo import foo
+from b_module.bar import bar
 
-ITERATIONS = 20000
+ITERATIONS = 200000
 
 if __name__ == "__main__":
+
   print(f'yoyoy Application 1 started')
   for i in range(ITERATIONS):
-    fast_function(25000)
-    slow_function(8000)
+    foo(75000)
+    bar(25000)
   print(f'yoyoy Application 1 ended')
 
   print(f'Switching fast and slow around.....')
@@ -18,6 +19,6 @@ if __name__ == "__main__":
 
   print(f'yoyoy Application 2 started')
   for i in range(ITERATIONS):
-    fast_function(25000)
-    slow_function(75000)
+    bar(25000)
+    foo(8000)
   print(f'yoyoy Application 2 ended')
