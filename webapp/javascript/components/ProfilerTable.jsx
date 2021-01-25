@@ -12,7 +12,7 @@ export default function ProfilerTable({
   viewState,
   sortByDirection,
   sortBy,
-  setState,
+  setViewState,
 }) {
   function updateSortBy(newSortBy) {
     let dir = sortByDirection;
@@ -21,7 +21,7 @@ export default function ProfilerTable({
     } else {
       dir = "desc";
     }
-    setState({
+    setViewState({
       sortBy: newSortBy,
       sortByDirection: dir,
     });
@@ -159,12 +159,12 @@ function getPackageNameFromStackTrace(spyName, stackTrace) {
 }
 
 // generates a table from data in flamebearer format
-const generateTable = (data) => {
+const generateTable = (flamebearer) => {
   const table = [];
-  if (!data) {
+  if (!flamebearer) {
     return table;
   }
-  const { names, levels } = data;
+  const { names, levels } = flamebearer;
   const hash = {};
   // eslint-disable-next-line no-plusplus
   for (let i = 0; i < levels.length; i++) {

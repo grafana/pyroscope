@@ -8,6 +8,17 @@ import ProfilerTable from "./ProfilerTable";
 import { fetchJSON } from "../redux/actions";
 import { buildRenderURL } from "../util/update_requests";
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
+import {
+  numberWithCommas,
+  formatPercent,
+  DurationFormater,
+} from "../util/format";
+
+const PX_PER_LEVEL = 18;
+const COLLAPSE_THRESHOLD = 5;
+const LABEL_THRESHOLD = 20;
+const HIGHLIGHT_NODE_COLOR = "#48CE73"; // green
+const GAP = 0.5;
 
 const Profiler = withShortcut(({ shortcut }) => {
   const dispatch = useDispatch();
@@ -37,12 +48,20 @@ const Profiler = withShortcut(({ shortcut }) => {
   const labels = useSelector((state) => state.labels);
 
   useEffect(() => {
+    setCanvas(canvasRef.current);
+    if (canvasRef.current) {
+      setCTX(canvasRef.current.getContext("2d"));
+      // setCTX(canvasRef && canvasRef.current.canvas.getContext("2d"));
+    }
+  }, [canvasRef]);
+
+  useEffect(() => {
     dispatch(fetchJSON(buildRenderURL({ from, until, labels })));
   }, [from, until, labels]);
 
   useEffect(() => {
-    updateData(flamebearer);
-  }, [flamebearer]);
+    renderCanvas(flamebearer, canvasData);
+  }, [canvasData, flamebearer]);
 
   useEffect(() => {
     if (shortcut) {
@@ -85,15 +104,15 @@ const Profiler = withShortcut(({ shortcut }) => {
             viewState={viewState}
             sortByDirection={viewState.sortByDirection}
             sortBy={viewState.sortBy}
-            setState={setViewState}
+            setViewState={setViewState}
           />
-          {/* <ProfilerFlameGraph
-            view={view}
+          <ProfilerFlameGraph
+            view={viewState.view ?? "both"}
             canvasRef={canvasRef}
             clickHandler={clickHandler}
             mouseMoveHandler={mouseMoveHandler}
             mouseOutHandler={mouseOutHandler}
-          /> */}
+          />
         </div>
         <div
           className={clsx("no-data-message", {
@@ -116,14 +135,6 @@ const Profiler = withShortcut(({ shortcut }) => {
       </div>
     </div>
   );
-
-  function updateData(flamebearer) {
-    if (flamebearer) {
-      // const { names, levels, numTicks, sampleRate } = flamebearer;
-      setCanvasData(flamebearer);
-      renderCanvas(flamebearer, canvasData);
-    }
-  }
 
   function rect(ctx, x, y, w, h, radius) {
     return ctx.rect(x, y, w, h);
@@ -157,27 +168,33 @@ const Profiler = withShortcut(({ shortcut }) => {
   }
 
   function updateZoom(i, j) {
-    const { selectedLevel, topLevel, rangeMin, rangeMax } = canvasData;
+    const { selectedLevel } = canvasData;
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
-      selectedLevel = i;
-      topLevel = 0;
-      rangeMin = levels[i][j] / flamebearer.numTicks;
-      rangeMax = (levels[i][j] + levels[i][j + 1]) / flamebearer.numTicks;
+      setCanvasData({
+        selectedLevel: i,
+        topLevel: 0,
+        rangeMin: levels[i][j] / flamebearer.numTicks,
+        rangeMax: (levels[i][j] + levels[i][j + 1]) / flamebearer.numTicks,
+        ...canvasData,
+      });
     } else {
-      selectedLevel = 0;
-      topLevel = 0;
-      rangeMin = 0;
-      rangeMax = 1;
+      setCanvasData({
+        selectedLevel: 0,
+        topLevel: 0,
+        rangeMin: 0,
+        rangeMax: 1,
+        canvasData,
+      });
     }
-    updateResetStyle(canvasData.selectedLevel, setViewState);
+    updateResetStyle(selectedLevel, setViewState);
   }
 
   function renderCanvas(flamebearer, canvasData) {
-    if (!flamebearer || !canvas) {
+    if (!flamebearer || !canvas || !ctx) {
       return;
     }
     const { topLevel, selectedLevel, rangeMin, rangeMax, query } = canvasData;
-    const { names, levels, numTicks, sampleRate, spyname } = flamebearer;
+    const { names, levels, numTicks, sampleRate, spyName } = flamebearer;
 
     canvas.height = PX_PER_LEVEL * (levels.length - topLevel);
     canvas.style.height = `${canvas.height}px`;
@@ -313,7 +330,7 @@ const Profiler = withShortcut(({ shortcut }) => {
   }
 
   function handleSearchChange(e) {
-    setCanvasData({ query: e.target.value, ...canvasData });
+    setCanvasData({ ...canvasData, query: e.target.value });
     updateResetStyle(canvasData.selectedLevel, setViewState);
   }
 
@@ -323,9 +340,9 @@ const Profiler = withShortcut(({ shortcut }) => {
   }
 
   function xyToBar(x, y) {
-    const i = Math.floor(y / PX_PER_LEVEL) + topLevel;
+    const i = Math.floor(y / PX_PER_LEVEL) + canvasData.topLevel;
     if (i >= 0 && i < levels.length) {
-      const j = binarySearchLevel(x, levels[i]);
+      const j = binarySearchLevel(x, levels[i], tickToX);
       return { i, j };
     }
     return { i: 0, j: 0 };
@@ -356,7 +373,6 @@ const Profiler = withShortcut(({ shortcut }) => {
   function updateView(newView) {
     setViewState({
       view: newView,
-      ...viewState,
     });
     // console.log('render-canvas');
     setTimeout(() => renderCanvas(flamebearer, canvasData), 0);
@@ -416,7 +432,6 @@ const Profiler = withShortcut(({ shortcut }) => {
       tooltipSubtitle: `${percent}, ${numberWithCommas(
         numBarTicks
       )} samples, ${df.format(numBarTicks / flamebearer.sampleRate)}`,
-      ...viewState,
     });
   }
 
@@ -429,7 +444,6 @@ const Profiler = withShortcut(({ shortcut }) => {
       tooltipStyle: {
         display: "none",
       },
-      ...viewState,
     });
   }
 });

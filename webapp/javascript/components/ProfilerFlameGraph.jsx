@@ -1,4 +1,5 @@
 import React from "react";
+import clsx from "clsx";
 
 export default function ProfilerFlameGraph({
   view,
@@ -7,6 +8,7 @@ export default function ProfilerFlameGraph({
   mouseMoveHandler,
   mouseOutHandler,
 }) {
+  console.log(view);
   return (
     <div className={clsx("pane", { hidden: view === "table" })}>
       <canvas
