@@ -13,6 +13,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
@@ -70,8 +71,14 @@ func (ctrl *Controller) Start() {
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
 	}
+	atexit.Register(func() {
+		s.Close()
+	})
 	err := s.ListenAndServe()
 	if err != nil {
+		if err == http.ErrServerClosed {
+			return
+		}
 		logrus.Error(err)
 	}
 }
