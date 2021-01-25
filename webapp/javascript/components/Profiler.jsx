@@ -14,6 +14,7 @@ const Profiler = withShortcut(({ shortcut }) => {
   const tooltipRef = useRef(null);
   const canvasRef = useRef(null);
   const flamebearer = useSelector((state) => state.flamebearer);
+  const levels = flamebearer && flamebearer.levels;
   const [viewState, setViewState] = useState({
     highlightStyle: { display: "none" },
     tooltipStyle: { display: "none" },
@@ -54,22 +55,28 @@ const Profiler = withShortcut(({ shortcut }) => {
     }
   }, []);
 
-  const resizeHandler = () => {};
-  const focusHandler = () => {};
-
   useEffect(() => {
     window.addEventListener("resize", resizeHandler);
     window.addEventListener("focus", focusHandler);
   }, [resizeHandler, focusHandler]);
+
+  const graphWidth = canvas && (canvas.width = canvas.clientWidth);
+  const pxPerTick =
+    flamebearer &&
+    graphWidth /
+      flamebearer.numTicks /
+      (canvasData.rangeMax - canvasData.rangeMin);
+  const tickToX = (i) =>
+    (i - flamebearer.numTicks * canvasData.rangeMin) * pxPerTick;
 
   return (
     <div className="canvas-renderer">
       <div className="canvas-container">
         <ProfilerHeader
           view={viewState.view}
-          handleSearchChange={() => {}}
-          reset={() => {}}
-          updateView={() => {}}
+          handleSearchChange={handleSearchChange}
+          reset={reset}
+          updateView={updateView}
           resetStyle={viewState.resetStyle}
         />
         <div className="flamegraph-container panes-wrapper">
@@ -141,42 +148,39 @@ const Profiler = withShortcut(({ shortcut }) => {
     ctx.quadraticCurveTo(x, y, x + radius, y);
   }
 
-  function updateResetStyle({ selectedLevel, setViewState }) {
+  function updateResetStyle(selectedLevel, setViewState) {
     // const emptyQuery = this.query === "";
     setViewState({
       resetStyle: { visibility: selectedLevel === 0 ? "hidden" : "visible" },
+      ...viewState,
     });
   }
 
   function updateZoom(i, j) {
+    const { selectedLevel, topLevel, rangeMin, rangeMax } = canvasData;
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
-      this.selectedLevel = i;
-      this.topLevel = 0;
-      this.rangeMin = this.levels[i][j] / this.numTicks;
-      this.rangeMax =
-        (this.levels[i][j] + this.levels[i][j + 1]) / this.numTicks;
+      selectedLevel = i;
+      topLevel = 0;
+      rangeMin = levels[i][j] / flamebearer.numTicks;
+      rangeMax = (levels[i][j] + levels[i][j + 1]) / flamebearer.numTicks;
     } else {
-      this.selectedLevel = 0;
-      this.topLevel = 0;
-      this.rangeMin = 0;
-      this.rangeMax = 1;
+      selectedLevel = 0;
+      topLevel = 0;
+      rangeMin = 0;
+      rangeMax = 1;
     }
-    updateResetStyle({ selectedLevel, setViewState });
+    updateResetStyle(canvasData.selectedLevel, setViewState);
   }
 
-  function renderCanvas(
-    { names, levels, numTicks, sampleRate, spyName },
-    { topLevel, selectedLevel, rangeMin, rangeMax, query }
-  ) {
-    if (!names || !canvas) {
+  function renderCanvas(flamebearer, canvasData) {
+    if (!flamebearer || !canvas) {
       return;
     }
+    const { topLevel, selectedLevel, rangeMin, rangeMax, query } = canvasData;
+    const { names, levels, numTicks, sampleRate, spyname } = flamebearer;
 
-    const graphWidth = (canvas.width = canvas.clientWidth);
-    const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
     canvas.height = PX_PER_LEVEL * (levels.length - topLevel);
     canvas.style.height = `${canvas.height}px`;
-    const tickToX = (i) => (i - numTicks * rangeMin) * pxPerTick;
 
     if (devicePixelRatio > 1) {
       canvas.width *= 2;
@@ -286,6 +290,147 @@ const Profiler = withShortcut(({ shortcut }) => {
       return fullStackGroups.groups.packageName;
     }
     return stackTrace;
+  }
+
+  // binary search of a block in a stack level
+  function binarySearchLevel(x, level, tickToX) {
+    let i = 0;
+    let j = level.length - 4;
+    while (i <= j) {
+      const m = 4 * ((i / 4 + j / 4) >> 1);
+      const x0 = tickToX(level[m]);
+      const x1 = tickToX(level[m] + level[m + 1]);
+      if (x0 <= x && x1 >= x) {
+        return x1 - x0 > COLLAPSE_THRESHOLD ? m : -1;
+      }
+      if (x0 > x) {
+        j = m - 4;
+      } else {
+        i = m + 4;
+      }
+    }
+    return -1;
+  }
+
+  function handleSearchChange(e) {
+    setCanvasData({ query: e.target.value, ...canvasData });
+    updateResetStyle(canvasData.selectedLevel, setViewState);
+  }
+
+  function reset() {
+    updateZoom(0, 0);
+    renderCanvas(flamebearer, canvasData);
+  }
+
+  function xyToBar(x, y) {
+    const i = Math.floor(y / PX_PER_LEVEL) + topLevel;
+    if (i >= 0 && i < levels.length) {
+      const j = binarySearchLevel(x, levels[i]);
+      return { i, j };
+    }
+    return { i: 0, j: 0 };
+  }
+
+  function clickHandler(e) {
+    const { i, j } = xyToBar(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    if (j === -1) return;
+    updateZoom(i, j);
+    renderCanvas(flamebearer, canvasData);
+    mouseOutHandler();
+  }
+
+  function resizeHandler() {
+    // this is here to debounce resize events (see: https://css-tricks.com/debouncing-throttling-explained-examples/)
+    //   because rendering is expensive
+    clearTimeout(this.resizeFinish);
+    this.resizeFinish = setTimeout(
+      () => renderCanvas(flamebearer, canvasData),
+      100
+    );
+  }
+
+  function focusHandler() {
+    renderCanvas(flamebearer, canvasData);
+  }
+
+  function updateView(newView) {
+    setViewState({
+      view: newView,
+      ...viewState,
+    });
+    // console.log('render-canvas');
+    setTimeout(() => renderCanvas(flamebearer, canvasData), 0);
+  }
+
+  function mouseMoveHandler(e) {
+    const { i, j } = xyToBar(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+
+    if (
+      j === -1 ||
+      e.nativeEvent.offsetX < 0 ||
+      e.nativeEvent.offsetX > graphWidth
+    ) {
+      mouseOutHandler();
+      return;
+    }
+
+    canvas.style.cursor = "pointer";
+
+    const level = levels[i];
+    const x = Math.max(tickToX(level[j]), 0);
+    const y = (i - canvasData.topLevel) * PX_PER_LEVEL;
+    const sw = Math.min(tickToX(level[j] + level[j + 1]) - x, graphWidth);
+
+    const tooltipEl = tooltipRef.current;
+    const numBarTicks = level[j + 1];
+    const percent = formatPercent(numBarTicks / flamebearer.numTicks);
+
+    // a little hacky but this is here so that we can get tooltipWidth after text is updated.
+    const tooltipTitle = flamebearer.names[level[j + 3]];
+    tooltipEl.children[0].innerText = tooltipTitle;
+    const tooltipWidth = tooltipEl.clientWidth;
+
+    const df = new DurationFormater(
+      flamebearer.numTicks / flamebearer.sampleRate
+    );
+
+    setViewState({
+      highlightStyle: {
+        display: "block",
+        left: `${canvas.offsetLeft + x}px`,
+        top: `${canvas.offsetTop + y}px`,
+        width: `${sw}px`,
+        height: `${PX_PER_LEVEL}px`,
+      },
+      tooltipStyle: {
+        display: "block",
+        left: `${
+          Math.min(
+            canvas.offsetLeft + e.nativeEvent.offsetX + 15 + tooltipWidth,
+            canvas.offsetLeft + graphWidth
+          ) - tooltipWidth
+        }px`,
+        top: `${canvas.offsetTop + e.nativeEvent.offsetY + 12}px`,
+      },
+      tooltipTitle,
+      tooltipSubtitle: `${percent}, ${numberWithCommas(
+        numBarTicks
+      )} samples, ${df.format(numBarTicks / flamebearer.sampleRate)}`,
+      ...viewState,
+    });
+  }
+
+  function mouseOutHandler() {
+    canvas.style.cursor = "";
+    setViewState({
+      highlightStyle: {
+        display: "none",
+      },
+      tooltipStyle: {
+        display: "none",
+      },
+      ...viewState,
+    });
   }
 });
 

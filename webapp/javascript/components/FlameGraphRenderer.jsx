@@ -155,13 +155,13 @@ class FlameGraphRenderer extends React.Component {
   };
 
   // binary search of a block in a stack level
-  binarySearchLevel(x, level) {
+  binarySearchLevel(x, level, tickToX) {
     let i = 0;
     let j = level.length - 4;
     while (i <= j) {
       const m = 4 * ((i / 4 + j / 4) >> 1);
-      const x0 = this.tickToX(level[m]);
-      const x1 = this.tickToX(level[m] + level[m + 1]);
+      const x0 = tickToX(level[m]);
+      const x1 = tickToX(level[m] + level[m + 1]);
       if (x0 <= x && x1 >= x) {
         return x1 - x0 > COLLAPSE_THRESHOLD ? m : -1;
       }
