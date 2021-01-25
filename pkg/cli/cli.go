@@ -57,7 +57,12 @@ func (tf *timeFlag) String() string {
 func (tf *timeFlag) Set(value string) error {
 	t2, err := time.Parse(timeFormat, value)
 	if err != nil {
-		return err
+		var i int
+		i, err = strconv.Atoi(value)
+		if err != nil {
+			return err
+		}
+		t2 = time.Unix(int64(i), 0)
 	}
 
 	t := (*time.Time)(tf)
@@ -247,9 +252,8 @@ func Start(cfg *config.Config) error {
 		ShortUsage: "pyroscope [flags] <subcommand>",
 		FlagSet:    rootFlagSet,
 		Subcommands: []*ffcli.Command{
-			// disabled these commands for now, they are not documented and confuse people
-			// agentCmd,
-			// convertCmd,
+			agentCmd,
+			convertCmd,
 			serverCmd,
 			execCmd,
 			dbmanagerCmd,
@@ -288,6 +292,9 @@ func Start(cfg *config.Config) error {
 		return exec.Cli(cfg, args)
 	}
 	dbmanagerCmd.Exec = func(_ context.Context, args []string) error {
+		if l, err := logrus.ParseLevel(cfg.DbManager.LogLevel); err == nil {
+			logrus.SetLevel(l)
+		}
 		return dbmanager.Cli(cfg, args)
 	}
 	rootCmd.Exec = func(_ context.Context, args []string) error {

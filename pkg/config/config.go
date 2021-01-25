@@ -63,10 +63,11 @@ type Convert struct {
 }
 
 type DbManager struct {
+	LogLevel        string `def:"error", desc:"debug|info|warn|error"`
 	StoragePath     string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
 	DstStartTime    time.Time
+	DstEndTime      time.Time
 	SrcStartTime    time.Time
-	SrcEndTime      time.Time
 	ApplicationName string
 }
 
