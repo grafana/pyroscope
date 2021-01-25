@@ -1,7 +1,7 @@
-# How to Debug Performance Issues in Python
-#### Using flame graphs to get to the root of the problem
+# How to Debug Performance Issues in Python with
+## Using flame graphs to get to the root of the problem
 
-I know from personal experience that debugging performance issues on Python servers can be incredibly frusturating. Usually, increased traffic or a transient bug would cause end users to report that something was wrong. 
+I know from personal experience that debugging performance issues on Python servers can be incredibly frustrating. Usually, increased traffic or a transient bug would cause end users to report that something was wrong. 
 
 More often than not, it's _impossible_ to exactly replicate the conditions under which the bug occured, and so I was stuck trying to figure out which part of our code/infrastructure was responsible for the performance issue on our server.
 
@@ -18,7 +18,7 @@ So when you see a graph of CPU utilization that looks like this:
 ![image](https://user-images.githubusercontent.com/23323466/105662478-aa40ce80-5e84-11eb-800a-57735c688fc9.png)
 
 During the period of 100% CPU utilization, you can assume:
-- End-users are having a frusturating experience (i.e. App / Website is loading slow) 
+- End-users are having a frustrating experience (i.e. App / Website is loading slow) 
 - Server costs will increase after you provision new servers to handle the additional load
 
 The question is: **which part of the code is responsible for the increase in CPU utilization?** That's where flame graphs come in!
@@ -75,7 +75,7 @@ def bar():
     work(25000)
 ```
 ## Improving `foo()` saved us $66,000
-Thanks to the flame graphs, we we're able to identify immediately that `foo()` was the bottleneck in our code. After optimizing it, we were able to significantly decrease our cpu utilization.
+Thanks to the flame graphs, we were able to identify immediately that `foo()` was the bottleneck in our code. After optimizing it, we were able to significantly decrease our cpu utilization.
 
 ![image](https://user-images.githubusercontent.com/23323466/105666001-1a535280-5e8d-11eb-9407-c63955ba86a1.png)
 
