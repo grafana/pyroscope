@@ -19,6 +19,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/dbmanager"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -33,6 +34,8 @@ import (
 	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
+const timeFormat = "2006-01-02T15:04:05Z0700"
+
 type arrayFlags []string
 
 func (i *arrayFlags) String() string {
@@ -41,6 +44,26 @@ func (i *arrayFlags) String() string {
 
 func (i *arrayFlags) Set(value string) error {
 	*i = append(*i, value)
+	return nil
+}
+
+type timeFlag time.Time
+
+func (tf *timeFlag) String() string {
+	v := time.Time(*tf)
+	return v.Format(timeFormat)
+}
+
+func (tf *timeFlag) Set(value string) error {
+	t2, err := time.Parse(timeFormat, value)
+	if err != nil {
+		return err
+	}
+
+	t := (*time.Time)(tf)
+	b, _ := t2.MarshalBinary()
+	t.UnmarshalBinary(b)
+
 	return nil
 }
 
@@ -80,6 +103,10 @@ func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
 		case reflect.TypeOf(true):
 			val := fieldV.Addr().Interface().(*bool)
 			flagSet.BoolVar(val, nameVal, defaultValStr == "true", descVal)
+		case reflect.TypeOf(time.Time{}):
+			valTime := fieldV.Addr().Interface().(*time.Time)
+			val := (*timeFlag)(valTime)
+			flagSet.Var(val, nameVal, descVal)
 		case reflect.TypeOf(time.Second):
 			val := fieldV.Addr().Interface().(*time.Duration)
 			var defaultVal time.Duration
@@ -147,11 +174,12 @@ func printUsage(c *ffcli.Command) string {
 
 func Start(cfg *config.Config) error {
 	var (
-		rootFlagSet    = flag.NewFlagSet("pyroscope", flag.ExitOnError)
-		agentFlagSet   = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
-		serverFlagSet  = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
-		convertFlagSet = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
-		execFlagSet    = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
+		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
+		agentFlagSet     = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
+		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
+		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
+		execFlagSet      = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
+		dbmanagerFlagSet = flag.NewFlagSet("pyroscope dbmanager", flag.ExitOnError)
 	)
 
 	populateFlagSet(cfg, rootFlagSet)
@@ -159,6 +187,7 @@ func Start(cfg *config.Config) error {
 	populateFlagSet(&cfg.Server, serverFlagSet)
 	populateFlagSet(&cfg.Convert, convertFlagSet)
 	populateFlagSet(&cfg.Exec, execFlagSet)
+	populateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
 
 	options := []ff.Option{
 		ff.WithConfigFileParser(ffyaml.Parser),
@@ -203,6 +232,15 @@ func Start(cfg *config.Config) error {
 		FlagSet:    execFlagSet,
 	}
 
+	dbmanagerCmd := &ffcli.Command{
+		UsageFunc:  printUsage,
+		Options:    options,
+		Name:       "dbmanager",
+		ShortUsage: "pyroscope dbmanager [flags] <args>",
+		ShortHelp:  "tools for managing database",
+		FlagSet:    dbmanagerFlagSet,
+	}
+
 	rootCmd := &ffcli.Command{
 		UsageFunc:  printUsage,
 		Options:    options,
@@ -214,6 +252,7 @@ func Start(cfg *config.Config) error {
 			// convertCmd,
 			serverCmd,
 			execCmd,
+			dbmanagerCmd,
 		},
 	}
 
@@ -247,6 +286,9 @@ func Start(cfg *config.Config) error {
 		}
 
 		return exec.Cli(cfg, args)
+	}
+	dbmanagerCmd.Exec = func(_ context.Context, args []string) error {
+		return dbmanager.Cli(cfg, args)
 	}
 	rootCmd.Exec = func(_ context.Context, args []string) error {
 		if cfg.Version || len(args) > 0 && args[0] == "version" {
