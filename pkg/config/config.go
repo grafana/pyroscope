@@ -7,10 +7,11 @@ import (
 type Config struct {
 	Version bool
 
-	Agent   Agent   `skip:"true"`
-	Server  Server  `skip:"true"`
-	Convert Convert `skip:"true"`
-	Exec    Exec    `skip:"true"`
+	Agent     Agent     `skip:"true"`
+	Server    Server    `skip:"true"`
+	Convert   Convert   `skip:"true"`
+	Exec      Exec      `skip:"true"`
+	DbManager DbManager `skip:"true"`
 }
 
 type Agent struct {
@@ -59,6 +60,14 @@ type Server struct {
 
 type Convert struct {
 	Format string `def:"tree"`
+}
+
+type DbManager struct {
+	StoragePath     string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
+	DstStartTime    time.Time
+	SrcStartTime    time.Time
+	SrcEndTime      time.Time
+	ApplicationName string
 }
 
 type Exec struct {
