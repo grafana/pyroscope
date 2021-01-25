@@ -15,7 +15,7 @@ In fact, Netflix performance architect Brendan Gregg mentioned that decreasing C
 2. End-user experience - The more load placed on your server's CPUs, the slower your website or server becomes 
 
 So when you see a graph of CPU utilization that looks like this:
-![image](https://user-images.githubusercontent.com/23323466/105274459-1a341980-5b52-11eb-9807-cf91351d9bf2.png)
+![image](https://user-images.githubusercontent.com/23323466/105662478-aa40ce80-5e84-11eb-800a-57735c688fc9.png)
 
 During the period of 100% CPU utilization, you can assume:
 - End-users are having a frusturating experience (i.e. App / Website is loading slow) 
