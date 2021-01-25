@@ -5,10 +5,11 @@ import {
   formatPercent,
   DurationFormater,
 } from "../util/format";
+import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
 
 export default function ProfilerTable({
   flamebearer,
-  view,
+  viewState,
   sortByDirection,
   sortBy,
   setState,
@@ -26,18 +27,25 @@ export default function ProfilerTable({
     });
   }
   return (
-    <div className={clsx("pane", { hidden: view === "icicle" })}>
+    <div className={clsx("pane", { hidden: viewState.view === "icicle" })}>
       <Table
         flamebearer={flamebearer}
         updateSortBy={updateSortBy}
         sortBy={sortBy}
-        sortByDirection={sortByDirections}
+        sortByDirection={sortByDirection}
+        viewState={viewState}
       />
     </div>
   );
 }
 
-function Table({ flamebearer, updateSortBy, sortBy, sortByDirection }) {
+function Table({
+  flamebearer,
+  updateSortBy,
+  sortBy,
+  sortByDirection,
+  viewState,
+}) {
   if (!flamebearer || flamebearer.numTicks === 0) {
     return [];
   }
@@ -73,15 +81,15 @@ function Table({ flamebearer, updateSortBy, sortBy, sortByDirection }) {
         </tr>
       </thead>
       <tbody>
-        <TableBody />
+        <TableBody flamebearer={flamebearer} viewState={viewState} />
       </tbody>
     </table>
   );
 }
 
-function TableBody({ flamebearer, state }) {
+function TableBody({ flamebearer, viewState }) {
   const { numTicks, maxSelf, sampleRate, spyName } = flamebearer;
-  const { sortBy, sortByDirection } = state;
+  const { sortBy, sortByDirection } = viewState;
 
   const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
 

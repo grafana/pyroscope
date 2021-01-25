@@ -26,7 +26,7 @@ function Header(props) {
           visible: !areNamesLoading,
         })}
       >
-        <NameSelector />
+        <NameSelector names={labels.map((i) => i.value)} />
         {labels
           .filter((x) => x.name !== "__name__")
           .map((label) => (

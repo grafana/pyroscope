@@ -1,15 +1,21 @@
 import React from "react";
 
-function ProfilerFlameGraph() {
+export default function ProfilerFlameGraph({
+  view,
+  canvasRef,
+  clickHandler,
+  mouseMoveHandler,
+  mouseOutHandler,
+}) {
   return (
-    <div className={clsx("pane", { hidden: this.state.view === "table" })}>
+    <div className={clsx("pane", { hidden: view === "table" })}>
       <canvas
         className="flamegraph-canvas"
         height="0"
-        ref={this.canvasRef}
-        onClick={this.clickHandler}
-        onMouseMove={this.mouseMoveHandler}
-        onMouseOut={this.mouseOutHandler}
+        ref={canvasRef}
+        onClick={clickHandler}
+        onMouseMove={mouseMoveHandler}
+        onMouseOut={mouseOutHandler}
       />
     </div>
   );
