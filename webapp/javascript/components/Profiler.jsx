@@ -21,10 +21,17 @@ const HIGHLIGHT_NODE_COLOR = "#48CE73"; // green
 const GAP = 0.5;
 
 const Profiler = withShortcut(({ shortcut }) => {
+  const state = useSelector((state) => state);
+  const from = state.from;
+  const until = state.until;
+  const labels = state.labels;
+  const renderURL = buildRenderURL({ from, until, labels });
   const dispatch = useDispatch();
   const tooltipRef = useRef(null);
   const canvasRef = useRef(null);
   const flamebearer = useSelector((state) => state.flamebearer);
+  let canvas = canvasRef.current;
+  let ctx = canvasRef.current && canvasRef.current.getContext("2d");
   const levels = flamebearer && flamebearer.levels;
   const [viewState, setViewState] = useState({
     highlightStyle: { display: "none" },
@@ -34,8 +41,8 @@ const Profiler = withShortcut(({ shortcut }) => {
     sortByDirection: "desc",
     view: "both",
   });
-  const [canvas, setCanvas] = useState(canvasRef.current);
-  const [ctx, setCTX] = useState(canvas && canvas.getContext("2d"));
+  const prevViewState = usePrevious(viewState);
+
   const [canvasData, setCanvasData] = useState({
     topLevel: 0,
     selectedLevel: 0,
@@ -43,25 +50,17 @@ const Profiler = withShortcut(({ shortcut }) => {
     rangeMax: 1,
     query: "",
   });
-  const from = useSelector((state) => state.from);
-  const until = useSelector((state) => state.until);
-  const labels = useSelector((state) => state.labels);
 
   useEffect(() => {
-    setCanvas(canvasRef.current);
-    if (canvasRef.current) {
-      setCTX(canvasRef.current.getContext("2d"));
-      // setCTX(canvasRef && canvasRef.current.canvas.getContext("2d"));
-    }
-  }, [canvasRef]);
+    dispatch(fetchJSON(renderURL));
+  }, [from, until]);
 
   useEffect(() => {
-    dispatch(fetchJSON(buildRenderURL({ from, until, labels })));
-  }, [from, until, labels]);
+    // compare previous state, viewState before deciding to render
+    console.log(prevViewState, viewState);
 
-  useEffect(() => {
     renderCanvas(flamebearer, canvasData);
-  }, [canvasData, flamebearer]);
+  }, [state, viewState]);
 
   useEffect(() => {
     if (shortcut) {
@@ -88,6 +87,8 @@ const Profiler = withShortcut(({ shortcut }) => {
   const tickToX = (i) =>
     (i - flamebearer.numTicks * canvasData.rangeMin) * pxPerTick;
 
+  if (!flamebearer) return <></>;
+
   return (
     <div className="canvas-renderer">
       <div className="canvas-container">
@@ -109,9 +110,9 @@ const Profiler = withShortcut(({ shortcut }) => {
           <ProfilerFlameGraph
             view={viewState.view ?? "both"}
             canvasRef={canvasRef}
-            clickHandler={clickHandler}
-            mouseMoveHandler={mouseMoveHandler}
-            mouseOutHandler={mouseOutHandler}
+            clickHandler={() => {}}
+            mouseMoveHandler={() => {}}
+            mouseOutHandler={() => {}}
           />
         </div>
         <div
@@ -162,13 +163,14 @@ const Profiler = withShortcut(({ shortcut }) => {
   function updateResetStyle(selectedLevel, setViewState) {
     // const emptyQuery = this.query === "";
     setViewState({
-      resetStyle: { visibility: selectedLevel === 0 ? "hidden" : "visible" },
       ...viewState,
+      resetStyle: { visibility: selectedLevel === 0 ? "hidden" : "visible" },
     });
   }
 
   function updateZoom(i, j) {
     const { selectedLevel } = canvasData;
+    if (!levels) return;
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
       setCanvasData({
         selectedLevel: i,
@@ -190,7 +192,7 @@ const Profiler = withShortcut(({ shortcut }) => {
   }
 
   function renderCanvas(flamebearer, canvasData) {
-    if (!flamebearer || !canvas || !ctx) {
+    if (!flamebearer || !canvas) {
       return;
     }
     const { topLevel, selectedLevel, rangeMin, rangeMax, query } = canvasData;
@@ -359,11 +361,8 @@ const Profiler = withShortcut(({ shortcut }) => {
   function resizeHandler() {
     // this is here to debounce resize events (see: https://css-tricks.com/debouncing-throttling-explained-examples/)
     //   because rendering is expensive
-    clearTimeout(this.resizeFinish);
-    this.resizeFinish = setTimeout(
-      () => renderCanvas(flamebearer, canvasData),
-      100
-    );
+    // clearTimeout(resizeFinish);
+    // resizeFinish = setTimeout(() => renderCanvas(flamebearer, canvasData), 100);
   }
 
   function focusHandler() {
@@ -372,10 +371,11 @@ const Profiler = withShortcut(({ shortcut }) => {
 
   function updateView(newView) {
     setViewState({
+      ...viewState,
       view: newView,
     });
     // console.log('render-canvas');
-    setTimeout(() => renderCanvas(flamebearer, canvasData), 0);
+    setTimeout(renderCanvas(flamebearer, canvasData), 1000);
   }
 
   function mouseMoveHandler(e) {
@@ -411,6 +411,7 @@ const Profiler = withShortcut(({ shortcut }) => {
     );
 
     setViewState({
+      ...viewState,
       highlightStyle: {
         display: "block",
         left: `${canvas.offsetLeft + x}px`,
@@ -438,6 +439,7 @@ const Profiler = withShortcut(({ shortcut }) => {
   function mouseOutHandler() {
     canvas.style.cursor = "";
     setViewState({
+      ...viewState,
       highlightStyle: {
         display: "none",
       },
@@ -447,5 +449,13 @@ const Profiler = withShortcut(({ shortcut }) => {
     });
   }
 });
+
+function usePrevious(value) {
+  const ref = useRef();
+  useEffect(() => {
+    ref.current = value;
+  });
+  return ref.current;
+}
 
 export default withShortcut(Profiler);

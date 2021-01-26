@@ -8,7 +8,6 @@ export default function ProfilerFlameGraph({
   mouseMoveHandler,
   mouseOutHandler,
 }) {
-  console.log(view);
   return (
     <div className={clsx("pane", { hidden: view === "table" })}>
       <canvas

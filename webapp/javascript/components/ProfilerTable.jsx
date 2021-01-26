@@ -22,6 +22,7 @@ export default function ProfilerTable({
       dir = "desc";
     }
     setViewState({
+      ...viewState,
       sortBy: newSortBy,
       sortByDirection: dir,
     });
