@@ -1,4 +1,4 @@
-# How to Debug Performance Issues in Python with
+# How to Debug Performance Issues in Python with Profilers
 ## Using flame graphs to get to the root of the problem
 
 I know from personal experience that debugging performance issues on Python servers can be incredibly frustrating. Usually, increased traffic or a transient bug would cause end users to report that something was wrong. 
