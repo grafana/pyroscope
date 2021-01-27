@@ -194,6 +194,8 @@
 
 package names
 
+// revive:disable:line-length-limit
+
 import (
 	"github.com/spaolacci/murmur3"
 )
@@ -768,5 +770,7 @@ const murmurSeed = 6231912
 
 func GetRandomName(seed string) string {
 	v := murmur3.Sum32WithSeed([]byte(seed), murmurSeed)
-	return left[int(v & 0xffff)%len(left)] + "." + right[int(v >> 16 & 0xffff)%len(right)]
+	return left[int(v&0xffff)%len(left)] + "." + right[int(v>>16&0xffff)%len(right)]
 }
+
+// revive:enable:line-length-limit
