@@ -69,6 +69,8 @@ type DbManager struct {
 	DstEndTime      time.Time
 	SrcStartTime    time.Time
 	ApplicationName string
+
+	EnableProfiling bool `def:"false" desc:"enables profiling of dbmanager"`
 }
 
 type Exec struct {

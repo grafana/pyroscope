@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 
 	"github.com/cheggaaa/pb/v3"
 )
@@ -42,6 +45,14 @@ func copyData(cfg *config.Config) error {
 	dstEt := cfg.DbManager.DstEndTime.Truncate(resolution)
 	srcEt := srcSt.Add(dstEt.Sub(dstSt))
 
+	fmt.Printf("copying %s from %s-%s to %s-%s\n",
+		appName,
+		srcSt.String(),
+		srcEt.String(),
+		dstSt.String(),
+		dstEt.String(),
+	)
+
 	// TODO: add more correctness checks
 	if !srcSt.Before(srcEt) {
 		return fmt.Errorf("src start time (%q) has to be before src end time (%q)", srcSt, srcEt)
@@ -56,6 +67,11 @@ func copyData(cfg *config.Config) error {
 		return err
 	}
 
+	if cfg.DbManager.EnableProfiling {
+		u := direct.New(cfg, s)
+		go agent.SelfProfile(cfg, u, "pyroscope.dbmanager.cpu{}")
+	}
+
 	st := srcSt
 	et := srcEt
 	sk, err := storage.ParseKey(appName)
@@ -68,8 +84,17 @@ func copyData(cfg *config.Config) error {
 
 	durDiff := dstSt.Sub(srcSt)
 
+	stop := false
+	atexit.Register(func() {
+		stop = true
+	})
+
 	for srct := st; srct.Before(et); srct = srct.Add(resolution) {
 		bar.Increment()
+
+		if stop {
+			break
+		}
 
 		srct2 := srct.Add(resolution)
 		tree, _, sn, sr, err := s.Get(srct, srct2, sk)

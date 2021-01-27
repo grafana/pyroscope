@@ -35,9 +35,14 @@ ReduxQuerySync({
       action: setUntil,
     },
     name: {
-      defaultValue: "pyroscope.server.cpu{}",
       selector: (state) => encodeLabels(state.labels),
-      action: (v) => setLabels(parseLabels(v)),
+      action: (v) => {
+        const labels = parseLabels(v);
+        if (labels.length > 0) {
+          return setLabels(labels);
+        }
+        return { type: "NOOP" };
+      },
     },
     maxNodes: {
       defaultValue: "1024",

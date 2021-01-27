@@ -73,7 +73,6 @@ function PyroscopeApp(props) {
   const { actions, shortcut, timeline } = props;
   const [state, setState] = useState(initialState);
   useEffect(() => {
-    actions.fetchNames();
     shortcut.registerShortcut(
       showShortcutsModal,
       ["shift+?"],
