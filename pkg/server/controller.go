@@ -145,7 +145,7 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	if extraMetadataPath != "" {
 		b, err = ioutil.ReadFile(extraMetadataPath)
 		if err != nil {
-			logrus.Error("failed to read file at %s", extraMetadataPath)
+			logrus.Errorf("failed to read file at %s", extraMetadataPath)
 		}
 		extraMetadataStr = string(b)
 	}
