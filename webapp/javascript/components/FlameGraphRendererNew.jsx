@@ -42,6 +42,7 @@ import {
 } from "../util/format";
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
 import ProfilerTable from "./ProfilerTable";
+import ProfilerHeader from "./ProfilerHeader";
 
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
@@ -437,47 +438,13 @@ class FlameGraphRenderer extends React.Component {
   render = () => (
     <div className="canvas-renderer">
       <div className="canvas-container">
-        <div className="navbar-2">
-          <input
-            className="flamegraph-search"
-            name="flamegraph-search"
-            placeholder="Search…"
-            onChange={this.handleSearchChange}
-          />
-          &nbsp;
-          <button
-            className={clsx("btn")}
-            style={this.state.resetStyle}
-            id="reset"
-            onClick={this.reset}
-          >
-            Reset View
-          </button>
-          <div className="navbar-space-filler" />
-          <div className="btn-group viz-switch">
-            <button
-              className={clsx("btn", { active: this.state.view == "table" })}
-              onClick={() => this.updateView("table")}
-            >
-              <FontAwesomeIcon icon={faBars} />
-              &nbsp;&thinsp;Table
-            </button>
-            <button
-              className={clsx("btn", { active: this.state.view == "both" })}
-              onClick={() => this.updateView("both")}
-            >
-              <FontAwesomeIcon icon={faColumns} />
-              &nbsp;&thinsp;Both
-            </button>
-            <button
-              className={clsx("btn", { active: this.state.view == "icicle" })}
-              onClick={() => this.updateView("icicle")}
-            >
-              <FontAwesomeIcon icon={faIcicles} />
-              &nbsp;&thinsp;Flamegraph
-            </button>
-          </div>
-        </div>
+        <ProfilerHeader
+          view={this.state.view}
+          handleSearchChange={this.handleSearchChange}
+          reset={this.reset}
+          updateView={this.updateView}
+          resetStyle={this.state.resetStyle}
+        />
         <div className="flamegraph-container panes-wrapper">
           <div
             className={clsx("pane", { hidden: this.state.view === "icicle" })}
