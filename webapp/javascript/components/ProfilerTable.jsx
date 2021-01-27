@@ -1,52 +1,26 @@
 import React from "react";
 import clsx from "clsx";
-import {
-  numberWithCommas,
-  formatPercent,
-  DurationFormater,
-} from "../util/format";
-import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
+import { DurationFormater } from "../util/format";
+import { colorBasedOnPackageName } from "../util/color";
 
 export default function ProfilerTable({
   flamebearer,
-  viewState,
   sortByDirection,
   sortBy,
-  setViewState,
+  updateSortBy,
+  view,
 }) {
-  function updateSortBy(newSortBy) {
-    let dir = sortByDirection;
-    if (sortBy === newSortBy) {
-      dir = dir === "asc" ? "desc" : "asc";
-    } else {
-      dir = "desc";
-    }
-    setViewState({
-      ...viewState,
-      sortBy: newSortBy,
-      sortByDirection: dir,
-    });
-  }
   return (
-    <div className={clsx("pane", { hidden: viewState.view === "icicle" })}>
-      <Table
-        flamebearer={flamebearer}
-        updateSortBy={updateSortBy}
-        sortBy={sortBy}
-        sortByDirection={sortByDirection}
-        viewState={viewState}
-      />
-    </div>
+    <Table
+      flamebearer={flamebearer}
+      updateSortBy={updateSortBy}
+      sortBy={sortBy}
+      sortByDirection={sortByDirection}
+    />
   );
 }
 
-function Table({
-  flamebearer,
-  updateSortBy,
-  sortBy,
-  sortByDirection,
-  viewState,
-}) {
+function Table({ flamebearer, updateSortBy, sortBy, sortByDirection }) {
   if (!flamebearer || flamebearer.numTicks === 0) {
     return [];
   }
@@ -82,15 +56,28 @@ function Table({
         </tr>
       </thead>
       <tbody>
+<<<<<<< HEAD
         <TableBody flamebearer={flamebearer} viewState={viewState} />
+=======
+        <TableBody
+          flamebearer={flamebearer}
+          sortBy={sortBy}
+          sortByDirection={sortByDirection}
+        />
+>>>>>>> 5afee25e59ccef93dc2ffd55f971b5b2644d9fc5
       </tbody>
     </table>
   );
 }
 
+<<<<<<< HEAD
 function TableBody({ flamebearer, viewState }) {
   const { numTicks, maxSelf, sampleRate, spyName } = flamebearer;
   const { sortBy, sortByDirection } = viewState;
+=======
+function TableBody({ flamebearer, sortBy, sortByDirection }) {
+  const { numTicks, maxSelf, sampleRate, spyName } = flamebearer;
+>>>>>>> 5afee25e59ccef93dc2ffd55f971b5b2644d9fc5
 
   const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
 

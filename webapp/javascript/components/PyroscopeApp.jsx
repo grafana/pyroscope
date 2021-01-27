@@ -7,7 +7,8 @@ import Modal from "react-modal";
 import { withShortcut } from "react-keybind";
 import { bindActionCreators } from "redux";
 import FlameGraphRenderer from "./FlameGraphRenderer";
-import Profiler from "./Profiler";
+import FlameGraphRendererNew from "./FlameGraphRendererNew";
+
 import TimelineChart from "./TimelineChart";
 import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
@@ -107,7 +108,8 @@ function PyroscopeApp(props) {
           height="100px"
         />
         {/* <FlameGraphRenderer /> */}
-        <Profiler />
+        <FlameGraphRendererNew />
+        {/* <Profiler /> */}
         <Modal
           isOpen={state.shortcutsModalOpen}
           style={modalStyle}
