@@ -8,6 +8,7 @@ import (
 	"os/user"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -67,6 +68,17 @@ func Cli(cfg *config.Config, args []string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
+
+	// permissions drop
+	if isRoot() && !cfg.Exec.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
+		creds, err := generateCredentialsDrop()
+		if err != nil {
+			logrus.Errorf("failed to drop permissions, %q", err)
+		} else {
+			cmd.SysProcAttr.Credential = creds
+		}
+	}
+
 	cmd.SysProcAttr.Setpgid = true
 	err := cmd.Start()
 	if err != nil {
@@ -103,7 +115,7 @@ func Cli(cfg *config.Config, args []string) error {
 func waitForProcessToExit(cmd *exec.Cmd) {
 	sigc := make(chan struct{})
 
-	go func(){
+	go func() {
 		cmd.Wait()
 	}()
 
@@ -135,7 +147,7 @@ func performChecks(spyName string) error {
 
 	if runtime.GOOS == "darwin" {
 		if !isRoot() {
-			logrus.Error("on macOS you're required to run the agent with sudo")
+			logrus.Fatal("on macOS you're required to run the agent with sudo")
 		}
 	}
 
@@ -173,10 +185,29 @@ func armMessage() string {
 	return ""
 }
 
-func generateSeed(args []string) string{
+func generateSeed(args []string) string {
 	path, err := os.Getwd()
 	if err != nil {
 		path = "<unknown>"
 	}
 	return path + "|" + strings.Join(args, "&")
+}
+
+func generateCredentialsDrop() (*syscall.Credential, error) {
+	sudoUser := os.Getenv("SUDO_USER")
+	sudoUid := os.Getenv("SUDO_UID")
+	sudoGid := os.Getenv("SUDO_GID")
+
+	logrus.Infof("dropping permissions, running command as %q (%s/%s)", sudoUser, sudoUid, sudoGid)
+
+	uid, err := strconv.Atoi(sudoUid)
+	if err != nil {
+		return nil, err
+	}
+	gid, err := strconv.Atoi(sudoGid)
+	if err != nil {
+		return nil, err
+	}
+
+	return &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}, nil
 }

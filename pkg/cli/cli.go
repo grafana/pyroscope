@@ -280,7 +280,9 @@ func Start(cfg *config.Config) error {
 		return convert.Cli(cfg, args)
 	}
 	execCmd.Exec = func(_ context.Context, args []string) error {
-		if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
+		if cfg.Exec.NoLogging {
+			logrus.SetLevel(logrus.PanicLevel)
+		} else if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
 			logrus.SetLevel(l)
 		}
 		if len(args) == 0 {
