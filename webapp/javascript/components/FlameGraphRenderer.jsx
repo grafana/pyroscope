@@ -27,12 +27,6 @@ import { bindActionCreators } from "redux";
 
 import { withShortcut } from "react-keybind";
 
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faIcicles,
-  faColumns,
-  faBars,
-} from "@fortawesome/free-solid-svg-icons";
 import { fetchJSON } from "../redux/actions";
 import { buildRenderURL } from "../util/update_requests";
 import {
@@ -41,6 +35,8 @@ import {
   DurationFormater,
 } from "../util/format";
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
+import ProfilerTable from "./ProfilerTable";
+import ProfilerHeader from "./ProfilerHeader";
 
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
@@ -155,13 +151,13 @@ class FlameGraphRenderer extends React.Component {
   };
 
   // binary search of a block in a stack level
-  binarySearchLevel(x, level) {
+  binarySearchLevel(x, level, tickToX) {
     let i = 0;
     let j = level.length - 4;
     while (i <= j) {
       const m = 4 * ((i / 4 + j / 4) >> 1);
-      const x0 = this.tickToX(level[m]);
-      const x1 = this.tickToX(level[m] + level[m + 1]);
+      const x0 = tickToX(level[m]);
+      const x1 = tickToX(level[m] + level[m + 1]);
       if (x0 <= x && x1 >= x) {
         return x1 - x0 > COLLAPSE_THRESHOLD ? m : -1;
       }
@@ -208,7 +204,7 @@ class FlameGraphRenderer extends React.Component {
   xyToBar = (x, y) => {
     const i = Math.floor(y / PX_PER_LEVEL) + this.topLevel;
     if (i >= 0 && i < this.levels.length) {
-      const j = this.binarySearchLevel(x, this.levels[i]);
+      const j = this.binarySearchLevel(x, this.levels[i], this.tickToX);
       return { i, j };
     }
     return { i: 0, j: 0 };
@@ -420,50 +416,6 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  renderTable = () => {
-    if (!this.props.flamebearer) {
-      return [];
-    }
-
-    if (this.props.flamebearer.numTicks == 0) {
-      return [];
-    }
-
-    return (
-      <table className="flamegraph-table">
-        <thead>
-          <tr>
-            <th className="sortable" onClick={() => this.updateSortBy("name")}>
-              Location
-              <span
-                className={clsx("sort-arrow", {
-                  [this.state.sortByDirection]: this.state.sortBy == "name",
-                })}
-              />
-            </th>
-            <th className="sortable" onClick={() => this.updateSortBy("self")}>
-              Self
-              <span
-                className={clsx("sort-arrow", {
-                  [this.state.sortByDirection]: this.state.sortBy == "self",
-                })}
-              />
-            </th>
-            <th className="sortable" onClick={() => this.updateSortBy("total")}>
-              Total
-              <span
-                className={clsx("sort-arrow", {
-                  [this.state.sortByDirection]: this.state.sortBy == "total",
-                })}
-              />
-            </th>
-          </tr>
-        </thead>
-        <tbody>{this.renderTableBody()}</tbody>
-      </table>
-    );
-  };
-
   updateSortBy = (newSortBy) => {
     let dir = this.state.sortByDirection;
     if (this.state.sortBy == newSortBy) {
@@ -477,108 +429,27 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  renderTableBody = () => {
-    const { numTicks, maxSelf, sampleRate, spyName } = this.props.flamebearer;
-
-    const table = generateTable(this.props.flamebearer).sort(
-      (a, b) => b.total - a.total
-    );
-
-    const { sortBy, sortByDirection } = this.state;
-    const m = sortByDirection == "asc" ? 1 : -1;
-    let sorted;
-    if (sortBy == "name") {
-      sorted = table.sort((a, b) => m * a[sortBy].localeCompare(b[sortBy]));
-    } else {
-      sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
-    }
-
-    const df = new DurationFormater(this.numTicks / this.sampleRate);
-
-    return sorted.map((x) => {
-      const pn = this.getPackageNameFromStackTrace(spyName, x.name);
-      const color = colorBasedOnPackageName(pn, 1);
-      const style = {
-        backgroundColor: color,
-      };
-      return (
-        <tr key={x.name}>
-          <td>
-            <span className="color-reference" style={style} />
-            <span>{x.name}</span>
-          </td>
-          <td style={backgroundImageStyle(x.self, maxSelf, color)}>
-            {/* <span>{ formatPercent(x.self / numTicks) }</span>
-          &nbsp;
-          <span>{ shortNumber(x.self) }</span>
-          &nbsp; */}
-            <span title={df.format(x.self / sampleRate)}>
-              {df.format(x.self / sampleRate)}
-            </span>
-          </td>
-          <td style={backgroundImageStyle(x.total, numTicks, color)}>
-            {/* <span>{ formatPercent(x.total / numTicks) }</span>
-          &nbsp;
-          <span>{ shortNumber(x.total) }</span>
-          &nbsp; */}
-            <span title={df.format(x.total / sampleRate)}>
-              {df.format(x.total / sampleRate)}
-            </span>
-          </td>
-        </tr>
-      );
-    });
-  };
-
   render = () => (
     <div className="canvas-renderer">
       <div className="canvas-container">
-        <div className="navbar-2">
-          <input
-            className="flamegraph-search"
-            name="flamegraph-search"
-            placeholder="Search…"
-            onChange={this.handleSearchChange}
-          />
-          &nbsp;
-          <button
-            className={clsx("btn")}
-            style={this.state.resetStyle}
-            id="reset"
-            onClick={this.reset}
-          >
-            Reset View
-          </button>
-          <div className="navbar-space-filler" />
-          <div className="btn-group viz-switch">
-            <button
-              className={clsx("btn", { active: this.state.view == "table" })}
-              onClick={() => this.updateView("table")}
-            >
-              <FontAwesomeIcon icon={faBars} />
-              &nbsp;&thinsp;Table
-            </button>
-            <button
-              className={clsx("btn", { active: this.state.view == "both" })}
-              onClick={() => this.updateView("both")}
-            >
-              <FontAwesomeIcon icon={faColumns} />
-              &nbsp;&thinsp;Both
-            </button>
-            <button
-              className={clsx("btn", { active: this.state.view == "icicle" })}
-              onClick={() => this.updateView("icicle")}
-            >
-              <FontAwesomeIcon icon={faIcicles} />
-              &nbsp;&thinsp;Flamegraph
-            </button>
-          </div>
-        </div>
+        <ProfilerHeader
+          view={this.state.view}
+          handleSearchChange={this.handleSearchChange}
+          reset={this.reset}
+          updateView={this.updateView}
+          resetStyle={this.state.resetStyle}
+        />
         <div className="flamegraph-container panes-wrapper">
           <div
             className={clsx("pane", { hidden: this.state.view === "icicle" })}
           >
-            {this.renderTable()}
+            <ProfilerTable
+              flamebearer={this.props.flamebearer}
+              sortByDirection={this.state.sortByDirection}
+              sortBy={this.state.sortBy}
+              updateSortBy={this.updateSortBy}
+              view={this.state.view}
+            />
           </div>
           <div
             className={clsx("pane", { hidden: this.state.view === "table" })}
@@ -630,42 +501,6 @@ const mapDispatchToProps = (dispatch) => ({
     dispatch
   ),
 });
-
-const backgroundImageStyle = (a, b, color) => {
-  const w = 148;
-  const k = w - (a / b) * w;
-  const clr = color.alpha(1.0);
-  return {
-    // backgroundColor: 'transparent',
-    backgroundImage: `linear-gradient(${clr}, ${clr})`,
-    backgroundPosition: `-${k}px 0px`,
-    backgroundRepeat: "no-repeat",
-  };
-};
-
-// generates a table from data in flamebearer format
-const generateTable = (data) => {
-  const table = [];
-  if (!data) {
-    return table;
-  }
-  const { names, levels } = data;
-  const hash = {};
-  for (let i = 0; i < levels.length; i++) {
-    for (let j = 0; j < levels[i].length; j += 4) {
-      const key = levels[i][j + 3];
-      const name = names[key];
-      hash[name] = hash[name] || {
-        name: name || "<empty>",
-        self: 0,
-        total: 0,
-      };
-      hash[name].total += levels[i][j + 1];
-      hash[name].self += levels[i][j + 2];
-    }
-  }
-  return Object.values(hash);
-};
 
 export default connect(
   mapStateToProps,
