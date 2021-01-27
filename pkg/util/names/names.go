@@ -194,7 +194,8 @@
 
 package names
 
-// revive:disable:line-length-limit
+// revive:disable:line-length-limit this is not our code so I figured it's okay
+//   especially if we're gonna be pull the changes in the future
 
 import (
 	"github.com/spaolacci/murmur3"
