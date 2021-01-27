@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/signal"
 	"os/user"
 	"path"
 	"runtime"
@@ -20,6 +19,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
+	"github.com/pyroscope-io/pyroscope/pkg/util/names"
 	"github.com/sirupsen/logrus"
 )
 
@@ -53,8 +53,15 @@ func Cli(cfg *config.Config, args []string) error {
 		return err
 	}
 
-	signal.Ignore(syscall.SIGCHLD)
+	if cfg.Exec.ApplicationName == "" {
+		logrus.Infof("we recommend specifying application name via %s flag or env variable %s", color.YellowString("-application-name"), color.YellowString("PYROSCOPE_APPLICATION_NAME"))
+		cfg.Exec.ApplicationName = spyName + "." + names.GetRandomName(generateSeed(args))
+		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.BlueString(cfg.Exec.ApplicationName))
+	}
 
+	logrus.WithFields(logrus.Fields{
+		"args": fmt.Sprintf("%q", args),
+	}).Debug("starting command")
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -72,12 +79,19 @@ func Cli(cfg *config.Config, args []string) error {
 	})
 	defer u.Stop()
 
-	// TODO: improve this logic, basically we need a smart way of detecting that an app successfully loaded.
-	//   Maybe do this on some ticker (every 100 ms) with a timeout (20 s). Make this configurable too
-	time.Sleep(5 * time.Second)
+	logrus.WithFields(logrus.Fields{
+		"app-name":            cfg.Exec.ApplicationName,
+		"spy-name":            spyName,
+		"pid":                 cmd.Process.Pid,
+		"detect-subprocesses": cfg.Exec.DetectSubprocesses,
+	}).Debug("starting agent session")
+
 	// TODO: add sample rate, make it configurable
 	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, 100, cmd.Process.Pid, cfg.Exec.DetectSubprocesses)
-	sess.Start()
+	err = sess.Start()
+	if err != nil {
+		logrus.Errorf("error when starting session: %q", err)
+	}
 	defer sess.Stop()
 
 	waitForProcessToExit(cmd)
@@ -89,6 +103,10 @@ func Cli(cfg *config.Config, args []string) error {
 func waitForProcessToExit(cmd *exec.Cmd) {
 	sigc := make(chan struct{})
 
+	go func(){
+		cmd.Wait()
+	}()
+
 	atexit.Register(func() {
 		sigc <- struct{}{}
 	})
@@ -97,11 +115,13 @@ func waitForProcessToExit(cmd *exec.Cmd) {
 	for {
 		select {
 		case <-sigc:
+			logrus.Debug("received a signal, killing subprocess")
 			cmd.Process.Kill()
 			return
 		case <-t.C:
 			p, err := ps.FindProcess(cmd.Process.Pid)
 			if p == nil || err != nil {
+				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
 				return
 			}
 		}
@@ -151,4 +171,12 @@ func armMessage() string {
 		return "Note that rbspy is not available on arm64 platform"
 	}
 	return ""
+}
+
+func generateSeed(args []string) string{
+	path, err := os.Getwd()
+	if err != nil {
+		path = "<unknown>"
+	}
+	return path + "|" + strings.Join(args, "&")
 }

@@ -134,8 +134,9 @@ func (ps *ProfileSession) Stop() {
 	}
 	close(ps.stopCh)
 
-	now := time.Now()
-	ps.upstream.Upload(ps.appName, ps.startTime, now, ps.spyName, ps.sampleRate, ps.trie)
+	if ps.trie != nil {
+		ps.upstream.Upload(ps.appName, ps.startTime, time.Now(), ps.spyName, ps.sampleRate, ps.trie)
+	}
 }
 
 func (ps *ProfileSession) addSubprocesses() {
