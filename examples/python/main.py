@@ -3,7 +3,7 @@ import threading
 from a_module.foo import foo
 from b_module.bar import bar
 
-ITERATIONS = 200000
+ITERATIONS = 251678
 
 if __name__ == "__main__":
 

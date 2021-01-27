@@ -23,9 +23,7 @@ func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, r *http.Reques
 	res := []string{}
 	labelName := r.URL.Query().Get("label")
 	ctrl.s.GetValues(labelName, func(v string) bool {
-		if labelName != "__name__" || !arrContains(ctrl.cfg.Server.HideApplications, v) {
-			res = append(res, v)
-		}
+		res = append(res, v)
 		return true
 	})
 	b, err := json.Marshal(res)
@@ -34,13 +32,4 @@ func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, r *http.Reques
 	}
 	w.WriteHeader(200)
 	w.Write(b)
-}
-
-func arrContains(arr []string, searchValue string) bool {
-	for _, v := range arr {
-		if searchValue == v {
-			return true
-		}
-	}
-	return false
 }

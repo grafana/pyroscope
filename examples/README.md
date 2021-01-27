@@ -23,7 +23,7 @@ If you are familiar with profiling and flame graphs, then you'll be happy to kno
 There are two main components that allow Pyroscope to run smoothly and quickly:
 ## Pyroscope agent
 Every .01 seconds, the Pyroscope agent wraps around your Python, Ruby, or Go application to poll the stacktrace and calculate which function is consuming your CPU resources. 
-![pyroscope_diagram_no_logo-01](https://user-images.githubusercontent.com/23323466/104868724-1194d680-58f9-11eb-96da-c5a4922a95d5.png)
+![pyroscope_diagram_with_logo](https://user-images.githubusercontent.com/23323466/105389455-b864c580-5bcc-11eb-9357-a42dd0e9947b.png)
 ## Pyroscope Server
 Pyroscope records and aggregates what your application has been doing, then sends that data to the Pyroscope server over port `:4040`([BadgerDB](https://github.com/dgraph-io/badger)) to be processed, aggregated, and stored  for speedy queries of any time range, including:
 - [x] all of 2020

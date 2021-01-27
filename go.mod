@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
+	github.com/cheggaaa/pb/v3 v3.0.5
 	github.com/clarkduvall/hyperloglog v0.0.0-20171127014514-a0107a5d8004
 	github.com/cosmtrek/air v1.21.2
 	github.com/creack/pty v1.1.11 // indirect

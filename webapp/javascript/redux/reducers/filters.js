@@ -16,10 +16,15 @@ import {
 
 import { deltaDiff } from "../../util/flamebearer";
 
+const defaultName = window.initialState.appNames.find(
+  (x) => x !== "pyroscope.server.cpu"
+);
+
 const initialState = {
   from: "now-1h",
   until: "now",
-  labels: [],
+  labels: [{ name: "__name__", value: defaultName || "pyroscope.server.cpu" }],
+  names: window.initialState.appNames,
   timeline: null,
   flamebearer: null,
   isJSONLoading: false,

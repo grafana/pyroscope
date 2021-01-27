@@ -8,6 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/pyroscope-io/pyroscope/pkg/util/strarr"
 )
 
 var headerClr *color.Color
@@ -21,6 +22,13 @@ func init() {
 	// itemClr = color.New()
 	descClr = color.New()
 	defClr = color.New(color.FgYellow)
+}
+
+// disabled these commands for now, they are not documented and confuse people
+var hiddenCommands = []string{
+	"agent",
+	"convert",
+	"dbmanager",
 }
 
 // This is mostly copied from ffcli package
@@ -43,7 +51,9 @@ func DefaultUsageFunc(c *ffcli.Command) string {
 		headerClr.Fprintf(&b, "SUBCOMMANDS\n")
 		tw := tabwriter.NewWriter(&b, 0, 2, 2, ' ', 0)
 		for _, subcommand := range c.Subcommands {
-			fmt.Fprintf(tw, "  %s\t%s\n", itemClr.Sprintf(subcommand.Name), subcommand.ShortHelp)
+			if !strarr.Contains(hiddenCommands, subcommand.Name) {
+				fmt.Fprintf(tw, "  %s\t%s\n", itemClr.Sprintf(subcommand.Name), subcommand.ShortHelp)
+			}
 		}
 		tw.Flush()
 		fmt.Fprintf(&b, "\n")
