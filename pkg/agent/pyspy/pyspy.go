@@ -8,8 +8,9 @@ package pyspy
 // #include "../../../third_party/rustdeps/pyspy.h"
 import "C"
 import (
-	"fmt"
+	"errors"
 	"unsafe"
+	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 )
@@ -19,48 +20,55 @@ import (
 var bufferLength = 1024 * 64
 
 type PySpy struct {
-	cPointer unsafe.Pointer
-	data     []byte
+	dataPtr unsafe.Pointer
+	dataBuf     []byte
+
+	errorBuf []byte
+	errorPtr unsafe.Pointer
+
 	pid      int
 }
 
 func Start(pid int) (spy.Spy, error) {
-	data := make([]byte, bufferLength)
-	cPointer := unsafe.Pointer(&data[0])
+	dataBuf := make([]byte, bufferLength)
+	dataPtr := unsafe.Pointer(&dataBuf[0])
 
-	r := C.pyspy_init(C.int(pid))
+	errorBuf := make([]byte, bufferLength)
+	errorPtr := unsafe.Pointer(&errorBuf[0])
 
-	if r == -1 {
-		return nil, fmt.Errorf("buffer too small, current size %d", bufferLength)
+	// TODO: handle this better
+	time.Sleep(1 * time.Second)
+
+	r := C.pyspy_init(C.int(pid), errorPtr, C.int(bufferLength))
+
+	if r < 0 {
+		return nil, errors.New(string(errorBuf[:-r]))
 	}
 
 	return &PySpy{
-		cPointer: cPointer,
-		data:     data,
+		dataPtr: dataPtr,
+		dataBuf:     dataBuf,
+		errorBuf: errorBuf,
+		errorPtr: errorPtr,
 		pid:      pid,
 	}, nil
 }
 
 func (s *PySpy) Stop() error {
-	r := C.pyspy_cleanup(C.int(s.pid))
-	if r == -1 {
-		return fmt.Errorf("failed to close spy")
+	r := C.pyspy_cleanup(C.int(s.pid), s.errorPtr, C.int(bufferLength))
+	if r < 0 {
+		return errors.New(string(s.errorBuf[:-r]))
 	}
 	return nil
 }
 
 // Snapshot calls callback function with stack-trace or error.
 func (s *PySpy) Snapshot(cb func([]byte, error)) {
-	newL := C.pyspy_snapshot(C.int(s.pid), s.cPointer, C.int(bufferLength))
-	switch newL {
-	case -1:
-		cb(nil, fmt.Errorf("buffer too small, current size %d", bufferLength))
-	case -2:
-		cb(nil, fmt.Errorf("spy is not initialized yet"))
-	case -3:
-		cb(nil, fmt.Errorf("failed to get a trace"))
-	default:
-		cb(s.data[:newL], nil)
+	r := C.pyspy_snapshot(C.int(s.pid), s.dataPtr, C.int(bufferLength), s.errorPtr, C.int(bufferLength))
+	if r < 0 {
+		cb(nil, errors.New(string(s.errorBuf[:-r])))
+	} else {
+		cb(s.dataBuf[:r], nil)
 	}
 }
 

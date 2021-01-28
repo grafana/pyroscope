@@ -7,8 +7,19 @@ function copyrightYears(start, end) {
   return start === end ? start : `${start} – ${end}`;
 }
 
-function version() {
-  return `v${PYROSCOPE_VERSION}`;
+function buildInfo() {
+  return `
+    BUILD INFO:
+    js_version: v${PYROSCOPE_VERSION}
+    goos: ${window.buildInfo.goos}
+    goarch: ${window.buildInfo.goarch}
+    version: ${window.buildInfo.version}
+    id: ${window.buildInfo.id}
+    time: ${window.buildInfo.time}
+    gitSHA: ${window.buildInfo.gitSHA}
+    gitDirty: ${window.buildInfo.gitDirty}
+    embeddedAssets: ${window.buildInfo.useEmbeddedAssets}
+`.replace(/^\s+/gm, "");
 }
 
 function Footer(props) {
@@ -16,7 +27,7 @@ function Footer(props) {
   // console.log(flags);
   return (
     <div className="footer">
-      <span title={version()}>
+      <span title={buildInfo()}>
         © Pyroscope {copyrightYears(START_YEAR, new Date().getFullYear())}
       </span>
     </div>

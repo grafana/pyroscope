@@ -9,3 +9,4 @@ pkged.go
 /Icon*
 /scripts/packages/
 .eslintcache
+*.pyc

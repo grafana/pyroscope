@@ -82,6 +82,7 @@ type Exec struct {
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
 	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
 	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`
+	NoRootDrop             bool          `def:"false" desc:"disables permissions drop when ran under root. use this one if you want to run your command as root"`
 }
 
 func calculateMaxDepth(min, max time.Duration, multiplier int) int {

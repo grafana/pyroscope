@@ -7,6 +7,7 @@ import (
 	golog "log"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 	"text/template"
 	"time"
@@ -103,13 +104,25 @@ type indexPageJson struct {
 	AppNames []string `json:"appNames"`
 }
 
+type buildInfoJson struct {
+	GOOS              string `json:"goos"`
+	GOARCH            string `json:"goarch"`
+	Version           string `json:"version"`
+	ID                string `json:"id"`
+	Time              string `json:"time"`
+	GitSHA            string `json:"gitSHA"`
+	GitDirty          int    `json:"gitDirty"`
+	UseEmbeddedAssets bool   `json:"useEmbeddedAssets"`
+}
+
 type indexPage struct {
 	InitialState  string
+	BuildInfo     string
 	ExtraMetadata string
 }
 
 func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWriter, r *http.Request) {
-	f, err := dir.Open("index.html")
+	f, err := dir.Open("/index.html")
 	if err != nil {
 		renderServerError(rw, fmt.Sprintf("could not find file index.html: %q", err))
 		return
@@ -127,25 +140,41 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 		return
 	}
 
-	jsonObj := indexPageJson{}
+	initialStateObj := indexPageJson{}
 	ctrl.s.GetValues("__name__", func(v string) bool {
-		jsonObj.AppNames = append(jsonObj.AppNames, v)
+		initialStateObj.AppNames = append(initialStateObj.AppNames, v)
 		return true
 	})
-	b, err = json.Marshal(jsonObj)
+	b, err = json.Marshal(initialStateObj)
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not marshal json: %q", err))
+		renderServerError(rw, fmt.Sprintf("could not marshal initialStateObj json: %q", err))
 		return
 	}
+	initialStateStr := string(b)
 
-	jsonStr := string(b)
+	buildInfoObj := buildInfoJson{
+		GOOS:              runtime.GOOS,
+		GOARCH:            runtime.GOARCH,
+		Version:           build.Version,
+		ID:                build.ID,
+		Time:              build.Time,
+		GitSHA:            build.GitSHA,
+		GitDirty:          build.GitDirty,
+		UseEmbeddedAssets: build.UseEmbeddedAssets,
+	}
+	b, err = json.Marshal(buildInfoObj)
+	if err != nil {
+		renderServerError(rw, fmt.Sprintf("could not marshal buildInfoObj json: %q", err))
+		return
+	}
+	buildInfoStr := string(b)
 
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
 	if extraMetadataPath != "" {
 		b, err = ioutil.ReadFile(extraMetadataPath)
 		if err != nil {
-			logrus.Error("failed to read file at %s", extraMetadataPath)
+			logrus.Errorf("failed to read file at %s", extraMetadataPath)
 		}
 		extraMetadataStr = string(b)
 	}
@@ -153,12 +182,12 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	rw.Header().Add("Content-Type", "text/html")
 	rw.WriteHeader(200)
 	err = tmpl.Execute(rw, indexPage{
-		InitialState:  jsonStr,
+		InitialState:  initialStateStr,
+		BuildInfo:     buildInfoStr,
 		ExtraMetadata: extraMetadataStr,
 	})
 	if err != nil {
 		renderServerError(rw, fmt.Sprintf("could not marshal json: %q", err))
 		return
 	}
-
 }
