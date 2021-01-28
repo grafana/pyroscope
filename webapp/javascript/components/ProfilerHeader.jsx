@@ -34,21 +34,21 @@ export default function ProfilerHeader({
       <div className="navbar-space-filler" />
       <div className="btn-group viz-switch">
         <button
-          className={clsx("btn", { active: view == "table" })}
+          className={clsx("btn", { active: view === "table" })}
           onClick={() => updateView("table")}
         >
           <FontAwesomeIcon icon={faBars} />
           &nbsp;&thinsp;Table
         </button>
         <button
-          className={clsx("btn", { active: view == "both" })}
+          className={clsx("btn", { active: view === "both" })}
           onClick={() => updateView("both")}
         >
           <FontAwesomeIcon icon={faColumns} />
           &nbsp;&thinsp;Both
         </button>
         <button
-          className={clsx("btn", { active: view == "icicle" })}
+          className={clsx("btn", { active: view === "icicle" })}
           onClick={() => updateView("icicle")}
         >
           <FontAwesomeIcon icon={faIcicles} />
