@@ -75,7 +75,7 @@ func (ctrl *Controller) Start() {
 	w := logger.Writer()
 	defer w.Close()
 	s := &http.Server{
-		Addr:           ctrl.cfg.Server.ApibuildInfoJSONndAddr,
+		Addr:           ctrl.cfg.Server.ApiBindAddr,
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
