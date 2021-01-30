@@ -1,5 +1,11 @@
 @use "../variables" as *;
 @use "../mixins/outline" as *;
+/** 
+* DatePicker Compenent styles
+* TODO: adjust styling
+*/
+@import "../../node_modules/react-datepicker/dist/react-datepicker.css";
+@import "../../node_modules/react-datepicker/dist/react-datepicker-cssmodules.css";
 
 .drp-button {
   white-space: nowrap;
@@ -21,18 +27,20 @@
     right: 0px;
     width: 400px;
     padding: 20px 20px 20px 20px;
-    border: 1px solid  rgb(75, 75, 75);
-    box-shadow: 0 5px 20px rgba(0,0,0,0.9);
+    border: 1px solid rgb(75, 75, 75);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.9);
     border-radius: 4px;
 
     z-index: 1;
   }
 
-  h4:nth-child(1), h5:nth-child(1) {
+  h4:nth-child(1),
+  h5:nth-child(1) {
     margin-top: 0;
   }
 
-  h4, h5 {
+  h4,
+  h5 {
     margin: 10px 0;
   }
 
@@ -53,10 +61,11 @@
     border: none;
     text-align: left;
     padding: 2px 0;
-    color: rgba(255,255,255,0.66);
+    color: rgba(255, 255, 255, 0.66);
 
-    &:hover, &.active {
-      color: rgba(255,255,255,1);
+    &:hover,
+    &.active {
+      color: rgba(255, 255, 255, 1);
     }
   }
 
