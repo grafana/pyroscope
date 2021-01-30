@@ -115,7 +115,7 @@ func (tn *treeNode) insert(targetLabel []byte) *treeNode {
 	return tn.ChildrenNodes[i]
 }
 
-func (t *Tree) Insert(key []byte, value uint64, merge ...bool) {
+func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 	t.m.Lock()
 	defer t.m.Unlock()
 

@@ -22,7 +22,6 @@ var _ = Describe("tree package", func() {
 		It("returns correct results", func() {
 			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
 		})
-
 	})
 
 	Context("trie.Serialize(d, )", func() {

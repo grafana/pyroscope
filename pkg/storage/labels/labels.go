@@ -11,7 +11,7 @@ type Labels struct {
 	db *badger.DB
 }
 
-func New(cfg *config.Config, db *badger.DB) *Labels {
+func New(_, db *badger.DB) *Labels {
 	ll := &Labels{
 		db: db,
 	}

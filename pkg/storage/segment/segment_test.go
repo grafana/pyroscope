@@ -156,13 +156,10 @@ var _ = Describe("stree", func() {
 
 			It("works with 3 mins", func() {
 				s := New(r, m)
-
 				s.Put(testing.SimpleTime(10), testing.SimpleTime(70), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
-
 				spew.Dump(s.root)
-
 				// Expect(doGet(s, testing.SimpleTime(20, testing.SimpleTime(49))).To(HaveLen(3))
 			})
 

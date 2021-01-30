@@ -115,7 +115,6 @@ OuterLoop:
 				continue OuterLoop
 			} else {
 				// 2
-
 				varint.Write(w, uint64(leadIndex))
 				varint.Write(w, uint64(len(leadKey)))
 				return

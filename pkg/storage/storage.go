@@ -24,7 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var closingErr = errors.New("the db is in closing state")
+var errFoo = errors.New("the db is in closing state")
 
 type Storage struct {
 	closingMutex sync.Mutex
@@ -171,7 +171,7 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree, sp
 	defer s.closingMutex.Unlock()
 
 	if s.closing {
-		return closingErr
+		return errFoo
 	}
 	logrus.WithFields(logrus.Fields{
 		"startTime": startTime.String(),
@@ -218,7 +218,7 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 	defer s.closingMutex.Unlock()
 
 	if s.closing {
-		return nil, nil, "", 100, closingErr
+		return nil, nil, "", 100, errFoo
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -308,7 +308,7 @@ func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
 		"dimensions": 0,
 		"segments":   0,
 	}
-	for k, _ := range res {
+	for k := range res {
 		res[k] = dirSize(filepath.Join(s.cfg.Server.StoragePath, k))
 	}
 	return res

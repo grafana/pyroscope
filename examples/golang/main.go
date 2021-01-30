@@ -6,10 +6,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/profiler"
 )
 
-func work(n int) {
-	for i := 0; i < n; i++ {
+func work(int) {
 
-	}
 }
 
 func fastFunction() {

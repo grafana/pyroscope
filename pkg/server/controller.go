@@ -100,11 +100,11 @@ func renderServerError(rw http.ResponseWriter, text string) {
 	rw.Write([]byte("\n"))
 }
 
-type indexPageJson struct {
+type indexPageJSON struct {
 	AppNames []string `json:"appNames"`
 }
 
-type buildInfoJson struct {
+type bi struct {
 	GOOS              string `json:"goos"`
 	GOARCH            string `json:"goarch"`
 	Version           string `json:"version"`
@@ -121,7 +121,7 @@ type indexPage struct {
 	ExtraMetadata string
 }
 
-func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWriter, _ *http.Request) {
 	f, err := dir.Open("/index.html")
 	if err != nil {
 		renderServerError(rw, fmt.Sprintf("could not find file index.html: %q", err))
@@ -140,7 +140,7 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 		return
 	}
 
-	initialStateObj := indexPageJson{}
+	initialStateObj := indexPageJSON{}
 	ctrl.s.GetValues("__name__", func(v string) bool {
 		initialStateObj.AppNames = append(initialStateObj.AppNames, v)
 		return true
@@ -152,7 +152,7 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	}
 	initialStateStr := string(b)
 
-	buildInfoObj := buildInfoJson{
+	buildInfoObj := bi{
 		GOOS:              runtime.GOOS,
 		GOARCH:            runtime.GOARCH,
 		Version:           build.Version,

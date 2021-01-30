@@ -12,7 +12,6 @@ var _ = Describe("cappedarr", func() {
 	defer GinkgoRecover()
 	Context("simple case", func() {
 		It("works", func() {
-
 			values := []uint64{1, 2, 3, 4, 5, 6}
 			for i := 0; i < 1000; i++ {
 				ca := New(4)

@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func (ctrl *Controller) labelsHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) labelsHandler(w http.ResponseWriter, _ *http.Request) {
 	res := []string{}
 	ctrl.s.GetKeys(func(k string) bool {
 		res = append(res, k)
@@ -19,7 +19,7 @@ func (ctrl *Controller) labelsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, _ *http.Request) {
 	res := []string{}
 	labelName := r.URL.Query().Get("label")
 	ctrl.s.GetValues(labelName, func(v string) bool {

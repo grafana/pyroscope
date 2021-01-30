@@ -23,11 +23,11 @@ type GoSpy struct {
 	selfFrame *runtime.Frame
 }
 
-func Start(_pid int) (spy.Spy, error) {
+func Start(_ int) (spy.Spy, error) {
 	return &GoSpy{}, nil
 }
 
-func (s *GoSpy) Stop() error {
+func (*GoSpy) Stop() error {
 	return nil
 }
 
