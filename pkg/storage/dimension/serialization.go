@@ -16,11 +16,7 @@ func (s *Dimension) Serialize(w io.Writer) error {
 
 	for _, k := range s.keys {
 		varint.Write(w, uint64(len(k)))
-		if err != nil {
-			return nil
-		} else {
-			w.Write([]byte(k))
-		}
+		w.Write([]byte(k))
 	}
 	return nil
 }

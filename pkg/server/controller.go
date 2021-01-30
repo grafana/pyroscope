@@ -75,7 +75,7 @@ func (ctrl *Controller) Start() {
 	w := logger.Writer()
 	defer w.Close()
 	s := &http.Server{
-		Addr:           ctrl.cfg.Server.ApiBindAddr,
+		Addr:           ctrl.cfg.Server.ApibuildInfoJSONndAddr,
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -104,7 +104,7 @@ type indexPageJSON struct {
 	AppNames []string `json:"appNames"`
 }
 
-type bi struct {
+type buildInfoJSON struct {
 	GOOS              string `json:"goos"`
 	GOARCH            string `json:"goarch"`
 	Version           string `json:"version"`
@@ -152,7 +152,7 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	}
 	initialStateStr := string(b)
 
-	buildInfoObj := bi{
+	buildInfoObj := buildInfoJSON{
 		GOOS:              runtime.GOOS,
 		GOARCH:            runtime.GOARCH,
 		Version:           build.Version,
