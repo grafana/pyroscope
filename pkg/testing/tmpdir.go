@@ -17,9 +17,9 @@ func DirStats(path string) (directories int, files int, size bytesize.ByteSize) 
 			return err
 		}
 		if info.IsDir() {
-			directories += 1
+			directories++
 		} else {
-			files += 1
+			files++
 			size += bytesize.ByteSize(info.Size())
 		}
 		return nil

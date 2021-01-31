@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func SelfProfile(cfg *config.Config, u upstream.Upstream, appName string) {
+func SelfProfile(_ *config.Config, u upstream.Upstream, appName string) {
 	// TODO: add sample rate
 	s := NewSession(u, appName, "gospy", 100, 0, false)
 	err := s.Start()

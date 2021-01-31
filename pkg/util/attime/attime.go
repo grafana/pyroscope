@@ -46,7 +46,7 @@ func Parse(s string) time.Time {
 	return parseTimeReference(ref).Add(parseTimeOffset(offset))
 }
 
-func parseTimeReference(ref string) time.Time {
+func parseTimeReference(_ string) time.Time {
 	now := time.Now()
 	// TODO: implement
 	return now

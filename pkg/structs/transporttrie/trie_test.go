@@ -207,7 +207,6 @@ var _ = Describe("trie package", func() {
 				Expect(buf4).To(Equal(buf3))
 			}
 			close(done)
-
 		}, 1.0)
 	})
 

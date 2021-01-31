@@ -49,7 +49,7 @@ func MergeTriesConcurrently(concurrency int, tries ...Merger) Merger {
 	return pool[0]
 }
 
-func MergeTriesSerially(concurrency int, tries ...Merger) Merger {
+func MergeTriesSerially(_ int, tries ...Merger) Merger {
 	// rand.Shuffle(len(tries), func(i, j int) {
 	// 	tries[i], tries[j] = tries[j], tries[i]
 	// })
