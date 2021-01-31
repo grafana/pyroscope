@@ -3,10 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
-
+import DatePicker from "react-datepicker";
 import OutsideClickHandler from "react-outside-click-handler";
-import moment from "moment";
 import { setDateRange } from "../redux/actions";
+import humanReadableRange from "../util/formatDate";
 
 const defaultPresets = [
   [
@@ -30,24 +30,12 @@ const defaultPresets = [
     { label: "Last 5 years", from: "now-5y", until: "now" },
   ],
 ];
-
-const multiplierMapping = {
-  s: "second",
-  m: "minute",
-  h: "hour",
-  d: "day",
-  w: "week",
-  M: "month",
-  y: "year",
-};
-
 function DateRangePicker() {
   const dispatch = useDispatch();
   const from = useSelector((state) => state.from);
   const until = useSelector((state) => state.until);
-
   const [opened, setOpened] = useState(false);
-  const [presets, setPresets] = useState(defaultPresets);
+  const readableDateForm = humanReadableRange(until, from);
 
   const updateFrom = (from) => {
     dispatch(setDateRange(from, until));
@@ -59,23 +47,6 @@ function DateRangePicker() {
 
   const updateDateRange = () => {
     dispatch(setDateRange(from, until));
-  };
-
-  const humanReadableRange = () => {
-    if (until === "now") {
-      const m = from.match(/^now-(?<number>\d+)(?<multiplier>\D+)$/);
-      if (m && multiplierMapping[m.groups.multiplier]) {
-        let multiplier = multiplierMapping[m.groups.multiplier];
-        if (m.groups.number > 1) {
-          multiplier += "s";
-        }
-        return `Last ${m.groups.number} ${multiplier}`;
-      }
-    }
-    return `${moment(from * 1000).format("lll")} – ${moment(
-      until * 1000
-    ).format("lll")}`;
-    // return from + " to " +until;
   };
 
   const toggleDropdown = () => {
@@ -94,19 +65,24 @@ function DateRangePicker() {
   return (
     <div className={opened ? "drp-container opened" : "drp-container"}>
       <OutsideClickHandler onOutsideClick={hideDropdown}>
-        <button className="btn drp-button" onClick={toggleDropdown}>
+        <button
+          type="button"
+          className="btn drp-button"
+          onClick={toggleDropdown}
+        >
           <FontAwesomeIcon icon={faClock} />
-          <span>{humanReadableRange()}</span>
+          <span>{readableDateForm.range}</span>
         </button>
         <div className="drp-dropdown">
           <h4>Quick Presets</h4>
           <div className="drp-presets">
-            {presets.map((arr, i) => (
+            {defaultPresets.map((arr, i) => (
               <div key={`preset-${i + 1}`} className="drp-preset-column">
                 {arr.map((x) => (
                   <button
+                    type="button"
                     className={`drp-preset ${
-                      x.label === humanReadableRange() ? "active" : ""
+                      x.label === readableDateForm.range ? "active" : ""
                     }`}
                     key={x.label}
                     onClick={() => selectPreset(x)}
@@ -119,25 +95,37 @@ function DateRangePicker() {
           </div>
           <h4>Custom Date Range</h4>
           <div className="drp-calendar-input-group">
-            <input
+            <DatePicker
               className="followed-by-btn"
-              onChange={(e) => updateFrom(e.target.value)}
-              onBlur={updateDateRange}
-              value={from}
+              showTimeSelect
+              dateFormat="MMM d, yyyy h:mm aa"
+              onChange={(date) => updateFrom(date / 1000)}
+              onBlur={() => updateDateRange()}
+              selected={readableDateForm.from}
             />
-            <button className="drp-calendar-btn btn" onClick={updateDateRange}>
+            <button
+              type="button"
+              className="drp-calendar-btn btn"
+              onClick={updateDateRange}
+            >
               <FontAwesomeIcon icon={faClock} />
               Update
             </button>
           </div>
           <div className="drp-calendar-input-group">
-            <input
+            <DatePicker
               className="followed-by-btn"
-              onChange={(e) => updateUntil(e.target.value)}
-              onBlur={updateDateRange}
-              value={until}
+              showTimeSelect
+              dateFormat="MMM d, yyyy h:mm aa"
+              onChange={(date) => updateUntil(date / 1000)}
+              onBlur={() => updateDateRange()}
+              selected={readableDateForm.until}
             />
-            <button className="drp-calendar-btn btn" onClick={updateDateRange}>
+            <button
+              type="button"
+              className="drp-calendar-btn btn"
+              onClick={updateDateRange}
+            >
               <FontAwesomeIcon icon={faClock} />
               Update
             </button>

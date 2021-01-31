@@ -71,6 +71,7 @@
     "moment": "^2.27.0",
     "normalize.css": "^8.0.1",
     "react": "16.12.0",
+    "react-datepicker": "^3.4.1",
     "react-dom": "^16.13.1",
     "react-flot": "^1.3.0",
     "react-keybind": "^0.8.1",
