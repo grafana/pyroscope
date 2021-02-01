@@ -14,6 +14,7 @@ var bufferLength = 1024 * 64
 var excludes = []string{
 	"gopark",
 	"GoroutineProfile",
+	"gospy.(*GoSpy).Snapshot", // see https://github.com/pyroscope-io/pyroscope/issues/50 for context
 	"sigNoteSleep",
 	"notetsleepg",
 }
