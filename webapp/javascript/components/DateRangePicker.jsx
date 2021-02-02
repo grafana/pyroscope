@@ -94,6 +94,7 @@ function DateRangePicker() {
             ))}
           </div>
           <h4>Custom Date Range</h4>
+          <div className="drp-label">From</div>
           <div className="drp-calendar-input-group">
             <DatePicker
               className="followed-by-btn"
@@ -112,6 +113,7 @@ function DateRangePicker() {
               Update
             </button>
           </div>
+          <div className="drp-label">To</div>
           <div className="drp-calendar-input-group">
             <DatePicker
               className="followed-by-btn"
