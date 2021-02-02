@@ -1,6 +1,6 @@
 @use "../variables" as *;
 @use "../mixins/outline" as *;
-/** 
+/**
 * DatePicker Compenent styles
 * TODO: adjust styling
 */
@@ -11,6 +11,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.drp-label {
+  margin-bottom: -10px;
 }
 
 .drp-container {
@@ -77,5 +81,7 @@
 
   .drp-calendar-input-group {
     margin-top: 15px;
+    display: flex;
+    flex-direction: row;
   }
 }
