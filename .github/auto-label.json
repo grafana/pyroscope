@@ -1,0 +1,6 @@
+{
+  "rules": {
+    "frontend": ["webapp/"],
+    "backend": ["*.go"]
+  }
+}
