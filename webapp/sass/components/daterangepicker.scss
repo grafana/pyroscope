@@ -89,3 +89,16 @@
   background: none;
   color: black;
 }
+.react-datepicker__day--in-range:hover {
+  background-color: #216ba5;
+  color: white;
+}
+
+.react-datepicker__day--disabled {
+  background-color: transparent;
+  color: #ccc;
+}
+
+.react-datepicker__day--in-selecting-range:hover {
+  color: white;
+}
