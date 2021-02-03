@@ -24,6 +24,11 @@ const flotOptions = {
   selection: {
     mode: "x",
   },
+  crosshair: {
+    mode: "x",
+    color: "blue",
+    lineWidth: "1",
+  },
   grid: {
     borderWidth: 1,
     margin: {
