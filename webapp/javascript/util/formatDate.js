@@ -24,7 +24,7 @@ export function convertPresetsToDate(from) {
 }
 
 export function readableRange(from, until) {
-  const dateFormat = "YYYY-DD-MM hh:mm A";
+  const dateFormat = "YYYY-MM-DD hh:mm A";
   if (/^now-/.test(from) && until === "now") {
     const { number, _multiplier } = convertPresetsToDate(from);
     return `Last ${number} ${_multiplier}`;

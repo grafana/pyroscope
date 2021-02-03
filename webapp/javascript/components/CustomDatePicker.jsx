@@ -51,7 +51,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
           showTimeSelect
           startDate={selectedDate.from}
           endDate={selectedDate.until}
-          dateFormat="yyyy-dd-MM hh:mm aa"
+          dateFormat="yyyy-MM-dd hh:mm aa"
         />
       </div>
       <div className="until">
@@ -66,7 +66,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
           startDate={selectedDate.from}
           endDate={selectedDate.until}
           minDate={selectedDate.from}
-          dateFormat="yyyy-dd-MM hh:mm aa"
+          dateFormat="yyyy-MM-dd hh:mm aa"
         />
       </div>
       {warning && <p style={{ color: "red" }}>Warning: invalid date Range</p>}
