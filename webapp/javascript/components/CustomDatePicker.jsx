@@ -50,7 +50,6 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
           selectsStart
           showTimeSelect
           startDate={selectedDate.from}
-          endDate={selectedDate.until}
           dateFormat="yyyy-MM-dd hh:mm aa"
         />
       </div>
