@@ -3,12 +3,15 @@ package atexit
 import (
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
 var callbacks []func()
 
-func init() {
+var once sync.Once
+
+func initSignalHandler() {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -20,5 +23,6 @@ func init() {
 }
 
 func Register(cb func()) {
+	once.Do(initSignalHandler)
 	callbacks = append(callbacks, cb)
 }
