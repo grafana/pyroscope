@@ -26,7 +26,7 @@ const flotOptions = {
   },
   crosshair: {
     mode: "x",
-    color: "blue",
+    color: "#C3170D",
     lineWidth: "1",
   },
   grid: {
