@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func (ctrl *Controller) labelsHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) labelsHandler(w http.ResponseWriter, _ *http.Request) {
 	res := []string{}
 	ctrl.s.GetKeys(func(k string) bool {
 		res = append(res, k)

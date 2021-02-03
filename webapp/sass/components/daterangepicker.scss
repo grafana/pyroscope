@@ -1,9 +1,7 @@
 @use "../variables" as *;
 @use "../mixins/outline" as *;
-/** 
-* DatePicker Component styles
-* TODO: adjust styling
-*/
+
+// DatePicker Component styles
 @import "../../node_modules/react-datepicker/dist/react-datepicker.css";
 @import "../../node_modules/react-datepicker/dist/react-datepicker-cssmodules.css";
 
@@ -11,6 +9,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.drp-label {
+  margin-bottom: -10px;
 }
 
 .drp-container {
@@ -77,6 +79,8 @@
 
   .drp-calendar-input-group {
     margin-top: 15px;
+    display: flex;
+    flex-direction: row;
   }
 }
 

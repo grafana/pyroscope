@@ -195,12 +195,12 @@ func generateSeed(args []string) string {
 
 func generateCredentialsDrop() (*syscall.Credential, error) {
 	sudoUser := os.Getenv("SUDO_USER")
-	sudoUid := os.Getenv("SUDO_UID")
+	sudoUID := os.Getenv("SUDO_UID")
 	sudoGid := os.Getenv("SUDO_GID")
 
-	logrus.Infof("dropping permissions, running command as %q (%s/%s)", sudoUser, sudoUid, sudoGid)
+	logrus.Infof("dropping permissions, running command as %q (%s/%s)", sudoUser, sudoUID, sudoGid)
 
-	uid, err := strconv.Atoi(sudoUid)
+	uid, err := strconv.Atoi(sudoUID)
 	if err != nil {
 		return nil, err
 	}

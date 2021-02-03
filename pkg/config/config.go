@@ -22,6 +22,7 @@ type Agent struct {
 	AgentSpyName           string        `desc:"name of the spy you want to use"` // TODO: add options
 	AgentPID               int           `def:"-1" desc:"pid of the process you want to spy on"`
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`
+	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data"`
 	UpstreamThreads        int           `def:"4"`
 	UpstreamRequestTimeout time.Duration `def:"10s"`
 	UNIXSocketPath         string        `def:"<installPrefix>/var/run/pyroscope-agent.sock" desc:"path to a UNIX socket file"`
@@ -52,7 +53,7 @@ type Server struct {
 	MaxNodesSerialization int `def:"2048" desc:"max number of nodes used when saving profiles to disk"`
 	MaxNodesRender        int `def:"2048" desc:"max number of nodes used to display data on the frontend"`
 
-	// current only used in our demo app
+	// currently only used in our demo app
 	HideApplications []string `def:""`
 
 	AnalyticsOptOut bool `def:"false" desc:"disables analytics"`
@@ -79,6 +80,7 @@ type Exec struct {
 	DetectSubprocesses     bool          `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
 	LogLevel               string        `def:"info", desc:"debug|info|warn|error"`
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`
+	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data"`
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
 	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
 	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`

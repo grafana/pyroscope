@@ -1,0 +1,35 @@
+# For docs on this see https://github.com/marketplace/actions/auto-request-review#reviewers-configuration
+reviewers:
+  # The default reviewers
+  defaults:
+    - repository-owners
+
+  # Reviewer groups each of which has a list of GitHub usernames
+  groups:
+    repository-owners:
+      - petethepig
+      - Rperry2174
+    go-experts:
+      - petethepig
+    js-experts:
+      - Rperry2174
+
+files:
+  # Keys are glob expressions.
+  # You can assign groups defined above as well as GitHub usernames.
+  '**':
+    - repository-owners # group
+  '**/*.go':
+    - go-experts
+  'webapp/**':
+    - js-experts
+
+options:
+  ignore_draft: true
+  ignored_keywords:
+    - DO NOT REVIEW
+  enable_group_assignment: false
+
+  # Randomly pick reviewers up to this number.
+  # Do not set this option if you'd like to assign all matching reviewers.
+  number_of_reviewers: 2

@@ -31,6 +31,7 @@ type Remote struct {
 }
 
 type RemoteConfig struct {
+	AuthToken              string
 	UpstreamThreads        int
 	UpstreamAddress        string
 	UpstreamRequestTimeout time.Duration
@@ -99,7 +100,18 @@ func (u *Remote) uploadProfile(j *uploadJob) {
 	urlObj.RawQuery = q.Encode()
 	buf := j.t.Bytes()
 	log.Info("uploading at ", urlObj.String())
-	resp, err := u.client.Post(urlObj.String(), "binary/octet-stream+trie", bytes.NewReader(buf))
+
+	req, err := http.NewRequest("POST", urlObj.String(), bytes.NewReader(buf))
+	if err != nil {
+		log.Error("Error happened when uploading a profile:", err)
+		return
+	}
+	req.Header.Set("Content-Type", "binary/octet-stream+trie")
+	if u.cfg.AuthToken != "" {
+		req.Header.Set("Authorization", "Bearer "+u.cfg.AuthToken)
+	}
+	resp, err := u.client.Do(req)
+
 	if err != nil {
 		log.Error("Error happened when uploading a profile:", err)
 	}

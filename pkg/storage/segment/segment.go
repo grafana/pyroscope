@@ -66,7 +66,7 @@ func (sn *streeNode) findAddons() []Addon {
 	return res
 }
 
-func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode, depth int, dt time.Time, r *big.Rat, addons []Addon)) {
+func (sn *streeNode) put(st, et time.Time, _ uint64, cb func(n *streeNode, depth int, dt time.Time, r *big.Rat, addons []Addon)) {
 	nodes := []*streeNode{sn}
 
 	for len(nodes) > 0 {
