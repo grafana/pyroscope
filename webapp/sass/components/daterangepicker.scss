@@ -1,7 +1,7 @@
 @use "../variables" as *;
 @use "../mixins/outline" as *;
 /** 
-* DatePicker Compenent styles
+* DatePicker Component styles
 * TODO: adjust styling
 */
 @import "../../node_modules/react-datepicker/dist/react-datepicker.css";
@@ -78,4 +78,10 @@
   .drp-calendar-input-group {
     margin-top: 15px;
   }
+}
+
+// range picker custom style
+.react-datepicker__day--in-range {
+  background-color: #216ba5 !important;
+  color: white !important;
 }
