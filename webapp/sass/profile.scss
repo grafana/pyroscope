@@ -3,22 +3,24 @@
 @use "components/daterangepicker";
 @use "components/labels";
 
-@import '~sanitize.css';
-@import '~sanitize.css/forms.css';
-@import '~sanitize.css/typography.css';
+@import "~sanitize.css";
+@import "~sanitize.css/forms.css";
+@import "~sanitize.css/typography.css";
 
-
-@import 'flamebearer.scss';
+@import "flamebearer.scss";
 
 body {
-  font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
   background-color: $bg-color;
   color: white;
 }
 
-pre, code, tt {
-  font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
+pre,
+code,
+tt {
+  font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
   font-size: 14px;
 }
 
@@ -26,9 +28,8 @@ tt {
   border-radius: 3px;
   border: 1px solid #aaa;
   padding: 2px 4px;
-  background-color: rgba(255,255,255,0.3);
+  background-color: rgba(255, 255, 255, 0.3);
 }
-
 
 .navbar-2 {
   display: flex;
@@ -58,14 +59,14 @@ tt {
   margin: 0;
   padding: 0;
   font-weight: 400;
-  background-image: url('../images/logo-v3-small.png');
+  background-image: url("../images/logo-v3-small.png");
   background-size: 40px 40px;
   background-position: 0px 8px;
   background-repeat: no-repeat;
 }
 
 .logo::after {
-  content: 'Pyroscope';
+  content: "Pyroscope";
   font-weight: 400;
   padding-left: 44px;
   font-size: 25px;
@@ -126,7 +127,7 @@ input {
   border-radius: 4px 0 0 4px;
 }
 
-.followed-by-btn+.btn {
+.followed-by-btn + .btn {
   border-left: none;
   border-radius: 0 4px 4px 0;
 }
@@ -171,7 +172,7 @@ body {
 }
 @media only screen and (max-width: 1023px) {
   .logo::after {
-    content: '';
+    content: "";
   }
   .labels {
     margin-left: 5px;
@@ -196,6 +197,7 @@ body {
 
 #timeline-chart {
   overflow: hidden;
+  cursor: crosshair;
 }
 
 .flot-tick-label.tickLabel {
@@ -218,7 +220,6 @@ $pane-width: 6px;
   }
 }
 
-
 .flamegraph-table,
 .flamegraph-canvas {
   width: 100%;
@@ -226,7 +227,8 @@ $pane-width: 6px;
 
 .flamegraph-table {
   font-size: 14px;
-  th, td {
+  th,
+  td {
     text-align: right;
     padding: 0px 10px;
 
@@ -243,7 +245,7 @@ $pane-width: 6px;
     .sort-arrow {
       display: inline-block;
       border: 5px solid transparent;
-      border-top-color: rgba(255,255,255,0.1);
+      border-top-color: rgba(255, 255, 255, 0.1);
       top: 3px;
       position: relative;
       margin-left: 7px;
@@ -260,13 +262,12 @@ $pane-width: 6px;
 
     span {
       // mix-blend-mode: exclusion;
-      text-shadow: 0 0 2px rgba(0,0,0,0.33);
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.33);
     }
 
     &:first-child {
       border-left: none;
       text-align: left;
-
 
       width: auto;
       min-width: auto;
@@ -282,7 +283,7 @@ $pane-width: 6px;
   }
   tr th,
   tr:nth-child(2n) td {
-    background: rgba(255,255,255,0.05)
+    background: rgba(255, 255, 255, 0.05);
   }
 }
 
@@ -295,11 +296,11 @@ $pane-width: 6px;
 }
 
 .flamegraph-search {
-  background: rgba(255,255,255,0.8);
+  background: rgba(255, 255, 255, 0.8);
   color: #333;
   transition: background-color ease-out 0.1s;
   &:focus {
-    background: rgba(255,255,255,1);
+    background: rgba(255, 255, 255, 1);
   }
 }
 
@@ -310,7 +311,7 @@ $pane-width: 6px;
   right: 20px;
   cursor: pointer;
   &:after {
-    content: '✕';
+    content: "✕";
     position: absolute;
     top: 0;
     right: 0;
@@ -322,7 +323,7 @@ $pane-width: 6px;
   }
   // hit-area
   &:before {
-    content: '';
+    content: "";
     cursor: pointer;
     top: -20px;
     right: -20px;
@@ -345,13 +346,14 @@ $pane-width: 6px;
   }
 }
 
-.navbar, .footer {
+.navbar,
+.footer {
   .navbar-link {
     a {
       color: white;
       text-decoration: none;
       font-weight: 500;
-      &:hover{
+      &:hover {
         color: #fff;
         cursor: pointer;
       }
@@ -360,7 +362,10 @@ $pane-width: 6px;
   }
 }
 
-html, body, #root, .pyroscope-app {
+html,
+body,
+#root,
+.pyroscope-app {
   height: 100%;
   min-height: 100%;
 }
@@ -385,11 +390,11 @@ html, body, #root, .pyroscope-app {
 
 // used to generate gifs with no scrollbars
 .demo-mode {
-  body{
+  body {
     overflow: hidden;
   }
 
-  .root{
+  .root {
     width: 100%;
     height: 100%;
     overflow-y: scroll;
@@ -418,7 +423,7 @@ html, body, #root, .pyroscope-app {
   .btn {
     padding-left: 12px;
     padding-right: 12px;
-    $active-color: #2ECC40;
+    $active-color: #2ecc40;
     &.active {
       background-color: $active-color;
       color: #222;
