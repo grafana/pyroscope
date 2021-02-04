@@ -1,9 +1,7 @@
 @use "../variables" as *;
 @use "../mixins/outline" as *;
-/**
-* DatePicker Compenent styles
-* TODO: adjust styling
-*/
+
+// DatePicker Component styles
 @import "../../node_modules/react-datepicker/dist/react-datepicker.css";
 @import "../../node_modules/react-datepicker/dist/react-datepicker-cssmodules.css";
 
@@ -84,4 +82,27 @@
     display: flex;
     flex-direction: row;
   }
+}
+
+// range picker custom styles
+.react-datepicker__day--in-range {
+  background-color: #216ba5 !important;
+  color: white !important;
+}
+.react-datepicker__day--in-selecting-range {
+  background: none;
+  color: black;
+}
+.react-datepicker__day--in-range:hover {
+  background-color: #216ba5;
+  color: white;
+}
+
+.react-datepicker__day--disabled {
+  background-color: transparent;
+  color: #ccc;
+}
+
+.react-datepicker__day--in-selecting-range:hover {
+  color: white;
 }

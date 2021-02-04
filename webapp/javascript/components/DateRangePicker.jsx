@@ -1,12 +1,11 @@
 import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
-import DatePicker from "react-datepicker";
 import OutsideClickHandler from "react-outside-click-handler";
+import CustomDatePicker from "./CustomDatePicker";
 import { setDateRange } from "../redux/actions";
-import humanReadableRange from "../util/formatDate";
 
 const defaultPresets = [
   [
@@ -30,24 +29,12 @@ const defaultPresets = [
     { label: "Last 5 years", from: "now-5y", until: "now" },
   ],
 ];
+
 function DateRangePicker() {
   const dispatch = useDispatch();
-  const from = useSelector((state) => state.from);
-  const until = useSelector((state) => state.until);
+
   const [opened, setOpened] = useState(false);
-  const readableDateForm = humanReadableRange(until, from);
-
-  const updateFrom = (from) => {
-    dispatch(setDateRange(from, until));
-  };
-
-  const updateUntil = (until) => {
-    dispatch(setDateRange(from, until));
-  };
-
-  const updateDateRange = () => {
-    dispatch(setDateRange(from, until));
-  };
+  const [range, setRange] = useState();
 
   const toggleDropdown = () => {
     setOpened(!opened);
@@ -56,7 +43,6 @@ function DateRangePicker() {
   const hideDropdown = () => {
     setOpened(false);
   };
-
   const selectPreset = ({ from, until }) => {
     dispatch(setDateRange(from, until));
     setOpened(false);
@@ -71,7 +57,7 @@ function DateRangePicker() {
           onClick={toggleDropdown}
         >
           <FontAwesomeIcon icon={faClock} />
-          <span>{readableDateForm.range}</span>
+          <span>{range}</span>
         </button>
         <div className="drp-dropdown">
           <h4>Quick Presets</h4>
@@ -82,7 +68,7 @@ function DateRangePicker() {
                   <button
                     type="button"
                     className={`drp-preset ${
-                      x.label === readableDateForm.range ? "active" : ""
+                      x.label === range ? "active" : ""
                     }`}
                     key={x.label}
                     onClick={() => selectPreset(x)}
@@ -93,45 +79,11 @@ function DateRangePicker() {
               </div>
             ))}
           </div>
-          <h4>Custom Date Range</h4>
-          <div className="drp-label">From</div>
-          <div className="drp-calendar-input-group">
-            <DatePicker
-              className="followed-by-btn"
-              showTimeSelect
-              dateFormat="MMM d, yyyy h:mm aa"
-              onChange={(date) => updateFrom(date / 1000)}
-              onBlur={() => updateDateRange()}
-              selected={readableDateForm.from}
-            />
-            <button
-              type="button"
-              className="drp-calendar-btn btn"
-              onClick={updateDateRange}
-            >
-              <FontAwesomeIcon icon={faClock} />
-              Update
-            </button>
-          </div>
-          <div className="drp-label">To</div>
-          <div className="drp-calendar-input-group">
-            <DatePicker
-              className="followed-by-btn"
-              showTimeSelect
-              dateFormat="MMM d, yyyy h:mm aa"
-              onChange={(date) => updateUntil(date / 1000)}
-              onBlur={() => updateDateRange()}
-              selected={readableDateForm.until}
-            />
-            <button
-              type="button"
-              className="drp-calendar-btn btn"
-              onClick={updateDateRange}
-            >
-              <FontAwesomeIcon icon={faClock} />
-              Update
-            </button>
-          </div>
+          <CustomDatePicker
+            setRange={setRange}
+            dispatch={dispatch}
+            setDateRange={setDateRange}
+          />
         </div>
       </OutsideClickHandler>
     </div>

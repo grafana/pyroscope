@@ -11,65 +11,60 @@ const multiplierMapping = {
   y: "year",
 };
 
-function convertPresetsToDate(from) {
+export function convertPresetsToDate(from) {
   const { groups } = from.match(/^now-(?<number>\d+)(?<multiplier>\D+)$/);
   const { number, multiplier } = groups;
   let _multiplier = multiplierMapping[multiplier];
   if (number > 1) {
     _multiplier += "s";
   }
-  // convert preset to a Date object
-  const fromObjectForm = moment().add(-number, _multiplier).toDate();
+  const _from = moment().add(-number, _multiplier).toDate() / 1000;
 
-  return { fromObjectForm, number, _multiplier };
+  return { _from, number, _multiplier };
 }
 
-function formateDate(from, until, preset = true) {
-  const { fromObjectForm, number, _multiplier } = preset
-    ? convertPresetsToDate(from)
-    : {};
-
-  /**
-   * this default values are assinged depending on the state of the parameters from and until
-   */
-
-  const _from = Math.round(moment(fromObjectForm || from * 1000));
-  const _until =
-    until !== "now" ? Math.round(moment(until * 1000)) : Math.round(moment());
-
-  let readableDateForm = {
-    range: `Last ${number} ${_multiplier}`,
-    from: _from,
-    until: _until,
-  };
-
-  if (until === "now") {
-    // check if from is not a preset
-    if (!/^now-/.test(from)) {
-      readableDateForm = {
-        ...readableDateForm,
-        from: _from,
-        range: `${moment(_from).format("lll")} - now`,
-      };
-      return readableDateForm;
-    }
-    return readableDateForm;
+export function readableRange(from, until) {
+  const dateFormat = "YYYY-MM-DD hh:mm A";
+  if (/^now-/.test(from) && until === "now") {
+    const { number, _multiplier } = convertPresetsToDate(from);
+    return `Last ${number} ${_multiplier}`;
   }
 
-  readableDateForm = {
-    ...readableDateForm,
-    range: `${moment(_from).format("lll")} - ${moment(_until).format("llll")}`,
-    until: _until,
-  };
+  if (until === "now" && !/^now-/.test(from)) {
+    return `${moment(Math.round(from * 1000)).format(dateFormat)} - now`;
+  }
 
-  return readableDateForm;
+  if (until !== "now" && /^now-/.test(from)) {
+    const { _from } = convertPresetsToDate(from);
+    return `${moment(Math.round(_from * 1000)).format(dateFormat)} - ${moment(
+      Math.round(until * 1000)
+    ).format(dateFormat)}`;
+  }
+
+  return `${moment(Math.round(from * 1000)).format(dateFormat)} - ${moment(
+    Math.round(until * 1000)
+  ).format(dateFormat)}`;
 }
 
-export default function humanReadableRange(until, from) {
+/**
+ * taking state.from and state.until values
+ * and converting it to a date object
+ * this is neccessary because the DatePicker component
+ * from react-datepicker package has a property (selected)
+ * that requires an input of type Date if we passed another
+ * type the Component will give back an error and the app will crash
+ */
+export function fromConverter(from) {
   if (/^now-/.test(from)) {
-    return formateDate(from, until);
+    const { _from } = convertPresetsToDate(from);
+    return { from: _from * 1000 };
   }
+  return { from: moment(from * 1000).toDate() };
+}
 
-  return formateDate(from, until, false);
-  // return from + " to " +until;
+export function untilConverter(until) {
+  if (until === "now") {
+    return { until: moment().toDate() };
+  }
+  return { until: moment(until * 1000).toDate() };
 }
