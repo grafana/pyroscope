@@ -1,3 +1,41 @@
+## <small>0.0.18 (2021-02-04)</small>
+
+* Add FlameGraphRendererNew, factor out ProfilerHeader and ProfilerTable ([5c0f137](https://github.com/pyroscope-io/pyroscope/commit/5c0f137))
+* Added a date and time picker ([7246d32](https://github.com/pyroscope-io/pyroscope/commit/7246d32))
+* adds 'gospy.(*GoSpy).Snapshot' to list of excludes in gospy, addresses #50 ([a565c52](https://github.com/pyroscope-io/pyroscope/commit/a565c52)), closes [#50](https://github.com/pyroscope-io/pyroscope/issues/50)
+* adds a lint comment ([8da5bae](https://github.com/pyroscope-io/pyroscope/commit/8da5bae))
+* adds a revive exception for code that we didn't write ([0616b14](https://github.com/pyroscope-io/pyroscope/commit/0616b14))
+* adds auto-review github action ([da0f556](https://github.com/pyroscope-io/pyroscope/commit/da0f556))
+* auto review config improvements ([bc5eaa5](https://github.com/pyroscope-io/pyroscope/commit/bc5eaa5))
+* Change cursor to pointer, change crosshair color ([1b9c1b4](https://github.com/pyroscope-io/pyroscope/commit/1b9c1b4))
+* changed date format to YYYY-mm-dd HH:MM ([609d2e4](https://github.com/pyroscope-io/pyroscope/commit/609d2e4))
+* coloring date as blue when it's part of the range ([a9155d9](https://github.com/pyroscope-io/pyroscope/commit/a9155d9))
+* Fix ProfilerHeader lint ([2f987ce](https://github.com/pyroscope-io/pyroscope/commit/2f987ce))
+* fix typo ([67f1567](https://github.com/pyroscope-io/pyroscope/commit/67f1567))
+* Fix Update button from falling out, add date range labels ([534ce1f](https://github.com/pyroscope-io/pyroscope/commit/534ce1f))
+* fixes an issue with forks and "Auto Request Review" ([9880432](https://github.com/pyroscope-io/pyroscope/commit/9880432))
+* fixes work function ([00753b7](https://github.com/pyroscope-io/pyroscope/commit/00753b7))
+* from selector fixed ([ed7e47b](https://github.com/pyroscope-io/pyroscope/commit/ed7e47b))
+* Import crosshair library, define function that draws crosshair ([383fcd2](https://github.com/pyroscope-io/pyroscope/commit/383fcd2))
+* improved the date range selector and fixed #54 #60 ([6194b88](https://github.com/pyroscope-io/pyroscope/commit/6194b88)), closes [#54](https://github.com/pyroscope-io/pyroscope/issues/54) [#60](https://github.com/pyroscope-io/pyroscope/issues/60)
+* makes exec work with auth token ([9039949](https://github.com/pyroscope-io/pyroscope/commit/9039949))
+* Merge FlameGraphRendererNew to FlameGraphRenderer ([a235867](https://github.com/pyroscope-io/pyroscope/commit/a235867))
+* removed coloring range on hover ([c20d909](https://github.com/pyroscope-io/pyroscope/commit/c20d909))
+* renames errFoo -> errClosing ([aaf0a68](https://github.com/pyroscope-io/pyroscope/commit/aaf0a68))
+* reverts examples/golang/main.go changes ([9fa9e34](https://github.com/pyroscope-io/pyroscope/commit/9fa9e34))
+* Set cross hair settings ([7bf4ab5](https://github.com/pyroscope-io/pyroscope/commit/7bf4ab5))
+* Small css changes ([f70da15](https://github.com/pyroscope-io/pyroscope/commit/f70da15))
+* split the code into reusable pieces, fixed issue#55 ([2c81645](https://github.com/pyroscope-io/pyroscope/commit/2c81645)), closes [issue#55](https://github.com/issue/issues/55)
+* support for auth tokens, atexit fix ([ff206a3](https://github.com/pyroscope-io/pyroscope/commit/ff206a3))
+* trying to add auto-labeler + fix auto-review actionAuto label (#63) ([bc7aa2f](https://github.com/pyroscope-io/pyroscope/commit/bc7aa2f)), closes [#63](https://github.com/pyroscope-io/pyroscope/issues/63)
+* updated ([320ac81](https://github.com/pyroscope-io/pyroscope/commit/320ac81))
+* updated 2/ ([9734d74](https://github.com/pyroscope-io/pyroscope/commit/9734d74))
+* updates our list of contributors ([0dc9715](https://github.com/pyroscope-io/pyroscope/commit/0dc9715))
+* updates the list of contributors ([032c148](https://github.com/pyroscope-io/pyroscope/commit/032c148))
+* cleanup: lint go code ([04c69b1](https://github.com/pyroscope-io/pyroscope/commit/04c69b1))
+
+
+
 ## <small>0.0.17 (2021-01-27)</small>
 
 * Add logo to examples page ([1ea5655](https://github.com/pyroscope-io/pyroscope/commit/1ea5655))
