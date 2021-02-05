@@ -48,7 +48,7 @@ export function readableRange(from, until) {
 
 /**
  * formateAsOBject() returns a Date object
- * based on the passed-in parameter date
+ * based on the passed-in parameter value
  * which is either a Number repsenting a date
  * or a default preset(example: "now-1h")
  * this is neccessary because the DatePicker component
@@ -56,13 +56,13 @@ export function readableRange(from, until) {
  * that requires an input of type Date if we passed another
  * type the Component will throw an error and the app will crash
  */
-export function formatAsOBject(date) {
-  if (/^now-/.test(date)) {
-    const { _from } = convertPresetsToDate(date);
+export function formatAsOBject(value) {
+  if (/^now-/.test(value)) {
+    const { _from } = convertPresetsToDate(value);
     return _from * 1000;
   }
-  if (date === "now") {
+  if (value === "now") {
     return moment().toDate();
   }
-  return moment(date * 1000).toDate();
+  return moment(value * 1000).toDate();
 }
