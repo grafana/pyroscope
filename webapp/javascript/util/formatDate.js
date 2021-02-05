@@ -47,24 +47,22 @@ export function readableRange(from, until) {
 }
 
 /**
- * taking state.from and state.until values
- * and converting it to a date object
+ * formateAsOBject() returns a Date object
+ * based on the passed-in parameter date
+ * which is either a Number repsenting a date
+ * or a default preset(example: "now-1h")
  * this is neccessary because the DatePicker component
  * from react-datepicker package has a property (selected)
  * that requires an input of type Date if we passed another
- * type the Component will give back an error and the app will crash
+ * type the Component will throw an error and the app will crash
  */
-export function fromConverter(from) {
-  if (/^now-/.test(from)) {
-    const { _from } = convertPresetsToDate(from);
-    return { from: _from * 1000 };
+export function formatAsOBject(date) {
+  if (/^now-/.test(date)) {
+    const { _from } = convertPresetsToDate(date);
+    return _from * 1000;
   }
-  return { from: moment(from * 1000).toDate() };
-}
-
-export function untilConverter(until) {
-  if (until === "now") {
-    return { until: moment().toDate() };
+  if (date === "now") {
+    return moment().toDate();
   }
-  return { until: moment(until * 1000).toDate() };
+  return moment(date * 1000).toDate();
 }
