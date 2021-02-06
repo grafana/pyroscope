@@ -1,7 +1,7 @@
 export function buildRenderURL(state) {
   const { from, until } = state;
 
-  let url = `/render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}`;
+  let url = `render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}`;
   const nameLabel = state.labels.find((x) => x.name == '__name__');
 
   if (nameLabel) {

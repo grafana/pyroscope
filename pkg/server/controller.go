@@ -119,6 +119,7 @@ type indexPage struct {
 	InitialState  string
 	BuildInfo     string
 	ExtraMetadata string
+	BaseURL       string
 }
 
 func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWriter, _ *http.Request) {
@@ -185,6 +186,7 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 		InitialState:  initialStateStr,
 		BuildInfo:     buildInfoStr,
 		ExtraMetadata: extraMetadataStr,
+		BaseURL:       ctrl.cfg.Server.BaseURL,
 	})
 	if err != nil {
 		renderServerError(rw, fmt.Sprintf("could not marshal json: %q", err))

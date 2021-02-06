@@ -35,6 +35,7 @@ type Server struct {
 
 	StoragePath string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
 	ApiBindAddr string `def:":4040" desc:"port for the HTTP server used for data ingestion and web UI"`
+	BaseURL     string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path"`
 
 	// These will eventually be replaced by some sort of a system that keeps track of RAM
 	//   and updates
