@@ -285,7 +285,7 @@ func Start(cfg *config.Config) error {
 		} else if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
 			logrus.SetLevel(l)
 		}
-		if len(args) == 0 {
+		if len(args) == 0 || args[0] == "help" {
 			fmt.Println(gradientBanner())
 			fmt.Println(DefaultUsageFunc(execCmd))
 			return nil
