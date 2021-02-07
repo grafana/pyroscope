@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"os/user"
 	"path"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -37,13 +36,12 @@ func Cli(cfg *config.Config, args []string) error {
 			supportedSpies := spy.SupportedExecSpies()
 			suggestedCommand := fmt.Sprintf("pyroscope exec -spy-name %s %s", supportedSpies[0], strings.Join(args, " "))
 			return fmt.Errorf(
-				"could not automatically find a spy for program \"%s\". Pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\n%s\nIf you believe this is a mistake, please submit an issue at %s",
+				"could not automatically find a spy for program \"%s\". Pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
 				baseName,
 				color.YellowString("-spy-name"),
 				color.YellowString(suggestedCommand),
 				strings.Join(supportedSpies, ","),
-				armMessage(),
-				color.BlueString("https://github.com/pyroscope-io/pyroscope/issues"),
+				color.GreenString("https://github.com/pyroscope-io/pyroscope/issues"),
 			)
 		}
 	}
@@ -57,7 +55,7 @@ func Cli(cfg *config.Config, args []string) error {
 	if cfg.Exec.ApplicationName == "" {
 		logrus.Infof("we recommend specifying application name via %s flag or env variable %s", color.YellowString("-application-name"), color.YellowString("PYROSCOPE_APPLICATION_NAME"))
 		cfg.Exec.ApplicationName = spyName + "." + names.GetRandomName(generateSeed(args))
-		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.BlueString(cfg.Exec.ApplicationName))
+		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.Exec.ApplicationName))
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -143,22 +141,17 @@ func waitForProcessToExit(cmd *exec.Cmd) {
 
 func performChecks(spyName string) error {
 	if spyName == "gospy" {
-		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.BlueString("https://pyroscope.io/docs/"))
+		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.GreenString("https://pyroscope.io/docs/"))
 	}
 
-	if runtime.GOOS == "darwin" {
-		if !isRoot() {
-			logrus.Fatal("on macOS you're required to run the agent with sudo")
-		}
-	}
+	performOSChecks()
 
 	if !stringsContains(spy.SupportedSpies, spyName) {
 		supportedSpies := spy.SupportedExecSpies()
 		return fmt.Errorf(
-			"Spy \"%s\" is not supported. Available spies are: %s\n%s",
-			color.BlueString(spyName),
+			"Spy \"%s\" is not supported. Available spies are: %s\n",
+			color.GreenString(spyName),
 			strings.Join(supportedSpies, ","),
-			armMessage(),
 		)
 	}
 
@@ -177,13 +170,6 @@ func stringsContains(arr []string, element string) bool {
 func isRoot() bool {
 	u, err := user.Current()
 	return err == nil && u.Username == "root"
-}
-
-func armMessage() string {
-	if runtime.GOARCH == "arm64" {
-		return "Note that rbspy is not available on arm64 platform"
-	}
-	return ""
 }
 
 func generateSeed(args []string) string {
