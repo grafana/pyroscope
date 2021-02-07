@@ -8,9 +8,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 # py-spy = { path = "../../../py-spy" }
-py-spy = { git = "https://github.com/pyroscope-io/py-spy", rev = "34473d6" }
-
-[target.'cfg(target_arch = "x86_64")'.dependencies]
 # rbspy = { path = "../../../rbspy" }
-rbspy = { git = "https://github.com/pyroscope-io/rbspy", rev = "eef6732" }
 
+py-spy = { git = "https://github.com/pyroscope-io/py-spy", rev = "c1a8008" }
+rbspy = { git = "https://github.com/pyroscope-io/rbspy", rev = "c24b153" }
