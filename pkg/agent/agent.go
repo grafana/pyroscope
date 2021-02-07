@@ -21,14 +21,16 @@ type Agent struct {
 }
 
 func New(cfg *config.Config) *Agent {
+	// TODO: handle this error properly
+	r, _ := remote.New(remote.RemoteConfig{
+		UpstreamThreads:        cfg.Agent.UpstreamThreads,
+		UpstreamAddress:        cfg.Agent.ServerAddress,
+		UpstreamRequestTimeout: cfg.Agent.UpstreamRequestTimeout,
+	})
 	return &Agent{
 		cfg:            cfg,
 		activeProfiles: make(map[int]*ProfileSession),
-		u: remote.New(remote.RemoteConfig{
-			UpstreamThreads:        cfg.Agent.UpstreamThreads,
-			UpstreamAddress:        cfg.Agent.ServerAddress,
-			UpstreamRequestTimeout: cfg.Agent.UpstreamRequestTimeout,
-		}),
+		u:              r,
 	}
 }
 

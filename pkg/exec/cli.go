@@ -82,12 +82,16 @@ func Cli(cfg *config.Config, args []string) error {
 	if err != nil {
 		return err
 	}
-	u := remote.New(remote.RemoteConfig{
+	u, err := remote.New(remote.RemoteConfig{
 		AuthToken:              cfg.Exec.AuthToken,
 		UpstreamAddress:        cfg.Exec.ServerAddress,
 		UpstreamThreads:        cfg.Exec.UpstreamThreads,
 		UpstreamRequestTimeout: cfg.Exec.UpstreamRequestTimeout,
 	})
+	if err != nil {
+		return err
+	}
+
 	defer u.Stop()
 
 	logrus.WithFields(logrus.Fields{

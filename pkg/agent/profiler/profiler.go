@@ -21,12 +21,15 @@ type Profiler struct {
 
 // Start starts continuously profiling go code
 func Start(cfg Config) (*Profiler, error) {
-	u := remote.New(remote.RemoteConfig{
+	u, err := remote.New(remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamThreads:        4,
 		UpstreamRequestTimeout: 30 * time.Second,
 	})
+	if err != nil {
+		return nil, err
+	}
 	// TODO: add sample rate
 	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 100, 0, false)
 	sess.Start()

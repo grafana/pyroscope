@@ -2,10 +2,12 @@ package remote
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,6 +15,9 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
+
+var ErrCloudTokenRequired = errors.New("Please provide an authentication token. You can find it here: https://pyroscope.io/cloud")
+var cloudHostnameSuffix = "pyroscope.cloud"
 
 type uploadJob struct {
 	name       string
@@ -37,7 +42,7 @@ type RemoteConfig struct {
 	UpstreamRequestTimeout time.Duration
 }
 
-func New(cfg RemoteConfig) *Remote {
+func New(cfg RemoteConfig) (*Remote, error) {
 	r := &Remote{
 		cfg:  cfg,
 		todo: make(chan *uploadJob, 100),
@@ -49,8 +54,18 @@ func New(cfg RemoteConfig) *Remote {
 			Timeout: cfg.UpstreamRequestTimeout,
 		},
 	}
+
+	urlObj, err := url.Parse(cfg.UpstreamAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.AuthToken == "" && requiresAuthToken(urlObj) {
+		return nil, ErrCloudTokenRequired
+	}
+
 	go r.start()
-	return r
+	return r, nil
 }
 
 func (u *Remote) start() {
@@ -133,4 +148,8 @@ func (u *Remote) uploadLoop() {
 			return
 		}
 	}
+}
+
+func requiresAuthToken(u *url.URL) bool {
+	return strings.HasSuffix(u.Host, cloudHostnameSuffix)
 }
