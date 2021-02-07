@@ -35,6 +35,7 @@ var hiddenCommands = []string{
 func DefaultUsageFunc(c *ffcli.Command) string {
 	var b strings.Builder
 
+	fmt.Fprintf(&b, "continuous profiling platform\n\n")
 	headerClr.Fprintf(&b, "USAGE\n")
 	if c.ShortUsage != "" {
 		fmt.Fprintf(&b, "  %s\n", c.ShortUsage)
@@ -83,6 +84,10 @@ func DefaultUsageFunc(c *ffcli.Command) string {
 		})
 		tw.Flush()
 		// fmt.Fprintf(&b, "\n")
+	}
+
+	if len(c.Subcommands) > 0 {
+		b.WriteString("Run 'pyroscope SUBCOMMAND --help' for more information on a subcommand.\n")
 	}
 
 	return strings.ReplaceAll(b.String(), "@new-line@", "\n")
