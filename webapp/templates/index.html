@@ -12,11 +12,7 @@
   {{- end }}
   {{ .ExtraMetadata }}
   <%= extra_metadata %>
-  <% if (mode == "development") { %>
-    <link rel="icon" href="/build/images/favicon.ico">
-  <% } else { %>
-    <link rel="icon" href="/build/images/favicon.ico">
-  <% } %>
+  <link rel="icon" href="build/images/favicon.ico">
 </head>
 <body>
   <div id="root"></div>
