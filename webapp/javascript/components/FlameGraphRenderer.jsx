@@ -90,16 +90,39 @@ class FlameGraphRenderer extends React.Component {
     this.props.actions.fetchJSON(this.props.renderURL);
   }
 
-  componentDidUpdate(prevProps) {
-    if (prevProps.renderURL != this.props.renderURL) {
+  componentDidUpdate(prevProps, prevState) {
+    if (this.getParamsFromRenderURL(this.props.renderURL).name != this.getParamsFromRenderURL(prevProps.renderURL).name ||
+      prevProps.from != this.props.from ||
+      prevProps.until != this.props.until ||
+      prevProps.maxNodes != this.props.maxNodes
+    ) {
       this.props.actions.fetchJSON(this.props.renderURL);
     }
+
     if (
       this.props.flamebearer &&
       prevProps.flamebearer != this.props.flamebearer
     ) {
       this.updateData(this.props.flamebearer);
     }
+  }
+
+  getParamsFromRenderURL(inputURL) {
+    let urlParamsRegexp = /(\/render\?)(?<urlParams>(.*))/
+    let paramsString = inputURL.match(urlParamsRegexp);
+  
+    let params = new URLSearchParams(paramsString.groups.urlParams);
+    let paramsObj = this.paramsToObject(params);
+
+    return paramsObj
+  }
+
+  paramsToObject(entries) {
+    const result = {}
+    for(const [key, value] of entries) { // each 'entry' is a [key, value] tupple
+      result[key] = value;
+    }
+    return result;
   }
 
   rect(ctx, x, y, w, h, radius) {
