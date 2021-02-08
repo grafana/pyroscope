@@ -10,3 +10,8 @@ export const REQUEST_JSON = "REQUEST_JSON";
 export const RECEIVE_JSON = "RECEIVE_JSON";
 export const REQUEST_NAMES = "REQUEST_NAMES";
 export const RECEIVE_NAMES = "RECEIVE_NAMES";
+export const SET_LEFT_FROM = "SET_LEFT_FROM";
+export const SET_LEFT_UNTIL = "SET_LEFT_UNTIL";
+export const SET_RIGHT_FROM = "SET_RIGHT_FROM";
+export const SET_RIGHT_UNTIL = "SET_RIGHT_UNTIL";
+

@@ -11,6 +11,10 @@ import {
   RECEIVE_JSON,
   REQUEST_NAMES,
   RECEIVE_NAMES,
+  SET_LEFT_FROM,
+  SET_LEFT_UNTIL,
+  SET_RIGHT_FROM,
+  SET_RIGHT_UNTIL,
 } from "./actionTypes";
 
 export const setDateRange = (from, until) => ({
@@ -19,8 +23,12 @@ export const setDateRange = (from, until) => ({
 });
 
 export const setFrom = (from) => ({ type: SET_FROM, payload: { from } });
+export const setLeftFrom = (from) => ({ type: SET_LEFT_FROM, payload: { from } });
+export const setRightFrom = (from) => ({ type: SET_RIGHT_FROM, payload: { from } });
 
 export const setUntil = (until) => ({ type: SET_UNTIL, payload: { until } });
+export const setLeftUntil = (until) => ({ type: SET_LEFT_UNTIL, payload: { until } });
+export const setRightUntil = (until) => ({ type: SET_RIGHT_UNTIL, payload: { until } });
 
 export const setMaxNodes = (maxNodes) => ({
   type: SET_MAX_NODES,
