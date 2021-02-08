@@ -1,3 +1,16 @@
+## <small>0.0.19 (2021-02-08)</small>
+
+* adds config option for setting the app's base url (#69) ([86f07d7](https://github.com/pyroscope-io/pyroscope/commit/86f07d7)), closes [#69](https://github.com/pyroscope-io/pyroscope/issues/69)
+* explicit error message when used with our hosted version and no auth-token provided ([d6d9b45](https://github.com/pyroscope-io/pyroscope/commit/d6d9b45))
+* improves Usage message ([d2d4535](https://github.com/pyroscope-io/pyroscope/commit/d2d4535))
+* linux, exec: adds capabilities detection - prints a message when running pyroscope exec with no prop ([e37a9a0](https://github.com/pyroscope-io/pyroscope/commit/e37a9a0))
+* makes `pyroscope exec help` print usage message ([dfce70c](https://github.com/pyroscope-io/pyroscope/commit/dfce70c))
+* makes favicon url relative ([c176b73](https://github.com/pyroscope-io/pyroscope/commit/c176b73))
+* updates rbspy / pyspy version, enables arm builds ([30ec4c0](https://github.com/pyroscope-io/pyroscope/commit/30ec4c0))
+* updates the list of contributors ([6137fa2](https://github.com/pyroscope-io/pyroscope/commit/6137fa2))
+
+
+
 ## <small>0.0.18 (2021-02-04)</small>
 
 * Add FlameGraphRendererNew, factor out ProfilerHeader and ProfilerTable ([5c0f137](https://github.com/pyroscope-io/pyroscope/commit/5c0f137))
