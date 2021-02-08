@@ -122,8 +122,12 @@ function PyroscopeApp(props) {
         {/* <TimelineChartApex data={timeline || [[0, 0]]}/> */}
         {/* <FlameGraphRenderer /> */}
         <div className="container-container">
-          <ComparisonFlameGraphRenderer />
-          <ComparisonFlameGraphRenderer />
+          <ComparisonFlameGraphRenderer 
+            side={'left'}
+          />
+          <ComparisonFlameGraphRenderer 
+            side={'right'}
+          />
         </div>
         <Modal
           isOpen={state.shortcutsModalOpen}

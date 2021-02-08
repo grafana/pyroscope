@@ -37,6 +37,7 @@ import {
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
+import TimelineComparison from "./TimelineComparison";
 import { deltaDiff } from "../util/flamebearer";
 
 const PX_PER_LEVEL = 18;
@@ -52,6 +53,54 @@ const regexpLookup = {
   gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
   default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
 };
+
+// See docs here: https://github.com/flot/flot/blob/master/API.md
+const flotOptions = {
+  margin: {
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+  },
+  selection: {
+    mode: "x",
+  },
+  crosshair: {
+    mode: "x",
+    color: "#C3170D",
+    lineWidth: "1",
+  },
+  grid: {
+    borderWidth: 1,
+    margin: {
+      left: 16,
+      right: 16,
+    },
+  },
+  yaxis: {
+    show: false,
+    min: 0,
+  },
+  points: {
+    show: false,
+    radius: 0.1,
+  },
+  lines: {
+    show: false,
+    steps: true,
+    lineWidth: 1.0,
+  },
+  bars: {
+    show: true,
+    fill: true,
+  },
+  xaxis: {
+    mode: "time",
+    timezone: "browser",
+    reserveSpace: false,
+  },
+};
+
 
 class ComparisonFlameGraphRenderer extends React.Component {
   constructor() {
@@ -89,7 +138,7 @@ class ComparisonFlameGraphRenderer extends React.Component {
         "Reset Flamegraph View"
       );
     }
-    this.fetchFlameBearerData(this.props.renderURL);
+    this.fetchFlameBearerData(this.props[`${this.props.side}RenderURL`]);
   }
 
   fetchFlameBearerData(url) {
@@ -108,12 +157,16 @@ class ComparisonFlameGraphRenderer extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
+    let fromSide = `${this.props.side}From`
+    let untilSide = `${this.props.side}Until`
+
     if (this.getParamsFromRenderURL(this.props.renderURL).name != this.getParamsFromRenderURL(prevProps.renderURL).name ||
-      prevProps.from != this.props.from ||
-      prevProps.until != this.props.until ||
+      prevProps[fromSide] != this.props[fromSide] ||
+      prevProps[untilSide] != this.props[untilSide] ||
       prevProps.maxNodes != this.props.maxNodes
     ) {
-      this.fetchFlameBearerData(this.props.renderURL);
+      console.log('componentDidUpdate!!!');
+      this.fetchFlameBearerData(this.props[`${this.props.side}RenderURL`]);
     }
 
     if (
@@ -469,68 +522,87 @@ class ComparisonFlameGraphRenderer extends React.Component {
     });
   };
 
-  render = () => (
-    <div className="canvas-renderer">
-      <div className="canvas-container">
-        <ProfilerHeader
-          view={this.state.view}
-          handleSearchChange={this.handleSearchChange}
-          reset={this.reset}
-          updateView={this.updateView}
-          resetStyle={this.state.resetStyle}
-        />
-        <div className="flamegraph-container panes-wrapper">
-          <div
-            className={clsx("pane", { hidden: this.state.view === "table" })}
-          >
-            <canvas
-              className="flamegraph-canvas"
-              height="0"
-              ref={this.canvasRef}
-              onClick={this.clickHandler}
-              onMouseMove={this.mouseMoveHandler}
-              onMouseOut={this.mouseOutHandler}
-            />
+  render = () => {
+    const flotData = this.props.timeline
+    ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
+    : [];
+
+    return(
+      <div className="canvas-renderer">
+        <div className="canvas-container">
+          <ProfilerHeader
+            view={this.state.view}
+            handleSearchChange={this.handleSearchChange}
+            reset={this.reset}
+            updateView={this.updateView}
+            resetStyle={this.state.resetStyle}
+          />
+          <TimelineComparison
+            id={`${this.props.side}-timeline-chart`}
+            side={this.props.side}
+            options={flotOptions}
+            data={flotData}
+            width="100%"
+            height="100px"
+          />
+          <div className="flamegraph-container panes-wrapper">
+            <div
+              className={clsx("pane", { hidden: this.state.view === "table" })}
+            >
+              <canvas
+                className="flamegraph-canvas"
+                height="0"
+                ref={this.canvasRef}
+                onClick={this.clickHandler}
+                onMouseMove={this.mouseMoveHandler}
+                onMouseOut={this.mouseOutHandler}
+              />
+            </div>
+            <div
+              className={clsx("pane", { hidden: this.state.view === "icicle" })}
+            >
+              <ProfilerTable
+                flamebearer={this.state.flamebearer}
+                sortByDirection={this.state.sortByDirection}
+                sortBy={this.state.sortBy}
+                updateSortBy={this.updateSortBy}
+                view={this.state.view}
+              />
+            </div>
           </div>
           <div
-            className={clsx("pane", { hidden: this.state.view === "icicle" })}
+            className={clsx("no-data-message", {
+              visible:
+                this.state.flamebearer && this.state.flamebearer.numTicks === 0,
+            })}
           >
-            <ProfilerTable
-              flamebearer={this.state.flamebearer}
-              sortByDirection={this.state.sortByDirection}
-              sortBy={this.state.sortBy}
-              updateSortBy={this.updateSortBy}
-              view={this.state.view}
-            />
+            <span>
+              No profiling data available for this application / time range.
+            </span>
           </div>
         </div>
+        <div className="flamegraph-highlight" style={this.state.highlightStyle} />
         <div
-          className={clsx("no-data-message", {
-            visible:
-              this.state.flamebearer && this.state.flamebearer.numTicks === 0,
-          })}
+          className="flamegraph-tooltip"
+          ref={this.tooltipRef}
+          style={this.state.tooltipStyle}
         >
-          <span>
-            No profiling data available for this application / time range.
-          </span>
+          <div className="flamegraph-tooltip-name">{this.state.tooltipTitle}</div>
+          <div>{this.state.tooltipSubtitle}</div>
         </div>
       </div>
-      <div className="flamegraph-highlight" style={this.state.highlightStyle} />
-      <div
-        className="flamegraph-tooltip"
-        ref={this.tooltipRef}
-        style={this.state.tooltipStyle}
-      >
-        <div className="flamegraph-tooltip-name">{this.state.tooltipTitle}</div>
-        <div>{this.state.tooltipSubtitle}</div>
-      </div>
-    </div>
-  );
+  )};
 }
 
 const mapStateToProps = (state) => ({
   renderURL: buildRenderURL(state),
-  timeline: state.timeline
+  leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
+  rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),
+  timeline: state.timeline,
+  leftFrom: state.leftFrom,
+  rightFrom: state.rightFrom,
+  leftUntil: state.leftUntil,
+  rightUntil: state.rightUntil
 });
 
 const mapDispatchToProps = (dispatch) => ({

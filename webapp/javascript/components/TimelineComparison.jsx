@@ -30,10 +30,6 @@ class TimelineComparison extends ReactFlot {
         );
       } else {
         console.error('should not be here....')
-        this.props.actions.setDateRange(
-          Math.round(ranges.xaxis.from / 1000),
-          Math.round(ranges.xaxis.to / 1000)
-        );
       }
     });
 
