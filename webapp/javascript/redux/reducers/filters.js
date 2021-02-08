@@ -1,6 +1,8 @@
 import uniqBy from "lodash/fp/uniqBy";
 import {
   SET_DATE_RANGE,
+  SET_LEFT_DATE_RANGE,
+  SET_RIGHT_DATE_RANGE,
   SET_FROM,
   SET_LEFT_FROM,
   SET_RIGHT_FROM,
@@ -47,6 +49,18 @@ export default function (state = initialState, action) {
         ...state,
         from: action.payload.from,
         until: action.payload.until,
+      };
+    case SET_LEFT_DATE_RANGE:
+      return {
+        ...state,
+        leftFrom: action.payload.from,
+        leftUntil: action.payload.until,
+      };
+    case SET_RIGHT_DATE_RANGE:
+      return {
+        ...state,
+        rightFrom: action.payload.from,
+        rightUntil: action.payload.until,
       };
     case SET_FROM:
       return {

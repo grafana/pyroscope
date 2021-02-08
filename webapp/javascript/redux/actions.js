@@ -1,5 +1,7 @@
 import {
   SET_DATE_RANGE,
+  SET_LEFT_DATE_RANGE,
+  SET_RIGHT_DATE_RANGE,
   SET_FROM,
   SET_UNTIL,
   SET_MAX_NODES,
@@ -19,6 +21,16 @@ import {
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
+  payload: { from, until },
+});
+
+export const setLeftDateRange = (from, until) => ({
+  type: SET_LEFT_DATE_RANGE,
+  payload: { from, until },
+});
+
+export const setRightDateRange = (from, until) => ({
+  type: SET_RIGHT_DATE_RANGE,
   payload: { from, until },
 });
 
