@@ -144,7 +144,9 @@ input {
 
 .svg-renderer,
 .canvas-renderer {
+  display: flex;
   padding: 0 15px;
+  width: 50%;
 }
 
 .svg-container,
@@ -153,6 +155,7 @@ input {
   // box-shadow: 0 1px 2px rgba(0,0,0,0.33);
   background-color: #212124;
   border: 1px solid #141414;
+  width: 100%;
 }
 
 .canvas-container {
@@ -210,14 +213,21 @@ body {
 
 $pane-width: 6px;
 
+.container-container {
+  display: flex;
+  flex-direction: row;
+}
+
 .panes-wrapper {
   margin: 0 -$pane-width;
   display: flex;
+  flex-direction: column;
+  flex: 1;
 
   .pane {
     flex: 1;
     margin: 0 $pane-width;
-    width: 50%;
+    width: 100%;
     &.hidden {
       display: none;
     }

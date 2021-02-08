@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { connect } from "react-redux";
 import "react-dom";
 
@@ -7,12 +7,15 @@ import Modal from "react-modal";
 import { withShortcut } from "react-keybind";
 import { bindActionCreators } from "redux";
 import FlameGraphRenderer from "./FlameGraphRenderer";
+import ComparisonFlameGraphRenderer from "./ComparisonFlameGraphRenderer";
 import TimelineChart from "./TimelineChart";
 import TimelineChartApex from "./TimelineChartApex";
 import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
-import { fetchNames } from "../redux/actions";
+import { fetchNames, fetchJSON } from "../redux/actions";
+import { buildRenderURL } from "../util/update_requests";
+
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 const flotOptions = {
@@ -76,8 +79,10 @@ const initialState = {
 };
 
 function PyroscopeApp(props) {
-  const { actions, shortcut, timeline } = props;
+  const { actions, shortcut, timeline, renderURL } = props;
   const [state, setState] = useState(initialState);
+  const prevPropsRef = useRef();
+
   useEffect(() => {
     shortcut.registerShortcut(
       showShortcutsModal,
@@ -85,7 +90,11 @@ function PyroscopeApp(props) {
       "Shortcuts",
       "Show Keyboard Shortcuts Modal"
     );
-  }, []);
+
+    if(prevPropsRef.renderURL != renderURL) {
+      actions.fetchJSON(renderURL);
+    }
+  }, [renderURL]);
 
   const showShortcutsModal = () => {
     setState({ shortcutsModalOpen: true });
@@ -110,8 +119,12 @@ function PyroscopeApp(props) {
           width="100%"
           height="100px"
         /> */}
-        <TimelineChartApex data={timeline || [[0, 0]]}/>
-        <FlameGraphRenderer />
+        {/* <TimelineChartApex data={timeline || [[0, 0]]}/> */}
+        {/* <FlameGraphRenderer /> */}
+        <div className="container-container">
+          <ComparisonFlameGraphRenderer />
+          <ComparisonFlameGraphRenderer />
+        </div>
         <Modal
           isOpen={state.shortcutsModalOpen}
           style={modalStyle}
@@ -128,12 +141,14 @@ function PyroscopeApp(props) {
 
 const mapStateToProps = (state) => ({
   ...state,
+  renderURL: buildRenderURL(state),
 });
 
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
       fetchNames,
+      fetchJSON
     },
     dispatch
   ),
