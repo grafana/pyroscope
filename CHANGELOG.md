@@ -1,3 +1,12 @@
+## <small>0.0.20 (2021-02-08)</small>
+
+* fixes darwin build ([4907ade](https://github.com/pyroscope-io/pyroscope/commit/4907ade))
+* new util to convert from and until values to date Object ([1e758cf](https://github.com/pyroscope-io/pyroscope/commit/1e758cf))
+* renamed formatAsOBject() parameter ([874941b](https://github.com/pyroscope-io/pyroscope/commit/874941b))
+* Updated to use the new util formatAsOBject() ([b59744a](https://github.com/pyroscope-io/pyroscope/commit/b59744a))
+
+
+
 ## <small>0.0.19 (2021-02-08)</small>
 
 * adds config option for setting the app's base url (#69) ([86f07d7](https://github.com/pyroscope-io/pyroscope/commit/86f07d7)), closes [#69](https://github.com/pyroscope-io/pyroscope/issues/69)
