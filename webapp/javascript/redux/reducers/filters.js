@@ -26,7 +26,11 @@ const defaultName = window.initialState.appNames.find(
 
 const initialState = {
   from: "now-1h",
+  leftFrom: "now-1h",
+  rightFrom: "now-1h",
   until: "now",
+  leftUntil: "now",
+  rightUntil: "now",
   labels: [{ name: "__name__", value: defaultName || "pyroscope.server.cpu" }],
   names: window.initialState.appNames,
   timeline: null,
