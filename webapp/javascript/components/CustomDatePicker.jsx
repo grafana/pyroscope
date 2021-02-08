@@ -2,20 +2,17 @@ import React, { useState, useEffect } from "react";
 import moment from "moment";
 import { useSelector } from "react-redux";
 import DatePicker from "react-datepicker";
-import {
-  readableRange,
-  fromConverter,
-  untilConverter,
-} from "../util/formatDate";
+import { readableRange, formatAsOBject } from "../util/formatDate";
 
 function CustomDatePicker({ setRange, dispatch, setDateRange }) {
   const from = useSelector((state) => state.from);
   const until = useSelector((state) => state.until);
-  const [selectedDate, setSelectedDate] = useState({
-    from: fromConverter(from).from,
-    until: untilConverter(until).until,
-  });
   const [warning, setWarning] = useState(false);
+  const [selectedDate, setSelectedDate] = useState({
+    from: formatAsOBject(from),
+    until: formatAsOBject(until),
+  });
+
   const updateDateRange = () => {
     if (moment(selectedDate.from).isSameOrAfter(selectedDate.until)) {
       return setWarning(true);
@@ -32,11 +29,12 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
   useEffect(() => {
     setSelectedDate({
       ...selectedDate,
-      from: fromConverter(from).from,
-      until: untilConverter(until).until,
+      from: formatAsOBject(from),
+      until: formatAsOBject(until),
     });
     setRange(readableRange(from, until));
   }, [from, until]);
+
   return (
     <div>
       <h4>Custom Date Range</h4>
