@@ -32,7 +32,7 @@ var hiddenCommands = []string{
 }
 
 // This is mostly copied from ffcli package
-func DefaultUsageFunc(c *ffcli.Command) string {
+func DefaultUsageFunc(sf *SortedFlags, c *ffcli.Command) string {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "continuous profiling platform\n\n")
@@ -67,7 +67,7 @@ func DefaultUsageFunc(c *ffcli.Command) string {
 
 		// TODO: it would be nice to sort by how often people would use these.
 		//   But for that we'd have to have a conversion from flag-set back to struct
-		c.FlagSet.VisitAll(func(f *flag.Flag) {
+		sf.VisitAll(func(f *flag.Flag) {
 			def := f.DefValue
 			// if def == "" {
 			// 	def = "..."

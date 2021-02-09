@@ -73,7 +73,7 @@ func (tf *timeFlag) Set(value string) error {
 }
 
 // this is mostly reflection magic
-func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
+func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet) *SortedFlags {
 	v := reflect.ValueOf(obj).Elem()
 	t := reflect.TypeOf(v.Interface())
 	num := t.NumField()
@@ -142,6 +142,7 @@ func populateFlagSet(obj interface{}, flagSet *flag.FlagSet) {
 			log.Fatalf("type %s is not supported", field.Type)
 		}
 	}
+	return NewSortedFlags(obj, flagSet)
 }
 
 // on mac pyroscope is usually installed via homebrew. homebrew installs under a prefix
@@ -173,26 +174,22 @@ func resolvePath(path string) string {
 	return path
 }
 
-func printUsage(c *ffcli.Command) string {
-	return gradientBanner() + "\n" + DefaultUsageFunc(c)
-}
-
 func Start(cfg *config.Config) error {
 	var (
-		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 		agentFlagSet     = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
 		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
 		execFlagSet      = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
 		dbmanagerFlagSet = flag.NewFlagSet("pyroscope dbmanager", flag.ExitOnError)
+		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 	)
 
-	populateFlagSet(cfg, rootFlagSet)
-	populateFlagSet(&cfg.Agent, agentFlagSet)
-	populateFlagSet(&cfg.Server, serverFlagSet)
-	populateFlagSet(&cfg.Convert, convertFlagSet)
-	populateFlagSet(&cfg.Exec, execFlagSet)
-	populateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
+	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet)
+	serverSortedFlags := PopulateFlagSet(&cfg.Server, serverFlagSet)
+	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
+	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet)
+	dbmanagerSortedFlags := PopulateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
+	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
 
 	options := []ff.Option{
 		ff.WithConfigFileParser(ffyaml.Parser),
@@ -202,7 +199,7 @@ func Start(cfg *config.Config) error {
 	}
 
 	agentCmd := &ffcli.Command{
-		UsageFunc:  printUsage,
+		UsageFunc:  agentSortedFlags.printUsage,
 		Options:    options,
 		Name:       "agent",
 		ShortUsage: "pyroscope agent [flags]",
@@ -211,7 +208,7 @@ func Start(cfg *config.Config) error {
 	}
 
 	serverCmd := &ffcli.Command{
-		UsageFunc:  printUsage,
+		UsageFunc:  serverSortedFlags.printUsage,
 		Options:    options,
 		Name:       "server",
 		ShortUsage: "pyroscope server [flags]",
@@ -220,7 +217,7 @@ func Start(cfg *config.Config) error {
 	}
 
 	convertCmd := &ffcli.Command{
-		UsageFunc:  printUsage,
+		UsageFunc:  convertSortedFlags.printUsage,
 		Options:    options,
 		Name:       "convert",
 		ShortUsage: "pyroscope convert [flags] <input-file>",
@@ -229,7 +226,7 @@ func Start(cfg *config.Config) error {
 	}
 
 	execCmd := &ffcli.Command{
-		UsageFunc:  printUsage,
+		UsageFunc:  execSortedFlags.printUsage,
 		Options:    options,
 		Name:       "exec",
 		ShortUsage: "pyroscope exec [flags] <args>",
@@ -238,7 +235,7 @@ func Start(cfg *config.Config) error {
 	}
 
 	dbmanagerCmd := &ffcli.Command{
-		UsageFunc:  printUsage,
+		UsageFunc:  dbmanagerSortedFlags.printUsage,
 		Options:    options,
 		Name:       "dbmanager",
 		ShortUsage: "pyroscope dbmanager [flags] <args>",
@@ -247,7 +244,7 @@ func Start(cfg *config.Config) error {
 	}
 
 	rootCmd := &ffcli.Command{
-		UsageFunc:  printUsage,
+		UsageFunc:  rootSortedFlags.printUsage,
 		Options:    options,
 		ShortUsage: "pyroscope [flags] <subcommand>",
 		FlagSet:    rootFlagSet,
@@ -287,7 +284,7 @@ func Start(cfg *config.Config) error {
 		}
 		if len(args) == 0 || args[0] == "help" {
 			fmt.Println(gradientBanner())
-			fmt.Println(DefaultUsageFunc(execCmd))
+			fmt.Println(DefaultUsageFunc(execSortedFlags, execCmd))
 			return nil
 		}
 
@@ -306,7 +303,7 @@ func Start(cfg *config.Config) error {
 			fmt.Println("")
 		} else {
 			fmt.Println(gradientBanner())
-			fmt.Println(DefaultUsageFunc(rootCmd))
+			fmt.Println(DefaultUsageFunc(rootSortedFlags, rootCmd))
 		}
 		return nil
 	}

@@ -16,7 +16,7 @@ type Config struct {
 
 type Agent struct {
 	Config   string `def:"<installPrefix>/etc/pyroscope/agent.yml" desc:"location of config file"`
-	LogLevel string `def:"info", desc:"debug|info|warn|error"`
+	LogLevel string `def:"info", desc:"log level: debug|info|warn|error"`
 
 	// AgentCMD           []string
 	AgentSpyName           string        `desc:"name of the spy you want to use"` // TODO: add options
@@ -29,9 +29,11 @@ type Agent struct {
 }
 
 type Server struct {
+	AnalyticsOptOut bool `def:"false" desc:"disables analytics"`
+
 	Config         string `def:"<installPrefix>/etc/pyroscope/server.yml" desc:"location of config file"`
-	LogLevel       string `def:"info", desc:"debug|info|warn|error"`
-	BadgerLogLevel string `def:"error", desc:"debug|info|warn|error"`
+	LogLevel       string `def:"info", desc:"log level: debug|info|warn|error"`
+	BadgerLogLevel string `def:"error", desc:"log level: debug|info|warn|error"`
 
 	StoragePath string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
 	ApiBindAddr string `def:":4040" desc:"port for the HTTP server used for data ingestion and web UI"`
@@ -55,9 +57,7 @@ type Server struct {
 	MaxNodesRender        int `def:"2048" desc:"max number of nodes used to display data on the frontend"`
 
 	// currently only used in our demo app
-	HideApplications []string `def:""`
-
-	AnalyticsOptOut bool `def:"false" desc:"disables analytics"`
+	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
 }
 
 type Convert struct {
@@ -65,7 +65,7 @@ type Convert struct {
 }
 
 type DbManager struct {
-	LogLevel        string `def:"error", desc:"debug|info|warn|error"`
+	LogLevel        string `def:"error", desc:"log level: debug|info|warn|error"`
 	StoragePath     string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
 	DstStartTime    time.Time
 	DstEndTime      time.Time
@@ -79,7 +79,7 @@ type Exec struct {
 	SpyName                string        `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>"`
 	ApplicationName        string        `def:"" desc:"application name used when uploading profiling data"`
 	DetectSubprocesses     bool          `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
-	LogLevel               string        `def:"info", desc:"debug|info|warn|error"`
+	LogLevel               string        `def:"info", desc:"log level: debug|info|warn|error"`
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`
 	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data"`
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`

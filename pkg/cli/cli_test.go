@@ -22,12 +22,12 @@ type FlagsStruct struct {
 }
 
 var _ = Describe("config package", func() {
-	Context("populateFlagSet", func() {
+	Context("PopulateFlagSet", func() {
 		Context("without config file", func() {
 			It("correctly sets all types of arguments", func() {
 				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
 				cfg := FlagsStruct{}
-				populateFlagSet(&cfg, exampleFlagSet)
+				PopulateFlagSet(&cfg, exampleFlagSet)
 
 				exampleCommand := &ffcli.Command{
 					FlagSet: exampleFlagSet,
@@ -58,7 +58,7 @@ var _ = Describe("config package", func() {
 			It("correctly sets all types of arguments", func() {
 				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
 				cfg := FlagsStruct{}
-				populateFlagSet(&cfg, exampleFlagSet)
+				PopulateFlagSet(&cfg, exampleFlagSet)
 
 				exampleCommand := &ffcli.Command{
 					FlagSet: exampleFlagSet,
@@ -86,7 +86,7 @@ var _ = Describe("config package", func() {
 			It("arguments take precendence", func() {
 				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
 				cfg := FlagsStruct{}
-				populateFlagSet(&cfg, exampleFlagSet)
+				PopulateFlagSet(&cfg, exampleFlagSet)
 
 				exampleCommand := &ffcli.Command{
 					FlagSet: exampleFlagSet,
