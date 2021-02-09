@@ -527,6 +527,9 @@ class ComparisonFlameGraphRenderer extends React.Component {
     ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
     : [];
 
+    flotOptions.selection["color"] = this.props.side == "left" ? "#7975f0" : "#74eaec";
+    // flotOptions.selection["color"] = this.props.side == "left" ? "#c874ec" : "#74eaec";
+
     return(
       <div className="canvas-renderer">
         <div className="canvas-container">
