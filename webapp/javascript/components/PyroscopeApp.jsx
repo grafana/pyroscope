@@ -8,6 +8,7 @@ import { withShortcut } from "react-keybind";
 import { bindActionCreators } from "redux";
 import FlameGraphRenderer from "./FlameGraphRenderer";
 import TimelineChart from "./TimelineChart";
+import TimelineChartApex from "./TimelineChartApex";
 import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -98,17 +99,21 @@ function PyroscopeApp(props) {
     ? [timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
     : [];
 
+  console.log('timeline: ', timeline);
+
+  
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <Header />
-        <TimelineChart
+        {/* <TimelineChart
           id="timeline-chart"
           options={flotOptions}
           data={flotData}
           width="100%"
           height="100px"
-        />
+        /> */}
+        <TimelineChartApex data={timeline || [[0, 0]]}/>
         <FlameGraphRenderer />
         <Modal
           isOpen={state.shortcutsModalOpen}
