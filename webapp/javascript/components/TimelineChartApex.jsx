@@ -82,6 +82,36 @@ function TimelineChartApex(props) {
       colors: '#E8BE3F',
       width: 1,
       dashArray: 0,      
+    },
+    tooltip: {
+      enabled: true,
+      enabledOnSeries: undefined,
+      shared: false,
+      followCursor: false,
+      intersect: false,
+      inverseOrder: false,
+      custom: function({series, seriesIndex, dataPointIndex, w}) {
+        return ''
+      },
+      fillSeriesColor: false,
+      theme: false,
+      style: {
+        fontSize: '12px',
+        fontFamily: undefined
+      },
+      onDatasetHover: {
+        highlightDataSeries: false,
+      },
+      x: {
+          show: true,
+          format: 'yyyy-MM-dd hh:mm',
+          formatter: undefined,
+      },
+      marker: {
+        show: false,
+        strokeColors: '#fff',
+        strokeWidth: 1,
+      },
     }
   }
   
