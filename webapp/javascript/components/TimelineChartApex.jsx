@@ -19,7 +19,39 @@ function TimelineChartApex(props) {
     chart: {
       height: 380,
       width: "100%",
-      type: "line"
+      type: "line",
+      toolbar: {
+        show: false,
+      },
+      zoom: {
+        enabled: true,
+        zoomedArea: {
+          fill: {
+            color: '#90CAF9',
+            opacity: 0.4
+          },
+          stroke: {
+            color: '#0D47A1',
+            opacity: 0.4,
+            width: 1
+          }
+        }
+      },
+      events: {
+        beforeZoom: function(chartContext, { xaxis }) {
+          console.log('xaxis...', xaxis)
+          return {
+            xaxis: {
+              min: xaxis.min,
+              max: xaxis.max
+            }
+          } 
+        },
+        beforeResetZoom: undefined,
+        zoomed: undefined,
+        scrolled: undefined,
+        scrolled: undefined,
+      }
     },
     markers: {
       size: 0,
