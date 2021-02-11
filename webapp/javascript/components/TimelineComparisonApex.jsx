@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 
 import { setLeftDateRange, setRightDateRange } from "../redux/actions";
 import Chart from 'react-apexcharts'
+import ApexChart from 'react-apexcharts';
 import moment from "moment";
 
 

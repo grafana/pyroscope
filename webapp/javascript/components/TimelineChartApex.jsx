@@ -7,18 +7,37 @@ import moment from "moment";
 
 
 function TimelineChartApex(props) {
-  const { from, until, setDateRange } = props;
+  const { setDateRange, timelineData } = props;
 
   const dateFormat = "YYYY-MM-DD hh:mm A";
 
   let series = [
     {
       name: "CPU Load",
-      data: props.data
+      data: timelineData
     }
   ]
 
   let options = {
+    annotations: {
+      xaxis: [
+        {
+          x: timelineData[0][0],
+          x2: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
+          fillColor: '#B3F7CA',
+          label: {
+            text: 'X-axis range1'
+          }
+        },
+        {
+          x: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
+          x2: timelineData[timelineData.length - 1][0],
+          fillColor: '#ff0000',
+          label: {
+            text: 'X-axis range2'
+          }
+        }]
+    },
     chart: {
       height: 380,
       width: "100%",
