@@ -43,23 +43,35 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 * Efficient compression, low disk space requirements
 * Snappy UI
 
-## Documentation
+## Installation
 
-To install pyroscope on a mac:
+#### on macOS:
 ```shell
 brew install pyroscope-io/brew/pyroscope
 ```
+## Try Pyroscope Locally
 
-To install the docker image:
+### Step 1 — Start Pyroscope Server
+
+#### on macOS / Linux:
 ```shell
-docker pull pyroscope/pyroscope:latest
+pyroscope server
 ```
 
-After pyroscope is installed, you just need to:
-1. Start the pyroscope server (`pyroscope server` or `docker run -it pyroscope/pyroscope:latest server`)
-2. Run your application with the right agent (see image below). For more information on this, see our [Getting Started guide](https://pyroscope.io/docs/#profile-your-applications).
+#### with Docker:
+```shell
+docker run -it -p 4040:4040 pyroscope/pyroscope:latest server
+```
 
-![Deployment Diagram](.github/markdown-images/deployment.svg)
+### Step 2 — Profile Your Application
+
+Add `pyroscope exec` before the command you use to start your app:
+
+```
+pyroscope exec python manage.py runserver
+```
+
+### More Documentation
 
 For information on how to install it on Linux or use it in production environment check out our documentation:
 
@@ -67,6 +79,10 @@ For information on how to install it on Linux or use it in production environmen
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
 * [Developer Guide](https://pyroscope.io/docs/developer-guide)
 
+
+## Deployment Diagram
+
+![Deployment Diagram](.github/markdown-images/deployment.svg)
 
 ## Downloads
 
