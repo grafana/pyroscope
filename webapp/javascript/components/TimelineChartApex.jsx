@@ -20,6 +20,19 @@ function TimelineChartApex(props) {
       height: 380,
       width: "100%",
       type: "line",
+      animations: {
+        enabled: false,
+        easing: 'easeinout',
+        speed: 800,
+        animateGradually: {
+            enabled: true,
+            delay: 150
+        },
+        dynamicAnimation: {
+            enabled: true,
+            speed: 350
+        }
+      },
       toolbar: {
         show: false,
       },
@@ -43,12 +56,7 @@ function TimelineChartApex(props) {
             Math.round(xaxis.min / 1000),
             Math.round(xaxis.max / 1000),
           )
-          return {
-            xaxis: {
-              min: xaxis.min,
-              max: xaxis.max
-            }
-          } 
+          return
         },
         beforeResetZoom: undefined,
         zoomed: undefined,
