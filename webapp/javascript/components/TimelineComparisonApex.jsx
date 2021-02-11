@@ -28,11 +28,11 @@ function TimelineComparisonApex(props) {
         easing: 'easeinout',
         speed: 800,
         animateGradually: {
-            enabled: true,
+            enabled: false,
             delay: 150
         },
         dynamicAnimation: {
-            enabled: true,
+            enabled: false,
             speed: 350
         }
       },
@@ -110,7 +110,22 @@ function TimelineComparisonApex(props) {
         month: "MM",
         day: 'dd',
         hour: 'HH:mm',
-    },
+      },
+      axisBorder: {
+        show: true,
+        color: '#424446',
+        height: 1,
+        offsetX: 0,
+        offsetY: 0
+      },
+      axisTicks: {
+        show: true,
+        borderType: 'solid',
+        color: '#424446',
+        height: 6,
+        offsetX: 0,
+        offsetY: 0
+      },
     },
     yaxis: {
       labels: {

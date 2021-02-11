@@ -28,12 +28,12 @@ function TimelineChartApex(props) {
         easing: 'easeinout',
         speed: 800,
         animateGradually: {
-            enabled: true,
-            delay: 150
+            enabled: false,
+            delay: 0
         },
         dynamicAnimation: {
-            enabled: true,
-            speed: 350
+            enabled: false,
+            speed: 0
         }
       },
       toolbar: {
@@ -96,7 +96,22 @@ function TimelineChartApex(props) {
         month: "MM",
         day: 'dd',
         hour: 'HH:mm',
-    },
+      },
+      axisBorder: {
+        show: true,
+        color: '#424446',
+        height: 1,
+        offsetX: 0,
+        offsetY: 0
+      },
+      axisTicks: {
+        show: true,
+        borderType: 'solid',
+        color: '#424446',
+        height: 6,
+        offsetX: 0,
+        offsetY: 0
+      },
     },
     yaxis: {
       labels: {
