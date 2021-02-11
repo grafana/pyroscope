@@ -39,7 +39,10 @@ function TimelineChartApex(props) {
       },
       events: {
         beforeZoom: function(chartContext, { xaxis }) {
-          console.log('xaxis...', xaxis)
+          setDateRange(
+            Math.round(xaxis.min / 1000),
+            Math.round(xaxis.max / 1000),
+          )
           return {
             xaxis: {
               min: xaxis.min,
