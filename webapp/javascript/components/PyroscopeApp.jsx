@@ -98,9 +98,6 @@ function PyroscopeApp(props) {
   const flotData = timeline
     ? [timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
     : [];
-
-  console.log('timeline: ', timeline);
-
   
   return (
     <div className="pyroscope-app">
