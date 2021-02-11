@@ -21,6 +21,27 @@ function TimelineChartApex(props) {
       width: "100%",
       type: "line"
     },
+    markers: {
+      size: 0,
+      colors: "#E8BE3F",
+      strokeColors: '#E8BE3F',
+      strokeWidth: 1,
+      strokeOpacity: 0.9,
+      strokeDashArray: 0,
+      fillOpacity: 1,
+      discrete: [],
+      shape: "circle",
+      radius: 2,
+      offsetX: 0,
+      offsetY: 0,
+      onClick: undefined,
+      onDblClick: undefined,
+      showNullDataPoints: true,
+      hover: {
+        size: undefined,
+        sizeOffset: 3
+      }
+    },
     series: series,
     xaxis: {
       type: 'datetime',
@@ -109,8 +130,6 @@ function TimelineChartApex(props) {
       },
       marker: {
         show: false,
-        strokeColors: '#fff',
-        strokeWidth: 1,
       },
     }
   }
