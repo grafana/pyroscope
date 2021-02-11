@@ -3,11 +3,14 @@ import { connect } from "react-redux";
 
 import { setDateRange } from "../redux/actions";
 import Chart from 'react-apexcharts'
+import moment from "moment";
+
 
 function TimelineChartApex(props) {
   const { from, until, setDateRange } = props;
 
-  
+  const dateFormat = "YYYY-MM-DD hh:mm A";
+
   let series = [
     {
       name: "CPU Load",
@@ -168,8 +171,9 @@ function TimelineChartApex(props) {
       },
       x: {
           show: true,
-          format: 'yyyy-MM-dd hh:mm',
-          formatter: undefined,
+          formatter: function(val, opts) {
+            return moment(val).format(dateFormat);
+          }
       },
       marker: {
         show: false,
