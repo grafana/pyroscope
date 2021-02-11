@@ -557,6 +557,10 @@ class ComparisonFlameGraphRenderer extends React.Component {
             timelineData={this.props.timeline || [[0, 0]]}
             id={`${this.props.side}-timeline-chart`}
             side={this.props.side}
+            leftFrom={this.props.leftFrom}
+            leftUntil={this.props.leftUntil}
+            rightFrom={this.props.rightFrom}
+            rightUntil={this.props.rightUntil}
           />
           <div className="flamegraph-container panes-wrapper">
             <div

@@ -40,17 +40,17 @@ ReduxQuerySync({
       action: setLeftFrom,
     },
     leftUntil: {
-      defaultValue: "now",
+      defaultValue: "now-30m",
       selector: (state) => state.leftUntil,
       action: setLeftUntil,
     },
     rightFrom: {
-      defaultValue: "now-1h",
+      defaultValue: "now-30m",
       selector: (state) => state.rightFrom,
       action: setRightFrom,
     },
     rightUntil: {
-      defaultValue: "now",
+      defaultValue: "now-1m",
       selector: (state) => state.rightUntil,
       action: setRightUntil,
     },

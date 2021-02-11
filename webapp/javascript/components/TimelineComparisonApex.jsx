@@ -3,12 +3,13 @@ import { connect } from "react-redux";
 
 import { setLeftDateRange, setRightDateRange } from "../redux/actions";
 import Chart from 'react-apexcharts'
-import ApexChart from 'react-apexcharts';
+// import ApexChart from 'react-apexcharts';
 import moment from "moment";
+import { formatAsOBject } from "../util/formatDate";
 
 
 function TimelineComparisonApex(props) {
-  const { from, until, timelineData, side, setLeftDateRange, setRightDateRange } = props;
+  const { leftFrom, leftUntil, rightFrom, rightUntil, timelineData, side, setLeftDateRange, setRightDateRange } = props;
 
   const dateFormat = "YYYY-MM-DD hh:mm A";
 
@@ -21,16 +22,16 @@ function TimelineComparisonApex(props) {
 
   let annotation = side == 'left' ?
     {
-      x: timelineData[0][0],
-      x2: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
+      x: formatAsOBject(leftFrom),
+      x2: formatAsOBject(leftUntil),
       fillColor: '#AEA2E0',
       label: {
         text: 'Left Chart'
       }
     } :
     {
-      x: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
-      x2: timelineData[timelineData.length - 1][0],
+      x: formatAsOBject(rightFrom),
+      x2: formatAsOBject(rightUntil),
       fillColor: '#83B5D8',
       label: {
         text: 'Right Chart'
