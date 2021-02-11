@@ -79,7 +79,6 @@ export default function (state = initialState, action) {
       };
     case RECEIVE_JSON:
       deltaDiff(action.payload.flamebearer.levels);
-      // console.log('timeline: ', decodeTimelineData(action.payload.timeline));
       return {
         ...state,
         timeline: decodeTimelineData(action.payload.timeline),
