@@ -135,7 +135,9 @@ function TimelineChartApex(props) {
   }
   
   return (
-    <Chart id="timeline-chart" options={options} series={series} type="line" height={150} />
+    <div className="timeline-chart-container">
+      <Chart id="timeline-chart" options={options} series={series} type="line" height={150} />
+    </div>
   );
 }
 
