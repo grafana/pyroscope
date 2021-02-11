@@ -19,7 +19,28 @@ function TimelineComparisonApex(props) {
     }
   ]
 
+  let annotation = side == 'left' ?
+    {
+      x: timelineData[0][0],
+      x2: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
+      fillColor: '#AEA2E0',
+      label: {
+        text: 'Left Chart'
+      }
+    } :
+    {
+      x: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
+      x2: timelineData[timelineData.length - 1][0],
+      fillColor: '#83B5D8',
+      label: {
+        text: 'Right Chart'
+      }
+    }
+
   let options = {
+    annotations: {
+      xaxis: [annotation]
+    },
     chart: {
       height: 380,
       width: "100%",

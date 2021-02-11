@@ -24,17 +24,17 @@ function TimelineChartApex(props) {
         {
           x: timelineData[0][0],
           x2: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
-          fillColor: '#B3F7CA',
+          fillColor: '#AEA2E0',
           label: {
-            text: 'X-axis range1'
+            text: 'Left Chart'
           }
         },
         {
           x: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
           x2: timelineData[timelineData.length - 1][0],
-          fillColor: '#ff0000',
+          fillColor: '#83B5D8',
           label: {
-            text: 'X-axis range2'
+            text: 'Right Chart'
           }
         }]
     },
