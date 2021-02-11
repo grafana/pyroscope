@@ -38,6 +38,7 @@ import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
 import TimelineComparison from "./TimelineComparison";
+import TimelineComparisonApex from "./TimelineComparisonApex";
 import { deltaDiff } from "../util/flamebearer";
 
 const PX_PER_LEVEL = 18;
@@ -180,9 +181,13 @@ class ComparisonFlameGraphRenderer extends React.Component {
   getParamsFromRenderURL(inputURL) {
     let urlParamsRegexp = /(\/render\?)(?<urlParams>(.*))/
     let paramsString = inputURL.match(urlParamsRegexp);
-  
-    let params = new URLSearchParams(paramsString.groups.urlParams);
-    let paramsObj = this.paramsToObject(params);
+    let paramsObj = {}
+
+    if (paramsString) {
+      let params = new URLSearchParams(paramsString.groups.urlParams);
+      paramsObj = this.paramsToObject(params);
+    }
+
 
     return paramsObj
   }
@@ -540,13 +545,18 @@ class ComparisonFlameGraphRenderer extends React.Component {
             updateView={this.updateView}
             resetStyle={this.state.resetStyle}
           />
-          <TimelineComparison
+          {/* <TimelineComparison
             id={`${this.props.side}-timeline-chart`}
             side={this.props.side}
             options={flotOptions}
             data={flotData}
             width="100%"
             height="100px"
+          /> */}
+          <TimelineComparisonApex 
+            timelineData={this.props.timeline || [[0, 0]]}
+            id={`${this.props.side}-timeline-chart`}
+            side={this.props.side}
           />
           <div className="flamegraph-container panes-wrapper">
             <div
@@ -598,6 +608,7 @@ class ComparisonFlameGraphRenderer extends React.Component {
 }
 
 const mapStateToProps = (state) => ({
+  timeline: state.timeline,
   renderURL: buildRenderURL(state),
   leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
   rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),

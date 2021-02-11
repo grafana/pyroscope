@@ -119,7 +119,7 @@ function PyroscopeApp(props) {
           width="100%"
           height="100px"
         /> */}
-        {/* <TimelineChartApex data={timeline || [[0, 0]]}/> */}
+        <TimelineChartApex data={timeline || [[0, 0]]}/>
         {/* <FlameGraphRenderer /> */}
         <div className="container-container">
           <ComparisonFlameGraphRenderer 
