@@ -59,7 +59,7 @@ function Header(props) {
       <button
         type="button"
         style={{
-          marginRight: "5px",
+          marginRight: "6px",
           backgroundColor: "#C3170D",
           color: "white",
         }}
