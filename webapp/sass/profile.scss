@@ -377,6 +377,11 @@ body,
   flex-direction: column;
 }
 
+.sidebar-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
 .main-wrapper {
   flex: 1 0 auto;
 }
@@ -451,6 +456,10 @@ $logo-width: $sidebar-size * 2 / 3;
 $logo-offset: ($sidebar-size - $logo-width) / 2;
 $sidebar-tooltip-color: #777;
 
+.ReactModal__Overlay {
+  z-index: 2;
+}
+
 .sidebar {
   width: $sidebar-size;
   position: fixed;
@@ -458,7 +467,7 @@ $sidebar-tooltip-color: #777;
   flex-direction: column;
   background-color: rgba(#fff, 0.13);
   height: 100vh;
-  z-index: 10000000;
+  z-index: 1;
 
   .logo {
     margin: 0;
