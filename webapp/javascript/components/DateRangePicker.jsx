@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faClock } from "@fortawesome/free-solid-svg-icons";
 import OutsideClickHandler from "react-outside-click-handler";
 import CustomDatePicker from "./CustomDatePicker";
-import { setDateRange } from "../redux/actions";
+import { setDateRange, storePreviousDateRange } from "../redux/actions";
 
 const defaultPresets = [
   [
@@ -35,6 +35,8 @@ function DateRangePicker() {
 
   const [opened, setOpened] = useState(false);
   const [range, setRange] = useState();
+  const from = useSelector((state) => state.from);
+  const until = useSelector((state) => state.until);
 
   const toggleDropdown = () => {
     setOpened(!opened);
@@ -71,7 +73,12 @@ function DateRangePicker() {
                       x.label === range ? "active" : ""
                     }`}
                     key={x.label}
-                    onClick={() => selectPreset(x)}
+                    onClick={() => {
+                      dispatch(
+                        storePreviousDateRange({ from: from, until: until })
+                      );
+                      selectPreset(x);
+                    }}
                   >
                     {x.label}
                   </button>
@@ -83,6 +90,7 @@ function DateRangePicker() {
             setRange={setRange}
             dispatch={dispatch}
             setDateRange={setDateRange}
+            storePreviousDateRange={storePreviousDateRange}
           />
         </div>
       </OutsideClickHandler>
