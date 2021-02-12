@@ -79,7 +79,7 @@ const initialState = {
 };
 
 function PyroscopeApp(props) {
-  const { actions, shortcut, timeline, renderURL } = props;
+  const { actions, shortcut, timeline, renderURL, leftFrom, leftUntil, rightFrom, rightUntil } = props;
   const [state, setState] = useState(initialState);
   const prevPropsRef = useRef();
 
@@ -119,7 +119,13 @@ function PyroscopeApp(props) {
           width="100%"
           height="100px"
         /> */}
-        <TimelineChartApex timelineData={timeline || [[0, 0]]}/>
+        <TimelineChartApex 
+          timelineData={timeline || [[0, 0]]}
+          leftFrom={leftFrom}
+          leftUntil={leftUntil}
+          rightFrom={rightFrom}
+          rightUntil={rightUntil}
+        />
         {/* <FlameGraphRenderer /> */}
         <div className="container-container">
           <ComparisonFlameGraphRenderer 

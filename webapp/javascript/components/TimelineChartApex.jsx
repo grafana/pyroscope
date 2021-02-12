@@ -4,10 +4,11 @@ import { connect } from "react-redux";
 import { setDateRange } from "../redux/actions";
 import Chart from 'react-apexcharts'
 import moment from "moment";
+import { formatAsOBject } from "../util/formatDate";
 
 
 function TimelineChartApex(props) {
-  const { setDateRange, timelineData } = props;
+  const { setDateRange, timelineData, leftFrom, leftUntil, rightFrom, rightUntil } = props;
 
   const dateFormat = "YYYY-MM-DD hh:mm A";
 
@@ -22,21 +23,22 @@ function TimelineChartApex(props) {
     annotations: {
       xaxis: [
         {
-          x: timelineData[0][0],
-          x2: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
+          x: new Date(formatAsOBject(leftFrom)).getTime(),
+          x2: new Date(formatAsOBject(leftUntil)).getTime(),
           fillColor: '#AEA2E0',
           label: {
-            text: 'Left Chart'
+            text: undefined
           }
         },
         {
-          x: timelineData.length > 2 ? timelineData[Math.floor(timelineData.length / 2)][0] : timelineData[0][0],
-          x2: timelineData[timelineData.length - 1][0],
+          x: new Date(formatAsOBject(rightFrom)).getTime(),
+          x2: new Date(formatAsOBject(rightUntil)).getTime(),
           fillColor: '#83B5D8',
           label: {
-            text: 'Right Chart'
+            text: undefined
           }
-        }]
+        }
+      ]
     },
     chart: {
       height: 380,

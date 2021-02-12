@@ -26,7 +26,7 @@ function TimelineComparisonApex(props) {
       x2: new Date(formatAsOBject(leftUntil)).getTime(),
       fillColor: '#AEA2E0',
       label: {
-        text: 'Left Chart'
+        text: undefined
       }
     } :
     {
@@ -34,7 +34,7 @@ function TimelineComparisonApex(props) {
       x2: new Date(formatAsOBject(rightUntil)).getTime(),
       fillColor: '#83B5D8',
       label: {
-        text: 'Right Chart'
+        text: undefined
       }
     }
 
