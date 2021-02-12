@@ -35,6 +35,7 @@ const initialState = {
   rightUntil: "now-1m",
   labels: [{ name: "__name__", value: defaultName || "pyroscope.server.cpu" }],
   names: window.initialState.appNames,
+  maxNodes: 1024,
   timeline: null,
   flamebearer: null,
   isJSONLoading: false,

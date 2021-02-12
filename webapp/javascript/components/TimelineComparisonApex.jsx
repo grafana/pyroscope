@@ -22,16 +22,16 @@ function TimelineComparisonApex(props) {
 
   let annotation = side == 'left' ?
     {
-      x: formatAsOBject(leftFrom),
-      x2: formatAsOBject(leftUntil),
+      x: new Date(formatAsOBject(leftFrom)).getTime(),
+      x2: new Date(formatAsOBject(leftUntil)).getTime(),
       fillColor: '#AEA2E0',
       label: {
         text: 'Left Chart'
       }
     } :
     {
-      x: formatAsOBject(rightFrom),
-      x2: formatAsOBject(rightUntil),
+      x: new Date(formatAsOBject(rightFrom)).getTime(),
+      x2: new Date(formatAsOBject(rightUntil)).getTime(),
       fillColor: '#83B5D8',
       label: {
         text: 'Right Chart'
