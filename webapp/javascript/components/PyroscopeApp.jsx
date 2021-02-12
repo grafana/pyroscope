@@ -12,6 +12,7 @@ import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
 import { fetchNames } from "../redux/actions";
+import Sidebar from "./Sidebar";
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 const flotOptions = {
@@ -100,24 +101,27 @@ function PyroscopeApp(props) {
 
   return (
     <div className="pyroscope-app">
-      <div className="main-wrapper">
-        <Header />
-        <TimelineChart
-          id="timeline-chart"
-          options={flotOptions}
-          data={flotData}
-          width="100%"
-          height="100px"
-        />
-        <FlameGraphRenderer />
-        <Modal
-          isOpen={state.shortcutsModalOpen}
-          style={modalStyle}
-          appElement={document.getElementById("root")}
-        >
-          <div className="modal-close-btn" onClick={closeShortcutsModal} />
-          <ShortcutsModal closeModal={closeShortcutsModal} />
-        </Modal>
+      <div className="sidebar-wrapper">
+        <Sidebar showShortcutsModal={showShortcutsModal} />
+        <div className="main-wrapper">
+          <Header />
+          <TimelineChart
+            id="timeline-chart"
+            options={flotOptions}
+            data={flotData}
+            width="100%"
+            height="100px"
+          />
+          <FlameGraphRenderer />
+          <Modal
+            isOpen={state.shortcutsModalOpen}
+            style={modalStyle}
+            appElement={document.getElementById("root")}
+          >
+            <div className="modal-close-btn" onClick={closeShortcutsModal} />
+            <ShortcutsModal closeModal={closeShortcutsModal} />
+          </Modal>
+        </div>
       </div>
       <Footer />
     </div>

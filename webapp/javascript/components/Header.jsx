@@ -20,7 +20,6 @@ function Header(props) {
   const { areNamesLoading, isJSONLoading, labels } = props;
   return (
     <div className="navbar">
-      <h1 className="logo" />
       <div
         className={classNames("labels", {
           visible: !areNamesLoading,
@@ -42,33 +41,6 @@ function Header(props) {
     </div> */}
       {/* <LabelsFilter /> */}
       <div className="navbar-space-filler" />
-      <div className="navbar-links">
-        <span className="navbar-link">
-          <FontAwesomeIcon icon={faFile} />
-          &nbsp;
-          <a rel="noreferrer" target="_blank" href="https://pyroscope.io/docs">
-            Docs
-          </a>
-        </span>
-        <span className="navbar-link">
-          <SlackIcon />
-          &nbsp;
-          <a rel="noreferrer" target="_blank" href="https://pyroscope.io/slack">
-            Slack
-          </a>
-        </span>
-        <span className="navbar-link">
-          <FontAwesomeIcon icon={faGithub} />
-          &nbsp;
-          <a
-            rel="noreferrer"
-            target="_blank"
-            href="https://github.com/pyroscope-io/pyroscope"
-          >
-            GitHub
-          </a>
-        </span>
-      </div>
       <div
         className={classNames("navbar-spinner-container", {
           visible: isJSONLoading,

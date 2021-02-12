@@ -44,7 +44,7 @@ function ShortcutsModal(props) {
     <ShortcutConsumer>
       {({ shortcuts }) => (
         <div>
-          <h2 style={{ marginTop: 0 }}>🔥 Keyboard Shortcuts</h2>
+          <h2 style={{ marginTop: 0 }}>Keyboard Shortcuts</h2>
           <table className="shortcuts">
             <tbody>
               {shortcuts
