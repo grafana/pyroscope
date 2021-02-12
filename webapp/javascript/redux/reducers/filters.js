@@ -12,6 +12,7 @@ import {
   REQUEST_JSON,
   RECEIVE_NAMES,
   REQUEST_NAMES,
+  STORE_PREVIOUS_DATE_RANGE,
 } from "../actionTypes";
 
 import { deltaDiff } from "../../util/flamebearer";
@@ -23,6 +24,7 @@ const defaultName = window.initialState.appNames.find(
 const initialState = {
   from: "now-1h",
   until: "now",
+  previousDateRange: { from: "now-1h", until: "now" },
   labels: [{ name: "__name__", value: defaultName || "pyroscope.server.cpu" }],
   names: window.initialState.appNames,
   timeline: null,
@@ -39,6 +41,11 @@ export default function (state = initialState, action) {
         ...state,
         from: action.payload.from,
         until: action.payload.until,
+      };
+    case STORE_PREVIOUS_DATE_RANGE:
+      return {
+        ...state,
+        previousDateRange: action.payload.previousDateRangeObject,
       };
     case SET_FROM:
       return {
