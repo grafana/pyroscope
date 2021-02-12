@@ -11,11 +11,17 @@ import {
   RECEIVE_JSON,
   REQUEST_NAMES,
   RECEIVE_NAMES,
+  STORE_PREVIOUS_DATE_RANGE,
 } from "./actionTypes";
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
   payload: { from, until },
+});
+
+export const storePreviousDateRange = (previousDateRangeObject) => ({
+  type: STORE_PREVIOUS_DATE_RANGE,
+  payload: { previousDateRangeObject },
 });
 
 export const setFrom = (from) => ({ type: SET_FROM, payload: { from } });
