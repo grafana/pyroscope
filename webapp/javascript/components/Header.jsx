@@ -1,9 +1,7 @@
 import React from "react";
-import { connect } from "react-redux";
+import { connect, useDispatch, useSelector } from "react-redux";
 import "react-dom";
-
 import Spinner from "react-svg-spinner";
-
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFile } from "@fortawesome/free-solid-svg-icons";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
@@ -13,10 +11,17 @@ import RefreshButton from "./RefreshButton";
 import SlackIcon from "./SlackIcon";
 import Label from "./Label";
 import NameSelector from "./NameSelector";
-
-import { fetchNames } from "../redux/actions";
+import {
+  fetchNames,
+  setDateRange,
+  storePreviousDateRange,
+} from "../redux/actions";
 
 function Header(props) {
+  const from = useSelector((state) => state.from);
+  const until = useSelector((state) => state.until);
+  const previousDateRange = useSelector((state) => state.previousDateRange);
+  const dispatch = useDispatch();
   const { areNamesLoading, isJSONLoading, labels } = props;
   return (
     <div className="navbar">
@@ -51,6 +56,24 @@ function Header(props) {
       &nbsp;
       <RefreshButton />
       &nbsp;
+      <button
+        type="button"
+        style={{
+          marginRight: "5px",
+          backgroundColor: "#C3170D",
+          color: "white",
+        }}
+        type="submit"
+        className="btn"
+        onClick={() => {
+          dispatch(storePreviousDateRange({ from: from, until: until }));
+          dispatch(
+            setDateRange(previousDateRange.from, previousDateRange.until)
+          );
+        }}
+      >
+        Previous Time
+      </button>
       <DateRangePicker />
     </div>
   );
