@@ -4,9 +4,15 @@ import { useSelector } from "react-redux";
 import DatePicker from "react-datepicker";
 import { readableRange, formatAsOBject } from "../util/formatDate";
 
-function CustomDatePicker({ setRange, dispatch, setDateRange }) {
+function CustomDatePicker({
+  setRange,
+  dispatch,
+  setDateRange,
+  storePreviousDateRange,
+}) {
   const from = useSelector((state) => state.from);
   const until = useSelector((state) => state.until);
+  const previousDateRange = useSelector((state) => state.previousDateRange);
   const [warning, setWarning] = useState(false);
   const [selectedDate, setSelectedDate] = useState({
     from: formatAsOBject(from),
@@ -17,6 +23,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
     if (moment(selectedDate.from).isSameOrAfter(selectedDate.until)) {
       return setWarning(true);
     }
+    dispatch(storePreviousDateRange({ from: from, until: until }));
     dispatch(
       setDateRange(
         Math.round(selectedDate.from / 1000),
@@ -79,6 +86,24 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
         onClick={() => updateDateRange()}
       >
         Apply range
+      </button>
+      <button
+        style={{
+          marginTop: "20px",
+          marginLeft: "20px",
+          backgroundColor: "#C3170D",
+          color: "white",
+        }}
+        type="submit"
+        className="btn"
+        onClick={() => {
+          dispatch(storePreviousDateRange({ from: from, until: until }));
+          dispatch(
+            setDateRange(previousDateRange.from, previousDateRange.until)
+          );
+        }}
+      >
+        Previous Time
       </button>
     </div>
   );
