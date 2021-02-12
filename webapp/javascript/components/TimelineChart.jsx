@@ -7,12 +7,20 @@ import "react-flot/flot/jquery.flot.time.min";
 import "react-flot/flot/jquery.flot.selection.min";
 import "react-flot/flot/jquery.flot.crosshair.min";
 import { bindActionCreators } from "redux";
-import { setDateRange, receiveJSON } from "../redux/actions";
+import {
+  setDateRange,
+  receiveJSON,
+  storePreviousDateRange,
+} from "../redux/actions";
 
 class TimelineChart extends ReactFlot {
   componentDidMount() {
     this.draw();
     $(`#${this.props.id}`).bind("plotselected", (event, ranges) => {
+      this.props.actions.storePreviousDateRange({
+        from: this.props.from,
+        until: this.props.until,
+      });
       this.props.actions.setDateRange(
         Math.round(ranges.xaxis.from / 1000),
         Math.round(ranges.xaxis.to / 1000)
@@ -41,6 +49,7 @@ const mapDispatchToProps = (dispatch) => ({
     {
       setDateRange,
       receiveJSON,
+      storePreviousDateRange,
     },
     dispatch
   ),
