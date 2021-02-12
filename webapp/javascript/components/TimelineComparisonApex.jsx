@@ -235,7 +235,7 @@ function TimelineComparisonApex(props) {
   
   return (
     <div className="timeline-chart-container">
-      <Chart id="timeline-chart" options={options} series={series} type="line" height={150} />
+      <Chart options={options} series={series} type="line" height={150} />
     </div>
   );
 }

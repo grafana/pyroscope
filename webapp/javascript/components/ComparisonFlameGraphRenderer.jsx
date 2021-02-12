@@ -562,7 +562,7 @@ class ComparisonFlameGraphRenderer extends React.Component {
             rightFrom={this.props.rightFrom}
             rightUntil={this.props.rightUntil}
           />
-          <div className="flamegraph-container panes-wrapper">
+          <div className="flamegraph-container panes-wrapper comparison">
             <div
               className={clsx("pane", { hidden: this.state.view === "table" })}
             >

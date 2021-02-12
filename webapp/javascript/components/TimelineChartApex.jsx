@@ -20,20 +20,31 @@ function TimelineChartApex(props) {
   ]
 
   let options = {
+    stroke: {
+      color: '#ff0000',
+      opacity: 0.4,
+      width: 1
+    },
     annotations: {
       xaxis: [
         {
+          cssClass: 'yoyoyo',
           x: new Date(formatAsOBject(leftFrom)).getTime(),
           x2: new Date(formatAsOBject(leftUntil)).getTime(),
           fillColor: '#AEA2E0',
+          strokeDashArray: 0,
+          borderColor: '#AEA2E0',
           label: {
             text: undefined
           }
         },
         {
+          cssClass: 'hihihi',
           x: new Date(formatAsOBject(rightFrom)).getTime(),
           x2: new Date(formatAsOBject(rightUntil)).getTime(),
           fillColor: '#83B5D8',
+          strokeDashArray: 0,
+          borderColor: '#83B5D8',
           label: {
             text: undefined
           }
@@ -41,6 +52,7 @@ function TimelineChartApex(props) {
       ]
     },
     chart: {
+      offsetY: -10,
       height: 380,
       width: "100%",
       type: "line",
@@ -126,6 +138,7 @@ function TimelineChartApex(props) {
         offsetY: 0
       },
       axisTicks: {
+
         show: true,
         borderType: 'solid',
         color: '#424446',
@@ -147,7 +160,7 @@ function TimelineChartApex(props) {
     },
     grid: {
       show: false,
-      borderColor: '#90A4AE',
+      borderColor: '#424446',
       strokeDashArray: 0,
       position: 'back',
       xaxis: {

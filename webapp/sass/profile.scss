@@ -198,6 +198,7 @@ body {
 //   bottom: 0;
 // }
 
+
 .timeline-chart-container {
   padding: 0 15px;
 }
@@ -205,6 +206,7 @@ body {
 #timeline-chart {
   overflow: hidden;
   cursor: crosshair;
+  // border: 2px solid #353333;
 }
 
 .flot-tick-label.tickLabel {
@@ -226,8 +228,10 @@ $pane-width: 6px;
 
   .pane {
     flex: 1;
-    margin: 0 $pane-width;
+    // margin: 0 $pane-width;
     width: 100%;
+    padding: 10px;
+
     &.hidden {
       display: none;
     }
