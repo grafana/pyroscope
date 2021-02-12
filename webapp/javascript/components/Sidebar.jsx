@@ -39,12 +39,12 @@ function Sidebar(props) {
   return (
     <div className="sidebar">
       <h1 className="logo active" />
-      {/* <SidebarItem tooltipText="Compare - Coming Soon">
+      <SidebarItem tooltipText="Comparison View - Coming Soon">
         <button>
           <FontAwesomeIcon icon={faColumns} />
         </button>
       </SidebarItem>
-      <SidebarItem tooltipText="Alerts - Coming Soon">
+      {/* <SidebarItem tooltipText="Alerts - Coming Soon">
         <button>
           <FontAwesomeIcon icon={faBell} />
         </button>
