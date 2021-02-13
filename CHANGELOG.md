@@ -1,3 +1,18 @@
+## <small>0.0.21 (2021-02-13)</small>
+
+* adds ARCHITECTURE.md file ([658410d](https://github.com/pyroscope-io/pyroscope/commit/658410d))
+* adds comparison view button ([c6ee9e0](https://github.com/pyroscope-io/pyroscope/commit/c6ee9e0))
+* adds order to config fields, adds a sample config generator program, fixes #66 ([0569dc6](https://github.com/pyroscope-io/pyroscope/commit/0569dc6)), closes [#66](https://github.com/pyroscope-io/pyroscope/issues/66)
+* improves readme with simpler instructions ([a059050](https://github.com/pyroscope-io/pyroscope/commit/a059050))
+* simplifies python example ([a0e3cb5](https://github.com/pyroscope-io/pyroscope/commit/a0e3cb5))
+* styling fixes ([9fee8ae](https://github.com/pyroscope-io/pyroscope/commit/9fee8ae))
+* updates language names ([a1447dd](https://github.com/pyroscope-io/pyroscope/commit/a1447dd))
+* updates README with 2 step install process ([70954b9](https://github.com/pyroscope-io/pyroscope/commit/70954b9))
+* updates README with an updated diagram ([8f85bb4](https://github.com/pyroscope-io/pyroscope/commit/8f85bb4))
+* frontend: adds a sidebar, simplifies header ([2cdf22a](https://github.com/pyroscope-io/pyroscope/commit/2cdf22a))
+
+
+
 ## <small>0.0.20 (2021-02-08)</small>
 
 * fixes darwin build ([4907ade](https://github.com/pyroscope-io/pyroscope/commit/4907ade))
