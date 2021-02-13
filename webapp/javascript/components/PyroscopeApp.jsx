@@ -12,7 +12,6 @@ import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
 import { fetchNames } from "../redux/actions";
-import Sidebar from "./Sidebar";
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 const flotOptions = {
@@ -101,8 +100,6 @@ function PyroscopeApp(props) {
 
   return (
     <div className="pyroscope-app">
-      <div className="sidebar-wrapper">
-        <Sidebar showShortcutsModal={showShortcutsModal} />
         <div className="main-wrapper">
           <Header />
           <TimelineChart
@@ -122,7 +119,6 @@ function PyroscopeApp(props) {
             <ShortcutsModal closeModal={closeShortcutsModal} />
           </Modal>
         </div>
-      </div>
       <Footer />
     </div>
   );

@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import "react-dom";
 import clsx from "clsx";
 
 import Spinner from "react-svg-spinner";
 
+import { withShortcut } from "react-keybind";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFileAlt, faKeyboard, faColumns, faBell } from "@fortawesome/free-solid-svg-icons";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
@@ -34,8 +35,31 @@ function SidebarItem(props) {
   );
 }
 
+const initialState = {
+  shortcutsModalOpen: false,
+};
+
 function Sidebar(props) {
-  const { areNamesLoading, isJSONLoading, labels, showShortcutsModal } = props;
+  const { areNamesLoading, isJSONLoading, labels, shortcut } = props;
+
+  const [state, setState] = useState(initialState);
+  useEffect(() => {
+    shortcut.registerShortcut(
+      showShortcutsModal,
+      ["shift+?"],
+      "Shortcuts",
+      "Show Keyboard Shortcuts Modal"
+    );
+  }, []);
+
+  const showShortcutsModal = () => {
+    setState({ shortcutsModalOpen: true });
+  };
+
+  const closeShortcutsModal = () => {
+    setState({ shortcutsModalOpen: false });
+  };
+
   return (
     <div className="sidebar">
       <h1 className="logo active" />
@@ -78,4 +102,4 @@ function Sidebar(props) {
   );
 }
 
-export default connect((x) => x, { fetchNames })(Sidebar);
+export default connect((x) => x, { fetchNames })(withShortcut(Sidebar));

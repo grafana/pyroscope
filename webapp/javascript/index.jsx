@@ -6,10 +6,12 @@ import { ShortcutProvider } from "react-keybind";
 import store from "./redux/store";
 
 import PyroscopeApp from "./components/PyroscopeApp";
+import Sidebar from "./components/Sidebar";
 
 ReactDOM.render(
   <Provider store={store}>
     <ShortcutProvider>
+      <Sidebar />
       <PyroscopeApp />
     </ShortcutProvider>
   </Provider>,
