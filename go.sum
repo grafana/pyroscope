@@ -27,8 +27,8 @@ github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDk
 github.com/coreos/etcd v3.3.10+incompatible/go.mod h1:uF7uidLiAD3TWHmW31ZFd/JWoc32PjwdhPthX9715RE=
 github.com/coreos/go-etcd v2.0.0+incompatible/go.mod h1:Jez6KQU2B/sWsbdaef3ED8NzMklzPG4d5KIOhIy30Tk=
 github.com/coreos/go-semver v0.2.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=
-github.com/cosmtrek/air v1.21.2 h1:PwChdKs3qlSkKucKwwC04daw5eoy4SVgiEBQiHX5L9A=
-github.com/cosmtrek/air v1.21.2/go.mod h1:5EsgUqrBIHlW2ghNoevwPBEG1FQvF5XNulikjPte538=
+github.com/cosmtrek/air v1.12.2 h1:YBO3ThUrGNO95zoJDUQeleP3paP7ZkutHkRX3y6HTd4=
+github.com/cosmtrek/air v1.12.2/go.mod h1:5EsgUqrBIHlW2ghNoevwPBEG1FQvF5XNulikjPte538=
 github.com/cpuguy83/go-md2man v1.0.10/go.mod h1:SmD6nW6nTyfqj6ABTjUi3V3JVMnlJmwcJI5acqYI6dE=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/creack/pty v1.1.11 h1:07n33Z8lZxZ2qwegKbObQohDhXDQxiMMz1NOUGYlesw=
