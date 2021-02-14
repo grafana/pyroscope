@@ -9,6 +9,8 @@ import ReduxQuerySync from "redux-query-sync";
 import updateUrl from "./enhancers/updateUrl";
 
 import rootReducer from "./reducers";
+import history from "../util/history";
+
 import { setFrom, setUntil, setLabels, setMaxNodes } from "./actions";
 
 import { parseLabels, encodeLabels } from "../util/key";
@@ -52,6 +54,7 @@ ReduxQuerySync({
   },
   initialTruth: "location",
   replaceState: false,
+  history,
 });
 
 export default store;

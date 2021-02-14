@@ -66,6 +66,9 @@ func (ctrl *Controller) Start() {
 		if r.URL.Path == "/" {
 			ctrl.statsInc("index")
 			ctrl.renderIndexPage(dir, rw, r)
+		} else if r.URL.Path == "/comparison" {
+			ctrl.statsInc("index")
+			ctrl.renderIndexPage(dir, rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)
 		}
