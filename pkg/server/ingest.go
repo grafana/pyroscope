@@ -73,7 +73,8 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		t, err = tree.DeserializeNoDict(r.Body)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
+			return
 		}
 	} else {
 		parserFunc := convert.ParseIndividualLines
@@ -94,7 +95,8 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t, ip.spyName, ip.sampleRate)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return
 	}
 	ctrl.statsInc("ingest")
 	ctrl.statsInc("ingest:" + ip.spyName)
