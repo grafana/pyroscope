@@ -212,10 +212,21 @@ $pane-width: 6px;
   margin: 0 -$pane-width;
   display: flex;
 
+  &.vertical-orientation {
+    flex-direction: column;
+    flex: 1;
+  }
+
   .pane {
     flex: 1;
     margin: 0 $pane-width;
     width: 50%;
+
+    &.vertical-orientation {
+      width: 100%;
+      padding: 10px;
+    }
+    
     &.hidden {
       display: none;
     }
