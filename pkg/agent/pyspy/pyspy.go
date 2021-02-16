@@ -9,8 +9,8 @@ package pyspy
 import "C"
 import (
 	"errors"
-	"unsafe"
 	"time"
+	"unsafe"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 )
@@ -21,12 +21,12 @@ var bufferLength = 1024 * 64
 
 type PySpy struct {
 	dataPtr unsafe.Pointer
-	dataBuf     []byte
+	dataBuf []byte
 
 	errorBuf []byte
 	errorPtr unsafe.Pointer
 
-	pid      int
+	pid int
 }
 
 func Start(pid int) (spy.Spy, error) {
@@ -36,6 +36,7 @@ func Start(pid int) (spy.Spy, error) {
 	errorBuf := make([]byte, bufferLength)
 	errorPtr := unsafe.Pointer(&errorBuf[0])
 
+	// Sometimes pyspy doesn't initialize properly right after the process starts so we need to give it some time
 	// TODO: handle this better
 	time.Sleep(1 * time.Second)
 
@@ -46,8 +47,8 @@ func Start(pid int) (spy.Spy, error) {
 	}
 
 	return &PySpy{
-		dataPtr: dataPtr,
-		dataBuf:     dataBuf,
+		dataPtr:  dataPtr,
+		dataBuf:  dataBuf,
 		errorBuf: errorBuf,
 		errorPtr: errorPtr,
 		pid:      pid,

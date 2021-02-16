@@ -840,7 +840,7 @@ dependencies = [
 [[package]]
 name = "rbspy"
 version = "0.3.11"
-source = "git+https://github.com/pyroscope-io/rbspy?rev=c24b153#c24b15347ef9d3fb168872810b9e9990c335f607"
+source = "git+https://github.com/pyroscope-io/rbspy?rev=1136868#1136868b8a0a6e4d745efd91b4c527f0406b854d"
 dependencies = [
  "chrono",
  "clap",
@@ -864,7 +864,7 @@ dependencies = [
 [[package]]
 name = "rbspy-ruby-structs"
 version = "0.1.0"
-source = "git+https://github.com/pyroscope-io/rbspy?rev=c24b153#c24b15347ef9d3fb168872810b9e9990c335f607"
+source = "git+https://github.com/pyroscope-io/rbspy?rev=1136868#1136868b8a0a6e4d745efd91b4c527f0406b854d"
 
 [[package]]
 name = "rdrand"
