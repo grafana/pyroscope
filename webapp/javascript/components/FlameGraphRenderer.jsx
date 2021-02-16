@@ -485,9 +485,9 @@ class FlameGraphRenderer extends React.Component {
           updateView={this.updateView}
           resetStyle={this.state.resetStyle}
         />
-        <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.isVertical || false })}>
+        <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.orientation == "vertical" })}>
           <div
-            className={clsx("pane", { hidden: this.state.view === "icicle", "vertical-orientation": this.props.isVertical || false })}
+            className={clsx("pane", { hidden: this.state.view === "icicle", "vertical-orientation": this.props.orientation == "vertical" })}
           >
             <ProfilerTable
               flamebearer={this.state.flamebearer}
@@ -498,7 +498,7 @@ class FlameGraphRenderer extends React.Component {
             />
           </div>
           <div
-            className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.isVertical || false })}
+            className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.orientation == "vertical" })}
           >
             <canvas
               className="flamegraph-canvas"

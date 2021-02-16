@@ -112,7 +112,7 @@ function PyroscopeApp(props) {
             width="100%"
             height="100px"
           />
-          <FlameGraphRenderer />
+          <FlameGraphRenderer orientation={"horizontal"}/>
           <Modal
             isOpen={state.shortcutsModalOpen}
             style={modalStyle}
