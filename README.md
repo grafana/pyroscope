@@ -44,7 +44,7 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 * Snappy UI
 * Support for Go, Ruby and Python
 
-## Try pyroscope locally in 3 steps:
+## Try Pyroscope locally in 3 steps:
 
 ```shell
 # install pyroscope
@@ -59,7 +59,7 @@ pyroscope exec python manage.py runserver
 
 ## Documentation
 
-For more information on how to use Pyroscope with other programming languages, install it on Linux or use it in production environment check out our documentation:
+For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
 
 * [Getting Started](https://pyroscope.io/docs/)
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
