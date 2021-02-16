@@ -1,3 +1,13 @@
+## <small>0.0.22 (2021-02-16)</small>
+
+* fix upload URL to include existing path (#76) ([221988f](https://github.com/pyroscope-io/pyroscope/commit/221988f)), closes [#76](https://github.com/pyroscope-io/pyroscope/issues/76)
+* makes controller fail more gracefully when the db is closing ([ae5cc0f](https://github.com/pyroscope-io/pyroscope/commit/ae5cc0f))
+* updates contributors ([337cc12](https://github.com/pyroscope-io/pyroscope/commit/337cc12))
+* updates rbspy version, adds comments to rbspy and pyspy ([cbc5a7b](https://github.com/pyroscope-io/pyroscope/commit/cbc5a7b))
+* fix: unknown revision cosmtrek/air v1.21.2 => v1.12.2 (#75) ([9eaed48](https://github.com/pyroscope-io/pyroscope/commit/9eaed48)), closes [#75](https://github.com/pyroscope-io/pyroscope/issues/75)
+
+
+
 ## <small>0.0.21 (2021-02-13)</small>
 
 * adds ARCHITECTURE.md file ([658410d](https://github.com/pyroscope-io/pyroscope/commit/658410d))
