@@ -27,8 +27,8 @@ import { bindActionCreators } from "redux";
 
 import { withShortcut } from "react-keybind";
 
-import { fetchJSON } from "../redux/actions";
-import { buildRenderURL } from "../util/update_requests";
+import { receiveJSON } from "../redux/actions";
+import { buildRenderURL } from "../util/updateRequests";
 import {
   numberWithCommas,
   formatPercent,
@@ -37,6 +37,7 @@ import {
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
+import { deltaDiff } from "../util/flamebearer";
 
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
@@ -62,9 +63,11 @@ class FlameGraphRenderer extends React.Component {
       sortBy: "self",
       sortByDirection: "desc",
       view: "both",
+      flamebearer: null,
     };
     this.canvasRef = React.createRef();
     this.tooltipRef = React.createRef();
+    this.currentJSONController = null;
   }
 
   componentDidMount() {
@@ -87,19 +90,62 @@ class FlameGraphRenderer extends React.Component {
         "Reset Flamegraph View"
       );
     }
-    this.props.actions.fetchJSON(this.props.renderURL);
+    this.fetchFlameBearerData(this.props.renderURL);
   }
 
-  componentDidUpdate(prevProps) {
-    if (prevProps.renderURL != this.props.renderURL) {
-      this.props.actions.fetchJSON(this.props.renderURL);
-    }
-    if (
-      this.props.flamebearer &&
-      prevProps.flamebearer != this.props.flamebearer
+  componentDidUpdate(prevProps, prevState) {
+    if (this.getParamsFromRenderURL(this.props.renderURL).name != this.getParamsFromRenderURL(prevProps.renderURL).name ||
+      prevProps.from != this.props.from ||
+      prevProps.until != this.props.until ||
+      prevProps.maxNodes != this.props.maxNodes
     ) {
-      this.updateData(this.props.flamebearer);
+      this.fetchFlameBearerData(this.props.renderURL);
     }
+
+    if (
+      this.state.flamebearer &&
+      prevState.flamebearer != this.state.flamebearer
+    ) {
+      this.updateData(this.state.flamebearer);
+    }
+  }
+
+  fetchFlameBearerData(url) {
+    if (this.currentJSONController) {
+      this.currentJSONController.abort();
+    }
+    this.currentJSONController = new AbortController();
+
+    fetch(`${url}&format=json`, { signal: this.currentJSONController.signal })
+      .then((response) => response.json())
+      .then((data) => {
+        deltaDiff(data.flamebearer.levels);
+
+        this.setState({
+          flamebearer: data.flamebearer
+        })
+
+        this.props.actions.receiveJSON(data);
+      })
+      .finally();
+  }
+
+  getParamsFromRenderURL(inputURL) {
+    let urlParamsRegexp = /(.*render\?)(?<urlParams>(.*))/
+    let paramsString = inputURL.match(urlParamsRegexp);
+
+    let params = new URLSearchParams(paramsString.groups.urlParams);
+    let paramsObj = this.paramsToObject(params);
+
+    return paramsObj
+  }
+
+  paramsToObject(entries) {
+    const result = {}
+    for(const [key, value] of entries) { // each 'entry' is a [key, value] tupple
+      result[key] = value;
+    }
+    return result;
   }
 
   rect(ctx, x, y, w, h, radius) {
@@ -142,7 +188,7 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateData = () => {
-    const { names, levels, numTicks, sampleRate } = this.props.flamebearer;
+    const { names, levels, numTicks, sampleRate } = this.state.flamebearer;
     this.names = names;
     this.levels = levels;
     this.numTicks = numTicks;
@@ -311,7 +357,7 @@ class FlameGraphRenderer extends React.Component {
 
         const a = this.selectedLevel > i ? 0.33 : 1;
 
-        const { spyName } = this.props.flamebearer;
+        const { spyName } = this.state.flamebearer;
 
         let nodeColor;
         if (collapsed) {
@@ -444,7 +490,7 @@ class FlameGraphRenderer extends React.Component {
             className={clsx("pane", { hidden: this.state.view === "icicle" })}
           >
             <ProfilerTable
-              flamebearer={this.props.flamebearer}
+              flamebearer={this.state.flamebearer}
               sortByDirection={this.state.sortByDirection}
               sortBy={this.state.sortBy}
               updateSortBy={this.updateSortBy}
@@ -467,7 +513,7 @@ class FlameGraphRenderer extends React.Component {
         <div
           className={clsx("no-data-message", {
             visible:
-              this.props.flamebearer && this.props.flamebearer.numTicks === 0,
+              this.state.flamebearer && this.state.flamebearer.numTicks === 0,
           })}
         >
           <span>
@@ -496,7 +542,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchJSON,
+      receiveJSON,
     },
     dispatch
   ),

@@ -26,8 +26,8 @@ const initialState = {
   labels: [{ name: "__name__", value: defaultName || "pyroscope.server.cpu" }],
   names: window.initialState.appNames,
   timeline: null,
-  flamebearer: null,
   isJSONLoading: false,
+  maxNodes: 1024,
 };
 
 window.uniqBy = uniqBy;
