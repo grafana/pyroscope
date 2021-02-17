@@ -10,7 +10,7 @@ export default function updateUrl(paths, config) {
     ...config,
   };
 
-  const { merge, slicer } = cfg;
+  const { merge } = cfg;
 
   return (next) => (reducer, initialState, enhancer) => {
     if (typeof initialState === "function" && typeof enhancer === "undefined") {
@@ -40,7 +40,6 @@ export default function updateUrl(paths, config) {
     }
 
     const store = next(reducer, finalInitialState, enhancer);
-    const slicerFn = slicer(paths);
 
     store.subscribe(() => {
       const state = store.getState();
