@@ -10,7 +10,7 @@ export default function updateUrl(paths, config) {
     ...config,
   };
 
-  const { merge, slicer, serialize, deserialize } = cfg;
+  const { merge, slicer } = cfg;
 
   return (next) => (reducer, initialState, enhancer) => {
     if (typeof initialState === "function" && typeof enhancer === "undefined") {
@@ -18,7 +18,6 @@ export default function updateUrl(paths, config) {
       initialState = undefined;
     }
 
-    let persistedState;
     let finalInitialState;
 
     try {
@@ -45,7 +44,6 @@ export default function updateUrl(paths, config) {
 
     store.subscribe(() => {
       const state = store.getState();
-      const subset = slicerFn(state);
 
       try {
         const queryString = window.location.search;

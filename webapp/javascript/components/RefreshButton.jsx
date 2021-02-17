@@ -9,7 +9,11 @@ function RefreshButton() {
   const dispatch = useDispatch();
   return (
     <div>
-      <button className="btn refresh-btn" onClick={() => dispatch(refresh())}>
+      <button
+        type="button"
+        className="btn refresh-btn"
+        onClick={() => dispatch(refresh())}
+      >
         <FontAwesomeIcon icon={faSyncAlt} />
       </button>
     </div>

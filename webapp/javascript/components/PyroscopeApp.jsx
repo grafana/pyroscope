@@ -76,16 +76,8 @@ const initialState = {
 };
 
 function PyroscopeApp(props) {
-  const { actions, shortcut, timeline } = props;
+  const { shortcut, timeline } = props;
   const [state, setState] = useState(initialState);
-  useEffect(() => {
-    shortcut.registerShortcut(
-      showShortcutsModal,
-      ["shift+?"],
-      "Shortcuts",
-      "Show Keyboard Shortcuts Modal"
-    );
-  }, []);
 
   const showShortcutsModal = () => {
     setState({ shortcutsModalOpen: true });
@@ -94,6 +86,14 @@ function PyroscopeApp(props) {
   const closeShortcutsModal = () => {
     setState({ shortcutsModalOpen: false });
   };
+  useEffect(() => {
+    shortcut.registerShortcut(
+      showShortcutsModal,
+      ["shift+?"],
+      "Shortcuts",
+      "Show Keyboard Shortcuts Modal"
+    );
+  }, []);
 
   const flotData = timeline
     ? [timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
