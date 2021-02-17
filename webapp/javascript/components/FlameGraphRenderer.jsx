@@ -119,10 +119,13 @@ class FlameGraphRenderer extends React.Component {
     fetch(`${url}&format=json`, { signal: this.currentJSONController.signal })
       .then((response) => response.json())
       .then((data) => {
-        deltaDiff(data.flamebearer.levels);
+        let flamebearer = data.flamebearer;
+        console.log('flamebearer before:', flamebearer)
+        deltaDiff(flamebearer.levels);
+        console.log('flamebearer after:', flamebearer)
 
         this.setState({
-          flamebearer: data.flamebearer
+          flamebearer: flamebearer
         })
 
         this.props.actions.receiveJSON(data);
@@ -175,9 +178,9 @@ class FlameGraphRenderer extends React.Component {
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
       this.selectedLevel = i;
       this.topLevel = 0;
-      this.rangeMin = this.levels[i][j] / this.numTicks;
+      this.rangeMin = this.state.levels[i][j] / this.state.numTicks;
       this.rangeMax =
-        (this.levels[i][j] + this.levels[i][j + 1]) / this.numTicks;
+        (this.state.levels[i][j] + this.state.levels[i][j + 1]) / this.state.numTicks;
     } else {
       this.selectedLevel = 0;
       this.topLevel = 0;
@@ -189,10 +192,13 @@ class FlameGraphRenderer extends React.Component {
 
   updateData = () => {
     const { names, levels, numTicks, sampleRate } = this.state.flamebearer;
-    this.names = names;
-    this.levels = levels;
-    this.numTicks = numTicks;
-    this.sampleRate = sampleRate;
+    this.setState({
+      names: names,
+      levels: levels,
+      numTicks: numTicks,
+      sampleRate: sampleRate,
+    });
+
     this.renderCanvas();
   };
 
@@ -249,8 +255,8 @@ class FlameGraphRenderer extends React.Component {
 
   xyToBar = (x, y) => {
     const i = Math.floor(y / PX_PER_LEVEL) + this.topLevel;
-    if (i >= 0 && i < this.levels.length) {
-      const j = this.binarySearchLevel(x, this.levels[i], this.tickToX);
+    if (i >= 0 && i < this.state.levels.length) {
+      const j = this.binarySearchLevel(x, this.state.levels[i], this.tickToX);
       return { i, j };
     }
     return { i: 0, j: 0 };
@@ -276,7 +282,7 @@ class FlameGraphRenderer extends React.Component {
     this.renderCanvas();
   };
 
-  tickToX = (i) => (i - this.numTicks * this.rangeMin) * this.pxPerTick;
+  tickToX = (i) => (i - this.state.numTicks * this.rangeMin) * this.pxPerTick;
 
   updateView = (newView) => {
     this.setState({
@@ -287,11 +293,11 @@ class FlameGraphRenderer extends React.Component {
   };
 
   renderCanvas = () => {
-    if (!this.names) {
+    if (!this.state.names) {
       return;
     }
 
-    const { names, levels, numTicks, sampleRate } = this;
+    const { names, levels, numTicks, sampleRate } = this.state;
     this.graphWidth = this.canvas.width = this.canvas.clientWidth;
     this.pxPerTick =
       this.graphWidth / numTicks / (this.rangeMax - this.rangeMin);
@@ -308,11 +314,11 @@ class FlameGraphRenderer extends React.Component {
     this.ctx.font =
       '400 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
-    const df = new DurationFormater(this.numTicks / this.sampleRate);
+    const df = new DurationFormater(this.state.numTicks / this.state.sampleRate);
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
-
+      console.log('level: ', level);
       for (let j = 0; j < level.length; j += 4) {
         // j = 0: x start of bar
         // j = 1: width of bar
@@ -406,7 +412,7 @@ class FlameGraphRenderer extends React.Component {
 
     this.canvas.style.cursor = "pointer";
 
-    const level = this.levels[i];
+    const level = this.state.levels[i];
     const x = Math.max(this.tickToX(level[j]), 0);
     const y = (i - this.topLevel) * PX_PER_LEVEL;
     const sw = Math.min(
@@ -416,14 +422,14 @@ class FlameGraphRenderer extends React.Component {
 
     const tooltipEl = this.tooltipRef.current;
     const numBarTicks = level[j + 1];
-    const percent = formatPercent(numBarTicks / this.numTicks);
+    const percent = formatPercent(numBarTicks / this.state.numTicks);
 
     // a little hacky but this is here so that we can get tooltipWidth after text is updated.
-    const tooltipTitle = this.names[level[j + 3]];
+    const tooltipTitle = this.state.names[level[j + 3]];
     tooltipEl.children[0].innerText = tooltipTitle;
     const tooltipWidth = tooltipEl.clientWidth;
 
-    const df = new DurationFormater(this.numTicks / this.sampleRate);
+    const df = new DurationFormater(this.state.numTicks / this.state.sampleRate);
 
     this.setState({
       highlightStyle: {
@@ -446,7 +452,7 @@ class FlameGraphRenderer extends React.Component {
       tooltipTitle,
       tooltipSubtitle: `${percent}, ${numberWithCommas(
         numBarTicks
-      )} samples, ${df.format(numBarTicks / this.sampleRate)}`,
+      )} samples, ${df.format(numBarTicks / this.state.sampleRate)}`,
     });
   };
 
