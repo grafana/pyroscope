@@ -19,6 +19,10 @@
   <a href="https://pyroscope.io/slack">Slack</a>
 </h2>
 
+#### _Read this in other languages._
+<kbd>[<img title="中文 (Simplified)" alt="中文 (Simplified)" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/cn.svg" width="22">](translations/README.ch.md)</kbd>
+
+
 Pyroscope is an open source continuous profiling platform. It will help you:
 * Find performance issues in your code
 * Resolve issues with high CPU utilization
