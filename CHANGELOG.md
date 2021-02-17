@@ -1,3 +1,13 @@
+## <small>0.0.23 (2021-02-17)</small>
+
+* Add translations structure (#81) ([05b9fa8](https://github.com/pyroscope-io/pyroscope/commit/05b9fa8)), closes [#81](https://github.com/pyroscope-io/pyroscope/issues/81)
+* Create README.ch.md ([fe33f46](https://github.com/pyroscope-io/pyroscope/commit/fe33f46))
+* Update diagram in CH version ([72d98c6](https://github.com/pyroscope-io/pyroscope/commit/72d98c6))
+* Update README.md ([b1cfe82](https://github.com/pyroscope-io/pyroscope/commit/b1cfe82))
+* updates rbspy version (relative filenames update) ([a58d354](https://github.com/pyroscope-io/pyroscope/commit/a58d354))
+
+
+
 ## <small>0.0.22 (2021-02-16)</small>
 
 * fix upload URL to include existing path (#76) ([221988f](https://github.com/pyroscope-io/pyroscope/commit/221988f)), closes [#76](https://github.com/pyroscope-io/pyroscope/issues/76)
