@@ -23,6 +23,7 @@
   },
   "env": {
     "browser": true,
-    "node": true
+    "node": true,
+    "jquery": true
   }
 }
