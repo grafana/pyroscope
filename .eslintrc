@@ -12,7 +12,7 @@
     "no-use-before-define": ["warn"],
     "no-restricted-globals": ["warn"],
     "react/button-has-type": ["warn"],
-    "react/prop-types": ["warn"],
+    "react/prop-types": ["off"],
     "jsx-a11y/heading-has-content": ["warn"],
     "jsx-a11y/control-has-associated-label": ["warn"],
     "no-undef": ["warn"],
