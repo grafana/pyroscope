@@ -81,7 +81,7 @@ pyroscope exec python manage.py runserver
 
 ## 怎樣貢獻
 
-如果想當貢獻者，請查看我們的貢獻說明書。 [Contributing Guide](/CONTRIBUTING.md)
+如果想當貢獻者，請查看我們的貢獻說明書 [Contributing Guide](/CONTRIBUTING.md).
 
 ### 感謝全部幫助發展Pyroscope的貢獻者！
 
