@@ -63,7 +63,7 @@ pyroscope exec python manage.py runserver
 
 ## 部署圖樣
 
-![Deployment Diagram](.github/markdown-images/deployment.svg)
+![Deployment Diagram](../.github/markdown-images/deployment.svg)
 
 ## 怎樣下載
 
