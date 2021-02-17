@@ -78,11 +78,11 @@ export default function (state = initialState, action) {
         isJSONLoading: true,
       };
     case RECEIVE_JSON:
-      deltaDiff(action.payload.flamebearer.levels);
+      // deltaDiff(action.payload.flamebearer.levels);
       return {
         ...state,
         timeline: decodeTimelineData(action.payload.timeline),
-        flamebearer: action.payload.flamebearer,
+        // flamebearer: action.payload.flamebearer,
         isJSONLoading: false,
       };
     case REQUEST_NAMES:
