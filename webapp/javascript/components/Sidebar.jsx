@@ -34,7 +34,7 @@ function Sidebar(props) {
   const { showShortcutsModal } = props;
   return (
     <div className="sidebar">
-      <h1 className="logo active" />
+      <span className="logo active" />
       <SidebarItem tooltipText="Comparison View - Coming Soon">
         <button type="button">
           <FontAwesomeIcon icon={faColumns} />

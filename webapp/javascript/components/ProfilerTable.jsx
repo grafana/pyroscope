@@ -28,6 +28,26 @@ const generateTable = (flamebearer) => {
   return Object.values(hash);
 };
 
+function getPackageNameFromStackTrace(spyName, stackTrace) {
+  // TODO: actually make sure these make sense and add tests
+  const regexpLookup = {
+    pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
+    rbspy: /^(?<func>.+? - )?(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+  };
+
+  if (stackTrace.length === 0) {
+    return stackTrace;
+  }
+  const regexp = regexpLookup[spyName] || regexpLookup.default;
+  const fullStackGroups = stackTrace.match(regexp);
+  if (fullStackGroups) {
+    return fullStackGroups.groups.packageName;
+  }
+  return stackTrace;
+}
+
 function backgroundImageStyle(a, b, color) {
   const w = 148;
   const k = w - (a / b) * w;
@@ -150,24 +170,4 @@ function TableBody({ flamebearer, sortBy, sortByDirection }) {
       </tr>
     );
   });
-}
-
-function getPackageNameFromStackTrace(spyName, stackTrace) {
-  // TODO: actually make sure these make sense and add tests
-  const regexpLookup = {
-    pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
-    rbspy: /^(?<func>.+? - )?(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-  };
-
-  if (stackTrace.length === 0) {
-    return stackTrace;
-  }
-  const regexp = regexpLookup[spyName] || regexpLookup.default;
-  const fullStackGroups = stackTrace.match(regexp);
-  if (fullStackGroups) {
-    return fullStackGroups.groups.packageName;
-  }
-  return stackTrace;
 }
