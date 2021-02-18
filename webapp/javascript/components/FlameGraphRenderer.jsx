@@ -27,7 +27,8 @@ import { bindActionCreators } from "redux";
 
 import { withShortcut } from "react-keybind";
 
-import { buildRenderURL } from "../util/updateRequests";
+import { fetchJSON } from "../redux/actions";
+import { buildRenderURL } from "../util/update_requests";
 import {
   numberWithCommas,
   formatPercent,
@@ -37,7 +38,6 @@ import {
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
-import { deltaDiff } from "../util/flamebearer";
 
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
@@ -54,11 +54,9 @@ class FlameGraphRenderer extends React.Component {
       sortBy: "self",
       sortByDirection: "desc",
       view: "both",
-      flamebearer: null,
     };
     this.canvasRef = React.createRef();
     this.tooltipRef = React.createRef();
-    this.currentJSONController = null;
   }
 
   componentDidMount() {
@@ -81,63 +79,19 @@ class FlameGraphRenderer extends React.Component {
         "Reset Flamegraph View"
       );
     }
-    this.fetchFlameBearerData(this.props.renderURL);
+    this.props.actions.fetchJSON(this.props.renderURL);
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    if (this.getParamsFromRenderURL(this.props.renderURL).name != this.getParamsFromRenderURL(prevProps.renderURL).name ||
-      prevProps.from != this.props.from ||
-      prevProps.until != this.props.until ||
-      prevProps.maxNodes != this.props.maxNodes
-    ) {
-      this.fetchFlameBearerData(this.props.renderURL);
+  componentDidUpdate(prevProps) {
+    if (prevProps.renderURL != this.props.renderURL) {
+      this.props.actions.fetchJSON(this.props.renderURL);
     }
-
     if (
-      this.state.flamebearer &&
-      prevState.flamebearer != this.state.flamebearer
+      this.props.flamebearer &&
+      prevProps.flamebearer != this.props.flamebearer
     ) {
-      this.updateData();
+      this.updateData(this.props.flamebearer);
     }
-  }
-
-  fetchFlameBearerData(url) {
-    if (this.currentJSONController) {
-      this.currentJSONController.abort();
-    }
-    this.currentJSONController = new AbortController();
-
-    fetch(`${url}&format=json`, { signal: this.currentJSONController.signal })
-      .then((response) => response.json())
-      .then((data) => {
-        let flamebearer = data.flamebearer;
-        deltaDiff(flamebearer.levels);
-
-        this.setState({
-          flamebearer: flamebearer
-        }, () => {
-          this.updateData();
-        })
-      })
-      .finally();
-  }
-
-  getParamsFromRenderURL(inputURL) {
-    let urlParamsRegexp = /(.*render\?)(?<urlParams>(.*))/
-    let paramsString = inputURL.match(urlParamsRegexp);
-
-    let params = new URLSearchParams(paramsString.groups.urlParams);
-    let paramsObj = this.paramsToObject(params);
-
-    return paramsObj
-  }
-
-  paramsToObject(entries) {
-    const result = {}
-    for(const [key, value] of entries) { // each 'entry' is a [key, value] tupple
-      result[key] = value;
-    }
-    return result;
   }
 
   rect(ctx, x, y, w, h, radius) {
@@ -167,9 +121,9 @@ class FlameGraphRenderer extends React.Component {
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
       this.selectedLevel = i;
       this.topLevel = 0;
-      this.rangeMin = this.state.levels[i][j] / this.state.numTicks;
+      this.rangeMin = this.levels[i][j] / this.numTicks;
       this.rangeMax =
-        (this.state.levels[i][j] + this.state.levels[i][j + 1]) / this.state.numTicks;
+        (this.levels[i][j] + this.levels[i][j + 1]) / this.numTicks;
     } else {
       this.selectedLevel = 0;
       this.topLevel = 0;
@@ -180,15 +134,12 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateData = () => {
-    const { names, levels, numTicks, sampleRate } = this.state.flamebearer;
-    this.setState({
-      names: names,
-      levels: levels,
-      numTicks: numTicks,
-      sampleRate: sampleRate,
-    }, () => {
-      this.renderCanvas();
-    });
+    const { names, levels, numTicks, sampleRate } = this.props.flamebearer;
+    this.names = names;
+    this.levels = levels;
+    this.numTicks = numTicks;
+    this.sampleRate = sampleRate;
+    this.renderCanvas();
   };
 
   // binary search of a block in a stack level
@@ -232,8 +183,8 @@ class FlameGraphRenderer extends React.Component {
 
   xyToBar = (x, y) => {
     const i = Math.floor(y / PX_PER_LEVEL) + this.topLevel;
-    if (i >= 0 && i < this.state.levels.length) {
-      const j = this.binarySearchLevel(x, this.state.levels[i], this.tickToX);
+    if (i >= 0 && i < this.levels.length) {
+      const j = this.binarySearchLevel(x, this.levels[i], this.tickToX);
       return { i, j };
     }
     return { i: 0, j: 0 };
@@ -259,21 +210,22 @@ class FlameGraphRenderer extends React.Component {
     this.renderCanvas();
   };
 
-  tickToX = (i) => (i - this.state.numTicks * this.rangeMin) * this.pxPerTick;
+  tickToX = (i) => (i - this.numTicks * this.rangeMin) * this.pxPerTick;
 
   updateView = (newView) => {
     this.setState({
       view: newView,
     });
+    // console.log('render-canvas');
     setTimeout(this.renderCanvas, 0);
   };
 
   renderCanvas = () => {
-    if (!this.state.names) {
+    if (!this.names) {
       return;
     }
 
-    const { names, levels, numTicks, sampleRate } = this.state;
+    const { names, levels, numTicks, sampleRate } = this;
     this.graphWidth = this.canvas.width = this.canvas.clientWidth;
     this.pxPerTick =
       this.graphWidth / numTicks / (this.rangeMax - this.rangeMin);
@@ -290,10 +242,11 @@ class FlameGraphRenderer extends React.Component {
     this.ctx.font =
       '400 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
-    const df = new DurationFormater(this.state.numTicks / this.state.sampleRate);
+    const df = new DurationFormater(this.numTicks / this.sampleRate);
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
+
       for (let j = 0; j < level.length; j += 4) {
         // j = 0: x start of bar
         // j = 1: width of bar
@@ -338,7 +291,7 @@ class FlameGraphRenderer extends React.Component {
 
         const a = this.selectedLevel > i ? 0.33 : 1;
 
-        const { spyName } = this.state.flamebearer;
+        const { spyName } = this.props.flamebearer;
 
         let nodeColor;
         if (collapsed) {
@@ -387,7 +340,7 @@ class FlameGraphRenderer extends React.Component {
 
     this.canvas.style.cursor = "pointer";
 
-    const level = this.state.levels[i];
+    const level = this.levels[i];
     const x = Math.max(this.tickToX(level[j]), 0);
     const y = (i - this.topLevel) * PX_PER_LEVEL;
     const sw = Math.min(
@@ -397,14 +350,14 @@ class FlameGraphRenderer extends React.Component {
 
     const tooltipEl = this.tooltipRef.current;
     const numBarTicks = level[j + 1];
-    const percent = formatPercent(numBarTicks / this.state.numTicks);
+    const percent = formatPercent(numBarTicks / this.numTicks);
 
     // a little hacky but this is here so that we can get tooltipWidth after text is updated.
-    const tooltipTitle = this.state.names[level[j + 3]];
+    const tooltipTitle = this.names[level[j + 3]];
     tooltipEl.children[0].innerText = tooltipTitle;
     const tooltipWidth = tooltipEl.clientWidth;
 
-    const df = new DurationFormater(this.state.numTicks / this.state.sampleRate);
+    const df = new DurationFormater(this.numTicks / this.sampleRate);
 
     this.setState({
       highlightStyle: {
@@ -427,7 +380,7 @@ class FlameGraphRenderer extends React.Component {
       tooltipTitle,
       tooltipSubtitle: `${percent}, ${numberWithCommas(
         numBarTicks
-      )} samples, ${df.format(numBarTicks / this.state.sampleRate)}`,
+      )} samples, ${df.format(numBarTicks / this.sampleRate)}`,
     });
   };
 
@@ -466,12 +419,12 @@ class FlameGraphRenderer extends React.Component {
           updateView={this.updateView}
           resetStyle={this.state.resetStyle}
         />
-        <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.orientation == "vertical" })}>
+        <div className="flamegraph-container panes-wrapper">
           <div
-            className={clsx("pane", { hidden: this.state.view === "icicle", "vertical-orientation": this.props.orientation == "vertical" })}
+            className={clsx("pane", { hidden: this.state.view === "icicle" })}
           >
             <ProfilerTable
-              flamebearer={this.state.flamebearer}
+              flamebearer={this.props.flamebearer}
               sortByDirection={this.state.sortByDirection}
               sortBy={this.state.sortBy}
               updateSortBy={this.updateSortBy}
@@ -479,7 +432,7 @@ class FlameGraphRenderer extends React.Component {
             />
           </div>
           <div
-            className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.orientation == "vertical" })}
+            className={clsx("pane", { hidden: this.state.view === "table" })}
           >
             <canvas
               className="flamegraph-canvas"
@@ -494,7 +447,7 @@ class FlameGraphRenderer extends React.Component {
         <div
           className={clsx("no-data-message", {
             visible:
-              this.state.flamebearer && this.state.flamebearer.numTicks === 0,
+              this.props.flamebearer && this.props.flamebearer.numTicks === 0,
           })}
         >
           <span>
@@ -522,7 +475,9 @@ const mapStateToProps = (state) => ({
 
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
-    { },
+    {
+      fetchJSON,
+    },
     dispatch
   ),
 });
