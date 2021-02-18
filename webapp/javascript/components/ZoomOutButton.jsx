@@ -14,7 +14,7 @@ function ZoomOutButton(props) {
 
   return (
     <div>
-      <button className="btn" onClick={zoomOut}>
+      <button type="button" className="btn" onClick={zoomOut}>
         &nbsp;
         <FontAwesomeIcon icon={faSearchMinus} />
         &nbsp;

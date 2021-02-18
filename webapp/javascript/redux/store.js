@@ -1,12 +1,10 @@
 import thunkMiddleware from "redux-thunk";
 import promiseMiddleware from "redux-promise";
 
-import { createStore, compose, applyMiddleware } from "redux";
-import persistState from "redux-localstorage";
+import { createStore, applyMiddleware } from "redux";
 import { composeWithDevTools } from "redux-devtools-extension";
 
 import ReduxQuerySync from "redux-query-sync";
-import updateUrl from "./enhancers/updateUrl";
 
 import rootReducer from "./reducers";
 import { setFrom, setUntil, setLabels, setMaxNodes } from "./actions";

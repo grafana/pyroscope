@@ -24,6 +24,7 @@ export default function ProfilerHeader({
       />
       &nbsp;
       <button
+        type="button"
         className={clsx("btn")}
         style={resetStyle}
         id="reset"
@@ -34,6 +35,7 @@ export default function ProfilerHeader({
       <div className="navbar-space-filler" />
       <div className="btn-group viz-switch">
         <button
+          type="button"
           className={clsx("btn", { active: view === "table" })}
           onClick={() => updateView("table")}
         >
@@ -41,6 +43,7 @@ export default function ProfilerHeader({
           &nbsp;&thinsp;Table
         </button>
         <button
+          type="button"
           className={clsx("btn", { active: view === "both" })}
           onClick={() => updateView("both")}
         >
@@ -48,6 +51,7 @@ export default function ProfilerHeader({
           &nbsp;&thinsp;Both
         </button>
         <button
+          type="button"
           className={clsx("btn", { active: view === "icicle" })}
           onClick={() => updateView("icicle")}
         >

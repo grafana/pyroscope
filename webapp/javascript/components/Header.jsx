@@ -4,13 +4,9 @@ import "react-dom";
 
 import Spinner from "react-svg-spinner";
 
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFile } from "@fortawesome/free-solid-svg-icons";
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import classNames from "classnames";
 import DateRangePicker from "./DateRangePicker";
 import RefreshButton from "./RefreshButton";
-import SlackIcon from "./SlackIcon";
 import Label from "./Label";
 import NameSelector from "./NameSelector";
 

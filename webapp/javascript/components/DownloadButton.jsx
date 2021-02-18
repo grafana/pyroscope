@@ -13,7 +13,7 @@ function RefreshButton(props) {
 
   return (
     <div>
-      <button className="btn" onClick={download}>
+      <button type="button" className="btn" onClick={download}>
         &nbsp;
         <FontAwesomeIcon icon={faDownload} />
         &nbsp;
