@@ -95,7 +95,7 @@ function PyroscopeApp(props) {
       "Shortcuts",
       "Show Keyboard Shortcuts Modal"
     );
-    if(prevPropsRef.renderURL != renderURL) {
+    if (prevPropsRef.renderURL != renderURL) {
       actions.fetchTimeline(renderURL);
     }
   }, [renderURL]);
@@ -117,7 +117,7 @@ function PyroscopeApp(props) {
             width="100%"
             height="100px"
           />
-          <FlameGraphRenderer orientation={"horizontal"}/>
+          <FlameGraphRenderer orientation="horizontal" />
           <Modal
             isOpen={state.shortcutsModalOpen}
             style={modalStyle}

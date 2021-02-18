@@ -44,9 +44,15 @@ export const removeLabel = (name) => ({
 
 export const refresh = (url) => ({ type: REFRESH, payload: { url } });
 
-export const requestTimeline = (url) => ({ type: REQUEST_TIMELINE, payload: { url } });
+export const requestTimeline = (url) => ({
+  type: REQUEST_TIMELINE,
+  payload: { url },
+});
 
-export const receiveTimeline = (data) => ({ type: RECEIVE_TIMELINE, payload: data });
+export const receiveTimeline = (data) => ({
+  type: RECEIVE_TIMELINE,
+  payload: data,
+});
 
 export const requestNames = () => ({ type: REQUEST_NAMES, payload: {} });
 
@@ -63,7 +69,9 @@ export function fetchTimeline(url) {
     }
     currentTimelineController = new AbortController();
     dispatch(requestTimeline(url));
-    return fetch(`${url}&format=json`, { signal: currentTimelineController.signal })
+    return fetch(`${url}&format=json`, {
+      signal: currentTimelineController.signal,
+    })
       .then((response) => response.json())
       .then((data) => {
         dispatch(receiveTimeline(data));
