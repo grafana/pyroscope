@@ -55,6 +55,23 @@ export const receiveNames = (names) => ({
   payload: { names },
 });
 
+let currentJSONController;
+export function fetchJSON(url) {
+  return (dispatch) => {
+    if (currentJSONController) {
+      currentJSONController.abort();
+    }
+    currentJSONController = new AbortController();
+    dispatch(requestJSON(url));
+    return fetch(`${url}&format=json`, { signal: currentJSONController.signal })
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveJSON(data));
+      })
+      .finally();
+  };
+}
+
 let currentNamesController;
 export function fetchNames() {
   return (dispatch) => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { connect } from "react-redux";
 import "react-dom";
 
@@ -11,7 +11,8 @@ import TimelineChart from "./TimelineChart";
 import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
-import { fetchNames } from "../redux/actions";
+import { buildRenderURL } from "../util/updateRequests";
+import { fetchNames, fetchJSON } from "../redux/actions";
 import Sidebar from "./Sidebar";
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
@@ -76,8 +77,9 @@ const initialState = {
 };
 
 function PyroscopeApp(props) {
-  const { shortcut, timeline } = props;
+  const { actions, renderURL, shortcut, timeline } = props;
   const [state, setState] = useState(initialState);
+  const prevPropsRef = useRef();
 
   const showShortcutsModal = () => {
     setState({ shortcutsModalOpen: true });
@@ -93,7 +95,10 @@ function PyroscopeApp(props) {
       "Shortcuts",
       "Show Keyboard Shortcuts Modal"
     );
-  }, []);
+    if(prevPropsRef.renderURL != renderURL) {
+      actions.fetchJSON(renderURL);
+    }
+  }, [renderURL]);
 
   const flotData = timeline
     ? [timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
@@ -130,11 +135,13 @@ function PyroscopeApp(props) {
 
 const mapStateToProps = (state) => ({
   ...state,
+  renderURL: buildRenderURL(state),
 });
 
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
+      fetchJSON,
       fetchNames,
     },
     dispatch

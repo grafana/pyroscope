@@ -129,8 +129,6 @@ class FlameGraphRenderer extends React.Component {
         }, () => {
           this.updateData();
         })
-
-        this.props.actions.receiveJSON(data);
       })
       .finally();
   }
