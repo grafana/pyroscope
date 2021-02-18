@@ -7,8 +7,8 @@ import {
   ADD_LABEL,
   REMOVE_LABEL,
   REFRESH,
-  REQUEST_JSON,
-  RECEIVE_JSON,
+  REQUEST_TIMELINE,
+  RECEIVE_TIMELINE,
   REQUEST_NAMES,
   RECEIVE_NAMES,
 } from "./actionTypes";
@@ -44,9 +44,9 @@ export const removeLabel = (name) => ({
 
 export const refresh = (url) => ({ type: REFRESH, payload: { url } });
 
-export const requestJSON = (url) => ({ type: REQUEST_JSON, payload: { url } });
+export const requestTimeline = (url) => ({ type: REQUEST_TIMELINE, payload: { url } });
 
-export const receiveJSON = (data) => ({ type: RECEIVE_JSON, payload: data });
+export const receiveTimeline = (data) => ({ type: RECEIVE_TIMELINE, payload: data });
 
 export const requestNames = () => ({ type: REQUEST_NAMES, payload: {} });
 
@@ -62,11 +62,11 @@ export function fetchTimeline(url) {
       currentTimelineController.abort();
     }
     currentTimelineController = new AbortController();
-    dispatch(requestJSON(url));
+    dispatch(requestTimeline(url));
     return fetch(`${url}&format=json`, { signal: currentTimelineController.signal })
       .then((response) => response.json())
       .then((data) => {
-        dispatch(receiveJSON(data));
+        dispatch(receiveTimeline(data));
       })
       .finally();
   };

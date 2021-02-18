@@ -27,7 +27,6 @@ import { bindActionCreators } from "redux";
 
 import { withShortcut } from "react-keybind";
 
-import { receiveJSON } from "../redux/actions";
 import { buildRenderURL } from "../util/updateRequests";
 import {
   numberWithCommas,
@@ -547,9 +546,7 @@ const mapStateToProps = (state) => ({
 
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
-    {
-      receiveJSON,
-    },
+    { },
     dispatch
   ),
 });

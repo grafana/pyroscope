@@ -8,13 +8,11 @@ import {
   REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
-  RECEIVE_JSON,
-  REQUEST_JSON,
+  RECEIVE_TIMELINE,
+  REQUEST_TIMELINE,
   RECEIVE_NAMES,
   REQUEST_NAMES,
 } from "../actionTypes";
-
-import { deltaDiff } from "../../util/flamebearer";
 
 const defaultName = window.initialState.appNames.find(
   (x) => x !== "pyroscope.server.cpu"
@@ -72,17 +70,15 @@ export default function (state = initialState, action) {
         ...state,
         labels: state.labels.filter((x) => x.name !== action.payload.name),
       };
-    case REQUEST_JSON:
+    case REQUEST_TIMELINE:
       return {
         ...state,
         isJSONLoading: true,
       };
-    case RECEIVE_JSON:
-      // deltaDiff(action.payload.flamebearer.levels);
+    case RECEIVE_TIMELINE:
       return {
         ...state,
         timeline: decodeTimelineData(action.payload.timeline),
-        // flamebearer: action.payload.flamebearer,
         isJSONLoading: false,
       };
     case REQUEST_NAMES:
