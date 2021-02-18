@@ -95,7 +95,7 @@ function PyroscopeApp(props) {
       "Shortcuts",
       "Show Keyboard Shortcuts Modal"
     );
-    if (prevPropsRef.renderURL != renderURL) {
+    if (prevPropsRef.renderURL !== renderURL) {
       actions.fetchTimeline(renderURL);
     }
   }, [renderURL]);

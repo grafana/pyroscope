@@ -30,6 +30,19 @@ const initialState = {
 
 window.uniqBy = uniqBy;
 
+function decodeTimelineData(timelineData) {
+  if (!timelineData) {
+    return [];
+  }
+  const res = [];
+  let time = timelineData.startTime;
+  return timelineData.samples.map((x) => {
+    const res = [time * 1000, x];
+    time += timelineData.durationDelta;
+    return res;
+  });
+}
+
 export default function (state = initialState, action) {
   switch (action.type) {
     case SET_DATE_RANGE:
@@ -103,15 +116,3 @@ export default function (state = initialState, action) {
   }
 }
 
-function decodeTimelineData(timelineData) {
-  if (!timelineData) {
-    return [];
-  }
-  const res = [];
-  let time = timelineData.startTime;
-  return timelineData.samples.map((x) => {
-    const res = [time * 1000, x];
-    time += timelineData.durationDelta;
-    return res;
-  });
-}
