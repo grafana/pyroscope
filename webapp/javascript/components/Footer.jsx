@@ -24,7 +24,6 @@ function buildInfo() {
 
 function Footer() {
   // let flags = BUILD_FLAGS.split("\n").map(x => x.replace("-X github.com/pyroscope-io/pyroscope/pkg/build.", ""));
-  // console.log(flags);
   return (
     <div className="footer">
       <span title={buildInfo()}>
