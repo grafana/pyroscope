@@ -106,7 +106,7 @@ class FlameGraphRenderer extends React.Component {
       this.state.flamebearer &&
       prevState.flamebearer != this.state.flamebearer
     ) {
-      this.updateData(this.state.flamebearer);
+      this.updateData();
     }
   }
 
@@ -126,6 +126,8 @@ class FlameGraphRenderer extends React.Component {
 
         this.setState({
           flamebearer: flamebearer
+        }, () => {
+          this.updateData();
         })
 
         this.props.actions.receiveJSON(data);
@@ -197,9 +199,9 @@ class FlameGraphRenderer extends React.Component {
       levels: levels,
       numTicks: numTicks,
       sampleRate: sampleRate,
+    }, () => {
+      this.renderCanvas();
     });
-
-    this.renderCanvas();
   };
 
   // binary search of a block in a stack level
