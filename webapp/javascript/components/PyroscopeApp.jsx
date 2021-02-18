@@ -12,7 +12,7 @@ import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
 import { buildRenderURL } from "../util/updateRequests";
-import { fetchNames, fetchJSON } from "../redux/actions";
+import { fetchNames, fetchTimeline } from "../redux/actions";
 import Sidebar from "./Sidebar";
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
@@ -96,7 +96,7 @@ function PyroscopeApp(props) {
       "Show Keyboard Shortcuts Modal"
     );
     if(prevPropsRef.renderURL != renderURL) {
-      actions.fetchJSON(renderURL);
+      actions.fetchTimeline(renderURL);
     }
   }, [renderURL]);
 
@@ -141,7 +141,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchJSON,
+      fetchTimeline,
       fetchNames,
     },
     dispatch

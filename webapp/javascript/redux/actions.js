@@ -55,15 +55,15 @@ export const receiveNames = (names) => ({
   payload: { names },
 });
 
-let currentJSONController;
-export function fetchJSON(url) {
+let currentTimelineController;
+export function fetchTimeline(url) {
   return (dispatch) => {
-    if (currentJSONController) {
-      currentJSONController.abort();
+    if (currentTimelineController) {
+      currentTimelineController.abort();
     }
-    currentJSONController = new AbortController();
+    currentTimelineController = new AbortController();
     dispatch(requestJSON(url));
-    return fetch(`${url}&format=json`, { signal: currentJSONController.signal })
+    return fetch(`${url}&format=json`, { signal: currentTimelineController.signal })
       .then((response) => response.json())
       .then((data) => {
         dispatch(receiveJSON(data));
