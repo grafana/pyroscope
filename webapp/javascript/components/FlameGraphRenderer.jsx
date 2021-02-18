@@ -119,9 +119,7 @@ class FlameGraphRenderer extends React.Component {
       .then((response) => response.json())
       .then((data) => {
         let flamebearer = data.flamebearer;
-        console.log('flamebearer before:', flamebearer)
         deltaDiff(flamebearer.levels);
-        console.log('flamebearer after:', flamebearer)
 
         this.setState({
           flamebearer: flamebearer
@@ -287,7 +285,6 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       view: newView,
     });
-    // console.log('render-canvas');
     setTimeout(this.renderCanvas, 0);
   };
 
@@ -317,7 +314,6 @@ class FlameGraphRenderer extends React.Component {
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
-      console.log('level: ', level);
       for (let j = 0; j < level.length; j += 4) {
         // j = 0: x start of bar
         // j = 1: width of bar
