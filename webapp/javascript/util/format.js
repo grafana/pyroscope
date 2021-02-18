@@ -60,3 +60,25 @@ export class DurationFormater {
     return `${number} ${this.suffix}` + (number == 1 ? '' : 's');
   }
 }
+
+
+export function getPackageNameFromStackTrace(spyName, stackTrace) {
+  // TODO: actually make sure these make sense and add tests
+  const regexpLookup = {
+    pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
+    rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
+    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+  };
+
+  if (stackTrace.length === 0) {
+    return stackTrace;
+  }
+  const regexp = regexpLookup[spyName] || regexpLookup.default;
+  const fullStackGroups = stackTrace.match(regexp);
+  if (fullStackGroups) {
+    return fullStackGroups.groups.packageName;
+  }
+  return stackTrace;
+}
+
