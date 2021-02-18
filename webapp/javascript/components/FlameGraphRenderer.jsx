@@ -88,7 +88,8 @@ class FlameGraphRenderer extends React.Component {
     if (this.getParamsFromRenderURL(this.props.renderURL).name != this.getParamsFromRenderURL(prevProps.renderURL).name ||
       prevProps.from != this.props.from ||
       prevProps.until != this.props.until ||
-      prevProps.maxNodes != this.props.maxNodes
+      prevProps.maxNodes != this.props.maxNodes ||
+      prevProps.refreshToken != this.props.refreshToken
     ) {
       this.fetchFlameBearerData(this.props.renderURL);
     }
