@@ -31,6 +31,7 @@ import { buildRenderURL } from "../util/updateRequests";
 import {
   numberWithCommas,
   formatPercent,
+  getPackageNameFromStackTrace,
   DurationFormater,
 } from "../util/format";
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
@@ -43,15 +44,6 @@ const COLLAPSE_THRESHOLD = 5;
 const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = "#48CE73"; // green
 const GAP = 0.5;
-
-// TODO: actually make sure these make sense and add tests
-const regexpLookup = {
-  pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
-  rbspy: /^(?<func>.+? - )?(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-  gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-  default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-};
-
 class FlameGraphRenderer extends React.Component {
   constructor() {
     super();
@@ -219,18 +211,6 @@ class FlameGraphRenderer extends React.Component {
     return -1;
   }
 
-  getPackageNameFromStackTrace(spyName, stackTrace) {
-    if (stackTrace.length == 0) {
-      return stackTrace;
-    }
-    const regexp = regexpLookup[spyName] || regexpLookup.default;
-    const fullStackGroups = stackTrace.match(regexp);
-    if (fullStackGroups) {
-      return fullStackGroups.groups.packageName;
-    }
-    return stackTrace;
-  }
-
   updateResetStyle = () => {
     // const emptyQuery = this.query === "";
     const topLevelSelected = this.selectedLevel === 0;
@@ -369,7 +349,7 @@ class FlameGraphRenderer extends React.Component {
           nodeColor = colorGreyscale(200, 0.66);
         } else {
           nodeColor = colorBasedOnPackageName(
-            this.getPackageNameFromStackTrace(spyName, names[level[j + 3]]),
+            getPackageNameFromStackTrace(spyName, names[level[j + 3]]),
             a
           );
         }
