@@ -53,14 +53,6 @@ function Sidebar(props) {
   const { areNamesLoading, isJSONLoading, labels, shortcut } = props;
 
   const [state, setState] = useState(initialState);
-  useEffect(() => {
-    shortcut.registerShortcut(
-      showShortcutsModal,
-      ["shift+?"],
-      "Shortcuts",
-      "Show Keyboard Shortcuts Modal"
-    );
-  }, []);
 
   const showShortcutsModal = () => {
     setState({ shortcutsModalOpen: true });
@@ -69,6 +61,15 @@ function Sidebar(props) {
   const closeShortcutsModal = () => {
     setState({ shortcutsModalOpen: false });
   };
+
+  useEffect(() => {
+    shortcut.registerShortcut(
+      showShortcutsModal,
+      ["shift+?"],
+      "Shortcuts",
+      "Show Keyboard Shortcuts Modal"
+    );
+  }, []);
 
   return (
     <div className="sidebar">
