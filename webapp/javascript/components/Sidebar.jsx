@@ -73,7 +73,6 @@ function Sidebar(props) {
   return (
     <div className="sidebar">
       <span className="logo active" onClick={() => {
-        console.log(' history: ', history);
         history.push({
           pathname: '/',
           search: history.location.search,
@@ -81,11 +80,10 @@ function Sidebar(props) {
       }}/>
       <SidebarItem tooltipText="Comparison View - Coming Soon">
         <button type="button" onClick={() => {
-          console.log(' history: ', history);
-          history.push({
-            pathname: '/comparison',
-            search: history.location.search,
-          });
+          // history.push({
+          //   pathname: '/comparison',
+          //   search: history.location.search,
+          // });
         }} >
           <FontAwesomeIcon icon={faColumns} />
         </button>
