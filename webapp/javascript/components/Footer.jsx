@@ -1,7 +1,9 @@
 import React from "react";
 import { connect } from "react-redux";
+import { version } from "../../../package.json";
 
 const START_YEAR = 2020;
+const PYROSCOPE_VERSION = version;
 
 function copyrightYears(start, end) {
   return start === end ? start : `${start} – ${end}`;
