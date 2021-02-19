@@ -176,10 +176,6 @@ module.exports = {
     new MiniCssExtractPlugin({
       filename: "[name].[hash].css",
     }),
-    new webpack.DefinePlugin({
-      // eslint-disable-next-line
-      PYROSCOPE_VERSION: JSON.stringify(require('../../package.json').version),
-    }),
     new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
     new CopyPlugin({
       patterns: [
