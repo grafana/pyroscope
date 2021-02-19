@@ -82,6 +82,7 @@ func (ctrl *Controller) Start() {
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
+		IdleTimeout:    30 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
 	}
