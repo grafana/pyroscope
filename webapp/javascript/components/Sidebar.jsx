@@ -13,6 +13,8 @@ import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import SlackIcon from "./SlackIcon";
 
 import { fetchNames } from "../redux/actions";
+import history from "../util/history";
+
 
 function SidebarItem(props) {
   const { children, tooltipText } = props;
@@ -58,9 +60,9 @@ function Sidebar(props) {
 
   return (
     <div className="sidebar">
-      <span className="logo active" />
+      <span className="logo active" onClick={() => history.push('/')} />
       <SidebarItem tooltipText="Comparison View - Coming Soon">
-        <button type="button">
+        <button type="button" onClick={() => history.push('/comparison')} >
           <FontAwesomeIcon icon={faColumns} />
         </button>
       </SidebarItem>

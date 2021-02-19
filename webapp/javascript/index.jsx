@@ -14,14 +14,15 @@ import {
   Router,
   Switch,
   Route,
-  Link
 } from "react-router-dom";
 
 function ComingSoon() {
   return <h2 style={{    
     "display": "flex",
     "flexDirection": "column",
-    "marginLeft": "100px"}}>Coming soon</h2>;
+    "marginLeft": "100px",
+    "marginTop": "0px" 
+  }}>Comparison view</h2>;
 }
 
 ReactDOM.render(
