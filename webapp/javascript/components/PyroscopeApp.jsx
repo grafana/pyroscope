@@ -83,7 +83,8 @@ function PyroscopeApp(props) {
           width="100%"
           height="100px"
         />
-        <FlameGraphRenderer orientation="horizontal" />
+        <FlameGraphRenderer 
+          viewType="comparison" />
       </div>
       <Footer />
     </div>

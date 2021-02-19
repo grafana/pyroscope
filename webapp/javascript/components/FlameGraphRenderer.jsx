@@ -35,6 +35,7 @@ import {
   DurationFormater,
 } from "../util/format";
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
+import ComparisonTimeline from "./ComparisonTimeline";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
 import { deltaDiff } from "../util/flamebearer";
@@ -62,6 +63,9 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidMount() {
+    this.orientation = this.props.viewType === 'single' ?
+      'horizontal' :
+      'vertical'
     this.canvas = this.canvasRef.current;
     this.ctx = this.canvas.getContext("2d");
     this.topLevel = 0; // Todo: could be a constant
@@ -457,63 +461,97 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  render = () => (
-    <div className="canvas-renderer">
-      <div className="canvas-container">
-        <ProfilerHeader
-          view={this.state.view}
-          handleSearchChange={this.handleSearchChange}
-          reset={this.reset}
-          updateView={this.updateView}
-          resetStyle={this.state.resetStyle}
-        />
-        <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.orientation == "vertical" })}>
-          <div
-            className={clsx("pane", { hidden: this.state.view === "icicle", "vertical-orientation": this.props.orientation == "vertical" })}
-          >
-            <ProfilerTable
-              flamebearer={this.state.flamebearer}
-              sortByDirection={this.state.sortByDirection}
-              sortBy={this.state.sortBy}
-              updateSortBy={this.updateSortBy}
-              view={this.state.view}
-            />
-          </div>
-          <div
-            className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.orientation == "vertical" })}
-          >
-            <canvas
-              className="flamegraph-canvas"
-              height="0"
-              ref={this.canvasRef}
-              onClick={this.clickHandler}
-              onMouseMove={this.mouseMoveHandler}
-              onMouseOut={this.mouseOutHandler}
-            />
-          </div>
-        </div>
-        <div
-          className={clsx("no-data-message", {
-            visible:
-              this.state.flamebearer && this.state.flamebearer.numTicks === 0,
-          })}
-        >
-          <span>
-            No profiling data available for this application / time range.
-          </span>
-        </div>
-      </div>
-      <div className="flamegraph-highlight" style={this.state.highlightStyle} />
+  render = () => {
+    // This is necessary because the order switches depending on single vs comparison view
+    let tablePane = (
       <div
-        className="flamegraph-tooltip"
-        ref={this.tooltipRef}
-        style={this.state.tooltipStyle}
+        key={'table-pane'}
+        className={clsx("pane", { hidden: this.state.view === "icicle", "vertical-orientation": this.orientation === "vertical" })}
       >
-        <div className="flamegraph-tooltip-name">{this.state.tooltipTitle}</div>
-        <div>{this.state.tooltipSubtitle}</div>
+        <ProfilerTable
+          flamebearer={this.state.flamebearer}
+          sortByDirection={this.state.sortByDirection}
+          sortBy={this.state.sortBy}
+          updateSortBy={this.updateSortBy}
+          view={this.state.view}
+        />
       </div>
-    </div>
-  );
+    )
+
+    let flameGraphPane = (
+      <div
+        key={'flamegraph-pane'}
+        className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.orientation === "vertical" })}
+      >
+        <canvas
+          className="flamegraph-canvas"
+          height="0"
+          ref={this.canvasRef}
+          onClick={this.clickHandler}
+          onMouseMove={this.mouseMoveHandler}
+          onMouseOut={this.mouseOutHandler}
+        />
+      </div>
+    )
+
+    let panes = this.props.viewType === "comparison" ?
+      [flameGraphPane, tablePane]:
+      [tablePane, flameGraphPane]
+    
+    return (
+      <div className="canvas-renderer">
+        <div className="canvas-container">
+          <ProfilerHeader
+            view={this.state.view}
+            handleSearchChange={this.handleSearchChange}
+            reset={this.reset}
+            updateView={this.updateView}
+            resetStyle={this.state.resetStyle}
+          />
+          { 
+            this.props.viewType === "comparison" ? 
+              <ComparisonTimeline 
+                timelineData={this.props.timeline || [[0, 0]]}
+                id={`left-timeline-chart`}
+                side={'left'}
+                leftFrom={this.props.leftFrom}
+                leftUntil={this.props.leftUntil}
+                rightFrom={this.props.rightFrom}
+                rightUntil={this.props.rightUntil}
+              /> : null 
+          }
+          <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.orientation === "vertical" })}>
+            {
+              panes.map((pane) => (
+                pane
+              ))
+            }
+            {/* { tablePane }
+            { flameGraphPane } */}
+          </div>
+          <div
+            className={clsx("no-data-message", {
+              visible:
+                this.state.flamebearer && this.state.flamebearer.numTicks === 0,
+            })}
+          >
+            <span>
+              No profiling data available for this application / time range.
+            </span>
+          </div>
+        </div>
+        <div className="flamegraph-highlight" style={this.state.highlightStyle} />
+        <div
+          className="flamegraph-tooltip"
+          ref={this.tooltipRef}
+          style={this.state.tooltipStyle}
+        >
+          <div className="flamegraph-tooltip-name">{this.state.tooltipTitle}</div>
+          <div>{this.state.tooltipSubtitle}</div>
+        </div>
+      </div>
+    )
+}
 }
 
 const mapStateToProps = (state) => ({

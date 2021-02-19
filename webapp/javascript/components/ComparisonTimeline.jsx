@@ -2,18 +2,21 @@ import React from "react";
 import { connect } from "react-redux";
 
 import Chart from "react-apexcharts";
+// import ApexChart from 'react-apexcharts';
 import moment from "moment";
-import { setDateRange } from "../redux/actions";
+import { setLeftDateRange, setRightDateRange } from "../redux/actions";
 import { formatAsOBject } from "../util/formatDate";
 
 function ComparisonTimeline(props) {
   const {
-    setDateRange,
-    timelineData,
     leftFrom,
     leftUntil,
     rightFrom,
     rightUntil,
+    timelineData,
+    side,
+    setLeftDateRange,
+    setRightDateRange,
   } = props;
 
   const dateFormat = "YYYY-MM-DD hh:mm A";
@@ -25,38 +28,30 @@ function ComparisonTimeline(props) {
     },
   ];
 
-  const options = {
-    stroke: {
-      color: "#ff0000",
-      opacity: 0.4,
-      width: 1,
-    },
-    annotations: {
-      xaxis: [
-        {
+  const annotation =
+    side == "left"
+      ? {
           x: new Date(formatAsOBject(leftFrom)).getTime(),
           x2: new Date(formatAsOBject(leftUntil)).getTime(),
           fillColor: "#AEA2E0",
-          strokeDashArray: 0,
-          borderColor: "#AEA2E0",
           label: {
             text: undefined,
           },
-        },
-        {
+        }
+      : {
           x: new Date(formatAsOBject(rightFrom)).getTime(),
           x2: new Date(formatAsOBject(rightUntil)).getTime(),
           fillColor: "#83B5D8",
-          strokeDashArray: 0,
-          borderColor: "#83B5D8",
           label: {
             text: undefined,
           },
-        },
-      ],
+        };
+
+  const options = {
+    annotations: {
+      xaxis: [annotation],
     },
     chart: {
-      offsetY: -10,
       height: 380,
       width: "100%",
       type: "line",
@@ -66,11 +61,11 @@ function ComparisonTimeline(props) {
         speed: 800,
         animateGradually: {
           enabled: false,
-          delay: 0,
+          delay: 150,
         },
         dynamicAnimation: {
           enabled: false,
-          speed: 0,
+          speed: 350,
         },
       },
       toolbar: {
@@ -92,10 +87,25 @@ function ComparisonTimeline(props) {
       },
       events: {
         beforeZoom(chartContext, { xaxis }) {
-          setDateRange(
-            Math.round(xaxis.min / 1000),
-            Math.round(xaxis.max / 1000)
-          );
+          if (side == "left") {
+            setLeftDateRange(
+              Math.round(xaxis.min / 1000),
+              Math.round(xaxis.max / 1000)
+            );
+          } else if (side == "right") {
+            setRightDateRange(
+              Math.round(xaxis.min / 1000),
+              Math.round(xaxis.max / 1000)
+            );
+          } else {
+            console.error("should not be here....");
+          }
+          return {
+            xaxis: {
+              min: timelineData[0][0],
+              max: timelineData[timelineData.length - 1][0],
+            },
+          };
         },
         beforeResetZoom: undefined,
         zoomed: undefined,
@@ -162,7 +172,7 @@ function ComparisonTimeline(props) {
     },
     grid: {
       show: false,
-      borderColor: "#424446",
+      borderColor: "#90A4AE",
       strokeDashArray: 0,
       position: "back",
       xaxis: {
@@ -234,15 +244,11 @@ function ComparisonTimeline(props) {
 
   return (
     <div className="timeline-chart-container">
-      <Chart
-        id="timeline-chart"
-        options={options}
-        series={series}
-        type="line"
-        height={150}
-      />
+      <Chart options={options} series={series} type="line" height={150} />
     </div>
   );
 }
 
-export default connect((x) => x, { setDateRange })(ComparisonTimeline);
+export default connect((x) => x, { setLeftDateRange, setRightDateRange })(
+  ComparisonTimeline
+);
