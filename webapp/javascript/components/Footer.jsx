@@ -22,13 +22,12 @@ function buildInfo() {
 `.replace(/^\s+/gm, "");
 }
 
-function Footer(props) {
+function Footer() {
   // let flags = BUILD_FLAGS.split("\n").map(x => x.replace("-X github.com/pyroscope-io/pyroscope/pkg/build.", ""));
-  // console.log(flags);
   return (
     <div className="footer">
       <span title={buildInfo()}>
-        © Pyroscope {copyrightYears(START_YEAR, new Date().getFullYear())}
+        {`© Pyroscope ${copyrightYears(START_YEAR, new Date().getFullYear())}`}
       </span>
     </div>
     /* <FontAwesomeIcon icon={faGitHub} /> */

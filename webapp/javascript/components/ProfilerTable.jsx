@@ -1,14 +1,50 @@
 import React from "react";
 import clsx from "clsx";
-import { DurationFormater } from "../util/format";
+import { DurationFormater, getPackageNameFromStackTrace } from "../util/format";
 import { colorBasedOnPackageName } from "../util/color";
+
+// generates a table from data in flamebearer format
+const generateTable = (flamebearer) => {
+  const table = [];
+  if (!flamebearer) {
+    return table;
+  }
+  const { names, levels } = flamebearer;
+  const hash = {};
+  // eslint-disable-next-line no-plusplus
+  for (let i = 0; i < levels.length; i++) {
+    for (let j = 0; j < levels[i].length; j += 4) {
+      const key = levels[i][j + 3];
+      const name = names[key];
+      hash[name] = hash[name] || {
+        name: name || "<empty>",
+        self: 0,
+        total: 0,
+      };
+      hash[name].total += levels[i][j + 1];
+      hash[name].self += levels[i][j + 2];
+    }
+  }
+  return Object.values(hash);
+};
+
+function backgroundImageStyle(a, b, color) {
+  const w = 148;
+  const k = w - (a / b) * w;
+  const clr = color.alpha(1.0);
+  return {
+    // backgroundColor: 'transparent',
+    backgroundImage: `linear-gradient(${clr}, ${clr})`,
+    backgroundPosition: `-${k}px 0px`,
+    backgroundRepeat: "no-repeat",
+  };
+}
 
 export default function ProfilerTable({
   flamebearer,
   sortByDirection,
   sortBy,
   updateSortBy,
-  view,
 }) {
   return (
     <Table
@@ -114,61 +150,4 @@ function TableBody({ flamebearer, sortBy, sortByDirection }) {
       </tr>
     );
   });
-}
-
-function getPackageNameFromStackTrace(spyName, stackTrace) {
-  // TODO: actually make sure these make sense and add tests
-  const regexpLookup = {
-    pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
-    rbspy: /^(?<func>.+? - )?(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-  };
-
-  if (stackTrace.length === 0) {
-    return stackTrace;
-  }
-  const regexp = regexpLookup[spyName] || regexpLookup.default;
-  const fullStackGroups = stackTrace.match(regexp);
-  if (fullStackGroups) {
-    return fullStackGroups.groups.packageName;
-  }
-  return stackTrace;
-}
-
-// generates a table from data in flamebearer format
-const generateTable = (flamebearer) => {
-  const table = [];
-  if (!flamebearer) {
-    return table;
-  }
-  const { names, levels } = flamebearer;
-  const hash = {};
-  // eslint-disable-next-line no-plusplus
-  for (let i = 0; i < levels.length; i++) {
-    for (let j = 0; j < levels[i].length; j += 4) {
-      const key = levels[i][j + 3];
-      const name = names[key];
-      hash[name] = hash[name] || {
-        name: name || "<empty>",
-        self: 0,
-        total: 0,
-      };
-      hash[name].total += levels[i][j + 1];
-      hash[name].self += levels[i][j + 2];
-    }
-  }
-  return Object.values(hash);
-};
-
-function backgroundImageStyle(a, b, color) {
-  const w = 148;
-  const k = w - (a / b) * w;
-  const clr = color.alpha(1.0);
-  return {
-    // backgroundColor: 'transparent',
-    backgroundImage: `linear-gradient(${clr}, ${clr})`,
-    backgroundPosition: `-${k}px 0px`,
-    backgroundRepeat: "no-repeat",
-  };
 }

@@ -1,4 +1,3 @@
-import React from "react";
 import { connect } from "react-redux";
 import "react-dom";
 
@@ -7,7 +6,7 @@ import "react-flot/flot/jquery.flot.time.min";
 import "react-flot/flot/jquery.flot.selection.min";
 import "react-flot/flot/jquery.flot.crosshair.min";
 import { bindActionCreators } from "redux";
-import { setDateRange, receiveJSON } from "../redux/actions";
+import { setDateRange } from "../redux/actions";
 
 class TimelineChart extends ReactFlot {
   componentDidMount() {
@@ -40,7 +39,6 @@ const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
       setDateRange,
-      receiveJSON,
     },
     dispatch
   ),

@@ -1,25 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import "react-dom";
-import clsx from "clsx";
-
-import Spinner from "react-svg-spinner";
 
 import { withShortcut } from "react-keybind";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileAlt, faKeyboard, faColumns, faBell } from "@fortawesome/free-solid-svg-icons";
+import {
+  faFileAlt,
+  faKeyboard,
+  faColumns,
+} from "@fortawesome/free-solid-svg-icons";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
-import classNames from "classnames";
-import DateRangePicker from "./DateRangePicker";
-import RefreshButton from "./RefreshButton";
 import SlackIcon from "./SlackIcon";
-import Label from "./Label";
-import NameSelector from "./NameSelector";
 
 import { fetchNames } from "../redux/actions";
 
 function SidebarItem(props) {
-  const { children, tooltipText, externalLink } = props;
+  const { children, tooltipText } = props;
   return (
     <div className="sidebar-item">
       {children}
@@ -60,11 +56,12 @@ function Sidebar(props) {
     setState({ shortcutsModalOpen: false });
   };
 
+  const { showShortcutsModal } = props;
   return (
     <div className="sidebar">
-      <h1 className="logo active" />
+      <span className="logo active" />
       <SidebarItem tooltipText="Comparison View - Coming Soon">
-        <button>
+        <button type="button">
           <FontAwesomeIcon icon={faColumns} />
         </button>
       </SidebarItem>
@@ -94,7 +91,7 @@ function Sidebar(props) {
         </a>
       </SidebarItem>
       <SidebarItem tooltipText="Keyboard Shortcuts">
-        <button onClick={showShortcutsModal}>
+        <button onClick={showShortcutsModal} type="button">
           <FontAwesomeIcon icon={faKeyboard} />
         </button>
       </SidebarItem>

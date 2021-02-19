@@ -9,6 +9,7 @@ package rbspy
 import "C"
 import (
 	"errors"
+	"time"
 	"unsafe"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -34,6 +35,10 @@ func Start(pid int) (spy.Spy, error) {
 
 	errorBuf := make([]byte, bufferLength)
 	errorPtr := unsafe.Pointer(&errorBuf[0])
+
+	// Sometimes rbspy doesn't initialize properly right after the process starts so we need to give it some time
+	// TODO: handle this better
+	time.Sleep(1 * time.Second)
 
 	r := C.rbspy_init(C.int(pid), errorPtr, C.int(bufferLength))
 

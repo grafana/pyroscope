@@ -1,7 +1,7 @@
 import React from "react";
 import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
-import { addLabel, receiveJSON } from "../redux/actions";
+import { addLabel } from "../redux/actions";
 
 function NameSelector(props) {
   const { actions, names, labels } = props;
@@ -40,7 +40,6 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      receiveJSON,
       addLabel,
     },
     dispatch

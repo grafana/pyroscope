@@ -3,13 +3,14 @@ import { connect } from "react-redux";
 import { removeLabel } from "../redux/actions";
 
 function Label(props) {
-  const { label, removeLabel } = props;
+  const { label } = props;
 
   return (
     <div className="label">
       <span className="label-name">{label.name}</span>
       <span className="label-value">{label.value}</span>
       <button
+        type="button"
         className="label-delete-btn"
         onClick={() => removeLabel(label.name)}
       />

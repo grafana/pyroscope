@@ -8,13 +8,11 @@ import {
   REFRESH,
   ADD_LABEL,
   REMOVE_LABEL,
-  RECEIVE_JSON,
-  REQUEST_JSON,
+  RECEIVE_TIMELINE,
+  REQUEST_TIMELINE,
   RECEIVE_NAMES,
   REQUEST_NAMES,
 } from "../actionTypes";
-
-import { deltaDiff } from "../../util/flamebearer";
 
 const defaultName = window.initialState.appNames.find(
   (x) => x !== "pyroscope.server.cpu"
@@ -26,11 +24,24 @@ const initialState = {
   labels: [{ name: "__name__", value: defaultName || "pyroscope.server.cpu" }],
   names: window.initialState.appNames,
   timeline: null,
-  flamebearer: null,
   isJSONLoading: false,
+  maxNodes: 1024,
 };
 
 window.uniqBy = uniqBy;
+
+function decodeTimelineData(timelineData) {
+  if (!timelineData) {
+    return [];
+  }
+  const res = [];
+  let time = timelineData.startTime;
+  return timelineData.samples.map((x) => {
+    const res = [time * 1000, x];
+    time += timelineData.durationDelta;
+    return res;
+  });
+}
 
 export default function (state = initialState, action) {
   switch (action.type) {
@@ -72,17 +83,15 @@ export default function (state = initialState, action) {
         ...state,
         labels: state.labels.filter((x) => x.name !== action.payload.name),
       };
-    case REQUEST_JSON:
+    case REQUEST_TIMELINE:
       return {
         ...state,
         isJSONLoading: true,
       };
-    case RECEIVE_JSON:
-      deltaDiff(action.payload.flamebearer.levels);
+    case RECEIVE_TIMELINE:
       return {
         ...state,
         timeline: decodeTimelineData(action.payload.timeline),
-        flamebearer: action.payload.flamebearer,
         isJSONLoading: false,
       };
     case REQUEST_NAMES:
@@ -107,15 +116,3 @@ export default function (state = initialState, action) {
   }
 }
 
-function decodeTimelineData(timelineData) {
-  if (!timelineData) {
-    return [];
-  }
-  const res = [];
-  let time = timelineData.startTime;
-  return timelineData.samples.map((x) => {
-    const res = [time * 1000, x];
-    time += timelineData.durationDelta;
-    return res;
-  });
-}

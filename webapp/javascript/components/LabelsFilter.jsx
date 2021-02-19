@@ -31,6 +31,7 @@ function LabelsFilter() {
         value={state.value}
       />
       <button
+        type="button"
         className="btn labels-new-btn"
         onClick={(e) => {
           addLabel(state.name, state.value);

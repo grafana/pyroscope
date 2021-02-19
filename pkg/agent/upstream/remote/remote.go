@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -111,7 +112,7 @@ func (u *Remote) uploadProfile(j *uploadJob) {
 	q.Set("spyName", j.spyName)
 	q.Set("sampleRate", strconv.Itoa(j.sampleRate))
 
-	urlObj.Path = "/ingest"
+	urlObj.Path = path.Join(urlObj.Path, "/ingest")
 	urlObj.RawQuery = q.Encode()
 	buf := j.t.Bytes()
 	log.Info("uploading at ", urlObj.String())
