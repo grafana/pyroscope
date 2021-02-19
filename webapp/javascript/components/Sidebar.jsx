@@ -1,6 +1,10 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import "react-dom";
+
+import { withShortcut } from "react-keybind";
+import Modal from "react-modal";
+import ShortcutsModal from "./ShortcutsModal";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -12,6 +16,17 @@ import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import SlackIcon from "./SlackIcon";
 
 import { fetchNames } from "../redux/actions";
+import history from "../util/history";
+
+const modalStyle = {
+  overlay: {
+    backgroundColor: "rgba(0,0,0,0.75)",
+  },
+  content: {
+    background: "#222",
+    border: "1px solid #111",
+  },
+};
 
 function SidebarItem(props) {
   const { children, tooltipText } = props;
@@ -30,13 +45,47 @@ function SidebarItem(props) {
   );
 }
 
+const initialState = {
+  shortcutsModalOpen: false,
+};
+
 function Sidebar(props) {
-  const { showShortcutsModal } = props;
+  const { areNamesLoading, isJSONLoading, labels, shortcut } = props;
+
+  const [state, setState] = useState(initialState);
+
+  const showShortcutsModal = () => {
+    setState({ shortcutsModalOpen: true });
+  };
+
+  const closeShortcutsModal = () => {
+    setState({ shortcutsModalOpen: false });
+  };
+
+  useEffect(() => {
+    shortcut.registerShortcut(
+      showShortcutsModal,
+      ["shift+?"],
+      "Shortcuts",
+      "Show Keyboard Shortcuts Modal"
+    );
+  }, []);
+
   return (
     <div className="sidebar">
-      <span className="logo active" />
+      <span className="logo active" onClick={() => {
+        history.push({
+          pathname: '/',
+          search: history.location.search,
+        });
+      }}/>
       <SidebarItem tooltipText="Comparison View - Coming Soon">
-        <button type="button">
+        <button type="button" onClick={() => {
+          // history.push({
+          //   pathname: '/comparison',
+          //   search: history.location.search,
+          // });
+        }} >
           <FontAwesomeIcon icon={faColumns} />
         </button>
       </SidebarItem>
@@ -70,8 +119,16 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faKeyboard} />
         </button>
       </SidebarItem>
+      <Modal
+        isOpen={state.shortcutsModalOpen}
+        style={modalStyle}
+        appElement={document.getElementById("root")}
+      >
+        <div className="modal-close-btn" onClick={closeShortcutsModal} />
+        <ShortcutsModal closeModal={closeShortcutsModal} />
+      </Modal>
     </div>
   );
 }
 
-export default connect((x) => x, { fetchNames })(Sidebar);
+export default connect((x) => x, { fetchNames })(withShortcut(Sidebar));

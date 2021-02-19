@@ -7,6 +7,8 @@ import { composeWithDevTools } from "redux-devtools-extension";
 import ReduxQuerySync from "redux-query-sync";
 
 import rootReducer from "./reducers";
+import history from "../util/history";
+
 import { setFrom, setUntil, setLabels, setMaxNodes } from "./actions";
 
 import { parseLabels, encodeLabels } from "../util/key";
@@ -50,6 +52,7 @@ ReduxQuerySync({
   },
   initialTruth: "location",
   replaceState: false,
+  history,
 });
 
 export default store;
