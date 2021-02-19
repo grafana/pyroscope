@@ -56,7 +56,6 @@ function Sidebar(props) {
     setState({ shortcutsModalOpen: false });
   };
 
-  const { showShortcutsModal } = props;
   return (
     <div className="sidebar">
       <span className="logo active" />

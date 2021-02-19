@@ -20,8 +20,8 @@ import {
 function ComingSoon() {
   return <h2 style={{    
     "display": "flex",
-    "flex-direction": "column",
-    "margin-left": "100px"}}>Coming soon</h2>;
+    "flexDirection": "column",
+    "marginLeft": "100px"}}>Coming soon</h2>;
 }
 
 ReactDOM.render(
