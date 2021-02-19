@@ -9,7 +9,16 @@ import ReduxQuerySync from "redux-query-sync";
 import rootReducer from "./reducers";
 import history from "../util/history";
 
-import { setLeftFrom, setLeftUntil, setRightFrom, setRightUntil, setFrom, setUntil, setLabels, setMaxNodes } from "./actions";
+import {
+  setLeftFrom,
+  setLeftUntil,
+  setRightFrom,
+  setRightUntil,
+  setFrom,
+  setUntil,
+  setLabels,
+  setMaxNodes,
+} from "./actions";
 
 import { parseLabels, encodeLabels } from "../util/key";
 

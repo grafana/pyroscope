@@ -4,7 +4,6 @@ import "react-dom";
 
 import { withShortcut } from "react-keybind";
 import Modal from "react-modal";
-import ShortcutsModal from "./ShortcutsModal";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -13,6 +12,7 @@ import {
   faColumns,
 } from "@fortawesome/free-solid-svg-icons";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
+import ShortcutsModal from "./ShortcutsModal";
 import SlackIcon from "./SlackIcon";
 
 import { fetchNames } from "../redux/actions";
@@ -73,19 +73,25 @@ function Sidebar(props) {
 
   return (
     <div className="sidebar">
-      <span className="logo active" onClick={() => {
-        history.push({
-          pathname: '/',
-          search: history.location.search,
-        });
-      }}/>
+      <span
+        className="logo active"
+        onClick={() => {
+          history.push({
+            pathname: "/",
+            search: history.location.search,
+          });
+        }}
+      />
       <SidebarItem tooltipText="Comparison View - Coming Soon">
-        <button type="button" onClick={() => {
-          // history.push({
-          //   pathname: '/comparison',
-          //   search: history.location.search,
-          // });
-        }} >
+        <button
+          type="button"
+          onClick={() => {
+            // history.push({
+            //   pathname: '/comparison',
+            //   search: history.location.search,
+            // });
+          }}
+        >
           <FontAwesomeIcon icon={faColumns} />
         </button>
       </SidebarItem>

@@ -74,17 +74,17 @@ function PyroscopeApp(props) {
 
   return (
     <div className="pyroscope-app">
-        <div className="main-wrapper">
-          <Header />
-          <TimelineChart
-            id="timeline-chart"
-            options={flotOptions}
-            data={flotData}
-            width="100%"
-            height="100px"
-          />
-          <FlameGraphRenderer orientation="horizontal" />
-        </div>
+      <div className="main-wrapper">
+        <Header />
+        <TimelineChart
+          id="timeline-chart"
+          options={flotOptions}
+          data={flotData}
+          width="100%"
+          height="100px"
+        />
+        <FlameGraphRenderer orientation="horizontal" />
+      </div>
       <Footer />
     </div>
   );
@@ -105,7 +105,4 @@ const mapDispatchToProps = (dispatch) => ({
   ),
 });
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(PyroscopeApp);
+export default connect(mapStateToProps, mapDispatchToProps)(PyroscopeApp);
