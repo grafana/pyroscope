@@ -2,18 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { connect } from "react-redux";
 import "react-dom";
 
-import Modal from "react-modal";
-
-import { withShortcut } from "react-keybind";
 import { bindActionCreators } from "redux";
 import FlameGraphRenderer from "./FlameGraphRenderer";
 import TimelineChart from "./TimelineChart";
-import ShortcutsModal from "./ShortcutsModal";
 import Header from "./Header";
 import Footer from "./Footer";
 import { buildRenderURL } from "../util/updateRequests";
 import { fetchNames, fetchTimeline } from "../redux/actions";
-import Sidebar from "./Sidebar";
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 const flotOptions = {
@@ -62,39 +57,12 @@ const flotOptions = {
   },
 };
 
-const modalStyle = {
-  overlay: {
-    backgroundColor: "rgba(0,0,0,0.75)",
-  },
-  content: {
-    background: "#222",
-    border: "1px solid #111",
-  },
-};
-
-const initialState = {
-  shortcutsModalOpen: false,
-};
-
 function PyroscopeApp(props) {
-  const { actions, renderURL, shortcut, timeline } = props;
+  const { actions, renderURL, timeline } = props;
   const [state, setState] = useState(initialState);
   const prevPropsRef = useRef();
 
-  const showShortcutsModal = () => {
-    setState({ shortcutsModalOpen: true });
-  };
-
-  const closeShortcutsModal = () => {
-    setState({ shortcutsModalOpen: false });
-  };
   useEffect(() => {
-    shortcut.registerShortcut(
-      showShortcutsModal,
-      ["shift+?"],
-      "Shortcuts",
-      "Show Keyboard Shortcuts Modal"
-    );
     if (prevPropsRef.renderURL !== renderURL) {
       actions.fetchTimeline(renderURL);
     }
@@ -116,14 +84,6 @@ function PyroscopeApp(props) {
             height="100px"
           />
           <FlameGraphRenderer orientation="horizontal" />
-          <Modal
-            isOpen={state.shortcutsModalOpen}
-            style={modalStyle}
-            appElement={document.getElementById("root")}
-          >
-            <div className="modal-close-btn" onClick={closeShortcutsModal} />
-            <ShortcutsModal closeModal={closeShortcutsModal} />
-          </Modal>
         </div>
       <Footer />
     </div>
@@ -148,4 +108,4 @@ const mapDispatchToProps = (dispatch) => ({
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(withShortcut(PyroscopeApp));
+)(PyroscopeApp);

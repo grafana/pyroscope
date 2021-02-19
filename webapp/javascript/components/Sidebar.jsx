@@ -3,6 +3,9 @@ import { connect } from "react-redux";
 import "react-dom";
 
 import { withShortcut } from "react-keybind";
+import Modal from "react-modal";
+import ShortcutsModal from "./ShortcutsModal";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFileAlt,
@@ -15,6 +18,15 @@ import SlackIcon from "./SlackIcon";
 import { fetchNames } from "../redux/actions";
 import history from "../util/history";
 
+const modalStyle = {
+  overlay: {
+    backgroundColor: "rgba(0,0,0,0.75)",
+  },
+  content: {
+    background: "#222",
+    border: "1px solid #111",
+  },
+};
 
 function SidebarItem(props) {
   const { children, tooltipText } = props;
@@ -60,9 +72,21 @@ function Sidebar(props) {
 
   return (
     <div className="sidebar">
-      <span className="logo active" onClick={() => history.push('/')} />
+      <span className="logo active" onClick={() => {
+        console.log(' history: ', history);
+        history.push({
+          pathname: '/',
+          search: history.location.search,
+        });
+      }}/>
       <SidebarItem tooltipText="Comparison View - Coming Soon">
-        <button type="button" onClick={() => history.push('/comparison')} >
+        <button type="button" onClick={() => {
+          console.log(' history: ', history);
+          history.push({
+            pathname: '/comparison',
+            search: history.location.search,
+          });
+        }} >
           <FontAwesomeIcon icon={faColumns} />
         </button>
       </SidebarItem>
@@ -96,6 +120,14 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faKeyboard} />
         </button>
       </SidebarItem>
+      <Modal
+        isOpen={state.shortcutsModalOpen}
+        style={modalStyle}
+        appElement={document.getElementById("root")}
+      >
+        <div className="modal-close-btn" onClick={closeShortcutsModal} />
+        <ShortcutsModal closeModal={closeShortcutsModal} />
+      </Modal>
     </div>
   );
 }
