@@ -36,6 +36,10 @@ class TimelineChart extends ReactFlot {
       }
     });
   }
+
+  componentDidUpdate(prevProps) {
+    this.draw();
+  }
 }
 
 const mapStateToProps = (state) => ({
