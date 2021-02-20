@@ -30,7 +30,7 @@ const initialState = {
   rightFrom: "now-30m",
   until: "now",
   leftUntil: "now-30m",
-  rightUntil: "now-1m",
+  rightUntil: "now",
   labels: [{ name: "__name__", value: defaultName || "pyroscope.server.cpu" }],
   names: window.initialState.appNames,
   timeline: null,

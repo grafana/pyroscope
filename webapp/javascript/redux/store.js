@@ -59,7 +59,7 @@ ReduxQuerySync({
       action: setRightFrom,
     },
     rightUntil: {
-      defaultValue: "now-1m",
+      defaultValue: "now",
       selector: (state) => state.rightUntil,
       action: setRightUntil,
     },

@@ -35,6 +35,7 @@ export const setRightDateRange = (from, until) => ({
 });
 
 export const setFrom = (from) => ({ type: SET_FROM, payload: { from } });
+
 export const setLeftFrom = (from) => ({
   type: SET_LEFT_FROM,
   payload: { from },
