@@ -35,7 +35,7 @@ import {
   DurationFormater,
 } from "../util/format";
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
-import ComparisonTimeline from "./ComparisonTimeline";
+import TimelineChart from "./TimelineChart";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
 import { deltaDiff } from "../util/flamebearer";
@@ -45,6 +45,53 @@ const COLLAPSE_THRESHOLD = 5;
 const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = "#48CE73"; // green
 const GAP = 0.5;
+
+let flotOptions = {
+  margin: {
+    top: 0,
+    left: 0,
+    bottom: 0,
+    right: 0,
+  },
+  selection: {
+    mode: "x",
+  },
+  crosshair: {
+    mode: "x",
+    color: "#C3170D",
+    lineWidth: "1",
+  },
+  grid: {
+    borderWidth: 1,
+    margin: {
+    left: 16,
+    right: 16,
+    },
+  },
+  yaxis: {
+    show: false,
+    min: 0,
+  },
+  points: {
+    show: false,
+    radius: 0.1,
+  },
+  lines: {
+    show: false,
+    steps: true,
+    lineWidth: 1.0,
+  },
+  bars: {
+    show: true,
+    fill: true,
+  },
+  xaxis: {
+    mode: "time",
+    timezone: "browser",
+    reserveSpace: false,
+  }
+}
+
 class FlameGraphRenderer extends React.Component {
   constructor() {
     super();
@@ -494,7 +541,11 @@ class FlameGraphRenderer extends React.Component {
     let panes = this.props.viewType === "double" ?
       [flameGraphPane, tablePane]:
       [tablePane, flameGraphPane]
-    
+
+    const flotData = this.props.timeline
+      ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
+      : [];
+
     return (
       <div className={clsx("canvas-renderer", { "double": this.props.viewType === "double" })}>
 
@@ -506,18 +557,18 @@ class FlameGraphRenderer extends React.Component {
             updateView={this.updateView}
             resetStyle={this.state.resetStyle}
           />
-          {/* { 
+          { 
             this.props.viewType === "double" ? 
-              <ComparisonTimeline 
-                timelineData={this.props.timeline || [[0, 0]]}
-                id={`left-timeline-chart`}
-                side={'left'}
-                leftFrom={this.props.leftFrom}
-                leftUntil={this.props.leftUntil}
-                rightFrom={this.props.rightFrom}
-                rightUntil={this.props.rightUntil}
-              /> : null 
-          } */}
+              <TimelineChart
+                id={`timeline-chart-${this.props.viewSide}`}
+                options={flotOptions}
+                showMarkings={'both'}
+                data={flotData}
+                width="100%"
+                height="100px"
+              /> :
+              null
+          }
           <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.viewType === "double" })}>
             {
               panes.map((pane) => (

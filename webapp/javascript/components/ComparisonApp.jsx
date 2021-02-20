@@ -78,7 +78,7 @@ function ComparisonApp(props) {
       <div className="main-wrapper">
         <Header />
         <TimelineChart
-          id="timeline-chart2"
+          id="timeline-chart"
           options={flotOptions}
           showMarkings={'both'}
           data={flotData}
@@ -87,9 +87,11 @@ function ComparisonApp(props) {
         />
         <div className={'comparison-container'}>
             <FlameGraphRenderer 
-                viewType="double" />
+                viewType="double"
+                viewSide="left" />
             <FlameGraphRenderer 
-                viewType="double" />
+                viewType="double"
+                viewSide="right" />
         </div>
       </div>
       <Footer />

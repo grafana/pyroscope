@@ -83,6 +83,7 @@ class TimelineChart extends ReactFlot {
   };
 
   componentDidMount() {
+    this.props.options.grid.markings = this.plotMarkings();
     this.draw();
     
     $(`#${this.props.id}`).bind("plotselected", (event, ranges) => {
