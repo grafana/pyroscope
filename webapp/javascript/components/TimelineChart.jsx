@@ -15,75 +15,7 @@ class TimelineChart extends ReactFlot {
     super();
   }
 
-  plotMarkings = () => {
-    if (!this.props.showMarkings) {
-      return null;
-    }
-
-    let leftFromInt = new Date(formatAsOBject(this.props.leftFrom)).getTime()
-    let leftUntilInt = new Date(formatAsOBject(this.props.leftUntil)).getTime()
-    let rightFromInt = new Date(formatAsOBject(this.props.rightFrom)).getTime()
-    let rightUntilInt = new Date(formatAsOBject(this.props.rightUntil)).getTime()
-
-    let leftMarkings = [
-      {
-        xaxis: {
-          from: leftFromInt,
-          to: leftUntilInt
-        },
-        yaxis: {
-          from: 0,
-          to: 1000
-        },
-        color: "rgba(235, 168, 230, 0.35)",
-        opacity: 0.5,
-      },         
-      { 
-        color: "rgba(235, 168, 230, 1)", 
-        lineWidth: 2, 
-        xaxis: { from: leftFromInt, to: leftFromInt } 
-      },
-      { 
-        color: "rgba(235, 168, 230, 1)", 
-        lineWidth: 2, 
-        xaxis: { from: leftUntilInt, to: leftUntilInt } 
-      },
-    ]
-
-    let rightMarkings = [
-      { 
-        xaxis: { 
-          from: rightFromInt,
-          to: rightUntilInt
-        }, 
-        yaxis: { 
-          from: 0, 
-          to: 1000 
-        }, 
-        color: "rgba(81,  149, 206, 0.35)" 
-      },
-      { 
-        color: "rgba(81,  149, 206, 1)" , 
-        lineWidth: 2, 
-        xaxis: { from: rightFromInt, to: rightFromInt } 
-      },
-      { 
-        color: "rgba(81,  149, 206, 1)" , 
-        lineWidth: 2, 
-        xaxis: { from: rightUntilInt, to: rightUntilInt } 
-      },
-    ]
-
-    return {
-      left: leftMarkings,
-      right: rightMarkings,
-      both: leftMarkings.concat(rightMarkings),
-      none: []
-    }[this.props.showMarkings];
-  };
-
   componentDidMount() {
-    this.props.options.grid.markings = this.plotMarkings();
     this.draw();
     
     $(`#${this.props.id}`).bind("plotselected", (event, ranges) => {
@@ -105,11 +37,17 @@ class TimelineChart extends ReactFlot {
     });
   }
 
-  render = () => {
-    return (
-      <ReactFlot id={this.props.id} options={this.props.options} data={this.props.data || [[0, 0]]} width={this.props.width} height="100px" />
-    )
+  componentDidUpdate() {
+    // this.props.options.grid.markings = this.plotMarkings();
+    console.log('counting updates')
+    this.draw();
   }
+
+  // render = () => {
+  //   return (
+  //     <ReactFlot id={this.props.id} options={this.props.options} data={this.props.data || [[0, 0]]} width={this.props.width} height="100px" />
+  //   )
+  // }
 }
 
 const mapStateToProps = (state) => ({

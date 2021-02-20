@@ -35,7 +35,7 @@ import {
   DurationFormater,
 } from "../util/format";
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
-import TimelineChart from "./TimelineChart";
+import TimelineChartWrapper from "./TimelineChartWrapper";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
 import { deltaDiff } from "../util/flamebearer";
@@ -45,52 +45,6 @@ const COLLAPSE_THRESHOLD = 5;
 const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = "#48CE73"; // green
 const GAP = 0.5;
-
-let flotOptions = {
-  margin: {
-    top: 0,
-    left: 0,
-    bottom: 0,
-    right: 0,
-  },
-  selection: {
-    mode: "x",
-  },
-  crosshair: {
-    mode: "x",
-    color: "#C3170D",
-    lineWidth: "1",
-  },
-  grid: {
-    borderWidth: 1,
-    margin: {
-    left: 16,
-    right: 16,
-    },
-  },
-  yaxis: {
-    show: false,
-    min: 0,
-  },
-  points: {
-    show: false,
-    radius: 0.1,
-  },
-  lines: {
-    show: false,
-    steps: true,
-    lineWidth: 1.0,
-  },
-  bars: {
-    show: true,
-    fill: true,
-  },
-  xaxis: {
-    mode: "time",
-    timezone: "browser",
-    reserveSpace: false,
-  }
-}
 
 class FlameGraphRenderer extends React.Component {
   constructor() {
@@ -559,13 +513,10 @@ class FlameGraphRenderer extends React.Component {
           />
           { 
             this.props.viewType === "double" ? 
-              <TimelineChart
+              <TimelineChartWrapper
+                key={`timeline-chart-${this.props.viewSide}`}
                 id={`timeline-chart-${this.props.viewSide}`}
-                options={flotOptions}
-                showMarkings={'both'}
-                data={flotData}
-                width="100%"
-                height="100px"
+                showMarkings={this.props.viewSide}
               /> :
               null
           }
