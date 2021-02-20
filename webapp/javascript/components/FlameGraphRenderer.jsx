@@ -63,9 +63,6 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidMount() {
-    this.orientation = this.props.viewType === 'single' ?
-      'horizontal' :
-      'vertical'
     this.canvas = this.canvasRef.current;
     this.ctx = this.canvas.getContext("2d");
     this.topLevel = 0; // Todo: could be a constant
@@ -466,7 +463,7 @@ class FlameGraphRenderer extends React.Component {
     let tablePane = (
       <div
         key={'table-pane'}
-        className={clsx("pane", { hidden: this.state.view === "icicle", "vertical-orientation": this.orientation === "vertical" })}
+        className={clsx("pane", { hidden: this.state.view === "icicle", "vertical-orientation": this.props.viewType === "double" })}
       >
         <ProfilerTable
           flamebearer={this.state.flamebearer}
@@ -481,7 +478,7 @@ class FlameGraphRenderer extends React.Component {
     let flameGraphPane = (
       <div
         key={'flamegraph-pane'}
-        className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.orientation === "vertical" })}
+        className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.viewType === "double" })}
       >
         <canvas
           className="flamegraph-canvas"
@@ -521,7 +518,7 @@ class FlameGraphRenderer extends React.Component {
                 rightUntil={this.props.rightUntil}
               /> : null 
           }
-          <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.orientation === "vertical" })}>
+          <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.viewType === "double" })}>
             {
               panes.map((pane) => (
                 pane
