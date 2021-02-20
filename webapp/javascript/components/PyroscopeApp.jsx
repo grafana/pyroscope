@@ -15,10 +15,10 @@ import { fetchNames, fetchTimeline } from "../redux/actions";
 function ComparisonView(props) {
   return (
     <div className={'comparison-container'}>
-    <FlameGraphRenderer 
-      viewType="comparison" />
-    <FlameGraphRenderer 
-      viewType="comparison" />
+      <FlameGraphRenderer 
+        viewType="double" />
+      <FlameGraphRenderer 
+        viewType="double" />
     </div>
   )
 }

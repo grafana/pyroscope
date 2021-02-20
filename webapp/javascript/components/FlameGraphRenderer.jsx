@@ -494,12 +494,12 @@ class FlameGraphRenderer extends React.Component {
       </div>
     )
 
-    let panes = this.props.viewType === "comparison" ?
+    let panes = this.props.viewType === "double" ?
       [flameGraphPane, tablePane]:
       [tablePane, flameGraphPane]
     
     return (
-      <div className={clsx("canvas-renderer", { "comparison": this.props.viewType === "comparison" })}>
+      <div className={clsx("canvas-renderer", { "double": this.props.viewType === "double" })}>
 
         <div className="canvas-container">
           <ProfilerHeader
@@ -510,7 +510,7 @@ class FlameGraphRenderer extends React.Component {
             resetStyle={this.state.resetStyle}
           />
           { 
-            this.props.viewType === "comparison" ? 
+            this.props.viewType === "double" ? 
               <ComparisonTimeline 
                 timelineData={this.props.timeline || [[0, 0]]}
                 id={`left-timeline-chart`}
