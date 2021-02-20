@@ -66,35 +66,64 @@ class TimelineChart extends ReactFlot {
       return null;
     }
 
-    let leftMarkings = {
-      xaxis: {
-        from: new Date(formatAsOBject(this.props.leftFrom)).getTime(),
-        to: new Date(formatAsOBject(this.props.leftUntil)).getTime()
-      },
-      yaxis: {
-        from: 0,
-        to: 1000
-      },
-      color: "rgba(235, 168, 230, 0.35)",
-      opacity: 0.5,
-    }
+    let leftFromInt = new Date(formatAsOBject(this.props.leftFrom)).getTime()
+    let leftUntilInt = new Date(formatAsOBject(this.props.leftUntil)).getTime()
+    let rightFromInt = new Date(formatAsOBject(this.props.rightFrom)).getTime()
+    let rightUntilInt = new Date(formatAsOBject(this.props.rightUntil)).getTime()
 
-    let rightMarkings = { 
-      xaxis: { 
-        from: new Date(formatAsOBject(this.props.rightFrom)).getTime(),
-        to: new Date(formatAsOBject(this.props.rightUntil)).getTime()
-      }, 
-      yaxis: { 
-        from: 0, 
-        to: 1000 
-      }, 
-      color: "rgba(81,  149, 206, 0.35)" 
-    }
+    let leftMarkings = [
+      {
+        xaxis: {
+          from: leftFromInt,
+          to: leftUntilInt
+        },
+        yaxis: {
+          from: 0,
+          to: 1000
+        },
+        color: "rgba(235, 168, 230, 0.35)",
+        opacity: 0.5,
+      },         
+      { 
+        color: "rgba(235, 168, 230, 1)", 
+        lineWidth: 2, 
+        xaxis: { from: leftFromInt, to: leftFromInt } 
+      },
+      { 
+        color: "rgba(235, 168, 230, 1)", 
+        lineWidth: 2, 
+        xaxis: { from: leftUntilInt, to: leftUntilInt } 
+      },
+    ]
+
+    let rightMarkings = [
+      { 
+        xaxis: { 
+          from: rightFromInt,
+          to: rightUntilInt
+        }, 
+        yaxis: { 
+          from: 0, 
+          to: 1000 
+        }, 
+        color: "rgba(81,  149, 206, 0.35)" 
+      },
+      { 
+        color: "rgba(81,  149, 206, 1)" , 
+        lineWidth: 2, 
+        xaxis: { from: rightFromInt, to: rightFromInt } 
+      },
+      { 
+        color: "rgba(81,  149, 206, 1)" , 
+        lineWidth: 2, 
+        xaxis: { from: rightUntilInt, to: rightUntilInt } 
+      },
+    ]
 
     return {
-      left: [leftMarkings],
-      right: [rightMarkings],
-      both: [leftMarkings, rightMarkings],
+      left: leftMarkings,
+      right: rightMarkings,
+      both: leftMarkings.concat(rightMarkings),
       none: []
     }[this.props.showMarkings];
   };
