@@ -13,52 +13,52 @@ import { fetchNames, fetchTimeline } from "../redux/actions";
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
 let flotOptions = {
-  margin: {
-    top: 0,
-    left: 0,
-    bottom: 0,
-    right: 0,
-  },
-  selection: {
-    mode: "x",
-  },
-  crosshair: {
-    mode: "x",
-    color: "#C3170D",
-    lineWidth: "1",
-  },
-  grid: {
-    borderWidth: 1,
-    margin: {
-      left: 16,
-      right: 16,
-    },
-  },
-  yaxis: {
-    show: false,
-    min: 0,
-  },
-  points: {
-    show: false,
-    radius: 0.1,
-  },
-  lines: {
-    show: false,
-    steps: true,
-    lineWidth: 1.0,
-  },
-  bars: {
-    show: true,
-    fill: true,
-  },
-  xaxis: {
-    mode: "time",
-    timezone: "browser",
-    reserveSpace: false,
-  }
-}
+      margin: {
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+      },
+      selection: {
+        mode: "x",
+      },
+      crosshair: {
+        mode: "x",
+        color: "#C3170D",
+        lineWidth: "1",
+      },
+      grid: {
+        borderWidth: 1,
+        margin: {
+        left: 16,
+        right: 16,
+        },
+      },
+      yaxis: {
+        show: false,
+        min: 0,
+      },
+      points: {
+        show: false,
+        radius: 0.1,
+      },
+      lines: {
+        show: false,
+        steps: true,
+        lineWidth: 1.0,
+      },
+      bars: {
+        show: true,
+        fill: true,
+      },
+      xaxis: {
+        mode: "time",
+        timezone: "browser",
+        reserveSpace: false,
+      }
+    }
 
-function PyroscopeApp(props) {
+function ComparisonApp(props) {
   const { actions, renderURL, timeline } = props;
   const [state, setState] = useState(initialState);
   const prevPropsRef = useRef();
@@ -78,15 +78,19 @@ function PyroscopeApp(props) {
       <div className="main-wrapper">
         <Header />
         <TimelineChart
-          id="timeline-chart"
-          options={flotOptions} // using options inside of component to calculate markings
-          showMarkings={'none'}
+          id="timeline-chart2"
+          options={flotOptions}
+          showMarkings={'both'}
           data={flotData}
           width="100%"
           height="100px"
         />
-        <FlameGraphRenderer 
-          viewType="single" />
+        <div className={'comparison-container'}>
+            <FlameGraphRenderer 
+                viewType="double" />
+            <FlameGraphRenderer 
+                viewType="double" />
+        </div>
       </div>
       <Footer />
     </div>
@@ -108,4 +112,4 @@ const mapDispatchToProps = (dispatch) => ({
   ),
 });
 
-export default connect(mapStateToProps, mapDispatchToProps)(PyroscopeApp);
+export default connect(mapStateToProps, mapDispatchToProps)(ComparisonApp);

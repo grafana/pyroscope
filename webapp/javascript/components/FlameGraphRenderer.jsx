@@ -506,7 +506,7 @@ class FlameGraphRenderer extends React.Component {
             updateView={this.updateView}
             resetStyle={this.state.resetStyle}
           />
-          { 
+          {/* { 
             this.props.viewType === "double" ? 
               <ComparisonTimeline 
                 timelineData={this.props.timeline || [[0, 0]]}
@@ -517,7 +517,7 @@ class FlameGraphRenderer extends React.Component {
                 rightFrom={this.props.rightFrom}
                 rightUntil={this.props.rightUntil}
               /> : null 
-          }
+          } */}
           <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.viewType === "double" })}>
             {
               panes.map((pane) => (

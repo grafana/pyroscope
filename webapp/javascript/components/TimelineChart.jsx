@@ -13,52 +13,6 @@ import { formatAsOBject } from "../util/formatDate";
 class TimelineChart extends ReactFlot {
   constructor() {
     super();
-
-    this.flotOptions = {
-      margin: {
-        top: 0,
-        left: 0,
-        bottom: 0,
-        right: 0,
-      },
-      selection: {
-        mode: "x",
-      },
-      crosshair: {
-        mode: "x",
-        color: "#C3170D",
-        lineWidth: "1",
-      },
-      grid: {
-        borderWidth: 1,
-        margin: {
-          left: 16,
-          right: 16,
-        },
-      },
-      yaxis: {
-        show: false,
-        min: 0,
-      },
-      points: {
-        show: false,
-        radius: 0.1,
-      },
-      lines: {
-        show: false,
-        steps: true,
-        lineWidth: 1.0,
-      },
-      bars: {
-        show: true,
-        fill: true,
-      },
-      xaxis: {
-        mode: "time",
-        timezone: "browser",
-        reserveSpace: false,
-      },
-    };
   }
 
   plotMarkings = () => {
@@ -130,6 +84,7 @@ class TimelineChart extends ReactFlot {
 
   componentDidMount() {
     this.draw();
+    
     $(`#${this.props.id}`).bind("plotselected", (event, ranges) => {
       this.props.actions.setDateRange(
         Math.round(ranges.xaxis.from / 1000),
@@ -150,10 +105,8 @@ class TimelineChart extends ReactFlot {
   }
 
   render = () => {
-    this.flotOptions.grid.markings = this.plotMarkings();
-
     return (
-      <ReactFlot id={this.props.id} options={this.flotOptions} data={this.props.data} width={this.props.width} height="100px" />
+      <ReactFlot id={this.props.id} options={this.props.options} data={this.props.data || [[0, 0]]} width={this.props.width} height="100px" />
     )
   }
 }

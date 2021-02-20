@@ -7,6 +7,7 @@ import { Router, Switch, Route } from "react-router-dom";
 import store from "./redux/store";
 
 import PyroscopeApp from "./components/PyroscopeApp";
+import ComparisonApp from "./components/ComparisonApp";
 import Sidebar from "./components/Sidebar";
 
 import history from "./util/history";
@@ -36,7 +37,8 @@ ReactDOM.render(
             <PyroscopeApp />
           </Route>
           <Route path="/comparison">
-            <ComingSoon />
+            <ComparisonApp />
+            {/* <ComingSoon /> */}
           </Route>
         </Switch>
       </ShortcutProvider>

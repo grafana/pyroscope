@@ -86,10 +86,10 @@ function Sidebar(props) {
         <button
           type="button"
           onClick={() => {
-            // history.push({
-            //   pathname: '/comparison',
-            //   search: history.location.search,
-            // });
+            history.push({
+              pathname: '/comparison',
+              search: history.location.search,
+            });
           }}
         >
           <FontAwesomeIcon icon={faColumns} />
