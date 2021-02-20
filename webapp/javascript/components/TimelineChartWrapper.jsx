@@ -24,61 +24,65 @@ import { bindActionCreators } from "redux";
 import TimelineChart from "./TimelineChart";
 import { formatAsOBject } from "../util/formatDate";
 
-let flotOptions = {
-  margin: {
-    top: 0,
-    left: 0,
-    bottom: 0,
-    right: 0,
-  },
-  selection: {
-    mode: "x",
-  },
-  crosshair: {
-    mode: "x",
-    color: "#C3170D",
-    lineWidth: "1",
-  },
-  grid: {
-    borderWidth: 1,
-    margin: {
-      left: 16,
-      right: 16,
-    },
-  },
-  yaxis: {
-    show: false,
-    min: 0,
-  },
-  points: {
-    show: false,
-    radius: 0.1,
-  },
-  lines: {
-    show: false,
-    steps: true,
-    lineWidth: 1.0,
-  },
-  bars: {
-    show: true,
-    fill: true,
-  },
-  xaxis: {
-    mode: "time",
-    timezone: "browser",
-    reserveSpace: false,
-  }
-}
 
 
 class TimelineChartWrapper extends React.Component {
   constructor() {
     super();
 
+    this.state = {
+      flotOptions: {
+      margin: {
+        top: 0,
+        left: 0,
+        bottom: 0,
+        right: 0,
+      },
+      selection: {
+        mode: "x",
+      },
+      crosshair: {
+        mode: "x",
+        color: "#C3170D",
+        lineWidth: "1",
+      },
+      grid: {
+        borderWidth: 1,
+        margin: {
+          left: 16,
+          right: 16,
+        },
+      },
+      yaxis: {
+        show: false,
+        min: 0,
+      },
+      points: {
+        show: false,
+        radius: 0.1,
+      },
+      lines: {
+        show: false,
+        steps: true,
+        lineWidth: 1.0,
+      },
+      bars: {
+        show: true,
+        fill: true,
+      },
+      xaxis: {
+        mode: "time",
+        timezone: "browser",
+        reserveSpace: false,
+      }
+    }}
   }
 
   componentDidMount() {
+    let newFlotOptions = this.state.flotOptions;
+    newFlotOptions.grid.markings = this.plotMarkings();
 
+    this.setState({flotOptions: newFlotOptions})
   }
 
   plotMarkings = () => {
@@ -154,12 +158,10 @@ class TimelineChartWrapper extends React.Component {
     ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
     : [];
     
-    flotOptions.grid.markings = this.plotMarkings();
-
     return (
       <TimelineChart
         id={this.props.id}
-        options={flotOptions}
+        options={this.state.flotOptions}
         data={flotData}
         width="100%"
         height="100px"
