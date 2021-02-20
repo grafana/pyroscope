@@ -499,7 +499,8 @@ class FlameGraphRenderer extends React.Component {
       [tablePane, flameGraphPane]
     
     return (
-      <div className="canvas-renderer">
+      <div className={clsx("canvas-renderer", { "comparison": this.props.viewType === "comparison" })}>
+
         <div className="canvas-container">
           <ProfilerHeader
             view={this.state.view}

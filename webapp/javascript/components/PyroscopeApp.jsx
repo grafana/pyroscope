@@ -12,6 +12,24 @@ import { fetchNames, fetchTimeline } from "../redux/actions";
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
+function ComparisonView(props) {
+  return (
+    <div className={'comparison-container'}>
+    <FlameGraphRenderer 
+      viewType="comparison" />
+    <FlameGraphRenderer 
+      viewType="comparison" />
+    </div>
+  )
+}
+
+function SingleView(props) {
+  return (
+    <FlameGraphRenderer 
+      viewType="single" />
+  )
+}
+
 function PyroscopeApp(props) {
   const { actions, renderURL, timeline } = props;
   const [state, setState] = useState(initialState);
@@ -33,14 +51,14 @@ function PyroscopeApp(props) {
         <Header />
         <TimelineChart
           id="timeline-chart"
-          options={{}} // using options insode of component to calculate markings
+          options={{}} // using options inside of component to calculate markings
           showMarkings={'both'}
           data={flotData}
           width="100%"
           height="100px"
         />
-        <FlameGraphRenderer 
-          viewType="single" />
+        <ComparisonView />
+        {/* <SingleView /> */}
       </div>
       <Footer />
     </div>
