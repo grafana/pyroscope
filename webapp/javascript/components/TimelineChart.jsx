@@ -8,6 +8,7 @@ import "react-flot/flot/jquery.flot.selection.min";
 import "react-flot/flot/jquery.flot.crosshair.min";
 import { bindActionCreators } from "redux";
 import { setDateRange } from "../redux/actions";
+import { formatAsOBject } from "../util/formatDate";
 
 class TimelineChart extends ReactFlot {
   constructor() {
@@ -60,6 +61,43 @@ class TimelineChart extends ReactFlot {
     };
   }
 
+  plotMarkings = () => {
+    if (!this.props.showMarkings) {
+      return null;
+    }
+
+    let leftMarkings = {
+      xaxis: {
+        from: new Date(formatAsOBject(this.props.leftFrom)).getTime(),
+        to: new Date(formatAsOBject(this.props.leftUntil)).getTime()
+      },
+      yaxis: {
+        from: 0,
+        to: 1000
+      },
+      color: "#bb0000"
+    }
+
+    let rightMarkings = { 
+      xaxis: { 
+        from: new Date(formatAsOBject(this.props.rightFrom)).getTime(),
+        to: new Date(formatAsOBject(this.props.rightUntil)).getTime()
+      }, 
+      yaxis: { 
+        from: 0, 
+        to: 1000 
+      }, 
+      color: "#00bb00" 
+    }
+
+    return {
+      left: [leftMarkings],
+      right: [rightMarkings],
+      both: [leftMarkings, rightMarkings],
+      none: []
+    }[this.props.showMarkings];
+  };
+
   componentDidMount() {
     this.draw();
     $(`#${this.props.id}`).bind("plotselected", (event, ranges) => {
@@ -82,6 +120,8 @@ class TimelineChart extends ReactFlot {
   }
 
   render = () => {
+    this.flotOptions.grid.markings = this.plotMarkings();
+
     return (
       <ReactFlot id={this.props.id} options={this.flotOptions} data={this.props.data} width={this.props.width} height="100px" />
     )
