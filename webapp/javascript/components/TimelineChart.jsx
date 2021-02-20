@@ -75,7 +75,8 @@ class TimelineChart extends ReactFlot {
         from: 0,
         to: 1000
       },
-      color: "#bb0000"
+      color: "rgba(235, 168, 230, 0.35)",
+      opacity: 0.5,
     }
 
     let rightMarkings = { 
@@ -87,7 +88,7 @@ class TimelineChart extends ReactFlot {
         from: 0, 
         to: 1000 
       }, 
-      color: "#00bb00" 
+      color: "rgba(81,  149, 206, 0.35)" 
     }
 
     return {

@@ -34,7 +34,7 @@ function PyroscopeApp(props) {
         <TimelineChart
           id="timeline-chart"
           options={{}} // using options insode of component to calculate markings
-          showMarkings={'none'}
+          showMarkings={'both'}
           data={flotData}
           width="100%"
           height="100px"
