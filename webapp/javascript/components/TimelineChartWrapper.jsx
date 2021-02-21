@@ -85,6 +85,21 @@ class TimelineChartWrapper extends React.Component {
     this.setState({flotOptions: newFlotOptions})
   }
 
+  componentDidUpdate(prevProps) {
+    if (this.props.viewSide == 'none') return;
+
+    if (prevProps.leftFrom !== this.props.leftFrom ||
+      prevProps.leftUntil !== this.props.leftUntil ||
+      prevProps.rightFrom !== this.props.rightFrom ||
+      prevProps.rightUntil !== this.props.rightUntil) {
+        let newFlotOptions = this.state.flotOptions;
+        newFlotOptions.grid.markings = this.plotMarkings();
+    
+        this.setState({flotOptions: newFlotOptions})
+    }
+    
+  }
+
   plotMarkings = () => {
     if (!this.props.viewSide) {
       return null;
