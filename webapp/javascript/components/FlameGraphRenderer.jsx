@@ -91,9 +91,15 @@ class FlameGraphRenderer extends React.Component {
       prevProps.from != this.props.from ||
       prevProps.until != this.props.until ||
       prevProps.maxNodes != this.props.maxNodes ||
-      prevProps.refreshToken != this.props.refreshToken
+      prevProps.refreshToken != this.props.refreshToken ||
+      prevProps[`${this.props.viewSide}From`] != this.props[`${this.props.viewSide}From`] ||
+      prevProps[`${this.props.viewSide}Until`] != this.props[`${this.props.viewSide}Until`]
     ) {
-      this.fetchFlameBearerData(this.props.renderURL);
+      if(this.props.viewSide === 'left' || this.props.viewSide === 'right') {
+        this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`])
+      } else {
+        this.fetchFlameBearerData(this.props.renderURL)
+      }
     }
 
     if (
@@ -557,6 +563,8 @@ class FlameGraphRenderer extends React.Component {
 const mapStateToProps = (state) => ({
   ...state,
   renderURL: buildRenderURL(state),
+  leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
+  rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),
 });
 
 const mapDispatchToProps = (dispatch) => ({
