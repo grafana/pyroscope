@@ -83,7 +83,12 @@ class FlameGraphRenderer extends React.Component {
         "Reset Flamegraph View"
       );
     }
-    this.fetchFlameBearerData(this.props.renderURL);
+
+    if(this.props.viewSide === 'left' || this.props.viewSide === 'right') {
+      this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`])
+    } else {
+      this.fetchFlameBearerData(this.props.renderURL)
+    }
   }
 
   componentDidUpdate(prevProps, prevState) {
