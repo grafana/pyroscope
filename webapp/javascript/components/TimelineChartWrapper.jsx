@@ -105,10 +105,13 @@ class TimelineChartWrapper extends React.Component {
       return null;
     }
 
-    let leftFromInt = new Date(formatAsOBject(this.props.leftFrom)).getTime()
-    let leftUntilInt = new Date(formatAsOBject(this.props.leftUntil)).getTime()
-    let rightFromInt = new Date(formatAsOBject(this.props.rightFrom)).getTime()
-    let rightUntilInt = new Date(formatAsOBject(this.props.rightUntil)).getTime()
+    let leftFromInt = new Date(formatAsOBject(this.props.leftFrom)).getTime();
+    let leftUntilInt = new Date(formatAsOBject(this.props.leftUntil)).getTime();
+    let rightFromInt = new Date(formatAsOBject(this.props.rightFrom)).getTime();
+    let rightUntilInt = new Date(formatAsOBject(this.props.rightUntil)).getTime();
+
+    let nonActiveBorder = 0.2;
+    let nonActiveBackground = 0.1;
 
     let leftMarkings = [
       {
@@ -116,20 +119,20 @@ class TimelineChartWrapper extends React.Component {
           from: leftFromInt,
           to: leftUntilInt
         },
-        yaxis: {
-          from: 0,
-          to: 1000
-        },
-        color: "rgba(235, 168, 230, 0.35)",
+        // yaxis: {
+        //   from: 0,
+        //   to: 1000
+        // },
+        color: (this.props.viewSide === "left" || this.props.viewSide === "both") ? "rgba(235, 168, 230, 0.35)" : `rgba(235, 168, 230, ${nonActiveBackground})`,
         opacity: 0.5,
       },         
       { 
-        color: "rgba(235, 168, 230, 1)", 
+        color: (this.props.viewSide === "left" || this.props.viewSide === "both") ? "rgba(235, 168, 230, 1)" : `rgba(235, 168, 230, ${nonActiveBorder})`,
         lineWidth: 2, 
         xaxis: { from: leftFromInt, to: leftFromInt } 
       },
       { 
-        color: "rgba(235, 168, 230, 1)", 
+        color: (this.props.viewSide === "left" || this.props.viewSide === "both") ? "rgba(235, 168, 230, 1)" : `rgba(235, 168, 230, ${nonActiveBorder})`, 
         lineWidth: 2, 
         xaxis: { from: leftUntilInt, to: leftUntilInt } 
       },
@@ -141,30 +144,32 @@ class TimelineChartWrapper extends React.Component {
           from: rightFromInt,
           to: rightUntilInt
         }, 
-        yaxis: { 
-          from: 0, 
-          to: 1000 
-        }, 
-        color: "rgba(81,  149, 206, 0.35)" 
+        // yaxis: { 
+        //   from: 0, 
+        //   to: 1000 
+        // }, 
+        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(81,  149, 206, 0.35)" : `rgba(81,  149, 206, ${nonActiveBackground + 0.05})`,
       },
       { 
-        color: "rgba(81,  149, 206, 1)" , 
+        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(81,  149, 206, 1)" : `rgba(81,  149, 206, ${nonActiveBorder + 0.05})`,
         lineWidth: 2, 
         xaxis: { from: rightFromInt, to: rightFromInt } 
       },
       { 
-        color: "rgba(81,  149, 206, 1)" , 
+        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(81,  149, 206, 1)" : `rgba(81,  149, 206, ${nonActiveBorder})`, 
         lineWidth: 2, 
         xaxis: { from: rightUntilInt, to: rightUntilInt } 
       },
     ]
 
-    return {
-      left: leftMarkings,
-      right: rightMarkings,
-      both: leftMarkings.concat(rightMarkings),
-      none: []
-    }[this.props.viewSide];
+    return this.props.viewSide === "none" ? [] : leftMarkings.concat(rightMarkings);
+
+    // return {
+    //   left: leftMarkings,
+    //   right: rightMarkings,
+    //   both: leftMarkings.concat(rightMarkings),
+    //   none: []
+    // }[this.props.viewSide];
   };
 
 
