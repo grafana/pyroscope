@@ -33,7 +33,7 @@ function ComparisonApp(props) {
         <Header />
         <TimelineChartWrapper
           id={"timeline-chart-double"}
-          showMarkings={'both'}
+          viewSide={'both'}
         />
         <div className={'comparison-container'}>
             <FlameGraphRenderer 

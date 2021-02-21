@@ -33,7 +33,7 @@ function PyroscopeApp(props) {
         <Header />
         <TimelineChartWrapper
           id={"timeline-chart-single"}
-          showMarkings={'none'}
+          viewSide={'none'}
         />
         <FlameGraphRenderer 
           viewType="single" />

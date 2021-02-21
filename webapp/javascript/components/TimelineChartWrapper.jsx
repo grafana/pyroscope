@@ -86,7 +86,7 @@ class TimelineChartWrapper extends React.Component {
   }
 
   plotMarkings = () => {
-    if (!this.props.showMarkings) {
+    if (!this.props.viewSide) {
       return null;
     }
 
@@ -149,7 +149,7 @@ class TimelineChartWrapper extends React.Component {
       right: rightMarkings,
       both: leftMarkings.concat(rightMarkings),
       none: []
-    }[this.props.showMarkings];
+    }[this.props.viewSide];
   };
 
 
@@ -162,6 +162,7 @@ class TimelineChartWrapper extends React.Component {
       <TimelineChart
         id={this.props.id}
         options={this.state.flotOptions}
+        viewSide={this.props.viewSide}
         data={flotData}
         width="100%"
         height="100px"

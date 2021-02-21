@@ -516,7 +516,7 @@ class FlameGraphRenderer extends React.Component {
               <TimelineChartWrapper
                 key={`timeline-chart-${this.props.viewSide}`}
                 id={`timeline-chart-${this.props.viewSide}`}
-                showMarkings={this.props.viewSide}
+                viewSide={this.props.viewSide}
               /> :
               null
           }
