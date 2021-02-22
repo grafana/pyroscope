@@ -208,7 +208,10 @@ body {
 //   bottom: 0;
 // }
 
-#timeline-chart {
+#timeline-chart-single,
+#timeline-chart-double,
+#timeline-chart-left,
+#timeline-chart-right {
   overflow: hidden;
   cursor: crosshair;
 }
