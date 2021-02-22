@@ -111,7 +111,7 @@ class TimelineChartWrapper extends React.Component {
     let rightUntilInt = new Date(formatAsOBject(this.props.rightUntil)).getTime();
 
     let nonActiveBorder = 0.2;
-    let nonActiveBackground = 0.1;
+    let nonActiveBackground = 0.09;
 
     let leftMarkings = [
       {
@@ -147,10 +147,10 @@ class TimelineChartWrapper extends React.Component {
         //   from: 0, 
         //   to: 1000 
         // }, 
-        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(19, 152, 246, 0.35)" : `rgba(19, 152, 246, ${nonActiveBackground + 0.05})`,
+        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(19, 152, 246, 0.35)" : `rgba(19, 152, 246, ${nonActiveBackground})`,
       },
       { 
-        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(19, 152, 246, 1)" : `rgba(19, 152, 246, ${nonActiveBorder + 0.05})`,
+        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(19, 152, 246, 1)" : `rgba(19, 152, 246, ${nonActiveBorder})`,
         lineWidth: 3, 
         xaxis: { from: rightFromInt, to: rightFromInt } 
       },
