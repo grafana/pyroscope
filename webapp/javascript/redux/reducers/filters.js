@@ -12,6 +12,12 @@ import {
   REQUEST_TIMELINE,
   RECEIVE_NAMES,
   REQUEST_NAMES,
+  SET_LEFT_DATE_RANGE,
+  SET_RIGHT_DATE_RANGE,
+  SET_LEFT_FROM,
+  SET_RIGHT_FROM,
+  SET_LEFT_UNTIL,
+  SET_RIGHT_UNTIL,
 } from "../actionTypes";
 
 const defaultName = window.initialState.appNames.find(
@@ -20,7 +26,11 @@ const defaultName = window.initialState.appNames.find(
 
 const initialState = {
   from: "now-1h",
+  leftFrom: "now-1h",
+  rightFrom: "now-30m",
   until: "now",
+  leftUntil: "now-30m",
+  rightUntil: "now",
   labels: [{ name: "__name__", value: defaultName || "pyroscope.server.cpu" }],
   names: window.initialState.appNames,
   timeline: null,
@@ -56,10 +66,42 @@ export default function (state = initialState, action) {
         ...state,
         from: action.payload.from,
       };
+    case SET_LEFT_FROM:
+      return {
+        ...state,
+        leftFrom: action.payload.from,
+      };
+    case SET_RIGHT_FROM:
+      return {
+        ...state,
+        rightFrom: action.payload.from,
+      };
     case SET_UNTIL:
       return {
         ...state,
         until: action.payload.until,
+      };
+    case SET_LEFT_UNTIL:
+      return {
+        ...state,
+        leftUntil: action.payload.until,
+      };
+    case SET_RIGHT_UNTIL:
+      return {
+        ...state,
+        rightUntil: action.payload.until,
+      };
+    case SET_LEFT_DATE_RANGE:
+      return {
+        ...state,
+        leftFrom: action.payload.from,
+        leftUntil: action.payload.until,
+      };
+    case SET_RIGHT_DATE_RANGE:
+      return {
+        ...state,
+        rightFrom: action.payload.from,
+        rightUntil: action.payload.until,
       };
     case SET_MAX_NODES:
       return {

@@ -3,27 +3,14 @@ import React from "react";
 
 import { Provider } from "react-redux";
 import { ShortcutProvider } from "react-keybind";
+import { Router, Switch, Route } from "react-router-dom";
 import store from "./redux/store";
 
 import PyroscopeApp from "./components/PyroscopeApp";
+import ComparisonApp from "./components/ComparisonApp";
 import Sidebar from "./components/Sidebar";
 
 import history from "./util/history";
-
-import {
-  Router,
-  Switch,
-  Route,
-} from "react-router-dom";
-
-function ComingSoon() {
-  return <h2 style={{    
-    "display": "flex",
-    "flexDirection": "column",
-    "marginLeft": "100px",
-    "marginTop": "0px" 
-  }}>Comparison view</h2>;
-}
 
 ReactDOM.render(
   <Provider store={store}>
@@ -35,7 +22,7 @@ ReactDOM.render(
             <PyroscopeApp />
           </Route>
           <Route path="/comparison">
-            <ComingSoon />
+            <ComparisonApp />
           </Route>
         </Switch>
       </ShortcutProvider>

@@ -9,7 +9,16 @@ import ReduxQuerySync from "redux-query-sync";
 import rootReducer from "./reducers";
 import history from "../util/history";
 
-import { setFrom, setUntil, setLabels, setMaxNodes } from "./actions";
+import {
+  setLeftFrom,
+  setLeftUntil,
+  setRightFrom,
+  setRightUntil,
+  setFrom,
+  setUntil,
+  setLabels,
+  setMaxNodes,
+} from "./actions";
 
 import { parseLabels, encodeLabels } from "../util/key";
 
@@ -33,6 +42,26 @@ ReduxQuerySync({
       defaultValue: "now",
       selector: (state) => state.until,
       action: setUntil,
+    },
+    leftFrom: {
+      defaultValue: "now-1h",
+      selector: (state) => state.leftFrom,
+      action: setLeftFrom,
+    },
+    leftUntil: {
+      defaultValue: "now-30m",
+      selector: (state) => state.leftUntil,
+      action: setLeftUntil,
+    },
+    rightFrom: {
+      defaultValue: "now-30m",
+      selector: (state) => state.rightFrom,
+      action: setRightFrom,
+    },
+    rightUntil: {
+      defaultValue: "now",
+      selector: (state) => state.rightUntil,
+      action: setRightUntil,
     },
     name: {
       selector: (state) => encodeLabels(state.labels),
