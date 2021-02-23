@@ -45,7 +45,7 @@ function SidebarItem(props) {
 
 const initialState = {
   shortcutsModalOpen: false,
-  currentRoute: '/'
+  currentRoute: "/",
 };
 
 function Sidebar(props) {
@@ -67,8 +67,8 @@ function Sidebar(props) {
       search: history.location.search,
     });
 
-    setState({ currentRoute: newRoute})
-  }
+    setState({ currentRoute: newRoute });
+  };
 
   useEffect(() => {
     shortcut.registerShortcut(
@@ -79,29 +79,28 @@ function Sidebar(props) {
     );
 
     // console.log('history: ', history.location.pathname);
-    setState({ currentRoute: history.location.pathname})
+    setState({ currentRoute: history.location.pathname });
   }, []);
 
   return (
     <div className="sidebar">
-      <span
-        className="logo"
-        onClick={() => updateRoute('/')}
-      />
+      <span className="logo" onClick={() => updateRoute("/")} />
       <SidebarItem tooltipText="Single View">
         <button
           className={clsx({ "active-route": state.currentRoute === "/" })}
           type="button"
-          onClick={() => updateRoute('/')}
+          onClick={() => updateRoute("/")}
         >
           <FontAwesomeIcon icon={faWindowMaximize} />
         </button>
       </SidebarItem>
       <SidebarItem tooltipText="Comparison View">
         <button
-          className={clsx({ "active-route": state.currentRoute === "/comparison" })}
+          className={clsx({
+            "active-route": state.currentRoute === "/comparison",
+          })}
           type="button"
-          onClick={() => updateRoute('/comparison')}
+          onClick={() => updateRoute("/comparison")}
         >
           <FontAwesomeIcon icon={faColumns} />
         </button>
