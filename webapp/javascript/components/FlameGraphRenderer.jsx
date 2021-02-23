@@ -511,6 +511,9 @@ class FlameGraphRenderer extends React.Component {
       ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
       : [];
 
+    let instructionsText = this.props.viewType === "double" ? `Select ${this.props.viewSide} time range` : null;
+    let instructionsClassName = this.props.viewType === "double" ? `${this.props.viewSide}-instructions` : null;
+
     return (
       <div className={clsx("canvas-renderer", { "double": this.props.viewType === "double" })}>
 
@@ -522,6 +525,9 @@ class FlameGraphRenderer extends React.Component {
             updateView={this.updateView}
             resetStyle={this.state.resetStyle}
           />
+          <div className={`${instructionsClassName}-wrapper`}>
+            <span className={`${instructionsClassName}-text`}>{instructionsText}</span>
+          </div>
           { 
             this.props.viewType === "double" ? 
               <TimelineChartWrapper
