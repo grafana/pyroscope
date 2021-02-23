@@ -123,15 +123,15 @@ class TimelineChartWrapper extends React.Component {
         //   from: 0,
         //   to: 1000
         // },
-        color: (this.props.viewSide === "left" || this.props.viewSide === "both") ? "rgba(200, 102, 204, 0.35)" : `rgba(255, 102, 204, ${nonActiveBackground})`,
+        color: this.props.viewSide === "left" ? "rgba(200, 102, 204, 0.35)" : `rgba(255, 102, 204, ${nonActiveBackground})`,
       },         
       { 
-        color: (this.props.viewSide === "left" || this.props.viewSide === "both") ? "rgba(200, 102, 204, 1)" : `rgba(255, 102, 204, ${nonActiveBorder})`,
+        color: this.props.viewSide === "left" ? "rgba(200, 102, 204, 1)" : `rgba(255, 102, 204, ${nonActiveBorder})`,
         lineWidth: 3, 
         xaxis: { from: leftFromInt, to: leftFromInt } 
       },
       { 
-        color: (this.props.viewSide === "left" || this.props.viewSide === "both") ? "rgba(200, 102, 204, 1)" : `rgba(255, 102, 204, ${nonActiveBorder})`, 
+        color: this.props.viewSide === "left" ? "rgba(200, 102, 204, 1)" : `rgba(255, 102, 204, ${nonActiveBorder})`, 
         lineWidth: 3, 
         xaxis: { from: leftUntilInt, to: leftUntilInt } 
       },
@@ -147,15 +147,15 @@ class TimelineChartWrapper extends React.Component {
         //   from: 0, 
         //   to: 1000 
         // }, 
-        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(19, 152, 246, 0.35)" : `rgba(19, 152, 246, ${nonActiveBackground})`,
+        color: this.props.viewSide === "right" ? "rgba(19, 152, 246, 0.35)" : `rgba(19, 152, 246, ${nonActiveBackground})`,
       },
       { 
-        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(19, 152, 246, 1)" : `rgba(19, 152, 246, ${nonActiveBorder})`,
+        color: this.props.viewSide === "right" ? "rgba(19, 152, 246, 1)" : `rgba(19, 152, 246, ${nonActiveBorder})`,
         lineWidth: 3, 
         xaxis: { from: rightFromInt, to: rightFromInt } 
       },
       { 
-        color: (this.props.viewSide === "right" || this.props.viewSide === "both") ? "rgba(19, 152, 246, 1)" : `rgba(19, 152, 246, ${nonActiveBorder})`, 
+        color: this.props.viewSide === "right" ? "rgba(19, 152, 246, 1)" : `rgba(19, 152, 246, ${nonActiveBorder})`, 
         lineWidth: 3, 
         xaxis: { from: rightUntilInt, to: rightUntilInt } 
       },
