@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { connect } from "react-redux";
 import "react-dom";
 
@@ -13,8 +13,7 @@ import { fetchNames, fetchTimeline } from "../redux/actions";
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
 function ComparisonApp(props) {
-  const { actions, renderURL, timeline } = props;
-  const [state, setState] = useState(initialState);
+  const { actions, renderURL } = props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
@@ -23,25 +22,14 @@ function ComparisonApp(props) {
     }
   }, [renderURL]);
 
-  const flotData = timeline
-    ? [timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
-    : [];
-
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <Header />
-        <TimelineChartWrapper
-          id={"timeline-chart-double"}
-          viewSide={'both'}
-        />
-        <div className={'comparison-container'}>
-            <FlameGraphRenderer 
-                viewType="double"
-                viewSide="left" />
-            <FlameGraphRenderer 
-                viewType="double"
-                viewSide="right" />
+        <TimelineChartWrapper id="timeline-chart-double" viewSide="both" />
+        <div className="comparison-container">
+          <FlameGraphRenderer viewType="double" viewSide="left" />
+          <FlameGraphRenderer viewType="double" viewSide="right" />
         </div>
       </div>
       <Footer />

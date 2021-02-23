@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { connect } from "react-redux";
 import "react-dom";
 
@@ -10,11 +10,8 @@ import Footer from "./Footer";
 import { buildRenderURL } from "../util/updateRequests";
 import { fetchNames, fetchTimeline } from "../redux/actions";
 
-// See docs here: https://github.com/flot/flot/blob/master/API.md
-
 function PyroscopeApp(props) {
-  const { actions, renderURL, timeline } = props;
-  const [state, setState] = useState(initialState);
+  const { actions, renderURL } = props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
@@ -23,20 +20,12 @@ function PyroscopeApp(props) {
     }
   }, [renderURL]);
 
-  const flotData = timeline
-    ? [timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
-    : [];
-
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <Header />
-        <TimelineChartWrapper
-          id={"timeline-chart-single"}
-          viewSide={'none'}
-        />
-        <FlameGraphRenderer 
-          viewType="single" />
+        <TimelineChartWrapper id="timeline-chart-single" viewSide="none" />
+        <FlameGraphRenderer viewType="single" />
       </div>
       <Footer />
     </div>

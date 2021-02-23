@@ -12,21 +12,6 @@ import Sidebar from "./components/Sidebar";
 
 import history from "./util/history";
 
-function ComingSoon() {
-  return (
-    <h2
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        marginLeft: "100px",
-        marginTop: "0px",
-      }}
-    >
-      Comparison view
-    </h2>
-  );
-}
-
 ReactDOM.render(
   <Provider store={store}>
     <Router history={history}>
@@ -38,7 +23,6 @@ ReactDOM.render(
           </Route>
           <Route path="/comparison">
             <ComparisonApp />
-            {/* <ComingSoon /> */}
           </Route>
         </Switch>
       </ShortcutProvider>

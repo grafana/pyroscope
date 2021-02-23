@@ -7,35 +7,35 @@ import "react-flot/flot/jquery.flot.time.min";
 import "react-flot/flot/jquery.flot.selection.min";
 import "react-flot/flot/jquery.flot.crosshair.min";
 import { bindActionCreators } from "redux";
-import { setDateRange, setLeftDateRange, setRightDateRange } from "../redux/actions";
+import {
+  setDateRange,
+  setLeftDateRange,
+  setRightDateRange,
+} from "../redux/actions";
 import { formatAsOBject } from "../util/formatDate";
 
 class TimelineChart extends ReactFlot {
-  constructor() {
-    super();
-  }
-
   componentDidMount() {
     this.draw();
-    
+
     $(`#${this.props.id}`).bind("plotselected", (event, ranges) => {
-      console.log('plotselected', this.props);
-      if(this.props.viewSide === "both" || this.props.viewSide === "none") {
+      console.log("plotselected", this.props);
+      if (this.props.viewSide === "both" || this.props.viewSide === "none") {
         this.props.actions.setDateRange(
           Math.round(ranges.xaxis.from / 1000),
           Math.round(ranges.xaxis.to / 1000)
         );
-        } else if (this.props.viewSide === "left") {
-          this.props.actions.setLeftDateRange(
-            Math.round(ranges.xaxis.from / 1000),
-            Math.round(ranges.xaxis.to / 1000)
-          );
-        } else if (this.props.viewSide === "right") {
-          this.props.actions.setRightDateRange(
-            Math.round(ranges.xaxis.from / 1000),
-            Math.round(ranges.xaxis.to / 1000)
-          );
-        }
+      } else if (this.props.viewSide === "left") {
+        this.props.actions.setLeftDateRange(
+          Math.round(ranges.xaxis.from / 1000),
+          Math.round(ranges.xaxis.to / 1000)
+        );
+      } else if (this.props.viewSide === "right") {
+        this.props.actions.setRightDateRange(
+          Math.round(ranges.xaxis.from / 1000),
+          Math.round(ranges.xaxis.to / 1000)
+        );
+      }
     });
 
     $(`#${this.props.id}`).bind("plothover", (evt, position) => {

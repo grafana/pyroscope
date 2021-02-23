@@ -36,7 +36,7 @@ function SidebarItem(props) {
     <div className="sidebar-item">
       {children}
       <div className="sidebar-tooltip-wrapper">
-        { tooltipText &&  <span className="sidebar-tooltip">{tooltipText}</span> }
+        {tooltipText && <span className="sidebar-tooltip">{tooltipText}</span>}
       </div>
     </div>
   );
@@ -47,7 +47,7 @@ const initialState = {
 };
 
 function Sidebar(props) {
-  const { areNamesLoading, isJSONLoading, labels, shortcut } = props;
+  const { shortcut } = props;
 
   const [state, setState] = useState(initialState);
 
@@ -84,7 +84,7 @@ function Sidebar(props) {
           type="button"
           onClick={() => {
             history.push({
-              pathname: '/',
+              pathname: "/",
               search: history.location.search,
             });
           }}
@@ -97,7 +97,7 @@ function Sidebar(props) {
           type="button"
           onClick={() => {
             history.push({
-              pathname: '/comparison',
+              pathname: "/comparison",
               search: history.location.search,
             });
           }}
@@ -106,7 +106,7 @@ function Sidebar(props) {
         </button>
       </SidebarItem>
       <SidebarItem tooltipText="Alerts - Coming Soon">
-        <button>
+        <button type="button">
           <FontAwesomeIcon icon={faBell} />
         </button>
       </SidebarItem>
