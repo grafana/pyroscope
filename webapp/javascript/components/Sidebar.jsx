@@ -11,6 +11,7 @@ import {
   faKeyboard,
   faColumns,
 } from "@fortawesome/free-solid-svg-icons";
+import { faWindowMaximize } from "@fortawesome/free-regular-svg-icons";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import ShortcutsModal from "./ShortcutsModal";
 import SlackIcon from "./SlackIcon";
@@ -82,6 +83,19 @@ function Sidebar(props) {
           });
         }}
       />
+      <SidebarItem tooltipText="Comparison View - Coming Soon">
+        <button
+          type="button"
+          onClick={() => {
+            history.push({
+              pathname: '/',
+              search: history.location.search,
+            });
+          }}
+        >
+          <FontAwesomeIcon icon={faWindowMaximize} />
+        </button>
+      </SidebarItem>
       <SidebarItem tooltipText="Comparison View - Coming Soon">
         <button
           type="button"
