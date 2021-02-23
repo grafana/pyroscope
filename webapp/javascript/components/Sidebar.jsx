@@ -4,6 +4,7 @@ import "react-dom";
 
 import { withShortcut } from "react-keybind";
 import Modal from "react-modal";
+import clsx from "clsx";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -44,6 +45,7 @@ function SidebarItem(props) {
 
 const initialState = {
   shortcutsModalOpen: false,
+  currentRoute: '/'
 };
 
 function Sidebar(props) {
@@ -59,6 +61,15 @@ function Sidebar(props) {
     setState({ shortcutsModalOpen: false });
   };
 
+  const updateRoute = (newRoute) => {
+    history.push({
+      pathname: newRoute,
+      search: history.location.search,
+    });
+
+    setState({ currentRoute: newRoute})
+  }
+
   useEffect(() => {
     shortcut.registerShortcut(
       showShortcutsModal,
@@ -66,41 +77,31 @@ function Sidebar(props) {
       "Shortcuts",
       "Show Keyboard Shortcuts Modal"
     );
+
+    // console.log('history: ', history.location.pathname);
+    setState({ currentRoute: history.location.pathname})
   }, []);
 
   return (
     <div className="sidebar">
       <span
-        className="logo active"
-        onClick={() => {
-          history.push({
-            pathname: "/",
-            search: history.location.search,
-          });
-        }}
+        className="logo"
+        onClick={() => updateRoute('/')}
       />
       <SidebarItem tooltipText="Single View">
         <button
+          className={clsx({ "active-route": state.currentRoute === "/" })}
           type="button"
-          onClick={() => {
-            history.push({
-              pathname: "/",
-              search: history.location.search,
-            });
-          }}
+          onClick={() => updateRoute('/')}
         >
           <FontAwesomeIcon icon={faWindowMaximize} />
         </button>
       </SidebarItem>
       <SidebarItem tooltipText="Comparison View">
         <button
+          className={clsx({ "active-route": state.currentRoute === "/comparison" })}
           type="button"
-          onClick={() => {
-            history.push({
-              pathname: "/comparison",
-              search: history.location.search,
-            });
-          }}
+          onClick={() => updateRoute('/comparison')}
         >
           <FontAwesomeIcon icon={faColumns} />
         </button>
