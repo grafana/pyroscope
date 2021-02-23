@@ -79,7 +79,7 @@ function Sidebar(props) {
           });
         }}
       />
-      <SidebarItem>
+      <SidebarItem tooltipText="Single View">
         <button
           type="button"
           onClick={() => {
@@ -92,7 +92,7 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faWindowMaximize} />
         </button>
       </SidebarItem>
-      <SidebarItem>
+      <SidebarItem tooltipText="Comparison View">
         <button
           type="button"
           onClick={() => {
