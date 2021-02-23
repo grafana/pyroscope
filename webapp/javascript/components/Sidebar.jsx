@@ -10,6 +10,7 @@ import {
   faFileAlt,
   faKeyboard,
   faColumns,
+  faBell,
 } from "@fortawesome/free-solid-svg-icons";
 import { faWindowMaximize } from "@fortawesome/free-regular-svg-icons";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
@@ -34,13 +35,8 @@ function SidebarItem(props) {
   return (
     <div className="sidebar-item">
       {children}
-      {
-        // <div className="sidebar-external-link">
-        //   <FontAwesomeIcon icon={faExternalLinkSquareAlt} />
-        // </div>
-      }
       <div className="sidebar-tooltip-wrapper">
-        <span className="sidebar-tooltip">{tooltipText}</span>
+        { tooltipText &&  <span className="sidebar-tooltip">{tooltipText}</span> }
       </div>
     </div>
   );
@@ -83,7 +79,7 @@ function Sidebar(props) {
           });
         }}
       />
-      <SidebarItem tooltipText="Comparison View - Coming Soon">
+      <SidebarItem>
         <button
           type="button"
           onClick={() => {
@@ -96,7 +92,7 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faWindowMaximize} />
         </button>
       </SidebarItem>
-      <SidebarItem tooltipText="Comparison View - Coming Soon">
+      <SidebarItem>
         <button
           type="button"
           onClick={() => {
@@ -109,11 +105,11 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faColumns} />
         </button>
       </SidebarItem>
-      {/* <SidebarItem tooltipText="Alerts - Coming Soon">
+      <SidebarItem tooltipText="Alerts - Coming Soon">
         <button>
           <FontAwesomeIcon icon={faBell} />
         </button>
-      </SidebarItem> */}
+      </SidebarItem>
       <div className="sidebar-space-filler" />
       <SidebarItem tooltipText="Docs" externalLink>
         <a rel="noreferrer" target="_blank" href="https://pyroscope.io/docs">
