@@ -119,10 +119,6 @@ class TimelineChartWrapper extends React.Component {
           from: leftFromInt,
           to: leftUntilInt
         },
-        // yaxis: {
-        //   from: 0,
-        //   to: 1000
-        // },
         color: this.props.viewSide === "left" ? "rgba(200, 102, 204, 0.35)" : `rgba(255, 102, 204, ${nonActiveBackground})`,
       },         
       { 
@@ -143,10 +139,6 @@ class TimelineChartWrapper extends React.Component {
           from: rightFromInt,
           to: rightUntilInt
         }, 
-        // yaxis: { 
-        //   from: 0, 
-        //   to: 1000 
-        // }, 
         color: this.props.viewSide === "right" ? "rgba(19, 152, 246, 0.35)" : `rgba(19, 152, 246, ${nonActiveBackground})`,
       },
       { 
@@ -162,13 +154,6 @@ class TimelineChartWrapper extends React.Component {
     ]
 
     return this.props.viewSide === "none" ? [] : leftMarkings.concat(rightMarkings);
-
-    // return {
-    //   left: leftMarkings,
-    //   right: rightMarkings,
-    //   both: leftMarkings.concat(rightMarkings),
-    //   none: []
-    // }[this.props.viewSide];
   };
 
 
