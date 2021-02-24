@@ -10,3 +10,6 @@ pkged.go
 /scripts/packages/
 .eslintcache
 *.pyc
+.idea
+.vscode
+vendor/
