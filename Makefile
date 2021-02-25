@@ -1,9 +1,14 @@
 GOBUILD=go build -trimpath
 
-ENABLED_SPIES ?= "rbspy,pyspy"
 ifeq ("$(shell go env GOARCH || true)", "arm64")
 	# this makes it work better on M1 machines
 	GODEBUG=asyncpreemptoff=1
+endif
+
+ifeq ("$(shell go env GOOS || true)", "linux")
+	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy"
+else
+	ENABLED_SPIES ?= "rbspy,pyspy"
 endif
 
 EMBEDDED_ASSETS ?= ""

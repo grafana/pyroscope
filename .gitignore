@@ -10,3 +10,4 @@ pkged.go
 /scripts/packages/
 .eslintcache
 *.pyc
+*.internal
