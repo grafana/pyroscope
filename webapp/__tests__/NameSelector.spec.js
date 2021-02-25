@@ -39,7 +39,5 @@ describe("NameSelector", () => {
     wrapper.find("select").simulate("mouseDown");
     expect(wrapper.find("option").length).toEqual(3);
     wrapper.find("option").at(2).simulate("click", null);
-
-    console.log(wrapper.debug());
   });
 });
