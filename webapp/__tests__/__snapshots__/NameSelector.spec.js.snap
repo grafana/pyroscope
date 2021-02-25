@@ -1,0 +1,29 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`NameSelector render correctly NameSelector component 1`] = `
+<span>
+  Application: 
+  <select
+    className="label-select"
+    onChange={[Function]}
+    value="hotrod.golang.customer"
+  >
+    <option
+      disabled={true}
+      value="Select an app..."
+    >
+      Select an app...
+    </option>
+    <option
+      value="hotrod.golang.customer"
+    >
+      hotrod.golang.customer
+    </option>
+    <option
+      value="hotrod.golang.driver"
+    >
+      hotrod.golang.driver
+    </option>
+  </select>
+</span>
+`;
