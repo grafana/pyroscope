@@ -1,3 +1,12 @@
+## <small>0.0.25 (2021-02-26)</small>
+
+* adds eBPF spy ([3438826](https://github.com/pyroscope-io/pyroscope/commit/3438826))
+* new connect command ([7d2a410](https://github.com/pyroscope-io/pyroscope/commit/7d2a410))
+* update ignore (#93) ([2176676](https://github.com/pyroscope-io/pyroscope/commit/2176676)), closes [#93](https://github.com/pyroscope-io/pyroscope/issues/93)
+* updates readme ([ce3f843](https://github.com/pyroscope-io/pyroscope/commit/ce3f843))
+
+
+
 ## <small>0.0.24 (2021-02-23)</small>
 
 * Add comparison view (#90) ([bc648e9](https://github.com/pyroscope-io/pyroscope/commit/bc648e9)), closes [#90](https://github.com/pyroscope-io/pyroscope/issues/90)
