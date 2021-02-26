@@ -8,6 +8,7 @@ import (
 	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
 
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/debugspy"
+	_ "github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
@@ -55,18 +56,26 @@ func (ps *ProfileSession) takeSnapshots() {
 	for {
 		select {
 		case <-ticker.C:
-			if ps.isDueForReset() {
-				ps.reset()
+			isdueToReset := ps.isDueForReset()
+			if isdueToReset {
+				for _, s := range ps.spies {
+					if sr, ok := s.(spy.Resettable); ok {
+						sr.Reset()
+					}
+				}
 			}
-			for _, spy := range ps.spies {
-				spy.Snapshot(func(stack []byte, err error) {
+			for _, s := range ps.spies {
+				s.Snapshot(func(stack []byte, v uint64, err error) {
 					if stack != nil && len(stack) > 0 {
 						ps.trieMutex.Lock()
 						defer ps.trieMutex.Unlock()
 
-						ps.trie.Insert(stack, 1, true)
+						ps.trie.Insert(stack, v, true)
 					}
 				})
+			}
+			if isdueToReset {
+				ps.reset()
 			}
 		case <-ps.stopCh:
 			ticker.Stop()

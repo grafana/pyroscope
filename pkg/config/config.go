@@ -86,6 +86,7 @@ type Exec struct {
 	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
 	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`
 	NoRootDrop             bool          `def:"false" desc:"disables permissions drop when ran under root. use this one if you want to run your command as root"`
+	Pid                    int           `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)"`
 }
 
 func calculateMaxDepth(min, max time.Duration, multiplier int) int {

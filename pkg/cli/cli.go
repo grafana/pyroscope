@@ -25,6 +25,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
+	"github.com/pyroscope-io/pyroscope/pkg/util/strarr"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
@@ -73,7 +74,7 @@ func (tf *timeFlag) Set(value string) error {
 }
 
 // this is mostly reflection magic
-func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet) *SortedFlags {
+func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *SortedFlags {
 	v := reflect.ValueOf(obj).Elem()
 	t := reflect.TypeOf(v.Interface())
 	num := t.NumField()
@@ -86,14 +87,15 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet) *SortedFlags {
 		fieldV := v.Field(i)
 		defaultValStr := field.Tag.Get("def")
 		descVal := field.Tag.Get("desc")
-		nameVal := field.Tag.Get("name")
 		skipVal := field.Tag.Get("skip")
-		if skipVal == "true" {
-			continue
-		}
+		nameVal := field.Tag.Get("name")
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
 		}
+		if skipVal == "true" || strarr.Contains(skip, nameVal) {
+			continue
+		}
+
 		descVal = strings.ReplaceAll(descVal, "<supportedProfilers>", supportedSpies)
 
 		switch field.Type {
@@ -180,6 +182,7 @@ func Start(cfg *config.Config) error {
 		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
 		execFlagSet      = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
+		connectFlagSet   = flag.NewFlagSet("pyroscope connect", flag.ExitOnError)
 		dbmanagerFlagSet = flag.NewFlagSet("pyroscope dbmanager", flag.ExitOnError)
 		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 	)
@@ -187,7 +190,8 @@ func Start(cfg *config.Config) error {
 	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet)
 	serverSortedFlags := PopulateFlagSet(&cfg.Server, serverFlagSet)
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
-	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet)
+	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, "pid")
+	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet)
 	dbmanagerSortedFlags := PopulateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
 	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
 
@@ -234,6 +238,15 @@ func Start(cfg *config.Config) error {
 		FlagSet:    execFlagSet,
 	}
 
+	connectCmd := &ffcli.Command{
+		UsageFunc:  connectSortedFlags.printUsage,
+		Options:    options,
+		Name:       "connect",
+		ShortUsage: "pyroscope connect [flags]",
+		ShortHelp:  "connects to an existing process and profiles it",
+		FlagSet:    connectFlagSet,
+	}
+
 	dbmanagerCmd := &ffcli.Command{
 		UsageFunc:  dbmanagerSortedFlags.printUsage,
 		Options:    options,
@@ -253,6 +266,7 @@ func Start(cfg *config.Config) error {
 			convertCmd,
 			serverCmd,
 			execCmd,
+			connectCmd,
 			dbmanagerCmd,
 		},
 	}
@@ -290,6 +304,22 @@ func Start(cfg *config.Config) error {
 
 		return exec.Cli(cfg, args)
 	}
+
+	connectCmd.Exec = func(_ context.Context, args []string) error {
+		if cfg.Exec.NoLogging {
+			logrus.SetLevel(logrus.PanicLevel)
+		} else if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
+			logrus.SetLevel(l)
+		}
+		if len(args) > 0 && args[0] == "help" {
+			fmt.Println(gradientBanner())
+			fmt.Println(DefaultUsageFunc(connectSortedFlags, connectCmd))
+			return nil
+		}
+
+		return exec.Cli(cfg, args)
+	}
+
 	dbmanagerCmd.Exec = func(_ context.Context, args []string) error {
 		if l, err := logrus.ParseLevel(cfg.DbManager.LogLevel); err == nil {
 			logrus.SetLevel(l)

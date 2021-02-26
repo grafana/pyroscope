@@ -40,9 +40,9 @@ RUN apk add --no-cache make
 
 WORKDIR /opt/pyroscope
 
-COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore Makefile ./
 COPY scripts ./scripts
 COPY webapp ./webapp
+COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore Makefile ./
 
 ARG EXTRA_METADATA=""
 RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
@@ -76,7 +76,7 @@ COPY scripts ./scripts
 COPY go.mod go.sum pyroscope.go ./
 COPY Makefile ./
 
-RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags \"-static\"" make build-release
+RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
 
 
 #   __ _             _   _

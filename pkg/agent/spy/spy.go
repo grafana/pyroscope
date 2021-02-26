@@ -7,7 +7,10 @@ import (
 
 type Spy interface {
 	Stop() error
-	Snapshot(cb func([]byte, error))
+	Snapshot(cb func([]byte, uint64, error))
+}
+type Resettable interface {
+	Reset()
 }
 
 type spyIntitializer func(pid int) (Spy, error)

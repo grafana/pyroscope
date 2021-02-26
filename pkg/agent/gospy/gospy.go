@@ -33,14 +33,15 @@ func (*GoSpy) Stop() error {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *GoSpy) Snapshot(cb func([]byte, error)) {
+func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 	if s.selfFrame == nil {
 		// Determine the runtime.Frame of this func so we can hide it from our
 		// profiling output.
 		rpc := make([]uintptr, 1)
 		n := runtime.Callers(1, rpc)
 		if n < 1 {
-			panic("could not determine selfFrame")
+			// TODO: log the error
+			return
 		}
 		selfFrame, _ := runtime.CallersFrames(rpc).Next()
 		s.selfFrame = &selfFrame
@@ -60,7 +61,7 @@ func (s *GoSpy) Snapshot(cb func([]byte, error)) {
 				}
 			}
 			if !shouldExclude {
-				cb([]byte(stackStr), nil)
+				cb([]byte(stackStr), 1, nil)
 			}
 		}
 	}
