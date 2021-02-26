@@ -4,11 +4,14 @@
 package ebpfspy
 
 import (
+	"fmt"
 	"os/exec"
+	"strconv"
 	"sync"
 	"syscall"
 
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/util/file"
 )
 
 type line struct {
@@ -17,9 +20,10 @@ type line struct {
 }
 
 type session struct {
-	cmdMutex sync.Mutex
-	cmd      *exec.Cmd
-	ch       chan line
+	pid int
+
+	cmd *exec.Cmd
+	ch  chan line
 
 	stopMutex sync.Mutex
 	stop      bool
@@ -27,21 +31,26 @@ type session struct {
 
 const helpURL = "https://github.com/iovisor/bcc/blob/master/INSTALL.md"
 
-const command = []string{"/usr/share/bcc/tools/profile", "-F", "100", "-f", "11"}
+var command = "/usr/share/bcc/tools/profile"
 
-func newSession() *session {
-	return &session{}
+// TODO: make these configurable
+var commandArgs = []string{"-F", "100", "-f", "11"}
+
+func newSession(pid int) *session {
+	return &session{pid: pid}
 }
 
 func (s *session) Start() error {
-	// s.cmdMutex.Lock()
-	// defer s.cmdMutex.Unlock()
-
-	if !file.Exists(command[0]) {
-		return fmt.Errorf("Could not find profile.py at '%s'. Visit %s for instructions on how to install it", command[0], helpURL)
+	if !file.Exists(command) {
+		return fmt.Errorf("Could not find profile.py at '%s'. Visit %s for instructions on how to install it", command, helpURL)
 	}
 
-	s.cmd = exec.Command(command...)
+	args := commandArgs
+	if s.pid != -1 {
+		args = append(commandArgs, "-p", strconv.Itoa(s.pid))
+	}
+
+	s.cmd = exec.Command(command, args...)
 	stdout, err := s.cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -65,16 +74,12 @@ func (s *session) Start() error {
 }
 
 func (s *session) Reset(cb func([]byte, uint64)) error {
-	// s.cmdMutex.Lock()
-
 	s.cmd.Process.Signal(syscall.SIGINT)
 
 	for v := range s.ch {
 		cb(v.name, uint64(v.val))
 	}
 	s.cmd.Wait()
-
-	// s.cmdMutex.Unlock()
 
 	s.stopMutex.Lock()
 	defer s.stopMutex.Unlock()

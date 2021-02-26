@@ -22,7 +22,7 @@ type EbpfSpy struct {
 }
 
 func Start(pid int) (spy.Spy, error) {
-	s := newSession()
+	s := newSession(pid)
 	err := s.Start()
 	if err != nil {
 		return nil, err

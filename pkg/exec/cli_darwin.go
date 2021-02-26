@@ -2,12 +2,11 @@
 
 package exec
 
-import (
-	"github.com/sirupsen/logrus"
-)
+import "errors"
 
-func performOSChecks() {
+func performOSChecks(spyName string) error {
 	if !isRoot() {
-		logrus.Fatal("on macOS you're required to run the agent with sudo")
+		return errors.New("on macOS you're required to run the agent with sudo")
 	}
+	return nil
 }

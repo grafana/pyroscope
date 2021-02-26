@@ -3,14 +3,23 @@
 package exec
 
 import (
+	"errors"
+
 	"github.com/pyroscope-io/pyroscope/pkg/util/caps"
 	"github.com/sirupsen/logrus"
 )
 
-func performOSChecks() {
-	if !hasSysPtraceCap() {
-		logrus.Fatal("if you're running pyroscope in a Docker container, add --cap-add=sys_ptrace. See our Docker Guide for more information: https://pyroscope.io/docs/docker-guide")
+func performOSChecks(spyName string) error {
+	if spyName == "ebpfspy" {
+		if !isRoot() {
+			return errors.New("when using eBPF you're required to run the agent with sudo")
+		}
+	} else {
+		if !hasSysPtraceCap() {
+			return errors.New("if you're running pyroscope in a Docker container, add --cap-add=sys_ptrace. See our Docker Guide for more information: https://pyroscope.io/docs/docker-guide")
+		}
 	}
+	return nil
 }
 
 // See linux source code: https://github.com/torvalds/linux/blob/6ad4bf6ea1609fb539a62f10fca87ddbd53a0315/include/uapi/linux/capability.h#L235
