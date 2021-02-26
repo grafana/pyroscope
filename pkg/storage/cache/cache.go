@@ -1,7 +1,7 @@
 package cache
 
 import (
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgrijalva/lfu-go"
@@ -56,7 +56,7 @@ func (cache *Cache) Put(key string, val interface{}) {
 }
 
 func (cache *Cache) saveToDisk(key string, val interface{}) {
-	log.WithFields(log.Fields{
+	logrus.WithFields(logrus.Fields{
 		"prefix": cache.prefix,
 		"key":    key,
 	}).Info("saving to disk")
@@ -77,14 +77,14 @@ func (cache *Cache) Flush() {
 }
 
 func (cache *Cache) Get(key string) interface{} {
-	lg := log.WithField("key", key)
+	lg := logrus.WithField("key", key)
 	if cache.lfu.UpperBound > 0 {
 		fromLfu := cache.lfu.Get(key)
 		if fromLfu != nil {
 			return fromLfu
 		}
 	} else {
-		log.Warn("lfu is not used, only use this during debugging")
+		logrus.Warn("lfu is not used, only use this during debugging")
 	}
 	lg.Debug("lfu miss")
 

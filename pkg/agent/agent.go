@@ -3,7 +3,7 @@ package agent
 import (
 	"os"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/csock"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
@@ -38,13 +38,13 @@ func (a *Agent) Start() {
 	sockPath := a.cfg.Agent.UNIXSocketPath
 	cs, err := csock.NewUnixCSock(sockPath, a.controlSocketHandler)
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 	a.cs = cs
 	defer os.Remove(sockPath)
 
 	go SelfProfile(a.cfg, a.u, "pyroscope.agent.cpu{}")
-	log.WithField("addr", cs.CanonicalAddr()).Info("Starting control socket")
+	logrus.WithField("addr", cs.CanonicalAddr()).Info("Starting control socket")
 	cs.Start()
 }
 

@@ -27,7 +27,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 	"github.com/pyroscope-io/pyroscope/pkg/util/strarr"
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/iancoleman/strcase"
 	"github.com/peterbourgon/ff/ffyaml"
@@ -123,7 +122,7 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 				var err error
 				defaultVal, err = time.ParseDuration(defaultValStr)
 				if err != nil {
-					log.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
 				}
 			}
 			flagSet.DurationVar(val, nameVal, defaultVal, descVal)
@@ -136,12 +135,12 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 				var err error
 				defaultVal, err = strconv.Atoi(defaultValStr)
 				if err != nil {
-					log.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
 				}
 			}
 			flagSet.IntVar(val, nameVal, defaultVal, descVal)
 		default:
-			log.Fatalf("type %s is not supported", field.Type)
+			logrus.Fatalf("type %s is not supported", field.Type)
 		}
 	}
 	return NewSortedFlags(obj, flagSet)
@@ -183,6 +182,7 @@ func Start(cfg *config.Config) error {
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
 		execFlagSet      = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
 		connectFlagSet   = flag.NewFlagSet("pyroscope connect", flag.ExitOnError)
+		uploadFlagSet    = flag.NewFlagSet("pyroscope upload", flag.ExitOnError)
 		dbmanagerFlagSet = flag.NewFlagSet("pyroscope dbmanager", flag.ExitOnError)
 		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 	)
@@ -192,6 +192,7 @@ func Start(cfg *config.Config) error {
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
 	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, "pid")
 	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet)
+	uploadSortedFlags := PopulateFlagSet(&cfg.Exec, uploadFlagSet)
 	dbmanagerSortedFlags := PopulateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
 	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
 
@@ -247,6 +248,15 @@ func Start(cfg *config.Config) error {
 		FlagSet:    connectFlagSet,
 	}
 
+	uploadCmd := &ffcli.Command{
+		UsageFunc:  uploadSortedFlags.printUsage,
+		Options:    options,
+		Name:       "upload",
+		ShortUsage: "pyroscope upload [flags]",
+		ShortHelp:  "uploads raw profiling data to pyroscope server",
+		FlagSet:    uploadFlagSet,
+	}
+
 	dbmanagerCmd := &ffcli.Command{
 		UsageFunc:  dbmanagerSortedFlags.printUsage,
 		Options:    options,
@@ -267,6 +277,7 @@ func Start(cfg *config.Config) error {
 			serverCmd,
 			execCmd,
 			connectCmd,
+			uploadCmd,
 			dbmanagerCmd,
 		},
 	}
@@ -299,6 +310,21 @@ func Start(cfg *config.Config) error {
 		if len(args) == 0 || args[0] == "help" {
 			fmt.Println(gradientBanner())
 			fmt.Println(DefaultUsageFunc(execSortedFlags, execCmd))
+			return nil
+		}
+
+		return exec.Cli(cfg, args)
+	}
+
+	connectCmd.Exec = func(_ context.Context, args []string) error {
+		if cfg.Exec.NoLogging {
+			logrus.SetLevel(logrus.PanicLevel)
+		} else if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
+			logrus.SetLevel(l)
+		}
+		if len(args) > 0 && args[0] == "help" {
+			fmt.Println(gradientBanner())
+			fmt.Println(DefaultUsageFunc(connectSortedFlags, connectCmd))
 			return nil
 		}
 
@@ -359,7 +385,7 @@ func startServer(cfg *config.Config) {
 	}
 	// if you ever change this line, make sure to update this homebrew test:
 	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
-	log.Info("starting HTTP server")
+	logrus.Info("starting HTTP server")
 	c.Start()
 }
 
@@ -367,7 +393,7 @@ func printRAMUsage() {
 	t := time.NewTicker(30 * time.Second)
 	for {
 		<-t.C
-		if log.IsLevelEnabled(log.DebugLevel) {
+		if logrus.IsLevelEnabled(logrus.DebugLevel) {
 			debug.PrintMemUsage()
 		}
 	}
@@ -377,7 +403,7 @@ func printDiskUsage(cfg *config.Config) {
 	t := time.NewTicker(30 * time.Second)
 	for {
 		<-t.C
-		if log.IsLevelEnabled(log.DebugLevel) {
+		if logrus.IsLevelEnabled(logrus.DebugLevel) {
 			debug.PrintDiskUsage(cfg.Server.StoragePath)
 		}
 	}

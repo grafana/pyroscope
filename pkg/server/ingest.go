@@ -10,7 +10,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 )
 
 type ingestParams struct {
@@ -73,7 +72,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		t, err = tree.DeserializeNoDict(r.Body)
 		if err != nil {
-			log.Error(err)
+			logrus.Error(err)
 			return
 		}
 	} else {
@@ -95,7 +94,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t, ip.spyName, ip.sampleRate)
 	if err != nil {
-		log.Error(err)
+		logrus.Error(err)
 		return
 	}
 	ctrl.statsInc("ingest")

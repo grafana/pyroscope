@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"time"
 
@@ -70,8 +70,8 @@ var _ = Describe("stree", func() {
 			s.Serialize(&buf2)
 			serialized2 := buf2.Bytes()
 			spew.Dump(s.root)
-			log.Debugf("1: %q", serialized)
-			log.Debugf("2: %q", serialized2)
+			logrus.Debugf("1: %q", serialized)
+			logrus.Debugf("2: %q", serialized2)
 			Expect(string(serialized2)).To(Equal(string(serialized)))
 		})
 	})

@@ -6,7 +6,7 @@ import (
 	"math/rand"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -28,7 +28,7 @@ var _ = Describe("trie package", func() {
 		trie := New()
 		trie.Insert([]byte("abc"), 1)
 		trie.Insert([]byte("abd"), 2)
-		log.Debug("trie abc abd", trie)
+		logrus.Debug("trie abc abd", trie)
 
 		It("returns correct results", func() {
 			var buf bytes.Buffer
@@ -50,7 +50,7 @@ var _ = Describe("trie package", func() {
 	Context("Ser/Deserialize()", func() {
 		It("returns correct results", func() {
 			for j := 0; j < 10; j++ {
-				// log.Debug("---")
+				// logrus.Debug("---")
 				trie := New()
 				// trie.Insert([]byte("acc"), []byte{1})
 				// trie.Insert([]byte("abc"), []byte{2})
@@ -83,12 +83,12 @@ var _ = Describe("trie package", func() {
 				// trie.Insert([]byte("1234567"), []byte{1})
 				// trie.Insert([]byte("1234667"), []byte{2})
 				// trie.Insert([]byte("1234767"), []byte{3})
-				log.Debug("a", trie.String())
+				logrus.Debug("a", trie.String())
 				strA := ""
 				trie.Iterate(func(k []byte, v uint64) {
 					strA += fmt.Sprintf("%q %d\n", k, v)
 				})
-				log.Debug("strA", strA)
+				logrus.Debug("strA", strA)
 
 				var buf bytes.Buffer
 				trie.Serialize(&buf)
@@ -99,12 +99,12 @@ var _ = Describe("trie package", func() {
 				t.Iterate(func(k []byte, v uint64) {
 					strB += fmt.Sprintf("%q %d\n", k, v)
 				})
-				log.Debug("b", t.String())
-				log.Debug("strB", strB)
+				logrus.Debug("b", t.String())
+				logrus.Debug("strB", strB)
 				Expect(e).To(BeNil())
 				Expect(trie.String()).To(Equal(t.String()))
 				Expect(strA).To(Equal(strB))
-				log.Debug("---/")
+				logrus.Debug("---/")
 			}
 		})
 	})
@@ -113,12 +113,12 @@ var _ = Describe("trie package", func() {
 		trie := New()
 		trie.Insert([]byte("abc"), 1)
 		trie.Insert([]byte("ab"), 2)
-		log.Debug(trie.String())
+		logrus.Debug(trie.String())
 
 		It("returns correct results", func() {
 			r := bytes.NewReader(serializationExample)
 			t, e := Deserialize(r)
-			log.Debug(t.String())
+			logrus.Debug(t.String())
 			Expect(e).To(BeNil())
 			var buf bytes.Buffer
 			t.Serialize(&buf)
@@ -140,11 +140,11 @@ var _ = Describe("trie package", func() {
 		It("merges 2 tries", func(done Done) {
 			for s := 0; s < 1000; s++ {
 				rand.Seed(int64(s))
-				// log.Debug(s)
+				// logrus.Debug(s)
 				t1 := New()
 				t2 := New()
 				t3 := New()
-				// log.Debug("---")
+				// logrus.Debug("---")
 				n := 2
 				n2 := 4
 				for i := 0; i < n; i++ {
@@ -187,9 +187,9 @@ var _ = Describe("trie package", func() {
 				t1.Serialize(&buf1)
 				t2.Serialize(&buf2)
 
-				// log.Debug("t1\n", t1.String())
-				// log.Debug("t2\n", t2.String())
-				// log.Debug("t3\n", t3.String())
+				// logrus.Debug("t1\n", t1.String())
+				// logrus.Debug("t2\n", t2.String())
+				// logrus.Debug("t3\n", t3.String())
 
 				// Expect(buf1.Bytes()).To(Equal(buf2.Bytes()))
 				tries := []merge.Merger{t1, t2}
@@ -198,7 +198,7 @@ var _ = Describe("trie package", func() {
 				})
 				t1I := merge.MergeTriesSerially(1, tries...)
 				t1 = t1I.(*Trie)
-				// log.Debug("t1m\n", t1.String())
+				// logrus.Debug("t1m\n", t1.String())
 
 				var buf3 bytes.Buffer
 				var buf4 bytes.Buffer
@@ -229,14 +229,14 @@ var _ = Describe("trie package", func() {
 			t1.Serialize(&buf1)
 			t2.Serialize(&buf2)
 
-			log.Debug("t1", t1)
-			log.Debug("t2", t2)
-			log.Debug("t3", t3)
+			logrus.Debug("t1", t1)
+			logrus.Debug("t2", t2)
+			logrus.Debug("t3", t3)
 
 			Expect(buf1.Bytes()).To(Equal(buf2.Bytes()))
 			t1.Merge(t2)
 
-			log.Debug("t1+2", t1)
+			logrus.Debug("t1+2", t1)
 
 			var buf3 bytes.Buffer
 			var buf4 bytes.Buffer

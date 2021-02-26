@@ -6,7 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 var serializationExample = []byte{4, 0, 0, 0, 0, 0, 1, 5, 97, 60, 37, 105, 178, 0, 2, 5, 98, 149, 222, 126, 3, 1, 0, 5, 99, 225, 50, 214, 95, 2, 0}
@@ -71,8 +71,8 @@ var _ = Describe("tree package", func() {
 			Expect(b).To(Equal(serializationExample))
 			t2 := FromBytes(d2, b)
 
-			log.Debug("tree", tree.String())
-			log.Debug("t2", t2.String())
+			logrus.Debug("tree", tree.String())
+			logrus.Debug("t2", t2.String())
 			Expect(tree.String()).To(Equal(t2.String()))
 			Expect(nil).ToNot(BeNil())
 		})

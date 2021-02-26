@@ -21,7 +21,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -74,7 +73,7 @@ func (ctrl *Controller) Start() {
 		}
 	})
 
-	logger := log.New()
+	logger := logrus.New()
 	w := logger.Writer()
 	defer w.Close()
 	s := &http.Server{

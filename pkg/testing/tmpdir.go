@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/onsi/ginkgo"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -38,7 +38,7 @@ func TmpDir(cb func(name string)) {
 	}
 	defer os.RemoveAll(path)
 
-	log.Debug("tmpDir:", path)
+	logrus.Debug("tmpDir:", path)
 	cb(path)
 	// return dirSize(path)
 }

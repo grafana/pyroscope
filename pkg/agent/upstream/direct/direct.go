@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -65,7 +64,7 @@ func (u *Direct) Upload(name string, startTime time.Time, endTime time.Time, spy
 	select {
 	case u.todo <- job:
 	default:
-		log.Error("Direct upload queue is full, dropping a profile")
+		logrus.Error("Direct upload queue is full, dropping a profile")
 	}
 }
 

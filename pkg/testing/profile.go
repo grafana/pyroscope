@@ -7,7 +7,7 @@ import (
 	"runtime/pprof"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/felixge/fgprof"
 )
@@ -22,7 +22,7 @@ func FProfile(name string, cb func()) time.Duration {
 		defer func() {
 			endProfile()
 			cmd := fmt.Sprintf("cat '%s' | grep -v gopark | flamegraph.pl > '%s'", path, pathSVG)
-			log.Debug("cmd", cmd)
+			logrus.Debug("cmd", cmd)
 			exec.Command("sh", "-c", cmd).Run()
 		}()
 	}
@@ -35,7 +35,7 @@ func Profile(name string, cb func()) time.Duration {
 	t := time.Now()
 	cb()
 	d := time.Now().Sub(t)
-	log.Debugf("%q took %s", name, d)
+	logrus.Debugf("%q took %s", name, d)
 	return d
 }
 
@@ -47,6 +47,6 @@ func PProfile(name string, cb func()) time.Duration {
 	}
 	cb()
 	d := time.Now().Sub(t)
-	log.Debug(name, d)
+	logrus.Debug(name, d)
 	return d
 }

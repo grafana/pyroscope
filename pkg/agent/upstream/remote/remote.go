@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
@@ -97,7 +97,7 @@ func (u *Remote) Upload(name string, startTime time.Time, endTime time.Time, spy
 	select {
 	case u.todo <- job:
 	default:
-		log.Error("Remote upload queue is full, dropping a profile")
+		logrus.Error("Remote upload queue is full, dropping a profile")
 	}
 }
 
@@ -115,11 +115,11 @@ func (u *Remote) uploadProfile(j *uploadJob) {
 	urlObj.Path = path.Join(urlObj.Path, "/ingest")
 	urlObj.RawQuery = q.Encode()
 	buf := j.t.Bytes()
-	log.Info("uploading at ", urlObj.String())
+	logrus.Info("uploading at ", urlObj.String())
 
 	req, err := http.NewRequest("POST", urlObj.String(), bytes.NewReader(buf))
 	if err != nil {
-		log.Error("Error happened when uploading a profile:", err)
+		logrus.Error("Error happened when uploading a profile:", err)
 		return
 	}
 	req.Header.Set("Content-Type", "binary/octet-stream+trie")
@@ -129,7 +129,7 @@ func (u *Remote) uploadProfile(j *uploadJob) {
 	resp, err := u.client.Do(req)
 
 	if err != nil {
-		log.Error("Error happened when uploading a profile:", err)
+		logrus.Error("Error happened when uploading a profile:", err)
 		return
 	}
 
@@ -137,7 +137,7 @@ func (u *Remote) uploadProfile(j *uploadJob) {
 		defer resp.Body.Close()
 		_, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Error("Error happened while reading server response:", err)
+			logrus.Error("Error happened while reading server response:", err)
 		}
 	}
 }

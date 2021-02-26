@@ -5,7 +5,7 @@ import (
 
 	golog "log"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -14,6 +14,6 @@ func init() {
 
 func SetupLogging() {
 	// log.SetFormatter(&log.JSONFormatter{})
-	log.SetOutput(os.Stdout)
-	log.SetLevel(log.DebugLevel)
+	logrus.SetOutput(os.Stdout)
+	logrus.SetLevel(logrus.DebugLevel)
 }
