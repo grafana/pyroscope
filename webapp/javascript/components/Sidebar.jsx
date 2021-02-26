@@ -4,15 +4,18 @@ import "react-dom";
 
 import { withShortcut } from "react-keybind";
 import Modal from "react-modal";
-import ShortcutsModal from "./ShortcutsModal";
+import clsx from "clsx";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFileAlt,
   faKeyboard,
   faColumns,
+  faBell,
 } from "@fortawesome/free-solid-svg-icons";
+import { faWindowMaximize } from "@fortawesome/free-regular-svg-icons";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
+import ShortcutsModal from "./ShortcutsModal";
 import SlackIcon from "./SlackIcon";
 
 import { fetchNames } from "../redux/actions";
@@ -33,13 +36,8 @@ function SidebarItem(props) {
   return (
     <div className="sidebar-item">
       {children}
-      {
-        // <div className="sidebar-external-link">
-        //   <FontAwesomeIcon icon={faExternalLinkSquareAlt} />
-        // </div>
-      }
       <div className="sidebar-tooltip-wrapper">
-        <span className="sidebar-tooltip">{tooltipText}</span>
+        {tooltipText && <span className="sidebar-tooltip">{tooltipText}</span>}
       </div>
     </div>
   );
@@ -47,10 +45,11 @@ function SidebarItem(props) {
 
 const initialState = {
   shortcutsModalOpen: false,
+  currentRoute: "/",
 };
 
 function Sidebar(props) {
-  const { areNamesLoading, isJSONLoading, labels, shortcut } = props;
+  const { shortcut } = props;
 
   const [state, setState] = useState(initialState);
 
@@ -62,6 +61,15 @@ function Sidebar(props) {
     setState({ shortcutsModalOpen: false });
   };
 
+  const updateRoute = (newRoute) => {
+    history.push({
+      pathname: newRoute,
+      search: history.location.search,
+    });
+
+    setState({ currentRoute: newRoute });
+  };
+
   useEffect(() => {
     shortcut.registerShortcut(
       showShortcutsModal,
@@ -69,31 +77,39 @@ function Sidebar(props) {
       "Shortcuts",
       "Show Keyboard Shortcuts Modal"
     );
+
+    // console.log('history: ', history.location.pathname);
+    setState({ currentRoute: history.location.pathname });
   }, []);
 
   return (
     <div className="sidebar">
-      <span className="logo active" onClick={() => {
-        history.push({
-          pathname: '/',
-          search: history.location.search,
-        });
-      }}/>
-      <SidebarItem tooltipText="Comparison View - Coming Soon">
-        <button type="button" onClick={() => {
-          // history.push({
-          //   pathname: '/comparison',
-          //   search: history.location.search,
-          // });
-        }} >
+      <span className="logo" onClick={() => updateRoute("/")} />
+      <SidebarItem tooltipText="Single View">
+        <button
+          className={clsx({ "active-route": state.currentRoute === "/" })}
+          type="button"
+          onClick={() => updateRoute("/")}
+        >
+          <FontAwesomeIcon icon={faWindowMaximize} />
+        </button>
+      </SidebarItem>
+      <SidebarItem tooltipText="Comparison View">
+        <button
+          className={clsx({
+            "active-route": state.currentRoute === "/comparison",
+          })}
+          type="button"
+          onClick={() => updateRoute("/comparison")}
+        >
           <FontAwesomeIcon icon={faColumns} />
         </button>
       </SidebarItem>
-      {/* <SidebarItem tooltipText="Alerts - Coming Soon">
-        <button>
+      <SidebarItem tooltipText="Alerts - Coming Soon">
+        <button type="button">
           <FontAwesomeIcon icon={faBell} />
         </button>
-      </SidebarItem> */}
+      </SidebarItem>
       <div className="sidebar-space-filler" />
       <SidebarItem tooltipText="Docs" externalLink>
         <a rel="noreferrer" target="_blank" href="https://pyroscope.io/docs">

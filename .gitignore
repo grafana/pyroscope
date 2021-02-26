@@ -11,3 +11,6 @@ pkged.go
 .eslintcache
 *.pyc
 *.internal
+.idea
+.vscode
+vendor/

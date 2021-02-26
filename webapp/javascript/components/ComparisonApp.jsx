@@ -10,7 +10,9 @@ import Footer from "./Footer";
 import { buildRenderURL } from "../util/updateRequests";
 import { fetchNames, fetchTimeline } from "../redux/actions";
 
-function PyroscopeApp(props) {
+// See docs here: https://github.com/flot/flot/blob/master/API.md
+
+function ComparisonApp(props) {
   const { actions, renderURL } = props;
   const prevPropsRef = useRef();
 
@@ -24,8 +26,11 @@ function PyroscopeApp(props) {
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <Header />
-        <TimelineChartWrapper id="timeline-chart-single" viewSide="none" />
-        <FlameGraphRenderer viewType="single" />
+        <TimelineChartWrapper id="timeline-chart-double" viewSide="both" />
+        <div className="comparison-container">
+          <FlameGraphRenderer viewType="double" viewSide="left" />
+          <FlameGraphRenderer viewType="double" viewSide="right" />
+        </div>
       </div>
       <Footer />
     </div>
@@ -47,4 +52,4 @@ const mapDispatchToProps = (dispatch) => ({
   ),
 });
 
-export default connect(mapStateToProps, mapDispatchToProps)(PyroscopeApp);
+export default connect(mapStateToProps, mapDispatchToProps)(ComparisonApp);

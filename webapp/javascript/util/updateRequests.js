@@ -1,5 +1,13 @@
-export function buildRenderURL(state) {
-  const { from, until } = state;
+export function buildRenderURL(state, fromOverride=null, untilOverride=null, side=null) {
+  let { from, until } = state;
+
+  if (fromOverride) {
+    from = fromOverride;
+  }
+
+  if (untilOverride) {
+    until = untilOverride;
+  }
 
   let url = `render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}`;
   const nameLabel = state.labels.find((x) => x.name == '__name__');

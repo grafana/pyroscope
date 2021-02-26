@@ -1,3 +1,19 @@
+## <small>0.0.24 (2021-02-23)</small>
+
+* Add comparison view (#90) ([bc648e9](https://github.com/pyroscope-io/pyroscope/commit/bc648e9)), closes [#90](https://github.com/pyroscope-io/pyroscope/issues/90)
+* Add React Router (#73) ([1443b8c](https://github.com/pyroscope-io/pyroscope/commit/1443b8c)), closes [#73](https://github.com/pyroscope-io/pyroscope/issues/73)
+* added chinese for flamgrahs (#89) ([11a22e6](https://github.com/pyroscope-io/pyroscope/commit/11a22e6)), closes [#89](https://github.com/pyroscope-io/pyroscope/issues/89)
+* fix connection reuse (#87) ([8fb42ec](https://github.com/pyroscope-io/pyroscope/commit/8fb42ec)), closes [#87](https://github.com/pyroscope-io/pyroscope/issues/87)
+* fixes air config (`make dev` command) ([3a3b366](https://github.com/pyroscope-io/pyroscope/commit/3a3b366))
+* fixes ruby stacktraces formatting ([4a7c2be](https://github.com/pyroscope-io/pyroscope/commit/4a7c2be))
+* Import pyroscope version from package.json (#86) ([295a002](https://github.com/pyroscope-io/pyroscope/commit/295a002)), closes [#86](https://github.com/pyroscope-io/pyroscope/issues/86)
+* Move flamebearer to local state instead of redux store (#77) ([03f3abc](https://github.com/pyroscope-io/pyroscope/commit/03f3abc)), closes [#77](https://github.com/pyroscope-io/pyroscope/issues/77)
+* refresh button fix ([649678e](https://github.com/pyroscope-io/pyroscope/commit/649678e))
+* Update contributors ([10e1740](https://github.com/pyroscope-io/pyroscope/commit/10e1740))
+* cleanup: lint js code (#80) ([3dab5d9](https://github.com/pyroscope-io/pyroscope/commit/3dab5d9)), closes [#80](https://github.com/pyroscope-io/pyroscope/issues/80)
+
+
+
 ## <small>0.0.23 (2021-02-17)</small>
 
 * Add translations structure (#81) ([05b9fa8](https://github.com/pyroscope-io/pyroscope/commit/05b9fa8)), closes [#81](https://github.com/pyroscope-io/pyroscope/issues/81)
