@@ -123,6 +123,7 @@ function Sidebar(props) {
         isOpen={state.shortcutsModalOpen}
         style={modalStyle}
         appElement={document.getElementById("root")}
+        ariaHideApp={false}
       >
         <div className="modal-close-btn" onClick={closeShortcutsModal} />
         <ShortcutsModal closeModal={closeShortcutsModal} />
