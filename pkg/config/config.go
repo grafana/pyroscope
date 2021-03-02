@@ -16,7 +16,7 @@ type Config struct {
 
 type Agent struct {
 	Config   string `def:"<installPrefix>/etc/pyroscope/agent.yml" desc:"location of config file"`
-	LogLevel string `def:"info", desc:"log level: debug|info|warn|error"`
+	LogLevel string `def:"info" desc:"log level: debug|info|warn|error"`
 
 	// AgentCMD           []string
 	AgentSpyName           string        `desc:"name of the spy you want to use"` // TODO: add options
@@ -36,7 +36,7 @@ type Server struct {
 	BadgerLogLevel string `def:"error", desc:"log level: debug|info|warn|error"`
 
 	StoragePath string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
-	ApiBindAddr string `def:":4040" desc:"port for the HTTP server used for data ingestion and web UI"`
+	APIBindAddr string `def:":4040" desc:"port for the HTTP server used for data ingestion and web UI"`
 	BaseURL     string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path"`
 
 	// These will eventually be replaced by some sort of a system that keeps track of RAM
@@ -107,7 +107,7 @@ func NewForTests(path string) *Config {
 	cfg := &Config{
 		Server: Server{
 			StoragePath: path,
-			ApiBindAddr: ":4040",
+			APIBindAddr: ":4040",
 
 			CacheSegmentSize: 10,
 			CacheTreeSize:    10,

@@ -70,7 +70,7 @@ embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS))
 
 .PHONY: lint
 lint:
-	revive -config revive.toml -formatter stylish ./...
+	revive -config revive.toml -exclude ./vendor/... -formatter stylish ./...
 
 .PHONY: unused
 unused:
