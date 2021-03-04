@@ -5,6 +5,7 @@
 [![Tests Status](https://github.com/pyroscope-io/pyroscope/workflows/Tests/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3ATests)
 [![Apache 2 License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/release/pyroscope-io/pyroscope.svg)](https://github.com/pyroscope-io/pyroscope/releases)
+[![DockerHub](https://img.shields.io/docker/pulls/pyroscope/pyroscope.svg)](https://hub.docker.com/r/pyroscope/pyroscope)
 [![GoDoc](https://godoc.org/github.com/pyroscope-io/pyroscope?status.svg)](https://godoc.org/github.com/pyroscope-io/pyroscope)
 
 <h2>
@@ -17,6 +18,8 @@
   <a href="/examples">Examples</a>
   <span> • </span>
   <a href="https://pyroscope.io/slack">Slack</a>
+  <span> • </span>
+  <a href="https://pyroscope.io/cloud">Cloud</a>
 </h2>
 
 #### _Read this in other languages._
@@ -30,11 +33,7 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 * Track changes over time
 
 
-## Live Demo
-
-<h2>
-  🔥<a href="https://demo.pyroscope.io/?name=hotrod.python.frontend%7B%7D">Pyroscope Live Demo</a>🔥
-</h2>
+## 🔥 [Pyroscope Live Demo](https://demo.pyroscope.io/?name=hotrod.python.frontend%7B%7D) 🔥
 
 [![Pyroscope GIF Demo](https://user-images.githubusercontent.com/662636/105124618-55b9df80-5a8f-11eb-8ad5-0e18c17c827d.gif)](https://demo.pyroscope.io/)
 
@@ -91,9 +90,17 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 
 Let us know what other integrations you want to see in [our slack](https://pyroscope.io/slack).
 
+## Cloud
+
+Pyroscope Cloud is a fully-managed, continous profiling service powered by Pyroscope team. It is the fastests, easiest way to start using Pyroscope.
+
+Special Offer: first 100 users get 3 months of Pyroscope Cloud for free. Create a server [here](https://pyroscope.io/cloud).
+
+
 ## Contributing
 
 To start contributing, check out our [Contributing Guide](/CONTRIBUTING.md)
+
 
 ### Thanks to the contributors of Pyroscope!
 
