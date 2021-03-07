@@ -13,7 +13,6 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
-	"github.com/sirupsen/logrus"
 
 	// revive:enable:blank-imports
 
@@ -36,6 +35,8 @@ type ProfileSession struct {
 
 	startTime time.Time
 	stopTime  time.Time
+
+	Logger Logger
 }
 
 func NewSession(upstream upstream.Upstream, appName string, spyName string, sampleRate int, pid int, withSubprocesses bool) *ProfileSession {
@@ -155,15 +156,13 @@ func (ps *ProfileSession) addSubprocesses() {
 			ps.pids = append(ps.pids, newPid)
 			newSpy, err := spy.SpyFromName(ps.spyName, newPid)
 			if err != nil {
-				logrus.WithFields(logrus.Fields{
-					"spy-name": ps.spyName,
-					"pid":      newPid,
-				}).Error("failed to initialize a spy")
+				if ps.Logger != nil {
+					ps.Logger.Errorf("failed to initialize a spy %d [%s]", newPid, ps.spyName)
+				}
 			} else {
-				logrus.WithFields(logrus.Fields{
-					"spy-name": ps.spyName,
-					"pid":      newPid,
-				}).Debug("started spy for subprocess")
+				if ps.Logger != nil {
+					ps.Logger.Debugf("started spy for subprocess %d [%s]", newPid, ps.spyName)
+				}
 				ps.spies = append(ps.spies, newSpy)
 			}
 		}

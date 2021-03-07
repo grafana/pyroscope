@@ -9,6 +9,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
+	"github.com/sirupsen/logrus"
 
 	"github.com/cheggaaa/pb/v3"
 )
@@ -69,7 +70,7 @@ func copyData(cfg *config.Config) error {
 
 	if cfg.DbManager.EnableProfiling {
 		u := direct.New(cfg, s)
-		go agent.SelfProfile(cfg, u, "pyroscope.dbmanager.cpu{}")
+		go agent.SelfProfile(cfg, u, "pyroscope.dbmanager.cpu{}", logrus.StandardLogger())
 	}
 
 	st := srcSt

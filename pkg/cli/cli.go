@@ -177,7 +177,6 @@ func resolvePath(path string) string {
 
 func Start(cfg *config.Config) error {
 	var (
-		agentFlagSet     = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
 		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
 		execFlagSet      = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
@@ -187,7 +186,6 @@ func Start(cfg *config.Config) error {
 		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 	)
 
-	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet)
 	serverSortedFlags := PopulateFlagSet(&cfg.Server, serverFlagSet)
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
 	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, "pid")
@@ -201,15 +199,6 @@ func Start(cfg *config.Config) error {
 		ff.WithEnvVarPrefix("PYROSCOPE"),
 		ff.WithAllowMissingConfigFile(true),
 		ff.WithConfigFileFlag("config"),
-	}
-
-	agentCmd := &ffcli.Command{
-		UsageFunc:  agentSortedFlags.printUsage,
-		Options:    options,
-		Name:       "agent",
-		ShortUsage: "pyroscope agent [flags]",
-		ShortHelp:  "starts pyroscope agent. Run this one on the machines you want to profile",
-		FlagSet:    agentFlagSet,
 	}
 
 	serverCmd := &ffcli.Command{
@@ -272,7 +261,6 @@ func Start(cfg *config.Config) error {
 		ShortUsage: "pyroscope [flags] <subcommand>",
 		FlagSet:    rootFlagSet,
 		Subcommands: []*ffcli.Command{
-			agentCmd,
 			convertCmd,
 			serverCmd,
 			execCmd,
@@ -282,15 +270,6 @@ func Start(cfg *config.Config) error {
 		},
 	}
 
-	agentCmd.Exec = func(_ context.Context, args []string) error {
-		if l, err := logrus.ParseLevel(cfg.Agent.LogLevel); err == nil {
-			logrus.SetLevel(l)
-		}
-		a := agent.New(cfg)
-		atexit.Register(a.Stop)
-		a.Start()
-		return nil
-	}
 	serverCmd.Exec = func(_ context.Context, args []string) error {
 		if l, err := logrus.ParseLevel(cfg.Server.LogLevel); err == nil {
 			logrus.SetLevel(l)
@@ -374,7 +353,7 @@ func startServer(cfg *config.Config) {
 		panic(err)
 	}
 	u := direct.New(cfg, s)
-	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}")
+	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}", logrus.StandardLogger())
 	go printRAMUsage()
 	go printDiskUsage(cfg)
 	c := server.New(cfg, s)

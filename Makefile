@@ -74,8 +74,8 @@ lint:
 
 .PHONY: ensure-logrus-not-used
 ensure-logrus-not-used:
-	godepgraph -nostdlib -s ./pkg/agent/profiler/ | grep github.com/sirupsen/logrus \
-		&& (echo "make sure ./pkg/agent/profiler/ doesn not depend on logrus. we don't want users' logs to be tainted" &1>2; false) || true
+	@! godepgraph -nostdlib -s ./pkg/agent/profiler/ | grep ' -> "github.com/sirupsen/logrus' \
+		|| (echo "\n^ ERROR: make sure ./pkg/agent/profiler/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
 
 .PHONY: unused
 unused:

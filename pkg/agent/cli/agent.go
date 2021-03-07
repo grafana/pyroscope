@@ -1,21 +1,21 @@
-package agent
+package cli
 
 import (
 	"os"
 
-	"github.com/sirupsen/logrus"
-
+	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/csock"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/id"
+	"github.com/sirupsen/logrus"
 )
 
 type Agent struct {
 	cfg            *config.Config
 	cs             *csock.CSock
-	activeProfiles map[int]*ProfileSession
+	activeProfiles map[int]*agent.ProfileSession
 	id             id.ID
 	u              upstream.Upstream
 }
@@ -27,25 +27,26 @@ func New(cfg *config.Config) *Agent {
 		UpstreamAddress:        cfg.Agent.ServerAddress,
 		UpstreamRequestTimeout: cfg.Agent.UpstreamRequestTimeout,
 	})
+	r.Logger = logrus.StandardLogger()
 	return &Agent{
 		cfg:            cfg,
-		activeProfiles: make(map[int]*ProfileSession),
+		activeProfiles: make(map[int]*agent.ProfileSession),
 		u:              r,
 	}
 }
 
-func (a *Agent) Start() {
+func (a *Agent) Start() error {
 	sockPath := a.cfg.Agent.UNIXSocketPath
 	cs, err := csock.NewUnixCSock(sockPath, a.controlSocketHandler)
 	if err != nil {
-		logrus.Fatal(err)
+		return err
 	}
 	a.cs = cs
 	defer os.Remove(sockPath)
 
-	go SelfProfile(a.cfg, a.u, "pyroscope.agent.cpu{}")
-	logrus.WithField("addr", cs.CanonicalAddr()).Info("Starting control socket")
+	go agent.SelfProfile(a.cfg, a.u, "pyroscope.agent.cpu{}", logrus.StandardLogger())
 	cs.Start()
+	return nil
 }
 
 func (a *Agent) Stop() {
@@ -59,7 +60,8 @@ func (a *Agent) controlSocketHandler(req *csock.Request) *csock.Response {
 		// TODO: pass withSubprocesses from somewhere
 		// TODO: pass appName from somewhere
 		// TODO: add sample rate
-		s := NewSession(a.u, "testapp.cpu", "gospy", 100, 0, false)
+		s := agent.NewSession(a.u, "testapp.cpu", "gospy", 100, 0, false)
+		s.Logger = logrus.StandardLogger()
 		a.activeProfiles[profileID] = s
 		s.Start()
 		return &csock.Response{ProfileID: profileID}

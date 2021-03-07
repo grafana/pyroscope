@@ -13,6 +13,7 @@ type Config struct {
 	ApplicationName string // e.g backend.purchases
 	ServerAddress   string // e.g http://pyroscope.services.internal:4040
 	AuthToken       string
+	Logger          agent.Logger
 }
 
 type Profiler struct {
@@ -27,11 +28,16 @@ func Start(cfg Config) (*Profiler, error) {
 		UpstreamThreads:        4,
 		UpstreamRequestTimeout: 30 * time.Second,
 	})
+
+	u.Logger = cfg.Logger
+
 	if err != nil {
 		return nil, err
 	}
+
 	// TODO: add sample rate
 	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 100, 0, false)
+	sess.Logger = cfg.Logger
 	sess.Start()
 
 	p := &Profiler{
