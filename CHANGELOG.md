@@ -1,3 +1,16 @@
+## <small>0.0.26 (2021-03-08)</small>
+
+* Add Pyroscope cloud instructions ([3765ea2](https://github.com/pyroscope-io/pyroscope/commit/3765ea2))
+* add unit tests (#98) ([31474b3](https://github.com/pyroscope-io/pyroscope/commit/31474b3)), closes [#98](https://github.com/pyroscope-io/pyroscope/issues/98)
+* check to see if logrus is used ([e2ff648](https://github.com/pyroscope-io/pyroscope/commit/e2ff648))
+* fixes dependency graph task ([e4c2168](https://github.com/pyroscope-io/pyroscope/commit/e4c2168))
+* removes logrus dependency from the library code ([f8e033e](https://github.com/pyroscope-io/pyroscope/commit/f8e033e))
+* Update contributors ([a39c7ab](https://github.com/pyroscope-io/pyroscope/commit/a39c7ab))
+* Updates README with information about the cloud ([2da1333](https://github.com/pyroscope-io/pyroscope/commit/2da1333))
+* consistency: removes "log" alias in favor of "logrus" ([a66f8b3](https://github.com/pyroscope-io/pyroscope/commit/a66f8b3))
+
+
+
 ## <small>0.0.25 (2021-02-26)</small>
 
 * adds eBPF spy ([3438826](https://github.com/pyroscope-io/pyroscope/commit/3438826))
