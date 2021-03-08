@@ -27,7 +27,8 @@ func DirStats(path string) (directories int, files int, size bytesize.ByteSize) 
 	if err != nil {
 		return -1, -1, -1
 	}
-	return
+
+	return directories, files, size
 }
 
 func TmpDir(cb func(name string)) {

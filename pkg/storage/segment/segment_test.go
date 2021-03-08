@@ -56,9 +56,12 @@ var _ = Describe("stree", func() {
 	Context("Serialize / Deserialize", func() {
 		It("returns serialized value", func() {
 			s := New(r, m)
-			s.Put(testing.SimpleTime(0), testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-			s.Put(testing.SimpleTime(10), testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-			s.Put(testing.SimpleTime(20), testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+			s.Put(testing.SimpleTime(0),
+				testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+			s.Put(testing.SimpleTime(10),
+				testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+			s.Put(testing.SimpleTime(20),
+				testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 			var buf bytes.Buffer
 			s.Serialize(&buf)
@@ -80,55 +83,64 @@ var _ = Describe("stree", func() {
 		Context("When empty", func() {
 			It("sets root properly", func() {
 				s := New(r, m)
-				s.Put(testing.SimpleTime(0), testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(0),
+					testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(0))
 			})
 
 			It("sets root properly", func() {
 				s := New(r, m)
-				s.Put(testing.SimpleTime(0), testing.SimpleTime(49), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(0),
+					testing.SimpleTime(49), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
 			})
 
 			It("sets root properly", func() {
 				s := New(r, m)
-				s.Put(testing.SimpleTime(10), testing.SimpleTime(109), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(10),
+					testing.SimpleTime(109), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(2))
 			})
 
 			It("sets root properly", func() {
 				s := New(r, m)
-				s.Put(testing.SimpleTime(10), testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(10),
+					testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(0))
-				s.Put(testing.SimpleTime(10), testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(10),
+					testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 			})
 
 			It("sets root properly", func() {
 				s := New(r, m)
-				s.Put(testing.SimpleTime(10), testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(10),
+					testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(0))
-				s.Put(testing.SimpleTime(20), testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(20),
+					testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
 			})
 
 			It("sets root properly", func() {
 				s := New(r, m)
-
-				s.Put(testing.SimpleTime(10), testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(10),
+					testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(0))
 
-				s.Put(testing.SimpleTime(20), testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(20),
+					testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
 
-				s.Put(testing.SimpleTime(30), testing.SimpleTime(39), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(30),
+					testing.SimpleTime(39), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
 				spew.Dump(s.root)
@@ -136,16 +148,18 @@ var _ = Describe("stree", func() {
 
 			It("sets root properly", func() {
 				s := New(r, m)
-
-				s.Put(testing.SimpleTime(30), testing.SimpleTime(39), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(30),
+					testing.SimpleTime(39), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(0))
 
-				s.Put(testing.SimpleTime(20), testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(20),
+					testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
 
-				s.Put(testing.SimpleTime(10), testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(10),
+					testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
 
@@ -156,7 +170,8 @@ var _ = Describe("stree", func() {
 
 			It("works with 3 mins", func() {
 				s := New(r, m)
-				s.Put(testing.SimpleTime(10), testing.SimpleTime(70), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(10),
+					testing.SimpleTime(70), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
 				spew.Dump(s.root)
@@ -166,12 +181,14 @@ var _ = Describe("stree", func() {
 			It("sets trie properly, gets work", func() {
 				s := New(r, m)
 
-				s.Put(testing.SimpleTime(0), testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(0),
+					testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(0))
 				spew.Dump(s.root)
 
-				s.Put(testing.SimpleTime(100), testing.SimpleTime(109), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleTime(100),
+					testing.SimpleTime(109), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				spew.Dump(s.root)
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(2))
