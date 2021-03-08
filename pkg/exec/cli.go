@@ -115,6 +115,7 @@ func Cli(cfg *config.Config, args []string) error {
 	if err != nil {
 		return err
 	}
+	u.Logger = logrus.StandardLogger()
 	defer u.Stop()
 
 	logrus.WithFields(logrus.Fields{
@@ -126,6 +127,7 @@ func Cli(cfg *config.Config, args []string) error {
 
 	// TODO: add sample rate, make it configurable
 	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, 100, pid, cfg.Exec.DetectSubprocesses)
+	sess.Logger = logrus.StandardLogger()
 	err = sess.Start()
 	if err != nil {
 		logrus.Errorf("error when starting session: %q", err)
