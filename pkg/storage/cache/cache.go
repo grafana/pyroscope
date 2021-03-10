@@ -59,7 +59,7 @@ func (cache *Cache) saveToDisk(key string, val interface{}) {
 	logrus.WithFields(logrus.Fields{
 		"prefix": cache.prefix,
 		"key":    key,
-	}).Info("saving to disk")
+	}).Debug("saving to disk")
 	buf := cache.Bytes(key, val)
 	err := cache.db.Update(func(txn *badger.Txn) error {
 		return txn.SetEntry(badger.NewEntry([]byte(cache.prefix+key), buf))

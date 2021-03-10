@@ -11,6 +11,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
+const upstreamThreads = 1
+
 type uploadJob struct {
 	name       string
 	startTime  time.Time
@@ -32,7 +34,7 @@ func New(cfg *config.Config, s *storage.Storage) *Direct {
 		cfg:  cfg,
 		s:    s,
 		todo: make(chan *uploadJob, 100),
-		done: make(chan struct{}, cfg.Agent.UpstreamThreads),
+		done: make(chan struct{}, upstreamThreads),
 	}
 
 	go d.start()
@@ -40,13 +42,13 @@ func New(cfg *config.Config, s *storage.Storage) *Direct {
 }
 
 func (u *Direct) start() {
-	for i := 0; i < u.cfg.Agent.UpstreamThreads; i++ {
+	for i := 0; i < upstreamThreads; i++ {
 		go u.uploadLoop()
 	}
 }
 
 func (u *Direct) Stop() {
-	for i := 0; i < u.cfg.Agent.UpstreamThreads; i++ {
+	for i := 0; i < upstreamThreads; i++ {
 		u.done <- struct{}{}
 	}
 }

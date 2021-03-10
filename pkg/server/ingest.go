@@ -68,7 +68,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 
 	var t *tree.Tree
 	if r.Header.Get("Content-Type") == "binary/octet-stream+tree" {
-		logrus.Info("ingest format = tree")
+		logrus.Debug("ingest format = tree")
 		var err error
 		t, err = tree.DeserializeNoDict(r.Body)
 		if err != nil {
@@ -79,11 +79,11 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		parserFunc := convert.ParseIndividualLines
 		if ip.grouped {
 			parserFunc = convert.ParseGroups
-			logrus.Info("ingest format = groups")
+			logrus.Debug("ingest format = groups")
 		}
 
 		if r.Header.Get("Content-Type") == "binary/octet-stream+trie" {
-			logrus.Info("ingest format = trie")
+			logrus.Debug("ingest format = trie")
 			parserFunc = convert.ParseTrie
 		}
 		t = tree.New()
