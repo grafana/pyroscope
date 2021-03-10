@@ -1,6 +1,6 @@
 ![image](https://user-images.githubusercontent.com/23323466/110414341-8ad0c000-8044-11eb-9628-7b24e50295b2.png)
 
-# O(log n) makes continous profiling possible
+# O(log n) makes continuous profiling possible
 
 Pyroscope is software that lets you **continuously** profile your code to debug performance issues down to a line of code. With just a few lines of code it will do the following:
 
