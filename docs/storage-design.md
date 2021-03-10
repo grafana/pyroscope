@@ -1,10 +1,3 @@
----
-id: storage-design
-title: Storage Design
-sidebar_label: Storage Design
-slug: /storage-design
----
-
 ![image](https://user-images.githubusercontent.com/23323466/110414341-8ad0c000-8044-11eb-9628-7b24e50295b2.png)
 
 # O(log n) makes continous profiling possible
