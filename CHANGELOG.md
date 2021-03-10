@@ -1,3 +1,13 @@
+## <small>0.0.27 (2021-03-10)</small>
+
+* adds a mutex to hyperloglog library, addresses #112 ([66ad877](https://github.com/pyroscope-io/pyroscope/commit/66ad877)), closes [#112](https://github.com/pyroscope-io/pyroscope/issues/112)
+* exclude vendor directory from being linted.  Update ApiBindAddr to APIBindAddr ([27c33d2](https://github.com/pyroscope-io/pyroscope/commit/27c33d2))
+* fix malformed struct tags ([a2d577d](https://github.com/pyroscope-io/pyroscope/commit/a2d577d))
+* remove naked return and cut down line length ([e7df6f6](https://github.com/pyroscope-io/pyroscope/commit/e7df6f6))
+* updates the list of contributors ([bc1b5d6](https://github.com/pyroscope-io/pyroscope/commit/bc1b5d6))
+
+
+
 ## <small>0.0.26 (2021-03-08)</small>
 
 * Add Pyroscope cloud instructions ([3765ea2](https://github.com/pyroscope-io/pyroscope/commit/3765ea2))
