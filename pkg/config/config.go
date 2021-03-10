@@ -54,7 +54,7 @@ type Server struct {
 	StorageMaxDepth int           `skip:"true"`
 
 	MaxNodesSerialization int `def:"2048" desc:"max number of nodes used when saving profiles to disk"`
-	MaxNodesRender        int `def:"2048" desc:"max number of nodes used to display data on the frontend"`
+	MaxNodesRender        int `def:"8192" desc:"max number of nodes used to display data on the frontend"`
 
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
