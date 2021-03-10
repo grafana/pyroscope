@@ -30,7 +30,7 @@ jobs:
       - name: Run Webapp lints
         run: yarn lint
       - name: Upload codecov coverage
-      - uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v1
         with:
           fail_ci_if_error: false
           verbose: true
