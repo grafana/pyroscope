@@ -250,7 +250,7 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 
 		tl.PopulateTimeline(startTime, endTime, st)
 
-		st.Get(startTime, endTime, func(depth int, t time.Time, r *big.Rat) {
+		st.Get(startTime, endTime, func(depth int, samples uint64, t time.Time, r *big.Rat) {
 			k := skk.TreeKey(depth, t)
 			tr := s.trees.Get(k).(*tree.Tree)
 			// TODO: these clones are probably are not the most efficient way of doing this
