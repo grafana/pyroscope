@@ -1,3 +1,23 @@
+## <small>0.0.28 (2021-03-11)</small>
+
+* adds a mutex to hyperloglog library, addresses #112 ([66ad877](https://github.com/pyroscope-io/pyroscope/commit/66ad877)), closes [#112](https://github.com/pyroscope-io/pyroscope/issues/112)
+* adds codecov ([0b35827](https://github.com/pyroscope-io/pyroscope/commit/0b35827))
+* adds storage design doc ([99aa4ad](https://github.com/pyroscope-io/pyroscope/commit/99aa4ad))
+* exclude vendor directory from being linted.  Update ApiBindAddr to APIBindAddr ([27c33d2](https://github.com/pyroscope-io/pyroscope/commit/27c33d2))
+* fix malformed struct tags ([a2d577d](https://github.com/pyroscope-io/pyroscope/commit/a2d577d))
+* fixes syntax error ([13f5168](https://github.com/pyroscope-io/pyroscope/commit/13f5168))
+* improves ebpf support on debian ([38918a1](https://github.com/pyroscope-io/pyroscope/commit/38918a1))
+* increases maximum nodes per tree when rendering trees ([76d3fa2](https://github.com/pyroscope-io/pyroscope/commit/76d3fa2))
+* makes logging less verbose, fixes a bug with direct upstream ([9784bc2](https://github.com/pyroscope-io/pyroscope/commit/9784bc2))
+* remove naked return and cut down line length ([e7df6f6](https://github.com/pyroscope-io/pyroscope/commit/e7df6f6))
+* removes mdx parts ([5b515e6](https://github.com/pyroscope-io/pyroscope/commit/5b515e6))
+* spelling fixes ([eb08802](https://github.com/pyroscope-io/pyroscope/commit/eb08802))
+* update typos ([e813976](https://github.com/pyroscope-io/pyroscope/commit/e813976))
+* updates the list of contributors ([bc1b5d6](https://github.com/pyroscope-io/pyroscope/commit/bc1b5d6))
+* version 0.0.27 ([28f31b8](https://github.com/pyroscope-io/pyroscope/commit/28f31b8))
+
+
+
 ## <small>0.0.27 (2021-03-10)</small>
 
 * adds a mutex to hyperloglog library, addresses #112 ([66ad877](https://github.com/pyroscope-io/pyroscope/commit/66ad877)), closes [#112](https://github.com/pyroscope-io/pyroscope/issues/112)
