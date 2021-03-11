@@ -20,7 +20,7 @@ The challenge with continuous profiling is that if you just take frequent chunks
 
 We solve these problems by:
 1. Using a combination of tries and trees to compress data efficiently
-2. Using segment trees to return queries for any timespan of data in Olog(n) vs O(n) time complexity
+2. Using segment trees to return queries for any timespan of data in O(log n) vs O(n) time complexity
 
 ## Step 1: Turning the profiling data into a tree
 
@@ -82,9 +82,9 @@ Every 10s Pyroscope agent sends a chunk of profiling data to the server whuch wr
 
 ![segment_tree_animation_1](https://user-images.githubusercontent.com/23323466/110259555-196a1200-7f5d-11eb-9223-218bb4b34c6b.gif)
 
-## Turn reads from O(n) to Olog(n)
+## Turn reads from O(n) to O(log n)
 
-If you don't use segment trees and just write data in 10 second chunks the time complexity for the reads becomes a function of how many 10s units the query asks for. If you want 1 year of data, you'll have to then merge 3,154,000 trees representing the profiling data. By using segment trees you can effictevely decrease the amount of merge operations from O(n) to Olog(n).
+If you don't use segment trees and just write data in 10 second chunks the time complexity for the reads becomes a function of how many 10s units the query asks for. If you want 1 year of data, you'll have to then merge 3,154,000 trees representing the profiling data. By using segment trees you can effictevely decrease the amount of merge operations from O(n) to O(log n).
 
 ![segment_tree_reads](https://user-images.githubusercontent.com/23323466/110277713-b98a6000-7f8a-11eb-942f-3a924a6e0b09.gif)
 
