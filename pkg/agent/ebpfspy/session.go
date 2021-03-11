@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -31,7 +32,10 @@ type session struct {
 
 const helpURL = "https://github.com/iovisor/bcc/blob/master/INSTALL.md"
 
-var command = "/usr/share/bcc/tools/profile"
+var possibleCommandLocations = []string{
+	"/usr/sbin/profile-bpfcc", // debian: https://github.com/pyroscope-io/pyroscope/issues/114
+	"/usr/share/bcc/tools/profile",
+}
 
 // TODO: make these configurable
 var commandArgs = []string{"-F", "100", "-f", "11"}
@@ -40,9 +44,19 @@ func newSession(pid int) *session {
 	return &session{pid: pid}
 }
 
+func findSuitableExecutable() (string, error) {
+	for _, str := range possibleCommandLocations {
+		if file.Exists(str) {
+			return str, nil
+		}
+	}
+	return "", fmt.Errorf("Could not find profile.py at %s. Visit %s for instructions on how to install it", strings.Join(possibleCommandLocations, ", "), helpURL)
+}
+
 func (s *session) Start() error {
-	if !file.Exists(command) {
-		return fmt.Errorf("Could not find profile.py at '%s'. Visit %s for instructions on how to install it", command, helpURL)
+	command, err := findSuitableExecutable()
+	if err != nil {
+		return err
 	}
 
 	args := commandArgs
