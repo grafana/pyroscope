@@ -38,43 +38,65 @@ func ParseKey(name string) (*Key, error) {
 		labels: make(map[string]string),
 	}
 
-	state := nameParserState
-
-	key := ""
-	value := ""
+	p := parser{
+		parserState: nameParserState,
+		key:         "",
+		value:       "",
+	}
 
 	for _, r := range name + "{" {
-		switch state {
+		switch p.parserState {
 		case nameParserState:
-			switch r {
-			case '{':
-				state = tagKeyParserState
-				k.labels["__name__"] = strings.TrimSpace(value)
-			default:
-				value += string(r)
-			}
+			p.nameParserCase(r, k)
 		case tagKeyParserState:
-			switch r {
-			case '}':
-				state = doneParserState
-			case '=':
-				state = tagValueParserState
-				value = ""
-			default:
-				key += string(r)
-			}
+			p.tagKeyParserCase(r)
 		case tagValueParserState:
-			switch r {
-			case ',', '}':
-				state = tagKeyParserState
-				k.labels[strings.TrimSpace(key)] = strings.TrimSpace(value)
-				key = ""
-			default:
-				value += string(r)
-			}
+			p.tagValueParserCase(r, k)
 		}
 	}
 	return k, nil
+}
+
+type parser struct {
+	parserState ParserState
+	key         string
+	value       string
+}
+
+// ParseKey's nameParserState switch case
+func (p *parser) nameParserCase(r int32, k *Key) {
+	switch r {
+	case '{':
+		p.parserState = tagKeyParserState
+		k.labels["__name__"] = strings.TrimSpace(p.value)
+	default:
+		p.value += string(r)
+	}
+}
+
+// ParseKey's tagKeyParserState switch case
+func (p *parser) tagKeyParserCase(r int32) {
+	switch r {
+	case '}':
+		p.parserState = doneParserState
+	case '=':
+		p.parserState = tagValueParserState
+		p.value = ""
+	default:
+		p.key += string(r)
+	}
+}
+
+// ParseKey's tagValueParserState switch case
+func (p *parser) tagValueParserCase(r int32, k *Key) {
+	switch r {
+	case ',', '}':
+		p.parserState = tagKeyParserState
+		k.labels[strings.TrimSpace(p.key)] = strings.TrimSpace(p.value)
+		p.key = ""
+	default:
+		p.value += string(r)
+	}
 }
 
 func (k *Key) SegmentKey() string {
