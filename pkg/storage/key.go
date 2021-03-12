@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spaolacci/murmur3"
-
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
+	"github.com/spaolacci/murmur3"
 )
 
 type Key struct {
@@ -39,56 +38,64 @@ func ParseKey(name string) (*Key, error) {
 		labels: make(map[string]string),
 	}
 
-	state := nameParserState
-	key := ""
-	value := ""
+	p := parser{
+		parserState: nameParserState,
+		key:         "",
+		value:       "",
+	}
 
 	for _, r := range name + "{" {
-		switch state {
+		switch p.parserState {
 		case nameParserState:
-			nameParserCase(r, &state, k, &value)
+			p.nameParserCase(r, k)
 		case tagKeyParserState:
-			tagKeyParserCase(r, &state, &key, &value)
+			p.tagKeyParserCase(r)
 		case tagValueParserState:
-			tagValueParserCase(r, &state, k, &key, &value)
+			p.tagValueParserCase(r, k)
 		}
 	}
 	return k, nil
 }
 
+type parser struct {
+	parserState ParserState
+	key         string
+	value       string
+}
+
 // ParseKey's nameParserState switch case
-func nameParserCase(r int32, state *ParserState, k *Key, value *string) {
+func (p *parser) nameParserCase(r int32, k *Key) {
 	switch r {
 	case '{':
-		*state = tagKeyParserState
-		k.labels["__name__"] = strings.TrimSpace(*value)
+		p.parserState = tagKeyParserState
+		k.labels["__name__"] = strings.TrimSpace(p.value)
 	default:
-		*value += string(r)
+		p.value += string(r)
 	}
 }
 
 // ParseKey's tagKeyParserState switch case
-func tagKeyParserCase(r int32, state *ParserState, key *string, value *string) {
+func (p *parser) tagKeyParserCase(r int32) {
 	switch r {
 	case '}':
-		*state = doneParserState
+		p.parserState = doneParserState
 	case '=':
-		*state = tagValueParserState
-		*value = ""
+		p.parserState = tagValueParserState
+		p.value = ""
 	default:
-		*key += string(r)
+		p.key += string(r)
 	}
 }
 
 // ParseKey's tagValueParserState switch case
-func tagValueParserCase(r int32, state *ParserState, k *Key, key *string, value *string) {
+func (p *parser) tagValueParserCase(r int32, k *Key) {
 	switch r {
 	case ',', '}':
-		*state = tagKeyParserState
-		k.labels[strings.TrimSpace(*key)] = strings.TrimSpace(*value)
-		*key = ""
+		p.parserState = tagKeyParserState
+		k.labels[strings.TrimSpace(p.key)] = strings.TrimSpace(p.value)
+		p.key = ""
 	default:
-		*value += string(r)
+		p.value += string(r)
 	}
 }
 
@@ -116,31 +123,25 @@ func (k *Key) Normalized() string {
 	sortedMap := sortedmap.New()
 	for k, v := range k.labels {
 		if k == "__name__" {
-			writeString(&sb, v)
+			sb.WriteString(v)
 		} else {
 			sortedMap.Put(k, v)
 		}
 	}
 
-	writeString(&sb, "{")
+	sb.WriteString("{")
 	for i, k := range sortedMap.Keys() {
 		v := sortedMap.Get(k).(string)
 		if i != 0 {
-			writeString(&sb, ",")
+			sb.WriteString(",")
 		}
-		writeString(&sb, k)
-		writeString(&sb, "=")
-		writeString(&sb, v)
+		sb.WriteString(k)
+		sb.WriteString("=")
+		sb.WriteString(v)
 	}
-	writeString(&sb, "}")
+	sb.WriteString("}")
 
 	return sb.String()
-}
-
-func writeString(sb *strings.Builder, value string) {
-	if _, err := sb.WriteString(value); err != nil {
-		panic(err)
-	}
 }
 
 func (k *Key) Hashed() []byte {
