@@ -11,7 +11,6 @@ import (
 
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -81,13 +80,11 @@ var _ = Describe("stree", func() {
 			var buf bytes.Buffer
 			s.Serialize(&buf)
 			serialized := buf.Bytes()
-			// spew.Dump(s.root)
 			s, err := Deserialize(r, m, bytes.NewReader(serialized))
 			Expect(err).ToNot(HaveOccurred())
 			var buf2 bytes.Buffer
 			s.Serialize(&buf2)
 			serialized2 := buf2.Bytes()
-			spew.Dump(s.root)
 			logrus.Debugf("1: %q", serialized)
 			logrus.Debugf("2: %q", serialized2)
 			Expect(string(serialized2)).To(Equal(string(serialized)))
@@ -176,6 +173,19 @@ var _ = Describe("stree", func() {
 			It("sets root properly", func() {
 				s := New(r, m)
 				s.Put(testing.SimpleTime(10),
+					testing.SimpleTime(19), 10, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				Expect(s.root).ToNot(BeNil())
+				Expect(s.root.depth).To(Equal(0))
+				s.Put(testing.SimpleTime(20),
+					testing.SimpleTime(39), 10, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				Expect(s.root).ToNot(BeNil())
+				Expect(s.root.depth).To(Equal(1))
+				expectChildrenSamplesAddUpToParentSamples(s.root)
+			})
+
+			It("sets root properly", func() {
+				s := New(r, m)
+				s.Put(testing.SimpleTime(10),
 					testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(0))
@@ -189,7 +199,6 @@ var _ = Describe("stree", func() {
 					testing.SimpleTime(39), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
-				spew.Dump(s.root)
 				expectChildrenSamplesAddUpToParentSamples(s.root)
 			})
 
@@ -210,8 +219,6 @@ var _ = Describe("stree", func() {
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
 
-				spew.Dump(s.root)
-
 				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(39))).To(HaveLen(3))
 			})
 
@@ -221,7 +228,6 @@ var _ = Describe("stree", func() {
 					testing.SimpleTime(70), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(1))
-				spew.Dump(s.root)
 				// Expect(doGet(s, testing.SimpleTime(20, testing.SimpleTime(49))).To(HaveLen(3))
 			})
 
@@ -232,11 +238,9 @@ var _ = Describe("stree", func() {
 					testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(0))
-				spew.Dump(s.root)
 
 				s.Put(testing.SimpleTime(100),
 					testing.SimpleTime(109), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-				spew.Dump(s.root)
 				expectChildrenSamplesAddUpToParentSamples(s.root)
 				Expect(s.root).ToNot(BeNil())
 				Expect(s.root.depth).To(Equal(2))

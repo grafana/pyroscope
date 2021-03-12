@@ -100,7 +100,7 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 
 			r := sn.overlapWrite(st, et)
 			fv, _ := r.Float64()
-			sn.samples += samples * uint64(fv)
+			sn.samples += uint64(float64(samples) * fv)
 
 			//  relationship                               overlap read             overlap write
 			// 	inside  rel = iota   // | S E |            <1                       1/1

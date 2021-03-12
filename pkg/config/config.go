@@ -109,12 +109,17 @@ func NewForTests(path string) *Config {
 			StoragePath: path,
 			APIBindAddr: ":4040",
 
-			CacheSegmentSize: 10,
-			CacheTreeSize:    10,
+			CacheSegmentSize:    10,
+			CacheTreeSize:       10,
+			CacheDictionarySize: 10,
+			CacheDimensionSize:  10,
 
 			Multiplier:    10,
 			MinResolution: 10 * time.Second,
 			MaxResolution: time.Hour * 24 * 365 * 5,
+
+			MaxNodesSerialization: 2048,
+			MaxNodesRender:        2048,
 		},
 	}
 

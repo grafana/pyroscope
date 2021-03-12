@@ -195,7 +195,7 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree, sp
 	st.Put(startTime, endTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := key.TreeKey(depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
-		treeClone := val.Clone(big.NewRat(1, 1))
+		treeClone := val.Clone(r)
 		for _, addon := range addons {
 			tk2 := key.TreeKey(addon.Depth, addon.T)
 			addonTree := s.trees.Get(tk2).(*tree.Tree)

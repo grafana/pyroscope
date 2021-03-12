@@ -27,8 +27,6 @@ var _ = Describe("storage package", func() {
 	BeforeEach(func() {
 		tmpDir = testing.TmpDirSync()
 		cfg = config.NewForTests(tmpDir.Path)
-		cfg.Server.CacheSegmentSize = 0
-		cfg.Server.CacheTreeSize = 0
 		var err error
 		s, err = New(cfg)
 		Expect(err).ToNot(HaveOccurred())
@@ -38,36 +36,79 @@ var _ = Describe("storage package", func() {
 		tmpDir.Close()
 	})
 
-	Context("Storage", func() {
-		XIt("works", func() {
+	Context("smoke tests", func() {
+		Context("simple 10 second write", func() {
+			It("works correctly", func() {
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(1))
+				tree.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(19)
+				st2 := testing.SimpleTime(0)
+				et2 := testing.SimpleTime(30)
+				key, _ := ParseKey("foo")
+
+				err := s.Put(st, et, key, tree, "testspy", 100)
+				Expect(err).ToNot(HaveOccurred())
+
+				t2, _, _, _, err := s.Get(st2, et2, key)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(t2).ToNot(BeNil())
+				Expect(t2.String()).To(Equal(tree.String()))
+				Expect(s.Close()).ToNot(HaveOccurred())
+			})
+		})
+		Context("simple 20 second write", func() {
+			It("works correctly", func() {
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(2))
+				tree.Insert([]byte("a;c"), uint64(4))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(29)
+				st2 := testing.SimpleTime(0)
+				et2 := testing.SimpleTime(30)
+				key, _ := ParseKey("foo")
+
+				err := s.Put(st, et, key, tree, "testspy", 100)
+				Expect(err).ToNot(HaveOccurred())
+
+				t2, _, _, _, err := s.Get(st2, et2, key)
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(t2).ToNot(BeNil())
+				Expect(t2.String()).To(Equal(tree.String()))
+				Expect(s.Close()).ToNot(HaveOccurred())
+			})
+		})
+
+		It("persist data between restarts", func() {
 			tree := tree.New()
 			tree.Insert([]byte("a;b"), uint64(1))
 			tree.Insert([]byte("a;c"), uint64(2))
-			st := testing.ParseTime("0001-01-01-00:00:10")
-			et := testing.ParseTime("0001-01-01-00:00:19")
-			st2 := testing.ParseTime("0001-01-01-00:00:00")
-			et2 := testing.ParseTime("0001-01-01-00:00:30")
+			st := testing.SimpleTime(10)
+			et := testing.SimpleTime(19)
+			st2 := testing.SimpleTime(0)
+			et2 := testing.SimpleTime(30)
 			key, _ := ParseKey("foo")
+
 			err := s.Put(st, et, key, tree, "testspy", 100)
 			Expect(err).ToNot(HaveOccurred())
 
 			t2, _, _, _, err := s.Get(st2, et2, key)
+
 			Expect(err).ToNot(HaveOccurred())
 			Expect(t2).ToNot(BeNil())
-
 			Expect(t2.String()).To(Equal(tree.String()))
-
 			Expect(s.Close()).ToNot(HaveOccurred())
 
 			s2, err = New(cfg)
+			Expect(err).ToNot(HaveOccurred())
 
 			t3, _, _, _, err := s2.Get(st2, et2, key)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(t3).ToNot(BeNil())
-
 			Expect(t3.String()).To(Equal(tree.String()))
-
-			Expect(nil).ToNot(BeNil())
 		})
 	})
 })

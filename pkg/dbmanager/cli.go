@@ -15,9 +15,6 @@ import (
 )
 
 func Cli(cfg *config.Config, args []string) error {
-	// spew.Dump(cfg.DbManager)
-	// spew.Dump(args)
-
 	if len(args) == 0 {
 		return fmt.Errorf("please provide a command")
 	}
