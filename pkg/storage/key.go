@@ -40,7 +40,6 @@ func ParseKey(name string) (*Key, error) {
 	}
 
 	state := nameParserState
-
 	key := ""
 	value := ""
 
@@ -117,25 +116,31 @@ func (k *Key) Normalized() string {
 	sortedMap := sortedmap.New()
 	for k, v := range k.labels {
 		if k == "__name__" {
-			sb.WriteString(v)
+			writeString(&sb, v)
 		} else {
 			sortedMap.Put(k, v)
 		}
 	}
 
-	sb.WriteString("{")
+	writeString(&sb, "{")
 	for i, k := range sortedMap.Keys() {
 		v := sortedMap.Get(k).(string)
 		if i != 0 {
-			sb.WriteString(",")
+			writeString(&sb, ",")
 		}
-		sb.WriteString(k)
-		sb.WriteString("=")
-		sb.WriteString(v)
+		writeString(&sb, k)
+		writeString(&sb, "=")
+		writeString(&sb, v)
 	}
-	sb.WriteString("}")
+	writeString(&sb, "}")
 
 	return sb.String()
+}
+
+func writeString(sb *strings.Builder, value string) {
+	if _, err := sb.WriteString(value); err != nil {
+		panic(err)
+	}
 }
 
 func (k *Key) Hashed() []byte {
