@@ -92,7 +92,7 @@ Let us know what other integrations you want to see in [our slack](https://pyros
 
 ## Cloud
 
-Pyroscope Cloud is a fully-managed, continous profiling service powered by Pyroscope team. It is the fastests, easiest way to start using Pyroscope.
+Pyroscope Cloud is a fully-managed, continous profiling service powered by Pyroscope team. It is the fastest, easiest way to start using Pyroscope.
 
 Special Offer: first 100 users get 3 months of Pyroscope Cloud for free. Create a server [here](https://pyroscope.io/cloud).
 
