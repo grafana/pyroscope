@@ -67,6 +67,7 @@ warningCode = 0
 [rule.bare-return]
 [rule.unused-receiver]
 [rule.unhandled-error]
+  arguments = ["sb.WriteString"]
   severity = "error"
 [rule.cognitive-complexity]
   arguments = [7]
