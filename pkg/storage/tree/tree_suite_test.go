@@ -1,11 +1,10 @@
 package tree_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"testing"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 	testing2 "github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 

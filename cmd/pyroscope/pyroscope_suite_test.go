@@ -1,4 +1,4 @@
-package transporttrie_test
+package main_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestTrie(t *testing.T) {
+func TestPyroscope(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Trie Suite")
+	RunSpecs(t, "Pyroscope Suite")
 }
