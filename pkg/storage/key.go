@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
 	"github.com/spaolacci/murmur3"
+
+	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
 )
 
 type Key struct {
@@ -46,35 +47,50 @@ func ParseKey(name string) (*Key, error) {
 	for _, r := range name + "{" {
 		switch state {
 		case nameParserState:
-			switch r {
-			case '{':
-				state = tagKeyParserState
-				k.labels["__name__"] = strings.TrimSpace(value)
-			default:
-				value += string(r)
-			}
+			nameParserCase(r, &state, k, &value)
 		case tagKeyParserState:
-			switch r {
-			case '}':
-				state = doneParserState
-			case '=':
-				state = tagValueParserState
-				value = ""
-			default:
-				key += string(r)
-			}
+			tagKeyParserCase(r, &state, &key, &value)
 		case tagValueParserState:
-			switch r {
-			case ',', '}':
-				state = tagKeyParserState
-				k.labels[strings.TrimSpace(key)] = strings.TrimSpace(value)
-				key = ""
-			default:
-				value += string(r)
-			}
+			tagValueParserCase(r, &state, k, &key, &value)
 		}
 	}
 	return k, nil
+}
+
+// ParseKey's nameParserState switch case
+func nameParserCase(r int32, state *ParserState, k *Key, value *string) {
+	switch r {
+	case '{':
+		*state = tagKeyParserState
+		k.labels["__name__"] = strings.TrimSpace(*value)
+	default:
+		*value += string(r)
+	}
+}
+
+// ParseKey's tagKeyParserState switch case
+func tagKeyParserCase(r int32, state *ParserState, key *string, value *string) {
+	switch r {
+	case '}':
+		*state = doneParserState
+	case '=':
+		*state = tagValueParserState
+		*value = ""
+	default:
+		*key += string(r)
+	}
+}
+
+// ParseKey's tagValueParserState switch case
+func tagValueParserCase(r int32, state *ParserState, k *Key, key *string, value *string) {
+	switch r {
+	case ',', '}':
+		*state = tagKeyParserState
+		k.labels[strings.TrimSpace(*key)] = strings.TrimSpace(*value)
+		*key = ""
+	default:
+		*value += string(r)
+	}
 }
 
 func (k *Key) SegmentKey() string {
