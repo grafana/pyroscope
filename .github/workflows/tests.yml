@@ -22,7 +22,7 @@ jobs:
       - name: Ensure logrus is not used by pkg/agent/profiler
         run: make ensure-logrus-not-used
       - name: Run Go tests
-        run: go test -coverprofile=coverage.txt -covermode=atomic ./...
+        run: go test -tags debugspy -coverprofile=coverage.txt -covermode=atomic ./...
       - name: Install Webapp dependencies
         run: yarn install
       - name: Run Webapp tests

@@ -23,6 +23,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// used in tests
+var disableMacOSChecks bool
+var disableLinuxChecks bool
+
 // Cli is command line interface for both exec and connect commands
 func Cli(cfg *config.Config, args []string) error {
 	// isExec = true means we need to start the process first (pyroscope exec)
