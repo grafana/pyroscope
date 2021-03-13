@@ -23,12 +23,6 @@ jobs:
         run: make ensure-logrus-not-used
       - name: Run Go tests
         run: go test -tags debugspy -coverprofile=coverage.txt -covermode=atomic ./...
-      - name: Install Webapp dependencies
-        run: yarn install
-      - name: Run Webapp tests
-        run: yarn run test
-      - name: Run Webapp lints
-        run: yarn lint
       - name: Upload codecov coverage
         uses: codecov/codecov-action@v1
         with:

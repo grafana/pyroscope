@@ -1,0 +1,20 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Webapp dependencies
+        run: yarn install
+      - name: Run Webapp tests
+        run: yarn run test
+      - name: Run Webapp lints
+        run: yarn lint
