@@ -1,4 +1,4 @@
-name: Tests
+name: Go Tests
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  go-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
