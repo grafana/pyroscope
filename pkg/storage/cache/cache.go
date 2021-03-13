@@ -66,7 +66,7 @@ func (cache *Cache) saveToDisk(key string, val interface{}) {
 	})
 	if err != nil {
 		// TODO: handle
-		panic(err)
+		logrus.Errorf("error happened in saveToDisk: %v", err)
 	}
 }
 
@@ -96,7 +96,7 @@ func (cache *Cache) Get(key string) interface{} {
 			if err == badger.ErrKeyNotFound {
 				return nil
 			}
-			panic(err)
+			logrus.Errorf("error happened when reading from badger %v", err)
 		}
 
 		err = item.Value(func(val []byte) error {
@@ -105,10 +105,16 @@ func (cache *Cache) Get(key string) interface{} {
 		})
 		if err != nil {
 			// TODO: handle
-			panic(err)
+			logrus.Errorf("error happened getting value from badger %v", err)
 		}
 		return nil
 	})
+
+	if err != nil {
+		// TODO: handle
+		logrus.Errorf("error happened in badger view %v", err)
+		return nil
+	}
 
 	if valCopy == nil {
 		lg.Debug("storage miss")
@@ -125,11 +131,6 @@ func (cache *Cache) Get(key string) interface{} {
 	cache.lfu.Set(key, val)
 	if cache.alwaysSave {
 		cache.saveToDisk(key, val)
-	}
-
-	if err != nil {
-		// TODO: handle
-		panic(err)
 	}
 
 	lg.Debug("storage hit")
