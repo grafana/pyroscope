@@ -10,7 +10,7 @@ import (
 
 var _ = Describe("metadata", func() {
 	in := map[string]interface{}{
-		"foo": 1,
+		"foo": 1.0,
 		"bar": "baz",
 	}
 	out := "\x15{\"bar\":\"baz\",\"foo\":1}"
@@ -26,7 +26,10 @@ var _ = Describe("metadata", func() {
 	Describe("ReadMetadata", func() {
 		It("deserializes metadata", func() {
 			b := bufio.NewReader(bytes.NewReader([]byte(out)))
-			Expect(ReadMetadata(b)).To(BeIdenticalTo(in))
+			res, err := ReadMetadata(b)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res["foo"]).To(Equal(in["foo"]))
+			Expect(res["bar"]).To(Equal(in["bar"]))
 		})
 	})
 })
