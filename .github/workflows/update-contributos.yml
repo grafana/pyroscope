@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 jobs:
-  php-cs-fixer:
+  update-contributors:
     runs-on: ubuntu-latest
 
     steps:
@@ -14,10 +14,10 @@ jobs:
         ref: ${{ github.head_ref }}
 
     - name: Install dependencies
-      run: rake install-web-dependencies
+      run: make install-web-dependencies
 
     - name: Update contributors
-      run: rake update-contributors
+      run: make update-contributors
 
     - uses: stefanzweifel/git-auto-commit-action@v4
       with:
