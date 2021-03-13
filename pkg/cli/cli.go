@@ -175,7 +175,7 @@ func resolvePath(path string) string {
 	return path
 }
 
-func Start(cfg *config.Config) error {
+func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	var (
 		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
@@ -343,7 +343,11 @@ func Start(cfg *config.Config) error {
 		return nil
 	}
 
-	return rootCmd.ParseAndRun(context.Background(), os.Args[1:])
+	return rootCmd
+}
+
+func Start(cfg *config.Config) error {
+	return generateRootCmd(cfg).ParseAndRun(context.Background(), os.Args[1:])
 }
 
 func startServer(cfg *config.Config) {
