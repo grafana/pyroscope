@@ -91,6 +91,15 @@ var _ = Describe("stree", func() {
 		})
 	})
 
+	Context("Get", func() {
+		Context("When there's no root", func() {
+			It("get doesn't fail", func() {
+				s := New(r, m)
+				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(39))).To(HaveLen(0))
+			})
+		})
+	})
+
 	Context("Put", func() {
 		Context("When inserts are far apart", func() {
 			Context("When second insert is far in the future", func() {
