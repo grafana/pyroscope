@@ -28,9 +28,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var url = "https://analytics.pyroscope.io/api/events"
-var gracePeriod = 5 * time.Minute
-var uploadFrequency = 24 * time.Hour
+var (
+	url             = "https://analytics.pyroscope.io/api/events"
+	gracePeriod     = 5 * time.Minute
+	uploadFrequency = 24 * time.Hour
+)
 
 func NewService(cfg *config.Config, s *storage.Storage, c *server.Controller) *Service {
 	return &Service{

@@ -11,7 +11,6 @@ func (s *Storage) InstallID() string {
 	var id []byte
 	err := s.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(installID))
-
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
 				return nil
@@ -28,7 +27,6 @@ func (s *Storage) InstallID() string {
 		}
 		return nil
 	})
-
 	if err != nil {
 		return "id-read-error"
 	}

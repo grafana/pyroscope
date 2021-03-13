@@ -1,0 +1,25 @@
+name: Update Contributors in README
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  update-contributors:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        ref: ${{ github.head_ref }}
+
+    - name: Install dependencies
+      run: make install-web-dependencies
+
+    - name: Update contributors
+      run: make update-contributors
+
+    - uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: Updates the list of contributors in README
+        file_pattern: README.md

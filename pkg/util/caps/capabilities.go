@@ -25,8 +25,10 @@ type data struct {
 	inheritable uint32
 }
 
-const CAP_SYS_TIME = 25
-const CAP_SYSLOG = 34
+const (
+	CAP_SYS_TIME = 25
+	CAP_SYSLOG   = 34
+)
 
 type Caps struct {
 	header header

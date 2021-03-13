@@ -59,7 +59,7 @@ func badgerGC(db *badger.DB) {
 
 func newBadger(cfg *config.Config, name string) (*badger.DB, error) {
 	badgerPath := filepath.Join(cfg.Server.StoragePath, name)
-	err := os.MkdirAll(badgerPath, 0755)
+	err := os.MkdirAll(badgerPath, 0o755)
 	if err != nil {
 		return nil, err
 	}

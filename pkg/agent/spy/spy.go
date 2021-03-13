@@ -9,14 +9,17 @@ type Spy interface {
 	Stop() error
 	Snapshot(cb func([]byte, uint64, error))
 }
+
 type Resettable interface {
 	Reset()
 }
 
 type spyIntitializer func(pid int) (Spy, error)
 
-var supportedSpiesMap map[string]spyIntitializer
-var SupportedSpies []string
+var (
+	supportedSpiesMap map[string]spyIntitializer
+	SupportedSpies    []string
+)
 
 var autoDetectionMapping = map[string]string{
 	"python":  "pyspy",
