@@ -62,7 +62,7 @@ OuterLoop:
 		}
 
 		if leadIndex == -1 { // 1
-			//log.Debug("case 1")
+			// log.Debug("case 1")
 			newTn := newTrieNode(key)
 			tn.insert(newTn)
 			i := len(tn.children) - 1
@@ -72,12 +72,12 @@ OuterLoop:
 			return
 		} else {
 			leadKey := tn.children[leadIndex].label
-			//log.Debug("lead key", string(leadKey))
+			// log.Debug("lead key", string(leadKey))
 			lk := len(key)
 			llk := len(leadKey)
 			for i := 0; i < lk; i++ {
 				if i == llk { // 4 fooo / foo i = 3 llk = 3
-					//log.Debug("case 4")
+					// log.Debug("case 4")
 					tn = tn.children[leadIndex]
 					key = key[llk:]
 					varint.Write(w, uint64(leadIndex))

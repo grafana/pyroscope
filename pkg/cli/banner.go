@@ -28,7 +28,7 @@ const (
 	endColor   = 0xf64d3d
 )
 
-func gradient(start, end int, offset int, progress float64) uint8 {
+func gradient(start, end, offset int, progress float64) uint8 {
 	start = (start >> offset) & 0xff
 	end = (end >> offset) & 0xff
 	return uint8(start + int(float64(end-start)*progress))

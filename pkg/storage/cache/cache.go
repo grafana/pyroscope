@@ -91,7 +91,6 @@ func (cache *Cache) Get(key string) interface{} {
 	var valCopy []byte
 	err := cache.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(cache.prefix + key))
-
 		if err != nil {
 			// TODO: handle
 			if err == badger.ErrKeyNotFound {

@@ -7,8 +7,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
-type Key []byte
-type Value []byte
+type (
+	Key   []byte
+	Value []byte
+)
 
 func New() *Dict {
 	return &Dict{

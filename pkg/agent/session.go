@@ -39,7 +39,7 @@ type ProfileSession struct {
 	Logger Logger
 }
 
-func NewSession(upstream upstream.Upstream, appName string, spyName string, sampleRate int, pid int, withSubprocesses bool) *ProfileSession {
+func NewSession(upstream upstream.Upstream, appName, spyName string, sampleRate, pid int, withSubprocesses bool) *ProfileSession {
 	return &ProfileSession{
 		upstream:         upstream,
 		appName:          appName,

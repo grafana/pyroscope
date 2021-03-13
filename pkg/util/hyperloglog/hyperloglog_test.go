@@ -16,7 +16,6 @@ func (hs hashString) Sum64() uint64 {
 }
 
 var _ = Describe("Hyperloglog", func() {
-
 	defer GinkgoRecover()
 	Context("wrapper implementation", func() {
 		It("panics", func() {

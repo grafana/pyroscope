@@ -17,8 +17,10 @@ import (
 // 21:22:08      air |  (time.Duration) 2777h46m40s,
 // 21:22:08      air |  (time.Duration) 27777h46m40s
 
-var s *Storage
-var s2 *Storage
+var (
+	s  *Storage
+	s2 *Storage
+)
 
 var _ = Describe("storage package", func() {
 	var tmpDir *testing.TmpDirectory

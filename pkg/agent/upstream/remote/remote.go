@@ -16,8 +16,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
-var ErrCloudTokenRequired = errors.New("Please provide an authentication token. You can find it here: https://pyroscope.io/cloud")
-var cloudHostnameSuffix = "pyroscope.cloud"
+var (
+	ErrCloudTokenRequired = errors.New("Please provide an authentication token. You can find it here: https://pyroscope.io/cloud")
+	cloudHostnameSuffix   = "pyroscope.cloud"
+)
 
 type uploadJob struct {
 	name       string
@@ -86,7 +88,7 @@ func (u *Remote) Stop() {
 }
 
 // TODO: this metadata class should be unified
-func (u *Remote) Upload(name string, startTime time.Time, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie) {
+func (u *Remote) Upload(name string, startTime, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie) {
 	job := &uploadJob{
 		name:       name,
 		startTime:  startTime,
@@ -134,7 +136,6 @@ func (u *Remote) uploadProfile(j *uploadJob) {
 		req.Header.Set("Authorization", "Bearer "+u.cfg.AuthToken)
 	}
 	resp, err := u.client.Do(req)
-
 	if err != nil {
 		if u.Logger != nil {
 			u.Logger.Errorf("Error happened when uploading a profile: %v", err)
