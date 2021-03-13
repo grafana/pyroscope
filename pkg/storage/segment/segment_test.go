@@ -53,19 +53,6 @@ func expectChildrenSamplesAddUpToParentSamples(tn *streeNode) {
 var _ = Describe("stree", func() {
 	r := 10 * time.Second
 	m := 10
-	// var cfg *config.Config
-
-	var tmpDir *testing.TmpDirectory
-
-	BeforeEach(func() {
-		tmpDir = testing.TmpDirSync()
-		var err error
-		Expect(err).ToNot(HaveOccurred())
-		// cfg = config.NewForTests("/tmp")
-	})
-	AfterEach(func() {
-		tmpDir.Close()
-	})
 
 	Context("Serialize / Deserialize", func() {
 		It("returns serialized value", func() {

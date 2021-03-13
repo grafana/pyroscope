@@ -21,24 +21,60 @@ var s *Storage
 var s2 *Storage
 
 var _ = Describe("storage package", func() {
-	var tmpDir *testing.TmpDirectory
-	var cfg *config.Config
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(*cfg)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-	BeforeEach(func() {
-		tmpDir = testing.TmpDirSync()
-		cfg = config.NewForTests(tmpDir.Path)
-		var err error
-		s, err = New(cfg)
-		Expect(err).ToNot(HaveOccurred())
-	})
+		Context("smoke tests", func() {
+			Context("simple 10 second write", func() {
+				It("works correctly", func() {
+					tree := tree.New()
+					tree.Insert([]byte("a;b"), uint64(1))
+					tree.Insert([]byte("a;c"), uint64(2))
+					st := testing.SimpleTime(10)
+					et := testing.SimpleTime(19)
+					st2 := testing.SimpleTime(0)
+					et2 := testing.SimpleTime(30)
+					key, _ := ParseKey("foo")
 
-	AfterEach(func() {
-		tmpDir.Close()
-	})
+					err := s.Put(st, et, key, tree, "testspy", 100)
+					Expect(err).ToNot(HaveOccurred())
 
-	Context("smoke tests", func() {
-		Context("simple 10 second write", func() {
-			It("works correctly", func() {
+					t2, _, _, _, err := s.Get(st2, et2, key)
+
+					Expect(err).ToNot(HaveOccurred())
+					Expect(t2).ToNot(BeNil())
+					Expect(t2.String()).To(Equal(tree.String()))
+					Expect(s.Close()).ToNot(HaveOccurred())
+				})
+			})
+			Context("simple 20 second write", func() {
+				It("works correctly", func() {
+					tree := tree.New()
+					tree.Insert([]byte("a;b"), uint64(2))
+					tree.Insert([]byte("a;c"), uint64(4))
+					st := testing.SimpleTime(10)
+					et := testing.SimpleTime(29)
+					st2 := testing.SimpleTime(0)
+					et2 := testing.SimpleTime(30)
+					key, _ := ParseKey("foo")
+
+					err := s.Put(st, et, key, tree, "testspy", 100)
+					Expect(err).ToNot(HaveOccurred())
+
+					t2, _, _, _, err := s.Get(st2, et2, key)
+
+					Expect(err).ToNot(HaveOccurred())
+					Expect(t2).ToNot(BeNil())
+					Expect(t2.String()).To(Equal(tree.String()))
+					Expect(s.Close()).ToNot(HaveOccurred())
+				})
+			})
+
+			It("persist data between restarts", func() {
 				tree := tree.New()
 				tree.Insert([]byte("a;b"), uint64(1))
 				tree.Insert([]byte("a;c"), uint64(2))
@@ -57,58 +93,15 @@ var _ = Describe("storage package", func() {
 				Expect(t2).ToNot(BeNil())
 				Expect(t2.String()).To(Equal(tree.String()))
 				Expect(s.Close()).ToNot(HaveOccurred())
-			})
-		})
-		Context("simple 20 second write", func() {
-			It("works correctly", func() {
-				tree := tree.New()
-				tree.Insert([]byte("a;b"), uint64(2))
-				tree.Insert([]byte("a;c"), uint64(4))
-				st := testing.SimpleTime(10)
-				et := testing.SimpleTime(29)
-				st2 := testing.SimpleTime(0)
-				et2 := testing.SimpleTime(30)
-				key, _ := ParseKey("foo")
 
-				err := s.Put(st, et, key, tree, "testspy", 100)
+				s2, err = New(*cfg)
 				Expect(err).ToNot(HaveOccurred())
 
-				t2, _, _, _, err := s.Get(st2, et2, key)
-
+				t3, _, _, _, err := s2.Get(st2, et2, key)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(t2).ToNot(BeNil())
-				Expect(t2.String()).To(Equal(tree.String()))
-				Expect(s.Close()).ToNot(HaveOccurred())
+				Expect(t3).ToNot(BeNil())
+				Expect(t3.String()).To(Equal(tree.String()))
 			})
-		})
-
-		It("persist data between restarts", func() {
-			tree := tree.New()
-			tree.Insert([]byte("a;b"), uint64(1))
-			tree.Insert([]byte("a;c"), uint64(2))
-			st := testing.SimpleTime(10)
-			et := testing.SimpleTime(19)
-			st2 := testing.SimpleTime(0)
-			et2 := testing.SimpleTime(30)
-			key, _ := ParseKey("foo")
-
-			err := s.Put(st, et, key, tree, "testspy", 100)
-			Expect(err).ToNot(HaveOccurred())
-
-			t2, _, _, _, err := s.Get(st2, et2, key)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(t2).ToNot(BeNil())
-			Expect(t2.String()).To(Equal(tree.String()))
-			Expect(s.Close()).ToNot(HaveOccurred())
-
-			s2, err = New(cfg)
-			Expect(err).ToNot(HaveOccurred())
-
-			t3, _, _, _, err := s2.Get(st2, et2, key)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(t3).ToNot(BeNil())
-			Expect(t3.String()).To(Equal(tree.String()))
 		})
 	})
 })
