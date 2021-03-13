@@ -92,6 +92,9 @@ func getUnitMultiplier(s string) int {
 	if strings.HasPrefix(s, "s") {
 		return 1
 	}
+	if strings.HasPrefix(s, "mon") || strings.HasPrefix(s, "M") {
+		return 3600 * 24 * 30
+	}
 	if strings.HasPrefix(s, "min") || strings.HasPrefix(s, "m") {
 		return 60
 	}
@@ -103,9 +106,6 @@ func getUnitMultiplier(s string) int {
 	}
 	if strings.HasPrefix(s, "w") {
 		return 3600 * 24 * 7
-	}
-	if strings.HasPrefix(s, "mon") || strings.HasPrefix(s, "M") {
-		return 3600 * 24 * 30
 	}
 	if strings.HasPrefix(s, "y") {
 		return 3600 * 24 * 365
