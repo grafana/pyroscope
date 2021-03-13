@@ -58,6 +58,6 @@ var _ = Describe("flags", func() {
 			wg.Wait()
 			r.Stop()
 			close(done)
-		})
+		}, 2)
 	})
 })
