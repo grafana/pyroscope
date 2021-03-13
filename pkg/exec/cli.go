@@ -130,7 +130,7 @@ func Cli(cfg *config.Config, args []string) error {
 	}).Debug("starting agent session")
 
 	// TODO: add sample rate, make it configurable
-	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, 100, pid, cfg.Exec.DetectSubprocesses)
+	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, 100, 10*time.Second, pid, cfg.Exec.DetectSubprocesses)
 	sess.Logger = logrus.StandardLogger()
 	err = sess.Start()
 	if err != nil {

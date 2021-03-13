@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/csock"
@@ -60,7 +61,7 @@ func (a *Agent) controlSocketHandler(req *csock.Request) *csock.Response {
 		// TODO: pass withSubprocesses from somewhere
 		// TODO: pass appName from somewhere
 		// TODO: add sample rate
-		s := agent.NewSession(a.u, "testapp.cpu", "gospy", 100, 0, false)
+		s := agent.NewSession(a.u, "testapp.cpu", "gospy", 100, 10*time.Second, 0, false)
 		s.Logger = logrus.StandardLogger()
 		a.activeProfiles[profileID] = s
 		s.Start()

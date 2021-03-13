@@ -26,6 +26,7 @@ type ProfileSession struct {
 	appName          string
 	spyName          string
 	sampleRate       int
+	uploadRate       time.Duration
 	pids             []int
 	spies            []spy.Spy
 	stopCh           chan struct{}
@@ -39,12 +40,13 @@ type ProfileSession struct {
 	Logger Logger
 }
 
-func NewSession(upstream upstream.Upstream, appName, spyName string, sampleRate, pid int, withSubprocesses bool) *ProfileSession {
+func NewSession(upstream upstream.Upstream, appName, spyName string, sampleRate int, uploadRate time.Duration, pid int, withSubprocesses bool) *ProfileSession {
 	return &ProfileSession{
 		upstream:         upstream,
 		appName:          appName,
 		spyName:          spyName,
 		sampleRate:       sampleRate,
+		uploadRate:       uploadRate,
 		pids:             []int{pid},
 		stopCh:           make(chan struct{}),
 		withSubprocesses: withSubprocesses,
@@ -104,9 +106,8 @@ func (ps *ProfileSession) Start() error {
 
 func (ps *ProfileSession) isDueForReset() bool {
 	// TODO: duration should be either taken from config or ideally passed from server
-	dur := 10 * time.Second
-	now := time.Now().Truncate(dur)
-	st := ps.startTime.Truncate(dur)
+	now := time.Now().Truncate(ps.uploadRate)
+	st := ps.startTime.Truncate(ps.uploadRate)
 
 	return !st.Equal(now)
 }
@@ -120,8 +121,7 @@ func (ps *ProfileSession) reset() {
 	now := time.Now()
 	if ps.trie != nil {
 		// TODO: duration should be either taken from config or ideally passed from server
-		dur := 10 * time.Second
-		now = now.Truncate(dur)
+		now = now.Truncate(ps.uploadRate)
 		ps.upstream.Upload(ps.appName, ps.startTime, now, ps.spyName, ps.sampleRate, ps.trie)
 	}
 
