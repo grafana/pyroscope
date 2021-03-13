@@ -11,10 +11,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/strarr"
 )
 
-var headerClr *color.Color
-var itemClr *color.Color
-var descClr *color.Color
-var defClr *color.Color
+var (
+	headerClr *color.Color
+	itemClr   *color.Color
+	descClr   *color.Color
+	defClr    *color.Color
+)
 
 func init() {
 	headerClr = color.New(color.FgGreen)

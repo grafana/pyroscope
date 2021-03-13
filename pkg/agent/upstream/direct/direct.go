@@ -54,7 +54,7 @@ func (u *Direct) Stop() {
 }
 
 // TODO: this metadata class should be unified
-func (u *Direct) Upload(name string, startTime time.Time, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie) {
+func (u *Direct) Upload(name string, startTime, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie) {
 	job := &uploadJob{
 		name:       name,
 		startTime:  startTime,

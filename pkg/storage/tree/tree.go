@@ -44,8 +44,10 @@ func newNode(label []byte) *treeNode {
 	}
 }
 
-var placeholderTreeNode = &treeNode{}
-var semicolon = byte(';')
+var (
+	placeholderTreeNode = &treeNode{}
+	semicolon           = byte(';')
+)
 
 type Tree struct {
 	m    sync.RWMutex

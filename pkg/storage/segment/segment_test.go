@@ -6,10 +6,9 @@ import (
 	"log"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
-
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

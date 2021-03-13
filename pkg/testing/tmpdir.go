@@ -11,7 +11,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
-func DirStats(path string) (directories int, files int, size bytesize.ByteSize) {
+func DirStats(path string) (directories, files int, size bytesize.ByteSize) {
 	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

@@ -43,7 +43,7 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		var cnl = uint64(0)
+		cnl := uint64(0)
 		if tn.Total > minVal {
 			cnl = uint64(len(tn.ChildrenNodes))
 			nodes = append(tn.ChildrenNodes, nodes...)
@@ -83,7 +83,7 @@ func (t *Tree) SerializeNoDict(maxNodes int, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		var cnl = uint64(0)
+		cnl := uint64(0)
 		if tn.Total > minVal {
 			cnl = uint64(len(tn.ChildrenNodes))
 			nodes = append(tn.ChildrenNodes, nodes...)
@@ -217,6 +217,7 @@ func (t *Tree) Bytes(d *dict.Dict, maxNodes int) []byte {
 	t.Serialize(d, maxNodes, &b)
 	return b.Bytes()
 }
+
 func FromBytes(d *dict.Dict, p []byte) *Tree {
 	t, _ := Deserialize(d, bytes.NewReader(p))
 	return t
