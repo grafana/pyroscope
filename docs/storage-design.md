@@ -76,7 +76,7 @@ As you can see this is a 9x improvement for a fairly trivial case. In real world
 
 Now that we have a way of storing the data efficiently the next problem that arises is how do we query it efficiently. The way we solve this problem is by pre-aggregating the profiling data and storing it in a special segment tree.
 
-Every 10s Pyroscope agent sends a chunk of profiling data to the server whuch writes the data into the db with the corresponding timestamp. You'll notice that each write happens once, but is replicated multiple times.
+Every 10s Pyroscope agent sends a chunk of profiling data to the server which writes the data into the db with the corresponding timestamp. You'll notice that each write happens once, but is replicated multiple times.
 
 **Each layer represents a time block of larger units so in this case for every two 10s time blocks, one 20s time block is created. This is to make reading the data more efficient (more on that in a second)**.
 
