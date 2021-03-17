@@ -32,7 +32,7 @@ jobs:
       shell: bash
       run: |
         sudo apt-get -y install bpfcc-tools linux-headers-$(uname -r)
-        sudo /usr/sbin/profile-bpfcc -adf -F 99  > my_file.txt
+        sudo /usr/sbin/profile-bpfcc -adf -F 99 60 > my_file.txt
     
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v2
