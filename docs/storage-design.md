@@ -84,7 +84,7 @@ Every 10s Pyroscope agent sends a chunk of profiling data to the server which wr
 
 ## Turn reads from O(n) to O(log n)
 
-If you don't use segment trees and just write data in 10 second chunks the time complexity for the reads becomes a function of how many 10s units the query asks for. If you want 1 year of data, you'll have to then merge 3,154,000 trees representing the profiling data. By using segment trees you can effictevely decrease the amount of merge operations from O(n) to O(log n).
+If you don't use segment trees and just write data in 10 second chunks the time complexity for the reads becomes a function of how many 10s units the query asks for. If you want 1 year of data, you'll have to then merge 3,154,000 trees representing the profiling data. By using segment trees you can effectively decrease the amount of merge operations from O(n) to O(log n).
 
 ![segment_tree_reads](https://user-images.githubusercontent.com/23323466/110277713-b98a6000-7f8a-11eb-942f-3a924a6e0b09.gif)
 
