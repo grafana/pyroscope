@@ -59,7 +59,7 @@ pyroscope server
 
 # in a separate tab, start profiling your app:
 pyroscope exec python manage.py runserver # If using Python
-pyroscope exec rails server # Ruby        # If using Ruby
+pyroscope exec rails server               # If using Ruby
 
 # If using Pyroscope cloud add flags for server address and auth token
 # pyroscope exec -server-address "https://your_company.pyroscope.cloud" -auth-token "ps-key-1234567890" python manage.py runserver
