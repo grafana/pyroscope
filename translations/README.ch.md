@@ -74,8 +74,9 @@ pyroscope exec python manage.py runserver
 * [x] Ruby
 * [x] Python
 * [x] Go
+* [x] Linux eBPF (即將到來)
 * [ ] Node (即將到來)
-* [ ] Linux eBPF (即將到來)
+
 
 請在我們的Slack上告訴我們你還想看倒哪些程式語言 [our slack](https://pyroscope.io/slack).
 
