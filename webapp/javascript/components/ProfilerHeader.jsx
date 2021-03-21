@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faIcicles,
   faColumns,
-  faBars,
+  faTable,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function ProfilerHeader({
@@ -39,7 +39,7 @@ export default function ProfilerHeader({
           className={clsx("btn", { active: view === "table" })}
           onClick={() => updateView("table")}
         >
-          <FontAwesomeIcon icon={faBars} />
+          <FontAwesomeIcon icon={faTable} />
           &nbsp;&thinsp;Table
         </button>
         <button
