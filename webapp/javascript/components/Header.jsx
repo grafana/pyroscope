@@ -11,6 +11,7 @@ import Label from "./Label";
 import NameSelector from "./NameSelector";
 
 import { fetchNames } from "../redux/actions";
+import ExportData from "./ExportData";
 
 function Header(props) {
   const { areNamesLoading, isJSONLoading, labels } = props;
@@ -28,6 +29,7 @@ function Header(props) {
             <Label key={label.name} label={label} />
           ))}
       </div>
+      <ExportData />
       {/* <div className={
       classNames("navbar-spinner-container", {
         visible: this.props.areNamesLoading
