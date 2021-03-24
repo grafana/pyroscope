@@ -40,6 +40,9 @@ import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
 import { deltaDiff } from "../util/flamebearer";
 
+import ExportData from "./ExportData";
+
+
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
 const LABEL_THRESHOLD = 20;
@@ -492,6 +495,10 @@ class FlameGraphRenderer extends React.Component {
         key={'flamegraph-pane'}
         className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.viewType === "double" })}
       >
+        <div style={{border: '2px solid lime', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+          <span>Frame width represents CPU time per function</span>
+          <ExportData flameCanvas={this.canvasRef}/>
+        </div>
         <canvas
           className="flamegraph-canvas"
           height="0"
@@ -538,13 +545,21 @@ class FlameGraphRenderer extends React.Component {
               null
           }
           <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.viewType === "double" })}>
-            {
-              panes.map((pane) => (
-                pane
-              ))
-            }
-            {/* { tablePane }
-            { flameGraphPane } */}
+            {/*{*/}
+            {/*  panes.map((pane) => {*/}
+            {/*    if (pane.key === 'flamegraph-pane') {*/}
+            {/*      return <div>*/}
+            {/*        <div>*/}
+            {/*          Header*/}
+            {/*        </div>*/}
+            {/*        {pane}*/}
+            {/*      </div>*/}
+            {/*    }*/}
+            {/*    return pane*/}
+            {/*  })*/}
+            {/*}*/}
+            { tablePane }
+            { flameGraphPane }
           </div>
           <div
             className={clsx("no-data-message", {
