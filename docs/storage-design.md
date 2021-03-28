@@ -54,7 +54,7 @@ Each of these lines can be serialized using a prefix tree as follows. This means
 
 ![storage-design-0](https://user-images.githubusercontent.com/23323466/110520399-446e7600-80c3-11eb-84e9-ecac7c0dbf23.gif)
 
-In this basic example we save ~80% of space going from 39 bytes to 8 bytes. Typically symbol names are much longer and as the number of symols grows, storage requirements grow logarithmically rather than linearly.
+In this basic example we save ~80% of space going from 39 bytes to 8 bytes. Typically, symbol names are much longer and as the number of symols grows, storage requirements grow logarithmically rather than linearly.
 
 ## Step 1 + 2: Combining the trees with the tries
 
