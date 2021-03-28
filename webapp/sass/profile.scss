@@ -2,6 +2,7 @@
 @use "mixins/outline"as *;
 @use "components/daterangepicker";
 @use "components/labels";
+@use "components/exportdata";
 
 @import "~sanitize.css";
 @import "~sanitize.css/forms.css";

@@ -1,28 +1,35 @@
 import React from "react";
 
-import Highcharts from 'highcharts'
-import HighchartsReact from 'highcharts-react-official'
-require("highcharts/modules/exporting")(Highcharts);
+import clsx from "clsx";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBars } from "@fortawesome/free-solid-svg-icons/faBars";
+
+import { jsPDF } from "jspdf";
+
 
 
 function ExportData(props) {
-  const cc = React.useRef(null)
-  const options = {
-    exporting: {buttons: { contextButton: {menuItems:
-            ["downloadPNG", "downloadJPEG", "downloadPDF"]
-    }}}}
+  const [toggleMenu, setToggleMenu] = React.useState(false)
 
-  const exportGraph = () => {
-    // chart.exportChart()
-    console.log(cc.current.chart)
-    cc.current.chart.exportChart()
-  }
+  const exportCanvasAsPNG = (event, paneType, mimeType) => {
+    console.log('mimeType', mimeType);
+    if (mimeType === 'pdf') {
+      const canvas = document.querySelector('.flamegraph-canvas');
+      const myImage = canvas.toDataURL("image/jpeg,1.0");
+      // Adjust width and height
+      const imgWidth = (canvas.width * 20) / 240;
+      const imgHeight = (canvas.height * 20) / 240;
+      // jspdf changes
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      pdf.addImage(myImage, 'JPEG', 15, 2, imgWidth, imgHeight); // 2: 19
+      pdf.save('Download.pdf');
+      return
+    }
 
-  // vanilla handler solution
-  const exportCanvasAsPNG = () => {
     const canvasElement = document.querySelector('.flamegraph-canvas');
-    const MIME_TYPE = "image/png";
-    const imgURL = canvasElement.toDataURL(MIME_TYPE);
+    const MIME_TYPE = `image/${mimeType}`;
+    const imgURL = canvasElement.toDataURL();
     const dlLink = document.createElement('a');
 
     dlLink.download = `${Date.now()}file`;
@@ -34,15 +41,39 @@ function ExportData(props) {
     document.body.removeChild(dlLink);
   }
 
-  // Highcharts WIP
-  return (
-    <div style={{display: 'flex'}}>
-      <HighchartsReact
-        highcharts={Highcharts} options={options} ref={cc} />
+  const handleToggleMenu = event => {
+    event.preventDefault()
+    setToggleMenu(!toggleMenu)
+  }
 
-      {/*<button onClick={exportGraph}>Export</button>*/}
-      <button onClick={exportCanvasAsPNG}>Export</button>
-    </div>
+  return (
+      <div className='dropdown-container'>
+        <button
+          type="button"
+          className="btn"
+          onClick={handleToggleMenu}
+        >
+          <FontAwesomeIcon icon={faBars} />
+        </button>
+
+        <div className={clsx({'menu-show': toggleMenu, 'menu-hide': !toggleMenu})}>
+          <div className='dropdown-header'>Export Flamegraph</div>
+          <div>
+            <div className='dropdown-menu-item' onClick={event => exportCanvasAsPNG(event, 'flame', 'pdf')}>PDF</div>
+          </div>
+          <div>
+            <div className='dropdown-menu-item' onClick={event => exportCanvasAsPNG(event, 'flame', 'png')}>PNG</div>
+          </div>
+          <div className='dropdown-divider'></div>
+          <div className='dropdown-header'>Export Table</div>
+          <div>
+            <div className='dropdown-menu-item' onClick={event => exportCanvasAsPNG(event, 'flame', 'pdf')}>PDF</div>
+          </div>
+          <div>
+            <div className='dropdown-menu-item' onClick={event => exportCanvasAsPNG(event, 'flame', 'png')}>PNG</div>
+          </div>
+        </div>
+      </div>
   );
 }
 
