@@ -495,7 +495,7 @@ class FlameGraphRenderer extends React.Component {
         key={'flamegraph-pane'}
         className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.viewType === "double" })}
       >
-        <div style={{border: '2px solid lime', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+        <div className='flamegraph-header'>
           <span></span>
           <span>Frame width represents CPU time per function</span>
           <ExportData flameCanvas={this.canvasRef}/>

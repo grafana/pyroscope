@@ -224,6 +224,13 @@ $pane-width: 6px;
     margin: 0 $pane-width;
     width: 50%;
 
+    .flamegraph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 2px solid lime;
+    }
+
     &.vertical-orientation {
       width: 100%;
       padding: 10px;
