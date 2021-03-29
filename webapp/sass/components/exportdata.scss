@@ -30,6 +30,9 @@
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
+  width: 100%;
+  text-align: left;
+  border: 0;
   &:hover {
     background-color: #cccccc;
   }
