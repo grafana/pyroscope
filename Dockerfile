@@ -8,22 +8,21 @@
 FROM alpine:3.12 as rust-builder
 
 RUN apk update &&\
-    apk add git gcc g++ make build-base openssl-dev musl musl-dev \
-    rust cargo curl
+    apk add --no-cache git gcc g++ make build-base openssl-dev musl musl-dev curl
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN /root/.cargo/bin/rustup target add $(uname -m)-unknown-linux-musl
 
-RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwind-1.3.1.tar.gz
-RUN tar -zxvf libunwind-1.3.1.tar.gz
-RUN cd libunwind-1.3.1/ && ./configure --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
+RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwind-1.3.1.tar.gz && \
+    tar -zxf libunwind-1.3.1.tar.gz && \
+    cd libunwind-1.3.1/ && \
+    ./configure --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
 
 COPY third_party/rustdeps /opt/rustdeps
 
 WORKDIR /opt/rustdeps
 
-ENV RUSTFLAGS="-C target-feature=+crt-static"
-RUN /root/.cargo/bin/cargo build --release --target $(uname -m)-unknown-linux-musl
+RUN RUSTFLAGS="-C target-feature=+crt-static" /root/.cargo/bin/cargo build --release --target $(uname -m)-unknown-linux-musl
 RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a /opt/rustdeps/librustdeps.a
 
 
