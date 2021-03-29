@@ -72,25 +72,25 @@ OuterLoop:
 		}
 
 		if leadIndex == -1 { // 1
-			//log.Debug("case 1")
+			// log.Debug("case 1")
 			newTn := newTrieNode(key)
 			tn.insert(newTn)
 			fn(newTn)
 			return
 		} else {
 			leadKey := tn.children[leadIndex].name
-			//log.Debug("lead key", string(leadKey))
+			// log.Debug("lead key", string(leadKey))
 			lk := len(key)
 			llk := len(leadKey)
 			for i := 0; i < lk; i++ {
 				if i == llk { // 4 fooo / foo i = 3 llk = 3
-					//log.Debug("case 4")
+					// log.Debug("case 4")
 					tn = tn.children[leadIndex]
 					key = key[llk:]
 					continue OuterLoop
 				}
 				if leadKey[i] != key[i] { // 3
-					//log.Debug("case 3")
+					// log.Debug("case 3")
 					// leadKey = abc
 					// key = abd
 					a := leadKey[:i] // ab

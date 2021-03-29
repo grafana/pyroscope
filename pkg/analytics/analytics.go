@@ -1,3 +1,15 @@
+/*
+Package analytics deals with collecting pyroscope server usage data.
+
+By default pyroscope server sends anonymized usage data to Pyroscope team. This helps us understand how people use Pyroscope and prioritize features accordingly. We take privacy of our users very seriously and only collect high-level stats such as number of apps added, types of spies used, etc.
+
+You can disable this with a flag or an environment variable
+
+	pyroscope server -analytics-opt-out
+	...
+	PYROSCOPE_ANALYTICS_OPT_OUT=true pyroscope server
+
+*/
 package analytics
 
 import (
@@ -16,9 +28,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const url = "https://analytics.pyroscope.io/api/events"
-const gracePeriod = 5 * time.Minute
-const uploadFrequency = 24 * time.Hour
+var (
+	url             = "https://analytics.pyroscope.io/api/events"
+	gracePeriod     = 5 * time.Minute
+	uploadFrequency = 24 * time.Hour
+)
 
 func NewService(cfg *config.Config, s *storage.Storage, c *server.Controller) *Service {
 	return &Service{
@@ -134,12 +148,12 @@ func (s *Service) sendReport() {
 	}
 	resp, err := s.httpClient.Post(url, "application/json", bytes.NewReader(buf))
 	if err != nil {
-		logrus.WithField("err", err).Error("Error happened when uploading a profile")
+		logrus.WithField("err", err).Error("Error happened when uploading anonymized usage data")
 	}
 	if resp != nil {
 		_, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			logrus.WithField("err", err).Error("Error happened while reading server response")
+			logrus.WithField("err", err).Error("Error happened when uploading reading server response")
 			return
 		}
 	}

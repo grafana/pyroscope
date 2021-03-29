@@ -78,9 +78,11 @@ type sortableDims []*sortableDim
 func (s sortableDims) Len() int {
 	return len(s)
 }
+
 func (s sortableDims) Less(i, j int) bool {
 	return bytes.Compare(s[i].current(), s[j].current()) >= 0
 }
+
 func (s sortableDims) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }

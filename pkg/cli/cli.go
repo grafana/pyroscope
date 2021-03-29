@@ -175,13 +175,12 @@ func resolvePath(path string) string {
 	return path
 }
 
-func Start(cfg *config.Config) error {
+func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	var (
 		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
 		execFlagSet      = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
 		connectFlagSet   = flag.NewFlagSet("pyroscope connect", flag.ExitOnError)
-		uploadFlagSet    = flag.NewFlagSet("pyroscope upload", flag.ExitOnError)
 		dbmanagerFlagSet = flag.NewFlagSet("pyroscope dbmanager", flag.ExitOnError)
 		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 	)
@@ -190,7 +189,6 @@ func Start(cfg *config.Config) error {
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
 	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, "pid")
 	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet)
-	uploadSortedFlags := PopulateFlagSet(&cfg.Exec, uploadFlagSet)
 	dbmanagerSortedFlags := PopulateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
 	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
 
@@ -237,15 +235,6 @@ func Start(cfg *config.Config) error {
 		FlagSet:    connectFlagSet,
 	}
 
-	uploadCmd := &ffcli.Command{
-		UsageFunc:  uploadSortedFlags.printUsage,
-		Options:    options,
-		Name:       "upload",
-		ShortUsage: "pyroscope upload [flags]",
-		ShortHelp:  "uploads raw profiling data to pyroscope server",
-		FlagSet:    uploadFlagSet,
-	}
-
 	dbmanagerCmd := &ffcli.Command{
 		UsageFunc:  dbmanagerSortedFlags.printUsage,
 		Options:    options,
@@ -265,7 +254,6 @@ func Start(cfg *config.Config) error {
 			serverCmd,
 			execCmd,
 			connectCmd,
-			uploadCmd,
 			dbmanagerCmd,
 		},
 	}
@@ -310,21 +298,6 @@ func Start(cfg *config.Config) error {
 		return exec.Cli(cfg, args)
 	}
 
-	connectCmd.Exec = func(_ context.Context, args []string) error {
-		if cfg.Exec.NoLogging {
-			logrus.SetLevel(logrus.PanicLevel)
-		} else if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
-			logrus.SetLevel(l)
-		}
-		if len(args) > 0 && args[0] == "help" {
-			fmt.Println(gradientBanner())
-			fmt.Println(DefaultUsageFunc(connectSortedFlags, connectCmd))
-			return nil
-		}
-
-		return exec.Cli(cfg, args)
-	}
-
 	dbmanagerCmd.Exec = func(_ context.Context, args []string) error {
 		if l, err := logrus.ParseLevel(cfg.DbManager.LogLevel); err == nil {
 			logrus.SetLevel(l)
@@ -343,7 +316,11 @@ func Start(cfg *config.Config) error {
 		return nil
 	}
 
-	return rootCmd.ParseAndRun(context.Background(), os.Args[1:])
+	return rootCmd
+}
+
+func Start(cfg *config.Config) error {
+	return generateRootCmd(cfg).ParseAndRun(context.Background(), os.Args[1:])
 }
 
 func startServer(cfg *config.Config) {

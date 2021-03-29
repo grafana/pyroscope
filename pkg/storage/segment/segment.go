@@ -22,18 +22,6 @@ func (parent *streeNode) replace(child *streeNode) {
 	parent.children[i] = child
 }
 
-func ft(t time.Time) string {
-	return fmt.Sprintf("%d", t.Sub(time.Time{})/1000000000)
-}
-
-func calcMultiplier(m, d int) (r int) {
-	r = 1
-	for i := 0; i < d; i++ {
-		r *= m
-	}
-	return
-}
-
 func (sn *streeNode) relationship(st, et time.Time) rel {
 	t2 := sn.time.Add(durations[sn.depth])
 	return relationship(sn.time, t2, st, et)

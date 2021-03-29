@@ -10,6 +10,9 @@ import (
 )
 
 func performOSChecks(spyName string) error {
+	if disableLinuxChecks {
+		return nil
+	}
 	if spyName == "ebpfspy" {
 		if !isRoot() {
 			return errors.New("when using eBPF you're required to run the agent with sudo")

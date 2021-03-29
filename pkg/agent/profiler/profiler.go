@@ -36,7 +36,7 @@ func Start(cfg Config) (*Profiler, error) {
 	}
 
 	// TODO: add sample rate
-	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 100, 0, false)
+	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 100, 10*time.Second, 0, false)
 	sess.Logger = cfg.Logger
 	sess.Start()
 

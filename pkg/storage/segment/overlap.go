@@ -11,12 +11,14 @@ func tmin(a, b time.Time) time.Time {
 	}
 	return b
 }
+
 func tmax(a, b time.Time) time.Time {
 	if a.After(b) {
 		return a
 	}
 	return b
 }
+
 func dmax(a, b time.Duration) time.Duration {
 	if a > b {
 		return a

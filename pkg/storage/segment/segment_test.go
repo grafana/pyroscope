@@ -6,10 +6,9 @@ import (
 	"log"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
-
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -53,19 +52,6 @@ func expectChildrenSamplesAddUpToParentSamples(tn *streeNode) {
 var _ = Describe("stree", func() {
 	r := 10 * time.Second
 	m := 10
-	// var cfg *config.Config
-
-	var tmpDir *testing.TmpDirectory
-
-	BeforeEach(func() {
-		tmpDir = testing.TmpDirSync()
-		var err error
-		Expect(err).ToNot(HaveOccurred())
-		// cfg = config.NewForTests("/tmp")
-	})
-	AfterEach(func() {
-		tmpDir.Close()
-	})
 
 	Context("Serialize / Deserialize", func() {
 		It("returns serialized value", func() {
@@ -88,6 +74,15 @@ var _ = Describe("stree", func() {
 			logrus.Debugf("1: %q", serialized)
 			logrus.Debugf("2: %q", serialized2)
 			Expect(string(serialized2)).To(Equal(string(serialized)))
+		})
+	})
+
+	Context("Get", func() {
+		Context("When there's no root", func() {
+			It("get doesn't fail", func() {
+				s := New(r, m)
+				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(39))).To(HaveLen(0))
+			})
 		})
 	})
 

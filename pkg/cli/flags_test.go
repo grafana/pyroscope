@@ -21,7 +21,7 @@ type FlagsStruct struct {
 	FooBar string
 }
 
-var _ = Describe("config package", func() {
+var _ = Describe("flags", func() {
 	Context("PopulateFlagSet", func() {
 		Context("without config file", func() {
 			It("correctly sets all types of arguments", func() {

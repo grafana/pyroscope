@@ -54,7 +54,7 @@ Each of these lines can be serialized using a prefix tree as follows. This means
 
 ![storage-design-0](https://user-images.githubusercontent.com/23323466/110520399-446e7600-80c3-11eb-84e9-ecac7c0dbf23.gif)
 
-In this basic example we save ~80% of space going from 39 bytes to 8 bytes. Typically symbol names are much longer and as the number of symols grows, storage requirements grow logarithmically rather than linearly.
+In this basic example we save ~80% of space going from 39 bytes to 8 bytes. Typically, symbol names are much longer and as the number of symols grows, storage requirements grow logarithmically rather than linearly.
 
 ## Step 1 + 2: Combining the trees with the tries
 
@@ -76,7 +76,7 @@ As you can see this is a 9x improvement for a fairly trivial case. In real world
 
 Now that we have a way of storing the data efficiently the next problem that arises is how do we query it efficiently. The way we solve this problem is by pre-aggregating the profiling data and storing it in a special segment tree.
 
-Every 10s Pyroscope agent sends a chunk of profiling data to the server whuch writes the data into the db with the corresponding timestamp. You'll notice that each write happens once, but is replicated multiple times.
+Every 10s Pyroscope agent sends a chunk of profiling data to the server which writes the data into the db with the corresponding timestamp. You'll notice that each write happens once, but is replicated multiple times.
 
 **Each layer represents a time block of larger units so in this case for every two 10s time blocks, one 20s time block is created. This is to make reading the data more efficient (more on that in a second)**.
 
@@ -84,7 +84,7 @@ Every 10s Pyroscope agent sends a chunk of profiling data to the server whuch wr
 
 ## Turn reads from O(n) to O(log n)
 
-If you don't use segment trees and just write data in 10 second chunks the time complexity for the reads becomes a function of how many 10s units the query asks for. If you want 1 year of data, you'll have to then merge 3,154,000 trees representing the profiling data. By using segment trees you can effictevely decrease the amount of merge operations from O(n) to O(log n).
+If you don't use segment trees and just write data in 10 second chunks the time complexity for the reads becomes a function of how many 10s units the query asks for. If you want 1 year of data, you'll have to then merge 3,154,000 trees representing the profiling data. By using segment trees you can effectively decrease the amount of merge operations from O(n) to O(log n).
 
 ![segment_tree_reads](https://user-images.githubusercontent.com/23323466/110277713-b98a6000-7f8a-11eb-942f-3a924a6e0b09.gif)
 

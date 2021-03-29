@@ -1,10 +1,10 @@
 package cappedarr_test
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
 func TestCappedarr(t *testing.T) {

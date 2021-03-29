@@ -11,7 +11,6 @@ type CappedArray struct {
 }
 
 func New(maxSize int) *CappedArray {
-
 	return &CappedArray{
 		len:     0,
 		maxSize: maxSize,
