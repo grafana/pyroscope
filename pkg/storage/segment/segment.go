@@ -112,12 +112,9 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 func normalize(st, et time.Time) (time.Time, time.Time) {
 	st = st.Truncate(durations[0])
 	et2 := et.Truncate(durations[0])
-	if et2.Equal(et) {
+	if et2.Equal(et) && !st.Equal(et2) {
 		return st, et
 	}
-	// if st.Equal(et2) {
-	// 	et2.Add(durations[0])
-	// }
 	return st, et2.Add(durations[0])
 }
 

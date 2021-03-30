@@ -23,10 +23,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func init() {
-	// pkger.Include("/webapp")
-}
-
 type Controller struct {
 	cfg *config.Config
 	s   *storage.Storage
