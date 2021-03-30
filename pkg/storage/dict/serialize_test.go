@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var serialized = []byte{1, 0, 2, 3, 102, 111, 111, 1, 3, 98, 97, 114, 0, 3, 98, 97, 114, 0}
+var serialized = []byte("\x01\x00\x02\x03foo\x01\x03bar\x00\x03bar\x00")
 
 var _ = Describe("dict", func() {
 	Describe("Serialize", func() {
