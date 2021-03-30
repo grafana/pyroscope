@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var serializationExample = []byte{0, 0, 1, 1, 97, 0, 2, 1, 98, 1, 0, 1, 99, 2, 0}
+var serializationExample = []byte("\x00\x00\x01\x01a\x00\x02\x01b\x01\x00\x01c\x02\x00")
 
 var _ = Describe("tree package", func() {
 	Describe("SerializeNoDict", func() {

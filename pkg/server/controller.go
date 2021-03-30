@@ -43,6 +43,7 @@ func New(cfg *config.Config, s *storage.Storage) *Controller {
 	}
 }
 
+// TODO: split the cli initialization from HTTP controller logic
 func (ctrl *Controller) Start() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ingest", ctrl.ingestHandler)
