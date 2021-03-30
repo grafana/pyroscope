@@ -4,6 +4,10 @@
 .dropdown-container {
   position: relative;
   display: inline-block;
+  .btn {
+    width: 35px;
+    height: 35px;
+  }
 }
 
 .dropdown-toggle {

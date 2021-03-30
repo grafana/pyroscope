@@ -228,7 +228,7 @@ $pane-width: 6px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border: 2px solid lime;
+      padding-bottom: 5px;
     }
 
     &.vertical-orientation {

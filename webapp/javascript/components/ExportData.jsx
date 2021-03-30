@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { connect } from "react-redux";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars } from "@fortawesome/free-solid-svg-icons/faBars";
@@ -7,7 +8,7 @@ import clsx from "clsx";
 import { jsPDF as JSPDF } from "jspdf";
 import "jspdf-autotable";
 
-function ExportData() {
+function ExportData(props) {
   const [toggleMenu, setToggleMenu] = useState(false);
 
   const formattedDate = () => {
@@ -17,6 +18,13 @@ function ExportData() {
     const y = cd.getFullYear();
     return `${d}_${m}_${y}`;
   };
+
+  const formatPdfTitle = () => {
+    const { value } = props.labels.filter((x) => x.name === "__name__")[0];
+    const { from, until } = props
+
+    return `${value} - from: ${from} - to ${until}`
+  }
 
   // export flamegraph canvas element
   const exportCanvas = (mimeType) => {
@@ -54,7 +62,7 @@ function ExportData() {
 
       const textXOffset = pdfXOffset;
       const textYOffset = 10;
-      pdf.text(textXOffset, textYOffset, "Flamegraph Visual");
+      pdf.text(textXOffset, textYOffset, formatPdfTitle());
 
       pdf.save(`flamegraph_visual_${formattedDate()}`);
       setToggleMenu(!toggleMenu);
@@ -141,4 +149,8 @@ function ExportData() {
   );
 }
 
-export default ExportData;
+const mapStateToProps = (state) => ({
+  ...state,
+});
+
+export default connect(mapStateToProps)(ExportData);
