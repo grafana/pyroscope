@@ -45,3 +45,5 @@ require (
 	honnef.co/go/tools v0.0.1-2020.1.6
 	k8s.io/klog v1.0.0 // indirect
 )
+
+replace github.com/mgechev/revive v1.0.3 => github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1
