@@ -8,7 +8,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 )
 
-var dictSerializeExample = []byte{1, 0, 0, 1, 2, 0, 1, 0, 2, 2, 1, 1, 1, 0, 2, 2, 1, 2, 0}
+var dictSerializeExample = []byte("\x01\x00\x00\x01\x02\x00\x01\x00\x02\x02\x01\x01\x01\x00\x02\x02\x01\x02\x00")
 
 var _ = Describe("tree package", func() {
 	Describe("Serialize", func() {

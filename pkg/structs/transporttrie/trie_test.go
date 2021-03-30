@@ -23,7 +23,7 @@ func randStr(l int) []byte {
 }
 
 var _ = Describe("trie package", func() {
-	serializationExample := []byte{0, 0, 1, 2, 97, 98, 0, 2, 1, 99, 1, 0, 1, 100, 2, 0}
+	serializationExample := []byte("\x00\x00\x01\x02ab\x00\x02\x01c\x01\x00\x01d\x02\x00")
 	Context("trie.Serialize()", func() {
 		trie := New()
 		trie.Insert([]byte("abc"), 1)
