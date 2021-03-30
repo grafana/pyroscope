@@ -89,6 +89,7 @@ function ExportData(props) {
   // export the flamegraph table element
   const exportTable = () => {
     const pdf = new JSPDF("p", "mm", "a4");
+    pdf.text(12, 7, formatPdfTitle())
     pdf.autoTable({
       html: ".flamegraph-table",
       theme: "grid",

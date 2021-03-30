@@ -5,9 +5,6 @@ import { addLabel } from "../redux/actions";
 
 function NameSelector(props) {
   const { actions, names, labels } = props;
-  React.useEffect(() => {
-    console.log('names', names)
-  }, [props])
   const selectName = (event) => {
     actions.addLabel("__name__", event.target.value);
   };
