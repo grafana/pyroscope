@@ -40,6 +40,9 @@ import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
 import { deltaDiff } from "../util/flamebearer";
 
+import ExportData from "./ExportData";
+
+
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
 const LABEL_THRESHOLD = 20;
@@ -492,6 +495,11 @@ class FlameGraphRenderer extends React.Component {
         key={'flamegraph-pane'}
         className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.viewType === "double" })}
       >
+        <div className='flamegraph-header'>
+          <span></span>
+          <span>Frame width represents CPU time per function</span>
+          <ExportData flameCanvas={this.canvasRef}/>
+        </div>
         <canvas
           className="flamegraph-canvas"
           height="0"
