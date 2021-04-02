@@ -34,6 +34,7 @@ type Server struct {
 	Config         string `def:"<installPrefix>/etc/pyroscope/server.yml" desc:"location of config file"`
 	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error"`
 	BadgerLogLevel string `def:"error" desc:"log level: debug|info|warn|error"`
+	BadgerTruncate bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
 
 	StoragePath string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
 	APIBindAddr string `def:":4040" desc:"port for the HTTP server used for data ingestion and web UI"`
