@@ -34,7 +34,6 @@ type Server struct {
 	Config         string `def:"<installPrefix>/etc/pyroscope/server.yml" desc:"location of config file"`
 	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error"`
 	BadgerLogLevel string `def:"error" desc:"log level: debug|info|warn|error"`
-	BadgerTruncate bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
 
 	StoragePath string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
 	APIBindAddr string `def:":4040" desc:"port for the HTTP server used for data ingestion and web UI"`
@@ -49,10 +48,11 @@ type Server struct {
 
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.
-	Multiplier      int           `skip:"true" def:"10"`
-	MinResolution   time.Duration `skip:"true" def:"10s"`
-	MaxResolution   time.Duration `skip:"true" def:"8760h"` // 365 days
-	StorageMaxDepth int           `skip:"true"`
+	Multiplier       int           `skip:"true" def:"10"`
+	MinResolution    time.Duration `skip:"true" def:"10s"`
+	MaxResolution    time.Duration `skip:"true" def:"8760h"` // 365 days
+	StorageMaxDepth  int           `skip:"true"`
+	BadgerNoTruncate bool          `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
 
 	MaxNodesSerialization int `def:"2048" desc:"max number of nodes used when saving profiles to disk"`
 	MaxNodesRender        int `def:"8192" desc:"max number of nodes used to display data on the frontend"`
