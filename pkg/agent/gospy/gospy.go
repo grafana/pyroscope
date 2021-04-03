@@ -1,7 +1,9 @@
 package gospy
 
 import (
+	"bytes"
 	"runtime"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -10,14 +12,6 @@ import (
 // TODO: make this configurable
 // TODO: pass lower level structures between go and rust?
 var bufferLength = 1024 * 64
-
-var excludes = []string{
-	"gopark",
-	"GoroutineProfile",
-	"gospy.(*GoSpy).Snapshot", // see https://github.com/pyroscope-io/pyroscope/issues/50 for context
-	"sigNoteSleep",
-	"notetsleepg",
-}
 
 type GoSpy struct {
 	stacks    []runtime.StackRecord
@@ -34,37 +28,10 @@ func (*GoSpy) Stop() error {
 
 // Snapshot calls callback function with stack-trace or error.
 func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
-	if s.selfFrame == nil {
-		// Determine the runtime.Frame of this func so we can hide it from our
-		// profiling output.
-		rpc := make([]uintptr, 1)
-		n := runtime.Callers(1, rpc)
-		if n < 1 {
-			// TODO: log the error
-			return
-		}
-		selfFrame, _ := runtime.CallersFrames(rpc).Next()
-		s.selfFrame = &selfFrame
-	}
-
-	n, ok := runtime.GoroutineProfile(s.stacks)
-	if !ok {
-		s.stacks = make([]runtime.StackRecord, int(float64(n)*1.1))
-	} else {
-		for _, stack := range s.stacks[0:n] {
-			stackStr := stackToString(&stack)
-			shouldExclude := false
-			for _, suffix := range excludes {
-				if strings.HasSuffix(stackStr, suffix) {
-					shouldExclude = true
-					break
-				}
-			}
-			if !shouldExclude {
-				cb([]byte(stackStr), 1, nil)
-			}
-		}
-	}
+	buf := bytes.Buffer{}
+	profile := pprof.Lookup("goroutine")
+	profile.WriteTo(&buf, 2)
+	Parse(&buf, cb)
 }
 
 func stackToString(sr *runtime.StackRecord) string {
