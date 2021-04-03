@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"log"
 	"strings"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/strarr"
@@ -55,7 +54,6 @@ func Parse(r io.Reader, cb func([]byte, uint64, error)) {
 				stackTraceBytes := []byte(strings.Join(arr, ";"))
 				m[goroutineState] = true
 				if !bytes.HasSuffix(stackTraceBytes, []byte("pprof.writeGoroutineStacks")) {
-					log.Println("st", goroutineState, string(stackTraceBytes))
 					cb(stackTraceBytes[:len(stackTraceBytes)-1], 1, nil)
 				}
 				// stackTrace.Reset()
