@@ -87,6 +87,8 @@ type Exec struct {
 	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`
 	NoRootDrop             bool          `def:"false" desc:"disables permissions drop when ran under root. use this one if you want to run your command as root"`
 	Pid                    int           `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)"`
+	UserName               string        `def:"" desc:"starts process under specified user name"`
+	GroupName              string        `def:"" desc:"starts process under specified group name"`
 	PyspyBlocking          bool          `def:"false" desc:"enables blocking mode for pyspy"`
 }
 
