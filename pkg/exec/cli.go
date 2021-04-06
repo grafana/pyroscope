@@ -15,6 +15,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/mitchellh/go-ps"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -36,6 +37,9 @@ func Cli(cfg *config.Config, args []string) error {
 	if isExec && len(args) == 0 {
 		return errors.New("no arguments passed")
 	}
+
+	// TODO: this is somewhat hacky, we need to find a better way to configure agents
+	pyspy.Blocking = cfg.Exec.PyspyBlocking
 
 	spyName := cfg.Exec.SpyName
 	if spyName == "auto" {
@@ -131,8 +135,11 @@ func Cli(cfg *config.Config, args []string) error {
 
 	// TODO: add sample rate, make it configurable
 	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, 100, 10*time.Second, pid, cfg.Exec.DetectSubprocesses)
+
 	sess.Logger = logrus.StandardLogger()
+	logrus.Debug("sess created")
 	err = sess.Start()
+	logrus.Debug("sess started")
 	if err != nil {
 		logrus.Errorf("error when starting session: %q", err)
 	}
