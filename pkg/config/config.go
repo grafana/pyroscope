@@ -48,10 +48,11 @@ type Server struct {
 
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.
-	Multiplier      int           `skip:"true" def:"10"`
-	MinResolution   time.Duration `skip:"true" def:"10s"`
-	MaxResolution   time.Duration `skip:"true" def:"8760h"` // 365 days
-	StorageMaxDepth int           `skip:"true"`
+	Multiplier       int           `skip:"true" def:"10"`
+	MinResolution    time.Duration `skip:"true" def:"10s"`
+	MaxResolution    time.Duration `skip:"true" def:"8760h"` // 365 days
+	StorageMaxDepth  int           `skip:"true"`
+	BadgerNoTruncate bool          `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
 
 	MaxNodesSerialization int `def:"2048" desc:"max number of nodes used when saving profiles to disk"`
 	MaxNodesRender        int `def:"8192" desc:"max number of nodes used to display data on the frontend"`
@@ -87,6 +88,9 @@ type Exec struct {
 	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`
 	NoRootDrop             bool          `def:"false" desc:"disables permissions drop when ran under root. use this one if you want to run your command as root"`
 	Pid                    int           `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)"`
+	UserName               string        `def:"" desc:"starts process under specified user name"`
+	GroupName              string        `def:"" desc:"starts process under specified group name"`
+	PyspyBlocking          bool          `def:"false" desc:"enables blocking mode for pyspy"`
 }
 
 func calculateMaxDepth(min, max time.Duration, multiplier int) int {

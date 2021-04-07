@@ -70,55 +70,55 @@ OuterLoop:
 			varint.Write(w, uint64(len(key)))
 			// fn(newTn)
 			return
-		} else {
-			leadKey := tn.children[leadIndex].label
-			// log.Debug("lead key", string(leadKey))
-			lk := len(key)
-			llk := len(leadKey)
-			for i := 0; i < lk; i++ {
-				if i == llk { // 4 fooo / foo i = 3 llk = 3
-					// log.Debug("case 4")
-					tn = tn.children[leadIndex]
-					key = key[llk:]
-					varint.Write(w, uint64(leadIndex))
-					varint.Write(w, uint64(llk))
-					continue OuterLoop
-				}
-				if leadKey[i] != key[i] { // 3
-					a := leadKey[:i] // ab
-					b := leadKey[i:] // c
-					newTn := newTrieNode(a)
-					newTn.children = []*trieNode{tn.children[leadIndex]}
-					tn.children[leadIndex].label = b
-					tn.children[leadIndex] = newTn
-					tn = newTn
-					key = key[i:]
+		}
 
-					varint.Write(w, uint64(leadIndex))
-					varint.Write(w, uint64(i))
-					continue OuterLoop
-				}
+		leadKey := tn.children[leadIndex].label
+		// log.Debug("lead key", string(leadKey))
+		lk := len(key)
+		llk := len(leadKey)
+		for i := 0; i < lk; i++ {
+			if i == llk { // 4 fooo / foo i = 3 llk = 3
+				// log.Debug("case 4")
+				tn = tn.children[leadIndex]
+				key = key[llk:]
+				varint.Write(w, uint64(leadIndex))
+				varint.Write(w, uint64(llk))
+				continue OuterLoop
 			}
-			// lk < llk
-			if !bytes.Equal(key, leadKey) { // 3
-				a := leadKey[:lk] // ab
-				b := leadKey[lk:] // c
+			if leadKey[i] != key[i] { // 3
+				a := leadKey[:i] // ab
+				b := leadKey[i:] // c
 				newTn := newTrieNode(a)
 				newTn.children = []*trieNode{tn.children[leadIndex]}
 				tn.children[leadIndex].label = b
 				tn.children[leadIndex] = newTn
 				tn = newTn
-				key = key[lk:]
+				key = key[i:]
 
 				varint.Write(w, uint64(leadIndex))
-				varint.Write(w, uint64(lk))
+				varint.Write(w, uint64(i))
 				continue OuterLoop
-			} else {
-				// 2
-				varint.Write(w, uint64(leadIndex))
-				varint.Write(w, uint64(len(leadKey)))
-				return
 			}
 		}
+		// lk < llk
+		if !bytes.Equal(key, leadKey) { // 3
+			a := leadKey[:lk] // ab
+			b := leadKey[lk:] // c
+			newTn := newTrieNode(a)
+			newTn.children = []*trieNode{tn.children[leadIndex]}
+			tn.children[leadIndex].label = b
+			tn.children[leadIndex] = newTn
+			tn = newTn
+			key = key[lk:]
+
+			varint.Write(w, uint64(leadIndex))
+			varint.Write(w, uint64(lk))
+			continue OuterLoop
+		}
+
+		// 2
+		varint.Write(w, uint64(leadIndex))
+		varint.Write(w, uint64(len(leadKey)))
+		return
 	}
 }

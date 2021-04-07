@@ -2,6 +2,7 @@
 @use "mixins/outline"as *;
 @use "components/daterangepicker";
 @use "components/labels";
+@use "components/exportdata";
 
 @import "~sanitize.css";
 @import "~sanitize.css/forms.css";
@@ -222,6 +223,13 @@ $pane-width: 6px;
     flex: 1;
     margin: 0 $pane-width;
     width: 50%;
+
+    .flamegraph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 5px;
+    }
 
     &.vertical-orientation {
       width: 100%;

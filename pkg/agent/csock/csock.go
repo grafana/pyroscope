@@ -57,7 +57,11 @@ func (c *CSock) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		logrus.Error(err) // TODO: handle
 	}
 	req := &Request{}
-	json.Unmarshal(buf, &req)
+	err = json.Unmarshal(buf, &req)
+	if err != nil {
+		logrus.Error(err)
+	}
+
 	req.Command = commandFromRequest(r)
 	resp := c.callback(req)
 	rw.WriteHeader(200)
@@ -65,7 +69,10 @@ func (c *CSock) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.Error(err) // TODO: handle
 	}
-	rw.Write(b)
+	_, err = rw.Write(b)
+	if err != nil {
+		logrus.Error(err)
+	}
 }
 
 func (c *CSock) CanonicalAddr() string {

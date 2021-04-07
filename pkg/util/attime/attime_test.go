@@ -8,7 +8,6 @@ import (
 )
 
 var _ = Describe("metadata", func() {
-
 	Describe("Parse", func() {
 		Context("simple cases", func() {
 			It("works correctly", func() {

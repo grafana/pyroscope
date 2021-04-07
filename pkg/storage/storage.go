@@ -64,7 +64,7 @@ func newBadger(cfg *config.Config, name string) (*badger.DB, error) {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
-	badgerOptions = badgerOptions.WithTruncate(false)
+	badgerOptions = badgerOptions.WithTruncate(!cfg.Server.BadgerNoTruncate)
 	badgerOptions = badgerOptions.WithSyncWrites(false)
 	badgerOptions = badgerOptions.WithCompression(options.ZSTD)
 	badgerLevel := logrus.ErrorLevel

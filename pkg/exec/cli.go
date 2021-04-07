@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -15,6 +16,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/mitchellh/go-ps"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -36,6 +38,9 @@ func Cli(cfg *config.Config, args []string) error {
 	if isExec && len(args) == 0 {
 		return errors.New("no arguments passed")
 	}
+
+	// TODO: this is somewhat hacky, we need to find a better way to configure agents
+	pyspy.Blocking = cfg.Exec.PyspyBlocking
 
 	spyName := cfg.Exec.SpyName
 	if spyName == "auto" {
@@ -102,6 +107,15 @@ func Cli(cfg *config.Config, args []string) error {
 			}
 		}
 
+		if cfg.Exec.UserName != "" || cfg.Exec.GroupName != "" {
+			creds, err := generateCredentials(cfg.Exec.UserName, cfg.Exec.GroupName)
+			if err != nil {
+				logrus.Errorf("failed to generate credentials: %q", err)
+			} else {
+				cmd.SysProcAttr.Credential = creds
+			}
+		}
+
 		cmd.SysProcAttr.Setpgid = true
 		err := cmd.Start()
 		if err != nil {
@@ -131,6 +145,7 @@ func Cli(cfg *config.Config, args []string) error {
 
 	// TODO: add sample rate, make it configurable
 	sess := agent.NewSession(u, cfg.Exec.ApplicationName, spyName, 100, 10*time.Second, pid, cfg.Exec.DetectSubprocesses)
+
 	sess.Logger = logrus.StandardLogger()
 	err = sess.Start()
 	if err != nil {
@@ -255,4 +270,44 @@ func generateCredentialsDrop() (*syscall.Credential, error) {
 	}
 
 	return &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}, nil
+}
+
+var digitCheck = regexp.MustCompile(`^[0-9]+$`)
+
+func generateCredentials(userName, groupName string) (*syscall.Credential, error) {
+	c := syscall.Credential{}
+
+	var u *user.User
+	var g *user.Group
+	var err error
+
+	if userName != "" {
+		if digitCheck.MatchString(userName) {
+			u, err = user.LookupId(userName)
+		} else {
+			u, err = user.Lookup(userName)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		uid, _ := strconv.Atoi(u.Uid)
+		c.Uid = uint32(uid)
+	}
+
+	if groupName != "" {
+		if digitCheck.MatchString(groupName) {
+			g, err = user.LookupGroupId(groupName)
+		} else {
+			g, err = user.LookupGroup(groupName)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		gid, _ := strconv.Atoi(g.Gid)
+		c.Gid = uint32(gid)
+	}
+
+	return &c, nil
 }

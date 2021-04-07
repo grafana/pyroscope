@@ -2,7 +2,6 @@ package server
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -97,7 +96,6 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = ctrl.s.Put(ip.from, ip.until, ip.storageKey, t, ip.spyName, ip.sampleRate)
-	log.Println("test", err, ip.from, ip.until, ip.storageKey, t, ip.spyName, ip.sampleRate)
 	if err != nil {
 		logrus.WithField("err", err).Error("error happened while inserting data")
 		return
