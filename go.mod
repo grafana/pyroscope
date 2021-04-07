@@ -13,6 +13,7 @@ require (
 	github.com/dgrijalva/lfu-go v0.0.0-20141010002404-f174e76c5138
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
+	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99
 	github.com/google/uuid v1.1.2
