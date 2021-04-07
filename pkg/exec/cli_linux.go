@@ -6,7 +6,6 @@ import (
 	"errors"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/caps"
-	"github.com/sirupsen/logrus"
 )
 
 func performOSChecks(spyName string) error {
