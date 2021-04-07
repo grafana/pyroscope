@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"io/ioutil"
 	"strconv"
+	"strings"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
+	"google.golang.org/protobuf/proto"
 )
 
 // format is a Serialized trie (see transporttrie.Serialize implementation)
@@ -15,6 +18,41 @@ func ParseTrie(r io.Reader, cb func(name []byte, val int)) error {
 	t.Iterate(func(name []byte, val uint64) {
 		cb(name, int(val))
 	})
+	return nil
+}
+
+// format is pprof. See https://github.com/google/pprof/blob/master/proto/profile.proto
+func ParsePprof(r io.Reader, cb func(name []byte, val int)) error {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	profile := &Profile{}
+	if err := proto.Unmarshal(b, profile); err != nil {
+		return err
+	}
+
+	locations := make(map[uint64]*Location, len(profile.Location))
+	for _, l := range profile.Location {
+		locations[l.Id] = l
+	}
+
+	functions := make(map[uint64]*Function, len(profile.Function))
+	for _, f := range profile.Function {
+		functions[f.Id] = f
+	}
+
+	for _, s := range profile.Sample {
+		stack := []string{}
+		for _, lID := range s.LocationId {
+			l := locations[lID]
+			fID := l.Line[0].FunctionId
+			f := functions[fID]
+			stack = append([]string{profile.StringTable[f.Name]}, stack...)
+		}
+		name := strings.Join(stack, ";")
+		cb([]byte(name), int(s.Value[0]))
+	}
 	return nil
 }
 
