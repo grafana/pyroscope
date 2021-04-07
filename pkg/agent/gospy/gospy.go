@@ -2,11 +2,12 @@ package gospy
 
 import (
 	"bytes"
-	"runtime"
+	"compress/gzip"
 	"runtime/pprof"
-	"strings"
+	"sync"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/convert"
 )
 
 // TODO: make this configurable
@@ -14,38 +15,55 @@ import (
 var bufferLength = 1024 * 64
 
 type GoSpy struct {
-	stacks    []runtime.StackRecord
-	selfFrame *runtime.Frame
+	resetMutex sync.Mutex
+	reset      bool
+	stop       bool
+
+	stopCh chan struct{}
+	buf    *bytes.Buffer
 }
 
 func Start(_ int) (spy.Spy, error) {
-	return &GoSpy{}, nil
+	s := &GoSpy{
+		reset:  true,
+		stopCh: make(chan struct{}),
+	}
+	return s, nil
 }
 
-func (*GoSpy) Stop() error {
+func (s *GoSpy) Stop() error {
+	s.stop = true
+	<-s.stopCh
 	return nil
 }
 
 // Snapshot calls callback function with stack-trace or error.
 func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
-	buf := bytes.Buffer{}
-	profile := pprof.Lookup("goroutine")
-	profile.WriteTo(&buf, 2)
-	Parse(&buf, cb)
+	s.resetMutex.Lock()
+	defer s.resetMutex.Unlock()
+
+	if !s.reset {
+		return
+	}
+
+	s.reset = false
+	if s.buf != nil {
+		pprof.StopCPUProfile()
+		bs := s.buf.Bytes()
+		r, _ := gzip.NewReader(bytes.NewReader(bs))
+		_ = convert.ParsePprof(r, func(name []byte, val int) {
+			cb(name, uint64(val), nil)
+		})
+	}
+	s.buf = &bytes.Buffer{}
+	_ = pprof.StartCPUProfile(s.buf)
 }
 
-func stackToString(sr *runtime.StackRecord) string {
-	frames := runtime.CallersFrames(sr.Stack())
-	stack := []string{}
-	for i := 0; ; i++ {
-		frame, more := frames.Next()
-		stack = append([]string{frame.Function}, stack...)
-		if !more {
-			break
-		}
-	}
-	// TODO: join is probably slow, the reason I'm not using a buffer is that i
-	return strings.Join(stack, ";")
+func (s *GoSpy) Reset() {
+	s.resetMutex.Lock()
+	defer s.resetMutex.Unlock()
+
+	s.reset = true
 }
 
 func init() {
