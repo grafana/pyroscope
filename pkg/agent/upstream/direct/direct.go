@@ -1,6 +1,7 @@
 package direct
 
 import (
+	"runtime/debug"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -91,9 +92,20 @@ func (u *Direct) uploadLoop() {
 		select {
 		case j := <-u.todo:
 			logrus.Debug("upload profile")
-			u.uploadProfile(j)
+			u.safeUpload(j)
 		case <-u.done:
 			return
 		}
 	}
+}
+
+// do safe upload
+func (u *Direct) safeUpload(j *uploadJob) {
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("panic, stack = : %v", debug.Stack())
+		}
+	}()
+
+	u.uploadProfile(j)
 }
