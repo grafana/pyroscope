@@ -92,7 +92,7 @@ func (u *Direct) uploadLoop() {
 		select {
 		case j := <-u.todo:
 			logrus.Debug("upload profile")
-			u.uploadProfile(j)
+			u.safeUpload(j)
 		case <-u.done:
 			return
 		}
