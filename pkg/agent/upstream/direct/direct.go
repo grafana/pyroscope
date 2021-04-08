@@ -1,6 +1,7 @@
 package direct
 
 import (
+	"runtime/debug"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -96,4 +97,15 @@ func (u *Direct) uploadLoop() {
 			return
 		}
 	}
+}
+
+// do safe upload
+func (u *Direct) safeUpload(j *uploadJob) {
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("panic, stack = : %v", debug.Stack())
+		}
+	}()
+
+	u.uploadProfile(j)
 }
