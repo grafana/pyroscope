@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -34,7 +35,7 @@ var _ = Describe("analytics", func() {
 				s := NewSession(&SessionConfig{
 					Upstream:         u,
 					AppName:          "test-app",
-					ProfilingTypes:   []string{"cpu"},
+					ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 					SpyName:          "debugspy",
 					SampleRate:       100,
 					UploadRate:       uploadRate,

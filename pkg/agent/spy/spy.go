@@ -14,6 +14,16 @@ type Resettable interface {
 	Reset()
 }
 
+type ProfileType string
+
+const (
+	ProfileCPU          ProfileType = "cpu"
+	ProfileInuseObjects ProfileType = "inuse_objects"
+	ProfileAllocObjects ProfileType = "alloc_objects"
+	ProfileInuseSpace   ProfileType = "inuse_space"
+	ProfileAllocSpace   ProfileType = "alloc_space"
+)
+
 type spyIntitializer func(pid int) (Spy, error)
 
 var (

@@ -18,15 +18,17 @@ type GoSpy struct {
 	resetMutex sync.Mutex
 	reset      bool
 	stop       bool
+	pid        int
 
 	stopCh chan struct{}
 	buf    *bytes.Buffer
 }
 
-func Start(_ int) (spy.Spy, error) {
+func Start(pid int) (spy.Spy, error) {
 	s := &GoSpy{
 		reset:  true,
 		stopCh: make(chan struct{}),
+		pid:    pid,
 	}
 	return s, nil
 }
@@ -47,17 +49,30 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 	}
 
 	s.reset = false
-	if s.buf != nil {
-		pprof.StopCPUProfile()
-		bs := s.buf.Bytes()
-		r, _ := gzip.NewReader(bytes.NewReader(bs))
-		profile, _ := convert.ParsePprof(r)
-		profile.Get("cpu", func(name []byte, val int) {
+
+	if s.pid == 0 {
+		if s.buf != nil {
+			pprof.StopCPUProfile()
+			bs := s.buf.Bytes()
+			r, _ := gzip.NewReader(bytes.NewReader(bs))
+			profile, _ := convert.ParsePprof(r)
+			profile.Get("cpu", func(name []byte, val int) {
+				cb(name, uint64(val), nil)
+			})
+		}
+		s.buf = &bytes.Buffer{}
+		_ = pprof.StartCPUProfile(s.buf)
+	} else {
+		types := []spy.ProfileType{spy.ProfileCPU, spy.ProfileAllocObjects, spy.ProfileAllocSpace, spy.ProfileInuseObjects, spy.ProfileInuseSpace}
+		heapBuf := &bytes.Buffer{}
+		pprof.WriteHeapProfile(heapBuf)
+		gHeap, _ := gzip.NewReader(bytes.NewReader(heapBuf.Bytes()))
+		profileHeap, _ := convert.ParsePprof(gHeap)
+		profileHeap.Get(string(types[s.pid]), func(name []byte, val int) {
 			cb(name, uint64(val), nil)
 		})
 	}
-	s.buf = &bytes.Buffer{}
-	_ = pprof.StartCPUProfile(s.buf)
+
 }
 
 func (s *GoSpy) Reset() {

@@ -12,10 +12,10 @@ import (
 type ParserState int
 
 const (
-	goroutineParserState     ParserState = iota
-	methodParserState        ParserState = iota
-	fileParserState          ParserState = iota
-	skipGoroutineParserState ParserState = iota
+	goroutineParserState ParserState = iota
+	methodParserState
+	fileParserState
+	skipGoroutineParserState
 )
 
 var allowedStates = []string{

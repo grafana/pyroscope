@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 )
 
@@ -39,7 +40,7 @@ func Start(cfg Config) (*Profiler, error) {
 	c := agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.ApplicationName,
-		ProfilingTypes:   []string{"cpu", "inuse_objects", "alloc_objects", "inuse_space", "alloc_space"},
+		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU, spy.ProfileAllocObjects, spy.ProfileAllocSpace, spy.ProfileInuseObjects, spy.ProfileInuseSpace},
 		SpyName:          "gospy",
 		SampleRate:       100,
 		UploadRate:       10 * time.Second,

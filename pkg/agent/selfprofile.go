@@ -3,6 +3,7 @@ package agent
 import (
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
@@ -13,7 +14,7 @@ func SelfProfile(_ *config.Config, u upstream.Upstream, appName string, logger L
 	c := SessionConfig{
 		Upstream:         u,
 		AppName:          appName,
-		ProfilingTypes:   []string{"cpu", "inuse_objects", "alloc_objects", "inuse_space", "alloc_space"},
+		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU, spy.ProfileAllocObjects, spy.ProfileAllocSpace, spy.ProfileInuseObjects, spy.ProfileInuseSpace},
 		SpyName:          "gospy",
 		SampleRate:       100,
 		UploadRate:       10 * time.Second,

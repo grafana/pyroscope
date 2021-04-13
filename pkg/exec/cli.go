@@ -147,7 +147,7 @@ func Cli(cfg *config.Config, args []string) error {
 	sess := agent.NewSession(&agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.Exec.ApplicationName,
-		ProfilingTypes:   []string{"cpu"},
+		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 		SpyName:          spyName,
 		SampleRate:       100,
 		UploadRate:       10 * time.Second,

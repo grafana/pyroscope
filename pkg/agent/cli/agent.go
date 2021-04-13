@@ -6,6 +6,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/csock"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -63,8 +64,8 @@ func (a *Agent) controlSocketHandler(req *csock.Request) *csock.Response {
 		// TODO: add sample rate
 		s := agent.NewSession(&agent.SessionConfig{
 			Upstream:         a.u,
-			AppName:          "testapp.cpu",
-			ProfilingTypes:   []string{"cpu", "inuse_objects", "alloc_objects", "inuse_space", "alloc_space"},
+			AppName:          "testapp",
+			ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU, spy.ProfileAllocObjects, spy.ProfileAllocSpace, spy.ProfileInuseObjects, spy.ProfileInuseSpace},
 			SpyName:          "gospy",
 			SampleRate:       100,
 			UploadRate:       10 * time.Second,

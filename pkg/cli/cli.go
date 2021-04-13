@@ -330,7 +330,7 @@ func startServer(cfg *config.Config) {
 		panic(err)
 	}
 	u := direct.New(cfg, s)
-	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}", logrus.StandardLogger())
+	go agent.SelfProfile(cfg, u, "pyroscope.server", logrus.StandardLogger())
 	go printRAMUsage()
 	go printDiskUsage(cfg)
 	c := server.New(cfg, s)
