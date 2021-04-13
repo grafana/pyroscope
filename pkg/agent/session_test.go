@@ -31,7 +31,16 @@ var _ = Describe("analytics", func() {
 			It("works as expected", func(done Done) {
 				u := &upstreamMock{}
 				uploadRate := 200 * time.Millisecond
-				s := NewSession(u, "test-app", "debugspy", 100, uploadRate, os.Getpid(), true)
+				s := NewSession(&SessionConfig{
+					Upstream:         u,
+					AppName:          "test-app",
+					ProfilingTypes:   []string{"cpu"},
+					SpyName:          "debugspy",
+					SampleRate:       100,
+					UploadRate:       uploadRate,
+					Pid:              os.Getpid(),
+					WithSubprocesses: true,
+				})
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()

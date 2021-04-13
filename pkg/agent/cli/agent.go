@@ -61,7 +61,16 @@ func (a *Agent) controlSocketHandler(req *csock.Request) *csock.Response {
 		// TODO: pass withSubprocesses from somewhere
 		// TODO: pass appName from somewhere
 		// TODO: add sample rate
-		s := agent.NewSession(a.u, "testapp.cpu", "gospy", 100, 10*time.Second, 0, false)
+		s := agent.NewSession(&agent.SessionConfig{
+			Upstream:         a.u,
+			AppName:          "testapp.cpu",
+			ProfilingTypes:   []string{"cpu", "inuse_objects", "alloc_objects", "inuse_space", "alloc_space"},
+			SpyName:          "gospy",
+			SampleRate:       100,
+			UploadRate:       10 * time.Second,
+			Pid:              0,
+			WithSubprocesses: false,
+		})
 		s.Logger = logrus.StandardLogger()
 		a.activeProfiles[profileID] = s
 		s.Start()

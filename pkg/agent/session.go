@@ -40,21 +40,31 @@ type ProfileSession struct {
 	Logger Logger
 }
 
-func NewSession(upstream upstream.Upstream, appName, spyName string, sampleRate int, uploadRate time.Duration, pid int, withSubprocesses bool) *ProfileSession {
+type SessionConfig struct {
+	Upstream         upstream.Upstream
+	AppName          string
+	ProfilingTypes   []string
+	SpyName          string
+	SampleRate       int
+	UploadRate       time.Duration
+	Pid              int
+	WithSubprocesses bool
+}
+
+func NewSession(c *SessionConfig) *ProfileSession {
 	return &ProfileSession{
-		upstream:         upstream,
-		appName:          appName,
-		spyName:          spyName,
-		sampleRate:       sampleRate,
-		uploadRate:       uploadRate,
-		pids:             []int{pid},
+		upstream:         c.Upstream,
+		appName:          c.AppName,
+		spyName:          c.SpyName,
+		sampleRate:       c.SampleRate,
+		uploadRate:       c.UploadRate,
+		pids:             []int{c.Pid},
 		stopCh:           make(chan struct{}),
-		withSubprocesses: withSubprocesses,
+		withSubprocesses: c.WithSubprocesses,
 	}
 }
 
 func (ps *ProfileSession) takeSnapshots() {
-	// TODO: has to be configurable
 	ticker := time.NewTicker(time.Second / time.Duration(ps.sampleRate))
 	for {
 		select {

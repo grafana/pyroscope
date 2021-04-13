@@ -36,7 +36,17 @@ func Start(cfg Config) (*Profiler, error) {
 	}
 
 	// TODO: add sample rate
-	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 100, 10*time.Second, 0, false)
+	c := agent.SessionConfig{
+		Upstream:         u,
+		AppName:          cfg.ApplicationName,
+		ProfilingTypes:   []string{"cpu", "inuse_objects", "alloc_objects", "inuse_space", "alloc_space"},
+		SpyName:          "gospy",
+		SampleRate:       100,
+		UploadRate:       10 * time.Second,
+		Pid:              0,
+		WithSubprocesses: false,
+	}
+	sess := agent.NewSession(&c)
 	sess.Logger = cfg.Logger
 	sess.Start()
 

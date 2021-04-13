@@ -51,7 +51,8 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 		pprof.StopCPUProfile()
 		bs := s.buf.Bytes()
 		r, _ := gzip.NewReader(bytes.NewReader(bs))
-		_ = convert.ParsePprof(r, func(name []byte, val int) {
+		profile, _ := convert.ParsePprof(r)
+		profile.Get("cpu", func(name []byte, val int) {
 			cb(name, uint64(val), nil)
 		})
 	}
