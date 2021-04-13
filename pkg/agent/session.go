@@ -13,6 +13,7 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 
 	// revive:enable:blank-imports
 
@@ -196,7 +197,7 @@ func (ps *ProfileSession) Stop() {
 func (ps *ProfileSession) addSubprocesses() {
 	newPids := findAllSubprocesses(ps.pids[0])
 	for _, newPid := range newPids {
-		if !includes(ps.pids, newPid) {
+		if !slices.IntContains(ps.pids, newPid) {
 			ps.pids = append(ps.pids, newPid)
 			newSpy, err := spy.SpyFromName(ps.spyName, newPid)
 			if err != nil {
@@ -211,15 +212,6 @@ func (ps *ProfileSession) addSubprocesses() {
 			}
 		}
 	}
-}
-
-func includes(arr []int, v int) bool {
-	for _, x := range arr {
-		if x == v {
-			return true
-		}
-	}
-	return false
 }
 
 func findAllSubprocesses(pid int) []int {

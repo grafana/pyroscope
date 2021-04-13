@@ -8,7 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/peterbourgon/ff/v3/ffcli"
-	"github.com/pyroscope-io/pyroscope/pkg/util/strarr"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
 var (
@@ -54,7 +54,7 @@ func DefaultUsageFunc(sf *SortedFlags, c *ffcli.Command) string {
 		headerClr.Fprintf(&b, "SUBCOMMANDS\n")
 		tw := tabwriter.NewWriter(&b, 0, 2, 2, ' ', 0)
 		for _, subcommand := range c.Subcommands {
-			if !strarr.Contains(hiddenCommands, subcommand.Name) {
+			if !slices.StringContains(hiddenCommands, subcommand.Name) {
 				fmt.Fprintf(tw, "  %s\t%s\n", itemClr.Sprintf(subcommand.Name), subcommand.ShortHelp)
 			}
 		}

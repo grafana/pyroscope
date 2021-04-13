@@ -1,4 +1,4 @@
-package strarr_test
+package slices_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestStrarr(t *testing.T) {
+func TestSlices(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Strarr Suite")
+	RunSpecs(t, "Slices Suite")
 }

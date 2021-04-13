@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/pyroscope-io/pyroscope/pkg/util/strarr"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
 type ParserState int
@@ -87,7 +87,7 @@ func Parse(r io.Reader, cb func([]byte, uint64, error)) {
 			if l > -1 && r > -1 {
 				goroutineState = string(line[l+1 : r])
 				// log.Printf("%q", goroutineState)
-				if !strarr.Contains(allowedStates, goroutineState) {
+				if !slices.StringContains(allowedStates, goroutineState) {
 					state = skipGoroutineParserState
 				} else {
 					state = methodParserState
