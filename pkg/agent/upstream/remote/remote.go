@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -142,7 +143,7 @@ func (u *Remote) uploadLoop() {
 	for {
 		select {
 		case j := <-u.todo:
-			u.uploadProfile(j)
+			u.safeUpload(j)
 		case wg := <-u.done:
 			wg.Done()
 			return
@@ -152,4 +153,17 @@ func (u *Remote) uploadLoop() {
 
 func requiresAuthToken(u *url.URL) bool {
 	return strings.HasSuffix(u.Host, cloudHostnameSuffix)
+}
+
+// do safe upload
+func (u *Remote) safeUpload(j *uploadJob) {
+	defer func() {
+		if r := recover(); r != nil {
+			if u.Logger != nil {
+				u.Logger.Errorf("panic, stack = : %v", debug.Stack())
+			}
+		}
+	}()
+
+	u.uploadProfile(j)
 }

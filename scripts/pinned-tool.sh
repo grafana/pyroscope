@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # this is basically $(yarn bin <command name>) alternative for golang
 

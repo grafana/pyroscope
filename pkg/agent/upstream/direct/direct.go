@@ -1,6 +1,7 @@
 package direct
 
 import (
+	"runtime/debug"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
@@ -77,9 +78,20 @@ func (u *Direct) uploadLoop() {
 	for {
 		select {
 		case j := <-u.todo:
-			u.uploadProfile(j)
+			u.safeUpload(j)
 		case <-u.done:
 			return
 		}
 	}
+}
+
+// do safe upload
+func (u *Direct) safeUpload(j *uploadJob) {
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("panic, stack = : %v", debug.Stack())
+		}
+	}()
+
+	u.uploadProfile(j)
 }
