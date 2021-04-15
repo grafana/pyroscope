@@ -156,7 +156,7 @@ func requiresAuthToken(u *url.URL) bool {
 }
 
 // do safe upload
-func (u *Remote) safeUpload(j *uploadJob) {
+func (u *Remote) safeUpload(j *upstream.UploadJob) {
 	defer func() {
 		if r := recover(); r != nil {
 			if u.Logger != nil {
