@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -14,7 +15,7 @@ var _ = Describe("analytics", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		Describe("NewSession", func() {
 			It("works as expected", func(done Done) {
-				s, err := Start(0)
+				s, err := Start(spy.ProfileCPU)
 				Expect(err).ToNot(HaveOccurred())
 				go func() {
 					s := time.Now()

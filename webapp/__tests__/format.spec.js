@@ -1,9 +1,9 @@
-import {DurationFormater} from '../javascript/util/format';
+import {DurationFormatter} from '../javascript/util/format';
 
 
-describe('DurationFormater', () => {
+describe('DurationFormatter', () => {
   it('correctly formats duration', () => {
-    const df = new DurationFormater(40);
+    const df = new DurationFormatter(40);
     expect(df.format(0.00001)).toBe('< 0.01 seconds');
     expect(df.format(1)).toBe('1.00 second');
     expect(df.format(20)).toBe('20.00 seconds');
@@ -12,7 +12,7 @@ describe('DurationFormater', () => {
   });
 
   it('correctly formats duration', () => {
-    const df = new DurationFormater(80);
+    const df = new DurationFormatter(80);
     expect(df.format(60)).toBe('1.00 minute');
     expect(df.format(1)).toBe('0.02 minutes');
     expect(df.format(20)).toBe('0.33 minutes');

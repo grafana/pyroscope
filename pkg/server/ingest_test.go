@@ -69,9 +69,13 @@ var _ = Describe("server", func() {
 					Expect(res.StatusCode).To(Equal(200))
 
 					sk, _ := storage.ParseKey(name)
-					t, _, _, _, _ := s.Get(st, et, sk)
-					Expect(t).ToNot(BeNil())
-					Expect(t.String()).To(Equal("\"foo;bar\" 2\n\"foo;baz\" 3\n"))
+					gOut, err := s.Get(&storage.GetInput{
+						StartTime: st,
+						EndTime:   et,
+						Key:       sk,
+					})
+					Expect(gOut.Tree).ToNot(BeNil())
+					Expect(gOut.Tree.String()).To(Equal("\"foo;bar\" 2\n\"foo;baz\" 3\n"))
 
 					close(done)
 				})

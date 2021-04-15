@@ -153,6 +153,7 @@ type Segment struct {
 
 	spyName    string
 	sampleRate int
+	units      string
 }
 
 func newNode(t time.Time, depth, multiplier int) *streeNode {
@@ -272,9 +273,10 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples uint64, t tim
 
 // TODO: this should be refactored
 
-func (s *Segment) SetMetadata(spyName string, sampleRate int) {
+func (s *Segment) SetMetadata(spyName string, sampleRate int, units string) {
 	s.spyName = spyName
 	s.sampleRate = sampleRate
+	s.units = units
 }
 
 func (s *Segment) SpyName() string {
@@ -283,4 +285,8 @@ func (s *Segment) SpyName() string {
 
 func (s *Segment) SampleRate() int {
 	return s.sampleRate
+}
+
+func (s *Segment) Units() string {
+	return s.units
 }

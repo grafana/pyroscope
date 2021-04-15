@@ -10,11 +10,25 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 )
 
+type ProfileType = spy.ProfileType
+
+var (
+	ProfileCPU          = spy.ProfileCPU
+	ProfileAllocObjects = spy.ProfileAllocObjects
+	ProfileAllocSpace   = spy.ProfileAllocSpace
+	ProfileInuseObjects = spy.ProfileInuseObjects
+	ProfileInuseSpace   = spy.ProfileInuseSpace
+)
+
+var DefaultProfileTypes = []ProfileType{ProfileCPU, ProfileAllocObjects, ProfileAllocSpace, ProfileInuseObjects, ProfileInuseSpace}
+
 type Config struct {
 	ApplicationName string // e.g backend.purchases
 	ServerAddress   string // e.g http://pyroscope.services.internal:4040
 	AuthToken       string
 	Logger          agent.Logger
+	ProfileTypes    []ProfileType
+	ForceGC         bool // this will run runtime.GC before memory profiling
 }
 
 type Profiler struct {
@@ -23,6 +37,9 @@ type Profiler struct {
 
 // Start starts continuously profiling go code
 func Start(cfg Config) (*Profiler, error) {
+	if len(cfg.ProfileTypes) == 0 {
+		cfg.ProfileTypes = DefaultProfileTypes
+	}
 	u, err := remote.New(remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
 		UpstreamAddress:        cfg.ServerAddress,
@@ -40,7 +57,7 @@ func Start(cfg Config) (*Profiler, error) {
 	c := agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.ApplicationName,
-		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU, spy.ProfileAllocObjects, spy.ProfileAllocSpace, spy.ProfileInuseObjects, spy.ProfileInuseSpace},
+		ProfilingTypes:   []ProfileType{ProfileCPU, ProfileAllocObjects, ProfileAllocSpace, ProfileInuseObjects, ProfileInuseSpace},
 		SpyName:          "gospy",
 		SampleRate:       100,
 		UploadRate:       10 * time.Second,

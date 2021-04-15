@@ -32,7 +32,7 @@ import {
   numberWithCommas,
   formatPercent,
   getPackageNameFromStackTrace,
-  DurationFormater,
+  getFormatter,
 } from "../util/format";
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
 import TimelineChartWrapper from "./TimelineChartWrapper";
@@ -48,6 +48,12 @@ const COLLAPSE_THRESHOLD = 5;
 const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = "#48CE73"; // green
 const GAP = 0.5;
+
+const unitsToFlamegraphTitle = {
+  "objects": "amount of objects in RAM per function",
+  "bytes": "amount of RAM per function",
+  "samples": "CPU time per function",
+}
 
 class FlameGraphRenderer extends React.Component {
   constructor() {
@@ -197,12 +203,13 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateData = () => {
-    const { names, levels, numTicks, sampleRate } = this.state.flamebearer;
+    const { names, levels, numTicks, sampleRate, units } = this.state.flamebearer;
     this.setState({
       names: names,
       levels: levels,
       numTicks: numTicks,
       sampleRate: sampleRate,
+      units: units,
     }, () => {
       this.renderCanvas();
     });
@@ -285,12 +292,17 @@ class FlameGraphRenderer extends React.Component {
     setTimeout(this.renderCanvas, 0);
   };
 
+  createFormatter = () => {
+    return getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
+  }
+
   renderCanvas = () => {
     if (!this.state.names) {
       return;
     }
 
-    const { names, levels, numTicks, sampleRate } = this.state;
+    const { names, levels, numTicks, sampleRate, units } = this.state;
+
     this.graphWidth = this.canvas.width = this.canvas.clientWidth;
     this.pxPerTick =
       this.graphWidth / numTicks / (this.rangeMax - this.rangeMin);
@@ -307,7 +319,7 @@ class FlameGraphRenderer extends React.Component {
     this.ctx.font =
       '400 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
-    const df = new DurationFormater(this.state.numTicks / this.state.sampleRate);
+    const formatter = this.createFormatter();
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
@@ -376,9 +388,7 @@ class FlameGraphRenderer extends React.Component {
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
           const percent = formatPercent(ratio);
-          const name = `${names[level[j + 3]]} (${percent}, ${df.format(
-            numBarTicks / sampleRate
-          )})`;
+          const name = `${names[level[j + 3]]} (${percent}, ${formatter.format(numBarTicks, sampleRate)})`;
 
           this.ctx.save();
           this.ctx.clip();
@@ -421,7 +431,7 @@ class FlameGraphRenderer extends React.Component {
     tooltipEl.children[0].innerText = tooltipTitle;
     const tooltipWidth = tooltipEl.clientWidth;
 
-    const df = new DurationFormater(this.state.numTicks / this.state.sampleRate);
+    const formatter = this.createFormatter();
 
     this.setState({
       highlightStyle: {
@@ -444,7 +454,7 @@ class FlameGraphRenderer extends React.Component {
       tooltipTitle,
       tooltipSubtitle: `${percent}, ${numberWithCommas(
         numBarTicks
-      )} samples, ${df.format(numBarTicks / this.state.sampleRate)}`,
+      )} samples, ${formatter.format(numBarTicks, this.state.sampleRate)}`,
     });
   };
 
@@ -497,7 +507,7 @@ class FlameGraphRenderer extends React.Component {
       >
         <div className='flamegraph-header'>
           <span></span>
-          <span>Frame width represents CPU time per function</span>
+          <span>Frame width represents {unitsToFlamegraphTitle[this.state.units]}</span>
           <ExportData flameCanvas={this.canvasRef}/>
         </div>
         <canvas
@@ -536,8 +546,8 @@ class FlameGraphRenderer extends React.Component {
           <div className={`${instructionsClassName}-wrapper`}>
             <span className={`${instructionsClassName}-text`}>{instructionsText}</span>
           </div>
-          { 
-            this.props.viewType === "double" ? 
+          {
+            this.props.viewType === "double" ?
               <TimelineChartWrapper
                 key={`timeline-chart-${this.props.viewSide}`}
                 id={`timeline-chart-${this.props.viewSide}`}

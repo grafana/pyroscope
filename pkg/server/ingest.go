@@ -18,6 +18,7 @@ type ingestParams struct {
 	storageKey *storage.Key
 	spyName    string
 	sampleRate int
+	units      string
 	modifiers  []string
 	from       time.Time
 	until      time.Time
@@ -76,6 +77,12 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 		ip.spyName = "unknown"
 	}
 
+	if sn := q.Get("units"); sn != "" {
+		ip.units = sn
+	} else {
+		ip.units = "samples"
+	}
+
 	var err error
 	ip.storageKey, err = storage.ParseKey(q.Get("name"))
 	if err != nil {
@@ -95,7 +102,15 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = ctrl.s.Put(ip.from, ip.until, ip.storageKey, t, ip.spyName, ip.sampleRate)
+	err = ctrl.s.Put(&storage.PutInput{
+		StartTime:  ip.from,
+		EndTime:    ip.until,
+		Key:        ip.storageKey,
+		Val:        t,
+		SpyName:    ip.spyName,
+		SampleRate: ip.sampleRate,
+		Units:      ip.units,
+	})
 	if err != nil {
 		logrus.WithField("err", err).Error("error happened while inserting data")
 		return

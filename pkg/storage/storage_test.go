@@ -42,14 +42,25 @@ var _ = Describe("storage package", func() {
 					et2 := testing.SimpleTime(30)
 					key, _ := ParseKey("foo")
 
-					err := s.Put(st, et, key, tree, "testspy", 100)
+					err := s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
 					Expect(err).ToNot(HaveOccurred())
 
-					t2, _, _, _, err := s.Get(st2, et2, key)
+					gOut, err := s.Get(&GetInput{
+						StartTime: st2,
+						EndTime:   et2,
+						Key:       key,
+					})
 
 					Expect(err).ToNot(HaveOccurred())
-					Expect(t2).ToNot(BeNil())
-					Expect(t2.String()).To(Equal(tree.String()))
+					Expect(gOut.Tree).ToNot(BeNil())
+					Expect(gOut.Tree.String()).To(Equal(tree.String()))
 					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
@@ -64,14 +75,25 @@ var _ = Describe("storage package", func() {
 					et2 := testing.SimpleTime(30)
 					key, _ := ParseKey("foo")
 
-					err := s.Put(st, et, key, tree, "testspy", 100)
+					err := s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
 					Expect(err).ToNot(HaveOccurred())
 
-					t2, _, _, _, err := s.Get(st2, et2, key)
+					gOut, err := s.Get(&GetInput{
+						StartTime: st2,
+						EndTime:   et2,
+						Key:       key,
+					})
 
 					Expect(err).ToNot(HaveOccurred())
-					Expect(t2).ToNot(BeNil())
-					Expect(t2.String()).To(Equal(tree.String()))
+					Expect(gOut.Tree).ToNot(BeNil())
+					Expect(gOut.Tree.String()).To(Equal(tree.String()))
 					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
@@ -86,23 +108,38 @@ var _ = Describe("storage package", func() {
 				et2 := testing.SimpleTime(30)
 				key, _ := ParseKey("foo")
 
-				err := s.Put(st, et, key, tree, "testspy", 100)
+				err := s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        tree,
+					SpyName:    "testspy",
+					SampleRate: 100,
+				})
 				Expect(err).ToNot(HaveOccurred())
 
-				t2, _, _, _, err := s.Get(st2, et2, key)
+				gOut, err := s.Get(&GetInput{
+					StartTime: st2,
+					EndTime:   et2,
+					Key:       key,
+				})
 
 				Expect(err).ToNot(HaveOccurred())
-				Expect(t2).ToNot(BeNil())
-				Expect(t2.String()).To(Equal(tree.String()))
+				Expect(gOut.Tree).ToNot(BeNil())
+				Expect(gOut.Tree.String()).To(Equal(tree.String()))
 				Expect(s.Close()).ToNot(HaveOccurred())
 
 				s2, err = New(*cfg)
 				Expect(err).ToNot(HaveOccurred())
 
-				t3, _, _, _, err := s2.Get(st2, et2, key)
+				gOut2, err := s2.Get(&GetInput{
+					StartTime: st2,
+					EndTime:   et2,
+					Key:       key,
+				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(t3).ToNot(BeNil())
-				Expect(t3.String()).To(Equal(tree.String()))
+				Expect(gOut2.Tree).ToNot(BeNil())
+				Expect(gOut2.Tree.String()).To(Equal(tree.String()))
 			})
 		})
 	})

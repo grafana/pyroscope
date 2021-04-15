@@ -166,7 +166,17 @@ func New(cfg *config.Config) (*Storage, error) {
 	return s, nil
 }
 
-func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree, spyName string, sampleRate int) error {
+type PutInput struct {
+	StartTime  time.Time
+	EndTime    time.Time
+	Key        *Key
+	Val        *tree.Tree
+	SpyName    string
+	SampleRate int
+	Units      string
+}
+
+func (s *Storage) Put(po *PutInput) error {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
 
@@ -174,30 +184,31 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree, sp
 		return errClosing
 	}
 	logrus.WithFields(logrus.Fields{
-		"startTime": startTime.String(),
-		"endTime":   endTime.String(),
-		"key":       key.Normalized(),
-		"samples":   val.Samples(),
+		"startTime": po.StartTime.String(),
+		"endTime":   po.EndTime.String(),
+		"key":       po.Key.Normalized(),
+		"samples":   po.Val.Samples(),
+		"units ":    po.Units,
 	}).Info("storage.Put")
-	for k, v := range key.labels {
+	for k, v := range po.Key.labels {
 		s.labels.Put(k, v)
 	}
 
-	sk := key.SegmentKey()
-	for k, v := range key.labels {
+	sk := po.Key.SegmentKey()
+	for k, v := range po.Key.labels {
 		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
 		d.Insert([]byte(sk))
 	}
 
 	st := s.segments.Get(sk).(*segment.Segment)
-	st.SetMetadata(spyName, sampleRate)
-	samples := val.Samples()
-	st.Put(startTime, endTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
-		tk := key.TreeKey(depth, t)
+	st.SetMetadata(po.SpyName, po.SampleRate, po.Units)
+	samples := po.Val.Samples()
+	st.Put(po.StartTime, po.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
+		tk := po.Key.TreeKey(depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
-		treeClone := val.Clone(r)
+		treeClone := po.Val.Clone(r)
 		for _, addon := range addons {
-			tk2 := key.TreeKey(addon.Depth, addon.T)
+			tk2 := po.Key.TreeKey(addon.Depth, addon.T)
 			addonTree := s.trees.Get(tk2).(*tree.Tree)
 			treeClone.Merge(addonTree)
 		}
@@ -213,30 +224,44 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree, sp
 	return nil
 }
 
-func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segment.Timeline, string, int, error) {
+type GetInput struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Key       *Key
+}
+
+type GetOutput struct {
+	Tree       *tree.Tree
+	Timeline   *segment.Timeline
+	SpyName    string
+	SampleRate int
+	Units      string
+}
+
+func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
 
 	if s.closing {
-		return nil, nil, "", 100, errClosing
+		return nil, errClosing
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"startTime": startTime.String(),
-		"endTime":   endTime.String(),
-		"key":       key.Normalized(),
+		"startTime": gi.StartTime.String(),
+		"endTime":   gi.EndTime.String(),
+		"key":       gi.Key.Normalized(),
 	}).Info("storage.Get")
 	triesToMerge := []merge.Merger{}
 
 	dimensions := []*dimension.Dimension{}
-	for k, v := range key.labels {
+	for k, v := range gi.Key.labels {
 		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
 		dimensions = append(dimensions, d)
 	}
 
 	segmentKeys := dimension.Intersection(dimensions...)
 
-	tl := segment.GenerateTimeline(startTime, endTime)
+	tl := segment.GenerateTimeline(gi.StartTime, gi.EndTime)
 	var lastSegment *segment.Segment
 	for _, sk := range segmentKeys {
 		// TODO: refactor, store `Key`s in dimensions
@@ -250,7 +275,7 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 
 		tl.PopulateTimeline(st)
 
-		st.Get(startTime, endTime, func(depth int, samples uint64, t time.Time, r *big.Rat) {
+		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples uint64, t time.Time, r *big.Rat) {
 			k := skk.TreeKey(depth, t)
 			tr := s.trees.Get(k).(*tree.Tree)
 			// TODO: these clones are probably are not the most efficient way of doing this
@@ -262,9 +287,15 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 
 	resultTrie := merge.MergeTriesConcurrently(runtime.NumCPU(), triesToMerge...)
 	if resultTrie == nil {
-		return nil, tl, "", 100, nil
+		return nil, nil
 	}
-	return resultTrie.(*tree.Tree), tl, lastSegment.SpyName(), lastSegment.SampleRate(), nil
+	return &GetOutput{
+		Tree:       resultTrie.(*tree.Tree),
+		Timeline:   tl,
+		SpyName:    lastSegment.SpyName(),
+		SampleRate: lastSegment.SampleRate(),
+		Units:      lastSegment.Units(),
+	}, nil
 }
 
 func (s *Storage) Close() error {

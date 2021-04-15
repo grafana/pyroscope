@@ -235,7 +235,7 @@ $pane-width: 6px;
       width: 100%;
       padding: 10px;
     }
-    
+
     &.hidden {
       display: none;
     }
@@ -285,6 +285,7 @@ $pane-width: 6px;
 
     &.sortable {
       cursor: pointer;
+      user-select: none;
     }
 
     .sort-arrow {

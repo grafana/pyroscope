@@ -29,6 +29,20 @@ func newTrieNode(name []byte) *trieNode {
 	}
 }
 
+func (tn *trieNode) clone() *trieNode {
+	newTn := &trieNode{
+		name:     tn.name,
+		value:    tn.value,
+		children: make([]*trieNode, len(tn.children)),
+	}
+
+	for i, c := range tn.children {
+		newTn.children[i] = c.clone()
+	}
+
+	return newTn
+}
+
 func (tn *trieNode) insert(t2 *trieNode) {
 	key := t2.name
 	i := sort.Search(len(tn.children), func(i int) bool { return bytes.Compare(tn.children[i].name, key) >= 0 })

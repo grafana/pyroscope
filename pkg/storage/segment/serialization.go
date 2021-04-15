@@ -20,12 +20,16 @@ func (s *Segment) populateFromMetadata(metadata map[string]interface{}) {
 	if v, ok := metadata["spyName"]; ok {
 		s.spyName = v.(string)
 	}
+	if v, ok := metadata["units"]; ok {
+		s.units = v.(string)
+	}
 }
 
 func (s *Segment) generateMetadata() map[string]interface{} {
 	return map[string]interface{}{
 		"sampleRate": s.sampleRate,
 		"spyName":    s.spyName,
+		"units":      s.units,
 	}
 }
 

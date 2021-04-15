@@ -1,6 +1,6 @@
 import React from "react";
 import clsx from "clsx";
-import { DurationFormater, getPackageNameFromStackTrace } from "../util/format";
+import { getFormatter, getPackageNameFromStackTrace } from "../util/format";
 import { colorBasedOnPackageName } from "../util/color";
 
 // generates a table from data in flamebearer format
@@ -103,7 +103,7 @@ function Table({ flamebearer, updateSortBy, sortBy, sortByDirection }) {
 }
 
 function TableBody({ flamebearer, sortBy, sortByDirection }) {
-  const { numTicks, maxSelf, sampleRate, spyName } = flamebearer;
+  const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
   const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
 
@@ -115,7 +115,12 @@ function TableBody({ flamebearer, sortBy, sortByDirection }) {
     sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
   }
 
-  const df = new DurationFormater(numTicks / sampleRate);
+  // The problem is that when you switch apps or time-range and the function
+  //   names stay the same it leads to an issue where rows don't get re-rendered
+  // So we force a rerender each time.
+  let renderID = Math.random();
+
+  const formatter = getFormatter(numTicks, sampleRate, units);
 
   return sorted.map((x) => {
     const pn = getPackageNameFromStackTrace(spyName, x.name);
@@ -124,18 +129,18 @@ function TableBody({ flamebearer, sortBy, sortByDirection }) {
       backgroundColor: color,
     };
     return (
-      <tr key={x.name}>
+      <tr key={x.name+renderID}>
         <td>
           <span className="color-reference" style={style} />
-          <span>{x.name}</span>
+          <span title={x.name}>{x.name}</span>
         </td>
         <td style={backgroundImageStyle(x.self, maxSelf, color)}>
           {/* <span>{ formatPercent(x.self / numTicks) }</span>
         &nbsp;
         <span>{ shortNumber(x.self) }</span>
         &nbsp; */}
-          <span title={df.format(x.self / sampleRate)}>
-            {df.format(x.self / sampleRate)}
+          <span title={formatter.format(x.self, sampleRate)}>
+            {formatter.format(x.self, sampleRate)}
           </span>
         </td>
         <td style={backgroundImageStyle(x.total, numTicks, color)}>
@@ -143,8 +148,8 @@ function TableBody({ flamebearer, sortBy, sortByDirection }) {
         &nbsp;
         <span>{ shortNumber(x.total) }</span>
         &nbsp; */}
-          <span title={df.format(x.total / sampleRate)}>
-            {df.format(x.total / sampleRate)}
+          <span title={formatter.format(x.total, sampleRate)}>
+            {formatter.format(x.total, sampleRate)}
           </span>
         </td>
       </tr>

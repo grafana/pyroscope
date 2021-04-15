@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -22,8 +23,8 @@ func (u *upstreamMock) Stop() {
 
 }
 
-func (u *upstreamMock) Upload(name string, startTime, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie) {
-	u.tries = append(u.tries, t)
+func (u *upstreamMock) Upload(j *upstream.UploadJob) {
+	u.tries = append(u.tries, j.Trie)
 }
 
 var _ = Describe("analytics", func() {

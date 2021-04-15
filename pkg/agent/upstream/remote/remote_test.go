@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -51,7 +52,15 @@ var _ = Describe("flags", func() {
 			t := transporttrie.New()
 			for i := 0; i < 3; i++ {
 
-				r.Upload("test{}", testing.SimpleTime(0), testing.SimpleTime(10), "debugspy", 100, t)
+				r.Upload(&upstream.UploadJob{
+					Name:       "test{}",
+					StartTime:  testing.SimpleTime(0),
+					EndTime:    testing.SimpleTime(10),
+					SpyName:    "debugspy",
+					SampleRate: 100,
+					Units:      "samples",
+					Trie:       t,
+				})
 			}
 
 			Expect(err).To(BeNil())

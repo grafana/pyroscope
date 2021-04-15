@@ -24,6 +24,21 @@ const (
 	ProfileAllocSpace   ProfileType = "alloc_space"
 )
 
+func (t ProfileType) IsCumulative() bool {
+	return t == ProfileAllocObjects || t == ProfileAllocSpace
+}
+
+func (t ProfileType) Units() string {
+	if t == ProfileInuseObjects || t == ProfileAllocObjects {
+		return "objects"
+	}
+	if t == ProfileInuseSpace || t == ProfileAllocSpace {
+		return "bytes"
+	}
+
+	return "samples"
+}
+
 type spyIntitializer func(pid int) (Spy, error)
 
 var (
