@@ -2,6 +2,7 @@ package direct
 
 import (
 	"runtime/debug"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
@@ -86,7 +87,7 @@ func (u *Direct) uploadLoop() {
 }
 
 // do safe upload
-func (u *Direct) safeUpload(j *uploadJob) {
+func (u *Direct) safeUpload(j *upstream.UploadJob) {
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Errorf("panic, stack = : %v", debug.Stack())
