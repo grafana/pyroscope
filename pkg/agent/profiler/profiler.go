@@ -58,6 +58,7 @@ func Start(cfg Config) (*Profiler, error) {
 		Upstream:         u,
 		AppName:          cfg.ApplicationName,
 		ProfilingTypes:   []ProfileType{ProfileCPU, ProfileAllocObjects, ProfileAllocSpace, ProfileInuseObjects, ProfileInuseSpace},
+		ForceGC:          cfg.ForceGC,
 		SpyName:          "gospy",
 		SampleRate:       100,
 		UploadRate:       10 * time.Second,

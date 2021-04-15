@@ -21,6 +21,7 @@ type GoSpy struct {
 	reset       bool
 	stop        bool
 	profileType spy.ProfileType
+	forceGC     bool
 
 	lastGC uint32
 
@@ -28,11 +29,12 @@ type GoSpy struct {
 	buf    *bytes.Buffer
 }
 
-func Start(profileType spy.ProfileType) (spy.Spy, error) {
+func Start(profileType spy.ProfileType, forceGC bool) (spy.Spy, error) {
 	s := &GoSpy{
 		stopCh:      make(chan struct{}),
 		buf:         &bytes.Buffer{},
 		profileType: profileType,
+		forceGC:     forceGC,
 	}
 	if s.profileType == spy.ProfileCPU {
 		_ = pprof.StartCPUProfile(s.buf)
@@ -54,11 +56,14 @@ var (
 	lastProfileCreatedAt time.Time
 )
 
-func getHeapProfile(b *bytes.Buffer) *convert.Profile {
+func getHeapProfile(b *bytes.Buffer, forceGC bool) *convert.Profile {
 	lastProfileMutex.Lock()
 	defer lastProfileMutex.Unlock()
 
 	if lastProfile == nil || !lastProfileCreatedAt.After(time.Now().Add(-1*time.Second)) {
+		if forceGC {
+			runtime.GC()
+		}
 		pprof.WriteHeapProfile(b)
 		g, _ := gzip.NewReader(bytes.NewReader(b.Bytes()))
 
@@ -100,7 +105,7 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 
 		// heap profiles change only after GC runs
 		if lastGC != s.lastGC {
-			getHeapProfile(s.buf).Get(string(s.profileType), func(name []byte, val int) {
+			getHeapProfile(s.buf, s.forceGC).Get(string(s.profileType), func(name []byte, val int) {
 				cb(name, uint64(val), nil)
 			})
 			s.lastGC = lastGC
