@@ -20,8 +20,6 @@
   <a href="/examples">Examples</a>
   <span> • </span>
   <a href="https://pyroscope.io/slack">Slack</a>
-  <span> • </span>
-  <a href="https://pyroscope.io/cloud">Cloud</a>
 </h2>
 
 #### _Read this in other languages._
@@ -92,13 +90,6 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [ ] Node (coming soon)
 
 Let us know what other integrations you want to see in [our slack](https://pyroscope.io/slack).
-
-## Cloud
-
-Pyroscope Cloud is a fully-managed, continous profiling service powered by Pyroscope team. It is the fastest, easiest way to start using Pyroscope.
-
-Special Offer: first 100 users get 3 months of Pyroscope Cloud for free. Create a server [here](https://pyroscope.io/cloud).
-
 
 ## Contributing
 
