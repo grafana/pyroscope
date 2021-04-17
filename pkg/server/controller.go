@@ -18,14 +18,14 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/sirupsen/logrus"
 )
 
 type Controller struct {
-	cfg *config.Config
-	s   *storage.Storage
+	cfg        *config.Config
+	s          *storage.Storage
+	httpServer *http.Server
 
 	statsMutex sync.Mutex
 	stats      map[string]int
@@ -41,6 +41,13 @@ func New(cfg *config.Config, s *storage.Storage) *Controller {
 		stats:    make(map[string]int),
 		appStats: appStats,
 	}
+}
+
+func (ctrl *Controller) Stop() error {
+	if ctrl.httpServer != nil {
+		return ctrl.httpServer.Close()
+	}
+	return nil
 }
 
 // TODO: split the cli initialization from HTTP controller logic
@@ -73,7 +80,7 @@ func (ctrl *Controller) Start() {
 	logger := logrus.New()
 	w := logger.Writer()
 	defer w.Close()
-	s := &http.Server{
+	ctrl.httpServer = &http.Server{
 		Addr:           ctrl.cfg.Server.APIBindAddr,
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
@@ -82,10 +89,7 @@ func (ctrl *Controller) Start() {
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
 	}
-	atexit.Register(func() {
-		s.Close()
-	})
-	err := s.ListenAndServe()
+	err := ctrl.httpServer.ListenAndServe()
 	if err != nil {
 		if err == http.ErrServerClosed {
 			return

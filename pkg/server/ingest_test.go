@@ -18,10 +18,8 @@ import (
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 
-		port := 51234
 		BeforeEach(func() {
-			port++
-			(*cfg).Server.APIBindAddr = ":" + strconv.Itoa(port)
+			(*cfg).Server.APIBindAddr = ":10043"
 		})
 
 		Describe("/ingest", func() {
@@ -46,7 +44,7 @@ var _ = Describe("server", func() {
 					st := testing.ParseTime("2020-01-01-01:01:00")
 					et := testing.ParseTime("2020-01-01-01:01:10")
 
-					u, _ := url.Parse(fmt.Sprintf("http://localhost:%d/ingest", port))
+					u, _ := url.Parse("http://localhost:10043/ingest")
 					q := u.Query()
 					q.Add("name", name)
 					q.Add("from", strconv.Itoa(int(st.Unix())))
@@ -72,6 +70,8 @@ var _ = Describe("server", func() {
 					t, _, _, _, _ := s.Get(st, et, sk)
 					Expect(t).ToNot(BeNil())
 					Expect(t.String()).To(Equal("\"foo;bar\" 2\n\"foo;baz\" 3\n"))
+
+					c.Stop()
 
 					close(done)
 				})

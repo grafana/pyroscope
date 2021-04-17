@@ -334,6 +334,7 @@ func startServer(cfg *config.Config) {
 	go printRAMUsage()
 	go printDiskUsage(cfg)
 	c := server.New(cfg, s)
+	atexit.Register(func() { c.Stop() })
 	if !cfg.Server.AnalyticsOptOut {
 		analyticsService := analytics.NewService(cfg, s, c)
 		go analyticsService.Start()
