@@ -10,10 +10,22 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/avast/retry-go"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
+
+func retryUntilServerIsUp(urlStr string) {
+	err := retry.Do(
+		func() error {
+			_, err := http.Get(urlStr)
+			return err
+		},
+	)
+
+	Expect(err).ToNot(HaveOccurred())
+}
 
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
@@ -62,6 +74,7 @@ var _ = Describe("server", func() {
 						contentType = "text/plain"
 					}
 					req.Header.Set("Content-Type", contentType)
+					retryUntilServerIsUp("http://localhost:10043/")
 					res, err := http.DefaultClient.Do(req)
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(200))
