@@ -89,7 +89,7 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [x] Linux eBPF
 * [ ] Node (coming soon)
 
-Let us know what other integrations you want to see in [our slack](https://pyroscope.io/slack).
+Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
 
 ## Contributing
 
