@@ -67,6 +67,9 @@ COPY --from=rust-builder /opt/rustdeps/librustdeps.a /opt/pyroscope/third_party/
 COPY third_party/rustdeps/rbspy.h /opt/pyroscope/third_party/rustdeps/rbspy.h
 COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
 
+COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
+COPY --from=pyroscope/phpspy:dev /var/www/html/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
+
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
 COPY pkg ./pkg
 COPY cmd ./cmd
