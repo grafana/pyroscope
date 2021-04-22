@@ -19,11 +19,14 @@ var _ = Describe("flags", func() {
 		It("works", func(done Done) {
 			wg := sync.WaitGroup{}
 			wg.Add(3)
+			var timestampsMutex sync.Mutex
 			timestamps := []time.Time{}
 			myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				defer GinkgoRecover()
 
+				timestampsMutex.Lock()
 				timestamps = append(timestamps, time.Now())
+				timestampsMutex.Unlock()
 				_, err := ioutil.ReadAll(r.Body)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -58,6 +61,6 @@ var _ = Describe("flags", func() {
 			wg.Wait()
 			r.Stop()
 			close(done)
-		}, 2)
+		}, 3)
 	})
 })

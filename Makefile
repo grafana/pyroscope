@@ -37,7 +37,7 @@ build-rust-dependencies:
 
 .PHONY: test
 test:
-	go list ./... | xargs -I {} sh -c "go test {} || exit 255"
+	go test -race -tags debugspy
 
 .PHONY: server
 server:

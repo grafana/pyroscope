@@ -44,5 +44,5 @@ var _ = Describe("cache", func() {
 		cache.Flush()
 
 		close(done)
-	})
+	}, 3)
 })

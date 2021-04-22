@@ -3,6 +3,7 @@ package transporttrie
 import (
 	"bytes"
 	"sort"
+	"sync"
 )
 
 type trieNode struct {
@@ -134,6 +135,7 @@ OuterLoop:
 }
 
 type Trie struct {
+	mutex      sync.Mutex
 	I          byte // debugging
 	metadata   map[string]string
 	Multiplier int
@@ -162,6 +164,9 @@ func (t *Trie) Clone(m, d int) *Trie {
 }
 
 func (t *Trie) Insert(key []byte, value uint64, merge ...bool) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
 	isMerge := false
 	if len(merge) > 0 && merge[0] {
 		isMerge = true
@@ -178,6 +183,9 @@ func (t *Trie) Insert(key []byte, value uint64, merge ...bool) {
 }
 
 func (t *Trie) Iterate(cb func(name []byte, val uint64)) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
 	nodes := []*trieNode{t.root}
 	prefixes := make([][]byte, 1)
 	prefixes[0] = make([]byte, 0)

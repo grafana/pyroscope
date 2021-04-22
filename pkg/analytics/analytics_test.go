@@ -69,7 +69,7 @@ var _ = Describe("analytics", func() {
 					BeTemporally("~", startTime.Add(500*time.Millisecond), durThreshold),
 				))
 				close(done)
-			})
+			}, 2)
 		})
 	})
 })

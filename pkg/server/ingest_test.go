@@ -87,7 +87,7 @@ var _ = Describe("server", func() {
 					c.Stop()
 
 					close(done)
-				})
+				}, 2)
 			}
 
 			Context("default format", func() {
