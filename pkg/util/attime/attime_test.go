@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("metadata", func() {
+var _ = Describe("attime", func() {
 	Describe("Parse", func() {
 		Context("simple cases", func() {
 			It("works correctly", func() {

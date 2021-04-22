@@ -10,7 +10,7 @@ import (
 
 var _ = Describe("FlamebearerStruct", func() {
 	Context("simple case", func() {
-		It("deserialize returns the same trie", func() {
+		It("sets all attributes correctly", func() {
 			tree := New()
 			tree.Insert([]byte("a;b"), uint64(1))
 			tree.Insert([]byte("a;c"), uint64(2))
@@ -23,7 +23,7 @@ var _ = Describe("FlamebearerStruct", func() {
 		})
 	})
 	Context("case with many nodes", func() {
-		It("deserialize returns the same trie", func() {
+		It("groups nodes into a new \"other\" node", func() {
 			tree := New()
 			r := rand.New(rand.NewSource(123))
 			for i := 0; i < 2048; i++ {

@@ -14,9 +14,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
-var _ = Describe("flags", func() {
-	Describe("generateRootCmd", func() {
-		It("works", func(done Done) {
+var _ = Describe("remote.Remote", func() {
+	Describe("Upload", func() {
+		It("uploads data to an http server", func(done Done) {
 			wg := sync.WaitGroup{}
 			wg.Add(3)
 			var timestampsMutex sync.Mutex
@@ -53,7 +53,6 @@ var _ = Describe("flags", func() {
 
 			t := transporttrie.New()
 			for i := 0; i < 3; i++ {
-
 				r.Upload("test{}", testing.SimpleTime(0), testing.SimpleTime(10), "debugspy", 100, t)
 			}
 

@@ -13,7 +13,7 @@ import (
 )
 
 var _ = Describe("cache", func() {
-	It("works", func(done Done) {
+	It("works properly", func(done Done) {
 		tdir := testing.TmpDirSync()
 		badgerPath := filepath.Join(tdir.Path)
 		err := os.MkdirAll(badgerPath, 0o755)

@@ -10,24 +10,24 @@ import (
 
 var dictSerializeExample = []byte("\x01\x00\x00\x01\x02\x00\x01\x00\x02\x02\x01\x01\x01\x00\x02\x02\x01\x02\x00")
 
-var _ = Describe("tree package", func() {
-	Describe("Serialize", func() {
+var _ = Describe("tree", func() {
+	Describe("Insert", func() {
 		tree := New()
 		tree.Insert([]byte("a;b"), uint64(1))
 		tree.Insert([]byte("a;c"), uint64(2))
 
-		It("returns correct results", func() {
+		It("correctly sets children nodes", func() {
 			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
 		})
 	})
 
-	Describe("trie.Serialize(d, )", func() {
+	Describe("Serialize", func() {
 		d := dict.New()
 		tree := New()
 		tree.Insert([]byte("a;b"), uint64(1))
 		tree.Insert([]byte("a;c"), uint64(2))
 
-		It("returns correct results", func() {
+		It("serializes tree", func() {
 			var buf bytes.Buffer
 			tree.Serialize(d, 1024, &buf)
 			Expect(buf.Bytes()).To(Equal(dictSerializeExample))
@@ -44,9 +44,9 @@ var _ = Describe("tree package", func() {
 		})
 	})
 
-	Describe("trie.Deserialize()", func() {
+	Describe("Deserialize", func() {
 		// TODO: add a case with a real dictionary
-		It("returns correct results", func() {
+		It("returns a properly deserialized tree", func() {
 			d := dict.New()
 			r := bytes.NewReader(dictSerializeExample)
 			t, err := Deserialize(d, r)
