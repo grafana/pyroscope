@@ -20,8 +20,6 @@
   <a href="/examples">Examples</a>
   <span> • </span>
   <a href="https://pyroscope.io/slack">Slack</a>
-  <span> • </span>
-  <a href="https://pyroscope.io/cloud">Cloud</a>
 </h2>
 
 #### _Read this in other languages._
@@ -91,14 +89,7 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [x] Linux eBPF
 * [ ] Node (coming soon)
 
-Let us know what other integrations you want to see in [our slack](https://pyroscope.io/slack).
-
-## Cloud
-
-Pyroscope Cloud is a fully-managed, continous profiling service powered by Pyroscope team. It is the fastest, easiest way to start using Pyroscope.
-
-Special Offer: first 100 users get 3 months of Pyroscope Cloud for free. Create a server [here](https://pyroscope.io/cloud).
-
+Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
 
 ## Contributing
 
@@ -130,5 +121,7 @@ To start contributing, check out our [Contributing Guide](/CONTRIBUTING.md)
 <a href="https://github.com/SusyQinqinYang"><img src="https://avatars.githubusercontent.com/u/55719616?v=4" title="SusyQinqinYang" width="80" height="80"></a>
 <a href="https://github.com/NSObjects"><img src="https://avatars.githubusercontent.com/u/17995427?v=4" title="NSObjects" width="80" height="80"></a>
 <a href="https://github.com/miravtmehta"><img src="https://avatars.githubusercontent.com/u/54740656?v=4" title="miravtmehta" width="80" height="80"></a>
+<a href="https://github.com/lzh2nix"><img src="https://avatars.githubusercontent.com/u/7421004?v=4" title="lzh2nix" width="80" height="80"></a>
+<a href="https://github.com/cnych"><img src="https://avatars.githubusercontent.com/u/3094973?v=4" title="cnych" width="80" height="80"></a>
 
 [//]: contributor-faces

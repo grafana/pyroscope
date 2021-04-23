@@ -1,13 +1,13 @@
 package server
 
-import "github.com/spaolacci/murmur3"
+import "github.com/twmb/murmur3"
 
 const seed = 6231912
 
 type hashString string
 
 func (hs hashString) Sum64() uint64 {
-	return murmur3.Sum64WithSeed([]byte(hs), seed)
+	return murmur3.SeedSum64(seed, []byte(hs))
 }
 
 func (ctrl *Controller) statsInc(name string) {

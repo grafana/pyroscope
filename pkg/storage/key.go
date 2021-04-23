@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
-	"github.com/spaolacci/murmur3"
+	"github.com/twmb/murmur3"
 )
 
 type Key struct {
@@ -145,7 +145,7 @@ func (k *Key) Normalized() string {
 }
 
 func (k *Key) Hashed() []byte {
-	u1, u2 := murmur3.Sum128WithSeed([]byte(k.Normalized()), seed)
+	u1, u2 := murmur3.SeedSum128(seed, seed, []byte(k.Normalized()))
 
 	b := make([]byte, 16)
 	binary.LittleEndian.PutUint64(b[:8], u1)

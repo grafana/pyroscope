@@ -27,10 +27,10 @@ func (u *upstreamMock) Upload(j *upstream.UploadJob) {
 	u.tries = append(u.tries, j.Trie)
 }
 
-var _ = Describe("analytics", func() {
+var _ = Describe("agent.Session", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		Describe("NewSession", func() {
-			It("works as expected", func(done Done) {
+			It("creates a new session and performs chunking", func(done Done) {
 				u := &upstreamMock{}
 				uploadRate := 200 * time.Millisecond
 				s := NewSession(&SessionConfig{

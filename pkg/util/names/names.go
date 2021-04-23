@@ -198,7 +198,7 @@ package names
 //   especially if we're gonna be pull the changes in the future
 
 import (
-	"github.com/spaolacci/murmur3"
+	"github.com/twmb/murmur3"
 )
 
 var (
@@ -770,7 +770,7 @@ var (
 const murmurSeed = 6231912
 
 func GetRandomName(seed string) string {
-	v := murmur3.Sum32WithSeed([]byte(seed), murmurSeed)
+	v := murmur3.SeedSum32(murmurSeed, []byte(seed))
 	return left[int(v&0xffff)%len(left)] + "." + right[int(v>>16&0xffff)%len(right)]
 }
 

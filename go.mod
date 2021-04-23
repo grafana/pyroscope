@@ -3,6 +3,7 @@ module github.com/pyroscope-io/pyroscope
 go 1.14
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
 	github.com/cheggaaa/pb/v3 v3.0.5
 	github.com/clarkduvall/hyperloglog v0.0.0-20171127014514-a0107a5d8004
@@ -37,7 +38,7 @@ require (
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sirupsen/logrus v1.7.0
-	github.com/spaolacci/murmur3 v1.1.0
+	github.com/twmb/murmur3 v1.1.5
 	github.com/wacul/ptr v1.0.0 // indirect
 	golang.org/x/sys v0.0.0-20210228012217-479acdf4ea46 // indirect
 	golang.org/x/tools v0.1.0

@@ -37,7 +37,7 @@ build-rust-dependencies:
 
 .PHONY: test
 test:
-	go list ./... | xargs -I {} sh -c "go test {} || exit 255"
+	go test -race -tags debugspy
 
 .PHONY: server
 server:
@@ -66,11 +66,11 @@ assets-release: install-web-dependencies
 
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS))
-	PATH=$(GOPATH):$(PATH) pkger -o pkg/server
+	go run "$(shell scripts/pinned-tool.sh github.com/markbates/pkger)/cmd/pkger" -o pkg/server
 
 .PHONY: lint
 lint:
-	scripts/pinned-tool.sh github.com/mgechev/revive -config revive.toml -exclude ./vendor/... -formatter stylish ./...
+	go run "$(shell scripts/pinned-tool.sh github.com/mgechev/revive)" -config revive.toml -exclude ./vendor/... -formatter stylish ./...
 
 .PHONY: ensure-logrus-not-used
 ensure-logrus-not-used:

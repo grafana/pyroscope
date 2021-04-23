@@ -58,7 +58,7 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 
 FROM golang:1.15.1-alpine3.12 as go-builder
 
-RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev
+RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 
 WORKDIR /opt/pyroscope
 
