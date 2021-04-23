@@ -12,6 +12,7 @@ type streeNode struct {
 	time     time.Time
 	present  bool
 	samples  uint64
+	writes   uint64
 	children []*streeNode
 }
 
@@ -89,6 +90,7 @@ func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode,
 			r := sn.overlapWrite(st, et)
 			fv, _ := r.Float64()
 			sn.samples += uint64(float64(samples) * fv)
+			sn.writes += uint64(1)
 
 			//  relationship                               overlap read             overlap write
 			// 	inside  rel = iota   // | S E |            <1                       1/1
@@ -228,6 +230,7 @@ func (s *Segment) growTree(st, et time.Time) {
 		s.root = newNode(prevVal.time.Truncate(s.durations[newDepth]), newDepth, s.multiplier)
 		if prevVal != nil {
 			s.root.samples = prevVal.samples
+			s.root.writes = prevVal.writes
 			s.root.replace(prevVal)
 		}
 	}
@@ -238,7 +241,7 @@ type Addon struct {
 	T     time.Time
 }
 
-// TODO: just give d+t info here
+// TODO: simplify arguments
 func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, r *big.Rat, addons []Addon)) {
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -253,7 +256,8 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 	v.print(fmt.Sprintf("/tmp/0-put-%s-%s.html", st.String(), et.String()))
 }
 
-func (s *Segment) Get(st, et time.Time, cb func(depth int, samples uint64, t time.Time, r *big.Rat)) {
+// TODO: simplify arguments
+func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint64, t time.Time, r *big.Rat)) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
@@ -266,7 +270,7 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples uint64, t tim
 	s.root.get(st, et, func(sn *streeNode, depth int, t time.Time, r *big.Rat) {
 		// TODO: pass m / d from .get() ?
 		v.add(sn, r, true)
-		cb(depth, sn.samples, t, r)
+		cb(depth, sn.samples, sn.writes, t, r)
 	})
 	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
 }

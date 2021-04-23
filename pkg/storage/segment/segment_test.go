@@ -2,13 +2,10 @@ package segment
 
 import (
 	"bufio"
-	"bytes"
 	"log"
 	"math/big"
 	"strings"
 	"time"
-
-	"github.com/sirupsen/logrus"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,7 +14,7 @@ import (
 
 func doGet(s *Segment, st, et time.Time) []time.Time {
 	res := []time.Time{}
-	s.Get(st, et, func(d int, samples uint64, t time.Time, r *big.Rat) {
+	s.Get(st, et, func(d int, samples, writes uint64, t time.Time, r *big.Rat) {
 		res = append(res, t)
 	})
 	return res
@@ -52,30 +49,6 @@ func expectChildrenSamplesAddUpToParentSamples(tn *streeNode) {
 var _ = Describe("stree", func() {
 	r := 10 * time.Second
 	m := 10
-
-	Context("Serialize / Deserialize", func() {
-		It("returns serialized value", func() {
-			s := New(r, m)
-			s.Put(testing.SimpleTime(0),
-				testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-			s.Put(testing.SimpleTime(10),
-				testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-			s.Put(testing.SimpleTime(20),
-				testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-
-			var buf bytes.Buffer
-			s.Serialize(&buf)
-			serialized := buf.Bytes()
-			s, err := Deserialize(r, m, bytes.NewReader(serialized))
-			Expect(err).ToNot(HaveOccurred())
-			var buf2 bytes.Buffer
-			s.Serialize(&buf2)
-			serialized2 := buf2.Bytes()
-			logrus.Debugf("1: %q", serialized)
-			logrus.Debugf("2: %q", serialized2)
-			Expect(string(serialized2)).To(Equal(string(serialized)))
-		})
-	})
 
 	Context("Get", func() {
 		Context("When there's no root", func() {

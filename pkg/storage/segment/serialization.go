@@ -11,7 +11,7 @@ import (
 )
 
 // serialization format version. it's not very useful right now, but it will be in the future
-const currentVersion = 1
+const currentVersion = 2
 
 func (s *Segment) populateFromMetadata(metadata map[string]interface{}) {
 	if v, ok := metadata["sampleRate"]; ok {
@@ -47,6 +47,7 @@ func (s *Segment) Serialize(w io.Writer) error {
 		varint.Write(w, uint64(n.depth))
 		varint.Write(w, uint64(n.time.Unix()))
 		varint.Write(w, n.samples)
+		varint.Write(w, n.writes)
 		p := uint64(0)
 		if n.present {
 			p = 1
@@ -78,7 +79,7 @@ func Deserialize(resolution time.Duration, multiplier int, r io.Reader) (*Segmen
 	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
 
 	// reads serialization format version, see comment at the top
-	_, err := varint.Read(br)
+	version, err := varint.Read(br)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +104,13 @@ func Deserialize(resolution time.Duration, multiplier int, r io.Reader) (*Segmen
 		if err != nil {
 			return nil, err
 		}
+		var writesVal uint64
+		if version >= 2 {
+			writesVal, err = varint.Read(br)
+			if err != nil {
+				return nil, err
+			}
+		}
 		presentVal, err := varint.Read(br)
 		if err != nil {
 			return nil, err
@@ -112,6 +120,7 @@ func Deserialize(resolution time.Duration, multiplier int, r io.Reader) (*Segmen
 			node.present = true
 		}
 		node.samples = samplesVal
+		node.writes = writesVal
 		if s.root == nil {
 			s.root = node
 		}
