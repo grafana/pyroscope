@@ -15,7 +15,7 @@ var _ = Describe("analytics", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		Describe("NewSession", func() {
 			It("works as expected", func(done Done) {
-				s, err := Start(spy.ProfileCPU)
+				s, err := Start(spy.ProfileCPU, false)
 				Expect(err).ToNot(HaveOccurred())
 				go func() {
 					s := time.Now()

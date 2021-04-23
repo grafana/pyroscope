@@ -38,7 +38,7 @@ type ProfileSession struct {
 	tries         []*transporttrie.Trie
 
 	profileTypes     []spy.ProfileType
-	forceGC          bool
+	disableGCRuns    bool
 	withSubprocesses bool
 
 	startTime time.Time
@@ -51,7 +51,7 @@ type SessionConfig struct {
 	Upstream         upstream.Upstream
 	AppName          string
 	ProfilingTypes   []spy.ProfileType
-	ForceGC          bool
+	DisableGCRuns    bool
 	SpyName          string
 	SampleRate       int
 	UploadRate       time.Duration
@@ -65,7 +65,7 @@ func NewSession(c *SessionConfig) *ProfileSession {
 		appName:          c.AppName,
 		spyName:          c.SpyName,
 		profileTypes:     c.ProfilingTypes,
-		forceGC:          c.ForceGC,
+		disableGCRuns:    c.DisableGCRuns,
 		sampleRate:       c.SampleRate,
 		uploadRate:       c.UploadRate,
 		pids:             []int{c.Pid},
@@ -130,7 +130,7 @@ func (ps *ProfileSession) Start() error {
 
 	if ps.spyName == "gospy" {
 		for _, pt := range ps.profileTypes {
-			s, err := gospy.Start(pt, ps.forceGC)
+			s, err := gospy.Start(pt, ps.disableGCRuns)
 			if err != nil {
 				return err
 			}

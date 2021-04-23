@@ -25,10 +25,10 @@ var DefaultProfileTypes = []ProfileType{ProfileCPU, ProfileAllocObjects, Profile
 type Config struct {
 	ApplicationName string // e.g backend.purchases
 	ServerAddress   string // e.g http://pyroscope.services.internal:4040
-	AuthToken       string
+	AuthToken       string // specify this token when using pyroscope cloud
 	Logger          agent.Logger
 	ProfileTypes    []ProfileType
-	ForceGC         bool // this will run runtime.GC before memory profiling
+	DisableGCRuns   bool // this will disable automatic runtime.GC runs
 }
 
 type Profiler struct {
@@ -58,7 +58,7 @@ func Start(cfg Config) (*Profiler, error) {
 		Upstream:         u,
 		AppName:          cfg.ApplicationName,
 		ProfilingTypes:   []ProfileType{ProfileCPU, ProfileAllocObjects, ProfileAllocSpace, ProfileInuseObjects, ProfileInuseSpace},
-		ForceGC:          cfg.ForceGC,
+		DisableGCRuns:    cfg.DisableGCRuns,
 		SpyName:          "gospy",
 		SampleRate:       100,
 		UploadRate:       10 * time.Second,

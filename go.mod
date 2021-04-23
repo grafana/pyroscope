@@ -14,7 +14,7 @@ require (
 	github.com/dgrijalva/lfu-go v0.0.0-20141010002404-f174e76c5138
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
-	github.com/golang/protobuf v1.4.2 // indirect
+	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99
 	github.com/google/uuid v1.1.2
@@ -42,7 +42,7 @@ require (
 	github.com/wacul/ptr v1.0.0 // indirect
 	golang.org/x/sys v0.0.0-20210228012217-479acdf4ea46 // indirect
 	golang.org/x/tools v0.1.0
-	google.golang.org/protobuf v1.25.0 // indirect
+	google.golang.org/protobuf v1.25.0
 	honnef.co/go/tools v0.0.1-2020.1.6
 )
 
