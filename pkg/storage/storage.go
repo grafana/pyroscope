@@ -263,6 +263,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 	tl := segment.GenerateTimeline(gi.StartTime, gi.EndTime)
 	var lastSegment *segment.Segment
+	var writesTotal uint64
 	for _, sk := range segmentKeys {
 		// TODO: refactor, store `Key`s in dimensions
 		skk, _ := ParseKey(string(sk))
@@ -275,13 +276,15 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 		tl.PopulateTimeline(st)
 
-		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples uint64, t time.Time, r *big.Rat) {
+		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
 			k := skk.TreeKey(depth, t)
 			tr := s.trees.Get(k).(*tree.Tree)
 			// TODO: these clones are probably are not the most efficient way of doing this
 			//   instead this info should be passed to the merger function imo
 			tr2 := tr.Clone(r)
 			triesToMerge = append(triesToMerge, merge.Merger(tr2))
+			logrus.Debug("w: ", writes)
+			writesTotal += writes
 		})
 	}
 
@@ -289,8 +292,17 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	if resultTrie == nil {
 		return nil, nil
 	}
+
+	t := resultTrie.(*tree.Tree)
+
+	// TODO: only do this for some types of data
+	logrus.Debug("writes ", writesTotal)
+	if writesTotal > 0 {
+		t = t.Clone(big.NewRat(1, int64(writesTotal)))
+	}
+
 	return &GetOutput{
-		Tree:       resultTrie.(*tree.Tree),
+		Tree:       t,
 		Timeline:   tl,
 		SpyName:    lastSegment.SpyName(),
 		SampleRate: lastSegment.SampleRate(),

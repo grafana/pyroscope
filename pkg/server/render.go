@@ -36,7 +36,8 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err) // TODO: handle
 	}
 
-	if gOut.Tree == nil {
+	// TODO: handle properly
+	if gOut == nil {
 		gOut.Tree = tree.New()
 	}
 
