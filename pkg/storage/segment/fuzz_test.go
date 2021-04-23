@@ -53,7 +53,7 @@ func (sm *storageMock) Get(st, et time.Time, cb func(depth int, samples, writes 
 }
 
 // if you change something in this test make sure it doesn't change test coverage.
-func fuzzTest(writeSize func() int) {
+func fuzzTest(testWrites bool, writeSize func() int) {
 	s := New(10*time.Second, 10)
 	m := newMock(10 * time.Second)
 
@@ -118,7 +118,9 @@ func fuzzTest(writeSize func() int) {
 		log.Println("s:", sSum, sSumF, sWrites, sWritesF)
 
 		Expect(mSum.Cmp(sSum)).To(Equal(0))
-		Expect(mWrites.Cmp(sWrites)).To(Equal(0))
+		if testWrites {
+			Expect(mWrites.Cmp(sWrites)).To(Equal(0))
+		}
 	}
 }
 
@@ -127,20 +129,20 @@ var _ = Describe("segment", func() {
 	Context("fuzz tests", func() {
 		Context("writes are 10 second long", func() {
 			It("works as expected", func(done Done) {
-				fuzzTest(func() int {
+				fuzzTest(true, func() int {
 					return 10
 				})
 				close(done)
 			}, 5)
 		})
 		Context("writes are different lengths", func() {
-			// It("works as expected", func(done Done) {
-			// 	fuzzTest(func() int {
-			// 		return 20
-			// 		// return 1 + rand.Intn(10)*10
-			// 	})
-			// 	close(done)
-			// }, 5)
+			It("works as expected", func(done Done) {
+				fuzzTest(false, func() int {
+					return 20
+					// return 1 + rand.Intn(10)*10
+				})
+				close(done)
+			}, 5)
 		})
 	})
 })
