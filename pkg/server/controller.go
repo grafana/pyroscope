@@ -12,8 +12,6 @@ import (
 	"text/template"
 	"time"
 
-	_ "net/http/pprof"
-
 	"github.com/markbates/pkger"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"

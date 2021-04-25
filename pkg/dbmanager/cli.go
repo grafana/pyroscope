@@ -95,15 +95,28 @@ func copyData(cfg *config.Config) error {
 		}
 
 		srct2 := srct.Add(resolution)
-		tree, _, sn, sr, err := s.Get(srct, srct2, sk)
+		gOut, err := s.Get(&storage.GetInput{
+			StartTime: srct,
+			EndTime:   srct2,
+			Key:       sk,
+		})
 		if err != nil {
 			return err
 		}
 
-		if tree != nil {
+		if gOut.Tree != nil {
 			dstt := srct.Add(durDiff)
 			dstt2 := dstt.Add(resolution)
-			err = s.Put(dstt, dstt2, sk, tree, sn, sr)
+
+			err = s.Put(&storage.PutInput{
+				StartTime:  dstt,
+				EndTime:    dstt2,
+				Key:        sk,
+				Val:        gOut.Tree,
+				SpyName:    gOut.SpyName,
+				SampleRate: gOut.SampleRate,
+				Units:      gOut.Units,
+			})
 			if err != nil {
 				return err
 			}

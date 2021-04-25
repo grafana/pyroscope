@@ -25,7 +25,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
-	"github.com/pyroscope-io/pyroscope/pkg/util/strarr"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/sirupsen/logrus"
 
 	"github.com/iancoleman/strcase"
@@ -91,7 +91,7 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
 		}
-		if skipVal == "true" || strarr.Contains(skip, nameVal) {
+		if skipVal == "true" || slices.StringContains(skip, nameVal) {
 			continue
 		}
 
@@ -330,7 +330,7 @@ func startServer(cfg *config.Config) {
 		panic(err)
 	}
 	u := direct.New(cfg, s)
-	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}", logrus.StandardLogger())
+	go agent.SelfProfile(cfg, u, "pyroscope.server", logrus.StandardLogger())
 	go printRAMUsage()
 	go printDiskUsage(cfg)
 	c := server.New(cfg, s)

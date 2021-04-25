@@ -1,86 +1,129 @@
 package gospy
 
 import (
+	"bytes"
+	"compress/gzip"
 	"runtime"
-	"strings"
+	"runtime/pprof"
+	"sync"
+	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/convert"
 )
 
 // TODO: make this configurable
 // TODO: pass lower level structures between go and rust?
 var bufferLength = 1024 * 64
 
-var excludes = []string{
-	"gopark",
-	"GoroutineProfile",
-	"gospy.(*GoSpy).Snapshot", // see https://github.com/pyroscope-io/pyroscope/issues/50 for context
-	"sigNoteSleep",
-	"notetsleepg",
-}
-
 type GoSpy struct {
-	stacks    []runtime.StackRecord
-	selfFrame *runtime.Frame
+	resetMutex    sync.Mutex
+	reset         bool
+	stop          bool
+	profileType   spy.ProfileType
+	disableGCRuns bool
+
+	lastGCGeneration uint32
+
+	stopCh chan struct{}
+	buf    *bytes.Buffer
 }
 
-func Start(_ int) (spy.Spy, error) {
-	return &GoSpy{}, nil
+func Start(profileType spy.ProfileType, disableGCRuns bool) (spy.Spy, error) {
+	s := &GoSpy{
+		stopCh:        make(chan struct{}),
+		buf:           &bytes.Buffer{},
+		profileType:   profileType,
+		disableGCRuns: disableGCRuns,
+	}
+	if s.profileType == spy.ProfileCPU {
+		_ = pprof.StartCPUProfile(s.buf)
+	}
+	return s, nil
 }
 
-func (*GoSpy) Stop() error {
+func (s *GoSpy) Stop() error {
+	s.stop = true
+	<-s.stopCh
 	return nil
+}
+
+// TODO: this is not the most elegant solution as it creates global state
+//   the idea here is that we can reuse heap profiles
+var (
+	lastProfileMutex     sync.Mutex
+	lastProfile          *convert.Profile
+	lastProfileCreatedAt time.Time
+)
+
+func getHeapProfile(b *bytes.Buffer) *convert.Profile {
+	lastProfileMutex.Lock()
+	defer lastProfileMutex.Unlock()
+
+	if lastProfile == nil || !lastProfileCreatedAt.After(time.Now().Add(-1*time.Second)) {
+		pprof.WriteHeapProfile(b)
+		g, _ := gzip.NewReader(bytes.NewReader(b.Bytes()))
+
+		lastProfile, _ = convert.ParsePprof(g)
+		lastProfileCreatedAt = time.Now()
+	}
+
+	return lastProfile
+}
+
+func numGC() uint32 {
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	return memStats.NumGC
 }
 
 // Snapshot calls callback function with stack-trace or error.
 func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
-	if s.selfFrame == nil {
-		// Determine the runtime.Frame of this func so we can hide it from our
-		// profiling output.
-		rpc := make([]uintptr, 1)
-		n := runtime.Callers(1, rpc)
-		if n < 1 {
-			// TODO: log the error
-			return
-		}
-		selfFrame, _ := runtime.CallersFrames(rpc).Next()
-		s.selfFrame = &selfFrame
+	s.resetMutex.Lock()
+	defer s.resetMutex.Unlock()
+
+	if !s.reset {
+		return
 	}
 
-	n, ok := runtime.GoroutineProfile(s.stacks)
-	if !ok {
-		s.stacks = make([]runtime.StackRecord, int(float64(n)*1.1))
+	s.reset = false
+
+	// TODO: handle errors
+	if s.profileType == spy.ProfileCPU {
+		pprof.StopCPUProfile()
+		r, _ := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
+		profile, _ := convert.ParsePprof(r)
+		profile.Get("samples", func(name []byte, val int) {
+			cb(name, uint64(val), nil)
+		})
+		_ = pprof.StartCPUProfile(s.buf)
 	} else {
-		for _, stack := range s.stacks[0:n] {
-			stackStr := stackToString(&stack)
-			shouldExclude := false
-			for _, suffix := range excludes {
-				if strings.HasSuffix(stackStr, suffix) {
-					shouldExclude = true
-					break
-				}
-			}
-			if !shouldExclude {
-				cb([]byte(stackStr), 1, nil)
-			}
+		// this is current GC generation
+		currentGCGeneration := numGC()
+
+		// sometimes GC doesn't run within 10 seconds
+		//   in such cases we force a GC run
+		//   users can disable it with disableGCRuns option
+		if currentGCGeneration == s.lastGCGeneration && !s.disableGCRuns {
+			runtime.GC()
+			currentGCGeneration = numGC()
+		}
+
+		// if there's no GC run then the profile is gonna be the same
+		//   in such case it does not make sense to upload the same profile twice
+		if currentGCGeneration != s.lastGCGeneration {
+			getHeapProfile(s.buf).Get(string(s.profileType), func(name []byte, val int) {
+				cb(name, uint64(val), nil)
+			})
+			s.lastGCGeneration = currentGCGeneration
 		}
 	}
+	s.buf.Reset()
 }
 
-func stackToString(sr *runtime.StackRecord) string {
-	frames := runtime.CallersFrames(sr.Stack())
-	stack := []string{}
-	for i := 0; ; i++ {
-		frame, more := frames.Next()
-		stack = append([]string{frame.Function}, stack...)
-		if !more {
-			break
-		}
-	}
-	// TODO: join is probably slow, the reason I'm not using a buffer is that i
-	return strings.Join(stack, ";")
-}
+func (s *GoSpy) Reset() {
+	s.resetMutex.Lock()
+	defer s.resetMutex.Unlock()
 
-func init() {
-	spy.RegisterSpy("gospy", Start)
+	s.reset = true
 }

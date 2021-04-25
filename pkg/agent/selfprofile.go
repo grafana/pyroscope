@@ -3,6 +3,7 @@ package agent
 import (
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
@@ -10,7 +11,17 @@ import (
 
 func SelfProfile(_ *config.Config, u upstream.Upstream, appName string, logger Logger) error {
 	// TODO: sample rate and upload rate should come from config
-	s := NewSession(u, appName, "gospy", 100, 10*time.Second, 0, false)
+	c := SessionConfig{
+		Upstream:         u,
+		AppName:          appName,
+		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU, spy.ProfileAllocObjects, spy.ProfileAllocSpace, spy.ProfileInuseObjects, spy.ProfileInuseSpace},
+		SpyName:          "gospy",
+		SampleRate:       100,
+		UploadRate:       10 * time.Second,
+		Pid:              0,
+		WithSubprocesses: false,
+	}
+	s := NewSession(&c)
 	err := s.Start()
 
 	s.Logger = logger

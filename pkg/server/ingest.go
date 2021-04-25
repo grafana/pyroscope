@@ -14,13 +14,15 @@ import (
 )
 
 type ingestParams struct {
-	parserFunc func(io.Reader) (*tree.Tree, error)
-	storageKey *storage.Key
-	spyName    string
-	sampleRate int
-	modifiers  []string
-	from       time.Time
-	until      time.Time
+	parserFunc      func(io.Reader) (*tree.Tree, error)
+	storageKey      *storage.Key
+	spyName         string
+	sampleRate      int
+	units           string
+	aggregationType string
+	modifiers       []string
+	from            time.Time
+	until           time.Time
 }
 
 func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(io.Reader) (*tree.Tree, error) {
@@ -76,6 +78,18 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 		ip.spyName = "unknown"
 	}
 
+	if u := q.Get("units"); u != "" {
+		ip.units = u
+	} else {
+		ip.units = "samples"
+	}
+
+	if at := q.Get("aggregationType"); at != "" {
+		ip.aggregationType = at
+	} else {
+		ip.aggregationType = "sum"
+	}
+
 	var err error
 	ip.storageKey, err = storage.ParseKey(q.Get("name"))
 	if err != nil {
@@ -95,7 +109,15 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = ctrl.s.Put(ip.from, ip.until, ip.storageKey, t, ip.spyName, ip.sampleRate)
+	err = ctrl.s.Put(&storage.PutInput{
+		StartTime:  ip.from,
+		EndTime:    ip.until,
+		Key:        ip.storageKey,
+		Val:        t,
+		SpyName:    ip.spyName,
+		SampleRate: ip.sampleRate,
+		Units:      ip.units,
+	})
 	if err != nil {
 		logrus.WithField("err", err).Error("error happened while inserting data")
 		return

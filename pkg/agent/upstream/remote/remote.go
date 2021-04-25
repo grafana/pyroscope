@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 )
 
 var (
@@ -22,18 +22,9 @@ var (
 	cloudHostnameSuffix   = "pyroscope.cloud"
 )
 
-type uploadJob struct {
-	name       string
-	startTime  time.Time
-	endTime    time.Time
-	t          *transporttrie.Trie
-	spyName    string
-	sampleRate int
-}
-
 type Remote struct {
 	cfg    RemoteConfig
-	todo   chan *uploadJob
+	todo   chan *upstream.UploadJob
 	done   chan *sync.WaitGroup
 	client *http.Client
 
@@ -50,7 +41,7 @@ type RemoteConfig struct {
 func New(cfg RemoteConfig) (*Remote, error) {
 	r := &Remote{
 		cfg:  cfg,
-		todo: make(chan *uploadJob, 100),
+		todo: make(chan *upstream.UploadJob, 100),
 		done: make(chan *sync.WaitGroup, cfg.UpstreamThreads),
 		client: &http.Client{
 			Transport: &http.Transport{
@@ -89,17 +80,9 @@ func (u *Remote) Stop() {
 }
 
 // TODO: this metadata class should be unified
-func (u *Remote) Upload(name string, startTime, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie) {
-	job := &uploadJob{
-		name:       name,
-		startTime:  startTime,
-		endTime:    endTime,
-		t:          t,
-		spyName:    spyName,
-		sampleRate: sampleRate,
-	}
+func (u *Remote) Upload(j *upstream.UploadJob) {
 	select {
-	case u.todo <- job:
+	case u.todo <- j:
 	default:
 		if u.Logger != nil {
 			u.Logger.Errorf("Remote upload queue is full, dropping a profile")
@@ -107,20 +90,22 @@ func (u *Remote) Upload(name string, startTime, endTime time.Time, spyName strin
 	}
 }
 
-func (u *Remote) uploadProfile(j *uploadJob) {
+func (u *Remote) uploadProfile(j *upstream.UploadJob) {
 	urlObj, _ := url.Parse(u.cfg.UpstreamAddress)
 	q := urlObj.Query()
 
-	q.Set("name", j.name)
-	// TODO: I think these should be renamed in favor of startTime endTime
-	q.Set("from", strconv.Itoa(int(j.startTime.Unix())))
-	q.Set("until", strconv.Itoa(int(j.endTime.Unix())))
-	q.Set("spyName", j.spyName)
-	q.Set("sampleRate", strconv.Itoa(j.sampleRate))
+	q.Set("name", j.Name)
+	// TODO: I think these should be renamed to startTime / endTime
+	q.Set("from", strconv.Itoa(int(j.StartTime.Unix())))
+	q.Set("until", strconv.Itoa(int(j.EndTime.Unix())))
+	q.Set("spyName", j.SpyName)
+	q.Set("sampleRate", strconv.Itoa(j.SampleRate))
+	q.Set("units", j.Units)
+	q.Set("aggregationType", j.AggregationType)
 
 	urlObj.Path = path.Join(urlObj.Path, "/ingest")
 	urlObj.RawQuery = q.Encode()
-	buf := j.t.Bytes()
+	buf := j.Trie.Bytes()
 	if u.Logger != nil {
 		u.Logger.Infof("uploading at %s", urlObj.String())
 	}
@@ -172,7 +157,7 @@ func requiresAuthToken(u *url.URL) bool {
 }
 
 // do safe upload
-func (u *Remote) safeUpload(j *uploadJob) {
+func (u *Remote) safeUpload(j *upstream.UploadJob) {
 	defer func() {
 		if r := recover(); r != nil {
 			if u.Logger != nil {

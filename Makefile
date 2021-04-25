@@ -37,7 +37,7 @@ build-rust-dependencies:
 
 .PHONY: test
 test:
-	go test -race -tags debugspy
+	go test -race -tags debugspy ./...
 
 .PHONY: server
 server:
@@ -110,6 +110,11 @@ update-contributors:
 .PHONY: update-changelog
 update-changelog:
 	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -s
+
+.PHONY: update-protobuf
+update-protobuf:
+	go install google.golang.org/protobuf/cmd/protoc-gen-go
+	protoc --go_out=. pkg/convert/profile.proto
 
 .PHONY: docker-dev
 docker-dev:

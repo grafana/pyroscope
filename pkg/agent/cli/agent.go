@@ -6,6 +6,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/csock"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -61,7 +62,16 @@ func (a *Agent) controlSocketHandler(req *csock.Request) *csock.Response {
 		// TODO: pass withSubprocesses from somewhere
 		// TODO: pass appName from somewhere
 		// TODO: add sample rate
-		s := agent.NewSession(a.u, "testapp.cpu", "gospy", 100, 10*time.Second, 0, false)
+		s := agent.NewSession(&agent.SessionConfig{
+			Upstream:         a.u,
+			AppName:          "testapp",
+			ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU, spy.ProfileAllocObjects, spy.ProfileAllocSpace, spy.ProfileInuseObjects, spy.ProfileInuseSpace},
+			SpyName:          "gospy",
+			SampleRate:       100,
+			UploadRate:       10 * time.Second,
+			Pid:              0,
+			WithSubprocesses: false,
+		})
 		s.Logger = logrus.StandardLogger()
 		a.activeProfiles[profileID] = s
 		s.Start()

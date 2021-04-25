@@ -26,14 +26,19 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err) // TODO: handle
 	}
 
-	resultTree, tl, spyName, sampleRate, err := ctrl.s.Get(startTime, endTime, storageKey)
+	gOut, err := ctrl.s.Get(&storage.GetInput{
+		StartTime: startTime,
+		EndTime:   endTime,
+		Key:       storageKey,
+	})
 	ctrl.statsInc("render")
 	if err != nil {
 		panic(err) // TODO: handle
 	}
 
-	if resultTree == nil {
-		resultTree = tree.New()
+	// TODO: handle properly
+	if gOut == nil {
+		gOut.Tree = tree.New()
 	}
 
 	maxNodes := ctrl.cfg.Server.MaxNodesRender
@@ -46,15 +51,18 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(200)
 
-		fs := resultTree.FlamebearerStruct(maxNodes)
-		fs.SpyName = spyName
-		fs.SampleRate = sampleRate
+		fs := gOut.Tree.FlamebearerStruct(maxNodes)
+		// TODO remove this duplication? We're already adding this to metadata
+		fs.SpyName = gOut.SpyName
+		fs.SampleRate = gOut.SampleRate
+		fs.Units = gOut.Units
 		res := map[string]interface{}{
-			"timeline":    tl,
+			"timeline":    gOut.Timeline,
 			"flamebearer": fs,
 			"metadata": map[string]interface{}{
-				"spyName":    spyName,
-				"sampleRate": sampleRate,
+				"spyName":    gOut.SpyName,
+				"sampleRate": gOut.SampleRate,
+				"units":      gOut.Units,
 			},
 		}
 		encoder := json.NewEncoder(w)

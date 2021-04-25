@@ -35,7 +35,7 @@ const durations = [
 
 // this is a class and not a function because we can save some time by
 //   precalculating divider and suffix and not doing it on each iteration
-export class DurationFormater {
+export class DurationFormatter {
   constructor(maxDur) {
     this.divider = 1;
     this.suffix = 'second';
@@ -50,14 +50,83 @@ export class DurationFormater {
     }
   }
 
-  format(seconds) {
-    let number = seconds / this.divider;
+  format(samples, sampleRate) {
+    let number = samples / sampleRate / this.divider;
     if (number < 0.01) {
       number = '< 0.01';
     } else {
       number = number.toFixed(2);
     }
     return `${number} ${this.suffix}` + (number == 1 ? '' : 's');
+  }
+}
+
+
+const bytes = [
+  [1024, "KB"],
+  [1024, "MB"],
+  [1024, "GB"],
+  [1024, "TB"],
+  [1024, "PB"],
+];
+
+export class BytesFormatter {
+  constructor(maxBytes) {
+    this.divider = 1;
+    this.suffix = 'bytes';
+    for(var i = 0; i < bytes.length; i++) {
+      if (maxBytes >= bytes[i][0]) {
+        this.divider *= bytes[i][0];
+        maxBytes /= bytes[i][0];
+        this.suffix = bytes[i][1];
+      } else {
+        break;
+      }
+    }
+  }
+
+  format(samples, sampleRate) {
+    let number = samples / this.divider;
+    if (number < 0.01) {
+      number = '< 0.01';
+    } else {
+      number = number.toFixed(2);
+    }
+    return `${number} ${this.suffix}`;
+  }
+}
+
+const objects = [
+  [1000, "K"],
+  [1000, "M"],
+  [1000, "G"],
+  [1000, "T"],
+  [1000, "P"],
+];
+
+export class ObjectsFormatter {
+  constructor(maxObjects) {
+    this.divider = 1;
+    this.suffix = '';
+    for(var i = 0; i < objects.length; i++) {
+      if (maxObjects >= objects[i][0]) {
+        this.divider *= objects[i][0];
+        maxObjects /= objects[i][0];
+        this.suffix = objects[i][1];
+      } else {
+        break;
+      }
+    }
+  }
+
+  format(samples, sampleRate) {
+    let number = samples / this.divider;
+    if (number < 0.01) {
+      number = '< 0.01';
+    } else {
+      number = number.toFixed(2);
+    }
+    return `${number} ${this.suffix}`;
   }
 }
 
@@ -83,3 +152,15 @@ export function getPackageNameFromStackTrace(spyName, stackTrace) {
   return stackTrace;
 }
 
+export function getFormatter(max, sampleRate, units){
+  switch (units) {
+    case "samples":
+      return new DurationFormatter(max / sampleRate);
+    case "objects":
+      return new ObjectsFormatter(max);
+    case "bytes":
+      return new BytesFormatter(max);
+    default:
+      return new DurationFormatter(max / sampleRate);
+  }
+}

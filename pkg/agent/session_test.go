@@ -6,6 +6,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -21,8 +23,8 @@ func (u *upstreamMock) Stop() {
 
 }
 
-func (u *upstreamMock) Upload(name string, startTime, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie) {
-	u.tries = append(u.tries, t)
+func (u *upstreamMock) Upload(j *upstream.UploadJob) {
+	u.tries = append(u.tries, j.Trie)
 }
 
 var _ = Describe("agent.Session", func() {
@@ -31,7 +33,16 @@ var _ = Describe("agent.Session", func() {
 			It("creates a new session and performs chunking", func(done Done) {
 				u := &upstreamMock{}
 				uploadRate := 200 * time.Millisecond
-				s := NewSession(u, "test-app", "debugspy", 100, uploadRate, os.Getpid(), true)
+				s := NewSession(&SessionConfig{
+					Upstream:         u,
+					AppName:          "test-app",
+					ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
+					SpyName:          "debugspy",
+					SampleRate:       100,
+					UploadRate:       uploadRate,
+					Pid:              os.Getpid(),
+					WithSubprocesses: true,
+				})
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()

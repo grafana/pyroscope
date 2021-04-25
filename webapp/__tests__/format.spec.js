@@ -1,22 +1,22 @@
-import {DurationFormater} from '../javascript/util/format';
+import {DurationFormatter} from '../javascript/util/format';
 
 
-describe('DurationFormater', () => {
+describe('DurationFormatter', () => {
   it('correctly formats duration', () => {
-    const df = new DurationFormater(40);
-    expect(df.format(0.00001)).toBe('< 0.01 seconds');
-    expect(df.format(1)).toBe('1.00 second');
-    expect(df.format(20)).toBe('20.00 seconds');
-    expect(df.format(20.123)).toBe('20.12 seconds');
-    expect(df.format(80)).toBe('80.00 seconds');
+    const df = new DurationFormatter(40);
+    expect(df.format(0.001, 100)).toBe('< 0.01 seconds');
+    expect(df.format(100, 100)).toBe('1.00 second');
+    expect(df.format(2000, 100)).toBe('20.00 seconds');
+    expect(df.format(2012.3, 100)).toBe('20.12 seconds');
+    expect(df.format(8000, 100)).toBe('80.00 seconds');
   });
 
   it('correctly formats duration', () => {
-    const df = new DurationFormater(80);
-    expect(df.format(60)).toBe('1.00 minute');
-    expect(df.format(1)).toBe('0.02 minutes');
-    expect(df.format(20)).toBe('0.33 minutes');
-    expect(df.format(20.123)).toBe('0.34 minutes');
-    expect(df.format(80)).toBe('1.33 minutes');
+    const df = new DurationFormatter(80);
+    expect(df.format(6000, 100)).toBe('1.00 minute');
+    expect(df.format(100, 100)).toBe('0.02 minutes');
+    expect(df.format(2000, 100)).toBe('0.33 minutes');
+    expect(df.format(2012.3, 100)).toBe('0.34 minutes');
+    expect(df.format(8000, 100)).toBe('1.33 minutes');
   });
 });

@@ -10,8 +10,8 @@ import (
 )
 
 // to run this program:
-//   go run scripts/genrate-sample-config.go -format yaml
-//   go run scripts/genrate-sample-config.go -format md
+//   go run scripts/generate-sample-config/main.go -format yaml
+//   go run scripts/generate-sample-config/main.go -format md
 
 func main() {
 	var format string

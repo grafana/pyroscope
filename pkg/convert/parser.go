@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"io/ioutil"
 	"strconv"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
+	"google.golang.org/protobuf/proto"
 )
 
 // format is a Serialized trie (see transporttrie.Serialize implementation)
@@ -16,6 +18,19 @@ func ParseTrie(r io.Reader, cb func(name []byte, val int)) error {
 		cb(name, int(val))
 	})
 	return nil
+}
+
+// format is pprof. See https://github.com/google/pprof/blob/master/proto/profile.proto
+func ParsePprof(r io.Reader) (*Profile, error) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	profile := &Profile{}
+	if err := proto.Unmarshal(b, profile); err != nil {
+		return nil, err
+	}
+	return profile, nil
 }
 
 // format:

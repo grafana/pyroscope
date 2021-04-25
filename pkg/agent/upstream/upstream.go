@@ -6,8 +6,19 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
+type UploadJob struct {
+	Name            string
+	StartTime       time.Time
+	EndTime         time.Time
+	SpyName         string
+	SampleRate      int
+	Units           string
+	AggregationType string
+	Trie            *transporttrie.Trie
+}
+
 type Upstream interface {
 	Stop()
 	// TODO: too complex, fix it
-	Upload(name string, startTime, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie)
+	Upload(u *UploadJob)
 }
