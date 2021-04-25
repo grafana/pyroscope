@@ -189,9 +189,9 @@ func (ps *ProfileSession) Stop() {
 
 func (ps *ProfileSession) uploadTries(now time.Time) {
 	for i, t := range ps.tries {
-		// TODO: duration should be either taken from config or ideally passed from server
 		skipUpload := false
 		if t != nil {
+			// TODO: uploadRate should be either taken from config or ideally passed from server
 			now = now.Truncate(ps.uploadRate)
 
 			uploadTrie := t
@@ -200,6 +200,7 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 				if previousTrie == nil {
 					skipUpload = true
 				} else {
+					// TODO: Diff doesn't remove empty branches. We need to add that at some point
 					uploadTrie = t.Diff(previousTrie)
 				}
 			}

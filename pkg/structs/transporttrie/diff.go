@@ -1,9 +1,9 @@
 package transporttrie
 
-import "github.com/pyroscope-io/pyroscope/pkg/structs/merge"
+func (originalTrie *Trie) Diff(srcTrie *Trie) *Trie {
+	dstTrie := originalTrie.Clone(1, 1)
+	dstTrie.root = originalTrie.root.clone()
 
-func (dstTrie *Trie) Merge(srcTrieI merge.Merger) {
-	srcTrie := srcTrieI.(*Trie)
 	srcNodes := []*trieNode{srcTrie.root}
 	dstNodes := []*trieNode{dstTrie.root}
 
@@ -16,12 +16,15 @@ func (dstTrie *Trie) Merge(srcTrieI merge.Merger) {
 
 		for _, srcChildNode := range st.children {
 			dt.findNodeAt(srcChildNode.name, func(dstChildNode *trieNode) {
-				if srcChildNode.value > 0 {
-					dstChildNode.value = mergeFunc(dstChildNode.value, srcChildNode.value, dstTrie, srcTrie)
+				if srcChildNode.value > dstChildNode.value {
+					dstChildNode.value = 0
+				} else {
+					dstChildNode.value -= srcChildNode.value
 				}
 				srcNodes = append([]*trieNode{srcChildNode}, srcNodes...)
 				dstNodes = append([]*trieNode{dstChildNode}, dstNodes...)
 			})
 		}
 	}
+	return dstTrie
 }
