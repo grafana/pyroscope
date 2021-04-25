@@ -3,7 +3,6 @@ package transporttrie
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"math/rand"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
@@ -244,25 +243,6 @@ var _ = Describe("trie package", func() {
 			t3.Serialize(&buf3)
 			t1.Serialize(&buf4)
 			Expect(buf4).To(Equal(buf3))
-		})
-	})
-
-	Context("multiple merges", func() {
-		It("works correctly", func() {
-			t1 := New()
-			t1.Insert([]byte("foo"), uint64(1))
-			t1.Insert([]byte("bar"), uint64(2))
-			t1.Insert([]byte("baz"), uint64(3))
-
-			t2 := New()
-			t2.Insert([]byte("foo"), uint64(3))
-			t2.Insert([]byte("bar"), uint64(2))
-			t2.Insert([]byte("baz"), uint64(1))
-
-			t2.Merge(t1.Clone(-1, 1))
-
-			log.Println("t2-t1", t2)
-			Expect(nil).ToNot(BeNil())
 		})
 	})
 })

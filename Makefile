@@ -37,7 +37,7 @@ build-rust-dependencies:
 
 .PHONY: test
 test:
-	go test -race -tags debugspy
+	go test -race -tags debugspy ./...
 
 .PHONY: server
 server:

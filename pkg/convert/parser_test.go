@@ -10,8 +10,8 @@ import (
 
 var _ = Describe("convert", func() {
 	Describe("ParseTrie", func() {
-		XIt("parses data correctly", func() {
-			r := bytes.NewReader([]byte("TODO"))
+		It("parses data correctly", func() {
+			r := bytes.NewReader([]byte("\x00\x00\x01\x06foo;ba\x00\x02\x01r\x01\x00\x01z\x01\x00"))
 			result := []string{}
 			ParseTrie(r, func(name []byte, val int) {
 				result = append(result, fmt.Sprintf("%s %d", name, val))
