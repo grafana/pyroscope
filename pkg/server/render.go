@@ -38,7 +38,9 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: handle properly
 	if gOut == nil {
-		gOut.Tree = tree.New()
+		gOut = &storage.GetOutput{
+			Tree: tree.New(),
+		}
 	}
 
 	maxNodes := ctrl.cfg.Server.MaxNodesRender

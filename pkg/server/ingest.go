@@ -110,13 +110,14 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = ctrl.s.Put(&storage.PutInput{
-		StartTime:  ip.from,
-		EndTime:    ip.until,
-		Key:        ip.storageKey,
-		Val:        t,
-		SpyName:    ip.spyName,
-		SampleRate: ip.sampleRate,
-		Units:      ip.units,
+		StartTime:       ip.from,
+		EndTime:         ip.until,
+		Key:             ip.storageKey,
+		Val:             t,
+		SpyName:         ip.spyName,
+		SampleRate:      ip.sampleRate,
+		Units:           ip.units,
+		AggregationType: ip.aggregationType,
 	})
 	if err != nil {
 		logrus.WithField("err", err).Error("error happened while inserting data")
