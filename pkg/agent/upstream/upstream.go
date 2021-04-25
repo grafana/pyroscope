@@ -7,13 +7,14 @@ import (
 )
 
 type UploadJob struct {
-	Name       string
-	StartTime  time.Time
-	EndTime    time.Time
-	SpyName    string
-	SampleRate int
-	Units      string
-	Trie       *transporttrie.Trie
+	Name            string
+	StartTime       time.Time
+	EndTime         time.Time
+	SpyName         string
+	SampleRate      int
+	Units           string
+	AggregationType string
+	Trie            *transporttrie.Trie
 }
 
 type Upstream interface {

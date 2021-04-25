@@ -206,15 +206,15 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 
 			if !skipUpload {
 				name := ps.appName + "." + string(ps.profileTypes[i])
-				units := ps.profileTypes[i].Units()
 				ps.upstream.Upload(&upstream.UploadJob{
-					Name:       name,
-					StartTime:  ps.startTime,
-					EndTime:    now,
-					SpyName:    ps.spyName,
-					SampleRate: ps.sampleRate,
-					Units:      units,
-					Trie:       uploadTrie,
+					Name:            name,
+					StartTime:       ps.startTime,
+					EndTime:         now,
+					SpyName:         ps.spyName,
+					SampleRate:      ps.sampleRate,
+					Units:           ps.profileTypes[i].Units(),
+					AggregationType: ps.profileTypes[i].AggregationType(),
+					Trie:            uploadTrie,
 				})
 			}
 			if ps.profileTypes[i].IsCumulative() {

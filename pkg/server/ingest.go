@@ -14,14 +14,15 @@ import (
 )
 
 type ingestParams struct {
-	parserFunc func(io.Reader) (*tree.Tree, error)
-	storageKey *storage.Key
-	spyName    string
-	sampleRate int
-	units      string
-	modifiers  []string
-	from       time.Time
-	until      time.Time
+	parserFunc      func(io.Reader) (*tree.Tree, error)
+	storageKey      *storage.Key
+	spyName         string
+	sampleRate      int
+	units           string
+	aggregationType string
+	modifiers       []string
+	from            time.Time
+	until           time.Time
 }
 
 func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(io.Reader) (*tree.Tree, error) {
@@ -77,10 +78,16 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 		ip.spyName = "unknown"
 	}
 
-	if sn := q.Get("units"); sn != "" {
-		ip.units = sn
+	if u := q.Get("units"); u != "" {
+		ip.units = u
 	} else {
 		ip.units = "samples"
+	}
+
+	if at := q.Get("aggregationType"); at != "" {
+		ip.aggregationType = at
+	} else {
+		ip.aggregationType = "sum"
 	}
 
 	var err error

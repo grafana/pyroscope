@@ -101,6 +101,7 @@ func (u *Remote) uploadProfile(j *upstream.UploadJob) {
 	q.Set("spyName", j.SpyName)
 	q.Set("sampleRate", strconv.Itoa(j.SampleRate))
 	q.Set("units", j.Units)
+	q.Set("aggregationType", j.AggregationType)
 
 	urlObj.Path = path.Join(urlObj.Path, "/ingest")
 	urlObj.RawQuery = q.Encode()

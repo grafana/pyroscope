@@ -167,13 +167,14 @@ func New(cfg *config.Config) (*Storage, error) {
 }
 
 type PutInput struct {
-	StartTime  time.Time
-	EndTime    time.Time
-	Key        *Key
-	Val        *tree.Tree
-	SpyName    string
-	SampleRate int
-	Units      string
+	StartTime       time.Time
+	EndTime         time.Time
+	Key             *Key
+	Val             *tree.Tree
+	SpyName         string
+	SampleRate      int
+	Units           string
+	AggregationType string
 }
 
 func (s *Storage) Put(po *PutInput) error {
@@ -184,11 +185,12 @@ func (s *Storage) Put(po *PutInput) error {
 		return errClosing
 	}
 	logrus.WithFields(logrus.Fields{
-		"startTime": po.StartTime.String(),
-		"endTime":   po.EndTime.String(),
-		"key":       po.Key.Normalized(),
-		"samples":   po.Val.Samples(),
-		"units ":    po.Units,
+		"startTime":       po.StartTime.String(),
+		"endTime":         po.EndTime.String(),
+		"key":             po.Key.Normalized(),
+		"samples":         po.Val.Samples(),
+		"units":           po.Units,
+		"aggregationType": po.AggregationType,
 	}).Info("storage.Put")
 	for k, v := range po.Key.labels {
 		s.labels.Put(k, v)
@@ -201,7 +203,7 @@ func (s *Storage) Put(po *PutInput) error {
 	}
 
 	st := s.segments.Get(sk).(*segment.Segment)
-	st.SetMetadata(po.SpyName, po.SampleRate, po.Units)
+	st.SetMetadata(po.SpyName, po.SampleRate, po.Units, po.AggregationType)
 	samples := po.Val.Samples()
 	st.Put(po.StartTime, po.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := po.Key.TreeKey(depth, t)
@@ -264,12 +266,17 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	tl := segment.GenerateTimeline(gi.StartTime, gi.EndTime)
 	var lastSegment *segment.Segment
 	var writesTotal uint64
+	aggregationType := "sum"
 	for _, sk := range segmentKeys {
 		// TODO: refactor, store `Key`s in dimensions
 		skk, _ := ParseKey(string(sk))
 		st := s.segments.Get(skk.SegmentKey()).(*segment.Segment)
 		if st == nil {
 			continue
+		}
+
+		if st.AggregationType() == "average" {
+			aggregationType = "average"
 		}
 
 		lastSegment = st
@@ -283,7 +290,6 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 			//   instead this info should be passed to the merger function imo
 			tr2 := tr.Clone(r)
 			triesToMerge = append(triesToMerge, merge.Merger(tr2))
-			logrus.Debug("w: ", writes)
 			writesTotal += writes
 		})
 	}
@@ -295,9 +301,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 	t := resultTrie.(*tree.Tree)
 
-	// TODO: only do this for some types of data
-	logrus.Debug("writes ", writesTotal)
-	if writesTotal > 0 {
+	if writesTotal > 0 && aggregationType == "average" {
 		t = t.Clone(big.NewRat(1, int64(writesTotal)))
 	}
 

@@ -153,9 +153,10 @@ type Segment struct {
 	root       *streeNode
 	durations  []time.Duration
 
-	spyName    string
-	sampleRate int
-	units      string
+	spyName         string
+	sampleRate      int
+	units           string
+	aggregationType string
 }
 
 func newNode(t time.Time, depth, multiplier int) *streeNode {
@@ -277,10 +278,11 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 
 // TODO: this should be refactored
 
-func (s *Segment) SetMetadata(spyName string, sampleRate int, units string) {
+func (s *Segment) SetMetadata(spyName string, sampleRate int, units, aggregationType string) {
 	s.spyName = spyName
 	s.sampleRate = sampleRate
 	s.units = units
+	s.aggregationType = aggregationType
 }
 
 func (s *Segment) SpyName() string {
@@ -293,4 +295,7 @@ func (s *Segment) SampleRate() int {
 
 func (s *Segment) Units() string {
 	return s.units
+}
+func (s *Segment) AggregationType() string {
+	return s.aggregationType
 }

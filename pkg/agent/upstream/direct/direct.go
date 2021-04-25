@@ -65,13 +65,14 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 	})
 
 	u.s.Put(&storage.PutInput{
-		StartTime:  j.StartTime,
-		EndTime:    j.EndTime,
-		Key:        key,
-		Val:        t,
-		SpyName:    j.SpyName,
-		SampleRate: j.SampleRate,
-		Units:      j.Units,
+		StartTime:       j.StartTime,
+		EndTime:         j.EndTime,
+		Key:             key,
+		Val:             t,
+		SpyName:         j.SpyName,
+		SampleRate:      j.SampleRate,
+		Units:           j.Units,
+		AggregationType: j.AggregationType,
 	})
 }
 

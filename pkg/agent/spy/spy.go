@@ -39,6 +39,14 @@ func (t ProfileType) Units() string {
 	return "samples"
 }
 
+func (t ProfileType) AggregationType() string {
+	if t == ProfileInuseObjects || t == ProfileInuseSpace {
+		return "average"
+	}
+
+	return "sum"
+}
+
 type spyIntitializer func(pid int) (Spy, error)
 
 var (
