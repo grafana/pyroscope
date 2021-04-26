@@ -1,3 +1,29 @@
+## <small>0.0.30 (2021-04-26)</small>
+
+* adds buildx as a builder ([6234773](https://github.com/pyroscope-io/pyroscope/commit/6234773))
+* build fix ([c328dbf](https://github.com/pyroscope-io/pyroscope/commit/c328dbf))
+* controller code improvements ([3116e37](https://github.com/pyroscope-io/pyroscope/commit/3116e37))
+* fix upload panic(do upload with recover) (#151) ([e73031a](https://github.com/pyroscope-io/pyroscope/commit/e73031a)), closes [#151](https://github.com/pyroscope-io/pyroscope/issues/151)
+* flaky test fix ([e098d77](https://github.com/pyroscope-io/pyroscope/commit/e098d77))
+* flaky test fix ([7afecca](https://github.com/pyroscope-io/pyroscope/commit/7afecca))
+* github actions: prints available platforms ([ba443f9](https://github.com/pyroscope-io/pyroscope/commit/ba443f9))
+* Golang Profiler — adds memory profiling, improves cpu profiling (#146) ([704fcfb](https://github.com/pyroscope-io/pyroscope/commit/704fcfb)), closes [#146](https://github.com/pyroscope-io/pyroscope/issues/146)
+* improves support for multiple paths in GOPATH - fixes #142 ([5e06042](https://github.com/pyroscope-io/pyroscope/commit/5e06042)), closes [#142](https://github.com/pyroscope-io/pyroscope/issues/142)
+* improves test descriptions (Describe / Context / It) ([35b4dca](https://github.com/pyroscope-io/pyroscope/commit/35b4dca))
+* ran go mod tidy ([5274dd3](https://github.com/pyroscope-io/pyroscope/commit/5274dd3))
+* removes a useless warning ([c50a77b](https://github.com/pyroscope-io/pyroscope/commit/c50a77b))
+* removes dockerhub action ([c5079c9](https://github.com/pyroscope-io/pyroscope/commit/c5079c9))
+* sets up docker builds from github actions to dockerhub ([d500f8d](https://github.com/pyroscope-io/pyroscope/commit/d500f8d))
+* tests improvements ([74c5237](https://github.com/pyroscope-io/pyroscope/commit/74c5237))
+* Update README.ch.md (#159) ([e711418](https://github.com/pyroscope-io/pyroscope/commit/e711418)), closes [#159](https://github.com/pyroscope-io/pyroscope/issues/159)
+* updates README ([f20da5f](https://github.com/pyroscope-io/pyroscope/commit/f20da5f))
+* Updates the list of contributors in README ([1df3ce1](https://github.com/pyroscope-io/pyroscope/commit/1df3ce1))
+* Updates the list of contributors in README ([9605a8a](https://github.com/pyroscope-io/pyroscope/commit/9605a8a))
+* Updates the list of contributors in README ([d897b57](https://github.com/pyroscope-io/pyroscope/commit/d897b57))
+* Use bash to run scripts ([a019ef3](https://github.com/pyroscope-io/pyroscope/commit/a019ef3))
+
+
+
 ## <small>0.0.29 (2021-04-06)</small>
 
 * Add node_modules, git folders to dockerignore ([306c5c4](https://github.com/pyroscope-io/pyroscope/commit/306c5c4))
