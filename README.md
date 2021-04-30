@@ -68,6 +68,7 @@ pyroscope exec rails server               # If using Ruby
 
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
 
+* [Public Roadmap](https://github.com/pyroscope-io/pyroscope/projects/1)
 * [Getting Started](https://pyroscope.io/docs/)
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
 * [Developer Guide](https://pyroscope.io/docs/developer-guide)
