@@ -38,7 +38,7 @@ func DiskUsage(path string) (*DiskUsagesStats, error) {
 }
 
 func IsRunningOutOfSpace(cfg *config.Config) bool {
-	stats, err := DiskUsage("/")
+	stats, err := DiskUsage(cfg.Server.StoragePath)
 	if err != nil {
 		return false
 	}
@@ -53,7 +53,7 @@ func IsRunningOutOfSpace(cfg *config.Config) bool {
 }
 
 func ShouldShowOutOfSpaceWarning(cfg *config.Config) bool {
-	stats, err := DiskUsage("/")
+	stats, err := DiskUsage(cfg.Server.StoragePath)
 	if err != nil {
 		return false
 	}
