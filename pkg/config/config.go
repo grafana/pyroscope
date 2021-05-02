@@ -59,6 +59,11 @@ type Server struct {
 
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
+
+	OutOfSpaceThreshold              float64 `def:"10" desc:"Threshold value to consider out of space in percentage"`
+	OutOfSpaceWarningThreshold       float64 `def:"20" desc:"Threshold value to consider to show out of space in warning percentage"`
+	OutOfSpaceStaticThreshold        int     `def:"512" desc:"Threshold static value to consider out of space. Useful when % value is very high than required value"`
+	OutOfSpaceWarningStaticThreshold int     `def:"1024" desc:"Threshold static value to consider to show out of space warning. Useful when % value is very high than required value"`
 }
 
 type Convert struct {
@@ -124,6 +129,11 @@ func NewForTests(path string) *Config {
 
 			MaxNodesSerialization: 2048,
 			MaxNodesRender:        2048,
+
+			OutOfSpaceThreshold:              10,   // %
+			OutOfSpaceWarningThreshold:       20,   // %
+			OutOfSpaceStaticThreshold:        512,  // MB
+			OutOfSpaceWarningStaticThreshold: 1024, // MB
 		},
 	}
 
