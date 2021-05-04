@@ -109,7 +109,8 @@ func calculateMaxDepth(min, max time.Duration, multiplier int) int {
 
 // TODO: remove these preset configs
 func New() *Config {
-	return NewForTests("tmp/pyroscope-storage")
+	return NewForTests("/tmp/")
+	//return NewForTests("/tmp/pyroscope-storage")
 }
 
 func NewForTests(path string) *Config {

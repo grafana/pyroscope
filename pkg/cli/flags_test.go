@@ -19,6 +19,7 @@ type FlagsStruct struct {
 	Bar    int
 	Baz    time.Duration
 	FooBar string
+	FooFoo float64
 }
 
 var _ = Describe("flags", func() {
@@ -43,6 +44,7 @@ var _ = Describe("flags", func() {
 					"-bar", "123",
 					"-baz", "10h",
 					"-foo-bar", "test-val-4",
+					"-foo-foo", "10.23",
 				})
 
 				Expect(err).ToNot(HaveOccurred())
@@ -51,6 +53,7 @@ var _ = Describe("flags", func() {
 				Expect(cfg.Bar).To(Equal(123))
 				Expect(cfg.Baz).To(Equal(10 * time.Hour))
 				Expect(cfg.FooBar).To(Equal("test-val-4"))
+				Expect(cfg.FooFoo).To(Equal(10.23))
 			})
 		})
 
@@ -81,6 +84,7 @@ var _ = Describe("flags", func() {
 				Expect(cfg.Bar).To(Equal(123))
 				Expect(cfg.Baz).To(Equal(10 * time.Hour))
 				Expect(cfg.FooBar).To(Equal("test-val-4"))
+				Expect(cfg.FooFoo).To(Equal(10.23))
 			})
 
 			It("arguments take precendence", func() {
