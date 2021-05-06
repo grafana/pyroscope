@@ -152,6 +152,19 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 				}
 			}
 			flagSet.Float64Var(val, nameVal, defaultVal, descVal)
+		case reflect.TypeOf(uint64(1)):
+			val := fieldV.Addr().Interface().(*uint64)
+			var defaultVal uint64
+			if defaultValStr == "" {
+				defaultVal = uint64(0)
+			} else {
+				var err error
+				defaultVal, err = strconv.ParseUint(defaultValStr, 10, 64)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			flagSet.Uint64Var(val, nameVal, defaultVal, descVal)
 		default:
 			logrus.Fatalf("type %s is not supported", field.Type)
 		}

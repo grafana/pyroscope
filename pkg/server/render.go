@@ -9,7 +9,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
-	"github.com/pyroscope-io/pyroscope/pkg/util/resource_usages"
+	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 )
 
 type samplesEntry struct {
@@ -67,8 +67,8 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 				"sampleRate": gOut.SampleRate,
 				"units":      gOut.Units,
 			},
-			"is_running_out_of_space":   resource_usages.IsRunningOutOfSpace(ctrl.cfg),
-			"show_out_of_space_warning": resource_usages.ShouldShowOutOfSpaceWarning(ctrl.cfg),
+			"isRunningOutOfSpace":         disk.IsRunningOutOfSpace(ctrl.cfg.Server.StoragePath, ctrl.cfg.Server.OutOfSpaceThreshold),
+			"shouldShowOutOfSpaceWarning": disk.ShouldShowOutOfSpaceWarning(ctrl.cfg.Server.StoragePath, ctrl.cfg.Server.OutOfSpaceWarningThreshold),
 		}
 
 		encoder := json.NewEncoder(w)

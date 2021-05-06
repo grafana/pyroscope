@@ -10,7 +10,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
-	"github.com/pyroscope-io/pyroscope/pkg/util/resource_usages"
 	"github.com/sirupsen/logrus"
 )
 
@@ -101,12 +100,6 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 }
 
 func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
-	if resource_usages.IsRunningOutOfSpace(ctrl.cfg) {
-		logrus.Error("running out of space")
-		w.WriteHeader(422)
-		return
-	}
-
 	ip := ingestParamsFromRequest(r)
 
 	var t *tree.Tree

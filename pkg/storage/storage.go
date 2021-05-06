@@ -2,6 +2,8 @@ package storage
 
 import (
 	"errors"
+	"fmt"
+	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -180,6 +182,11 @@ type PutInput struct {
 func (s *Storage) Put(po *PutInput) error {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
+
+	if disk.IsRunningOutOfSpace(s.cfg.Server.StoragePath, s.cfg.Server.OutOfSpaceThreshold) {
+		logrus.Error("running out of space")
+		return fmt.Errorf("running out of space")
+	}
 
 	if s.closing {
 		return errClosing
