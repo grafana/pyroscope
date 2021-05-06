@@ -1,3 +1,5 @@
 target
 third_party/*/target
 webapp/public/*
+node_modules
+.git/

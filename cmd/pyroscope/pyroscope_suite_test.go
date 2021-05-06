@@ -1,4 +1,4 @@
-package server_test
+package main_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestController(t *testing.T) {
+func TestPyroscope(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Controller Suite")
+	RunSpecs(t, "Pyroscope Suite")
 }

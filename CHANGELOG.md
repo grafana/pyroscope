@@ -1,3 +1,163 @@
+## <small>0.0.30 (2021-04-26)</small>
+
+* adds buildx as a builder ([6234773](https://github.com/pyroscope-io/pyroscope/commit/6234773))
+* build fix ([c328dbf](https://github.com/pyroscope-io/pyroscope/commit/c328dbf))
+* controller code improvements ([3116e37](https://github.com/pyroscope-io/pyroscope/commit/3116e37))
+* fix upload panic(do upload with recover) (#151) ([e73031a](https://github.com/pyroscope-io/pyroscope/commit/e73031a)), closes [#151](https://github.com/pyroscope-io/pyroscope/issues/151)
+* flaky test fix ([e098d77](https://github.com/pyroscope-io/pyroscope/commit/e098d77))
+* flaky test fix ([7afecca](https://github.com/pyroscope-io/pyroscope/commit/7afecca))
+* github actions: prints available platforms ([ba443f9](https://github.com/pyroscope-io/pyroscope/commit/ba443f9))
+* Golang Profiler — adds memory profiling, improves cpu profiling (#146) ([704fcfb](https://github.com/pyroscope-io/pyroscope/commit/704fcfb)), closes [#146](https://github.com/pyroscope-io/pyroscope/issues/146)
+* improves support for multiple paths in GOPATH - fixes #142 ([5e06042](https://github.com/pyroscope-io/pyroscope/commit/5e06042)), closes [#142](https://github.com/pyroscope-io/pyroscope/issues/142)
+* improves test descriptions (Describe / Context / It) ([35b4dca](https://github.com/pyroscope-io/pyroscope/commit/35b4dca))
+* ran go mod tidy ([5274dd3](https://github.com/pyroscope-io/pyroscope/commit/5274dd3))
+* removes a useless warning ([c50a77b](https://github.com/pyroscope-io/pyroscope/commit/c50a77b))
+* removes dockerhub action ([c5079c9](https://github.com/pyroscope-io/pyroscope/commit/c5079c9))
+* sets up docker builds from github actions to dockerhub ([d500f8d](https://github.com/pyroscope-io/pyroscope/commit/d500f8d))
+* tests improvements ([74c5237](https://github.com/pyroscope-io/pyroscope/commit/74c5237))
+* Update README.ch.md (#159) ([e711418](https://github.com/pyroscope-io/pyroscope/commit/e711418)), closes [#159](https://github.com/pyroscope-io/pyroscope/issues/159)
+* updates README ([f20da5f](https://github.com/pyroscope-io/pyroscope/commit/f20da5f))
+* Updates the list of contributors in README ([1df3ce1](https://github.com/pyroscope-io/pyroscope/commit/1df3ce1))
+* Updates the list of contributors in README ([9605a8a](https://github.com/pyroscope-io/pyroscope/commit/9605a8a))
+* Updates the list of contributors in README ([d897b57](https://github.com/pyroscope-io/pyroscope/commit/d897b57))
+* Use bash to run scripts ([a019ef3](https://github.com/pyroscope-io/pyroscope/commit/a019ef3))
+
+
+
+## <small>0.0.29 (2021-04-06)</small>
+
+* Add node_modules, git folders to dockerignore ([306c5c4](https://github.com/pyroscope-io/pyroscope/commit/306c5c4))
+* add parser type for ParseKey switch case ([f74af6f](https://github.com/pyroscope-io/pyroscope/commit/f74af6f))
+* add strings.Builder.WriteString() method to whitelist in revive.toml ([c9da6d8](https://github.com/pyroscope-io/pyroscope/commit/c9da6d8))
+* add tests for metadata serialization ([8e27013](https://github.com/pyroscope-io/pyroscope/commit/8e27013))
+* Addressing #28 added some randomized tests ([8a7134c](https://github.com/pyroscope-io/pyroscope/commit/8a7134c)), closes [#28](https://github.com/pyroscope-io/pyroscope/issues/28)
+* adds a github action to update contributors automatically (#128) ([a686fe7](https://github.com/pyroscope-io/pyroscope/commit/a686fe7)), closes [#128](https://github.com/pyroscope-io/pyroscope/issues/128)
+* adds a lint rule for byte arrays ([b41c36e](https://github.com/pyroscope-io/pyroscope/commit/b41c36e))
+* adds a very basic cli test ([187788e](https://github.com/pyroscope-io/pyroscope/commit/187788e))
+* adds ability to specify user in pyroscope exec ([2bda8b1](https://github.com/pyroscope-io/pyroscope/commit/2bda8b1))
+* adds basic tests for upstream/remote ([9bf67c6](https://github.com/pyroscope-io/pyroscope/commit/9bf67c6))
+* adds cache tests ([fb42525](https://github.com/pyroscope-io/pyroscope/commit/fb42525))
+* adds dictionary serialization tests ([98d0f59](https://github.com/pyroscope-io/pyroscope/commit/98d0f59))
+* Adds ginkgo bootstrap files to all packages we should test (#126) ([f399f08](https://github.com/pyroscope-io/pyroscope/commit/f399f08)), closes [#126](https://github.com/pyroscope-io/pyroscope/issues/126)
+* Adds Go Report to README ([a94aca3](https://github.com/pyroscope-io/pyroscope/commit/a94aca3))
+* adds go tests ([886479a](https://github.com/pyroscope-io/pyroscope/commit/886479a))
+* adds profiling data parser tests ([c4d60fd](https://github.com/pyroscope-io/pyroscope/commit/c4d60fd))
+* adds smoke tests to storage ([466cd8b](https://github.com/pyroscope-io/pyroscope/commit/466cd8b))
+* adds tests for agent/session.go ([0586d24](https://github.com/pyroscope-io/pyroscope/commit/0586d24))
+* adds tests for attime ([bd69e65](https://github.com/pyroscope-io/pyroscope/commit/bd69e65))
+* adds tests for storage/segment/timeline.go ([2bd256b](https://github.com/pyroscope-io/pyroscope/commit/2bd256b))
+* adds tests for storage/tree ([bccbf93](https://github.com/pyroscope-io/pyroscope/commit/bccbf93))
+* Allow enabling Badger's truncate option (#148) ([73e68a3](https://github.com/pyroscope-io/pyroscope/commit/73e68a3)), closes [#148](https://github.com/pyroscope-io/pyroscope/issues/148)
+* better names ([4209607](https://github.com/pyroscope-io/pyroscope/commit/4209607))
+* break down ParseKey's nested switch statement into separate function calls ([a586929](https://github.com/pyroscope-io/pyroscope/commit/a586929))
+* bug fix ([cf12eec](https://github.com/pyroscope-io/pyroscope/commit/cf12eec))
+* bug fix ([571df5d](https://github.com/pyroscope-io/pyroscope/commit/571df5d))
+* changes badger-log-truncate to be on by default as discussed in #148 ([dc2a22c](https://github.com/pyroscope-io/pyroscope/commit/dc2a22c)), closes [#148](https://github.com/pyroscope-io/pyroscope/issues/148)
+* Controller Improvements (#144) ([ad4ad80](https://github.com/pyroscope-io/pyroscope/commit/ad4ad80)), closes [#144](https://github.com/pyroscope-io/pyroscope/issues/144)
+* exec tests ([a888823](https://github.com/pyroscope-io/pyroscope/commit/a888823))
+* Export flamegraph and table to pdf/png (#143) ([7782248](https://github.com/pyroscope-io/pyroscope/commit/7782248)), closes [#143](https://github.com/pyroscope-io/pyroscope/issues/143)
+* Fix Python3 Indentation - Following PEP8 style (#138) ([bd13663](https://github.com/pyroscope-io/pyroscope/commit/bd13663)), closes [#138](https://github.com/pyroscope-io/pyroscope/issues/138)
+* Fix some Revive lint warnings (#145) ([d7ccae6](https://github.com/pyroscope-io/pyroscope/commit/d7ccae6)), closes [#145](https://github.com/pyroscope-io/pyroscope/issues/145)
+* Fix typo in README (#124) ([f956810](https://github.com/pyroscope-io/pyroscope/commit/f956810)), closes [#124](https://github.com/pyroscope-io/pyroscope/issues/124)
+* Fix typo in storage-design.md ([3638a0c](https://github.com/pyroscope-io/pyroscope/commit/3638a0c))
+* fixes typos ([e1c6cad](https://github.com/pyroscope-io/pyroscope/commit/e1c6cad))
+* improves test reliability ([c38e151](https://github.com/pyroscope-io/pyroscope/commit/c38e151))
+* makes docker builds more resilient ([98284f7](https://github.com/pyroscope-io/pyroscope/commit/98284f7))
+* refactors config initialization in tests ([988514d](https://github.com/pyroscope-io/pyroscope/commit/988514d))
+* remove broken upload command ([58e292f](https://github.com/pyroscope-io/pyroscope/commit/58e292f))
+* Small improvements to Dockerfile ([b3aaa29](https://github.com/pyroscope-io/pyroscope/commit/b3aaa29))
+* splits test workflows ([4ddcfab](https://github.com/pyroscope-io/pyroscope/commit/4ddcfab))
+* tests for analytics service ([94004d0](https://github.com/pyroscope-io/pyroscope/commit/94004d0))
+* Typo fix ([d173be8](https://github.com/pyroscope-io/pyroscope/commit/d173be8))
+* Update README.ch.md ([4c4dc1c](https://github.com/pyroscope-io/pyroscope/commit/4c4dc1c))
+* Update README.md ([3aee8df](https://github.com/pyroscope-io/pyroscope/commit/3aee8df))
+* Update README.md ([82fb22d](https://github.com/pyroscope-io/pyroscope/commit/82fb22d))
+* Update storage-design.md (#135) ([3cd6242](https://github.com/pyroscope-io/pyroscope/commit/3cd6242)), closes [#135](https://github.com/pyroscope-io/pyroscope/issues/135)
+* updates badges on README page ([f8105fd](https://github.com/pyroscope-io/pyroscope/commit/f8105fd))
+* Updates the list of contributors in README ([04bc145](https://github.com/pyroscope-io/pyroscope/commit/04bc145))
+* Updates the list of contributors in README ([2673c71](https://github.com/pyroscope-io/pyroscope/commit/2673c71))
+* Updates the list of contributors in README ([d477532](https://github.com/pyroscope-io/pyroscope/commit/d477532))
+* Updates the list of contributors in README ([f29ddd6](https://github.com/pyroscope-io/pyroscope/commit/f29ddd6))
+* Updates the list of contributors in README ([646c0b1](https://github.com/pyroscope-io/pyroscope/commit/646c0b1))
+* Updates the list of contributors in README ([a17ecbc](https://github.com/pyroscope-io/pyroscope/commit/a17ecbc))
+* Updates the list of contributors in README ([a08c100](https://github.com/pyroscope-io/pyroscope/commit/a08c100))
+* Updates the list of contributors in README ([48924e9](https://github.com/pyroscope-io/pyroscope/commit/48924e9))
+* Updates the list of contributors in README ([8fe0a91](https://github.com/pyroscope-io/pyroscope/commit/8fe0a91))
+* version 0.0.28 ([1fc03bb](https://github.com/pyroscope-io/pyroscope/commit/1fc03bb))
+* wrap the strings.Builder WriteString calls in a separate function to handle error check ([66b1bb3](https://github.com/pyroscope-io/pyroscope/commit/66b1bb3))
+* pyspy: defaults to non-blocking mode, adds an option to enable blocking mode ([0035a99](https://github.com/pyroscope-io/pyroscope/commit/0035a99))
+* chore(style): update go format style. (#129) ([a7b15ca](https://github.com/pyroscope-io/pyroscope/commit/a7b15ca)), closes [#129](https://github.com/pyroscope-io/pyroscope/issues/129)
+
+
+
+## <small>0.0.28 (2021-03-11)</small>
+
+* adds a mutex to hyperloglog library, addresses #112 ([66ad877](https://github.com/pyroscope-io/pyroscope/commit/66ad877)), closes [#112](https://github.com/pyroscope-io/pyroscope/issues/112)
+* adds codecov ([0b35827](https://github.com/pyroscope-io/pyroscope/commit/0b35827))
+* adds storage design doc ([99aa4ad](https://github.com/pyroscope-io/pyroscope/commit/99aa4ad))
+* exclude vendor directory from being linted.  Update ApiBindAddr to APIBindAddr ([27c33d2](https://github.com/pyroscope-io/pyroscope/commit/27c33d2))
+* fix malformed struct tags ([a2d577d](https://github.com/pyroscope-io/pyroscope/commit/a2d577d))
+* fixes syntax error ([13f5168](https://github.com/pyroscope-io/pyroscope/commit/13f5168))
+* improves ebpf support on debian ([38918a1](https://github.com/pyroscope-io/pyroscope/commit/38918a1))
+* increases maximum nodes per tree when rendering trees ([76d3fa2](https://github.com/pyroscope-io/pyroscope/commit/76d3fa2))
+* makes logging less verbose, fixes a bug with direct upstream ([9784bc2](https://github.com/pyroscope-io/pyroscope/commit/9784bc2))
+* remove naked return and cut down line length ([e7df6f6](https://github.com/pyroscope-io/pyroscope/commit/e7df6f6))
+* removes mdx parts ([5b515e6](https://github.com/pyroscope-io/pyroscope/commit/5b515e6))
+* spelling fixes ([eb08802](https://github.com/pyroscope-io/pyroscope/commit/eb08802))
+* update typos ([e813976](https://github.com/pyroscope-io/pyroscope/commit/e813976))
+* updates the list of contributors ([bc1b5d6](https://github.com/pyroscope-io/pyroscope/commit/bc1b5d6))
+* version 0.0.27 ([28f31b8](https://github.com/pyroscope-io/pyroscope/commit/28f31b8))
+
+
+
+## <small>0.0.27 (2021-03-10)</small>
+
+* adds a mutex to hyperloglog library, addresses #112 ([66ad877](https://github.com/pyroscope-io/pyroscope/commit/66ad877)), closes [#112](https://github.com/pyroscope-io/pyroscope/issues/112)
+* exclude vendor directory from being linted.  Update ApiBindAddr to APIBindAddr ([27c33d2](https://github.com/pyroscope-io/pyroscope/commit/27c33d2))
+* fix malformed struct tags ([a2d577d](https://github.com/pyroscope-io/pyroscope/commit/a2d577d))
+* remove naked return and cut down line length ([e7df6f6](https://github.com/pyroscope-io/pyroscope/commit/e7df6f6))
+* updates the list of contributors ([bc1b5d6](https://github.com/pyroscope-io/pyroscope/commit/bc1b5d6))
+
+
+
+## <small>0.0.26 (2021-03-08)</small>
+
+* Add Pyroscope cloud instructions ([3765ea2](https://github.com/pyroscope-io/pyroscope/commit/3765ea2))
+* add unit tests (#98) ([31474b3](https://github.com/pyroscope-io/pyroscope/commit/31474b3)), closes [#98](https://github.com/pyroscope-io/pyroscope/issues/98)
+* check to see if logrus is used ([e2ff648](https://github.com/pyroscope-io/pyroscope/commit/e2ff648))
+* fixes dependency graph task ([e4c2168](https://github.com/pyroscope-io/pyroscope/commit/e4c2168))
+* removes logrus dependency from the library code ([f8e033e](https://github.com/pyroscope-io/pyroscope/commit/f8e033e))
+* Update contributors ([a39c7ab](https://github.com/pyroscope-io/pyroscope/commit/a39c7ab))
+* Updates README with information about the cloud ([2da1333](https://github.com/pyroscope-io/pyroscope/commit/2da1333))
+* consistency: removes "log" alias in favor of "logrus" ([a66f8b3](https://github.com/pyroscope-io/pyroscope/commit/a66f8b3))
+
+
+
+## <small>0.0.25 (2021-02-26)</small>
+
+* adds eBPF spy ([3438826](https://github.com/pyroscope-io/pyroscope/commit/3438826))
+* new connect command ([7d2a410](https://github.com/pyroscope-io/pyroscope/commit/7d2a410))
+* update ignore (#93) ([2176676](https://github.com/pyroscope-io/pyroscope/commit/2176676)), closes [#93](https://github.com/pyroscope-io/pyroscope/issues/93)
+* updates readme ([ce3f843](https://github.com/pyroscope-io/pyroscope/commit/ce3f843))
+
+
+
+## <small>0.0.24 (2021-02-23)</small>
+
+* Add comparison view (#90) ([bc648e9](https://github.com/pyroscope-io/pyroscope/commit/bc648e9)), closes [#90](https://github.com/pyroscope-io/pyroscope/issues/90)
+* Add React Router (#73) ([1443b8c](https://github.com/pyroscope-io/pyroscope/commit/1443b8c)), closes [#73](https://github.com/pyroscope-io/pyroscope/issues/73)
+* added chinese for flamgrahs (#89) ([11a22e6](https://github.com/pyroscope-io/pyroscope/commit/11a22e6)), closes [#89](https://github.com/pyroscope-io/pyroscope/issues/89)
+* fix connection reuse (#87) ([8fb42ec](https://github.com/pyroscope-io/pyroscope/commit/8fb42ec)), closes [#87](https://github.com/pyroscope-io/pyroscope/issues/87)
+* fixes air config (`make dev` command) ([3a3b366](https://github.com/pyroscope-io/pyroscope/commit/3a3b366))
+* fixes ruby stacktraces formatting ([4a7c2be](https://github.com/pyroscope-io/pyroscope/commit/4a7c2be))
+* Import pyroscope version from package.json (#86) ([295a002](https://github.com/pyroscope-io/pyroscope/commit/295a002)), closes [#86](https://github.com/pyroscope-io/pyroscope/issues/86)
+* Move flamebearer to local state instead of redux store (#77) ([03f3abc](https://github.com/pyroscope-io/pyroscope/commit/03f3abc)), closes [#77](https://github.com/pyroscope-io/pyroscope/issues/77)
+* refresh button fix ([649678e](https://github.com/pyroscope-io/pyroscope/commit/649678e))
+* Update contributors ([10e1740](https://github.com/pyroscope-io/pyroscope/commit/10e1740))
+* cleanup: lint js code (#80) ([3dab5d9](https://github.com/pyroscope-io/pyroscope/commit/3dab5d9)), closes [#80](https://github.com/pyroscope-io/pyroscope/issues/80)
+
+
+
 ## <small>0.0.23 (2021-02-17)</small>
 
 * Add translations structure (#81) ([05b9fa8](https://github.com/pyroscope-io/pyroscope/commit/05b9fa8)), closes [#81](https://github.com/pyroscope-io/pyroscope/issues/81)

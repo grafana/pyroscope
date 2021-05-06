@@ -2,6 +2,7 @@
 @use "mixins/outline"as *;
 @use "components/daterangepicker";
 @use "components/labels";
+@use "components/exportdata";
 
 @import "~sanitize.css";
 @import "~sanitize.css/forms.css";
@@ -147,6 +148,11 @@ input {
 .svg-renderer,
 .canvas-renderer {
   padding: 0 15px;
+
+  &.double {
+    display: flex;
+    width: 50%
+  }
 }
 
 .svg-container,
@@ -157,8 +163,14 @@ input {
   border: 1px solid #141414;
 }
 
+.comparison-container {
+  display: flex;
+  flex-direction: row;
+}
+
 .canvas-container {
   padding: 10px;
+  width: 100%;
 }
 
 body {
@@ -184,20 +196,10 @@ body {
   }
 }
 
-// .timeline-wrapper {
-//   position: relative;
-//   width: 100%;
-//   height: 100px;
-// }
-// .timeline-container {
-//   position: absolute;
-//   top: 0;
-//   left: 0;
-//   right: 0;
-//   bottom: 0;
-// }
-
-#timeline-chart {
+#timeline-chart-single,
+#timeline-chart-double,
+#timeline-chart-left,
+#timeline-chart-right {
   overflow: hidden;
   cursor: crosshair;
 }
@@ -222,15 +224,45 @@ $pane-width: 6px;
     margin: 0 $pane-width;
     width: 50%;
 
+    .flamegraph-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 5px;
+    }
+
     &.vertical-orientation {
       width: 100%;
       padding: 10px;
     }
-    
+
     &.hidden {
       display: none;
     }
   }
+}
+
+.left-instructions-wrapper {
+  display: flex;
+  width: 50%;
+  justify-content: center;
+}
+
+.left-instructions-text {
+  color: rgba(200, 102, 204, 1);
+  font-size: 12px;
+}
+
+.right-instructions-wrapper {
+  display: flex;
+  width: 50%;
+  justify-content: center;
+  margin-left: 50%;
+}
+
+.right-instructions-text {
+  color: rgba(19, 152, 246, 1);
+  font-size: 12px;
 }
 
 .flamegraph-table,
@@ -253,6 +285,7 @@ $pane-width: 6px;
 
     &.sortable {
       cursor: pointer;
+      user-select: none;
     }
 
     .sort-arrow {
@@ -564,13 +597,15 @@ $sidebar-tooltip-color: #777;
       padding: 0;
       width: 100%;
       cursor: pointer;
-      &:active, &:hover {
+      &:active, &:hover{
         opacity: 1;
       }
-    }
 
-    &.active {
-      background-color: rgba(#000, 0.33);
+      &.active-route  {
+        opacity: 1;
+        color: white;
+        background-color: rgba(#000, 0.33);
+      }
     }
 
     &:hover {

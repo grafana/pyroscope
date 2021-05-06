@@ -7,13 +7,52 @@ import (
 
 type Spy interface {
 	Stop() error
-	Snapshot(cb func([]byte, error))
+	Snapshot(cb func([]byte, uint64, error))
+}
+
+type Resettable interface {
+	Reset()
+}
+
+type ProfileType string
+
+const (
+	ProfileCPU          ProfileType = "cpu"
+	ProfileInuseObjects ProfileType = "inuse_objects"
+	ProfileAllocObjects ProfileType = "alloc_objects"
+	ProfileInuseSpace   ProfileType = "inuse_space"
+	ProfileAllocSpace   ProfileType = "alloc_space"
+)
+
+func (t ProfileType) IsCumulative() bool {
+	return t == ProfileAllocObjects || t == ProfileAllocSpace
+}
+
+func (t ProfileType) Units() string {
+	if t == ProfileInuseObjects || t == ProfileAllocObjects {
+		return "objects"
+	}
+	if t == ProfileInuseSpace || t == ProfileAllocSpace {
+		return "bytes"
+	}
+
+	return "samples"
+}
+
+func (t ProfileType) AggregationType() string {
+	if t == ProfileInuseObjects || t == ProfileInuseSpace {
+		return "average"
+	}
+
+	return "sum"
 }
 
 type spyIntitializer func(pid int) (Spy, error)
 
-var supportedSpiesMap map[string]spyIntitializer
-var SupportedSpies []string
+var (
+	supportedSpiesMap map[string]spyIntitializer
+	SupportedSpies    []string
+)
 
 var autoDetectionMapping = map[string]string{
 	"python":  "pyspy",

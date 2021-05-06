@@ -1,12 +1,14 @@
 package tree
 
 type Flamebearer struct {
-	Names      []string `json:"names"`
-	Levels     [][]int  `json:"levels"`
-	NumTicks   int      `json:"numTicks"`
-	MaxSelf    int      `json:"maxSelf"`
-	SpyName    string   `json:"spyName"`
-	SampleRate int      `json:"sampleRate"`
+	Names    []string `json:"names"`
+	Levels   [][]int  `json:"levels"`
+	NumTicks int      `json:"numTicks"`
+	MaxSelf  int      `json:"maxSelf"`
+	// TODO: see note in render.go
+	SpyName    string `json:"spyName"`
+	SampleRate int    `json:"sampleRate"`
+	Units      string `json:"units"`
 }
 
 func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {

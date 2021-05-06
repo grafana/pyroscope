@@ -32,18 +32,29 @@ import {
   numberWithCommas,
   formatPercent,
   getPackageNameFromStackTrace,
-  DurationFormater,
+  getFormatter,
 } from "../util/format";
 import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
+import TimelineChartWrapper from "./TimelineChartWrapper";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
 import { deltaDiff } from "../util/flamebearer";
+
+import ExportData from "./ExportData";
+
 
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
 const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = "#48CE73"; // green
 const GAP = 0.5;
+
+const unitsToFlamegraphTitle = {
+  "objects": "amount of objects in RAM per function",
+  "bytes": "amount of RAM per function",
+  "samples": "CPU time per function",
+}
+
 class FlameGraphRenderer extends React.Component {
   constructor() {
     super();
@@ -81,7 +92,12 @@ class FlameGraphRenderer extends React.Component {
         "Reset Flamegraph View"
       );
     }
-    this.fetchFlameBearerData(this.props.renderURL);
+
+    if(this.props.viewSide === 'left' || this.props.viewSide === 'right') {
+      this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`])
+    } else {
+      this.fetchFlameBearerData(this.props.renderURL)
+    }
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -89,9 +105,15 @@ class FlameGraphRenderer extends React.Component {
       prevProps.from != this.props.from ||
       prevProps.until != this.props.until ||
       prevProps.maxNodes != this.props.maxNodes ||
-      prevProps.refreshToken != this.props.refreshToken
+      prevProps.refreshToken != this.props.refreshToken ||
+      prevProps[`${this.props.viewSide}From`] != this.props[`${this.props.viewSide}From`] ||
+      prevProps[`${this.props.viewSide}Until`] != this.props[`${this.props.viewSide}Until`]
     ) {
-      this.fetchFlameBearerData(this.props.renderURL);
+      if(this.props.viewSide === 'left' || this.props.viewSide === 'right') {
+        this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`])
+      } else {
+        this.fetchFlameBearerData(this.props.renderURL)
+      }
     }
 
     if (
@@ -181,12 +203,13 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateData = () => {
-    const { names, levels, numTicks, sampleRate } = this.state.flamebearer;
+    const { names, levels, numTicks, sampleRate, units } = this.state.flamebearer;
     this.setState({
       names: names,
       levels: levels,
       numTicks: numTicks,
       sampleRate: sampleRate,
+      units: units,
     }, () => {
       this.renderCanvas();
     });
@@ -269,12 +292,17 @@ class FlameGraphRenderer extends React.Component {
     setTimeout(this.renderCanvas, 0);
   };
 
+  createFormatter = () => {
+    return getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
+  }
+
   renderCanvas = () => {
     if (!this.state.names) {
       return;
     }
 
-    const { names, levels, numTicks, sampleRate } = this.state;
+    const { names, levels, numTicks, sampleRate, units } = this.state;
+
     this.graphWidth = this.canvas.width = this.canvas.clientWidth;
     this.pxPerTick =
       this.graphWidth / numTicks / (this.rangeMax - this.rangeMin);
@@ -291,7 +319,7 @@ class FlameGraphRenderer extends React.Component {
     this.ctx.font =
       '400 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
-    const df = new DurationFormater(this.state.numTicks / this.state.sampleRate);
+    const formatter = this.createFormatter();
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
@@ -360,9 +388,7 @@ class FlameGraphRenderer extends React.Component {
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
           const percent = formatPercent(ratio);
-          const name = `${names[level[j + 3]]} (${percent}, ${df.format(
-            numBarTicks / sampleRate
-          )})`;
+          const name = `${names[level[j + 3]]} (${percent}, ${formatter.format(numBarTicks, sampleRate)})`;
 
           this.ctx.save();
           this.ctx.clip();
@@ -405,7 +431,7 @@ class FlameGraphRenderer extends React.Component {
     tooltipEl.children[0].innerText = tooltipTitle;
     const tooltipWidth = tooltipEl.clientWidth;
 
-    const df = new DurationFormater(this.state.numTicks / this.state.sampleRate);
+    const formatter = this.createFormatter();
 
     this.setState({
       highlightStyle: {
@@ -428,7 +454,7 @@ class FlameGraphRenderer extends React.Component {
       tooltipTitle,
       tooltipSubtitle: `${percent}, ${numberWithCommas(
         numBarTicks
-      )} samples, ${df.format(numBarTicks / this.state.sampleRate)}`,
+      )} samples, ${formatter.format(numBarTicks, this.state.sampleRate)}`,
     });
   };
 
@@ -457,68 +483,117 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  render = () => (
-    <div className="canvas-renderer">
-      <div className="canvas-container">
-        <ProfilerHeader
-          view={this.state.view}
-          handleSearchChange={this.handleSearchChange}
-          reset={this.reset}
-          updateView={this.updateView}
-          resetStyle={this.state.resetStyle}
-        />
-        <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.orientation == "vertical" })}>
-          <div
-            className={clsx("pane", { hidden: this.state.view === "icicle", "vertical-orientation": this.props.orientation == "vertical" })}
-          >
-            <ProfilerTable
-              flamebearer={this.state.flamebearer}
-              sortByDirection={this.state.sortByDirection}
-              sortBy={this.state.sortBy}
-              updateSortBy={this.updateSortBy}
-              view={this.state.view}
-            />
-          </div>
-          <div
-            className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.orientation == "vertical" })}
-          >
-            <canvas
-              className="flamegraph-canvas"
-              height="0"
-              ref={this.canvasRef}
-              onClick={this.clickHandler}
-              onMouseMove={this.mouseMoveHandler}
-              onMouseOut={this.mouseOutHandler}
-            />
-          </div>
-        </div>
-        <div
-          className={clsx("no-data-message", {
-            visible:
-              this.state.flamebearer && this.state.flamebearer.numTicks === 0,
-          })}
-        >
-          <span>
-            No profiling data available for this application / time range.
-          </span>
-        </div>
-      </div>
-      <div className="flamegraph-highlight" style={this.state.highlightStyle} />
+  render = () => {
+    // This is necessary because the order switches depending on single vs comparison view
+    let tablePane = (
       <div
-        className="flamegraph-tooltip"
-        ref={this.tooltipRef}
-        style={this.state.tooltipStyle}
+        key={'table-pane'}
+        className={clsx("pane", { hidden: this.state.view === "icicle", "vertical-orientation": this.props.viewType === "double" })}
       >
-        <div className="flamegraph-tooltip-name">{this.state.tooltipTitle}</div>
-        <div>{this.state.tooltipSubtitle}</div>
+        <ProfilerTable
+          flamebearer={this.state.flamebearer}
+          sortByDirection={this.state.sortByDirection}
+          sortBy={this.state.sortBy}
+          updateSortBy={this.updateSortBy}
+          view={this.state.view}
+        />
       </div>
-    </div>
-  );
+    )
+
+    let flameGraphPane = (
+      <div
+        key={'flamegraph-pane'}
+        className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.viewType === "double" })}
+      >
+        <div className='flamegraph-header'>
+          <span></span>
+          <span>Frame width represents {unitsToFlamegraphTitle[this.state.units]}</span>
+          <ExportData flameCanvas={this.canvasRef}/>
+        </div>
+        <canvas
+          className="flamegraph-canvas"
+          height="0"
+          ref={this.canvasRef}
+          onClick={this.clickHandler}
+          onMouseMove={this.mouseMoveHandler}
+          onMouseOut={this.mouseOutHandler}
+        />
+      </div>
+    )
+
+    let panes = this.props.viewType === "double" ?
+      [flameGraphPane, tablePane]:
+      [tablePane, flameGraphPane]
+
+    const flotData = this.props.timeline
+      ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
+      : [];
+
+    let instructionsText = this.props.viewType === "double" ? `Select ${this.props.viewSide} time range` : null;
+    let instructionsClassName = this.props.viewType === "double" ? `${this.props.viewSide}-instructions` : null;
+
+    return (
+      <div className={clsx("canvas-renderer", { "double": this.props.viewType === "double" })}>
+
+        <div className="canvas-container">
+          <ProfilerHeader
+            view={this.state.view}
+            handleSearchChange={this.handleSearchChange}
+            reset={this.reset}
+            updateView={this.updateView}
+            resetStyle={this.state.resetStyle}
+          />
+          <div className={`${instructionsClassName}-wrapper`}>
+            <span className={`${instructionsClassName}-text`}>{instructionsText}</span>
+          </div>
+          {
+            this.props.viewType === "double" ?
+              <TimelineChartWrapper
+                key={`timeline-chart-${this.props.viewSide}`}
+                id={`timeline-chart-${this.props.viewSide}`}
+                viewSide={this.props.viewSide}
+              /> :
+              null
+          }
+          <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.viewType === "double" })}>
+            {
+              panes.map((pane) => (
+                pane
+              ))
+            }
+            {/* { tablePane }
+            { flameGraphPane } */}
+          </div>
+          <div
+            className={clsx("no-data-message", {
+              visible:
+                this.state.flamebearer && this.state.flamebearer.numTicks === 0,
+            })}
+          >
+            <span>
+              No profiling data available for this application / time range.
+            </span>
+          </div>
+        </div>
+        <div className="flamegraph-highlight" style={this.state.highlightStyle} />
+        <div
+          className="flamegraph-tooltip"
+          ref={this.tooltipRef}
+          style={this.state.tooltipStyle}
+        >
+          <div className="flamegraph-tooltip-name">{this.state.tooltipTitle}</div>
+          <div>{this.state.tooltipSubtitle}</div>
+        </div>
+      </div>
+    )
+}
 }
 
 const mapStateToProps = (state) => ({
   ...state,
   renderURL: buildRenderURL(state),
+  leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
+  rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),
 });
 
 const mapDispatchToProps = (dispatch) => ({

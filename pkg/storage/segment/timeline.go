@@ -5,6 +5,8 @@ import (
 )
 
 type Timeline struct {
+	st            time.Time
+	et            time.Time
 	StartTime     int64    `json:"startTime"`
 	Samples       []uint64 `json:"samples"`
 	durationDelta time.Duration
@@ -36,6 +38,8 @@ func GenerateTimeline(st, et time.Time) *Timeline {
 	// 	currentTime = currentTime.Add(delta)
 	// }
 	return &Timeline{
+		st:            st,
+		et:            et,
 		StartTime:     st.Unix(),
 		Samples:       res,
 		durationDelta: delta,
@@ -43,14 +47,13 @@ func GenerateTimeline(st, et time.Time) *Timeline {
 	}
 }
 
-func (tl *Timeline) PopulateTimeline(st, et time.Time, s *Segment) {
-	st, et = normalize(st, et)
+func (tl *Timeline) PopulateTimeline(s *Segment) {
 
 	if s.root == nil {
 		return
 	}
 
-	s.root.populateTimeline(st, et, tl.durationDelta, tl.Samples)
+	s.root.populateTimeline(tl.st, tl.et, tl.durationDelta, tl.Samples)
 }
 
 func (sn *streeNode) populateTimeline(st, et time.Time, minDuration time.Duration, buf []uint64) {

@@ -20,7 +20,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
-	"github.com/pyroscope-io/pyroscope/pkg/util/strarr"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/sirupsen/logrus"
 )
 
@@ -59,12 +59,12 @@ func badgerGC(db *badger.DB) {
 
 func newBadger(cfg *config.Config, name string) (*badger.DB, error) {
 	badgerPath := filepath.Join(cfg.Server.StoragePath, name)
-	err := os.MkdirAll(badgerPath, 0755)
+	err := os.MkdirAll(badgerPath, 0o755)
 	if err != nil {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
-	badgerOptions = badgerOptions.WithTruncate(false)
+	badgerOptions = badgerOptions.WithTruncate(!cfg.Server.BadgerNoTruncate)
 	badgerOptions = badgerOptions.WithSyncWrites(false)
 	badgerOptions = badgerOptions.WithCompression(options.ZSTD)
 	badgerLevel := logrus.ErrorLevel
@@ -166,7 +166,18 @@ func New(cfg *config.Config) (*Storage, error) {
 	return s, nil
 }
 
-func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree, spyName string, sampleRate int) error {
+type PutInput struct {
+	StartTime       time.Time
+	EndTime         time.Time
+	Key             *Key
+	Val             *tree.Tree
+	SpyName         string
+	SampleRate      int
+	Units           string
+	AggregationType string
+}
+
+func (s *Storage) Put(po *PutInput) error {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
 
@@ -174,30 +185,32 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree, sp
 		return errClosing
 	}
 	logrus.WithFields(logrus.Fields{
-		"startTime": startTime.String(),
-		"endTime":   endTime.String(),
-		"key":       key.Normalized(),
-		"samples":   val.Samples(),
+		"startTime":       po.StartTime.String(),
+		"endTime":         po.EndTime.String(),
+		"key":             po.Key.Normalized(),
+		"samples":         po.Val.Samples(),
+		"units":           po.Units,
+		"aggregationType": po.AggregationType,
 	}).Info("storage.Put")
-	for k, v := range key.labels {
+	for k, v := range po.Key.labels {
 		s.labels.Put(k, v)
 	}
 
-	sk := key.SegmentKey()
-	for k, v := range key.labels {
+	sk := po.Key.SegmentKey()
+	for k, v := range po.Key.labels {
 		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
 		d.Insert([]byte(sk))
 	}
 
 	st := s.segments.Get(sk).(*segment.Segment)
-	st.SetMetadata(spyName, sampleRate)
-	samples := val.Samples()
-	st.Put(startTime, endTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
-		tk := key.TreeKey(depth, t)
+	st.SetMetadata(po.SpyName, po.SampleRate, po.Units, po.AggregationType)
+	samples := po.Val.Samples()
+	st.Put(po.StartTime, po.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
+		tk := po.Key.TreeKey(depth, t)
 		existingTree := s.trees.Get(tk).(*tree.Tree)
-		treeClone := val.Clone(big.NewRat(1, 1))
+		treeClone := po.Val.Clone(r)
 		for _, addon := range addons {
-			tk2 := key.TreeKey(addon.Depth, addon.T)
+			tk2 := po.Key.TreeKey(addon.Depth, addon.T)
 			addonTree := s.trees.Get(tk2).(*tree.Tree)
 			treeClone.Merge(addonTree)
 		}
@@ -213,31 +226,47 @@ func (s *Storage) Put(startTime, endTime time.Time, key *Key, val *tree.Tree, sp
 	return nil
 }
 
-func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segment.Timeline, string, int, error) {
+type GetInput struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Key       *Key
+}
+
+type GetOutput struct {
+	Tree       *tree.Tree
+	Timeline   *segment.Timeline
+	SpyName    string
+	SampleRate int
+	Units      string
+}
+
+func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
 
 	if s.closing {
-		return nil, nil, "", 100, errClosing
+		return nil, errClosing
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"startTime": startTime.String(),
-		"endTime":   endTime.String(),
-		"key":       key.Normalized(),
+		"startTime": gi.StartTime.String(),
+		"endTime":   gi.EndTime.String(),
+		"key":       gi.Key.Normalized(),
 	}).Info("storage.Get")
 	triesToMerge := []merge.Merger{}
 
 	dimensions := []*dimension.Dimension{}
-	for k, v := range key.labels {
+	for k, v := range gi.Key.labels {
 		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
 		dimensions = append(dimensions, d)
 	}
 
 	segmentKeys := dimension.Intersection(dimensions...)
 
-	tl := segment.GenerateTimeline(startTime, endTime)
+	tl := segment.GenerateTimeline(gi.StartTime, gi.EndTime)
 	var lastSegment *segment.Segment
+	var writesTotal uint64
+	aggregationType := "sum"
 	for _, sk := range segmentKeys {
 		// TODO: refactor, store `Key`s in dimensions
 		skk, _ := ParseKey(string(sk))
@@ -246,25 +275,43 @@ func (s *Storage) Get(startTime, endTime time.Time, key *Key) (*tree.Tree, *segm
 			continue
 		}
 
+		if st.AggregationType() == "average" {
+			aggregationType = "average"
+		}
+
 		lastSegment = st
 
-		tl.PopulateTimeline(startTime, endTime, st)
+		tl.PopulateTimeline(st)
 
-		st.Get(startTime, endTime, func(depth int, t time.Time, r *big.Rat) {
+		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
 			k := skk.TreeKey(depth, t)
 			tr := s.trees.Get(k).(*tree.Tree)
 			// TODO: these clones are probably are not the most efficient way of doing this
 			//   instead this info should be passed to the merger function imo
 			tr2 := tr.Clone(r)
 			triesToMerge = append(triesToMerge, merge.Merger(tr2))
+			writesTotal += writes
 		})
 	}
 
 	resultTrie := merge.MergeTriesConcurrently(runtime.NumCPU(), triesToMerge...)
 	if resultTrie == nil {
-		return nil, tl, "", 100, nil
+		return nil, nil
 	}
-	return resultTrie.(*tree.Tree), tl, lastSegment.SpyName(), lastSegment.SampleRate(), nil
+
+	t := resultTrie.(*tree.Tree)
+
+	if writesTotal > 0 && aggregationType == "average" {
+		t = t.Clone(big.NewRat(1, int64(writesTotal)))
+	}
+
+	return &GetOutput{
+		Tree:       t,
+		Timeline:   tl,
+		SpyName:    lastSegment.SpyName(),
+		SampleRate: lastSegment.SampleRate(),
+		Units:      lastSegment.Units(),
+	}, nil
 }
 
 func (s *Storage) Close() error {
@@ -293,7 +340,7 @@ func (s *Storage) GetKeys(cb func(_k string) bool) {
 
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
-		if key != "__name__" || !strarr.Contains(s.cfg.Server.HideApplications, v) {
+		if key != "__name__" || !slices.StringContains(s.cfg.Server.HideApplications, v) {
 			return cb(v)
 		}
 		return true

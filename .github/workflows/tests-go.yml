@@ -1,4 +1,4 @@
-name: Tests
+name: Go Tests
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  go-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,11 +19,12 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      - name: Ensure logrus is not used by pkg/agent/profiler
+        run: make ensure-logrus-not-used
       - name: Run Go tests
-        run: go test ./...
-      - name: Install Webapp dependencies
-        run: yarn install
-      - name: Run Webapp tests
-        run: yarn run test
-      - name: Run Webapp lints
-        run: yarn lint
+        run: go test -tags debugspy -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: Upload codecov coverage
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: false
+          verbose: true

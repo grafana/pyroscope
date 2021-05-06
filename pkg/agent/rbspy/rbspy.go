@@ -7,6 +7,7 @@ package rbspy
 // #cgo linux LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
 // #include "../../../third_party/rustdeps/rbspy.h"
 import "C"
+
 import (
 	"errors"
 	"time"
@@ -64,12 +65,12 @@ func (s *RbSpy) Stop() error {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *RbSpy) Snapshot(cb func([]byte, error)) {
+func (s *RbSpy) Snapshot(cb func([]byte, uint64, error)) {
 	r := C.rbspy_snapshot(C.int(s.pid), s.dataPtr, C.int(bufferLength), s.errorPtr, C.int(bufferLength))
 	if r < 0 {
-		cb(nil, errors.New(string(s.errorBuf[:-r])))
+		cb(nil, 0, errors.New(string(s.errorBuf[:-r])))
 	} else {
-		cb(s.dataBuf[:r], nil)
+		cb(s.dataBuf[:r], 1, nil)
 	}
 }
 

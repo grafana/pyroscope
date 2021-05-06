@@ -8,22 +8,21 @@
 FROM alpine:3.12 as rust-builder
 
 RUN apk update &&\
-    apk add git gcc g++ make build-base openssl-dev musl musl-dev \
-    rust cargo curl
+    apk add --no-cache git gcc g++ make build-base openssl-dev musl musl-dev curl
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN /root/.cargo/bin/rustup target add $(uname -m)-unknown-linux-musl
 
-RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwind-1.3.1.tar.gz
-RUN tar -zxvf libunwind-1.3.1.tar.gz
-RUN cd libunwind-1.3.1/ && ./configure --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
+RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwind-1.3.1.tar.gz && \
+    tar -zxf libunwind-1.3.1.tar.gz && \
+    cd libunwind-1.3.1/ && \
+    ./configure --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
 
 COPY third_party/rustdeps /opt/rustdeps
 
 WORKDIR /opt/rustdeps
 
-ENV RUSTFLAGS="-C target-feature=+crt-static"
-RUN /root/.cargo/bin/cargo build --release --target $(uname -m)-unknown-linux-musl
+RUN RUSTFLAGS="-C target-feature=+crt-static" /root/.cargo/bin/cargo build --release --target $(uname -m)-unknown-linux-musl
 RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a /opt/rustdeps/librustdeps.a
 
 
@@ -40,9 +39,9 @@ RUN apk add --no-cache make
 
 WORKDIR /opt/pyroscope
 
-COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore Makefile ./
 COPY scripts ./scripts
 COPY webapp ./webapp
+COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore Makefile ./
 
 ARG EXTRA_METADATA=""
 RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
@@ -59,7 +58,7 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 
 FROM golang:1.15.1-alpine3.12 as go-builder
 
-RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev
+RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 
 WORKDIR /opt/pyroscope
 
@@ -76,7 +75,7 @@ COPY scripts ./scripts
 COPY go.mod go.sum pyroscope.go ./
 COPY Makefile ./
 
-RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags \"-static\"" make build-release
+RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
 
 
 #   __ _             _   _

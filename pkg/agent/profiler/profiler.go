@@ -6,13 +6,29 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 )
+
+type ProfileType = spy.ProfileType
+
+var (
+	ProfileCPU          = spy.ProfileCPU
+	ProfileAllocObjects = spy.ProfileAllocObjects
+	ProfileAllocSpace   = spy.ProfileAllocSpace
+	ProfileInuseObjects = spy.ProfileInuseObjects
+	ProfileInuseSpace   = spy.ProfileInuseSpace
+)
+
+var DefaultProfileTypes = []ProfileType{ProfileCPU, ProfileAllocObjects, ProfileAllocSpace, ProfileInuseObjects, ProfileInuseSpace}
 
 type Config struct {
 	ApplicationName string // e.g backend.purchases
 	ServerAddress   string // e.g http://pyroscope.services.internal:4040
-	AuthToken       string
+	AuthToken       string // specify this token when using pyroscope cloud
+	Logger          agent.Logger
+	ProfileTypes    []ProfileType
+	DisableGCRuns   bool // this will disable automatic runtime.GC runs
 }
 
 type Profiler struct {
@@ -21,17 +37,36 @@ type Profiler struct {
 
 // Start starts continuously profiling go code
 func Start(cfg Config) (*Profiler, error) {
+	if len(cfg.ProfileTypes) == 0 {
+		cfg.ProfileTypes = DefaultProfileTypes
+	}
 	u, err := remote.New(remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamThreads:        4,
 		UpstreamRequestTimeout: 30 * time.Second,
 	})
+
+	u.Logger = cfg.Logger
+
 	if err != nil {
 		return nil, err
 	}
+
 	// TODO: add sample rate
-	sess := agent.NewSession(u, cfg.ApplicationName, "gospy", 100, 0, false)
+	c := agent.SessionConfig{
+		Upstream:         u,
+		AppName:          cfg.ApplicationName,
+		ProfilingTypes:   []ProfileType{ProfileCPU, ProfileAllocObjects, ProfileAllocSpace, ProfileInuseObjects, ProfileInuseSpace},
+		DisableGCRuns:    cfg.DisableGCRuns,
+		SpyName:          "gospy",
+		SampleRate:       100,
+		UploadRate:       10 * time.Second,
+		Pid:              0,
+		WithSubprocesses: false,
+	}
+	sess := agent.NewSession(&c)
+	sess.Logger = cfg.Logger
 	sess.Start()
 
 	p := &Profiler{

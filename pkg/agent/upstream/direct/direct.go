@@ -1,30 +1,22 @@
 package direct
 
 import (
-	"time"
+	"runtime/debug"
 
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
-type uploadJob struct {
-	name       string
-	startTime  time.Time
-	endTime    time.Time
-	t          *transporttrie.Trie
-	spyName    string
-	sampleRate int
-}
+const upstreamThreads = 1
 
 type Direct struct {
 	cfg  *config.Config
 	s    *storage.Storage
-	todo chan *uploadJob
+	todo chan *upstream.UploadJob
 	done chan struct{}
 }
 
@@ -32,8 +24,8 @@ func New(cfg *config.Config, s *storage.Storage) *Direct {
 	d := &Direct{
 		cfg:  cfg,
 		s:    s,
-		todo: make(chan *uploadJob, 100),
-		done: make(chan struct{}, cfg.Agent.UpstreamThreads),
+		todo: make(chan *upstream.UploadJob, 100),
+		done: make(chan struct{}, upstreamThreads),
 	}
 
 	go d.start()
@@ -41,58 +33,67 @@ func New(cfg *config.Config, s *storage.Storage) *Direct {
 }
 
 func (u *Direct) start() {
-	for i := 0; i < u.cfg.Agent.UpstreamThreads; i++ {
+	for i := 0; i < upstreamThreads; i++ {
 		go u.uploadLoop()
 	}
 }
 
 func (u *Direct) Stop() {
-	for i := 0; i < u.cfg.Agent.UpstreamThreads; i++ {
+	for i := 0; i < upstreamThreads; i++ {
 		u.done <- struct{}{}
 	}
 }
 
-// TODO: this metadata class should be unified
-func (u *Direct) Upload(name string, startTime time.Time, endTime time.Time, spyName string, sampleRate int, t *transporttrie.Trie) {
-	job := &uploadJob{
-		name:       name,
-		startTime:  startTime,
-		endTime:    endTime,
-		t:          t,
-		spyName:    spyName,
-		sampleRate: sampleRate,
-	}
+func (u *Direct) Upload(j *upstream.UploadJob) {
 	select {
-	case u.todo <- job:
+	case u.todo <- j:
 	default:
-		log.Error("Direct upload queue is full, dropping a profile")
+		logrus.Error("Direct upload queue is full, dropping a profile")
 	}
 }
 
-func (u *Direct) uploadProfile(j *uploadJob) {
-	key, err := storage.ParseKey(j.name)
+func (u *Direct) uploadProfile(j *upstream.UploadJob) {
+	key, err := storage.ParseKey(j.Name)
 	if err != nil {
 		logrus.WithField("key", key).Error("invalid key:")
 		return
 	}
 
 	t := tree.New()
-	j.t.Iterate(func(name []byte, val uint64) {
+	j.Trie.Iterate(func(name []byte, val uint64) {
 		t.Insert(name, val, false)
 	})
 
-	// TODO: pass spy name and sample rate from somewhere
-	u.s.Put(j.startTime, j.endTime, key, t, j.spyName, j.sampleRate)
+	u.s.Put(&storage.PutInput{
+		StartTime:       j.StartTime,
+		EndTime:         j.EndTime,
+		Key:             key,
+		Val:             t,
+		SpyName:         j.SpyName,
+		SampleRate:      j.SampleRate,
+		Units:           j.Units,
+		AggregationType: j.AggregationType,
+	})
 }
 
 func (u *Direct) uploadLoop() {
 	for {
 		select {
 		case j := <-u.todo:
-			logrus.Debug("upload profile")
-			u.uploadProfile(j)
+			u.safeUpload(j)
 		case <-u.done:
 			return
 		}
 	}
+}
+
+// do safe upload
+func (u *Direct) safeUpload(j *upstream.UploadJob) {
+	defer func() {
+		if r := recover(); r != nil {
+			logrus.Errorf("panic, stack = : %v", debug.Stack())
+		}
+	}()
+
+	u.uploadProfile(j)
 }

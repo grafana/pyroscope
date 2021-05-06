@@ -9,14 +9,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
+	"github.com/sirupsen/logrus"
 
 	"github.com/cheggaaa/pb/v3"
 )
 
 func Cli(cfg *config.Config, args []string) error {
-	// spew.Dump(cfg.DbManager)
-	// spew.Dump(args)
-
 	if len(args) == 0 {
 		return fmt.Errorf("please provide a command")
 	}
@@ -69,7 +67,7 @@ func copyData(cfg *config.Config) error {
 
 	if cfg.DbManager.EnableProfiling {
 		u := direct.New(cfg, s)
-		go agent.SelfProfile(cfg, u, "pyroscope.dbmanager.cpu{}")
+		go agent.SelfProfile(cfg, u, "pyroscope.dbmanager.cpu{}", logrus.StandardLogger())
 	}
 
 	st := srcSt
@@ -97,15 +95,28 @@ func copyData(cfg *config.Config) error {
 		}
 
 		srct2 := srct.Add(resolution)
-		tree, _, sn, sr, err := s.Get(srct, srct2, sk)
+		gOut, err := s.Get(&storage.GetInput{
+			StartTime: srct,
+			EndTime:   srct2,
+			Key:       sk,
+		})
 		if err != nil {
 			return err
 		}
 
-		if tree != nil {
+		if gOut.Tree != nil {
 			dstt := srct.Add(durDiff)
 			dstt2 := dstt.Add(resolution)
-			err = s.Put(dstt, dstt2, sk, tree, sn, sr)
+
+			err = s.Put(&storage.PutInput{
+				StartTime:  dstt,
+				EndTime:    dstt2,
+				Key:        sk,
+				Val:        gOut.Tree,
+				SpyName:    gOut.SpyName,
+				SampleRate: gOut.SampleRate,
+				Units:      gOut.Units,
+			})
 			if err != nil {
 				return err
 			}

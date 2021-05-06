@@ -17,57 +17,130 @@ import (
 // 21:22:08      air |  (time.Duration) 2777h46m40s,
 // 21:22:08      air |  (time.Duration) 27777h46m40s
 
-var s *Storage
-var s2 *Storage
+var (
+	s  *Storage
+	s2 *Storage
+)
 
 var _ = Describe("storage package", func() {
-	var tmpDir *testing.TmpDirectory
-	var cfg *config.Config
-
-	BeforeEach(func() {
-		tmpDir = testing.TmpDirSync()
-		cfg = config.NewForTests(tmpDir.Path)
-		cfg.Server.CacheSegmentSize = 0
-		cfg.Server.CacheTreeSize = 0
-		var err error
-		s, err = New(cfg)
-		Expect(err).ToNot(HaveOccurred())
-	})
-
-	AfterEach(func() {
-		tmpDir.Close()
-	})
-
-	Context("Storage", func() {
-		XIt("works", func() {
-			tree := tree.New()
-			tree.Insert([]byte("a;b"), uint64(1))
-			tree.Insert([]byte("a;c"), uint64(2))
-			st := testing.ParseTime("0001-01-01-00:00:10")
-			et := testing.ParseTime("0001-01-01-00:00:19")
-			st2 := testing.ParseTime("0001-01-01-00:00:00")
-			et2 := testing.ParseTime("0001-01-01-00:00:30")
-			key, _ := ParseKey("foo")
-			err := s.Put(st, et, key, tree, "testspy", 100)
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(*cfg)
 			Expect(err).ToNot(HaveOccurred())
+		})
 
-			t2, _, _, _, err := s.Get(st2, et2, key)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(t2).ToNot(BeNil())
+		Context("smoke tests", func() {
+			Context("simple 10 second write", func() {
+				It("works correctly", func() {
+					tree := tree.New()
+					tree.Insert([]byte("a;b"), uint64(1))
+					tree.Insert([]byte("a;c"), uint64(2))
+					st := testing.SimpleTime(10)
+					et := testing.SimpleTime(19)
+					st2 := testing.SimpleTime(0)
+					et2 := testing.SimpleTime(30)
+					key, _ := ParseKey("foo")
 
-			Expect(t2.String()).To(Equal(tree.String()))
+					err := s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
+					Expect(err).ToNot(HaveOccurred())
 
-			Expect(s.Close()).ToNot(HaveOccurred())
+					gOut, err := s.Get(&GetInput{
+						StartTime: st2,
+						EndTime:   et2,
+						Key:       key,
+					})
 
-			s2, err = New(cfg)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(gOut.Tree).ToNot(BeNil())
+					Expect(gOut.Tree.String()).To(Equal(tree.String()))
+					Expect(s.Close()).ToNot(HaveOccurred())
+				})
+			})
+			Context("simple 20 second write", func() {
+				It("works correctly", func() {
+					tree := tree.New()
+					tree.Insert([]byte("a;b"), uint64(2))
+					tree.Insert([]byte("a;c"), uint64(4))
+					st := testing.SimpleTime(10)
+					et := testing.SimpleTime(29)
+					st2 := testing.SimpleTime(0)
+					et2 := testing.SimpleTime(30)
+					key, _ := ParseKey("foo")
 
-			t3, _, _, _, err := s2.Get(st2, et2, key)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(t3).ToNot(BeNil())
+					err := s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
+					Expect(err).ToNot(HaveOccurred())
 
-			Expect(t3.String()).To(Equal(tree.String()))
+					gOut, err := s.Get(&GetInput{
+						StartTime: st2,
+						EndTime:   et2,
+						Key:       key,
+					})
 
-			Expect(nil).ToNot(BeNil())
+					Expect(err).ToNot(HaveOccurred())
+					Expect(gOut.Tree).ToNot(BeNil())
+					Expect(gOut.Tree.String()).To(Equal(tree.String()))
+					Expect(s.Close()).ToNot(HaveOccurred())
+				})
+			})
+
+			It("persist data between restarts", func() {
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(1))
+				tree.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(19)
+				st2 := testing.SimpleTime(0)
+				et2 := testing.SimpleTime(30)
+				key, _ := ParseKey("foo")
+
+				err := s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        tree,
+					SpyName:    "testspy",
+					SampleRate: 100,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				gOut, err := s.Get(&GetInput{
+					StartTime: st2,
+					EndTime:   et2,
+					Key:       key,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(gOut.Tree).ToNot(BeNil())
+				Expect(gOut.Tree.String()).To(Equal(tree.String()))
+				Expect(s.Close()).ToNot(HaveOccurred())
+
+				s2, err = New(*cfg)
+				Expect(err).ToNot(HaveOccurred())
+
+				gOut2, err := s2.Get(&GetInput{
+					StartTime: st2,
+					EndTime:   et2,
+					Key:       key,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(gOut2.Tree).ToNot(BeNil())
+				Expect(gOut2.Tree.String()).To(Equal(tree.String()))
+			})
 		})
 	})
 })

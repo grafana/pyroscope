@@ -25,8 +25,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/iancoleman/strcase"
 	"github.com/peterbourgon/ff/ffyaml"
@@ -73,7 +73,7 @@ func (tf *timeFlag) Set(value string) error {
 }
 
 // this is mostly reflection magic
-func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet) *SortedFlags {
+func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *SortedFlags {
 	v := reflect.ValueOf(obj).Elem()
 	t := reflect.TypeOf(v.Interface())
 	num := t.NumField()
@@ -86,14 +86,15 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet) *SortedFlags {
 		fieldV := v.Field(i)
 		defaultValStr := field.Tag.Get("def")
 		descVal := field.Tag.Get("desc")
-		nameVal := field.Tag.Get("name")
 		skipVal := field.Tag.Get("skip")
-		if skipVal == "true" {
-			continue
-		}
+		nameVal := field.Tag.Get("name")
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
 		}
+		if skipVal == "true" || slices.StringContains(skip, nameVal) {
+			continue
+		}
+
 		descVal = strings.ReplaceAll(descVal, "<supportedProfilers>", supportedSpies)
 
 		switch field.Type {
@@ -121,7 +122,7 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet) *SortedFlags {
 				var err error
 				defaultVal, err = time.ParseDuration(defaultValStr)
 				if err != nil {
-					log.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
 				}
 			}
 			flagSet.DurationVar(val, nameVal, defaultVal, descVal)
@@ -134,12 +135,12 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet) *SortedFlags {
 				var err error
 				defaultVal, err = strconv.Atoi(defaultValStr)
 				if err != nil {
-					log.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
 				}
 			}
 			flagSet.IntVar(val, nameVal, defaultVal, descVal)
 		default:
-			log.Fatalf("type %s is not supported", field.Type)
+			logrus.Fatalf("type %s is not supported", field.Type)
 		}
 	}
 	return NewSortedFlags(obj, flagSet)
@@ -174,20 +175,20 @@ func resolvePath(path string) string {
 	return path
 }
 
-func Start(cfg *config.Config) error {
+func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	var (
-		agentFlagSet     = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
 		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
 		execFlagSet      = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
+		connectFlagSet   = flag.NewFlagSet("pyroscope connect", flag.ExitOnError)
 		dbmanagerFlagSet = flag.NewFlagSet("pyroscope dbmanager", flag.ExitOnError)
 		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 	)
 
-	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet)
 	serverSortedFlags := PopulateFlagSet(&cfg.Server, serverFlagSet)
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
-	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet)
+	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, "pid")
+	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet)
 	dbmanagerSortedFlags := PopulateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
 	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
 
@@ -196,15 +197,6 @@ func Start(cfg *config.Config) error {
 		ff.WithEnvVarPrefix("PYROSCOPE"),
 		ff.WithAllowMissingConfigFile(true),
 		ff.WithConfigFileFlag("config"),
-	}
-
-	agentCmd := &ffcli.Command{
-		UsageFunc:  agentSortedFlags.printUsage,
-		Options:    options,
-		Name:       "agent",
-		ShortUsage: "pyroscope agent [flags]",
-		ShortHelp:  "starts pyroscope agent. Run this one on the machines you want to profile",
-		FlagSet:    agentFlagSet,
 	}
 
 	serverCmd := &ffcli.Command{
@@ -234,6 +226,15 @@ func Start(cfg *config.Config) error {
 		FlagSet:    execFlagSet,
 	}
 
+	connectCmd := &ffcli.Command{
+		UsageFunc:  connectSortedFlags.printUsage,
+		Options:    options,
+		Name:       "connect",
+		ShortUsage: "pyroscope connect [flags]",
+		ShortHelp:  "connects to an existing process and profiles it",
+		FlagSet:    connectFlagSet,
+	}
+
 	dbmanagerCmd := &ffcli.Command{
 		UsageFunc:  dbmanagerSortedFlags.printUsage,
 		Options:    options,
@@ -249,23 +250,14 @@ func Start(cfg *config.Config) error {
 		ShortUsage: "pyroscope [flags] <subcommand>",
 		FlagSet:    rootFlagSet,
 		Subcommands: []*ffcli.Command{
-			agentCmd,
 			convertCmd,
 			serverCmd,
 			execCmd,
+			connectCmd,
 			dbmanagerCmd,
 		},
 	}
 
-	agentCmd.Exec = func(_ context.Context, args []string) error {
-		if l, err := logrus.ParseLevel(cfg.Agent.LogLevel); err == nil {
-			logrus.SetLevel(l)
-		}
-		a := agent.New(cfg)
-		atexit.Register(a.Stop)
-		a.Start()
-		return nil
-	}
 	serverCmd.Exec = func(_ context.Context, args []string) error {
 		if l, err := logrus.ParseLevel(cfg.Server.LogLevel); err == nil {
 			logrus.SetLevel(l)
@@ -290,6 +282,22 @@ func Start(cfg *config.Config) error {
 
 		return exec.Cli(cfg, args)
 	}
+
+	connectCmd.Exec = func(_ context.Context, args []string) error {
+		if cfg.Exec.NoLogging {
+			logrus.SetLevel(logrus.PanicLevel)
+		} else if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
+			logrus.SetLevel(l)
+		}
+		if len(args) > 0 && args[0] == "help" {
+			fmt.Println(gradientBanner())
+			fmt.Println(DefaultUsageFunc(connectSortedFlags, connectCmd))
+			return nil
+		}
+
+		return exec.Cli(cfg, args)
+	}
+
 	dbmanagerCmd.Exec = func(_ context.Context, args []string) error {
 		if l, err := logrus.ParseLevel(cfg.DbManager.LogLevel); err == nil {
 			logrus.SetLevel(l)
@@ -308,7 +316,11 @@ func Start(cfg *config.Config) error {
 		return nil
 	}
 
-	return rootCmd.ParseAndRun(context.Background(), os.Args[1:])
+	return rootCmd
+}
+
+func Start(cfg *config.Config) error {
+	return generateRootCmd(cfg).ParseAndRun(context.Background(), os.Args[1:])
 }
 
 func startServer(cfg *config.Config) {
@@ -318,10 +330,11 @@ func startServer(cfg *config.Config) {
 		panic(err)
 	}
 	u := direct.New(cfg, s)
-	go agent.SelfProfile(cfg, u, "pyroscope.server.cpu{}")
+	go agent.SelfProfile(cfg, u, "pyroscope.server", logrus.StandardLogger())
 	go printRAMUsage()
 	go printDiskUsage(cfg)
 	c := server.New(cfg, s)
+	atexit.Register(func() { c.Stop() })
 	if !cfg.Server.AnalyticsOptOut {
 		analyticsService := analytics.NewService(cfg, s, c)
 		go analyticsService.Start()
@@ -329,7 +342,7 @@ func startServer(cfg *config.Config) {
 	}
 	// if you ever change this line, make sure to update this homebrew test:
 	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
-	log.Info("starting HTTP server")
+	logrus.Info("starting HTTP server")
 	c.Start()
 }
 
@@ -337,7 +350,7 @@ func printRAMUsage() {
 	t := time.NewTicker(30 * time.Second)
 	for {
 		<-t.C
-		if log.IsLevelEnabled(log.DebugLevel) {
+		if logrus.IsLevelEnabled(logrus.DebugLevel) {
 			debug.PrintMemUsage()
 		}
 	}
@@ -347,7 +360,7 @@ func printDiskUsage(cfg *config.Config) {
 	t := time.NewTicker(30 * time.Second)
 	for {
 		<-t.C
-		if log.IsLevelEnabled(log.DebugLevel) {
+		if logrus.IsLevelEnabled(logrus.DebugLevel) {
 			debug.PrintDiskUsage(cfg.Server.StoragePath)
 		}
 	}

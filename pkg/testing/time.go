@@ -15,3 +15,7 @@ func ParseTime(str string) time.Time {
 func SimpleTime(i int) time.Time {
 	return time.Time{}.Add(time.Duration(i) * time.Second).UTC()
 }
+
+func PrintTime(t time.Time) int {
+	return int(t.Sub(time.Time{}) / time.Second)
+}

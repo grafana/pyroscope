@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -10,24 +11,46 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
 )
 
 type ingestParams struct {
-	grouped    bool
-	format     string
-	storageKey *storage.Key
-	spyName    string
-	sampleRate int
-	modifiers  []string
-	from       time.Time
-	until      time.Time
+	parserFunc      func(io.Reader) (*tree.Tree, error)
+	storageKey      *storage.Key
+	spyName         string
+	sampleRate      int
+	units           string
+	aggregationType string
+	modifiers       []string
+	from            time.Time
+	until           time.Time
+}
+
+func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(io.Reader) (*tree.Tree, error) {
+	return func(r io.Reader) (*tree.Tree, error) {
+		t := tree.New()
+		convertFunc(r, func(k []byte, v int) {
+			t.Insert(k, uint64(v))
+		})
+
+		return t, nil
+	}
 }
 
 func ingestParamsFromRequest(r *http.Request) *ingestParams {
 	ip := &ingestParams{}
 	q := r.URL.Query()
-	ip.grouped = q.Get("grouped") != ""
+
+	format := q.Get("format")
+
+	if format == "tree" || r.Header.Get("Content-Type") == "binary/octet-stream+tree" {
+		ip.parserFunc = tree.DeserializeNoDict
+	} else if format == "trie" || r.Header.Get("Content-Type") == "binary/octet-stream+trie" {
+		ip.parserFunc = wrapConvertFunction(convert.ParseTrie)
+	} else if format == "lines" {
+		ip.parserFunc = wrapConvertFunction(convert.ParseIndividualLines)
+	} else {
+		ip.parserFunc = wrapConvertFunction(convert.ParseGroups)
+	}
 
 	if qt := q.Get("from"); qt != "" {
 		ip.from = attime.Parse(qt)
@@ -55,6 +78,18 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 		ip.spyName = "unknown"
 	}
 
+	if u := q.Get("units"); u != "" {
+		ip.units = u
+	} else {
+		ip.units = "samples"
+	}
+
+	if at := q.Get("aggregationType"); at != "" {
+		ip.aggregationType = at
+	} else {
+		ip.aggregationType = "sum"
+	}
+
 	var err error
 	ip.storageKey, err = storage.ParseKey(q.Get("name"))
 	if err != nil {
@@ -68,34 +103,24 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	ip := ingestParamsFromRequest(r)
 
 	var t *tree.Tree
-	if r.Header.Get("Content-Type") == "binary/octet-stream+tree" {
-		logrus.Info("ingest format = tree")
-		var err error
-		t, err = tree.DeserializeNoDict(r.Body)
-		if err != nil {
-			log.Error(err)
-			return
-		}
-	} else {
-		parserFunc := convert.ParseIndividualLines
-		if ip.grouped {
-			parserFunc = convert.ParseGroups
-			logrus.Info("ingest format = groups")
-		}
-
-		if r.Header.Get("Content-Type") == "binary/octet-stream+trie" {
-			logrus.Info("ingest format = trie")
-			parserFunc = convert.ParseTrie
-		}
-		t = tree.New()
-		parserFunc(r.Body, func(k []byte, v int) {
-			t.Insert(k, uint64(v))
-		})
+	t, err := ip.parserFunc(r.Body)
+	if err != nil {
+		logrus.WithField("err", err).Error("error happened while parsing data")
+		return
 	}
 
-	err := ctrl.s.Put(ip.from, ip.until, ip.storageKey, t, ip.spyName, ip.sampleRate)
+	err = ctrl.s.Put(&storage.PutInput{
+		StartTime:       ip.from,
+		EndTime:         ip.until,
+		Key:             ip.storageKey,
+		Val:             t,
+		SpyName:         ip.spyName,
+		SampleRate:      ip.sampleRate,
+		Units:           ip.units,
+		AggregationType: ip.aggregationType,
+	})
 	if err != nil {
-		log.Error(err)
+		logrus.WithField("err", err).Error("error happened while inserting data")
 		return
 	}
 	ctrl.statsInc("ingest")

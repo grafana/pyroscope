@@ -25,15 +25,3 @@ func (dstTrie *Trie) Merge(srcTrieI merge.Merger) {
 		}
 	}
 }
-
-// *
-//  abc
-//  fb
-//    c
-//    d
-
-// *
-//  f
-//   bc
-//   c
-//

@@ -5,13 +5,13 @@ import (
 	"os"
 	"path/filepath"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/onsi/ginkgo"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
-func DirStats(path string) (directories int, files int, size bytesize.ByteSize) {
+func DirStats(path string) (directories, files int, size bytesize.ByteSize) {
 	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -27,7 +27,8 @@ func DirStats(path string) (directories int, files int, size bytesize.ByteSize) 
 	if err != nil {
 		return -1, -1, -1
 	}
-	return
+
+	return directories, files, size
 }
 
 func TmpDir(cb func(name string)) {
@@ -38,7 +39,7 @@ func TmpDir(cb func(name string)) {
 	}
 	defer os.RemoveAll(path)
 
-	log.Debug("tmpDir:", path)
+	logrus.Debug("tmpDir:", path)
 	cb(path)
 	// return dirSize(path)
 }

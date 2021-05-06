@@ -67,7 +67,13 @@ warningCode = 0
 [rule.bare-return]
 [rule.unused-receiver]
 [rule.unhandled-error]
+  arguments = ["sb.WriteString"]
   severity = "error"
 [rule.cognitive-complexity]
   arguments = [7]
 [rule.string-of-int]
+
+# Custom rules. We use a revive fork available here: https://github.com/pyroscope-io/revive
+# See Makefile `lint` section for how to use the fork
+[rule.byte-array-limit]
+  arguments = [7]

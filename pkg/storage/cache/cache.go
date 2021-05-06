@@ -1,7 +1,7 @@
 package cache
 
 import (
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgrijalva/lfu-go"
@@ -56,17 +56,17 @@ func (cache *Cache) Put(key string, val interface{}) {
 }
 
 func (cache *Cache) saveToDisk(key string, val interface{}) {
-	log.WithFields(log.Fields{
+	logrus.WithFields(logrus.Fields{
 		"prefix": cache.prefix,
 		"key":    key,
-	}).Info("saving to disk")
+	}).Debug("saving to disk")
 	buf := cache.Bytes(key, val)
 	err := cache.db.Update(func(txn *badger.Txn) error {
 		return txn.SetEntry(badger.NewEntry([]byte(cache.prefix+key), buf))
 	})
 	if err != nil {
 		// TODO: handle
-		panic(err)
+		logrus.Errorf("error happened in saveToDisk: %v", err)
 	}
 }
 
@@ -77,27 +77,26 @@ func (cache *Cache) Flush() {
 }
 
 func (cache *Cache) Get(key string) interface{} {
-	lg := log.WithField("key", key)
+	lg := logrus.WithField("key", key)
 	if cache.lfu.UpperBound > 0 {
 		fromLfu := cache.lfu.Get(key)
 		if fromLfu != nil {
 			return fromLfu
 		}
 	} else {
-		log.Warn("lfu is not used, only use this during debugging")
+		logrus.Warn("lfu is not used, only use this during debugging")
 	}
 	lg.Debug("lfu miss")
 
 	var valCopy []byte
 	err := cache.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(cache.prefix + key))
-
 		if err != nil {
 			// TODO: handle
 			if err == badger.ErrKeyNotFound {
 				return nil
 			}
-			panic(err)
+			logrus.Errorf("error happened when reading from badger %v", err)
 		}
 
 		err = item.Value(func(val []byte) error {
@@ -106,10 +105,16 @@ func (cache *Cache) Get(key string) interface{} {
 		})
 		if err != nil {
 			// TODO: handle
-			panic(err)
+			logrus.Errorf("error happened getting value from badger %v", err)
 		}
 		return nil
 	})
+
+	if err != nil {
+		// TODO: handle
+		logrus.Errorf("error happened in badger view %v", err)
+		return nil
+	}
 
 	if valCopy == nil {
 		lg.Debug("storage miss")
@@ -126,11 +131,6 @@ func (cache *Cache) Get(key string) interface{} {
 	cache.lfu.Set(key, val)
 	if cache.alwaysSave {
 		cache.saveToDisk(key, val)
-	}
-
-	if err != nil {
-		// TODO: handle
-		panic(err)
 	}
 
 	lg.Debug("storage hit")

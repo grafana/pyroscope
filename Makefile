@@ -1,9 +1,14 @@
 GOBUILD=go build -trimpath
 
-ENABLED_SPIES ?= "rbspy,pyspy"
 ifeq ("$(shell go env GOARCH || true)", "arm64")
 	# this makes it work better on M1 machines
 	GODEBUG=asyncpreemptoff=1
+endif
+
+ifeq ("$(shell go env GOOS || true)", "linux")
+	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy"
+else
+	ENABLED_SPIES ?= "rbspy,pyspy"
 endif
 
 EMBEDDED_ASSETS ?= ""
@@ -32,7 +37,7 @@ build-rust-dependencies:
 
 .PHONY: test
 test:
-	go list ./... | xargs -I {} sh -c "go test {} || exit 255"
+	go test -race -tags debugspy ./...
 
 .PHONY: server
 server:
@@ -61,11 +66,16 @@ assets-release: install-web-dependencies
 
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS))
-	$(GOPATH)/bin/pkger -o pkg/server
+	go run "$(shell scripts/pinned-tool.sh github.com/markbates/pkger)/cmd/pkger" -o pkg/server
 
 .PHONY: lint
 lint:
-	revive -config revive.toml -formatter stylish ./...
+	go run "$(shell scripts/pinned-tool.sh github.com/mgechev/revive)" -config revive.toml -exclude ./vendor/... -formatter stylish ./...
+
+.PHONY: ensure-logrus-not-used
+ensure-logrus-not-used:
+	@! godepgraph -nostdlib -s ./pkg/agent/profiler/ | grep ' -> "github.com/sirupsen/logrus' \
+		|| (echo "\n^ ERROR: make sure ./pkg/agent/profiler/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
 
 .PHONY: unused
 unused:
@@ -100,6 +110,11 @@ update-contributors:
 .PHONY: update-changelog
 update-changelog:
 	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -s
+
+.PHONY: update-protobuf
+update-protobuf:
+	go install google.golang.org/protobuf/cmd/protoc-gen-go
+	protoc --go_out=. pkg/convert/profile.proto
 
 .PHONY: docker-dev
 docker-dev:

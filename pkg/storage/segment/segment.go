@@ -12,6 +12,7 @@ type streeNode struct {
 	time     time.Time
 	present  bool
 	samples  uint64
+	writes   uint64
 	children []*streeNode
 }
 
@@ -22,21 +23,13 @@ func (parent *streeNode) replace(child *streeNode) {
 	parent.children[i] = child
 }
 
-func ft(t time.Time) string {
-	return fmt.Sprintf("%d", t.Sub(time.Time{})/1000000000)
-}
-
-func calcMultiplier(m, d int) (r int) {
-	r = 1
-	for i := 0; i < d; i++ {
-		r *= m
-	}
-	return
-}
-
 func (sn *streeNode) relationship(st, et time.Time) rel {
 	t2 := sn.time.Add(durations[sn.depth])
 	return relationship(sn.time, t2, st, et)
+}
+
+func (sn *streeNode) endTime() time.Time {
+	return sn.time.Add(durations[sn.depth])
 }
 
 func (sn *streeNode) overlapRead(st, et time.Time) *big.Rat {
@@ -66,7 +59,7 @@ func (sn *streeNode) findAddons() []Addon {
 	return res
 }
 
-func (sn *streeNode) put(st, et time.Time, _ uint64, cb func(n *streeNode, depth int, dt time.Time, r *big.Rat, addons []Addon)) {
+func (sn *streeNode) put(st, et time.Time, samples uint64, cb func(n *streeNode, depth int, dt time.Time, r *big.Rat, addons []Addon)) {
 	nodes := []*streeNode{sn}
 
 	for len(nodes) > 0 {
@@ -94,18 +87,23 @@ func (sn *streeNode) put(st, et time.Time, _ uint64, cb func(n *streeNode, depth
 			}
 			var addons []Addon
 
+			r := sn.overlapWrite(st, et)
+			fv, _ := r.Float64()
+			sn.samples += uint64(float64(samples) * fv)
+			sn.writes += uint64(1)
+
 			//  relationship                               overlap read             overlap write
 			// 	inside  rel = iota   // | S E |            <1                       1/1
 			// 	match                // matching ranges    1/1                      1/1
 			// 	outside              // | | S E            0/1                      0/1
 			// 	overlap              // | S | E            <1                       <1
 			// 	contain              // S | | E            1/1                      <1
+
 			if rel == match || rel == contain || childrenCount > 1 || sn.present {
 				if !sn.present {
 					addons = sn.findAddons()
 				}
-				// TODO: calculate proper r
-				r := sn.overlapWrite(st, et)
+
 				cb(sn, sn.depth, sn.time, r, addons)
 				sn.present = true
 			}
@@ -116,7 +114,7 @@ func (sn *streeNode) put(st, et time.Time, _ uint64, cb func(n *streeNode, depth
 func normalize(st, et time.Time) (time.Time, time.Time) {
 	st = st.Truncate(durations[0])
 	et2 := et.Truncate(durations[0])
-	if et2.Equal(et) {
+	if et2.Equal(et) && !st.Equal(et2) {
 		return st, et
 	}
 	return st, et2.Add(durations[0])
@@ -155,8 +153,10 @@ type Segment struct {
 	root       *streeNode
 	durations  []time.Duration
 
-	spyName    string
-	sampleRate int
+	spyName         string
+	sampleRate      int
+	units           string
+	aggregationType string
 }
 
 func newNode(t time.Time, depth, multiplier int) *streeNode {
@@ -213,7 +213,7 @@ func (s *Segment) growTree(st, et time.Time) {
 	var prevVal *streeNode
 	if s.root != nil {
 		st = minTime(st, s.root.time)
-		et = maxTime(et, s.root.time)
+		et = maxTime(et, s.root.endTime())
 	} else {
 		st = st.Truncate(s.durations[0])
 		s.root = newNode(st, 0, s.multiplier)
@@ -228,9 +228,10 @@ func (s *Segment) growTree(st, et time.Time) {
 
 		prevVal = s.root
 		newDepth := prevVal.depth + 1
-		s.root = newNode(st.Truncate(s.durations[newDepth]), newDepth, s.multiplier)
+		s.root = newNode(prevVal.time.Truncate(s.durations[newDepth]), newDepth, s.multiplier)
 		if prevVal != nil {
 			s.root.samples = prevVal.samples
+			s.root.writes = prevVal.writes
 			s.root.replace(prevVal)
 		}
 	}
@@ -241,7 +242,7 @@ type Addon struct {
 	T     time.Time
 }
 
-// TODO: just give d+t info here
+// TODO: simplify arguments
 func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, r *big.Rat, addons []Addon)) {
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -250,14 +251,14 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 	s.growTree(st, et)
 	v := newVis()
 	s.root.put(st, et, samples, func(sn *streeNode, depth int, tm time.Time, r *big.Rat, addons []Addon) {
-		sn.samples += samples * uint64(r.Num().Int64()) / uint64(r.Denom().Int64())
 		v.add(sn, r, true)
 		cb(depth, tm, r, addons)
 	})
 	v.print(fmt.Sprintf("/tmp/0-put-%s-%s.html", st.String(), et.String()))
 }
 
-func (s *Segment) Get(st, et time.Time, cb func(depth int, t time.Time, r *big.Rat)) {
+// TODO: simplify arguments
+func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint64, t time.Time, r *big.Rat)) {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
@@ -270,16 +271,18 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, t time.Time, r *big.R
 	s.root.get(st, et, func(sn *streeNode, depth int, t time.Time, r *big.Rat) {
 		// TODO: pass m / d from .get() ?
 		v.add(sn, r, true)
-		cb(depth, t, r)
+		cb(depth, sn.samples, sn.writes, t, r)
 	})
 	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
 }
 
 // TODO: this should be refactored
 
-func (s *Segment) SetMetadata(spyName string, sampleRate int) {
+func (s *Segment) SetMetadata(spyName string, sampleRate int, units, aggregationType string) {
 	s.spyName = spyName
 	s.sampleRate = sampleRate
+	s.units = units
+	s.aggregationType = aggregationType
 }
 
 func (s *Segment) SpyName() string {
@@ -288,4 +291,11 @@ func (s *Segment) SpyName() string {
 
 func (s *Segment) SampleRate() int {
 	return s.sampleRate
+}
+
+func (s *Segment) Units() string {
+	return s.units
+}
+func (s *Segment) AggregationType() string {
+	return s.aggregationType
 }

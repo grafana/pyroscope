@@ -3,6 +3,7 @@ package transporttrie
 import (
 	"bytes"
 	"sort"
+	"sync"
 )
 
 type trieNode struct {
@@ -27,6 +28,20 @@ func newTrieNode(name []byte) *trieNode {
 		name:     name,
 		children: make([]*trieNode, 0),
 	}
+}
+
+func (tn *trieNode) clone() *trieNode {
+	newTn := &trieNode{
+		name:     tn.name,
+		value:    tn.value,
+		children: make([]*trieNode, len(tn.children)),
+	}
+
+	for i, c := range tn.children {
+		newTn.children[i] = c.clone()
+	}
+
+	return newTn
 }
 
 func (tn *trieNode) insert(t2 *trieNode) {
@@ -72,25 +87,25 @@ OuterLoop:
 		}
 
 		if leadIndex == -1 { // 1
-			//log.Debug("case 1")
+			// log.Debug("case 1")
 			newTn := newTrieNode(key)
 			tn.insert(newTn)
 			fn(newTn)
 			return
 		} else {
 			leadKey := tn.children[leadIndex].name
-			//log.Debug("lead key", string(leadKey))
+			// log.Debug("lead key", string(leadKey))
 			lk := len(key)
 			llk := len(leadKey)
 			for i := 0; i < lk; i++ {
 				if i == llk { // 4 fooo / foo i = 3 llk = 3
-					//log.Debug("case 4")
+					// log.Debug("case 4")
 					tn = tn.children[leadIndex]
 					key = key[llk:]
 					continue OuterLoop
 				}
 				if leadKey[i] != key[i] { // 3
-					//log.Debug("case 3")
+					// log.Debug("case 3")
 					// leadKey = abc
 					// key = abd
 					a := leadKey[:i] // ab
@@ -134,6 +149,7 @@ OuterLoop:
 }
 
 type Trie struct {
+	mutex      sync.Mutex
 	I          byte // debugging
 	metadata   map[string]string
 	Multiplier int
@@ -162,6 +178,9 @@ func (t *Trie) Clone(m, d int) *Trie {
 }
 
 func (t *Trie) Insert(key []byte, value uint64, merge ...bool) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
 	isMerge := false
 	if len(merge) > 0 && merge[0] {
 		isMerge = true
@@ -178,6 +197,9 @@ func (t *Trie) Insert(key []byte, value uint64, merge ...bool) {
 }
 
 func (t *Trie) Iterate(cb func(name []byte, val uint64)) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
 	nodes := []*trieNode{t.root}
 	prefixes := make([][]byte, 1)
 	prefixes[0] = make([]byte, 0)

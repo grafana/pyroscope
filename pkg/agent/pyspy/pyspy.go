@@ -7,6 +7,7 @@ package pyspy
 // #cgo linux LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
 // #include "../../../third_party/rustdeps/pyspy.h"
 import "C"
+
 import (
 	"errors"
 	"time"
@@ -18,6 +19,9 @@ import (
 // TODO: make this configurable
 // TODO: pass lower level structures between go and rust?
 var bufferLength = 1024 * 64
+
+// TODO: we should probably find a better way of setting this
+var Blocking bool
 
 type PySpy struct {
 	dataPtr unsafe.Pointer
@@ -40,7 +44,11 @@ func Start(pid int) (spy.Spy, error) {
 	// TODO: handle this better
 	time.Sleep(1 * time.Second)
 
-	r := C.pyspy_init(C.int(pid), errorPtr, C.int(bufferLength))
+	blocking := 0
+	if Blocking {
+		blocking = 1
+	}
+	r := C.pyspy_init(C.int(pid), C.int(blocking), errorPtr, C.int(bufferLength))
 
 	if r < 0 {
 		return nil, errors.New(string(errorBuf[:-r]))
@@ -64,12 +72,12 @@ func (s *PySpy) Stop() error {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *PySpy) Snapshot(cb func([]byte, error)) {
+func (s *PySpy) Snapshot(cb func([]byte, uint64, error)) {
 	r := C.pyspy_snapshot(C.int(s.pid), s.dataPtr, C.int(bufferLength), s.errorPtr, C.int(bufferLength))
 	if r < 0 {
-		cb(nil, errors.New(string(s.errorBuf[:-r])))
+		cb(nil, 0, errors.New(string(s.errorBuf[:-r])))
 	} else {
-		cb(s.dataBuf[:r], nil)
+		cb(s.dataBuf[:r], 1, nil)
 	}
 }
 

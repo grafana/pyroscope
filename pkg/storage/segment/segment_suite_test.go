@@ -1,10 +1,10 @@
 package segment_test
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
 )
 
 func TestSegment(t *testing.T) {
