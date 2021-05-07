@@ -11,20 +11,20 @@ const (
 	gB = 1024 * mB
 )
 
-type UsagesStats struct {
+type usagesStats struct {
 	All  uint64
 	Used uint64
 	Free uint64
 }
 
-func usage(path string) (*UsagesStats, error) {
+func usage(path string) (*usagesStats, error) {
 	fs := syscall.Statfs_t{}
 	err := syscall.Statfs(path, &fs)
 	if err != nil {
 		return nil, err
 	}
 
-	stat := UsagesStats{}
+	stat := usagesStats{}
 	stat.All = fs.Blocks * uint64(fs.Bsize)
 	stat.Free = fs.Bfree * uint64(fs.Bsize)
 	stat.Used = stat.All - stat.Free

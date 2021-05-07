@@ -4,14 +4,13 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"testing"
 )
 
-var _ = Describe("testDiskUsage", func() {
-	It("canGetDiskUsage", func() {
+var _ = Describe("TestDiskUsage", func() {
+	It("isNotRunningOutOfSpace", func() {
 		cfg := config.New()
 		_, err := usage(cfg.Server.StoragePath)
-		Expect(err).To(nil)
+		Expect(err).To(Not(HaveOccurred()))
 	})
 
 	It("isNotRunningOutOfSpace", func() {
@@ -23,7 +22,7 @@ var _ = Describe("testDiskUsage", func() {
 	It("isRunningOutOfSpace", func() {
 		cfg := config.New()
 		stats, err := usage(cfg.Server.StoragePath)
-		Expect(err).To(nil)
+		Expect(err).To(Not(HaveOccurred()))
 
 		cfg.Server.OutOfSpaceThreshold = stats.All
 		result := IsRunningOutOfSpace(cfg.Server.StoragePath, cfg.Server.OutOfSpaceThreshold)
@@ -40,7 +39,7 @@ var _ = Describe("testDiskUsage", func() {
 		cfg := config.New()
 
 		stats, err := usage(cfg.Server.StoragePath)
-		Expect(err).To(nil)
+		Expect(err).To(Not(HaveOccurred()))
 
 		cfg.Server.OutOfSpaceWarningThreshold = stats.All
 
@@ -48,8 +47,3 @@ var _ = Describe("testDiskUsage", func() {
 		Expect(result).To(BeTrue())
 	})
 })
-
-func TestDiskUsage(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Disk usage suite")
-}
