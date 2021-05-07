@@ -4,6 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"testing"
 )
 
 var _ = Describe("testDiskUsage", func() {
@@ -47,3 +48,8 @@ var _ = Describe("testDiskUsage", func() {
 		Expect(result).To(BeTrue())
 	})
 })
+
+func TestDiskUsage(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Disk usage suite")
+}
