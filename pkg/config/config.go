@@ -59,6 +59,9 @@ type Server struct {
 
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
+
+	RetentionThresholdDays  int `def:"30" desc:"data retention threshold in days"`
+	RetentionThresholdDepth int `def:"3" desc:"data retention threshold in depth"`
 }
 
 type Convert struct {
@@ -124,6 +127,9 @@ func NewForTests(path string) *Config {
 
 			MaxNodesSerialization: 2048,
 			MaxNodesRender:        2048,
+
+			RetentionThresholdDays:  30,
+			RetentionThresholdDepth: 3,
 		},
 	}
 

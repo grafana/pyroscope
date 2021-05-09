@@ -333,6 +333,7 @@ func startServer(cfg *config.Config) {
 	go agent.SelfProfile(cfg, u, "pyroscope.server", logrus.StandardLogger())
 	go printRAMUsage()
 	go printDiskUsage(cfg)
+	go storageCleaner(cfg, s)
 	c := server.New(cfg, s)
 	atexit.Register(func() { c.Stop() })
 	if !cfg.Server.AnalyticsOptOut {
@@ -362,6 +363,25 @@ func printDiskUsage(cfg *config.Config) {
 		<-t.C
 		if logrus.IsLevelEnabled(logrus.DebugLevel) {
 			debug.PrintDiskUsage(cfg.Server.StoragePath)
+		}
+	}
+}
+
+func storageCleaner(cfg *config.Config, s *storage.Storage) {
+	t := time.NewTicker(30 * time.Second)
+	for {
+		<-t.C
+		depth := cfg.Server.RetentionThresholdDepth
+		if cfg.Server.RetentionThresholdDepth > cfg.Server.StorageMaxDepth {
+			depth = cfg.Server.StorageMaxDepth
+		}
+
+		if err := s.Cleanup(&storage.CleanupInput{
+			Key:            "",
+			DepthThreshold: depth,
+			TimeThreshold:  time.Now().UTC().Add(time.Duration(cfg.Server.RetentionThresholdDays) * time.Hour * 24),
+		}); err != nil {
+			logrus.Errorln("storageCleaner: ", err)
 		}
 	}
 }

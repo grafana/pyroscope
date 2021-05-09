@@ -277,7 +277,6 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 }
 
 // TODO: this should be refactored
-
 func (s *Segment) SetMetadata(spyName string, sampleRate int, units, aggregationType string) {
 	s.spyName = spyName
 	s.sampleRate = sampleRate

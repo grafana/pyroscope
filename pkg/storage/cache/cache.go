@@ -136,3 +136,27 @@ func (cache *Cache) Get(key string) interface{} {
 	lg.Debug("storage hit")
 	return val
 }
+
+func (cache *Cache) Cleanup(key string) error {
+	lg := logrus.WithField("key", key)
+
+	if cache.lfu.UpperBound > 0 {
+		// TODO: Cleanup from cache
+	}
+
+	err := cache.db.Update(func(txn *badger.Txn) error {
+		if err := txn.Delete([]byte(cache.prefix + key)); err != nil {
+			lg.Error(err)
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		lg.Error()
+		return err
+	}
+
+	lg.Debugf("%s deleted from storage", key)
+
+	return nil
+}

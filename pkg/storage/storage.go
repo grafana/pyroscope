@@ -314,6 +314,37 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}, nil
 }
 
+type CleanupInput struct {
+	Key            string
+	DepthThreshold int
+	TimeThreshold  time.Time
+}
+
+func (s *Storage) Cleanup(ci *CleanupInput) error {
+	s.closingMutex.Lock()
+	defer s.closingMutex.Unlock()
+
+	if s.closing {
+		return errClosing
+	}
+
+	lg := logrus.WithField("key", ci.Key)
+
+	// TODO: Traverse tree and segments
+
+	//st := s.segments.Get(ci.Key).(*segment.Segment)
+	//st.Get(nil, ci.TimeThreshold, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+	//
+	//})
+
+	if err := s.segments.Cleanup(ci.Key); err != nil {
+		return err
+	}
+
+	lg.Debugf("cleanup completed")
+	return nil
+}
+
 func (s *Storage) Close() error {
 	s.closingMutex.Lock()
 	s.closing = true
