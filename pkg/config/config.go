@@ -60,8 +60,7 @@ type Server struct {
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
 
-	OutOfSpaceThreshold        uint64 `def:"2048" desc:"Threshold value to consider out of space in bytes"`
-	OutOfSpaceWarningThreshold uint64 `def:"1024" desc:"Threshold value to consider to show out of space warning in bytes"`
+	OutOfSpaceThreshold uint64 `def:"2048" desc:"Threshold value to consider out of space in bytes"`
 }
 
 type Convert struct {
@@ -129,8 +128,7 @@ func NewForTests(path string) *Config {
 			MaxNodesSerialization: 2048,
 			MaxNodesRender:        2048,
 
-			OutOfSpaceThreshold:        512 * 1024 * 1024, // bytes (default: 512MB)
-			OutOfSpaceWarningThreshold: 612 * 1024 * 1024, // bytes (default: 612MB)
+			OutOfSpaceThreshold: 512 * 1024 * 1024, // bytes (default: 512MB)
 		},
 	}
 
