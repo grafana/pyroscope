@@ -37,20 +37,5 @@ func IsRunningOutOfSpace(storagePath string, threshold uint64) bool {
 		return false
 	}
 
-	if stats.Free < threshold {
-		return true
-	}
-	return false
-}
-
-func ShouldShowOutOfSpaceWarning(storagePath string, threshold uint64) bool {
-	stats, err := usage(storagePath)
-	if err != nil {
-		return false
-	}
-
-	if stats.Free < threshold {
-		return true
-	}
-	return false
+	return stats.Free < threshold
 }

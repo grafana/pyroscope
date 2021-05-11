@@ -68,7 +68,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 				"units":      gOut.Units,
 			},
 			"isRunningOutOfSpace":         disk.IsRunningOutOfSpace(ctrl.cfg.Server.StoragePath, ctrl.cfg.Server.OutOfSpaceThreshold),
-			"shouldShowOutOfSpaceWarning": disk.ShouldShowOutOfSpaceWarning(ctrl.cfg.Server.StoragePath, ctrl.cfg.Server.OutOfSpaceWarningThreshold),
 		}
 
 		encoder := json.NewEncoder(w)
