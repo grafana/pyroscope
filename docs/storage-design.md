@@ -2,6 +2,9 @@
 
 # O(log n) makes continuous profiling possible
 
+#### _Read this in other languages._
+<kbd>[<img title="中文 (Simplified)" alt="中文 (Simplified)" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/cn.svg" width="22">](storage-design-ch.md)</kbd>
+
 Pyroscope is software that lets you **continuously** profile your code to debug performance issues down to a line of code. With just a few lines of code it will do the following:
 
 ### Pyroscope Agent
