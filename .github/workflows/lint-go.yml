@@ -13,7 +13,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Run revive action
-      uses: petethepig/revive-action@v4
+        uses: petethepig/revive-action@v4
         with:
           config: revive.toml
           exclude: "vendor/..."
