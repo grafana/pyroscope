@@ -5,6 +5,7 @@ ifeq ("$(shell go env GOARCH || true)", "arm64")
 	GODEBUG=asyncpreemptoff=1
 endif
 
+ALL_SPIES = "ebpfspy,rbspy,pyspy,debugspy"
 ifeq ("$(shell go env GOOS || true)", "linux")
 	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy"
 else
@@ -79,7 +80,7 @@ ensure-logrus-not-used:
 
 .PHONY: unused
 unused:
-	staticcheck -f stylish -unused.whole-program ./...
+	staticcheck -f stylish -tags $(ALL_SPIES) -unused.whole-program ./...
 
 .PHONY: install-dev-tools
 install-dev-tools:

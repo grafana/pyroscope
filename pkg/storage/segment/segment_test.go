@@ -47,13 +47,10 @@ func expectChildrenSamplesAddUpToParentSamples(tn *streeNode) {
 }
 
 var _ = Describe("stree", func() {
-	r := 10 * time.Second
-	m := 10
-
 	Context("Get", func() {
 		Context("When there's no root", func() {
 			It("get doesn't fail", func() {
-				s := New(r, m)
+				s := New()
 				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(39))).To(HaveLen(0))
 			})
 		})
@@ -64,7 +61,7 @@ var _ = Describe("stree", func() {
 			Context("When second insert is far in the future", func() {
 				It("sets root properly", func() {
 					log.Println("---")
-					s := New(r, m)
+					s := New()
 					s.Put(testing.SimpleTime(1330),
 						testing.SimpleTime(1339), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 					Expect(s.root).ToNot(BeNil())
@@ -77,7 +74,7 @@ var _ = Describe("stree", func() {
 			Context("When second insert is far in the past", func() {
 				It("sets root properly", func() {
 					log.Println("---")
-					s := New(r, m)
+					s := New()
 					s.Put(testing.SimpleTime(2030),
 						testing.SimpleTime(2039), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 					Expect(s.root).ToNot(BeNil())
@@ -91,7 +88,7 @@ var _ = Describe("stree", func() {
 
 		Context("When empty", func() {
 			It("sets root properly", func() {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(0),
 					testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
@@ -99,7 +96,7 @@ var _ = Describe("stree", func() {
 			})
 
 			It("sets root properly", func() {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(0),
 					testing.SimpleTime(49), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
@@ -107,7 +104,7 @@ var _ = Describe("stree", func() {
 			})
 
 			It("sets root properly", func() {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(10),
 					testing.SimpleTime(109), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
@@ -115,7 +112,7 @@ var _ = Describe("stree", func() {
 			})
 
 			It("sets root properly", func() {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(10),
 					testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
@@ -126,7 +123,7 @@ var _ = Describe("stree", func() {
 			})
 
 			It("sets root properly", func() {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(10),
 					testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
@@ -139,7 +136,7 @@ var _ = Describe("stree", func() {
 			})
 
 			It("sets root properly", func() {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(10),
 					testing.SimpleTime(19), 10, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
@@ -152,7 +149,7 @@ var _ = Describe("stree", func() {
 			})
 
 			It("sets root properly", func() {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(10),
 					testing.SimpleTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
@@ -171,7 +168,7 @@ var _ = Describe("stree", func() {
 			})
 
 			It("sets root properly", func() {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(30),
 					testing.SimpleTime(39), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
@@ -191,7 +188,7 @@ var _ = Describe("stree", func() {
 			})
 
 			It("works with 3 mins", func() {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(10),
 					testing.SimpleTime(70), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				Expect(s.root).ToNot(BeNil())
@@ -200,7 +197,7 @@ var _ = Describe("stree", func() {
 			})
 
 			It("sets trie properly, gets work", func() {
-				s := New(r, m)
+				s := New()
 
 				s.Put(testing.SimpleTime(0),
 					testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
