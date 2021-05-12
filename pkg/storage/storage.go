@@ -133,10 +133,10 @@ func New(cfg *config.Config) (*Storage, error) {
 	s.segments.FromBytes = func(_k string, v []byte) interface{} {
 		// TODO:
 		//   these configuration params should be saved in db when it initializes
-		return segment.FromBytes(cfg.Server.MinResolution, cfg.Server.Multiplier, v)
+		return segment.FromBytes(v)
 	}
 	s.segments.New = func(_k string) interface{} {
-		return segment.New(s.cfg.Server.MinResolution, s.cfg.Server.Multiplier)
+		return segment.New()
 	}
 
 	s.dicts = cache.New(dbDicts, cfg.Server.CacheDictionarySize, "d:")
@@ -162,9 +162,6 @@ func New(cfg *config.Config) (*Storage, error) {
 	s.trees.New = func(_k string) interface{} {
 		return tree.New()
 	}
-
-	// TODO: horrible, remove soon
-	segment.InitializeGlobalState(s.cfg.Server.MinResolution, s.cfg.Server.Multiplier)
 
 	return s, nil
 }

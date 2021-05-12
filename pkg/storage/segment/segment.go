@@ -16,8 +16,6 @@ type streeNode struct {
 	children []*streeNode
 }
 
-var durations []time.Duration
-
 func (parent *streeNode) replace(child *streeNode) {
 	i := child.time.Sub(parent.time) / durations[child.depth]
 	parent.children[i] = child
@@ -170,26 +168,12 @@ func newNode(t time.Time, depth, multiplier int) *streeNode {
 	return sn
 }
 
-// TODO: global state is not good
-func InitializeGlobalState(resolution time.Duration, multiplier int) {
-	// this is here just to initialize global duration variable
-	New(resolution, multiplier)
-}
-
-func New(resolution time.Duration, multiplier int) *Segment {
+func New() *Segment {
 	st := &Segment{
 		resolution: resolution,
 		multiplier: multiplier,
-		durations:  []time.Duration{},
+		durations:  durations,
 	}
-
-	// TODO better upper boundary
-	d := resolution
-	for i := 0; i < 50; i++ {
-		st.durations = append(st.durations, d)
-		d *= time.Duration(multiplier)
-	}
-	durations = st.durations
 
 	return st
 }
