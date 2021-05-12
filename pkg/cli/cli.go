@@ -368,20 +368,33 @@ func printDiskUsage(cfg *config.Config) {
 }
 
 func storageCleaner(cfg *config.Config, s *storage.Storage) {
-	t := time.NewTicker(30 * time.Second)
+	logrus.Debug("Storage cleaner scheduled")
+
+	t := time.NewTicker(10 * time.Second)
 	for {
 		<-t.C
+
 		depth := cfg.Server.RetentionThresholdDepth
 		if cfg.Server.RetentionThresholdDepth > cfg.Server.StorageMaxDepth {
 			depth = cfg.Server.StorageMaxDepth
 		}
 
-		if err := s.Cleanup(&storage.CleanupInput{
-			Key:            "",
-			DepthThreshold: depth,
-			TimeThreshold:  time.Now().UTC().Add(time.Duration(cfg.Server.RetentionThresholdDays) * time.Hour * 24),
-		}); err != nil {
-			logrus.Errorln("storageCleaner: ", err)
+		labels := []string{
+			"pyroscope.server.cpu",
+			"pyroscope.server.alloc_space",
+			"pyroscope.server.alloc_objects",
+			"pyroscope.server.inuse_space",
+			"pyroscope.server.inuse_objects",
+		}
+		for _, l := range labels {
+			key, _ := storage.ParseKey(l)
+			if err := s.Cleanup(&storage.CleanupInput{
+				Key:            key,
+				DepthThreshold: depth,
+				TimeThreshold:  time.Now().UTC().Add(time.Duration(cfg.Server.RetentionThresholdDays) * time.Hour * 24),
+			}); err != nil {
+				logrus.Errorln("storageCleaner: ", err)
+			}
 		}
 	}
 }

@@ -315,7 +315,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 }
 
 type CleanupInput struct {
-	Key            string
+	Key            *Key
 	DepthThreshold int
 	TimeThreshold  time.Time
 }
@@ -328,20 +328,30 @@ func (s *Storage) Cleanup(ci *CleanupInput) error {
 		return errClosing
 	}
 
-	lg := logrus.WithField("key", ci.Key)
+	lg := logrus.WithField("key", ci.Key.Normalized())
 
-	// TODO: Traverse tree and segments
+	sk := ci.Key.SegmentKey()
+	st := s.segments.Get(sk).(*segment.Segment)
+	st.Get(ci.TimeThreshold, ci.TimeThreshold, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+		if depth < ci.DepthThreshold {
+			lg.Debugf("out of depth threshold")
+			return
+		}
 
-	//st := s.segments.Get(ci.Key).(*segment.Segment)
-	//st.Get(nil, ci.TimeThreshold, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-	//
-	//})
+		tk := ci.Key.TreeKey(depth, t)
+		if err := s.trees.Cleanup(tk); err != nil {
+			lg.Errorf("failed to clean tree: %v", err)
+			return
+		}
 
-	if err := s.segments.Cleanup(ci.Key); err != nil {
+		lg.Debugf("tree cleanup complete: tk_%s", tk)
+	})
+
+	if err := s.segments.Cleanup(ci.Key.Normalized()); err != nil {
 		return err
 	}
 
-	lg.Debugf("cleanup completed")
+	lg.Debugf("segment cleanup completed")
 	return nil
 }
 

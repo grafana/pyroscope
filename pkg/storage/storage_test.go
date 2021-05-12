@@ -6,6 +6,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
+	"log"
+	"time"
 )
 
 // 21:22:08      air |  (time.Duration) 10s,
@@ -140,6 +142,62 @@ var _ = Describe("storage package", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(gOut2.Tree).ToNot(BeNil())
 				Expect(gOut2.Tree.String()).To(Equal(tree.String()))
+			})
+		})
+	})
+})
+
+var _ = Describe("StorageCleanup", func() {
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(*cfg)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		Context("testStorageCleanup", func() {
+			It("cleanupWorks", func() {
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(1))
+				tree.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(19)
+				st2 := testing.SimpleTime(0)
+				et2 := testing.SimpleTime(30)
+				key, _ := ParseKey("foo")
+
+				err := s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        tree,
+					SpyName:    "testspy",
+					SampleRate: 100,
+				})
+				Expect(err).ToNot(HaveOccurred())
+
+				gOut, err := s.Get(&GetInput{
+					StartTime: st2,
+					EndTime:   et2,
+					Key:       key,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(gOut.Tree).ToNot(BeNil())
+				Expect(gOut.Tree.String()).To(Equal(tree.String()))
+				Expect(s.Close()).ToNot(HaveOccurred())
+
+				labels := []string{"pyroscope.server.cpu{}"}
+				for _, l := range labels {
+					log.Println(l)
+
+					err := s.Cleanup(&CleanupInput{
+						//Key:            l,
+						TimeThreshold:  time.Now().Add(time.Hour * 24 * -2).UTC(),
+						DepthThreshold: 4,
+					})
+					Expect(err).ToNot(HaveOccurred())
+				}
 			})
 		})
 	})

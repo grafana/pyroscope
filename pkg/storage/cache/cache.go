@@ -78,6 +78,8 @@ func (cache *Cache) Flush() {
 
 func (cache *Cache) Get(key string) interface{} {
 	lg := logrus.WithField("key", key)
+	lg.Debugf("prefix: %s", cache.prefix)
+
 	if cache.lfu.UpperBound > 0 {
 		fromLfu := cache.lfu.Get(key)
 		if fromLfu != nil {
@@ -146,17 +148,21 @@ func (cache *Cache) Cleanup(key string) error {
 
 	err := cache.db.Update(func(txn *badger.Txn) error {
 		if err := txn.Delete([]byte(cache.prefix + key)); err != nil {
+			if err == badger.ErrKeyNotFound {
+				lg.Debugf("key not found: %v", err)
+				return nil
+			}
+
 			lg.Error(err)
 			return err
 		}
 		return nil
 	})
 	if err != nil {
-		lg.Error()
+		lg.Errorf("failed to delete from db: %v", err)
 		return err
 	}
 
 	lg.Debugf("%s deleted from storage", key)
-
 	return nil
 }
