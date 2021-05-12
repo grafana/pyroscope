@@ -10,15 +10,18 @@ import (
 	"github.com/peterbourgon/ff/ffyaml"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
 type FlagsStruct struct {
-	Config string
-	Foo    string
-	Foos   []string
-	Bar    int
-	Baz    time.Duration
-	FooBar string
+	Config   string
+	Foo      string
+	Foos     []string
+	Bar      int
+	Baz      time.Duration
+	FooBar   string
+	FooFoo   float64
+	FooBytes bytesize.ByteSize
 }
 
 var _ = Describe("flags", func() {
@@ -43,6 +46,8 @@ var _ = Describe("flags", func() {
 					"-bar", "123",
 					"-baz", "10h",
 					"-foo-bar", "test-val-4",
+					"-foo-foo", "10.23",
+					"-foo-bytes", "100MB",
 				})
 
 				Expect(err).ToNot(HaveOccurred())
@@ -51,6 +56,8 @@ var _ = Describe("flags", func() {
 				Expect(cfg.Bar).To(Equal(123))
 				Expect(cfg.Baz).To(Equal(10 * time.Hour))
 				Expect(cfg.FooBar).To(Equal("test-val-4"))
+				Expect(cfg.FooFoo).To(Equal(10.23))
+				Expect(cfg.FooBytes).To(Equal(100 * bytesize.MB))
 			})
 		})
 
@@ -81,6 +88,8 @@ var _ = Describe("flags", func() {
 				Expect(cfg.Bar).To(Equal(123))
 				Expect(cfg.Baz).To(Equal(10 * time.Hour))
 				Expect(cfg.FooBar).To(Equal("test-val-4"))
+				Expect(cfg.FooFoo).To(Equal(10.23))
+				Expect(cfg.FooBytes).To(Equal(100 * bytesize.MB))
 			})
 
 			It("arguments take precendence", func() {

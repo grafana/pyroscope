@@ -14,8 +14,7 @@ require (
 	github.com/dgrijalva/lfu-go v0.0.0-20141010002404-f174e76c5138
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
-	github.com/golang/protobuf v1.4.2
-	github.com/google/go-cmp v0.5.2 // indirect
+	github.com/golang/protobuf v1.5.2
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99
 	github.com/google/uuid v1.1.2
 	github.com/iancoleman/strcase v0.1.2
@@ -31,8 +30,8 @@ require (
 	github.com/mgechev/revive v1.0.3
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/onsi/ginkgo v1.14.0
-	github.com/onsi/gomega v1.10.1
+	github.com/onsi/ginkgo v1.16.2
+	github.com/onsi/gomega v1.12.0
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/peterbourgon/ff v1.7.0
 	github.com/peterbourgon/ff/v3 v3.0.0
@@ -40,9 +39,9 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/twmb/murmur3 v1.1.5
 	github.com/wacul/ptr v1.0.0 // indirect
-	golang.org/x/sys v0.0.0-20210228012217-479acdf4ea46 // indirect
 	golang.org/x/tools v0.1.0
-	google.golang.org/protobuf v1.25.0
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
+	google.golang.org/protobuf v1.26.0
 	honnef.co/go/tools v0.0.1-2020.1.6
 )
 

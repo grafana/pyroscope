@@ -67,6 +67,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 				"units":      gOut.Units,
 			},
 		}
+
 		encoder := json.NewEncoder(w)
 		encoder.Encode(res)
 		return
