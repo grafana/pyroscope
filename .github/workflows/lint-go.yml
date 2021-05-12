@@ -12,5 +12,5 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Run Revive
-        uses: petethepig/revive-action@v3
+      - name: Run revive action
+        uses: morphy2k/revive-action@v2
