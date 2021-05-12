@@ -1,6 +1,12 @@
 package bytesize
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+)
 
 type ByteSize int64
 
@@ -36,4 +42,63 @@ func (b ByteSize) String() string {
 		}
 	}
 	return fmt.Sprintf("%.2f %s", bf, suffixes[len(suffixes)-1])
+}
+
+var multipliers = map[string]ByteSize{
+	"":    Byte,
+	"b":   Byte,
+	"kb":  KB,
+	"mb":  MB,
+	"gb":  GB,
+	"tb":  TB,
+	"pb":  PB,
+	"kib": KiB,
+	"mib": MiB,
+	"gib": GiB,
+	"tib": TiB,
+	"pib": PiB,
+}
+
+var byteSizeRegexp *regexp.Regexp
+
+func init() {
+	byteSizeRegexp = regexp.MustCompile("^([\\d\\.]+)\\s*([^\\d]*)$")
+}
+
+var ParseErr = errors.New("could not parse ByteSize")
+
+func Parse(str string) (ByteSize, error) {
+	r := byteSizeRegexp.FindStringSubmatch(strings.TrimSpace(str))
+	if len(r) != 3 {
+		return 0, ParseErr
+	}
+
+	multiplier := ByteSize(1)
+	if m, ok := multipliers[strings.ToLower(r[2])]; ok {
+		multiplier = m
+	} else {
+		return 0, ParseErr
+	}
+	if strings.Contains(r[1], ".") {
+		val, err := strconv.ParseFloat(r[1], 64)
+		if err != nil {
+			return 0, ParseErr
+		}
+		return ByteSize(val * float64(multiplier)), nil
+	}
+
+	val, err := strconv.ParseUint(r[1], 10, 64)
+	if err != nil {
+		return 0, ParseErr
+	}
+	return ByteSize(val) * multiplier, nil
+}
+
+func (i *ByteSize) Set(value string) error {
+	v, err := Parse(value)
+	if err != nil {
+		return err
+	}
+	*i = v
+	return nil
 }

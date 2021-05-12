@@ -24,6 +24,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/sirupsen/logrus"
@@ -126,6 +127,18 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 				}
 			}
 			flagSet.DurationVar(val, nameVal, defaultVal, descVal)
+		case reflect.TypeOf(bytesize.Byte):
+			val := fieldV.Addr().Interface().(*bytesize.ByteSize)
+			var defaultVal bytesize.ByteSize
+			if defaultValStr != "" {
+				var err error
+				defaultVal, err = bytesize.Parse(defaultValStr)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			*val = defaultVal
+			flagSet.Var(val, nameVal, descVal)
 		case reflect.TypeOf(1):
 			val := fieldV.Addr().Interface().(*int)
 			var defaultVal int

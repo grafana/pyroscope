@@ -2,14 +2,14 @@ package storage
 
 import (
 	"errors"
-	"fmt"
-	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 	"math/big"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
@@ -27,6 +27,7 @@ import (
 )
 
 var errClosing = errors.New("the db is in closing state")
+var errOutOfSpace = errors.New("running out of space")
 
 type Storage struct {
 	closingMutex sync.Mutex
@@ -183,14 +184,15 @@ func (s *Storage) Put(po *PutInput) error {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
 
-	if disk.IsRunningOutOfSpace(s.cfg.Server.StoragePath, s.cfg.Server.OutOfSpaceThreshold) {
-		logrus.Error("running out of space")
-		return fmt.Errorf("running out of space")
-	}
-
 	if s.closing {
 		return errClosing
 	}
+
+	freeSpace, err := disk.FreeSpace(s.cfg.Server.StoragePath)
+	if err == nil && freeSpace < s.cfg.Server.OutOfSpaceThreshold {
+		return errOutOfSpace
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"startTime":       po.StartTime.String(),
 		"endTime":         po.EndTime.String(),

@@ -2,40 +2,16 @@ package disk
 
 import (
 	"syscall"
+
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
-const (
-	b  = 1
-	kB = 1024 * b
-	mB = 1024 * kB
-	gB = 1024 * mB
-)
-
-type usagesStats struct {
-	All  uint64
-	Used uint64
-	Free uint64
-}
-
-func usage(path string) (*usagesStats, error) {
+func FreeSpace(storagePath string) (bytesize.ByteSize, error) {
 	fs := syscall.Statfs_t{}
-	err := syscall.Statfs(path, &fs)
+	err := syscall.Statfs(storagePath, &fs)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	stat := usagesStats{}
-	stat.All = fs.Blocks * uint64(fs.Bsize)
-	stat.Free = fs.Bfree * uint64(fs.Bsize)
-	stat.Used = stat.All - stat.Free
-	return &stat, nil
-}
-
-func IsRunningOutOfSpace(storagePath string, threshold uint64) bool {
-	stats, err := usage(storagePath)
-	if err != nil {
-		return false
-	}
-
-	return stats.Free < threshold
+	return bytesize.ByteSize(fs.Bfree) * bytesize.ByteSize(fs.Bsize), nil
 }

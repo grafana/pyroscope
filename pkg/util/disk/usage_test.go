@@ -9,30 +9,14 @@ import (
 
 var _ = Describe("disk package", func() {
 	testing.WithConfig(func(cfg **config.Config) {
-		Describe("usage", func() {
+		Describe("FreeSpace", func() {
 			It("doesn't return an error", func() {
-				_, err := usage((*cfg).Server.StoragePath)
+				_, err := FreeSpace((*cfg).Server.StoragePath)
 				Expect(err).To(Not(HaveOccurred()))
 			})
-		})
 
-		Describe("isRunningOutOfSpace", func() {
-			Context("when there's enough space", func() {
-				It("returns false", func() {
-					result := IsRunningOutOfSpace((*cfg).Server.StoragePath, (*cfg).Server.OutOfSpaceThreshold)
-					Expect(result).To(BeFalse())
-				})
-			})
-
-			Context("when there's not enough space", func() {
-				It("returns true", func() {
-					stats, err := usage((*cfg).Server.StoragePath)
-					Expect(err).To(Not(HaveOccurred()))
-
-					(*cfg).Server.OutOfSpaceThreshold = stats.All
-					result := IsRunningOutOfSpace((*cfg).Server.StoragePath, (*cfg).Server.OutOfSpaceThreshold)
-					Expect(result).To(BeTrue())
-				})
+			It("returns non-zero value for storage space", func() {
+				Expect(FreeSpace((*cfg).Server.StoragePath)).To(BeNumerically(">", 0))
 			})
 		})
 	})

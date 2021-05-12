@@ -2,6 +2,8 @@ package config
 
 import (
 	"time"
+
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
 type Config struct {
@@ -60,7 +62,7 @@ type Server struct {
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
 
-	OutOfSpaceThreshold uint64 `def:"2048" desc:"Threshold value to consider out of space in bytes"`
+	OutOfSpaceThreshold bytesize.ByteSize `def:"512MB" desc:"Threshold value to consider out of space in bytes"`
 }
 
 type Convert struct {
@@ -107,7 +109,6 @@ func calculateMaxDepth(min, max time.Duration, multiplier int) int {
 // TODO: remove these preset configs
 func New() *Config {
 	return NewForTests("/tmp/")
-	//return NewForTests("/tmp/pyroscope-storage")
 }
 
 func NewForTests(path string) *Config {

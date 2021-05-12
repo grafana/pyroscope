@@ -9,7 +9,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
-	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 )
 
 type samplesEntry struct {
@@ -67,7 +66,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 				"sampleRate": gOut.SampleRate,
 				"units":      gOut.Units,
 			},
-			"isRunningOutOfSpace":         disk.IsRunningOutOfSpace(ctrl.cfg.Server.StoragePath, ctrl.cfg.Server.OutOfSpaceThreshold),
 		}
 
 		encoder := json.NewEncoder(w)
