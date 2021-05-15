@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
+
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -25,6 +27,7 @@ import (
 )
 
 var errClosing = errors.New("the db is in closing state")
+var errOutOfSpace = errors.New("running out of space")
 
 type Storage struct {
 	closingMutex sync.Mutex
@@ -130,10 +133,10 @@ func New(cfg *config.Config) (*Storage, error) {
 	s.segments.FromBytes = func(_k string, v []byte) interface{} {
 		// TODO:
 		//   these configuration params should be saved in db when it initializes
-		return segment.FromBytes(cfg.Server.MinResolution, cfg.Server.Multiplier, v)
+		return segment.FromBytes(v)
 	}
 	s.segments.New = func(_k string) interface{} {
-		return segment.New(s.cfg.Server.MinResolution, s.cfg.Server.Multiplier)
+		return segment.New()
 	}
 
 	s.dicts = cache.New(dbDicts, cfg.Server.CacheDictionarySize, "d:")
@@ -160,9 +163,6 @@ func New(cfg *config.Config) (*Storage, error) {
 		return tree.New()
 	}
 
-	// TODO: horrible, remove soon
-	segment.InitializeGlobalState(s.cfg.Server.MinResolution, s.cfg.Server.Multiplier)
-
 	return s, nil
 }
 
@@ -184,6 +184,12 @@ func (s *Storage) Put(po *PutInput) error {
 	if s.closing {
 		return errClosing
 	}
+
+	freeSpace, err := disk.FreeSpace(s.cfg.Server.StoragePath)
+	if err == nil && freeSpace < s.cfg.Server.OutOfSpaceThreshold {
+		return errOutOfSpace
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"startTime":       po.StartTime.String(),
 		"endTime":         po.EndTime.String(),

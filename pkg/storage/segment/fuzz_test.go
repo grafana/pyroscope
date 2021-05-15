@@ -54,7 +54,7 @@ func (sm *storageMock) Get(st, et time.Time, cb func(depth int, samples, writes 
 
 // if you change something in this test make sure it doesn't change test coverage.
 func fuzzTest(testWrites bool, writeSize func() int) {
-	s := New(10*time.Second, 10)
+	s := New()
 	m := newMock(10 * time.Second)
 
 	r := rand.New(rand.NewSource(1213))

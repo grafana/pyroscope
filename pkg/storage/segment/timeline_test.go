@@ -10,11 +10,6 @@ import (
 )
 
 var _ = Describe("timeline", func() {
-	r := 10 * time.Second
-	m := 10
-	// TODO: this is horrible, need to delete soon
-	InitializeGlobalState(r, m)
-
 	var (
 		timeline *Timeline
 		st       int
@@ -36,7 +31,7 @@ var _ = Describe("timeline", func() {
 	Describe("PopulateTimeline", func() {
 		Context("empty segment", func() {
 			It("works as expected", func(done Done) {
-				s := New(r, m)
+				s := New()
 				timeline.PopulateTimeline(s)
 				Expect(timeline.Samples).To(Equal([]uint64{
 					0,
@@ -49,7 +44,7 @@ var _ = Describe("timeline", func() {
 		})
 		Context("one level", func() {
 			It("works as expected", func(done Done) {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(0),
 					testing.SimpleTime(9), 2, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				s.Put(testing.SimpleTime(10),
@@ -75,7 +70,7 @@ var _ = Describe("timeline", func() {
 			})
 
 			It("works as expected", func(done Done) {
-				s := New(r, m)
+				s := New()
 				s.Put(testing.SimpleTime(0),
 					testing.SimpleTime(9), 2, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				s.Put(testing.SimpleTime(10),

@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	cfg := config.New()
+	cfg := &config.Config{}
 	err := cli.Start(cfg)
 	if err != nil {
 		os.Stderr.Write([]byte(color.RedString("Error: ") + err.Error() + "\n\n"))

@@ -21,12 +21,9 @@ var serializedExampleV2 = "\x02={\"aggregationType\":\"\",\"sampleRate\":0,\"spy
 	"\x00\x8a\x92\xb8Ø\xfe\xff\xff\xff\x01\x01\x01\x01\x00\x00\x94\x92\xb8Ø\xfe\xff\xff\xff\x01\x01\x01\x01\x00"
 
 var _ = Describe("stree", func() {
-	r := 10 * time.Second
-	m := 10
-
 	Context("Serialize / Deserialize", func() {
 		It("both functions work properly", func() {
-			s := New(r, m)
+			s := New()
 			s.Put(testing.SimpleTime(0),
 				testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 			s.Put(testing.SimpleTime(10),
@@ -39,7 +36,7 @@ var _ = Describe("stree", func() {
 			serialized := buf.Bytes()
 			log.Printf("%q", serialized)
 
-			s, err := Deserialize(r, m, bytes.NewReader(serialized))
+			s, err := Deserialize(bytes.NewReader(serialized))
 			Expect(err).ToNot(HaveOccurred())
 			var buf2 bytes.Buffer
 			s.Serialize(&buf2)
@@ -50,7 +47,7 @@ var _ = Describe("stree", func() {
 
 	Context("Serialize", func() {
 		It("serializes segment tree properly", func() {
-			s := New(r, m)
+			s := New()
 			s.Put(testing.SimpleTime(0),
 				testing.SimpleTime(9), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 			s.Put(testing.SimpleTime(10),
@@ -69,7 +66,7 @@ var _ = Describe("stree", func() {
 	Context("Deserialize", func() {
 		Context("v1", func() {
 			It("deserializes v1 data", func() {
-				s, err := Deserialize(r, m, bytes.NewReader([]byte(serializedExampleV1)))
+				s, err := Deserialize(bytes.NewReader([]byte(serializedExampleV1)))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(s.root.children[0]).ToNot(BeNil())
 				Expect(s.root.children[1]).ToNot(BeNil())
@@ -79,7 +76,7 @@ var _ = Describe("stree", func() {
 		})
 		Context("v2", func() {
 			It("deserializes v2 data", func() {
-				s, err := Deserialize(r, m, bytes.NewReader([]byte(serializedExampleV2)))
+				s, err := Deserialize(bytes.NewReader([]byte(serializedExampleV2)))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(s.root.children[0]).ToNot(BeNil())
 				Expect(s.root.children[1]).ToNot(BeNil())

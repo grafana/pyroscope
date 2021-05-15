@@ -24,6 +24,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/sirupsen/logrus"
@@ -126,6 +127,18 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 				}
 			}
 			flagSet.DurationVar(val, nameVal, defaultVal, descVal)
+		case reflect.TypeOf(bytesize.Byte):
+			val := fieldV.Addr().Interface().(*bytesize.ByteSize)
+			var defaultVal bytesize.ByteSize
+			if defaultValStr != "" {
+				var err error
+				defaultVal, err = bytesize.Parse(defaultValStr)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			*val = defaultVal
+			flagSet.Var(val, nameVal, descVal)
 		case reflect.TypeOf(1):
 			val := fieldV.Addr().Interface().(*int)
 			var defaultVal int
@@ -139,6 +152,32 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 				}
 			}
 			flagSet.IntVar(val, nameVal, defaultVal, descVal)
+		case reflect.TypeOf(1.00):
+			val := fieldV.Addr().Interface().(*float64)
+			var defaultVal float64
+			if defaultValStr == "" {
+				defaultVal = 0.00
+			} else {
+				var err error
+				defaultVal, err = strconv.ParseFloat(defaultValStr, 64)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			flagSet.Float64Var(val, nameVal, defaultVal, descVal)
+		case reflect.TypeOf(uint64(1)):
+			val := fieldV.Addr().Interface().(*uint64)
+			var defaultVal uint64
+			if defaultValStr == "" {
+				defaultVal = uint64(0)
+			} else {
+				var err error
+				defaultVal, err = strconv.ParseUint(defaultValStr, 10, 64)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			flagSet.Uint64Var(val, nameVal, defaultVal, descVal)
 		default:
 			logrus.Fatalf("type %s is not supported", field.Type)
 		}

@@ -78,8 +78,8 @@ func (s *Segment) Serialize(w io.Writer) error {
 	return nil
 }
 
-func Deserialize(resolution time.Duration, multiplier int, r io.Reader) (*Segment, error) {
-	s := New(resolution, multiplier)
+func Deserialize(r io.Reader) (*Segment, error) {
+	s := New()
 	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
 
 	// reads serialization format version, see comment at the top
@@ -155,8 +155,8 @@ func (t *Segment) Bytes() []byte {
 	return b.Bytes()
 }
 
-func FromBytes(resolution time.Duration, multiplier int, p []byte) *Segment {
+func FromBytes(p []byte) *Segment {
 	// TODO: handle error
-	t, _ := Deserialize(resolution, multiplier, bytes.NewReader(p))
+	t, _ := Deserialize(bytes.NewReader(p))
 	return t
 }
