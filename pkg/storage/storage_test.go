@@ -6,7 +6,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
-	"log"
 )
 
 // 21:22:08      air |  (time.Duration) 10s,
@@ -184,15 +183,8 @@ var _ = Describe("StorageCleanup", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(gOut.Tree).ToNot(BeNil())
 				Expect(gOut.Tree.String()).To(Equal(tree.String()))
-				Expect(s.Close()).ToNot(HaveOccurred())
 
-				labels := []string{"pyroscope.server.cpu{}"}
-				for _, l := range labels {
-					log.Println(l)
-
-					err := s.Cleanup()
-					Expect(err).ToNot(HaveOccurred())
-				}
+				Expect(s.Cleanup()).ToNot(HaveOccurred())
 			})
 		})
 	})
