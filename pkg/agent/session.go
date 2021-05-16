@@ -27,7 +27,7 @@ type ProfileSession struct {
 	upstream   upstream.Upstream
 	appName    string
 	spyName    string
-	sampleRate int
+	sampleRate uint32
 	uploadRate time.Duration
 	pids       []int
 	spies      []spy.Spy
@@ -53,7 +53,7 @@ type SessionConfig struct {
 	ProfilingTypes   []spy.ProfileType
 	DisableGCRuns    bool
 	SpyName          string
-	SampleRate       int
+	SampleRate       uint32
 	UploadRate       time.Duration
 	Pid              int
 	WithSubprocesses bool
@@ -99,7 +99,7 @@ func (ps *ProfileSession) takeSnapshots() {
 			}
 			for i, s := range ps.spies {
 				s.Snapshot(func(stack []byte, v uint64, err error) {
-					if stack != nil && len(stack) > 0 {
+					if len(stack) > 0 {
 						ps.trieMutex.Lock()
 						defer ps.trieMutex.Unlock()
 

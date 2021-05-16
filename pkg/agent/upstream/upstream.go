@@ -11,7 +11,7 @@ type UploadJob struct {
 	StartTime       time.Time
 	EndTime         time.Time
 	SpyName         string
-	SampleRate      int
+	SampleRate      uint32
 	Units           string
 	AggregationType string
 	Trie            *transporttrie.Trie

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent/profiler"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -17,7 +18,7 @@ type ingestParams struct {
 	parserFunc      func(io.Reader) (*tree.Tree, error)
 	storageKey      *storage.Key
 	spyName         string
-	sampleRate      int
+	sampleRate      uint32
 	units           string
 	aggregationType string
 	modifiers       []string
@@ -65,10 +66,15 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 	}
 
 	if sr := q.Get("sampleRate"); sr != "" {
-		// TODO: error handling
-		ip.sampleRate, _ = strconv.Atoi(sr)
+		sampleRate, err := strconv.Atoi(sr)
+		if err != nil {
+			logrus.WithField("err", err).Errorf("invalid sample rate: %v", sr)
+			ip.sampleRate = profiler.DefaultSampleRate
+		} else {
+			ip.sampleRate = uint32(sampleRate)
+		}
 	} else {
-		ip.sampleRate = 100
+		ip.sampleRate = profiler.DefaultSampleRate
 	}
 
 	if sn := q.Get("spyName"); sn != "" {

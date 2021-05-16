@@ -99,7 +99,7 @@ func (u *Remote) uploadProfile(j *upstream.UploadJob) {
 	q.Set("from", strconv.Itoa(int(j.StartTime.Unix())))
 	q.Set("until", strconv.Itoa(int(j.EndTime.Unix())))
 	q.Set("spyName", j.SpyName)
-	q.Set("sampleRate", strconv.Itoa(j.SampleRate))
+	q.Set("sampleRate", strconv.Itoa(int(j.SampleRate)))
 	q.Set("units", j.Units)
 	q.Set("aggregationType", j.AggregationType)
 

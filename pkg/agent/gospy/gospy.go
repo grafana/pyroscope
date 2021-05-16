@@ -37,7 +37,9 @@ func Start(profileType spy.ProfileType, disableGCRuns bool) (spy.Spy, error) {
 		disableGCRuns: disableGCRuns,
 	}
 	if s.profileType == spy.ProfileCPU {
-		_ = pprof.StartCPUProfile(s.buf)
+		if err := pprof.StartCPUProfile(s.buf); err != nil {
+			return nil, err
+		}
 	}
 	return s, nil
 }

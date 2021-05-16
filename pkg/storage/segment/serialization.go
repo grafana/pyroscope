@@ -15,7 +15,7 @@ const currentVersion = 2
 
 func (s *Segment) populateFromMetadata(metadata map[string]interface{}) {
 	if v, ok := metadata["sampleRate"]; ok {
-		s.sampleRate = int(v.(float64))
+		s.sampleRate = uint32(v.(float64))
 	}
 	if v, ok := metadata["spyName"]; ok {
 		s.spyName = v.(string)

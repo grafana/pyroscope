@@ -16,6 +16,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/mitchellh/go-ps"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/profiler"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
@@ -143,13 +144,17 @@ func Cli(cfg *config.Config, args []string) error {
 		"detect-subprocesses": cfg.Exec.DetectSubprocesses,
 	}).Debug("starting agent session")
 
-	// TODO: add sample rate, make it configurable
+	// if the sample rate is zero, use the default value
+	if cfg.Exec.SampleRate == 0 {
+		cfg.Exec.SampleRate = profiler.DefaultSampleRate
+	}
+
 	sess := agent.NewSession(&agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.Exec.ApplicationName,
 		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 		SpyName:          spyName,
-		SampleRate:       100,
+		SampleRate:       uint32(cfg.Exec.SampleRate),
 		UploadRate:       10 * time.Second,
 		Pid:              pid,
 		WithSubprocesses: cfg.Exec.DetectSubprocesses,

@@ -152,7 +152,7 @@ type Segment struct {
 	durations  []time.Duration
 
 	spyName         string
-	sampleRate      int
+	sampleRate      uint32
 	units           string
 	aggregationType string
 }
@@ -262,7 +262,7 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 
 // TODO: this should be refactored
 
-func (s *Segment) SetMetadata(spyName string, sampleRate int, units, aggregationType string) {
+func (s *Segment) SetMetadata(spyName string, sampleRate uint32, units, aggregationType string) {
 	s.spyName = spyName
 	s.sampleRate = sampleRate
 	s.units = units
@@ -273,7 +273,7 @@ func (s *Segment) SpyName() string {
 	return s.spyName
 }
 
-func (s *Segment) SampleRate() int {
+func (s *Segment) SampleRate() uint32 {
 	return s.sampleRate
 }
 

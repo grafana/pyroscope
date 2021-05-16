@@ -20,12 +20,17 @@ var (
 	ProfileInuseSpace   = spy.ProfileInuseSpace
 )
 
+const (
+	DefaultSampleRate = 100 // 100 times per second
+)
+
 var DefaultProfileTypes = []ProfileType{ProfileCPU, ProfileAllocObjects, ProfileAllocSpace, ProfileInuseObjects, ProfileInuseSpace}
 
 type Config struct {
 	ApplicationName string // e.g backend.purchases
 	ServerAddress   string // e.g http://pyroscope.services.internal:4040
 	AuthToken       string // specify this token when using pyroscope cloud
+	SampleRate      uint32
 	Logger          agent.Logger
 	ProfileTypes    []ProfileType
 	DisableGCRuns   bool // this will disable automatic runtime.GC runs
@@ -40,27 +45,28 @@ func Start(cfg Config) (*Profiler, error) {
 	if len(cfg.ProfileTypes) == 0 {
 		cfg.ProfileTypes = DefaultProfileTypes
 	}
+	if cfg.SampleRate == 0 {
+		cfg.SampleRate = DefaultSampleRate
+	}
+
 	u, err := remote.New(remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamThreads:        4,
 		UpstreamRequestTimeout: 30 * time.Second,
 	})
-
-	u.Logger = cfg.Logger
-
 	if err != nil {
 		return nil, err
 	}
+	u.Logger = cfg.Logger
 
-	// TODO: add sample rate
 	c := agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.ApplicationName,
-		ProfilingTypes:   []ProfileType{ProfileCPU, ProfileAllocObjects, ProfileAllocSpace, ProfileInuseObjects, ProfileInuseSpace},
+		ProfilingTypes:   DefaultProfileTypes,
 		DisableGCRuns:    cfg.DisableGCRuns,
 		SpyName:          "gospy",
-		SampleRate:       100,
+		SampleRate:       cfg.SampleRate,
 		UploadRate:       10 * time.Second,
 		Pid:              0,
 		WithSubprocesses: false,
