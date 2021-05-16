@@ -7,6 +7,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 )
 
@@ -19,12 +20,6 @@ var (
 	ProfileInuseObjects = spy.ProfileInuseObjects
 	ProfileInuseSpace   = spy.ProfileInuseSpace
 )
-
-const (
-	DefaultSampleRate = 100 // 100 times per second
-)
-
-var DefaultProfileTypes = []ProfileType{ProfileCPU, ProfileAllocObjects, ProfileAllocSpace, ProfileInuseObjects, ProfileInuseSpace}
 
 type Config struct {
 	ApplicationName string // e.g backend.purchases
@@ -43,10 +38,10 @@ type Profiler struct {
 // Start starts continuously profiling go code
 func Start(cfg Config) (*Profiler, error) {
 	if len(cfg.ProfileTypes) == 0 {
-		cfg.ProfileTypes = DefaultProfileTypes
+		cfg.ProfileTypes = types.DefaultProfileTypes
 	}
 	if cfg.SampleRate == 0 {
-		cfg.SampleRate = DefaultSampleRate
+		cfg.SampleRate = types.DefaultSampleRate
 	}
 
 	u, err := remote.New(remote.RemoteConfig{
@@ -63,23 +58,24 @@ func Start(cfg Config) (*Profiler, error) {
 	c := agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.ApplicationName,
-		ProfilingTypes:   DefaultProfileTypes,
+		ProfilingTypes:   types.DefaultProfileTypes,
 		DisableGCRuns:    cfg.DisableGCRuns,
-		SpyName:          "gospy",
+		SpyName:          types.GoSpy,
 		SampleRate:       cfg.SampleRate,
 		UploadRate:       10 * time.Second,
 		Pid:              0,
 		WithSubprocesses: false,
 	}
 	sess := agent.NewSession(&c)
-	sess.Logger = cfg.Logger
-	sess.Start()
 
-	p := &Profiler{
-		sess: sess,
+	sess.Logger = cfg.Logger
+	if err := sess.Start(); err != nil {
+		return nil, err
 	}
 
-	return p, nil
+	return &Profiler{
+		sess: sess,
+	}, nil
 }
 
 // Stop stops continious profiling session

@@ -13,6 +13,7 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 
@@ -73,7 +74,7 @@ func NewSession(c *SessionConfig) *ProfileSession {
 		withSubprocesses: c.WithSubprocesses,
 	}
 
-	if ps.spyName == "gospy" {
+	if ps.spyName == types.GoSpy {
 		ps.previousTries = make([]*transporttrie.Trie, len(ps.profileTypes))
 		ps.tries = make([]*transporttrie.Trie, len(ps.profileTypes))
 	} else {
@@ -103,7 +104,7 @@ func (ps *ProfileSession) takeSnapshots() {
 						ps.trieMutex.Lock()
 						defer ps.trieMutex.Unlock()
 
-						if ps.spyName == "gospy" {
+						if ps.spyName == types.GoSpy {
 							ps.tries[i].Insert(stack, v, true)
 						} else {
 							ps.tries[0].Insert(stack, v, true)
@@ -128,7 +129,7 @@ func (ps *ProfileSession) takeSnapshots() {
 func (ps *ProfileSession) Start() error {
 	ps.reset()
 
-	if ps.spyName == "gospy" {
+	if ps.spyName == types.GoSpy {
 		for _, pt := range ps.profileTypes {
 			s, err := gospy.Start(pt, ps.disableGCRuns)
 			if err != nil {

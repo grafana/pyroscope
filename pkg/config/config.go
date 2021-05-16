@@ -59,6 +59,7 @@ type Server struct {
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
 
 	OutOfSpaceThreshold bytesize.ByteSize `def:"512MB" desc:"Threshold value to consider out of space in bytes"`
+	SampleRate          uint              `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
 }
 
 type Convert struct {

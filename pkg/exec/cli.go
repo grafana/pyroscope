@@ -16,9 +16,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/mitchellh/go-ps"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/profiler"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
@@ -146,7 +146,7 @@ func Cli(cfg *config.Config, args []string) error {
 
 	// if the sample rate is zero, use the default value
 	if cfg.Exec.SampleRate == 0 {
-		cfg.Exec.SampleRate = profiler.DefaultSampleRate
+		cfg.Exec.SampleRate = types.DefaultSampleRate
 	}
 
 	sess := agent.NewSession(&agent.SessionConfig{
@@ -224,7 +224,7 @@ func waitForProcessToExit(pid int) {
 }
 
 func performChecks(spyName string) error {
-	if spyName == "gospy" {
+	if spyName == types.GoSpy {
 		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.GreenString("https://pyroscope.io/docs/"))
 	}
 
