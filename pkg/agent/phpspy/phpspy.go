@@ -9,6 +9,7 @@ package phpspy
 import "C"
 
 import (
+	"bytes"
 	"errors"
 	"time"
 	"unsafe"
@@ -70,10 +71,17 @@ func (s *PhpSpy) Snapshot(cb func([]byte, uint64, error)) {
 	if r < 0 {
 		cb(nil, 0, errors.New(string(s.errorBuf[:-r])))
 	} else {
-		cb(s.dataBuf[:r], 1, nil)
+		cb(trimSemicolon(s.dataBuf[:r]), 1, nil)
 	}
 }
 
 func init() {
 	spy.RegisterSpy("phpspy", Start)
+}
+
+func trimSemicolon(b []byte) []byte {
+	if bytes.HasSuffix(b, []byte(";")) {
+		return b[:len(b)-1]
+	}
+	return b
 }

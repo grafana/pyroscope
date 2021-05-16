@@ -25,6 +25,19 @@ WORKDIR /opt/rustdeps
 RUN RUSTFLAGS="-C target-feature=+crt-static" /root/.cargo/bin/cargo build --release --target $(uname -m)-unknown-linux-musl
 RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a /opt/rustdeps/librustdeps.a
 
+#        _
+#       | |
+#  _ __ | |__  _ __  ___ _ __  _   _
+# | '_ \| '_ \| '_ \/ __| '_ \| | | |
+# | |_) | | | | |_) \__ \ |_) | |_| |
+# | .__/|_| |_| .__/|___/ .__/ \__, |
+# | |         | |       | |     __/ |
+# |_|         |_|       |_|    |___/
+
+FROM php:7.3-fpm-alpine as phpspy-builder
+RUN apk add --update alpine-sdk
+RUN git clone https://github.com/pyroscope-io/phpspy.git
+RUN cd phpspy && USE_ZEND=1 make
 
 #                     _
 #                    | |
@@ -66,10 +79,8 @@ RUN mkdir -p /opt/pyroscope/third_party/rustdeps/target/release
 COPY --from=rust-builder /opt/rustdeps/librustdeps.a /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a
 COPY third_party/rustdeps/rbspy.h /opt/pyroscope/third_party/rustdeps/rbspy.h
 COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
-
 COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
-COPY --from=pyroscope/phpspy:dev /var/www/html/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
-
+COPY --from=phpspy-builder /var/www/html/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
 COPY pkg ./pkg
 COPY cmd ./cmd
