@@ -79,7 +79,7 @@ type DbManager struct {
 type Exec struct {
 	SpyName                string        `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>"`
 	ApplicationName        string        `def:"" desc:"application name used when uploading profiling data"`
-	SampleRate             uint          `def:"100" desc:"sample rate for reading profile data. 100 means reading 100 times per second"`
+	SampleRate             uint          `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
 	DetectSubprocesses     bool          `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
 	LogLevel               string        `def:"info" desc:"log level: debug|info|warn|error"`
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`
