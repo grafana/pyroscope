@@ -372,7 +372,7 @@ func startServer(cfg *config.Config) {
 	go agent.SelfProfile(cfg, u, "pyroscope.server", logrus.StandardLogger())
 	go printRAMUsage()
 	go printDiskUsage(cfg)
-	go storageCleaner(cfg, s)
+	go storageCleaner(s)
 	c := server.New(cfg, s)
 	atexit.Register(func() { c.Stop() })
 	if !cfg.Server.AnalyticsOptOut {
@@ -406,34 +406,17 @@ func printDiskUsage(cfg *config.Config) {
 	}
 }
 
-func storageCleaner(cfg *config.Config, s *storage.Storage) {
+func storageCleaner(s *storage.Storage) {
 	logrus.Debug("Storage cleaner scheduled")
 
 	t := time.NewTicker(10 * time.Second)
 	for {
 		<-t.C
 
-		depth := cfg.Server.RetentionThresholdDepth
-		if cfg.Server.RetentionThresholdDepth > cfg.Server.StorageMaxDepth {
-			depth = cfg.Server.StorageMaxDepth
+		logrus.Debugf("Calling storage cleaner...")
+		if err := s.Cleanup(); err != nil {
+			logrus.Errorln("storageCleaner: ", err)
 		}
-
-		labels := []string{
-			"pyroscope.server.cpu",
-			"pyroscope.server.alloc_space",
-			"pyroscope.server.alloc_objects",
-			"pyroscope.server.inuse_space",
-			"pyroscope.server.inuse_objects",
-		}
-		for _, l := range labels {
-			key, _ := storage.ParseKey(l)
-			if err := s.Cleanup(&storage.CleanupInput{
-				Key:            key,
-				DepthThreshold: depth,
-				TimeThreshold:  time.Now().UTC().Add(time.Duration(cfg.Server.RetentionThresholdDays) * time.Hour * 24),
-			}); err != nil {
-				logrus.Errorln("storageCleaner: ", err)
-			}
-		}
+		logrus.Debugf("Storage cleaner cycle done")
 	}
 }

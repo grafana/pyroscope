@@ -51,3 +51,13 @@ func relationship(t1, t2, st, et time.Time) rel {
 
 	return overlap
 }
+
+func cleanupRelationship(t1, t2, st time.Time) rel {
+	if t1.Equal(st) || t2.Equal(st) {
+		return match
+	}
+	if t1.Before(st) || t2.Before(st) {
+		return inside
+	}
+	return outside
+}

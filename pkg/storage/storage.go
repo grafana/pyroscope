@@ -320,13 +320,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}, nil
 }
 
-type CleanupInput struct {
-	Key            *Key
-	DepthThreshold int
-	TimeThreshold  time.Time
-}
-
-func (s *Storage) Cleanup(ci *CleanupInput) error {
+func (s *Storage) Cleanup() error {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
 
@@ -334,27 +328,41 @@ func (s *Storage) Cleanup(ci *CleanupInput) error {
 		return errClosing
 	}
 
-	lg := logrus.WithField("key", ci.Key.Normalized())
+	nameKey := "__name__"
+	timeThreshold := time.
+		Now().
+		UTC().
+		Add(time.Duration(s.cfg.Server.RetentionThresholdDays) * time.Hour * 24 * -1)
 
-	sk := ci.Key.SegmentKey()
-	st := s.segments.Get(sk).(*segment.Segment)
-	st.Get(ci.TimeThreshold, ci.TimeThreshold, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-		if depth < ci.DepthThreshold {
-			lg.Debugf("out of depth threshold")
-			return
-		}
+	lg := logrus.WithField("task", "cleanup")
 
-		tk := ci.Key.TreeKey(depth, t)
-		if err := s.trees.Cleanup(tk); err != nil {
-			lg.Errorf("failed to clean tree: %v", err)
-			return
-		}
-
-		lg.Debugf("tree cleanup complete: tk_%s", tk)
+	var dimensions []*dimension.Dimension
+	s.labels.GetValues(nameKey, func(v string) bool {
+		dm := s.dimensions.Get(nameKey + ":" + v).(*dimension.Dimension)
+		dimensions = append(dimensions, dm)
+		return true
 	})
 
-	if err := s.segments.Cleanup(ci.Key.Normalized()); err != nil {
-		return err
+	logrus.Debugf("Dimension len: %d", len(dimensions))
+
+	segmentKeys := dimension.Intersection(dimensions...)
+
+	logrus.Debugf("Segment key count: %d", len(segmentKeys))
+	for _, rawSk := range segmentKeys {
+		sk, _ := ParseKey(string(rawSk))
+		logrus.Debugf("Segment key: %s", sk)
+
+		st := s.segments.Get(sk.SegmentKey()).(*segment.Segment)
+		st.Cleanup(timeThreshold, func(depth int, t time.Time) {
+			tk := sk.TreeKey(depth, t)
+
+			logrus.Debugf("Tree key: %s", tk)
+			if err := s.trees.Cleanup(tk); err != nil {
+				lg.Debugf("%v", err)
+			}
+		})
+
+		lg.Debugf("sk: %s", sk.SegmentKey())
 	}
 
 	lg.Debugf("segment cleanup completed")

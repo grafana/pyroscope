@@ -24,7 +24,8 @@ func WithConfig(cb func(cfg **config.Config)) {
 				MaxNodesSerialization: 2048,
 				MaxNodesRender:        2048,
 
-				OutOfSpaceThreshold: 512 * 1024 * 1024, // bytes (default: 512MB)
+				OutOfSpaceThreshold:    512 * 1024 * 1024, // bytes (default: 512MB)
+				RetentionThresholdDays: 3,                 // Time threshold in days
 			},
 		}
 	})

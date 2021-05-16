@@ -26,6 +26,11 @@ func (sn *streeNode) relationship(st, et time.Time) rel {
 	return relationship(sn.time, t2, st, et)
 }
 
+func (sn *streeNode) cleanupRelationship(st time.Time) rel {
+	t2 := sn.time.Add(durations[sn.depth])
+	return cleanupRelationship(sn.time, t2, st)
+}
+
 func (sn *streeNode) endTime() time.Time {
 	return sn.time.Add(durations[sn.depth])
 }
@@ -118,6 +123,10 @@ func normalize(st, et time.Time) (time.Time, time.Time) {
 	return st, et2.Add(durations[0])
 }
 
+func normalizeTime(t time.Time) time.Time {
+	return t.Truncate(durations[0])
+}
+
 //  relationship                               overlap read             overlap write
 // 	inside  rel = iota   // | S E |            <1                       1/1
 // 	match                // matching ranges    1/1                      1/1
@@ -139,6 +148,19 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 				if v != nil {
 					v.get(st, et, cb)
 				}
+			}
+		}
+	}
+}
+
+func (sn *streeNode) cleanup(timeThreshold time.Time, cb func(depth int, t time.Time)) {
+	rel := sn.cleanupRelationship(timeThreshold)
+	if sn.present && (rel == inside || rel == match) {
+		cb(sn.depth, sn.time)
+
+		for _, v := range sn.children {
+			if v != nil {
+				v.cleanup(timeThreshold, cb)
 			}
 		}
 	}
@@ -258,6 +280,20 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 		cb(depth, sn.samples, sn.writes, t, r)
 	})
 	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
+}
+
+func (s *Segment) Cleanup(timeThreshold time.Time, cb func(depth int, t time.Time)) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+
+	timeThreshold = normalizeTime(timeThreshold)
+	if s.root == nil {
+		return
+	}
+
+	s.root.cleanup(timeThreshold, func(depth int, t time.Time) {
+		cb(depth, t)
+	})
 }
 
 // TODO: this should be refactored

@@ -143,7 +143,7 @@ func (cache *Cache) Cleanup(key string) error {
 	lg := logrus.WithField("key", key)
 
 	if cache.lfu.UpperBound > 0 {
-		// TODO: Cleanup from cache
+		cache.lfu.Set(key, nil)
 	}
 
 	err := cache.db.Update(func(txn *badger.Txn) error {

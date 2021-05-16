@@ -60,8 +60,7 @@ type Server struct {
 
 	OutOfSpaceThreshold bytesize.ByteSize `def:"512MB" desc:"Threshold value to consider out of space in bytes"`
 
-	RetentionThresholdDays  int `def:"30" desc:"data retention threshold in days"`
-	RetentionThresholdDepth int `def:"3" desc:"data retention threshold in depth"`
+	RetentionThresholdDays int `def:"3" desc:"data retention threshold in days"`
 }
 
 type Convert struct {
