@@ -7,7 +7,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 	"log"
-	"time"
 )
 
 // 21:22:08      air |  (time.Duration) 10s,
@@ -191,11 +190,7 @@ var _ = Describe("StorageCleanup", func() {
 				for _, l := range labels {
 					log.Println(l)
 
-					err := s.Cleanup(&CleanupInput{
-						//Key:            l,
-						TimeThreshold:  time.Now().Add(time.Hour * 24 * -2).UTC(),
-						DepthThreshold: 4,
-					})
+					err := s.Cleanup()
 					Expect(err).ToNot(HaveOccurred())
 				}
 			})
