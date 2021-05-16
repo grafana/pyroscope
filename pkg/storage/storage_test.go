@@ -185,6 +185,7 @@ var _ = Describe("StorageCleanup", func() {
 				Expect(gOut.Tree.String()).To(Equal(tree.String()))
 
 				Expect(s.Cleanup()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})

@@ -409,7 +409,7 @@ func printDiskUsage(cfg *config.Config) {
 func storageCleaner(s *storage.Storage) {
 	logrus.Debug("Storage cleaner scheduled")
 
-	t := time.NewTicker(10 * time.Second)
+	t := time.NewTicker(30 * time.Second)
 	for {
 		<-t.C
 

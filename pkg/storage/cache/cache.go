@@ -143,7 +143,7 @@ func (cache *Cache) Cleanup(key string) error {
 	lg := logrus.WithField("key", key)
 
 	if cache.lfu.UpperBound > 0 {
-		cache.lfu.Set(key, nil)
+		// TODO: No delete function in cache
 	}
 
 	err := cache.db.Update(func(txn *badger.Txn) error {

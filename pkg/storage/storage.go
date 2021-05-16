@@ -345,7 +345,7 @@ func (s *Storage) Cleanup() error {
 
 	logrus.Debugf("Dimension len: %d", len(dimensions))
 
-	segmentKeys := dimension.Intersection(dimensions...)
+	segmentKeys := dimension.Union(dimensions...)
 
 	logrus.Debugf("Segment key count: %d", len(segmentKeys))
 	for _, rawSk := range segmentKeys {

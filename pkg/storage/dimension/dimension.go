@@ -144,3 +144,19 @@ func Intersection(input ...*Dimension) []key {
 		}
 	}
 }
+
+func Union(input ...*Dimension) []key {
+	if len(input) == 0 {
+		return []key{}
+	} else if len(input) == 1 {
+		return input[0].keys
+	}
+
+	result := []key{}
+
+	for _, v := range input {
+		result = append(result, v.keys...)
+	}
+
+	return result
+}
