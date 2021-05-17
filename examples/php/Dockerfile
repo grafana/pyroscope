@@ -2,7 +2,7 @@ FROM php:7.3.27
 
 WORKDIR /var/www/html
 
-COPY --from=pyroscope/pyroscope:dev /usr/bin/pyroscope /usr/bin/pyroscope
+COPY --from=pyroscope/pyroscope:latest /usr/bin/pyroscope /usr/bin/pyroscope
 COPY main.php ./main.php
 
 ENV PYROSCOPE_APPLICATION_NAME=simple.php.app
