@@ -88,7 +88,9 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [x] Python
 * [x] Go
 * [x] Linux eBPF
-* [ ] Node (coming soon)
+* [x] PHP
+* [ ] .NET (coming soon)
+* [ ] Java (coming soon)
 
 Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
 
