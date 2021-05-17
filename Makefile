@@ -5,9 +5,9 @@ ifeq ("$(shell go env GOARCH || true)", "arm64")
 	GODEBUG=asyncpreemptoff=1
 endif
 
-ALL_SPIES = "ebpfspy,rbspy,pyspy,debugspy"
+ALL_SPIES = "ebpfspy,rbspy,pyspy,dotnetspy,debugspy"
 ifeq ("$(shell go env GOOS || true)", "linux")
-	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy,phpspy"
+	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy,phpspy,dotnetspy"
 else
 	ENABLED_SPIES ?= "rbspy,pyspy"
 endif
