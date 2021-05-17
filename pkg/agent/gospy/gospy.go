@@ -3,13 +3,15 @@ package gospy
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"runtime"
-	"runtime/pprof"
 	"sync"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/sirupsen/logrus"
 )
 
 // TODO: make this configurable
@@ -22,6 +24,7 @@ type GoSpy struct {
 	stop          bool
 	profileType   spy.ProfileType
 	disableGCRuns bool
+	sampleRate    uint32
 
 	lastGCGeneration uint32
 
@@ -29,15 +32,18 @@ type GoSpy struct {
 	buf    *bytes.Buffer
 }
 
-func Start(profileType spy.ProfileType, disableGCRuns bool) (spy.Spy, error) {
+func Start(profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error) {
 	s := &GoSpy{
 		stopCh:        make(chan struct{}),
 		buf:           &bytes.Buffer{},
 		profileType:   profileType,
 		disableGCRuns: disableGCRuns,
+		sampleRate:    sampleRate,
 	}
 	if s.profileType == spy.ProfileCPU {
-		_ = pprof.StartCPUProfile(s.buf)
+		if err := pprof.StartCPUProfile(s.buf, sampleRate); err != nil {
+			return nil, err
+		}
 	}
 	return s, nil
 }
@@ -82,21 +88,42 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 	s.resetMutex.Lock()
 	defer s.resetMutex.Unlock()
 
+	// before the upload rate is reached, no need to read the profile data
 	if !s.reset {
 		return
 	}
-
 	s.reset = false
 
-	// TODO: handle errors
 	if s.profileType == spy.ProfileCPU {
+		fmt.Printf("## before stop: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
+		// stop the previous cycle of sample collection
 		pprof.StopCPUProfile()
-		r, _ := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
-		profile, _ := convert.ParsePprof(r)
+		fmt.Printf("## after stop: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
+		defer func() {
+			fmt.Printf("## before start: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
+			// start a new cycle of sample collection
+			if err := pprof.StartCPUProfile(s.buf, s.sampleRate); err != nil {
+				logrus.Errorf("start cpu profile: %v", err)
+			}
+			fmt.Printf("## after start: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
+		}()
+
+		// new gzip reader with the read data in buffer
+		r, err := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
+		if err != nil {
+			cb(nil, uint64(0), fmt.Errorf("new gzip reader: %v", err))
+			return
+		}
+
+		// parse the read data with pprof format
+		profile, err := convert.ParsePprof(r)
+		if err != nil {
+			cb(nil, uint64(0), fmt.Errorf("parse pprof: %v", err))
+			return
+		}
 		profile.Get("samples", func(name []byte, val int) {
 			cb(name, uint64(val), nil)
 		})
-		_ = pprof.StartCPUProfile(s.buf)
 	} else {
 		// this is current GC generation
 		currentGCGeneration := numGC()

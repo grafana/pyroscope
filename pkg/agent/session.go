@@ -15,6 +15,7 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
+	"github.com/sirupsen/logrus"
 
 	// revive:enable:blank-imports
 
@@ -90,6 +91,7 @@ func (ps *ProfileSession) takeSnapshots() {
 		select {
 		case <-ticker.C:
 			isdueToReset := ps.isDueForReset()
+			// reset the profiler for spies every upload rate(10s), and before uploading, it needs to read profile data every sample rate
 			if isdueToReset {
 				for _, s := range ps.spies {
 					if sr, ok := s.(spy.Resettable); ok {
@@ -97,9 +99,15 @@ func (ps *ProfileSession) takeSnapshots() {
 					}
 				}
 			}
+
+			// fmt.Printf("## before snapshot: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
 			for i, s := range ps.spies {
 				s.Snapshot(func(stack []byte, v uint64, err error) {
-					if stack != nil && len(stack) > 0 {
+					if err != nil {
+						logrus.Errorf("do snapshot: %v", err)
+						return
+					}
+					if len(stack) > 0 {
 						ps.trieMutex.Lock()
 						defer ps.trieMutex.Unlock()
 
@@ -111,15 +119,19 @@ func (ps *ProfileSession) takeSnapshots() {
 					}
 				})
 			}
+			// fmt.Printf("## after snapshot: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
+
+			// upload the read data to server and reset the start time
 			if isdueToReset {
 				ps.reset()
 			}
+
 		case <-ps.stopCh:
 			ticker.Stop()
+			// stop the spies
 			for _, spy := range ps.spies {
 				spy.Stop()
 			}
-
 			return
 		}
 	}
@@ -130,7 +142,7 @@ func (ps *ProfileSession) Start() error {
 
 	if ps.spyName == "gospy" {
 		for _, pt := range ps.profileTypes {
-			s, err := gospy.Start(pt, ps.disableGCRuns)
+			s, err := gospy.Start(pt, ps.sampleRate, ps.disableGCRuns)
 			if err != nil {
 				return err
 			}
@@ -152,20 +164,22 @@ func (ps *ProfileSession) Start() error {
 func (ps *ProfileSession) isDueForReset() bool {
 	// TODO: duration should be either taken from config or ideally passed from server
 	now := time.Now().Truncate(ps.uploadRate)
-	st := ps.startTime.Truncate(ps.uploadRate)
+	start := ps.startTime.Truncate(ps.uploadRate)
 
-	return !st.Equal(now)
+	return !start.Equal(now)
 }
 
 // the difference between stop and reset is that reset stops current session
-//   and then instantly starts a new one
+// and then instantly starts a new one
 func (ps *ProfileSession) reset() {
 	ps.trieMutex.Lock()
 	defer ps.trieMutex.Unlock()
 
 	now := time.Now()
+	// upload the read data to server
 	ps.uploadTries(now)
 
+	// reset the start time
 	ps.startTime = now
 
 	if ps.withSubprocesses {
@@ -184,24 +198,26 @@ func (ps *ProfileSession) Stop() {
 	}
 	close(ps.stopCh)
 
+	// before stopping, upload the tries
 	ps.uploadTries(time.Now())
 }
 
+// upload the read profile data about 10s to server
 func (ps *ProfileSession) uploadTries(now time.Time) {
-	for i, t := range ps.tries {
+	for i, trie := range ps.tries {
 		skipUpload := false
-		if t != nil {
-			// TODO: uploadRate should be either taken from config or ideally passed from server
-			now = now.Truncate(ps.uploadRate)
 
-			uploadTrie := t
+		if trie != nil {
+			endTime := now.Truncate(ps.uploadRate)
+
+			uploadTrie := trie
 			if ps.profileTypes[i].IsCumulative() {
 				previousTrie := ps.previousTries[i]
 				if previousTrie == nil {
 					skipUpload = true
 				} else {
 					// TODO: Diff doesn't remove empty branches. We need to add that at some point
-					uploadTrie = t.Diff(previousTrie)
+					uploadTrie = trie.Diff(previousTrie)
 				}
 			}
 
@@ -210,7 +226,7 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 				ps.upstream.Upload(&upstream.UploadJob{
 					Name:            name,
 					StartTime:       ps.startTime,
-					EndTime:         now,
+					EndTime:         endTime,
 					SpyName:         ps.spyName,
 					SampleRate:      ps.sampleRate,
 					Units:           ps.profileTypes[i].Units(),
@@ -219,7 +235,7 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 				})
 			}
 			if ps.profileTypes[i].IsCumulative() {
-				ps.previousTries[i] = t
+				ps.previousTries[i] = trie
 			}
 		}
 		ps.tries[i] = transporttrie.New()
