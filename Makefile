@@ -7,7 +7,7 @@ endif
 
 ALL_SPIES = "ebpfspy,rbspy,pyspy,debugspy"
 ifeq ("$(shell go env GOOS || true)", "linux")
-	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy"
+	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy,phpspy"
 else
 	ENABLED_SPIES ?= "rbspy,pyspy"
 endif

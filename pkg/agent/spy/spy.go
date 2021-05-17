@@ -61,6 +61,8 @@ var autoDetectionMapping = map[string]string{
 	"uwsgi":   "pyspy",
 	"pipenv":  "pyspy",
 
+	"php": "phpspy",
+
 	"ruby":   "rbspy",
 	"bundle": "rbspy",
 	"rails":  "rbspy",
