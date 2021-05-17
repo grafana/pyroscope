@@ -21,13 +21,10 @@ func SelfProfile(cfg *config.Config, u upstream.Upstream, appName string, logger
 		WithSubprocesses: false,
 	}
 	s := NewSession(&c)
-	err := s.Start()
-
-	s.Logger = logger
-
-	if err != nil {
+	if err := s.Start(); err != nil {
 		return err
 	}
+	s.Logger = logger
 
 	atexit.Register(s.Stop)
 	return nil
