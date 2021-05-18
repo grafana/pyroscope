@@ -102,10 +102,10 @@ net/http.request;net/io.write 200 samples
 - [x] Python
 - [x] eBPF
 - [x] Ruby
+- [x] PHP
 - [ ] [Java](https://github.com/pyroscope-io/pyroscope/issues/94)
 - [ ] [Rust](https://github.com/pyroscope-io/pyroscope/issues/83#issuecomment-784947654)
 - [ ] [Node](https://github.com/pyroscope-io/pyroscope/issues/8)
-- [ ] [PHP](https://github.com/pyroscope-io/pyroscope/issues/30)
 
 如果你想做出贡献或需要Pyroscope设置方面的帮助，你可以通过以下方式联系我们:
 - 加入我们的[Slack](https://pyroscope.io/slack)
