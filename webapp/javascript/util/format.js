@@ -138,6 +138,7 @@ export function getPackageNameFromStackTrace(spyName, stackTrace) {
     rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
     gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
     ebpfspy: /^(?<packageName>.+)$/,
+    dotnet: /^(?<packageName>.+)!(?<filename>.+)\.(\w+)\(.*\)$/,
     default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
   };
 

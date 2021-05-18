@@ -5,7 +5,6 @@ package dotnetspy
 import (
 	"context"
 	"io"
-	"strings"
 	"sync"
 	"time"
 
@@ -68,13 +67,6 @@ func (s *session) Start() error {
 	stream.SequencePointBlockHandler = p.SequencePointBlockHandler
 
 	s.ch = make(chan line)
-	r := newRenderer(func(name []byte, val int) {
-		s.ch <- line{
-			name: name,
-			val:  val,
-		}
-	})
-
 	go func() {
 		defer close(s.ch)
 		for {
@@ -83,8 +75,12 @@ func (s *session) Start() error {
 			case nil:
 				continue
 			case io.EOF:
-				p.Walk(r.visitor)
-				r.flush()
+				for k, v := range p.Samples() {
+					s.ch <- line{
+						name: []byte(k),
+						val:  int(v.Milliseconds() / 10),
+					}
+				}
 			}
 			return
 		}
@@ -112,36 +108,6 @@ func (s *session) Stop() error {
 	s.session.Close()
 	s.stop = true
 	return nil
-}
-
-type renderer struct {
-	callBack func(name []byte, val int)
-	names    []string
-	val      time.Duration
-	prev     int
-}
-
-func newRenderer(cb func(name []byte, val int)) *renderer {
-	return &renderer{callBack: cb}
-}
-
-func (r *renderer) visitor(frame profiler.FrameInfo) {
-	if frame.Level > r.prev || (frame.Level == 0 && r.prev == 0) {
-		r.names = append(r.names, frame.Name)
-	} else {
-		r.flush()
-		if frame.Level == 0 {
-			r.names = []string{frame.Name}
-		} else {
-			r.names = append(r.names[:frame.Level], frame.Name)
-		}
-	}
-	r.val = frame.SampledTime
-	r.prev = frame.Level
-}
-
-func (r *renderer) flush() {
-	r.callBack([]byte(strings.Join(r.names, ";")), int(r.val.Milliseconds())/100)
 }
 
 // .Net runtime requires some time to initialize diagnostic IPC server and
