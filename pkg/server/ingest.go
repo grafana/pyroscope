@@ -28,9 +28,11 @@ type ingestParams struct {
 func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(io.Reader) (*tree.Tree, error) {
 	return func(r io.Reader) (*tree.Tree, error) {
 		t := tree.New()
-		convertFunc(r, func(k []byte, v int) {
+		if err := convertFunc(r, func(k []byte, v int) {
 			t.Insert(k, uint64(v))
-		})
+		}); err != nil {
+			return nil, err
+		}
 
 		return t, nil
 	}
