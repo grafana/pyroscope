@@ -95,19 +95,16 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 	s.reset = false
 
 	if s.profileType == spy.ProfileCPU {
-		fmt.Printf("## before stop: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
 		// stop the previous cycle of sample collection
 		pprof.StopCPUProfile()
-		fmt.Printf("## after stop: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
 		defer func() {
-			fmt.Printf("## before start: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
 			// start a new cycle of sample collection
 			if err := pprof.StartCPUProfile(s.buf, s.sampleRate); err != nil {
 				logrus.Errorf("start cpu profile: %v", err)
 			}
-			fmt.Printf("## after start: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
 		}()
 
+		// fmt.Printf("## buffer bytes: %d, %v\n", s.buf.Len(), time.Now().Format("2006-01-02 15:04:05.000"))
 		// new gzip reader with the read data in buffer
 		r, err := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
 		if err != nil {
