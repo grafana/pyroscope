@@ -100,7 +100,6 @@ func (ps *ProfileSession) takeSnapshots() {
 				}
 			}
 
-			// fmt.Printf("## before snapshot: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
 			for i, s := range ps.spies {
 				s.Snapshot(func(stack []byte, v uint64, err error) {
 					if err != nil {
@@ -119,7 +118,6 @@ func (ps *ProfileSession) takeSnapshots() {
 					}
 				})
 			}
-			// fmt.Printf("## after snapshot: %v\n", time.Now().Format("2006-01-02 15:04:05.000"))
 
 			// upload the read data to server and reset the start time
 			if isdueToReset {

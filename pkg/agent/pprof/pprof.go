@@ -82,7 +82,6 @@ import (
 	"strings"
 	"sync"
 	"text/tabwriter"
-	"time"
 	"unsafe"
 )
 
@@ -795,17 +794,17 @@ func profileWriter(w io.Writer) {
 	b := newProfileBuilder(w)
 	var err error
 
-	start := time.Now()
-	fmt.Printf("## before read: %v\n", start.Format("2006-01-02 15:04:05.000"))
+	// start := time.Now()
+	// fmt.Printf("## before read: %v\n", start.Format("2006-01-02 15:04:05.000"))
 	for {
 		// time.Sleep(100 * time.Millisecond)
 		data, tags, eof := readProfile()
 		if e := b.addCPUData(data, tags); e != nil && err == nil {
 			err = e
 		}
-		fmt.Printf("## after read: %v, %v\n", time.Now().Format("2006-01-02 15:04:05.000"), time.Since(start))
+		// fmt.Printf("## after read: %v, %v\n", time.Now().Format("2006-01-02 15:04:05.000"), time.Since(start))
 		if eof {
-			fmt.Printf("## after eof: %v, %v\n", time.Now().Format("2006-01-02 15:04:05.000"), time.Since(start))
+			// fmt.Printf("## after eof: %v, %v\n", time.Now().Format("2006-01-02 15:04:05.000"), time.Since(start))
 			break
 		}
 	}
