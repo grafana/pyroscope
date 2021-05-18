@@ -172,6 +172,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pyroscope-io/dotnetdiag v1.0.0 h1:kEZtxYDqO27s9Vx8su2sreHHQLAJS0QV62BNm7EMmPI=
 github.com/pyroscope-io/dotnetdiag v1.0.0/go.mod h1:mUudCmW+j2ewS55/FHq0lHj0Xy2AHWc1UhaaRdfSve8=
+github.com/pyroscope-io/dotnetdiag v1.0.1 h1:Kw3myHH+oWeh+ztDzxbDz5JBOOqH7fdukNnL5RfR+ds=
+github.com/pyroscope-io/dotnetdiag v1.0.1/go.mod h1:mUudCmW+j2ewS55/FHq0lHj0Xy2AHWc1UhaaRdfSve8=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1 h1:0v9lBNgdmVtpyyk9PP/DfpJlOHkXriu5YgNlrhQw5YE=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1/go.mod h1:tSw34BaGZ0iF+oVKDOjq1/LuxGifgW7shaJ6+dBYFXg=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=

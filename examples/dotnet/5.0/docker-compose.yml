@@ -1,0 +1,13 @@
+---
+version: "3.9"
+services:
+  pyroscope:
+    image: "pyroscope/pyroscope:latest"
+    ports:
+      - "4040:4040"
+    command:
+      - "server"
+  app:
+    build: .
+    cap_add:
+      - SYS_PTRACE
