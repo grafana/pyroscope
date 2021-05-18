@@ -3,6 +3,7 @@
 package dotnetspy
 
 import (
+	"context"
 	"io"
 	"strings"
 	"sync"
@@ -29,10 +30,12 @@ type line struct {
 }
 
 func newSession(pid int) *session {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 	return &session{
-		client: dotnetdiag.NewClient(dotnetdiag.DefaultServerAddress(pid)),
+		client: dotnetdiag.NewClient(waitDiagnosticServer(ctx, pid)),
 		config: dotnetdiag.CollectTracingConfig{
-			CircularBufferSizeMB: 10,
+			CircularBufferSizeMB: 100,
 			Providers: []dotnetdiag.ProviderConfig{
 				{
 					Keywords:     0x0000F00000000000,
@@ -138,5 +141,27 @@ func (r *renderer) visitor(frame profiler.FrameInfo) {
 }
 
 func (r *renderer) flush() {
-	r.callBack([]byte(strings.Join(r.names, ";")), int(r.val.Milliseconds()))
+	r.callBack([]byte(strings.Join(r.names, ";")), int(r.val.Milliseconds())/100)
+}
+
+// .Net runtime requires some time to initialize diagnostic IPC server and
+// start accepting connections.
+func waitDiagnosticServer(ctx context.Context, pid int) string {
+	ticker := time.NewTicker(time.Millisecond * 100)
+	defer ticker.Stop()
+	var failures int
+	for {
+		select {
+		case <-ctx.Done():
+			return ""
+		case <-ticker.C:
+			if addr := dotnetdiag.DefaultServerAddress(pid); addr != "" {
+				if failures > 0 {
+					time.Sleep(time.Millisecond * 100)
+				}
+				return addr
+			}
+			failures++
+		}
+	}
 }

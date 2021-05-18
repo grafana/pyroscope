@@ -4,6 +4,8 @@ package dotnetspy
 
 import (
 	"sync"
+
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 )
 
 type DotnetSpy struct {
@@ -12,7 +14,11 @@ type DotnetSpy struct {
 	reset   bool
 }
 
-func Start(pid int) (*DotnetSpy, error) {
+func init() {
+	spy.RegisterSpy("dotnetspy", Start)
+}
+
+func Start(pid int) (spy.Spy, error) {
 	s := newSession(pid)
 	err := s.Start()
 	if err != nil {
