@@ -8,6 +8,6 @@ services:
     command:
       - "server"
   app:
-    build: .
+    build: ""
     cap_add:
       - SYS_PTRACE
