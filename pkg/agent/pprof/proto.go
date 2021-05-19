@@ -9,9 +9,11 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"os"
+	"io/ioutil"
 	"runtime"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 	"unsafe"
 )
@@ -208,6 +210,28 @@ func (b *profileBuilder) pbMapping(tag int, id, base, limit, offset uint64, file
 	b.pb.endMessage(tag, start)
 }
 
+// labelMap is the representation of the label set held in the context type.
+// This is an initial implementation, but it will be replaced with something
+// that admits incremental immutable modification more efficiently.
+type labelMap map[string]string
+
+// String statisfies Stringer and returns key, value pairs in a consistent
+// order.
+func (l *labelMap) String() string {
+	if l == nil {
+		return ""
+	}
+	keyVals := make([]string, 0, len(*l))
+
+	for k, v := range *l {
+		keyVals = append(keyVals, fmt.Sprintf("%q:%q", k, v))
+	}
+
+	sort.Strings(keyVals)
+
+	return "{" + strings.Join(keyVals, ", ") + "}"
+}
+
 func allFrames(addr uintptr) ([]runtime.Frame, symbolizeFlag) {
 	// Expand this one address using CallersFrames so we can cache
 	// each expansion. In general, CallersFrames takes a whole
@@ -322,10 +346,7 @@ func (b *profileBuilder) addCPUData(data []uint64, tags []unsafe.Pointer) error 
 			// overflow record
 			count = uint64(stk[0])
 			stk = []uint64{
-				// gentraceback guarantees that PCs in the
-				// stack can be unconditionally decremented and
-				// still be valid, so we must do the same.
-				uint64(funcPC(lostProfileEvent) + 1),
+				uint64(funcPC(lostProfileEvent)),
 			}
 		}
 		b.m.lookup(stk, tag).count += int64(count)
@@ -387,10 +408,6 @@ func (b *profileBuilder) build() {
 // It may emit to b.pb, so there must be no message encoding in progress.
 func (b *profileBuilder) appendLocsForStack(locs []uint64, stk []uintptr) (newLocs []uint64) {
 	b.deck.reset()
-
-	// The last frame might be truncated. Recover lost inline frames.
-	stk = runtime_expandFinalInlineFrame(stk)
-
 	for len(stk) > 0 {
 		addr := stk[0]
 		if l, ok := b.locs[addr]; ok {
@@ -402,12 +419,22 @@ func (b *profileBuilder) appendLocsForStack(locs []uint64, stk []uintptr) (newLo
 			// then, record the cached location.
 			locs = append(locs, l.id)
 
-			// Skip the matching pcs.
-			//
-			// Even if stk was truncated due to the stack depth
-			// limit, expandFinalInlineFrame above has already
-			// fixed the truncation, ensuring it is long enough.
-			stk = stk[len(l.pcs):]
+			// The stk may be truncated due to the stack depth limit
+			// (e.g. See maxStack and maxCPUProfStack in runtime) or
+			// bugs in runtime. Avoid the crash in either case.
+			// TODO(hyangah): The correct fix may require using the exact
+			// pcs as the key for b.locs cache management instead of just
+			// relying on the very first pc. We are late in the go1.14 dev
+			// cycle, so this is a workaround with little code change.
+			if len(l.pcs) > len(stk) {
+				stk = nil
+				// TODO(hyangah): would be nice if we can enable
+				// debug print out on demand and report the problematic
+				// cached location entry and stack traces. Do we already
+				// have such facility to utilize (e.g. GODEBUG)?
+			} else {
+				stk = stk[len(l.pcs):] // skip the matching pcs.
+			}
 			continue
 		}
 
@@ -424,9 +451,9 @@ func (b *profileBuilder) appendLocsForStack(locs []uint64, stk []uintptr) (newLo
 			stk = stk[1:]
 			continue
 		}
-		// add failed because this addr is not inlined with the
-		// existing PCs in the deck. Flush the deck and retry handling
-		// this pc.
+		// add failed because this addr is not inlined with
+		// the existing PCs in the deck. Flush the deck and retry to
+		// handle this pc.
 		if id := b.emitLocation(); id > 0 {
 			locs = append(locs, id)
 		}
@@ -460,8 +487,8 @@ func (b *profileBuilder) appendLocsForStack(locs []uint64, stk []uintptr) (newLo
 // the fake pcs and restore the inlined and entry functions. Inlined functions
 // have the following properties:
 //   Frame's Func is nil (note: also true for non-Go functions), and
-//   Frame's Entry matches its entry function frame's Entry (note: could also be true for recursive calls and non-Go functions), and
-//   Frame's Name does not match its entry function frame's name (note: inlined functions cannot be directly recursive).
+//   Frame's Entry matches its entry function frame's Entry. (note: could also be true for recursive calls and non-Go functions),
+//   Frame's Name does not match its entry function frame's name.
 //
 // As reading and processing the pcs in a stack trace one by one (from leaf to the root),
 // we use pcDeck to temporarily hold the observed pcs and their expanded frames
@@ -483,8 +510,8 @@ func (d *pcDeck) reset() {
 // to the deck. If it fails the caller needs to flush the deck and retry.
 func (d *pcDeck) tryAdd(pc uintptr, frames []runtime.Frame, symbolizeResult symbolizeFlag) (success bool) {
 	if existing := len(d.pcs); existing > 0 {
-		// 'd.frames' are all expanded from one 'pc' and represent all
-		// inlined functions so we check only the last one.
+		// 'frames' are all expanded from one 'pc' and represent all inlined functions
+		// so we check only the last one.
 		newFrame := frames[0]
 		last := d.frames[existing-1]
 		if last.Func != nil { // the last frame can't be inlined. Flush.
@@ -575,7 +602,7 @@ func (b *profileBuilder) emitLocation() uint64 {
 // It saves the address ranges of the mappings in b.mem for use
 // when emitting locations.
 func (b *profileBuilder) readMapping() {
-	data, _ := os.ReadFile("/proc/self/maps")
+	data, _ := ioutil.ReadFile("/proc/self/maps")
 	parseProcSelfMaps(data, b.addMapping)
 	if len(b.mem) == 0 { // pprof expects a map entry, so fake one.
 		b.addMappingEntry(0, 0, 0, "", "", true)

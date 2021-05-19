@@ -104,7 +104,6 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 			}
 		}()
 
-		// fmt.Printf("## buffer bytes: %d, %v\n", s.buf.Len(), time.Now().Format("2006-01-02 15:04:05.000"))
 		// new gzip reader with the read data in buffer
 		r, err := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
 		if err != nil {
