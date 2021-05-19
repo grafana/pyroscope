@@ -67,6 +67,8 @@ var autoDetectionMapping = map[string]string{
 	"bundle": "rbspy",
 	"rails":  "rbspy",
 	"rake":   "rbspy",
+
+	"dotnet": "dotnetspy",
 }
 
 func init() {

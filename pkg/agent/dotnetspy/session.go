@@ -14,13 +14,14 @@ import (
 )
 
 type session struct {
-	client  *dotnetdiag.Client
+	pid int
+
 	config  dotnetdiag.CollectTracingConfig
 	session *dotnetdiag.Session
 
-	ch   chan line
-	m    sync.Mutex
-	stop bool
+	ch      chan line
+	m       sync.Mutex
+	stopped bool
 }
 
 type line struct {
@@ -29,10 +30,8 @@ type line struct {
 }
 
 func newSession(pid int) *session {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
 	return &session{
-		client: dotnetdiag.NewClient(waitDiagnosticServer(ctx, pid)),
+		pid: pid,
 		config: dotnetdiag.CollectTracingConfig{
 			CircularBufferSizeMB: 100,
 			Providers: []dotnetdiag.ProviderConfig{
@@ -46,8 +45,12 @@ func newSession(pid int) *session {
 	}
 }
 
-func (s *session) Start() error {
-	ns, err := s.client.CollectTracing(s.config)
+func (s *session) start() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+
+	client := dotnetdiag.NewClient(waitDiagnosticServer(ctx, s.pid))
+	ns, err := client.CollectTracing(s.config)
 	if err != nil {
 		return err
 	}
@@ -60,7 +63,7 @@ func (s *session) Start() error {
 		return err
 	}
 
-	p := profiler.NewSampleProfiler(trace)
+	p := profiler.NewSampleProfiler(trace, profiler.WithManagedCodeOnly())
 	stream.EventHandler = p.EventHandler
 	stream.MetadataHandler = p.MetadataHandler
 	stream.StackBlockHandler = p.StackBlockHandler
@@ -78,7 +81,7 @@ func (s *session) Start() error {
 				for k, v := range p.Samples() {
 					s.ch <- line{
 						name: []byte(k),
-						val:  int(v.Milliseconds() / 10),
+						val:  int(v.Milliseconds()) / 10,
 					}
 				}
 			}
@@ -89,24 +92,24 @@ func (s *session) Start() error {
 	return nil
 }
 
-func (s *session) Flush(cb func([]byte, uint64)) error {
-	s.session.Close()
+func (s *session) flush(cb func([]byte, uint64)) error {
+	_ = s.session.Close()
 	for v := range s.ch {
 		cb(v.name, uint64(v.val))
 	}
 	s.m.Lock()
 	defer s.m.Unlock()
-	if s.stop {
+	if s.stopped {
 		return nil
 	}
-	return s.Start()
+	return s.start()
 }
 
-func (s *session) Stop() error {
+func (s *session) stop() error {
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.session.Close()
-	s.stop = true
+	_ = s.session.Close()
+	s.stopped = true
 	return nil
 }
 
@@ -115,19 +118,14 @@ func (s *session) Stop() error {
 func waitDiagnosticServer(ctx context.Context, pid int) string {
 	ticker := time.NewTicker(time.Millisecond * 100)
 	defer ticker.Stop()
-	var failures int
 	for {
 		select {
 		case <-ctx.Done():
 			return ""
 		case <-ticker.C:
 			if addr := dotnetdiag.DefaultServerAddress(pid); addr != "" {
-				if failures > 0 {
-					time.Sleep(time.Millisecond * 100)
-				}
 				return addr
 			}
-			failures++
 		}
 	}
 }

@@ -20,15 +20,12 @@ func init() {
 
 func Start(pid int) (spy.Spy, error) {
 	s := newSession(pid)
-	err := s.Start()
-	if err != nil {
-		return nil, err
-	}
+	_ = s.start()
 	return &DotnetSpy{session: s}, nil
 }
 
 func (s *DotnetSpy) Stop() error {
-	return s.session.Stop()
+	return s.session.stop()
 }
 
 func (s *DotnetSpy) Reset() {
@@ -44,7 +41,7 @@ func (s *DotnetSpy) Snapshot(cb func([]byte, uint64, error)) {
 		return
 	}
 	s.reset = false
-	s.session.Flush(func(name []byte, v uint64) {
+	_ = s.session.flush(func(name []byte, v uint64) {
 		cb(name, v, nil)
 	})
 }

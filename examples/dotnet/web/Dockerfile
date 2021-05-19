@@ -7,7 +7,7 @@ ADD example .
 
 RUN dotnet publish -o . -r linux-x64
 
-ENV PYROSCOPE_APPLICATION_NAME=simple.dotnet.app
+ENV PYROSCOPE_APPLICATION_NAME=web.dotnet.app
 ENV PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040/
 ENV PYROSCOPE_LOG_LEVEL=debug
-CMD ["pyroscope", "exec", "-spy-name", "dotnetspy", "/dotnet/example"]
+CMD ["pyroscope", "exec", "dotnet", "/dotnet/example.dll"]
