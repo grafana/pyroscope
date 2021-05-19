@@ -74,417 +74,17 @@ package pprof
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
 	"text/tabwriter"
+	"time"
 	"unsafe"
 )
-
-// BUG(rsc): Profiles are only as good as the kernel support used to generate them.
-// See https://golang.org/issue/13841 for details about known problems.
-
-// A Profile is a collection of stack traces showing the call sequences
-// that led to instances of a particular event, such as allocation.
-// Packages can create and maintain their own profiles; the most common
-// use is for tracking resources that must be explicitly closed, such as files
-// or network connections.
-//
-// A Profile's methods can be called from multiple goroutines simultaneously.
-//
-// Each Profile has a unique name. A few profiles are predefined:
-//
-//	goroutine    - stack traces of all current goroutines
-//	heap         - a sampling of memory allocations of live objects
-//	allocs       - a sampling of all past memory allocations
-//	threadcreate - stack traces that led to the creation of new OS threads
-//	block        - stack traces that led to blocking on synchronization primitives
-//	mutex        - stack traces of holders of contended mutexes
-//
-// These predefined profiles maintain themselves and panic on an explicit
-// Add or Remove method call.
-//
-// The heap profile reports statistics as of the most recently completed
-// garbage collection; it elides more recent allocation to avoid skewing
-// the profile away from live data and toward garbage.
-// If there has been no garbage collection at all, the heap profile reports
-// all known allocations. This exception helps mainly in programs running
-// without garbage collection enabled, usually for debugging purposes.
-//
-// The heap profile tracks both the allocation sites for all live objects in
-// the application memory and for all objects allocated since the program start.
-// Pprof's -inuse_space, -inuse_objects, -alloc_space, and -alloc_objects
-// flags select which to display, defaulting to -inuse_space (live objects,
-// scaled by size).
-//
-// The allocs profile is the same as the heap profile but changes the default
-// pprof display to -alloc_space, the total number of bytes allocated since
-// the program began (including garbage-collected bytes).
-//
-// The CPU profile is not available as a Profile. It has a special API,
-// the StartCPUProfile and StopCPUProfile functions, because it streams
-// output to a writer during profiling.
-//
-type Profile struct {
-	name  string
-	mu    sync.Mutex
-	m     map[interface{}][]uintptr
-	count func() int
-	write func(io.Writer, int) error
-}
-
-// profiles records all registered profiles.
-var profiles struct {
-	mu sync.Mutex
-	m  map[string]*Profile
-}
-
-var goroutineProfile = &Profile{
-	name:  "goroutine",
-	count: countGoroutine,
-	write: writeGoroutine,
-}
-
-var threadcreateProfile = &Profile{
-	name:  "threadcreate",
-	count: countThreadCreate,
-	write: writeThreadCreate,
-}
-
-var heapProfile = &Profile{
-	name:  "heap",
-	count: countHeap,
-	write: writeHeap,
-}
-
-var allocsProfile = &Profile{
-	name:  "allocs",
-	count: countHeap, // identical to heap profile
-	write: writeAlloc,
-}
-
-var blockProfile = &Profile{
-	name:  "block",
-	count: countBlock,
-	write: writeBlock,
-}
-
-var mutexProfile = &Profile{
-	name:  "mutex",
-	count: countMutex,
-	write: writeMutex,
-}
-
-func lockProfiles() {
-	profiles.mu.Lock()
-	if profiles.m == nil {
-		// Initial built-in profiles.
-		profiles.m = map[string]*Profile{
-			"goroutine":    goroutineProfile,
-			"threadcreate": threadcreateProfile,
-			"heap":         heapProfile,
-			"allocs":       allocsProfile,
-			"block":        blockProfile,
-			"mutex":        mutexProfile,
-		}
-	}
-}
-
-func unlockProfiles() {
-	profiles.mu.Unlock()
-}
-
-// NewProfile creates a new profile with the given name.
-// If a profile with that name already exists, NewProfile panics.
-// The convention is to use a 'import/path.' prefix to create
-// separate name spaces for each package.
-// For compatibility with various tools that read pprof data,
-// profile names should not contain spaces.
-func NewProfile(name string) *Profile {
-	lockProfiles()
-	defer unlockProfiles()
-	if name == "" {
-		panic("pprof: NewProfile with empty name")
-	}
-	if profiles.m[name] != nil {
-		panic("pprof: NewProfile name already in use: " + name)
-	}
-	p := &Profile{
-		name: name,
-		m:    map[interface{}][]uintptr{},
-	}
-	profiles.m[name] = p
-	return p
-}
-
-// Lookup returns the profile with the given name, or nil if no such profile exists.
-func Lookup(name string) *Profile {
-	lockProfiles()
-	defer unlockProfiles()
-	return profiles.m[name]
-}
-
-// Profiles returns a slice of all the known profiles, sorted by name.
-func Profiles() []*Profile {
-	lockProfiles()
-	defer unlockProfiles()
-
-	all := make([]*Profile, 0, len(profiles.m))
-	for _, p := range profiles.m {
-		all = append(all, p)
-	}
-
-	sort.Slice(all, func(i, j int) bool { return all[i].name < all[j].name })
-	return all
-}
-
-// Name returns this profile's name, which can be passed to Lookup to reobtain the profile.
-func (p *Profile) Name() string {
-	return p.name
-}
-
-// Count returns the number of execution stacks currently in the profile.
-func (p *Profile) Count() int {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.count != nil {
-		return p.count()
-	}
-	return len(p.m)
-}
-
-// Add adds the current execution stack to the profile, associated with value.
-// Add stores value in an internal map, so value must be suitable for use as
-// a map key and will not be garbage collected until the corresponding
-// call to Remove. Add panics if the profile already contains a stack for value.
-//
-// The skip parameter has the same meaning as runtime.Caller's skip
-// and controls where the stack trace begins. Passing skip=0 begins the
-// trace in the function calling Add. For example, given this
-// execution stack:
-//
-//	Add
-//	called from rpc.NewClient
-//	called from mypkg.Run
-//	called from main.main
-//
-// Passing skip=0 begins the stack trace at the call to Add inside rpc.NewClient.
-// Passing skip=1 begins the stack trace at the call to NewClient inside mypkg.Run.
-//
-func (p *Profile) Add(value interface{}, skip int) {
-	if p.name == "" {
-		panic("pprof: use of uninitialized Profile")
-	}
-	if p.write != nil {
-		panic("pprof: Add called on built-in Profile " + p.name)
-	}
-
-	stk := make([]uintptr, 32)
-	n := runtime.Callers(skip+1, stk[:])
-	stk = stk[:n]
-	if len(stk) == 0 {
-		// The value for skip is too large, and there's no stack trace to record.
-		stk = []uintptr{funcPC(lostProfileEvent)}
-	}
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.m[value] != nil {
-		panic("pprof: Profile.Add of duplicate value")
-	}
-	p.m[value] = stk
-}
-
-// Remove removes the execution stack associated with value from the profile.
-// It is a no-op if the value is not in the profile.
-func (p *Profile) Remove(value interface{}) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	delete(p.m, value)
-}
-
-// WriteTo writes a pprof-formatted snapshot of the profile to w.
-// If a write to w returns an error, WriteTo returns that error.
-// Otherwise, WriteTo returns nil.
-//
-// The debug parameter enables additional output.
-// Passing debug=0 writes the gzip-compressed protocol buffer described
-// in https://github.com/google/pprof/tree/master/proto#overview.
-// Passing debug=1 writes the legacy text format with comments
-// translating addresses to function names and line numbers, so that a
-// programmer can read the profile without tools.
-//
-// The predefined profiles may assign meaning to other debug values;
-// for example, when printing the "goroutine" profile, debug=2 means to
-// print the goroutine stacks in the same form that a Go program uses
-// when dying due to an unrecovered panic.
-func (p *Profile) WriteTo(w io.Writer, debug int) error {
-	if p.name == "" {
-		panic("pprof: use of zero Profile")
-	}
-	if p.write != nil {
-		return p.write(w, debug)
-	}
-
-	// Obtain consistent snapshot under lock; then process without lock.
-	p.mu.Lock()
-	all := make([][]uintptr, 0, len(p.m))
-	for _, stk := range p.m {
-		all = append(all, stk)
-	}
-	p.mu.Unlock()
-
-	// Map order is non-deterministic; make output deterministic.
-	sort.Slice(all, func(i, j int) bool {
-		t, u := all[i], all[j]
-		for k := 0; k < len(t) && k < len(u); k++ {
-			if t[k] != u[k] {
-				return t[k] < u[k]
-			}
-		}
-		return len(t) < len(u)
-	})
-
-	return printCountProfile(w, debug, p.name, stackProfile(all))
-}
-
-type stackProfile [][]uintptr
-
-func (x stackProfile) Len() int              { return len(x) }
-func (x stackProfile) Stack(i int) []uintptr { return x[i] }
-func (x stackProfile) Label(i int) *labelMap { return nil }
-
-// A countProfile is a set of stack traces to be printed as counts
-// grouped by stack trace. There are multiple implementations:
-// all that matters is that we can find out how many traces there are
-// and obtain each trace in turn.
-type countProfile interface {
-	Len() int
-	Stack(i int) []uintptr
-	Label(i int) *labelMap
-}
-
-// printCountCycleProfile outputs block profile records (for block or mutex profiles)
-// as the pprof-proto format output. Translations from cycle count to time duration
-// are done because The proto expects count and time (nanoseconds) instead of count
-// and the number of cycles for block, contention profiles.
-// Possible 'scaler' functions are scaleBlockProfile and scaleMutexProfile.
-func printCountCycleProfile(w io.Writer, countName, cycleName string, scaler func(int64, float64) (int64, float64), records []runtime.BlockProfileRecord) error {
-	// Output profile in protobuf form.
-	b := newProfileBuilder(w)
-	b.pbValueType(tagProfile_PeriodType, countName, "count")
-	b.pb.int64Opt(tagProfile_Period, 1)
-	b.pbValueType(tagProfile_SampleType, countName, "count")
-	b.pbValueType(tagProfile_SampleType, cycleName, "nanoseconds")
-
-	cpuGHz := float64(runtime_cyclesPerSecond()) / 1e9
-
-	values := []int64{0, 0}
-	var locs []uint64
-	for _, r := range records {
-		count, nanosec := scaler(r.Count, float64(r.Cycles)/cpuGHz)
-		values[0] = count
-		values[1] = int64(nanosec)
-		// For count profiles, all stack addresses are
-		// return PCs, which is what appendLocsForStack expects.
-		locs = b.appendLocsForStack(locs[:0], r.Stack())
-		b.pbSample(values, locs, nil)
-	}
-	b.build()
-	return nil
-}
-
-// printCountProfile prints a countProfile at the specified debug level.
-// The profile will be in compressed proto format unless debug is nonzero.
-func printCountProfile(w io.Writer, debug int, name string, p countProfile) error {
-	// Build count of each stack.
-	var buf bytes.Buffer
-	key := func(stk []uintptr, lbls *labelMap) string {
-		buf.Reset()
-		fmt.Fprintf(&buf, "@")
-		for _, pc := range stk {
-			fmt.Fprintf(&buf, " %#x", pc)
-		}
-		if lbls != nil {
-			buf.WriteString("\n# labels: ")
-			buf.WriteString(lbls.String())
-		}
-		return buf.String()
-	}
-	count := map[string]int{}
-	index := map[string]int{}
-	var keys []string
-	n := p.Len()
-	for i := 0; i < n; i++ {
-		k := key(p.Stack(i), p.Label(i))
-		if count[k] == 0 {
-			index[k] = i
-			keys = append(keys, k)
-		}
-		count[k]++
-	}
-
-	sort.Sort(&keysByCount{keys, count})
-
-	if debug > 0 {
-		// Print debug profile in legacy format
-		tw := tabwriter.NewWriter(w, 1, 8, 1, '\t', 0)
-		fmt.Fprintf(tw, "%s profile: total %d\n", name, p.Len())
-		for _, k := range keys {
-			fmt.Fprintf(tw, "%d %s\n", count[k], k)
-			printStackRecord(tw, p.Stack(index[k]), false)
-		}
-		return tw.Flush()
-	}
-
-	// Output profile in protobuf form.
-	b := newProfileBuilder(w)
-	b.pbValueType(tagProfile_PeriodType, name, "count")
-	b.pb.int64Opt(tagProfile_Period, 1)
-	b.pbValueType(tagProfile_SampleType, name, "count")
-
-	values := []int64{0}
-	var locs []uint64
-	for _, k := range keys {
-		values[0] = int64(count[k])
-		// For count profiles, all stack addresses are
-		// return PCs, which is what appendLocsForStack expects.
-		locs = b.appendLocsForStack(locs[:0], p.Stack(index[k]))
-		idx := index[k]
-		var labels func()
-		if p.Label(idx) != nil {
-			labels = func() {
-				for k, v := range *p.Label(idx) {
-					b.pbLabel(tagSample_Label, k, v, 0)
-				}
-			}
-		}
-		b.pbSample(values, locs, labels)
-	}
-	b.build()
-	return nil
-}
-
-// keysByCount sorts keys with higher counts first, breaking ties by key string order.
-type keysByCount struct {
-	keys  []string
-	count map[string]int
-}
-
-func (x *keysByCount) Len() int      { return len(x.keys) }
-func (x *keysByCount) Swap(i, j int) { x.keys[i], x.keys[j] = x.keys[j], x.keys[i] }
-func (x *keysByCount) Less(i, j int) bool {
-	ki, kj := x.keys[i], x.keys[j]
-	ci, cj := x.count[ki], x.count[kj]
-	if ci != cj {
-		return ci > cj
-	}
-	return ki < kj
-}
 
 // printStackRecord prints the function + source line information
 // for a single stack trace.
@@ -516,7 +116,86 @@ func printStackRecord(w io.Writer, stk []uintptr, allFrames bool) {
 	fmt.Fprintf(w, "\n")
 }
 
-// Interface to system profiles.
+// writeHeapProto writes the current heap profile in protobuf format to w.
+func writeHeapProto(w io.Writer, p []runtime.MemProfileRecord, rate int64, defaultSampleType string) error {
+	b := newProfileBuilder(w)
+	b.pbValueType(tagProfile_PeriodType, "space", "bytes")
+	b.pb.int64Opt(tagProfile_Period, rate)
+	b.pbValueType(tagProfile_SampleType, "alloc_objects", "count")
+	b.pbValueType(tagProfile_SampleType, "alloc_space", "bytes")
+	b.pbValueType(tagProfile_SampleType, "inuse_objects", "count")
+	b.pbValueType(tagProfile_SampleType, "inuse_space", "bytes")
+	if defaultSampleType != "" {
+		b.pb.int64Opt(tagProfile_DefaultSampleType, b.stringIndex(defaultSampleType))
+	}
+
+	values := []int64{0, 0, 0, 0}
+	var locs []uint64
+	for _, r := range p {
+		hideRuntime := true
+		for tries := 0; tries < 2; tries++ {
+			stk := r.Stack()
+			// For heap profiles, all stack
+			// addresses are return PCs, which is
+			// what appendLocsForStack expects.
+			if hideRuntime {
+				for i, addr := range stk {
+					if f := runtime.FuncForPC(addr); f != nil && strings.HasPrefix(f.Name(), "runtime.") {
+						continue
+					}
+					// Found non-runtime. Show any runtime uses above it.
+					stk = stk[i:]
+					break
+				}
+			}
+			locs = b.appendLocsForStack(locs[:0], stk)
+			if len(locs) > 0 {
+				break
+			}
+			hideRuntime = false // try again, and show all frames next time.
+		}
+
+		values[0], values[1] = scaleHeapSample(r.AllocObjects, r.AllocBytes, rate)
+		values[2], values[3] = scaleHeapSample(r.InUseObjects(), r.InUseBytes(), rate)
+		var blockSize int64
+		if r.AllocObjects > 0 {
+			blockSize = r.AllocBytes / r.AllocObjects
+		}
+		b.pbSample(values, locs, func() {
+			if blockSize != 0 {
+				b.pbLabel(tagSample_Label, "bytes", "", blockSize)
+			}
+		})
+	}
+	b.build()
+	return nil
+}
+
+// scaleHeapSample adjusts the data from a heap Sample to
+// account for its probability of appearing in the collected
+// data. heap profiles are a sampling of the memory allocations
+// requests in a program. We estimate the unsampled value by dividing
+// each collected sample by its probability of appearing in the
+// profile. heap profiles rely on a poisson process to determine
+// which samples to collect, based on the desired average collection
+// rate R. The probability of a sample of size S to appear in that
+// profile is 1-exp(-S/R).
+func scaleHeapSample(count, size, rate int64) (int64, int64) {
+	if count == 0 || size == 0 {
+		return 0, 0
+	}
+
+	if rate <= 1 {
+		// if rate==1 all samples were collected so no adjustment is needed.
+		// if rate<1 treat as unknown and skip scaling.
+		return count, size
+	}
+
+	avgSize := float64(size) / float64(count)
+	scale := 1 / (1 - math.Exp(-avgSize/float64(rate)))
+
+	return int64(float64(count) * scale), int64(float64(size) * scale)
+}
 
 // WriteHeapProfile is shorthand for Lookup("heap").WriteTo(w, 0).
 // It is preserved for backwards compatibility.
@@ -524,21 +203,9 @@ func WriteHeapProfile(w io.Writer) error {
 	return writeHeap(w, 0)
 }
 
-// countHeap returns the number of records in the heap profile.
-func countHeap() int {
-	n, _ := runtime.MemProfile(nil, true)
-	return n
-}
-
 // writeHeap writes the current runtime heap profile to w.
 func writeHeap(w io.Writer, debug int) error {
 	return writeHeapInternal(w, debug, "")
-}
-
-// writeAlloc writes the current runtime heap profile to w
-// with the total allocation space as the default sample type.
-func writeAlloc(w io.Writer, debug int) error {
-	return writeHeapInternal(w, debug, "alloc_space")
 }
 
 func writeHeapInternal(w io.Writer, debug int, defaultSampleType string) error {
@@ -644,101 +311,9 @@ func writeHeapInternal(w io.Writer, debug int, defaultSampleType string) error {
 	fmt.Fprintf(w, "# GCCPUFraction = %v\n", s.GCCPUFraction)
 	fmt.Fprintf(w, "# DebugGC = %v\n", s.DebugGC)
 
-	// Also flush out MaxRSS on supported platforms.
-	addMaxRSS(w)
-
 	tw.Flush()
 	return b.Flush()
 }
-
-// countThreadCreate returns the size of the current ThreadCreateProfile.
-func countThreadCreate() int {
-	n, _ := runtime.ThreadCreateProfile(nil)
-	return n
-}
-
-// writeThreadCreate writes the current runtime ThreadCreateProfile to w.
-func writeThreadCreate(w io.Writer, debug int) error {
-	// Until https://golang.org/issues/6104 is addressed, wrap
-	// ThreadCreateProfile because there's no point in tracking labels when we
-	// don't get any stack-traces.
-	return writeRuntimeProfile(w, debug, "threadcreate", func(p []runtime.StackRecord, _ []unsafe.Pointer) (n int, ok bool) {
-		return runtime.ThreadCreateProfile(p)
-	})
-}
-
-// countGoroutine returns the number of goroutines.
-func countGoroutine() int {
-	return runtime.NumGoroutine()
-}
-
-//go:linkname runtime_goroutineProfileWithLabels runtime/pprof.runtime_goroutineProfileWithLabels
-func runtime_goroutineProfileWithLabels(p []runtime.StackRecord, labels []unsafe.Pointer) (n int, ok bool)
-
-// writeGoroutine writes the current runtime GoroutineProfile to w.
-func writeGoroutine(w io.Writer, debug int) error {
-	if debug >= 2 {
-		return writeGoroutineStacks(w)
-	}
-	return writeRuntimeProfile(w, debug, "goroutine", runtime_goroutineProfileWithLabels)
-}
-
-func writeGoroutineStacks(w io.Writer) error {
-	// We don't know how big the buffer needs to be to collect
-	// all the goroutines. Start with 1 MB and try a few times, doubling each time.
-	// Give up and use a truncated trace if 64 MB is not enough.
-	buf := make([]byte, 1<<20)
-	for i := 0; ; i++ {
-		n := runtime.Stack(buf, true)
-		if n < len(buf) {
-			buf = buf[:n]
-			break
-		}
-		if len(buf) >= 64<<20 {
-			// Filled 64 MB - stop there.
-			break
-		}
-		buf = make([]byte, 2*len(buf))
-	}
-	_, err := w.Write(buf)
-	return err
-}
-
-func writeRuntimeProfile(w io.Writer, debug int, name string, fetch func([]runtime.StackRecord, []unsafe.Pointer) (int, bool)) error {
-	// Find out how many records there are (fetch(nil)),
-	// allocate that many records, and get the data.
-	// There's a race—more records might be added between
-	// the two calls—so allocate a few extra records for safety
-	// and also try again if we're very unlucky.
-	// The loop should only execute one iteration in the common case.
-	var p []runtime.StackRecord
-	var labels []unsafe.Pointer
-	n, ok := fetch(nil, nil)
-	for {
-		// Allocate room for a slightly bigger profile,
-		// in case a few more entries have been added
-		// since the call to ThreadProfile.
-		p = make([]runtime.StackRecord, n+10)
-		labels = make([]unsafe.Pointer, n+10)
-		n, ok = fetch(p, labels)
-		if ok {
-			p = p[0:n]
-			break
-		}
-		// Profile grew; try again.
-	}
-
-	return printCountProfile(w, debug, name, &runtimeProfile{p, labels})
-}
-
-type runtimeProfile struct {
-	stk    []runtime.StackRecord
-	labels []unsafe.Pointer
-}
-
-func (p *runtimeProfile) Len() int              { return len(p.stk) }
-func (p *runtimeProfile) Stack(i int) []uintptr { return p.stk[i].Stack() }
-func (p *runtimeProfile) Label(i int) *labelMap { return (*labelMap)(p.labels[i]) }
 
 var cpu struct {
 	sync.Mutex
@@ -793,18 +368,13 @@ func readProfile() (data []uint64, tags []unsafe.Pointer, eof bool)
 func profileWriter(w io.Writer) {
 	b := newProfileBuilder(w)
 	var err error
-
-	// start := time.Now()
-	// fmt.Printf("## before read: %v\n", start.Format("2006-01-02 15:04:05.000"))
 	for {
-		// time.Sleep(100 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		data, tags, eof := readProfile()
 		if e := b.addCPUData(data, tags); e != nil && err == nil {
 			err = e
 		}
-		// fmt.Printf("## after read: %v, %v\n", time.Now().Format("2006-01-02 15:04:05.000"), time.Since(start))
 		if eof {
-			// fmt.Printf("## after eof: %v, %v\n", time.Now().Format("2006-01-02 15:04:05.000"), time.Since(start))
 			break
 		}
 	}
@@ -831,119 +401,3 @@ func StopCPUProfile() {
 	runtime.SetCPUProfileRate(0)
 	<-cpu.done
 }
-
-// countBlock returns the number of records in the blocking profile.
-func countBlock() int {
-	n, _ := runtime.BlockProfile(nil)
-	return n
-}
-
-// countMutex returns the number of records in the mutex profile.
-func countMutex() int {
-	n, _ := runtime.MutexProfile(nil)
-	return n
-}
-
-// writeBlock writes the current blocking profile to w.
-func writeBlock(w io.Writer, debug int) error {
-	var p []runtime.BlockProfileRecord
-	n, ok := runtime.BlockProfile(nil)
-	for {
-		p = make([]runtime.BlockProfileRecord, n+50)
-		n, ok = runtime.BlockProfile(p)
-		if ok {
-			p = p[:n]
-			break
-		}
-	}
-
-	sort.Slice(p, func(i, j int) bool { return p[i].Cycles > p[j].Cycles })
-
-	if debug <= 0 {
-		return printCountCycleProfile(w, "contentions", "delay", scaleBlockProfile, p)
-	}
-
-	b := bufio.NewWriter(w)
-	tw := tabwriter.NewWriter(w, 1, 8, 1, '\t', 0)
-	w = tw
-
-	fmt.Fprintf(w, "--- contention:\n")
-	fmt.Fprintf(w, "cycles/second=%v\n", runtime_cyclesPerSecond())
-	for i := range p {
-		r := &p[i]
-		fmt.Fprintf(w, "%v %v @", r.Cycles, r.Count)
-		for _, pc := range r.Stack() {
-			fmt.Fprintf(w, " %#x", pc)
-		}
-		fmt.Fprint(w, "\n")
-		if debug > 0 {
-			printStackRecord(w, r.Stack(), true)
-		}
-	}
-
-	if tw != nil {
-		tw.Flush()
-	}
-	return b.Flush()
-}
-
-func scaleBlockProfile(cnt int64, ns float64) (int64, float64) {
-	// Do nothing.
-	// The current way of block profile sampling makes it
-	// hard to compute the unsampled number. The legacy block
-	// profile parse doesn't attempt to scale or unsample.
-	return cnt, ns
-}
-
-// writeMutex writes the current mutex profile to w.
-func writeMutex(w io.Writer, debug int) error {
-	// TODO(pjw): too much common code with writeBlock. FIX!
-	var p []runtime.BlockProfileRecord
-	n, ok := runtime.MutexProfile(nil)
-	for {
-		p = make([]runtime.BlockProfileRecord, n+50)
-		n, ok = runtime.MutexProfile(p)
-		if ok {
-			p = p[:n]
-			break
-		}
-	}
-
-	sort.Slice(p, func(i, j int) bool { return p[i].Cycles > p[j].Cycles })
-
-	if debug <= 0 {
-		return printCountCycleProfile(w, "contentions", "delay", scaleMutexProfile, p)
-	}
-
-	b := bufio.NewWriter(w)
-	tw := tabwriter.NewWriter(w, 1, 8, 1, '\t', 0)
-	w = tw
-
-	fmt.Fprintf(w, "--- mutex:\n")
-	fmt.Fprintf(w, "cycles/second=%v\n", runtime_cyclesPerSecond())
-	fmt.Fprintf(w, "sampling period=%d\n", runtime.SetMutexProfileFraction(-1))
-	for i := range p {
-		r := &p[i]
-		fmt.Fprintf(w, "%v %v @", r.Cycles, r.Count)
-		for _, pc := range r.Stack() {
-			fmt.Fprintf(w, " %#x", pc)
-		}
-		fmt.Fprint(w, "\n")
-		if debug > 0 {
-			printStackRecord(w, r.Stack(), true)
-		}
-	}
-
-	if tw != nil {
-		tw.Flush()
-	}
-	return b.Flush()
-}
-
-func scaleMutexProfile(cnt int64, ns float64) (int64, float64) {
-	period := runtime.SetMutexProfileFraction(-1)
-	return cnt * int64(period), ns * float64(period)
-}
-
-//go:linkname runtime_cyclesPerSecond runtime/pprof.runtime_cyclesPerSecond
-func runtime_cyclesPerSecond() int64
