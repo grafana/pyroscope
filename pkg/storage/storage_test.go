@@ -6,6 +6,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
+	"time"
 )
 
 // 21:22:08      air |  (time.Duration) 10s,
@@ -158,10 +159,8 @@ var _ = Describe("StorageCleanup", func() {
 				tree := tree.New()
 				tree.Insert([]byte("a;b"), uint64(1))
 				tree.Insert([]byte("a;c"), uint64(2))
-				st := testing.SimpleTime(10)
-				et := testing.SimpleTime(19)
-				st2 := testing.SimpleTime(0)
-				et2 := testing.SimpleTime(30)
+				st := time.Now().UTC().Add(time.Hour * 24 * 10 * -1)
+				et := time.Now().UTC().Add(time.Hour * 24 * 10 * -1).Add(time.Second * 10)
 				key, _ := ParseKey("foo")
 
 				err := s.Put(&PutInput{
@@ -173,17 +172,29 @@ var _ = Describe("StorageCleanup", func() {
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
+				Expect(s.Cleanup()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
+			})
+		})
 
-				gOut, err := s.Get(&GetInput{
-					StartTime: st2,
-					EndTime:   et2,
-					Key:       key,
+		Context("testStorageCleanup2", func() {
+			It("cleanupDoesNotWorkAsOutOfTimeRange", func() {
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(1))
+				tree.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(20)
+				key, _ := ParseKey("foo")
+
+				err := s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        tree,
+					SpyName:    "testspy",
+					SampleRate: 100,
 				})
-
 				Expect(err).ToNot(HaveOccurred())
-				Expect(gOut.Tree).ToNot(BeNil())
-				Expect(gOut.Tree.String()).To(Equal(tree.String()))
-
 				Expect(s.Cleanup()).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
