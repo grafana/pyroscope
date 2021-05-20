@@ -64,7 +64,8 @@ pyroscope exec python manage.py runserver
 
 ## 部署架构
 
-![Deployment Diagram](../.github/markdown-images/deployment.svg)
+![agent_server_diagram_00-01-01](https://user-images.githubusercontent.com/23323466/119034061-d536bd00-b962-11eb-8642-ce23a1b6b35f.png)
+
 
 ## 下载
 
