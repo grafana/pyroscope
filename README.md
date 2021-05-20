@@ -84,15 +84,27 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 
 ## Supported Integrations
 
-* [x] Ruby
-* [x] Python
-* [x] Go
-* [x] Linux eBPF
-* [x] PHP
+* [x] Ruby (via `rbspy`)
+* [x] Python (via `py-spy`)
+* [x] Go (via `pprof`)
+* [x] Linux eBPF (via `profile.py` from `bcc-tools`)
+* [x] PHP (via `phpspy`)
 * [ ] .NET (coming soon)
 * [ ] Java (coming soon)
 
 Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
+
+## Credits
+
+Pyroscope is possible thanks to the excellent work of many people, including but not limited to:
+
+* Brendan Gregg — inventor of Flame Graphs
+* Julia Evans — creator of rbspy — sampling profiler for Ruby
+* Vladimir Agafonkin — creator of flamebearer — fast flamegraph renderer
+* Ben Frederickson — creator of py-spy — sampling profiler for Python
+* Adam Saponara — creator of phpspy — sampling profiler for PHP
+* Alexei Starovoitov, Brendan Gregg, and many others who made BPF based profiling in Linux kernel possible
+
 
 ## Contributing
 
