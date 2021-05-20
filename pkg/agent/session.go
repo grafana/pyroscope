@@ -156,7 +156,9 @@ func (ps *ProfileSession) Start() error {
 
 		ps.spies = append(ps.spies, s)
 	}
+
 	go ps.takeSnapshots()
+
 	return nil
 }
 

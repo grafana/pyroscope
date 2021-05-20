@@ -67,10 +67,18 @@ func getHeapProfile(b *bytes.Buffer) *convert.Profile {
 	defer lastProfileMutex.Unlock()
 
 	if lastProfile == nil || !lastProfileCreatedAt.After(time.Now().Add(-1*time.Second)) {
-		pprof.WriteHeapProfile(b)
-		g, _ := gzip.NewReader(bytes.NewReader(b.Bytes()))
+		if err := pprof.WriteHeapProfile(b); err != nil {
 
-		lastProfile, _ = convert.ParsePprof(g)
+		}
+		g, err := gzip.NewReader(bytes.NewReader(b.Bytes()))
+		if err != nil {
+
+		}
+
+		lastProfile, err = convert.ParsePprof(g)
+		if err != nil {
+
+		}
 		lastProfileCreatedAt = time.Now()
 	}
 
