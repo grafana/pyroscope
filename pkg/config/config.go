@@ -59,8 +59,8 @@ type Server struct {
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
 
 	OutOfSpaceThreshold bytesize.ByteSize `def:"512MB" desc:"Threshold value to consider out of space in bytes"`
-
-	RetentionThresholdDays int `def:"3" desc:"data retention threshold in days"`
+	ThresholdModeAuto   bool              `def:"true" desc:"Threshold mode auto will do data cleanup automatically when will run out of storage"`
+	RetentionThreshold  time.Duration     `def:"-24h" desc:"data retention threshold"`
 }
 
 type Convert struct {

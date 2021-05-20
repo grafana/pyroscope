@@ -153,17 +153,22 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 	}
 }
 
-func (sn *streeNode) cleanup(timeThreshold time.Time, cb func(depth int, t time.Time)) {
+func (sn *streeNode) cleanup(timeThreshold time.Time, cb func(depth int, t time.Time)) bool {
+	hasData := false
 	rel := sn.cleanupRelationship(timeThreshold)
 	if sn.present && (rel == inside || rel == match) {
 		cb(sn.depth, sn.time)
 
 		for _, v := range sn.children {
 			if v != nil {
-				v.cleanup(timeThreshold, cb)
+				ok := v.cleanup(timeThreshold, cb)
+				hasData = hasData || ok
 			}
 		}
+		return hasData
 	}
+
+	return true
 }
 
 type Segment struct {
@@ -282,16 +287,16 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
 }
 
-func (s *Segment) Cleanup(timeThreshold time.Time, cb func(depth int, t time.Time)) {
+func (s *Segment) Cleanup(timeThreshold time.Time, cb func(depth int, t time.Time)) bool {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
 	timeThreshold = normalizeTime(timeThreshold)
 	if s.root == nil {
-		return
+		return false
 	}
 
-	s.root.cleanup(timeThreshold, func(depth int, t time.Time) {
+	return s.root.cleanup(timeThreshold, func(depth int, t time.Time) {
 		cb(depth, t)
 	})
 }

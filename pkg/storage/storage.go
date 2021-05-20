@@ -187,6 +187,11 @@ func (s *Storage) Put(po *PutInput) error {
 
 	freeSpace, err := disk.FreeSpace(s.cfg.Server.StoragePath)
 	if err == nil && freeSpace < s.cfg.Server.OutOfSpaceThreshold {
+		if s.cfg.Server.ThresholdModeAuto {
+			// TODO: Threshold calculation & Handle race condition
+			logrus.Debugf("Triggered auto cleanup")
+			// defer s.Cleanup()
+		}
 		return errOutOfSpace
 	}
 
@@ -329,10 +334,6 @@ func (s *Storage) Cleanup() error {
 	}
 
 	nameKey := "__name__"
-	timeThreshold := time.
-		Now().
-		UTC().
-		Add(time.Duration(s.cfg.Server.RetentionThresholdDays) * time.Hour * 24 * -1)
 
 	lg := logrus.WithField("task", "cleanup")
 
@@ -353,14 +354,20 @@ func (s *Storage) Cleanup() error {
 		logrus.Debugf("Segment key: %s", sk)
 
 		st := s.segments.Get(sk.SegmentKey()).(*segment.Segment)
-		st.Cleanup(timeThreshold, func(depth int, t time.Time) {
+		hasData := st.Cleanup(time.Now().UTC().Add(s.cfg.Server.RetentionThreshold), func(depth int, t time.Time) {
 			tk := sk.TreeKey(depth, t)
 
 			logrus.Debugf("Tree key: %s", tk)
-			if err := s.trees.Cleanup(tk); err != nil {
-				lg.Debugf("%v", err)
+			if err := s.trees.Delete(tk); err != nil {
+				lg.Errorf("%v", err)
 			}
 		})
+
+		if !hasData {
+			if err := s.segments.Delete(sk.SegmentKey()); err != nil {
+				lg.Errorf("%v", err)
+			}
+		}
 
 		lg.Debugf("sk: %s", sk.SegmentKey())
 	}

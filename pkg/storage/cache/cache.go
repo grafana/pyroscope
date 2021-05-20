@@ -139,7 +139,7 @@ func (cache *Cache) Get(key string) interface{} {
 	return val
 }
 
-func (cache *Cache) Cleanup(key string) error {
+func (cache *Cache) Delete(key string) error {
 	lg := logrus.WithField("key", key)
 
 	if cache.lfu.UpperBound > 0 {
@@ -149,11 +149,11 @@ func (cache *Cache) Cleanup(key string) error {
 	err := cache.db.Update(func(txn *badger.Txn) error {
 		if err := txn.Delete([]byte(cache.prefix + key)); err != nil {
 			if err == badger.ErrKeyNotFound {
-				lg.Debugf("key not found: %v", err)
+				lg.Errorf("key not found: %v", err)
 				return nil
 			}
 
-			lg.Error(err)
+			lg.Errorf("%v", err)
 			return err
 		}
 		return nil

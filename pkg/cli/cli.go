@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -67,9 +68,37 @@ func (tf *timeFlag) Set(value string) error {
 	}
 
 	t := (*time.Time)(tf)
-	b, _ := t2.MarshalBinary()
-	t.UnmarshalBinary(b)
+	b, err := t2.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	if err := t.UnmarshalBinary(b); err != nil {
+		return err
+	}
+	return nil
+}
 
+type DurationFlag time.Duration
+
+func (df *DurationFlag) String() string {
+	v := time.Duration(*df)
+	return v.String()
+}
+
+func (df *DurationFlag) Set(value string) error {
+	d2, err := time.ParseDuration(value)
+	if err != nil {
+		return err
+	}
+
+	d := (*time.Duration)(df)
+	b, err := json.Marshal(&d2)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(b, d); err != nil {
+		return err
+	}
 	return nil
 }
 

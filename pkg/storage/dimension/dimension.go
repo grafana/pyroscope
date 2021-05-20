@@ -154,8 +154,16 @@ func Union(input ...*Dimension) []key {
 
 	result := []key{}
 
+	isExists := map[string]bool{}
+
 	for _, v := range input {
-		result = append(result, v.keys...)
+		for _, k := range v.keys {
+			if !isExists[string(k)] {
+				result = append(result, k)
+			}
+
+			isExists[string(k)] = true
+		}
 	}
 
 	return result
