@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:5.0
 
 WORKDIR /dotnet
 
-COPY --from=pyroscope/pyroscope:dev /usr/bin/pyroscope /usr/bin/pyroscope
+COPY --from=pyroscope/pyroscope:latest /usr/bin/pyroscope /usr/bin/pyroscope
 ADD example .
 
 RUN dotnet publish -o . -r $(dotnet --info | grep RID | cut -b 6- | tr -d ' ')
