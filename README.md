@@ -76,8 +76,7 @@ For more information on how to use Pyroscope with other programming languages, i
 
 ## Deployment Diagram
 
-![agent_server_diagram_00-01-01](https://user-images.githubusercontent.com/23323466/119031161-9f440980-b95f-11eb-94ce-bc83f3a23c39.png)
-
+![Deployment Diagram](.github/markdown-images/deployment.svg)
 
 ## Downloads
 
