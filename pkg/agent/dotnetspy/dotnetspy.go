@@ -3,14 +3,11 @@
 package dotnetspy
 
 import (
-	"sync"
-
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 )
 
 type DotnetSpy struct {
 	session *session
-	m       sync.Mutex
 	reset   bool
 }
 
@@ -29,14 +26,10 @@ func (s *DotnetSpy) Stop() error {
 }
 
 func (s *DotnetSpy) Reset() {
-	s.m.Lock()
-	defer s.m.Unlock()
 	s.reset = true
 }
 
 func (s *DotnetSpy) Snapshot(cb func([]byte, uint64, error)) {
-	s.m.Lock()
-	defer s.m.Unlock()
 	if !s.reset {
 		return
 	}

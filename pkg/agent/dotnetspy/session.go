@@ -5,7 +5,6 @@ package dotnetspy
 import (
 	"context"
 	"io"
-	"sync"
 	"time"
 
 	"github.com/pyroscope-io/dotnetdiag"
@@ -14,13 +13,13 @@ import (
 )
 
 type session struct {
-	pid int
+	pid     int
+	timeout time.Duration
 
 	config  dotnetdiag.CollectTracingConfig
 	session *dotnetdiag.Session
 
 	ch      chan line
-	m       sync.Mutex
 	stopped bool
 }
 
@@ -31,7 +30,8 @@ type line struct {
 
 func newSession(pid int) *session {
 	return &session{
-		pid: pid,
+		pid:     pid,
+		timeout: 3 * time.Second,
 		config: dotnetdiag.CollectTracingConfig{
 			CircularBufferSizeMB: 100,
 			Providers: []dotnetdiag.ProviderConfig{
@@ -45,10 +45,13 @@ func newSession(pid int) *session {
 	}
 }
 
+// start opens a new diagnostic session to the process given, and asynchronously
+// processes the event stream.
 func (s *session) start() error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
-
+	// If the process does not create Diagnostic Server, the next call will
+	// fail, and a session won't be created.
 	client := dotnetdiag.NewClient(waitDiagnosticServer(ctx, s.pid))
 	ns, err := client.CollectTracing(s.config)
 	if err != nil {
@@ -78,6 +81,8 @@ func (s *session) start() error {
 			case nil:
 				continue
 			case io.EOF:
+				// The session is closed by us (on flush or stop call),
+				// or the target process has exited.
 				for k, v := range p.Samples() {
 					s.ch <- line{
 						name: []byte(k),
@@ -92,30 +97,41 @@ func (s *session) start() error {
 	return nil
 }
 
+// flush closes NetTrace stream in order to retrieve samples,
+// and starts a new session, if not in stopped state.
 func (s *session) flush(cb func([]byte, uint64)) error {
+	// Ignore call, if NetTrace session has not been established.
+	if s.session == nil {
+		return nil
+	}
 	_ = s.session.Close()
 	for v := range s.ch {
 		cb(v.name, uint64(v.val))
 	}
-	s.m.Lock()
-	defer s.m.Unlock()
 	if s.stopped {
 		return nil
 	}
 	return s.start()
 }
 
+// stop closes diagnostic session, if it was established, and sets the
+// flag preventing session to start again.
 func (s *session) stop() error {
-	s.m.Lock()
-	defer s.m.Unlock()
-	_ = s.session.Close()
+	if s.session != nil {
+		_ = s.session.Close()
+	}
 	s.stopped = true
 	return nil
 }
 
 // .Net runtime requires some time to initialize diagnostic IPC server and
-// start accepting connections.
+// start accepting connections. If it fails before context cancel, an empty
+// string will be returned.
 func waitDiagnosticServer(ctx context.Context, pid int) string {
+	// Do not wait for the timer to fire for the first time.
+	if addr := dotnetdiag.DefaultServerAddress(pid); addr != "" {
+		return addr
+	}
 	ticker := time.NewTicker(time.Millisecond * 100)
 	defer ticker.Stop()
 	for {
