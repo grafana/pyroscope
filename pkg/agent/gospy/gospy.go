@@ -62,27 +62,27 @@ var (
 	lastProfileCreatedAt time.Time
 )
 
-func getHeapProfile(b *bytes.Buffer) *convert.Profile {
+func getHeapProfile(b *bytes.Buffer) (*convert.Profile, error) {
 	lastProfileMutex.Lock()
 	defer lastProfileMutex.Unlock()
 
 	if lastProfile == nil || !lastProfileCreatedAt.After(time.Now().Add(-1*time.Second)) {
 		if err := pprof.WriteHeapProfile(b); err != nil {
-
+			return nil, fmt.Errorf("write heap profile: %v", err)
 		}
 		g, err := gzip.NewReader(bytes.NewReader(b.Bytes()))
 		if err != nil {
-
+			return nil, fmt.Errorf("new gzip reader: %v", err)
 		}
 
 		lastProfile, err = convert.ParsePprof(g)
 		if err != nil {
-
+			return nil, fmt.Errorf("parse heap pprof: %v", err)
 		}
 		lastProfileCreatedAt = time.Now()
 	}
 
-	return lastProfile
+	return lastProfile, nil
 }
 
 func numGC() uint32 {
@@ -133,19 +133,27 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 		currentGCGeneration := numGC()
 
 		// sometimes GC doesn't run within 10 seconds
-		//   in such cases we force a GC run
-		//   users can disable it with disableGCRuns option
+		// - in such cases we force a GC run
+		// - users can disable it with disableGCRuns option
 		if currentGCGeneration == s.lastGCGeneration && !s.disableGCRuns {
 			runtime.GC()
 			currentGCGeneration = numGC()
 		}
 
 		// if there's no GC run then the profile is gonna be the same
-		//   in such case it does not make sense to upload the same profile twice
+		// - in such case it does not make sense to upload the same profile twice
 		if currentGCGeneration != s.lastGCGeneration {
-			getHeapProfile(s.buf).Get(string(s.profileType), func(name []byte, val int) {
+			profile, err := getHeapProfile(s.buf)
+			if err != nil {
+				logrus.Errorf("do heap profile: %v", err)
+				return
+			}
+			if err := profile.Get(string(s.profileType), func(name []byte, val int) {
 				cb(name, uint64(val), nil)
-			})
+			}); err != nil {
+				logrus.Errorf("handle heap profile: %v", err)
+				return
+			}
 			s.lastGCGeneration = currentGCGeneration
 		}
 	}

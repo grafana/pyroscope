@@ -215,6 +215,7 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 			if ps.profileTypes[i].IsCumulative() {
 				previousTrie := ps.previousTries[i]
 				if previousTrie == nil {
+					ps.previousTries[i] = trie
 					skipUpload = true
 				} else {
 					// TODO: Diff doesn't remove empty branches. We need to add that at some point
@@ -234,9 +235,6 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 					AggregationType: ps.profileTypes[i].AggregationType(),
 					Trie:            uploadTrie,
 				})
-			}
-			if ps.profileTypes[i].IsCumulative() {
-				ps.previousTries[i] = trie
 			}
 		}
 		ps.tries[i] = transporttrie.New()

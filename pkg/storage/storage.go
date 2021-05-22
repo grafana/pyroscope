@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
+	"github.com/shirou/gopsutil/v3/mem"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
@@ -162,6 +163,37 @@ func New(cfg *config.Config) (*Storage, error) {
 	s.trees.New = func(_k string) interface{} {
 		return tree.New()
 	}
+
+	// load the total memory of the server
+	vm, err := mem.VirtualMemory()
+	if err != nil {
+		return nil, err
+	}
+	// start a timer for checking if the memory used by application
+	// is more than 25% of the total memory, if so, trigger eviction
+	// with 10% to every cache
+	go func() {
+		ticker := time.NewTimer(10 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			// read the allocated memory used by application
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+
+			used := float64(m.Alloc) / float64(vm.Total)
+
+			logrus.Infof("current used percent of memory: %v", used)
+			if used > s.cfg.Server.CacheEviction {
+				s.dimensions.Evit(10)
+				s.segments.Evit(10)
+				s.trees.Evit(10)
+				s.dicts.Evit(10)
+			}
+			// reset the timer
+			ticker.Reset(10 * time.Second)
+		}
+	}()
 
 	return s, nil
 }
@@ -327,16 +359,18 @@ func (s *Storage) Close() error {
 
 	wg := sync.WaitGroup{}
 	wg.Add(3)
-	go func() { s.dimensions.Flush(); wg.Done() }()
-	go func() { s.segments.Flush(); wg.Done() }()
-	go func() { s.trees.Flush(); wg.Done() }()
+	go func() { defer wg.Done(); s.dimensions.Flush() }()
+	go func() { defer wg.Done(); s.segments.Flush() }()
+	go func() { defer wg.Done(); s.trees.Flush() }()
 	wg.Wait()
 	// dictionary has to flush last because trees write to dictionaries
 	s.dicts.Flush()
+
 	s.dbTrees.Close()
 	s.dbDicts.Close()
 	s.dbDimensions.Close()
 	s.dbSegments.Close()
+
 	return s.db.Close()
 }
 
