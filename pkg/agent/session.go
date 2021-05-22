@@ -215,12 +215,13 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 			if ps.profileTypes[i].IsCumulative() {
 				previousTrie := ps.previousTries[i]
 				if previousTrie == nil {
-					ps.previousTries[i] = trie
 					skipUpload = true
 				} else {
 					// TODO: Diff doesn't remove empty branches. We need to add that at some point
 					uploadTrie = trie.Diff(previousTrie)
 				}
+				// update the previous trie
+				ps.previousTries[i] = trie
 			}
 
 			if !skipUpload {
