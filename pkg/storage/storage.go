@@ -33,7 +33,7 @@ type Storage struct {
 	closingMutex sync.Mutex
 	closing      bool
 
-	cfg      *config.Config
+	cfg      *config.Server
 	segments *cache.Cache
 
 	dimensions *cache.Cache
@@ -60,18 +60,18 @@ func badgerGC(db *badger.DB) {
 	}
 }
 
-func newBadger(cfg *config.Config, name string) (*badger.DB, error) {
-	badgerPath := filepath.Join(cfg.Server.StoragePath, name)
+func newBadger(cfg *config.Server, name string) (*badger.DB, error) {
+	badgerPath := filepath.Join(cfg.StoragePath, name)
 	err := os.MkdirAll(badgerPath, 0o755)
 	if err != nil {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
-	badgerOptions = badgerOptions.WithTruncate(!cfg.Server.BadgerNoTruncate)
+	badgerOptions = badgerOptions.WithTruncate(!cfg.BadgerNoTruncate)
 	badgerOptions = badgerOptions.WithSyncWrites(false)
 	badgerOptions = badgerOptions.WithCompression(options.ZSTD)
 	badgerLevel := logrus.ErrorLevel
-	if l, err := logrus.ParseLevel(cfg.Server.BadgerLogLevel); err == nil {
+	if l, err := logrus.ParseLevel(cfg.BadgerLogLevel); err == nil {
 		badgerLevel = l
 	}
 	badgerOptions = badgerOptions.WithLogger(badgerLogger{name: name, logLevel: badgerLevel})
@@ -83,7 +83,7 @@ func newBadger(cfg *config.Config, name string) (*badger.DB, error) {
 	return db, err
 }
 
-func New(cfg *config.Config) (*Storage, error) {
+func New(cfg *config.Server) (*Storage, error) { // TODO: cfg.Server?
 	db, err := newBadger(cfg, "main")
 	if err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func New(cfg *config.Config) (*Storage, error) {
 
 	s := &Storage{
 		cfg:          cfg,
-		labels:       labels.New(cfg, db),
+		labels:       labels.New(db),
 		db:           db,
 		dbTrees:      dbTrees,
 		dbDicts:      dbDicts,
@@ -115,7 +115,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		dbSegments:   dbSegments,
 	}
 
-	s.dimensions = cache.New(dbDimensions, cfg.Server.CacheDimensionSize, "i:")
+	s.dimensions = cache.New(dbDimensions, cfg.CacheDimensionSize, "i:")
 	s.dimensions.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -126,7 +126,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		return dimension.New()
 	}
 
-	s.segments = cache.New(dbSegments, cfg.Server.CacheSegmentSize, "s:")
+	s.segments = cache.New(dbSegments, cfg.CacheSegmentSize, "s:")
 	s.segments.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*segment.Segment).Bytes()
 	}
@@ -139,7 +139,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		return segment.New()
 	}
 
-	s.dicts = cache.New(dbDicts, cfg.Server.CacheDictionarySize, "d:")
+	s.dicts = cache.New(dbDicts, cfg.CacheDictionarySize, "d:")
 	s.dicts.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -150,10 +150,10 @@ func New(cfg *config.Config) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(dbTrees, cfg.Server.CacheSegmentSize, "t:")
+	s.trees = cache.New(dbTrees, cfg.CacheSegmentSize, "t:")
 	s.trees.Bytes = func(k string, v interface{}) []byte {
 		d := s.dicts.Get(FromTreeToMainKey(k)).(*dict.Dict)
-		return v.(*tree.Tree).Bytes(d, cfg.Server.MaxNodesSerialization)
+		return v.(*tree.Tree).Bytes(d, cfg.MaxNodesSerialization)
 	}
 	s.trees.FromBytes = func(k string, v []byte) interface{} {
 		d := s.dicts.Get(FromTreeToMainKey(k)).(*dict.Dict)
@@ -185,8 +185,8 @@ func (s *Storage) Put(po *PutInput) error {
 		return errClosing
 	}
 
-	freeSpace, err := disk.FreeSpace(s.cfg.Server.StoragePath)
-	if err == nil && freeSpace < s.cfg.Server.OutOfSpaceThreshold {
+	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
+	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
 		return errOutOfSpace
 	}
 
@@ -346,7 +346,7 @@ func (s *Storage) GetKeys(cb func(_k string) bool) {
 
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
-		if key != "__name__" || !slices.StringContains(s.cfg.Server.HideApplications, v) {
+		if key != "__name__" || !slices.StringContains(s.cfg.HideApplications, v) {
 			return cb(v)
 		}
 		return true
@@ -362,7 +362,7 @@ func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
 		"segments":   0,
 	}
 	for k := range res {
-		res[k] = dirSize(filepath.Join(s.cfg.Server.StoragePath, k))
+		res[k] = dirSize(filepath.Join(s.cfg.StoragePath, k))
 	}
 	return res
 }

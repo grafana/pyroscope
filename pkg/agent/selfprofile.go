@@ -5,11 +5,10 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 )
 
-func SelfProfile(_ *config.Config, u upstream.Upstream, appName string, logger Logger) error {
+func SelfProfile(u upstream.Upstream, appName string, logger Logger) error {
 	// TODO: sample rate and upload rate should come from config
 	c := SessionConfig{
 		Upstream:         u,

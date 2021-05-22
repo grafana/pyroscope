@@ -14,14 +14,17 @@ import (
 	"github.com/cheggaaa/pb/v3"
 )
 
-func Cli(cfg *config.Config, args []string) error {
+func Cli(db_cfg *config.DbManager, srv_cfg *config.Server, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("please provide a command")
 	}
 
 	switch args[0] {
 	case "copy":
-		copyData(cfg)
+		// TODO: this is meh, I think config.Config should be separate from storage config
+		srv_cfg.StoragePath = db_cfg.StoragePath
+		srv_cfg.LogLevel = "error"
+		copyData(db_cfg, srv_cfg)
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
@@ -33,14 +36,11 @@ func Cli(cfg *config.Config, args []string) error {
 const resolution = 10 * time.Second
 
 // src start time, src end time, dst start time
-func copyData(cfg *config.Config) error {
-	// TODO: this is meh, I think config.Config should be separate from storage config
-	cfg.Server.StoragePath = cfg.DbManager.StoragePath
-	cfg.Server.LogLevel = "error"
-	appName := cfg.DbManager.ApplicationName
-	srcSt := cfg.DbManager.SrcStartTime.Truncate(resolution)
-	dstSt := cfg.DbManager.DstStartTime.Truncate(resolution)
-	dstEt := cfg.DbManager.DstEndTime.Truncate(resolution)
+func copyData(db_cfg *config.DbManager, srv_cfg *config.Server) error {
+	appName := db_cfg.ApplicationName
+	srcSt := db_cfg.SrcStartTime.Truncate(resolution)
+	dstSt := db_cfg.DstStartTime.Truncate(resolution)
+	dstEt := db_cfg.DstEndTime.Truncate(resolution)
 	srcEt := srcSt.Add(dstEt.Sub(dstSt))
 
 	fmt.Printf("copying %s from %s-%s to %s-%s\n",
@@ -60,14 +60,14 @@ func copyData(cfg *config.Config) error {
 		return fmt.Errorf("src start time (%q) has to be before src end time (%q)", srcSt, srcEt)
 	}
 
-	s, err := storage.New(cfg)
+	s, err := storage.New(srv_cfg)
 	if err != nil {
 		return err
 	}
 
-	if cfg.DbManager.EnableProfiling {
-		u := direct.New(cfg, s)
-		go agent.SelfProfile(cfg, u, "pyroscope.dbmanager.cpu{}", logrus.StandardLogger())
+	if db_cfg.EnableProfiling {
+		u := direct.New(s)
+		go agent.SelfProfile(u, "pyroscope.dbmanager.cpu{}", logrus.StandardLogger())
 	}
 
 	st := srcSt

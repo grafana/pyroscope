@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func Cli(cfg *config.Config, args []string) error {
+func Cli(cfg *config.Convert, args []string) error {
 	logrus.SetOutput(os.Stderr)
 	var input io.Reader
 	if len(args) == 0 {
@@ -21,7 +21,7 @@ func Cli(cfg *config.Config, args []string) error {
 	}
 
 	parser := ParseGroups
-	switch cfg.Convert.Format {
+	switch cfg.Format {
 	case "tree":
 		t := tree.New()
 		parser(input, func(name []byte, val int) {
@@ -37,7 +37,7 @@ func Cli(cfg *config.Config, args []string) error {
 
 		t.Serialize(os.Stdout)
 	default:
-		log.Fatal("unknown format: ", cfg.Convert.Format)
+		log.Fatal("unknown format: ", cfg.Format)
 	}
 	return nil
 }

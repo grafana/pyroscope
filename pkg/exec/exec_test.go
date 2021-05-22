@@ -18,14 +18,14 @@ var _ = Describe("Cli", func() {
 		Describe("Cli", func() {
 			Context("no arguments", func() {
 				It("returns error", func() {
-					err := Cli(*cfg, []string{})
+					err := Cli(&(*cfg).Exec, []string{})
 					Expect(err).To(MatchError("no arguments passed"))
 				})
 			})
 			Context("simple case", func() {
 				It("returns nil", func() {
 					(*cfg).Exec.SpyName = "debugspy"
-					err := Cli(*cfg, []string{"ls"})
+					err := Cli(&(*cfg).Exec, []string{"ls"})
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
