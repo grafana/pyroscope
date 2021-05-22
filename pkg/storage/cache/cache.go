@@ -143,6 +143,6 @@ func (cache *Cache) Get(key string) interface{} {
 	return val
 }
 
-func (cache *Cache) Evit(percent int) {
-	cache.lfu.Evict(cache.lfu.Len() / percent)
+func (cache *Cache) Evit(percent float64) {
+	cache.lfu.Evict(cache.lfu.Len() / int(percent*100))
 }

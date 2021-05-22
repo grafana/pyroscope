@@ -43,11 +43,12 @@ type Server struct {
 
 	// These will eventually be replaced by some sort of a system that keeps track of RAM
 	//   and updates
-	CacheDimensionSize  int     `def:"1000" desc:"max number of elements in LRU cache for dimensions"`
-	CacheDictionarySize int     `def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
-	CacheSegmentSize    int     `def:"1000" desc:"max number of elements in LRU cache for segments"`
-	CacheTreeSize       int     `def:"10000" desc:"max number of elements in LRU cache for trees"`
-	CacheEviction       float64 `def:"0.25" desc:"evict the cache when used memory is 25 percent of total memory"`
+	CacheDimensionSize   int     `def:"1000" desc:"max number of elements in LRU cache for dimensions"`
+	CacheDictionarySize  int     `def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
+	CacheSegmentSize     int     `def:"1000" desc:"max number of elements in LRU cache for segments"`
+	CacheTreeSize        int     `def:"10000" desc:"max number of elements in LRU cache for trees"`
+	CacheEviction        float64 `def:"0.25" desc:"evict the cache when used memory is several percent of total memory"`
+	CacheEvictionPercent float64 `def:"0.10" desc:"evict several percent of cache items"`
 
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.

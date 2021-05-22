@@ -183,12 +183,14 @@ func New(cfg *config.Config) (*Storage, error) {
 
 			used := float64(m.Alloc) / float64(vm.Total)
 
-			logrus.Infof("current used percent of memory: %v", used)
+			logrus.Infof("current used percent of memory: %v, %f, %f", used, s.cfg.Server.CacheEviction, s.cfg.Server.CacheEvictionPercent)
 			if used > s.cfg.Server.CacheEviction {
-				s.dimensions.Evit(10)
-				s.segments.Evit(10)
-				s.trees.Evit(10)
-				s.dicts.Evit(10)
+				percent := s.cfg.Server.CacheEvictionPercent
+
+				s.dimensions.Evit(percent)
+				s.segments.Evit(percent)
+				s.trees.Evit(percent)
+				s.dicts.Evit(percent)
 			}
 			// reset the timer
 			ticker.Reset(10 * time.Second)
