@@ -8,6 +8,7 @@ import (
 	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
 
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/debugspy"
+	_ "github.com/pyroscope-io/pyroscope/pkg/agent/dotnetspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
