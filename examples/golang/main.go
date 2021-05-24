@@ -6,6 +6,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/profiler"
 )
 
+//go:noinline
 func work(n int) {
 	// revive:disable:empty-block this is fine because this is a example app, not real production code
 	for i := 0; i < n; i++ {
