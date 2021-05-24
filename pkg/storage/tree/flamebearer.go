@@ -7,7 +7,7 @@ type Flamebearer struct {
 	MaxSelf  int      `json:"maxSelf"`
 	// TODO: see note in render.go
 	SpyName    string `json:"spyName"`
-	SampleRate int    `json:"sampleRate"`
+	SampleRate uint32 `json:"sampleRate"`
 	Units      string `json:"units"`
 }
 

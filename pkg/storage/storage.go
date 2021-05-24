@@ -172,7 +172,7 @@ type PutInput struct {
 	Key             *Key
 	Val             *tree.Tree
 	SpyName         string
-	SampleRate      int
+	SampleRate      uint32
 	Units           string
 	AggregationType string
 }
@@ -242,7 +242,7 @@ type GetOutput struct {
 	Tree       *tree.Tree
 	Timeline   *segment.Timeline
 	SpyName    string
-	SampleRate int
+	SampleRate uint32
 	Units      string
 }
 

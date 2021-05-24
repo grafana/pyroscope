@@ -15,6 +15,7 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/phpspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 
@@ -29,7 +30,7 @@ type ProfileSession struct {
 	upstream   upstream.Upstream
 	appName    string
 	spyName    string
-	sampleRate int
+	sampleRate uint32
 	uploadRate time.Duration
 	pids       []int
 	spies      []spy.Spy
@@ -55,7 +56,7 @@ type SessionConfig struct {
 	ProfilingTypes   []spy.ProfileType
 	DisableGCRuns    bool
 	SpyName          string
-	SampleRate       int
+	SampleRate       uint32
 	UploadRate       time.Duration
 	Pid              int
 	WithSubprocesses bool
@@ -75,7 +76,7 @@ func NewSession(c *SessionConfig) *ProfileSession {
 		withSubprocesses: c.WithSubprocesses,
 	}
 
-	if ps.spyName == "gospy" {
+	if ps.spyName == types.GoSpy {
 		ps.previousTries = make([]*transporttrie.Trie, len(ps.profileTypes))
 		ps.tries = make([]*transporttrie.Trie, len(ps.profileTypes))
 	} else {
@@ -101,11 +102,11 @@ func (ps *ProfileSession) takeSnapshots() {
 			}
 			for i, s := range ps.spies {
 				s.Snapshot(func(stack []byte, v uint64, err error) {
-					if stack != nil && len(stack) > 0 {
+					if len(stack) > 0 {
 						ps.trieMutex.Lock()
 						defer ps.trieMutex.Unlock()
 
-						if ps.spyName == "gospy" {
+						if ps.spyName == types.GoSpy {
 							ps.tries[i].Insert(stack, v, true)
 						} else {
 							ps.tries[0].Insert(stack, v, true)
@@ -130,7 +131,7 @@ func (ps *ProfileSession) takeSnapshots() {
 func (ps *ProfileSession) Start() error {
 	ps.reset()
 
-	if ps.spyName == "gospy" {
+	if ps.spyName == types.GoSpy {
 		for _, pt := range ps.profileTypes {
 			s, err := gospy.Start(pt, ps.disableGCRuns)
 			if err != nil {

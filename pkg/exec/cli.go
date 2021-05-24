@@ -18,6 +18,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
@@ -143,13 +144,17 @@ func Cli(cfg *config.Config, args []string) error {
 		"detect-subprocesses": cfg.Exec.DetectSubprocesses,
 	}).Debug("starting agent session")
 
-	// TODO: add sample rate, make it configurable
+	// if the sample rate is zero, use the default value
+	if cfg.Exec.SampleRate == 0 {
+		cfg.Exec.SampleRate = types.DefaultSampleRate
+	}
+
 	sess := agent.NewSession(&agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.Exec.ApplicationName,
 		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 		SpyName:          spyName,
-		SampleRate:       100,
+		SampleRate:       uint32(cfg.Exec.SampleRate),
 		UploadRate:       10 * time.Second,
 		Pid:              pid,
 		WithSubprocesses: cfg.Exec.DetectSubprocesses,
@@ -219,7 +224,7 @@ func waitForProcessToExit(pid int) {
 }
 
 func performChecks(spyName string) error {
-	if spyName == "gospy" {
+	if spyName == types.GoSpy {
 		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.GreenString("https://pyroscope.io/docs/"))
 	}
 
