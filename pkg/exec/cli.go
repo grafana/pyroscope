@@ -28,6 +28,7 @@ import (
 
 // used in tests
 var disableMacOSChecks bool
+var disableLinuxChecks bool
 
 // Cli is command line interface for both exec and connect commands
 func Cli(cfg *config.Exec, args []string) error {
