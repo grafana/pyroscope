@@ -34,7 +34,7 @@ var (
 	uploadFrequency = 24 * time.Hour
 )
 
-func NewService(cfg *config.Config, s *storage.Storage, c *server.Controller) *Service {
+func NewService(cfg *config.Server, s *storage.Storage, c *server.Controller) *Service {
 	return &Service{
 		cfg: cfg,
 		s:   s,
@@ -50,7 +50,7 @@ func NewService(cfg *config.Config, s *storage.Storage, c *server.Controller) *S
 }
 
 type Service struct {
-	cfg        *config.Config
+	cfg        *config.Server
 	s          *storage.Storage
 	c          *server.Controller
 	httpClient *http.Client

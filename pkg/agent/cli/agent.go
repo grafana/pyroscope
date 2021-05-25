@@ -15,24 +15,23 @@ import (
 )
 
 type Agent struct {
-	cfg            *config.Config
+	cfg            *config.Agent
 	cs             *csock.CSock
 	activeProfiles map[int]*agent.ProfileSession
 	id             id.ID
 	u              upstream.Upstream
 }
 
-func New(cfg *config.Config) (*Agent, error) {
+func New(cfg *config.Agent) (*Agent, error) {
 	rc := remote.RemoteConfig{
-		UpstreamThreads:        cfg.Agent.UpstreamThreads,
-		UpstreamAddress:        cfg.Agent.ServerAddress,
-		UpstreamRequestTimeout: cfg.Agent.UpstreamRequestTimeout,
+		UpstreamThreads:        cfg.UpstreamThreads,
+		UpstreamAddress:        cfg.ServerAddress,
+		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
 	}
 	upstream, err := remote.New(rc, logrus.StandardLogger())
 	if err != nil {
 		return nil, err
 	}
-
 	return &Agent{
 		cfg:            cfg,
 		activeProfiles: make(map[int]*agent.ProfileSession),
@@ -41,7 +40,7 @@ func New(cfg *config.Config) (*Agent, error) {
 }
 
 func (a *Agent) Start() error {
-	sockPath := a.cfg.Agent.UNIXSocketPath
+	sockPath := a.cfg.UNIXSocketPath
 	cs, err := csock.NewUnixCSock(sockPath, a.controlSocketHandler)
 	if err != nil {
 		return err
@@ -49,7 +48,7 @@ func (a *Agent) Start() error {
 	a.cs = cs
 	defer os.Remove(sockPath)
 
-	go agent.SelfProfile(a.cfg, a.u, "pyroscope.agent.cpu{}", logrus.StandardLogger())
+	go agent.SelfProfile(100, a.u, "pyroscope.agent.cpu{}", logrus.StandardLogger())
 	cs.Start()
 	return nil
 }

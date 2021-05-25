@@ -6,7 +6,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
@@ -14,15 +13,13 @@ import (
 const upstreamThreads = 1
 
 type Direct struct {
-	cfg  *config.Config
 	s    *storage.Storage
 	todo chan *upstream.UploadJob
 	done chan struct{}
 }
 
-func New(cfg *config.Config, s *storage.Storage) *Direct {
+func New(s *storage.Storage) *Direct {
 	d := &Direct{
-		cfg:  cfg,
 		s:    s,
 		todo: make(chan *upstream.UploadJob, 100),
 		done: make(chan struct{}, upstreamThreads),
