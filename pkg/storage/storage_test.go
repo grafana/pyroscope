@@ -26,7 +26,7 @@ var _ = Describe("storage package", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(*cfg)
+			s, err = New(&(*cfg).Server)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -129,7 +129,7 @@ var _ = Describe("storage package", func() {
 				Expect(gOut.Tree.String()).To(Equal(tree.String()))
 				Expect(s.Close()).ToNot(HaveOccurred())
 
-				s2, err = New(*cfg)
+				s2, err = New(&(*cfg).Server)
 				Expect(err).ToNot(HaveOccurred())
 
 				gOut2, err := s2.Get(&GetInput{
