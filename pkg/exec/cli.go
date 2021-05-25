@@ -145,8 +145,8 @@ func Cli(cfg *config.Exec, args []string) error {
 	}).Debug("starting agent session")
 
 	// if the sample rate is zero, use the default value
-	if cfg.Exec.SampleRate == 0 {
-		cfg.Exec.SampleRate = types.DefaultSampleRate
+	if cfg.SampleRate == 0 {
+		cfg.SampleRate = types.DefaultSampleRate
 	}
 
 	sess := agent.NewSession(&agent.SessionConfig{
@@ -154,7 +154,7 @@ func Cli(cfg *config.Exec, args []string) error {
 		AppName:          cfg.ApplicationName,
 		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 		SpyName:          spyName,
-		SampleRate:       uint32(cfg.Exec.SampleRate),
+		SampleRate:       uint32(cfg.SampleRate),
 		UploadRate:       10 * time.Second,
 		Pid:              pid,
 		WithSubprocesses: cfg.DetectSubprocesses,
