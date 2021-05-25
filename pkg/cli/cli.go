@@ -318,7 +318,11 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		return nil
 	}
 	convertCmd.Exec = func(_ context.Context, args []string) error {
-		return convert.Cli(cfg, args)
+		logrus.SetOutput(os.Stderr)
+		logger := func(s string) {
+			logrus.Fatal(s)
+		}
+		return convert.Cli(cfg, logger, args)
 	}
 	execCmd.Exec = func(_ context.Context, args []string) error {
 		if cfg.Exec.NoLogging {
