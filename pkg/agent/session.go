@@ -18,7 +18,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
-	"github.com/sirupsen/logrus"
 
 	// revive:enable:blank-imports
 
@@ -106,7 +105,11 @@ func (ps *ProfileSession) takeSnapshots() {
 			for i, s := range ps.spies {
 				s.Snapshot(func(stack []byte, v uint64, err error) {
 					if err != nil {
-						logrus.Errorf("do snapshot: %v", err)
+						// TODO: figure out what to do with these messages. A couple of considerations:
+						// * We probably shouldn't just suppress these messages as they might be useful for users
+						// * We probably want to throttle the messages because this is code that runs 100 times per second.
+						//   If we don't throttle we risk upsetting users with a flood of messages
+						// * In gospy case we need to add ability for users to bring their own logger, we can't just use logrus here
 						return
 					}
 					if len(stack) > 0 {

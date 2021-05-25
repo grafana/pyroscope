@@ -13,7 +13,6 @@ import (
 	custom_pprof "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
-	"github.com/sirupsen/logrus"
 )
 
 // TODO: make this configurable
@@ -112,7 +111,7 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 		defer func() {
 			// start a new cycle of sample collection
 			if err := startCPUProfile(s.buf, s.sampleRate); err != nil {
-				logrus.Errorf("start cpu profile: %v", err)
+				cb(nil, uint64(0), err)
 			}
 		}()
 
