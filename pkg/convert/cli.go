@@ -10,7 +10,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
-func Cli(cfg *config.Config, logger func(string), args []string) error {
+func Cli(cfg *config.Convert, logger func(string), args []string) error {
 	var input io.Reader
 	if len(args) == 0 {
 		input = os.Stdin
