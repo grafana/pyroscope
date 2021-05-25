@@ -1,23 +1,21 @@
 package convert
 
 import (
+	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
-	"github.com/sirupsen/logrus"
 )
 
-func Cli(cfg *config.Convert, args []string) error {
-	logrus.SetOutput(os.Stderr)
+func Cli(cfg *config.Config, logger func(string), args []string) error {
 	var input io.Reader
 	if len(args) == 0 {
 		input = os.Stdin
 	} else {
-		log.Fatal("not implemented yet")
+		logger("not implemented yet")
 	}
 
 	parser := ParseGroups
@@ -37,7 +35,7 @@ func Cli(cfg *config.Convert, args []string) error {
 
 		t.Serialize(os.Stdout)
 	default:
-		log.Fatal("unknown format: ", cfg.Format)
+		logger(fmt.Sprintf("unknown format: %s", cfg.Format))
 	}
 	return nil
 }

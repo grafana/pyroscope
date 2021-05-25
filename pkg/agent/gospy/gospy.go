@@ -3,11 +3,14 @@ package gospy
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
+	"io"
 	"runtime"
 	"runtime/pprof"
 	"sync"
 	"time"
 
+	custom_pprof "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 )
@@ -22,6 +25,7 @@ type GoSpy struct {
 	stop          bool
 	profileType   spy.ProfileType
 	disableGCRuns bool
+	sampleRate    uint32
 
 	lastGCGeneration uint32
 
@@ -29,15 +33,28 @@ type GoSpy struct {
 	buf    *bytes.Buffer
 }
 
-func Start(profileType spy.ProfileType, disableGCRuns bool) (spy.Spy, error) {
+func startCPUProfile(w io.Writer, hz uint32) error {
+	// idea here is that for most people we're starting the default profiler
+	//   but if you want to use a different sampling rate we use our experimental profiler
+	if hz == 100 {
+		return pprof.StartCPUProfile(w)
+	} else {
+		return custom_pprof.StartCPUProfile(w, hz)
+	}
+}
+
+func Start(profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error) {
 	s := &GoSpy{
 		stopCh:        make(chan struct{}),
 		buf:           &bytes.Buffer{},
 		profileType:   profileType,
 		disableGCRuns: disableGCRuns,
+		sampleRate:    sampleRate,
 	}
 	if s.profileType == spy.ProfileCPU {
-		_ = pprof.StartCPUProfile(s.buf)
+		if err := startCPUProfile(s.buf, sampleRate); err != nil {
+			return nil, err
+		}
 	}
 	return s, nil
 }
@@ -82,21 +99,38 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 	s.resetMutex.Lock()
 	defer s.resetMutex.Unlock()
 
+	// before the upload rate is reached, no need to read the profile data
 	if !s.reset {
 		return
 	}
-
 	s.reset = false
 
-	// TODO: handle errors
 	if s.profileType == spy.ProfileCPU {
+		// stop the previous cycle of sample collection
 		pprof.StopCPUProfile()
-		r, _ := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
-		profile, _ := convert.ParsePprof(r)
+		defer func() {
+			// start a new cycle of sample collection
+			if err := startCPUProfile(s.buf, s.sampleRate); err != nil {
+				cb(nil, uint64(0), err)
+			}
+		}()
+
+		// new gzip reader with the read data in buffer
+		r, err := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
+		if err != nil {
+			cb(nil, uint64(0), fmt.Errorf("new gzip reader: %v", err))
+			return
+		}
+
+		// parse the read data with pprof format
+		profile, err := convert.ParsePprof(r)
+		if err != nil {
+			cb(nil, uint64(0), fmt.Errorf("parse pprof: %v", err))
+			return
+		}
 		profile.Get("samples", func(name []byte, val int) {
 			cb(name, uint64(val), nil)
 		})
-		_ = pprof.StartCPUProfile(s.buf)
 	} else {
 		// this is current GC generation
 		currentGCGeneration := numGC()

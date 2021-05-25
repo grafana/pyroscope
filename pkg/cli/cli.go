@@ -178,6 +178,19 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 				}
 			}
 			flagSet.Uint64Var(val, nameVal, defaultVal, descVal)
+		case reflect.TypeOf(uint(1)):
+			val := fieldV.Addr().Interface().(*uint)
+			var defaultVal uint
+			if defaultValStr == "" {
+				defaultVal = uint(0)
+			} else {
+				out, err := strconv.ParseUint(defaultValStr, 10, 64)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+				defaultVal = uint(out)
+			}
+			flagSet.UintVar(val, nameVal, defaultVal, descVal)
 		default:
 			logrus.Fatalf("type %s is not supported", field.Type)
 		}
@@ -312,7 +325,11 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		return nil
 	}
 	convertCmd.Exec = func(_ context.Context, args []string) error {
-		return convert.Cli(&cfg.Convert, args)
+		logrus.SetOutput(os.Stderr)
+		logger := func(s string) {
+			logrus.Fatal(s)
+		}
+		return convert.Cli(&cfg.Convert, logger, args)
 	}
 	execCmd.Exec = func(_ context.Context, args []string) error {
 		if cfg.Exec.NoLogging {
