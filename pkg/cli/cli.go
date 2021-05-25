@@ -231,13 +231,12 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	// init the log formatter for logrus
 	logrus.SetReportCaller(true)
 	logrus.SetFormatter(&logrus.TextFormatter{
-		TimestampFormat: "02-01-2006 15:04:05",
+		TimestampFormat: "2006-01-02T15:04:05.000000",
 		FullTimestamp:   true,
 		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
 			filename := f.File
-			parts := strings.Split(f.File, "/")
-			if count := len(parts); count > 1 {
-				filename = parts[count-2] + "/" + parts[count-1]
+			if len(filename) > 38 {
+				filename = filename[38:]
 			}
 			return "", fmt.Sprintf(" %s:%d", filename, f.Line)
 		},
