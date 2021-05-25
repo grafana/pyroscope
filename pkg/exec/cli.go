@@ -28,7 +28,6 @@ import (
 
 // used in tests
 var disableMacOSChecks bool
-var disableLinuxChecks bool
 
 // Cli is command line interface for both exec and connect commands
 func Cli(cfg *config.Config, args []string) error {
@@ -64,7 +63,7 @@ func Cli(cfg *config.Config, args []string) error {
 			supportedSpies := spy.SupportedExecSpies()
 			suggestedCommand := fmt.Sprintf("pyroscope connect -spy-name %s %s", supportedSpies[0], strings.Join(args, " "))
 			return fmt.Errorf(
-				"Pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
+				"pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
 				color.YellowString("-spy-name"),
 				color.YellowString(suggestedCommand),
 				strings.Join(supportedSpies, ","),
@@ -210,15 +209,13 @@ func waitForProcessToExit(pid int) {
 	if pid == -1 {
 		select {}
 	}
+
 	t := time.NewTicker(time.Second)
-	for {
-		select {
-		case <-t.C:
-			p, err := ps.FindProcess(pid)
-			if p == nil || err != nil {
-				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
-				return
-			}
+	for range t.C {
+		p, err := ps.FindProcess(pid)
+		if p == nil || err != nil {
+			logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
+			return
 		}
 	}
 }
@@ -236,7 +233,7 @@ func performChecks(spyName string) error {
 	if !stringsContains(spy.SupportedSpies, spyName) {
 		supportedSpies := spy.SupportedExecSpies()
 		return fmt.Errorf(
-			"Spy \"%s\" is not supported. Available spies are: %s\n",
+			"spy \"%s\" is not supported. Available spies are: %s",
 			color.GreenString(spyName),
 			strings.Join(supportedSpies, ","),
 		)

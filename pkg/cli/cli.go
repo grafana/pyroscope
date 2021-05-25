@@ -228,6 +228,21 @@ func resolvePath(path string) string {
 }
 
 func generateRootCmd(cfg *config.Config) *ffcli.Command {
+	// init the log formatter for logrus
+	logrus.SetReportCaller(true)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		TimestampFormat: "02-01-2006 15:04:05",
+		FullTimestamp:   true,
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			filename := f.File
+			parts := strings.Split(f.File, "/")
+			if count := len(parts); count > 1 {
+				filename = parts[count-2] + "/" + parts[count-1]
+			}
+			return "", fmt.Sprintf(" %s:%d", filename, f.Line)
+		},
+	})
+
 	var (
 		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
@@ -310,14 +325,17 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		},
 	}
 
-	serverCmd.Exec = func(_ context.Context, args []string) error {
-		if l, err := logrus.ParseLevel(cfg.Server.LogLevel); err == nil {
-			logrus.SetLevel(l)
+	serverCmd.Exec = func(ctx context.Context, args []string) error {
+		l, err := logrus.ParseLevel(cfg.Server.LogLevel)
+		if err != nil {
+			return err
 		}
+		logrus.SetLevel(l)
+
 		startServer(cfg)
 		return nil
 	}
-	convertCmd.Exec = func(_ context.Context, args []string) error {
+	convertCmd.Exec = func(ctx context.Context, args []string) error {
 		return convert.Cli(cfg, args)
 	}
 	execCmd.Exec = func(_ context.Context, args []string) error {
@@ -335,7 +353,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		return exec.Cli(cfg, args)
 	}
 
-	connectCmd.Exec = func(_ context.Context, args []string) error {
+	connectCmd.Exec = func(ctx context.Context, args []string) error {
 		if cfg.Exec.NoLogging {
 			logrus.SetLevel(logrus.PanicLevel)
 		} else if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
@@ -350,13 +368,13 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		return exec.Cli(cfg, args)
 	}
 
-	dbmanagerCmd.Exec = func(_ context.Context, args []string) error {
+	dbmanagerCmd.Exec = func(ctx context.Context, args []string) error {
 		if l, err := logrus.ParseLevel(cfg.DbManager.LogLevel); err == nil {
 			logrus.SetLevel(l)
 		}
 		return dbmanager.Cli(cfg, args)
 	}
-	rootCmd.Exec = func(_ context.Context, args []string) error {
+	rootCmd.Exec = func(ctx context.Context, args []string) error {
 		if cfg.Version || len(args) > 0 && args[0] == "version" {
 			fmt.Println(gradientBanner())
 			fmt.Println(build.Summary())
@@ -400,8 +418,7 @@ func startServer(cfg *config.Config) {
 
 func printRAMUsage() {
 	t := time.NewTicker(30 * time.Second)
-	for {
-		<-t.C
+	for range t.C {
 		if logrus.IsLevelEnabled(logrus.DebugLevel) {
 			debug.PrintMemUsage()
 		}
@@ -410,8 +427,7 @@ func printRAMUsage() {
 
 func printDiskUsage(cfg *config.Config) {
 	t := time.NewTicker(30 * time.Second)
-	for {
-		<-t.C
+	for range t.C {
 		if logrus.IsLevelEnabled(logrus.DebugLevel) {
 			debug.PrintDiskUsage(cfg.Server.StoragePath)
 		}
