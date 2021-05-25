@@ -3,7 +3,7 @@ package types
 import "github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 
 const (
-	DefaultSampleRate = 100 // 100 times per
+	DefaultSampleRate = 100 // 100 times per second
 	GoSpy             = spy.Go
 	PySpy             = spy.Python
 	RbSpy             = spy.Ruby

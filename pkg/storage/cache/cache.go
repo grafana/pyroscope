@@ -23,21 +23,25 @@ type Cache struct {
 }
 
 func New(db *badger.DB, bound int, prefix string) *Cache {
+	eviction := make(chan lfu.Eviction, 1)
+
 	l := lfu.New()
-	// TODO: figure out how to set these
 	l.UpperBound = bound
+	// 10 percent of upper for the lower bound
 	l.LowerBound = bound - bound/10
-	ech := make(chan lfu.Eviction, 1)
-	l.EvictionChannel = ech
+	l.EvictionChannel = eviction
+
 	cache := &Cache{
 		db:          db,
 		lfu:         l,
 		prefix:      prefix,
 		cleanupDone: make(chan struct{}),
 	}
+
+	// start a goroutine for saving the evicted cache items to disk
 	go func() {
 		for {
-			e, ok := <-ech
+			e, ok := <-eviction
 			if !ok {
 				break
 			}
@@ -45,6 +49,7 @@ func New(db *badger.DB, bound int, prefix string) *Cache {
 		}
 		cache.cleanupDone <- struct{}{}
 	}()
+
 	return cache
 }
 
@@ -71,9 +76,16 @@ func (cache *Cache) saveToDisk(key string, val interface{}) {
 }
 
 func (cache *Cache) Flush() {
+	// evict all the items in cache
 	cache.lfu.Evict(cache.lfu.Len())
+
 	close(cache.lfu.EvictionChannel)
+	// wait until cache flushing is finished
 	<-cache.cleanupDone
+}
+
+func (cache *Cache) Evit(percent float64) {
+	cache.lfu.Evict(cache.lfu.Len() / int(percent*100))
 }
 
 func (cache *Cache) Get(key string) interface{} {
