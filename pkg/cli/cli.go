@@ -329,17 +329,9 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		if err != nil {
 			return err
 		}
-
 		logrus.SetLevel(l)
 
-		s, err := storage.New(&cfg.Server)
-		atexit.Register(func() { s.Close() })
-		if err != nil {
-			panic(err)
-		}
-
-		startServer(&cfg.Server, s)
-		return nil
+		return startServer(&cfg.Server)
 	}
 
 	convertCmd.Exec = func(ctx context.Context, args []string) error {
@@ -403,16 +395,6 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 func Start(cfg *config.Config) error {
 	return generateRootCmd(cfg).ParseAndRun(context.Background(), os.Args[1:])
 }
-
-// func startServer(cfg *config.Server, storage *storage.Storage) {
-// 	u := direct.New(storage)
-// 	go agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger())
-// 	go printRAMUsage()
-// 	go printDiskUsage(cfg)
-// 	c := server.New(cfg, storage)
-// 	atexit.Register(func() { c.Stop() })
-// 	if !cfg.AnalyticsOptOut {
-// 		analyticsService := analytics.NewService(cfg, storage, c)
 
 func startServer(cfg *config.Server) error {
 	// new a storage with configuration
