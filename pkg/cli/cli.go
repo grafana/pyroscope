@@ -314,7 +314,14 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		if l, err := logrus.ParseLevel(cfg.Server.LogLevel); err == nil {
 			logrus.SetLevel(l)
 		}
-		startServer(cfg)
+
+		s, err := storage.New(&cfg.Server)
+		atexit.Register(func() { s.Close() })
+		if err != nil {
+			panic(err)
+		}
+
+		startServer(&cfg.Server, s)
 		return nil
 	}
 	convertCmd.Exec = func(_ context.Context, args []string) error {
@@ -322,7 +329,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		logger := func(s string) {
 			logrus.Fatal(s)
 		}
-		return convert.Cli(cfg, logger, args)
+		return convert.Cli(&cfg.Convert, logger, args)
 	}
 	execCmd.Exec = func(_ context.Context, args []string) error {
 		if cfg.Exec.NoLogging {
@@ -336,7 +343,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			return nil
 		}
 
-		return exec.Cli(cfg, args)
+		return exec.Cli(&cfg.Exec, args)
 	}
 
 	connectCmd.Exec = func(_ context.Context, args []string) error {
@@ -351,14 +358,14 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			return nil
 		}
 
-		return exec.Cli(cfg, args)
+		return exec.Cli(&cfg.Exec, args)
 	}
 
 	dbmanagerCmd.Exec = func(_ context.Context, args []string) error {
 		if l, err := logrus.ParseLevel(cfg.DbManager.LogLevel); err == nil {
 			logrus.SetLevel(l)
 		}
-		return dbmanager.Cli(cfg, args)
+		return dbmanager.Cli(&cfg.DbManager, &cfg.Server, args)
 	}
 	rootCmd.Exec = func(_ context.Context, args []string) error {
 		if cfg.Version || len(args) > 0 && args[0] == "version" {
@@ -379,20 +386,15 @@ func Start(cfg *config.Config) error {
 	return generateRootCmd(cfg).ParseAndRun(context.Background(), os.Args[1:])
 }
 
-func startServer(cfg *config.Config) {
-	s, err := storage.New(cfg)
-	atexit.Register(func() { s.Close() })
-	if err != nil {
-		panic(err)
-	}
-	u := direct.New(cfg, s)
-	go agent.SelfProfile(cfg, u, "pyroscope.server", logrus.StandardLogger())
+func startServer(cfg *config.Server, storage *storage.Storage) {
+	u := direct.New(storage)
+	go agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger())
 	go printRAMUsage()
 	go printDiskUsage(cfg)
-	c := server.New(cfg, s)
+	c := server.New(cfg, storage)
 	atexit.Register(func() { c.Stop() })
-	if !cfg.Server.AnalyticsOptOut {
-		analyticsService := analytics.NewService(cfg, s, c)
+	if !cfg.AnalyticsOptOut {
+		analyticsService := analytics.NewService(cfg, storage, c)
 		go analyticsService.Start()
 		atexit.Register(func() { analyticsService.Stop() })
 	}
@@ -412,12 +414,12 @@ func printRAMUsage() {
 	}
 }
 
-func printDiskUsage(cfg *config.Config) {
+func printDiskUsage(cfg *config.Server) {
 	t := time.NewTicker(30 * time.Second)
 	for {
 		<-t.C
 		if logrus.IsLevelEnabled(logrus.DebugLevel) {
-			debug.PrintDiskUsage(cfg.Server.StoragePath)
+			debug.PrintDiskUsage(cfg.StoragePath)
 		}
 	}
 }

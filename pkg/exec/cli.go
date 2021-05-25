@@ -31,19 +31,19 @@ var disableMacOSChecks bool
 var disableLinuxChecks bool
 
 // Cli is command line interface for both exec and connect commands
-func Cli(cfg *config.Config, args []string) error {
+func Cli(cfg *config.Exec, args []string) error {
 	// isExec = true means we need to start the process first (pyroscope exec)
 	// isExec = false means the process is already there (pyroscope connect)
-	isExec := cfg.Exec.Pid == 0
+	isExec := cfg.Pid == 0
 
 	if isExec && len(args) == 0 {
 		return errors.New("no arguments passed")
 	}
 
 	// TODO: this is somewhat hacky, we need to find a better way to configure agents
-	pyspy.Blocking = cfg.Exec.PyspyBlocking
+	pyspy.Blocking = cfg.PyspyBlocking
 
-	spyName := cfg.Exec.SpyName
+	spyName := cfg.SpyName
 	if spyName == "auto" {
 		if isExec {
 			baseName := path.Base(args[0])
@@ -79,17 +79,17 @@ func Cli(cfg *config.Config, args []string) error {
 		return err
 	}
 
-	if cfg.Exec.ApplicationName == "" {
+	if cfg.ApplicationName == "" {
 		logrus.Infof("we recommend specifying application name via %s flag or env variable %s", color.YellowString("-application-name"), color.YellowString("PYROSCOPE_APPLICATION_NAME"))
-		cfg.Exec.ApplicationName = spyName + "." + names.GetRandomName(generateSeed(args))
-		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.Exec.ApplicationName))
+		cfg.ApplicationName = spyName + "." + names.GetRandomName(generateSeed(args))
+		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.ApplicationName))
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"args": fmt.Sprintf("%q", args),
 	}).Debug("starting command")
 
-	pid := cfg.Exec.Pid
+	pid := cfg.Pid
 	var cmd *exec.Cmd
 	if isExec {
 		cmd = exec.Command(args[0], args[1:]...)
@@ -99,7 +99,7 @@ func Cli(cfg *config.Config, args []string) error {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 
 		// permissions drop
-		if isRoot() && !cfg.Exec.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
+		if isRoot() && !cfg.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
 			creds, err := generateCredentialsDrop()
 			if err != nil {
 				logrus.Errorf("failed to drop permissions, %q", err)
@@ -108,8 +108,8 @@ func Cli(cfg *config.Config, args []string) error {
 			}
 		}
 
-		if cfg.Exec.UserName != "" || cfg.Exec.GroupName != "" {
-			creds, err := generateCredentials(cfg.Exec.UserName, cfg.Exec.GroupName)
+		if cfg.UserName != "" || cfg.GroupName != "" {
+			creds, err := generateCredentials(cfg.UserName, cfg.GroupName)
 			if err != nil {
 				logrus.Errorf("failed to generate credentials: %q", err)
 			} else {
@@ -126,10 +126,10 @@ func Cli(cfg *config.Config, args []string) error {
 	}
 
 	u, err := remote.New(remote.RemoteConfig{
-		AuthToken:              cfg.Exec.AuthToken,
-		UpstreamAddress:        cfg.Exec.ServerAddress,
-		UpstreamThreads:        cfg.Exec.UpstreamThreads,
-		UpstreamRequestTimeout: cfg.Exec.UpstreamRequestTimeout,
+		AuthToken:              cfg.AuthToken,
+		UpstreamAddress:        cfg.ServerAddress,
+		UpstreamThreads:        cfg.UpstreamThreads,
+		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
 	})
 	if err != nil {
 		return err
@@ -138,26 +138,26 @@ func Cli(cfg *config.Config, args []string) error {
 	defer u.Stop()
 
 	logrus.WithFields(logrus.Fields{
-		"app-name":            cfg.Exec.ApplicationName,
+		"app-name":            cfg.ApplicationName,
 		"spy-name":            spyName,
 		"pid":                 pid,
-		"detect-subprocesses": cfg.Exec.DetectSubprocesses,
+		"detect-subprocesses": cfg.DetectSubprocesses,
 	}).Debug("starting agent session")
 
 	// if the sample rate is zero, use the default value
-	if cfg.Exec.SampleRate == 0 {
-		cfg.Exec.SampleRate = types.DefaultSampleRate
+	if cfg.SampleRate == 0 {
+		cfg.SampleRate = types.DefaultSampleRate
 	}
 
 	sess := agent.NewSession(&agent.SessionConfig{
 		Upstream:         u,
-		AppName:          cfg.Exec.ApplicationName,
+		AppName:          cfg.ApplicationName,
 		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 		SpyName:          spyName,
-		SampleRate:       uint32(cfg.Exec.SampleRate),
+		SampleRate:       uint32(cfg.SampleRate),
 		UploadRate:       10 * time.Second,
 		Pid:              pid,
-		WithSubprocesses: cfg.Exec.DetectSubprocesses,
+		WithSubprocesses: cfg.DetectSubprocesses,
 	})
 
 	sess.Logger = logrus.StandardLogger()

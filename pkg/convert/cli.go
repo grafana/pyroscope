@@ -10,7 +10,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
-func Cli(cfg *config.Config, logger func(string), args []string) error {
+func Cli(cfg *config.Convert, logger func(string), args []string) error {
 	var input io.Reader
 	if len(args) == 0 {
 		input = os.Stdin
@@ -19,7 +19,7 @@ func Cli(cfg *config.Config, logger func(string), args []string) error {
 	}
 
 	parser := ParseGroups
-	switch cfg.Convert.Format {
+	switch cfg.Format {
 	case "tree":
 		t := tree.New()
 		parser(input, func(name []byte, val int) {
@@ -35,7 +35,7 @@ func Cli(cfg *config.Config, logger func(string), args []string) error {
 
 		t.Serialize(os.Stdout)
 	default:
-		logger(fmt.Sprintf("unknown format: %s", cfg.Convert.Format))
+		logger(fmt.Sprintf("unknown format: %s", cfg.Format))
 	}
 	return nil
 }

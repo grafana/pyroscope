@@ -21,7 +21,7 @@ import (
 )
 
 type Controller struct {
-	cfg        *config.Config
+	cfg        *config.Server
 	s          *storage.Storage
 	httpServer *http.Server
 
@@ -31,7 +31,7 @@ type Controller struct {
 	appStats *hyperloglog.HyperLogLogPlus
 }
 
-func New(cfg *config.Config, s *storage.Storage) *Controller {
+func New(cfg *config.Server, s *storage.Storage) *Controller {
 	appStats, _ := hyperloglog.NewPlus(uint8(18))
 	return &Controller{
 		cfg:      cfg,
@@ -79,7 +79,7 @@ func (ctrl *Controller) Start() {
 	w := logger.Writer()
 	defer w.Close()
 	ctrl.httpServer = &http.Server{
-		Addr:           ctrl.cfg.Server.APIBindAddr,
+		Addr:           ctrl.cfg.APIBindAddr,
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -188,7 +188,7 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 		InitialState:  initialStateStr,
 		BuildInfo:     buildInfoStr,
 		ExtraMetadata: extraMetadataStr,
-		BaseURL:       ctrl.cfg.Server.BaseURL,
+		BaseURL:       ctrl.cfg.BaseURL,
 	})
 	if err != nil {
 		renderServerError(rw, fmt.Sprintf("could not marshal json: %q", err))

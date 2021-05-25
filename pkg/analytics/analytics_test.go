@@ -53,10 +53,10 @@ var _ = Describe("analytics", func() {
 				}
 				go mockServer.ListenAndServe()
 
-				s, err := storage.New(*cfg)
+				s, err := storage.New(&(*cfg).Server)
 				Expect(err).ToNot(HaveOccurred())
-				c := server.New(*cfg, s)
-				analytics := NewService(*cfg, s, c)
+				c := server.New(&(*cfg).Server, s)
+				analytics := NewService(&(*cfg).Server, s, c)
 
 				startTime := time.Now()
 				go analytics.Start()
