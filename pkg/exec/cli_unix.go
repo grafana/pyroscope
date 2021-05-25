@@ -3,16 +3,22 @@
 package exec
 
 import (
+	"os"
 	"os/exec"
+	"os/user"
+	"regexp"
+	"strconv"
 	"syscall"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
 func adjustCmd(cmd *exec.Cmd, cfg config.Exec) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	// permissions drop
-	if isRoot() && !cfg.Exec.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
+	if isRoot() && !cfg.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
 		creds, err := generateCredentialsDrop()
 		if err != nil {
 			logrus.Errorf("failed to drop permissions, %q", err)
@@ -21,8 +27,8 @@ func adjustCmd(cmd *exec.Cmd, cfg config.Exec) error {
 		}
 	}
 
-	if cfg.Exec.UserName != "" || cfg.Exec.GroupName != "" {
-		creds, err := generateCredentials(cfg.Exec.UserName, cfg.Exec.GroupName)
+	if cfg.UserName != "" || cfg.GroupName != "" {
+		creds, err := generateCredentials(cfg.UserName, cfg.GroupName)
 		if err != nil {
 			logrus.Errorf("failed to generate credentials: %q", err)
 		} else {

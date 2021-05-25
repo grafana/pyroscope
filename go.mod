@@ -40,6 +40,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/twmb/murmur3 v1.1.5
 	github.com/wacul/ptr v1.0.0 // indirect
+	golang.org/x/sys v0.0.0-20210423082822-04245dca01da
 	golang.org/x/tools v0.1.0
 	google.golang.org/protobuf v1.26.0
 	honnef.co/go/tools v0.0.1-2020.1.6

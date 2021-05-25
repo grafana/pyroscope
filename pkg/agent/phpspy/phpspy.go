@@ -3,7 +3,6 @@
 // Package phpspy is a wrapper around this library called phpspy written in Rust
 package phpspy
 
-// #cgo windows LDFLAGS: -L../../../third_party/phpspy -lphpspy
 // #cgo darwin LDFLAGS: -L../../../third_party/phpspy -lphpspy
 // #cgo linux LDFLAGS: -L../../../third_party/phpspy -lphpspy
 // #include "../../../third_party/phpspy/phpspy.h"
