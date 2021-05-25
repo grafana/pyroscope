@@ -67,7 +67,7 @@ func copyData(db_cfg *config.DbManager, srv_cfg *config.Server) error {
 
 	if db_cfg.EnableProfiling {
 		u := direct.New(s)
-		go agent.SelfProfile(u, "pyroscope.dbmanager.cpu{}", logrus.StandardLogger())
+		go agent.SelfProfile(100, u, "pyroscope.dbmanager.cpu{}", logrus.StandardLogger())
 	}
 
 	st := srcSt

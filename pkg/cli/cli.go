@@ -388,7 +388,7 @@ func Start(cfg *config.Config) error {
 
 func startServer(cfg *config.Server, storage *storage.Storage) {
 	u := direct.New(storage)
-	go agent.SelfProfile(u, "pyroscope.server", logrus.StandardLogger())
+	go agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger())
 	go printRAMUsage()
 	go printDiskUsage(cfg)
 	c := server.New(cfg, storage)

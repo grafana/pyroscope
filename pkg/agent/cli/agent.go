@@ -47,7 +47,7 @@ func (a *Agent) Start() error {
 	a.cs = cs
 	defer os.Remove(sockPath)
 
-	go agent.SelfProfile(a.u, "pyroscope.agent.cpu{}", logrus.StandardLogger())
+	go agent.SelfProfile(100, a.u, "pyroscope.agent.cpu{}", logrus.StandardLogger())
 	cs.Start()
 	return nil
 }
