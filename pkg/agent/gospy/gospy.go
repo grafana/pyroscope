@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
+	"io"
 	"runtime"
+	"runtime/pprof"
 	"sync"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
+	custom_pprof "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/sirupsen/logrus"
@@ -32,6 +34,16 @@ type GoSpy struct {
 	buf    *bytes.Buffer
 }
 
+func startCPUProfile(w io.Writer, hz uint32) error {
+	// idea here is that for most people we're starting the default profiler
+	//   but if you want to use a different sampling rate we use our experimental profiler
+	if hz == 100 {
+		return pprof.StartCPUProfile(w)
+	} else {
+		return custom_pprof.StartCPUProfile(w, hz)
+	}
+}
+
 func Start(profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error) {
 	s := &GoSpy{
 		stopCh:        make(chan struct{}),
@@ -41,7 +53,7 @@ func Start(profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (
 		sampleRate:    sampleRate,
 	}
 	if s.profileType == spy.ProfileCPU {
-		if err := pprof.StartCPUProfile(s.buf, sampleRate); err != nil {
+		if err := startCPUProfile(s.buf, sampleRate); err != nil {
 			return nil, err
 		}
 	}
@@ -99,7 +111,7 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 		pprof.StopCPUProfile()
 		defer func() {
 			// start a new cycle of sample collection
-			if err := pprof.StartCPUProfile(s.buf, s.sampleRate); err != nil {
+			if err := startCPUProfile(s.buf, s.sampleRate); err != nil {
 				logrus.Errorf("start cpu profile: %v", err)
 			}
 		}()
