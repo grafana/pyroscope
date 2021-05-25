@@ -45,7 +45,7 @@ var _ = Describe("server", func() {
 				It("correctly parses incoming data", func(done Done) {
 					s, err := storage.New(*cfg)
 					Expect(err).ToNot(HaveOccurred())
-					c := New(*cfg, s)
+					c, _ := New(*cfg, s)
 					go func() {
 						defer GinkgoRecover()
 						c.Start()

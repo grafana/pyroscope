@@ -10,7 +10,7 @@ import (
 )
 
 func SelfProfile(cfg *config.Config, u upstream.Upstream, appName string, logger Logger) error {
-	c := SessionConfig{
+	sc := SessionConfig{
 		Upstream:         u,
 		AppName:          appName,
 		ProfilingTypes:   types.DefaultProfileTypes,
@@ -20,12 +20,8 @@ func SelfProfile(cfg *config.Config, u upstream.Upstream, appName string, logger
 		Pid:              0,
 		WithSubprocesses: false,
 	}
-	s := NewSession(&c)
-	err := s.Start()
-
-	s.Logger = logger
-
-	if err != nil {
+	s := NewSession(&sc, logger)
+	if err := s.Start(); err != nil {
 		return err
 	}
 

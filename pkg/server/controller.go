@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -31,30 +32,39 @@ type Controller struct {
 	appStats *hyperloglog.HyperLogLogPlus
 }
 
-func New(cfg *config.Config, s *storage.Storage) *Controller {
-	appStats, _ := hyperloglog.NewPlus(uint8(18))
+func New(cfg *config.Config, s *storage.Storage) (*Controller, error) {
+	appStats, err := hyperloglog.NewPlus(uint8(18))
+	if err != nil {
+		return nil, err
+	}
+
 	return &Controller{
 		cfg:      cfg,
 		s:        s,
 		stats:    make(map[string]int),
 		appStats: appStats,
-	}
+	}, nil
 }
 
 func (ctrl *Controller) Stop() error {
 	if ctrl.httpServer != nil {
-		return ctrl.httpServer.Close()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		defer cancel()
+
+		// shutdown the server gracefully
+		return ctrl.httpServer.Shutdown(ctx)
 	}
 	return nil
 }
 
 // TODO: split the cli initialization from HTTP controller logic
-func (ctrl *Controller) Start() {
+func (ctrl *Controller) Start() error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ingest", ctrl.ingestHandler)
 	mux.HandleFunc("/render", ctrl.renderHandler)
 	mux.HandleFunc("/labels", ctrl.labelsHandler)
 	mux.HandleFunc("/label-values", ctrl.labelValuesHandler)
+
 	var dir http.FileSystem
 	if build.UseEmbeddedAssets {
 		// for this to work you need to run `pkger` first. See Makefile for more information
@@ -62,6 +72,7 @@ func (ctrl *Controller) Start() {
 	} else {
 		dir = http.Dir("./webapp/public")
 	}
+
 	fs := http.FileServer(dir)
 	mux.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
@@ -78,6 +89,7 @@ func (ctrl *Controller) Start() {
 	logger := logrus.New()
 	w := logger.Writer()
 	defer w.Close()
+
 	ctrl.httpServer = &http.Server{
 		Addr:           ctrl.cfg.Server.APIBindAddr,
 		Handler:        mux,
@@ -87,13 +99,14 @@ func (ctrl *Controller) Start() {
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
 	}
-	err := ctrl.httpServer.ListenAndServe()
-	if err != nil {
+	if err := ctrl.httpServer.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
-			return
+			return nil
 		}
-		logrus.Error(err)
+		return fmt.Errorf("listen and serve: %v", err)
 	}
+
+	return nil
 }
 
 func renderServerError(rw http.ResponseWriter, text string) {

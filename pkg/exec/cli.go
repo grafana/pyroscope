@@ -125,16 +125,16 @@ func Cli(cfg *config.Config, args []string) error {
 		pid = cmd.Process.Pid
 	}
 
-	u, err := remote.New(remote.RemoteConfig{
+	rc := remote.RemoteConfig{
 		AuthToken:              cfg.Exec.AuthToken,
 		UpstreamAddress:        cfg.Exec.ServerAddress,
 		UpstreamThreads:        cfg.Exec.UpstreamThreads,
 		UpstreamRequestTimeout: cfg.Exec.UpstreamRequestTimeout,
-	})
-	if err != nil {
-		return err
 	}
-	u.Logger = logrus.StandardLogger()
+	u, err := remote.New(rc, logrus.StandardLogger())
+	if err != nil {
+		return fmt.Errorf("new remote upstream: %v", err)
+	}
 	defer u.Stop()
 
 	logrus.WithFields(logrus.Fields{
@@ -149,7 +149,7 @@ func Cli(cfg *config.Config, args []string) error {
 		cfg.Exec.SampleRate = types.DefaultSampleRate
 	}
 
-	sess := agent.NewSession(&agent.SessionConfig{
+	sc := agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.Exec.ApplicationName,
 		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
@@ -158,20 +158,19 @@ func Cli(cfg *config.Config, args []string) error {
 		UploadRate:       10 * time.Second,
 		Pid:              pid,
 		WithSubprocesses: cfg.Exec.DetectSubprocesses,
-	})
-
-	sess.Logger = logrus.StandardLogger()
-	err = sess.Start()
-	if err != nil {
-		logrus.Errorf("error when starting session: %q", err)
 	}
-	defer sess.Stop()
+	session := agent.NewSession(&sc, logrus.StandardLogger())
+	if err := session.Start(); err != nil {
+		return fmt.Errorf("start session: %v", err)
+	}
+	defer session.Stop()
 
 	if isExec {
 		waitForSpawnedProcessToExit(cmd)
 	} else {
 		waitForProcessToExit(pid)
 	}
+
 	return nil
 }
 

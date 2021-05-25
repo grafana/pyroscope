@@ -55,7 +55,7 @@ var _ = Describe("analytics", func() {
 
 				s, err := storage.New(*cfg)
 				Expect(err).ToNot(HaveOccurred())
-				c := server.New(*cfg, s)
+				c, _ := server.New(*cfg, s)
 				analytics := NewService(*cfg, s, c)
 
 				startTime := time.Now()

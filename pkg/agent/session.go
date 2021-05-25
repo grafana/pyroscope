@@ -62,7 +62,7 @@ type SessionConfig struct {
 	WithSubprocesses bool
 }
 
-func NewSession(c *SessionConfig) *ProfileSession {
+func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 	ps := &ProfileSession{
 		upstream:         c.Upstream,
 		appName:          c.AppName,
@@ -74,6 +74,7 @@ func NewSession(c *SessionConfig) *ProfileSession {
 		pids:             []int{c.Pid},
 		stopCh:           make(chan struct{}),
 		withSubprocesses: c.WithSubprocesses,
+		Logger:           logger,
 	}
 
 	if ps.spyName == types.GoSpy {
