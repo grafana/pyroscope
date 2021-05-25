@@ -5,11 +5,17 @@ ifeq ("$(shell go env GOARCH || true)", "arm64")
 	GODEBUG=asyncpreemptoff=1
 endif
 
-ALL_SPIES = "ebpfspy,rbspy,pyspy,debugspy"
+ALL_SPIES = "ebpfspy,rbspy,pyspy,dotnetspy,debugspy"
 ifeq ("$(shell go env GOOS || true)", "linux")
-	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy"
+	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy,phpspy,dotnetspy"
 else
 	ENABLED_SPIES ?= "rbspy,pyspy"
+endif
+
+ifeq ("$(shell go env GOOS || true)", "linux")
+	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies build-phpspy-dependencies"
+else
+	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies"
 endif
 
 EMBEDDED_ASSETS ?= ""
@@ -34,7 +40,15 @@ build-release: embedded-assets
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
-	cd third_party/rustdeps && cargo build --release
+	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release
+
+.PHONY: build-phpspy-dependencies
+build-phpspy-dependencies:
+	cd third_party && git clone https://github.com/pyroscope-io/phpspy.git
+	cd phpspy && USE_ZEND=1 make
+
+.PHONY: build-third-party-dependencies
+build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES))
 
 .PHONY: test
 test:

@@ -1,0 +1,3 @@
+// +build !dotnetspy
+
+package dotnetspy

@@ -81,6 +81,9 @@ type metrics struct {
 	SpyRbspy         int       `json:"spy_rbspy"`
 	SpyPyspy         int       `json:"spy_pyspy"`
 	SpyGospy         int       `json:"spy_gospy"`
+	SpyEbpfspy       int       `json:"spy_ebpfspy"`
+	SpyPhpspy        int       `json:"spy_phpspy"`
+	SpyDotnetspy     int       `json:"spy_dotnetspy"`
 	AppsCount        int       `json:"apps_count"`
 }
 
@@ -138,6 +141,9 @@ func (s *Service) sendReport() {
 		SpyRbspy:         controllerStats["ingest:rbspy"],
 		SpyPyspy:         controllerStats["ingest:pyspy"],
 		SpyGospy:         controllerStats["ingest:gospy"],
+		SpyEbpfspy:       controllerStats["ingest:ebpfspy"],
+		SpyPhpspy:        controllerStats["ingest:phpspy"],
+		SpyDotnetspy:     controllerStats["ingest:dotnetspy"],
 		AppsCount:        s.c.AppsCount(),
 	}
 
