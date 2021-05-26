@@ -11,6 +11,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
+	"github.com/sirupsen/logrus"
 )
 
 const durThreshold = 30 * time.Millisecond
@@ -42,7 +43,7 @@ var _ = Describe("agent.Session", func() {
 					UploadRate:       uploadRate,
 					Pid:              os.Getpid(),
 					WithSubprocesses: true,
-				})
+				}, logrus.StandardLogger())
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()

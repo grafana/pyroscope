@@ -6,7 +6,6 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/csock"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
@@ -23,19 +22,21 @@ type Agent struct {
 	u              upstream.Upstream
 }
 
-func New(cfg *config.Agent) *Agent {
-	// TODO: handle this error properly
-	r, _ := remote.New(remote.RemoteConfig{
+func New(cfg *config.Agent) (*Agent, error) {
+	rc := remote.RemoteConfig{
 		UpstreamThreads:        cfg.UpstreamThreads,
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
-	})
-	r.Logger = logrus.StandardLogger()
+	}
+	upstream, err := remote.New(rc, logrus.StandardLogger())
+	if err != nil {
+		return nil, err
+	}
 	return &Agent{
 		cfg:            cfg,
 		activeProfiles: make(map[int]*agent.ProfileSession),
-		u:              r,
-	}
+		u:              upstream,
+	}, nil
 }
 
 func (a *Agent) Start() error {
@@ -63,17 +64,18 @@ func (a *Agent) controlSocketHandler(req *csock.Request) *csock.Response {
 		// TODO: pass withSubprocesses from somewhere
 		// TODO: pass appName from somewhere
 		// TODO: add sample rate
-		s := agent.NewSession(&agent.SessionConfig{
+
+		sc := agent.SessionConfig{
 			Upstream:         a.u,
 			AppName:          "testapp",
-			ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU, spy.ProfileAllocObjects, spy.ProfileAllocSpace, spy.ProfileInuseObjects, spy.ProfileInuseSpace},
+			ProfilingTypes:   types.DefaultProfileTypes,
 			SpyName:          types.GoSpy,
-			SampleRate:       100,
+			SampleRate:       types.DefaultSampleRate,
 			UploadRate:       10 * time.Second,
 			Pid:              0,
 			WithSubprocesses: false,
-		})
-		s.Logger = logrus.StandardLogger()
+		}
+		s := agent.NewSession(&sc, logrus.StandardLogger())
 		a.activeProfiles[profileID] = s
 		s.Start()
 		return &csock.Response{ProfileID: profileID}

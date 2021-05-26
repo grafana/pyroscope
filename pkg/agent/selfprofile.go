@@ -20,7 +20,7 @@ func SelfProfile(sampleRate uint32, u upstream.Upstream, appName string, logger 
 		Pid:              0,
 		WithSubprocesses: false,
 	}
-	s := NewSession(&c)
+	s := NewSession(&c, logger)
 	if err := s.Start(); err != nil {
 		return err
 	}

@@ -329,17 +329,9 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		if err != nil {
 			return err
 		}
-
 		logrus.SetLevel(l)
 
-		s, err := storage.New(&cfg.Server)
-		atexit.Register(func() { s.Close() })
-		if err != nil {
-			panic(err)
-		}
-
-		startServer(&cfg.Server, s)
-		return nil
+		return startServer(&cfg.Server)
 	}
 
 	convertCmd.Exec = func(ctx context.Context, args []string) error {
@@ -404,22 +396,45 @@ func Start(cfg *config.Config) error {
 	return generateRootCmd(cfg).ParseAndRun(context.Background(), os.Args[1:])
 }
 
-func startServer(cfg *config.Server, storage *storage.Storage) {
-	u := direct.New(storage)
-	go agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger())
+func startServer(cfg *config.Server) error {
+	// new a storage with configuration
+	s, err := storage.New(cfg)
+	if err != nil {
+		return fmt.Errorf("new storage: %v", err)
+	}
+	atexit.Register(func() { s.Close() })
+
+	// new a direct upstream
+	u := direct.New(s)
+
+	// uploading the server profile self
+	if err := agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger()); err != nil {
+		return fmt.Errorf("start self profile: %v", err)
+	}
+
+	// debuging the RAM and disk usages
 	go printRAMUsage()
 	go printDiskUsage(cfg)
-	c := server.New(cfg, storage)
+
+	// new server
+	c, err := server.New(cfg, s)
+	if err != nil {
+		return fmt.Errorf("new server: %v", err)
+	}
 	atexit.Register(func() { c.Stop() })
+
+	// start the analytics
 	if !cfg.AnalyticsOptOut {
-		analyticsService := analytics.NewService(cfg, storage, c)
+		analyticsService := analytics.NewService(cfg, s, c)
 		go analyticsService.Start()
 		atexit.Register(func() { analyticsService.Stop() })
 	}
 	// if you ever change this line, make sure to update this homebrew test:
 	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
 	logrus.Info("starting HTTP server")
-	c.Start()
+
+	// start the server
+	return c.Start()
 }
 
 func printRAMUsage() {
