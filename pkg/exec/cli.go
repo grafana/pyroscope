@@ -92,15 +92,12 @@ func Cli(cfg *config.Exec, args []string) error {
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
 		cmd.Stdin = os.Stdin
-
-		if err := adjustCmd(cmd, cfg.Exec); err != nil {
+		if err := adjustCmd(cmd, *cfg); err != nil {
 			logrus.Error(err)
 		}
-
 		if err := cmd.Start(); err != nil {
 			return err
 		}
-
 		pid = cmd.Process.Pid
 	}
 
