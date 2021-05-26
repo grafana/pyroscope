@@ -3,6 +3,7 @@ package remote
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -24,11 +25,12 @@ var (
 
 type Remote struct {
 	cfg    RemoteConfig
-	todo   chan *upstream.UploadJob
-	done   chan *sync.WaitGroup
+	jobs   chan *upstream.UploadJob
 	client *http.Client
-
 	Logger agent.Logger
+
+	done chan struct{}
+	wg   sync.WaitGroup
 }
 
 type RemoteConfig struct {
@@ -38,116 +40,115 @@ type RemoteConfig struct {
 	UpstreamRequestTimeout time.Duration
 }
 
-func New(cfg RemoteConfig) (*Remote, error) {
-	r := &Remote{
+func New(cfg RemoteConfig, logger agent.Logger) (*Remote, error) {
+	remote := &Remote{
 		cfg:  cfg,
-		todo: make(chan *upstream.UploadJob, 100),
-		done: make(chan *sync.WaitGroup, cfg.UpstreamThreads),
+		jobs: make(chan *upstream.UploadJob, 100),
 		client: &http.Client{
 			Transport: &http.Transport{
 				MaxConnsPerHost: cfg.UpstreamThreads,
 			},
 			Timeout: cfg.UpstreamRequestTimeout,
 		},
+		Logger: logger,
+		done:   make(chan struct{}),
 	}
 
-	urlObj, err := url.Parse(cfg.UpstreamAddress)
+	// parse the upstream address
+	u, err := url.Parse(cfg.UpstreamAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	if cfg.AuthToken == "" && requiresAuthToken(urlObj) {
+	// authorize the token first
+	if cfg.AuthToken == "" && requiresAuthToken(u) {
 		return nil, ErrCloudTokenRequired
 	}
 
-	go r.start()
-	return r, nil
+	// start goroutines for uploading profile data
+	remote.start()
+
+	return remote, nil
 }
 
-func (u *Remote) start() {
-	for i := 0; i < u.cfg.UpstreamThreads; i++ {
-		go u.uploadLoop()
+func (r *Remote) start() {
+	for i := 0; i < r.cfg.UpstreamThreads; i++ {
+		go r.handleJobs()
 	}
 }
 
-func (u *Remote) Stop() {
-	wg := sync.WaitGroup{}
-	wg.Add(u.cfg.UpstreamThreads)
-	for i := 0; i < u.cfg.UpstreamThreads; i++ {
-		u.done <- &wg
+func (r *Remote) Stop() {
+	if r.done != nil {
+		close(r.done)
 	}
-	wg.Wait()
+
+	// wait for uploading goroutines exit
+	r.wg.Wait()
 }
 
-// TODO: this metadata class should be unified
-func (u *Remote) Upload(j *upstream.UploadJob) {
+func (r *Remote) Upload(job *upstream.UploadJob) {
 	select {
-	case u.todo <- j:
+	case r.jobs <- job:
 	default:
-		if u.Logger != nil {
-			u.Logger.Errorf("Remote upload queue is full, dropping a profile")
-		}
+		r.Logger.Errorf("remote upload queue is full, dropping a profile job")
 	}
 }
 
-func (u *Remote) uploadProfile(j *upstream.UploadJob) {
-	urlObj, _ := url.Parse(u.cfg.UpstreamAddress)
-	q := urlObj.Query()
+func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
+	u, err := url.Parse(r.cfg.UpstreamAddress)
+	if err != nil {
+		return fmt.Errorf("url parse: %v", err)
+	}
 
+	q := u.Query()
 	q.Set("name", j.Name)
 	// TODO: I think these should be renamed to startTime / endTime
 	q.Set("from", strconv.Itoa(int(j.StartTime.Unix())))
 	q.Set("until", strconv.Itoa(int(j.EndTime.Unix())))
 	q.Set("spyName", j.SpyName)
-	q.Set("sampleRate", strconv.Itoa(j.SampleRate))
+	q.Set("sampleRate", strconv.Itoa(int(j.SampleRate)))
 	q.Set("units", j.Units)
 	q.Set("aggregationType", j.AggregationType)
 
-	urlObj.Path = path.Join(urlObj.Path, "/ingest")
-	urlObj.RawQuery = q.Encode()
-	buf := j.Trie.Bytes()
-	if u.Logger != nil {
-		u.Logger.Infof("uploading at %s", urlObj.String())
+	u.Path = path.Join(u.Path, "/ingest")
+	u.RawQuery = q.Encode()
+
+	r.Logger.Infof("uploading at %s", u.String())
+	// new a request for the job
+	request, err := http.NewRequest("POST", u.String(), bytes.NewReader(j.Trie.Bytes()))
+	if err != nil {
+		return fmt.Errorf("new http request: %v", err)
+	}
+	request.Header.Set("Content-Type", "binary/octet-stream+trie")
+
+	if r.cfg.AuthToken != "" {
+		request.Header.Set("Authorization", "Bearer "+r.cfg.AuthToken)
 	}
 
-	req, err := http.NewRequest("POST", urlObj.String(), bytes.NewReader(buf))
+	// do the request and get the response
+	response, err := r.client.Do(request)
 	if err != nil {
-		if u.Logger != nil {
-			u.Logger.Errorf("Error happened when uploading a profile: %v", err)
-		}
-		return
+		return fmt.Errorf("do http request: %v", err)
 	}
-	req.Header.Set("Content-Type", "binary/octet-stream+trie")
-	if u.cfg.AuthToken != "" {
-		req.Header.Set("Authorization", "Bearer "+u.cfg.AuthToken)
-	}
-	resp, err := u.client.Do(req)
+	defer response.Body.Close()
+
+	// read all the response body
+	_, err = ioutil.ReadAll(response.Body)
 	if err != nil {
-		if u.Logger != nil {
-			u.Logger.Errorf("Error happened when uploading a profile: %v", err)
-		}
-		return
+		return fmt.Errorf("read response body: %v", err)
 	}
 
-	if resp != nil {
-		defer resp.Body.Close()
-		_, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			if u.Logger != nil {
-				u.Logger.Errorf("Error happened while reading server response: %v", err)
-			}
-		}
-	}
+	return nil
 }
 
-func (u *Remote) uploadLoop() {
+// handle the jobs
+func (r *Remote) handleJobs() {
 	for {
 		select {
-		case j := <-u.todo:
-			u.safeUpload(j)
-		case wg := <-u.done:
-			wg.Done()
+		case <-r.done:
 			return
+		case job := <-r.jobs:
+			r.safeUpload(job)
 		}
 	}
 }
@@ -157,14 +158,15 @@ func requiresAuthToken(u *url.URL) bool {
 }
 
 // do safe upload
-func (u *Remote) safeUpload(j *upstream.UploadJob) {
+func (r *Remote) safeUpload(job *upstream.UploadJob) {
 	defer func() {
-		if r := recover(); r != nil {
-			if u.Logger != nil {
-				u.Logger.Errorf("panic, stack = : %v", debug.Stack())
-			}
+		if catch := recover(); catch != nil {
+			r.Logger.Errorf("recover stack: %v", debug.Stack())
 		}
 	}()
 
-	u.uploadProfile(j)
+	// update the profile data to server
+	if err := r.uploadProfile(job); err != nil {
+		r.Logger.Errorf("upload profile: %v", err)
+	}
 }

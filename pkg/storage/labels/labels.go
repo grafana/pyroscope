@@ -4,14 +4,13 @@ import (
 	"strings"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
 type Labels struct {
 	db *badger.DB
 }
 
-func New(cfg *config.Config, db *badger.DB) *Labels {
+func New(db *badger.DB) *Labels {
 	ll := &Labels{
 		db: db,
 	}

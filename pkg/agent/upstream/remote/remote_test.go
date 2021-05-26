@@ -13,6 +13,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
+	"github.com/sirupsen/logrus"
 )
 
 var _ = Describe("remote.Remote", func() {
@@ -50,7 +51,7 @@ var _ = Describe("remote.Remote", func() {
 				UpstreamAddress:        "http://localhost:50001",
 				UpstreamRequestTimeout: 3 * time.Second,
 			}
-			r, err := New(cfg)
+			r, err := New(cfg, logrus.New())
 
 			t := transporttrie.New()
 			for i := 0; i < 3; i++ {

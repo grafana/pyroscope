@@ -12,6 +12,12 @@ else
 	ENABLED_SPIES ?= "rbspy,pyspy"
 endif
 
+ifeq ("$(shell go env GOOS || true)", "linux")
+	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies build-phpspy-dependencies"
+else
+	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies"
+endif
+
 EMBEDDED_ASSETS ?= ""
 EMBEDDED_ASSETS_DEPS ?= "assets-release"
 EXTRA_LDFLAGS ?= ""
@@ -34,7 +40,15 @@ build-release: embedded-assets
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
-	cd third_party/rustdeps && cargo build --release
+	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release
+
+.PHONY: build-phpspy-dependencies
+build-phpspy-dependencies:
+	cd third_party && git clone https://github.com/pyroscope-io/phpspy.git
+	cd phpspy && USE_ZEND=1 make
+
+.PHONY: build-third-party-dependencies
+build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES))
 
 .PHONY: test
 test:
@@ -75,7 +89,7 @@ lint:
 
 .PHONY: ensure-logrus-not-used
 ensure-logrus-not-used:
-	@! godepgraph -nostdlib -s ./pkg/agent/profiler/ | grep ' -> "github.com/sirupsen/logrus' \
+	@! go run "$(shell scripts/pinned-tool.sh github.com/kisielk/godepgraph)" -nostdlib -s ./pkg/agent/profiler/ | grep ' -> "github.com/sirupsen/logrus' \
 		|| (echo "\n^ ERROR: make sure ./pkg/agent/profiler/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
 
 .PHONY: unused
