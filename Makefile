@@ -31,7 +31,7 @@ endif
 all: build
 
 .PHONY: build
-build:
+build: generate-windows-version-info
 	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
 
 .PHONY: build-release
@@ -82,6 +82,10 @@ assets-release: install-web-dependencies
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS))
 	go run "$(shell scripts/pinned-tool.sh github.com/markbates/pkger)/cmd/pkger" -o pkg/server
+
+.PHONY: generate-windows-version-info
+generate-windows-version-info:
+	go run scripts/generate-windows-version-info/main.go -out ./cmd/pyroscope/resource.syso
 
 .PHONY: lint
 lint:
