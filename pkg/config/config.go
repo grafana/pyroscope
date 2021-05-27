@@ -46,7 +46,7 @@ type Server struct {
 	CacheDimensionSize  int `def:"1000" desc:"max number of elements in LRU cache for dimensions"`
 	CacheDictionarySize int `def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
 	CacheSegmentSize    int `def:"1000" desc:"max number of elements in LRU cache for segments"`
-	CacheTreeSize       int `def:"10000" desc:"max number of elements in LRU cache for trees"`
+	CacheTreeSize       int `def:"1000" desc:"max number of elements in LRU cache for trees"`
 
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.

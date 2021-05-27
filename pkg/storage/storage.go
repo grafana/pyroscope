@@ -150,7 +150,7 @@ func New(cfg *config.Server) (*Storage, error) { // TODO: cfg.Server?
 		return dict.New()
 	}
 
-	s.trees = cache.New(dbTrees, cfg.CacheSegmentSize, "t:")
+	s.trees = cache.New(dbTrees, cfg.CacheTreeSize, "t:")
 	s.trees.Bytes = func(k string, v interface{}) []byte {
 		d := s.dicts.Get(FromTreeToMainKey(k)).(*dict.Dict)
 		return v.(*tree.Tree).Bytes(d, cfg.MaxNodesSerialization)
