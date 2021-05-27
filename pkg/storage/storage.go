@@ -131,8 +131,6 @@ func New(cfg *config.Server) (*Storage, error) { // TODO: cfg.Server?
 		return v.(*segment.Segment).Bytes()
 	}
 	s.segments.FromBytes = func(_k string, v []byte) interface{} {
-		// TODO:
-		//   these configuration params should be saved in db when it initializes
 		return segment.FromBytes(v)
 	}
 	s.segments.New = func(_k string) interface{} {
@@ -378,4 +376,13 @@ func dirSize(path string) (result bytesize.ByteSize) {
 		return nil
 	})
 	return
+}
+
+func (s *Storage) CacheStats() map[string]interface{} {
+	return map[string]interface{}{
+		"dimensions": s.dimensions.Size(),
+		"segments":   s.segments.Size(),
+		"dicts":      s.dicts.Size(),
+		"trees":      s.trees.Size(),
+	}
 }

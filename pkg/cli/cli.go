@@ -27,6 +27,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
+	"github.com/pyroscope-io/pyroscope/pkg/util/statsd"
 	"github.com/sirupsen/logrus"
 
 	"github.com/iancoleman/strcase"
@@ -412,9 +413,11 @@ func startServer(cfg *config.Server) error {
 		return fmt.Errorf("start self profile: %v", err)
 	}
 
+	if statsdAddr := os.Getenv("PYROSCOPE_STATSD_ADDR"); statsdAddr != "" {
+		statsd.Initialize(statsdAddr, "pyroscope-server")
+	}
 	// debuging the RAM and disk usages
-	go printRAMUsage()
-	go printDiskUsage(cfg)
+	go reportDebuggingInformation(cfg, s)
 
 	// new server
 	c, err := server.New(cfg, s)
@@ -437,20 +440,29 @@ func startServer(cfg *config.Server) error {
 	return c.Start()
 }
 
-func printRAMUsage() {
-	t := time.NewTicker(30 * time.Second)
+func reportDebuggingInformation(cfg *config.Server, s *storage.Storage) {
+	t := time.NewTicker(1 * time.Second)
+	i := 0
 	for range t.C {
 		if logrus.IsLevelEnabled(logrus.DebugLevel) {
-			debug.PrintMemUsage()
-		}
-	}
-}
+			maps := map[string]map[string]interface{}{
+				"mem":   debug.MemUsage(),
+				"disk":  debug.DiskUsage(cfg.StoragePath),
+				"cache": s.CacheStats(),
+			}
 
-func printDiskUsage(cfg *config.Server) {
-	t := time.NewTicker(30 * time.Second)
-	for range t.C {
-		if logrus.IsLevelEnabled(logrus.DebugLevel) {
-			debug.PrintDiskUsage(cfg.StoragePath)
+			for dataType, data := range maps {
+				for k, v := range data {
+					if iv, ok := v.(bytesize.ByteSize); ok {
+						v = int64(iv)
+					}
+					statsd.Gauge(dataType+"."+k, v)
+				}
+				if i%30 == 0 {
+					logrus.WithFields(data).Debug(dataType + " stats")
+				}
+			}
 		}
+		i++
 	}
 }
