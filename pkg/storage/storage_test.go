@@ -22,11 +22,11 @@ import (
 // 21:22:08      air |  (time.Duration) 2777h46m40s,
 // 21:22:08      air |  (time.Duration) 27777h46m40s
 
-var _ = Describe("storage package", func() {
-	var (
-		s *Storage
-	)
+var (
+	s *Storage
+)
 
+var _ = Describe("storage package", func() {
 	logrus.SetLevel(logrus.InfoLevel)
 	// logrus.SetOutput(ioutil.Discard)
 
@@ -35,12 +35,6 @@ var _ = Describe("storage package", func() {
 			var err error
 			s, err = New(*cfg)
 			Expect(err).ToNot(HaveOccurred())
-		})
-
-		JustAfterEach(func() {
-			if s != nil {
-				Expect(s.Close()).ToNot(HaveOccurred())
-			}
 		})
 
 		Context("smoke tests", func() {
@@ -74,6 +68,7 @@ var _ = Describe("storage package", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(o.Tree).ToNot(BeNil())
 					Expect(o.Tree.String()).To(Equal(tree.String()))
+					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
 			Context("simple 20 second write", func() {
@@ -106,28 +101,24 @@ var _ = Describe("storage package", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(o.Tree).ToNot(BeNil())
 					Expect(o.Tree.String()).To(Equal(tree.String()))
+					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
 			Context("evict cache items periodly", func() {
 				It("works correctly", func() {
 					tree := tree.New()
 
-					size := 1024 * 1024
+					size := 1024
 					treeKey := make([]byte, size)
 					for i := 0; i < size; i++ {
 						treeKey[i] = 'a'
 					}
-					for i := 0; i < 32; i++ {
+					for i := 0; i < 100; i++ {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
-						st := testing.SimpleTime(10)
-						et := testing.SimpleTime(29)
 						key, _ := ParseKey("tree key" + strconv.Itoa(i+1))
-
 						err := s.Put(&PutInput{
-							StartTime:  st,
-							EndTime:    et,
 							Key:        key,
 							Val:        tree,
 							SpyName:    "testspy",
@@ -135,7 +126,6 @@ var _ = Describe("storage package", func() {
 						})
 						Expect(err).ToNot(HaveOccurred())
 					}
-
 					for i := 0; i < 100; i++ {
 						log.Printf("dimensions: %v", s.dimensions.Len())
 						log.Printf("segments: %v", s.segments.Len())
@@ -144,6 +134,7 @@ var _ = Describe("storage package", func() {
 
 						time.Sleep(time.Second * 5)
 					}
+					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
 			Context("persist data between restarts", func() {
@@ -176,10 +167,10 @@ var _ = Describe("storage package", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(o.Tree).ToNot(BeNil())
 					Expect(o.Tree.String()).To(Equal(tree.String()))
+					Expect(s.Close()).ToNot(HaveOccurred())
 
 					s2, err := New(*cfg)
 					Expect(err).ToNot(HaveOccurred())
-					defer s2.Close()
 
 					o2, err := s2.Get(&GetInput{
 						StartTime: st2,
@@ -189,6 +180,7 @@ var _ = Describe("storage package", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(o2.Tree).ToNot(BeNil())
 					Expect(o2.Tree.String()).To(Equal(tree.String()))
+					Expect(s2.Close()).ToNot(HaveOccurred())
 				})
 			})
 		})

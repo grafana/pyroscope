@@ -238,7 +238,7 @@ func (s *Storage) Put(po *PutInput) error {
 		"samples":         po.Val.Samples(),
 		"units":           po.Units,
 		"aggregationType": po.AggregationType,
-	}).Info("storage.Put")
+	}).Debug("storage.Put")
 	for k, v := range po.Key.labels {
 		s.labels.Put(k, v)
 	}
@@ -299,7 +299,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		"startTime": gi.StartTime.String(),
 		"endTime":   gi.EndTime.String(),
 		"key":       gi.Key.Normalized(),
-	}).Info("storage.Get")
+	}).Debug("storage.Get")
 	triesToMerge := []merge.Merger{}
 
 	dimensions := []*dimension.Dimension{}
