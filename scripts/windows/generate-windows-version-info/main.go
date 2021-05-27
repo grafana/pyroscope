@@ -10,32 +10,18 @@ import (
 	"github.com/josephspurrier/goversioninfo"
 )
 
-const (
-	defaultVersion    = "0.0.0"
-	defaultVarName    = "GIT_TAG"
-	defaultOutputFile = "resource.syso"
-)
-
-// This tool generates syso file which is required for windows build.
-// In particular, version info is used in MSI build.
-
 func main() {
 	var version string
-	flag.StringVar(&version, "version", defaultVersion, "Version in semver format.")
+	flag.StringVar(&version, "version", "0.0.0", "Version in semver format.")
 
-	var variable string
-	flag.StringVar(&variable, "variable", defaultVarName, "Environment variable containing version.")
+	var outputPath string
+	flag.StringVar(&outputPath, "out", "", "Output file path.")
 
-	var outputFile string
-	flag.StringVar(&outputFile, "out", defaultOutputFile, "Output file name.")
+	var iconPath string
+	flag.StringVar(&iconPath, "icon", "", "Icon file path.")
 	flag.Parse()
 
-	// Variable specified with "variable" flag takes precedence over environment variable.
-	vv, ok := os.LookupEnv(variable)
-	if ok && version == defaultVersion {
-		version = vv
-	}
-
+	version = strings.Trim(version, "\"")
 	v, err := semver.Parse(strings.TrimPrefix(version, "v"))
 	if err != nil {
 		fatalf("invalid version %q: %v", version, err)
@@ -64,7 +50,7 @@ func main() {
 		StringFileInfo: goversioninfo.StringFileInfo{
 			Comments:         "",
 			CompanyName:      "Pyroscope, Inc",
-			FileDescription:  "",
+			FileDescription:  "Pyroscope continuous profiling platform agent",
 			FileVersion:      version,
 			InternalName:     "pyroscope.exe",
 			LegalCopyright:   "Copyright (c) 2021 Pyroscope, Inc",
@@ -81,15 +67,15 @@ func main() {
 				CharsetID: goversioninfo.CsUnicode,
 			},
 		},
-		IconPath:     "",
+		IconPath:     iconPath,
 		ManifestPath: "",
 	}
 
 	versionInfo.Build()
 	versionInfo.Walk()
 
-	if err = versionInfo.WriteSyso(outputFile, "amd64"); err != nil {
-		fatalf("failed to write output file %s: %v", outputFile, err)
+	if err = versionInfo.WriteSyso(outputPath, "amd64"); err != nil {
+		fatalf("failed to write output file %s: %v", outputPath, err)
 	}
 }
 

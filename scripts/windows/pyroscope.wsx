@@ -20,11 +20,11 @@
 	<?endif?>
 
 	<?define ProductUpgradeCode="fcf551d4-b847-10bd-a5f2-4451366a1174"?>
-	<?define ManufacturerName="pyroscope.io"?>
+	<?define ManufacturerName="Pyroscope"?>
 
 	<?define PyroscopeFullName="Pyroscope Agent"?>
     <?define PyroscopeServiceName="pyroscope"?>
-    <?define PyroscopeDescription="Pyroscope Continuous Profiling platform agent"?>
+    <?define PyroscopeDescription="Pyroscope continuous profiling platform agent"?>
 
 	<!-- Multi-arch
 		Use -arch candle flag (BUILDARCH) to specify architecture the MSI is compiled for - one of x86, x64 is allowed.
@@ -70,7 +70,7 @@
 		<Property Id="ARPPRODUCTICON" Value="Icon.exe"/>
 
 		<!-- Define icons (ID should not be longer than 18 chars and must end with ".exe") -->
-		<!-- <Icon Id="Icon.exe" SourceFile="images\app.ico"/> -->
+		<Icon Id="Icon.exe" SourceFile="resources\app.ico"/>
 
 		<!-- Upgrades
 			AllowSameVersionUpgrades - MSI ignores the fourth product version field, setting this attribute to yes
@@ -108,8 +108,15 @@
 						Source="$(var.PyroscopeSourceExecutable)"
 						Vital="yes"
 						KeyPath="yes"/>
+                <Environment
+						Id="PATH"
+						Name="PATH"
+						Value="[INSTALLDIR]"
+						Permanent="yes"
+						Part="last"
+						Action="set"
+						System="yes" />
 				<!-- https://blogs.msdn.microsoft.com/jcalev/2008/01/10/some-tricks-with-service-restart-logic/ -->
-				<!--
 				<ServiceInstall
 						Id="PyroscopeService"
 						Type="ownProcess"
@@ -117,7 +124,7 @@
 						DisplayName="$(var.PyroscopeFullName)"
 						Description="$(var.PyroscopeDescription)"
 						Start="auto"
-						ErrorControl="normal"
+						ErrorControl="ignore"
 						Vital="yes">
 					<util:ServiceConfig
 							FirstFailureActionType='restart'
@@ -132,8 +139,7 @@
 						Start="install"
 						Stop="both"
 						Remove="uninstall"
-						Wait="yes"/>
-                -->
+						Wait="no"/>
 			</Component>
 		</DirectoryRef>
 
