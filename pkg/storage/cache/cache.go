@@ -148,3 +148,7 @@ func (cache *Cache) Get(key string) interface{} {
 	lg.Debug("storage hit")
 	return val
 }
+
+func (cache *Cache) Len() int {
+	return cache.lfu.Len()
+}

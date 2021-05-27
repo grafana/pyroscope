@@ -179,15 +179,19 @@ func New(cfg *config.Config) (*Storage, error) {
 		defer ticker.Stop()
 
 		for range ticker.C {
+			if s.closing {
+				return
+			}
+
 			// read the allocated memory used by application
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 
 			used := float64(m.Alloc) / float64(vm.Total)
 
-			logrus.Infof("current used percent of memory: %.5f, %f, %f", used, s.cfg.Server.CacheEviction, s.cfg.Server.CacheEvictionPercent)
-			if used > s.cfg.Server.CacheEviction {
-				percent := s.cfg.Server.CacheEvictionPercent
+			logrus.Infof("current used percent of memory: %.5f, %f, %f", used, s.cfg.Server.CacheEvictPoint, s.cfg.Server.CacheEvictVolume)
+			if used > s.cfg.Server.CacheEvictPoint {
+				percent := s.cfg.Server.CacheEvictVolume
 
 				s.dimensions.Evit(percent)
 				s.segments.Evit(percent)
