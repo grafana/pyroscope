@@ -12,6 +12,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/iancoleman/strcase"
+	"github.com/peterbourgon/ff/v3"
+	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
@@ -27,12 +33,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
-	"github.com/sirupsen/logrus"
-
-	"github.com/iancoleman/strcase"
-	"github.com/peterbourgon/ff/ffyaml"
-	"github.com/peterbourgon/ff/v3"
-	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
 const timeFormat = "2006-01-02T15:04:05Z0700"
@@ -85,6 +85,10 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 	for i := 0; i < num; i++ {
 		field := t.Field(i)
 		fieldV := v.Field(i)
+		if !(fieldV.IsValid() && fieldV.CanSet()) {
+			continue
+		}
+
 		defaultValStr := field.Tag.Get("def")
 		descVal := field.Tag.Get("desc")
 		skipVal := field.Tag.Get("skip")
@@ -244,6 +248,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 
 	var (
 		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
+		agentFlagSet     = flag.NewFlagSet("pyroscope agent", flag.ExitOnError)
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
 		execFlagSet      = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
 		connectFlagSet   = flag.NewFlagSet("pyroscope connect", flag.ExitOnError)
@@ -252,6 +257,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	)
 
 	serverSortedFlags := PopulateFlagSet(&cfg.Server, serverFlagSet)
+	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet)
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
 	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, "pid")
 	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet)
@@ -259,7 +265,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
 
 	options := []ff.Option{
-		ff.WithConfigFileParser(ffyaml.Parser),
+		ff.WithConfigFileParser(parser),
 		ff.WithEnvVarPrefix("PYROSCOPE"),
 		ff.WithAllowMissingConfigFile(true),
 		ff.WithConfigFileFlag("config"),
@@ -272,6 +278,15 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		ShortUsage: "pyroscope server [flags]",
 		ShortHelp:  "starts pyroscope server. This is the database + web-based user interface",
 		FlagSet:    serverFlagSet,
+	}
+
+	agentCmd := &ffcli.Command{
+		UsageFunc:  agentSortedFlags.printUsage,
+		Options:    append(options, ff.WithIgnoreUndefined(true)),
+		Name:       "agent",
+		ShortUsage: "pyroscope agent [flags]",
+		ShortHelp:  "starts pyroscope agent.",
+		FlagSet:    agentFlagSet,
 	}
 
 	convertCmd := &ffcli.Command{
@@ -310,28 +325,25 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		FlagSet:    dbmanagerFlagSet,
 	}
 
-	rootCmd := &ffcli.Command{
-		UsageFunc:  rootSortedFlags.printUsage,
-		Options:    options,
-		ShortUsage: "pyroscope [flags] <subcommand>",
-		FlagSet:    rootFlagSet,
-		Subcommands: []*ffcli.Command{
-			convertCmd,
-			serverCmd,
-			execCmd,
-			connectCmd,
-			dbmanagerCmd,
-		},
-	}
-
 	serverCmd.Exec = func(ctx context.Context, args []string) error {
 		l, err := logrus.ParseLevel(cfg.Server.LogLevel)
 		if err != nil {
 			return err
 		}
 		logrus.SetLevel(l)
-
 		return startServer(&cfg.Server)
+	}
+
+	agentCmd.Exec = func(ctx context.Context, args []string) error {
+		l, err := logrus.ParseLevel(cfg.Server.LogLevel)
+		if err != nil {
+			return err
+		}
+		logrus.SetLevel(l)
+		if err = loadTargets(&cfg.Agent); err != nil {
+			return fmt.Errorf("configuration is invalid: %w", err)
+		}
+		return startAgent(&cfg.Agent)
 	}
 
 	convertCmd.Exec = func(ctx context.Context, args []string) error {
@@ -341,6 +353,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		}
 		return convert.Cli(&cfg.Convert, logger, args)
 	}
+
 	execCmd.Exec = func(_ context.Context, args []string) error {
 		if cfg.Exec.NoLogging {
 			logrus.SetLevel(logrus.PanicLevel)
@@ -377,6 +390,22 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		}
 		return dbmanager.Cli(&cfg.DbManager, &cfg.Server, args)
 	}
+
+	rootCmd := &ffcli.Command{
+		UsageFunc:  rootSortedFlags.printUsage,
+		Options:    options,
+		ShortUsage: "pyroscope [flags] <subcommand>",
+		FlagSet:    rootFlagSet,
+		Subcommands: []*ffcli.Command{
+			convertCmd,
+			serverCmd,
+			agentCmd,
+			execCmd,
+			connectCmd,
+			dbmanagerCmd,
+		},
+	}
+
 	rootCmd.Exec = func(ctx context.Context, args []string) error {
 		if cfg.Version || len(args) > 0 && args[0] == "version" {
 			fmt.Println(gradientBanner())
@@ -435,6 +464,25 @@ func startServer(cfg *config.Server) error {
 
 	// start the server
 	return c.Start()
+}
+
+func startAgent(cfg *config.Agent) error {
+	fmt.Printf("%+v\n", cfg)
+	// TODO: implement agent.
+	return nil
+}
+
+func loadTargets(c *config.Agent) error {
+	b, err := os.ReadFile(c.Config)
+	if err != nil {
+		return err
+	}
+	var a config.Agent
+	if err = yaml.Unmarshal(b, &a); err != nil {
+		return err
+	}
+	c.Targets = a.Targets
+	return nil
 }
 
 func printRAMUsage() {

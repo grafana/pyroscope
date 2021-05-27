@@ -17,17 +17,28 @@ type Config struct {
 }
 
 type Agent struct {
-	Config   string `def:"<installPrefix>/etc/pyroscope/agent.yml" desc:"location of config file"`
-	LogLevel string `def:"info" desc:"log level: debug|info|warn|error"`
+	Config string `def:"agent.yml" desc:"location of config file"`
 
-	// AgentCMD           []string
-	AgentSpyName           string        `desc:"name of the spy you want to use"` // TODO: add options
-	AgentPID               int           `def:"-1" desc:"pid of the process you want to spy on"`
+	LogLevel               string        `def:"info" desc:"log level: debug|info|warn|error"`
+	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`
 	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data"`
-	UpstreamThreads        int           `def:"4"`
-	UpstreamRequestTimeout time.Duration `def:"10s"`
-	UNIXSocketPath         string        `def:"<installPrefix>/var/run/pyroscope-agent.sock" desc:"path to a UNIX socket file"`
+	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
+	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
+
+	Targets []Target `skip:"true"`
+}
+
+type Target struct {
+	ServiceName string `yaml:"service-name"`
+
+	SpyName            string `yaml:"spy-name"`
+	ApplicationName    string `yaml:"application-name"`
+	SampleRate         uint   `yaml:"sample-rate"`
+	DetectSubprocesses bool   `yaml:"detect-subprocesses"`
+
+	// Spy-specific settings.
+	PyspyBlocking bool `yaml:"pyspy-blocking"`
 }
 
 type Server struct {
