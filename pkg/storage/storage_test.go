@@ -113,12 +113,14 @@ var _ = Describe("storage package", func() {
 					for i := 0; i < size; i++ {
 						treeKey[i] = 'a'
 					}
-					for i := 0; i < 100; i++ {
+					for i := 0; i < 32*1024; i++ {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
 						key, _ := ParseKey("tree key" + strconv.Itoa(i+1))
 						err := s.Put(&PutInput{
+							StartTime:  st,
+							EndTime:    et,
 							Key:        key,
 							Val:        tree,
 							SpyName:    "testspy",
@@ -126,6 +128,7 @@ var _ = Describe("storage package", func() {
 						})
 						Expect(err).ToNot(HaveOccurred())
 					}
+
 					for i := 0; i < 100; i++ {
 						log.Printf("dimensions: %v", s.dimensions.Len())
 						log.Printf("segments: %v", s.segments.Len())
@@ -134,7 +137,6 @@ var _ = Describe("storage package", func() {
 
 						time.Sleep(time.Second * 5)
 					}
-					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
 			Context("persist data between restarts", func() {
