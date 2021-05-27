@@ -320,6 +320,58 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}, nil
 }
 
+type DeleteInput struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Key       *Key
+}
+
+func (s *Storage) Delete(di *DeleteInput) error {
+	s.closingMutex.Lock()
+	defer s.closingMutex.Unlock()
+
+	if s.closing {
+		return errClosing
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"startTime": di.StartTime.String(),
+		"endTime":   di.EndTime.String(),
+		"key":       di.Key.Normalized(),
+	}).Info("storage.Delete")
+
+	dimensions := []*dimension.Dimension{}
+	for k, v := range di.Key.labels {
+		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
+		dimensions = append(dimensions, d)
+	}
+
+	segmentKeys := dimension.Intersection(dimensions...)
+
+	for _, sk := range segmentKeys {
+		// TODO: refactor, store `Key`s in dimensions
+		skk, _ := ParseKey(string(sk))
+		st := s.segments.Get(skk.SegmentKey()).(*segment.Segment)
+		if st == nil {
+			continue
+		}
+
+		st.Get(di.StartTime, di.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+			k := skk.TreeKey(depth, t)
+			s.trees.Delete(k)
+			s.dicts.Delete(FromTreeToMainKey(k))
+		})
+
+		s.segments.Delete(skk.SegmentKey())
+	}
+
+	for k, v := range di.Key.labels {
+		s.dimensions.Delete(k + ":" + v)
+	}
+
+	return nil
+}
+
 func (s *Storage) Close() error {
 	s.closingMutex.Lock()
 	s.closing = true

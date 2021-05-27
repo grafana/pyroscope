@@ -76,6 +76,22 @@ func (cache *Cache) Flush() {
 	<-cache.cleanupDone
 }
 
+func (cache *Cache) Delete(key string) {
+	cache.Flush()
+	lg := logrus.WithFields(logrus.Fields{
+		"prefix": cache.prefix,
+		"key":    key,
+	})
+	lg.Debug("deleting")
+	err := cache.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(cache.prefix + key))
+	})
+	if err != nil {
+		// TODO: handle
+		lg.Errorf("error happened in Delete: %v", err)
+	}
+}
+
 func (cache *Cache) Get(key string) interface{} {
 	lg := logrus.WithField("key", key)
 	if cache.lfu.UpperBound > 0 {
