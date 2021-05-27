@@ -83,9 +83,11 @@ func (cache *Cache) Delete(key string) {
 		"key":    key,
 	})
 	lg.Debug("deleting")
+
 	err := cache.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(cache.prefix + key))
 	})
+
 	if err != nil {
 		// TODO: handle
 		lg.Errorf("error happened in Delete: %v", err)
