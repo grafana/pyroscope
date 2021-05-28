@@ -28,11 +28,11 @@ var _ = Describe("cache", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		cache := New(db, 10, "prefix:")
-		cache.Bytes = func(k string, v interface{}) []byte {
-			return []byte(v.(string))
+		cache.Bytes = func(k string, v interface{}) ([]byte, error) {
+			return []byte(v.(string)), nil
 		}
-		cache.FromBytes = func(k string, v []byte) interface{} {
-			return string(v)
+		cache.FromBytes = func(k string, v []byte) (interface{}, error) {
+			return string(v), nil
 		}
 		for i := 0; i < 200; i++ {
 			cache.Put(fmt.Sprintf("foo-%d", i), fmt.Sprintf("bar-%d", i))
