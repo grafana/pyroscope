@@ -66,6 +66,7 @@ var _ = Describe("storage package", func() {
 
 					Expect(err).ToNot(HaveOccurred())
 					Expect(gOut).To(BeNil())
+					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
 			Context("delete all trees", func() {
@@ -114,6 +115,7 @@ var _ = Describe("storage package", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(gOut).To(BeNil())
+					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
 			Context("put after delete", func() {

@@ -77,7 +77,7 @@ func (cache *Cache) Flush() {
 }
 
 func (cache *Cache) Delete(key string) {
-	cache.Flush()
+	cache.lfu.Delete(key)
 	lg := logrus.WithFields(logrus.Fields{
 		"prefix": cache.prefix,
 		"key":    key,
