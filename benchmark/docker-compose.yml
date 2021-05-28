@@ -3,26 +3,20 @@ services:
   client:
     env_file:
       - git-info.env
+      - run-parameters.env
     environment:
-      # these parameters set generated profiles parameters
-      - RAND_SEED=23061912
-      - PROFILE_NODES=10
-      - PROFILE_DEPTH=10
-      - PROFILE_SYMBOL_LENGTH=10
-
-      # these parameters set how many clients we should emulate
-      - CLIENTS=10
-      - REQUESTS=1
       # this generates nice graphs in grafana
       - PYROSCOPE_STATSD_ADDR=grafana:8125
 
     build:
       context: ../
       dockerfile: benchmark/Dockerfile
+
   pyroscope:
     environment:
       - PYROSCOPE_STATSD_ADDR=grafana:8125
       - PYROSCOPE_LOG_LEVEL=debug
+      - PYROSCOPE_CACHE_TREE_SIZE=10
     build:
       context: ../
       dockerfile: Dockerfile

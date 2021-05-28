@@ -348,13 +348,13 @@
         {
           "refCount": 0,
           "refId": "A",
-          "target": "aliasSub(aliasByMetric(stats.gauges.pyroscope-server.times.*), '---', '=')",
+          "target": "aliasSub(aliasByMetric(stats.gauges.pyroscope-server.stats.*), '---', '=')",
           "textEditor": false
         }
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Times",
+      "title": "Stats",
       "transformations": [
         {
           "id": "seriesToRows",

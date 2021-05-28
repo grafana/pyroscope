@@ -95,8 +95,8 @@ func (r *Remote) Upload(job *upstream.UploadJob) {
 }
 
 // UploadSync is only used in benchmarks right now
-func (r *Remote) UploadSync(job *upstream.UploadJob) {
-	r.jobs <- job
+func (r *Remote) UploadSync(job *upstream.UploadJob) error {
+	return r.uploadProfile(job)
 }
 
 func (r *Remote) uploadProfile(j *upstream.UploadJob) error {

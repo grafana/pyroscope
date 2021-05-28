@@ -41,13 +41,14 @@ func startClientThread(wg *sync.WaitGroup) {
 		panic(err)
 	}
 
-	st := time.Now()
-	et := st.Add(10 * time.Second)
+	threadStartTime := time.Now()
 
 	for i := 0; i < envInt("REQUESTS"); i++ {
 		t := fixtures[0]
 
-		r.UploadSync(&upstream.UploadJob{
+		st := threadStartTime.Add(time.Duration(i*10) * time.Second)
+		et := st.Add(10 * time.Second)
+		err := r.UploadSync(&upstream.UploadJob{
 			Name:            "app-name{}",
 			StartTime:       st,
 			EndTime:         et,
@@ -57,6 +58,9 @@ func startClientThread(wg *sync.WaitGroup) {
 			AggregationType: "sum",
 			Trie:            t,
 		})
+		if err != nil {
+			statsd.Increment("errors.upload-error")
+		}
 	}
 
 	wg.Done()
@@ -100,16 +104,26 @@ var excludeEnv = []string{
 	"PYROSCOPE_STATSD_ADDR",
 }
 
-func main() {
+var symbolBuf []byte
 
-	logrus.Info("waiting for other services to load")
-	// TODO: should have some health check instead
-	time.Sleep(30 * time.Second)
+func generateProfile() *transporttrie.Trie {
+	t := transporttrie.New()
+	r := rand.New(rand.NewSource(int64(envInt("RAND_SEED"))))
 
-	if statsdAddr := os.Getenv("PYROSCOPE_STATSD_ADDR"); statsdAddr != "" {
-		statsd.Initialize(statsdAddr, "pyroscope-server")
+	for w := 0; w < envInt("PROFILE_WIDTH"); w++ {
+		symbol := []byte("root")
+		for d := 0; d < envInt("PROFILE_DEPTH"); d++ {
+			r.Read(symbolBuf)
+			symbol = append(symbol, byte(';'))
+			symbol = append(symbol, []byte(hex.EncodeToString(symbolBuf))...)
+		}
+
+		t.Insert(symbol, 100, true)
 	}
+	return t
+}
 
+func reportEnvMetrics() {
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
 		if len(pair) == 2 && !slices.StringContains(excludeEnv, pair[0]) {
@@ -119,35 +133,37 @@ func main() {
 
 	reportMetrics("env", "GOARCH", runtime.GOARCH)
 	reportMetrics("env", "GOOS", runtime.GOOS)
+}
+
+func setupLogging() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		TimestampFormat: "2006-01-02T15:04:05.000000",
+	})
+}
+
+func main() {
+	symbolBuf = make([]byte, envInt("PROFILE_SYMBOL_LENGTH"))
+	setupLogging()
+	if statsdAddr := os.Getenv("PYROSCOPE_STATSD_ADDR"); statsdAddr != "" {
+		statsd.Initialize(statsdAddr, "pyroscope-server")
+	}
+
+	logrus.Info("waiting for other services to load")
+	// TODO: should have some health check instead
+	time.Sleep(30 * time.Second)
+
+	reportEnvMetrics()
 
 	clients := envInt("CLIENTS")
-	customFormatter := new(logrus.TextFormatter)
-	customFormatter.TimestampFormat = "2006-01-02T15:04:05.000000"
-	logrus.SetFormatter(customFormatter)
-
 	logrus.Info("generating fixtures")
-	symbolBuf := make([]byte, envInt("PROFILE_SYMBOL_LENGTH"))
 	for i := 0; i < 100; i++ {
-		t := transporttrie.New()
-		r := rand.New(rand.NewSource(int64(envInt("RAND_SEED"))))
-
-		for j := 0; j < envInt("PROFILE_NODES"); j++ {
-			symbol := []byte("root")
-			for k := 0; k < envInt("PROFILE_DEPTH"); k++ {
-				r.Read(symbolBuf)
-				symbol = append(symbol, []byte(";")[0])
-				symbol = append(symbol, symbolBuf...)
-			}
-			s := hex.EncodeToString(symbol)
-			t.Insert([]byte(s), 100, true)
-		}
-
-		fixtures = append(fixtures, t)
+		fixtures = append(fixtures, generateProfile())
 	}
 	logrus.Info("done generating fixtures")
 
 	logrus.Info("starting sending requests")
-	reportMetrics("times", "1-start-time", time.Now().Format(timeFmt))
+	startTime := time.Now()
+	reportMetrics("stats", "1-start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
 	wg.Add(clients)
 	for i := 0; i < clients; i++ {
@@ -155,7 +171,8 @@ func main() {
 	}
 	wg.Wait()
 	logrus.Info("done sending requests")
-	reportMetrics("times", "2-stop-time", time.Now().Format(timeFmt))
+	reportMetrics("stats", "2-stop-time", time.Now().Format(timeFmt))
+	reportMetrics("stats", "duration", time.Now().Sub(startTime).String())
 
 	time.Sleep(5 * time.Second)
 	pingScreenshotTaker()
