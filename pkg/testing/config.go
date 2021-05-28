@@ -16,10 +16,10 @@ func WithConfig(cb func(cfg **config.Config)) {
 				StoragePath: tmpDir.Path,
 				APIBindAddr: ":4040",
 
-				CacheSegmentSize:    10,
-				CacheTreeSize:       10,
-				CacheDictionarySize: 10,
-				CacheDimensionSize:  10,
+				CacheSegmentSize:    50,
+				CacheTreeSize:       50,
+				CacheDictionarySize: 50,
+				CacheDimensionSize:  50,
 
 				MaxNodesSerialization: 2048,
 				MaxNodesRender:        2048,
