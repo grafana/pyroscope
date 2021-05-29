@@ -28,5 +28,5 @@ func dirSize(path string) (result bytesize.ByteSize) {
 		}
 		return nil
 	})
-	return
+	return result
 }
