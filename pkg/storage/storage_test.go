@@ -1,7 +1,8 @@
 package storage
 
 import (
-	"log"
+	"os"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -10,7 +11,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
+	"github.com/shirou/gopsutil/mem"
 	"github.com/sirupsen/logrus"
+	stats "gopkg.in/alexcesaro/statsd.v2"
 )
 
 // 21:22:08      air |  (time.Duration) 10s,
@@ -23,12 +26,21 @@ import (
 // 21:22:08      air |  (time.Duration) 27777h46m40s
 
 var (
-	s *Storage
+	s      *Storage
+	client *stats.Client
 )
+
+var _ = BeforeSuite(func() {
+	statAddr := os.Getenv("STORAGE_TEST_STATS_ADDR")
+	if statAddr != "" {
+		cli, err := stats.New(stats.Address(statAddr), stats.Prefix("storage_test"))
+		Expect(err).ToNot(HaveOccurred())
+		client = cli
+	}
+})
 
 var _ = Describe("storage package", func() {
 	logrus.SetLevel(logrus.InfoLevel)
-	// logrus.SetOutput(ioutil.Discard)
 
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
@@ -108,12 +120,12 @@ var _ = Describe("storage package", func() {
 				It("works correctly", func() {
 					tree := tree.New()
 
-					size := 1024
+					size := 16
 					treeKey := make([]byte, size)
 					for i := 0; i < size; i++ {
 						treeKey[i] = 'a'
 					}
-					for i := 0; i < 32*1024; i++ {
+					for i := 0; i < 1024; i++ {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
@@ -128,12 +140,19 @@ var _ = Describe("storage package", func() {
 					}
 
 					for i := 0; i < 100; i++ {
-						log.Printf("dimensions: %v", s.dimensions.Len())
-						log.Printf("segments: %v", s.segments.Len())
-						log.Printf("dicts: %v", s.dicts.Len())
-						log.Printf("trees: %v", s.trees.Len())
+						if client != nil {
+							vm, err := mem.VirtualMemory()
+							Expect(err).ToNot(HaveOccurred())
+							client.Gauge("Total", vm.Total)
 
-						time.Sleep(time.Second * 5)
+							var m runtime.MemStats
+							runtime.ReadMemStats(&m)
+							client.Gauge("NumGC", m.NumGC)
+							client.Gauge("Alloc", m.Alloc)
+							client.Gauge("Used", float64(m.Alloc)/float64(vm.Total))
+							client.Gauge("Segments", s.segments.Len())
+						}
+						time.Sleep(time.Second * 10)
 					}
 				})
 			})

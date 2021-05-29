@@ -197,6 +197,9 @@ func New(cfg *config.Config) (*Storage, error) {
 				s.segments.Evit(percent)
 				s.trees.Evit(percent)
 				s.dicts.Evit(percent)
+
+				// force gc after eviction
+				runtime.GC()
 			}
 
 			// reset the timer

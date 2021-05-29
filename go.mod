@@ -45,6 +45,7 @@ require (
 	github.com/wacul/ptr v1.0.0 // indirect
 	golang.org/x/tools v0.1.0
 	google.golang.org/protobuf v1.26.0
+	gopkg.in/alexcesaro/statsd.v2 v2.0.0
 	honnef.co/go/tools v0.0.1-2020.1.6
 )
 
