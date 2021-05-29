@@ -41,13 +41,13 @@ func (s *Segment) Serialize(w io.Writer) error {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
-	if s.root == nil {
-		return nil
-	}
-
 	varint.Write(w, currentVersion)
 
 	serialization.WriteMetadata(w, s.generateMetadata())
+
+	if s.root == nil {
+		return nil
+	}
 
 	nodes := []*streeNode{s.root}
 	for len(nodes) > 0 {
