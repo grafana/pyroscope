@@ -46,15 +46,15 @@ func Deserialize(r io.Reader) (*Dimension, error) {
 			return nil, err
 		}
 
-		s.keys = append(s.keys, key(keyBuf))
+		s.keys = append(s.keys, Key(keyBuf))
 	}
 
 	return s, nil
 }
 
-func (t *Dimension) Bytes() []byte {
+func (s *Dimension) Bytes() []byte {
 	b := bytes.Buffer{}
-	t.Serialize(&b)
+	s.Serialize(&b)
 	return b.Bytes()
 }
 

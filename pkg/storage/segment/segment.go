@@ -16,9 +16,9 @@ type streeNode struct {
 	children []*streeNode
 }
 
-func (parent *streeNode) replace(child *streeNode) {
-	i := child.time.Sub(parent.time) / durations[child.depth]
-	parent.children[i] = child
+func (sn *streeNode) replace(child *streeNode) {
+	i := child.time.Sub(sn.time) / durations[child.depth]
+	sn.children[i] = child
 }
 
 func (sn *streeNode) relationship(st, et time.Time) rel {

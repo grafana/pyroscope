@@ -50,13 +50,13 @@ type TmpltVars struct {
 	Data string
 }
 
-func (s *vis) print(name string) {
+func (v *vis) print(name string) {
 	if !visDebuggingEnabled {
 		return
 	}
 	vizTmplt, _ := template.New("viz").Parse(vizTmplt)
 
-	jsonBytes, _ := json.MarshalIndent(s.nodes, "", "  ")
+	jsonBytes, _ := json.MarshalIndent(v.nodes, "", "  ")
 	jsonStr := string(jsonBytes)
 	w, _ := os.Create(name)
 	vizTmplt.Execute(w, TmpltVars{Data: jsonStr})
