@@ -38,9 +38,8 @@ func startCPUProfile(w io.Writer, hz uint32) error {
 	//   but if you want to use a different sampling rate we use our experimental profiler
 	if hz == 100 {
 		return pprof.StartCPUProfile(w)
-	} else {
-		return custom_pprof.StartCPUProfile(w, hz)
 	}
+	return custom_pprof.StartCPUProfile(w, hz)
 }
 
 func Start(profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error) {
