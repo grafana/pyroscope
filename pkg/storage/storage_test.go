@@ -119,8 +119,6 @@ var _ = Describe("storage package", func() {
 
 						key, _ := ParseKey("tree key" + strconv.Itoa(i+1))
 						err := s.Put(&PutInput{
-							StartTime:  st,
-							EndTime:    et,
 							Key:        key,
 							Val:        tree,
 							SpyName:    "testspy",
