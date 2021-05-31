@@ -22,6 +22,7 @@ require (
 	github.com/ianlancetaylor/demangle v0.0.0-20200715173712-053cf528c12f // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/josephspurrier/goversioninfo v1.2.0
+	github.com/kardianos/service v1.2.0
 	github.com/kisielk/godepgraph v0.0.0-20190626013829-57a7e4a651a9
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kyoh86/richgo v0.3.3

@@ -17,7 +17,7 @@ type Config struct {
 }
 
 type Agent struct {
-	Config string `def:"agent.yml" desc:"location of config file"`
+	Config string `def:"<defaultAgentConfigPath>" desc:"location of config file"`
 
 	LogLevel               string        `def:"info" desc:"log level: debug|info|warn|error"`
 	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`

@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -27,7 +28,7 @@ var disableMacOSChecks bool
 var disableLinuxChecks bool
 
 // Cli is command line interface for both exec and connect commands
-func Cli(cfg *config.Exec, args []string) error {
+func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 	// isExec = true means we need to start the process first (pyroscope exec)
 	// isExec = false means the process is already there (pyroscope connect)
 	isExec := cfg.Pid == 0
@@ -88,7 +89,7 @@ func Cli(cfg *config.Exec, args []string) error {
 	pid := cfg.Pid
 	var cmd *exec.Cmd
 	if isExec {
-		cmd = exec.Command(args[0], args[1:]...)
+		cmd = exec.CommandContext(ctx, args[0], args[1:]...)
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
 		cmd.Stdin = os.Stdin
@@ -144,7 +145,7 @@ func Cli(cfg *config.Exec, args []string) error {
 	if isExec {
 		waitForSpawnedProcessToExit(cmd)
 	} else {
-		waitForProcessToExit(pid)
+		waitForProcessToExit(ctx, pid)
 	}
 
 	return nil
@@ -180,18 +181,23 @@ func waitForSpawnedProcessToExit(cmd *exec.Cmd) {
 	}
 }
 
-func waitForProcessToExit(pid int) {
+func waitForProcessToExit(ctx context.Context, pid int) {
 	// pid == -1 means we're profiling whole system
 	if pid == -1 {
 		select {}
 	}
-
 	t := time.NewTicker(time.Second)
-	for range t.C {
-		p, err := ps.FindProcess(pid)
-		if p == nil || err != nil {
-			logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
 			return
+		case <-t.C:
+			p, err := ps.FindProcess(pid)
+			if p == nil || err != nil {
+				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
+				return
+			}
 		}
 	}
 }
