@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,7 +12,6 @@ import (
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -219,19 +217,6 @@ func resolvePath(path string) string {
 		return res
 	}
 	return path
-}
-
-func loadTargets(c *config.Agent) error {
-	b, err := ioutil.ReadFile(c.Config)
-	if err != nil {
-		return err
-	}
-	var a config.Agent
-	if err = yaml.Unmarshal(b, &a); err != nil {
-		return err
-	}
-	c.Targets = a.Targets
-	return nil
 }
 
 func printRAMUsage() {

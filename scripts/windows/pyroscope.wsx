@@ -120,6 +120,7 @@
 				<ServiceInstall
 						Id="PyroscopeService"
 						Type="ownProcess"
+						Arguments="agent"
 						Name="$(var.PyroscopeServiceName)"
 						DisplayName="$(var.PyroscopeFullName)"
 						Description="$(var.PyroscopeDescription)"
