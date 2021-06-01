@@ -139,7 +139,7 @@ var _ = Describe("storage package", func() {
 						Expect(err).ToNot(HaveOccurred())
 					}
 
-					for i := 0; i < 100; i++ {
+					for i := 0; i < 6; i++ {
 						if client != nil {
 							vm, err := mem.VirtualMemory()
 							Expect(err).ToNot(HaveOccurred())

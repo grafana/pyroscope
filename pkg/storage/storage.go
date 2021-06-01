@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -84,6 +85,52 @@ func newBadger(cfg *config.Config, name string) (*badger.DB, error) {
 	return db, err
 }
 
+func (s *Storage) startEvictTimer(interval time.Duration) error {
+	// load the total memory of the server
+	vm, err := mem.VirtualMemory()
+	if err != nil {
+		return err
+	}
+
+	// start a timer for checking if the memory used by application
+	// is more than 25% of the total memory, if so, trigger eviction
+	// with 10% to every cache
+	go func() {
+		ticker := time.NewTimer(interval * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if s.closing {
+				return
+			}
+
+			// read the allocated memory used by application
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+
+			used := float64(m.Alloc) / float64(vm.Total)
+
+			logrus.Infof("current used percent of memory: %.5f, %f, %f", used, s.cfg.Server.CacheEvictPoint, s.cfg.Server.CacheEvictVolume)
+			if used > s.cfg.Server.CacheEvictPoint {
+				percent := s.cfg.Server.CacheEvictVolume
+
+				s.dimensions.Evit(percent)
+				s.segments.Evit(percent)
+				s.trees.Evit(percent)
+				s.dicts.Evit(percent)
+
+				// force gc after eviction
+				runtime.GC()
+			}
+
+			// reset the timer
+			ticker.Reset(interval * time.Second)
+		}
+	}()
+
+	return nil
+}
+
 func New(cfg *config.Config) (*Storage, error) {
 	db, err := newBadger(cfg, "main")
 	if err != nil {
@@ -164,48 +211,12 @@ func New(cfg *config.Config) (*Storage, error) {
 		return tree.New()
 	}
 
-	// load the total memory of the server
-	vm, err := mem.VirtualMemory()
-	if err != nil {
-		return nil, err
-	}
-
-	interval := time.Duration(10)
 	// start a timer for checking if the memory used by application
 	// is more than 25% of the total memory, if so, trigger eviction
 	// with 10% to every cache
-	go func() {
-		ticker := time.NewTimer(interval * time.Second)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			if s.closing {
-				return
-			}
-
-			// read the allocated memory used by application
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-
-			used := float64(m.Alloc) / float64(vm.Total)
-
-			logrus.Infof("current used percent of memory: %.5f, %f, %f", used, s.cfg.Server.CacheEvictPoint, s.cfg.Server.CacheEvictVolume)
-			if used > s.cfg.Server.CacheEvictPoint {
-				percent := s.cfg.Server.CacheEvictVolume
-
-				s.dimensions.Evit(percent)
-				s.segments.Evit(percent)
-				s.trees.Evit(percent)
-				s.dicts.Evit(percent)
-
-				// force gc after eviction
-				runtime.GC()
-			}
-
-			// reset the timer
-			ticker.Reset(interval * time.Second)
-		}
-	}()
+	if err := s.startEvictTimer(time.Duration(10)); err != nil {
+		return nil, fmt.Errorf("start evict timer: %v", err)
+	}
 
 	return s, nil
 }
