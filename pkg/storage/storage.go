@@ -31,6 +31,10 @@ import (
 var errClosing = errors.New("the db is in closing state")
 var errOutOfSpace = errors.New("running out of space")
 
+var (
+	EvictInterval = 10
+)
+
 type Storage struct {
 	closingMutex sync.Mutex
 	closing      bool
@@ -214,7 +218,7 @@ func New(cfg *config.Config) (*Storage, error) {
 	// start a timer for checking if the memory used by application
 	// is more than 25% of the total memory, if so, trigger eviction
 	// with 10% to every cache
-	if err := s.startEvictTimer(time.Duration(10)); err != nil {
+	if err := s.startEvictTimer(time.Duration(EvictInterval)); err != nil {
 		return nil, fmt.Errorf("start evict timer: %v", err)
 	}
 

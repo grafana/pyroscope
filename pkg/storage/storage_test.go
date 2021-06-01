@@ -44,6 +44,8 @@ var _ = Describe("storage package", func() {
 
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
+			EvictInterval = 2
+
 			var err error
 			s, err = New(*cfg)
 			Expect(err).ToNot(HaveOccurred())
@@ -125,7 +127,7 @@ var _ = Describe("storage package", func() {
 					for i := 0; i < size; i++ {
 						treeKey[i] = 'a'
 					}
-					for i := 0; i < 1024; i++ {
+					for i := 0; i < 200; i++ {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
@@ -139,7 +141,7 @@ var _ = Describe("storage package", func() {
 						Expect(err).ToNot(HaveOccurred())
 					}
 
-					for i := 0; i < 6; i++ {
+					for i := 0; i < 5; i++ {
 						if client != nil {
 							vm, err := mem.VirtualMemory()
 							Expect(err).ToNot(HaveOccurred())
@@ -151,8 +153,10 @@ var _ = Describe("storage package", func() {
 							client.Gauge("Alloc", m.Alloc)
 							client.Gauge("Used", float64(m.Alloc)/float64(vm.Total))
 							client.Gauge("Segments", s.segments.Len())
+						} else {
+							logrus.Infof("segments: %v", s.segments.Len())
 						}
-						time.Sleep(time.Second * 10)
+						time.Sleep(time.Second * time.Duration(EvictInterval))
 					}
 				})
 			})
