@@ -31,19 +31,19 @@ var disableMacOSChecks bool
 var disableLinuxChecks bool
 
 // Cli is command line interface for both exec and connect commands
-func Cli(cfg *config.Config, args []string) error {
+func Cli(cfg *config.Exec, args []string) error {
 	// isExec = true means we need to start the process first (pyroscope exec)
 	// isExec = false means the process is already there (pyroscope connect)
-	isExec := cfg.Exec.Pid == 0
+	isExec := cfg.Pid == 0
 
 	if isExec && len(args) == 0 {
 		return errors.New("no arguments passed")
 	}
 
 	// TODO: this is somewhat hacky, we need to find a better way to configure agents
-	pyspy.Blocking = cfg.Exec.PyspyBlocking
+	pyspy.Blocking = cfg.PyspyBlocking
 
-	spyName := cfg.Exec.SpyName
+	spyName := cfg.SpyName
 	if spyName == "auto" {
 		if isExec {
 			baseName := path.Base(args[0])
@@ -64,7 +64,7 @@ func Cli(cfg *config.Config, args []string) error {
 			supportedSpies := spy.SupportedExecSpies()
 			suggestedCommand := fmt.Sprintf("pyroscope connect -spy-name %s %s", supportedSpies[0], strings.Join(args, " "))
 			return fmt.Errorf(
-				"Pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
+				"pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
 				color.YellowString("-spy-name"),
 				color.YellowString(suggestedCommand),
 				strings.Join(supportedSpies, ","),
@@ -79,17 +79,17 @@ func Cli(cfg *config.Config, args []string) error {
 		return err
 	}
 
-	if cfg.Exec.ApplicationName == "" {
+	if cfg.ApplicationName == "" {
 		logrus.Infof("we recommend specifying application name via %s flag or env variable %s", color.YellowString("-application-name"), color.YellowString("PYROSCOPE_APPLICATION_NAME"))
-		cfg.Exec.ApplicationName = spyName + "." + names.GetRandomName(generateSeed(args))
-		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.Exec.ApplicationName))
+		cfg.ApplicationName = spyName + "." + names.GetRandomName(generateSeed(args))
+		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.ApplicationName))
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"args": fmt.Sprintf("%q", args),
 	}).Debug("starting command")
 
-	pid := cfg.Exec.Pid
+	pid := cfg.Pid
 	var cmd *exec.Cmd
 	if isExec {
 		cmd = exec.Command(args[0], args[1:]...)
@@ -99,7 +99,7 @@ func Cli(cfg *config.Config, args []string) error {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 
 		// permissions drop
-		if isRoot() && !cfg.Exec.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
+		if isRoot() && !cfg.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
 			creds, err := generateCredentialsDrop()
 			if err != nil {
 				logrus.Errorf("failed to drop permissions, %q", err)
@@ -108,8 +108,8 @@ func Cli(cfg *config.Config, args []string) error {
 			}
 		}
 
-		if cfg.Exec.UserName != "" || cfg.Exec.GroupName != "" {
-			creds, err := generateCredentials(cfg.Exec.UserName, cfg.Exec.GroupName)
+		if cfg.UserName != "" || cfg.GroupName != "" {
+			creds, err := generateCredentials(cfg.UserName, cfg.GroupName)
 			if err != nil {
 				logrus.Errorf("failed to generate credentials: %q", err)
 			} else {
@@ -125,53 +125,52 @@ func Cli(cfg *config.Config, args []string) error {
 		pid = cmd.Process.Pid
 	}
 
-	u, err := remote.New(remote.RemoteConfig{
-		AuthToken:              cfg.Exec.AuthToken,
-		UpstreamAddress:        cfg.Exec.ServerAddress,
-		UpstreamThreads:        cfg.Exec.UpstreamThreads,
-		UpstreamRequestTimeout: cfg.Exec.UpstreamRequestTimeout,
-	})
-	if err != nil {
-		return err
+	rc := remote.RemoteConfig{
+		AuthToken:              cfg.AuthToken,
+		UpstreamAddress:        cfg.ServerAddress,
+		UpstreamThreads:        cfg.UpstreamThreads,
+		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
 	}
-	u.Logger = logrus.StandardLogger()
+	u, err := remote.New(rc, logrus.StandardLogger())
+	if err != nil {
+		return fmt.Errorf("new remote upstream: %v", err)
+	}
 	defer u.Stop()
 
 	logrus.WithFields(logrus.Fields{
-		"app-name":            cfg.Exec.ApplicationName,
+		"app-name":            cfg.ApplicationName,
 		"spy-name":            spyName,
 		"pid":                 pid,
-		"detect-subprocesses": cfg.Exec.DetectSubprocesses,
+		"detect-subprocesses": cfg.DetectSubprocesses,
 	}).Debug("starting agent session")
 
 	// if the sample rate is zero, use the default value
-	if cfg.Exec.SampleRate == 0 {
-		cfg.Exec.SampleRate = types.DefaultSampleRate
+	if cfg.SampleRate == 0 {
+		cfg.SampleRate = types.DefaultSampleRate
 	}
 
-	sess := agent.NewSession(&agent.SessionConfig{
+	sc := agent.SessionConfig{
 		Upstream:         u,
-		AppName:          cfg.Exec.ApplicationName,
+		AppName:          cfg.ApplicationName,
 		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 		SpyName:          spyName,
-		SampleRate:       uint32(cfg.Exec.SampleRate),
+		SampleRate:       uint32(cfg.SampleRate),
 		UploadRate:       10 * time.Second,
 		Pid:              pid,
-		WithSubprocesses: cfg.Exec.DetectSubprocesses,
-	})
-
-	sess.Logger = logrus.StandardLogger()
-	err = sess.Start()
-	if err != nil {
-		logrus.Errorf("error when starting session: %q", err)
+		WithSubprocesses: cfg.DetectSubprocesses,
 	}
-	defer sess.Stop()
+	session := agent.NewSession(&sc, logrus.StandardLogger())
+	if err := session.Start(); err != nil {
+		return fmt.Errorf("start session: %v", err)
+	}
+	defer session.Stop()
 
 	if isExec {
 		waitForSpawnedProcessToExit(cmd)
 	} else {
 		waitForProcessToExit(pid)
 	}
+
 	return nil
 }
 
@@ -210,15 +209,13 @@ func waitForProcessToExit(pid int) {
 	if pid == -1 {
 		select {}
 	}
+
 	t := time.NewTicker(time.Second)
-	for {
-		select {
-		case <-t.C:
-			p, err := ps.FindProcess(pid)
-			if p == nil || err != nil {
-				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
-				return
-			}
+	for range t.C {
+		p, err := ps.FindProcess(pid)
+		if p == nil || err != nil {
+			logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
+			return
 		}
 	}
 }
@@ -236,7 +233,7 @@ func performChecks(spyName string) error {
 	if !stringsContains(spy.SupportedSpies, spyName) {
 		supportedSpies := spy.SupportedExecSpies()
 		return fmt.Errorf(
-			"Spy \"%s\" is not supported. Available spies are: %s\n",
+			"spy \"%s\" is not supported. Available spies are: %s",
 			color.GreenString(spyName),
 			strings.Join(supportedSpies, ","),
 		)
