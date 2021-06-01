@@ -9,5 +9,5 @@ import (
 )
 
 func startAgent(_ *config.Agent) error {
-	return fmt.Errorf("agent mode is not supported")
+	return fmt.Errorf("agent mode is supported only on Windows")
 }

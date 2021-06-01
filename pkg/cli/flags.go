@@ -89,6 +89,7 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 			val := fieldV.Addr().Interface().(*string)
 			defaultValStr = strings.ReplaceAll(defaultValStr, "<installPrefix>", installPrefix)
 			defaultValStr = strings.ReplaceAll(defaultValStr, "<defaultAgentConfigPath>", defaultAgentConfigPath())
+			defaultValStr = strings.ReplaceAll(defaultValStr, "<defaultAgentLogFilePath>", defaultAgentLogFilePath())
 			flagSet.StringVar(val, nameVal, defaultValStr, descVal)
 		case reflect.TypeOf(true):
 			val := fieldV.Addr().Interface().(*bool)

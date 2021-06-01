@@ -1,3 +1,5 @@
+// +build debugspy
+
 package target
 
 import (
@@ -8,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
@@ -17,7 +20,7 @@ func (t *fakeTarget) attach(_ context.Context) { t.attached++ }
 
 var _ = Describe("target", func() {
 	It("Attaches to targets", func() {
-		tgtMgr := NewManager(logrus.StandardLogger(), &config.Agent{
+		tgtMgr := NewManager(logrus.StandardLogger(), new(remote.Remote), &config.Agent{
 			Targets: []config.Target{
 				{
 					ServiceName:     "my-service",
@@ -31,7 +34,7 @@ var _ = Describe("target", func() {
 		tgtMgr.resolve = func(c config.Target) (target, bool) { return t, true }
 		tgtMgr.backoffPeriod = time.Millisecond * 10
 
-		Expect(tgtMgr.Start()).ToNot(HaveOccurred())
+		tgtMgr.Start()
 		time.Sleep(time.Second)
 		tgtMgr.Stop()
 

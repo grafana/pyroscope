@@ -19,8 +19,10 @@ type Config struct {
 type Agent struct {
 	Config string `def:"<defaultAgentConfigPath>" desc:"location of config file"`
 
-	LogLevel               string        `def:"info" desc:"log level: debug|info|warn|error"`
-	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope"`
+	LogFilePath string `def:"<defaultAgentLogFilePath>" desc:"log file path"`
+	LogLevel    string `def:"info" desc:"log level: debug|info|warn|error"`
+	NoLogging   bool   `def:"false" desc:"disables logging from pyroscope"`
+
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`
 	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data"`
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`

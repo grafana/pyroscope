@@ -50,7 +50,7 @@
 			 Language="1033"
 			 Version="$(var.ProductVersion)"
 			 UpgradeCode="$(var.ProductUpgradeCode)"
-			 Manufacturer="$(var.ManufacturerName)" >
+			 Manufacturer="Pyroscope, Inc" >
 
 		<Package
 				Compressed="yes"

@@ -2,18 +2,19 @@ package target
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
-)
+	"github.com/sirupsen/logrus"
 
-var (
-	ErrNotFound   = errors.New("not found")
-	ErrNotRunning = errors.New("not running")
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/util/names"
 )
 
 const (
@@ -25,43 +26,14 @@ type Manager struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	logger agent.Logger
-	agent  *config.Agent
+	logger *logrus.Logger
+	remote *remote.Remote
+	config *config.Agent
 	stop   chan struct{}
 	wg     sync.WaitGroup
 
 	resolve       func(config.Target) (target, bool)
 	backoffPeriod time.Duration
-}
-
-func NewManager(logger agent.Logger, agentConfig *config.Agent) *Manager {
-	mgr := Manager{
-		logger:        logger,
-		agent:         agentConfig,
-		stop:          make(chan struct{}),
-		backoffPeriod: defaultBackoffPeriod,
-	}
-	mgr.ctx, mgr.cancel = context.WithCancel(context.Background())
-	mgr.resolve = mgr.resolveTarget
-	return &mgr
-}
-
-func (mgr *Manager) Start() error {
-	for _, t := range mgr.agent.Targets {
-		tgt, ok := mgr.resolve(t)
-		if !ok {
-			return fmt.Errorf("unknown target type")
-		}
-		mgr.wg.Add(1)
-		go mgr.runTarget(tgt)
-	}
-	return nil
-}
-
-func (mgr *Manager) Stop() {
-	mgr.cancel()
-	close(mgr.stop)
-	mgr.wg.Wait()
 }
 
 type target interface {
@@ -70,11 +42,82 @@ type target interface {
 	attach(ctx context.Context)
 }
 
+func NewManager(l *logrus.Logger, r *remote.Remote, c *config.Agent) *Manager {
+	mgr := Manager{
+		logger:        l,
+		remote:        r,
+		config:        c,
+		stop:          make(chan struct{}),
+		backoffPeriod: defaultBackoffPeriod,
+	}
+	mgr.ctx, mgr.cancel = context.WithCancel(context.Background())
+	mgr.resolve = mgr.resolveTarget
+	return &mgr
+}
+
+func (mgr *Manager) canonise(t *config.Target) error {
+	if t.SpyName == types.GoSpy {
+		return fmt.Errorf("gospy can not profile other processes")
+	}
+	var found bool
+	for _, s := range spy.SupportedSpies {
+		if s == t.SpyName {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("spy %q is not supported", t.SpyName)
+	}
+	if t.SampleRate == 0 {
+		t.SampleRate = types.DefaultSampleRate
+	}
+	if t.ApplicationName == "" {
+		t.ApplicationName = t.SpyName + "." + names.GetRandomName(generateSeed(t.ServiceName, t.SpyName))
+		logger := mgr.logger.WithField("spy-name", t.SpyName)
+		if t.ServiceName != "" {
+			logger = logger.WithField("service-name", t.ServiceName)
+		}
+		logger.Infof("we recommend specifying application name via 'application-name' parameter")
+		logger.Infof("for now we chose the name for you and it's %q", t.ApplicationName)
+	}
+	return nil
+}
+
+func (mgr *Manager) Start() {
+	for _, t := range mgr.config.Targets {
+		var tgt target
+		var ok bool
+		err := mgr.canonise(&t)
+		if err == nil {
+			tgt, ok = mgr.resolve(t)
+			if !ok {
+				err = fmt.Errorf("unknown target type")
+			}
+		}
+		if err != nil {
+			mgr.logger.
+				WithField("app-name", t.ApplicationName).
+				WithField("spy-name", t.SpyName).
+				WithError(err).Error("failed to setup target")
+			continue
+		}
+		mgr.wg.Add(1)
+		go mgr.runTarget(tgt)
+	}
+}
+
+func (mgr *Manager) Stop() {
+	mgr.cancel()
+	close(mgr.stop)
+	mgr.wg.Wait()
+}
+
 func (mgr *Manager) resolveTarget(t config.Target) (target, bool) {
 	var tgt target
 	switch {
 	case t.ServiceName != "":
-		tgt = newServiceTarget(mgr.logger, mgr.agent, t)
+		tgt = newServiceTarget(mgr.logger, mgr.remote, t)
 	default:
 		return nil, false
 	}
@@ -102,4 +145,12 @@ func (mgr *Manager) runTarget(t target) {
 			return
 		}
 	}
+}
+
+func generateSeed(args ...string) string {
+	path, err := os.Getwd()
+	if err != nil {
+		path = "<unknown>"
+	}
+	return path + "|" + strings.Join(args, "&")
 }
