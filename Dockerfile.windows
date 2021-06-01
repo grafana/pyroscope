@@ -10,10 +10,10 @@ COPY scripts ./scripts
 COPY go.mod go.sum pyroscope.go ./
 
 # Generate .syso object file.
-RUN export $("scripts/generate-git-info.sh") && go run scripts/windows/generate-windows-version-info/main.go \
+RUN source scripts/packages/git-info && go run scripts/windows/generate-windows-version-info/main.go \
   -version "$GIT_TAG" \
   -icon scripts/windows/resources/app.ico \
-  -out resource.syso
+  -out cmd/pyroscope/resource.syso
 
 ## Build for Windows x64 only.
 RUN GOOS=windows GOARCH=amd64 go build \

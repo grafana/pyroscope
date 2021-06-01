@@ -12,7 +12,7 @@ import (
 
 func main() {
 	var version string
-	flag.StringVar(&version, "version", "0.0.0", "Version in semver format.")
+	flag.StringVar(&version, "version", "", "Version in semver format.")
 
 	var outputPath string
 	flag.StringVar(&outputPath, "out", "", "Output file path.")
@@ -21,10 +21,17 @@ func main() {
 	flag.StringVar(&iconPath, "icon", "", "Icon file path.")
 	flag.Parse()
 
-	version = strings.Trim(version, "\"")
+	if version == "" {
+		fatalf("version is required")
+	}
+	version = strings.Trim(version, `"`)
 	v, err := semver.Parse(strings.TrimPrefix(version, "v"))
 	if err != nil {
 		fatalf("invalid version %q: %v", version, err)
+	}
+
+	if outputPath == "" {
+		fatalf("output path is required")
 	}
 
 	versionInfo := goversioninfo.VersionInfo{
