@@ -75,7 +75,7 @@ func createLogger(config *config.Agent) (*logrus.Logger, error) {
 	}
 	l, err := logrus.ParseLevel(config.LogLevel)
 	if err != nil {
-		return nil, fmt.Errorf("parsing log level %q: %w", config.LogLevel, err)
+		return nil, fmt.Errorf("parsing log level: %w", err)
 	}
 	logrus.SetLevel(l)
 	if service.Interactive() || config.LogFilePath == "" {
@@ -83,7 +83,7 @@ func createLogger(config *config.Agent) (*logrus.Logger, error) {
 	}
 	f, err := ensureLogFile(config.LogFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("log file %q: %w", config.LogFilePath, err)
+		return nil, fmt.Errorf("log file: %w", err)
 	}
 	logrus.SetOutput(f)
 	return logrus.StandardLogger(), nil
