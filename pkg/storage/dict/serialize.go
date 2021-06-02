@@ -81,13 +81,14 @@ func Deserialize(r io.Reader) (*Dict, error) {
 	return t, nil
 }
 
-func (t *Dict) Bytes() []byte {
+func (t *Dict) Bytes() ([]byte, error) {
 	b := bytes.Buffer{}
-	t.Serialize(&b)
-	return b.Bytes()
+	if err := t.Serialize(&b); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
 
-func FromBytes(p []byte) *Dict {
-	t, _ := Deserialize(bytes.NewReader(p))
-	return t
+func FromBytes(p []byte) (*Dict, error) {
+	return Deserialize(bytes.NewReader(p))
 }
