@@ -4,7 +4,11 @@ package cli
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
+	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
@@ -33,8 +37,7 @@ func startServer(cfg *config.Server) error {
 	}
 
 	// debuging the RAM and disk usages
-	go printRAMUsage()
-	go printDiskUsage(cfg)
+	go reportDebuggingInformation(cfg, s)
 
 	// new server
 	c, err := server.New(cfg, s)
@@ -55,4 +58,31 @@ func startServer(cfg *config.Server) error {
 
 	// start the server
 	return c.Start()
+}
+
+func reportDebuggingInformation(cfg *config.Server, s *storage.Storage) {
+	t := time.NewTicker(1 * time.Second)
+	i := 0
+	for range t.C {
+		if logrus.IsLevelEnabled(logrus.DebugLevel) {
+			maps := map[string]map[string]interface{}{
+				"mem":   debug.MemUsage(),
+				"disk":  debug.DiskUsage(cfg.StoragePath),
+				"cache": s.CacheStats(),
+			}
+
+			for dataType, data := range maps {
+				for k, v := range data {
+					if iv, ok := v.(bytesize.ByteSize); ok {
+						v = int64(iv)
+					}
+					metrics.Gauge(dataType+"."+k, v)
+				}
+				if i%30 == 0 {
+					logrus.WithFields(data).Debug(dataType + " stats")
+				}
+			}
+		}
+		i++
+	}
 }
