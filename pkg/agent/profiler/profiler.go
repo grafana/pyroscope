@@ -4,14 +4,12 @@ package profiler
 
 import (
 	"fmt"
-	"io/ioutil"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
-	"github.com/sirupsen/logrus"
 )
 
 type ProfileType = spy.ProfileType
@@ -47,9 +45,7 @@ func Start(cfg Config) (*Profiler, error) {
 		cfg.SampleRate = types.DefaultSampleRate
 	}
 	if cfg.Logger == nil {
-		logger := logrus.StandardLogger()
-		logger.SetOutput(ioutil.Discard)
-		cfg.Logger = logger
+		cfg.Logger = &agent.NoopLogger{}
 	}
 
 	rc := remote.RemoteConfig{
