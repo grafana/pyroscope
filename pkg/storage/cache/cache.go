@@ -92,9 +92,7 @@ func (cache *Cache) Delete(key string) error {
 		return txn.Delete([]byte(cache.prefix + key))
 	})
 
-	if err != nil {
-		return err
-	}
+	return err
 }
 
 func (cache *Cache) Get(key string) (interface{}, error) {
