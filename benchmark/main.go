@@ -75,7 +75,7 @@ func pingScreenshotTaker() {
 		panic(err)
 	}
 
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	conn, _ := net.DialTCP("tcp", nil, tcpAddr)
 	if conn != nil {
 		conn.Close()
 	}
@@ -91,13 +91,13 @@ var summaryText = `
 </style>
 `
 
-func printSummary(rsp http.ResponseWriter, req *http.Request) {
+func printSummary(rsp http.ResponseWriter, _ *http.Request) {
 	rsp.Header().Add("Content-Type", "text/html")
 	rsp.WriteHeader(200)
 	rsp.Write([]byte(summaryText))
 }
 
-func reportSummaryMetric(prefix, k, v string) {
+func reportSummaryMetric(k, v string) {
 	summaryText += fmt.Sprintf("%s=%s<br>\n", k, v)
 }
 
@@ -133,12 +133,12 @@ func reportEnvMetrics() {
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
 		if len(pair) == 2 && !slices.StringContains(excludeEnv, pair[0]) {
-			reportSummaryMetric("env", pair[0], pair[1])
+			reportSummaryMetric(pair[0], pair[1])
 		}
 	}
 
-	reportSummaryMetric("env", "GOARCH", runtime.GOARCH)
-	reportSummaryMetric("env", "GOOS", runtime.GOOS)
+	reportSummaryMetric("GOARCH", runtime.GOARCH)
+	reportSummaryMetric("GOOS", runtime.GOOS)
 }
 
 func setupLogging() {
@@ -170,7 +170,7 @@ func main() {
 
 	logrus.Info("starting sending requests")
 	startTime := time.Now()
-	reportSummaryMetric("stats", "1-start-time", startTime.Format(timeFmt))
+	reportSummaryMetric("start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
 	wg.Add(clients)
 	for i := 0; i < clients; i++ {
@@ -178,8 +178,8 @@ func main() {
 	}
 	wg.Wait()
 	logrus.Info("done sending requests")
-	reportSummaryMetric("stats", "2-stop-time", time.Now().Format(timeFmt))
-	reportSummaryMetric("stats", "duration", time.Now().Sub(startTime).String())
+	reportSummaryMetric("stop-time", time.Now().Format(timeFmt))
+	reportSummaryMetric("duration", time.Since(startTime).String())
 
 	time.Sleep(5 * time.Second)
 	pingScreenshotTaker()
