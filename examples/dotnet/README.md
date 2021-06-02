@@ -1,7 +1,6 @@
 # .NET Examples
 
 The directory contains examples of how to run Pyroscop to profile .NET applications in Docker containers.
-Although examples are present for different .NET Core/.NET versions, they are basically the same.
 
 ### Fast-slow
 
@@ -18,7 +17,7 @@ required to tell Pyroscope how to deal with the process:
 To run the example execute the following commands:
 
 ```shell
-# cd examples/dotnet/{dotnet-version}/fast-slow
+# cd examples/dotnet/fast-slow
 # docker-compose up
 ```
 
@@ -35,6 +34,6 @@ unnecessary:
 To run the example execute the following commands:
 
 ```shell
-# cd examples/dotnet/{dotnet-version}/web
+# cd examples/dotnet/web
 # docker-compose up
 ```
