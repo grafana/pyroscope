@@ -6,19 +6,33 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/peterbourgon/ff/v3"
-	"github.com/peterbourgon/ff/v3/ffcli"
-	"github.com/sirupsen/logrus"
-
+	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
+	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/dbmanager"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
+	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
+	"github.com/sirupsen/logrus"
+
+	"github.com/iancoleman/strcase"
+	"github.com/peterbourgon/ff/ffyaml"
+	"github.com/peterbourgon/ff/v3"
+	"github.com/peterbourgon/ff/v3/ffcli"
 )
 
 func generateRootCmd(cfg *config.Config) *ffcli.Command {
@@ -205,29 +219,4 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 
 func Start(cfg *config.Config) error {
 	return generateRootCmd(cfg).ParseAndRun(context.Background(), os.Args[1:])
-}
-
-func resolvePath(path string) string {
-	if res, err := filepath.EvalSymlinks(path); err == nil {
-		return res
-	}
-	return path
-}
-
-func printRAMUsage() {
-	t := time.NewTicker(30 * time.Second)
-	for range t.C {
-		if logrus.IsLevelEnabled(logrus.DebugLevel) {
-			debug.PrintMemUsage()
-		}
-	}
-}
-
-func printDiskUsage(cfg *config.Server) {
-	t := time.NewTicker(30 * time.Second)
-	for range t.C {
-		if logrus.IsLevelEnabled(logrus.DebugLevel) {
-			debug.PrintDiskUsage(cfg.StoragePath)
-		}
-	}
 }

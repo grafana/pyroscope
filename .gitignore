@@ -17,3 +17,4 @@ pkged.go
 .idea
 .vscode
 vendor/
+benchmark/git-info.env
