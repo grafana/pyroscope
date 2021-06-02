@@ -31,7 +31,7 @@ var errClosing = errors.New("the db is in closing state")
 var errOutOfSpace = errors.New("running out of space")
 
 type Storage struct {
-	closingMutex sync.Mutex
+	closingMutex sync.RWMutex
 	closing      bool
 
 	cfg      *config.Server
@@ -193,11 +193,11 @@ type PutInput struct {
 }
 
 func (s *Storage) Put(po *PutInput) error {
-	s.closingMutex.Lock()
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
 	if s.closing {
 		return errClosing
 	}
-	s.closingMutex.Unlock()
 
 	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
 	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
@@ -291,11 +291,11 @@ type GetOutput struct {
 }
 
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
-	s.closingMutex.Lock()
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
 	if s.closing {
 		return nil, errClosing
 	}
-	s.closingMutex.Unlock()
 
 	logrus.WithFields(logrus.Fields{
 		"startTime": gi.StartTime.String(),
@@ -393,11 +393,11 @@ type DeleteInput struct {
 }
 
 func (s *Storage) Delete(di *DeleteInput) error {
-	s.closingMutex.Lock()
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
 	if s.closing {
 		return errClosing
 	}
-	s.closingMutex.Unlock()
 
 	logrus.WithFields(logrus.Fields{
 		"startTime": di.StartTime.String(),
