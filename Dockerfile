@@ -82,12 +82,14 @@ COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
 COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
 COPY --from=phpspy-builder /var/www/html/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
-COPY pkg ./pkg
-COPY cmd ./cmd
+COPY Makefile ./
 COPY tools ./tools
 COPY scripts ./scripts
 COPY go.mod go.sum pyroscope.go ./
-COPY Makefile ./
+RUN make install-dev-tools
+
+COPY pkg ./pkg
+COPY cmd ./cmd
 
 RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
 

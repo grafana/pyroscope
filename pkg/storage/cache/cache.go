@@ -1,6 +1,9 @@
 package cache
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/dgraph-io/badger/v2"
@@ -15,9 +18,9 @@ type Cache struct {
 	cleanupDone chan struct{}
 
 	// Bytes serializes objects before they go into storage. Users are required to define this one
-	Bytes func(k string, v interface{}) []byte
+	Bytes func(k string, v interface{}) ([]byte, error)
 	// FromBytes deserializes object coming from storage. Users are required to define this one
-	FromBytes func(k string, v []byte) interface{}
+	FromBytes func(k string, v []byte) (interface{}, error)
 	// New creates a new object when there's no object in cache or storage. Optional
 	New func(k string) interface{}
 }
@@ -55,19 +58,25 @@ func (cache *Cache) Put(key string, val interface{}) {
 	}
 }
 
-func (cache *Cache) saveToDisk(key string, val interface{}) {
+func (cache *Cache) saveToDisk(key string, val interface{}) error {
 	logrus.WithFields(logrus.Fields{
 		"prefix": cache.prefix,
 		"key":    key,
 	}).Debug("saving to disk")
-	buf := cache.Bytes(key, val)
-	err := cache.db.Update(func(txn *badger.Txn) error {
-		return txn.SetEntry(badger.NewEntry([]byte(cache.prefix+key), buf))
-	})
+
+	// serialize the key and value
+	buf, err := cache.Bytes(key, val)
 	if err != nil {
-		// TODO: handle
-		logrus.Errorf("error happened in saveToDisk: %v", err)
+		return fmt.Errorf("serialize key and value: %v", err)
 	}
+
+	// update the kv to badger
+	if err := cache.db.Update(func(txn *badger.Txn) error {
+		return txn.SetEntry(badger.NewEntry([]byte(cache.prefix+key), buf))
+	}); err != nil {
+		return fmt.Errorf("save to disk: %v", err)
+	}
+	return nil
 }
 
 func (cache *Cache) Flush() {
@@ -76,81 +85,81 @@ func (cache *Cache) Flush() {
 	<-cache.cleanupDone
 }
 
-func (cache *Cache) Delete(key string) {
+func (cache *Cache) Delete(key string) error {
 	cache.lfu.Delete(key)
-	lg := logrus.WithFields(logrus.Fields{
-		"prefix": cache.prefix,
-		"key":    key,
-	})
-	lg.Debug("deleting")
 
 	err := cache.db.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(cache.prefix + key))
 	})
 
 	if err != nil {
-		// TODO: handle
-		lg.Errorf("error happened in Delete: %v", err)
+		return err
 	}
 }
 
-func (cache *Cache) Get(key string) interface{} {
-	lg := logrus.WithField("key", key)
+func (cache *Cache) Get(key string) (interface{}, error) {
+	// find the key from cache first
 	if cache.lfu.UpperBound > 0 {
-		fromLfu := cache.lfu.Get(key)
-		if fromLfu != nil {
-			return fromLfu
+		val := cache.lfu.Get(key)
+		if val != nil {
+			return val, nil
 		}
 	} else {
 		logrus.Warn("lfu is not used, only use this during debugging")
 	}
-	lg.Debug("lfu miss")
+	logrus.WithField("key", key).Debug("lfu miss")
 
-	var valCopy []byte
-	err := cache.db.View(func(txn *badger.Txn) error {
+	var copied []byte
+	// read the value from badger
+	if err := cache.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(cache.prefix + key))
 		if err != nil {
-			// TODO: handle
 			if err == badger.ErrKeyNotFound {
 				return nil
 			}
-			logrus.Errorf("error happened when reading from badger %v", err)
+
+			return fmt.Errorf("read from badger: %v", err)
 		}
 
-		err = item.Value(func(val []byte) error {
-			valCopy = append([]byte{}, val...)
+		if err := item.Value(func(val []byte) error {
+			copied = append([]byte{}, val...)
 			return nil
-		})
-		if err != nil {
-			// TODO: handle
-			logrus.Errorf("error happened getting value from badger %v", err)
+		}); err != nil {
+			return fmt.Errorf("retrieve value from item: %v", err)
 		}
 		return nil
-	})
-
-	if err != nil {
-		// TODO: handle
-		logrus.Errorf("error happened in badger view %v", err)
-		return nil
+	}); err != nil {
+		return nil, fmt.Errorf("badger view: %v", err)
 	}
 
-	if valCopy == nil {
-		lg.Debug("storage miss")
+	// if it's not found from badger, create a new object
+	if copied == nil {
+		logrus.WithField("key", key).Debug("storage miss")
+
 		if cache.New == nil {
-			return nil
+			return nil, errors.New("cache's New function is nil")
 		}
-		newStruct := cache.New(key)
-		cache.lfu.Set(key, newStruct)
-		return newStruct
+
+		newVal := cache.New(key)
+		cache.lfu.Set(key, newVal)
+		return newVal, nil
 	}
 
-	val := cache.FromBytes(key, valCopy)
-
+	// deserialize the object from storage
+	val, err := cache.FromBytes(key, copied)
+	if err != nil {
+		return nil, fmt.Errorf("deserialize the object: %v", err)
+	}
 	cache.lfu.Set(key, val)
+	// if it needs to save to disk
 	if cache.alwaysSave {
 		cache.saveToDisk(key, val)
 	}
 
-	lg.Debug("storage hit")
-	return val
+	logrus.WithField("key", key).Debug("storage hit")
+	return val, nil
+}
+
+func (cache *Cache) Size() uint64 {
+	return uint64(cache.lfu.Len())
 }

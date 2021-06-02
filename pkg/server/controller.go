@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/markbates/pkger"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -60,6 +61,8 @@ func (ctrl *Controller) Stop() error {
 // TODO: split the cli initialization from HTTP controller logic
 func (ctrl *Controller) Start() error {
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
 	mux.HandleFunc("/ingest", ctrl.ingestHandler)
 	mux.HandleFunc("/render", ctrl.renderHandler)
 	mux.HandleFunc("/labels", ctrl.labelsHandler)

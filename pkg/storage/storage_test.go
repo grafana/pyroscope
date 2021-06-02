@@ -1,11 +1,14 @@
 package storage
 
 import (
+	"strconv"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
+	"github.com/sirupsen/logrus"
 )
 
 // 21:22:08      air |  (time.Duration) 10s,
@@ -23,6 +26,8 @@ var (
 )
 
 var _ = Describe("storage package", func() {
+	logrus.SetLevel(logrus.WarnLevel)
+
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
@@ -173,6 +178,31 @@ var _ = Describe("storage package", func() {
 		})
 
 		Context("smoke tests", func() {
+			Context("check segment cache", func() {
+				It("works correctly", func() {
+					tree := tree.New()
+
+					size := 32
+					treeKey := make([]byte, size)
+					for i := 0; i < size; i++ {
+						treeKey[i] = 'a'
+					}
+					for i := 0; i < 60; i++ {
+						k := string(treeKey) + strconv.Itoa(i+1)
+						tree.Insert([]byte(k), uint64(i+1))
+
+						key, _ := ParseKey("tree key" + strconv.Itoa(i+1))
+						err := s.Put(&PutInput{
+							Key:        key,
+							Val:        tree,
+							SpyName:    "testspy",
+							SampleRate: 100,
+						})
+						Expect(err).ToNot(HaveOccurred())
+					}
+					Expect(s.Close()).ToNot(HaveOccurred())
+				})
+			})
 			Context("simple 10 second write", func() {
 				It("works correctly", func() {
 					tree := tree.New()

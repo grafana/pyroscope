@@ -212,13 +212,14 @@ func DeserializeNoDict(r io.Reader) (*Tree, error) {
 	return t, nil
 }
 
-func (t *Tree) Bytes(d *dict.Dict, maxNodes int) []byte {
+func (t *Tree) Bytes(d *dict.Dict, maxNodes int) ([]byte, error) {
 	b := bytes.Buffer{}
-	t.Serialize(d, maxNodes, &b)
-	return b.Bytes()
+	if err := t.Serialize(d, maxNodes, &b); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
 
-func FromBytes(d *dict.Dict, p []byte) *Tree {
-	t, _ := Deserialize(d, bytes.NewReader(p))
-	return t
+func FromBytes(d *dict.Dict, p []byte) (*Tree, error) {
+	return Deserialize(d, bytes.NewReader(p))
 }
