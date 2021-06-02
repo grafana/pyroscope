@@ -147,3 +147,7 @@ func (cache *Cache) Get(key string) (interface{}, error) {
 	logrus.WithField("key", key).Debug("storage hit")
 	return val, nil
 }
+
+func (cache *Cache) Size() uint64 {
+	return uint64(cache.lfu.Len())
+}

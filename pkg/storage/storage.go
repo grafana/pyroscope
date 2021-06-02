@@ -151,7 +151,7 @@ func New(cfg *config.Server) (*Storage, error) { // TODO: cfg.Server?
 		return dict.New()
 	}
 
-	s.trees = cache.New(dbTrees, cfg.CacheSegmentSize, "t:")
+	s.trees = cache.New(dbTrees, cfg.CacheTreeSize, "t:")
 	s.trees.Bytes = func(k string, v interface{}) ([]byte, error) {
 		key := FromTreeToMainKey(k)
 		d, err := s.dicts.Get(key)
@@ -446,4 +446,13 @@ func dirSize(path string) (result bytesize.ByteSize) {
 		return nil
 	})
 	return
+}
+
+func (s *Storage) CacheStats() map[string]interface{} {
+	return map[string]interface{}{
+		"dimensions": s.dimensions.Size(),
+		"segments":   s.segments.Size(),
+		"dicts":      s.dicts.Size(),
+		"trees":      s.trees.Size(),
+	}
 }
