@@ -134,11 +134,13 @@ export class ObjectsFormatter {
 export function getPackageNameFromStackTrace(spyName, stackTrace) {
   // TODO: actually make sure these make sense and add tests
   const regexpLookup = {
+    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    dotnetspy: /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/,
+    ebpfspy: /^(?<packageName>.+)$/,
+    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    phpspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
     pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
     rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
-    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-    ebpfspy: /^(?<packageName>.+)$/,
-    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
   };
 
   if (stackTrace.length === 0) {

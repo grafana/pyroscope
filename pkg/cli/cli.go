@@ -27,6 +27,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/sirupsen/logrus"
 
@@ -207,6 +208,19 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 				}
 			}
 			flagSet.Uint64Var(val, nameVal, defaultVal, descVal)
+		case reflect.TypeOf(uint(1)):
+			val := fieldV.Addr().Interface().(*uint)
+			var defaultVal uint
+			if defaultValStr == "" {
+				defaultVal = uint(0)
+			} else {
+				out, err := strconv.ParseUint(defaultValStr, 10, 64)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+				defaultVal = uint(out)
+			}
+			flagSet.UintVar(val, nameVal, defaultVal, descVal)
 		default:
 			logrus.Fatalf("type %s is not supported", field.Type)
 		}
@@ -244,6 +258,20 @@ func resolvePath(path string) string {
 }
 
 func generateRootCmd(cfg *config.Config) *ffcli.Command {
+	// init the log formatter for logrus
+	logrus.SetReportCaller(true)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		TimestampFormat: "2006-01-02T15:04:05.000000",
+		FullTimestamp:   true,
+		CallerPrettyfier: func(f *runtime.Frame) (string, string) {
+			filename := f.File
+			if len(filename) > 38 {
+				filename = filename[38:]
+			}
+			return "", fmt.Sprintf(" %s:%d", filename, f.Line)
+		},
+	})
+
 	var (
 		serverFlagSet    = flag.NewFlagSet("pyroscope server", flag.ExitOnError)
 		convertFlagSet   = flag.NewFlagSet("pyroscope convert", flag.ExitOnError)
@@ -326,15 +354,22 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		},
 	}
 
-	serverCmd.Exec = func(_ context.Context, args []string) error {
-		if l, err := logrus.ParseLevel(cfg.Server.LogLevel); err == nil {
-			logrus.SetLevel(l)
+	serverCmd.Exec = func(ctx context.Context, args []string) error {
+		l, err := logrus.ParseLevel(cfg.Server.LogLevel)
+		if err != nil {
+			return err
 		}
-		startServer(cfg)
-		return nil
+		logrus.SetLevel(l)
+
+		return startServer(&cfg.Server)
 	}
-	convertCmd.Exec = func(_ context.Context, args []string) error {
-		return convert.Cli(cfg, args)
+
+	convertCmd.Exec = func(ctx context.Context, args []string) error {
+		logrus.SetOutput(os.Stderr)
+		logger := func(s string) {
+			logrus.Fatal(s)
+		}
+		return convert.Cli(&cfg.Convert, logger, args)
 	}
 	execCmd.Exec = func(_ context.Context, args []string) error {
 		if cfg.Exec.NoLogging {
@@ -348,10 +383,10 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			return nil
 		}
 
-		return exec.Cli(cfg, args)
+		return exec.Cli(&cfg.Exec, args)
 	}
 
-	connectCmd.Exec = func(_ context.Context, args []string) error {
+	connectCmd.Exec = func(ctx context.Context, args []string) error {
 		if cfg.Exec.NoLogging {
 			logrus.SetLevel(logrus.PanicLevel)
 		} else if l, err := logrus.ParseLevel(cfg.Exec.LogLevel); err == nil {
@@ -363,16 +398,16 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			return nil
 		}
 
-		return exec.Cli(cfg, args)
+		return exec.Cli(&cfg.Exec, args)
 	}
 
-	dbmanagerCmd.Exec = func(_ context.Context, args []string) error {
+	dbmanagerCmd.Exec = func(ctx context.Context, args []string) error {
 		if l, err := logrus.ParseLevel(cfg.DbManager.LogLevel); err == nil {
 			logrus.SetLevel(l)
 		}
-		return dbmanager.Cli(cfg, args)
+		return dbmanager.Cli(&cfg.DbManager, &cfg.Server, args)
 	}
-	rootCmd.Exec = func(_ context.Context, args []string) error {
+	rootCmd.Exec = func(ctx context.Context, args []string) error {
 		if cfg.Version || len(args) > 0 && args[0] == "version" {
 			fmt.Println(gradientBanner())
 			fmt.Println(build.Summary())
@@ -391,20 +426,36 @@ func Start(cfg *config.Config) error {
 	return generateRootCmd(cfg).ParseAndRun(context.Background(), os.Args[1:])
 }
 
-func startServer(cfg *config.Config) {
+func startServer(cfg *config.Server) error {
+	// new a storage with configuration
 	s, err := storage.New(cfg)
-	atexit.Register(func() { s.Close() })
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("new storage: %v", err)
 	}
-	u := direct.New(cfg, s)
-	go agent.SelfProfile(cfg, u, "pyroscope.server", logrus.StandardLogger())
-	go printRAMUsage()
-	go printDiskUsage(cfg)
+	atexit.Register(func() { s.Close() })
+
+	// new a direct upstream
+	u := direct.New(s)
+
+	// uploading the server profile self
+	if err := agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger()); err != nil {
+		return fmt.Errorf("start self profile: %v", err)
+	}
+
+	// debuging the RAM and disk usages
+	go reportDebuggingInformation(cfg, s)
+
+	// new server
+	c, err := server.New(cfg, s)
+	if err != nil {
+		return fmt.Errorf("new server: %v", err)
+	}
+
 	go storageCleaner(s)
-	c := server.New(cfg, s)
 	atexit.Register(func() { c.Stop() })
-	if !cfg.Server.AnalyticsOptOut {
+
+	// start the analytics
+	if !cfg.AnalyticsOptOut {
 		analyticsService := analytics.NewService(cfg, s, c)
 		go analyticsService.Start()
 		atexit.Register(func() { analyticsService.Stop() })
@@ -412,26 +463,35 @@ func startServer(cfg *config.Config) {
 	// if you ever change this line, make sure to update this homebrew test:
 	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
 	logrus.Info("starting HTTP server")
-	c.Start()
+
+	// start the server
+	return c.Start()
 }
 
-func printRAMUsage() {
-	t := time.NewTicker(30 * time.Second)
-	for {
-		<-t.C
+func reportDebuggingInformation(cfg *config.Server, s *storage.Storage) {
+	t := time.NewTicker(1 * time.Second)
+	i := 0
+	for range t.C {
 		if logrus.IsLevelEnabled(logrus.DebugLevel) {
-			debug.PrintMemUsage()
-		}
-	}
-}
+			maps := map[string]map[string]interface{}{
+				"mem":   debug.MemUsage(),
+				"disk":  debug.DiskUsage(cfg.StoragePath),
+				"cache": s.CacheStats(),
+			}
 
-func printDiskUsage(cfg *config.Config) {
-	t := time.NewTicker(30 * time.Second)
-	for {
-		<-t.C
-		if logrus.IsLevelEnabled(logrus.DebugLevel) {
-			debug.PrintDiskUsage(cfg.Server.StoragePath)
+			for dataType, data := range maps {
+				for k, v := range data {
+					if iv, ok := v.(bytesize.ByteSize); ok {
+						v = int64(iv)
+					}
+					metrics.Gauge(dataType+"."+k, v)
+				}
+				if i%30 == 0 {
+					logrus.WithFields(data).Debug(dataType + " stats")
+				}
+			}
 		}
+		i++
 	}
 }
 

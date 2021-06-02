@@ -104,10 +104,10 @@ Any sampling profiler that can export data in the "raw" format linked above can 
 - [x] Python
 - [x] eBPF
 - [x] Ruby
+- [x] PHP
 - [ ] [Java](https://github.com/pyroscope-io/pyroscope/issues/94)
 - [ ] [Rust](https://github.com/pyroscope-io/pyroscope/issues/83#issuecomment-784947654)
 - [ ] [Node](https://github.com/pyroscope-io/pyroscope/issues/8)
-- [ ] [PHP](https://github.com/pyroscope-io/pyroscope/issues/30)
 
 If you want to help contribute or need help setting up Pyroscope heres how you can reach us:
 - Join our [Slack](https://pyroscope.io/slack)

@@ -34,7 +34,7 @@ var (
 	uploadFrequency = 24 * time.Hour
 )
 
-func NewService(cfg *config.Config, s *storage.Storage, c *server.Controller) *Service {
+func NewService(cfg *config.Server, s *storage.Storage, c *server.Controller) *Service {
 	return &Service{
 		cfg: cfg,
 		s:   s,
@@ -50,7 +50,7 @@ func NewService(cfg *config.Config, s *storage.Storage, c *server.Controller) *S
 }
 
 type Service struct {
-	cfg        *config.Config
+	cfg        *config.Server
 	s          *storage.Storage
 	c          *server.Controller
 	httpClient *http.Client
@@ -81,6 +81,9 @@ type metrics struct {
 	SpyRbspy         int       `json:"spy_rbspy"`
 	SpyPyspy         int       `json:"spy_pyspy"`
 	SpyGospy         int       `json:"spy_gospy"`
+	SpyEbpfspy       int       `json:"spy_ebpfspy"`
+	SpyPhpspy        int       `json:"spy_phpspy"`
+	SpyDotnetspy     int       `json:"spy_dotnetspy"`
 	AppsCount        int       `json:"apps_count"`
 }
 
@@ -138,6 +141,9 @@ func (s *Service) sendReport() {
 		SpyRbspy:         controllerStats["ingest:rbspy"],
 		SpyPyspy:         controllerStats["ingest:pyspy"],
 		SpyGospy:         controllerStats["ingest:gospy"],
+		SpyEbpfspy:       controllerStats["ingest:ebpfspy"],
+		SpyPhpspy:        controllerStats["ingest:phpspy"],
+		SpyDotnetspy:     controllerStats["ingest:dotnetspy"],
 		AppsCount:        s.c.AppsCount(),
 	}
 

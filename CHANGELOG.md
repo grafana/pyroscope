@@ -1,3 +1,35 @@
+## <small>0.0.32 (2021-05-21)</small>
+
+* Add .Net support (#200) ([99f1149](https://github.com/pyroscope-io/pyroscope/commit/99f1149)), closes [#200](https://github.com/pyroscope-io/pyroscope/issues/200)
+* examples fix ([b4eb2eb](https://github.com/pyroscope-io/pyroscope/commit/b4eb2eb))
+* Fix dotnetspy panic on premature exit and add tests. (#203) ([b2fff2b](https://github.com/pyroscope-io/pyroscope/commit/b2fff2b)), closes [#203](https://github.com/pyroscope-io/pyroscope/issues/203)
+* fix the nil reference issue, just add the error handle logic (#194) ([fc9e25b](https://github.com/pyroscope-io/pyroscope/commit/fc9e25b)), closes [#194](https://github.com/pyroscope-io/pyroscope/issues/194)
+* improves multi-platform support in dotnet examples ([0e8d6ff](https://github.com/pyroscope-io/pyroscope/commit/0e8d6ff))
+* Update deployment diagram ([bc5d5e7](https://github.com/pyroscope-io/pyroscope/commit/bc5d5e7))
+* Update deployment diagram ([fbd3a59](https://github.com/pyroscope-io/pyroscope/commit/fbd3a59))
+* Update README.md ([83d181b](https://github.com/pyroscope-io/pyroscope/commit/83d181b))
+* Update README.md ([f825a37](https://github.com/pyroscope-io/pyroscope/commit/f825a37))
+* Update README.md ([555f765](https://github.com/pyroscope-io/pyroscope/commit/555f765))
+* Update storage-design-ch.md ([e39332a](https://github.com/pyroscope-io/pyroscope/commit/e39332a))
+* Update storage-design.md ([659c5c4](https://github.com/pyroscope-io/pyroscope/commit/659c5c4))
+* Updates README and adds Credits section ([7773f33](https://github.com/pyroscope-io/pyroscope/commit/7773f33))
+* Updates the list of contributors in README ([0f526ea](https://github.com/pyroscope-io/pyroscope/commit/0f526ea))
+
+
+
+## <small>0.0.31 (2021-05-17)</small>
+
+* Add roadmap to readme ([5372d78](https://github.com/pyroscope-io/pyroscope/commit/5372d78))
+* added chinese translation for storage-design (#180) ([fbeb788](https://github.com/pyroscope-io/pyroscope/commit/fbeb788)), closes [#180](https://github.com/pyroscope-io/pyroscope/issues/180)
+* Adds PHP support via phpspy (#157) ([16f2bff](https://github.com/pyroscope-io/pyroscope/commit/16f2bff)), closes [#157](https://github.com/pyroscope-io/pyroscope/issues/157)
+* Cleans up pkg/storage/segment and global state (#183) ([fc51463](https://github.com/pyroscope-io/pyroscope/commit/fc51463)), closes [#183](https://github.com/pyroscope-io/pyroscope/issues/183)
+* deletes an old unused script ([a91d465](https://github.com/pyroscope-io/pyroscope/commit/a91d465))
+* Resolves #165 - implemented out of space check (#174) ([3628793](https://github.com/pyroscope-io/pyroscope/commit/3628793)), closes [#165](https://github.com/pyroscope-io/pyroscope/issues/165) [#174](https://github.com/pyroscope-io/pyroscope/issues/174)
+* Update storage-design.md ([f2b83ae](https://github.com/pyroscope-io/pyroscope/commit/f2b83ae))
+* updates contributors ([81148ef](https://github.com/pyroscope-io/pyroscope/commit/81148ef))
+
+
+
 ## <small>0.0.30 (2021-04-26)</small>
 
 * adds buildx as a builder ([6234773](https://github.com/pyroscope-io/pyroscope/commit/6234773))

@@ -43,7 +43,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	maxNodes := ctrl.cfg.Server.MaxNodesRender
+	maxNodes := ctrl.cfg.MaxNodesRender
 	if mn, err := strconv.Atoi(q.Get("max-nodes")); err == nil && mn > 0 {
 		maxNodes = mn
 	}

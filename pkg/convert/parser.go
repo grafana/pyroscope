@@ -13,8 +13,11 @@ import (
 
 // format is a Serialized trie (see transporttrie.Serialize implementation)
 func ParseTrie(r io.Reader, cb func(name []byte, val int)) error {
-	t, _ := transporttrie.Deserialize(r)
-	t.Iterate(func(name []byte, val uint64) {
+	trie, err := transporttrie.Deserialize(r)
+	if err != nil {
+		return err
+	}
+	trie.Iterate(func(name []byte, val uint64) {
 		cb(name, int(val))
 	})
 	return nil

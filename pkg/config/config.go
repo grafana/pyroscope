@@ -46,7 +46,7 @@ type Server struct {
 	CacheDimensionSize  int `def:"1000" desc:"max number of elements in LRU cache for dimensions"`
 	CacheDictionarySize int `def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
 	CacheSegmentSize    int `def:"1000" desc:"max number of elements in LRU cache for segments"`
-	CacheTreeSize       int `def:"10000" desc:"max number of elements in LRU cache for trees"`
+	CacheTreeSize       int `def:"1000" desc:"max number of elements in LRU cache for trees"`
 
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.
@@ -61,6 +61,7 @@ type Server struct {
 	OutOfSpaceThreshold bytesize.ByteSize `def:"512MB" desc:"Threshold value to consider out of space in bytes"`
 	ThresholdModeAuto   bool              `def:"true" desc:"Threshold mode auto will do data cleanup automatically when will run out of storage"`
 	RetentionThreshold  time.Duration     `def:"-24h" desc:"data retention threshold"`
+	SampleRate          uint              `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
 }
 
 type Convert struct {
@@ -81,6 +82,7 @@ type DbManager struct {
 type Exec struct {
 	SpyName                string        `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>"`
 	ApplicationName        string        `def:"" desc:"application name used when uploading profiling data"`
+	SampleRate             uint          `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
 	DetectSubprocesses     bool          `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
 	LogLevel               string        `def:"info" desc:"log level: debug|info|warn|error"`
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`

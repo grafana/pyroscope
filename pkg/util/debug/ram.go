@@ -2,20 +2,18 @@ package debug
 
 import (
 	"runtime"
-	"strconv"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
-	"github.com/sirupsen/logrus"
 )
 
-func PrintMemUsage() {
+func MemUsage() map[string]interface{} {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	logrus.WithFields(logrus.Fields{
-		"Alloc":      bytesize.ByteSize(m.Alloc).String(),
-		"TotalAlloc": bytesize.ByteSize(m.TotalAlloc).String(),
-		"Sys":        bytesize.ByteSize(m.Sys).String(),
-		"NumGC":      strconv.Itoa(int(m.NumGC)),
-	}).Debug("RAM stats")
+	return map[string]interface{}{
+		"Alloc":      bytesize.ByteSize(m.Alloc),
+		"TotalAlloc": bytesize.ByteSize(m.TotalAlloc),
+		"Sys":        bytesize.ByteSize(m.Sys),
+		"NumGC":      m.NumGC,
+	}
 }
