@@ -202,11 +202,6 @@ func (s *Storage) Put(po *PutInput) error {
 
 	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
 	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
-		if s.cfg.ThresholdModeAuto {
-			// TODO: Threshold calculation & Handle race condition
-			logrus.Debugf("Triggered auto cleanup")
-			// defer s.Cleanup()
-		}
 		return errOutOfSpace
 	}
 
@@ -419,32 +414,30 @@ func (s *Storage) Cleanup() error {
 		return err
 	}
 
-	logrus.Debugf("Dimension len: %d", len(dimensions))
-
 	segmentKeys := dimension.Union(dimensions...)
 
-	logrus.Debugf("Segment key count: %d", len(segmentKeys))
 	for _, rawSk := range segmentKeys {
 		sk, _ := ParseKey(string(rawSk))
-		logrus.Debugf("Segment key: %s", sk)
 
 		stInt, err := s.segments.Get(sk.SegmentKey())
 		if err != nil {
 			return err
 		}
 		st := stInt.(*segment.Segment)
-		hasData := st.Cleanup(time.Now().UTC().Add(s.cfg.RetentionThreshold), func(depth int, t time.Time) {
+		hasData := st.DeleteDataBefore(time.Now().Add(-1*s.cfg.RetentionThreshold), func(depth int, t time.Time) {
 			tk := sk.TreeKey(depth, t)
-
-			logrus.Debugf("Tree key: %s", tk)
-			if err := s.trees.Delete(tk); err != nil {
-				lg.Errorf("%v", err)
+			if delErr := s.trees.Delete(tk); delErr != nil {
+				// TODO: need to improve it so that we can exit out of cleanup here
+				err = delErr
 			}
 		})
+		if err != nil {
+			return err
+		}
 
 		if !hasData {
 			if err := s.segments.Delete(sk.SegmentKey()); err != nil {
-				lg.Errorf("%v", err)
+				return err
 			}
 		}
 

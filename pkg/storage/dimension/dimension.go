@@ -73,6 +73,19 @@ func (sd *sortableDim) advance(cmp key) advanceResult {
 	}
 }
 
+func (sd *sortableDim) advanceUnion(cmp key) advanceResult {
+	for {
+		if sd.i == sd.l {
+			return end
+		}
+		v := bytes.Compare(sd.current(), cmp)
+		if v != 0 {
+			return match
+		}
+		sd.i++
+	}
+}
+
 type sortableDims []*sortableDim
 
 func (s sortableDims) Len() int {
@@ -145,6 +158,8 @@ func Intersection(input ...*Dimension) []key {
 	}
 }
 
+// TODO: we need to take advantage of the fact that these are sorted arrays
+// Current implementation might be taking too much memory
 func Union(input ...*Dimension) []key {
 	if len(input) == 0 {
 		return []key{}

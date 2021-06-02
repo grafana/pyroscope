@@ -287,9 +287,9 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
 }
 
-func (s *Segment) Cleanup(timeThreshold time.Time, cb func(depth int, t time.Time)) bool {
-	s.m.RLock()
-	defer s.m.RUnlock()
+func (s *Segment) DeleteDataBefore(timeThreshold time.Time, cb func(depth int, t time.Time)) bool {
+	s.m.Lock()
+	defer s.m.Unlock()
 
 	timeThreshold = normalizeTime(timeThreshold)
 	if s.root == nil {

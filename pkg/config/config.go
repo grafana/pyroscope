@@ -60,7 +60,7 @@ type Server struct {
 
 	OutOfSpaceThreshold bytesize.ByteSize `def:"512MB" desc:"Threshold value to consider out of space in bytes"`
 	ThresholdModeAuto   bool              `def:"true" desc:"Threshold mode auto will do data cleanup automatically when will run out of storage"`
-	RetentionThreshold  time.Duration     `def:"-24h" desc:"data retention threshold"`
+	RetentionThreshold  time.Duration     `def:"" desc:"data retention threshold"`
 	SampleRate          uint              `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
 }
 
