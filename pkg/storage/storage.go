@@ -406,11 +406,18 @@ func (s *Storage) Cleanup() error {
 	lg := logrus.WithField("task", "cleanup")
 
 	var dimensions []*dimension.Dimension
+	var err error
 	s.labels.GetValues(nameKey, func(v string) bool {
-		dm := s.dimensions.Get(nameKey + ":" + v).(*dimension.Dimension)
+		dmInt, getErr := s.dimensions.Get(nameKey + ":" + v)
+		dm, _ := dmInt.(*dimension.Dimension)
+		err = getErr
 		dimensions = append(dimensions, dm)
-		return true
+		return err == nil
 	})
+
+	if err != nil {
+		return err
+	}
 
 	logrus.Debugf("Dimension len: %d", len(dimensions))
 
@@ -421,8 +428,12 @@ func (s *Storage) Cleanup() error {
 		sk, _ := ParseKey(string(rawSk))
 		logrus.Debugf("Segment key: %s", sk)
 
-		st := s.segments.Get(sk.SegmentKey()).(*segment.Segment)
-		hasData := st.Cleanup(time.Now().UTC().Add(s.cfg.Server.RetentionThreshold), func(depth int, t time.Time) {
+		stInt, err := s.segments.Get(sk.SegmentKey())
+		if err != nil {
+			return err
+		}
+		st := stInt.(*segment.Segment)
+		hasData := st.Cleanup(time.Now().UTC().Add(s.cfg.RetentionThreshold), func(depth int, t time.Time) {
 			tk := sk.TreeKey(depth, t)
 
 			logrus.Debugf("Tree key: %s", tk)
