@@ -4,19 +4,15 @@ services:
     env_file:
       - git-info.env
       - run-parameters.env
-    environment:
-      # this generates nice graphs in grafana
-      - PYROSCOPE_STATSD_ADDR=grafana:8125
-
+    ports:
+      - 8081:8081
     build:
       context: ../
       dockerfile: benchmark/Dockerfile
 
   pyroscope:
     environment:
-      - PYROSCOPE_STATSD_ADDR=grafana:8125
       - PYROSCOPE_LOG_LEVEL=debug
-      - PYROSCOPE_CACHE_TREE_SIZE=10
     build:
       context: ../
       dockerfile: Dockerfile
@@ -30,12 +26,17 @@ services:
           cpus: 1
           memory: 512M
 
-  grafana:
-    platform: linux/amd64
-    build:
-      context: grafana-docker
+  prometheus:
+    image: prom/prometheus:v2.27.1
     volumes:
-      - ./grafana-dashboards:/src/dashboards
+      - ./prometheus:/etc/prometheus/
     ports:
-      - 8125:8125/udp
-      - 8080:80
+      - 9090:9090
+
+  grafana:
+    image: grafana/grafana:7.5.7
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+      - ./grafana-docker/grafana.ini:/etc/grafana/grafana.ini
+    ports:
+      - 8080:3000

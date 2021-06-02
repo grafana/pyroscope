@@ -3,6 +3,7 @@
 * docker-compose
 * puppeteer and Google Chrome for screenshots
 
+
 ## Usage
 
 To start benchmark run:
@@ -13,6 +14,14 @@ Pass `--wait` to make the system continue running after benchmarking is over:
 ```
 sh start.sh --wait
 ```
+
+
+## Configuration
+
+Edit `run-parameters.env` file to change the parameters of the benchmark run.
+
+
+## Browsing results
 
 To view results open [http://localhost:8080/d/65gjqY3Mk/main?orgId=1](http://localhost:8080/d/65gjqY3Mk/main?orgId=1).
 

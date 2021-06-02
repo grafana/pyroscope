@@ -2,21 +2,23 @@ package main
 
 import (
 	"encoding/hex"
+	"fmt"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
-	"github.com/pyroscope-io/pyroscope/pkg/util/statsd"
 	"github.com/sirupsen/logrus"
 )
 
@@ -59,7 +61,7 @@ func startClientThread(wg *sync.WaitGroup) {
 			Trie:            t,
 		})
 		if err != nil {
-			statsd.Increment("errors.upload-error")
+			metrics.Count("errors.upload-error", 1)
 		}
 	}
 
@@ -79,20 +81,24 @@ func pingScreenshotTaker() {
 	}
 }
 
-func reportMetrics(prefix, k, v string) {
-	r1 := regexp.MustCompile("\\s+")
-	r2 := regexp.MustCompile("\\/+")
-	r3 := regexp.MustCompile("[^a-zA-Z_\\-0-9\\.]+")
+var summaryText = `
+<style>
+	body {
+		font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;
+		font-size: 12px;
+		color: #ddd;
+	}
+</style>
+`
 
-	k = r1.ReplaceAllString(k, "_")
-	k = r2.ReplaceAllString(k, "-")
-	k = r3.ReplaceAllString(k, "")
+func printSummary(rsp http.ResponseWriter, req *http.Request) {
+	rsp.Header().Add("Content-Type", "text/html")
+	rsp.WriteHeader(200)
+	rsp.Write([]byte(summaryText))
+}
 
-	v = r1.ReplaceAllString(v, "_")
-	v = r2.ReplaceAllString(v, "-")
-	v = r3.ReplaceAllString(v, "")
-
-	statsd.Gauge(prefix+"."+k+"---"+v, 1)
+func reportSummaryMetric(prefix, k, v string) {
+	summaryText += fmt.Sprintf("%s=%s<br>\n", k, v)
 }
 
 const timeFmt = "2006-01-02T15-04-05-000"
@@ -127,12 +133,12 @@ func reportEnvMetrics() {
 	for _, e := range os.Environ() {
 		pair := strings.SplitN(e, "=", 2)
 		if len(pair) == 2 && !slices.StringContains(excludeEnv, pair[0]) {
-			reportMetrics("env", pair[0], pair[1])
+			reportSummaryMetric("env", pair[0], pair[1])
 		}
 	}
 
-	reportMetrics("env", "GOARCH", runtime.GOARCH)
-	reportMetrics("env", "GOOS", runtime.GOOS)
+	reportSummaryMetric("env", "GOARCH", runtime.GOARCH)
+	reportSummaryMetric("env", "GOOS", runtime.GOOS)
 }
 
 func setupLogging() {
@@ -144,9 +150,10 @@ func setupLogging() {
 func main() {
 	symbolBuf = make([]byte, envInt("PROFILE_SYMBOL_LENGTH"))
 	setupLogging()
-	if statsdAddr := os.Getenv("PYROSCOPE_STATSD_ADDR"); statsdAddr != "" {
-		statsd.Initialize(statsdAddr, "pyroscope-server")
-	}
+
+	http.Handle("/metrics", promhttp.Handler())
+	http.HandleFunc("/summary", printSummary)
+	go http.ListenAndServe(":8081", nil)
 
 	logrus.Info("waiting for other services to load")
 	// TODO: should have some health check instead
@@ -163,7 +170,7 @@ func main() {
 
 	logrus.Info("starting sending requests")
 	startTime := time.Now()
-	reportMetrics("stats", "1-start-time", startTime.Format(timeFmt))
+	reportSummaryMetric("stats", "1-start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
 	wg.Add(clients)
 	for i := 0; i < clients; i++ {
@@ -171,8 +178,8 @@ func main() {
 	}
 	wg.Wait()
 	logrus.Info("done sending requests")
-	reportMetrics("stats", "2-stop-time", time.Now().Format(timeFmt))
-	reportMetrics("stats", "duration", time.Now().Sub(startTime).String())
+	reportSummaryMetric("stats", "2-stop-time", time.Now().Format(timeFmt))
+	reportSummaryMetric("stats", "duration", time.Now().Sub(startTime).String())
 
 	time.Sleep(5 * time.Second)
 	pingScreenshotTaker()

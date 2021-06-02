@@ -15,7 +15,6 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 2,
-  "id": 1,
   "links": [],
   "panels": [
     {
@@ -23,7 +22,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -65,10 +64,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "refCount": 0,
-          "refId": "A",
-          "target": "aliasByMetric(stats.gauges.pyroscope-server.mem.*)",
-          "textEditor": false
+          "exemplar": true,
+          "expr": "{__name__=~\"mem_.+\"}",
+          "interval": "",
+          "legendFormat": "{{__name__}}",
+          "queryType": "randomWalk",
+          "refId": "A"
         }
       ],
       "thresholds": [],
@@ -117,7 +118,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {},
         "overrides": []
@@ -159,10 +160,12 @@
       "steppedLine": false,
       "targets": [
         {
-          "refCount": 0,
-          "refId": "A",
-          "target": "aliasByMetric(stats.gauges.pyroscope-server.disk.*)",
-          "textEditor": false
+          "exemplar": true,
+          "expr": "{__name__=~\"disk_.+\"}",
+          "interval": "",
+          "legendFormat": "{{__name__}}",
+          "queryType": "randomWalk",
+          "refId": "A"
         }
       ],
       "thresholds": [],
@@ -211,7 +214,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": null,
+      "datasource": "Prometheus",
       "description": "Number of objects in cache",
       "fieldConfig": {
         "defaults": {},
@@ -254,10 +257,13 @@
       "steppedLine": false,
       "targets": [
         {
-          "refCount": 0,
-          "refId": "A",
-          "target": "aliasByMetric(stats.gauges.pyroscope-server.cache.*)",
-          "textEditor": false
+          "exemplar": true,
+          "expr": "{__name__=~\"cache_.+\"}",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{__name__}}",
+          "queryType": "randomWalk",
+          "refId": "A"
         }
       ],
       "thresholds": [],
@@ -304,52 +310,33 @@
       }
     },
     {
-      "datasource": null,
+      "datasource": "Prometheus",
       "description": "a lot symbols are replaces with dashes or removed",
       "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
+        "defaults": {},
         "overrides": []
       },
       "gridPos": {
-        "h": 15,
+        "h": 30,
         "w": 6,
-        "x": 0,
-        "y": 11
+        "x": 18,
+        "y": 0
       },
       "id": 5,
       "links": [],
       "options": {
-        "showHeader": true
+        "content": "<iframe style=\"border:none; width:100%; height: 100%;\" src=\"http://localhost:8081/summary\">",
+        "mode": "html"
       },
       "pluginVersion": "7.5.7",
       "targets": [
         {
-          "refCount": 0,
-          "refId": "A",
-          "target": "aliasSub(aliasByMetric(stats.gauges.pyroscope-server.stats.*), '---', '=')",
-          "textEditor": false
+          "exemplar": true,
+          "expr": "{__name__=~\"stats_.+\"}",
+          "interval": "",
+          "legendFormat": "{{__name__}}",
+          "queryType": "randomWalk",
+          "refId": "A"
         }
       ],
       "timeFrom": null,
@@ -372,78 +359,7 @@
           }
         }
       ],
-      "type": "table"
-    },
-    {
-      "datasource": null,
-      "description": "a lot symbols are replaces with dashes or removed",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": null,
-            "filterable": false
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 15,
-        "w": 6,
-        "x": 6,
-        "y": 11
-      },
-      "id": 4,
-      "links": [],
-      "options": {
-        "showHeader": true
-      },
-      "pluginVersion": "7.5.7",
-      "targets": [
-        {
-          "refCount": 0,
-          "refId": "A",
-          "target": "aliasSub(aliasByMetric(stats.gauges.pyroscope-server.env.*), '---', '=')",
-          "textEditor": false
-        }
-      ],
-      "timeFrom": null,
-      "timeShift": null,
-      "title": "Environment",
-      "transformations": [
-        {
-          "id": "seriesToRows",
-          "options": {}
-        },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "Metric": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
-            }
-          }
-        }
-      ],
-      "type": "table"
+      "type": "text"
     }
   ],
   "refresh": false,
@@ -454,7 +370,7 @@
     "list": []
   },
   "time": {
-    "from": "2021-05-27T01:20:30.085Z",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {
@@ -485,5 +401,5 @@
   "timezone": "browser",
   "title": "main",
   "uid": "65gjqY3Mk",
-  "version": 2
+  "version": 1
 }
