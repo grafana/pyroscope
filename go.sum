@@ -1,7 +1,5 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-github.com/AdrK/lfu-go v1.0.0-test h1:dx2G4x/XEycM4gRaMfjmJlkru+eZIOF/ScSwsNMVbuw=
-github.com/AdrK/lfu-go v1.0.0-test/go.mod h1:4t363rMheLAG0/EVxY6KFVCk/1sxPcsFrRpQ8Qr5LEM=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/DataDog/zstd v1.4.1 h1:3oxKN3wbHibqx897utPC2LTQU4J+IHWWJO+glkAkpFM=
@@ -370,6 +368,8 @@ github.com/prometheus/procfs v0.6.0 h1:mxy4L2jP6qMonqmq+aTtOx1ifVWUgG/TAmntgbh3x
 github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/pyroscope-io/dotnetdiag v1.1.0 h1:BIo2cIAH+/iXQgbgUfpLil3E9ODY2HcnBBwQ4smjgAU=
 github.com/pyroscope-io/dotnetdiag v1.1.0/go.mod h1:mUudCmW+j2ewS55/FHq0lHj0Xy2AHWc1UhaaRdfSve8=
+github.com/pyroscope-io/lfu-go v1.0.1 h1:yGE9tbsAYTr+Bb5KL25WJOh7FX0bnb01MDgIqPvxPAY=
+github.com/pyroscope-io/lfu-go v1.0.1/go.mod h1:3W9sGrDLhKFkHZPXkz6c5dAKrxcwkKbFFKnJtDukMDA=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1 h1:0v9lBNgdmVtpyyk9PP/DfpJlOHkXriu5YgNlrhQw5YE=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1/go.mod h1:tSw34BaGZ0iF+oVKDOjq1/LuxGifgW7shaJ6+dBYFXg=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
