@@ -58,6 +58,7 @@ type Server struct {
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
 
+	RetentionPeriod     time.Duration     `def:"30s" desc:"retention period"`
 	OutOfSpaceThreshold bytesize.ByteSize `def:"512MB" desc:"Threshold value to consider out of space in bytes"`
 	ThresholdModeAuto   bool              `def:"true" desc:"Threshold mode auto will do data cleanup automatically when will run out of storage"`
 	RetentionThreshold  time.Duration     `def:"" desc:"data retention threshold"`

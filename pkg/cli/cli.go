@@ -426,7 +426,7 @@ func startServer(cfg *config.Server) error {
 		return fmt.Errorf("new server: %v", err)
 	}
 
-	go storageCleaner(s)
+	go performRetentionCleanups(cfg, s)
 	atexit.Register(func() { c.Stop() })
 
 	// start the analytics
@@ -470,17 +470,16 @@ func reportDebuggingInformation(cfg *config.Server, s *storage.Storage) {
 	}
 }
 
-func storageCleaner(s *storage.Storage) {
-	logrus.Debug("Storage cleaner scheduled")
+func performRetentionCleanups(cfg *config.Server, s *storage.Storage) {
+	logrus.Debug("starts storage retention data cleanups")
 
-	t := time.NewTicker(30 * time.Second)
+	t := time.NewTicker(cfg.RetentionPeriod)
 	for {
 		<-t.C
 
-		logrus.Debugf("Calling storage cleaner...")
-		if err := s.Cleanup(); err != nil {
-			logrus.Errorln("storageCleaner: ", err)
+		threshold := time.Now().Add(-1 * cfg.RetentionThreshold)
+		if err := s.DeleteDataBefore(threshold); err != nil {
+			logrus.WithField("err", err).Errorln("error happened when deleting old data")
 		}
-		logrus.Debugf("Storage cleaner cycle done")
 	}
 }

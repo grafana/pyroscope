@@ -202,7 +202,7 @@ var _ = Describe("StorageCleanup", func() {
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(s.Cleanup()).ToNot(HaveOccurred())
+				Expect(s.DeleteDataBefore(time.Now().Add(-1 * time.Hour))).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
@@ -225,7 +225,7 @@ var _ = Describe("StorageCleanup", func() {
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(s.Cleanup()).ToNot(HaveOccurred())
+				Expect(s.DeleteDataBefore(time.Now().Add(-1 * time.Hour))).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})

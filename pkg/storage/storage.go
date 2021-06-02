@@ -388,7 +388,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}, nil
 }
 
-func (s *Storage) Cleanup() error {
+func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 	s.closingMutex.Lock()
 	defer s.closingMutex.Unlock()
 
@@ -424,7 +424,7 @@ func (s *Storage) Cleanup() error {
 			return err
 		}
 		st := stInt.(*segment.Segment)
-		hasData := st.DeleteDataBefore(time.Now().Add(-1*s.cfg.RetentionThreshold), func(depth int, t time.Time) {
+		hasData := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 			tk := sk.TreeKey(depth, t)
 			if delErr := s.trees.Delete(tk); delErr != nil {
 				// TODO: need to improve it so that we can exit out of cleanup here
