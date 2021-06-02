@@ -194,11 +194,10 @@ type PutInput struct {
 
 func (s *Storage) Put(po *PutInput) error {
 	s.closingMutex.Lock()
-	defer s.closingMutex.Unlock()
-
 	if s.closing {
 		return errClosing
 	}
+	s.closingMutex.Unlock()
 
 	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
 	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
@@ -293,11 +292,10 @@ type GetOutput struct {
 
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	s.closingMutex.Lock()
-	defer s.closingMutex.Unlock()
-
 	if s.closing {
 		return nil, errClosing
 	}
+	s.closingMutex.Unlock()
 
 	logrus.WithFields(logrus.Fields{
 		"startTime": gi.StartTime.String(),
@@ -396,11 +394,10 @@ type DeleteInput struct {
 
 func (s *Storage) Delete(di *DeleteInput) error {
 	s.closingMutex.Lock()
-	defer s.closingMutex.Unlock()
-
 	if s.closing {
 		return errClosing
 	}
+	s.closingMutex.Unlock()
 
 	logrus.WithFields(logrus.Fields{
 		"startTime": di.StartTime.String(),
@@ -410,7 +407,11 @@ func (s *Storage) Delete(di *DeleteInput) error {
 
 	dimensions := []*dimension.Dimension{}
 	for k, v := range di.Key.labels {
-		d := s.dimensions.Get(k + ":" + v).(*dimension.Dimension)
+		dInt, err := s.dimensions.Get(k + ":" + v)
+		if err != nil {
+			return nil
+		}
+		d := dInt.(*dimension.Dimension)
 		dimensions = append(dimensions, d)
 	}
 
@@ -419,7 +420,11 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	for _, sk := range segmentKeys {
 		// TODO: refactor, store `Key`s in dimensions
 		skk, _ := ParseKey(string(sk))
-		st := s.segments.Get(skk.SegmentKey()).(*segment.Segment)
+		stInt, err := s.segments.Get(skk.SegmentKey())
+		if err != nil {
+			return nil
+		}
+		st := stInt.(*segment.Segment)
 		if st == nil {
 			continue
 		}
