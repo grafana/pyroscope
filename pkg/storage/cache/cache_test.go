@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -27,7 +28,7 @@ var _ = Describe("cache", func() {
 		db, err := badger.Open(badgerOptions)
 		Expect(err).ToNot(HaveOccurred())
 
-		cache := New(db, 10, "prefix:")
+		cache := New(db, "prefix:")
 		cache.Bytes = func(k string, v interface{}) []byte {
 			return []byte(v.(string))
 		}
@@ -37,6 +38,7 @@ var _ = Describe("cache", func() {
 		for i := 0; i < 200; i++ {
 			cache.Put(fmt.Sprintf("foo-%d", i), fmt.Sprintf("bar-%d", i))
 		}
+		log.Printf("size: %d", cache.Len())
 
 		Expect(cache.Get("foo-199")).To(Equal("bar-199"))
 		Expect(cache.Get("foo-1")).To(Equal("bar-1"))

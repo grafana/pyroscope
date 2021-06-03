@@ -167,7 +167,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		dbSegments:   dbSegments,
 	}
 
-	s.dimensions = cache.New(dbDimensions, cfg.Server.CacheDimensionSize, "i:")
+	s.dimensions = cache.New(dbDimensions, "i:")
 	s.dimensions.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -178,7 +178,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		return dimension.New()
 	}
 
-	s.segments = cache.New(dbSegments, cfg.Server.CacheSegmentSize, "s:")
+	s.segments = cache.New(dbSegments, "s:")
 	s.segments.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*segment.Segment).Bytes()
 	}
@@ -191,7 +191,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		return segment.New()
 	}
 
-	s.dicts = cache.New(dbDicts, cfg.Server.CacheDictionarySize, "d:")
+	s.dicts = cache.New(dbDicts, "d:")
 	s.dicts.Bytes = func(_k string, v interface{}) []byte {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -202,7 +202,7 @@ func New(cfg *config.Config) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(dbTrees, cfg.Server.CacheSegmentSize, "t:")
+	s.trees = cache.New(dbTrees, "t:")
 	s.trees.Bytes = func(k string, v interface{}) []byte {
 		d := s.dicts.Get(FromTreeToMainKey(k)).(*dict.Dict)
 		return v.(*tree.Tree).Bytes(d, cfg.Server.MaxNodesSerialization)

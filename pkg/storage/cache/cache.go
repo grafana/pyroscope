@@ -22,14 +22,17 @@ type Cache struct {
 	New func(k string) interface{}
 }
 
-func New(db *badger.DB, bound int, prefix string) *Cache {
+func New(db *badger.DB, prefix string) *Cache {
 	eviction := make(chan lfu.Eviction, 1)
 
 	l := lfu.New()
-	l.UpperBound = bound
-	// 10 percent of upper for the lower bound
-	l.LowerBound = bound - bound/10
+
+	// eviction channel for saving cache items to disk
 	l.EvictionChannel = eviction
+
+	// disable the eviction based on upper and lower bound
+	l.UpperBound = 0
+	l.LowerBound = 0
 
 	cache := &Cache{
 		db:          db,
@@ -90,13 +93,9 @@ func (cache *Cache) Evit(percent float64) {
 
 func (cache *Cache) Get(key string) interface{} {
 	lg := logrus.WithField("key", key)
-	if cache.lfu.UpperBound > 0 {
-		fromLfu := cache.lfu.Get(key)
-		if fromLfu != nil {
-			return fromLfu
-		}
-	} else {
-		logrus.Warn("lfu is not used, only use this during debugging")
+	fromLfu := cache.lfu.Get(key)
+	if fromLfu != nil {
+		return fromLfu
 	}
 	lg.Debug("lfu miss")
 

@@ -88,6 +88,7 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 		defaultValStr := field.Tag.Get("def")
 		descVal := field.Tag.Get("desc")
 		skipVal := field.Tag.Get("skip")
+		deprecatedVal := field.Tag.Get("deprecated")
 		nameVal := field.Tag.Get("name")
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
@@ -95,8 +96,11 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 		if skipVal == "true" || slices.StringContains(skip, nameVal) {
 			continue
 		}
-
-		descVal = strings.ReplaceAll(descVal, "<supportedProfilers>", supportedSpies)
+		if deprecatedVal == "true" {
+			descVal = strings.ReplaceAll(descVal+" (DEPRECATED: This parameter is not supported)", "<supportedProfilers>", supportedSpies)
+		} else {
+			descVal = strings.ReplaceAll(descVal, "<supportedProfilers>", supportedSpies)
+		}
 
 		switch field.Type {
 		case reflect.TypeOf([]string{}):
