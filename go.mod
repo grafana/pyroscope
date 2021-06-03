@@ -37,6 +37,7 @@ require (
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/peterbourgon/ff v1.7.0
 	github.com/peterbourgon/ff/v3 v3.0.0
+	github.com/prometheus/client_golang v1.10.0
 	github.com/pyroscope-io/dotnetdiag v1.1.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/shirou/gopsutil v3.21.4+incompatible
@@ -50,3 +51,5 @@ require (
 )
 
 replace github.com/mgechev/revive v1.0.3 => github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1
+
+replace github.com/dgrijalva/lfu-go => github.com/pyroscope-io/lfu-go v1.0.1

@@ -1,0 +1,42 @@
+version: "3.9"
+services:
+  client:
+    env_file:
+      - git-info.env
+      - run-parameters.env
+    ports:
+      - 8081:8081
+    build:
+      context: ../
+      dockerfile: benchmark/Dockerfile
+
+  pyroscope:
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    command:
+      - server
+    ports:
+      - 4040:4040
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 512M
+
+  prometheus:
+    image: prom/prometheus:v2.27.1
+    volumes:
+      - ./prometheus:/etc/prometheus/
+    ports:
+      - 9090:9090
+
+  grafana:
+    image: grafana/grafana:7.5.7
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    ports:
+      - 8080:3000

@@ -29,20 +29,34 @@ var _ = Describe("cache", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		cache := New(db, "prefix:")
-		cache.Bytes = func(k string, v interface{}) []byte {
-			return []byte(v.(string))
+		cache.New = func(k string) interface{} {
+			return k
 		}
-		cache.FromBytes = func(k string, v []byte) interface{} {
-			return string(v)
+		cache.Bytes = func(k string, v interface{}) ([]byte, error) {
+			return []byte(v.(string)), nil
+		}
+		cache.Bytes = func(k string, v interface{}) ([]byte, error) {
+			return []byte(v.(string)), nil
+		}
+		cache.FromBytes = func(k string, v []byte) (interface{}, error) {
+			return string(v), nil
 		}
 		for i := 0; i < 200; i++ {
 			cache.Put(fmt.Sprintf("foo-%d", i), fmt.Sprintf("bar-%d", i))
 		}
 		log.Printf("size: %d", cache.Len())
 
-		Expect(cache.Get("foo-199")).To(Equal("bar-199"))
-		Expect(cache.Get("foo-1")).To(Equal("bar-1"))
-		Expect(cache.Get("foo-1234")).To(BeNil())
+		v, err := cache.Get("foo-199")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(v).To(Equal("bar-199"))
+
+		v, err = cache.Get("foo-1")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(v).To(Equal("bar-1"))
+
+		v, err = cache.Get("foo-1234")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(v).To(Equal("foo-1234"))
 		cache.Flush()
 
 		close(done)
