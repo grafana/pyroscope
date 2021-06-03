@@ -85,6 +85,16 @@ func (cache *Cache) Flush() {
 	<-cache.cleanupDone
 }
 
+func (cache *Cache) Delete(key string) error {
+	cache.lfu.Delete(key)
+
+	err := cache.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(cache.prefix + key))
+	})
+
+	return err
+}
+
 func (cache *Cache) Get(key string) (interface{}, error) {
 	// find the key from cache first
 	if cache.lfu.UpperBound > 0 {

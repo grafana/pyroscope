@@ -31,7 +31,7 @@ var errClosing = errors.New("the db is in closing state")
 var errOutOfSpace = errors.New("running out of space")
 
 type Storage struct {
-	closingMutex sync.Mutex
+	closingMutex sync.RWMutex
 	closing      bool
 
 	cfg      *config.Server
@@ -193,9 +193,8 @@ type PutInput struct {
 }
 
 func (s *Storage) Put(po *PutInput) error {
-	s.closingMutex.Lock()
-	defer s.closingMutex.Unlock()
-
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
 	if s.closing {
 		return errClosing
 	}
@@ -292,9 +291,8 @@ type GetOutput struct {
 }
 
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
-	s.closingMutex.Lock()
-	defer s.closingMutex.Unlock()
-
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
 	if s.closing {
 		return nil, errClosing
 	}
@@ -386,6 +384,65 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		SampleRate: lastSegment.SampleRate(),
 		Units:      lastSegment.Units(),
 	}, nil
+}
+
+type DeleteInput struct {
+	StartTime time.Time
+	EndTime   time.Time
+	Key       *Key
+}
+
+func (s *Storage) Delete(di *DeleteInput) error {
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
+	if s.closing {
+		return errClosing
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"startTime": di.StartTime.String(),
+		"endTime":   di.EndTime.String(),
+		"key":       di.Key.Normalized(),
+	}).Info("storage.Delete")
+
+	dimensions := []*dimension.Dimension{}
+	for k, v := range di.Key.labels {
+		dInt, err := s.dimensions.Get(k + ":" + v)
+		if err != nil {
+			return nil
+		}
+		d := dInt.(*dimension.Dimension)
+		dimensions = append(dimensions, d)
+	}
+
+	segmentKeys := dimension.Intersection(dimensions...)
+
+	for _, sk := range segmentKeys {
+		// TODO: refactor, store `Key`s in dimensions
+		skk, _ := ParseKey(string(sk))
+		stInt, err := s.segments.Get(skk.SegmentKey())
+		if err != nil {
+			return nil
+		}
+		st := stInt.(*segment.Segment)
+		if st == nil {
+			continue
+		}
+
+		st.Get(di.StartTime, di.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+			k := skk.TreeKey(depth, t)
+			s.trees.Delete(k)
+			s.dicts.Delete(FromTreeToMainKey(k))
+		})
+
+		s.segments.Delete(skk.SegmentKey())
+	}
+
+	for k, v := range di.Key.labels {
+		s.dimensions.Delete(k + ":" + v)
+	}
+
+	return nil
 }
 
 func (s *Storage) Close() error {

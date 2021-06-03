@@ -35,6 +35,148 @@ var _ = Describe("storage package", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
+		Context("delete tests", func() {
+			Context("simple delete", func() {
+				It("works correctly", func() {
+					tree := tree.New()
+					tree.Insert([]byte("a;b"), uint64(1))
+					tree.Insert([]byte("a;c"), uint64(2))
+					st := testing.SimpleTime(10)
+					et := testing.SimpleTime(19)
+					st2 := testing.SimpleTime(0)
+					et2 := testing.SimpleTime(30)
+					key, _ := ParseKey("foo")
+
+					s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
+
+					err := s.Delete(&DeleteInput{
+						StartTime: st,
+						EndTime:   et,
+						Key:       key,
+					})
+					Expect(err).ToNot(HaveOccurred())
+
+					gOut, err := s.Get(&GetInput{
+						StartTime: st2,
+						EndTime:   et2,
+						Key:       key,
+					})
+
+					Expect(err).ToNot(HaveOccurred())
+					Expect(gOut).To(BeNil())
+					Expect(s.Close()).ToNot(HaveOccurred())
+				})
+			})
+			Context("delete all trees", func() {
+				It("works correctly", func() {
+					tree1 := tree.New()
+					tree1.Insert([]byte("a;b"), uint64(1))
+					tree1.Insert([]byte("a;c"), uint64(2))
+					tree2 := tree.New()
+					tree2.Insert([]byte("c;d"), uint64(1))
+					tree2.Insert([]byte("e;f"), uint64(2))
+					st := testing.SimpleTime(10)
+					et := testing.SimpleTime(19)
+					st2 := testing.SimpleTime(0)
+					et2 := testing.SimpleTime(30)
+					key, _ := ParseKey("foo")
+
+					s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree1,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
+
+					s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree2,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
+
+					err := s.Delete(&DeleteInput{
+						StartTime: st,
+						EndTime:   et,
+						Key:       key,
+					})
+					Expect(err).ToNot(HaveOccurred())
+
+					gOut, err := s.Get(&GetInput{
+						StartTime: st2,
+						EndTime:   et2,
+						Key:       key,
+					})
+					Expect(err).ToNot(HaveOccurred())
+					Expect(gOut).To(BeNil())
+					Expect(s.Close()).ToNot(HaveOccurred())
+				})
+			})
+			Context("put after delete", func() {
+				It("works correctly", func() {
+					tree1 := tree.New()
+					tree1.Insert([]byte("a;b"), uint64(1))
+					tree1.Insert([]byte("a;c"), uint64(2))
+					tree2 := tree.New()
+					tree2.Insert([]byte("c;d"), uint64(1))
+					tree2.Insert([]byte("e;f"), uint64(2))
+					st := testing.SimpleTime(10)
+					et := testing.SimpleTime(19)
+					st2 := testing.SimpleTime(0)
+					et2 := testing.SimpleTime(30)
+					key, _ := ParseKey("foo")
+
+					err := s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree1,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
+					Expect(err).ToNot(HaveOccurred())
+
+					err = s.Delete(&DeleteInput{
+						StartTime: st,
+						EndTime:   et,
+						Key:       key,
+					})
+					Expect(err).ToNot(HaveOccurred())
+
+					s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree2,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
+
+					gOut, err := s.Get(&GetInput{
+						StartTime: st2,
+						EndTime:   et2,
+						Key:       key,
+					})
+
+					Expect(err).ToNot(HaveOccurred())
+					Expect(gOut.Tree).ToNot(BeNil())
+					Expect(gOut.Tree.String()).To(Equal(tree2.String()))
+					Expect(s.Close()).ToNot(HaveOccurred())
+				})
+			})
+		})
+
 		Context("smoke tests", func() {
 			Context("check segment cache", func() {
 				It("works correctly", func() {
