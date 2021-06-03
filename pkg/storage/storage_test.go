@@ -47,7 +47,7 @@ var _ = Describe("storage package", func() {
 			EvictInterval = 2
 
 			var err error
-			s, err = New(*cfg)
+			s, err = New(&(*cfg).Server)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -192,7 +192,7 @@ var _ = Describe("storage package", func() {
 					Expect(o.Tree.String()).To(Equal(tree.String()))
 					Expect(s.Close()).ToNot(HaveOccurred())
 
-					s2, err := New(*cfg)
+					s2, err := New(&(*cfg).Server)
 					Expect(err).ToNot(HaveOccurred())
 
 					o2, err := s2.Get(&GetInput{

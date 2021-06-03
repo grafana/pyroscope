@@ -39,7 +39,7 @@ type Storage struct {
 	closingMutex sync.Mutex
 	closing      bool
 
-	cfg      *config.Config
+	cfg      *config.Server
 	segments *cache.Cache
 
 	dimensions *cache.Cache
@@ -66,18 +66,18 @@ func badgerGC(db *badger.DB) {
 	}
 }
 
-func newBadger(cfg *config.Config, name string) (*badger.DB, error) {
-	badgerPath := filepath.Join(cfg.Server.StoragePath, name)
+func newBadger(cfg *config.Server, name string) (*badger.DB, error) {
+	badgerPath := filepath.Join(cfg.StoragePath, name)
 	err := os.MkdirAll(badgerPath, 0o755)
 	if err != nil {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
-	badgerOptions = badgerOptions.WithTruncate(!cfg.Server.BadgerNoTruncate)
+	badgerOptions = badgerOptions.WithTruncate(!cfg.BadgerNoTruncate)
 	badgerOptions = badgerOptions.WithSyncWrites(false)
 	badgerOptions = badgerOptions.WithCompression(options.ZSTD)
 	badgerLevel := logrus.ErrorLevel
-	if l, err := logrus.ParseLevel(cfg.Server.BadgerLogLevel); err == nil {
+	if l, err := logrus.ParseLevel(cfg.BadgerLogLevel); err == nil {
 		badgerLevel = l
 	}
 	badgerOptions = badgerOptions.WithLogger(badgerLogger{name: name, logLevel: badgerLevel})
@@ -114,9 +114,9 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 
 			used := float64(m.Alloc) / float64(vm.Total)
 
-			logrus.Infof("current used percent of memory: %.5f, %f, %f", used, s.cfg.Server.CacheEvictPoint, s.cfg.Server.CacheEvictVolume)
-			if used > s.cfg.Server.CacheEvictPoint {
-				percent := s.cfg.Server.CacheEvictVolume
+			logrus.Infof("current used percent of memory: %.5f, %f, %f", used, s.cfg.CacheEvictPoint, s.cfg.CacheEvictVolume)
+			if used > s.cfg.CacheEvictPoint {
+				percent := s.cfg.CacheEvictVolume
 
 				s.dimensions.Evit(percent)
 				s.segments.Evit(percent)
@@ -135,7 +135,7 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 	return nil
 }
 
-func New(cfg *config.Config) (*Storage, error) {
+func New(cfg *config.Server) (*Storage, error) {
 	db, err := newBadger(cfg, "main")
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func New(cfg *config.Config) (*Storage, error) {
 
 	s := &Storage{
 		cfg:          cfg,
-		labels:       labels.New(cfg, db),
+		labels:       labels.New(db),
 		db:           db,
 		dbTrees:      dbTrees,
 		dbDicts:      dbDicts,
@@ -205,7 +205,7 @@ func New(cfg *config.Config) (*Storage, error) {
 	s.trees = cache.New(dbTrees, "t:")
 	s.trees.Bytes = func(k string, v interface{}) []byte {
 		d := s.dicts.Get(FromTreeToMainKey(k)).(*dict.Dict)
-		return v.(*tree.Tree).Bytes(d, cfg.Server.MaxNodesSerialization)
+		return v.(*tree.Tree).Bytes(d, cfg.MaxNodesSerialization)
 	}
 	s.trees.FromBytes = func(k string, v []byte) interface{} {
 		d := s.dicts.Get(FromTreeToMainKey(k)).(*dict.Dict)
@@ -244,8 +244,8 @@ func (s *Storage) Put(po *PutInput) error {
 		return errClosing
 	}
 
-	freeSpace, err := disk.FreeSpace(s.cfg.Server.StoragePath)
-	if err == nil && freeSpace < s.cfg.Server.OutOfSpaceThreshold {
+	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
+	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
 		return errOutOfSpace
 	}
 
@@ -408,7 +408,7 @@ func (s *Storage) GetKeys(cb func(_k string) bool) {
 
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
-		if key != "__name__" || !slices.StringContains(s.cfg.Server.HideApplications, v) {
+		if key != "__name__" || !slices.StringContains(s.cfg.HideApplications, v) {
 			return cb(v)
 		}
 		return true
@@ -424,7 +424,7 @@ func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
 		"segments":   0,
 	}
 	for k := range res {
-		res[k] = dirSize(filepath.Join(s.cfg.Server.StoragePath, k))
+		res[k] = dirSize(filepath.Join(s.cfg.StoragePath, k))
 	}
 	return res
 }

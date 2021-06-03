@@ -8,3 +8,9 @@ type Logger interface {
 	Debugf(format string, args ...interface{})
 	Errorf(format string, args ...interface{})
 }
+
+type NoopLogger struct{}
+
+func (*NoopLogger) Infof(format string, args ...interface{})  {}
+func (*NoopLogger) Debugf(format string, args ...interface{}) {}
+func (*NoopLogger) Errorf(format string, args ...interface{}) {}
