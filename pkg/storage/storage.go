@@ -173,7 +173,7 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 			}
 
 			// reset the timer
-			ticker.Reset(interval * time.Second)
+			ticker.Reset(interval)
 		}
 	}()
 
