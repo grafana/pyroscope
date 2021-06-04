@@ -3,14 +3,18 @@ package storage
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
+	"github.com/pyroscope-io/pyroscope/pkg/util/file"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/shirou/gopsutil/mem"
 
@@ -87,9 +91,45 @@ func newBadger(cfg *config.Server, name string) (*badger.DB, error) {
 	return db, err
 }
 
+const memLimitPath = "/sys/fs/cgroup/memory/memory.limit_in_bytes"
+
+func getCgroupMemLimit() (uint64, error) {
+	f, err := os.Open(memLimitPath)
+	if err != nil {
+		return 0, err
+	}
+	b, err := ioutil.ReadAll(f)
+	if err != nil {
+		return 0, err
+	}
+	r, err := strconv.Atoi(strings.TrimSuffix(string(b), "\n"))
+	if err != nil {
+		return 0, err
+	}
+
+	return uint64(r), nil
+}
+
+func getMemTotal() (uint64, error) {
+	if file.Exists(memLimitPath) {
+		v, err := getCgroupMemLimit()
+		if err == nil {
+			return v, nil
+		}
+		logrus.WithError(err).Warn("Could not read cgroup memory limit")
+	}
+
+	vm, err := mem.VirtualMemory()
+	if err != nil {
+		return 0, err
+	}
+
+	return vm.Total, nil
+}
+
 func (s *Storage) startEvictTimer(interval time.Duration) error {
 	// load the total memory of the server
-	vm, err := mem.VirtualMemory()
+	memTotal, err := getMemTotal()
 	if err != nil {
 		return err
 	}
@@ -110,10 +150,10 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 
-			used := float64(m.Alloc) / float64(vm.Total)
+			used := float64(m.Alloc) / float64(memTotal)
 
 			metrics.Gauge("ram_evictions_alloc_bytes", m.Alloc)
-			metrics.Gauge("ram_evictions_total_bytes", vm.Total)
+			metrics.Gauge("ram_evictions_total_bytes", memTotal)
 			metrics.Gauge("ram_evictions_used_perc", used)
 
 			logrus.Infof("current used percent of memory: %.5f, %f, %f", used, s.cfg.CacheEvictPoint, s.cfg.CacheEvictVolume)
@@ -122,10 +162,10 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 					metrics.Count("ram_evictions", 1)
 					percent := s.cfg.CacheEvictVolume
 
-					s.dimensions.Evit(percent)
-					s.segments.Evit(percent)
-					s.trees.Evit(percent)
-					s.dicts.Evit(percent)
+					s.dimensions.Evict(percent)
+					s.segments.Evict(percent)
+					s.trees.Evict(percent)
+					s.dicts.Evict(percent)
 
 					// force gc after eviction
 					runtime.GC()

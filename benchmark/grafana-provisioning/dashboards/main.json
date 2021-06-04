@@ -826,7 +826,7 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 11,
-        "w": 6,
+        "w": 3,
         "x": 6,
         "y": 22
       },
@@ -880,15 +880,6 @@
           "legendFormat": "{{__name__}}",
           "queryType": "randomWalk",
           "refId": "C"
-        },
-        {
-          "exemplar": true,
-          "expr": "ram_evictions_used_perc{}",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "{{__name__}}",
-          "queryType": "randomWalk",
-          "refId": "D"
         }
       ],
       "thresholds": [],
@@ -912,10 +903,124 @@
       "yaxes": [
         {
           "$$hashKey": "object:42",
-          "format": "short",
+          "format": "bytes",
           "label": null,
           "logBase": 1,
           "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "$$hashKey": "object:43",
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 11,
+        "w": 3,
+        "x": 9,
+        "y": 22
+      },
+      "hiddenSeries": false,
+      "id": 14,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.7",
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [
+        {
+          "alias": "ram_evictions_used_perc",
+          "yaxis": 1
+        }
+      ],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "ram_evictions_used_perc{}",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{__name__}}",
+          "queryType": "randomWalk",
+          "refId": "D"
+        }
+      ],
+      "thresholds": [
+        {
+          "$$hashKey": "object:104",
+          "colorMode": "critical",
+          "fill": true,
+          "line": true,
+          "op": "gt",
+          "value": 0.25,
+          "yaxis": "left"
+        }
+      ],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "RAM Usage %",
+      "tooltip": {
+        "shared": true,
+        "sort": 2,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "$$hashKey": "object:42",
+          "format": "percentunit",
+          "label": null,
+          "logBase": 1,
+          "max": "1",
           "min": "0",
           "show": true
         },
@@ -1124,7 +1229,7 @@
     "list": []
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {

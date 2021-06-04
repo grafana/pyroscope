@@ -96,7 +96,7 @@ func (cache *Cache) Flush() {
 	<-cache.cleanupDone
 }
 
-func (cache *Cache) Evit(percent float64) {
+func (cache *Cache) Evict(percent float64) {
 	cache.lfu.Evict(int(float64(cache.lfu.Len()) * percent))
 }
 
