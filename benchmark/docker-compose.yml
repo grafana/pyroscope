@@ -13,6 +13,7 @@ services:
   pyroscope:
     environment:
       - PYROSCOPE_LOG_LEVEL=debug
+      - PYROSCOPE_WAIT_AFTER_STOP=true
     build:
       context: ../
       dockerfile: Dockerfile
@@ -23,8 +24,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: 1
-          memory: 512M
+          cpus: "${PYROSCOPE_CPUS}"
+          memory: "${PYROSCOPE_MEMORY}"
 
   prometheus:
     image: prom/prometheus:v2.27.1

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -23,6 +24,7 @@ import (
 )
 
 var fixtures = []*transporttrie.Trie{}
+var appNames = []string{}
 
 func envInt(s string) int {
 	v, err := strconv.Atoi(os.Getenv(s))
@@ -32,7 +34,9 @@ func envInt(s string) int {
 	return v
 }
 
-func startClientThread(wg *sync.WaitGroup) {
+var requestsCompleteCount uint64
+
+func startClientThread(clientsCount int, wg *sync.WaitGroup) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
 		UpstreamAddress:        "http://pyroscope:4040",
@@ -45,13 +49,16 @@ func startClientThread(wg *sync.WaitGroup) {
 
 	threadStartTime := time.Now()
 
-	for i := 0; i < envInt("REQUESTS"); i++ {
-		t := fixtures[0]
+	requestsCount := envInt("REQUESTS")
+
+	for i := 0; i < requestsCount; i++ {
+		t := fixtures[i%len(fixtures)]
+		appName := appNames[i%len(appNames)]
 
 		st := threadStartTime.Add(time.Duration(i*10) * time.Second)
 		et := st.Add(10 * time.Second)
 		err := r.UploadSync(&upstream.UploadJob{
-			Name:            "app-name{}",
+			Name:            appName + "{}",
 			StartTime:       st,
 			EndTime:         et,
 			SpyName:         "gospy",
@@ -61,8 +68,13 @@ func startClientThread(wg *sync.WaitGroup) {
 			Trie:            t,
 		})
 		if err != nil {
-			metrics.Count("errors.upload-error", 1)
+			metrics.Count("upload_errors", 1)
+			time.Sleep(time.Second)
+		} else {
+			metrics.Count("successful_uploads", 1)
 		}
+		atomic.AddUint64(&requestsCompleteCount, 1)
+		metrics.Gauge("run_progress", float64(requestsCompleteCount)/(float64(requestsCount)*float64(clientsCount)))
 	}
 
 	wg.Done()
@@ -112,9 +124,14 @@ var excludeEnv = []string{
 
 var symbolBuf []byte
 
+var r *rand.Rand
+
+func init() {
+	r = rand.New(rand.NewSource(int64(envInt("RAND_SEED"))))
+}
+
 func generateProfile() *transporttrie.Trie {
 	t := transporttrie.New()
-	r := rand.New(rand.NewSource(int64(envInt("RAND_SEED"))))
 
 	for w := 0; w < envInt("PROFILE_WIDTH"); w++ {
 		symbol := []byte("root")
@@ -161,10 +178,16 @@ func main() {
 
 	reportEnvMetrics()
 
-	clients := envInt("CLIENTS")
+	clientsCount := envInt("CLIENTS")
 	logrus.Info("generating fixtures")
-	for i := 0; i < 100; i++ {
+	for i := 0; i < envInt("FIXTURES"); i++ {
 		fixtures = append(fixtures, generateProfile())
+	}
+
+	appNameBuf := make([]byte, 25)
+	for i := 0; i < envInt("APPS"); i++ {
+		r.Read(appNameBuf)
+		appNames = append(appNames, hex.EncodeToString(appNameBuf))
 	}
 	logrus.Info("done generating fixtures")
 
@@ -172,9 +195,9 @@ func main() {
 	startTime := time.Now()
 	reportSummaryMetric("start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
-	wg.Add(clients)
-	for i := 0; i < clients; i++ {
-		go startClientThread(&wg)
+	wg.Add(clientsCount)
+	for i := 0; i < clientsCount; i++ {
+		go startClientThread(clientsCount, &wg)
 	}
 	wg.Wait()
 	logrus.Info("done sending requests")
@@ -184,4 +207,7 @@ func main() {
 	time.Sleep(5 * time.Second)
 	pingScreenshotTaker()
 	time.Sleep(10 * time.Second)
+	if os.Getenv("WAIT") != "" {
+		select {}
+	}
 }

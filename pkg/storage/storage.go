@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/shirou/gopsutil/mem"
 
 	"github.com/dgraph-io/badger/v2"
@@ -114,17 +115,24 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 
 			used := float64(m.Alloc) / float64(vm.Total)
 
+			metrics.Gauge("ram_evictions_alloc_bytes", m.Alloc)
+			metrics.Gauge("ram_evictions_total_bytes", vm.Total)
+			metrics.Gauge("ram_evictions_used_perc", used)
+
 			logrus.Infof("current used percent of memory: %.5f, %f, %f", used, s.cfg.CacheEvictPoint, s.cfg.CacheEvictVolume)
 			if used > s.cfg.CacheEvictPoint {
-				percent := s.cfg.CacheEvictVolume
+				metrics.Timing("ram_evictions_timer", func() {
+					metrics.Count("ram_evictions", 1)
+					percent := s.cfg.CacheEvictVolume
 
-				s.dimensions.Evit(percent)
-				s.segments.Evit(percent)
-				s.trees.Evit(percent)
-				s.dicts.Evit(percent)
+					s.dimensions.Evit(percent)
+					s.segments.Evit(percent)
+					s.trees.Evit(percent)
+					s.dicts.Evit(percent)
 
-				// force gc after eviction
-				runtime.GC()
+					// force gc after eviction
+					runtime.GC()
+				})
 			}
 
 			// reset the timer
@@ -508,22 +516,29 @@ func (s *Storage) Close() error {
 	s.closing = true
 	s.closingMutex.Unlock()
 
-	wg := sync.WaitGroup{}
-	wg.Add(3)
-	go func() { defer wg.Done(); s.dimensions.Flush() }()
-	go func() { defer wg.Done(); s.segments.Flush() }()
-	go func() { defer wg.Done(); s.trees.Flush() }()
-	wg.Wait()
+	metrics.Timing("storage_caches_flush_timer", func() {
+		wg := sync.WaitGroup{}
+		wg.Add(3)
+		go func() { defer wg.Done(); s.dimensions.Flush() }()
+		go func() { defer wg.Done(); s.segments.Flush() }()
+		go func() { defer wg.Done(); s.trees.Flush() }()
+		wg.Wait()
 
-	// dictionary has to flush last because trees write to dictionaries
-	s.dicts.Flush()
+		// dictionary has to flush last because trees write to dictionaries
+		s.dicts.Flush()
+	})
 
-	s.dbTrees.Close()
-	s.dbDicts.Close()
-	s.dbDimensions.Close()
-	s.dbSegments.Close()
-
-	return s.db.Close()
+	metrics.Timing("storage_badger_close_timer", func() {
+		s.dbTrees.Close()
+		s.dbDicts.Close()
+		s.dbDimensions.Close()
+		s.dbSegments.Close()
+		s.db.Close()
+	})
+	if os.Getenv("PYROSCOPE_WAIT_AFTER_STOP") != "" {
+		time.Sleep(20 * time.Second)
+	}
+	return nil
 }
 
 func (s *Storage) GetKeys(cb func(_k string) bool) {
