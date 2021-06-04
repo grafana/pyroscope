@@ -14,6 +14,7 @@ type Config struct {
 	Convert   Convert   `skip:"true"`
 	Exec      Exec      `skip:"true"`
 	DbManager DbManager `skip:"true"`
+	Upload    Upload    `skip:"true"`
 }
 
 type Agent struct {
@@ -64,6 +65,19 @@ type Server struct {
 
 type Convert struct {
 	Format string `def:"tree"`
+}
+
+type Upload struct {
+	LogLevel        string `def:"error" desc:"log level: debug|info|warn|error"`
+	StoragePath     string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data"`
+	StartTime       time.Time
+	EndTime         time.Time
+	ApplicationName string `def:"upload"`
+
+	SpyName         string `def:"upload"`
+	SampleRate      uint   `def:"10"`
+	Units           string `def:"samples"`
+	AggregationType string `def:"sum"`
 }
 
 type DbManager struct {

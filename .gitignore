@@ -15,3 +15,8 @@ pkged.go
 .vscode
 vendor/
 benchmark/git-info.env
+
+storage/
+playground/
+pyroscope
+LOCAL_TODO.md

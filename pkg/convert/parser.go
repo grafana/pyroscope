@@ -46,16 +46,16 @@ func ParseGroups(r io.Reader, cb func(name []byte, val int)) error {
 			return err
 		}
 
-		line := scanner.Bytes()
-		line2 := make([]byte, len(line))
-		copy(line2, line)
+		scannerLine := scanner.Bytes()
+		line := make([]byte, len(scannerLine))
+		copy(line, scannerLine)
 
-		index := bytes.LastIndexByte(line2, byte(' '))
+		index := bytes.LastIndexByte(line, byte(' '))
 		if index == -1 {
 			continue
 		}
-		stacktrace := line2[:index]
-		count := line2[index+1:]
+		stacktrace := line[:index]
+		count := line[index+1:]
 
 		i, err := strconv.Atoi(string(count))
 		if err != nil {

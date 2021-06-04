@@ -23,6 +23,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/upload"
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
@@ -249,6 +250,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		execFlagSet      = flag.NewFlagSet("pyroscope exec", flag.ExitOnError)
 		connectFlagSet   = flag.NewFlagSet("pyroscope connect", flag.ExitOnError)
 		dbmanagerFlagSet = flag.NewFlagSet("pyroscope dbmanager", flag.ExitOnError)
+		uploadFlagSet    = flag.NewFlagSet("pyroscope upload", flag.ExitOnError)
 		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 	)
 
@@ -256,6 +258,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
 	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, "pid")
 	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet)
+	uploadSortedFlags := PopulateFlagSet(&cfg.Upload, uploadFlagSet)
 	dbmanagerSortedFlags := PopulateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
 	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
 
@@ -282,6 +285,15 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		ShortUsage: "pyroscope convert [flags] <input-file>",
 		ShortHelp:  "converts between different profiling formats",
 		FlagSet:    convertFlagSet,
+	}
+
+	uploadCmd := &ffcli.Command{
+		UsageFunc:  uploadSortedFlags.printUsage,
+		Options:    options,
+		Name:       "upload",
+		ShortUsage: "pyroscope upload [flags] <input-file>",
+		ShortHelp:  "upload tree file to pyroscope storage",
+		FlagSet:    uploadFlagSet,
 	}
 
 	execCmd := &ffcli.Command{
@@ -321,6 +333,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			serverCmd,
 			execCmd,
 			connectCmd,
+			uploadCmd,
 			dbmanagerCmd,
 		},
 	}
@@ -342,6 +355,26 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		}
 		return convert.Cli(&cfg.Convert, logger, args)
 	}
+
+	uploadCmd.Exec = func(ctx context.Context, args []string) error {
+		if cfg.Exec.NoLogging {
+			logrus.SetLevel(logrus.PanicLevel)
+		} else if l, err := logrus.ParseLevel(cfg.Upload.LogLevel); err == nil {
+			logrus.SetLevel(l)
+		}
+
+		if len(args) == 0 && args[0] == "help" {
+			fmt.Println(gradientBanner())
+			fmt.Println(DefaultUsageFunc(uploadSortedFlags, uploadCmd))
+			return nil
+		}
+
+		logger := func(s string) {
+			logrus.Fatal(s)
+		}
+		return upload.Cli(&cfg.Upload, &cfg.Server, logger, args)
+	}
+
 	execCmd.Exec = func(_ context.Context, args []string) error {
 		if cfg.Exec.NoLogging {
 			logrus.SetLevel(logrus.PanicLevel)
