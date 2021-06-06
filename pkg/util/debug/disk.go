@@ -5,17 +5,16 @@ import (
 	"path/filepath"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
-	"github.com/sirupsen/logrus"
 )
 
-func PrintDiskUsage(path string) {
-	f := logrus.Fields{}
+func DiskUsage(path string) map[string]interface{} {
+	f := map[string]interface{}{}
 	subdirectories, _ := filepath.Glob(filepath.Join(path, "*"))
 	for _, path := range subdirectories {
-		f[filepath.Base(path)] = dirSize(path).String()
+		f[filepath.Base(path)] = dirSize(path)
 	}
 
-	logrus.WithFields(f).Debug("Disk stats")
+	return f
 }
 
 func dirSize(path string) (result bytesize.ByteSize) {

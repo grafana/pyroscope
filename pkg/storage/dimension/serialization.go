@@ -52,13 +52,14 @@ func Deserialize(r io.Reader) (*Dimension, error) {
 	return s, nil
 }
 
-func (s *Dimension) Bytes() []byte {
+func (s *Dimension) Bytes() ([]byte, error) {
 	b := bytes.Buffer{}
-	s.Serialize(&b)
-	return b.Bytes()
+	if err := s.Serialize(&b); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
 
-func FromBytes(p []byte) *Dimension {
-	t, _ := Deserialize(bytes.NewReader(p))
-	return t
+func FromBytes(p []byte) (*Dimension, error) {
+	return Deserialize(bytes.NewReader(p))
 }

@@ -3,3 +3,9 @@ third_party/*/target
 webapp/public/*
 node_modules
 .git/
+
+benchmark/Dockerfile
+benchmark/runs
+benchmark/docker-compose.yml
+benchmark/grafana-*
+benchmark/node_modules

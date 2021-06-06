@@ -45,6 +45,9 @@ func (s *Segment) Serialize(w io.Writer) error {
 
 	serialization.WriteMetadata(w, s.generateMetadata())
 
+	if s.root == nil {
+		return nil
+	}
 	nodes := []*streeNode{s.root}
 	for len(nodes) > 0 {
 		n := nodes[0]
@@ -149,14 +152,14 @@ func Deserialize(r io.Reader) (*Segment, error) {
 	return s, nil
 }
 
-func (s *Segment) Bytes() []byte {
+func (s *Segment) Bytes() ([]byte, error) {
 	b := bytes.Buffer{}
-	s.Serialize(&b)
-	return b.Bytes()
+	if err := s.Serialize(&b); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
 
-func FromBytes(p []byte) *Segment {
-	// TODO: handle error
-	t, _ := Deserialize(bytes.NewReader(p))
-	return t
+func FromBytes(p []byte) (*Segment, error) {
+	return Deserialize(bytes.NewReader(p))
 }
