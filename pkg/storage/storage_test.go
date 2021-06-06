@@ -321,7 +321,7 @@ var _ = Describe("storage package", func() {
 						} else {
 							logrus.Infof("segments: %v", s.segments.Len())
 						}
-						time.Sleep(time.Second * time.Duration(evictInterval))
+						time.Sleep(evictInterval)
 					}
 				})
 			})

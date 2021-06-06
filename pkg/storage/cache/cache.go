@@ -33,7 +33,6 @@ type Cache struct {
 }
 
 func New(db *badger.DB, prefix, humanReadableName string) *Cache {
-
 	eviction := make(chan lfu.Eviction, 1)
 
 	l := lfu.New()
