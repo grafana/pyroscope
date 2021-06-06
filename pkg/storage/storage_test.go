@@ -42,7 +42,7 @@ var _ = Describe("storage package", func() {
 
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
-			EvictInterval = 2
+			evictInterval = 2 * time.Second
 
 			var err error
 			s, err = New(&(*cfg).Server)
@@ -321,7 +321,7 @@ var _ = Describe("storage package", func() {
 						} else {
 							logrus.Infof("segments: %v", s.segments.Len())
 						}
-						time.Sleep(time.Second * time.Duration(EvictInterval))
+						time.Sleep(time.Second * time.Duration(evictInterval))
 					}
 				})
 			})

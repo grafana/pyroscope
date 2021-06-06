@@ -12,7 +12,7 @@ services:
 
   pyroscope:
     environment:
-      - PYROSCOPE_LOG_LEVEL=debug
+      - PYROSCOPE_LOG_LEVEL=info
       - PYROSCOPE_WAIT_AFTER_STOP=true
     build:
       context: ../

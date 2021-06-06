@@ -13,6 +13,6 @@ func CPUUsage(interval time.Duration) map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"cpu_utilization": cpuVal[0],
+		"utilization": cpuVal[0],
 	}
 }

@@ -28,7 +28,7 @@ var _ = Describe("cache", func() {
 		db, err := badger.Open(badgerOptions)
 		Expect(err).ToNot(HaveOccurred())
 
-		cache := New(db, "prefix:")
+		cache := New(db, "prefix:", "test_cache")
 		cache.New = func(k string) interface{} {
 			return k
 		}

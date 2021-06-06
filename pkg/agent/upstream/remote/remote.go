@@ -118,7 +118,7 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	u.Path = path.Join(u.Path, "/ingest")
 	u.RawQuery = q.Encode()
 
-	r.Logger.Infof("uploading at %s", u.String())
+	r.Logger.Debugf("uploading at %s", u.String())
 	// new a request for the job
 	request, err := http.NewRequest("POST", u.String(), bytes.NewReader(j.Trie.Bytes()))
 	if err != nil {

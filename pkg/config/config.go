@@ -48,7 +48,7 @@ type Server struct {
 	CacheSegmentSize    int     `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for segments"`
 	CacheTreeSize       int     `deprecated:"true" def:"10000" desc:"max number of elements in LRU cache for trees"`
 	CacheEvictPoint     float64 `def:"0.25" desc:"evict the cache when used memory is over several percent of total memory"`
-	CacheEvictVolume    float64 `def:"0.10" desc:"evict several percent of cache items"`
+	CacheEvictVolume    float64 `def:"0.33" desc:"evict several percent of cache items"`
 
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.

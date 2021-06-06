@@ -37,6 +37,7 @@ func envInt(s string) int {
 var requestsCompleteCount uint64
 
 func startClientThread(clientsCount int, wg *sync.WaitGroup) {
+	logrus.SetLevel(logrus.InfoLevel)
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
 		UpstreamAddress:        "http://pyroscope:4040",

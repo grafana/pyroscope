@@ -156,16 +156,21 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 			metrics.Gauge("ram_evictions_total_bytes", memTotal)
 			metrics.Gauge("ram_evictions_used_perc", used)
 
-			logrus.Infof("current used percent of memory: %.5f, %f, %f", used, s.cfg.CacheEvictPoint, s.cfg.CacheEvictVolume)
+			percent := s.cfg.CacheEvictVolume
+			logrus.WithFields(logrus.Fields{
+				"used_memory":    used,
+				"eviction point": s.cfg.CacheEvictPoint,
+				"percent":        percent,
+			}).Debugf("current used percent of memory")
+
 			if used > s.cfg.CacheEvictPoint {
 				metrics.Timing("ram_evictions_timer", func() {
 					metrics.Count("ram_evictions", 1)
-					percent := s.cfg.CacheEvictVolume
 
-					s.dimensions.Evict(percent)
-					s.segments.Evict(percent)
+					// s.dimensions.Evict(percent)
+					// s.segments.Evict(percent)
+					// s.dicts.Evict(percent)
 					s.trees.Evict(percent)
-					s.dicts.Evict(percent)
 
 					// force gc after eviction
 					runtime.GC()
@@ -212,7 +217,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		dbSegments:   dbSegments,
 	}
 
-	s.dimensions = cache.New(dbDimensions, "i:")
+	s.dimensions = cache.New(dbDimensions, "i:", "dimensions")
 	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -223,7 +228,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		return dimension.New()
 	}
 
-	s.segments = cache.New(dbSegments, "s:")
+	s.segments = cache.New(dbSegments, "s:", "segments")
 	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*segment.Segment).Bytes()
 	}
@@ -236,7 +241,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		return segment.New()
 	}
 
-	s.dicts = cache.New(dbDicts, "d:")
+	s.dicts = cache.New(dbDicts, "d:", "dicts")
 	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -247,7 +252,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(dbTrees, "t:")
+	s.trees = cache.New(dbTrees, "t:", "trees")
 	s.trees.Bytes = func(k string, v interface{}) ([]byte, error) {
 		key := FromTreeToMainKey(k)
 		d, err := s.dicts.Get(key)
@@ -296,8 +301,8 @@ type PutInput struct {
 }
 
 func (s *Storage) Put(po *PutInput) error {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
+	s.closingMutex.Lock()
+	defer s.closingMutex.Unlock()
 	if s.closing {
 		return errClosing
 	}
@@ -394,8 +399,8 @@ type GetOutput struct {
 }
 
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
+	s.closingMutex.Lock()
+	defer s.closingMutex.Unlock()
 	if s.closing {
 		return nil, errClosing
 	}
@@ -404,7 +409,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		"startTime": gi.StartTime.String(),
 		"endTime":   gi.EndTime.String(),
 		"key":       gi.Key.Normalized(),
-	}).Debug("storage.Get")
+	}).Trace("storage.Get")
 	triesToMerge := []merge.Merger{}
 
 	dimensions := []*dimension.Dimension{}
@@ -496,8 +501,8 @@ type DeleteInput struct {
 }
 
 func (s *Storage) Delete(di *DeleteInput) error {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
+	s.closingMutex.Lock()
+	defer s.closingMutex.Unlock()
 	if s.closing {
 		return errClosing
 	}
@@ -620,9 +625,9 @@ func dirSize(path string) (result bytesize.ByteSize) {
 
 func (s *Storage) CacheStats() map[string]interface{} {
 	return map[string]interface{}{
-		"dimensions": s.dimensions.Size(),
-		"segments":   s.segments.Size(),
-		"dicts":      s.dicts.Size(),
-		"trees":      s.trees.Size(),
+		"dimensions_size": s.dimensions.Size(),
+		"segments_size":   s.segments.Size(),
+		"dicts_size":      s.dicts.Size(),
+		"trees_size":      s.trees.Size(),
 	}
 }
