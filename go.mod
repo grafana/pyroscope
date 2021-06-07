@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb/v3 v3.0.5
 	github.com/clarkduvall/hyperloglog v0.0.0-20171127014514-a0107a5d8004
 	github.com/cosmtrek/air v1.12.2
@@ -20,6 +21,8 @@ require (
 	github.com/iancoleman/strcase v0.1.2
 	github.com/ianlancetaylor/demangle v0.0.0-20200715173712-053cf528c12f // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/josephspurrier/goversioninfo v1.2.0
+	github.com/kardianos/service v1.2.0
 	github.com/kisielk/godepgraph v0.0.0-20190626013829-57a7e4a651a9
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kyoh86/richgo v0.3.3
@@ -33,16 +36,17 @@ require (
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
 	github.com/pelletier/go-toml v1.8.1 // indirect
-	github.com/peterbourgon/ff v1.7.0
 	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/prometheus/client_golang v1.10.0
-	github.com/pyroscope-io/dotnetdiag v1.1.0
+	github.com/pyroscope-io/dotnetdiag v1.2.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/sirupsen/logrus v1.7.0
 	github.com/twmb/murmur3 v1.1.5
 	github.com/wacul/ptr v1.0.0 // indirect
+	golang.org/x/sys v0.0.0-20210423082822-04245dca01da
 	golang.org/x/tools v0.1.0
 	google.golang.org/protobuf v1.26.0
+	gopkg.in/yaml.v2 v2.4.0
 	honnef.co/go/tools v0.0.1-2020.1.6
 )
 

@@ -134,3 +134,7 @@ update-protobuf:
 .PHONY: docker-dev
 docker-dev:
 	docker build . --tag pyroscope/pyroscope:dev
+
+.PHONY: windows-dev
+windows-dev:
+	docker build -f Dockerfile.windows --output type=local,dest=out .

@@ -3,6 +3,8 @@ package segment
 import (
 	"fmt"
 	"math/big"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -238,7 +240,7 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 		v.add(sn, r, true)
 		cb(depth, tm, r, addons)
 	})
-	v.print(fmt.Sprintf("/tmp/0-put-%s-%s.html", st.String(), et.String()))
+	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-put-%s-%s.html", st.String(), et.String())))
 }
 
 // TODO: simplify arguments
@@ -257,7 +259,7 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 		v.add(sn, r, true)
 		cb(depth, sn.samples, sn.writes, t, r)
 	})
-	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
+	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-get-%s-%s.html", st.String(), et.String())))
 }
 
 // TODO: this should be refactored

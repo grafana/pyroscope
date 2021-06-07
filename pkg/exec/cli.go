@@ -1,16 +1,13 @@
 package exec
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"path"
-	"regexp"
-	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -31,7 +28,7 @@ var disableMacOSChecks bool
 var disableLinuxChecks bool
 
 // Cli is command line interface for both exec and connect commands
-func Cli(cfg *config.Exec, args []string) error {
+func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 	// isExec = true means we need to start the process first (pyroscope exec)
 	// isExec = false means the process is already there (pyroscope connect)
 	isExec := cfg.Pid == 0
@@ -94,34 +91,14 @@ func Cli(cfg *config.Exec, args []string) error {
 	pid := cfg.Pid
 	var cmd *exec.Cmd
 	if isExec {
-		cmd = exec.Command(args[0], args[1:]...)
+		cmd = exec.CommandContext(ctx, args[0], args[1:]...)
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
 		cmd.Stdin = os.Stdin
-		cmd.SysProcAttr = &syscall.SysProcAttr{}
-
-		// permissions drop
-		if isRoot() && !cfg.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
-			creds, err := generateCredentialsDrop()
-			if err != nil {
-				logrus.Errorf("failed to drop permissions, %q", err)
-			} else {
-				cmd.SysProcAttr.Credential = creds
-			}
+		if err := adjustCmd(cmd, *cfg); err != nil {
+			logrus.Error(err)
 		}
-
-		if cfg.UserName != "" || cfg.GroupName != "" {
-			creds, err := generateCredentials(cfg.UserName, cfg.GroupName)
-			if err != nil {
-				logrus.Errorf("failed to generate credentials: %q", err)
-			} else {
-				cmd.SysProcAttr.Credential = creds
-			}
-		}
-
-		cmd.SysProcAttr.Setpgid = true
-		err := cmd.Start()
-		if err != nil {
+		if err := cmd.Start(); err != nil {
 			return err
 		}
 		pid = cmd.Process.Pid
@@ -170,7 +147,7 @@ func Cli(cfg *config.Exec, args []string) error {
 	if isExec {
 		waitForSpawnedProcessToExit(cmd)
 	} else {
-		waitForProcessToExit(pid)
+		waitForProcessToExit(ctx, pid)
 	}
 
 	return nil
@@ -206,18 +183,23 @@ func waitForSpawnedProcessToExit(cmd *exec.Cmd) {
 	}
 }
 
-func waitForProcessToExit(pid int) {
+func waitForProcessToExit(ctx context.Context, pid int) {
 	// pid == -1 means we're profiling whole system
 	if pid == -1 {
 		select {} // revive:disable-line:empty-block This block has to be empty
 	}
-
 	t := time.NewTicker(time.Second)
-	for range t.C {
-		p, err := ps.FindProcess(pid)
-		if p == nil || err != nil {
-			logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
 			return
+		case <-t.C:
+			p, err := ps.FindProcess(pid)
+			if p == nil || err != nil {
+				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
+				return
+			}
 		}
 	}
 }
@@ -253,74 +235,10 @@ func stringsContains(arr []string, element string) bool {
 	return false
 }
 
-func isRoot() bool {
-	u, err := user.Current()
-	return err == nil && u.Username == "root"
-}
-
 func generateSeed(args []string) string {
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "<unknown>"
 	}
 	return cwd + "|" + strings.Join(args, "&")
-}
-
-func generateCredentialsDrop() (*syscall.Credential, error) {
-	sudoUser := os.Getenv("SUDO_USER")
-	sudoUID := os.Getenv("SUDO_UID")
-	sudoGid := os.Getenv("SUDO_GID")
-
-	logrus.Infof("dropping permissions, running command as %q (%s/%s)", sudoUser, sudoUID, sudoGid)
-
-	uid, err := strconv.Atoi(sudoUID)
-	if err != nil {
-		return nil, err
-	}
-	gid, err := strconv.Atoi(sudoGid)
-	if err != nil {
-		return nil, err
-	}
-
-	return &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}, nil
-}
-
-var digitCheck = regexp.MustCompile(`^[0-9]+$`)
-
-func generateCredentials(userName, groupName string) (*syscall.Credential, error) {
-	c := syscall.Credential{}
-
-	var u *user.User
-	var g *user.Group
-	var err error
-
-	if userName != "" {
-		if digitCheck.MatchString(userName) {
-			u, err = user.LookupId(userName)
-		} else {
-			u, err = user.Lookup(userName)
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		uid, _ := strconv.Atoi(u.Uid)
-		c.Uid = uint32(uid)
-	}
-
-	if groupName != "" {
-		if digitCheck.MatchString(groupName) {
-			g, err = user.LookupGroupId(groupName)
-		} else {
-			g, err = user.LookupGroup(groupName)
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		gid, _ := strconv.Atoi(g.Gid)
-		c.Gid = uint32(gid)
-	}
-
-	return &c, nil
 }

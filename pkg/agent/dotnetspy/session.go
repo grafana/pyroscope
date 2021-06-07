@@ -58,7 +58,6 @@ func (s *session) start() error {
 		return err
 	}
 
-	s.session = ns
 	stream := nettrace.NewStream(ns)
 	trace, err := stream.Open()
 	if err != nil {
@@ -66,15 +65,19 @@ func (s *session) start() error {
 		return err
 	}
 
-	p := profiler.NewSampleProfiler(trace, profiler.WithManagedCodeOnly())
+	p := profiler.NewSampleProfiler(trace, profilerOptions...)
 	stream.EventHandler = p.EventHandler
 	stream.MetadataHandler = p.MetadataHandler
 	stream.StackBlockHandler = p.StackBlockHandler
 	stream.SequencePointBlockHandler = p.SequencePointBlockHandler
 
+	s.session = ns
 	s.ch = make(chan line)
 	go func() {
-		defer close(s.ch)
+		defer func() {
+			s.session = nil
+			close(s.ch)
+		}()
 		for {
 			switch err = stream.Next(); err {
 			default:
@@ -101,12 +104,11 @@ func (s *session) start() error {
 // and starts a new session, if not in stopped state.
 func (s *session) flush(cb func([]byte, uint64)) error {
 	// Ignore call, if NetTrace session has not been established.
-	if s.session == nil {
-		return nil
-	}
-	_ = s.session.Close()
-	for v := range s.ch {
-		cb(v.name, uint64(v.val))
+	if s.session != nil {
+		_ = s.session.Close()
+		for v := range s.ch {
+			cb(v.name, uint64(v.val))
+		}
 	}
 	if s.stopped {
 		return nil
