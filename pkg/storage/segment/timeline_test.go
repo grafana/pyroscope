@@ -21,7 +21,6 @@ var _ = Describe("timeline", func() {
 		et = 40
 	})
 	JustBeforeEach(func() {
-
 		timeline = GenerateTimeline(
 			testing.SimpleTime(st),
 			testing.SimpleTime(et),

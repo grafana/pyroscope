@@ -85,7 +85,7 @@ func parseTimeOffset(offset string) (d time.Duration) {
 		d += time.Second * time.Duration(num*sign*getUnitMultiplier(unit))
 	}
 
-	return
+	return d
 }
 
 func getUnitMultiplier(s string) int {

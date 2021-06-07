@@ -20,7 +20,7 @@ type upstreamMock struct {
 	tries []*transporttrie.Trie
 }
 
-func (u *upstreamMock) Stop() {
+func (*upstreamMock) Stop() {
 
 }
 

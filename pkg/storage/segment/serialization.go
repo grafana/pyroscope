@@ -152,9 +152,9 @@ func Deserialize(r io.Reader) (*Segment, error) {
 	return s, nil
 }
 
-func (t *Segment) Bytes() ([]byte, error) {
+func (s *Segment) Bytes() ([]byte, error) {
 	b := bytes.Buffer{}
-	if err := t.Serialize(&b); err != nil {
+	if err := s.Serialize(&b); err != nil {
 		return nil, err
 	}
 	return b.Bytes(), nil
