@@ -5,12 +5,12 @@ import (
 )
 
 type Timeline struct {
-	st            time.Time
-	et            time.Time
-	StartTime     int64    `json:"startTime"`
-	Samples       []uint64 `json:"samples"`
-	durationDelta time.Duration
-	DurationDelta int64 `json:"durationDelta"`
+	st                      time.Time
+	et                      time.Time
+	StartTime               int64    `json:"startTime"`
+	Samples                 []uint64 `json:"samples"`
+	durationDelta           time.Duration
+	DurationDeltaNormalized int64 `json:"durationDelta"`
 }
 
 func GenerateTimeline(st, et time.Time) *Timeline {
@@ -38,17 +38,16 @@ func GenerateTimeline(st, et time.Time) *Timeline {
 	// 	currentTime = currentTime.Add(delta)
 	// }
 	return &Timeline{
-		st:            st,
-		et:            et,
-		StartTime:     st.Unix(),
-		Samples:       res,
-		durationDelta: delta,
-		DurationDelta: int64(delta / time.Second),
+		st:                      st,
+		et:                      et,
+		StartTime:               st.Unix(),
+		Samples:                 res,
+		durationDelta:           delta,
+		DurationDeltaNormalized: int64(delta / time.Second),
 	}
 }
 
 func (tl *Timeline) PopulateTimeline(s *Segment) {
-
 	if s.root == nil {
 		return
 	}

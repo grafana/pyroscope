@@ -37,6 +37,6 @@ services:
     image: grafana/grafana:7.5.7
     volumes:
       - ./grafana-provisioning:/etc/grafana/provisioning
-      - ./grafana-docker/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     ports:
       - 8080:3000

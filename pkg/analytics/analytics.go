@@ -1,7 +1,10 @@
 /*
 Package analytics deals with collecting pyroscope server usage data.
 
-By default pyroscope server sends anonymized usage data to Pyroscope team. This helps us understand how people use Pyroscope and prioritize features accordingly. We take privacy of our users very seriously and only collect high-level stats such as number of apps added, types of spies used, etc.
+By default pyroscope server sends anonymized usage data to Pyroscope team.
+This helps us understand how people use Pyroscope and prioritize features accordingly.
+We take privacy of our users very seriously and only collect high-level stats
+such as number of apps added, types of spies used, etc.
 
 You can disable this with a flag or an environment variable
 

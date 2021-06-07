@@ -25,10 +25,13 @@ type data struct {
 	inheritable uint32
 }
 
+//revive:disable:var-naming Those names mimics system constants names
 const (
 	CAP_SYS_TIME = 25
 	CAP_SYSLOG   = 34
 )
+
+//revive:enable:var-naming
 
 type Caps struct {
 	header header

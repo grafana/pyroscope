@@ -65,40 +65,40 @@ func init() {
 	byteSizeRegexp = regexp.MustCompile("^([\\d\\.]+)\\s*([^\\d]*)$")
 }
 
-var ParseErr = errors.New("could not parse ByteSize")
+var errParse = errors.New("could not parse ByteSize")
 
 func Parse(str string) (ByteSize, error) {
 	r := byteSizeRegexp.FindStringSubmatch(strings.TrimSpace(str))
 	if len(r) != 3 {
-		return 0, ParseErr
+		return 0, errParse
 	}
 
 	multiplier := ByteSize(1)
 	if m, ok := multipliers[strings.ToLower(r[2])]; ok {
 		multiplier = m
 	} else {
-		return 0, ParseErr
+		return 0, errParse
 	}
 	if strings.Contains(r[1], ".") {
 		val, err := strconv.ParseFloat(r[1], 64)
 		if err != nil {
-			return 0, ParseErr
+			return 0, errParse
 		}
 		return ByteSize(val * float64(multiplier)), nil
 	}
 
 	val, err := strconv.ParseUint(r[1], 10, 64)
 	if err != nil {
-		return 0, ParseErr
+		return 0, errParse
 	}
 	return ByteSize(val) * multiplier, nil
 }
 
-func (i *ByteSize) Set(value string) error {
+func (b *ByteSize) Set(value string) error {
 	v, err := Parse(value)
 	if err != nil {
 		return err
 	}
-	*i = v
+	*b = v
 	return nil
 }

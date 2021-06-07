@@ -89,8 +89,6 @@ github.com/dgraph-io/badger/v2 v2.2007.2/go.mod h1:26P/7fbL4kUZVEVKLAKXkBXKOydDm
 github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de h1:t0UHb5vdojIDUqktM6+xJAfScFBsVpXZmqC9dsgJmeA=
 github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de/go.mod h1:KPxhHT9ZxKefz+PCeOGsrHpl1qZ7i70dGTu2u+Ahh6E=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
-github.com/dgrijalva/lfu-go v0.0.0-20141010002404-f174e76c5138 h1:dnHgW/+2AbIFKEIhb3mXw6OuPNPrMmrJ6GZylDT556s=
-github.com/dgrijalva/lfu-go v0.0.0-20141010002404-f174e76c5138/go.mod h1:NBHEfzv9sqF3bQdv4L3+buvhN5JtVkuO1EhpELjZxXk=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 h1:tdlZCpZ/P9DhczCTSixgIKmwPv6+wP5DGjqLYw5SUiA=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
@@ -377,6 +375,8 @@ github.com/prometheus/procfs v0.6.0 h1:mxy4L2jP6qMonqmq+aTtOx1ifVWUgG/TAmntgbh3x
 github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/pyroscope-io/dotnetdiag v1.2.0 h1:RuuCMjuJbW3vnv+XO/0492P5OndG/ZFlvzZQy3k+hi4=
 github.com/pyroscope-io/dotnetdiag v1.2.0/go.mod h1:eFUEHCp4eD1TgcXMlJihC+R4MrqGf7nTRdWxNADbDHA=
+github.com/pyroscope-io/lfu-go v1.0.1 h1:yGE9tbsAYTr+Bb5KL25WJOh7FX0bnb01MDgIqPvxPAY=
+github.com/pyroscope-io/lfu-go v1.0.1/go.mod h1:3W9sGrDLhKFkHZPXkz6c5dAKrxcwkKbFFKnJtDukMDA=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1 h1:0v9lBNgdmVtpyyk9PP/DfpJlOHkXriu5YgNlrhQw5YE=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1/go.mod h1:tSw34BaGZ0iF+oVKDOjq1/LuxGifgW7shaJ6+dBYFXg=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=

@@ -49,7 +49,8 @@ func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 				supportedSpies := spy.SupportedExecSpies()
 				suggestedCommand := fmt.Sprintf("pyroscope exec -spy-name %s %s", supportedSpies[0], strings.Join(args, " "))
 				return fmt.Errorf(
-					"could not automatically find a spy for program \"%s\". Pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
+					"could not automatically find a spy for program \"%s\". Pass spy name via %s argument, for example: \n"+
+						"  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
 					baseName,
 					color.YellowString("-spy-name"),
 					color.YellowString(suggestedCommand),
@@ -77,7 +78,8 @@ func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 	}
 
 	if cfg.ApplicationName == "" {
-		logrus.Infof("we recommend specifying application name via %s flag or env variable %s", color.YellowString("-application-name"), color.YellowString("PYROSCOPE_APPLICATION_NAME"))
+		logrus.Infof("we recommend specifying application name via %s flag or env variable %s",
+			color.YellowString("-application-name"), color.YellowString("PYROSCOPE_APPLICATION_NAME"))
 		cfg.ApplicationName = spyName + "." + names.GetRandomName(generateSeed(args))
 		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.ApplicationName))
 	}
@@ -184,7 +186,7 @@ func waitForSpawnedProcessToExit(cmd *exec.Cmd) {
 func waitForProcessToExit(ctx context.Context, pid int) {
 	// pid == -1 means we're profiling whole system
 	if pid == -1 {
-		select {}
+		select {} // revive:disable-line:empty-block This block has to be empty
 	}
 	t := time.NewTicker(time.Second)
 	defer t.Stop()
@@ -234,9 +236,9 @@ func stringsContains(arr []string, element string) bool {
 }
 
 func generateSeed(args []string) string {
-	path, err := os.Getwd()
+	cwd, err := os.Getwd()
 	if err != nil {
-		path = "<unknown>"
+		cwd = "<unknown>"
 	}
-	return path + "|" + strings.Join(args, "&")
+	return cwd + "|" + strings.Join(args, "&")
 }

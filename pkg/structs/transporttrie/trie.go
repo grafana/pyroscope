@@ -53,6 +53,7 @@ func (tn *trieNode) insert(t2 *trieNode) {
 	tn.children[i] = t2
 }
 
+// TODO: Refactor
 func (tn *trieNode) findNodeAt(key []byte, fn func(*trieNode)) {
 	key2 := make([]byte, len(key))
 	// TODO: remove
@@ -92,59 +93,59 @@ OuterLoop:
 			tn.insert(newTn)
 			fn(newTn)
 			return
-		} else {
-			leadKey := tn.children[leadIndex].name
-			// log.Debug("lead key", string(leadKey))
-			lk := len(key)
-			llk := len(leadKey)
-			for i := 0; i < lk; i++ {
-				if i == llk { // 4 fooo / foo i = 3 llk = 3
-					// log.Debug("case 4")
-					tn = tn.children[leadIndex]
-					key = key[llk:]
-					continue OuterLoop
-				}
-				if leadKey[i] != key[i] { // 3
-					// log.Debug("case 3")
-					// leadKey = abc
-					// key = abd
-					a := leadKey[:i] // ab
-					b := leadKey[i:] // c
-					// log.Debug("children ", string(a), string(b))
-					// tn.childrenKeys[leadIndex] = a
-					newTn := newTrieNode(a)
-					// newTn.childrenKeys = [][]byte{b}
-					newTn.children = []*trieNode{tn.children[leadIndex]}
-					tn.children[leadIndex].name = b
-					tn.children[leadIndex] = newTn
-					// newTn.value = tn.value
-					// tn.value = nil
-					tn = newTn
-					key = key[i:]
-					continue OuterLoop
-				}
+		}
+
+		leadKey := tn.children[leadIndex].name
+		// log.Debug("lead key", string(leadKey))
+		lk := len(key)
+		llk := len(leadKey)
+		for i := 0; i < lk; i++ {
+			if i == llk { // 4 fooo / foo i = 3 llk = 3
+				// log.Debug("case 4")
+				tn = tn.children[leadIndex]
+				key = key[llk:]
+				continue OuterLoop
 			}
-			// lk < llk
-			if !bytes.Equal(key, leadKey) { // 3
-				// log.Debug("case 3.2")
-				a := leadKey[:lk] // ab
-				b := leadKey[lk:] // c
+			if leadKey[i] != key[i] { // 3
+				// log.Debug("case 3")
+				// leadKey = abc
+				// key = abd
+				a := leadKey[:i] // ab
+				b := leadKey[i:] // c
+				// log.Debug("children ", string(a), string(b))
 				// tn.childrenKeys[leadIndex] = a
 				newTn := newTrieNode(a)
 				// newTn.childrenKeys = [][]byte{b}
 				newTn.children = []*trieNode{tn.children[leadIndex]}
 				tn.children[leadIndex].name = b
 				tn.children[leadIndex] = newTn
+				// newTn.value = tn.value
+				// tn.value = nil
 				tn = newTn
-				key = key[lk:]
+				key = key[i:]
 				continue OuterLoop
-			} else {
-				// 2
-				// log.Debug("case 2 —", lk, llk, bytes.Equal(key, leadKey), string(key), string(leadKey))
-				fn(tn.children[leadIndex])
-				return
 			}
 		}
+		// lk < llk
+		if !bytes.Equal(key, leadKey) { // 3
+			// log.Debug("case 3.2")
+			a := leadKey[:lk] // ab
+			b := leadKey[lk:] // c
+			// tn.childrenKeys[leadIndex] = a
+			newTn := newTrieNode(a)
+			// newTn.childrenKeys = [][]byte{b}
+			newTn.children = []*trieNode{tn.children[leadIndex]}
+			tn.children[leadIndex].name = b
+			tn.children[leadIndex] = newTn
+			tn = newTn
+			key = key[lk:]
+			continue OuterLoop
+		}
+
+		// 2
+		// log.Debug("case 2 —", lk, llk, bytes.Equal(key, leadKey), string(key), string(leadKey))
+		fn(tn.children[leadIndex])
+		return
 	}
 }
 
