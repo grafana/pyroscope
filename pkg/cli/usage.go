@@ -28,7 +28,6 @@ func init() {
 
 // disabled these commands for now, they are not documented and confuse people
 var hiddenCommands = []string{
-	"agent",
 	"convert",
 	"dbmanager",
 }

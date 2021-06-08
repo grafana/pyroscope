@@ -23,7 +23,10 @@ func FProfile(name string, cb func()) time.Duration {
 			endProfile()
 			cmd := fmt.Sprintf("cat '%s' | grep -v gopark | flamegraph.pl > '%s'", path, pathSVG)
 			logrus.Debug("cmd", cmd)
-			exec.Command("sh", "-c", cmd).Run()
+			err := exec.Command("sh", "-c", cmd).Run()
+			if err != nil {
+				panic(err)
+			}
 		}()
 	}
 	cb()

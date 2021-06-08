@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	Mandatory pre-processor variables:
+		- PyroscopeSourceExecutable - path to the local pyroscope binary.
+
+	Optional pre-processor variables:
+		- ProductVersion - if not set, the value is taken from the pyroscope binary VersionInfo.
+
+ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
+<Wix
+		xmlns="http://schemas.microsoft.com/wix/2006/wi"
+		xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+
+	<!-- Product versioning
+		Use -dProductVersion candle flag to specify the package version.
+	-->
+	<?ifndef ProductVersion ?>
+		<?define ProductVersion="!(bind.FileVersion.PyroscopeExe)"?>
+	<?endif?>
+
+	<?define ProductUpgradeCode="fcf551d4-b847-10bd-a5f2-4451366a1174"?>
+	<?define ManufacturerName="Pyroscope"?>
+
+	<?define PyroscopeFullName="Pyroscope Agent"?>
+    <?define PyroscopeServiceName="pyroscope"?>
+    <?define PyroscopeDescription="Pyroscope continuous profiling platform agent"?>
+
+	<!-- Multi-arch
+		Use -arch candle flag (BUILDARCH) to specify architecture the MSI is compiled for - one of x86, x64 is allowed.
+		Any arch-dependent vars must be defined in this section.
+	-->
+
+	<?if $(sys.BUILDARCH)="x86"?>
+		<?define Minimum_Version="100"?>
+		<?define ArchProgramFiles="ProgramFilesFolder"?>
+		<?define QuietExec="CAQuietExec"?>
+	<?elseif $(sys.BUILDARCH)="x64"?>
+		<?define Minimum_Version="200"?>
+		<?define ArchProgramFiles="ProgramFiles64Folder"?>
+		<?define QuietExec="CAQuietExec64"?>
+	<?else?>
+		<?error Unsupported value of sys.BUILDARCH=$(sys.BUILDARCH)?>
+	<?endif?>
+
+	<!-- Default MSI parameters -->
+
+	<Product Id="*"
+			 Name="$(var.PyroscopeFullName)"
+			 Language="1033"
+			 Version="$(var.ProductVersion)"
+			 UpgradeCode="$(var.ProductUpgradeCode)"
+			 Manufacturer="Pyroscope, Inc" >
+
+		<Package
+				Compressed="yes"
+				InstallScope="perMachine"
+				Manufacturer="$(var.ManufacturerName)"
+				Description="$(var.PyroscopeDescription)"/>
+
+		<Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
+
+		<Condition Message="You need to be an administrator to install this product.">
+			Privileged
+		</Condition>
+
+		<!-- Set properties for add/remove programs -->
+		<Property Id="ARPNOREPAIR" Value="yes" Secure="yes"/> <!-- Remove repair -->
+		<Property Id="ARPNOMODIFY" Value="yes" Secure="yes"/> <!-- Remove modify -->
+		<Property Id="ARPPRODUCTICON" Value="Icon.exe"/>
+
+		<!-- Define icons (ID should not be longer than 18 chars and must end with ".exe") -->
+		<Icon Id="Icon.exe" SourceFile="resources\app.ico"/>
+
+		<!-- Upgrades
+			AllowSameVersionUpgrades - MSI ignores the fourth product version field, setting this attribute to yes
+			also allows downgrades when the first three product version fields are identical.
+
+			For example, product version 1.0.0.1 will "upgrade" 1.0.0.2998 because they're seen as the same
+			version (1.0.0). That could reintroduce serious bugs so the safest choice is to change the first three
+			version fields and omit this attribute to get the default of no. Refer to:
+			https://wixtoolset.org/documentation/manual/v3/xsd/wix/majorupgrade.html.
+
+			When AllowSameVersionUpgrades is set to true, warning LGHT1076 is raised by light:
+			ICE61: This product should remove only older versions of itself. The Maximum version is not less than
+			the current product.
+
+			Use -sw1076 light flag to suppress the message.
+		-->
+
+		<MajorUpgrade
+				AllowDowngrades="no"
+				AllowSameVersionUpgrades="yes"
+				DowngradeErrorMessage="A later version of [ProductName] is already installed."/>
+
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="$(var.ArchProgramFiles)">
+				<Directory Id="ManufacturerDir" Name="$(var.ManufacturerName)">
+                    <Directory Id="INSTALLDIR" Name="$(var.PyroscopeFullName)" />
+				</Directory>
+			</Directory>
+		</Directory>
+
+		<DirectoryRef Id="INSTALLDIR">
+			<Component Id="Pyroscope" Guid="*">
+				<File
+						Id="PyroscopeExe"
+						Source="$(var.PyroscopeSourceExecutable)"
+						Vital="yes"
+						KeyPath="yes"/>
+                <Environment
+						Id="PATH"
+						Name="PATH"
+						Value="[INSTALLDIR]"
+						Permanent="yes"
+						Part="last"
+						Action="set"
+						System="yes" />
+				<!-- https://blogs.msdn.microsoft.com/jcalev/2008/01/10/some-tricks-with-service-restart-logic/ -->
+				<ServiceInstall
+						Id="PyroscopeService"
+						Type="ownProcess"
+						Arguments="agent"
+						Name="$(var.PyroscopeServiceName)"
+						DisplayName="$(var.PyroscopeFullName)"
+						Description="$(var.PyroscopeDescription)"
+						Start="auto"
+						ErrorControl="ignore"
+						Vital="yes">
+					<util:ServiceConfig
+							FirstFailureActionType='restart'
+							SecondFailureActionType='restart'
+							ThirdFailureActionType='restart'
+							RestartServiceDelayInSeconds='60'
+							ResetPeriodInDays='0'/>
+				</ServiceInstall>
+				<ServiceControl
+						Id="PyroscopeServiceControl"
+						Name="$(var.PyroscopeServiceName)"
+						Start="install"
+						Stop="both"
+						Remove="uninstall"
+						Wait="no"/>
+			</Component>
+		</DirectoryRef>
+
+		<Feature Id="Complete" Level="1">
+			<ComponentRef Id="Pyroscope"/>
+		</Feature>
+
+	</Product>
+</Wix>

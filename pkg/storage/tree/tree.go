@@ -60,15 +60,15 @@ func New() *Tree {
 	}
 }
 
-func (dstTrie *Tree) Merge(srcTrieI merge.Merger) {
+func (t *Tree) Merge(srcTrieI merge.Merger) {
 	srcTrie := srcTrieI.(*Tree)
 	srcNodes := []*treeNode{srcTrie.root}
-	dstNodes := []*treeNode{dstTrie.root}
+	dstNodes := []*treeNode{t.root}
 
 	srcTrie.m.RLock()
 	defer srcTrie.m.RUnlock()
-	dstTrie.m.Lock()
-	defer dstTrie.m.Unlock()
+	t.m.Lock()
+	defer t.m.Unlock()
 
 	for len(srcNodes) > 0 {
 		st := srcNodes[0]
@@ -103,18 +103,18 @@ func (t *Tree) String() string {
 	return res
 }
 
-func (tn *treeNode) insert(targetLabel []byte) *treeNode {
-	i := sort.Search(len(tn.ChildrenNodes), func(i int) bool {
-		return bytes.Compare(tn.ChildrenNodes[i].Name, targetLabel) >= 0
+func (n *treeNode) insert(targetLabel []byte) *treeNode {
+	i := sort.Search(len(n.ChildrenNodes), func(i int) bool {
+		return bytes.Compare(n.ChildrenNodes[i].Name, targetLabel) >= 0
 	})
 
-	if i > len(tn.ChildrenNodes)-1 || !bytes.Equal(tn.ChildrenNodes[i].Name, targetLabel) {
+	if i > len(n.ChildrenNodes)-1 || !bytes.Equal(n.ChildrenNodes[i].Name, targetLabel) {
 		child := newNode(targetLabel)
-		tn.ChildrenNodes = append(tn.ChildrenNodes, child)
-		copy(tn.ChildrenNodes[i+1:], tn.ChildrenNodes[i:])
-		tn.ChildrenNodes[i] = child
+		n.ChildrenNodes = append(n.ChildrenNodes, child)
+		copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
+		n.ChildrenNodes[i] = child
 	}
-	return tn.ChildrenNodes[i]
+	return n.ChildrenNodes[i]
 }
 
 func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {

@@ -6,21 +6,21 @@ import (
 	"sync"
 )
 
-type key []byte
+type Key []byte
 
 type Dimension struct {
 	m sync.RWMutex
 	// keys are sorted
-	keys []key
+	keys []Key
 }
 
 func New() *Dimension {
 	return &Dimension{
-		keys: []key{},
+		keys: []Key{},
 	}
 }
 
-func (d *Dimension) Insert(key key) {
+func (d *Dimension) Insert(key Key) {
 	d.m.Lock()
 	defer d.m.Unlock()
 
@@ -48,16 +48,16 @@ const (
 )
 
 type sortableDim struct {
-	keys []key
+	keys []Key
 	i    int
 	l    int
 }
 
-func (sd *sortableDim) current() key {
+func (sd *sortableDim) current() Key {
 	return sd.keys[sd.i]
 }
 
-func (sd *sortableDim) advance(cmp key) advanceResult {
+func (sd *sortableDim) advance(cmp Key) advanceResult {
 	for {
 		v := bytes.Compare(sd.current(), cmp)
 		switch v {
@@ -88,20 +88,20 @@ func (s sortableDims) Swap(i, j int) {
 }
 
 // finds keys that are present in all dimensions
-func Intersection(input ...*Dimension) []key {
+func Intersection(input ...*Dimension) []Key {
 	if len(input) == 0 {
-		return []key{}
+		return []Key{}
 	} else if len(input) == 1 {
 		return input[0].keys
 	}
 
-	result := []key{}
+	result := []Key{}
 
 	dims := []*sortableDim{}
 
 	for _, v := range input {
 		if len(v.keys) == 0 {
-			return []key{}
+			return []Key{}
 		}
 		// kinda ugly imo
 		v.m.RLock()

@@ -7,10 +7,13 @@ node_modules
 pkged.go
 .DS_Store
 /Icon*
+/out/
 /scripts/packages/
 .eslintcache
 *.pyc
 *.internal
+*.syso
+*.exe
 .idea
 .vscode
 vendor/
