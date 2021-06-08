@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -11,9 +10,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/sirupsen/logrus"
-	stats "gopkg.in/alexcesaro/statsd.v2"
 )
 
 // 21:22:08      air |  (time.Duration) 16m40s,
@@ -23,19 +22,7 @@ import (
 // 21:22:08      air |  (time.Duration) 2777h46m40s,
 // 21:22:08      air |  (time.Duration) 27777h46m40s
 
-var (
-	s      *Storage
-	client *stats.Client
-)
-
-var _ = BeforeSuite(func() {
-	statAddr := os.Getenv("STORAGE_TEST_STATS_ADDR")
-	if statAddr != "" {
-		cli, err := stats.New(stats.Address(statAddr), stats.Prefix("storage_test"))
-		Expect(err).ToNot(HaveOccurred())
-		client = cli
-	}
-})
+var s *Storage
 
 var _ = Describe("storage package", func() {
 	logrus.SetLevel(logrus.InfoLevel)
@@ -307,20 +294,16 @@ var _ = Describe("storage package", func() {
 					}
 
 					for i := 0; i < 5; i++ {
-						if client != nil {
-							vm, err := mem.VirtualMemory()
-							Expect(err).ToNot(HaveOccurred())
-							client.Gauge("Total", vm.Total)
+						vm, err := mem.VirtualMemory()
+						Expect(err).ToNot(HaveOccurred())
+						metrics.Gauge("Total", vm.Total)
 
-							var m runtime.MemStats
-							runtime.ReadMemStats(&m)
-							client.Gauge("NumGC", m.NumGC)
-							client.Gauge("Alloc", m.Alloc)
-							client.Gauge("Used", float64(m.Alloc)/float64(vm.Total))
-							client.Gauge("Segments", s.segments.Len())
-						} else {
-							logrus.Infof("segments: %v", s.segments.Len())
-						}
+						var m runtime.MemStats
+						runtime.ReadMemStats(&m)
+						metrics.Gauge("NumGC", m.NumGC)
+						metrics.Gauge("Alloc", m.Alloc)
+						metrics.Gauge("Used", float64(m.Alloc)/float64(vm.Total))
+						metrics.Gauge("Segments", s.segments.Len())
 						time.Sleep(evictInterval)
 					}
 				})
