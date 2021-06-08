@@ -60,6 +60,8 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 	installPrefix := getInstallPrefix()
 	supportedSpies := strings.Join(spy.SupportedExecSpies(), ", ")
 
+	deprecatedFields := []string{}
+
 	for i := 0; i < num; i++ {
 		field := t.Field(i)
 		fieldV := v.Field(i)
@@ -70,12 +72,17 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 		defaultValStr := field.Tag.Get("def")
 		descVal := field.Tag.Get("desc")
 		skipVal := field.Tag.Get("skip")
+		deprecatedVal := field.Tag.Get("deprecated")
 		nameVal := field.Tag.Get("name")
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
 		}
 		if skipVal == "true" || slices.StringContains(skip, nameVal) {
 			continue
+		}
+
+		if deprecatedVal == "true" {
+			deprecatedFields = append(deprecatedFields, nameVal)
 		}
 
 		descVal = strings.ReplaceAll(descVal, "<supportedProfilers>", supportedSpies)
@@ -179,5 +186,5 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 			logrus.Fatalf("type %s is not supported", field.Type)
 		}
 	}
-	return NewSortedFlags(obj, flagSet)
+	return NewSortedFlags(obj, flagSet, deprecatedFields)
 }

@@ -12,8 +12,9 @@ import (
 // SortedFlags is needed because by default there's no way to provide order for flags
 //   this is kind of an ugly workaround
 type SortedFlags struct {
-	orderMap map[string]int
-	flags    []*flag.Flag
+	orderMap         map[string]int
+	flags            []*flag.Flag
+	deprecatedFields []string
 }
 
 func (sf *SortedFlags) Len() int {
@@ -35,17 +36,18 @@ func (sf *SortedFlags) VisitAll(cb func(*flag.Flag)) {
 }
 
 func (sf *SortedFlags) printUsage(c *ffcli.Command) string {
-	return gradientBanner() + "\n" + DefaultUsageFunc(sf, c)
+	return gradientBanner() + "\n" + DefaultUsageFunc(sf, c, sf.deprecatedFields)
 }
 
-func NewSortedFlags(obj interface{}, fs *flag.FlagSet) *SortedFlags {
+func NewSortedFlags(obj interface{}, fs *flag.FlagSet, deprecatedFields []string) *SortedFlags {
 	v := reflect.ValueOf(obj).Elem()
 	t := reflect.TypeOf(v.Interface())
 	num := t.NumField()
 
 	res := SortedFlags{
-		orderMap: make(map[string]int),
-		flags:    []*flag.Flag{},
+		orderMap:         make(map[string]int),
+		flags:            []*flag.Flag{},
+		deprecatedFields: deprecatedFields,
 	}
 
 	for i := 0; i < num; i++ {

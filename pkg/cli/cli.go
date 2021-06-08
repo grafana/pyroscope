@@ -141,7 +141,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		}
 		if len(args) == 0 || args[0] == "help" {
 			fmt.Println(gradientBanner())
-			fmt.Println(DefaultUsageFunc(execSortedFlags, execCmd))
+			fmt.Println(DefaultUsageFunc(execSortedFlags, execCmd, []string{}))
 			return nil
 		}
 
@@ -156,7 +156,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		}
 		if len(args) > 0 && args[0] == "help" {
 			fmt.Println(gradientBanner())
-			fmt.Println(DefaultUsageFunc(connectSortedFlags, connectCmd))
+			fmt.Println(DefaultUsageFunc(connectSortedFlags, connectCmd, []string{}))
 			return nil
 		}
 
@@ -192,7 +192,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			fmt.Println("")
 		} else {
 			fmt.Println(gradientBanner())
-			fmt.Println(DefaultUsageFunc(rootSortedFlags, rootCmd))
+			fmt.Println(DefaultUsageFunc(rootSortedFlags, rootCmd, []string{}))
 		}
 		return nil
 	}

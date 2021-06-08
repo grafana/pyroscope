@@ -13,6 +13,8 @@ import (
 	"text/template"
 	"time"
 
+	"net/http/pprof"
+
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
@@ -61,6 +63,12 @@ func (ctrl *Controller) Stop() error {
 // TODO: split the cli initialization from HTTP controller logic
 func (ctrl *Controller) Start() error {
 	mux := http.NewServeMux()
+
+	mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	mux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
 	mux.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
 	mux.HandleFunc("/ingest", ctrl.ingestHandler)
