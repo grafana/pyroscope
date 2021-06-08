@@ -23,8 +23,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var fixtures = []*transporttrie.Trie{}
-var appNames = []string{}
+var appsCount int
+var clientsCount int
+var fixturesCount int
+var fixtures = [][]*transporttrie.Trie{}
 
 func envInt(s string) int {
 	v, err := strconv.Atoi(os.Getenv(s))
@@ -36,8 +38,7 @@ func envInt(s string) int {
 
 var requestsCompleteCount uint64
 
-func startClientThread(clientsCount int, wg *sync.WaitGroup) {
-	logrus.SetLevel(logrus.InfoLevel)
+func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
 		UpstreamAddress:        "http://pyroscope:4040",
@@ -51,12 +52,12 @@ func startClientThread(clientsCount int, wg *sync.WaitGroup) {
 	threadStartTime := time.Now()
 
 	requestsCount := envInt("REQUESTS")
+	st := threadStartTime.Truncate(10 * time.Second)
 
 	for i := 0; i < requestsCount; i++ {
-		t := fixtures[i%len(fixtures)]
-		appName := appNames[i%len(appNames)]
+		t := appFixtures[i%len(appFixtures)]
 
-		st := threadStartTime.Add(time.Duration(i*10) * time.Second)
+		st = st.Add(10 * time.Second)
 		et := st.Add(10 * time.Second)
 		err := r.UploadSync(&upstream.UploadJob{
 			Name:            appName + "{}",
@@ -75,7 +76,7 @@ func startClientThread(clientsCount int, wg *sync.WaitGroup) {
 			metrics.Count("successful_uploads", 1)
 		}
 		atomic.AddUint64(&requestsCompleteCount, 1)
-		metrics.Gauge("run_progress", float64(requestsCompleteCount)/(float64(requestsCount)*float64(clientsCount)))
+		metrics.Gauge("run_progress", float64(requestsCompleteCount)/(float64(appsCount*requestsCount*clientsCount)))
 	}
 
 	wg.Done()
@@ -131,18 +132,21 @@ func init() {
 	r = rand.New(rand.NewSource(int64(envInt("RAND_SEED"))))
 }
 
-func generateProfile() *transporttrie.Trie {
+func generateProfile(randomGen *rand.Rand) *transporttrie.Trie {
 	t := transporttrie.New()
 
 	for w := 0; w < envInt("PROFILE_WIDTH"); w++ {
 		symbol := []byte("root")
-		for d := 0; d < envInt("PROFILE_DEPTH"); d++ {
-			r.Read(symbolBuf)
+		for d := 0; d < 2+r.Intn(envInt("PROFILE_DEPTH")); d++ {
+			randomGen.Read(symbolBuf)
 			symbol = append(symbol, byte(';'))
 			symbol = append(symbol, []byte(hex.EncodeToString(symbolBuf))...)
+			if r.Intn(100) <= 20 {
+				t.Insert(symbol, uint64(r.Intn(100)), true)
+			}
 		}
 
-		t.Insert(symbol, 100, true)
+		t.Insert(symbol, uint64(r.Intn(100)), true)
 	}
 	return t
 }
@@ -160,6 +164,7 @@ func reportEnvMetrics() {
 }
 
 func setupLogging() {
+	logrus.SetLevel(logrus.InfoLevel)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		TimestampFormat: "2006-01-02T15:04:05.000000",
 	})
@@ -174,23 +179,28 @@ func main() {
 	go http.ListenAndServe(":8081", nil)
 
 	logrus.Info("waiting for other services to load")
+	metrics.Gauge("benchmark", 0)
 
 	// TODO: should have some health check instead
 	time.Sleep(30 * time.Second)
 
 	reportEnvMetrics()
 
-	clientsCount := envInt("CLIENTS")
+	appsCount = envInt("APPS")
+	clientsCount = envInt("CLIENTS")
+	fixturesCount = envInt("FIXTURES")
+
 	logrus.Info("generating fixtures")
-	for i := 0; i < envInt("FIXTURES"); i++ {
-		fixtures = append(fixtures, generateProfile())
+	for i := 0; i < appsCount; i++ {
+		fixtures = append(fixtures, []*transporttrie.Trie{})
+
+		randomGen := rand.New(rand.NewSource(int64(envInt("RAND_SEED") + i)))
+		p := generateProfile(randomGen)
+		for j := 0; j < fixturesCount; j++ {
+			fixtures[i] = append(fixtures[i], p)
+		}
 	}
 
-	appNameBuf := make([]byte, 25)
-	for i := 0; i < envInt("APPS"); i++ {
-		r.Read(appNameBuf)
-		appNames = append(appNames, hex.EncodeToString(appNameBuf))
-	}
 	logrus.Info("done generating fixtures")
 
 	logrus.Info("starting sending requests")
@@ -199,8 +209,13 @@ func main() {
 	reportSummaryMetric("start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
 	wg.Add(clientsCount)
-	for i := 0; i < clientsCount; i++ {
-		go startClientThread(clientsCount, &wg)
+
+	appNameBuf := make([]byte, 25)
+	for i := 0; i < appsCount; i++ {
+		r.Read(appNameBuf)
+		for j := 0; j < clientsCount; j++ {
+			go startClientThread(hex.EncodeToString(appNameBuf), &wg, fixtures[i])
+		}
 	}
 	wg.Wait()
 	logrus.Info("done sending requests")

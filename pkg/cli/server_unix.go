@@ -61,26 +61,26 @@ func startServer(cfg *config.Server) error {
 }
 
 func reportDebuggingInformation(cfg *config.Server, s *storage.Storage) {
-	t := time.NewTicker(1 * time.Second)
+	interval := 1 * time.Second
+	t := time.NewTicker(interval)
 	i := 0
 	for range t.C {
-		if logrus.IsLevelEnabled(logrus.DebugLevel) {
-			maps := map[string]map[string]interface{}{
-				"mem":   debug.MemUsage(),
-				"disk":  debug.DiskUsage(cfg.StoragePath),
-				"cache": s.CacheStats(),
-			}
+		maps := map[string]map[string]interface{}{
+			"cpu":   debug.CPUUsage(interval),
+			"mem":   debug.MemUsage(),
+			"disk":  debug.DiskUsage(cfg.StoragePath),
+			"cache": s.CacheStats(),
+		}
 
-			for dataType, data := range maps {
-				for k, v := range data {
-					if iv, ok := v.(bytesize.ByteSize); ok {
-						v = int64(iv)
-					}
-					metrics.Gauge(dataType+"."+k, v)
+		for dataType, data := range maps {
+			for k, v := range data {
+				if iv, ok := v.(bytesize.ByteSize); ok {
+					v = int64(iv)
 				}
-				if i%30 == 0 {
-					logrus.WithFields(data).Debug(dataType + " stats")
-				}
+				metrics.Gauge(dataType+"_"+k, v)
+			}
+			if i%30 == 0 {
+				logrus.WithFields(data).Debug(dataType + " stats")
 			}
 		}
 		i++
