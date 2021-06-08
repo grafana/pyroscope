@@ -174,6 +174,7 @@ func main() {
 	go http.ListenAndServe(":8081", nil)
 
 	logrus.Info("waiting for other services to load")
+
 	// TODO: should have some health check instead
 	time.Sleep(30 * time.Second)
 
@@ -193,6 +194,7 @@ func main() {
 	logrus.Info("done generating fixtures")
 
 	logrus.Info("starting sending requests")
+	metrics.Gauge("benchmark", 1)
 	startTime := time.Now()
 	reportSummaryMetric("start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
@@ -202,6 +204,7 @@ func main() {
 	}
 	wg.Wait()
 	logrus.Info("done sending requests")
+	metrics.Gauge("benchmark", 0)
 	reportSummaryMetric("stop-time", time.Now().Format(timeFmt))
 	reportSummaryMetric("duration", time.Since(startTime).String())
 

@@ -3,11 +3,16 @@
     "list": [
       {
         "builtIn": 1,
-        "datasource": "-- Grafana --",
+        "datasource": "Prometheus",
         "enable": true,
+        "expr": "benchmark",
         "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
+        "iconColor": "rgba(87, 148, 242, 0.24)",
+        "limit": 100,
         "name": "Annotations & Alerts",
+        "showIn": 0,
+        "step": "1s",
+        "titleFormat": "run",
         "type": "dashboard"
       }
     ]
@@ -1768,7 +1773,7 @@
     "list": []
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
@@ -1799,5 +1804,5 @@
   "timezone": "browser",
   "title": "main",
   "uid": "65gjqY3Mk",
-  "version": 4
+  "version": 1
 }
