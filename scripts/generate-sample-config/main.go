@@ -22,7 +22,7 @@ func main() {
 	cfg := config.Config{Server: config.Server{}}
 	cli.PopulateFlagSet(&cfg.Server, serverFlagSet)
 
-	sf := cli.NewSortedFlags(&cfg.Server, serverFlagSet)
+	sf := cli.NewSortedFlags(&cfg.Server, serverFlagSet, []string{})
 
 	if format == "yaml" {
 		fmt.Println("---")

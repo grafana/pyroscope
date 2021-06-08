@@ -4,8 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/sirupsen/logrus"
 
 	"github.com/dgraph-io/badger/v2"
@@ -19,10 +18,10 @@ type Cache struct {
 	alwaysSave  bool
 	cleanupDone chan struct{}
 
-	hitCounter          prometheus.Counter
-	missCounter         prometheus.Counter
-	storageReadCounter  prometheus.Counter
-	storageWriteCounter prometheus.Counter
+	hitCounter          string
+	missCounter         string
+	storageReadCounter  string
+	storageWriteCounter string
 
 	// Bytes serializes objects before they go into storage. Users are required to define this one
 	Bytes func(k string, v interface{}) ([]byte, error)
@@ -50,10 +49,10 @@ func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 		prefix:      prefix,
 		cleanupDone: make(chan struct{}),
 
-		hitCounter:          promauto.NewCounter(prometheus.CounterOpts{Name: "cache_" + humanReadableName + "_hit"}),
-		missCounter:         promauto.NewCounter(prometheus.CounterOpts{Name: "cache_" + humanReadableName + "_miss"}),
-		storageReadCounter:  promauto.NewCounter(prometheus.CounterOpts{Name: "storage_" + humanReadableName + "_read"}),
-		storageWriteCounter: promauto.NewCounter(prometheus.CounterOpts{Name: "storage_" + humanReadableName + "_write"}),
+		hitCounter:          "cache_" + humanReadableName + "_hit",
+		missCounter:         "cache_" + humanReadableName + "_miss",
+		storageReadCounter:  "storage_" + humanReadableName + "_read",
+		storageWriteCounter: "storage_" + humanReadableName + "_write",
 	}
 
 	// start a goroutine for saving the evicted cache items to disk
@@ -90,7 +89,7 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 		return fmt.Errorf("serialize key and value: %v", err)
 	}
 
-	cache.storageWriteCounter.Inc()
+	metrics.Count(cache.storageWriteCounter, 1)
 	// update the kv to badger
 	if err := cache.db.Update(func(txn *badger.Txn) error {
 		return txn.SetEntry(badger.NewEntry([]byte(cache.prefix+key), buf))
@@ -127,11 +126,11 @@ func (cache *Cache) Get(key string) (interface{}, error) {
 	// find the key from cache first
 	val := cache.lfu.Get(key)
 	if val != nil {
-		cache.hitCounter.Inc()
+		metrics.Count(cache.hitCounter, 1)
 		return val, nil
 	}
 	logrus.WithField("key", key).Debug("lfu miss")
-	cache.missCounter.Inc()
+	metrics.Count(cache.missCounter, 1)
 
 	var copied []byte
 	// read the value from badger
@@ -170,7 +169,7 @@ func (cache *Cache) Get(key string) (interface{}, error) {
 	}
 
 	// deserialize the object from storage
-	cache.storageReadCounter.Inc()
+	metrics.Count(cache.storageReadCounter, 1)
 	val, err := cache.FromBytes(key, copied)
 	if err != nil {
 		return nil, fmt.Errorf("deserialize the object: %v", err)

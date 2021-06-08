@@ -144,7 +144,14 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 		defer ticker.Stop()
 
 		for range ticker.C {
-			if s.closing {
+			closing := func() bool {
+				s.closingMutex.RLock()
+				defer s.closingMutex.RUnlock()
+
+				return s.closing
+			}()
+
+			if closing {
 				return
 			}
 
