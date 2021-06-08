@@ -41,6 +41,8 @@ type Storage struct {
 	closingMutex sync.RWMutex
 	closing      bool
 
+	putMutex sync.Mutex
+
 	cfg      *config.Server
 	segments *cache.Cache
 
@@ -162,7 +164,6 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 				"eviction point": s.cfg.CacheEvictPoint,
 				"percent":        percent,
 			}).Debugf("current used percent of memory")
-
 			if used > s.cfg.CacheEvictPoint {
 				metrics.Timing("ram_evictions_timer", func() {
 					metrics.Count("ram_evictions", 1)
@@ -301,11 +302,15 @@ type PutInput struct {
 }
 
 func (s *Storage) Put(po *PutInput) error {
-	s.closingMutex.Lock()
-	defer s.closingMutex.Unlock()
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
 	if s.closing {
 		return errClosing
 	}
+
+	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
+	s.putMutex.Lock()
+	defer s.putMutex.Unlock()
 
 	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
 	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
@@ -399,8 +404,8 @@ type GetOutput struct {
 }
 
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
-	s.closingMutex.Lock()
-	defer s.closingMutex.Unlock()
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
 	if s.closing {
 		return nil, errClosing
 	}
@@ -501,8 +506,8 @@ type DeleteInput struct {
 }
 
 func (s *Storage) Delete(di *DeleteInput) error {
-	s.closingMutex.Lock()
-	defer s.closingMutex.Unlock()
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
 	if s.closing {
 		return errClosing
 	}

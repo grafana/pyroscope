@@ -31,6 +31,7 @@ services:
     image: prom/prometheus:v2.27.1
     volumes:
       - ./prometheus:/etc/prometheus/
+      - data-prometheus:/prometheus
     ports:
       - 9090:9090
 
@@ -41,3 +42,7 @@ services:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     ports:
       - 8080:3000
+
+volumes:
+  data-prometheus:
+    driver: local
