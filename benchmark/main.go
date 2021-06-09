@@ -49,10 +49,12 @@ func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transp
 		panic(err)
 	}
 
-	threadStartTime := time.Now()
-
 	requestsCount := envInt("REQUESTS")
-	st := threadStartTime.Truncate(10 * time.Second)
+
+	threadStartTime := time.Now().Truncate(10 * time.Second)
+	threadStartTime = threadStartTime.Add(time.Duration(-1*requestsCount) * (10 * time.Second))
+
+	st := threadStartTime
 
 	for i := 0; i < requestsCount; i++ {
 		t := appFixtures[i%len(appFixtures)]

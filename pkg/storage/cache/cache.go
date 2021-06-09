@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dgrijalva/lfu-go"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/sirupsen/logrus"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/dgrijalva/lfu-go"
 )
 
 type Cache struct {
@@ -33,11 +33,13 @@ type Cache struct {
 
 func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 	eviction := make(chan lfu.Eviction, 1)
+	persistence := make(chan lfu.Eviction, 1)
 
 	l := lfu.New()
 
 	// eviction channel for saving cache items to disk
 	l.EvictionChannel = eviction
+	l.PersistenceChannel = persistence
 
 	// disable the eviction based on upper and lower bound
 	l.UpperBound = 0
@@ -56,6 +58,7 @@ func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 	}
 
 	// start a goroutine for saving the evicted cache items to disk
+
 	go func() {
 		for {
 			e, ok := <-eviction
@@ -65,6 +68,17 @@ func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 			cache.saveToDisk(e.Key, e.Value)
 		}
 		cache.cleanupDone <- struct{}{}
+	}()
+
+	// start a goroutine for saving the evicted cache items to disk
+	go func() {
+		for {
+			e, ok := <-persistence
+			if !ok {
+				break
+			}
+			cache.saveToDisk(e.Key, e.Value)
+		}
 	}()
 
 	return cache
@@ -104,12 +118,17 @@ func (cache *Cache) Flush() {
 	cache.lfu.Evict(cache.lfu.Len())
 
 	close(cache.lfu.EvictionChannel)
+	close(cache.lfu.PersistenceChannel)
 	// wait until cache flushing is finished
 	<-cache.cleanupDone
 }
 
 func (cache *Cache) Evict(percent float64) {
 	cache.lfu.Evict(int(float64(cache.lfu.Len()) * percent))
+}
+
+func (cache *Cache) Persist() {
+	cache.lfu.Persist(cache.lfu.Len())
 }
 
 func (cache *Cache) Delete(key string) error {

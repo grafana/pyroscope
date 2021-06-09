@@ -79,6 +79,7 @@ func newBadger(cfg *config.Server, name string) (*badger.DB, error) {
 	badgerOptions := badger.DefaultOptions(badgerPath)
 	badgerOptions = badgerOptions.WithTruncate(!cfg.BadgerNoTruncate)
 	badgerOptions = badgerOptions.WithSyncWrites(false)
+	badgerOptions = badgerOptions.WithCompactL0OnClose(false)
 	badgerOptions = badgerOptions.WithCompression(options.ZSTD)
 	badgerLevel := logrus.ErrorLevel
 	if l, err := logrus.ParseLevel(cfg.BadgerLogLevel); err == nil {
@@ -193,6 +194,38 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 	return nil
 }
 
+func (s *Storage) startPersistTimer(interval time.Duration) error {
+	go func() {
+		ticker := time.NewTimer(interval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			closing := func() bool {
+				s.closingMutex.RLock()
+				defer s.closingMutex.RUnlock()
+
+				return s.closing
+			}()
+
+			if closing {
+				return
+			}
+
+			metrics.Timing("ram_persistence_timer", func() {
+				metrics.Count("ram_persistence", 1)
+				s.dimensions.Persist()
+				s.segments.Persist()
+				s.dicts.Persist()
+				s.trees.Persist()
+				runtime.GC()
+			})
+			ticker.Reset(interval)
+		}
+	}()
+
+	return nil
+}
+
 func New(cfg *config.Server) (*Storage, error) {
 	db, err := newBadger(cfg, "main")
 	if err != nil {
@@ -292,6 +325,10 @@ func New(cfg *config.Server) (*Storage, error) {
 	// with 10% to every cache
 	if err := s.startEvictTimer(evictInterval); err != nil {
 		return nil, fmt.Errorf("start evict timer: %v", err)
+	}
+
+	if err := s.startPersistTimer(evictInterval); err != nil {
+		return nil, fmt.Errorf("start persist timer: %v", err)
 	}
 
 	return s, nil
@@ -583,11 +620,14 @@ func (s *Storage) Close() error {
 	})
 
 	metrics.Timing("storage_badger_close_timer", func() {
-		s.dbTrees.Close()
-		s.dbDicts.Close()
-		s.dbDimensions.Close()
-		s.dbSegments.Close()
-		s.db.Close()
+		wg := sync.WaitGroup{}
+		wg.Add(5)
+		go func() { defer wg.Done(); s.dbTrees.Close() }()
+		go func() { defer wg.Done(); s.dbDicts.Close() }()
+		go func() { defer wg.Done(); s.dbDimensions.Close() }()
+		go func() { defer wg.Done(); s.dbSegments.Close() }()
+		go func() { defer wg.Done(); s.db.Close() }()
+		wg.Wait()
 	})
 	if os.Getenv("PYROSCOPE_WAIT_AFTER_STOP") != "" {
 		time.Sleep(20 * time.Second)
