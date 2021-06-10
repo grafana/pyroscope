@@ -379,8 +379,6 @@ github.com/prometheus/procfs v0.6.0 h1:mxy4L2jP6qMonqmq+aTtOx1ifVWUgG/TAmntgbh3x
 github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/pyroscope-io/dotnetdiag v1.2.0 h1:RuuCMjuJbW3vnv+XO/0492P5OndG/ZFlvzZQy3k+hi4=
 github.com/pyroscope-io/dotnetdiag v1.2.0/go.mod h1:eFUEHCp4eD1TgcXMlJihC+R4MrqGf7nTRdWxNADbDHA=
-github.com/pyroscope-io/lfu-go v1.0.1 h1:yGE9tbsAYTr+Bb5KL25WJOh7FX0bnb01MDgIqPvxPAY=
-github.com/pyroscope-io/lfu-go v1.0.1/go.mod h1:3W9sGrDLhKFkHZPXkz6c5dAKrxcwkKbFFKnJtDukMDA=
 github.com/pyroscope-io/lfu-go v1.0.2 h1:C7MusVuskGNMCoRT7ao8qSp2XKrZFHdpgeBSsGkddaY=
 github.com/pyroscope-io/lfu-go v1.0.2/go.mod h1:3W9sGrDLhKFkHZPXkz6c5dAKrxcwkKbFFKnJtDukMDA=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1 h1:0v9lBNgdmVtpyyk9PP/DfpJlOHkXriu5YgNlrhQw5YE=

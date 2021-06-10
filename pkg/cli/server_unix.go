@@ -67,7 +67,6 @@ func reportDebuggingInformation(cfg *config.Server, s *storage.Storage) {
 	for range t.C {
 		maps := map[string]map[string]interface{}{
 			"cpu":   debug.CPUUsage(interval),
-			"mem":   debug.MemUsage(),
 			"disk":  debug.DiskUsage(cfg.StoragePath),
 			"cache": s.CacheStats(),
 		}

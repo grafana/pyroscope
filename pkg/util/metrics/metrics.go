@@ -1,7 +1,8 @@
+// Package metrics is a temporary solution for handling prometheus metrics.
+// Temporary because I don't think this is how they are supposed to be set up.
 package metrics
 
 import (
-	"strings"
 	"sync"
 	"time"
 
@@ -54,18 +55,10 @@ func fixValue(v interface{}) float64 {
 	return 0.0
 }
 
-func fixName(n string) string {
-	n = strings.ToLower(n)
-	n = strings.ReplaceAll(n, ".", "_")
-	n = strings.ReplaceAll(n, "-", "_")
-	return n
-}
-
 func Count(name string, value interface{}) {
 	countersMutex.Lock()
 	defer countersMutex.Unlock()
 
-	name = fixName(name)
 	if _, ok := counters[name]; !ok {
 		counters[name] = promauto.NewCounter(prometheus.CounterOpts{
 			Name: name,
@@ -78,7 +71,6 @@ func Gauge(name string, value interface{}) {
 	gaugesMutex.Lock()
 	defer gaugesMutex.Unlock()
 
-	name = fixName(name)
 	if _, ok := gauges[name]; !ok {
 		gauges[name] = promauto.NewGauge(prometheus.GaugeOpts{
 			Name: name,
@@ -91,7 +83,6 @@ func Histogram(name string, value interface{}) {
 	histogramsMutex.Lock()
 	defer histogramsMutex.Unlock()
 
-	name = fixName(name)
 	if _, ok := histograms[name]; !ok {
 		histograms[name] = promauto.NewHistogram(prometheus.HistogramOpts{
 			Name: name,
