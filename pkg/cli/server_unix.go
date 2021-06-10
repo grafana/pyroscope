@@ -21,18 +21,22 @@ import (
 )
 
 func startServer(cfg *config.Server) error {
+	defer atexit.Wait()
 	// new a storage with configuration
 	s, err := storage.New(cfg)
 	if err != nil {
 		return fmt.Errorf("new storage: %v", err)
 	}
-	atexit.Register(func() { s.Close() })
+	atexit.Register(func() {
+		s.Close()
+	})
 
 	// new a direct upstream
 	u := direct.New(s)
 
 	// uploading the server profile self
-	if err := agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger()); err != nil {
+	stopSelfProfilingChan := make(chan struct{})
+	if err := agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger(), stopSelfProfilingChan); err != nil {
 		return fmt.Errorf("start self profile: %v", err)
 	}
 
@@ -44,7 +48,10 @@ func startServer(cfg *config.Server) error {
 	if err != nil {
 		return fmt.Errorf("new server: %v", err)
 	}
-	atexit.Register(func() { c.Stop() })
+	atexit.Register(func() {
+		c.Stop()
+		stopSelfProfilingChan <- struct{}{}
+	})
 
 	// start the analytics
 	if !cfg.AnalyticsOptOut {
@@ -55,6 +62,10 @@ func startServer(cfg *config.Server) error {
 	// if you ever change this line, make sure to update this homebrew test:
 	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
 	logrus.Info("starting HTTP server")
+
+	if err := s.CollectLocalProfiles(); err != nil {
+		logrus.WithError(err).Error("failed to collect local profiles")
+	}
 
 	// start the server
 	return c.Start()

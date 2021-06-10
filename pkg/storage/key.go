@@ -15,13 +15,9 @@ type Key struct {
 	labels map[string]string
 }
 
-var nameParser *regexp.Regexp
+var nameParser = regexp.MustCompile("^(.+)\\{(.+)\\}.*$")
 
 const seed = 6231912
-
-func init() {
-	nameParser = regexp.MustCompile("^(.+)\\{(.+)\\}.*$")
-}
 
 type ParserState int
 

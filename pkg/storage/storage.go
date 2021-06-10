@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +18,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 	"github.com/pyroscope-io/pyroscope/pkg/util/file"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
+	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 	"github.com/shirou/gopsutil/mem"
 
 	"github.com/dgraph-io/badger/v2"
@@ -33,7 +36,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var errClosing = errors.New("the db is in closing state")
+var ErrClosing = errors.New("the db is in closing state")
 var errOutOfSpace = errors.New("running out of space")
 var evictInterval = 1 * time.Second
 
@@ -56,6 +59,8 @@ type Storage struct {
 	dbDicts      *badger.DB
 	dbDimensions *badger.DB
 	dbSegments   *badger.DB
+
+	localProfilesDir string
 }
 
 func badgerGC(db *badger.DB) {
@@ -176,9 +181,9 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 				metrics.Timing("ram_evictions_timer", func() {
 					metrics.Count("ram_evictions", 1)
 
-					// s.dimensions.Evict(percent)
-					// s.segments.Evict(percent)
-					// s.dicts.Evict(percent)
+					s.dimensions.Evict(percent / 4)
+					s.dicts.Evict(percent / 4)
+					s.segments.Evict(percent / 2)
 					s.trees.Evict(percent)
 
 					// force gc after eviction
@@ -248,14 +253,20 @@ func New(cfg *config.Server) (*Storage, error) {
 		return nil, err
 	}
 
+	localProfilesDir := filepath.Join(cfg.StoragePath, "local-profiles")
+	if err = os.MkdirAll(localProfilesDir, 0o755); err != nil {
+		return nil, err
+	}
+
 	s := &Storage{
-		cfg:          cfg,
-		labels:       labels.New(db),
-		db:           db,
-		dbTrees:      dbTrees,
-		dbDicts:      dbDicts,
-		dbDimensions: dbDimensions,
-		dbSegments:   dbSegments,
+		cfg:              cfg,
+		labels:           labels.New(db),
+		db:               db,
+		dbTrees:          dbTrees,
+		dbDicts:          dbDicts,
+		dbDimensions:     dbDimensions,
+		dbSegments:       dbSegments,
+		localProfilesDir: localProfilesDir,
 	}
 
 	s.dimensions = cache.New(dbDimensions, "i:", "dimensions")
@@ -349,7 +360,7 @@ func (s *Storage) Put(po *PutInput) error {
 	s.closingMutex.RLock()
 	defer s.closingMutex.RUnlock()
 	if s.closing {
-		return errClosing
+		return ErrClosing
 	}
 
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
@@ -433,6 +444,114 @@ func (s *Storage) Put(po *PutInput) error {
 	return nil
 }
 
+func (s *Storage) collectLocalProfile(path string) error {
+	defer os.Remove(path)
+
+	logrus.WithField("path", path).Info("collecting local profile")
+
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	r := bytes.NewReader(b)
+
+	l, err := varint.Read(r)
+	if err != nil {
+		return err
+	}
+	nameBuf := make([]byte, l)
+
+	_, err = r.Read(nameBuf)
+	if err != nil {
+		return err
+	}
+
+	l, err = varint.Read(r)
+	if err != nil {
+		return err
+	}
+
+	metadataBuf := make([]byte, l)
+	_, err = r.Read(metadataBuf)
+	if err != nil {
+		return err
+	}
+	pi := PutInput{}
+	metadataReader := bytes.NewReader(metadataBuf)
+	d := json.NewDecoder(metadataReader)
+	err = d.Decode(&pi)
+	if err != nil {
+		return err
+	}
+
+	t, err := tree.DeserializeNoDict(r)
+	if err != nil {
+		return err
+	}
+
+	pi.Key, err = ParseKey(string(nameBuf))
+	if err != nil {
+		return err
+	}
+	pi.Val = t
+
+	if err := s.Put(&pi); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) CollectLocalProfiles() error {
+	logrus.Info("collecting local profiles")
+	matches, err := filepath.Glob(filepath.Join(s.localProfilesDir, "*.profile"))
+	if err != nil {
+		return err
+	}
+	for _, path := range matches {
+		logrus.WithField("path", path).Info("collectLocalProfile")
+		if err := s.collectLocalProfile(path); err != nil {
+			logrus.WithError(err).WithField("path", path).Error("failed to collect local profile")
+		}
+	}
+	return nil
+}
+
+func (s *Storage) PutLocal(po *PutInput) error {
+	logrus.Info("PutLocal")
+	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
+	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
+		return errOutOfSpace
+	}
+
+	name := fmt.Sprintf("%d-%s.profile", po.StartTime.Unix(), po.Key.AppName())
+
+	buf := bytes.Buffer{}
+
+	metadataBuf := bytes.Buffer{}
+	t := po.Val
+	po.Val = nil
+	e := json.NewEncoder(&metadataBuf)
+	if err := e.Encode(po); err != nil {
+		return err
+	}
+
+	nameBuf := []byte(po.Key.Normalized())
+	varint.Write(&buf, uint64(len(nameBuf)))
+	buf.Write(nameBuf)
+
+	mb := metadataBuf.Bytes()
+	varint.Write(&buf, uint64(len(mb)))
+	buf.Write(mb)
+
+	if err := t.SerializeNoDict(s.cfg.MaxNodesSerialization, &buf); err != nil {
+		return err
+	}
+	ioutil.WriteFile(filepath.Join(s.localProfilesDir, name), buf.Bytes(), 0600)
+
+	return nil
+}
+
 type GetInput struct {
 	StartTime time.Time
 	EndTime   time.Time
@@ -451,7 +570,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	s.closingMutex.RLock()
 	defer s.closingMutex.RUnlock()
 	if s.closing {
-		return nil, errClosing
+		return nil, ErrClosing
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -553,7 +672,7 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	s.closingMutex.RLock()
 	defer s.closingMutex.RUnlock()
 	if s.closing {
-		return errClosing
+		return ErrClosing
 	}
 
 	logrus.WithFields(logrus.Fields{

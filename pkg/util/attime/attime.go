@@ -9,11 +9,7 @@ import (
 
 // this code is a rough copy of this code https://github.com/graphite-project/graphite-web/blob/master/webapp/graphite/render/attime.py
 
-var digitsOnly *regexp.Regexp
-
-func init() {
-	digitsOnly = regexp.MustCompile("^\\d+$")
-}
+var digitsOnly = regexp.MustCompile("^\\d+$")
 
 func Parse(s string) time.Time {
 	s = strings.TrimSpace(s)
