@@ -65,7 +65,8 @@ type Server struct {
 
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.
-	BadgerNoTruncate bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
+	BadgerNoTruncate     bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
+	DisablePprofEndpoint bool `def:"false" desc:"disables /debug/pprof route"`
 
 	MaxNodesSerialization int `def:"2048" desc:"max number of nodes used when saving profiles to disk"`
 	MaxNodesRender        int `def:"8192" desc:"max number of nodes used to display data on the frontend"`
