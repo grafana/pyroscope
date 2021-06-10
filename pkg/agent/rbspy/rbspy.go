@@ -20,6 +20,9 @@ import (
 // TODO: pass lower level structures between go and rust?
 var bufferLength = 1024 * 64
 
+// TODO: we should probably find a better way of setting this
+var Blocking bool
+
 type RbSpy struct {
 	dataBuf []byte
 	dataPtr unsafe.Pointer
@@ -41,7 +44,11 @@ func Start(pid int) (spy.Spy, error) {
 	// TODO: handle this better
 	time.Sleep(1 * time.Second)
 
-	r := C.rbspy_init(C.int(pid), errorPtr, C.int(bufferLength))
+	blocking := 0
+	if Blocking {
+		blocking = 1
+	}
+	r := C.rbspy_init(C.int(pid), C.int(blocking), errorPtr, C.int(bufferLength))
 
 	if r < 0 {
 		return nil, errors.New(string(errorBuf[:-r]))

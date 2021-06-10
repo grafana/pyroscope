@@ -159,6 +159,7 @@ var _ = Describe("flags", func() {
 						SampleRate:         0,
 						DetectSubprocesses: false,
 						PyspyBlocking:      false,
+						RbspyBlocking:      false,
 					},
 				}))
 			})

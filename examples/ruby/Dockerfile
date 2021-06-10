@@ -1,8 +1,8 @@
-FROM ruby:2.7.1
+FROM ruby:3.0.1
 
 WORKDIR /usr/src/app
 
-COPY --from=pyroscope/pyroscope:latest /usr/bin/pyroscope /usr/bin/pyroscope
+COPY --from=pyroscope/pyroscope:dev /usr/bin/pyroscope /usr/bin/pyroscope
 COPY main.rb ./main.rb
 
 ENV PYROSCOPE_APPLICATION_NAME=simple.ruby.app
