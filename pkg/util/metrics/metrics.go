@@ -16,13 +16,9 @@ var counters map[string]prometheus.Counter
 var gaugesMutex sync.Mutex
 var gauges map[string]prometheus.Gauge
 
-var histogramsMutex sync.Mutex
-var histograms map[string]prometheus.Histogram
-
 func init() {
 	counters = make(map[string]prometheus.Counter)
 	gauges = make(map[string]prometheus.Gauge)
-	histograms = make(map[string]prometheus.Histogram)
 }
 
 func fixValue(v interface{}) float64 {
@@ -79,22 +75,10 @@ func Gauge(name string, value interface{}) {
 	gauges[name].Set(fixValue(value))
 }
 
-func Histogram(name string, value interface{}) {
-	histogramsMutex.Lock()
-	defer histogramsMutex.Unlock()
-
-	if _, ok := histograms[name]; !ok {
-		histograms[name] = promauto.NewHistogram(prometheus.HistogramOpts{
-			Name: name,
-		})
-	}
-	histograms[name].Observe(fixValue(value))
-}
-
 func Timing(name string, cb func()) {
 	startTime := time.Now()
 	// func wrapper is important, otherwise time.Now is the same as startTime
-	defer func() { Histogram(name, int64(time.Now().Sub(startTime))) }()
+	defer func() { Gauge(name, int64(time.Now().Sub(startTime))) }()
 
 	cb()
 }

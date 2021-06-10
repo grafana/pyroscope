@@ -1539,7 +1539,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "{__name__=~\"ram_evictions_timer_sum\", instance=\"pyroscope:4040\"}",
+          "expr": "{__name__=~\"ram_evictions_timer\", instance=\"pyroscope:4040\"}",
           "interval": "",
           "legendFormat": "{{__name__}}",
           "queryType": "randomWalk",
@@ -1646,7 +1646,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "{__name__=~\"storage_caches_flush_timer_sum\", instance=\"pyroscope:4040\"}",
+          "expr": "{__name__=~\"storage_caches_flush_timer\", instance=\"pyroscope:4040\"}",
           "interval": "",
           "legendFormat": "{{__name__}}",
           "queryType": "randomWalk",
@@ -1654,7 +1654,7 @@
         },
         {
           "exemplar": true,
-          "expr": "{__name__=~\"storage_badger_close_timer_sum\", instance=\"pyroscope:4040\"}",
+          "expr": "{__name__=~\"storage_badger_close_timer\", instance=\"pyroscope:4040\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{__name__}}",
@@ -1721,7 +1721,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "{__name__=~\"ram_persistence_timer_sum\", instance=\"pyroscope:4040\"}",
+          "expr": "{__name__=~\"ram_persistence_timer\", instance=\"pyroscope:4040\"}",
           "interval": "",
           "legendFormat": "{{__name__}}",
           "queryType": "randomWalk",
@@ -1789,7 +1789,7 @@
     "list": []
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {
