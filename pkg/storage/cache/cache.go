@@ -124,7 +124,7 @@ func (cache *Cache) Flush() {
 		cache.lfu.Evict(cache.lfu.Len())
 
 		close(cache.lfu.EvictionChannel)
-		close(cache.lfu.PersistenceChannel)
+		close(cache.lfu.WriteBackChannel)
 
 		// wait until all evictions are done
 		<-cache.evictionsDone
