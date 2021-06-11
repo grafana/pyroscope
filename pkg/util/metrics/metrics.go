@@ -1,13 +1,19 @@
+// Package metrics is a temporary solution for handling prometheus metrics.
+// Temporary because I don't think this is how they are supposed to be set up.
 package metrics
 
 import (
-	"strings"
+	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+var countersMutex sync.Mutex
 var counters map[string]prometheus.Counter
+
+var gaugesMutex sync.Mutex
 var gauges map[string]prometheus.Gauge
 
 func init() {
@@ -45,15 +51,10 @@ func fixValue(v interface{}) float64 {
 	return 0.0
 }
 
-func fixName(n string) string {
-	n = strings.ToLower(n)
-	n = strings.ReplaceAll(n, ".", "_")
-	n = strings.ReplaceAll(n, "-", "_")
-	return n
-}
-
 func Count(name string, value interface{}) {
-	name = fixName(name)
+	countersMutex.Lock()
+	defer countersMutex.Unlock()
+
 	if _, ok := counters[name]; !ok {
 		counters[name] = promauto.NewCounter(prometheus.CounterOpts{
 			Name: name,
@@ -63,11 +64,21 @@ func Count(name string, value interface{}) {
 }
 
 func Gauge(name string, value interface{}) {
-	name = fixName(name)
+	gaugesMutex.Lock()
+	defer gaugesMutex.Unlock()
+
 	if _, ok := gauges[name]; !ok {
 		gauges[name] = promauto.NewGauge(prometheus.GaugeOpts{
 			Name: name,
 		})
 	}
 	gauges[name].Set(fixValue(value))
+}
+
+func Timing(name string, cb func()) {
+	startTime := time.Now()
+	// func wrapper is important, otherwise time.Now is the same as startTime
+	defer func() { Gauge(name, int64(time.Now().Sub(startTime))) }()
+
+	cb()
 }

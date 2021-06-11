@@ -12,7 +12,8 @@ services:
 
   pyroscope:
     environment:
-      - PYROSCOPE_LOG_LEVEL=debug
+      - PYROSCOPE_LOG_LEVEL=info
+      - PYROSCOPE_WAIT_AFTER_STOP=true
     build:
       context: ../
       dockerfile: Dockerfile
@@ -23,13 +24,14 @@ services:
     deploy:
       resources:
         limits:
-          cpus: 1
-          memory: 512M
+          cpus: "${PYROSCOPE_CPUS}"
+          memory: "${PYROSCOPE_MEMORY}"
 
   prometheus:
     image: prom/prometheus:v2.27.1
     volumes:
       - ./prometheus:/etc/prometheus/
+      - data-prometheus:/prometheus
     ports:
       - 9090:9090
 
@@ -40,3 +42,7 @@ services:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     ports:
       - 8080:3000
+
+volumes:
+  data-prometheus:
+    driver: local
