@@ -356,6 +356,13 @@ type PutInput struct {
 	AggregationType string
 }
 
+func (s *Storage) IsClosing() bool {
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
+
+	return s.closing
+}
+
 func (s *Storage) Put(po *PutInput) error {
 	s.closingMutex.RLock()
 	defer s.closingMutex.RUnlock()
@@ -748,8 +755,9 @@ func (s *Storage) Close() error {
 		go func() { defer wg.Done(); s.db.Close() }()
 		wg.Wait()
 	})
+	// this allows prometheus to collect metrics before pyroscope exits
 	if os.Getenv("PYROSCOPE_WAIT_AFTER_STOP") != "" {
-		time.Sleep(20 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 	return nil
 }

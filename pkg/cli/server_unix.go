@@ -57,17 +57,18 @@ func startServer(cfg *config.Server) error {
 	if !cfg.AnalyticsOptOut {
 		analyticsService := analytics.NewService(cfg, s, c)
 		go analyticsService.Start()
-		atexit.Register(func() { analyticsService.Stop() })
+		atexit.Register(func() {
+			analyticsService.Stop()
+		})
 	}
-	// if you ever change this line, make sure to update this homebrew test:
-	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
-	logrus.Info("starting HTTP server")
 
 	if err := s.CollectLocalProfiles(); err != nil {
 		logrus.WithError(err).Error("failed to collect local profiles")
 	}
 
-	// start the server
+	// if you ever change this line, make sure to update this homebrew test:
+	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
+	logrus.Info("starting HTTP server")
 	return c.Start()
 }
 

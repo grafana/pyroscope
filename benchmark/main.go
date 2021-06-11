@@ -38,6 +38,18 @@ func envInt(s string) int {
 
 var requestsCompleteCount uint64
 
+func waitUntilEndpointReady(url string) {
+	for {
+		logrus.Infof("checking endpoint %s", url)
+
+		_, err := http.Get(url)
+		if err != nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+}
+
 func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
@@ -183,8 +195,8 @@ func main() {
 	logrus.Info("waiting for other services to load")
 	metrics.Gauge("benchmark", 0)
 
-	// TODO: should have some health check instead
-	time.Sleep(30 * time.Second)
+	waitUntilEndpointReady("pyroscope:4040")
+	waitUntilEndpointReady("prometheus:9090")
 
 	reportEnvMetrics()
 
@@ -210,7 +222,7 @@ func main() {
 	startTime := time.Now()
 	reportSummaryMetric("start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
-	wg.Add(clientsCount)
+	wg.Add(appsCount * clientsCount)
 
 	appNameBuf := make([]byte, 25)
 	for i := 0; i < appsCount; i++ {

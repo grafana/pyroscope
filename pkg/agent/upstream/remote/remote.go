@@ -20,6 +20,7 @@ import (
 
 var (
 	ErrCloudTokenRequired = errors.New("Please provide an authentication token. You can find it here: https://pyroscope.io/cloud")
+	ErrUpload             = errors.New("Failed to upload a profile")
 	cloudHostnameSuffix   = "pyroscope.cloud"
 )
 
@@ -149,6 +150,10 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	_, err = ioutil.ReadAll(response.Body)
 	if err != nil {
 		return fmt.Errorf("read response body: %v", err)
+	}
+
+	if response.StatusCode != 200 {
+		return ErrUpload
 	}
 
 	return nil
