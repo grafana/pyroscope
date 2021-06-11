@@ -35,14 +35,14 @@ type Cache struct {
 }
 
 func New(db *badger.DB, prefix, humanReadableName string) *Cache {
-	eviction := make(chan lfu.Eviction)
-	persistence := make(chan lfu.Eviction)
+	evictionChannel := make(chan lfu.Eviction)
+	writeBackChannel := make(chan lfu.Eviction)
 
 	l := lfu.New()
 
 	// eviction channel for saving cache items to disk
-	l.EvictionChannel = eviction
-	l.PersistenceChannel = persistence
+	l.EvictionChannel = evictionChannel
+	l.WriteBackChannel = writeBackChannel
 
 	// disable the eviction based on upper and lower bound
 	l.UpperBound = 0
@@ -65,7 +65,7 @@ func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 
 	go func() {
 		for {
-			e, ok := <-eviction
+			e, ok := <-evictionChannel
 			if !ok {
 				break
 			}
@@ -78,7 +78,7 @@ func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 	// start a goroutine for saving the evicted cache items to disk
 	go func() {
 		for {
-			e, ok := <-persistence
+			e, ok := <-writeBackChannel
 			if !ok {
 				break
 			}
@@ -131,16 +131,16 @@ func (cache *Cache) Flush() {
 	})
 }
 
-// Evict performs cache evictions. The difference between Evict and Persist is that evictions happen when cache grows
-// above allowed threshold and persist calls happen constantly, and perform write-back function of the cache.
+// Evict performs cache evictions. The difference between Evict and WriteBack is that evictions happen when cache grows
+// above allowed threshold and write-back calls happen constantly, making pyroscope more crash-resilient.
 // See https://github.com/pyroscope-io/pyroscope/issues/210 for more context
 func (cache *Cache) Evict(percent float64) {
 	cache.lfu.Evict(int(float64(cache.lfu.Len()) * percent))
 }
 
 // See Evict for more information on this
-func (cache *Cache) Persist() {
-	cache.lfu.Persist(cache.lfu.Len())
+func (cache *Cache) WriteBack() {
+	cache.lfu.WriteBack(cache.lfu.Len())
 }
 
 func (cache *Cache) Delete(key string) error {

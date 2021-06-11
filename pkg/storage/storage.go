@@ -140,9 +140,6 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 		return err
 	}
 
-	// start a timer for checking if the memory used by application
-	// is more than 25% of the total memory, if so, trigger eviction
-	// with 10% to every cache
 	go func() {
 		ticker := time.NewTimer(interval)
 		defer ticker.Stop()
@@ -192,7 +189,7 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 	return nil
 }
 
-func (s *Storage) startPersistTimer(interval time.Duration) error {
+func (s *Storage) startWriteBackTimer(interval time.Duration) error {
 	go func() {
 		ticker := time.NewTimer(interval)
 		defer ticker.Stop()
@@ -209,12 +206,12 @@ func (s *Storage) startPersistTimer(interval time.Duration) error {
 				return
 			}
 
-			metrics.Timing("ram_persistence_timer", func() {
-				metrics.Count("ram_persistence", 1)
-				s.dimensions.Persist()
-				s.segments.Persist()
-				s.dicts.Persist()
-				s.trees.Persist()
+			metrics.Timing("ram_write_back_timer", func() {
+				metrics.Count("ram_write_back", 1)
+				s.dimensions.WriteBack()
+				s.segments.WriteBack()
+				s.dicts.WriteBack()
+				s.trees.WriteBack()
 				runtime.GC()
 			})
 			ticker.Reset(interval)
@@ -331,8 +328,8 @@ func New(cfg *config.Server) (*Storage, error) {
 		return nil, fmt.Errorf("start evict timer: %v", err)
 	}
 
-	if err := s.startPersistTimer(evictInterval); err != nil {
-		return nil, fmt.Errorf("start persist timer: %v", err)
+	if err := s.startWriteBackTimer(evictInterval); err != nil {
+		return nil, fmt.Errorf("start WriteBack timer: %v", err)
 	}
 
 	return s, nil
