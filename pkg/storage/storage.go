@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -18,7 +16,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 	"github.com/pyroscope-io/pyroscope/pkg/util/file"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
-	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 	"github.com/shirou/gopsutil/mem"
 
 	"github.com/dgraph-io/badger/v2"
@@ -443,114 +440,6 @@ func (s *Storage) Put(po *PutInput) error {
 		}
 	})
 	s.segments.Put(string(sk), st)
-
-	return nil
-}
-
-func (s *Storage) collectLocalProfile(path string) error {
-	defer os.Remove(path)
-
-	logrus.WithField("path", path).Info("collecting local profile")
-
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	r := bytes.NewReader(b)
-
-	l, err := varint.Read(r)
-	if err != nil {
-		return err
-	}
-	nameBuf := make([]byte, l)
-
-	_, err = r.Read(nameBuf)
-	if err != nil {
-		return err
-	}
-
-	l, err = varint.Read(r)
-	if err != nil {
-		return err
-	}
-
-	metadataBuf := make([]byte, l)
-	_, err = r.Read(metadataBuf)
-	if err != nil {
-		return err
-	}
-	pi := PutInput{}
-	metadataReader := bytes.NewReader(metadataBuf)
-	d := json.NewDecoder(metadataReader)
-	err = d.Decode(&pi)
-	if err != nil {
-		return err
-	}
-
-	t, err := tree.DeserializeNoDict(r)
-	if err != nil {
-		return err
-	}
-
-	pi.Key, err = ParseKey(string(nameBuf))
-	if err != nil {
-		return err
-	}
-	pi.Val = t
-
-	if err := s.Put(&pi); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *Storage) CollectLocalProfiles() error {
-	logrus.Info("collecting local profiles")
-	matches, err := filepath.Glob(filepath.Join(s.localProfilesDir, "*.profile"))
-	if err != nil {
-		return err
-	}
-	for _, path := range matches {
-		logrus.WithField("path", path).Info("collectLocalProfile")
-		if err := s.collectLocalProfile(path); err != nil {
-			logrus.WithError(err).WithField("path", path).Error("failed to collect local profile")
-		}
-	}
-	return nil
-}
-
-func (s *Storage) PutLocal(po *PutInput) error {
-	logrus.Info("PutLocal")
-	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
-	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
-		return errOutOfSpace
-	}
-
-	name := fmt.Sprintf("%d-%s.profile", po.StartTime.Unix(), po.Key.AppName())
-
-	buf := bytes.Buffer{}
-
-	metadataBuf := bytes.Buffer{}
-	t := po.Val
-	po.Val = nil
-	e := json.NewEncoder(&metadataBuf)
-	if err := e.Encode(po); err != nil {
-		return err
-	}
-
-	nameBuf := []byte(po.Key.Normalized())
-	varint.Write(&buf, uint64(len(nameBuf)))
-	buf.Write(nameBuf)
-
-	mb := metadataBuf.Bytes()
-	varint.Write(&buf, uint64(len(mb)))
-	buf.Write(mb)
-
-	if err := t.SerializeNoDict(s.cfg.MaxNodesSerialization, &buf); err != nil {
-		return err
-	}
-	ioutil.WriteFile(filepath.Join(s.localProfilesDir, name), buf.Bytes(), 0600)
 
 	return nil
 }
