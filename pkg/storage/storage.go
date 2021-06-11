@@ -37,6 +37,7 @@ import (
 )
 
 var ErrClosing = errors.New("the db is in closing state")
+var ErrAlreadyClosed = errors.New("the db is already closed")
 var errOutOfSpace = errors.New("running out of space")
 var evictInterval = 1 * time.Second
 
@@ -724,6 +725,10 @@ func (s *Storage) Delete(di *DeleteInput) error {
 }
 
 func (s *Storage) Close() error {
+	if s.IsClosing() {
+		return ErrAlreadyClosed
+	}
+
 	s.closingMutex.Lock()
 	s.closing = true
 	s.closingMutex.Unlock()

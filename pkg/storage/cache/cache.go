@@ -3,6 +3,7 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/dgrijalva/lfu-go"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
@@ -12,11 +13,13 @@ import (
 )
 
 type Cache struct {
-	db          *badger.DB
-	lfu         *lfu.Cache
-	prefix      string
-	alwaysSave  bool
-	cleanupDone chan struct{}
+	db     *badger.DB
+	lfu    *lfu.Cache
+	prefix string
+
+	alwaysSave    bool
+	evictionsDone chan struct{}
+	flushOnce     sync.Once
 
 	hitCounter          string
 	missCounter         string
@@ -32,8 +35,8 @@ type Cache struct {
 }
 
 func New(db *badger.DB, prefix, humanReadableName string) *Cache {
-	eviction := make(chan lfu.Eviction, 1)
-	persistence := make(chan lfu.Eviction, 1)
+	eviction := make(chan lfu.Eviction)
+	persistence := make(chan lfu.Eviction)
 
 	l := lfu.New()
 
@@ -46,10 +49,11 @@ func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 	l.LowerBound = 0
 
 	cache := &Cache{
-		db:          db,
-		lfu:         l,
-		prefix:      prefix,
-		cleanupDone: make(chan struct{}),
+		db:  db,
+		lfu: l,
+
+		prefix:        prefix,
+		evictionsDone: make(chan struct{}),
 
 		hitCounter:          "cache_" + humanReadableName + "_hit",
 		missCounter:         "cache_" + humanReadableName + "_miss",
@@ -66,8 +70,9 @@ func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 				break
 			}
 			cache.saveToDisk(e.Key, e.Value)
+
 		}
-		cache.cleanupDone <- struct{}{}
+		cache.evictionsDone <- struct{}{}
 	}()
 
 	// start a goroutine for saving the evicted cache items to disk
@@ -114,19 +119,26 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 }
 
 func (cache *Cache) Flush() {
-	// evict all the items in cache
-	cache.lfu.Evict(cache.lfu.Len())
+	cache.flushOnce.Do(func() {
+		// evict all the items in cache
+		cache.lfu.Evict(cache.lfu.Len())
 
-	close(cache.lfu.EvictionChannel)
-	close(cache.lfu.PersistenceChannel)
-	// wait until cache flushing is finished
-	<-cache.cleanupDone
+		close(cache.lfu.EvictionChannel)
+		close(cache.lfu.PersistenceChannel)
+
+		// wait until all evictions are done
+		<-cache.evictionsDone
+	})
 }
 
+// Evict performs cache evictions. The difference between Evict and Persist is that evictions happen when cache grows
+// above allowed threshold and persist calls happen constantly, and perform write-back function of the cache.
+// See https://github.com/pyroscope-io/pyroscope/issues/210 for more context
 func (cache *Cache) Evict(percent float64) {
 	cache.lfu.Evict(int(float64(cache.lfu.Len()) * percent))
 }
 
+// See Evict for more information on this
 func (cache *Cache) Persist() {
 	cache.lfu.Persist(cache.lfu.Len())
 }

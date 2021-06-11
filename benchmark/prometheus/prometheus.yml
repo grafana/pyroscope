@@ -30,4 +30,3 @@ scrape_configs:
       - 'localhost:9090'
       - 'pyroscope:4040'
       - 'client:8081'
-      - 'host.docker.internal:9223'
