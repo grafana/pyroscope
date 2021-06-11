@@ -20,7 +20,7 @@ func WithConfig(cb func(cfg **config.Config)) {
 				CacheTreeSize:       100,
 				CacheDictionarySize: 100,
 				CacheDimensionSize:  100,
-				CacheEvictPoint:     0.02,
+				CacheEvictThreshold: 0.02,
 				CacheEvictVolume:    0.10,
 
 				MaxNodesSerialization: 2048,

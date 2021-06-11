@@ -172,12 +172,7 @@ func (s *Storage) startEvictTimer(interval time.Duration) error {
 			metrics.Gauge("ram_evictions_used_perc", used)
 
 			percent := s.cfg.CacheEvictVolume
-			logrus.WithFields(logrus.Fields{
-				"used_memory":    used,
-				"eviction point": s.cfg.CacheEvictPoint,
-				"percent":        percent,
-			}).Debugf("current used percent of memory")
-			if used > s.cfg.CacheEvictPoint {
+			if used > s.cfg.CacheEvictThreshold {
 				metrics.Timing("ram_evictions_timer", func() {
 					metrics.Count("ram_evictions", 1)
 
