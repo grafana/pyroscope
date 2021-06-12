@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyroscope
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyroscope
+  template:
+    metadata:
+      labels:
+        app: pyroscope
+    spec:
+      containers:
+        - name: pyroscope
+          image: $PYROSCOPE_IMAGE # need to update the image
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4040
+          resources:
+            limits:
+              cpu: "1"
+              memory: "2048Mi"
+            requests:
+              cpu: "1"
+              memory: "2048Mi"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 4040
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 4040
+            initialDelaySeconds: 5
+            periodSeconds: 5

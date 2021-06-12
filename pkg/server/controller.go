@@ -33,8 +33,6 @@ type Controller struct {
 	stats      map[string]int
 
 	appStats *hyperloglog.HyperLogLogPlus
-
-	endpoint string // endpoint for healthz
 }
 
 func New(cfg *config.Server, s *storage.Storage) (*Controller, error) {
