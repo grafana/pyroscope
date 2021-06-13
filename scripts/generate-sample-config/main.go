@@ -11,11 +11,14 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+	"unicode"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
-	"github.com/sirupsen/logrus"
 )
 
 // to run this program:
@@ -23,8 +26,6 @@ import (
 //   go run scripts/generate-sample-config/main.go -format md
 // or:
 //   go run scripts/generate-sample-config/main.go -directory ../pyroscope.io/docs
-
-var cfg config.Config
 
 func main() {
 	var (
@@ -84,43 +85,68 @@ func processFile(path string) {
 
 	if bytes.Equal(content, newContent) {
 		log.Println("no changes")
-	} else {
-		ioutil.WriteFile(path, newContent, fs.FileMode(0))
+		return
 	}
-
+	if err := ioutil.WriteFile(path, newContent, fs.FileMode(0)); err != nil {
+		panic(err)
+	}
 }
+
 func writeConfigDocs(w io.Writer, subcommand, format string) {
 	var val interface{}
-	if subcommand == "agent" {
-		val = &cfg.Agent
-	} else if subcommand == "server" {
-		val = &cfg.Server
-	} else if subcommand == "convert" {
-		val = &cfg.Convert
-	} else if subcommand == "exec" {
-		val = &cfg.Exec
+	switch subcommand {
+	case "agent":
+		val = new(config.Agent)
+	case "server":
+		val = new(config.Server)
+	case "convert":
+		val = new(config.Convert)
+	case "exec":
+		val = new(config.Exec)
+	case "connect":
+		val = new(config.Exec)
+	case "target":
+		val = new(config.Target)
+	default:
+		log.Fatalf("Unknown subcommand %q", subcommand)
 	}
 
 	flagSet := flag.NewFlagSet("pyroscope "+subcommand, flag.ExitOnError)
 
 	cli.PopulateFlagSet(val, flagSet)
 	sf := cli.NewSortedFlags(val, flagSet)
-	if format == "yaml" {
-		fmt.Fprintln(w, "---")
+	switch format {
+	case "yaml":
+		_, _ = fmt.Fprintln(w, "---")
 		sf.VisitAll(func(f *flag.Flag) {
 			if f.Name != "config" {
-				fmt.Fprintf(w, "# %s\n%s: %q\n\n", f.Usage, f.Name, f.DefValue)
+				_, _ = fmt.Fprintf(w, "# %s\n%s: %q\n\n", toPrettySentence(f.Usage), f.Name, f.DefValue)
 			}
 		})
-	} else if format == "md" {
-		fmt.Fprintf(w, "| %s | %s | %s |\n", "Name", "Default Value", "Usage")
-		fmt.Fprintf(w, "| %s | %s | %s |\n", ":-", ":-", ":-")
+	case "md":
+		_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", "Name", "Default Value", "Usage")
+		_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", ":-", ":-", ":-")
 		sf.VisitAll(func(f *flag.Flag) {
 			if f.Name != "config" {
-				fmt.Fprintf(w, "| %s | %s | %q |\n", f.Name, f.DefValue, f.Usage)
+				// Replace vertical bar glyph with HTML code.
+				desc := strings.ReplaceAll(toPrettySentence(f.Usage), "|", `&#124;`)
+				_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", f.Name, f.DefValue, desc)
 			}
 		})
-	} else {
+	default:
 		logrus.Fatalf("Unknown format %q", format)
 	}
+}
+
+// Capitalizes the first letter and adds period at the end, if necessary.
+func toPrettySentence(s string) string {
+	if s == "" {
+		return ""
+	}
+	x := []rune(s)
+	x[0] = unicode.ToUpper(x[0])
+	if x[len(s)-1] != '.' {
+		x = append(x, '.')
+	}
+	return string(x)
 }
