@@ -14,17 +14,17 @@ spec:
     spec:
       containers:
         - name: pyroscope
-          image: $PYROSCOPE_IMAGE # need to update the image
+          image: pyroscope/pyroscope
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 4040
           resources:
             limits:
               cpu: "1"
-              memory: "2048Mi"
+              memory: "1024Mi"
             requests:
               cpu: "1"
-              memory: "2048Mi"
+              memory: "1024Mi"
           livenessProbe:
             httpGet:
               path: /healthz
