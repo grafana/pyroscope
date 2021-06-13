@@ -28,7 +28,7 @@ type Agent struct {
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
 	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
 
-	Targets []Target `skip:"true"`
+	Targets []Target `desc:"list of targets to be profiled"`
 }
 
 type Target struct {

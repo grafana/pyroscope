@@ -19,6 +19,9 @@ const timeFormat = "2006-01-02T15:04:05Z0700"
 type arrayFlags []string
 
 func (i *arrayFlags) String() string {
+	if len(*i) == 0 {
+		return "[]"
+	}
 	return strings.Join(*i, ", ")
 }
 
@@ -79,6 +82,11 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 		}
 
 		descVal = strings.ReplaceAll(descVal, "<supportedProfilers>", supportedSpies)
+
+		if fieldV.Kind() == reflect.Slice && field.Type.Elem().Kind() == reflect.Struct {
+			flagSet.Var(new(arrayFlags), nameVal, descVal)
+			continue
+		}
 
 		switch field.Type {
 		case reflect.TypeOf([]string{}):

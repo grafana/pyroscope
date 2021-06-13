@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"unicode"
@@ -93,45 +94,57 @@ func processFile(path string) {
 }
 
 func writeConfigDocs(w io.Writer, subcommand, format string) {
+	flagSet := flag.NewFlagSet("pyroscope "+subcommand, flag.ExitOnError)
 	var val interface{}
 	switch subcommand {
 	case "agent":
 		val = new(config.Agent)
+		cli.PopulateFlagSet(val, flagSet)
 	case "server":
 		val = new(config.Server)
+		cli.PopulateFlagSet(val, flagSet)
 	case "convert":
 		val = new(config.Convert)
+		cli.PopulateFlagSet(val, flagSet)
 	case "exec":
 		val = new(config.Exec)
+		cli.PopulateFlagSet(val, flagSet, "pid")
 	case "connect":
 		val = new(config.Exec)
+		cli.PopulateFlagSet(val, flagSet, "group-name", "user-name", "no-root-drop")
 	case "target":
 		val = new(config.Target)
+		cli.PopulateFlagSet(val, flagSet)
 	default:
 		log.Fatalf("Unknown subcommand %q", subcommand)
 	}
 
-	flagSet := flag.NewFlagSet("pyroscope "+subcommand, flag.ExitOnError)
-
-	cli.PopulateFlagSet(val, flagSet)
 	sf := cli.NewSortedFlags(val, flagSet)
 	switch format {
 	case "yaml":
 		_, _ = fmt.Fprintln(w, "---")
 		sf.VisitAll(func(f *flag.Flag) {
-			if f.Name != "config" {
-				_, _ = fmt.Fprintf(w, "# %s\n%s: %q\n\n", toPrettySentence(f.Usage), f.Name, f.DefValue)
+			if f.Name == "config" {
+				return
 			}
+			var v string
+			if reflect.TypeOf(f.Value).Elem().Kind() == reflect.Slice {
+				v = f.Value.String()
+			} else {
+				v = fmt.Sprintf("%q", f.Value)
+			}
+			_, _ = fmt.Fprintf(w, "# %s\n%s: %s\n\n", toPrettySentence(f.Usage), f.Name, v)
 		})
 	case "md":
 		_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", "Name", "Default Value", "Usage")
 		_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", ":-", ":-", ":-")
 		sf.VisitAll(func(f *flag.Flag) {
-			if f.Name != "config" {
-				// Replace vertical bar glyph with HTML code.
-				desc := strings.ReplaceAll(toPrettySentence(f.Usage), "|", `&#124;`)
-				_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", f.Name, f.DefValue, desc)
+			if f.Name == "config" {
+				return
 			}
+			// Replace vertical bar glyph with HTML code.
+			desc := strings.ReplaceAll(toPrettySentence(f.Usage), "|", `&#124;`)
+			_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", f.Name, f.DefValue, desc)
 		})
 	default:
 		logrus.Fatalf("Unknown format %q", format)
