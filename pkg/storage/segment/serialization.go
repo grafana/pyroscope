@@ -41,25 +41,28 @@ func (s *Segment) Serialize(w io.Writer) error {
 	s.m.RLock()
 	defer s.m.RUnlock()
 
-	varint.Write(w, currentVersion)
+	vw := varint.NewWriter()
+
+	vw.Write(w, currentVersion)
 
 	serialization.WriteMetadata(w, s.generateMetadata())
 
 	if s.root == nil {
 		return nil
 	}
+
 	nodes := []*streeNode{s.root}
 	for len(nodes) > 0 {
 		n := nodes[0]
-		varint.Write(w, uint64(n.depth))
-		varint.Write(w, uint64(n.time.Unix()))
-		varint.Write(w, n.samples)
-		varint.Write(w, n.writes)
+		vw.Write(w, uint64(n.depth))
+		vw.Write(w, uint64(n.time.Unix()))
+		vw.Write(w, n.samples)
+		vw.Write(w, n.writes)
 		p := uint64(0)
 		if n.present {
 			p = 1
 		}
-		varint.Write(w, p)
+		vw.Write(w, p)
 		nodes = nodes[1:]
 
 		// depth
@@ -75,7 +78,7 @@ func (s *Segment) Serialize(w io.Writer) error {
 			}
 		}
 
-		varint.Write(w, uint64(l))
+		vw.Write(w, uint64(l))
 		nodes = append(r, nodes...)
 	}
 	return nil
@@ -152,9 +155,9 @@ func Deserialize(r io.Reader) (*Segment, error) {
 	return s, nil
 }
 
-func (t *Segment) Bytes() ([]byte, error) {
+func (s *Segment) Bytes() ([]byte, error) {
 	b := bytes.Buffer{}
-	if err := t.Serialize(&b); err != nil {
+	if err := s.Serialize(&b); err != nil {
 		return nil, err
 	}
 	return b.Bytes(), nil

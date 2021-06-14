@@ -17,17 +17,30 @@ type Config struct {
 }
 
 type Agent struct {
-	Config   string `def:"<installPrefix>/etc/pyroscope/agent.yml" desc:"location of config file"`
-	LogLevel string `def:"info" desc:"log level: debug|info|warn|error"`
+	Config string `def:"<defaultAgentConfigPath>" desc:"location of config file"`
 
-	// AgentCMD           []string
-	AgentSpyName           string        `desc:"name of the spy you want to use"` // TODO: add options
-	AgentPID               int           `def:"-1" desc:"pid of the process you want to spy on"`
+	LogFilePath string `def:"<defaultAgentLogFilePath>" desc:"log file path"`
+	LogLevel    string `def:"info" desc:"log level: debug|info|warn|error"`
+	NoLogging   bool   `def:"false" desc:"disables logging from pyroscope"`
+
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server"`
 	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data"`
-	UpstreamThreads        int           `def:"4"`
-	UpstreamRequestTimeout time.Duration `def:"10s"`
-	UNIXSocketPath         string        `def:"<installPrefix>/var/run/pyroscope-agent.sock" desc:"path to a UNIX socket file"`
+	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
+	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
+
+	Targets []Target `skip:"true"`
+}
+
+type Target struct {
+	ServiceName string `yaml:"service-name"`
+
+	SpyName            string `yaml:"spy-name"`
+	ApplicationName    string `yaml:"application-name"`
+	SampleRate         uint   `yaml:"sample-rate"`
+	DetectSubprocesses bool   `yaml:"detect-subprocesses"`
+
+	// Spy-specific settings.
+	PyspyBlocking bool `yaml:"pyspy-blocking"`
 }
 
 type Server struct {
@@ -43,14 +56,18 @@ type Server struct {
 
 	// These will eventually be replaced by some sort of a system that keeps track of RAM
 	//   and updates
-	CacheDimensionSize  int `def:"1000" desc:"max number of elements in LRU cache for dimensions"`
-	CacheDictionarySize int `def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
-	CacheSegmentSize    int `def:"1000" desc:"max number of elements in LRU cache for segments"`
-	CacheTreeSize       int `def:"1000" desc:"max number of elements in LRU cache for trees"`
+	CacheDimensionSize  int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for dimensions"`
+	CacheDictionarySize int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
+	CacheSegmentSize    int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for segments"`
+	CacheTreeSize       int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for trees"`
+
+	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start"`
+	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run"`
 
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.
-	BadgerNoTruncate bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
+	BadgerNoTruncate     bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
+	DisablePprofEndpoint bool `def:"false" desc:"disables /debug/pprof route"`
 
 	MaxNodesSerialization int `def:"2048" desc:"max number of nodes used when saving profiles to disk"`
 	MaxNodesRender        int `def:"8192" desc:"max number of nodes used to display data on the frontend"`

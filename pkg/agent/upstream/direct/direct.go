@@ -61,7 +61,7 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 		t.Insert(name, val, false)
 	})
 
-	u.s.Put(&storage.PutInput{
+	pi := &storage.PutInput{
 		StartTime:       j.StartTime,
 		EndTime:         j.EndTime,
 		Key:             key,
@@ -70,7 +70,12 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 		SampleRate:      j.SampleRate,
 		Units:           j.Units,
 		AggregationType: j.AggregationType,
-	})
+	}
+	if err := u.s.Put(pi); err == storage.ErrClosing {
+		if err := u.s.PutLocal(pi); err != nil {
+			logrus.WithError(err).Error("failed to store a local profile")
+		}
+	}
 }
 
 func (u *Direct) uploadLoop() {

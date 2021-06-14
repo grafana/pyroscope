@@ -1,4 +1,4 @@
-package csock_test
+package target_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestCsock(t *testing.T) {
+func TestTarget(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Csock Suite")
+	RunSpecs(t, "Target Suite")
 }

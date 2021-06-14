@@ -1,0 +1,7 @@
+---
+log-level: debug
+
+targets:
+ - service-name: foo
+   application-name: foo.app
+   spy-name: debugspy

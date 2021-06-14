@@ -1,3 +1,1 @@
-// +build !ebpfspy
-
 package ebpfspy

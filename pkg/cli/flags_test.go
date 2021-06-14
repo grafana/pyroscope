@@ -7,9 +7,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/peterbourgon/ff/ffyaml"
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
+
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -70,7 +71,7 @@ var _ = Describe("flags", func() {
 				exampleCommand := &ffcli.Command{
 					FlagSet: exampleFlagSet,
 					Options: []ff.Option{
-						ff.WithConfigFileParser(ffyaml.Parser),
+						ff.WithConfigFileParser(parser),
 						ff.WithConfigFileFlag("config"),
 					},
 					Exec: func(_ context.Context, args []string) error {
@@ -79,7 +80,7 @@ var _ = Describe("flags", func() {
 				}
 
 				err := exampleCommand.ParseAndRun(context.Background(), []string{
-					"-config", "example.yml",
+					"-config", "testdata/example.yml",
 				})
 
 				Expect(err).ToNot(HaveOccurred())
@@ -92,7 +93,7 @@ var _ = Describe("flags", func() {
 				Expect(cfg.FooBytes).To(Equal(100 * bytesize.MB))
 			})
 
-			It("arguments take precendence", func() {
+			It("arguments take precedence", func() {
 				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
 				cfg := FlagsStruct{}
 				PopulateFlagSet(&cfg, exampleFlagSet)
@@ -100,7 +101,7 @@ var _ = Describe("flags", func() {
 				exampleCommand := &ffcli.Command{
 					FlagSet: exampleFlagSet,
 					Options: []ff.Option{
-						ff.WithConfigFileParser(ffyaml.Parser),
+						ff.WithConfigFileParser(parser),
 						ff.WithConfigFileFlag("config"),
 					},
 					Exec: func(_ context.Context, args []string) error {
@@ -109,12 +110,57 @@ var _ = Describe("flags", func() {
 				}
 
 				err := exampleCommand.ParseAndRun(context.Background(), []string{
-					"-config", "example.yml",
+					"-config", "testdata/example.yml",
 					"-foo", "test-val-4",
 				})
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg.Foo).To(Equal("test-val-4"))
+			})
+
+			It("agent configuration", func() {
+				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
+				var cfg config.Agent
+				PopulateFlagSet(&cfg, exampleFlagSet)
+
+				exampleCommand := &ffcli.Command{
+					FlagSet: exampleFlagSet,
+					Options: []ff.Option{
+						ff.WithIgnoreUndefined(true),
+						ff.WithConfigFileParser(parser),
+						ff.WithConfigFileFlag("config"),
+					},
+					Exec: func(_ context.Context, args []string) error {
+						return nil
+					},
+				}
+
+				err := exampleCommand.ParseAndRun(context.Background(), []string{
+					"-config", "testdata/agent.yml",
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(cfg).To(Equal(config.Agent{
+					Config:                 "testdata/agent.yml",
+					LogLevel:               "debug",
+					NoLogging:              false,
+					ServerAddress:          "http://localhost:4040",
+					AuthToken:              "",
+					UpstreamThreads:        4,
+					UpstreamRequestTimeout: 10 * time.Second,
+				}))
+
+				Expect(loadTargets(&cfg)).ToNot(HaveOccurred())
+				Expect(cfg.Targets).To(Equal([]config.Target{
+					{
+						ServiceName:        "foo",
+						SpyName:            "debugspy",
+						ApplicationName:    "foo.app",
+						SampleRate:         0,
+						DetectSubprocesses: false,
+						PyspyBlocking:      false,
+					},
+				}))
 			})
 		})
 	})

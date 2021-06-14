@@ -3,6 +3,8 @@ package segment
 import (
 	"fmt"
 	"math/big"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -16,9 +18,9 @@ type streeNode struct {
 	children []*streeNode
 }
 
-func (parent *streeNode) replace(child *streeNode) {
-	i := child.time.Sub(parent.time) / durations[child.depth]
-	parent.children[i] = child
+func (sn *streeNode) replace(child *streeNode) {
+	i := child.time.Sub(sn.time) / durations[child.depth]
+	sn.children[i] = child
 }
 
 func (sn *streeNode) relationship(st, et time.Time) rel {
@@ -265,7 +267,7 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 		v.add(sn, r, true)
 		cb(depth, tm, r, addons)
 	})
-	v.print(fmt.Sprintf("/tmp/0-put-%s-%s.html", st.String(), et.String()))
+	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-put-%s-%s.html", st.String(), et.String())))
 }
 
 // TODO: simplify arguments
@@ -284,7 +286,7 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 		v.add(sn, r, true)
 		cb(depth, sn.samples, sn.writes, t, r)
 	})
-	v.print(fmt.Sprintf("/tmp/0-get-%s-%s.html", st.String(), et.String()))
+	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-get-%s-%s.html", st.String(), et.String())))
 }
 
 func (s *Segment) DeleteDataBefore(timeThreshold time.Time, cb func(depth int, t time.Time)) bool {

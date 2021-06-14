@@ -3,19 +3,28 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"sync"
 
+	"github.com/dgrijalva/lfu-go"
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/sirupsen/logrus"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/dgrijalva/lfu-go"
 )
 
 type Cache struct {
-	db          *badger.DB
-	lfu         *lfu.Cache
-	prefix      string
-	alwaysSave  bool
-	cleanupDone chan struct{}
+	db     *badger.DB
+	lfu    *lfu.Cache
+	prefix string
+
+	alwaysSave    bool
+	evictionsDone chan struct{}
+	flushOnce     sync.Once
+
+	hitCounter          string
+	missCounter         string
+	storageReadCounter  string
+	storageWriteCounter string
 
 	// Bytes serializes objects before they go into storage. Users are required to define this one
 	Bytes func(k string, v interface{}) ([]byte, error)
@@ -25,29 +34,58 @@ type Cache struct {
 	New func(k string) interface{}
 }
 
-func New(db *badger.DB, bound int, prefix string) *Cache {
+func New(db *badger.DB, prefix, humanReadableName string) *Cache {
+	evictionChannel := make(chan lfu.Eviction)
+	writeBackChannel := make(chan lfu.Eviction)
+
 	l := lfu.New()
-	// TODO: figure out how to set these
-	l.UpperBound = bound
-	l.LowerBound = bound - bound/10
-	ech := make(chan lfu.Eviction, 1)
-	l.EvictionChannel = ech
+
+	// eviction channel for saving cache items to disk
+	l.EvictionChannel = evictionChannel
+	l.WriteBackChannel = writeBackChannel
+
+	// disable the eviction based on upper and lower bound
+	l.UpperBound = 0
+	l.LowerBound = 0
+
 	cache := &Cache{
-		db:          db,
-		lfu:         l,
-		prefix:      prefix,
-		cleanupDone: make(chan struct{}),
+		db:  db,
+		lfu: l,
+
+		prefix:        prefix,
+		evictionsDone: make(chan struct{}),
+
+		hitCounter:          "cache_" + humanReadableName + "_hit",
+		missCounter:         "cache_" + humanReadableName + "_miss",
+		storageReadCounter:  "storage_" + humanReadableName + "_read",
+		storageWriteCounter: "storage_" + humanReadableName + "_write",
 	}
+
+	// start a goroutine for saving the evicted cache items to disk
+
 	go func() {
 		for {
-			e, ok := <-ech
+			e, ok := <-evictionChannel
+			if !ok {
+				break
+			}
+			cache.saveToDisk(e.Key, e.Value)
+
+		}
+		cache.evictionsDone <- struct{}{}
+	}()
+
+	// start a goroutine for saving the evicted cache items to disk
+	go func() {
+		for {
+			e, ok := <-writeBackChannel
 			if !ok {
 				break
 			}
 			cache.saveToDisk(e.Key, e.Value)
 		}
-		cache.cleanupDone <- struct{}{}
 	}()
+
 	return cache
 }
 
@@ -70,6 +108,7 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 		return fmt.Errorf("serialize key and value: %v", err)
 	}
 
+	metrics.Count(cache.storageWriteCounter, 1)
 	// update the kv to badger
 	if err := cache.db.Update(func(txn *badger.Txn) error {
 		return txn.SetEntry(badger.NewEntry([]byte(cache.prefix+key), buf))
@@ -80,22 +119,49 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 }
 
 func (cache *Cache) Flush() {
-	cache.lfu.Evict(cache.lfu.Len())
-	close(cache.lfu.EvictionChannel)
-	<-cache.cleanupDone
+	cache.flushOnce.Do(func() {
+		// evict all the items in cache
+		cache.lfu.Evict(cache.lfu.Len())
+
+		close(cache.lfu.EvictionChannel)
+		close(cache.lfu.WriteBackChannel)
+
+		// wait until all evictions are done
+		<-cache.evictionsDone
+	})
+}
+
+// Evict performs cache evictions. The difference between Evict and WriteBack is that evictions happen when cache grows
+// above allowed threshold and write-back calls happen constantly, making pyroscope more crash-resilient.
+// See https://github.com/pyroscope-io/pyroscope/issues/210 for more context
+func (cache *Cache) Evict(percent float64) {
+	cache.lfu.Evict(int(float64(cache.lfu.Len()) * percent))
+}
+
+// See Evict for more information on this
+func (cache *Cache) WriteBack() {
+	cache.lfu.WriteBack(cache.lfu.Len())
+}
+
+func (cache *Cache) Delete(key string) error {
+	cache.lfu.Delete(key)
+
+	err := cache.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(cache.prefix + key))
+	})
+
+	return err
 }
 
 func (cache *Cache) Get(key string) (interface{}, error) {
 	// find the key from cache first
-	if cache.lfu.UpperBound > 0 {
-		val := cache.lfu.Get(key)
-		if val != nil {
-			return val, nil
-		}
-	} else {
-		logrus.Warn("lfu is not used, only use this during debugging")
+	val := cache.lfu.Get(key)
+	if val != nil {
+		metrics.Count(cache.hitCounter, 1)
+		return val, nil
 	}
 	logrus.WithField("key", key).Debug("lfu miss")
+	metrics.Count(cache.missCounter, 1)
 
 	var copied []byte
 	// read the value from badger
@@ -134,6 +200,7 @@ func (cache *Cache) Get(key string) (interface{}, error) {
 	}
 
 	// deserialize the object from storage
+	metrics.Count(cache.storageReadCounter, 1)
 	val, err := cache.FromBytes(key, copied)
 	if err != nil {
 		return nil, fmt.Errorf("deserialize the object: %v", err)
@@ -152,30 +219,6 @@ func (cache *Cache) Size() uint64 {
 	return uint64(cache.lfu.Len())
 }
 
-func (cache *Cache) Delete(key string) error {
-	lg := logrus.WithField("key", key)
-
-	if cache.lfu.UpperBound > 0 {
-		// TODO: No delete function in cache
-	}
-
-	err := cache.db.Update(func(txn *badger.Txn) error {
-		if err := txn.Delete([]byte(cache.prefix + key)); err != nil {
-			if err == badger.ErrKeyNotFound {
-				lg.Errorf("key not found: %v", err)
-				return nil
-			}
-
-			lg.Errorf("%v", err)
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		lg.Errorf("failed to delete from db: %v", err)
-		return err
-	}
-
-	lg.Debugf("%s deleted from storage", key)
-	return nil
+func (cache *Cache) Len() int {
+	return cache.lfu.Len()
 }

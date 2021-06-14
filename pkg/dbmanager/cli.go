@@ -14,7 +14,7 @@ import (
 	"github.com/cheggaaa/pb/v3"
 )
 
-func Cli(db_cfg *config.DbManager, srv_cfg *config.Server, args []string) error {
+func Cli(dbCfg *config.DbManager, srvCfg *config.Server, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("please provide a command")
 	}
@@ -22,9 +22,12 @@ func Cli(db_cfg *config.DbManager, srv_cfg *config.Server, args []string) error 
 	switch args[0] {
 	case "copy":
 		// TODO: this is meh, I think config.Config should be separate from storage config
-		srv_cfg.StoragePath = db_cfg.StoragePath
-		srv_cfg.LogLevel = "error"
-		copyData(db_cfg, srv_cfg)
+		srvCfg.StoragePath = dbCfg.StoragePath
+		srvCfg.LogLevel = "error"
+		err := copyData(dbCfg, srvCfg)
+		if err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("unknown command %q", args[0])
 	}
@@ -36,11 +39,11 @@ func Cli(db_cfg *config.DbManager, srv_cfg *config.Server, args []string) error 
 const resolution = 10 * time.Second
 
 // src start time, src end time, dst start time
-func copyData(db_cfg *config.DbManager, srv_cfg *config.Server) error {
-	appName := db_cfg.ApplicationName
-	srcSt := db_cfg.SrcStartTime.Truncate(resolution)
-	dstSt := db_cfg.DstStartTime.Truncate(resolution)
-	dstEt := db_cfg.DstEndTime.Truncate(resolution)
+func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
+	appName := dbCfg.ApplicationName
+	srcSt := dbCfg.SrcStartTime.Truncate(resolution)
+	dstSt := dbCfg.DstStartTime.Truncate(resolution)
+	dstEt := dbCfg.DstEndTime.Truncate(resolution)
 	srcEt := srcSt.Add(dstEt.Sub(dstSt))
 
 	fmt.Printf("copying %s from %s-%s to %s-%s\n",
@@ -52,32 +55,27 @@ func copyData(db_cfg *config.DbManager, srv_cfg *config.Server) error {
 	)
 
 	// TODO: add more correctness checks
-	if !srcSt.Before(srcEt) {
-		return fmt.Errorf("src start time (%q) has to be before src end time (%q)", srcSt, srcEt)
+	if !srcSt.Before(srcEt) || !dstSt.Before(dstEt) {
+		return fmt.Errorf("Incorrect time parameters. Start time has to be before end time. "+
+			"src start: %q end: %q, dst start: %q end: %q", srcSt, srcEt, dstSt, dstEt)
 	}
 
-	if !srcSt.Before(srcEt) {
-		return fmt.Errorf("src start time (%q) has to be before src end time (%q)", srcSt, srcEt)
-	}
-
-	s, err := storage.New(srv_cfg)
+	s, err := storage.New(srvCfg)
 	if err != nil {
 		return err
 	}
 
-	if db_cfg.EnableProfiling {
+	if dbCfg.EnableProfiling {
 		u := direct.New(s)
-		go agent.SelfProfile(100, u, "pyroscope.dbmanager.cpu{}", logrus.StandardLogger())
+		go agent.SelfProfile(100, u, "pyroscope.dbmanager.cpu{}", logrus.StandardLogger(), nil)
 	}
 
-	st := srcSt
-	et := srcEt
 	sk, err := storage.ParseKey(appName)
 	if err != nil {
 		return err
 	}
 
-	count := int(et.Sub(st) / (resolution))
+	count := int(srcEt.Sub(srcSt) / (resolution))
 	bar := pb.StartNew(count)
 
 	durDiff := dstSt.Sub(srcSt)
@@ -87,7 +85,7 @@ func copyData(db_cfg *config.DbManager, srv_cfg *config.Server) error {
 		stop = true
 	})
 
-	for srct := st; srct.Before(et); srct = srct.Add(resolution) {
+	for srct := srcSt; srct.Before(srcEt); srct = srct.Add(resolution) {
 		bar.Increment()
 
 		if stop {

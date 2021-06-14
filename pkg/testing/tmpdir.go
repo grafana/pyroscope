@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/onsi/ginkgo"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
@@ -33,15 +31,13 @@ func DirStats(path string) (directories, files int, size bytesize.ByteSize) {
 
 func TmpDir(cb func(name string)) {
 	defer ginkgo.GinkgoRecover()
-	path, err := ioutil.TempDir("/tmp", "pyroscope-test-dir")
+	path, err := ioutil.TempDir("", "pyroscope-test-dir")
 	if err != nil {
 		panic(err)
 	}
 	defer os.RemoveAll(path)
 
-	logrus.Debug("tmpDir:", path)
 	cb(path)
-	// return dirSize(path)
 }
 
 type TmpDirectory struct {
@@ -54,7 +50,7 @@ func (t *TmpDirectory) Close() {
 
 func TmpDirSync() *TmpDirectory {
 	defer ginkgo.GinkgoRecover()
-	path, err := ioutil.TempDir("/tmp", "pyroscope-test-dir")
+	path, err := ioutil.TempDir("", "pyroscope-test-dir")
 	if err != nil {
 		panic(err)
 	}

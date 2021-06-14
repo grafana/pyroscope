@@ -20,6 +20,7 @@ import (
 
 var (
 	ErrCloudTokenRequired = errors.New("Please provide an authentication token. You can find it here: https://pyroscope.io/cloud")
+	ErrUpload             = errors.New("Failed to upload a profile")
 	cloudHostnameSuffix   = "pyroscope.cloud"
 )
 
@@ -38,6 +39,8 @@ type RemoteConfig struct {
 	UpstreamThreads        int
 	UpstreamAddress        string
 	UpstreamRequestTimeout time.Duration
+
+	ManualStart bool
 }
 
 func New(cfg RemoteConfig, logger agent.Logger) (*Remote, error) {
@@ -65,10 +68,16 @@ func New(cfg RemoteConfig, logger agent.Logger) (*Remote, error) {
 		return nil, ErrCloudTokenRequired
 	}
 
-	// start goroutines for uploading profile data
-	remote.start()
+	if !cfg.ManualStart {
+		// start goroutines for uploading profile data
+		remote.start()
+	}
 
 	return remote, nil
+}
+
+func (r *Remote) Start() {
+	r.start()
 }
 
 func (r *Remote) start() {
@@ -118,7 +127,7 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	u.Path = path.Join(u.Path, "/ingest")
 	u.RawQuery = q.Encode()
 
-	r.Logger.Infof("uploading at %s", u.String())
+	r.Logger.Debugf("uploading at %s", u.String())
 	// new a request for the job
 	request, err := http.NewRequest("POST", u.String(), bytes.NewReader(j.Trie.Bytes()))
 	if err != nil {
@@ -141,6 +150,10 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	_, err = ioutil.ReadAll(response.Body)
 	if err != nil {
 		return fmt.Errorf("read response body: %v", err)
+	}
+
+	if response.StatusCode != 200 {
+		return ErrUpload
 	}
 
 	return nil

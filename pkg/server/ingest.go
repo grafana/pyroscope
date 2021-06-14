@@ -110,10 +110,15 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	ip := ingestParamsFromRequest(r)
 
+	if ctrl.s.IsClosing() {
+		returnError(w, 422, nil, "database is closing")
+		return
+	}
+
 	var t *tree.Tree
 	t, err := ip.parserFunc(r.Body)
 	if err != nil {
-		logrus.WithField("err", err).Error("error happened while parsing data")
+		returnError(w, 422, err, "error happened while parsing data")
 		return
 	}
 
@@ -128,7 +133,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		AggregationType: ip.aggregationType,
 	})
 	if err != nil {
-		logrus.WithField("err", err).Error("error happened while inserting data")
+		returnError(w, 503, err, "error happened while inserting data")
 		return
 	}
 	ctrl.statsInc("ingest")
@@ -136,4 +141,9 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	k := *ip.storageKey
 	ctrl.appStats.Add(hashString(k.AppName()))
 	w.WriteHeader(200)
+}
+
+func returnError(w http.ResponseWriter, status int, err error, errMessage string) {
+	logrus.WithField("err", err).Error(errMessage)
+	w.WriteHeader(status)
 }

@@ -78,7 +78,10 @@ pyroscope exec python manage.py runserver
 * [x] Python
 * [x] Go
 * [x] Linux eBPF
+* [x] PHP
+* [x] .NET
 * [ ] Node (即将支持)
+* [ ] Java
 
 
 你也可以在 [issue](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) 或者我们的 [slack](https://pyroscope.io/slack) 中来告诉我们你还想支持的平台。
