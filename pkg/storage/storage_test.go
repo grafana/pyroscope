@@ -362,7 +362,7 @@ var _ = Describe("StorageCleanup", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(*cfg)
+			s, err = New(&(*cfg).Server)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
