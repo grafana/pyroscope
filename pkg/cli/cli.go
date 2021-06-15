@@ -113,11 +113,6 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	}
 
 	serverCmd.Exec = func(ctx context.Context, args []string) error {
-		l, err := logrus.ParseLevel(cfg.Server.LogLevel)
-		if err != nil {
-			return err
-		}
-		logrus.SetLevel(l)
 		return startServer(&cfg.Server)
 	}
 

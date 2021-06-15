@@ -4,96 +4,34 @@ package cli
 
 import (
 	"fmt"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
-	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
-	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/server"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 )
 
-func startServer(cfg *config.Server) error {
-	defer atexit.Wait()
-	// new a storage with configuration
-	s, err := storage.New(cfg)
+func startServer(c *config.Server) error {
+	logLevel, err := logrus.ParseLevel(c.LogLevel)
 	if err != nil {
-		return fmt.Errorf("new storage: %v", err)
+		return err
 	}
-	atexit.Register(func() {
-		s.Close()
-	})
-
-	// new a direct upstream
-	u := direct.New(s)
-
-	// uploading the server profile self
-	stopSelfProfilingChan := make(chan struct{})
-	if err := agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger(), stopSelfProfilingChan); err != nil {
-		return fmt.Errorf("start self profile: %v", err)
-	}
-
-	// debuging the RAM and disk usages
-	go reportDebuggingInformation(cfg, s)
-
-	// new server
-	c, err := server.New(cfg, s)
+	logrus.SetLevel(logLevel)
+	srv, err := newServerService(logrus.StandardLogger(), c)
 	if err != nil {
-		return fmt.Errorf("new server: %v", err)
-	}
-	atexit.Register(func() {
-		c.Stop()
-		stopSelfProfilingChan <- struct{}{}
-	})
-
-	// start the analytics
-	if !cfg.AnalyticsOptOut {
-		analyticsService := analytics.NewService(cfg, s, c)
-		go analyticsService.Start()
-		atexit.Register(func() {
-			analyticsService.Stop()
-		})
+		return fmt.Errorf("could not initialize server: %w", err)
 	}
 
-	if err := s.CollectLocalProfiles(); err != nil {
-		logrus.WithError(err).Error("failed to collect local profiles")
-	}
+	go func() {
+		err = srv.Start()
+	}()
 
-	// if you ever change this line, make sure to update this homebrew test:
-	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
-	logrus.Info("starting HTTP server")
-	return c.Start()
-}
+	s := make(chan os.Signal, 1)
+	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)
+	<-s
 
-func reportDebuggingInformation(cfg *config.Server, s *storage.Storage) {
-	interval := 1 * time.Second
-	t := time.NewTicker(interval)
-	i := 0
-	for range t.C {
-		maps := map[string]map[string]interface{}{
-			"cpu":   debug.CPUUsage(interval),
-			"disk":  debug.DiskUsage(cfg.StoragePath),
-			"cache": s.CacheStats(),
-		}
-
-		for dataType, data := range maps {
-			for k, v := range data {
-				if iv, ok := v.(bytesize.ByteSize); ok {
-					v = int64(iv)
-				}
-				metrics.Gauge(dataType+"_"+k, v)
-			}
-			if i%30 == 0 {
-				logrus.WithFields(data).Debug(dataType + " stats")
-			}
-		}
-		i++
-	}
+	srv.Stop()
+	return err
 }

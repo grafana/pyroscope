@@ -19,17 +19,14 @@ type Direct struct {
 }
 
 func New(s *storage.Storage) *Direct {
-	d := &Direct{
+	return &Direct{
 		s:    s,
 		todo: make(chan *upstream.UploadJob, 100),
 		done: make(chan struct{}, upstreamThreads),
 	}
-
-	go d.start()
-	return d
 }
 
-func (u *Direct) start() {
+func (u *Direct) Start() {
 	for i := 0; i < upstreamThreads; i++ {
 		go u.uploadLoop()
 	}

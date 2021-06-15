@@ -47,6 +47,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/twmb/murmur3 v1.1.5
 	github.com/wacul/ptr v1.0.0 // indirect
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/sys v0.0.0-20210423082822-04245dca01da
 	golang.org/x/tools v0.1.0
 	google.golang.org/protobuf v1.26.0
