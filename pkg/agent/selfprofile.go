@@ -8,7 +8,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 )
 
-func SelfProfile(sampleRate uint32, u upstream.Upstream, appName string, logger Logger) error {
+func SelfProfile(sampleRate uint32, u upstream.Upstream, appName string, logger Logger, stopChan chan struct{}) error {
 	// TODO: upload rate should come from config
 	c := SessionConfig{
 		Upstream:         u,
@@ -26,6 +26,13 @@ func SelfProfile(sampleRate uint32, u upstream.Upstream, appName string, logger 
 	}
 	s.Logger = logger
 
-	atexit.Register(s.Stop)
+	if stopChan == nil {
+		atexit.Register(s.Stop)
+	} else {
+		go func() {
+			<-stopChan
+			s.Stop()
+		}()
+	}
 	return nil
 }

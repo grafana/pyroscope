@@ -117,7 +117,7 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 	}
 
 	_, _ = fmt.Fprintf(w, "<!-- generate-sample-config:%s:%s -->\n", subcommand, format)
-	sf := cli.NewSortedFlags(val, flagSet)
+	sf := cli.NewSortedFlags(val, flagSet, nil)
 
 	switch format {
 	case "yaml":

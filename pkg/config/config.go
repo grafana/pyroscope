@@ -56,14 +56,18 @@ type Server struct {
 
 	// These will eventually be replaced by some sort of a system that keeps track of RAM
 	//   and updates
-	CacheDimensionSize  int `def:"1000" desc:"max number of elements in LRU cache for dimensions"`
-	CacheDictionarySize int `def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
-	CacheSegmentSize    int `def:"1000" desc:"max number of elements in LRU cache for segments"`
-	CacheTreeSize       int `def:"1000" desc:"max number of elements in LRU cache for trees"`
+	CacheDimensionSize  int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for dimensions"`
+	CacheDictionarySize int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
+	CacheSegmentSize    int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for segments"`
+	CacheTreeSize       int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for trees"`
+
+	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start"`
+	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run"`
 
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.
-	BadgerNoTruncate bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
+	BadgerNoTruncate     bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any"`
+	DisablePprofEndpoint bool `def:"false" desc:"disables /debug/pprof route"`
 
 	MaxNodesSerialization int `def:"2048" desc:"max number of nodes used when saving profiles to disk"`
 	MaxNodesRender        int `def:"8192" desc:"max number of nodes used to display data on the frontend"`

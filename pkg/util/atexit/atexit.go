@@ -10,6 +10,7 @@ import (
 var callbacks []func()
 
 var once sync.Once
+var wg sync.WaitGroup
 
 func initSignalHandler() {
 	signalChan := make(chan os.Signal, 1)
@@ -18,11 +19,17 @@ func initSignalHandler() {
 		<-signalChan
 		for _, cb := range callbacks {
 			cb()
+			wg.Done()
 		}
 	}()
 }
 
 func Register(cb func()) {
 	once.Do(initSignalHandler)
+	wg.Add(1)
 	callbacks = append(callbacks, cb)
+}
+
+func Wait() {
+	wg.Wait()
 }

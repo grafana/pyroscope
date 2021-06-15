@@ -3,15 +3,20 @@ package debug
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
+
+var nameRegexp = regexp.MustCompile("[^a-zA-Z0-9_]+")
 
 func DiskUsage(path string) map[string]interface{} {
 	f := map[string]interface{}{}
 	subdirectories, _ := filepath.Glob(filepath.Join(path, "*"))
 	for _, path := range subdirectories {
-		f[filepath.Base(path)] = dirSize(path)
+		name := filepath.Base(path)
+		name = nameRegexp.ReplaceAllString(name, "_")
+		f[name] = dirSize(path)
 	}
 
 	return f

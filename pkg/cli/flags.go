@@ -91,6 +91,8 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption)
 		option(o)
 	}
 
+	deprecatedFields := []string{}
+
 	for i := 0; i < num; i++ {
 		field := t.Field(i)
 		fieldV := v.Field(i)
@@ -101,12 +103,17 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption)
 		defaultValStr := field.Tag.Get("def")
 		descVal := field.Tag.Get("desc")
 		skipVal := field.Tag.Get("skip")
+		deprecatedVal := field.Tag.Get("deprecated")
 		nameVal := field.Tag.Get("name")
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
 		}
 		if skipVal == "true" || slices.StringContains(o.skip, nameVal) {
 			continue
+		}
+
+		if deprecatedVal == "true" {
+			deprecatedFields = append(deprecatedFields, nameVal)
 		}
 
 		for old, n := range o.replacements {
@@ -217,5 +224,5 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption)
 			logrus.Fatalf("type %s is not supported", field.Type)
 		}
 	}
-	return NewSortedFlags(obj, flagSet)
+	return NewSortedFlags(obj, flagSet, deprecatedFields)
 }
