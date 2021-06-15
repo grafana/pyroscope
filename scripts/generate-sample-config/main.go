@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
@@ -42,8 +41,7 @@ func main() {
 	if directory != "" {
 		err := filepath.Walk(directory, func(path string, f os.FileInfo, err error) error {
 			if slices.StringContains([]string{".mdx", ".md"}, filepath.Ext(path)) {
-				// log.Println(""path)
-				processFile(path)
+				return processFile(path)
 			}
 			return nil
 		})
@@ -55,100 +53,112 @@ func main() {
 	}
 }
 
-func processFile(path string) {
-	log.Printf("processing %s", path)
+var (
+	sectionRegexp = regexp.MustCompile(`(?s)<!--\s*generate-sample-config:(.+?):(.+?)\s*-->.*?<!--\s*/generate-sample-config\s*-->`)
+	headerRegexp  = regexp.MustCompile("generate-sample-config:(.+?):(.+?)\\s*-")
+)
+
+func processFile(path string) error {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("reading file: %w", err)
 	}
 
-	// r := regexp.MustCompile("<!-- generate-sample-config:.+?:.+? -->.+?<!-- \\/generate-sample-config -->")
-	r := regexp.MustCompile("(?s)<!--\\s*generate-sample-config:.+?:.+?\\s*-->.*?<!--\\s*/generate-sample-config\\s*-->")
-	r2 := regexp.MustCompile("generate-sample-config:(.+?):(.+?)\\s*-")
-	newContent := r.ReplaceAllFunc(content, func(b []byte) []byte {
-		submatches := r2.FindSubmatch(b)
+	newContent := sectionRegexp.ReplaceAllFunc(content, func(b []byte) []byte {
+		submatches := headerRegexp.FindSubmatch(b)
 		buf := bytes.Buffer{}
-
 		subcommand := string(submatches[1])
 		format := string(submatches[2])
-
-		fmt.Fprintf(&buf, "<!-- generate-sample-config:%s:%s -->\n", subcommand, format)
-		if format == "yaml" {
-			fmt.Fprintf(&buf, "```yaml\n")
-		}
 		writeConfigDocs(&buf, subcommand, format)
-		if format == "yaml" {
-			fmt.Fprintf(&buf, "```\n")
-		}
-		fmt.Fprintf(&buf, "<!-- /generate-sample-config -->")
 		return buf.Bytes()
 	})
 
 	if bytes.Equal(content, newContent) {
-		log.Println("no changes")
-		return
+		return nil
 	}
-	if err := ioutil.WriteFile(path, newContent, fs.FileMode(0)); err != nil {
-		panic(err)
-	}
+
+	fmt.Println(path)
+	return ioutil.WriteFile(path, newContent, 0640)
 }
 
 func writeConfigDocs(w io.Writer, subcommand, format string) {
 	flagSet := flag.NewFlagSet("pyroscope "+subcommand, flag.ExitOnError)
+	opts := []cli.FlagOption{
+		cli.WithReplacement("<supportedProfilers>", "pyspy, rbspy, phpspy, dotnetspy, ebpfspy"),
+	}
+
 	var val interface{}
 	switch subcommand {
 	case "agent":
 		val = new(config.Agent)
-		cli.PopulateFlagSet(val, flagSet)
+		// Skip `targets` only from CLI reference.
+		if format == "md" {
+			cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("targets"))...)
+		} else {
+			cli.PopulateFlagSet(val, flagSet, opts...)
+		}
 	case "server":
 		val = new(config.Server)
-		cli.PopulateFlagSet(val, flagSet)
+		cli.PopulateFlagSet(val, flagSet, opts...)
 	case "convert":
 		val = new(config.Convert)
-		cli.PopulateFlagSet(val, flagSet)
+		cli.PopulateFlagSet(val, flagSet, opts...)
 	case "exec":
 		val = new(config.Exec)
-		cli.PopulateFlagSet(val, flagSet, "pid")
+		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("pid"))...)
 	case "connect":
 		val = new(config.Exec)
-		cli.PopulateFlagSet(val, flagSet, "group-name", "user-name", "no-root-drop")
+		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("group-name", "user-name", "no-root-drop"))...)
 	case "target":
 		val = new(config.Target)
-		cli.PopulateFlagSet(val, flagSet)
+		cli.PopulateFlagSet(val, flagSet, opts...)
 	default:
 		log.Fatalf("Unknown subcommand %q", subcommand)
 	}
 
+	_, _ = fmt.Fprintf(w, "<!-- generate-sample-config:%s:%s -->\n", subcommand, format)
 	sf := cli.NewSortedFlags(val, flagSet)
+
 	switch format {
 	case "yaml":
-		_, _ = fmt.Fprintln(w, "---")
-		sf.VisitAll(func(f *flag.Flag) {
-			if f.Name == "config" {
-				return
-			}
-			var v string
-			if reflect.TypeOf(f.Value).Elem().Kind() == reflect.Slice {
-				v = f.Value.String()
-			} else {
-				v = fmt.Sprintf("%q", f.Value)
-			}
-			_, _ = fmt.Fprintf(w, "# %s\n%s: %s\n\n", toPrettySentence(f.Usage), f.Name, v)
-		})
+		writeYaml(w, sf)
 	case "md":
-		_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", "Name", "Default Value", "Usage")
-		_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", ":-", ":-", ":-")
-		sf.VisitAll(func(f *flag.Flag) {
-			if f.Name == "config" {
-				return
-			}
-			// Replace vertical bar glyph with HTML code.
-			desc := strings.ReplaceAll(toPrettySentence(f.Usage), "|", `&#124;`)
-			_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", f.Name, f.DefValue, desc)
-		})
+		writeMarkdown(w, sf)
 	default:
 		logrus.Fatalf("Unknown format %q", format)
 	}
+
+	_, _ = fmt.Fprintf(w, "<!-- /generate-sample-config -->")
+}
+
+func writeYaml(w io.Writer, sf *cli.SortedFlags) {
+	_, _ = fmt.Fprintf(w, "```yaml\n---\n")
+	sf.VisitAll(func(f *flag.Flag) {
+		if f.Name == "config" {
+			return
+		}
+		var v string
+		if reflect.TypeOf(f.Value).Elem().Kind() == reflect.Slice {
+			v = f.Value.String()
+		} else {
+			v = fmt.Sprintf("%q", f.Value)
+		}
+		_, _ = fmt.Fprintf(w, "# %s\n%s: %s\n\n", toPrettySentence(f.Usage), f.Name, v)
+	})
+	_, _ = fmt.Fprintf(w, "```\n")
+}
+
+func writeMarkdown(w io.Writer, sf *cli.SortedFlags) {
+	_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", "Name", "Default Value", "Usage")
+	_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", ":-", ":-", ":-")
+	sf.VisitAll(func(f *flag.Flag) {
+		if f.Name == "config" {
+			return
+		}
+		// Replace vertical bar glyph with HTML code.
+		desc := strings.ReplaceAll(toPrettySentence(f.Usage), "|", `&#124;`)
+		_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", f.Name, f.DefValue, desc)
+	})
 }
 
 // Capitalizes the first letter and adds period at the end, if necessary.
