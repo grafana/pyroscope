@@ -1,13 +1,14 @@
 package exec
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -18,7 +19,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
 	"github.com/sirupsen/logrus"
 )
@@ -28,7 +28,7 @@ var disableMacOSChecks bool
 var disableLinuxChecks bool
 
 // Cli is command line interface for both exec and connect commands
-func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
+func Cli(cfg *config.Exec, args []string) error {
 	// isExec = true means we need to start the process first (pyroscope exec)
 	// isExec = false means the process is already there (pyroscope connect)
 	isExec := cfg.Pid == 0
@@ -91,7 +91,7 @@ func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 	pid := cfg.Pid
 	var cmd *exec.Cmd
 	if isExec {
-		cmd = exec.CommandContext(ctx, args[0], args[1:]...)
+		cmd = exec.Command(args[0], args[1:]...)
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
 		cmd.Stdin = os.Stdin
@@ -139,7 +139,7 @@ func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 		WithSubprocesses: cfg.DetectSubprocesses,
 	}
 	session := agent.NewSession(&sc, logrus.StandardLogger())
-	if err := session.Start(); err != nil {
+	if err = session.Start(); err != nil {
 		return fmt.Errorf("start session: %v", err)
 	}
 	defer session.Stop()
@@ -147,7 +147,7 @@ func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 	if isExec {
 		waitForSpawnedProcessToExit(cmd)
 	} else {
-		waitForProcessToExit(ctx, pid)
+		waitForProcessToExit(pid)
 	}
 
 	return nil
@@ -156,45 +156,42 @@ func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 // TODO: very hacky, at some point we'll need to make `cmd.Wait()` work
 //   Currently the issue is that on Linux it often thinks the process exited when it did not.
 func waitForSpawnedProcessToExit(cmd *exec.Cmd) {
-	sigc := make(chan struct{})
-
-	go func() {
-		cmd.Wait()
-	}()
-
-	atexit.Register(func() {
-		sigc <- struct{}{}
-	})
-
-	t := time.NewTicker(time.Second)
-	for {
-		select {
-		case <-sigc:
-			logrus.Debug("received a signal, killing subprocess")
-			cmd.Process.Kill()
-			return
-		case <-t.C:
-			p, err := ps.FindProcess(cmd.Process.Pid)
-			if p == nil || err != nil {
-				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
-				return
-			}
+	// Note that we don't specify which signals to be sent: any signal to be
+	// relayed to the child process (including SIGINT).
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc)
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	select {
+	case <-ticker.C:
+		p, err := ps.FindProcess(cmd.Process.Pid)
+		if p == nil || err != nil {
+			logrus.WithError(err).Debug("could not find subprocess, it might be dead")
+		}
+	case s := <-sigc:
+		logger := logrus.WithField("signal", s)
+		logger.Debug("received signal")
+		if err := cmd.Process.Signal(s); err != nil {
+			logger.WithError(err).Warning("failed to send signal to child process")
 		}
 	}
 }
 
-func waitForProcessToExit(ctx context.Context, pid int) {
+func waitForProcessToExit(pid int) {
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 	// pid == -1 means we're profiling whole system
 	if pid == -1 {
-		select {} // revive:disable-line:empty-block This block has to be empty
+		<-sigc
+		return
 	}
-	t := time.NewTicker(time.Second)
-	defer t.Stop()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-sigc:
 			return
-		case <-t.C:
+		case <-ticker.C:
 			p, err := ps.FindProcess(pid)
 			if p == nil || err != nil {
 				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")

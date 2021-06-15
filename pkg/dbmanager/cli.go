@@ -2,6 +2,10 @@ package dbmanager
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -12,7 +16,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 )
 
 func Cli(dbCfg *config.DbManager, srvCfg *config.Server, args []string) error {
@@ -91,15 +94,18 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 
 	durDiff := dstSt.Sub(srcSt)
 
-	stop := false
-	atexit.Register(func() {
-		stop = true
-	})
+	var stopped uint32
+	go func() {
+		sigc := make(chan os.Signal, 1)
+		signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
+		<-sigc
+		atomic.StoreUint32(&stopped, 1)
+	}()
 
 	for srct := srcSt; srct.Before(srcEt); srct = srct.Add(resolution) {
 		bar.Increment()
 
-		if stop {
+		if atomic.LoadUint32(&stopped) > 0 {
 			break
 		}
 

@@ -140,7 +140,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			return nil
 		}
 
-		return exec.Cli(context.Background(), &cfg.Exec, args)
+		return exec.Cli(&cfg.Exec, args)
 	}
 
 	connectCmd.Exec = func(ctx context.Context, args []string) error {
@@ -155,7 +155,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			return nil
 		}
 
-		return exec.Cli(context.Background(), &cfg.Exec, args)
+		return exec.Cli(&cfg.Exec, args)
 	}
 
 	dbmanagerCmd.Exec = func(ctx context.Context, args []string) error {
