@@ -85,6 +85,7 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 	flagSet := flag.NewFlagSet("pyroscope "+subcommand, flag.ExitOnError)
 	opts := []cli.FlagOption{
 		cli.WithReplacement("<supportedProfilers>", "pyspy, rbspy, phpspy, dotnetspy, ebpfspy"),
+		cli.WithSkipDeprecated(true),
 	}
 
 	var val interface{}

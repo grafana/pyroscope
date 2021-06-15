@@ -56,8 +56,9 @@ func (tf *timeFlag) Set(value string) error {
 }
 
 type options struct {
-	replacements map[string]string
-	skip         []string
+	replacements   map[string]string
+	skip           []string
+	skipDeprecated bool
 }
 
 type FlagOption func(*options)
@@ -65,6 +66,15 @@ type FlagOption func(*options)
 func WithSkip(n ...string) FlagOption {
 	return func(o *options) {
 		o.skip = append(o.skip, n...)
+	}
+}
+
+// WithSkipDeprecated specifies that fields marked as deprecated won't be parsed.
+// By default PopulateFlagSet parses them but not shows in Usage; setting this
+// option to true causes PopulateFlagSet to skip parsing.
+func WithSkipDeprecated(ok bool) FlagOption {
+	return func(o *options) {
+		o.skipDeprecated = ok
 	}
 }
 
@@ -114,6 +124,9 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption)
 
 		if deprecatedVal == "true" {
 			deprecatedFields = append(deprecatedFields, nameVal)
+			if o.skipDeprecated {
+				continue
+			}
 		}
 
 		for old, n := range o.replacements {
