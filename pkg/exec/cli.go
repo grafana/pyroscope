@@ -12,7 +12,8 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/mitchellh/go-ps"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -20,7 +21,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
-	"github.com/sirupsen/logrus"
 )
 
 // used in tests
@@ -88,22 +88,6 @@ func Cli(cfg *config.Exec, args []string) error {
 		"args": fmt.Sprintf("%q", args),
 	}).Debug("starting command")
 
-	pid := cfg.Pid
-	var cmd *exec.Cmd
-	if isExec {
-		cmd = exec.Command(args[0], args[1:]...)
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-		cmd.Stdin = os.Stdin
-		if err := adjustCmd(cmd, *cfg); err != nil {
-			logrus.Error(err)
-		}
-		if err := cmd.Start(); err != nil {
-			return err
-		}
-		pid = cmd.Process.Pid
-	}
-
 	rc := remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
 		UpstreamAddress:        cfg.ServerAddress,
@@ -115,6 +99,35 @@ func Cli(cfg *config.Exec, args []string) error {
 		return fmt.Errorf("new remote upstream: %v", err)
 	}
 	defer u.Stop()
+
+	// The channel buffer capacity should be sufficient to be keep up with
+	// the expected signal rate (in case of Exec all the signals to be relayed
+	// to the child process)
+	c := make(chan os.Signal, 10)
+	pid := cfg.Pid
+	var cmd *exec.Cmd
+	if isExec {
+		// Note that we don't specify which signals to be sent: any signal to be
+		// relayed to the child process (including SIGINT and SIGTERM).
+		signal.Notify(c)
+		cmd = exec.Command(args[0], args[1:]...)
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		cmd.Stdin = os.Stdin
+		if err = adjustCmd(cmd, *cfg); err != nil {
+			logrus.Error(err)
+		}
+		if err = cmd.Start(); err != nil {
+			return err
+		}
+		pid = cmd.Process.Pid
+	} else {
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	}
+	defer func() {
+		signal.Stop(c)
+		close(c)
+	}()
 
 	logrus.WithFields(logrus.Fields{
 		"app-name":            cfg.ApplicationName,
@@ -145,56 +158,39 @@ func Cli(cfg *config.Exec, args []string) error {
 	defer session.Stop()
 
 	if isExec {
-		waitForSpawnedProcessToExit(cmd)
-	} else {
-		waitForProcessToExit(pid)
+		return waitForSpawnedProcessToExit(c, cmd)
 	}
-
+	waitForProcessToExit(c, pid)
 	return nil
 }
 
-// TODO: very hacky, at some point we'll need to make `cmd.Wait()` work
-//   Currently the issue is that on Linux it often thinks the process exited when it did not.
-func waitForSpawnedProcessToExit(cmd *exec.Cmd) {
-	// Note that we don't specify which signals to be sent: any signal to be
-	// relayed to the child process (including SIGINT).
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc)
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	select {
-	case <-ticker.C:
-		p, err := ps.FindProcess(cmd.Process.Pid)
-		if p == nil || err != nil {
-			logrus.WithError(err).Debug("could not find subprocess, it might be dead")
+func waitForSpawnedProcessToExit(c chan os.Signal, cmd *exec.Cmd) error {
+	go func() {
+		for s := range c {
+			logger := logrus.WithField("signal", s)
+			logger.Debug("received signal")
+			if err := cmd.Process.Signal(s); err != nil {
+				logger.WithError(err).Warning("failed to send signal to child process")
+			}
 		}
-	case s := <-sigc:
-		logger := logrus.WithField("signal", s)
-		logger.Debug("received signal")
-		if err := cmd.Process.Signal(s); err != nil {
-			logger.WithError(err).Warning("failed to send signal to child process")
-		}
-	}
+	}()
+	return cmd.Wait()
 }
 
-func waitForProcessToExit(pid int) {
-	sigc := make(chan os.Signal, 1)
-	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
+func waitForProcessToExit(c chan os.Signal, pid int) {
 	// pid == -1 means we're profiling whole system
 	if pid == -1 {
-		<-sigc
+		<-c
 		return
 	}
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
 		select {
-		case <-sigc:
+		case <-c:
 			return
 		case <-ticker.C:
-			p, err := ps.FindProcess(pid)
-			if p == nil || err != nil {
-				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
+			if !processExists(pid) {
 				return
 			}
 		}
