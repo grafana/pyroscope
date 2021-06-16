@@ -52,11 +52,12 @@ func relationship(t1, t2, st, et time.Time) rel {
 	return overlap
 }
 
-func cleanupRelationship(t1, t2, st time.Time) rel {
-	if t1.Equal(st) || t2.Equal(st) {
+// t1, t2 represent segment node, rt represents retention threshold time
+func retentionRelationship(t1, t2, rt time.Time) rel {
+	if t1.Equal(rt) || t2.Equal(rt) {
 		return match
 	}
-	if t1.Before(st) || t2.Before(st) {
+	if t1.Before(rt) || t2.Before(rt) {
 		return inside
 	}
 	return outside

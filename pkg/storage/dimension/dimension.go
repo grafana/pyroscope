@@ -73,19 +73,6 @@ func (sd *sortableDim) advance(cmp Key) advanceResult {
 	}
 }
 
-func (sd *sortableDim) advanceUnion(cmp Key) advanceResult {
-	for {
-		if sd.i == sd.l {
-			return end
-		}
-		v := bytes.Compare(sd.current(), cmp)
-		if v != 0 {
-			return match
-		}
-		sd.i++
-	}
-}
-
 type sortableDims []*sortableDim
 
 func (s sortableDims) Len() int {

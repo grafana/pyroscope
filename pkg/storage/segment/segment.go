@@ -28,9 +28,9 @@ func (sn *streeNode) relationship(st, et time.Time) rel {
 	return relationship(sn.time, t2, st, et)
 }
 
-func (sn *streeNode) cleanupRelationship(st time.Time) rel {
+func (sn *streeNode) retentionRelationship(rt time.Time) rel {
 	t2 := sn.time.Add(durations[sn.depth])
-	return cleanupRelationship(sn.time, t2, st)
+	return retentionRelationship(sn.time, t2, rt)
 }
 
 func (sn *streeNode) endTime() time.Time {
@@ -155,15 +155,15 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 	}
 }
 
-func (sn *streeNode) cleanup(timeThreshold time.Time, cb func(depth int, t time.Time)) bool {
+func (sn *streeNode) deleteDataBefore(retentionThreshold time.Time, cb func(depth int, t time.Time)) bool {
 	hasData := false
-	rel := sn.cleanupRelationship(timeThreshold)
+	rel := sn.retentionRelationship(retentionThreshold)
 	if sn.present && (rel == inside || rel == match) {
 		cb(sn.depth, sn.time)
 
 		for _, v := range sn.children {
 			if v != nil {
-				ok := v.cleanup(timeThreshold, cb)
+				ok := v.deleteDataBefore(retentionThreshold, cb)
 				hasData = hasData || ok
 			}
 		}
@@ -289,16 +289,16 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-get-%s-%s.html", st.String(), et.String())))
 }
 
-func (s *Segment) DeleteDataBefore(timeThreshold time.Time, cb func(depth int, t time.Time)) bool {
+func (s *Segment) DeleteDataBefore(retentionThreshold time.Time, cb func(depth int, t time.Time)) bool {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	timeThreshold = normalizeTime(timeThreshold)
+	retentionThreshold = normalizeTime(retentionThreshold)
 	if s.root == nil {
 		return false
 	}
 
-	return s.root.cleanup(timeThreshold, func(depth int, t time.Time) {
+	return s.root.deleteDataBefore(retentionThreshold, func(depth int, t time.Time) {
 		cb(depth, t)
 	})
 }

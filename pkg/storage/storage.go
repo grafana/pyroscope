@@ -350,6 +350,8 @@ func (s *Storage) IsClosing() bool {
 	return s.closing
 }
 
+var OutOfSpaceThreshold = 512 * bytesize.MB
+
 func (s *Storage) Put(po *PutInput) error {
 	s.closingMutex.RLock()
 	defer s.closingMutex.RUnlock()
@@ -362,7 +364,7 @@ func (s *Storage) Put(po *PutInput) error {
 	defer s.putMutex.Unlock()
 
 	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
-	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
+	if err == nil && freeSpace < OutOfSpaceThreshold {
 		return errOutOfSpace
 	}
 
