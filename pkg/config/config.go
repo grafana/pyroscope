@@ -68,9 +68,9 @@ type Server struct {
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
 
-	RetentionMaxSpace    bytesize.ByteSize `def:"" desc:"limits the maximum size of data stored. Old data is deleted when this threshold is reached. By default it equals to the total amount of disk space available"`
-	RetentionMaxLifetime time.Duration     `def:"" desc:"limits how long pyroscope keeps data for. Data outside this threshold will be deleted periodically. Unlimited by default"`
-	DeleteWhenLowOnSpace bool              `def:"true" desc:"indicates if pyroscope should delete old data when it's out of disk space. If set to false pyroscope will stop accepting writes instead of deleting data."`
+	RetentionMaxSpace        bytesize.ByteSize `def:"" desc:"limits the maximum size of data stored. Old data is deleted when this threshold is reached. By default it equals to the total amount of disk space available"`
+	RetentionMaxLifetime     time.Duration     `def:"" desc:"limits how long pyroscope keeps data for. Data outside this threshold will be deleted periodically. Unlimited by default"`
+	StopWritesWhenLowOnSpace bool              `def:"false" desc:"indicates if pyroscope should just stop accepting writes when low on space. By default in this situation pyroscope will delete old data."`
 
 	// Deprecated fields. They can be set (for backwards compatibility) but have no effect
 	// TODO: we should print some warning messages when people try to use these

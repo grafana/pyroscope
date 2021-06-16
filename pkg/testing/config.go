@@ -1,8 +1,6 @@
 package testing
 
 import (
-	"time"
-
 	"github.com/onsi/ginkgo"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
@@ -23,9 +21,6 @@ func WithConfig(cb func(cfg **config.Config)) {
 
 				MaxNodesSerialization: 2048,
 				MaxNodesRender:        2048,
-
-				ThresholdModeAuto:  true,
-				RetentionThreshold: time.Hour * 24 * 7, // (default: 3days)
 			},
 		}
 	})

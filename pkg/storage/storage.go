@@ -36,6 +36,7 @@ import (
 var ErrClosing = errors.New("the db is in closing state")
 var ErrAlreadyClosed = errors.New("the db is already closed")
 var errOutOfSpace = errors.New("running out of space")
+var errRetention = errors.New("could not write because of retention settings")
 var evictInterval = 1 * time.Second
 
 type Storage struct {
@@ -368,6 +369,10 @@ func (s *Storage) Put(po *PutInput) error {
 		return errOutOfSpace
 	}
 
+	if po.StartTime.Before(s.CurrentRetentionThreshold()) {
+		return errRetention
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"startTime":       po.StartTime.String(),
 		"endTime":         po.EndTime.String(),
@@ -550,20 +555,8 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}, nil
 }
 
-func (s *Storage) DeleteDataBefore(threshold time.Time) error {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-	if s.closing {
-		return ErrClosing
-	}
-
-	if s.closing {
-		return ErrClosing
-	}
-
+func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) error {
 	nameKey := "__name__"
-
-	lg := logrus.WithField("task", "cleanup")
 
 	var dimensions []*dimension.Dimension
 	var err error
@@ -589,6 +582,26 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 			return err
 		}
 		st := stInt.(*segment.Segment)
+		if err := cb(sk, st); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Storage) DeleteDataBefore(threshold time.Time) error {
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
+	if s.closing {
+		return ErrClosing
+	}
+
+	if s.closing {
+		return ErrClosing
+	}
+
+	s.iterateOverAllSegments(func(sk *Key, st *segment.Segment) error {
+		var err error
 		hasData := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 			tk := sk.TreeKey(depth, t)
 			if delErr := s.trees.Delete(tk); delErr != nil {
@@ -605,11 +618,9 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 				return err
 			}
 		}
+		return nil
+	})
 
-		lg.Debugf("sk: %s", sk.SegmentKey())
-	}
-
-	lg.Debugf("segment cleanup completed")
 	return nil
 }
 
@@ -757,4 +768,16 @@ func (s *Storage) CacheStats() map[string]interface{} {
 		"dicts_size":      s.dicts.Size(),
 		"trees_size":      s.trees.Size(),
 	}
+}
+
+func (s *Storage) CurrentRetentionThreshold() time.Time {
+	// TODO: add retention threshold calculated based on storage available
+	var retentionLifetimeThreshold time.Time
+	if s.cfg.RetentionMaxLifetime != 0 {
+		retentionLifetimeThreshold = time.Now().Add(-1 * s.cfg.RetentionMaxLifetime)
+	}
+
+	var retentionSpaceThreshold time.Time
+
+	return retentionLifetimeThreshold
 }
