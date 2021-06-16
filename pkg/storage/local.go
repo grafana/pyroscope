@@ -90,7 +90,7 @@ func (s *Storage) CollectLocalProfiles() error {
 func (s *Storage) PutLocal(po *PutInput) error {
 	logrus.Debug("PutLocal")
 	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
-	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
+	if err == nil && freeSpace < OutOfSpaceThreshold {
 		return errOutOfSpace
 	}
 

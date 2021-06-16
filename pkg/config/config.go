@@ -54,13 +54,6 @@ type Server struct {
 	APIBindAddr string `def:":4040" desc:"port for the HTTP server used for data ingestion and web UI"`
 	BaseURL     string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path"`
 
-	// These will eventually be replaced by some sort of a system that keeps track of RAM
-	//   and updates
-	CacheDimensionSize  int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for dimensions"`
-	CacheDictionarySize int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for dictionaries"`
-	CacheSegmentSize    int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for segments"`
-	CacheTreeSize       int `deprecated:"true" def:"1000" desc:"max number of elements in LRU cache for trees"`
-
 	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start"`
 	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run"`
 
@@ -79,7 +72,14 @@ type Server struct {
 	RetentionMaxLifetime time.Duration     `def:"" desc:"limits how long pyroscope keeps data for. Data outside this threshold will be deleted periodically. Unlimited by default"`
 	DeleteWhenLowOnSpace bool              `def:"true" desc:"indicates if pyroscope should delete old data when it's out of disk space. If set to false pyroscope will stop accepting writes instead of deleting data."`
 
-	SampleRate uint `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
+	// Deprecated fields. They can be set (for backwards compatibility) but have no effect
+	// TODO: we should print some warning messages when people try to use these
+	SampleRate          uint              `deprecated:"true"`
+	OutOfSpaceThreshold bytesize.ByteSize `deprecated:"true"`
+	CacheDimensionSize  int               `deprecated:"true"`
+	CacheDictionarySize int               `deprecated:"true"`
+	CacheSegmentSize    int               `deprecated:"true"`
+	CacheTreeSize       int               `deprecated:"true"`
 }
 
 type Convert struct {
