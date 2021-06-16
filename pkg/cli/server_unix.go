@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -19,19 +20,42 @@ func startServer(c *config.Server) error {
 		return err
 	}
 	logrus.SetLevel(logLevel)
-	srv, err := newServerService(logrus.StandardLogger(), c)
+	logger := logrus.StandardLogger()
+
+	srv, err := newServerService(logger, c)
 	if err != nil {
 		return fmt.Errorf("could not initialize server: %w", err)
 	}
 
+	exited := make(chan error)
 	go func() {
-		err = srv.Start()
+		exited <- srv.Start()
+		close(exited)
 	}()
 
+	var stopTime time.Time
 	s := make(chan os.Signal, 1)
 	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)
-	<-s
+	select {
+	case <-s:
+		logger.Info("stopping server")
+		stopTime = time.Now()
+		srv.Stop()
+		err = <-exited
+		if err == nil {
+			logger.WithField("duration", time.Since(stopTime)).Info("server stopped gracefully")
+			return nil
+		}
+		logger.WithError(err).Error("failed to stop server gracefully")
+		return err
 
-	srv.Stop()
-	return err
+	case err = <-exited:
+		if err == nil {
+			// Should never happen.
+			logger.Error("server exited")
+			return nil
+		}
+		logger.WithError(err).Error("server failed")
+		return err
+	}
 }

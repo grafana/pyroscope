@@ -73,28 +73,29 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 func (svc *serverService) Start() error {
 	g, ctx := errgroup.WithContext(context.Background())
 	svc.group = g
-
 	g.Go(func() error {
 		// if you ever change this line, make sure to update this homebrew test:
 		// https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
-		logrus.Info("starting HTTP server")
+		svc.logger.Info("starting HTTP server")
+		// Anything that is run in the errorgroup should be ready that Stop may
+		// be called prior Start or concurrently: underlying http server will
+		// return nil in this particular case.
 		return svc.controller.Start()
 	})
 
-	g.Go(func() error {
-		svc.debugReporter.Start()
-		return nil
-	})
+	go svc.debugReporter.Start()
+	if svc.analyticsService != nil {
+		go svc.analyticsService.Start()
+	}
 
-	g.Go(func() error {
-		svc.analyticsService.Start()
-		return nil
-	})
-
-	// Self-profiling runs concurrently, its failure does not cause server to stop.
 	svc.directUpstream.Start()
 	if err := svc.selfProfiling.Start(); err != nil {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
+	}
+
+	svc.logger.Debug("collecting local profiles")
+	if err := svc.storage.CollectLocalProfiles(); err != nil {
+		svc.logger.WithError(err).Error("failed to collect local profiles")
 	}
 
 	defer close(svc.done)
@@ -102,9 +103,11 @@ func (svc *serverService) Start() error {
 	case <-svc.stopped:
 	case <-ctx.Done():
 		// The context is canceled the first time a function passed to Go
-		// returns a non-nil error or the first time Wait returns, whichever
-		// occurs first.
+		// returns a non-nil error.
 	}
+	// N.B. internal components are de-initialized/disposed (if applicable)
+	// regardless of the exit reason. Once server is stopped, wait for all
+	// Go goroutines to finish.
 	svc.stop()
 	return svc.group.Wait()
 }
@@ -115,26 +118,16 @@ func (svc *serverService) Stop() {
 }
 
 func (svc *serverService) stop() {
-	if svc.debugReporter != nil {
-		svc.debugReporter.Stop()
-	}
+	svc.debugReporter.Stop()
 	if svc.analyticsService != nil {
 		svc.analyticsService.Stop()
 	}
-	if svc.selfProfiling != nil {
-		svc.selfProfiling.Stop()
+	svc.selfProfiling.Stop()
+	svc.directUpstream.Stop()
+	if err := svc.controller.Stop(); err != nil {
+		svc.logger.WithError(err).Error("controller stop")
 	}
-	if svc.directUpstream != nil {
-		svc.directUpstream.Stop()
-	}
-	if svc.controller != nil {
-		if err := svc.controller.Stop(); err != nil {
-			svc.logger.WithError(err).Error("controller stop")
-		}
-	}
-	if svc.storage != nil {
-		if err := svc.storage.Close(); err != nil {
-			svc.logger.WithError(err).Error("storage close")
-		}
+	if err := svc.storage.Close(); err != nil {
+		svc.logger.WithError(err).Error("storage close")
 	}
 }

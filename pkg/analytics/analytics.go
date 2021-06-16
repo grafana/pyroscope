@@ -31,7 +31,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
+const (
 	url             = "https://analytics.pyroscope.io/api/events"
 	gracePeriod     = 5 * time.Minute
 	uploadFrequency = 24 * time.Hour

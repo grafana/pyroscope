@@ -7,21 +7,21 @@ import (
 	"io/ioutil"
 	golog "log"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"runtime"
 	"sync"
 	"text/template"
 	"time"
 
-	"net/http/pprof"
-
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
-	"github.com/sirupsen/logrus"
 )
 
 type Controller struct {
@@ -41,27 +41,13 @@ func New(cfg *config.Server, s *storage.Storage) (*Controller, error) {
 		return nil, err
 	}
 
-	return &Controller{
+	ctrl := Controller{
 		cfg:      cfg,
 		s:        s,
 		stats:    make(map[string]int),
 		appStats: appStats,
-	}, nil
-}
-
-func (ctrl *Controller) Stop() error {
-	if ctrl.httpServer != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-		defer cancel()
-
-		// shutdown the server gracefully
-		return ctrl.httpServer.Shutdown(ctx)
 	}
-	return nil
-}
 
-// TODO: split the cli initialization from HTTP controller logic
-func (ctrl *Controller) Start() error {
 	mux := http.NewServeMux()
 
 	if !ctrl.cfg.DisablePprofEndpoint {
@@ -112,14 +98,24 @@ func (ctrl *Controller) Start() error {
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
 	}
-	if err := ctrl.httpServer.ListenAndServe(); err != nil {
-		if err == http.ErrServerClosed {
-			return nil
-		}
-		return fmt.Errorf("listen and serve: %v", err)
-	}
 
-	return nil
+	return &ctrl, nil
+}
+
+func (ctrl *Controller) Start() error {
+	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
+	// the returned error is ErrServerClosed.
+	err := ctrl.httpServer.ListenAndServe()
+	if err == http.ErrServerClosed {
+		return nil
+	}
+	return fmt.Errorf("listen and serve: %v", err)
+}
+
+func (ctrl *Controller) Stop() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	return ctrl.httpServer.Shutdown(ctx)
 }
 
 func renderServerError(rw http.ResponseWriter, text string) {

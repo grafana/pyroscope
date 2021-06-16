@@ -73,7 +73,6 @@ func (s *Storage) collectLocalProfile(path string) error {
 }
 
 func (s *Storage) CollectLocalProfiles() error {
-	logrus.Debug("collecting local profiles")
 	matches, err := filepath.Glob(filepath.Join(s.localProfilesDir, "*.profile"))
 	if err != nil {
 		return err
