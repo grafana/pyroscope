@@ -42,7 +42,6 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	var err error
-	// TODO: start and stop storage maintenance (GC/cache/retention) separately.
 	svc.storage, err = storage.New(svc.config)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %v", err)
@@ -127,6 +126,7 @@ func (svc *serverService) stop() {
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
+	svc.logger.Info("Stop storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
 	}

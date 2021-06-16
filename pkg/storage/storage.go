@@ -33,18 +33,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var ErrClosing = errors.New("the db is in closing state")
-var ErrAlreadyClosed = errors.New("the db is already closed")
-var errOutOfSpace = errors.New("running out of space")
-var evictInterval = 1 * time.Second
+var (
+	errOutOfSpace = errors.New("running out of space")
+	evictInterval = 1 * time.Second
+)
 
 type Storage struct {
-	closingMutex sync.RWMutex
-	closing      bool
-
 	putMutex sync.Mutex
 
-	cfg      *config.Server
+	config   *config.Server
 	segments *cache.Cache
 
 	dimensions *cache.Cache
@@ -59,42 +56,54 @@ type Storage struct {
 	dbSegments   *badger.DB
 
 	localProfilesDir string
+
+	stop chan struct{}
+	wg   sync.WaitGroup
 }
 
-func badgerGC(db *badger.DB) {
+func (s *Storage) badgerGC(db *badger.DB) {
 	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-	for range ticker.C {
-	again:
-		err := db.RunValueLogGC(0.7)
-		if err == nil {
-			goto again
+	defer func() {
+		ticker.Stop()
+		s.wg.Done()
+	}()
+	for {
+		select {
+		case <-s.stop:
+			return
+		case <-ticker.C:
+		again:
+			err := db.RunValueLogGC(0.7)
+			if err == nil {
+				goto again
+			}
 		}
 	}
 }
 
-func newBadger(cfg *config.Server, name string) (*badger.DB, error) {
-	badgerPath := filepath.Join(cfg.StoragePath, name)
+func (s *Storage) newBadger(name string) (*badger.DB, error) {
+	badgerPath := filepath.Join(s.config.StoragePath, name)
 	err := os.MkdirAll(badgerPath, 0o755)
 	if err != nil {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
-	badgerOptions = badgerOptions.WithTruncate(!cfg.BadgerNoTruncate)
+	badgerOptions = badgerOptions.WithTruncate(!s.config.BadgerNoTruncate)
 	badgerOptions = badgerOptions.WithSyncWrites(false)
 	badgerOptions = badgerOptions.WithCompactL0OnClose(false)
 	badgerOptions = badgerOptions.WithCompression(options.ZSTD)
 	badgerLevel := logrus.ErrorLevel
-	if l, err := logrus.ParseLevel(cfg.BadgerLogLevel); err == nil {
+	if l, err := logrus.ParseLevel(s.config.BadgerLogLevel); err == nil {
 		badgerLevel = l
 	}
 	badgerOptions = badgerOptions.WithLogger(badgerLogger{name: name, logLevel: badgerLevel})
-
 	db, err := badger.Open(badgerOptions)
-	if err == nil {
-		go badgerGC(db)
+	if err != nil {
+		return nil, err
 	}
-	return db, err
+	s.wg.Add(1)
+	go s.badgerGC(db)
+	return db, nil
 }
 
 const memLimitPath = "/sys/fs/cgroup/memory/memory.limit_in_bytes"
@@ -133,79 +142,54 @@ func getMemTotal() (uint64, error) {
 	return vm.Total, nil
 }
 
-func (s *Storage) startEvictTimer(interval time.Duration) error {
-	// load the total memory of the server
-	memTotal, err := getMemTotal()
-	if err != nil {
-		return err
-	}
+func (s *Storage) startEvictTimer(interval time.Duration, memTotal uint64) {
+	timer := time.NewTimer(interval)
+	defer func() {
+		timer.Stop()
+		s.wg.Done()
+	}()
+	for {
+		select {
+		case <-s.stop:
+			return
 
-	go func() {
-		ticker := time.NewTimer(interval)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			closing := func() bool {
-				s.closingMutex.RLock()
-				defer s.closingMutex.RUnlock()
-
-				return s.closing
-			}()
-
-			if closing {
-				return
-			}
-
-			// read the allocated memory used by application
+		case <-timer.C:
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
-
 			used := float64(m.Alloc) / float64(memTotal)
 
 			metrics.Gauge("ram_evictions_alloc_bytes", m.Alloc)
 			metrics.Gauge("ram_evictions_total_bytes", memTotal)
 			metrics.Gauge("ram_evictions_used_perc", used)
 
-			percent := s.cfg.CacheEvictVolume
-			if used > s.cfg.CacheEvictThreshold {
+			percent := s.config.CacheEvictVolume
+			if used > s.config.CacheEvictThreshold {
 				metrics.Timing("ram_evictions_timer", func() {
 					metrics.Count("ram_evictions", 1)
-
 					s.dimensions.Evict(percent / 4)
 					s.dicts.Evict(percent / 4)
 					s.segments.Evict(percent / 2)
 					s.trees.Evict(percent)
-
-					// force gc after eviction
 					runtime.GC()
 				})
 			}
-
-			// reset the timer
-			ticker.Reset(interval)
+			timer.Reset(interval)
 		}
-	}()
-
-	return nil
+	}
 }
 
-func (s *Storage) startWriteBackTimer(interval time.Duration) error {
-	go func() {
-		ticker := time.NewTimer(interval)
-		defer ticker.Stop()
+func (s *Storage) startWriteBackTimer(interval time.Duration) {
+	timer := time.NewTimer(interval)
+	defer func() {
+		timer.Stop()
+		s.wg.Done()
+	}()
+	for {
+		select {
+		case <-s.stop:
+			return
 
-		for range ticker.C {
-			closing := func() bool {
-				s.closingMutex.RLock()
-				defer s.closingMutex.RUnlock()
-
-				return s.closing
-			}()
-
-			if closing {
-				return
-			}
-
+		case <-timer.C:
 			metrics.Timing("ram_write_back_timer", func() {
 				metrics.Count("ram_write_back", 1)
 				s.dimensions.WriteBack()
@@ -214,52 +198,45 @@ func (s *Storage) startWriteBackTimer(interval time.Duration) error {
 				s.trees.WriteBack()
 				runtime.GC()
 			})
-			ticker.Reset(interval)
+			timer.Reset(interval)
 		}
-	}()
-
-	return nil
+	}
 }
 
-func New(cfg *config.Server) (*Storage, error) {
-	db, err := newBadger(cfg, "main")
-	if err != nil {
-		return nil, err
-	}
-	dbTrees, err := newBadger(cfg, "trees")
-	if err != nil {
-		return nil, err
-	}
-	dbDicts, err := newBadger(cfg, "dicts")
-	if err != nil {
-		return nil, err
-	}
-	dbDimensions, err := newBadger(cfg, "dimensions")
-	if err != nil {
-		return nil, err
-	}
-	dbSegments, err := newBadger(cfg, "segments")
-	if err != nil {
-		return nil, err
-	}
-
-	localProfilesDir := filepath.Join(cfg.StoragePath, "local-profiles")
-	if err = os.MkdirAll(localProfilesDir, 0o755); err != nil {
-		return nil, err
-	}
-
+func New(c *config.Server) (*Storage, error) {
 	s := &Storage{
-		cfg:              cfg,
-		labels:           labels.New(db),
-		db:               db,
-		dbTrees:          dbTrees,
-		dbDicts:          dbDicts,
-		dbDimensions:     dbDimensions,
-		dbSegments:       dbSegments,
-		localProfilesDir: localProfilesDir,
+		config:           c,
+		stop:             make(chan struct{}),
+		localProfilesDir: filepath.Join(c.StoragePath, "local-profiles"),
+	}
+	var err error
+	s.db, err = s.newBadger("main")
+	if err != nil {
+		return nil, err
+	}
+	s.labels = labels.New(s.db)
+	s.dbTrees, err = s.newBadger("trees")
+	if err != nil {
+		return nil, err
+	}
+	s.dbDicts, err = s.newBadger("dicts")
+	if err != nil {
+		return nil, err
+	}
+	s.dbDimensions, err = s.newBadger("dimensions")
+	if err != nil {
+		return nil, err
+	}
+	s.dbSegments, err = s.newBadger("segments")
+	if err != nil {
+		return nil, err
 	}
 
-	s.dimensions = cache.New(dbDimensions, "i:", "dimensions")
+	if err = os.MkdirAll(s.localProfilesDir, 0o755); err != nil {
+		return nil, err
+	}
+
+	s.dimensions = cache.New(s.dbDimensions, "i:", "dimensions")
 	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -270,7 +247,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		return dimension.New()
 	}
 
-	s.segments = cache.New(dbSegments, "s:", "segments")
+	s.segments = cache.New(s.dbSegments, "s:", "segments")
 	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*segment.Segment).Bytes()
 	}
@@ -283,7 +260,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		return segment.New()
 	}
 
-	s.dicts = cache.New(dbDicts, "d:", "dicts")
+	s.dicts = cache.New(s.dbDicts, "d:", "dicts")
 	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -294,7 +271,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(dbTrees, "t:", "trees")
+	s.trees = cache.New(s.dbTrees, "t:", "trees")
 	s.trees.Bytes = func(k string, v interface{}) ([]byte, error) {
 		key := FromTreeToMainKey(k)
 		d, err := s.dicts.Get(key)
@@ -304,7 +281,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		if d == nil { // key not found
 			return nil, nil
 		}
-		return v.(*tree.Tree).Bytes(d.(*dict.Dict), cfg.MaxNodesSerialization)
+		return v.(*tree.Tree).Bytes(d.(*dict.Dict), s.config.MaxNodesSerialization)
 	}
 	s.trees.FromBytes = func(k string, v []byte) (interface{}, error) {
 		key := FromTreeToMainKey(k)
@@ -321,13 +298,15 @@ func New(cfg *config.Server) (*Storage, error) {
 		return tree.New()
 	}
 
-	if err := s.startEvictTimer(evictInterval); err != nil {
-		return nil, fmt.Errorf("start evict timer: %v", err)
+	// load the total memory of the server
+	memTotal, err := getMemTotal()
+	if err != nil {
+		return nil, err
 	}
 
-	if err := s.startWriteBackTimer(evictInterval); err != nil {
-		return nil, fmt.Errorf("start WriteBack timer: %v", err)
-	}
+	s.wg.Add(2)
+	go s.startEvictTimer(evictInterval, memTotal)
+	go s.startWriteBackTimer(evictInterval)
 
 	return s, nil
 }
@@ -343,26 +322,13 @@ type PutInput struct {
 	AggregationType string
 }
 
-func (s *Storage) IsClosing() bool {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-
-	return s.closing
-}
-
 func (s *Storage) Put(po *PutInput) error {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-	if s.closing {
-		return ErrClosing
-	}
-
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
 
-	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
-	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
+	freeSpace, err := disk.FreeSpace(s.config.StoragePath)
+	if err == nil && freeSpace < s.config.OutOfSpaceThreshold {
 		return errOutOfSpace
 	}
 
@@ -433,7 +399,7 @@ func (s *Storage) Put(po *PutInput) error {
 			s.trees.Put(tk, treeClone)
 		}
 	})
-	s.segments.Put(string(sk), st)
+	s.segments.Put(sk, st)
 
 	return nil
 }
@@ -453,12 +419,6 @@ type GetOutput struct {
 }
 
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-	if s.closing {
-		return nil, ErrClosing
-	}
-
 	logrus.WithFields(logrus.Fields{
 		"startTime": gi.StartTime.String(),
 		"endTime":   gi.EndTime.String(),
@@ -555,12 +515,6 @@ type DeleteInput struct {
 }
 
 func (s *Storage) Delete(di *DeleteInput) error {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-	if s.closing {
-		return ErrClosing
-	}
-
 	logrus.WithFields(logrus.Fields{
 		"startTime": di.StartTime.String(),
 		"endTime":   di.EndTime.String(),
@@ -608,13 +562,8 @@ func (s *Storage) Delete(di *DeleteInput) error {
 }
 
 func (s *Storage) Close() error {
-	if s.IsClosing() {
-		return ErrAlreadyClosed
-	}
-
-	s.closingMutex.Lock()
-	s.closing = true
-	s.closingMutex.Unlock()
+	close(s.stop)
+	s.wg.Wait()
 
 	metrics.Timing("storage_caches_flush_timer", func() {
 		wg := sync.WaitGroup{}
@@ -651,7 +600,7 @@ func (s *Storage) GetKeys(cb func(_k string) bool) {
 
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
-		if key != "__name__" || !slices.StringContains(s.cfg.HideApplications, v) {
+		if key != "__name__" || !slices.StringContains(s.config.HideApplications, v) {
 			return cb(v)
 		}
 		return true
@@ -667,7 +616,7 @@ func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
 		"segments":   0,
 	}
 	for k := range res {
-		res[k] = dirSize(filepath.Join(s.cfg.StoragePath, k))
+		res[k] = dirSize(filepath.Join(s.config.StoragePath, k))
 	}
 	return res
 }
