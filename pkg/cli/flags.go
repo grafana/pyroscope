@@ -127,6 +127,17 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 		case reflect.TypeOf(time.Second):
 			valDur := fieldV.Addr().Interface().(*time.Duration)
 			val := (*durFlag)(valDur)
+
+			var defaultVal time.Duration
+			if defaultValStr != "" {
+				var err error
+				defaultVal, err = duration.ParseDuration(defaultValStr)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			*val = (durFlag)(defaultVal)
+
 			flagSet.Var(val, nameVal, descVal)
 		case reflect.TypeOf(bytesize.Byte):
 			val := fieldV.Addr().Interface().(*bytesize.ByteSize)

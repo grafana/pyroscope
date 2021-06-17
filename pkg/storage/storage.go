@@ -497,6 +497,8 @@ type DeleteInput struct {
 	Key *Key
 }
 
+var maxTime = time.Unix(1<<62, 999999999)
+
 func (s *Storage) Delete(di *DeleteInput) error {
 	s.closingMutex.RLock()
 	defer s.closingMutex.RUnlock()
@@ -525,6 +527,14 @@ func (s *Storage) Delete(di *DeleteInput) error {
 		st := stInt.(*segment.Segment)
 		if st == nil {
 			continue
+		}
+
+		st.Get(zeroTime, maxTime, func(depth int, _, _ uint64, t time.Time, _ *big.Rat) {
+			treeKey := skk.TreeKey(depth, t)
+			err = s.trees.Delete(treeKey)
+		})
+		if err != nil {
+			return err
 		}
 
 		s.deleteSegmentAndRelatedData(skk)

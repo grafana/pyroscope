@@ -58,9 +58,7 @@ var _ = Describe("storage package", func() {
 					})
 
 					err := s.Delete(&DeleteInput{
-						StartTime: st,
-						EndTime:   et,
-						Key:       key,
+						Key: key,
 					})
 					Expect(err).ToNot(HaveOccurred())
 
@@ -108,9 +106,7 @@ var _ = Describe("storage package", func() {
 					})
 
 					err := s.Delete(&DeleteInput{
-						StartTime: st,
-						EndTime:   et,
-						Key:       key,
+						Key: key,
 					})
 					Expect(err).ToNot(HaveOccurred())
 
@@ -149,9 +145,7 @@ var _ = Describe("storage package", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					err = s.Delete(&DeleteInput{
-						StartTime: st,
-						EndTime:   et,
-						Key:       key,
+						Key: key,
 					})
 					Expect(err).ToNot(HaveOccurred())
 
@@ -270,7 +264,7 @@ var _ = Describe("storage package", func() {
 					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
-			Context("evict cache items periodly", func() {
+			Context("evict cache items periodically", func() {
 				It("works correctly", func() {
 					tree := tree.New()
 
