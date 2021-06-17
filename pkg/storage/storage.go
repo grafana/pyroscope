@@ -3,20 +3,15 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
-	"github.com/pyroscope-io/pyroscope/pkg/util/file"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
-	"github.com/shirou/gopsutil/mem"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
@@ -36,7 +31,11 @@ import (
 var ErrClosing = errors.New("the db is in closing state")
 var ErrAlreadyClosed = errors.New("the db is already closed")
 var errOutOfSpace = errors.New("running out of space")
+var errRetention = errors.New("could not write because of retention settings")
+
 var evictInterval = 1 * time.Second
+var writeBackInterval = 1 * time.Second
+var retentionInterval = 1 * time.Minute
 
 type Storage struct {
 	closingMutex sync.RWMutex
@@ -95,130 +94,6 @@ func newBadger(cfg *config.Server, name string) (*badger.DB, error) {
 		go badgerGC(db)
 	}
 	return db, err
-}
-
-const memLimitPath = "/sys/fs/cgroup/memory/memory.limit_in_bytes"
-
-func getCgroupMemLimit() (uint64, error) {
-	f, err := os.Open(memLimitPath)
-	if err != nil {
-		return 0, err
-	}
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		return 0, err
-	}
-	r, err := strconv.Atoi(strings.TrimSuffix(string(b), "\n"))
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(r), nil
-}
-
-func getMemTotal() (uint64, error) {
-	if file.Exists(memLimitPath) {
-		v, err := getCgroupMemLimit()
-		if err == nil {
-			return v, nil
-		}
-		logrus.WithError(err).Warn("Could not read cgroup memory limit")
-	}
-
-	vm, err := mem.VirtualMemory()
-	if err != nil {
-		return 0, err
-	}
-
-	return vm.Total, nil
-}
-
-func (s *Storage) startEvictTimer(interval time.Duration) error {
-	// load the total memory of the server
-	memTotal, err := getMemTotal()
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		ticker := time.NewTimer(interval)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			closing := func() bool {
-				s.closingMutex.RLock()
-				defer s.closingMutex.RUnlock()
-
-				return s.closing
-			}()
-
-			if closing {
-				return
-			}
-
-			// read the allocated memory used by application
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-
-			used := float64(m.Alloc) / float64(memTotal)
-
-			metrics.Gauge("ram_evictions_alloc_bytes", m.Alloc)
-			metrics.Gauge("ram_evictions_total_bytes", memTotal)
-			metrics.Gauge("ram_evictions_used_perc", used)
-
-			percent := s.cfg.CacheEvictVolume
-			if used > s.cfg.CacheEvictThreshold {
-				metrics.Timing("ram_evictions_timer", func() {
-					metrics.Count("ram_evictions", 1)
-
-					s.dimensions.Evict(percent / 4)
-					s.dicts.Evict(percent / 4)
-					s.segments.Evict(percent / 2)
-					s.trees.Evict(percent)
-
-					// force gc after eviction
-					runtime.GC()
-				})
-			}
-
-			// reset the timer
-			ticker.Reset(interval)
-		}
-	}()
-
-	return nil
-}
-
-func (s *Storage) startWriteBackTimer(interval time.Duration) error {
-	go func() {
-		ticker := time.NewTimer(interval)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			closing := func() bool {
-				s.closingMutex.RLock()
-				defer s.closingMutex.RUnlock()
-
-				return s.closing
-			}()
-
-			if closing {
-				return
-			}
-
-			metrics.Timing("ram_write_back_timer", func() {
-				metrics.Count("ram_write_back", 1)
-				s.dimensions.WriteBack()
-				s.segments.WriteBack()
-				s.dicts.WriteBack()
-				s.trees.WriteBack()
-				runtime.GC()
-			})
-			ticker.Reset(interval)
-		}
-	}()
-
-	return nil
 }
 
 func New(cfg *config.Server) (*Storage, error) {
@@ -325,7 +200,11 @@ func New(cfg *config.Server) (*Storage, error) {
 		return nil, fmt.Errorf("start evict timer: %v", err)
 	}
 
-	if err := s.startWriteBackTimer(evictInterval); err != nil {
+	if err := s.startWriteBackTimer(writeBackInterval); err != nil {
+		return nil, fmt.Errorf("start WriteBack timer: %v", err)
+	}
+
+	if err := s.startRetentionTimer(retentionInterval); err != nil {
 		return nil, fmt.Errorf("start WriteBack timer: %v", err)
 	}
 
@@ -350,6 +229,8 @@ func (s *Storage) IsClosing() bool {
 	return s.closing
 }
 
+var OutOfSpaceThreshold = 512 * bytesize.MB
+
 func (s *Storage) Put(po *PutInput) error {
 	s.closingMutex.RLock()
 	defer s.closingMutex.RUnlock()
@@ -361,9 +242,12 @@ func (s *Storage) Put(po *PutInput) error {
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
 
-	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
-	if err == nil && freeSpace < s.cfg.OutOfSpaceThreshold {
-		return errOutOfSpace
+	if err := s.performFreeSpaceCheck(); err != nil {
+		return err
+	}
+
+	if po.StartTime.Before(s.lifetimeBasedRetentionThreshold()) {
+		return errRetention
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -374,6 +258,7 @@ func (s *Storage) Put(po *PutInput) error {
 		"units":           po.Units,
 		"aggregationType": po.AggregationType,
 	}).Debug("storage.Put")
+
 	for k, v := range po.Key.labels {
 		s.labels.Put(k, v)
 	}
@@ -548,11 +433,71 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}, nil
 }
 
-type DeleteInput struct {
-	StartTime time.Time
-	EndTime   time.Time
-	Key       *Key
+func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) error {
+	nameKey := "__name__"
+
+	var dimensions []*dimension.Dimension
+	var err error
+	s.labels.GetValues(nameKey, func(v string) bool {
+		dmInt, getErr := s.dimensions.Get(nameKey + ":" + v)
+		dm, _ := dmInt.(*dimension.Dimension)
+		err = getErr
+		dimensions = append(dimensions, dm)
+		return err == nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	segmentKeys := dimension.Union(dimensions...)
+
+	for _, rawSk := range segmentKeys {
+		sk, _ := ParseKey(string(rawSk))
+
+		stInt, err := s.segments.Get(sk.SegmentKey())
+		if err != nil {
+			return err
+		}
+		st := stInt.(*segment.Segment)
+		if err := cb(sk, st); err != nil {
+			return err
+		}
+	}
+	return nil
 }
+
+func (s *Storage) DeleteDataBefore(threshold time.Time) error {
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
+	if s.closing {
+		return ErrClosing
+	}
+
+	return s.iterateOverAllSegments(func(sk *Key, st *segment.Segment) error {
+		var err error
+		deletedRoot := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
+			tk := sk.TreeKey(depth, t)
+			if delErr := s.trees.Delete(tk); delErr != nil {
+				err = delErr
+			}
+		})
+		if err != nil {
+			return err
+		}
+
+		if deletedRoot {
+			s.deleteSegmentAndRelatedData(sk)
+		}
+		return nil
+	})
+}
+
+type DeleteInput struct {
+	Key *Key
+}
+
+var maxTime = time.Unix(1<<62, 999999999)
 
 func (s *Storage) Delete(di *DeleteInput) error {
 	s.closingMutex.RLock()
@@ -560,12 +505,6 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	if s.closing {
 		return ErrClosing
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"startTime": di.StartTime.String(),
-		"endTime":   di.EndTime.String(),
-		"key":       di.Key.Normalized(),
-	}).Info("storage.Delete")
 
 	dimensions := []*dimension.Dimension{}
 	for k, v := range di.Key.labels {
@@ -580,7 +519,6 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	segmentKeys := dimension.Intersection(dimensions...)
 
 	for _, sk := range segmentKeys {
-		// TODO: refactor, store `Key`s in dimensions
 		skk, _ := ParseKey(string(sk))
 		stInt, err := s.segments.Get(skk.SegmentKey())
 		if err != nil {
@@ -591,19 +529,32 @@ func (s *Storage) Delete(di *DeleteInput) error {
 			continue
 		}
 
-		st.Get(di.StartTime, di.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-			k := skk.TreeKey(depth, t)
-			s.trees.Delete(k)
-			s.dicts.Delete(FromTreeToMainKey(k))
+		st.Get(zeroTime, maxTime, func(depth int, _, _ uint64, t time.Time, _ *big.Rat) {
+			treeKey := skk.TreeKey(depth, t)
+			err = s.trees.Delete(treeKey)
 		})
+		if err != nil {
+			return err
+		}
 
-		s.segments.Delete(skk.SegmentKey())
+		s.deleteSegmentAndRelatedData(skk)
 	}
 
-	for k, v := range di.Key.labels {
-		s.dimensions.Delete(k + ":" + v)
-	}
+	return nil
+}
 
+func (s *Storage) deleteSegmentAndRelatedData(key *Key) error {
+	s.dicts.Delete(key.DictKey())
+	s.segments.Delete(key.SegmentKey())
+
+	for k, v := range key.labels {
+		dInt, err := s.dimensions.Get(k + ":" + v)
+		if err != nil {
+			return err
+		}
+		d := dInt.(*dimension.Dimension)
+		d.Delete(dimension.Key(key.SegmentKey()))
+	}
 	return nil
 }
 
@@ -692,4 +643,24 @@ func (s *Storage) CacheStats() map[string]interface{} {
 		"dicts_size":      s.dicts.Size(),
 		"trees_size":      s.trees.Size(),
 	}
+}
+
+var zeroTime time.Time
+
+func (s *Storage) lifetimeBasedRetentionThreshold() time.Time {
+	var t time.Time
+	if s.cfg.Retention != 0 {
+		t = time.Now().Add(-1 * s.cfg.Retention)
+	}
+	return t
+}
+
+func (s *Storage) performFreeSpaceCheck() error {
+	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
+	if err == nil {
+		if freeSpace < OutOfSpaceThreshold {
+			return errOutOfSpace
+		}
+	}
+	return nil
 }

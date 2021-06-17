@@ -72,6 +72,8 @@ func (ctrl *Controller) Start() error {
 		mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 	}
 
+	mux.HandleFunc("/healthz", ctrl.healthz)
+
 	mux.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
 	mux.HandleFunc("/ingest", ctrl.ingestHandler)
 	mux.HandleFunc("/render", ctrl.renderHandler)
@@ -112,6 +114,7 @@ func (ctrl *Controller) Start() error {
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
 	}
+
 	if err := ctrl.httpServer.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
 			return nil
