@@ -26,7 +26,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		panic(err) // TODO: handle
 	}
 
-	gOut, err := ctrl.s.Get(&storage.GetInput{
+	gOut, err := ctrl.storage.Get(&storage.GetInput{
 		StartTime: startTime,
 		EndTime:   endTime,
 		Key:       storageKey,
@@ -43,7 +43,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	maxNodes := ctrl.cfg.MaxNodesRender
+	maxNodes := ctrl.config.MaxNodesRender
 	if mn, err := strconv.Atoi(q.Get("max-nodes")); err == nil && mn > 0 {
 		maxNodes = mn
 	}

@@ -34,7 +34,7 @@ func (s *Storage) periodicTask(interval time.Duration, cb func()) {
 
 func (s *Storage) badgerGCTask(db *badger.DB) func() {
 	return func() {
-		logrus.Info("starting badger garbage collection")
+		logrus.Debug("starting badger garbage collection")
 		for {
 			if err := db.RunValueLogGC(0.7); err != nil {
 				return
@@ -46,7 +46,6 @@ func (s *Storage) badgerGCTask(db *badger.DB) func() {
 func (s *Storage) evictionTask(memTotal uint64) func() {
 	var m runtime.MemStats
 	return func() {
-		logrus.Info("starting cache eviction")
 		runtime.ReadMemStats(&m)
 		used := float64(m.Alloc) / float64(memTotal)
 		metrics.Gauge("evictions_alloc_bytes", m.Alloc)
@@ -79,7 +78,7 @@ func (s *Storage) writeBackTask() {
 }
 
 func (s *Storage) retentionTask() {
-	logrus.Info("starting retention task")
+	logrus.Debug("starting retention task")
 	metrics.Timing("retention_timer", func() {
 		metrics.Count("retention_count", 1)
 		if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
