@@ -368,10 +368,7 @@ func (s *Storage) Put(po *PutInput) error {
 		return err
 	}
 
-		return errOutOfSpace
-	}
-
-	if po.StartTime.Before(s.CurrentRetentionThreshold()) {
+	if po.StartTime.Before(s.lifetimeBasedRetentionThreshold()) {
 		return errRetention
 	}
 
@@ -772,14 +769,15 @@ func (s *Storage) CacheStats() map[string]interface{} {
 	}
 }
 
-func (s *Storage) CurrentRetentionThreshold() time.Time {
-	// TODO: add retention threshold calculated based on storage available
-	var retentionLifetimeThreshold time.Time
-	if s.cfg.RetentionMaxLifetime != 0 {
-		retentionLifetimeThreshold = time.Now().Add(-1 * s.cfg.RetentionMaxLifetime)
-	}
+var zeroTime time.Time
 
-	var retentionSpaceThreshold time.Time
+func (s *Storage) lifetimeBasedRetentionThreshold() time.Time {
+	var t time.Time
+	if s.cfg.RetentionMaxLifetime != 0 {
+		t = time.Now().Add(-1 * s.cfg.RetentionMaxLifetime)
+	}
+	return t
+}
 
 func (s *Storage) performFreeSpaceCheck() error {
 	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
