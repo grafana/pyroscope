@@ -488,6 +488,7 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 			return err
 		}
 
+		logrus.Info("deletedRoot", deletedRoot)
 		if deletedRoot {
 			s.deleteSegmentAndRelatedData(sk)
 		}
@@ -496,9 +497,7 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 }
 
 type DeleteInput struct {
-	StartTime time.Time
-	EndTime   time.Time
-	Key       *Key
+	Key *Key
 }
 
 func (s *Storage) Delete(di *DeleteInput) error {
@@ -509,9 +508,7 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"startTime": di.StartTime.String(),
-		"endTime":   di.EndTime.String(),
-		"key":       di.Key.Normalized(),
+		"key": di.Key.Normalized(),
 	}).Info("storage.Delete")
 
 	dimensions := []*dimension.Dimension{}
@@ -544,7 +541,9 @@ func (s *Storage) Delete(di *DeleteInput) error {
 }
 
 func (s *Storage) deleteSegmentAndRelatedData(key *Key) error {
+	logrus.Info("s.dicts.Delete", key.DictKey())
 	s.dicts.Delete(key.DictKey())
+	logrus.Info("s.segments.Delete", key.SegmentKey())
 	s.segments.Delete(key.SegmentKey())
 
 	for k, v := range key.labels {
@@ -553,6 +552,7 @@ func (s *Storage) deleteSegmentAndRelatedData(key *Key) error {
 			return err
 		}
 		d := dInt.(*dimension.Dimension)
+		logrus.Info("dimension key delete", d, key.SegmentKey())
 		d.Delete(dimension.Key(key.SegmentKey()))
 	}
 	return nil
