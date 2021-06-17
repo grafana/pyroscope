@@ -256,6 +256,7 @@ type Addon struct {
 }
 
 // TODO: simplify arguments
+// TODO: validate st < et
 func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, r *big.Rat, addons []Addon)) {
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -271,6 +272,7 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 }
 
 // TODO: simplify arguments
+// TODO: validate st < et
 func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint64, t time.Time, r *big.Rat)) {
 	s.m.RLock()
 	defer s.m.RUnlock()
@@ -322,6 +324,35 @@ func (s *Segment) SampleRate() uint32 {
 func (s *Segment) Units() string {
 	return s.units
 }
+
 func (s *Segment) AggregationType() string {
 	return s.aggregationType
+}
+
+var zeroTime time.Time
+
+func (s *Segment) StartTime() time.Time {
+	if s.root == nil {
+		return zeroTime
+	}
+	n := s.root
+
+	for {
+		if len(n.children) == 0 {
+			return n.time
+		}
+
+		oldN := n
+
+		for _, child := range n.children {
+			if child != nil {
+				n = child
+				break
+			}
+		}
+
+		if n == oldN {
+			return n.time
+		}
+	}
 }
