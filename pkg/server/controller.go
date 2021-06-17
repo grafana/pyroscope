@@ -58,6 +58,8 @@ func New(cfg *config.Server, s *storage.Storage) (*Controller, error) {
 		mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 	}
 
+	mux.HandleFunc("/healthz", ctrl.healthz)
+
 	mux.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
 	mux.HandleFunc("/ingest", ctrl.ingestHandler)
 	mux.HandleFunc("/render", ctrl.renderHandler)

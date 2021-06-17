@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"log"
 	"math/big"
+	"math/rand"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,6 +54,115 @@ var _ = Describe("stree", func() {
 			It("get doesn't fail", func() {
 				s := New()
 				Expect(doGet(s, testing.SimpleTime(0), testing.SimpleTime(39))).To(HaveLen(0))
+			})
+		})
+	})
+
+	Context("StartTime", func() {
+		Context("empty segment", func() {
+			It("returns zero time", func() {
+				s := New()
+				Expect(s.StartTime().IsZero()).To(BeTrue())
+			})
+		})
+
+		Context("fuzz test", func() {
+			It("always returns the right values", func() {
+				r := rand.New(rand.NewSource(6231912))
+
+				// doesn't work with minTime = 0
+				minTime := 1023886146
+				maxTime := 1623886146
+
+				runs := 100
+				maxInsertionsPerTree := 100
+
+				for i := 0; i < runs; i++ {
+					s := New()
+					minSt := maxTime
+					for j := 0; j < 1+r.Intn(maxInsertionsPerTree); j++ {
+						st := (minTime + r.Intn(maxTime-minTime)) / 10 * 10
+						if st < minSt {
+							minSt = st
+						}
+						et := st + 10 + r.Intn(1000)
+						s.Put(testing.SimpleTime(st), testing.SimpleTime(et), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+					}
+
+					Expect(s.StartTime()).To(Equal(testing.SimpleTime(minSt)))
+				}
+			})
+		})
+	})
+
+	Context("DeleteDataBefore", func() {
+		Context("empty segment", func() {
+			It("returns true and no keys", func() {
+				s := New()
+
+				keys := []string{}
+				r := s.DeleteDataBefore(testing.SimpleUTime(19), func(depth int, t time.Time) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+				})
+
+				Expect(r).To(BeTrue())
+				Expect(keys).To(BeEmpty())
+			})
+		})
+
+		Context("simple test 1", func() {
+			It("correctly deletes data", func() {
+				s := New()
+				s.Put(testing.SimpleUTime(10), testing.SimpleUTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+
+				keys := []string{}
+				r := s.DeleteDataBefore(testing.SimpleUTime(21), func(depth int, t time.Time) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+				})
+
+				Expect(r).To(BeFalse())
+				Expect(keys).To(ConsistOf([]string{
+					"0:10",
+				}))
+			})
+		})
+
+		Context("simple test 3", func() {
+			It("correctly deletes data", func() {
+				s := New()
+				s.Put(testing.SimpleUTime(10), testing.SimpleUTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleUTime(1020), testing.SimpleUTime(1029), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+
+				keys := []string{}
+				r := s.DeleteDataBefore(testing.SimpleUTime(21), func(depth int, t time.Time) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+				})
+
+				Expect(r).To(BeFalse())
+				Expect(keys).To(ConsistOf([]string{
+					"0:10",
+				}))
+			})
+		})
+
+		Context("simple test 2", func() {
+			It("correctly deletes data", func() {
+				s := New()
+				s.Put(testing.SimpleUTime(10), testing.SimpleUTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+
+				keys := []string{}
+				r := s.DeleteDataBefore(testing.SimpleUTime(200), func(depth int, t time.Time) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+				})
+
+				Expect(r).To(BeTrue())
+				Expect(keys).To(ConsistOf([]string{
+					"1:0",
+					"0:10",
+					"0:20",
+				}))
 			})
 		})
 	})

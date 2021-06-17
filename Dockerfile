@@ -36,8 +36,8 @@ RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a
 
 FROM php:7.3-fpm-alpine as phpspy-builder
 RUN apk add --update alpine-sdk
-RUN git clone https://github.com/pyroscope-io/phpspy.git
-RUN cd phpspy && USE_ZEND=1 make
+RUN git clone https://github.com/pyroscope-io/phpspy.git && cd phpspy && git checkout 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
+RUN cd phpspy && make CFLAGS="-DUSE_DIRECT"
 
 #                     _
 #                    | |

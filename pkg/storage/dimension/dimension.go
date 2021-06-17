@@ -39,6 +39,20 @@ func (d *Dimension) Insert(key Key) {
 	}
 }
 
+func (d *Dimension) Delete(key Key) {
+	d.m.Lock()
+	defer d.m.Unlock()
+
+	i := sort.Search(len(d.keys), func(i int) bool {
+		return bytes.Compare(d.keys[i], key) >= 0
+	})
+
+	if i < len(d.keys) && bytes.Compare(d.keys[i], key) == 0 {
+		d.keys = append(d.keys[:i], d.keys[i+1:]...)
+		return
+	}
+}
+
 type advanceResult int
 
 const (
@@ -143,4 +157,30 @@ func Intersection(input ...*Dimension) []Key {
 			}
 		}
 	}
+}
+
+// TODO: we need to take advantage of the fact that these are sorted arrays
+// Current implementation might be taking too much memory
+func Union(input ...*Dimension) []Key {
+	if len(input) == 0 {
+		return []Key{}
+	} else if len(input) == 1 {
+		return input[0].keys
+	}
+
+	result := []Key{}
+
+	isExists := map[string]bool{}
+
+	for _, v := range input {
+		for _, k := range v.keys {
+			if !isExists[string(k)] {
+				result = append(result, k)
+			}
+
+			isExists[string(k)] = true
+		}
+	}
+
+	return result
 }
