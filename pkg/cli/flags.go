@@ -10,6 +10,7 @@ import (
 	"github.com/iancoleman/strcase"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
+	"github.com/pyroscope-io/pyroscope/pkg/util/duration"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/sirupsen/logrus"
 )
@@ -48,6 +49,24 @@ func (tf *timeFlag) Set(value string) error {
 	t := (*time.Time)(tf)
 	b, _ := t2.MarshalBinary()
 	t.UnmarshalBinary(b)
+
+	return nil
+}
+
+type durFlag time.Duration
+
+func (df *durFlag) String() string {
+	v := time.Duration(*df)
+	return v.String()
+}
+
+func (df *durFlag) Set(value string) error {
+	d, err := duration.ParseDuration(value)
+	if err != nil {
+		return err
+	}
+
+	*df = durFlag(d)
 
 	return nil
 }
@@ -106,18 +125,9 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 			val := (*timeFlag)(valTime)
 			flagSet.Var(val, nameVal, descVal)
 		case reflect.TypeOf(time.Second):
-			val := fieldV.Addr().Interface().(*time.Duration)
-			var defaultVal time.Duration
-			if defaultValStr == "" {
-				defaultVal = time.Duration(0)
-			} else {
-				var err error
-				defaultVal, err = time.ParseDuration(defaultValStr)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-			}
-			flagSet.DurationVar(val, nameVal, defaultVal, descVal)
+			valDur := fieldV.Addr().Interface().(*time.Duration)
+			val := (*durFlag)(valDur)
+			flagSet.Var(val, nameVal, descVal)
 		case reflect.TypeOf(bytesize.Byte):
 			val := fieldV.Addr().Interface().(*bytesize.ByteSize)
 			var defaultVal bytesize.ByteSize
