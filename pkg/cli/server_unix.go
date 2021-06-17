@@ -36,7 +36,7 @@ func startServer(cfg *config.Server) error {
 
 	// uploading the server profile self
 	stopSelfProfilingChan := make(chan struct{})
-	if err := agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger(), stopSelfProfilingChan); err != nil {
+	if err := agent.SelfProfile(100, u, "pyroscope.server", logrus.StandardLogger(), stopSelfProfilingChan); err != nil {
 		return fmt.Errorf("start self profile: %v", err)
 	}
 
