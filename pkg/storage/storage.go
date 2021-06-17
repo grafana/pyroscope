@@ -10,11 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
-
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
@@ -24,17 +23,19 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
+	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
-	"github.com/sirupsen/logrus"
 )
 
 var (
 	errOutOfSpace = errors.New("running out of space")
-	errRetention = errors.New("could not write because of retention settings")
+	errRetention  = errors.New("could not write because of retention settings")
 
-	evictInterval = time.Second
+	evictInterval     = time.Second
 	writeBackInterval = time.Second
 	retentionInterval = time.Minute
+	gcInterval        = 5 * time.Minute
 )
 
 type Storage struct {
@@ -60,26 +61,6 @@ type Storage struct {
 	wg   sync.WaitGroup
 }
 
-func (s *Storage) badgerGC(db *badger.DB) {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer func() {
-		ticker.Stop()
-		s.wg.Done()
-	}()
-	for {
-		select {
-		case <-s.stop:
-			return
-		case <-ticker.C:
-		again:
-			err := db.RunValueLogGC(0.7)
-			if err == nil {
-				goto again
-			}
-		}
-	}
-}
-
 func (s *Storage) newBadger(name string) (*badger.DB, error) {
 	badgerPath := filepath.Join(s.config.StoragePath, name)
 	err := os.MkdirAll(badgerPath, 0o755)
@@ -101,7 +82,7 @@ func (s *Storage) newBadger(name string) (*badger.DB, error) {
 		return nil, err
 	}
 	s.wg.Add(1)
-	go s.badgerGC(db)
+	go s.periodicTask(gcInterval, s.badgerGCTask(db))
 	return db, nil
 }
 
@@ -200,17 +181,17 @@ func New(c *config.Server) (*Storage, error) {
 		return tree.New()
 	}
 
-	// load the total memory of the server
 	memTotal, err := getMemTotal()
 	if err != nil {
 		return nil, err
 	}
 
-	s.wg.Add(3)
-	go s.startEvictTimer(evictInterval, memTotal)
-	go s.startWriteBackTimer(evictInterval)
-	if err := s.startRetentionTimer(retentionInterval); err != nil {
-		return nil, fmt.Errorf("start WriteBack timer: %v", err)
+	s.wg.Add(2)
+	go s.periodicTask(evictInterval, s.evictionTask(memTotal))
+	go s.periodicTask(writeBackInterval, s.writeBackTask)
+	if s.config.Retention > 0 {
+		s.wg.Add(1)
+		go s.periodicTask(retentionInterval, s.retentionTask)
 	}
 
 	return s, nil
@@ -454,12 +435,6 @@ func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) 
 }
 
 func (s *Storage) DeleteDataBefore(threshold time.Time) error {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-	if s.closing {
-		return ErrClosing
-	}
-
 	return s.iterateOverAllSegments(func(sk *Key, st *segment.Segment) error {
 		var err error
 		deletedRoot := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
@@ -624,8 +599,8 @@ var zeroTime time.Time
 
 func (s *Storage) lifetimeBasedRetentionThreshold() time.Time {
 	var t time.Time
-	if s.cfg.Retention != 0 {
-		t = time.Now().Add(-1 * s.cfg.Retention)
+	if s.config.Retention != 0 {
+		t = time.Now().Add(-1 * s.config.Retention)
 	}
 	return t
 }
@@ -638,65 +613,4 @@ func (s *Storage) performFreeSpaceCheck() error {
 		}
 	}
 	return nil
-}
-
-func (s *Storage) startEvictTimer(interval time.Duration, memTotal uint64) {
-	timer := time.NewTimer(interval)
-	defer func() {
-		timer.Stop()
-		s.wg.Done()
-	}()
-	for {
-		select {
-		case <-s.stop:
-			return
-
-		case <-timer.C:
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
-			used := float64(m.Alloc) / float64(memTotal)
-
-			metrics.Gauge("ram_evictions_alloc_bytes", m.Alloc)
-			metrics.Gauge("ram_evictions_total_bytes", memTotal)
-			metrics.Gauge("ram_evictions_used_perc", used)
-
-			percent := s.config.CacheEvictVolume
-			if used > s.config.CacheEvictThreshold {
-				metrics.Timing("ram_evictions_timer", func() {
-					metrics.Count("ram_evictions", 1)
-					s.dimensions.Evict(percent / 4)
-					s.dicts.Evict(percent / 4)
-					s.segments.Evict(percent / 2)
-					s.trees.Evict(percent)
-					runtime.GC()
-				})
-			}
-			timer.Reset(interval)
-		}
-	}
-}
-
-func (s *Storage) startWriteBackTimer(interval time.Duration) {
-	timer := time.NewTimer(interval)
-	defer func() {
-		timer.Stop()
-		s.wg.Done()
-	}()
-	for {
-		select {
-		case <-s.stop:
-			return
-
-		case <-timer.C:
-			metrics.Timing("ram_write_back_timer", func() {
-				metrics.Count("ram_write_back", 1)
-				s.dimensions.WriteBack()
-				s.segments.WriteBack()
-				s.dicts.WriteBack()
-				s.trees.WriteBack()
-				runtime.GC()
-			})
-			timer.Reset(interval)
-		}
-	}
 }

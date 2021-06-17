@@ -27,27 +27,28 @@ func startServer(c *config.Server) error {
 		return fmt.Errorf("could not initialize server: %w", err)
 	}
 
+	var stopTime time.Time
+	s := make(chan os.Signal, 1)
+	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)
+
 	exited := make(chan error)
 	go func() {
 		exited <- srv.Start()
 		close(exited)
 	}()
 
-	var stopTime time.Time
-	s := make(chan os.Signal, 1)
-	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)
 	select {
 	case <-s:
 		logger.Info("stopping server")
 		stopTime = time.Now()
 		srv.Stop()
 		err = <-exited
-		if err == nil {
-			logger.WithField("duration", time.Since(stopTime)).Info("server stopped gracefully")
-			return nil
+		if err != nil {
+			logger.WithError(err).Error("failed to stop server gracefully")
+			return err
 		}
-		logger.WithError(err).Error("failed to stop server gracefully")
-		return err
+		logger.WithField("duration", time.Since(stopTime)).Info("server stopped gracefully")
+		return nil
 
 	case err = <-exited:
 		if err == nil {

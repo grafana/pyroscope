@@ -58,7 +58,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		AppName:        "pyroscope.server",
 		ProfilingTypes: types.DefaultProfileTypes,
 		SpyName:        types.GoSpy,
-		SampleRate:     uint32(c.SampleRate),
+		SampleRate:     100,
 		UploadRate:     10 * time.Second,
 	}
 	svc.selfProfiling = agent.NewSession(selfProfilingConfig, svc.logger)
@@ -76,9 +76,6 @@ func (svc *serverService) Start() error {
 		// if you ever change this line, make sure to update this homebrew test:
 		// https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
 		svc.logger.Info("starting HTTP server")
-		// Anything that is run in the errorgroup should be ready that Stop may
-		// be called prior Start or concurrently: underlying http server will
-		// return nil in this particular case.
 		return svc.controller.Start()
 	})
 
@@ -126,7 +123,7 @@ func (svc *serverService) stop() {
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
-	svc.logger.Info("Stop storage")
+	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
 	}
