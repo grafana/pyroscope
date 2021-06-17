@@ -364,8 +364,10 @@ func (s *Storage) Put(po *PutInput) error {
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
 
-	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
-	if err == nil && freeSpace < OutOfSpaceThreshold {
+	if err := s.performFreeSpaceCheck(); err != nil {
+		return err
+	}
+
 		return errOutOfSpace
 	}
 
@@ -779,5 +781,12 @@ func (s *Storage) CurrentRetentionThreshold() time.Time {
 
 	var retentionSpaceThreshold time.Time
 
-	return retentionLifetimeThreshold
+func (s *Storage) performFreeSpaceCheck() error {
+	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
+	if err == nil {
+		if freeSpace < OutOfSpaceThreshold {
+			return errOutOfSpace
+		}
+	}
+	return nil
 }

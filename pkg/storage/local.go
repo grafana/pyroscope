@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 	"github.com/sirupsen/logrus"
 )
@@ -89,9 +88,8 @@ func (s *Storage) CollectLocalProfiles() error {
 
 func (s *Storage) PutLocal(po *PutInput) error {
 	logrus.Debug("PutLocal")
-	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
-	if err == nil && freeSpace < OutOfSpaceThreshold {
-		return errOutOfSpace
+	if err := s.performFreeSpaceCheck(); err != nil {
+		return err
 	}
 
 	name := fmt.Sprintf("%d-%s.profile", po.StartTime.Unix(), po.Key.AppName())
