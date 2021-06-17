@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/big"
 	"math/rand"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,6 +91,78 @@ var _ = Describe("stree", func() {
 
 					Expect(s.StartTime()).To(Equal(testing.SimpleTime(minSt)))
 				}
+			})
+		})
+	})
+
+	Context("DeleteDataBefore", func() {
+		Context("empty segment", func() {
+			It("returns true and no keys", func() {
+				s := New()
+
+				keys := []string{}
+				r := s.DeleteDataBefore(testing.SimpleUTime(19), func(depth int, t time.Time) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+				})
+
+				Expect(r).To(BeTrue())
+				Expect(keys).To(BeEmpty())
+			})
+		})
+
+		Context("simple test 1", func() {
+			It("correctly deletes data", func() {
+				s := New()
+				s.Put(testing.SimpleUTime(10), testing.SimpleUTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+
+				keys := []string{}
+				r := s.DeleteDataBefore(testing.SimpleUTime(21), func(depth int, t time.Time) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+				})
+
+				Expect(r).To(BeFalse())
+				Expect(keys).To(ConsistOf([]string{
+					"0:10",
+				}))
+			})
+		})
+
+		Context("simple test 3", func() {
+			It("correctly deletes data", func() {
+				s := New()
+				s.Put(testing.SimpleUTime(10), testing.SimpleUTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleUTime(1020), testing.SimpleUTime(1029), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+
+				keys := []string{}
+				r := s.DeleteDataBefore(testing.SimpleUTime(21), func(depth int, t time.Time) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+				})
+
+				Expect(r).To(BeFalse())
+				Expect(keys).To(ConsistOf([]string{
+					"0:10",
+				}))
+			})
+		})
+
+		Context("simple test 2", func() {
+			It("correctly deletes data", func() {
+				s := New()
+				s.Put(testing.SimpleUTime(10), testing.SimpleUTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+
+				keys := []string{}
+				r := s.DeleteDataBefore(testing.SimpleUTime(200), func(depth int, t time.Time) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+				})
+
+				Expect(r).To(BeTrue())
+				Expect(keys).To(ConsistOf([]string{
+					"1:0",
+					"0:10",
+					"0:20",
+				}))
 			})
 		})
 	})

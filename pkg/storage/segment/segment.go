@@ -28,9 +28,13 @@ func (sn *streeNode) relationship(st, et time.Time) rel {
 	return relationship(sn.time, t2, st, et)
 }
 
-func (sn *streeNode) retentionRelationship(rt time.Time) rel {
+func (sn *streeNode) isBefore(rt time.Time) bool {
 	t2 := sn.time.Add(durations[sn.depth])
-	return retentionRelationship(sn.time, t2, rt)
+	return !t2.After(rt)
+}
+
+func (sn *streeNode) isAfter(rt time.Time) bool {
+	return sn.time.After(rt)
 }
 
 func (sn *streeNode) endTime() time.Time {
@@ -155,22 +159,26 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 	}
 }
 
+// deleteDataBefore returns true if the node should be deleted
 func (sn *streeNode) deleteDataBefore(retentionThreshold time.Time, cb func(depth int, t time.Time)) bool {
-	hasData := false
-	rel := sn.retentionRelationship(retentionThreshold)
-	if sn.present && (rel == inside || rel == match) {
-		cb(sn.depth, sn.time)
+	if !sn.isAfter(retentionThreshold) {
+		isBefore := sn.isBefore(retentionThreshold)
+		if isBefore {
+			cb(sn.depth, sn.time)
+		}
 
-		for _, v := range sn.children {
+		for i, v := range sn.children {
 			if v != nil {
-				ok := v.deleteDataBefore(retentionThreshold, cb)
-				hasData = hasData || ok
+				deletedData := v.deleteDataBefore(retentionThreshold, cb)
+				if deletedData {
+					sn.children[i] = nil
+				}
 			}
 		}
-		return hasData
+		return isBefore
 	}
 
-	return true
+	return false
 }
 
 type Segment struct {
@@ -295,14 +303,21 @@ func (s *Segment) DeleteDataBefore(retentionThreshold time.Time, cb func(depth i
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	retentionThreshold = normalizeTime(retentionThreshold)
 	if s.root == nil {
-		return false
+		return true
 	}
 
-	return s.root.deleteDataBefore(retentionThreshold, func(depth int, t time.Time) {
+	retentionThreshold = normalizeTime(retentionThreshold)
+	shouldDeleteRoot := s.root.deleteDataBefore(retentionThreshold, func(depth int, t time.Time) {
 		cb(depth, t)
 	})
+
+	if shouldDeleteRoot {
+		s.root = nil
+		return true
+	}
+
+	return false
 }
 
 // TODO: this should be refactored

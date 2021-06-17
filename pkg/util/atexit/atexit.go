@@ -8,12 +8,15 @@ import (
 )
 
 var callbacks []func()
-
 var once sync.Once
 var wg sync.WaitGroup
+var signalChan chan os.Signal
+
+func init() {
+	signalChan = make(chan os.Signal, 1)
+}
 
 func initSignalHandler() {
-	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-signalChan
@@ -31,5 +34,7 @@ func Register(cb func()) {
 }
 
 func Wait() {
+	signalChan <- syscall.SIGINT
+
 	wg.Wait()
 }

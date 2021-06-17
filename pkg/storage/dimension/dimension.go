@@ -39,6 +39,20 @@ func (d *Dimension) Insert(key Key) {
 	}
 }
 
+func (d *Dimension) Delete(key Key) {
+	d.m.Lock()
+	defer d.m.Unlock()
+
+	i := sort.Search(len(d.keys), func(i int) bool {
+		return bytes.Compare(d.keys[i], key) >= 0
+	})
+
+	if i < len(d.keys) && bytes.Compare(d.keys[i], key) == 0 {
+		d.keys = append(d.keys[:i], d.keys[i+1:]...)
+		return
+	}
+}
+
 type advanceResult int
 
 const (

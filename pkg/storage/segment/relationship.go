@@ -7,12 +7,12 @@ import (
 type rel int
 
 const (
-	// relationship                          overlap read             overlap write
-	inside  rel = iota // | S E |            <1                       1/1
-	match              // matching ranges    1/1                      1/1
-	outside            // | | S E            0/1                      0/1
-	overlap            // | S | E            <1                       <1
-	contain            // S | | E            1/1                      <1
+	// relationship                          overlap read    overlap write
+	inside  rel = iota // | S E |            <1              1/1
+	match              // matching ranges    1/1             1/1
+	outside            // | | S E            0/1             0/1
+	overlap            // | S | E            <1              <1
+	contain            // S | | E            1/1             <1
 )
 
 var overlapStrings map[rel]string
@@ -50,15 +50,4 @@ func relationship(t1, t2, st, et time.Time) rel {
 	}
 
 	return overlap
-}
-
-// t1, t2 represent segment node, rt represents retention threshold time
-func retentionRelationship(t1, t2, rt time.Time) rel {
-	if t1.Equal(rt) || t2.Equal(rt) {
-		return match
-	}
-	if t1.Before(rt) || t2.Before(rt) {
-		return inside
-	}
-	return outside
 }

@@ -358,7 +358,7 @@ var _ = Describe("storage package", func() {
 	})
 })
 
-var _ = Describe("StorageCleanup", func() {
+var _ = Describe("DeleteDataBefore", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
@@ -366,13 +366,13 @@ var _ = Describe("StorageCleanup", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		Context("testStorageCleanup", func() {
-			It("cleanupWorks", func() {
+		Context("simple case 1", func() {
+			It("does not return errors", func() {
 				tree := tree.New()
 				tree.Insert([]byte("a;b"), uint64(1))
 				tree.Insert([]byte("a;c"), uint64(2))
-				st := time.Now().UTC().Add(time.Hour * 24 * 10 * -1)
-				et := time.Now().UTC().Add(time.Hour * 24 * 10 * -1).Add(time.Second * 10)
+				st := time.Now().Add(time.Hour * 24 * 10 * -1)
+				et := st.Add(time.Second * 10)
 				key, _ := ParseKey("foo")
 
 				err := s.Put(&PutInput{
@@ -389,8 +389,8 @@ var _ = Describe("StorageCleanup", func() {
 			})
 		})
 
-		Context("testStorageCleanup2", func() {
-			It("cleanupDoesNotWorkAsOutOfTimeRange", func() {
+		Context("simple case 2", func() {
+			It("does not return errors", func() {
 				tree := tree.New()
 				tree.Insert([]byte("a;b"), uint64(1))
 				tree.Insert([]byte("a;c"), uint64(2))
