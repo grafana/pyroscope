@@ -2,14 +2,12 @@
 version: "3.9"
 services:
   pyroscope:
-    image: "pyroscope/pyroscope:dev"
+    image: "pyroscope/pyroscope:latest"
     ports:
       - "4040:4040"
     command:
       - "server"
   app:
     build: .
-#    environment:
-#      PYROSCOPE_RBSPY_BLOCKING: "true"
     cap_add:
       - SYS_PTRACE
