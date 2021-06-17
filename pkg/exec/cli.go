@@ -36,6 +36,8 @@ func Cli(cfg *config.Exec, args []string) error {
 
 	if isExec && len(args) == 0 {
 		return errors.New("no arguments passed")
+	} else if !processExists(cfg.Pid) {
+		return errors.New("process not found")
 	}
 
 	// TODO: this is somewhat hacky, we need to find a better way to configure agents
@@ -169,11 +171,7 @@ func Cli(cfg *config.Exec, args []string) error {
 func waitForSpawnedProcessToExit(c chan os.Signal, cmd *exec.Cmd) error {
 	go func() {
 		for s := range c {
-			logger := logrus.WithField("signal", s)
-			logger.Debug("received signal")
-			if err := cmd.Process.Signal(s); err != nil {
-				logger.WithError(err).Warning("failed to send signal to child process")
-			}
+			_ = cmd.Process.Signal(s)
 		}
 	}()
 	return cmd.Wait()
@@ -193,6 +191,7 @@ func waitForProcessToExit(c chan os.Signal, pid int) {
 			return
 		case <-ticker.C:
 			if !processExists(pid) {
+				logrus.Debug("child process exited")
 				return
 			}
 		}
