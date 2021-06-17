@@ -475,11 +475,9 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 	}
 
 	return s.iterateOverAllSegments(func(sk *Key, st *segment.Segment) error {
-		logrus.Info("deleting from segment", sk)
 		var err error
 		deletedRoot := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 			tk := sk.TreeKey(depth, t)
-			logrus.Info("deleting tree", tk)
 			if delErr := s.trees.Delete(tk); delErr != nil {
 				err = delErr
 			}
@@ -488,7 +486,6 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 			return err
 		}
 
-		logrus.Info("deletedRoot", deletedRoot)
 		if deletedRoot {
 			s.deleteSegmentAndRelatedData(sk)
 		}
@@ -506,10 +503,6 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	if s.closing {
 		return ErrClosing
 	}
-
-	logrus.WithFields(logrus.Fields{
-		"key": di.Key.Normalized(),
-	}).Info("storage.Delete")
 
 	dimensions := []*dimension.Dimension{}
 	for k, v := range di.Key.labels {
@@ -541,9 +534,7 @@ func (s *Storage) Delete(di *DeleteInput) error {
 }
 
 func (s *Storage) deleteSegmentAndRelatedData(key *Key) error {
-	logrus.Info("s.dicts.Delete", key.DictKey())
 	s.dicts.Delete(key.DictKey())
-	logrus.Info("s.segments.Delete", key.SegmentKey())
 	s.segments.Delete(key.SegmentKey())
 
 	for k, v := range key.labels {
@@ -552,7 +543,6 @@ func (s *Storage) deleteSegmentAndRelatedData(key *Key) error {
 			return err
 		}
 		d := dInt.(*dimension.Dimension)
-		logrus.Info("dimension key delete", d, key.SegmentKey())
 		d.Delete(dimension.Key(key.SegmentKey()))
 	}
 	return nil
