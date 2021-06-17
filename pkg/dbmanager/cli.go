@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -94,19 +93,15 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 
 	durDiff := dstSt.Sub(srcSt)
 
-	var stopped uint32
-	go func() {
-		sigc := make(chan os.Signal, 1)
-		signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
-		<-sigc
-		atomic.StoreUint32(&stopped, 1)
-	}()
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 
 	for srct := srcSt; srct.Before(srcEt); srct = srct.Add(resolution) {
 		bar.Increment()
-
-		if atomic.LoadUint32(&stopped) > 0 {
+		select {
+		case <-sigc:
 			break
+		default:
 		}
 
 		srct2 := srct.Add(resolution)
