@@ -18,3 +18,4 @@ pkged.go
 .vscode
 vendor/
 benchmark/git-info.env
+benchmark/.env

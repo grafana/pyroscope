@@ -3,6 +3,7 @@ module github.com/pyroscope-io/pyroscope
 go 1.14
 
 require (
+	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59
 	github.com/blang/semver v3.5.1+incompatible
@@ -15,6 +16,7 @@ require (
 	github.com/dgrijalva/lfu-go v0.0.0-20141010002404-f174e76c5138
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
+	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99
 	github.com/google/uuid v1.1.2
@@ -40,7 +42,9 @@ require (
 	github.com/prometheus/client_golang v1.10.0
 	github.com/pyroscope-io/dotnetdiag v1.2.0
 	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/sirupsen/logrus v1.7.0
+	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/twmb/murmur3 v1.1.5
 	github.com/wacul/ptr v1.0.0 // indirect
 	golang.org/x/sys v0.0.0-20210423082822-04245dca01da
@@ -52,4 +56,4 @@ require (
 
 replace github.com/mgechev/revive v1.0.3 => github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1
 
-replace github.com/dgrijalva/lfu-go => github.com/pyroscope-io/lfu-go v1.0.1
+replace github.com/dgrijalva/lfu-go => github.com/pyroscope-io/lfu-go v1.0.3

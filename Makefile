@@ -137,4 +137,4 @@ docker-dev:
 
 .PHONY: windows-dev
 windows-dev:
-	docker build -f Dockerfile.windows --output type=local,dest=out .
+	docker build --platform linux/amd64 -f Dockerfile.windows --output type=local,dest=out .

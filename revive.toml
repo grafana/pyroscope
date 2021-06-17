@@ -4,7 +4,7 @@
 ignoreGeneratedHeader = false
 severity = "warning"
 confidence = 0.8
-errorCode = 0
+errorCode = 1
 warningCode = 0
 
 [directive.specify-disable-reason]
@@ -29,8 +29,6 @@ warningCode = 0
 [rule.indent-error-flow]
 [rule.argument-limit]
   arguments = [5]
-[rule.cyclomatic]
-  arguments = [10]
 [rule.max-public-structs]
   arguments = [4]
 [rule.empty-block]
@@ -65,14 +63,19 @@ warningCode = 0
 [rule.import-shadowing]
 [rule.bare-return]
 [rule.unused-receiver]
-[rule.unhandled-error]
-  arguments = ["sb.WriteString", "fmt.Fprintf", "fmt.Printf", "fmt.Println"]
-  severity = "error"
-[rule.cognitive-complexity]
-  arguments = [7]
 [rule.string-of-int]
 
 # Custom rules. We use a revive fork available here: https://github.com/pyroscope-io/revive
 # See Makefile `lint` section for how to use the fork
 [rule.byte-array-limit]
   arguments = [7]
+
+# These are pretty much disabled
+[rule.cognitive-complexity]
+  arguments = [50]
+
+[rule.cyclomatic]
+  arguments = [50]
+
+# [rule.unhandled-error]
+#   arguments = ["sb.WriteString", "fmt.Fprintf", "fmt.Printf", "fmt.Println"]

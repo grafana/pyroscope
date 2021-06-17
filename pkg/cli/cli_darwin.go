@@ -34,3 +34,10 @@ func getInstallPrefix() string {
 
 	return filepath.Clean(filepath.Join(cellarPath, "../"))
 }
+
+func resolvePath(path string) string {
+	if res, err := filepath.EvalSymlinks(path); err == nil {
+		return res
+	}
+	return path
+}

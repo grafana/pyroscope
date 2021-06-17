@@ -9,6 +9,7 @@ function timeout(ms) {
 const args = process.argv.slice(2);
 
 const from = args[1];
+console.log('from', from)
 
 (async () => {
   const browser = await puppeteer.launch({});

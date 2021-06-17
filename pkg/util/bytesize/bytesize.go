@@ -59,11 +59,7 @@ var multipliers = map[string]ByteSize{
 	"pib": PiB,
 }
 
-var byteSizeRegexp *regexp.Regexp
-
-func init() {
-	byteSizeRegexp = regexp.MustCompile("^([\\d\\.]+)\\s*([^\\d]*)$")
-}
+var byteSizeRegexp = regexp.MustCompile("^([\\d\\.]+)\\s*([^\\d]*)$")
 
 var errParse = errors.New("could not parse ByteSize")
 

@@ -21,18 +21,22 @@ import (
 )
 
 func startServer(cfg *config.Server) error {
+	defer atexit.Wait()
 	// new a storage with configuration
 	s, err := storage.New(cfg)
 	if err != nil {
 		return fmt.Errorf("new storage: %v", err)
 	}
-	atexit.Register(func() { s.Close() })
+	atexit.Register(func() {
+		s.Close()
+	})
 
 	// new a direct upstream
 	u := direct.New(s)
 
 	// uploading the server profile self
-	if err := agent.SelfProfile(uint32(cfg.SampleRate), u, "pyroscope.server", logrus.StandardLogger()); err != nil {
+	stopSelfProfilingChan := make(chan struct{})
+	if err := agent.SelfProfile(100, u, "pyroscope.server", logrus.StandardLogger(), stopSelfProfilingChan); err != nil {
 		return fmt.Errorf("start self profile: %v", err)
 	}
 
@@ -44,43 +48,50 @@ func startServer(cfg *config.Server) error {
 	if err != nil {
 		return fmt.Errorf("new server: %v", err)
 	}
-	atexit.Register(func() { c.Stop() })
+	atexit.Register(func() {
+		c.Stop()
+		stopSelfProfilingChan <- struct{}{}
+	})
 
 	// start the analytics
 	if !cfg.AnalyticsOptOut {
 		analyticsService := analytics.NewService(cfg, s, c)
 		go analyticsService.Start()
-		atexit.Register(func() { analyticsService.Stop() })
+		atexit.Register(func() {
+			analyticsService.Stop()
+		})
 	}
+
+	if err := s.CollectLocalProfiles(); err != nil {
+		logrus.WithError(err).Error("failed to collect local profiles")
+	}
+
 	// if you ever change this line, make sure to update this homebrew test:
 	//   https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
 	logrus.Info("starting HTTP server")
-
-	// start the server
 	return c.Start()
 }
 
 func reportDebuggingInformation(cfg *config.Server, s *storage.Storage) {
-	t := time.NewTicker(1 * time.Second)
+	interval := 1 * time.Second
+	t := time.NewTicker(interval)
 	i := 0
 	for range t.C {
-		if logrus.IsLevelEnabled(logrus.DebugLevel) {
-			maps := map[string]map[string]interface{}{
-				"mem":   debug.MemUsage(),
-				"disk":  debug.DiskUsage(cfg.StoragePath),
-				"cache": s.CacheStats(),
-			}
+		maps := map[string]map[string]interface{}{
+			"cpu":   debug.CPUUsage(interval),
+			"disk":  debug.DiskUsage(cfg.StoragePath),
+			"cache": s.CacheStats(),
+		}
 
-			for dataType, data := range maps {
-				for k, v := range data {
-					if iv, ok := v.(bytesize.ByteSize); ok {
-						v = int64(iv)
-					}
-					metrics.Gauge(dataType+"."+k, v)
+		for dataType, data := range maps {
+			for k, v := range data {
+				if iv, ok := v.(bytesize.ByteSize); ok {
+					v = int64(iv)
 				}
-				if i%30 == 0 {
-					logrus.WithFields(data).Debug(dataType + " stats")
-				}
+				metrics.Gauge(dataType+"_"+k, v)
+			}
+			if i%30 == 0 {
+				logrus.WithFields(data).Debug(dataType + " stats")
 			}
 		}
 		i++

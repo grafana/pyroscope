@@ -10,6 +10,7 @@ import (
 	"github.com/iancoleman/strcase"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
+	"github.com/pyroscope-io/pyroscope/pkg/util/duration"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/sirupsen/logrus"
 )
@@ -52,6 +53,24 @@ func (tf *timeFlag) Set(value string) error {
 	return nil
 }
 
+type durFlag time.Duration
+
+func (df *durFlag) String() string {
+	v := time.Duration(*df)
+	return v.String()
+}
+
+func (df *durFlag) Set(value string) error {
+	d, err := duration.ParseDuration(value)
+	if err != nil {
+		return err
+	}
+
+	*df = durFlag(d)
+
+	return nil
+}
+
 func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *SortedFlags {
 	v := reflect.ValueOf(obj).Elem()
 	t := reflect.TypeOf(v.Interface())
@@ -59,6 +78,8 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 
 	installPrefix := getInstallPrefix()
 	supportedSpies := strings.Join(spy.SupportedExecSpies(), ", ")
+
+	deprecatedFields := []string{}
 
 	for i := 0; i < num; i++ {
 		field := t.Field(i)
@@ -70,12 +91,17 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 		defaultValStr := field.Tag.Get("def")
 		descVal := field.Tag.Get("desc")
 		skipVal := field.Tag.Get("skip")
+		deprecatedVal := field.Tag.Get("deprecated")
 		nameVal := field.Tag.Get("name")
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
 		}
 		if skipVal == "true" || slices.StringContains(skip, nameVal) {
 			continue
+		}
+
+		if deprecatedVal == "true" {
+			deprecatedFields = append(deprecatedFields, nameVal)
 		}
 
 		descVal = strings.ReplaceAll(descVal, "<supportedProfilers>", supportedSpies)
@@ -99,18 +125,20 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 			val := (*timeFlag)(valTime)
 			flagSet.Var(val, nameVal, descVal)
 		case reflect.TypeOf(time.Second):
-			val := fieldV.Addr().Interface().(*time.Duration)
+			valDur := fieldV.Addr().Interface().(*time.Duration)
+			val := (*durFlag)(valDur)
+
 			var defaultVal time.Duration
-			if defaultValStr == "" {
-				defaultVal = time.Duration(0)
-			} else {
+			if defaultValStr != "" {
 				var err error
-				defaultVal, err = time.ParseDuration(defaultValStr)
+				defaultVal, err = duration.ParseDuration(defaultValStr)
 				if err != nil {
 					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
 				}
 			}
-			flagSet.DurationVar(val, nameVal, defaultVal, descVal)
+			*val = (durFlag)(defaultVal)
+
+			flagSet.Var(val, nameVal, descVal)
 		case reflect.TypeOf(bytesize.Byte):
 			val := fieldV.Addr().Interface().(*bytesize.ByteSize)
 			var defaultVal bytesize.ByteSize
@@ -179,5 +207,5 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 			logrus.Fatalf("type %s is not supported", field.Type)
 		}
 	}
-	return NewSortedFlags(obj, flagSet)
+	return NewSortedFlags(obj, flagSet, deprecatedFields)
 }

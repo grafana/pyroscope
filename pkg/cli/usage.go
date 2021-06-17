@@ -33,7 +33,7 @@ var hiddenCommands = []string{
 }
 
 // This is mostly copied from ffcli package
-func DefaultUsageFunc(sf *SortedFlags, c *ffcli.Command) string {
+func DefaultUsageFunc(sf *SortedFlags, c *ffcli.Command, deprecatedFields []string) string {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "continuous profiling platform\n\n")
@@ -69,6 +69,9 @@ func DefaultUsageFunc(sf *SortedFlags, c *ffcli.Command) string {
 		// TODO: it would be nice to sort by how often people would use these.
 		//   But for that we'd have to have a conversion from flag-set back to struct
 		sf.VisitAll(func(f *flag.Flag) {
+			if slices.StringContains(deprecatedFields, f.Name) {
+				return
+			}
 			def := f.DefValue
 			// if def == "" {
 			// 	def = "..."

@@ -36,8 +36,8 @@ RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a
 
 FROM php:7.3-fpm-alpine as phpspy-builder
 RUN apk add --update alpine-sdk
-RUN git clone https://github.com/pyroscope-io/phpspy.git
-RUN cd phpspy && USE_ZEND=1 make
+RUN git clone https://github.com/pyroscope-io/phpspy.git && cd phpspy && git checkout 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
+RUN cd phpspy && make CFLAGS="-DUSE_DIRECT"
 
 #                     _
 #                    | |
@@ -84,12 +84,12 @@ COPY --from=phpspy-builder /var/www/html/phpspy/libphpspy.a /opt/pyroscope/third
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
 COPY Makefile ./
 COPY tools ./tools
-COPY scripts ./scripts
 COPY go.mod go.sum pyroscope.go ./
 RUN make install-dev-tools
 
 COPY pkg ./pkg
 COPY cmd ./cmd
+COPY scripts ./scripts
 
 RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
 

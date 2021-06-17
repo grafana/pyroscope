@@ -13,6 +13,8 @@ import (
 	"text/template"
 	"time"
 
+	"net/http/pprof"
+
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
@@ -62,6 +64,16 @@ func (ctrl *Controller) Stop() error {
 func (ctrl *Controller) Start() error {
 	mux := http.NewServeMux()
 
+	if !ctrl.cfg.DisablePprofEndpoint {
+		mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+		mux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+		mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+		mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+		mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+	}
+
+	mux.HandleFunc("/healthz", ctrl.healthz)
+
 	mux.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
 	mux.HandleFunc("/ingest", ctrl.ingestHandler)
 	mux.HandleFunc("/render", ctrl.renderHandler)
@@ -102,6 +114,7 @@ func (ctrl *Controller) Start() error {
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
 	}
+
 	if err := ctrl.httpServer.ListenAndServe(); err != nil {
 		if err == http.ErrServerClosed {
 			return nil
