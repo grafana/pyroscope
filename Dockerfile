@@ -133,5 +133,6 @@ COPY --from=go-builder /opt/pyroscope/bin/pyroscope /usr/bin/pyroscope
 RUN chmod 777 /usr/bin/pyroscope
 
 USER pyroscope
+ENV PORT=4040
 EXPOSE 4040/tcp
 ENTRYPOINT [ "/usr/bin/pyroscope" ]

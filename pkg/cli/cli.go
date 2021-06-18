@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/peterbourgon/ff/v3"
 	"github.com/peterbourgon/ff/v3/ffcli"
@@ -50,6 +51,13 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet)
 	dbmanagerSortedFlags := PopulateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
 	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
+
+	port := strings.TrimSpace(os.Getenv("PORT"))
+	if port != "" {
+		cfg.Server.APIBindAddr = ":" + port
+		cfg.Agent.ServerAddress = "http://localhost:" + port
+		cfg.Exec.ServerAddress = "http://localhost:" + port
+	}
 
 	options := []ff.Option{
 		ff.WithConfigFileParser(parser),
