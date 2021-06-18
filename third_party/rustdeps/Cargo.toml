@@ -12,3 +12,6 @@ crate-type = ["staticlib"]
 
 py-spy = { git = "https://github.com/pyroscope-io/py-spy", rev = "f990f0b" }
 rbspy = { git = "https://github.com/pyroscope-io/rbspy", rev = "be059a6" }
+
+[patch.crates-io]
+benfred-read-process-memory = { git = 'https://github.com/pyroscope-io/read-process-memory.git', branch = 'benfred-read-process-memory'}
