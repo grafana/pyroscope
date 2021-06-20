@@ -1,0 +1,12 @@
+FROM golang:1.16
+
+RUN git clone https://github.com/hashicorp/consul.git $GOPATH/src/consul
+WORKDIR $GOPATH/src/consul
+
+RUN git checkout release/1.9.6
+COPY main/consul main.go
+RUN GO111MODULE=on go mod tidy
+RUN GO111MODULE=on go build
+RUN chmod +x consul
+
+ENTRYPOINT ["/go/src/consul/consul", "agent", "-dev"]

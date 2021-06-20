@@ -1,0 +1,14 @@
+FROM golang:1.16
+
+RUN git clone https://github.com/traefik/traefik.git $GOPATH/src/traefik
+WORKDIR $GOPATH/src/traefik
+
+RUN git checkout v2.1
+COPY main/traefik cmd/traefik/traefik.go
+RUN GO111MODULE=off go get github.com/containous/go-bindata/...
+RUN go generate
+RUN GO111MODULE=on go mod tidy
+RUN GO111MODULE=on go build cmd/traefik/traefik.go
+RUN chmod +x traefik
+
+ENTRYPOINT ["./traefik"]

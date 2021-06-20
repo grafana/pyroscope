@@ -1,0 +1,13 @@
+FROM golang:1.16
+
+RUN git clone https://github.com/etcd-io/etcd.git $GOPATH/src/etcd
+WORKDIR $GOPATH/src/etcd/server
+
+RUN git checkout release-3.5
+COPY main/etcd main.go
+RUN mkdir FORBIDDEN_DEPENDENCY && touch FORBIDDEN_DEPENDENCY/go.mod
+RUN GO111MODULE=on go mod tidy
+RUN GO111MODULE=on go build -o etcd
+RUN chmod +x etcd
+
+ENTRYPOINT ["./etcd"]

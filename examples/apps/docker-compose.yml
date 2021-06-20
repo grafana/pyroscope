@@ -1,0 +1,55 @@
+version: '3'
+services:
+    rqlite:
+        build:
+            context: .
+            dockerfile: Dockerfile.rqlite
+        container_name: rqlite
+        image: rqlite:pyroscope
+        env_file:
+          - 'variables.env'
+
+    nsqd:
+        build:
+            context: .
+            dockerfile: Dockerfile.nsqd
+        container_name: nsqd
+        image: nsqd:pyroscope
+        env_file:
+          - 'variables.env'
+
+    centrifugo:
+        build:
+            context: .
+            dockerfile: Dockerfile.centrifugo
+        container_name: centrifugo
+        image: centrifugo:pyroscope
+        env_file:
+          - 'variables.env'
+
+    etcd:
+        build:
+            context: .
+            dockerfile: Dockerfile.etcd
+        container_name: etcd
+        image: etcd:pyroscope
+        env_file:
+          - 'variables.env'
+
+    traefik:
+        build:
+            context: .
+            dockerfile: Dockerfile.traefik
+        container_name: traefik
+        image: traefik:pyroscope
+        env_file:
+          - 'variables.env'
+
+    consul:
+        build:
+            context: .
+            dockerfile: Dockerfile.consul
+        container_name: consul
+        image: consul:pyroscope
+        env_file:
+          - 'variables.env'
