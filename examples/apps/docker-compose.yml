@@ -53,3 +53,4 @@ services:
         image: consul:pyroscope
         env_file:
           - 'variables.env'
+

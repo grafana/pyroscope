@@ -11,3 +11,4 @@ RUN GO111MODULE=on go build -o etcd
 RUN chmod +x etcd
 
 ENTRYPOINT ["./etcd"]
+

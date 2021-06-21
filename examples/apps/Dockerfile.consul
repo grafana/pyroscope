@@ -10,3 +10,4 @@ RUN GO111MODULE=on go build
 RUN chmod +x consul
 
 ENTRYPOINT ["/go/src/consul/consul", "agent", "-dev"]
+

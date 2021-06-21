@@ -12,3 +12,4 @@ RUN GO111MODULE=on go build cmd/traefik/traefik.go
 RUN chmod +x traefik
 
 ENTRYPOINT ["./traefik"]
+

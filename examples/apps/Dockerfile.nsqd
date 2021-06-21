@@ -9,3 +9,4 @@ RUN GO111MODULE=on go build
 RUN chmod +x nsqd
 
 ENTRYPOINT ["./nsqd"]
+

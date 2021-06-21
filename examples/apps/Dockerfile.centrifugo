@@ -10,3 +10,4 @@ RUN chmod +x centrifugo
 RUN ./centrifugo genconfig
 
 ENTRYPOINT ["./centrifugo"]
+

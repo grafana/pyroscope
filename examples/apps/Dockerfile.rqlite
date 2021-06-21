@@ -9,3 +9,4 @@ RUN GO111MODULE=on go build
 RUN chmod +x rqlited
 
 ENTRYPOINT ["./rqlited", "~/node.1"]
+
