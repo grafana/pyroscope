@@ -311,7 +311,9 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := ParseKey("foo")
+
+					appKey, _ := ParseKey("foo")
+					key, _ := ParseKey("foo{tag=value}")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -326,7 +328,7 @@ var _ = Describe("storage package", func() {
 					o, err := s.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
-						Key:       key,
+						Key:       appKey,
 					})
 
 					Expect(err).ToNot(HaveOccurred())
@@ -340,7 +342,7 @@ var _ = Describe("storage package", func() {
 					o2, err := s2.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
-						Key:       key,
+						Key:       appKey,
 					})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(o2.Tree).ToNot(BeNil())
