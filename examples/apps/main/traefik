@@ -435,3 +435,4 @@ func collect(staticConfiguration *static.Configuration) {
 		}
 	})
 }
+

@@ -1708,3 +1708,4 @@ func Mux(n *centrifuge.Node, apiExecutor *api.Executor, flags HandlerFlag) *http
 
 	return mux
 }
+

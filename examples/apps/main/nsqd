@@ -126,3 +126,4 @@ func (p *program) Context() context.Context {
 func logFatal(f string, args ...interface{}) {
 	lg.LogFatal("[nsqd] ", f, args...)
 }
+
