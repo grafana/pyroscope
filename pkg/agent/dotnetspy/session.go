@@ -89,7 +89,7 @@ func (s *session) start() error {
 				for k, v := range p.Samples() {
 					s.ch <- line{
 						name: []byte(k),
-						val:  int(v.Milliseconds()) / 10,
+						val:  int(v.Milliseconds()),
 					}
 				}
 			}
