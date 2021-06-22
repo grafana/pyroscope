@@ -109,12 +109,6 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 
 func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	ip := ingestParamsFromRequest(r)
-
-	if ctrl.s.IsClosing() {
-		returnError(w, 422, nil, "database is closing")
-		return
-	}
-
 	var t *tree.Tree
 	t, err := ip.parserFunc(r.Body)
 	if err != nil {
@@ -122,7 +116,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = ctrl.s.Put(&storage.PutInput{
+	err = ctrl.storage.Put(&storage.PutInput{
 		StartTime:       ip.from,
 		EndTime:         ip.until,
 		Key:             ip.storageKey,

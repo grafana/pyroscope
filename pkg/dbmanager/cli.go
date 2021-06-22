@@ -2,16 +2,19 @@ package dbmanager
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/cheggaaa/pb/v3"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
-	"github.com/sirupsen/logrus"
-
-	"github.com/cheggaaa/pb/v3"
 )
 
 func Cli(dbCfg *config.DbManager, srvCfg *config.Server, args []string) error {
@@ -66,8 +69,18 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 	}
 
 	if dbCfg.EnableProfiling {
-		u := direct.New(s)
-		go agent.SelfProfile(100, u, "pyroscope.dbmanager.cpu{}", logrus.StandardLogger(), nil)
+		upstream := direct.New(s)
+		selfProfilingConfig := &agent.SessionConfig{
+			Upstream:       upstream,
+			AppName:        "pyroscope.dbmanager.cpu{}",
+			ProfilingTypes: types.DefaultProfileTypes,
+			SpyName:        types.GoSpy,
+			SampleRate:     100,
+			UploadRate:     10 * time.Second,
+		}
+		session := agent.NewSession(selfProfilingConfig, logrus.StandardLogger())
+		upstream.Start()
+		_ = session.Start()
 	}
 
 	sk, err := storage.ParseKey(appName)
@@ -80,16 +93,15 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 
 	durDiff := dstSt.Sub(srcSt)
 
-	stop := false
-	atexit.Register(func() {
-		stop = true
-	})
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 
 	for srct := srcSt; srct.Before(srcEt); srct = srct.Add(resolution) {
 		bar.Increment()
-
-		if stop {
+		select {
+		case <-sigc:
 			break
+		default:
 		}
 
 		srct2 := srct.Add(resolution)
@@ -122,8 +134,5 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 	}
 
 	bar.Finish()
-
-	s.Close()
-
-	return nil
+	return s.Close()
 }

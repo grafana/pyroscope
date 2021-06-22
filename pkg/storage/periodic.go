@@ -4,95 +4,85 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/dgraph-io/badger/v2"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 )
 
 func (s *Storage) periodicTask(interval time.Duration, cb func()) {
-	ticker := time.NewTimer(interval)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		closing := func() bool {
-			s.closingMutex.RLock()
-			defer s.closingMutex.RUnlock()
-
-			return s.closing
-		}()
-
-		if closing {
+	timer := time.NewTimer(interval)
+	defer func() {
+		timer.Stop()
+		s.wg.Done()
+	}()
+	for {
+		select {
+		case <-s.stop:
 			return
+		case <-timer.C:
+			select {
+			case <-s.stop:
+				return
+			default:
+				cb()
+				timer.Reset(interval)
+			}
 		}
-
-		cb()
-
-		ticker.Reset(interval)
 	}
 }
 
-func (s *Storage) startEvictTimer(interval time.Duration) error {
-	// load the total memory of the server
-	memTotal, err := getMemTotal()
-	if err != nil {
-		return err
+func (s *Storage) badgerGCTask(db *badger.DB) func() {
+	return func() {
+		logrus.Debug("starting badger garbage collection")
+		for {
+			if err := db.RunValueLogGC(0.7); err != nil {
+				return
+			}
+		}
 	}
+}
 
-	go s.periodicTask(interval, func() {
-		// read the allocated memory used by application
-		var m runtime.MemStats
+func (s *Storage) evictionTask(memTotal uint64) func() {
+	var m runtime.MemStats
+	return func() {
 		runtime.ReadMemStats(&m)
-
 		used := float64(m.Alloc) / float64(memTotal)
-
 		metrics.Gauge("evictions_alloc_bytes", m.Alloc)
 		metrics.Gauge("evictions_total_bytes", memTotal)
 		metrics.Gauge("evictions_used_perc", used)
 
-		percent := s.cfg.CacheEvictVolume
-		if used > s.cfg.CacheEvictThreshold {
+		percent := s.config.CacheEvictVolume
+		if used > s.config.CacheEvictThreshold {
 			metrics.Timing("evictions_timer", func() {
 				metrics.Count("evictions_count", 1)
-
 				s.dimensions.Evict(percent / 4)
 				s.dicts.Evict(percent / 4)
 				s.segments.Evict(percent / 2)
 				s.trees.Evict(percent)
-
-				// force gc after eviction
 				runtime.GC()
 			})
 		}
-
-	})
-
-	return nil
-}
-
-func (s *Storage) startWriteBackTimer(interval time.Duration) error {
-	go s.periodicTask(interval, func() {
-		metrics.Timing("write_back_timer", func() {
-			metrics.Count("write_back_count", 1)
-			s.dimensions.WriteBack()
-			s.segments.WriteBack()
-			s.dicts.WriteBack()
-			s.trees.WriteBack()
-			runtime.GC()
-		})
-	})
-
-	return nil
-}
-
-func (s *Storage) startRetentionTimer(interval time.Duration) error {
-	if s.cfg.Retention == 0 {
-		return nil
 	}
+}
 
-	go s.periodicTask(interval, func() {
-		metrics.Timing("retention_timer", func() {
-			metrics.Count("retention_count", 1)
-			s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold())
-		})
+func (s *Storage) writeBackTask() {
+	metrics.Timing("write_back_timer", func() {
+		metrics.Count("write_back_count", 1)
+		s.dimensions.WriteBack()
+		s.segments.WriteBack()
+		s.dicts.WriteBack()
+		s.trees.WriteBack()
+		runtime.GC()
 	})
+}
 
-	return nil
+func (s *Storage) retentionTask() {
+	logrus.Debug("starting retention task")
+	metrics.Timing("retention_timer", func() {
+		metrics.Count("retention_count", 1)
+		if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
+			logrus.WithError(err).Warn("retention task failed")
+		}
+	})
 }

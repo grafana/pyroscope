@@ -102,3 +102,7 @@ func generateCredentials(userName, groupName string) (*syscall.Credential, error
 
 	return &c, nil
 }
+
+func processExists(pid int) bool {
+	return nil == syscall.Kill(pid, 0)
+}

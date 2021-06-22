@@ -46,7 +46,7 @@ type ProfileSession struct {
 	startTime time.Time
 	stopTime  time.Time
 
-	Logger Logger
+	logger Logger
 }
 
 type SessionConfig struct {
@@ -73,7 +73,7 @@ func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 		pids:             []int{c.Pid},
 		stopCh:           make(chan struct{}),
 		withSubprocesses: c.WithSubprocesses,
-		Logger:           logger,
+		logger:           logger,
 	}
 
 	if ps.spyName == types.GoSpy {
@@ -89,6 +89,7 @@ func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 
 func (ps *ProfileSession) takeSnapshots() {
 	ticker := time.NewTicker(time.Second / time.Duration(ps.sampleRate))
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
@@ -131,7 +132,6 @@ func (ps *ProfileSession) takeSnapshots() {
 			}
 
 		case <-ps.stopCh:
-			ticker.Stop()
 			// stop the spies
 			for _, spy := range ps.spies {
 				spy.Stop()
@@ -196,11 +196,8 @@ func (ps *ProfileSession) Stop() {
 	defer ps.trieMutex.Unlock()
 
 	ps.stopTime = time.Now()
-	select {
-	case ps.stopCh <- struct{}{}:
-	default:
-	}
 	close(ps.stopCh)
+	// TODO: wait for stopCh consumer to finish!
 
 	// before stopping, upload the tries
 	ps.uploadTries(time.Now())
@@ -253,12 +250,12 @@ func (ps *ProfileSession) addSubprocesses() {
 			ps.pids = append(ps.pids, newPid)
 			newSpy, err := spy.SpyFromName(ps.spyName, newPid)
 			if err != nil {
-				if ps.Logger != nil {
-					ps.Logger.Errorf("failed to initialize a spy %d [%s]", newPid, ps.spyName)
+				if ps.logger != nil {
+					ps.logger.Errorf("failed to initialize a spy %d [%s]", newPid, ps.spyName)
 				}
 			} else {
-				if ps.Logger != nil {
-					ps.Logger.Debugf("started spy for subprocess %d [%s]", newPid, ps.spyName)
+				if ps.logger != nil {
+					ps.logger.Debugf("started spy for subprocess %d [%s]", newPid, ps.spyName)
 				}
 				ps.spies = append(ps.spies, newSpy)
 			}

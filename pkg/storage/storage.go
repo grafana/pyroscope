@@ -10,11 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
-
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
@@ -24,26 +23,25 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
+	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
-	"github.com/sirupsen/logrus"
 )
 
-var ErrClosing = errors.New("the db is in closing state")
-var ErrAlreadyClosed = errors.New("the db is already closed")
-var errOutOfSpace = errors.New("running out of space")
-var errRetention = errors.New("could not write because of retention settings")
+var (
+	errOutOfSpace = errors.New("running out of space")
+	errRetention  = errors.New("could not write because of retention settings")
 
-var evictInterval = 1 * time.Second
-var writeBackInterval = 1 * time.Second
-var retentionInterval = 1 * time.Minute
+	evictInterval     = time.Second
+	writeBackInterval = time.Second
+	retentionInterval = time.Minute
+	gcInterval        = 5 * time.Minute
+)
 
 type Storage struct {
-	closingMutex sync.RWMutex
-	closing      bool
-
 	putMutex sync.Mutex
 
-	cfg      *config.Server
+	config   *config.Server
 	segments *cache.Cache
 
 	dimensions *cache.Cache
@@ -58,83 +56,70 @@ type Storage struct {
 	dbSegments   *badger.DB
 
 	localProfilesDir string
+
+	stop chan struct{}
+	wg   sync.WaitGroup
 }
 
-func badgerGC(db *badger.DB) {
-	ticker := time.NewTicker(5 * time.Minute)
-	defer ticker.Stop()
-	for range ticker.C {
-	again:
-		err := db.RunValueLogGC(0.7)
-		if err == nil {
-			goto again
-		}
-	}
-}
-
-func newBadger(cfg *config.Server, name string) (*badger.DB, error) {
-	badgerPath := filepath.Join(cfg.StoragePath, name)
+func (s *Storage) newBadger(name string) (*badger.DB, error) {
+	badgerPath := filepath.Join(s.config.StoragePath, name)
 	err := os.MkdirAll(badgerPath, 0o755)
 	if err != nil {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
-	badgerOptions = badgerOptions.WithTruncate(!cfg.BadgerNoTruncate)
+	badgerOptions = badgerOptions.WithTruncate(!s.config.BadgerNoTruncate)
 	badgerOptions = badgerOptions.WithSyncWrites(false)
 	badgerOptions = badgerOptions.WithCompactL0OnClose(false)
 	badgerOptions = badgerOptions.WithCompression(options.ZSTD)
 	badgerLevel := logrus.ErrorLevel
-	if l, err := logrus.ParseLevel(cfg.BadgerLogLevel); err == nil {
+	if l, err := logrus.ParseLevel(s.config.BadgerLogLevel); err == nil {
 		badgerLevel = l
 	}
 	badgerOptions = badgerOptions.WithLogger(badgerLogger{name: name, logLevel: badgerLevel})
-
 	db, err := badger.Open(badgerOptions)
-	if err == nil {
-		go badgerGC(db)
+	if err != nil {
+		return nil, err
 	}
-	return db, err
+	s.wg.Add(1)
+	go s.periodicTask(gcInterval, s.badgerGCTask(db))
+	return db, nil
 }
 
-func New(cfg *config.Server) (*Storage, error) {
-	db, err := newBadger(cfg, "main")
-	if err != nil {
-		return nil, err
-	}
-	dbTrees, err := newBadger(cfg, "trees")
-	if err != nil {
-		return nil, err
-	}
-	dbDicts, err := newBadger(cfg, "dicts")
-	if err != nil {
-		return nil, err
-	}
-	dbDimensions, err := newBadger(cfg, "dimensions")
-	if err != nil {
-		return nil, err
-	}
-	dbSegments, err := newBadger(cfg, "segments")
-	if err != nil {
-		return nil, err
-	}
-
-	localProfilesDir := filepath.Join(cfg.StoragePath, "local-profiles")
-	if err = os.MkdirAll(localProfilesDir, 0o755); err != nil {
-		return nil, err
-	}
-
+func New(c *config.Server) (*Storage, error) {
 	s := &Storage{
-		cfg:              cfg,
-		labels:           labels.New(db),
-		db:               db,
-		dbTrees:          dbTrees,
-		dbDicts:          dbDicts,
-		dbDimensions:     dbDimensions,
-		dbSegments:       dbSegments,
-		localProfilesDir: localProfilesDir,
+		config:           c,
+		stop:             make(chan struct{}),
+		localProfilesDir: filepath.Join(c.StoragePath, "local-profiles"),
+	}
+	var err error
+	s.db, err = s.newBadger("main")
+	if err != nil {
+		return nil, err
+	}
+	s.labels = labels.New(s.db)
+	s.dbTrees, err = s.newBadger("trees")
+	if err != nil {
+		return nil, err
+	}
+	s.dbDicts, err = s.newBadger("dicts")
+	if err != nil {
+		return nil, err
+	}
+	s.dbDimensions, err = s.newBadger("dimensions")
+	if err != nil {
+		return nil, err
+	}
+	s.dbSegments, err = s.newBadger("segments")
+	if err != nil {
+		return nil, err
 	}
 
-	s.dimensions = cache.New(dbDimensions, "i:", "dimensions")
+	if err = os.MkdirAll(s.localProfilesDir, 0o755); err != nil {
+		return nil, err
+	}
+
+	s.dimensions = cache.New(s.dbDimensions, "i:", "dimensions")
 	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -145,7 +130,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		return dimension.New()
 	}
 
-	s.segments = cache.New(dbSegments, "s:", "segments")
+	s.segments = cache.New(s.dbSegments, "s:", "segments")
 	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*segment.Segment).Bytes()
 	}
@@ -158,7 +143,7 @@ func New(cfg *config.Server) (*Storage, error) {
 		return segment.New()
 	}
 
-	s.dicts = cache.New(dbDicts, "d:", "dicts")
+	s.dicts = cache.New(s.dbDicts, "d:", "dicts")
 	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -169,23 +154,24 @@ func New(cfg *config.Server) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(dbTrees, "t:", "trees")
+	s.trees = cache.New(s.dbTrees, "t:", "trees")
 	s.trees.Bytes = s.treeBytes
 	s.trees.FromBytes = s.treeFromBytes
 	s.trees.New = func(k string) interface{} {
 		return tree.New()
 	}
 
-	if err := s.startEvictTimer(evictInterval); err != nil {
-		return nil, fmt.Errorf("start evict timer: %v", err)
+	memTotal, err := getMemTotal()
+	if err != nil {
+		return nil, err
 	}
 
-	if err := s.startWriteBackTimer(writeBackInterval); err != nil {
-		return nil, fmt.Errorf("start WriteBack timer: %v", err)
-	}
-
-	if err := s.startRetentionTimer(retentionInterval); err != nil {
-		return nil, fmt.Errorf("start WriteBack timer: %v", err)
+	s.wg.Add(2)
+	go s.periodicTask(evictInterval, s.evictionTask(memTotal))
+	go s.periodicTask(writeBackInterval, s.writeBackTask)
+	if s.config.Retention > 0 {
+		s.wg.Add(1)
+		go s.periodicTask(retentionInterval, s.retentionTask)
 	}
 
 	return s, nil
@@ -237,25 +223,12 @@ func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
 	if d == nil { // key not found
 		return nil, nil
 	}
-	return v.(*tree.Tree).Bytes(d.(*dict.Dict), s.cfg.MaxNodesSerialization)
-}
-
-func (s *Storage) IsClosing() bool {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-
-	return s.closing
+	return v.(*tree.Tree).Bytes(d.(*dict.Dict), s.config.MaxNodesSerialization)
 }
 
 var OutOfSpaceThreshold = 512 * bytesize.MB
 
 func (s *Storage) Put(po *PutInput) error {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-	if s.closing {
-		return ErrClosing
-	}
-
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
@@ -336,7 +309,7 @@ func (s *Storage) Put(po *PutInput) error {
 			s.trees.Put(tk, treeClone)
 		}
 	})
-	s.segments.Put(string(sk), st)
+	s.segments.Put(sk, st)
 
 	return nil
 }
@@ -356,12 +329,6 @@ type GetOutput struct {
 }
 
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-	if s.closing {
-		return nil, ErrClosing
-	}
-
 	logrus.WithFields(logrus.Fields{
 		"startTime": gi.StartTime.String(),
 		"endTime":   gi.EndTime.String(),
@@ -486,12 +453,6 @@ func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) 
 }
 
 func (s *Storage) DeleteDataBefore(threshold time.Time) error {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-	if s.closing {
-		return ErrClosing
-	}
-
 	return s.iterateOverAllSegments(func(sk *Key, st *segment.Segment) error {
 		var err error
 		deletedRoot := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
@@ -518,12 +479,6 @@ type DeleteInput struct {
 var maxTime = time.Unix(1<<62, 999999999)
 
 func (s *Storage) Delete(di *DeleteInput) error {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-	if s.closing {
-		return ErrClosing
-	}
-
 	dimensions := []*dimension.Dimension{}
 	for k, v := range di.Key.labels {
 		dInt, err := s.dimensions.Get(k + ":" + v)
@@ -577,13 +532,8 @@ func (s *Storage) deleteSegmentAndRelatedData(key *Key) error {
 }
 
 func (s *Storage) Close() error {
-	if s.IsClosing() {
-		return ErrAlreadyClosed
-	}
-
-	s.closingMutex.Lock()
-	s.closing = true
-	s.closingMutex.Unlock()
+	close(s.stop)
+	s.wg.Wait()
 
 	metrics.Timing("storage_caches_flush_timer", func() {
 		wg := sync.WaitGroup{}
@@ -620,7 +570,7 @@ func (s *Storage) GetKeys(cb func(_k string) bool) {
 
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
-		if key != "__name__" || !slices.StringContains(s.cfg.HideApplications, v) {
+		if key != "__name__" || !slices.StringContains(s.config.HideApplications, v) {
 			return cb(v)
 		}
 		return true
@@ -636,7 +586,7 @@ func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
 		"segments":   0,
 	}
 	for k := range res {
-		res[k] = dirSize(filepath.Join(s.cfg.StoragePath, k))
+		res[k] = dirSize(filepath.Join(s.config.StoragePath, k))
 	}
 	return res
 }
@@ -667,14 +617,14 @@ var zeroTime time.Time
 
 func (s *Storage) lifetimeBasedRetentionThreshold() time.Time {
 	var t time.Time
-	if s.cfg.Retention != 0 {
-		t = time.Now().Add(-1 * s.cfg.Retention)
+	if s.config.Retention != 0 {
+		t = time.Now().Add(-1 * s.config.Retention)
 	}
 	return t
 }
 
 func (s *Storage) performFreeSpaceCheck() error {
-	freeSpace, err := disk.FreeSpace(s.cfg.StoragePath)
+	freeSpace, err := disk.FreeSpace(s.config.StoragePath)
 	if err == nil {
 		if freeSpace < OutOfSpaceThreshold {
 			return errOutOfSpace
