@@ -87,9 +87,20 @@ func (s *session) start() error {
 				// The session is closed by us (on flush or stop call),
 				// or the target process has exited.
 				for k, v := range p.Samples() {
+					// dotnet profiler reports total time v per call stack k.
+					// Meanwhile, pyroscope agent expects number of samples is
+					// reported. Every sample is a time fraction of second
+					// according to sample rate: 1000ms/100 = 10ms by default.
+					// To represent reported time v as a number of samples,
+					// we divide it by sample duration.
+					//
+					// Taking into account that under the hood dotnet spy uses
+					// Microsoft-DotNETCore-SampleProfiler, which captures a
+					// snapshot of each thread's managed callstack every 10 ms,
+					// we cannot manage sample rate from outside.
 					s.ch <- line{
 						name: []byte(k),
-						val:  int(v.Milliseconds()),
+						val:  int(v.Milliseconds()) / 10,
 					}
 				}
 			}
