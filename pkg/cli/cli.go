@@ -44,10 +44,10 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	)
 
 	serverSortedFlags := PopulateFlagSet(&cfg.Server, serverFlagSet)
-	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet)
+	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet, WithSkip("targets"))
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
-	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, "pid")
-	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet)
+	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, WithSkip("pid"))
+	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet, WithSkip("group-name", "user-name", "no-root-drop"))
 	dbmanagerSortedFlags := PopulateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
 	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
 
