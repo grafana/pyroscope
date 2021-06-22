@@ -28,6 +28,15 @@ func (sn *streeNode) relationship(st, et time.Time) rel {
 	return relationship(sn.time, t2, st, et)
 }
 
+func (sn *streeNode) isBefore(rt time.Time) bool {
+	t2 := sn.time.Add(durations[sn.depth])
+	return !t2.After(rt)
+}
+
+func (sn *streeNode) isAfter(rt time.Time) bool {
+	return sn.time.After(rt)
+}
+
 func (sn *streeNode) endTime() time.Time {
 	return sn.time.Add(durations[sn.depth])
 }
@@ -120,6 +129,10 @@ func normalize(st, et time.Time) (time.Time, time.Time) {
 	return st, et2.Add(durations[0])
 }
 
+func normalizeTime(t time.Time) time.Time {
+	return t.Truncate(durations[0])
+}
+
 //  relationship                               overlap read             overlap write
 // 	inside  rel = iota   // | S E |            <1                       1/1
 // 	match                // matching ranges    1/1                      1/1
@@ -144,6 +157,28 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 			}
 		}
 	}
+}
+
+// deleteDataBefore returns true if the node should be deleted
+func (sn *streeNode) deleteDataBefore(retentionThreshold time.Time, cb func(depth int, t time.Time)) bool {
+	if !sn.isAfter(retentionThreshold) {
+		isBefore := sn.isBefore(retentionThreshold)
+		if isBefore {
+			cb(sn.depth, sn.time)
+		}
+
+		for i, v := range sn.children {
+			if v != nil {
+				deletedData := v.deleteDataBefore(retentionThreshold, cb)
+				if deletedData {
+					sn.children[i] = nil
+				}
+			}
+		}
+		return isBefore
+	}
+
+	return false
 }
 
 type Segment struct {
@@ -229,6 +264,7 @@ type Addon struct {
 }
 
 // TODO: simplify arguments
+// TODO: validate st < et
 func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, r *big.Rat, addons []Addon)) {
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -244,6 +280,7 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 }
 
 // TODO: simplify arguments
+// TODO: validate st < et
 func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint64, t time.Time, r *big.Rat)) {
 	s.m.RLock()
 	defer s.m.RUnlock()
@@ -262,8 +299,28 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-get-%s-%s.html", st.String(), et.String())))
 }
 
-// TODO: this should be refactored
+func (s *Segment) DeleteDataBefore(retentionThreshold time.Time, cb func(depth int, t time.Time)) bool {
+	s.m.Lock()
+	defer s.m.Unlock()
 
+	if s.root == nil {
+		return true
+	}
+
+	retentionThreshold = normalizeTime(retentionThreshold)
+	shouldDeleteRoot := s.root.deleteDataBefore(retentionThreshold, func(depth int, t time.Time) {
+		cb(depth, t)
+	})
+
+	if shouldDeleteRoot {
+		s.root = nil
+		return true
+	}
+
+	return false
+}
+
+// TODO: this should be refactored
 func (s *Segment) SetMetadata(spyName string, sampleRate uint32, units, aggregationType string) {
 	s.spyName = spyName
 	s.sampleRate = sampleRate
@@ -282,6 +339,35 @@ func (s *Segment) SampleRate() uint32 {
 func (s *Segment) Units() string {
 	return s.units
 }
+
 func (s *Segment) AggregationType() string {
 	return s.aggregationType
+}
+
+var zeroTime time.Time
+
+func (s *Segment) StartTime() time.Time {
+	if s.root == nil {
+		return zeroTime
+	}
+	n := s.root
+
+	for {
+		if len(n.children) == 0 {
+			return n.time
+		}
+
+		oldN := n
+
+		for _, child := range n.children {
+			if child != nil {
+				n = child
+				break
+			}
+		}
+
+		if n == oldN {
+			return n.time
+		}
+	}
 }

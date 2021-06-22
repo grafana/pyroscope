@@ -107,6 +107,15 @@ func (k *Key) DictKey() string {
 	return k.Normalized()
 }
 
+// FromTreeToDictKey returns app name from tree key k: given tree key
+// "foo{}:0:-62135596790", the call returns "foo".
+//
+// Before tags support, segment key form (i.e. app name + tags: foo{key=value})
+// has been used to reference a dictionary (trie).
+func FromTreeToDictKey(k string) string {
+	return k[0:strings.IndexAny(k, "{")]
+}
+
 func FromTreeToMainKey(k string) string {
 	i := strings.LastIndex(k, ":")
 	i = strings.LastIndex(k[:i-1], ":")

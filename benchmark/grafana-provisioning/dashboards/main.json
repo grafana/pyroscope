@@ -1300,7 +1300,7 @@
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "ram_evictions_used_perc",
+          "alias": "evictions_used_perc",
           "yaxis": 2
         }
       ],
@@ -1310,7 +1310,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "ram_evictions_alloc_bytes{}",
+          "expr": "evictions_alloc_bytes{}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{__name__}}",
@@ -1319,7 +1319,7 @@
         },
         {
           "exemplar": true,
-          "expr": "ram_evictions_total_bytes{}",
+          "expr": "evictions_total_bytes{}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{__name__}}",
@@ -1389,14 +1389,14 @@
         "y": 10
       },
       "hiddenSeries": false,
-      "id": 14,
+      "id": 12,
       "interval": "1",
       "legend": {
         "avg": false,
         "current": false,
         "max": false,
         "min": false,
-        "show": false,
+        "show": true,
         "total": false,
         "values": false
       },
@@ -1414,8 +1414,12 @@
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "ram_evictions_used_perc",
-          "yaxis": 1
+          "alias": "evictions",
+          "yaxis": 2
+        },
+        {
+          "alias": "evictions_count",
+          "yaxis": 2
         }
       ],
       "spaceLength": 10,
@@ -1424,29 +1428,27 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "ram_evictions_used_perc{}",
+          "expr": "{__name__=~\"evictions_timer\", instance=\"pyroscope:4040\"}",
+          "interval": "",
+          "legendFormat": "{{__name__}}",
+          "queryType": "randomWalk",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "{__name__=~\"evictions_count\", instance=\"pyroscope:4040\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{__name__}}",
           "queryType": "randomWalk",
-          "refId": "D"
+          "refId": "B"
         }
       ],
-      "thresholds": [
-        {
-          "$$hashKey": "object:104",
-          "colorMode": "critical",
-          "fill": true,
-          "line": true,
-          "op": "gt",
-          "value": 0.25,
-          "yaxis": "left"
-        }
-      ],
+      "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "RAM Usage %",
+      "title": "RAM Evictions Timer",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -1463,20 +1465,20 @@
       "yaxes": [
         {
           "$$hashKey": "object:42",
-          "format": "percentunit",
+          "format": "ns",
           "label": null,
           "logBase": 1,
-          "max": "1",
+          "max": null,
           "min": "0",
           "show": true
         },
         {
           "$$hashKey": "object:43",
-          "format": "percentunit",
+          "format": "short",
           "label": null,
           "logBase": 1,
           "max": null,
-          "min": "0",
+          "min": null,
           "show": true
         }
       ],
@@ -1504,14 +1506,14 @@
         "y": 10
       },
       "hiddenSeries": false,
-      "id": 12,
+      "id": 20,
       "interval": "1",
       "legend": {
         "avg": false,
         "current": false,
         "max": false,
         "min": false,
-        "show": false,
+        "show": true,
         "total": false,
         "values": false
       },
@@ -1529,7 +1531,11 @@
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "ram_evictions",
+          "alias": "evictions",
+          "yaxis": 2
+        },
+        {
+          "alias": "write_back_count",
           "yaxis": 2
         }
       ],
@@ -1539,7 +1545,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "{__name__=~\"ram_evictions_timer\", instance=\"pyroscope:4040\"}",
+          "expr": "{__name__=~\"write_back_timer\", instance=\"pyroscope:4040\"}",
           "interval": "",
           "legendFormat": "{{__name__}}",
           "queryType": "randomWalk",
@@ -1547,7 +1553,7 @@
         },
         {
           "exemplar": true,
-          "expr": "{__name__=~\"ram_evictions\", instance=\"pyroscope:4040\"}",
+          "expr": "{__name__=~\"write_back_count\", instance=\"pyroscope:4040\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "{{__name__}}",
@@ -1559,7 +1565,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "RAM Evictions Timer",
+      "title": "RAM Persistence Timer",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -1682,18 +1688,18 @@
       "gridPos": {
         "h": 5,
         "w": 3,
-        "x": 12,
+        "x": 6,
         "y": 15
       },
       "hiddenSeries": false,
-      "id": 20,
+      "id": 14,
       "interval": "1",
       "legend": {
         "avg": false,
         "current": false,
         "max": false,
         "min": false,
-        "show": false,
+        "show": true,
         "total": false,
         "values": false
       },
@@ -1711,7 +1717,11 @@
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "ram_evictions",
+          "alias": "evictions_used_perc",
+          "yaxis": 1
+        },
+        {
+          "alias": "retention_count",
           "yaxis": 2
         }
       ],
@@ -1721,27 +1731,28 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "{__name__=~\"ram_persistence_timer\", instance=\"pyroscope:4040\"}",
-          "interval": "",
-          "legendFormat": "{{__name__}}",
-          "queryType": "randomWalk",
-          "refId": "A"
-        },
-        {
-          "exemplar": true,
-          "expr": "{__name__=~\"ram_persistence\", instance=\"pyroscope:4040\"}",
+          "expr": "retention_timer",
           "hide": false,
           "interval": "",
           "legendFormat": "{{__name__}}",
           "queryType": "randomWalk",
-          "refId": "B"
+          "refId": "D"
+        },
+        {
+          "exemplar": true,
+          "expr": "retention_count",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "{{__name__}}",
+          "queryType": "randomWalk",
+          "refId": "A"
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "RAM Persistence Timer",
+      "title": "Retention",
       "tooltip": {
         "shared": true,
         "sort": 2,
@@ -1771,7 +1782,7 @@
           "label": null,
           "logBase": 1,
           "max": null,
-          "min": null,
+          "min": "0",
           "show": true
         }
       ],
@@ -1789,7 +1800,7 @@
     "list": []
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {
@@ -1820,5 +1831,5 @@
   "timezone": "browser",
   "title": "main",
   "uid": "65gjqY3Mk",
-  "version": 1
+  "version": 10
 }

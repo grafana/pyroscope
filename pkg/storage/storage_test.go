@@ -58,9 +58,7 @@ var _ = Describe("storage package", func() {
 					})
 
 					err := s.Delete(&DeleteInput{
-						StartTime: st,
-						EndTime:   et,
-						Key:       key,
+						Key: key,
 					})
 					Expect(err).ToNot(HaveOccurred())
 
@@ -108,9 +106,7 @@ var _ = Describe("storage package", func() {
 					})
 
 					err := s.Delete(&DeleteInput{
-						StartTime: st,
-						EndTime:   et,
-						Key:       key,
+						Key: key,
 					})
 					Expect(err).ToNot(HaveOccurred())
 
@@ -149,9 +145,7 @@ var _ = Describe("storage package", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					err = s.Delete(&DeleteInput{
-						StartTime: st,
-						EndTime:   et,
-						Key:       key,
+						Key: key,
 					})
 					Expect(err).ToNot(HaveOccurred())
 
@@ -270,7 +264,7 @@ var _ = Describe("storage package", func() {
 					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
-			Context("evict cache items periodly", func() {
+			Context("evict cache items periodically", func() {
 				It("works correctly", func() {
 					tree := tree.New()
 
@@ -317,7 +311,9 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := ParseKey("foo")
+
+					appKey, _ := ParseKey("foo")
+					key, _ := ParseKey("foo{tag=value}")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -332,7 +328,7 @@ var _ = Describe("storage package", func() {
 					o, err := s.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
-						Key:       key,
+						Key:       appKey,
 					})
 
 					Expect(err).ToNot(HaveOccurred())
@@ -346,13 +342,69 @@ var _ = Describe("storage package", func() {
 					o2, err := s2.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
-						Key:       key,
+						Key:       appKey,
 					})
 					Expect(err).ToNot(HaveOccurred())
 					Expect(o2.Tree).ToNot(BeNil())
 					Expect(o2.Tree.String()).To(Equal(tree.String()))
 					Expect(s2.Close()).ToNot(HaveOccurred())
 				})
+			})
+		})
+	})
+})
+
+var _ = Describe("DeleteDataBefore", func() {
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(&(*cfg).Server)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		Context("simple case 1", func() {
+			It("does not return errors", func() {
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(1))
+				tree.Insert([]byte("a;c"), uint64(2))
+				st := time.Now().Add(time.Hour * 24 * 10 * -1)
+				et := st.Add(time.Second * 10)
+				key, _ := ParseKey("foo")
+
+				err := s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        tree,
+					SpyName:    "testspy",
+					SampleRate: 100,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(s.DeleteDataBefore(time.Now().Add(-1 * time.Hour))).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
+			})
+		})
+
+		Context("simple case 2", func() {
+			It("does not return errors", func() {
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(1))
+				tree.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(20)
+				key, _ := ParseKey("foo")
+
+				err := s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        tree,
+					SpyName:    "testspy",
+					SampleRate: 100,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(s.DeleteDataBefore(time.Now().Add(-1 * time.Hour))).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
