@@ -154,7 +154,7 @@ func New(c *config.Server) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(dbTrees, "t:", "trees")
+	s.trees = cache.New(s.dbTrees, "t:", "trees")
 	s.trees.Bytes = s.treeBytes
 	s.trees.FromBytes = s.treeFromBytes
 	s.trees.New = func(k string) interface{} {
@@ -223,14 +223,7 @@ func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
 	if d == nil { // key not found
 		return nil, nil
 	}
-	return v.(*tree.Tree).Bytes(d.(*dict.Dict), s.cfg.MaxNodesSerialization)
-}
-
-func (s *Storage) IsClosing() bool {
-	s.closingMutex.RLock()
-	defer s.closingMutex.RUnlock()
-
-	return s.closing
+	return v.(*tree.Tree).Bytes(d.(*dict.Dict), s.config.MaxNodesSerialization)
 }
 
 var OutOfSpaceThreshold = 512 * bytesize.MB
