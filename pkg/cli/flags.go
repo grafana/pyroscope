@@ -20,6 +20,9 @@ const timeFormat = "2006-01-02T15:04:05Z0700"
 type arrayFlags []string
 
 func (i *arrayFlags) String() string {
+	if len(*i) == 0 {
+		return "[]"
+	}
 	return strings.Join(*i, ", ")
 }
 
@@ -53,6 +56,35 @@ func (tf *timeFlag) Set(value string) error {
 	return nil
 }
 
+type options struct {
+	replacements   map[string]string
+	skip           []string
+	skipDeprecated bool
+}
+
+type FlagOption func(*options)
+
+func WithSkip(n ...string) FlagOption {
+	return func(o *options) {
+		o.skip = append(o.skip, n...)
+	}
+}
+
+// WithSkipDeprecated specifies that fields marked as deprecated won't be parsed.
+// By default PopulateFlagSet parses them but not shows in Usage; setting this
+// option to true causes PopulateFlagSet to skip parsing.
+func WithSkipDeprecated(ok bool) FlagOption {
+	return func(o *options) {
+		o.skipDeprecated = ok
+	}
+}
+
+func WithReplacement(k, v string) FlagOption {
+	return func(o *options) {
+		o.replacements[k] = v
+	}
+}
+
 type durFlag time.Duration
 
 func (df *durFlag) String() string {
@@ -71,13 +103,22 @@ func (df *durFlag) Set(value string) error {
 	return nil
 }
 
-func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *SortedFlags {
+func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption) *SortedFlags {
 	v := reflect.ValueOf(obj).Elem()
 	t := reflect.TypeOf(v.Interface())
 	num := t.NumField()
 
-	installPrefix := getInstallPrefix()
-	supportedSpies := strings.Join(spy.SupportedExecSpies(), ", ")
+	o := &options{
+		replacements: map[string]string{
+			"<installPrefix>":           getInstallPrefix(),
+			"<defaultAgentConfigPath>":  defaultAgentConfigPath(),
+			"<defaultAgentLogFilePath>": defaultAgentLogFilePath(),
+			"<supportedProfilers>":      strings.Join(spy.SupportedExecSpies(), ", "),
+		},
+	}
+	for _, option := range opts {
+		option(o)
+	}
 
 	deprecatedFields := []string{}
 
@@ -96,15 +137,25 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
 		}
-		if skipVal == "true" || slices.StringContains(skip, nameVal) {
+		if skipVal == "true" || slices.StringContains(o.skip, nameVal) {
 			continue
 		}
 
 		if deprecatedVal == "true" {
 			deprecatedFields = append(deprecatedFields, nameVal)
+			if o.skipDeprecated {
+				continue
+			}
 		}
 
-		descVal = strings.ReplaceAll(descVal, "<supportedProfilers>", supportedSpies)
+		for old, n := range o.replacements {
+			descVal = strings.ReplaceAll(descVal, old, n)
+		}
+
+		if fieldV.Kind() == reflect.Slice && field.Type.Elem().Kind() == reflect.Struct {
+			flagSet.Var(new(arrayFlags), nameVal, descVal)
+			continue
+		}
 
 		switch field.Type {
 		case reflect.TypeOf([]string{}):
@@ -113,9 +164,9 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, skip ...string) *So
 			flagSet.Var(val2, nameVal, descVal)
 		case reflect.TypeOf(""):
 			val := fieldV.Addr().Interface().(*string)
-			defaultValStr = strings.ReplaceAll(defaultValStr, "<installPrefix>", installPrefix)
-			defaultValStr = strings.ReplaceAll(defaultValStr, "<defaultAgentConfigPath>", defaultAgentConfigPath())
-			defaultValStr = strings.ReplaceAll(defaultValStr, "<defaultAgentLogFilePath>", defaultAgentLogFilePath())
+			for old, n := range o.replacements {
+				defaultValStr = strings.ReplaceAll(defaultValStr, old, n)
+			}
 			flagSet.StringVar(val, nameVal, defaultValStr, descVal)
 		case reflect.TypeOf(true):
 			val := fieldV.Addr().Interface().(*bool)

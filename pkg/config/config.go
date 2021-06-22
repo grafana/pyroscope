@@ -28,20 +28,21 @@ type Agent struct {
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
 	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
 
-	Targets []Target `skip:"true"`
+	Targets []Target `desc:"list of targets to be profiled"`
 }
 
 type Target struct {
-	ServiceName string `yaml:"service-name"`
+	ServiceName string `yaml:"service-name" desc:"name of the system service to be profiled"`
 
-	SpyName            string `yaml:"spy-name"`
-	ApplicationName    string `yaml:"application-name"`
-	SampleRate         uint   `yaml:"sample-rate"`
-	DetectSubprocesses bool   `yaml:"detect-subprocesses"`
+	SpyName            string `yaml:"spy-name" def:"" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>"`
+	ApplicationName    string `yaml:"application-name" def:"" desc:"application name used when uploading profiling data"`
+	SampleRate         uint   `yaml:"sample-rate" def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
+	DetectSubprocesses bool   `yaml:"detect-subprocesses" def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
 
 	// Spy-specific settings.
-	PyspyBlocking bool `yaml:"pyspy-blocking"`
-	RbspyBlocking bool `yaml:"rbspy-blocking"`
+
+	PyspyBlocking bool `yaml:"pyspy-blocking" def:"false" desc:"enables blocking mode for pyspy"`
+	RbspyBlocking bool `yaml:"rbspy-blocking" def:"false" desc:"enables blocking mode for rbspy"`
 }
 
 type Server struct {

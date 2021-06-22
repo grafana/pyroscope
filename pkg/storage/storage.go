@@ -154,29 +154,9 @@ func New(c *config.Server) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(s.dbTrees, "t:", "trees")
-	s.trees.Bytes = func(k string, v interface{}) ([]byte, error) {
-		key := FromTreeToMainKey(k)
-		d, err := s.dicts.Get(key)
-		if err != nil {
-			return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
-		}
-		if d == nil { // key not found
-			return nil, nil
-		}
-		return v.(*tree.Tree).Bytes(d.(*dict.Dict), s.config.MaxNodesSerialization)
-	}
-	s.trees.FromBytes = func(k string, v []byte) (interface{}, error) {
-		key := FromTreeToMainKey(k)
-		d, err := s.dicts.Get(FromTreeToMainKey(k))
-		if err != nil {
-			return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
-		}
-		if d == nil { // key not found
-			return nil, nil
-		}
-		return tree.FromBytes(d.(*dict.Dict), v)
-	}
+	s.trees = cache.New(dbTrees, "t:", "trees")
+	s.trees.Bytes = s.treeBytes
+	s.trees.FromBytes = s.treeFromBytes
 	s.trees.New = func(k string) interface{} {
 		return tree.New()
 	}
@@ -206,6 +186,51 @@ type PutInput struct {
 	SampleRate      uint32
 	Units           string
 	AggregationType string
+}
+
+func (s *Storage) treeFromBytes(k string, v []byte) (interface{}, error) {
+	key := FromTreeToDictKey(k)
+	d, err := s.dicts.Get(key)
+	if err != nil {
+		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
+	}
+	if d == nil {
+		// The key not found. Fallback to segment key form which has been
+		// used before tags support. Refer to FromTreeToDictKey.
+		return s.treeFromBytesFallback(k, v)
+	}
+	return tree.FromBytes(d.(*dict.Dict), v)
+}
+
+func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error) {
+	key := FromTreeToMainKey(k)
+	d, err := s.dicts.Get(key)
+	if err != nil {
+		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
+	}
+	if d == nil { // key not found
+		return nil, nil
+	}
+	return tree.FromBytes(d.(*dict.Dict), v)
+}
+
+func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
+	key := FromTreeToDictKey(k)
+	d, err := s.dicts.Get(key)
+	if err != nil {
+		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
+	}
+	if d == nil { // key not found
+		return nil, nil
+	}
+	return v.(*tree.Tree).Bytes(d.(*dict.Dict), s.cfg.MaxNodesSerialization)
+}
+
+func (s *Storage) IsClosing() bool {
+	s.closingMutex.RLock()
+	defer s.closingMutex.RUnlock()
+
+	return s.closing
 }
 
 var OutOfSpaceThreshold = 512 * bytesize.MB

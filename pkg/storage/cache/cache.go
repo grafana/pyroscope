@@ -97,11 +97,6 @@ func (cache *Cache) Put(key string, val interface{}) {
 }
 
 func (cache *Cache) saveToDisk(key string, val interface{}) error {
-	logrus.WithFields(logrus.Fields{
-		"prefix": cache.prefix,
-		"key":    key,
-	}).Debug("saving to disk")
-
 	// serialize the key and value
 	buf, err := cache.Bytes(key, val)
 	if err != nil {
