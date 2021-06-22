@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	goexec "os/exec"
 	"runtime"
 
 	"github.com/peterbourgon/ff/v3"
@@ -44,10 +45,10 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	)
 
 	serverSortedFlags := PopulateFlagSet(&cfg.Server, serverFlagSet)
-	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet)
+	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet, WithSkip("targets"))
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
-	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, "pid")
-	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet)
+	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, WithSkip("pid"))
+	connectSortedFlags := PopulateFlagSet(&cfg.Exec, connectFlagSet, WithSkip("group-name", "user-name", "no-root-drop"))
 	dbmanagerSortedFlags := PopulateFlagSet(&cfg.DbManager, dbmanagerFlagSet)
 	rootSortedFlags := PopulateFlagSet(cfg, rootFlagSet)
 
@@ -113,11 +114,6 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 	}
 
 	serverCmd.Exec = func(ctx context.Context, args []string) error {
-		l, err := logrus.ParseLevel(cfg.Server.LogLevel)
-		if err != nil {
-			return err
-		}
-		logrus.SetLevel(l)
 		return startServer(&cfg.Server)
 	}
 
@@ -145,7 +141,15 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			return nil
 		}
 
-		return exec.Cli(context.Background(), &cfg.Exec, args)
+		err := exec.Cli(&cfg.Exec, args)
+		// Normally, if the program ran, the call should return ExitError and
+		// the exit code must be preserved. Otherwise, the error originates from
+		// pyroscope and will be printed.
+		if e, ok := err.(*goexec.ExitError); ok {
+			os.Exit(e.ExitCode())
+		}
+
+		return err
 	}
 
 	connectCmd.Exec = func(ctx context.Context, args []string) error {
@@ -160,7 +164,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			return nil
 		}
 
-		return exec.Cli(context.Background(), &cfg.Exec, args)
+		return exec.Cli(&cfg.Exec, args)
 	}
 
 	dbmanagerCmd.Exec = func(ctx context.Context, args []string) error {

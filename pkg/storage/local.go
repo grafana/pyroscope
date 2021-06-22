@@ -72,13 +72,11 @@ func (s *Storage) collectLocalProfile(path string) error {
 }
 
 func (s *Storage) CollectLocalProfiles() error {
-	logrus.Debug("collecting local profiles")
 	matches, err := filepath.Glob(filepath.Join(s.localProfilesDir, "*.profile"))
 	if err != nil {
 		return err
 	}
 	for _, path := range matches {
-		logrus.WithField("path", path).Debug("collectLocalProfile")
 		if err := s.collectLocalProfile(path); err != nil {
 			logrus.WithError(err).WithField("path", path).Error("failed to collect local profile")
 		}
@@ -112,7 +110,7 @@ func (s *Storage) PutLocal(po *PutInput) error {
 	varint.Write(&buf, uint64(len(mb)))
 	buf.Write(mb)
 
-	if err := t.SerializeNoDict(s.cfg.MaxNodesSerialization, &buf); err != nil {
+	if err := t.SerializeNoDict(s.config.MaxNodesSerialization, &buf); err != nil {
 		return err
 	}
 	ioutil.WriteFile(filepath.Join(s.localProfilesDir, name), buf.Bytes(), 0600)

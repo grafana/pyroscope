@@ -48,7 +48,8 @@ func NewService(cfg *config.Server, s *storage.Storage, c *server.Controller) *S
 			},
 			Timeout: 60 * time.Second,
 		},
-		stopCh: make(chan struct{}),
+		stop: make(chan struct{}),
+		done: make(chan struct{}),
 	}
 }
 
@@ -58,7 +59,9 @@ type Service struct {
 	c          *server.Controller
 	httpClient *http.Client
 	uploads    int
-	stopCh     chan struct{}
+
+	stop chan struct{}
+	done chan struct{}
 }
 
 type metrics struct {
@@ -91,26 +94,29 @@ type metrics struct {
 }
 
 func (s *Service) Start() {
+	defer close(s.done)
 	timer := time.NewTimer(gracePeriod)
-	<-timer.C
+	select {
+	case <-s.stop:
+		return
+	case <-timer.C:
+	}
 	s.sendReport()
 	ticker := time.NewTicker(uploadFrequency)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
 			s.sendReport()
-		case <-s.stopCh:
+		case <-s.stop:
 			return
 		}
 	}
 }
 
 func (s *Service) Stop() {
-	select {
-	case s.stopCh <- struct{}{}:
-	default:
-	}
-	close(s.stopCh)
+	close(s.stop)
+	<-s.done
 }
 
 func (s *Service) sendReport() {

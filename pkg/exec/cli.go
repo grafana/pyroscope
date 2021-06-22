@@ -1,17 +1,19 @@
 package exec
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/mitchellh/go-ps"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
@@ -19,9 +21,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/util/atexit"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
-	"github.com/sirupsen/logrus"
 )
 
 // used in tests
@@ -29,13 +29,15 @@ var disableMacOSChecks bool
 var disableLinuxChecks bool
 
 // Cli is command line interface for both exec and connect commands
-func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
+func Cli(cfg *config.Exec, args []string) error {
 	// isExec = true means we need to start the process first (pyroscope exec)
 	// isExec = false means the process is already there (pyroscope connect)
 	isExec := cfg.Pid == 0
 
 	if isExec && len(args) == 0 {
 		return errors.New("no arguments passed")
+	} else if !processExists(cfg.Pid) {
+		return errors.New("process not found")
 	}
 
 	// TODO: this is somewhat hacky, we need to find a better way to configure agents
@@ -90,22 +92,6 @@ func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 		"args": fmt.Sprintf("%q", args),
 	}).Debug("starting command")
 
-	pid := cfg.Pid
-	var cmd *exec.Cmd
-	if isExec {
-		cmd = exec.CommandContext(ctx, args[0], args[1:]...)
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-		cmd.Stdin = os.Stdin
-		if err := adjustCmd(cmd, *cfg); err != nil {
-			logrus.Error(err)
-		}
-		if err := cmd.Start(); err != nil {
-			return err
-		}
-		pid = cmd.Process.Pid
-	}
-
 	rc := remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
 		UpstreamAddress:        cfg.ServerAddress,
@@ -117,6 +103,35 @@ func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 		return fmt.Errorf("new remote upstream: %v", err)
 	}
 	defer u.Stop()
+
+	// The channel buffer capacity should be sufficient to be keep up with
+	// the expected signal rate (in case of Exec all the signals to be relayed
+	// to the child process)
+	c := make(chan os.Signal, 10)
+	pid := cfg.Pid
+	var cmd *exec.Cmd
+	if isExec {
+		// Note that we don't specify which signals to be sent: any signal to be
+		// relayed to the child process (including SIGINT and SIGTERM).
+		signal.Notify(c)
+		cmd = exec.Command(args[0], args[1:]...)
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		cmd.Stdin = os.Stdin
+		if err = adjustCmd(cmd, *cfg); err != nil {
+			logrus.Error(err)
+		}
+		if err = cmd.Start(); err != nil {
+			return err
+		}
+		pid = cmd.Process.Pid
+	} else {
+		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	}
+	defer func() {
+		signal.Stop(c)
+		close(c)
+	}()
 
 	logrus.WithFields(logrus.Fields{
 		"app-name":            cfg.ApplicationName,
@@ -141,65 +156,42 @@ func Cli(ctx context.Context, cfg *config.Exec, args []string) error {
 		WithSubprocesses: cfg.DetectSubprocesses,
 	}
 	session := agent.NewSession(&sc, logrus.StandardLogger())
-	if err := session.Start(); err != nil {
+	if err = session.Start(); err != nil {
 		return fmt.Errorf("start session: %v", err)
 	}
 	defer session.Stop()
 
 	if isExec {
-		waitForSpawnedProcessToExit(cmd)
-	} else {
-		waitForProcessToExit(ctx, pid)
+		return waitForSpawnedProcessToExit(c, cmd)
 	}
-
+	waitForProcessToExit(c, pid)
 	return nil
 }
 
-// TODO: very hacky, at some point we'll need to make `cmd.Wait()` work
-//   Currently the issue is that on Linux it often thinks the process exited when it did not.
-func waitForSpawnedProcessToExit(cmd *exec.Cmd) {
-	sigc := make(chan struct{})
-
+func waitForSpawnedProcessToExit(c chan os.Signal, cmd *exec.Cmd) error {
 	go func() {
-		cmd.Wait()
-	}()
-
-	atexit.Register(func() {
-		sigc <- struct{}{}
-	})
-
-	t := time.NewTicker(time.Second)
-	for {
-		select {
-		case <-sigc:
-			logrus.Debug("received a signal, killing subprocess")
-			cmd.Process.Kill()
-			return
-		case <-t.C:
-			p, err := ps.FindProcess(cmd.Process.Pid)
-			if p == nil || err != nil {
-				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
-				return
-			}
+		for s := range c {
+			_ = cmd.Process.Signal(s)
 		}
-	}
+	}()
+	return cmd.Wait()
 }
 
-func waitForProcessToExit(ctx context.Context, pid int) {
+func waitForProcessToExit(c chan os.Signal, pid int) {
 	// pid == -1 means we're profiling whole system
 	if pid == -1 {
-		select {} // revive:disable-line:empty-block This block has to be empty
+		<-c
+		return
 	}
-	t := time.NewTicker(time.Second)
-	defer t.Stop()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-c:
 			return
-		case <-t.C:
-			p, err := ps.FindProcess(pid)
-			if p == nil || err != nil {
-				logrus.WithField("err", err).Debug("could not find subprocess, it might be dead")
+		case <-ticker.C:
+			if !processExists(pid) {
+				logrus.Debug("child process exited")
 				return
 			}
 		}

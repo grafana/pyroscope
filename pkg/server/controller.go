@@ -7,26 +7,29 @@ import (
 	"io/ioutil"
 	golog "log"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
-	"net/http/pprof"
-
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
-	"github.com/sirupsen/logrus"
 )
 
 type Controller struct {
-	cfg        *config.Server
-	s          *storage.Storage
+	drained uint32
+
+	config     *config.Server
+	storage    *storage.Storage
 	httpServer *http.Server
 
 	statsMutex sync.Mutex
@@ -35,78 +38,51 @@ type Controller struct {
 	appStats *hyperloglog.HyperLogLogPlus
 }
 
-func New(cfg *config.Server, s *storage.Storage) (*Controller, error) {
+func New(c *config.Server, s *storage.Storage) (*Controller, error) {
 	appStats, err := hyperloglog.NewPlus(uint8(18))
 	if err != nil {
 		return nil, err
 	}
 
-	return &Controller{
-		cfg:      cfg,
-		s:        s,
+	ctrl := Controller{
+		config:   c,
+		storage:  s,
 		stats:    make(map[string]int),
 		appStats: appStats,
-	}, nil
-}
-
-func (ctrl *Controller) Stop() error {
-	if ctrl.httpServer != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-		defer cancel()
-
-		// shutdown the server gracefully
-		return ctrl.httpServer.Shutdown(ctx)
 	}
-	return nil
-}
 
-// TODO: split the cli initialization from HTTP controller logic
-func (ctrl *Controller) Start() error {
 	mux := http.NewServeMux()
-
-	if !ctrl.cfg.DisablePprofEndpoint {
-		mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
-		mux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-		mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-		mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-		mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
-	}
-
-	mux.HandleFunc("/healthz", ctrl.healthz)
-
-	mux.HandleFunc("/metrics", promhttp.Handler().ServeHTTP)
-	mux.HandleFunc("/ingest", ctrl.ingestHandler)
-	mux.HandleFunc("/render", ctrl.renderHandler)
-	mux.HandleFunc("/labels", ctrl.labelsHandler)
-	mux.HandleFunc("/label-values", ctrl.labelValuesHandler)
-
-	var dir http.FileSystem
-	if build.UseEmbeddedAssets {
-		// for this to work you need to run `pkger` first. See Makefile for more information
-		dir = pkger.Dir("/webapp/public")
-	} else {
-		dir = http.Dir("./webapp/public")
-	}
-
-	fs := http.FileServer(dir)
-	mux.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			ctrl.statsInc("index")
-			ctrl.renderIndexPage(dir, rw, r)
-		} else if r.URL.Path == "/comparison" {
-			ctrl.statsInc("index")
-			ctrl.renderIndexPage(dir, rw, r)
-		} else {
-			fs.ServeHTTP(rw, r)
-		}
+	addRoutes(mux, []route{
+		{"/healthz", ctrl.healthz},
+		{"/metrics", promhttp.Handler().ServeHTTP},
 	})
+
+	routes := []route{
+		{"/", ctrl.indexHandler()},
+		{"/ingest", ctrl.ingestHandler},
+		{"/render", ctrl.renderHandler},
+		{"/labels", ctrl.labelsHandler},
+		{"/label-values", ctrl.labelValuesHandler},
+	}
+
+	addRoutes(mux, routes, ctrl.drainMiddleware)
+
+	if !ctrl.config.DisablePprofEndpoint {
+		addRoutes(mux, []route{
+			{"/debug/pprof/", pprof.Index},
+			{"/debug/pprof/cmdline", pprof.Cmdline},
+			{"/debug/pprof/profile", pprof.Profile},
+			{"/debug/pprof/symbol", pprof.Symbol},
+			{"/debug/pprof/trace", pprof.Trace},
+		})
+	}
 
 	logger := logrus.New()
 	w := logger.Writer()
 	defer w.Close()
 
 	ctrl.httpServer = &http.Server{
-		Addr:           ctrl.cfg.APIBindAddr,
+		Addr:           ctrl.config.APIBindAddr,
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -115,14 +91,37 @@ func (ctrl *Controller) Start() error {
 		ErrorLog:       golog.New(w, "", 0),
 	}
 
-	if err := ctrl.httpServer.ListenAndServe(); err != nil {
-		if err == http.ErrServerClosed {
-			return nil
-		}
-		return fmt.Errorf("listen and serve: %v", err)
-	}
+	return &ctrl, nil
+}
 
-	return nil
+func (ctrl *Controller) Start() error {
+	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
+	// the returned error is ErrServerClosed.
+	err := ctrl.httpServer.ListenAndServe()
+	if err == http.ErrServerClosed {
+		return nil
+	}
+	return fmt.Errorf("listen and serve: %v", err)
+}
+
+func (ctrl *Controller) Stop() error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	return ctrl.httpServer.Shutdown(ctx)
+}
+
+func (ctrl *Controller) Drain() {
+	atomic.StoreUint32(&ctrl.drained, 1)
+}
+
+func (ctrl *Controller) drainMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if atomic.LoadUint32(&ctrl.drained) > 0 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
 }
 
 func renderServerError(rw http.ResponseWriter, text string) {
@@ -153,6 +152,28 @@ type indexPage struct {
 	BaseURL       string
 }
 
+func (ctrl *Controller) indexHandler() http.HandlerFunc {
+	var dir http.FileSystem
+	if build.UseEmbeddedAssets {
+		// for this to work you need to run `pkger` first. See Makefile for more information
+		dir = pkger.Dir("/webapp/public")
+	} else {
+		dir = http.Dir("./webapp/public")
+	}
+	fs := http.FileServer(dir)
+	return func(rw http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			ctrl.statsInc("index")
+			ctrl.renderIndexPage(dir, rw, r)
+		} else if r.URL.Path == "/comparison" {
+			ctrl.statsInc("index")
+			ctrl.renderIndexPage(dir, rw, r)
+		} else {
+			fs.ServeHTTP(rw, r)
+		}
+	}
+}
+
 func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWriter, _ *http.Request) {
 	f, err := dir.Open("/index.html")
 	if err != nil {
@@ -173,7 +194,7 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	}
 
 	initialStateObj := indexPageJSON{}
-	ctrl.s.GetValues("__name__", func(v string) bool {
+	ctrl.storage.GetValues("__name__", func(v string) bool {
 		initialStateObj.AppNames = append(initialStateObj.AppNames, v)
 		return true
 	})
@@ -217,7 +238,7 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 		InitialState:  initialStateStr,
 		BuildInfo:     buildInfoStr,
 		ExtraMetadata: extraMetadataStr,
-		BaseURL:       ctrl.cfg.BaseURL,
+		BaseURL:       ctrl.config.BaseURL,
 	})
 	if err != nil {
 		renderServerError(rw, fmt.Sprintf("could not marshal json: %q", err))

@@ -2,6 +2,7 @@ package direct
 
 import (
 	"runtime/debug"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 
@@ -13,37 +14,37 @@ import (
 const upstreamThreads = 1
 
 type Direct struct {
-	s    *storage.Storage
-	todo chan *upstream.UploadJob
-	done chan struct{}
+	s     *storage.Storage
+	queue chan *upstream.UploadJob
+	stop  chan struct{}
+	wg    sync.WaitGroup
 }
 
 func New(s *storage.Storage) *Direct {
-	d := &Direct{
-		s:    s,
-		todo: make(chan *upstream.UploadJob, 100),
-		done: make(chan struct{}, upstreamThreads),
+	return &Direct{
+		s:     s,
+		queue: make(chan *upstream.UploadJob, 100),
+		stop:  make(chan struct{}),
 	}
-
-	go d.start()
-	return d
 }
 
-func (u *Direct) start() {
+func (u *Direct) Start() {
+	u.wg.Add(upstreamThreads)
 	for i := 0; i < upstreamThreads; i++ {
 		go u.uploadLoop()
 	}
 }
 
 func (u *Direct) Stop() {
-	for i := 0; i < upstreamThreads; i++ {
-		u.done <- struct{}{}
-	}
+	close(u.stop)
+	u.wg.Wait()
 }
 
 func (u *Direct) Upload(j *upstream.UploadJob) {
 	select {
-	case u.todo <- j:
+	case u.queue <- j:
+	case <-u.stop:
+		return
 	default:
 		logrus.Error("Direct upload queue is full, dropping a profile")
 	}
@@ -71,19 +72,18 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 		Units:           j.Units,
 		AggregationType: j.AggregationType,
 	}
-	if err := u.s.Put(pi); err == storage.ErrClosing {
-		if err := u.s.PutLocal(pi); err != nil {
-			logrus.WithError(err).Error("failed to store a local profile")
-		}
+	if err = u.s.Put(pi); err != nil {
+		logrus.WithError(err).Error("failed to store a local profile")
 	}
 }
 
 func (u *Direct) uploadLoop() {
+	defer u.wg.Done()
 	for {
 		select {
-		case j := <-u.todo:
+		case j := <-u.queue:
 			u.safeUpload(j)
-		case <-u.done:
+		case <-u.stop:
 			return
 		}
 	}
@@ -93,9 +93,8 @@ func (u *Direct) uploadLoop() {
 func (u *Direct) safeUpload(j *upstream.UploadJob) {
 	defer func() {
 		if r := recover(); r != nil {
-			logrus.Errorf("panic, stack = : %v", debug.Stack())
+			logrus.Errorf("panic recovered: %v; %v", r, string(debug.Stack()))
 		}
 	}()
-
 	u.uploadProfile(j)
 }
