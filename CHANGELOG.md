@@ -8,10 +8,6 @@
 * Graceful shutdown (#243) ([2723d11](https://github.com/pyroscope-io/pyroscope/commit/2723d11)), closes [#243](https://github.com/pyroscope-io/pyroscope/issues/243)
 * Ignore tags at dictionary lookup (#245) ([e756a20](https://github.com/pyroscope-io/pyroscope/commit/e756a20)), closes [#245](https://github.com/pyroscope-io/pyroscope/issues/245)
 * Improves generate-sample-config script (#236) ([b78084d](https://github.com/pyroscope-io/pyroscope/commit/b78084d)), closes [#236](https://github.com/pyroscope-io/pyroscope/issues/236)
-* Updates the list of contributors in README ([2fbe768](https://github.com/pyroscope-io/pyroscope/commit/2fbe768))
-* Updates the list of contributors in README ([5e74957](https://github.com/pyroscope-io/pyroscope/commit/5e74957))
-* Updates the list of contributors in README ([e4b854e](https://github.com/pyroscope-io/pyroscope/commit/e4b854e))
-* Updates the list of contributors in README ([295e881](https://github.com/pyroscope-io/pyroscope/commit/295e881))
 
 
 
@@ -43,24 +39,6 @@
 * Update README.ch.md ([f16b131](https://github.com/pyroscope-io/pyroscope/commit/f16b131))
 * Update readmes ([6ed27ce](https://github.com/pyroscope-io/pyroscope/commit/6ed27ce))
 * updates dotnet examples docker image ([f445381](https://github.com/pyroscope-io/pyroscope/commit/f445381))
-* Updates the list of contributors in README ([6161fd3](https://github.com/pyroscope-io/pyroscope/commit/6161fd3))
-* Updates the list of contributors in README ([c39f929](https://github.com/pyroscope-io/pyroscope/commit/c39f929))
-* Updates the list of contributors in README ([4382496](https://github.com/pyroscope-io/pyroscope/commit/4382496))
-* Updates the list of contributors in README ([96e42d3](https://github.com/pyroscope-io/pyroscope/commit/96e42d3))
-* Updates the list of contributors in README ([351586d](https://github.com/pyroscope-io/pyroscope/commit/351586d))
-* Updates the list of contributors in README ([a5cf54a](https://github.com/pyroscope-io/pyroscope/commit/a5cf54a))
-* Updates the list of contributors in README ([a39670c](https://github.com/pyroscope-io/pyroscope/commit/a39670c))
-* Updates the list of contributors in README ([a550356](https://github.com/pyroscope-io/pyroscope/commit/a550356))
-* Updates the list of contributors in README ([cfcc0a2](https://github.com/pyroscope-io/pyroscope/commit/cfcc0a2))
-* Updates the list of contributors in README ([24dac56](https://github.com/pyroscope-io/pyroscope/commit/24dac56))
-* Updates the list of contributors in README ([fdb6b28](https://github.com/pyroscope-io/pyroscope/commit/fdb6b28))
-* Updates the list of contributors in README ([a32f7d4](https://github.com/pyroscope-io/pyroscope/commit/a32f7d4))
-* Updates the list of contributors in README ([bc326f9](https://github.com/pyroscope-io/pyroscope/commit/bc326f9))
-* Updates the list of contributors in README ([dec9540](https://github.com/pyroscope-io/pyroscope/commit/dec9540))
-* Updates the list of contributors in README ([411e51e](https://github.com/pyroscope-io/pyroscope/commit/411e51e))
-* Updates the list of contributors in README ([4f9d51e](https://github.com/pyroscope-io/pyroscope/commit/4f9d51e))
-* Updates the list of contributors in README ([99d76c2](https://github.com/pyroscope-io/pyroscope/commit/99d76c2))
-* Updates the list of contributors in README ([69e7fed](https://github.com/pyroscope-io/pyroscope/commit/69e7fed))
 * Windows support (agent) (#212) ([c1babda](https://github.com/pyroscope-io/pyroscope/commit/c1babda)), closes [#212](https://github.com/pyroscope-io/pyroscope/issues/212)
 * Closes: #192 Use the specific config structure for each command (#208) ([2f33d66](https://github.com/pyroscope-io/pyroscope/commit/2f33d66)), closes [#192](https://github.com/pyroscope-io/pyroscope/issues/192) [#208](https://github.com/pyroscope-io/pyroscope/issues/208)
 * Closes: Feature: add ability to delete apps #119 (#221) ([2cc5f0e](https://github.com/pyroscope-io/pyroscope/commit/2cc5f0e)), closes [#119](https://github.com/pyroscope-io/pyroscope/issues/119) [#221](https://github.com/pyroscope-io/pyroscope/issues/221) [#119](https://github.com/pyroscope-io/pyroscope/issues/119)
@@ -77,13 +55,9 @@
 * improves multi-platform support in dotnet examples ([0e8d6ff](https://github.com/pyroscope-io/pyroscope/commit/0e8d6ff))
 * Update deployment diagram ([bc5d5e7](https://github.com/pyroscope-io/pyroscope/commit/bc5d5e7))
 * Update deployment diagram ([fbd3a59](https://github.com/pyroscope-io/pyroscope/commit/fbd3a59))
-* Update README.md ([83d181b](https://github.com/pyroscope-io/pyroscope/commit/83d181b))
-* Update README.md ([f825a37](https://github.com/pyroscope-io/pyroscope/commit/f825a37))
-* Update README.md ([555f765](https://github.com/pyroscope-io/pyroscope/commit/555f765))
 * Update storage-design-ch.md ([e39332a](https://github.com/pyroscope-io/pyroscope/commit/e39332a))
 * Update storage-design.md ([659c5c4](https://github.com/pyroscope-io/pyroscope/commit/659c5c4))
 * Updates README and adds Credits section ([7773f33](https://github.com/pyroscope-io/pyroscope/commit/7773f33))
-* Updates the list of contributors in README ([0f526ea](https://github.com/pyroscope-io/pyroscope/commit/0f526ea))
 
 
 
@@ -119,9 +93,6 @@
 * tests improvements ([74c5237](https://github.com/pyroscope-io/pyroscope/commit/74c5237))
 * Update README.ch.md (#159) ([e711418](https://github.com/pyroscope-io/pyroscope/commit/e711418)), closes [#159](https://github.com/pyroscope-io/pyroscope/issues/159)
 * updates README ([f20da5f](https://github.com/pyroscope-io/pyroscope/commit/f20da5f))
-* Updates the list of contributors in README ([1df3ce1](https://github.com/pyroscope-io/pyroscope/commit/1df3ce1))
-* Updates the list of contributors in README ([9605a8a](https://github.com/pyroscope-io/pyroscope/commit/9605a8a))
-* Updates the list of contributors in README ([d897b57](https://github.com/pyroscope-io/pyroscope/commit/d897b57))
 * Use bash to run scripts ([a019ef3](https://github.com/pyroscope-io/pyroscope/commit/a019ef3))
 
 
@@ -172,19 +143,8 @@
 * tests for analytics service ([94004d0](https://github.com/pyroscope-io/pyroscope/commit/94004d0))
 * Typo fix ([d173be8](https://github.com/pyroscope-io/pyroscope/commit/d173be8))
 * Update README.ch.md ([4c4dc1c](https://github.com/pyroscope-io/pyroscope/commit/4c4dc1c))
-* Update README.md ([3aee8df](https://github.com/pyroscope-io/pyroscope/commit/3aee8df))
-* Update README.md ([82fb22d](https://github.com/pyroscope-io/pyroscope/commit/82fb22d))
 * Update storage-design.md (#135) ([3cd6242](https://github.com/pyroscope-io/pyroscope/commit/3cd6242)), closes [#135](https://github.com/pyroscope-io/pyroscope/issues/135)
 * updates badges on README page ([f8105fd](https://github.com/pyroscope-io/pyroscope/commit/f8105fd))
-* Updates the list of contributors in README ([04bc145](https://github.com/pyroscope-io/pyroscope/commit/04bc145))
-* Updates the list of contributors in README ([2673c71](https://github.com/pyroscope-io/pyroscope/commit/2673c71))
-* Updates the list of contributors in README ([d477532](https://github.com/pyroscope-io/pyroscope/commit/d477532))
-* Updates the list of contributors in README ([f29ddd6](https://github.com/pyroscope-io/pyroscope/commit/f29ddd6))
-* Updates the list of contributors in README ([646c0b1](https://github.com/pyroscope-io/pyroscope/commit/646c0b1))
-* Updates the list of contributors in README ([a17ecbc](https://github.com/pyroscope-io/pyroscope/commit/a17ecbc))
-* Updates the list of contributors in README ([a08c100](https://github.com/pyroscope-io/pyroscope/commit/a08c100))
-* Updates the list of contributors in README ([48924e9](https://github.com/pyroscope-io/pyroscope/commit/48924e9))
-* Updates the list of contributors in README ([8fe0a91](https://github.com/pyroscope-io/pyroscope/commit/8fe0a91))
 * version 0.0.28 ([1fc03bb](https://github.com/pyroscope-io/pyroscope/commit/1fc03bb))
 * wrap the strings.Builder WriteString calls in a separate function to handle error check ([66b1bb3](https://github.com/pyroscope-io/pyroscope/commit/66b1bb3))
 * pyspy: defaults to non-blocking mode, adds an option to enable blocking mode ([0035a99](https://github.com/pyroscope-io/pyroscope/commit/0035a99))
@@ -265,7 +225,6 @@
 * Add translations structure (#81) ([05b9fa8](https://github.com/pyroscope-io/pyroscope/commit/05b9fa8)), closes [#81](https://github.com/pyroscope-io/pyroscope/issues/81)
 * Create README.ch.md ([fe33f46](https://github.com/pyroscope-io/pyroscope/commit/fe33f46))
 * Update diagram in CH version ([72d98c6](https://github.com/pyroscope-io/pyroscope/commit/72d98c6))
-* Update README.md ([b1cfe82](https://github.com/pyroscope-io/pyroscope/commit/b1cfe82))
 * updates rbspy version (relative filenames update) ([a58d354](https://github.com/pyroscope-io/pyroscope/commit/a58d354))
 
 
@@ -416,10 +375,6 @@
 * Readme examples changes ([2105963](https://github.com/pyroscope-io/pyroscope/commit/2105963))
 * update readme ([21f71e8](https://github.com/pyroscope-io/pyroscope/commit/21f71e8))
 * Update Readme with new logo ([f3addba](https://github.com/pyroscope-io/pyroscope/commit/f3addba))
-* Update README.md ([94fc945](https://github.com/pyroscope-io/pyroscope/commit/94fc945))
-* Update README.md ([51c3273](https://github.com/pyroscope-io/pyroscope/commit/51c3273))
-* Update README.md ([f1b7a17](https://github.com/pyroscope-io/pyroscope/commit/f1b7a17))
-* Update README.md ([ce55733](https://github.com/pyroscope-io/pyroscope/commit/ce55733))
 * updates our contributors list ([89349d6](https://github.com/pyroscope-io/pyroscope/commit/89349d6))
 
 
@@ -428,7 +383,6 @@
 
 * implements #29 ([a42a241](https://github.com/pyroscope-io/pyroscope/commit/a42a241)), closes [#29](https://github.com/pyroscope-io/pyroscope/issues/29)
 * new logo ([a22b529](https://github.com/pyroscope-io/pyroscope/commit/a22b529))
-* Update README.md ([fa51d9d](https://github.com/pyroscope-io/pyroscope/commit/fa51d9d))
 
 
 
@@ -473,8 +427,6 @@
 * Simplifies Dockerfile ([679206a](https://github.com/pyroscope-io/pyroscope/commit/679206a))
 * storage/segment test fixes ([e40c02c](https://github.com/pyroscope-io/pyroscope/commit/e40c02c))
 * Update main readme with diagram ([ee465d3](https://github.com/pyroscope-io/pyroscope/commit/ee465d3))
-* Update README.md ([7895fd1](https://github.com/pyroscope-io/pyroscope/commit/7895fd1))
-* Update README.md ([4e5c818](https://github.com/pyroscope-io/pyroscope/commit/4e5c818))
 * Update tests.yml ([7fe6047](https://github.com/pyroscope-io/pyroscope/commit/7fe6047))
 * updates README with a better demo gif ([591ce36](https://github.com/pyroscope-io/pyroscope/commit/591ce36))
 * updates README with more install instructions ([da03ff5](https://github.com/pyroscope-io/pyroscope/commit/da03ff5))
