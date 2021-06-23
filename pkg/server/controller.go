@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"text/template"
@@ -63,6 +62,8 @@ func New(c *config.Server, s *storage.Storage) (*Controller, error) {
 		{"/render", ctrl.renderHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
+		{"/config", ctrl.configHandler},
+		{"/build", ctrl.buildHandler},
 	}
 
 	addRoutes(mux, routes, ctrl.drainMiddleware)
@@ -133,18 +134,6 @@ func renderServerError(rw http.ResponseWriter, text string) {
 type indexPageJSON struct {
 	AppNames []string `json:"appNames"`
 }
-
-type buildInfoJSON struct {
-	GOOS              string `json:"goos"`
-	GOARCH            string `json:"goarch"`
-	Version           string `json:"version"`
-	ID                string `json:"id"`
-	Time              string `json:"time"`
-	GitSHA            string `json:"gitSHA"`
-	GitDirty          int    `json:"gitDirty"`
-	UseEmbeddedAssets bool   `json:"useEmbeddedAssets"`
-}
-
 type indexPage struct {
 	InitialState  string
 	BuildInfo     string
@@ -205,22 +194,11 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	}
 	initialStateStr := string(b)
 
-	buildInfoObj := buildInfoJSON{
-		GOOS:              runtime.GOOS,
-		GOARCH:            runtime.GOARCH,
-		Version:           build.Version,
-		ID:                build.ID,
-		Time:              build.Time,
-		GitSHA:            build.GitSHA,
-		GitDirty:          build.GitDirty,
-		UseEmbeddedAssets: build.UseEmbeddedAssets,
-	}
-	b, err = json.Marshal(buildInfoObj)
+	buildInfoStr, err := buildInfoJSONString(false)
 	if err != nil {
 		renderServerError(rw, fmt.Sprintf("could not marshal buildInfoObj json: %q", err))
 		return
 	}
-	buildInfoStr := string(b)
 
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")

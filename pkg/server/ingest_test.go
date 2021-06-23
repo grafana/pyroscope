@@ -42,56 +42,62 @@ var _ = Describe("server", func() {
 			// this is an example of Shared Example pattern
 			//   see https://onsi.github.io/ginkgo/#shared-example-patterns
 			ItCorrectlyParsesIncomingData := func() {
-				It("correctly parses incoming data", func(done Done) {
-					s, err := storage.New(&(*cfg).Server)
-					Expect(err).ToNot(HaveOccurred())
-					c, _ := New(&(*cfg).Server, s)
+				It("correctly parses incoming data", func() {
+					done := make(chan interface{})
 					go func() {
 						defer GinkgoRecover()
-						c.Start()
+
+						s, err := storage.New(&(*cfg).Server)
+						Expect(err).ToNot(HaveOccurred())
+						c, _ := New(&(*cfg).Server, s)
+						go func() {
+							defer GinkgoRecover()
+							c.Start()
+						}()
+
+						name := "test.app{}"
+
+						st := testing.ParseTime("2020-01-01-01:01:00")
+						et := testing.ParseTime("2020-01-01-01:01:10")
+
+						u, _ := url.Parse("http://localhost:10043/ingest")
+						q := u.Query()
+						q.Add("name", name)
+						q.Add("from", strconv.Itoa(int(st.Unix())))
+						q.Add("until", strconv.Itoa(int(et.Unix())))
+						if format != "" {
+							q.Add("format", format)
+						}
+						u.RawQuery = q.Encode()
+
+						fmt.Println(u.String())
+
+						req, err := http.NewRequest("POST", u.String(), buf)
+						Expect(err).ToNot(HaveOccurred())
+						if contentType == "" {
+							contentType = "text/plain"
+						}
+						req.Header.Set("Content-Type", contentType)
+						retryUntilServerIsUp("http://localhost:10043/")
+						res, err := http.DefaultClient.Do(req)
+						Expect(err).ToNot(HaveOccurred())
+						Expect(res.StatusCode).To(Equal(200))
+
+						sk, _ := storage.ParseKey(name)
+						gOut, err := s.Get(&storage.GetInput{
+							StartTime: st,
+							EndTime:   et,
+							Key:       sk,
+						})
+						Expect(gOut.Tree).ToNot(BeNil())
+						Expect(gOut.Tree.String()).To(Equal("\"foo;bar\" 2\n\"foo;baz\" 3\n"))
+
+						c.Stop()
+
+						close(done)
 					}()
-
-					name := "test.app{}"
-
-					st := testing.ParseTime("2020-01-01-01:01:00")
-					et := testing.ParseTime("2020-01-01-01:01:10")
-
-					u, _ := url.Parse("http://localhost:10043/ingest")
-					q := u.Query()
-					q.Add("name", name)
-					q.Add("from", strconv.Itoa(int(st.Unix())))
-					q.Add("until", strconv.Itoa(int(et.Unix())))
-					if format != "" {
-						q.Add("format", format)
-					}
-					u.RawQuery = q.Encode()
-
-					fmt.Println(u.String())
-
-					req, err := http.NewRequest("POST", u.String(), buf)
-					Expect(err).ToNot(HaveOccurred())
-					if contentType == "" {
-						contentType = "text/plain"
-					}
-					req.Header.Set("Content-Type", contentType)
-					retryUntilServerIsUp("http://localhost:10043/")
-					res, err := http.DefaultClient.Do(req)
-					Expect(err).ToNot(HaveOccurred())
-					Expect(res.StatusCode).To(Equal(200))
-
-					sk, _ := storage.ParseKey(name)
-					gOut, err := s.Get(&storage.GetInput{
-						StartTime: st,
-						EndTime:   et,
-						Key:       sk,
-					})
-					Expect(gOut.Tree).ToNot(BeNil())
-					Expect(gOut.Tree.String()).To(Equal("\"foo;bar\" 2\n\"foo;baz\" 3\n"))
-
-					c.Stop()
-
-					close(done)
-				}, 2)
+					Eventually(done, 2).Should(BeClosed())
+				})
 			}
 
 			Context("default format", func() {
