@@ -1,3 +1,20 @@
+## <small>0.0.34 (2021-06-23)</small>
+
+* adds linelint (#254) ([a85f6a8](https://github.com/pyroscope-io/pyroscope/commit/a85f6a8)), closes [#254](https://github.com/pyroscope-io/pyroscope/issues/254)
+* Document dotnet magic denominator (#255) ([07e72b3](https://github.com/pyroscope-io/pyroscope/commit/07e72b3)), closes [#255](https://github.com/pyroscope-io/pyroscope/issues/255)
+* Examples should run spies as non-root users #248 (#251) ([0df4c1d](https://github.com/pyroscope-io/pyroscope/commit/0df4c1d)), closes [#248](https://github.com/pyroscope-io/pyroscope/issues/248) [#251](https://github.com/pyroscope-io/pyroscope/issues/251)
+* Fixed wrong time calc in dotnetspy. (#252) ([f1dff48](https://github.com/pyroscope-io/pyroscope/commit/f1dff48)), closes [#252](https://github.com/pyroscope-io/pyroscope/issues/252)
+* fixes max memory available detection on linux (#256) ([5bee853](https://github.com/pyroscope-io/pyroscope/commit/5bee853)), closes [#256](https://github.com/pyroscope-io/pyroscope/issues/256)
+* Graceful shutdown (#243) ([2723d11](https://github.com/pyroscope-io/pyroscope/commit/2723d11)), closes [#243](https://github.com/pyroscope-io/pyroscope/issues/243)
+* Ignore tags at dictionary lookup (#245) ([e756a20](https://github.com/pyroscope-io/pyroscope/commit/e756a20)), closes [#245](https://github.com/pyroscope-io/pyroscope/issues/245)
+* Improves generate-sample-config script (#236) ([b78084d](https://github.com/pyroscope-io/pyroscope/commit/b78084d)), closes [#236](https://github.com/pyroscope-io/pyroscope/issues/236)
+* Updates the list of contributors in README ([2fbe768](https://github.com/pyroscope-io/pyroscope/commit/2fbe768))
+* Updates the list of contributors in README ([5e74957](https://github.com/pyroscope-io/pyroscope/commit/5e74957))
+* Updates the list of contributors in README ([e4b854e](https://github.com/pyroscope-io/pyroscope/commit/e4b854e))
+* Updates the list of contributors in README ([295e881](https://github.com/pyroscope-io/pyroscope/commit/295e881))
+
+
+
 ## <small>0.0.33 (2021-06-17)</small>
 
 * Add phpspy coloring #201 (#209) ([a69794d](https://github.com/pyroscope-io/pyroscope/commit/a69794d)), closes [#201](https://github.com/pyroscope-io/pyroscope/issues/201) [#209](https://github.com/pyroscope-io/pyroscope/issues/209)
