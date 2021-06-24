@@ -34,8 +34,10 @@ func Cli(cfg *config.Exec, args []string) error {
 	// isExec = false means the process is already there (pyroscope connect)
 	isExec := cfg.Pid == 0
 
-	if isExec && len(args) == 0 {
-		return errors.New("no arguments passed")
+	if isExec {
+		if len(args) == 0 {
+			return errors.New("no arguments passed")
+		}
 	} else if !processExists(cfg.Pid) {
 		return errors.New("process not found")
 	}
@@ -171,7 +173,7 @@ func Cli(cfg *config.Exec, args []string) error {
 func waitForSpawnedProcessToExit(c chan os.Signal, cmd *exec.Cmd) error {
 	go func() {
 		for s := range c {
-			_ = cmd.Process.Signal(s)
+			_ = sendSignal(cmd.Process, s)
 		}
 	}()
 	return cmd.Wait()

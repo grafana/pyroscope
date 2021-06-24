@@ -106,3 +106,7 @@ func generateCredentials(userName, groupName string) (*syscall.Credential, error
 func processExists(pid int) bool {
 	return nil == syscall.Kill(pid, 0)
 }
+
+func sendSignal(p *os.Process, s os.Signal) error {
+	return p.Signal(s)
+}
