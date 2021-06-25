@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
+	goexec "os/exec"
 	"os/signal"
 	"path"
 	"strings"
@@ -109,12 +109,12 @@ func Cli(cfg *config.Exec, args []string) error {
 	// to the child process)
 	c := make(chan os.Signal, 10)
 	pid := cfg.Pid
-	var cmd *exec.Cmd
+	var cmd *goexec.Cmd
 	if isExec {
 		// Note that we don't specify which signals to be sent: any signal to be
 		// relayed to the child process (including SIGINT and SIGTERM).
 		signal.Notify(c)
-		cmd = exec.Command(args[0], args[1:]...)
+		cmd = goexec.Command(args[0], args[1:]...)
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
 		cmd.Stdin = os.Stdin
@@ -168,7 +168,7 @@ func Cli(cfg *config.Exec, args []string) error {
 	return nil
 }
 
-func waitForSpawnedProcessToExit(c chan os.Signal, cmd *exec.Cmd) error {
+func waitForSpawnedProcessToExit(c chan os.Signal, cmd *goexec.Cmd) error {
 	go func() {
 		for s := range c {
 			_ = cmd.Process.Signal(s)

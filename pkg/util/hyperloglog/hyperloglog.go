@@ -4,18 +4,18 @@ package hyperloglog
 import (
 	"sync"
 
-	"github.com/clarkduvall/hyperloglog"
+	original "github.com/clarkduvall/hyperloglog"
 )
 
-type Hash64 hyperloglog.Hash64
+type Hash64 original.Hash64
 
 type HyperLogLogPlus struct {
 	hMutex sync.Mutex
-	h      *hyperloglog.HyperLogLogPlus
+	h      *original.HyperLogLogPlus
 }
 
 func NewPlus(n uint8) (*HyperLogLogPlus, error) {
-	h, err := hyperloglog.NewPlus(n)
+	h, err := original.NewPlus(n)
 	if err != nil {
 		return nil, err
 	}

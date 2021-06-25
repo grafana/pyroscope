@@ -64,11 +64,7 @@ func (s *Storage) collectLocalProfile(path string) error {
 	}
 	pi.Val = t
 
-	if err := s.Put(&pi); err != nil {
-		return err
-	}
-
-	return nil
+	return s.Put(&pi)
 }
 
 func (s *Storage) CollectLocalProfiles() error {

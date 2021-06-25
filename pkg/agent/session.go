@@ -133,8 +133,8 @@ func (ps *ProfileSession) takeSnapshots() {
 
 		case <-ps.stopCh:
 			// stop the spies
-			for _, spy := range ps.spies {
-				spy.Stop()
+			for _, s := range ps.spies {
+				s.Stop()
 			}
 			return
 		}

@@ -70,7 +70,7 @@ type Server struct {
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated"`
 
-	Retention time.Duration `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data outside of this threshold is deleted periodically. Disabled by default"`
+	Retention time.Duration `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default"`
 
 	// Deprecated fields. They can be set (for backwards compatibility) but have no effect
 	// TODO: we should print some warning messages when people try to use these

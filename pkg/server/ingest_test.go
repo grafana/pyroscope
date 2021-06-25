@@ -29,7 +29,6 @@ func retryUntilServerIsUp(urlStr string) {
 
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
-
 		BeforeEach(func() {
 			(*cfg).Server.APIBindAddr = ":10043"
 		})
