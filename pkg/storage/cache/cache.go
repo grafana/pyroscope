@@ -70,7 +70,6 @@ func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 				break
 			}
 			cache.saveToDisk(e.Key, e.Value)
-
 		}
 		cache.evictionsDone <- struct{}{}
 	}()

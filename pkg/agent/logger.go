@@ -4,13 +4,13 @@ package agent
 // It is based on logrus, but much smaller — That's because we don't want library users to have to implement
 // all of the logrus's methods
 type Logger interface {
-	Infof(format string, args ...interface{})
-	Debugf(format string, args ...interface{})
-	Errorf(format string, args ...interface{})
+	Infof(_ string, _ ...interface{})
+	Debugf(_ string, _ ...interface{})
+	Errorf(_ string, _ ...interface{})
 }
 
 type NoopLogger struct{}
 
-func (*NoopLogger) Infof(format string, args ...interface{})  {}
-func (*NoopLogger) Debugf(format string, args ...interface{}) {}
-func (*NoopLogger) Errorf(format string, args ...interface{}) {}
+func (*NoopLogger) Infof(_ string, _ ...interface{})  {}
+func (*NoopLogger) Debugf(_ string, _ ...interface{}) {}
+func (*NoopLogger) Errorf(_ string, _ ...interface{}) {}

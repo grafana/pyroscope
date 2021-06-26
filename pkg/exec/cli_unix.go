@@ -4,7 +4,7 @@ package exec
 
 import (
 	"os"
-	"os/exec"
+	goexec "os/exec"
 	"os/user"
 	"regexp"
 	"strconv"
@@ -15,7 +15,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func adjustCmd(cmd *exec.Cmd, cfg config.Exec) error {
+func adjustCmd(cmd *goexec.Cmd, cfg config.Exec) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	// permissions drop
 	if isRoot() && !cfg.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {

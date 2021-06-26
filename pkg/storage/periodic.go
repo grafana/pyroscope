@@ -32,7 +32,7 @@ func (s *Storage) periodicTask(interval time.Duration, cb func()) {
 	}
 }
 
-func (s *Storage) badgerGCTask(db *badger.DB) func() {
+func (*Storage) badgerGCTask(db *badger.DB) func() {
 	return func() {
 		logrus.Debug("starting badger garbage collection")
 		for {

@@ -2,7 +2,7 @@ package exec
 
 import "errors"
 
-func performOSChecks(spyName string) error {
+func performOSChecks(_ string) error {
 	if disableMacOSChecks {
 		return nil
 	}
