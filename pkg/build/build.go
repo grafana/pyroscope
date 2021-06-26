@@ -2,6 +2,7 @@
 package build
 
 import (
+	"encoding/json"
 	"fmt"
 	"runtime"
 	"strconv"
@@ -55,4 +56,38 @@ func Summary() string {
 		UseEmbeddedAssets,
 		spy.SupportedSpies,
 	)
+}
+
+type buildInfoJSON struct {
+	GOOS              string `json:"goos"`
+	GOARCH            string `json:"goarch"`
+	Version           string `json:"version"`
+	ID                string `json:"id"`
+	Time              string `json:"time"`
+	GitSHA            string `json:"gitSHA"`
+	GitDirty          int    `json:"gitDirty"`
+	UseEmbeddedAssets bool   `json:"useEmbeddedAssets"`
+}
+
+func generateBuildInfoJSON() buildInfoJSON {
+	return buildInfoJSON{
+		GOOS:              runtime.GOOS,
+		GOARCH:            runtime.GOARCH,
+		Version:           Version,
+		ID:                ID,
+		Time:              Time,
+		GitSHA:            GitSHA,
+		GitDirty:          GitDirty,
+		UseEmbeddedAssets: UseEmbeddedAssets,
+	}
+}
+
+func JSON() string {
+	b, _ := json.Marshal(generateBuildInfoJSON())
+	return string(b)
+}
+
+func PrettyJSON() string {
+	b, _ := json.MarshalIndent(generateBuildInfoJSON(), "", "  ")
+	return string(b)
 }

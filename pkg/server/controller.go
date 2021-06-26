@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
-	"runtime"
 	"sync"
 	"sync/atomic"
 	"text/template"
@@ -55,8 +54,11 @@ func New(c *config.Server, s *storage.Storage) (*Controller, error) {
 	addRoutes(mux, []route{
 		{"/healthz", ctrl.healthz},
 		{"/metrics", promhttp.Handler().ServeHTTP},
+		{"/config", ctrl.configHandler},
+		{"/build", ctrl.buildHandler},
 	})
 
+	// drainable routes:
 	routes := []route{
 		{"/", ctrl.indexHandler()},
 		{"/ingest", ctrl.ingestHandler},
@@ -133,18 +135,6 @@ func renderServerError(rw http.ResponseWriter, text string) {
 type indexPageJSON struct {
 	AppNames []string `json:"appNames"`
 }
-
-type buildInfoJSON struct {
-	GOOS              string `json:"goos"`
-	GOARCH            string `json:"goarch"`
-	Version           string `json:"version"`
-	ID                string `json:"id"`
-	Time              string `json:"time"`
-	GitSHA            string `json:"gitSHA"`
-	GitDirty          int    `json:"gitDirty"`
-	UseEmbeddedAssets bool   `json:"useEmbeddedAssets"`
-}
-
 type indexPage struct {
 	InitialState  string
 	BuildInfo     string
@@ -205,23 +195,6 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	}
 	initialStateStr := string(b)
 
-	buildInfoObj := buildInfoJSON{
-		GOOS:              runtime.GOOS,
-		GOARCH:            runtime.GOARCH,
-		Version:           build.Version,
-		ID:                build.ID,
-		Time:              build.Time,
-		GitSHA:            build.GitSHA,
-		GitDirty:          build.GitDirty,
-		UseEmbeddedAssets: build.UseEmbeddedAssets,
-	}
-	b, err = json.Marshal(buildInfoObj)
-	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not marshal buildInfoObj json: %q", err))
-		return
-	}
-	buildInfoStr := string(b)
-
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
 	if extraMetadataPath != "" {
@@ -233,10 +206,9 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	}
 
 	rw.Header().Add("Content-Type", "text/html")
-	rw.WriteHeader(200)
 	err = tmpl.Execute(rw, indexPage{
 		InitialState:  initialStateStr,
-		BuildInfo:     buildInfoStr,
+		BuildInfo:     build.JSON(),
 		ExtraMetadata: extraMetadataStr,
 		BaseURL:       ctrl.config.BaseURL,
 	})

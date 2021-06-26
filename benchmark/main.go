@@ -121,7 +121,6 @@ var summaryText = `
 
 func printSummary(rsp http.ResponseWriter, _ *http.Request) {
 	rsp.Header().Add("Content-Type", "text/html")
-	rsp.WriteHeader(200)
 	rsp.Write([]byte(summaryText))
 }
 

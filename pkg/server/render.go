@@ -51,7 +51,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	switch q.Get("format") {
 	case "json":
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(200)
 
 		fs := gOut.Tree.FlamebearerStruct(maxNodes)
 		// TODO remove this duplication? We're already adding this to metadata
