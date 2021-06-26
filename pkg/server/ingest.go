@@ -134,7 +134,6 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	ctrl.statsInc("ingest:" + ip.spyName)
 	k := *ip.storageKey
 	ctrl.appStats.Add(hashString(k.AppName()))
-	w.WriteHeader(200)
 }
 
 func returnError(w http.ResponseWriter, status int, err error, errMessage string) {

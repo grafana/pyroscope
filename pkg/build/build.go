@@ -59,19 +59,18 @@ func Summary() string {
 }
 
 type buildInfoJSON struct {
-	GOOS              string   `json:"goos"`
-	GOARCH            string   `json:"goarch"`
-	Version           string   `json:"version"`
-	ID                string   `json:"id"`
-	Time              string   `json:"time"`
-	GitSHA            string   `json:"gitSHA"`
-	GitDirty          int      `json:"gitDirty"`
-	UseEmbeddedAssets bool     `json:"useEmbeddedAssets"`
-	SupportedSpies    []string `json:"supportedSpies"`
+	GOOS              string `json:"goos"`
+	GOARCH            string `json:"goarch"`
+	Version           string `json:"version"`
+	ID                string `json:"id"`
+	Time              string `json:"time"`
+	GitSHA            string `json:"gitSHA"`
+	GitDirty          int    `json:"gitDirty"`
+	UseEmbeddedAssets bool   `json:"useEmbeddedAssets"`
 }
 
-func toJSONString(pretty bool) string {
-	buildInfoObj := buildInfoJSON{
+func generateBuildInfoJSON() buildInfoJSON {
+	return buildInfoJSON{
 		GOOS:              runtime.GOOS,
 		GOARCH:            runtime.GOARCH,
 		Version:           Version,
@@ -80,21 +79,15 @@ func toJSONString(pretty bool) string {
 		GitSHA:            GitSHA,
 		GitDirty:          GitDirty,
 		UseEmbeddedAssets: UseEmbeddedAssets,
-		SupportedSpies:    spy.SupportedSpies,
 	}
-	var b []byte
-	if pretty {
-		b, _ = json.MarshalIndent(buildInfoObj, "", "  ")
-	} else {
-		b, _ = json.Marshal(buildInfoObj)
-	}
-	return string(b)
 }
 
 func JSON() string {
-	return toJSONString(false)
+	b, _ := json.Marshal(generateBuildInfoJSON())
+	return string(b)
 }
 
 func PrettyJSON() string {
-	return toJSONString(true)
+	b, _ := json.MarshalIndent(generateBuildInfoJSON(), "", "  ")
+	return string(b)
 }

@@ -54,16 +54,17 @@ func New(c *config.Server, s *storage.Storage) (*Controller, error) {
 	addRoutes(mux, []route{
 		{"/healthz", ctrl.healthz},
 		{"/metrics", promhttp.Handler().ServeHTTP},
+		{"/config", ctrl.configHandler},
+		{"/build", ctrl.buildHandler},
 	})
 
+	// drainable routes:
 	routes := []route{
 		{"/", ctrl.indexHandler()},
 		{"/ingest", ctrl.ingestHandler},
 		{"/render", ctrl.renderHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
-		{"/config", ctrl.configHandler},
-		{"/build", ctrl.buildHandler},
 	}
 
 	addRoutes(mux, routes, ctrl.drainMiddleware)
@@ -205,7 +206,6 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	}
 
 	rw.Header().Add("Content-Type", "text/html")
-	rw.WriteHeader(200)
 	err = tmpl.Execute(rw, indexPage{
 		InitialState:  initialStateStr,
 		BuildInfo:     build.JSON(),
