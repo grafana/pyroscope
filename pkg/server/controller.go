@@ -194,12 +194,6 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	}
 	initialStateStr := string(b)
 
-	buildInfoStr, err := buildInfoJSONString(false)
-	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not marshal buildInfoObj json: %q", err))
-		return
-	}
-
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
 	if extraMetadataPath != "" {
@@ -214,7 +208,7 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	rw.WriteHeader(200)
 	err = tmpl.Execute(rw, indexPage{
 		InitialState:  initialStateStr,
-		BuildInfo:     buildInfoStr,
+		BuildInfo:     build.JSON(),
 		ExtraMetadata: extraMetadataStr,
 		BaseURL:       ctrl.config.BaseURL,
 	})
