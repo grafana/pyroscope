@@ -4,28 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strconv"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/avast/retry-go"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
-
-func retryUntilServerIsUp(urlStr string) {
-	err := retry.Do(
-		func() error {
-			_, err := http.Get(urlStr)
-			return err
-		},
-	)
-
-	Expect(err).ToNot(HaveOccurred())
-}
 
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
@@ -49,17 +38,15 @@ var _ = Describe("server", func() {
 						s, err := storage.New(&(*cfg).Server)
 						Expect(err).ToNot(HaveOccurred())
 						c, _ := New(&(*cfg).Server, s)
-						go func() {
-							defer GinkgoRecover()
-							c.Start()
-						}()
+						httpServer := httptest.NewServer(c.mux())
+						defer s.Close()
 
 						name := "test.app{}"
 
 						st := testing.ParseTime("2020-01-01-01:01:00")
 						et := testing.ParseTime("2020-01-01-01:01:10")
 
-						u, _ := url.Parse("http://localhost:10043/ingest")
+						u, _ := url.Parse(httpServer.URL + "/ingest")
 						q := u.Query()
 						q.Add("name", name)
 						q.Add("from", strconv.Itoa(int(st.Unix())))
@@ -77,7 +64,7 @@ var _ = Describe("server", func() {
 							contentType = "text/plain"
 						}
 						req.Header.Set("Content-Type", contentType)
-						retryUntilServerIsUp("http://localhost:10043/")
+
 						res, err := http.DefaultClient.Do(req)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(res.StatusCode).To(Equal(200))
@@ -90,8 +77,6 @@ var _ = Describe("server", func() {
 						})
 						Expect(gOut.Tree).ToNot(BeNil())
 						Expect(gOut.Tree.String()).To(Equal("\"foo;bar\" 2\n\"foo;baz\" 3\n"))
-
-						c.Stop()
 
 						close(done)
 					}()

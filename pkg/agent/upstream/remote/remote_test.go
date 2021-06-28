@@ -5,6 +5,7 @@ import (
 	"html"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"sync"
 	"time"
 
@@ -21,6 +22,8 @@ var _ = Describe("remote.Remote", func() {
 		It("uploads data to an http server", func() {
 			done := make(chan interface{})
 			func() {
+				defer GinkgoRecover()
+
 				wg := sync.WaitGroup{}
 				wg.Add(3)
 				var timestampsMutex sync.Mutex
@@ -38,19 +41,13 @@ var _ = Describe("remote.Remote", func() {
 					wg.Done()
 				})
 
-				mockServer := &http.Server{
-					Addr:           ":50001",
-					Handler:        myHandler,
-					ReadTimeout:    10 * time.Second,
-					WriteTimeout:   10 * time.Second,
-					MaxHeaderBytes: 1 << 20,
-				}
-				go mockServer.ListenAndServe()
+				httpServer := httptest.NewServer(myHandler)
+				defer httpServer.Close()
 
 				cfg := RemoteConfig{
 					AuthToken:              "",
 					UpstreamThreads:        4,
-					UpstreamAddress:        "http://localhost:50001",
+					UpstreamAddress:        httpServer.URL,
 					UpstreamRequestTimeout: 3 * time.Second,
 				}
 				r, err := New(cfg, logrus.New())
