@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -25,14 +26,10 @@ var _ = Describe("server", func() {
 					s, err := storage.New(&(*cfg).Server)
 					Expect(err).ToNot(HaveOccurred())
 					c, _ := New(&(*cfg).Server, s)
-					go func() {
-						defer GinkgoRecover()
-						c.Start()
-					}()
+					httpServer := httptest.NewServer(c.mux())
+					defer httpServer.Close()
 
-					retryUntilServerIsUp("http://localhost:10045/")
-
-					res, err := http.Get("http://localhost:10045/config")
+					res, err := http.Get(httpServer.URL + "/config")
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(200))
 
@@ -45,7 +42,6 @@ var _ = Describe("server", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(actual["APIBindAddr"]).To(Equal((*cfg).Server.APIBindAddr))
 
-					c.Stop()
 					close(done)
 				}()
 				Eventually(done, 2).Should(BeClosed())

@@ -50,6 +50,10 @@ func New(c *config.Server, s *storage.Storage) (*Controller, error) {
 		appStats: appStats,
 	}
 
+	return &ctrl, nil
+}
+
+func (ctrl *Controller) mux() http.Handler {
 	mux := http.NewServeMux()
 	addRoutes(mux, []route{
 		{"/healthz", ctrl.healthz},
@@ -78,14 +82,17 @@ func New(c *config.Server, s *storage.Storage) (*Controller, error) {
 			{"/debug/pprof/trace", pprof.Trace},
 		})
 	}
+	return mux
+}
 
+func (ctrl *Controller) Start() error {
 	logger := logrus.New()
 	w := logger.Writer()
 	defer w.Close()
 
 	ctrl.httpServer = &http.Server{
 		Addr:           ctrl.config.APIBindAddr,
-		Handler:        mux,
+		Handler:        ctrl.mux(),
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		IdleTimeout:    30 * time.Second,
@@ -93,10 +100,6 @@ func New(c *config.Server, s *storage.Storage) (*Controller, error) {
 		ErrorLog:       golog.New(w, "", 0),
 	}
 
-	return &ctrl, nil
-}
-
-func (ctrl *Controller) Start() error {
 	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
 	// the returned error is ErrServerClosed.
 	err := ctrl.httpServer.ListenAndServe()
