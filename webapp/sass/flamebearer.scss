@@ -31,7 +31,6 @@
   will-change: left, top, opacity;
   font-size: 12px;
   opacity: 0;
-  // transition: left 0.05s ease-out, top 0.05s ease-out;
 }
 
 .flamegraph-tooltip-name {
@@ -51,5 +50,4 @@
   mix-blend-mode: overlay;
   will-change: left, top, opacity;
   opacity: 0;
-  // transition: opacity 0.05s ease-out;
 }
