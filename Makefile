@@ -131,8 +131,8 @@ update-contributors:
 .PHONY: update-changelog
 update-changelog:
 	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -s
-	sed -i '' '/Updates the list of contributors in README/d' CHANGELOG.md
-	sed -i '' '/Update README.md/d' CHANGELOG.md
+	sed -i '/Updates the list of contributors in README/d' CHANGELOG.md
+	sed -i '/Update README.md/d' CHANGELOG.md
 
 .PHONY: update-protobuf
 update-protobuf:
