@@ -15,6 +15,8 @@ import history from "./util/history";
 
 let showFps = false;
 try {
+  // run this to enable FPS meter:
+  //   window.localStorage.setItem("showFps", true);
   showFps = window.localStorage.getItem("showFps");
 } catch(e) {
   console.error(e);
