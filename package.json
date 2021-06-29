@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "private": true,
   "name": "pyroscope",
-  "version": "0.0.34",
+  "version": "0.0.35",
   "repository": {
     "type": "git",
     "url": "https://github.com/pyroscope-io/pyroscope.git"

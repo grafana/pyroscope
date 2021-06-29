@@ -1,3 +1,16 @@
+## <small>0.0.35 (2021-06-29)</small>
+
+* Adds new build and config endpoints (#259) ([aa8c868](https://github.com/pyroscope-io/pyroscope/commit/aa8c868)), closes [#259](https://github.com/pyroscope-io/pyroscope/issues/259)
+* Fix signal sending on Windows (#261) ([d94dc82](https://github.com/pyroscope-io/pyroscope/commit/d94dc82)), closes [#261](https://github.com/pyroscope-io/pyroscope/issues/261)
+* freezes php docker version ([2af42b3](https://github.com/pyroscope-io/pyroscope/commit/2af42b3))
+* lints some code ([cc9a447](https://github.com/pyroscope-io/pyroscope/commit/cc9a447))
+* sed linux fix ([d2f669f](https://github.com/pyroscope-io/pyroscope/commit/d2f669f))
+* switches to httptest everywhere, hopefully will fix flaky http tests (#267) ([3cc251f](https://github.com/pyroscope-io/pyroscope/commit/3cc251f)), closes [#267](https://github.com/pyroscope-io/pyroscope/issues/267)
+* updates contributor / changelog scripts ([bd816a1](https://github.com/pyroscope-io/pyroscope/commit/bd816a1))
+* Use own fork of read-process-memory (#246) ([5958327](https://github.com/pyroscope-io/pyroscope/commit/5958327)), closes [#246](https://github.com/pyroscope-io/pyroscope/issues/246)
+
+
+
 ## <small>0.0.34 (2021-06-23)</small>
 
 * adds linelint (#254) ([a85f6a8](https://github.com/pyroscope-io/pyroscope/commit/a85f6a8)), closes [#254](https://github.com/pyroscope-io/pyroscope/issues/254)
