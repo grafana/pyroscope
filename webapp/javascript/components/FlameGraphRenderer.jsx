@@ -68,6 +68,7 @@ class FlameGraphRenderer extends React.Component {
       flamebearer: null,
     };
     this.canvasRef = React.createRef();
+    this.highlightRef = React.createRef();
     this.tooltipRef = React.createRef();
     this.currentJSONController = null;
   }
@@ -421,43 +422,35 @@ class FlameGraphRenderer extends React.Component {
       this.graphWidth
     );
 
+    const highlightEl = this.highlightRef.current;
     const tooltipEl = this.tooltipRef.current;
     const numBarTicks = level[j + 1];
     const percent = formatPercent(numBarTicks / this.state.numTicks);
-
-    // a little hacky but this is here so that we can get tooltipWidth after text is updated.
     const tooltipTitle = this.state.names[level[j + 3]];
 
-    this.setState(
-      {
-        highlightStyle: {
-          opacity: 1,
-          transform: `translate(${this.canvas.offsetLeft + x}px, ${this.canvas.offsetTop + y}px)`,
-          width: `${sw}px`,
-          height: `${PX_PER_LEVEL}px`,
-        },
-        tooltipStyle: {
-          opacity: 1,
-          transform: `translate(${e.clientX+12}px, ${e.clientY+12}px)`,
-        },
-        tooltipTitle,
-        tooltipSubtitle: `${percent}, ${numberWithCommas(
-          numBarTicks
-        )} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`,
-      }, 
-      () => { tooltipEl.children[0].innerText = tooltipTitle; }
-    );
+    // Before you change all of this to React consider performance implications.
+    // Doing this with setState leads to significant lag.
+    // See this issue https://github.com/pyroscope-io/pyroscope/issues/205
+    //   and this PR https://github.com/pyroscope-io/pyroscope/pull/266 for more info.
+    highlightEl.style.opacity = 1;
+    highlightEl.style.left = `${this.canvas.offsetLeft + x}px`;
+    highlightEl.style.top = `${this.canvas.offsetTop + y}px`;
+    highlightEl.style.width = `${sw}px`;
+    highlightEl.style.height = `${PX_PER_LEVEL}px`;
+
+    tooltipEl.style.opacity = 1;
+    tooltipEl.style.left = `${e.clientX+12}px`;
+    tooltipEl.style.top = `${e.clientY+12}px`;
+
+    tooltipEl.children[0].innerText = tooltipTitle;
+    tooltipEl.children[1].innerText = `${percent}, ${numberWithCommas(
+      numBarTicks
+    )} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
   };
 
   mouseOutHandler = () => {
-    this.setState({
-      highlightStyle: {
-        opacity: "0",
-      },
-      tooltipStyle: {
-        opacity: "0",
-      },
-    });
+    this.highlightRef.current.style.opacity = "0";
+    this.tooltipRef.current.style.opacity = "0";
   };
 
   updateSortBy = (newSortBy) => {
@@ -565,14 +558,16 @@ class FlameGraphRenderer extends React.Component {
             </span>
           </div>
         </div>
-        <div className="flamegraph-highlight" style={this.state.highlightStyle} />
+        <div
+          className="flamegraph-highlight"
+          ref={this.highlightRef}
+        />
         <div
           className="flamegraph-tooltip"
           ref={this.tooltipRef}
-          style={this.state.tooltipStyle}
         >
-          <div className="flamegraph-tooltip-name">{this.state.tooltipTitle}</div>
-          <div>{this.state.tooltipSubtitle}</div>
+          <div className="flamegraph-tooltip-name"></div>
+          <div></div>
         </div>
       </div>
     )
