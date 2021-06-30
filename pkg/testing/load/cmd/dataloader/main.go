@@ -17,8 +17,9 @@ import (
 
 type Config struct {
 	load.StorageWriteSuiteConfig `yaml:",inline"`
-	Apps                         map[string]load.AppConfig
-	Storage                      struct{ Path string }
+
+	Apps    map[string]load.AppConfig
+	Storage struct{ Path string }
 }
 
 func loadConfig(path string) (Config, error) {

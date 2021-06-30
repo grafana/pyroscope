@@ -9,6 +9,13 @@ func newRand(seed int) *rand.Rand {
 	return rand.New(rand.NewSource(int64(seed)))
 }
 
+func randInt(r *rand.Rand, min, max int) int {
+	if max == min {
+		return max
+	}
+	return r.Intn(max-min) + min
+}
+
 func randString(r *rand.Rand, min, max int) string {
 	var l int
 	if min == max {

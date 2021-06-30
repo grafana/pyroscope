@@ -19,9 +19,9 @@ type TreeGenerator struct {
 }
 
 type TreeConfig struct {
-	MaxSymLen int
-	MaxDepth  int
-	Width     int
+	MaxSymLen int `yaml:"maxSymLen"`
+	MaxDepth  int `yaml:"maxDepth"`
+	Width     int `yaml:"width"`
 }
 
 var rootNode = []byte("root")
@@ -64,9 +64,9 @@ func (g *TreeGenerator) generateStack(r *rand.Rand) []byte {
 	g.b.Reset()
 	g.b.Write(rootNode)
 	e := hex.NewEncoder(g.b)
-	d := r.Intn(g.MaxDepth-minStackDepth) + minStackDepth
+	d := randInt(r, minStackDepth, g.MaxDepth)
 	for i := 0; i < d; i++ {
-		l := r.Intn(g.MaxSymLen-minSymLength) + minSymLength
+		l := randInt(r, minSymLength, g.MaxSymLen)
 		r.Read(g.symBuf[:l])
 		g.b.WriteString(";")
 		_, _ = e.Write(g.symBuf[:l])

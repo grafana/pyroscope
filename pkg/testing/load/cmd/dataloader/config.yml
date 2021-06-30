@@ -7,9 +7,9 @@ apps:
   app_1:
     trees: 50
     treeConfig:
-      maxSymLen: 15,
-      maxDepth: 30,
-      width: 10,
+      maxSymLen: 15
+      maxDepth: 30
+      width: 10
     tags:
       - name: env
         cardinality: 3
