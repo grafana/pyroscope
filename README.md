@@ -108,7 +108,7 @@ Pyroscope is possible thanks to the excellent work of many people, including but
 
 ## Contributing
 
-To start contributing, check out our [Contributing Guide](/CONTRIBUTING.md)
+To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 
 
 ### Thanks to the contributors of Pyroscope!
