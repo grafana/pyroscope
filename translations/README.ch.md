@@ -2,7 +2,7 @@
 
 
 [![Tests Status](https://github.com/pyroscope-io/pyroscope/workflows/Tests/badge.svg)](https://github.com/pyroscope-io/pyroscope/actions?query=workflow%3ATests)
-[![Apache 2 License](https://img.shields.io/badge/license-Apache%202-blue.svg)](/LICENSE)
+[![Apache 2 License](https://img.shields.io/badge/license-Apache%202-blue.svg)](../LICENSE)
 [![Latest release](https://img.shields.io/github/release/pyroscope-io/pyroscope.svg)](https://github.com/pyroscope-io/pyroscope/releases)
 [![GoDoc](https://godoc.org/github.com/pyroscope-io/pyroscope?status.svg)](https://godoc.org/github.com/pyroscope-io/pyroscope)
 
@@ -89,7 +89,7 @@ pyroscope exec python manage.py runserver
 
 ## 贡献
 
-在为我们贡献代码之前，请先查看我们的[贡献指南](/CONTRIBUTING.md)。
+在为我们贡献代码之前，请先查看我们的[贡献指南](../CONTRIBUTING.md)。
 
 
 ### 感谢 Pyroscope 的贡献者!
