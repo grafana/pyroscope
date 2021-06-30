@@ -64,7 +64,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	defer x.Close()
 	c.WriteFn = func(input *storage.PutInput) {
 		if err = x.Put(input); err != nil {
 			fmt.Println(err)
@@ -81,9 +81,18 @@ func main() {
 	go func() {
 		for range t.C {
 			stats := s.Stats()
-			p := float32(c.Period-stats.RemainingPeriod) * 100 / float32(c.Period)
-			d := time.Since(start)
-			e := time.Duration(100/p*float32(d)) - d
+			var (
+				p float32
+				d time.Duration
+				e time.Duration
+			)
+			if stats.RemainingPeriod > 0 {
+				p = float32(c.Period-stats.RemainingPeriod) * 100 / float32(c.Period)
+				d = time.Since(start)
+				e = time.Duration(100/p*float32(d)) - d
+			} else {
+				p = 100
+			}
 			fmt.Printf("Progress: %.2f%%, estimated remaining time: %v\n", p, e)
 		}
 	}()

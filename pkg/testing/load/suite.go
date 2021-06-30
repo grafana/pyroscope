@@ -100,13 +100,14 @@ func (s *StorageWriteSuite) Start() {
 			}
 		}()
 	}
+	from := s.from
 	for s.period > 0 {
-		from := s.from.Add(-s.period)
 		to := from.Add(s.interval)
 		for i := 0; i < s.sources; i++ {
 			a := s.apps[i%len(s.apps)]
 			q <- a.CreatePutInput(from, to)
 		}
+		from = to
 		s.period -= s.interval
 	}
 	close(q)

@@ -1,19 +1,19 @@
 storage:
   path: test_storage
 
-sources: 1000
+sources: 10000
 period: 1h
 apps:
-  app_1:
+  test-app.cpu:
     spyName: gospy
     sampleRate: 100
     aggregationType: sum
     units: samples
-    trees: 50
+    trees: 3
     treeConfig:
-      maxSymLen: 15
+      maxSymLen: 10
       maxDepth: 30
-      width: 10
+      width: 5
     tags:
       - name: env
         cardinality: 3

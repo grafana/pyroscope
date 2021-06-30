@@ -54,8 +54,7 @@ func (g *TreeGenerator) Next() *tree.Tree {
 func (g *TreeGenerator) generateTree(r *rand.Rand) *tree.Tree {
 	t := tree.New()
 	for w := 0; w < g.Width; w++ {
-		k, v := g.generateStack(r), uint64(r.Intn(1000))
-		t.Insert(k, v, true)
+		t.Insert(g.generateStack(r), uint64(r.Intn(100)), true)
 	}
 	return t
 }
