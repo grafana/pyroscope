@@ -5,6 +5,10 @@ sources: 1000
 period: 1h
 apps:
   app_1:
+    spyName: gospy
+    sampleRate: 100
+    aggregationType: sum
+    units: samples
     trees: 50
     treeConfig:
       maxSymLen: 15
