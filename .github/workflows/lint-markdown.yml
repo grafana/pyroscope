@@ -1,10 +1,9 @@
 name: Markdown Linting
 
+# runs every monday at 9 am
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  schedule:
+    - cron: "0 9 * * 1"
 
 jobs:
   markdown-lint:
