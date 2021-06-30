@@ -69,7 +69,7 @@ pyroscope exec python manage.py runserver
 
 ## 下载
 
-你可以从我们的[下载页面]((https://pyroscope.io/downloads/))下载最新版本的 pyroscope，可以用于 MacOS、Linux 和 Docker 环境使用。
+你可以从我们的[下载页面](https://pyroscope.io/downloads/)下载最新版本的 pyroscope，可以用于 MacOS、Linux 和 Docker 环境使用。
 
 
 ## 兼容性

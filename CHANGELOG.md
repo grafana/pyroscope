@@ -316,7 +316,7 @@
 * reverts examples/golang/main.go changes ([9fa9e34](https://github.com/pyroscope-io/pyroscope/commit/9fa9e34))
 * Set cross hair settings ([7bf4ab5](https://github.com/pyroscope-io/pyroscope/commit/7bf4ab5))
 * Small css changes ([f70da15](https://github.com/pyroscope-io/pyroscope/commit/f70da15))
-* split the code into reusable pieces, fixed issue#55 ([2c81645](https://github.com/pyroscope-io/pyroscope/commit/2c81645)), closes [issue#55](https://github.com/issue/issues/55)
+* split the code into reusable pieces, fixed issue#55 ([2c81645](https://github.com/pyroscope-io/pyroscope/commit/2c81645)), closes [issue#55](https://github.com/pyroscope-io/pyroscope/issues/55)
 * support for auth tokens, atexit fix ([ff206a3](https://github.com/pyroscope-io/pyroscope/commit/ff206a3))
 * trying to add auto-labeler + fix auto-review actionAuto label (#63) ([bc7aa2f](https://github.com/pyroscope-io/pyroscope/commit/bc7aa2f)), closes [#63](https://github.com/pyroscope-io/pyroscope/issues/63)
 * updated ([320ac81](https://github.com/pyroscope-io/pyroscope/commit/320ac81))
