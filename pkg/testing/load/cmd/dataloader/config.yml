@@ -1,0 +1,33 @@
+storage:
+  path: test_storage
+
+sources: 1000
+period: 1h
+apps:
+  app_1:
+    trees: 50
+    treeConfig:
+      maxSymLen: 15,
+      maxDepth: 30,
+      width: 10,
+    tags:
+      - name: env
+        cardinality: 3
+        minLen: 4
+        maxLen: 4
+      - name: region
+        cardinality: 5
+        minLen: 4
+        maxLen: 7
+      - name: version
+        cardinality: 4
+        minLen: 5
+        maxLen: 5
+      - name: project
+        cardinality: 150
+        minLen: 4
+        maxLen: 12
+      - name: instance
+        cardinality: 10000
+        minLen: 16
+        maxLen: 16

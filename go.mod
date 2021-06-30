@@ -3,6 +3,7 @@ module github.com/pyroscope-io/pyroscope
 go 1.14
 
 require (
+	github.com/RoaringBitmap/roaring v0.8.0
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/aybabtme/rgbterm v0.0.0-20170906152045-cc83f3b3ce59

@@ -28,6 +28,8 @@ const (
 	doneParserState
 )
 
+func NewKey(labels map[string]string) *Key { return &Key{labels: labels} }
+
 // TODO: should rewrite this at some point to not rely on regular expressions & splits
 func ParseKey(name string) (*Key, error) {
 	k := &Key{
