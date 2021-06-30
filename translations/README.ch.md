@@ -89,7 +89,7 @@ pyroscope exec python manage.py runserver
 
 ## 贡献
 
-在为我们贡献代码之前，请先查看我们的[贡献指南](/CONTRIBUTING.md)。
+在为我们贡献代码之前，请先查看我们的[贡献指南](CONTRIBUTING.md)。
 
 
 ### 感谢 Pyroscope 的贡献者!
