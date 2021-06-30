@@ -1,10 +1,9 @@
 name: Markdown Linting
 
+# runs every monday at 9 am
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  schedule:
+    - cron: "0 9 * * 1"
 
 jobs:
   markdown-lint:
@@ -12,4 +11,6 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        config-file: .github/workflows/markdown-links-config.json
 
