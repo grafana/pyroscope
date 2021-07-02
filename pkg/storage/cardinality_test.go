@@ -40,10 +40,12 @@ func BenchmarkTags(b *testing.B) {
 		b.Run("5 tags (12.5k)", func(b *testing.B) {
 			b.Run("put", bs.put)
 			bs.fill(25000)
-			b.Run("get (app)", bs.get())
-			b.Run("get (card 5)", bs.get("region"))
-			b.Run("get (card 25)", bs.get("project"))
-			b.Run("get (card 100)", bs.get("version"))
+			b.Run("get", func(b *testing.B) {
+				b.Run("app", bs.get())
+				b.Run("card 5", bs.get("region"))
+				b.Run("card 25", bs.get("project"))
+				b.Run("card 100", bs.get("version"))
+			})
 		})
 	})
 
@@ -59,11 +61,13 @@ func BenchmarkTags(b *testing.B) {
 		b.Run("5 tags (inf)", func(b *testing.B) {
 			b.Run("put", bs.put)
 			bs.fill(25000)
-			b.Run("get (app)", bs.get())
-			b.Run("get (card 5)", bs.get("region"))
-			b.Run("get (card 25)", bs.get("project"))
-			b.Run("get (card 100)", bs.get("version"))
-			b.Run("get (card 1000000)", bs.get("instance_id"))
+			b.Run("get", func(b *testing.B) {
+				b.Run("app", bs.get())
+				b.Run("card 5", bs.get("region"))
+				b.Run("card 25", bs.get("project"))
+				b.Run("card 100", bs.get("version"))
+				b.Run("card 1000000", bs.get("instance_id"))
+			})
 		})
 	})
 }
@@ -133,20 +137,25 @@ func (bs *tagSuite) get(tags ...string) func(b *testing.B) {
 	bs.k.ixs = make([]int, len(bs.k.ixs))
 	return func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			k := bs.k.next()
-			q := map[string]string{"__name__": k.labels["__name__"]}
-			for _, l := range tags {
-				q[l] = k.labels[l]
-			}
-			k.labels = q
-			_, err := bs.s.Get(&GetInput{
-				StartTime: time.Now().Add(time.Hour * 24 * 11 * -1),
-				EndTime:   time.Now(),
-				Key:       k,
-			})
-			Expect(err).ToNot(HaveOccurred())
+			bs.getByTags(tags...)
 		}
 	}
+}
+
+func (bs *tagSuite) getByTags(tags ...string) *GetOutput {
+	k := bs.k.next()
+	q := map[string]string{"__name__": k.labels["__name__"]}
+	for _, l := range tags {
+		q[l] = k.labels[l]
+	}
+	k.labels = q
+	o, err := bs.s.Get(&GetInput{
+		StartTime: time.Now().Add(time.Hour * 100 * 11 * -1),
+		EndTime:   time.Now(),
+		Key:       k,
+	})
+	Expect(err).ToNot(HaveOccurred())
+	return o
 }
 
 type keygen struct {
