@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { connect } from "react-redux";
 import "react-dom";
 
@@ -10,7 +10,16 @@ import Footer from "./Footer";
 import { buildRenderURL } from "../util/updateRequests";
 import { fetchNames, fetchTimeline } from "../redux/actions";
 
-function PyroscopeApp() {
+function PyroscopeApp(props) {
+  const { actions, renderURL } = props;
+  const prevPropsRef = useRef();
+
+  useEffect(() => {
+    if (prevPropsRef.renderURL !== renderURL) {
+      actions.fetchTimeline(renderURL);
+    }
+  }, [renderURL]);
+
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
