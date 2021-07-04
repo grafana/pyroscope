@@ -12,11 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	// the badger name for files
-	defaultBadgerName = "badger"
-)
-
 // Config for badger
 type Config struct {
 	Name        string // the name for badger file
@@ -76,8 +71,13 @@ func (s *Service) newBadger(config *Config) (*badger.DB, error) {
 
 	// start a timer for the badger GC
 	timer.StartWorker("badger gc", s.done, 5*time.Minute, func() error {
-		logrus.Debug("starting badger garbage collection")
-		return db.RunValueLogGC(0.7)
+		if err := db.RunValueLogGC(0.7); err != nil {
+			if err == badger.ErrNoRewrite {
+				return nil
+			}
+			return err
+		}
+		return nil
 	})
 
 	return db, err
@@ -92,17 +92,15 @@ func (s *Service) Get(key []byte) ([]byte, error) {
 			if err == badger.ErrKeyNotFound {
 				return nil
 			}
-			return fmt.Errorf("read from badger: %v", err)
+			return fmt.Errorf("read from badger: %w", err)
 		}
-		if err := item.Value(func(val []byte) error {
-			data = append([]byte{}, val...)
-			return nil
-		}); err != nil {
-			return fmt.Errorf("read item value: %v", err)
+		data, err = item.ValueCopy(data)
+		if err != nil {
+			return fmt.Errorf("read item value: %w", err)
 		}
 		return nil
 	}); err != nil {
-		return nil, fmt.Errorf("badger view: %v", err)
+		return nil, fmt.Errorf("badger view: %w", err)
 	}
 
 	return data, nil
@@ -111,7 +109,7 @@ func (s *Service) Get(key []byte) ([]byte, error) {
 func (s *Service) Set(key, value []byte) error {
 	return s.db.Update(func(txn *badger.Txn) error {
 		if err := txn.Set(key, value); err != nil {
-			return fmt.Errorf("set entry: %v", err)
+			return fmt.Errorf("set entry: %w", err)
 		}
 		return nil
 	})
@@ -123,8 +121,21 @@ func (s *Service) Del(key []byte) error {
 	})
 }
 
-func (s *Service) View(fn func(txn *badger.Txn) error) error {
-	return s.db.View(fn)
+func (s *Service) IterateKeys(prefix []byte, fn func([]byte) bool) error {
+	return s.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.Prefix = prefix
+		opts.PrefetchValues = false
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			if !fn(it.Item().Key()) {
+				break
+			}
+		}
+		return nil
+	})
 }
 
 func (s *Service) Close() error {
@@ -132,9 +143,7 @@ func (s *Service) Close() error {
 		close(s.done)
 	}
 	if s.db != nil {
-		if err := s.db.Close(); err != nil {
-			logrus.Errorf("close badger: %v", err)
-		}
+		return s.db.Close()
 	}
 	return nil
 }

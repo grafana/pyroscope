@@ -196,7 +196,7 @@ func (s *Storage) treeFromBytes(k string, v []byte) (interface{}, error) {
 	key := FromTreeToDictKey(k)
 	d, err := s.dicts.Get(key)
 	if err != nil {
-		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
+		return nil, fmt.Errorf("dicts cache for %v: %w", key, err)
 	}
 	if d == nil {
 		// The key not found. Fallback to segment key form which has been
@@ -210,7 +210,7 @@ func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error)
 	key := FromTreeToMainKey(k)
 	d, err := s.dicts.Get(key)
 	if err != nil {
-		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
+		return nil, fmt.Errorf("dicts cache for %v: %w", key, err)
 	}
 	if d == nil { // key not found
 		return nil, nil
@@ -222,7 +222,7 @@ func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
 	key := FromTreeToDictKey(k)
 	d, err := s.dicts.Get(key)
 	if err != nil {
-		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
+		return nil, fmt.Errorf("dicts cache for %v: %w", key, err)
 	}
 	if d == nil { // key not found
 		return nil, nil
@@ -256,7 +256,7 @@ func (s *Storage) Put(po *PutInput) error {
 
 	for k, v := range po.Key.labels {
 		if err := s.labels.Put(k, v); err != nil {
-			return fmt.Errorf("labels put for %v: %v", k, err)
+			return fmt.Errorf("labels put for %v: %w", k, err)
 		}
 	}
 
@@ -265,7 +265,7 @@ func (s *Storage) Put(po *PutInput) error {
 		key := k + ":" + v
 		res, err := s.dimensions.Get(key)
 		if err != nil {
-			logrus.Errorf("dimensions cache for %v: %v", key, err)
+			logrus.Errorf("dimensions cache for %v: %w", key, err)
 			continue
 		}
 		if res != nil {
@@ -275,7 +275,7 @@ func (s *Storage) Put(po *PutInput) error {
 
 	res, err := s.segments.Get(sk)
 	if err != nil {
-		return fmt.Errorf("segments cache for %v: %v", sk, err)
+		return fmt.Errorf("segments cache for %v: %w", sk, err)
 	}
 	if res == nil {
 		return fmt.Errorf("segments cache for %v: not found", sk)
