@@ -6,6 +6,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
+const JWTSecret = "qC8=%q~'z'o'CBi"
+
 type Config struct {
 	Version bool
 
@@ -80,6 +82,16 @@ type Server struct {
 	CacheDictionarySize int               `deprecated:"true"`
 	CacheSegmentSize    int               `deprecated:"true"`
 	CacheTreeSize       int               `deprecated:"true"`
+
+	Enabled            bool   `def:"false" desc:"enables Google Oauth"`
+	GoogleClientID     string `def:"<yourClientID>" desc:"client ID generated for Google API"`
+	GoogleClientSecret string `def:"<yourClientSecret>" desc:"client secret generated for Google API"`
+	GoogleRedirectURL  string `def:"<mycompany.org/google/callback>" desc:"url that google will redirect to after logging in. Has to be in form <pathToPyroscopeServer/google/callback>"`
+	GoogleScopes       string `def:"https://www.googleapis.com/auth/userinfo.email" desc:"scopes for Google API"`
+	GoogleAuthURL      string `def:"https://accounts.google.com/o/oauth2/auth" desc:"auth url for Google API (usually present in credentials.json file)"`
+	GoogleTokenURL     string `def:"https://accounts.google.com/o/oauth2/token" desc:"token url for Google API (usually present in credentials.json file)"`
+	AllowedDomains     string `def:"<mycompany.com>" desc:"allowed domains for Google API"`
+	AllowSignUp        bool   `def:"false" desc:"enables sign up for pyroscope using Google OAuth"`
 }
 
 type Convert struct {
