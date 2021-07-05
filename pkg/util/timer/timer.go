@@ -32,6 +32,12 @@ func StartWorker(name string, done chan struct{}, interval time.Duration, fn fun
 			case <-done:
 				return
 			case <-ticker.C:
+				select {
+				case <-done:
+					return
+				default:
+				}
+
 				doFuncWithRecover(name, fn)
 
 				// reset the timer

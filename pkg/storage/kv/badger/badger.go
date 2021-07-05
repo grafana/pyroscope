@@ -76,6 +76,12 @@ func (s *Service) newBadger(config *Config) (*badger.DB, error) {
 		s.closeMux.Lock()
 		defer s.closeMux.Unlock()
 
+		select {
+		case <-s.done:
+			return nil
+		default:
+		}
+
 		if err := db.RunValueLogGC(0.7); err != nil {
 			if err == badger.ErrNoRewrite {
 				return nil
