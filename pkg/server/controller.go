@@ -246,7 +246,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		if exp, ok := claims["exp"].(float64); ok && int64(exp) < time.Now().Unix() {
 			ctrl.httpServer.ErrorLog.Printf("Token no longer valid")
 
-			refreshCookie := &http.Cookie{
+			jwtCookie := &http.Cookie{
 				Name: jwtCookieName,
 
 				Path:     "/",
@@ -257,7 +257,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				SameSite: http.SameSiteStrictMode,
 			}
 
-			http.SetCookie(w, refreshCookie)
+			http.SetCookie(w, jwtCookie)
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
@@ -352,10 +352,10 @@ func (ctrl *Controller) callbacRedirectkHandler(getAccountInfoURL string, oauthC
 		}
 
 		cookieState := cookie.Value
+		requestState := r.FormValue("state")
 
-		state := r.FormValue("state")
-		if state != cookieState {
-			ctrl.httpServer.ErrorLog.Printf("invalid oauth state, expected %v got %v", cookieState, state)
+		if requestState != cookieState {
+			ctrl.httpServer.ErrorLog.Printf("invalid oauth state, expected %v got %v", cookieState, requestState)
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
@@ -363,18 +363,14 @@ func (ctrl *Controller) callbacRedirectkHandler(getAccountInfoURL string, oauthC
 		code := r.FormValue("code")
 		if code == "" {
 			ctrl.httpServer.ErrorLog.Printf("Code not found")
-			w.Write([]byte("Code Not Found to provide AccessToken..\n"))
-			reason := r.FormValue("error_reason")
-			if reason == "user_denied" {
-				w.Write([]byte("User has denied Permission.."))
-			}
-
+			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
 		token, err := oauthConf.Exchange(oauth2.NoContext, code)
 		if err != nil {
 			ctrl.httpServer.ErrorLog.Printf("Exchanging auth code for token failed with %v ", err)
+			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
@@ -404,7 +400,6 @@ func (ctrl *Controller) callbacRedirectkHandler(getAccountInfoURL string, oauthC
 		}
 
 		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 		tk, err := jwtToken.SignedString([]byte(ctrl.config.JWTSecret))
 		if err != nil {
 			ctrl.httpServer.ErrorLog.Printf("Signing jwt failed: %v", err)
@@ -412,7 +407,7 @@ func (ctrl *Controller) callbacRedirectkHandler(getAccountInfoURL string, oauthC
 			return
 		}
 
-		// delete state cookie and add refresh cookie
+		// delete state cookie and add jwt cookie
 		stateCookie := &http.Cookie{
 			Name:     stateCookieName,
 			Path:     "/",
@@ -425,7 +420,7 @@ func (ctrl *Controller) callbacRedirectkHandler(getAccountInfoURL string, oauthC
 
 		http.SetCookie(w, stateCookie)
 
-		refreshCookie := &http.Cookie{
+		jwtCookie := &http.Cookie{
 			Name:     jwtCookieName,
 			Path:     "/",
 			Value:    tk,
@@ -434,7 +429,7 @@ func (ctrl *Controller) callbacRedirectkHandler(getAccountInfoURL string, oauthC
 			SameSite: http.SameSiteStrictMode,
 		}
 
-		http.SetCookie(w, refreshCookie)
+		http.SetCookie(w, jwtCookie)
 		tmplt := template.New("welcome.html")
 		tmplt, _ = tmplt.ParseFiles("./webapp/templates/welcome.html")
 		params := map[string]string{"Name": name}
@@ -444,6 +439,7 @@ func (ctrl *Controller) callbacRedirectkHandler(getAccountInfoURL string, oauthC
 	}
 }
 
+// can be replaced with a faster solution if cryptographic randomness isn't a priority
 func generateStateToken(length int) (string, error) {
 	b := make([]byte, length)
 	if _, err := rand.Read(b); err != nil {
@@ -509,9 +505,8 @@ func (ctrl *Controller) loginHandler() http.HandlerFunc {
 
 func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		refreshCookie := &http.Cookie{
-			Name: jwtCookieName,
-
+		jwtCookie := &http.Cookie{
+			Name:     jwtCookieName,
 			Path:     "/",
 			Value:    "",
 			HttpOnly: true,
@@ -520,7 +515,7 @@ func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 			SameSite: http.SameSiteStrictMode,
 		}
 
-		http.SetCookie(w, refreshCookie)
+		http.SetCookie(w, jwtCookie)
 		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 	}
 }
