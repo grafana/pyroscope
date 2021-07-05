@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
@@ -22,9 +23,10 @@ type Config struct {
 
 // Service for badger
 type Service struct {
-	config *Config       // the settings for badger
-	db     *badger.DB    // the badger for persistence
-	done   chan struct{} // the service is done
+	config   *Config       // the settings for badger
+	db       *badger.DB    // the badger for persistence
+	done     chan struct{} // the service is done
+	closeMux sync.Mutex    // serialize the GC and Close of badger
 }
 
 // NewService returns a badger service
@@ -71,6 +73,9 @@ func (s *Service) newBadger(config *Config) (*badger.DB, error) {
 
 	// start a timer for the badger GC
 	timer.StartWorker("badger gc", s.done, 5*time.Minute, func() error {
+		s.closeMux.Lock()
+		defer s.closeMux.Unlock()
+
 		if err := db.RunValueLogGC(0.7); err != nil {
 			if err == badger.ErrNoRewrite {
 				return nil
@@ -139,6 +144,9 @@ func (s *Service) IterateKeys(prefix []byte, fn func([]byte) bool) error {
 }
 
 func (s *Service) Close() error {
+	s.closeMux.Lock()
+	defer s.closeMux.Unlock()
+
 	if s.done != nil {
 		close(s.done)
 	}
