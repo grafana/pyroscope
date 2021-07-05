@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -28,7 +30,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 )
 
-const cookieName = "pyroscopeJWT"
+const (
+	jwtCookieName   = "pyroscopeJWT"
+	stateCookieName = "pyroscopeState"
+)
 
 type Controller struct {
 	drained uint32
@@ -68,6 +73,9 @@ func (ctrl *Controller) mux() http.Handler {
 		{"/build", ctrl.buildHandler},
 	})
 
+	// auth routes
+	addRoutes(mux, ctrl.getAuthRoutes())
+
 	// drainable routes:
 	routes := []route{
 		{"/", ctrl.indexHandler()},
@@ -79,16 +87,6 @@ func (ctrl *Controller) mux() http.Handler {
 
 	addRoutes(mux, routes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
-	// auth routes:
-	authRoutes := []route{
-		{"/google/login", ctrl.googleLoginHandler()},
-		{"/google/callback", ctrl.googleCallbackHandler()},
-		{"/login", ctrl.loginHandler()},
-		{"/logout", ctrl.logoutHandler()},
-	}
-
-	addRoutes(mux, authRoutes)
-
 	if !ctrl.config.DisablePprofEndpoint {
 		addRoutes(mux, []route{
 			{"/debug/pprof/", pprof.Index},
@@ -99,6 +97,70 @@ func (ctrl *Controller) mux() http.Handler {
 		})
 	}
 	return mux
+}
+
+func getNewRedirectURL(url string) string {
+	splitRedirect := strings.Split(url, "/")
+	splitRedirect[len(splitRedirect)-1] = "redirect"
+	return strings.Join(splitRedirect, "/")
+}
+
+func (ctrl *Controller) getAuthRoutes() []route {
+	authRoutes := []route{
+		{"/login", ctrl.loginHandler()},
+		{"/logout", ctrl.logoutHandler()},
+	}
+
+	if ctrl.config.GoogleEnabled {
+		googleOauthConfig := &oauth2.Config{
+			ClientID:     ctrl.config.GoogleClientID,
+			ClientSecret: ctrl.config.GoogleClientSecret,
+			RedirectURL:  ctrl.config.GoogleRedirectURL,
+			Scopes:       strings.Split(ctrl.config.GoogleScopes, " "),
+			Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GoogleAuthURL, TokenURL: ctrl.config.GoogleTokenURL},
+		}
+
+		authRoutes = append(authRoutes, []route{
+			{"/google/login", ctrl.oauthLoginHandler(googleOauthConfig)},
+			{"/google/callback", ctrl.callbackHandler(getNewRedirectURL(ctrl.config.GoogleRedirectURL))},
+			{"/google/redirect", ctrl.callbacRedirectkHandler(
+				"https://www.googleapis.com/oauth2/v2/userinfo", googleOauthConfig, ctrl.decodeGoogleCallbackResponse)},
+		}...)
+	}
+
+	if ctrl.config.GithubEnabled {
+		gitHubOauthConfig := &oauth2.Config{
+			ClientID:     ctrl.config.GithubClientID,
+			ClientSecret: ctrl.config.GithubClientSecret,
+			RedirectURL:  ctrl.config.GithubRedirectURL,
+			Scopes:       strings.Split(ctrl.config.GithubScopes, " "),
+			Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GithubAuthURL, TokenURL: ctrl.config.GithubTokenURL},
+		}
+
+		authRoutes = append(authRoutes, []route{
+			{"/github/login", ctrl.oauthLoginHandler(gitHubOauthConfig)},
+			{"/github/callback", ctrl.callbackHandler(getNewRedirectURL(ctrl.config.GithubRedirectURL))},
+			{"/github/redirect", ctrl.callbacRedirectkHandler("https://api.github.com/user", gitHubOauthConfig, ctrl.decodeGithubCallbackResponse)},
+		}...)
+	}
+
+	if ctrl.config.GitlabEnabled {
+		gitLabOauthConfig := &oauth2.Config{
+			ClientID:     ctrl.config.GitlabApplicationID,
+			ClientSecret: ctrl.config.GitlabClientSecret,
+			RedirectURL:  ctrl.config.GitlabRedirectURL,
+			Scopes:       strings.Split(ctrl.config.GitlabScopes, " "),
+			Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GitlabAuthURL, TokenURL: ctrl.config.GitlabTokenURL},
+		}
+
+		authRoutes = append(authRoutes, []route{
+			{"/gitlab/login", ctrl.oauthLoginHandler(gitLabOauthConfig)},
+			{"/gitlab/callback", ctrl.callbackHandler(getNewRedirectURL(ctrl.config.GitlabRedirectURL))},
+			{"/gitlab/redirect", ctrl.callbacRedirectkHandler(ctrl.config.GitlabAPIURL, gitLabOauthConfig, ctrl.decodeGitLabCallbackResponse)},
+		}...)
+	}
+
+	return authRoutes
 }
 
 func (ctrl *Controller) Start() error {
@@ -147,9 +209,9 @@ func (ctrl *Controller) drainMiddleware(next http.HandlerFunc) http.HandlerFunc 
 
 func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		jwtCookie, errCookie := r.Cookie(cookieName)
-		if errCookie != nil {
-			ctrl.httpServer.ErrorLog.Printf("There seems to be problem with jwt token cookie: %v", errCookie)
+		jwtCookie, err := r.Cookie(jwtCookieName)
+		if err != nil {
+			ctrl.httpServer.ErrorLog.Printf("There seems to be problem with jwt token cookie: %v", err)
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
@@ -165,7 +227,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(config.JWTSecret), nil
+			return []byte(ctrl.config.JWTSecret), nil
 		})
 
 		if err != nil {
@@ -174,14 +236,32 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		if _, ok := token.Claims.(jwt.MapClaims); !ok || !token.Valid {
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok || !token.Valid {
 			ctrl.httpServer.ErrorLog.Printf("Token not valid")
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
-		// TODO: Access logged in user information by replacing _ with claims above and uncommenting below
-		// value, ok := claims.(jwt.MapClaims)["key"]
+		if exp, ok := claims["exp"].(float64); ok && int64(exp) < time.Now().Unix() {
+			ctrl.httpServer.ErrorLog.Printf("Token no longer valid")
+
+			refreshCookie := &http.Cookie{
+				Name: jwtCookieName,
+
+				Path:     "/",
+				Value:    "",
+				HttpOnly: true,
+				// MaxAge -1 request cookie be deleted immediately
+				MaxAge:   -1,
+				SameSite: http.SameSiteStrictMode,
+			}
+
+			http.SetCookie(w, refreshCookie)
+			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			return
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -202,7 +282,7 @@ type indexPage struct {
 	BaseURL       string
 }
 
-func (ctrl *Controller) googleCallbackHandler() http.HandlerFunc {
+func (ctrl *Controller) decodeGoogleCallbackResponse(resp *http.Response) (name string, err error) {
 	type callbackResponse struct {
 		ID            string
 		Email         string
@@ -210,13 +290,74 @@ func (ctrl *Controller) googleCallbackHandler() http.HandlerFunc {
 		Picture       string
 	}
 
+	var userProfile callbackResponse
+	err = json.NewDecoder(resp.Body).Decode(&userProfile)
+	if err != nil {
+		return
+	}
+
+	name = userProfile.Email
+	return
+}
+
+func (ctrl *Controller) decodeGithubCallbackResponse(resp *http.Response) (name string, err error) {
+	type callbackResponse struct {
+		ID        int64
+		Email     string
+		Login     string
+		AvatarURL string
+	}
+
+	var userProfile callbackResponse
+	err = json.NewDecoder(resp.Body).Decode(&userProfile)
+	if err != nil {
+		return
+	}
+
+	name = userProfile.Login
+	return
+}
+
+func (ctrl *Controller) decodeGitLabCallbackResponse(resp *http.Response) (name string, err error) {
+	type callbackResponse struct {
+		ID        int64
+		Email     string
+		Username  string
+		AvatarURL string
+	}
+
+	var userProfile callbackResponse
+	err = json.NewDecoder(resp.Body).Decode(&userProfile)
+	if err != nil {
+		return
+	}
+
+	name = userProfile.Username
+	return
+}
+
+func (ctrl *Controller) callbacRedirectkHandler(getAccountInfoURL string, oauthConf *oauth2.Config, decodeResponse func(*http.Response) (string, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		oauthConf := &oauth2.Config{
-			ClientID:     ctrl.config.GoogleClientID,
-			ClientSecret: ctrl.config.GoogleClientSecret,
-			RedirectURL:  ctrl.config.GoogleRedirectURL,
-			Scopes:       strings.Split(ctrl.config.GoogleScopes, " "),
-			Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GoogleAuthURL, TokenURL: ctrl.config.GoogleTokenURL},
+		cookie, err := r.Cookie(stateCookieName)
+		if err != nil {
+			ctrl.httpServer.ErrorLog.Printf("There seems to be problem with state cookie: %v", err)
+			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			return
+		}
+
+		if cookie == nil {
+			ctrl.httpServer.ErrorLog.Printf("Missing state cookie")
+			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			return
+		}
+
+		cookieState := cookie.Value
+
+		state := r.FormValue("state")
+		if state != cookieState {
+			ctrl.httpServer.ErrorLog.Printf("invalid oauth state, expected %v got %v", cookieState, state)
+			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			return
 		}
 
 		code := r.FormValue("code")
@@ -237,7 +378,8 @@ func (ctrl *Controller) googleCallbackHandler() http.HandlerFunc {
 			return
 		}
 
-		resp, err := http.Get("https://www.googleapis.com/oauth2/v2/userinfo?access_token=" + url.QueryEscape(token.AccessToken))
+		client := oauthConf.Client(oauth2.NoContext, token)
+		resp, err := client.Get(getAccountInfoURL)
 		if err != nil {
 			ctrl.httpServer.ErrorLog.Printf("Failed to get oauth user info: %v", err)
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
@@ -245,31 +387,46 @@ func (ctrl *Controller) googleCallbackHandler() http.HandlerFunc {
 		}
 		defer resp.Body.Close()
 
-		var userProfile callbackResponse
-		err = json.NewDecoder(resp.Body).Decode(&userProfile)
+		name, err := decodeResponse(resp)
 		if err != nil {
 			ctrl.httpServer.ErrorLog.Printf("Decoding response body failed: %v", err)
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
-		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			// TODO: Add if we want it to expire
-			// "exp": time.Now().Add(144 * time.Hour).Unix(),
-			// "iat": time.Now().Unix(),
-			"email": userProfile.Email,
-		})
+		claims := jwt.MapClaims{
+			"iat":  time.Now().Unix(),
+			"name": name,
+		}
 
-		tk, err := jwtToken.SignedString([]byte(config.JWTSecret))
+		if ctrl.config.LoginMaximumLifetimeDays > 0 {
+			claims["exp"] = time.Now().Add(time.Hour * 24 * time.Duration(ctrl.config.LoginMaximumLifetimeDays)).Unix()
+		}
+
+		jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		tk, err := jwtToken.SignedString([]byte(ctrl.config.JWTSecret))
 		if err != nil {
 			ctrl.httpServer.ErrorLog.Printf("Signing jwt failed: %v", err)
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
-		// TODO: Should user be logged out once google token expires?
+		// delete state cookie and add refresh cookie
+		stateCookie := &http.Cookie{
+			Name:     stateCookieName,
+			Path:     "/",
+			Value:    "",
+			HttpOnly: true,
+			// MaxAge -1 request cookie be deleted immediately
+			MaxAge:   -1,
+			SameSite: http.SameSiteStrictMode,
+		}
+
+		http.SetCookie(w, stateCookie)
+
 		refreshCookie := &http.Cookie{
-			Name:     cookieName,
+			Name:     jwtCookieName,
 			Path:     "/",
 			Value:    tk,
 			HttpOnly: true,
@@ -280,51 +437,81 @@ func (ctrl *Controller) googleCallbackHandler() http.HandlerFunc {
 		http.SetCookie(w, refreshCookie)
 		tmplt := template.New("welcome.html")
 		tmplt, _ = tmplt.ParseFiles("./webapp/templates/welcome.html")
-		params := map[string]string{"Email": userProfile.Email}
+		params := map[string]string{"Name": name}
 
 		tmplt.Execute(w, params)
 		return
 	}
 }
 
-func (ctrl *Controller) googleLoginHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		oauthConf := &oauth2.Config{
-			ClientID:     ctrl.config.GoogleClientID,
-			ClientSecret: ctrl.config.GoogleClientSecret,
-			RedirectURL:  ctrl.config.GoogleRedirectURL,
-			Scopes:       strings.Split(ctrl.config.GoogleScopes, " "),
-			Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GoogleAuthURL, TokenURL: ctrl.config.GoogleTokenURL},
-		}
+func generateStateToken(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
 
+func (ctrl *Controller) oauthLoginHandler(oauthConf *oauth2.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		URL, err := url.Parse(oauthConf.Endpoint.AuthURL)
 		if err != nil {
-			ctrl.httpServer.ErrorLog.Printf("Parse: " + err.Error())
+			ctrl.httpServer.ErrorLog.Printf("Parse error: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
-		ctrl.httpServer.ErrorLog.Printf(URL.String())
 		parameters := url.Values{}
 		parameters.Add("client_id", oauthConf.ClientID)
 		parameters.Add("scope", strings.Join(oauthConf.Scopes, " "))
 		parameters.Add("redirect_uri", oauthConf.RedirectURL)
 		parameters.Add("response_type", "code")
+
+		// generate state token for CSRF protection
+		state, err := generateStateToken(16)
+		if err != nil {
+			ctrl.httpServer.ErrorLog.Printf("Generate token error: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		parameters.Add("state", state)
 		URL.RawQuery = parameters.Encode()
 		url := URL.String()
-		ctrl.httpServer.ErrorLog.Printf(url)
+
+		stateCookie := &http.Cookie{
+			Name:     stateCookieName,
+			Path:     "/",
+			Value:    state,
+			HttpOnly: true,
+			MaxAge:   0,
+			SameSite: http.SameSiteStrictMode,
+		}
+		http.SetCookie(w, stateCookie)
+
 		http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 	}
 }
 
 func (ctrl *Controller) loginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./webapp/templates/login.html")
+		tmplt := template.New("login.html")
+		tmplt, _ = tmplt.ParseFiles("./webapp/templates/login.html")
+		params := map[string]bool{
+			"GoogleEnabled": ctrl.config.GoogleEnabled,
+			"GithubEnabled": ctrl.config.GithubEnabled,
+			"GitlabEnabled": ctrl.config.GitlabEnabled,
+		}
+
+		tmplt.Execute(w, params)
 	}
 }
 
 func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		refreshCookie := &http.Cookie{
-			Name:     cookieName,
+			Name: jwtCookieName,
+
 			Path:     "/",
 			Value:    "",
 			HttpOnly: true,
@@ -335,6 +522,26 @@ func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 
 		http.SetCookie(w, refreshCookie)
 		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+	}
+}
+
+// Instead of this handler that just redirects, Javascript code can be added to load the state and send it to backend
+// this is done so that the state cookie would be send back from browser
+func (ctrl *Controller) callbackHandler(callbackURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		parsedUrl, err := url.Parse(callbackURL)
+		if err != nil {
+			ctrl.httpServer.ErrorLog.Printf("Parse error: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		parsedUrl.RawQuery = r.URL.Query().Encode()
+		tmplt := template.New("redirect.html")
+		tmplt, _ = tmplt.ParseFiles("./webapp/templates/redirect.html")
+		params := map[string]string{"CallbackURL": parsedUrl.String()}
+
+		tmplt.Execute(w, params)
 	}
 }
 
