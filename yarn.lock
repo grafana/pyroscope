@@ -7807,6 +7807,11 @@ react-flot@^1.3.0:
     deep-equal "^1.0.1"
     jquery "^3.1.1"
 
+react-fps-stats@^0.1.3:
+  version "0.1.3"
+  resolved "https://registry.yarnpkg.com/react-fps-stats/-/react-fps-stats-0.1.3.tgz#c6adbbe27d9de5436730a5eb0136780df78f588d"
+  integrity sha512-/HS2dOP20L8X8Q+iHqQI1T5txXIL53yRt72iHuk2a2tIvhIKKDWfgCadBW2wwYkSiDTtPKe0cRwoGXVumrPy3A==
+
 react-is@^16.13.1, react-is@^16.6.0, react-is@^16.7.0, react-is@^16.8.1, react-is@^16.8.6, react-is@^16.9.0:
   version "16.13.1"
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"

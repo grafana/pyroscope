@@ -19,6 +19,8 @@
   max-width: 80%;
 
   position: absolute;
+  top: 0;
+  left: 0;
   pointer-events: none;
   background: #ffffff;
   white-space: nowrap;
@@ -26,7 +28,9 @@
   border-radius: 4px;
   padding: 3px 5px;
   color: #333;
+  will-change: left, top, opacity;
   font-size: 12px;
+  opacity: 0;
 }
 
 .flamegraph-tooltip-name {
@@ -38,8 +42,12 @@
 
 .flamegraph-highlight {
   position: absolute;
+  top: 0;
+  left: 0;
   pointer-events: none;
   background: #ffffff40;
   // this makes it so that text doesn't get dimmer
   mix-blend-mode: overlay;
+  will-change: left, top, opacity;
+  opacity: 0;
 }

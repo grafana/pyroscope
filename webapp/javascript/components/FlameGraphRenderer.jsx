@@ -68,6 +68,7 @@ class FlameGraphRenderer extends React.Component {
       flamebearer: null,
     };
     this.canvasRef = React.createRef();
+    this.highlightRef = React.createRef();
     this.tooltipRef = React.createRef();
     this.currentJSONController = null;
   }
@@ -308,6 +309,7 @@ class FlameGraphRenderer extends React.Component {
       this.graphWidth / numTicks / (this.rangeMax - this.rangeMin);
     this.canvas.height = PX_PER_LEVEL * (levels.length - this.topLevel);
     this.canvas.style.height = `${this.canvas.height}px`;
+    this.canvas.style.cursor = "pointer";
 
     if (devicePixelRatio > 1) {
       this.canvas.width *= 2;
@@ -319,7 +321,7 @@ class FlameGraphRenderer extends React.Component {
     this.ctx.font =
       '400 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
 
-    const formatter = this.createFormatter();
+    this.formatter = this.createFormatter();
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
@@ -388,7 +390,7 @@ class FlameGraphRenderer extends React.Component {
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
           const percent = formatPercent(ratio);
-          const name = `${names[level[j + 3]]} (${percent}, ${formatter.format(numBarTicks, sampleRate)})`;
+          const name = `${names[level[j + 3]]} (${percent}, ${this.formatter.format(numBarTicks, sampleRate)})`;
 
           this.ctx.save();
           this.ctx.clip();
@@ -412,8 +414,6 @@ class FlameGraphRenderer extends React.Component {
       return;
     }
 
-    this.canvas.style.cursor = "pointer";
-
     const level = this.state.levels[i];
     const x = Math.max(this.tickToX(level[j]), 0);
     const y = (i - this.topLevel) * PX_PER_LEVEL;
@@ -422,52 +422,35 @@ class FlameGraphRenderer extends React.Component {
       this.graphWidth
     );
 
+    const highlightEl = this.highlightRef.current;
     const tooltipEl = this.tooltipRef.current;
     const numBarTicks = level[j + 1];
     const percent = formatPercent(numBarTicks / this.state.numTicks);
-
-    // a little hacky but this is here so that we can get tooltipWidth after text is updated.
     const tooltipTitle = this.state.names[level[j + 3]];
+
+    // Before you change all of this to React consider performance implications.
+    // Doing this with setState leads to significant lag.
+    // See this issue https://github.com/pyroscope-io/pyroscope/issues/205
+    //   and this PR https://github.com/pyroscope-io/pyroscope/pull/266 for more info.
+    highlightEl.style.opacity = 1;
+    highlightEl.style.left = `${this.canvas.offsetLeft + x}px`;
+    highlightEl.style.top = `${this.canvas.offsetTop + y}px`;
+    highlightEl.style.width = `${sw}px`;
+    highlightEl.style.height = `${PX_PER_LEVEL}px`;
+
+    tooltipEl.style.opacity = 1;
+    tooltipEl.style.left = `${e.clientX+12}px`;
+    tooltipEl.style.top = `${e.clientY+12}px`;
+
     tooltipEl.children[0].innerText = tooltipTitle;
-    const tooltipWidth = tooltipEl.clientWidth;
-
-    const formatter = this.createFormatter();
-
-    this.setState({
-      highlightStyle: {
-        display: "block",
-        left: `${this.canvas.offsetLeft + x}px`,
-        top: `${this.canvas.offsetTop + y}px`,
-        width: `${sw}px`,
-        height: `${PX_PER_LEVEL}px`,
-      },
-      tooltipStyle: {
-        display: "block",
-        left: `${
-          Math.min(
-            this.canvas.offsetLeft + e.nativeEvent.offsetX + 15 + tooltipWidth,
-            this.canvas.offsetLeft + this.graphWidth
-          ) - tooltipWidth
-        }px`,
-        top: `${this.canvas.offsetTop + e.nativeEvent.offsetY + 12}px`,
-      },
-      tooltipTitle,
-      tooltipSubtitle: `${percent}, ${numberWithCommas(
-        numBarTicks
-      )} samples, ${formatter.format(numBarTicks, this.state.sampleRate)}`,
-    });
+    tooltipEl.children[1].innerText = `${percent}, ${numberWithCommas(
+      numBarTicks
+    )} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
   };
 
   mouseOutHandler = () => {
-    this.canvas.style.cursor = "";
-    this.setState({
-      highlightStyle: {
-        display: "none",
-      },
-      tooltipStyle: {
-        display: "none",
-      },
-    });
+    this.highlightRef.current.style.opacity = "0";
+    this.tooltipRef.current.style.opacity = "0";
   };
 
   updateSortBy = (newSortBy) => {
@@ -575,14 +558,16 @@ class FlameGraphRenderer extends React.Component {
             </span>
           </div>
         </div>
-        <div className="flamegraph-highlight" style={this.state.highlightStyle} />
+        <div
+          className="flamegraph-highlight"
+          ref={this.highlightRef}
+        />
         <div
           className="flamegraph-tooltip"
           ref={this.tooltipRef}
-          style={this.state.tooltipStyle}
         >
-          <div className="flamegraph-tooltip-name">{this.state.tooltipTitle}</div>
-          <div>{this.state.tooltipSubtitle}</div>
+          <div className="flamegraph-tooltip-name"></div>
+          <div></div>
         </div>
       </div>
     )
