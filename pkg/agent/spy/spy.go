@@ -84,11 +84,12 @@ func RegisterSpy(name string, cb spyIntitializer) {
 	supportedSpiesMap[name] = cb
 }
 
-func SpyFromName(name string, pid int) (Spy, error) {
+func StartFunc(name string) (interface{}, error) {
 	if s, ok := supportedSpiesMap[name]; ok {
-		return s(pid)
+		return s, nil
 	}
 	return nil, fmt.Errorf("unknown spy \"%s\". Make sure it's supported (run `pyroscope version` to check if your version supports it)", name)
+
 }
 
 func ResolveAutoName(s string) string {

@@ -1,3 +1,5 @@
+// +build !nogospy
+
 package gospy
 
 import (

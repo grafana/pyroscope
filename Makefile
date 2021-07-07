@@ -18,6 +18,12 @@ else
 	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies"
 endif
 
+ifeq ("$(shell go env GOOS || true)", "linux")
+	ARCHIVE_EXT ?= "a"
+else
+	ARCHIVE_EXT ?= "bundle"
+endif
+
 EMBEDDED_ASSETS ?= ""
 EMBEDDED_ASSETS_DEPS ?= "assets-release"
 EXTRA_LDFLAGS ?= ""
@@ -34,12 +40,25 @@ all: build
 build:
 	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
 
+.PHONY: build-rbspy-static-library
+build-rbspy-static-library:
+	$(GOBUILD) -tags nogospy,rbspy -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./bin/libpyroscope.rbspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+
+.PHONY: build-pyspy-static-library
+build-pyspy-static-library:
+	$(GOBUILD) -tags nogospy,pyspy -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./bin/libpyroscope.pyspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+
+.PHONY: build-phpspy-static-library
+build-phpspy-static-library:
+	$(GOBUILD) -tags nogospy,phpspy -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./bin/libpyroscope.phpspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+
 .PHONY: build-release
 build-release: embedded-assets
 	EMBEDDED_ASSETS=true $(MAKE) build
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
+# relocation-model=pic
 	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release
 
 .PHONY: build-phpspy-dependencies
@@ -95,6 +114,13 @@ lint-summary:
 ensure-logrus-not-used:
 	@! go run "$(shell scripts/pinned-tool.sh github.com/kisielk/godepgraph)" -nostdlib -s ./pkg/agent/profiler/ | grep ' -> "github.com/sirupsen/logrus' \
 		|| (echo "\n^ ERROR: make sure ./pkg/agent/profiler/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
+
+	@! go run "$(shell scripts/pinned-tool.sh github.com/kisielk/godepgraph)" -nostdlib -s ./pkg/agent/clib/ | grep ' -> "github.com/sirupsen/logrus' \
+	|| (echo "\n^ ERROR: make sure ./pkg/agent/clib/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
+
+.PHONY: clib-deps
+clib-deps:
+	go run "$(shell scripts/pinned-tool.sh github.com/kisielk/godepgraph)" -tags nogospy ./pkg/agent/clib/ | dot -Tsvg -o ./tmp/clib-deps.svg
 
 .PHONY: unused
 unused:

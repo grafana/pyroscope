@@ -10,7 +10,7 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/debugspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/dotnetspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
+	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/phpspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
@@ -141,26 +141,50 @@ func (ps *ProfileSession) takeSnapshots() {
 	}
 }
 
+type standardStartFunc func(pid int) (spy.Spy, error)
+type gospyStartFunc func(profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error)
+
+func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
+	res := []spy.Spy{}
+
+	sf, err := spy.StartFunc(ps.spyName)
+	if err != nil {
+		return res, err
+	}
+
+	if standardF, ok := sf.(standardStartFunc); ok {
+		s, err := standardF(pid)
+		if err != nil {
+			return res, err
+		}
+		res = append(res, s)
+	} else if gospyF, ok := sf.(gospyStartFunc); ok {
+		for _, pt := range ps.profileTypes {
+			s, err := gospyF(pt, ps.sampleRate, ps.disableGCRuns)
+
+			if err != nil {
+				return res, err
+			}
+			res = append(res, s)
+		}
+	}
+	return res, nil
+}
+
 func (ps *ProfileSession) Start() error {
 	ps.reset()
 
-	if ps.spyName == types.GoSpy {
-		for _, pt := range ps.profileTypes {
-			s, err := gospy.Start(pt, ps.sampleRate, ps.disableGCRuns)
-			if err != nil {
-				return err
-			}
-
-			ps.spies = append(ps.spies, s)
-		}
-	} else {
-		s, err := spy.SpyFromName(ps.spyName, ps.pids[0])
-		if err != nil {
-			return err
-		}
-
-		ps.spies = append(ps.spies, s)
+	pid := -1
+	if len(ps.pids) > 0 {
+		pid = ps.pids[0]
 	}
+	spies, err := ps.initializeSpies(pid)
+	if err != nil {
+		return err
+	}
+
+	ps.spies = spies
+
 	go ps.takeSnapshots()
 	return nil
 }
@@ -248,7 +272,7 @@ func (ps *ProfileSession) addSubprocesses() {
 	for _, newPid := range newPids {
 		if !slices.IntContains(ps.pids, newPid) {
 			ps.pids = append(ps.pids, newPid)
-			newSpy, err := spy.SpyFromName(ps.spyName, newPid)
+			newSpies, err := ps.initializeSpies(newPid)
 			if err != nil {
 				if ps.logger != nil {
 					ps.logger.Errorf("failed to initialize a spy %d [%s]", newPid, ps.spyName)
@@ -257,7 +281,7 @@ func (ps *ProfileSession) addSubprocesses() {
 				if ps.logger != nil {
 					ps.logger.Debugf("started spy for subprocess %d [%s]", newPid, ps.spyName)
 				}
-				ps.spies = append(ps.spies, newSpy)
+				ps.spies = append(ps.spies, newSpies...)
 			}
 		}
 	}
