@@ -127,6 +127,12 @@ func (ctrl *Controller) callbackHandler(callbackURL string) http.HandlerFunc {
 	}
 }
 
+func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./webapp/templates/forbidden.html")
+	}
+}
+
 func (ctrl *Controller) decodeGoogleCallbackResponse(resp *http.Response) (string, error) {
 	type callbackResponse struct {
 		ID            string
@@ -197,12 +203,21 @@ func (ctrl *Controller) newJWTToken(name string) (string, error) {
 	return tk, nil
 }
 
+func (ctrl *Controller) logAndRedirect(w http.ResponseWriter, r *http.Request, logString string, shouldInvalidateCookie bool) {
+	ctrl.log.Error(logString)
+	if shouldInvalidateCookie {
+		invalidateCookie(w, stateCookieName)
+	}
+
+	http.Redirect(w, r, "/forbidden", http.StatusTemporaryRedirect)
+	return
+}
+
 func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, oauthConf *oauth2.Config, decodeResponse decodeResponseFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(stateCookieName)
 		if err != nil {
-			ctrl.log.Error("Missing state cookie")
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.logAndRedirect(w, r, "missing state cookie", false)
 			return
 		}
 
@@ -210,50 +225,40 @@ func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, oauthC
 		requestState := r.FormValue("state")
 
 		if requestState != cookieState {
-			ctrl.log.Error("invalid oauth state")
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.logAndRedirect(w, r, "invalid oauth state", false)
 			return
 		}
 
 		code := r.FormValue("code")
 		if code == "" {
-			ctrl.log.Error("Code not found")
-			invalidateCookie(w, stateCookieName)
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.logAndRedirect(w, r, "code not found", true)
 			return
 		}
 
 		token, err := oauthConf.Exchange(r.Context(), code)
 		if err != nil {
-			ctrl.log.Errorf("Exchanging auth code for token failed with %v ", err)
-			invalidateCookie(w, stateCookieName)
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.logAndRedirect(w, r, "Exchanging auth code for token failed with "+err.Error(), true)
 			return
 		}
 
 		client := oauthConf.Client(r.Context(), token)
 		resp, err := client.Get(getAccountInfoURL)
 		if err != nil {
-			ctrl.log.Errorf("Failed to get oauth user info: %v", err)
-			invalidateCookie(w, stateCookieName)
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.logAndRedirect(w, r, "Failed to get oauth user info: "+err.Error(), true)
 			return
 		}
 		defer resp.Body.Close()
 
 		name, err := decodeResponse(resp)
 		if err != nil {
-			ctrl.log.Errorf("Decoding response body failed: %v", err)
-			invalidateCookie(w, stateCookieName)
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.logAndRedirect(w, r, "Decoding response body failed: "+err.Error(), true)
 			return
 		}
 
 		tk, err := ctrl.newJWTToken(name)
 		if err != nil {
-			ctrl.log.Errorf("Signing jwt failed: %v", err)
-			invalidateCookie(w, stateCookieName)
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.logAndRedirect(w, r, "Signing jwt failed: "+err.Error(), true)
+			return
 		}
 
 		// delete state cookie and add jwt cookie

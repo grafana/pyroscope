@@ -91,7 +91,12 @@ func (ctrl *Controller) mux() http.Handler {
 		})
 	}
 
-	mux.HandleFunc("/ingest", ctrl.drainMiddleware(ctrl.ingestHandler))
+	nonAuthRoutes := []route{
+		{"/ingest", ctrl.ingestHandler},
+		{"/forbidden", ctrl.forbiddenHandler()},
+	}
+
+	addRoutes(mux, nonAuthRoutes, ctrl.drainMiddleware)
 	return mux
 }
 
