@@ -106,7 +106,7 @@ type Server struct {
 	GithubAuthURL      string `def:"https://github.com/login/oauth/authorize" desc:"auth url for Github API"`
 	GithubTokenURL     string `def:"https://github.com/login/oauth/access_token" desc:"token url for Github API"`
 
-	JWTSecret                string `def:"qC8=%q~'z'o'CBi" desc:"secret used to secure your JWT tokens"`
+	JWTSecret                string `def:"" desc:"secret used to secure your JWT tokens"`
 	LoginMaximumLifetimeDays int    `def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring."`
 }
 
