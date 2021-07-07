@@ -1,8 +1,8 @@
 storage:
   path: test_storage
 
-sources: 10000
-period: 1h
+sources: 500
+period: 10m
 apps:
   test-app.cpu:
     spyName: gospy

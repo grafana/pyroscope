@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dgrijalva/lfu-go"
+	"github.com/pyroscope-io/lfu-go"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/sirupsen/logrus"
 
@@ -152,7 +152,31 @@ func (cache *Cache) Delete(key string) error {
 	return err
 }
 
-func (cache *Cache) Get(key string) (interface{}, error) {
+func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
+	v, err := cache.lookup(key) // find the key from cache first
+	if err != nil {
+		return nil, err
+	}
+	if v != nil {
+		return v, nil
+	}
+	if cache.New == nil {
+		return nil, errors.New("cache's New function is nil")
+	}
+	v = cache.New(key)
+	cache.lfu.Set(key, v)
+	return v, nil
+}
+
+func (cache *Cache) Lookup(key string) (interface{}, bool) {
+	v, err := cache.lookup(key)
+	if v == nil || err != nil {
+		return nil, false
+	}
+	return v, true
+}
+
+func (cache *Cache) lookup(key string) (interface{}, error) {
 	// find the key from cache first
 	val := cache.lfu.Get(key)
 	if val != nil {
@@ -188,14 +212,7 @@ func (cache *Cache) Get(key string) (interface{}, error) {
 	// if it's not found from badger, create a new object
 	if copied == nil {
 		logrus.WithField("key", key).Debug("storage miss")
-
-		if cache.New == nil {
-			return nil, errors.New("cache's New function is nil")
-		}
-
-		newVal := cache.New(key)
-		cache.lfu.Set(key, newVal)
-		return newVal, nil
+		return nil, nil
 	}
 
 	// deserialize the object from storage

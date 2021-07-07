@@ -17,12 +17,7 @@ func randInt(r *rand.Rand, min, max int) int {
 }
 
 func randString(r *rand.Rand, min, max int) string {
-	var l int
-	if min == max {
-		l = max
-	} else {
-		l = r.Intn(max-min) + min
-	}
+	l := randInt(r, min, max)
 	buf := make([]byte, l)
 	r.Read(buf)
 	return hex.EncodeToString(buf)
