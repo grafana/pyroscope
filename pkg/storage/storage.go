@@ -265,7 +265,7 @@ func (s *Storage) Put(po *PutInput) error {
 		key := k + ":" + v
 		res, err := s.dimensions.Get(key)
 		if err != nil {
-			logrus.Errorf("dimensions cache for %v: %w", key, err)
+			logrus.Errorf("dimensions cache for %v: %v", key, err)
 			continue
 		}
 		if res != nil {
