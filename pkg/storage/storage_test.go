@@ -144,12 +144,16 @@ var _ = Describe("storage package", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 
-					err = s.Delete(&DeleteInput{
-						Key: key,
-					})
+					err = s.Delete(&DeleteInput{Key: key})
 					Expect(err).ToNot(HaveOccurred())
+					gOut, err := s.Get(&GetInput{
+						StartTime: st2,
+						EndTime:   et2,
+						Key:       key,
+					})
+					Expect(gOut).To(BeNil())
 
-					s.Put(&PutInput{
+					err = s.Put(&PutInput{
 						StartTime:  st,
 						EndTime:    et,
 						Key:        key,
@@ -157,8 +161,9 @@ var _ = Describe("storage package", func() {
 						SpyName:    "testspy",
 						SampleRate: 100,
 					})
+					Expect(err).ToNot(HaveOccurred())
 
-					gOut, err := s.Get(&GetInput{
+					gOut, err = s.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
 						Key:       key,

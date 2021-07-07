@@ -3,7 +3,6 @@ package storage
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -20,6 +19,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	v2 "github.com/pyroscope-io/pyroscope/pkg/storage/segment/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -120,46 +120,24 @@ func New(c *config.Server) (*Storage, error) {
 	}
 
 	s.dimensions = cache.New(s.dbDimensions, "i:", "dimensions")
-	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) {
-		return v.(*dimension.Dimension).Bytes()
-	}
-	s.dimensions.FromBytes = func(k string, v []byte) (interface{}, error) {
-		return dimension.FromBytes(v)
-	}
-	s.dimensions.New = func(k string) interface{} {
-		return dimension.New()
-	}
+	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) { return v.(*dimension.Dimension).Bytes() }
+	s.dimensions.FromBytes = func(k string, v []byte) (interface{}, error) { return dimension.FromBytes(v) }
+	s.dimensions.New = func(k string) interface{} { return dimension.New() }
 
 	s.segments = cache.New(s.dbSegments, "s:", "segments")
-	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) {
-		return v.(*segment.Segment).Bytes()
-	}
-	s.segments.FromBytes = func(k string, v []byte) (interface{}, error) {
-		// TODO:
-		//   these configuration params should be saved in db when it initializes
-		return segment.FromBytes(v)
-	}
-	s.segments.New = func(k string) interface{} {
-		return segment.New()
-	}
+	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) { return v2.Marshal(v.(v2.Segment)) }
+	s.segments.FromBytes = func(k string, v []byte) (interface{}, error) { return v2.Unmarshal(v) }
+	s.segments.New = func(k string) interface{} { return v2.Segment{} }
 
 	s.dicts = cache.New(s.dbDicts, "d:", "dicts")
-	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) {
-		return v.(*dict.Dict).Bytes()
-	}
-	s.dicts.FromBytes = func(k string, v []byte) (interface{}, error) {
-		return dict.FromBytes(v)
-	}
-	s.dicts.New = func(k string) interface{} {
-		return dict.New()
-	}
+	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) { return v.(*dict.Dict).Bytes() }
+	s.dicts.FromBytes = func(k string, v []byte) (interface{}, error) { return dict.FromBytes(v) }
+	s.dicts.New = func(k string) interface{} { return dict.New() }
 
 	s.trees = cache.New(s.dbTrees, "t:", "trees")
 	s.trees.Bytes = s.treeBytes
 	s.trees.FromBytes = s.treeFromBytes
-	s.trees.New = func(k string) interface{} {
-		return tree.New()
-	}
+	s.trees.New = func(k string) interface{} { return tree.New() }
 
 	memTotal, err := getMemTotal()
 	if err != nil {
@@ -189,21 +167,21 @@ type PutInput struct {
 }
 
 func (s *Storage) treeFromBytes(k string, v []byte) (interface{}, error) {
-	key := FromTreeToDictKey(k)
+	key := fromTreeToDictKey(k)
 	d, err := s.dicts.Get(key)
 	if err != nil {
 		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
 	}
 	if d == nil {
 		// The key not found. Fallback to segment key form which has been
-		// used before tags support. Refer to FromTreeToDictKey.
+		// used before tags support. Refer to fromTreeToDictKey.
 		return s.treeFromBytesFallback(k, v)
 	}
 	return tree.FromBytes(d.(*dict.Dict), v)
 }
 
 func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error) {
-	key := FromTreeToMainKey(k)
+	key := fromTreeToMainKey(k)
 	d, err := s.dicts.Get(key)
 	if err != nil {
 		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
@@ -215,7 +193,7 @@ func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error)
 }
 
 func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
-	key := FromTreeToDictKey(k)
+	key := fromTreeToDictKey(k)
 	d, err := s.dicts.Get(key)
 	if err != nil {
 		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
@@ -228,34 +206,26 @@ func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
 
 var OutOfSpaceThreshold = 512 * bytesize.MB
 
-func (s *Storage) Put(po *PutInput) error {
+func (s *Storage) Put(pi *PutInput) error {
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
 
-	if err := s.performFreeSpaceCheck(); err != nil {
-		return err
-	}
-
-	if po.StartTime.Before(s.lifetimeBasedRetentionThreshold()) {
-		return errRetention
-	}
-
 	logrus.WithFields(logrus.Fields{
-		"startTime":       po.StartTime.String(),
-		"endTime":         po.EndTime.String(),
-		"key":             po.Key.Normalized(),
-		"samples":         po.Val.Samples(),
-		"units":           po.Units,
-		"aggregationType": po.AggregationType,
+		"startTime":       pi.StartTime.String(),
+		"endTime":         pi.EndTime.String(),
+		"key":             pi.Key.Normalized(),
+		"samples":         pi.Val.Samples(),
+		"units":           pi.Units,
+		"aggregationType": pi.AggregationType,
 	}).Debug("storage.Put")
 
-	for k, v := range po.Key.labels {
+	for k, v := range pi.Key.labels {
 		s.labels.Put(k, v)
 	}
 
-	sk := po.Key.SegmentKey()
-	for k, v := range po.Key.labels {
+	segmentKey := pi.Key.SegmentKey()
+	for k, v := range pi.Key.labels {
 		key := k + ":" + v
 		res, err := s.dimensions.Get(key)
 		if err != nil {
@@ -263,54 +233,45 @@ func (s *Storage) Put(po *PutInput) error {
 			continue
 		}
 		if res != nil {
-			res.(*dimension.Dimension).Insert([]byte(sk))
+			res.(*dimension.Dimension).Insert([]byte(segmentKey))
+			s.dimensions.Put(key, res)
 		}
 	}
 
-	res, err := s.segments.Get(sk)
+	r, err := s.segments.Get(segmentKey)
 	if err != nil {
-		return fmt.Errorf("segments cache for %v: %v", sk, err)
-	}
-	if res == nil {
-		return fmt.Errorf("segments cache for %v: not found", sk)
+		return fmt.Errorf("segments cache for %v: %w", segmentKey, err)
 	}
 
-	st := res.(*segment.Segment)
-	st.SetMetadata(po.SpyName, po.SampleRate, po.Units, po.AggregationType)
-	samples := po.Val.Samples()
-	st.Put(po.StartTime, po.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
-		tk := po.Key.TreeKey(depth, t)
+	// Cache always returns an instance.
+	seg := r.(v2.Segment)
+	if seg.IsEmpty() {
+		// Not found in database, initialize.
+		seg.CreatedAt = pi.StartTime
+		seg.Meta = v2.Meta{
+			SpyName:         pi.SpyName,
+			SampleRate:      pi.SampleRate,
+			Units:           pi.Units,
+			AggregationType: pi.AggregationType,
+		}
+	}
 
-		res, err := s.trees.Get(tk)
+	for level, index := range seg.NodeIndexes(pi.StartTime) {
+		treeKey := pi.Key.TreeKey(level, seg.NodeCreatedAt(level, index))
+		r, err = s.trees.Get(treeKey)
 		if err != nil {
-			logrus.Errorf("trees cache for %v: %v", tk, err)
-			return
+			return fmt.Errorf("trees cache for %v: %w", treeKey, err)
 		}
-		cachedTree := res.(*tree.Tree)
-
-		treeClone := po.Val.Clone(r)
-		for _, addon := range addons {
-			tk2 := po.Key.TreeKey(addon.Depth, addon.T)
-
-			res, err := s.trees.Get(tk2)
-			if err != nil {
-				logrus.Errorf("trees cache for %v: %v", tk, err)
-				continue
-			}
-			if res == nil {
-				continue
-			}
-			treeClone.Merge(res.(*tree.Tree))
-		}
-		if cachedTree != nil {
-			cachedTree.Merge(treeClone)
-			s.trees.Put(tk, cachedTree)
+		t := r.(*tree.Tree)
+		if !t.IsEmpty() {
+			t.Merge(pi.Val)
 		} else {
-			s.trees.Put(tk, treeClone)
+			t = pi.Val
 		}
-	})
-	s.segments.Put(sk, st)
+		s.trees.Put(treeKey, t)
+	}
 
+	s.segments.Put(segmentKey, seg)
 	return nil
 }
 
@@ -334,200 +295,142 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		"endTime":   gi.EndTime.String(),
 		"key":       gi.Key.Normalized(),
 	}).Trace("storage.Get")
-	triesToMerge := []merge.Merger{}
 
-	dimensions := []*dimension.Dimension{}
+	var (
+		triesToMerge []merge.Merger
+		dimensions   []*dimension.Dimension
+	)
+
 	for k, v := range gi.Key.labels {
 		key := k + ":" + v
-		res, err := s.dimensions.Get(key)
+		r, err := s.dimensions.Get(key)
 		if err != nil {
 			logrus.Errorf("dimensions cache for %v: %v", key, err)
 			continue
 		}
-		if res != nil {
-			dimensions = append(dimensions, res.(*dimension.Dimension))
+		if r != nil {
+			dimensions = append(dimensions, r.(*dimension.Dimension))
 		}
 	}
 
 	segmentKeys := dimension.Intersection(dimensions...)
-
-	tl := segment.GenerateTimeline(gi.StartTime, gi.EndTime)
-	var lastSegment *segment.Segment
-	var writesTotal uint64
-	aggregationType := "sum"
-	for _, sk := range segmentKeys {
-		// TODO: refactor, store `Key`s in dimensions
-		parsedKey, err := ParseKey(string(sk))
+	var lastSegment v2.Segment
+	for _, segmentKey := range segmentKeys {
+		r, err := s.segments.Get(string(segmentKey))
 		if err != nil {
-			logrus.Errorf("parse key: %v: %v", string(sk), err)
+			logrus.Errorf("segments cache for %v: %v", segmentKey, err)
 			continue
 		}
 
-		key := parsedKey.SegmentKey()
-		res, err := s.segments.Get(key)
-		if err != nil {
-			logrus.Errorf("segments cache for %v: %v", key, err)
-			continue
-		}
-		if res == nil {
+		seg := r.(v2.Segment)
+		if seg.IsEmpty() {
 			continue
 		}
 
-		st := res.(*segment.Segment)
-		if st.AggregationType() == "average" {
-			aggregationType = "average"
-		}
-		lastSegment = st
-
-		tl.PopulateTimeline(st)
-
-		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-			key := parsedKey.TreeKey(depth, t)
-			res, err := s.trees.Get(key)
+		lastSegment = seg
+		err = seg.Walk(gi.StartTime, gi.EndTime, func(node v2.Node) bool {
+			treeKey := segmentKeyToTreeKey(string(segmentKey), node.Level, seg.NodeCreatedAt(node.Level, node.I))
+			r, err = s.trees.Get(treeKey)
 			if err != nil {
-				logrus.Errorf("trees cache for %v: %v", key, err)
-				return
+				logrus.Errorf("trees cache for %v: %v", treeKey, err)
+				return false
 			}
-
-			tr := res.(*tree.Tree)
-			// TODO: these clones are probably are not the most efficient way of doing this
-			//   instead this info should be passed to the merger function imo
-			tr2 := tr.Clone(r)
-			triesToMerge = append(triesToMerge, merge.Merger(tr2))
-			writesTotal += writes
+			t := r.(*tree.Tree)
+			if !t.IsEmpty() {
+				triesToMerge = append(triesToMerge, merge.Merger(t))
+			}
+			return true
 		})
+
+		if err != nil {
+			logrus.Errorf("segment %v: %v", string(segmentKey), err)
+			continue
+		}
 	}
 
-	resultTrie := merge.MergeTriesConcurrently(runtime.NumCPU(), triesToMerge...)
-	if resultTrie == nil {
+	r := merge.MergeTriesConcurrently(runtime.NumCPU(), triesToMerge...)
+	if r == nil {
 		return nil, nil
 	}
 
-	t := resultTrie.(*tree.Tree)
-
-	if writesTotal > 0 && aggregationType == "average" {
-		t = t.Clone(big.NewRat(1, int64(writesTotal)))
+	output := GetOutput{
+		Tree:       r.(*tree.Tree),
+		Timeline:   new(segment.Timeline),
+		SpyName:    lastSegment.SpyName,
+		SampleRate: lastSegment.SampleRate,
+		Units:      lastSegment.Units,
 	}
 
-	return &GetOutput{
-		Tree:       t,
-		Timeline:   tl,
-		SpyName:    lastSegment.SpyName(),
-		SampleRate: lastSegment.SampleRate(),
-		Units:      lastSegment.Units(),
-	}, nil
-}
-
-func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) error {
-	nameKey := "__name__"
-
-	var dimensions []*dimension.Dimension
-	var err error
-	s.labels.GetValues(nameKey, func(v string) bool {
-		dmInt, getErr := s.dimensions.Get(nameKey + ":" + v)
-		dm, _ := dmInt.(*dimension.Dimension)
-		err = getErr
-		dimensions = append(dimensions, dm)
-		return err == nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	segmentKeys := dimension.Union(dimensions...)
-
-	for _, rawSk := range segmentKeys {
-		sk, _ := ParseKey(string(rawSk))
-
-		stInt, err := s.segments.Get(sk.SegmentKey())
-		if err != nil {
-			return err
-		}
-		st := stInt.(*segment.Segment)
-		if err := cb(sk, st); err != nil {
-			return err
-		}
-	}
-	return nil
+	return &output, nil
 }
 
 func (s *Storage) DeleteDataBefore(threshold time.Time) error {
-	return s.iterateOverAllSegments(func(sk *Key, st *segment.Segment) error {
-		var err error
-		deletedRoot := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
-			tk := sk.TreeKey(depth, t)
-			if delErr := s.trees.Delete(tk); delErr != nil {
-				err = delErr
-			}
-		})
-		if err != nil {
-			return err
-		}
-
-		if deletedRoot {
-			s.deleteSegmentAndRelatedData(sk)
-		}
-		return nil
-	})
+	// TODO: should we use TTL feature of badger?
+	return nil
 }
 
 type DeleteInput struct {
 	Key *Key
 }
 
-var maxTime = time.Unix(1<<62, 999999999)
-
 func (s *Storage) Delete(di *DeleteInput) error {
-	dimensions := []*dimension.Dimension{}
+	var dimensions []*dimension.Dimension
 	for k, v := range di.Key.labels {
-		dInt, err := s.dimensions.Get(k + ":" + v)
+		r, err := s.dimensions.Get(k + ":" + v)
 		if err != nil {
-			return nil
+			return err
 		}
-		d := dInt.(*dimension.Dimension)
-		dimensions = append(dimensions, d)
+		dimensions = append(dimensions, r.(*dimension.Dimension))
 	}
 
-	segmentKeys := dimension.Intersection(dimensions...)
+	// Persist cached items, otherwise badger iterator may not find all.
+	// TODO: either implement fetching from cache by prefix, or
+	//  add synchronous cache flushing.
+	s.trees.WriteBack()
+	time.Sleep(10 * time.Millisecond)
 
-	for _, sk := range segmentKeys {
-		skk, _ := ParseKey(string(sk))
-		stInt, err := s.segments.Get(skk.SegmentKey())
-		if err != nil {
+	for _, k := range dimension.Intersection(dimensions...) {
+		segmentKey := string(k)
+		prefix := []byte("t:" + segmentKey + ":")
+		// Remove trees from the cache.
+		err := s.dbTrees.View(func(txn *badger.Txn) error {
+			it := txn.NewIterator(badger.IteratorOptions{
+				PrefetchValues: false,
+				Prefix:         prefix,
+			})
+			defer it.Close()
+			for it.Rewind(); it.Valid(); it.Next() {
+				k := it.Item().Key()
+				s.trees.EvictItem(string(k[2:]))
+			}
 			return nil
-		}
-		st := stInt.(*segment.Segment)
-		if st == nil {
-			continue
-		}
-
-		st.Get(zeroTime, maxTime, func(depth int, _, _ uint64, t time.Time, _ *big.Rat) {
-			treeKey := skk.TreeKey(depth, t)
-			err = s.trees.Delete(treeKey)
 		})
 		if err != nil {
 			return err
 		}
-
-		s.deleteSegmentAndRelatedData(skk)
-	}
-
-	return nil
-}
-
-func (s *Storage) deleteSegmentAndRelatedData(key *Key) error {
-	s.dicts.Delete(key.DictKey())
-	s.segments.Delete(key.SegmentKey())
-
-	for k, v := range key.labels {
-		dInt, err := s.dimensions.Get(k + ":" + v)
-		if err != nil {
+		// Drop segment trees.
+		if err = s.dbTrees.DropPrefix(prefix); err != nil {
 			return err
 		}
-		d := dInt.(*dimension.Dimension)
-		d.Delete(dimension.Key(key.SegmentKey()))
+
+		// TODO: delete dict?
+		// TODO: refactor: extremely expensive.
+		key, _ := ParseKey(segmentKey)
+		for k, v := range key.labels {
+			dk := k + ":" + v
+			r, err := s.dimensions.Get(dk)
+			if err != nil {
+				return err
+			}
+			d := r.(*dimension.Dimension)
+			d.Delete(dimension.Key(key.SegmentKey()))
+			s.dimensions.Put(dk, d)
+		}
+		if err := s.segments.Delete(segmentKey); err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
@@ -612,8 +515,6 @@ func (s *Storage) CacheStats() map[string]interface{} {
 		"trees_size":      s.trees.Size(),
 	}
 }
-
-var zeroTime time.Time
 
 func (s *Storage) lifetimeBasedRetentionThreshold() time.Time {
 	var t time.Time

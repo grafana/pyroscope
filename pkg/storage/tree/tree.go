@@ -60,6 +60,10 @@ func New() *Tree {
 	}
 }
 
+func (t *Tree) IsEmpty() bool {
+	return t.root.Total == 0
+}
+
 func (t *Tree) Merge(srcTrieI merge.Merger) {
 	srcTrie := srcTrieI.(*Tree)
 	srcNodes := []*treeNode{srcTrie.root}

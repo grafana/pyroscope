@@ -20,7 +20,15 @@ const (
 
 // Segment represents segment tree.
 type Segment struct {
-	creationTime time.Time
+	CreatedAt time.Time
+	Meta
+}
+
+type Meta struct {
+	SpyName         string
+	SampleRate      uint32
+	Units           string
+	AggregationType string
 }
 
 type Node struct {
@@ -28,25 +36,24 @@ type Node struct {
 	I     uint32
 }
 
-func NewSegment(t time.Time) Segment {
-	return Segment{t}
+// IsEmpty reports whether the given segment has any data.
+func (s Segment) IsEmpty() bool {
+	return s.CreatedAt == time.Time{}
 }
 
-// StartTime returns the time when the node was created.
-func (s Segment) StartTime(n Node) time.Time {
-	return s.creationTime.Add(time.Duration(n.Offset()) * time.Second)
+// NodeCreatedAt returns the time when the given node was created.
+func (s Segment) NodeCreatedAt(level int, index uint32) time.Time {
+	d := time.Duration(uint32(math.Pow10(level)) * res * index)
+	return s.CreatedAt.Add(d * time.Second)
 }
 
 // Duration reports node size in seconds.
 func (n Node) Duration() uint32 { return uint32(math.Pow10(n.Level)) * res }
 
-// Offset returns number of seconds from the segment creation time.
-func (n Node) Offset() uint32 { return n.Duration() * n.I }
-
 // NodeIndexes returns slice of node indexes for every affected level.
 func (s Segment) NodeIndexes(t time.Time) []uint32 {
 	ixs := make([]uint32, 1, mul) // empirical.
-	ixs[0] = uint32(t.Sub(s.creationTime).Seconds()) / res
+	ixs[0] = uint32(t.Sub(s.CreatedAt).Seconds()) / res
 	x := ixs[0]
 	for {
 		x /= res
@@ -70,8 +77,8 @@ func (s Segment) Walk(from, to time.Time, fn Visitor) error {
 	if to.Second() > maxTime {
 		return ErrTimeRangeExceeded
 	}
-	if from.Before(s.creationTime) {
-		from = s.creationTime
+	if from.Before(s.CreatedAt) {
+		from = s.CreatedAt
 	}
 	s.walk(from, to, fn)
 	return nil
@@ -109,12 +116,10 @@ func (s Segment) walk(from, to time.Time, fn Visitor) {
 		// Check if left-most and right-most nodes need
 		// to be included, e.g. when the range fits all
 		// nodes at the level.
-		n := Node{level, left}
-		if !s.isInRange(n, from, to) {
+		if !s.isInRange(level, left, from, to) {
 			left++
 		}
-		n.I = right
-		if !s.isInRange(n, from, to) {
+		if !s.isInRange(level, right, from, to) {
 			right--
 		}
 
@@ -140,13 +145,12 @@ func (s Segment) walk(from, to time.Time, fn Visitor) {
 }
 
 // isInRange reports whether node n pertains to the range [from, to).
-func (s *Segment) isInRange(n Node, from, to time.Time) bool {
-	begins := s.StartTime(n)
+func (s *Segment) isInRange(level int, index uint32, from, to time.Time) bool {
+	begins := s.NodeCreatedAt(level, index)
 	if !(begins.After(from) || begins.Equal(from)) {
 		return false
 	}
-	n.I++
-	ends := s.StartTime(n)
+	ends := s.NodeCreatedAt(level, index+1)
 	return ends.Before(to) || ends.Equal(to)
 }
 

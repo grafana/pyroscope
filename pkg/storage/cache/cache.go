@@ -137,6 +137,11 @@ func (cache *Cache) WriteBack() {
 	cache.lfu.WriteBack(cache.lfu.Len())
 }
 
+// EvictItem removes the item from cache but not from the database.
+func (cache *Cache) EvictItem(key string) {
+	cache.lfu.Delete(key)
+}
+
 func (cache *Cache) Delete(key string) error {
 	cache.lfu.Delete(key)
 
