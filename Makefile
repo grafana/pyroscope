@@ -18,11 +18,7 @@ else
 	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies"
 endif
 
-ifeq ("$(shell go env GOOS || true)", "linux")
-	ARCHIVE_EXT ?= "a"
-else
-	ARCHIVE_EXT ?= "bundle"
-endif
+ARCHIVE_EXT ?= "a"
 
 EMBEDDED_ASSETS ?= ""
 EMBEDDED_ASSETS_DEPS ?= "assets-release"
