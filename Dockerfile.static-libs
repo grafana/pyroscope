@@ -84,6 +84,6 @@ RUN make build-phpspy-static-library
 #                                          |___/
 
 FROM scratch AS lib-exporter
-COPY --from=go-builder /opt/pyroscope/bin/libpyroscope.rbspy.a /
-COPY --from=go-builder /opt/pyroscope/bin/libpyroscope.pyspy.a /
-COPY --from=go-builder /opt/pyroscope/bin/libpyroscope.phpspy.a /
+COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.a /
+COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.a /
+COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.a /
