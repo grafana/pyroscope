@@ -87,3 +87,4 @@ FROM scratch AS lib-exporter
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.a /
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.a /
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.a /
+COPY --from=go-builder /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a /
