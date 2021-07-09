@@ -186,8 +186,10 @@ func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error)
 	return tree.FromBytes(d.(*dict.Dict), v)
 }
 
+const ballastSize = 10 << 30
+
 func init() {
-	_ = make([]byte, 10<<30)
+	_ = make([]byte, ballastSize)
 }
 
 func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
@@ -259,8 +261,11 @@ func (s *Storage) Put(pi *PutInput) error {
 			s.trees.Put(treeKey, pi.Val)
 			continue
 		}
-		r.(*tree.Tree).Merge(pi.Val)
-		s.trees.Put(treeKey, r)
+		t := r.(*tree.Tree)
+		t.Lock()
+		t.Merge(pi.Val)
+		t.Unlock()
+		s.trees.Put(treeKey, t)
 	}
 
 	s.segments.Put(segmentKey, seg)
@@ -314,7 +319,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 			treeKey := segmentKeyToTreeKey(segmentKey, node.Level, seg.NodeCreatedAt(node.Level, node.I))
 			r, ok = s.trees.Lookup(treeKey)
 			if ok {
-				triesToMerge = append(triesToMerge, r.(merge.Merger))
+				triesToMerge = append(triesToMerge, r.(*tree.Tree).Copy())
 			}
 			return true
 		})
@@ -323,7 +328,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		}
 	}
 
-	r := merge.MergeTriesConcurrently(runtime.NumCPU(), triesToMerge...)
+	r := merge.MergeTriesSerially(runtime.NumCPU(), triesToMerge...)
 	if r == nil {
 		return nil, nil
 	}

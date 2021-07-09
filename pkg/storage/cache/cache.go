@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/dgraph-io/badger/v2"
 	"github.com/pyroscope-io/lfu-go"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
-	"github.com/sirupsen/logrus"
-
-	"github.com/dgraph-io/badger/v2"
 )
 
 type Cache struct {
@@ -183,7 +181,7 @@ func (cache *Cache) lookup(key string) (interface{}, error) {
 		metrics.Count(cache.hitCounter, 1)
 		return val, nil
 	}
-	logrus.WithField("key", key).Debug("lfu miss")
+	// logrus.WithField("key", key).Debug("lfu miss")
 	metrics.Count(cache.missCounter, 1)
 
 	var copied []byte
@@ -211,7 +209,7 @@ func (cache *Cache) lookup(key string) (interface{}, error) {
 
 	// if it's not found from badger, create a new object
 	if copied == nil {
-		logrus.WithField("key", key).Debug("storage miss")
+		// logrus.WithField("key", key).Debug("storage miss")
 		return nil, nil
 	}
 
@@ -227,7 +225,7 @@ func (cache *Cache) lookup(key string) (interface{}, error) {
 		cache.saveToDisk(key, val)
 	}
 
-	logrus.WithField("key", key).Debug("storage hit")
+	// logrus.WithField("key", key).Debug("storage hit")
 	return val, nil
 }
 
