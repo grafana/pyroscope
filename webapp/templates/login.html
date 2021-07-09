@@ -93,17 +93,17 @@
 
 
       <div {{if not .GoogleEnabled}} style="display: none" {{end}} class="sign-in-button" id="btn-google">
-        <a href="/google/login" style="color:white" class="btn btn-danger"> SignIn with Google</a>
+        <a id="google-link" href="/google/login" style="color:white" class="btn btn-danger"> SignIn with Google</a>
       </div>
 
 
       <div {{if not .GithubEnabled}} style="display: none" {{end}} class="sign-in-button" id="btn-github">
-        <a href="github/login" style="color:white" class="btn btn-danger">SignIn with GitHub</a>
+        <a id="github-link" href="github/login" style="color:white" class="btn btn-danger">SignIn with GitHub</a>
       </div>
 
 
       <div {{if not .GitlabEnabled}} style="display: none" {{end}} class="sign-in-button" id="btn-gitlab">
-        <a href="gitlab/login" style="color:white" class="btn btn-danger">SignIn with GitLab</a>
+        <a id="gitlab-link" href="gitlab/login" style="color:white" class="btn btn-danger">SignIn with GitLab</a>
       </div>
 
 
@@ -112,6 +112,17 @@
 
     </div>
   </section>
+
+  <script>
+    var has_tls = false
+    if (location.protocol === 'https:') {
+      has_tls = true
+    }
+    
+    document.getElementById('google-link').href += '?tls=' + has_tls
+    document.getElementById('github-link').href += '?tls=' + has_tls
+    document.getElementById('gitlab-link').href += '?tls=' + has_tls
+  </script>
 
 </body>
 

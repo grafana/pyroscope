@@ -6,7 +6,7 @@ import (
 	golog "log"
 	"net/http"
 	"net/http/pprof"
-	"strings"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -24,6 +24,9 @@ import (
 const (
 	jwtCookieName   = "pyroscopeJWT"
 	stateCookieName = "pyroscopeState"
+	oauthGoogle     = iota
+	oauthGithub
+	oauthGitlab
 )
 
 type decodeResponseFunc func(*http.Response) (string, error)
@@ -100,10 +103,64 @@ func (ctrl *Controller) mux() http.Handler {
 	return mux
 }
 
-func getNewRedirectURL(url string) string {
-	splitRedirect := strings.Split(url, "/")
-	splitRedirect[len(splitRedirect)-1] = "redirect"
-	return strings.Join(splitRedirect, "/")
+type oauthInfo struct {
+	Config  *oauth2.Config
+	AuthURL *url.URL
+	Type    int
+}
+
+func (ctrl *Controller) generateOauthInfo(oauthType int) *oauthInfo {
+	switch oauthType {
+	case oauthGoogle:
+		googleOauthInfo := &oauthInfo{
+			Config: &oauth2.Config{
+				ClientID:     ctrl.config.GoogleClientID,
+				ClientSecret: ctrl.config.GoogleClientSecret,
+				Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
+				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GoogleAuthURL, TokenURL: ctrl.config.GoogleTokenURL},
+			},
+			Type: oauthGoogle,
+		}
+		if ctrl.config.GoogleRedirectURL != "" {
+			googleOauthInfo.Config.RedirectURL = ctrl.config.GoogleRedirectURL
+		}
+
+		return googleOauthInfo
+	case oauthGithub:
+		githubOauthInfo := &oauthInfo{
+			Config: &oauth2.Config{
+				ClientID:     ctrl.config.GithubClientID,
+				ClientSecret: ctrl.config.GithubClientSecret,
+				Scopes:       []string{"read:user", "user:email"},
+				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GithubAuthURL, TokenURL: ctrl.config.GithubTokenURL},
+			},
+			Type: oauthGithub,
+		}
+
+		if ctrl.config.GithubRedirectURL != "" {
+			githubOauthInfo.Config.RedirectURL = ctrl.config.GithubRedirectURL
+		}
+
+		return githubOauthInfo
+	case oauthGitlab:
+		gitlabOauthInfo := &oauthInfo{
+			Config: &oauth2.Config{
+				ClientID:     ctrl.config.GitlabApplicationID,
+				ClientSecret: ctrl.config.GitlabClientSecret,
+				Scopes:       []string{"read_user"},
+				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GitlabAuthURL, TokenURL: ctrl.config.GitlabTokenURL},
+			},
+			Type: oauthGitlab,
+		}
+
+		if ctrl.config.GitlabRedirectURL != "" {
+			gitlabOauthInfo.Config.RedirectURL = ctrl.config.GitlabRedirectURL
+		}
+
+		return gitlabOauthInfo
+	}
+
+	return nil
 }
 
 func (ctrl *Controller) getAuthRoutes() []route {
@@ -113,52 +170,57 @@ func (ctrl *Controller) getAuthRoutes() []route {
 	}
 
 	if ctrl.config.GoogleEnabled {
-		googleOauthConfig := &oauth2.Config{
-			ClientID:     ctrl.config.GoogleClientID,
-			ClientSecret: ctrl.config.GoogleClientSecret,
-			RedirectURL:  ctrl.config.GoogleRedirectURL,
-			Scopes:       strings.Split(ctrl.config.GoogleScopes, " "),
-			Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GoogleAuthURL, TokenURL: ctrl.config.GoogleTokenURL},
+		authURL, err := url.Parse(ctrl.config.GoogleAuthURL)
+		if err != nil {
+			ctrl.log.WithError(err).Error("Problem parsing google auth url")
 		}
 
-		authRoutes = append(authRoutes, []route{
-			{"/google/login", ctrl.oauthLoginHandler(googleOauthConfig)},
-			{"/google/callback", ctrl.callbackHandler(getNewRedirectURL(ctrl.config.GoogleRedirectURL))},
-			{"/google/redirect", ctrl.callbackRedirectHandler(
-				"https://www.googleapis.com/oauth2/v2/userinfo", googleOauthConfig, ctrl.decodeGoogleCallbackResponse)},
-		}...)
+		googleOauthInfo := ctrl.generateOauthInfo(oauthGoogle)
+		if err == nil && googleOauthInfo != nil {
+			googleOauthInfo.AuthURL = authURL
+			authRoutes = append(authRoutes, []route{
+				{"/google/login", ctrl.oauthLoginHandler(googleOauthInfo)},
+				{"/google/callback", ctrl.callbackHandler("/google/redirect")},
+				{"/google/redirect", ctrl.callbackRedirectHandler(
+					"https://www.googleapis.com/oauth2/v2/userinfo", googleOauthInfo, ctrl.decodeGoogleCallbackResponse)},
+			}...)
+		}
 	}
 
 	if ctrl.config.GithubEnabled {
-		gitHubOauthConfig := &oauth2.Config{
-			ClientID:     ctrl.config.GithubClientID,
-			ClientSecret: ctrl.config.GithubClientSecret,
-			RedirectURL:  ctrl.config.GithubRedirectURL,
-			Scopes:       strings.Split(ctrl.config.GithubScopes, " "),
-			Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GithubAuthURL, TokenURL: ctrl.config.GithubTokenURL},
+		authURL, err := url.Parse(ctrl.config.GithubAuthURL)
+		if err != nil {
+			ctrl.log.WithError(err).Error("Problem parsing github auth url")
+			return nil
 		}
 
-		authRoutes = append(authRoutes, []route{
-			{"/github/login", ctrl.oauthLoginHandler(gitHubOauthConfig)},
-			{"/github/callback", ctrl.callbackHandler(getNewRedirectURL(ctrl.config.GithubRedirectURL))},
-			{"/github/redirect", ctrl.callbackRedirectHandler("https://api.github.com/user", gitHubOauthConfig, ctrl.decodeGithubCallbackResponse)},
-		}...)
+		githubOauthInfo := ctrl.generateOauthInfo(oauthGithub)
+		if err == nil && githubOauthInfo != nil {
+			githubOauthInfo.AuthURL = authURL
+			authRoutes = append(authRoutes, []route{
+				{"/github/login", ctrl.oauthLoginHandler(githubOauthInfo)},
+				{"/github/callback", ctrl.callbackHandler("/github/redirect")},
+				{"/github/redirect", ctrl.callbackRedirectHandler("https://api.github.com/user", githubOauthInfo, ctrl.decodeGithubCallbackResponse)},
+			}...)
+		}
 	}
 
 	if ctrl.config.GitlabEnabled {
-		gitLabOauthConfig := &oauth2.Config{
-			ClientID:     ctrl.config.GitlabApplicationID,
-			ClientSecret: ctrl.config.GitlabClientSecret,
-			RedirectURL:  ctrl.config.GitlabRedirectURL,
-			Scopes:       strings.Split(ctrl.config.GitlabScopes, " "),
-			Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GitlabAuthURL, TokenURL: ctrl.config.GitlabTokenURL},
+		authURL, err := url.Parse(ctrl.config.GitlabAuthURL)
+		if err != nil {
+			ctrl.log.WithError(err).Error("Problem parsing gitlab auth url")
+			return nil
 		}
 
-		authRoutes = append(authRoutes, []route{
-			{"/gitlab/login", ctrl.oauthLoginHandler(gitLabOauthConfig)},
-			{"/gitlab/callback", ctrl.callbackHandler(getNewRedirectURL(ctrl.config.GitlabRedirectURL))},
-			{"/gitlab/redirect", ctrl.callbackRedirectHandler(ctrl.config.GitlabAPIURL, gitLabOauthConfig, ctrl.decodeGitLabCallbackResponse)},
-		}...)
+		gitlabOauthInfo := ctrl.generateOauthInfo(oauthGitlab)
+		if err == nil && gitlabOauthInfo != nil {
+			gitlabOauthInfo.AuthURL = authURL
+			authRoutes = append(authRoutes, []route{
+				{"/gitlab/login", ctrl.oauthLoginHandler(gitlabOauthInfo)},
+				{"/gitlab/callback", ctrl.callbackHandler("/gitlab/redirect")},
+				{"/gitlab/redirect", ctrl.callbackRedirectHandler(ctrl.config.GitlabAPIURL, gitlabOauthInfo, ctrl.decodeGitLabCallbackResponse)},
+			}...)
+		}
 	}
 
 	return authRoutes
@@ -212,7 +274,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		jwtCookie, err := r.Cookie(jwtCookieName)
 		if err != nil {
-			ctrl.log.Error("Missing jwt cookie")
+			ctrl.log.Error("missing jwt cookie")
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
@@ -225,7 +287,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		})
 
 		if err != nil {
-			ctrl.log.Errorf("Error parsing jwt token: %v", err)
+			ctrl.log.WithError(err).Error("parsing jwt token")
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}

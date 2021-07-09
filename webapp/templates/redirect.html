@@ -4,7 +4,7 @@
 <head> 
     <title>Pyroscope Redirect</title> 
     <meta http-equiv="refresh"
-        content="0; url = {{.CallbackURL}}" /> 
+        content="0; url = {{.RedirectURL}}" /> 
 </head> 
   
 <body>       
@@ -14,7 +14,17 @@
         Homepage immidietly, otherwise click on the link below. 
     </p> 
 
-    <p><a href="{{.CallbackURL}}">Redirect</a></p>
+    <p><a id="redirect" href="{{.RedirectURL}}">Redirect</a></p>
+
+    <script>
+        var has_tls = false
+        if (location.protocol === 'https:') {
+          has_tls = true
+        }
+        
+        document.querySelector('meta[http-equiv="refresh"]').setAttribute("content", "0; {{.RedirectURL}}" + '&tls=' + has_tls);
+        document.getElementById('redirect').href += '&tls=' + has_tls
+      </script>
 </body> 
   
 </html> 

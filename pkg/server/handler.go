@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -17,7 +18,6 @@ import (
 	"github.com/markbates/pkger"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/oauth2"
 )
 
 func (ctrl *Controller) loginHandler() http.HandlerFunc {
@@ -76,25 +76,51 @@ func generateStateToken(length int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func (ctrl *Controller) oauthLoginHandler(oauthConf *oauth2.Config) http.HandlerFunc {
+func getCallbackURL(host, configCallbackURL string, oauthType int, hasTLS bool) (string, error) {
+	if configCallbackURL != "" {
+		return configCallbackURL, nil
+	}
+
+	if host == "" {
+		return "", errors.New("host is empty")
+	}
+
+	schema := "http"
+	if hasTLS {
+		schema = "https"
+	}
+
+	switch oauthType {
+	case oauthGoogle:
+		return fmt.Sprintf("%v://%v/google/callback", schema, host), nil
+	case oauthGithub:
+		return fmt.Sprintf("%v://%v/github/callback", schema, host), nil
+	case oauthGitlab:
+		return fmt.Sprintf("%v://%v/gitlab/callback", schema, host), nil
+	}
+
+	return "", errors.New("invalid oauth type provided")
+}
+
+func (ctrl *Controller) oauthLoginHandler(info *oauthInfo) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		authURL, err := url.Parse(oauthConf.Endpoint.AuthURL)
+		callbackURL, err := getCallbackURL(r.Host, info.Config.RedirectURL, info.Type, r.URL.Query().Get("tls") == "true")
 		if err != nil {
-			ctrl.log.Errorf("Parse error: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
+			ctrl.log.WithError(err).Error("callbackURL parsing failed")
 			return
 		}
 
+		authURL := *info.AuthURL
 		parameters := url.Values{}
-		parameters.Add("client_id", oauthConf.ClientID)
-		parameters.Add("scope", strings.Join(oauthConf.Scopes, " "))
-		parameters.Add("redirect_uri", oauthConf.RedirectURL)
+		parameters.Add("client_id", info.Config.ClientID)
+		parameters.Add("scope", strings.Join(info.Config.Scopes, " "))
+		parameters.Add("redirect_uri", callbackURL)
 		parameters.Add("response_type", "code")
 
 		// generate state token for CSRF protection
 		state, err := generateStateToken(16)
 		if err != nil {
-			ctrl.log.Errorf("Generate token error: %v", err)
+			ctrl.log.WithError(err).Error("problem generating state token")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -109,19 +135,12 @@ func (ctrl *Controller) oauthLoginHandler(oauthConf *oauth2.Config) http.Handler
 
 // Instead of this handler that just redirects, Javascript code can be added to load the state and send it to backend
 // this is done so that the state cookie would be send back from browser
-func (ctrl *Controller) callbackHandler(callbackURL string) http.HandlerFunc {
+func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		parsedUrl, err := url.Parse(callbackURL)
-		if err != nil {
-			ctrl.log.Errorf("Parse error: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		parsedUrl.RawQuery = r.URL.Query().Encode()
+		redirectURL += "?" + r.URL.RawQuery
 		tmplt := template.New("redirect.html")
 		tmplt, _ = tmplt.ParseFiles("./webapp/templates/redirect.html")
-		params := map[string]string{"CallbackURL": parsedUrl.String()}
+		params := map[string]string{"RedirectURL": redirectURL}
 
 		tmplt.Execute(w, params)
 	}
@@ -203,21 +222,34 @@ func (ctrl *Controller) newJWTToken(name string) (string, error) {
 	return tk, nil
 }
 
-func (ctrl *Controller) logAndRedirect(w http.ResponseWriter, r *http.Request, logString string, shouldInvalidateCookie bool) {
-	ctrl.log.Error(logString)
-	if shouldInvalidateCookie {
-		invalidateCookie(w, stateCookieName)
+func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, logString string, err error) {
+	if err != nil {
+		ctrl.log.WithError(err).Error(logString)
+	} else {
+		ctrl.log.Error(logString)
 	}
+
+	invalidateCookie(w, stateCookieName)
 
 	http.Redirect(w, r, "/forbidden", http.StatusTemporaryRedirect)
 	return
 }
 
-func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, oauthConf *oauth2.Config, decodeResponse decodeResponseFunc) http.HandlerFunc {
+func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, info *oauthInfo, decodeResponse decodeResponseFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		callbackURL, err := getCallbackURL(r.Host, info.Config.RedirectURL, info.Type, r.URL.Query().Get("tls") == "true")
+		if err != nil {
+			ctrl.logErrorAndRedirect(w, r, "callbackURL parsing failed", nil)
+			ctrl.log.WithError(err).Error("")
+			return
+		}
+
+		oauthConf := *info.Config
+		oauthConf.RedirectURL = callbackURL
+
 		cookie, err := r.Cookie(stateCookieName)
 		if err != nil {
-			ctrl.logAndRedirect(w, r, "missing state cookie", false)
+			ctrl.logErrorAndRedirect(w, r, "missing state cookie", err)
 			return
 		}
 
@@ -225,39 +257,39 @@ func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, oauthC
 		requestState := r.FormValue("state")
 
 		if requestState != cookieState {
-			ctrl.logAndRedirect(w, r, "invalid oauth state", false)
+			ctrl.logErrorAndRedirect(w, r, "invalid oauth state", nil)
 			return
 		}
 
 		code := r.FormValue("code")
 		if code == "" {
-			ctrl.logAndRedirect(w, r, "code not found", true)
+			ctrl.logErrorAndRedirect(w, r, "code not found", nil)
 			return
 		}
 
 		token, err := oauthConf.Exchange(r.Context(), code)
 		if err != nil {
-			ctrl.logAndRedirect(w, r, "Exchanging auth code for token failed with "+err.Error(), true)
+			ctrl.logErrorAndRedirect(w, r, "exchanging auth code for token failed", err)
 			return
 		}
 
 		client := oauthConf.Client(r.Context(), token)
 		resp, err := client.Get(getAccountInfoURL)
 		if err != nil {
-			ctrl.logAndRedirect(w, r, "Failed to get oauth user info: "+err.Error(), true)
+			ctrl.logErrorAndRedirect(w, r, "failed to get oauth user info", err)
 			return
 		}
 		defer resp.Body.Close()
 
 		name, err := decodeResponse(resp)
 		if err != nil {
-			ctrl.logAndRedirect(w, r, "Decoding response body failed: "+err.Error(), true)
+			ctrl.logErrorAndRedirect(w, r, "decoding response body failed", err)
 			return
 		}
 
 		tk, err := ctrl.newJWTToken(name)
 		if err != nil {
-			ctrl.logAndRedirect(w, r, "Signing jwt failed: "+err.Error(), true)
+			ctrl.logErrorAndRedirect(w, r, "signing jwt failed", err)
 			return
 		}
 
