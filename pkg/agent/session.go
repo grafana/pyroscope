@@ -14,37 +14,57 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/phpspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 
 	// revive:enable:blank-imports
 
-	"github.com/mitchellh/go-ps"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
-type ProfileSession struct {
-	upstream   upstream.Upstream
-	appName    string
-	spyName    string
-	sampleRate uint32
-	uploadRate time.Duration
-	pids       []int
-	spies      []spy.Spy
-	stopCh     chan struct{}
-	trieMutex  sync.Mutex
+// Each Session can deal with:
+// * multiple processes (one main process and zero or more subprocesses)
+// * multiple profile types (cpu, mem, etc)
+// * multiple names (app.cpu{} or app.cpu{controller=foo}) (one at a a time)
 
-	previousTries []*transporttrie.Trie
-	tries         []*transporttrie.Trie
+/*
+                PROCESSES
+            ┌─────┬─────┬─────┐
+            │pid 1│pid 2│pid 3│
+            └──┬──┴──┬──┴──┬──┘
+               │     │     │          NAMES/TAGS
+               │     │     │            ┌─app.cpu{}
+             0 ▼   1 ▼   2 ▼            │     ┌─app.cpu{controller=bar}
+            ┌─────┬─────┬─────┐      ┌─────┬─────┐     ┌──────┐
+     0 cpu  │     │     │     │ ───► │     │     │ ──► │      │
+            └─────┴─────┴─────┘      └─────┴─────┘     │      │
+PROFILE TYPES      SPIES                 TRIES     ──► │server│
+            ┌─────┬─────┬─────┐      ┌─────┬─────┐     │      │
+     1 mem  │     │     │     │ ───► │     │     │ ──► │      │
+            └─────┴─────┴─────┘      └─────┴─────┘     └──────┘
+*/
+type ProfileSession struct {
+	upstream       upstream.Upstream
+	appName        string
+	currentAppName string
+	spyName        string
+	sampleRate     uint32
+	uploadRate     time.Duration
+	pids           []int
+	spies          [][]spy.Spy
+	stopCh         chan struct{}
+	trieMutex      sync.Mutex
+
+	// see comment about multiple dimensions above
+	previousTries map[string][]*transporttrie.Trie
+	tries         map[string][]*transporttrie.Trie
 
 	profileTypes     []spy.ProfileType
 	disableGCRuns    bool
 	withSubprocesses bool
 
 	startTime time.Time
-	stopTime  time.Time
 
 	logger Logger
 }
@@ -65,6 +85,7 @@ func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 	ps := &ProfileSession{
 		upstream:         c.Upstream,
 		appName:          c.AppName,
+		currentAppName:   c.AppName,
 		spyName:          c.SpyName,
 		profileTypes:     c.ProfilingTypes,
 		disableGCRuns:    c.DisableGCRuns,
@@ -74,15 +95,12 @@ func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 		stopCh:           make(chan struct{}),
 		withSubprocesses: c.WithSubprocesses,
 		logger:           logger,
+		previousTries:    make(map[string][]*transporttrie.Trie),
+		tries:            make(map[string][]*transporttrie.Trie),
 	}
 
-	if ps.spyName == types.GoSpy {
-		ps.previousTries = make([]*transporttrie.Trie, len(ps.profileTypes))
-		ps.tries = make([]*transporttrie.Trie, len(ps.profileTypes))
-	} else {
-		ps.previousTries = make([]*transporttrie.Trie, 1)
-		ps.tries = make([]*transporttrie.Trie, 1)
-	}
+	ps.previousTries[ps.currentAppName] = []*transporttrie.Trie{}
+	ps.tries[ps.currentAppName] = []*transporttrie.Trie{}
 
 	return ps
 }
@@ -96,34 +114,34 @@ func (ps *ProfileSession) takeSnapshots() {
 			isdueToReset := ps.isDueForReset()
 			// reset the profiler for spies every upload rate(10s), and before uploading, it needs to read profile data every sample rate
 			if isdueToReset {
-				for _, s := range ps.spies {
-					if sr, ok := s.(spy.Resettable); ok {
-						sr.Reset()
+				for _, sarr := range ps.spies {
+					for _, s := range sarr {
+						if sr, ok := s.(spy.Resettable); ok {
+							sr.Reset()
+						}
 					}
 				}
 			}
 
-			for i, s := range ps.spies {
-				s.Snapshot(func(stack []byte, v uint64, err error) {
-					if err != nil {
-						// TODO: figure out what to do with these messages. A couple of considerations:
-						// * We probably shouldn't just suppress these messages as they might be useful for users
-						// * We probably want to throttle the messages because this is code that runs 100 times per second.
-						//   If we don't throttle we risk upsetting users with a flood of messages
-						// * In gospy case we need to add ability for users to bring their own logger, we can't just use logrus here
-						return
-					}
-					if len(stack) > 0 {
-						ps.trieMutex.Lock()
-						defer ps.trieMutex.Unlock()
-
-						if ps.spyName == types.GoSpy {
-							ps.tries[i].Insert(stack, v, true)
-						} else {
-							ps.tries[0].Insert(stack, v, true)
+			for _, sarr := range ps.spies {
+				for i, s := range sarr {
+					s.Snapshot(func(stack []byte, v uint64, err error) {
+						if err != nil {
+							// TODO: figure out what to do with these messages. A couple of considerations:
+							// * We probably shouldn't just suppress these messages as they might be useful for users
+							// * We probably want to throttle the messages because this is code that runs 100 times per second.
+							//   If we don't throttle we risk upsetting users with a flood of messages
+							// * In gospy case we need to add ability for users to bring their own logger, we can't just use logrus here
+							return
 						}
-					}
-				})
+						if len(stack) > 0 {
+							ps.trieMutex.Lock()
+							defer ps.trieMutex.Unlock()
+
+							ps.tries[ps.currentAppName][i].Insert(stack, v, true)
+						}
+					})
+				}
 			}
 
 			// upload the read data to server and reset the start time
@@ -133,8 +151,10 @@ func (ps *ProfileSession) takeSnapshots() {
 
 		case <-ps.stopCh:
 			// stop the spies
-			for _, s := range ps.spies {
-				s.Stop()
+			for _, sarr := range ps.spies {
+				for _, s := range sarr {
+					s.Stop()
+				}
 			}
 			return
 		}
@@ -152,23 +172,26 @@ func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
 		return res, err
 	}
 
-	if standardF, ok := sf.(standardStartFunc); ok {
-		s, err := standardF(pid)
+	var s spy.Spy
+	for _, pt := range ps.profileTypes {
+		if standardF, ok := sf.(standardStartFunc); ok {
+			s, err = standardF(pid)
+		} else if gospyF, ok := sf.(gospyStartFunc); ok {
+			s, err = gospyF(pt, ps.sampleRate, ps.disableGCRuns)
+		} else {
+			// TODO: figure out what happens here
+		}
+
 		if err != nil {
 			return res, err
 		}
 		res = append(res, s)
-	} else if gospyF, ok := sf.(gospyStartFunc); ok {
-		for _, pt := range ps.profileTypes {
-			s, err := gospyF(pt, ps.sampleRate, ps.disableGCRuns)
-
-			if err != nil {
-				return res, err
-			}
-			res = append(res, s)
-		}
 	}
 	return res, nil
+}
+
+func (ps *ProfileSession) Tag(key, value string) error {
+	return nil
 }
 
 func (ps *ProfileSession) Start() error {
@@ -183,7 +206,7 @@ func (ps *ProfileSession) Start() error {
 		return err
 	}
 
-	ps.spies = spies
+	ps.spies = append(ps.spies, spies)
 
 	go ps.takeSnapshots()
 	return nil
@@ -219,7 +242,6 @@ func (ps *ProfileSession) Stop() {
 	ps.trieMutex.Lock()
 	defer ps.trieMutex.Unlock()
 
-	ps.stopTime = time.Now()
 	close(ps.stopCh)
 	// TODO: wait for stopCh consumer to finish!
 
@@ -227,43 +249,45 @@ func (ps *ProfileSession) Stop() {
 	ps.uploadTries(time.Now())
 }
 
-// upload the read profile data about 10s to server
 func (ps *ProfileSession) uploadTries(now time.Time) {
-	for i, trie := range ps.tries {
-		skipUpload := false
+	for name, tarr := range ps.tries {
+		for i, trie := range tarr {
+			profileType := ps.profileTypes[i]
+			skipUpload := false
 
-		if trie != nil {
-			endTime := now.Truncate(ps.uploadRate)
+			if trie != nil {
+				endTime := now.Truncate(ps.uploadRate)
 
-			uploadTrie := trie
-			if ps.profileTypes[i].IsCumulative() {
-				previousTrie := ps.previousTries[i]
-				if previousTrie == nil {
-					skipUpload = true
-				} else {
-					// TODO: Diff doesn't remove empty branches. We need to add that at some point
-					uploadTrie = trie.Diff(previousTrie)
+				uploadTrie := trie
+				if profileType.IsCumulative() {
+					previousTrie := ps.previousTries[name][i]
+					if previousTrie == nil {
+						skipUpload = true
+					} else {
+						// TODO: Diff doesn't remove empty branches. We need to add that at some point
+						uploadTrie = trie.Diff(previousTrie)
+					}
+				}
+
+				if !skipUpload {
+					name := ps.appName + "." + string(profileType)
+					ps.upstream.Upload(&upstream.UploadJob{
+						Name:            name,
+						StartTime:       ps.startTime,
+						EndTime:         endTime,
+						SpyName:         ps.spyName,
+						SampleRate:      ps.sampleRate,
+						Units:           profileType.Units(),
+						AggregationType: profileType.AggregationType(),
+						Trie:            uploadTrie,
+					})
+				}
+				if profileType.IsCumulative() {
+					ps.previousTries[name][i] = trie
 				}
 			}
-
-			if !skipUpload {
-				name := ps.appName + "." + string(ps.profileTypes[i])
-				ps.upstream.Upload(&upstream.UploadJob{
-					Name:            name,
-					StartTime:       ps.startTime,
-					EndTime:         endTime,
-					SpyName:         ps.spyName,
-					SampleRate:      ps.sampleRate,
-					Units:           ps.profileTypes[i].Units(),
-					AggregationType: ps.profileTypes[i].AggregationType(),
-					Trie:            uploadTrie,
-				})
-			}
-			if ps.profileTypes[i].IsCumulative() {
-				ps.previousTries[i] = trie
-			}
+			ps.tries[name][i] = transporttrie.New()
 		}
-		ps.tries[i] = transporttrie.New()
 	}
 }
 
@@ -281,41 +305,8 @@ func (ps *ProfileSession) addSubprocesses() {
 				if ps.logger != nil {
 					ps.logger.Debugf("started spy for subprocess %d [%s]", newPid, ps.spyName)
 				}
-				ps.spies = append(ps.spies, newSpies...)
+				ps.spies = append(ps.spies, newSpies)
 			}
 		}
 	}
-}
-
-func findAllSubprocesses(pid int) []int {
-	res := []int{}
-
-	childrenLookup := map[int][]int{}
-	processes, err := ps.Processes()
-	if err != nil {
-		// TODO: handle
-		return res
-	}
-	for _, p := range processes {
-		ppid := p.PPid()
-		if _, ok := childrenLookup[ppid]; !ok {
-			childrenLookup[ppid] = []int{}
-		}
-		childrenLookup[ppid] = append(childrenLookup[ppid], p.Pid())
-	}
-
-	todo := []int{pid}
-	for len(todo) > 0 {
-		parentPid := todo[0]
-		todo = todo[1:]
-
-		if children, ok := childrenLookup[parentPid]; ok {
-			for _, childPid := range children {
-				res = append(res, childPid)
-				todo = append(todo, childPid)
-			}
-		}
-	}
-
-	return res
 }
