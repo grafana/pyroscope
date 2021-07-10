@@ -100,6 +100,11 @@ func Stop(Pid C.int) {
 	pyspy_session.session.Stop()
 }
 
+//export ChangeName
+func ChangeName(newName *C.char) {
+	pyspy_session.session.ChangeName(C.GoString(newName))
+}
+
 func main() {
 	fmt.Println("app name:", os.Args[1], "pid: ", os.Args[2], "spy name: ", os.Args[3], "server address: ", os.Args[4])
 	pid, _ := strconv.Atoi(os.Args[2])

@@ -45,16 +45,15 @@ PROFILE TYPES      SPIES                 TRIES     ──► │server│
             └─────┴─────┴─────┘      └─────┴─────┘     └──────┘
 */
 type ProfileSession struct {
-	upstream       upstream.Upstream
-	appName        string
-	currentAppName string
-	spyName        string
-	sampleRate     uint32
-	uploadRate     time.Duration
-	pids           []int
-	spies          [][]spy.Spy
-	stopCh         chan struct{}
-	trieMutex      sync.Mutex
+	upstream   upstream.Upstream
+	appName    string
+	spyName    string
+	sampleRate uint32
+	uploadRate time.Duration
+	pids       []int
+	spies      [][]spy.Spy
+	stopCh     chan struct{}
+	trieMutex  sync.Mutex
 
 	// see comment about multiple dimensions above
 	previousTries map[string][]*transporttrie.Trie
@@ -85,7 +84,6 @@ func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 	ps := &ProfileSession{
 		upstream:         c.Upstream,
 		appName:          c.AppName,
-		currentAppName:   c.AppName,
 		spyName:          c.SpyName,
 		profileTypes:     c.ProfilingTypes,
 		disableGCRuns:    c.DisableGCRuns,
@@ -95,12 +93,14 @@ func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 		stopCh:           make(chan struct{}),
 		withSubprocesses: c.WithSubprocesses,
 		logger:           logger,
-		previousTries:    make(map[string][]*transporttrie.Trie),
-		tries:            make(map[string][]*transporttrie.Trie),
+
+		// string is appName, int is index in pids
+		previousTries: make(map[string][]*transporttrie.Trie),
+		tries:         make(map[string][]*transporttrie.Trie),
 	}
 
-	ps.previousTries[ps.currentAppName] = []*transporttrie.Trie{}
-	ps.tries[ps.currentAppName] = []*transporttrie.Trie{}
+	ps.previousTries[ps.appName] = []*transporttrie.Trie{nil}
+	ps.tries[ps.appName] = []*transporttrie.Trie{transporttrie.New()}
 
 	return ps
 }
@@ -138,7 +138,7 @@ func (ps *ProfileSession) takeSnapshots() {
 							ps.trieMutex.Lock()
 							defer ps.trieMutex.Unlock()
 
-							ps.tries[ps.currentAppName][i].Insert(stack, v, true)
+							ps.tries[ps.appName][i].Insert(stack, v, true)
 						}
 					})
 				}
@@ -180,7 +180,15 @@ func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
 	return res, nil
 }
 
-func (ps *ProfileSession) Tag(key, value string) error {
+func (ps *ProfileSession) ChangeName(newName string) error {
+	ps.appName = newName
+
+	ps.previousTries[ps.appName] = []*transporttrie.Trie{nil}
+	ps.tries[ps.appName] = []*transporttrie.Trie{}
+	for i := 0; i < len(ps.pids); i++ {
+		ps.tries[ps.appName] = append(ps.tries[ps.appName], transporttrie.New())
+	}
+
 	return nil
 }
 
