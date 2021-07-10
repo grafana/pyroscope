@@ -161,9 +161,6 @@ func (ps *ProfileSession) takeSnapshots() {
 	}
 }
 
-type standardStartFunc func(pid int) (spy.Spy, error)
-type gospyStartFunc func(profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error)
-
 func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
 	res := []spy.Spy{}
 
@@ -172,15 +169,8 @@ func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
 		return res, err
 	}
 
-	var s spy.Spy
 	for _, pt := range ps.profileTypes {
-		if standardF, ok := sf.(standardStartFunc); ok {
-			s, err = standardF(pid)
-		} else if gospyF, ok := sf.(gospyStartFunc); ok {
-			s, err = gospyF(pt, ps.sampleRate, ps.disableGCRuns)
-		} else {
-			// TODO: figure out what happens here
-		}
+		s, err := sf(pid, pt, ps.sampleRate, ps.disableGCRuns)
 
 		if err != nil {
 			return res, err

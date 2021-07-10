@@ -51,7 +51,8 @@ func (t ProfileType) AggregationType() string {
 	return "sum"
 }
 
-type spyIntitializer func(pid int) (Spy, error)
+// TODO: this interface is not the best as different spies have different arguments
+type spyIntitializer func(pid int, profileType ProfileType, sampleRate uint32, disableGCRuns bool) (Spy, error)
 
 var (
 	supportedSpiesMap map[string]spyIntitializer
@@ -84,7 +85,7 @@ func RegisterSpy(name string, cb spyIntitializer) {
 	supportedSpiesMap[name] = cb
 }
 
-func StartFunc(name string) (interface{}, error) {
+func StartFunc(name string) (spyIntitializer, error) {
 	if s, ok := supportedSpiesMap[name]; ok {
 		return s, nil
 	}
