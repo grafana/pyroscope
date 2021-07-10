@@ -181,13 +181,15 @@ func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
 }
 
 func (ps *ProfileSession) ChangeName(newName string) error {
-	ps.appName = newName
 
-	ps.previousTries[ps.appName] = []*transporttrie.Trie{nil}
-	ps.tries[ps.appName] = []*transporttrie.Trie{}
+	// TODO Only set the trie if it's not already set
+	ps.previousTries[newName] = []*transporttrie.Trie{nil}
+	ps.tries[newName] = []*transporttrie.Trie{}
 	for i := 0; i < len(ps.pids); i++ {
-		ps.tries[ps.appName] = append(ps.tries[ps.appName], transporttrie.New())
+		ps.tries[newName] = append(ps.tries[newName], transporttrie.New())
 	}
+
+	ps.appName = newName
 
 	return nil
 }
