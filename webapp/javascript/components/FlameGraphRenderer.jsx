@@ -18,7 +18,7 @@
 // This component is based on flamebearer project
 //   https://github.com/mapbox/flamebearer
 
-import React from "react";
+import React, { Fragment } from "react";
 import { connect } from "react-redux";
 
 import clsx from "clsx";
@@ -349,9 +349,9 @@ class FlameGraphRenderer extends React.Component {
             barIndex + numBarTicks === level[j + 3] &&
             level[j + 4] * this.pxPerTick <= COLLAPSE_THRESHOLD &&
             nodeIsInQuery ===
-              ((this.query && names[level[j + 5]].indexOf(this.query) >= 0) ||
-                false)
-          ) {
+            ((this.query && names[level[j + 5]].indexOf(this.query) >= 0) ||
+              false)
+            ) {
             j += 4;
             numBarTicks += level[j + 1];
           }
@@ -512,9 +512,6 @@ class FlameGraphRenderer extends React.Component {
       ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
       : [];
 
-    let instructionsText = this.props.viewType === "double" ? `Select ${this.props.viewSide} time range` : null;
-    let instructionsClassName = this.props.viewType === "double" ? `${this.props.viewSide}-instructions` : null;
-
     return (
       <div className={clsx("canvas-renderer", { "double": this.props.viewType === "double" })}>
 
@@ -526,17 +523,36 @@ class FlameGraphRenderer extends React.Component {
             updateView={this.updateView}
             resetStyle={this.state.resetStyle}
           />
-          <div className={`${instructionsClassName}-wrapper`}>
-            <span className={`${instructionsClassName}-text`}>{instructionsText}</span>
-          </div>
           {
-            this.props.viewType === "double" ?
-              <TimelineChartWrapper
-                key={`timeline-chart-${this.props.viewSide}`}
-                id={`timeline-chart-${this.props.viewSide}`}
-                viewSide={this.props.viewSide}
-              /> :
-              null
+            this.props.viewType === "double"
+              ? <Fragment>
+                <InstructionText {...this.props}/>
+                <TimelineChartWrapper
+                  key={`timeline-chart-${this.props.viewSide}`}
+                  id={`timeline-chart-${this.props.viewSide}`}
+                  viewSide={this.props.viewSide}
+                />
+              </Fragment>
+              : this.props.viewType === "diff"
+              ? <div className="diff-instructions-wrapper">
+                <div className="diff-instructions-wrapper-side">
+                  <InstructionText {...this.props} viewSide="left"/>
+                  <TimelineChartWrapper
+                    key={`timeline-chart-left`}
+                    id={`timeline-chart-left`}
+                    viewSide="left"
+                  />
+                </div>
+                <div className="diff-instructions-wrapper-side">
+                  <InstructionText {...this.props} viewSide="right"/>
+                  <TimelineChartWrapper
+                    key={`timeline-chart-right`}
+                    id={`timeline-chart-right`}
+                    viewSide="right"
+                  />
+                </div>
+              </div>
+              : null
           }
           <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.viewType === "double" })}>
             {
@@ -571,7 +587,19 @@ class FlameGraphRenderer extends React.Component {
         </div>
       </div>
     )
+  }
 }
+
+function InstructionText(props) {
+  const {viewType, viewSide} = props;
+  let instructionsText = viewType === "double" || viewType === "diff" ? `Select ${viewSide} time range` : null;
+  let instructionsClassName = viewType === "double" || viewType === "diff" ? `${viewSide}-instructions` : null;
+
+  return (
+    <div className={`${instructionsClassName}-wrapper`}>
+      <span className={`${instructionsClassName}-text`}>{instructionsText}</span>
+    </div>
+  )
 }
 
 const mapStateToProps = (state) => ({
