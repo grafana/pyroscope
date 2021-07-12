@@ -243,6 +243,16 @@ $pane-width: 6px;
   }
 }
 
+.diff-instructions-wrapper {
+  display: flex;
+  gap: 30px;
+  padding-bottom: 10px;
+}
+
+.diff-instructions-wrapper-side {
+  flex: 1 1 0;
+}
+
 .left-instructions-wrapper {
   display: flex;
   width: 50%;
