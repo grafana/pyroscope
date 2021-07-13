@@ -1,19 +1,31 @@
 storage:
   path: test_storage
 
+# sources specify how many trees to be ingested per 10s interval.
+# Writes are distributed evenly among all the applications.
+# A new tag set is generated for every write.
 sources: 1000
+
+# Time window to be filled with data.
 period: 1h
+
+# Start date in RFC3339Nano. Defaults to now() - period.
+# from: "2006-01-02T15:04:05.999999999Z07:00"
+
+# Number of concurrent writers.
+# writers: 4
+
 apps:
   test-app.cpu:
     spyName: gospy
     sampleRate: 100
     aggregationType: sum
     units: samples
-    trees: 3
+    trees: 100
     treeConfig:
       maxSymLen: 10
-      maxDepth: 30
-      width: 5
+      maxDepth: 50
+      width: 20
     tags:
       - name: env
         cardinality: 3
