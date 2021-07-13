@@ -21,11 +21,11 @@ apps:
     sampleRate: 100
     aggregationType: sum
     units: samples
-    trees: 100
+    trees: 10
     treeConfig:
       maxSymLen: 10
-      maxDepth: 50
-      width: 20
+      maxDepth: 30
+      width: 10
     tags:
       - name: env
         cardinality: 3
