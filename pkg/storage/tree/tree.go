@@ -25,33 +25,16 @@ func (a jsonableSlice) MarshalJSON() ([]byte, error) {
 }
 
 func (n *treeNode) clone(m, d uint64) *treeNode {
-	nn := &treeNode{
+	newNode := &treeNode{
 		Name:  n.Name,
 		Total: n.Total * m / d,
 		Self:  n.Self * m / d,
 	}
-	nn.ChildrenNodes = make([]*treeNode, len(n.ChildrenNodes))
+	newNode.ChildrenNodes = make([]*treeNode, len(n.ChildrenNodes))
 	for i, cn := range n.ChildrenNodes {
-		nn.ChildrenNodes[i] = cn.clone(m, d)
+		newNode.ChildrenNodes[i] = cn.clone(m, d)
 	}
-	return nn
-}
-
-func (n *treeNode) copy() *treeNode {
-	nn := &treeNode{
-		Name:  n.Name,
-		Total: n.Total,
-		Self:  n.Self,
-	}
-	l := len(n.ChildrenNodes)
-	if l == 0 {
-		return nn
-	}
-	nn.ChildrenNodes = make([]*treeNode, l)
-	for i := 0; i < l; i++ {
-		nn.ChildrenNodes[i] = n.ChildrenNodes[i].copy()
-	}
-	return nn
+	return newNode
 }
 
 func newNode(label []byte) *treeNode {
@@ -67,7 +50,7 @@ var (
 )
 
 type Tree struct {
-	sync.RWMutex
+	m    sync.RWMutex
 	root *treeNode
 }
 
@@ -85,6 +68,11 @@ func (t *Tree) Merge(srcTrieI merge.Merger) {
 
 	dstNodes := make([]*treeNode, 0, 100)
 	dstNodes = append(dstNodes, t.root)
+
+	srcTrie.m.RLock()
+	defer srcTrie.m.RUnlock()
+	t.m.Lock()
+	defer t.m.Unlock()
 
 	for len(srcNodes) > 0 {
 		st := srcNodes[0]
@@ -126,8 +114,8 @@ func prepend(s []*treeNode, x *treeNode) []*treeNode {
 }
 
 func (t *Tree) String() string {
-	t.RLock()
-	defer t.RUnlock()
+	t.m.RLock()
+	defer t.m.RUnlock()
 
 	res := ""
 	t.iterate(func(k []byte, v uint64) {
@@ -213,8 +201,8 @@ func (t *Tree) Samples() uint64 {
 }
 
 func (t *Tree) Clone(r *big.Rat) *Tree {
-	t.RLock()
-	defer t.RUnlock()
+	t.m.RLock()
+	defer t.m.RUnlock()
 
 	m := uint64(r.Num().Int64())
 	d := uint64(r.Denom().Int64())
@@ -225,15 +213,8 @@ func (t *Tree) Clone(r *big.Rat) *Tree {
 	return newTrie
 }
 
-// TODO: rework.
-func (t *Tree) Copy() *Tree {
-	t.RLock()
-	defer t.RUnlock()
-	return &Tree{root: t.root.copy()}
-}
-
 func (t *Tree) MarshalJSON() ([]byte, error) {
-	t.RLock()
-	defer t.RUnlock()
+	t.m.RLock()
+	defer t.m.RUnlock()
 	return json.Marshal(t.root)
 }

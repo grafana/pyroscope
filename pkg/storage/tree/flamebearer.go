@@ -12,8 +12,8 @@ type Flamebearer struct {
 }
 
 func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
-	t.RLock()
-	defer t.RUnlock()
+	t.m.RLock()
+	defer t.m.RUnlock()
 
 	res := Flamebearer{
 		Names:    []string{},

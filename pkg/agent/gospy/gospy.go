@@ -138,7 +138,7 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 		//   in such cases we force a GC run
 		//   users can disable it with disableGCRuns option
 		if currentGCGeneration == s.lastGCGeneration && !s.disableGCRuns {
-			// runtime.GC()
+			runtime.GC()
 			currentGCGeneration = numGC()
 		}
 

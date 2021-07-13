@@ -193,7 +193,7 @@ func (s *Storage) treeFromBytes(k string, v []byte) (interface{}, error) {
 	d, ok := s.dicts.Lookup(key)
 	if !ok {
 		// The key not found. Fallback to segment key form which has been
-		// used before tags support. Refer to FromTreeToDictKey.
+		// used before tags support. Refer to fromTreeToDictKey.
 		return s.treeFromBytesFallback(k, v)
 	}
 	return tree.FromBytes(d.(*dict.Dict), v)
@@ -210,7 +210,7 @@ func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error)
 
 func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
 	key := fromTreeToDictKey(k)
-	d, err := s.dicts.Get(key)
+	d, err := s.dicts.GetOrCreate(key)
 	if err != nil {
 		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
 	}
@@ -253,58 +253,43 @@ func (s *Storage) Put(po *PutInput) error {
 	sk := po.Key.SegmentKey()
 	for k, v := range po.Key.labels {
 		key := k + ":" + v
-		r, err := s.dimensions.Get(key)
+		r, err := s.dimensions.GetOrCreate(key)
 		if err != nil {
 			logrus.Errorf("dimensions cache for %v: %v", key, err)
 			continue
 		}
-		if r != nil {
-			r.(*dimension.Dimension).Insert([]byte(sk))
-			s.dimensions.Put(key, r)
-		}
+		r.(*dimension.Dimension).Insert([]byte(sk))
+		s.dimensions.Put(key, r)
 	}
 
-	res, err := s.segments.Get(sk)
+	r, err := s.segments.GetOrCreate(sk)
 	if err != nil {
 		return fmt.Errorf("segments cache for %v: %v", sk, err)
 	}
-	if res == nil {
-		return fmt.Errorf("segments cache for %v: not found", sk)
-	}
 
-	st := res.(*segment.Segment)
+	st := r.(*segment.Segment)
 	st.SetMetadata(po.SpyName, po.SampleRate, po.Units, po.AggregationType)
 	samples := po.Val.Samples()
+
 	st.Put(po.StartTime, po.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := po.Key.TreeKey(depth, t)
-
-		res, err := s.trees.Get(tk)
+		res, err := s.trees.GetOrCreate(tk)
 		if err != nil {
 			logrus.Errorf("trees cache for %v: %v", tk, err)
 			return
 		}
 		cachedTree := res.(*tree.Tree)
-
 		treeClone := po.Val.Clone(r)
 		for _, addon := range addons {
-			tk2 := po.Key.TreeKey(addon.Depth, addon.T)
-			// TODO: lookup?
-			res, err := s.trees.Get(tk2)
-			if err != nil {
-				logrus.Errorf("trees cache for %v: %v", tk, err)
-				continue
+			if res, ok := s.trees.Lookup(po.Key.TreeKey(addon.Depth, addon.T)); ok {
+				treeClone.Merge(res.(*tree.Tree))
 			}
-			treeClone.Merge(res.(*tree.Tree))
 		}
-		if cachedTree != nil {
-			cachedTree.Merge(treeClone)
-			s.trees.Put(tk, cachedTree)
-		} else {
-			s.trees.Put(tk, treeClone)
-		}
+		cachedTree.Merge(treeClone)
+		s.trees.Put(tk, cachedTree)
 	})
-	s.segments.Put(sk, st)
 
+	s.segments.Put(sk, st)
 	return nil
 }
 
@@ -341,13 +326,11 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		dimensions = append(dimensions, res.(*dimension.Dimension))
 	}
 
-	segmentKeys := dimension.Intersection(dimensions...)
-
 	tl := segment.GenerateTimeline(gi.StartTime, gi.EndTime)
 	var lastSegment *segment.Segment
 	var writesTotal uint64
 	aggregationType := "sum"
-	for _, sk := range segmentKeys {
+	for _, sk := range dimension.Intersection(dimensions...) {
 		// TODO: refactor, store `Key`s in dimensions
 		parsedKey, err := ParseKey(string(sk))
 		if err != nil {
@@ -364,19 +347,15 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		if st.AggregationType() == "average" {
 			aggregationType = "average"
 		}
-		lastSegment = st
 
+		lastSegment = st
 		tl.PopulateTimeline(st)
 
 		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-			k := parsedKey.TreeKey(depth, t)
-			res, ok := s.trees.Lookup(k)
-			if !ok {
-				return
+			if res, ok = s.trees.Lookup(parsedKey.TreeKey(depth, t)); ok {
+				triesToMerge = append(triesToMerge, res.(*tree.Tree).Clone(r))
+				writesTotal += writes
 			}
-			tr2 := res.(*tree.Tree).Clone(r)
-			triesToMerge = append(triesToMerge, merge.Merger(tr2))
-			writesTotal += writes
 		})
 	}
 
@@ -386,22 +365,17 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}
 
 	t := resultTrie.(*tree.Tree)
-
 	if writesTotal > 0 && aggregationType == "average" {
 		t = t.Clone(big.NewRat(1, int64(writesTotal)))
 	}
 
-	output := &GetOutput{
-		Tree:     t,
-		Timeline: tl,
-	}
-	if lastSegment != nil {
-		output.SpyName = lastSegment.SpyName()
-		output.SampleRate = lastSegment.SampleRate()
-		output.Units = lastSegment.Units()
-	}
-
-	return output, nil
+	return &GetOutput{
+		Tree:       t,
+		Timeline:   tl,
+		SpyName:    lastSegment.SpyName(),
+		SampleRate: lastSegment.SampleRate(),
+		Units:      lastSegment.Units(),
+	}, nil
 }
 
 func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) error {

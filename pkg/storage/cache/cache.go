@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dgrijalva/lfu-go"
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
-
 	"github.com/dgraph-io/badger/v2"
+	"github.com/dgrijalva/lfu-go"
+
+	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 )
 
 type Cache struct {
@@ -146,7 +146,7 @@ func (cache *Cache) Delete(key string) error {
 	return err
 }
 
-func (cache *Cache) Get(key string) (interface{}, error) {
+func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
 	v, err := cache.lookup(key) // find the key from cache first
 	if err != nil {
 		return nil, err
