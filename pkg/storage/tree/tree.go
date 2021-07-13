@@ -50,7 +50,7 @@ var (
 )
 
 type Tree struct {
-	m    sync.RWMutex
+	sync.RWMutex
 	root *treeNode
 }
 
@@ -68,11 +68,6 @@ func (t *Tree) Merge(srcTrieI merge.Merger) {
 
 	dstNodes := make([]*treeNode, 0, 100)
 	dstNodes = append(dstNodes, t.root)
-
-	srcTrie.m.RLock()
-	defer srcTrie.m.RUnlock()
-	t.m.Lock()
-	defer t.m.Unlock()
 
 	for len(srcNodes) > 0 {
 		st := srcNodes[0]
@@ -114,8 +109,8 @@ func prepend(s []*treeNode, x *treeNode) []*treeNode {
 }
 
 func (t *Tree) String() string {
-	t.m.RLock()
-	defer t.m.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 
 	res := ""
 	t.iterate(func(k []byte, v uint64) {
@@ -201,8 +196,8 @@ func (t *Tree) Samples() uint64 {
 }
 
 func (t *Tree) Clone(r *big.Rat) *Tree {
-	t.m.RLock()
-	defer t.m.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 
 	m := uint64(r.Num().Int64())
 	d := uint64(r.Denom().Int64())
@@ -214,7 +209,7 @@ func (t *Tree) Clone(r *big.Rat) *Tree {
 }
 
 func (t *Tree) MarshalJSON() ([]byte, error) {
-	t.m.RLock()
-	defer t.m.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 	return json.Marshal(t.root)
 }

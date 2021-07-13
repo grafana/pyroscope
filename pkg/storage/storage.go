@@ -282,10 +282,15 @@ func (s *Storage) Put(po *PutInput) error {
 		treeClone := po.Val.Clone(r)
 		for _, addon := range addons {
 			if res, ok := s.trees.Lookup(po.Key.TreeKey(addon.Depth, addon.T)); ok {
-				treeClone.Merge(res.(*tree.Tree))
+				ta := res.(*tree.Tree)
+				ta.RLock()
+				treeClone.Merge(ta)
+				ta.RUnlock()
 			}
 		}
+		cachedTree.Lock()
 		cachedTree.Merge(treeClone)
+		cachedTree.Unlock()
 		s.trees.Put(tk, cachedTree)
 	})
 
