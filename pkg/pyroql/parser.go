@@ -29,6 +29,19 @@ const (
 	NEQ_REGEX    // !~
 )
 
+func IsKeyRuneAllowed(r rune) bool {
+	return unicode.IsDigit(r) || unicode.IsLetter(r) ||
+		r == '-' || r == '_' || r == '.' || r == '/'
+}
+
+func IsKeyReserved(s string) bool {
+	switch s {
+	case "__name__":
+		return true
+	}
+	return false
+}
+
 // ParseQuery parses a string of $app_name<{<$tag_matchers>}> form.
 func ParseQuery(s string) (*Query, error) {
 	s = strings.TrimSpace(s)
@@ -161,6 +174,7 @@ loop:
 		tm.R = r
 	}
 
+	// TODO: allow duplicates?
 	tm.Key = k
 	tm.Value = v
 	return &tm, nil
@@ -171,18 +185,4 @@ func unquote(s string) (string, bool) {
 		return s, false
 	}
 	return s[1 : len(s)-1], true
-}
-
-func IsKeyRuneAllowed(r rune) bool {
-	return unicode.IsDigit(r) || unicode.IsLetter(r) ||
-		r == '-' || r == '_' || r == '.' || r == ':' ||
-		r == '/' || r == '|'
-}
-
-func IsKeyReserved(s string) bool {
-	switch s {
-	case "__name__":
-		return true
-	}
-	return false
 }
