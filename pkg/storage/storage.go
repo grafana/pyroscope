@@ -330,6 +330,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		logger = logger.WithField("query", gi.Query)
 		dimensionKeys = s.dimensionKeysByQuery(gi.Query)
 	default:
+		// Should never happen.
 		return nil, fmt.Errorf("key or query must be specified")
 	}
 

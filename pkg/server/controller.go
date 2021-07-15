@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	golog "log"
@@ -103,10 +104,10 @@ func (ctrl *Controller) Start() error {
 	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
 	// the returned error is ErrServerClosed.
 	err := ctrl.httpServer.ListenAndServe()
-	if err == http.ErrServerClosed {
+	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
-	return fmt.Errorf("listen and serve: %v", err)
+	return err
 }
 
 func (ctrl *Controller) Stop() error {
@@ -129,15 +130,38 @@ func (ctrl *Controller) drainMiddleware(next http.HandlerFunc) http.HandlerFunc 
 	}
 }
 
-func renderServerError(rw http.ResponseWriter, text string) {
-	rw.WriteHeader(500)
-	rw.Write([]byte(text))
-	rw.Write([]byte("\n"))
+func (ctrl *Controller) writeInvalidParameterError(w http.ResponseWriter, err error) {
+	ctrl.writeError(w, http.StatusBadRequest, err, "invalid parameter")
+}
+
+func (ctrl *Controller) writeInternalServerError(w http.ResponseWriter, err error, msg string) {
+	ctrl.writeError(w, http.StatusInternalServerError, err, msg)
+}
+
+func (ctrl *Controller) writeJSONEncodeError(w http.ResponseWriter, err error) {
+	ctrl.writeInternalServerError(w, err, "encoding response body")
+}
+
+func (ctrl *Controller) writeError(w http.ResponseWriter, code int, err error, msg string) {
+	logrus.WithError(err).Error(msg)
+	writeMessage(w, code, "%s: %q", msg, err)
+}
+
+func (ctrl *Controller) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
+	logrus.Error(msg)
+	writeMessage(w, code, msg)
+}
+
+func writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
+	w.WriteHeader(code)
+	_, _ = fmt.Fprintf(w, format, args...)
+	_, _ = fmt.Fprintln(w)
 }
 
 type indexPageJSON struct {
 	AppNames []string `json:"appNames"`
 }
+
 type indexPage struct {
 	InitialState  string
 	BuildInfo     string
@@ -167,22 +191,22 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	}
 }
 
-func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWriter, _ *http.Request) {
+func (ctrl *Controller) renderIndexPage(dir http.FileSystem, w http.ResponseWriter, _ *http.Request) {
 	f, err := dir.Open("/index.html")
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not find file index.html: %q", err))
+		ctrl.writeInternalServerError(w, err, "could not find file index.html")
 		return
 	}
 
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not read file index.html: %q", err))
+		ctrl.writeInternalServerError(w, err, "could not read file index.html")
 		return
 	}
 
 	tmpl, err := template.New("index.html").Parse(string(b))
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not parse index.html template: %q", err))
+		ctrl.writeInternalServerError(w, err, "could not parse index.html template")
 		return
 	}
 
@@ -193,11 +217,11 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 	})
 	b, err = json.Marshal(initialStateObj)
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not marshal initialStateObj json: %q", err))
+		ctrl.writeJSONEncodeError(w, err)
 		return
 	}
-	initialStateStr := string(b)
 
+	initialStateStr := string(b)
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
 	if extraMetadataPath != "" {
@@ -208,15 +232,15 @@ func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWri
 		extraMetadataStr = string(b)
 	}
 
-	rw.Header().Add("Content-Type", "text/html")
-	err = tmpl.Execute(rw, indexPage{
+	w.Header().Add("Content-Type", "text/html")
+	err = tmpl.Execute(w, indexPage{
 		InitialState:  initialStateStr,
 		BuildInfo:     build.JSON(),
 		ExtraMetadata: extraMetadataStr,
 		BaseURL:       ctrl.config.BaseURL,
 	})
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not marshal json: %q", err))
+		ctrl.writeInternalServerError(w, err, "could not render index page template")
 		return
 	}
 }

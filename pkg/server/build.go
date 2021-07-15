@@ -6,7 +6,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 )
 
-func (ctrl *Controller) buildHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) buildHandler(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(build.PrettyJSON()))
+	_, _ = w.Write([]byte(build.PrettyJSON()))
 }

@@ -112,7 +112,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	var t *tree.Tree
 	t, err := ip.parserFunc(r.Body)
 	if err != nil {
-		returnError(w, 422, err, "error happened while parsing data")
+		ctrl.writeError(w, 422, err, "error happened while parsing request body")
 		return
 	}
 
@@ -127,16 +127,12 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		AggregationType: ip.aggregationType,
 	})
 	if err != nil {
-		returnError(w, 503, err, "error happened while inserting data")
+		ctrl.writeInternalServerError(w, err, "error happened while ingesting data")
 		return
 	}
+
 	ctrl.statsInc("ingest")
 	ctrl.statsInc("ingest:" + ip.spyName)
 	k := *ip.storageKey
 	ctrl.appStats.Add(hashString(k.AppName()))
-}
-
-func returnError(w http.ResponseWriter, status int, err error, errMessage string) {
-	logrus.WithField("err", err).Error(errMessage)
-	w.WriteHeader(status)
 }
