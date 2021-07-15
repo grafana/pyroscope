@@ -1062,7 +1062,7 @@ dependencies = [
 [[package]]
 name = "rbspy"
 version = "0.6.0"
-source = "git+https://github.com/pyroscope-io/rbspy?rev=be059a6#be059a60634d4249c006d1ef3de837823d052447"
+source = "git+https://github.com/pyroscope-io/rbspy?rev=93d604b#93d604bc24c10a976ae7f0d4fa5e752d85ef6282"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1091,7 +1091,7 @@ dependencies = [
 [[package]]
 name = "rbspy-ruby-structs"
 version = "0.6.0"
-source = "git+https://github.com/pyroscope-io/rbspy?rev=be059a6#be059a60634d4249c006d1ef3de837823d052447"
+source = "git+https://github.com/pyroscope-io/rbspy?rev=93d604b#93d604bc24c10a976ae7f0d4fa5e752d85ef6282"
 
 [[package]]
 name = "regex"
