@@ -36,20 +36,32 @@ all: build
 build:
 	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
 
+# see for context: https://github.com/golang/go/issues/42136#issuecomment-717684147
+# .PHONY: ensure-modern-ld-version
+# ifeq ("$(shell go env GOOS || true)", "linux")
+# ensure-modern-ld-version:
+
+# else
+# ensure-modern-ld-version:
+# 	@echo "Not on Linux, so not checking for modern ld version."
+# endif
+
+
+
 .PHONY: build-rbspy-static-library
 build-rbspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,rbspy -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,rbspy -buildmode=c-archive -ldflags "compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
 
 .PHONY: build-pyspy-static-library
 build-pyspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,pyspy -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,pyspy -buildmode=c-archive -ldflags "compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
 
 .PHONY: build-phpspy-static-library
 build-phpspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,phpspy -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,phpspy -buildmode=c-archive -ldflags "compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
 
 .PHONY: build-release
 build-release: embedded-assets
