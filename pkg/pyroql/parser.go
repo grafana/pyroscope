@@ -90,7 +90,6 @@ func ParseMatchers(s string) ([]*TagMatcher, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		matchers = append(matchers, m)
 	}
 	if len(matchers) == 0 && len(s) != 0 {
@@ -114,15 +113,19 @@ loop:
 			switch {
 			case r <= 2:
 				return nil, newErr(ErrInvalidValueSyntax, s)
+			case s[offset+1] == '"':
+				tm.Op = EQL
 			case s[offset+1] == '~':
 				if r <= 3 {
 					return nil, newErr(ErrInvalidValueSyntax, s)
 				}
 				tm.Op = EQL_REGEX
-			case s[offset+1] != '"':
-				return nil, newErr(ErrUnknownOp, s)
 			default:
-				tm.Op = EQL
+				// Just for more meaningful error message.
+				if s[offset+2] != '"' {
+					return nil, newErr(ErrInvalidValueSyntax, s)
+				}
+				return nil, newErr(ErrUnknownOp, s)
 			}
 			break loop
 		case '!':
@@ -174,7 +177,6 @@ loop:
 		tm.R = r
 	}
 
-	// TODO: allow duplicates?
 	tm.Key = k
 	tm.Value = v
 	return &tm, nil
