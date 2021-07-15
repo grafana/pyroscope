@@ -2,7 +2,7 @@ package storage
 
 import (
 	"context"
-	"errors"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,30 +14,81 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
-var _ = Describe("querying", func() {
+var _ = Describe("Querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
 			s, err = New(&(*cfg).Server)
 			Expect(err).ToNot(HaveOccurred())
+			keys := []string{
+				"app.name{foo=bar,baz=qux}",
+				"app.name{foo=bar,baz=xxx}",
+				"app.name{waldo=fred,baz=xxx}",
+			}
+			for _, k := range keys {
+				t := tree.New()
+				t.Insert([]byte("a;b"), uint64(1))
+				t.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(19)
+				key, err := ParseKey(k)
+				Expect(err).ToNot(HaveOccurred())
+				err = s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        t,
+					SpyName:    "testspy",
+					SampleRate: 100,
+				})
+				Expect(err).ToNot(HaveOccurred())
+			}
 		})
 
 		Context("basic queries", func() {
-			It("returns error on invalid query", func() {
-				_, err := s.Query(context.TODO(), `app.name{foo=bar}`)
-				Expect(errors.Is(err, pyroql.ErrInvalidValueSyntax)).To(BeTrue())
+			It("get returns result with query", func() {
+				qry, err := pyroql.ParseQuery(`app.name{foo="bar"}`)
+				Expect(err).ToNot(HaveOccurred())
+				output, err := s.Get(&GetInput{
+					StartTime: time.Time{},
+					EndTime:   maxTime,
+					Query:     qry,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output).ToNot(BeNil())
+				Expect(output.Tree).ToNot(BeNil())
+				Expect(output.Tree.Samples()).To(Equal(uint64(6)))
 			})
 
-			It("return expected results", func() {
-				keys := []string{
-					"app.name{foo=bar,baz=qux}",
-					"app.name{foo=bar,baz=xxx}",
-					"app.name{waldo=fred,baz=xxx}",
-				}
-				for _, k := range keys {
-					put(s, k)
-				}
+			It("get returns a particular tree for a fully qualified key", func() {
+				k, err := ParseKey(`app.name{foo=bar,baz=qux}`)
+				Expect(err).ToNot(HaveOccurred())
+				output, err := s.Get(&GetInput{
+					StartTime: time.Time{},
+					EndTime:   maxTime,
+					Key:       k,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output).ToNot(BeNil())
+				Expect(output.Tree).ToNot(BeNil())
+				Expect(output.Tree.Samples()).To(Equal(uint64(3)))
+			})
 
+			It("get returns all results for a key containing only app name", func() {
+				k, err := ParseKey(`app.name`)
+				Expect(err).ToNot(HaveOccurred())
+				output, err := s.Get(&GetInput{
+					StartTime: time.Time{},
+					EndTime:   maxTime,
+					Key:       k,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output).ToNot(BeNil())
+				Expect(output.Tree).ToNot(BeNil())
+				Expect(output.Tree.Samples()).To(Equal(uint64(9)))
+			})
+
+			It("query returns expected results", func() {
 				type testCase struct {
 					query       string
 					segmentKeys []dimension.Key
@@ -82,8 +133,9 @@ var _ = Describe("querying", func() {
 				}
 
 				for _, tc := range testCases {
-					r, err := s.Query(context.TODO(), tc.query)
+					qry, err := pyroql.ParseQuery(tc.query)
 					Expect(err).ToNot(HaveOccurred())
+					r := s.exec(context.TODO(), qry)
 					if tc.segmentKeys == nil {
 						Expect(r).To(BeEmpty())
 						continue
@@ -94,22 +146,3 @@ var _ = Describe("querying", func() {
 		})
 	})
 })
-
-func put(s *Storage, k string) {
-	t := tree.New()
-	t.Insert([]byte("a;b"), uint64(1))
-	t.Insert([]byte("a;c"), uint64(2))
-	st := testing.SimpleTime(10)
-	et := testing.SimpleTime(19)
-	key, err := ParseKey(k)
-	Expect(err).ToNot(HaveOccurred())
-	err = s.Put(&PutInput{
-		StartTime:  st,
-		EndTime:    et,
-		Key:        key,
-		Val:        t,
-		SpyName:    "testspy",
-		SampleRate: 100,
-	})
-	Expect(err).ToNot(HaveOccurred())
-}

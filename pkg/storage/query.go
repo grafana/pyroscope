@@ -7,18 +7,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 )
 
-// TODO: add context, refactor matchers, decouple from storage, e.g:
-//  func (q *Query) Exec(context.Context, Queryable) ([]dimension.Key, error)
-
-func (s *Storage) Query(ctx context.Context, q string) ([]dimension.Key, error) {
-	qry, err := pyroql.ParseQuery(q)
-	if err != nil {
-		return nil, err
-	}
-	return s.Exec(ctx, qry), nil
-}
-
-func (s *Storage) Exec(_ context.Context, qry *pyroql.Query) []dimension.Key {
+func (s *Storage) exec(_ context.Context, qry *pyroql.Query) []dimension.Key {
 	app, found := s.lookupAppDimension(qry.AppName)
 	if !found {
 		return nil
@@ -33,17 +22,14 @@ func (s *Storage) Exec(_ context.Context, qry *pyroql.Query) []dimension.Key {
 			if d, ok := s.lookupDimension(m); ok {
 				r = append(r, d)
 			}
-
 		case pyroql.NEQ:
 			if d, ok := s.lookupDimension(m); ok {
 				n = append(n, d)
 			}
-
 		case pyroql.EQL_REGEX:
 			if d, ok := s.lookupDimensionRegex(m); ok {
 				r = append(r, d)
 			}
-
 		case pyroql.NEQ_REGEX:
 			if d, ok := s.lookupDimensionRegex(m); ok {
 				n = append(n, d)

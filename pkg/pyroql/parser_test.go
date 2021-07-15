@@ -20,9 +20,9 @@ var _ = Describe("ParseQuery", func() {
 			{`app.name`, nil, &Query{AppName: "app.name"}},
 			{`app.name{}`, nil, &Query{AppName: "app.name"}},
 			{`app.name{foo="bar"}`, nil,
-				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}}}},
+				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}}, ""}},
 			{`app.name{foo="bar",baz!="quo"}`, nil,
-				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}, {"baz", "quo", NEQ, nil}}}},
+				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}, {"baz", "quo", NEQ, nil}}, ""}},
 
 			{"", ErrAppNameIsRequired, nil},
 			{"{}", ErrAppNameIsRequired, nil},

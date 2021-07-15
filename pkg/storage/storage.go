@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
@@ -15,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/pyroql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
@@ -302,6 +304,7 @@ type GetInput struct {
 	StartTime time.Time
 	EndTime   time.Time
 	Key       *Key
+	Query     *pyroql.Query
 }
 
 type GetOutput struct {
@@ -313,33 +316,38 @@ type GetOutput struct {
 }
 
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
-	logrus.WithFields(logrus.Fields{
+	logger := logrus.WithFields(logrus.Fields{
 		"startTime": gi.StartTime.String(),
 		"endTime":   gi.EndTime.String(),
-		"key":       gi.Key.Normalized(),
-	}).Trace("storage.Get")
+	})
 
-	var triesToMerge []merge.Merger
-	var dimensions []*dimension.Dimension
-
-	for k, v := range gi.Key.labels {
-		key := k + ":" + v
-		res, ok := s.dimensions.Lookup(key)
-		if !ok {
-			continue
-		}
-		dimensions = append(dimensions, res.(*dimension.Dimension))
+	var dimensionKeys func() []dimension.Key
+	switch {
+	case gi.Key != nil:
+		logger = logger.WithField("key", gi.Key.Normalized())
+		dimensionKeys = s.dimensionKeysByKey(gi.Key)
+	case gi.Query != nil:
+		logger = logger.WithField("query", gi.Query)
+		dimensionKeys = s.dimensionKeysByQuery(gi.Query)
+	default:
+		return nil, fmt.Errorf("key or query must be specified")
 	}
 
-	tl := segment.GenerateTimeline(gi.StartTime, gi.EndTime)
-	var lastSegment *segment.Segment
-	var writesTotal uint64
-	aggregationType := "sum"
-	for _, sk := range dimension.Intersection(dimensions...) {
+	logger.Trace("storage.Get")
+	var (
+		triesToMerge []merge.Merger
+		lastSegment  *segment.Segment
+		writesTotal  uint64
+
+		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
+		aggregationType = "sum"
+	)
+
+	for _, k := range dimensionKeys() {
 		// TODO: refactor, store `Key`s in dimensions
-		parsedKey, err := ParseKey(string(sk))
+		parsedKey, err := ParseKey(string(k))
 		if err != nil {
-			logrus.Errorf("parse key: %v: %v", string(sk), err)
+			logrus.Errorf("parse key: %v: %v", string(k), err)
 			continue
 		}
 		key := parsedKey.SegmentKey()
@@ -353,8 +361,8 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 			aggregationType = "average"
 		}
 
+		timeline.PopulateTimeline(st)
 		lastSegment = st
-		tl.PopulateTimeline(st)
 
 		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
 			if res, ok = s.trees.Lookup(parsedKey.TreeKey(depth, t)); ok {
@@ -376,11 +384,27 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 	return &GetOutput{
 		Tree:       t,
-		Timeline:   tl,
+		Timeline:   timeline,
 		SpyName:    lastSegment.SpyName(),
 		SampleRate: lastSegment.SampleRate(),
 		Units:      lastSegment.Units(),
 	}, nil
+}
+
+func (s *Storage) dimensionKeysByKey(key *Key) func() []dimension.Key {
+	return func() []dimension.Key {
+		var dimensions []*dimension.Dimension
+		for k, v := range key.labels {
+			if d, ok := s.lookupDimensionKV(k, v); ok {
+				dimensions = append(dimensions, d)
+			}
+		}
+		return dimension.Intersection(dimensions...)
+	}
+}
+
+func (s *Storage) dimensionKeysByQuery(qry *pyroql.Query) func() []dimension.Key {
+	return func() []dimension.Key { return s.exec(context.TODO(), qry) }
 }
 
 func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) error {

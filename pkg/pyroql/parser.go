@@ -9,7 +9,11 @@ import (
 type Query struct {
 	AppName  string
 	Matchers []*TagMatcher
+
+	q string // The original query string.
 }
+
+func (q *Query) String() string { return q.q }
 
 type TagMatcher struct {
 	Key   string
@@ -45,7 +49,7 @@ func IsKeyReserved(s string) bool {
 // ParseQuery parses a string of $app_name<{<$tag_matchers>}> form.
 func ParseQuery(s string) (*Query, error) {
 	s = strings.TrimSpace(s)
-	var q Query
+	q := Query{q: s}
 
 	for offset, c := range s {
 		switch c {
