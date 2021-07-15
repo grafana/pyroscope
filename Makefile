@@ -51,17 +51,17 @@ build:
 .PHONY: build-rbspy-static-library
 build-rbspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,rbspy -buildmode=c-archive -ldflags "compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,rbspy -buildmode=c-archive -ldflags "-compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
 
 .PHONY: build-pyspy-static-library
 build-pyspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,pyspy -buildmode=c-archive -ldflags "compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,pyspy -buildmode=c-archive -ldflags "-compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
 
 .PHONY: build-phpspy-static-library
 build-phpspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,phpspy -buildmode=c-archive -ldflags "compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,phpspy -buildmode=c-archive -ldflags "-compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
 
 .PHONY: build-release
 build-release: embedded-assets
