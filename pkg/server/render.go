@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 
 	"github.com/pyroscope-io/pyroscope/pkg/pyroql"
@@ -19,22 +18,27 @@ var (
 	errLabelIsRequired = errors.New("label parameter is required")
 )
 
+type renderParams struct {
+	format   string
+	maxNodes int
+	gi       *storage.GetInput
+}
+
 func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	var gi storage.GetInput
-	if err := resolveGetParams(q, &gi); err != nil {
+	var p renderParams
+	if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
 		ctrl.writeInvalidParameterError(w, err)
 		return
 	}
 
-	switch q.Get("format") {
+	switch p.format {
 	case "json", "":
 	default:
 		ctrl.writeInvalidParameterError(w, errUnknownFormat)
 		return
 	}
 
-	out, err := ctrl.storage.Get(&gi)
+	out, err := ctrl.storage.Get(p.gi)
 	ctrl.statsInc("render")
 	if err != nil {
 		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
@@ -46,13 +50,8 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		out = &storage.GetOutput{Tree: tree.New()}
 	}
 
-	maxNodes := ctrl.config.MaxNodesRender
-	if mn, err := strconv.Atoi(q.Get("max-nodes")); err == nil && mn > 0 {
-		maxNodes = mn
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	fs := out.Tree.FlamebearerStruct(maxNodes)
+	fs := out.Tree.FlamebearerStruct(p.maxNodes)
 	// TODO remove this duplication? We're already adding this to metadata
 	fs.SpyName = out.SpyName
 	fs.SampleRate = out.SampleRate
@@ -72,26 +71,37 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func resolveGetParams(v url.Values, gi *storage.GetInput) error {
-	gi.StartTime = attime.Parse(v.Get("from"))
-	gi.EndTime = attime.Parse(v.Get("until"))
+func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {
+	v := r.URL.Query()
+	p.gi = new(storage.GetInput)
+
 	k := v.Get("name")
-	if k != "" {
+	q := v.Get("query")
+
+	switch {
+	case k == "" && q == "":
+		return fmt.Errorf("'query' or 'name' parameter is required")
+	case k != "":
 		sk, err := storage.ParseKey(k)
 		if err != nil {
 			return fmt.Errorf("name: parsing storage key: %w", err)
 		}
-		gi.Key = sk
-		return nil
+		p.gi.Key = sk
+	case q != "":
+		qry, err := pyroql.ParseQuery(q)
+		if err != nil {
+			return fmt.Errorf("query: %w", err)
+		}
+		p.gi.Query = qry
 	}
-	q := v.Get("query")
-	if q == "" {
-		return fmt.Errorf("'query' or 'name' parameter is required")
+
+	p.maxNodes = ctrl.config.MaxNodesRender
+	if mn, err := strconv.Atoi(v.Get("max-nodes")); err == nil && mn > 0 {
+		p.maxNodes = mn
 	}
-	qry, err := pyroql.ParseQuery(q)
-	if err != nil {
-		return fmt.Errorf("query: %w", err)
-	}
-	gi.Query = qry
+
+	p.gi.StartTime = attime.Parse(v.Get("from"))
+	p.gi.EndTime = attime.Parse(v.Get("until"))
+	p.format = v.Get("format")
 	return nil
 }

@@ -16,6 +16,7 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 
 	// revive:enable:blank-imports
@@ -47,11 +48,16 @@ type ProfileSession struct {
 	stopTime  time.Time
 
 	logger Logger
+
+	// The map holds fully qualified names (storage keys) for
+	// every profiler that is running within the session.
+	names map[spy.ProfileType]string
 }
 
 type SessionConfig struct {
 	Upstream         upstream.Upstream
 	AppName          string
+	Tags             map[string]string
 	ProfilingTypes   []spy.ProfileType
 	DisableGCRuns    bool
 	SpyName          string
@@ -65,6 +71,7 @@ func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 	ps := &ProfileSession{
 		upstream:         c.Upstream,
 		appName:          c.AppName,
+		names:            make(map[spy.ProfileType]string),
 		spyName:          c.SpyName,
 		profileTypes:     c.ProfilingTypes,
 		disableGCRuns:    c.DisableGCRuns,
@@ -84,7 +91,30 @@ func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 		ps.tries = make([]*transporttrie.Trie, 1)
 	}
 
+	ps.createNames(c.Tags)
 	return ps
+}
+
+func (ps *ProfileSession) createNames(tags map[string]string) {
+	if tags == nil {
+		for _, t := range ps.profileTypes {
+			ps.names[t] = fullAppName(ps.appName, t)
+		}
+		return
+	}
+	tagsCopy := make(map[string]string)
+	for k, v := range tags {
+		tagsCopy[k] = v
+	}
+	for _, t := range ps.profileTypes {
+		tagsCopy["__name__"] = fullAppName(ps.appName, t)
+		ps.names[t] = storage.NewKey(tagsCopy).Normalized()
+	}
+	return
+}
+
+func fullAppName(app string, t spy.ProfileType) string {
+	return app + "." + string(t)
 }
 
 func (ps *ProfileSession) takeSnapshots() {
@@ -223,9 +253,8 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 			}
 
 			if !skipUpload {
-				name := ps.appName + "." + string(ps.profileTypes[i])
 				ps.upstream.Upload(&upstream.UploadJob{
-					Name:            name,
+					Name:            ps.names[ps.profileTypes[i]],
 					StartTime:       ps.startTime,
 					EndTime:         endTime,
 					SpyName:         ps.spyName,

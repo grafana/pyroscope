@@ -115,7 +115,7 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	}
 
 	q := u.Query()
-	q.Set("name", j.Name)
+	q.Set("name", url.QueryEscape(j.Name))
 	// TODO: I think these should be renamed to startTime / endTime
 	q.Set("from", strconv.Itoa(int(j.StartTime.Unix())))
 	q.Set("until", strconv.Itoa(int(j.EndTime.Unix())))

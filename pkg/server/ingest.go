@@ -1,17 +1,19 @@
 package server
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
-	"github.com/sirupsen/logrus"
 )
 
 type ingestParams struct {
@@ -26,32 +28,53 @@ type ingestParams struct {
 	until           time.Time
 }
 
-func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(io.Reader) (*tree.Tree, error) {
-	return func(r io.Reader) (*tree.Tree, error) {
-		t := tree.New()
-		if err := convertFunc(r, func(k []byte, v int) {
-			t.Insert(k, uint64(v))
-		}); err != nil {
-			return nil, err
-		}
-
-		return t, nil
+func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
+	var ip ingestParams
+	if err := ctrl.ingestParamsFromRequest(r, &ip); err != nil {
+		ctrl.writeInvalidParameterError(w, err)
+		return
 	}
+
+	var t *tree.Tree
+	t, err := ip.parserFunc(r.Body)
+	if err != nil {
+		ctrl.writeError(w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
+		return
+	}
+
+	err = ctrl.storage.Put(&storage.PutInput{
+		StartTime:       ip.from,
+		EndTime:         ip.until,
+		Key:             ip.storageKey,
+		Val:             t,
+		SpyName:         ip.spyName,
+		SampleRate:      ip.sampleRate,
+		Units:           ip.units,
+		AggregationType: ip.aggregationType,
+	})
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "error happened while ingesting data")
+		return
+	}
+
+	ctrl.statsInc("ingest")
+	ctrl.statsInc("ingest:" + ip.spyName)
+	k := *ip.storageKey
+	ctrl.appStats.Add(hashString(k.AppName()))
 }
 
-func ingestParamsFromRequest(r *http.Request) *ingestParams {
-	ip := &ingestParams{}
+func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParams) error {
 	q := r.URL.Query()
-
 	format := q.Get("format")
-
-	if format == "tree" || r.Header.Get("Content-Type") == "binary/octet-stream+tree" {
+	contentType := r.Header.Get("Content-Type")
+	switch {
+	case format == "tree", contentType == "binary/octet-stream+tree":
 		ip.parserFunc = tree.DeserializeNoDict
-	} else if format == "trie" || r.Header.Get("Content-Type") == "binary/octet-stream+trie" {
+	case format == "trie", contentType == "binary/octet-stream+trie":
 		ip.parserFunc = wrapConvertFunction(convert.ParseTrie)
-	} else if format == "lines" {
+	case format == "lines":
 		ip.parserFunc = wrapConvertFunction(convert.ParseIndividualLines)
-	} else {
+	default:
 		ip.parserFunc = wrapConvertFunction(convert.ParseGroups)
 	}
 
@@ -100,39 +123,17 @@ func ingestParamsFromRequest(r *http.Request) *ingestParams {
 
 	var err error
 	ip.storageKey, err = storage.ParseKey(q.Get("name"))
-	if err != nil {
-		logrus.Error("parsing error:", err)
-	}
-
-	return ip
+	return fmt.Errorf("name: %w", err)
 }
 
-func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
-	ip := ingestParamsFromRequest(r)
-	var t *tree.Tree
-	t, err := ip.parserFunc(r.Body)
-	if err != nil {
-		ctrl.writeError(w, 422, err, "error happened while parsing request body")
-		return
+func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(io.Reader) (*tree.Tree, error) {
+	return func(r io.Reader) (*tree.Tree, error) {
+		t := tree.New()
+		if err := convertFunc(r, func(k []byte, v int) {
+			t.Insert(k, uint64(v))
+		}); err != nil {
+			return nil, err
+		}
+		return t, nil
 	}
-
-	err = ctrl.storage.Put(&storage.PutInput{
-		StartTime:       ip.from,
-		EndTime:         ip.until,
-		Key:             ip.storageKey,
-		Val:             t,
-		SpyName:         ip.spyName,
-		SampleRate:      ip.sampleRate,
-		Units:           ip.units,
-		AggregationType: ip.aggregationType,
-	})
-	if err != nil {
-		ctrl.writeInternalServerError(w, err, "error happened while ingesting data")
-		return
-	}
-
-	ctrl.statsInc("ingest")
-	ctrl.statsInc("ingest:" + ip.spyName)
-	k := *ip.storageKey
-	ctrl.appStats.Add(hashString(k.AppName()))
 }
