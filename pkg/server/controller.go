@@ -270,8 +270,17 @@ func (ctrl *Controller) drainMiddleware(next http.HandlerFunc) http.HandlerFunc 
 	}
 }
 
+func (ctrl *Controller) isAuthRequired() bool {
+	return ctrl.config.GoogleEnabled || ctrl.config.GithubEnabled || ctrl.config.GitlabEnabled
+}
+
 func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !ctrl.isAuthRequired() {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		jwtCookie, err := r.Cookie(jwtCookieName)
 		if err != nil {
 			ctrl.log.Error("missing jwt cookie")
