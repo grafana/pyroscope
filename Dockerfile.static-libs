@@ -52,6 +52,7 @@ FROM golang:1.15.1-alpine3.12 as go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 RUN apk upgrade binutils
+RUN apk upgrade elfutils
 
 WORKDIR /opt/pyroscope
 
