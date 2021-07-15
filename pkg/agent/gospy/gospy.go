@@ -107,6 +107,7 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 	if s.profileType == spy.ProfileCPU {
 		// stop the previous cycle of sample collection
 		pprof.StopCPUProfile()
+		custom_pprof.StopCPUProfile()
 		defer func() {
 			// start a new cycle of sample collection
 			if err := startCPUProfile(s.buf, s.sampleRate); err != nil {
