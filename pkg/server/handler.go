@@ -15,15 +15,17 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/markbates/pkger"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/sirupsen/logrus"
 )
 
 func (ctrl *Controller) loginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt := template.New("login.html")
-		tmplt, _ = tmplt.ParseFiles("./webapp/templates/login.html")
+		tmplt, err := ctrl.getTemplate("/login.html")
+		if err != nil {
+			renderServerError(w, err.Error())
+			return
+		}
 		params := map[string]bool{
 			"GoogleEnabled": ctrl.config.GoogleEnabled,
 			"GithubEnabled": ctrl.config.GithubEnabled,
@@ -138,8 +140,13 @@ func (ctrl *Controller) oauthLoginHandler(info *oauthInfo) http.HandlerFunc {
 func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		redirectURL += "?" + r.URL.RawQuery
-		tmplt := template.New("redirect.html")
-		tmplt, _ = tmplt.ParseFiles("./webapp/templates/redirect.html")
+
+		tmplt, err := ctrl.getTemplate("/redirect.html")
+		if err != nil {
+			renderServerError(w, err.Error())
+			return
+		}
+
 		params := map[string]string{"RedirectURL": redirectURL}
 
 		tmplt.Execute(w, params)
@@ -148,7 +155,13 @@ func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
 
 func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "./webapp/templates/forbidden.html")
+		tmplt, err := ctrl.getTemplate("/forbidden.html")
+		if err != nil {
+			renderServerError(w, err.Error())
+			return
+		}
+
+		tmplt.Execute(w, map[string]string{})
 	}
 }
 
@@ -297,8 +310,12 @@ func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, info *
 		invalidateCookie(w, stateCookieName)
 		createCookie(w, jwtCookieName, tk)
 
-		tmplt := template.New("welcome.html")
-		tmplt, _ = tmplt.ParseFiles("./webapp/templates/welcome.html")
+		tmplt, err := ctrl.getTemplate("/welcome.html")
+		if err != nil {
+			renderServerError(w, err.Error())
+			return
+		}
+
 		params := map[string]string{"Name": name}
 
 		tmplt.Execute(w, params)
@@ -307,21 +324,14 @@ func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, info *
 }
 
 func (ctrl *Controller) indexHandler() http.HandlerFunc {
-	var dir http.FileSystem
-	if build.UseEmbeddedAssets {
-		// for this to work you need to run `pkger` first. See Makefile for more information
-		dir = pkger.Dir("/webapp/public")
-	} else {
-		dir = http.Dir("./webapp/public")
-	}
-	fs := http.FileServer(dir)
+	fs := http.FileServer(ctrl.dir)
 	return func(rw http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
 			ctrl.statsInc("index")
-			ctrl.renderIndexPage(dir, rw, r)
+			ctrl.renderIndexPage(rw, r)
 		} else if r.URL.Path == "/comparison" {
 			ctrl.statsInc("index")
-			ctrl.renderIndexPage(dir, rw, r)
+			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)
 		}
@@ -344,22 +354,29 @@ type indexPage struct {
 	BaseURL       string
 }
 
-func (ctrl *Controller) renderIndexPage(dir http.FileSystem, rw http.ResponseWriter, _ *http.Request) {
-	f, err := dir.Open("/index.html")
+func (ctrl *Controller) getTemplate(path string) (*template.Template, error) {
+	f, err := ctrl.dir.Open(path)
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not find file index.html: %q", err))
-		return
+		return nil, fmt.Errorf("could not find file index.html: %q", err)
 	}
 
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not read file index.html: %q", err))
-		return
+		return nil, fmt.Errorf("could not read file index.html: %q", err)
 	}
 
 	tmpl, err := template.New("index.html").Parse(string(b))
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not parse index.html template: %q", err))
+		return nil, fmt.Errorf("could not parse index.html template: %q", err)
+	}
+	return tmpl, nil
+}
+
+func (ctrl *Controller) renderIndexPage(rw http.ResponseWriter, _ *http.Request) {
+	var b []byte
+	tmpl, err := ctrl.getTemplate("/index.html")
+	if err != nil {
+		renderServerError(rw, err.Error())
 		return
 	}
 

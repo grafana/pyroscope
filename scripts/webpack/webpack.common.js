@@ -1,11 +1,35 @@
 const webpack = require("webpack");
 const path = require("path");
+const glob = require("glob");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyPlugin = require("copy-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
 
 const fs = require("fs");
+
+let pages = glob.sync("./webapp/templates/*.html").map((x) => path.basename(x));
+let pagePlugins = pages.map((name) => {
+  return new HtmlWebpackPlugin({
+    filename: path.resolve(__dirname, "../../webapp/public/" + name),
+    template: path.resolve(__dirname, "../../webapp/templates/" + name),
+    inject: false,
+    chunksSortMode: "none",
+    templateParameters: (compilation, assets, options) => ({
+      extra_metadata: process.env.EXTRA_METADATA
+        ? fs.readFileSync(process.env.EXTRA_METADATA)
+        : "",
+      mode: process.env.NODE_ENV,
+      webpack: compilation.getStats().toJson(),
+      compilation,
+      webpackConfig: compilation.options,
+      htmlWebpackPlugin: {
+        files: assets,
+        options,
+      },
+    }),
+  });
+});
 
 module.exports = {
   target: "web",
@@ -94,21 +118,6 @@ module.exports = {
         ],
       },
       {
-        test: /\.html$/,
-        exclude: /(index|error)\.html/,
-        use: [
-          {
-            loader: "html-loader",
-            options: {
-              attrs: [],
-              minimize: true,
-              removeComments: false,
-              collapseWhitespace: false,
-            },
-          },
-        ],
-      },
-      {
         test: /\.css$/,
         // include: MONACO_DIR, // https://github.com/react-monaco-editor/react-monaco-editor
         use: ["style-loader", "css-loader"],
@@ -154,25 +163,7 @@ module.exports = {
       $: "jquery",
       jQuery: "jquery",
     }),
-    new HtmlWebpackPlugin({
-      filename: path.resolve(__dirname, "../../webapp/public/index.html"),
-      template: path.resolve(__dirname, "../../webapp/templates/index.html"),
-      inject: false,
-      chunksSortMode: "none",
-      templateParameters: (compilation, assets, options) => ({
-        extra_metadata: process.env.EXTRA_METADATA
-          ? fs.readFileSync(process.env.EXTRA_METADATA)
-          : "",
-        mode: process.env.NODE_ENV,
-        webpack: compilation.getStats().toJson(),
-        compilation,
-        webpackConfig: compilation.options,
-        htmlWebpackPlugin: {
-          files: assets,
-          options,
-        },
-      }),
-    }),
+    ...pagePlugins,
     new MiniCssExtractPlugin({
       filename: "[name].[hash].css",
     }),
@@ -184,6 +175,6 @@ module.exports = {
           to: "images",
         },
       ],
-    }),
+    })
   ],
 };

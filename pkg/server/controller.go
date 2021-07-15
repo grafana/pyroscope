@@ -12,10 +12,12 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 
+	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
@@ -39,6 +41,8 @@ type Controller struct {
 	log        *logrus.Logger
 	httpServer *http.Server
 
+	dir http.FileSystem
+
 	statsMutex sync.Mutex
 	stats      map[string]int
 
@@ -57,6 +61,13 @@ func New(c *config.Server, s *storage.Storage, l *logrus.Logger) (*Controller, e
 		storage:  s,
 		stats:    make(map[string]int),
 		appStats: appStats,
+	}
+
+	if build.UseEmbeddedAssets {
+		// for this to work you need to run `pkger` first. See Makefile for more information
+		ctrl.dir = pkger.Dir("/webapp/public")
+	} else {
+		ctrl.dir = http.Dir("./webapp/public")
 	}
 
 	return &ctrl, nil
