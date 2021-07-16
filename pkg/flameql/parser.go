@@ -3,7 +3,6 @@ package flameql
 import (
 	"regexp"
 	"strings"
-	"unicode"
 )
 
 type Query struct {
@@ -32,19 +31,6 @@ const (
 	EQL_REGEX    // =~
 	NEQ_REGEX    // !~
 )
-
-func IsKeyRuneAllowed(r rune) bool {
-	return unicode.IsDigit(r) || unicode.IsLetter(r) ||
-		r == '-' || r == '_' || r == '.' || r == '/'
-}
-
-func IsKeyReserved(s string) bool {
-	switch s {
-	case "__name__":
-		return true
-	}
-	return false
-}
 
 // ParseQuery parses a string of $app_name<{<$tag_matchers>}> form.
 func ParseQuery(s string) (*Query, error) {
@@ -147,7 +133,7 @@ loop:
 			break loop
 		default:
 			if !IsKeyRuneAllowed(c) {
-				return nil, newErr(ErrInvalidKey, s)
+				return nil, newInvalidKeyRuneError(s, c)
 			}
 		}
 	}
