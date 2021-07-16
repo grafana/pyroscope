@@ -28,6 +28,10 @@ type Agent struct {
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
 	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
 
+	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times"`
+
+	// Structs and slices are not parsed with ffcli package,
+	// instead `loadAgentConfig` function should be used.
 	Targets []Target `desc:"list of targets to be profiled"`
 }
 
@@ -114,4 +118,6 @@ type Exec struct {
 	GroupName              string        `def:"" desc:"starts process under specified group name"`
 	PyspyBlocking          bool          `def:"false" desc:"enables blocking mode for pyspy"`
 	RbspyBlocking          bool          `def:"false" desc:"enables blocking mode for rbspy"`
+
+	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times"`
 }

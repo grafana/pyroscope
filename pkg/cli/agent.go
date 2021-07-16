@@ -51,7 +51,10 @@ func (svc *agentService) Stop(_ service.Service) error {
 	return nil
 }
 
-func loadTargets(c *config.Agent) error {
+// loadAgentConfig is a hack for ffcli parser, which can't parse maps, structs,
+// and slices. The function to be called after the parser finishes just to fill
+// missing configuration elements.
+func loadAgentConfig(c *config.Agent) error {
 	b, err := ioutil.ReadFile(c.Config)
 	switch {
 	case err == nil:
@@ -65,6 +68,17 @@ func loadTargets(c *config.Agent) error {
 		return err
 	}
 	c.Targets = a.Targets
+	// Merge tags from config file: flags take precedence.
+	switch {
+	case a.Tags == nil:
+	case c.Tags == nil:
+		c.Tags = a.Tags
+	default:
+		for k, v := range c.Tags {
+			a.Tags[k] = v
+		}
+		c.Tags = a.Tags
+	}
 	return nil
 }
 

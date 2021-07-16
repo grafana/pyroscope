@@ -137,6 +137,7 @@ var _ = Describe("flags", func() {
 
 				err := exampleCommand.ParseAndRun(context.Background(), []string{
 					"-config", "testdata/agent.yml",
+					"-tag", "baz=zzz",
 				})
 
 				Expect(err).ToNot(HaveOccurred())
@@ -148,9 +149,12 @@ var _ = Describe("flags", func() {
 					AuthToken:              "",
 					UpstreamThreads:        4,
 					UpstreamRequestTimeout: 10 * time.Second,
+					Tags: map[string]string{
+						"baz": "zzz",
+					},
 				}))
 
-				Expect(loadTargets(&cfg)).ToNot(HaveOccurred())
+				Expect(loadAgentConfig(&cfg)).ToNot(HaveOccurred())
 				Expect(cfg.Targets).To(Equal([]config.Target{
 					{
 						ServiceName:        "foo",
@@ -160,6 +164,48 @@ var _ = Describe("flags", func() {
 						DetectSubprocesses: false,
 						PyspyBlocking:      false,
 						RbspyBlocking:      false,
+					},
+				}))
+				Expect(cfg.Tags).To(Equal(map[string]string{
+					"foo": "bar",
+					"baz": "zzz",
+				}))
+			})
+
+			It("parses tag flags in exec", func() {
+				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
+				var cfg config.Exec
+				PopulateFlagSet(&cfg, exampleFlagSet)
+
+				exampleCommand := &ffcli.Command{
+					FlagSet: exampleFlagSet,
+					Options: []ff.Option{
+						ff.WithIgnoreUndefined(true),
+						ff.WithConfigFileParser(parser),
+						ff.WithConfigFileFlag("config"),
+					},
+					Exec: func(_ context.Context, args []string) error {
+						return nil
+					},
+				}
+
+				err := exampleCommand.ParseAndRun(context.Background(), []string{
+					"-tag", "foo=bar",
+					"-tag", "baz=qux",
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(cfg).To(Equal(config.Exec{
+					SpyName:                "auto",
+					SampleRate:             100,
+					DetectSubprocesses:     true,
+					LogLevel:               "info",
+					ServerAddress:          "http://localhost:4040",
+					UpstreamThreads:        4,
+					UpstreamRequestTimeout: 10 * time.Second,
+					Tags: map[string]string{
+						"foo": "bar",
+						"baz": "qux",
 					},
 				}))
 			})

@@ -2,17 +2,19 @@ package cli
 
 import (
 	"flag"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/iancoleman/strcase"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/duration"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
-	"github.com/sirupsen/logrus"
 )
 
 const timeFormat = "2006-01-02T15:04:05Z0700"
@@ -53,6 +55,32 @@ func (tf *timeFlag) Set(value string) error {
 	b, _ := t2.MarshalBinary()
 	t.UnmarshalBinary(b)
 
+	return nil
+}
+
+type mapFlags map[string]string
+
+func (m mapFlags) String() string {
+	if len(m) == 0 {
+		return "{}"
+	}
+	// Cast to map to avoid recursion.
+	return fmt.Sprint((map[string]string)(m))
+}
+
+func (m *mapFlags) Set(s string) error {
+	if len(s) == 0 {
+		return nil
+	}
+	v := strings.Split(s, "=")
+	if len(v) != 2 {
+		return fmt.Errorf("invalid flag %s: should be in key=value format", s)
+	}
+	if *m == nil {
+		*m = map[string]string{v[0]: v[1]}
+	} else {
+		(*m)[v[0]] = v[1]
+	}
 	return nil
 }
 
@@ -161,6 +189,10 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption)
 		case reflect.TypeOf([]string{}):
 			val := fieldV.Addr().Interface().(*[]string)
 			val2 := (*arrayFlags)(val)
+			flagSet.Var(val2, nameVal, descVal)
+		case reflect.TypeOf(map[string]string{}):
+			val := fieldV.Addr().Interface().(*map[string]string)
+			val2 := (*mapFlags)(val)
 			flagSet.Var(val2, nameVal, descVal)
 		case reflect.TypeOf(""):
 			val := fieldV.Addr().Interface().(*string)
