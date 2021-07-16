@@ -54,7 +54,7 @@ func ParseQuery(s string) (*Query, error) {
 			q.Matchers = m
 			return &q, nil
 		default:
-			if !IsKeyRuneAllowed(c) {
+			if !IsTagKeyRuneAllowed(c) {
 				return nil, newErr(ErrInvalidAppName, s[:offset+1])
 			}
 		}
@@ -102,25 +102,25 @@ loop:
 		case '=':
 			switch {
 			case r <= 2:
-				return nil, newErr(ErrInvalidValueSyntax, s)
+				return nil, newErr(ErrInvalidTagValueSyntax, s)
 			case s[offset+1] == '"':
 				tm.Op = EQL
 			case s[offset+1] == '~':
 				if r <= 3 {
-					return nil, newErr(ErrInvalidValueSyntax, s)
+					return nil, newErr(ErrInvalidTagValueSyntax, s)
 				}
 				tm.Op = EQL_REGEX
 			default:
 				// Just for more meaningful error message.
 				if s[offset+2] != '"' {
-					return nil, newErr(ErrInvalidValueSyntax, s)
+					return nil, newErr(ErrInvalidTagValueSyntax, s)
 				}
 				return nil, newErr(ErrUnknownOp, s)
 			}
 			break loop
 		case '!':
 			if r <= 3 {
-				return nil, newErr(ErrInvalidValueSyntax, s)
+				return nil, newErr(ErrInvalidTagValueSyntax, s)
 			}
 			switch s[offset+1] {
 			case '=':
@@ -132,15 +132,15 @@ loop:
 			}
 			break loop
 		default:
-			if !IsKeyRuneAllowed(c) {
-				return nil, newInvalidKeyRuneError(s, c)
+			if !IsTagKeyRuneAllowed(c) {
+				return nil, newInvalidTagKeyRuneError(s, c)
 			}
 		}
 	}
 
 	k := s[:offset]
-	if IsKeyReserved(k) {
-		return nil, newErr(ErrKeyReserved, k)
+	if IsTagKeyReserved(k) {
+		return nil, newErr(ErrTagKeyReserved, k)
 	}
 
 	var v string
@@ -154,7 +154,7 @@ loop:
 		v, ok = unquote(s[offset+2:])
 	}
 	if !ok {
-		return nil, newErr(ErrInvalidValueSyntax, v)
+		return nil, newErr(ErrInvalidTagValueSyntax, v)
 	}
 
 	// Compile regex, it applicable.

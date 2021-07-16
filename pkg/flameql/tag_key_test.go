@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("ValidateKey", func() {
+var _ = Describe("ValidateTagKey", func() {
 	It("reports error if a key violates constraints", func() {
 		type testCase struct {
 			key string
@@ -17,13 +17,13 @@ var _ = Describe("ValidateKey", func() {
 		testCases := []testCase{
 			{"foo/BAR.1-2.baz_qux", nil},
 
-			{ReservedKeyName, ErrKeyReserved},
-			{"", ErrKeyIsRequired},
-			{"#", ErrInvalidKey},
+			{ReservedTagKeyName, ErrTagKeyReserved},
+			{"", ErrTagKeyIsRequired},
+			{"#", ErrInvalidTagKey},
 		}
 
 		for _, tc := range testCases {
-			err := ValidateKey(tc.key)
+			err := ValidateTagKey(tc.key)
 			if tc.err != nil {
 				Expect(errors.Is(err, tc.err)).To(BeTrue())
 				continue
