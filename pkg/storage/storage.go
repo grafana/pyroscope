@@ -16,7 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/pyroql"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
@@ -304,7 +304,7 @@ type GetInput struct {
 	StartTime time.Time
 	EndTime   time.Time
 	Key       *Key
-	Query     *pyroql.Query
+	Query     *flameql.Query
 }
 
 type GetOutput struct {
@@ -404,7 +404,7 @@ func (s *Storage) dimensionKeysByKey(key *Key) func() []dimension.Key {
 	}
 }
 
-func (s *Storage) dimensionKeysByQuery(qry *pyroql.Query) func() []dimension.Key {
+func (s *Storage) dimensionKeysByQuery(qry *flameql.Query) func() []dimension.Key {
 	return func() []dimension.Key { return s.exec(context.TODO(), qry) }
 }
 

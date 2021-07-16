@@ -26,6 +26,7 @@ var _ = Describe("server", func() {
 			var buf *bytes.Buffer
 			var format string
 			var contentType string
+			var name string
 
 			// this is an example of Shared Example pattern
 			//   see https://onsi.github.io/ginkgo/#shared-example-patterns
@@ -41,13 +42,14 @@ var _ = Describe("server", func() {
 						httpServer := httptest.NewServer(c.mux())
 						defer s.Close()
 
-						name := "test.app{}"
-
 						st := testing.ParseTime("2020-01-01-01:01:00")
 						et := testing.ParseTime("2020-01-01-01:01:10")
 
 						u, _ := url.Parse(httpServer.URL + "/ingest")
 						q := u.Query()
+						if name == "" {
+							name = "test.app{}"
+						}
 						q.Add("name", name)
 						q.Add("from", strconv.Itoa(int(st.Unix())))
 						q.Add("until", strconv.Itoa(int(et.Unix())))
@@ -139,6 +141,17 @@ var _ = Describe("server", func() {
 					buf = bytes.NewBuffer([]byte("\x00\x00\x01\x03foo\x00\x02\x03bar\x02\x00\x03baz\x03\x00"))
 					format = ""
 					contentType = "binary/octet-stream+tree"
+				})
+
+				ItCorrectlyParsesIncomingData()
+			})
+
+			Context("name with tags", func() {
+				BeforeEach(func() {
+					buf = bytes.NewBuffer([]byte("foo;bar 2\nfoo;baz 3\n"))
+					format = ""
+					contentType = ""
+					name = "test.app{foo=bar,baz=qux}"
 				})
 
 				ItCorrectlyParsesIncomingData()

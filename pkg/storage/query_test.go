@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/pyroql"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -47,7 +47,7 @@ var _ = Describe("Querying", func() {
 
 		Context("basic queries", func() {
 			It("get returns result with query", func() {
-				qry, err := pyroql.ParseQuery(`app.name{foo="bar"}`)
+				qry, err := flameql.ParseQuery(`app.name{foo="bar"}`)
 				Expect(err).ToNot(HaveOccurred())
 				output, err := s.Get(&GetInput{
 					StartTime: time.Time{},
@@ -133,7 +133,7 @@ var _ = Describe("Querying", func() {
 				}
 
 				for _, tc := range testCases {
-					qry, err := pyroql.ParseQuery(tc.query)
+					qry, err := flameql.ParseQuery(tc.query)
 					Expect(err).ToNot(HaveOccurred())
 					r := s.exec(context.TODO(), qry)
 					if tc.segmentKeys == nil {

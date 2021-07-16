@@ -26,15 +26,15 @@ var _ = Describe("server", func() {
 				httpServer = httptest.NewServer(c.mux())
 				defer httpServer.Close()
 
-				resp, err := http.Get(fmt.Sprintf("%s/render?name=%s", httpServer.URL, url.PathEscape(`app`)))
+				resp, err := http.Get(fmt.Sprintf("%s/render?name=%s", httpServer.URL, url.QueryEscape(`app`)))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
-				resp, err = http.Get(fmt.Sprintf("%s/render?query=%s", httpServer.URL, url.PathEscape(`app{foo="bar"}`)))
+				resp, err = http.Get(fmt.Sprintf("%s/render?query=%s", httpServer.URL, url.QueryEscape(`app{foo="bar"}`)))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusOK))
 
-				resp, err = http.Get(fmt.Sprintf("%s/render?query=%s", httpServer.URL, url.PathEscape(`app{foo"bar"}`)))
+				resp, err = http.Get(fmt.Sprintf("%s/render?query=%s", httpServer.URL, url.QueryEscape(`app{foo"bar"}`)))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
 

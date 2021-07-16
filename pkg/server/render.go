@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/pyroscope-io/pyroscope/pkg/pyroql"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
@@ -88,7 +88,7 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 		}
 		p.gi.Key = sk
 	case q != "":
-		qry, err := pyroql.ParseQuery(q)
+		qry, err := flameql.ParseQuery(q)
 		if err != nil {
 			return fmt.Errorf("query: %w", err)
 		}

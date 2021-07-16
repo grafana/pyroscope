@@ -123,7 +123,10 @@ func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParam
 
 	var err error
 	ip.storageKey, err = storage.ParseKey(q.Get("name"))
-	return fmt.Errorf("name: %w", err)
+	if err != nil {
+		return fmt.Errorf("name: %w", err)
+	}
+	return nil
 }
 
 func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(io.Reader) (*tree.Tree, error) {

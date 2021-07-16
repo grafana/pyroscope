@@ -1,4 +1,4 @@
-package pyroql_test
+package flameql_test
 
 import (
 	"testing"

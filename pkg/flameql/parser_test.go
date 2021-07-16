@@ -1,4 +1,4 @@
-package pyroql
+package flameql
 
 import (
 	"errors"
@@ -17,12 +17,12 @@ var _ = Describe("ParseQuery", func() {
 		}
 
 		testCases := []testCase{
-			{`app.name`, nil, &Query{AppName: "app.name"}},
-			{`app.name{}`, nil, &Query{AppName: "app.name"}},
+			{`app.name`, nil, &Query{AppName: "app.name", q: `app.name`}},
+			{`app.name{}`, nil, &Query{AppName: "app.name", q: `app.name{}`}},
 			{`app.name{foo="bar"}`, nil,
-				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}}, ""}},
+				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}}, `app.name{foo="bar"}`}},
 			{`app.name{foo="bar",baz!="quo"}`, nil,
-				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}, {"baz", "quo", NEQ, nil}}, ""}},
+				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}, {"baz", "quo", NEQ, nil}}, `app.name{foo="bar",baz!="quo"}`}},
 
 			{"", ErrAppNameIsRequired, nil},
 			{"{}", ErrAppNameIsRequired, nil},
