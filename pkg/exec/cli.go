@@ -150,6 +150,7 @@ func Cli(cfg *config.Exec, args []string) error {
 	sc := agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.ApplicationName,
+		Tags:             cfg.Tags,
 		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 		SpyName:          spyName,
 		SampleRate:       uint32(cfg.SampleRate),

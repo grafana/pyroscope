@@ -167,3 +167,7 @@ func (k *Key) Hashed() []byte {
 func (k *Key) AppName() string {
 	return k.labels["__name__"]
 }
+
+func (k *Key) Labels() map[string]string {
+	return k.labels
+}

@@ -35,6 +35,7 @@ func newServiceTarget(logger *logrus.Logger, upstream *remote.Remote, t config.T
 		sc: &agent.SessionConfig{
 			Upstream:         upstream,
 			AppName:          t.ApplicationName,
+			Tags:             t.Tags,
 			ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 			SpyName:          t.SpyName,
 			SampleRate:       uint32(t.SampleRate),

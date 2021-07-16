@@ -51,9 +51,9 @@ func (svc *agentService) Stop(_ service.Service) error {
 	return nil
 }
 
-// loadAgentConfig is a hack for ffcli parser, which can't parse maps, structs,
-// and slices. The function to be called after the parser finishes just to fill
-// missing configuration elements.
+// loadAgentConfig is a hack for ff parser, which can't parse maps, structs,
+// and slices. The function to be called after the parser finishes just to
+// fill missing configuration elements.
 func loadAgentConfig(c *config.Agent) error {
 	b, err := ioutil.ReadFile(c.Config)
 	switch {
@@ -67,19 +67,31 @@ func loadAgentConfig(c *config.Agent) error {
 	if err = yaml.Unmarshal(b, &a); err != nil {
 		return err
 	}
-	c.Targets = a.Targets
-	// Merge tags from config file: flags take precedence.
-	switch {
-	case a.Tags == nil:
-	case c.Tags == nil:
-		c.Tags = a.Tags
-	default:
-		for k, v := range c.Tags {
-			a.Tags[k] = v
+	// Override tags from config file with flags.
+	c.Tags = mergeTags(a.Tags, c.Tags)
+	for _, t := range a.Targets {
+		t.Tags = mergeTags(t.Tags, c.Tags)
+		appName, err := mergeTagsWithAppName(t.ApplicationName, t.Tags)
+		if err != nil {
+			return fmt.Errorf("invalid tag (%s): %w", t.ApplicationName, err)
 		}
-		c.Tags = a.Tags
+		t.ApplicationName = appName
+		c.Targets = append(c.Targets, t)
 	}
 	return nil
+}
+
+// mergeTags creates a new map with tags from a and b.
+// Values from b take precedence. Returned map is never nil.
+func mergeTags(a, b map[string]string) map[string]string {
+	t := make(map[string]string, len(a))
+	for k, v := range a {
+		t[k] = v
+	}
+	for k, v := range b {
+		t[k] = v
+	}
+	return t
 }
 
 func createLogger(config *config.Agent) (*logrus.Logger, error) {

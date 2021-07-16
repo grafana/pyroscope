@@ -24,6 +24,7 @@ var (
 
 type Config struct {
 	ApplicationName string // e.g backend.purchases
+	Tags            map[string]string
 	ServerAddress   string // e.g http://pyroscope.services.internal:4040
 	AuthToken       string // specify this token when using pyroscope cloud
 	SampleRate      uint32
@@ -62,6 +63,7 @@ func Start(cfg Config) (*Profiler, error) {
 	sc := agent.SessionConfig{
 		Upstream:         upstream,
 		AppName:          cfg.ApplicationName,
+		Tags:             cfg.Tags,
 		ProfilingTypes:   types.DefaultProfileTypes,
 		DisableGCRuns:    cfg.DisableGCRuns,
 		SpyName:          types.GoSpy,

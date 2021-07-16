@@ -155,20 +155,33 @@ var _ = Describe("flags", func() {
 				}))
 
 				Expect(loadAgentConfig(&cfg)).ToNot(HaveOccurred())
-				Expect(cfg.Targets).To(Equal([]config.Target{
-					{
-						ServiceName:        "foo",
-						SpyName:            "debugspy",
-						ApplicationName:    "foo.app",
-						SampleRate:         0,
-						DetectSubprocesses: false,
-						PyspyBlocking:      false,
-						RbspyBlocking:      false,
+				Expect(cfg).To(Equal(config.Agent{
+					Config:                 "testdata/agent.yml",
+					LogLevel:               "debug",
+					NoLogging:              false,
+					ServerAddress:          "http://localhost:4040",
+					AuthToken:              "",
+					UpstreamThreads:        4,
+					UpstreamRequestTimeout: 10 * time.Second,
+					Tags: map[string]string{
+						"foo": "bar",
+						"baz": "zzz",
 					},
-				}))
-				Expect(cfg.Tags).To(Equal(map[string]string{
-					"foo": "bar",
-					"baz": "zzz",
+					Targets: []config.Target{
+						{
+							ServiceName:        "foo",
+							SpyName:            "debugspy",
+							ApplicationName:    "foo.app",
+							SampleRate:         0,
+							DetectSubprocesses: false,
+							PyspyBlocking:      false,
+							RbspyBlocking:      false,
+							Tags: map[string]string{
+								"foo": "bar",
+								"baz": "zzz",
+							},
+						},
+					},
 				}))
 			})
 
