@@ -147,7 +147,9 @@ func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
 			return
 		}
 
-		params := map[string]string{"RedirectURL": redirectURL}
+		params := map[string]interface{}{
+			"RedirectURL": redirectURL + "?" + r.URL.RawQuery,
+		}
 
 		tmplt.Execute(w, params)
 	}
