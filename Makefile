@@ -126,6 +126,7 @@ clean:
 update-contributors:
 	$(shell yarn bin contributor-faces) \
 		-e pyroscopebot \
+		-l 100 \
 		.
 
 .PHONY: update-changelog
