@@ -71,8 +71,7 @@ func ParseQuery(s string) (*Query, error) {
 // ParseMatchers parses a string of $tag_matcher<,$tag_matchers> form.
 func ParseMatchers(s string) ([]*TagMatcher, error) {
 	var matchers []*TagMatcher
-	// TODO: allow escaped ',' in value?
-	for _, t := range strings.Split(s, ",") {
+	for _, t := range split(s) {
 		if t == "" {
 			continue
 		}
@@ -177,4 +176,24 @@ func unquote(s string) (string, bool) {
 		return s, false
 	}
 	return s[1 : len(s)-1], true
+}
+
+func split(s string) []string {
+	var r []string
+	var x int
+	var y bool
+	for i := 0; i < len(s); i++ {
+		switch {
+		case s[i] == ',' && !y:
+			r = append(r, s[x:i])
+			x = i + 1
+		case s[i] == '"':
+			if y && i > 0 && s[i-1] != '\\' {
+				y = false
+				continue
+			}
+			y = true
+		}
+	}
+	return append(r, s[x:])
 }

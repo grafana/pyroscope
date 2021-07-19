@@ -21,6 +21,8 @@ var _ = Describe("ParseQuery", func() {
 			{`app.name{}`, nil, &Query{AppName: "app.name", q: `app.name{}`}},
 			{`app.name{foo="bar"}`, nil,
 				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}}, `app.name{foo="bar"}`}},
+			{`app.name{foo="bar,baz"}`, nil,
+				&Query{"app.name", []*TagMatcher{{"foo", "bar,baz", EQL, nil}}, `app.name{foo="bar,baz"}`}},
 			{`app.name{foo="bar",baz!="quo"}`, nil,
 				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}, {"baz", "quo", NEQ, nil}}, `app.name{foo="bar",baz!="quo"}`}},
 
@@ -81,6 +83,9 @@ var _ = Describe("ParseMatcher", func() {
 			{expr: `foo!~"`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo!~"z`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo!~`, err: ErrInvalidTagValueSyntax},
+
+			{expr: `foo="bar,baz"`, m: &TagMatcher{"foo", "bar,baz", EQL, nil}},
+			{expr: `foo="bar\",\"baz"`, m: &TagMatcher{"foo", "bar\\\",\\\"baz", EQL, nil}},
 
 			{expr: `foo;bar="baz"`, err: ErrInvalidTagKey},
 			{expr: `foo""`, err: ErrInvalidTagKey},
