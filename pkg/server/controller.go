@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	golog "log"
@@ -80,28 +79,37 @@ func (ctrl *Controller) assetsFilesHandler(w http.ResponseWriter, r *http.Reques
 	fs.ServeHTTP(w, r)
 }
 
-func (ctrl *Controller) mux() http.Handler {
+func (ctrl *Controller) mux() (http.Handler, error) {
 	mux := http.NewServeMux()
-	addRoutes(mux, []route{
-		{"/healthz", ctrl.healthz},
-		{"/metrics", promhttp.Handler().ServeHTTP},
-		{"/config", ctrl.configHandler},
-		{"/build", ctrl.buildHandler},
-	})
 
-	// auth routes
-	addRoutes(mux, ctrl.getAuthRoutes(), ctrl.drainMiddleware)
+	// Routes not protected with auth. Drained at shutdown.
+	insecureRoutes, err := ctrl.getAuthRoutes()
+	if err != nil {
+		return nil, err
+	}
+	insecureRoutes = append(insecureRoutes, []route{
+		{"/ingest", ctrl.ingestHandler},
+		{"/forbidden", ctrl.forbiddenHandler()},
+		{"/assets/", ctrl.assetsFilesHandler},
+	}...)
+	addRoutes(mux, insecureRoutes, ctrl.drainMiddleware)
 
-	// drainable routes:
+	// Protected routes:
 	routes := []route{
 		{"/", ctrl.indexHandler()},
 		{"/render", ctrl.renderHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 	}
-
 	addRoutes(mux, routes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
+	// Diagnostic routes: not protected with auth, not drained.
+	addRoutes(mux, []route{
+		{"/healthz", ctrl.healthz},
+		{"/metrics", promhttp.Handler().ServeHTTP},
+		{"/config", ctrl.configHandler},
+		{"/build", ctrl.buildHandler},
+	})
 	if !ctrl.config.DisablePprofEndpoint {
 		addRoutes(mux, []route{
 			{"/debug/pprof/", pprof.Index},
@@ -112,14 +120,7 @@ func (ctrl *Controller) mux() http.Handler {
 		})
 	}
 
-	nonAuthRoutes := []route{
-		{"/ingest", ctrl.ingestHandler},
-		{"/forbidden", ctrl.forbiddenHandler()},
-		{"/assets/", ctrl.assetsFilesHandler},
-	}
-
-	addRoutes(mux, nonAuthRoutes, ctrl.drainMiddleware)
-	return mux
+	return mux, nil
 }
 
 type oauthInfo struct {
@@ -182,7 +183,7 @@ func (ctrl *Controller) generateOauthInfo(oauthType int) *oauthInfo {
 	return nil
 }
 
-func (ctrl *Controller) getAuthRoutes() []route {
+func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	authRoutes := []route{
 		{"/login", ctrl.loginHandler()},
 		{"/logout", ctrl.logoutHandler()},
@@ -191,11 +192,11 @@ func (ctrl *Controller) getAuthRoutes() []route {
 	if ctrl.config.GoogleEnabled {
 		authURL, err := url.Parse(ctrl.config.GoogleAuthURL)
 		if err != nil {
-			ctrl.log.WithError(err).Error("Problem parsing google auth url")
+			return nil, err
 		}
 
 		googleOauthInfo := ctrl.generateOauthInfo(oauthGoogle)
-		if err == nil && googleOauthInfo != nil {
+		if googleOauthInfo != nil {
 			googleOauthInfo.AuthURL = authURL
 			authRoutes = append(authRoutes, []route{
 				{"/auth/google/login", ctrl.oauthLoginHandler(googleOauthInfo)},
@@ -209,12 +210,11 @@ func (ctrl *Controller) getAuthRoutes() []route {
 	if ctrl.config.GithubEnabled {
 		authURL, err := url.Parse(ctrl.config.GithubAuthURL)
 		if err != nil {
-			ctrl.log.WithError(err).Error("Problem parsing github auth url")
-			return nil
+			return nil, err
 		}
 
 		githubOauthInfo := ctrl.generateOauthInfo(oauthGithub)
-		if err == nil && githubOauthInfo != nil {
+		if githubOauthInfo != nil {
 			githubOauthInfo.AuthURL = authURL
 			authRoutes = append(authRoutes, []route{
 				{"/auth/github/login", ctrl.oauthLoginHandler(githubOauthInfo)},
@@ -227,12 +227,11 @@ func (ctrl *Controller) getAuthRoutes() []route {
 	if ctrl.config.GitlabEnabled {
 		authURL, err := url.Parse(ctrl.config.GitlabAuthURL)
 		if err != nil {
-			ctrl.log.WithError(err).Error("Problem parsing gitlab auth url")
-			return nil
+			return nil, err
 		}
 
 		gitlabOauthInfo := ctrl.generateOauthInfo(oauthGitlab)
-		if err == nil && gitlabOauthInfo != nil {
+		if gitlabOauthInfo != nil {
 			gitlabOauthInfo.AuthURL = authURL
 			authRoutes = append(authRoutes, []route{
 				{"/auth/gitlab/login", ctrl.oauthLoginHandler(gitlabOauthInfo)},
@@ -242,7 +241,7 @@ func (ctrl *Controller) getAuthRoutes() []route {
 		}
 	}
 
-	return authRoutes
+	return authRoutes, nil
 }
 
 func (ctrl *Controller) Start() error {
@@ -250,9 +249,14 @@ func (ctrl *Controller) Start() error {
 	w := logger.Writer()
 	defer w.Close()
 
+	handler, err := ctrl.mux()
+	if err != nil {
+		return err
+	}
+
 	ctrl.httpServer = &http.Server{
 		Addr:           ctrl.config.APIBindAddr,
-		Handler:        ctrl.mux(),
+		Handler:        handler,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		IdleTimeout:    30 * time.Second,
@@ -262,7 +266,7 @@ func (ctrl *Controller) Start() error {
 
 	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
 	// the returned error is ErrServerClosed.
-	err := ctrl.httpServer.ListenAndServe()
+	err = ctrl.httpServer.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
@@ -288,16 +292,6 @@ func (ctrl *Controller) drainMiddleware(next http.HandlerFunc) http.HandlerFunc 
 		next.ServeHTTP(w, r)
 	}
 }
-
-
-
-
-
-
-
-
-
-
 
 func (ctrl *Controller) isAuthRequired() bool {
 	return ctrl.config.GoogleEnabled || ctrl.config.GithubEnabled || ctrl.config.GitlabEnabled
@@ -328,7 +322,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		})
 
 		if err != nil {
-			ctrl.log.WithError(err).Error("parsing jwt token")
+			ctrl.log.WithError(err).Error("invalid jwt token")
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
@@ -336,17 +330,6 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		next.ServeHTTP(w, r)
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
 
 func (ctrl *Controller) writeInvalidParameterError(w http.ResponseWriter, err error) {
 	ctrl.writeError(w, http.StatusBadRequest, err, "invalid parameter")
@@ -374,91 +357,4 @@ func writeMessage(w http.ResponseWriter, code int, format string, args ...interf
 	w.WriteHeader(code)
 	_, _ = fmt.Fprintf(w, format, args...)
 	_, _ = fmt.Fprintln(w)
-}
-
-type indexPageJSON struct {
-	AppNames []string `json:"appNames"`
-}
-
-type indexPage struct {
-	InitialState  string
-	BuildInfo     string
-	ExtraMetadata string
-	BaseURL       string
-}
-
-func (ctrl *Controller) indexHandler() http.HandlerFunc {
-	var dir http.FileSystem
-	if build.UseEmbeddedAssets {
-		// for this to work you need to run `pkger` first. See Makefile for more information
-		dir = pkger.Dir("/webapp/public")
-	} else {
-		dir = http.Dir("./webapp/public")
-	}
-	fs := http.FileServer(dir)
-	return func(rw http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			ctrl.statsInc("index")
-			ctrl.renderIndexPage(dir, rw, r)
-		} else if r.URL.Path == "/comparison" {
-			ctrl.statsInc("index")
-			ctrl.renderIndexPage(dir, rw, r)
-		} else {
-			fs.ServeHTTP(rw, r)
-		}
-	}
-}
-
-func (ctrl *Controller) renderIndexPage(dir http.FileSystem, w http.ResponseWriter, _ *http.Request) {
-	f, err := dir.Open("/index.html")
-	if err != nil {
-		ctrl.writeInternalServerError(w, err, "could not find file index.html")
-		return
-	}
-
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		ctrl.writeInternalServerError(w, err, "could not read file index.html")
-		return
-	}
-
-	tmpl, err := template.New("index.html").Parse(string(b))
-	if err != nil {
-		ctrl.writeInternalServerError(w, err, "could not parse index.html template")
-		return
-	}
-
-	initialStateObj := indexPageJSON{}
-	ctrl.storage.GetValues("__name__", func(v string) bool {
-		initialStateObj.AppNames = append(initialStateObj.AppNames, v)
-		return true
-	})
-	b, err = json.Marshal(initialStateObj)
-	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
-		return
-	}
-
-	initialStateStr := string(b)
-	var extraMetadataStr string
-	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
-	if extraMetadataPath != "" {
-		b, err = ioutil.ReadFile(extraMetadataPath)
-		if err != nil {
-			logrus.Errorf("failed to read file at %s", extraMetadataPath)
-		}
-		extraMetadataStr = string(b)
-	}
-
-	w.Header().Add("Content-Type", "text/html")
-	err = tmpl.Execute(w, indexPage{
-		InitialState:  initialStateStr,
-		BuildInfo:     build.JSON(),
-		ExtraMetadata: extraMetadataStr,
-		BaseURL:       ctrl.config.BaseURL,
-	})
-	if err != nil {
-		ctrl.writeInternalServerError(w, err, "could not render index page template")
-		return
-	}
 }
