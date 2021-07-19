@@ -1,0 +1,129 @@
+body.login-page{
+  $c0: darken(#feb40e, 10%);
+  $c1: darken(#3dc1d3, 10%);
+  $c2: darken(#d12838, 30%);
+  // $c2: darken(#3dc1d3, 10%);
+  background: radial-gradient(farthest-side at 0% 0%, rgba(0,0,0, 0.3) 60%, rgba(0,0,0, 0.6)),url(data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20version%3D%221.1%22%20x%3D%220%22%20y%3D%220%22%20width%3D%22160%22%20height%3D%2215%22%20viewBox%3D%220%200%20160%2015%22%20preserveAspectRatio%3D%22xMinYMin%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%23000000%22%20stroke-opacity%3D%220.13%22%20stroke-miterlimit%3D%2210%22%20d%3D%22M0%200.5c26.7%200%2053.3%2014%2080%2014%2026.7%200%2053.3-14%2080-14M0-4.5c26.7%200%2053.3%2014%2080%2014%2026.7%200%2053.3-14%2080-14M0-9.5c26.7%200%2053.3%2014%2080%2014%2026.7%200%2053.3-14%2080-14M0%205.5c26.7%200%2053.3%2014%2080%2014%2026.7%200%2053.3-14%2080-14M0%2010.5c26.7%200%2053.3%2014%2080%2014%2026.7%200%2053.3-14%2080-14%22%2F%3E%3C%2Fsvg%3E), linear-gradient(180deg, $c1 0, $c2 100%) fixed;
+  background-size: cover, auto, auto;
+}
+
+.bg-2 {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background-image: radial-gradient(farthest-corner at 0% 0%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 1));
+  transition: background-size 2s ease-out, opacity 2s ease-out;
+  &.fade-out {
+    opacity: 0;
+    background-size: 150% 150%;
+  }
+}
+
+.login-form {
+  width: 450px;
+  // height: 550px;
+  padding: 0 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 3px 30px 0 rgba(0,0,0,0.3);
+  // background-color: darken(#3dc1d3, 48%);
+  border-radius: 10px;
+  margin: auto;
+  text-align: center;
+
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 20%;
+  padding-bottom: 50px;
+  overflow: hidden;  //adding overflow hidden
+
+  .login-to-continue {
+    margin: 20px 70px 30px;
+  }
+
+  hr {
+    opacity: 0.3;
+    margin: 30px 70px 40px;
+  }
+}
+
+.welcome-logo {
+  background-image: url("../images/logo-v3-small.svg");
+  $w: 100px;
+  width: $w;
+  height: $w;
+  display: inline-block;
+  background-size: $w $w;
+  margin: $w/2 auto $w/4;
+  background-repeat: no-repeat;
+}
+.welcome-title {
+  margin-top: 0;
+}
+
+.sign-in-buttons {
+  padding: 0 80px;
+}
+
+.sign-in-button {
+  display: block;
+  list-style: none;
+  line-height: 1;
+  padding: 10px 20px;
+  height: 40px;
+  border-radius: 4px;
+  text-decoration: none;
+  width: 100%;
+  color: white;
+  margin: 0 auto 15px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.33);
+  transition: background-color 0.2s ease-in;
+  svg {
+    display: inline-block;
+    vertical-align: middle;
+    width: 20px;
+    height: 20px;
+  }
+  span {
+    line-height: 1;
+    display: inline-block;
+    vertical-align: middle;
+    width: 160px;
+    text-align: left;
+  }
+}
+
+.sign-in-button-github{
+  background-color: #464646;
+  &:hover {
+    background-color: darken(#464646, 5%);
+  }
+}
+
+.sign-in-button-gitlab{
+  background-color: #fc6d26;
+  &:hover {
+    background-color: darken(#fc6d26, 5%);
+  }
+}
+
+.sign-in-button-google{
+  background-color: #e84d3c;
+  &:hover {
+    background-color: darken(#e84d3c, 5%);
+  }
+}
+
+.sign-in-button-go-back{
+  background-color: #333;
+  span {
+    width: 180px;
+  }
+  &:hover {
+    background-color: darken(#333, 5%);
+  }
+}
+
+
