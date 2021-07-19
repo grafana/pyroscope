@@ -73,6 +73,11 @@ func New(c *config.Server, s *storage.Storage, l *logrus.Logger) (*Controller, e
 	return &ctrl, nil
 }
 
+func (ctrl *Controller) assetsFilesHandler(w http.ResponseWriter, r *http.Request) {
+	fs := http.FileServer(ctrl.dir)
+	fs.ServeHTTP(w, r)
+}
+
 func (ctrl *Controller) mux() http.Handler {
 	mux := http.NewServeMux()
 	addRoutes(mux, []route{
@@ -108,6 +113,7 @@ func (ctrl *Controller) mux() http.Handler {
 	nonAuthRoutes := []route{
 		{"/ingest", ctrl.ingestHandler},
 		{"/forbidden", ctrl.forbiddenHandler()},
+		{"/assets/", ctrl.assetsFilesHandler},
 	}
 
 	addRoutes(mux, nonAuthRoutes, ctrl.drainMiddleware)
@@ -190,9 +196,9 @@ func (ctrl *Controller) getAuthRoutes() []route {
 		if err == nil && googleOauthInfo != nil {
 			googleOauthInfo.AuthURL = authURL
 			authRoutes = append(authRoutes, []route{
-				{"/google/login", ctrl.oauthLoginHandler(googleOauthInfo)},
-				{"/google/callback", ctrl.callbackHandler("/google/redirect")},
-				{"/google/redirect", ctrl.callbackRedirectHandler(
+				{"/auth/google/login", ctrl.oauthLoginHandler(googleOauthInfo)},
+				{"/auth/google/callback", ctrl.callbackHandler("/auth/google/redirect")},
+				{"/auth/google/redirect", ctrl.callbackRedirectHandler(
 					"https://www.googleapis.com/oauth2/v2/userinfo", googleOauthInfo, ctrl.decodeGoogleCallbackResponse)},
 			}...)
 		}
@@ -209,9 +215,9 @@ func (ctrl *Controller) getAuthRoutes() []route {
 		if err == nil && githubOauthInfo != nil {
 			githubOauthInfo.AuthURL = authURL
 			authRoutes = append(authRoutes, []route{
-				{"/github/login", ctrl.oauthLoginHandler(githubOauthInfo)},
-				{"/github/callback", ctrl.callbackHandler("/github/redirect")},
-				{"/github/redirect", ctrl.callbackRedirectHandler("https://api.github.com/user", githubOauthInfo, ctrl.decodeGithubCallbackResponse)},
+				{"/auth/github/login", ctrl.oauthLoginHandler(githubOauthInfo)},
+				{"/auth/github/callback", ctrl.callbackHandler("/auth/github/redirect")},
+				{"/auth/github/redirect", ctrl.callbackRedirectHandler("https://api.github.com/user", githubOauthInfo, ctrl.decodeGithubCallbackResponse)},
 			}...)
 		}
 	}
@@ -227,9 +233,9 @@ func (ctrl *Controller) getAuthRoutes() []route {
 		if err == nil && gitlabOauthInfo != nil {
 			gitlabOauthInfo.AuthURL = authURL
 			authRoutes = append(authRoutes, []route{
-				{"/gitlab/login", ctrl.oauthLoginHandler(gitlabOauthInfo)},
-				{"/gitlab/callback", ctrl.callbackHandler("/gitlab/redirect")},
-				{"/gitlab/redirect", ctrl.callbackRedirectHandler(ctrl.config.GitlabAPIURL, gitlabOauthInfo, ctrl.decodeGitLabCallbackResponse)},
+				{"/auth/gitlab/login", ctrl.oauthLoginHandler(gitlabOauthInfo)},
+				{"/auth/gitlab/callback", ctrl.callbackHandler("/auth/gitlab/redirect")},
+				{"/auth/gitlab/redirect", ctrl.callbackRedirectHandler(ctrl.config.GitlabAPIURL, gitlabOauthInfo, ctrl.decodeGitLabCallbackResponse)},
 			}...)
 		}
 	}
@@ -294,7 +300,10 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		jwtCookie, err := r.Cookie(jwtCookieName)
 		if err != nil {
-			ctrl.log.Error("missing jwt cookie")
+			ctrl.log.WithFields(logrus.Fields{
+				"url":  r.URL.String(),
+				"host": r.Header.Get("Host"),
+			}).Debug("missing jwt cookie")
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}

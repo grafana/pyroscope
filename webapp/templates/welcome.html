@@ -1,78 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <style>
-    body {
-      padding-top: 30px;
-    }
-
-    h1 {
-      color: blue;
-    }
-    
-    a {
-      text-decoration: none;
-    }
-
-    section {
-      background-color: rgb(29, 20, 39);
-      display: flex;
-      height: 250px;
-      width: 450px;
-      justify-content: center;
-      margin: auto;
-
-    }
-
-    .container {
-      position: inherit;
-      margin: auto;
-      align-content: center;
-    }
-
-    .pyroscope-button {
-      height: 30px;
-      width: 400px;
-      border-radius: 2px;
-      margin-bottom: 8px;
-    }
-
-    #btn-pyroscope {
-      text-align: center;
-
-      font-size: 16px;
-
-      border-right: #BB3F30 1px solid;
-      background-size: 20px;
-
-      border: 1px solid transparent;
-      background-color: #ea4235;
-      line-height: 30px;
-    }
-  </style>
-
-<link rel="icon" href="build/images/favicon.ico">
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width">
+  <title>Pyroscope</title>
+  <link rel="stylesheet" href="/assets/styles.<%= webpack.hash %>.css">
+  {{- if .BaseURL }}
+  <base href="{{ .BaseURL }}">
+  {{- end }}
+  <link rel="icon" href="/assets/images/favicon.ico">
 </head>
 
-<body background="https://play.grafana.org/public/img/g8_login_dark.svg">
+<body class="login-page">
+  <div class="bg-2"></div>
+    <section class="login-form">
+      <div class="welcome-logo"></div>
+      <h1 class="welcome-title">Welcome to Pyroscope</h1>
+      <p class="login-to-continue">You will be redirected</p>
+    </section>
 
-  <section>
-
-    <div class="container">
-
-
-    <p style="text-align:center; color:white"> Logged in with {{.Name}} </p>
-
-    <div class="pyroscope-button" id="btn-pyroscope">
-        <a href="/" style="color:white" class="btn btn-danger"> Go to Pyroscope</a>
-      </div>
-
-
-
-    </div>
-  </section>
-
+  <script>
+    window.location.href = "/";
+  </script>
 </body>
-
 </html>

@@ -26,10 +26,11 @@ func (ctrl *Controller) loginHandler() http.HandlerFunc {
 			renderServerError(w, err.Error())
 			return
 		}
-		params := map[string]bool{
+		params := map[string]interface{}{
 			"GoogleEnabled": ctrl.config.GoogleEnabled,
 			"GithubEnabled": ctrl.config.GithubEnabled,
 			"GitlabEnabled": ctrl.config.GitlabEnabled,
+			"BaseURL":       ctrl.config.BaseURL,
 		}
 
 		tmplt.Execute(w, params)
@@ -64,6 +65,10 @@ func invalidateCookie(w http.ResponseWriter, name string) {
 
 func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" && r.Method != "DELETE" {
+			renderServerError(w, "you can only logout via a POST or DELETE")
+			return
+		}
 		invalidateCookie(w, jwtCookieName)
 		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 	}
@@ -94,11 +99,11 @@ func getCallbackURL(host, configCallbackURL string, oauthType int, hasTLS bool) 
 
 	switch oauthType {
 	case oauthGoogle:
-		return fmt.Sprintf("%v://%v/google/callback", schema, host), nil
+		return fmt.Sprintf("%v://%v/auth/google/callback", schema, host), nil
 	case oauthGithub:
-		return fmt.Sprintf("%v://%v/github/callback", schema, host), nil
+		return fmt.Sprintf("%v://%v/auth/github/callback", schema, host), nil
 	case oauthGitlab:
-		return fmt.Sprintf("%v://%v/gitlab/callback", schema, host), nil
+		return fmt.Sprintf("%v://%v/auth/gitlab/callback", schema, host), nil
 	}
 
 	return "", errors.New("invalid oauth type provided")
@@ -139,8 +144,6 @@ func (ctrl *Controller) oauthLoginHandler(info *oauthInfo) http.HandlerFunc {
 // this is done so that the state cookie would be send back from browser
 func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		redirectURL += "?" + r.URL.RawQuery
-
 		tmplt, err := ctrl.getTemplate("/redirect.html")
 		if err != nil {
 			renderServerError(w, err.Error())
@@ -149,6 +152,7 @@ func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
 
 		params := map[string]interface{}{
 			"RedirectURL": redirectURL + "?" + r.URL.RawQuery,
+			"BaseURL":     ctrl.config.BaseURL,
 		}
 
 		tmplt.Execute(w, params)
@@ -163,7 +167,9 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 			return
 		}
 
-		tmplt.Execute(w, map[string]string{})
+		tmplt.Execute(w, map[string]interface{}{
+			"BaseURL": ctrl.config.BaseURL,
+		})
 	}
 }
 
@@ -318,7 +324,10 @@ func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, info *
 			return
 		}
 
-		params := map[string]string{"Name": name}
+		params := map[string]interface{}{
+			"Name":    name,
+			"BaseURL": ctrl.config.BaseURL,
+		}
 
 		tmplt.Execute(w, params)
 		return
@@ -359,17 +368,17 @@ type indexPage struct {
 func (ctrl *Controller) getTemplate(path string) (*template.Template, error) {
 	f, err := ctrl.dir.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("could not find file index.html: %q", err)
+		return nil, fmt.Errorf("could not find file %s: %q", path, err)
 	}
 
 	b, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, fmt.Errorf("could not read file index.html: %q", err)
+		return nil, fmt.Errorf("could not read file %s: %q", path, err)
 	}
 
-	tmpl, err := template.New("index.html").Parse(string(b))
+	tmpl, err := template.New(path).Parse(string(b))
 	if err != nil {
-		return nil, fmt.Errorf("could not parse index.html template: %q", err)
+		return nil, fmt.Errorf("could not parse %s template: %q", path, err)
 	}
 	return tmpl, nil
 }

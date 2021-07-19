@@ -12,6 +12,7 @@ import {
   faKeyboard,
   faColumns,
   faBell,
+  faSignOutAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { faWindowMaximize } from "@fortawesome/free-regular-svg-icons";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
@@ -41,6 +42,17 @@ function SidebarItem(props) {
       </div>
     </div>
   );
+}
+
+function signOut(){
+  var form = document.createElement("form");
+
+  form.method = "POST";
+  form.action = "/logout";
+
+  document.body.appendChild(form);
+
+  form.submit();
 }
 
 const initialState = {
@@ -133,6 +145,14 @@ function Sidebar(props) {
       <SidebarItem tooltipText="Keyboard Shortcuts">
         <button onClick={showShortcutsModal} type="button">
           <FontAwesomeIcon icon={faKeyboard} />
+        </button>
+      </SidebarItem>
+      <SidebarItem tooltipText="Sign Out">
+        <button
+          type="button"
+          onClick={() => signOut()}
+        >
+          <FontAwesomeIcon icon={faSignOutAlt} />
         </button>
       </SidebarItem>
       <Modal
