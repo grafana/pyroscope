@@ -143,7 +143,7 @@ function Sidebar(props) {
         </a>
       </SidebarItem>
       <SidebarItem tooltipText="Keyboard Shortcuts">
-        <button onClick={showShortcutsModal} type="button">
+        <button onClick={showShortcutsModal} type="button" id="tests-shortcuts-btn">
           <FontAwesomeIcon icon={faKeyboard} />
         </button>
       </SidebarItem>
