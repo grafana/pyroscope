@@ -12,6 +12,9 @@ func (s *Storage) exec(_ context.Context, qry *flameql.Query) []dimension.Key {
 	if !found {
 		return nil
 	}
+	if len(qry.Matchers) == 0 {
+		return app.Keys
+	}
 
 	r := []*dimension.Dimension{app}
 	var n []*dimension.Dimension // Keys to be removed from the result.
@@ -21,6 +24,8 @@ func (s *Storage) exec(_ context.Context, qry *flameql.Query) []dimension.Key {
 		case flameql.EQL:
 			if d, ok := s.lookupDimension(m); ok {
 				r = append(r, d)
+			} else {
+				return nil
 			}
 		case flameql.NEQ:
 			if d, ok := s.lookupDimension(m); ok {
@@ -29,6 +34,8 @@ func (s *Storage) exec(_ context.Context, qry *flameql.Query) []dimension.Key {
 		case flameql.EQL_REGEX:
 			if d, ok := s.lookupDimensionRegex(m); ok {
 				r = append(r, d)
+			} else {
+				return nil
 			}
 		case flameql.NEQ_REGEX:
 			if d, ok := s.lookupDimensionRegex(m); ok {

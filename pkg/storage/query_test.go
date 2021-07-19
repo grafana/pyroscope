@@ -128,8 +128,36 @@ var _ = Describe("Querying", func() {
 					{`app.name{foo="bar",baz!~"^x.*"}`, []dimension.Key{
 						dimension.Key("app.name{baz=qux,foo=bar}"),
 					}},
+
 					{`app.name{foo=~"b.*",foo!~".*r"}`, nil},
-					{`not.an.app{}`, nil},
+
+					{`app.name{foo!="non-existing-value"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{foo!~"non-existing-.*"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{non-existing-key!="bar"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{non-existing-key!~"bar"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+
+					{`app.name{foo="non-existing-value"}`, nil},
+					{`app.name{foo=~"non-existing-.*"}`, nil},
+					{`app.name{non-existing-key="bar"}`, nil},
+					{`app.name{non-existing-key=~"bar"}`, nil},
+
+					{`non-existing-app{}`, nil},
 				}
 
 				for _, tc := range testCases {

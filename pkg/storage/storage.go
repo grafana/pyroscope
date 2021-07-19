@@ -334,7 +334,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		return nil, fmt.Errorf("key or query must be specified")
 	}
 
-	logger.Trace("storage.Get")
+	logger.Debug("storage.Get")
 	var (
 		triesToMerge []merge.Merger
 		lastSegment  *segment.Segment
