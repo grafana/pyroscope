@@ -26,7 +26,7 @@ var _ = Describe("agent.Session", func() {
 		It("creates a new session and performs chunking", func(done Done) {
 			u := &upstreamMock{}
 			uploadRate := 200 * time.Millisecond
-			s := NewSession(&SessionConfig{
+			s, _ := NewSession(&SessionConfig{
 				Upstream:         u,
 				AppName:          "test-app",
 				ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
@@ -63,7 +63,7 @@ var _ = Describe("agent.Session", func() {
 				uploadRate := 200 * time.Millisecond
 				c := &SessionConfig{
 					Upstream:         u,
-					AppName:          "test-app",
+					AppName:          "test-app{bar=xxx}",
 					ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 					SpyName:          "debugspy",
 					SampleRate:       100,
@@ -76,7 +76,7 @@ var _ = Describe("agent.Session", func() {
 					},
 				}
 
-				s := NewSession(c, logrus.StandardLogger())
+				s, _ := NewSession(c, logrus.StandardLogger())
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()
@@ -85,7 +85,7 @@ var _ = Describe("agent.Session", func() {
 				s.Stop()
 
 				Expect(u.uploads).To(HaveLen(3))
-				Expect(u.uploads[0].Name).To(Equal("test-app.cpu{baz=qux,foo=bar}"))
+				Expect(u.uploads[0].Name).To(Equal("test-app.cpu{bar=xxx,baz=qux,foo=bar}"))
 			})
 		})
 	})

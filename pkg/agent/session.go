@@ -16,6 +16,7 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 
@@ -67,7 +68,7 @@ type SessionConfig struct {
 	WithSubprocesses bool
 }
 
-func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
+func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 	ps := &ProfileSession{
 		upstream:         c.Upstream,
 		appName:          c.AppName,
@@ -91,30 +92,64 @@ func NewSession(c *SessionConfig, logger Logger) *ProfileSession {
 		ps.tries = make([]*transporttrie.Trie, 1)
 	}
 
-	ps.createNames(c.Tags)
-	return ps
+	if err := ps.createNames(c.Tags); err != nil {
+		return nil, err
+	}
+
+	return ps, nil
 }
 
-func (ps *ProfileSession) createNames(tags map[string]string) {
-	if tags == nil {
-		for _, t := range ps.profileTypes {
-			ps.names[t] = fullAppName(ps.appName, t)
-		}
-		return
-	}
-	tagsCopy := make(map[string]string)
-	for k, v := range tags {
-		tagsCopy[k] = v
-	}
+func (ps *ProfileSession) createNames(tags map[string]string) error {
 	for _, t := range ps.profileTypes {
-		tagsCopy["__name__"] = fullAppName(ps.appName, t)
+		tagsCopy := make(map[string]string)
+		for k, v := range tags {
+			tagsCopy[k] = v
+		}
+		appName, err := mergeTagsWithAppName(ps.appName, tagsCopy)
+		if err != nil {
+			return err
+		}
+		tagsCopy["__name__"] = appName + "." + string(t)
 		ps.names[t] = storage.NewKey(tagsCopy).Normalized()
 	}
-	return
+	return nil
 }
 
-func fullAppName(app string, t spy.ProfileType) string {
-	return app + "." + string(t)
+// mergeTagsWithAppName validates user input and merges explicitly specified
+// tags with tags from app name.
+//
+// App name may be in the full form including tags (app.name{foo=bar,baz=qux}).
+// Returned application name is always short, any tags that were included are
+// moved to tags map. When merged with explicitly provided tags (config/CLI),
+// last take precedence.
+//
+// App name may be an empty string. Tags must not contain reserved keys,
+// the map is modified in place.
+func mergeTagsWithAppName(appName string, tags map[string]string) (string, error) {
+	k, err := storage.ParseKey(appName)
+	if err != nil {
+		return "", err
+	}
+	appName = k.AppName()
+	if tags == nil {
+		return appName, nil
+	}
+	// Note that at this point k may contain
+	// reserved tag keys (e.g. '__name__').
+	for tagKey, v := range k.Labels() {
+		if flameql.IsTagKeyReserved(tagKey) {
+			continue
+		}
+		if _, ok := tags[tagKey]; !ok {
+			tags[tagKey] = v
+		}
+	}
+	for tagKey := range tags {
+		if err = flameql.ValidateTagKey(tagKey); err != nil {
+			return "", err
+		}
+	}
+	return appName, nil
 }
 
 func (ps *ProfileSession) takeSnapshots() {

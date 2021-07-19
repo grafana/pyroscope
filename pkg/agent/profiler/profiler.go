@@ -72,14 +72,15 @@ func Start(cfg Config) (*Profiler, error) {
 		Pid:              0,
 		WithSubprocesses: false,
 	}
-	session := agent.NewSession(&sc, cfg.Logger)
-	if err := session.Start(); err != nil {
-		return nil, fmt.Errorf("start session: %v", err)
+	session, err := agent.NewSession(&sc, cfg.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("new session: %w", err)
+	}
+	if err = session.Start(); err != nil {
+		return nil, fmt.Errorf("start session: %w", err)
 	}
 
-	return &Profiler{
-		session: session,
-	}, nil
+	return &Profiler{session: session}, nil
 }
 
 // Stop stops continious profiling session

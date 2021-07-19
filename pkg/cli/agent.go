@@ -71,11 +71,6 @@ func loadAgentConfig(c *config.Agent) error {
 	c.Tags = mergeTags(a.Tags, c.Tags)
 	for _, t := range a.Targets {
 		t.Tags = mergeTags(t.Tags, c.Tags)
-		appName, err := mergeTagsWithAppName(t.ApplicationName, t.Tags)
-		if err != nil {
-			return fmt.Errorf("invalid tag (%s): %w", t.ApplicationName, err)
-		}
-		t.ApplicationName = appName
 		c.Targets = append(c.Targets, t)
 	}
 	return nil

@@ -140,13 +140,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			fmt.Println(DefaultUsageFunc(execSortedFlags, execCmd, []string{}))
 			return nil
 		}
-		// TODO: move to session.Start()?
-		appName, err := mergeTagsWithAppName(cfg.Exec.ApplicationName, cfg.Exec.Tags)
-		if err != nil {
-			return fmt.Errorf("invalid tag: %w", err)
-		}
-		cfg.Exec.ApplicationName = appName
-		err = exec.Cli(&cfg.Exec, args)
+		err := exec.Cli(&cfg.Exec, args)
 		// Normally, if the program ran, the call should return ExitError and
 		// the exit code must be preserved. Otherwise, the error originates from
 		// pyroscope and will be printed.
@@ -168,11 +162,6 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			fmt.Println(DefaultUsageFunc(connectSortedFlags, connectCmd, []string{}))
 			return nil
 		}
-		appName, err := mergeTagsWithAppName(cfg.Exec.ApplicationName, cfg.Exec.Tags)
-		if err != nil {
-			return fmt.Errorf("invalid tag: %w", err)
-		}
-		cfg.Exec.ApplicationName = appName
 		return exec.Cli(&cfg.Exec, args)
 	}
 

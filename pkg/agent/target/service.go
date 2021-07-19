@@ -69,7 +69,10 @@ func (s *service) wait(ctx context.Context) error {
 	pyspy.Blocking = s.target.PyspyBlocking
 	rbspy.Blocking = s.target.RbspyBlocking
 
-	session := agent.NewSession(s.sc, s.logger)
+	session, err := agent.NewSession(s.sc, s.logger)
+	if err != nil {
+		return err
+	}
 	if err := session.Start(); err != nil {
 		return err
 	}

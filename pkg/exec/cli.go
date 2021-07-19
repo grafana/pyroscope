@@ -158,9 +158,12 @@ func Cli(cfg *config.Exec, args []string) error {
 		Pid:              pid,
 		WithSubprocesses: cfg.DetectSubprocesses,
 	}
-	session := agent.NewSession(&sc, logrus.StandardLogger())
+	session, err := agent.NewSession(&sc, logrus.StandardLogger())
+	if err != nil {
+		return fmt.Errorf("new session: %w", err)
+	}
 	if err = session.Start(); err != nil {
-		return fmt.Errorf("start session: %v", err)
+		return fmt.Errorf("start session: %w", err)
 	}
 	defer session.Stop()
 

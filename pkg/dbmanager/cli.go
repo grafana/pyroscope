@@ -78,7 +78,7 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 			SampleRate:     100,
 			UploadRate:     10 * time.Second,
 		}
-		session := agent.NewSession(selfProfilingConfig, logrus.StandardLogger())
+		session, _ := agent.NewSession(selfProfilingConfig, logrus.StandardLogger())
 		upstream.Start()
 		_ = session.Start()
 	}

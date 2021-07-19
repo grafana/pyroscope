@@ -61,7 +61,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		SampleRate:     100,
 		UploadRate:     10 * time.Second,
 	}
-	svc.selfProfiling = agent.NewSession(selfProfilingConfig, svc.logger)
+	svc.selfProfiling, _ = agent.NewSession(selfProfilingConfig, svc.logger)
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
 	}
