@@ -17,7 +17,15 @@ var _ = Describe("FlamebearerStruct", func() {
 
 			f := tree.FlamebearerStruct(1024)
 			Expect(f.Names).To(ConsistOf("total", "a", "b", "c"))
-			Expect(f.Levels).To(HaveLen(3))
+			Expect(f.Levels).To(Equal([][]int{
+				// i+0 = x offset (delta encoded)
+				// i+1 = total
+				// i+2 = self
+				// i+3 = index in names array
+				{0, 3, 0, 0},
+				{0, 3, 0, 1},
+				{0, 1, 1, 3, 0, 2, 2, 2},
+			}))
 			Expect(f.NumTicks).To(Equal(3))
 			Expect(f.MaxSelf).To(Equal(2))
 		})

@@ -12,6 +12,7 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger/v2 v2.2007.2
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dgrijalva/lfu-go v0.0.0-00010101000000-000000000000
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
@@ -46,6 +47,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/twmb/murmur3 v1.1.5
 	github.com/wacul/ptr v1.0.0 // indirect
+	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
 	golang.org/x/tools v0.1.0

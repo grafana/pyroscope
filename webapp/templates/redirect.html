@@ -10,14 +10,20 @@
   {{- if .BaseURL }}
   <base href="{{ .BaseURL }}">
   {{- end }}
-  {{ .ExtraMetadata }}
-  <%= extra_metadata %>
   <link rel="icon" href="/assets/images/favicon.ico">
 </head>
-<body>
-  <div id="root"></div>
-  <script type="text/javascript">window.initialState = {{ .InitialState }};</script>
-  <script type="text/javascript">window.buildInfo = {{ .BuildInfo }};</script>
-  <script src="/assets/app.<%= webpack.hash %>.js" type="text/javascript"></script>
+
+<body class="login-page">
+  <div class="bg-2"></div>
+    <section class="login-form">
+      <div class="welcome-logo"></div>
+      <h1 class="welcome-title">Welcome to Pyroscope</h1>
+      <p class="login-to-continue">You will be redirected</p>
+    </section>
+
+  <script>
+    var has_tls = location.protocol === 'https:';
+    window.location.href = "{{.RedirectURL}}&tls=" + has_tls;
+  </script>
 </body>
 </html>
