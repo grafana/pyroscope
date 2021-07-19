@@ -19,3 +19,4 @@ pkged.go
 vendor/
 benchmark/git-info.env
 benchmark/.env
+/.env

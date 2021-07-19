@@ -27,6 +27,9 @@ ifndef $(GOPATH)
 	export GOPATH
 endif
 
+-include .env
+export
+
 .PHONY: all
 all: build
 
