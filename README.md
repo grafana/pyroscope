@@ -142,6 +142,6 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/radixdev"><img src="https://avatars.githubusercontent.com/u/2373546?v=4" title="radixdev" width="80" height="80"></a>
 <a href="https://github.com/Loggy"><img src="https://avatars.githubusercontent.com/u/3171097?v=4" title="Loggy" width="80" height="80"></a>
 <a href="https://github.com/NSObjects"><img src="https://avatars.githubusercontent.com/u/17995427?v=4" title="NSObjects" width="80" height="80"></a>
-<a href="https://github.com/miravtmehta"><img src="https://avatars.githubusercontent.com/u/54740656?v=4" title="miravtmehta" width="80" height="80"></a>
+<a href="https://github.com/hiyanxu"><img src="https://avatars.githubusercontent.com/u/15027927?v=4" title="hiyanxu" width="80" height="80"></a>
 
 [//]: contributor-faces
