@@ -156,7 +156,7 @@ loop:
 		return nil, newErr(ErrInvalidTagValueSyntax, v)
 	}
 
-	// Compile regex, it applicable.
+	// Compile regex, if applicable.
 	switch tm.Op {
 	case EQL_REGEX, NEQ_REGEX:
 		r, err := regexp.Compile(v)
