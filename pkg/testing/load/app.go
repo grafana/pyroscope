@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
 
 type App struct {
@@ -55,7 +56,7 @@ func (a *App) CreatePutInput(from, to time.Time) *storage.PutInput {
 	return &storage.PutInput{
 		StartTime:       from,
 		EndTime:         to,
-		Key:             storage.NewKey(a.tags.Next()),
+		Key:             segment.NewKey(a.tags.Next()),
 		Val:             a.trees.Next(),
 		SpyName:         a.SpyName,
 		SampleRate:      a.SampleRate,

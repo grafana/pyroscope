@@ -12,13 +12,14 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
 type ingestParams struct {
 	parserFunc      func(io.Reader) (*tree.Tree, error)
-	storageKey      *storage.Key
+	storageKey      *segment.Key
 	spyName         string
 	sampleRate      uint32
 	units           string
@@ -122,7 +123,7 @@ func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParam
 	}
 
 	var err error
-	ip.storageKey, err = storage.ParseKey(q.Get("name"))
+	ip.storageKey, err = segment.ParseKey(q.Get("name"))
 	if err != nil {
 		return fmt.Errorf("name: %w", err)
 	}

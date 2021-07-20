@@ -1,14 +1,12 @@
-package storage
+package segment
 
 import (
-	"encoding/binary"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
-	"github.com/twmb/murmur3"
 )
 
 type Key struct {
@@ -113,16 +111,16 @@ func (k *Key) DictKey() string {
 	return k.labels["__name__"]
 }
 
-// fromTreeToDictKey returns app name from tree key k: given tree key
+// FromTreeToDictKey returns app name from tree key k: given tree key
 // "foo{}:0:-62135596790", the call returns "foo".
 //
 // Before tags support, segment key form (i.e. app name + tags: foo{key=value})
 // has been used to reference a dictionary (trie).
-func fromTreeToDictKey(k string) string {
+func FromTreeToDictKey(k string) string {
 	return k[0:strings.IndexAny(k, "{")]
 }
 
-func fromTreeToMainKey(k string) string {
+func FromTreeToMainKey(k string) string {
 	i := strings.LastIndex(k, ":")
 	i = strings.LastIndex(k[:i-1], ":")
 	return k[:i]
@@ -153,15 +151,6 @@ func (k *Key) Normalized() string {
 	sb.WriteString("}")
 
 	return sb.String()
-}
-
-func (k *Key) Hashed() []byte {
-	u1, u2 := murmur3.SeedSum128(seed, seed, []byte(k.Normalized()))
-
-	b := make([]byte, 16)
-	binary.LittleEndian.PutUint64(b[:8], u1)
-	binary.LittleEndian.PutUint64(b[8:16], u2)
-	return b
 }
 
 func (k *Key) AppName() string {

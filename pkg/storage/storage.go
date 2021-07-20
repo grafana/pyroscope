@@ -182,7 +182,7 @@ func New(c *config.Server) (*Storage, error) {
 type PutInput struct {
 	StartTime       time.Time
 	EndTime         time.Time
-	Key             *Key
+	Key             *segment.Key
 	Val             *tree.Tree
 	SpyName         string
 	SampleRate      uint32
@@ -191,18 +191,18 @@ type PutInput struct {
 }
 
 func (s *Storage) treeFromBytes(k string, v []byte) (interface{}, error) {
-	key := fromTreeToDictKey(k)
+	key := segment.FromTreeToDictKey(k)
 	d, ok := s.dicts.Lookup(key)
 	if !ok {
 		// The key not found. Fallback to segment key form which has been
-		// used before tags support. Refer to fromTreeToDictKey.
+		// used before tags support. Refer to FromTreeToDictKey.
 		return s.treeFromBytesFallback(k, v)
 	}
 	return tree.FromBytes(d.(*dict.Dict), v)
 }
 
 func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error) {
-	key := fromTreeToMainKey(k)
+	key := segment.FromTreeToMainKey(k)
 	d, ok := s.dicts.Lookup(key)
 	if !ok {
 		return nil, nil
@@ -211,7 +211,7 @@ func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error)
 }
 
 func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
-	key := fromTreeToDictKey(k)
+	key := segment.FromTreeToDictKey(k)
 	d, err := s.dicts.GetOrCreate(key)
 	if err != nil {
 		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
@@ -248,12 +248,12 @@ func (s *Storage) Put(po *PutInput) error {
 		"aggregationType": po.AggregationType,
 	}).Debug("storage.Put")
 
-	for k, v := range po.Key.labels {
+	for k, v := range po.Key.Labels() {
 		s.labels.Put(k, v)
 	}
 
 	sk := po.Key.SegmentKey()
-	for k, v := range po.Key.labels {
+	for k, v := range po.Key.Labels() {
 		key := k + ":" + v
 		r, err := s.dimensions.GetOrCreate(key)
 		if err != nil {
@@ -303,7 +303,7 @@ func (s *Storage) Put(po *PutInput) error {
 type GetInput struct {
 	StartTime time.Time
 	EndTime   time.Time
-	Key       *Key
+	Key       *segment.Key
 	Query     *flameql.Query
 }
 
@@ -346,7 +346,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 	for _, k := range dimensionKeys() {
 		// TODO: refactor, store `Key`s in dimensions
-		parsedKey, err := ParseKey(string(k))
+		parsedKey, err := segment.ParseKey(string(k))
 		if err != nil {
 			logrus.Errorf("parse key: %v: %v", string(k), err)
 			continue
@@ -392,10 +392,10 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}, nil
 }
 
-func (s *Storage) dimensionKeysByKey(key *Key) func() []dimension.Key {
+func (s *Storage) dimensionKeysByKey(key *segment.Key) func() []dimension.Key {
 	return func() []dimension.Key {
 		var dimensions []*dimension.Dimension
-		for k, v := range key.labels {
+		for k, v := range key.Labels() {
 			if d, ok := s.lookupDimensionKV(k, v); ok {
 				dimensions = append(dimensions, d)
 			}
@@ -408,7 +408,7 @@ func (s *Storage) dimensionKeysByQuery(qry *flameql.Query) func() []dimension.Ke
 	return func() []dimension.Key { return s.exec(context.TODO(), qry) }
 }
 
-func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) error {
+func (s *Storage) iterateOverAllSegments(cb func(*segment.Key, *segment.Segment) error) error {
 	nameKey := "__name__"
 
 	var dimensions []*dimension.Dimension
@@ -422,7 +422,7 @@ func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) 
 	})
 
 	for _, rawSk := range dimension.Union(dimensions...) {
-		sk, _ := ParseKey(string(rawSk))
+		sk, _ := segment.ParseKey(string(rawSk))
 		stInt, ok := s.segments.Lookup(sk.SegmentKey())
 		if !ok {
 			continue
@@ -436,7 +436,7 @@ func (s *Storage) iterateOverAllSegments(cb func(*Key, *segment.Segment) error) 
 }
 
 func (s *Storage) DeleteDataBefore(threshold time.Time) error {
-	return s.iterateOverAllSegments(func(sk *Key, st *segment.Segment) error {
+	return s.iterateOverAllSegments(func(sk *segment.Key, st *segment.Segment) error {
 		var err error
 		deletedRoot := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 			tk := sk.TreeKey(depth, t)
@@ -456,14 +456,14 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 }
 
 type DeleteInput struct {
-	Key *Key
+	Key *segment.Key
 }
 
 var maxTime = time.Unix(1<<62, 999999999)
 
 func (s *Storage) Delete(di *DeleteInput) error {
 	var dimensions []*dimension.Dimension
-	for k, v := range di.Key.labels {
+	for k, v := range di.Key.Labels() {
 		dInt, ok := s.dimensions.Lookup(k + ":" + v)
 		if !ok {
 			return nil
@@ -472,7 +472,7 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	}
 
 	for _, sk := range dimension.Intersection(dimensions...) {
-		skk, _ := ParseKey(string(sk))
+		skk, _ := segment.ParseKey(string(sk))
 		stInt, ok := s.segments.Lookup(skk.SegmentKey())
 		if !ok {
 			continue
@@ -493,10 +493,10 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	return nil
 }
 
-func (s *Storage) deleteSegmentAndRelatedData(key *Key) error {
+func (s *Storage) deleteSegmentAndRelatedData(key *segment.Key) error {
 	s.dicts.Delete(key.DictKey())
 	s.segments.Delete(key.SegmentKey())
-	for k, v := range key.labels {
+	for k, v := range key.Labels() {
 		dInt, ok := s.dimensions.Lookup(k + ":" + v)
 		if !ok {
 			continue

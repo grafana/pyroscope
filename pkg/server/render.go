@@ -9,6 +9,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
@@ -82,7 +83,7 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	case k == "" && q == "":
 		return fmt.Errorf("'query' or 'name' parameter is required")
 	case k != "":
-		sk, err := storage.ParseKey(k)
+		sk, err := segment.ParseKey(k)
 		if err != nil {
 			return fmt.Errorf("name: parsing storage key: %w", err)
 		}

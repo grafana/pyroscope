@@ -14,6 +14,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
@@ -73,7 +74,7 @@ var _ = Describe("server", func() {
 						Expect(err).ToNot(HaveOccurred())
 						Expect(res.StatusCode).To(Equal(200))
 
-						sk, _ := storage.ParseKey(name)
+						sk, _ := segment.ParseKey(name)
 						gOut, err := s.Get(&storage.GetInput{
 							StartTime: st,
 							EndTime:   et,

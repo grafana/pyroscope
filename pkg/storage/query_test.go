@@ -10,6 +10,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -31,7 +32,7 @@ var _ = Describe("Querying", func() {
 				t.Insert([]byte("a;c"), uint64(2))
 				st := testing.SimpleTime(10)
 				et := testing.SimpleTime(19)
-				key, err := ParseKey(k)
+				key, err := segment.ParseKey(k)
 				Expect(err).ToNot(HaveOccurred())
 				err = s.Put(&PutInput{
 					StartTime:  st,
@@ -61,7 +62,7 @@ var _ = Describe("Querying", func() {
 			})
 
 			It("get returns a particular tree for a fully qualified key", func() {
-				k, err := ParseKey(`app.name{foo=bar,baz=qux}`)
+				k, err := segment.ParseKey(`app.name{foo=bar,baz=qux}`)
 				Expect(err).ToNot(HaveOccurred())
 				output, err := s.Get(&GetInput{
 					StartTime: time.Time{},
@@ -75,7 +76,7 @@ var _ = Describe("Querying", func() {
 			})
 
 			It("get returns all results for a key containing only app name", func() {
-				k, err := ParseKey(`app.name`)
+				k, err := segment.ParseKey(`app.name`)
 				Expect(err).ToNot(HaveOccurred())
 				output, err := s.Get(&GetInput{
 					StartTime: time.Time{},

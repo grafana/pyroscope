@@ -17,7 +17,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 
 	// revive:enable:blank-imports
@@ -110,7 +110,7 @@ func (ps *ProfileSession) createNames(tags map[string]string) error {
 			return err
 		}
 		tagsCopy["__name__"] = appName + "." + string(t)
-		ps.names[t] = storage.NewKey(tagsCopy).Normalized()
+		ps.names[t] = segment.NewKey(tagsCopy).Normalized()
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ func (ps *ProfileSession) createNames(tags map[string]string) error {
 // App name may be an empty string. Tags must not contain reserved keys,
 // the map is modified in place.
 func mergeTagsWithAppName(appName string, tags map[string]string) (string, error) {
-	k, err := storage.ParseKey(appName)
+	k, err := segment.ParseKey(appName)
 	if err != nil {
 		return "", err
 	}
