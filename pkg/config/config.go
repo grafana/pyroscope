@@ -116,6 +116,18 @@ type Server struct {
 	// TODO: can we generate these automatically if it's empty?
 	JWTSecret                string `deprecated:"true" def:"" desc:"secret used to secure your JWT tokens"`
 	LoginMaximumLifetimeDays int    `deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring."`
+
+	MetricExportRules []MetricExportRule `deprecated:"true"`
+}
+
+type MetricExportRule struct {
+	// Exported metric name.
+	MetricName string
+	// Expression to evaluate against sample in FlameQL syntax.
+	Expr string
+
+	Filter string
+	Metric string // self | total
 }
 
 type Convert struct {
