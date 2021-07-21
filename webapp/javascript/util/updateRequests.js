@@ -29,3 +29,18 @@ export function buildRenderURL(state, fromOverride=null, untilOverride=null, sid
 
   return url;
 }
+
+// TODO: merge buildRenderURL and buildDiffRenderURL
+export function buildDiffRenderURL(state, leftFrom=null, leftUntil=null, rightFrom=null, rightUntil=null) {
+  const urlStr = buildRenderURL(state, leftFrom, leftUntil);
+  const url = new URL(urlStr, location.origin);
+  const params = url.searchParams;
+  params.delete('from');
+  params.delete('until');
+  params.set('leftFrom', leftFrom);
+  params.set('leftUntil', leftUntil);
+  params.set('rightFrom', rightFrom);
+  params.set('rightUntil', rightUntil);
+
+  return url.toString();
+}

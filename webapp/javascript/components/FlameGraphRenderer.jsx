@@ -27,7 +27,7 @@ import { bindActionCreators } from "redux";
 
 import { withShortcut } from "react-keybind";
 
-import { buildRenderURL } from "../util/updateRequests";
+import { buildDiffRenderURL, buildRenderURL } from "../util/updateRequests";
 import {
   numberWithCommas,
   formatPercent,
@@ -96,24 +96,37 @@ class FlameGraphRenderer extends React.Component {
 
     if(this.props.viewSide === 'left' || this.props.viewSide === 'right') {
       this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`])
-    } else {
+    } else if (this.props.viewType === 'single') {
       this.fetchFlameBearerData(this.props.renderURL)
+    } else if (this.props.viewType === 'diff') {
+      this.fetchFlameBearerData(this.props.diffRenderURL);
     }
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (this.getParamsFromRenderURL(this.props.renderURL).name != this.getParamsFromRenderURL(prevProps.renderURL).name ||
+    const propsChanged = this.getParamsFromRenderURL(this.props.renderURL).name != this.getParamsFromRenderURL(prevProps.renderURL).name ||
+      prevProps.maxNodes != this.props.maxNodes ||
+      prevProps.refreshToken != this.props.refreshToken;
+
+    if (propsChanged ||
       prevProps.from != this.props.from ||
       prevProps.until != this.props.until ||
-      prevProps.maxNodes != this.props.maxNodes ||
-      prevProps.refreshToken != this.props.refreshToken ||
       prevProps[`${this.props.viewSide}From`] != this.props[`${this.props.viewSide}From`] ||
       prevProps[`${this.props.viewSide}Until`] != this.props[`${this.props.viewSide}Until`]
     ) {
       if(this.props.viewSide === 'left' || this.props.viewSide === 'right') {
         this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`])
-      } else {
+      } else if (this.props.viewType === 'single') {
         this.fetchFlameBearerData(this.props.renderURL)
+      }
+    }
+
+    if (this.props.viewType === 'diff') {
+      if (propsChanged || prevProps.leftFrom != this.props.leftFrom || prevProps.leftUntil != this.props.leftUntil) {
+        this.fetchFlameBearerData(this.props.leftRenderURL);
+      }
+      if (propsChanged || prevProps.rightFrom != this.props.rightFrom || prevProps.rightUntil != this.props.rightUntil) {
+        this.fetchFlameBearerData(this.props.rightRenderURL);
       }
     }
 
@@ -135,6 +148,7 @@ class FlameGraphRenderer extends React.Component {
       .then((response) => response.json())
       .then((data) => {
         let flamebearer = data.flamebearer;
+        // TODO: handle different format of /render
         deltaDiff(flamebearer.levels);
 
         this.setState({
@@ -607,6 +621,7 @@ const mapStateToProps = (state) => ({
   renderURL: buildRenderURL(state),
   leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
   rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),
+  diffRenderURL: buildDiffRenderURL(state, state.leftFrom, state.leftUntil, state.rightFrom, state.rightUntil),
 });
 
 const mapDispatchToProps = (dispatch) => ({
