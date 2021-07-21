@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -15,42 +16,40 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/sirupsen/logrus"
+
+	"github.com/pyroscope-io/pyroscope/pkg/build"
 )
 
 func (ctrl *Controller) loginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, err := ctrl.getTemplate("/login.html")
+		tmpl, err := ctrl.getTemplate("/login.html")
 		if err != nil {
-			renderServerError(w, err.Error())
+			ctrl.writeInternalServerError(w, err, "could not render login page")
 			return
 		}
-		params := map[string]interface{}{
+		mustExecute(tmpl, w, map[string]interface{}{
 			"GoogleEnabled": ctrl.config.GoogleEnabled,
 			"GithubEnabled": ctrl.config.GithubEnabled,
 			"GitlabEnabled": ctrl.config.GitlabEnabled,
 			"BaseURL":       ctrl.config.BaseURL,
-		}
-
-		tmplt.Execute(w, params)
+		})
 	}
 }
 
 func createCookie(w http.ResponseWriter, name, value string) {
-	cookie := &http.Cookie{
+	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Path:     "/",
 		Value:    value,
 		HttpOnly: true,
 		MaxAge:   0,
 		SameSite: http.SameSiteStrictMode,
-	}
-	http.SetCookie(w, cookie)
+	})
 }
 
 func invalidateCookie(w http.ResponseWriter, name string) {
-	cookie := &http.Cookie{
+	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Path:     "/",
 		Value:    "",
@@ -58,15 +57,13 @@ func invalidateCookie(w http.ResponseWriter, name string) {
 		// MaxAge -1 request cookie be deleted immediately
 		MaxAge:   -1,
 		SameSite: http.SameSiteStrictMode,
-	}
-
-	http.SetCookie(w, cookie)
+	})
 }
 
 func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" && r.Method != "DELETE" {
-			renderServerError(w, "you can only logout via a POST or DELETE")
+			ctrl.writeErrorMessage(w, http.StatusMethodNotAllowed, "only POST and DELETE are allowed")
 			return
 		}
 		invalidateCookie(w, jwtCookieName)
@@ -144,30 +141,26 @@ func (ctrl *Controller) oauthLoginHandler(info *oauthInfo) http.HandlerFunc {
 // this is done so that the state cookie would be send back from browser
 func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, err := ctrl.getTemplate("/redirect.html")
+		tmpl, err := ctrl.getTemplate("/redirect.html")
 		if err != nil {
-			renderServerError(w, err.Error())
+			ctrl.writeInternalServerError(w, err, "could not render redirect page")
 			return
 		}
-
-		params := map[string]interface{}{
+		mustExecute(tmpl, w, map[string]interface{}{
 			"RedirectURL": redirectURL + "?" + r.URL.RawQuery,
 			"BaseURL":     ctrl.config.BaseURL,
-		}
-
-		tmplt.Execute(w, params)
+		})
 	}
 }
 
 func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmplt, err := ctrl.getTemplate("/forbidden.html")
+		tmpl, err := ctrl.getTemplate("/forbidden.html")
 		if err != nil {
-			renderServerError(w, err.Error())
+			ctrl.writeInternalServerError(w, err, "could not render forbidden page")
 			return
 		}
-
-		tmplt.Execute(w, map[string]interface{}{
+		mustExecute(tmpl, w, map[string]interface{}{
 			"BaseURL": ctrl.config.BaseURL,
 		})
 	}
@@ -235,59 +228,43 @@ func (ctrl *Controller) newJWTToken(name string) (string, error) {
 	}
 
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tk, err := jwtToken.SignedString([]byte(ctrl.config.JWTSecret))
-	if err != nil {
-		return "", err
-	}
-
-	return tk, nil
+	return jwtToken.SignedString([]byte(ctrl.config.JWTSecret))
 }
 
-func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, logString string, err error) {
+func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, msg string, err error) {
 	if err != nil {
-		ctrl.log.WithError(err).Error(logString)
+		ctrl.log.WithError(err).Error(msg)
 	} else {
-		ctrl.log.Error(logString)
+		ctrl.log.Error(msg)
 	}
-
 	invalidateCookie(w, stateCookieName)
-
 	http.Redirect(w, r, "/forbidden", http.StatusTemporaryRedirect)
-	return
 }
 
 func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, info *oauthInfo, decodeResponse decodeResponseFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		callbackURL, err := getCallbackURL(r.Host, info.Config.RedirectURL, info.Type, r.URL.Query().Get("tls") == "true")
-		if err != nil {
-			ctrl.logErrorAndRedirect(w, r, "callbackURL parsing failed", nil)
-			ctrl.log.WithError(err).Error("")
-			return
-		}
-
-		oauthConf := *info.Config
-		oauthConf.RedirectURL = callbackURL
-
 		cookie, err := r.Cookie(stateCookieName)
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "missing state cookie", err)
 			return
 		}
-
-		cookieState := cookie.Value
-		requestState := r.FormValue("state")
-
-		if requestState != cookieState {
+		if cookie.Value != r.FormValue("state") {
 			ctrl.logErrorAndRedirect(w, r, "invalid oauth state", nil)
 			return
 		}
-
 		code := r.FormValue("code")
 		if code == "" {
 			ctrl.logErrorAndRedirect(w, r, "code not found", nil)
 			return
 		}
 
+		callbackURL, err := getCallbackURL(r.Host, info.Config.RedirectURL, info.Type, r.URL.Query().Get("tls") == "true")
+		if err != nil {
+			ctrl.logErrorAndRedirect(w, r, "callbackURL parsing failed", nil)
+			return
+		}
+		oauthConf := *info.Config
+		oauthConf.RedirectURL = callbackURL
 		token, err := oauthConf.Exchange(r.Context(), code)
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "exchanging auth code for token failed", err)
@@ -318,19 +295,16 @@ func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, info *
 		invalidateCookie(w, stateCookieName)
 		createCookie(w, jwtCookieName, tk)
 
-		tmplt, err := ctrl.getTemplate("/welcome.html")
+		tmpl, err := ctrl.getTemplate("/welcome.html")
 		if err != nil {
-			renderServerError(w, err.Error())
+			ctrl.writeInternalServerError(w, err, "could not render welcome page")
 			return
 		}
 
-		params := map[string]interface{}{
+		mustExecute(tmpl, w, map[string]interface{}{
 			"Name":    name,
 			"BaseURL": ctrl.config.BaseURL,
-		}
-
-		tmplt.Execute(w, params)
-		return
+		})
 	}
 }
 
@@ -349,20 +323,8 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	}
 }
 
-func renderServerError(rw http.ResponseWriter, text string) {
-	rw.WriteHeader(500)
-	rw.Write([]byte(text))
-	rw.Write([]byte("\n"))
-}
-
 type indexPageJSON struct {
 	AppNames []string `json:"appNames"`
-}
-type indexPage struct {
-	InitialState  string
-	BuildInfo     string
-	ExtraMetadata string
-	BaseURL       string
 }
 
 func (ctrl *Controller) getTemplate(path string) (*template.Template, error) {
@@ -383,11 +345,10 @@ func (ctrl *Controller) getTemplate(path string) (*template.Template, error) {
 	return tmpl, nil
 }
 
-func (ctrl *Controller) renderIndexPage(rw http.ResponseWriter, _ *http.Request) {
-	var b []byte
+func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) {
 	tmpl, err := ctrl.getTemplate("/index.html")
 	if err != nil {
-		renderServerError(rw, err.Error())
+		ctrl.writeInternalServerError(w, err, "could not render index page")
 		return
 	}
 
@@ -396,13 +357,15 @@ func (ctrl *Controller) renderIndexPage(rw http.ResponseWriter, _ *http.Request)
 		initialStateObj.AppNames = append(initialStateObj.AppNames, v)
 		return true
 	})
+
+	var b []byte
 	b, err = json.Marshal(initialStateObj)
 	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not marshal initialStateObj json: %q", err))
+		ctrl.writeJSONEncodeError(w, err)
 		return
 	}
-	initialStateStr := string(b)
 
+	initialStateStr := string(b)
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
 	if extraMetadataPath != "" {
@@ -413,15 +376,17 @@ func (ctrl *Controller) renderIndexPage(rw http.ResponseWriter, _ *http.Request)
 		extraMetadataStr = string(b)
 	}
 
-	rw.Header().Add("Content-Type", "text/html")
-	err = tmpl.Execute(rw, indexPage{
-		InitialState:  initialStateStr,
-		BuildInfo:     build.JSON(),
-		ExtraMetadata: extraMetadataStr,
-		BaseURL:       ctrl.config.BaseURL,
+	w.Header().Add("Content-Type", "text/html")
+	mustExecute(tmpl, w, map[string]string{
+		"InitialState":  initialStateStr,
+		"BuildInfo":     build.JSON(),
+		"ExtraMetadata": extraMetadataStr,
+		"BaseURL":       ctrl.config.BaseURL,
 	})
-	if err != nil {
-		renderServerError(rw, fmt.Sprintf("could not marshal json: %q", err))
-		return
+}
+
+func mustExecute(t *template.Template, w io.Writer, v interface{}) {
+	if err := t.Execute(w, v); err != nil {
+		panic(err)
 	}
 }

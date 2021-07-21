@@ -14,6 +14,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
@@ -27,6 +28,7 @@ var _ = Describe("server", func() {
 			var buf *bytes.Buffer
 			var format string
 			var contentType string
+			var name string
 
 			// this is an example of Shared Example pattern
 			//   see https://onsi.github.io/ginkgo/#shared-example-patterns
@@ -39,16 +41,18 @@ var _ = Describe("server", func() {
 						s, err := storage.New(&(*cfg).Server)
 						Expect(err).ToNot(HaveOccurred())
 						c, _ := New(&(*cfg).Server, s, logrus.New())
-						httpServer := httptest.NewServer(c.mux())
+						h, _ := c.mux()
+						httpServer := httptest.NewServer(h)
 						defer s.Close()
-
-						name := "test.app{}"
 
 						st := testing.ParseTime("2020-01-01-01:01:00")
 						et := testing.ParseTime("2020-01-01-01:01:10")
 
 						u, _ := url.Parse(httpServer.URL + "/ingest")
 						q := u.Query()
+						if name == "" {
+							name = "test.app{}"
+						}
 						q.Add("name", name)
 						q.Add("from", strconv.Itoa(int(st.Unix())))
 						q.Add("until", strconv.Itoa(int(et.Unix())))
@@ -70,7 +74,7 @@ var _ = Describe("server", func() {
 						Expect(err).ToNot(HaveOccurred())
 						Expect(res.StatusCode).To(Equal(200))
 
-						sk, _ := storage.ParseKey(name)
+						sk, _ := segment.ParseKey(name)
 						gOut, err := s.Get(&storage.GetInput{
 							StartTime: st,
 							EndTime:   et,
@@ -140,6 +144,17 @@ var _ = Describe("server", func() {
 					buf = bytes.NewBuffer([]byte("\x00\x00\x01\x03foo\x00\x02\x03bar\x02\x00\x03baz\x03\x00"))
 					format = ""
 					contentType = "binary/octet-stream+tree"
+				})
+
+				ItCorrectlyParsesIncomingData()
+			})
+
+			Context("name with tags", func() {
+				BeforeEach(func() {
+					buf = bytes.NewBuffer([]byte("foo;bar 2\nfoo;baz 3\n"))
+					format = ""
+					contentType = ""
+					name = "test.app{foo=bar,baz=qux}"
 				})
 
 				ItCorrectlyParsesIncomingData()

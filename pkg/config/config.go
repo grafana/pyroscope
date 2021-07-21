@@ -28,7 +28,12 @@ type Agent struct {
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads"`
 	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout"`
 
-	Targets []Target `desc:"list of targets to be profiled"`
+	// Structs and slices are not parsed with ffcli package,
+	// instead `loadAgentConfig` function should be used.
+	Targets []Target `yaml:"targets" desc:"list of targets to be profiled"`
+
+	// Note that in YAML the key is 'tags' but the flag is 'tag'.
+	Tags map[string]string `yaml:"tags" name:"tag" def:"" desc:"tag key value pairs"`
 }
 
 type Target struct {
@@ -40,9 +45,12 @@ type Target struct {
 	DetectSubprocesses bool   `yaml:"detect-subprocesses" def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
 
 	// Spy-specific settings.
-
 	PyspyBlocking bool `yaml:"pyspy-blocking" def:"false" desc:"enables blocking mode for pyspy"`
 	RbspyBlocking bool `yaml:"rbspy-blocking" def:"false" desc:"enables blocking mode for rbspy"`
+
+	// Tags are inherited from the agent level. At some point we may need
+	// specifying tags at the target level (override).
+	Tags map[string]string `yaml:"-"`
 }
 
 type Server struct {
@@ -142,4 +150,6 @@ type Exec struct {
 	GroupName              string        `def:"" desc:"starts process under specified group name"`
 	PyspyBlocking          bool          `def:"false" desc:"enables blocking mode for pyspy"`
 	RbspyBlocking          bool          `def:"false" desc:"enables blocking mode for rbspy"`
+
+	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times"`
 }

@@ -6,28 +6,34 @@ import (
 )
 
 func (ctrl *Controller) labelsHandler(w http.ResponseWriter, _ *http.Request) {
-	res := []string{}
+	var keys []string
 	ctrl.storage.GetKeys(func(k string) bool {
-		res = append(res, k)
+		keys = append(keys, k)
 		return true
 	})
-	b, err := json.Marshal(res)
+	b, err := json.Marshal(keys)
 	if err != nil {
-		panic(err) // TODO: handle
+		ctrl.writeJSONEncodeError(w, err)
+		return
 	}
-	w.Write(b)
+	_, _ = w.Write(b)
 }
 
 func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, r *http.Request) {
-	res := []string{}
 	labelName := r.URL.Query().Get("label")
+	if labelName == "" {
+		ctrl.writeInvalidParameterError(w, errLabelIsRequired)
+		return
+	}
+	var values []string
 	ctrl.storage.GetValues(labelName, func(v string) bool {
-		res = append(res, v)
+		values = append(values, v)
 		return true
 	})
-	b, err := json.Marshal(res)
+	b, err := json.Marshal(values)
 	if err != nil {
-		panic(err) // TODO: handle
+		ctrl.writeJSONEncodeError(w, err)
+		return
 	}
-	w.Write(b)
+	_, _ = w.Write(b)
 }

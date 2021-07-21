@@ -140,7 +140,6 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			fmt.Println(DefaultUsageFunc(execSortedFlags, execCmd, []string{}))
 			return nil
 		}
-
 		err := exec.Cli(&cfg.Exec, args)
 		// Normally, if the program ran, the call should return ExitError and
 		// the exit code must be preserved. Otherwise, the error originates from
@@ -163,7 +162,6 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 			fmt.Println(DefaultUsageFunc(connectSortedFlags, connectCmd, []string{}))
 			return nil
 		}
-
 		return exec.Cli(&cfg.Exec, args)
 	}
 

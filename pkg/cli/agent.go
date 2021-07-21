@@ -51,7 +51,10 @@ func (svc *agentService) Stop(_ service.Service) error {
 	return nil
 }
 
-func loadTargets(c *config.Agent) error {
+// loadAgentConfig is a hack for ff parser, which can't parse maps, structs,
+// and slices. The function to be called after the parser finishes just to
+// fill missing configuration elements.
+func loadAgentConfig(c *config.Agent) error {
 	b, err := ioutil.ReadFile(c.Config)
 	switch {
 	case err == nil:
@@ -64,8 +67,26 @@ func loadTargets(c *config.Agent) error {
 	if err = yaml.Unmarshal(b, &a); err != nil {
 		return err
 	}
-	c.Targets = a.Targets
+	// Override tags from config file with flags.
+	c.Tags = mergeTags(a.Tags, c.Tags)
+	for _, t := range a.Targets {
+		t.Tags = mergeTags(t.Tags, c.Tags)
+		c.Targets = append(c.Targets, t)
+	}
 	return nil
+}
+
+// mergeTags creates a new map with tags from a and b.
+// Values from b take precedence. Returned map is never nil.
+func mergeTags(a, b map[string]string) map[string]string {
+	t := make(map[string]string, len(a))
+	for k, v := range a {
+		t[k] = v
+	}
+	for k, v := range b {
+		t[k] = v
+	}
+	return t
 }
 
 func createLogger(config *config.Agent) (*logrus.Logger, error) {

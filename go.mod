@@ -13,7 +13,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/dgrijalva/lfu-go v0.0.0-20141010002404-f174e76c5138
+	github.com/dgrijalva/lfu-go v0.0.0-00010101000000-000000000000
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
 	github.com/go-ole/go-ole v1.2.5 // indirect
@@ -58,4 +58,4 @@ require (
 
 replace github.com/mgechev/revive v1.0.3 => github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1
 
-replace github.com/dgrijalva/lfu-go => github.com/pyroscope-io/lfu-go v1.0.3
+replace github.com/dgrijalva/lfu-go => github.com/pyroscope-io/lfu-go v1.0.4-0.20210705073127-18ae647b0d6e
