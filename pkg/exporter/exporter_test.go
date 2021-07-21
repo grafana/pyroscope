@@ -4,12 +4,15 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-func TestMatch(t *testing.T) {
+func TestEval(t *testing.T) {
 	type testCase struct {
 		query string
 		match bool
@@ -40,12 +43,19 @@ func TestMatch(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		k, _ := segment.ParseKey(tc.key)
 		qry, _ := flameql.ParseQuery(tc.query)
-		r := newRule("test", qry, prometheus.NewRegistry())
-		_, matched := r.counter(k)
+		k, _ := segment.ParseKey(tc.key)
+		r := &rule{
+			qry:      qry,
+			name:     "test",
+			counters: make(map[uint64]prometheus.Counter),
+			reg:      prometheus.NewRegistry(),
+		}
+
+		_, matched := r.eval(k)
 		if matched != tc.match {
-			t.Fatalf("Expect matches: %v, actual: %v\n\tQuery: %s\n\tKey: %v", tc.match, matched, tc.query, tc.key)
+			t.Fatalf("Expect matches: %v, actual: %v\n\tQuery: %s\n\tKey: %v",
+				tc.match, matched, tc.query, tc.key)
 		}
 	}
 }
@@ -55,12 +65,57 @@ func TestMatch(t *testing.T) {
 // labels set (matching query).
 func TestRegister(t *testing.T) {
 	qry, _ := flameql.ParseQuery(`app.name{foo=~"bar"}`)
-	reg := prometheus.NewRegistry()
-	r := newRule("test", qry, reg)
 	k, _ := segment.ParseKey(`app.name{foo=barbar,bar=bar}`)
-	r.counter(k)
-	r.counter(k)
+	r := &rule{
+		qry:      qry,
+		name:     "test",
+		counters: make(map[uint64]prometheus.Counter),
+		reg:      prometheus.NewRegistry(),
+	}
+
+	r.eval(k)
+	r.eval(k)
+
 	if len(r.counters) != 1 {
 		t.Fatalf("Expected exactly one counter, got %d", len(r.counters))
 	}
+}
+
+func TestExport(t *testing.T) {
+	rules := []config.MetricExportRule{
+		{
+			Name: "app_name_cpu_total",
+			Expr: `app.name.cpu{foo="bar"}`,
+			Node: "total",
+		},
+		{
+			Name: "app_name_cpu_abc",
+			Expr: `app.name.cpu{foo=~"b.*"}`,
+			Node: "^a;b;c$",
+		},
+	}
+
+	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
+	k, _ := segment.ParseKey(`app.name.cpu{foo=bar,bar=baz}`)
+	v := createTree()
+	exporter.Observe(k, v)
+
+	// Hashes are predetermined.
+	total := testutil.ToFloat64(exporter.rules[0].counters[16252301464360304376])
+	if total != 5 {
+		t.Fatalf("total counter must be 5")
+	}
+
+	abc := testutil.ToFloat64(exporter.rules[1].counters[16252301464360304376])
+	if abc != 2 {
+		t.Fatalf("a;b;c counter must be 2")
+	}
+}
+
+func createTree() *tree.Tree {
+	t := tree.New()
+	t.Insert([]byte("a;b"), uint64(1))
+	t.Insert([]byte("a;c"), uint64(2))
+	t.Insert([]byte("a;b;c"), uint64(2))
+	return t
 }

@@ -113,7 +113,7 @@ func (t *Tree) String() string {
 	defer t.RUnlock()
 
 	res := ""
-	t.iterate(func(k []byte, v uint64) {
+	t.Iterate(func(k []byte, v uint64) {
 		if v > 0 {
 			res += fmt.Sprintf("%q %d\n", k[2:], v)
 		}
@@ -154,7 +154,7 @@ func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 	node.Total += value
 }
 
-func (t *Tree) iterate(cb func(key []byte, val uint64)) {
+func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	nodes := []*treeNode{t.root}
 	prefixes := make([][]byte, 1)
 	prefixes[0] = make([]byte, 0)

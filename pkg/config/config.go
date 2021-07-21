@@ -117,17 +117,13 @@ type Server struct {
 	JWTSecret                string `deprecated:"true" def:"" desc:"secret used to secure your JWT tokens"`
 	LoginMaximumLifetimeDays int    `deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring."`
 
-	MetricExportRules []MetricExportRule `deprecated:"true"`
+	MetricExportRules []MetricExportRule `deprecated:"true" def:"" desc:"metric export rules"`
 }
 
 type MetricExportRule struct {
-	// Exported metric name.
-	MetricName string
-	// Expression to evaluate against sample in FlameQL syntax.
-	Expr string
-
-	Filter string
-	Metric string // self | total
+	Name string `def:"" desc:"exported metric name"`
+	Expr string `def:"" desc:"expression in FlameQL syntax to be evaluate against samples"`
+	Node string `def:"total" desc:"tree node filter expression. Should be either 'total' or a valid regexp"`
 }
 
 type Convert struct {

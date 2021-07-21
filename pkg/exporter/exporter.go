@@ -1,9 +1,7 @@
 package exporter
 
 import (
-	"encoding/binary"
 	"fmt"
-	"hash/fnv"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,54 +13,70 @@ import (
 )
 
 // MetricsExporter exports profiling metrics via Prometheus.
-type MetricsExporter struct {
-	rules []*rule
-}
+// Safe for concurrent use.
+type MetricsExporter struct{ rules []*rule }
 
 type rule struct {
+	reg prometheus.Registerer
+
 	name string
 	qry  *flameql.Query
-	reg  prometheus.Registerer
+	node
+
 	// N.B: CounterVec/MetricVec is not used due to the fact
 	// that label names are not determined.
 	sync.RWMutex
 	counters map[uint64]prometheus.Counter
 }
 
+// NewExporter validates configuration and creates a new prometheus MetricsExporter.
 func NewExporter(rules []config.MetricExportRule, reg prometheus.Registerer) (*MetricsExporter, error) {
 	var e MetricsExporter
 	for _, c := range rules {
+		// TODO(kolesnikovae): validate metric name.
 		qry, err := flameql.ParseQuery(c.Expr)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("rule %q: invalid expression %q: %w", c.Name, c.Expr, err)
 		}
-		e.rules = append(e.rules, newRule(c.MetricName, qry, reg))
+		n, err := newNode(c.Node)
+		if err != nil {
+			return nil, fmt.Errorf("rule %q: invalid node %q: %w", c.Name, c.Node, err)
+		}
+		e.rules = append(e.rules, &rule{
+			name:     c.Name,
+			qry:      qry,
+			reg:      reg,
+			node:     n,
+			counters: make(map[uint64]prometheus.Counter),
+		})
 	}
 	return &e, nil
 }
 
-func newRule(name string, qry *flameql.Query, reg prometheus.Registerer) *rule {
-	return &rule{
-		name:     name,
-		qry:      qry,
-		reg:      reg,
-		counters: make(map[uint64]prometheus.Counter),
-	}
-}
-
-func (e MetricsExporter) Export(k *segment.Key, v *tree.Tree) {
-	var x float64
-	// TODO: find x from v lazily
+// Observe ingested key and value.
+//
+// The call evaluates export rules against the key k and creates prometheus
+// counters for new time series, if required. Every export rule has an
+// expression to evaluate a dimension key, and a filter, which allow to
+// retrieve metric value for particular nodes.
+//
+// When a new counter is created, labels matching the rule expression are
+// preserved. Therefore it is crucial to keep query cardinality low.
+func (e MetricsExporter) Observe(k *segment.Key, tree *tree.Tree) {
 	for _, r := range e.rules {
-		if c, ok := r.counter(k); ok {
-			c.Add(x)
+		c, ok := r.eval(k)
+		if !ok {
+			continue
+		}
+		if val, ok := r.value(tree); ok {
+			c.Add(val)
 		}
 	}
 }
 
-// counter returns existing counter for the key or creates a new one,
+// eval returns existing counter for the key or creates a new one,
 // if the key satisfies the rule expression.
-func (r *rule) counter(k *segment.Key) (prometheus.Counter, bool) {
+func (r *rule) eval(k *segment.Key) (prometheus.Counter, bool) {
 	if k.AppName() != r.qry.AppName {
 		return nil, false
 	}
@@ -76,7 +90,9 @@ func (r *rule) counter(k *segment.Key) (prometheus.Counter, bool) {
 	}
 	r.RUnlock()
 	if match(r.qry, m) {
-		m = m[1:] // Remove app name label.
+		// Remove app name label to avoid
+		// collision with prometheus labels.
+		m = m[1:]
 		c = prometheus.NewCounter(prometheus.CounterOpts{
 			Name:        r.name,
 			ConstLabels: m.labels(),
@@ -112,56 +128,4 @@ func match(qry *flameql.Query, labels matchedLabels) bool {
 		}
 	}
 	return true
-}
-
-// matchedLabels returns map of KV pairs from the given key that match
-// tag matchers keys of the rule regardless of their values, e.g.:
-//   key:     app{foo=bar,baz=qux}
-//   query:   app{foo="xxx"}
-//   matched: {__name__: app, foo: bar}
-//
-// N.B: application name label is always first.
-func (r *rule) matchedLabels(key *segment.Key) matchedLabels {
-	z := matchedLabels{{flameql.ReservedTagKeyName, key.AppName()}}
-	l := key.Labels()
-	// Matchers may refer the same labels,
-	// the set is used to filter duplicates.
-	set := map[string]struct{}{}
-	for _, m := range r.qry.Matchers {
-		v, ok := l[m.Key]
-		if !ok {
-			continue
-		}
-		if _, ok = set[m.Key]; !ok {
-			// Note that Matchers are sorted.
-			z = append(z, label{m.Key, v})
-			set[m.Key] = struct{}{}
-		}
-	}
-	return z
-}
-
-// matchedLabels contain KV pairs from a dimension key that match
-// tag matchers keys of a rule regardless of their values.
-type matchedLabels []label
-
-type label struct {
-	key   string
-	value string
-}
-
-func (m matchedLabels) hash() uint64 {
-	h := fnv.New64a()
-	for k, v := range m {
-		_, _ = fmt.Fprint(h, k, ":", v, ";")
-	}
-	return binary.BigEndian.Uint64(h.Sum(nil))
-}
-
-func (m matchedLabels) labels() prometheus.Labels {
-	p := make(prometheus.Labels, len(m))
-	for _, l := range m {
-		p[l.key] = l.value
-	}
-	return nil
 }
