@@ -6,22 +6,28 @@ import { Menu, SubMenu, MenuItem, MenuButton } from "@szhsin/react-menu";
 import { fetchTags, fetchTagValues } from "../redux/actions";
 import history from "../util/history";
 
-function TagsBar(props) {
+function TagsBar({ tags, fetchTags, fetchTagValues, tagValuesLoading }) {
   const [tagsValue, setTagsValue] = useState("");
 
   const loadTagValues = (tag) => {
-    if (
-      props.tags[tag] &&
-      !props.tags[tag].length &&
-      props.tagValuesLoading !== tag
-    ) {
-      props.fetchTagValues(tag);
+    if (tags[tag] && !tags[tag].length && tagValuesLoading !== tag) {
+      fetchTagValues(tag);
     }
   };
 
   useEffect(() => {
-    props.fetchTags();
+    fetchTags();
   }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    Object.keys(tags).forEach((tag) => {
+      if (url.search.includes(tag)) {
+        loadTagValues(tag);
+        setTagsValue(url.searchParams.get(tag));
+      }
+    });
+  }, [tags]);
 
   useEffect(() => {
     history.push(`/?${tagsValue.replace(/[{}]/g, "")}`);
@@ -34,26 +40,22 @@ function TagsBar(props) {
         theming="dark"
         keepMounted
       >
-        {Object.keys(props.tags).map((tag) => (
+        {Object.keys(tags).map((tag) => (
           <SubMenu
             value={tag}
             key={tag}
             label={(e) => {
-              if (
-                !props.tags[tag].length &&
-                e.active &&
-                props.tagValuesLoading !== tag
-              )
+              if (!tags[tag].length && e.active && tagValuesLoading !== tag)
                 loadTagValues(tag);
               return tag;
             }}
             onChange={(e) => loadTagValues(e.value)}
             className="active"
           >
-            {props.tagValuesLoading === tag ? (
+            {tagValuesLoading === tag ? (
               <MenuItem>Loading...</MenuItem>
             ) : (
-              props.tags[tag].map((tagValue) => (
+              tags[tag].map((tagValue) => (
                 <MenuItem
                   key={tagValue}
                   value={tagValue}
