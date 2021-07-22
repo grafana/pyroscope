@@ -18,6 +18,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
+	"github.com/sirupsen/logrus"
 
 	// revive:enable:blank-imports
 
@@ -68,10 +69,6 @@ type ProfileSession struct {
 	startTime time.Time
 
 	logger Logger
-
-	// The map holds fully qualified names (storage keys) for
-	// every profiler that is running within the session.
-	names map[spy.ProfileType]string
 }
 
 type SessionConfig struct {
@@ -88,10 +85,14 @@ type SessionConfig struct {
 }
 
 func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
+	appName, err := mergeTagsWithAppName(c.AppName, c.Tags)
+	if err != nil {
+		return nil, err
+	}
+
 	ps := &ProfileSession{
 		upstream:         c.Upstream,
-		appName:          c.AppName,
-		names:            make(map[spy.ProfileType]string),
+		appName:          appName,
 		spyName:          c.SpyName,
 		profileTypes:     c.ProfilingTypes,
 		disableGCRuns:    c.DisableGCRuns,
@@ -110,27 +111,34 @@ func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 	ps.previousTries[ps.appName] = []*transporttrie.Trie{nil}
 	ps.tries[ps.appName] = []*transporttrie.Trie{transporttrie.New()}
 
-	if err := ps.createNames(c.Tags); err != nil {
-		return nil, err
-	}
-
 	return ps, nil
 }
 
-func (ps *ProfileSession) createNames(tags map[string]string) error {
-	for _, t := range ps.profileTypes {
-		tagsCopy := make(map[string]string)
-		for k, v := range tags {
-			tagsCopy[k] = v
-		}
-		appName, err := mergeTagsWithAppName(ps.appName, tagsCopy)
-		if err != nil {
-			return err
-		}
-		tagsCopy["__name__"] = appName + "." + string(t)
-		ps.names[t] = segment.NewKey(tagsCopy).Normalized()
+// func (ps *ProfileSession) createNames(tags map[string]string) error {
+// 	for _, t := range ps.profileTypes {
+// 		tagsCopy := make(map[string]string)
+// 		for k, v := range tags {
+// 			tagsCopy[k] = v
+// 		}
+// 		appName, err := mergeTagsWithAppName(ps.appName, tagsCopy)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		tagsCopy["__name__"] = appName + "." + string(t)
+// 		// ps.names[t] = segment.NewKey(tagsCopy).Normalized()
+// 	}
+// 	return nil
+// }
+
+func addSuffix(name string, ptype spy.ProfileType) (string, error) {
+	k, err := segment.ParseKey(name)
+	if err != nil {
+		return "", err
 	}
-	return nil
+	k.Add("__name__", k.AppName()+"."+string(ptype))
+	return k.Normalized(), nil
+	// tagsCopy["__name__"] = appName + "." + string(t)
+	// ps.names[t] = segment.NewKey(tagsCopy).Normalized()
 }
 
 // mergeTagsWithAppName validates user input and merges explicitly specified
@@ -188,6 +196,7 @@ func (ps *ProfileSession) takeSnapshots() {
 				}
 			}
 
+			ps.trieMutex.Lock()
 			for _, sarr := range ps.spies {
 				for i, s := range sarr {
 					s.Snapshot(func(stack []byte, v uint64, err error) {
@@ -200,14 +209,13 @@ func (ps *ProfileSession) takeSnapshots() {
 							return
 						}
 						if len(stack) > 0 {
-							ps.trieMutex.Lock()
-							defer ps.trieMutex.Unlock()
 
 							ps.tries[ps.appName][i].Insert(stack, v, true)
 						}
 					})
 				}
 			}
+			ps.trieMutex.Unlock()
 
 			// upload the read data to server and reset the start time
 			if isdueToReset {
@@ -340,7 +348,8 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 				}
 
 				if !skipUpload {
-					name2 := ps.appName + "." + string(profileType)
+					name2, e := addSuffix(name, profileType)
+					logrus.Info("name2 ", name, name2, e)
 					ps.upstream.Upload(&upstream.UploadJob{
 						// Name:            ps.names[ps.profileTypes[i]],
 						Name:            name2,
