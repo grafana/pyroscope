@@ -1,11 +1,11 @@
-package storage
+package segment
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("storage package", func() {
+var _ = Describe("segment key", func() {
 	Context("ParseKey", func() {
 		It("no tags version works", func() {
 			k, err := ParseKey("foo")

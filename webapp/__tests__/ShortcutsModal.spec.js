@@ -22,8 +22,8 @@ describe("ShortcutsModal", () => {
         </ShortcutProvider>
       </Provider>
     );
-    
-    wrapper.find("button").last().simulate("click");
+
+    wrapper.find("#tests-shortcuts-btn").last().simulate("click");
     expect(wrapper.find(ShortcutsModal).length).toBe(1);
 
   });

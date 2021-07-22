@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width">
+  <title>Pyroscope</title>
+  <link rel="stylesheet" href="/assets/styles.<%= webpack.hash %>.css">
+  {{- if .BaseURL }}
+  <base href="{{ .BaseURL }}">
+  {{- end }}
+  <link rel="icon" href="/assets/images/favicon.ico">
+</head>
+
+<body class="login-page">
+  <div class="bg-2"></div>
+    <section class="login-form">
+      <div class="welcome-logo"></div>
+      <h1 class="welcome-title">Welcome to Pyroscope</h1>
+      <p class="login-to-continue">You will be redirected</p>
+    </section>
+
+  <script>
+    var has_tls = location.protocol === 'https:';
+    window.location.href = "{{.RedirectURL}}&tls=" + has_tls;
+  </script>
+</body>
+</html>

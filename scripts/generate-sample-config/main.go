@@ -112,7 +112,7 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("group-name", "user-name", "no-root-drop"))...)
 	case "target":
 		val = new(config.Target)
-		cli.PopulateFlagSet(val, flagSet, opts...)
+		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("tags"))...)
 	default:
 		log.Fatalf("Unknown subcommand %q", subcommand)
 	}
@@ -139,9 +139,10 @@ func writeYaml(w io.Writer, sf *cli.SortedFlags) {
 			return
 		}
 		var v string
-		if reflect.TypeOf(f.Value).Elem().Kind() == reflect.Slice {
+		switch reflect.TypeOf(f.Value).Elem().Kind() {
+		case reflect.Slice, reflect.Map:
 			v = f.Value.String()
-		} else {
+		default:
 			v = fmt.Sprintf("%q", f.Value)
 		}
 		_, _ = fmt.Fprintf(w, "# %s\n%s: %s\n\n", toPrettySentence(f.Usage), f.Name, v)

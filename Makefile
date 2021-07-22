@@ -29,6 +29,9 @@ ifndef $(GOPATH)
 	export GOPATH
 endif
 
+-include .env
+export
+
 .PHONY: all
 all: build
 
@@ -163,6 +166,7 @@ clean:
 update-contributors:
 	$(shell yarn bin contributor-faces) \
 		-e pyroscopebot \
+		-l 100 \
 		.
 
 .PHONY: update-changelog

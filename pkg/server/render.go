@@ -2,76 +2,107 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
-type samplesEntry struct {
-	Ts      time.Time `json:"ts"`
-	Samples uint16    `json:"samples"`
+var (
+	errUnknownFormat   = errors.New("unknown format")
+	errLabelIsRequired = errors.New("label parameter is required")
+)
+
+type renderParams struct {
+	format   string
+	maxNodes int
+	gi       *storage.GetInput
 }
 
 func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	startTime := attime.Parse(q.Get("from"))
-	endTime := attime.Parse(q.Get("until"))
-	var err error
-	storageKey, err := storage.ParseKey(q.Get("name"))
-	if err != nil {
-		panic(err) // TODO: handle
+	var p renderParams
+	if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
+		ctrl.writeInvalidParameterError(w, err)
+		return
 	}
 
-	gOut, err := ctrl.storage.Get(&storage.GetInput{
-		StartTime: startTime,
-		EndTime:   endTime,
-		Key:       storageKey,
-	})
+	switch p.format {
+	case "json", "":
+	default:
+		ctrl.writeInvalidParameterError(w, errUnknownFormat)
+		return
+	}
+
+	out, err := ctrl.storage.Get(p.gi)
 	ctrl.statsInc("render")
 	if err != nil {
-		panic(err) // TODO: handle
+		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
+		return
 	}
 
 	// TODO: handle properly
-	if gOut == nil {
-		gOut = &storage.GetOutput{
-			Tree: tree.New(),
+	if out == nil {
+		out = &storage.GetOutput{Tree: tree.New()}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	fs := out.Tree.FlamebearerStruct(p.maxNodes)
+	// TODO remove this duplication? We're already adding this to metadata
+	fs.SpyName = out.SpyName
+	fs.SampleRate = out.SampleRate
+	fs.Units = out.Units
+	res := map[string]interface{}{
+		"timeline":    out.Timeline,
+		"flamebearer": fs,
+		"metadata": map[string]interface{}{
+			"spyName":    out.SpyName,
+			"sampleRate": out.SampleRate,
+			"units":      out.Units,
+		},
+	}
+
+	if err = json.NewEncoder(w).Encode(res); err != nil {
+		ctrl.writeJSONEncodeError(w, err)
+	}
+}
+
+func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {
+	v := r.URL.Query()
+	p.gi = new(storage.GetInput)
+
+	k := v.Get("name")
+	q := v.Get("query")
+
+	switch {
+	case k == "" && q == "":
+		return fmt.Errorf("'query' or 'name' parameter is required")
+	case k != "":
+		sk, err := segment.ParseKey(k)
+		if err != nil {
+			return fmt.Errorf("name: parsing storage key: %w", err)
 		}
-	}
-
-	maxNodes := ctrl.config.MaxNodesRender
-	if mn, err := strconv.Atoi(q.Get("max-nodes")); err == nil && mn > 0 {
-		maxNodes = mn
-	}
-
-	switch q.Get("format") {
-	case "json":
-		w.Header().Set("Content-Type", "application/json")
-
-		fs := gOut.Tree.FlamebearerStruct(maxNodes)
-		// TODO remove this duplication? We're already adding this to metadata
-		fs.SpyName = gOut.SpyName
-		fs.SampleRate = gOut.SampleRate
-		fs.Units = gOut.Units
-		res := map[string]interface{}{
-			"timeline":    gOut.Timeline,
-			"flamebearer": fs,
-			"metadata": map[string]interface{}{
-				"spyName":    gOut.SpyName,
-				"sampleRate": gOut.SampleRate,
-				"units":      gOut.Units,
-			},
+		p.gi.Key = sk
+	case q != "":
+		qry, err := flameql.ParseQuery(q)
+		if err != nil {
+			return fmt.Errorf("query: %w", err)
 		}
-
-		encoder := json.NewEncoder(w)
-		encoder.Encode(res)
-		return
-	default:
-		// TODO: add handling for other cases
-		w.WriteHeader(422)
+		p.gi.Query = qry
 	}
+
+	p.maxNodes = ctrl.config.MaxNodesRender
+	if mn, err := strconv.Atoi(v.Get("max-nodes")); err == nil && mn > 0 {
+		p.maxNodes = mn
+	}
+
+	p.gi.StartTime = attime.Parse(v.Get("from"))
+	p.gi.EndTime = attime.Parse(v.Get("until"))
+	p.format = v.Get("format")
+	return nil
 }

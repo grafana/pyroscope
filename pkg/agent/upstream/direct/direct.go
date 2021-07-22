@@ -8,6 +8,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
@@ -51,7 +52,7 @@ func (u *Direct) Upload(j *upstream.UploadJob) {
 }
 
 func (u *Direct) uploadProfile(j *upstream.UploadJob) {
-	key, err := storage.ParseKey(j.Name)
+	key, err := segment.ParseKey(j.Name)
 	if err != nil {
 		logrus.WithField("key", key).Error("invalid key:")
 		return

@@ -44,6 +44,16 @@ func startCPUProfile(w io.Writer, hz uint32) error {
 	return custom_pprof.StartCPUProfile(w, hz)
 }
 
+func stopCPUProfile(hz uint32) {
+	// idea here is that for most people we're starting the default profiler
+	//   but if you want to use a different sampling rate we use our experimental profiler
+	if hz == 100 {
+		pprof.StopCPUProfile()
+		return
+	}
+	custom_pprof.StopCPUProfile()
+}
+
 func Start(_ int, profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error) {
 	s := &GoSpy{
 		stopCh:        make(chan struct{}),
@@ -108,7 +118,7 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 
 	if s.profileType == spy.ProfileCPU {
 		// stop the previous cycle of sample collection
-		pprof.StopCPUProfile()
+		stopCPUProfile(s.sampleRate)
 		defer func() {
 			// start a new cycle of sample collection
 			if err := startCPUProfile(s.buf, s.sampleRate); err != nil {

@@ -7,12 +7,14 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/shirou/gopsutil/mem"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/sirupsen/logrus"
 )
 
 // 21:22:08      air |  (time.Duration) 16m40s,
@@ -46,7 +48,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := ParseKey("foo")
+					key, _ := segment.ParseKey("foo")
 
 					s.Put(&PutInput{
 						StartTime:  st,
@@ -85,7 +87,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := ParseKey("foo")
+					key, _ := segment.ParseKey("foo")
 
 					s.Put(&PutInput{
 						StartTime:  st,
@@ -132,7 +134,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := ParseKey("foo")
+					key, _ := segment.ParseKey("foo")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -186,7 +188,7 @@ var _ = Describe("storage package", func() {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
-						key, _ := ParseKey("tree key" + strconv.Itoa(i+1))
+						key, _ := segment.ParseKey("tree key" + strconv.Itoa(i+1))
 						err := s.Put(&PutInput{
 							Key:        key,
 							Val:        tree,
@@ -207,7 +209,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := ParseKey("foo")
+					key, _ := segment.ParseKey("foo")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -240,7 +242,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(29)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := ParseKey("foo")
+					key, _ := segment.ParseKey("foo")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -277,7 +279,7 @@ var _ = Describe("storage package", func() {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
-						key, _ := ParseKey("tree key" + strconv.Itoa(i+1))
+						key, _ := segment.ParseKey("tree key" + strconv.Itoa(i+1))
 						err := s.Put(&PutInput{
 							Key:        key,
 							Val:        tree,
@@ -312,8 +314,8 @@ var _ = Describe("storage package", func() {
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
 
-					appKey, _ := ParseKey("foo")
-					key, _ := ParseKey("foo{tag=value}")
+					appKey, _ := segment.ParseKey("foo")
+					key, _ := segment.ParseKey("foo{tag=value}")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -369,7 +371,7 @@ var _ = Describe("DeleteDataBefore", func() {
 				tree.Insert([]byte("a;c"), uint64(2))
 				st := time.Now().Add(time.Hour * 24 * 10 * -1)
 				et := st.Add(time.Second * 10)
-				key, _ := ParseKey("foo")
+				key, _ := segment.ParseKey("foo")
 
 				err := s.Put(&PutInput{
 					StartTime:  st,
@@ -392,7 +394,7 @@ var _ = Describe("DeleteDataBefore", func() {
 				tree.Insert([]byte("a;c"), uint64(2))
 				st := testing.SimpleTime(10)
 				et := testing.SimpleTime(20)
-				key, _ := ParseKey("foo")
+				key, _ := segment.ParseKey("foo")
 
 				err := s.Put(&PutInput{
 					StartTime:  st,

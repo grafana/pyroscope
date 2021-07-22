@@ -19,6 +19,5 @@ type UploadJob struct {
 
 type Upstream interface {
 	Stop()
-	// TODO: too complex, fix it
 	Upload(u *UploadJob)
 }

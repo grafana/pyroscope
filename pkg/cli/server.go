@@ -46,7 +46,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %v", err)
 	}
-	svc.controller, err = server.New(svc.config, svc.storage)
+	svc.controller, err = server.New(svc.config, svc.storage, svc.logger)
 	if err != nil {
 		return nil, fmt.Errorf("new server: %v", err)
 	}
@@ -61,7 +61,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		SampleRate:     100,
 		UploadRate:     10 * time.Second,
 	}
-	svc.selfProfiling = agent.NewSession(selfProfilingConfig, svc.logger)
+	svc.selfProfiling, _ = agent.NewSession(selfProfilingConfig, svc.logger)
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
 	}

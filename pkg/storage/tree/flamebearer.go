@@ -12,8 +12,8 @@ type Flamebearer struct {
 }
 
 func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
-	t.m.RLock()
-	defer t.m.RUnlock()
+	t.RLock()
+	defer t.RUnlock()
 
 	res := Flamebearer{
 		Names:    []string{},
@@ -54,18 +54,14 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			if level == len(res.Levels) {
 				res.Levels = append(res.Levels, []int{})
 			}
-			// * barIndex, delta encoded
-			// * numBarTicks
-			// * link to name
-			// barIndex := xOffset
-			// if len(res.Levels[level]) > 0 { // delta encoding
-			// 	prevX := res.Levels[level][len(res.Levels[level])-3]
-			// 	prevW := res.Levels[level][len(res.Levels[level])-2]
-			// 	barIndex -= prevX + prevW
-			// }
 			if res.MaxSelf < int(tn.Self) {
 				res.MaxSelf = int(tn.Self)
 			}
+
+			// i+0 = x offset
+			// i+1 = total
+			// i+2 = self
+			// i+3 = index in names array
 			res.Levels[level] = append([]int{xOffset, int(tn.Total), int(tn.Self), i}, res.Levels[level]...)
 
 			xOffset += int(tn.Self)
@@ -93,6 +89,8 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			}
 		}
 	}
+
+	// delta encoding
 	for _, l := range res.Levels {
 		prev := 0
 		for i := 0; i < len(l); i += 4 {
@@ -100,6 +98,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			prev += l[i] + l[i+1]
 		}
 	}
+
 	// TODO: we used to drop the first level, because it's always an empty node
 	//   but that didn't work because flamebearer doesn't work with more
 	//   than one root element. Long term we should fix it on flamebearer side

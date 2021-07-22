@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -25,8 +26,9 @@ var _ = Describe("server", func() {
 					(*cfg).Server.APIBindAddr = ":10045"
 					s, err := storage.New(&(*cfg).Server)
 					Expect(err).ToNot(HaveOccurred())
-					c, _ := New(&(*cfg).Server, s)
-					httpServer := httptest.NewServer(c.mux())
+					c, _ := New(&(*cfg).Server, s, logrus.New())
+					h, _ := c.mux()
+					httpServer := httptest.NewServer(h)
 					defer httpServer.Close()
 
 					res, err := http.Get(httpServer.URL + "/config")

@@ -1,14 +1,12 @@
-package storage
+package segment
 
 import (
-	"encoding/binary"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
-	"github.com/twmb/murmur3"
 )
 
 type Key struct {
@@ -27,6 +25,8 @@ const (
 	tagValueParserState
 	doneParserState
 )
+
+func NewKey(labels map[string]string) *Key { return &Key{labels: labels} }
 
 // TODO: should rewrite this at some point to not rely on regular expressions & splits
 func ParseKey(name string) (*Key, error) {
@@ -99,12 +99,16 @@ func (k *Key) SegmentKey() string {
 	return k.Normalized()
 }
 
+func segmentKeyToTreeKey(k string, depth int, t time.Time) string {
+	return k + ":" + strconv.Itoa(depth) + ":" + strconv.Itoa(int(t.Unix()))
+}
+
 func (k *Key) TreeKey(depth int, t time.Time) string {
-	return k.Normalized() + ":" + strconv.Itoa(depth) + ":" + strconv.Itoa(int(t.Unix()))
+	return segmentKeyToTreeKey(k.Normalized(), depth, t)
 }
 
 func (k *Key) DictKey() string {
-	return k.Normalized()
+	return k.labels["__name__"]
 }
 
 // FromTreeToDictKey returns app name from tree key k: given tree key
@@ -149,15 +153,10 @@ func (k *Key) Normalized() string {
 	return sb.String()
 }
 
-func (k *Key) Hashed() []byte {
-	u1, u2 := murmur3.SeedSum128(seed, seed, []byte(k.Normalized()))
-
-	b := make([]byte, 16)
-	binary.LittleEndian.PutUint64(b[:8], u1)
-	binary.LittleEndian.PutUint64(b[8:16], u2)
-	return b
-}
-
 func (k *Key) AppName() string {
 	return k.labels["__name__"]
+}
+
+func (k *Key) Labels() map[string]string {
+	return k.labels
 }
