@@ -98,9 +98,9 @@ export const receiveTags = (tags) => ({
   payload: { tags },
 });
 
-export const requestTagValues = () => ({
+export const requestTagValues = (tag) => ({
   type: REQUEST_TAG_VALUES,
-  payload: {},
+  payload: { tag },
 });
 
 export const receiveTagValues = (values, tag) => ({

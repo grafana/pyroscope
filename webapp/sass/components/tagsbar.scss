@@ -28,6 +28,10 @@
     color: $white;
   }
 
+  .rc-menu--open:empty {
+    display: none;
+  }
+
   .rc-menu__item {
     &::after {
       content: "▸";
@@ -37,6 +41,10 @@
     }
     &:hover {
       background-color: $btn-hover-color;
+    }
+    &.active {
+      background-color: $btn-hover-color;
+      color: rgb(223, 139, 83);
     }
   }
 

@@ -29,44 +29,43 @@ function TagsBar(props) {
 
   return (
     <div className="tags-bar rc-menu-container--theme-dark">
-      <Menu menuButton={<MenuButton>Select Tag</MenuButton>} theming="dark">
-        {Object.keys(props.tags).map((tag) =>
-          (props.tags[tag] && props.tags[tag].length) ||
-          props.tagValuesLoading === tag ? (
-            <SubMenu
-              value={tag}
-              label={tag}
-              onChange={(e) => loadTagValues(e.value)}
-              keepMounted
-            >
-              {props.tagValuesLoading === tag ? (
-                <MenuItem>Loading...</MenuItem>
-              ) : (
-                props.tags[tag].map((tagValue) => (
-                  <MenuItem
-                    key={tagValue}
-                    value={tagValue}
-                    onClick={(e) => setTagsValue(`{${tag}=${e.value}}`)}
-                  >
-                    {tagValue}
-                  </MenuItem>
-                ))
-              )}
-            </SubMenu>
-          ) : (
-            <MenuItem
-              value={tag}
-              label={tag}
-              key={tag}
-              onClick={(e) => {
-                loadTagValues(e.value);
-                e.keepOpen = true;
-              }}
-            >
-              {tag}
-            </MenuItem>
-          )
-        )}
+      <Menu
+        menuButton={<MenuButton>Select Tag</MenuButton>}
+        theming="dark"
+        keepMounted
+      >
+        {Object.keys(props.tags).map((tag) => (
+          <SubMenu
+            value={tag}
+            key={tag}
+            label={(e) => {
+              if (
+                !props.tags[tag].length &&
+                e.active &&
+                props.tagValuesLoading !== tag
+              )
+                loadTagValues(tag);
+              return tag;
+            }}
+            onChange={(e) => loadTagValues(e.value)}
+            className="active"
+          >
+            {props.tagValuesLoading === tag ? (
+              <MenuItem>Loading...</MenuItem>
+            ) : (
+              props.tags[tag].map((tagValue) => (
+                <MenuItem
+                  key={tagValue}
+                  value={tagValue}
+                  onClick={(e) => setTagsValue(`{${tag}=${e.value}}`)}
+                  className={tagsValue.includes(tagValue) ? "active" : ""}
+                >
+                  {tagValue}
+                </MenuItem>
+              ))
+            )}
+          </SubMenu>
+        ))}
       </Menu>
       <input
         className="tags-input"
