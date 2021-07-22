@@ -1,34 +1,47 @@
+// +build clib
 // Package main deals with ruby / python / php integrations
 package main
 
 import (
 	"C"
 	"fmt"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+)
+import (
+	"errors"
+
+	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
+	"github.com/pyroscope-io/pyroscope/pkg/util/caps"
 )
 
 type PyspySession struct {
 	session *agent.ProfileSession
 }
 
+func performOSChecks() error {
+	if !caps.HasSysPtraceCap() {
+		return errors.New("if you're running pyroscope in a Docker container, add --cap-add=sys_ptrace. See our Docker Guide for more information: https://pyroscope.io/docs/docker-guide")
+	}
+	return nil
+}
+
 var pyspy_session = PyspySession{}
 
 func (pys PyspySession) startNewSession(cfg *config.Exec) (*agent.ProfileSession, error) {
-	// TODO: Removed some checks to simplify. Bring them back at the end.
-
 	logger := &agent.NoopLogger{}
 
 	spyName := cfg.SpyName
 	pid := cfg.Pid
-	//pyspy.Blocking = cfg.PyspyBlocking // TODO: Set it somwhere in cfg
+	pyspy.Blocking = cfg.PyspyBlocking
+
+	if err := performOSChecks(); pyspy.Blocking && err != nil {
+		return nil, err
+	}
 
 	rc := remote.RemoteConfig{
 		AuthToken:              cfg.AuthToken,
@@ -39,10 +52,6 @@ func (pys PyspySession) startNewSession(cfg *config.Exec) (*agent.ProfileSession
 	u, err := remote.New(rc, logger)
 	if err != nil {
 		return nil, fmt.Errorf("new remote upstream: %v", err)
-	}
-
-	if cfg.SampleRate == 0 {
-		cfg.SampleRate = types.DefaultSampleRate
 	}
 
 	sc := agent.SessionConfig{
@@ -68,7 +77,6 @@ func (pys PyspySession) startNewSession(cfg *config.Exec) (*agent.ProfileSession
 
 //export Start
 func Start(ApplicationName *C.char, Pid C.int, SpyName *C.char, ServerAddress *C.char) int {
-	// TODO: It might be more useful if it would be []pids instead of pid
 
 	s, err := pyspy_session.startNewSession(&config.Exec{
 		SpyName:                C.GoString(SpyName),
@@ -109,9 +117,4 @@ func ChangeName(newName *C.char) {
 }
 
 func main() {
-	fmt.Println("app name:", os.Args[1], "pid: ", os.Args[2], "spy name: ", os.Args[3], "server address: ", os.Args[4])
-	pid, _ := strconv.Atoi(os.Args[2])
-	Start(C.CString(os.Args[1]), C.int(pid), C.CString(os.Args[3]), C.CString(os.Args[4]))
-	time.Sleep(11 * time.Second)
-	Stop(C.int(pid))
 }
