@@ -55,7 +55,10 @@ func (pys PyspySession) startNewSession(cfg *config.Exec) (*agent.ProfileSession
 		Pid:              pid,
 		WithSubprocesses: cfg.DetectSubprocesses,
 	}
-	session := agent.NewSession(&sc, logger)
+	session, err := agent.NewSession(&sc, logger)
+	if err != nil {
+		return nil, err
+	}
 	if err = session.Start(); err != nil {
 		return nil, fmt.Errorf("start session: %v", err)
 	}
