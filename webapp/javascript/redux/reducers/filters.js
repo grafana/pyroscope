@@ -10,6 +10,10 @@ import {
   REMOVE_LABEL,
   RECEIVE_TIMELINE,
   REQUEST_TIMELINE,
+  REQUEST_TAGS,
+  RECEIVE_TAGS,
+  REQUEST_TAG_VALUES,
+  RECEIVE_TAG_VALUES,
   RECEIVE_NAMES,
   REQUEST_NAMES,
   SET_LEFT_DATE_RANGE,
@@ -36,6 +40,7 @@ const initialState = {
   timeline: null,
   isJSONLoading: false,
   maxNodes: 1024,
+  tags: [],
 };
 
 window.uniqBy = uniqBy;
@@ -135,6 +140,35 @@ export default function (state = initialState, action) {
         ...state,
         timeline: decodeTimelineData(action.payload.timeline),
         isJSONLoading: false,
+      };
+    case REQUEST_TAGS:
+      return {
+        ...state,
+        areTagsLoading: true,
+      };
+    case RECEIVE_TAGS: {
+      return {
+        ...state,
+        areTagsLoading: false,
+        tags: action.payload.tags.reduce((acc, tag) => {
+          acc[tag] = [];
+          return acc;
+        }, {}),
+      };
+    }
+    case REQUEST_TAG_VALUES:
+      return {
+        ...state,
+        tagValuesLoading: action.payload.tag,
+      };
+    case RECEIVE_TAG_VALUES:
+      return {
+        ...state,
+        tagValuesLoading: "",
+        tags: {
+          ...state.tags,
+          [action.payload.tag]: action.payload.values,
+        },
       };
     case REQUEST_NAMES:
       return {

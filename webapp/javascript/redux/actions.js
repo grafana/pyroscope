@@ -9,6 +9,10 @@ import {
   REFRESH,
   REQUEST_TIMELINE,
   RECEIVE_TIMELINE,
+  REQUEST_TAGS,
+  RECEIVE_TAGS,
+  REQUEST_TAG_VALUES,
+  RECEIVE_TAG_VALUES,
   REQUEST_NAMES,
   RECEIVE_NAMES,
   SET_LEFT_DATE_RANGE,
@@ -87,6 +91,23 @@ export const receiveTimeline = (data) => ({
   payload: data,
 });
 
+export const requestTags = () => ({ type: REQUEST_TAGS });
+
+export const receiveTags = (tags) => ({
+  type: RECEIVE_TAGS,
+  payload: { tags },
+});
+
+export const requestTagValues = () => ({
+  type: REQUEST_TAG_VALUES,
+  payload: {},
+});
+
+export const receiveTagValues = (values, tag) => ({
+  type: RECEIVE_TAG_VALUES,
+  payload: { values, tag },
+});
+
 export const requestNames = () => ({ type: REQUEST_NAMES, payload: {} });
 
 export const receiveNames = (names) => ({
@@ -108,6 +129,30 @@ export function fetchTimeline(url) {
       .then((response) => response.json())
       .then((data) => {
         dispatch(receiveTimeline(data));
+      })
+      .finally();
+  };
+}
+
+export function fetchTags() {
+  return (dispatch) => {
+    dispatch(requestTags());
+    return fetch("/labels")
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveTags(data));
+      })
+      .finally();
+  };
+}
+
+export function fetchTagValues(tag) {
+  return (dispatch) => {
+    dispatch(requestTagValues(tag));
+    return fetch(`/label-values?label=${tag}`)
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveTagValues(data, tag));
       })
       .finally();
   };

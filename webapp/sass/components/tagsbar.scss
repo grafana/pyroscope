@@ -1,0 +1,47 @@
+@use "../variables" as *;
+
+@import "../../node_modules/@szhsin/react-menu/dist/index.css";
+
+.tags-bar {
+  display: flex;
+  padding: 5px 15px 15px;
+
+  .rc-menu-button {
+    outline: none;
+    display: inline-block;
+    position: relative;
+    border-radius: 4px;
+    background-color: $btn-color;
+    border: 1px solid $btn-border-color;
+    margin-right: 5px;
+    padding-right: 20px;
+    &::after {
+      content: "▾";
+      position: absolute;
+      top: 3px;
+      right: 5px;
+    }
+  }
+
+  .rc-menu, .rc-menu__item {
+    background-color: $btn-color;
+    color: $white;
+  }
+
+  .rc-menu__item {
+    &::after {
+      content: "▸";
+      position: absolute;
+      top: 6px;
+      right: 5px;
+    }
+    &:hover {
+      background-color: $btn-hover-color;
+    }
+  }
+
+  .tags-input {
+    flex-grow: 1;
+  }
+
+}
