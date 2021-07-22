@@ -93,6 +93,11 @@ func TestExport(t *testing.T) {
 			Expr: `app.name.cpu{foo=~"b.*"}`,
 			Node: "^a;b;c$",
 		},
+		{
+			Name: "app_name_cpu_ab",
+			Expr: `app.name.cpu{foo=~"b.*"}`,
+			Node: "a;b",
+		},
 	}
 
 	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
@@ -103,12 +108,17 @@ func TestExport(t *testing.T) {
 	// Hashes are predetermined.
 	total := testutil.ToFloat64(exporter.rules[0].counters[16252301464360304376])
 	if total != 5 {
-		t.Fatalf("total counter must be 5")
+		t.Fatalf("total counter must be 5, got %v", total)
 	}
 
 	abc := testutil.ToFloat64(exporter.rules[1].counters[16252301464360304376])
 	if abc != 2 {
-		t.Fatalf("a;b;c counter must be 2")
+		t.Fatalf("a;b;c counter must be 2, got %v", abc)
+	}
+
+	ab := testutil.ToFloat64(exporter.rules[2].counters[16252301464360304376])
+	if ab != 3 {
+		t.Fatalf("a;b counter must be 3, got %v", ab)
 	}
 }
 

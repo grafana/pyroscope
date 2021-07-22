@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
@@ -33,7 +34,9 @@ type rule struct {
 func NewExporter(rules []config.MetricExportRule, reg prometheus.Registerer) (*MetricsExporter, error) {
 	var e MetricsExporter
 	for _, c := range rules {
-		// TODO(kolesnikovae): validate metric name.
+		if !model.IsValidMetricName(model.LabelValue(c.Name)) {
+			return nil, fmt.Errorf("%q is not a valid metric name", c.Name)
+		}
 		qry, err := flameql.ParseQuery(c.Expr)
 		if err != nil {
 			return nil, fmt.Errorf("rule %q: invalid expression %q: %w", c.Name, c.Expr, err)
@@ -77,10 +80,10 @@ func (e MetricsExporter) Observe(k *segment.Key, tree *tree.Tree) {
 // eval returns existing counter for the key or creates a new one,
 // if the key satisfies the rule expression.
 func (r *rule) eval(k *segment.Key) (prometheus.Counter, bool) {
-	if k.AppName() != r.qry.AppName {
+	m, ok := r.matchedLabels(k)
+	if !ok {
 		return nil, false
 	}
-	m := r.matchedLabels(k)
 	h := m.hash()
 	r.RLock()
 	c, ok := r.counters[h]

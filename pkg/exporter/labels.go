@@ -6,8 +6,8 @@ import (
 	"hash/fnv"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
 
@@ -18,17 +18,28 @@ import (
 //   matched: {__name__: app, foo: bar}
 //
 // N.B: application name label is always first.
-func (r *rule) matchedLabels(key *segment.Key) matchedLabels {
+//
+// The key must include labels required by the rule expression, otherwise
+// the function returns empty labels and false.
+func (r *rule) matchedLabels(key *segment.Key) (matchedLabels, bool) {
+	appName := key.AppName()
+	if appName != r.qry.AppName {
+		return nil, false
+	}
 	// This is required for a case when there are no tag matchers.
-	z := matchedLabels{{flameql.ReservedTagKeyName, key.AppName()}}
+	z := matchedLabels{{flameql.ReservedTagKeyName, appName}}
 	l := key.Labels()
-	// Matchers may refer the same labels,
-	// the set is used to filter duplicates.
+	// Matchers may refer the same labels, duplicates should be removed.
 	set := map[string]struct{}{}
 	for _, m := range r.qry.Matchers {
 		v, ok := l[m.Key]
 		if !ok {
-			continue
+			// If the matcher label is required (e.g. the matcher
+			// operator is EQL or EQL_REGEX) but not present, return.
+			if m.IsNegation() {
+				continue
+			}
+			return nil, false
 		}
 		if _, ok = set[m.Key]; !ok {
 			// Note that Matchers are sorted.
@@ -36,7 +47,7 @@ func (r *rule) matchedLabels(key *segment.Key) matchedLabels {
 			set[m.Key] = struct{}{}
 		}
 	}
-	return z
+	return z, true
 }
 
 // matchedLabels contain KV pairs from a dimension key that match
