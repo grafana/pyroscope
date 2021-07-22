@@ -38,7 +38,7 @@ import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
 import TimelineChartWrapper from "./TimelineChartWrapper";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
-import { deltaDiff } from "../util/flamebearer";
+import { deltaDiffWrapper, parseFlamebearerFormat } from "../util/flamebearer";
 
 import ExportData from "./ExportData";
 
@@ -122,11 +122,11 @@ class FlameGraphRenderer extends React.Component {
     }
 
     if (this.props.viewType === 'diff') {
-      if (propsChanged || prevProps.leftFrom != this.props.leftFrom || prevProps.leftUntil != this.props.leftUntil) {
-        this.fetchFlameBearerData(this.props.leftRenderURL);
-      }
-      if (propsChanged || prevProps.rightFrom != this.props.rightFrom || prevProps.rightUntil != this.props.rightUntil) {
-        this.fetchFlameBearerData(this.props.rightRenderURL);
+      if (propsChanged
+        || prevProps.leftFrom != this.props.leftFrom || prevProps.leftUntil != this.props.leftUntil
+        || prevProps.rightFrom != this.props.rightFrom || prevProps.rightUntil != this.props.rightUntil
+      ) {
+        this.fetchFlameBearerData(this.props.diffRenderURL);
       }
     }
 
@@ -147,12 +147,13 @@ class FlameGraphRenderer extends React.Component {
     fetch(`${url}&format=json`, { signal: this.currentJSONController.signal })
       .then((response) => response.json())
       .then((data) => {
-        let flamebearer = data.flamebearer;
+        let { flamebearer, metadata } = data;
         // TODO: handle different format of /render
-        deltaDiff(flamebearer.levels);
+        deltaDiffWrapper(metadata.format, flamebearer.levels);
 
         this.setState({
-          flamebearer: flamebearer
+          flamebearer: flamebearer,
+          metadata: metadata,
         }, () => {
           this.updateData();
         })
@@ -202,12 +203,13 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateZoom(i, j) {
+    const { jStep, jName, getBarIndex, getNumBarTicks, getNumBarDiff } = parseFormat(format);
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
       this.selectedLevel = i;
       this.topLevel = 0;
-      this.rangeMin = this.state.levels[i][j] / this.state.numTicks;
+      this.rangeMin = getBarIndex(this.state.levels[i], j) / this.state.numTicks;
       this.rangeMax =
-        (this.state.levels[i][j] + this.state.levels[i][j + 1]) / this.state.numTicks;
+        (getBarIndex(this.state.levels[i], j) + getNumBarTicks(this.state.levels[i], j)) / this.state.numTicks;
     } else {
       this.selectedLevel = 0;
       this.topLevel = 0;
@@ -219,19 +221,37 @@ class FlameGraphRenderer extends React.Component {
 
   updateData = () => {
     const { names, levels, numTicks, sampleRate, units } = this.state.flamebearer;
+    const { metadata } = this.state;
     this.setState({
       names: names,
       levels: levels,
       numTicks: numTicks,
       sampleRate: sampleRate,
       units: units,
+      format: metadata.format, // "single" | "double"
     }, () => {
       this.renderCanvas();
     });
   };
 
+  // format=single
+  //   j = 0: x start of bar
+  //   j = 1: width of bar
+  //   j = 3: position in the main index (jStep)
+  //
+  // format=double
+  //   j = 0,3: x start of bar =>     x = (level[0] + level[3]) / 2
+  //   j = 1,4: width of bar   => width = (level[1] + level[4]) / 2
+  //                           =>  diff = (level[4] - level[1]) / (level[1] + level[4])
+  //   j = 6  : position in the main index (jStep)
+  parseFormat(format) {
+    return parseFlamebearerFormat(format || this.state.format);
+  }
+
   // binary search of a block in a stack level
   binarySearchLevel(x, level, tickToX) {
+    const { jStep, jName, getBarIndex, getNumBarTicks, getNumBarDiff } = this.parseFormat();
+
     let i = 0;
     let j = level.length - 4;
     while (i <= j) {
@@ -317,6 +337,7 @@ class FlameGraphRenderer extends React.Component {
     }
 
     const { names, levels, numTicks, sampleRate, units } = this.state;
+    const { jStep, jName, getBarIndex, getNumBarTicks, getNumBarDiff } = this.parseFormat();
 
     this.graphWidth = this.canvas.width = this.canvas.clientWidth;
     this.pxPerTick =
@@ -339,35 +360,30 @@ class FlameGraphRenderer extends React.Component {
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
-      for (let j = 0; j < level.length; j += 4) {
-        // j = 0: x start of bar
-        // j = 1: width of bar
-        // j = 2: position in the main index
+      for (let j = 0; j < level.length; j += jStep) {
 
-        const barIndex = level[j];
+        const barIndex = getBarIndex(level, j);
         const x = this.tickToX(barIndex);
         const y = i * PX_PER_LEVEL;
-        let numBarTicks = level[j + 1];
+        let numBarTicks = getNumBarTicks(level, j);
 
         // For this particular bar, there is a match
         const queryExists = this.query.length > 0;
         const nodeIsInQuery =
-          (this.query && names[level[j + 3]].indexOf(this.query) >= 0) || false;
+          (this.query && names[level[j + jName]].indexOf(this.query) >= 0) || false;
         // merge very small blocks into big "collapsed" ones for performance
         const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
 
         // const collapsed = false;
-        if (collapsed) {
+        if (collapsed) { // TODO: fix collapsed code
           while (
-            j < level.length - 3 &&
-            barIndex + numBarTicks === level[j + 3] &&
-            level[j + 4] * this.pxPerTick <= COLLAPSE_THRESHOLD &&
-            nodeIsInQuery ===
-            ((this.query && names[level[j + 5]].indexOf(this.query) >= 0) ||
-              false)
-            ) {
-            j += 4;
-            numBarTicks += level[j + 1];
+            j < level.length - jStep &&
+            barIndex + numBarTicks === getBarIndex(level, j + jStep) &&
+            getNumBarTicks(level, j + jStep) * this.pxPerTick <= COLLAPSE_THRESHOLD &&
+            nodeIsInQuery === ((this.query && names[level[j + jStep + jName]].indexOf(this.query) >= 0) || false)
+          ) {
+            j += jStep;
+            numBarTicks += getNumBarTicks(level, j);
           }
         }
         // ticks are samples
@@ -394,7 +410,7 @@ class FlameGraphRenderer extends React.Component {
           nodeColor = colorGreyscale(200, 0.66);
         } else {
           nodeColor = colorBasedOnPackageName(
-            getPackageNameFromStackTrace(spyName, names[level[j + 3]]),
+            getPackageNameFromStackTrace(spyName, names[level[j + jName]]),
             a
           );
         }
@@ -404,7 +420,7 @@ class FlameGraphRenderer extends React.Component {
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
           const percent = formatPercent(ratio);
-          const name = `${names[level[j + 3]]} (${percent}, ${this.formatter.format(numBarTicks, sampleRate)})`;
+          const name = `${names[level[j + jName]]} (${percent}, ${this.formatter.format(numBarTicks, sampleRate)})`;
 
           this.ctx.save();
           this.ctx.clip();
@@ -417,6 +433,7 @@ class FlameGraphRenderer extends React.Component {
   };
 
   mouseMoveHandler = (e) => {
+    const { jStep, jName, getBarIndex, getNumBarTicks, getNumBarDiff } = this.parseFormat();
     const { i, j } = this.xyToBar(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
 
     if (
@@ -429,18 +446,18 @@ class FlameGraphRenderer extends React.Component {
     }
 
     const level = this.state.levels[i];
-    const x = Math.max(this.tickToX(level[j]), 0);
+    const x = Math.max(this.tickToX(getBarIndex(level, j)), 0);
     const y = (i - this.topLevel) * PX_PER_LEVEL;
     const sw = Math.min(
-      this.tickToX(level[j] + level[j + 1]) - x,
+      this.tickToX(getBarIndex(level, j) + getNumBarTicks(level, j)) - x,
       this.graphWidth
     );
 
     const highlightEl = this.highlightRef.current;
     const tooltipEl = this.tooltipRef.current;
-    const numBarTicks = level[j + 1];
+    const numBarTicks = getNumBarTicks(level, j);
     const percent = formatPercent(numBarTicks / this.state.numTicks);
-    const tooltipTitle = this.state.names[level[j + 3]];
+    const tooltipTitle = this.state.names[level[j + jName]];
 
     // Before you change all of this to React consider performance implications.
     // Doing this with setState leads to significant lag.

@@ -31,7 +31,13 @@ export function buildRenderURL(state, fromOverride=null, untilOverride=null, sid
 }
 
 // TODO: merge buildRenderURL and buildDiffRenderURL
-export function buildDiffRenderURL(state, leftFrom=null, leftUntil=null, rightFrom=null, rightUntil=null) {
+export function buildDiffRenderURL(state, leftFromOverride=null, leftUntilOverride=null, rightFromOverride=null, rightUntilOverride=null) {
+  let { leftFrom, leftUntil, rightFrom, rightUntil } = state;
+  leftFrom = leftFromOverride || leftFrom;
+  leftUntil = leftUntilOverride || leftUntil;
+  rightFrom = rightFromOverride || rightFrom;
+  rightUntil = rightUntilOverride || rightUntil;
+
   const urlStr = buildRenderURL(state, leftFrom, leftUntil);
   const url = new URL(urlStr, location.origin);
   const params = url.searchParams;

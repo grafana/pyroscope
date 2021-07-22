@@ -5,18 +5,18 @@ import FlameGraphRenderer from "./FlameGraphRenderer";
 import Header from "./Header";
 import Footer from "./Footer";
 import TimelineChartWrapper from "./TimelineChartWrapper";
-import { buildRenderURL } from "../util/updateRequests";
+import { buildDiffRenderURL } from "../util/updateRequests";
 import { fetchNames, fetchTimeline } from "../redux/actions";
 
 function ComparisonDiffApp(props) {
-  const { actions, renderURL } = props;
+  const { actions, diffRenderURL } = props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
-    if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchTimeline(renderURL);
+    if (prevPropsRef.diffRenderURL !== diffRenderURL) {
+      actions.fetchTimeline(diffRenderURL);
     }
-  }, [renderURL]);
+  }, [diffRenderURL]);
 
   return (
     <div className="pyroscope-app">
@@ -32,7 +32,7 @@ function ComparisonDiffApp(props) {
 
 const mapStateToProps = (state) => ({
   ...state,
-  renderURL: buildRenderURL(state),
+  diffRenderURL: buildDiffRenderURL(state),
 });
 
 const mapDispatchToProps = (dispatch) => ({
