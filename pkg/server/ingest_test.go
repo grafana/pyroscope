@@ -15,8 +15,13 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
+
+type mockObserver struct{}
+
+func (mockObserver) Observe(*segment.Key, *tree.Tree) {}
 
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
@@ -40,7 +45,7 @@ var _ = Describe("server", func() {
 
 						s, err := storage.New(&(*cfg).Server)
 						Expect(err).ToNot(HaveOccurred())
-						c, _ := New(&(*cfg).Server, s, logrus.New())
+						c, _ := New(&(*cfg).Server, s, mockObserver{}, logrus.New())
 						h, _ := c.mux()
 						httpServer := httptest.NewServer(h)
 						defer s.Close()

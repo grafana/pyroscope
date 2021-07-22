@@ -21,6 +21,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 )
 
@@ -32,6 +34,10 @@ const (
 	oauthGitlab
 )
 
+type Observer interface {
+	Observe(*segment.Key, *tree.Tree)
+}
+
 type decodeResponseFunc func(*http.Response) (string, error)
 
 type Controller struct {
@@ -39,6 +45,7 @@ type Controller struct {
 
 	config     *config.Server
 	storage    *storage.Storage
+	observer   Observer
 	log        *logrus.Logger
 	httpServer *http.Server
 
@@ -50,7 +57,7 @@ type Controller struct {
 	appStats *hyperloglog.HyperLogLogPlus
 }
 
-func New(c *config.Server, s *storage.Storage, l *logrus.Logger) (*Controller, error) {
+func New(c *config.Server, s *storage.Storage, o Observer, l *logrus.Logger) (*Controller, error) {
 	appStats, err := hyperloglog.NewPlus(uint8(18))
 	if err != nil {
 		return nil, err
@@ -60,6 +67,7 @@ func New(c *config.Server, s *storage.Storage, l *logrus.Logger) (*Controller, e
 		config:   c,
 		log:      l,
 		storage:  s,
+		observer: o,
 		stats:    make(map[string]int),
 		appStats: appStats,
 	}

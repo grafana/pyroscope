@@ -56,7 +56,7 @@ func NewExporter(rules []config.MetricExportRule, reg prometheus.Registerer) (*M
 	return &e, nil
 }
 
-// Observe ingested key and value.
+// Observe ingested segment key and tree.
 //
 // The call evaluates export rules against the key k and creates prometheus
 // counters for new time series, if required. Every export rule has an

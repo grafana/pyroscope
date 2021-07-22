@@ -58,6 +58,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctrl.observer.Observe(ip.storageKey, t)
 	ctrl.statsInc("ingest")
 	ctrl.statsInc("ingest:" + ip.spyName)
 	k := *ip.storageKey

@@ -23,7 +23,7 @@ var _ = Describe("server", func() {
 				(*cfg).Server.APIBindAddr = ":10044"
 				s, err := storage.New(&(*cfg).Server)
 				Expect(err).ToNot(HaveOccurred())
-				c, _ := New(&(*cfg).Server, s, logrus.New())
+				c, _ := New(&(*cfg).Server, s, mockObserver{}, logrus.New())
 				h, _ := c.mux()
 				httpServer = httptest.NewServer(h)
 				defer httpServer.Close()
