@@ -33,5 +33,13 @@ func (e *Error) Error() string { return e.Inner.Error() + ": " + e.Expr }
 func (e *Error) Unwrap() error { return e.Inner }
 
 func newInvalidTagKeyRuneError(k string, r rune) *Error {
-	return newErr(ErrInvalidTagKey, fmt.Sprintf("%s: character is not allowed: %q", k, r))
+	return newInvalidRuneError(ErrInvalidTagKey, k, r)
+}
+
+func newInvalidAppNameRuneError(k string, r rune) *Error {
+	return newInvalidRuneError(ErrInvalidAppName, k, r)
+}
+
+func newInvalidRuneError(err error, k string, r rune) *Error {
+	return newErr(err, fmt.Sprintf("%s: character is not allowed: %q", k, r))
 }

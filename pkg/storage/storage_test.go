@@ -188,7 +188,7 @@ var _ = Describe("storage package", func() {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
-						key, _ := segment.ParseKey("tree key" + strconv.Itoa(i+1))
+						key, _ := segment.ParseKey("tree_key" + strconv.Itoa(i+1))
 						err := s.Put(&PutInput{
 							Key:        key,
 							Val:        tree,
@@ -279,7 +279,7 @@ var _ = Describe("storage package", func() {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
-						key, _ := segment.ParseKey("tree key" + strconv.Itoa(i+1))
+						key, _ := segment.ParseKey("tree_key" + strconv.Itoa(i+1))
 						err := s.Put(&PutInput{
 							Key:        key,
 							Val:        tree,

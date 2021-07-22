@@ -28,7 +28,7 @@ func ParseQuery(s string) (*Query, error) {
 			q.Matchers = m
 			return &q, nil
 		default:
-			if !IsTagKeyRuneAllowed(c) {
+			if !IsAppNameRuneAllowed(c) {
 				return nil, newErr(ErrInvalidAppName, s[:offset+1])
 			}
 		}

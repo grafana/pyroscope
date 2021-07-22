@@ -31,6 +31,14 @@ const (
 	EQL_REGEX    // =~
 )
 
+const (
+	ReservedTagKeyName = "__name__"
+)
+
+var reservedTagKeys = []string{
+	ReservedTagKeyName,
+}
+
 // IsNegation reports whether the operator assumes negation.
 func (o Op) IsNegation() bool { return o < EQL }
 
@@ -54,4 +62,53 @@ func (m *TagMatcher) Match(v string) bool {
 	default:
 		panic("invalid match operator")
 	}
+}
+
+// ValidateTagKey report an error if the given key k violates constraints.
+//
+// The function should be used to validate user input. The function returns
+// ErrTagKeyReserved if the key is valid but reserved for internal use.
+func ValidateTagKey(k string) error {
+	if len(k) == 0 {
+		return ErrTagKeyIsRequired
+	}
+	for _, r := range k {
+		if !IsTagKeyRuneAllowed(r) {
+			return newInvalidTagKeyRuneError(k, r)
+		}
+	}
+	if IsTagKeyReserved(k) {
+		return newErr(ErrTagKeyReserved, k)
+	}
+	return nil
+}
+
+// ValidateAppName report an error if the given app name n violates constraints.
+func ValidateAppName(n string) error {
+	if len(n) == 0 {
+		return ErrAppNameIsRequired
+	}
+	for _, r := range n {
+		if !IsAppNameRuneAllowed(r) {
+			return newInvalidAppNameRuneError(n, r)
+		}
+	}
+	return nil
+}
+
+func IsTagKeyRuneAllowed(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
+}
+
+func IsAppNameRuneAllowed(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.'
+}
+
+func IsTagKeyReserved(k string) bool {
+	for _, s := range reservedTagKeys {
+		if s == k {
+			return true
+		}
+	}
+	return false
 }

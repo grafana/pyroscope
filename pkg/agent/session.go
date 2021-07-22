@@ -109,7 +109,11 @@ func (ps *ProfileSession) createNames(tags map[string]string) error {
 		if err != nil {
 			return err
 		}
-		tagsCopy["__name__"] = appName + "." + string(t)
+		appName += "." + string(t)
+		if err = flameql.ValidateAppName(appName); err != nil {
+			return err
+		}
+		tagsCopy["__name__"] = appName
 		ps.names[t] = segment.NewKey(tagsCopy).Normalized()
 	}
 	return nil
