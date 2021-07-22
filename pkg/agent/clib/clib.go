@@ -19,22 +19,18 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/caps"
 )
 
-type PyspySession struct {
-	session *agent.ProfileSession
-}
-
 func performOSChecks() error {
 	if !caps.HasSysPtraceCap() {
-		return errors.New("if you're running pyroscope in a Docker container, add --cap-add=sys_ptrace. See our Docker Guide for more information: https://pyroscope.io/docs/docker-guide")
+		return errors.New("if you're running pyroscope in a Docker container,  add --cap-add=sys_ptrace." +
+			"See our Docker Guide for more information: https://pyroscope.io/docs/docker-guide")
 	}
 	return nil
 }
 
-var pyspy_session = PyspySession{}
+var Sessions = map[int]*agent.ProfileSession{}
 
-func (pys PyspySession) startNewSession(cfg *config.Exec) (*agent.ProfileSession, error) {
+func startNewSession(cfg *config.Exec) (*agent.ProfileSession, error) {
 	logger := &agent.NoopLogger{}
-
 	spyName := cfg.SpyName
 	pid := cfg.Pid
 	pyspy.Blocking = cfg.PyspyBlocking
@@ -77,8 +73,14 @@ func (pys PyspySession) startNewSession(cfg *config.Exec) (*agent.ProfileSession
 
 //export Start
 func Start(ApplicationName *C.char, Pid C.int, SpyName *C.char, ServerAddress *C.char) int {
+	pid := int(Pid)
 
-	s, err := pyspy_session.startNewSession(&config.Exec{
+	if _, ok := Sessions[pid]; ok {
+		fmt.Println(fmt.Errorf("session for pid: %d already exists", pid))
+		return -2
+	}
+
+	s, err := startNewSession(&config.Exec{
 		SpyName:                C.GoString(SpyName),
 		ApplicationName:        C.GoString(ApplicationName),
 		SampleRate:             100,
@@ -90,7 +92,7 @@ func Start(ApplicationName *C.char, Pid C.int, SpyName *C.char, ServerAddress *C
 		UpstreamRequestTimeout: time.Second * 10,
 		NoLogging:              false,
 		NoRootDrop:             false,
-		Pid:                    int(Pid),
+		Pid:                    pid,
 		UserName:               "",
 		GroupName:              "",
 		PyspyBlocking:          false,
@@ -101,19 +103,33 @@ func Start(ApplicationName *C.char, Pid C.int, SpyName *C.char, ServerAddress *C
 		return -1
 	}
 
-	pyspy_session.session = s
+	Sessions[pid] = s
 
 	return 0
 }
 
 //export Stop
-func Stop(Pid C.int) {
-	pyspy_session.session.Stop()
+func Stop(Pid C.int) int {
+	pid := int(Pid)
+
+	if _, ok := Sessions[pid]; !ok {
+		fmt.Println(fmt.Errorf("session for pid: %d doesn't exists", pid))
+		return -1
+	}
+	Sessions[int(Pid)].Stop()
+	return 0
 }
 
 //export ChangeName
-func ChangeName(newName *C.char) {
-	pyspy_session.session.ChangeName(C.GoString(newName))
+func ChangeName(newName *C.char, Pid C.int) int {
+	pid := int(Pid)
+
+	if _, ok := Sessions[pid]; !ok {
+		fmt.Println(fmt.Errorf("session for pid: %d doesn't exists", pid))
+		return -1
+	}
+	Sessions[int(Pid)].ChangeName(C.GoString(newName))
+	return 0
 }
 
 func main() {
