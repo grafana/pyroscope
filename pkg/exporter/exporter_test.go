@@ -81,7 +81,7 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-func TestExport(t *testing.T) {
+func TestObserve(t *testing.T) {
 	rules := []config.MetricExportRule{
 		{
 			Name: "app_name_cpu_total",

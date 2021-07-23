@@ -117,7 +117,7 @@ type Server struct {
 	JWTSecret                string `deprecated:"true" def:"" desc:"secret used to secure your JWT tokens"`
 	LoginMaximumLifetimeDays int    `deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring."`
 
-	MetricExportRules []MetricExportRule `deprecated:"true" def:"" desc:"metric export rules"`
+	MetricExportRules []MetricExportRule `yaml:"metric-export-rules" deprecated:"true" def:"" desc:"metric export rules"`
 }
 
 type MetricExportRule struct {
