@@ -1,4 +1,4 @@
 metric-export-rules:
-  - name: my_metric_name
+  my_metric_name:
     expr: app.name{foo=~"bar"}
     node: a;b;c

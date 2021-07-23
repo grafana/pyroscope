@@ -20,36 +20,45 @@ type MetricsExporter struct{ rules []*rule }
 type rule struct {
 	reg prometheus.Registerer
 
-	name string
-	qry  *flameql.Query
+	name   string
+	qry    *flameql.Query
+	labels []string
 	node
 
 	// N.B: CounterVec/MetricVec is not used due to the fact
-	// that label names are not determined.
+	// that label names are not predetermined.
 	sync.RWMutex
 	counters map[uint64]prometheus.Counter
 }
 
 // NewExporter validates configuration and creates a new prometheus MetricsExporter.
-func NewExporter(rules []config.MetricExportRule, reg prometheus.Registerer) (*MetricsExporter, error) {
+func NewExporter(rules config.MetricExportRules, reg prometheus.Registerer) (*MetricsExporter, error) {
 	var e MetricsExporter
-	for _, c := range rules {
-		if !model.IsValidMetricName(model.LabelValue(c.Name)) {
-			return nil, fmt.Errorf("%q is not a valid metric name", c.Name)
+	if rules == nil {
+		return &e, nil
+	}
+	for name, r := range rules {
+		if !model.IsValidMetricName(model.LabelValue(name)) {
+			return nil, fmt.Errorf("%q is not a valid metric name", name)
 		}
-		qry, err := flameql.ParseQuery(c.Expr)
+		qry, err := flameql.ParseQuery(r.Expr)
 		if err != nil {
-			return nil, fmt.Errorf("rule %q: invalid expression %q: %w", c.Name, c.Expr, err)
+			return nil, fmt.Errorf("rule %q: invalid expression %q: %w", name, r.Expr, err)
 		}
-		n, err := newNode(c.Node)
+		n, err := newNode(r.Node)
 		if err != nil {
-			return nil, fmt.Errorf("rule %q: invalid node %q: %w", c.Name, c.Node, err)
+			return nil, fmt.Errorf("rule %q: invalid node %q: %w", name, r.Node, err)
+		}
+		g, err := validateTagKeys(r.Labels)
+		if err != nil {
+			return nil, fmt.Errorf("rule %q: invalid tags to group by %q: %w", name, r.Labels, err)
 		}
 		e.rules = append(e.rules, &rule{
-			name:     c.Name,
+			name:     name,
 			qry:      qry,
 			reg:      reg,
 			node:     n,
+			labels:   g,
 			counters: make(map[uint64]prometheus.Counter),
 		})
 	}
@@ -80,7 +89,7 @@ func (e MetricsExporter) Observe(k *segment.Key, tree *tree.Tree) {
 // eval returns existing counter for the key or creates a new one,
 // if the key satisfies the rule expression.
 func (r *rule) eval(k *segment.Key) (prometheus.Counter, bool) {
-	m, ok := r.matchedLabels(k)
+	m, ok := r.matchLabelNames(k)
 	if !ok {
 		return nil, false
 	}
@@ -93,12 +102,9 @@ func (r *rule) eval(k *segment.Key) (prometheus.Counter, bool) {
 	}
 	r.RUnlock()
 	if match(r.qry, m) {
-		// Remove app name label to avoid
-		// collision with prometheus labels.
-		m = m[1:]
 		c = prometheus.NewCounter(prometheus.CounterOpts{
 			Name:        r.name,
-			ConstLabels: m.labels(),
+			ConstLabels: promLabels(k, r.labels...),
 		})
 		r.reg.MustRegister(c)
 		r.Lock()
@@ -109,8 +115,33 @@ func (r *rule) eval(k *segment.Key) (prometheus.Counter, bool) {
 	return nil, false
 }
 
+func validateTagKeys(tagKeys []string) ([]string, error) {
+	for _, l := range tagKeys {
+		if err := flameql.ValidateTagKey(l); err != nil {
+			return nil, err
+		}
+	}
+	return tagKeys, nil
+}
+
+// promLabels converts key to prometheus.Labels ignoring reserved tag keys.
+func promLabels(key *segment.Key, labels ...string) prometheus.Labels {
+	if len(labels) == 0 {
+		return nil
+	}
+	l := key.Labels()
+	p := make(prometheus.Labels, len(labels))
+	// labels are guarantied to be valid.
+	for _, k := range labels {
+		if v, ok := l[k]; ok {
+			p[k] = v
+		}
+	}
+	return p
+}
+
 // match reports whether the key matches the query.
-func match(qry *flameql.Query, labels matchedLabels) bool {
+func match(qry *flameql.Query, labels labels) bool {
 	for _, m := range qry.Matchers {
 		var ok bool
 		for _, l := range labels {

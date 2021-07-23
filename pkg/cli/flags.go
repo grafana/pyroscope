@@ -287,7 +287,7 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption)
 			}
 			flagSet.UintVar(val, nameVal, defaultVal, descVal)
 		default:
-			logrus.Fatalf("type %s is not supported", field.Type)
+			continue
 		}
 	}
 	return NewSortedFlags(obj, flagSet, deprecatedFields)

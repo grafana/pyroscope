@@ -100,7 +100,12 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 		}
 	case "server":
 		val = new(config.Server)
-		cli.PopulateFlagSet(val, flagSet, opts...)
+		// Skip `metric-export-rules` only from CLI reference.
+		if format == "md" {
+			cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("metric-export-rules"))...)
+		} else {
+			cli.PopulateFlagSet(val, flagSet, opts...)
+		}
 	case "convert":
 		val = new(config.Convert)
 		cli.PopulateFlagSet(val, flagSet, opts...)
@@ -113,6 +118,9 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 	case "target":
 		val = new(config.Target)
 		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("tags"))...)
+	case "metric-export-rule":
+		val = new(config.MetricExportRule)
+		cli.PopulateFlagSet(val, flagSet, opts...)
 	default:
 		log.Fatalf("Unknown subcommand %q", subcommand)
 	}
