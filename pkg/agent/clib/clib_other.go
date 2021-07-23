@@ -1,6 +1,6 @@
 // +build !linux
 
-package clib
+package main
 
 func performOSChecks() error {
 	return nil

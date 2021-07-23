@@ -1,6 +1,6 @@
 // +build linux
 
-package clib
+package main
 
 import (
 	"errors"
