@@ -17,13 +17,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
-type RenderFormat string
-
-const (
-	FormatSingle = "single"
-	FormatDouble = "double"
-)
-
 var (
 	errUnknownFormat   = errors.New("unknown format")
 	errLabelIsRequired = errors.New("label parameter is required")
@@ -55,9 +48,8 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	leftStartTime, leftEndTime, leftOK := parseRenderRangeParams(r.URL.Query(), "leftFrom", "leftUntil")
 	rghtStartTime, rghtEndTime, rghtOK := parseRenderRangeParams(r.URL.Query(), "rightFrom", "rightUntil")
 
-	format := FormatSingle
-	if rghtOK || leftOK {
-		format = FormatDouble
+	isFormatDouble := rghtOK || leftOK
+	if isFormatDouble {
 		out, leftOut, rghtOut, err = ctrl.loadTreeConcurrently(p.gi, p.gi.StartTime, p.gi.EndTime, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
 	} else {
 		out, err = ctrl.storage.Get(p.gi)
@@ -75,7 +67,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var fs *tree.Flamebearer
-	if format == FormatDouble {
+	if isFormatDouble {
 		leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
 		fs = tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
 	} else {
@@ -90,10 +82,10 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		"timeline":    out.Timeline,
 		"flamebearer": fs,
 		"metadata": map[string]interface{}{
+			"format":     fs.Format, // "single" | "double"
 			"spyName":    out.SpyName,
 			"sampleRate": out.SampleRate,
 			"units":      out.Units,
-			"format":     format, // "single" | "double"
 		},
 	}
 

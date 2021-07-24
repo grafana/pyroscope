@@ -86,6 +86,7 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 		Levels:   [][]int{},
 		NumTicks: int(leftTree.Samples() + rightTree.Samples()),
 		MaxSelf:  int(0),
+		Format:   FormatDouble,
 	}
 
 	leftNodes, xLeftOffsets := []*treeNode{leftTree.root}, []int{0}

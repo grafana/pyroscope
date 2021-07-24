@@ -63,7 +63,7 @@ var _ = Describe("tree package", func() {
 					{0, 3, 0, 0, 12, 0, 1},
 					{0, 1, 1, 0, 4, 4, 3, 0, 2, 2, 0, 8, 8, 2},
 				}))
-				Expect(f.NumTicks).To(Equal(3))
+				Expect(f.NumTicks).To(Equal(15))
 				Expect(f.MaxSelf).To(Equal(8))
 			})
 		})
@@ -115,7 +115,7 @@ var _ = Describe("tree package", func() {
 						0, 3, 3, 0, 12, 12, 2, // b
 					},
 				}))
-				Expect(f.NumTicks).To(Equal(6))
+				Expect(f.NumTicks).To(Equal(30))
 				Expect(f.MaxSelf).To(Equal(12))
 			})
 		})
