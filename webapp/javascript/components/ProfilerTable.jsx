@@ -2,6 +2,7 @@ import React from "react";
 import clsx from "clsx";
 import { getFormatter, getPackageNameFromStackTrace } from "../util/format";
 import { colorBasedOnPackageName } from "../util/color";
+import { parseFlamebearerFormat } from "../util/flamebearer";
 
 // generates a table from data in flamebearer format
 const generateTable = (flamebearer) => {
@@ -9,20 +10,22 @@ const generateTable = (flamebearer) => {
   if (!flamebearer) {
     return table;
   }
-  const { names, levels } = flamebearer;
+  const { names, levels, format } = flamebearer;
+  const ff = parseFlamebearerFormat(format);
   const hash = {};
   // eslint-disable-next-line no-plusplus
   for (let i = 0; i < levels.length; i++) {
-    for (let j = 0; j < levels[i].length; j += 4) {
-      const key = levels[i][j + 3];
+    const level = levels[i];
+    for (let j = 0; j < level.length; j += ff.jStep) {
+      const key = ff.getBarName(level, j);
       const name = names[key];
       hash[name] = hash[name] || {
         name: name || "<empty>",
         self: 0,
         total: 0,
       };
-      hash[name].total += levels[i][j + 1];
-      hash[name].self += levels[i][j + 2];
+      hash[name].total += ff.getBarTotal(level, j);
+      hash[name].self += ff.getBarSelf(level, j);
     }
   }
   return Object.values(hash);
@@ -103,7 +106,7 @@ function Table({ flamebearer, updateSortBy, sortBy, sortByDirection }) {
 }
 
 function TableBody({ flamebearer, sortBy, sortByDirection }) {
-  const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
+  const { numTicks, maxSelf, sampleRate, spyName, units, format } = flamebearer;
 
   const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
 

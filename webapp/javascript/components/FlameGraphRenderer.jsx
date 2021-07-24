@@ -147,13 +147,11 @@ class FlameGraphRenderer extends React.Component {
     fetch(`${url}&format=json`, { signal: this.currentJSONController.signal })
       .then((response) => response.json())
       .then((data) => {
-        let { flamebearer, metadata } = data;
-        // TODO: handle different format of /render
-        deltaDiffWrapper(metadata.format, flamebearer.levels);
+        let { flamebearer } = data;
+        deltaDiffWrapper(flamebearer.format, flamebearer.levels);
 
         this.setState({
           flamebearer: flamebearer,
-          metadata: metadata,
         }, () => {
           this.updateData();
         })
@@ -220,15 +218,14 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateData = () => {
-    const { names, levels, numTicks, sampleRate, units } = this.state.flamebearer;
-    const { metadata } = this.state;
+    const { names, levels, numTicks, sampleRate, units, format } = this.state.flamebearer;
     this.setState({
       names: names,
       levels: levels,
       numTicks: numTicks,
       sampleRate: sampleRate,
       units: units,
-      format: metadata.format, // "single" | "double"
+      format: format, // "single" | "double"
     }, () => {
       this.renderCanvas();
     });
