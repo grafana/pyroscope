@@ -1,5 +1,12 @@
 package tree
 
+type Format string
+
+const (
+	FormatSingle Format = "single"
+	FormatDouble Format = "double"
+)
+
 type Flamebearer struct {
 	Names    []string `json:"names"`
 	Levels   [][]int  `json:"levels"`
@@ -9,6 +16,7 @@ type Flamebearer struct {
 	SpyName    string `json:"spyName"`
 	SampleRate uint32 `json:"sampleRate"`
 	Units      string `json:"units"`
+	Format     Format `json:"format"`
 }
 
 func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
@@ -20,6 +28,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 		Levels:   [][]int{},
 		NumTicks: int(t.Samples()),
 		MaxSelf:  int(0),
+		Format:   FormatSingle,
 	}
 
 	nodes := []*treeNode{t.root}
