@@ -14,7 +14,7 @@ import (
 )
 
 // MetricsExporter exports profiling metrics via Prometheus.
-// Safe for concurrent use.
+// It is safe for concurrent use.
 type MetricsExporter struct{ rules []*rule }
 
 type rule struct {
@@ -25,8 +25,6 @@ type rule struct {
 	labels []string
 	node
 
-	// N.B: CounterVec/MetricVec is not used due to the fact
-	// that label names are not predetermined.
 	sync.RWMutex
 	counters map[uint64]prometheus.Counter
 }
@@ -51,7 +49,7 @@ func NewExporter(rules config.MetricExportRules, reg prometheus.Registerer) (*Me
 		}
 		g, err := validateTagKeys(r.Labels)
 		if err != nil {
-			return nil, fmt.Errorf("rule %q: invalid tags to group by %q: %w", name, r.Labels, err)
+			return nil, fmt.Errorf("rule %q: invalid label: %w", name, err)
 		}
 		e.rules = append(e.rules, &rule{
 			name:     name,
@@ -71,9 +69,6 @@ func NewExporter(rules config.MetricExportRules, reg prometheus.Registerer) (*Me
 // counters for new time series, if required. Every export rule has an
 // expression to evaluate a dimension key, and a filter, which allow to
 // retrieve metric value for particular nodes.
-//
-// When a new counter is created, labels matching the rule expression are
-// preserved. Therefore it is crucial to keep query cardinality low.
 func (e MetricsExporter) Observe(k *segment.Key, tree *tree.Tree) {
 	for _, r := range e.rules {
 		c, ok := r.eval(k)
@@ -125,6 +120,7 @@ func validateTagKeys(tagKeys []string) ([]string, error) {
 }
 
 // promLabels converts key to prometheus.Labels ignoring reserved tag keys.
+// Only explicitly listed labels are converted.
 func promLabels(key *segment.Key, labels ...string) prometheus.Labels {
 	if len(labels) == 0 {
 		return nil

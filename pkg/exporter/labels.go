@@ -15,8 +15,6 @@ import (
 //   query:   app{foo="xxx"}
 //   matched: {__name__: app, foo: bar}
 //
-// N.B: application name label is always first.
-//
 // The key must include labels required by the rule expression, otherwise
 // the function returns empty labels and false.
 func (r *rule) matchLabelNames(key *segment.Key) (labels, bool) {
