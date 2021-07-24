@@ -49,40 +49,37 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var out *storage.GetOutput
-	var fs *tree.Flamebearer
 	var err error
-	var format RenderFormat
+	var out, leftOut, rghtOut *storage.GetOutput
 
 	leftStartTime, leftEndTime, leftOK := parseRenderRangeParams(r.URL.Query(), "leftFrom", "leftUntil")
 	rghtStartTime, rghtEndTime, rghtOK := parseRenderRangeParams(r.URL.Query(), "rightFrom", "rightUntil")
 
+	format := FormatSingle
 	if rghtOK || leftOK {
-		var leftOut, rghtOut *storage.GetOutput
-		leftOut, rghtOut, err = ctrl.loadDiffOutput(p.gi, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
-		ctrl.statsInc("render")
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "failed to retrieve data")
-			return
-		}
-		out = leftOut // to be compatible with responding code
-		fs = tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
 		format = FormatDouble
-
+		out, leftOut, rghtOut, err = ctrl.loadTreeConcurrently(p.gi, p.gi.StartTime, p.gi.EndTime, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
 	} else {
 		out, err = ctrl.storage.Get(p.gi)
-		ctrl.statsInc("render")
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "failed to retrieve data")
-			return
-		}
+	}
 
-		// TODO: handle properly
-		if out == nil {
-			out = &storage.GetOutput{Tree: tree.New()}
-		}
+	ctrl.statsInc("render")
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
+		return
+	}
+
+	// TODO: handle properly
+	if out == nil {
+		out = &storage.GetOutput{Tree: tree.New()}
+	}
+
+	var fs *tree.Flamebearer
+	if format == FormatDouble {
+		leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
+		fs = tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
+	} else {
 		fs = out.Tree.FlamebearerStruct(p.maxNodes)
-		format = FormatSingle
 	}
 
 	// TODO remove this duplication? We're already adding this to metadata
@@ -147,32 +144,30 @@ func parseRenderRangeParams(v url.Values, from, until string) (startTime, endTim
 	return startTime, endTime, fromStr != "" || untilStr != ""
 }
 
-func (ctrl *Controller) loadDiffOutput(
+func (ctrl *Controller) loadTreeConcurrently(
 	gi *storage.GetInput,
+	treeStartTime, treeEndTime time.Time,
 	leftStartTime, leftEndTime time.Time,
 	rghtStartTime, rghtEndTime time.Time,
-) (*storage.GetOutput, *storage.GetOutput, error) {
+) (treeOut, leftOut, rghtOut *storage.GetOutput, _ error) {
 
-	var leftOut, rghtOut *storage.GetOutput
-	var leftErr, rghtErr error
-
+	var treeErr, leftErr, rghtErr error
 	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() { defer wg.Done(); leftOut, leftErr = ctrl.loadDiffOutputExec(gi, leftStartTime, leftEndTime) }()
-	go func() { defer wg.Done(); rghtOut, rghtErr = ctrl.loadDiffOutputExec(gi, rghtStartTime, rghtEndTime) }()
+	wg.Add(3)
+	go func() { defer wg.Done(); treeOut, treeErr = ctrl.loadTree(gi, treeStartTime, treeEndTime) }()
+	go func() { defer wg.Done(); leftOut, leftErr = ctrl.loadTree(gi, leftStartTime, leftEndTime) }()
+	go func() { defer wg.Done(); rghtOut, rghtErr = ctrl.loadTree(gi, rghtStartTime, rghtEndTime) }()
 	wg.Wait()
 
-	if leftErr != nil {
-		return nil, nil, leftErr
+	for _, err := range []error{treeErr, leftErr, rghtErr} {
+		if err != nil {
+			return nil, nil, nil, err
+		}
 	}
-	if rghtErr != nil {
-		return nil, nil, rghtErr
-	}
-	leftOut.Tree, rghtOut.Tree = combineTree(leftOut.Tree, rghtOut.Tree)
-	return leftOut, rghtOut, nil
+	return treeOut, leftOut, rghtOut, nil
 }
 
-func (ctrl *Controller) loadDiffOutputExec(gi *storage.GetInput, startTime, endTime time.Time) (_ *storage.GetOutput, _err error) {
+func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.Time) (_ *storage.GetOutput, _err error) {
 	defer func() {
 		rerr := recover()
 		if rerr != nil {
@@ -191,8 +186,4 @@ func (ctrl *Controller) loadDiffOutputExec(gi *storage.GetInput, startTime, endT
 		return &storage.GetOutput{Tree: tree.New()}, nil
 	}
 	return out, nil
-}
-
-func combineTree(leftTree, rightTree *tree.Tree) (*tree.Tree, *tree.Tree) {
-	return tree.CombineTree(leftTree, rightTree)
 }
