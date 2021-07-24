@@ -31,18 +31,18 @@ export function buildRenderURL(state, fromOverride=null, untilOverride=null, sid
 }
 
 // TODO: merge buildRenderURL and buildDiffRenderURL
-export function buildDiffRenderURL(state, leftFromOverride=null, leftUntilOverride=null, rightFromOverride=null, rightUntilOverride=null) {
-  let { leftFrom, leftUntil, rightFrom, rightUntil } = state;
+export function buildDiffRenderURL(state, { from: fromOverride, until: untilOverride, leftFrom: leftFromOverride, leftUntil: leftUntilOverride, rightFrom: rightFromOverride, rightUntil: rightUntilOverride } = {}) {
+  let { from, until, leftFrom, leftUntil, rightFrom, rightUntil } = state;
+  from = fromOverride || from;
+  until = untilOverride || until;
   leftFrom = leftFromOverride || leftFrom;
   leftUntil = leftUntilOverride || leftUntil;
   rightFrom = rightFromOverride || rightFrom;
   rightUntil = rightUntilOverride || rightUntil;
 
-  const urlStr = buildRenderURL(state, leftFrom, leftUntil);
+  const urlStr = buildRenderURL(state, from, until);
   const url = new URL(urlStr, location.origin);
   const params = url.searchParams;
-  params.delete('from');
-  params.delete('until');
   params.set('leftFrom', leftFrom);
   params.set('leftUntil', leftUntil);
   params.set('rightFrom', rightFrom);

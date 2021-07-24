@@ -47,24 +47,27 @@ export function deltaDiffWrapper(format, levels) {
 //   j = 1,4: width of bar   => width = (level[4] + level[1]) / 2
 //                           =>  diff = (level[4] - level[1]) / (level[1] + level[4])
 //   j = 6  : position in the main index (jStep)
+
+const formatSingle = {
+  jStep: 4,
+  jName: 3,
+  getBarTotal: (level, j) => level[j],
+  getBarSelf:  (level, j) => level[j + 1],
+  getBarDiff:  (level, j) => 0,
+  getBarName:  (level, j) => level[j + 3],
+}
+
+const formatDouble = {
+  jStep : 7,
+  jName : 6,
+  getBarTotal: (level, j) => (level[j]     + level[j + 3]),
+  getBarSelf:  (level, j) => (level[j + 4] + level[j + 1]),
+  getBarDiff:  (level, j) => (level[j + 4] - level[j + 1]),
+  getBarName:  (level, j) =>  level[j + 6],
+}
+
 export function parseFlamebearerFormat(format) {
   const isSingle = format !== "double";
-  if (isSingle) {
-    return {
-      jStep: 4,
-      jName: 3,
-      getBarIndex:    (level, j) => level[j],
-      getNumBarTicks: (level, j) => level[j + 1],
-      getNumBarDiff:  (level, j) => 0,
-      getBarName:     (level, j) => level[j + 3],
-    }
-  }
-  return {
-    jStep : 7,
-    jName : 6,
-    getBarIndex:    (level, j) => (level[j]     + level[j + 3]) / 2,
-    getNumBarTicks: (level, j) => (level[j + 4] + level[j + 1]) / 2,
-    getNumBarDiff:  (level, j) => (level[j + 4] - level[j + 1]) / 2,
-    getBarName:     (level, j) =>  level[j + 6],
-  }
+  if (isSingle) return formatSingle;
+  else return formatDouble;
 }
