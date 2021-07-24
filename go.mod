@@ -12,11 +12,11 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger/v2 v2.2007.2
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dgrijalva/lfu-go v0.0.0-00010101000000-000000000000
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
 	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99
 	github.com/google/uuid v1.1.2
