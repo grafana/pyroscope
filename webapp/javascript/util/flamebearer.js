@@ -51,19 +51,23 @@ export function deltaDiffWrapper(format, levels) {
 const formatSingle = {
   jStep: 4,
   jName: 3,
-  getBarTotal: (level, j) => level[j],
-  getBarSelf:  (level, j) => level[j + 1],
-  getBarDiff:  (level, j) => 0,
-  getBarName:  (level, j) => level[j + 3],
+  getBarOffset:    (level, j) => level[j],
+  getBarTotal:     (level, j) => level[j + 1],
+  getBarTotalDiff: (level, j) => 0,
+  getBarSelf:      (level, j) => level[j + 1],
+  getBarSelfDiff:  (level, j) => 0,
+  getBarName:      (level, j) => level[j + 3],
 }
 
 const formatDouble = {
   jStep : 7,
   jName : 6,
-  getBarTotal: (level, j) => (level[j]     + level[j + 3]),
-  getBarSelf:  (level, j) => (level[j + 4] + level[j + 1]),
-  getBarDiff:  (level, j) => (level[j + 4] - level[j + 1]),
-  getBarName:  (level, j) =>  level[j + 6],
+  getBarOffset:    (level, j) => (level[j]     + level[j + 3]),
+  getBarTotal:     (level, j) => (level[j + 4] + level[j + 1]),
+  getBarTotalDiff: (level, j) => (level[j + 4] - level[j + 1]),
+  getBarSelf:      (level, j) => (level[j + 5] + level[j + 2]),
+  getBarSelfDiff:  (level, j) => (level[j + 5] - level[j + 2]),
+  getBarName:      (level, j) =>  level[j + 6],
 }
 
 export function parseFlamebearerFormat(format) {
