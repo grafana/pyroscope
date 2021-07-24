@@ -34,7 +34,7 @@ import {
   getPackageNameFromStackTrace,
   getFormatter,
 } from "../util/format";
-import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
+import { colorBasedOnDiff, colorBasedOnPackageName, colorGreyscale } from "../util/color";
 import TimelineChartWrapper from "./TimelineChartWrapper";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
@@ -335,6 +335,7 @@ class FlameGraphRenderer extends React.Component {
 
     const { names, levels, numTicks, sampleRate, units } = this.state;
     const ff = this.parseFormat();
+    const isDiff = this.props.viewType === "diff";
 
     this.graphWidth = this.canvas.width = this.canvas.clientWidth;
     this.pxPerTick =
@@ -370,6 +371,7 @@ class FlameGraphRenderer extends React.Component {
           (this.query && names[level[j + ff.jName]].indexOf(this.query) >= 0) || false;
         // merge very small blocks into big "collapsed" ones for performance
         const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
+        const numBarDiff = collapsed? 0 : ff.getBarTotalDiff(level, j);
 
         // const collapsed = false;
         if (collapsed) { // TODO: fix collapsed code
@@ -399,7 +401,11 @@ class FlameGraphRenderer extends React.Component {
         const { spyName } = this.state.flamebearer;
 
         let nodeColor;
-        if (collapsed) {
+        if (isDiff && collapsed) {
+          nodeColor = colorGreyscale(200, 0.66);
+        } else if (isDiff) {
+          nodeColor = colorBasedOnDiff(numBarDiff, numBarTicks, a);
+        } else if (collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (queryExists && nodeIsInQuery) {
           nodeColor = HIGHLIGHT_NODE_COLOR;

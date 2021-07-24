@@ -37,6 +37,12 @@ export function colorBasedOnPackageName(name, a) {
   return baseClr.alpha(a);
 }
 
+export function colorBasedOnDiff(diff, total, a) {
+  let v = 200 * Math.sqrt(Math.abs(diff / total));
+  if (diff >= 0) return Color.rgb(200-v, 200-(v/2), 200).alpha(a);
+  return Color.rgb(200, 200-v, 200-v).alpha(a);
+}
+
 export function colorGreyscale(v, a) {
   return Color.rgb(v, v, v).alpha(a);
 }
