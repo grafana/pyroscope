@@ -1,20 +1,12 @@
 package cli
 
 import (
-	"flag"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/iancoleman/strcase"
-	"github.com/sirupsen/logrus"
-
-	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/duration"
-	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
 const timeFormat = "2006-01-02T15:04:05Z0700"
@@ -131,167 +123,164 @@ func (df *durFlag) Set(value string) error {
 	return nil
 }
 
-func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption) *SortedFlags {
-	v := reflect.ValueOf(obj).Elem()
-	t := reflect.TypeOf(v.Interface())
-	num := t.NumField()
+// func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption) *SortedFlags {
+// 	v := reflect.ValueOf(obj).Elem()
+// 	t := reflect.TypeOf(v.Interface())
+// 	num := t.NumField()
 
-	o := &options{
-		replacements: map[string]string{
-			"<installPrefix>":           getInstallPrefix(),
-			"<defaultAgentConfigPath>":  defaultAgentConfigPath(),
-			"<defaultAgentLogFilePath>": defaultAgentLogFilePath(),
-			"<supportedProfilers>":      strings.Join(spy.SupportedExecSpies(), ", "),
-		},
-	}
-	for _, option := range opts {
-		option(o)
-	}
+// 	o := &options{
+// 		replacements: map[string]string{
+// 			"<installPrefix>":           getInstallPrefix(),
+// 			"<defaultAgentConfigPath>":  defaultAgentConfigPath(),
+// 			"<defaultAgentLogFilePath>": defaultAgentLogFilePath(),
+// 			"<supportedProfilers>":      strings.Join(spy.SupportedExecSpies(), ", "),
+// 		},
+// 	}
+// 	for _, option := range opts {
+// 		option(o)
+// 	}
 
-	deprecatedFields := []string{}
+// 	deprecatedFields := []string{}
 
-	for i := 0; i < num; i++ {
-		field := t.Field(i)
-		fieldV := v.Field(i)
-		if !(fieldV.IsValid() && fieldV.CanSet()) {
-			continue
-		}
+// 	for i := 0; i < num; i++ {
+// 		field := t.Field(i)
+// 		fieldV := v.Field(i)
+// 		if !(fieldV.IsValid() && fieldV.CanSet()) {
+// 			continue
+// 		}
 
-		defaultValStr := field.Tag.Get("def")
-		descVal := field.Tag.Get("desc")
-		skipVal := field.Tag.Get("skip")
-		deprecatedVal := field.Tag.Get("deprecated")
-		nameVal := field.Tag.Get("name")
-		if nameVal == "" {
-			nameVal = strcase.ToKebab(field.Name)
-		}
-		if skipVal == "true" || slices.StringContains(o.skip, nameVal) {
-			continue
-		}
+// 		defaultValStr := field.Tag.Get("def")
+// 		descVal := field.Tag.Get("desc")
+// 		skipVal := field.Tag.Get("skip")
+// 		deprecatedVal := field.Tag.Get("deprecated")
+// 		nameVal := field.Tag.Get("name")
+// 		if nameVal == "" {
+// 			nameVal = strcase.ToKebab(field.Name)
+// 		}
+// 		if skipVal == "true" || slices.StringContains(o.skip, nameVal) {
+// 			continue
+// 		}
 
-		if deprecatedVal == "true" {
-			deprecatedFields = append(deprecatedFields, nameVal)
-			if o.skipDeprecated {
-				continue
-			}
-		}
+// 		if deprecatedVal == "true" {
+// 			deprecatedFields = append(deprecatedFields, nameVal)
+// 			if o.skipDeprecated {
+// 				continue
+// 			}
+// 		}
 
-		for old, n := range o.replacements {
-			descVal = strings.ReplaceAll(descVal, old, n)
-		}
+// 		for old, n := range o.replacements {
+// 			descVal = strings.ReplaceAll(descVal, old, n)
+// 		}
 
-		if fieldV.Kind() == reflect.Slice && field.Type.Elem().Kind() == reflect.Struct {
-			flagSet.Var(new(arrayFlags), nameVal, descVal)
-			continue
-		}
+// 		if fieldV.Kind() == reflect.Slice && field.Type.Elem().Kind() == reflect.Struct {
+// 			flagSet.Var(new(arrayFlags), nameVal, descVal)
+// 			continue
+// 		}
 
-		switch field.Type {
-		case reflect.TypeOf([]string{}):
-			val := fieldV.Addr().Interface().(*[]string)
-			val2 := (*arrayFlags)(val)
-			flagSet.Var(val2, nameVal, descVal)
-		case reflect.TypeOf(map[string]string{}):
-			val := fieldV.Addr().Interface().(*map[string]string)
-			val2 := (*mapFlags)(val)
-			flagSet.Var(val2, nameVal, descVal)
-		case reflect.TypeOf(""):
-			val := fieldV.Addr().Interface().(*string)
-			for old, n := range o.replacements {
-				defaultValStr = strings.ReplaceAll(defaultValStr, old, n)
-			}
-			flagSet.StringVar(val, nameVal, defaultValStr, descVal)
-		case reflect.TypeOf(true):
-			val := fieldV.Addr().Interface().(*bool)
-			flagSet.BoolVar(val, nameVal, defaultValStr == "true", descVal)
-		case reflect.TypeOf(time.Time{}):
-			valTime := fieldV.Addr().Interface().(*time.Time)
-			val := (*timeFlag)(valTime)
-			flagSet.Var(val, nameVal, descVal)
-		case reflect.TypeOf(time.Second):
-			valDur := fieldV.Addr().Interface().(*time.Duration)
-			val := (*durFlag)(valDur)
+// 		switch field.Type {
+// 		case reflect.TypeOf([]string{}):
+// 			val := fieldV.Addr().Interface().(*[]string)
+// 			val2 := (*arrayFlags)(val)
+// 			flagSet.Var(val2, nameVal, descVal)
+// 		case reflect.TypeOf(map[string]string{}):
+// 			val := fieldV.Addr().Interface().(*map[string]string)
+// 			val2 := (*mapFlags)(val)
+// 			flagSet.Var(val2, nameVal, descVal)
+// 		case reflect.TypeOf(""):
+// 			val := fieldV.Addr().Interface().(*string)
+// 			for old, n := range o.replacements {
+// 				defaultValStr = strings.ReplaceAll(defaultValStr, old, n)
+// 			}
+// 			flagSet.StringVar(val, nameVal, defaultValStr, descVal)
+// 		case reflect.TypeOf(true):
+// 			val := fieldV.Addr().Interface().(*bool)
+// 			flagSet.BoolVar(val, nameVal, defaultValStr == "true", descVal)
+// 		case reflect.TypeOf(time.Time{}):
+// 			valTime := fieldV.Addr().Interface().(*time.Time)
+// 			val := (*timeFlag)(valTime)
+// 			flagSet.Var(val, nameVal, descVal)
+// 		case reflect.TypeOf(time.Second):
+// 			valDur := fieldV.Addr().Interface().(*time.Duration)
+// 			val := (*durFlag)(valDur)
 
-			var defaultVal time.Duration
-			if defaultValStr != "" {
-				var err error
-				defaultVal, err = duration.ParseDuration(defaultValStr)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-			}
-			*val = (durFlag)(defaultVal)
+// 			var defaultVal time.Duration
+// 			if defaultValStr != "" {
+// 				var err error
+// 				defaultVal, err = duration.ParseDuration(defaultValStr)
+// 				if err != nil {
+// 					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+// 				}
+// 			}
+// 			*val = (durFlag)(defaultVal)
 
-			flagSet.Var(val, nameVal, descVal)
-		case reflect.TypeOf(bytesize.Byte):
-			val := fieldV.Addr().Interface().(*bytesize.ByteSize)
-			var defaultVal bytesize.ByteSize
-			if defaultValStr != "" {
-				var err error
-				defaultVal, err = bytesize.Parse(defaultValStr)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-			}
-			*val = defaultVal
-			flagSet.Var(val, nameVal, descVal)
-		case reflect.TypeOf(1):
-			val := fieldV.Addr().Interface().(*int)
-			var defaultVal int
-			if defaultValStr == "" {
-				defaultVal = 0
-			} else {
-				var err error
-				defaultVal, err = strconv.Atoi(defaultValStr)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-			}
-			flagSet.IntVar(val, nameVal, defaultVal, descVal)
-		case reflect.TypeOf(1.00):
-			val := fieldV.Addr().Interface().(*float64)
-			var defaultVal float64
-			if defaultValStr == "" {
-				defaultVal = 0.00
-			} else {
-				var err error
-				defaultVal, err = strconv.ParseFloat(defaultValStr, 64)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-			}
-			flagSet.Float64Var(val, nameVal, defaultVal, descVal)
-		case reflect.TypeOf(uint64(1)):
-			val := fieldV.Addr().Interface().(*uint64)
-			var defaultVal uint64
-			if defaultValStr == "" {
-				defaultVal = uint64(0)
-			} else {
-				var err error
-				defaultVal, err = strconv.ParseUint(defaultValStr, 10, 64)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-			}
-			flagSet.Uint64Var(val, nameVal, defaultVal, descVal)
-		case reflect.TypeOf(uint(1)):
-			val := fieldV.Addr().Interface().(*uint)
-			var defaultVal uint
-			if defaultValStr == "" {
-				defaultVal = uint(0)
-			} else {
-				out, err := strconv.ParseUint(defaultValStr, 10, 64)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-				defaultVal = uint(out)
-			}
-			flagSet.UintVar(val, nameVal, defaultVal, descVal)
-		default:
-			// A stub for unknown types. This is required for generated configs and
-			// documentation (when a parameter can not be set via flag but present
-			// in the configuration). Empty value is shown as '{}'.
-			flagSet.Var(new(mapFlags), nameVal, descVal)
-		}
-	}
-	return NewSortedFlags(obj, flagSet, deprecatedFields)
-}
+// 			flagSet.Var(val, nameVal, descVal)
+// 		case reflect.TypeOf(bytesize.Byte):
+// 			val := fieldV.Addr().Interface().(*bytesize.ByteSize)
+// 			var defaultVal bytesize.ByteSize
+// 			if defaultValStr != "" {
+// 				var err error
+// 				defaultVal, err = bytesize.Parse(defaultValStr)
+// 				if err != nil {
+// 					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+// 				}
+// 			}
+// 			*val = defaultVal
+// 			flagSet.Var(val, nameVal, descVal)
+// 		case reflect.TypeOf(1):
+// 			val := fieldV.Addr().Interface().(*int)
+// 			var defaultVal int
+// 			if defaultValStr == "" {
+// 				defaultVal = 0
+// 			} else {
+// 				var err error
+// 				defaultVal, err = strconv.Atoi(defaultValStr)
+// 				if err != nil {
+// 					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+// 				}
+// 			}
+// 			flagSet.IntVar(val, nameVal, defaultVal, descVal)
+// 		case reflect.TypeOf(1.00):
+// 			val := fieldV.Addr().Interface().(*float64)
+// 			var defaultVal float64
+// 			if defaultValStr == "" {
+// 				defaultVal = 0.00
+// 			} else {
+// 				var err error
+// 				defaultVal, err = strconv.ParseFloat(defaultValStr, 64)
+// 				if err != nil {
+// 					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+// 				}
+// 			}
+// 			flagSet.Float64Var(val, nameVal, defaultVal, descVal)
+// 		case reflect.TypeOf(uint64(1)):
+// 			val := fieldV.Addr().Interface().(*uint64)
+// 			var defaultVal uint64
+// 			if defaultValStr == "" {
+// 				defaultVal = uint64(0)
+// 			} else {
+// 				var err error
+// 				defaultVal, err = strconv.ParseUint(defaultValStr, 10, 64)
+// 				if err != nil {
+// 					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+// 				}
+// 			}
+// 			flagSet.Uint64Var(val, nameVal, defaultVal, descVal)
+// 		case reflect.TypeOf(uint(1)):
+// 			val := fieldV.Addr().Interface().(*uint)
+// 			var defaultVal uint
+// 			if defaultValStr == "" {
+// 				defaultVal = uint(0)
+// 			} else {
+// 				out, err := strconv.ParseUint(defaultValStr, 10, 64)
+// 				if err != nil {
+// 					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+// 				}
+// 				defaultVal = uint(out)
+// 			}
+// 			flagSet.UintVar(val, nameVal, defaultVal, descVal)
+// 		default:
+// 			logrus.Fatalf("type %s is not supported", field.Type)
+// 		}
+// 	}
+// 	return NewSortedFlags(obj, flagSet, deprecatedFields)
+// }

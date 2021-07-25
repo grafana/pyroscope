@@ -1,4 +1,4 @@
-package pyroscope_test
+package main
 
 import (
 	"testing"

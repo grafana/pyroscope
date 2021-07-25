@@ -1,14 +1,14 @@
-package cli
+package cmd
 
 import (
-	"flag"
 	"fmt"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/fatih/color"
-	"github.com/peterbourgon/ff/v3/ffcli"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 var (
@@ -32,44 +32,45 @@ var hiddenCommands = []string{
 	"dbmanager",
 }
 
+// TODO: Do we want to keep this or use cobra default one? Maybe banner + cobra default? Or something else?
 // This is mostly copied from ffcli package
-func DefaultUsageFunc(sf *SortedFlags, c *ffcli.Command, deprecatedFields []string) string {
+func DefaultUsageFunc(sf *pflag.FlagSet, c *cobra.Command) string {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "continuous profiling platform\n\n")
 	headerClr.Fprintf(&b, "USAGE\n")
-	if c.ShortUsage != "" {
-		fmt.Fprintf(&b, "  %s\n", c.ShortUsage)
+	if c.Use != "" {
+		fmt.Fprintf(&b, "  %s\n", c.Use)
 	} else {
-		fmt.Fprintf(&b, "  %s\n", c.Name)
+		fmt.Fprintf(&b, "  %s\n", c.Name())
 	}
 	fmt.Fprintf(&b, "\n")
 
-	if c.LongHelp != "" {
-		fmt.Fprintf(&b, "%s\n\n", c.LongHelp)
+	if c.Long != "" {
+		fmt.Fprintf(&b, "%s\n\n", c.Long)
 	}
 
-	if len(c.Subcommands) > 0 {
+	if c.HasSubCommands() {
 		headerClr.Fprintf(&b, "SUBCOMMANDS\n")
 		tw := tabwriter.NewWriter(&b, 0, 2, 2, ' ', 0)
-		for _, subcommand := range c.Subcommands {
-			if !slices.StringContains(hiddenCommands, subcommand.Name) {
-				fmt.Fprintf(tw, "  %s\t%s\n", itemClr.Sprintf(subcommand.Name), subcommand.ShortHelp)
+		for _, subcommand := range c.Commands() {
+			if !slices.StringContains(hiddenCommands, subcommand.Name()) {
+				fmt.Fprintf(tw, "  %s\t%s\n", itemClr.Sprintf(subcommand.Name()), subcommand.Short)
 			}
 		}
 		tw.Flush()
 		fmt.Fprintf(&b, "\n")
 	}
 
-	if countFlags(c.FlagSet) > 0 {
+	if countFlags(c.Flags()) > 0 {
 		// headerClr.Fprintf(&b, "FLAGS\n")
 		tw := tabwriter.NewWriter(&b, 0, 2, 2, ' ', 0)
 		fmt.Fprintf(tw, "%s\t  %s@new-line@\n", headerClr.Sprintf("FLAGS"), defClr.Sprint("DEFAULT VALUES"))
 
 		// TODO: it would be nice to sort by how often people would use these.
 		//   But for that we'd have to have a conversion from flag-set back to struct
-		sf.VisitAll(func(f *flag.Flag) {
-			if slices.StringContains(deprecatedFields, f.Name) {
+		sf.VisitAll(func(f *pflag.Flag) {
+			if f.Hidden {
 				return
 			}
 			def := f.DefValue
@@ -90,14 +91,14 @@ func DefaultUsageFunc(sf *SortedFlags, c *ffcli.Command, deprecatedFields []stri
 		// fmt.Fprintf(&b, "\n")
 	}
 
-	if len(c.Subcommands) > 0 {
+	if c.HasSubCommands() {
 		b.WriteString("Run 'pyroscope SUBCOMMAND --help' for more information on a subcommand.\n")
 	}
 
 	return strings.ReplaceAll(b.String(), "@new-line@", "\n")
 }
 
-func countFlags(fs *flag.FlagSet) (n int) {
-	fs.VisitAll(func(*flag.Flag) { n++ })
+func countFlags(fs *pflag.FlagSet) (n int) {
+	fs.VisitAll(func(*pflag.Flag) { n++ })
 	return n
 }

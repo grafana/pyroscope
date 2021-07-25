@@ -14,7 +14,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func startServer(c *config.Server) error {
+func StartServer(c *config.Server) error {
 	logLevel, err := logrus.ParseLevel(c.LogLevel)
 	if err != nil {
 		return err

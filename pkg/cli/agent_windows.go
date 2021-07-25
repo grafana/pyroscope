@@ -7,7 +7,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func startAgent(config *config.Agent) error {
+func StartAgent(config *config.Agent) error {
 	logger, err := createLogger(config)
 	if err != nil {
 		return fmt.Errorf("could not create logger: %w", err)
