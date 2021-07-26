@@ -5,14 +5,16 @@ import (
 	"os"
 	goexec "os/exec"
 
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // execCmd represents the exec command
 var execCmd = &cobra.Command{
-	Use:   "pyroscope exec [flags] <args>",
+	Use:   "exec [flags] <args>",
 	Short: "starts a new process from arguments and profiles it",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if cfg.Exec.NoLogging {
@@ -39,6 +41,9 @@ var execCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(execCmd)
+
+	cli.PopulateFlagSet(&cfg.Exec, execCmd.Flags(), cli.WithSkip("pid"))
+	viper.BindPFlags(execCmd.Flags())
 
 	// Here you will define your flags and configuration settings.
 

@@ -153,47 +153,47 @@ func (ctrl *Controller) generateOauthInfo(oauthType int) *oauthInfo {
 	case oauthGoogle:
 		googleOauthInfo := &oauthInfo{
 			Config: &oauth2.Config{
-				ClientID:     ctrl.config.GoogleClientID,
-				ClientSecret: ctrl.config.GoogleClientSecret,
+				ClientID:     ctrl.config.Google.ClientID,
+				ClientSecret: ctrl.config.Google.ClientSecret,
 				Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
-				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GoogleAuthURL, TokenURL: ctrl.config.GoogleTokenURL},
+				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.Google.AuthURL, TokenURL: ctrl.config.Google.TokenURL},
 			},
 			Type: oauthGoogle,
 		}
-		if ctrl.config.GoogleRedirectURL != "" {
-			googleOauthInfo.Config.RedirectURL = ctrl.config.GoogleRedirectURL
+		if ctrl.config.Google.RedirectURL != "" {
+			googleOauthInfo.Config.RedirectURL = ctrl.config.Google.RedirectURL
 		}
 
 		return googleOauthInfo
 	case oauthGithub:
 		githubOauthInfo := &oauthInfo{
 			Config: &oauth2.Config{
-				ClientID:     ctrl.config.GithubClientID,
-				ClientSecret: ctrl.config.GithubClientSecret,
+				ClientID:     ctrl.config.Github.ClientID,
+				ClientSecret: ctrl.config.Github.ClientSecret,
 				Scopes:       []string{"read:user", "user:email"},
-				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GithubAuthURL, TokenURL: ctrl.config.GithubTokenURL},
+				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.Github.AuthURL, TokenURL: ctrl.config.Github.TokenURL},
 			},
 			Type: oauthGithub,
 		}
 
-		if ctrl.config.GithubRedirectURL != "" {
-			githubOauthInfo.Config.RedirectURL = ctrl.config.GithubRedirectURL
+		if ctrl.config.Github.RedirectURL != "" {
+			githubOauthInfo.Config.RedirectURL = ctrl.config.Github.RedirectURL
 		}
 
 		return githubOauthInfo
 	case oauthGitlab:
 		gitlabOauthInfo := &oauthInfo{
 			Config: &oauth2.Config{
-				ClientID:     ctrl.config.GitlabApplicationID,
-				ClientSecret: ctrl.config.GitlabClientSecret,
+				ClientID:     ctrl.config.Gitlab.ClientID,
+				ClientSecret: ctrl.config.Gitlab.ClientSecret,
 				Scopes:       []string{"read_user"},
-				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.GitlabAuthURL, TokenURL: ctrl.config.GitlabTokenURL},
+				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.Gitlab.AuthURL, TokenURL: ctrl.config.Gitlab.TokenURL},
 			},
 			Type: oauthGitlab,
 		}
 
-		if ctrl.config.GitlabRedirectURL != "" {
-			gitlabOauthInfo.Config.RedirectURL = ctrl.config.GitlabRedirectURL
+		if ctrl.config.Gitlab.RedirectURL != "" {
+			gitlabOauthInfo.Config.RedirectURL = ctrl.config.Gitlab.RedirectURL
 		}
 
 		return gitlabOauthInfo
@@ -208,8 +208,8 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 		{"/logout", ctrl.logoutHandler()},
 	}
 
-	if ctrl.config.GoogleEnabled {
-		authURL, err := url.Parse(ctrl.config.GoogleAuthURL)
+	if ctrl.config.Google.Enabled {
+		authURL, err := url.Parse(ctrl.config.Google.AuthURL)
 		if err != nil {
 			return nil, err
 		}
@@ -226,8 +226,8 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 		}
 	}
 
-	if ctrl.config.GithubEnabled {
-		authURL, err := url.Parse(ctrl.config.GithubAuthURL)
+	if ctrl.config.Github.Enabled {
+		authURL, err := url.Parse(ctrl.config.Github.AuthURL)
 		if err != nil {
 			return nil, err
 		}
@@ -243,8 +243,8 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 		}
 	}
 
-	if ctrl.config.GitlabEnabled {
-		authURL, err := url.Parse(ctrl.config.GitlabAuthURL)
+	if ctrl.config.Gitlab.Enabled {
+		authURL, err := url.Parse(ctrl.config.Gitlab.AuthURL)
 		if err != nil {
 			return nil, err
 		}
@@ -255,7 +255,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 			authRoutes = append(authRoutes, []route{
 				{"/auth/gitlab/login", ctrl.oauthLoginHandler(gitlabOauthInfo)},
 				{"/auth/gitlab/callback", ctrl.callbackHandler("/auth/gitlab/redirect")},
-				{"/auth/gitlab/redirect", ctrl.callbackRedirectHandler(ctrl.config.GitlabAPIURL, gitlabOauthInfo, ctrl.decodeGitLabCallbackResponse)},
+				{"/auth/gitlab/redirect", ctrl.callbackRedirectHandler(ctrl.config.Gitlab.APIURL, gitlabOauthInfo, ctrl.decodeGitLabCallbackResponse)},
 			}...)
 		}
 	}
@@ -322,7 +322,7 @@ func (ctrl *Controller) trackMetrics(route string) func(next http.HandlerFunc) h
 }
 
 func (ctrl *Controller) isAuthRequired() bool {
-	return ctrl.config.GoogleEnabled || ctrl.config.GithubEnabled || ctrl.config.GitlabEnabled
+	return ctrl.config.Google.Enabled || ctrl.config.Github.Enabled || ctrl.config.Gitlab.Enabled
 }
 
 func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {

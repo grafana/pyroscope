@@ -5,11 +5,12 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // agentCmd represents the agent command
 var agentCmd = &cobra.Command{
-	Use:   "pyroscope agent [flags]",
+	Use:   "agent [flags]",
 	Short: "starts pyroscope agent.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cli.StartAgent(&cfg.Agent)
@@ -18,6 +19,9 @@ var agentCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(agentCmd)
+
+	cli.PopulateFlagSet(&cfg.Agent, agentCmd.Flags(), cli.WithSkip("targets"))
+	viper.BindPFlags(agentCmd.Flags())
 
 	// Here you will define your flags and configuration settings.
 

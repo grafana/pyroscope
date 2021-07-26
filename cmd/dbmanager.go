@@ -3,14 +3,16 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/dbmanager"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // dbmanagerCmd represents the dbmanager command
 var dbmanagerCmd = &cobra.Command{
-	Use:   "pyroscope dbmanager [flags] <args>",
+	Use:   "dbmanager [flags] <args>",
 	Short: "tools for managing database",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if l, err := logrus.ParseLevel(cfg.DbManager.LogLevel); err == nil {
@@ -23,6 +25,9 @@ var dbmanagerCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(dbmanagerCmd)
+
+	cli.PopulateFlagSet(&cfg.DbManager, dbmanagerCmd.Flags(), cli.WithSkip("group-name", "user-name", "no-root-drop"))
+	viper.BindPFlags(dbmanagerCmd.Flags())
 
 	// Here you will define your flags and configuration settings.
 

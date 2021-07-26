@@ -3,14 +3,16 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // connectCmd represents the connect command
 var connectCmd = &cobra.Command{
-	Use:   "pyroscope connect [flags]",
+	Use:   "connect [flags]",
 	Short: "connects to an existing process and profiles it",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if cfg.Exec.NoLogging {
@@ -29,6 +31,9 @@ var connectCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(connectCmd)
+
+	cli.PopulateFlagSet(&cfg.Exec, connectCmd.Flags())
+	viper.BindPFlags(connectCmd.Flags())
 
 	// Here you will define your flags and configuration settings.
 

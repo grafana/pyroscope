@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -51,17 +53,9 @@ func init() {
 		},
 	})
 
+	cli.PopulateFlagSet(&cfg, rootCmd.Flags())
+	viper.BindPFlags(rootCmd.Flags())
 	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.pyroscope.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	rootCmd.SetUsageFunc(func(cmd *cobra.Command) error {
 		fmt.Println(gradientBanner() + "\n" + DefaultUsageFunc(cmd.Flags(), cmd))
@@ -86,6 +80,8 @@ func initConfig() {
 		viper.SetConfigName(".pyroscope")
 	}
 
+	viper.SetEnvPrefix("PYROSCOPE")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
@@ -93,5 +89,7 @@ func initConfig() {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	}
 
-	viper.Unmarshal(&cfg)
+	if err := viper.Unmarshal(&cfg); err != nil {
+		fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
+	}
 }

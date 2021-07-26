@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // convertCmd represents the convert command
 var convertCmd = &cobra.Command{
-	Use:   "pyroscope convert [flags] <input-file>",
+	Use:   "convert [flags] <input-file>",
 	Short: "converts between different profiling formats",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		logrus.SetOutput(os.Stderr)
@@ -26,6 +28,9 @@ var convertCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(convertCmd)
+
+	cli.PopulateFlagSet(&cfg.Convert, convertCmd.Flags())
+	viper.BindPFlags(convertCmd.Flags())
 
 	// Here you will define your flags and configuration settings.
 

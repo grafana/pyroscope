@@ -5,11 +5,12 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // serverCmd represents the server command
 var serverCmd = &cobra.Command{
-	Use:   "pyroscope server [flags]",
+	Use:   "server [flags]",
 	Short: "starts pyroscope server. This is the database + web-based user interface",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cli.StartServer(&cfg.Server)
@@ -18,6 +19,9 @@ var serverCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(serverCmd)
+
+	cli.PopulateFlagSet(&cfg.Server, serverCmd.Flags())
+	viper.BindPFlags(serverCmd.Flags())
 
 	// Here you will define your flags and configuration settings.
 
