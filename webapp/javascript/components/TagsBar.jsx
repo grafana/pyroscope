@@ -24,13 +24,20 @@ function TagsBar({ tags, fetchTags, fetchTagValues, tagValuesLoading }) {
     Object.keys(tags).forEach((tag) => {
       if (url.search.includes(tag)) {
         loadTagValues(tag);
-        setTagsValue(url.searchParams.get(tag));
+        setTagsValue(`{${tag}=${url.searchParams.get(tag)}}`);
       }
     });
   }, [tags]);
 
   useEffect(() => {
-    history.push(`/?${tagsValue.replace(/[{}]/g, "")}`);
+    const [name, value] = tagsValue.replace(/[{}]/g, "").split("=");
+    const url = new URL(window.location.href);
+    if (value) {
+      url.searchParams.set(name, value);
+    } else {
+      url.searchParams.delete(name);
+    }
+    history.push(url.search);
   }, [tagsValue]);
 
   return (
