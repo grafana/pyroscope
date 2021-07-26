@@ -394,11 +394,27 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 func (s *Storage) dimensionKeysByKey(key *segment.Key) func() []dimension.Key {
 	return func() []dimension.Key {
-		var dimensions []*dimension.Dimension
-		for k, v := range key.Labels() {
-			if d, ok := s.lookupDimensionKV(k, v); ok {
+		d, ok := s.lookupAppDimension(key.AppName())
+		if !ok {
+			return nil
+		}
+		l := key.Labels()
+		if len(l) == 1 {
+			// No tags specified: return application dimension keys.
+			return d.Keys
+		}
+		dimensions := []*dimension.Dimension{d}
+		for k, v := range l {
+			if flameql.IsTagKeyReserved(k) {
+				continue
+			}
+			if d, ok = s.lookupDimensionKV(k, v); ok {
 				dimensions = append(dimensions, d)
 			}
+		}
+		if len(dimensions) == 1 {
+			// Tags specified but not found.
+			return nil
 		}
 		return dimension.Intersection(dimensions...)
 	}
