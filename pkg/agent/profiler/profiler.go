@@ -64,7 +64,7 @@ func Start(cfg Config) (*Profiler, error) {
 		Upstream:         upstream,
 		AppName:          cfg.ApplicationName,
 		Tags:             cfg.Tags,
-		ProfilingTypes:   types.DefaultProfileTypes,
+		ProfilingTypes:   cfg.ProfileTypes,
 		DisableGCRuns:    cfg.DisableGCRuns,
 		SpyName:          types.GoSpy,
 		SampleRate:       cfg.SampleRate,
