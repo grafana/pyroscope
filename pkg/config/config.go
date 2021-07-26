@@ -89,9 +89,10 @@ type Server struct {
 	CacheSegmentSize    int               `deprecated:"true" mapstructure:"cache-segment-size"`
 	CacheTreeSize       int               `deprecated:"true" mapstructure:"cache-tree-size"`
 
-	Google GoogleOauth `deprecated:"true" mapstructure:"google"`
-	Gitlab GitlabOauth `deprecated:"true" mapstructure:"gitlab"`
-	Github GithubOauth `deprecated:"true" mapstructure:"github"`
+	// TODO: remove skip once nested structures are possible
+	Google GoogleOauth `skip:"true" mapstructure:"google"`
+	Gitlab GitlabOauth `skip:"true" mapstructure:"gitlab"`
+	Github GithubOauth `skip:"true" mapstructure:"github"`
 
 	// TODO: can we generate these automatically if it's empty?
 	JWTSecret                string            `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`

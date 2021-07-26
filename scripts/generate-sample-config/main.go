@@ -15,6 +15,7 @@ import (
 	"unicode"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
 
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -41,7 +42,7 @@ func main() {
 	if directory != "" {
 		err := filepath.Walk(directory, func(path string, f os.FileInfo, err error) error {
 			if slices.StringContains([]string{".mdx", ".md"}, filepath.Ext(path)) {
-				return processFile(path)
+				return processfile(path)
 			}
 			return nil
 		})
@@ -58,7 +59,7 @@ var (
 	headerRegexp  = regexp.MustCompile("generate-sample-config:(.+?):(.+?)\\s*-")
 )
 
-func processFile(path string) error {
+func processfile(path string) error {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
@@ -82,7 +83,7 @@ func processFile(path string) error {
 }
 
 func writeConfigDocs(w io.Writer, subcommand, format string) {
-	flagSet := flag.NewFlagSet("pyroscope "+subcommand, flag.ExitOnError)
+	flagSet := pflag.NewFlagSet("pyroscope "+subcommand, pflag.ExitOnError)
 	opts := []cli.FlagOption{
 		cli.WithReplacement("<supportedProfilers>", "pyspy, rbspy, phpspy, dotnetspy, ebpfspy"),
 		cli.WithSkipDeprecated(true),
@@ -126,13 +127,12 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 	}
 
 	_, _ = fmt.Fprintf(w, "<!-- generate-sample-config:%s:%s -->\n", subcommand, format)
-	sf := cli.NewSortedFlags(val, flagSet, nil)
 
 	switch format {
 	case "yaml":
-		writeYaml(w, sf)
+		writeYaml(w, flagSet)
 	case "md":
-		writeMarkdown(w, sf)
+		writeMarkdown(w, flagSet)
 	default:
 		logrus.Fatalf("Unknown format %q", format)
 	}
@@ -140,9 +140,9 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 	_, _ = fmt.Fprintf(w, "<!-- /generate-sample-config -->")
 }
 
-func writeYaml(w io.Writer, sf *cli.SortedFlags) {
+func writeYaml(w io.Writer, flagSet *pflag.FlagSet) {
 	_, _ = fmt.Fprintf(w, "```yaml\n---\n")
-	sf.VisitAll(func(f *flag.Flag) {
+	flagSet.VisitAll(func(f *pflag.Flag) {
 		if f.Name == "config" {
 			return
 		}
@@ -158,10 +158,10 @@ func writeYaml(w io.Writer, sf *cli.SortedFlags) {
 	_, _ = fmt.Fprintf(w, "```\n")
 }
 
-func writeMarkdown(w io.Writer, sf *cli.SortedFlags) {
+func writeMarkdown(w io.Writer, flagSet *pflag.FlagSet) {
 	_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", "Name", "Default Value", "Usage")
 	_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", ":-", ":-", ":-")
-	sf.VisitAll(func(f *flag.Flag) {
+	flagSet.VisitAll(func(f *pflag.Flag) {
 		if f.Name == "config" {
 			return
 		}

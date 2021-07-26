@@ -20,6 +20,7 @@ require (
 	github.com/google/go-jsonnet v0.17.0
 	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5
 	github.com/google/uuid v1.1.2
+	github.com/iancoleman/strcase v0.2.0
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/josephspurrier/goversioninfo v1.2.0
 	github.com/jsonnet-bundler/jsonnet-bundler v0.4.0
