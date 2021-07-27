@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -97,30 +97,33 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	addRoutes(mux, insecureRoutes, ctrl.drainMiddleware)
 
 	// Protected routes:
-	routes := []route{
+	protectedRoutes := []route{
 		{"/", ctrl.indexHandler()},
 		{"/render", ctrl.renderHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 	}
-	addRoutes(mux, routes, ctrl.drainMiddleware, ctrl.authMiddleware)
+	addRoutes(mux, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
-	// Diagnostic routes: not protected with auth, not drained.
-	addRoutes(mux, []route{
-		{"/healthz", ctrl.healthz},
-		{"/metrics", promhttp.Handler().ServeHTTP},
+	// Diagnostic secure routes: must be protected but not drained.
+	diagnosticSecureRoutes := []route{
 		{"/config", ctrl.configHandler},
 		{"/build", ctrl.buildHandler},
-	})
+	}
 	if !ctrl.config.DisablePprofEndpoint {
-		addRoutes(mux, []route{
+		diagnosticSecureRoutes = append(diagnosticSecureRoutes, []route{
 			{"/debug/pprof/", pprof.Index},
 			{"/debug/pprof/cmdline", pprof.Cmdline},
 			{"/debug/pprof/profile", pprof.Profile},
 			{"/debug/pprof/symbol", pprof.Symbol},
 			{"/debug/pprof/trace", pprof.Trace},
-		})
+		}...)
 	}
+	addRoutes(mux, diagnosticSecureRoutes, ctrl.authMiddleware)
+	addRoutes(mux, []route{
+		{"/metrics", promhttp.Handler().ServeHTTP},
+		{"/healthz", ctrl.healthz},
+	})
 
 	return mux, nil
 }
