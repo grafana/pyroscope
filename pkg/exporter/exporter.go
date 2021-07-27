@@ -69,14 +69,14 @@ func NewExporter(rules config.MetricExportRules, reg prometheus.Registerer) (*Me
 // counters for new time series, if required. Every export rule has an
 // expression to evaluate a dimension key, and a filter, which allow to
 // retrieve metric value for particular nodes.
-func (e MetricsExporter) Observe(k *segment.Key, tree *tree.Tree) {
+func (e MetricsExporter) Observe(k *segment.Key, tree *tree.Tree, multiplier float64) {
 	for _, r := range e.rules {
 		c, ok := r.eval(k)
 		if !ok {
 			continue
 		}
 		if val, ok := r.value(tree); ok {
-			c.Add(val)
+			c.Add(val * multiplier)
 		}
 	}
 }

@@ -104,7 +104,7 @@ func TestObserve(t *testing.T) {
 	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
 	k, _ := segment.ParseKey(`app.name.cpu{foo=bar,bar=baz}`)
 	v := createTree()
-	exporter.Observe(k, v)
+	exporter.Observe(k, v, 1)
 
 	if total := getRuleCounterValue(exporter, "app_name_cpu_total", k); total != 5 {
 		t.Fatalf("Total counter must be 5, got %v", total)
@@ -181,7 +181,7 @@ func getRuleCounterValue(e *MetricsExporter, name string, k *segment.Key) float6
 
 func observe(e *MetricsExporter, key string) *segment.Key {
 	k, _ := segment.ParseKey(key)
-	e.Observe(k, createTree())
+	e.Observe(k, createTree(), 1)
 	return k
 }
 

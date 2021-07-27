@@ -27,7 +27,6 @@ type serverService struct {
 	config           *config.Server
 	logger           *logrus.Logger
 	controller       *server.Controller
-	exporter         *exporter.MetricsExporter
 	storage          *storage.Storage
 	directUpstream   *direct.Direct
 	analyticsService *analytics.Service
@@ -54,18 +53,19 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	// TODO: make registerer configurable: let users to decide how their metrics are exported.
-	svc.exporter, err = exporter.NewExporter(svc.config.MetricExportRules, prometheus.DefaultRegisterer)
+	observer, err := exporter.NewExporter(svc.config.MetricExportRules, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, fmt.Errorf("new metric exprter: %w", err)
 	}
 
-	svc.controller, err = server.New(svc.config, svc.storage, svc.exporter, svc.logger)
+	ingester := storage.NewIngestionObserver(svc.storage, observer)
+	svc.controller, err = server.New(svc.config, svc.storage, ingester, svc.logger)
 	if err != nil {
 		return nil, fmt.Errorf("new server: %w", err)
 	}
 
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config)
-	svc.directUpstream = direct.New(svc.storage)
+	svc.directUpstream = direct.New(ingester)
 	selfProfilingConfig := &agent.SessionConfig{
 		Upstream:       svc.directUpstream,
 		AppName:        "pyroscope.server",
