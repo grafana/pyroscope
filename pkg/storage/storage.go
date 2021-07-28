@@ -176,6 +176,10 @@ func New(c *config.Server) (*Storage, error) {
 		go s.periodicTask(retentionInterval, s.retentionTask)
 	}
 
+	if err = s.migrate(); err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 
@@ -192,20 +196,9 @@ type PutInput struct {
 
 func (s *Storage) treeFromBytes(k string, v []byte) (interface{}, error) {
 	key := segment.FromTreeToDictKey(k)
-	d, ok := s.dicts.Lookup(key)
-	if !ok {
-		// The key not found. Fallback to segment key form which has been
-		// used before tags support. Refer to FromTreeToDictKey.
-		return s.treeFromBytesFallback(k, v)
-	}
-	return tree.FromBytes(d.(*dict.Dict), v)
-}
-
-func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error) {
-	key := segment.FromTreeToMainKey(k)
-	d, ok := s.dicts.Lookup(key)
-	if !ok {
-		return nil, nil
+	d, err := s.dicts.GetOrCreate(key)
+	if err != nil {
+		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
 	}
 	return tree.FromBytes(d.(*dict.Dict), v)
 }
