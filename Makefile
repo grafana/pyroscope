@@ -18,8 +18,6 @@ else
 	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies"
 endif
 
-ARCHIVE_EXT ?= "a"
-
 EMBEDDED_ASSETS ?= ""
 EMBEDDED_ASSETS_DEPS ?= "assets-release"
 EXTRA_LDFLAGS ?= ""
@@ -54,17 +52,20 @@ build:
 .PHONY: build-rbspy-static-library
 build-rbspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,rbspy,clib -buildmode=c-archive -ldflags "-compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,rbspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
+	ar -M < ./scripts/static-libs/rbspy.mri
 
 .PHONY: build-pyspy-static-library
 build-pyspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,pyspy,clib -buildmode=c-archive -ldflags "-compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,pyspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
+	ar -M < ./scripts/static-libs/pyspy.mri
 
 .PHONY: build-phpspy-static-library
 build-phpspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,phpspy,clib -buildmode=c-archive -ldflags "-compressdwarf=false $(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.$(ARCHIVE_EXT)" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,phpspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
+	ar -M < ./scripts/static-libs/phpspy.mri
 
 .PHONY: build-release
 build-release: embedded-assets
@@ -72,8 +73,7 @@ build-release: embedded-assets
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
-# relocation-model=pic
-	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release
+	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release
 
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies:

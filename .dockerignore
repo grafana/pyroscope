@@ -3,6 +3,7 @@ third_party/*/target
 webapp/public/*
 node_modules
 .git/
+tmp
 
 benchmark/Dockerfile
 benchmark/runs

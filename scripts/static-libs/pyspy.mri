@@ -1,0 +1,5 @@
+create out/libpyroscope.pyspy.combo.a
+addlib out/libpyroscope.pyspy.a
+addlib third_party/rustdeps/target/release/librustdeps.a
+save
+end

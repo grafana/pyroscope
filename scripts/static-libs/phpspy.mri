@@ -1,0 +1,5 @@
+create out/libpyroscope.phpspy.combo.a
+addlib out/libpyroscope.phpspy.a
+addlib third_party/rustdeps/target/release/librustdeps.a
+save
+end
