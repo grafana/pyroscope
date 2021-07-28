@@ -40,7 +40,7 @@ func (g *TagsGenerator) Add(name string, card, min, max int) *TagsGenerator {
 	return g
 }
 
-func (g *TagsGenerator) values(r *rand.Rand, count, min, max int) []string {
+func (*TagsGenerator) values(r *rand.Rand, count, min, max int) []string {
 	values := make([]string, count)
 	for i := 0; i < count; i++ {
 		values[i] = randString(r, min, max)

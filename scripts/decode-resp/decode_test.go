@@ -26,7 +26,7 @@ var _ = Describe("Decode", func() {
 				},
 			}
 			out := decodeLevels(in)
-			outJson := marshal(out)
+			outJSON := marshal(out)
 			expected := `{
   "flamebearer": {
     "levels": [
@@ -59,7 +59,7 @@ var _ = Describe("Decode", func() {
     ]
   }
 }`
-			Expect(outJson).To(Equal(expected))
+			Expect(outJSON).To(Equal(expected))
 		})
 	})
 })

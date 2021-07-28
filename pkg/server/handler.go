@@ -62,12 +62,13 @@ func invalidateCookie(w http.ResponseWriter, name string) {
 
 func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "POST" && r.Method != "DELETE" {
-			ctrl.writeErrorMessage(w, http.StatusMethodNotAllowed, "only POST and DELETE are allowed")
-			return
+		switch r.Method {
+			case http.MethodPost, http.MethodGet:
+				invalidateCookie(w, jwtCookieName)
+				http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			default:
+				ctrl.writeErrorMessage(w, http.StatusMethodNotAllowed, "only POST and DELETE methods are allowed")
 		}
-		invalidateCookie(w, jwtCookieName)
-		http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 	}
 }
 
@@ -166,7 +167,7 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	}
 }
 
-func (ctrl *Controller) decodeGoogleCallbackResponse(resp *http.Response) (string, error) {
+func (*Controller) decodeGoogleCallbackResponse(resp *http.Response) (string, error) {
 	type callbackResponse struct {
 		ID            string
 		Email         string
@@ -183,7 +184,7 @@ func (ctrl *Controller) decodeGoogleCallbackResponse(resp *http.Response) (strin
 	return userProfile.Email, nil
 }
 
-func (ctrl *Controller) decodeGithubCallbackResponse(resp *http.Response) (string, error) {
+func (*Controller) decodeGithubCallbackResponse(resp *http.Response) (string, error) {
 	type callbackResponse struct {
 		ID        int64
 		Email     string
@@ -200,7 +201,7 @@ func (ctrl *Controller) decodeGithubCallbackResponse(resp *http.Response) (strin
 	return userProfile.Login, nil
 }
 
-func (ctrl *Controller) decodeGitLabCallbackResponse(resp *http.Response) (string, error) {
+func (*Controller) decodeGitLabCallbackResponse(resp *http.Response) (string, error) {
 	type callbackResponse struct {
 		ID        int64
 		Email     string
