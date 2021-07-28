@@ -73,7 +73,7 @@ build-release: embedded-assets
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
-	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release --target x86_64-unknown-linux-gnu
+	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release
 
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies:
