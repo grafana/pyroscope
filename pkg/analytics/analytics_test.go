@@ -12,14 +12,19 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
-	"github.com/sirupsen/logrus"
 )
 
 const durThreshold = 30 * time.Millisecond
+
+type mockStatsProvider struct{}
+
+func (mockStatsProvider) Stats() map[string]int { return map[string]int{} }
+
+func (mockStatsProvider) AppsCount() int { return 0 }
 
 var _ = Describe("analytics", func() {
 	gracePeriod = 100 * time.Millisecond
@@ -55,8 +60,7 @@ var _ = Describe("analytics", func() {
 					s, err := storage.New(&(*cfg).Server)
 					Expect(err).ToNot(HaveOccurred())
 
-					c, _ := server.New(&(*cfg).Server, s, logrus.New())
-					analytics := NewService(&(*cfg).Server, s, c)
+					analytics := NewService(&(*cfg).Server, s, mockStatsProvider{})
 
 					startTime := time.Now()
 					go analytics.Start()

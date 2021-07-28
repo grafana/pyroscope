@@ -39,7 +39,8 @@ require (
 	github.com/onsi/gomega v1.12.0
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/peterbourgon/ff/v3 v3.0.0
-	github.com/prometheus/client_golang v1.10.0
+	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/common v0.29.0
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/shirou/gopsutil v3.21.4+incompatible
@@ -47,7 +48,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/twmb/murmur3 v1.1.5
 	github.com/wacul/ptr v1.0.0 // indirect
-	golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421
+	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
 	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
 	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
 	golang.org/x/tools v0.1.0

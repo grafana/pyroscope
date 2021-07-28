@@ -2,6 +2,7 @@ package flameql
 
 import (
 	"errors"
+	"regexp"
 	"regexp/syntax"
 
 	. "github.com/onsi/ginkgo"
@@ -24,7 +25,7 @@ var _ = Describe("ParseQuery", func() {
 			{`app.name{foo="bar,baz"}`, nil,
 				&Query{"app.name", []*TagMatcher{{"foo", "bar,baz", EQL, nil}}, `app.name{foo="bar,baz"}`}},
 			{`app.name{foo="bar",baz!="quo"}`, nil,
-				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}, {"baz", "quo", NEQ, nil}}, `app.name{foo="bar",baz!="quo"}`}},
+				&Query{"app.name", []*TagMatcher{{"baz", "quo", NEQ, nil}, {"foo", "bar", EQL, nil}}, `app.name{foo="bar",baz!="quo"}`}},
 
 			{"", ErrAppNameIsRequired, nil},
 			{"{}", ErrAppNameIsRequired, nil},
@@ -111,6 +112,18 @@ var _ = Describe("ParseMatcher", func() {
 			}
 			Expect(tm).To(Equal(tc.m))
 		}
+	})
+
+	It("matchers are properly sorted by operator priority", func() {
+		m, err := ParseMatchers(`3="x",4=~"x",1!="x",2!~"x"`)
+		Expect(err).ToNot(HaveOccurred())
+		x := regexp.MustCompile("x")
+		Expect(m).To(Equal([]*TagMatcher{
+			{"1", "x", NEQ, nil},
+			{"2", "x", NEQ_REGEX, x},
+			{"3", "x", EQL, nil},
+			{"4", "x", EQL_REGEX, x},
+		}))
 	})
 })
 

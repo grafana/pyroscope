@@ -40,7 +40,7 @@ var _ = Describe("server", func() {
 
 						s, err := storage.New(&(*cfg).Server)
 						Expect(err).ToNot(HaveOccurred())
-						c, _ := New(&(*cfg).Server, s, logrus.New())
+						c, _ := New(&(*cfg).Server, s, s, logrus.New())
 						h, _ := c.mux()
 						httpServer := httptest.NewServer(h)
 						defer s.Close()

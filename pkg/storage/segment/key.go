@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
 )
 
@@ -28,26 +29,21 @@ const (
 
 func NewKey(labels map[string]string) *Key { return &Key{labels: labels} }
 
-// TODO: should rewrite this at some point to not rely on regular expressions & splits
 func ParseKey(name string) (*Key, error) {
-	k := &Key{
-		labels: make(map[string]string),
-	}
-
-	p := parser{
-		parserState: nameParserState,
-		key:         "",
-		value:       "",
-	}
-
+	k := &Key{labels: make(map[string]string)}
+	p := parser{parserState: nameParserState}
+	var err error
 	for _, r := range name + "{" {
 		switch p.parserState {
 		case nameParserState:
-			p.nameParserCase(r, k)
+			err = p.nameParserCase(r, k)
 		case tagKeyParserState:
 			p.tagKeyParserCase(r)
 		case tagValueParserState:
-			p.tagValueParserCase(r, k)
+			err = p.tagValueParserCase(r, k)
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 	return k, nil
@@ -60,14 +56,19 @@ type parser struct {
 }
 
 // ParseKey's nameParserState switch case
-func (p *parser) nameParserCase(r int32, k *Key) {
+func (p *parser) nameParserCase(r int32, k *Key) error {
 	switch r {
 	case '{':
 		p.parserState = tagKeyParserState
-		k.labels["__name__"] = strings.TrimSpace(p.value)
+		appName := strings.TrimSpace(p.value)
+		if err := flameql.ValidateAppName(appName); err != nil {
+			return err
+		}
+		k.labels["__name__"] = appName
 	default:
 		p.value += string(r)
 	}
+	return nil
 }
 
 // ParseKey's tagKeyParserState switch case
@@ -84,15 +85,22 @@ func (p *parser) tagKeyParserCase(r int32) {
 }
 
 // ParseKey's tagValueParserState switch case
-func (p *parser) tagValueParserCase(r int32, k *Key) {
+func (p *parser) tagValueParserCase(r int32, k *Key) error {
 	switch r {
 	case ',', '}':
 		p.parserState = tagKeyParserState
-		k.labels[strings.TrimSpace(p.key)] = strings.TrimSpace(p.value)
+		key := strings.TrimSpace(p.key)
+		if !flameql.IsTagKeyReserved(key) {
+			if err := flameql.ValidateTagKey(key); err != nil {
+				return err
+			}
+		}
+		k.labels[key] = strings.TrimSpace(p.value)
 		p.key = ""
 	default:
 		p.value += string(r)
 	}
+	return nil
 }
 
 func (k *Key) SegmentKey() string {

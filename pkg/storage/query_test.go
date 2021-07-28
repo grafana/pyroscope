@@ -142,12 +142,12 @@ var _ = Describe("Querying", func() {
 						dimension.Key("app.name{baz=xxx,foo=bar}"),
 						dimension.Key("app.name{baz=xxx,waldo=fred}"),
 					}},
-					{`app.name{non-existing-key!="bar"}`, []dimension.Key{
+					{`app.name{non_existing_key!="bar"}`, []dimension.Key{
 						dimension.Key("app.name{baz=qux,foo=bar}"),
 						dimension.Key("app.name{baz=xxx,foo=bar}"),
 						dimension.Key("app.name{baz=xxx,waldo=fred}"),
 					}},
-					{`app.name{non-existing-key!~"bar"}`, []dimension.Key{
+					{`app.name{non_existing_key!~"bar"}`, []dimension.Key{
 						dimension.Key("app.name{baz=qux,foo=bar}"),
 						dimension.Key("app.name{baz=xxx,foo=bar}"),
 						dimension.Key("app.name{baz=xxx,waldo=fred}"),
@@ -155,8 +155,8 @@ var _ = Describe("Querying", func() {
 
 					{`app.name{foo="non-existing-value"}`, nil},
 					{`app.name{foo=~"non-existing-.*"}`, nil},
-					{`app.name{non-existing-key="bar"}`, nil},
-					{`app.name{non-existing-key=~"bar"}`, nil},
+					{`app.name{non_existing_key="bar"}`, nil},
+					{`app.name{non_existing_key=~"bar"}`, nil},
 
 					{`non-existing-app{}`, nil},
 				}
