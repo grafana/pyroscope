@@ -21,6 +21,7 @@ import {
   SET_LEFT_UNTIL,
   SET_RIGHT_FROM,
   SET_RIGHT_UNTIL,
+  UPDATE_TAGS,
 } from "./actionTypes";
 
 export const setDateRange = (from, until) => ({
@@ -107,6 +108,8 @@ export const receiveTagValues = (values, tag) => ({
   type: RECEIVE_TAG_VALUES,
   payload: { values, tag },
 });
+
+export const updateTags = (tags) => ({ type: UPDATE_TAGS, payload: { tags } });
 
 export const requestNames = () => ({ type: REQUEST_NAMES, payload: {} });
 

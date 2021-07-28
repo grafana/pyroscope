@@ -13,13 +13,12 @@ export function buildRenderURL(state, fromOverride=null, untilOverride=null, sid
   const nameLabel = state.labels.find((x) => x.name == '__name__');
 
   if (nameLabel) {
-    url += `&name=${nameLabel.value}{`;
+    url += `&query=${nameLabel.value}{`;
   } else {
-    url += '&name=unknown{';
+    url += '&query=unknown{';
   }
 
-  // TODO: replace this so this is a real utility function
-  url += state.labels.filter((x) => x.name != '__name__').map((x) => `${x.name}=${x.value}`).join(',');
+  url += state.selectedTags.map((x) => `${x.name}="${x.value}"`).join(',');
   url += '}';
 
   if (state.refreshToken) {

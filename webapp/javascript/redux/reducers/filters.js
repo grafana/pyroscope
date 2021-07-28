@@ -22,6 +22,7 @@ import {
   SET_RIGHT_FROM,
   SET_LEFT_UNTIL,
   SET_RIGHT_UNTIL,
+  UPDATE_TAGS,
 } from "../actionTypes";
 
 const defaultName = window.initialState.appNames.find(
@@ -41,6 +42,7 @@ const initialState = {
   isJSONLoading: false,
   maxNodes: 1024,
   tags: [],
+  selectedTags: [],
 };
 
 window.uniqBy = uniqBy;
@@ -151,7 +153,9 @@ export default function (state = initialState, action) {
         ...state,
         areTagsLoading: false,
         tags: action.payload.tags.reduce((acc, tag) => {
-          acc[tag] = [];
+          if (tag !== "__name__") {
+            acc[tag] = [];
+          }
           return acc;
         }, {}),
       };
@@ -169,6 +173,11 @@ export default function (state = initialState, action) {
           ...state.tags,
           [action.payload.tag]: action.payload.values,
         },
+      };
+    case UPDATE_TAGS:
+      return {
+        ...state,
+        selectedTags: action.payload.tags,
       };
     case REQUEST_NAMES:
       return {

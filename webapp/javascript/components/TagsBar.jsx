@@ -3,15 +3,41 @@ import { connect } from "react-redux";
 import "react-dom";
 import { Menu, SubMenu, MenuItem, MenuButton } from "@szhsin/react-menu";
 
-import { fetchTags, fetchTagValues } from "../redux/actions";
+import { fetchTags, fetchTagValues, updateTags } from "../redux/actions";
 import history from "../util/history";
 
-function TagsBar({ tags, fetchTags, fetchTagValues, tagValuesLoading }) {
-  const [tagsValue, setTagsValue] = useState("");
+function TagsBar({
+  tags,
+  fetchTags,
+  fetchTagValues,
+  updateTags,
+  tagValuesLoading,
+  labels,
+}) {
+  const [tagsValue, setTagsValue] = useState("{}");
 
   const loadTagValues = (tag) => {
     if (tags[tag] && !tags[tag].length && tagValuesLoading !== tag) {
       fetchTagValues(tag);
+    }
+  };
+
+  const onTagsValueChange = (tag, tagValue) => {
+    if (!tagsValue.includes(tag)) {
+      setTagsValue(
+        tagsValue.replace(
+          "}",
+          `${tagsValue === "{}" ? "" : ","}${tag}=${tagValue}}`
+        )
+      );
+    } else {
+      const tagPairs = tagsValue.replace(/[{}]/g, "").split(",");
+      tagPairs.forEach((pair, i) => {
+        if (pair.startsWith(tag)) {
+          tagPairs[i] = `${tag}=${tagValue}`;
+        }
+      });
+      setTagsValue(`{${tagPairs.join(",")}}`);
     }
   };
 
@@ -21,23 +47,32 @@ function TagsBar({ tags, fetchTags, fetchTagValues, tagValuesLoading }) {
 
   useEffect(() => {
     const url = new URL(window.location.href);
+    const tagsParams = [];
     Object.keys(tags).forEach((tag) => {
       if (url.search.includes(tag)) {
         loadTagValues(tag);
-        setTagsValue(`{${tag}=${url.searchParams.get(tag)}}`);
+        tagsParams.push(`${tag}=${url.searchParams.get(tag)}`);
       }
     });
+    setTagsValue(`{${tagsParams.join(",")}}`);
   }, [tags]);
 
   useEffect(() => {
-    const [name, value] = tagsValue.replace(/[{}]/g, "").split("=");
+    const tagPairs = tagsValue.replace(/[{}]/g, "").split(",");
     const url = new URL(window.location.href);
-    if (value) {
-      url.searchParams.set(name, value);
-    } else {
-      url.searchParams.delete(name);
-    }
+    const tagsUpdater = [];
+    tagPairs.forEach((pair) => {
+      const [name, value] = pair.split("=");
+      if (value) {
+        url.searchParams.set(name, value);
+        tagsUpdater.push({ name, value });
+      } else {
+        url.searchParams.delete(name);
+      }
+    });
     history.push(url.search);
+    updateTags(tagsUpdater);
+    console.log(tagsUpdater);
   }, [tagsValue]);
 
   return (
@@ -56,7 +91,6 @@ function TagsBar({ tags, fetchTags, fetchTagValues, tagValuesLoading }) {
                 loadTagValues(tag);
               return tag;
             }}
-            onChange={(e) => loadTagValues(e.value)}
             className="active"
           >
             {tagValuesLoading === tag ? (
@@ -66,7 +100,7 @@ function TagsBar({ tags, fetchTags, fetchTagValues, tagValuesLoading }) {
                 <MenuItem
                   key={tagValue}
                   value={tagValue}
-                  onClick={(e) => setTagsValue(`{${tag}=${e.value}}`)}
+                  onClick={(e) => onTagsValueChange(tag, e.value)}
                   className={tagsValue.includes(tagValue) ? "active" : ""}
                 >
                   {tagValue}
@@ -76,16 +110,28 @@ function TagsBar({ tags, fetchTags, fetchTagValues, tagValuesLoading }) {
           </SubMenu>
         ))}
       </Menu>
-      <input
-        className="tags-input"
-        type="text"
-        value={tagsValue}
-        onChange={(e) => setTagsValue(e.target.value)}
-      />
+      <div className="tags-query">
+        <span className="tags-app-name">
+          {labels && labels.find((label) => label.name === "__name__").value}
+        </span>
+        <pre className="tags-highlighted  highlight-promql" aria-hidden="true">
+          <code className="language-html" id="highlighting-content">
+            {tagsValue}
+          </code>
+        </pre>
+        <input
+          className="tags-input"
+          type="text"
+          value={tagsValue}
+          onChange={(e) => setTagsValue(e.target.value)}
+        />
+      </div>
     </div>
   );
 }
 
-export default connect((state) => state, { fetchTags, fetchTagValues })(
-  TagsBar
-);
+export default connect((state) => state, {
+  fetchTags,
+  fetchTagValues,
+  updateTags,
+})(TagsBar);
