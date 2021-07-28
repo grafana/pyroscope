@@ -1,14 +1,16 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -18,8 +20,10 @@ import (
 )
 
 var (
-	errUnknownFormat   = errors.New("unknown format")
-	errLabelIsRequired = errors.New("label parameter is required")
+	errUnknownFormat         = errors.New("unknown format")
+	errLabelIsRequired       = errors.New("label parameter is required")
+	errNoData                = errors.New("no data")
+	errTimeParamsAreRequired = errors.New("leftFrom,leftUntil,rightFrom,rightUntil are required")
 )
 
 type renderParams struct {
@@ -34,65 +38,58 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		ctrl.writeInvalidParameterError(w, err)
 		return
 	}
-
-	switch p.format {
-	case "json", "":
-	default:
-		ctrl.writeInvalidParameterError(w, errUnknownFormat)
+	if ok := ctrl.expectJSON(w, p.format); !ok {
 		return
 	}
 
-	var err error
-	var out, leftOut, rghtOut *storage.GetOutput
-
-	leftStartTime, leftEndTime, leftOK := parseRenderRangeParams(r.URL.Query(), "leftFrom", "leftUntil")
-	rghtStartTime, rghtEndTime, rghtOK := parseRenderRangeParams(r.URL.Query(), "rightFrom", "rightUntil")
-
-	isFormatDouble := rghtOK || leftOK
-	if isFormatDouble {
-		out, leftOut, rghtOut, err = ctrl.loadTreeConcurrently(p.gi, p.gi.StartTime, p.gi.EndTime, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
-	} else {
-		out, err = ctrl.storage.Get(p.gi)
-	}
-
+	out, err := ctrl.storage.Get(p.gi)
 	ctrl.statsInc("render")
 	if err != nil {
 		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
 		return
 	}
-
 	// TODO: handle properly
 	if out == nil {
 		out = &storage.GetOutput{Tree: tree.New()}
 	}
 
-	var fs *tree.Flamebearer
-	if isFormatDouble {
-		leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
-		fs = tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
-	} else {
-		fs = out.Tree.FlamebearerStruct(p.maxNodes)
+	fs := out.Tree.FlamebearerStruct(p.maxNodes)
+	res := renderResponse(fs, out)
+	ctrl.writeResponseJSON(w, res)
+}
+
+func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
+	var p renderParams
+	if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
+		ctrl.writeInvalidParameterError(w, err)
+		return
+	}
+	if ok := ctrl.expectJSON(w, p.format); !ok {
+		return
 	}
 
-	// TODO remove this duplication? We're already adding this to metadata
-	fs.SpyName = out.SpyName
-	fs.SampleRate = out.SampleRate
-	fs.Units = out.Units
-	res := map[string]interface{}{
-		"timeline":    out.Timeline,
-		"flamebearer": fs,
-		"metadata": map[string]interface{}{
-			"format":     fs.Format, // "single" | "double"
-			"spyName":    out.SpyName,
-			"sampleRate": out.SampleRate,
-			"units":      out.Units,
-		},
+	leftStartTime, leftEndTime, leftOK := parseRenderRangeParams(r.URL.Query(), "leftFrom", "leftUntil")
+	rghtStartTime, rghtEndTime, rghtOK := parseRenderRangeParams(r.URL.Query(), "rightFrom", "rightUntil")
+	if !leftOK || !rghtOK {
+		ctrl.writeInvalidParameterError(w, errTimeParamsAreRequired)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err = json.NewEncoder(w).Encode(res); err != nil {
-		ctrl.writeJSONEncodeError(w, err)
+	out, leftOut, rghtOut, err := ctrl.loadTreeConcurrently(p.gi, p.gi.StartTime, p.gi.EndTime, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
+		return
 	}
+	// TODO: handle properly, see ctrl.renderHandler
+	if out == nil {
+		ctrl.writeInternalServerError(w, errNoData, "failed to retrieve data")
+		return
+	}
+
+	leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
+	fs := tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
+	res := renderResponse(fs, out)
+	ctrl.writeResponseJSON(w, res)
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {
@@ -130,6 +127,24 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	return nil
 }
 
+func renderResponse(fs *tree.Flamebearer, out *storage.GetOutput) map[string]interface{} {
+	// TODO remove this duplication? We're already adding this to metadata
+	fs.SpyName = out.SpyName
+	fs.SampleRate = out.SampleRate
+	fs.Units = out.Units
+	res := map[string]interface{}{
+		"timeline":    out.Timeline,
+		"flamebearer": fs,
+		"metadata": map[string]interface{}{
+			"format":     fs.Format, // "single" | "double"
+			"spyName":    out.SpyName,
+			"sampleRate": out.SampleRate,
+			"units":      out.Units,
+		},
+	}
+	return res
+}
+
 func parseRenderRangeParams(v url.Values, from, until string) (startTime, endTime time.Time, ok bool) {
 	fromStr, untilStr := v.Get(from), v.Get(until)
 	startTime, endTime = attime.Parse(fromStr), attime.Parse(untilStr)
@@ -164,6 +179,10 @@ func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.T
 		rerr := recover()
 		if rerr != nil {
 			_err = fmt.Errorf("panic: %v", rerr)
+			ctrl.log.WithFields(logrus.Fields{
+				"recover": rerr,
+				"stack":   string(debug.Stack()),
+			}).Error("loadTree: recovered from panic")
 		}
 	}()
 

@@ -56,7 +56,7 @@ const unitsToFlamegraphTitle = {
 }
 
 class FlameGraphRenderer extends React.Component {
-  constructor() {
+  constructor(props) {
     super();
     this.state = {
       highlightStyle: { display: "none" },
@@ -65,6 +65,7 @@ class FlameGraphRenderer extends React.Component {
       sortBy: "self",
       sortByDirection: "desc",
       view: "both",
+      viewDiff: props.viewType === "diff" ? "diff" : undefined,
       flamebearer: null,
     };
     this.canvasRef = React.createRef();
@@ -324,6 +325,13 @@ class FlameGraphRenderer extends React.Component {
     setTimeout(this.renderCanvas, 0);
   };
 
+  updateViewDiff = (newView) => {
+    this.setState({
+      viewDiff: newView,
+    });
+    setTimeout(this.renderCanvas, 0);
+  };
+
   createFormatter = () => {
     return getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
   }
@@ -513,6 +521,7 @@ class FlameGraphRenderer extends React.Component {
           sortBy={this.state.sortBy}
           updateSortBy={this.updateSortBy}
           view={this.state.view}
+          viewDiff={this.state.viewDiff}
         />
       </div>
     )
@@ -552,9 +561,11 @@ class FlameGraphRenderer extends React.Component {
         <div className="canvas-container">
           <ProfilerHeader
             view={this.state.view}
+            viewDiff={this.state.viewDiff}
             handleSearchChange={this.handleSearchChange}
             reset={this.reset}
             updateView={this.updateView}
+            updateViewDiff={this.updateViewDiff}
             resetStyle={this.state.resetStyle}
           />
           {

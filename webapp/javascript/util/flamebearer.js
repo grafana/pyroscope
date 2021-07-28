@@ -54,7 +54,7 @@ const formatSingle = {
   getBarOffset:    (level, j) => level[j],
   getBarTotal:     (level, j) => level[j + 1],
   getBarTotalDiff: (level, j) => 0,
-  getBarSelf:      (level, j) => level[j + 1],
+  getBarSelf:      (level, j) => level[j + 2],
   getBarSelfDiff:  (level, j) => 0,
   getBarName:      (level, j) => level[j + 3],
 }
@@ -64,8 +64,12 @@ const formatDouble = {
   jName : 6,
   getBarOffset:    (level, j) => (level[j]     + level[j + 3]),
   getBarTotal:     (level, j) => (level[j + 4] + level[j + 1]),
+  getBarTotalLeft: (level, j) =>  level[j + 1],
+  getBarTotalRght: (level, j) =>  level[j + 4],
   getBarTotalDiff: (level, j) => (level[j + 4] - level[j + 1]),
   getBarSelf:      (level, j) => (level[j + 5] + level[j + 2]),
+  getBarSelfLeft:  (level, j) =>  level[j + 2],
+  getBarSelfRght:  (level, j) =>  level[j + 5],
   getBarSelfDiff:  (level, j) => (level[j + 5] - level[j + 2]),
   getBarName:      (level, j) =>  level[j + 6],
 }

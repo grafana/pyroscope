@@ -42,6 +42,8 @@ export function buildDiffRenderURL(state, { from: fromOverride, until: untilOver
 
   const urlStr = buildRenderURL(state, from, until);
   const url = new URL(urlStr, location.origin);
+  url.pathname = '/render-diff'; // TODO: merge with buildRenderURL
+
   const params = url.searchParams;
   params.set('leftFrom', leftFrom);
   params.set('leftUntil', leftUntil);

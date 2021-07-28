@@ -15,7 +15,7 @@ func (t *Tree) StringWithEmpty() string {
 	defer t.RUnlock()
 
 	res := ""
-	t.iterate(func(k []byte, v uint64) {
+	t.Iterate(func(k []byte, v uint64) {
 		if len(k) >= 2 {
 			res += fmt.Sprintf("%q %d\n", k[2:], v)
 		}
