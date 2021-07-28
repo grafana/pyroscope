@@ -9,8 +9,8 @@ IN1="$(realpath $1)"
 IN2="$(realpath $2)"
 OUT="$(realpath $3)"
 
-cd "$DIR1" && ar x IN1
-cd "$DIR2" && ar x IN2
+cd "$DIR1" && ar x "$IN1"
+cd "$DIR2" && ar x "$IN2"
 
 ar c "$OUT" "$IN1/*.o" "$IN2/*.o"
 
