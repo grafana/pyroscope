@@ -12,8 +12,8 @@ OUT="$(realpath $3)"
 cd "$DIR1" && ar -x "$IN1"
 cd "$DIR2" && ar -x "$IN2"
 
-echo ar -c "$OUT" "$IN1/*.o" "$IN2/*.o"
-ar -c "$OUT" "$IN1/*.o" "$IN2/*.o"
+echo ar -c "$OUT" "$DIR1/*.o" "$DIR2/*.o"
+ar -c "$OUT" "$DIR1/*.o" "$DIR2/*.o"
 
 rm -rf $DIR1
 rm -rf $DIR2
