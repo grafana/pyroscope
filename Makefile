@@ -53,19 +53,19 @@ build:
 build-rbspy-static-library:
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,rbspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
-	ar -M < ./scripts/static-libs/rbspy.mri
+	scripts/merge-libs.sh ./out/libpyroscope.rbspy.a third_party/rustdeps/target/release/librustdeps.a ./out/libpyroscope.rbspy.combo.a
 
 .PHONY: build-pyspy-static-library
 build-pyspy-static-library:
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,pyspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
-	ar -M < ./scripts/static-libs/pyspy.mri
+	scripts/merge-libs.sh ./out/libpyroscope.pyspy.a third_party/rustdeps/target/release/librustdeps.a ./out/libpyroscope.pyspy.combo.a
 
 .PHONY: build-phpspy-static-library
 build-phpspy-static-library:
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,phpspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
-	ar -M < ./scripts/static-libs/phpspy.mri
+	scripts/merge-libs.sh ./out/libpyroscope.phpspy.a third_party/rustdeps/target/release/librustdeps.a ./out/libpyroscope.phpspy.combo.a
 
 .PHONY: build-release
 build-release: embedded-assets
@@ -73,12 +73,12 @@ build-release: embedded-assets
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
-	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release
+	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release --target x86_64-unknown-linux-gnu
 
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies:
-	cd third_party && git clone https://github.com/pyroscope-io/phpspy.git
-	cd phpspy && USE_ZEND=1 make
+	cd third_party && cd phpspy_src || (git clone https://github.com/pyroscope-io/phpspy.git phpspy_src && cd phpspy_src)
+	USE_ZEND=1 make
 
 .PHONY: build-third-party-dependencies
 build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES))
