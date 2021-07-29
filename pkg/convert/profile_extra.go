@@ -20,6 +20,8 @@ func (x *Profile) Get(sampleType string, cb func(name []byte, val int)) error {
 	}
 
 	b := bytebufferpool.Get()
+	defer bytebufferpool.Put(b)
+
 	for _, s := range x.Sample {
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
 			name, ok := x.findFunctionName(s.LocationId[i])
@@ -35,7 +37,6 @@ func (x *Profile) Get(sampleType string, cb func(name []byte, val int)) error {
 		b.Reset()
 	}
 
-	bytebufferpool.Put(b)
 	return nil
 }
 
