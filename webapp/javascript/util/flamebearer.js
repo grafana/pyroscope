@@ -49,8 +49,9 @@ export function deltaDiffWrapper(format, levels) {
 //   j = 6  : position in the main index (jStep)
 
 const formatSingle = {
-  jStep: 4,
-  jName: 3,
+  format: "single",
+  jStep : 4,
+  jName : 3,
   getBarOffset:    (level, j) => level[j],
   getBarTotal:     (level, j) => level[j + 1],
   getBarTotalDiff: (level, j) => 0,
@@ -60,6 +61,7 @@ const formatSingle = {
 }
 
 const formatDouble = {
+  format: "double",
   jStep : 7,
   jName : 6,
   getBarOffset:    (level, j) => (level[j]     + level[j + 3]),

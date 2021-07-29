@@ -470,6 +470,16 @@ class FlameGraphRenderer extends React.Component {
     const percent = formatPercent(numBarTicks / this.state.numTicks);
     const tooltipTitle = this.state.names[level[j + ff.jName]];
 
+    var tooltipText = `${percent}, ${numberWithCommas(numBarTicks)} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
+    if (ff.format === "double") {
+      const totalLeft = ff.getBarTotalLeft(level, j);
+      const totalRght = ff.getBarTotalRght(level, j);
+      const totalDiff = ff.getBarTotalDiff(level, j);
+      tooltipText += `\nLeft: ${numberWithCommas(totalLeft)} samples, ${this.formatter.format(totalLeft, this.state.sampleRate)}`;
+      tooltipText += `\nRight: ${numberWithCommas(totalRght)} samples, ${this.formatter.format(totalRght, this.state.sampleRate)}`;
+      tooltipText += ` (${totalDiff > 0 ? '+' : ''}${formatPercent(totalDiff / totalLeft)})`;
+    }
+
     // Before you change all of this to React consider performance implications.
     // Doing this with setState leads to significant lag.
     // See this issue https://github.com/pyroscope-io/pyroscope/issues/205
@@ -485,9 +495,7 @@ class FlameGraphRenderer extends React.Component {
     tooltipEl.style.top = `${e.clientY+12}px`;
 
     tooltipEl.children[0].innerText = tooltipTitle;
-    tooltipEl.children[1].innerText = `${percent}, ${numberWithCommas(
-      numBarTicks
-    )} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
+    tooltipEl.children[1].innerText = tooltipText;
   };
 
   mouseOutHandler = () => {
