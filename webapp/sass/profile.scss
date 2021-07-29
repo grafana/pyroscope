@@ -226,10 +226,32 @@ $pane-width: 6px;
     width: 50%;
 
     .flamegraph-header {
+      padding-bottom: 5px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding-bottom: 5px;
+
+      .row {
+        display: flex;
+        justify-content: center;
+      }
+
+      .flamegraph-legend {
+        display: flex;
+        align-items: center;
+        font-size: 11px;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+
+      .flamegraph-legend-list {
+        display: flex;
+        justify-content: center;
+      }
+
+      .flamegraph-legend-item {
+        width: 35px;
+        text-align: center;
+      }
     }
 
     &.vertical-orientation {

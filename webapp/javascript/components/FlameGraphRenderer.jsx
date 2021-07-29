@@ -55,6 +55,8 @@ const unitsToFlamegraphTitle = {
   "samples": "CPU time per function",
 }
 
+const diffLegend = [20, 10, 5, 3, 2, 1, 0, -1, -2, -3, -5, -10, -20];
+
 class FlameGraphRenderer extends React.Component {
   constructor(props) {
     super();
@@ -541,7 +543,22 @@ class FlameGraphRenderer extends React.Component {
       >
         <div className='flamegraph-header'>
           <span></span>
-          <span>Frame width represents {unitsToFlamegraphTitle[this.state.units]}</span>
+          <div>
+            <div className="row">
+              Frame width represents {unitsToFlamegraphTitle[this.state.units]}
+            </div>
+            { !this.state.viewDiff ? null :
+              <div className="row flamegraph-legend">
+                <div className="flamegraph-legend-list">
+                  {diffLegend.map((v) => (
+                    <div className="flamegraph-legend-item" style={{ backgroundColor: colorBasedOnDiff(v, 100, 0.8) }}>
+                      {v > 0 ? '+' : ''}{v}%
+                    </div>
+                  ))}
+                </div>
+              </div>
+            }
+          </div>
           <ExportData flameCanvas={this.canvasRef}/>
         </div>
         <canvas
