@@ -54,24 +54,24 @@ build-rbspy-static-library:
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,rbspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
 	ar -M < ./scripts/static-libs/rbspy.mri
-	strip --strip-all ./out/libpyroscope.rbspy.a
-	strip --strip-all ./out/libpyroscope.rbspy.combo.a
+	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.rbspy.a
+	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.rbspy.combo.a
 
 .PHONY: build-pyspy-static-library
 build-pyspy-static-library:
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,pyspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
 	ar -M < ./scripts/static-libs/pyspy.mri
-	strip --strip-all ./out/libpyroscope.pyspy.a
-	strip --strip-all ./out/libpyroscope.pyspy.combo.a
+	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.pyspy.a
+	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.pyspy.combo.a
 
 .PHONY: build-phpspy-static-library
 build-phpspy-static-library:
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,phpspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
 	ar -M < ./scripts/static-libs/phpspy.mri
-	strip --strip-all ./out/libpyroscope.phpspy.a
-	strip --strip-all ./out/libpyroscope.phpspy.combo.a
+	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.phpspy.a
+	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.phpspy.combo.a
 
 .PHONY: build-release
 build-release: embedded-assets
