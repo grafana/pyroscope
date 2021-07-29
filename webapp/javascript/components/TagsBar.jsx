@@ -5,6 +5,7 @@ import { Menu, SubMenu, MenuItem, MenuButton } from "@szhsin/react-menu";
 
 import { fetchTags, fetchTagValues, updateTags } from "../redux/actions";
 import history from "../util/history";
+import "../util/prism";
 
 function TagsBar({
   tags,
@@ -14,7 +15,9 @@ function TagsBar({
   tagValuesLoading,
   labels,
 }) {
-  const [tagsValue, setTagsValue] = useState("{}");
+  const [tagsValue, setTagsValue] = useState(
+    new URL(window.location.href).searchParams.get("query")
+  );
 
   const loadTagValues = (tag) => {
     if (tags[tag] && !tags[tag].length && tagValuesLoading !== tag) {
@@ -27,14 +30,14 @@ function TagsBar({
       setTagsValue(
         tagsValue.replace(
           "}",
-          `${tagsValue === "{}" ? "" : ","}${tag}=${tagValue}}`
+          `${tagsValue === "{}" ? "" : ","}${tag}="${tagValue}"}`
         )
       );
     } else {
       const tagPairs = tagsValue.replace(/[{}]/g, "").split(",");
       tagPairs.forEach((pair, i) => {
         if (pair.startsWith(tag)) {
-          tagPairs[i] = `${tag}=${tagValue}`;
+          tagPairs[i] = `${tag}="${tagValue}"`;
         }
       });
       setTagsValue(`{${tagPairs.join(",")}}`);
@@ -47,32 +50,34 @@ function TagsBar({
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    const tagsParams = [];
+    // const tagsParams = [];
     Object.keys(tags).forEach((tag) => {
-      if (url.search.includes(tag)) {
+      if (url.searchParams.get("query").includes(tag)) {
         loadTagValues(tag);
-        tagsParams.push(`${tag}=${url.searchParams.get(tag)}`);
+        // tagsParams.push(`${tag}="${url.searchParams.get(tag)}"`);
       }
     });
-    setTagsValue(`{${tagsParams.join(",")}}`);
+    // setTagsValue(`{${tagsParams.join(",")}}`);
   }, [tags]);
 
   useEffect(() => {
-    const tagPairs = tagsValue.replace(/[{}]/g, "").split(",");
+    const tagPairs = tagsValue.replace(/[{}"]/g, "").split(",");
     const url = new URL(window.location.href);
     const tagsUpdater = [];
     tagPairs.forEach((pair) => {
       const [name, value] = pair.split("=");
-      if (value) {
-        url.searchParams.set(name, value);
+      if (name && value) {
         tagsUpdater.push({ name, value });
-      } else {
-        url.searchParams.delete(name);
       }
     });
+    url.searchParams.set("query", tagsValue);
     history.push(url.search);
     updateTags(tagsUpdater);
-    console.log(tagsUpdater);
+    if (window.Prism) {
+      window.Prism.highlightElement(
+        document.getElementById("highlighting-content")
+      );
+    }
   }, [tagsValue]);
 
   return (
@@ -101,7 +106,9 @@ function TagsBar({
                   key={tagValue}
                   value={tagValue}
                   onClick={(e) => onTagsValueChange(tag, e.value)}
-                  className={tagsValue.includes(tagValue) ? "active" : ""}
+                  className={
+                    tagsValue.includes(`${tag}="${tagValue}"`) ? "active" : ""
+                  }
                 >
                   {tagValue}
                 </MenuItem>
@@ -114,8 +121,8 @@ function TagsBar({
         <span className="tags-app-name">
           {labels && labels.find((label) => label.name === "__name__").value}
         </span>
-        <pre className="tags-highlighted  highlight-promql" aria-hidden="true">
-          <code className="language-html" id="highlighting-content">
+        <pre className="tags-highlighted language-promql" aria-hidden="true">
+          <code className="language-promql" id="highlighting-content">
             {tagsValue}
           </code>
         </pre>

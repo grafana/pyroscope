@@ -1,6 +1,7 @@
 @use "../variables" as *;
 
 @import "../../node_modules/@szhsin/react-menu/dist/index.css";
+@import "../prism.scss";
 
 .tags-bar {
   display: flex;
@@ -79,14 +80,22 @@
   .tags-highlighted{
     height: 0;
     width: 0;
-    margin-top: -12px;
+    margin-top: -17px;
     margin-right: -7px;
     z-index: 1;
     margin-left: 5px;
     pointer-events: none;
+    overflow: inherit;
+    background: none;
+    padding: 0;
     code {
       font-size: 16px;
       font-family: arial;
+      background: none;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      margin: 0;
     }
   }
 }
