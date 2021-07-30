@@ -94,7 +94,11 @@ build-release: embedded-assets
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
+ifeq ("$(shell go env GOOS || true)", "linux")
 	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release
+else
+	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release
+endif
 
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies:
