@@ -58,8 +58,8 @@ build-rbspy-static-library:
 ifeq ("$(shell go env GOOS || true)", "linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.a
 	ranlib ./out/libpyroscope.rbspy.a
-	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.combo.a
-	ranlib ./out/libpyroscope.rbspy.combo.a
+# LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.combo.a
+# ranlib ./out/libpyroscope.rbspy.combo.a
 endif
 
 .PHONY: build-pyspy-static-library
@@ -71,8 +71,8 @@ build-pyspy-static-library:
 ifeq ("$(shell go env GOOS || true)", "linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.a
 	ranlib ./out/libpyroscope.pyspy.a
-	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.combo.a
-	ranlib ./out/libpyroscope.pyspy.combo.a
+# LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.combo.a
+# ranlib ./out/libpyroscope.pyspy.combo.a
 endif
 
 .PHONY: build-phpspy-static-library
@@ -84,8 +84,8 @@ build-phpspy-static-library:
 ifeq ("$(shell go env GOOS || true)", "linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.phpspy.a
 	ranlib ./out/libpyroscope.phpspy.a
-	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.phpspy.combo.a
-	ranlib ./out/libpyroscope.phpspy.combo.a
+# LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.phpspy.combo.a
+# ranlib ./out/libpyroscope.phpspy.combo.a
 endif
 
 .PHONY: build-release
