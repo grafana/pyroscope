@@ -18,7 +18,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
-	"github.com/sirupsen/logrus"
 
 	// revive:enable:blank-imports
 
@@ -348,8 +347,7 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 				}
 
 				if !skipUpload {
-					name2, e := addSuffix(name, profileType)
-					logrus.Info("name2 ", name, name2, e)
+					name2, _ := addSuffix(name, profileType)
 					ps.upstream.Upload(&upstream.UploadJob{
 						// Name:            ps.names[ps.profileTypes[i]],
 						Name:            name2,

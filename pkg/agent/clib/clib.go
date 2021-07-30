@@ -4,120 +4,108 @@ package main
 
 import (
 	"C"
-	"fmt"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 import (
+	"sync"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 )
 
-var Sessions = map[int]*agent.ProfileSession{}
+var sessionsMapMutex sync.Mutex
+var sessionsMap = map[int]*agent.ProfileSession{}
 
-func startNewSession(cfg *config.Exec) (*agent.ProfileSession, error) {
-	logger := &agent.NoopLogger{}
-	spyName := cfg.SpyName
-	pid := cfg.Pid
-	pyspy.Blocking = cfg.PyspyBlocking
+var logger agent.Logger
+
+func init() {
+	logger = &agent.NoopLogger{}
+}
+
+//export Start
+func Start(applicationName *C.char, cpid C.int, spyName *C.char, serverAddress *C.char, authToken *C.char, sampleRate C.int, withSubprocesses C.int, logLevel *C.char) int {
+	sessionsMapMutex.Lock()
+	defer sessionsMapMutex.Unlock()
+
+	pid := int(cpid)
+	pyspy.Blocking = false
+
+	if _, ok := sessionsMap[pid]; ok {
+		logger.Errorf("session for this pid already exists")
+		return -1
+	}
 
 	if err := performOSChecks(); pyspy.Blocking && err != nil {
-		return nil, err
+		logger.Errorf("error happened when starting profiling session %v", err)
+		return -1
 	}
 
 	rc := remote.RemoteConfig{
-		AuthToken:              cfg.AuthToken,
-		UpstreamAddress:        cfg.ServerAddress,
-		UpstreamThreads:        cfg.UpstreamThreads,
-		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
+		AuthToken:              C.GoString(authToken),
+		UpstreamAddress:        C.GoString(serverAddress),
+		UpstreamThreads:        4,
+		UpstreamRequestTimeout: 10 * time.Second,
 	}
 	u, err := remote.New(rc, logger)
 	if err != nil {
-		return nil, fmt.Errorf("new remote upstream: %v", err)
+		logger.Errorf("error happened when starting profiling session %v", err)
+		return -1
 	}
 
 	sc := agent.SessionConfig{
 		Upstream:         u,
-		AppName:          cfg.ApplicationName,
+		AppName:          C.GoString(applicationName),
 		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
-		SpyName:          spyName,
-		SampleRate:       uint32(cfg.SampleRate),
+		SpyName:          C.GoString(spyName),
+		SampleRate:       uint32(sampleRate),
 		UploadRate:       10 * time.Second,
 		Pid:              pid,
-		WithSubprocesses: cfg.DetectSubprocesses,
+		WithSubprocesses: withSubprocesses != 0,
 	}
 	session, err := agent.NewSession(&sc, logger)
+	sessionsMap[pid] = session
 	if err != nil {
-		return nil, err
-	}
-	if err = session.Start(); err != nil {
-		return nil, fmt.Errorf("start session: %v", err)
-	}
-
-	return session, nil
-}
-
-//export Start
-func Start(ApplicationName *C.char, Pid C.int, SpyName *C.char, ServerAddress *C.char) int {
-	pid := int(Pid)
-
-	if _, ok := Sessions[pid]; ok {
-		fmt.Println(fmt.Errorf("session for pid: %d already exists", pid))
-		return -2
-	}
-
-	s, err := startNewSession(&config.Exec{
-		SpyName:                C.GoString(SpyName),
-		ApplicationName:        C.GoString(ApplicationName),
-		SampleRate:             100,
-		DetectSubprocesses:     true,
-		LogLevel:               "debug",
-		ServerAddress:          C.GoString(ServerAddress),
-		AuthToken:              "",
-		UpstreamThreads:        4,
-		UpstreamRequestTimeout: time.Second * 10,
-		NoLogging:              false,
-		NoRootDrop:             false,
-		Pid:                    pid,
-		UserName:               "",
-		GroupName:              "",
-		PyspyBlocking:          false,
-	})
-
-	if err != nil {
-		fmt.Println(err.Error())
+		logger.Errorf("error happened when starting profiling session %v", err)
 		return -1
 	}
-
-	Sessions[pid] = s
+	if err = session.Start(); err != nil {
+		logger.Errorf("error happened when starting profiling session %v", err)
+		return -1
+	}
 
 	return 0
 }
 
 //export Stop
 func Stop(Pid C.int) int {
+	sessionsMapMutex.Lock()
+	defer sessionsMapMutex.Unlock()
+
 	pid := int(Pid)
 
-	if _, ok := Sessions[pid]; !ok {
-		fmt.Println(fmt.Errorf("session for pid: %d doesn't exists", pid))
+	if _, ok := sessionsMap[pid]; !ok {
+		logger.Errorf("session for pid: %d doesn't exists", pid)
 		return -1
 	}
-	Sessions[int(Pid)].Stop()
+	sessionsMap[int(Pid)].Stop()
 	return 0
 }
 
 //export ChangeName
 func ChangeName(newName *C.char, Pid C.int) int {
+	sessionsMapMutex.Lock()
+	defer sessionsMapMutex.Unlock()
+
 	pid := int(Pid)
 
-	if _, ok := Sessions[pid]; !ok {
-		fmt.Println(fmt.Errorf("session for pid: %d doesn't exists", pid))
+	if _, ok := sessionsMap[pid]; !ok {
+		logger.Errorf("session for pid: %d doesn't exists", pid)
 		return -1
 	}
-	Sessions[int(Pid)].ChangeName(C.GoString(newName))
+	sessionsMap[int(Pid)].ChangeName(C.GoString(newName))
 	return 0
 }
 
