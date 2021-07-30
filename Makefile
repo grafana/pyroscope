@@ -54,9 +54,10 @@ build-rbspy-static-library:
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,rbspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
 	ar -M < ./scripts/static-libs/rbspy.mri
+# this is needed because of a bug in binutils
 ifeq ("$(shell go env GOOS || true)", "linux")
-	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.rbspy.a
-	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.rbspy.combo.a
+	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.a
+	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.combo.a
 endif
 
 .PHONY: build-pyspy-static-library
@@ -64,9 +65,10 @@ build-pyspy-static-library:
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,pyspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
 	ar -M < ./scripts/static-libs/pyspy.mri
+# this is needed because of a bug in binutils
 ifeq ("$(shell go env GOOS || true)", "linux")
-	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.pyspy.a
-	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.pyspy.combo.a
+	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.a
+	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.combo.a
 endif
 
 .PHONY: build-phpspy-static-library
@@ -74,9 +76,10 @@ build-phpspy-static-library:
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,phpspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
 	ar -M < ./scripts/static-libs/phpspy.mri
+# this is needed because of a bug in binutils
 ifeq ("$(shell go env GOOS || true)", "linux")
-	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.phpspy.a
-	LC_CTYPE=C LANG=C strip --strip-all ./out/libpyroscope.phpspy.combo.a
+	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.phpspy.a
+	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.phpspy.combo.a
 endif
 
 .PHONY: build-release
