@@ -34,7 +34,7 @@ import {
   getPackageNameFromStackTrace,
   getFormatter,
 } from "../util/format";
-import { colorBasedOnDiff, colorBasedOnPackageName, colorGreyscale } from "../util/color";
+import { colorBasedOnDiff, colorBasedOnPackageName, colorGreyscale, diffColorGreen, diffColorRed } from "../util/color";
 import TimelineChartWrapper from "./TimelineChartWrapper";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
@@ -55,7 +55,7 @@ const unitsToFlamegraphTitle = {
   "samples": "CPU time per function",
 }
 
-const diffLegend = [20, 10, 5, 3, 2, 1, 0, -1, -2, -3, -5, -10, -20];
+const diffLegend = [100, 50, 20, 10, 5, 3, 2, 1, 0, -1, -2, -3, -5, -10, -20, -50, -100];
 
 class FlameGraphRenderer extends React.Component {
   constructor(props) {
@@ -381,7 +381,7 @@ class FlameGraphRenderer extends React.Component {
           (this.query && names[level[j + ff.jName]].indexOf(this.query) >= 0) || false;
         // merge very small blocks into big "collapsed" ones for performance
         const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
-        const numBarDiff = collapsed? 0 : ff.getBarTotalDiff(level, j);
+        const numBarDiff = collapsed ? 0 : ff.getBarTotalDiff(level, j);
 
         // const collapsed = false;
         if (collapsed) { // TODO: fix collapsed code
@@ -414,7 +414,7 @@ class FlameGraphRenderer extends React.Component {
         if (isDiff && collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (isDiff) {
-          nodeColor = colorBasedOnDiff(numBarDiff, numBarTicks, a);
+          nodeColor = colorBasedOnDiff(numBarDiff, ff.getBarTotalLeft(level, j), a);
         } else if (collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (queryExists && nodeIsInQuery) {
@@ -472,14 +472,19 @@ class FlameGraphRenderer extends React.Component {
     const percent = formatPercent(numBarTicks / this.state.numTicks);
     const tooltipTitle = this.state.names[level[j + ff.jName]];
 
-    var tooltipText = `${percent}, ${numberWithCommas(numBarTicks)} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
-    if (ff.format === "double") {
+    var tooltipText, tooltipDiffText = '', tooltipDiffColor = ''
+    if (ff.format !== "double") {
+      tooltipText = `${percent}, ${numberWithCommas(numBarTicks)} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
+    } else {
       const totalLeft = ff.getBarTotalLeft(level, j);
       const totalRght = ff.getBarTotalRght(level, j);
       const totalDiff = ff.getBarTotalDiff(level, j);
-      tooltipText += `\nLeft: ${numberWithCommas(totalLeft)} samples, ${this.formatter.format(totalLeft, this.state.sampleRate)}`;
+      tooltipText  = `Left: ${numberWithCommas(totalLeft)} samples, ${this.formatter.format(totalLeft, this.state.sampleRate)}`;
       tooltipText += `\nRight: ${numberWithCommas(totalRght)} samples, ${this.formatter.format(totalRght, this.state.sampleRate)}`;
-      tooltipText += ` (${totalDiff > 0 ? '+' : ''}${formatPercent(totalDiff / totalLeft)})`;
+      tooltipDiffColor = totalDiff === 0 ? '' : totalDiff > 0 ? diffColorRed : diffColorGreen;
+      tooltipDiffText = !totalLeft ? ' (new)'
+                      : !totalRght ? ' (removed)'
+                      : ' (' + (totalDiff > 0 ? '+' : '') + formatPercent(totalDiff / totalLeft) + ')';
     }
 
     // Before you change all of this to React consider performance implications.
@@ -497,7 +502,9 @@ class FlameGraphRenderer extends React.Component {
     tooltipEl.style.top = `${e.clientY+12}px`;
 
     tooltipEl.children[0].innerText = tooltipTitle;
-    tooltipEl.children[1].innerText = tooltipText;
+    tooltipEl.children[1].children[0].innerText = tooltipText;
+    tooltipEl.children[1].children[1].innerText = tooltipDiffText;
+    tooltipEl.children[1].children[1].style.color = tooltipDiffColor;
   };
 
   mouseOutHandler = () => {
@@ -543,22 +550,27 @@ class FlameGraphRenderer extends React.Component {
       >
         <div className='flamegraph-header'>
           <span></span>
-          <div>
-            <div className="row">
-              Frame width represents {unitsToFlamegraphTitle[this.state.units]}
-            </div>
-            { !this.state.viewDiff ? null :
+          { !this.state.viewDiff ?
+            <div>
+              <div className="row">
+                Frame width represents {unitsToFlamegraphTitle[this.state.units]}
+              </div>
+            </div> :
+            <div>
+              <div className="row">
+                Base graph: left - Comparison graph: right
+              </div>
               <div className="row flamegraph-legend">
                 <div className="flamegraph-legend-list">
                   {diffLegend.map((v) => (
-                    <div className="flamegraph-legend-item" style={{ backgroundColor: colorBasedOnDiff(v, 100, 0.8) }}>
+                    <div key={v} className="flamegraph-legend-item" style={{ backgroundColor: colorBasedOnDiff(v, 100, 0.8) }}>
                       {v > 0 ? '+' : ''}{v}%
                     </div>
                   ))}
                 </div>
               </div>
-            }
-          </div>
+            </div>
+          }
           <ExportData flameCanvas={this.canvasRef}/>
         </div>
         <canvas
@@ -653,7 +665,7 @@ class FlameGraphRenderer extends React.Component {
           ref={this.tooltipRef}
         >
           <div className="flamegraph-tooltip-name"></div>
-          <div></div>
+          <div><span></span><span></span></div>
         </div>
       </div>
     )

@@ -251,6 +251,10 @@ $pane-width: 6px;
       .flamegraph-legend-item {
         width: 35px;
         text-align: center;
+
+        &:first-child, &:last-child {
+          width: 40px;
+        }
       }
     }
 

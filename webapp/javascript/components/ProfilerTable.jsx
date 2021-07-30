@@ -4,7 +4,7 @@
 import React from "react";
 import clsx from "clsx";
 import { getFormatter, getPackageNameFromStackTrace } from "../util/format";
-import { colorBasedOnPackageName, defaultColor } from "../util/color";
+import { colorBasedOnPackageName, defaultColor, diffColorGreen, diffColorRed } from "../util/color";
 import { parseFlamebearerFormat } from "../util/flamebearer";
 
 const zero = (v) => v || 0;
@@ -78,8 +78,8 @@ function backgroundImageDiffStyle(a, b, total, color, side) {
   const k = w - (Math.min(a, b) / total) * w;
   const kd = w - (Math.max(a, b) / total) * w;
   const clr = color.alpha(1.0);
-  const cld = b < a ? color.rgb(0, 200, 0).alpha(0.8)
-                    : color.rgb(200, 0, 0).alpha(0.8);
+  const cld = b < a ? diffColorGreen.alpha(0.8)
+                    : diffColorRed.alpha(0.8);
 
   if (side === 'L' && a < b) {
     return `
