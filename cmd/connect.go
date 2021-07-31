@@ -33,7 +33,7 @@ var connectCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(connectCmd)
 
-	cli.PopulateFlagSet(&cfg.Exec, connectCmd.Flags())
+	cli.PopulateFlagSet(&cfg.Exec, connectCmd.Flags(), cli.WithSkip("group-name", "user-name", "no-root-drop"))
 	viper.BindPFlags(connectCmd.Flags())
 
 	// Here you will define your flags and configuration settings.

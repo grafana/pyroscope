@@ -36,7 +36,7 @@ var serverCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(serverCmd)
 
-	cli.PopulateFlagSet(&cfg.Server, serverCmd.Flags())
+	cli.PopulateFlagSet(&cfg.Server, serverCmd.Flags(), cli.WithSkip("metric-export-rules"))
 	viper.BindPFlags(serverCmd.Flags())
 	// Here you will define your flags and configuration settings.
 

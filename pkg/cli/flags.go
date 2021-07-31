@@ -357,7 +357,10 @@ func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflec
 				continue
 			}
 
-			logrus.Fatalf("type %s is not supported", field.Type)
+			// A stub for unknown types. This is required for generated configs and
+			// documentation (when a parameter can not be set via flag but present
+			// in the configuration). Empty value is shown as '{}'.
+			flagSet.Var(new(mapFlags), nameVal, descVal)
 		}
 
 		if deprecatedVal == "true" {
