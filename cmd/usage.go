@@ -79,7 +79,7 @@ func DefaultUsageFunc(sf *pflag.FlagSet, c *cobra.Command) string {
 			// }
 			def = defClr.Sprint(def)
 			// def = fmt.Sprintf("(%s)", def)
-			fmt.Fprintf(tw, "  %s\t%s", itemClr.Sprintf("-"+f.Name), def)
+			fmt.Fprintf(tw, "  %s\t%s", itemClr.Sprintf("--"+f.Name), def)
 			if f.Usage != "" {
 				fmt.Fprintf(tw, "@new-line@    ")
 				descClr.Fprint(tw, f.Usage)

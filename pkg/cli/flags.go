@@ -180,7 +180,6 @@ func (bs *byteSizeFlag) Type() string {
 func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, opts ...FlagOption) *pflag.FlagSet {
 	v := reflect.ValueOf(obj).Elem()
 	t := reflect.TypeOf(v.Interface())
-	num := t.NumField()
 
 	o := &options{
 		replacements: map[string]string{
@@ -194,9 +193,17 @@ func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, opts ...FlagOption
 		option(o)
 	}
 
+	visitFields(flagSet, "", t, v, o)
+
+	return flagSet
+}
+
+func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflect.Value, o *options) {
+	num := t.NumField()
 	for i := 0; i < num; i++ {
 		field := t.Field(i)
 		fieldV := v.Field(i)
+
 		if !(fieldV.IsValid() && fieldV.CanSet()) {
 			continue
 		}
@@ -209,6 +216,10 @@ func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, opts ...FlagOption
 		if nameVal == "" {
 			nameVal = strcase.ToKebab(field.Name)
 		}
+		if prefix != "" {
+			nameVal = prefix + "." + nameVal
+		}
+
 		if skipVal == "true" || slices.StringContains(o.skip, nameVal) {
 			continue
 		}
@@ -341,7 +352,12 @@ func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, opts ...FlagOption
 			flagSet.UintVar(val, nameVal, defaultVal, descVal)
 			viper.SetDefault(nameVal, defaultVal)
 		default:
-			logrus.Fatalf("type %s is not supported, kind %v kind2 %v", field.Type, fieldV.Kind(), field.Type.Kind())
+			if field.Type.Kind() == reflect.Struct {
+				visitFields(flagSet, nameVal, field.Type, fieldV, o)
+				continue
+			}
+
+			logrus.Fatalf("type %s is not supported", field.Type)
 		}
 
 		if deprecatedVal == "true" {
@@ -349,5 +365,4 @@ func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, opts ...FlagOption
 			flagSet.MarkDeprecated(nameVal, "repalce this flag as it will be removed in future versions")
 		}
 	}
-	return flagSet
 }

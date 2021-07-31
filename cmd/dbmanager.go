@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/dbmanager"
@@ -42,4 +43,8 @@ func init() {
 		fmt.Println(gradientBanner() + "\n" + DefaultUsageFunc(cmd.Flags(), cmd))
 		return nil
 	})
+
+	if err := viper.Unmarshal(&cfg.DbManager); err != nil {
+		fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
+	}
 }

@@ -45,4 +45,8 @@ func init() {
 		fmt.Println(gradientBanner() + "\n" + DefaultUsageFunc(cmd.Flags(), cmd))
 		return nil
 	})
+
+	if err := viper.Unmarshal(&cfg.Convert); err != nil {
+		fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
+	}
 }
