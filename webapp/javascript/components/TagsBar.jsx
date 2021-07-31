@@ -16,7 +16,7 @@ function TagsBar({
   labels,
 }) {
   const [tagsValue, setTagsValue] = useState(
-    new URL(window.location.href).searchParams.get("query")
+    new URL(window.location.href).searchParams.get("query") || "{}"
   );
 
   const loadTagValues = (tag) => {
@@ -34,7 +34,7 @@ function TagsBar({
         )
       );
     } else {
-      const tagPairs = tagsValue.replace(/[{}]/g, "").split(",");
+      const tagPairs = (tagsValue || "").replace(/[{}]/g, "").split(",");
       tagPairs.forEach((pair, i) => {
         if (pair.startsWith(tag)) {
           tagPairs[i] = `${tag}="${tagValue}"`;
@@ -50,18 +50,15 @@ function TagsBar({
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    // const tagsParams = [];
     Object.keys(tags).forEach((tag) => {
-      if (url.searchParams.get("query").includes(tag)) {
+      if ((url.searchParams.get("query") || "").includes(tag)) {
         loadTagValues(tag);
-        // tagsParams.push(`${tag}="${url.searchParams.get(tag)}"`);
       }
     });
-    // setTagsValue(`{${tagsParams.join(",")}}`);
   }, [tags]);
 
   useEffect(() => {
-    const tagPairs = tagsValue.replace(/[{}"]/g, "").split(",");
+    const tagPairs = (tagsValue || "").replace(/[{}"]/g, "").split(",");
     const url = new URL(window.location.href);
     const tagsUpdater = [];
     tagPairs.forEach((pair) => {
@@ -70,9 +67,11 @@ function TagsBar({
         tagsUpdater.push({ name, value });
       }
     });
-    url.searchParams.set("query", tagsValue);
-    history.push(url.search);
-    updateTags(tagsUpdater);
+    if (tagsValue) {
+      url.searchParams.set("query", tagsValue);
+      history.push(url.search);
+      updateTags(tagsUpdater);
+    }
     if (window.Prism) {
       window.Prism.highlightElement(
         document.getElementById("highlighting-content")
@@ -91,11 +90,18 @@ function TagsBar({
           <SubMenu
             value={tag}
             key={tag}
-            label={(e) => {
-              if (!tags[tag].length && e.active && tagValuesLoading !== tag)
-                loadTagValues(tag);
-              return tag;
-            }}
+            label={(e) => (
+              <span
+                className="tag-content"
+                aria-hidden
+                onClick={() => {
+                  if (!tags[tag].length && tagValuesLoading !== tag)
+                    loadTagValues(tag);
+                }}
+              >
+                {tag}
+              </span>
+            )}
             className="active"
           >
             {tagValuesLoading === tag ? (
