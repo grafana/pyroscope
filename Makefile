@@ -100,6 +100,10 @@ else
 	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release
 endif
 
+.PHONY: build-rust-dependencies-docker
+build-rust-dependencies-docker:
+	DOCKER_BUILDKIT=1 docker build -f Dockerfile.static-libs --output type=local,dest=out .
+
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies:
 	cd third_party && cd phpspy_src || (git clone https://github.com/pyroscope-io/phpspy.git phpspy_src && cd phpspy_src)

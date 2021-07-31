@@ -19,10 +19,8 @@ import (
 var sessionsMapMutex sync.Mutex
 var sessionsMap = map[int]*agent.ProfileSession{}
 
-var logger agent.Logger
-
 func init() {
-	logger = &agent.NoopLogger{}
+	logger = &clibLogger{}
 }
 
 //export Start
