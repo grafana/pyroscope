@@ -7,4 +7,4 @@ bar: 123
 baz: "10h"
 foo-bar: "test-val-4"
 foo-foo: 10.23
-foo-bytes: "100mb"
+#foo-bytes: "100mb"

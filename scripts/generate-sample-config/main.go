@@ -42,7 +42,7 @@ func main() {
 	if directory != "" {
 		err := filepath.Walk(directory, func(path string, f os.FileInfo, err error) error {
 			if slices.StringContains([]string{".mdx", ".md"}, filepath.Ext(path)) {
-				return processfile(path)
+				return processFile(path)
 			}
 			return nil
 		})
@@ -59,7 +59,7 @@ var (
 	headerRegexp  = regexp.MustCompile("generate-sample-config:(.+?):(.+?)\\s*-")
 )
 
-func processfile(path string) error {
+func processFile(path string) error {
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)

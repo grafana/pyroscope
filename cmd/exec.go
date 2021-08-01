@@ -45,15 +45,6 @@ func init() {
 	cli.PopulateFlagSet(&cfg.Exec, execCmd.Flags(), cli.WithSkip("pid"))
 	viper.BindPFlags(execCmd.Flags())
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// execCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// execCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	execCmd.SetUsageFunc(func(cmd *cobra.Command) error {
 		fmt.Println(gradientBanner() + "\n" + DefaultUsageFunc(cmd.Flags(), cmd))
 		return nil

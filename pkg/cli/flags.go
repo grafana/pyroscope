@@ -234,7 +234,6 @@ func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflec
 		}
 
 		switch field.Type {
-		// TODO: Add support for nested struct visit and populate
 		case reflect.TypeOf([]string{}):
 			val := fieldV.Addr().Interface().(*[]string)
 			val2 := (*arrayFlags)(val)

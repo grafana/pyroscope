@@ -51,8 +51,9 @@ func init() {
 	})
 
 	viper.SetEnvPrefix("PYROSCOPE")
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv() // read in environment variables that match
+	replacer := strings.NewReplacer("-", "_", ".", "_")
+	viper.SetEnvKeyReplacer(replacer)
 
 	rootCmd.SetUsageFunc(func(cmd *cobra.Command) error {
 		fmt.Println(gradientBanner() + "\n" + DefaultUsageFunc(cmd.Flags(), cmd))
