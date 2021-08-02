@@ -110,33 +110,16 @@ func treeStr(s string) string {
 }
 
 var _ = Describe("prepend", func() {
-	Context("prepend (treeNode)", func() {
-		A, B, C, X := &treeNode{}, &treeNode{}, &treeNode{}, &treeNode{}
-
-		It("prepend to slice with single elem", func() {
-			s := []*treeNode{A}
-			s = prepend(s, A)
-			Expect(s).To(HaveLen(1))
-			Expect(s[0]).To(Equal(A))
-		})
-
-		It("prepend slice with new elem", func() {
+	Context("prependTreeNode)", func() {
+		It("prepend elem", func() {
+			A, B, C, X := &treeNode{}, &treeNode{}, &treeNode{}, &treeNode{}
 			s := []*treeNode{A, B, C}
-			s = prepend(s, X)
+			s = prependTreeNode(s, X)
 			Expect(s).To(HaveLen(4))
 			Expect(s[0]).To(Equal(X))
 			Expect(s[1]).To(Equal(A))
 			Expect(s[2]).To(Equal(B))
 			Expect(s[3]).To(Equal(C))
-		})
-
-		It("prepend slice with existing elem", func() {
-			s := []*treeNode{A, B, C}
-			s = prepend(s, B)
-			Expect(s).To(HaveLen(3))
-			Expect(s[0]).To(Equal(B))
-			Expect(s[1]).To(Equal(A))
-			Expect(s[2]).To(Equal(C))
 		})
 	})
 	Context("prependBytes", func() {

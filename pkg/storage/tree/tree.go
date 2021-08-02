@@ -81,31 +81,17 @@ func (t *Tree) Merge(srcTrieI merge.Merger) {
 
 		for _, srcChildNode := range st.ChildrenNodes {
 			dstChildNode := dt.insert(srcChildNode.Name)
-			srcNodes = prepend(srcNodes, srcChildNode)
-			dstNodes = prepend(dstNodes, dstChildNode)
+			srcNodes = prependTreeNode(srcNodes, srcChildNode)
+			dstNodes = prependTreeNode(dstNodes, dstChildNode)
 		}
 	}
 }
 
-func prepend(s []*treeNode, x *treeNode) []*treeNode {
-	if len(s) != 0 && s[0] == x {
-		return s
-	}
-	prev := x
-	for i, elem := range s {
-		switch {
-		case i == 0:
-			s[0] = x
-			prev = elem
-		case elem == x:
-			s[i] = prev
-			return s
-		default:
-			s[i] = prev
-			prev = elem
-		}
-	}
-	return append(s, prev)
+func prependTreeNode(s []*treeNode, x *treeNode) []*treeNode {
+	s = append(s, nil)
+	copy(s[1:], s)
+	s[0] = x
+	return s
 }
 
 func prependBytes(s [][]byte, x []byte) [][]byte {
