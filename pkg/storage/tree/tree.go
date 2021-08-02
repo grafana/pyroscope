@@ -108,6 +108,13 @@ func prepend(s []*treeNode, x *treeNode) []*treeNode {
 	return append(s, prev)
 }
 
+func prependBytes(s [][]byte, x []byte) [][]byte {
+	s = append(s, nil)
+	copy(s[1:], s)
+	s[0] = x
+	return s
+}
+
 func (t *Tree) String() string {
 	t.RLock()
 	defer t.RUnlock()
@@ -178,7 +185,7 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 
 		nodes = append(node.ChildrenNodes, nodes...)
 		for i := 0; i < len(node.ChildrenNodes); i++ {
-			prefixes = append([][]byte{label}, prefixes...)
+			prefixes = prependBytes(prefixes, label)
 		}
 	}
 }
