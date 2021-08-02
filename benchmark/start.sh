@@ -5,7 +5,13 @@ set -e
 ../scripts/generate-git-info.sh > git-info.env
 
 echo "building containers..."
+
+source run-parameters.env
+export PYROSCOPE_CPUS PYROSCOPE_MEMORY
+
 docker-compose build
+
+exit 0
 
 
 NAME="$(date -u +%FT%TZ | tr ':' '-').png"
@@ -53,9 +59,6 @@ esac
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-
-source run-parameters.env
-export PYROSCOPE_CPUS PYROSCOPE_MEMORY
 
 echo args "$RECREATE_VOLUMES" "$ABORT_ON_EXIT"
 docker-compose up --remove-orphans $RECREATE_VOLUMES $ABORT_ON_EXIT

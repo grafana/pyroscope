@@ -14,6 +14,10 @@ Pass `--wait` to make the system continue running after benchmarking is over:
 ```
 sh start.sh --wait
 ```
+Pass `--keep-data` to keep existing data:
+```
+sh start.sh --keep-data
+```
 
 
 ## Configuration
