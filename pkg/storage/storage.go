@@ -34,10 +34,10 @@ var (
 	errOutOfSpace = errors.New("running out of space")
 	errRetention  = errors.New("could not write because of retention settings")
 
-	evictInterval     = time.Second
+	evictInterval     = 20 * time.Second
 	writeBackInterval = time.Second
 	retentionInterval = time.Minute
-	gcInterval        = 5 * time.Minute
+	badgerGCInterval  = 5 * time.Minute
 )
 
 type Storage struct {
@@ -84,7 +84,7 @@ func (s *Storage) newBadger(name string) (*badger.DB, error) {
 		return nil, err
 	}
 	s.wg.Add(1)
-	go s.periodicTask(gcInterval, s.badgerGCTask(db))
+	go s.periodicTask(badgerGCInterval, s.badgerGCTask(db))
 	return db, nil
 }
 

@@ -61,6 +61,7 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 				s.segments.Evict(percent / 2)
 				s.trees.Evict(percent)
 			})
+			runtime.GC()
 		}
 	}
 }
