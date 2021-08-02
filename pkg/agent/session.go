@@ -113,22 +113,6 @@ func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 	return ps, nil
 }
 
-// func (ps *ProfileSession) createNames(tags map[string]string) error {
-// 	for _, t := range ps.profileTypes {
-// 		tagsCopy := make(map[string]string)
-// 		for k, v := range tags {
-// 			tagsCopy[k] = v
-// 		}
-// 		appName, err := mergeTagsWithAppName(ps.appName, tagsCopy)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		tagsCopy["__name__"] = appName + "." + string(t)
-// 		// ps.names[t] = segment.NewKey(tagsCopy).Normalized()
-// 	}
-// 	return nil
-// }
-
 func addSuffix(name string, ptype spy.ProfileType) (string, error) {
 	k, err := segment.ParseKey(name)
 	if err != nil {
@@ -155,26 +139,16 @@ func mergeTagsWithAppName(appName string, tags map[string]string) (string, error
 	if err != nil {
 		return "", err
 	}
-	appName = k.AppName()
-	if tags == nil {
-		return appName, nil
-	}
-	// Note that at this point k may contain
-	// reserved tag keys (e.g. '__name__').
-	for tagKey, v := range k.Labels() {
+	for tagKey, tagValue := range tags {
 		if flameql.IsTagKeyReserved(tagKey) {
 			continue
 		}
-		if _, ok := tags[tagKey]; !ok {
-			tags[tagKey] = v
-		}
-	}
-	for tagKey := range tags {
 		if err = flameql.ValidateTagKey(tagKey); err != nil {
 			return "", err
 		}
+		k.Add(tagKey, tagValue)
 	}
-	return appName, nil
+	return k.Normalized(), nil
 }
 
 func (ps *ProfileSession) takeSnapshots() {
@@ -255,6 +229,12 @@ func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
 func (ps *ProfileSession) ChangeName(newName string) error {
 	ps.trieMutex.Lock()
 	defer ps.trieMutex.Unlock()
+
+	var err error
+	newName, err = mergeTagsWithAppName(newName, map[string]string{})
+	if err != nil {
+		return err
+	}
 
 	if _, ok := ps.previousTries[newName]; !ok {
 		// TODO Only set the trie if it's not already set
