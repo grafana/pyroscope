@@ -136,20 +136,25 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 	return n.ChildrenNodes[i]
 }
 
+func (n *treeNode) insertChild(label []byte, value uint64) *treeNode {
+	n.Total += value
+	childNode := n.insert(label)
+	return childNode
+}
+
 func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
-	// TODO: can optimize this, split is not necessary?
-	labels := bytes.Split(key, []byte(";"))
-	node := t.root
-	for _, l := range labels {
-		buf := make([]byte, len(l))
-		copy(buf, l)
-		l = buf
+	buf := make([]byte, len(key))
+	copy(buf, key)
 
-		n := node.insert(l)
-
-		node.Total += value
-		node = n
+	node, lastIdx := t.root, 0
+	for i, b := range buf {
+		if b == semicolon {
+			node = node.insertChild(buf[lastIdx:i], value)
+			lastIdx = i + 1
+		}
 	}
+	node = node.insertChild(buf[lastIdx:], value)
+
 	node.Self += value
 	node.Total += value
 }
