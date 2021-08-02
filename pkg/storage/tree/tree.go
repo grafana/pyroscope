@@ -63,10 +63,10 @@ func New() *Tree {
 func (t *Tree) Merge(srcTrieI merge.Merger) {
 	srcTrie := srcTrieI.(*Tree)
 
-	srcNodes := make([]*treeNode, 0, 100)
+	srcNodes := make([]*treeNode, 0, 128)
 	srcNodes = append(srcNodes, srcTrie.root)
 
-	dstNodes := make([]*treeNode, 0, 100)
+	dstNodes := make([]*treeNode, 0, 128)
 	dstNodes = append(dstNodes, t.root)
 
 	for len(srcNodes) > 0 {
