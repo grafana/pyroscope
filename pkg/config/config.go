@@ -116,6 +116,16 @@ type Server struct {
 	// TODO: can we generate these automatically if it's empty?
 	JWTSecret                string `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens"`
 	LoginMaximumLifetimeDays int    `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring."`
+
+	MetricExportRules MetricExportRules `yaml:"metric-export-rules" def:"" desc:"metric export rules"`
+}
+
+type MetricExportRules map[string]MetricExportRule
+
+type MetricExportRule struct {
+	Expr   string   `def:"" desc:"expression in FlameQL syntax to be evaluated against samples"`
+	Node   string   `def:"total" desc:"tree node filter expression. Should be either 'total' or a valid regexp"`
+	Labels []string `def:"" desc:"list of tags to be exported as prometheus labels"`
 }
 
 type Convert struct {

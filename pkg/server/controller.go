@@ -39,6 +39,7 @@ type Controller struct {
 
 	config     *config.Server
 	storage    *storage.Storage
+	ingester   storage.Ingester
 	log        *logrus.Logger
 	httpServer *http.Server
 
@@ -50,7 +51,7 @@ type Controller struct {
 	appStats *hyperloglog.HyperLogLogPlus
 }
 
-func New(c *config.Server, s *storage.Storage, l *logrus.Logger) (*Controller, error) {
+func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger) (*Controller, error) {
 	appStats, err := hyperloglog.NewPlus(uint8(18))
 	if err != nil {
 		return nil, err
@@ -60,6 +61,7 @@ func New(c *config.Server, s *storage.Storage, l *logrus.Logger) (*Controller, e
 		config:   c,
 		log:      l,
 		storage:  s,
+		ingester: i,
 		stats:    make(map[string]int),
 		appStats: appStats,
 	}

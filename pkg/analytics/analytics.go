@@ -24,11 +24,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -37,11 +37,16 @@ var (
 	uploadFrequency = 24 * time.Hour
 )
 
-func NewService(cfg *config.Server, s *storage.Storage, c *server.Controller) *Service {
+type StatsProvider interface {
+	Stats() map[string]int
+	AppsCount() int
+}
+
+func NewService(cfg *config.Server, s *storage.Storage, p StatsProvider) *Service {
 	return &Service{
 		cfg: cfg,
 		s:   s,
-		c:   c,
+		p:   p,
 		httpClient: &http.Client{
 			Transport: &http.Transport{
 				MaxConnsPerHost: 1,
@@ -56,7 +61,7 @@ func NewService(cfg *config.Server, s *storage.Storage, c *server.Controller) *S
 type Service struct {
 	cfg        *config.Server
 	s          *storage.Storage
-	c          *server.Controller
+	p          StatsProvider
 	httpClient *http.Client
 	uploads    int
 
@@ -125,7 +130,7 @@ func (s *Service) sendReport() {
 	runtime.ReadMemStats(&ms)
 	du := s.s.DiskUsage()
 
-	controllerStats := s.c.Stats()
+	controllerStats := s.p.Stats()
 
 	m := metrics{
 		InstallID:        s.s.InstallID(),
@@ -153,7 +158,7 @@ func (s *Service) sendReport() {
 		SpyEbpfspy:       controllerStats["ingest:ebpfspy"],
 		SpyPhpspy:        controllerStats["ingest:phpspy"],
 		SpyDotnetspy:     controllerStats["ingest:dotnetspy"],
-		AppsCount:        s.c.AppsCount(),
+		AppsCount:        s.p.AppsCount(),
 	}
 
 	buf, err := json.Marshal(m)

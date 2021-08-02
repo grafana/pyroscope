@@ -44,7 +44,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 		rootFlagSet      = flag.NewFlagSet("pyroscope", flag.ExitOnError)
 	)
 
-	serverSortedFlags := PopulateFlagSet(&cfg.Server, serverFlagSet)
+	serverSortedFlags := PopulateFlagSet(&cfg.Server, serverFlagSet, WithSkip("metric-export-rules"))
 	agentSortedFlags := PopulateFlagSet(&cfg.Agent, agentFlagSet, WithSkip("targets"))
 	convertSortedFlags := PopulateFlagSet(&cfg.Convert, convertFlagSet)
 	execSortedFlags := PopulateFlagSet(&cfg.Exec, execFlagSet, WithSkip("pid"))
@@ -61,7 +61,7 @@ func generateRootCmd(cfg *config.Config) *ffcli.Command {
 
 	serverCmd := &ffcli.Command{
 		UsageFunc:  serverSortedFlags.printUsage,
-		Options:    options,
+		Options:    append(options, ff.WithIgnoreUndefined(true)),
 		Name:       "server",
 		ShortUsage: "pyroscope server [flags]",
 		ShortHelp:  "starts pyroscope server. This is the database + web-based user interface",

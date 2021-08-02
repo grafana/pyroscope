@@ -287,7 +287,10 @@ func PopulateFlagSet(obj interface{}, flagSet *flag.FlagSet, opts ...FlagOption)
 			}
 			flagSet.UintVar(val, nameVal, defaultVal, descVal)
 		default:
-			logrus.Fatalf("type %s is not supported", field.Type)
+			// A stub for unknown types. This is required for generated configs and
+			// documentation (when a parameter can not be set via flag but present
+			// in the configuration). Empty value is shown as '{}'.
+			flagSet.Var(new(mapFlags), nameVal, descVal)
 		}
 	}
 	return NewSortedFlags(obj, flagSet, deprecatedFields)

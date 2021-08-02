@@ -118,6 +118,83 @@ var _ = Describe("flags", func() {
 				Expect(cfg.Foo).To(Equal("test-val-4"))
 			})
 
+			It("server configuration", func() {
+				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
+				var cfg config.Server
+				PopulateFlagSet(&cfg, exampleFlagSet)
+
+				exampleCommand := &ffcli.Command{
+					FlagSet: exampleFlagSet,
+					Options: []ff.Option{
+						ff.WithIgnoreUndefined(true),
+						ff.WithConfigFileParser(parser),
+						ff.WithConfigFileFlag("config"),
+					},
+					Exec: func(_ context.Context, args []string) error {
+						return nil
+					},
+				}
+
+				err := exampleCommand.ParseAndRun(context.Background(), []string{
+					"-config", "testdata/server.yml",
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(cfg).To(Equal(config.Server{
+					AnalyticsOptOut:          false,
+					Config:                   "testdata/server.yml",
+					LogLevel:                 "info",
+					BadgerLogLevel:           "error",
+					StoragePath:              "/var/lib/pyroscope",
+					APIBindAddr:              ":4040",
+					BaseURL:                  "",
+					CacheEvictThreshold:      0.25,
+					CacheEvictVolume:         0.33,
+					BadgerNoTruncate:         false,
+					DisablePprofEndpoint:     false,
+					MaxNodesSerialization:    2048,
+					MaxNodesRender:           8192,
+					HideApplications:         nil,
+					Retention:                0,
+					SampleRate:               0,
+					OutOfSpaceThreshold:      0,
+					CacheDimensionSize:       0,
+					CacheDictionarySize:      0,
+					CacheSegmentSize:         0,
+					CacheTreeSize:            0,
+					GoogleEnabled:            false,
+					GoogleClientID:           "",
+					GoogleClientSecret:       "",
+					GoogleRedirectURL:        "",
+					GoogleAuthURL:            "https://accounts.google.com/o/oauth2/auth",
+					GoogleTokenURL:           "https://accounts.google.com/o/oauth2/token",
+					GitlabEnabled:            false,
+					GitlabApplicationID:      "",
+					GitlabClientSecret:       "",
+					GitlabRedirectURL:        "",
+					GitlabAuthURL:            "https://gitlab.com/oauth/authorize",
+					GitlabTokenURL:           "https://gitlab.com/oauth/token",
+					GitlabAPIURL:             "https://gitlab.com/api/v4/user",
+					GithubEnabled:            false,
+					GithubClientID:           "",
+					GithubClientSecret:       "",
+					GithubRedirectURL:        "",
+					GithubAuthURL:            "https://github.com/login/oauth/authorize",
+					GithubTokenURL:           "https://github.com/login/oauth/access_token",
+					JWTSecret:                "",
+					LoginMaximumLifetimeDays: 0,
+					MetricExportRules:        nil,
+				}))
+
+				Expect(loadServerConfig(&cfg)).ToNot(HaveOccurred())
+				Expect(cfg.MetricExportRules).To(Equal(config.MetricExportRules{
+					"my_metric_name": {
+						Expr: `app.name{foo=~"bar"}`,
+						Node: "a;b;c",
+					},
+				}))
+			})
+
 			It("agent configuration", func() {
 				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
 				var cfg config.Agent
