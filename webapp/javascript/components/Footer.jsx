@@ -15,6 +15,7 @@ function buildInfo() {
     js_version: v${PYROSCOPE_VERSION}
     goos: ${window.buildInfo.goos}
     goarch: ${window.buildInfo.goarch}
+    go_version: ${window.buildInfo.goVersion}
     version: ${window.buildInfo.version}
     id: ${window.buildInfo.id}
     time: ${window.buildInfo.time}

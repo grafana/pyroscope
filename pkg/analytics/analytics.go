@@ -77,6 +77,7 @@ type metrics struct {
 	UploadIndex      int       `json:"upload_index"`
 	GOOS             string    `json:"goos"`
 	GOARCH           string    `json:"goarch"`
+	GoVersion        string    `json:"go_version"`
 	MemAlloc         int       `json:"mem_alloc"`
 	MemTotalAlloc    int       `json:"mem_total_alloc"`
 	MemSys           int       `json:"mem_sys"`
@@ -140,6 +141,7 @@ func (s *Service) sendReport() {
 		UploadIndex:      s.uploads,
 		GOOS:             runtime.GOOS,
 		GOARCH:           runtime.GOARCH,
+		GoVersion:        runtime.Version(),
 		MemAlloc:         int(ms.Alloc),
 		MemTotalAlloc:    int(ms.TotalAlloc),
 		MemSys:           int(ms.Sys),

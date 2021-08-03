@@ -33,6 +33,7 @@ const tmplt = `
 GENERAL
   GOARCH:             %s
   GOOS:               %s
+  Go Version:         %s
   Version:            %s
   Build ID:           %s
   Build Time:         %s
@@ -48,6 +49,7 @@ func Summary() string {
 	return fmt.Sprintf(strings.TrimSpace(tmplt),
 		runtime.GOARCH,
 		runtime.GOOS,
+		runtime.Version(),
 		Version,
 		ID,
 		Time,
@@ -61,6 +63,7 @@ func Summary() string {
 type buildInfoJSON struct {
 	GOOS              string `json:"goos"`
 	GOARCH            string `json:"goarch"`
+	GoVersion         string `json:"goVersion"`
 	Version           string `json:"version"`
 	ID                string `json:"id"`
 	Time              string `json:"time"`
@@ -73,6 +76,7 @@ func generateBuildInfoJSON() buildInfoJSON {
 	return buildInfoJSON{
 		GOOS:              runtime.GOOS,
 		GOARCH:            runtime.GOARCH,
+		GoVersion:         runtime.Version(),
 		Version:           Version,
 		ID:                ID,
 		Time:              Time,
