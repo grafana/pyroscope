@@ -60,6 +60,7 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 				s.dicts.Evict(percent / 4)
 				s.segments.Evict(percent / 2)
 				s.trees.Evict(percent)
+				runtime.GC()
 			})
 		}
 	}
