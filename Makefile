@@ -61,13 +61,13 @@ build-release: embedded-assets
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
-	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release --target $(RUST_TARGET)
+	(cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release --target $(RUST_TARGET)) || $(MAKE) print-deps-error-message
 
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies:
 	cd third_party && cd phpspy_src || (git clone https://github.com/pyroscope-io/phpspy.git phpspy_src && cd phpspy_src)
 	cd third_party/phpspy_src && git checkout 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
-	cd third_party/phpspy_src && USE_ZEND=1 make CFLAGS="-DUSE_DIRECT"
+	cd third_party/phpspy_src && USE_ZEND=1 make CFLAGS="-DUSE_DIRECT" || $(MAKE) print-deps-error-message
 	cp third_party/phpspy_src/libphpspy.a third_party/phpspy/libphpspy.a
 
 .PHONY: build-third-party-dependencies
@@ -166,3 +166,11 @@ docker-dev:
 .PHONY: windows-dev
 windows-dev:
 	docker build --platform linux/amd64 -f Dockerfile.windows --output type=local,dest=out .
+
+.PHONY: print-deps-error-message
+print-deps-error-message:
+	@echo ""
+	@echo "  NOTE: you can still build pyroscope without spies by adding ENABLED_SPIES=none before the build command:"
+	@echo "  $$ ENABLED_SPIES=none make build"
+	@echo ""
+	exit 1
