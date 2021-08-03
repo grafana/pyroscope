@@ -69,7 +69,7 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #   __/ |                     __/ |
 #  |___/                     |___/
 
-FROM golang:1.16.6-alpine3.14 as go-builder
+FROM golang:1.16.4-alpine3.12 as go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 
