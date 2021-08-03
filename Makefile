@@ -1,21 +1,39 @@
 GOBUILD=go build -trimpath
 
-ifeq ("$(shell go env GOARCH || true)", "arm64")
-	# this makes it work better on M1 machines
+ARCH ?= $(shell arch)
+OS ?= $(shell uname)
+
+ifeq ("$(ARCH)", "arm64")
+# this makes it work better on M1 machines
 	GODEBUG=asyncpreemptoff=1
 endif
 
-ALL_SPIES = "ebpfspy,rbspy,pyspy,dotnetspy,debugspy"
-ifeq ("$(shell go env GOOS || true)", "linux")
-	ENABLED_SPIES ?= "ebpfspy,rbspy,pyspy,phpspy,dotnetspy"
+ALL_SPIES = ebpfspy,rbspy,pyspy,dotnetspy,debugspy
+ifeq ("$(OS)", "Linux")
+	ENABLED_SPIES ?= ebpfspy,rbspy,pyspy,phpspy,dotnetspy
 else
-	ENABLED_SPIES ?= "rbspy,pyspy"
+	ENABLED_SPIES ?= rbspy,pyspy
 endif
 
-ifeq ("$(shell go env GOOS || true)", "linux")
+ifeq ("$(OS)", "Linux")
 	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies build-phpspy-dependencies"
 else
 	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies"
+endif
+
+GO_TAGS = $(ENABLED_SPIES)
+
+ifeq ("$(OS)", "Linux")
+	ifeq ("$(shell cat /etc/os-release | grep ^ID=)", "ID=alpine")
+		RUST_TARGET ?= "$(ARCH)-unknown-linux-musl"
+		GO_TAGS := $(GO_TAGS),musl
+	else
+		RUST_TARGET ?= "$(ARCH)-unknown-linux-gnu"
+	endif
+else
+	ifeq ("$(OS)", "Darwin")
+		RUST_TARGET ?= "$(ARCH)-apple-darwin"
+	endif
 endif
 
 EMBEDDED_ASSETS ?= ""
@@ -35,7 +53,7 @@ all: build
 
 .PHONY: build
 build:
-	$(GOBUILD) -tags $(ENABLED_SPIES) -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
+	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
 
 .PHONY: build-release
 build-release: embedded-assets
@@ -43,12 +61,14 @@ build-release: embedded-assets
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
-	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release
+	(cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release --target $(RUST_TARGET)) || $(MAKE) print-deps-error-message
 
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies:
-	cd third_party && git clone https://github.com/pyroscope-io/phpspy.git
-	cd phpspy && USE_ZEND=1 make
+	cd third_party && cd phpspy_src || (git clone https://github.com/pyroscope-io/phpspy.git phpspy_src && cd phpspy_src)
+	cd third_party/phpspy_src && git checkout 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
+	cd third_party/phpspy_src && USE_ZEND=1 make CFLAGS="-DUSE_DIRECT" || $(MAKE) print-deps-error-message
+	cp third_party/phpspy_src/libphpspy.a third_party/phpspy/libphpspy.a
 
 .PHONY: build-third-party-dependencies
 build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES))
@@ -60,10 +80,6 @@ test:
 .PHONY: server
 server:
 	bin/pyroscope server --log-level debug --badger-log-level error --storage-path tmp/pyroscope-storage
-
-.PHONY: agent
-agent:
-	bin/pyroscope agent
 
 .PHONY: install-web-dependencies
 install-web-dependencies:
@@ -150,3 +166,11 @@ docker-dev:
 .PHONY: windows-dev
 windows-dev:
 	docker build --platform linux/amd64 -f Dockerfile.windows --output type=local,dest=out .
+
+.PHONY: print-deps-error-message
+print-deps-error-message:
+	@echo ""
+	@echo "  NOTE: you can still build pyroscope without spies by adding ENABLED_SPIES=none before the build command:"
+	@echo "  $$ ENABLED_SPIES=none make build"
+	@echo ""
+	exit 1
