@@ -63,10 +63,10 @@ func New() *Tree {
 func (t *Tree) Merge(srcTrieI merge.Merger) {
 	srcTrie := srcTrieI.(*Tree)
 
-	srcNodes := make([]*treeNode, 0, 100)
+	srcNodes := make([]*treeNode, 0, 128)
 	srcNodes = append(srcNodes, srcTrie.root)
 
-	dstNodes := make([]*treeNode, 0, 100)
+	dstNodes := make([]*treeNode, 0, 128)
 	dstNodes = append(dstNodes, t.root)
 
 	for len(srcNodes) > 0 {
@@ -81,31 +81,24 @@ func (t *Tree) Merge(srcTrieI merge.Merger) {
 
 		for _, srcChildNode := range st.ChildrenNodes {
 			dstChildNode := dt.insert(srcChildNode.Name)
-			srcNodes = prepend(srcNodes, srcChildNode)
-			dstNodes = prepend(dstNodes, dstChildNode)
+			srcNodes = prependTreeNode(srcNodes, srcChildNode)
+			dstNodes = prependTreeNode(dstNodes, dstChildNode)
 		}
 	}
 }
 
-func prepend(s []*treeNode, x *treeNode) []*treeNode {
-	if len(s) != 0 && s[0] == x {
-		return s
-	}
-	prev := x
-	for i, elem := range s {
-		switch {
-		case i == 0:
-			s[0] = x
-			prev = elem
-		case elem == x:
-			s[i] = prev
-			return s
-		default:
-			s[i] = prev
-			prev = elem
-		}
-	}
-	return append(s, prev)
+func prependTreeNode(s []*treeNode, x *treeNode) []*treeNode {
+	s = append(s, nil)
+	copy(s[1:], s)
+	s[0] = x
+	return s
+}
+
+func prependBytes(s [][]byte, x []byte) [][]byte {
+	s = append(s, nil)
+	copy(s[1:], s)
+	s[0] = x
+	return s
 }
 
 func (t *Tree) String() string {
@@ -136,20 +129,25 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 	return n.ChildrenNodes[i]
 }
 
+func (n *treeNode) insertChild(label []byte, value uint64) *treeNode {
+	n.Total += value
+	childNode := n.insert(label)
+	return childNode
+}
+
 func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
-	// TODO: can optimize this, split is not necessary?
-	labels := bytes.Split(key, []byte(";"))
-	node := t.root
-	for _, l := range labels {
-		buf := make([]byte, len(l))
-		copy(buf, l)
-		l = buf
+	buf := make([]byte, len(key))
+	copy(buf, key)
 
-		n := node.insert(l)
-
-		node.Total += value
-		node = n
+	node, lastIdx := t.root, 0
+	for i, b := range buf {
+		if b == semicolon {
+			node = node.insertChild(buf[lastIdx:i], value)
+			lastIdx = i + 1
+		}
 	}
+	node = node.insertChild(buf[lastIdx:], value)
+
 	node.Self += value
 	node.Total += value
 }
@@ -173,7 +171,7 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 
 		nodes = append(node.ChildrenNodes, nodes...)
 		for i := 0; i < len(node.ChildrenNodes); i++ {
-			prefixes = append([][]byte{label}, prefixes...)
+			prefixes = prependBytes(prefixes, label)
 		}
 	}
 }
