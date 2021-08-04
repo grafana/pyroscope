@@ -6,6 +6,7 @@ import { faClock } from "@fortawesome/free-solid-svg-icons";
 import OutsideClickHandler from "react-outside-click-handler";
 import CustomDatePicker from "./CustomDatePicker";
 import { setDateRange } from "../redux/actions";
+import CheckIcon from "./CheckIcon";
 
 const defaultPresets = [
   [
@@ -74,7 +75,7 @@ function DateRangePicker() {
                       key={x.label}
                       onClick={() => selectPreset(x)}
                     >
-                      {x.label} {x.label === range ? "✔" : ""}
+                      {x.label} {x.label === range ? <CheckIcon /> : ""}
                     </button>
                   ))}
                 </div>
