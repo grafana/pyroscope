@@ -1,3 +1,11 @@
+## <small>0.0.37 (2021-08-04)</small>
+
+* adds error message ([7e02b3d](https://github.com/pyroscope-io/pyroscope/commit/7e02b3d))
+* Fix LFU cache package version ([f2a06a8](https://github.com/pyroscope-io/pyroscope/commit/f2a06a8))
+* improves build stability on linux ([31e4065](https://github.com/pyroscope-io/pyroscope/commit/31e4065))
+
+
+
 ## <small>0.0.36 (2021-08-03)</small>
 
 * Add a short path for case when not all required labels are present ([7c8e7b0](https://github.com/pyroscope-io/pyroscope/commit/7c8e7b0))
