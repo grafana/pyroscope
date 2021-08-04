@@ -49,6 +49,12 @@
   .drp-presets {
     display: flex;
     flex-direction: row;
+
+    // cancel the padding from drp-container
+    // so that it spams the whole row
+    margin-left: -20px;
+    margin-right: -20px;
+
     .drp-preset-column {
       flex: 1;
       display: flex;
@@ -57,17 +63,29 @@
     }
   }
 
+  .drp-custom {
+    margin-top: 20px;
+  }
+
   .drp-preset {
     @include outline;
+
 
     border: none;
     text-align: left;
     padding: 2px 0;
+    // compensates for the negative margin in .drp-presets
+    padding-left: 20px;
     color: rgba(255, 255, 255, 0.66);
 
     &:hover,
     &.active {
       color: rgba(255, 255, 255, 1);
+      background: $btn-hover-color;
+    }
+
+    &:hover{
+      cursor: pointer;
     }
   }
 
