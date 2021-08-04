@@ -3,9 +3,14 @@ GOBUILD=go build -trimpath
 ARCH ?= $(shell arch)
 OS ?= $(shell uname)
 
-ifeq ("$(ARCH)", "arm64")
+ifeq ("$(OS)", "Darwin")
+	ifeq ("$(ARCH)", "arm64")
+# on a mac it's called arm64 which rust doesn't know about
+# see https://unix.stackexchange.com/questions/461179/what-is-the-difference-between-different-implemetation-of-arm64-aarch64-for-linu
+		ARCH=aarch64
 # this makes it work better on M1 machines
-	GODEBUG=asyncpreemptoff=1
+		GODEBUG=asyncpreemptoff=1
+	endif
 endif
 
 ALL_SPIES = ebpfspy,rbspy,pyspy,dotnetspy,debugspy
