@@ -103,6 +103,17 @@ tt {
   &:hover {
     background: $btn-hover-color;
   }
+
+  // inspired by .viz-switch .btn
+  &.primary {
+      $active-color: #2ecc40;
+      background-color: $active-color;
+      color: #222;
+      border-left-color: $active-color;
+      border-right-color: $active-color;
+      border-top-color: $active-color;
+      border-bottom-color: $active-color;
+  }
 }
 
 select {

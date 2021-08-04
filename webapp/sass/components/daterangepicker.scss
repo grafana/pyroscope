@@ -102,6 +102,23 @@
   }
 }
 
+// Custom Date Range block
+.drp-custom {
+  // label should be on its own line
+  label {
+    display: block;
+  }
+
+  .until {
+    margin-top: 10px;
+  }
+
+  // submit button
+  button {
+    margin-top: 20px;
+  }
+}
+
 // range picker custom styles
 .react-datepicker__day--in-range {
   background-color: #216ba5 !important;

@@ -60,24 +60,26 @@ function DateRangePicker() {
           <span>{range}</span>
         </button>
         <div className="drp-dropdown">
-          <h4>Quick Presets</h4>
-          <div className="drp-presets">
-            {defaultPresets.map((arr, i) => (
-              <div key={`preset-${i + 1}`} className="drp-preset-column">
-                {arr.map((x) => (
-                  <button
-                    type="button"
-                    className={`drp-preset ${
-                      x.label === range ? "active" : ""
-                    }`}
-                    key={x.label}
-                    onClick={() => selectPreset(x)}
-                  >
-                    {x.label}
-                  </button>
-                ))}
-              </div>
-            ))}
+          <div className="drp-quick-presets">
+            <h4>Quick Presets</h4>
+            <div className="drp-presets">
+              {defaultPresets.map((arr, i) => (
+                <div key={`preset-${i + 1}`} className="drp-preset-column">
+                  {arr.map((x) => (
+                    <button
+                      type="button"
+                      className={`drp-preset ${
+                        x.label === range ? "active" : ""
+                      }`}
+                      key={x.label}
+                      onClick={() => selectPreset(x)}
+                    >
+                      {x.label} {x.label === range ? "✔" : ""}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
           <CustomDatePicker
             setRange={setRange}
