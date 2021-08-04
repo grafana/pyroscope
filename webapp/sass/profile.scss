@@ -3,6 +3,7 @@
 @use "components/daterangepicker";
 @use "components/labels";
 @use "components/exportdata";
+@use "components/button";
 
 @import "~sanitize.css";
 @import "~sanitize.css/forms.css";
@@ -83,37 +84,6 @@ tt {
 
 .fx-1 {
   flex: 1;
-}
-
-.btn {
-  @include outline;
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  cursor: pointer;
-
-  // height: 30px;
-  // line-height: 30px;
-  border: 1px solid $btn-border-color;
-  border-radius: 4px;
-  background: $btn-color;
-
-  &:hover {
-    background: $btn-hover-color;
-  }
-
-  // inspired by .viz-switch .btn
-  &.primary {
-      $active-color: #2ecc40;
-      background-color: $active-color;
-      color: #222;
-      border-left-color: $active-color;
-      border-right-color: $active-color;
-      border-top-color: $active-color;
-      border-bottom-color: $active-color;
-  }
 }
 
 select {
