@@ -21,11 +21,17 @@
 
 // inspired by .viz-switch .btn
 .btn.primary {
-  $active-color: #2ecc40;
+  $active-color: #269f34;
+
   background-color: $active-color;
-  color: #222;
   border-left-color: $active-color;
   border-right-color: $active-color;
   border-top-color: $active-color;
   border-bottom-color: $active-color;
+  transition: 0.3s cubic-bezier(.17,.67,.83,.67);
+  font-weight: 600;
+
+  &:hover {
+    background-color: #2ecc40;
+  }
 }
