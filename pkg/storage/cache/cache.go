@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/dgrijalva/lfu-go"
+	"github.com/pyroscope-io/lfu-go"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/valyala/bytebufferpool"
 )
