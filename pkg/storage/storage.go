@@ -37,7 +37,7 @@ var (
 	evictInterval     = 20 * time.Second
 	writeBackInterval = time.Second
 	retentionInterval = time.Minute
-	badgerGCInterval        = 5 * time.Minute
+	badgerGCInterval  = 5 * time.Minute
 )
 
 type Storage struct {
