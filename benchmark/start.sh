@@ -6,13 +6,10 @@ set -e
 
 echo "building containers..."
 
-source run-parameters.env
+source ./run-parameters.env
 export PYROSCOPE_CPUS PYROSCOPE_MEMORY
 
 docker-compose build
-
-exit 0
-
 
 NAME="$(date -u +%FT%TZ | tr ':' '-').png"
 FROM="$(date +%s000)"
