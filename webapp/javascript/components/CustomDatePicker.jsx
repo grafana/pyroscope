@@ -53,7 +53,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
         />
       </div>
       <div className="until">
-        <label htmlFor="datepicker-from">Until: </label>
+        <label htmlFor="datepicker-until">Until: </label>
         <DatePicker
           id="datepicker-until"
           selected={selectedDate.until}
