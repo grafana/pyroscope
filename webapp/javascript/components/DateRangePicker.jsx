@@ -75,7 +75,8 @@ function DateRangePicker() {
                       key={x.label}
                       onClick={() => selectPreset(x)}
                     >
-                      {x.label} {x.label === range ? <CheckIcon /> : ""}
+                      {x.label}
+                      {x.label === range ? <CheckIcon /> : false}
                     </button>
                   ))}
                 </div>

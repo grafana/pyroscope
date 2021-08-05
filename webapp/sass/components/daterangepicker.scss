@@ -78,6 +78,12 @@
     padding-left: 20px;
     color: rgba(255, 255, 255, 0.66);
 
+    // give some room between the text and the icon
+    // https://web.dev/learn/css/logical-properties/#solving-the-icon-issue
+    svg {
+      margin-inline-start: 0.5em;
+    }
+
     &:hover,
     &.active {
       color: rgba(255, 255, 255, 1);
