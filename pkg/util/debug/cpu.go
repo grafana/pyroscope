@@ -8,7 +8,7 @@ import (
 
 func CPUUsage(interval time.Duration) map[string]interface{} {
 	cpuVal, err := cpu.Percent(interval, false)
-	if err != nil {
+	if err != nil || len(cpuVal) == 0 {
 		return map[string]interface{}{}
 	}
 
