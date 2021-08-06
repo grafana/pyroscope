@@ -28,6 +28,9 @@ var execCmd = &cobra.Command{
 			return nil
 		}
 		err := exec.Cli(&cfg.Exec, args)
+		if err != nil {
+			cmd.SilenceUsage = true
+		}
 		// Normally, if the program ran, the call should return ExitError and
 		// the exit code must be preserved. Otherwise, the error originates from
 		// pyroscope and will be printed.

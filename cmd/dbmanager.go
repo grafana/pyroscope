@@ -20,7 +20,12 @@ var dbmanagerCmd = &cobra.Command{
 			logrus.SetLevel(l)
 		}
 
-		return dbmanager.Cli(&cfg.DbManager, &cfg.Server, args)
+		err := dbmanager.Cli(&cfg.DbManager, &cfg.Server, args)
+		if err != nil {
+			cmd.SilenceUsage = true
+		}
+
+		return err
 	},
 }
 

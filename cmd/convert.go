@@ -22,6 +22,10 @@ var convertCmd = &cobra.Command{
 		}
 
 		err := convert.Cli(&cfg.Convert, logger, args)
+		if err != nil {
+			cmd.SilenceUsage = true
+		}
+
 		return err
 	},
 }

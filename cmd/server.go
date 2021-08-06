@@ -29,7 +29,12 @@ var serverCmd = &cobra.Command{
 
 		}
 
-		return cli.StartServer(&cfg.Server)
+		err := cli.StartServer(&cfg.Server)
+		if err != nil {
+			cmd.SilenceUsage = true
+		}
+
+		return err
 	},
 }
 

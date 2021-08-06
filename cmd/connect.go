@@ -26,7 +26,12 @@ var connectCmd = &cobra.Command{
 			fmt.Println(DefaultUsageFunc(cmd.Flags(), cmd))
 		}
 
-		return exec.Cli(&cfg.Exec, args)
+		err := exec.Cli(&cfg.Exec, args)
+		if err != nil {
+			cmd.SilenceUsage = true
+		}
+
+		return err
 	},
 }
 

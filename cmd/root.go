@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 
@@ -33,10 +34,6 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	cobra.CheckErr(rootCmd.Execute())
-}
-
-func init() {
 	logrus.SetReportCaller(true)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		TimestampFormat: "2006-01-02T15:04:05.000000",
@@ -50,6 +47,18 @@ func init() {
 		},
 	})
 
+	args := os.Args[1:]
+	for i, arg := range args {
+		if len(arg) > 2 && strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
+			args[i] = fmt.Sprintf("-%s", arg)
+		}
+	}
+
+	rootCmd.SetArgs(args)
+	rootCmd.Execute()
+}
+
+func init() {
 	viper.SetEnvPrefix("PYROSCOPE")
 	viper.AutomaticEnv() // read in environment variables that match
 	replacer := strings.NewReplacer("-", "_", ".", "_")

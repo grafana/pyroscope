@@ -28,7 +28,12 @@ var agentCmd = &cobra.Command{
 			}
 		}
 
-		return cli.StartAgent(&cfg.Agent)
+		err := cli.StartAgent(&cfg.Agent)
+		if err != nil {
+			cmd.SilenceUsage = true
+		}
+
+		return err
 	},
 }
 
