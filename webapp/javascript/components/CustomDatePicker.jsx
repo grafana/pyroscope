@@ -36,11 +36,12 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
   }, [from, until]);
 
   return (
-    <div>
+    <div className="drp-custom">
       <h4>Custom Date Range</h4>
-      <div className="form">
-        <p style={{ marginBottom: "10px", color: "white" }}>From: </p>
+      <div className="from">
+        <label htmlFor="datepicker-from">From: </label>
         <DatePicker
+          id="datepicker-from"
           selected={selectedDate.from}
           onChange={(date) => {
             setSelectedDate({ ...selectedDate, from: date });
@@ -52,8 +53,9 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
         />
       </div>
       <div className="until">
-        <p style={{ marginBottom: "10px", color: "white" }}>Until: </p>
+        <label htmlFor="datepicker-until">Until: </label>
         <DatePicker
+          id="datepicker-until"
           selected={selectedDate.until}
           onChange={(date) => {
             setSelectedDate({ ...selectedDate, until: date });
@@ -69,13 +71,8 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
       {warning && <p style={{ color: "red" }}>Warning: invalid date Range</p>}
 
       <button
-        style={{
-          marginTop: "20px",
-          backgroundColor: "#2ECC40",
-          color: "white",
-        }}
         type="submit"
-        className="btn"
+        className="btn primary"
         onClick={() => updateDateRange()}
       >
         Apply range

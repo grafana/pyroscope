@@ -1,0 +1,37 @@
+@use "../variables"as *;
+@use "../mixins/outline"as *;
+
+.btn {
+  @include outline;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  cursor: pointer;
+
+  border: 1px solid $btn-border-color;
+  border-radius: 4px;
+  background: $btn-color;
+
+  &:hover {
+    background: $btn-hover-color;
+  }
+}
+
+// inspired by .viz-switch .btn
+.btn.primary {
+  $active-color: #269f34;
+
+  background-color: $active-color;
+  border-left-color: $active-color;
+  border-right-color: $active-color;
+  border-top-color: $active-color;
+  border-bottom-color: $active-color;
+  transition: 0.3s cubic-bezier(.17,.67,.83,.67);
+  font-weight: 600;
+
+  &:hover {
+    background-color: #2ecc40;
+  }
+}
