@@ -29,12 +29,24 @@ const colors = [
   Color.rgb(128, 110, 183),
 ]
 
+export const defaultColor = colors[0];
+export const diffColorRed = Color.rgb(200, 0, 0);
+export const diffColorGreen = Color.rgb(0, 170, 0);
 
 export function colorBasedOnPackageName(name, a) {
   const hash = murmurhash3_32_gc(name);
   const colorIndex = hash % colors.length;
   const baseClr = colors[colorIndex];
   return baseClr.alpha(a);
+}
+
+// assume: left >= 0 && Math.abs(diff) <= left so diff / left is in [0...1]
+// if left == 0 || Math.abs(diff) > left, we use the color of 100%
+export function colorBasedOnDiff(diff, left, a) {
+  const v = !left || Math.abs(diff) > left ? 1
+    : 200 * Math.sqrt(Math.abs(diff / left));
+  if (diff >= 0) return Color.rgb(200,  200-v,200-v).alpha(a);
+  return Color.rgb(200-v, 200, 200-v).alpha(a);
 }
 
 export function colorGreyscale(v, a) {

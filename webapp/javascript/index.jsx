@@ -9,6 +9,7 @@ import store from "./redux/store";
 
 import PyroscopeApp from "./components/PyroscopeApp";
 import ComparisonApp from "./components/ComparisonApp";
+import ComparisonDiffApp from "./components/ComparisonDiffApp";
 import Sidebar from "./components/Sidebar";
 
 import history from "./util/history";
@@ -33,6 +34,9 @@ ReactDOM.render(
           </Route>
           <Route path="/comparison">
             <ComparisonApp />
+          </Route>
+          <Route path="/comparison-diff">
+            <ComparisonDiffApp />
           </Route>
         </Switch>
       </ShortcutProvider>

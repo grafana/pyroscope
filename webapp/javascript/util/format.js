@@ -52,7 +52,9 @@ export class DurationFormatter {
 
   format(samples, sampleRate) {
     let number = samples / sampleRate / this.divider;
-    if (number < 0.01) {
+    if (number >= 0 && number < 0.01) {
+      number = '< 0.01';
+    } else if (number <= 0 && number > -0.01) {
       number = '< 0.01';
     } else {
       number = number.toFixed(2);
@@ -87,7 +89,9 @@ export class BytesFormatter {
 
   format(samples, sampleRate) {
     let number = samples / this.divider;
-    if (number < 0.01) {
+    if (number >= 0 && number < 0.01) {
+      number = '< 0.01';
+    } else if (number <= 0 && number > -0.01) {
       number = '< 0.01';
     } else {
       number = number.toFixed(2);
@@ -121,7 +125,9 @@ export class ObjectsFormatter {
 
   format(samples, sampleRate) {
     let number = samples / this.divider;
-    if (number < 0.01) {
+    if (number >= 0 && number < 0.01) {
+      number = '< 0.01';
+    } else if (number <= 0 && number > -0.01) {
       number = '< 0.01';
     } else {
       number = number.toFixed(2);

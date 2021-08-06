@@ -207,10 +207,36 @@ $pane-width: 6px;
     width: 50%;
 
     .flamegraph-header {
+      padding-bottom: 5px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding-bottom: 5px;
+
+      .row {
+        display: flex;
+        justify-content: center;
+      }
+
+      .flamegraph-legend {
+        display: flex;
+        align-items: center;
+        font-size: 11px;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+
+      .flamegraph-legend-list {
+        display: flex;
+        justify-content: center;
+      }
+
+      .flamegraph-legend-item {
+        width: 35px;
+        text-align: center;
+
+        &:first-child, &:last-child {
+          width: 40px;
+        }
+      }
     }
 
     &.vertical-orientation {
@@ -222,6 +248,16 @@ $pane-width: 6px;
       display: none;
     }
   }
+}
+
+.diff-instructions-wrapper {
+  display: flex;
+  gap: 30px;
+  padding-bottom: 10px;
+}
+
+.diff-instructions-wrapper-side {
+  flex: 1 1 0;
 }
 
 .left-instructions-wrapper {
@@ -465,6 +501,10 @@ body,
       border-top-color: $active-color;
       border-bottom-color: $active-color;
     }
+  }
+
+  & + .viz-switch {
+    margin-left: 10px;
   }
 }
 
