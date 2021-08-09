@@ -146,11 +146,11 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 			for ni := range left.ChildrenNodes {
 				leftNode, rghtNode := left.ChildrenNodes[ni], rght.ChildrenNodes[ni]
 				if leftNode.Total >= minVal || rghtNode.Total >= minVal {
-					levels = append([]int{level + 1}, levels...)
-					xLeftOffsets = append([]int{xLeftOffset}, xLeftOffsets...)
-					xRghtOffsets = append([]int{xRghtOffset}, xRghtOffsets...)
-					leftNodes = append([]*treeNode{leftNode}, leftNodes...)
-					rghtNodes = append([]*treeNode{rghtNode}, rghtNodes...)
+					levels = prependInt(levels, level+1)
+					xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
+					xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
+					leftNodes = prependTreeNode(leftNodes, leftNode)
+					rghtNodes = prependTreeNode(rghtNodes, rghtNode)
 					xLeftOffset += int(leftNode.Total)
 					xRghtOffset += int(rghtNode.Total)
 				} else {
@@ -159,15 +159,15 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 				}
 			}
 			if otherLeftTotal != 0 || otherRghtTotal != 0 {
+				levels = prependInt(levels, level+1)
 				{
 					leftNode := &treeNode{
 						Name:  jsonableSlice("other"),
 						Total: otherLeftTotal,
 						Self:  otherLeftTotal,
 					}
-					levels = append([]int{level + 1}, levels...)
-					xLeftOffsets = append([]int{xLeftOffset}, xLeftOffsets...)
-					leftNodes = append([]*treeNode{leftNode}, leftNodes...)
+					xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
+					leftNodes = prependTreeNode(leftNodes, leftNode)
 					xLeftOffset += int(leftNode.Total)
 				}
 				{
@@ -176,9 +176,8 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 						Total: otherRghtTotal,
 						Self:  otherRghtTotal,
 					}
-					levels = append([]int{level + 1}, levels...)
-					xRghtOffsets = append([]int{xRghtOffset}, xRghtOffsets...)
-					rghtNodes = append([]*treeNode{rghtNode}, rghtNodes...)
+					xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
+					rghtNodes = prependTreeNode(rghtNodes, rghtNode)
 					xRghtOffset += int(rghtNode.Total)
 				}
 			}
