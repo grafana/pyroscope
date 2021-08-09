@@ -12,7 +12,7 @@ function NameSelector(props) {
   const selectAppName = (event) => {
     actions.setQuery(event.target.value+"{}");
   };
-  let defaultValue = query.replace(/\{.*/g, "");
+  let defaultValue = (query || "").replace(/\{.*/g, "");
   if(names && names.indexOf(defaultValue) === -1) {
     defaultValue = defKey;
   }
