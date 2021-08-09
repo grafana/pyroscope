@@ -101,6 +101,13 @@ func prependBytes(s [][]byte, x []byte) [][]byte {
 	return s
 }
 
+func prependInt(s []int, x int) []int {
+	s = append(s, 0)
+	copy(s[1:], s)
+	s[0] = x
+	return s
+}
+
 func (t *Tree) String() string {
 	t.RLock()
 	defer t.RUnlock()
