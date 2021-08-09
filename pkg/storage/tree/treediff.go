@@ -159,13 +159,13 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 				}
 			}
 			if otherLeftTotal != 0 || otherRghtTotal != 0 {
+				levels = append([]int{level + 1}, levels...)
 				{
 					leftNode := &treeNode{
 						Name:  jsonableSlice("other"),
 						Total: otherLeftTotal,
 						Self:  otherLeftTotal,
 					}
-					levels = append([]int{level + 1}, levels...)
 					xLeftOffsets = append([]int{xLeftOffset}, xLeftOffsets...)
 					leftNodes = append([]*treeNode{leftNode}, leftNodes...)
 					xLeftOffset += int(leftNode.Total)
@@ -176,7 +176,6 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 						Total: otherRghtTotal,
 						Self:  otherRghtTotal,
 					}
-					levels = append([]int{level + 1}, levels...)
 					xRghtOffsets = append([]int{xRghtOffset}, xRghtOffsets...)
 					rghtNodes = append([]*treeNode{rghtNode}, rghtNodes...)
 					xRghtOffset += int(rghtNode.Total)
