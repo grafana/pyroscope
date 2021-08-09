@@ -4,7 +4,8 @@
 package rbspy
 
 // #cgo darwin LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
-// #cgo linux LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
+// #cgo linux,!musl LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps -ldl -lunwind -lrt
+// #cgo linux,musl LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
 // #include "../../../third_party/rustdeps/rbspy.h"
 import "C"
 

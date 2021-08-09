@@ -35,10 +35,10 @@ var (
 	errOutOfSpace = errors.New("running out of space")
 	errRetention  = errors.New("could not write because of retention settings")
 
-	evictInterval     = time.Second
+	evictInterval     = 20 * time.Second
 	writeBackInterval = time.Second
 	retentionInterval = time.Minute
-	gcInterval        = 5 * time.Minute
+	badgerGCInterval  = 5 * time.Minute
 )
 
 type Storage struct {
@@ -85,7 +85,7 @@ func (s *Storage) newBadger(name string) (*badger.DB, error) {
 		return nil, err
 	}
 	s.wg.Add(1)
-	go s.periodicTask(gcInterval, s.badgerGCTask(db))
+	go s.periodicTask(badgerGCInterval, s.badgerGCTask(db))
 	return db, nil
 }
 
@@ -177,6 +177,10 @@ func New(c *config.Server) (*Storage, error) {
 		go s.periodicTask(retentionInterval, s.retentionTask)
 	}
 
+	if err = s.migrate(); err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 
@@ -193,20 +197,9 @@ type PutInput struct {
 
 func (s *Storage) treeFromBytes(k string, v []byte) (interface{}, error) {
 	key := segment.FromTreeToDictKey(k)
-	d, ok := s.dicts.Lookup(key)
-	if !ok {
-		// The key not found. Fallback to segment key form which has been
-		// used before tags support. Refer to FromTreeToDictKey.
-		return s.treeFromBytesFallback(k, v)
-	}
-	return tree.FromBytes(d.(*dict.Dict), v)
-}
-
-func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error) {
-	key := segment.FromTreeToMainKey(k)
-	d, ok := s.dicts.Lookup(key)
-	if !ok {
-		return nil, nil
+	d, err := s.dicts.GetOrCreate(key)
+	if err != nil {
+		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
 	}
 	return tree.FromBytes(d.(*dict.Dict), v)
 }

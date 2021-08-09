@@ -1,5 +1,12 @@
 package tree
 
+type Format string
+
+const (
+	FormatSingle Format = "single"
+	FormatDouble Format = "double"
+)
+
 type Flamebearer struct {
 	Names    []string `json:"names"`
 	Levels   [][]int  `json:"levels"`
@@ -9,6 +16,7 @@ type Flamebearer struct {
 	SpyName    string `json:"spyName"`
 	SampleRate uint32 `json:"sampleRate"`
 	Units      string `json:"units"`
+	Format     Format `json:"format"`
 }
 
 func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
@@ -20,6 +28,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 		Levels:   [][]int{},
 		NumTicks: int(t.Samples()),
 		MaxSelf:  int(0),
+		Format:   FormatSingle,
 	}
 
 	nodes := []*treeNode{t.root}
@@ -91,13 +100,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 	}
 
 	// delta encoding
-	for _, l := range res.Levels {
-		prev := 0
-		for i := 0; i < len(l); i += 4 {
-			l[i] -= prev
-			prev += l[i] + l[i+1]
-		}
-	}
+	deltaEncoding(res.Levels, 0, 4)
 
 	// TODO: we used to drop the first level, because it's always an empty node
 	//   but that didn't work because flamebearer doesn't work with more
@@ -106,4 +109,14 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 	// 	res.Levels = res.Levels[1:]
 	// }
 	return &res
+}
+
+func deltaEncoding(levels [][]int, start, step int) {
+	for _, l := range levels {
+		prev := 0
+		for i := start; i < len(l); i += step {
+			l[i] -= prev
+			prev += l[i] + l[i+1]
+		}
+	}
 }

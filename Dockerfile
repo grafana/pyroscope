@@ -36,8 +36,9 @@ RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a
 
 FROM php:7.3-fpm-alpine3.13 as phpspy-builder
 RUN apk add --update alpine-sdk
-RUN git clone https://github.com/pyroscope-io/phpspy.git && cd phpspy && git checkout 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
-RUN cd phpspy && make CFLAGS="-DUSE_DIRECT"
+COPY Makefile Makefile
+RUN mkdir -p third_party/phpspy
+RUN make build-phpspy-dependencies
 
 #                     _
 #                    | |
@@ -69,7 +70,7 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #   __/ |                     __/ |
 #  |___/                     |___/
 
-FROM golang:1.15.1-alpine3.12 as go-builder
+FROM golang:1.16.4-alpine3.12 as go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 
@@ -80,7 +81,7 @@ COPY --from=rust-builder /opt/rustdeps/librustdeps.a /opt/pyroscope/third_party/
 COPY third_party/rustdeps/rbspy.h /opt/pyroscope/third_party/rustdeps/rbspy.h
 COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
 COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
-COPY --from=phpspy-builder /var/www/html/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
+COPY --from=phpspy-builder /var/www/html/third_party/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
 COPY Makefile ./
 COPY tools ./tools

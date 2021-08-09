@@ -13,6 +13,7 @@ import {
   faColumns,
   faBell,
   faSignOutAlt,
+  faChartBar,
 } from "@fortawesome/free-solid-svg-icons";
 import { faWindowMaximize } from "@fortawesome/free-regular-svg-icons";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
@@ -115,6 +116,17 @@ function Sidebar(props) {
           onClick={() => updateRoute("/comparison")}
         >
           <FontAwesomeIcon icon={faColumns} />
+        </button>
+      </SidebarItem>
+      <SidebarItem tooltipText="Diff View">
+        <button
+          className={clsx({
+            "active-route": state.currentRoute === "/comparison-diff",
+          })}
+          type="button"
+          onClick={() => updateRoute("/comparison-diff")}
+        >
+          <FontAwesomeIcon icon={faChartBar} />
         </button>
       </SidebarItem>
       <SidebarItem tooltipText="Alerts - Coming Soon">
