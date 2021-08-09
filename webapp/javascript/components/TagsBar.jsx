@@ -4,38 +4,29 @@ import { connect } from "react-redux";
 import "react-dom";
 import { Menu, SubMenu, MenuItem, MenuButton } from "@szhsin/react-menu";
 
-import {
-  fetchTags,
-  fetchTagValues,
-  setQuery,
-} from "../redux/actions";
-import history from "../util/history";
+import { fetchTags, fetchTagValues, setQuery } from "../redux/actions";
 import "../util/prism";
-import { actionTypes } from "redux-localstorage";
 
-function TagsBar({
-  query,
-  actions,
-  tags,
-  tagValuesLoading,
-}) {
+function TagsBar({ query, actions, tags, tagValuesLoading }) {
   const [queryVal, setQuery] = useState(query);
 
   useEffect(() => {
     setQuery(query);
-  }, [query])
+  }, [query]);
 
   useEffect(() => {
     actions.fetchTags(query);
   }, [query]);
 
-  let submitTagsValue = (newValue) => {
+  const submitTagsValue = (newValue) => {
     actions.setQuery(newValue);
   };
 
-  let inputOnChange = (v) => {
+  const inputOnChange = (v) => {
     setQuery(v);
-    window.Prism.highlightElement(document.getElementById("highlighting-content"));
+    window.Prism.highlightElement(
+      document.getElementById("highlighting-content")
+    );
   };
 
   useEffect(() => {
@@ -53,14 +44,14 @@ function TagsBar({
   const onTagsValueChange = (tagKey, tagValue) => {
     let newQuery;
     const case1Regexp = new RegExp(`${tagKey}=.+?(\\}|,)`);
-    if(queryVal.match(case1Regexp)){
+    if (queryVal.match(case1Regexp)) {
       newQuery = queryVal.replace(case1Regexp, `${tagKey}="${tagValue}"$1`);
-    } else if(queryVal.indexOf('{}') !== -1){
+    } else if (queryVal.indexOf("{}") !== -1) {
       newQuery = queryVal.replace("}", `${tagKey}="${tagValue}"}`);
-    } else if(queryVal.indexOf('}') !== -1){
+    } else if (queryVal.indexOf("}") !== -1) {
       newQuery = queryVal.replace("}", `, ${tagKey}="${tagValue}"}`);
     } else {
-      console.warn('TODO: handle this case');
+      console.warn("TODO: handle this case");
     }
     actions.setQuery(newQuery);
   };
@@ -72,9 +63,11 @@ function TagsBar({
         theming="dark"
         keepMounted
       >
-        {
-          Object.keys(tags).length === 0 ? <MenuItem>No tags available</MenuItem> : []
-        }
+        {Object.keys(tags).length === 0 ? (
+          <MenuItem>No tags available</MenuItem>
+        ) : (
+          []
+        )}
         {Object.keys(tags).map((tag) => (
           <SubMenu
             value={tag}
@@ -112,7 +105,13 @@ function TagsBar({
           </SubMenu>
         ))}
       </Menu>
-      <form className="tags-query" onSubmit={(e) => { e.preventDefault(); submitTagsValue(queryVal) }}>
+      <form
+        className="tags-query"
+        onSubmit={(e) => {
+          e.preventDefault();
+          submitTagsValue(queryVal);
+        }}
+      >
         <pre className="tags-highlighted language-promql" aria-hidden="true">
           <code className="language-promql" id="highlighting-content">
             {queryVal}
@@ -130,7 +129,6 @@ function TagsBar({
     </div>
   );
 }
-
 
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(

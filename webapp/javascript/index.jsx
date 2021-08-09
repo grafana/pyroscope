@@ -19,7 +19,7 @@ try {
   // run this to enable FPS meter:
   //   window.localStorage.setItem("showFps", true);
   showFps = window.localStorage.getItem("showFps");
-} catch(e) {
+} catch (e) {
   console.error(e);
 }
 
@@ -41,7 +41,7 @@ ReactDOM.render(
         </Switch>
       </ShortcutProvider>
     </Router>
-    { showFps ? <FPSStats left={"auto"} top={"auto"} bottom={2} right={2} /> : "" }
+    {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ""}
   </Provider>,
   document.getElementById("root")
 );

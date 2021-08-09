@@ -45,8 +45,8 @@ function SidebarItem(props) {
   );
 }
 
-function signOut(){
-  var form = document.createElement("form");
+function signOut() {
+  const form = document.createElement("form");
 
   form.method = "POST";
   form.action = "/logout";
@@ -155,15 +155,16 @@ function Sidebar(props) {
         </a>
       </SidebarItem>
       <SidebarItem tooltipText="Keyboard Shortcuts">
-        <button onClick={showShortcutsModal} type="button" id="tests-shortcuts-btn">
+        <button
+          onClick={showShortcutsModal}
+          type="button"
+          id="tests-shortcuts-btn"
+        >
           <FontAwesomeIcon icon={faKeyboard} />
         </button>
       </SidebarItem>
       <SidebarItem tooltipText="Sign Out">
-        <button
-          type="button"
-          onClick={() => signOut()}
-        >
+        <button type="button" onClick={() => signOut()}>
           <FontAwesomeIcon icon={faSignOutAlt} />
         </button>
       </SidebarItem>
