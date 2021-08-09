@@ -43,6 +43,7 @@ func main() {
 		flag.Usage()
 	}
 
+	command = flag.Args()[0]
 	if err := run(command, dbDir, []byte(key)); err != nil {
 		_, _ = fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
