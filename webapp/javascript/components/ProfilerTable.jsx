@@ -205,7 +205,7 @@ function TableBody({ flamebearer, sortBy, sortByDirection, viewDiff }) {
   // The problem is that when you switch apps or time-range and the function
   //   names stay the same it leads to an issue where rows don't get re-rendered
   // So we force a rerender each time.
-  let renderID = Math.random();
+  const renderID = Math.random();
 
   const formatter = getFormatter(numTicks, sampleRate, units);
 

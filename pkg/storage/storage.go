@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"sync"
 	"time"
 
@@ -560,6 +561,76 @@ func (s *Storage) GetValues(key string, cb func(v string) bool) {
 		}
 		return true
 	})
+}
+
+func (s *Storage) GetKeysByQuery(query string, cb func(_k string) bool) error {
+	parsedQuery, err := flameql.ParseQuery(query)
+	if err != nil {
+		return err
+	}
+
+	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
+	if err != nil {
+		return err
+	}
+	dimensionKeys := s.dimensionKeysByKey(segmentKey)
+
+	resultSet := map[string]bool{}
+	for _, dk := range dimensionKeys() {
+		dkParsed, _ := segment.ParseKey(string(dk))
+		if dkParsed.AppName() == parsedQuery.AppName {
+			for k := range dkParsed.Labels() {
+				resultSet[k] = true
+			}
+		}
+	}
+
+	resultList := []string{}
+	for v := range resultSet {
+		resultList = append(resultList, v)
+	}
+
+	sort.Strings(resultList)
+	for _, v := range resultList {
+		if !cb(v) {
+			break
+		}
+	}
+	return nil
+}
+
+func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string) bool) error {
+	parsedQuery, err := flameql.ParseQuery(query)
+	if err != nil {
+		return err
+	}
+
+	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
+	if err != nil {
+		return err
+	}
+	dimensionKeys := s.dimensionKeysByKey(segmentKey)
+
+	resultSet := map[string]bool{}
+	for _, dk := range dimensionKeys() {
+		dkParsed, _ := segment.ParseKey(string(dk))
+		if v, ok := dkParsed.Labels()[label]; ok {
+			resultSet[v] = true
+		}
+	}
+
+	resultList := []string{}
+	for v := range resultSet {
+		resultList = append(resultList, v)
+	}
+
+	sort.Strings(resultList)
+	for _, v := range resultList {
+		if !cb(v) {
+			break
+		}
+	}
+	return nil
 }
 
 func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
