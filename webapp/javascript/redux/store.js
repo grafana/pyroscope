@@ -16,8 +16,8 @@ import {
   setRightUntil,
   setFrom,
   setUntil,
-  setLabels,
   setMaxNodes,
+  setQuery,
 } from "./actions";
 
 import { parseLabels, encodeLabels } from "../util/key";
@@ -63,15 +63,10 @@ ReduxQuerySync({
       selector: (state) => state.rightUntil,
       action: setRightUntil,
     },
-    name: {
-      selector: (state) => encodeLabels(state.labels),
-      action: (v) => {
-        const labels = parseLabels(v);
-        if (labels.length > 0) {
-          return setLabels(labels);
-        }
-        return { type: "NOOP" };
-      },
+    query: {
+      defaultValue: "now",
+      selector: (state) => state.query,
+      action: setQuery,
     },
     maxNodes: {
       defaultValue: "1024",

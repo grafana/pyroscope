@@ -24,6 +24,12 @@
     }
   }
 
+  .rc-menu {
+    // border: 1px solid #222222;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.33);
+    padding: 0.25rem 0;
+  }
+
   .rc-menu, .rc-menu__item {
     background-color: $btn-color;
     color: $white;
@@ -34,12 +40,6 @@
   }
 
   .rc-menu__item {
-    &::after {
-      content: "▸";
-      position: absolute;
-      top: 6px;
-      right: 5px;
-    }
     &:hover {
       background-color: $btn-hover-color;
     }
@@ -67,14 +67,30 @@
     border-right: none;
   }
   .tags-input {
+    flex-grow: 20;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+    border-right: none;
+    caret-color: #fff;
+    color: rgba(0,0,0,0);
+    // color: red;
+    letter-spacing: 0;
+    font-family: arial;
+    font-size: 16px;
+  }
+  .tags-query-execute {
     flex-grow: 1;
     border-top-left-radius: 0px;
     border-bottom-left-radius: 0px;
     caret-color: #fff;
-    color: rgba(0,0,0,0);
+    background-color: #0074D9;
+    border-color: darken(#0074D9, 10%);
     letter-spacing: 0;
     font-family: arial;
     font-size: 16px;
+    &:hover {
+      background-color: lighten(#0074D9, 10%);
+    }
   }
 
   .tags-highlighted{
@@ -98,10 +114,19 @@
       margin: 0;
     }
   }
+
+  .rc-menu__item {
+    $xpadding: 0.375rem;
+    $ypadding: 1.5rem;
+    $ypadding: 1.0rem;
+
+    padding: $xpadding $ypadding;
+  }
+
   .tag-content {
     width: 100%;
     box-sizing: content-box;
-    padding: 0.375rem 1.5rem;
-    margin: -0.375rem -1.5rem;
+    padding: 0;
+    margin: 0;
   }
 }
