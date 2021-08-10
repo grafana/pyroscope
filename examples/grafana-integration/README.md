@@ -1,5 +1,5 @@
 # Pyroscope Grafana Integration
-This example shows
+This example shows pyroscope + grafana + prometheus integration
 
 # Running
 
