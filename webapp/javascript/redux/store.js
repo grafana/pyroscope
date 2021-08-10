@@ -30,6 +30,10 @@ const enhancer = composeWithDevTools(
 
 const store = createStore(rootReducer, enhancer);
 
+const defaultName = window.initialState.appNames.find(
+  (x) => x !== "pyroscope.server.cpu"
+);
+
 ReduxQuerySync({
   store, // your Redux store
   params: {
@@ -64,7 +68,7 @@ ReduxQuerySync({
       action: setRightUntil,
     },
     query: {
-      defaultValue: "now",
+      defaultValue: `${defaultName || "pyroscope.server.cpu"}{}`,
       selector: (state) => state.query,
       action: setQuery,
     },
