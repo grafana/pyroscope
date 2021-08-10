@@ -49,6 +49,12 @@
   .drp-presets {
     display: flex;
     flex-direction: row;
+
+    // cancel the padding from drp-container
+    // so that it spams the whole row
+    margin-left: -20px;
+    margin-right: -20px;
+
     .drp-preset-column {
       flex: 1;
       display: flex;
@@ -57,17 +63,35 @@
     }
   }
 
+  .drp-custom {
+    margin-top: 20px;
+  }
+
   .drp-preset {
     @include outline;
+
 
     border: none;
     text-align: left;
     padding: 2px 0;
+    // compensates for the negative margin in .drp-presets
+    padding-left: 20px;
     color: rgba(255, 255, 255, 0.66);
+
+    // give some room between the text and the icon
+    // https://web.dev/learn/css/logical-properties/#solving-the-icon-issue
+    svg {
+      margin-inline-start: 0.5em;
+    }
 
     &:hover,
     &.active {
       color: rgba(255, 255, 255, 1);
+      background: $btn-hover-color;
+    }
+
+    &:hover{
+      cursor: pointer;
     }
   }
 
@@ -81,6 +105,23 @@
     margin-top: 15px;
     display: flex;
     flex-direction: row;
+  }
+}
+
+// Custom Date Range block
+.drp-custom {
+  // label should be on its own line
+  label {
+    display: block;
+  }
+
+  .until {
+    margin-top: 10px;
+  }
+
+  // submit button
+  button {
+    margin-top: 20px;
   }
 }
 

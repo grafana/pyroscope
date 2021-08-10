@@ -1398,6 +1398,13 @@
   dependencies:
     "@sinonjs/commons" "^1.7.0"
 
+"@szhsin/react-menu@^1.10.1":
+  version "1.10.1"
+  resolved "https://registry.yarnpkg.com/@szhsin/react-menu/-/react-menu-1.10.1.tgz#a09e6ce5da819afa78973d994fb446e735a0b7c6"
+  integrity sha512-41SLi9/bbZjy4cMrDONRkXuZ4trJ/Eqvd/SXNMcus7J0ZoiNp3IEVJ0yXmrm9BhhzHc9XbuS4LGTN28NkXmBPg==
+  dependencies:
+    prop-types "^15.7.2"
+
 "@szmarczak/http-timer@^4.0.0":
   version "4.0.5"
   resolved "https://registry.yarnpkg.com/@szmarczak/http-timer/-/http-timer-4.0.5.tgz#bfbd50211e9dfa51ba07da58a14cdfd333205152"

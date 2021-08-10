@@ -14,7 +14,7 @@ configure({ adapter: new Adapter() });
 const store = mockStore({});
 
 const props = {
-  labels: [{ name: "__name__", value: "hotrod.golang.customer" }],
+  query: "hotrod.golang.customer",
   names: ["hotrod.golang.customer", "hotrod.golang.driver"],
 };
 

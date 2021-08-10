@@ -101,6 +101,13 @@ func prependBytes(s [][]byte, x []byte) [][]byte {
 	return s
 }
 
+func prependInt(s []int, x int) []int {
+	s = append(s, 0)
+	copy(s[1:], s)
+	s[0] = x
+	return s
+}
+
 func (t *Tree) String() string {
 	t.RLock()
 	defer t.RUnlock()
@@ -129,25 +136,20 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 	return n.ChildrenNodes[i]
 }
 
-func (n *treeNode) insertChild(label []byte, value uint64) *treeNode {
-	n.Total += value
-	childNode := n.insert(label)
-	return childNode
-}
-
 func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
-	buf := make([]byte, len(key))
-	copy(buf, key)
+	// TODO: can optimize this, split is not necessary?
+	labels := bytes.Split(key, []byte(";"))
+	node := t.root
+	for _, l := range labels {
+		buf := make([]byte, len(l))
+		copy(buf, l)
+		l = buf
 
-	node, lastIdx := t.root, 0
-	for i, b := range buf {
-		if b == semicolon {
-			node = node.insertChild(buf[lastIdx:i], value)
-			lastIdx = i + 1
-		}
+		n := node.insert(l)
+
+		node.Total += value
+		node = n
 	}
-	node = node.insertChild(buf[lastIdx:], value)
-
 	node.Self += value
 	node.Total += value
 }

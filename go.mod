@@ -45,6 +45,7 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/sirupsen/logrus v1.7.0
+	github.com/spf13/cobra v0.0.5
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/twmb/murmur3 v1.1.5
 	github.com/valyala/bytebufferpool v1.0.0

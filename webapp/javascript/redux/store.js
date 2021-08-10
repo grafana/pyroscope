@@ -16,8 +16,8 @@ import {
   setRightUntil,
   setFrom,
   setUntil,
-  setLabels,
   setMaxNodes,
+  setQuery,
 } from "./actions";
 
 import { parseLabels, encodeLabels } from "../util/key";
@@ -29,6 +29,10 @@ const enhancer = composeWithDevTools(
 );
 
 const store = createStore(rootReducer, enhancer);
+
+const defaultName = window.initialState.appNames.find(
+  (x) => x !== "pyroscope.server.cpu"
+);
 
 ReduxQuerySync({
   store, // your Redux store
@@ -63,15 +67,10 @@ ReduxQuerySync({
       selector: (state) => state.rightUntil,
       action: setRightUntil,
     },
-    name: {
-      selector: (state) => encodeLabels(state.labels),
-      action: (v) => {
-        const labels = parseLabels(v);
-        if (labels.length > 0) {
-          return setLabels(labels);
-        }
-        return { type: "NOOP" };
-      },
+    query: {
+      defaultValue: `${defaultName || "pyroscope.server.cpu"}{}`,
+      selector: (state) => state.query,
+      action: setQuery,
     },
     maxNodes: {
       defaultValue: "1024",

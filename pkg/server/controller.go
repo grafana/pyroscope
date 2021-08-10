@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	golog "log"
@@ -100,6 +101,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	protectedRoutes := []route{
 		{"/", ctrl.indexHandler()},
 		{"/render", ctrl.renderHandler},
+		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 	}
@@ -333,6 +335,23 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		next.ServeHTTP(w, r)
+	}
+}
+
+func (ctrl *Controller) expectJSON(w http.ResponseWriter, format string) (ok bool) {
+	switch format {
+	case "json", "":
+		return true
+	default:
+		ctrl.writeInvalidParameterError(w, errUnknownFormat)
+		return false
+	}
+}
+
+func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		ctrl.writeJSONEncodeError(w, err)
 	}
 }
 

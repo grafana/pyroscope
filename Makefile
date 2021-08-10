@@ -53,6 +53,10 @@ endif
 -include .env
 export
 
+PYROSCOPE_LOG_LEVEL ?= debug
+PYROSCOPE_BADGER_LOG_LEVEL ?= error
+PYROSCOPE_STORAGE_PATH ?= tmp/pyroscope-storage
+
 .PHONY: all
 all: build
 
@@ -84,7 +88,7 @@ test:
 
 .PHONY: server
 server:
-	bin/pyroscope server --log-level debug --badger-log-level error --storage-path tmp/pyroscope-storage
+	bin/pyroscope server
 
 .PHONY: install-web-dependencies
 install-web-dependencies:

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -17,7 +18,7 @@ var _ = Describe("Decode", func() {
 			levels := [][]int{
 				{0, 3, 0, 0},             // total
 				{0, 3, 0, 1},             // a
-				{0, 1, 1, 3, 2, 0, 2, 2}, // b, c
+				{0, 1, 1, 3, 2, 2, 2, 2}, // b, c
 			}
 			in := &Input{
 				Flamebearer: &tree.Flamebearer{
@@ -32,33 +33,46 @@ var _ = Describe("Decode", func() {
     "levels": [
       [
         {
+          "_row": 0,
+          "_col": 0,
           "name": "total",
           "total": 3,
-          "self": 0
+          "self": 0,
+          "offset": 0
         }
       ],
       [
         {
+          "_row": 1,
+          "_col": 0,
           "name": "a",
           "total": 3,
-          "self": 0
+          "self": 0,
+          "offset": 0
         }
       ],
       [
         {
+          "_row": 2,
+          "_col": 0,
           "name": "c",
           "total": 1,
-          "self": 1
+          "self": 1,
+          "offset": 0
         },
         {
+          "_row": 2,
+          "_col": 1,
           "name": "b",
           "total": 2,
-          "self": 2
+          "self": 2,
+          "offset": 2
         }
       ]
     ]
   }
 }`
+ 			fmt.Println(outJSON)
 			Expect(outJSON).To(Equal(expected))
 		})
 	})

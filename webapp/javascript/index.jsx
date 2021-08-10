@@ -9,6 +9,7 @@ import store from "./redux/store";
 
 import PyroscopeApp from "./components/PyroscopeApp";
 import ComparisonApp from "./components/ComparisonApp";
+import ComparisonDiffApp from "./components/ComparisonDiffApp";
 import Sidebar from "./components/Sidebar";
 
 import history from "./util/history";
@@ -18,7 +19,7 @@ try {
   // run this to enable FPS meter:
   //   window.localStorage.setItem("showFps", true);
   showFps = window.localStorage.getItem("showFps");
-} catch(e) {
+} catch (e) {
   console.error(e);
 }
 
@@ -34,10 +35,13 @@ ReactDOM.render(
           <Route path="/comparison">
             <ComparisonApp />
           </Route>
+          <Route path="/comparison-diff">
+            <ComparisonDiffApp />
+          </Route>
         </Switch>
       </ShortcutProvider>
     </Router>
-    { showFps ? <FPSStats left={"auto"} top={"auto"} bottom={2} right={2} /> : "" }
+    {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ""}
   </Provider>,
   document.getElementById("root")
 );

@@ -312,10 +312,11 @@ func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, info *
 func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	fs := http.FileServer(ctrl.dir)
 	return func(rw http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
+		path := r.URL.Path
+		if path == "/" {
 			ctrl.statsInc("index")
 			ctrl.renderIndexPage(rw, r)
-		} else if r.URL.Path == "/comparison" {
+		} else if path == "/comparison" || path == "/comparison-diff" {
 			ctrl.statsInc("index")
 			ctrl.renderIndexPage(rw, r)
 		} else {
