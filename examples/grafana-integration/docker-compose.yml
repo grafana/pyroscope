@@ -1,18 +1,17 @@
 version: "3.9"
 services:
   prometheus:
-    image: prom/prometheus:v2.27.1
+    image: prom/prometheus:latest
     volumes:
       - ./prometheus:/etc/prometheus/
       - data-prometheus:/prometheus
-    ports:
-      - 9091:9090
 
   grafana:
-    image: grafana/grafana:7.5.7
+    image: grafana/grafana:8.1.1
     volumes:
       - ./grafana-provisioning:/etc/grafana/provisioning
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/home.json:/default-dashboard.json
     environment:
     - "GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel"
     ports:
@@ -27,6 +26,11 @@ services:
     environment:
       - PYROSCOPE_LOG_LEVEL=info
       - PYROSCOPE_WAIT_AFTER_STOP=true
+
+
+  go-agent:
+    build:
+      context: ../golang
 
 volumes:
   data-prometheus:

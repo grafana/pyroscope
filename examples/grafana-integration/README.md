@@ -7,6 +7,14 @@ This example shows
 docker-compose up
 ```
 
-Then access grafana at
+Then access grafana at http://localhost:3000
+Pyroscope is also available at http://localhost:4040
 
-http://localhost:3000
+
+# Development
+
+To start from scratch, use
+```
+yes | docker-compose rm
+docker-compose rm
+```
