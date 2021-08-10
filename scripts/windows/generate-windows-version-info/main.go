@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -21,17 +22,26 @@ func main() {
 	flag.StringVar(&iconPath, "icon", "", "Icon file path.")
 	flag.Parse()
 
-	if version == "" {
-		fatalf("version is required")
+	if err := generateVersionInfo(version, outputPath, iconPath); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
+}
+
+func generateVersionInfo(version, outputPath, iconPath string) error {
 	version = strings.Trim(version, `"`)
 	v, err := semver.Parse(strings.TrimPrefix(version, "v"))
+  
+	if version == "" {
+		return errors.New("version is required")
+	}
+
 	if err != nil {
-		fatalf("invalid version %q: %v", version, err)
+		return fmt.Errorf("invalid version %q: %w", version, err)
 	}
 
 	if outputPath == "" {
-		fatalf("output path is required")
+		return errors.New("output path is required")
 	}
 
 	versionInfo := goversioninfo.VersionInfo{
@@ -82,11 +92,8 @@ func main() {
 	versionInfo.Walk()
 
 	if err = versionInfo.WriteSyso(outputPath, "amd64"); err != nil {
-		fatalf("failed to write output file %s: %v", outputPath, err)
+		return fmt.Errorf("failed to write output file %s: %w", outputPath, err)
 	}
-}
 
-func fatalf(format string, args ...interface{}) {
-	_, _ = fmt.Fprintf(os.Stderr, format+"\n", args...)
-	os.Exit(1)
+	return nil
 }

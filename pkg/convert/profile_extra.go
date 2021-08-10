@@ -40,8 +40,8 @@ func (x *Profile) Get(sampleType string, cb func(name []byte, val int)) error {
 	return nil
 }
 
-func (x *Profile) findFunctionName(locId uint64) (string, bool) {
-	if loc, ok := x.findLocation(locId); ok {
+func (x *Profile) findFunctionName(locID uint64) (string, bool) {
+	if loc, ok := x.findLocation(locID); ok {
 		if fn, ok := x.findFunction(loc.Line[0].FunctionId); ok {
 			return x.StringTable[fn.Name], true
 		}

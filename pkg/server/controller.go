@@ -368,12 +368,12 @@ func (ctrl *Controller) writeJSONEncodeError(w http.ResponseWriter, err error) {
 }
 
 func (ctrl *Controller) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	logrus.WithError(err).Error(msg)
+	ctrl.log.WithError(err).Error(msg)
 	writeMessage(w, code, "%s: %q", msg, err)
 }
 
 func (ctrl *Controller) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
-	logrus.Error(msg)
+	ctrl.log.Error(msg)
 	writeMessage(w, code, msg)
 }
 
