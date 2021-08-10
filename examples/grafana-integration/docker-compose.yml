@@ -13,6 +13,8 @@ services:
     volumes:
       - ./grafana-provisioning:/etc/grafana/provisioning
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    environment:
+    - "GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel"
     ports:
       - 3000:3000
 
