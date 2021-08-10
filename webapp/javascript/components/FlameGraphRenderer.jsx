@@ -107,7 +107,7 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    const propsChanged = this.getParamsFromRenderURL(this.props.renderURL).name != this.getParamsFromRenderURL(prevProps.renderURL).name ||
+    const propsChanged = this.getParamsFromRenderURL(this.props.renderURL).query != this.getParamsFromRenderURL(prevProps.renderURL).query ||
       prevProps.maxNodes != this.props.maxNodes ||
       prevProps.refreshToken != this.props.refreshToken;
 
