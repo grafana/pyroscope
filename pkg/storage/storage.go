@@ -242,6 +242,8 @@ func (s *Storage) Put(po *PutInput) error {
 		"aggregationType": po.AggregationType,
 	}).Debug("storage.Put")
 
+	metrics.Count("storage_writes_total", 1.0)
+
 	for k, v := range po.Key.Labels() {
 		s.labels.Put(k, v)
 	}
@@ -329,6 +331,9 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}
 
 	logger.Debug("storage.Get")
+
+	metrics.Count("storage_reads_total", 1.0)
+
 	var (
 		triesToMerge []merge.Merger
 		lastSegment  *segment.Segment

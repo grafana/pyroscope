@@ -1,0 +1,152 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "simple.golang.app.cpu",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "simple.golang.app.cpu",
+      "type": "pyroscope-panel"
+    },
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 5,
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "simple.golang.app.alloc_objects",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "simple.golang.app.alloc_objects",
+      "type": "pyroscope-panel"
+    },
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 6,
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "simple.golang.app.alloc_space",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "simple.golang.app.alloc_space",
+      "type": "pyroscope-panel"
+    },
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "id": 3,
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "simple.golang.app.inuse_objects",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "simple.golang.app.inuse_objects",
+      "type": "pyroscope-panel"
+    },
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 27
+      },
+      "id": 4,
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "simple.golang.app.inuse_space",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "simple.golang.app.inuse_space",
+      "type": "pyroscope-panel"
+    }
+  ],
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Simple Go App (Pyroscope)",
+  "uid": "aLlBhXM7z",
+  "version": 1
+}
