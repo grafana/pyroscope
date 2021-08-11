@@ -11,6 +11,7 @@ import PyroscopeApp from "./components/PyroscopeApp";
 import ComparisonApp from "./components/ComparisonApp";
 import ComparisonDiffApp from "./components/ComparisonDiffApp";
 import Sidebar from "./components/Sidebar";
+import Notifications from "./components/Notifications";
 
 import history from "./util/history";
 
@@ -39,6 +40,7 @@ ReactDOM.render(
             <ComparisonDiffApp />
           </Route>
         </Switch>
+        <Notifications />
       </ShortcutProvider>
     </Router>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ""}
