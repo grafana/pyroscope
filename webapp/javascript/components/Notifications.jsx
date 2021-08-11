@@ -7,12 +7,10 @@ import Modal from "react-modal";
 import clsx from "clsx";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faExclamationTriangle,
-} from "@fortawesome/free-solid-svg-icons";
+import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 
 function Notifications(props) {
-  const notificationText = window.notificationText;
+  const { notificationText } = window;
 
   const [hidden, setHidden] = useState(notificationText === "");
 
@@ -23,7 +21,12 @@ function Notifications(props) {
           <FontAwesomeIcon icon={faExclamationTriangle} />
         </div>
         <div className="notification-body">{notificationText}</div>
-        <div className="notification-close-btn" onClick={function(){ setHidden(true) }}></div>
+        <div
+          className="notification-close-btn"
+          onClick={function () {
+            setHidden(true);
+          }}
+        />
       </div>
     </div>
   );
