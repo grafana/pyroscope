@@ -52,7 +52,7 @@ build:
 .PHONY: build-rbspy-static-library
 build-rbspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,rbspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,rbspy,clib -buildmode=c-archive -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
 # ar -M < ./scripts/static-libs/rbspy.mri
 # this is needed because of a bug in binutils
 ifeq ("$(shell go env GOOS || true)", "linux")
@@ -65,7 +65,7 @@ endif
 .PHONY: build-pyspy-static-library
 build-pyspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,pyspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,pyspy,clib -buildmode=c-archive -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
 # ar -M < ./scripts/static-libs/pyspy.mri
 # this is needed because of a bug in binutils
 ifeq ("$(shell go env GOOS || true)", "linux")
@@ -78,7 +78,7 @@ endif
 .PHONY: build-phpspy-static-library
 build-phpspy-static-library:
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,phpspy,clib -buildmode=c-archive -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,phpspy,clib -buildmode=c-archive -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
 # ar -M < ./scripts/static-libs/phpspy.mri
 # this is needed because of a bug in binutils
 ifeq ("$(shell go env GOOS || true)", "linux")
