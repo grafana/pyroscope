@@ -2,6 +2,11 @@ import React from "react";
 import { connect } from "react-redux";
 import { version } from "../../../package.json";
 
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faDownload,
+} from "@fortawesome/free-solid-svg-icons";
+
 const START_YEAR = 2020;
 const PYROSCOPE_VERSION = version;
 
@@ -26,14 +31,27 @@ function buildInfo() {
 }
 
 function Footer() {
-  // let flags = BUILD_FLAGS.split("\n").map(x => x.replace("-X github.com/pyroscope-io/pyroscope/pkg/build.", ""));
+  const latestVersion = window.latestVersionInfo.latest_version;
+  const newVersionAvailable = latestVersion && window.buildInfo.version !== latestVersion;
+
   return (
-    <div className="footer">
-      <span title={buildInfo()}>
+    <div className="footer" title={buildInfo()}>
+      <span>
         {`© Pyroscope ${copyrightYears(START_YEAR, new Date().getFullYear())}`}
       </span>
+      &nbsp;&nbsp;|&nbsp;&nbsp;
+      <span>
+        {window.buildInfo.version}
+      </span>
+      {
+        newVersionAvailable && <span>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          <a href="https://pyroscope.io/downloads?utm_source=pyroscope_footer" target="_blank">
+            <FontAwesomeIcon icon={faDownload} />&nbsp;<span>Newer Version Available ({latestVersion})</span>
+          </a>
+        </span>
+      }
     </div>
-    /* <FontAwesomeIcon icon={faGitHub} /> */
   );
 }
 

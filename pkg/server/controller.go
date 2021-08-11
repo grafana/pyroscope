@@ -23,6 +23,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
+	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
 const (
@@ -270,6 +271,8 @@ func (ctrl *Controller) Start() error {
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
 	}
+
+	updates.StartVersionUpdateLoop()
 
 	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
 	// the returned error is ErrServerClosed.

@@ -19,6 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
 func (ctrl *Controller) loginHandler() http.HandlerFunc {
@@ -63,11 +64,11 @@ func invalidateCookie(w http.ResponseWriter, name string) {
 func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
-			case http.MethodPost, http.MethodGet:
-				invalidateCookie(w, jwtCookieName)
-				http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
-			default:
-				ctrl.writeErrorMessage(w, http.StatusMethodNotAllowed, "only POST and DELETE methods are allowed")
+		case http.MethodPost, http.MethodGet:
+			invalidateCookie(w, jwtCookieName)
+			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+		default:
+			ctrl.writeErrorMessage(w, http.StatusMethodNotAllowed, "only POST and DELETE methods are allowed")
 		}
 	}
 }
@@ -380,10 +381,11 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 
 	w.Header().Add("Content-Type", "text/html")
 	mustExecute(tmpl, w, map[string]string{
-		"InitialState":  initialStateStr,
-		"BuildInfo":     build.JSON(),
-		"ExtraMetadata": extraMetadataStr,
-		"BaseURL":       ctrl.config.BaseURL,
+		"InitialState":      initialStateStr,
+		"BuildInfo":         build.JSON(),
+		"LatestVersionInfo": updates.LatestVersionJSON(),
+		"ExtraMetadata":     extraMetadataStr,
+		"BaseURL":           ctrl.config.BaseURL,
 	})
 }
 
