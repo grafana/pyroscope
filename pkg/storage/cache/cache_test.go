@@ -10,6 +10,7 @@ import (
 	"github.com/dgraph-io/badger/v2/options"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
@@ -28,7 +29,7 @@ var _ = Describe("cache", func() {
 		db, err := badger.Open(badgerOptions)
 		Expect(err).ToNot(HaveOccurred())
 
-		cache := New(db, "prefix:", "test_cache")
+		cache := New(db, "prefix:", "test_cache", prometheus.NewRegistry())
 		cache.New = func(k string) interface{} {
 			return k
 		}

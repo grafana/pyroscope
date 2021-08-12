@@ -98,24 +98,24 @@ func (s *Storage) newBadger(name string) (*badger.DB, error) {
 	return db, nil
 }
 
-func New(c *config.Server) (*Storage, error) {
+func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 	s := &Storage{
 		config:           c,
 		stop:             make(chan struct{}),
 		localProfilesDir: filepath.Join(c.StoragePath, "local-profiles"),
-		storageWritesTotal: promauto.NewCounter(prometheus.CounterOpts{
+		storageWritesTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "storage_writes_total",
 		}),
-		writeBackCount: promauto.NewCounter(prometheus.CounterOpts{
+		writeBackCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "write_back_count",
 		}),
-		evictionsCount: promauto.NewCounter(prometheus.CounterOpts{
+		evictionsCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "evictions_count",
 		}),
-		retentionCount: promauto.NewCounter(prometheus.CounterOpts{
+		retentionCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "retention_count",
 		}),
-		storageReadsTotal: promauto.NewCounter(prometheus.CounterOpts{
+		storageReadsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "storage_reads_total",
 		}),
 	}
@@ -147,7 +147,7 @@ func New(c *config.Server) (*Storage, error) {
 		return nil, err
 	}
 
-	s.dimensions = cache.New(s.dbDimensions, "i:", "dimensions")
+	s.dimensions = cache.New(s.dbDimensions, "i:", "dimensions", reg)
 	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -158,7 +158,7 @@ func New(c *config.Server) (*Storage, error) {
 		return dimension.New()
 	}
 
-	s.segments = cache.New(s.dbSegments, "s:", "segments")
+	s.segments = cache.New(s.dbSegments, "s:", "segments", reg)
 	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*segment.Segment).Bytes()
 	}
@@ -171,7 +171,7 @@ func New(c *config.Server) (*Storage, error) {
 		return segment.New()
 	}
 
-	s.dicts = cache.New(s.dbDicts, "d:", "dicts")
+	s.dicts = cache.New(s.dbDicts, "d:", "dicts", reg)
 	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -182,7 +182,7 @@ func New(c *config.Server) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(s.dbTrees, "t:", "trees")
+	s.trees = cache.New(s.dbTrees, "t:", "trees", reg)
 	s.trees.Bytes = s.treeBytes
 	s.trees.FromBytes = s.treeFromBytes
 	s.trees.New = func(k string) interface{} {

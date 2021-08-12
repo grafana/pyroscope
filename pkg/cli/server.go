@@ -47,7 +47,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	var err error
-	svc.storage, err = storage.New(svc.config)
+	svc.storage, err = storage.New(svc.config, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}

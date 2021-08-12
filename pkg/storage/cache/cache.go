@@ -36,7 +36,7 @@ type Cache struct {
 	New func(k string) interface{}
 }
 
-func New(db *badger.DB, prefix, humanReadableName string) *Cache {
+func New(db *badger.DB, prefix, humanReadableName string, reg prometheus.Registerer) *Cache {
 	evictionChannel := make(chan lfu.Eviction)
 	writeBackChannel := make(chan lfu.Eviction)
 
@@ -57,16 +57,16 @@ func New(db *badger.DB, prefix, humanReadableName string) *Cache {
 		prefix:        prefix,
 		evictionsDone: make(chan struct{}),
 
-		hitCounter: promauto.NewCounter(prometheus.CounterOpts{
+		hitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "cache_" + humanReadableName + "_hit",
 		}),
-		missCounter: promauto.NewCounter(prometheus.CounterOpts{
+		missCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "cache_" + humanReadableName + "_miss",
 		}),
-		storageReadCounter: promauto.NewCounter(prometheus.CounterOpts{
+		storageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "storage_" + humanReadableName + "_read",
 		}),
-		storageWriteCounter: promauto.NewCounter(prometheus.CounterOpts{
+		storageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "storage_" + humanReadableName + "_write",
 		}),
 	}

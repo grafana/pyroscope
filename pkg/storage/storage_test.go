@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/sirupsen/logrus"
 
@@ -34,7 +35,7 @@ var _ = Describe("storage package", func() {
 			evictInterval = 2 * time.Second
 
 			var err error
-			s, err = New(&(*cfg).Server)
+			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -338,7 +339,7 @@ var _ = Describe("storage package", func() {
 					Expect(o.Tree.String()).To(Equal(tree.String()))
 					Expect(s.Close()).ToNot(HaveOccurred())
 
-					s2, err := New(&(*cfg).Server)
+					s2, err := New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
 					o2, err := s2.Get(&GetInput{
@@ -360,7 +361,7 @@ var _ = Describe("DeleteDataBefore", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(&(*cfg).Server)
+			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
