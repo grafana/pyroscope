@@ -172,3 +172,7 @@ func (s *GoSpy) Reset() {
 
 	s.reset = true
 }
+
+func init() {
+	spy.RegisterSpy("gospy", Start)
+}
