@@ -71,6 +71,10 @@ type Storage struct {
 	evictionsCount     prometheus.Counter
 	retentionCount     prometheus.Counter
 	storageReadsTotal  prometheus.Counter
+
+	evictionsAllocBytes prometheus.Gauge
+	evictionsTotalBytes prometheus.Gauge
+	evictionsUsedPerc   prometheus.Gauge
 }
 
 func (s *Storage) newBadger(name string) (*badger.DB, error) {
@@ -117,6 +121,17 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		}),
 		storageReadsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "storage_reads_total",
+		}),
+
+		evictionsAllocBytes: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "evictions_alloc_bytes",
+		}),
+
+		evictionsTotalBytes: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "evictions_total_bytes",
+		}),
+		evictionsUsedPerc: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "evictions_used_perc",
 		}),
 	}
 

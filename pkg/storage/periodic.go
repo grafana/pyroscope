@@ -48,9 +48,10 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 	return func() {
 		runtime.ReadMemStats(&m)
 		used := float64(m.Alloc) / float64(memTotal)
-		metrics.Gauge("evictions_alloc_bytes", m.Alloc)
-		metrics.Gauge("evictions_total_bytes", memTotal)
-		metrics.Gauge("evictions_used_perc", used)
+
+		s.evictionsAllocBytes.Set(float64(m.Alloc))
+		s.evictionsTotalBytes.Set(float64(memTotal))
+		s.evictionsUsedPerc.Set(used)
 
 		percent := s.config.CacheEvictVolume
 		if used > s.config.CacheEvictThreshold {
