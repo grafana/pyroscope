@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
@@ -68,6 +70,15 @@ func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transp
 
 	st := threadStartTime
 
+	reg := prometheus.NewRegistry()
+
+	uploadErrors := promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		Name: "upload_errors",
+	})
+	successfulUploads := promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		Name: "successful_uploads",
+	})
+
 	for i := 0; i < requestsCount; i++ {
 		t := appFixtures[i%len(appFixtures)]
 
@@ -84,10 +95,10 @@ func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transp
 			Trie:            t,
 		})
 		if err != nil {
-			metrics.Count("upload_errors", 1)
+			uploadErrors.Add(1)
 			time.Sleep(time.Second)
 		} else {
-			metrics.Count("successful_uploads", 1)
+			successfulUploads.Add(1)
 		}
 		atomic.AddUint64(&requestsCompleteCount, 1)
 		metrics.Gauge("run_progress", float64(requestsCompleteCount)/(float64(appsCount*requestsCount*clientsCount)))

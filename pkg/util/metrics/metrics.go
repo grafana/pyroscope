@@ -51,18 +51,6 @@ func fixValue(v interface{}) float64 {
 	return 0.0
 }
 
-func Count(name string, value interface{}) {
-	countersMutex.Lock()
-	defer countersMutex.Unlock()
-
-	if _, ok := counters[name]; !ok {
-		counters[name] = promauto.NewCounter(prometheus.CounterOpts{
-			Name: name,
-		})
-	}
-	counters[name].Add(fixValue(value))
-}
-
 func Gauge(name string, value interface{}) {
 	gaugesMutex.Lock()
 	defer gaugesMutex.Unlock()

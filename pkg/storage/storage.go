@@ -14,6 +14,8 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -62,6 +64,13 @@ type Storage struct {
 
 	stop chan struct{}
 	wg   sync.WaitGroup
+
+	// prometheus metrics
+	storageWritesTotal prometheus.Counter
+	writeBackCount     prometheus.Counter
+	evictionsCount     prometheus.Counter
+	retentionCount     prometheus.Counter
+	storageReadsTotal  prometheus.Counter
 }
 
 func (s *Storage) newBadger(name string) (*badger.DB, error) {
@@ -94,7 +103,23 @@ func New(c *config.Server) (*Storage, error) {
 		config:           c,
 		stop:             make(chan struct{}),
 		localProfilesDir: filepath.Join(c.StoragePath, "local-profiles"),
+		storageWritesTotal: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "storage_writes_total",
+		}),
+		writeBackCount: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "write_back_count",
+		}),
+		evictionsCount: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "evictions_count",
+		}),
+		retentionCount: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "retention_count",
+		}),
+		storageReadsTotal: promauto.NewCounter(prometheus.CounterOpts{
+			Name: "storage_reads_total",
+		}),
 	}
+
 	var err error
 	s.db, err = s.newBadger("main")
 	if err != nil {
@@ -242,7 +267,7 @@ func (s *Storage) Put(po *PutInput) error {
 		"aggregationType": po.AggregationType,
 	}).Debug("storage.Put")
 
-	metrics.Count("storage_writes_total", 1.0)
+	s.storageWritesTotal.Add(1.0)
 
 	for k, v := range po.Key.Labels() {
 		s.labels.Put(k, v)
@@ -332,7 +357,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 	logger.Debug("storage.Get")
 
-	metrics.Count("storage_reads_total", 1.0)
+	s.storageReadsTotal.Add(1)
 
 	var (
 		triesToMerge []merge.Merger

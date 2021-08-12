@@ -55,7 +55,7 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		percent := s.config.CacheEvictVolume
 		if used > s.config.CacheEvictThreshold {
 			metrics.Timing("evictions_timer", func() {
-				metrics.Count("evictions_count", 1)
+				s.evictionsCount.Add(1)
 				s.dimensions.Evict(percent / 4)
 				s.dicts.Evict(percent / 4)
 				s.segments.Evict(percent / 2)
@@ -68,7 +68,7 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 
 func (s *Storage) writeBackTask() {
 	metrics.Timing("write_back_timer", func() {
-		metrics.Count("write_back_count", 1)
+		s.writeBackCount.Add(1)
 		s.dimensions.WriteBack()
 		s.segments.WriteBack()
 		s.dicts.WriteBack()
@@ -79,7 +79,7 @@ func (s *Storage) writeBackTask() {
 func (s *Storage) retentionTask() {
 	logrus.Debug("starting retention task")
 	metrics.Timing("retention_timer", func() {
-		metrics.Count("retention_count", 1)
+		s.retentionCount.Add(1)
 		if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
 			logrus.WithError(err).Warn("retention task failed")
 		}
