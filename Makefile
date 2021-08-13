@@ -64,7 +64,7 @@ all: build ## Runs the build target
 build-rbspy-static-library: ## builds rbspy static library (used in our gem integration)
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,rbspy,clib -buildmode=c-archive -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
-ifeq ("$(shell go env GOOS || true)", "linux")
+ifeq ("$(OS)", "Linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.a
 	ranlib ./out/libpyroscope.rbspy.a
 endif
@@ -73,7 +73,7 @@ endif
 build-pyspy-static-library: ## builds pyspy static library (used in our pip integration)
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,pyspy,clib -buildmode=c-archive -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
-ifeq ("$(shell go env GOOS || true)", "linux")
+ifeq ("$(OS)", "Linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.a
 	ranlib ./out/libpyroscope.pyspy.a
 endif
@@ -82,7 +82,7 @@ endif
 build-phpspy-static-library: ## builds phpspy static library
 	mkdir -p ./out
 	$(GOBUILD) -tags nogospy,phpspy,clib -buildmode=c-archive -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
-ifeq ("$(shell go env GOOS || true)", "linux")
+ifeq ("$(OS)", "Linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.phpspy.a
 	ranlib ./out/libpyroscope.phpspy.a
 endif
@@ -97,8 +97,8 @@ build-release: embedded-assets ## Builds the release build
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
-ifeq ("$(shell go env GOOS || true)", "linux")
-	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release || $(MAKE) print-deps-error-message
+ifeq ("$(OS)", "Linux")
+	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release --target $(RUST_TARGET) || $(MAKE) print-deps-error-message
 else
 	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release || $(MAKE) print-deps-error-message
 endif
