@@ -160,7 +160,7 @@ ensure-logrus-not-used: ## Verify if logrus not used in codebase
 		|| (echo "\n^ ERROR: make sure ./pkg/agent/profiler/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
 
 	@! go run "$(shell scripts/pinned-tool.sh github.com/kisielk/godepgraph)" -nostdlib -s ./pkg/agent/clib/ | grep ' -> "github.com/sirupsen/logrus' \
-	|| (echo "\n^ ERROR: make sure ./pkg/agent/clib/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
+		|| (echo "\n^ ERROR: make sure ./pkg/agent/clib/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
 
 .PHONY: clib-deps
 clib-deps:
