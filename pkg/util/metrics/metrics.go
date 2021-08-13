@@ -51,7 +51,7 @@ func fixValue(v interface{}) float64 {
 	return 0.0
 }
 
-func Gauge(name string, value interface{}) {
+func gauge(name string, value interface{}) {
 	gaugesMutex.Lock()
 	defer gaugesMutex.Unlock()
 
@@ -66,7 +66,7 @@ func Gauge(name string, value interface{}) {
 func Timing(name string, cb func()) {
 	startTime := time.Now()
 	// func wrapper is important, otherwise time.Now is the same as startTime
-	defer func() { Gauge(name, int64(time.Now().Sub(startTime))) }()
+	defer func() { gauge(name, int64(time.Now().Sub(startTime))) }()
 
 	cb()
 }

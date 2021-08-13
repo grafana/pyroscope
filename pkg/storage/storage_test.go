@@ -291,16 +291,11 @@ var _ = Describe("storage package", func() {
 					}
 
 					for i := 0; i < 5; i++ {
-						vm, err := mem.VirtualMemory()
+						_, err := mem.VirtualMemory()
 						Expect(err).ToNot(HaveOccurred())
-						metrics.Gauge("Total", vm.Total)
 
 						var m runtime.MemStats
 						runtime.ReadMemStats(&m)
-						metrics.Gauge("NumGC", m.NumGC)
-						metrics.Gauge("Alloc", m.Alloc)
-						metrics.Gauge("Used", float64(m.Alloc)/float64(vm.Total))
-						metrics.Gauge("Segments", s.segments.Len())
 						time.Sleep(evictInterval)
 					}
 				})
