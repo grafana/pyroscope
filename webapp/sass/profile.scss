@@ -409,6 +409,13 @@ $pane-width: 6px;
   .footer-space-filler {
     // flex-grow: 1;
   }
+  a {
+    color: white;
+    text-decoration: none;
+    &:hover span {
+      text-decoration: underline;
+    }
+  }
 }
 
 .navbar,
