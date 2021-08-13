@@ -19,6 +19,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
 func (ctrl *Controller) loginHandler() http.HandlerFunc {
@@ -380,11 +381,12 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 
 	w.Header().Add("Content-Type", "text/html")
 	mustExecute(tmpl, w, map[string]string{
-		"InitialState":     initialStateStr,
-		"BuildInfo":        build.JSON(),
-		"ExtraMetadata":    extraMetadataStr,
-		"BaseURL":          ctrl.config.BaseURL,
-		"NotificationText": ctrl.NotificationText(),
+		"InitialState":      initialStateStr,
+		"BuildInfo":         build.JSON(),
+		"LatestVersionInfo": updates.LatestVersionJSON(),
+		"ExtraMetadata":     extraMetadataStr,
+		"BaseURL":           ctrl.config.BaseURL,
+		"NotificationText":  ctrl.NotificationText(),
 	})
 }
 
