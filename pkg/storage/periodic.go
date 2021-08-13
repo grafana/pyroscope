@@ -7,7 +7,7 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func (s *Storage) periodicTask(interval time.Duration, cb func()) {
@@ -55,34 +55,38 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 
 		percent := s.config.CacheEvictVolume
 		if used > s.config.CacheEvictThreshold {
-			metrics.Timing("evictions_timer", func() {
+			func() {
+				timer := prometheus.NewTimer(prometheus.ObserverFunc(s.evictionsTimer.Set))
+				defer timer.ObserveDuration()
+
 				s.evictionsCount.Add(1)
 				s.dimensions.Evict(percent / 4)
 				s.dicts.Evict(percent / 4)
 				s.segments.Evict(percent / 2)
 				s.trees.Evict(percent)
 				runtime.GC()
-			})
+			}()
 		}
 	}
 }
 
 func (s *Storage) writeBackTask() {
-	metrics.Timing("write_back_timer", func() {
-		s.writeBackCount.Add(1)
-		s.dimensions.WriteBack()
-		s.segments.WriteBack()
-		s.dicts.WriteBack()
-		s.trees.WriteBack()
-	})
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.writeBackTimer.Set))
+	defer timer.ObserveDuration()
+
+	s.writeBackCount.Add(1)
+	s.dimensions.WriteBack()
+	s.segments.WriteBack()
+	s.dicts.WriteBack()
+	s.trees.WriteBack()
 }
 
 func (s *Storage) retentionTask() {
-	logrus.Debug("starting retention task")
-	metrics.Timing("retention_timer", func() {
-		s.retentionCount.Add(1)
-		if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
-			logrus.WithError(err).Warn("retention task failed")
-		}
-	})
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.retentionTimer.Set))
+	defer timer.ObserveDuration()
+
+	s.retentionCount.Add(1)
+	if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
+		logrus.WithError(err).Warn("retention task failed")
+	}
 }

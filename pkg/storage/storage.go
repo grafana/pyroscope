@@ -29,7 +29,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
@@ -75,6 +74,13 @@ type Storage struct {
 	evictionsAllocBytes prometheus.Gauge
 	evictionsTotalBytes prometheus.Gauge
 	evictionsUsedPerc   prometheus.Gauge
+
+	storageCachesFlushTimer prometheus.Gauge
+	storageBadgerCloseTimer prometheus.Gauge
+
+	evictionsTimer prometheus.Gauge
+	writeBackTimer prometheus.Gauge
+	retentionTimer prometheus.Gauge
 }
 
 func (s *Storage) newBadger(name string) (*badger.DB, error) {
@@ -132,6 +138,23 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		}),
 		evictionsUsedPerc: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "evictions_used_perc",
+		}),
+
+		storageCachesFlushTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "storage_caches_flush_timer",
+		}),
+		storageBadgerCloseTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "storage_badger_close_timer",
+		}),
+
+		evictionsTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "evictions_timer",
+		}),
+		writeBackTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "write_back_timer",
+		}),
+		retentionTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "retention_timer",
 		}),
 	}
 
@@ -566,7 +589,10 @@ func (s *Storage) Close() error {
 	close(s.stop)
 	s.wg.Wait()
 
-	metrics.Timing("storage_caches_flush_timer", func() {
+	func() {
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.storageCachesFlushTimer.Set))
+		defer timer.ObserveDuration()
+
 		wg := sync.WaitGroup{}
 		wg.Add(3)
 		go func() { defer wg.Done(); s.dimensions.Flush() }()
@@ -576,9 +602,12 @@ func (s *Storage) Close() error {
 
 		// dictionary has to flush last because trees write to dictionaries
 		s.dicts.Flush()
-	})
+	}()
 
-	metrics.Timing("storage_badger_close_timer", func() {
+	func() {
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.storageBadgerCloseTimer.Set))
+		defer timer.ObserveDuration()
+
 		wg := sync.WaitGroup{}
 		wg.Add(5)
 		go func() { defer wg.Done(); s.dbTrees.Close() }()
@@ -587,7 +616,8 @@ func (s *Storage) Close() error {
 		go func() { defer wg.Done(); s.dbSegments.Close() }()
 		go func() { defer wg.Done(); s.db.Close() }()
 		wg.Wait()
-	})
+	}()
+
 	// this allows prometheus to collect metrics before pyroscope exits
 	if os.Getenv("PYROSCOPE_WAIT_AFTER_STOP") != "" {
 		time.Sleep(5 * time.Second)
