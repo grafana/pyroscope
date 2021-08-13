@@ -1,3 +1,62 @@
+## <small>0.0.37 (2021-08-04)</small>
+
+* adds error message ([7e02b3d](https://github.com/pyroscope-io/pyroscope/commit/7e02b3d))
+* Fix LFU cache package version ([f2a06a8](https://github.com/pyroscope-io/pyroscope/commit/f2a06a8))
+* improves build stability on linux ([31e4065](https://github.com/pyroscope-io/pyroscope/commit/31e4065))
+
+
+
+## <small>0.0.36 (2021-08-03)</small>
+
+* Add a short path for case when not all required labels are present ([7c8e7b0](https://github.com/pyroscope-io/pyroscope/commit/7c8e7b0))
+* Add dimension lookup by key labels ([ebdc846](https://github.com/pyroscope-io/pyroscope/commit/ebdc846))
+* Add explicit yaml key name for metric export rules ([c02a21d](https://github.com/pyroscope-io/pyroscope/commit/c02a21d))
+* Add metric exported scratches ([fa20295](https://github.com/pyroscope-io/pyroscope/commit/fa20295))
+* Add option to filter prometheus labels ([ee29c0b](https://github.com/pyroscope-io/pyroscope/commit/ee29c0b))
+* add prependBytes and test ([e1f5e3d](https://github.com/pyroscope-io/pyroscope/commit/e1f5e3d))
+* add test for storage/tree (#276) ([bde2a99](https://github.com/pyroscope-io/pyroscope/commit/bde2a99)), closes [#276](https://github.com/pyroscope-io/pyroscope/issues/276)
+* Add tree node filter to metric exporter. ([f76f9c1](https://github.com/pyroscope-io/pyroscope/commit/f76f9c1))
+* adds comments to flamebearer ([fada901](https://github.com/pyroscope-io/pyroscope/commit/fada901))
+* Adds markdown linting (dead urls) (#270) ([8c4e0c2](https://github.com/pyroscope-io/pyroscope/commit/8c4e0c2)), closes [#270](https://github.com/pyroscope-io/pyroscope/issues/270)
+* adds support for .env files (helpful for debugging things like OAuth integration) ([266d360](https://github.com/pyroscope-io/pyroscope/commit/266d360))
+* better slice allocating ([81d10a6](https://github.com/pyroscope-io/pyroscope/commit/81d10a6))
+* changes contributors limit in README ([3d159b6](https://github.com/pyroscope-io/pyroscope/commit/3d159b6))
+* changes eviction timeout value to 20s and brings runtime.GC back ([3b34e74](https://github.com/pyroscope-io/pyroscope/commit/3b34e74))
+* changes flamebearer tooltip to position fixed ([b1ba728](https://github.com/pyroscope-io/pyroscope/commit/b1ba728))
+* Clean comments ([9138314](https://github.com/pyroscope-io/pyroscope/commit/9138314))
+* decode-resp: decode flamebearer response for debugging (#284) ([8c45c81](https://github.com/pyroscope-io/pyroscope/commit/8c45c81)), closes [#284](https://github.com/pyroscope-io/pyroscope/issues/284)
+* Defer buffer put ([077e260](https://github.com/pyroscope-io/pyroscope/commit/077e260))
+* downgrades to golang:1.16.4-alpine3.12 ([7a47a33](https://github.com/pyroscope-io/pyroscope/commit/7a47a33))
+* Fix dictionary keys ([746871d](https://github.com/pyroscope-io/pyroscope/commit/746871d))
+* fixes benchmark script ([d5a3c0e](https://github.com/pyroscope-io/pyroscope/commit/d5a3c0e))
+* follow up to #283 ([e0f799a](https://github.com/pyroscope-io/pyroscope/commit/e0f799a)), closes [#283](https://github.com/pyroscope-io/pyroscope/issues/283)
+* Hide sensitive data from /config endpoint response ([9dfdd25](https://github.com/pyroscope-io/pyroscope/commit/9dfdd25))
+* improve prependTreeNode ([d6d904e](https://github.com/pyroscope-io/pyroscope/commit/d6d904e))
+* improve tooltip rendering (#266) ([53ce5f8](https://github.com/pyroscope-io/pyroscope/commit/53ce5f8)), closes [#266](https://github.com/pyroscope-io/pyroscope/issues/266)
+* improve tree.Insert ([cc0e5c5](https://github.com/pyroscope-io/pyroscope/commit/cc0e5c5))
+* initial version of traffic duplicator ([03f32ff](https://github.com/pyroscope-io/pyroscope/commit/03f32ff))
+* Introduce ingester abstraction ([75b27be](https://github.com/pyroscope-io/pyroscope/commit/75b27be))
+* Make observer respect sample rate ([8411db8](https://github.com/pyroscope-io/pyroscope/commit/8411db8))
+* Make ParseKey validate user input ([fa6048b](https://github.com/pyroscope-io/pyroscope/commit/fa6048b))
+* Oauth flow for Google, GitHub and GitLab (#272) ([66ea269](https://github.com/pyroscope-io/pyroscope/commit/66ea269)), closes [#272](https://github.com/pyroscope-io/pyroscope/issues/272)
+* Protect /config and /build endpoints, if applicable ([3830233](https://github.com/pyroscope-io/pyroscope/commit/3830233))
+* Refactor analytics package to decouple it from controller ([c935964](https://github.com/pyroscope-io/pyroscope/commit/c935964))
+* Refactor pprof profile traversal ([33db173](https://github.com/pyroscope-io/pyroscope/commit/33db173))
+* Replaced no longer maintained jwt-go with golang-jwt/jwt which is community maintained ([438b07f](https://github.com/pyroscope-io/pyroscope/commit/438b07f))
+* Resolve merge conflicts ([b9f4c5e](https://github.com/pyroscope-io/pyroscope/commit/b9f4c5e))
+* Setup metric exporter initialization ([6daeafc](https://github.com/pyroscope-io/pyroscope/commit/6daeafc))
+* Tags support (#280) ([a41b2b7](https://github.com/pyroscope-io/pyroscope/commit/a41b2b7)), closes [#280](https://github.com/pyroscope-io/pyroscope/issues/280)
+* Tidy go mod ([212241b](https://github.com/pyroscope-io/pyroscope/commit/212241b))
+* update go version in linux builds ([e44f8c8](https://github.com/pyroscope-io/pyroscope/commit/e44f8c8))
+* Update upstream.go ([dd1daa5](https://github.com/pyroscope-io/pyroscope/commit/dd1daa5))
+* updates alpine version ([77397d8](https://github.com/pyroscope-io/pyroscope/commit/77397d8))
+* updates windows golang version ([94d5c43](https://github.com/pyroscope-io/pyroscope/commit/94d5c43))
+* Use byte buffer pool for serialization ([725cfdd](https://github.com/pyroscope-io/pyroscope/commit/725cfdd))
+* fix(agent): use the ProfileTypes from the configuration ([88aaed0](https://github.com/pyroscope-io/pyroscope/commit/88aaed0))
+* fix(gospy.go): Snapshot add custom_pprof.StopCPUProfile() (#283) ([3a13771](https://github.com/pyroscope-io/pyroscope/commit/3a13771)), closes [#283](https://github.com/pyroscope-io/pyroscope/issues/283)
+
+
+
 ## <small>0.0.35 (2021-06-29)</small>
 
 * Adds new build and config endpoints (#259) ([aa8c868](https://github.com/pyroscope-io/pyroscope/commit/aa8c868)), closes [#259](https://github.com/pyroscope-io/pyroscope/issues/259)

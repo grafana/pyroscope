@@ -2,34 +2,8 @@ package flameql
 
 import (
 	"regexp"
+	"sort"
 	"strings"
-)
-
-type Query struct {
-	AppName  string
-	Matchers []*TagMatcher
-
-	q string // The original query string.
-}
-
-func (q *Query) String() string { return q.q }
-
-type TagMatcher struct {
-	Key   string
-	Value string
-	Op
-
-	R *regexp.Regexp
-}
-
-type Op int
-
-const (
-	_         Op = iota
-	EQL          // =
-	NEQ          // !=
-	EQL_REGEX    // =~
-	NEQ_REGEX    // !~
 )
 
 // ParseQuery parses a string of $app_name<{<$tag_matchers>}> form.
@@ -54,7 +28,7 @@ func ParseQuery(s string) (*Query, error) {
 			q.Matchers = m
 			return &q, nil
 		default:
-			if !IsTagKeyRuneAllowed(c) {
+			if !IsAppNameRuneAllowed(c) {
 				return nil, newErr(ErrInvalidAppName, s[:offset+1])
 			}
 		}
@@ -84,6 +58,7 @@ func ParseMatchers(s string) ([]*TagMatcher, error) {
 	if len(matchers) == 0 && len(s) != 0 {
 		return nil, newErr(ErrInvalidMatchersSyntax, s)
 	}
+	sort.Sort(ByPriority(matchers))
 	return matchers, nil
 }
 

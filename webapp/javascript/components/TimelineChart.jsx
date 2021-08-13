@@ -19,7 +19,6 @@ class TimelineChart extends ReactFlot {
     this.draw();
 
     $(`#${this.props.id}`).bind("plotselected", (event, ranges) => {
-      console.log("plotselected", this.props);
       if (this.props.viewSide === "both" || this.props.viewSide === "none") {
         this.props.actions.setDateRange(
           Math.round(ranges.xaxis.from / 1000),

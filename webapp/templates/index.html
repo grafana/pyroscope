@@ -17,7 +17,9 @@
 <body>
   <div id="root"></div>
   <script type="text/javascript">window.initialState = {{ .InitialState }};</script>
+  <script type="text/javascript">window.notificationText = "{{ .NotificationText }}";</script>
   <script type="text/javascript">window.buildInfo = {{ .BuildInfo }};</script>
+  <script type="text/javascript">window.latestVersionInfo = {{ .LatestVersionInfo }};</script>
   <script src="/assets/app.<%= webpack.hash %>.js" type="text/javascript"></script>
 </body>
 </html>

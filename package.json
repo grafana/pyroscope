@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "private": true,
   "name": "pyroscope",
-  "version": "0.0.35",
+  "version": "0.0.37",
   "repository": {
     "type": "git",
     "url": "https://github.com/pyroscope-io/pyroscope.git"
@@ -61,6 +61,7 @@
     "@fortawesome/free-regular-svg-icons": "^5.15.2",
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
     "@fortawesome/react-fontawesome": "^0.1.11",
+    "@szhsin/react-menu": "^1.10.1",
     "@types/react": "^17.0.0",
     "babel-loader": "^8.1.0",
     "classnames": "^2.2.6",

@@ -1,25 +1,29 @@
 import React from "react";
 import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
-import { addLabel } from "../redux/actions";
+import { setQuery } from "../redux/actions";
+
+const defKey = "Select an app...";
 
 function NameSelector(props) {
-  const { actions, names, labels } = props;
-  const selectName = (event) => {
-    actions.addLabel("__name__", event.target.value);
+  const { actions, names, query } = props;
+  const selectAppName = (event) => {
+    actions.setQuery(`${event.target.value}{}`);
   };
+  let defaultValue = (query || "").replace(/\{.*/g, "");
+  if (names && names.indexOf(defaultValue) === -1) {
+    defaultValue = defKey;
+  }
 
-  let selectedName = labels.filter((x) => x.name === "__name__")[0];
-  selectedName = selectedName ? selectedName.value : "none";
   return (
     <span>
       Application:&nbsp;
       <select
         className="label-select"
-        value={selectedName}
-        onChange={selectName}
+        value={defaultValue}
+        onChange={selectAppName}
       >
-        <option disabled key="Select an app..." value="Select an app...">
+        <option disabled key={defKey} value="Select an app...">
           Select an app...
         </option>
         {names &&
@@ -40,7 +44,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      addLabel,
+      setQuery,
     },
     dispatch
   ),

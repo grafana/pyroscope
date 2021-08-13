@@ -43,7 +43,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = ctrl.storage.Put(&storage.PutInput{
+	err = ctrl.ingester.Put(&storage.PutInput{
 		StartTime:       ip.from,
 		EndTime:         ip.until,
 		Key:             ip.storageKey,

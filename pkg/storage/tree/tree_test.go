@@ -1,6 +1,7 @@
 package tree
 
 import (
+	"bytes"
 	"math/rand"
 	"strings"
 
@@ -107,3 +108,28 @@ var _ = Describe("tree package", func() {
 func treeStr(s string) string {
 	return strings.ReplaceAll(s, "|", "\n")
 }
+
+var _ = Describe("prepend", func() {
+	Context("prependTreeNode)", func() {
+		It("prepend elem", func() {
+			A, B, C, X := &treeNode{}, &treeNode{}, &treeNode{}, &treeNode{}
+			s := []*treeNode{A, B, C}
+			s = prependTreeNode(s, X)
+			Expect(s).To(HaveLen(4))
+			Expect(s[0]).To(Equal(X))
+			Expect(s[1]).To(Equal(A))
+			Expect(s[2]).To(Equal(B))
+			Expect(s[3]).To(Equal(C))
+		})
+	})
+	Context("prependBytes", func() {
+		It("prepend elem", func() {
+			A, B, C, X := []byte("A"), []byte("B"), []byte("C"), []byte("X")
+			s := [][]byte{A, B, C}
+			s = prependBytes(s, X)
+
+			out := bytes.Join(s, []byte(","))
+			Expect(string(out)).To(Equal("X,A,B,C"))
+		})
+	})
+})

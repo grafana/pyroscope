@@ -3,6 +3,8 @@
 @use "components/daterangepicker";
 @use "components/labels";
 @use "components/exportdata";
+@use "components/tagsbar";
+@use "components/button";
 
 @import "~sanitize.css";
 @import "~sanitize.css/forms.css";
@@ -83,26 +85,6 @@ tt {
 
 .fx-1 {
   flex: 1;
-}
-
-.btn {
-  @include outline;
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  cursor: pointer;
-
-  // height: 30px;
-  // line-height: 30px;
-  border: 1px solid $btn-border-color;
-  border-radius: 4px;
-  background: $btn-color;
-
-  &:hover {
-    background: $btn-hover-color;
-  }
 }
 
 select {
@@ -226,10 +208,36 @@ $pane-width: 6px;
     width: 50%;
 
     .flamegraph-header {
+      padding-bottom: 5px;
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      padding-bottom: 5px;
+
+      .row {
+        display: flex;
+        justify-content: center;
+      }
+
+      .flamegraph-legend {
+        display: flex;
+        align-items: center;
+        font-size: 11px;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+
+      .flamegraph-legend-list {
+        display: flex;
+        justify-content: center;
+      }
+
+      .flamegraph-legend-item {
+        width: 35px;
+        text-align: center;
+
+        &:first-child, &:last-child {
+          width: 40px;
+        }
+      }
     }
 
     &.vertical-orientation {
@@ -241,6 +249,16 @@ $pane-width: 6px;
       display: none;
     }
   }
+}
+
+.diff-instructions-wrapper {
+  display: flex;
+  gap: 30px;
+  padding-bottom: 10px;
+}
+
+.diff-instructions-wrapper-side {
+  flex: 1 1 0;
 }
 
 .left-instructions-wrapper {
@@ -391,6 +409,13 @@ $pane-width: 6px;
   .footer-space-filler {
     // flex-grow: 1;
   }
+  a {
+    color: white;
+    text-decoration: none;
+    &:hover span {
+      text-decoration: underline;
+    }
+  }
 }
 
 .navbar,
@@ -484,6 +509,10 @@ body,
       border-top-color: $active-color;
       border-bottom-color: $active-color;
     }
+  }
+
+  & + .viz-switch {
+    margin-left: 10px;
   }
 }
 
@@ -649,4 +678,43 @@ $sidebar-tooltip-color: #777;
 
 .main-wrapper {
   margin-left: $sidebar-size;
+}
+
+.notifications {
+  position: fixed;
+  top: 58px;
+  right: 15px;
+
+  &.hidden {
+    display: none;
+  }
+
+  .notifications-container {
+    display: flex;
+    overflow: hidden;
+    background-color: rgb(78, 81, 90);
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+
+    .notification-icon {
+      padding: 15px;
+      background-color: #c43028bb;
+    }
+
+    .notification-body {
+      padding: 15px;
+      max-width: 30vw;
+    }
+    .notification-close-btn {
+      text-align: center;
+      font-weight: bold;
+      cursor: pointer;
+      background-color: rgba(0,0,0,0.1);
+      padding: 15px;
+      &::before {
+        content: '×';
+        display: inline;
+      }
+    }
+  }
 }

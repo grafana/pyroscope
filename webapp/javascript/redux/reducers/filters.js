@@ -4,12 +4,13 @@ import {
   SET_FROM,
   SET_UNTIL,
   SET_MAX_NODES,
-  SET_LABELS,
   REFRESH,
-  ADD_LABEL,
-  REMOVE_LABEL,
   RECEIVE_TIMELINE,
   REQUEST_TIMELINE,
+  REQUEST_TAGS,
+  RECEIVE_TAGS,
+  REQUEST_TAG_VALUES,
+  RECEIVE_TAG_VALUES,
   RECEIVE_NAMES,
   REQUEST_NAMES,
   SET_LEFT_DATE_RANGE,
@@ -18,6 +19,7 @@ import {
   SET_RIGHT_FROM,
   SET_LEFT_UNTIL,
   SET_RIGHT_UNTIL,
+  SET_QUERY,
 } from "../actionTypes";
 
 const defaultName = window.initialState.appNames.find(
@@ -31,11 +33,12 @@ const initialState = {
   until: "now",
   leftUntil: "now-30m",
   rightUntil: "now",
-  labels: [{ name: "__name__", value: defaultName || "pyroscope.server.cpu" }],
+  query: `${defaultName || "pyroscope.server.cpu"}{}`,
   names: window.initialState.appNames,
   timeline: null,
   isJSONLoading: false,
   maxNodes: 1024,
+  tags: [],
 };
 
 window.uniqBy = uniqBy;
@@ -113,18 +116,6 @@ export default function (state = initialState, action) {
         ...state,
         refreshToken: Math.random(),
       };
-    case SET_LABELS:
-      return { ...state, labels: action.payload.labels };
-    case ADD_LABEL:
-      return {
-        ...state,
-        labels: uniqBy("name", [action.payload].concat(state.labels)),
-      };
-    case REMOVE_LABEL:
-      return {
-        ...state,
-        labels: state.labels.filter((x) => x.name !== action.payload.name),
-      };
     case REQUEST_TIMELINE:
       return {
         ...state,
@@ -136,22 +127,52 @@ export default function (state = initialState, action) {
         timeline: decodeTimelineData(action.payload.timeline),
         isJSONLoading: false,
       };
+    case REQUEST_TAGS:
+      return {
+        ...state,
+        areTagsLoading: true,
+      };
+    case RECEIVE_TAGS: {
+      return {
+        ...state,
+        areTagsLoading: false,
+        tags: action.payload.tags.reduce((acc, tag) => {
+          if (tag !== "__name__") {
+            acc[tag] = [];
+          }
+          return acc;
+        }, {}),
+      };
+    }
+    case REQUEST_TAG_VALUES:
+      return {
+        ...state,
+        tagValuesLoading: action.payload.tag,
+      };
+    case RECEIVE_TAG_VALUES:
+      return {
+        ...state,
+        tagValuesLoading: "",
+        tags: {
+          ...state.tags,
+          [action.payload.tag]: action.payload.values,
+        },
+      };
     case REQUEST_NAMES:
       return {
         ...state,
         areNamesLoading: true,
       };
     case RECEIVE_NAMES:
-      let { labels } = state;
-      const firstName = action.payload.names[0] || "none";
-      if (labels.filter((x) => x.name === "__name__").length === 0) {
-        labels = labels.concat([{ name: "__name__", value: firstName }]);
-      }
       return {
         ...state,
         names: action.payload.names,
         areNamesLoading: false,
-        labels,
+      };
+    case SET_QUERY:
+      return {
+        ...state,
+        query: action.payload.query,
       };
     default:
       return state;

@@ -21,7 +21,9 @@ func startServer(c *config.Server) error {
 	}
 	logrus.SetLevel(logLevel)
 	logger := logrus.StandardLogger()
-
+	if err = loadServerConfig(c); err != nil {
+		return fmt.Errorf("could not read config: %w", err)
+	}
 	srv, err := newServerService(logger, c)
 	if err != nil {
 		return fmt.Errorf("could not initialize server: %w", err)

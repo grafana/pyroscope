@@ -1,0 +1,132 @@
+@use "../variables" as *;
+
+@import "../../node_modules/@szhsin/react-menu/dist/index.css";
+@import "../prism.scss";
+
+.tags-bar {
+  display: flex;
+  padding: 5px 15px 15px;
+
+  .rc-menu-button {
+    outline: none;
+    display: inline-block;
+    position: relative;
+    border-radius: 4px;
+    background-color: $btn-color;
+    border: 1px solid $btn-border-color;
+    margin-right: 5px;
+    padding-right: 20px;
+    &::after {
+      content: "▾";
+      position: absolute;
+      top: 3px;
+      right: 5px;
+    }
+  }
+
+  .rc-menu {
+    // border: 1px solid #222222;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.33);
+    padding: 0.25rem 0;
+  }
+
+  .rc-menu, .rc-menu__item {
+    background-color: $btn-color;
+    color: $white;
+  }
+
+  .rc-menu--open:empty {
+    display: none;
+  }
+
+  .rc-menu__item {
+    &:hover {
+      background-color: $btn-hover-color;
+    }
+    &.active {
+      background-color: $btn-hover-color;
+      color: rgb(223, 139, 83);
+    }
+  }
+
+  .tags-query {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+  }
+  .tags-app-name {
+    position: relative;
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    background-color: #272727;
+    border: 1px solid #4d4d4d;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 5px;
+    border-right: none;
+  }
+  .tags-input {
+    flex-grow: 20;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+    border-right: none;
+    caret-color: #fff;
+    color: rgba(0,0,0,0);
+    // color: red;
+    letter-spacing: 0;
+    font-family: arial;
+    font-size: 16px;
+  }
+  .tags-query-execute {
+    flex-grow: 1;
+    border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+    caret-color: #fff;
+    background-color: #0074D9;
+    border-color: darken(#0074D9, 10%);
+    letter-spacing: 0;
+    font-family: arial;
+    font-size: 16px;
+    &:hover {
+      background-color: lighten(#0074D9, 10%);
+    }
+  }
+
+  .tags-highlighted{
+    height: 0;
+    width: 0;
+    margin-top: -17px;
+    margin-right: -7px;
+    z-index: 1;
+    margin-left: 5px;
+    pointer-events: none;
+    overflow: inherit;
+    background: none;
+    padding: 0;
+    code {
+      font-size: 16px;
+      font-family: arial;
+      background: none;
+      border: none;
+      box-shadow: none;
+      padding: 0;
+      margin: 0;
+    }
+  }
+
+  .rc-menu__item {
+    $xpadding: 0.375rem;
+    $ypadding: 1.5rem;
+    $ypadding: 1.0rem;
+
+    padding: $xpadding $ypadding;
+  }
+
+  .tag-content {
+    width: 100%;
+    box-sizing: content-box;
+    padding: 0;
+    margin: 0;
+  }
+}

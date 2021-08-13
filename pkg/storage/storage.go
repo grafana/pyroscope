@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"sync"
 	"time"
 
@@ -34,10 +35,10 @@ var (
 	errOutOfSpace = errors.New("running out of space")
 	errRetention  = errors.New("could not write because of retention settings")
 
-	evictInterval     = time.Second
+	evictInterval     = 20 * time.Second
 	writeBackInterval = time.Second
 	retentionInterval = time.Minute
-	gcInterval        = 5 * time.Minute
+	badgerGCInterval  = 5 * time.Minute
 )
 
 type Storage struct {
@@ -84,7 +85,7 @@ func (s *Storage) newBadger(name string) (*badger.DB, error) {
 		return nil, err
 	}
 	s.wg.Add(1)
-	go s.periodicTask(gcInterval, s.badgerGCTask(db))
+	go s.periodicTask(badgerGCInterval, s.badgerGCTask(db))
 	return db, nil
 }
 
@@ -176,6 +177,10 @@ func New(c *config.Server) (*Storage, error) {
 		go s.periodicTask(retentionInterval, s.retentionTask)
 	}
 
+	if err = s.migrate(); err != nil {
+		return nil, err
+	}
+
 	return s, nil
 }
 
@@ -192,20 +197,9 @@ type PutInput struct {
 
 func (s *Storage) treeFromBytes(k string, v []byte) (interface{}, error) {
 	key := segment.FromTreeToDictKey(k)
-	d, ok := s.dicts.Lookup(key)
-	if !ok {
-		// The key not found. Fallback to segment key form which has been
-		// used before tags support. Refer to FromTreeToDictKey.
-		return s.treeFromBytesFallback(k, v)
-	}
-	return tree.FromBytes(d.(*dict.Dict), v)
-}
-
-func (s *Storage) treeFromBytesFallback(k string, v []byte) (interface{}, error) {
-	key := segment.FromTreeToMainKey(k)
-	d, ok := s.dicts.Lookup(key)
-	if !ok {
-		return nil, nil
+	d, err := s.dicts.GetOrCreate(key)
+	if err != nil {
+		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
 	}
 	return tree.FromBytes(d.(*dict.Dict), v)
 }
@@ -247,6 +241,8 @@ func (s *Storage) Put(po *PutInput) error {
 		"units":           po.Units,
 		"aggregationType": po.AggregationType,
 	}).Debug("storage.Put")
+
+	metrics.Count("storage_writes_total", 1.0)
 
 	for k, v := range po.Key.Labels() {
 		s.labels.Put(k, v)
@@ -335,6 +331,9 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}
 
 	logger.Debug("storage.Get")
+
+	metrics.Count("storage_reads_total", 1.0)
+
 	var (
 		triesToMerge []merge.Merger
 		lastSegment  *segment.Segment
@@ -394,11 +393,27 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 func (s *Storage) dimensionKeysByKey(key *segment.Key) func() []dimension.Key {
 	return func() []dimension.Key {
-		var dimensions []*dimension.Dimension
-		for k, v := range key.Labels() {
-			if d, ok := s.lookupDimensionKV(k, v); ok {
+		d, ok := s.lookupAppDimension(key.AppName())
+		if !ok {
+			return nil
+		}
+		l := key.Labels()
+		if len(l) == 1 {
+			// No tags specified: return application dimension keys.
+			return d.Keys
+		}
+		dimensions := []*dimension.Dimension{d}
+		for k, v := range l {
+			if flameql.IsTagKeyReserved(k) {
+				continue
+			}
+			if d, ok = s.lookupDimensionKV(k, v); ok {
 				dimensions = append(dimensions, d)
 			}
+		}
+		if len(dimensions) == 1 {
+			// Tags specified but not found.
+			return nil
 		}
 		return dimension.Intersection(dimensions...)
 	}
@@ -551,6 +566,76 @@ func (s *Storage) GetValues(key string, cb func(v string) bool) {
 		}
 		return true
 	})
+}
+
+func (s *Storage) GetKeysByQuery(query string, cb func(_k string) bool) error {
+	parsedQuery, err := flameql.ParseQuery(query)
+	if err != nil {
+		return err
+	}
+
+	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
+	if err != nil {
+		return err
+	}
+	dimensionKeys := s.dimensionKeysByKey(segmentKey)
+
+	resultSet := map[string]bool{}
+	for _, dk := range dimensionKeys() {
+		dkParsed, _ := segment.ParseKey(string(dk))
+		if dkParsed.AppName() == parsedQuery.AppName {
+			for k := range dkParsed.Labels() {
+				resultSet[k] = true
+			}
+		}
+	}
+
+	resultList := []string{}
+	for v := range resultSet {
+		resultList = append(resultList, v)
+	}
+
+	sort.Strings(resultList)
+	for _, v := range resultList {
+		if !cb(v) {
+			break
+		}
+	}
+	return nil
+}
+
+func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string) bool) error {
+	parsedQuery, err := flameql.ParseQuery(query)
+	if err != nil {
+		return err
+	}
+
+	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
+	if err != nil {
+		return err
+	}
+	dimensionKeys := s.dimensionKeysByKey(segmentKey)
+
+	resultSet := map[string]bool{}
+	for _, dk := range dimensionKeys() {
+		dkParsed, _ := segment.ParseKey(string(dk))
+		if v, ok := dkParsed.Labels()[label]; ok {
+			resultSet[v] = true
+		}
+	}
+
+	resultList := []string{}
+	for v := range resultSet {
+		resultList = append(resultList, v)
+	}
+
+	sort.Strings(resultList)
+	for _, v := range resultList {
+		if !cb(v) {
+			break
+		}
+	}
+	return nil
 }
 
 func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {

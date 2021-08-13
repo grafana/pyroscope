@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	golog "log"
@@ -12,7 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -22,6 +23,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
+	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
 const (
@@ -39,6 +41,7 @@ type Controller struct {
 
 	config     *config.Server
 	storage    *storage.Storage
+	ingester   storage.Ingester
 	log        *logrus.Logger
 	httpServer *http.Server
 
@@ -50,7 +53,7 @@ type Controller struct {
 	appStats *hyperloglog.HyperLogLogPlus
 }
 
-func New(c *config.Server, s *storage.Storage, l *logrus.Logger) (*Controller, error) {
+func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger) (*Controller, error) {
 	appStats, err := hyperloglog.NewPlus(uint8(18))
 	if err != nil {
 		return nil, err
@@ -60,6 +63,7 @@ func New(c *config.Server, s *storage.Storage, l *logrus.Logger) (*Controller, e
 		config:   c,
 		log:      l,
 		storage:  s,
+		ingester: i,
 		stats:    make(map[string]int),
 		appStats: appStats,
 	}
@@ -95,30 +99,34 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	addRoutes(mux, insecureRoutes, ctrl.drainMiddleware)
 
 	// Protected routes:
-	routes := []route{
+	protectedRoutes := []route{
 		{"/", ctrl.indexHandler()},
 		{"/render", ctrl.renderHandler},
+		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 	}
-	addRoutes(mux, routes, ctrl.drainMiddleware, ctrl.authMiddleware)
+	addRoutes(mux, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
-	// Diagnostic routes: not protected with auth, not drained.
-	addRoutes(mux, []route{
-		{"/healthz", ctrl.healthz},
-		{"/metrics", promhttp.Handler().ServeHTTP},
+	// Diagnostic secure routes: must be protected but not drained.
+	diagnosticSecureRoutes := []route{
 		{"/config", ctrl.configHandler},
 		{"/build", ctrl.buildHandler},
-	})
+	}
 	if !ctrl.config.DisablePprofEndpoint {
-		addRoutes(mux, []route{
+		diagnosticSecureRoutes = append(diagnosticSecureRoutes, []route{
 			{"/debug/pprof/", pprof.Index},
 			{"/debug/pprof/cmdline", pprof.Cmdline},
 			{"/debug/pprof/profile", pprof.Profile},
 			{"/debug/pprof/symbol", pprof.Symbol},
 			{"/debug/pprof/trace", pprof.Trace},
-		})
+		}...)
 	}
+	addRoutes(mux, diagnosticSecureRoutes, ctrl.authMiddleware)
+	addRoutes(mux, []route{
+		{"/metrics", promhttp.Handler().ServeHTTP},
+		{"/healthz", ctrl.healthz},
+	})
 
 	return mux, nil
 }
@@ -264,6 +272,8 @@ func (ctrl *Controller) Start() error {
 		ErrorLog:       golog.New(w, "", 0),
 	}
 
+	updates.StartVersionUpdateLoop()
+
 	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
 	// the returned error is ErrServerClosed.
 	err = ctrl.httpServer.ListenAndServe()
@@ -331,6 +341,23 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+func (ctrl *Controller) expectJSON(w http.ResponseWriter, format string) (ok bool) {
+	switch format {
+	case "json", "":
+		return true
+	default:
+		ctrl.writeInvalidParameterError(w, errUnknownFormat)
+		return false
+	}
+}
+
+func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		ctrl.writeJSONEncodeError(w, err)
+	}
+}
+
 func (ctrl *Controller) writeInvalidParameterError(w http.ResponseWriter, err error) {
 	ctrl.writeError(w, http.StatusBadRequest, err, "invalid parameter")
 }
@@ -344,12 +371,12 @@ func (ctrl *Controller) writeJSONEncodeError(w http.ResponseWriter, err error) {
 }
 
 func (ctrl *Controller) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	logrus.WithError(err).Error(msg)
+	ctrl.log.WithError(err).Error(msg)
 	writeMessage(w, code, "%s: %q", msg, err)
 }
 
 func (ctrl *Controller) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
-	logrus.Error(msg)
+	ctrl.log.Error(msg)
 	writeMessage(w, code, msg)
 }
 

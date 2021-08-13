@@ -18,7 +18,7 @@
 // This component is based on flamebearer project
 //   https://github.com/mapbox/flamebearer
 
-import React from "react";
+import React, { Fragment } from "react";
 import { connect } from "react-redux";
 
 import clsx from "clsx";
@@ -27,18 +27,18 @@ import { bindActionCreators } from "redux";
 
 import { withShortcut } from "react-keybind";
 
-import { buildRenderURL } from "../util/updateRequests";
+import { buildDiffRenderURL, buildRenderURL } from "../util/updateRequests";
 import {
   numberWithCommas,
   formatPercent,
   getPackageNameFromStackTrace,
   getFormatter,
 } from "../util/format";
-import { colorBasedOnPackageName, colorGreyscale } from "../util/color";
+import { colorBasedOnDiff, colorBasedOnPackageName, colorGreyscale, diffColorGreen, diffColorRed } from "../util/color";
 import TimelineChartWrapper from "./TimelineChartWrapper";
 import ProfilerTable from "./ProfilerTable";
 import ProfilerHeader from "./ProfilerHeader";
-import { deltaDiff } from "../util/flamebearer";
+import { deltaDiffWrapper, parseFlamebearerFormat } from "../util/flamebearer";
 
 import ExportData from "./ExportData";
 
@@ -55,8 +55,10 @@ const unitsToFlamegraphTitle = {
   "samples": "CPU time per function",
 }
 
+const diffLegend = [100, 50, 20, 10, 5, 3, 2, 1, 0, -1, -2, -3, -5, -10, -20, -50, -100];
+
 class FlameGraphRenderer extends React.Component {
-  constructor() {
+  constructor(props) {
     super();
     this.state = {
       highlightStyle: { display: "none" },
@@ -65,6 +67,7 @@ class FlameGraphRenderer extends React.Component {
       sortBy: "self",
       sortByDirection: "desc",
       view: "both",
+      viewDiff: props.viewType === "diff" ? "diff" : undefined,
       flamebearer: null,
     };
     this.canvasRef = React.createRef();
@@ -96,24 +99,37 @@ class FlameGraphRenderer extends React.Component {
 
     if(this.props.viewSide === 'left' || this.props.viewSide === 'right') {
       this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`])
-    } else {
+    } else if (this.props.viewType === 'single') {
       this.fetchFlameBearerData(this.props.renderURL)
+    } else if (this.props.viewType === 'diff') {
+      this.fetchFlameBearerData(this.props.diffRenderURL);
     }
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (this.getParamsFromRenderURL(this.props.renderURL).name != this.getParamsFromRenderURL(prevProps.renderURL).name ||
+    const propsChanged = this.getParamsFromRenderURL(this.props.renderURL).query != this.getParamsFromRenderURL(prevProps.renderURL).query ||
+      prevProps.maxNodes != this.props.maxNodes ||
+      prevProps.refreshToken != this.props.refreshToken;
+
+    if (propsChanged ||
       prevProps.from != this.props.from ||
       prevProps.until != this.props.until ||
-      prevProps.maxNodes != this.props.maxNodes ||
-      prevProps.refreshToken != this.props.refreshToken ||
       prevProps[`${this.props.viewSide}From`] != this.props[`${this.props.viewSide}From`] ||
       prevProps[`${this.props.viewSide}Until`] != this.props[`${this.props.viewSide}Until`]
     ) {
       if(this.props.viewSide === 'left' || this.props.viewSide === 'right') {
         this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`])
-      } else {
+      } else if (this.props.viewType === 'single') {
         this.fetchFlameBearerData(this.props.renderURL)
+      }
+    }
+
+    if (this.props.viewType === 'diff') {
+      if (propsChanged
+        || prevProps.leftFrom != this.props.leftFrom || prevProps.leftUntil != this.props.leftUntil
+        || prevProps.rightFrom != this.props.rightFrom || prevProps.rightUntil != this.props.rightUntil
+      ) {
+        this.fetchFlameBearerData(this.props.diffRenderURL);
       }
     }
 
@@ -134,11 +150,11 @@ class FlameGraphRenderer extends React.Component {
     fetch(`${url}&format=json`, { signal: this.currentJSONController.signal })
       .then((response) => response.json())
       .then((data) => {
-        let flamebearer = data.flamebearer;
-        deltaDiff(flamebearer.levels);
+        let { flamebearer } = data;
+        deltaDiffWrapper(flamebearer.format, flamebearer.levels);
 
         this.setState({
-          flamebearer: flamebearer
+          flamebearer: flamebearer,
         }, () => {
           this.updateData();
         })
@@ -188,12 +204,13 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateZoom(i, j) {
+    const ff = this.parseFormat();
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
       this.selectedLevel = i;
       this.topLevel = 0;
-      this.rangeMin = this.state.levels[i][j] / this.state.numTicks;
+      this.rangeMin = ff.getBarOffset(this.state.levels[i], j) / this.state.numTicks;
       this.rangeMax =
-        (this.state.levels[i][j] + this.state.levels[i][j + 1]) / this.state.numTicks;
+        (ff.getBarOffset(this.state.levels[i], j) + ff.getBarTotal(this.state.levels[i], j)) / this.state.numTicks;
     } else {
       this.selectedLevel = 0;
       this.topLevel = 0;
@@ -204,33 +221,50 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateData = () => {
-    const { names, levels, numTicks, sampleRate, units } = this.state.flamebearer;
+    const { names, levels, numTicks, sampleRate, units, format } = this.state.flamebearer;
     this.setState({
       names: names,
       levels: levels,
       numTicks: numTicks,
       sampleRate: sampleRate,
       units: units,
+      format: format, // "single" | "double"
     }, () => {
       this.renderCanvas();
     });
   };
 
+  // format=single
+  //   j = 0: x start of bar
+  //   j = 1: width of bar
+  //   j = 3: position in the main index (jStep)
+  //
+  // format=double
+  //   j = 0,3: x start of bar =>     x = (level[0] + level[3]) / 2
+  //   j = 1,4: width of bar   => width = (level[1] + level[4]) / 2
+  //                           =>  diff = (level[4] - level[1]) / (level[1] + level[4])
+  //   j = 6  : position in the main index (jStep)
+  parseFormat(format) {
+    return parseFlamebearerFormat(format || this.state.format);
+  }
+
   // binary search of a block in a stack level
   binarySearchLevel(x, level, tickToX) {
+    const ff = this.parseFormat();
+
     let i = 0;
-    let j = level.length - 4;
+    let j = level.length - ff.jStep;
     while (i <= j) {
-      const m = 4 * ((i / 4 + j / 4) >> 1);
-      const x0 = tickToX(level[m]);
-      const x1 = tickToX(level[m] + level[m + 1]);
+      const m = ff.jStep * ((i / ff.jStep + j / ff.jStep) >> 1);
+      const x0 = tickToX(ff.getBarOffset(level, m));
+      const x1 = tickToX(ff.getBarOffset(level, m) + ff.getBarTotal(level, m));
       if (x0 <= x && x1 >= x) {
         return x1 - x0 > COLLAPSE_THRESHOLD ? m : -1;
       }
       if (x0 > x) {
-        j = m - 4;
+        j = m - ff.jStep;
       } else {
-        i = m + 4;
+        i = m + ff.jStep;
       }
     }
     return -1;
@@ -293,6 +327,13 @@ class FlameGraphRenderer extends React.Component {
     setTimeout(this.renderCanvas, 0);
   };
 
+  updateViewDiff = (newView) => {
+    this.setState({
+      viewDiff: newView,
+    });
+    setTimeout(this.renderCanvas, 0);
+  };
+
   createFormatter = () => {
     return getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
   }
@@ -303,6 +344,8 @@ class FlameGraphRenderer extends React.Component {
     }
 
     const { names, levels, numTicks, sampleRate, units } = this.state;
+    const ff = this.parseFormat();
+    const isDiff = this.props.viewType === "diff";
 
     this.graphWidth = this.canvas.width = this.canvas.clientWidth;
     this.pxPerTick =
@@ -325,35 +368,31 @@ class FlameGraphRenderer extends React.Component {
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i++) {
       const level = levels[this.topLevel + i];
-      for (let j = 0; j < level.length; j += 4) {
-        // j = 0: x start of bar
-        // j = 1: width of bar
-        // j = 2: position in the main index
+      for (let j = 0; j < level.length; j += ff.jStep) {
 
-        const barIndex = level[j];
+        const barIndex = ff.getBarOffset(level, j);
         const x = this.tickToX(barIndex);
         const y = i * PX_PER_LEVEL;
-        let numBarTicks = level[j + 1];
+        let numBarTicks = ff.getBarTotal(level, j);
 
         // For this particular bar, there is a match
         const queryExists = this.query.length > 0;
         const nodeIsInQuery =
-          (this.query && names[level[j + 3]].indexOf(this.query) >= 0) || false;
+          (this.query && names[level[j + ff.jName]].indexOf(this.query) >= 0) || false;
         // merge very small blocks into big "collapsed" ones for performance
         const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
+        const numBarDiff = collapsed ? 0 : ff.getBarTotalDiff(level, j);
 
         // const collapsed = false;
-        if (collapsed) {
+        if (collapsed) { // TODO: fix collapsed code
           while (
-            j < level.length - 3 &&
-            barIndex + numBarTicks === level[j + 3] &&
-            level[j + 4] * this.pxPerTick <= COLLAPSE_THRESHOLD &&
-            nodeIsInQuery ===
-              ((this.query && names[level[j + 5]].indexOf(this.query) >= 0) ||
-                false)
+            j < level.length - ff.jStep &&
+            barIndex + numBarTicks === ff.getBarOffset(level, j + ff.jStep) &&
+            ff.getBarTotal(level, j + ff.jStep) * this.pxPerTick <= COLLAPSE_THRESHOLD &&
+            nodeIsInQuery === ((this.query && names[level[j + ff.jStep + ff.jName]].indexOf(this.query) >= 0) || false)
           ) {
-            j += 4;
-            numBarTicks += level[j + 1];
+            j += ff.jStep;
+            numBarTicks += ff.getBarTotal(level, j);
           }
         }
         // ticks are samples
@@ -372,7 +411,11 @@ class FlameGraphRenderer extends React.Component {
         const { spyName } = this.state.flamebearer;
 
         let nodeColor;
-        if (collapsed) {
+        if (isDiff && collapsed) {
+          nodeColor = colorGreyscale(200, 0.66);
+        } else if (isDiff) {
+          nodeColor = colorBasedOnDiff(numBarDiff, ff.getBarTotalLeft(level, j), a);
+        } else if (collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (queryExists && nodeIsInQuery) {
           nodeColor = HIGHLIGHT_NODE_COLOR;
@@ -380,7 +423,7 @@ class FlameGraphRenderer extends React.Component {
           nodeColor = colorGreyscale(200, 0.66);
         } else {
           nodeColor = colorBasedOnPackageName(
-            getPackageNameFromStackTrace(spyName, names[level[j + 3]]),
+            getPackageNameFromStackTrace(spyName, names[level[j + ff.jName]]),
             a
           );
         }
@@ -390,7 +433,7 @@ class FlameGraphRenderer extends React.Component {
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
           const percent = formatPercent(ratio);
-          const name = `${names[level[j + 3]]} (${percent}, ${this.formatter.format(numBarTicks, sampleRate)})`;
+          const name = `${names[level[j + ff.jName]]} (${percent}, ${this.formatter.format(numBarTicks, sampleRate)})`;
 
           this.ctx.save();
           this.ctx.clip();
@@ -403,6 +446,7 @@ class FlameGraphRenderer extends React.Component {
   };
 
   mouseMoveHandler = (e) => {
+    const ff = this.parseFormat();
     const { i, j } = this.xyToBar(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
 
     if (
@@ -415,18 +459,33 @@ class FlameGraphRenderer extends React.Component {
     }
 
     const level = this.state.levels[i];
-    const x = Math.max(this.tickToX(level[j]), 0);
+    const x = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
     const y = (i - this.topLevel) * PX_PER_LEVEL;
     const sw = Math.min(
-      this.tickToX(level[j] + level[j + 1]) - x,
+      this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - x,
       this.graphWidth
     );
 
     const highlightEl = this.highlightRef.current;
     const tooltipEl = this.tooltipRef.current;
-    const numBarTicks = level[j + 1];
+    const numBarTicks = ff.getBarTotal(level, j);
     const percent = formatPercent(numBarTicks / this.state.numTicks);
-    const tooltipTitle = this.state.names[level[j + 3]];
+    const tooltipTitle = this.state.names[level[j + ff.jName]];
+
+    var tooltipText, tooltipDiffText = '', tooltipDiffColor = ''
+    if (ff.format !== "double") {
+      tooltipText = `${percent}, ${numberWithCommas(numBarTicks)} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
+    } else {
+      const totalLeft = ff.getBarTotalLeft(level, j);
+      const totalRght = ff.getBarTotalRght(level, j);
+      const totalDiff = ff.getBarTotalDiff(level, j);
+      tooltipText  = `Left: ${numberWithCommas(totalLeft)} samples, ${this.formatter.format(totalLeft, this.state.sampleRate)}`;
+      tooltipText += `\nRight: ${numberWithCommas(totalRght)} samples, ${this.formatter.format(totalRght, this.state.sampleRate)}`;
+      tooltipDiffColor = totalDiff === 0 ? '' : totalDiff > 0 ? diffColorRed : diffColorGreen;
+      tooltipDiffText = !totalLeft ? ' (new)'
+                      : !totalRght ? ' (removed)'
+                      : ' (' + (totalDiff > 0 ? '+' : '') + formatPercent(totalDiff / totalLeft) + ')';
+    }
 
     // Before you change all of this to React consider performance implications.
     // Doing this with setState leads to significant lag.
@@ -443,9 +502,9 @@ class FlameGraphRenderer extends React.Component {
     tooltipEl.style.top = `${e.clientY+12}px`;
 
     tooltipEl.children[0].innerText = tooltipTitle;
-    tooltipEl.children[1].innerText = `${percent}, ${numberWithCommas(
-      numBarTicks
-    )} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
+    tooltipEl.children[1].children[0].innerText = tooltipText;
+    tooltipEl.children[1].children[1].innerText = tooltipDiffText;
+    tooltipEl.children[1].children[1].style.color = tooltipDiffColor;
   };
 
   mouseOutHandler = () => {
@@ -479,6 +538,7 @@ class FlameGraphRenderer extends React.Component {
           sortBy={this.state.sortBy}
           updateSortBy={this.updateSortBy}
           view={this.state.view}
+          viewDiff={this.state.viewDiff}
         />
       </div>
     )
@@ -490,7 +550,27 @@ class FlameGraphRenderer extends React.Component {
       >
         <div className='flamegraph-header'>
           <span></span>
-          <span>Frame width represents {unitsToFlamegraphTitle[this.state.units]}</span>
+          { !this.state.viewDiff ?
+            <div>
+              <div className="row">
+                Frame width represents {unitsToFlamegraphTitle[this.state.units]}
+              </div>
+            </div> :
+            <div>
+              <div className="row">
+                Base graph: left - Comparison graph: right
+              </div>
+              <div className="row flamegraph-legend">
+                <div className="flamegraph-legend-list">
+                  {diffLegend.map((v) => (
+                    <div key={v} className="flamegraph-legend-item" style={{ backgroundColor: colorBasedOnDiff(v, 100, 0.8) }}>
+                      {v > 0 ? '+' : ''}{v}%
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          }
           <ExportData flameCanvas={this.canvasRef}/>
         </div>
         <canvas
@@ -512,31 +592,49 @@ class FlameGraphRenderer extends React.Component {
       ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
       : [];
 
-    let instructionsText = this.props.viewType === "double" ? `Select ${this.props.viewSide} time range` : null;
-    let instructionsClassName = this.props.viewType === "double" ? `${this.props.viewSide}-instructions` : null;
-
     return (
       <div className={clsx("canvas-renderer", { "double": this.props.viewType === "double" })}>
 
         <div className="canvas-container">
           <ProfilerHeader
             view={this.state.view}
+            viewDiff={this.state.viewDiff}
             handleSearchChange={this.handleSearchChange}
             reset={this.reset}
             updateView={this.updateView}
+            updateViewDiff={this.updateViewDiff}
             resetStyle={this.state.resetStyle}
           />
-          <div className={`${instructionsClassName}-wrapper`}>
-            <span className={`${instructionsClassName}-text`}>{instructionsText}</span>
-          </div>
           {
-            this.props.viewType === "double" ?
-              <TimelineChartWrapper
-                key={`timeline-chart-${this.props.viewSide}`}
-                id={`timeline-chart-${this.props.viewSide}`}
-                viewSide={this.props.viewSide}
-              /> :
-              null
+            this.props.viewType === "double"
+              ? <Fragment>
+                <InstructionText {...this.props}/>
+                <TimelineChartWrapper
+                  key={`timeline-chart-${this.props.viewSide}`}
+                  id={`timeline-chart-${this.props.viewSide}`}
+                  viewSide={this.props.viewSide}
+                />
+              </Fragment>
+              : this.props.viewType === "diff"
+              ? <div className="diff-instructions-wrapper">
+                <div className="diff-instructions-wrapper-side">
+                  <InstructionText {...this.props} viewSide="left"/>
+                  <TimelineChartWrapper
+                    key={`timeline-chart-left`}
+                    id={`timeline-chart-left`}
+                    viewSide="left"
+                  />
+                </div>
+                <div className="diff-instructions-wrapper-side">
+                  <InstructionText {...this.props} viewSide="right"/>
+                  <TimelineChartWrapper
+                    key={`timeline-chart-right`}
+                    id={`timeline-chart-right`}
+                    viewSide="right"
+                  />
+                </div>
+              </div>
+              : null
           }
           <div className={clsx("flamegraph-container panes-wrapper", { "vertical-orientation": this.props.viewType === "double" })}>
             {
@@ -567,11 +665,23 @@ class FlameGraphRenderer extends React.Component {
           ref={this.tooltipRef}
         >
           <div className="flamegraph-tooltip-name"></div>
-          <div></div>
+          <div><span></span><span></span></div>
         </div>
       </div>
     )
+  }
 }
+
+function InstructionText(props) {
+  const {viewType, viewSide} = props;
+  let instructionsText = viewType === "double" || viewType === "diff" ? `Select ${viewSide} time range` : null;
+  let instructionsClassName = viewType === "double" || viewType === "diff" ? `${viewSide}-instructions` : null;
+
+  return (
+    <div className={`${instructionsClassName}-wrapper`}>
+      <span className={`${instructionsClassName}-text`}>{instructionsText}</span>
+    </div>
+  )
 }
 
 const mapStateToProps = (state) => ({
@@ -579,6 +689,7 @@ const mapStateToProps = (state) => ({
   renderURL: buildRenderURL(state),
   leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
   rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),
+  diffRenderURL: buildDiffRenderURL(state, state.leftFrom, state.leftUntil, state.rightFrom, state.rightUntil),
 });
 
 const mapDispatchToProps = (dispatch) => ({

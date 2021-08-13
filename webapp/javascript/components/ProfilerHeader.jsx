@@ -2,17 +2,22 @@ import React from "react";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faIcicles,
+  faAlignLeft,
+  faBars,
   faColumns,
+  faIcicles,
+  faListUl,
   faTable,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function ProfilerHeader({
   view,
+  viewDiff,
   handleSearchChange,
   resetStyle,
   reset,
   updateView,
+  updateViewDiff,
 }) {
   return (
     <div className="navbar-2">
@@ -33,6 +38,34 @@ export default function ProfilerHeader({
         Reset View
       </button>
       <div className="navbar-space-filler" />
+      {!viewDiff ? null : (
+        <div className="btn-group viz-switch">
+          <button
+            type="button"
+            className={clsx("btn", { active: viewDiff === "self" })}
+            onClick={() => updateViewDiff("self")}
+          >
+            <FontAwesomeIcon icon={faListUl} />
+            &nbsp;&thinsp;Self
+          </button>
+          <button
+            type="button"
+            className={clsx("btn", { active: viewDiff === "total" })}
+            onClick={() => updateViewDiff("total")}
+          >
+            <FontAwesomeIcon icon={faBars} />
+            &nbsp;&thinsp;Total
+          </button>
+          <button
+            type="button"
+            className={clsx("btn", { active: viewDiff === "diff" })}
+            onClick={() => updateViewDiff("diff")}
+          >
+            <FontAwesomeIcon icon={faAlignLeft} />
+            &nbsp;&thinsp;Diff
+          </button>
+        </div>
+      )}
       <div className="btn-group viz-switch">
         <button
           type="button"

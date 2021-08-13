@@ -21,10 +21,10 @@ function ExportData(props) {
 
   const formatPdfTitle = () => {
     const { value } = props.labels.filter((x) => x.name === "__name__")[0];
-    const { from, until } = props
+    const { from, until } = props;
 
-    return `${value} - from: ${from} - to ${until}`
-  }
+    return `${value} - from: ${from} - to ${until}`;
+  };
 
   // export flamegraph canvas element
   const exportCanvas = (mimeType) => {
@@ -89,7 +89,7 @@ function ExportData(props) {
   // export the flamegraph table element
   const exportTable = () => {
     const pdf = new JSPDF("p", "mm", "a4");
-    pdf.text(12, 7, formatPdfTitle())
+    pdf.text(12, 7, formatPdfTitle());
     pdf.autoTable({
       html: ".flamegraph-table",
       theme: "grid",

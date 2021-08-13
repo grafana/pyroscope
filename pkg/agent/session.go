@@ -120,8 +120,6 @@ func addSuffix(name string, ptype spy.ProfileType) (string, error) {
 	}
 	k.Add("__name__", k.AppName()+"."+string(ptype))
 	return k.Normalized(), nil
-	// tagsCopy["__name__"] = appName + "." + string(t)
-	// ps.names[t] = segment.NewKey(tagsCopy).Normalized()
 }
 
 // mergeTagsWithAppName validates user input and merges explicitly specified

@@ -4,6 +4,7 @@ node_modules
 /bin
 /third_party/*/lib*.a
 /third_party/*/target
+/third_party/phpspy_src
 pkged.go
 .DS_Store
 /Icon*

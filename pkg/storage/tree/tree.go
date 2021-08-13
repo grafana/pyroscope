@@ -63,10 +63,10 @@ func New() *Tree {
 func (t *Tree) Merge(srcTrieI merge.Merger) {
 	srcTrie := srcTrieI.(*Tree)
 
-	srcNodes := make([]*treeNode, 0, 100)
+	srcNodes := make([]*treeNode, 0, 128)
 	srcNodes = append(srcNodes, srcTrie.root)
 
-	dstNodes := make([]*treeNode, 0, 100)
+	dstNodes := make([]*treeNode, 0, 128)
 	dstNodes = append(dstNodes, t.root)
 
 	for len(srcNodes) > 0 {
@@ -81,31 +81,31 @@ func (t *Tree) Merge(srcTrieI merge.Merger) {
 
 		for _, srcChildNode := range st.ChildrenNodes {
 			dstChildNode := dt.insert(srcChildNode.Name)
-			srcNodes = prepend(srcNodes, srcChildNode)
-			dstNodes = prepend(dstNodes, dstChildNode)
+			srcNodes = prependTreeNode(srcNodes, srcChildNode)
+			dstNodes = prependTreeNode(dstNodes, dstChildNode)
 		}
 	}
 }
 
-func prepend(s []*treeNode, x *treeNode) []*treeNode {
-	if len(s) != 0 && s[0] == x {
-		return s
-	}
-	prev := x
-	for i, elem := range s {
-		switch {
-		case i == 0:
-			s[0] = x
-			prev = elem
-		case elem == x:
-			s[i] = prev
-			return s
-		default:
-			s[i] = prev
-			prev = elem
-		}
-	}
-	return append(s, prev)
+func prependTreeNode(s []*treeNode, x *treeNode) []*treeNode {
+	s = append(s, nil)
+	copy(s[1:], s)
+	s[0] = x
+	return s
+}
+
+func prependBytes(s [][]byte, x []byte) [][]byte {
+	s = append(s, nil)
+	copy(s[1:], s)
+	s[0] = x
+	return s
+}
+
+func prependInt(s []int, x int) []int {
+	s = append(s, 0)
+	copy(s[1:], s)
+	s[0] = x
+	return s
 }
 
 func (t *Tree) String() string {
@@ -113,7 +113,7 @@ func (t *Tree) String() string {
 	defer t.RUnlock()
 
 	res := ""
-	t.iterate(func(k []byte, v uint64) {
+	t.Iterate(func(k []byte, v uint64) {
 		if v > 0 {
 			res += fmt.Sprintf("%q %d\n", k[2:], v)
 		}
@@ -154,7 +154,7 @@ func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 	node.Total += value
 }
 
-func (t *Tree) iterate(cb func(key []byte, val uint64)) {
+func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	nodes := []*treeNode{t.root}
 	prefixes := make([][]byte, 1)
 	prefixes[0] = make([]byte, 0)
@@ -173,7 +173,7 @@ func (t *Tree) iterate(cb func(key []byte, val uint64)) {
 
 		nodes = append(node.ChildrenNodes, nodes...)
 		for i := 0; i < len(node.ChildrenNodes); i++ {
-			prefixes = append([][]byte{label}, prefixes...)
+			prefixes = prependBytes(prefixes, label)
 		}
 	}
 }

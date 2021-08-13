@@ -3,12 +3,13 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/dgrijalva/lfu-go"
-
+	"github.com/pyroscope-io/lfu-go"
 	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
+	"github.com/valyala/bytebufferpool"
 )
 
 type Cache struct {
@@ -94,17 +95,28 @@ func (cache *Cache) Put(key string, val interface{}) {
 	}
 }
 
+type serializable interface{ Serialize(io.Writer) error }
+
 func (cache *Cache) saveToDisk(key string, val interface{}) error {
-	// serialize the key and value
-	buf, err := cache.Bytes(key, val)
+	var buf []byte
+	var err error
+	if s, ok := val.(serializable); ok {
+		b := bytebufferpool.Get()
+		defer bytebufferpool.Put(b)
+		if err = s.Serialize(b); err == nil {
+			buf = b.Bytes()
+		}
+	} else {
+		// Note that `tree.Tree` does not satisfy serializable interface.
+		buf, err = cache.Bytes(key, val)
+	}
 	if err != nil {
 		return fmt.Errorf("serialize key and value: %v", err)
 	}
 
 	metrics.Count(cache.storageWriteCounter, 1)
-	// update the kv to badger
-	if err := cache.db.Update(func(txn *badger.Txn) error {
-		return txn.SetEntry(badger.NewEntry([]byte(cache.prefix+key), buf))
+	if err = cache.db.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(cache.prefix+key), buf)
 	}); err != nil {
 		return fmt.Errorf("save to disk: %v", err)
 	}

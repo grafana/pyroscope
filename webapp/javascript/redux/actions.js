@@ -3,14 +3,16 @@ import {
   SET_FROM,
   SET_UNTIL,
   SET_MAX_NODES,
-  SET_LABELS,
-  ADD_LABEL,
-  REMOVE_LABEL,
   REFRESH,
   REQUEST_TIMELINE,
   RECEIVE_TIMELINE,
+  REQUEST_TAGS,
+  RECEIVE_TAGS,
+  REQUEST_TAG_VALUES,
+  RECEIVE_TAG_VALUES,
   REQUEST_NAMES,
   RECEIVE_NAMES,
+  SET_QUERY,
   SET_LEFT_DATE_RANGE,
   SET_RIGHT_DATE_RANGE,
   SET_LEFT_FROM,
@@ -60,21 +62,6 @@ export const setMaxNodes = (maxNodes) => ({
   payload: { maxNodes },
 });
 
-export const setLabels = (labels) => ({
-  type: SET_LABELS,
-  payload: { labels },
-});
-
-export const addLabel = (name, value) => ({
-  type: ADD_LABEL,
-  payload: { name, value },
-});
-
-export const removeLabel = (name) => ({
-  type: REMOVE_LABEL,
-  payload: { name },
-});
-
 export const refresh = (url) => ({ type: REFRESH, payload: { url } });
 
 export const requestTimeline = (url) => ({
@@ -87,11 +74,33 @@ export const receiveTimeline = (data) => ({
   payload: data,
 });
 
+export const requestTags = () => ({ type: REQUEST_TAGS });
+
+export const receiveTags = (tags) => ({
+  type: RECEIVE_TAGS,
+  payload: { tags },
+});
+
+export const requestTagValues = (tag) => ({
+  type: REQUEST_TAG_VALUES,
+  payload: { tag },
+});
+
+export const receiveTagValues = (values, tag) => ({
+  type: RECEIVE_TAG_VALUES,
+  payload: { values, tag },
+});
+
 export const requestNames = () => ({ type: REQUEST_NAMES, payload: {} });
 
 export const receiveNames = (names) => ({
   type: RECEIVE_NAMES,
   payload: { names },
+});
+
+export const setQuery = (query) => ({
+  type: SET_QUERY,
+  payload: { query },
 });
 
 let currentTimelineController;
@@ -108,6 +117,34 @@ export function fetchTimeline(url) {
       .then((response) => response.json())
       .then((data) => {
         dispatch(receiveTimeline(data));
+      })
+      .finally();
+  };
+}
+
+export function fetchTags(query) {
+  return (dispatch) => {
+    dispatch(requestTags());
+    return fetch(`/labels?query=${encodeURIComponent(query)}`)
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveTags(data));
+      })
+      .finally();
+  };
+}
+
+export function fetchTagValues(query, tag) {
+  return (dispatch) => {
+    dispatch(requestTagValues(tag));
+    return fetch(
+      `/label-values?label=${encodeURIComponent(
+        tag
+      )}&query=${encodeURIComponent(query)}`
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveTagValues(data, tag));
       })
       .finally();
   };
