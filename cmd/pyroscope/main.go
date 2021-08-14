@@ -1,7 +1,7 @@
 package main
 
-import "github.com/pyroscope-io/pyroscope/cmd"
+import "github.com/pyroscope-io/pyroscope/cmd/pyroscope/command"
 
 func main() {
-	cmd.Execute()
+	command.Initialize()
 }
