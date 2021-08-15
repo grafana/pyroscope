@@ -9,14 +9,27 @@ services:
       dockerfile: Dockerfile
     command:
       - server
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 2048MB
+
 
   pyroscope_reference:
     environment:
       - PYROSCOPE_LOG_LEVEL=debug
       - PYROSCOPE_WAIT_AFTER_STOP=true
-    image: "pyroscope/pyroscope:latest"
+    image: pyroscope/pyroscope-dev:main
     command:
       - server
+    ports:
+    - 4041:4040
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 2048MB
 
   grafana:
     image: grafana/grafana:8.1.1
