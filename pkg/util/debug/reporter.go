@@ -98,8 +98,36 @@ func (d *Reporter) Start() {
 			retAndConv := func(m map[string]interface{}, k string) (float64, bool) {
 				if v, ok := m[k]; ok {
 					if iv, ok := v.(bytesize.ByteSize); ok {
-						return float64(iv), true
+						v = int64(iv)
 					}
+
+					switch n := v.(type) {
+					case int:
+						return float64(n), true
+					case uint:
+						return float64(n), true
+					case int64:
+						return float64(n), true
+					case uint64:
+						return float64(n), true
+					case int32:
+						return float64(n), true
+					case uint32:
+						return float64(n), true
+					case int16:
+						return float64(n), true
+					case uint16:
+						return float64(n), true
+					case int8:
+						return float64(n), true
+					case uint8:
+						return float64(n), true
+					case float64:
+						return float64(n), true
+					case float32:
+						return float64(n), true
+					}
+					return 0.0, false
 				}
 
 				return 0, false
@@ -155,7 +183,7 @@ func (d *Reporter) Start() {
 			if v, ok := retAndConv(cache, "trees_size"); ok {
 				d.cacheTreesSize.Set(v)
 			}
-			logData(c, "cache stats")
+			logData(cache, "cache stats")
 
 			counter++
 		}
