@@ -15,7 +15,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 )
 
 // 21:22:08      air |  (time.Duration) 16m40s,
