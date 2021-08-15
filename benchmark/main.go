@@ -20,7 +20,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/sirupsen/logrus"
 )
@@ -52,7 +51,7 @@ func waitUntilEndpointReady(url string) {
 	}
 }
 
-func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
+func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie, runProgress prometheus.Gauge) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
 		UpstreamAddress:        "http://pyroscope:4040",
@@ -101,7 +100,7 @@ func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transp
 			successfulUploads.Add(1)
 		}
 		atomic.AddUint64(&requestsCompleteCount, 1)
-		metrics.Gauge("run_progress", float64(requestsCompleteCount)/(float64(appsCount*requestsCount*clientsCount)))
+		runProgress.Set(float64(requestsCompleteCount) / (float64(appsCount * requestsCount * clientsCount)))
 	}
 
 	wg.Done()
@@ -203,7 +202,15 @@ func main() {
 	go http.ListenAndServe(":8081", nil)
 
 	logrus.Info("waiting for other services to load")
-	metrics.Gauge("benchmark", 0)
+
+	benchmark := promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "benchmark",
+	})
+	runProgress := promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "run_progress",
+	})
+
+	benchmark.Set(0)
 
 	waitUntilEndpointReady("pyroscope:4040")
 	waitUntilEndpointReady("prometheus:9090")
@@ -228,7 +235,7 @@ func main() {
 	logrus.Info("done generating fixtures")
 
 	logrus.Info("starting sending requests")
-	metrics.Gauge("benchmark", 1)
+	benchmark.Set(1)
 	startTime := time.Now()
 	reportSummaryMetric("start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
@@ -238,12 +245,12 @@ func main() {
 	for i := 0; i < appsCount; i++ {
 		r.Read(appNameBuf)
 		for j := 0; j < clientsCount; j++ {
-			go startClientThread(hex.EncodeToString(appNameBuf), &wg, fixtures[i])
+			go startClientThread(hex.EncodeToString(appNameBuf), &wg, fixtures[i], runProgress)
 		}
 	}
 	wg.Wait()
 	logrus.Info("done sending requests")
-	metrics.Gauge("benchmark", 0)
+	benchmark.Set(0)
 	reportSummaryMetric("stop-time", time.Now().Format(timeFmt))
 	reportSummaryMetric("duration", time.Since(startTime).String())
 
