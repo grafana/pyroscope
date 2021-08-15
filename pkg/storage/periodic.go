@@ -56,7 +56,11 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		percent := s.config.CacheEvictVolume
 		if used > s.config.CacheEvictThreshold {
 			func() {
-				timer := prometheus.NewTimer(prometheus.ObserverFunc(s.evictionsTimer.Set))
+				timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+					v = v * 1_000_000_000 // convert to nanoseconds
+
+					s.evictionsTimer.Set(v)
+				}))
 				defer timer.ObserveDuration()
 
 				s.evictionsCount.Add(1)
@@ -71,7 +75,11 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 }
 
 func (s *Storage) writeBackTask() {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.writeBackTimer.Set))
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+		v = v * 1_000_000_000 // convert to nanoseconds
+
+		s.writeBackTimer.Set(v)
+	}))
 	defer timer.ObserveDuration()
 
 	s.writeBackCount.Add(1)
@@ -82,7 +90,11 @@ func (s *Storage) writeBackTask() {
 }
 
 func (s *Storage) retentionTask() {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.retentionTimer.Set))
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+		v = v * 1_000_000_000 // convert to nanoseconds
+
+		s.retentionTimer.Set(v)
+	}))
 	defer timer.ObserveDuration()
 
 	s.retentionCount.Add(1)

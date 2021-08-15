@@ -590,7 +590,11 @@ func (s *Storage) Close() error {
 	s.wg.Wait()
 
 	func() {
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.storageCachesFlushTimer.Set))
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+			v = v * 1_000_000_000 // convert to nanoseconds
+
+			s.storageCachesFlushTimer.Set(v)
+		}))
 		defer timer.ObserveDuration()
 
 		wg := sync.WaitGroup{}
@@ -605,7 +609,11 @@ func (s *Storage) Close() error {
 	}()
 
 	func() {
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.storageBadgerCloseTimer.Set))
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+			v = v * 1_000_000_000 // convert to nanoseconds
+
+			s.storageBadgerCloseTimer.Set(v)
+		}))
 		defer timer.ObserveDuration()
 
 		wg := sync.WaitGroup{}
