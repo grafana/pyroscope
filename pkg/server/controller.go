@@ -8,7 +8,6 @@ import (
 	golog "log"
 	"net/http"
 	"net/http/pprof"
-	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,7 +19,6 @@ import (
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	goHttpMetricsMiddleware "github.com/slok/go-http-metrics/middleware"
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
-	"golang.org/x/oauth2"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -142,122 +140,52 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	return mux, nil
 }
 
-type oauthInfo struct {
-	Config  *oauth2.Config
-	AuthURL *url.URL
-	Type    int
-}
-
-func (ctrl *Controller) generateOauthInfo(oauthType int) *oauthInfo {
-	switch oauthType {
-	case oauthGoogle:
-		googleOauthInfo := &oauthInfo{
-			Config: &oauth2.Config{
-				ClientID:     ctrl.config.Google.ClientID,
-				ClientSecret: ctrl.config.Google.ClientSecret,
-				Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
-				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.Google.AuthURL, TokenURL: ctrl.config.Google.TokenURL},
-			},
-			Type: oauthGoogle,
-		}
-		if ctrl.config.Google.RedirectURL != "" {
-			googleOauthInfo.Config.RedirectURL = ctrl.config.Google.RedirectURL
-		}
-
-		return googleOauthInfo
-	case oauthGithub:
-		githubOauthInfo := &oauthInfo{
-			Config: &oauth2.Config{
-				ClientID:     ctrl.config.Github.ClientID,
-				ClientSecret: ctrl.config.Github.ClientSecret,
-				Scopes:       []string{"read:user", "user:email"},
-				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.Github.AuthURL, TokenURL: ctrl.config.Github.TokenURL},
-			},
-			Type: oauthGithub,
-		}
-
-		if ctrl.config.Github.RedirectURL != "" {
-			githubOauthInfo.Config.RedirectURL = ctrl.config.Github.RedirectURL
-		}
-
-		return githubOauthInfo
-	case oauthGitlab:
-		gitlabOauthInfo := &oauthInfo{
-			Config: &oauth2.Config{
-				ClientID:     ctrl.config.Gitlab.ClientID,
-				ClientSecret: ctrl.config.Gitlab.ClientSecret,
-				Scopes:       []string{"read_user"},
-				Endpoint:     oauth2.Endpoint{AuthURL: ctrl.config.Gitlab.AuthURL, TokenURL: ctrl.config.Gitlab.TokenURL},
-			},
-			Type: oauthGitlab,
-		}
-
-		if ctrl.config.Gitlab.RedirectURL != "" {
-			gitlabOauthInfo.Config.RedirectURL = ctrl.config.Gitlab.RedirectURL
-		}
-
-		return gitlabOauthInfo
-	}
-
-	return nil
-}
-
 func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	authRoutes := []route{
 		{"/login", ctrl.loginHandler()},
 		{"/logout", ctrl.logoutHandler()},
 	}
 
-	if ctrl.config.Google.Enabled {
-		authURL, err := url.Parse(ctrl.config.Google.AuthURL)
+	if ctrl.config.Auth.Google.Enabled {
+		googleHandler, err := newGoogleHandler(ctrl.config.Auth.Google, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
 
-		googleOauthInfo := ctrl.generateOauthInfo(oauthGoogle)
-		if googleOauthInfo != nil {
-			googleOauthInfo.AuthURL = authURL
-			authRoutes = append(authRoutes, []route{
-				{"/auth/google/login", ctrl.oauthLoginHandler(googleOauthInfo)},
-				{"/auth/google/callback", ctrl.callbackHandler("/auth/google/redirect")},
-				{"/auth/google/redirect", ctrl.callbackRedirectHandler(
-					"https://www.googleapis.com/oauth2/v2/userinfo", googleOauthInfo, ctrl.decodeGoogleCallbackResponse)},
-			}...)
-		}
+		authRoutes = append(authRoutes, []route{
+			{"/auth/google/login", ctrl.oauthLoginHandler(googleHandler)},
+			{"/auth/google/callback", ctrl.callbackHandler(googleHandler.redirectRoute)},
+			{"/auth/google/redirect", ctrl.callbackRedirectHandler(googleHandler)},
+		}...)
+
 	}
 
-	if ctrl.config.Github.Enabled {
-		authURL, err := url.Parse(ctrl.config.Github.AuthURL)
+	if ctrl.config.Auth.Github.Enabled {
+		githubHandler, err := newGithubHandler(ctrl.config.Auth.Github, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
 
-		githubOauthInfo := ctrl.generateOauthInfo(oauthGithub)
-		if githubOauthInfo != nil {
-			githubOauthInfo.AuthURL = authURL
-			authRoutes = append(authRoutes, []route{
-				{"/auth/github/login", ctrl.oauthLoginHandler(githubOauthInfo)},
-				{"/auth/github/callback", ctrl.callbackHandler("/auth/github/redirect")},
-				{"/auth/github/redirect", ctrl.callbackRedirectHandler("https://api.github.com/user", githubOauthInfo, ctrl.decodeGithubCallbackResponse)},
-			}...)
-		}
+		authRoutes = append(authRoutes, []route{
+			{"/auth/github/login", ctrl.oauthLoginHandler(githubHandler)},
+			{"/auth/github/callback", ctrl.callbackHandler(githubHandler.redirectRoute)},
+			{"/auth/github/redirect", ctrl.callbackRedirectHandler(githubHandler)},
+		}...)
+
 	}
 
-	if ctrl.config.Gitlab.Enabled {
-		authURL, err := url.Parse(ctrl.config.Gitlab.AuthURL)
+	if ctrl.config.Auth.Gitlab.Enabled {
+		gitlabHandler, err := newGitlabHandler(ctrl.config.Auth.Gitlab, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
 
-		gitlabOauthInfo := ctrl.generateOauthInfo(oauthGitlab)
-		if gitlabOauthInfo != nil {
-			gitlabOauthInfo.AuthURL = authURL
-			authRoutes = append(authRoutes, []route{
-				{"/auth/gitlab/login", ctrl.oauthLoginHandler(gitlabOauthInfo)},
-				{"/auth/gitlab/callback", ctrl.callbackHandler("/auth/gitlab/redirect")},
-				{"/auth/gitlab/redirect", ctrl.callbackRedirectHandler(ctrl.config.Gitlab.APIURL, gitlabOauthInfo, ctrl.decodeGitLabCallbackResponse)},
-			}...)
-		}
+		authRoutes = append(authRoutes, []route{
+			{"/auth/gitlab/login", ctrl.oauthLoginHandler(gitlabHandler)},
+			{"/auth/gitlab/callback", ctrl.callbackHandler(gitlabHandler.redirectRoute)},
+			{"/auth/gitlab/redirect", ctrl.callbackRedirectHandler(gitlabHandler)},
+		}...)
+
 	}
 
 	return authRoutes, nil
@@ -322,7 +250,7 @@ func (ctrl *Controller) trackMetrics(route string) func(next http.HandlerFunc) h
 }
 
 func (ctrl *Controller) isAuthRequired() bool {
-	return ctrl.config.Google.Enabled || ctrl.config.Github.Enabled || ctrl.config.Gitlab.Enabled
+	return ctrl.config.Auth.Google.Enabled || ctrl.config.Auth.Github.Enabled || ctrl.config.Auth.Gitlab.Enabled
 }
 
 func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {

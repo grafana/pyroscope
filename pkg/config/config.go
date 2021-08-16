@@ -89,9 +89,7 @@ type Server struct {
 	CacheSegmentSize    int               `deprecated:"true" mapstructure:"cache-segment-size"`
 	CacheTreeSize       int               `deprecated:"true" mapstructure:"cache-tree-size"`
 
-	Google GoogleOauth `mapstructure:"google"`
-	Gitlab GitlabOauth `mapstructure:"gitlab"`
-	Github GithubOauth `mapstructure:"github"`
+	Auth Auth `mapstructure:"auth"`
 
 	// TODO: can we generate these automatically if it's empty?
 	JWTSecret                string            `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
@@ -107,35 +105,44 @@ type MetricExportRule struct {
 	Labels []string `def:"" desc:"list of tags to be exported as prometheus labels" mapstructure:"labels"`
 }
 
+type Auth struct {
+	Google GoogleOauth `mapstructure:"google"`
+	Gitlab GitlabOauth `mapstructure:"gitlab"`
+	Github GithubOauth `mapstructure:"github"`
+}
+
 // TODO: Maybe merge Oauth structs into one (would have to move def and desc tags somewhere else in code)
 type GoogleOauth struct {
 	// TODO: remove deprecated: true when we enable these back
-	Enabled      bool   `json:"-" deprecated:"true" def:"false" desc:"enables Google Oauth" mapstructure:"enabled"`
-	ClientID     string `json:"-" deprecated:"true" def:"" desc:"client ID generated for Google API" mapstructure:"client-id"`
-	ClientSecret string `json:"-" deprecated:"true" def:"" desc:"client secret generated for Google API" mapstructure:"client-secret"`
-	RedirectURL  string `json:"-" deprecated:"true" def:"" desc:"url that google will redirect to after logging in. Has to be in form <pathToPyroscopeServer/auth/google/callback>" mapstructure:"redirect-url"`
-	AuthURL      string `json:"-" deprecated:"true" def:"https://accounts.google.com/o/oauth2/auth" desc:"auth url for Google API (usually present in credentials.json file)" mapstructure:"auth-url"`
-	TokenURL     string `json:"-" deprecated:"true" def:"https://accounts.google.com/o/oauth2/token" desc:"token url for Google API (usually present in credentials.json file)" mapstructure:"token-url"`
+	Enabled        bool     `json:"-" deprecated:"true" def:"false" desc:"enables Google Oauth" mapstructure:"enabled"`
+	ClientID       string   `json:"-" deprecated:"true" def:"" desc:"client ID generated for Google API" mapstructure:"client-id"`
+	ClientSecret   string   `json:"-" deprecated:"true" def:"" desc:"client secret generated for Google API" mapstructure:"client-secret"`
+	RedirectURL    string   `json:"-" deprecated:"true" def:"" desc:"url that google will redirect to after logging in. Has to be in form <pathToPyroscopeServer/auth/google/callback>" mapstructure:"redirect-url"`
+	AuthURL        string   `json:"-" deprecated:"true" def:"https://accounts.google.com/o/oauth2/auth" desc:"auth url for Google API (usually present in credentials.json file)" mapstructure:"auth-url"`
+	TokenURL       string   `json:"-" deprecated:"true" def:"https://accounts.google.com/o/oauth2/token" desc:"token url for Google API (usually present in credentials.json file)" mapstructure:"token-url"`
+	AllowedDomains []string `json:"-" deprecated:"true" def:"" desc:"list of domains that are allowed to login through google" mapstructure:"allowed-domains"`
 }
 
 type GitlabOauth struct {
 	Enabled bool `json:"-" deprecated:"true" def:"false" desc:"enables Gitlab Oauth" mapstructure:"enabled"`
 	// TODO: I changed this to ClientID to fit others, but in Gitlab docs it's Application ID so it might get someone confused?
-	ClientID     string `json:"-" deprecated:"true" def:"" desc:"client ID generated for GitLab API" mapstructure:"client-id"`
-	ClientSecret string `json:"-" deprecated:"true" def:"" desc:"client secret generated for GitLab API" mapstructure:"client-secret"`
-	RedirectURL  string `json:"-" deprecated:"true" def:"" desc:"url that gitlab will redirect to after logging in. Has to be in form <pathToPyroscopeServer/auth/gitlab/callback>" mapstructure:"redirect-url"`
-	AuthURL      string `json:"-" deprecated:"true" def:"https://gitlab.com/oauth/authorize" desc:"auth url for GitLab API (keep default for cloud, usually https://gitlab.mycompany.com/oauth/authorize for on-premise)" mapstructure:"auth-url"`
-	TokenURL     string `json:"-" deprecated:"true" def:"https://gitlab.com/oauth/token" desc:"token url for GitLab API (keep default for cloud, usually https://gitlab.mycompany.com/oauth/token for on-premise)" mapstructure:"token-url"`
-	APIURL       string `json:"-" deprecated:"true" def:"https://gitlab.com/api/v4/user" desc:"URL to gitlab API (keep default for cloud, usually https://gitlab.mycompany.com/api/v4/user for on-premise)" mapstructure:"api-url"`
+	ClientID      string   `json:"-" deprecated:"true" def:"" desc:"client ID generated for GitLab API" mapstructure:"client-id"`
+	ClientSecret  string   `json:"-" deprecated:"true" def:"" desc:"client secret generated for GitLab API" mapstructure:"client-secret"`
+	RedirectURL   string   `json:"-" deprecated:"true" def:"" desc:"url that gitlab will redirect to after logging in. Has to be in form <pathToPyroscopeServer/auth/gitlab/callback>" mapstructure:"redirect-url"`
+	AuthURL       string   `json:"-" deprecated:"true" def:"https://gitlab.com/oauth/authorize" desc:"auth url for GitLab API (keep default for cloud, usually https://gitlab.mycompany.com/oauth/authorize for on-premise)" mapstructure:"auth-url"`
+	TokenURL      string   `json:"-" deprecated:"true" def:"https://gitlab.com/oauth/token" desc:"token url for GitLab API (keep default for cloud, usually https://gitlab.mycompany.com/oauth/token for on-premise)" mapstructure:"token-url"`
+	APIURL        string   `json:"-" deprecated:"true" def:"https://gitlab.com/api/v4" desc:"URL to gitlab API (keep default for cloud, usually https://gitlab.mycompany.com/api/v4/user for on-premise)" mapstructure:"api-url"`
+	AllowedGroups []string `json:"-" deprecated:"true" def:"" desc:"list of groups (unique names of the group as listed in URL) that are allowed to login through gitlab" mapstructure:"allowed-groups"`
 }
 
 type GithubOauth struct {
-	Enabled      bool   `json:"-" deprecated:"true" def:"false" desc:"enables Github Oauth" mapstructure:"enabled"`
-	ClientID     string `json:"-" deprecated:"true" def:"" desc:"client ID generated for Github API" mapstructure:"client-id"`
-	ClientSecret string `json:"-" deprecated:"true" def:"" desc:"client secret generated for Github API" mapstructure:"client-secret"`
-	RedirectURL  string `json:"-" deprecated:"true" def:"" desc:"url that Github will redirect to after logging in. Has to be in form <pathToPyroscopeServer/auth/github/callback>" mapstructure:"redirect-url"`
-	AuthURL      string `json:"-" deprecated:"true" def:"https://github.com/login/oauth/authorize" desc:"auth url for Github API" mapstructure:"auth-url"`
-	TokenURL     string `json:"-" deprecated:"true" def:"https://github.com/login/oauth/access_token" desc:"token url for Github API" mapstructure:"token-url"`
+	Enabled              bool     `json:"-" deprecated:"true" def:"false" desc:"enables Github Oauth" mapstructure:"enabled"`
+	ClientID             string   `json:"-" deprecated:"true" def:"" desc:"client ID generated for Github API" mapstructure:"client-id"`
+	ClientSecret         string   `json:"-" deprecated:"true" def:"" desc:"client secret generated for Github API" mapstructure:"client-secret"`
+	RedirectURL          string   `json:"-" deprecated:"true" def:"" desc:"url that Github will redirect to after logging in. Has to be in form <pathToPyroscopeServer/auth/github/callback>" mapstructure:"redirect-url"`
+	AuthURL              string   `json:"-" deprecated:"true" def:"https://github.com/login/oauth/authorize" desc:"auth url for Github API" mapstructure:"auth-url"`
+	TokenURL             string   `json:"-" deprecated:"true" def:"https://github.com/login/oauth/access_token" desc:"token url for Github API" mapstructure:"token-url"`
+	AllowedOrganizations []string `json:"-" deprecated:"true" def:"" desc:"list of organizations that are allowed to login through github" mapstructure:"allowed-organizations"`
 }
 
 type Convert struct {

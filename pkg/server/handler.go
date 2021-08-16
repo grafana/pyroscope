@@ -4,14 +4,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 	"text/template"
 	"time"
 
@@ -30,9 +27,9 @@ func (ctrl *Controller) loginHandler() http.HandlerFunc {
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
-			"GoogleEnabled": ctrl.config.Google.Enabled,
-			"GithubEnabled": ctrl.config.Github.Enabled,
-			"GitlabEnabled": ctrl.config.Gitlab.Enabled,
+			"GoogleEnabled": ctrl.config.Auth.Google.Enabled,
+			"GithubEnabled": ctrl.config.Auth.Github.Enabled,
+			"GitlabEnabled": ctrl.config.Auth.Gitlab.Enabled,
 			"BaseURL":       ctrl.config.BaseURL,
 		})
 	}
@@ -82,60 +79,15 @@ func generateStateToken(length int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func getCallbackURL(host, configCallbackURL string, oauthType int, hasTLS bool) (string, error) {
-	if configCallbackURL != "" {
-		return configCallbackURL, nil
-	}
-
-	if host == "" {
-		return "", errors.New("host is empty")
-	}
-
-	schema := "http"
-	if hasTLS {
-		schema = "https"
-	}
-
-	switch oauthType {
-	case oauthGoogle:
-		return fmt.Sprintf("%v://%v/auth/google/callback", schema, host), nil
-	case oauthGithub:
-		return fmt.Sprintf("%v://%v/auth/github/callback", schema, host), nil
-	case oauthGitlab:
-		return fmt.Sprintf("%v://%v/auth/gitlab/callback", schema, host), nil
-	}
-
-	return "", errors.New("invalid oauth type provided")
-}
-
-func (ctrl *Controller) oauthLoginHandler(info *oauthInfo) http.HandlerFunc {
+func (ctrl *Controller) oauthLoginHandler(oh oauthHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		callbackURL, err := getCallbackURL(r.Host, info.Config.RedirectURL, info.Type, r.URL.Query().Get("tls") == "true")
-		if err != nil {
-			ctrl.log.WithError(err).Error("callbackURL parsing failed")
-			return
-		}
-
-		authURL := *info.AuthURL
-		parameters := url.Values{}
-		parameters.Add("client_id", info.Config.ClientID)
-		parameters.Add("scope", strings.Join(info.Config.Scopes, " "))
-		parameters.Add("redirect_uri", callbackURL)
-		parameters.Add("response_type", "code")
-
-		// generate state token for CSRF protection
-		state, err := generateStateToken(16)
+		authURL, err := oh.getOauthBase().buildAuthQuery(r, w)
 		if err != nil {
 			ctrl.log.WithError(err).Error("problem generating state token")
-			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		createCookie(w, stateCookieName, state)
-		parameters.Add("state", state)
-		authURL.RawQuery = parameters.Encode()
-
-		http.Redirect(w, r, authURL.String(), http.StatusTemporaryRedirect)
+		http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
 	}
 }
 
@@ -168,57 +120,6 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	}
 }
 
-func (*Controller) decodeGoogleCallbackResponse(resp *http.Response) (string, error) {
-	type callbackResponse struct {
-		ID            string
-		Email         string
-		VerifiedEmail bool
-		Picture       string
-	}
-
-	var userProfile callbackResponse
-	err := json.NewDecoder(resp.Body).Decode(&userProfile)
-	if err != nil {
-		return "", err
-	}
-
-	return userProfile.Email, nil
-}
-
-func (*Controller) decodeGithubCallbackResponse(resp *http.Response) (string, error) {
-	type callbackResponse struct {
-		ID        int64
-		Email     string
-		Login     string
-		AvatarURL string
-	}
-
-	var userProfile callbackResponse
-	err := json.NewDecoder(resp.Body).Decode(&userProfile)
-	if err != nil {
-		return "", err
-	}
-
-	return userProfile.Login, nil
-}
-
-func (*Controller) decodeGitLabCallbackResponse(resp *http.Response) (string, error) {
-	type callbackResponse struct {
-		ID        int64
-		Email     string
-		Username  string
-		AvatarURL string
-	}
-
-	var userProfile callbackResponse
-	err := json.NewDecoder(resp.Body).Decode(&userProfile)
-	if err != nil {
-		return "", nil
-	}
-
-	return userProfile.Username, nil
-}
-
 func (ctrl *Controller) newJWTToken(name string) (string, error) {
 	claims := jwt.MapClaims{
 		"iat":  time.Now().Unix(),
@@ -243,7 +144,7 @@ func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Reque
 	http.Redirect(w, r, "/forbidden", http.StatusTemporaryRedirect)
 }
 
-func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, info *oauthInfo, decodeResponse decodeResponseFunc) http.HandlerFunc {
+func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(stateCookieName)
 		if err != nil {
@@ -254,37 +155,16 @@ func (ctrl *Controller) callbackRedirectHandler(getAccountInfoURL string, info *
 			ctrl.logErrorAndRedirect(w, r, "invalid oauth state", nil)
 			return
 		}
-		code := r.FormValue("code")
-		if code == "" {
-			ctrl.logErrorAndRedirect(w, r, "code not found", nil)
+
+		client, err := oh.getOauthBase().generateOauthClient(r)
+		if err != nil {
+			ctrl.logErrorAndRedirect(w, r, "failed to generate oauth client", err)
 			return
 		}
 
-		callbackURL, err := getCallbackURL(r.Host, info.Config.RedirectURL, info.Type, r.URL.Query().Get("tls") == "true")
+		name, err := oh.userAuth(client)
 		if err != nil {
-			ctrl.logErrorAndRedirect(w, r, "callbackURL parsing failed", nil)
-			return
-		}
-		oauthConf := *info.Config
-		oauthConf.RedirectURL = callbackURL
-		token, err := oauthConf.Exchange(r.Context(), code)
-		if err != nil {
-			ctrl.logErrorAndRedirect(w, r, "exchanging auth code for token failed", err)
-			return
-		}
-
-		client := oauthConf.Client(r.Context(), token)
-		resp, err := client.Get(getAccountInfoURL)
-		if err != nil {
-			ctrl.logErrorAndRedirect(w, r, "failed to get oauth user info", err)
-			return
-		}
-		defer resp.Body.Close()
-
-		name, err := decodeResponse(resp)
-		if err != nil {
-			ctrl.logErrorAndRedirect(w, r, "decoding response body failed", err)
-			return
+			ctrl.logErrorAndRedirect(w, r, "failed to get user auth info", err)
 		}
 
 		tk, err := ctrl.newJWTToken(name)
