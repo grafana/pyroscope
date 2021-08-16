@@ -173,7 +173,7 @@ func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *rend
 	p.gi = new(storage.GetInput)
 	switch {
 	case rP.Name == nil && rP.Query == nil:
-		return fmt.Errorf("'query' or 'name' parameter is required Name:%v Query:%v", *&rP.Name, *rP.Query)
+		return fmt.Errorf("'query' or 'name' parameter is required")
 	case rP.Name != nil:
 		sk, err := segment.ParseKey(*rP.Name)
 		if err != nil {

@@ -42,8 +42,7 @@ var _ = Describe("server", func() {
 	}
 
 	malFormedBody := &RenderDiffParams{
-		Query: &query,
-		From:  "",
+
 		Until: "now",
 		Left: RenderTreeParams{
 			From:  "now-1h",
