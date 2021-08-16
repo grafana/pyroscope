@@ -12,7 +12,7 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger/v2 v2.2007.2
-	github.com/fatih/color v1.12.0
+	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
@@ -29,10 +29,9 @@ require (
 	github.com/kyoh86/richgo v0.3.3
 	github.com/kyoh86/xdg v1.2.0 // indirect
 	github.com/markbates/pkger v0.17.1
-	github.com/mattn/go-isatty v0.0.13 // indirect
-	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mattn/goreman v0.3.5
-	github.com/mgechev/revive v1.1.0
+	github.com/mgechev/revive v1.0.3
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.16.2
@@ -52,9 +51,9 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/wacul/ptr v1.0.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210816174021-fcbd12d029cd
-	golang.org/x/tools v0.1.5
+	golang.org/x/sync v0.0.0-20201207232520-09787c993a3a
+	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+	golang.org/x/tools v0.1.0
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/yaml.v2 v2.4.0
 	honnef.co/go/tools v0.0.1-2020.1.6

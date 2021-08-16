@@ -62,30 +62,52 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
 
-	var p renderParams
+	var (
+		p             renderParams
+		rP            RenderDiffParams
+		leftStartTime time.Time
+		leftEndTime   time.Time
+		rghtStartTime time.Time
+		rghtEndTime   time.Time
+
+		leftOK bool
+		rghtOK bool
+	)
+
 	if r.Method == "GET" {
 		if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
 			ctrl.writeInvalidParameterError(w, err)
 			return
 		}
+
+		if ok := ctrl.expectJSON(w, p.format); !ok {
+			return
+		}
+
+		leftStartTime, leftEndTime, leftOK = parseRenderRangeParams(r.URL.Query(), "leftFrom", "leftUntil")
+		rghtStartTime, rghtEndTime, rghtOK = parseRenderRangeParams(r.URL.Query(), "rightFrom", "rightUntil")
+		if !leftOK || !rghtOK {
+			ctrl.writeInvalidParameterError(w, errTimeParamsAreRequired)
+			return
+		}
+
 	} else if r.Method == "POST" {
-		if err := ctrl.renderParametersFromRequestBody(r, &p); err != nil {
+		if err := ctrl.renderParametersFromRequestBody(r, &p, &rP); err != nil {
 			ctrl.writeInvalidParameterError(w, err)
 			return
 		}
+
+		if ok := ctrl.expectJSON(w, p.format); !ok {
+			return
+		}
+
+		leftStartTime = attime.Parse(rP.Left.From)
+		leftEndTime = attime.Parse(rP.Left.Until)
+		rghtStartTime = attime.Parse(rP.Right.From)
+		rghtEndTime = attime.Parse(rP.Right.Until)
+
 	} else {
 		ctrl.writeInvalidMethodError(w, errMethodNotAllowed)
-		return
-	}
-
-	if ok := ctrl.expectJSON(w, p.format); !ok {
-		return
-	}
-
-	leftStartTime, leftEndTime, leftOK := parseRenderRangeParams(r.URL.Query(), "leftFrom", "leftUntil")
-	rghtStartTime, rghtEndTime, rghtOK := parseRenderRangeParams(r.URL.Query(), "rightFrom", "rightUntil")
-	if !leftOK || !rghtOK {
-		ctrl.writeInvalidParameterError(w, errTimeParamsAreRequired)
 		return
 	}
 
@@ -141,24 +163,24 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	return nil
 }
 
-func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams) error {
-	var rP RenderDiffParams
+func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams, rP *RenderDiffParams) error {
+
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&rP); err != nil {
+	if err := decoder.Decode(rP); err != nil {
 		return err
 	}
 
 	p.gi = new(storage.GetInput)
 	switch {
-	case *rP.Name == "" && *rP.Query == "":
+	case rP.Name == nil && rP.Query == nil:
 		return fmt.Errorf("'query' or 'name' parameter is required Name:%v Query:%v", *&rP.Name, *rP.Query)
-	case *rP.Name != "":
+	case rP.Name != nil:
 		sk, err := segment.ParseKey(*rP.Name)
 		if err != nil {
 			return fmt.Errorf("name: parsing storage key: %w", err)
 		}
 		p.gi.Key = sk
-	case *rP.Query != "":
+	case rP.Query != nil:
 		qry, err := flameql.ParseQuery(*rP.Query)
 		if err != nil {
 			return fmt.Errorf("query: %w", err)
@@ -167,7 +189,7 @@ func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *rend
 	}
 
 	p.maxNodes = ctrl.config.MaxNodesRender
-	if *rP.MaxNodes > 0 {
+	if rP.MaxNodes != nil && *rP.MaxNodes > 0 {
 		p.maxNodes = *rP.MaxNodes
 	}
 
