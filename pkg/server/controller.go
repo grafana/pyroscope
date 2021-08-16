@@ -358,6 +358,10 @@ func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}
 	}
 }
 
+func (ctrl *Controller) writeInvalidMethodError(w http.ResponseWriter, err error) {
+	ctrl.writeError(w, http.StatusMethodNotAllowed, err, "method not supported")
+}
+
 func (ctrl *Controller) writeInvalidParameterError(w http.ResponseWriter, err error) {
 	ctrl.writeError(w, http.StatusBadRequest, err, "invalid parameter")
 }

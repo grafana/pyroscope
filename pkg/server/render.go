@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,6 +25,7 @@ var (
 	errLabelIsRequired       = errors.New("label parameter is required")
 	errNoData                = errors.New("no data")
 	errTimeParamsAreRequired = errors.New("leftFrom,leftUntil,rightFrom,rightUntil are required")
+	errMethodNotAllowed      = errors.New("Method not allowed")
 )
 
 type renderParams struct {
@@ -59,11 +61,23 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
+
 	var p renderParams
-	if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
-		ctrl.writeInvalidParameterError(w, err)
+	if r.Method == "GET" {
+		if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
+			ctrl.writeInvalidParameterError(w, err)
+			return
+		}
+	} else if r.Method == "POST" {
+		if err := ctrl.renderParametersFromRequestBody(r, &p); err != nil {
+			ctrl.writeInvalidParameterError(w, err)
+			return
+		}
+	} else {
+		ctrl.writeInvalidMethodError(w, errMethodNotAllowed)
 		return
 	}
+
 	if ok := ctrl.expectJSON(w, p.format); !ok {
 		return
 	}
@@ -124,6 +138,42 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	p.gi.StartTime = attime.Parse(v.Get("from"))
 	p.gi.EndTime = attime.Parse(v.Get("until"))
 	p.format = v.Get("format")
+	return nil
+}
+
+func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams) error {
+	var rP RenderDiffParams
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&rP); err != nil {
+		return err
+	}
+
+	p.gi = new(storage.GetInput)
+	switch {
+	case *rP.Name == "" && *rP.Query == "":
+		return fmt.Errorf("'query' or 'name' parameter is required Name:%v Query:%v", *&rP.Name, *rP.Query)
+	case *rP.Name != "":
+		sk, err := segment.ParseKey(*rP.Name)
+		if err != nil {
+			return fmt.Errorf("name: parsing storage key: %w", err)
+		}
+		p.gi.Key = sk
+	case *rP.Query != "":
+		qry, err := flameql.ParseQuery(*rP.Query)
+		if err != nil {
+			return fmt.Errorf("query: %w", err)
+		}
+		p.gi.Query = qry
+	}
+
+	p.maxNodes = ctrl.config.MaxNodesRender
+	if *rP.MaxNodes > 0 {
+		p.maxNodes = *rP.MaxNodes
+	}
+
+	p.gi.StartTime = attime.Parse(rP.From)
+	p.gi.EndTime = attime.Parse(rP.Until)
+	p.format = rP.Format
 	return nil
 }
 
@@ -197,4 +247,24 @@ func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.T
 		return &storage.GetOutput{Tree: tree.New()}, nil
 	}
 	return out, nil
+}
+
+// Request Body Interface
+type RenderDiffParams struct {
+	Name  *string `json:"name,omitempty"`
+	Query *string `json:"query,omitempty"`
+
+	From  string `json:"from"`
+	Until string `json:"until"`
+
+	Format   string `json:"format"`
+	MaxNodes *int   `json:"max-nodes,omitempty"`
+
+	Left  RenderTreeParams `json:"left-params"`
+	Right RenderTreeParams `json:"right-params"`
+}
+
+type RenderTreeParams struct {
+	From  string `json:"from"`
+	Until string `json:"until"`
 }
