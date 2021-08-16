@@ -3,6 +3,9 @@ GOBUILD=go build -trimpath
 ARCH ?= $(shell arch)
 OS ?= $(shell uname)
 
+# if you change the name of this variable please change it in generate-git-info.sh file
+PHPSPY_VERSION ?= 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
+
 ifeq ("$(OS)", "Darwin")
 	ifeq ("$(ARCH)", "arm64")
 # on a mac it's called arm64 which rust doesn't know about
@@ -110,7 +113,7 @@ build-rust-dependencies-docker: ## Builds the rust dependency
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies: ## Builds the PHP dependency
 	cd third_party && cd phpspy_src || (git clone https://github.com/pyroscope-io/phpspy.git phpspy_src && cd phpspy_src)
-	cd third_party/phpspy_src && git checkout 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
+	cd third_party/phpspy_src && git checkout $(PHPSPY_VERSION)
 	cd third_party/phpspy_src && USE_ZEND=1 make CFLAGS="-DUSE_DIRECT" || $(MAKE) print-deps-error-message
 	cp third_party/phpspy_src/libphpspy.a third_party/phpspy/libphpspy.a
 

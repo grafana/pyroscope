@@ -22,6 +22,10 @@ var (
 
 	UseEmbeddedAssetsStr = "false"
 	UseEmbeddedAssets    bool
+
+	RbspyGitSHA  = "N/A"
+	PyspyGitSHA  = "N/A"
+	PhpspyGitSHA = "N/A"
 )
 
 func init() {
@@ -43,6 +47,9 @@ GENERAL
 
 AGENT
   Supported Spies:    %q
+  rbspy  Git SHA:     %q
+  pyspy  Git SHA:     %q
+  phpspy Git SHA:     %q
 `
 
 func Summary() string {
@@ -57,6 +64,9 @@ func Summary() string {
 		GitDirty,
 		UseEmbeddedAssets,
 		spy.SupportedSpies,
+		RbspyGitSHA,
+		PyspyGitSHA,
+		PhpspyGitSHA,
 	)
 }
 
@@ -70,6 +80,9 @@ type buildInfoJSON struct {
 	GitSHA            string `json:"gitSHA"`
 	GitDirty          int    `json:"gitDirty"`
 	UseEmbeddedAssets bool   `json:"useEmbeddedAssets"`
+	RbspyGitSHA       string `json:"rbspyGitSHA"`
+	PyspyGitSHA       string `json:"pyspyGitSHA"`
+	PhpspyGitSHA      string `json:"phpspyGitSHA"`
 }
 
 func generateBuildInfoJSON() buildInfoJSON {
@@ -83,6 +96,9 @@ func generateBuildInfoJSON() buildInfoJSON {
 		GitSHA:            GitSHA,
 		GitDirty:          GitDirty,
 		UseEmbeddedAssets: UseEmbeddedAssets,
+		RbspyGitSHA:       RbspyGitSHA,
+		PyspyGitSHA:       PyspyGitSHA,
+		PhpspyGitSHA:      PhpspyGitSHA,
 	}
 }
 
