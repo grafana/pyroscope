@@ -283,7 +283,9 @@ func (ps *ProfileSession) reset() {
 
 	now := time.Now()
 	// upload the read data to server
-	ps.uploadTries(now)
+	if !ps.startTime.IsZero() {
+		ps.uploadTries(now)
+	}
 
 	// reset the start time
 	ps.startTime = now
@@ -324,7 +326,7 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 					}
 				}
 
-				if !skipUpload {
+				if !skipUpload && !uploadTrie.IsEmpty() {
 					name2, _ := addSuffix(name, profileType)
 					ps.upstream.Upload(&upstream.UploadJob{
 						// Name:            ps.names[ps.profileTypes[i]],

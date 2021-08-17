@@ -223,3 +223,10 @@ func (t *Trie) Iterate(cb func(name []byte, val uint64)) {
 		}
 	}
 }
+
+func (t *Trie) IsEmpty() bool {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	return len(t.root.children) == 0
+}
