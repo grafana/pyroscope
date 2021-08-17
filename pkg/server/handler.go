@@ -126,12 +126,12 @@ func (ctrl *Controller) newJWTToken(name string) (string, error) {
 		"name": name,
 	}
 
-	if ctrl.config.LoginMaximumLifetimeDays > 0 {
-		claims["exp"] = time.Now().Add(time.Hour * 24 * time.Duration(ctrl.config.LoginMaximumLifetimeDays)).Unix()
+	if ctrl.config.Auth.LoginMaximumLifetimeDays > 0 {
+		claims["exp"] = time.Now().Add(time.Hour * 24 * time.Duration(ctrl.config.Auth.LoginMaximumLifetimeDays)).Unix()
 	}
 
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return jwtToken.SignedString([]byte(ctrl.config.JWTSecret))
+	return jwtToken.SignedString([]byte(ctrl.config.Auth.JWTSecret))
 }
 
 func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, msg string, err error) {

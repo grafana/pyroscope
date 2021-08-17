@@ -91,10 +91,7 @@ type Server struct {
 
 	Auth Auth `mapstructure:"auth"`
 
-	// TODO: can we generate these automatically if it's empty?
-	JWTSecret                string            `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
-	LoginMaximumLifetimeDays int               `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
-	MetricExportRules        MetricExportRules `yaml:"metric-export-rules" def:"" desc:"metric export rules" mapstructure:"metric-export-rules"`
+	MetricExportRules MetricExportRules `yaml:"metric-export-rules" def:"" desc:"metric export rules" mapstructure:"metric-export-rules"`
 }
 
 type MetricExportRules map[string]MetricExportRule
@@ -109,6 +106,10 @@ type Auth struct {
 	Google GoogleOauth `mapstructure:"google"`
 	Gitlab GitlabOauth `mapstructure:"gitlab"`
 	Github GithubOauth `mapstructure:"github"`
+
+	// TODO: can we generate these automatically if it's empty?
+	JWTSecret                string `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
+	LoginMaximumLifetimeDays int    `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
 }
 
 // TODO: Maybe merge Oauth structs into one (would have to move def and desc tags somewhere else in code)

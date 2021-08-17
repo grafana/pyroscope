@@ -230,9 +230,10 @@ var _ = Describe("flags", func() {
 							TokenURL:             "https://github.com/login/oauth/access_token",
 							AllowedOrganizations: []string{},
 						},
+						JWTSecret:                "",
+						LoginMaximumLifetimeDays: 0,
 					},
-					JWTSecret:                "",
-					LoginMaximumLifetimeDays: 0,
+
 					MetricExportRules: config.MetricExportRules{
 						"my_metric_name": {
 							Expr: `app.name{foo=~"bar"}`,

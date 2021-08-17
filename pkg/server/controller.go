@@ -274,7 +274,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(ctrl.config.JWTSecret), nil
+			return []byte(ctrl.config.Auth.JWTSecret), nil
 		})
 
 		if err != nil {
