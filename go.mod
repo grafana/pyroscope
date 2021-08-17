@@ -17,12 +17,14 @@ require (
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/protobuf v1.5.2
+	github.com/google/go-jsonnet v0.17.0
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99
 	github.com/google/uuid v1.1.2
 	github.com/iancoleman/strcase v0.1.2
 	github.com/ianlancetaylor/demangle v0.0.0-20200715173712-053cf528c12f // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/josephspurrier/goversioninfo v1.2.0
+	github.com/jsonnet-bundler/jsonnet-bundler v0.4.0
 	github.com/kardianos/service v1.2.0
 	github.com/kisielk/godepgraph v0.0.0-20190626013829-57a7e4a651a9
 	github.com/kr/pretty v0.2.0 // indirect
