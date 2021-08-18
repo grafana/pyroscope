@@ -187,16 +187,16 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 
 	s.dimensions = cache.New(s.dbDimensions, "i:", &cache.Metrics{
 		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cache_dimensions_hit",
+			Name: "pyroscope_cache_dimensions_hit",
 		}),
 		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cache_dimensions_miss",
+			Name: "pyroscope_cache_dimensions_miss",
 		}),
 		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_dimensions_read",
+			Name: "pyroscope_storage_dimensions_read",
 		}),
 		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_dimensions_write",
+			Name: "pyroscope_storage_dimensions_write",
 		}),
 	})
 
@@ -212,16 +212,16 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 
 	s.segments = cache.New(s.dbSegments, "s:", &cache.Metrics{
 		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cache_segments_hit",
+			Name: "pyroscope_cache_segments_hit",
 		}),
 		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cache_segments_miss",
+			Name: "pyroscope_cache_segments_miss",
 		}),
 		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_segments_read",
+			Name: "pyroscope_storage_segments_read",
 		}),
 		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_segments_write",
+			Name: "pyroscope_storage_segments_write",
 		}),
 	})
 
@@ -239,16 +239,16 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 
 	s.dicts = cache.New(s.dbDicts, "d:", &cache.Metrics{
 		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cache_dicts_hit",
+			Name: "pyroscope_cache_dicts_hit",
 		}),
 		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cache_dicts_miss",
+			Name: "pyroscope_cache_dicts_miss",
 		}),
 		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_dicts_read",
+			Name: "pyroscope_storage_dicts_read",
 		}),
 		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_dicts_write",
+			Name: "pyroscope_storage_dicts_write",
 		}),
 	})
 
@@ -264,16 +264,16 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 
 	s.trees = cache.New(s.dbTrees, "t:", &cache.Metrics{
 		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cache_trees_hit",
+			Name: "pyroscope_cache_trees_hit",
 		}),
 		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "cache_trees_miss",
+			Name: "pyroscope_cache_trees_miss",
 		}),
 		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_trees_read",
+			Name: "pyroscope_storage_trees_read",
 		}),
 		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_trees_write",
+			Name: "pyroscope_storage_trees_write",
 		}),
 	})
 	s.trees.Bytes = s.treeBytes
