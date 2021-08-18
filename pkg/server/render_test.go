@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -21,7 +22,7 @@ var _ = Describe("server", func() {
 			It("supports name and query parameters", func() {
 				var httpServer *httptest.Server
 				(*cfg).Server.APIBindAddr = ":10044"
-				s, err := storage.New(&(*cfg).Server)
+				s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 				Expect(err).ToNot(HaveOccurred())
 				c, _ := New(&(*cfg).Server, s, s, logrus.New())
 				h, _ := c.mux()

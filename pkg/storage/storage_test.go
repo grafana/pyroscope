@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/sirupsen/logrus"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 )
 
 // 21:22:08      air |  (time.Duration) 16m40s,
@@ -34,7 +34,7 @@ var _ = Describe("storage package", func() {
 			evictInterval = 2 * time.Second
 
 			var err error
-			s, err = New(&(*cfg).Server)
+			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -290,16 +290,11 @@ var _ = Describe("storage package", func() {
 					}
 
 					for i := 0; i < 5; i++ {
-						vm, err := mem.VirtualMemory()
+						_, err := mem.VirtualMemory()
 						Expect(err).ToNot(HaveOccurred())
-						metrics.Gauge("Total", vm.Total)
 
 						var m runtime.MemStats
 						runtime.ReadMemStats(&m)
-						metrics.Gauge("NumGC", m.NumGC)
-						metrics.Gauge("Alloc", m.Alloc)
-						metrics.Gauge("Used", float64(m.Alloc)/float64(vm.Total))
-						metrics.Gauge("Segments", s.segments.Len())
 						time.Sleep(evictInterval)
 					}
 				})
@@ -338,7 +333,7 @@ var _ = Describe("storage package", func() {
 					Expect(o.Tree.String()).To(Equal(tree.String()))
 					Expect(s.Close()).ToNot(HaveOccurred())
 
-					s2, err := New(&(*cfg).Server)
+					s2, err := New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
 					o2, err := s2.Get(&GetInput{
@@ -360,7 +355,7 @@ var _ = Describe("DeleteDataBefore", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(&(*cfg).Server)
+			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 

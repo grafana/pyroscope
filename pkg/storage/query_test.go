@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
@@ -19,7 +20,7 @@ var _ = Describe("Querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(&(*cfg).Server)
+			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 			keys := []string{
 				"app.name{foo=bar,baz=qux}",
