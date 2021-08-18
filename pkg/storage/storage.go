@@ -75,12 +75,12 @@ type Storage struct {
 	evictionsTotalBytes prometheus.Gauge
 	evictionsUsedPerc   prometheus.Gauge
 
-	storageCachesFlushTimer prometheus.Gauge
-	storageBadgerCloseTimer prometheus.Gauge
+	storageCachesFlushTimer prometheus.Histogram
+	storageBadgerCloseTimer prometheus.Histogram
 
-	evictionsTimer prometheus.Gauge
-	writeBackTimer prometheus.Gauge
-	retentionTimer prometheus.Gauge
+	evictionsTimer prometheus.Histogram
+	writeBackTimer prometheus.Histogram
+	retentionTimer prometheus.Histogram
 }
 
 func (s *Storage) newBadger(name string) (*badger.DB, error) {
@@ -131,30 +131,41 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 
 		evictionsAllocBytes: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "pyroscope_evictions_alloc_bytes",
+			Help: "number of bytes allocated heap objects", // TODO
 		}),
-
 		evictionsTotalBytes: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "pyroscope_evictions_total_bytes",
+			Name: "pyroscope_evictions_bytes",
+			Help: "number of bytes evicted", // TODO
 		}),
 		evictionsUsedPerc: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "pyroscope_evictions_used_perc",
 		}),
 
-		storageCachesFlushTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "pyroscope_storage_caches_flush_timer",
+		storageCachesFlushTimer: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+			Name: "pyroscope_storage_caches_flush_timer_seconds",
+			// TODO what buckets to use here?
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		}),
-		storageBadgerCloseTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "pyroscope_storage_badger_close_timer",
+		storageBadgerCloseTimer: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+			Name: "pyroscope_storage_badger_close_timer_seconds",
+			// TODO what buckets to use here?
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		}),
 
-		evictionsTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "pyroscope_evictions_timer",
+		evictionsTimer: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+			Name: "pyroscope_evictions_timer_seconds",
+			// TODO what buckets to use here?
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		}),
-		writeBackTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "pyroscope_write_back_timer",
+		writeBackTimer: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+			Name: "pyroscope_write_back_timer_seconds",
+			// TODO what buckets to use here?
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		}),
-		retentionTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "pyroscope_retention_timer",
+		retentionTimer: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+			Name: "pyroscope_retention_timer_seconds",
+			// TODO what buckets to use here?
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
 		}),
 	}
 
@@ -626,11 +637,7 @@ func (s *Storage) Close() error {
 	s.wg.Wait()
 
 	func() {
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
-			v = v * 1_000_000_000 // convert to nanoseconds
-
-			s.storageCachesFlushTimer.Set(v)
-		}))
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.storageCachesFlushTimer.Observe))
 		defer timer.ObserveDuration()
 
 		wg := sync.WaitGroup{}
@@ -645,11 +652,7 @@ func (s *Storage) Close() error {
 	}()
 
 	func() {
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
-			v = v * 1_000_000_000 // convert to nanoseconds
-
-			s.storageBadgerCloseTimer.Set(v)
-		}))
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.storageBadgerCloseTimer.Observe))
 		defer timer.ObserveDuration()
 
 		wg := sync.WaitGroup{}

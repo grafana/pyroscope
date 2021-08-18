@@ -35,10 +35,12 @@ type Reporter struct {
 
 func NewReporter(l *logrus.Logger, s *storage.Storage, c *config.Server, reg prometheus.Registerer) *Reporter {
 	diskMetrics := promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
-		Name: "pyroscope_disk",
+		Name: "pyroscope_disk_bytes",
+		Help: "size of items in disk",
 	}, []string{"name"})
 	cacheSizeMetrics := promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 		Name: "pyroscope_cache_size",
+		Help: "number of items in cache(memory)",
 	}, []string{"name"})
 
 	return &Reporter{
