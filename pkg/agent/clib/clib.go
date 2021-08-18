@@ -10,8 +10,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
-)
-import (
+	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"sync"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
@@ -117,6 +116,11 @@ func SetTag(cpid C.int, key *C.char, value *C.char) int {
 	}
 	sessionsMap[pid].SetTag(C.GoString(key), C.GoString(value))
 	return 0
+}
+
+//export BuildSummary
+func BuildSummary() *C.char {
+	return C.CString(build.Summary())
 }
 
 func main() {
