@@ -185,7 +185,21 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		return nil, err
 	}
 
-	s.dimensions = cache.New(s.dbDimensions, "i:", "dimensions", reg)
+	s.dimensions = cache.New(s.dbDimensions, "i:", &cache.Metrics{
+		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_dimensions_hit",
+		}),
+		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_dimensions_miss",
+		}),
+		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_dimensions_read",
+		}),
+		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_dimensions_write",
+		}),
+	})
+
 	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -196,7 +210,21 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		return dimension.New()
 	}
 
-	s.segments = cache.New(s.dbSegments, "s:", "segments", reg)
+	s.segments = cache.New(s.dbSegments, "s:", &cache.Metrics{
+		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_segments_hit",
+		}),
+		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_segments_miss",
+		}),
+		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_segments_read",
+		}),
+		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_segments_write",
+		}),
+	})
+
 	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*segment.Segment).Bytes()
 	}
@@ -209,7 +237,21 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		return segment.New()
 	}
 
-	s.dicts = cache.New(s.dbDicts, "d:", "dicts", reg)
+	s.dicts = cache.New(s.dbDicts, "d:", &cache.Metrics{
+		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_dicts_hit",
+		}),
+		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_dicts_miss",
+		}),
+		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_dicts_read",
+		}),
+		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_dicts_write",
+		}),
+	})
+
 	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -220,7 +262,20 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(s.dbTrees, "t:", "trees", reg)
+	s.trees = cache.New(s.dbTrees, "t:", &cache.Metrics{
+		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_trees_hit",
+		}),
+		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_trees_miss",
+		}),
+		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_trees_read",
+		}),
+		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_trees_write",
+		}),
+	})
 	s.trees.Bytes = s.treeBytes
 	s.trees.FromBytes = s.treeFromBytes
 	s.trees.New = func(k string) interface{} {
