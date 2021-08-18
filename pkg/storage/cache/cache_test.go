@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
@@ -29,7 +30,21 @@ var _ = Describe("cache", func() {
 		db, err := badger.Open(badgerOptions)
 		Expect(err).ToNot(HaveOccurred())
 
-		cache := New(db, "prefix:", "test_cache", prometheus.NewRegistry())
+		reg := prometheus.NewRegistry()
+		cache := New(db, "prefix:", &Metrics{
+			HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "cache_test_hit",
+			}),
+			MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "cache_test_miss",
+			}),
+			StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "storage_test_read",
+			}),
+			StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "storage_test_write",
+			}),
+		})
 		cache.New = func(k string) interface{} {
 			return k
 		}
