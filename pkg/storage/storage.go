@@ -114,47 +114,47 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		stop:             make(chan struct{}),
 		localProfilesDir: filepath.Join(c.StoragePath, "local-profiles"),
 		storageWritesTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_writes_total",
+			Name: "pyroscope_storage_writes_total",
 		}),
 		writeBackCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "write_back_count",
+			Name: "pyroscope_write_back_count",
 		}),
 		evictionsCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "evictions_count",
+			Name: "pyroscope_evictions_count",
 		}),
 		retentionCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "retention_count",
+			Name: "pyroscope_retention_count",
 		}),
 		storageReadsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "storage_reads_total",
+			Name: "pyroscope_storage_reads_total",
 		}),
 
 		evictionsAllocBytes: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "evictions_alloc_bytes",
+			Name: "pyroscope_evictions_alloc_bytes",
 		}),
 
 		evictionsTotalBytes: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "evictions_total_bytes",
+			Name: "pyroscope_evictions_total_bytes",
 		}),
 		evictionsUsedPerc: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "evictions_used_perc",
+			Name: "pyroscope_evictions_used_perc",
 		}),
 
 		storageCachesFlushTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "storage_caches_flush_timer",
+			Name: "pyroscope_storage_caches_flush_timer",
 		}),
 		storageBadgerCloseTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "storage_badger_close_timer",
+			Name: "pyroscope_storage_badger_close_timer",
 		}),
 
 		evictionsTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "evictions_timer",
+			Name: "pyroscope_evictions_timer",
 		}),
 		writeBackTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "write_back_timer",
+			Name: "pyroscope_write_back_timer",
 		}),
 		retentionTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "retention_timer",
+			Name: "pyroscope_retention_timer",
 		}),
 	}
 

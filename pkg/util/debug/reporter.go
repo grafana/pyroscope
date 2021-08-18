@@ -45,37 +45,37 @@ func NewReporter(l *logrus.Logger, s *storage.Storage, c *config.Server, reg pro
 		// so by moving here their semantics have changed
 		// since they are now initialized to 0
 		cpuUtilization: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cpu_utilization",
+			Name: "pyroscope_cpu_utilization",
 		}),
 		diskLocalProfiles: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_local_profiles",
+			Name: "pyroscope_disk_local_profiles",
 		}),
 		diskMain: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_main",
+			Name: "pyroscope_disk_main",
 		}),
 		diskSegments: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_segments",
+			Name: "pyroscope_disk_segments",
 		}),
 		diskTrees: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_trees",
+			Name: "pyroscope_disk_trees",
 		}),
 		diskDicts: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_dicts",
+			Name: "pyroscope_disk_dicts",
 		}),
 		diskDimensions: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_dimensions",
+			Name: "pyroscope_disk_dimensions",
 		}),
 		cacheDimensionsSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cache_dimensions_size",
+			Name: "pyroscope_cache_dimensions_size",
 		}),
 		cacheSegmentsSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cache_segments_size",
+			Name: "pyroscope_cache_segments_size",
 		}),
 		cacheDictsSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cache_dicts_size",
+			Name: "pyroscope_cache_dicts_size",
 		}),
 		cacheTreesSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cache_trees_size",
+			Name: "pyroscope_cache_trees_size",
 		}),
 	}
 }

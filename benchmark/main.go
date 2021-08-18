@@ -72,10 +72,10 @@ func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transp
 	reg := prometheus.NewRegistry()
 
 	uploadErrors := promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "upload_errors",
+		Name: "pyroscope_upload_errors",
 	})
 	successfulUploads := promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "successful_uploads",
+		Name: "pyroscope_successful_uploads",
 	})
 
 	for i := 0; i < requestsCount; i++ {
@@ -204,10 +204,10 @@ func main() {
 	logrus.Info("waiting for other services to load")
 
 	benchmark := promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "benchmark",
+		Name: "pyroscope_benchmark",
 	})
 	runProgress := promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "run_progress",
+		Name: "pyroscope_run_progress",
 	})
 
 	benchmark.Set(0)
