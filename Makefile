@@ -109,7 +109,7 @@ else
 endif
 
 .PHONY: build-rust-dependencies-docker
-build-rust-dependencies-docker: ## Builds the rust dependency
+build-rust-dependencies-docker: ## Builds the rust dependencies in docker
 	DOCKER_BUILDKIT=1 docker build -f Dockerfile.static-libs --output type=local,dest=out .
 
 .PHONY: build-phpspy-dependencies

@@ -13,9 +13,12 @@ var durations = []time.Duration{}
 
 func init() {
 	d := resolution
-	// TODO: better upper boundary, currently 50 is a magic number
 	for i := 0; i < 50; i++ {
 		durations = append(durations, d)
-		d *= time.Duration(multiplier)
+		newD := d * time.Duration(multiplier)
+		if newD < d {
+			return
+		}
+		d = newD
 	}
 }

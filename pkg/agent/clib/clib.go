@@ -20,12 +20,8 @@ import (
 var sessionsMapMutex sync.Mutex
 var sessionsMap = map[int]*agent.ProfileSession{}
 
-func init() {
-	logger = &clibLogger{}
-}
-
 //export Start
-func Start(applicationName *C.char, cpid C.int, spyName *C.char, serverAddress *C.char, authToken *C.char, sampleRate C.int, withSubprocesses C.int, logLevel *C.char) int {
+func Start(cpid C.int, applicationName *C.char, spyName *C.char, serverAddress *C.char, authToken *C.char, sampleRate C.int, withSubprocesses C.int, logLevel *C.char) int {
 	sessionsMapMutex.Lock()
 	defer sessionsMapMutex.Unlock()
 
@@ -79,32 +75,47 @@ func Start(applicationName *C.char, cpid C.int, spyName *C.char, serverAddress *
 }
 
 //export Stop
-func Stop(Pid C.int) int {
+func Stop(cpid C.int) int {
 	sessionsMapMutex.Lock()
 	defer sessionsMapMutex.Unlock()
 
-	pid := int(Pid)
+	pid := int(cpid)
 
 	if _, ok := sessionsMap[pid]; !ok {
 		logger.Errorf("session for pid: %d doesn't exists", pid)
 		return -1
 	}
-	sessionsMap[int(Pid)].Stop()
+	sessionsMap[int(cpid)].Stop()
 	return 0
 }
 
 //export ChangeName
-func ChangeName(newName *C.char, Pid C.int) int {
+func ChangeName(cpid C.int, newName *C.char) int {
 	sessionsMapMutex.Lock()
 	defer sessionsMapMutex.Unlock()
 
-	pid := int(Pid)
+	pid := int(cpid)
 
 	if _, ok := sessionsMap[pid]; !ok {
 		logger.Errorf("session for pid: %d doesn't exists", pid)
 		return -1
 	}
-	sessionsMap[int(Pid)].ChangeName(C.GoString(newName))
+	sessionsMap[pid].ChangeName(C.GoString(newName))
+	return 0
+}
+
+//export SetTag
+func SetTag(cpid C.int, key *C.char, value *C.char) int {
+	sessionsMapMutex.Lock()
+	defer sessionsMapMutex.Unlock()
+
+	pid := int(cpid)
+
+	if _, ok := sessionsMap[pid]; !ok {
+		logger.Errorf("session for pid: %d doesn't exists", pid)
+		return -1
+	}
+	sessionsMap[pid].SetTag(C.GoString(key), C.GoString(value))
 	return 0
 }
 

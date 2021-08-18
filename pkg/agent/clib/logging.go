@@ -1,57 +1,61 @@
 package main
 
 import (
-	// #include <stdlib.h>
 	"C"
 	"fmt"
-	"unsafe"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 )
 
-//export RegisterLogger
-func RegisterLogger(callback unsafe.Pointer) int {
-	loggerCallback = callback
+//export TestLogger
+func TestLogger() int {
+	logger.Errorf("logger test error %d", 123)
+	logger.Infof("logger test info %d", 123)
+	logger.Debugf("logger test debug %d", 123)
 	return 0
 }
 
-//export TestLogger
-func TestLogger() int {
-	logger.Debugf("logger test debug %d", 123)
-	logger.Infof("logger test info %d", 123)
-	logger.Errorf("logger test error %d", 123)
+//export SetLoggerLevel
+func SetLoggerLevel(l int) int {
+	level = l
 	return 0
 }
 
 var logger agent.Logger
-var loggerCallback unsafe.Pointer
+var level int
+
+func init() {
+	logger = &clibLogger{}
+}
 
 type clibLogger struct{}
 
-func (*clibLogger) Infof(a string, b ...interface{}) {
-	funcPointer := (*func(*C.char))(loggerCallback)
-	if funcPointer != nil {
-		cstr := C.CString(fmt.Sprintf(a, b...))
-		(*funcPointer)(cstr)
-		C.free(unsafe.Pointer(cstr))
+func (*clibLogger) Errorf(a string, b ...interface{}) {
+	if level < 0 {
+		return
 	}
+	if a[len(a)-1] != '\n' {
+		a += "\n"
+	}
+	fmt.Printf("[ERROR] "+a, b...)
+}
+
+func (*clibLogger) Infof(a string, b ...interface{}) {
+	if level < 1 {
+		return
+	}
+	if a[len(a)-1] != '\n' {
+		a += "\n"
+	}
+	fmt.Printf("[INFO] "+a, b...)
 }
 
 func (*clibLogger) Debugf(a string, b ...interface{}) {
-	funcPointer := (*func(*C.char))(loggerCallback)
-	if funcPointer != nil {
-		cstr := C.CString(fmt.Sprintf(a, b...))
-		(*funcPointer)(cstr)
-		C.free(unsafe.Pointer(cstr))
+	if level < 2 {
+		return
 	}
-}
-
-func (*clibLogger) Errorf(a string, b ...interface{}) {
-	funcPointer := (*func(*C.char))(loggerCallback)
-	fmt.Printf("[PYROSCOPE ERROR] %s\n", fmt.Sprintf(a, b...))
-	if funcPointer != nil {
-		cstr := C.CString(fmt.Sprintf(a, b...))
-		(*funcPointer)(cstr)
-		C.free(unsafe.Pointer(cstr))
+	if a[len(a)-1] != '\n' {
+		a += "\n"
 	}
+	fmt.Printf("[DEBUG] "+a, b...)
 }

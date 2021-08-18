@@ -55,8 +55,8 @@ type ProfileSession struct {
 	pids       []int
 	spies      [][]spy.Spy
 	stopCh     chan struct{}
-	trieMutex  sync.Mutex
 
+	trieMutex sync.Mutex
 	// see comment about multiple dimensions above
 	previousTries map[string][]*transporttrie.Trie
 	tries         map[string][]*transporttrie.Trie
@@ -107,8 +107,7 @@ func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 		tries:         make(map[string][]*transporttrie.Trie),
 	}
 
-	ps.previousTries[ps.appName] = []*transporttrie.Trie{nil}
-	ps.tries[ps.appName] = []*transporttrie.Trie{transporttrie.New()}
+	ps.initializeTries()
 
 	return ps, nil
 }
@@ -180,7 +179,6 @@ func (ps *ProfileSession) takeSnapshots() {
 							return
 						}
 						if len(stack) > 0 {
-
 							ps.tries[ps.appName][i].Insert(stack, v, true)
 						}
 					})
@@ -234,19 +232,30 @@ func (ps *ProfileSession) ChangeName(newName string) error {
 		return err
 	}
 
-	if _, ok := ps.previousTries[newName]; !ok {
-		// TODO Only set the trie if it's not already set
-		ps.previousTries[newName] = []*transporttrie.Trie{nil}
-		ps.tries[newName] = []*transporttrie.Trie{}
-		for i := 0; i < len(ps.pids); i++ {
-			ps.previousTries[newName] = append(ps.previousTries[newName], nil)
-			ps.tries[newName] = append(ps.tries[newName], transporttrie.New())
-		}
-	}
-
 	ps.appName = newName
+	ps.initializeTries()
 
 	return nil
+}
+
+func (ps *ProfileSession) initializeTries() {
+	if _, ok := ps.previousTries[ps.appName]; !ok {
+		// TODO Only set the trie if it's not already set
+		ps.previousTries[ps.appName] = []*transporttrie.Trie{}
+		ps.tries[ps.appName] = []*transporttrie.Trie{}
+		for i := 0; i < len(ps.profileTypes); i++ {
+			ps.previousTries[ps.appName] = append(ps.previousTries[ps.appName], nil)
+			ps.tries[ps.appName] = append(ps.tries[ps.appName], transporttrie.New())
+		}
+	}
+}
+func (ps *ProfileSession) SetTag(key, val string) error {
+	newName, err := mergeTagsWithAppName(ps.appName, map[string]string{key: val})
+	if err != nil {
+		return err
+	}
+
+	return ps.ChangeName(newName)
 }
 
 func (ps *ProfileSession) Start() error {
@@ -327,10 +336,9 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 				}
 
 				if !skipUpload && !uploadTrie.IsEmpty() {
-					name2, _ := addSuffix(name, profileType)
+					nameWithSuffix, _ := addSuffix(name, profileType)
 					ps.upstream.Upload(&upstream.UploadJob{
-						// Name:            ps.names[ps.profileTypes[i]],
-						Name:            name2,
+						Name:            nameWithSuffix,
 						StartTime:       ps.startTime,
 						EndTime:         endTime,
 						SpyName:         ps.spyName,
