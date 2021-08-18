@@ -17,12 +17,13 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
+	"github.com/pyroscope-io/pyroscope/pkg/util/throttle"
 
 	// revive:enable:blank-imports
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
+	"github.com/shirou/gopsutil/process"
 )
 
 // Each Session can deal with:
@@ -46,28 +47,40 @@ PROFILE TYPES      SPIES                 TRIES     ──► │server│
      1 mem  │     │     │     │ ───► │     │     │ ──► │      │
             └─────┴─────┴─────┘      └─────┴─────┘     └──────┘
 */
+// type process struct {
+// 	pid            int
+// 	spies          []*spy.Spy
+// 	errorThrottler *throttle.Throttler
+// }
+
+const errorThrottlerPeriod = 10 * time.Second
+
 type ProfileSession struct {
-	upstream   upstream.Upstream
-	appName    string
-	spyName    string
-	sampleRate uint32
-	uploadRate time.Duration
-	pids       []int
-	spies      [][]spy.Spy
-	stopCh     chan struct{}
-
-	trieMutex sync.Mutex
-	// see comment about multiple dimensions above
-	previousTries map[string][]*transporttrie.Trie
-	tries         map[string][]*transporttrie.Trie
-
+	// configuration, doesn't change
+	upstream         upstream.Upstream
+	spyName          string
+	sampleRate       uint32
 	profileTypes     []spy.ProfileType
+	uploadRate       time.Duration
 	disableGCRuns    bool
 	withSubprocesses bool
+	pid              int
 
+	logger    Logger
+	throttler *throttle.Throttler
+	stopCh    chan struct{}
+	trieMutex sync.Mutex
+
+	// these things do change:
+	appName   string
 	startTime time.Time
 
-	logger Logger
+	// these slices / maps keep track of processes, spies, and tries
+	// see comment about multiple dimensions above
+	spies map[int][]spy.Spy // pid, profileType
+	// string is appName, int is index in pids
+	previousTries map[string][]*transporttrie.Trie
+	tries         map[string][]*transporttrie.Trie
 }
 
 type SessionConfig struct {
@@ -97,10 +110,12 @@ func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 		disableGCRuns:    c.DisableGCRuns,
 		sampleRate:       c.SampleRate,
 		uploadRate:       c.UploadRate,
-		pids:             []int{c.Pid},
+		pid:              c.Pid,
+		spies:            make(map[int][]spy.Spy),
 		stopCh:           make(chan struct{}),
 		withSubprocesses: c.WithSubprocesses,
 		logger:           logger,
+		throttler:        throttle.New(errorThrottlerPeriod),
 
 		// string is appName, int is index in pids
 		previousTries: make(map[string][]*transporttrie.Trie),
@@ -167,15 +182,19 @@ func (ps *ProfileSession) takeSnapshots() {
 			}
 
 			ps.trieMutex.Lock()
-			for _, sarr := range ps.spies {
+			pidsToRemove := []int{}
+			for pid, sarr := range ps.spies {
 				for i, s := range sarr {
 					s.Snapshot(func(stack []byte, v uint64, err error) {
 						if err != nil {
-							// TODO: figure out what to do with these messages. A couple of considerations:
-							// * We probably shouldn't just suppress these messages as they might be useful for users
-							// * We probably want to throttle the messages because this is code that runs 100 times per second.
-							//   If we don't throttle we risk upsetting users with a flood of messages
-							// * In gospy case we need to add ability for users to bring their own logger, we can't just use logrus here
+							if ok, pidErr := process.PidExists(int32(pid)); !ok || pidErr != nil {
+								// if process doesn't exist or there's an error, remove this spy and pid
+								pidsToRemove = append(pidsToRemove, pid)
+							} else {
+								ps.throttler.Run(func() {
+									ps.logger.Errorf("error taking snapshot: %v", err)
+								})
+							}
 							return
 						}
 						if len(stack) > 0 {
@@ -183,6 +202,9 @@ func (ps *ProfileSession) takeSnapshots() {
 						}
 					})
 				}
+			}
+			for _, pid := range pidsToRemove {
+				delete(ps.spies, pid)
 			}
 			ps.trieMutex.Unlock()
 
@@ -261,16 +283,13 @@ func (ps *ProfileSession) SetTag(key, val string) error {
 func (ps *ProfileSession) Start() error {
 	ps.reset()
 
-	pid := -1
-	if len(ps.pids) > 0 {
-		pid = ps.pids[0]
-	}
+	pid := ps.pid
 	spies, err := ps.initializeSpies(pid)
 	if err != nil {
 		return err
 	}
 
-	ps.spies = append(ps.spies, spies)
+	ps.spies[pid] = spies
 
 	go ps.takeSnapshots()
 	return nil
@@ -358,10 +377,9 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 }
 
 func (ps *ProfileSession) addSubprocesses() {
-	newPids := findAllSubprocesses(ps.pids[0])
+	newPids := findAllSubprocesses(ps.pid)
 	for _, newPid := range newPids {
-		if !slices.IntContains(ps.pids, newPid) {
-			ps.pids = append(ps.pids, newPid)
+		if _, ok := ps.spies[newPid]; !ok {
 			newSpies, err := ps.initializeSpies(newPid)
 			if err != nil {
 				if ps.logger != nil {
@@ -371,7 +389,7 @@ func (ps *ProfileSession) addSubprocesses() {
 				if ps.logger != nil {
 					ps.logger.Debugf("started spy for subprocess %d [%s]", newPid, ps.spyName)
 				}
-				ps.spies = append(ps.spies, newSpies)
+				ps.spies[newPid] = newSpies
 			}
 		}
 	}
