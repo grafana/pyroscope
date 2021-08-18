@@ -63,7 +63,7 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 				}))
 				defer timer.ObserveDuration()
 
-				s.evictionsCount.Add(1)
+				s.evictionsTotal.Add(1)
 				s.dimensions.Evict(percent / 4)
 				s.dicts.Evict(percent / 4)
 				s.segments.Evict(percent / 2)
@@ -82,7 +82,7 @@ func (s *Storage) writeBackTask() {
 	}))
 	defer timer.ObserveDuration()
 
-	s.writeBackCount.Add(1)
+	s.writeBackTotal.Add(1)
 	s.dimensions.WriteBack()
 	s.segments.WriteBack()
 	s.dicts.WriteBack()

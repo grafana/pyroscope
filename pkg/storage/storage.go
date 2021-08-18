@@ -66,8 +66,8 @@ type Storage struct {
 
 	// prometheus metrics
 	storageWritesTotal prometheus.Counter
-	writeBackCount     prometheus.Counter
-	evictionsCount     prometheus.Counter
+	writeBackTotal     prometheus.Counter
+	evictionsTotal     prometheus.Counter
 	retentionCount     prometheus.Counter
 	storageReadsTotal  prometheus.Counter
 
@@ -116,14 +116,14 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		storageWritesTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_storage_writes_total",
 		}),
-		writeBackCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_write_back_count",
+		writeBackTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "pyroscope_write_back_total",
 		}),
-		evictionsCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_evictions_count",
+		evictionsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "pyroscope_evictions_total",
 		}),
 		retentionCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "pyroscope_retention_count",
+			Name: "pyroscope_retention_total",
 		}),
 		storageReadsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_storage_reads_total",
