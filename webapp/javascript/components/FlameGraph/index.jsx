@@ -28,7 +28,7 @@ import { bindActionCreators } from "redux";
 import { withShortcut } from "react-keybind";
 import { buildDiffRenderURL, buildRenderURL } from "../../util/updateRequests";
 
-import FlameGraphRenderer from "./FlameGraphRendere";
+import FlameGraphRenderer from "./FlameGraphRenderer";
 
 const mapStateToProps = (state) => ({
   ...state,

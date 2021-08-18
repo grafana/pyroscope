@@ -7,6 +7,7 @@
 
 import React from "react";
 import clsx from "clsx";
+import Graph from "@pyroscope/flame-graph";
 import TimelineChartWrapper from "../TimelineChartWrapper";
 import ProfilerTable from "../ProfilerTable";
 import ProfilerHeader from "../ProfilerHeader";
@@ -14,9 +15,9 @@ import {
   deltaDiffWrapper,
   parseFlamebearerFormat,
 } from "../../util/flamebearer";
+import ExportData from "../ExportData";
 
 import InstructionText from "./InstructionText";
-import Graph from "./FlameGraph";
 
 const paramsToObject = (entries) => {
   const result = {};
@@ -203,9 +204,20 @@ class FlameGraphRenderer extends React.Component {
       </div>
     );
 
-    const flameGraphPane = this.state.flamebearer ? (
-      <Graph flamebearer={this.state.flamebearer} />
-    ) : null;
+    const flameGraphPane =
+      this.state.flamebearer && this.state.view !== "table" ? (
+        <Graph
+          flamebearer={this.state.flamebearer}
+          format={this.parseFormat(this.state.flamebearer.format)}
+          view={this.state.view}
+          ExportData={ExportData}
+          label={
+            this.props.labels
+              ? this.props.labels.filter((x) => x.name === "__name__")[0].value
+              : ""
+          }
+        />
+      ) : null;
 
     const panes =
       this.props.viewType === "double"

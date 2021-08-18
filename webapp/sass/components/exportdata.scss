@@ -1,6 +1,8 @@
 @use "../variables" as *;
 @use "../mixins/outline" as *;
 
+@import "/Users/michaelegorov/work/pyroscope/flame-graph/build/styles.css";
+
 .dropdown-container {
   position: relative;
   display: inline-block;
