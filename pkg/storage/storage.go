@@ -127,6 +127,7 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		}),
 		storageReadsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_storage_reads_total",
+			Help: "number of calls to storage.Get",
 		}),
 
 		evictionsAllocBytes: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
@@ -197,22 +198,24 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 	}
 
 	hitCounterMetrics := promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-		Name: "pyroscope_cache_hit_total",
+		Name: "pyroscope_cache_hits_total",
 	}, []string{"name"})
 	missCounterMetrics := promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-		Name: "pyroscope_cache_miss_total",
+		Name: "pyroscope_cache_misses_total",
 	}, []string{"name"})
 	storageReadCounterMetrics := promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-		Name: "pyroscope_storage_read_total",
+		Name: "pyroscope_cache_reads_total",
 	}, []string{"name"})
 	storageWriteCounterMetrics := promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-		Name: "pyroscope_storage_write_total",
+		// TODO find a better name?
+		Name: "pyroscope_cache_storage_writes_total",
+		Help: "number of writes to the storage",
 	}, []string{"name"})
 
 	s.dimensions = cache.New(s.dbDimensions, "i:", &cache.Metrics{
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "dimension"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
-		StorageReadCounter:  storageReadCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
+		ReadCounter:         storageReadCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
 		StorageWriteCounter: storageWriteCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
 	})
 
@@ -229,7 +232,7 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 	s.segments = cache.New(s.dbSegments, "s:", &cache.Metrics{
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "segments"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "segments"}),
-		StorageReadCounter:  storageReadCounterMetrics.With(prometheus.Labels{"name": "segments"}),
+		ReadCounter:         storageReadCounterMetrics.With(prometheus.Labels{"name": "segments"}),
 		StorageWriteCounter: storageWriteCounterMetrics.With(prometheus.Labels{"name": "segments"}),
 	})
 
@@ -248,7 +251,7 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 	s.dicts = cache.New(s.dbDicts, "d:", &cache.Metrics{
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
-		StorageReadCounter:  storageReadCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
+		ReadCounter:         storageReadCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
 		StorageWriteCounter: storageWriteCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
 	})
 
@@ -265,7 +268,7 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 	s.trees = cache.New(s.dbTrees, "t:", &cache.Metrics{
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "trees"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "trees"}),
-		StorageReadCounter:  storageReadCounterMetrics.With(prometheus.Labels{"name": "trees"}),
+		ReadCounter:         storageReadCounterMetrics.With(prometheus.Labels{"name": "trees"}),
 		StorageWriteCounter: storageWriteCounterMetrics.With(prometheus.Labels{"name": "trees"}),
 	})
 	s.trees.Bytes = s.treeBytes

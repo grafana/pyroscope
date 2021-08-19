@@ -34,7 +34,7 @@ type Cache struct {
 type Metrics struct {
 	HitCounter          prometheus.Counter
 	MissCounter         prometheus.Counter
-	StorageReadCounter  prometheus.Counter
+	ReadCounter         prometheus.Counter
 	StorageWriteCounter prometheus.Counter
 }
 
@@ -184,6 +184,8 @@ func (cache *Cache) Lookup(key string) (interface{}, bool) {
 }
 
 func (cache *Cache) lookup(key string) (interface{}, error) {
+	cache.metrics.ReadCounter.Add(1)
+
 	// find the key from cache first
 	val := cache.lfu.Get(key)
 	if val != nil {
@@ -223,7 +225,6 @@ func (cache *Cache) lookup(key string) (interface{}, error) {
 	}
 
 	// deserialize the object from storage
-	cache.metrics.StorageReadCounter.Add(1)
 	val, err := cache.FromBytes(key, copied)
 	if err != nil {
 		return nil, fmt.Errorf("deserialize the object: %v", err)

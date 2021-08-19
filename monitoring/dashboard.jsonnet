@@ -28,7 +28,7 @@ grafana.dashboard.new(
   grafana.template.new(
     'instance',
     '$PROMETHEUS_DS',
-    'label_values(cache_trees_size, instance)',
+    'label_values(pyroscope_cache_size, instance)',
     label='instance',
   )
 )
@@ -48,7 +48,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'cpu_utilization{}',
+        'pyroscope_cpu_utilization{}',
       )
     )
   )
@@ -311,4 +311,54 @@ grafana.dashboard.new(
       ),
     )
   )
+)
+
+  // My new stuff
+.addRow(
+  grafana.row.new(
+    title='Cache',
+  )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Hit Rate',
+      datasource='$PROMETHEUS_DS',
+      legend_values='true',
+      legend_rightSide='true',
+      legend_alignAsTable='true',
+      legend_current='true',
+      legend_sort='current',
+      legend_sortDesc=true,
+      min='0',
+      max='1',
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        // ignore the name
+        'sum without(name)(rate(pyroscope_cache_hits_total[$__rate_interval]))/sum without(name)(rate(pyroscope_cache_reads_total[$__rate_interval]))',
+        legendFormat='Hits',
+      )
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        // ignore the name
+        'sum without(name)(rate(pyroscope_cache_misses_total[$__rate_interval]))/sum without(name)(rate(pyroscope_cache_reads_total[$__rate_interval]))',
+        legendFormat='Misses',
+      )
+    )
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Storage Writes',
+      datasource='$PROMETHEUS_DS',
+      legend_show=false,
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        // ignore the name
+        'sum without(name) (rate(pyroscope_cache_storage_writes_total[$__rate_interval]))'
+      )
+    )
+  )
+
 )
