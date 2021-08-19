@@ -341,13 +341,12 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (ctrl *Controller) expectJSON(w http.ResponseWriter, format string) (ok bool) {
+func (ctrl *Controller) expectJSON(format string) error {
 	switch format {
 	case "json", "":
-		return true
+		return nil
 	default:
-		ctrl.writeInvalidParameterError(w, errUnknownFormat)
-		return false
+		return errUnknownFormat
 	}
 }
 
