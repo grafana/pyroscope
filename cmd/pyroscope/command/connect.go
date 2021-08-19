@@ -2,14 +2,12 @@ package command
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func newConnectCmd(cfg *config.Exec) *cobra.Command {
@@ -29,6 +27,7 @@ func newConnectCmd(cfg *config.Exec) *cobra.Command {
 
 			err := exec.Cli(cfg, args)
 			if err != nil {
+				// do not print usage in case of an error while running the subcommand
 				cmd.SilenceUsage = true
 			}
 
@@ -36,17 +35,6 @@ func newConnectCmd(cfg *config.Exec) *cobra.Command {
 		},
 	}
 
-	cli.PopulateFlagSet(cfg, connectCmd.Flags(), cli.WithSkip("group-name", "user-name", "no-root-drop"))
-	viper.BindPFlags(connectCmd.Flags())
-
-	connectCmd.SetUsageFunc(func(cmd *cobra.Command) error {
-		fmt.Println(gradientBanner() + "\n" + DefaultUsageFunc(cmd.Flags(), cmd))
-		return nil
-	})
-
-	if err := viper.Unmarshal(cfg); err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
-	}
-
+	loadFlags(cfg, connectCmd, cli.WithSkip("group-name", "user-name", "no-root-drop"))
 	return connectCmd
 }

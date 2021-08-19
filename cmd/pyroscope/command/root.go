@@ -37,7 +37,7 @@ func newRootCmd(cfg *config.Config) *cobra.Command {
 }
 
 // Initialize adds all child commands to the root command and sets flags appropriately
-func Initialize() {
+func Initialize() error {
 	var cfg config.Config
 
 	viper.SetEnvPrefix("PYROSCOPE")
@@ -46,19 +46,15 @@ func Initialize() {
 	viper.SetEnvKeyReplacer(replacer)
 
 	rootCmd := newRootCmd(&cfg)
-	agentCmd := newAgentCmd(&cfg.Agent)
-	connectCmd := newConnectCmd(&cfg.Exec)
-	convertCmd := newConvertCmd(&cfg.Convert)
-	dbManagerCmd := newDbManagerCmd(&cfg.DbManager, &cfg.Server)
-	execCmd := newExecCmd(&cfg.Exec)
-	serverCmd := newServerCmd(&cfg.Server)
-
-	rootCmd.AddCommand(agentCmd)
-	rootCmd.AddCommand(connectCmd)
-	rootCmd.AddCommand(convertCmd)
-	rootCmd.AddCommand(dbManagerCmd)
-	rootCmd.AddCommand(execCmd)
-	rootCmd.AddCommand(serverCmd)
+	rootCmd.SilenceErrors = true
+	rootCmd.AddCommand(
+		newAgentCmd(&cfg.Agent),
+		newConnectCmd(&cfg.Exec),
+		newConvertCmd(&cfg.Convert),
+		newDbManagerCmd(&cfg.DbManager, &cfg.Server),
+		newExecCmd(&cfg.Exec),
+		newServerCmd(&cfg.Server),
+	)
 
 	logrus.SetReportCaller(true)
 	logrus.SetFormatter(&logrus.TextFormatter{
@@ -81,5 +77,5 @@ func Initialize() {
 	}
 
 	rootCmd.SetArgs(args)
-	rootCmd.Execute()
+	return rootCmd.Execute()
 }

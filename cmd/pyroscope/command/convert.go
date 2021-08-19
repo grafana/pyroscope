@@ -1,15 +1,12 @@
 package command
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func newConvertCmd(cfg *config.Convert) *cobra.Command {
@@ -24,6 +21,7 @@ func newConvertCmd(cfg *config.Convert) *cobra.Command {
 
 			err := convert.Cli(cfg, logger, args)
 			if err != nil {
+				// do not print usage in case of an error while running the subcommand
 				cmd.SilenceUsage = true
 			}
 
@@ -31,17 +29,6 @@ func newConvertCmd(cfg *config.Convert) *cobra.Command {
 		},
 	}
 
-	cli.PopulateFlagSet(cfg, convertCmd.Flags())
-	viper.BindPFlags(convertCmd.Flags())
-
-	convertCmd.SetUsageFunc(func(cmd *cobra.Command) error {
-		fmt.Println(gradientBanner() + "\n" + DefaultUsageFunc(cmd.Flags(), cmd))
-		return nil
-	})
-
-	if err := viper.Unmarshal(cfg); err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
-	}
-
+	loadFlags(cfg, convertCmd)
 	return convertCmd
 }

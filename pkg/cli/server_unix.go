@@ -29,6 +29,13 @@ func StartServer(c *config.Server) error {
 		return fmt.Errorf("could not initialize server: %w", err)
 	}
 
+	if srv.config.Auth.JWTSecret == "" {
+		srv.config.Auth.JWTSecret, err = srv.storage.JWT()
+		if err != nil {
+			return err
+		}
+	}
+
 	var stopTime time.Time
 	s := make(chan os.Signal, 1)
 	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)

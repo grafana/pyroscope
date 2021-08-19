@@ -10,7 +10,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func newExecCmd(cfg *config.Exec) *cobra.Command {
@@ -31,6 +30,7 @@ func newExecCmd(cfg *config.Exec) *cobra.Command {
 
 			err := exec.Cli(cfg, args)
 			if err != nil {
+				// do not print usage in case of an error while running the subcommand
 				cmd.SilenceUsage = true
 			}
 			// Normally, if the program ran, the call should return ExitError and
@@ -44,17 +44,6 @@ func newExecCmd(cfg *config.Exec) *cobra.Command {
 		},
 	}
 
-	cli.PopulateFlagSet(cfg, execCmd.Flags(), cli.WithSkip("pid"))
-	viper.BindPFlags(execCmd.Flags())
-
-	execCmd.SetUsageFunc(func(cmd *cobra.Command) error {
-		fmt.Println(gradientBanner() + "\n" + DefaultUsageFunc(cmd.Flags(), cmd))
-		return nil
-	})
-
-	if err := viper.Unmarshal(cfg); err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
-	}
-
+	loadFlags(cfg, execCmd, cli.WithSkip("pid"))
 	return execCmd
 }
