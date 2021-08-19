@@ -1,6 +1,6 @@
 module github.com/pyroscope-io/pyroscope
 
-go 1.14
+go 1.16
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect

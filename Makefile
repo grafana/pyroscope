@@ -109,7 +109,6 @@ assets-release: install-web-dependencies ## Configure the assets for release
 
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS)) ## Configure the assets along with dev tools
-	go run "$(shell scripts/pinned-tool.sh github.com/markbates/pkger)/cmd/pkger" -o pkg/server
 
 .PHONY: lint
 lint: ## Run the lint across the codebase

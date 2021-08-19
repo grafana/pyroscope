@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/markbates/pkger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
@@ -24,6 +23,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
+	"github.com/pyroscope-io/pyroscope/webapp"
 )
 
 const (
@@ -70,7 +70,7 @@ func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Log
 
 	if build.UseEmbeddedAssets {
 		// for this to work you need to run `pkger` first. See Makefile for more information
-		ctrl.dir = pkger.Dir("/webapp/public")
+		ctrl.dir = webapp.GetFileSystem()
 	} else {
 		ctrl.dir = http.Dir("./webapp/public")
 	}
