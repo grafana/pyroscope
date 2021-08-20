@@ -16,13 +16,15 @@
     "@babel/core": "7.8.4",
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "7.8.3",
+    "@size-limit/preset-app": "^5.0.3",
+    "@size-limit/webpack": "^5.0.3",
     "autoprefixer": "^9.8.5",
     "babel-eslint": "^10.1.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
     "clean-webpack-plugin": "^3.0.0",
     "contributor-faces": "^1.1.0",
     "conventional-changelog-cli": "^2.1.1",
-    "copy-webpack-plugin": "^7.0.0",
+    "copy-webpack-plugin": "^6.3.2",
     "css-loader": "^4.0.0",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.15.5",
@@ -46,8 +48,9 @@
     "redux-mock-store": "^1.5.4",
     "sass": "^1.26.10",
     "sass-loader": "^9.0.2",
+    "size-limit": "^5.0.3",
     "typescript": "3.9.3",
-    "webpack": "^5.11.0",
+    "webpack": "^4.42.0",
     "webpack-bundle-analyzer": "^4.3.0",
     "webpack-cli": "^3.3.12",
     "webpack-merge": "^5.0.9",
@@ -96,5 +99,13 @@
   },
   "engines": {
     "node": ">=11"
-  }
+  },
+  "size-limit": [
+    {
+      "path": "webapp/javascript/index.jsx",
+      "webpack": true,
+      "config": "scripts/webpack/webpack.prod.js",
+      "limit": "500 kB"
+    }
+  ]
 }
