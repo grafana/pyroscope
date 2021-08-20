@@ -51,7 +51,7 @@
     "size-limit": "^5.0.3",
     "typescript": "3.9.3",
     "webpack": "^5.51.1",
-    "webpack-bundle-analyzer": "^4.3.0",
+    "webpack-bundle-analyzer": "^4.4.2",
     "webpack-cli": "^4.8.0",
     "webpack-merge": "^5.0.9",
     "webpack-plugin-hash-output": "^3.2.1"
