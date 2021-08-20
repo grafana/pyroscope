@@ -91,10 +91,13 @@ COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.a /
 COPY --from=go-builder /opt/pyroscope/third_party/phpspy/libphpspy.a /
 # COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.combo.a /
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.h /
+
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.a /
 # COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.combo.a /
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.h /
+
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.a /
 # COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.combo.a /
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.h /
+
 COPY --from=go-builder /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a /

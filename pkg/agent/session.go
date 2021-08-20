@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"os"
 	"sync"
 	"time"
 
@@ -64,6 +65,7 @@ type ProfileSession struct {
 	uploadRate       time.Duration
 	disableGCRuns    bool
 	withSubprocesses bool
+	noForkDetection  bool
 	pid              int
 
 	logger    Logger
@@ -191,8 +193,12 @@ func (ps *ProfileSession) takeSnapshots() {
 								// if process doesn't exist or there's an error, remove this spy and pid
 								pidsToRemove = append(pidsToRemove, pid)
 							} else {
-								ps.throttler.Run(func() {
-									ps.logger.Errorf("error taking snapshot: %v", err)
+								ps.throttler.Run(func(skipped int) {
+									if skipped > 0 {
+										ps.logger.Errorf("error taking snapshot: %v, %d messages skipped due to throttling", err, skipped)
+									} else {
+										ps.logger.Errorf("error taking snapshot: %v", err)
+									}
 								})
 							}
 							return
@@ -309,6 +315,14 @@ func (ps *ProfileSession) reset() {
 	ps.trieMutex.Lock()
 	defer ps.trieMutex.Unlock()
 
+	// if the process was forked the spy will keep profiling the old process. That's usually not what you want
+	//   so in that case we stop the profiling session early
+	if ps.spyName != "gospy" && !ps.noForkDetection && ps.isForked() {
+		ps.logger.Debugf("fork detected, stopping the session")
+		close(ps.stopCh)
+		return
+	}
+
 	now := time.Now()
 	// upload the read data to server
 	if !ps.startTime.IsZero() {
@@ -374,6 +388,10 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 			ps.tries[name][i] = transporttrie.New()
 		}
 	}
+}
+
+func (ps *ProfileSession) isForked() bool {
+	return os.Getpid() != ps.pid
 }
 
 func (ps *ProfileSession) addSubprocesses() {
