@@ -69,7 +69,6 @@ func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Log
 	}
 
 	if build.UseEmbeddedAssets {
-		// for this to work you need to run `pkger` first. See Makefile for more information
 		ctrl.dir, err = webapp.Assets()
 		if err != nil {
 			return nil, err
