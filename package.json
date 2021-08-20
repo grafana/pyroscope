@@ -11,14 +11,13 @@
     "dev": "webpack --progress --colors --config scripts/webpack/webpack.dev.js",
     "test": "jest",
     "lint": "eslint ./ --ext .js,.jsx --cache --fix",
-    "size-build": "make assets-release"
+    "size-build": "make assets-size-build"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "7.8.3",
-    "@size-limit/preset-app": "^5.0.3",
-    "@size-limit/webpack": "^5.0.3",
+    "@size-limit/file": "^5.0.3",
     "autoprefixer": "^9.8.5",
     "babel-eslint": "^10.1.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
