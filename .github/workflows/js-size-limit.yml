@@ -1,0 +1,18 @@
+name: JS Bundle Size Limit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  js-bundle-size-limit:
+    runs-on: ubuntu-latest
+    env:
+      CI_JOB_NUMBER: 1
+    steps:
+      - uses: actions/checkout@v1
+      - uses: andresz1/size-limit-action@v1.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
