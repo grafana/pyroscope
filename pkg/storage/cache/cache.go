@@ -35,7 +35,7 @@ type Metrics struct {
 	HitCounter          prometheus.Counter
 	MissCounter         prometheus.Counter
 	ReadCounter         prometheus.Counter
-	StorageWriteCounter prometheus.Counter
+	WritesToDiskCounter prometheus.Counter
 }
 
 func New(db *badger.DB, prefix string, metrics *Metrics) *Cache {
@@ -115,7 +115,7 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 		return fmt.Errorf("serialize key and value: %v", err)
 	}
 
-	cache.metrics.StorageWriteCounter.Add(1)
+	cache.metrics.WritesToDiskCounter.Add(1)
 	if err = cache.db.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(cache.prefix+key), buf)
 	}); err != nil {

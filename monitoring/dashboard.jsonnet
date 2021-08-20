@@ -313,14 +313,14 @@ grafana.dashboard.new(
   )
 )
 
-  // My new stuff
+// My new stuff
 .addRow(
   grafana.row.new(
-    title='Cache',
+    title='Storage',
   )
   .addPanel(
     grafana.graphPanel.new(
-      'Hit Rate',
+      'Cache Hit/Misses',
       datasource='$PROMETHEUS_DS',
       legend_values='true',
       legend_rightSide='true',
@@ -328,37 +328,199 @@ grafana.dashboard.new(
       legend_current='true',
       legend_sort='current',
       legend_sortDesc=true,
-      min='0',
-      max='1',
+      format='percentunit',
     )
     .addTarget(
-      grafana.prometheus.target(
-        // ignore the name
-        'sum without(name)(rate(pyroscope_cache_hits_total[$__rate_interval]))/sum without(name)(rate(pyroscope_cache_reads_total[$__rate_interval]))',
+      grafana.prometheus.target(|||
+        sum without(name) (rate(pyroscope_storage_cache_hits_total[$__rate_interval]))
+        /
+        sum without(name) (rate(pyroscope_storage_cache_reads_total[$__rate_interval]))
+      |||,
         legendFormat='Hits',
       )
     )
     .addTarget(
+      grafana.prometheus.target(|||
+        sum without(name) (rate(pyroscope_storage_cache_misses_total[$__rate_interval]))
+        /
+        sum without(name)(rate(pyroscope_storage_cache_reads_total[$__rate_interval]))
+      |||,
+        legendFormat='Misses',
+      )
+    )
+  )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Cache Hit Ratio',
+      datasource='$PROMETHEUS_DS',
+      legend_values='true',
+      legend_rightSide='true',
+      legend_alignAsTable='true',
+      legend_current='true',
+      legend_sort='current',
+      legend_sortDesc=true,
+      format='percentunit',
+    )
+    .addTarget(
+      grafana.prometheus.target(|||
+        rate(pyroscope_storage_cache_hits_total[$__rate_interval])
+        /
+        rate(pyroscope_storage_cache_reads_total[$__rate_interval])
+      |||,
+        legendFormat='{{ name }}',
+      )
+    )
+  )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Rate of items persisted from cache to disk',
+      datasource='$PROMETHEUS_DS',
+      legend_values='true',
+      legend_rightSide='true',
+      legend_alignAsTable='true',
+      legend_current='true',
+      legend_sort='current',
+      legend_sortDesc=true,
+    )
+    .addTarget(
       grafana.prometheus.target(
         // ignore the name
-        'sum without(name)(rate(pyroscope_cache_misses_total[$__rate_interval]))/sum without(name)(rate(pyroscope_cache_reads_total[$__rate_interval]))',
-        legendFormat='Misses',
+        'sum without(name) (rate(pyroscope_storage_cache_persisted_total[$__rate_interval]))',
+        legendFormat="Total",
+      )
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        '(rate(pyroscope_storage_cache_persisted_total[$__rate_interval]))',
+        legendFormat="{{ name }}",
       )
     )
   )
 
   .addPanel(
     grafana.graphPanel.new(
-      'Storage Writes',
+      'Storage Reads/Writes',
       datasource='$PROMETHEUS_DS',
-      legend_show=false,
     )
     .addTarget(
       grafana.prometheus.target(
-        // ignore the name
-        'sum without(name) (rate(pyroscope_cache_storage_writes_total[$__rate_interval]))'
+        'rate(pyroscope_storage_reads_total[$__rate_interval])',
+        legendFormat="Reads",
+      )
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'rate(pyroscope_storage_writes_total[$__rate_interval])',
+        legendFormat="Writes",
       )
     )
   )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Periodic tasks',
+      datasource='$PROMETHEUS_DS',
+      legend_values='true',
+      format='seconds',
+      min='0.001', // as as the bucket minimum
+      max='10', // same as the maximum bucket
+      logBase1Y=2,
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'histogram_quantile(0.9, pyroscope_storage_evictions_duration_seconds_bucket)',
+        legendFormat='evictions',
+      ),
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'histogram_quantile(0.9, pyroscope_storage_writeback_duration_seconds_bucket)',
+        legendFormat='write-back',
+      ),
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'histogram_quantile(0.9, pyroscope_storage_retention_duration_seconds_bucket)',
+        legendFormat='retention',
+      ),
+    )
+  )
 
+  .addPanel(
+    grafana.graphPanel.new(
+      'Disk Usage',
+      datasource='$PROMETHEUS_DS',
+      format='bytes',
+      legend_values='true',
+      legend_rightSide='true',
+      legend_alignAsTable='true',
+      legend_current='true',
+      legend_sort='current',
+      legend_sortDesc=true,
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'pyroscope_storage_disk_bytes',
+        legendFormat='{{ name }}',
+      ),
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'sum without(name)(pyroscope_disk_bytes)',
+        legendFormat='total',
+      ),
+    )
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Cache Size (number of items)',
+      datasource='$PROMETHEUS_DS',
+      legend_values='true',
+      legend_rightSide='true',
+      legend_alignAsTable='true',
+      legend_current='true',
+      legend_sort='current',
+      legend_sortDesc=true,
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'pyroscope_storage_cache_size',
+        legendFormat='{{ name }}',
+      ),
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'sum without(name)(pyroscope_storage_cache_size)',
+        legendFormat='total',
+      ),
+    )
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Cache Size (Approximation)',
+      datasource='$PROMETHEUS_DS',
+      format='bytes',
+      legend_values='true',
+      legend_rightSide='true',
+      legend_alignAsTable='true',
+      legend_current=true,
+      legend_max=true,
+      legend_sort='current',
+      legend_sortDesc=true,
+      logBase1Y=2,
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'pyroscope_storage_evictions_alloc_bytes',
+        legendFormat='heap size',
+      ),
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'pyroscope_storage_evictions_total_mem_bytes',
+        legendFormat='total memory',
+      ),
+    )
+  )
 )

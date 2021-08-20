@@ -1185,14 +1185,14 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "sum without(name)(rate(pyroscope_cache_hits_total[$__rate_interval]))/sum without(name)(rate(pyroscope_cache_reads_total[$__rate_interval]))",
+                     "expr": "sum without(name) (rate(pyroscope_storage_cache_hits_total[$__rate_interval]))\n/\nsum without(name) (rate(pyroscope_storage_cache_reads_total[$__rate_interval]))\n",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "Hits",
                      "refId": "A"
                   },
                   {
-                     "expr": "sum without(name)(rate(pyroscope_cache_misses_total[$__rate_interval]))/sum without(name)(rate(pyroscope_cache_reads_total[$__rate_interval]))",
+                     "expr": "sum without(name) (rate(pyroscope_storage_cache_misses_total[$__rate_interval]))\n/\nsum without(name)(rate(pyroscope_storage_cache_reads_total[$__rate_interval]))\n",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "Misses",
@@ -1202,7 +1202,178 @@
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Hit Rate",
+               "title": "Cache Hit/Misses",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "percentunit",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "percentunit",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 17,
+               "legend": {
+                  "alignAsTable": "true",
+                  "avg": false,
+                  "current": "true",
+                  "max": false,
+                  "min": false,
+                  "rightSide": "true",
+                  "show": true,
+                  "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
+                  "total": false,
+                  "values": "true"
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "rate(pyroscope_storage_cache_hits_total[$__rate_interval])\n/\nrate(pyroscope_storage_cache_reads_total[$__rate_interval])\n",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ name }}",
+                     "refId": "A"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Cache Hit Ratio",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "percentunit",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "percentunit",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 18,
+               "legend": {
+                  "alignAsTable": "true",
+                  "avg": false,
+                  "current": "true",
+                  "max": false,
+                  "min": false,
+                  "rightSide": "true",
+                  "show": true,
+                  "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
+                  "total": false,
+                  "values": "true"
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "sum without(name) (rate(pyroscope_storage_cache_persisted_total[$__rate_interval]))",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "Total",
+                     "refId": "A"
+                  },
+                  {
+                     "expr": "(rate(pyroscope_storage_cache_persisted_total[$__rate_interval]))",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ name }}",
+                     "refId": "B"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Rate of items persisted from cache to disk",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -1221,16 +1392,16 @@
                      "format": "short",
                      "label": null,
                      "logBase": 1,
-                     "max": "1",
-                     "min": "0",
+                     "max": null,
+                     "min": null,
                      "show": true
                   },
                   {
                      "format": "short",
                      "label": null,
                      "logBase": 1,
-                     "max": "1",
-                     "min": "0",
+                     "max": null,
+                     "min": null,
                      "show": true
                   }
                ]
@@ -1244,7 +1415,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 17,
+               "id": 19,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1252,7 +1423,7 @@
                   "max": false,
                   "min": false,
                   "rightSide": false,
-                  "show": false,
+                  "show": true,
                   "sideWidth": null,
                   "total": false,
                   "values": false
@@ -1272,17 +1443,24 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "sum without(name) (rate(pyroscope_cache_storage_writes_total[$__rate_interval]))",
+                     "expr": "rate(pyroscope_storage_reads_total[$__rate_interval])",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "Reads",
                      "refId": "A"
+                  },
+                  {
+                     "expr": "rate(pyroscope_storage_writes_total[$__rate_interval])",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "Writes",
+                     "refId": "B"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Storage Writes",
+               "title": "Storage Reads/Writes",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -1314,13 +1492,374 @@
                      "show": true
                   }
                ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 20,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": true,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": "true"
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "histogram_quantile(0.9, pyroscope_storage_evictions_duration_seconds_bucket)",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "evictions",
+                     "refId": "A"
+                  },
+                  {
+                     "expr": "histogram_quantile(0.9, pyroscope_storage_writeback_duration_seconds_bucket)",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "write-back",
+                     "refId": "B"
+                  },
+                  {
+                     "expr": "histogram_quantile(0.9, pyroscope_storage_retention_duration_seconds_bucket)",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "retention",
+                     "refId": "C"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Periodic tasks",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "seconds",
+                     "label": null,
+                     "logBase": 2,
+                     "max": "10",
+                     "min": "0.001",
+                     "show": true
+                  },
+                  {
+                     "format": "seconds",
+                     "label": null,
+                     "logBase": 1,
+                     "max": "10",
+                     "min": "0.001",
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 21,
+               "legend": {
+                  "alignAsTable": "true",
+                  "avg": false,
+                  "current": "true",
+                  "max": false,
+                  "min": false,
+                  "rightSide": "true",
+                  "show": true,
+                  "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
+                  "total": false,
+                  "values": "true"
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "pyroscope_storage_disk_bytes",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ name }}",
+                     "refId": "A"
+                  },
+                  {
+                     "expr": "sum without(name)(pyroscope_disk_bytes)",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "total",
+                     "refId": "B"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Disk Usage",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "bytes",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "bytes",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 22,
+               "legend": {
+                  "alignAsTable": "true",
+                  "avg": false,
+                  "current": "true",
+                  "max": false,
+                  "min": false,
+                  "rightSide": "true",
+                  "show": true,
+                  "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
+                  "total": false,
+                  "values": "true"
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "pyroscope_storage_cache_size",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ name }}",
+                     "refId": "A"
+                  },
+                  {
+                     "expr": "sum without(name)(pyroscope_storage_cache_size)",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "total",
+                     "refId": "B"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Cache Size (number of items)",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 23,
+               "legend": {
+                  "alignAsTable": "true",
+                  "avg": false,
+                  "current": true,
+                  "max": true,
+                  "min": false,
+                  "rightSide": "true",
+                  "show": true,
+                  "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
+                  "total": false,
+                  "values": "true"
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "pyroscope_storage_evictions_alloc_bytes",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "heap size",
+                     "refId": "A"
+                  },
+                  {
+                     "expr": "pyroscope_storage_evictions_total_mem_bytes",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "total memory",
+                     "refId": "B"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Cache Size (Approximation)",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "bytes",
+                     "label": null,
+                     "logBase": 2,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "bytes",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
             }
          ],
          "repeat": null,
          "repeatIteration": null,
          "repeatRowId": null,
          "showTitle": true,
-         "title": "Cache",
+         "title": "Storage",
          "titleSize": "h6",
          "type": "row"
       }

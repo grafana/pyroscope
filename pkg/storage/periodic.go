@@ -51,15 +51,16 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 
 		s.evictionsAllocBytes.Set(float64(m.Alloc))
 		s.evictionsTotalBytes.Set(float64(memTotal))
-		s.evictionsUsedPerc.Set(used)
 
 		percent := s.config.CacheEvictVolume
 		if used > s.config.CacheEvictThreshold {
 			func() {
-				timer := prometheus.NewTimer(prometheus.ObserverFunc(s.evictionsTimer.Observe))
+				timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+					logrus.Debugf("eviction task took %f seconds\n", v)
+					s.evictionsTimer.Observe(v)
+				}))
 				defer timer.ObserveDuration()
 
-				s.evictionsTotal.Add(1)
 				s.dimensions.Evict(percent / 4)
 				s.dicts.Evict(percent / 4)
 				s.segments.Evict(percent / 2)
@@ -71,7 +72,11 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 }
 
 func (s *Storage) writeBackTask() {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.writeBackTimer.Observe))
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+		logrus.Debugf("writeback task took %f seconds\n", v)
+		s.writeBackTimer.Observe(v)
+	}))
+
 	defer timer.ObserveDuration()
 
 	s.dimensions.WriteBack()
@@ -81,10 +86,12 @@ func (s *Storage) writeBackTask() {
 }
 
 func (s *Storage) retentionTask() {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.retentionTimer.Observe))
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+		logrus.Debugf("retention task %f seconds\n", v)
+		s.retentionTimer.Observe(v)
+	}))
 	defer timer.ObserveDuration()
 
-	s.retentionCount.Add(1)
 	if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
 		logrus.WithError(err).Warn("retention task failed")
 	}
