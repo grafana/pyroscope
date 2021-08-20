@@ -1,8 +1,6 @@
 name: JS Bundle Size Limit
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
 
