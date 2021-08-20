@@ -6,7 +6,8 @@ import (
 	"net/http"
 )
 
-//go:embed public
+// Asterisk here is important, see https://github.com/golang/go/issues/42328 for more details
+//go:embed public/*
 var assets embed.FS
 
 func Assets() (http.FileSystem, error) {
