@@ -57,14 +57,14 @@ PYROSCOPE_LOG_LEVEL ?= debug
 PYROSCOPE_BADGER_LOG_LEVEL ?= error
 PYROSCOPE_STORAGE_PATH ?= tmp/pyroscope-storage
 
-.PHONY: all 
+.PHONY: all
 all: build ## Runs the build target
 
-.PHONY: build   
+.PHONY: build
 build: ## Builds the binary
 	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
 
-.PHONY: build-release 
+.PHONY: build-release
 build-release: embedded-assets ## Builds the release build
 	EMBEDDED_ASSETS=true $(MAKE) build
 
@@ -106,6 +106,10 @@ assets-watch: install-web-dependencies ## Configure the assets with live reloadi
 assets-release: install-web-dependencies ## Configure the assets for release
 	rm -rf webapp/public
 	NODE_ENV=production $(shell yarn bin webpack) --config scripts/webpack/webpack.prod.js
+
+.PHONY: assets-size-build
+assets-size-build: assets-release ## Build assets for the size report
+	mv webapp/public/assets/app*.js webapp/public/assets/app.js
 
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS)) ## Configure the assets along with dev tools
