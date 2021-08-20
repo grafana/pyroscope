@@ -11,7 +11,7 @@
     "dev": "webpack --progress --colors --config scripts/webpack/webpack.dev.js",
     "test": "jest",
     "lint": "eslint ./ --ext .js,.jsx --cache --fix",
-    "build": "make assets-release"
+    "size-build": "make assets-release"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
