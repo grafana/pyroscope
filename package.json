@@ -103,8 +103,7 @@
   "size-limit": [
     {
       "path": "webapp/public/assets/*.js",
-      "webpack": false,
-      "limit": "1500 kB"
+      "limit": "750 kB"
     }
   ]
 }
