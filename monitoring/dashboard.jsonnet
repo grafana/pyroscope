@@ -28,7 +28,7 @@ grafana.dashboard.new(
   grafana.template.new(
     'instance',
     '$PROMETHEUS_DS',
-    'label_values(pyroscope_cache_size, instance)',
+    'label_values(pyroscope_storage_cache_size, instance)',
     label='instance',
   )
 )
@@ -523,4 +523,191 @@ grafana.dashboard.new(
       ),
     )
   )
+)
+
+// inspired by
+// https://github.com/aukhatov/grafana-dashboards/blob/master/Go%20Metrics-1567509764849.json
+.addRow(
+  grafana.row.new(
+    title='Go',
+    collapse=true,
+  )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Memory Off-heap',
+      datasource='$PROMETHEUS_DS',
+      format='bytes',
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'go_memstats_mspan_inuse_bytes{instance="$instance"}',
+        legendFormat='{{ __name__ }}',
+      )
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'go_memstats_mspan_sys_bytes{instance="$instance"}',
+        legendFormat='{{ __name__ }}',
+      )
+    )
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_mcache_inuse_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_mcache_sys_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_buck_hash_sys_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_gc_sys_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_other_sys_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_next_gc_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Memory In Heap',
+      datasource='$PROMETHEUS_DS',
+      format='bytes',
+    )
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_heap_alloc_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_heap_sys_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_heap_idle_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_heap_inuse_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_heap_released_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+  )
+
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Memory In Stack',
+      datasource='$PROMETHEUS_DS',
+      format='decbytes',
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'go_memstats_stack_inuse_bytes{instance="$instance"}',
+        legendFormat='{{ __name__ }}',
+      )
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'go_memstats_stack_sys_bytes{instance="$instance"}',
+        legendFormat='{{ __name__ }}',
+      )
+    )
+  )
+
+
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Total Used Memory',
+      datasource='$PROMETHEUS_DS',
+      format='decbytes',
+    )
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_sys_bytes{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+  )
+
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Number of Live Objects',
+      datasource='$PROMETHEUS_DS',
+      legend_show=false,
+    )
+    .addTarget(grafana.prometheus.target(
+      'go_memstats_mallocs_total{instance="$instance"} - go_memstats_frees_total{instance="$instance"}'
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Rate of Objects Allocated',
+      datasource='$PROMETHEUS_DS',
+      legend_show=false,
+    )
+    .addTarget(grafana.prometheus.target('rate(go_memstats_mallocs_total{instance="$instance"}[$__rate_interval])'))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Rates of Allocation',
+      datasource='$PROMETHEUS_DS',
+      format="Bps",
+      legend_show=false,
+    )
+    .addTarget(grafana.prometheus.target('rate(go_memstats_alloc_bytes_total{instance="$instance"}[$__rate_interval])'))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Goroutines',
+      datasource='$PROMETHEUS_DS',
+      legend_show=false,
+    )
+    .addTarget(grafana.prometheus.target('go_goroutines{instance="$instance"}'))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'GC duration quantile',
+      datasource='$PROMETHEUS_DS',
+      legend_show=false,
+    )
+    .addTarget(grafana.prometheus.target('go_gc_duration_seconds{instance="$instance"}'))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'File descriptors',
+      datasource='$PROMETHEUS_DS',
+    )
+    .addTarget(grafana.prometheus.target(
+      'process_open_fds{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+    .addTarget(grafana.prometheus.target(
+      'process_max_fds{instance="$instance"}',
+      legendFormat='{{ __name__ }}',
+    ))
+  )
+
+  // process_max_fds
+  // process_open_fds
+  // process_resident_memory_bytes
+  // process_resident_memory_bytes
+  // process_start_time_seconds
+  // process_virtual_memory_bytes
+
 )
