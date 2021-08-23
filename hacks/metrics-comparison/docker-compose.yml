@@ -1,0 +1,66 @@
+version: "3.9"
+services:
+  pyroscope_dev:
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
+      - PYROSCOPE_WAIT_AFTER_STOP=true
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    command:
+      - server
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 2048MB
+
+
+  pyroscope_reference:
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
+      - PYROSCOPE_WAIT_AFTER_STOP=true
+    image: pyroscope/pyroscope-dev:main
+    command:
+      - server
+    ports:
+    - 4041:4040
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 2048MB
+
+  grafana:
+    image: grafana/grafana:8.1.1
+    volumes:
+      - ./grafana-provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    environment:
+    - "GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel"
+    ports:
+    - 3000:3000
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    volumes:
+      - ./prometheus:/etc/prometheus/
+      - data-prometheus:/prometheus
+
+  go-agent-dev:
+    build:
+      context: ./golang
+    environment:
+    - "PYROSCOPE_URL=pyroscope_dev:4040"
+
+  go-agent-ref:
+    build:
+      context: ./golang
+    environment:
+    - "PYROSCOPE_URL=pyroscope_reference:4040"
+
+volumes:
+  data-prometheus:
+    driver: local

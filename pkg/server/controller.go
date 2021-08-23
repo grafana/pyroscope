@@ -338,13 +338,12 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (ctrl *Controller) expectJSON(w http.ResponseWriter, format string) (ok bool) {
+func (ctrl *Controller) expectJSON(format string) error {
 	switch format {
 	case "json", "":
-		return true
+		return nil
 	default:
-		ctrl.writeInvalidParameterError(w, errUnknownFormat)
-		return false
+		return errUnknownFormat
 	}
 }
 
@@ -353,6 +352,10 @@ func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}
 	if err := json.NewEncoder(w).Encode(res); err != nil {
 		ctrl.writeJSONEncodeError(w, err)
 	}
+}
+
+func (ctrl *Controller) writeInvalidMethodError(w http.ResponseWriter, err error) {
+	ctrl.writeError(w, http.StatusMethodNotAllowed, err, "method not supported")
 }
 
 func (ctrl *Controller) writeInvalidParameterError(w http.ResponseWriter, err error) {
