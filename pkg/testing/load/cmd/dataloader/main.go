@@ -10,6 +10,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing/load"
@@ -47,7 +48,7 @@ func openStorage(path string) (*storage.Storage, error) {
 		CacheEvictVolume:      0.10,
 		MaxNodesSerialization: 2048,
 		MaxNodesRender:        2048,
-	})
+	}, prometheus.NewRegistry())
 }
 
 func main() {

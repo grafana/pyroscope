@@ -47,7 +47,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	var err error
-	svc.storage, err = storage.New(svc.config)
+	svc.storage, err = storage.New(svc.config, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
@@ -64,7 +64,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		return nil, fmt.Errorf("new server: %w", err)
 	}
 
-	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config)
+	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config, prometheus.DefaultRegisterer)
 	svc.directUpstream = direct.New(ingester)
 	selfProfilingConfig := &agent.SessionConfig{
 		Upstream:       svc.directUpstream,

@@ -12,6 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -57,7 +58,7 @@ var _ = Describe("analytics", func() {
 					defer httpServer.Close()
 					url = httpServer.URL + "/api/events"
 
-					s, err := storage.New(&(*cfg).Server)
+					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
 					analytics := NewService(&(*cfg).Server, s, mockStatsProvider{})

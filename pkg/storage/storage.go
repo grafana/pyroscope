@@ -14,6 +14,8 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -27,7 +29,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
@@ -62,6 +63,24 @@ type Storage struct {
 
 	stop chan struct{}
 	wg   sync.WaitGroup
+
+	// prometheus metrics
+	storageWritesTotal prometheus.Counter
+	writeBackCount     prometheus.Counter
+	evictionsCount     prometheus.Counter
+	retentionCount     prometheus.Counter
+	storageReadsTotal  prometheus.Counter
+
+	evictionsAllocBytes prometheus.Gauge
+	evictionsTotalBytes prometheus.Gauge
+	evictionsUsedPerc   prometheus.Gauge
+
+	storageCachesFlushTimer prometheus.Gauge
+	storageBadgerCloseTimer prometheus.Gauge
+
+	evictionsTimer prometheus.Gauge
+	writeBackTimer prometheus.Gauge
+	retentionTimer prometheus.Gauge
 }
 
 func (s *Storage) newBadger(name string) (*badger.DB, error) {
@@ -89,12 +108,56 @@ func (s *Storage) newBadger(name string) (*badger.DB, error) {
 	return db, nil
 }
 
-func New(c *config.Server) (*Storage, error) {
+func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 	s := &Storage{
 		config:           c,
 		stop:             make(chan struct{}),
 		localProfilesDir: filepath.Join(c.StoragePath, "local-profiles"),
+		storageWritesTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_writes_total",
+		}),
+		writeBackCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "write_back_count",
+		}),
+		evictionsCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "evictions_count",
+		}),
+		retentionCount: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "retention_count",
+		}),
+		storageReadsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_reads_total",
+		}),
+
+		evictionsAllocBytes: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "evictions_alloc_bytes",
+		}),
+
+		evictionsTotalBytes: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "evictions_total_bytes",
+		}),
+		evictionsUsedPerc: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "evictions_used_perc",
+		}),
+
+		storageCachesFlushTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "storage_caches_flush_timer",
+		}),
+		storageBadgerCloseTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "storage_badger_close_timer",
+		}),
+
+		evictionsTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "evictions_timer",
+		}),
+		writeBackTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "write_back_timer",
+		}),
+		retentionTimer: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "retention_timer",
+		}),
 	}
+
 	var err error
 	s.db, err = s.newBadger("main")
 	if err != nil {
@@ -122,7 +185,21 @@ func New(c *config.Server) (*Storage, error) {
 		return nil, err
 	}
 
-	s.dimensions = cache.New(s.dbDimensions, "i:", "dimensions")
+	s.dimensions = cache.New(s.dbDimensions, "i:", &cache.Metrics{
+		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_dimensions_hit",
+		}),
+		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_dimensions_miss",
+		}),
+		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_dimensions_read",
+		}),
+		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_dimensions_write",
+		}),
+	})
+
 	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dimension.Dimension).Bytes()
 	}
@@ -133,7 +210,21 @@ func New(c *config.Server) (*Storage, error) {
 		return dimension.New()
 	}
 
-	s.segments = cache.New(s.dbSegments, "s:", "segments")
+	s.segments = cache.New(s.dbSegments, "s:", &cache.Metrics{
+		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_segments_hit",
+		}),
+		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_segments_miss",
+		}),
+		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_segments_read",
+		}),
+		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_segments_write",
+		}),
+	})
+
 	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*segment.Segment).Bytes()
 	}
@@ -146,7 +237,21 @@ func New(c *config.Server) (*Storage, error) {
 		return segment.New()
 	}
 
-	s.dicts = cache.New(s.dbDicts, "d:", "dicts")
+	s.dicts = cache.New(s.dbDicts, "d:", &cache.Metrics{
+		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_dicts_hit",
+		}),
+		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_dicts_miss",
+		}),
+		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_dicts_read",
+		}),
+		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_dicts_write",
+		}),
+	})
+
 	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) {
 		return v.(*dict.Dict).Bytes()
 	}
@@ -157,7 +262,20 @@ func New(c *config.Server) (*Storage, error) {
 		return dict.New()
 	}
 
-	s.trees = cache.New(s.dbTrees, "t:", "trees")
+	s.trees = cache.New(s.dbTrees, "t:", &cache.Metrics{
+		HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_trees_hit",
+		}),
+		MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "cache_trees_miss",
+		}),
+		StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_trees_read",
+		}),
+		StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "storage_trees_write",
+		}),
+	})
 	s.trees.Bytes = s.treeBytes
 	s.trees.FromBytes = s.treeFromBytes
 	s.trees.New = func(k string) interface{} {
@@ -242,7 +360,7 @@ func (s *Storage) Put(po *PutInput) error {
 		"aggregationType": po.AggregationType,
 	}).Debug("storage.Put")
 
-	metrics.Count("storage_writes_total", 1.0)
+	s.storageWritesTotal.Add(1.0)
 
 	for k, v := range po.Key.Labels() {
 		s.labels.Put(k, v)
@@ -332,7 +450,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 	logger.Debug("storage.Get")
 
-	metrics.Count("storage_reads_total", 1.0)
+	s.storageReadsTotal.Add(1)
 
 	var (
 		triesToMerge []merge.Merger
@@ -526,7 +644,14 @@ func (s *Storage) Close() error {
 	close(s.stop)
 	s.wg.Wait()
 
-	metrics.Timing("storage_caches_flush_timer", func() {
+	func() {
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+			v = v * 1_000_000_000 // convert to nanoseconds
+
+			s.storageCachesFlushTimer.Set(v)
+		}))
+		defer timer.ObserveDuration()
+
 		wg := sync.WaitGroup{}
 		wg.Add(3)
 		go func() { defer wg.Done(); s.dimensions.Flush() }()
@@ -536,9 +661,16 @@ func (s *Storage) Close() error {
 
 		// dictionary has to flush last because trees write to dictionaries
 		s.dicts.Flush()
-	})
+	}()
 
-	metrics.Timing("storage_badger_close_timer", func() {
+	func() {
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+			v = v * 1_000_000_000 // convert to nanoseconds
+
+			s.storageBadgerCloseTimer.Set(v)
+		}))
+		defer timer.ObserveDuration()
+
 		wg := sync.WaitGroup{}
 		wg.Add(5)
 		go func() { defer wg.Done(); s.dbTrees.Close() }()
@@ -547,7 +679,8 @@ func (s *Storage) Close() error {
 		go func() { defer wg.Done(); s.dbSegments.Close() }()
 		go func() { defer wg.Done(); s.db.Close() }()
 		wg.Wait()
-	})
+	}()
+
 	// this allows prometheus to collect metrics before pyroscope exits
 	if os.Getenv("PYROSCOPE_WAIT_AFTER_STOP") != "" {
 		time.Sleep(5 * time.Second)
