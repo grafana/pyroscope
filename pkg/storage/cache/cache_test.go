@@ -38,10 +38,10 @@ var _ = Describe("cache", func() {
 			MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "cache_test_miss",
 			}),
-			StorageReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			ReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "storage_test_read",
 			}),
-			StorageWriteCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			WritesToDiskCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "storage_test_write",
 			}),
 		})

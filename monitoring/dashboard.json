@@ -53,7 +53,7 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "cpu_utilization{}",
+                     "expr": "pyroscope_cpu_utilization{instance=\"$instance\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "",
@@ -95,7 +95,20 @@
                      "show": true
                   }
                ]
-            },
+            }
+         ],
+         "repeat": null,
+         "repeatIteration": null,
+         "repeatRowId": null,
+         "showTitle": true,
+         "title": "CPU",
+         "titleSize": "h6",
+         "type": "row"
+      },
+      {
+         "collapse": false,
+         "collapsed": false,
+         "panels": [
             {
                "aliasColors": { },
                "bars": false,
@@ -107,16 +120,18 @@
                "gridPos": { },
                "id": 3,
                "legend": {
-                  "alignAsTable": false,
+                  "alignAsTable": "true",
                   "avg": false,
-                  "current": false,
+                  "current": "true",
                   "max": false,
                   "min": false,
-                  "rightSide": false,
-                  "show": false,
+                  "rightSide": "true",
+                  "show": true,
                   "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
                   "total": false,
-                  "values": false
+                  "values": "true"
                },
                "lines": true,
                "linewidth": 1,
@@ -133,17 +148,24 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "{__name__=~\"go_goroutines\", instance=\"$instance\"}",
+                     "expr": "sum without(name) (rate(pyroscope_storage_cache_hits_total[$__rate_interval]))\n/\nsum without(name) (rate(pyroscope_storage_cache_reads_total[$__rate_interval]))\n",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "Hits",
                      "refId": "A"
+                  },
+                  {
+                     "expr": "sum without(name) (rate(pyroscope_storage_cache_misses_total[$__rate_interval]))\n/\nsum without(name)(rate(pyroscope_storage_cache_reads_total[$__rate_interval]))\n",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "Misses",
+                     "refId": "B"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Goroutines",
+               "title": "Cache Hit/Misses",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -159,19 +181,19 @@
                },
                "yaxes": [
                   {
-                     "format": "short",
+                     "format": "percentunit",
                      "label": null,
                      "logBase": 1,
                      "max": null,
-                     "min": "0",
+                     "min": null,
                      "show": true
                   },
                   {
-                     "format": "short",
+                     "format": "percentunit",
                      "label": null,
                      "logBase": 1,
                      "max": null,
-                     "min": "0",
+                     "min": null,
                      "show": true
                   }
                ]
@@ -187,16 +209,18 @@
                "gridPos": { },
                "id": 4,
                "legend": {
-                  "alignAsTable": false,
+                  "alignAsTable": "true",
                   "avg": false,
-                  "current": false,
+                  "current": "true",
                   "max": false,
                   "min": false,
-                  "rightSide": false,
+                  "rightSide": "true",
                   "show": true,
                   "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
                   "total": false,
-                  "values": false
+                  "values": "true"
                },
                "lines": true,
                "linewidth": 1,
@@ -213,17 +237,17 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "rate(storage_reads_total{}[1m])",
+                     "expr": "rate(pyroscope_storage_cache_hits_total[$__rate_interval])\n/\nrate(pyroscope_storage_cache_reads_total[$__rate_interval])\n",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "{{ name }}",
                      "refId": "A"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Throughput",
+               "title": "Cache Hit Ratio",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -239,7 +263,7 @@
                },
                "yaxes": [
                   {
-                     "format": "rps",
+                     "format": "percentunit",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -247,7 +271,7 @@
                      "show": true
                   },
                   {
-                     "format": "rps",
+                     "format": "percentunit",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -255,20 +279,7 @@
                      "show": true
                   }
                ]
-            }
-         ],
-         "repeat": null,
-         "repeatIteration": null,
-         "repeatRowId": null,
-         "showTitle": true,
-         "title": "CPU",
-         "titleSize": "h6",
-         "type": "row"
-      },
-      {
-         "collapse": false,
-         "collapsed": false,
-         "panels": [
+            },
             {
                "aliasColors": { },
                "bars": false,
@@ -308,24 +319,24 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "{__name__=~\"go_memstats_.+bytes\", instance=\"$instance\"}",
+                     "expr": "sum without(name) (rate(pyroscope_storage_cache_persisted_total[$__rate_interval]))",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{__name__}}",
+                     "legendFormat": "Total",
                      "refId": "A"
                   },
                   {
-                     "expr": "evictions_total_bytes{}",
+                     "expr": "(rate(pyroscope_storage_cache_persisted_total[$__rate_interval]))",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "RAM total",
+                     "legendFormat": "{{ name }}",
                      "refId": "B"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Memory",
+               "title": "Rate of items persisted from cache to disk",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -341,7 +352,7 @@
                },
                "yaxes": [
                   {
-                     "format": "bytes",
+                     "format": "short",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -349,7 +360,7 @@
                      "show": true
                   },
                   {
-                     "format": "bytes",
+                     "format": "short",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -364,24 +375,21 @@
                "dashLength": 10,
                "dashes": false,
                "datasource": "$PROMETHEUS_DS",
-               "description": "Number of objects in cache",
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
                "id": 6,
                "legend": {
-                  "alignAsTable": "true",
+                  "alignAsTable": false,
                   "avg": false,
-                  "current": "true",
+                  "current": false,
                   "max": false,
                   "min": false,
-                  "rightSide": "true",
+                  "rightSide": false,
                   "show": true,
                   "sideWidth": null,
-                  "sort": "current",
-                  "sortDesc": true,
                   "total": false,
-                  "values": "true"
+                  "values": false
                },
                "lines": true,
                "linewidth": 1,
@@ -398,17 +406,24 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "{__name__=~\"cache_.+_size\"}",
+                     "expr": "rate(pyroscope_storage_reads_total[$__rate_interval])",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{__name__}}",
+                     "legendFormat": "Reads",
                      "refId": "A"
+                  },
+                  {
+                     "expr": "rate(pyroscope_storage_writes_total[$__rate_interval])",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "Writes",
+                     "refId": "B"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Cache Size",
+               "title": "Storage Reads/Writes",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -428,7 +443,7 @@
                      "label": null,
                      "logBase": 1,
                      "max": null,
-                     "min": "0",
+                     "min": null,
                      "show": true
                   },
                   {
@@ -436,7 +451,7 @@
                      "label": null,
                      "logBase": 1,
                      "max": null,
-                     "min": "0",
+                     "min": null,
                      "show": true
                   }
                ]
@@ -451,119 +466,6 @@
                "fillGradient": 0,
                "gridPos": { },
                "id": 7,
-               "legend": {
-                  "alignAsTable": "true",
-                  "avg": false,
-                  "current": "true",
-                  "max": false,
-                  "min": false,
-                  "rightSide": "true",
-                  "show": true,
-                  "sideWidth": null,
-                  "sort": "current",
-                  "sortDesc": true,
-                  "total": false,
-                  "values": "true"
-               },
-               "lines": true,
-               "linewidth": 1,
-               "links": [ ],
-               "nullPointMode": "null",
-               "percentage": false,
-               "pointradius": 5,
-               "points": false,
-               "renderer": "flot",
-               "repeat": null,
-               "seriesOverrides": [ ],
-               "spaceLength": 10,
-               "stack": false,
-               "steppedLine": false,
-               "targets": [
-                  {
-                     "expr": "cache_dicts_hit / (cache_dicts_hit+cache_dicts_miss)",
-                     "format": "time_series",
-                     "intervalFactor": 2,
-                     "legendFormat": "cache_dicts_hit_rate",
-                     "refId": "A"
-                  },
-                  {
-                     "expr": "cache_trees_hit / (cache_trees_hit+cache_trees_miss)",
-                     "format": "time_series",
-                     "intervalFactor": 2,
-                     "legendFormat": "cache_trees_hit_rate",
-                     "refId": "B"
-                  },
-                  {
-                     "expr": "cache_segments_hit / (cache_segments_hit+cache_segments_miss)",
-                     "format": "time_series",
-                     "intervalFactor": 2,
-                     "legendFormat": "cache_segments_hit_rate",
-                     "refId": "C"
-                  },
-                  {
-                     "expr": "cache_dimensions_hit / (cache_dimensions_hit+cache_dimensions_miss)",
-                     "format": "time_series",
-                     "intervalFactor": 2,
-                     "legendFormat": "cache_dimensions_hit_rate",
-                     "refId": "D"
-                  }
-               ],
-               "thresholds": [ ],
-               "timeFrom": null,
-               "timeShift": null,
-               "title": "Cache Hit Ratios",
-               "tooltip": {
-                  "shared": true,
-                  "sort": 0,
-                  "value_type": "individual"
-               },
-               "type": "graph",
-               "xaxis": {
-                  "buckets": null,
-                  "mode": "time",
-                  "name": null,
-                  "show": true,
-                  "values": [ ]
-               },
-               "yaxes": [
-                  {
-                     "format": "percentunit",
-                     "label": null,
-                     "logBase": 1,
-                     "max": null,
-                     "min": null,
-                     "show": true
-                  },
-                  {
-                     "format": "percentunit",
-                     "label": null,
-                     "logBase": 1,
-                     "max": null,
-                     "min": null,
-                     "show": true
-                  }
-               ]
-            },
-            {
-               "content": "<p style=\"text-align: left; font-weight: bold;\">\nEvictions & Write Back\n</p>\n\n\nCache objects have two ways of getting persisted:\n* via evictions when there's memory pressure\n* via write-back mechanism that's continiuosly saving data on disk\n",
-               "datasource": null,
-               "gridPos": { },
-               "id": 8,
-               "mode": "markdown",
-               "span": "12",
-               "title": "",
-               "type": "text"
-            },
-            {
-               "aliasColors": { },
-               "bars": false,
-               "dashLength": 10,
-               "dashes": false,
-               "datasource": "$PROMETHEUS_DS",
-               "fill": 1,
-               "fillGradient": 0,
-               "gridPos": { },
-               "id": 9,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -591,17 +493,31 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "{__name__=~\"evictions_timer\", instance=\"$instance\"}",
+                     "expr": "histogram_quantile(0.9, pyroscope_storage_evictions_duration_seconds_bucket)",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{__name__}}",
+                     "legendFormat": "evictions",
                      "refId": "A"
+                  },
+                  {
+                     "expr": "histogram_quantile(0.9, pyroscope_storage_writeback_duration_seconds_bucket)",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "write-back",
+                     "refId": "B"
+                  },
+                  {
+                     "expr": "histogram_quantile(0.9, pyroscope_storage_retention_duration_seconds_bucket)",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "retention",
+                     "refId": "C"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Cache Evictions Timer",
+               "title": "Periodic tasks",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -617,7 +533,96 @@
                },
                "yaxes": [
                   {
-                     "format": "ns",
+                     "format": "seconds",
+                     "label": null,
+                     "logBase": 2,
+                     "max": "10",
+                     "min": "0.001",
+                     "show": true
+                  },
+                  {
+                     "format": "seconds",
+                     "label": null,
+                     "logBase": 1,
+                     "max": "10",
+                     "min": "0.001",
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 8,
+               "legend": {
+                  "alignAsTable": "true",
+                  "avg": false,
+                  "current": "true",
+                  "max": false,
+                  "min": false,
+                  "rightSide": "true",
+                  "show": true,
+                  "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
+                  "total": false,
+                  "values": "true"
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "pyroscope_storage_disk_bytes",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ name }}",
+                     "refId": "A"
+                  },
+                  {
+                     "expr": "sum without(name)(pyroscope_disk_bytes)",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "total",
+                     "refId": "B"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Disk Usage",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "bytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -625,7 +630,96 @@
                      "show": true
                   },
                   {
-                     "format": "ns",
+                     "format": "bytes",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 9,
+               "legend": {
+                  "alignAsTable": "true",
+                  "avg": false,
+                  "current": "true",
+                  "max": false,
+                  "min": false,
+                  "rightSide": "true",
+                  "show": true,
+                  "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
+                  "total": false,
+                  "values": "true"
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "pyroscope_storage_cache_size",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ name }}",
+                     "refId": "A"
+                  },
+                  {
+                     "expr": "sum without(name)(pyroscope_storage_cache_size)",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "total",
+                     "refId": "B"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Cache Size (number of items)",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -645,14 +739,16 @@
                "gridPos": { },
                "id": 10,
                "legend": {
-                  "alignAsTable": false,
+                  "alignAsTable": "true",
                   "avg": false,
-                  "current": false,
-                  "max": false,
+                  "current": true,
+                  "max": true,
                   "min": false,
-                  "rightSide": false,
+                  "rightSide": "true",
                   "show": true,
                   "sideWidth": null,
+                  "sort": "current",
+                  "sortDesc": true,
                   "total": false,
                   "values": "true"
                },
@@ -671,17 +767,24 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "{__name__=~\"write_back_timer\", instance=\"$instance\"}",
+                     "expr": "pyroscope_storage_evictions_alloc_bytes",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{__name__}}",
+                     "legendFormat": "heap size",
                      "refId": "A"
+                  },
+                  {
+                     "expr": "pyroscope_storage_evictions_total_mem_bytes",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "total memory",
+                     "refId": "B"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Cache Write Back Timer",
+               "title": "Cache Size (Approximation)",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -697,15 +800,15 @@
                },
                "yaxes": [
                   {
-                     "format": "ns",
+                     "format": "bytes",
                      "label": null,
-                     "logBase": 1,
+                     "logBase": 2,
                      "max": null,
                      "min": null,
                      "show": true
                   },
                   {
-                     "format": "ns",
+                     "format": "bytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -713,7 +816,20 @@
                      "show": true
                   }
                ]
-            },
+            }
+         ],
+         "repeat": null,
+         "repeatIteration": null,
+         "repeatRowId": null,
+         "showTitle": true,
+         "title": "Storage",
+         "titleSize": "h6",
+         "type": "row"
+      },
+      {
+         "collapse": true,
+         "collapsed": true,
+         "panels": [
             {
                "aliasColors": { },
                "bars": false,
@@ -734,7 +850,7 @@
                   "show": true,
                   "sideWidth": null,
                   "total": false,
-                  "values": "true"
+                  "values": false
                },
                "lines": true,
                "linewidth": 1,
@@ -751,17 +867,66 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "{__name__=~\"write_back_count\", instance=\"$instance\"}",
+                     "expr": "go_memstats_mspan_inuse_bytes{instance=\"$instance\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{__name__}}",
+                     "legendFormat": "{{ __name__ }}",
                      "refId": "A"
+                  },
+                  {
+                     "expr": "go_memstats_mspan_sys_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "B"
+                  },
+                  {
+                     "expr": "go_memstats_mcache_inuse_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "C"
+                  },
+                  {
+                     "expr": "go_memstats_mcache_sys_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "D"
+                  },
+                  {
+                     "expr": "go_memstats_buck_hash_sys_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "E"
+                  },
+                  {
+                     "expr": "go_memstats_gc_sys_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "F"
+                  },
+                  {
+                     "expr": "go_memstats_other_sys_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "G"
+                  },
+                  {
+                     "expr": "go_memstats_next_gc_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "H"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Cache Write Back Count",
+               "title": "Memory Off-heap",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -777,7 +942,7 @@
                },
                "yaxes": [
                   {
-                     "format": "short",
+                     "format": "bytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -785,7 +950,7 @@
                      "show": true
                   },
                   {
-                     "format": "short",
+                     "format": "bytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -793,20 +958,7 @@
                      "show": true
                   }
                ]
-            }
-         ],
-         "repeat": null,
-         "repeatIteration": null,
-         "repeatRowId": null,
-         "showTitle": true,
-         "title": "Memory",
-         "titleSize": "h6",
-         "type": "row"
-      },
-      {
-         "collapse": false,
-         "collapsed": false,
-         "panels": [
+            },
             {
                "aliasColors": { },
                "bars": false,
@@ -818,18 +970,16 @@
                "gridPos": { },
                "id": 12,
                "legend": {
-                  "alignAsTable": "true",
+                  "alignAsTable": false,
                   "avg": false,
-                  "current": "true",
+                  "current": false,
                   "max": false,
                   "min": false,
-                  "rightSide": "true",
+                  "rightSide": false,
                   "show": true,
                   "sideWidth": null,
-                  "sort": "current",
-                  "sortDesc": true,
                   "total": false,
-                  "values": "true"
+                  "values": false
                },
                "lines": true,
                "linewidth": 1,
@@ -846,17 +996,45 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "{__name__=~\"disk_.+\"}",
+                     "expr": "go_memstats_heap_alloc_bytes{instance=\"$instance\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{__name__}}",
+                     "legendFormat": "{{ __name__ }}",
                      "refId": "A"
+                  },
+                  {
+                     "expr": "go_memstats_heap_sys_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "B"
+                  },
+                  {
+                     "expr": "go_memstats_heap_idle_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "C"
+                  },
+                  {
+                     "expr": "go_memstats_heap_inuse_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "D"
+                  },
+                  {
+                     "expr": "go_memstats_heap_released_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "E"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Badger Space Breakdown",
+               "title": "Memory In Heap",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -900,18 +1078,16 @@
                "gridPos": { },
                "id": 13,
                "legend": {
-                  "alignAsTable": "true",
+                  "alignAsTable": false,
                   "avg": false,
-                  "current": "true",
+                  "current": false,
                   "max": false,
                   "min": false,
-                  "rightSide": "true",
+                  "rightSide": false,
                   "show": true,
                   "sideWidth": null,
-                  "sort": "current",
-                  "sortDesc": true,
                   "total": false,
-                  "values": "true"
+                  "values": false
                },
                "lines": true,
                "linewidth": 1,
@@ -928,17 +1104,24 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "{__name__=~\"storage_.+_read\"}",
+                     "expr": "go_memstats_stack_inuse_bytes{instance=\"$instance\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{__name__}}",
+                     "legendFormat": "{{ __name__ }}",
                      "refId": "A"
+                  },
+                  {
+                     "expr": "go_memstats_stack_sys_bytes{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "B"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Badger Reads",
+               "title": "Memory In Stack",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -954,19 +1137,19 @@
                },
                "yaxes": [
                   {
-                     "format": "short",
+                     "format": "decbytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
-                     "min": "0",
+                     "min": null,
                      "show": true
                   },
                   {
-                     "format": "short",
+                     "format": "decbytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
-                     "min": "0",
+                     "min": null,
                      "show": true
                   }
                ]
@@ -982,18 +1165,16 @@
                "gridPos": { },
                "id": 14,
                "legend": {
-                  "alignAsTable": "true",
+                  "alignAsTable": false,
                   "avg": false,
-                  "current": "true",
+                  "current": false,
                   "max": false,
                   "min": false,
-                  "rightSide": "true",
+                  "rightSide": false,
                   "show": true,
                   "sideWidth": null,
-                  "sort": "current",
-                  "sortDesc": true,
                   "total": false,
-                  "values": "true"
+                  "values": false
                },
                "lines": true,
                "linewidth": 1,
@@ -1010,17 +1191,17 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "{__name__=~\"storage_.+_write\"}",
+                     "expr": "go_memstats_sys_bytes{instance=\"$instance\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{__name__}}",
+                     "legendFormat": "{{ __name__ }}",
                      "refId": "A"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Badger Writes",
+               "title": "Total Used Memory",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -1036,19 +1217,19 @@
                },
                "yaxes": [
                   {
-                     "format": "short",
+                     "format": "decbytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
-                     "min": "0",
+                     "min": null,
                      "show": true
                   },
                   {
-                     "format": "short",
+                     "format": "decbytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
-                     "min": "0",
+                     "min": null,
                      "show": true
                   }
                ]
@@ -1070,10 +1251,10 @@
                   "max": false,
                   "min": false,
                   "rightSide": false,
-                  "show": true,
+                  "show": false,
                   "sideWidth": null,
                   "total": false,
-                  "values": "true"
+                  "values": false
                },
                "lines": true,
                "linewidth": 1,
@@ -1090,17 +1271,17 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "retention_timer",
+                     "expr": "go_memstats_mallocs_total{instance=\"$instance\"} - go_memstats_frees_total{instance=\"$instance\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{__name__}}",
+                     "legendFormat": "",
                      "refId": "A"
                   }
                ],
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Retention",
+               "title": "Number of Live Objects",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -1116,7 +1297,7 @@
                },
                "yaxes": [
                   {
-                     "format": "ns",
+                     "format": "short",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -1124,7 +1305,414 @@
                      "show": true
                   },
                   {
-                     "format": "ns",
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 16,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": false,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": false
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "rate(go_memstats_mallocs_total{instance=\"$instance\"}[$__rate_interval])",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "",
+                     "refId": "A"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Rate of Objects Allocated",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 17,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": false,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": false
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "rate(go_memstats_alloc_bytes_total{instance=\"$instance\"}[$__rate_interval])",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "",
+                     "refId": "A"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Rates of Allocation",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "Bps",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "Bps",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 18,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": false,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": false
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "go_goroutines{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "",
+                     "refId": "A"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Goroutines",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 19,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": false,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": false
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "go_gc_duration_seconds{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "",
+                     "refId": "A"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "GC duration quantile",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 20,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": true,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": false
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "process_open_fds{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "A"
+                  },
+                  {
+                     "expr": "process_max_fds{instance=\"$instance\"}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "{{ __name__ }}",
+                     "refId": "B"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "File descriptors",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -1138,7 +1726,7 @@
          "repeatIteration": null,
          "repeatRowId": null,
          "showTitle": true,
-         "title": "Storage",
+         "title": "Go",
          "titleSize": "h6",
          "type": "row"
       }
@@ -1174,7 +1762,7 @@
             "multi": false,
             "name": "instance",
             "options": [ ],
-            "query": "label_values(cache_trees_size, instance)",
+            "query": "label_values(pyroscope_storage_cache_size, instance)",
             "refresh": 0,
             "regex": "",
             "sort": 0,

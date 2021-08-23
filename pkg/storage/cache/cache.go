@@ -34,8 +34,8 @@ type Cache struct {
 type Metrics struct {
 	HitCounter          prometheus.Counter
 	MissCounter         prometheus.Counter
-	StorageReadCounter  prometheus.Counter
-	StorageWriteCounter prometheus.Counter
+	ReadCounter         prometheus.Counter
+	WritesToDiskCounter prometheus.Counter
 }
 
 func New(db *badger.DB, prefix string, metrics *Metrics) *Cache {
@@ -115,7 +115,7 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 		return fmt.Errorf("serialize key and value: %v", err)
 	}
 
-	cache.metrics.StorageWriteCounter.Add(1)
+	cache.metrics.WritesToDiskCounter.Add(1)
 	if err = cache.db.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(cache.prefix+key), buf)
 	}); err != nil {
@@ -184,6 +184,8 @@ func (cache *Cache) Lookup(key string) (interface{}, bool) {
 }
 
 func (cache *Cache) lookup(key string) (interface{}, error) {
+	cache.metrics.ReadCounter.Add(1)
+
 	// find the key from cache first
 	val := cache.lfu.Get(key)
 	if val != nil {
@@ -223,7 +225,6 @@ func (cache *Cache) lookup(key string) (interface{}, error) {
 	}
 
 	// deserialize the object from storage
-	cache.metrics.StorageReadCounter.Add(1)
 	val, err := cache.FromBytes(key, copied)
 	if err != nil {
 		return nil, fmt.Errorf("deserialize the object: %v", err)

@@ -34,6 +34,15 @@ type Reporter struct {
 }
 
 func NewReporter(l *logrus.Logger, s *storage.Storage, c *config.Server, reg prometheus.Registerer) *Reporter {
+	diskMetrics := promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+		Name: "pyroscope_storage_disk_bytes",
+		Help: "size of items in disk",
+	}, []string{"name"})
+	cacheSizeMetrics := promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+		Name: "pyroscope_storage_cache_size",
+		Help: "number of items in cache (memory)",
+	}, []string{"name"})
+
 	return &Reporter{
 		config:  c,
 		storage: s,
@@ -41,42 +50,22 @@ func NewReporter(l *logrus.Logger, s *storage.Storage, c *config.Server, reg pro
 		stopped: make(chan struct{}),
 		done:    make(chan struct{}),
 
-		// these metrics were previously lazily instantiated
-		// so by moving here their semantics have changed
-		// since they are now initialized to 0
 		cpuUtilization: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cpu_utilization",
+			Name: "pyroscope_cpu_utilization",
+			Help: "cpu utilization (percentage)",
 		}),
-		diskLocalProfiles: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_local_profiles",
-		}),
-		diskMain: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_main",
-		}),
-		diskSegments: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_segments",
-		}),
-		diskTrees: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_trees",
-		}),
-		diskDicts: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_dicts",
-		}),
-		diskDimensions: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "disk_dimensions",
-		}),
-		cacheDimensionsSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cache_dimensions_size",
-		}),
-		cacheSegmentsSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cache_segments_size",
-		}),
-		cacheDictsSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cache_dicts_size",
-		}),
-		cacheTreesSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "cache_trees_size",
-		}),
+
+		diskLocalProfiles: diskMetrics.With(prometheus.Labels{"name": "local_profiles"}),
+		diskMain:          diskMetrics.With(prometheus.Labels{"name": "main"}),
+		diskSegments:      diskMetrics.With(prometheus.Labels{"name": "segments"}),
+		diskTrees:         diskMetrics.With(prometheus.Labels{"name": "trees"}),
+		diskDicts:         diskMetrics.With(prometheus.Labels{"name": "dicts"}),
+		diskDimensions:    diskMetrics.With(prometheus.Labels{"name": "dimensions"}),
+
+		cacheDimensionsSize: cacheSizeMetrics.With(prometheus.Labels{"name": "dimensions"}),
+		cacheSegmentsSize:   cacheSizeMetrics.With(prometheus.Labels{"name": "segments"}),
+		cacheDictsSize:      cacheSizeMetrics.With(prometheus.Labels{"name": "dicts"}),
+		cacheTreesSize:      cacheSizeMetrics.With(prometheus.Labels{"name": "trees"}),
 	}
 }
 
