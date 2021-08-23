@@ -127,11 +127,12 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/ekpatrice"><img src="https://avatars.githubusercontent.com/u/77462462?v=4" title="ekpatrice" width="80" height="80"></a>
 <a href="https://github.com/cmonez"><img src="https://avatars.githubusercontent.com/u/39146411?v=4" title="cmonez" width="80" height="80"></a>
 <a href="https://github.com/rajat2004"><img src="https://avatars.githubusercontent.com/u/37938604?v=4" title="rajat2004" width="80" height="80"></a>
+<a href="https://github.com/eh-am"><img src="https://avatars.githubusercontent.com/u/6951209?v=4" title="eh-am" width="80" height="80"></a>
 <a href="https://github.com/Pranay0302"><img src="https://avatars.githubusercontent.com/u/55592629?v=4" title="Pranay0302" width="80" height="80"></a>
 <a href="https://github.com/geoah"><img src="https://avatars.githubusercontent.com/u/88447?v=4" title="geoah" width="80" height="80"></a>
 <a href="https://github.com/s4kibs4mi"><img src="https://avatars.githubusercontent.com/u/5650785?v=4" title="s4kibs4mi" width="80" height="80"></a>
 <a href="https://github.com/SusyQinqinYang"><img src="https://avatars.githubusercontent.com/u/55719616?v=4" title="SusyQinqinYang" width="80" height="80"></a>
-<a href="https://github.com/eh-am"><img src="https://avatars.githubusercontent.com/u/6951209?v=4" title="eh-am" width="80" height="80"></a>
+<a href="https://github.com/yashrsharma44"><img src="https://avatars.githubusercontent.com/u/31438680?v=4" title="yashrsharma44" width="80" height="80"></a>
 <a href="https://github.com/wusphinx"><img src="https://avatars.githubusercontent.com/u/1380777?v=4" title="wusphinx" width="80" height="80"></a>
 <a href="https://github.com/Skemba"><img src="https://avatars.githubusercontent.com/u/8813875?v=4" title="Skemba" width="80" height="80"></a>
 <a href="https://github.com/ayeniblessing101"><img src="https://avatars.githubusercontent.com/u/29165344?v=4" title="ayeniblessing101" width="80" height="80"></a>
@@ -145,7 +146,6 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/radixdev"><img src="https://avatars.githubusercontent.com/u/2373546?v=4" title="radixdev" width="80" height="80"></a>
 <a href="https://github.com/NSObjects"><img src="https://avatars.githubusercontent.com/u/17995427?v=4" title="NSObjects" width="80" height="80"></a>
 <a href="https://github.com/vbehar"><img src="https://avatars.githubusercontent.com/u/6251?v=4" title="vbehar" width="80" height="80"></a>
-<a href="https://github.com/yashrsharma44"><img src="https://avatars.githubusercontent.com/u/31438680?v=4" title="yashrsharma44" width="80" height="80"></a>
 <a href="https://github.com/hiyanxu"><img src="https://avatars.githubusercontent.com/u/15027927?v=4" title="hiyanxu" width="80" height="80"></a>
 <a href="https://github.com/miravtmehta"><img src="https://avatars.githubusercontent.com/u/54740656?v=4" title="miravtmehta" width="80" height="80"></a>
 <a href="https://github.com/lzh2nix"><img src="https://avatars.githubusercontent.com/u/7421004?v=4" title="lzh2nix" width="80" height="80"></a>
