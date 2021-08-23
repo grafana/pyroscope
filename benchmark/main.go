@@ -73,9 +73,11 @@ func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transp
 
 	uploadErrors := promauto.With(reg).NewCounter(prometheus.CounterOpts{
 		Name: "pyroscope_upload_errors",
+		Help: "",
 	})
 	successfulUploads := promauto.With(reg).NewCounter(prometheus.CounterOpts{
 		Name: "pyroscope_successful_uploads",
+		Help: "",
 	})
 
 	for i := 0; i < requestsCount; i++ {
@@ -205,9 +207,11 @@ func main() {
 
 	benchmark := promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "pyroscope_benchmark",
+		Help: "",
 	})
 	runProgress := promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "pyroscope_run_progress",
+		Help: "",
 	})
 
 	benchmark.Set(0)
