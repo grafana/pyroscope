@@ -7,12 +7,17 @@ type route struct {
 	handler http.HandlerFunc
 }
 
-func addRoutes(mux *http.ServeMux, routes []route, m ...middleware) {
+func addRoutes(mux *http.ServeMux, metricsTracker metricsMiddleware, routes []route, m ...middleware) {
 	for _, r := range routes {
-		mux.HandleFunc(r.pattern, chain(r.handler, m...))
+		trackMetrics := metricsTracker(r.pattern)
+		mux.HandleFunc(r.pattern, trackMetrics(chain(r.handler, m...)))
 	}
 }
 
+// the metrics middleware needs to be explicit passed
+// since it requires access to the pattern string
+// otherwise it would infer route from the url, which would explode the cardinality
+type metricsMiddleware func(name string) func(http.HandlerFunc) http.HandlerFunc
 type middleware func(http.HandlerFunc) http.HandlerFunc
 
 func chain(f http.HandlerFunc, m ...middleware) http.HandlerFunc {

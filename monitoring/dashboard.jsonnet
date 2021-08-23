@@ -35,8 +35,63 @@ grafana.dashboard.new(
 
 .addRow(
   grafana.row.new(
-    title='CPU',
+    title='General',
   )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Request Latency P99',
+      datasource='$PROMETHEUS_DS',
+      format='seconds',
+    )
+    .addTarget(grafana.prometheus.target(|||
+        histogram_quantile(0.99,
+          sum(rate(pyroscope_http_request_duration_seconds_bucket{
+            instance="$instance",
+            handler!="/metrics",
+            handler!="/healthz"
+          }[$__rate_interval]))
+          by (le, handler)
+        )
+      |||,
+      legendFormat='{{ handler }}',
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Error Rate',
+      datasource='$PROMETHEUS_DS',
+    )
+    .addTarget(grafana.prometheus.target(|||
+      sum(rate(pyroscope_http_request_duration_seconds_count
+      {instance="$instance", code=~"5..", handler!="/metrics", handler!="/healthz"}[$__rate_interval])) by (handler)
+      /
+      sum(rate(pyroscope_http_request_duration_seconds_count{instance="$instance", handler!="/metrics", handler!="/healthz"}[$__rate_interval])) by (handler)
+    |||,
+      legendFormat='{{ handler }}',
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Throughput',
+      datasource='$PROMETHEUS_DS',
+    )
+    .addTarget(grafana.prometheus.target('sum(rate(pyroscope_http_request_duration_seconds_count{instance="$instance", handler!="/metrics", handler!="/healthz"}[$__rate_interval])) by (handler)',
+      legendFormat='{{ handler }}',
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Response Size P99',
+      datasource='$PROMETHEUS_DS',
+    )
+    .addTarget(grafana.prometheus.target('histogram_quantile(0.95, sum(rate(pyroscope_http_response_size_bytes_bucket{instance="$instance", handler!="/metrics", handler!="/healthz"}[$__rate_interval])) by (le, handler))',
+      legendFormat='{{ handler }}',
+    ))
+  )
+
   .addPanel(
     grafana.graphPanel.new(
       'CPU Utilization',
@@ -52,6 +107,7 @@ grafana.dashboard.new(
       )
     )
   )
+
 )
 
 
@@ -441,55 +497,6 @@ grafana.dashboard.new(
     .addTarget(grafana.prometheus.target(
       'process_max_fds{instance="$instance"}',
       legendFormat='{{ __name__ }}',
-    ))
-  )
-
-  // process_max_fds
-  // process_open_fds
-  // process_resident_memory_bytes
-  // process_resident_memory_bytes
-  // process_start_time_seconds
-  // process_virtual_memory_bytes
-
-)
-
-
-.addRow(
-  grafana.row.new(
-    title='HTTP',
-  )
-  .addPanel(
-    grafana.graphPanel.new(
-      'Request Latency',
-      datasource='$PROMETHEUS_DS',
-      format='seconds',
-    )
-    .addTarget(grafana.prometheus.target(
-      'histogram_quantile(0.90, sum(rate(pyroscope_http_request_duration_seconds_bucket{instance="$instance"}[$__rate_interval])) by (le, handler))',
-      legendFormat='{{ __handler__ }}',
-    ))
-  )
-
-  .addPanel(
-    grafana.graphPanel.new(
-      'Error Rate',
-      datasource='$PROMETHEUS_DS',
-    )
-    .addTarget(grafana.prometheus.target(|||
-      sum(rate(pyroscope_http_request_duration_seconds_count{instance="$instance", code=~"5..", route=~"$route"}[$__rate_interval]))
-      /
-      sum(rate(pyroscope_http_request_duration_seconds_bucket{instance=~"$instance", route=~"$route"}[$__rate_interval]))
-    |||,
-    ))
-  )
-
-  .addPanel(
-    grafana.graphPanel.new(
-      'Throughput',
-      datasource='$PROMETHEUS_DS',
-    )
-    .addTarget(grafana.prometheus.target('sum(rate(pyroscope_http_request_duration_seconds_count{instance="$instance"}[$__rate_interval])) by (handler)',
-      legendFormat='{{ __handler__ }}',
     ))
   )
 )
