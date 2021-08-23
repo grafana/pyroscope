@@ -1,0 +1,17 @@
+name: Max File Size Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  max-file-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actionsdesk/lfs-warning@v2.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filesizelimit: '1048576' # 1 MB
