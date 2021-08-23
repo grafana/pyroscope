@@ -68,7 +68,7 @@ all: build ## Runs the build target
 .PHONY: build-rbspy-static-library
 build-rbspy-static-library: ## builds rbspy static library (used in our gem integration)
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,rbspy,clib$(ALPINE_TAG) -buildmode=c-archive -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,rbspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
 ifeq ("$(OS)", "Linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.a
 	ranlib ./out/libpyroscope.rbspy.a
@@ -77,7 +77,7 @@ endif
 .PHONY: build-pyspy-static-library
 build-pyspy-static-library: ## builds pyspy static library (used in our pip integration)
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,pyspy,clib$(ALPINE_TAG) -buildmode=c-archive -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,pyspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
 ifeq ("$(OS)", "Linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.a
 	ranlib ./out/libpyroscope.pyspy.a
@@ -86,7 +86,7 @@ endif
 .PHONY: build-phpspy-static-library
 build-phpspy-static-library: ## builds phpspy static library
 	mkdir -p ./out
-	$(GOBUILD) -tags nogospy,phpspy,clib$(ALPINE_TAG) -buildmode=c-archive -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
+	$(GOBUILD) -tags nogospy,phpspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
 ifeq ("$(OS)", "Linux")
 	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.phpspy.a
 	ranlib ./out/libpyroscope.phpspy.a
@@ -110,7 +110,7 @@ endif
 
 .PHONY: build-rust-dependencies-docker
 build-rust-dependencies-docker: ## Builds the rust dependencies in docker
-	DOCKER_BUILDKIT=1 docker build -f Dockerfile.static-libs --output type=local,dest=out .
+	DOCKER_BUILDKIT=1 docker build -f Dockerfile.static-libs --progress=plain --output type=local,dest=out .
 
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies: ## Builds the PHP dependency

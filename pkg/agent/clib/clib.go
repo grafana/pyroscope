@@ -29,7 +29,7 @@ func Start(applicationName *C.char, spyName *C.char, serverAddress *C.char, auth
 	pyspy.Blocking = false
 
 	if err := performOSChecks(); pyspy.Blocking && err != nil {
-		logger.Errorf("error happened when starting profiling session %v", err)
+		logger.Errorf("error happened when starting profiling session: %v", err)
 		return -1
 	}
 
@@ -41,7 +41,7 @@ func Start(applicationName *C.char, spyName *C.char, serverAddress *C.char, auth
 	}
 	u, err := remote.New(rc, logger)
 	if err != nil {
-		logger.Errorf("error happened when starting profiling session %v", err)
+		logger.Errorf("error happened when starting profiling session: %v", err)
 		return -1
 	}
 
@@ -54,14 +54,15 @@ func Start(applicationName *C.char, spyName *C.char, serverAddress *C.char, auth
 		UploadRate:       10 * time.Second,
 		Pid:              os.Getpid(),
 		WithSubprocesses: withSubprocesses != 0,
+		ClibIntegration:  true,
 	}
 	session, err = agent.NewSession(&sc, logger)
 	if err != nil {
-		logger.Errorf("error happened when starting profiling session %v", err)
+		logger.Errorf("error happened when starting profiling session: %v", err)
 		return -1
 	}
 	if err = session.Start(); err != nil {
-		logger.Errorf("error happened when starting profiling session %v", err)
+		logger.Errorf("error happened when starting profiling session: %v", err)
 		return -1
 	}
 

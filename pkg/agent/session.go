@@ -65,11 +65,13 @@ type ProfileSession struct {
 	uploadRate       time.Duration
 	disableGCRuns    bool
 	withSubprocesses bool
+	clibIntegration  bool
 	noForkDetection  bool
 	pid              int
 
 	logger    Logger
 	throttler *throttle.Throttler
+	stopOnce  sync.Once
 	stopCh    chan struct{}
 	trieMutex sync.Mutex
 
@@ -96,6 +98,7 @@ type SessionConfig struct {
 	UploadRate       time.Duration
 	Pid              int
 	WithSubprocesses bool
+	ClibIntegration  bool
 }
 
 func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
@@ -116,6 +119,7 @@ func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 		spies:            make(map[int][]spy.Spy),
 		stopCh:           make(chan struct{}),
 		withSubprocesses: c.WithSubprocesses,
+		clibIntegration:  c.ClibIntegration,
 		logger:           logger,
 		throttler:        throttle.New(errorThrottlerPeriod),
 
@@ -317,9 +321,11 @@ func (ps *ProfileSession) reset() {
 
 	// if the process was forked the spy will keep profiling the old process. That's usually not what you want
 	//   so in that case we stop the profiling session early
-	if ps.spyName != "gospy" && !ps.noForkDetection && ps.isForked() {
+	if ps.clibIntegration && !ps.noForkDetection && ps.isForked() {
 		ps.logger.Debugf("fork detected, stopping the session")
-		close(ps.stopCh)
+		ps.stopOnce.Do(func() {
+			close(ps.stopCh)
+		})
 		return
 	}
 
@@ -341,11 +347,12 @@ func (ps *ProfileSession) Stop() {
 	ps.trieMutex.Lock()
 	defer ps.trieMutex.Unlock()
 
-	close(ps.stopCh)
-	// TODO: wait for stopCh consumer to finish!
-
-	// before stopping, upload the tries
-	ps.uploadTries(time.Now())
+	ps.stopOnce.Do(func() {
+		// TODO: wait for stopCh consumer to finish!
+		close(ps.stopCh)
+		// before stopping, upload the tries
+		ps.uploadTries(time.Now())
+	})
 }
 
 func (ps *ProfileSession) uploadTries(now time.Time) {
