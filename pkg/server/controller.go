@@ -18,7 +18,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 
-	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
@@ -68,13 +67,9 @@ func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Log
 		appStats: appStats,
 	}
 
-	if build.UseEmbeddedAssets {
-		ctrl.dir, err = webapp.Assets()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		ctrl.dir = http.Dir("./webapp/public")
+	ctrl.dir, err = webapp.Assets()
+	if err != nil {
+		return nil, err
 	}
 
 	return &ctrl, nil

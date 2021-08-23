@@ -1,3 +1,5 @@
+// +build embedassets
+
 package webapp
 
 import (
@@ -6,8 +8,9 @@ import (
 	"net/http"
 )
 
-// Asterisk here is important, see https://github.com/golang/go/issues/42328 for more details
-//go:embed public/*
+var AssetsEmbedded = true
+
+//go:embed public
 var assets embed.FS
 
 func Assets() (http.FileSystem, error) {

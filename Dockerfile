@@ -90,6 +90,7 @@ RUN make install-dev-tools
 
 COPY pkg ./pkg
 COPY cmd ./cmd
+COPY webapp/assets_embedded.go ./webapp/assets_embedded.go
 COPY scripts ./scripts
 
 RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
