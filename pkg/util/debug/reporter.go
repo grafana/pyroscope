@@ -1,10 +1,12 @@
 package debug
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -34,6 +36,21 @@ type Reporter struct {
 }
 
 func NewReporter(l *logrus.Logger, s *storage.Storage, c *config.Server, reg prometheus.Registerer) *Reporter {
+	promauto.With(reg).NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Name: "pyroscope_build_info",
+			Help: fmt.Sprintf(
+				"A metric with a constant '1' value labeled by version and git hash from which %s was built.",
+				"pyroscope",
+			),
+			ConstLabels: prometheus.Labels{
+				"version": build.Version,
+				"gitSHA":  build.GitSHA,
+			},
+		},
+		func() float64 { return 1 },
+	)
+
 	diskMetrics := promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 		Name: "pyroscope_storage_disk_bytes",
 		Help: "size of items in disk",

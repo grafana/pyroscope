@@ -28,7 +28,7 @@ grafana.dashboard.new(
   grafana.template.new(
     'instance',
     '$PROMETHEUS_DS',
-    'label_values(pyroscope_storage_cache_size, instance)',
+    'label_values(pyroscope_build_info, instance)',
     label='instance',
   )
 )
