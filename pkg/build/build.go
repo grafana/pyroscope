@@ -70,7 +70,7 @@ type buildInfoJSON struct {
 	GitSHA            string `json:"gitSHA"`
 	GitDirty          int    `json:"gitDirty"`
 	UseEmbeddedAssets bool   `json:"useEmbeddedAssets"`
-	IsTest            bool   `json:"isTest"` // Just for testing
+	IsTest            bool   `json:"isTest"` // Ensure PR commits cause deployment
 }
 
 func generateBuildInfoJSON() buildInfoJSON {
@@ -84,7 +84,7 @@ func generateBuildInfoJSON() buildInfoJSON {
 		GitSHA:            GitSHA,
 		GitDirty:          GitDirty,
 		UseEmbeddedAssets: UseEmbeddedAssets,
-		IsTest:            true,
+		IsTest:            false,
 	}
 }
 
