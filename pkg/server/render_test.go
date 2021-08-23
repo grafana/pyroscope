@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +19,48 @@ import (
 )
 
 var _ = Describe("server", func() {
+
+	query := "pyroscope.server.alloc_objects{}"
+	formedBody := &RenderDiffParams{
+		Query: &query,
+		From:  "now-1h",
+		Until: "now",
+		Left: RenderTreeParams{
+			From:  "now-1h",
+			Until: "now",
+		},
+
+		Right: RenderTreeParams{
+			From:  "now-30m",
+			Until: "now",
+		},
+		Format: "json",
+	}
+
+	formedBodyJSON, err := json.Marshal(formedBody)
+	if err != nil {
+		panic(err)
+	}
+
+	malFormedBody := &RenderDiffParams{
+
+		Until: "now",
+		Left: RenderTreeParams{
+			From:  "now-1h",
+			Until: "now",
+		},
+
+		Right: RenderTreeParams{
+			From:  "",
+			Until: "now",
+		},
+	}
+
+	malFormedBodyJSON, err := json.Marshal(malFormedBody)
+	if err != nil {
+		panic(err)
+	}
+
 	testing.WithConfig(func(cfg **config.Config) {
 		Context("/render", func() {
 			It("supports name and query parameters", func() {
@@ -44,6 +88,16 @@ var _ = Describe("server", func() {
 				resp, err = http.Get(fmt.Sprintf("%s/render", httpServer.URL))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
+
+				// POST Method
+				resp, err = http.Post(fmt.Sprintf("%s/render-diff", httpServer.URL), "application/json", bytes.NewBuffer(formedBodyJSON))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusOK))
+
+				resp, err = http.Post(fmt.Sprintf("%s/render-diff", httpServer.URL), "application/json", bytes.NewBuffer(malFormedBodyJSON))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
+
 			})
 		})
 	})
