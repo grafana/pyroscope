@@ -22,8 +22,6 @@ grafana.dashboard.new(
     hide='hidden',  // anything other than '' and 'label works
   )
 )
-// TODO
-// replace cache_trees_size for pyroscope_info or something
 .addTemplate(
   grafana.template.new(
     'instance',
@@ -33,6 +31,28 @@ grafana.dashboard.new(
   )
 )
 
+.addRow(
+  grafana.row.new(
+    title='Meta',
+  )
+  // Create using grafana 7
+  // TODO hide fields
+  .addPanel(
+    grafana.tablePanel.new(
+      title='Meta',
+      datasource='$PROMETHEUS_DS',
+      span=12,
+      height=10,
+    )
+    .addTarget(
+      grafana.prometheus.target(
+        'pyroscope_build_info{instance="$instance"}',
+        instant=true,
+        format='table',
+      )
+    )
+  )
+)
 .addRow(
   grafana.row.new(
     title='General',
