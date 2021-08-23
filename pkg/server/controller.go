@@ -15,8 +15,12 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/markbates/pkger"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
+	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
+	metricsMiddleware "github.com/slok/go-http-metrics/middleware"
+	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"golang.org/x/oauth2"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
@@ -50,22 +54,31 @@ type Controller struct {
 	statsMutex sync.Mutex
 	stats      map[string]int
 
-	appStats *hyperloglog.HyperLogLogPlus
+	appStats   *hyperloglog.HyperLogLogPlus
+	metricsMdw metricsMiddleware.Middleware
 }
 
-func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger) (*Controller, error) {
+func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger, reg prometheus.Registerer) (*Controller, error) {
 	appStats, err := hyperloglog.NewPlus(uint8(18))
 	if err != nil {
 		return nil, err
 	}
 
+	mdw := metricsMiddleware.New(metricsMiddleware.Config{
+		Recorder: metrics.NewRecorder(metrics.Config{
+			Prefix:   "pyroscope",
+			Registry: reg,
+		}),
+	})
+
 	ctrl := Controller{
-		config:   c,
-		log:      l,
-		storage:  s,
-		ingester: i,
-		stats:    make(map[string]int),
-		appStats: appStats,
+		config:     c,
+		log:        l,
+		storage:    s,
+		ingester:   i,
+		stats:      make(map[string]int),
+		appStats:   appStats,
+		metricsMdw: mdw,
 	}
 
 	if build.UseEmbeddedAssets {
@@ -106,7 +119,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 	}
-	addRoutes(mux, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
+	addRoutes(mux, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware, ctrl.metricsMiddleware)
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
@@ -122,6 +135,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 			{"/debug/pprof/trace", pprof.Trace},
 		}...)
 	}
+
 	addRoutes(mux, diagnosticSecureRoutes, ctrl.authMiddleware)
 	addRoutes(mux, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
@@ -301,6 +315,16 @@ func (ctrl *Controller) drainMiddleware(next http.HandlerFunc) http.HandlerFunc 
 		}
 		next.ServeHTTP(w, r)
 	}
+}
+
+func (ctrl *Controller) metricsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	// TODO
+	// this creates dynamic labels based on the path
+	// which could explode cardinality
+	// so it's advisable to update it once there are dynamic routes
+	h := middlewarestd.Handler("", ctrl.metricsMdw, next)
+
+	return h.ServeHTTP
 }
 
 func (ctrl *Controller) isAuthRequired() bool {

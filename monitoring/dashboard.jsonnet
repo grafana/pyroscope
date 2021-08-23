@@ -452,3 +452,44 @@ grafana.dashboard.new(
   // process_virtual_memory_bytes
 
 )
+
+
+.addRow(
+  grafana.row.new(
+    title='HTTP',
+  )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Request Latency',
+      datasource='$PROMETHEUS_DS',
+      format='seconds',
+    )
+    .addTarget(grafana.prometheus.target(
+      'histogram_quantile(0.90, sum(rate(pyroscope_http_request_duration_seconds_bucket{instance="$instance"}[$__rate_interval])) by (le, handler))',
+      legendFormat='{{ __handler__ }}',
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Error Rate',
+      datasource='$PROMETHEUS_DS',
+    )
+    .addTarget(grafana.prometheus.target(|||
+      sum(rate(pyroscope_http_request_duration_seconds_count{instance="$instance", code=~"5..", route=~"$route"}[$__rate_interval]))
+      /
+      sum(rate(pyroscope_http_request_duration_seconds_bucket{instance=~"$instance", route=~"$route"}[$__rate_interval]))
+    |||,
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Throughput',
+      datasource='$PROMETHEUS_DS',
+    )
+    .addTarget(grafana.prometheus.target('sum(rate(pyroscope_http_request_duration_seconds_count{instance="$instance"}[$__rate_interval])) by (handler)',
+      legendFormat='{{ __handler__ }}',
+    ))
+  )
+)
