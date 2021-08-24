@@ -1,6 +1,6 @@
 module github.com/pyroscope-io/pyroscope
 
-go 1.14
+go 1.16
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
@@ -30,7 +30,6 @@ require (
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kyoh86/richgo v0.3.3
 	github.com/kyoh86/xdg v1.2.0 // indirect
-	github.com/markbates/pkger v0.17.1
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mattn/goreman v0.3.5
 	github.com/mgechev/revive v1.0.3

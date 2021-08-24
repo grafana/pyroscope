@@ -26,7 +26,8 @@ else
 	THIRD_PARTY_DEPENDENCIES ?= "build-rust-dependencies"
 endif
 
-GO_TAGS = $(ENABLED_SPIES)
+EXTRA_GO_TAGS ?=
+GO_TAGS = $(ENABLED_SPIES)$(EXTRA_GO_TAGS)
 
 ifeq ("$(OS)", "Linux")
 	ifeq ("$(shell cat /etc/os-release | grep ^ID=)", "ID=alpine")
@@ -41,7 +42,6 @@ else
 	endif
 endif
 
-EMBEDDED_ASSETS ?= ""
 EMBEDDED_ASSETS_DEPS ?= "assets-release"
 EXTRA_LDFLAGS ?= ""
 
@@ -62,11 +62,11 @@ all: build ## Runs the build target
 
 .PHONY: build
 build: ## Builds the binary
-	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh $(EMBEDDED_ASSETS))" -o ./bin/pyroscope ./cmd/pyroscope
+	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
 
 .PHONY: build-release
 build-release: embedded-assets ## Builds the release build
-	EMBEDDED_ASSETS=true $(MAKE) build
+	EXTRA_GO_TAGS=,embedassets $(MAKE) build
 
 .PHONY: build-rust-dependencies
 build-rust-dependencies: ## Builds the rust dependency
@@ -104,7 +104,8 @@ assets-watch: install-web-dependencies ## Configure the assets with live reloadi
 
 .PHONY: assets
 assets-release: install-web-dependencies ## Configure the assets for release
-	rm -rf webapp/public
+	rm -rf webapp/public/assets
+	rm -rf webapp/public/*.html
 	NODE_ENV=production $(shell yarn bin webpack) --config scripts/webpack/webpack.prod.js
 
 .PHONY: assets-size-build
@@ -113,7 +114,6 @@ assets-size-build: assets-release ## Build assets for the size report
 
 .PHONY: embedded-assets
 embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS)) ## Configure the assets along with dev tools
-	go run "$(shell scripts/pinned-tool.sh github.com/markbates/pkger)/cmd/pkger" -o pkg/server
 
 .PHONY: lint
 lint: ## Run the lint across the codebase
@@ -174,11 +174,11 @@ update-protobuf: ## Update the protobuf
 
 .PHONY: docker-dev
 docker-dev: ## Build the docker dev
-	docker build . --tag pyroscope/pyroscope:dev
+	docker build . --tag pyroscope/pyroscope:dev --progress=plain
 
 .PHONY: windows-dev
 windows-dev: ## Build the windows dev
-	docker build --platform linux/amd64 -f Dockerfile.windows --output type=local,dest=out .
+	docker build --platform linux/amd64 -f Dockerfile.windows --progress=plain --output type=local,dest=out .
 
 .PHONY: print-deps-error-message
 print-deps-error-message:

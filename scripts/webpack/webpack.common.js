@@ -46,6 +46,7 @@ module.exports = {
     publicPath: "",
     path: path.resolve(__dirname, "../../webapp/public/assets"),
     filename: "[name].[hash].js",
+    clean: true,
   },
 
   resolve: {

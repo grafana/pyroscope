@@ -14,7 +14,6 @@ import (
 	_ "github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb"
 	_ "github.com/kisielk/godepgraph"
 	_ "github.com/kyoh86/richgo"
-	_ "github.com/markbates/pkger/cmd/pkger"
 	_ "github.com/mattn/goreman"
 	_ "github.com/mgechev/revive"
 	_ "github.com/onsi/ginkgo/ginkgo"
