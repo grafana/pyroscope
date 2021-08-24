@@ -6,8 +6,9 @@ WORKDIR /opt/pyroscope/
 
 COPY pkg ./pkg
 COPY cmd ./cmd
+COPY webapp/assets.go ./webapp/assets.go
 COPY scripts ./scripts
-COPY go.mod go.sum pyroscope.go ./
+COPY go.mod go.sum ./
 
 # Generate .syso object file.
 RUN source scripts/packages/git-info && go run scripts/windows/generate-windows-version-info/main.go \

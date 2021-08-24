@@ -10,6 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/webapp"
 )
 
 var (
@@ -20,14 +21,10 @@ var (
 	GitSHA      = "N/A"
 	GitDirtyStr = "-1"
 	GitDirty    int
-
-	UseEmbeddedAssetsStr = "false"
-	UseEmbeddedAssets    bool
 )
 
 func init() {
 	GitDirty, _ = strconv.Atoi(GitDirtyStr)
-	UseEmbeddedAssets = UseEmbeddedAssetsStr == "true"
 }
 
 const tmplt = `
@@ -56,7 +53,7 @@ func Summary() string {
 		Time,
 		GitSHA,
 		GitDirty,
-		UseEmbeddedAssets,
+		webapp.AssetsEmbedded,
 		spy.SupportedSpies,
 	)
 }
@@ -83,7 +80,7 @@ func generateBuildInfoJSON() buildInfoJSON {
 		Time:              Time,
 		GitSHA:            GitSHA,
 		GitDirty:          GitDirty,
-		UseEmbeddedAssets: UseEmbeddedAssets,
+		UseEmbeddedAssets: webapp.AssetsEmbedded,
 	}
 }
 
@@ -106,6 +103,6 @@ func PrometheusBuildLabels() prometheus.Labels {
 		"version":             Version,
 		"time":                Time,
 		"revision":            GitSHA,
-		"use_embedded_assets": UseEmbeddedAssetsStr,
+		"use_embedded_assets": strconv.FormatBool(webapp.AssetsEmbedded),
 	}
 }
