@@ -4,14 +4,349 @@
    "annotations": {
       "list": [ ]
    },
-   "editable": false,
+   "editable": "true",
    "gnetId": null,
    "graphTooltip": 0,
    "hideControls": false,
    "id": null,
    "links": [ ],
-   "refresh": "",
+   "refresh": "5s",
    "rows": [
+      {
+         "collapse": false,
+         "collapsed": false,
+         "panels": [
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 2,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": true,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": false
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "pyroscope_benchmark{}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "",
+                     "refId": "A"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Benchmark",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 3,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": true,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": false
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "pyroscope_run_progress{}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "",
+                     "refId": "A"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Run Progress",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 4,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": true,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": false
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "span": 2,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "pyroscope_upload_errors{}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "",
+                     "refId": "A"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Upload Errors",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            },
+            {
+               "aliasColors": { },
+               "bars": false,
+               "dashLength": 10,
+               "dashes": false,
+               "datasource": "$PROMETHEUS_DS",
+               "fill": 1,
+               "fillGradient": 0,
+               "gridPos": { },
+               "id": 5,
+               "legend": {
+                  "alignAsTable": false,
+                  "avg": false,
+                  "current": false,
+                  "max": false,
+                  "min": false,
+                  "rightSide": false,
+                  "show": true,
+                  "sideWidth": null,
+                  "total": false,
+                  "values": false
+               },
+               "lines": true,
+               "linewidth": 1,
+               "links": [ ],
+               "nullPointMode": "null",
+               "percentage": false,
+               "pointradius": 5,
+               "points": false,
+               "renderer": "flot",
+               "repeat": null,
+               "seriesOverrides": [ ],
+               "spaceLength": 10,
+               "span": 2,
+               "stack": false,
+               "steppedLine": false,
+               "targets": [
+                  {
+                     "expr": "pyroscope_successful_uploads{}",
+                     "format": "time_series",
+                     "intervalFactor": 2,
+                     "legendFormat": "",
+                     "refId": "A"
+                  }
+               ],
+               "thresholds": [ ],
+               "timeFrom": null,
+               "timeShift": null,
+               "title": "Upload Errors",
+               "tooltip": {
+                  "shared": true,
+                  "sort": 0,
+                  "value_type": "individual"
+               },
+               "type": "graph",
+               "xaxis": {
+                  "buckets": null,
+                  "mode": "time",
+                  "name": null,
+                  "show": true,
+                  "values": [ ]
+               },
+               "yaxes": [
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  },
+                  {
+                     "format": "short",
+                     "label": null,
+                     "logBase": 1,
+                     "max": null,
+                     "min": null,
+                     "show": true
+                  }
+               ]
+            }
+         ],
+         "repeat": null,
+         "repeatIteration": null,
+         "repeatRowId": null,
+         "showTitle": true,
+         "title": "Benchmark",
+         "titleSize": "h6",
+         "type": "row"
+      },
       {
          "collapse": false,
          "collapsed": false,
@@ -21,7 +356,7 @@
                "datasource": "$PROMETHEUS_DS",
                "gridPos": { },
                "height": 10,
-               "id": 2,
+               "id": 6,
                "links": [ ],
                "span": 12,
                "styles": [
@@ -93,7 +428,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 3,
+               "id": 7,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -173,7 +508,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 4,
+               "id": 8,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -253,7 +588,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 5,
+               "id": 9,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -333,7 +668,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 6,
+               "id": 10,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -387,7 +722,7 @@
                },
                "yaxes": [
                   {
-                     "format": "short",
+                     "format": "bytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -395,7 +730,7 @@
                      "show": true
                   },
                   {
-                     "format": "short",
+                     "format": "bytes",
                      "label": null,
                      "logBase": 1,
                      "max": null,
@@ -413,7 +748,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 7,
+               "id": 11,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -506,7 +841,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 8,
+               "id": 12,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -595,7 +930,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 9,
+               "id": 13,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -677,7 +1012,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 10,
+               "id": 14,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -766,7 +1101,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 11,
+               "id": 15,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -853,7 +1188,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 12,
+               "id": 16,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -947,7 +1282,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 13,
+               "id": 17,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -1036,7 +1371,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 14,
+               "id": 18,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -1125,7 +1460,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 15,
+               "id": 19,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -1227,7 +1562,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 16,
+               "id": 20,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1356,7 +1691,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 17,
+               "id": 21,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1464,7 +1799,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 18,
+               "id": 22,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1551,7 +1886,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 19,
+               "id": 23,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1631,7 +1966,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 20,
+               "id": 24,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1711,7 +2046,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 21,
+               "id": 25,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1791,7 +2126,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 22,
+               "id": 26,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1871,7 +2206,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 23,
+               "id": 27,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1951,7 +2286,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 24,
+               "id": 28,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -2031,7 +2366,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 25,
+               "id": 29,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -2128,8 +2463,8 @@
       "list": [
          {
             "current": {
-               "text": "",
-               "value": ""
+               "text": "prometheus",
+               "value": "prometheus"
             },
             "hide": 2,
             "label": null,
@@ -2151,7 +2486,7 @@
             "name": "instance",
             "options": [ ],
             "query": "label_values(pyroscope_build_info, instance)",
-            "refresh": 0,
+            "refresh": 2,
             "regex": "",
             "sort": 0,
             "tagValuesQuery": "",
