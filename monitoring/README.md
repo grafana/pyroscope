@@ -7,9 +7,9 @@
 make init
 ```
 
-3. (Re)Generate the dashboard
+3. (Re)Generate the dashboards
 ```
-make dashboard
+make
 ```
 
 # Development
@@ -18,10 +18,11 @@ make dashboard
 Run the [grafana-integration](../examples/grafana-integration) example docker-compose then copy the generated dashboard there:
 
 ```
-make dashboard && \
-  cp dashboard.json ../examples/grafana-integration/grafana-provisioning/dashboards/ \
-  docker-compose -f ../examples/grafana-integration/docker-compose.yml up -d --force-recreate grafana
+make && docker-compose -f ../examples/grafana-integration/docker-compose.yml up -d --force-recreate grafana
 ```
+
+# Warnings
+* If you ever rename the dashboard path, don't forget to update the references (see all the docker-compose.yaml)
 
 # References
 

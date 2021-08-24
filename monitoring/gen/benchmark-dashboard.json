@@ -236,7 +236,7 @@
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Upload Errors",
+               "title": "Upload Errors (Total)",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -317,7 +317,7 @@
                "thresholds": [ ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Successfull Uploads",
+               "title": "Successful Uploads (Total)",
                "tooltip": {
                   "shared": true,
                   "sort": 0,
@@ -1562,8 +1562,8 @@
          "type": "row"
       },
       {
-         "collapse": true,
-         "collapsed": true,
+         "collapse": false,
+         "collapsed": false,
          "panels": [
             {
                "aliasColors": { },
