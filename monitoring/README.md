@@ -19,7 +19,7 @@ Run the [grafana-integration](../examples/grafana-integration) example docker-co
 
 ```
 make dashboard && \
-  cp dashboard.json ../examples/grafana-integration/grafana-provisioning/dashboards/ \
+  cp dashboard.json ../examples/grafana-integration/grafana-provisioning/dashboards/ && \
   docker-compose -f ../examples/grafana-integration/docker-compose.yml up -d --force-recreate grafana
 ```
 
