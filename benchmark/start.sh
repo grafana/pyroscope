@@ -1,6 +1,5 @@
 #!/bin/bash
 
-set -x
 set -e
 
 ../scripts/generate-git-info.sh > git-info.env

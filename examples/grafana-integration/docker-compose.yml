@@ -19,7 +19,7 @@ services:
       - 3000:3000
 
   pyroscope:
-    image: "pyroscope/pyroscope-dev:main"
+    image: "pyroscope/pyroscope:latest"
     ports:
       - 4040:4040
     command:
