@@ -51,7 +51,7 @@ func waitUntilEndpointReady(url string) {
 	}
 }
 
-func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie, runProgress prometheus.Gauge) {
+func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie, runProgress prometheus.Gauge, successfulUploads prometheus.Counter, uploadErrors prometheus.Counter) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
 		UpstreamAddress:        "http://pyroscope:4040",
@@ -68,17 +68,6 @@ func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transp
 	threadStartTime = threadStartTime.Add(time.Duration(-1*requestsCount) * (10 * time.Second))
 
 	st := threadStartTime
-
-	reg := prometheus.NewRegistry()
-
-	uploadErrors := promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "pyroscope_upload_errors",
-		Help: "",
-	})
-	successfulUploads := promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "pyroscope_successful_uploads",
-		Help: "",
-	})
 
 	for i := 0; i < requestsCount; i++ {
 		t := appFixtures[i%len(appFixtures)]
@@ -216,6 +205,15 @@ func main() {
 
 	benchmark.Set(0)
 
+	uploadErrors := promauto.NewCounter(prometheus.CounterOpts{
+		Name: "pyroscope_upload_errors",
+		Help: "",
+	})
+	successfulUploads := promauto.NewCounter(prometheus.CounterOpts{
+		Name: "pyroscope_successful_uploads",
+		Help: "",
+	})
+
 	waitUntilEndpointReady("pyroscope:4040")
 	waitUntilEndpointReady("prometheus:9090")
 
@@ -249,7 +247,7 @@ func main() {
 	for i := 0; i < appsCount; i++ {
 		r.Read(appNameBuf)
 		for j := 0; j < clientsCount; j++ {
-			go startClientThread(hex.EncodeToString(appNameBuf), &wg, fixtures[i], runProgress)
+			go startClientThread(hex.EncodeToString(appNameBuf), &wg, fixtures[i], runProgress, successfulUploads, uploadErrors)
 		}
 	}
 	wg.Wait()

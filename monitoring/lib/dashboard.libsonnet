@@ -20,11 +20,18 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         title='Benchmark',
       )
       .addPanel(
+        grafana.text.new(
+          content= "<iframe style=\"border:none; width:100%; height: 100%;\" src=\"http://localhost:8081/summary\">",
+          span=2,
+        )
+      )
+      .addPanel(
         grafana.graphPanel.new(
           'Benchmark',
           datasource='$PROMETHEUS_DS',
           min=0,
           max=1,
+          span=2,
         )
         .addTarget(
           grafana.prometheus.target(
@@ -37,6 +44,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         grafana.graphPanel.new(
           'Run Progress',
           datasource='$PROMETHEUS_DS',
+          span=2,
         )
         .addTarget(
           grafana.prometheus.target(
@@ -47,7 +55,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
       )
       .addPanel(
         grafana.graphPanel.new(
-          'Upload Errors',
+          'Upload Errors (Total)',
           datasource='$PROMETHEUS_DS',
           span=2,
         )
@@ -60,7 +68,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
       )
       .addPanel(
         grafana.graphPanel.new(
-          'Upload Errors',
+          'Successful Uploads (Total)',
           datasource='$PROMETHEUS_DS',
           span=2,
         )
@@ -425,7 +433,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
     .addRow(
       grafana.row.new(
         title='Go',
-        collapse=true,
+        collapse=if $._config.benchmark then false else true,
       )
       .addPanel(
         grafana.graphPanel.new(

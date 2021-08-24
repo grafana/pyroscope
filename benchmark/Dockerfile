@@ -3,7 +3,7 @@ FROM golang:1.15.6
 WORKDIR /go/src/app
 
 COPY go.mod go.sum ./
-RUN go get -d ./
+RUN go mod download
 
 COPY ./pkg pkg
 COPY ./benchmark benchmark
