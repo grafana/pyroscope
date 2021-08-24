@@ -59,7 +59,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	ingester := storage.NewIngestionObserver(svc.storage, observer)
-	svc.controller, err = server.New(svc.config, svc.storage, ingester, svc.logger)
+	svc.controller, err = server.New(svc.config, svc.storage, ingester, svc.logger, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, fmt.Errorf("new server: %w", err)
 	}

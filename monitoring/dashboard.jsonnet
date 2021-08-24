@@ -1,17 +1,11 @@
 local grafana = import 'grafonnet/grafana.libsonnet';
 
-// TODO
-// add transformations once this pr is merged
-// https://github.com/grafana/grafonnet-lib/pull/324
-// match: go_memstats_(.*)_bytes
-// replace: $1
-
 grafana.dashboard.new(
   'Pyroscope Server',
   tags=['pyroscope'],
   time_from='now-1h',
   uid='tsWRL6ReZQkirFirmyvnWX1akHXJeHT8I8emjGJo',
-  editable='true',  // TODO: remove
+//  editable='true',
 )
 
 .addTemplate(
@@ -22,21 +16,104 @@ grafana.dashboard.new(
     hide='hidden',  // anything other than '' and 'label works
   )
 )
-// TODO
-// replace cache_trees_size for pyroscope_info or something
 .addTemplate(
   grafana.template.new(
     'instance',
     '$PROMETHEUS_DS',
-    'label_values(pyroscope_storage_cache_size, instance)',
+    'label_values(pyroscope_build_info, instance)',
     label='instance',
   )
 )
 
 .addRow(
   grafana.row.new(
-    title='CPU',
+    title='Meta',
   )
+  .addPanel(
+    grafana.tablePanel.new(
+      title='',
+      datasource='$PROMETHEUS_DS',
+      span=12,
+      height=10,
+    )
+    // they don't provide any value
+    .hideColumn("__name__")
+    .hideColumn("Time")
+    .hideColumn("instance")
+    .hideColumn("Value")
+    .hideColumn("job")
+
+    // somewhat useful but preferred to be hidden
+    // to make the table cleaner
+    .hideColumn("use_embedded_assets")
+    .addTarget(
+      grafana.prometheus.target(
+        'pyroscope_build_info{instance="$instance"}',
+        instant=true,
+        format='table',
+      )
+    )
+  )
+)
+.addRow(
+  grafana.row.new(
+    title='General',
+  )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Request Latency P99',
+      datasource='$PROMETHEUS_DS',
+      format='seconds',
+    )
+    .addTarget(grafana.prometheus.target(|||
+        histogram_quantile(0.99,
+          sum(rate(pyroscope_http_request_duration_seconds_bucket{
+            instance="$instance",
+            handler!="/metrics",
+            handler!="/healthz"
+          }[$__rate_interval]))
+          by (le, handler)
+        )
+      |||,
+      legendFormat='{{ handler }}',
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Error Rate',
+      datasource='$PROMETHEUS_DS',
+    )
+    .addTarget(grafana.prometheus.target(|||
+      sum(rate(pyroscope_http_request_duration_seconds_count
+      {instance="$instance", code=~"5..", handler!="/metrics", handler!="/healthz"}[$__rate_interval])) by (handler)
+      /
+      sum(rate(pyroscope_http_request_duration_seconds_count{instance="$instance", handler!="/metrics", handler!="/healthz"}[$__rate_interval])) by (handler)
+    |||,
+      legendFormat='{{ handler }}',
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Throughput',
+      datasource='$PROMETHEUS_DS',
+    )
+    .addTarget(grafana.prometheus.target('sum(rate(pyroscope_http_request_duration_seconds_count{instance="$instance", handler!="/metrics", handler!="/healthz"}[$__rate_interval])) by (handler)',
+      legendFormat='{{ handler }}',
+    ))
+  )
+
+  .addPanel(
+    grafana.graphPanel.new(
+      'Response Size P99',
+      datasource='$PROMETHEUS_DS',
+    )
+    .addTarget(grafana.prometheus.target('histogram_quantile(0.95, sum(rate(pyroscope_http_response_size_bytes_bucket{instance="$instance", handler!="/metrics", handler!="/healthz"}[$__rate_interval])) by (le, handler))',
+      legendFormat='{{ handler }}',
+    ))
+  )
+
   .addPanel(
     grafana.graphPanel.new(
       'CPU Utilization',
@@ -52,6 +129,7 @@ grafana.dashboard.new(
       )
     )
   )
+
 )
 
 
@@ -443,12 +521,4 @@ grafana.dashboard.new(
       legendFormat='{{ __name__ }}',
     ))
   )
-
-  // process_max_fds
-  // process_open_fds
-  // process_resident_memory_bytes
-  // process_resident_memory_bytes
-  // process_start_time_seconds
-  // process_virtual_memory_bytes
-
 )

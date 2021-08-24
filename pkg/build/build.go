@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/webapp"
 )
@@ -91,4 +92,17 @@ func JSON() string {
 func PrettyJSON() string {
 	b, _ := json.MarshalIndent(generateBuildInfoJSON(), "", "  ")
 	return string(b)
+}
+
+// PrometheusBuildLabels returns a map of the labels
+// that will be exposed in the build_info metric
+func PrometheusBuildLabels() prometheus.Labels {
+	return prometheus.Labels{
+		"GOOS":                runtime.GOOS,
+		"GOARCH":              runtime.GOARCH,
+		"version":             Version,
+		"time":                Time,
+		"revision":            GitSHA,
+		"use_embedded_assets": strconv.FormatBool(webapp.AssetsEmbedded),
+	}
 }
