@@ -4,7 +4,7 @@
    "annotations": {
       "list": [ ]
    },
-   "editable": "true",
+   "editable": false,
    "gnetId": null,
    "graphTooltip": 0,
    "hideControls": false,
@@ -24,7 +24,38 @@
                "id": 2,
                "links": [ ],
                "span": 12,
-               "styles": [ ],
+               "styles": [
+                  {
+                     "alias": "__name__",
+                     "pattern": "__name__",
+                     "type": "hidden"
+                  },
+                  {
+                     "alias": "Time",
+                     "pattern": "Time",
+                     "type": "hidden"
+                  },
+                  {
+                     "alias": "instance",
+                     "pattern": "instance",
+                     "type": "hidden"
+                  },
+                  {
+                     "alias": "Value",
+                     "pattern": "Value",
+                     "type": "hidden"
+                  },
+                  {
+                     "alias": "job",
+                     "pattern": "job",
+                     "type": "hidden"
+                  },
+                  {
+                     "alias": "use_embedded_assets",
+                     "pattern": "use_embedded_assets",
+                     "type": "hidden"
+                  }
+               ],
                "targets": [
                   {
                      "expr": "pyroscope_build_info{instance=\"$instance\"}",
@@ -37,7 +68,7 @@
                ],
                "timeFrom": null,
                "timeShift": null,
-               "title": "Meta",
+               "title": "",
                "type": "table"
             }
          ],

@@ -40,13 +40,9 @@ func NewReporter(l *logrus.Logger, s *storage.Storage, c *config.Server, reg pro
 		prometheus.GaugeOpts{
 			Name: "pyroscope_build_info",
 			Help: fmt.Sprintf(
-				"A metric with a constant '1' value labeled by version and git hash from which %s was built.",
-				"pyroscope",
+				"A metric with a constant '1' value labeled by version, revision and other info from which pyroscope was built.",
 			),
-			ConstLabels: prometheus.Labels{
-				"version": build.Version,
-				"gitSHA":  build.GitSHA,
-			},
+			ConstLabels: build.PrometheusBuildLabels(),
 		},
 		func() float64 { return 1 },
 	)

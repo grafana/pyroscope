@@ -1,17 +1,11 @@
 local grafana = import 'grafonnet/grafana.libsonnet';
 
-// TODO
-// add transformations once this pr is merged
-// https://github.com/grafana/grafonnet-lib/pull/324
-// match: go_memstats_(.*)_bytes
-// replace: $1
-
 grafana.dashboard.new(
   'Pyroscope Server',
   tags=['pyroscope'],
   time_from='now-1h',
   uid='tsWRL6ReZQkirFirmyvnWX1akHXJeHT8I8emjGJo',
-  editable='true',  // TODO: remove
+//  editable='true',
 )
 
 .addTemplate(
@@ -35,15 +29,23 @@ grafana.dashboard.new(
   grafana.row.new(
     title='Meta',
   )
-  // Create using grafana 7
-  // TODO hide fields
   .addPanel(
     grafana.tablePanel.new(
-      title='Meta',
+      title='',
       datasource='$PROMETHEUS_DS',
       span=12,
       height=10,
     )
+    // they don't provide any value
+    .hideColumn("__name__")
+    .hideColumn("Time")
+    .hideColumn("instance")
+    .hideColumn("Value")
+    .hideColumn("job")
+
+    // somewhat useful but preferred to be hidden
+    // to make the table cleaner
+    .hideColumn("use_embedded_assets")
     .addTarget(
       grafana.prometheus.target(
         'pyroscope_build_info{instance="$instance"}',
