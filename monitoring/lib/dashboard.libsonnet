@@ -26,29 +26,18 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
       )
       .addPanel(
-        grafana.graphPanel.new(
-          'Benchmark',
-          datasource='$PROMETHEUS_DS',
-          min=0,
-          max=1,
-          span=2,
-        )
-        .addTarget(
-          grafana.prometheus.target(
-            'pyroscope_benchmark{}',
-            legendFormat='{{ __name__ }}',
-          )
-        )
-      )
-      .addPanel(
-        grafana.graphPanel.new(
+        grafana.gaugePanel.new(
           'Run Progress',
           datasource='$PROMETHEUS_DS',
-          span=2,
+          unit='percentunit',
+          reducerFunction='last',
+          min=0,
+          max=1,
         )
+        .addThreshold({ color: 'green', value: 0 })
         .addTarget(
           grafana.prometheus.target(
-            'pyroscope_run_progress{}',
+            'pyroscope_benchmark_progress{}',
             legendFormat='{{ __name__ }}',
           )
         )
@@ -61,7 +50,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(
-            'pyroscope_upload_errors{}',
+            'pyroscope_benchmark_upload_errors{}',
             legendFormat='{{ __name__ }}',
           )
         )
@@ -74,7 +63,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(
-            'pyroscope_successful_uploads{}',
+            'pyroscope_benchmark_successful_uploads{}',
             legendFormat='{{ __name__ }}',
           )
         )

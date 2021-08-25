@@ -194,24 +194,24 @@ func main() {
 
 	logrus.Info("waiting for other services to load")
 
-	benchmark := promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "pyroscope_benchmark",
-		Help: "",
-	})
 	runProgress := promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "pyroscope_run_progress",
-		Help: "",
+		Namespace: "pyroscope",
+		Subsystem: "benchmark",
+		Name:      "progress",
+		Help:      "",
 	})
-
-	benchmark.Set(0)
 
 	uploadErrors := promauto.NewCounter(prometheus.CounterOpts{
-		Name: "pyroscope_upload_errors",
-		Help: "",
+		Namespace: "pyroscope",
+		Subsystem: "benchmark",
+		Name:      "upload_errors",
+		Help:      "",
 	})
 	successfulUploads := promauto.NewCounter(prometheus.CounterOpts{
-		Name: "pyroscope_successful_uploads",
-		Help: "",
+		Namespace: "pyroscope",
+		Subsystem: "benchmark",
+		Name:      "successful_uploads",
+		Help:      "",
 	})
 
 	waitUntilEndpointReady("pyroscope:4040")
@@ -237,7 +237,6 @@ func main() {
 	logrus.Info("done generating fixtures")
 
 	logrus.Info("starting sending requests")
-	benchmark.Set(1)
 	startTime := time.Now()
 	reportSummaryMetric("start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
@@ -252,7 +251,6 @@ func main() {
 	}
 	wg.Wait()
 	logrus.Info("done sending requests")
-	benchmark.Set(0)
 	reportSummaryMetric("stop-time", time.Now().Format(timeFmt))
 	reportSummaryMetric("duration", time.Since(startTime).String())
 
