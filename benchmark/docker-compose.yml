@@ -40,6 +40,7 @@ services:
     volumes:
       - ./grafana-provisioning:/etc/grafana/provisioning
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ../monitoring/gen/benchmark-dashboard.json:/etc/grafana/provisioning/dashboards/benchmark-dashboard.json
     ports:
       - 8080:3000
 

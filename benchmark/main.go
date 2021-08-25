@@ -51,7 +51,7 @@ func waitUntilEndpointReady(url string) {
 	}
 }
 
-func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie, runProgress prometheus.Gauge) {
+func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie, runProgress prometheus.Gauge, successfulUploads prometheus.Counter, uploadErrors prometheus.Counter) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
 		UpstreamAddress:        "http://pyroscope:4040",
@@ -68,17 +68,6 @@ func startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transp
 	threadStartTime = threadStartTime.Add(time.Duration(-1*requestsCount) * (10 * time.Second))
 
 	st := threadStartTime
-
-	reg := prometheus.NewRegistry()
-
-	uploadErrors := promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "pyroscope_upload_errors",
-		Help: "",
-	})
-	successfulUploads := promauto.With(reg).NewCounter(prometheus.CounterOpts{
-		Name: "pyroscope_successful_uploads",
-		Help: "",
-	})
 
 	for i := 0; i < requestsCount; i++ {
 		t := appFixtures[i%len(appFixtures)]
@@ -205,16 +194,25 @@ func main() {
 
 	logrus.Info("waiting for other services to load")
 
-	benchmark := promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "pyroscope_benchmark",
-		Help: "",
-	})
 	runProgress := promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "pyroscope_run_progress",
-		Help: "",
+		Namespace: "pyroscope",
+		Subsystem: "benchmark",
+		Name:      "progress",
+		Help:      "",
 	})
 
-	benchmark.Set(0)
+	uploadErrors := promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "pyroscope",
+		Subsystem: "benchmark",
+		Name:      "upload_errors",
+		Help:      "",
+	})
+	successfulUploads := promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "pyroscope",
+		Subsystem: "benchmark",
+		Name:      "successful_uploads",
+		Help:      "",
+	})
 
 	waitUntilEndpointReady("pyroscope:4040")
 	waitUntilEndpointReady("prometheus:9090")
@@ -239,7 +237,6 @@ func main() {
 	logrus.Info("done generating fixtures")
 
 	logrus.Info("starting sending requests")
-	benchmark.Set(1)
 	startTime := time.Now()
 	reportSummaryMetric("start-time", startTime.Format(timeFmt))
 	wg := sync.WaitGroup{}
@@ -249,12 +246,11 @@ func main() {
 	for i := 0; i < appsCount; i++ {
 		r.Read(appNameBuf)
 		for j := 0; j < clientsCount; j++ {
-			go startClientThread(hex.EncodeToString(appNameBuf), &wg, fixtures[i], runProgress)
+			go startClientThread(hex.EncodeToString(appNameBuf), &wg, fixtures[i], runProgress, successfulUploads, uploadErrors)
 		}
 	}
 	wg.Wait()
 	logrus.Info("done sending requests")
-	benchmark.Set(0)
 	reportSummaryMetric("stop-time", time.Now().Format(timeFmt))
 	reportSummaryMetric("duration", time.Since(startTime).String())
 

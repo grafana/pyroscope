@@ -8,6 +8,7 @@ echo "building containers..."
 
 source ./run-parameters.env
 export PYROSCOPE_CPUS PYROSCOPE_MEMORY
+export DOCKER_BUILDKIT=1
 
 docker-compose build
 

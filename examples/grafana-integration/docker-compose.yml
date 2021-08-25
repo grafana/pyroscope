@@ -10,6 +10,7 @@ services:
     image: grafana/grafana:8.1.1
     volumes:
       - ./grafana-provisioning:/etc/grafana/provisioning
+      - ../../monitoring/gen/dashboard.json:/etc/grafana/provisioning/dashboards/dashboard.json
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./grafana/home.json:/default-dashboard.json
     environment:
