@@ -7,7 +7,7 @@
 
 import React from "react";
 import clsx from "clsx";
-import Graph from "@pyroscope/flame-graph";
+import Graph from "./FlameGraphComponent";
 import TimelineChartWrapper from "../TimelineChartWrapper";
 import ProfilerTable from "../ProfilerTable";
 import ProfilerHeader from "../ProfilerHeader";
