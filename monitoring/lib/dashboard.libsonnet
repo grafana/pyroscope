@@ -22,7 +22,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
       .addPanel(
         grafana.text.new(
           content= "<iframe style=\"border:none; width:100%; height: 100%;\" src=\"http://localhost:8081/summary\">",
-          span=2,
+          span=3,
         )
       )
       .addPanel(
@@ -30,7 +30,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
           'Run Progress',
           datasource='$PROMETHEUS_DS',
           unit='percentunit',
-          reducerFunction='last',
+          reducerFunction='lastNotNull',
           min=0,
           max=1,
         )

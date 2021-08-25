@@ -22,7 +22,7 @@
                "gridPos": { },
                "id": 2,
                "mode": "markdown",
-               "span": 2,
+               "span": 3,
                "title": "",
                "type": "text"
             },
@@ -52,7 +52,7 @@
                "options": {
                   "reduceOptions": {
                      "calcs": [
-                        "last"
+                        "lastNotNull"
                      ],
                      "fields": "",
                      "values": false
