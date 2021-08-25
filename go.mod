@@ -1,6 +1,6 @@
 module github.com/pyroscope-io/pyroscope
 
-go 1.14
+go 1.16
 
 require (
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
@@ -17,18 +17,19 @@ require (
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/protobuf v1.5.2
+	github.com/google/go-jsonnet v0.17.0
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99
 	github.com/google/uuid v1.1.2
 	github.com/iancoleman/strcase v0.1.2
 	github.com/ianlancetaylor/demangle v0.0.0-20200715173712-053cf528c12f // indirect
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/josephspurrier/goversioninfo v1.2.0
+	github.com/jsonnet-bundler/jsonnet-bundler v0.4.0
 	github.com/kardianos/service v1.2.0
 	github.com/kisielk/godepgraph v0.0.0-20190626013829-57a7e4a651a9
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kyoh86/richgo v0.3.3
 	github.com/kyoh86/xdg v1.2.0 // indirect
-	github.com/markbates/pkger v0.17.1
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mattn/goreman v0.3.5
 	github.com/mgechev/revive v1.0.3
@@ -45,6 +46,7 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/sirupsen/logrus v1.7.0
+	github.com/slok/go-http-metrics v0.9.0 // indirect
 	github.com/spf13/cobra v0.0.5
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/twmb/murmur3 v1.1.5

@@ -8,7 +8,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/webapp"
 )
 
 var (
@@ -20,9 +22,6 @@ var (
 	GitDirtyStr = "-1"
 	GitDirty    int
 
-	UseEmbeddedAssetsStr = "false"
-	UseEmbeddedAssets    bool
-
 	RbspyGitSHA  = "N/A"
 	PyspyGitSHA  = "N/A"
 	PhpspyGitSHA = "N/A"
@@ -30,7 +29,6 @@ var (
 
 func init() {
 	GitDirty, _ = strconv.Atoi(GitDirtyStr)
-	UseEmbeddedAssets = UseEmbeddedAssetsStr == "true"
 }
 
 const tmplt = `
@@ -62,7 +60,7 @@ func Summary() string {
 		Time,
 		GitSHA,
 		GitDirty,
-		UseEmbeddedAssets,
+		webapp.AssetsEmbedded,
 		spy.SupportedSpies,
 		RbspyGitSHA,
 		PyspyGitSHA,
@@ -95,7 +93,7 @@ func generateBuildInfoJSON() buildInfoJSON {
 		Time:              Time,
 		GitSHA:            GitSHA,
 		GitDirty:          GitDirty,
-		UseEmbeddedAssets: UseEmbeddedAssets,
+		UseEmbeddedAssets: webapp.AssetsEmbedded,
 		RbspyGitSHA:       RbspyGitSHA,
 		PyspyGitSHA:       PyspyGitSHA,
 		PhpspyGitSHA:      PhpspyGitSHA,
@@ -110,4 +108,17 @@ func JSON() string {
 func PrettyJSON() string {
 	b, _ := json.MarshalIndent(generateBuildInfoJSON(), "", "  ")
 	return string(b)
+}
+
+// PrometheusBuildLabels returns a map of the labels
+// that will be exposed in the build_info metric
+func PrometheusBuildLabels() prometheus.Labels {
+	return prometheus.Labels{
+		"GOOS":                runtime.GOOS,
+		"GOARCH":              runtime.GOARCH,
+		"version":             Version,
+		"time":                Time,
+		"revision":            GitSHA,
+		"use_embedded_assets": strconv.FormatBool(webapp.AssetsEmbedded),
+	}
 }

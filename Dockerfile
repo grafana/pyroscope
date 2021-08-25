@@ -85,11 +85,12 @@ COPY --from=phpspy-builder /var/www/html/third_party/phpspy/libphpspy.a /opt/pyr
 COPY --from=js-builder /opt/pyroscope/webapp/public ./webapp/public
 COPY Makefile ./
 COPY tools ./tools
-COPY go.mod go.sum pyroscope.go ./
+COPY go.mod go.sum ./
 RUN make install-dev-tools
 
 COPY pkg ./pkg
 COPY cmd ./cmd
+COPY webapp/assets_embedded.go ./webapp/assets_embedded.go
 COPY scripts ./scripts
 
 RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release

@@ -7,7 +7,7 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/util/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func (s *Storage) periodicTask(interval time.Duration, cb func()) {
@@ -48,40 +48,51 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 	return func() {
 		runtime.ReadMemStats(&m)
 		used := float64(m.Alloc) / float64(memTotal)
-		metrics.Gauge("evictions_alloc_bytes", m.Alloc)
-		metrics.Gauge("evictions_total_bytes", memTotal)
-		metrics.Gauge("evictions_used_perc", used)
+
+		s.evictionsAllocBytes.Set(float64(m.Alloc))
+		s.evictionsTotalBytes.Set(float64(memTotal))
 
 		percent := s.config.CacheEvictVolume
 		if used > s.config.CacheEvictThreshold {
-			metrics.Timing("evictions_timer", func() {
-				metrics.Count("evictions_count", 1)
+			func() {
+				timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+					logrus.Debugf("eviction task took %f seconds\n", v)
+					s.evictionsTimer.Observe(v)
+				}))
+				defer timer.ObserveDuration()
+
 				s.dimensions.Evict(percent / 4)
 				s.dicts.Evict(percent / 4)
 				s.segments.Evict(percent / 2)
 				s.trees.Evict(percent)
 				runtime.GC()
-			})
+			}()
 		}
 	}
 }
 
 func (s *Storage) writeBackTask() {
-	metrics.Timing("write_back_timer", func() {
-		metrics.Count("write_back_count", 1)
-		s.dimensions.WriteBack()
-		s.segments.WriteBack()
-		s.dicts.WriteBack()
-		s.trees.WriteBack()
-	})
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+		logrus.Debugf("writeback task took %f seconds\n", v)
+		s.writeBackTimer.Observe(v)
+	}))
+
+	defer timer.ObserveDuration()
+
+	s.dimensions.WriteBack()
+	s.segments.WriteBack()
+	s.dicts.WriteBack()
+	s.trees.WriteBack()
 }
 
 func (s *Storage) retentionTask() {
-	logrus.Debug("starting retention task")
-	metrics.Timing("retention_timer", func() {
-		metrics.Count("retention_count", 1)
-		if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
-			logrus.WithError(err).Warn("retention task failed")
-		}
-	})
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+		logrus.Debugf("retention task %f seconds\n", v)
+		s.retentionTimer.Observe(v)
+	}))
+	defer timer.ObserveDuration()
+
+	if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
+		logrus.WithError(err).Warn("retention task failed")
+	}
 }
