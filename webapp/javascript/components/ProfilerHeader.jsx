@@ -9,6 +9,7 @@ import {
   faListUl,
   faTable,
 } from "@fortawesome/free-solid-svg-icons";
+import { FitModes } from "../util/fitMode"
 
 export default function ProfilerHeader({
   view,
@@ -16,6 +17,8 @@ export default function ProfilerHeader({
   handleSearchChange,
   resetStyle,
   reset,
+  updateFitMode,
+  fitMode,
   updateView,
   updateViewDiff,
 }) {
@@ -37,6 +40,17 @@ export default function ProfilerHeader({
       >
         Reset View
       </button>
+
+      <select
+        className="label-select"
+        value={fitMode}
+        onChange={(event) => updateFitMode(event.target.value)}
+      >
+        <option disabled>Prefer to fit</option>
+        <option value={FitModes.HEAD}>Head First</option>
+        <option value={FitModes.TAIL}>Tail First</option>
+      </select>
+
       <div className="navbar-space-filler" />
       {!viewDiff ? null : (
         <div className="btn-group viz-switch">
