@@ -30,14 +30,14 @@ func FProfile(name string, cb func()) time.Duration {
 		}()
 	}
 	cb()
-	d := time.Now().Sub(t)
+	d := time.Since(t)
 	return d
 }
 
 func Profile(name string, cb func()) time.Duration {
 	t := time.Now()
 	cb()
-	d := time.Now().Sub(t)
+	d := time.Since(t)
 	logrus.Debugf("%q took %s", name, d)
 	return d
 }
@@ -49,7 +49,7 @@ func PProfile(name string, cb func()) time.Duration {
 		defer pprof.StopCPUProfile()
 	}
 	cb()
-	d := time.Now().Sub(t)
+	d := time.Since(t)
 	logrus.Debug(name, d)
 	return d
 }

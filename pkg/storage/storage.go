@@ -418,6 +418,8 @@ type GetOutput struct {
 	Units      string
 }
 
+const averageAggregationType = "average"
+
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	logger := logrus.WithFields(logrus.Fields{
 		"startTime": gi.StartTime.String(),
@@ -464,8 +466,8 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		}
 
 		st := res.(*segment.Segment)
-		if st.AggregationType() == "average" {
-			aggregationType = "average"
+		if st.AggregationType() == averageAggregationType {
+			aggregationType = averageAggregationType
 		}
 
 		timeline.PopulateTimeline(st)
@@ -485,7 +487,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}
 
 	t := resultTrie.(*tree.Tree)
-	if writesTotal > 0 && aggregationType == "average" {
+	if writesTotal > 0 && aggregationType == averageAggregationType {
 		t = t.Clone(big.NewRat(1, int64(writesTotal)))
 	}
 
@@ -571,7 +573,9 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 		}
 
 		if deletedRoot {
-			s.deleteSegmentAndRelatedData(sk)
+			if err := s.deleteSegmentAndRelatedData(sk); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
@@ -584,13 +588,15 @@ type DeleteInput struct {
 var maxTime = time.Unix(1<<62, 999999999)
 
 func (s *Storage) Delete(di *DeleteInput) error {
-	var dimensions []*dimension.Dimension
+	dimensions := make([]*dimension.Dimension, len(di.Key.Labels()))
+	i := 0
 	for k, v := range di.Key.Labels() {
 		dInt, ok := s.dimensions.Lookup(k + ":" + v)
 		if !ok {
 			return nil
 		}
-		dimensions = append(dimensions, dInt.(*dimension.Dimension))
+		dimensions[i] = dInt.(*dimension.Dimension)
+		i++
 	}
 
 	for _, sk := range dimension.Intersection(dimensions...) {
@@ -609,15 +615,21 @@ func (s *Storage) Delete(di *DeleteInput) error {
 			return err
 		}
 
-		s.deleteSegmentAndRelatedData(skk)
+		if err := s.deleteSegmentAndRelatedData(skk); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func (s *Storage) deleteSegmentAndRelatedData(key *segment.Key) error {
-	s.dicts.Delete(key.DictKey())
-	s.segments.Delete(key.SegmentKey())
+	if err := s.dicts.Delete(key.DictKey()); err != nil {
+		return err
+	}
+	if err := s.segments.Delete(key.SegmentKey()); err != nil {
+		return err
+	}
 	for k, v := range key.Labels() {
 		dInt, ok := s.dimensions.Lookup(k + ":" + v)
 		if !ok {

@@ -1,7 +1,6 @@
 package debug
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -38,10 +37,8 @@ type Reporter struct {
 func NewReporter(l *logrus.Logger, s *storage.Storage, c *config.Server, reg prometheus.Registerer) *Reporter {
 	promauto.With(reg).NewGaugeFunc(
 		prometheus.GaugeOpts{
-			Name: "pyroscope_build_info",
-			Help: fmt.Sprintf(
-				"A metric with a constant '1' value labeled by version, revision and other info from which pyroscope was built.",
-			),
+			Name:        "pyroscope_build_info",
+			Help:        "A metric with a constant '1' value labeled by version, revision and other info from which pyroscope was built.",
 			ConstLabels: build.PrometheusBuildLabels(),
 		},
 		func() float64 { return 1 },
@@ -125,7 +122,7 @@ func (d *Reporter) Start() {
 					case uint8:
 						return float64(n), true
 					case float64:
-						return float64(n), true
+						return n, true
 					case float32:
 						return float64(n), true
 					}

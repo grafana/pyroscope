@@ -94,7 +94,6 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 				xOffsets = append([]int{xOffset}, xOffsets...)
 				levels = append([]int{level + 1}, levels...)
 				nodes = append([]*treeNode{n}, nodes...)
-				xOffset += int(n.Total)
 			}
 		}
 	}

@@ -28,7 +28,7 @@ func (d *Dimension) Insert(key Key) {
 		return bytes.Compare(d.Keys[i], key) >= 0
 	})
 
-	if i < len(d.Keys) && bytes.Compare(d.Keys[i], key) == 0 {
+	if i < len(d.Keys) && bytes.Equal(d.Keys[i], key) {
 		return
 	}
 
@@ -47,7 +47,7 @@ func (d *Dimension) Delete(key Key) {
 		return bytes.Compare(d.Keys[i], key) >= 0
 	})
 
-	if i < len(d.Keys) && bytes.Compare(d.Keys[i], key) == 0 {
+	if i < len(d.Keys) && bytes.Equal(d.Keys[i], key) {
 		d.Keys = append(d.Keys[:i], d.Keys[i+1:]...)
 		return
 	}
