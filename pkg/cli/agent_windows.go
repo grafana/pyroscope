@@ -12,10 +12,10 @@ func StartAgent(config *config.Agent) error {
 	if err != nil {
 		return fmt.Errorf("could not create logger: %w", err)
 	}
-	logger.Info("starting pyroscope agent")
 	if err = loadAgentConfig(config); err != nil {
 		return fmt.Errorf("could not load targets: %w", err)
 	}
+	logger.Info("starting pyroscope agent")
 	agent, err := newAgentService(logger, config)
 	if err != nil {
 		return fmt.Errorf("could not initialize agent: %w", err)

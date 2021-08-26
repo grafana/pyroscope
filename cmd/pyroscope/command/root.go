@@ -17,7 +17,7 @@ func newRootCmd(cfg *config.Config) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "pyroscope [flags] <subcommand>",
 		Run: func(cmd *cobra.Command, args []string) {
-			if cfg.Version || len(args) > 0 && args[0] == "version" {
+			if cfg.Version {
 				fmt.Println(gradientBanner())
 				fmt.Println(build.Summary())
 				fmt.Println("")
@@ -29,10 +29,17 @@ func newRootCmd(cfg *config.Config) *cobra.Command {
 	}
 
 	rootCmd.SetUsageFunc(func(cmd *cobra.Command) error {
-		fmt.Println(gradientBanner() + "\n" + DefaultUsageFunc(cmd.Flags(), cmd))
+		fmt.Println(gradientBanner())
+		fmt.Println(DefaultUsageFunc(cmd.Flags(), cmd))
 		return nil
 	})
 
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, a []string) {
+		fmt.Println(gradientBanner())
+		fmt.Println(DefaultUsageFunc(cmd.Flags(), cmd))
+	})
+
+	rootCmd.PersistentFlags().BoolVarP(&cfg.Version, "version", "v", false, "print pyroscope version details")
 	return rootCmd
 }
 
@@ -54,6 +61,7 @@ func Initialize() error {
 		newDbManagerCmd(&cfg.DbManager, &cfg.Server),
 		newExecCmd(&cfg.Exec),
 		newServerCmd(&cfg.Server),
+		newVersionCmd(),
 	)
 
 	logrus.SetReportCaller(true)

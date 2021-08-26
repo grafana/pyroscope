@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	Version bool
+	Version bool `mapstructure:"version"`
 
 	Agent     Agent     `skip:"true" mapstructure:",squash"`
 	Server    Server    `skip:"true" mapstructure:",squash"`

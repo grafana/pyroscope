@@ -77,11 +77,11 @@ func Cli(cfg *config.Exec, args []string) error {
 		}
 	}
 
-	logrus.Info("to disable logging from pyroscope, pass " + color.YellowString("-no-logging") + " argument to pyroscope exec")
-
 	if err := performChecks(spyName); err != nil {
 		return err
 	}
+
+	logrus.Info("to disable logging from pyroscope, pass " + color.YellowString("-no-logging") + " argument to pyroscope exec")
 
 	if cfg.ApplicationName == "" {
 		logrus.Infof("we recommend specifying application name via %s flag or env variable %s",

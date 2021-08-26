@@ -6,7 +6,6 @@ import (
 	"text/tabwriter"
 
 	"github.com/fatih/color"
-	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -24,12 +23,6 @@ func init() {
 	// itemClr = color.New()
 	descClr = color.New()
 	defClr = color.New(color.FgYellow)
-}
-
-// disabled these commands for now, they are not documented and confuse people
-var hiddenCommands = []string{
-	"convert",
-	"dbmanager",
 }
 
 // TODO: Do we want to keep this or use cobra default one? Maybe banner + cobra default? Or something else?
@@ -54,7 +47,7 @@ func DefaultUsageFunc(sf *pflag.FlagSet, c *cobra.Command) string {
 		headerClr.Fprintf(&b, "SUBCOMMANDS\n")
 		tw := tabwriter.NewWriter(&b, 0, 2, 2, ' ', 0)
 		for _, subcommand := range c.Commands() {
-			if !slices.StringContains(hiddenCommands, subcommand.Name()) {
+			if !subcommand.Hidden {
 				fmt.Fprintf(tw, "  %s\t%s\n", itemClr.Sprintf(subcommand.Name()), subcommand.Short)
 			}
 		}

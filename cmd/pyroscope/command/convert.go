@@ -12,7 +12,7 @@ import (
 func newConvertCmd(cfg *config.Convert) *cobra.Command {
 	convertCmd := &cobra.Command{
 		Use:   "convert [flags] <input-file>",
-		Short: "converts between different profiling formats",
+		Short: "Convert between different profiling formats",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logrus.SetOutput(os.Stderr)
 			logger := func(s string) {
@@ -27,6 +27,7 @@ func newConvertCmd(cfg *config.Convert) *cobra.Command {
 
 			return err
 		},
+		Hidden: true,
 	}
 
 	loadFlags(cfg, convertCmd)

@@ -9,7 +9,7 @@ import (
 func newServerCmd(cfg *config.Server) *cobra.Command {
 	serverCmd := &cobra.Command{
 		Use:   "server [flags]",
-		Short: "starts pyroscope server. This is the database + web-based user interface",
+		Short: "Start pyroscope server. This is the database + web-based user interface",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := loadConfig(cfg.Config, cfg)
 			if err != nil {

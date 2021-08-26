@@ -1,8 +1,6 @@
 package command
 
 import (
-	"fmt"
-
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
@@ -13,7 +11,7 @@ import (
 func newConnectCmd(cfg *config.Exec) *cobra.Command {
 	connectCmd := &cobra.Command{
 		Use:   "connect [flags]",
-		Short: "connects to an existing process and profiles it",
+		Short: "Connect to an existing process and profile it",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.NoLogging {
 				logrus.SetLevel(logrus.PanicLevel)
@@ -21,8 +19,8 @@ func newConnectCmd(cfg *config.Exec) *cobra.Command {
 				logrus.SetLevel(l)
 			}
 			if len(args) > 0 && args[0] == "help" {
-				fmt.Println(gradientBanner())
-				fmt.Println(DefaultUsageFunc(cmd.Flags(), cmd))
+				_ = cmd.Help()
+				return nil
 			}
 
 			err := exec.Cli(cfg, args)

@@ -1,7 +1,6 @@
 package command
 
 import (
-	"fmt"
 	"os"
 	goexec "os/exec"
 
@@ -15,7 +14,7 @@ import (
 func newExecCmd(cfg *config.Exec) *cobra.Command {
 	execCmd := &cobra.Command{
 		Use:   "exec [flags] <args>",
-		Short: "starts a new process from arguments and profiles it",
+		Short: "Start a new process from arguments and profile it",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if cfg.NoLogging {
 				logrus.SetLevel(logrus.PanicLevel)
@@ -23,8 +22,7 @@ func newExecCmd(cfg *config.Exec) *cobra.Command {
 				logrus.SetLevel(l)
 			}
 			if len(args) == 0 || args[0] == "help" {
-				fmt.Println(gradientBanner())
-				fmt.Println(DefaultUsageFunc(cmd.Flags(), cmd))
+				_ = cmd.Help()
 				return nil
 			}
 

@@ -9,7 +9,7 @@ import (
 func newAgentCmd(cfg *config.Agent) *cobra.Command {
 	agentCmd := &cobra.Command{
 		Use:   "agent [flags]",
-		Short: "starts pyroscope agent.",
+		Short: "Start pyroscope agent.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := loadConfig(cfg.Config, cfg)
 			if err != nil {

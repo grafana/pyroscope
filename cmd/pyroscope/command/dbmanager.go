@@ -25,6 +25,7 @@ func newDbManagerCmd(dbManagerCfg *config.DbManager, serverCfg *config.Server) *
 
 			return err
 		},
+		Hidden: true,
 	}
 
 	loadFlags(dbManagerCfg, dbmanagerCmd, cli.WithSkip("group-name", "user-name", "no-root-drop"))
