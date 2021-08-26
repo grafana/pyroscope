@@ -42,7 +42,7 @@ export default function ProfilerHeader({
       </button>
 
       <select
-        className="label-select"
+        className="fit-mode-select"
         value={fitMode}
         onChange={(event) => updateFitMode(event.target.value)}
       >

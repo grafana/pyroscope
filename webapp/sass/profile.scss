@@ -291,6 +291,8 @@ $pane-width: 6px;
 
 .flamegraph-table {
   font-size: 14px;
+  font-family: monospace;
+
   th,
   td {
     text-align: right;
@@ -339,9 +341,16 @@ $pane-width: 6px;
       max-width: auto;
 
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
+
+    &:first-child .color-reference {
+      position: absolute;
+      left: 10px;
+      bottom: 0;
+      top: 0;
+      margin: auto;
+    }
+
   }
   th {
     padding: 6px 10px;
@@ -349,6 +358,18 @@ $pane-width: 6px;
   tr th,
   tr:nth-child(2n) td {
     background: rgba(255, 255, 255, 0.05);
+  }
+
+  td {
+    &:first-child {
+      margin-left: 15px;
+      position: relative;
+    }
+
+    // element right next the color reference
+    &:first-child .color-reference + div {
+      margin-left: 15px;
+    }
   }
 }
 
@@ -717,4 +738,9 @@ $sidebar-tooltip-color: #777;
       }
     }
   }
+}
+
+
+.fit-mode-select {
+  margin: 0 10px;
 }

@@ -562,6 +562,7 @@ class FlameGraphRenderer extends React.Component {
           updateSortBy={this.updateSortBy}
           view={this.state.view}
           viewDiff={this.state.viewDiff}
+          fitMode={this.state.fitMode}
         />
       </div>
     )
@@ -628,7 +629,7 @@ class FlameGraphRenderer extends React.Component {
             updateViewDiff={this.updateViewDiff}
             resetStyle={this.state.resetStyle}
             updateFitMode={this.updateFitMode}
-            fitMode={this.fitMode}
+            fitMode={this.state.fitMode}
           />
           {
             this.props.viewType === "double"
