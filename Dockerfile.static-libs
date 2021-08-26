@@ -36,8 +36,7 @@ RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a
 
 FROM php:7.3-fpm-alpine3.13 as phpspy-builder
 RUN apk add --update alpine-sdk
-#TODO: Temporary hash, as it is still on a branch
-RUN git clone https://github.com/pyroscope-io/phpspy.git && cd phpspy && git checkout fead63162f25bf7b71b00f52516aacdad7b5dd6e
+RUN git clone https://github.com/pyroscope-io/phpspy.git && cd phpspy && git checkout 07d976f4e7a9ac85aa3718b4405b75fac155962d
 RUN cd phpspy && make CFLAGS="-DUSE_DIRECT"
 
 #              _
@@ -65,11 +64,12 @@ COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
 COPY --from=phpspy-builder /var/www/html/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
 COPY Makefile ./
 COPY tools ./tools
-COPY go.mod go.sum pyroscope.go ./
+COPY go.mod go.sum ./
 RUN make install-dev-tools
 
 COPY pkg ./pkg
 COPY cmd ./cmd
+COPY webapp/assets.go ./webapp/assets_embedded.go
 COPY scripts ./scripts
 
 RUN make build-rbspy-static-library
