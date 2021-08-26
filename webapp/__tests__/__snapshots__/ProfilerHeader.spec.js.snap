@@ -10,13 +10,6 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
     placeholder="Search…"
   />
    
-  <button
-    className="btn"
-    id="reset"
-    type="button"
-  >
-    Reset View
-  </button>
   <select
     className="fit-mode-select"
     onChange={[Function]}
@@ -37,6 +30,13 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
       Tail First
     </option>
   </select>
+  <button
+    className="btn"
+    id="reset"
+    type="button"
+  >
+    Reset View
+  </button>
   <div
     className="navbar-space-filler"
   />

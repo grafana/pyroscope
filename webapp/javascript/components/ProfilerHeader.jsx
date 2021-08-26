@@ -31,6 +31,15 @@ export default function ProfilerHeader({
         onChange={handleSearchChange}
       />
       &nbsp;
+      <select
+        className="fit-mode-select"
+        value={fitMode}
+        onChange={(event) => updateFitMode(event.target.value)}
+      >
+        <option disabled>Prefer to fit</option>
+        <option value={FitModes.HEAD}>Head First</option>
+        <option value={FitModes.TAIL}>Tail First</option>
+      </select>
       <button
         type="button"
         className={clsx("btn")}
@@ -41,15 +50,6 @@ export default function ProfilerHeader({
         Reset View
       </button>
 
-      <select
-        className="fit-mode-select"
-        value={fitMode}
-        onChange={(event) => updateFitMode(event.target.value)}
-      >
-        <option disabled>Prefer to fit</option>
-        <option value={FitModes.HEAD}>Head First</option>
-        <option value={FitModes.TAIL}>Tail First</option>
-      </select>
 
       <div className="navbar-space-filler" />
       {!viewDiff ? null : (
