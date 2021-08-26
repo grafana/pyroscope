@@ -371,7 +371,7 @@ class FlameGraphRenderer extends React.Component {
     }
 
     this.ctx.textBaseline = "middle";
-    this.ctx.font = '400 12px monospace';
+    this.ctx.font = '400 12px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
     // Since this is a monospaced font
     // any character would do
     const characterSize = this.ctx.measureText("a").width;
