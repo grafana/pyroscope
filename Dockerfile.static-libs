@@ -69,7 +69,7 @@ RUN make install-dev-tools
 
 COPY pkg ./pkg
 COPY cmd ./cmd
-COPY webapp/assets.go ./webapp/assets_embedded.go
+COPY webapp/assets.go ./webapp/assets.go
 COPY scripts ./scripts
 
 RUN make build-rbspy-static-library
