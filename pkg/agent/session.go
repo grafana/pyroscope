@@ -194,7 +194,7 @@ func (ps *ProfileSession) takeSnapshots() {
 					s.Snapshot(func(stack []byte, v uint64, err error) {
 						if err != nil {
 							if ok, pidErr := process.PidExists(int32(pid)); !ok || pidErr != nil {
-								// if process doesn't exist or there's an error, remove this spy and pid
+								ps.logger.Debugf("error taking snapshot: process doesn't exist?")
 								pidsToRemove = append(pidsToRemove, pid)
 							} else {
 								ps.throttler.Run(func(skipped int) {
