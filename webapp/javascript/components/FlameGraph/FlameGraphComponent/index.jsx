@@ -1,3 +1,8 @@
+/* eslint-disable no-bitwise */
+/* eslint-disable no-nested-ternary */
+/* eslint-disable react/destructuring-assignment */
+/* eslint-disable react/no-unused-state */
+/* eslint-disable no-restricted-syntax */
 import React from "react";
 import {
   numberWithCommas,
