@@ -15,14 +15,13 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.16.3'
-      - name: build app
-        env:
-          ENABLED_SPIES: none
-        run: make assets-release && make build
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
+          build: make assets-release && make build
+          wait-on: http://localhost:4040
           start: make e2e
         env:
           # keep the server quiet
           PYROSCOPE_LOG_LEVEL: error
+          ENABLED_SPIES: none
