@@ -43,7 +43,7 @@ func (td *Dict) Get(key Key) (Value, bool) {
 		labelBuf = append(labelBuf, label...)
 		tn = tn.children[v]
 
-		expectedLen, err := varint.Read(r)
+		expectedLen, _ := varint.Read(r)
 		for len(label) < int(expectedLen) {
 			if len(tn.children) == 0 {
 				return nil, false

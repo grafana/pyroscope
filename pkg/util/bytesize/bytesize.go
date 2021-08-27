@@ -69,12 +69,11 @@ func Parse(str string) (ByteSize, error) {
 		return 0, errParse
 	}
 
-	multiplier := ByteSize(1)
-	if m, ok := multipliers[strings.ToLower(r[2])]; ok {
-		multiplier = m
-	} else {
+	multiplier, ok := multipliers[strings.ToLower(r[2])]
+	if !ok {
 		return 0, errParse
 	}
+
 	if strings.Contains(r[1], ".") {
 		val, err := strconv.ParseFloat(r[1], 64)
 		if err != nil {

@@ -81,6 +81,7 @@ var _ = Describe("server", func() {
 							EndTime:   et,
 							Key:       sk,
 						})
+						Expect(err).ToNot(HaveOccurred())
 						Expect(gOut.Tree).ToNot(BeNil())
 						Expect(gOut.Tree.String()).To(Equal("\"foo;bar\" 2\n\"foo;baz\" 3\n"))
 

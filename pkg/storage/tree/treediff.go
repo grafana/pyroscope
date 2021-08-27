@@ -168,7 +168,6 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 					}
 					xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
 					leftNodes = prependTreeNode(leftNodes, leftNode)
-					xLeftOffset += int(leftNode.Total)
 				}
 				{
 					rghtNode := &treeNode{
@@ -178,7 +177,6 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 					}
 					xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
 					rghtNodes = prependTreeNode(rghtNodes, rghtNode)
-					xRghtOffset += int(rghtNode.Total)
 				}
 			}
 		}

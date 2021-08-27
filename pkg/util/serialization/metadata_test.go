@@ -19,7 +19,7 @@ var _ = Describe("metadata", func() {
 		It("serializes metadata", func() {
 			b := &bytes.Buffer{}
 			WriteMetadata(b, in)
-			Expect(string(b.Bytes())).To(Equal(out))
+			Expect(b.String()).To(Equal(out))
 		})
 	})
 

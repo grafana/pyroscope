@@ -98,11 +98,12 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
 
+loop:
 	for srct := srcSt; srct.Before(srcEt); srct = srct.Add(resolution) {
 		bar.Increment()
 		select {
 		case <-sigc:
-			break
+			break loop
 		default:
 		}
 

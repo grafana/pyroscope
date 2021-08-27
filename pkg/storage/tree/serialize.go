@@ -79,7 +79,7 @@ func (t *Tree) SerializeNoDict(maxNodes int, w io.Writer) error {
 		}
 
 		val := tn.Self
-		_, err = varint.Write(w, uint64(val))
+		_, err = varint.Write(w, val)
 		if err != nil {
 			return err
 		}
