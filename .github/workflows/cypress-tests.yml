@@ -1,0 +1,28 @@
+name: Cypress Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cypress-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.3'
+      - name: build app
+        env:
+          ENABLED_SPIES: none
+        run: make assets-release && make build
+      - name: Cypress run
+        uses: cypress-io/github-action@v2
+        with:
+          start: make e2e
+        env:
+          # keep the server quiet
+          PYROSCOPE_LOG_LEVEL: error
