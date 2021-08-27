@@ -256,7 +256,7 @@ func allFrames(addr uintptr) ([]runtime.Frame, symbolizeFlag) {
 		frame.PC = addr - 1
 	}
 	ret := []runtime.Frame{frame}
-	for frame.Function != "runtime.goexit" && more {
+	for frame.Function != "runtime.goexit" && more == true {
 		frame, more = frames.Next()
 		ret = append(ret, frame)
 	}

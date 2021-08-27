@@ -224,13 +224,13 @@ func writeHeapInternal(w io.Writer, debug int, defaultSampleType string) error {
 	// and also try again if we're very unlucky.
 	// The loop should only execute one iteration in the common case.
 	var p []runtime.MemProfileRecord
-	n, _ := runtime.MemProfile(nil, true)
+	n, ok := runtime.MemProfile(nil, true)
 	for {
 		// Allocate room for a slightly bigger profile,
 		// in case a few more entries have been added
 		// since the call to MemProfile.
 		p = make([]runtime.MemProfileRecord, n+50)
-		n, ok := runtime.MemProfile(p, true)
+		n, ok = runtime.MemProfile(p, true)
 		if ok {
 			p = p[0:n]
 			break
