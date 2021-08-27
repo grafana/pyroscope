@@ -366,6 +366,8 @@ $pane-width: 6px;
   }
 
   td {
+    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+
     &:first-child {
       margin-left: 15px;
       position: relative;

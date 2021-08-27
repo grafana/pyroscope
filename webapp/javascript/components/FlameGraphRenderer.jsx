@@ -371,7 +371,7 @@ class FlameGraphRenderer extends React.Component {
     }
 
     this.ctx.textBaseline = "middle";
-    this.ctx.font = '400 12px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
+    this.ctx.font = '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
     // Since this is a monospaced font
     // any character would do
     const characterSize = this.ctx.measureText("a").width;
@@ -461,7 +461,7 @@ class FlameGraphRenderer extends React.Component {
           this.ctx.clip();
           this.ctx.fillStyle = "black";
           // when showing the code, give it a space in the beginning
-          this.ctx.fillText(fitCalc.text, namePosX + fitCalc.marginLeft, y + sh / 2);
+          this.ctx.fillText(fitCalc.text, namePosX + fitCalc.marginLeft, y + sh / 2+1);
           this.ctx.restore();
         }
       }
