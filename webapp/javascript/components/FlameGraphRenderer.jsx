@@ -337,7 +337,6 @@ class FlameGraphRenderer extends React.Component {
   };
 
   updateFitMode = (newFitMode) => {
-    console.log("updated fit mode to", newFitMode);
     this.setState({
       fitMode: newFitMode,
     });
