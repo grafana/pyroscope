@@ -110,7 +110,7 @@ endif
 
 .PHONY: build-rust-dependencies-docker
 build-rust-dependencies-docker: ## Builds the rust dependencies in docker
-	DOCKER_BUILDKIT=1 docker build -f Dockerfile.static-libs --progress=plain --output type=local,dest=out .
+	DOCKER_BUILDKIT=1 docker build --target lib-exporter --progress=plain -f Dockerfile --output type=local,dest=out .
 
 .PHONY: build-phpspy-dependencies
 build-phpspy-dependencies: ## Builds the PHP dependency
