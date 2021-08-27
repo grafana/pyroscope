@@ -376,7 +376,7 @@ func (s *Storage) Put(po *PutInput) error {
 	st.SetMetadata(po.SpyName, po.SampleRate, po.Units, po.AggregationType)
 	samples := po.Val.Samples()
 
-	st.Put(po.StartTime, po.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
+	err = st.Put(po.StartTime, po.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := po.Key.TreeKey(depth, t)
 		res, err := s.trees.GetOrCreate(tk)
 		if err != nil {
@@ -398,6 +398,9 @@ func (s *Storage) Put(po *PutInput) error {
 		cachedTree.Unlock()
 		s.trees.Put(tk, cachedTree)
 	})
+	if err != nil {
+		return err
+	}
 
 	s.segments.Put(sk, st)
 	return nil

@@ -1,6 +1,7 @@
 package segment
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -182,11 +183,8 @@ func (sn *streeNode) deleteDataBefore(retentionThreshold time.Time, cb func(dept
 }
 
 type Segment struct {
-	m          sync.RWMutex
-	resolution time.Duration
-	multiplier int
-	root       *streeNode
-	durations  []time.Duration
+	m    sync.RWMutex
+	root *streeNode
 
 	spyName         string
 	sampleRate      uint32
@@ -206,11 +204,7 @@ func newNode(t time.Time, depth, multiplier int) *streeNode {
 }
 
 func New() *Segment {
-	st := &Segment{
-		resolution: resolution,
-		multiplier: multiplier,
-		durations:  durations,
-	}
+	st := &Segment{}
 
 	return st
 }
@@ -230,14 +224,14 @@ func minTime(a, b time.Time) time.Time {
 	return b
 }
 
-func (s *Segment) growTree(st, et time.Time) {
+func (s *Segment) growTree(st, et time.Time) bool {
 	var prevVal *streeNode
 	if s.root != nil {
 		st = minTime(st, s.root.time)
 		et = maxTime(et, s.root.endTime())
 	} else {
-		st = st.Truncate(s.durations[0])
-		s.root = newNode(st, 0, s.multiplier)
+		st = st.Truncate(durations[0])
+		s.root = newNode(st, 0, multiplier)
 	}
 
 	for {
@@ -249,13 +243,17 @@ func (s *Segment) growTree(st, et time.Time) {
 
 		prevVal = s.root
 		newDepth := prevVal.depth + 1
-		s.root = newNode(prevVal.time.Truncate(s.durations[newDepth]), newDepth, s.multiplier)
+		if newDepth >= len(durations) {
+			return false
+		}
+		s.root = newNode(prevVal.time.Truncate(durations[newDepth]), newDepth, multiplier)
 		if prevVal != nil {
 			s.root.samples = prevVal.samples
 			s.root.writes = prevVal.writes
 			s.root.replace(prevVal)
 		}
 	}
+	return true
 }
 
 type Addon struct {
@@ -263,20 +261,30 @@ type Addon struct {
 	T     time.Time
 }
 
+var errStartTimeBeforeEndTime = errors.New("start time cannot be after end time")
+var errTreeMaxSize = errors.New("segment tree reached max size, check start / end time parameters")
+
 // TODO: simplify arguments
 // TODO: validate st < et
-func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, r *big.Rat, addons []Addon)) {
+func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t time.Time, r *big.Rat, addons []Addon)) error {
 	s.m.Lock()
 	defer s.m.Unlock()
 
 	st, et = normalize(st, et)
-	s.growTree(st, et)
+	if st.After(et) {
+		return errStartTimeBeforeEndTime
+	}
+
+	if !s.growTree(st, et) {
+		return errTreeMaxSize
+	}
 	v := newVis()
 	s.root.put(st, et, samples, func(sn *streeNode, depth int, tm time.Time, r *big.Rat, addons []Addon) {
 		v.add(sn, r, true)
 		cb(depth, tm, r, addons)
 	})
 	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-put-%s-%s.html", st.String(), et.String())))
+	return nil
 }
 
 // TODO: simplify arguments

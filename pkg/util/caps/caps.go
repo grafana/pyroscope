@@ -27,17 +27,25 @@ type data struct {
 
 //revive:disable:var-naming Those names mimics system constants names
 const (
-	CAP_SYS_TIME = 25
-	CAP_SYSLOG   = 34
+	CAP_SYS_TIME   = 25
+	CAP_SYSLOG     = 34
+	CAP_SYS_PTRACE = 19
 )
 
 //revive:enable:var-naming
 
 type Caps struct {
 	header header
-	data   [2]data
+	data   data
 }
 
+func (c Caps) has(capSearch uint) bool {
+	return (c.data.inheritable & (1 << capSearch)) != 0
+}
+
+func (c Caps) inheritable() uint32 {
+	return c.data.inheritable
+}
 func Get() (Caps, error) {
 	var c Caps
 
@@ -47,17 +55,22 @@ func Get() (Caps, error) {
 	}
 
 	// Get current capabilities
-	if _, _, errno := syscall.Syscall(syscall.SYS_CAPGET, uintptr(unsafe.Pointer(&c.header)), uintptr(unsafe.Pointer(&c.data[0])), 0); errno != 0 {
+	if _, _, errno := syscall.Syscall(syscall.SYS_CAPGET, uintptr(unsafe.Pointer(&c.header)), uintptr(unsafe.Pointer(&c.data)), 0); errno != 0 {
 		return c, fmt.Errorf("SYS_CAPGET: %v", errno)
 	}
 
 	return c, nil
 }
 
-func (c Caps) Has(capSearch uint) bool {
-	return (c.data[0].inheritable & (1 << capSearch)) != 0
-}
+func HasSysPtraceCap() bool {
+	c, err := Get()
+	if err != nil {
+		return true // I don't know of cases when this would happen, but if it does I'd rather give this program a chance
+	}
 
-func (c Caps) Inheritable() uint32 {
-	return c.data[0].inheritable
+	if c.inheritable() == 0 {
+		return true // I don't know of cases when this would happen, but if it does I'd rather give this program a chance
+	}
+
+	return c.has(CAP_SYS_PTRACE)
 }

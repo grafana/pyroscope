@@ -16,7 +16,7 @@ RUN /root/.cargo/bin/rustup target add $(uname -m)-unknown-linux-musl
 RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwind-1.3.1.tar.gz && \
     tar -zxf libunwind-1.3.1.tar.gz && \
     cd libunwind-1.3.1/ && \
-    ./configure --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
+    ./configure --with-pic --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
 
 COPY third_party/rustdeps /opt/rustdeps
 
@@ -70,9 +70,11 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #   __/ |                     __/ |
 #  |___/                     |___/
 
-FROM golang:1.16.4-alpine3.12 as go-builder
+FROM golang:1.16.3-alpine3.12 as go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
+RUN apk upgrade binutils
+RUN apk upgrade elfutils
 
 WORKDIR /opt/pyroscope
 
@@ -91,9 +93,34 @@ RUN make install-dev-tools
 COPY pkg ./pkg
 COPY cmd ./cmd
 COPY webapp/assets_embedded.go ./webapp/assets_embedded.go
+COPY webapp/assets.go ./webapp/assets.go
 COPY scripts ./scripts
 
 RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
+RUN make build-rbspy-static-library
+RUN make build-pyspy-static-library
+RUN make build-phpspy-static-library
+
+
+#   __ _             _   _
+#  / _(_)           | | (_)
+# | |_ _ _ __   __ _| |  _ _ __ ___   __ _  __ _  ___
+# |  _| | '_ \ / _` | | | | '_ ` _ \ / _` |/ _` |/ _ \
+# | | | | | | | (_| | | | | | | | | | (_| | (_| |  __/
+# |_| |_|_| |_|\__,_|_| |_|_| |_| |_|\__,_|\__, |\___|
+#                                           __/ |
+#                                          |___/
+
+FROM scratch AS lib-exporter
+
+COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.a /
+COPY --from=go-builder /opt/pyroscope/third_party/phpspy/libphpspy.a /
+COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.h /
+COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.a /
+COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.h /
+COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.a /
+COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.h /
+COPY --from=go-builder /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a /
 
 
 #   __ _             _   _

@@ -168,3 +168,11 @@ func (k *Key) AppName() string {
 func (k *Key) Labels() map[string]string {
 	return k.labels
 }
+
+func (k *Key) Add(key, value string) {
+	if value == "" {
+		delete(k.labels, key)
+	} else {
+		k.labels[key] = value
+	}
+}

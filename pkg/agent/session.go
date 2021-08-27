@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"os"
 	"sync"
 	"time"
 
@@ -10,49 +11,80 @@ import (
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/debugspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/dotnetspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
+	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/phpspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
+	"github.com/pyroscope-io/pyroscope/pkg/util/throttle"
 
 	// revive:enable:blank-imports
 
-	"github.com/mitchellh/go-ps"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
+	"github.com/shirou/gopsutil/process"
 )
 
+// Each Session can deal with:
+// * multiple processes (one main process and zero or more subprocesses)
+// * multiple profile types (cpu, mem, etc)
+// * multiple names (app.cpu{} or app.cpu{controller=foo}) (one at a a time)
+
+/*
+                PROCESSES
+            ┌─────┬─────┬─────┐
+            │pid 1│pid 2│pid 3│
+            └──┬──┴──┬──┴──┬──┘
+               │     │     │          NAMES/TAGS
+               │     │     │            ┌─app.cpu{}
+             0 ▼   1 ▼   2 ▼            │     ┌─app.cpu{controller=bar}
+            ┌─────┬─────┬─────┐      ┌─────┬─────┐     ┌──────┐
+     0 cpu  │     │     │     │ ───► │     │     │ ──► │      │
+            └─────┴─────┴─────┘      └─────┴─────┘     │      │
+PROFILE TYPES      SPIES                 TRIES     ──► │server│
+            ┌─────┬─────┬─────┐      ┌─────┬─────┐     │      │
+     1 mem  │     │     │     │ ───► │     │     │ ──► │      │
+            └─────┴─────┴─────┘      └─────┴─────┘     └──────┘
+*/
+// type process struct {
+// 	pid            int
+// 	spies          []*spy.Spy
+// 	errorThrottler *throttle.Throttler
+// }
+
+const errorThrottlerPeriod = 10 * time.Second
+
 type ProfileSession struct {
-	upstream   upstream.Upstream
-	appName    string
-	spyName    string
-	sampleRate uint32
-	uploadRate time.Duration
-	pids       []int
-	spies      []spy.Spy
-	stopCh     chan struct{}
-	trieMutex  sync.Mutex
-
-	previousTries []*transporttrie.Trie
-	tries         []*transporttrie.Trie
-
+	// configuration, doesn't change
+	upstream         upstream.Upstream
+	spyName          string
+	sampleRate       uint32
 	profileTypes     []spy.ProfileType
+	uploadRate       time.Duration
 	disableGCRuns    bool
 	withSubprocesses bool
+	clibIntegration  bool
+	noForkDetection  bool
+	pid              int
 
+	logger    Logger
+	throttler *throttle.Throttler
+	stopOnce  sync.Once
+	stopCh    chan struct{}
+	trieMutex sync.Mutex
+
+	// these things do change:
+	appName   string
 	startTime time.Time
-	stopTime  time.Time
 
-	logger Logger
-
-	// The map holds fully qualified names (storage keys) for
-	// every profiler that is running within the session.
-	names map[spy.ProfileType]string
+	// these slices / maps keep track of processes, spies, and tries
+	// see comment about multiple dimensions above
+	spies map[int][]spy.Spy // pid, profileType
+	// string is appName, int is index in pids
+	previousTries map[string][]*transporttrie.Trie
+	tries         map[string][]*transporttrie.Trie
 }
 
 type SessionConfig struct {
@@ -66,57 +98,48 @@ type SessionConfig struct {
 	UploadRate       time.Duration
 	Pid              int
 	WithSubprocesses bool
+	ClibIntegration  bool
 }
 
 func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
+	appName, err := mergeTagsWithAppName(c.AppName, c.Tags)
+	if err != nil {
+		return nil, err
+	}
+
 	ps := &ProfileSession{
 		upstream:         c.Upstream,
-		appName:          c.AppName,
-		names:            make(map[spy.ProfileType]string),
+		appName:          appName,
 		spyName:          c.SpyName,
 		profileTypes:     c.ProfilingTypes,
 		disableGCRuns:    c.DisableGCRuns,
 		sampleRate:       c.SampleRate,
 		uploadRate:       c.UploadRate,
-		pids:             []int{c.Pid},
+		pid:              c.Pid,
+		spies:            make(map[int][]spy.Spy),
 		stopCh:           make(chan struct{}),
 		withSubprocesses: c.WithSubprocesses,
+		clibIntegration:  c.ClibIntegration,
 		logger:           logger,
+		throttler:        throttle.New(errorThrottlerPeriod),
+
+		// string is appName, int is index in pids
+		previousTries: make(map[string][]*transporttrie.Trie),
+		tries:         make(map[string][]*transporttrie.Trie),
 	}
 
-	if ps.spyName == types.GoSpy {
-		ps.previousTries = make([]*transporttrie.Trie, len(ps.profileTypes))
-		ps.tries = make([]*transporttrie.Trie, len(ps.profileTypes))
-	} else {
-		ps.previousTries = make([]*transporttrie.Trie, 1)
-		ps.tries = make([]*transporttrie.Trie, 1)
-	}
-
-	if err := ps.createNames(c.Tags); err != nil {
-		return nil, err
-	}
+	ps.initializeTries()
 
 	return ps, nil
 }
 
-func (ps *ProfileSession) createNames(tags map[string]string) error {
-	for _, t := range ps.profileTypes {
-		tagsCopy := make(map[string]string)
-		for k, v := range tags {
-			tagsCopy[k] = v
-		}
-		appName, err := mergeTagsWithAppName(ps.appName, tagsCopy)
-		if err != nil {
-			return err
-		}
-		appName += "." + string(t)
-		if err = flameql.ValidateAppName(appName); err != nil {
-			return err
-		}
-		tagsCopy["__name__"] = appName
-		ps.names[t] = segment.NewKey(tagsCopy).Normalized()
+func addSuffix(name string, ptype spy.ProfileType) (string, error) {
+	k, err := segment.ParseKey(name)
+	if err != nil {
+		return "", err
 	}
-	return nil
+	k.Add("__name__", k.AppName()+"."+string(ptype))
+	return k.Normalized(), nil
 }
 
 // mergeTagsWithAppName validates user input and merges explicitly specified
@@ -134,26 +157,16 @@ func mergeTagsWithAppName(appName string, tags map[string]string) (string, error
 	if err != nil {
 		return "", err
 	}
-	appName = k.AppName()
-	if tags == nil {
-		return appName, nil
-	}
-	// Note that at this point k may contain
-	// reserved tag keys (e.g. '__name__').
-	for tagKey, v := range k.Labels() {
+	for tagKey, tagValue := range tags {
 		if flameql.IsTagKeyReserved(tagKey) {
 			continue
 		}
-		if _, ok := tags[tagKey]; !ok {
-			tags[tagKey] = v
-		}
-	}
-	for tagKey := range tags {
 		if err = flameql.ValidateTagKey(tagKey); err != nil {
 			return "", err
 		}
+		k.Add(tagKey, tagValue)
 	}
-	return appName, nil
+	return k.Normalized(), nil
 }
 
 func (ps *ProfileSession) takeSnapshots() {
@@ -165,35 +178,45 @@ func (ps *ProfileSession) takeSnapshots() {
 			isdueToReset := ps.isDueForReset()
 			// reset the profiler for spies every upload rate(10s), and before uploading, it needs to read profile data every sample rate
 			if isdueToReset {
-				for _, s := range ps.spies {
-					if sr, ok := s.(spy.Resettable); ok {
-						sr.Reset()
+				for _, sarr := range ps.spies {
+					for _, s := range sarr {
+						if sr, ok := s.(spy.Resettable); ok {
+							sr.Reset()
+						}
 					}
 				}
 			}
 
-			for i, s := range ps.spies {
-				s.Snapshot(func(stack []byte, v uint64, err error) {
-					if err != nil {
-						// TODO: figure out what to do with these messages. A couple of considerations:
-						// * We probably shouldn't just suppress these messages as they might be useful for users
-						// * We probably want to throttle the messages because this is code that runs 100 times per second.
-						//   If we don't throttle we risk upsetting users with a flood of messages
-						// * In gospy case we need to add ability for users to bring their own logger, we can't just use logrus here
-						return
-					}
-					if len(stack) > 0 {
-						ps.trieMutex.Lock()
-						defer ps.trieMutex.Unlock()
-
-						if ps.spyName == types.GoSpy {
-							ps.tries[i].Insert(stack, v, true)
-						} else {
-							ps.tries[0].Insert(stack, v, true)
+			ps.trieMutex.Lock()
+			pidsToRemove := []int{}
+			for pid, sarr := range ps.spies {
+				for i, s := range sarr {
+					s.Snapshot(func(stack []byte, v uint64, err error) {
+						if err != nil {
+							if ok, pidErr := process.PidExists(int32(pid)); !ok || pidErr != nil {
+								ps.logger.Debugf("error taking snapshot: process doesn't exist?")
+								pidsToRemove = append(pidsToRemove, pid)
+							} else {
+								ps.throttler.Run(func(skipped int) {
+									if skipped > 0 {
+										ps.logger.Errorf("error taking snapshot: %v, %d messages skipped due to throttling", err, skipped)
+									} else {
+										ps.logger.Errorf("error taking snapshot: %v", err)
+									}
+								})
+							}
+							return
 						}
-					}
-				})
+						if len(stack) > 0 {
+							ps.tries[ps.appName][i].Insert(stack, v, true)
+						}
+					})
+				}
 			}
+			for _, pid := range pidsToRemove {
+				delete(ps.spies, pid)
+			}
+			ps.trieMutex.Unlock()
 
 			// upload the read data to server and reset the start time
 			if isdueToReset {
@@ -202,34 +225,82 @@ func (ps *ProfileSession) takeSnapshots() {
 
 		case <-ps.stopCh:
 			// stop the spies
-			for _, s := range ps.spies {
-				s.Stop()
+			for _, sarr := range ps.spies {
+				for _, s := range sarr {
+					s.Stop()
+				}
 			}
 			return
 		}
 	}
 }
 
+func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
+	res := []spy.Spy{}
+
+	sf, err := spy.StartFunc(ps.spyName)
+	if err != nil {
+		return res, err
+	}
+
+	for _, pt := range ps.profileTypes {
+		s, err := sf(pid, pt, ps.sampleRate, ps.disableGCRuns)
+
+		if err != nil {
+			return res, err
+		}
+		res = append(res, s)
+	}
+	return res, nil
+}
+
+func (ps *ProfileSession) ChangeName(newName string) error {
+	ps.trieMutex.Lock()
+	defer ps.trieMutex.Unlock()
+
+	var err error
+	newName, err = mergeTagsWithAppName(newName, map[string]string{})
+	if err != nil {
+		return err
+	}
+
+	ps.appName = newName
+	ps.initializeTries()
+
+	return nil
+}
+
+func (ps *ProfileSession) initializeTries() {
+	if _, ok := ps.previousTries[ps.appName]; !ok {
+		// TODO Only set the trie if it's not already set
+		ps.previousTries[ps.appName] = []*transporttrie.Trie{}
+		ps.tries[ps.appName] = []*transporttrie.Trie{}
+		for i := 0; i < len(ps.profileTypes); i++ {
+			ps.previousTries[ps.appName] = append(ps.previousTries[ps.appName], nil)
+			ps.tries[ps.appName] = append(ps.tries[ps.appName], transporttrie.New())
+		}
+	}
+}
+func (ps *ProfileSession) SetTag(key, val string) error {
+	newName, err := mergeTagsWithAppName(ps.appName, map[string]string{key: val})
+	if err != nil {
+		return err
+	}
+
+	return ps.ChangeName(newName)
+}
+
 func (ps *ProfileSession) Start() error {
 	ps.reset()
 
-	if ps.spyName == types.GoSpy {
-		for _, pt := range ps.profileTypes {
-			s, err := gospy.Start(pt, ps.sampleRate, ps.disableGCRuns)
-			if err != nil {
-				return err
-			}
-
-			ps.spies = append(ps.spies, s)
-		}
-	} else {
-		s, err := spy.SpyFromName(ps.spyName, ps.pids[0])
-		if err != nil {
-			return err
-		}
-
-		ps.spies = append(ps.spies, s)
+	pid := ps.pid
+	spies, err := ps.initializeSpies(pid)
+	if err != nil {
+		return err
 	}
+
+	ps.spies[pid] = spies
+
 	go ps.takeSnapshots()
 	return nil
 }
@@ -248,9 +319,21 @@ func (ps *ProfileSession) reset() {
 	ps.trieMutex.Lock()
 	defer ps.trieMutex.Unlock()
 
+	// if the process was forked the spy will keep profiling the old process. That's usually not what you want
+	//   so in that case we stop the profiling session early
+	if ps.clibIntegration && !ps.noForkDetection && ps.isForked() {
+		ps.logger.Debugf("fork detected, stopping the session")
+		ps.stopOnce.Do(func() {
+			close(ps.stopCh)
+		})
+		return
+	}
+
 	now := time.Now()
 	// upload the read data to server
-	ps.uploadTries(now)
+	if !ps.startTime.IsZero() {
+		ps.uploadTries(now)
+	}
 
 	// reset the start time
 	ps.startTime = now
@@ -264,59 +347,65 @@ func (ps *ProfileSession) Stop() {
 	ps.trieMutex.Lock()
 	defer ps.trieMutex.Unlock()
 
-	ps.stopTime = time.Now()
-	close(ps.stopCh)
-	// TODO: wait for stopCh consumer to finish!
-
-	// before stopping, upload the tries
-	ps.uploadTries(time.Now())
+	ps.stopOnce.Do(func() {
+		// TODO: wait for stopCh consumer to finish!
+		close(ps.stopCh)
+		// before stopping, upload the tries
+		ps.uploadTries(time.Now())
+	})
 }
 
-// upload the read profile data about 10s to server
 func (ps *ProfileSession) uploadTries(now time.Time) {
-	for i, trie := range ps.tries {
-		skipUpload := false
+	for name, tarr := range ps.tries {
+		for i, trie := range tarr {
+			profileType := ps.profileTypes[i]
+			skipUpload := false
 
-		if trie != nil {
-			endTime := now.Truncate(ps.uploadRate)
+			if trie != nil {
+				endTime := now.Truncate(ps.uploadRate)
 
-			uploadTrie := trie
-			if ps.profileTypes[i].IsCumulative() {
-				previousTrie := ps.previousTries[i]
-				if previousTrie == nil {
-					skipUpload = true
-				} else {
-					// TODO: Diff doesn't remove empty branches. We need to add that at some point
-					uploadTrie = trie.Diff(previousTrie)
+				uploadTrie := trie
+				if profileType.IsCumulative() {
+					previousTrie := ps.previousTries[name][i]
+					if previousTrie == nil {
+						skipUpload = true
+					} else {
+						// TODO: Diff doesn't remove empty branches. We need to add that at some point
+						uploadTrie = trie.Diff(previousTrie)
+					}
+				}
+
+				if !skipUpload && !uploadTrie.IsEmpty() {
+					nameWithSuffix, _ := addSuffix(name, profileType)
+					ps.upstream.Upload(&upstream.UploadJob{
+						Name:            nameWithSuffix,
+						StartTime:       ps.startTime,
+						EndTime:         endTime,
+						SpyName:         ps.spyName,
+						SampleRate:      ps.sampleRate,
+						Units:           profileType.Units(),
+						AggregationType: profileType.AggregationType(),
+						Trie:            uploadTrie,
+					})
+				}
+				if profileType.IsCumulative() {
+					ps.previousTries[name][i] = trie
 				}
 			}
-
-			if !skipUpload {
-				ps.upstream.Upload(&upstream.UploadJob{
-					Name:            ps.names[ps.profileTypes[i]],
-					StartTime:       ps.startTime,
-					EndTime:         endTime,
-					SpyName:         ps.spyName,
-					SampleRate:      ps.sampleRate,
-					Units:           ps.profileTypes[i].Units(),
-					AggregationType: ps.profileTypes[i].AggregationType(),
-					Trie:            uploadTrie,
-				})
-			}
-			if ps.profileTypes[i].IsCumulative() {
-				ps.previousTries[i] = trie
-			}
+			ps.tries[name][i] = transporttrie.New()
 		}
-		ps.tries[i] = transporttrie.New()
 	}
 }
 
+func (ps *ProfileSession) isForked() bool {
+	return os.Getpid() != ps.pid
+}
+
 func (ps *ProfileSession) addSubprocesses() {
-	newPids := findAllSubprocesses(ps.pids[0])
+	newPids := findAllSubprocesses(ps.pid)
 	for _, newPid := range newPids {
-		if !slices.IntContains(ps.pids, newPid) {
-			ps.pids = append(ps.pids, newPid)
-			newSpy, err := spy.SpyFromName(ps.spyName, newPid)
+		if _, ok := ps.spies[newPid]; !ok {
+			newSpies, err := ps.initializeSpies(newPid)
 			if err != nil {
 				if ps.logger != nil {
 					ps.logger.Errorf("failed to initialize a spy %d [%s]", newPid, ps.spyName)
@@ -325,41 +414,8 @@ func (ps *ProfileSession) addSubprocesses() {
 				if ps.logger != nil {
 					ps.logger.Debugf("started spy for subprocess %d [%s]", newPid, ps.spyName)
 				}
-				ps.spies = append(ps.spies, newSpy)
+				ps.spies[newPid] = newSpies
 			}
 		}
 	}
-}
-
-func findAllSubprocesses(pid int) []int {
-	res := []int{}
-
-	childrenLookup := map[int][]int{}
-	processes, err := ps.Processes()
-	if err != nil {
-		// TODO: handle
-		return res
-	}
-	for _, p := range processes {
-		ppid := p.PPid()
-		if _, ok := childrenLookup[ppid]; !ok {
-			childrenLookup[ppid] = []int{}
-		}
-		childrenLookup[ppid] = append(childrenLookup[ppid], p.Pid())
-	}
-
-	todo := []int{pid}
-	for len(todo) > 0 {
-		parentPid := todo[0]
-		todo = todo[1:]
-
-		if children, ok := childrenLookup[parentPid]; ok {
-			for _, childPid := range children {
-				res = append(res, childPid)
-				todo = append(todo, childPid)
-			}
-		}
-	}
-
-	return res
 }

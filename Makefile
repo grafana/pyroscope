@@ -3,6 +3,9 @@ GOBUILD=go build -trimpath
 ARCH ?= $(shell arch)
 OS ?= $(shell uname)
 
+# if you change the name of this variable please change it in generate-git-info.sh file
+PHPSPY_VERSION ?= 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
+
 ifeq ("$(OS)", "Darwin")
 	ifeq ("$(ARCH)", "arm64")
 # on a mac it's called arm64 which rust doesn't know about
@@ -28,11 +31,13 @@ endif
 
 EXTRA_GO_TAGS ?=
 GO_TAGS = $(ENABLED_SPIES)$(EXTRA_GO_TAGS)
+ALPINE_TAG =
 
 ifeq ("$(OS)", "Linux")
 	ifeq ("$(shell cat /etc/os-release | grep ^ID=)", "ID=alpine")
 		RUST_TARGET ?= "$(ARCH)-unknown-linux-musl"
 		GO_TAGS := $(GO_TAGS),musl
+		ALPINE_TAG := ,musl
 	else
 		RUST_TARGET ?= "$(ARCH)-unknown-linux-gnu"
 	endif
@@ -60,6 +65,33 @@ PYROSCOPE_STORAGE_PATH ?= tmp/pyroscope-storage
 .PHONY: all
 all: build ## Runs the build target
 
+.PHONY: build-rbspy-static-library
+build-rbspy-static-library: ## builds rbspy static library (used in our gem integration)
+	mkdir -p ./out
+	$(GOBUILD) -tags nogospy,rbspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.rbspy.a" ./pkg/agent/clib
+ifeq ("$(OS)", "Linux")
+	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.rbspy.a
+	ranlib ./out/libpyroscope.rbspy.a
+endif
+
+.PHONY: build-pyspy-static-library
+build-pyspy-static-library: ## builds pyspy static library (used in our pip integration)
+	mkdir -p ./out
+	$(GOBUILD) -tags nogospy,pyspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.pyspy.a" ./pkg/agent/clib
+ifeq ("$(OS)", "Linux")
+	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.pyspy.a
+	ranlib ./out/libpyroscope.pyspy.a
+endif
+
+.PHONY: build-phpspy-static-library
+build-phpspy-static-library: ## builds phpspy static library
+	mkdir -p ./out
+	$(GOBUILD) -tags nogospy,phpspy,clib$(ALPINE_TAG) -ldflags "$(shell scripts/generate-build-flags.sh false)" -buildmode=c-archive -o "./out/libpyroscope.phpspy.a" ./pkg/agent/clib
+ifeq ("$(OS)", "Linux")
+	LC_CTYPE=C LANG=C strip --strip-debug ./out/libpyroscope.phpspy.a
+	ranlib ./out/libpyroscope.phpspy.a
+endif
+
 .PHONY: build
 build: ## Builds the binary
 	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
@@ -69,13 +101,21 @@ build-release: embedded-assets ## Builds the release build
 	EXTRA_GO_TAGS=,embedassets $(MAKE) build
 
 .PHONY: build-rust-dependencies
-build-rust-dependencies: ## Builds the rust dependency
-	(cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release --target $(RUST_TARGET)) || $(MAKE) print-deps-error-message
+build-rust-dependencies:
+ifeq ("$(OS)", "Linux")
+	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release --target $(RUST_TARGET) || $(MAKE) print-deps-error-message
+else
+	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release || $(MAKE) print-deps-error-message
+endif
+
+.PHONY: build-rust-dependencies-docker
+build-rust-dependencies-docker: ## Builds the rust dependencies in docker
+	DOCKER_BUILDKIT=1 docker build --target lib-exporter --progress=plain -f Dockerfile --output type=local,dest=out .
 
 .PHONY: build-phpspy-dependencies
-build-phpspy-dependencies: ## Builds the PHP dep
+build-phpspy-dependencies: ## Builds the PHP dependency
 	cd third_party && cd phpspy_src || (git clone https://github.com/pyroscope-io/phpspy.git phpspy_src && cd phpspy_src)
-	cd third_party/phpspy_src && git checkout 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
+	cd third_party/phpspy_src && git checkout $(PHPSPY_VERSION)
 	cd third_party/phpspy_src && USE_ZEND=1 make CFLAGS="-DUSE_DIRECT" || $(MAKE) print-deps-error-message
 	cp third_party/phpspy_src/libphpspy.a third_party/phpspy/libphpspy.a
 
@@ -127,6 +167,13 @@ lint-summary: ## Get the lint summary
 ensure-logrus-not-used: ## Verify if logrus not used in codebase
 	@! go run "$(shell scripts/pinned-tool.sh github.com/kisielk/godepgraph)" -nostdlib -s ./pkg/agent/profiler/ | grep ' -> "github.com/sirupsen/logrus' \
 		|| (echo "\n^ ERROR: make sure ./pkg/agent/profiler/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
+
+	@! go run "$(shell scripts/pinned-tool.sh github.com/kisielk/godepgraph)" -nostdlib -s ./pkg/agent/clib/ | grep ' -> "github.com/sirupsen/logrus' \
+		|| (echo "\n^ ERROR: make sure ./pkg/agent/clib/ does not depend on logrus. We don't want users' logs to be tainted. Talk to @petethepig if have questions\n" &1>2; exit 1)
+
+.PHONY: clib-deps
+clib-deps:
+	go run "$(shell scripts/pinned-tool.sh github.com/kisielk/godepgraph)" -tags nogospy ./pkg/agent/clib/ | dot -Tsvg -o ./tmp/clib-deps.svg
 
 .PHONY: unused
 unused: ## Staticcheck for unused code
@@ -189,4 +236,4 @@ print-deps-error-message:
 	exit 1
 
 help: ## Show this help
-	@egrep '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-z0-9A-Z_-]+:.*?##/ { printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2 }'
+	@egrep '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | sed 's/Makefile://' | awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-z0-9A-Z_-]+:.*?##/ { printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2 }'

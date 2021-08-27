@@ -3,6 +3,7 @@ package segment
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"time"
 
@@ -84,6 +85,8 @@ func (s *Segment) Serialize(w io.Writer) error {
 	return nil
 }
 
+var errMaxDepth = errors.New("depth is too high")
+
 func Deserialize(r io.Reader) (*Segment, error) {
 	s := New()
 	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
@@ -106,6 +109,9 @@ func Deserialize(r io.Reader) (*Segment, error) {
 		if err != nil {
 			return nil, err
 		}
+		if int(depth) >= len(durations) {
+			return nil, errMaxDepth
+		}
 		timeVal, err := varint.Read(br)
 		if err != nil {
 			return nil, err
@@ -125,7 +131,7 @@ func Deserialize(r io.Reader) (*Segment, error) {
 		if err != nil {
 			return nil, err
 		}
-		node := newNode(time.Unix(int64(timeVal), 0), int(depth), s.multiplier)
+		node := newNode(time.Unix(int64(timeVal), 0), int(depth), multiplier)
 		if presentVal == 1 {
 			node.present = true
 		}

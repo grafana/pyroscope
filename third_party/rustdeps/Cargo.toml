@@ -10,8 +10,9 @@ crate-type = ["staticlib"]
 # py-spy = { path = "../../../py-spy" }
 # rbspy = { path = "../../../rbspy" }
 
+# if you change the format of these make sure generate-git-info.sh still works
 py-spy = { git = "https://github.com/pyroscope-io/py-spy", rev = "f990f0b" }
-rbspy = { git = "https://github.com/pyroscope-io/rbspy", rev = "be059a6" }
+rbspy = { git = "https://github.com/pyroscope-io/rbspy", rev = "eb54c23" }
 
 [patch.crates-io]
 benfred-read-process-memory = { git = 'https://github.com/pyroscope-io/read-process-memory.git', branch = 'benfred-read-process-memory'}
