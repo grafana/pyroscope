@@ -291,7 +291,6 @@ $pane-width: 6px;
 
 .flamegraph-table {
   font-size: 14px;
-  font-family: monospace;
 
   th,
   td {
@@ -341,6 +340,7 @@ $pane-width: 6px;
       max-width: auto;
 
       white-space: nowrap;
+
     }
 
     &:first-child .color-reference {
@@ -350,8 +350,13 @@ $pane-width: 6px;
       top: 0;
       margin: auto;
     }
-
   }
+
+  .symbol-name {
+    font-size: 14px;
+    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+  }
+
   th {
     padding: 6px 10px;
   }
@@ -361,6 +366,8 @@ $pane-width: 6px;
   }
 
   td {
+    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+
     &:first-child {
       margin-left: 15px;
       position: relative;

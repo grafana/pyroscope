@@ -216,7 +216,7 @@ function TableBody({ flamebearer, sortBy, sortByDirection, viewDiff, fitMode }) 
   const nameCell = (x, style) => (
     <td>
       <span className="color-reference" style={style} />
-      <div title={x.name} style={fitIntoTableCell(fitMode)}>{x.name}</div>
+      <div className="symbol-name" title={x.name} style={fitIntoTableCell(fitMode)}>{x.name}</div>
     </td>
   );
 
