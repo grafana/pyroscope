@@ -34,6 +34,7 @@ import {
   getPackageNameFromStackTrace,
   getFormatter,
 } from "../util/format";
+import { fitToCanvasRect } from "../util/fitMode.js";
 import { colorBasedOnDiff, colorBasedOnPackageName, colorGreyscale, diffColorGreen, diffColorRed } from "../util/color";
 import TimelineChartWrapper from "./TimelineChartWrapper";
 import ProfilerTable from "./ProfilerTable";
@@ -69,6 +70,7 @@ class FlameGraphRenderer extends React.Component {
       view: "both",
       viewDiff: props.viewType === "diff" ? "diff" : undefined,
       flamebearer: null,
+      fitMode: props.fitMode ? props.fitMode : "HEAD",
     };
     this.canvasRef = React.createRef();
     this.highlightRef = React.createRef();
@@ -334,6 +336,13 @@ class FlameGraphRenderer extends React.Component {
     setTimeout(this.renderCanvas, 0);
   };
 
+  updateFitMode = (newFitMode) => {
+    this.setState({
+      fitMode: newFitMode,
+    });
+    setTimeout(this.renderCanvas, 0);
+  }
+
   createFormatter = () => {
     return getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
   }
@@ -343,7 +352,7 @@ class FlameGraphRenderer extends React.Component {
       return;
     }
 
-    const { names, levels, numTicks, sampleRate, units } = this.state;
+    const { names, levels, numTicks, sampleRate, units, fitMode } = this.state;
     const ff = this.parseFormat();
     const isDiff = this.props.viewType === "diff";
 
@@ -361,8 +370,10 @@ class FlameGraphRenderer extends React.Component {
     }
 
     this.ctx.textBaseline = "middle";
-    this.ctx.font =
-      '400 12px system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu", "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"';
+    this.ctx.font = '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
+    // Since this is a monospaced font
+    // any character would do
+    const characterSize = this.ctx.measureText("a").width;
 
     this.formatter = this.createFormatter();
     // i = level
@@ -433,12 +444,23 @@ class FlameGraphRenderer extends React.Component {
 
         if (!collapsed && sw >= LABEL_THRESHOLD) {
           const percent = formatPercent(ratio);
-          const name = `${names[level[j + ff.jName]]} (${percent}, ${this.formatter.format(numBarTicks, sampleRate)})`;
+          const shortName = names[level[j + ff.jName]];
+          const longName = `${shortName} (${percent}, ${this.formatter.format(numBarTicks, sampleRate)})`
+
+          let namePosX = Math.round(Math.max(x, 0));
+          let fitCalc = fitToCanvasRect({
+            mode: fitMode,
+            charSize: characterSize,
+            rectWidth: sw,
+            fullText: longName,
+            shortText: shortName,
+          });
 
           this.ctx.save();
           this.ctx.clip();
           this.ctx.fillStyle = "black";
-          this.ctx.fillText(name, Math.round(Math.max(x, 0) + 3), y + sh / 2);
+          // when showing the code, give it a space in the beginning
+          this.ctx.fillText(fitCalc.text, namePosX + fitCalc.marginLeft, y + sh / 2+1);
           this.ctx.restore();
         }
       }
@@ -539,6 +561,7 @@ class FlameGraphRenderer extends React.Component {
           updateSortBy={this.updateSortBy}
           view={this.state.view}
           viewDiff={this.state.viewDiff}
+          fitMode={this.state.fitMode}
         />
       </div>
     )
@@ -604,6 +627,8 @@ class FlameGraphRenderer extends React.Component {
             updateView={this.updateView}
             updateViewDiff={this.updateViewDiff}
             resetStyle={this.state.resetStyle}
+            updateFitMode={this.updateFitMode}
+            fitMode={this.state.fitMode}
           />
           {
             this.props.viewType === "double"

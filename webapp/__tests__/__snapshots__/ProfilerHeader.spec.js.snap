@@ -10,6 +10,26 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
     placeholder="Search…"
   />
    
+  <select
+    className="fit-mode-select"
+    onChange={[Function]}
+  >
+    <option
+      disabled={true}
+    >
+      Prefer to fit
+    </option>
+    <option
+      value="HEAD"
+    >
+      Head First
+    </option>
+    <option
+      value="TAIL"
+    >
+      Tail First
+    </option>
+  </select>
   <button
     className="btn"
     id="reset"
