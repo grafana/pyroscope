@@ -26,7 +26,7 @@ type FlagsStruct struct {
 	FooBar   string            `mapstructure:"foo-bar"`
 	FooFoo   float64           `mapstructure:"foo-foo"`
 	FooBytes bytesize.ByteSize `mapstructure:"foo-bytes"`
-	FooTimes time.Duration     `mapstructure:"foo-dur"`
+	FooDur   time.Duration     `mapstructure:"foo-dur"`
 }
 
 func viperUnmarshalWithBytesHook(vpr *viper.Viper, cfg interface{}) error {
@@ -135,7 +135,7 @@ var _ = Describe("flags", func() {
 				Expect(cfg.FooBar).To(Equal("test-val-4"))
 				Expect(cfg.FooFoo).To(Equal(10.23))
 				Expect(cfg.FooBytes).To(Equal(100 * bytesize.MB))
-				Expect(cfg.FooTimes).To(Equal(5*time.Minute + 23*time.Second))
+				Expect(cfg.FooDur).To(Equal(5*time.Minute + 23*time.Second))
 			})
 
 			It("arguments take precedence", func() {
@@ -171,11 +171,13 @@ var _ = Describe("flags", func() {
 				exampleCommand.SetArgs([]string{
 					fmt.Sprintf("--config=%s", "testdata/example.yml"),
 					fmt.Sprintf("--foo=%s", "test-val-4"),
+					fmt.Sprintf("--foo-dur=%s", "3h"),
 				})
 
 				err := exampleCommand.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg.Foo).To(Equal("test-val-4"))
+				Expect(cfg.FooDur).To(Equal(3 * time.Hour))
 			})
 			It("server configuration", func() {
 				var cfg config.Server
