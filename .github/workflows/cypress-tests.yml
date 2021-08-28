@@ -1,0 +1,38 @@
+name: Cypress Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cypress-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16.3'
+      - name: Cypress run
+        uses: cypress-io/github-action@v2
+        with:
+          build: make e2e-build
+          wait-on: http://localhost:4040
+          start: make server
+        env:
+          # keep the server quiet
+          PYROSCOPE_LOG_LEVEL: error
+          ENABLED_SPIES: none
+          CYPRESS_VIDEO: true
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-videos
+          path: cypress/videos
