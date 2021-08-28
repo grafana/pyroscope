@@ -1,35 +1,23 @@
 package command
 
 import (
-	"os"
-
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 func newConvertCmd(cfg *config.Convert) *cobra.Command {
+	vpr := newViper()
 	convertCmd := &cobra.Command{
 		Use:   "convert [flags] <input-file>",
 		Short: "Convert between different profiling formats",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			logrus.SetOutput(os.Stderr)
-			logger := func(s string) {
-				logrus.Fatal(s)
-			}
-
-			err := convert.Cli(cfg, logger, args)
-			if err != nil {
-				// do not print usage in case of an error while running the subcommand
-				cmd.SilenceUsage = true
-			}
-
-			return err
-		},
+		RunE: createCmdRunFn(cfg, vpr, false, func(cmd *cobra.Command, args []string, logger config.LoggerFunc) error {
+			return convert.Cli(cfg, logger, args)
+		}),
 		Hidden: true,
 	}
 
-	loadFlags(cfg, convertCmd)
+	cli.PopulateFlagSet(cfg, convertCmd.Flags(), vpr)
 	return convertCmd
 }

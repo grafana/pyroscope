@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"reflect"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
@@ -24,12 +26,39 @@ type FlagsStruct struct {
 	FooBar   string            `mapstructure:"foo-bar"`
 	FooFoo   float64           `mapstructure:"foo-foo"`
 	FooBytes bytesize.ByteSize `mapstructure:"foo-bytes"`
+	FooTimes time.Duration     `mapstructure:"foo-dur"`
+}
+
+func viperUnmarshalWithBytesHook(vpr *viper.Viper, cfg interface{}) error {
+	return vpr.Unmarshal(cfg, viper.DecodeHook(
+		mapstructure.ComposeDecodeHookFunc(
+			// Function to add a special type for «env. mode»
+			func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+				if t != reflect.TypeOf(bytesize.Byte) {
+					return data, nil
+				}
+
+				stringData, ok := data.(string)
+				if !ok {
+					return data, nil
+				}
+
+				return bytesize.Parse(stringData)
+			},
+			// Function to support net.IP
+			mapstructure.StringToIPHookFunc(),
+			// Appended by the two default functions
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		),
+	))
 }
 
 var _ = Describe("flags", func() {
 	Context("PopulateFlagSet", func() {
 		Context("without config file", func() {
 			It("correctly sets all types of arguments", func() {
+				vpr := viper.New()
 				exampleCommand := &cobra.Command{
 					RunE: func(cmd *cobra.Command, args []string) error {
 						return nil
@@ -37,7 +66,7 @@ var _ = Describe("flags", func() {
 				}
 
 				cfg := FlagsStruct{}
-				PopulateFlagSet(&cfg, exampleCommand.Flags())
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
 
 				b := bytes.NewBufferString("")
 				exampleCommand.SetOut(b)
@@ -67,18 +96,19 @@ var _ = Describe("flags", func() {
 		Context("with config file", func() {
 			It("correctly sets all types of arguments", func() {
 				cfg := FlagsStruct{}
+				vpr := viper.New()
 				exampleCommand := &cobra.Command{
 					RunE: func(cmd *cobra.Command, args []string) error {
 						if cfg.Config != "" {
 							// Use config file from the flag.
-							viper.SetConfigFile(cfg.Config)
+							vpr.SetConfigFile(cfg.Config)
 
 							// If a config file is found, read it in.
-							if err := viper.ReadInConfig(); err == nil {
-								fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+							if err := vpr.ReadInConfig(); err == nil {
+								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
 							}
 
-							if err := viper.Unmarshal(&cfg); err != nil {
+							if err := viperUnmarshalWithBytesHook(vpr, &cfg); err != nil {
 								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
 							}
 
@@ -89,8 +119,8 @@ var _ = Describe("flags", func() {
 					},
 				}
 
-				PopulateFlagSet(&cfg, exampleCommand.Flags())
-				viper.BindPFlags(exampleCommand.Flags())
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				vpr.BindPFlags(exampleCommand.Flags())
 
 				b := bytes.NewBufferString("")
 				exampleCommand.SetOut(b)
@@ -104,24 +134,25 @@ var _ = Describe("flags", func() {
 				Expect(cfg.Baz).To(Equal(10 * time.Hour))
 				Expect(cfg.FooBar).To(Equal("test-val-4"))
 				Expect(cfg.FooFoo).To(Equal(10.23))
-				// TODO: fix this for viper unmarshaling
-				// Expect(cfg.FooBytes).To(Equal(100 * bytesize.MB))
+				Expect(cfg.FooBytes).To(Equal(100 * bytesize.MB))
+				Expect(cfg.FooTimes).To(Equal(5*time.Minute + 23*time.Second))
 			})
 
 			It("arguments take precedence", func() {
 				cfg := FlagsStruct{}
+				vpr := viper.New()
 				exampleCommand := &cobra.Command{
 					RunE: func(cmd *cobra.Command, args []string) error {
 						if cfg.Config != "" {
 							// Use config file from the flag.
-							viper.SetConfigFile(cfg.Config)
+							vpr.SetConfigFile(cfg.Config)
 
 							// If a config file is found, read it in.
-							if err := viper.ReadInConfig(); err == nil {
-								fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+							if err := vpr.ReadInConfig(); err == nil {
+								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
 							}
 
-							if err := viper.Unmarshal(&cfg); err != nil {
+							if err := viperUnmarshalWithBytesHook(vpr, &cfg); err != nil {
 								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
 							}
 
@@ -132,8 +163,8 @@ var _ = Describe("flags", func() {
 					},
 				}
 
-				PopulateFlagSet(&cfg, exampleCommand.Flags())
-				viper.BindPFlags(exampleCommand.Flags())
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				vpr.BindPFlags(exampleCommand.Flags())
 
 				b := bytes.NewBufferString("")
 				exampleCommand.SetOut(b)
@@ -148,18 +179,19 @@ var _ = Describe("flags", func() {
 			})
 			It("server configuration", func() {
 				var cfg config.Server
+				vpr := viper.New()
 				exampleCommand := &cobra.Command{
 					RunE: func(cmd *cobra.Command, args []string) error {
 						if cfg.Config != "" {
 							// Use config file from the flag.
-							viper.SetConfigFile(cfg.Config)
+							vpr.SetConfigFile(cfg.Config)
 
 							// If a config file is found, read it in.
-							if err := viper.ReadInConfig(); err == nil {
-								fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+							if err := vpr.ReadInConfig(); err == nil {
+								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
 							}
 
-							if err := viper.Unmarshal(&cfg); err != nil {
+							if err := viperUnmarshalWithBytesHook(vpr, &cfg); err != nil {
 								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
 							}
 
@@ -170,8 +202,8 @@ var _ = Describe("flags", func() {
 					},
 				}
 
-				PopulateFlagSet(&cfg, exampleCommand.Flags())
-				viper.BindPFlags(exampleCommand.Flags())
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				vpr.BindPFlags(exampleCommand.Flags())
 
 				b := bytes.NewBufferString("")
 				exampleCommand.SetOut(b)

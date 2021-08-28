@@ -4,30 +4,22 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/dbmanager"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-func newDbManagerCmd(dbManagerCfg *config.DbManager, serverCfg *config.Server) *cobra.Command {
+func newDbManagerCmd(cfg *config.CombinedDbManager) *cobra.Command {
+	vpr := newViper()
 	dbmanagerCmd := &cobra.Command{
 		Use:   "dbmanager [flags] <args>",
 		Short: "tools for managing database",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if l, err := logrus.ParseLevel(dbManagerCfg.LogLevel); err == nil {
-				logrus.SetLevel(l)
-			}
+		RunE: createCmdRunFn(cfg, vpr, false, func(cmd *cobra.Command, args []string, logger config.LoggerFunc) error {
+			return dbmanager.Cli(cfg.DbManager, cfg.Server, args)
 
-			err := dbmanager.Cli(dbManagerCfg, serverCfg, args)
-			if err != nil {
-				// do not print usage in case of an error while running the subcommand
-				cmd.SilenceUsage = true
-			}
-
-			return err
-		},
+		}),
 		Hidden: true,
 	}
 
-	loadFlags(dbManagerCfg, dbmanagerCmd, cli.WithSkip("group-name", "user-name", "no-root-drop"))
+	cli.PopulateFlagSet(cfg.DbManager, dbmanagerCmd.Flags(), vpr)
+	cli.PopulateFlagSet(cfg.Server, dbmanagerCmd.Flags(), vpr, cli.WithSkip("log-level", "storage-path", "metric-export-rules"))
 	return dbmanagerCmd
 }

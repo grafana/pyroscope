@@ -7,25 +7,15 @@ import (
 )
 
 func newServerCmd(cfg *config.Server) *cobra.Command {
+	vpr := newViper()
 	serverCmd := &cobra.Command{
 		Use:   "server [flags]",
 		Short: "Start pyroscope server. This is the database + web-based user interface",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			err := loadConfig(cfg.Config, cfg)
-			if err != nil {
-				return err
-			}
-
-			err = cli.StartServer(cfg)
-			if err != nil {
-				// do not print usage in case of an error while running the subcommand
-				cmd.SilenceUsage = true
-			}
-
-			return err
-		},
+		RunE: createCmdRunFn(cfg, vpr, false, func(cmd *cobra.Command, args []string, logger config.LoggerFunc) error {
+			return cli.StartServer(cfg)
+		}),
 	}
 
-	loadFlags(cfg, serverCmd, cli.WithSkip("metric-export-rules"))
+	cli.PopulateFlagSet(cfg, serverCmd.Flags(), vpr, cli.WithSkip("metric-export-rules"))
 	return serverCmd
 }

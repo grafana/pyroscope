@@ -150,6 +150,11 @@ type Convert struct {
 	Format string `def:"tree" mapstructure:"format"`
 }
 
+type CombinedDbManager struct {
+	*DbManager `mapstructure:",squash"`
+	*Server    `mapstructure:",squash"`
+}
+
 type DbManager struct {
 	LogLevel        string `def:"error" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	StoragePath     string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" mapstructure:"storage-path"`

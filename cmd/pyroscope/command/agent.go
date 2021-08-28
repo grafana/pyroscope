@@ -7,25 +7,15 @@ import (
 )
 
 func newAgentCmd(cfg *config.Agent) *cobra.Command {
+	vpr := newViper()
 	agentCmd := &cobra.Command{
 		Use:   "agent [flags]",
 		Short: "Start pyroscope agent.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			err := loadConfig(cfg.Config, cfg)
-			if err != nil {
-				return err
-			}
-
-			err = cli.StartAgent(cfg)
-			if err != nil {
-				// do not print usage in case of an error while running the subcommand
-				cmd.SilenceUsage = true
-			}
-
-			return err
-		},
+		RunE: createCmdRunFn(cfg, vpr, false, func(cmd *cobra.Command, args []string, logger config.LoggerFunc) error {
+			return cli.StartAgent(cfg)
+		}),
 	}
 
-	loadFlags(cfg, agentCmd, cli.WithSkip("targets"))
+	cli.PopulateFlagSet(cfg, agentCmd.Flags(), vpr, cli.WithSkip("targets"))
 	return agentCmd
 }

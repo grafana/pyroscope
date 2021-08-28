@@ -177,7 +177,7 @@ func (bs *byteSizeFlag) Type() string {
 	return t.String()
 }
 
-func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, opts ...FlagOption) *pflag.FlagSet {
+func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, vpr *viper.Viper, opts ...FlagOption) *pflag.FlagSet {
 	v := reflect.ValueOf(obj).Elem()
 	t := reflect.TypeOf(v.Interface())
 
@@ -193,12 +193,12 @@ func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, opts ...FlagOption
 		option(o)
 	}
 
-	visitFields(flagSet, "", t, v, o)
+	visitFields(flagSet, vpr, "", t, v, o)
 
 	return flagSet
 }
 
-func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflect.Value, o *options) {
+func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t reflect.Type, v reflect.Value, o *options) {
 	num := t.NumField()
 	for i := 0; i < num; i++ {
 		field := t.Field(i)
@@ -238,31 +238,31 @@ func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflec
 			val := fieldV.Addr().Interface().(*[]string)
 			val2 := (*arrayFlags)(val)
 			flagSet.Var(val2, nameVal, descVal)
-			// setting empty defaults to allow viper.Unmarshal to recognize this field
-			viper.SetDefault(nameVal, []string{})
+			// setting empty defaults to allow vpr.Unmarshal to recognize this field
+			vpr.SetDefault(nameVal, []string{})
 		case reflect.TypeOf(map[string]string{}):
 			val := fieldV.Addr().Interface().(*map[string]string)
 			val2 := (*mapFlags)(val)
 			flagSet.Var(val2, nameVal, descVal)
-			// setting empty defaults to allow viper.Unmarshal to recognize this field
-			viper.SetDefault(nameVal, map[string]string{})
+			// setting empty defaults to allow vpr.Unmarshal to recognize this field
+			vpr.SetDefault(nameVal, map[string]string{})
 		case reflect.TypeOf(""):
 			val := fieldV.Addr().Interface().(*string)
 			for old, n := range o.replacements {
 				defaultValStr = strings.ReplaceAll(defaultValStr, old, n)
 			}
 			flagSet.StringVar(val, nameVal, defaultValStr, descVal)
-			viper.SetDefault(nameVal, defaultValStr)
+			vpr.SetDefault(nameVal, defaultValStr)
 		case reflect.TypeOf(true):
 			val := fieldV.Addr().Interface().(*bool)
 			flagSet.BoolVar(val, nameVal, defaultValStr == "true", descVal)
-			viper.SetDefault(nameVal, defaultValStr == "true")
+			vpr.SetDefault(nameVal, defaultValStr == "true")
 		case reflect.TypeOf(time.Time{}):
 			valTime := fieldV.Addr().Interface().(*time.Time)
 			val := (*timeFlag)(valTime)
 			flagSet.Var(val, nameVal, descVal)
-			// setting empty defaults to allow viper.Unmarshal to recognize this field
-			viper.SetDefault(nameVal, time.Time{})
+			// setting empty defaults to allow vpr.Unmarshal to recognize this field
+			vpr.SetDefault(nameVal, time.Time{})
 		case reflect.TypeOf(time.Second):
 			valDur := fieldV.Addr().Interface().(*time.Duration)
 			val := (*durFlag)(valDur)
@@ -278,7 +278,7 @@ func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflec
 			*val = (durFlag)(defaultVal)
 
 			flagSet.Var(val, nameVal, descVal)
-			viper.SetDefault(nameVal, defaultVal)
+			vpr.SetDefault(nameVal, defaultVal)
 		case reflect.TypeOf(bytesize.Byte):
 			valByteSize := fieldV.Addr().Interface().(*bytesize.ByteSize)
 			val := (*byteSizeFlag)(valByteSize)
@@ -293,7 +293,7 @@ func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflec
 
 			*val = (byteSizeFlag)(defaultVal)
 			flagSet.Var(val, nameVal, descVal)
-			viper.SetDefault(nameVal, defaultVal)
+			vpr.SetDefault(nameVal, defaultVal)
 		case reflect.TypeOf(1):
 			val := fieldV.Addr().Interface().(*int)
 			var defaultVal int
@@ -307,7 +307,7 @@ func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflec
 				}
 			}
 			flagSet.IntVar(val, nameVal, defaultVal, descVal)
-			viper.SetDefault(nameVal, defaultVal)
+			vpr.SetDefault(nameVal, defaultVal)
 		case reflect.TypeOf(1.00):
 			val := fieldV.Addr().Interface().(*float64)
 			var defaultVal float64
@@ -321,7 +321,7 @@ func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflec
 				}
 			}
 			flagSet.Float64Var(val, nameVal, defaultVal, descVal)
-			viper.SetDefault(nameVal, defaultVal)
+			vpr.SetDefault(nameVal, defaultVal)
 		case reflect.TypeOf(uint64(1)):
 			val := fieldV.Addr().Interface().(*uint64)
 			var defaultVal uint64
@@ -335,7 +335,7 @@ func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflec
 				}
 			}
 			flagSet.Uint64Var(val, nameVal, defaultVal, descVal)
-			viper.SetDefault(nameVal, defaultVal)
+			vpr.SetDefault(nameVal, defaultVal)
 		case reflect.TypeOf(uint(1)):
 			val := fieldV.Addr().Interface().(*uint)
 			var defaultVal uint
@@ -349,10 +349,10 @@ func visitFields(flagSet *pflag.FlagSet, prefix string, t reflect.Type, v reflec
 				defaultVal = uint(out)
 			}
 			flagSet.UintVar(val, nameVal, defaultVal, descVal)
-			viper.SetDefault(nameVal, defaultVal)
+			vpr.SetDefault(nameVal, defaultVal)
 		default:
 			if field.Type.Kind() == reflect.Struct {
-				visitFields(flagSet, nameVal, field.Type, fieldV, o)
+				visitFields(flagSet, vpr, nameVal, field.Type, fieldV, o)
 				continue
 			}
 

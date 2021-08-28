@@ -10,7 +10,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func newRootCmd(cfg *config.Config) *cobra.Command {
@@ -47,18 +46,13 @@ func newRootCmd(cfg *config.Config) *cobra.Command {
 func Initialize() error {
 	var cfg config.Config
 
-	viper.SetEnvPrefix("PYROSCOPE")
-	viper.AutomaticEnv() // read in environment variables that match
-	replacer := strings.NewReplacer("-", "_", ".", "_")
-	viper.SetEnvKeyReplacer(replacer)
-
 	rootCmd := newRootCmd(&cfg)
 	rootCmd.SilenceErrors = true
 	rootCmd.AddCommand(
 		newAgentCmd(&cfg.Agent),
 		newConnectCmd(&cfg.Exec),
 		newConvertCmd(&cfg.Convert),
-		newDbManagerCmd(&cfg.DbManager, &cfg.Server),
+		newDbManagerCmd(&config.CombinedDbManager{DbManager: &cfg.DbManager, Server: &cfg.Server}),
 		newExecCmd(&cfg.Exec),
 		newServerCmd(&cfg.Server),
 		newVersionCmd(),
