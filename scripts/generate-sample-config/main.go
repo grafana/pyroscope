@@ -16,6 +16,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -84,6 +85,12 @@ func processFile(path string) error {
 
 func writeConfigDocs(w io.Writer, subcommand, format string) {
 	flagSet := pflag.NewFlagSet("pyroscope "+subcommand, pflag.ExitOnError)
+
+	v := viper.New()
+	v.SetEnvPrefix("PYROSCOPE")
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
+
 	opts := []cli.FlagOption{
 		cli.WithReplacement("<supportedProfilers>", "pyspy, rbspy, phpspy, dotnetspy, ebpfspy"),
 		cli.WithSkipDeprecated(true),
@@ -95,33 +102,33 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 		val = new(config.Agent)
 		// Skip `targets` only from CLI reference.
 		if format == "md" {
-			cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("targets"))...)
+			cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("targets"))...)
 		} else {
-			cli.PopulateFlagSet(val, flagSet, opts...)
+			cli.PopulateFlagSet(val, flagSet, v, opts...)
 		}
 	case "server":
 		val = new(config.Server)
 		// Skip `metric-export-rules` only from CLI reference.
 		if format == "md" {
-			cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("metric-export-rules"))...)
+			cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("metric-export-rules"))...)
 		} else {
-			cli.PopulateFlagSet(val, flagSet, opts...)
+			cli.PopulateFlagSet(val, flagSet, v, opts...)
 		}
 	case "convert":
 		val = new(config.Convert)
-		cli.PopulateFlagSet(val, flagSet, opts...)
+		cli.PopulateFlagSet(val, flagSet, v, opts...)
 	case "exec":
 		val = new(config.Exec)
-		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("pid"))...)
+		cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("pid"))...)
 	case "connect":
 		val = new(config.Exec)
-		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("group-name", "user-name", "no-root-drop"))...)
+		cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("group-name", "user-name", "no-root-drop"))...)
 	case "target":
 		val = new(config.Target)
-		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("tags"))...)
+		cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("tags"))...)
 	case "metric-export-rule":
 		val = new(config.MetricExportRule)
-		cli.PopulateFlagSet(val, flagSet, opts...)
+		cli.PopulateFlagSet(val, flagSet, v, opts...)
 	default:
 		log.Fatalf("Unknown subcommand %q", subcommand)
 	}
