@@ -1,6 +1,7 @@
 .flamegraph-pane {
   flex: 1;
   width: 100%;
+  position: relative;
 }
 
 .flamegraph-header {
@@ -53,9 +54,9 @@
   height: 100%;
   display: flex;
   justify-content: center;
-  align-items: center;
-  position: absolute;
-  top: 0;
+  align-items: start;
+  position: relative;
+  padding: 60px 0;
 }
 
 .flamegraph-tooltip {

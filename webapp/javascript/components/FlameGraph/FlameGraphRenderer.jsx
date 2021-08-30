@@ -32,8 +32,7 @@ const getParamsFromRenderURL = (inputURL) => {
   const paramsString = inputURL.match(urlParamsRegexp);
 
   const params = new URLSearchParams(paramsString.groups.urlParams);
-  const paramsObj = paramsToObject(params);
-
+  const paramsObj = paramsToObject([...params.entries()]);
   return paramsObj;
 };
 
@@ -189,7 +188,10 @@ class FlameGraphRenderer extends React.Component {
       <div
         key="table-pane"
         className={clsx("pane", {
-          hidden: this.state.view === "icicle",
+          hidden:
+            this.state.view === "icicle" ||
+            !this.state.flamebearer ||
+            this.state.flamebearer.names.length <= 1,
           "vertical-orientation": this.props.viewType === "double",
         })}
       >
@@ -203,9 +205,10 @@ class FlameGraphRenderer extends React.Component {
         />
       </div>
     );
-
+    const dataExists =
+      this.state.view !== "table" || this.state.flamebearer.names.length <= 1;
     const flameGraphPane =
-      this.state.flamebearer && this.state.view !== "table" ? (
+      this.state.flamebearer && dataExists ? (
         <Graph
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}

@@ -243,7 +243,11 @@ class FlameGraph extends React.Component {
     getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
 
   renderCanvas = () => {
-    if (!this.props.flamebearer || !this.props.flamebearer.names) {
+    if (
+      !this.props.flamebearer ||
+      !this.props.flamebearer.names ||
+      this.props.flamebearer.names.length <= 1
+    ) {
       return;
     }
 
@@ -487,53 +491,61 @@ class FlameGraph extends React.Component {
 
   render = () => {
     const { ExportData } = this.props;
+    const dataUnavailable =
+      !this.props.flamebearer || this.props.flamebearer.names.length <= 1;
     return (
-      <div key="flamegraph-pane" className="flamegraph-pane">
-        <div className="flamegraph-header">
-          {!this.state.viewDiff ? (
-            <div>
-              <div className="row flamegraph-title">
-                Frame width represents{" "}
-                {unitsToFlamegraphTitle[this.state.units]}
-              </div>
-            </div>
-          ) : (
-            <div>
-              <div className="row">
-                Base graph: left - Comparison graph: right
-              </div>
-              <div className="row flamegraph-legend">
-                <div className="flamegraph-legend-list">
-                  {diffLegend.map((v) => (
-                    <div
-                      key={v}
-                      className="flamegraph-legend-item"
-                      style={{ backgroundColor: colorBasedOnDiff(v, 100, 0.8) }}
-                    >
-                      {v > 0 ? "+" : ""}
-                      {v}%
-                    </div>
-                  ))}
+      <>
+        <div key="flamegraph-pane" className="flamegraph-pane">
+          <div className="flamegraph-header">
+            {!this.state.viewDiff ? (
+              <div>
+                <div className="row flamegraph-title">
+                  Frame width represents{" "}
+                  {unitsToFlamegraphTitle[this.state.units]}
                 </div>
               </div>
-            </div>
-          )}
-          {ExportData && (
-            <ExportData
-              flameCanvas={this.canvasRef}
-              label={this.props.label || ""}
-            />
-          )}
-        </div>
-
-        {!this.props.flamebearer || this.props.flamebearer.names.length <= 1 ? (
-          <div className="error-message">
-            <span>
-              No profiling data available for this application / time range.
-            </span>
+            ) : (
+              <div>
+                <div className="row">
+                  Base graph: left - Comparison graph: right
+                </div>
+                <div className="row flamegraph-legend">
+                  <div className="flamegraph-legend-list">
+                    {diffLegend.map((v) => (
+                      <div
+                        key={v}
+                        className="flamegraph-legend-item"
+                        style={{
+                          backgroundColor: colorBasedOnDiff(v, 100, 0.8),
+                        }}
+                      >
+                        {v > 0 ? "+" : ""}
+                        {v}%
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {ExportData && !dataUnavailable ? (
+              <ExportData
+                flameCanvas={this.canvasRef}
+                label={this.props.label || ""}
+              />
+            ) : null}
           </div>
-        ) : (
-          <>
+          {dataUnavailable ? (
+            <div className="error-message">
+              <span>
+                No profiling data available for this application / time range.
+              </span>
+            </div>
+          ) : null}
+          <div
+            style={{
+              opacity: dataUnavailable ? 0 : 1,
+            }}
+          >
             <canvas
               className="flamegraph-canvas"
               height="0"
@@ -544,16 +556,16 @@ class FlameGraph extends React.Component {
               onBlur={() => {}}
             />
             <div className="flamegraph-highlight" ref={this.highlightRef} />
-            <div className="flamegraph-tooltip" ref={this.tooltipRef}>
-              <div className="flamegraph-tooltip-name" />
-              <div>
-                <span />
-                <span />
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+        <div className="flamegraph-tooltip" ref={this.tooltipRef}>
+          <div className="flamegraph-tooltip-name" />
+          <div>
+            <span />
+            <span />
+          </div>
+        </div>
+      </>
     );
   };
 }
