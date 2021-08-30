@@ -15,6 +15,8 @@ import (
 	"unicode"
 
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -82,7 +84,13 @@ func processFile(path string) error {
 }
 
 func writeConfigDocs(w io.Writer, subcommand, format string) {
-	flagSet := flag.NewFlagSet("pyroscope "+subcommand, flag.ExitOnError)
+	flagSet := pflag.NewFlagSet("pyroscope "+subcommand, pflag.ExitOnError)
+
+	v := viper.New()
+	v.SetEnvPrefix("PYROSCOPE")
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
+
 	opts := []cli.FlagOption{
 		cli.WithReplacement("<supportedProfilers>", "pyspy, rbspy, phpspy, dotnetspy, ebpfspy"),
 		cli.WithSkipDeprecated(true),
@@ -94,45 +102,44 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 		val = new(config.Agent)
 		// Skip `targets` only from CLI reference.
 		if format == "md" {
-			cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("targets"))...)
+			cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("targets"))...)
 		} else {
-			cli.PopulateFlagSet(val, flagSet, opts...)
+			cli.PopulateFlagSet(val, flagSet, v, opts...)
 		}
 	case "server":
 		val = new(config.Server)
 		// Skip `metric-export-rules` only from CLI reference.
 		if format == "md" {
-			cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("metric-export-rules"))...)
+			cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("metric-export-rules"))...)
 		} else {
-			cli.PopulateFlagSet(val, flagSet, opts...)
+			cli.PopulateFlagSet(val, flagSet, v, opts...)
 		}
 	case "convert":
 		val = new(config.Convert)
-		cli.PopulateFlagSet(val, flagSet, opts...)
+		cli.PopulateFlagSet(val, flagSet, v, opts...)
 	case "exec":
 		val = new(config.Exec)
-		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("pid"))...)
+		cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("pid"))...)
 	case "connect":
 		val = new(config.Exec)
-		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("group-name", "user-name", "no-root-drop"))...)
+		cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("group-name", "user-name", "no-root-drop"))...)
 	case "target":
 		val = new(config.Target)
-		cli.PopulateFlagSet(val, flagSet, append(opts, cli.WithSkip("tags"))...)
+		cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("tags"))...)
 	case "metric-export-rule":
 		val = new(config.MetricExportRule)
-		cli.PopulateFlagSet(val, flagSet, opts...)
+		cli.PopulateFlagSet(val, flagSet, v, opts...)
 	default:
 		log.Fatalf("Unknown subcommand %q", subcommand)
 	}
 
 	_, _ = fmt.Fprintf(w, "<!-- generate-sample-config:%s:%s -->\n", subcommand, format)
-	sf := cli.NewSortedFlags(val, flagSet, nil)
 
 	switch format {
 	case "yaml":
-		writeYaml(w, sf)
+		writeYaml(w, flagSet)
 	case "md":
-		writeMarkdown(w, sf)
+		writeMarkdown(w, flagSet)
 	default:
 		logrus.Fatalf("Unknown format %q", format)
 	}
@@ -140,9 +147,9 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 	_, _ = fmt.Fprintf(w, "<!-- /generate-sample-config -->")
 }
 
-func writeYaml(w io.Writer, sf *cli.SortedFlags) {
+func writeYaml(w io.Writer, flagSet *pflag.FlagSet) {
 	_, _ = fmt.Fprintf(w, "```yaml\n---\n")
-	sf.VisitAll(func(f *flag.Flag) {
+	flagSet.VisitAll(func(f *pflag.Flag) {
 		if f.Name == "config" {
 			return
 		}
@@ -158,10 +165,10 @@ func writeYaml(w io.Writer, sf *cli.SortedFlags) {
 	_, _ = fmt.Fprintf(w, "```\n")
 }
 
-func writeMarkdown(w io.Writer, sf *cli.SortedFlags) {
+func writeMarkdown(w io.Writer, flagSet *pflag.FlagSet) {
 	_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", "Name", "Default Value", "Usage")
 	_, _ = fmt.Fprintf(w, "| %s | %s | %s |\n", ":-", ":-", ":-")
-	sf.VisitAll(func(f *flag.Flag) {
+	flagSet.VisitAll(func(f *pflag.Flag) {
 		if f.Name == "config" {
 			return
 		}

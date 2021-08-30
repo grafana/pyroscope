@@ -8,6 +8,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func startAgent(_ *config.Agent) error {
+func StartAgent(_ *config.Agent) error {
 	return fmt.Errorf("agent mode is supported only on Windows")
 }

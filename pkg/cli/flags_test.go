@@ -1,56 +1,87 @@
 package cli
 
 import (
-	"context"
-	"flag"
+	"bytes"
+	"fmt"
+	"os"
+	"reflect"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/peterbourgon/ff/v3"
-	"github.com/peterbourgon/ff/v3/ffcli"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
 type FlagsStruct struct {
-	Config   string
-	Foo      string
-	Foos     []string
-	Bar      int
-	Baz      time.Duration
-	FooBar   string
-	FooFoo   float64
-	FooBytes bytesize.ByteSize
+	Config   string            `mapstructure:"config"`
+	Foo      string            `mapstructure:"foo"`
+	Foos     []string          `mapstructure:"foos"`
+	Bar      int               `mapstructure:"bar"`
+	Baz      time.Duration     `mapstructure:"baz"`
+	FooBar   string            `mapstructure:"foo-bar"`
+	FooFoo   float64           `mapstructure:"foo-foo"`
+	FooBytes bytesize.ByteSize `mapstructure:"foo-bytes"`
+	FooDur   time.Duration     `mapstructure:"foo-dur"`
+}
+
+func viperUnmarshalWithBytesHook(vpr *viper.Viper, cfg interface{}) error {
+	return vpr.Unmarshal(cfg, viper.DecodeHook(
+		mapstructure.ComposeDecodeHookFunc(
+			// Function to add a special type for «env. mode»
+			func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+				if t != reflect.TypeOf(bytesize.Byte) {
+					return data, nil
+				}
+
+				stringData, ok := data.(string)
+				if !ok {
+					return data, nil
+				}
+
+				return bytesize.Parse(stringData)
+			},
+			// Function to support net.IP
+			mapstructure.StringToIPHookFunc(),
+			// Appended by the two default functions
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		),
+	))
 }
 
 var _ = Describe("flags", func() {
 	Context("PopulateFlagSet", func() {
 		Context("without config file", func() {
 			It("correctly sets all types of arguments", func() {
-				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
-				cfg := FlagsStruct{}
-				PopulateFlagSet(&cfg, exampleFlagSet)
-
-				exampleCommand := &ffcli.Command{
-					FlagSet: exampleFlagSet,
-					Exec: func(_ context.Context, args []string) error {
+				vpr := viper.New()
+				exampleCommand := &cobra.Command{
+					RunE: func(cmd *cobra.Command, args []string) error {
 						return nil
 					},
 				}
 
-				err := exampleCommand.ParseAndRun(context.Background(), []string{
-					"-foo", "test-val-1",
-					"-foos", "test-val-2",
-					"-foos", "test-val-3",
-					"-bar", "123",
-					"-baz", "10h",
-					"-foo-bar", "test-val-4",
-					"-foo-foo", "10.23",
-					"-foo-bytes", "100MB",
+				cfg := FlagsStruct{}
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+
+				b := bytes.NewBufferString("")
+				exampleCommand.SetOut(b)
+				exampleCommand.SetArgs([]string{
+					fmt.Sprintf("--foo=%s", "test-val-1"),
+					fmt.Sprintf("--foos=%s", "test-val-2"),
+					fmt.Sprintf("--foos=%s", "test-val-3"),
+					fmt.Sprintf("--bar=%s", "123"),
+					fmt.Sprintf("--baz=%s", "10h"),
+					fmt.Sprintf("--foo-bar=%s", "test-val-4"),
+					fmt.Sprintf("--foo-foo=%s", "10.23"),
+					fmt.Sprintf("--foo-bytes=%s", "100MB"),
 				})
 
+				err := exampleCommand.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg.Foo).To(Equal("test-val-1"))
 				Expect(cfg.Foos).To(Equal([]string{"test-val-2", "test-val-3"}))
@@ -64,25 +95,38 @@ var _ = Describe("flags", func() {
 
 		Context("with config file", func() {
 			It("correctly sets all types of arguments", func() {
-				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
 				cfg := FlagsStruct{}
-				PopulateFlagSet(&cfg, exampleFlagSet)
+				vpr := viper.New()
+				exampleCommand := &cobra.Command{
+					RunE: func(cmd *cobra.Command, args []string) error {
+						if cfg.Config != "" {
+							// Use config file from the flag.
+							vpr.SetConfigFile(cfg.Config)
 
-				exampleCommand := &ffcli.Command{
-					FlagSet: exampleFlagSet,
-					Options: []ff.Option{
-						ff.WithConfigFileParser(parser),
-						ff.WithConfigFileFlag("config"),
-					},
-					Exec: func(_ context.Context, args []string) error {
+							// If a config file is found, read it in.
+							if err := vpr.ReadInConfig(); err == nil {
+								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
+							}
+
+							if err := viperUnmarshalWithBytesHook(vpr, &cfg); err != nil {
+								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
+							}
+
+							fmt.Printf("configuration is %+v \n", cfg)
+						}
+
 						return nil
 					},
 				}
 
-				err := exampleCommand.ParseAndRun(context.Background(), []string{
-					"-config", "testdata/example.yml",
-				})
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				vpr.BindPFlags(exampleCommand.Flags())
 
+				b := bytes.NewBufferString("")
+				exampleCommand.SetOut(b)
+				exampleCommand.SetArgs([]string{fmt.Sprintf("--config=%s", "testdata/example.yml")})
+
+				err := exampleCommand.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg.Foo).To(Equal("test-val-1"))
 				Expect(cfg.Foos).To(Equal([]string{"test-val-2", "test-val-3"}))
@@ -91,213 +135,148 @@ var _ = Describe("flags", func() {
 				Expect(cfg.FooBar).To(Equal("test-val-4"))
 				Expect(cfg.FooFoo).To(Equal(10.23))
 				Expect(cfg.FooBytes).To(Equal(100 * bytesize.MB))
+				Expect(cfg.FooDur).To(Equal(5*time.Minute + 23*time.Second))
 			})
 
 			It("arguments take precedence", func() {
-				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
 				cfg := FlagsStruct{}
-				PopulateFlagSet(&cfg, exampleFlagSet)
+				vpr := viper.New()
+				exampleCommand := &cobra.Command{
+					RunE: func(cmd *cobra.Command, args []string) error {
+						if cfg.Config != "" {
+							// Use config file from the flag.
+							vpr.SetConfigFile(cfg.Config)
 
-				exampleCommand := &ffcli.Command{
-					FlagSet: exampleFlagSet,
-					Options: []ff.Option{
-						ff.WithConfigFileParser(parser),
-						ff.WithConfigFileFlag("config"),
-					},
-					Exec: func(_ context.Context, args []string) error {
+							// If a config file is found, read it in.
+							if err := vpr.ReadInConfig(); err == nil {
+								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
+							}
+
+							if err := viperUnmarshalWithBytesHook(vpr, &cfg); err != nil {
+								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
+							}
+
+							fmt.Printf("configuration is %+v \n", cfg)
+						}
+
 						return nil
 					},
 				}
 
-				err := exampleCommand.ParseAndRun(context.Background(), []string{
-					"-config", "testdata/example.yml",
-					"-foo", "test-val-4",
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				vpr.BindPFlags(exampleCommand.Flags())
+
+				b := bytes.NewBufferString("")
+				exampleCommand.SetOut(b)
+				exampleCommand.SetArgs([]string{
+					fmt.Sprintf("--config=%s", "testdata/example.yml"),
+					fmt.Sprintf("--foo=%s", "test-val-4"),
+					fmt.Sprintf("--foo-dur=%s", "3h"),
 				})
 
+				err := exampleCommand.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg.Foo).To(Equal("test-val-4"))
+				Expect(cfg.FooDur).To(Equal(3 * time.Hour))
 			})
-
 			It("server configuration", func() {
-				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
 				var cfg config.Server
-				PopulateFlagSet(&cfg, exampleFlagSet)
+				vpr := viper.New()
+				exampleCommand := &cobra.Command{
+					RunE: func(cmd *cobra.Command, args []string) error {
+						if cfg.Config != "" {
+							// Use config file from the flag.
+							vpr.SetConfigFile(cfg.Config)
 
-				exampleCommand := &ffcli.Command{
-					FlagSet: exampleFlagSet,
-					Options: []ff.Option{
-						ff.WithIgnoreUndefined(true),
-						ff.WithConfigFileParser(parser),
-						ff.WithConfigFileFlag("config"),
-					},
-					Exec: func(_ context.Context, args []string) error {
+							// If a config file is found, read it in.
+							if err := vpr.ReadInConfig(); err == nil {
+								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
+							}
+
+							if err := viperUnmarshalWithBytesHook(vpr, &cfg); err != nil {
+								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
+							}
+
+							fmt.Printf("configuration is %+v \n", cfg)
+						}
+
 						return nil
 					},
 				}
 
-				err := exampleCommand.ParseAndRun(context.Background(), []string{
-					"-config", "testdata/server.yml",
-				})
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				vpr.BindPFlags(exampleCommand.Flags())
 
+				b := bytes.NewBufferString("")
+				exampleCommand.SetOut(b)
+				exampleCommand.SetArgs([]string{fmt.Sprintf("--config=%s", "testdata/server.yml")})
+
+				err := exampleCommand.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg).To(Equal(config.Server{
-					AnalyticsOptOut:          false,
-					Config:                   "testdata/server.yml",
-					LogLevel:                 "info",
-					BadgerLogLevel:           "error",
-					StoragePath:              "/var/lib/pyroscope",
-					APIBindAddr:              ":4040",
-					BaseURL:                  "",
-					CacheEvictThreshold:      0.25,
-					CacheEvictVolume:         0.33,
-					BadgerNoTruncate:         false,
-					DisablePprofEndpoint:     false,
-					MaxNodesSerialization:    2048,
-					MaxNodesRender:           8192,
-					HideApplications:         nil,
-					Retention:                0,
-					SampleRate:               0,
-					OutOfSpaceThreshold:      0,
-					CacheDimensionSize:       0,
-					CacheDictionarySize:      0,
-					CacheSegmentSize:         0,
-					CacheTreeSize:            0,
-					GoogleEnabled:            false,
-					GoogleClientID:           "",
-					GoogleClientSecret:       "",
-					GoogleRedirectURL:        "",
-					GoogleAuthURL:            "https://accounts.google.com/o/oauth2/auth",
-					GoogleTokenURL:           "https://accounts.google.com/o/oauth2/token",
-					GitlabEnabled:            false,
-					GitlabApplicationID:      "",
-					GitlabClientSecret:       "",
-					GitlabRedirectURL:        "",
-					GitlabAuthURL:            "https://gitlab.com/oauth/authorize",
-					GitlabTokenURL:           "https://gitlab.com/oauth/token",
-					GitlabAPIURL:             "https://gitlab.com/api/v4/user",
-					GithubEnabled:            false,
-					GithubClientID:           "",
-					GithubClientSecret:       "",
-					GithubRedirectURL:        "",
-					GithubAuthURL:            "https://github.com/login/oauth/authorize",
-					GithubTokenURL:           "https://github.com/login/oauth/access_token",
-					JWTSecret:                "",
-					LoginMaximumLifetimeDays: 0,
-					MetricExportRules:        nil,
-				}))
-
-				Expect(loadServerConfig(&cfg)).ToNot(HaveOccurred())
-				Expect(cfg.MetricExportRules).To(Equal(config.MetricExportRules{
-					"my_metric_name": {
-						Expr: `app.name{foo=~"bar"}`,
-						Node: "a;b;c",
+					AnalyticsOptOut:       false,
+					Config:                "testdata/server.yml",
+					LogLevel:              "info",
+					BadgerLogLevel:        "error",
+					StoragePath:           "/var/lib/pyroscope",
+					APIBindAddr:           ":4040",
+					BaseURL:               "",
+					CacheEvictThreshold:   0.25,
+					CacheEvictVolume:      0.33,
+					BadgerNoTruncate:      false,
+					DisablePprofEndpoint:  false,
+					MaxNodesSerialization: 2048,
+					MaxNodesRender:        8192,
+					HideApplications:      []string{},
+					Retention:             0,
+					SampleRate:            0,
+					OutOfSpaceThreshold:   0,
+					CacheDimensionSize:    0,
+					CacheDictionarySize:   0,
+					CacheSegmentSize:      0,
+					CacheTreeSize:         0,
+					Auth: config.Auth{
+						Google: config.GoogleOauth{
+							Enabled:        false,
+							ClientID:       "",
+							ClientSecret:   "",
+							RedirectURL:    "",
+							AuthURL:        "https://accounts.google.com/o/oauth2/auth",
+							TokenURL:       "https://accounts.google.com/o/oauth2/token",
+							AllowedDomains: []string{},
+						},
+						Gitlab: config.GitlabOauth{
+							Enabled:       false,
+							ClientID:      "",
+							ClientSecret:  "",
+							RedirectURL:   "",
+							AuthURL:       "https://gitlab.com/oauth/authorize",
+							TokenURL:      "https://gitlab.com/oauth/token",
+							APIURL:        "https://gitlab.com/api/v4",
+							AllowedGroups: []string{},
+						},
+						Github: config.GithubOauth{
+							Enabled:              false,
+							ClientID:             "",
+							ClientSecret:         "",
+							RedirectURL:          "",
+							AuthURL:              "https://github.com/login/oauth/authorize",
+							TokenURL:             "https://github.com/login/oauth/access_token",
+							AllowedOrganizations: []string{},
+						},
+						JWTSecret:                "",
+						LoginMaximumLifetimeDays: 0,
 					},
-				}))
-			})
 
-			It("agent configuration", func() {
-				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
-				var cfg config.Agent
-				PopulateFlagSet(&cfg, exampleFlagSet)
-
-				exampleCommand := &ffcli.Command{
-					FlagSet: exampleFlagSet,
-					Options: []ff.Option{
-						ff.WithIgnoreUndefined(true),
-						ff.WithConfigFileParser(parser),
-						ff.WithConfigFileFlag("config"),
-					},
-					Exec: func(_ context.Context, args []string) error {
-						return nil
-					},
-				}
-
-				err := exampleCommand.ParseAndRun(context.Background(), []string{
-					"-config", "testdata/agent.yml",
-					"-tag", "baz=zzz",
-				})
-
-				Expect(err).ToNot(HaveOccurred())
-				Expect(cfg).To(Equal(config.Agent{
-					Config:                 "testdata/agent.yml",
-					LogLevel:               "debug",
-					NoLogging:              false,
-					ServerAddress:          "http://localhost:4040",
-					AuthToken:              "",
-					UpstreamThreads:        4,
-					UpstreamRequestTimeout: 10 * time.Second,
-					Tags: map[string]string{
-						"baz": "zzz",
-					},
-				}))
-
-				Expect(loadAgentConfig(&cfg)).ToNot(HaveOccurred())
-				Expect(cfg).To(Equal(config.Agent{
-					Config:                 "testdata/agent.yml",
-					LogLevel:               "debug",
-					NoLogging:              false,
-					ServerAddress:          "http://localhost:4040",
-					AuthToken:              "",
-					UpstreamThreads:        4,
-					UpstreamRequestTimeout: 10 * time.Second,
-					Tags: map[string]string{
-						"foo": "bar",
-						"baz": "zzz",
-					},
-					Targets: []config.Target{
-						{
-							ServiceName:        "foo",
-							SpyName:            "debugspy",
-							ApplicationName:    "foo.app",
-							SampleRate:         0,
-							DetectSubprocesses: false,
-							PyspyBlocking:      false,
-							RbspyBlocking:      false,
-							Tags: map[string]string{
-								"foo": "bar",
-								"baz": "zzz",
-							},
+					MetricExportRules: config.MetricExportRules{
+						"my_metric_name": {
+							Expr: `app.name{foo=~"bar"}`,
+							Node: "a;b;c",
 						},
 					},
 				}))
-			})
 
-			It("parses tag flags in exec", func() {
-				exampleFlagSet := flag.NewFlagSet("example flag set", flag.ExitOnError)
-				var cfg config.Exec
-				PopulateFlagSet(&cfg, exampleFlagSet)
-
-				exampleCommand := &ffcli.Command{
-					FlagSet: exampleFlagSet,
-					Options: []ff.Option{
-						ff.WithIgnoreUndefined(true),
-						ff.WithConfigFileParser(parser),
-						ff.WithConfigFileFlag("config"),
-					},
-					Exec: func(_ context.Context, args []string) error {
-						return nil
-					},
-				}
-
-				err := exampleCommand.ParseAndRun(context.Background(), []string{
-					"-tag", "foo=bar",
-					"-tag", "baz=qux",
-				})
-
-				Expect(err).ToNot(HaveOccurred())
-				Expect(cfg).To(Equal(config.Exec{
-					SpyName:                "auto",
-					SampleRate:             100,
-					DetectSubprocesses:     true,
-					LogLevel:               "info",
-					ServerAddress:          "http://localhost:4040",
-					UpstreamThreads:        4,
-					UpstreamRequestTimeout: 10 * time.Second,
-					Tags: map[string]string{
-						"foo": "bar",
-						"baz": "qux",
-					},
-				}))
+				Expect(loadServerConfig(&cfg)).ToNot(HaveOccurred())
 			})
 		})
 	})

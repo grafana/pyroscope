@@ -14,7 +14,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func startServer(c *config.Server) error {
+func StartServer(c *config.Server) error {
 	logLevel, err := logrus.ParseLevel(c.LogLevel)
 	if err != nil {
 		return err
@@ -27,6 +27,13 @@ func startServer(c *config.Server) error {
 	srv, err := newServerService(logger, c)
 	if err != nil {
 		return fmt.Errorf("could not initialize server: %w", err)
+	}
+
+	if srv.config.Auth.JWTSecret == "" {
+		srv.config.Auth.JWTSecret, err = srv.storage.JWT()
+		if err != nil {
+			return err
+		}
 	}
 
 	var stopTime time.Time
