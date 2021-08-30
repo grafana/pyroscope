@@ -8,16 +8,19 @@
     "url": "https://github.com/pyroscope-io/pyroscope.git"
   },
   "scripts": {
-    "dev": "webpack --progress --colors --config scripts/webpack/webpack.dev.js",
+    "dev": "webpack --progress --config scripts/webpack/webpack.dev.js",
     "test": "jest",
     "lint": "eslint ./ --ext .js,.jsx --cache --fix",
-    "size-build": "make assets-size-build"
+    "size-build": "make assets-size-build",
+    "cy:open": "cypress open",
+    "cy:ci": "cypress run"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "7.8.3",
     "@size-limit/file": "^5.0.3",
+    "@testing-library/cypress": "^8.0.0",
     "autoprefixer": "^9.8.5",
     "babel-eslint": "^10.1.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
@@ -26,6 +29,7 @@
     "conventional-changelog-cli": "^2.1.1",
     "copy-webpack-plugin": "^6.3.2",
     "css-loader": "^4.0.0",
+    "cypress": "^8.3.0",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.15.5",
     "eslint": "7.2.0",

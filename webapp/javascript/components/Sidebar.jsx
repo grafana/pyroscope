@@ -102,6 +102,7 @@ function Sidebar(props) {
         <button
           className={clsx({ "active-route": state.currentRoute === "/" })}
           type="button"
+          data-testid="sidebar-root"
           onClick={() => updateRoute("/")}
         >
           <FontAwesomeIcon icon={faWindowMaximize} />
@@ -112,6 +113,7 @@ function Sidebar(props) {
           className={clsx({
             "active-route": state.currentRoute === "/comparison",
           })}
+          data-testid="sidebar-comparison"
           type="button"
           onClick={() => updateRoute("/comparison")}
         >
@@ -124,6 +126,7 @@ function Sidebar(props) {
             "active-route": state.currentRoute === "/comparison-diff",
           })}
           type="button"
+          data-testid="sidebar-comparison-diff"
           onClick={() => updateRoute("/comparison-diff")}
         >
           <FontAwesomeIcon icon={faChartBar} />
