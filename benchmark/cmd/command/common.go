@@ -67,7 +67,7 @@ func bindFlags(cfg interface{}, cmd *cobra.Command, vpr *viper.Viper) error {
 
 func newViper() *viper.Viper {
 	v := viper.New()
-	v.SetEnvPrefix("PYROSCOPE")
+	v.SetEnvPrefix("PYROBENCH")
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	return v

@@ -16,6 +16,17 @@ func newRootCmd(cfg *config.Config) *cobra.Command {
 		Use: "pyrobench [flags] <subcommand>",
 	}
 
+	rootCmd.SetUsageFunc(func(cmd *cobra.Command) error {
+		fmt.Println(gradientBanner())
+		fmt.Println(DefaultUsageFunc(cmd.Flags(), cmd))
+		return nil
+	})
+
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, a []string) {
+		fmt.Println(gradientBanner())
+		fmt.Println(DefaultUsageFunc(cmd.Flags(), cmd))
+	})
+
 	return rootCmd
 }
 
