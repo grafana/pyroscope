@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/benchmark/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +26,7 @@ func Initialize() error {
 	rootCmd := newRootCmd(&cfg)
 	rootCmd.SilenceErrors = true
 	rootCmd.AddCommand(
-		newLoadGen(&cfg.Bench),
+		newLoadGen(&cfg),
 	)
 
 	logrus.SetReportCaller(true)

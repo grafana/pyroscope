@@ -10,8 +10,7 @@ import (
 	goexec "os/exec"
 
 	"github.com/mitchellh/mapstructure"
-	//	benchCfg "github.com/pyroscope-io/pyroscope/benchmark/config"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/benchmark/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

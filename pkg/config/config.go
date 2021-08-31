@@ -14,7 +14,6 @@ type Config struct {
 	Convert   Convert   `skip:"true" mapstructure:",squash"`
 	Exec      Exec      `skip:"true" mapstructure:",squash"`
 	DbManager DbManager `skip:"true" mapstructure:",squash"`
-	Bench     Bench     `skip:"true" mapstructure:", squash'`
 }
 
 type Agent struct {
@@ -186,7 +185,4 @@ type Exec struct {
 	RbspyBlocking          bool          `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
-}
-
-type Bench struct {
 }
