@@ -1,22 +1,24 @@
 package command
 
 import (
-	"fmt"
+	"github.com/spf13/cobra"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
-	"github.com/spf13/cobra"
 )
 
 func newVersionCmd() *cobra.Command {
-	versionCmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "version",
+		Args:  cobra.NoArgs,
 		Short: "Print pyroscope version details",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println(gradientBanner())
-			fmt.Println(build.Summary())
-			fmt.Println("")
+		Run: func(cmd *cobra.Command, _ []string) {
+			printVersion(cmd)
 		},
 	}
+}
 
-	return versionCmd
+func printVersion(cmd *cobra.Command) {
+	cmd.Println(gradientBanner())
+	cmd.Println(build.Summary())
+	cmd.Println()
 }

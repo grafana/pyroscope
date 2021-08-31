@@ -8,13 +8,16 @@ import (
 	"time"
 
 	"github.com/iancoleman/strcase"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
-	"github.com/pyroscope-io/pyroscope/pkg/util/duration"
-	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
+	"github.com/mitchellh/mapstructure"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
+	"github.com/pyroscope-io/pyroscope/pkg/util/duration"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
 const timeFormat = "2006-01-02T15:04:05Z0700"
@@ -98,6 +101,31 @@ func (m *mapFlags) Set(s string) error {
 func (m *mapFlags) Type() string {
 	t := reflect.TypeOf(map[string]string{})
 	return t.String()
+}
+
+func Unmarshal(vpr *viper.Viper, cfg interface{}) error {
+	return vpr.Unmarshal(cfg, viper.DecodeHook(
+		mapstructure.ComposeDecodeHookFunc(
+			// Function to add a special type for «env. mode»
+			stringToByteSize,
+			// Function to support net.IP
+			mapstructure.StringToIPHookFunc(),
+			// Appended by the two default functions
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		),
+	))
+}
+
+func stringToByteSize(_, t reflect.Type, data interface{}) (interface{}, error) {
+	if t != reflect.TypeOf(bytesize.Byte) {
+		return data, nil
+	}
+	stringData, ok := data.(string)
+	if !ok {
+		return data, nil
+	}
+	return bytesize.Parse(stringData)
 }
 
 type options struct {
@@ -350,6 +378,12 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 			}
 			flagSet.UintVar(val, nameVal, defaultVal, descVal)
 			vpr.SetDefault(nameVal, defaultVal)
+		case reflect.TypeOf(config.MetricExportRules{}):
+			flagSet.Var(new(mapFlags), nameVal, descVal)
+			vpr.SetDefault(nameVal, config.MetricExportRules{})
+		case reflect.TypeOf([]config.Target{}):
+			flagSet.Var(new(arrayFlags), nameVal, descVal)
+			vpr.SetDefault(nameVal, []config.Target{})
 		default:
 			if field.Type.Kind() == reflect.Struct {
 				visitFields(flagSet, vpr, nameVal, field.Type, fieldV, o)
@@ -360,6 +394,7 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 			// documentation (when a parameter can not be set via flag but present
 			// in the configuration). Empty value is shown as '{}'.
 			flagSet.Var(new(mapFlags), nameVal, descVal)
+			vpr.SetDefault(nameVal, nil)
 		}
 
 		if deprecatedVal == "true" {

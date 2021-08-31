@@ -72,7 +72,7 @@ var _ = Describe("Decode", func() {
     ]
   }
 }`
- 			fmt.Println(outJSON)
+			fmt.Println(outJSON)
 			Expect(outJSON).To(Equal(expected))
 		})
 	})

@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"reflect"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/spf13/cobra"
@@ -27,31 +25,6 @@ type FlagsStruct struct {
 	FooFoo   float64           `mapstructure:"foo-foo"`
 	FooBytes bytesize.ByteSize `mapstructure:"foo-bytes"`
 	FooDur   time.Duration     `mapstructure:"foo-dur"`
-}
-
-func viperUnmarshalWithBytesHook(vpr *viper.Viper, cfg interface{}) error {
-	return vpr.Unmarshal(cfg, viper.DecodeHook(
-		mapstructure.ComposeDecodeHookFunc(
-			// Function to add a special type for «env. mode»
-			func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
-				if t != reflect.TypeOf(bytesize.Byte) {
-					return data, nil
-				}
-
-				stringData, ok := data.(string)
-				if !ok {
-					return data, nil
-				}
-
-				return bytesize.Parse(stringData)
-			},
-			// Function to support net.IP
-			mapstructure.StringToIPHookFunc(),
-			// Appended by the two default functions
-			mapstructure.StringToTimeDurationHookFunc(),
-			mapstructure.StringToSliceHookFunc(","),
-		),
-	))
 }
 
 var _ = Describe("flags", func() {
@@ -108,7 +81,7 @@ var _ = Describe("flags", func() {
 								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
 							}
 
-							if err := viperUnmarshalWithBytesHook(vpr, &cfg); err != nil {
+							if err := Unmarshal(vpr, &cfg); err != nil {
 								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
 							}
 
@@ -152,7 +125,7 @@ var _ = Describe("flags", func() {
 								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
 							}
 
-							if err := viperUnmarshalWithBytesHook(vpr, &cfg); err != nil {
+							if err := Unmarshal(vpr, &cfg); err != nil {
 								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
 							}
 
@@ -193,7 +166,7 @@ var _ = Describe("flags", func() {
 								fmt.Fprintln(os.Stderr, "Using config file:", vpr.ConfigFileUsed())
 							}
 
-							if err := viperUnmarshalWithBytesHook(vpr, &cfg); err != nil {
+							if err := Unmarshal(vpr, &cfg); err != nil {
 								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
 							}
 
@@ -209,14 +182,17 @@ var _ = Describe("flags", func() {
 
 				b := bytes.NewBufferString("")
 				exampleCommand.SetOut(b)
-				exampleCommand.SetArgs([]string{fmt.Sprintf("--config=%s", "testdata/server.yml")})
+				exampleCommand.SetArgs([]string{
+					"--config=testdata/server.yml",
+					"--log-level=debug",
+				})
 
 				err := exampleCommand.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg).To(Equal(config.Server{
 					AnalyticsOptOut:       false,
 					Config:                "testdata/server.yml",
-					LogLevel:              "info",
+					LogLevel:              "debug",
 					BadgerLogLevel:        "error",
 					StoragePath:           "/var/lib/pyroscope",
 					APIBindAddr:           ":4040",
@@ -275,8 +251,56 @@ var _ = Describe("flags", func() {
 						},
 					},
 				}))
+			})
 
-				Expect(loadServerConfig(&cfg)).ToNot(HaveOccurred())
+			It("agent configuration", func() {
+				var cfg config.Agent
+				vpr := viper.New()
+				exampleCommand := &cobra.Command{
+					Run: func(cmd *cobra.Command, args []string) {
+						Expect(vpr.BindPFlags(cmd.Flags())).ToNot(HaveOccurred())
+						vpr.SetConfigFile(cfg.Config)
+						Expect(vpr.ReadInConfig()).ToNot(HaveOccurred())
+						Expect(Unmarshal(vpr, &cfg)).ToNot(HaveOccurred())
+						Expect(loadAgentConfig(&cfg)).ToNot(HaveOccurred())
+					},
+				}
+
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				exampleCommand.SetArgs([]string{
+					"--config=testdata/agent.yml",
+					"--log-level=debug",
+					"--tag=foo=xxx",
+				})
+
+				Expect(exampleCommand.Execute()).ToNot(HaveOccurred())
+				Expect(cfg).To(Equal(config.Agent{
+					Config:                 "testdata/agent.yml",
+					LogLevel:               "debug",
+					NoLogging:              false,
+					ServerAddress:          "http://localhost:4040",
+					AuthToken:              "",
+					UpstreamThreads:        4,
+					UpstreamRequestTimeout: 10 * time.Second,
+					Targets: []config.Target{
+						{
+							ServiceName:        "foo",
+							SpyName:            "debugspy",
+							ApplicationName:    "foo.app",
+							SampleRate:         0,
+							DetectSubprocesses: false,
+							PyspyBlocking:      false,
+							Tags: map[string]string{
+								"foo": "xxx",
+								"baz": "qux",
+							},
+						},
+					},
+					Tags: map[string]string{
+						"foo": "xxx",
+						"baz": "qux",
+					},
+				}))
 			})
 		})
 	})
