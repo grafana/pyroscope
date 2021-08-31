@@ -214,11 +214,7 @@ class FlameGraphRenderer extends React.Component {
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
           ExportData={ExportData}
-          label={
-            this.props.labels
-              ? this.props.labels.filter((x) => x.name === "__name__")[0].value
-              : ""
-          }
+          label={this.props.query}
         />
       ) : null;
 

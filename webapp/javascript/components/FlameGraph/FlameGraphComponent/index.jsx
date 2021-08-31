@@ -549,6 +549,8 @@ class FlameGraph extends React.Component {
             <canvas
               className="flamegraph-canvas"
               height="0"
+              data-testid="flamegraph-canvas"
+              data-appname={this.props.label}
               ref={this.canvasRef}
               onClick={this.clickHandler}
               onMouseMove={this.mouseMoveHandler}

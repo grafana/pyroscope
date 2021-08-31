@@ -54,7 +54,7 @@
   height: 100%;
   display: flex;
   justify-content: center;
-  align-items: start;
+  align-items: flex-start;
   position: relative;
   padding: 60px 0;
 }
