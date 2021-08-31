@@ -291,7 +291,7 @@
                ],
                "targets": [
                   {
-                     "expr": "pyroscope_build_info{instance=\"$instance\"}",
+                     "expr": "pyroscope_build_info{instance=~\"$instance\"}",
                      "format": "table",
                      "instant": true,
                      "intervalFactor": 2,

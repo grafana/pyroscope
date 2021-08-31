@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newRootCmd(cfg *config.LoadGen) *cobra.Command {
+func newRootCmd(cfg *config.Config) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "pyrobench [flags] <subcommand>",
 	}
@@ -32,12 +32,13 @@ func newRootCmd(cfg *config.LoadGen) *cobra.Command {
 
 // Initialize adds all child commands to the root command and sets flags appropriately
 func Initialize() error {
-	var cfg config.LoadGen
+	var cfg config.Config
 
 	rootCmd := newRootCmd(&cfg)
 	rootCmd.SilenceErrors = true
 	rootCmd.AddCommand(
-		newLoadGen(&cfg),
+		newLoadGen(&cfg.LoadGen),
+		newPromQuery(&cfg.PromQuery),
 	)
 
 	logrus.SetReportCaller(true)

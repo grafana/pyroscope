@@ -1,5 +1,9 @@
 package config
 
+type Config struct {
+	LoadGen   LoadGen   `skip:"true" mapstructure:",squash"`
+	PromQuery PromQuery `skip:"true" mapstructure:",squash"`
+}
 type LoadGen struct {
 	LogLevel string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 
@@ -15,6 +19,8 @@ type LoadGen struct {
 
 	WaitUntilAvailable bool `def:"true" desc:"wait until endpoint is available"`
 }
+
+type PromQuery struct{}
 
 // File can be read from file system.
 type File interface{ Path() string }
