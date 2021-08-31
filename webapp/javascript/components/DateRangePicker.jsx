@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useDispatch } from "react-redux";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faClock } from "@fortawesome/free-solid-svg-icons";
+import { faClock } from "@fortawesome/free-solid-svg-icons/faClock";
 import OutsideClickHandler from "react-outside-click-handler";
 import CustomDatePicker from "./CustomDatePicker";
 import { setDateRange } from "../redux/actions";

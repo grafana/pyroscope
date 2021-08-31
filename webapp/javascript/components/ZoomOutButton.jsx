@@ -2,7 +2,7 @@ import React from "react";
 import { connect } from "react-redux";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSearchMinus } from "@fortawesome/free-solid-svg-icons";
+import { faSearchMinus } from "@fortawesome/free-solid-svg-icons/faSearchMinus";
 import { setDateRange } from "../redux/actions";
 
 function ZoomOutButton(props) {

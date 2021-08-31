@@ -7,16 +7,14 @@ import Modal from "react-modal";
 import clsx from "clsx";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faFileAlt,
-  faKeyboard,
-  faColumns,
-  faBell,
-  faSignOutAlt,
-  faChartBar,
-} from "@fortawesome/free-solid-svg-icons";
+import { faFileAlt } from "@fortawesome/free-solid-svg-icons/faFileAlt";
+import { faKeyboard } from "@fortawesome/free-solid-svg-icons/faKeyboard";
+import { faColumns } from "@fortawesome/free-solid-svg-icons/faColumns";
+import { faBell } from "@fortawesome/free-solid-svg-icons/faBell";
+import { faSignOutAlt } from "@fortawesome/free-solid-svg-icons/faSignOutAlt";
+import { faChartBar } from "@fortawesome/free-solid-svg-icons/faChartBar";
 import { faWindowMaximize } from "@fortawesome/free-regular-svg-icons";
-import { faGithub } from "@fortawesome/free-brands-svg-icons";
+import { faGithub } from "@fortawesome/free-brands-svg-icons/faGithub";
 import ShortcutsModal from "./ShortcutsModal";
 import SlackIcon from "./SlackIcon";
 

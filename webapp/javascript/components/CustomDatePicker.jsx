@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import moment from "moment";
+// we import moment/src/moment instead of moment because we don't want to load locales
+import moment from "moment/src/moment";
 import { useSelector } from "react-redux";
 import DatePicker from "react-datepicker";
 import { readableRange, formatAsOBject } from "../util/formatDate";
