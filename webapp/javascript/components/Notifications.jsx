@@ -7,7 +7,7 @@ import Modal from "react-modal";
 import clsx from "clsx";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faExclamationTriangle } from "@fortawesome/free-solid-svg-icons/faExclamationTriangle";
 
 function Notifications(props) {
   const { notificationText } = window;

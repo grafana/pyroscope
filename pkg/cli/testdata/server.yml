@@ -1,3 +1,4 @@
+log-level: error
 metric-export-rules:
   my_metric_name:
     expr: app.name{foo=~"bar"}

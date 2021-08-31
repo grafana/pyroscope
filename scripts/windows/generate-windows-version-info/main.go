@@ -31,7 +31,7 @@ func main() {
 func generateVersionInfo(version, outputPath, iconPath string) error {
 	version = strings.Trim(version, `"`)
 	v, err := semver.Parse(strings.TrimPrefix(version, "v"))
-  
+
 	if version == "" {
 		return errors.New("version is required")
 	}

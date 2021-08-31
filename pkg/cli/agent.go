@@ -51,9 +51,9 @@ func (svc *agentService) Stop(_ service.Service) error {
 	return nil
 }
 
-// loadAgentConfig is a hack for ff parser, which can't parse maps, structs,
-// and slices. The function to be called after the parser finishes just to
-// fill missing configuration elements.
+// loadAgentConfig is a hack for viper parser, which can't merge maps:
+// https://github.com/spf13/viper#accessing-nested-keys.
+// TODO(kolesnikovae): find a way to get rid of the function.
 func loadAgentConfig(c *config.Agent) error {
 	b, err := ioutil.ReadFile(c.Config)
 	switch {

@@ -3,14 +3,11 @@ package cli
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-	"gopkg.in/yaml.v2"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
@@ -55,7 +52,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	// TODO: make registerer configurable: let users to decide how their metrics are exported.
 	observer, err := exporter.NewExporter(svc.config.MetricExportRules, prometheus.DefaultRegisterer)
 	if err != nil {
-		return nil, fmt.Errorf("new metric exprter: %w", err)
+		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
 	ingester := storage.NewIngestionObserver(svc.storage, observer)
@@ -142,21 +139,4 @@ func (svc *serverService) stop() {
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
-}
-
-func loadServerConfig(c *config.Server) error {
-	b, err := ioutil.ReadFile(c.Config)
-	switch {
-	case err == nil:
-	case os.IsNotExist(err):
-		return nil
-	default:
-		return err
-	}
-	var s config.Server
-	if err = yaml.Unmarshal(b, &s); err != nil {
-		return err
-	}
-	c.MetricExportRules = s.MetricExportRules
-	return nil
 }

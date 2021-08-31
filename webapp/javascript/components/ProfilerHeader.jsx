@@ -1,14 +1,12 @@
 import React from "react";
 import clsx from "clsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faAlignLeft,
-  faBars,
-  faColumns,
-  faIcicles,
-  faListUl,
-  faTable,
-} from "@fortawesome/free-solid-svg-icons";
+import { faAlignLeft } from "@fortawesome/free-solid-svg-icons/faAlignLeft";
+import { faBars } from "@fortawesome/free-solid-svg-icons/faBars";
+import { faColumns } from "@fortawesome/free-solid-svg-icons/faColumns";
+import { faIcicles } from "@fortawesome/free-solid-svg-icons/faIcicles";
+import { faListUl } from "@fortawesome/free-solid-svg-icons/faListUl";
+import { faTable } from "@fortawesome/free-solid-svg-icons/faTable";
 import { FitModes } from "../util/fitMode"
 
 export default function ProfilerHeader({

@@ -20,10 +20,6 @@ import (
 )
 
 func Cli(dbCfg *config.DbManager, srvCfg *config.Server, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("please provide a command")
-	}
-
 	switch args[0] {
 	case "copy":
 		// TODO: this is meh, I think config.Config should be separate from storage config

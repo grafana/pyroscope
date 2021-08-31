@@ -2,7 +2,7 @@ import React from "react";
 import { connect } from "react-redux";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload } from "@fortawesome/free-solid-svg-icons";
+import { faDownload } from "@fortawesome/free-solid-svg-icons/faDownload";
 import { version } from "../../../package.json";
 
 const START_YEAR = 2020;
