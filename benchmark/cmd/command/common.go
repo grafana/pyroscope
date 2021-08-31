@@ -7,10 +7,9 @@ import (
 	"reflect"
 	"strings"
 
-	goexec "os/exec"
-
 	"github.com/mitchellh/mapstructure"
 	"github.com/pyroscope-io/pyroscope/benchmark/config"
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -18,42 +17,24 @@ import (
 )
 
 type cmdRunFn func(cmd *cobra.Command, args []string) error
-type cmdStartFn func(cmd *cobra.Command, args []string, logger config.LoggerFunc) error
 
-func createCmdRunFn(cfg interface{}, vpr *viper.Viper, requiresArgs bool, fn cmdStartFn) cmdRunFn {
+func createCmdRunFn(cfg interface{}, vpr *viper.Viper, fn cmdRunFn) cmdRunFn {
 	return func(cmd *cobra.Command, args []string) error {
 		var err error
-		if err = bindFlags(cfg, cmd, vpr); err != nil {
-			return fmt.Errorf("invalid configuration: %w", err)
+		if err = vpr.BindPFlags(cmd.Flags()); err != nil {
+			return err
 		}
-
-		var logger func(s string)
-		if l, ok := cfg.(config.LoggerConfiger); ok {
-			logger = l.InitializeLogging()
-		}
-
-		if c, ok := cfg.(config.FileConfiger); ok {
-			if err = loadConfigFile(c.ConfigFilePath(), cmd, vpr, cfg); err != nil {
+		if c, ok := cfg.(config.File); ok {
+			if err = loadConfigFile(c.Path(), cmd, vpr, cfg); err != nil {
 				return fmt.Errorf("loading configuration file: %w", err)
 			}
 		}
-
-		if (requiresArgs && len(args) == 0) || (len(args) > 0 && args[0] == "help") {
-			_ = cmd.Help()
-			return nil
+		if err = cli.Unmarshal(vpr, cfg); err != nil {
+			return err
 		}
-
-		if err = fn(cmd, args, logger); err != nil {
+		if err = fn(cmd, args); err != nil {
 			cmd.SilenceUsage = true
 		}
-
-		// Normally, if the program ran, the call should return ExitError and
-		// the exit code must be preserved. Otherwise, the error originates from
-		// pyroscope and will be printed.
-		if e, ok := err.(*goexec.ExitError); ok {
-			os.Exit(e.ExitCode())
-		}
-
 		return err
 	}
 }

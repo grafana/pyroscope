@@ -15,3 +15,6 @@ type LoadGen struct {
 
 	WaitUntilAvailable bool `def:"true" desc:"wait until endpoint is available"`
 }
+
+// File can be read from file system.
+type File interface{ Path() string }
