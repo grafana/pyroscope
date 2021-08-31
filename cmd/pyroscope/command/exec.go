@@ -1,10 +1,14 @@
 package command
 
 import (
+	"os"
+	goexec "os/exec"
+
+	"github.com/spf13/cobra"
+
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
-	"github.com/spf13/cobra"
 )
 
 func newExecCmd(cfg *config.Exec) *cobra.Command {
@@ -12,8 +16,16 @@ func newExecCmd(cfg *config.Exec) *cobra.Command {
 	execCmd := &cobra.Command{
 		Use:   "exec [flags] <args>",
 		Short: "Start a new process from arguments and profile it",
-		RunE: createCmdRunFn(cfg, vpr, true, func(cmd *cobra.Command, args []string, logger config.LoggerFunc) error {
-			return exec.Cli(cfg, args)
+		Args:  cobra.MinimumNArgs(1),
+		RunE: createCmdRunFn(cfg, vpr, func(cmd *cobra.Command, args []string) error {
+			err := exec.Cli(cfg, args)
+			// Normally, if the program ran, the call should return ExitError and
+			// the exit code must be preserved. Otherwise, the error originates from
+			// pyroscope and will be printed.
+			if e, ok := err.(*goexec.ExitError); ok {
+				os.Exit(e.ExitCode())
+			}
+			return err
 		}),
 	}
 

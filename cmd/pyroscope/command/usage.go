@@ -43,7 +43,7 @@ func DefaultUsageFunc(sf *pflag.FlagSet, c *cobra.Command) string {
 		fmt.Fprintf(&b, "%s\n\n", c.Long)
 	}
 
-	if c.HasSubCommands() {
+	if hasSubCommands(c) {
 		headerClr.Fprintf(&b, "SUBCOMMANDS\n")
 		tw := tabwriter.NewWriter(&b, 0, 2, 2, ' ', 0)
 		for _, subcommand := range c.Commands() {
@@ -84,11 +84,17 @@ func DefaultUsageFunc(sf *pflag.FlagSet, c *cobra.Command) string {
 		// fmt.Fprintf(&b, "\n")
 	}
 
-	if c.HasSubCommands() {
+	if hasSubCommands(c) {
 		b.WriteString("Run 'pyroscope SUBCOMMAND --help' for more information on a subcommand.\n")
 	}
 
 	return strings.ReplaceAll(b.String(), "@new-line@", "\n")
+}
+
+// hasSubCommands works as cobra HasSubCommands but reports false
+// when the only subcommand is help.
+func hasSubCommands(cmd *cobra.Command) bool {
+	return cmd.HasSubCommands() && !(len(cmd.Commands()) == 1 && cmd.Commands()[0].Name() == "help")
 }
 
 func countFlags(fs *pflag.FlagSet) (n int) {

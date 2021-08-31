@@ -16,6 +16,21 @@ type Config struct {
 	DbManager DbManager `skip:"true" mapstructure:",squash"`
 }
 
+// File can be read from file system.
+type File interface{ Path() string }
+
+func (cfg Agent) Path() string {
+	return cfg.Config
+}
+
+func (cfg Server) Path() string {
+	return cfg.Config
+}
+
+func (cfg CombinedDbManager) Path() string {
+	return cfg.Server.Config
+}
+
 type Agent struct {
 	Config string `def:"<defaultAgentConfigPath>" desc:"location of config file" mapstructure:"config"`
 
@@ -28,25 +43,23 @@ type Agent struct {
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
 	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
 
-	// Structs and slices are not parsed with ffcli package,
-	// instead `loadAgentConfig` function should be used.
-	Targets []Target `yaml:"targets" desc:"list of targets to be profiled" mapstructure:"targets"`
+	Targets []Target `yaml:"targets" desc:"list of targets to be profiled" mapstructure:"-"`
 
 	// Note that in YAML the key is 'tags' but the flag is 'tag'.
-	Tags map[string]string `yaml:"tags" name:"tag" def:"" desc:"tag key value pairs" mapstructure:"tags"`
+	Tags map[string]string `yaml:"tags" name:"tag" def:"" desc:"tag key value pairs" mapstructure:"-"`
 }
 
 type Target struct {
-	ServiceName string `yaml:"service-name" desc:"name of the system service to be profiled"`
+	ServiceName string `yaml:"service-name" mapstructure:"service-name" desc:"name of the system service to be profiled"`
 
-	SpyName            string `yaml:"spy-name" def:"" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>"`
-	ApplicationName    string `yaml:"application-name" def:"" desc:"application name used when uploading profiling data"`
-	SampleRate         uint   `yaml:"sample-rate" def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
-	DetectSubprocesses bool   `yaml:"detect-subprocesses" def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
+	SpyName            string `yaml:"spy-name" mapstructure:"spy-name" def:"" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>"`
+	ApplicationName    string `yaml:"application-name" mapstructure:"application-name" def:"" desc:"application name used when uploading profiling data"`
+	SampleRate         uint   `yaml:"sample-rate" mapstructure:"sample-rate" def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second"`
+	DetectSubprocesses bool   `yaml:"detect-subprocesses" mapstructure:"detect-subprocesses" def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process"`
 
 	// Spy-specific settings.
-	PyspyBlocking bool `yaml:"pyspy-blocking" def:"false" desc:"enables blocking mode for pyspy"`
-	RbspyBlocking bool `yaml:"rbspy-blocking" def:"false" desc:"enables blocking mode for rbspy"`
+	PyspyBlocking bool `yaml:"pyspy-blocking" mapstructure:"pyspy-blocking" def:"false" desc:"enables blocking mode for pyspy"`
+	RbspyBlocking bool `yaml:"rbspy-blocking" mapstructure:"rbspy-blocking" def:"false" desc:"enables blocking mode for rbspy"`
 
 	// Tags are inherited from the agent level. At some point we may need
 	// specifying tags at the target level (override).

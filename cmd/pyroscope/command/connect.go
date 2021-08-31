@@ -1,10 +1,11 @@
 package command
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
-	"github.com/spf13/cobra"
 )
 
 func newConnectCmd(cfg *config.Exec) *cobra.Command {
@@ -12,11 +13,13 @@ func newConnectCmd(cfg *config.Exec) *cobra.Command {
 	connectCmd := &cobra.Command{
 		Use:   "connect [flags]",
 		Short: "Connect to an existing process and profile it",
-		RunE: createCmdRunFn(cfg, vpr, true, func(cmd *cobra.Command, args []string, logger config.LoggerFunc) error {
+		Args:  cobra.NoArgs,
+		RunE: createCmdRunFn(cfg, vpr, func(cmd *cobra.Command, args []string) error {
 			return exec.Cli(cfg, args)
 		}),
 	}
 
 	cli.PopulateFlagSet(cfg, connectCmd.Flags(), vpr, cli.WithSkip("group-name", "user-name", "no-root-drop"))
+	_ = connectCmd.MarkFlagRequired("pid")
 	return connectCmd
 }
