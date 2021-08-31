@@ -132,7 +132,7 @@ server: ## Start the Pyroscope Server
 
 .PHONY: install-web-dependencies
 install-web-dependencies: ## Install the web dependencies
-	yarn install
+	yarn install --ignore-engines
 
 .PHONY: assets
 assets: install-web-dependencies ## Configure the assets
