@@ -32,12 +32,12 @@ func newRootCmd(cfg *config.LoadGen) *cobra.Command {
 
 // Initialize adds all child commands to the root command and sets flags appropriately
 func Initialize() error {
-	var cfg config.LoadGen
+	var cfg config.Config
 
-	rootCmd := newRootCmd(&cfg)
+	rootCmd := newRootCmd(&cfg.LoadGen)
 	rootCmd.SilenceErrors = true
 	rootCmd.AddCommand(
-		newLoadGen(&cfg),
+		newLoadGen(&cfg.LoadGen),
 	)
 
 	logrus.SetReportCaller(true)
