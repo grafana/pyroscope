@@ -1,3 +1,12 @@
+## <small>0.0.39 (2021-09-01)</small>
+
+* Add tests for exec command ([70164d6](https://github.com/pyroscope-io/pyroscope/commit/70164d6))
+* Fix argument processing ([50351b1](https://github.com/pyroscope-io/pyroscope/commit/50351b1))
+* reduces bundle size (#362) ([90cfee2](https://github.com/pyroscope-io/pyroscope/commit/90cfee2)), closes [#362](https://github.com/pyroscope-io/pyroscope/issues/362)
+* Refactor CLI (#363) ([8d46308](https://github.com/pyroscope-io/pyroscope/commit/8d46308)), closes [#363](https://github.com/pyroscope-io/pyroscope/issues/363)
+
+
+
 ## <small>0.0.38 (2021-08-31)</small>
 
 * "native" integrations for ruby, python and php (#274) ([9df0684](https://github.com/pyroscope-io/pyroscope/commit/9df0684)), closes [#274](https://github.com/pyroscope-io/pyroscope/issues/274) [#352](https://github.com/pyroscope-io/pyroscope/issues/352)

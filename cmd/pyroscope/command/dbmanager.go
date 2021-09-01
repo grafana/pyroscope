@@ -15,7 +15,9 @@ func newDbManagerCmd(cfg *config.CombinedDbManager) *cobra.Command {
 		Short:  "Manage database",
 		Args:   cobra.ExactArgs(1), // TODO: should be implemented as subcommands.
 		Hidden: true,
-		RunE: createCmdRunFn(cfg, vpr, func(cmd *cobra.Command, args []string) error {
+
+		DisableFlagParsing: true,
+		RunE: createCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 			return dbmanager.Cli(cfg.DbManager, cfg.Server, args)
 		}),
 	}
