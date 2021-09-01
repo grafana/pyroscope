@@ -74,7 +74,7 @@ func printUsageMessage(cmd *cobra.Command) error {
 
 func printHelpMessage(cmd *cobra.Command, _ []string) {
 	cmd.Println(gradientBanner())
-	cmd.Println(DefaultUsageFunc(cmd.Flags(), cmd))
+	cmd.Println(cli.DefaultUsageFunc(cmd.Flags(), cmd))
 }
 
 func addHelpSubcommand(cmd *cobra.Command) {

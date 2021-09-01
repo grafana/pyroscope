@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pyroscope-io/pyroscope/benchmark/config"
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -18,13 +19,13 @@ func newRootCmd(cfg *config.LoadGen) *cobra.Command {
 
 	rootCmd.SetUsageFunc(func(cmd *cobra.Command) error {
 		fmt.Println(gradientBanner())
-		fmt.Println(DefaultUsageFunc(cmd.Flags(), cmd))
+		fmt.Println(cli.DefaultUsageFunc(cmd.Flags(), cmd))
 		return nil
 	})
 
 	rootCmd.SetHelpFunc(func(cmd *cobra.Command, a []string) {
 		fmt.Println(gradientBanner())
-		fmt.Println(DefaultUsageFunc(cmd.Flags(), cmd))
+		fmt.Println(cli.DefaultUsageFunc(cmd.Flags(), cmd))
 	})
 
 	return rootCmd
