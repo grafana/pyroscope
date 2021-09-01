@@ -38,7 +38,7 @@ func TestExecCommand(t *testing.T) {
 		},
 		{
 			description:  "delimiter",
-			inputArgs:    []string{optionsEnd},
+			inputArgs:    []string{cli.OptionsEnd},
 			expectedArgs: []string{},
 		},
 		{
@@ -53,7 +53,7 @@ func TestExecCommand(t *testing.T) {
 		},
 		{
 			description:  "exec_separated",
-			inputArgs:    execArgs("-spy-name", "debugspy", optionsEnd),
+			inputArgs:    execArgs("-spy-name", "debugspy", cli.OptionsEnd),
 			expectedArgs: appArgs,
 		},
 		{
@@ -79,7 +79,7 @@ func TestExecCommand(t *testing.T) {
 			cmd := &cobra.Command{
 				SilenceErrors:      true,
 				DisableFlagParsing: true,
-				RunE: createCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+				RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 					cmdArgs = args
 					return nil
 				}),

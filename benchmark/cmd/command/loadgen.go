@@ -12,7 +12,7 @@ func newLoadGen(cfg *config.LoadGen) *cobra.Command {
 	loadgenCmd := &cobra.Command{
 		Use:   "loadgen [flags]",
 		Short: "Generates load",
-		RunE: createCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 			return loadgen.Cli(cfg)
 		}),
 	}

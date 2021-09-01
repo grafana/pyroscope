@@ -19,7 +19,7 @@ func newExecCmd(cfg *config.Exec) *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 
 		DisableFlagParsing: true,
-		RunE: createCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 			err := exec.Cli(cfg, args)
 			// Normally, if the program ran, the call should return ExitError and
 			// the exit code must be preserved. Otherwise, the error originates from

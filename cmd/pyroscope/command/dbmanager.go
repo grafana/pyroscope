@@ -17,7 +17,7 @@ func newDbManagerCmd(cfg *config.CombinedDbManager) *cobra.Command {
 		Hidden: true,
 
 		DisableFlagParsing: true,
-		RunE: createCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 			return dbmanager.Cli(cfg.DbManager, cfg.Server, args)
 		}),
 	}
