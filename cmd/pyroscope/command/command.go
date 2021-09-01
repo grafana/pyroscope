@@ -5,13 +5,17 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
+
+// https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html#tag_12_02
+const optionsEnd = "--"
 
 type cmdRunFn func(cmd *cobra.Command, args []string) error
 
@@ -29,11 +33,67 @@ func createCmdRunFn(cfg interface{}, vpr *viper.Viper, fn cmdRunFn) cmdRunFn {
 		if err = cli.Unmarshal(vpr, cfg); err != nil {
 			return err
 		}
+
+		var xargs []string
+		x := firstArgumentIndex(cmd.Flags(), prependDash(args))
+		if x >= 0 {
+			xargs = args[:x]
+			args = args[x:]
+		} else {
+			xargs = args
+			args = nil
+		}
+		if err = cmd.Flags().Parse(prependDash(xargs)); err != nil {
+			return err
+		}
+		if slices.StringContains(xargs, "--help") {
+			_ = cmd.Help()
+			return nil
+		}
+
 		if err = fn(cmd, args); err != nil {
 			cmd.SilenceUsage = true
 		}
 		return err
 	}
+}
+
+func prependDash(args []string) []string {
+	for i, arg := range args {
+		if len(arg) > 2 && strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
+			args[i] = "-" + arg
+		}
+	}
+	return args
+}
+
+// firstArgumentIndex returns index of the first encountered argument.
+// If args does not contain arguments, or contains undefined flags,
+// the call returns -1.
+func firstArgumentIndex(flags *pflag.FlagSet, args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		default:
+			return i
+		case a == optionsEnd:
+			return i + 1
+		case strings.HasPrefix(a, optionsEnd) && len(a) > 2:
+			x := strings.SplitN(a[2:], "=", 2)
+			f := flags.Lookup(x[0])
+			if f == nil {
+				return -1
+			}
+			if f.Value.Type() == "bool" {
+				continue
+			}
+			if len(x) == 1 {
+				i++
+			}
+		}
+	}
+	// Should have returned earlier.
+	return -1
 }
 
 func newViper() *viper.Viper {

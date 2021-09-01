@@ -2,9 +2,7 @@ package command
 
 import (
 	"fmt"
-	"os"
 	"runtime"
-	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -47,14 +45,6 @@ func Execute() error {
 		},
 	})
 
-	args := os.Args[1:]
-	for i, arg := range args {
-		if len(arg) > 2 && strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
-			args[i] = fmt.Sprintf("-%s", arg)
-		}
-	}
-
-	rootCmd.SetArgs(args)
 	return rootCmd.Execute()
 }
 
