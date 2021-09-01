@@ -14,6 +14,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
+// https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html#tag_12_02
+const optionsEnd = "--"
+
 type cmdRunFn func(cmd *cobra.Command, args []string) error
 
 func createCmdRunFn(cfg interface{}, vpr *viper.Viper, fn cmdRunFn) cmdRunFn {
@@ -64,34 +67,31 @@ func prependDash(args []string) []string {
 	return args
 }
 
+// firstArgumentIndex returns index of the first encountered argument.
+// If args does not contain arguments, or contains undefined flags,
+// the call returns -1.
 func firstArgumentIndex(flags *pflag.FlagSet, args []string) int {
 	for i := 0; i < len(args); i++ {
 		a := args[i]
-		var x []string
-		var f *pflag.Flag
 		switch {
 		default:
 			return i
-		case a == "--":
+		case a == optionsEnd:
 			return i + 1
-		case strings.HasPrefix(a, "--") && len(a) > 2:
-			x = strings.SplitN(a[2:], "=", 2)
-			f = flags.Lookup(x[0])
-		case strings.HasPrefix(a, "-") && len(a) > 1:
-			x = strings.SplitN(a[1:], "=", 1)
-			f = flags.ShorthandLookup(x[0])
-		}
-		if f == nil {
-			return -1
-		}
-		if f.Value.Type() == "bool" {
-			continue
-		}
-		if len(x) == 1 {
-			i++
+		case strings.HasPrefix(a, optionsEnd) && len(a) > 2:
+			x := strings.SplitN(a[2:], "=", 2)
+			f := flags.Lookup(x[0])
+			if f == nil {
+				return -1
+			}
+			if f.Value.Type() == "bool" {
+				continue
+			}
+			if len(x) == 1 {
+				i++
+			}
 		}
 	}
-
 	// Should have returned earlier.
 	return -1
 }
