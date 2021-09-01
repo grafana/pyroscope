@@ -6,5 +6,5 @@ import (
 )
 
 func newViper() *viper.Viper {
-	return cli.NewViper("PYROBENCH")
+	return cli.NewViper("PYROSCOPE")
 }
