@@ -1,9 +1,9 @@
 package config
 
 type Config struct {
-	LoadGen   LoadGen   `skip:"true" mapstructure:",squash"`
-	PromQuery PromQuery `skip:"true" mapstructure:",squash"`
+	LoadGen LoadGen `skip:"true" mapstructure:",squash"`
 }
+
 type LoadGen struct {
 	LogLevel string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 

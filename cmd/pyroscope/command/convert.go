@@ -19,9 +19,10 @@ func newConvertCmd(cfg *config.Convert) *cobra.Command {
 	convertCmd := &cobra.Command{
 		Use:    "convert [flags]",
 		Short:  "Convert between different profiling formats",
-		Args:   cobra.NoArgs,
 		Hidden: true,
-		RunE: createCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
+
+		DisableFlagParsing: true,
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
 			return parse(os.Stdin, cfg.Format)
 		}),
 	}

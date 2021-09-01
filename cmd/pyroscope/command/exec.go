@@ -17,7 +17,9 @@ func newExecCmd(cfg *config.Exec) *cobra.Command {
 		Use:   "exec [flags] <args>",
 		Short: "Start a new process from arguments and profile it",
 		Args:  cobra.MinimumNArgs(1),
-		RunE: createCmdRunFn(cfg, vpr, func(cmd *cobra.Command, args []string) error {
+
+		DisableFlagParsing: true,
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 			err := exec.Cli(cfg, args)
 			// Normally, if the program ran, the call should return ExitError and
 			// the exit code must be preserved. Otherwise, the error originates from
