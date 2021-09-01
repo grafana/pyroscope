@@ -5,12 +5,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
 type cmdRunFn func(cmd *cobra.Command, args []string) error
@@ -29,11 +30,70 @@ func createCmdRunFn(cfg interface{}, vpr *viper.Viper, fn cmdRunFn) cmdRunFn {
 		if err = cli.Unmarshal(vpr, cfg); err != nil {
 			return err
 		}
+
+		var xargs []string
+		x := firstArgumentIndex(cmd.Flags(), prependDash(args))
+		if x >= 0 {
+			xargs = args[:x]
+			args = args[x:]
+		} else {
+			xargs = args
+			args = nil
+		}
+		if err = cmd.Flags().Parse(prependDash(xargs)); err != nil {
+			return err
+		}
+		if slices.StringContains(xargs, "--help") {
+			_ = cmd.Help()
+			return nil
+		}
+
 		if err = fn(cmd, args); err != nil {
 			cmd.SilenceUsage = true
 		}
 		return err
 	}
+}
+
+func prependDash(args []string) []string {
+	for i, arg := range args {
+		if len(arg) > 2 && strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
+			args[i] = "-" + arg
+		}
+	}
+	return args
+}
+
+func firstArgumentIndex(flags *pflag.FlagSet, args []string) int {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		var x []string
+		var f *pflag.Flag
+		switch {
+		default:
+			return i
+		case a == "--":
+			return i + 1
+		case strings.HasPrefix(a, "--") && len(a) > 2:
+			x = strings.SplitN(a[2:], "=", 2)
+			f = flags.Lookup(x[0])
+		case strings.HasPrefix(a, "-") && len(a) > 1:
+			x = strings.SplitN(a[1:], "=", 1)
+			f = flags.ShorthandLookup(x[0])
+		}
+		if f == nil {
+			return -1
+		}
+		if f.Value.Type() == "bool" {
+			continue
+		}
+		if len(x) == 1 {
+			i++
+		}
+	}
+
+	// Should have returned earlier.
+	return -1
 }
 
 func newViper() *viper.Viper {
