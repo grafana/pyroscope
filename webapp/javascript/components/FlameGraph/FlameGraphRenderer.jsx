@@ -16,6 +16,7 @@ import {
   parseFlamebearerFormat,
 } from "../../util/flamebearer";
 import ExportData from "../ExportData";
+import { isAbortError } from "../../util/abort";
 
 import InstructionText from "./InstructionText";
 
@@ -45,6 +46,7 @@ class FlameGraphRenderer extends React.Component {
       sortByDirection: "desc",
       view: "both",
       viewDiff: props.viewType === "diff" ? "diff" : undefined,
+      fitMode: props.fitMode ? props.fitMode : "HEAD",
       flamebearer: null,
     };
   }
@@ -96,6 +98,16 @@ class FlameGraphRenderer extends React.Component {
       }
     }
   }
+
+  componentWillUnmount() {
+    this.abortCurrentJSONController();
+  }
+
+  updateFitMode = (newFitMode) => {
+    this.setState({
+      fitMode: newFitMode,
+    });
+  };
 
   updateResetStyle = () => {
     // const emptyQuery = this.query === "";
@@ -163,7 +175,14 @@ class FlameGraphRenderer extends React.Component {
     return parseFlamebearerFormat(format || this.state.format);
   }
 
+  abortCurrentJSONController() {
+    if (this.currentJSONController) {
+      this.currentJSONController.abort();
+    }
+  }
+
   fetchFlameBearerData(url) {
+    this.abortCurrentJSONController();
     if (this.currentJSONController) {
       this.currentJSONController.abort();
     }
@@ -178,6 +197,12 @@ class FlameGraphRenderer extends React.Component {
         this.setState({
           flamebearer,
         });
+      })
+      .catch((e) => {
+        // AbortErrors are fine
+        if (!isAbortError(e)) {
+          throw e;
+        }
       })
       .finally();
   }
@@ -196,12 +221,14 @@ class FlameGraphRenderer extends React.Component {
         })}
       >
         <ProfilerTable
+          data-testid="table-view"
           flamebearer={this.state.flamebearer}
           sortByDirection={this.state.sortByDirection}
           sortBy={this.state.sortBy}
           updateSortBy={this.updateSortBy}
           view={this.state.view}
           viewDiff={this.state.viewDiff}
+          fitMode={this.state.fitMode}
         />
       </div>
     );
@@ -215,6 +242,8 @@ class FlameGraphRenderer extends React.Component {
           view={this.state.view}
           ExportData={ExportData}
           label={this.props.query}
+          fitMode={this.state.fitMode}
+          viewType={this.props.viewType}
         />
       ) : null;
 
@@ -242,6 +271,8 @@ class FlameGraphRenderer extends React.Component {
             updateView={this.updateView}
             updateViewDiff={this.updateViewDiff}
             resetStyle={this.state.resetStyle}
+            updateFitMode={this.updateFitMode}
+            fitMode={this.state.fitMode}
           />
           {this.props.viewType === "double" ? (
             <>

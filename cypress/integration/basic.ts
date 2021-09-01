@@ -20,10 +20,8 @@ describe('basic test', () => {
 
   it('updates flamegraph on app name change', () => {
     cy.visit('/')
-    waitInDevMode(100);
 
     cy.findByTestId('app-name-selector').select('pyroscope.server.cpu');
-    waitInDevMode(100);
     cy.findByTestId('flamegraph-canvas').invoke('attr', 'data-appname').should('eq', 'pyroscope.server.cpu{}');
   });
 
@@ -31,7 +29,7 @@ describe('basic test', () => {
     cy.visit('/')
     cy.findByTestId('btn-table-view').click();
     cy.findByTestId('table-view').should('be.visible');
-    cy.findByTestId('flamegraph-view').should('not.be.visible');
+    cy.findByTestId('flamegraph-view').should('not.exist');
         
     cy.findByTestId('btn-both-view').click();
     cy.findByTestId('table-view').should('be.visible');

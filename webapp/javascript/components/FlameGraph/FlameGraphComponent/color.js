@@ -30,7 +30,7 @@ const colors = [
   Color.rgb(128, 110, 183),
 ];
 
-export const defaultColor = colors[0];
+export const defaultColor = Color.rgb(148, 142, 142);
 export const diffColorRed = Color.rgb(200, 0, 0);
 export const diffColorGreen = Color.rgb(0, 170, 0);
 
@@ -53,5 +53,3 @@ export function colorBasedOnDiff(diff, left, a) {
 export function colorGreyscale(v, a) {
   return Color.rgb(v, v, v).alpha(a);
 }
-
-export default () => {};

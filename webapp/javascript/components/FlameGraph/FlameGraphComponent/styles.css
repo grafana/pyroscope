@@ -1,7 +1,12 @@
-.flamegraph-pane {
+.pane-wrapper .flamegraph-pane, .flamegraph-pane {
   flex: 1;
   width: 100%;
   position: relative;
+  margin: 0 6px;
+}
+
+.flamegraph-pane.vertical-orientation {
+  padding: 10px;
 }
 
 .flamegraph-header {
@@ -71,6 +76,8 @@
   padding: 3px 5px;
   color: #333;
   font-size: 12px;
+  opacity: 0;
+  z-index: 1;
 }
 
 .flamegraph-tooltip-name {

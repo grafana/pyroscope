@@ -34,10 +34,6 @@ const durations = [
 // this is a class and not a function because we can save some time by
 //   precalculating divider and suffix and not doing it on each iteration
 export class DurationFormatter {
-  divider;
-
-  suffix;
-
   constructor(maxDur) {
     this.divider = 1;
     this.suffix = "second";
@@ -54,7 +50,9 @@ export class DurationFormatter {
 
   format(samples, sampleRate) {
     let number = samples / sampleRate / this.divider;
-    if (number < 0.01) {
+    if (number >= 0 && number < 0.01) {
+      number = "< 0.01";
+    } else if (number <= 0 && number > -0.01) {
       number = "< 0.01";
     } else {
       number = number.toFixed(2);
@@ -72,10 +70,6 @@ const bytes = [
 ];
 
 export class BytesFormatter {
-  divider;
-
-  suffix;
-
   constructor(maxBytes) {
     this.divider = 1;
     this.suffix = "bytes";
@@ -92,7 +86,9 @@ export class BytesFormatter {
 
   format(samples, sampleRate) {
     let number = samples / this.divider;
-    if (number < 0.01) {
+    if (number >= 0 && number < 0.01) {
+      number = "< 0.01";
+    } else if (number <= 0 && number > -0.01) {
       number = "< 0.01";
     } else {
       number = number.toFixed(2);
@@ -110,10 +106,6 @@ const objects = [
 ];
 
 export class ObjectsFormatter {
-  divider;
-
-  suffix;
-
   constructor(maxObjects) {
     this.divider = 1;
     this.suffix = "";
@@ -130,7 +122,9 @@ export class ObjectsFormatter {
 
   format(samples, sampleRate) {
     let number = samples / this.divider;
-    if (number > 0.01) {
+    if (number >= 0 && number < 0.01) {
+      number = "< 0.01";
+    } else if (number <= 0 && number > -0.01) {
       number = "< 0.01";
     } else {
       number = number.toFixed(2);
@@ -142,11 +136,13 @@ export class ObjectsFormatter {
 export function getPackageNameFromStackTrace(spyName, stackTrace) {
   // TODO: actually make sure these make sense and add tests
   const regexpLookup = {
+    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    dotnetspy: /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/,
+    ebpfspy: /^(?<packageName>.+)$/,
+    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    phpspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
     pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
     rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
-    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-    ebpfspy: /^(?<packageName>.+)$/,
-    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
   };
 
   if (stackTrace.length === 0) {
