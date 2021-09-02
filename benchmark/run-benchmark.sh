@@ -3,19 +3,20 @@
 set -euo pipefail
 
 export DOCKER_BUILDKIT=1
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 
 function composeDown() {
-  ./with-env.sh docker-compose down
+  "$SCRIPT_DIR/with-env.sh" docker-compose down
 }
 
-./with-env.sh docker-compose build
+"$SCRIPT_DIR/with-env.sh" docker-compose build
 
 # Start the docker containers
-./with-env.sh docker-compose up -d --force-recreate --remove-orphans
+"$SCRIPT_DIR/with-env.sh"  docker-compose up -d --force-recreate --remove-orphans
 # cleanup
 trap \
-  "./with-env.sh docker-compose down" SIGINT SIGTERM ERR EXIT
+  "$SCRIPT_DIR/with-env.sh docker-compose down" SIGINT SIGTERM ERR EXIT
 
 go run cmd/main.go loadgen --server-address="http://localhost:4040" &
 
