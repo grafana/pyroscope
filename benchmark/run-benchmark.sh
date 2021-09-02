@@ -26,6 +26,6 @@ start=$(date +%s)
 sleep 5m
 
 # TODO(eh-am): use docker-compose exec
-docker exec benchmark_client_1 ./benchmark-main promquery
+docker exec benchmark_client_1 ./benchmark-main promquery \
   'rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", code="200"}[5m])' \
   --prometheus-address=http://prometheus:9090
