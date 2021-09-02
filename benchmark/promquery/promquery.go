@@ -2,11 +2,11 @@ package promquery
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 	"github.com/pyroscope-io/pyroscope/benchmark/config"
 )
 
@@ -20,23 +20,18 @@ func New(cfg *config.PromQuery) *promQuery {
 	}
 }
 
-func (pq *promQuery) Instant(query string, t time.Time) (error, string, string) {
+func (pq *promQuery) Instant(query string, t time.Time) (model.Value, v1.Warnings, error) {
 	client, err := api.NewClient(api.Config{
 		Address: pq.Config.PrometheusAddress,
 	})
 
 	if err != nil {
-		return err, "", ""
+		return nil, nil, err
 	}
 
 	v1api := v1.NewAPI(client)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	result, warnings, err := v1api.Query(ctx, query, t)
-	if err != nil {
-		return err, "", ""
-	}
-
-	return nil, fmt.Sprintf("Warnings: %v\n", warnings), fmt.Sprintf("Result:\n%v\n", result)
+	return v1api.Query(ctx, query, t)
 }

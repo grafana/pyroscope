@@ -23,9 +23,9 @@ go run cmd/main.go loadgen --server-address="http://localhost:4040" &
 
 
 start=$(date +%s)
-sleep 5m
+#sleep 5m
+sleep 30s
 
+#sleep Infinity
 # TODO(eh-am): use docker-compose exec
-docker exec benchmark_client_1 ./benchmark-main promquery \
-  'rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", code="200"}[5m])' \
-  --prometheus-address=http://prometheus:9090
+docker exec benchmark_client_1 ./benchmark-main ci-report > report.md
