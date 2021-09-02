@@ -11,7 +11,7 @@ function composeDown() {
   ./with-env.sh docker-compose down
 }
 
-#./with-env.sh docker-compose build
+./with-env.sh docker-compose build client
 
 # Start the docker containers
 ./with-env.sh docker-compose up -d --force-recreate --remove-orphans
