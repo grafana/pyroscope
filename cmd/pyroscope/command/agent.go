@@ -14,7 +14,7 @@ func newAgentCmd(cfg *config.Agent) *cobra.Command {
 		Short: "Start pyroscope agent",
 
 		DisableFlagParsing: true,
-		RunE: createCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
 			return cli.StartAgent(cfg)
 		}),
 	}

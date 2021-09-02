@@ -22,7 +22,7 @@ func newConvertCmd(cfg *config.Convert) *cobra.Command {
 		Hidden: true,
 
 		DisableFlagParsing: true,
-		RunE: createCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
 			return parse(os.Stdin, cfg.Format)
 		}),
 	}
