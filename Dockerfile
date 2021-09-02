@@ -5,7 +5,7 @@
 # | |  | |_| \__ \ |_
 # |_|   \__,_|___/\__|
 
-FROM alpine:3.12 as rust-builder
+FROM alpine:3.13 as rust-builder
 
 RUN apk update &&\
     apk add --no-cache git gcc g++ make build-base openssl-dev musl musl-dev curl
@@ -47,7 +47,7 @@ RUN make build-phpspy-dependencies
 # | (_| \__ \__ \  __/ |_\__ \
 #  \__,_|___/___/\___|\__|___/
 
-FROM node:14.15.1-alpine3.12 as js-builder
+FROM node:14.15.5-alpine3.13 as js-builder
 
 RUN apk add --no-cache make
 
@@ -70,7 +70,7 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #   __/ |                     __/ |
 #  |___/                     |___/
 
-FROM golang:1.16.3-alpine3.12 as go-builder
+FROM golang:1.17.0-alpine3.13 as go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 RUN apk upgrade binutils
@@ -132,7 +132,7 @@ COPY --from=go-builder /opt/pyroscope/third_party/rustdeps/target/release/librus
 #                                           __/ |
 #                                          |___/
 
-FROM alpine:3.12
+FROM alpine:3.13
 
 LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 

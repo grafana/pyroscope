@@ -1,4 +1,4 @@
-FROM golang:1.16.4-alpine3.12 as go-builder
+FROM golang:1.17.0-alpine3.13 as go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash mingw-w64-gcc
 

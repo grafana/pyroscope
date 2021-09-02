@@ -94,6 +94,7 @@ endif
 
 .PHONY: build
 build: ## Builds the binary
+	go mod tidy
 	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
 
 .PHONY: build-release
