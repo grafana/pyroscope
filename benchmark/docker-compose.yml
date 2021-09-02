@@ -30,8 +30,8 @@ services:
     volumes:
       - ./prometheus:/etc/prometheus/
       - data-prometheus:/prometheus
-    ports:
-      - 9091:9090
+        #    ports:
+        #      - 9091:9090
 
   grafana:
     image: grafana/grafana:7.5.7
@@ -43,8 +43,8 @@ services:
       GF_RENDERING_SERVER_URL: http://renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
       GF_LOG_FILTERS: rendering:debug
-    ports:
-      - 8080:3000
+        #    ports:
+        #      - 8080:3000
 volumes:
   data-prometheus:
     driver: local
