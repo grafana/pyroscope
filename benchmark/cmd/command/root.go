@@ -35,10 +35,11 @@ func newRootCmd(cfg *config.Config) *cobra.Command {
 func Initialize() error {
 	var cfg config.Config
 
-	rootCmd := newRootCmd(&cfg.LoadGen)
+	rootCmd := newRootCmd(&cfg)
 	rootCmd.SilenceErrors = true
 	rootCmd.AddCommand(
 		newLoadGen(&cfg.LoadGen),
+		newPromQuery(&cfg.PromQuery),
 	)
 
 	logrus.SetReportCaller(true)

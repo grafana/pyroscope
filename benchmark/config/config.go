@@ -1,7 +1,8 @@
 package config
 
 type Config struct {
-	LoadGen LoadGen `skip:"true" mapstructure:",squash"`
+	LoadGen   LoadGen   `skip:"true" mapstructure:",squash"`
+	PromQuery PromQuery `skip:"true" mapstructure:",squash"`
 }
 
 type LoadGen struct {
@@ -20,7 +21,9 @@ type LoadGen struct {
 	WaitUntilAvailable bool `def:"true" desc:"wait until endpoint is available"`
 }
 
-type PromQuery struct{}
+type PromQuery struct {
+	PrometheusAddress string `def:"http://localhost:9090" desc:"address of the prometheus instance being queried" mapstructure:"server-address"`
+}
 
 // File can be read from file system.
 type File interface{ Path() string }

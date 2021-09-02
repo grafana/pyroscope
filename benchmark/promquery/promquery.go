@@ -7,11 +7,22 @@ import (
 
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/pyroscope-io/pyroscope/benchmark/config"
 )
 
-func QueryRange(start, end time.Time) (error, string, string) {
+type promQuery struct {
+	Config *config.PromQuery
+}
+
+func New(cfg *config.PromQuery) *promQuery {
+	return &promQuery{
+		Config: cfg,
+	}
+}
+
+func (pq *promQuery) Instant(query string, t time.Time) (error, string, string) {
 	client, err := api.NewClient(api.Config{
-		Address: "http://localhost:9091",
+		Address: pq.Config.PrometheusAddress,
 	})
 
 	if err != nil {
@@ -22,14 +33,7 @@ func QueryRange(start, end time.Time) (error, string, string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	r := v1.Range{
-		Start: start,
-		End:   end,
-		//		Step:  time.Minute,
-		Step: time.Second * 15,
-	}
-
-	result, warnings, err := v1api.QueryRange(ctx, `rate(pyroscope_http_request_duration_seconds_count{handler="/ingest"}[1m])`, r)
+	result, warnings, err := v1api.Query(ctx, query, t)
 	if err != nil {
 		return err, "", ""
 	}
