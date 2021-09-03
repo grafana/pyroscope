@@ -13,9 +13,9 @@ RUN apk update &&\
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN /root/.cargo/bin/rustup target add $(uname -m)-unknown-linux-musl
 
-RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwind-1.3.1.tar.gz && \
-    tar -zxf libunwind-1.3.1.tar.gz && \
-    cd libunwind-1.3.1/ && \
+RUN wget https://github.com/libunwind/libunwind/releases/download/v1.5/libunwind-1.5.0.tar.gz && \
+    tar -zxf libunwind-1.5.0.tar.gz && \
+    cd libunwind-1.5.0/ && \
     ./configure --with-pic --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
 
 COPY third_party/rustdeps /opt/rustdeps
