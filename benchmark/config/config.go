@@ -1,9 +1,10 @@
 package config
 
 type Config struct {
-	LoadGen   LoadGen   `skip:"true" mapstructure:",squash"`
-	PromQuery PromQuery `skip:"true" mapstructure:",squash"`
-	CIReport  CIReport  `skip:"true" mapstructure:",squash"`
+	LoadGen             LoadGen             `skip:"true" mapstructure:",squash"`
+	PromQuery           PromQuery           `skip:"true" mapstructure:",squash"`
+	CIReport            CIReport            `skip:"true" mapstructure:",squash"`
+	DashboardScreenshot DashboardScreenshot `skip:"true" mapstructure:",squash"`
 }
 
 type LoadGen struct {
@@ -28,6 +29,12 @@ type PromQuery struct {
 
 type CIReport struct {
 	PrometheusAddress string `def:"http://localhost:9090" desc:"address of the prometheus instance being queried" mapstructure:"server-address"`
+}
+
+type DashboardScreenshot struct {
+	GrafanaAddress string `def:"http://localhost:4050" desc:"address of the grafana instance"`
+	DashboardUid   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
+	Destination    string `def:"./dashboard-screenshots" desc:"where to save the screenshots"`
 }
 
 // File can be read from file system.

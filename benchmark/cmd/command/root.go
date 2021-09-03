@@ -41,6 +41,7 @@ func Initialize() error {
 		newLoadGen(&cfg.LoadGen),
 		newPromQuery(&cfg.PromQuery),
 		newCIReport(&cfg.CIReport),
+		newScreenshotPane(&cfg.DashboardScreenshot),
 	)
 
 	logrus.SetReportCaller(true)

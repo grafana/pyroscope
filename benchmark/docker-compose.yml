@@ -9,6 +9,8 @@ services:
     - sh
     - -c
     - sleep Infinity
+    volumes:
+    - ./dashboard-screenshots:/screenshots
   pyroscope:
     environment:
       - PYROSCOPE_LOG_LEVEL=info
@@ -25,13 +27,25 @@ services:
         limits:
           cpus: "${PYROSCOPE_CPUS}"
           memory: "${PYROSCOPE_MEMORY}"
+  pyroscope_main:
+    image: pyroscope/pyroscope-dev:main
+    environment:
+      - PYROSCOPE_LOG_LEVEL=info
+      - PYROSCOPE_WAIT_AFTER_STOP=true
+    command:
+      - server
+    deploy:
+      resources:
+        limits:
+          cpus: "${PYROSCOPE_CPUS}"
+          memory: "${PYROSCOPE_MEMORY}"
   prometheus:
     image: prom/prometheus:v2.27.1
     volumes:
       - ./prometheus:/etc/prometheus/
       - data-prometheus:/prometheus
-        #    ports:
-        #      - 9091:9090
+    ports:
+      - 9091:9090
 
   grafana:
     image: grafana/grafana:7.5.7
@@ -39,12 +53,17 @@ services:
       - ./grafana-provisioning:/etc/grafana/provisioning
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - ../monitoring/gen/benchmark-dashboard.json:/etc/grafana/provisioning/dashboards/benchmark-dashboard.json
+      - ../monitoring/gen/benchmark-pr.json:/etc/grafana/provisioning/dashboards/benchmark-pr.json
+    ports:
+    - 4050:3000
     environment:
       GF_RENDERING_SERVER_URL: http://renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
       GF_LOG_FILTERS: rendering:debug
-        #    ports:
-        #      - 8080:3000
+  renderer:
+    image: grafana/grafana-image-renderer:latest
+    ports:
+      - 4051:8081
 volumes:
   data-prometheus:
     driver: local

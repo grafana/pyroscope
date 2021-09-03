@@ -11,21 +11,28 @@ function composeDown() {
   ./with-env.sh docker-compose down
 }
 
+# TODO
+# build newest version
 ./with-env.sh docker-compose build client
 
 # Start the docker containers
 ./with-env.sh docker-compose up -d --force-recreate --remove-orphans
 # cleanup
 trap \
-  "./with-env.sh docker-compose down" SIGINT SIGTERM ERR EXIT
+  "composeDown" SIGINT SIGTERM ERR EXIT
 
-go run cmd/main.go loadgen --server-address="http://localhost:4040" &
+echo "Generating test load"
+# TODO: figure out why it's sending messages
+docker exec benchmark_client_1 ./benchmark-main loadgen --log-level=error --server-address="http://pyroscope:4040" > /dev/null &
+docker exec benchmark_client_1 ./benchmark-main loadgen --log-level=error --server-address="http://pyroscope_main:4040" > /dev/null &
 
+# unix timestamp in ms
+start=$(date +%s%3N)
+sleep 5m
+end=$(date +%s%3N)
 
-start=$(date +%s)
-#sleep 5m
-sleep 30s
-
-#sleep Infinity
 # TODO(eh-am): use docker-compose exec
-docker exec benchmark_client_1 ./benchmark-main ci-report > report.md
+docker exec benchmark_client_1 ./benchmark-main screenshot-dashboard "$start" "$end" \
+  --destination="/screenshots" \
+  --grafana-address http://grafana:3000
+

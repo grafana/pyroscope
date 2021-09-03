@@ -22,8 +22,17 @@ func New(q Querier) *ciReport {
 	}
 }
 
+//func (r *ciReport) Screenshot() (string, error) {
+//	// query grafana api for a dashboard
+//	// get all panes
+//	// get each pane individually
+//	// take screenshot
+//	// upload to s3
+//}
+
 // Report reports benchmarking results in markdown format
 func (r *ciReport) Report() (string, error) {
+
 	query := `rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", code="200"}[5m])`
 	now := time.Now()
 
