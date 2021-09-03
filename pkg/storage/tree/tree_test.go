@@ -43,8 +43,8 @@ var _ = Describe("tree package", func() {
 			treeA.Insert([]byte("a;c"), uint64(2))
 			It("properly sets up tree A", func() {
 				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 1|"a;c" 2|`)))
+				Expect(treeA.Len()).To(Equal(3))
 			})
-
 			treeB := New()
 			treeB.Insert([]byte("a;b"), uint64(4))
 			treeB.Insert([]byte("a;c"), uint64(8))

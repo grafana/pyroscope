@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -26,7 +25,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
@@ -80,6 +78,8 @@ type Storage struct {
 	evictionsTimer prometheus.Histogram
 	writeBackTimer prometheus.Histogram
 	retentionTimer prometheus.Histogram
+
+	treeNodes prometheus.Histogram
 }
 
 func (s *Storage) newBadger(name string) (*badger.DB, error) {
@@ -159,6 +159,12 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 			Help: "duration of old data deletion",
 			// TODO what buckets to use here?
 			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		}),
+
+		treeNodes: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+			Name:    "pyroscope_storage_tree_nodes",
+			Help:    "number of tree nodes served",
+			Buckets: []float64{1 << 10, 1 << 12, 1 << 14, 1 << 16},
 		}),
 	}
 
@@ -447,9 +453,9 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	s.storageReadsTotal.Add(1)
 
 	var (
-		triesToMerge []merge.Merger
-		lastSegment  *segment.Segment
-		writesTotal  uint64
+		resultTrie  *tree.Tree
+		lastSegment *segment.Segment
+		writesTotal uint64
 
 		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
 		aggregationType = "sum"
@@ -478,24 +484,24 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
 			if res, ok = s.trees.Lookup(parsedKey.TreeKey(depth, t)); ok {
-				triesToMerge = append(triesToMerge, res.(*tree.Tree).Clone(r))
+				x := res.(*tree.Tree).Clone(r)
+				s.treeNodes.Observe(float64(x.Len()))
 				writesTotal += writes
+				if resultTrie == nil {
+					resultTrie = x
+					return
+				}
+				resultTrie.Merge(x)
 			}
 		})
 	}
 
-	resultTrie := merge.MergeTriesSerially(runtime.NumCPU(), triesToMerge...)
-	if resultTrie == nil {
-		return nil, nil
-	}
-
-	t := resultTrie.(*tree.Tree)
 	if writesTotal > 0 && aggregationType == averageAggregationType {
-		t = t.Clone(big.NewRat(1, int64(writesTotal)))
+		resultTrie = resultTrie.Clone(big.NewRat(1, int64(writesTotal)))
 	}
 
 	return &GetOutput{
-		Tree:       t,
+		Tree:       resultTrie,
 		Timeline:   timeline,
 		SpyName:    lastSegment.SpyName(),
 		SampleRate: lastSegment.SampleRate(),
