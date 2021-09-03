@@ -28,7 +28,7 @@ docker exec benchmark_client_1 ./benchmark-main loadgen --log-level=error --serv
 
 # unix timestamp in ms
 start=$(date +%s%3N)
-sleep 5m
+sleep 6m
 #sleep 30s
 end=$(date +%s%3N)
 
