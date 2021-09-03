@@ -1,3 +1,10 @@
+require "pyroscope"
+
+Pyroscope.configure do |config|
+  config.app_name = "test.ruby.app{}"
+  config.server_address = "http://localhost:4040/"
+end
+
 def work(n)
   i = 0
   while i < n
