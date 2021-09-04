@@ -81,6 +81,7 @@ export default function ProfilerHeader({
       <div className="btn-group viz-switch">
         <button
           type="button"
+          data-testid="btn-table-view"
           className={clsx("btn", { active: view === "table" })}
           onClick={() => updateView("table")}
         >
@@ -88,6 +89,7 @@ export default function ProfilerHeader({
           &nbsp;&thinsp;Table
         </button>
         <button
+          data-testid="btn-both-view"
           type="button"
           className={clsx("btn", { active: view === "both" })}
           onClick={() => updateView("both")}
@@ -96,6 +98,7 @@ export default function ProfilerHeader({
           &nbsp;&thinsp;Both
         </button>
         <button
+          data-testid="btn-flamegraph-view"
           type="button"
           className={clsx("btn", { active: view === "icicle" })}
           onClick={() => updateView("icicle")}
