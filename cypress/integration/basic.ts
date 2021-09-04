@@ -23,7 +23,7 @@ describe('basic test', () => {
     cy.location('pathname').should('eq', '/');
   });
 
-  it.only('view buttons should change view when clicked', () => {
+  it('view buttons should change view when clicked', () => {
     cy.visit('/')
     cy.findByTestId('btn-table-view').click();
     cy.findByTestId('table-view').should('be.visible');
@@ -36,8 +36,8 @@ describe('basic test', () => {
     cy.findByTestId('btn-flamegraph-view').click();
     cy.findByTestId('table-view').should('not.be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
-      
-  })
+  });
+
 })
 
 // very nasty, just to avoid dealing with the following error
