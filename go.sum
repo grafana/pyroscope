@@ -117,9 +117,9 @@ github.com/deadcheat/gonch v0.0.0-20180528124129-c2ff7a019863/go.mod h1:/5mH3gAu
 github.com/dgraph-io/badger/v2 v2.2007.2 h1:EjjK0KqwaFMlPin1ajhP943VPENHJdEz1KLIegjaI3k=
 github.com/dgraph-io/badger/v2 v2.2007.2/go.mod h1:26P/7fbL4kUZVEVKLAKXkBXKOydDmM2p1e+NhhnBCAE=
 github.com/dgraph-io/ristretto v0.0.3-0.20200630154024-f66de99634de/go.mod h1:KPxhHT9ZxKefz+PCeOGsrHpl1qZ7i70dGTu2u+Ahh6E=
-github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgraph-io/ristretto v0.1.0 h1:Jv3CGQHp9OjuMBSne1485aDpUkTKEcUqF+jm/LuerPI=
 github.com/dgraph-io/ristretto v0.1.0/go.mod h1:fux0lOrBhrVCJd3lcTHsIJhq1T2rokOu6v9Vcb3Q9ug=
+github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 h1:tdlZCpZ/P9DhczCTSixgIKmwPv6+wP5DGjqLYw5SUiA=
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
@@ -434,6 +434,8 @@ github.com/pyroscope-io/dotnetdiag v1.2.1 h1:3XEMrfFJnZ87BiEhozyQKmCUAuMd/Spq7KC
 github.com/pyroscope-io/dotnetdiag v1.2.1/go.mod h1:eFUEHCp4eD1TgcXMlJihC+R4MrqGf7nTRdWxNADbDHA=
 github.com/pyroscope-io/lfu-go v1.0.4 h1:mdL+AbcsmGMsQvfEYMxPzB2g5g+1XuCDQT+KDPvtQcE=
 github.com/pyroscope-io/lfu-go v1.0.4/go.mod h1:3W9sGrDLhKFkHZPXkz6c5dAKrxcwkKbFFKnJtDukMDA=
+github.com/pyroscope-io/lfu-go v1.0.5-0.20210905113657-805fd00e5b66 h1:jSWAqCULREzRm7c/nX7BuAB1Z9SlPo4eZ+ZNlhQijV0=
+github.com/pyroscope-io/lfu-go v1.0.5-0.20210905113657-805fd00e5b66/go.mod h1:3W9sGrDLhKFkHZPXkz6c5dAKrxcwkKbFFKnJtDukMDA=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1 h1:0v9lBNgdmVtpyyk9PP/DfpJlOHkXriu5YgNlrhQw5YE=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1/go.mod h1:tSw34BaGZ0iF+oVKDOjq1/LuxGifgW7shaJ6+dBYFXg=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=

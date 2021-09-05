@@ -496,6 +496,10 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		})
 	}
 
+	if resultTrie == nil {
+		return nil, nil
+	}
+
 	if writesTotal > 0 && aggregationType == averageAggregationType {
 		resultTrie = resultTrie.Clone(big.NewRat(1, int64(writesTotal)))
 	}
@@ -737,6 +741,10 @@ func (s *Storage) GetKeysByQuery(query string, cb func(_k string) bool) error {
 		}
 	}
 	return nil
+}
+
+func (s *Storage) WalkTrees(fn func(k string, v interface{})) {
+	s.trees.Walk(fn)
 }
 
 func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string) bool) error {

@@ -175,6 +175,10 @@ func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
 	return v, nil
 }
 
+func (cache *Cache) Walk(fn func(k string, v interface{})) {
+	cache.lfu.Walk(fn)
+}
+
 func (cache *Cache) Lookup(key string) (interface{}, bool) {
 	v, err := cache.lookup(key)
 	if v == nil || err != nil {

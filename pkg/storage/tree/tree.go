@@ -60,7 +60,33 @@ func New() *Tree {
 	}
 }
 
+func (t *Tree) Truncate(x int) {
+
+}
+
+func (t *Tree) Size() (nodes, leaves int) {
+	t.RLock()
+	defer t.RUnlock()
+	n := make([]*treeNode, 0, 128)
+	n = append(n, t.root)
+	for len(n) > 0 {
+		node := n[0]
+		if len(node.ChildrenNodes) != 0 {
+			nodes += len(node.ChildrenNodes)
+		} else {
+			leaves++
+		}
+		n = n[1:]
+		for _, cn := range node.ChildrenNodes {
+			n = prependTreeNode(n, cn)
+		}
+	}
+	return nodes, leaves
+}
+
 func (t *Tree) Len() int {
+	t.RLock()
+	defer t.RUnlock()
 	var x int
 	nodes := make([]*treeNode, 0, 128)
 	nodes = append(nodes, t.root)
