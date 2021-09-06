@@ -1,9 +1,10 @@
 import {markdown } from "danger"
-const fs = require('fs')
+const fs = require('fs');
+const path = require('path');
 
 
 const bucketAddress = envOrFail("BUCKET_ADDRESS");
-const filenames = fs.readdirSync("./dashboard-screenshots");
+const filenames = fs.readdirSync(path.join(__dirname,"./dashboard-screenshots"));
 
 const img = (name, url) => `![${name}](${url})`
 
