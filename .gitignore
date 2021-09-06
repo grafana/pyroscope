@@ -21,4 +21,5 @@ vendor/
 benchmark/git-info.env
 benchmark/.env
 benchmark/ci/pr/dashboard-screenshots
+benchmark/ci/pr/pr-report
 /.env

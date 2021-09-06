@@ -47,10 +47,7 @@ function run() {
     --destination="/screenshots" \
     --grafana-address "$GRAFANA_ADDRESS"
 
-  # get avg rate
-  docker exec pr_client_1 ./pyrobench promquery \
-    'avg(rate(pyroscope_http_request_duration_seconds_count{handler="/ingest"}[5m])) by (instance)' \
-    --prometheus-address 'http://prometheus:9090'
+  ./generate-report.sh > ./pr-report
 }
 
 run

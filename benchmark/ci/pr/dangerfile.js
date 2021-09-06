@@ -4,15 +4,17 @@ const path = require('path');
 
 
 const bucketAddress = envOrFail("BUCKET_ADDRESS");
+const prReport = fs.readFileSync(path.join(__dirname,"./pr-report"));
+
+markdown(`${prReport}`);
+
 const filenames = fs.readdirSync(path.join(__dirname,"./dashboard-screenshots"));
-
 const img = (name, url) => `![${name}](${url})`
-
-const md = filenames.map(name => img(name, `${bucketAddress}/${name}`)).join("\n"); 
+const imgmd = filenames.map(name => img(name, `${bucketAddress}/${name}`)).join("\n"); 
 
 markdown(`
 # screenshots
-${md}`);
+${imgmd}`);
 
 function envOrFail(name) {
   const env = process.env[name];
