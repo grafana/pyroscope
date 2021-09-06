@@ -27,9 +27,8 @@ total_main=$(docker exec pr_client_1 ./pyrobench promquery \
 
 # very ugly
 cat <<EOF
-# results
-|                 | pr             | main           |
-|-----------------|----------------|----------------|
-| rate            | \`$rate_pr\`   | \`$rate_main\`  |
-| total processed | \`$total_pr\` | \`$total_main\`  |
+|                                                                 | pr            | main            |
+|-----------------------------------------------------------------|---------------|-----------------|
+| rate (rate(pyroscope_http_request_duration_seconds_count[5m])   | \`$rate_pr\`  | \`$rate_main\`  |
+| total processed (pyroscope_http_request_duration_seconds_count) | \`$total_pr\` | \`$total_main\` |
 EOF
