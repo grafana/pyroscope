@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -78,8 +79,6 @@ type Storage struct {
 	evictionsTimer prometheus.Histogram
 	writeBackTimer prometheus.Histogram
 	retentionTimer prometheus.Histogram
-
-	treeNodes prometheus.Histogram
 }
 
 func (s *Storage) newBadger(name string) (*badger.DB, error) {
@@ -159,12 +158,6 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 			Help: "duration of old data deletion",
 			// TODO what buckets to use here?
 			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
-		}),
-
-		treeNodes: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_tree_nodes",
-			Help:    "number of tree nodes served",
-			Buckets: []float64{1 << 10, 1 << 12, 1 << 14, 1 << 16},
 		}),
 	}
 
@@ -323,17 +316,18 @@ func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
 	}
-	b, err := v.(*tree.Tree).Bytes(d.(*dict.Dict), s.config.MaxNodesSerialization)
+	var buf bytes.Buffer
+	err = v.(*tree.Tree).SerializeTruncate(d.(*dict.Dict), s.config.MaxNodesSerialization, &buf)
 	if err != nil {
-		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
+		return nil, fmt.Errorf("serialize %v: %v", key, err)
 	}
 	s.dicts.Put(key, d)
-	return b, nil
+	return buf.Bytes(), nil
 }
 
 var OutOfSpaceThreshold = 512 * bytesize.MB
 
-func (s *Storage) Put(po *PutInput) error {
+func (s *Storage) Put(pi *PutInput) error {
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
@@ -342,27 +336,27 @@ func (s *Storage) Put(po *PutInput) error {
 		return err
 	}
 
-	if po.StartTime.Before(s.lifetimeBasedRetentionThreshold()) {
+	if pi.StartTime.Before(s.lifetimeBasedRetentionThreshold()) {
 		return errRetention
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"startTime":       po.StartTime.String(),
-		"endTime":         po.EndTime.String(),
-		"key":             po.Key.Normalized(),
-		"samples":         po.Val.Samples(),
-		"units":           po.Units,
-		"aggregationType": po.AggregationType,
+		"startTime":       pi.StartTime.String(),
+		"endTime":         pi.EndTime.String(),
+		"key":             pi.Key.Normalized(),
+		"samples":         pi.Val.Samples(),
+		"units":           pi.Units,
+		"aggregationType": pi.AggregationType,
 	}).Debug("storage.Put")
 
 	s.storageWritesTotal.Add(1.0)
 
-	for k, v := range po.Key.Labels() {
+	for k, v := range pi.Key.Labels() {
 		s.labels.Put(k, v)
 	}
 
-	sk := po.Key.SegmentKey()
-	for k, v := range po.Key.Labels() {
+	sk := pi.Key.SegmentKey()
+	for k, v := range pi.Key.Labels() {
 		key := k + ":" + v
 		r, err := s.dimensions.GetOrCreate(key)
 		if err != nil {
@@ -379,20 +373,20 @@ func (s *Storage) Put(po *PutInput) error {
 	}
 
 	st := r.(*segment.Segment)
-	st.SetMetadata(po.SpyName, po.SampleRate, po.Units, po.AggregationType)
-	samples := po.Val.Samples()
+	st.SetMetadata(pi.SpyName, pi.SampleRate, pi.Units, pi.AggregationType)
+	samples := pi.Val.Samples()
 
-	err = st.Put(po.StartTime, po.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
-		tk := po.Key.TreeKey(depth, t)
+	err = st.Put(pi.StartTime, pi.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
+		tk := pi.Key.TreeKey(depth, t)
 		res, err := s.trees.GetOrCreate(tk)
 		if err != nil {
 			logrus.Errorf("trees cache for %v: %v", tk, err)
 			return
 		}
 		cachedTree := res.(*tree.Tree)
-		treeClone := po.Val.Clone(r)
+		treeClone := pi.Val.Clone(r)
 		for _, addon := range addons {
-			if res, ok := s.trees.Lookup(po.Key.TreeKey(addon.Depth, addon.T)); ok {
+			if res, ok := s.trees.Lookup(pi.Key.TreeKey(addon.Depth, addon.T)); ok {
 				ta := res.(*tree.Tree)
 				ta.RLock()
 				treeClone.Merge(ta)
@@ -485,7 +479,6 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
 			if res, ok = s.trees.Lookup(parsedKey.TreeKey(depth, t)); ok {
 				x := res.(*tree.Tree).Clone(r)
-				s.treeNodes.Observe(float64(x.Len()))
 				writesTotal += writes
 				if resultTrie == nil {
 					resultTrie = x

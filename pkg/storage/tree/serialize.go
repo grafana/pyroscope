@@ -56,6 +56,52 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 	return nil
 }
 
+func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error {
+	t.Lock()
+	defer t.Unlock()
+	var err error
+	if _, err = varint.Write(w, currentVersion); err != nil {
+		return err
+	}
+
+	minVal := t.minValue(maxNodes)
+	nodes := make([]*treeNode, 1, 128)
+	nodes[0] = t.root
+	for len(nodes) > 0 {
+		tn := nodes[0]
+		nodes = nodes[1:]
+
+		labelLink := d.Put([]byte(tn.Name))
+		if _, err = varint.Write(w, uint64(len(labelLink))); err != nil {
+			return err
+		}
+		if _, err = w.Write(labelLink); err != nil {
+			return err
+		}
+		val := tn.Self
+		if _, err = varint.Write(w, val); err != nil {
+			return err
+		}
+
+		cnlNodes := tn.ChildrenNodes
+		tn.ChildrenNodes = tn.ChildrenNodes[:0]
+		for _, cn := range cnlNodes {
+			if cn.Total >= minVal {
+				tn.ChildrenNodes = append(tn.ChildrenNodes, cn)
+			}
+		}
+		if len(tn.ChildrenNodes) > 0 {
+			nodes = append(tn.ChildrenNodes, nodes...)
+		} else {
+			tn.ChildrenNodes = nil // Just to make it eligible for GC.
+		}
+		if _, err = varint.Write(w, uint64(len(tn.ChildrenNodes))); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (t *Tree) SerializeNoDict(maxNodes int, w io.Writer) error {
 	t.RLock()
 	defer t.RUnlock()

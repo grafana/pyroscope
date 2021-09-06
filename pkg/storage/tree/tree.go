@@ -60,10 +60,6 @@ func New() *Tree {
 	}
 }
 
-func (t *Tree) Truncate(x int) {
-
-}
-
 func (t *Tree) Size() (nodes, leaves int) {
 	t.RLock()
 	defer t.RUnlock()
@@ -78,27 +74,10 @@ func (t *Tree) Size() (nodes, leaves int) {
 		}
 		n = n[1:]
 		for _, cn := range node.ChildrenNodes {
-			n = prependTreeNode(n, cn)
+			n = append(n, cn)
 		}
 	}
 	return nodes, leaves
-}
-
-func (t *Tree) Len() int {
-	t.RLock()
-	defer t.RUnlock()
-	var x int
-	nodes := make([]*treeNode, 0, 128)
-	nodes = append(nodes, t.root)
-	for len(nodes) > 0 {
-		n := nodes[0]
-		x += len(n.ChildrenNodes)
-		nodes = nodes[1:]
-		for _, cn := range n.ChildrenNodes {
-			nodes = prependTreeNode(nodes, cn)
-		}
-	}
-	return x
 }
 
 func (t *Tree) Merge(srcTrieI merge.Merger) {

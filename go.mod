@@ -31,7 +31,6 @@ require (
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kyoh86/richgo v0.3.3
 	github.com/kyoh86/xdg v1.2.0 // indirect
-	github.com/markbates/pkger v0.17.1
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mattn/goreman v0.3.5
 	github.com/mgechev/revive v1.0.3
@@ -40,7 +39,6 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
-	github.com/peterbourgon/ff/v3 v3.0.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.29.0
 	github.com/pyroscope-io/dotnetdiag v1.2.1

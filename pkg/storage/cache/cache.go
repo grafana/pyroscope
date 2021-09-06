@@ -8,7 +8,7 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/lfu-go"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/cache/lfu"
 	"github.com/valyala/bytebufferpool"
 )
 
