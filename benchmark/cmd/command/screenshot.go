@@ -31,11 +31,12 @@ func newScreenshotPane(cfg *config.DashboardScreenshot) *cobra.Command {
 			}
 
 			_, err = cireport.ScreenshotAllPanes(context.Background(), cireport.ScreenshotAllPanesConfig{
-				GrafanaURL:   cfg.GrafanaAddress,
-				DashboardUid: cfg.DashboardUid,
-				From:         from,
-				To:           to,
-				Dest:         cfg.Destination,
+				GrafanaURL:            cfg.GrafanaAddress,
+				DashboardUid:          cfg.DashboardUid,
+				From:                  from,
+				To:                    to,
+				Dest:                  cfg.Destination,
+				TimeoutSecondsPerPane: cfg.TimeoutSeconds,
 			})
 
 			return err

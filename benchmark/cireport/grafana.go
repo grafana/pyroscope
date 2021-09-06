@@ -119,11 +119,12 @@ func GetAllPaneIds(ctx context.Context, cfg GetAllPaneIdsConfig) ([]int, error) 
 }
 
 type ScreenshotAllPanesConfig struct {
-	GrafanaURL   string
-	DashboardUid string
-	Dest         string
-	From         int
-	To           int
+	GrafanaURL            string
+	DashboardUid          string
+	Dest                  string
+	From                  int
+	To                    int
+	TimeoutSecondsPerPane int
 }
 
 // ScreenshotAllPanes take a screenshot of every single pane
@@ -131,8 +132,9 @@ type ScreenshotAllPanesConfig struct {
 func ScreenshotAllPanes(ctx context.Context, cfg ScreenshotAllPanesConfig) ([]int, error) {
 	logrus.Debug("getting all ids from dashboard ", cfg.DashboardUid)
 	ids, err := GetAllPaneIds(ctx, GetAllPaneIdsConfig{
-		GrafanaURL:   cfg.GrafanaURL,
-		DashboardUid: cfg.DashboardUid,
+		GrafanaURL:     cfg.GrafanaURL,
+		DashboardUid:   cfg.DashboardUid,
+		TimeoutSeconds: cfg.TimeoutSecondsPerPane,
 	})
 	if err != nil {
 		return ids, err
@@ -148,13 +150,14 @@ func ScreenshotAllPanes(ctx context.Context, cfg ScreenshotAllPanesConfig) ([]in
 				ScreenshotPaneConfig{
 					Dest: path.Join(cfg.Dest, strconv.Itoa(i)+".png"),
 
-					GrafanaURL:   cfg.GrafanaURL,
-					DashboardUid: cfg.DashboardUid,
-					PanelId:      i,
-					Width:        500,
-					Height:       500,
-					From:         cfg.From,
-					To:           cfg.To,
+					GrafanaURL:     cfg.GrafanaURL,
+					DashboardUid:   cfg.DashboardUid,
+					PanelId:        i,
+					Width:          500,
+					Height:         500,
+					From:           cfg.From,
+					To:             cfg.To,
+					TimeoutSeconds: cfg.TimeoutSecondsPerPane,
 				})
 		})
 	}
