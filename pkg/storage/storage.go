@@ -317,7 +317,7 @@ func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
 		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
 	}
 	var buf bytes.Buffer
-	err = v.(*tree.Tree).SerializeTruncate(d.(*dict.Dict), 256, &buf)
+	err = v.(*tree.Tree).SerializeTruncate(d.(*dict.Dict), s.config.MaxNodesSerialization, &buf)
 	if err != nil {
 		return nil, fmt.Errorf("serialize %v: %v", key, err)
 	}

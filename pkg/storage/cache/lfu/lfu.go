@@ -144,8 +144,6 @@ func (c *Cache) evict(count int) int {
 }
 
 /*
-
-
 func (c *Cache) persist(count int) int {
 	var persisted int
 	for i := 0; i < count; {
@@ -167,7 +165,6 @@ func (c *Cache) persist(count int) int {
 	}
 	return persisted
 }
-
 */
 
 func (c *Cache) persist(count int) int {
