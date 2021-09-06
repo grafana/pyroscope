@@ -16,6 +16,7 @@ function ComparisonDiffApp(props) {
     if (prevPropsRef.diffRenderURL !== diffRenderURL) {
       actions.fetchTimeline(diffRenderURL);
     }
+    return actions.abortTimelineRequest;
   }, [diffRenderURL]);
 
   return (

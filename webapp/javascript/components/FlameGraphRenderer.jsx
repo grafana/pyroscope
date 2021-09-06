@@ -42,6 +42,7 @@ import ProfilerHeader from "./ProfilerHeader";
 import { deltaDiffWrapper, parseFlamebearerFormat } from "../util/flamebearer";
 
 import ExportData from "./ExportData";
+import {isAbortError} from "../util/abort";
 
 
 const PX_PER_LEVEL = 18;
@@ -143,10 +144,18 @@ class FlameGraphRenderer extends React.Component {
     }
   }
 
-  fetchFlameBearerData(url) {
+  componentWillUnmount() {
+    this.abortCurrentJSONController();
+  }
+
+  abortCurrentJSONController() {
     if (this.currentJSONController) {
       this.currentJSONController.abort();
     }
+  }
+
+  fetchFlameBearerData(url) {
+    this.abortCurrentJSONController();
     this.currentJSONController = new AbortController();
 
     fetch(`${url}&format=json`, { signal: this.currentJSONController.signal })
@@ -160,6 +169,12 @@ class FlameGraphRenderer extends React.Component {
         }, () => {
           this.updateData();
         })
+      })
+      .catch(e => {
+        // AbortErrors are fine
+        if (!isAbortError(e)) {
+          throw e;
+        }
       })
       .finally();
   }

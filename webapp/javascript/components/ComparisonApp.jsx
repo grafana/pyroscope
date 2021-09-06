@@ -20,6 +20,8 @@ function ComparisonApp(props) {
     if (prevPropsRef.renderURL !== renderURL) {
       actions.fetchTimeline(renderURL);
     }
+
+    return actions.abortTimelineRequest;
   }, [renderURL]);
 
   return (
