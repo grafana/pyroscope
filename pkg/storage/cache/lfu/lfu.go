@@ -143,7 +143,34 @@ func (c *Cache) evict(count int) int {
 	return evicted
 }
 
-func (c *Cache) persist(_ int) int {
+/*
+
+
+func (c *Cache) persist(count int) int {
+	var persisted int
+	for i := 0; i < count; {
+		if place := c.freqs.Front(); place != nil {
+			for entry := range place.Value.(*listEntry).entries {
+				if i < count {
+					if c.WriteBackChannel != nil && !entry.persisted {
+						c.WriteBackChannel <- Eviction{
+							Key: entry.key,
+							Value: entry.value,
+						}
+						entry.persisted = true
+						persisted++
+					}
+					i++
+				}
+			}
+		}
+	}
+	return persisted
+}
+
+*/
+
+func (c *Cache) persist(count int) int {
 	var persisted int
 	for k, v := range c.values {
 		if c.WriteBackChannel != nil && !v.persisted {

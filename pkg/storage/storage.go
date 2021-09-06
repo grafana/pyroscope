@@ -277,7 +277,7 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 
 	s.wg.Add(2)
 	go s.periodicTask(evictInterval, s.evictionTask(memTotal))
-	go s.periodicTask(writeBackInterval, s.writeBackTask)
+	go s.periodicTask(time.Minute, s.writeBackTask)
 	if s.config.Retention > 0 {
 		s.wg.Add(1)
 		go s.periodicTask(retentionInterval, s.retentionTask)
@@ -317,7 +317,7 @@ func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
 		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
 	}
 	var buf bytes.Buffer
-	err = v.(*tree.Tree).SerializeTruncate(d.(*dict.Dict), s.config.MaxNodesSerialization, &buf)
+	err = v.(*tree.Tree).SerializeTruncate(d.(*dict.Dict), 256, &buf)
 	if err != nil {
 		return nil, fmt.Errorf("serialize %v: %v", key, err)
 	}
