@@ -5,6 +5,7 @@ exports[`NameSelector render correctly NameSelector component 1`] = `
   Application: 
   <select
     className="label-select"
+    data-testid="select-app-change"
     onChange={[Function]}
     value="hotrod.golang.customer"
   >
