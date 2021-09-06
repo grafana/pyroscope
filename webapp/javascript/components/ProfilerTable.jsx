@@ -155,7 +155,7 @@ function Table({ flamebearer, updateSortBy, sortBy, sortByDirection, viewDiff, f
     !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
 
   return (
-    <table className="flamegraph-table">
+    <table className="flamegraph-table" data-testid="table-view">
       <thead>
         <tr>
           {tableFormat.map((v, idx) =>

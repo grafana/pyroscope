@@ -583,6 +583,7 @@ class FlameGraphRenderer extends React.Component {
 
     let flameGraphPane = (
       <div
+        data-testid="flamegraph-view"
         key={'flamegraph-pane'}
         className={clsx("pane", { hidden: this.state.view === "table", "vertical-orientation": this.props.viewType === "double" })}
       >

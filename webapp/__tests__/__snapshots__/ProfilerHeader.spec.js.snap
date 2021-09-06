@@ -45,6 +45,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
   >
     <button
       className="btn"
+      data-testid="btn-table-view"
       onClick={[Function]}
       type="button"
     >
@@ -69,6 +70,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
     </button>
     <button
       className="btn"
+      data-testid="btn-both-view"
       onClick={[Function]}
       type="button"
     >
@@ -93,6 +95,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
     </button>
     <button
       className="btn"
+      data-testid="btn-flamegraph-view"
       onClick={[Function]}
       type="button"
     >
