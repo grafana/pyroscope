@@ -33,7 +33,7 @@ type CIReport struct {
 
 type DashboardScreenshot struct {
 	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
-	TimeoutSeconds int    `def:"60" desc:"timeout in seconds of each call"`
+	TimeoutSeconds int    `def:"300" desc:"timeout in seconds of each call"`
 
 	GrafanaAddress string `def:"http://localhost:4050" desc:"address of the grafana instance"`
 	DashboardUid   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
