@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/benchmark/config"
@@ -17,9 +18,6 @@ func newPromQuery(cfg *config.PromQuery) *cobra.Command {
 		Use:   "promquery [flags]",
 		Short: "queries prometheus",
 		Args: func(cmd *cobra.Command, args []string) error {
-			//			if len(args) != 2 {
-			//				return errors.New("requires 2 arguments 'from' and 'end'")
-			//			}
 			return nil
 		},
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
@@ -28,14 +26,13 @@ func newPromQuery(cfg *config.PromQuery) *cobra.Command {
 
 			pq := promquery.New(cfg)
 
-			first, second, err := pq.Instant(query, t)
+			value, warnings, err := pq.Instant(query, t)
 			if err != nil {
 				return err
 			}
 
-			fmt.Println("first", first)
-			fmt.Println("second", second)
-			//
+			fmt.Println(value)
+			fmt.Fprintf(os.Stderr, "warnings:", warnings)
 			return nil
 		}),
 	}
