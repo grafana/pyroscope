@@ -16,14 +16,15 @@ import (
 )
 
 type ScreenshotPaneConfig struct {
-	GrafanaURL   string
-	DashboardUid string
-	PanelId      int
-	Dest         string
-	From         int
-	To           int
-	Width        int
-	Height       int
+	GrafanaURL     string
+	DashboardUid   string
+	PanelId        int
+	Dest           string
+	From           int
+	To             int
+	Width          int
+	Height         int
+	TimeoutSeconds int
 }
 
 // ScreenshotPane takes screenshot of a grafana pane
@@ -39,7 +40,7 @@ func ScreenshotPane(ctx context.Context, cfg ScreenshotPaneConfig) error {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(cfg.TimeoutSeconds)*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.GrafanaURL+"/render/d-solo/"+cfg.DashboardUid, nil)
 	if err != nil {
@@ -74,14 +75,15 @@ func ScreenshotPane(ctx context.Context, cfg ScreenshotPaneConfig) error {
 }
 
 type GetAllPaneIdsConfig struct {
-	GrafanaURL   string
-	DashboardUid string
+	GrafanaURL     string
+	DashboardUid   string
+	TimeoutSeconds int
 }
 
 // GetAllPaneIds retrieves all panes id for a given dashboard
 // It assumes there are no rows in the dashboard
 func GetAllPaneIds(ctx context.Context, cfg GetAllPaneIdsConfig) ([]int, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(cfg.TimeoutSeconds)*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cfg.GrafanaURL+"/api/dashboards/uid/"+cfg.DashboardUid, nil)
 	if err != nil {
