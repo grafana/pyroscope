@@ -21,11 +21,13 @@ function composeDown() {
 }
 
 function run() {
+  # pull latest image
+  docker-compose pull
+  # build local code
   docker-compose build
 
   # Start the docker containers
   docker-compose up -d --force-recreate --remove-orphans
-  trap "composeDown" SIGINT SIGTERM ERR EXIT
 
   echo "Generating test load"
   docker exec pr_client_1 ./pyrobench loadgen --log-level=error --server-address="$PYROSCOPE_ADDRESS" > /dev/null &
