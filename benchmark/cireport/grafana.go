@@ -9,8 +9,10 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 )
 
 type ScreenshotPaneConfig struct {
@@ -26,6 +28,7 @@ type ScreenshotPaneConfig struct {
 
 // ScreenshotPane takes screenshot of a grafana pane
 func ScreenshotPane(ctx context.Context, cfg ScreenshotPaneConfig) error {
+	logrus.Debug("screenshoting pane", cfg.PanelId)
 	if _, err := os.Stat(cfg.Dest); err == nil {
 		// File exists
 		return fmt.Errorf("file exists %s, won't overwrite", cfg.Dest)
@@ -61,6 +64,7 @@ func ScreenshotPane(ctx context.Context, cfg ScreenshotPaneConfig) error {
 		return err
 	}
 
+	logrus.Debugf("writing pane %d to %s\n", cfg.PanelId, cfg.Dest)
 	err = os.WriteFile(cfg.Dest, data, 0666)
 	if err != nil {
 		return err
@@ -123,21 +127,22 @@ type ScreenshotAllPanesConfig struct {
 // ScreenshotAllPanes take a screenshot of every single pane
 // It assumes there are no rows
 func ScreenshotAllPanes(ctx context.Context, cfg ScreenshotAllPanesConfig) ([]int, error) {
+	logrus.Debug("getting all ids from dashboard ", cfg.DashboardUid)
 	ids, err := GetAllPaneIds(ctx, GetAllPaneIdsConfig{
 		GrafanaURL:   cfg.GrafanaURL,
 		DashboardUid: cfg.DashboardUid,
 	})
+	if err != nil {
+		return ids, err
+	}
 
-	var wg sync.WaitGroup
+	g, ctx := errgroup.WithContext(ctx)
 
-	wg.Add(len(ids))
-
+	logrus.Debug("taking screenshot of panes ", ids)
 	for _, v := range ids {
-		go func(i int) {
-			// TODO
-			// handle errors
-			fmt.Println(path.Join(cfg.Dest, strconv.Itoa(i)+".png"))
-			err = ScreenshotPane(context.Background(),
+		i := v // // https://golang.org/doc/faq#closures_and_goroutines
+		g.Go(func() error {
+			return ScreenshotPane(ctx,
 				ScreenshotPaneConfig{
 					Dest: path.Join(cfg.Dest, strconv.Itoa(i)+".png"),
 
@@ -149,14 +154,12 @@ func ScreenshotAllPanes(ctx context.Context, cfg ScreenshotAllPanesConfig) ([]in
 					From:         cfg.From,
 					To:           cfg.To,
 				})
-			if err != nil {
-				fmt.Println("error", err)
-			}
-
-			wg.Done()
-		}(v)
+		})
 	}
-	wg.Wait()
+	//wg.Wait()
+	if err := g.Wait(); err != nil {
+		return []int{}, err
+	}
 
 	return ids, err
 }

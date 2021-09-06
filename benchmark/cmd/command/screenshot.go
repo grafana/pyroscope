@@ -12,12 +12,14 @@ import (
 
 func newScreenshotPane(cfg *config.DashboardScreenshot) *cobra.Command {
 	vpr := newViper()
-	ciReport := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:    "screenshot-dashboard [from (unix time in ms)] [to (unix time in ms)] [flags]",
 		Short:  "take a screenshot of all panes of a grafana dashboard",
 		Hidden: true,
 		Args:   cobra.ExactArgs(2),
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+			setLogLevel(cfg.LogLevel)
+
 			from, err := strconv.Atoi(args[0])
 			if err != nil {
 				return err
@@ -40,6 +42,6 @@ func newScreenshotPane(cfg *config.DashboardScreenshot) *cobra.Command {
 		}),
 	}
 
-	cli.PopulateFlagSet(cfg, ciReport.Flags(), vpr)
-	return ciReport
+	cli.PopulateFlagSet(cfg, cmd.Flags(), vpr)
+	return cmd
 }

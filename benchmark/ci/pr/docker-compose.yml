@@ -1,0 +1,69 @@
+# docker-compose ignores x-
+x-PYROSCOPE_CPUS: &PYROSCOPE_CPUS 1
+x-PYROSCOPE_MEMORY: &PYROSCOPE_MEMORY 4096MB
+
+version: "3.9"
+services:
+  client:
+    build:
+      context: ../../../
+      dockerfile: benchmark/Dockerfile
+    # we will be running docker exec against it
+    command:
+    - sh
+    - -c
+    - sleep Infinity
+    volumes:
+    - ./dashboard-screenshots:/screenshots
+  pyroscope:
+    environment:
+      - PYROSCOPE_LOG_LEVEL=info
+      - PYROSCOPE_WAIT_AFTER_STOP=true
+    build:
+      context: ../../../
+      dockerfile: Dockerfile
+    command:
+      - server
+    ports:
+      - 4040:4040
+    deploy:
+      resources:
+        limits:
+          cpus: *PYROSCOPE_CPUS
+          memory: *PYROSCOPE_MEMORY
+  pyroscope_main:
+    image: pyroscope/pyroscope-dev:main
+    environment:
+      - PYROSCOPE_LOG_LEVEL=info
+      - PYROSCOPE_WAIT_AFTER_STOP=true
+    command:
+      - server
+    deploy:
+      resources:
+        limits:
+          cpus: *PYROSCOPE_CPUS
+          memory: *PYROSCOPE_MEMORY
+  prometheus:
+    image: prom/prometheus:v2.27.1
+    volumes:
+      - ../../prometheus:/etc/prometheus/
+      - data-prometheus:/prometheus
+  grafana:
+    user: grafana
+    image: grafana/grafana:7.5.7
+    volumes:
+      - ../../grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ../../grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ../../grafana-provisioning/dashboards/main.yml:/etc/grafana/provisioning/dashboards/main.yml
+      - ../../../monitoring/gen/benchmark-pr.json:/etc/grafana/provisioning/dashboards/benchmark-pr.json:ro
+    ports:
+    - 4050:3000
+    environment:
+      GF_RENDERING_SERVER_URL: http://renderer:8081/render
+      GF_RENDERING_CALLBACK_URL: http://grafana:3000/
+      GF_LOG_FILTERS: rendering:debug
+  renderer:
+    image: grafana/grafana-image-renderer:latest
+volumes:
+  data-prometheus:
+    driver: local

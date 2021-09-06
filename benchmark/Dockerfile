@@ -9,5 +9,5 @@ COPY ./pkg pkg
 COPY ./webapp webapp
 COPY ./benchmark benchmark
 
-RUN go build -o benchmark-main ./benchmark/cmd
-CMD ["./benchmark-main"]
+RUN go build -o pyrobench ./benchmark/cmd
+CMD ["./pyrobench"]

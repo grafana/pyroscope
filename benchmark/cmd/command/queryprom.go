@@ -2,7 +2,6 @@ package command
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/benchmark/config"
@@ -26,13 +25,12 @@ func newPromQuery(cfg *config.PromQuery) *cobra.Command {
 
 			pq := promquery.New(cfg)
 
-			value, warnings, err := pq.Instant(query, t)
+			value, _, err := pq.Instant(query, t)
 			if err != nil {
 				return err
 			}
 
 			fmt.Println(value)
-			fmt.Fprintf(os.Stderr, "warnings:", warnings)
 			return nil
 		}),
 	}

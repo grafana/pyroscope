@@ -32,6 +32,8 @@ type CIReport struct {
 }
 
 type DashboardScreenshot struct {
+	LogLevel string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+
 	GrafanaAddress string `def:"http://localhost:4050" desc:"address of the grafana instance"`
 	DashboardUid   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
 	Destination    string `def:"./dashboard-screenshots" desc:"where to save the screenshots"`
