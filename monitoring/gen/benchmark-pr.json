@@ -21,7 +21,9 @@
          "fillGradient": 0,
          "gridPos": {
             "h": 10,
-            "w": 12
+            "w": 12,
+            "x": 0,
+            "y": 0
          },
          "id": 2,
          "legend": {
@@ -86,6 +88,187 @@
             },
             {
                "format": "short",
+               "label": null,
+               "logBase": 1,
+               "max": null,
+               "min": null,
+               "show": true
+            }
+         ]
+      },
+      {
+         "aliasColors": { },
+         "bars": false,
+         "dashLength": 10,
+         "dashes": false,
+         "datasource": "$PROMETHEUS_DS",
+         "fill": 1,
+         "fillGradient": 0,
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 0
+         },
+         "id": 3,
+         "legend": {
+            "alignAsTable": "true",
+            "avg": false,
+            "current": "true",
+            "max": false,
+            "min": false,
+            "rightSide": "true",
+            "show": true,
+            "sideWidth": null,
+            "sort": "current",
+            "sortDesc": true,
+            "total": false,
+            "values": "true"
+         },
+         "lines": true,
+         "linewidth": 1,
+         "links": [ ],
+         "nullPointMode": "null",
+         "percentage": false,
+         "pointradius": 5,
+         "points": false,
+         "renderer": "flot",
+         "repeat": null,
+         "seriesOverrides": [ ],
+         "spaceLength": 10,
+         "stack": false,
+         "steppedLine": false,
+         "targets": [
+            {
+               "expr": "sum(pyroscope_storage_disk_bytes) by (instance)",
+               "format": "time_series",
+               "intervalFactor": 2,
+               "legendFormat": "total {{ instance }}",
+               "refId": "A"
+            }
+         ],
+         "thresholds": [ ],
+         "timeFrom": null,
+         "timeShift": null,
+         "title": "Disk Usage",
+         "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+         },
+         "type": "graph",
+         "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": [ ]
+         },
+         "yaxes": [
+            {
+               "format": "bytes",
+               "label": null,
+               "logBase": 1,
+               "max": null,
+               "min": null,
+               "show": true
+            },
+            {
+               "format": "bytes",
+               "label": null,
+               "logBase": 1,
+               "max": null,
+               "min": null,
+               "show": true
+            }
+         ]
+      },
+      {
+         "aliasColors": { },
+         "bars": false,
+         "dashLength": 10,
+         "dashes": false,
+         "datasource": "$PROMETHEUS_DS",
+         "fill": 1,
+         "fillGradient": 0,
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 10
+         },
+         "id": 4,
+         "legend": {
+            "alignAsTable": "true",
+            "avg": false,
+            "current": true,
+            "max": true,
+            "min": false,
+            "rightSide": "true",
+            "show": true,
+            "sideWidth": null,
+            "sort": "current",
+            "sortDesc": true,
+            "total": false,
+            "values": "true"
+         },
+         "lines": true,
+         "linewidth": 1,
+         "links": [ ],
+         "nullPointMode": "null",
+         "percentage": false,
+         "pointradius": 5,
+         "points": false,
+         "renderer": "flot",
+         "repeat": null,
+         "seriesOverrides": [ ],
+         "spaceLength": 10,
+         "stack": false,
+         "steppedLine": false,
+         "targets": [
+            {
+               "expr": "pyroscope_storage_evictions_alloc_bytes",
+               "format": "time_series",
+               "intervalFactor": 2,
+               "legendFormat": "heap size {{ instance  }}",
+               "refId": "A"
+            },
+            {
+               "expr": "pyroscope_storage_evictions_total_mem_bytes",
+               "format": "time_series",
+               "intervalFactor": 2,
+               "legendFormat": "total memory {{ instance }}",
+               "refId": "B"
+            }
+         ],
+         "thresholds": [ ],
+         "timeFrom": null,
+         "timeShift": null,
+         "title": "Memory",
+         "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+         },
+         "type": "graph",
+         "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": [ ]
+         },
+         "yaxes": [
+            {
+               "format": "bytes",
+               "label": null,
+               "logBase": 2,
+               "max": null,
+               "min": null,
+               "show": true
+            },
+            {
+               "format": "bytes",
                "label": null,
                "logBase": 1,
                "max": null,

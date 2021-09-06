@@ -1217,7 +1217,7 @@
                      "refId": "A"
                   },
                   {
-                     "expr": "sum without(name)(pyroscope_disk_bytes)",
+                     "expr": "sum without(name)(pyroscope_storage_disk_bytes)",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "total",

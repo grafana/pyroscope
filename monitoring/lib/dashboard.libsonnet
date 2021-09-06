@@ -357,7 +357,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(
-            'sum without(name)(pyroscope_disk_bytes)',
+            'sum without(name)(pyroscope_storage_disk_bytes)',
             legendFormat='total',
           ),
         )
