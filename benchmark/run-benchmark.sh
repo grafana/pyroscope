@@ -29,7 +29,7 @@ docker exec benchmark_client_1 ./benchmark-main loadgen --log-level=error --serv
 # unix timestamp in ms
 start=$(date +%s%3N)
 sleep 10m
-#sleep 30s
+#sleep Infinity
 end=$(date +%s%3N)
 
 # TODO(eh-am): use docker-compose exec
@@ -37,3 +37,7 @@ docker exec benchmark_client_1 ./benchmark-main screenshot-dashboard "$start" "$
   --destination="/screenshots" \
   --grafana-address http://grafana:3000
 
+# get avg rate
+docker exec benchmark_client_1 ./benchmark-main \
+  'avg(rate(pyroscope_http_request_duration_seconds_count{handler="/ingest"}[5m])) by (instance)' \
+  --prometheus-address http://localhost:9091'
