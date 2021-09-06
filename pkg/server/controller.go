@@ -1,6 +1,7 @@
 package server
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
@@ -201,9 +203,14 @@ func (ctrl *Controller) Start() error {
 		return err
 	}
 
+	gzMiddleware, err := gzhttp.NewWrapper(gzhttp.MinSize(2000), gzhttp.CompressionLevel(gzip.BestSpeed))
+	if err != nil {
+		return err
+	}
+
 	ctrl.httpServer = &http.Server{
 		Addr:           ctrl.config.APIBindAddr,
-		Handler:        handler,
+		Handler:        gzMiddleware(handler),
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		IdleTimeout:    30 * time.Second,
