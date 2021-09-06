@@ -8,7 +8,7 @@ import TimelineChartWrapper from "./TimelineChartWrapper";
 import Header from "./Header";
 import Footer from "./Footer";
 import { buildRenderURL } from "../util/updateRequests";
-import { fetchNames, fetchTimeline } from "../redux/actions";
+import { fetchNames, fetchTimeline, abortTimelineRequest } from "../redux/actions";
 
 function PyroscopeApp(props) {
   const { actions, renderURL } = props;
@@ -18,6 +18,8 @@ function PyroscopeApp(props) {
     if (prevPropsRef.renderURL !== renderURL) {
       actions.fetchTimeline(renderURL);
     }
+
+    return actions.abortTimelineRequest;
   }, [renderURL]);
 
   return (
@@ -42,6 +44,7 @@ const mapDispatchToProps = (dispatch) => ({
     {
       fetchTimeline,
       fetchNames,
+      abortTimelineRequest,
     },
     dispatch
   ),

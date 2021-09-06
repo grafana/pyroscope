@@ -164,11 +164,15 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faKeyboard} />
         </button>
       </SidebarItem>
-      <SidebarItem tooltipText="Sign Out">
-        <button type="button" onClick={() => signOut()}>
-          <FontAwesomeIcon icon={faSignOutAlt} />
-        </button>
-      </SidebarItem>
+      {
+        window.isAuthRequired ? (
+          <SidebarItem tooltipText="Sign Out">
+            <button type="button" onClick={() => signOut()}>
+              <FontAwesomeIcon icon={faSignOutAlt} />
+            </button>
+          </SidebarItem>
+        ) : []
+      }
       <Modal
         isOpen={state.shortcutsModalOpen}
         style={modalStyle}

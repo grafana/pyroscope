@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import "react-dom";
 import { Menu, SubMenu, MenuItem, MenuButton } from "@szhsin/react-menu";
 
-import { fetchTags, fetchTagValues, setQuery } from "../redux/actions";
+import { fetchTags, fetchTagValues, setQuery, abortFetchTags, abortFetchTagValues } from "../redux/actions";
 import "../util/prism";
 
 function TagsBar({ query, actions, tags, tagValuesLoading }) {
@@ -16,6 +16,8 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
 
   useEffect(() => {
     actions.fetchTags(query);
+
+    return actions.abortFetchTags;
   }, [query]);
 
   const submitTagsValue = (newValue) => {
@@ -40,6 +42,10 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
   const loadTagValues = (tag) => {
     actions.fetchTagValues(query, tag);
   };
+  useEffect(() => {
+    // since fetchTagValues may be running
+    return actions.abortFetchTagValues;
+  }, [])
 
   const onTagsValueChange = (tagKey, tagValue) => {
     let newQuery;
@@ -135,6 +141,7 @@ const mapDispatchToProps = (dispatch) => ({
     {
       fetchTags,
       fetchTagValues,
+      abortFetchTags,
       setQuery,
     },
     dispatch
