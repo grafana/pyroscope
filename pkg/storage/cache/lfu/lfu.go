@@ -53,7 +53,7 @@ func (c *Cache) GetOrSet(key string, value func() (interface{}, error)) (interfa
 	}
 	// value doesn't exist.
 	v, err := value()
-	if err != nil {
+	if err != nil || v == nil {
 		return nil, err
 	}
 	e = new(cacheEntry)

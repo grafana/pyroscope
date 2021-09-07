@@ -194,8 +194,6 @@ func (cache *Cache) get(key string) (interface{}, error) {
 		case err == nil:
 		case errors.Is(err, badger.ErrKeyNotFound):
 			return nil, nil
-		case len(buf) == 0:
-			return nil, nil
 		default:
 			return nil, err
 		}
