@@ -22,7 +22,6 @@ Edit `run-parameters.env` file to change the parameters of the benchmark run.
 
 ### Use cases
 
-#### Running a certain load
 
 #### Running indefinitely
 Maybe you want to leave the load generator running for an indefine amount of time.
