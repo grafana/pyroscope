@@ -30,9 +30,10 @@ import (
 )
 
 const (
-	jwtCookieName   = "pyroscopeJWT"
-	stateCookieName = "pyroscopeState"
-	oauthGoogle     = iota
+	jwtCookieName              = "pyroscopeJWT"
+	stateCookieName            = "pyroscopeState"
+	gzHttpCompressionThreshold = 2000
+	oauthGoogle                = iota
 	oauthGithub
 	oauthGitlab
 )
@@ -193,24 +194,31 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	return authRoutes, nil
 }
 
+func (ctrl *Controller) getHandler() (http.Handler, error) {
+	handler, err := ctrl.mux()
+	if err != nil {
+		return nil, err
+	}
+
+	gzhttpMiddleware, err := gzhttp.NewWrapper(gzhttp.MinSize(gzHttpCompressionThreshold), gzhttp.CompressionLevel(gzip.BestSpeed))
+	if err != nil {
+		return nil, err
+	}
+	return gzhttpMiddleware(handler), nil
+}
+
 func (ctrl *Controller) Start() error {
 	logger := logrus.New()
 	w := logger.Writer()
 	defer w.Close()
-
-	handler, err := ctrl.mux()
-	if err != nil {
-		return err
-	}
-
-	gzMiddleware, err := gzhttp.NewWrapper(gzhttp.MinSize(2000), gzhttp.CompressionLevel(gzip.BestSpeed))
+	handler, err := ctrl.getHandler()
 	if err != nil {
 		return err
 	}
 
 	ctrl.httpServer = &http.Server{
 		Addr:           ctrl.config.APIBindAddr,
-		Handler:        gzMiddleware(handler),
+		Handler:        handler,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		IdleTimeout:    30 * time.Second,
