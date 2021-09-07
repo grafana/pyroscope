@@ -9,8 +9,8 @@ const prReport = fs.readFileSync(path.join(__dirname,"./pr-report"));
 markdown(`${prReport}`);
 
 const filenames = fs.readdirSync(path.join(__dirname,"./dashboard-screenshots"));
-const img = (name, url) => `![${name}](${url})`
-const imgmd = filenames.map(name => img(name, `${bucketAddress}/${name}`)).join("\n"); 
+const img = (name, url) => `<img src="${url}" alt="drawing" width="400"/>`;
+const imgmd = filenames.map(name => img(name, `${bucketAddress}/${name}`)).join(" ");
 
 markdown(`
 # screenshots

@@ -6,7 +6,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY ./pkg pkg
-# TODO(eh-am): why???
 COPY ./webapp webapp
 COPY ./benchmark benchmark
 

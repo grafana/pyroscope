@@ -14,3 +14,9 @@ create a folder `dashboard-screenshots`
 and `./run-benchmark.sh`
 
 You may tweak the running time for quicker feedback loop `BENCH_RUN_FOR=30s ./run-benchmark.sh`
+
+# Adding more panes
+Just update the dashboard in `monitoring/benchmark-pr.jsonnet`
+
+# Adding more things to the report
+Just update the bashscript `generate-reports.sh`
