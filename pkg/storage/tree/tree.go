@@ -148,7 +148,9 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 	})
 
 	if i > len(n.ChildrenNodes)-1 || !bytes.Equal(n.ChildrenNodes[i].Name, targetLabel) {
-		child := newNode(targetLabel)
+		l := make([]byte, len(targetLabel))
+		copy(l, targetLabel)
+		child := newNode(l)
 		n.ChildrenNodes = append(n.ChildrenNodes, child)
 		copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
 		n.ChildrenNodes[i] = child

@@ -71,11 +71,11 @@ func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error 
 		tn := nodes[0]
 		nodes = nodes[1:]
 
-		labelLink := d.Put([]byte(tn.Name))
-		if _, err = varint.Write(w, uint64(len(labelLink))); err != nil {
+		labelKey := d.Put([]byte(tn.Name))
+		if _, err = varint.Write(w, uint64(len(labelKey))); err != nil {
 			return err
 		}
-		if _, err = w.Write(labelLink); err != nil {
+		if _, err = w.Write(labelKey); err != nil {
 			return err
 		}
 		val := tn.Self
@@ -160,27 +160,26 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 	parents := []*parentNode{{t.root, nil}}
 	j := 0
 
+	var nameBuf bytes.Buffer
 	for len(parents) > 0 {
 		j++
 		parent := parents[0]
 		parents = parents[1:]
 
 		labelLen, err := varint.Read(br)
-		// if err == io.EOF {
-		// 	return t, nil
-		// }
 		labelLinkBuf := make([]byte, labelLen) // TODO: there are better ways to do this?
 		_, err = io.ReadAtLeast(br, labelLinkBuf, int(labelLen))
 		if err != nil {
 			return nil, err
 		}
-		nameBuf, ok := d.Get(labelLinkBuf)
-		if !ok {
-			// these strings has to be at least slightly different, hence base64 Addon
-			nameBuf = []byte("label not found " + base64.URLEncoding.EncodeToString(labelLinkBuf))
-		}
-		tn := parent.node.insert(nameBuf)
 
+		nameBuf.Reset()
+		if !d.GetValue(labelLinkBuf, &nameBuf) {
+			// these strings has to be at least slightly different, hence base64 Addon
+			nameBuf.Reset()
+			nameBuf.WriteString("label not found " + base64.URLEncoding.EncodeToString(labelLinkBuf))
+		}
+		tn := parent.node.insert(nameBuf.Bytes())
 		tn.Self, err = varint.Read(br)
 		tn.Total = tn.Self
 		if err != nil {
