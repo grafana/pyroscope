@@ -3,6 +3,7 @@ package lfu
 import (
 	"container/list"
 	"sync"
+	"time"
 )
 
 type Eviction struct {
@@ -11,28 +12,26 @@ type Eviction struct {
 }
 
 type Cache struct {
-	// If len > UpperBound, cache will automatically evict
-	// down to LowerBound.  If either value is 0, this behavior
-	// is disabled.
-	UpperBound       int
-	LowerBound       int
-	values           map[string]*cacheEntry
-	freqs            *list.List
-	len              int
-	lock             *sync.Mutex
+	TTL              int64
 	EvictionChannel  chan<- Eviction
 	WriteBackChannel chan<- Eviction
+
+	lock   *sync.Mutex
+	values map[string]*cacheEntry
+	freqs  *list.List
+	len    int
 }
 
 type cacheEntry struct {
-	key       string
-	value     interface{}
-	freqNode  *list.Element
-	persisted bool
+	key            string
+	value          interface{}
+	freqNode       *list.Element
+	persisted      bool
+	lastAccessTime int64
 }
 
 type listEntry struct {
-	entries map[*cacheEntry]byte
+	entries map[*cacheEntry]struct{}
 	freq    int
 }
 
@@ -70,12 +69,6 @@ func (c *Cache) Set(key string, value interface{}) {
 		c.values[key] = e
 		c.increment(e)
 		c.len++
-		// bounds mgmt
-		if c.UpperBound > 0 && c.LowerBound > 0 {
-			if c.len > c.UpperBound {
-				c.evict(c.len - c.LowerBound)
-			}
-		}
 	}
 }
 
@@ -113,10 +106,11 @@ func (c *Cache) Evict(count int) int {
 	return c.evict(count)
 }
 
-func (c *Cache) WriteBack(count int) int {
+// WriteBack persists modified items and evicts obsolete ones.
+func (c *Cache) WriteBack(count int) (persisted, evicted int) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	return c.persist(count)
+	return c.writeBack()
 }
 
 func (c *Cache) evict(count int) int {
@@ -143,46 +137,27 @@ func (c *Cache) evict(count int) int {
 	return evicted
 }
 
-/*
-func (c *Cache) persist(count int) int {
-	var persisted int
-	for i := 0; i < count; {
-		if place := c.freqs.Front(); place != nil {
-			for entry := range place.Value.(*listEntry).entries {
-				if i < count {
-					if c.WriteBackChannel != nil && !entry.persisted {
-						c.WriteBackChannel <- Eviction{
-							Key: entry.key,
-							Value: entry.value,
-						}
-						entry.persisted = true
-						persisted++
-					}
-					i++
-				}
-			}
-		}
-	}
-	return persisted
-}
-*/
-
-func (c *Cache) persist(count int) int {
-	var persisted int
-	for k, v := range c.values {
-		if c.WriteBackChannel != nil && !v.persisted {
+func (c *Cache) writeBack() (persisted, evicted int) {
+	now := time.Now().Unix()
+	for k, entry := range c.values {
+		if c.WriteBackChannel != nil && !entry.persisted {
 			c.WriteBackChannel <- Eviction{
 				Key:   k,
-				Value: v.value,
+				Value: entry.value,
 			}
-			v.persisted = true
+			entry.persisted = true
 			persisted++
 		}
+		if c.TTL > 0 && now-entry.lastAccessTime > c.TTL {
+			c.delete(entry)
+			evicted++
+		}
 	}
-	return persisted
+	return persisted, evicted
 }
 
 func (c *Cache) increment(e *cacheEntry) {
+	e.lastAccessTime = time.Now().Unix()
 	currentPlace := e.freqNode
 	var nextFreq int
 	var nextPlace *list.Element
@@ -200,7 +175,7 @@ func (c *Cache) increment(e *cacheEntry) {
 		// create a new list entry
 		li := new(listEntry)
 		li.freq = nextFreq
-		li.entries = make(map[*cacheEntry]byte)
+		li.entries = make(map[*cacheEntry]struct{})
 		if currentPlace != nil {
 			nextPlace = c.freqs.InsertAfter(li, currentPlace)
 		} else {
@@ -208,7 +183,7 @@ func (c *Cache) increment(e *cacheEntry) {
 		}
 	}
 	e.freqNode = nextPlace
-	nextPlace.Value.(*listEntry).entries[e] = 1
+	nextPlace.Value.(*listEntry).entries[e] = struct{}{}
 	if currentPlace != nil {
 		// remove from current position
 		c.remEntry(currentPlace, e)

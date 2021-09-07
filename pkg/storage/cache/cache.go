@@ -47,10 +47,7 @@ func New(db *badger.DB, prefix string, metrics *Metrics) *Cache {
 	// eviction channel for saving cache items to disk
 	l.EvictionChannel = evictionChannel
 	l.WriteBackChannel = writeBackChannel
-
-	// disable the eviction based on upper and lower bound
-	l.UpperBound = 0
-	l.LowerBound = 0
+	l.TTL = 120
 
 	cache := &Cache{
 		db:  db,

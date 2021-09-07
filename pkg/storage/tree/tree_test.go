@@ -102,29 +102,6 @@ var _ = Describe("tree package", func() {
 			})
 		})
 	})
-
-	Context("MergeCount", func() {
-		Context("divergent trees", func() {
-			treeA := New()
-			treeA.Insert([]byte("a;b"), uint64(1))
-			treeA.Insert([]byte("a;c"), uint64(2))
-			treeA.Insert([]byte("a;e"), uint64(3))
-			treeA.Insert([]byte("b"), uint64(16))
-
-			treeB := New()
-			treeB.Insert([]byte("a;b"), uint64(4))
-			treeB.Insert([]byte("a;e"), uint64(12))
-			treeB.Insert([]byte("a;d"), uint64(8))
-			treeB.Insert([]byte("a;f"), uint64(4))
-			treeB.Insert([]byte("a;z"), uint64(40))
-			treeB.Insert([]byte("a;x"), uint64(60))
-
-			It("properly truncates insignificant nodes", func() {
-				treeA.MergeCount(treeB, 5)
-				Expect(treeA.String()).To(Equal(treeStr(`"a;x" 60|"a;z" 40|"b" 16|`)))
-			})
-		})
-	})
 })
 
 func treeStr(s string) string {
