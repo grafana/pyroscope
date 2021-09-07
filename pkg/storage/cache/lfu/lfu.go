@@ -43,14 +43,26 @@ func New() *Cache {
 	return c
 }
 
-func (c *Cache) Get(key string) interface{} {
+func (c *Cache) GetOrSet(key string, value func() (interface{}, error)) (interface{}, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	if e, ok := c.values[key]; ok {
+	e, ok := c.values[key]
+	if ok {
 		c.increment(e)
-		return e.value
+		return e.value, nil
 	}
-	return nil
+	// value doesn't exist.
+	v, err := value()
+	if err != nil {
+		return nil, err
+	}
+	e = new(cacheEntry)
+	e.key = key
+	e.value = v
+	c.values[key] = e
+	c.increment(e)
+	c.len++
+	return v, nil
 }
 
 func (c *Cache) Set(key string, value interface{}) {

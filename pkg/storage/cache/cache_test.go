@@ -2,7 +2,6 @@ package cache
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -41,8 +40,11 @@ var _ = Describe("cache", func() {
 			ReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "storage_test_read",
 			}),
-			WritesToDiskCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			DiskWritesHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
 				Name: "storage_test_write",
+			}),
+			DiskReadsHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+				Name: "storage_test_reads",
 			}),
 		})
 		cache.New = func(k string) interface{} {
@@ -60,7 +62,6 @@ var _ = Describe("cache", func() {
 		for i := 0; i < 200; i++ {
 			cache.Put(fmt.Sprintf("foo-%d", i), fmt.Sprintf("bar-%d", i))
 		}
-		log.Printf("size: %d", cache.Len())
 
 		v, err := cache.GetOrCreate("foo-199")
 		Expect(err).ToNot(HaveOccurred())

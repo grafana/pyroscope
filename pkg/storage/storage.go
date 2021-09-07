@@ -200,16 +200,25 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		Name: "pyroscope_storage_cache_reads_total",
 		Help: "total number of cache queries",
 	}, []string{"name"})
-	writesToDiskCounterMetrics := promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-		Name: "pyroscope_storage_cache_persisted_total",
-		Help: "number of items persisted from cache to disk",
+
+	diskWritesCounterMetrics := promauto.With(reg).NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "pyroscope_storage_cache_disk_writes",
+		Help:    "items persisted from cache to disk",
+		Buckets: []float64{1 << 10, 1 << 12, 1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22, 1 << 24, 1 << 26},
+	}, []string{"name"})
+
+	diskReadsCounterMetrics := promauto.With(reg).NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "pyroscope_storage_cache_disk_reads",
+		Help:    "items loaded disk to cache",
+		Buckets: []float64{1 << 10, 1 << 12, 1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22, 1 << 24, 1 << 26},
 	}, []string{"name"})
 
 	s.dimensions = cache.New(s.dbDimensions, "i:", &cache.Metrics{
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
 		ReadCounter:         storageReadCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
-		WritesToDiskCounter: writesToDiskCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
+		DiskWritesHistogram: diskWritesCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
+		DiskReadsHistogram:  diskReadsCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
 	})
 
 	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) {
@@ -226,7 +235,8 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "segments"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "segments"}),
 		ReadCounter:         storageReadCounterMetrics.With(prometheus.Labels{"name": "segments"}),
-		WritesToDiskCounter: writesToDiskCounterMetrics.With(prometheus.Labels{"name": "segments"}),
+		DiskWritesHistogram: diskWritesCounterMetrics.With(prometheus.Labels{"name": "segments"}),
+		DiskReadsHistogram:  diskReadsCounterMetrics.With(prometheus.Labels{"name": "segments"}),
 	})
 
 	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) {
@@ -245,7 +255,8 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
 		ReadCounter:         storageReadCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
-		WritesToDiskCounter: writesToDiskCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
+		DiskWritesHistogram: diskWritesCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
+		DiskReadsHistogram:  diskReadsCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
 	})
 
 	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) {
@@ -262,7 +273,8 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "trees"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "trees"}),
 		ReadCounter:         storageReadCounterMetrics.With(prometheus.Labels{"name": "trees"}),
-		WritesToDiskCounter: writesToDiskCounterMetrics.With(prometheus.Labels{"name": "trees"}),
+		DiskWritesHistogram: diskWritesCounterMetrics.With(prometheus.Labels{"name": "trees"}),
+		DiskReadsHistogram:  diskReadsCounterMetrics.With(prometheus.Labels{"name": "trees"}),
 	})
 	s.trees.Bytes = s.treeBytes
 	s.trees.FromBytes = s.treeFromBytes
