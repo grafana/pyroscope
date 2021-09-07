@@ -48,6 +48,8 @@ services:
     volumes:
       - ../../prometheus:/etc/prometheus/
       - data-prometheus:/prometheus
+  pushgateway:
+    image: prom/pushgateway:v1.4.1
   grafana:
     user: grafana
     image: grafana/grafana:7.5.7

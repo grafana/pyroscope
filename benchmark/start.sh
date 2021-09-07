@@ -33,7 +33,8 @@ function run() {
 
   # TODO(eh-am): docker-compose exec
   docker exec benchmark_pyrobench_1 ./pyrobench loadgen \
-    --server-address="http://pyroscope:4040"
+    --server-address="http://pyroscope:4040" \
+    --pushgateway-address="http://pushgateway:9091"
 
   if [ "$wait" = true ]; then
     echo "Finished, waiting since --wait flag is true"

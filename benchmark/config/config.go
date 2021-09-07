@@ -20,7 +20,8 @@ type LoadGen struct {
 	Clients             int    `def:"20" desc:"how many pyroscope clients to emulate"`
 	Requests            int    `def:"10000" desc:"how many requests each clients should make"`
 
-	WaitUntilAvailable bool `def:"true" desc:"wait until endpoint is available"`
+	PushgatewayAddress string `def:"" desc:"if enabled, pushes data to prometheus pushgateway (assumes it's unauthenticated)" mapstructure:"pushgateway-address"`
+	WaitUntilAvailable bool   `def:"true" desc:"wait until endpoint is available"`
 }
 
 type PromQuery struct {

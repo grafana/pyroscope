@@ -8,6 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/pyroscope-io/pyroscope/benchmark/config"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
@@ -24,15 +27,69 @@ type LoadGen struct {
 	Config    *config.LoadGen
 	Rand      *rand.Rand
 	SymbolBuf []byte
+
+	runProgressMetric prometheus.Gauge
+	uploadErrors      prometheus.Counter
+	successfulUploads prometheus.Counter
+	pusher            GatewayPusher
+}
+
+type GatewayPusher interface {
+	Push() error
+}
+type NoopGatewayPusher struct{}
+
+func (n NoopGatewayPusher) Push() error {
+	return nil
 }
 
 func Cli(cfg *config.LoadGen) error {
 	r := rand.New(rand.NewSource(int64(cfg.RandSeed)))
+
+	var pusher GatewayPusher
+	if cfg.PushgatewayAddress == "" {
+		logrus.Debug("no pushgateway configured")
+		pusher = NoopGatewayPusher{}
+	} else {
+		logrus.Debug("will push metrics to ", cfg.PushgatewayAddress)
+		pusher = push.New(cfg.PushgatewayAddress, "push").Gatherer(prometheus.DefaultGatherer)
+	}
+
 	l := &LoadGen{
 		Config:    cfg,
 		Rand:      r,
 		SymbolBuf: make([]byte, cfg.ProfileSymbolLength),
+
+		runProgressMetric: promauto.NewGauge(prometheus.GaugeOpts{
+			Namespace: "pyroscope",
+			Subsystem: "benchmark",
+			Name:      "progress",
+			Help:      "",
+		}),
+		uploadErrors: promauto.NewCounter(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Subsystem: "benchmark",
+			Name:      "upload_errors",
+			Help:      "",
+		}),
+		successfulUploads: promauto.NewCounter(prometheus.CounterOpts{
+			Namespace: "pyroscope",
+			Subsystem: "benchmark",
+			Name:      "successful_uploads",
+			Help:      "",
+		}),
+		pusher: pusher,
 	}
+
+	promauto.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "pyroscope",
+			Subsystem: "benchmark",
+			Name:      "requests_total",
+			Help:      "",
+		},
+		func() float64 { return float64(cfg.Apps * cfg.Requests * cfg.Clients) },
+	)
 
 	return l.Run(cfg)
 }
@@ -49,6 +106,7 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 	logrus.Debug("done generating fixtures.")
 
 	logrus.Info("starting sending requests")
+	logrus.Infof("cfg %+v\n", cfg)
 	wg := sync.WaitGroup{}
 	wg.Add(l.Config.Apps * l.Config.Clients)
 	appNameBuf := make([]byte, 25)
@@ -89,7 +147,8 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 		UpstreamAddress:        l.Config.ServerAddress,
 		UpstreamRequestTimeout: 10 * time.Second,
 	}
-	r, err := remote.New(rc, logrus.StandardLogger())
+
+	r, err := remote.New(rc, logrus.New())
 	if err != nil {
 		panic(err)
 	}
@@ -117,11 +176,19 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 			Trie:            t,
 		})
 		if err != nil {
-			// TODO(eh-am): calculate errors
+			l.uploadErrors.Add(1)
 			time.Sleep(time.Second)
 		} else {
-			// TODO(eh-am): calculate success
+			l.successfulUploads.Add(1)
 		}
+
+		err = l.pusher.Push()
+		if err != nil {
+			logrus.Error(err)
+		}
+
+		//		atomic.AddUint64(&requestsCompleteCount, 1)
+		//		runProgress.Set(float64(requestsCompleteCount) / (float64(appsCount * requestsCount * clientsCount)))
 	}
 
 	wg.Done()
