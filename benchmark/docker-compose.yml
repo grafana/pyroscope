@@ -11,10 +11,6 @@ services:
     - sh
     - -c
     - sleep Infinity
-      #  command:
-      #  - sh
-      #  - -c
-      #  - ./pyrobench loadgen --server-address="http://pyroscope:4040"
 
   pyroscope:
     environment:
@@ -40,6 +36,8 @@ services:
       - data-prometheus:/prometheus
     ports:
       - 4090:9090
+  pushgateway:
+    image: prom/pushgateway:v1.4.1
 
   grafana:
     image: grafana/grafana:7.5.7

@@ -5,6 +5,7 @@ set -euo pipefail
 BENCH_RUN_FOR="${BENCH_RUN_FOR:-10m}"
 PYROSCOPE_ADDRESS="http://pyroscope:4040"
 PYROSCOPE_MAIN_ADDRESS="http://pyroscope_main:4040"
+PUSHGATEWAY_ADDRESS="http://pushgateway:9091"
 GRAFANA_ADDRESS="http://grafana:3000"
 DASHBOARD_UID="QF9YgRbUbt3BA5Qd"
 
@@ -30,8 +31,16 @@ function run() {
   docker-compose up -d --force-recreate --remove-orphans
 
   echo "Generating test load"
-  docker exec pr_client_1 ./pyrobench loadgen --log-level=error --server-address="$PYROSCOPE_ADDRESS" > /dev/null &
-  docker exec pr_client_1 ./pyrobench loadgen --log-level=error --server-address="$PYROSCOPE_MAIN_ADDRESS" > /dev/null &
+  docker exec pr_client_1 ./pyrobench loadgen \
+    --log-level=error \
+    --server-address="$PYROSCOPE_ADDRESS" \
+    --pushgateway-address="$PUSHGATEWAY_ADDRESS" \
+    > /dev/null &
+  docker exec pr_client_1 ./pyrobench loadgen \
+    --log-level=error \
+    --server-address="$PYROSCOPE_MAIN_ADDRESS"  \
+    --pushgateway-address="$PUSHGATEWAY_ADDRESS" \
+    > /dev/null &
 
   echo "Sleeping for $BENCH_RUN_FOR"
   # unix timestamp in ms

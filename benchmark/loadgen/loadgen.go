@@ -52,7 +52,7 @@ func Cli(cfg *config.LoadGen) error {
 		pusher = NoopGatewayPusher{}
 	} else {
 		logrus.Debug("will push metrics to ", cfg.PushgatewayAddress)
-		pusher = push.New(cfg.PushgatewayAddress, "push").Gatherer(prometheus.DefaultGatherer)
+		pusher = push.New(cfg.PushgatewayAddress, cfg.ServerAddress).Gatherer(prometheus.DefaultGatherer)
 	}
 
 	l := &LoadGen{
@@ -186,9 +186,6 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 		if err != nil {
 			logrus.Error(err)
 		}
-
-		//		atomic.AddUint64(&requestsCompleteCount, 1)
-		//		runProgress.Set(float64(requestsCompleteCount) / (float64(appsCount * requestsCount * clientsCount)))
 	}
 
 	wg.Done()

@@ -48,6 +48,8 @@ services:
     volumes:
       - ../../prometheus:/etc/prometheus/
       - data-prometheus:/prometheus
+    ports:
+      - 4090:9090
   pushgateway:
     image: prom/pushgateway:v1.4.1
   grafana:

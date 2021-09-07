@@ -93,3 +93,39 @@ grafana.dashboard.new(
     h: height,
   }
 )
+.addPanel(
+  grafana.graphPanel.new(
+    'Upload Errors (Total)',
+    datasource='$PROMETHEUS_DS',
+    span=4,
+  )
+  .addTarget(
+    grafana.prometheus.target(
+      'pyroscope_benchmark_upload_errors{}',
+    )
+  ),
+  gridPos={
+    x: width * 1,
+    y: height * 1,
+    w: width,
+    h: height,
+  }
+)
+.addPanel(
+  grafana.graphPanel.new(
+    'Successful Uploads (Total)',
+    datasource='$PROMETHEUS_DS',
+    span=4,
+  )
+  .addTarget(
+    grafana.prometheus.target(
+      'pyroscope_benchmark_successful_uploads{}',
+    )
+  ),
+  gridPos={
+    x: width * 0,
+    y: height * 2,
+    w: width,
+    h: height,
+  }
+)
