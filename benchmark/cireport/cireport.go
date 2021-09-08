@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"fmt"
 	"io/ioutil"
+	"math"
 	"sync"
 	"text/template"
 	"time"
@@ -28,23 +30,31 @@ type Querier interface {
 	Instant(query string, t time.Time) (float64, error)
 }
 
+type Query struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description" default:""`
+
+	Base         string `yaml:"base"`
+	BaseResult   float64
+	Target       string `yaml:"target"`
+	TargetResult float64
+	// TODO(eh-am): implement a default value
+	DiffThreshold float64 `yaml:"diffThresholdPercent"`
+	DiffPercent   float64
+	// Absolute value
+	DiffPercentAbs float64
+
+	// Indicates whether a bigger value is better or not
+	BiggerIsBetter bool `yaml:"biggerIsBetter"`
+
+	mu sync.Mutex
+}
+
 type QueriesConfig struct {
 	BaseName   string `yaml:"baseName"`
 	TargetName string `yaml:"targetName"`
 
-	Queries []struct {
-		Name        string `yaml:"name"`
-		Description string `yaml:"description" default:""`
-
-		Base          string `yaml:"base"`
-		BaseResult    float64
-		Target        string `yaml:"target"`
-		TargetResult  float64
-		DiffThreshold int `yaml:"diffThreshold" default:"5"` // TODO(eh-am): what type to use here
-		DiffPercent   float64
-
-		mu sync.Mutex
-	} `yaml:"queries"`
+	Queries []Query `yaml:"queries"`
 }
 
 func New(q Querier, cfg *config.CIReport) (*ciReport, error) {
@@ -81,15 +91,15 @@ func (r *ciReport) Report(ctx context.Context) (string, error) {
 	g, ctx := errgroup.WithContext(context.Background())
 
 	now := time.Now()
-	for i, queries := range r.qCfg.Queries {
-		i := i
+	for index, queries := range r.qCfg.Queries {
+		i := index
+		q := queries
 		g.Go(func() error {
-			baseResult, err := r.q.Instant(queries.Base, now)
+			baseResult, err := r.q.Instant(q.Base, now)
 			if err != nil {
 				return err
 			}
-
-			targetResult, err := r.q.Instant(queries.Target, now)
+			targetResult, err := r.q.Instant(q.Target, now)
 			if err != nil {
 				return err
 			}
@@ -97,11 +107,15 @@ func (r *ciReport) Report(ctx context.Context) (string, error) {
 			diffPercent := ((targetResult - baseResult) / (targetResult + baseResult)) * 100
 
 			// TODO(eh-am): should I lock the whole array?
-			queries.mu.Lock()
+			q.mu.Lock()
 			r.qCfg.Queries[i].BaseResult = baseResult
 			r.qCfg.Queries[i].TargetResult = targetResult
+
+			// compute as much as possible beforehand
+			// so that the template code is cleaner
 			r.qCfg.Queries[i].DiffPercent = diffPercent
-			queries.mu.Unlock()
+			r.qCfg.Queries[i].DiffPercentAbs = math.Abs(diffPercent)
+			q.mu.Unlock()
 			return nil
 		})
 	}
@@ -116,7 +130,11 @@ func (r *ciReport) Report(ctx context.Context) (string, error) {
 		QC: r.qCfg,
 	}
 
-	t, err := template.ParseFS(resources, "resources/pr.gotpl")
+	t, err := template.New("pr.gotpl").
+		Funcs(template.FuncMap{
+			"formatDiff": formatDiff,
+		}).
+		ParseFS(resources, "resources/pr.gotpl")
 	if err != nil {
 		return "", err
 	}
@@ -126,4 +144,34 @@ func (r *ciReport) Report(ctx context.Context) (string, error) {
 	}
 
 	return tpl.String(), nil
+}
+
+// formatDiff formats diff in a markdown intended format
+func formatDiff(q Query) string {
+	diffPercent := ((q.TargetResult - q.BaseResult) / ((q.TargetResult + q.BaseResult) / 2)) * 100.0
+
+	res := fmt.Sprintf("%.2f (%.2f%%)", q.TargetResult-q.BaseResult, diffPercent)
+
+	// TODO: use something friendlier to colourblind people?
+	goodEmoji := ":green_square:"
+	badEmoji := ":red_square:"
+
+	// is threshold relevant?
+	if math.Abs(diffPercent) > q.DiffThreshold {
+		if q.BiggerIsBetter { // higher is better
+			if q.TargetResult > q.BaseResult {
+				return fmt.Sprintf("%s %s", goodEmoji, res)
+			} else {
+				return fmt.Sprintf("%s %s", badEmoji, res)
+			}
+		} else { // lower is better
+			if q.TargetResult < q.BaseResult {
+				return fmt.Sprintf("%s %s", goodEmoji, res)
+			} else {
+				return fmt.Sprintf("%s %s", badEmoji, res)
+			}
+		}
+	}
+
+	return res
 }

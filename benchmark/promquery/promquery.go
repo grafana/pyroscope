@@ -2,6 +2,7 @@ package promquery
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
@@ -43,8 +44,12 @@ func (pq *promQuery) Instant(query string, t time.Time) (float64, error) {
 	//		logrus.Warn(warning)
 	//	}
 
-	// since it's an instant query
-	// assume the vector will only have a single value
-	result := float64(v.(model.Vector)[0].Value)
-	return result, nil
+	switch t := v.(type) {
+	case model.Vector:
+		return float64(v.(model.Vector)[0].Value), nil
+	case *model.Scalar:
+		return float64(v.(*model.Scalar).Value), nil
+	default:
+		return 0, fmt.Errorf("invalid type %T\n", t)
+	}
 }
