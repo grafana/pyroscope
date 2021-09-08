@@ -5,7 +5,7 @@
 # | |  | |_| \__ \ |_
 # |_|   \__,_|___/\__|
 
-FROM alpine:3.13 as rust-builder
+FROM alpine:3.12 as rust-builder
 
 RUN apk update &&\
     apk add --no-cache git gcc g++ make build-base openssl-dev musl musl-dev curl
@@ -13,9 +13,9 @@ RUN apk update &&\
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN /root/.cargo/bin/rustup target add $(uname -m)-unknown-linux-musl
 
-RUN wget https://github.com/libunwind/libunwind/releases/download/v1.5/libunwind-1.5.0.tar.gz && \
-    tar -zxf libunwind-1.5.0.tar.gz && \
-    cd libunwind-1.5.0/ && \
+RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwind-1.3.1.tar.gz && \
+    tar -zxf libunwind-1.3.1.tar.gz && \
+    cd libunwind-1.3.1/ && \
     ./configure --with-pic --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
 
 COPY third_party/rustdeps /opt/rustdeps
@@ -47,7 +47,7 @@ RUN make build-phpspy-dependencies
 # | (_| \__ \__ \  __/ |_\__ \
 #  \__,_|___/___/\___|\__|___/
 
-FROM node:14.15.5-alpine3.13 as js-builder
+FROM node:14.15.1-alpine3.12 as js-builder
 
 RUN apk add --no-cache make
 
@@ -70,7 +70,12 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #   __/ |                     __/ |
 #  |___/                     |___/
 
-FROM golang:1.17.0-alpine3.13 as go-builder
+# We build our own golang image because we need alpine 3.12 and go 1.17 is not available in alpine 3.12
+# The dockerfile we use is a copy of this one:
+#   https://github.com/docker-library/golang/blob/48e32c58a6abc052253fba899cea876740cab262/1.16/alpine3.14/Dockerfile
+# TODO: figure out why linking isn't working on alpine 3.13 or 3.14
+# see https://github.com/pyroscope-io/pyroscope/pull/372 for more context
+FROM pyroscope/golang:1.17.0-alpine3.12 AS go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 RUN apk upgrade binutils
@@ -102,14 +107,13 @@ RUN make build-pyspy-static-library
 RUN make build-phpspy-static-library
 
 
-#   __ _             _   _
-#  / _(_)           | | (_)
-# | |_ _ _ __   __ _| |  _ _ __ ___   __ _  __ _  ___
-# |  _| | '_ \ / _` | | | | '_ ` _ \ / _` |/ _` |/ _ \
-# | | | | | | | (_| | | | | | | | | | (_| | (_| |  __/
-# |_| |_|_| |_|\__,_|_| |_|_| |_| |_|\__,_|\__, |\___|
-#                                           __/ |
-#                                          |___/
+#      _        _   _        _ _ _
+#     | |      | | (_)      | (_) |
+#  ___| |_ __ _| |_ _  ___  | |_| |__  ___
+# / __| __/ _` | __| |/ __| | | | '_ \/ __|
+# \__ \ || (_| | |_| | (__  | | | |_) \__ \
+# |___/\__\__,_|\__|_|\___| |_|_|_.__/|___/
+
 
 FROM scratch AS lib-exporter
 
@@ -120,7 +124,7 @@ COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.a /
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.h /
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.a /
 COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.h /
-COPY --from=go-builder /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a /
+COPY --from=rust-builder /opt/rustdeps/librustdeps.a /
 
 
 #   __ _             _   _
@@ -132,7 +136,7 @@ COPY --from=go-builder /opt/pyroscope/third_party/rustdeps/target/release/librus
 #                                           __/ |
 #                                          |___/
 
-FROM alpine:3.13
+FROM alpine:3.12
 
 LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 
