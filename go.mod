@@ -1,5 +1,9 @@
 module github.com/pyroscope-io/pyroscope
 
+// we do use go1.17 for building pyroscope binaries
+// but we don't use any go1.17 specific features
+// so for maximum compatibility we only require go1.16 for this module
+// I think it would make sense to upgrade to 1.17 when it's more mainstream
 go 1.16
 
 require (
