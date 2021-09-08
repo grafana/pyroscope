@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -21,7 +20,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -36,7 +34,7 @@ var (
 	errRetention  = errors.New("could not write because of retention settings")
 
 	evictInterval     = 20 * time.Second
-	writeBackInterval = time.Second
+	writeBackInterval = time.Minute
 	retentionInterval = time.Minute
 	badgerGCInterval  = 5 * time.Minute
 )
@@ -221,16 +219,6 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		DiskReadsHistogram:  diskReadsCounterMetrics.With(prometheus.Labels{"name": "dimensions"}),
 	})
 
-	s.dimensions.Bytes = func(k string, v interface{}) ([]byte, error) {
-		return v.(*dimension.Dimension).Bytes()
-	}
-	s.dimensions.FromBytes = func(k string, v []byte) (interface{}, error) {
-		return dimension.FromBytes(v)
-	}
-	s.dimensions.New = func(k string) interface{} {
-		return dimension.New()
-	}
-
 	s.segments = cache.New(s.dbSegments, "s:", &cache.Metrics{
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "segments"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "segments"}),
@@ -238,18 +226,6 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		DiskWritesHistogram: diskWritesCounterMetrics.With(prometheus.Labels{"name": "segments"}),
 		DiskReadsHistogram:  diskReadsCounterMetrics.With(prometheus.Labels{"name": "segments"}),
 	})
-
-	s.segments.Bytes = func(k string, v interface{}) ([]byte, error) {
-		return v.(*segment.Segment).Bytes()
-	}
-	s.segments.FromBytes = func(k string, v []byte) (interface{}, error) {
-		// TODO:
-		//   these configuration params should be saved in db when it initializes
-		return segment.FromBytes(v)
-	}
-	s.segments.New = func(k string) interface{} {
-		return segment.New()
-	}
 
 	s.dicts = cache.New(s.dbDicts, "d:", &cache.Metrics{
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
@@ -259,16 +235,6 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		DiskReadsHistogram:  diskReadsCounterMetrics.With(prometheus.Labels{"name": "dicts"}),
 	})
 
-	s.dicts.Bytes = func(k string, v interface{}) ([]byte, error) {
-		return v.(*dict.Dict).Bytes()
-	}
-	s.dicts.FromBytes = func(k string, v []byte) (interface{}, error) {
-		return dict.FromBytes(v)
-	}
-	s.dicts.New = func(k string) interface{} {
-		return dict.New()
-	}
-
 	s.trees = cache.New(s.dbTrees, "t:", &cache.Metrics{
 		HitCounter:          hitCounterMetrics.With(prometheus.Labels{"name": "trees"}),
 		MissCounter:         missCounterMetrics.With(prometheus.Labels{"name": "trees"}),
@@ -276,11 +242,11 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		DiskWritesHistogram: diskWritesCounterMetrics.With(prometheus.Labels{"name": "trees"}),
 		DiskReadsHistogram:  diskReadsCounterMetrics.With(prometheus.Labels{"name": "trees"}),
 	})
-	s.trees.Bytes = s.treeBytes
-	s.trees.FromBytes = s.treeFromBytes
-	s.trees.New = func(k string) interface{} {
-		return tree.New()
-	}
+
+	s.dimensions.Codec = dimensionCodec{}
+	s.segments.Codec = segmentCodec{}
+	s.dicts.Codec = dictionaryCodec{}
+	s.trees.Codec = treeCodec{s}
 
 	memTotal, err := getMemTotal()
 	if err != nil {
@@ -289,7 +255,7 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 
 	s.wg.Add(2)
 	go s.periodicTask(evictInterval, s.evictionTask(memTotal))
-	go s.periodicTask(time.Minute, s.writeBackTask)
+	go s.periodicTask(writeBackInterval, s.writeBackTask)
 	if s.config.Retention > 0 {
 		s.wg.Add(1)
 		go s.periodicTask(retentionInterval, s.retentionTask)
@@ -311,30 +277,6 @@ type PutInput struct {
 	SampleRate      uint32
 	Units           string
 	AggregationType string
-}
-
-func (s *Storage) treeFromBytes(k string, v []byte) (interface{}, error) {
-	key := segment.FromTreeToDictKey(k)
-	d, err := s.dicts.GetOrCreate(key)
-	if err != nil {
-		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
-	}
-	return tree.FromBytes(d.(*dict.Dict), v)
-}
-
-func (s *Storage) treeBytes(k string, v interface{}) ([]byte, error) {
-	key := segment.FromTreeToDictKey(k)
-	d, err := s.dicts.GetOrCreate(key)
-	if err != nil {
-		return nil, fmt.Errorf("dicts cache for %v: %v", key, err)
-	}
-	var buf bytes.Buffer
-	err = v.(*tree.Tree).SerializeTruncate(d.(*dict.Dict), s.config.MaxNodesSerialization, &buf)
-	if err != nil {
-		return nil, fmt.Errorf("serialize %v: %v", key, err)
-	}
-	s.dicts.Put(key, d)
-	return buf.Bytes(), nil
 }
 
 var OutOfSpaceThreshold = 512 * bytesize.MB
@@ -591,7 +533,7 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 		}
 
 		if deletedRoot {
-			if err := s.deleteSegmentAndRelatedData(sk); err != nil {
+			if err = s.deleteSegmentAndRelatedData(sk); err != nil {
 				return err
 			}
 		}

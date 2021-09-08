@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -23,12 +24,13 @@ type Cache struct {
 
 	metrics *Metrics
 
-	// Bytes serializes objects before they go into storage. Users are required to define this one
-	Bytes func(k string, v interface{}) ([]byte, error)
-	// FromBytes deserializes object coming from storage. Users are required to define this one
-	FromBytes func(k string, v []byte) (interface{}, error)
-	// New creates a new object when there's no object in cache or storage. Optional
-	New func(k string) interface{}
+	Codec
+}
+
+type Codec interface {
+	Serialize(w io.Writer, k string, v interface{}) error
+	Deserialize(k string, r io.Reader) (interface{}, error)
+	New() interface{}
 }
 
 type Metrics struct {
@@ -92,28 +94,15 @@ func (cache *Cache) Put(key string, val interface{}) {
 	cache.lfu.Set(key, val)
 }
 
-type serializable interface{ Serialize(io.Writer) error }
-
 func (cache *Cache) saveToDisk(key string, val interface{}) error {
-	var buf []byte
-	var err error
-	if s, ok := val.(serializable); ok {
-		b := bytebufferpool.Get()
-		defer bytebufferpool.Put(b)
-		if err = s.Serialize(b); err == nil {
-			buf = b.Bytes()
-		}
-	} else {
-		// Note that `tree.Tree` does not satisfy serializable interface.
-		buf, err = cache.Bytes(key, val)
-	}
-	if err != nil {
+	b := bytebufferpool.Get()
+	defer bytebufferpool.Put(b)
+	if err := cache.Serialize(b, key, val); err != nil {
 		return fmt.Errorf("serialization: %w", err)
 	}
-
-	cache.metrics.DiskWritesHistogram.Observe(float64(len(buf)))
+	cache.metrics.DiskWritesHistogram.Observe(float64(b.Len()))
 	return cache.db.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(cache.prefix+key), buf)
+		return txn.Set([]byte(cache.prefix+key), b.Bytes())
 	})
 }
 
@@ -156,10 +145,7 @@ func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
 	if v != nil {
 		return v, nil
 	}
-	if cache.New == nil {
-		return nil, errors.New("cache's New function is nil")
-	}
-	v = cache.New(key)
+	v = cache.New()
 	cache.lfu.Set(key, v)
 	return v, nil
 }
@@ -199,7 +185,7 @@ func (cache *Cache) get(key string) (interface{}, error) {
 		}
 
 		cache.metrics.DiskReadsHistogram.Observe(float64(len(buf)))
-		return cache.FromBytes(key, buf)
+		return cache.Deserialize(key, bytes.NewReader(buf))
 	})
 }
 

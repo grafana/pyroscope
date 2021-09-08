@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -11,8 +12,17 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
+
+type fakeCodec struct{}
+
+func (fakeCodec) New() interface{} { return "foo-1234" }
+
+func (fakeCodec) Serialize(_ io.Writer, _ string, _ interface{}) error { return nil }
+
+func (fakeCodec) Deserialize(_ string, _ io.Reader) (interface{}, error) { return nil, nil }
 
 var _ = Describe("cache", func() {
 	It("works properly", func(done Done) {
@@ -47,18 +57,7 @@ var _ = Describe("cache", func() {
 				Name: "storage_test_reads",
 			}),
 		})
-		cache.New = func(k string) interface{} {
-			return k
-		}
-		cache.Bytes = func(k string, v interface{}) ([]byte, error) {
-			return []byte(v.(string)), nil
-		}
-		cache.Bytes = func(k string, v interface{}) ([]byte, error) {
-			return []byte(v.(string)), nil
-		}
-		cache.FromBytes = func(k string, v []byte) (interface{}, error) {
-			return string(v), nil
-		}
+		cache.Codec = fakeCodec{}
 		for i := 0; i < 200; i++ {
 			cache.Put(fmt.Sprintf("foo-%d", i), fmt.Sprintf("bar-%d", i))
 		}
