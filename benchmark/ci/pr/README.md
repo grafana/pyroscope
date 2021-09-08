@@ -19,4 +19,4 @@ You may tweak the running time for quicker feedback loop `BENCH_RUN_FOR=30s ./ru
 Just update the dashboard in `monitoring/benchmark-pr.jsonnet`
 
 # Adding more things to the report
-Just update the bashscript `generate-reports.sh`
+Update the `report.tmpl.yaml` file

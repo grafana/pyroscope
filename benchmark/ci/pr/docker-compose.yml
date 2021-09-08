@@ -15,6 +15,7 @@ services:
     - sleep Infinity
     volumes:
     - ./dashboard-screenshots:/screenshots
+    - ./report.tmpl.yaml:/report.tmpl.yaml
   pyroscope:
     environment:
       - PYROSCOPE_LOG_LEVEL=info

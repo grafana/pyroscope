@@ -1,0 +1,12 @@
+baseName: pr
+targetName: main
+
+queries:
+  - name: "throughput"
+    base: 'rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope:4040"}[5m])'
+    target: 'rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope_main:4040"}[5m])'
+    diffThresholdPercent: 5
+  - base: 'pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope:4040"}'
+    target: 'pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope_main:4040"}'
+    name: "total items processed"
+    diffThresholdPercent: 5

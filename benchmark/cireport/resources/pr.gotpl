@@ -1,0 +1,20 @@
+# Benchmark Result
+|             | {{ .QC.BaseName }}           | {{ .QC.TargetName }} | diff                |
+|-------------|------------------------------|----------------------|---------------------|
+{{ range .QC.Queries -}}
+| {{ .Name }} |  {{ .BaseResult }}           | {{ .TargetResult }}  |  {{ printf "%.2f" .DiffPercent }} |
+{{ end -}}
+
+{{ printf "\n" }}
+
+<details>
+  <summary>Details</summary>
+{{ printf "\n" }}
+| Name     | Description | Query for {{ .QC.BaseName }}   | Query for {{ .QC.TargetName }} |
+|----------|-------------|----------------------|----------------------|
+{{ range .QC.Queries -}}
+| {{ .Name }} | {{ .Description }} | {{ .Base }} | {{ .Target }}  |
+{{ end -}}
+{{ printf "\n" }}
+</details>
+

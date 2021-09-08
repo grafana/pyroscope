@@ -30,6 +30,7 @@ type PromQuery struct {
 
 type CIReport struct {
 	PrometheusAddress string `def:"http://localhost:9090" desc:"address of the prometheus instance being queried" mapstructure:"server-address"`
+	QueriesFile       string `def:"<defaultQueriesFile>" desc:"filepath of the queries file"`
 }
 
 type DashboardScreenshot struct {

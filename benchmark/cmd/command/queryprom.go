@@ -25,7 +25,7 @@ func newPromQuery(cfg *config.PromQuery) *cobra.Command {
 
 			pq := promquery.New(cfg)
 
-			value, _, err := pq.Instant(query, t)
+			value, err := pq.Instant(query, t)
 			if err != nil {
 				return err
 			}

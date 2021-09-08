@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pyroscope-io/pyroscope/benchmark/cireport"
@@ -17,22 +18,25 @@ func newCIReport(cfg *config.CIReport) *cobra.Command {
 		Short:  "markdown report to be used by ci",
 		Hidden: true,
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+
 			// TODO
 			// get same data from the command line?
 			pq := promquery.New(&config.PromQuery{
-				PrometheusAddress: "http://prometheus:9090",
-				//PrometheusAddress: "http://localhost:9091",
+				PrometheusAddress: cfg.PrometheusAddress,
 			})
 
-			r := cireport.New(pq)
+			r, err := cireport.New(pq, cfg)
+			if err != nil {
+				return err
+			}
 
-			report, err := r.Report()
+			// TODO(eh-am): doesn't cobra bring a context object?
+			report, err := r.Report(context.Background())
 			if err != nil {
 				return err
 			}
 
 			fmt.Println(report)
-			r.Report()
 			return nil
 		}),
 	}

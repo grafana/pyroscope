@@ -20,18 +20,31 @@ func New(cfg *config.PromQuery) *promQuery {
 	}
 }
 
-func (pq *promQuery) Instant(query string, t time.Time) (model.Value, v1.Warnings, error) {
+func (pq *promQuery) Instant(query string, t time.Time) (float64, error) {
 	client, err := api.NewClient(api.Config{
 		Address: pq.Config.PrometheusAddress,
 	})
 
 	if err != nil {
-		return nil, nil, err
+		return 0, err
 	}
 
 	v1api := v1.NewAPI(client)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	return v1api.Query(ctx, query, t)
+	v, _, err := v1api.Query(ctx, query, t)
+	if err != nil {
+		return 0, err
+	}
+
+	// TODO logrus
+	//	if warning != nil {
+	//		logrus.Warn(warning)
+	//	}
+
+	// since it's an instant query
+	// assume the vector will only have a single value
+	result := float64(v.(model.Vector)[0].Value)
+	return result, nil
 }

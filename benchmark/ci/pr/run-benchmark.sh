@@ -6,6 +6,7 @@ BENCH_RUN_FOR="${BENCH_RUN_FOR:-10m}"
 PYROSCOPE_ADDRESS="http://pyroscope:4040"
 PYROSCOPE_MAIN_ADDRESS="http://pyroscope_main:4040"
 PUSHGATEWAY_ADDRESS="http://pushgateway:9091"
+PROMETHEUS_ADDRESS="http://prometheus:9090"
 GRAFANA_ADDRESS="http://grafana:3000"
 DASHBOARD_UID="QF9YgRbUbt3BA5Qd"
 
@@ -56,7 +57,10 @@ function run() {
     --destination="/screenshots" \
     --grafana-address "$GRAFANA_ADDRESS"
 
-  ./generate-report.sh > ./pr-report
+  docker exec pr_client_1 ./pyrobench \
+    ci-report "$start" "$end" \
+    --prometheus-address="$PROMETHEUS_ADDRESS" \
+    --queries-file="/report.tmpl.yaml" > "$SCRIPT_DIR/pr-report"
 }
 
 run
