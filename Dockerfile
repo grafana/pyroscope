@@ -102,10 +102,6 @@ COPY webapp/assets.go ./webapp/assets.go
 COPY scripts ./scripts
 
 RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
-RUN make build-rbspy-static-library
-RUN make build-pyspy-static-library
-RUN make build-phpspy-static-library
-
 
 #      _        _   _        _ _ _
 #     | |      | | (_)      | (_) |
@@ -115,15 +111,21 @@ RUN make build-phpspy-static-library
 # |___/\__\__,_|\__|_|\___| |_|_|_.__/|___/
 
 
+FROM go-builder AS go-libs-builder
+
+RUN make build-rbspy-static-library
+RUN make build-pyspy-static-library
+RUN make build-phpspy-static-library
+
 FROM scratch AS lib-exporter
 
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.a /
-COPY --from=go-builder /opt/pyroscope/third_party/phpspy/libphpspy.a /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.h /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.a /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.h /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.a /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.h /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.phpspy.a /
+COPY --from=go-libs-builder /opt/pyroscope/third_party/phpspy/libphpspy.a /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.phpspy.h /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.pyspy.a /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.pyspy.h /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.rbspy.a /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.rbspy.h /
 COPY --from=rust-builder /opt/rustdeps/librustdeps.a /
 
 
