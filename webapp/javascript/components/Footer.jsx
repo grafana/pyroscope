@@ -50,7 +50,7 @@ function Footer() {
           >
             <FontAwesomeIcon icon={faDownload} />
             &nbsp;
-            <span>Newer Version Available ({latestVersion})</span>
+            <span>{`Newer Version Available (${latestVersion})`}</span>
           </a>
         </span>
       )}
