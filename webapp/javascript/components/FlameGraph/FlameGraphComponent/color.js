@@ -45,7 +45,9 @@ export function colorBasedOnPackageName(name, a) {
 // if left == 0 || Math.abs(diff) > left, we use the color of 100%
 export function colorBasedOnDiff(diff, left, a) {
   const v =
-    !left || Math.abs(diff) > left ? 1 : 200 * Math.sqrt(Math.abs(diff / left));
+    !left || Math.abs(diff) > left
+      ? 200
+      : 200 * Math.sqrt(Math.abs(diff / left));
   if (diff >= 0) return Color.rgb(200, 200 - v, 200 - v).alpha(a);
   return Color.rgb(200 - v, 200, 200 - v).alpha(a);
 }

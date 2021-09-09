@@ -4,7 +4,7 @@
 import React from "react";
 import clsx from "clsx";
 import { getFormatter, getPackageNameFromStackTrace } from "../util/format";
-import { colorBasedOnPackageName, defaultColor, diffColorGreen, diffColorRed } from "../util/color";
+import { colorBasedOnPackageName, defaultColor, diffColorGreen, diffColorRed } from "./FlameGraph/FlameGraphComponent/color";
 import { parseFlamebearerFormat } from "../util/flamebearer";
 import { fitIntoTableCell } from "../util/fitMode";
 
