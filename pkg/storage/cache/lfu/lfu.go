@@ -6,20 +6,20 @@ import (
 	"time"
 )
 
-type Eviction struct {
-	Key   string
-	Value interface{}
-}
-
 type Cache struct {
 	TTL              int64
 	EvictionChannel  chan<- Eviction
 	WriteBackChannel chan<- Eviction
 
-	lock   *sync.Mutex
+	lock   sync.Mutex
 	values map[string]*cacheEntry
 	freqs  *list.List
 	len    int
+}
+
+type Eviction struct {
+	Key   string
+	Value interface{}
 }
 
 type cacheEntry struct {
@@ -36,11 +36,10 @@ type listEntry struct {
 }
 
 func New() *Cache {
-	c := new(Cache)
-	c.values = make(map[string]*cacheEntry)
-	c.freqs = list.New()
-	c.lock = new(sync.Mutex)
-	return c
+	return &Cache{
+		values: make(map[string]*cacheEntry),
+		freqs:  list.New(),
+	}
 }
 
 func (c *Cache) GetOrSet(key string, value func() (interface{}, error)) (interface{}, error) {
@@ -84,14 +83,6 @@ func (c *Cache) Set(key string, value interface{}) {
 	}
 }
 
-func (c *Cache) Walk(fn func(k string, v interface{})) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	for k, v := range c.values {
-		fn(k, v.value)
-	}
-}
-
 func (c *Cache) Delete(key string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -119,7 +110,7 @@ func (c *Cache) Evict(count int) int {
 }
 
 // WriteBack persists modified items and evicts obsolete ones.
-func (c *Cache) WriteBack(count int) (persisted, evicted int) {
+func (c *Cache) WriteBack() (persisted, evicted int) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	return c.writeBack()
@@ -132,17 +123,18 @@ func (c *Cache) evict(count int) int {
 	for i := 0; i < count; {
 		if place := c.freqs.Front(); place != nil {
 			for entry := range place.Value.(*listEntry).entries {
-				if i < count {
-					if c.EvictionChannel != nil && !entry.persisted {
-						c.EvictionChannel <- Eviction{
-							Key:   entry.key,
-							Value: entry.value,
-						}
-					}
-					c.delete(entry)
-					evicted++
-					i++
+				if i >= count {
+					return evicted
 				}
+				if c.EvictionChannel != nil && !entry.persisted {
+					c.EvictionChannel <- Eviction{
+						Key:   entry.key,
+						Value: entry.value,
+					}
+				}
+				c.delete(entry)
+				evicted++
+				i++
 			}
 		}
 	}

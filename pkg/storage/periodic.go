@@ -62,8 +62,7 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 				defer timer.ObserveDuration()
 				s.trees.Evict(percent)
 				// Do not evict those as it will cause even more allocations
-				// to serialize and then load again. Obsolete items should
-				// gone due to TTL expiration.
+				// to serialize and then load them back again.
 				// s.dimensions.Evict(percent / 4)
 				// s.dicts.Evict(percent / 4)
 				// s.segments.Evict(percent / 2)

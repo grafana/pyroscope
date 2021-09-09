@@ -135,7 +135,6 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	addRoutes(mux, ctrl.trackMetrics, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/healthz", ctrl.healthz},
-		{"/walk", ctrl.walkHandler},
 	})
 
 	return mux, nil

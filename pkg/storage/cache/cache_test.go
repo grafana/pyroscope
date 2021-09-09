@@ -18,11 +18,11 @@ import (
 
 type fakeCodec struct{}
 
-func (fakeCodec) New() interface{} { return "foo-1234" }
+func (fakeCodec) New(k string) interface{} { return k }
 
 func (fakeCodec) Serialize(_ io.Writer, _ string, _ interface{}) error { return nil }
 
-func (fakeCodec) Deserialize(_ string, _ io.Reader) (interface{}, error) { return nil, nil }
+func (fakeCodec) Deserialize(_ io.Reader, _ string) (interface{}, error) { return nil, nil }
 
 var _ = Describe("cache", func() {
 	It("works properly", func(done Done) {
@@ -40,24 +40,26 @@ var _ = Describe("cache", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		reg := prometheus.NewRegistry()
-		cache := New(db, "prefix:", &Metrics{
-			HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "cache_test_hit",
-			}),
-			MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "cache_test_miss",
-			}),
-			ReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "storage_test_read",
-			}),
-			DiskWritesHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
-				Name: "storage_test_write",
-			}),
-			DiskReadsHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
-				Name: "storage_test_reads",
-			}),
+		cache := New(Config{
+			DB:     db,
+			Codec:  fakeCodec{},
+			Prefix: "p:",
+			Metrics: Metrics{
+				MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+					Name: "cache_test_miss",
+				}),
+				ReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+					Name: "storage_test_read",
+				}),
+				DiskWritesHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+					Name: "storage_test_write",
+				}),
+				DiskReadsHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+					Name: "storage_test_reads",
+				}),
+			},
 		})
-		cache.Codec = fakeCodec{}
+
 		for i := 0; i < 200; i++ {
 			cache.Put(fmt.Sprintf("foo-%d", i), fmt.Sprintf("bar-%d", i))
 		}

@@ -6,62 +6,68 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/cache/lfu"
 	"github.com/valyala/bytebufferpool"
+
+	"github.com/pyroscope-io/pyroscope/pkg/storage/cache/lfu"
 )
 
 type Cache struct {
-	db     *badger.DB
-	lfu    *lfu.Cache
-	prefix string
+	Config
+	lfu *lfu.Cache
 
-	alwaysSave    bool
 	evictionsDone chan struct{}
 	flushOnce     sync.Once
-
-	metrics *Metrics
-
-	Codec
 }
 
+type Config struct {
+	*badger.DB
+	Metrics
+	Codec
+
+	// Prefix for badger DB keys.
+	Prefix string
+	// TTL specifies number of seconds an item can reside in cache after
+	// the last access. An obsolete item is evicted. Setting TTL to less
+	// than a second disables time-based eviction.
+	TTL time.Duration
+}
+
+// Codec is a shorthand of coder-decoder. A Codec implementation
+// is responsible for type conversions and binary representation.
 type Codec interface {
-	Serialize(w io.Writer, k string, v interface{}) error
-	Deserialize(k string, r io.Reader) (interface{}, error)
-	New() interface{}
+	Serialize(w io.Writer, key string, value interface{}) error
+	Deserialize(r io.Reader, key string) (interface{}, error)
+	// New returns a new instance of the type. The method is
+	// called by GetOrCreate when an item can not be found by
+	// the given key.
+	New(key string) interface{}
 }
 
 type Metrics struct {
-	HitCounter  prometheus.Counter
-	MissCounter prometheus.Counter
-	ReadCounter prometheus.Counter
-
+	MissCounter         prometheus.Counter
+	ReadCounter         prometheus.Counter
 	DiskWritesHistogram prometheus.Observer
 	DiskReadsHistogram  prometheus.Observer
 }
 
-func New(db *badger.DB, prefix string, metrics *Metrics) *Cache {
+func New(c Config) *Cache {
+	cache := &Cache{
+		Config:        c,
+		lfu:           lfu.New(),
+		evictionsDone: make(chan struct{}),
+	}
+
 	evictionChannel := make(chan lfu.Eviction)
 	writeBackChannel := make(chan lfu.Eviction)
 
-	l := lfu.New()
-
 	// eviction channel for saving cache items to disk
-	l.EvictionChannel = evictionChannel
-	l.WriteBackChannel = writeBackChannel
-	l.TTL = 120
-
-	cache := &Cache{
-		db:  db,
-		lfu: l,
-
-		prefix:        prefix,
-		evictionsDone: make(chan struct{}),
-
-		metrics: metrics,
-	}
+	cache.lfu.EvictionChannel = evictionChannel
+	cache.lfu.WriteBackChannel = writeBackChannel
+	cache.lfu.TTL = int64(c.TTL.Seconds())
 
 	// start a goroutine for saving the evicted cache items to disk
 
@@ -100,9 +106,9 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 	if err := cache.Serialize(b, key, val); err != nil {
 		return fmt.Errorf("serialization: %w", err)
 	}
-	cache.metrics.DiskWritesHistogram.Observe(float64(b.Len()))
-	return cache.db.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(cache.prefix+key), b.Bytes())
+	cache.DiskWritesHistogram.Observe(float64(b.Len()))
+	return cache.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(cache.Prefix+key), b.Bytes())
 	})
 }
 
@@ -127,13 +133,13 @@ func (cache *Cache) Evict(percent float64) {
 }
 
 func (cache *Cache) WriteBack() {
-	cache.lfu.WriteBack(cache.lfu.Len())
+	cache.lfu.WriteBack()
 }
 
 func (cache *Cache) Delete(key string) error {
 	cache.lfu.Delete(key)
-	return cache.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte(cache.prefix + key))
+	return cache.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(cache.Prefix + key))
 	})
 }
 
@@ -145,13 +151,9 @@ func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
 	if v != nil {
 		return v, nil
 	}
-	v = cache.New()
+	v = cache.New(key)
 	cache.lfu.Set(key, v)
 	return v, nil
-}
-
-func (cache *Cache) Walk(fn func(k string, v interface{})) {
-	cache.lfu.Walk(fn)
 }
 
 func (cache *Cache) Lookup(key string) (interface{}, bool) {
@@ -163,12 +165,12 @@ func (cache *Cache) Lookup(key string) (interface{}, bool) {
 }
 
 func (cache *Cache) get(key string) (interface{}, error) {
-	cache.metrics.ReadCounter.Add(1)
+	cache.ReadCounter.Add(1)
 	return cache.lfu.GetOrSet(key, func() (interface{}, error) {
-		cache.metrics.MissCounter.Add(1)
+		cache.MissCounter.Add(1)
 		var buf []byte
-		err := cache.db.View(func(txn *badger.Txn) error {
-			item, err := txn.Get([]byte(cache.prefix + key))
+		err := cache.View(func(txn *badger.Txn) error {
+			item, err := txn.Get([]byte(cache.Prefix + key))
 			if err != nil {
 				return err
 			}
@@ -184,8 +186,8 @@ func (cache *Cache) get(key string) (interface{}, error) {
 			return nil, err
 		}
 
-		cache.metrics.DiskReadsHistogram.Observe(float64(len(buf)))
-		return cache.Deserialize(key, bytes.NewReader(buf))
+		cache.DiskReadsHistogram.Observe(float64(len(buf)))
+		return cache.Deserialize(bytes.NewReader(buf), key)
 	})
 }
 

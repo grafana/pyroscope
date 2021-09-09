@@ -24,37 +24,23 @@ type Dict struct {
 	root *trieNode
 }
 
-func (td *Dict) PutValue(val Value, key io.Writer) {
-	td.m.Lock()
-	defer td.m.Unlock()
-	td.root.findNodeAt(val, key)
-}
-
 func (td *Dict) GetValue(key Key, value io.Writer) bool {
 	td.m.RLock()
 	defer td.m.RUnlock()
-	return td.writeValue(key, value)
-}
-
-func (td *Dict) Put(val Value) Key {
-	td.m.Lock()
-	defer td.m.Unlock()
-	var buf bytes.Buffer
-	td.root.findNodeAt(val, &buf)
-	return buf.Bytes()
+	return td.readValue(key, value)
 }
 
 func (td *Dict) Get(key Key) (Value, bool) {
 	td.m.RLock()
 	defer td.m.RUnlock()
 	var labelBuf bytes.Buffer
-	if td.writeValue(key, &labelBuf) {
+	if td.readValue(key, &labelBuf) {
 		return labelBuf.Bytes(), true
 	}
 	return nil, false
 }
 
-func (td *Dict) writeValue(key Key, w io.Writer) bool {
+func (td *Dict) readValue(key Key, w io.Writer) bool {
 	r := bytes.NewReader(key)
 	tn := td.root
 	for {
@@ -81,4 +67,12 @@ func (td *Dict) writeValue(key Key, w io.Writer) bool {
 			tn = tn.children[0]
 		}
 	}
+}
+
+func (td *Dict) Put(val Value) Key {
+	td.m.Lock()
+	defer td.m.Unlock()
+	var buf bytes.Buffer
+	td.root.findNodeAt(val, &buf)
+	return buf.Bytes()
 }
