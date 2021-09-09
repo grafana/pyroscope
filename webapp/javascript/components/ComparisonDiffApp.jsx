@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
-import FlameGraphRenderer from "./FlameGraphRenderer";
+import FlameGraphRenderer from "./FlameGraph";
 import Header from "./Header";
 import Footer from "./Footer";
 import TimelineChartWrapper from "./TimelineChartWrapper";
@@ -16,6 +16,7 @@ function ComparisonDiffApp(props) {
     if (prevPropsRef.diffRenderURL !== diffRenderURL) {
       actions.fetchTimeline(diffRenderURL);
     }
+    return actions.abortTimelineRequest;
   }, [diffRenderURL]);
 
   return (

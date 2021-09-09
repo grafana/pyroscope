@@ -70,7 +70,12 @@ RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 #   __/ |                     __/ |
 #  |___/                     |___/
 
-FROM golang:1.16.3-alpine3.12 as go-builder
+# We build our own golang image because we need alpine 3.12 and go 1.17 is not available in alpine 3.12
+# The dockerfile we use is a copy of this one:
+#   https://github.com/docker-library/golang/blob/48e32c58a6abc052253fba899cea876740cab262/1.16/alpine3.14/Dockerfile
+# TODO: figure out why linking isn't working on alpine 3.13 or 3.14
+# see https://github.com/pyroscope-io/pyroscope/pull/372 for more context
+FROM pyroscope/golang:1.17.0-alpine3.12 AS go-builder
 
 RUN apk add --no-cache make git zstd gcc g++ libc-dev musl-dev bash
 RUN apk upgrade binutils
@@ -97,30 +102,31 @@ COPY webapp/assets.go ./webapp/assets.go
 COPY scripts ./scripts
 
 RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
+
+#      _        _   _        _ _ _
+#     | |      | | (_)      | (_) |
+#  ___| |_ __ _| |_ _  ___  | |_| |__  ___
+# / __| __/ _` | __| |/ __| | | | '_ \/ __|
+# \__ \ || (_| | |_| | (__  | | | |_) \__ \
+# |___/\__\__,_|\__|_|\___| |_|_|_.__/|___/
+
+
+FROM go-builder AS go-libs-builder
+
 RUN make build-rbspy-static-library
 RUN make build-pyspy-static-library
 RUN make build-phpspy-static-library
 
-
-#   __ _             _   _
-#  / _(_)           | | (_)
-# | |_ _ _ __   __ _| |  _ _ __ ___   __ _  __ _  ___
-# |  _| | '_ \ / _` | | | | '_ ` _ \ / _` |/ _` |/ _ \
-# | | | | | | | (_| | | | | | | | | | (_| | (_| |  __/
-# |_| |_|_| |_|\__,_|_| |_|_| |_| |_|\__,_|\__, |\___|
-#                                           __/ |
-#                                          |___/
-
 FROM scratch AS lib-exporter
 
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.a /
-COPY --from=go-builder /opt/pyroscope/third_party/phpspy/libphpspy.a /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.phpspy.h /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.a /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.pyspy.h /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.a /
-COPY --from=go-builder /opt/pyroscope/out/libpyroscope.rbspy.h /
-COPY --from=go-builder /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.phpspy.a /
+COPY --from=go-libs-builder /opt/pyroscope/third_party/phpspy/libphpspy.a /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.phpspy.h /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.pyspy.a /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.pyspy.h /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.rbspy.a /
+COPY --from=go-libs-builder /opt/pyroscope/out/libpyroscope.rbspy.h /
+COPY --from=rust-builder /opt/rustdeps/librustdeps.a /
 
 
 #   __ _             _   _

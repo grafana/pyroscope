@@ -21,6 +21,7 @@ function NameSelector(props) {
       <select
         data-testid="app-selector-dropdown"
         className="label-select"
+        data-testid="app-name-selector"
         value={defaultValue}
         onChange={selectAppName}
       >

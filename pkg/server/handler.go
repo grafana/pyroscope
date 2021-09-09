@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"text/template"
 	"time"
 
@@ -267,6 +268,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 		"ExtraMetadata":     extraMetadataStr,
 		"BaseURL":           ctrl.config.BaseURL,
 		"NotificationText":  ctrl.NotificationText(),
+		"IsAuthRequired":    strconv.FormatBool(ctrl.isAuthRequired()),
 	})
 }
 

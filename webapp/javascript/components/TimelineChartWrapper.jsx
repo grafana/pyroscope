@@ -1,31 +1,10 @@
 /* eslint-disable */
-// ISC License
-
-// Copyright (c) 2018, Mapbox
-
-// Permission to use, copy, modify, and/or distribute this software for any purpose
-// with or without fee is hereby granted, provided that the above copyright notice
-// and this permission notice appear in all copies.
-
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-// REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
-// FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-// INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
-// OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-// TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
-// THIS SOFTWARE.
-
-// This component is based on flamebearer project
-//   https://github.com/mapbox/flamebearer
 
 import React from "react";
 import { connect } from "react-redux";
 import { bindActionCreators } from "redux";
 import TimelineChart from "./TimelineChart";
 import { formatAsOBject } from "../util/formatDate";
-
-
-
 class TimelineChartWrapper extends React.Component {
   constructor() {
     super();
@@ -94,10 +73,10 @@ class TimelineChartWrapper extends React.Component {
       prevProps.rightUntil !== this.props.rightUntil) {
         let newFlotOptions = this.state.flotOptions;
         newFlotOptions.grid.markings = this.plotMarkings();
-    
+
         this.setState({flotOptions: newFlotOptions})
     }
-    
+
   }
 
   plotMarkings = () => {
@@ -120,36 +99,36 @@ class TimelineChartWrapper extends React.Component {
           to: leftUntilInt
         },
         color: this.props.viewSide === "left" ? "rgba(200, 102, 204, 0.35)" : `rgba(255, 102, 204, ${nonActiveBackground})`,
-      },         
-      { 
-        color: this.props.viewSide === "left" ? "rgba(200, 102, 204, 1)" : `rgba(255, 102, 204, ${nonActiveBorder})`,
-        lineWidth: 3, 
-        xaxis: { from: leftFromInt, to: leftFromInt } 
       },
-      { 
-        color: this.props.viewSide === "left" ? "rgba(200, 102, 204, 1)" : `rgba(255, 102, 204, ${nonActiveBorder})`, 
-        lineWidth: 3, 
-        xaxis: { from: leftUntilInt, to: leftUntilInt } 
+      {
+        color: this.props.viewSide === "left" ? "rgba(200, 102, 204, 1)" : `rgba(255, 102, 204, ${nonActiveBorder})`,
+        lineWidth: 3,
+        xaxis: { from: leftFromInt, to: leftFromInt }
+      },
+      {
+        color: this.props.viewSide === "left" ? "rgba(200, 102, 204, 1)" : `rgba(255, 102, 204, ${nonActiveBorder})`,
+        lineWidth: 3,
+        xaxis: { from: leftUntilInt, to: leftUntilInt }
       },
     ]
 
     let rightMarkings = [
-      { 
-        xaxis: { 
+      {
+        xaxis: {
           from: rightFromInt,
           to: rightUntilInt
-        }, 
+        },
         color: this.props.viewSide === "right" ? "rgba(19, 152, 246, 0.35)" : `rgba(19, 152, 246, ${nonActiveBackground})`,
       },
-      { 
+      {
         color: this.props.viewSide === "right" ? "rgba(19, 152, 246, 1)" : `rgba(19, 152, 246, ${nonActiveBorder})`,
-        lineWidth: 3, 
-        xaxis: { from: rightFromInt, to: rightFromInt } 
+        lineWidth: 3,
+        xaxis: { from: rightFromInt, to: rightFromInt }
       },
-      { 
-        color: this.props.viewSide === "right" ? "rgba(19, 152, 246, 1)" : `rgba(19, 152, 246, ${nonActiveBorder})`, 
-        lineWidth: 3, 
-        xaxis: { from: rightUntilInt, to: rightUntilInt } 
+      {
+        color: this.props.viewSide === "right" ? "rgba(19, 152, 246, 1)" : `rgba(19, 152, 246, ${nonActiveBorder})`,
+        lineWidth: 3,
+        xaxis: { from: rightUntilInt, to: rightUntilInt }
       },
     ]
 
@@ -161,7 +140,7 @@ class TimelineChartWrapper extends React.Component {
     const flotData = this.props.timeline
     ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
     : [];
-    
+
     return (
       <TimelineChart
         id={this.props.id}

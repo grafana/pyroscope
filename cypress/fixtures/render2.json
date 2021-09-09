@@ -1,10 +1,10 @@
 {
     "flamebearer": {
         "names": [
-            "function_0",
-            "function_1",
-            "function_2",
-            "function_3"
+            "cpu_function_0",
+            "cpu_function_1",
+            "cpu_function_2",
+            "cpu_function_3"
         ],
         "levels": [
             [

@@ -21,33 +21,51 @@ type cmdRunFn func(cmd *cobra.Command, args []string) error
 func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn cmdRunFn) cmdRunFn {
 	return func(cmd *cobra.Command, args []string) error {
 		var err error
+		var xargs []string
+
+		args, xargs = splitArgs(cmd.Flags(), args)
+		if slices.StringContains(xargs, "--help") {
+			_ = cmd.Help()
+			return nil
+		}
+
 		if err = vpr.BindPFlags(cmd.Flags()); err != nil {
 			return err
 		}
+
+		// Here's the correct order for configuration precedence:
+		// * command line arguments
+		// * environment variables
+		// * config file
+		// * defaults
+		// also documented here: https://pyroscope.io/docs/server-configuration
+
+		// Parsing arguments for the first time.
+		// The only reason we do this here is so that if you provide -config argument we use the right config path
+		if err = cmd.Flags().Parse(prependDash(xargs)); err != nil {
+			return err
+		}
+
+		// some subcommands don't have config files, so we use this File interface
+		// TODO: maybe should we rename this interface? `File` is too generic and confusing imo
 		if c, ok := cfg.(config.File); ok {
-			if err = loadConfigFile(c.Path(), cmd, vpr, cfg); err != nil {
+			configPath := os.Getenv("PYROSCOPE_CONFIG")
+			if cmd.Flags().Lookup("config").Changed {
+				configPath = c.Path()
+			}
+			if err = loadConfigFile(configPath, cmd, vpr, cfg); err != nil {
 				return fmt.Errorf("loading configuration file: %w", err)
 			}
 		}
+		// Viper deals with both environment variable mappings as well as config files.
+		// That's why this is not included in the previous if statement
 		if err = Unmarshal(vpr, cfg); err != nil {
 			return err
 		}
 
-		var xargs []string
-		x := firstArgumentIndex(cmd.Flags(), prependDash(args))
-		if x >= 0 {
-			xargs = args[:x]
-			args = args[x:]
-		} else {
-			xargs = args
-			args = nil
-		}
+		// Parsing arguments one more time to override anything set in environment variables or config file
 		if err = cmd.Flags().Parse(prependDash(xargs)); err != nil {
 			return err
-		}
-		if slices.StringContains(xargs, "--help") {
-			_ = cmd.Help()
-			return nil
 		}
 
 		if err = fn(cmd, args); err != nil {
@@ -55,6 +73,20 @@ func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn cmdRunFn) cmdRunFn {
 		}
 		return err
 	}
+}
+
+// splitArgs splits raw arguments into
+func splitArgs(flags *pflag.FlagSet, args []string) ([]string, []string) {
+	var xargs []string
+	x := firstArgumentIndex(flags, prependDash(args))
+	if x >= 0 {
+		xargs = args[:x]
+		args = args[x:]
+	} else {
+		xargs = args
+		args = nil
+	}
+	return args, xargs
 }
 
 func prependDash(args []string) []string {
@@ -98,6 +130,7 @@ func firstArgumentIndex(flags *pflag.FlagSet, args []string) int {
 func NewViper(prefix string) *viper.Viper {
 	v := viper.New()
 	v.SetEnvPrefix(prefix)
+	v.SetConfigType("yaml")
 	v.AutomaticEnv()
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	return v
@@ -117,8 +150,13 @@ func loadConfigFile(path string, cmd *cobra.Command, vpr *viper.Viper, v interfa
 		// User-defined configuration can not be read.
 		return err
 	case os.IsNotExist(err):
-		// Default configuration file not found.
-		return nil
+		// if it's default value and file doesn't exist that's okay
+		// we can't use Flag("config").Changed because it might be set via an env variable
+		if cmd.Flag("config").DefValue == path {
+			return nil
+		}
+		// if user set a custom file name and file doesn't exist that's not okay
+		return err
 	default:
 		return err
 	}
