@@ -90,7 +90,7 @@ THIS SOFTWARE.
 .flamegraph-tooltip {
   max-width: 80%;
 
-  position: absolute;
+  position: fixed;
   pointer-events: none;
   background: #ffffff;
   white-space: nowrap;

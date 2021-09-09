@@ -15,7 +15,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 /* eslint-disable no-bitwise */
 /* eslint-disable camelcase */
 
-
 export default function murmurhash3_32_gc(key, seed) {
   let remainder;
   let bytes;
