@@ -488,7 +488,10 @@ class FlameGraph extends React.Component {
     tooltipEl.children[1].children[1].style.color = tooltipDiffColor;
 
     // makes it so that tooltip is always visible even if mouse is close to the right edge
-    const tooltipX = Math.min(e.clientX + 12, window.innerWidth - tooltipEl.clientWidth - 20);
+    const tooltipX = Math.min(
+      e.clientX + 12,
+      window.innerWidth - tooltipEl.clientWidth - 20
+    );
     tooltipEl.style.left = `${tooltipX}px`;
     tooltipEl.style.top = `${e.clientY + 20}px`;
   };

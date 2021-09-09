@@ -7,7 +7,7 @@ import { faColumns } from "@fortawesome/free-solid-svg-icons/faColumns";
 import { faIcicles } from "@fortawesome/free-solid-svg-icons/faIcicles";
 import { faListUl } from "@fortawesome/free-solid-svg-icons/faListUl";
 import { faTable } from "@fortawesome/free-solid-svg-icons/faTable";
-import { FitModes } from "../util/fitMode"
+import { FitModes } from "../util/fitMode";
 
 export default function ProfilerHeader({
   view,

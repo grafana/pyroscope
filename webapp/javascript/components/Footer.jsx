@@ -48,7 +48,9 @@ function Footer() {
             rel="noreferrer"
             target="_blank"
           >
-            <FontAwesomeIcon icon={faDownload} />&nbsp;<span>Newer Version Available ({latestVersion})</span>
+            <FontAwesomeIcon icon={faDownload} />
+            &nbsp;
+            <span>Newer Version Available ({latestVersion})</span>
           </a>
         </span>
       )}
