@@ -237,6 +237,7 @@ class FlameGraphRenderer extends React.Component {
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
+          key="flamegraph-pane"
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
