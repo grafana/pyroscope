@@ -47,7 +47,6 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.29.0
 	github.com/pyroscope-io/dotnetdiag v1.2.1
-	github.com/pyroscope-io/lfu-go v1.0.4
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/sirupsen/logrus v1.7.0
