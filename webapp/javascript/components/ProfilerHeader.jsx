@@ -47,8 +47,6 @@ export default function ProfilerHeader({
       >
         Reset View
       </button>
-
-
       <div className="navbar-space-filler" />
       {!viewDiff ? null : (
         <div className="btn-group viz-switch">

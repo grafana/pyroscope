@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import "react-dom";
 
 import { bindActionCreators } from "redux";
-import FlameGraphRenderer from "./FlameGraphRenderer";
+import FlameGraphRenderer from "./FlameGraph";
 import TimelineChartWrapper from "./TimelineChartWrapper";
 import Header from "./Header";
 import Footer from "./Footer";
