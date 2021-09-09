@@ -1,11 +1,12 @@
 const { merge } = require("webpack-merge");
 
-const prod = require("./webpack.prod.js");
 const path = require("path");
+const prod = require("./webpack.prod.js");
 
 module.exports = merge(prod, {
   entry: {
-    flamegraphComponent: "./webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
+    flamegraphComponent:
+      "./webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   },
 
   output: {
@@ -15,7 +16,7 @@ module.exports = merge(prod, {
     clean: true,
 
     library: "pyroscope",
-    libraryTarget: 'umd',
-    umdNamedDefine: true
+    libraryTarget: "umd",
+    umdNamedDefine: true,
   },
 });
