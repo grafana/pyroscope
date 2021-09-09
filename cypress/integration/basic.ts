@@ -28,15 +28,44 @@ describe('basic test', () => {
     cy.findByTestId('btn-table-view').click();
     cy.findByTestId('table-view').should('be.visible');
     cy.findByTestId('flamegraph-view').should('not.be.visible');
-        
+
     cy.findByTestId('btn-both-view').click();
     cy.findByTestId('table-view').should('be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
-      
+
     cy.findByTestId('btn-flamegraph-view').click();
     cy.findByTestId('table-view').should('not.be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
+
+  it.only('app selector works', () => {
+    cy.intercept('**/render*', {
+      fixture: 'render.json',
+      times: 1
+    })
+
+    cy.visit('/');
+
+    cy.fixture('render.json').then((data) => {
+      cy.findByTestId('table-view').contains('td', data.flamebearer.names[0]).should('be.visible');
+      cy.findByTestId('table-view').contains('td', data.flamebearer.names[data.flamebearer.names.length - 1]).should('be.visible');
+    });
+
+    cy.intercept('**/render*', {
+      fixture: 'render2.json',
+      times: 1
+    })
+
+    cy.findByTestId('app-selector-dropdown').select('pyroscope.server.cpu');
+
+    cy.fixture('render2.json').then((data) => {
+      cy.findByTestId('table-view').contains('td', data.flamebearer.names[0]).should('be.visible');
+      cy.findByTestId('table-view').contains('td', data.flamebearer.names[data.flamebearer.names.length - 1]).should('be.visible');
+    });
+
+  });
+
+
 
 })
 

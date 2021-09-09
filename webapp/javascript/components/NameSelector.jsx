@@ -19,6 +19,7 @@ function NameSelector(props) {
     <span>
       Application:&nbsp;
       <select
+        data-testid="app-selector-dropdown"
         className="label-select"
         value={defaultValue}
         onChange={selectAppName}
