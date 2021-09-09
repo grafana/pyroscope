@@ -39,12 +39,15 @@ describe('basic test', () => {
   });
 
   it.only('app selector works', () => {
+
     cy.intercept('**/render*', {
       fixture: 'render.json',
       times: 1
-    })
+    }).as('render1')
 
     cy.visit('/');
+
+    cy.wait('@render1');
 
     cy.fixture('render.json').then((data) => {
       cy.findByTestId('table-view').contains('td', data.flamebearer.names[0]).should('be.visible');
@@ -54,9 +57,11 @@ describe('basic test', () => {
     cy.intercept('**/render*', {
       fixture: 'render2.json',
       times: 1
-    })
-
+    }).as('render2')
+    
     cy.findByTestId('app-selector-dropdown').select('pyroscope.server.cpu');
+    
+    cy.wait('@render2');
 
     cy.fixture('render2.json').then((data) => {
       cy.findByTestId('table-view').contains('td', data.flamebearer.names[0]).should('be.visible');
