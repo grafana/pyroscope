@@ -1,0 +1,20 @@
+# Benchmark Result
+|             | main           | pr | diff                | threshold |
+|-------------|------------------------------|----------------------|---------------------|----------------|
+| throughput |  81.77 | 81.61  |  -0.16 (-0.19%) | 5% |
+| total items processed |  2925.00 | 3206.00  |  :green_square: 281.00 (9.17%) | 5% |
+
+
+
+<details>
+  <summary>Details</summary>
+
+
+| Name     | Description | Query for main   | Query for pr |
+|----------|-------------|----------------------|----------------------|
+| throughput |  | `rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope:4040"}[5m])` | `rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope_main:4040"}[5m])`  |
+| total items processed |  | `pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope:4040"}` | `pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope_main:4040"}`  |
+
+
+</details>
+

@@ -40,8 +40,7 @@ func Initialize() error {
 	rootCmd.AddCommand(
 		newLoadGen(&cfg.LoadGen),
 		newPromQuery(&cfg.PromQuery),
-		newCIReport(&cfg.CIReport),
-		newScreenshotPane(&cfg.DashboardScreenshot),
+		newReport(&cfg.Report),
 	)
 
 	logrus.SetReportCaller(true)

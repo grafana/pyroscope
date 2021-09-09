@@ -17,6 +17,8 @@ CMD ["./pyrobench"]
 FROM ubuntu:latest
 
 WORKDIR /var/lib/pyrobench
+
+RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
 # Create a group and user
 #RUN addgroup -S pyrobench && adduser -S pyrobench -G pyrobench
 RUN useradd -ms /bin/bash pyrobench

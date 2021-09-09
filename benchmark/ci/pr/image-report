@@ -1,0 +1,40 @@
+# Benchmark screenshots
+
+
+
+<details>
+  <summary>Throughput</summary>
+  <img src="http://pyroscope-benchmarks.s3.amazonaws.com/eduardo-test/throughput.png?1631231024" alt="Throughput" />
+
+
+</details>
+
+<details>
+  <summary>Disk Usage</summary>
+  <img src="http://pyroscope-benchmarks.s3.amazonaws.com/eduardo-test/disk_usage.png?1631231024" alt="Disk Usage" />
+
+
+</details>
+
+<details>
+  <summary>Memory</summary>
+  <img src="http://pyroscope-benchmarks.s3.amazonaws.com/eduardo-test/memory.png?1631231024" alt="Memory" />
+
+
+</details>
+
+<details>
+  <summary>Upload Errors (Total)</summary>
+  <img src="http://pyroscope-benchmarks.s3.amazonaws.com/eduardo-test/upload_errors_total.png?1631231024" alt="Upload Errors (Total)" />
+
+
+</details>
+
+<details>
+  <summary>Successful Uploads (Total)</summary>
+  <img src="http://pyroscope-benchmarks.s3.amazonaws.com/eduardo-test/successful_uploads_total.png?1631231024" alt="Successful Uploads (Total)" />
+
+
+</details>
+
+

@@ -3,7 +3,7 @@ package config
 type Config struct {
 	LoadGen             LoadGen             `skip:"true" mapstructure:",squash"`
 	PromQuery           PromQuery           `skip:"true" mapstructure:",squash"`
-	CIReport            CIReport            `skip:"true" mapstructure:",squash"`
+	Report              Report              `skip:"true" mapstructure:",squash"`
 	DashboardScreenshot DashboardScreenshot `skip:"true" mapstructure:",squash"`
 }
 
@@ -28,9 +28,28 @@ type PromQuery struct {
 	PrometheusAddress string `def:"http://localhost:9090" desc:"address of the prometheus instance being queried" mapstructure:"server-address"`
 }
 
-type CIReport struct {
+type Report struct {
+	TableReport
+	ImageReport
+}
+
+type TableReport struct {
 	PrometheusAddress string `def:"http://localhost:9090" desc:"address of the prometheus instance being queried" mapstructure:"server-address"`
 	QueriesFile       string `def:"<defaultQueriesFile>" desc:"filepath of the queries file"`
+	LogLevel          string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+}
+
+type ImageReport struct {
+	GrafanaAddress string `def:"http://localhost:4050" desc:"address of the grafana instance"`
+	DashboardUid   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
+	UploadType     string `def:"fs" desc:"where to upload to: s3|fs"`
+	UploadBucket   string `def:"" desc:"bucket name if applicable"`
+	UploadDest     string `def:"dashboard-screenshots" desc:"name of the directory"`
+	TimeoutSeconds int    `def:"300" desc:"timeout in seconds of each call"`
+	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+
+	From int `def:"0" desc:"timestamp"`
+	To   int `def:"0" desc:"timestamp"`
 }
 
 type DashboardScreenshot struct {
@@ -39,7 +58,7 @@ type DashboardScreenshot struct {
 
 	GrafanaAddress string `def:"http://localhost:4050" desc:"address of the grafana instance"`
 	DashboardUid   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
-	Destination    string `def:"./dashboard-screenshots" desc:"where to save the screenshots"`
+	Destination    string `def:"fs" desc:"where to upload to: s3|fs"`
 }
 
 // File can be read from file system.

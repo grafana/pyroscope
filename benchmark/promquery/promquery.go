@@ -46,7 +46,11 @@ func (pq *promQuery) Instant(query string, t time.Time) (float64, error) {
 
 	switch t := v.(type) {
 	case model.Vector:
-		return float64(v.(model.Vector)[0].Value), nil
+		vector := v.(model.Vector)
+		if len(vector) <= 0 {
+			return 0, fmt.Errorf("got 0 responses from prometheus")
+		}
+		return float64(vector[0].Value), nil
 	case *model.Scalar:
 		return float64(v.(*model.Scalar).Value), nil
 	default:

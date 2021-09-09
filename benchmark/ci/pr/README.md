@@ -6,8 +6,6 @@ This
 * takes a screenshot of the dashboard panes
 * posts using [dangerjs](https://danger.systems/js/) in the PR body
 
-
-
 # Running locally
 
 create a folder `dashboard-screenshots`
