@@ -6,6 +6,7 @@ const path = require('path');
 const tableReport = fs.readFileSync(path.join(__dirname,"./table-report"));
 const imgReport = fs.readFileSync(path.join(__dirname,"./image-report"));
 
-markdown(`${tableReport}`);
-markdown(`${imgReport}`);
+// the markdown calls seem to be LIFO
+// so it's easier to just use a single call
+markdown(`${tableReport} \n${imgReport}`);
 
