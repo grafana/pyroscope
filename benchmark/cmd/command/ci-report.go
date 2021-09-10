@@ -3,25 +3,32 @@ package command
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 
 	"github.com/pyroscope-io/pyroscope/benchmark/cireport"
 	"github.com/pyroscope-io/pyroscope/benchmark/config"
 	"github.com/pyroscope-io/pyroscope/benchmark/promquery"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
-	"github.com/spf13/cobra"
 )
 
 func newReport(cfg *config.Report) *cobra.Command {
+	vpr := newViper()
 	report := &cobra.Command{
 		Use:    "report [subcommand]",
 		Hidden: true,
 	}
 
-	vpr := newViper()
+	// output logs to stderr
+	// since the commands below output their data to stdout
+	logrus.SetOutput(os.Stderr)
+
 	tableReport := &cobra.Command{
 		Use:   "table [flags]",
-		Short: "generates a markdown report to be used by ci",
+		Short: "runs queries and generates a markdown report",
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 			setLogLevel(cfg.TableReport.LogLevel)
 			pq := promquery.New(&config.PromQuery{
@@ -33,7 +40,6 @@ func newReport(cfg *config.Report) *cobra.Command {
 				return err
 			}
 
-			// TODO(eh-am): doesn't cobra bring a context object?
 			report, err := r.Report(context.Background())
 			if err != nil {
 				return err
