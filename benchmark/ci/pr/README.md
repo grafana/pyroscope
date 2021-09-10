@@ -8,10 +8,12 @@ This
 
 # Running locally
 
-create a folder `dashboard-screenshots`
-and `./run-benchmark.sh`
+Create a director `dashboard-screenshots` and `./run-benchmark.sh`
 
-You may tweak the running time for quicker feedback loop `BENCH_RUN_FOR=30s ./run-benchmark.sh`
+Screenshots will be stored in `dashboard-screenshots`
+
+You may tweak the running time for a quicker feedback loop `BENCH_RUN_FOR=30s ./run-benchmark.sh`
+If you want to just leave it running, `BENCH_RUN_FOR=Infinity ./run-benchmark.sh`
 
 # Adding more panes
 Just update the dashboard in `monitoring/benchmark-pr.jsonnet`

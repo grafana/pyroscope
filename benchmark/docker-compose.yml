@@ -16,6 +16,7 @@ services:
     - sleep Infinity
     volumes:
     - ./ci/pr/report.tmpl.yaml:/report.tmpl.yaml
+    - ./dashboard-screenshots:/screenshots
 
   pyroscope:
     environment:

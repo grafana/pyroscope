@@ -9,7 +9,15 @@ PUSHGATEWAY_ADDRESS="http://pushgateway:9091"
 PROMETHEUS_ADDRESS="http://prometheus:9090"
 GRAFANA_ADDRESS="http://grafana:3000"
 DASHBOARD_UID="QF9YgRbUbt3BA5Qd"
-UPLOAD_DEST="${GIT_COMMIT:-local-test}"
+UPLOAD_DEST="${GIT_COMMIT:-/screenshots}"
+BUCKET_NAME="${BUCKET_NAME:-}"
+set +u
+[[ -z "$AWS_ACCESS_KEY_ID" ]] && UPLOAD_TYPE="fs" || UPLOAD_TYPE="s3"
+set -u
+
+# set as empty string so that reexporting in docker works
+AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
+AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
 
 export DOCKER_BUILDKIT=1
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -60,10 +68,10 @@ function run() {
     pr_client_1 ./pyrobench report image \
     --image-report.from="$start" \
     --image-report.to="$end" \
-    --image-report.upload-bucket="pyroscope-benchmarks" \
+    --image-report.upload-bucket="$BUCKET_NAME" \
     --image-report.upload-dest="$UPLOAD_DEST" \
     --image-report.grafana-address "$GRAFANA_ADDRESS" \
-    --image-report.upload-type=s3 > "$SCRIPT_DIR/image-report"
+    --image-report.upload-type="$UPLOAD_TYPE" > "$SCRIPT_DIR/image-report"
 
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
