@@ -66,19 +66,19 @@ function run() {
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
     -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
     pr_client_1 ./pyrobench report image \
-    --image-report.from="$start" \
-    --image-report.to="$end" \
-    --image-report.upload-bucket="$BUCKET_NAME" \
-    --image-report.upload-dest="$UPLOAD_DEST" \
-    --image-report.grafana-address "$GRAFANA_ADDRESS" \
-    --image-report.upload-type="$UPLOAD_TYPE" > "$SCRIPT_DIR/image-report"
+    --from="$start" \
+    --to="$end" \
+    --upload-bucket="$BUCKET_NAME" \
+    --upload-dest="$UPLOAD_DEST" \
+    --grafana-address "$GRAFANA_ADDRESS" \
+    --upload-type="$UPLOAD_TYPE" > "$SCRIPT_DIR/image-report"
 
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
     -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
     pr_client_1 ./pyrobench report table \
-    --table-report.prometheus-address="$PROMETHEUS_ADDRESS" \
-    --table-report.queries-file /report.tmpl.yaml > "$SCRIPT_DIR/table-report"
+    --prometheus-address="$PROMETHEUS_ADDRESS" \
+    --queries-file /report.tmpl.yaml > "$SCRIPT_DIR/table-report"
 }
 
 run

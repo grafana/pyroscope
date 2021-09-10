@@ -85,10 +85,12 @@ func newReport(cfg *config.Report) *cobra.Command {
 		}),
 	}
 
-	report.AddCommand(tableReport)
-	report.AddCommand(imageReport)
+	report.AddCommand(
+		tableReport,
+		imageReport,
+	)
 
-	cli.PopulateFlagSet(cfg, tableReport.Flags(), vpr)
-	cli.PopulateFlagSet(cfg, imageReport.Flags(), vpr)
+	cli.PopulateFlagSet(&cfg.ImageReport, imageReport.Flags(), vpr)
+	cli.PopulateFlagSet(&cfg.TableReport, tableReport.Flags(), vpr)
 	return report
 }
