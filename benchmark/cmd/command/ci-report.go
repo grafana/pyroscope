@@ -3,33 +3,26 @@ package command
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
-
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 
 	"github.com/pyroscope-io/pyroscope/benchmark/cireport"
 	"github.com/pyroscope-io/pyroscope/benchmark/config"
 	"github.com/pyroscope-io/pyroscope/benchmark/promquery"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
+	"github.com/spf13/cobra"
 )
 
 func newReport(cfg *config.Report) *cobra.Command {
-	vpr := newViper()
 	report := &cobra.Command{
 		Use:    "report [subcommand]",
 		Hidden: true,
 	}
 
-	// output logs to stderr
-	// since the commands below output their data to stdout
-	logrus.SetOutput(os.Stderr)
-
+	vpr := newViper()
 	tableReport := &cobra.Command{
 		Use:   "table [flags]",
-		Short: "runs queries and generates a markdown report",
-		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+		Short: "generates a markdown report to be used by ci",
+		RunE: cli.CreateCmdRunFn(&cfg.TableReport, vpr, func(_ *cobra.Command, args []string) error {
 			setLogLevel(cfg.TableReport.LogLevel)
 			pq := promquery.New(&config.PromQuery{
 				PrometheusAddress: cfg.PrometheusAddress,
@@ -53,7 +46,7 @@ func newReport(cfg *config.Report) *cobra.Command {
 	imageReport := &cobra.Command{
 		Use:   "image [flags]",
 		Short: "generates a markdown report to be used by ci",
-		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+		RunE: cli.CreateCmdRunFn(&cfg.ImageReport, vpr, func(_ *cobra.Command, args []string) error {
 			setLogLevel(cfg.ImageReport.LogLevel)
 
 			r, err := cireport.NewImageReporter(
@@ -91,12 +84,10 @@ func newReport(cfg *config.Report) *cobra.Command {
 		}),
 	}
 
-	report.AddCommand(
-		tableReport,
-		imageReport,
-	)
+	report.AddCommand(tableReport)
+	report.AddCommand(imageReport)
 
-	cli.PopulateFlagSet(&cfg.ImageReport, imageReport.Flags(), vpr)
 	cli.PopulateFlagSet(&cfg.TableReport, tableReport.Flags(), vpr)
+	cli.PopulateFlagSet(&cfg.ImageReport, imageReport.Flags(), vpr)
 	return report
 }

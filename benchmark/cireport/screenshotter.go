@@ -30,7 +30,6 @@ type ScreenshotPanelConfig struct {
 func (gs *GrafanaScreenshotter) ScreenshotPanel(ctx context.Context, cfg ScreenshotPanelConfig) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(gs.TimeoutSeconds)*time.Second)
 	defer cancel()
-	// TODO(eh-am): pass width/height
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, gs.GrafanaURL+"/render/d-solo/"+cfg.DashboardUID, nil)
 	if err != nil {
 		return []byte{}, err
@@ -58,8 +57,8 @@ func (gs *GrafanaScreenshotter) ScreenshotPanel(ctx context.Context, cfg Screens
 }
 
 type Panel struct {
-	ID    int    `json: "id"`
-	Title string `json: "title"`
+	ID    int    `json:"id"`
+	Title string `json:"title"`
 	Data  []byte
 }
 
@@ -94,9 +93,8 @@ func (gs *GrafanaScreenshotter) getAllPanes(ctx context.Context, uid string) ([]
 	return j.Dashboard.Panels, nil
 }
 
-// AllPanes take a screenshot of every single pane
+// AllPanes take a screenshot of all panes in a dashboard
 // IMPORTANT! It assumes there are no rows
-// TODO: handle rows too
 func (gs *GrafanaScreenshotter) AllPanels(ctx context.Context, dashboardUID string, from int64, to int64) ([]Panel, error) {
 	logrus.Debug("getting all ids from dashboard ", dashboardUID)
 	panels, err := gs.getAllPanes(ctx, dashboardUID)
@@ -116,8 +114,6 @@ func (gs *GrafanaScreenshotter) AllPanels(ctx context.Context, dashboardUID stri
 				ScreenshotPanelConfig{
 					DashboardUID: dashboardUID,
 					PanelId:      id,
-					Width:        500,
-					Height:       500,
 					From:         from,
 					To:           to,
 				})

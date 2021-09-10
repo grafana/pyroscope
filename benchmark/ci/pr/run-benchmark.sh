@@ -9,11 +9,14 @@ PUSHGATEWAY_ADDRESS="http://pushgateway:9091"
 PROMETHEUS_ADDRESS="http://prometheus:9090"
 GRAFANA_ADDRESS="http://grafana:3000"
 DASHBOARD_UID="QF9YgRbUbt3BA5Qd"
-UPLOAD_DEST="${GIT_COMMIT:-/screenshots}"
-BUCKET_NAME="${BUCKET_NAME:-}"
-set +u
-[[ -z "$AWS_ACCESS_KEY_ID" ]] && UPLOAD_TYPE="fs" || UPLOAD_TYPE="s3"
-set -u
+PYROBENCH_UPLOAD_DEST="${PYROBENCH_UPLOAD_DEST:-/screenshots}"
+PYROBENCH_BUCKET_NAME="${PYROBENCH_BUCKET_NAME:-}"
+PYROBENCH_UPLOAD_TYPE="${PYROBENCH_UPLOAD_TYPE:-}"
+
+export PYROBENCH_UPLOAD_TYPE
+export PYROBENCH_BUCKET_NAME
+export PYROBENCH_UPLOAD_DEST
+
 
 # set as empty string so that reexporting in docker works
 AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
@@ -62,16 +65,14 @@ function run() {
 
   echo "Taking screenshots of dashboard $DASHBOARD_UID"
   # TODO(eh-am): use docker-compose exec
+  # TODO(eh-am): don't use default variables
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
     -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
     pr_client_1 ./pyrobench report image \
     --from="$start" \
     --to="$end" \
-    --upload-bucket="$BUCKET_NAME" \
-    --upload-dest="$UPLOAD_DEST" \
-    --grafana-address "$GRAFANA_ADDRESS" \
-    --upload-type="$UPLOAD_TYPE" > "$SCRIPT_DIR/image-report"
+    --grafana-address "$GRAFANA_ADDRESS" > "$SCRIPT_DIR/image-report"
 
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \

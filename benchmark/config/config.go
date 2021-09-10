@@ -42,14 +42,13 @@ type TableReport struct {
 type ImageReport struct {
 	GrafanaAddress string `def:"http://localhost:4050" desc:"address of the grafana instance"`
 	DashboardUid   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
-	UploadType     string `def:"fs" desc:"where to upload to: s3|fs"`
-	UploadBucket   string `def:"" desc:"bucket name if applicable"`
-	UploadDest     string `def:"dashboard-screenshots" desc:"name of the directory"`
+	UploadType     string `def:"fs" desc:"where to upload to: s3|fs" mapstructure:"upload-type"`
+	UploadBucket   string `def:"" desc:"bucket name if applicable" mapstructure:"upload-bucket"`
+	UploadDest     string `def:"dashboard-screenshots" desc:"name of the output directory" mapstructure:"upload-dest"`
 	TimeoutSeconds int    `def:"300" desc:"timeout in seconds of each call"`
 	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
-
-	From int `def:"0" desc:"timestamp"`
-	To   int `def:"0" desc:"timestamp"`
+	From           int    `def:"0" desc:"timestamp"`
+	To             int    `def:"0" desc:"timestamp"`
 }
 
 type DashboardScreenshot struct {

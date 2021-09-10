@@ -42,7 +42,7 @@ func NewImageReporter(grafanaURL string, timeoutSeconds int, uploadType string, 
 	case "fs":
 		uploader = NewFsWriter()
 	default:
-		return nil, fmt.Errorf("invalid upload type %s", uploadType)
+		return nil, fmt.Errorf("invalid upload type: '%s'", uploadType)
 	}
 
 	return &imageReporter{
