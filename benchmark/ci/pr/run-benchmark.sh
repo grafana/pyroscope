@@ -1,22 +1,20 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+set -x
 
 BENCH_RUN_FOR="${BENCH_RUN_FOR:-10m}"
+
 PYROSCOPE_ADDRESS="http://pyroscope:4040"
 PYROSCOPE_MAIN_ADDRESS="http://pyroscope_main:4040"
 PUSHGATEWAY_ADDRESS="http://pushgateway:9091"
 PROMETHEUS_ADDRESS="http://prometheus:9090"
 GRAFANA_ADDRESS="http://grafana:3000"
 DASHBOARD_UID="QF9YgRbUbt3BA5Qd"
+
 PYROBENCH_UPLOAD_DEST="${PYROBENCH_UPLOAD_DEST:-/screenshots}"
-PYROBENCH_BUCKET_NAME="${PYROBENCH_BUCKET_NAME:-}"
+PYROBENCH_UPLOAD_BUCKET="${PYROBENCH_UPLOAD_BUCKET:-}"
 PYROBENCH_UPLOAD_TYPE="${PYROBENCH_UPLOAD_TYPE:-}"
-
-export PYROBENCH_UPLOAD_TYPE
-export PYROBENCH_BUCKET_NAME
-export PYROBENCH_UPLOAD_DEST
-
 
 # set as empty string so that reexporting in docker works
 AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
@@ -39,7 +37,6 @@ function run() {
   docker-compose pull
   # build local code
   docker-compose build
-
 
   # Start the docker containers
   docker-compose up -d --force-recreate --remove-orphans
@@ -69,6 +66,9 @@ function run() {
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
     -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
+    -e "PYROBENCH_UPLOAD_TYPE=$PYROBENCH_UPLOAD_TYPE" \
+    -e "PYROBENCH_UPLOAD_BUCKET=$PYROBENCH_UPLOAD_BUCKET" \
+    -e "PYROBENCH_UPLOAD_DEST=$PYROBENCH_UPLOAD_DEST" \
     pr_client_1 ./pyrobench report image \
     --from="$start" \
     --to="$end" \
