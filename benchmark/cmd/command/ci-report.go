@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/benchmark/cireport"
-	"github.com/pyroscope-io/pyroscope/benchmark/config"
-	"github.com/pyroscope-io/pyroscope/benchmark/promquery"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/cireport"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/promquery"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

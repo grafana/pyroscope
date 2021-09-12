@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/benchmark/config"
-	"github.com/pyroscope-io/pyroscope/benchmark/promquery"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/promquery"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/spf13/cobra"
 )

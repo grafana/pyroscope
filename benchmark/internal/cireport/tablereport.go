@@ -5,7 +5,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/benchmark/config"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"

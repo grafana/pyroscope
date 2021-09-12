@@ -1,8 +1,8 @@
 package command
 
 import (
-	"github.com/pyroscope-io/pyroscope/benchmark/config"
-	"github.com/pyroscope-io/pyroscope/benchmark/loadgen"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/loadgen"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/spf13/cobra"
 )

@@ -19,11 +19,7 @@ func NewFsWriter() *fs {
 }
 
 func (rs *fs) WriteFile(dest string, data []byte) (string, error) {
-	if _, err := os.Stat(dest); err == nil {
-		return "", fmt.Errorf("file exists %s, won't overwrite", dest)
-	} else if os.IsNotExist(err) {
-		// file does not exist
-	} else {
+	if _, err := os.Stat(dest); err != nil && !os.IsNotExist(err) {
 		// unkown error
 		return "", err
 	}
@@ -39,6 +35,15 @@ func (rs *fs) WriteFile(dest string, data []byte) (string, error) {
 		return "", err
 	}
 
+	// not really useful since we don't have the full path
+	if _, err := os.Stat(dest); err == nil {
+		// file exists
+	} else if os.IsNotExist(err) {
+		// file does not exist
+	} else {
+		// unkown error
+		return "", err
+	}
 	return "file://" + dest, nil
 }
 
