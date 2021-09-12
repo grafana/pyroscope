@@ -1,4 +1,4 @@
-# Benchmark screenshots
+# Benchmark Screenshots
 
 {{ $root := . }}
 {{ range .Panels }}

@@ -9,6 +9,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/benchmark/config"
 	"github.com/pyroscope-io/pyroscope/benchmark/promquery"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -48,6 +49,8 @@ func newReport(cfg *config.Report) *cobra.Command {
 		Short: "generates a markdown report to be used by ci",
 		RunE: cli.CreateCmdRunFn(&cfg.ImageReport, vpr, func(_ *cobra.Command, args []string) error {
 			setLogLevel(cfg.ImageReport.LogLevel)
+
+			logrus.Debugf("config %+v", cfg.ImageReport)
 
 			r, err := cireport.NewImageReporter(
 				cfg.GrafanaAddress,

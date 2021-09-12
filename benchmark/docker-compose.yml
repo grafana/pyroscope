@@ -3,9 +3,6 @@ services:
   pyrobench:
     env_file:
     - run-parameters.env
-    environment:
-      AWS_ACCESS_KEY_ID: "${AWS_SECRET_ACCESS_KEY}"
-      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}}"
     build:
       context: ../
       dockerfile: benchmark/Dockerfile
