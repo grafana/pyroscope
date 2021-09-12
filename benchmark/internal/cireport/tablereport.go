@@ -5,7 +5,6 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -48,38 +47,42 @@ type QueriesConfig struct {
 	Queries []Query `yaml:"queries"`
 }
 type tableReport struct {
-	q    Querier
-	cfg  config.TableReport
-	qCfg *QueriesConfig
+	q Querier
+	// 	queriesFile string
+	//qCfg *QueriesConfig
 }
 
-func NewTableReport(q Querier, cfg config.TableReport) (*tableReport, error) {
+func NewTableReport(q Querier) *tableReport {
+	return &tableReport{
+		q,
+	}
+}
+
+func TableReportCli(q Querier, queriesFile string) (string, error) {
 	var qCfg QueriesConfig
 
 	// read the file
-	yamlFile, err := ioutil.ReadFile(cfg.QueriesFile)
+	yamlFile, err := ioutil.ReadFile(queriesFile)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	err = yaml.Unmarshal(yamlFile, &qCfg)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &tableReport{
-		q,
-		cfg,
-		&qCfg,
-	}, nil
+	t := NewTableReport(q)
+
+	return t.Report(context.Background(), &qCfg)
 }
 
 // TableReport reports query results from prometheus in markdown format
-func (r *tableReport) Report(ctx context.Context) (string, error) {
+func (r *tableReport) Report(ctx context.Context, qCfg *QueriesConfig) (string, error) {
 	// TODO: treat each error individually?
-	g, ctx := errgroup.WithContext(context.Background())
+	g, ctx := errgroup.WithContext(ctx)
 
 	now := time.Now()
-	for index, queries := range r.qCfg.Queries {
+	for index, queries := range qCfg.Queries {
 		i := index
 		q := queries
 		g.Go(func() error {
@@ -96,12 +99,12 @@ func (r *tableReport) Report(ctx context.Context) (string, error) {
 
 			// TODO(eh-am): should I lock the whole array?
 			q.mu.Lock()
-			r.qCfg.Queries[i].BaseResult = baseResult
-			r.qCfg.Queries[i].TargetResult = targetResult
+			qCfg.Queries[i].BaseResult = baseResult
+			qCfg.Queries[i].TargetResult = targetResult
 
 			// compute as much as possible beforehand
 			// so that the template code is cleaner
-			r.qCfg.Queries[i].DiffPercent = diffPercent
+			qCfg.Queries[i].DiffPercent = diffPercent
 			q.mu.Unlock()
 			return nil
 		})
@@ -116,7 +119,7 @@ func (r *tableReport) Report(ctx context.Context) (string, error) {
 	data := struct {
 		QC *QueriesConfig
 	}{
-		QC: r.qCfg,
+		QC: qCfg,
 	}
 
 	t, err := template.New("pr.gotpl").

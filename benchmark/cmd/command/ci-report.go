@@ -29,12 +29,7 @@ func newReport(cfg *config.Report) *cobra.Command {
 				PrometheusAddress: cfg.PrometheusAddress,
 			})
 
-			r, err := cireport.NewTableReport(pq, cfg.TableReport)
-			if err != nil {
-				return err
-			}
-
-			report, err := r.Report(context.Background())
+			report, err := cireport.TableReportCli(pq, cfg.TableReport.QueriesFile)
 			if err != nil {
 				return err
 			}
