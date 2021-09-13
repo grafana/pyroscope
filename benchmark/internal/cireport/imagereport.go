@@ -16,40 +16,45 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/text/transform"
 	"golang.org/x/text/unicode/norm"
+
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
 )
 
-type uploader interface {
+type Uploader interface {
 	WriteFile(dest string, data []byte) (string, error)
 }
 
-type imageReporter struct {
-	grafanaURL     string
-	timeoutSeconds int
-
-	uploader uploader
+type DashboardScreenshotter interface {
+	AllPanels(ctx context.Context, dashboardUID string, from int64, to int64) ([]Panel, error)
 }
 
-func NewImageReporter(grafanaURL string, timeoutSeconds int, uploadType string, uploadDestPath string) (*imageReporter, error) {
-	var uploader uploader
-	switch uploadType {
-	case "s3":
-		u, err := NewS3Writer(uploadDestPath)
-		uploader = u
+type imageReporter struct {
+	uploader      Uploader
+	screenshotter DashboardScreenshotter
+}
 
-		if err != nil {
-			return nil, err
-		}
-	case "fs":
-		uploader = NewFsWriter()
-	default:
-		return nil, fmt.Errorf("invalid upload type: '%s'", uploadType)
+func ImageReportCLI(cfg config.ImageReport) (string, error) {
+	uploader, err := decideUploader(cfg.UploadType, cfg.UploadBucket)
+	if err != nil {
+		return "", err
 	}
 
-	return &imageReporter{
-		grafanaURL,
-		timeoutSeconds,
-		uploader,
-	}, nil
+	gs := GrafanaScreenshotter{
+		GrafanaURL:     cfg.GrafanaAddress,
+		TimeoutSeconds: cfg.TimeoutSeconds,
+	}
+
+	r := NewImageReporter(gs, uploader)
+
+	from, to := decideTimestamp(cfg.From, cfg.To)
+
+	return r.Report(
+		context.Background(),
+		cfg.DashboardUid,
+		cfg.UploadDest,
+		from,
+		to,
+	)
 }
 
 type screenshotPanel struct {
@@ -57,16 +62,17 @@ type screenshotPanel struct {
 	Url   string
 }
 
-func (r *imageReporter) ImageReport(ctx context.Context, dashboardUID string, dir string, from int64, to int64) (string, error) {
-
-	gs := GrafanaScreenshotter{
-		GrafanaURL:     r.grafanaURL,
-		TimeoutSeconds: r.timeoutSeconds,
+func NewImageReporter(screenshotter GrafanaScreenshotter, uploader Uploader) *imageReporter {
+	return &imageReporter{
+		uploader,
+		&screenshotter,
 	}
+}
 
+func (r *imageReporter) Report(ctx context.Context, dashboardUID string, dir string, from int64, to int64) (string, error) {
 	// screenshot all panes
 	logrus.Debug("taking screenshot of all panels")
-	panels, err := gs.AllPanels(ctx, dashboardUID, from, to)
+	panels, err := r.screenshotter.AllPanels(ctx, dashboardUID, from, to)
 	if err != nil {
 		return "", err
 	}
@@ -148,4 +154,42 @@ func (r *imageReporter) template(panels []screenshotPanel) (string, error) {
 	}
 
 	return tpl.String(), nil
+}
+
+func decideTimestamp(fromInt, toInt int) (int64, int64) {
+	now := time.Now()
+	from := int64(fromInt)
+	to := int64(toInt)
+
+	// set defaults if appropriate
+	if to == 0 {
+		// TODO use UnixMilli()
+		to = now.UnixNano() / int64(time.Millisecond)
+	}
+
+	if from == 0 {
+		// TODO use UnixMilli()
+		from = now.Add(time.Duration(5)*-time.Minute).UnixNano() / int64(time.Millisecond)
+	}
+
+	return from, to
+}
+
+func decideUploader(uploadType string, uploadBucket string) (Uploader, error) {
+	var uploader Uploader
+	switch uploadType {
+	case "s3":
+		u, err := NewS3Writer(uploadBucket)
+		uploader = u
+
+		if err != nil {
+			return nil, err
+		}
+	case "fs":
+		uploader = NewFsWriter()
+	default:
+		return nil, fmt.Errorf("invalid upload type: '%s'", uploadType)
+	}
+
+	return uploader, nil
 }

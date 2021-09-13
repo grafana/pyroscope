@@ -1,15 +1,12 @@
 package command
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/pyroscope-io/pyroscope/benchmark/internal/cireport"
 	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
 	"github.com/pyroscope-io/pyroscope/benchmark/internal/promquery"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -45,34 +42,7 @@ func newReport(cfg *config.Report) *cobra.Command {
 		RunE: cli.CreateCmdRunFn(&cfg.ImageReport, vpr, func(_ *cobra.Command, args []string) error {
 			setLogLevel(cfg.ImageReport.LogLevel)
 
-			logrus.Debugf("config %+v", cfg.ImageReport)
-
-			r, err := cireport.NewImageReporter(
-				cfg.GrafanaAddress,
-				cfg.TimeoutSeconds,
-				cfg.UploadType,
-				cfg.UploadBucket,
-			)
-			if err != nil {
-				return err
-			}
-
-			now := time.Now()
-			from := int64(cfg.From)
-			to := int64(cfg.To)
-
-			// set defaults if appropriate
-			if to == 0 {
-				// TODO use UnixMilli()
-				to = now.UnixNano() / int64(time.Millisecond)
-			}
-
-			if from == 0 {
-				// TODO use UnixMilli()
-				from = now.Add(time.Duration(5)*-time.Minute).UnixNano() / int64(time.Millisecond)
-			}
-
-			report, err := r.ImageReport(context.Background(), cfg.DashboardUid, cfg.UploadDest, from, to)
+			report, err := cireport.ImageReportCLI(cfg.ImageReport)
 			if err != nil {
 				return err
 			}

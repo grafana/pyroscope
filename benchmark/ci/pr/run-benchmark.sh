@@ -62,7 +62,6 @@ function run() {
   sleep "$BENCH_RUN_FOR"
   end=$(date +%s%3N)
 
-  echo "Taking screenshots of dashboard $DASHBOARD_UID"
   # TODO(eh-am): use docker-compose exec
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
