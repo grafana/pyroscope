@@ -233,7 +233,11 @@ class FlameGraphRenderer extends React.Component {
       </div>
     );
     const dataExists =
-      this.state.view !== "table" || this.state.flamebearer.names.length <= 1;
+      this.state.view !== "table" || (
+        this.state.flamebearer &&
+        this.state.flamebearer.names.length <= 1
+      );
+
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
