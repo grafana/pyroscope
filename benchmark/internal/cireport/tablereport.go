@@ -48,8 +48,6 @@ type QueriesConfig struct {
 }
 type tableReport struct {
 	q Querier
-	// 	queriesFile string
-	//qCfg *QueriesConfig
 }
 
 func NewTableReport(q Querier) *tableReport {
