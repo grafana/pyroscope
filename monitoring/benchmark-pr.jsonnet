@@ -7,7 +7,7 @@ local height = 10;
 // Don't add rows, since that will mess up the json parsing
 // in the golang code
 grafana.dashboard.new(
-  'Pyroscope PR Dashboard',
+  'Pyroscope Server PR Dashboard',
   tags=['pyroscope'],
   time_from='now-1h',
   uid='QF9YgRbUbt3BA5Qd',
@@ -124,6 +124,26 @@ grafana.dashboard.new(
   ),
   gridPos={
     x: width * 0,
+    y: height * 2,
+    w: width,
+    h: height,
+  }
+)
+.addPanel(
+  grafana.graphPanel.new(
+    'CPU Utilization',
+    datasource='$PROMETHEUS_DS',
+    format='percent',
+    min='0',
+    max='100',
+  )
+  .addTarget(
+    grafana.prometheus.target(
+      'pyroscope_cpu_utilization',
+    )
+  ),
+  gridPos={
+    x: width * 1,
     y: height * 2,
     w: width,
     h: height,
