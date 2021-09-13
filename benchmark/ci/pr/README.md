@@ -19,4 +19,4 @@ If you want to just leave it running, `BENCH_RUN_FOR=Infinity ./run-benchmark.sh
 Just update the dashboard in `monitoring/benchmark-pr.jsonnet`
 
 # Adding more things to the report
-Update the `report.tmpl.yaml` file
+Update the `report.yaml` file

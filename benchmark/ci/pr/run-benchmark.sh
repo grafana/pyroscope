@@ -79,7 +79,7 @@ function run() {
     -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
     pr_client_1 ./pyrobench report table \
     --prometheus-address="$PROMETHEUS_ADDRESS" \
-    --queries-file /report.tmpl.yaml > "$SCRIPT_DIR/table-report"
+    --queries-file /report.yaml > "$SCRIPT_DIR/table-report"
 }
 
 run
