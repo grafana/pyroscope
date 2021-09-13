@@ -20,10 +20,9 @@ function ExportData(props) {
   };
 
   const formatPdfTitle = () => {
-    const { value } = props.labels.filter((x) => x.name === "__name__")[0];
     const { from, until } = props;
 
-    return `${value} - from: ${from} - to ${until}`;
+    return `${props.label} - from: ${from} - to ${until}`;
   };
 
   // export flamegraph canvas element

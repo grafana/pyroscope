@@ -3,6 +3,7 @@
   "private": true,
   "name": "pyroscope",
   "version": "0.0.39",
+  "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
     "url": "https://github.com/pyroscope-io/pyroscope.git"
@@ -99,7 +100,8 @@
     "redux-promise": "^0.6.0",
     "redux-query-sync": "^0.1.10",
     "redux-thunk": "^2.3.0",
-    "sanitize.css": "^11.0.1"
+    "sanitize.css": "^11.0.1",
+    "style-loader": "^3.2.1"
   },
   "engines": {
     "node": ">=11"

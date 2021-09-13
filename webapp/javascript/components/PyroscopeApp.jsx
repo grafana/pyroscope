@@ -3,12 +3,16 @@ import { connect } from "react-redux";
 import "react-dom";
 
 import { bindActionCreators } from "redux";
-import FlameGraphRenderer from "./FlameGraphRenderer";
+import FlameGraphRenderer from "./FlameGraph";
 import TimelineChartWrapper from "./TimelineChartWrapper";
 import Header from "./Header";
 import Footer from "./Footer";
 import { buildRenderURL } from "../util/updateRequests";
-import { fetchNames, fetchTimeline, abortTimelineRequest } from "../redux/actions";
+import {
+  fetchNames,
+  fetchTimeline,
+  abortTimelineRequest,
+} from "../redux/actions";
 
 function PyroscopeApp(props) {
   const { actions, renderURL } = props;

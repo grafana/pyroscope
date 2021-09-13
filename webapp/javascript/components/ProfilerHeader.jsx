@@ -7,7 +7,7 @@ import { faColumns } from "@fortawesome/free-solid-svg-icons/faColumns";
 import { faIcicles } from "@fortawesome/free-solid-svg-icons/faIcicles";
 import { faListUl } from "@fortawesome/free-solid-svg-icons/faListUl";
 import { faTable } from "@fortawesome/free-solid-svg-icons/faTable";
-import { FitModes } from "../util/fitMode"
+import { FitModes } from "../util/fitMode";
 
 export default function ProfilerHeader({
   view,
@@ -47,8 +47,6 @@ export default function ProfilerHeader({
       >
         Reset View
       </button>
-
-
       <div className="navbar-space-filler" />
       {!viewDiff ? null : (
         <div className="btn-group viz-switch">
@@ -81,6 +79,7 @@ export default function ProfilerHeader({
       <div className="btn-group viz-switch">
         <button
           type="button"
+          data-testid="btn-table-view"
           className={clsx("btn", { active: view === "table" })}
           onClick={() => updateView("table")}
         >
@@ -88,6 +87,7 @@ export default function ProfilerHeader({
           &nbsp;&thinsp;Table
         </button>
         <button
+          data-testid="btn-both-view"
           type="button"
           className={clsx("btn", { active: view === "both" })}
           onClick={() => updateView("both")}
@@ -96,6 +96,7 @@ export default function ProfilerHeader({
           &nbsp;&thinsp;Both
         </button>
         <button
+          data-testid="btn-flamegraph-view"
           type="button"
           className={clsx("btn", { active: view === "icicle" })}
           onClick={() => updateView("icicle")}
