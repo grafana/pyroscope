@@ -21,8 +21,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/profile"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
@@ -46,16 +46,17 @@ type Storage struct {
 	localProfilesDir string
 
 	db           *badger.DB
-	dbTrees      *badger.DB
+	dbProfiles   *badger.DB
 	dbDicts      *badger.DB
 	dbDimensions *badger.DB
 	dbSegments   *badger.DB
 
-	labels     *labels.Labels
+	symbols sync.Map
+	labels  *labels.Labels
+
 	segments   *cache.Cache
 	dimensions *cache.Cache
-	dicts      *cache.Cache
-	trees      *cache.Cache
+	profiles   *cache.Cache
 
 	*metrics
 
@@ -105,7 +106,7 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 	}
 	s.labels = labels.New(s.db)
 
-	if s.dbTrees, err = s.newBadger("trees"); err != nil {
+	if s.dbProfiles, err = s.newBadger("profiles"); err != nil {
 		return nil, err
 	}
 	if s.dbDicts, err = s.newBadger("dicts"); err != nil {
@@ -136,19 +137,11 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		TTL:     cacheTTL,
 	})
 
-	s.dicts = cache.New(cache.Config{
-		DB:      s.dbDicts,
-		Metrics: cm.createInstance("dicts"),
-		Codec:   dictionaryCodec{},
-		Prefix:  "d:",
-		TTL:     cacheTTL,
-	})
-
-	s.trees = cache.New(cache.Config{
-		DB:      s.dbTrees,
-		Metrics: cm.createInstance("trees"),
-		Codec:   treeCodec{s},
-		Prefix:  "t:",
+	s.profiles = cache.New(cache.Config{
+		DB:      s.dbProfiles,
+		Metrics: cm.createInstance("profiles"),
+		Codec:   profileCodec{},
+		Prefix:  "p:",
 		TTL:     cacheTTL,
 	})
 
@@ -176,7 +169,8 @@ type PutInput struct {
 	StartTime       time.Time
 	EndTime         time.Time
 	Key             *segment.Key
-	Val             *tree.Tree
+	Samples         uint64
+	Val             *profile.Profile
 	SpyName         string
 	SampleRate      uint32
 	Units           string
@@ -202,12 +196,12 @@ func (s *Storage) Put(pi *PutInput) error {
 		"startTime":       pi.StartTime.String(),
 		"endTime":         pi.EndTime.String(),
 		"key":             pi.Key.Normalized(),
-		"samples":         pi.Val.Samples(),
+		"samples":         pi.Samples,
 		"units":           pi.Units,
 		"aggregationType": pi.AggregationType,
 	}).Debug("storage.Put")
 
-	s.writesTotal.Add(1.0)
+	s.writesTotal.Inc()
 
 	for k, v := range pi.Key.Labels() {
 		s.labels.Put(k, v)
@@ -232,20 +226,19 @@ func (s *Storage) Put(pi *PutInput) error {
 
 	st := r.(*segment.Segment)
 	st.SetMetadata(pi.SpyName, pi.SampleRate, pi.Units, pi.AggregationType)
-	samples := pi.Val.Samples()
 
-	err = st.Put(pi.StartTime, pi.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
+	err = st.Put(pi.StartTime, pi.EndTime, pi.Samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := pi.Key.TreeKey(depth, t)
-		res, err := s.trees.GetOrCreate(tk)
+		res, err := s.profiles.GetOrCreate(tk)
 		if err != nil {
-			logrus.Errorf("trees cache for %v: %v", tk, err)
+			logrus.Errorf("profiles cache for %v: %v", tk, err)
 			return
 		}
-		cachedTree := res.(*tree.Tree)
-		treeClone := pi.Val.Clone(r)
+		cachedTree := res.(*profile.Profile)
+		treeClone := pi.Val.Clone(r.Num().Uint64(), r.Denom().Uint64())
 		for _, addon := range addons {
-			if res, ok := s.trees.Lookup(pi.Key.TreeKey(addon.Depth, addon.T)); ok {
-				ta := res.(*tree.Tree)
+			if res, ok := s.profiles.Lookup(pi.Key.TreeKey(addon.Depth, addon.T)); ok {
+				ta := res.(*profile.Profile)
 				ta.RLock()
 				treeClone.Merge(ta)
 				ta.RUnlock()
@@ -254,7 +247,7 @@ func (s *Storage) Put(pi *PutInput) error {
 		cachedTree.Lock()
 		cachedTree.Merge(treeClone)
 		cachedTree.Unlock()
-		s.trees.Put(tk, cachedTree)
+		s.profiles.Put(tk, cachedTree)
 	})
 	if err != nil {
 		return err
@@ -272,7 +265,7 @@ type GetInput struct {
 }
 
 type GetOutput struct {
-	Tree       *tree.Tree
+	Tree       *profile.Profile
 	Timeline   *segment.Timeline
 	SpyName    string
 	SampleRate uint32
@@ -301,11 +294,10 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}
 
 	logger.Debug("storage.Get")
-
-	s.readsTotal.Add(1)
+	s.readsTotal.Inc()
 
 	var (
-		resultTrie  *tree.Tree
+		resultTrie  *profile.Profile
 		lastSegment *segment.Segment
 		writesTotal uint64
 
@@ -335,8 +327,8 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		lastSegment = st
 
 		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-			if res, ok = s.trees.Lookup(parsedKey.TreeKey(depth, t)); ok {
-				x := res.(*tree.Tree).Clone(r)
+			if res, ok = s.profiles.Lookup(parsedKey.TreeKey(depth, t)); ok {
+				x := res.(*profile.Profile).Clone(r.Num().Uint64(), r.Denom().Uint64())
 				writesTotal += writes
 				if resultTrie == nil {
 					resultTrie = x
@@ -347,12 +339,12 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		})
 	}
 
-	if resultTrie == nil {
+	if resultTrie == nil || lastSegment == nil {
 		return nil, nil
 	}
 
 	if writesTotal > 0 && aggregationType == averageAggregationType {
-		resultTrie = resultTrie.Clone(big.NewRat(1, int64(writesTotal)))
+		resultTrie = resultTrie.Clone(1, writesTotal)
 	}
 
 	return &GetOutput{
@@ -428,7 +420,7 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 		var err error
 		deletedRoot := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 			tk := sk.TreeKey(depth, t)
-			if delErr := s.trees.Delete(tk); delErr != nil {
+			if delErr := s.profiles.Delete(tk); delErr != nil {
 				err = delErr
 			}
 		})
@@ -473,7 +465,7 @@ func (s *Storage) Delete(di *DeleteInput) error {
 		var err error
 		st.Get(zeroTime, maxTime, func(depth int, _, _ uint64, t time.Time, _ *big.Rat) {
 			treeKey := skk.TreeKey(depth, t)
-			err = s.trees.Delete(treeKey)
+			err = s.profiles.Delete(treeKey)
 		})
 		if err != nil {
 			return err
@@ -488,9 +480,10 @@ func (s *Storage) Delete(di *DeleteInput) error {
 }
 
 func (s *Storage) deleteSegmentAndRelatedData(key *segment.Key) error {
-	if err := s.dicts.Delete(key.DictKey()); err != nil {
-		return err
-	}
+	// TODO
+	//	if err := s.dicts.Delete(key.DictKey()); err != nil {
+	//		return err
+	//	}
 	if err := s.segments.Delete(key.SegmentKey()); err != nil {
 		return err
 	}
@@ -517,11 +510,14 @@ func (s *Storage) Close() error {
 		wg.Add(3)
 		go func() { defer wg.Done(); s.dimensions.Flush() }()
 		go func() { defer wg.Done(); s.segments.Flush() }()
-		go func() { defer wg.Done(); s.trees.Flush() }()
+		go func() {
+			defer wg.Done()
+			s.profiles.Flush()
+			if err := s.StoreSymbols(); err != nil {
+				panic(err)
+			}
+		}()
 		wg.Wait()
-
-		// dictionary has to flush last because trees write to dictionaries
-		s.dicts.Flush()
 	}()
 
 	func() {
@@ -530,7 +526,7 @@ func (s *Storage) Close() error {
 
 		wg := sync.WaitGroup{}
 		wg.Add(5)
-		go func() { defer wg.Done(); s.dbTrees.Close() }()
+		go func() { defer wg.Done(); s.dbProfiles.Close() }()
 		go func() { defer wg.Done(); s.dbDicts.Close() }()
 		go func() { defer wg.Done(); s.dbDimensions.Close() }()
 		go func() { defer wg.Done(); s.dbSegments.Close() }()
@@ -631,7 +627,7 @@ func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string)
 func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
 	res := map[string]bytesize.ByteSize{
 		"main":       0,
-		"trees":      0,
+		"profiles":   0,
 		"dicts":      0,
 		"dimensions": 0,
 		"segments":   0,
@@ -659,8 +655,8 @@ func (s *Storage) CacheStats() map[string]interface{} {
 	return map[string]interface{}{
 		"dimensions_size": s.dimensions.Size(),
 		"segments_size":   s.segments.Size(),
-		"dicts_size":      s.dicts.Size(),
-		"trees_size":      s.trees.Size(),
+		//		"dicts_size":      s.dicts.Size(),
+		"trees_size": s.profiles.Size(),
 	}
 }
 

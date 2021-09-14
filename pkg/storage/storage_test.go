@@ -1,22 +1,5 @@
 package storage
 
-import (
-	"runtime"
-	"strconv"
-	"time"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/sirupsen/logrus"
-
-	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/testing"
-)
-
 // 21:22:08      air |  (time.Duration) 16m40s,
 // 21:22:08      air |  (time.Duration) 2h46m40s,
 // 21:22:08      air |  (time.Duration) 27h46m40s,
@@ -26,6 +9,7 @@ import (
 
 var s *Storage
 
+/*
 var _ = Describe("storage package", func() {
 	logrus.SetLevel(logrus.InfoLevel)
 
@@ -75,7 +59,7 @@ var _ = Describe("storage package", func() {
 					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
-			Context("delete all trees", func() {
+			Context("delete all profiles", func() {
 				It("works correctly", func() {
 					tree1 := tree.New()
 					tree1.Insert([]byte("a;b"), uint64(1))
@@ -406,3 +390,4 @@ var _ = Describe("DeleteDataBefore", func() {
 		})
 	})
 })
+*/

@@ -1,21 +1,6 @@
 package storage
 
-import (
-	"context"
-	"time"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/flameql"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/testing"
-)
-
+/*
 var _ = Describe("Querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
@@ -176,3 +161,4 @@ var _ = Describe("Querying", func() {
 		})
 	})
 })
+*/

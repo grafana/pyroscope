@@ -1,16 +1,11 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
-	"runtime/debug"
 	"strconv"
-	"sync"
 	"time"
-
-	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -58,70 +53,80 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// TODO: handle properly
 	if out == nil {
-		out = &storage.GetOutput{Tree: tree.New()}
+		// out = &storage.GetOutput{Tree: tree.New()}
+		return
 	}
 
-	fs := out.Tree.FlamebearerStruct(p.maxNodes)
+	t := tree.New()
+	sym := ctrl.storage.Symbols(p.gi.Query.AppName)
+	out.Tree.RLock()
+	sym.Walk(out.Tree, func(k []byte, v uint64) bool {
+		t.Insert(k, v, false)
+		return true
+	})
+	out.Tree.RUnlock()
+
+	fs := t.FlamebearerStruct(p.maxNodes)
 	res := renderResponse(fs, out)
 	ctrl.writeResponseJSON(w, res)
 }
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
+	/*
+		var (
+			p  renderParams
+			rP RenderDiffParams
 
-	var (
-		p  renderParams
-		rP RenderDiffParams
+			leftStartParam string
+			leftEndParam   string
+			rghtStartParam string
+			rghtEndParam   string
+		)
 
-		leftStartParam string
-		leftEndParam   string
-		rghtStartParam string
-		rghtEndParam   string
-	)
+		switch r.Method {
+		case http.MethodGet:
+			if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
+				ctrl.writeInvalidParameterError(w, err)
+				return
+			}
+			leftStartParam, leftEndParam = "leftFrom", "leftUntil"
+			rghtStartParam, rghtEndParam = "rightFrom", "rightUntil"
 
-	switch r.Method {
-	case http.MethodGet:
-		if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
-			ctrl.writeInvalidParameterError(w, err)
+		case http.MethodPost:
+			if err := ctrl.renderParametersFromRequestBody(r, &p, &rP); err != nil {
+				ctrl.writeInvalidParameterError(w, err)
+				return
+			}
+			leftStartParam, leftEndParam = rP.Left.From, rP.Left.Until
+			rghtStartParam, rghtEndParam = rP.Right.From, rP.Right.Until
+
+		default:
+			ctrl.writeInvalidMethodError(w, errMethodNotAllowed)
 			return
 		}
-		leftStartParam, leftEndParam = "leftFrom", "leftUntil"
-		rghtStartParam, rghtEndParam = "rightFrom", "rightUntil"
 
-	case http.MethodPost:
-		if err := ctrl.renderParametersFromRequestBody(r, &p, &rP); err != nil {
-			ctrl.writeInvalidParameterError(w, err)
+		leftStartTime, leftEndTime, leftOK := parseRenderRangeParams(r, leftStartParam, leftEndParam)
+		rghtStartTime, rghtEndTime, rghtOK := parseRenderRangeParams(r, rghtStartParam, rghtEndParam)
+		if !leftOK || !rghtOK {
+			ctrl.writeInvalidParameterError(w, errTimeParamsAreRequired)
 			return
 		}
-		leftStartParam, leftEndParam = rP.Left.From, rP.Left.Until
-		rghtStartParam, rghtEndParam = rP.Right.From, rP.Right.Until
 
-	default:
-		ctrl.writeInvalidMethodError(w, errMethodNotAllowed)
-		return
-	}
+		out, leftOut, rghtOut, err := ctrl.loadTreeConcurrently(p.gi, p.gi.StartTime, p.gi.EndTime, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
+		if err != nil {
+			ctrl.writeInternalServerError(w, err, "failed to retrieve data")
+			return
+		}
+		// TODO: handle properly, see ctrl.renderHandler
+		if out == nil {
+			ctrl.writeInternalServerError(w, errNoData, "failed to retrieve data")
+			return
+		}
 
-	leftStartTime, leftEndTime, leftOK := parseRenderRangeParams(r, leftStartParam, leftEndParam)
-	rghtStartTime, rghtEndTime, rghtOK := parseRenderRangeParams(r, rghtStartParam, rghtEndParam)
-	if !leftOK || !rghtOK {
-		ctrl.writeInvalidParameterError(w, errTimeParamsAreRequired)
-		return
-	}
-
-	out, leftOut, rghtOut, err := ctrl.loadTreeConcurrently(p.gi, p.gi.StartTime, p.gi.EndTime, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
-	if err != nil {
-		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
-		return
-	}
-	// TODO: handle properly, see ctrl.renderHandler
-	if out == nil {
-		ctrl.writeInternalServerError(w, errNoData, "failed to retrieve data")
-		return
-	}
-
-	leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
-	fs := tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
-	res := renderResponse(fs, out)
-	ctrl.writeResponseJSON(w, res)
+		leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
+		fs := tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
+		res := renderResponse(fs, out)
+		ctrl.writeResponseJSON(w, res)*/
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {
@@ -164,6 +169,7 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	return nil
 }
 
+/*
 func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams, rP *RenderDiffParams) error {
 
 	decoder := json.NewDecoder(r.Body)
@@ -204,6 +210,7 @@ func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *rend
 
 	return nil
 }
+*/
 
 func renderResponse(fs *tree.Flamebearer, out *storage.GetOutput) map[string]interface{} {
 	// TODO remove this duplication? We're already adding this to metadata
@@ -223,7 +230,7 @@ func renderResponse(fs *tree.Flamebearer, out *storage.GetOutput) map[string]int
 	return res
 }
 
-func parseRenderRangeParams(r *http.Request, from, until string) (startTime, endTime time.Time, ok bool) {
+/*func parseRenderRangeParams(r *http.Request, from, until string) (startTime, endTime time.Time, ok bool) {
 
 	switch r.Method {
 	case http.MethodGet:
@@ -237,9 +244,9 @@ func parseRenderRangeParams(r *http.Request, from, until string) (startTime, end
 
 	return time.Now(), time.Now(), false
 
-}
+}*/
 
-func (ctrl *Controller) loadTreeConcurrently(
+/*func (ctrl *Controller) loadTreeConcurrently(
 	gi *storage.GetInput,
 	treeStartTime, treeEndTime time.Time,
 	leftStartTime, leftEndTime time.Time,
@@ -260,9 +267,9 @@ func (ctrl *Controller) loadTreeConcurrently(
 		}
 	}
 	return treeOut, leftOut, rghtOut, nil
-}
+}*/
 
-func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.Time) (_ *storage.GetOutput, _err error) {
+/*func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.Time) (_ *storage.GetOutput, _err error) {
 	defer func() {
 		rerr := recover()
 		if rerr != nil {
@@ -285,9 +292,9 @@ func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.T
 		return &storage.GetOutput{Tree: tree.New()}, nil
 	}
 	return out, nil
-}
+}*/
 
-// Request Body Interface
+/*// Request Body Interface
 type RenderDiffParams struct {
 	Name  *string `json:"name,omitempty"`
 	Query *string `json:"query,omitempty"`
@@ -306,3 +313,4 @@ type RenderTreeParams struct {
 	From  string `json:"from"`
 	Until string `json:"until"`
 }
+*/

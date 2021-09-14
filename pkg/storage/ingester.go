@@ -21,14 +21,15 @@ func NewIngestionObserver(storage *Storage, exporter *exporter.MetricsExporter) 
 }
 
 func (o IngestionObserver) Put(i *PutInput) error {
-	if err := o.storage.Put(i); err != nil {
-		return err
-	}
-	var m float64 = 1
-	if i.Units == "" {
-		// Sample duration in nanoseconds.
-		m = 1e9 / float64(i.SampleRate)
-	}
-	o.exporter.Observe(i.Key, i.Val, m)
-	return nil
+	return o.storage.Put(i)
+	//	if err := o.storage.Put(i); err != nil {
+	//		return err
+	//	}
+	//	var m float64 = 1
+	//	if i.Units == "" {
+	//		// Sample duration in nanoseconds.
+	//		m = 1e9 / float64(i.SampleRate)
+	//	}
+	//	o.exporter.Observe(i.Key, i.Val, m)
+	//	return nil
 }

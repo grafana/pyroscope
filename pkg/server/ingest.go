@@ -12,13 +12,13 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/profile"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
 type ingestParams struct {
-	parserFunc      func(io.Reader) (*tree.Tree, error)
+	parserFunc      func(*storage.Symbols, io.Reader) (*profile.Profile, uint64, error)
 	storageKey      *segment.Key
 	spyName         string
 	sampleRate      uint32
@@ -36,8 +36,8 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var t *tree.Tree
-	t, err := ip.parserFunc(r.Body)
+	sym := ctrl.storage.Symbols(ip.storageKey.AppName())
+	t, s, err := ip.parserFunc(sym, r.Body)
 	if err != nil {
 		ctrl.writeError(w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
 		return
@@ -47,6 +47,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		StartTime:       ip.from,
 		EndTime:         ip.until,
 		Key:             ip.storageKey,
+		Samples:         s,
 		Val:             t,
 		SpyName:         ip.spyName,
 		SampleRate:      ip.sampleRate,
@@ -66,11 +67,17 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 
 func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParams) error {
 	q := r.URL.Query()
+	var err error
+	ip.storageKey, err = segment.ParseKey(q.Get("name"))
+	if err != nil {
+		return fmt.Errorf("name: %w", err)
+	}
+
 	format := q.Get("format")
 	contentType := r.Header.Get("Content-Type")
 	switch {
-	case format == "tree", contentType == "binary/octet-stream+tree":
-		ip.parserFunc = tree.DeserializeNoDict
+	//	case format == "tree", contentType == "binary/octet-stream+tree":
+	//		ip.parserFunc = tree.DeserializeNoDict
 	case format == "trie", contentType == "binary/octet-stream+trie":
 		ip.parserFunc = wrapConvertFunction(convert.ParseTrie)
 	case format == "lines":
@@ -122,22 +129,16 @@ func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParam
 		ip.aggregationType = "sum"
 	}
 
-	var err error
-	ip.storageKey, err = segment.ParseKey(q.Get("name"))
-	if err != nil {
-		return fmt.Errorf("name: %w", err)
-	}
 	return nil
 }
 
-func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(io.Reader) (*tree.Tree, error) {
-	return func(r io.Reader) (*tree.Tree, error) {
-		t := tree.New()
-		if err := convertFunc(r, func(k []byte, v int) {
-			t.Insert(k, uint64(v))
-		}); err != nil {
-			return nil, err
-		}
-		return t, nil
+func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(*storage.Symbols, io.Reader) (*profile.Profile, uint64, error) {
+	return func(b *storage.Symbols, r io.Reader) (*profile.Profile, uint64, error) {
+		t := profile.New()
+		var s uint64
+		return t, s, convertFunc(r, func(k []byte, v int) {
+			b.Insert(t, k, uint64(v))
+			s += uint64(v)
+		})
 	}
 }

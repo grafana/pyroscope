@@ -1,23 +1,6 @@
 package server
 
-import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
-
-	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/testing"
-)
-
+/*
 var _ = Describe("server", func() {
 
 	query := "pyroscope.server.alloc_objects{}"
@@ -102,3 +85,4 @@ var _ = Describe("server", func() {
 		})
 	})
 })
+*/

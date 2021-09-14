@@ -1,40 +1,24 @@
 package storage
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/profile"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-type treeCodec struct{ *Storage }
+type profileCodec struct{}
 
-func (treeCodec) New(_ string) interface{} { return tree.New() }
+func (profileCodec) New(_ string) interface{} { return profile.New() }
 
-func (c treeCodec) Serialize(w io.Writer, k string, v interface{}) error {
-	key := segment.FromTreeToDictKey(k)
-	d, err := c.dicts.GetOrCreate(key)
-	if err != nil {
-		return fmt.Errorf("dicts cache for %v: %w", key, err)
-	}
-	err = v.(*tree.Tree).SerializeTruncate(d.(*dict.Dict), c.config.MaxNodesSerialization, w)
-	if err != nil {
-		return fmt.Errorf("serialize %v: %w", key, err)
-	}
-	c.dicts.Put(key, d)
-	return nil
+func (profileCodec) Serialize(w io.Writer, _ string, v interface{}) error {
+	return v.(*profile.Profile).Serialize(w)
 }
 
-func (c treeCodec) Deserialize(r io.Reader, k string) (interface{}, error) {
-	key := segment.FromTreeToDictKey(k)
-	d, err := c.dicts.GetOrCreate(key)
-	if err != nil {
-		return nil, fmt.Errorf("dicts cache for %v: %w", key, err)
-	}
-	return tree.Deserialize(d.(*dict.Dict), r)
+func (profileCodec) Deserialize(r io.Reader, _ string) (interface{}, error) {
+	return profile.Deserialize(r)
 }
 
 type dictionaryCodec struct{}

@@ -60,7 +60,7 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 					s.evictionsTimer.Observe(v)
 				}))
 				defer timer.ObserveDuration()
-				s.trees.Evict(percent)
+				s.profiles.Evict(percent)
 				// Do not evict those as it will cause even more allocations
 				// to serialize and then load them back again.
 				// s.dimensions.Evict(percent / 4)
@@ -82,8 +82,11 @@ func (s *Storage) writeBackTask() {
 
 	s.dimensions.WriteBack()
 	s.segments.WriteBack()
-	s.dicts.WriteBack()
-	s.trees.WriteBack()
+
+	s.profiles.WriteBack()
+	if err := s.StoreSymbols(); err != nil {
+		panic(err)
+	}
 }
 
 func (s *Storage) retentionTask() {
@@ -92,7 +95,6 @@ func (s *Storage) retentionTask() {
 		s.retentionTimer.Observe(v)
 	}))
 	defer timer.ObserveDuration()
-
 	if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
 		logrus.WithError(err).Warn("retention task failed")
 	}

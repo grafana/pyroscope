@@ -8,24 +8,24 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/profile"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
 const upstreamThreads = 1
 
 type Direct struct {
-	ingester storage.Ingester
-	queue    chan *upstream.UploadJob
-	stop     chan struct{}
-	wg       sync.WaitGroup
+	storage *storage.Storage
+	queue   chan *upstream.UploadJob
+	stop    chan struct{}
+	wg      sync.WaitGroup
 }
 
-func New(i storage.Ingester) *Direct {
+func New(s *storage.Storage) *Direct {
 	return &Direct{
-		ingester: i,
-		queue:    make(chan *upstream.UploadJob, 100),
-		stop:     make(chan struct{}),
+		storage: s,
+		queue:   make(chan *upstream.UploadJob, 100),
+		stop:    make(chan struct{}),
 	}
 }
 
@@ -58,22 +58,26 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 		return
 	}
 
-	t := tree.New()
+	sym := u.storage.Symbols(key.AppName())
+	p := profile.New()
+	var s uint64
 	j.Trie.Iterate(func(name []byte, val uint64) {
-		t.Insert(name, val, false)
+		sym.Insert(p, name, val)
+		s += val
 	})
 
 	pi := &storage.PutInput{
 		StartTime:       j.StartTime,
 		EndTime:         j.EndTime,
 		Key:             key,
-		Val:             t,
+		Samples:         s,
+		Val:             p,
 		SpyName:         j.SpyName,
 		SampleRate:      j.SampleRate,
 		Units:           j.Units,
 		AggregationType: j.AggregationType,
 	}
-	if err = u.ingester.Put(pi); err != nil {
+	if err = u.storage.Put(pi); err != nil {
 		logrus.WithError(err).Error("failed to store a local profile")
 	}
 }

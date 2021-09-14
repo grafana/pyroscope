@@ -55,6 +55,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
+	// TODO
 	ingester := storage.NewIngestionObserver(svc.storage, observer)
 	svc.controller, err = server.New(svc.config, svc.storage, ingester, svc.logger, prometheus.DefaultRegisterer)
 	if err != nil {
@@ -62,7 +63,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config, prometheus.DefaultRegisterer)
-	svc.directUpstream = direct.New(ingester)
+	svc.directUpstream = direct.New(svc.storage)
 	selfProfilingConfig := &agent.SessionConfig{
 		Upstream:       svc.directUpstream,
 		AppName:        "pyroscope.server",
@@ -98,12 +99,6 @@ func (svc *serverService) Start() error {
 	if err := svc.selfProfiling.Start(); err != nil {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
 	}
-
-	svc.logger.Debug("collecting local profiles")
-	if err := svc.storage.CollectLocalProfiles(); err != nil {
-		svc.logger.WithError(err).Error("failed to collect local profiles")
-	}
-
 	defer close(svc.done)
 	select {
 	case <-svc.stopped:
