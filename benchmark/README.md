@@ -14,6 +14,7 @@ Pass `--wait` to make the system continue running after benchmarking is over:
 sh start.sh --wait
 ```
 
+
 ## Browsing results
 To view results open http://localhost:8080/d/tsWRL6ReZQkirFirmyvnWX1akHXJeHT8I8emjGJo/main?orgId=1.
 
