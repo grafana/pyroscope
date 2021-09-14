@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Decide for how long the benchmark will run
-BENCH_RUN_FOR="${BENCH_RUN_FOR:-10m}"
+BENCH_RUN_FOR="${BENCH_RUN_FOR:-30m}"
 
 PYROSCOPE_ADDRESS="http://pyroscope:4040"
 PYROSCOPE_MAIN_ADDRESS="http://pyroscope_main:4040"
@@ -20,6 +20,9 @@ PYROBENCH_UPLOAD_TYPE="${PYROBENCH_UPLOAD_TYPE:-}"
 AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
 AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
 
+# TODO: added by eduardo
+PYROBENCH_PROFILE_WIDTH=40
+PYROBENCH_PROFILE_DEPTH=100
 
 export DOCKER_BUILDKIT=1
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -44,12 +47,18 @@ function run() {
   docker-compose up -d --force-recreate --remove-orphans
 
   echo "Generating test load"
-  docker exec pr_client_1 ./pyrobench loadgen \
+  docker exec \
+    -e "PYROBENCH_PROFILE_DEPTH=$PYROBENCH_PROFILE_DEPTH" \
+    -e "PYROBENCH_PROFILE_WIDTH=$PYROBENCH_PROFILE_WIDTH" \
+    pr_client_1 ./pyrobench loadgen \
     --log-level=error \
     --server-address="$PYROSCOPE_ADDRESS" \
     --pushgateway-address="$PUSHGATEWAY_ADDRESS" \
     > /dev/null &
-  docker exec pr_client_1 ./pyrobench loadgen \
+  docker exec \
+    -e "PYROBENCH_PROFILE_DEPTH=$PYROBENCH_PROFILE_DEPTH" \
+    -e "PYROBENCH_PROFILE_WIDTH=$PYROBENCH_PROFILE_WIDTH" \
+    pr_client_1 ./pyrobench loadgen \
     --log-level=error \
     --server-address="$PYROSCOPE_MAIN_ADDRESS"  \
     --pushgateway-address="$PUSHGATEWAY_ADDRESS" \
