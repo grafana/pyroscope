@@ -180,7 +180,7 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	}
 }
 
-func (t *Tree) iterateWithCum(cb func(cum uint64) bool) {
+func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
 	nodes := []*treeNode{t.root}
 	i := 0
 	for len(nodes) > 0 {

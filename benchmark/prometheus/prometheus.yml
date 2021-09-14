@@ -29,4 +29,5 @@ scrape_configs:
     - targets:
       - 'localhost:9090'
       - 'pyroscope:4040'
-      - 'client:8081'
+      - 'pyroscope_main:4040'
+      - 'pushgateway:9091'

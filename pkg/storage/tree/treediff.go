@@ -190,14 +190,14 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 
 func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
 	c := cappedarr.New(maxNodes)
-	combineIterateWithCum(leftTree, rightTree, func(left uint64, right uint64) bool {
+	combineIterateWithTotal(leftTree, rightTree, func(left uint64, right uint64) bool {
 		return c.Push(maxUint64(left, right))
 	})
 	return c.MinValue()
 }
 
 // iterate both trees, both trees must be returned from CombineTree
-func combineIterateWithCum(leftTree, rightTree *Tree, cb func(uint64, uint64) bool) {
+func combineIterateWithTotal(leftTree, rightTree *Tree, cb func(uint64, uint64) bool) {
 	leftNodes, rghtNodes := []*treeNode{leftTree.root}, []*treeNode{rightTree.root}
 	i := 0
 	for len(leftNodes) > 0 {
