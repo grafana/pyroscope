@@ -20,9 +20,22 @@ PYROBENCH_UPLOAD_TYPE="${PYROBENCH_UPLOAD_TYPE:-}"
 AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-}"
 AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-}"
 
-
 export DOCKER_BUILDKIT=1
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+function genUuid() {
+  echo $(cat /dev/urandom | tr -dc 'a-z' | fold -w 6 | head -n 1)
+  return 0
+}
+
+# setup a prefix for docker-compose
+# this is important to be able to run
+# multiple instances of the samples docker-composes
+# (think multiple jobs)
+PREFIX="${PREFIX:-}"
+if [ -z "$PREFIX" ]; then
+  PREFIX="$(genUuid)"
+fi
 
 cd $SCRIPT_DIR
 
@@ -30,10 +43,11 @@ trap 'rc=$?; echo "ERR at line ${LINENO} (rc: $rc)"; composeDown; exit $rc' ERR
 trap 'rc=$?; echo "EXIT (rc: $rc)"; composeDown; exit $rc' EXIT
 
 function composeDown() {
-  docker-compose down
+  docker-compose -p "$PREFIX" down
 }
 
 function run() {
+
   # pull latest image
   docker-compose pull
 
@@ -41,15 +55,15 @@ function run() {
   docker-compose build
 
   # Start the docker containers
-  docker-compose up -d --force-recreate --remove-orphans
+  docker-compose -p "$PREFIX" up -d --force-recreate --remove-orphans
 
   echo "Generating test load"
-  docker exec pr_client_1 ./pyrobench loadgen \
+  docker exec "${PREFIX}_client_1" ./pyrobench loadgen \
     --log-level=error \
     --server-address="$PYROSCOPE_ADDRESS" \
     --pushgateway-address="$PUSHGATEWAY_ADDRESS" \
     > /dev/null &
-  docker exec pr_client_1 ./pyrobench loadgen \
+  docker exec "${PREFIX}_client_1" ./pyrobench loadgen \
     --log-level=error \
     --server-address="$PYROSCOPE_MAIN_ADDRESS"  \
     --pushgateway-address="$PUSHGATEWAY_ADDRESS" \
@@ -69,7 +83,7 @@ function run() {
     -e "PYROBENCH_UPLOAD_TYPE=$PYROBENCH_UPLOAD_TYPE" \
     -e "PYROBENCH_UPLOAD_BUCKET=$PYROBENCH_UPLOAD_BUCKET" \
     -e "PYROBENCH_UPLOAD_DEST=$PYROBENCH_UPLOAD_DEST" \
-    pr_client_1 ./pyrobench report image \
+    "${PREFIX}_client_1" ./pyrobench report image \
     --from="$start" \
     --to="$end" \
     --grafana-address "$GRAFANA_ADDRESS" > "$SCRIPT_DIR/image-report"
@@ -77,7 +91,7 @@ function run() {
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
     -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
-    pr_client_1 ./pyrobench report table \
+    "${PREFIX}_client_1" ./pyrobench report table \
     --prometheus-address="$PROMETHEUS_ADDRESS" \
     --queries-file /report.yaml > "$SCRIPT_DIR/table-report"
 }
