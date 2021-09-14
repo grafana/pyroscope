@@ -17,16 +17,6 @@
          "collapsed": false,
          "panels": [
             {
-               "content": "<iframe style=\"border:none; width:100%; height: 100%;\" src=\"http://localhost:8081/summary\">",
-               "datasource": null,
-               "gridPos": { },
-               "id": 2,
-               "mode": "markdown",
-               "span": 3,
-               "title": "",
-               "type": "text"
-            },
-            {
                "datasource": "$PROMETHEUS_DS",
                "fieldConfig": {
                   "defaults": {
@@ -47,7 +37,7 @@
                   }
                },
                "gridPos": { },
-               "id": 3,
+               "id": 2,
                "links": [ ],
                "options": {
                   "reduceOptions": {
@@ -63,10 +53,10 @@
                "pluginVersion": "7",
                "targets": [
                   {
-                     "expr": "pyroscope_benchmark_progress{}",
+                     "expr": "(pyroscope_benchmark_successful_uploads + pyroscope_benchmark_upload_errors) / pyroscope_benchmark_requests_total",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{ __name__ }}",
+                     "legendFormat": "",
                      "refId": "A"
                   }
                ],
@@ -83,7 +73,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 4,
+               "id": 3,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -107,7 +97,7 @@
                "repeat": null,
                "seriesOverrides": [ ],
                "spaceLength": 10,
-               "span": 2,
+               "span": 4,
                "stack": false,
                "steppedLine": false,
                "targets": [
@@ -164,7 +154,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 5,
+               "id": 4,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -188,7 +178,7 @@
                "repeat": null,
                "seriesOverrides": [ ],
                "spaceLength": 10,
-               "span": 2,
+               "span": 4,
                "stack": false,
                "steppedLine": false,
                "targets": [
@@ -254,7 +244,7 @@
                "datasource": "$PROMETHEUS_DS",
                "gridPos": { },
                "height": 10,
-               "id": 6,
+               "id": 5,
                "links": [ ],
                "span": 12,
                "styles": [
@@ -291,7 +281,7 @@
                ],
                "targets": [
                   {
-                     "expr": "pyroscope_build_info{instance=\"$instance\"}",
+                     "expr": "pyroscope_build_info{instance=~\"$instance\"}",
                      "format": "table",
                      "instant": true,
                      "intervalFactor": 2,
@@ -326,7 +316,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 7,
+               "id": 6,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -406,7 +396,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 8,
+               "id": 7,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -486,7 +476,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 9,
+               "id": 8,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -566,7 +556,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 10,
+               "id": 9,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -646,7 +636,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 11,
+               "id": 10,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -739,7 +729,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 12,
+               "id": 11,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -828,7 +818,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 13,
+               "id": 12,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -910,7 +900,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 14,
+               "id": 13,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -999,7 +989,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 15,
+               "id": 14,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1086,7 +1076,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 16,
+               "id": 15,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1180,7 +1170,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 17,
+               "id": 16,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -1217,7 +1207,7 @@
                      "refId": "A"
                   },
                   {
-                     "expr": "sum without(name)(pyroscope_disk_bytes)",
+                     "expr": "sum without(name)(pyroscope_storage_disk_bytes)",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "total",
@@ -1269,7 +1259,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 18,
+               "id": 17,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -1358,7 +1348,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 19,
+               "id": 18,
                "legend": {
                   "alignAsTable": "true",
                   "avg": false,
@@ -1460,7 +1450,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 20,
+               "id": 19,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1589,7 +1579,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 21,
+               "id": 20,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1697,7 +1687,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 22,
+               "id": 21,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1784,7 +1774,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 23,
+               "id": 22,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1864,7 +1854,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 24,
+               "id": 23,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1944,7 +1934,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 25,
+               "id": 24,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -2024,7 +2014,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 26,
+               "id": 25,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -2104,7 +2094,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 27,
+               "id": 26,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -2184,7 +2174,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 28,
+               "id": 27,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -2264,7 +2254,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 29,
+               "id": 28,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,

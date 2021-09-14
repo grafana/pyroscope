@@ -1,0 +1,10 @@
+# Benchmark Screenshots
+
+{{ $root := . }}
+{{ range .Panels }}
+<details>
+  <summary>{{ .Title }}</summary>
+  <img src="{{ .Url }}?{{ $root.Ts }}" alt="{{ .Title }}" />
+{{ printf "\n" }}
+</details>
+{{ end }}
