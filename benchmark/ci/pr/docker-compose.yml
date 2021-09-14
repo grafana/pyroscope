@@ -25,8 +25,6 @@ services:
       dockerfile: Dockerfile
     command:
       - server
-    ports:
-      - 4040:4040
     deploy:
       resources:
         limits:
@@ -49,8 +47,6 @@ services:
     volumes:
       - ../../prometheus:/etc/prometheus/
       - data-prometheus:/prometheus
-    ports:
-      - 4090:9090
   pushgateway:
     image: prom/pushgateway:v1.4.1
   grafana:
@@ -61,8 +57,6 @@ services:
       - ../../grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
       - ../../grafana-provisioning/dashboards/main.yml:/etc/grafana/provisioning/dashboards/main.yml
       - ../../../monitoring/gen/benchmark-pr.json:/etc/grafana/provisioning/dashboards/benchmark-pr.json:ro
-    ports:
-    - 4050:3000
     environment:
       GF_RENDERING_SERVER_URL: http://renderer:8081/render
       GF_RENDERING_CALLBACK_URL: http://grafana:3000/
