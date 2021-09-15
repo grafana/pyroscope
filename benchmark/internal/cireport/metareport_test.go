@@ -34,11 +34,11 @@ var _ = Describe("metareport", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should fail when no element pass the allowlist", func() {
+		It("should fail when an element doesn't pass the allowlist", func() {
 			mr, err := cireport.NewMetaReport([]string{"allowed"})
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = mr.Report([]string{"a"})
+			_, err = mr.Report([]string{"A=B"})
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -47,6 +47,12 @@ var _ = Describe("metareport", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = mr.Report([]string{"A"})
+			Expect(err).To(HaveOccurred())
+
+			_, err = mr.Report([]string{"A="})
+			Expect(err).To(HaveOccurred())
+
+			_, err = mr.Report([]string{"=B"})
 			Expect(err).To(HaveOccurred())
 
 			_, err = mr.Report([]string{"A=B"})

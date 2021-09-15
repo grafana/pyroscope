@@ -54,7 +54,7 @@ func (mr *metaReport) Report(vars []string) (string, error) {
 		m = append(m, n)
 	}
 
-	// validate it's within the allowlist
+	// validate it's in the allowlist
 	logrus.Debug("validating there're no values not in the allowlist")
 	err := mr.validate(m)
 	if err != nil {
