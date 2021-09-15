@@ -13,7 +13,7 @@ import (
 
 var _ = Describe("screenshotter", func() {
 
-	FContext("AllPanels", func() {
+	Context("AllPanels", func() {
 		var ts *httptest.Server
 		var s cireport.GrafanaScreenshotter
 		var ctx context.Context
