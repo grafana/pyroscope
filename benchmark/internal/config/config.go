@@ -31,6 +31,7 @@ type PromQuery struct {
 type Report struct {
 	TableReport
 	ImageReport
+	MetaReport
 }
 
 type TableReport struct {
@@ -49,6 +50,11 @@ type ImageReport struct {
 	LogLevel       string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	From           int    `def:"0" desc:"timestamp"`
 	To             int    `def:"0" desc:"timestamp"`
+}
+
+type MetaReport struct {
+	LogLevel string   `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+	Params   []string `def:"" desc:"the parameters in format A=B. value must be in the allowlist"`
 }
 
 type DashboardScreenshot struct {

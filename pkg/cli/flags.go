@@ -28,7 +28,7 @@ func (i *arrayFlags) String() string {
 	if len(*i) == 0 {
 		return "[]"
 	}
-	return strings.Join(*i, ", ")
+	return strings.Join(*i, ",")
 }
 
 func (i *arrayFlags) Set(value string) error {
