@@ -546,7 +546,10 @@ class FlameGraph extends React.Component {
   render = () => {
     const { ExportData } = this.props;
     const dataUnavailable =
-      !this.props.flamebearer || this.props.flamebearer.names.length <= 1;
+      !this.props.flamebearer ||
+      (this.props.flamebearer &&
+       this.props.flamebearer.names.length <= 1);
+
     return (
       <>
         <div
