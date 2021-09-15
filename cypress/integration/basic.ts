@@ -33,7 +33,7 @@ describe('basic test', () => {
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
 
-  it.only('app selector works', () => {
+  it('app selector works', () => {
 
     cy.intercept('**/render*', {
       fixture: 'render.json',
@@ -54,7 +54,7 @@ describe('basic test', () => {
       times: 1
     }).as('render2')
     
-    cy.findByTestId('app-selector-dropdown').select('pyroscope.server.cpu');
+    cy.findByTestId('app-name-selector').select('pyroscope.server.cpu');
     
     cy.wait('@render2');
 
@@ -64,10 +64,6 @@ describe('basic test', () => {
     });
 
   });
-
-
-
-})
 
   it('updates flamegraph on app name change', () => {
     cy.visit('/')
