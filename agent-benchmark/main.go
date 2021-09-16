@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/jaegertracing/jaeger/examples/hotrod/cmd"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/profiler"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
 )
 
 func main() {
@@ -23,14 +24,19 @@ func main() {
 
 			// by default all profilers are enabled,
 			// but you can select the ones you want to use:
-			ProfileTypes: []profiler.ProfileType{
-				profiler.ProfileCPU,
-				profiler.ProfileAllocObjects,
-				profiler.ProfileAllocSpace,
-				profiler.ProfileInuseObjects,
-				profiler.ProfileInuseSpace,
-			},
+			//		ProfileTypes: []profiler.ProfileType{
+			//			profiler.ProfileCPU,
+			//			profiler.ProfileAllocObjects,
+			//			profiler.ProfileAllocSpace,
+			//			profiler.ProfileInuseObjects,
+			//			profiler.ProfileInuseSpace,
+			//		},
 		})
 	}
+
+	go func() {
+		http.ListenAndServe(":5050", nil)
+	}()
+
 	cmd.Execute()
 }

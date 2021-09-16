@@ -1,6 +1,8 @@
 # docker-compose ignores x-
 x-PYROSCOPE_CPUS: &PYROSCOPE_CPUS 1
 x-PYROSCOPE_MEMORY: &PYROSCOPE_MEMORY 4096MB
+x-HOTROD_CPUS: &HOTROD_CPUS 0.2
+x-HOTROD_MEM: &HOTROD_MEM 512MB
 
 version: "3.9"
 services:
@@ -19,22 +21,25 @@ services:
       dockerfile: Dockerfile
     ports:
     - 8081:8080
+    - 5051:5050 # pprof
+    deploy:
+      resources:
+        limits:
+          cpus: *HOTROD_CPUS
+          memory: *HOTROD_MEM
   hotrod_with_pyroscope:
     build:
       context: .
       dockerfile: Dockerfile
+    ports:
+    - 5050:5050 # pprof
     environment:
     - PYROSCOPE_ADDRESS=http://pyroscope:4040
-  loadgen:
-    build:
-      context: .
-      dockerfile: hey.Dockerfile
-    # we will be running docker exec against it
-    entrypoint: ""
-    command:
-    - sh
-    - -c
-    - sleep 24h
+    deploy:
+      resources:
+        limits:
+          cpus: *HOTROD_CPUS
+          memory: *HOTROD_MEM
   pyroscope:
     environment:
       - PYROSCOPE_LOG_LEVEL=info
@@ -74,7 +79,16 @@ services:
       GF_LOG_FILTERS: rendering:debug
   renderer:
     image: grafana/grafana-image-renderer:latest
-
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+    - 5080:8080
+    volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:rw
+    - /sys:/sys:ro
+    - /var/lib/docker/:/var/lib/docker:ro
 volumes:
   data-prometheus:
     driver: local

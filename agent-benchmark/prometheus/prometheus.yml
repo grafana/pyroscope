@@ -32,3 +32,4 @@ scrape_configs:
       - 'hotrod_with_pyroscope:8083'
       - 'hotrod_without_pyroscope:8083'
       - 'pushgateway:9091'
+      - 'cadvisor:8080'
