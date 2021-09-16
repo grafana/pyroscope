@@ -60,10 +60,12 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	t := tree.New()
 	sym := ctrl.storage.Symbols(p.gi.Query.AppName)
 	out.Tree.RLock()
+	sym.RLock()
 	sym.Walk(out.Tree, func(k []byte, v uint64) bool {
 		t.Insert(k, v, false)
 		return true
 	})
+	sym.RUnlock()
 	out.Tree.RUnlock()
 
 	fs := t.FlamebearerStruct(p.maxNodes)

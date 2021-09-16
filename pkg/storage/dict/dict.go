@@ -20,19 +20,20 @@ func New() *Dict {
 }
 
 type Dict struct {
-	m    sync.RWMutex
+	sync.RWMutex
 	root *trieNode
+	keys block
 }
 
 func (td *Dict) GetValue(key Key, value io.Writer) bool {
-	td.m.RLock()
-	defer td.m.RUnlock()
+	td.RLock()
+	defer td.RUnlock()
 	return td.readValue(key, value)
 }
 
 func (td *Dict) Get(key Key) (Value, bool) {
-	td.m.RLock()
-	defer td.m.RUnlock()
+	td.RLock()
+	defer td.RUnlock()
 	var labelBuf bytes.Buffer
 	if td.readValue(key, &labelBuf) {
 		return labelBuf.Bytes(), true
@@ -70,9 +71,24 @@ func (td *Dict) readValue(key Key, w io.Writer) bool {
 }
 
 func (td *Dict) Put(val Value) Key {
-	td.m.Lock()
-	defer td.m.Unlock()
+	td.Lock()
+	defer td.Unlock()
 	var buf bytes.Buffer
 	td.root.findNodeAt(val, &buf)
 	return buf.Bytes()
+}
+
+func (td *Dict) Store(v Value) uint64 {
+	var buf bytes.Buffer
+	td.root.findNodeAt(v, &buf)
+	return td.keys.insert(buf.Bytes())
+}
+
+func (td *Dict) Load(k uint64) (Value, bool) {
+	key := td.keys.load(k)
+	var labelBuf bytes.Buffer
+	if td.readValue(key, &labelBuf) {
+		return labelBuf.Bytes(), true
+	}
+	return nil, false
 }

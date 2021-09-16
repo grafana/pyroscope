@@ -61,10 +61,12 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 	sym := u.storage.Symbols(key.AppName())
 	p := profile.New()
 	var s uint64
+	sym.Lock()
 	j.Trie.Iterate(func(name []byte, val uint64) {
 		sym.Insert(p, name, val)
 		s += val
 	})
+	sym.Unlock()
 
 	pi := &storage.PutInput{
 		StartTime:       j.StartTime,

@@ -12,10 +12,13 @@ import (
 const currentVersion = 1
 
 func (t *Dict) Serialize(w io.Writer) error {
-	t.m.RLock()
-	defer t.m.RUnlock()
-
-	varint.Write(w, currentVersion)
+	vw := varint.NewWriter()
+	vw.Write(w, currentVersion)
+	vw.Write(w, uint64(len(t.keys.data)))
+	_, err := w.Write(t.keys.data)
+	if err != nil {
+		return err
+	}
 
 	nodes := []*trieNode{t.root}
 	for len(nodes) > 0 {
@@ -23,17 +26,14 @@ func (t *Dict) Serialize(w io.Writer) error {
 		nodes = nodes[1:]
 
 		label := tn.label
-		_, err := varint.Write(w, uint64(len(label)))
-		if err != nil {
+		if _, err = varint.Write(w, uint64(len(label))); err != nil {
 			return err
 		}
-		_, err = w.Write(label)
-		if err != nil {
+		if _, err = w.Write(label); err != nil {
 			return err
 		}
 
-		_, err = varint.Write(w, uint64(len(tn.children)))
-		if err != nil {
+		if _, err = varint.Write(w, uint64(len(tn.children))); err != nil {
 			return err
 		}
 
@@ -51,6 +51,14 @@ func Deserialize(r io.Reader) (*Dict, error) {
 	if err != nil {
 		return nil, err
 	}
+	keysLen, err := varint.Read(br)
+	if err != nil {
+		return nil, err
+	}
+	t.keys.data = make([]byte, int(keysLen))
+	if _, err = io.ReadAtLeast(br, t.keys.data, len(t.keys.data)); err != nil {
+		return nil, err
+	}
 
 	parents := []*trieNode{t.root}
 	for len(parents) > 0 {
@@ -59,8 +67,7 @@ func Deserialize(r io.Reader) (*Dict, error) {
 
 		nameLen, err := varint.Read(br)
 		nameBuf := make([]byte, nameLen) // TODO: maybe there are better ways to do this?
-		_, err = io.ReadAtLeast(br, nameBuf, int(nameLen))
-		if err != nil {
+		if _, err = io.ReadAtLeast(br, nameBuf, int(nameLen)); err != nil {
 			return nil, err
 		}
 		tn := newTrieNode(nameBuf)
@@ -82,7 +89,7 @@ func Deserialize(r io.Reader) (*Dict, error) {
 }
 
 func (t *Dict) Bytes() ([]byte, error) {
-	b := bytes.Buffer{}
+	var b bytes.Buffer
 	if err := t.Serialize(&b); err != nil {
 		return nil, err
 	}

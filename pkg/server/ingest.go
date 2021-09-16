@@ -18,7 +18,7 @@ import (
 )
 
 type ingestParams struct {
-	parserFunc      func(*storage.Symbols, io.Reader) (*profile.Profile, uint64, error)
+	parserFunc      func(storage.Symbols, io.Reader) (*profile.Profile, uint64, error)
 	storageKey      *segment.Key
 	spyName         string
 	sampleRate      uint32
@@ -37,12 +37,15 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sym := ctrl.storage.Symbols(ip.storageKey.AppName())
+	sym.Lock()
 	t, s, err := ip.parserFunc(sym, r.Body)
 	if err != nil {
+		sym.Unlock()
 		ctrl.writeError(w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
 		return
 	}
 
+	sym.Unlock()
 	err = ctrl.ingester.Put(&storage.PutInput{
 		StartTime:       ip.from,
 		EndTime:         ip.until,
@@ -132,12 +135,12 @@ func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParam
 	return nil
 }
 
-func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(*storage.Symbols, io.Reader) (*profile.Profile, uint64, error) {
-	return func(b *storage.Symbols, r io.Reader) (*profile.Profile, uint64, error) {
+func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(storage.Symbols, io.Reader) (*profile.Profile, uint64, error) {
+	return func(sym storage.Symbols, r io.Reader) (*profile.Profile, uint64, error) {
 		t := profile.New()
 		var s uint64
 		return t, s, convertFunc(r, func(k []byte, v int) {
-			b.Insert(t, k, uint64(v))
+			sym.Insert(t, k, uint64(v))
 			s += uint64(v)
 		})
 	}
