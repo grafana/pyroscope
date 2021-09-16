@@ -23,4 +23,5 @@ benchmark/.env
 benchmark/ci/pr/dashboard-screenshots
 benchmark/ci/pr/table-report
 benchmark/ci/pr/image-report
+benchmark/ci/pr/meta-report
 /.env
