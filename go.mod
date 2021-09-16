@@ -48,8 +48,9 @@ require (
 	github.com/prometheus/common v0.29.0
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/pyroscope-io/lfu-go v1.0.4
+	github.com/rakyll/hey v0.1.4
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/rlmcpherson/s3gof3r v0.5.0 // indirect
+	github.com/rlmcpherson/s3gof3r v0.5.0
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/slok/go-http-metrics v0.9.0
@@ -57,14 +58,15 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
-	github.com/tommy351/goldga v0.3.0 // indirect
+	github.com/tommy351/goldga v0.3.0
 	github.com/twmb/murmur3 v1.1.5
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/wacul/ptr v1.0.0 // indirect
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
-	golang.org/x/text v0.3.6 // indirect
+	golang.org/x/text v0.3.6
 	golang.org/x/tools v0.1.2
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/yaml.v2 v2.4.0

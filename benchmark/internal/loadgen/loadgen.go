@@ -45,6 +45,7 @@ func (n NoopGatewayPusher) Push() error {
 
 func Cli(cfg *config.LoadGen) error {
 	r := rand.New(rand.NewSource(int64(cfg.RandSeed)))
+	logrus.Debug(cfg)
 
 	var pusher GatewayPusher
 	if cfg.PushgatewayAddress == "" {

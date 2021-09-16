@@ -41,6 +41,7 @@ func Initialize() error {
 		newLoadGen(&cfg.LoadGen),
 		newPromQuery(&cfg.PromQuery),
 		newReport(&cfg.Report),
+		newHotRod(&cfg.Hotrod),
 	)
 
 	logrus.SetReportCaller(true)

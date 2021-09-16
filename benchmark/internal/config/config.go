@@ -5,6 +5,7 @@ type Config struct {
 	PromQuery           PromQuery           `skip:"true" mapstructure:",squash"`
 	Report              Report              `skip:"true" mapstructure:",squash"`
 	DashboardScreenshot DashboardScreenshot `skip:"true" mapstructure:",squash"`
+	Hotrod              Hotrod              `skip:"true" mapstructure:",squash"`
 }
 
 type LoadGen struct {
@@ -64,6 +65,14 @@ type DashboardScreenshot struct {
 	GrafanaAddress string `def:"http://localhost:4050" desc:"address of the grafana instance"`
 	DashboardUid   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
 	Destination    string `def:"fs" desc:"where to upload to: s3|fs"`
+}
+
+type Hotrod struct {
+	HotrodAddress   string  `def:"http://localhost:8080" desc:"hotrod address"`
+	RandSeed        int     `def:"23061912" desc:""`
+	DurationSeconds int     `def:"3600" desc:"duration in seconds"`
+	QPS             float64 `def:"10" desc:"maximum queries per second per worker"`
+	Workers         int     `def:"10" desc:"number of workers"`
 }
 
 // File can be read from file system.
