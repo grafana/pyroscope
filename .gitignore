@@ -24,4 +24,8 @@ benchmark/ci/pr/dashboard-screenshots
 benchmark/ci/pr/table-report
 benchmark/ci/pr/image-report
 benchmark/ci/pr/meta-report
+agent-benchmark/table-report
+agent-benchmark/image-report
+agent-benchmark/meta-report
+agent-benchmark/dashboard-screenshots
 /.env

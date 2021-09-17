@@ -15,6 +15,9 @@ services:
     - sh
     - -c
     - sleep Infinity
+    volumes:
+    - ./dashboard-screenshots:/screenshots
+    - ./report.yaml:/report.yaml
   hotrod_without_pyroscope:
     build:
       context: .

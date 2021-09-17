@@ -34,7 +34,7 @@ grafana.dashboard.new(
       )
       .addTarget(grafana.prometheus.target(
         'go_memstats_sys_bytes{instance=~"hotrod.*"}',
-        legendFormat='{{ __name__ }}',
+        legendFormat='{{ instance }}',
       )
     ),
   )
@@ -51,6 +51,7 @@ grafana.dashboard.new(
     .addTarget(
       grafana.prometheus.target(
         'rate(process_cpu_seconds_total{instance=~"hotrod.*"}[$__rate_interval])',
+        legendFormat='{{ instance }}',
       )
     ),
   )
@@ -59,7 +60,12 @@ grafana.dashboard.new(
       'Goroutines',
       datasource='$PROMETHEUS_DS',
     )
-    .addTarget(grafana.prometheus.target('go_goroutines{instance=~"hotrod.*"}')),
+    .addTarget(
+      grafana.prometheus.target(
+        'go_goroutines{instance=~"hotrod.*"}',
+        legendFormat='{{ instance }}',
+      )
+    ),
   )
 )
 .addRow(
@@ -71,22 +77,28 @@ grafana.dashboard.new(
       format='decbytes',
     )
     .addTarget(grafana.prometheus.target(
-      'container_memory_usage_bytes{container_label_com_docker_compose_service=~"hotrod.*"}'
+      'container_memory_usage_bytes{container_label_com_docker_compose_service=~"hotrod.*"}',
+      legendFormat='usage - {{ container_label_com_docker_compose_service }}'
     ))
     .addTarget(grafana.prometheus.target(
-      'container_memory_working_set_bytes{container_label_com_docker_compose_service=~"hotrod.*"}'
+      'container_memory_working_set_bytes{container_label_com_docker_compose_service=~"hotrod.*"}',
+      legendFormat='wss - {{ container_label_com_docker_compose_service }}'
     ))
     .addTarget(grafana.prometheus.target(
-      'container_memory_rss{container_label_com_docker_compose_service=~"hotrod.*"}'
+      'container_memory_rss{container_label_com_docker_compose_service=~"hotrod.*"}',
+      legendFormat='rss - {{ container_label_com_docker_compose_service }}'
     ))
     .addTarget(grafana.prometheus.target(
-      'container_memory_cache{container_label_com_docker_compose_service=~"hotrod.*"}'
+      'container_memory_cache{container_label_com_docker_compose_service=~"hotrod.*"}',
+      legendFormat='memory cache - {{ container_label_com_docker_compose_service }}'
     ))
     .addTarget(grafana.prometheus.target(
-      'container_memory_mapped_file{container_label_com_docker_compose_service=~"hotrod.*"}'
+      'container_memory_mapped_file{container_label_com_docker_compose_service=~"hotrod.*"}',
+      legendFormat='memory-mapped files - {{ container_label_com_docker_compose_service }}'
     ))
     .addTarget(grafana.prometheus.target(
-      'container_spec_memory_limit_bytes{container_label_com_docker_compose_service=~"hotrod.*"}'
+      'container_spec_memory_limit_bytes{container_label_com_docker_compose_service=~"hotrod.*"}',
+      legendFormat='limit - {{ container_label_com_docker_compose_service }}'
     ))
   )
   .addPanel(

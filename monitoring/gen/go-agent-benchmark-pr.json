@@ -56,7 +56,7 @@
                      "expr": "go_memstats_sys_bytes{instance=~\"hotrod.*\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "{{ __name__ }}",
+                     "legendFormat": "{{ instance }}",
                      "refId": "A"
                   }
                ],
@@ -136,7 +136,7 @@
                      "expr": "rate(process_cpu_seconds_total{instance=~\"hotrod.*\"}[$__rate_interval])",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "{{ instance }}",
                      "refId": "A"
                   }
                ],
@@ -216,7 +216,7 @@
                      "expr": "go_goroutines{instance=~\"hotrod.*\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "{{ instance }}",
                      "refId": "A"
                   }
                ],
@@ -309,42 +309,42 @@
                      "expr": "container_memory_usage_bytes{container_label_com_docker_compose_service=~\"hotrod.*\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "usage - {{ container_label_com_docker_compose_service }}",
                      "refId": "A"
                   },
                   {
                      "expr": "container_memory_working_set_bytes{container_label_com_docker_compose_service=~\"hotrod.*\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "wss - {{ container_label_com_docker_compose_service }}",
                      "refId": "B"
                   },
                   {
                      "expr": "container_memory_rss{container_label_com_docker_compose_service=~\"hotrod.*\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "rss - {{ container_label_com_docker_compose_service }}",
                      "refId": "C"
                   },
                   {
                      "expr": "container_memory_cache{container_label_com_docker_compose_service=~\"hotrod.*\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "memory cache - {{ container_label_com_docker_compose_service }}",
                      "refId": "D"
                   },
                   {
                      "expr": "container_memory_mapped_file{container_label_com_docker_compose_service=~\"hotrod.*\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "memory-mapped files - {{ container_label_com_docker_compose_service }}",
                      "refId": "E"
                   },
                   {
                      "expr": "container_spec_memory_limit_bytes{container_label_com_docker_compose_service=~\"hotrod.*\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
-                     "legendFormat": "",
+                     "legendFormat": "limit - {{ container_label_com_docker_compose_service }}",
                      "refId": "F"
                   }
                ],

@@ -1,0 +1,19 @@
+baseName: main
+targetName: pr
+
+queries:
+  - name: "memory usage (go's perspective)"
+    base: 'avg_over_time(go_memstats_sys_bytes{instance=~"hotrod_without_pyroscope.*"}[5m])'
+    target: 'avg_over_time(go_memstats_sys_bytes{instance=~"hotrod_with_pyroscope.*"}[5m])'
+    diffThresholdPercent: 5
+    biggerIsBetter: false
+  - name: "container memory usage"
+    base: 'avg_over_time(container_memory_usage_bytes{container_label_com_docker_compose_service=~"hotrod_without_pyroscope.*"}[5m])'
+    target: 'avg_over_time(container_memory_usage_bytes{container_label_com_docker_compose_service=~"hotrod_with_pyroscope.*"}[5m])'
+    diffThresholdPercent: 5
+    biggerIsBetter: false
+  - name: "cpu utilization"
+    base: 'rate(process_cpu_seconds_total{instance=~"hotrod_without_pyroscope.*"}[5m])'
+    target: 'rate(process_cpu_seconds_total{instance=~"hotrod_with_pyroscope.*"}[5m])'
+    diffThresholdPercent: 5
+    biggerIsBetter: false
