@@ -72,7 +72,8 @@ func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParam
 	case format == "tree", contentType == "binary/octet-stream+tree":
 		ip.parserFunc = tree.DeserializeNoDict
 	case format == "trie", contentType == "binary/octet-stream+trie":
-		ip.parserFunc = wrapConvertFunction(convert.ParseTrie)
+		// TODO: use buffer pool.
+		ip.parserFunc = wrapConvertFunction(convert.ParseTrieBuf(make([]byte, 0, 128)))
 	case format == "lines":
 		ip.parserFunc = wrapConvertFunction(convert.ParseIndividualLines)
 	default:

@@ -23,6 +23,12 @@ func ParseTrie(r io.Reader, cb func(name []byte, val int)) error {
 	return nil
 }
 
+func ParseTrieBuf(buf []byte) func(io.Reader, func([]byte, int)) error {
+	return func(r io.Reader, cb func([]byte, int)) error {
+		return transporttrie.IterateRaw(r, buf, cb)
+	}
+}
+
 // format is pprof. See https://github.com/google/pprof/blob/master/proto/profile.proto
 func ParsePprof(r io.Reader) (*Profile, error) {
 	b, err := ioutil.ReadAll(r)
