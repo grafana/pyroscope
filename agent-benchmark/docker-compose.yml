@@ -84,7 +84,6 @@ services:
     image: grafana/grafana-image-renderer:latest
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
     ports:
     - 5080:8080
     volumes:
