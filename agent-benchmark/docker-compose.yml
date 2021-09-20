@@ -1,8 +1,8 @@
 # docker-compose ignores x-
 x-PYROSCOPE_CPUS: &PYROSCOPE_CPUS 1
 x-PYROSCOPE_MEMORY: &PYROSCOPE_MEMORY 4096MB
-x-HOTROD_CPUS: &HOTROD_CPUS 0.2
-x-HOTROD_MEM: &HOTROD_MEM 512MB
+x-HOTROD_CPUS: &HOTROD_CPUS 1
+x-HOTROD_MEM: &HOTROD_MEM 128MB
 
 version: "3.9"
 services:
@@ -20,11 +20,11 @@ services:
     - ./report.yaml:/report.yaml
   hotrod_without_pyroscope:
     build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-    - 8081:8080
-    - 5051:5050 # pprof
+      context: ../
+      dockerfile: agent-benchmark/Dockerfile
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - JAEGER_AGENT_PORT=6831
     deploy:
       resources:
         limits:
@@ -32,12 +32,15 @@ services:
           memory: *HOTROD_MEM
   hotrod_with_pyroscope:
     build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-    - 5050:5050 # pprof
+      context: ../
+      dockerfile: agent-benchmark/Dockerfile
     environment:
     - PYROSCOPE_ADDRESS=http://pyroscope:4040
+    - JAEGER_AGENT_HOST=jaeger
+    - JAEGER_AGENT_PORT=6831
+      #    ports:
+      #      - '8080:8080'
+      #      - '8083:8083'
     deploy:
       resources:
         limits:
@@ -59,11 +62,17 @@ services:
         limits:
           cpus: *PYROSCOPE_CPUS
           memory: *PYROSCOPE_MEMORY
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - '6831:6831'
+      - '16686:16686'
+
   prometheus:
     image: prom/prometheus:v2.27.1
     volumes:
       - ./prometheus:/etc/prometheus/
-      - data-prometheus:/prometheus
     ports:
       - 4090:9090
   grafana:
@@ -91,6 +100,3 @@ services:
     - /var/run:/var/run:rw
     - /sys:/sys:ro
     - /var/lib/docker/:/var/lib/docker:ro
-volumes:
-  data-prometheus:
-    driver: local

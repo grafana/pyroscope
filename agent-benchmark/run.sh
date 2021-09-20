@@ -55,13 +55,17 @@ function run() {
 
   docker-compose -p "$PREFIX" up -d --force-recreate --remove-orphans
 
-  echo "Simulating traffic"
-  docker exec "${PREFIX}_client_1" \
-    ./pyrobench hotrod \
-    --hotrod-address=http://hotrod_without_pyroscope:8080&
-  docker exec "${PREFIX}_client_1" \
-    ./pyrobench hotrod \
-    --hotrod-address=http://hotrod_with_pyroscope:8080&
+#  echo "Simulating traffic"
+#  docker exec "${PREFIX}_client_1" \
+#    ./pyrobench hotrod \
+#    --workers=100 \
+#    --qps=100000 \
+#    --hotrod-address=http://hotrod_without_pyroscope:8080&
+#  docker exec "${PREFIX}_client_1" \
+#    ./pyrobench hotrod \
+#    --workers=100 \
+#    --qps=100000 \
+#    --hotrod-address=http://hotrod_with_pyroscope:8080&
 
   echo "Sleeping for $BENCH_RUN_FOR"
   # unix timestamp in ms
@@ -74,7 +78,6 @@ function run() {
     "${PREFIX}_client_1" ./pyrobench report meta \
     --params "BENCH_RUN_FOR=$BENCH_RUN_FOR" > "$SCRIPT_DIR/meta-report"
 
-  echo "generating image report"
   echo "generating image report"
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \

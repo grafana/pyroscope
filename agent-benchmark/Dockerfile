@@ -5,9 +5,10 @@ WORKDIR /go/src/app
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .
+COPY ./pkg pkg
+COPY ./agent-benchmark ./agent-benchmark
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/hotrod
+RUN cd agent-benchmark && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /go/bin/hotrod
 
 FROM scratch
 #EXPOSE 8080

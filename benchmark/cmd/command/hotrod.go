@@ -6,12 +6,15 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/rakyll/hey/requester"
 	"github.com/spf13/cobra"
 )
+
+var hotrodMutex = sync.Mutex{}
 
 func newHotRod(cfg *config.Hotrod) *cobra.Command {
 	vpr := newViper()
@@ -71,7 +74,11 @@ func genRequest(randomGen *rand.Rand, ctx context.Context, address string) (*htt
 func genCustomerId(randomGen *rand.Rand) string {
 	min := 0
 	max := 3
+
+	// not the best solution
+	hotrodMutex.Lock()
 	r := randomGen.Intn((max - min + 1) + min)
+	hotrodMutex.Unlock()
 
 	switch r {
 	case 0:

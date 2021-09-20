@@ -44,9 +44,7 @@ grafana.dashboard.new(
     grafana.graphPanel.new(
       'CPU Utilization',
       datasource='$PROMETHEUS_DS',
-      format='percent',
-      max='100',
-      logBase1Y=2,
+      format='percentunit',
     )
     .addTarget(
       grafana.prometheus.target(
@@ -115,6 +113,34 @@ grafana.dashboard.new(
       'irate(container_network_transmit_bytes_total{container_label_com_docker_compose_service=~"hotrod.*"}[$__rate_interval])',
       legendFormat='transmit - {{ container_label_com_docker_compose_service }}'
     ))
+  )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Container CPU',
+      datasource='$PROMETHEUS_DS',
+      format='decbytes',
+    )
+    .addTarget(grafana.prometheus.target(
+      'irate(container_network_receive_bytes_total{container_label_com_docker_compose_service=~"hotrod.*"}[$__rate_interval])',
+      legendFormat='receive - {{ container_label_com_docker_compose_service }}'
+    ))
+    .addTarget(grafana.prometheus.target(
+      'irate(container_network_transmit_bytes_total{container_label_com_docker_compose_service=~"hotrod.*"}[$__rate_interval])',
+      legendFormat='transmit - {{ container_label_com_docker_compose_service }}'
+    ))
+  )
+  .addPanel(
+    grafana.graphPanel.new(
+      'Container CPU Utilization',
+      datasource='$PROMETHEUS_DS',
+      format='percentunit',
+    )
+    .addTarget(
+      grafana.prometheus.target(
+  'sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_compose_service=~"hotrod.*"}[$__rate_interval])) by (container_label_com_docker_compose_service)',
+        legendFormat='{{ container_label_com_docker_compose_service }}',
+      )
+    ),
   )
 )
 
