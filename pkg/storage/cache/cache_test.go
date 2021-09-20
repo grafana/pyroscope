@@ -2,7 +2,7 @@ package cache
 
 import (
 	"fmt"
-	"log"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -12,8 +12,17 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
+
+type fakeCodec struct{}
+
+func (fakeCodec) New(k string) interface{} { return k }
+
+func (fakeCodec) Serialize(_ io.Writer, _ string, _ interface{}) error { return nil }
+
+func (fakeCodec) Deserialize(_ io.Reader, _ string) (interface{}, error) { return nil, nil }
 
 var _ = Describe("cache", func() {
 	It("works properly", func(done Done) {
@@ -31,36 +40,29 @@ var _ = Describe("cache", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		reg := prometheus.NewRegistry()
-		cache := New(db, "prefix:", &Metrics{
-			HitCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "cache_test_hit",
-			}),
-			MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "cache_test_miss",
-			}),
-			ReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "storage_test_read",
-			}),
-			WritesToDiskCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "storage_test_write",
-			}),
+		cache := New(Config{
+			DB:     db,
+			Codec:  fakeCodec{},
+			Prefix: "p:",
+			Metrics: Metrics{
+				MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+					Name: "cache_test_miss",
+				}),
+				ReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+					Name: "storage_test_read",
+				}),
+				DiskWritesHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+					Name: "storage_test_write",
+				}),
+				DiskReadsHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+					Name: "storage_test_reads",
+				}),
+			},
 		})
-		cache.New = func(k string) interface{} {
-			return k
-		}
-		cache.Bytes = func(k string, v interface{}) ([]byte, error) {
-			return []byte(v.(string)), nil
-		}
-		cache.Bytes = func(k string, v interface{}) ([]byte, error) {
-			return []byte(v.(string)), nil
-		}
-		cache.FromBytes = func(k string, v []byte) (interface{}, error) {
-			return string(v), nil
-		}
+
 		for i := 0; i < 200; i++ {
 			cache.Put(fmt.Sprintf("foo-%d", i), fmt.Sprintf("bar-%d", i))
 		}
-		log.Printf("size: %d", cache.Len())
 
 		v, err := cache.GetOrCreate("foo-199")
 		Expect(err).ToNot(HaveOccurred())
