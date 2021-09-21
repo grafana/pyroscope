@@ -47,7 +47,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 		level := levels[0]
 		levels = levels[1:]
 
-		name := string(tn.Name)
+		name := string(t.loadLabel(tn.labelPosition))
 		if tn.Total >= minVal || name == "other" {
 			var i int
 			var ok bool
@@ -87,9 +87,9 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			}
 			if otherTotal != 0 {
 				n := &treeNode{
-					Name:  jsonableSlice("other"),
-					Total: otherTotal,
-					Self:  otherTotal,
+					labelPosition: t.insertLabel([]byte("other")),
+					Total:         otherTotal,
+					Self:          otherTotal,
 				}
 				xOffsets = append([]int{xOffset}, xOffsets...)
 				levels = append([]int{level + 1}, levels...)

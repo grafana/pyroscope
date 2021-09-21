@@ -22,31 +22,31 @@ func CombineTree(leftTree, rightTree *Tree) (*Tree, *Tree) {
 		left, rght := leftNodes[0], rghtNodes[0]
 		leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
 
-		left.ChildrenNodes, rght.ChildrenNodes = combineNodes(left.ChildrenNodes, rght.ChildrenNodes)
+		left.ChildrenNodes, rght.ChildrenNodes = combineNodes(leftTree, rightTree, left.ChildrenNodes, rght.ChildrenNodes)
 		leftNodes = append(leftNodes, left.ChildrenNodes...)
 		rghtNodes = append(rghtNodes, rght.ChildrenNodes...)
 	}
 	return leftTree, rightTree
 }
 
-func combineNodes(leftNodes, rghtNodes []*treeNode) ([]*treeNode, []*treeNode) {
+func combineNodes(leftTree, rightTree *Tree, leftNodes, rghtNodes []*treeNode) ([]*treeNode, []*treeNode) {
 	size := nextPow2(max(len(leftNodes), len(rghtNodes)))
 	leftResult := make([]*treeNode, 0, size)
 	rghtResult := make([]*treeNode, 0, size)
 
 	for len(leftNodes) != 0 && len(rghtNodes) != 0 {
 		left, rght := leftNodes[0], rghtNodes[0]
-		switch bytes.Compare(left.Name, rght.Name) {
+		switch bytes.Compare(leftTree.loadLabel(left.labelPosition), rightTree.loadLabel(rght.labelPosition)) {
 		case 0:
 			leftResult = append(leftResult, left)
 			rghtResult = append(rghtResult, rght)
 			leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
 		case -1:
 			leftResult = append(leftResult, left)
-			rghtResult = append(rghtResult, newNode(left.Name))
+			rghtResult = append(rghtResult, rightTree.newNode(leftTree.loadLabel(left.labelPosition)))
 			leftNodes = leftNodes[1:]
 		case 1:
-			leftResult = append(leftResult, newNode(rght.Name))
+			leftResult = append(leftResult, leftTree.newNode(rightTree.loadLabel(rght.labelPosition)))
 			rghtResult = append(rghtResult, rght)
 			rghtNodes = rghtNodes[1:]
 		}
@@ -54,10 +54,10 @@ func combineNodes(leftNodes, rghtNodes []*treeNode) ([]*treeNode, []*treeNode) {
 	leftResult = append(leftResult, leftNodes...)
 	rghtResult = append(rghtResult, rghtNodes...)
 	for _, left := range leftNodes {
-		rghtResult = append(rghtResult, newNode(left.Name))
+		rghtResult = append(rghtResult, rightTree.newNode(leftTree.loadLabel(left.labelPosition)))
 	}
 	for _, rght := range rghtNodes {
-		leftResult = append(leftResult, newNode(rght.Name))
+		leftResult = append(leftResult, leftTree.newNode(rightTree.loadLabel(rght.labelPosition)))
 	}
 	return leftResult, rghtResult
 }
@@ -106,7 +106,7 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 		levels = levels[1:]
 
 		// both left.Name and rght.Name must be the same
-		name := string(left.Name)
+		name := string(rightTree.loadLabel(rght.labelPosition))
 		if left.Total >= minVal || rght.Total >= minVal || name == "other" {
 			i, ok := nameLocationCache[name]
 			if !ok {
@@ -162,18 +162,18 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 				levels = prependInt(levels, level+1)
 				{
 					leftNode := &treeNode{
-						Name:  jsonableSlice("other"),
-						Total: otherLeftTotal,
-						Self:  otherLeftTotal,
+						labelPosition: leftTree.insertLabel([]byte("other")),
+						Total:         otherLeftTotal,
+						Self:          otherLeftTotal,
 					}
 					xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
 					leftNodes = prependTreeNode(leftNodes, leftNode)
 				}
 				{
 					rghtNode := &treeNode{
-						Name:  jsonableSlice("other"),
-						Total: otherRghtTotal,
-						Self:  otherRghtTotal,
+						labelPosition: rightTree.insertLabel([]byte("other")),
+						Total:         otherRghtTotal,
+						Self:          otherRghtTotal,
 					}
 					xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
 					rghtNodes = prependTreeNode(rghtNodes, rghtNode)

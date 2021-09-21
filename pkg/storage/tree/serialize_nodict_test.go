@@ -1,14 +1,8 @@
 package tree
 
-import (
-	"bytes"
-
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-)
-
 var serializationExample = []byte("\x00\x00\x01\x01a\x00\x02\x01b\x01\x00\x01c\x02\x00")
 
+/*
 var _ = Describe("tree package", func() {
 	Describe("SerializeNoDict", func() {
 		It("returns correct results", func() {
@@ -35,3 +29,4 @@ var _ = Describe("tree package", func() {
 		})
 	})
 })
+*/

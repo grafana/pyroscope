@@ -2,69 +2,71 @@ package tree
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"sort"
 	"sync"
-
-	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
 )
 
-type jsonableSlice []byte
-
 type treeNode struct {
-	Name          jsonableSlice `json:"name,string"`
-	Total         uint64        `json:"total"`
-	Self          uint64        `json:"self"`
-	ChildrenNodes []*treeNode   `json:"children"`
+	labelPosition uint64
+	Total         uint64
+	Self          uint64
+	ChildrenNodes []*treeNode
 }
 
-func (a jsonableSlice) MarshalJSON() ([]byte, error) {
-	return json.Marshal(string(a))
-}
-
-func (n *treeNode) clone(m, d uint64) *treeNode {
+func (n *treeNode) clone(dstTree, srcTree *Tree, m, d uint64) *treeNode {
 	newNode := &treeNode{
-		Name:  n.Name,
-		Total: n.Total * m / d,
-		Self:  n.Self * m / d,
+		labelPosition: dstTree.insertLabel(srcTree.loadLabel(n.labelPosition)),
+		Total:         n.Total * m / d,
+		Self:          n.Self * m / d,
 	}
 	newNode.ChildrenNodes = make([]*treeNode, len(n.ChildrenNodes))
 	for i, cn := range n.ChildrenNodes {
-		newNode.ChildrenNodes[i] = cn.clone(m, d)
+		newNode.ChildrenNodes[i] = cn.clone(dstTree, srcTree, m, d)
 	}
 	return newNode
 }
 
-func newNode(label []byte) *treeNode {
-	return &treeNode{
-		Name:          label,
-		ChildrenNodes: []*treeNode{},
-	}
+func (t *Tree) newNode(label []byte) *treeNode {
+	return &treeNode{labelPosition: t.insertLabel(label)}
 }
 
-var (
-	placeholderTreeNode = &treeNode{}
-	semicolon           = byte(';')
-)
+const semicolon = byte(';')
 
 type Tree struct {
 	sync.RWMutex
-	root *treeNode
+	root   *treeNode
+	labels []byte
 }
+
+const (
+	initialLabelsBufferSizeBytes = 512
+
+	lengthMask = 1<<32 - 1
+	offsetMask = lengthMask << 32
+)
 
 func New() *Tree {
 	return &Tree{
-		root: newNode([]byte{}),
+		root:   new(treeNode),
+		labels: make([]byte, 0, initialLabelsBufferSizeBytes),
 	}
 }
 
-func (t *Tree) Merge(srcTrieI merge.Merger) {
-	srcTrie := srcTrieI.(*Tree)
+func (t *Tree) insertLabel(v []byte) uint64 {
+	offset := len(t.labels) << 32
+	t.labels = append(t.labels, v...)
+	return uint64(offset | (len(t.labels) & lengthMask))
+}
 
+func (t *Tree) loadLabel(k uint64) []byte {
+	return t.labels[((k & offsetMask) >> 32):(k & lengthMask)]
+}
+
+func (t *Tree) Merge(src *Tree) {
 	srcNodes := make([]*treeNode, 0, 128)
-	srcNodes = append(srcNodes, srcTrie.root)
+	srcNodes = append(srcNodes, src.root)
 
 	dstNodes := make([]*treeNode, 0, 128)
 	dstNodes = append(dstNodes, t.root)
@@ -80,7 +82,7 @@ func (t *Tree) Merge(srcTrieI merge.Merger) {
 		dt.Total += st.Total
 
 		for _, srcChildNode := range st.ChildrenNodes {
-			dstChildNode := dt.insert(srcChildNode.Name)
+			dstChildNode := dt.insert(t, src.loadLabel(srcChildNode.labelPosition))
 			srcNodes = prependTreeNode(srcNodes, srcChildNode)
 			dstNodes = prependTreeNode(dstNodes, dstChildNode)
 		}
@@ -122,15 +124,13 @@ func (t *Tree) String() string {
 	return res
 }
 
-func (n *treeNode) insert(targetLabel []byte) *treeNode {
+func (n *treeNode) insert(t *Tree, targetLabel []byte) *treeNode {
 	i := sort.Search(len(n.ChildrenNodes), func(i int) bool {
-		return bytes.Compare(n.ChildrenNodes[i].Name, targetLabel) >= 0
+		return bytes.Compare(t.loadLabel(n.ChildrenNodes[i].labelPosition), targetLabel) >= 0
 	})
 
-	if i > len(n.ChildrenNodes)-1 || !bytes.Equal(n.ChildrenNodes[i].Name, targetLabel) {
-		l := make([]byte, len(targetLabel))
-		copy(l, targetLabel)
-		child := newNode(l)
+	if i > len(n.ChildrenNodes)-1 || !bytes.Equal(t.loadLabel(n.ChildrenNodes[i].labelPosition), targetLabel) {
+		child := t.newNode(targetLabel)
 		n.ChildrenNodes = append(n.ChildrenNodes, child)
 		copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
 		n.ChildrenNodes[i] = child
@@ -139,18 +139,18 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 }
 
 func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
-	// TODO: can optimize this, split is not necessary?
-	labels := bytes.Split(key, []byte(";"))
 	node := t.root
-	for _, l := range labels {
-		buf := make([]byte, len(l))
-		copy(buf, l)
-		l = buf
-
-		n := node.insert(l)
-
+	var offset int
+	for i := 0; i < len(key); i++ {
+		if key[i] == semicolon {
+			node.Total += value
+			node = node.insert(t, key[offset:i])
+			offset = i + 1
+		}
+	}
+	if offset < len(key) {
 		node.Total += value
-		node = n
+		node = node.insert(t, key[offset:])
 	}
 	node.Self += value
 	node.Total += value
@@ -168,7 +168,7 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 		prefixes = prefixes[1:]
 
 		label := append(prefix, semicolon) // byte(';'),
-		l := node.Name
+		l := t.loadLabel(node.labelPosition)
 		label = append(label, l...) // byte(';'),
 
 		cb(label, node.Self)
@@ -200,18 +200,10 @@ func (t *Tree) Samples() uint64 {
 func (t *Tree) Clone(r *big.Rat) *Tree {
 	t.RLock()
 	defer t.RUnlock()
-
 	m := uint64(r.Num().Int64())
 	d := uint64(r.Denom().Int64())
-	newTrie := &Tree{
-		root: t.root.clone(m, d),
-	}
-
+	newTrie := new(Tree)
+	// TODO: just copy labels slice.
+	newTrie.root = t.root.clone(newTrie, t, m, d)
 	return newTrie
-}
-
-func (t *Tree) MarshalJSON() ([]byte, error) {
-	t.RLock()
-	defer t.RUnlock()
-	return json.Marshal(t.root)
 }
