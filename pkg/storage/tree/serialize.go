@@ -28,7 +28,7 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 		tn := nodes[0]
 		nodes = nodes[1:]
 
-		labelLink := d.Put([]byte(tn.Name))
+		labelLink := d.Put(t.loadLabel(tn.labelPosition))
 		_, err := varint.Write(w, uint64(len(labelLink)))
 		if err != nil {
 			return err
@@ -72,7 +72,7 @@ func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error 
 		tn := nodes[0]
 		nodes = nodes[1:]
 
-		labelKey := d.Put([]byte(tn.Name))
+		labelKey := d.Put(t.loadLabel(tn.labelPosition))
 		if _, err = vw.Write(w, uint64(len(labelKey))); err != nil {
 			return err
 		}
@@ -116,11 +116,12 @@ func (t *Tree) SerializeNoDict(maxNodes int, w io.Writer) error {
 		tn := nodes[0]
 		nodes = nodes[1:]
 
-		_, err := varint.Write(w, uint64(len(tn.Name)))
+		label := t.loadLabel(tn.labelPosition)
+		_, err := varint.Write(w, uint64(len(label)))
 		if err != nil {
 			return err
 		}
-		_, err = w.Write(tn.Name)
+		_, err = w.Write(label)
 		if err != nil {
 			return err
 		}
@@ -180,7 +181,7 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 			nameBuf.Reset()
 			nameBuf.WriteString("label not found " + base64.URLEncoding.EncodeToString(labelLinkBuf))
 		}
-		tn := parent.node.insert(nameBuf.Bytes())
+		tn := parent.node.insert(t, nameBuf.Bytes())
 		tn.Self, err = varint.Read(br)
 		tn.Total = tn.Self
 		if err != nil {
@@ -229,7 +230,7 @@ func DeserializeNoDict(r io.Reader) (*Tree, error) {
 		if err != nil {
 			return nil, err
 		}
-		tn := parent.node.insert(nameBuf)
+		tn := parent.node.insert(t, nameBuf)
 
 		tn.Self, err = varint.Read(br)
 		tn.Total = tn.Self
