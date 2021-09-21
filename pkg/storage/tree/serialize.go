@@ -56,6 +56,53 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 	return nil
 }
 
+func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error {
+	t.Lock()
+	defer t.Unlock()
+	vw := varint.NewWriter()
+	var err error
+	if _, err = vw.Write(w, currentVersion); err != nil {
+		return err
+	}
+
+	minVal := t.minValue(maxNodes)
+	nodes := make([]*treeNode, 1, 128)
+	nodes[0] = t.root
+	for len(nodes) > 0 {
+		tn := nodes[0]
+		nodes = nodes[1:]
+
+		labelKey := d.Put([]byte(tn.Name))
+		if _, err = vw.Write(w, uint64(len(labelKey))); err != nil {
+			return err
+		}
+		if _, err = w.Write(labelKey); err != nil {
+			return err
+		}
+		val := tn.Self
+		if _, err = vw.Write(w, val); err != nil {
+			return err
+		}
+
+		cNodes := tn.ChildrenNodes
+		tn.ChildrenNodes = tn.ChildrenNodes[:0]
+		for _, cn := range cNodes {
+			if cn.Total >= minVal {
+				tn.ChildrenNodes = append(tn.ChildrenNodes, cn)
+			}
+		}
+		if len(tn.ChildrenNodes) > 0 {
+			nodes = append(tn.ChildrenNodes, nodes...)
+		} else {
+			tn.ChildrenNodes = nil // Just to make it eligible for GC.
+		}
+		if _, err = vw.Write(w, uint64(len(tn.ChildrenNodes))); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (t *Tree) SerializeNoDict(maxNodes int, w io.Writer) error {
 	t.RLock()
 	defer t.RUnlock()
@@ -114,27 +161,26 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 	parents := []*parentNode{{t.root, nil}}
 	j := 0
 
+	var nameBuf bytes.Buffer
 	for len(parents) > 0 {
 		j++
 		parent := parents[0]
 		parents = parents[1:]
 
 		labelLen, err := varint.Read(br)
-		// if err == io.EOF {
-		// 	return t, nil
-		// }
 		labelLinkBuf := make([]byte, labelLen) // TODO: there are better ways to do this?
 		_, err = io.ReadAtLeast(br, labelLinkBuf, int(labelLen))
 		if err != nil {
 			return nil, err
 		}
-		nameBuf, ok := d.Get(labelLinkBuf)
-		if !ok {
-			// these strings has to be at least slightly different, hence base64 Addon
-			nameBuf = []byte("label not found " + base64.URLEncoding.EncodeToString(labelLinkBuf))
-		}
-		tn := parent.node.insert(nameBuf)
 
+		nameBuf.Reset()
+		if !d.GetValue(labelLinkBuf, &nameBuf) {
+			// these strings has to be at least slightly different, hence base64 Addon
+			nameBuf.Reset()
+			nameBuf.WriteString("label not found " + base64.URLEncoding.EncodeToString(labelLinkBuf))
+		}
+		tn := parent.node.insert(nameBuf.Bytes())
 		tn.Self, err = varint.Read(br)
 		tn.Total = tn.Self
 		if err != nil {

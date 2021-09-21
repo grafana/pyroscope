@@ -11,6 +11,17 @@ PUSHGATEWAY_ADDRESS="http://pushgateway:9091"
 PROMETHEUS_ADDRESS="http://prometheus:9090"
 GRAFANA_ADDRESS="http://grafana:3000"
 
+# since we gonna report this values in the meta table
+# let's define them explicitly here
+PYROBENCH_RAND_SEED="${PYROBENCH_RAND_SEED:-2306912}"
+PYROBENCH_PROFILE_WIDTH="${PYROBENCH_PROFILE_WIDTH:-20}"
+PYROBENCH_PROFILE_DEPTH="${PYROBENCH_PROFILE_DEPTH:-20}"
+PYROBENCH_PROFILE_SYMBOL_LENGTH="${PYROBENCH_PROFILE_SYMBOL_LENGTH:-30}"
+PYROBENCH_APPS="${PYROBENCH_APPS:-20}"
+PYROBENCH_CLIENTS="${PYROBENCH_CLIENTS:-20}"
+PYROBENCH_REQUESTS="${PYROBENCH_REQUESTS:-10000}"
+
+
 # For more info, check the cli documentation
 PYROBENCH_UPLOAD_DEST="${PYROBENCH_UPLOAD_DEST:-/screenshots}"
 PYROBENCH_UPLOAD_BUCKET="${PYROBENCH_UPLOAD_BUCKET:-}"
@@ -58,12 +69,28 @@ function run() {
   docker-compose -p "$PREFIX" up -d --force-recreate --remove-orphans
 
   echo "Generating test load"
-  docker exec "${PREFIX}_client_1" ./pyrobench loadgen \
+  docker exec \
+    -e "PYROBENCH_RAND_SEED=$PYROBENCH_RAND_SEED" \
+    -e "PYROBENCH_PROFILE_WIDTH=$PYROBENCH_PROFILE_WIDTH"\
+    -e "PYROBENCH_PROFILE_DEPTH=$PYROBENCH_PROFILE_DEPTH" \
+    -e "PYROBENCH_PROFILE_SYMBOL_LENGTH=$PYROBENCH_PROFILE_SYMBOL_LENGTH" \
+    -e "PYROBENCH_APPS=$PYROBENCH_APPS" \
+    -e "PYROBENCH_CLIENTS=$PYROBENCH_CLIENTS" \
+    -e "PYROBENCH_REQUESTS=$PYROBENCH_REQUESTS" \
+    "${PREFIX}_client_1" ./pyrobench loadgen \
     --log-level=error \
     --server-address="$PYROSCOPE_ADDRESS" \
     --pushgateway-address="$PUSHGATEWAY_ADDRESS" \
     > /dev/null &
-  docker exec "${PREFIX}_client_1" ./pyrobench loadgen \
+  docker exec \
+    -e "PYROBENCH_RAND_SEED=$PYROBENCH_RAND_SEED" \
+    -e "PYROBENCH_PROFILE_WIDTH=$PYROBENCH_PROFILE_WIDTH"\
+    -e "PYROBENCH_PROFILE_DEPTH=$PYROBENCH_PROFILE_DEPTH" \
+    -e "PYROBENCH_PROFILE_SYMBOL_LENGTH=$PYROBENCH_PROFILE_SYMBOL_LENGTH" \
+    -e "PYROBENCH_APPS=$PYROBENCH_APPS" \
+    -e "PYROBENCH_CLIENTS=$PYROBENCH_CLIENTS" \
+    -e "PYROBENCH_REQUESTS=$PYROBENCH_REQUESTS" \
+    "${PREFIX}_client_1" ./pyrobench loadgen \
     --log-level=error \
     --server-address="$PYROSCOPE_MAIN_ADDRESS"  \
     --pushgateway-address="$PUSHGATEWAY_ADDRESS" \
@@ -77,6 +104,19 @@ function run() {
   end=$(date +%s%3N)
 
   # TODO(eh-am): use docker-compose exec
+  echo "generating meta report"
+  docker exec \
+    "${PREFIX}_client_1" ./pyrobench report meta \
+    --params "BENCH_RUN_FOR=$BENCH_RUN_FOR" \
+    --params "PYROBENCH_RAND_SEED=$PYROBENCH_RAND_SEED" \
+    --params "PYROBENCH_PROFILE_WIDTH=$PYROBENCH_PROFILE_WIDTH"\
+    --params "PYROBENCH_PROFILE_DEPTH=$PYROBENCH_PROFILE_DEPTH" \
+    --params "PYROBENCH_PROFILE_SYMBOL_LENGTH=$PYROBENCH_PROFILE_SYMBOL_LENGTH" \
+    --params "PYROBENCH_APPS=$PYROBENCH_APPS" \
+    --params "PYROBENCH_CLIENTS=$PYROBENCH_CLIENTS" \
+    --params "PYROBENCH_REQUESTS=$PYROBENCH_REQUESTS" > "$SCRIPT_DIR/meta-report"
+
+  echo "generating image report"
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
     -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
@@ -88,6 +128,7 @@ function run() {
     --to="$end" \
     --grafana-address "$GRAFANA_ADDRESS" > "$SCRIPT_DIR/image-report"
 
+  echo "generating table report"
   docker exec \
     -e "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
     -e "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \

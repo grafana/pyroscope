@@ -1,4 +1,4 @@
-# Benchmark Result
+## Result
 |             | {{ .QC.BaseName }}           | {{ .QC.TargetName }} | diff                | threshold |
 |-------------|------------------------------|----------------------|---------------------|----------------|
 {{ range .QC.Queries -}}
