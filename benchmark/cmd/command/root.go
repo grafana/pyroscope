@@ -6,13 +6,13 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pyroscope-io/pyroscope/benchmark/config"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-func newRootCmd(cfg *config.LoadGen) *cobra.Command {
+func newRootCmd(cfg *config.Config) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "pyrobench [flags] <subcommand>",
 	}
@@ -35,10 +35,12 @@ func newRootCmd(cfg *config.LoadGen) *cobra.Command {
 func Initialize() error {
 	var cfg config.Config
 
-	rootCmd := newRootCmd(&cfg.LoadGen)
+	rootCmd := newRootCmd(&cfg)
 	rootCmd.SilenceErrors = true
 	rootCmd.AddCommand(
 		newLoadGen(&cfg.LoadGen),
+		newPromQuery(&cfg.PromQuery),
+		newReport(&cfg.Report),
 	)
 
 	logrus.SetReportCaller(true)

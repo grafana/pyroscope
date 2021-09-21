@@ -18,6 +18,39 @@ describe('basic test', () => {
     cy.location('pathname').should('eq', '/');
   });
 
+
+  it('app selector works', () => {
+
+    cy.intercept('**/render*', {
+      fixture: 'render.json',
+      times: 1
+    }).as('render1')
+
+    cy.visit('/');
+
+    cy.wait('@render1');
+
+    cy.fixture('render.json').then((data) => {
+      cy.findByTestId('table-view').contains('td', data.flamebearer.names[0]).should('be.visible');
+      cy.findByTestId('table-view').contains('td', data.flamebearer.names[data.flamebearer.names.length - 1]).should('be.visible');
+    });
+
+    cy.intercept('**/render*', {
+      fixture: 'render2.json',
+      times: 1
+    }).as('render2')
+    
+    cy.findByTestId('app-name-selector').select('pyroscope.server.cpu');
+    
+    cy.wait('@render2');
+
+    cy.fixture('render2.json').then((data) => {
+      cy.findByTestId('table-view').contains('td', data.flamebearer.names[0]).should('be.visible');
+      cy.findByTestId('table-view').contains('td', data.flamebearer.names[data.flamebearer.names.length - 1]).should('be.visible');
+    });
+
+  });
+
   it('updates flamegraph on app name change', () => {
     cy.visit('/')
 

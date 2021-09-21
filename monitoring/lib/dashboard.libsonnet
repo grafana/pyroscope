@@ -20,12 +20,6 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         title='Benchmark',
       )
       .addPanel(
-        grafana.text.new(
-          content= "<iframe style=\"border:none; width:100%; height: 100%;\" src=\"http://localhost:8081/summary\">",
-          span=3,
-        )
-      )
-      .addPanel(
         grafana.gaugePanel.new(
           'Run Progress',
           datasource='$PROMETHEUS_DS',
@@ -37,8 +31,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         .addThreshold({ color: 'green', value: 0 })
         .addTarget(
           grafana.prometheus.target(
-            'pyroscope_benchmark_progress{}',
-            legendFormat='{{ __name__ }}',
+            '(pyroscope_benchmark_successful_uploads + pyroscope_benchmark_upload_errors) / pyroscope_benchmark_requests_total',
           )
         )
       )
@@ -46,7 +39,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         grafana.graphPanel.new(
           'Upload Errors (Total)',
           datasource='$PROMETHEUS_DS',
-          span=2,
+          span=4,
         )
         .addTarget(
           grafana.prometheus.target(
@@ -59,7 +52,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         grafana.graphPanel.new(
           'Successful Uploads (Total)',
           datasource='$PROMETHEUS_DS',
-          span=2,
+          span=4,
         )
         .addTarget(
           grafana.prometheus.target(
@@ -327,7 +320,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(
-            'sum without(name)(pyroscope_disk_bytes)',
+            'sum without(name)(pyroscope_storage_disk_bytes)',
             legendFormat='total',
           ),
         )
