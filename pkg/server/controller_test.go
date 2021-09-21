@@ -114,7 +114,8 @@ var _ = Describe("server", func() {
 					c.dir = http.Dir(temp_asset_dir.Path)
 
 					go c.Start()
-					time.Sleep(50 * time.Millisecond) // TODO: There's possibly a better way of doing this
+					// TODO: Wait for start .There's possibly a better way of doing this
+					time.Sleep(50 * time.Millisecond) 
 					tr := &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 					}
