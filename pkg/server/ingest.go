@@ -18,7 +18,7 @@ import (
 )
 
 type ingestParams struct {
-	parserFunc      func(io.Reader) (*tree.Tree, error)
+	parserFunc      parserFunc
 	storageKey      *segment.Key
 	spyName         string
 	sampleRate      uint32
@@ -29,6 +29,30 @@ type ingestParams struct {
 	until           time.Time
 }
 
+type convertFunc func(r io.Reader, cb func([]byte, int)) error
+type convertFuncBuf func(r io.Reader, tmpBuf []byte, cb func([]byte, int)) error
+type convertFuncReader func(r io.Reader) (*tree.Tree, error)
+
+type parserFunc func(io.Reader, []byte) (*tree.Tree, error)
+
+func wrapConvertFunction(f convertFunc) parserFunc {
+	return func(r io.Reader, _ []byte) (*tree.Tree, error) {
+		t := tree.New()
+		return t, f(r, t.InsertInt)
+	}
+}
+
+func wrapConvertFunctionBuf(f convertFuncBuf) parserFunc {
+	return func(r io.Reader, tmpBuf []byte) (*tree.Tree, error) {
+		t := tree.New()
+		return t, f(r, tmpBuf, t.InsertInt)
+	}
+}
+
+func wrapConvertFunctionReader(f convertFuncReader) parserFunc {
+	return func(r io.Reader, _ []byte) (*tree.Tree, error) { return f(r) }
+}
+
 func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	var ip ingestParams
 	if err := ctrl.ingestParamsFromRequest(r, &ip); err != nil {
@@ -37,7 +61,10 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var t *tree.Tree
-	t, err := ip.parserFunc(r.Body)
+	tmpBuf := ctrl.bufferPool.Get()
+	t, err := ip.parserFunc(r.Body, tmpBuf.B)
+	ctrl.bufferPool.Put(tmpBuf)
+
 	if err != nil {
 		ctrl.writeError(w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
 		return
@@ -70,9 +97,9 @@ func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParam
 	contentType := r.Header.Get("Content-Type")
 	switch {
 	case format == "tree", contentType == "binary/octet-stream+tree":
-		ip.parserFunc = tree.DeserializeNoDict
+		ip.parserFunc = wrapConvertFunctionReader(tree.DeserializeNoDict)
 	case format == "trie", contentType == "binary/octet-stream+trie":
-		ip.parserFunc = wrapConvertFunction(convert.ParseTrie)
+		ip.parserFunc = wrapConvertFunctionBuf(convert.ParseTrieBuf)
 	case format == "lines":
 		ip.parserFunc = wrapConvertFunction(convert.ParseIndividualLines)
 	default:
@@ -128,16 +155,4 @@ func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParam
 		return fmt.Errorf("name: %w", err)
 	}
 	return nil
-}
-
-func wrapConvertFunction(convertFunc func(r io.Reader, cb func(name []byte, val int)) error) func(io.Reader) (*tree.Tree, error) {
-	return func(r io.Reader) (*tree.Tree, error) {
-		t := tree.New()
-		if err := convertFunc(r, func(k []byte, v int) {
-			t.Insert(k, uint64(v))
-		}); err != nil {
-			return nil, err
-		}
-		return t, nil
-	}
 }
