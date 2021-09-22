@@ -1,7 +1,6 @@
 package tree
 
 import (
-	"bytes"
 	"math/rand"
 	"strings"
 
@@ -21,17 +20,9 @@ var _ = Describe("tree package", func() {
 	Context("Insert", func() {
 		tree := New()
 		tree.Insert([]byte("a;b"), uint64(1))
-		tree.Insert([]byte("a;c;"), uint64(2))
+		tree.Insert([]byte("a;c"), uint64(2))
 
 		It("properly sets up a tree", func() {
-			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
-			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(2))
-			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
-			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(3)))
-			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(1)))
-			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(2)))
-			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(1)))
-			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(2)))
 			Expect(tree.String()).To(Equal("\"a;b\" 1\n\"a;c\" 2\n"))
 		})
 	})
@@ -55,14 +46,6 @@ var _ = Describe("tree package", func() {
 			It("properly merges", func() {
 				treeA.Merge(treeB)
 
-				Expect(treeA.root.ChildrenNodes).To(HaveLen(1))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(2))
-				Expect(treeA.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
-				Expect(treeA.root.ChildrenNodes[0].Total).To(Equal(uint64(15)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(5)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(10)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(5)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(10)))
 				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 5|"a;c" 10|`)))
 			})
 		})
@@ -87,18 +70,6 @@ var _ = Describe("tree package", func() {
 			It("properly merges", func() {
 				treeA.Merge(treeB)
 
-				Expect(treeA.root.ChildrenNodes).To(HaveLen(1))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(4))
-				Expect(treeA.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
-				Expect(treeA.root.ChildrenNodes[0].Total).To(Equal(uint64(30)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(5)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(2)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[2].Self).To(Equal(uint64(8)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[3].Self).To(Equal(uint64(15)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(5)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(2)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[2].Total).To(Equal(uint64(8)))
-				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[3].Total).To(Equal(uint64(15)))
 				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 5|"a;c" 2|"a;d" 8|"a;e" 15|`)))
 			})
 		})
@@ -108,28 +79,3 @@ var _ = Describe("tree package", func() {
 func treeStr(s string) string {
 	return strings.ReplaceAll(s, "|", "\n")
 }
-
-var _ = Describe("prepend", func() {
-	Context("prependTreeNode)", func() {
-		It("prepend elem", func() {
-			A, B, C, X := &treeNode{}, &treeNode{}, &treeNode{}, &treeNode{}
-			s := []*treeNode{A, B, C}
-			s = prependTreeNode(s, X)
-			Expect(s).To(HaveLen(4))
-			Expect(s[0]).To(Equal(X))
-			Expect(s[1]).To(Equal(A))
-			Expect(s[2]).To(Equal(B))
-			Expect(s[3]).To(Equal(C))
-		})
-	})
-	Context("prependBytes", func() {
-		It("prepend elem", func() {
-			A, B, C, X := []byte("A"), []byte("B"), []byte("C"), []byte("X")
-			s := [][]byte{A, B, C}
-			s = prependBytes(s, X)
-
-			out := bytes.Join(s, []byte(","))
-			Expect(string(out)).To(Equal("X,A,B,C"))
-		})
-	})
-})

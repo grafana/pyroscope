@@ -5,7 +5,7 @@ import "encoding/json"
 func (t *Tree) MarshalJSON() ([]byte, error) {
 	t.RLock()
 	defer t.RUnlock()
-	return json.Marshal(t.root.toJSONNode(t))
+	return json.Marshal(t.at(0).toJSONNode(t))
 }
 
 type treeNodeJSON struct {
@@ -18,11 +18,8 @@ type treeNodeJSON struct {
 func (n *treeNode) toJSONNode(t *Tree) treeNodeJSON {
 	nodes := make([]treeNodeJSON, len(n.ChildrenNodes))
 	for i := range n.ChildrenNodes {
-		nodes[i] = n.ChildrenNodes[i].toJSONNode(t)
+		nodes[i] = t.at(n.ChildrenNodes[i]).toJSONNode(t)
 	}
-	// Although it's possible to avoid an allocation for the label string,
-	// JSON encoding happens quite rarely, therefore there is no much sense
-	// to optimise this.
 	return treeNodeJSON{
 		Name:          string(t.loadLabel(n.labelPosition)),
 		Total:         n.Total,
