@@ -49,6 +49,10 @@ class FlameGraphRenderer extends React.Component {
       fitMode: props.fitMode ? props.fitMode : "HEAD",
       flamebearer: null,
     };
+
+    // generally not a good idea
+    // but we need to access the graph's reset function
+    this.graphRef = React.createRef();
   }
 
   componentDidMount() {
@@ -109,21 +113,13 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateResetStyle = () => {
-    // const emptyQuery = this.query === "";
-    const topLevelSelected = this.selectedLevel === 0;
-    this.setState({
-      resetStyle: { visibility: topLevelSelected ? "hidden" : "visible" },
-    });
-  };
-
   handleSearchChange = (e) => {
     this.query = e.target.value;
     this.updateResetStyle();
   };
 
   reset = () => {
-    this.updateZoom(0, 0);
+    this.graphRef.current.reset();
   };
 
   updateView = (newView) => {
@@ -169,6 +165,13 @@ class FlameGraphRenderer extends React.Component {
       this.rangeMax = 1;
     }
     this.updateResetStyle();
+  }
+
+  onZoom = (selectedLevel) => {
+    const topLevelSelected = selectedLevel === 0;
+    this.setState({
+      resetStyle: { visibility: topLevelSelected ? "hidden" : "visible" },
+    });
   }
 
   parseFormat(format) {
@@ -242,6 +245,7 @@ class FlameGraphRenderer extends React.Component {
       this.state.flamebearer && dataExists ? (
         <Graph
           key="flamegraph-pane"
+          ref={this.graphRef}
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
@@ -249,6 +253,7 @@ class FlameGraphRenderer extends React.Component {
           label={this.props.query}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
+          onZoom={this.onZoom}
         />
       ) : null;
 

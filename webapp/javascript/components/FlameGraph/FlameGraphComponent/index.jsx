@@ -518,7 +518,8 @@ class FlameGraph extends React.Component {
       this.rangeMin = 0;
       this.rangeMax = 1;
     }
-    this.updateResetStyle();
+
+    this.props.onZoom(this.selectedLevel);
   }
 
   // binary search of a block in a stack level
