@@ -1,3 +1,4 @@
+import { BAR_HEIGHT } from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx'
 /// <reference types="cypress" />
 describe('basic test', () => {
   it('successfully loads', () => {
@@ -59,6 +60,13 @@ describe('basic test', () => {
   });
 
   it('view buttons should change view when clicked', () => {
+    // mock data since the first preselected application
+    // could have no data
+    cy.intercept('**/render*', {
+      fixture: 'render.json',
+      times: 1
+    }).as('render1')
+
     cy.visit('/')
     cy.findByTestId('btn-table-view').click();
     cy.findByTestId('table-view').should('be.visible');
