@@ -52,10 +52,42 @@ func newReport(cfg *config.Report) *cobra.Command {
 		}),
 	}
 
+	metaReport := &cobra.Command{
+		Use:   "meta [flags]",
+		Short: "generates a markdown report to be used by ci",
+		RunE: cli.CreateCmdRunFn(&cfg.MetaReport, vpr, func(_ *cobra.Command, args []string) error {
+			setLogLevel(cfg.MetaReport.LogLevel)
+
+			mr, err := cireport.NewMetaReport([]string{
+				"BENCH_RUN_FOR",
+				"PYROBENCH_RAND_SEED",
+				"PYROBENCH_PROFILE_WIDTH",
+				"PYROBENCH_PROFILE_DEPTH",
+				"PYROBENCH_PROFILE_SYMBOL_LENGTH",
+				"PYROBENCH_APPS",
+				"PYROBENCH_CLIENTS",
+				"PYROBENCH_REQUESTS",
+			})
+			if err != nil {
+				return err
+			}
+
+			report, err := mr.Report(cfg.MetaReport.Params)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(report)
+			return nil
+		}),
+	}
+
 	report.AddCommand(tableReport)
 	report.AddCommand(imageReport)
+	report.AddCommand(metaReport)
 
 	cli.PopulateFlagSet(&cfg.TableReport, tableReport.Flags(), vpr)
 	cli.PopulateFlagSet(&cfg.ImageReport, imageReport.Flags(), vpr)
+	cli.PopulateFlagSet(&cfg.MetaReport, metaReport.Flags(), vpr)
 	return report
 }

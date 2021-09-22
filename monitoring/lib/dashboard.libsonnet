@@ -205,37 +205,6 @@ local grafana = import 'grafonnet/grafana.libsonnet';
       )
       .addPanel(
         grafana.graphPanel.new(
-          'Cache Hit/Misses',
-          datasource='$PROMETHEUS_DS',
-          legend_values='true',
-          legend_rightSide='true',
-          legend_alignAsTable='true',
-          legend_current='true',
-          legend_sort='current',
-          legend_sortDesc=true,
-          format='percentunit',
-        )
-        .addTarget(
-          grafana.prometheus.target(|||
-            sum without(name) (rate(pyroscope_storage_cache_hits_total[$__rate_interval]))
-            /
-            sum without(name) (rate(pyroscope_storage_cache_reads_total[$__rate_interval]))
-          |||,
-            legendFormat='Hits',
-          )
-        )
-        .addTarget(
-          grafana.prometheus.target(|||
-            sum without(name) (rate(pyroscope_storage_cache_misses_total[$__rate_interval]))
-            /
-            sum without(name)(rate(pyroscope_storage_cache_reads_total[$__rate_interval]))
-          |||,
-            legendFormat='Misses',
-          )
-        )
-      )
-      .addPanel(
-        grafana.graphPanel.new(
           'Cache Hit Ratio',
           datasource='$PROMETHEUS_DS',
           legend_values='true',
@@ -248,7 +217,8 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(|||
-            rate(pyroscope_storage_cache_hits_total[$__rate_interval])
+            (rate(pyroscope_storage_cache_reads_total[$__rate_interval])-
+            rate(pyroscope_storage_cache_misses_total[$__rate_interval]))
             /
             rate(pyroscope_storage_cache_reads_total[$__rate_interval])
           |||,
@@ -258,7 +228,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
       )
       .addPanel(
         grafana.graphPanel.new(
-          'Rate of items persisted from cache to disk',
+          'Cache disk IO',
           datasource='$PROMETHEUS_DS',
           legend_values='true',
           legend_rightSide='true',
@@ -266,18 +236,18 @@ local grafana = import 'grafonnet/grafana.libsonnet';
           legend_current='true',
           legend_sort='current',
           legend_sortDesc=true,
+          format='Bps',
         )
         .addTarget(
           grafana.prometheus.target(
-            // ignore the name
-            'sum without(name) (rate(pyroscope_storage_cache_persisted_total[$__rate_interval]))',
-            legendFormat="Total",
+            'rate(pyroscope_storage_cache_disk_writes_sum[$__rate_interval])*-1',
+            legendFormat="Writes - {{name}}",
           )
         )
         .addTarget(
           grafana.prometheus.target(
-            '(rate(pyroscope_storage_cache_persisted_total[$__rate_interval]))',
-            legendFormat="{{ name }}",
+            'rate(pyroscope_storage_cache_disk_reads_sum[$__rate_interval])',
+            legendFormat="Reads - {{name}}",
           )
         )
       )

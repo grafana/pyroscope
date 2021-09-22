@@ -3,6 +3,7 @@ package cireport
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -59,11 +60,15 @@ func (gs *GrafanaScreenshotter) ScreenshotPanel(ctx context.Context, cfg Screens
 type Panel struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
+	Type  string `json:"type"`
 	Data  []byte
 }
 
-// GetAllPaneIds retrieves all panes id for a given dashboard
-// It assumes there are no rows in the dashboard
+type Row struct {
+	Panels []Panel `json:"panels"`
+}
+
+// GetAllPaneIds retrieves all panes for a given dashboard
 func (gs *GrafanaScreenshotter) getAllPanes(ctx context.Context, uid string) ([]Panel, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(gs.TimeoutSeconds)*time.Second)
 	defer cancel()
@@ -82,6 +87,7 @@ func (gs *GrafanaScreenshotter) getAllPanes(ctx context.Context, uid string) ([]
 	var j struct {
 		Dashboard struct {
 			Panels []Panel `json:"panels"`
+			Rows   []Row   `json:"rows"`
 		} `json:"dashboard"`
 	}
 
@@ -90,16 +96,28 @@ func (gs *GrafanaScreenshotter) getAllPanes(ctx context.Context, uid string) ([]
 		return []Panel{}, err
 	}
 
-	return j.Dashboard.Panels, nil
+	panelsFromRows := make([]Panel, 0, 0)
+	for _, r := range j.Dashboard.Rows {
+		for _, p := range r.Panels {
+			panelsFromRows = append(panelsFromRows, p)
+		}
+	}
+
+	return append(j.Dashboard.Panels, panelsFromRows...), nil
 }
 
 // AllPanes take a screenshot of all panes in a dashboard
-// IMPORTANT! It assumes there are no rows
 func (gs *GrafanaScreenshotter) AllPanels(ctx context.Context, dashboardUID string, from int64, to int64) ([]Panel, error) {
 	logrus.Debug("getting all ids from dashboard ", dashboardUID)
 	panels, err := gs.getAllPanes(ctx, dashboardUID)
 	if err != nil {
 		return []Panel{}, err
+	}
+
+	// we don't want to take screenshots of row panels
+	panels = removeRowPanels(panels)
+	if len(panels) <= 0 {
+		return []Panel{}, fmt.Errorf("at least 1 panel is required")
 	}
 
 	res := make([]Panel, len(panels), len(panels))
@@ -131,4 +149,16 @@ func (gs *GrafanaScreenshotter) AllPanels(ctx context.Context, dashboardUID stri
 	}
 
 	return res, err
+}
+
+func removeRowPanels(panels []Panel) []Panel {
+	newPanels := make([]Panel, 0, 0)
+
+	for _, p := range panels {
+		if p.Type != "row" {
+			newPanels = append(newPanels, p)
+		}
+	}
+
+	return newPanels
 }

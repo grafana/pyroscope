@@ -1,66 +1,73 @@
 package cache
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/lfu-go"
 	"github.com/valyala/bytebufferpool"
+
+	"github.com/pyroscope-io/pyroscope/pkg/storage/cache/lfu"
 )
 
 type Cache struct {
-	db     *badger.DB
-	lfu    *lfu.Cache
-	prefix string
+	Config
+	lfu *lfu.Cache
 
-	alwaysSave    bool
 	evictionsDone chan struct{}
 	flushOnce     sync.Once
+}
 
-	metrics *Metrics
+type Config struct {
+	*badger.DB
+	Metrics
+	Codec
 
-	// Bytes serializes objects before they go into storage. Users are required to define this one
-	Bytes func(k string, v interface{}) ([]byte, error)
-	// FromBytes deserializes object coming from storage. Users are required to define this one
-	FromBytes func(k string, v []byte) (interface{}, error)
-	// New creates a new object when there's no object in cache or storage. Optional
-	New func(k string) interface{}
+	// Prefix for badger DB keys.
+	Prefix string
+	// TTL specifies number of seconds an item can reside in cache after
+	// the last access. An obsolete item is evicted. Setting TTL to less
+	// than a second disables time-based eviction.
+	TTL time.Duration
+}
+
+// Codec is a shorthand of coder-decoder. A Codec implementation
+// is responsible for type conversions and binary representation.
+type Codec interface {
+	Serialize(w io.Writer, key string, value interface{}) error
+	Deserialize(r io.Reader, key string) (interface{}, error)
+	// New returns a new instance of the type. The method is
+	// called by GetOrCreate when an item can not be found by
+	// the given key.
+	New(key string) interface{}
 }
 
 type Metrics struct {
-	HitCounter          prometheus.Counter
 	MissCounter         prometheus.Counter
 	ReadCounter         prometheus.Counter
-	WritesToDiskCounter prometheus.Counter
+	DiskWritesHistogram prometheus.Observer
+	DiskReadsHistogram  prometheus.Observer
 }
 
-func New(db *badger.DB, prefix string, metrics *Metrics) *Cache {
+func New(c Config) *Cache {
+	cache := &Cache{
+		Config:        c,
+		lfu:           lfu.New(),
+		evictionsDone: make(chan struct{}),
+	}
+
 	evictionChannel := make(chan lfu.Eviction)
 	writeBackChannel := make(chan lfu.Eviction)
 
-	l := lfu.New()
-
 	// eviction channel for saving cache items to disk
-	l.EvictionChannel = evictionChannel
-	l.WriteBackChannel = writeBackChannel
-
-	// disable the eviction based on upper and lower bound
-	l.UpperBound = 0
-	l.LowerBound = 0
-
-	cache := &Cache{
-		db:  db,
-		lfu: l,
-
-		prefix:        prefix,
-		evictionsDone: make(chan struct{}),
-
-		metrics: metrics,
-	}
+	cache.lfu.EvictionChannel = evictionChannel
+	cache.lfu.WriteBackChannel = writeBackChannel
+	cache.lfu.TTL = int64(c.TTL.Seconds())
 
 	// start a goroutine for saving the evicted cache items to disk
 
@@ -91,37 +98,18 @@ func New(db *badger.DB, prefix string, metrics *Metrics) *Cache {
 
 func (cache *Cache) Put(key string, val interface{}) {
 	cache.lfu.Set(key, val)
-	if cache.alwaysSave {
-		cache.saveToDisk(key, val)
-	}
 }
 
-type serializable interface{ Serialize(io.Writer) error }
-
 func (cache *Cache) saveToDisk(key string, val interface{}) error {
-	var buf []byte
-	var err error
-	if s, ok := val.(serializable); ok {
-		b := bytebufferpool.Get()
-		defer bytebufferpool.Put(b)
-		if err = s.Serialize(b); err == nil {
-			buf = b.Bytes()
-		}
-	} else {
-		// Note that `tree.Tree` does not satisfy serializable interface.
-		buf, err = cache.Bytes(key, val)
+	b := bytebufferpool.Get()
+	defer bytebufferpool.Put(b)
+	if err := cache.Serialize(b, key, val); err != nil {
+		return fmt.Errorf("serialization: %w", err)
 	}
-	if err != nil {
-		return fmt.Errorf("serialize key and value: %v", err)
-	}
-
-	cache.metrics.WritesToDiskCounter.Add(1)
-	if err = cache.db.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(cache.prefix+key), buf)
-	}); err != nil {
-		return fmt.Errorf("save to disk: %v", err)
-	}
-	return nil
+	cache.DiskWritesHistogram.Observe(float64(b.Len()))
+	return cache.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(cache.Prefix+key), b.Bytes())
+	})
 }
 
 func (cache *Cache) Flush() {
@@ -144,31 +132,24 @@ func (cache *Cache) Evict(percent float64) {
 	cache.lfu.Evict(int(float64(cache.lfu.Len()) * percent))
 }
 
-// See Evict for more information on this
 func (cache *Cache) WriteBack() {
-	cache.lfu.WriteBack(cache.lfu.Len())
+	cache.lfu.WriteBack()
 }
 
 func (cache *Cache) Delete(key string) error {
 	cache.lfu.Delete(key)
-
-	err := cache.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte(cache.prefix + key))
+	return cache.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(cache.Prefix + key))
 	})
-
-	return err
 }
 
 func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
-	v, err := cache.lookup(key) // find the key from cache first
+	v, err := cache.get(key) // find the key from cache first
 	if err != nil {
 		return nil, err
 	}
 	if v != nil {
 		return v, nil
-	}
-	if cache.New == nil {
-		return nil, errors.New("cache's New function is nil")
 	}
 	v = cache.New(key)
 	cache.lfu.Set(key, v)
@@ -176,73 +157,40 @@ func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
 }
 
 func (cache *Cache) Lookup(key string) (interface{}, bool) {
-	v, err := cache.lookup(key)
+	v, err := cache.get(key)
 	if v == nil || err != nil {
 		return nil, false
 	}
 	return v, true
 }
 
-func (cache *Cache) lookup(key string) (interface{}, error) {
-	cache.metrics.ReadCounter.Add(1)
-
-	// find the key from cache first
-	val := cache.lfu.Get(key)
-	if val != nil {
-		cache.metrics.HitCounter.Add(1)
-		return val, nil
-	}
-	// logrus.WithField("key", key).Debug("lfu miss")
-	cache.metrics.MissCounter.Add(1)
-
-	var copied []byte
-	// read the value from badger
-	if err := cache.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(cache.prefix + key))
-		if err != nil {
-			if err == badger.ErrKeyNotFound {
-				return nil
+func (cache *Cache) get(key string) (interface{}, error) {
+	cache.ReadCounter.Add(1)
+	return cache.lfu.GetOrSet(key, func() (interface{}, error) {
+		cache.MissCounter.Add(1)
+		var buf []byte
+		err := cache.View(func(txn *badger.Txn) error {
+			item, err := txn.Get([]byte(cache.Prefix + key))
+			if err != nil {
+				return err
 			}
+			buf, err = item.ValueCopy(buf)
+			return err
+		})
 
-			return fmt.Errorf("read from badger: %v", err)
+		switch {
+		case err == nil:
+		case errors.Is(err, badger.ErrKeyNotFound):
+			return nil, nil
+		default:
+			return nil, err
 		}
 
-		if err := item.Value(func(val []byte) error {
-			copied = append([]byte{}, val...)
-			return nil
-		}); err != nil {
-			return fmt.Errorf("retrieve value from item: %v", err)
-		}
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("badger view: %v", err)
-	}
-
-	// if it's not found from badger, create a new object
-	if copied == nil {
-		// logrus.WithField("key", key).Debug("storage miss")
-		return nil, nil
-	}
-
-	// deserialize the object from storage
-	val, err := cache.FromBytes(key, copied)
-	if err != nil {
-		return nil, fmt.Errorf("deserialize the object: %v", err)
-	}
-	cache.lfu.Set(key, val)
-	// if it needs to save to disk
-	if cache.alwaysSave {
-		cache.saveToDisk(key, val)
-	}
-
-	// logrus.WithField("key", key).Debug("storage hit")
-	return val, nil
+		cache.DiskReadsHistogram.Observe(float64(len(buf)))
+		return cache.Deserialize(bytes.NewReader(buf), key)
+	})
 }
 
 func (cache *Cache) Size() uint64 {
 	return uint64(cache.lfu.Len())
-}
-
-func (cache *Cache) Len() int {
-	return cache.lfu.Len()
 }

@@ -2,6 +2,7 @@ package dict
 
 import (
 	"bytes"
+	"io"
 	"sync"
 
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
@@ -23,33 +24,45 @@ type Dict struct {
 	root *trieNode
 }
 
+func (td *Dict) GetValue(key Key, value io.Writer) bool {
+	td.m.RLock()
+	defer td.m.RUnlock()
+	return td.readValue(key, value)
+}
+
 func (td *Dict) Get(key Key) (Value, bool) {
 	td.m.RLock()
 	defer td.m.RUnlock()
+	var labelBuf bytes.Buffer
+	if td.readValue(key, &labelBuf) {
+		return labelBuf.Bytes(), true
+	}
+	return nil, false
+}
 
+func (td *Dict) readValue(key Key, w io.Writer) bool {
 	r := bytes.NewReader(key)
 	tn := td.root
-	labelBuf := []byte{}
 	for {
 		v, err := varint.Read(r)
 		if err != nil {
-			return Value(labelBuf), true
+			return true
+		}
+		if int(v) >= len(tn.children) {
+			return false
 		}
 
-		if int(v) >= len(tn.children) {
-			return nil, false
-		}
 		label := tn.children[v].label
-		labelBuf = append(labelBuf, label...)
+		_, _ = w.Write(label)
 		tn = tn.children[v]
 
 		expectedLen, _ := varint.Read(r)
 		for len(label) < int(expectedLen) {
 			if len(tn.children) == 0 {
-				return nil, false
+				return false
 			}
 			label2 := tn.children[0].label
-			labelBuf = append(labelBuf, label2...)
+			_, _ = w.Write(label2)
 			expectedLen -= uint64(len(label2))
 			tn = tn.children[0]
 		}
@@ -59,8 +72,7 @@ func (td *Dict) Get(key Key) (Value, bool) {
 func (td *Dict) Put(val Value) Key {
 	td.m.Lock()
 	defer td.m.Unlock()
-
-	buf := &bytes.Buffer{}
-	td.root.findNodeAt(val, buf)
-	return Key(buf.Bytes())
+	var buf bytes.Buffer
+	td.root.findNodeAt(val, &buf)
+	return buf.Bytes()
 }
