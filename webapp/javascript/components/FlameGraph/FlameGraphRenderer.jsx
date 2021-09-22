@@ -138,7 +138,7 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateSortBy(newSortBy) {
+  updateSortBy = (newSortBy) => {
     let dir = this.state.sortByDirection;
     if (this.state.sortBy === newSortBy) {
       dir = dir === "asc" ? "desc" : "asc";

@@ -73,4 +73,81 @@ describe('basic test', () => {
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
 
+  it('sorting is working', () => {        
+    /** 
+     * @param row 'first' | 'last' 
+     * @param column 'location' | 'self' | 'total'
+    */
+
+    const columns = {
+      location: {
+        index: 1,
+        selector: '.symbol-name'
+      },
+      self: {
+        index: 2,
+        selector: 'span'
+      },
+      total: {
+        index: 3,
+        selector: 'span'
+      }
+    }
+
+    const sortColumn = (columnIndex) => {
+      return cy.findByTestId('table-view').find(`thead > tr > :nth-child(${columnIndex})`).click();
+    }
+
+    const getCellContent =  (row, column) => {
+        let query = `tbody > :nth-child(${row}) > :nth-child(${column.index}) > ${column.selector}`;
+        return cy.findByTestId('table-view').find(query)
+        .then(cell => cell[0].innerText);
+    }
+
+    cy.intercept('**/render*', {
+      fixture: 'render.json',
+      times: 1
+    }).as('render');
+
+    cy.visit('/');
+
+    cy.findByTestId('table-view')
+      .find('tbody > tr')
+      .then((rows) => {
+        const first = 1;
+        const last = rows.length;
+
+        //sort by location desc
+        sortColumn(columns['location'].index);
+        getCellContent(first, columns['location']).should('eq', 'function_6');
+        getCellContent(last, columns['location']).should('eq', 'function_0');
+        
+        //sort by location asc
+        sortColumn(columns['location'].index);
+        getCellContent(first, columns['location']).should('eq', 'function_0');
+        getCellContent(last, columns['location']).should('eq', 'function_6');
+
+        //sort by self desc
+        sortColumn(columns['self'].index);
+        getCellContent(first, columns['self']).should('eq', '5.00 seconds');
+        getCellContent(last, columns['self']).should('eq', '0.55 seconds');
+
+        //sort by self asc
+        sortColumn(columns['self'].index);
+        getCellContent(first, columns['self']).should('eq', '0.55 seconds');
+        getCellContent(last, columns['self']).should('eq', '5.00 seconds');
+
+        //sort by total desc
+        sortColumn(columns['total'].index);
+        getCellContent(first, columns['total']).should('eq', '5.16 seconds');
+        getCellContent(last, columns['total']).should('eq', '0.50 seconds');
+
+        //sort by total asc
+        sortColumn(columns['total'].index);
+        getCellContent(first, columns['total']).should('eq', '0.50 seconds');
+        getCellContent(last, columns['total']).should('eq', '5.16 seconds');
+      })
+  });
+
 })
+    
