@@ -48,7 +48,9 @@ class FlameGraphRenderer extends React.Component {
       viewDiff: props.viewType === "diff" ? "diff" : undefined,
       fitMode: props.fitMode ? props.fitMode : "HEAD",
       flamebearer: null,
-      query: "",
+
+      // query used in the 'search' checkbox
+      highlightQuery: "",
     };
   }
 
@@ -87,6 +89,7 @@ class FlameGraphRenderer extends React.Component {
       }
     }
 
+
     if (this.props.viewType === "diff") {
       if (
         propsChanged ||
@@ -98,6 +101,7 @@ class FlameGraphRenderer extends React.Component {
         this.fetchFlameBearerData(this.props.diffRenderURL);
       }
     }
+
   }
 
   componentWillUnmount() {
@@ -249,9 +253,10 @@ class FlameGraphRenderer extends React.Component {
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
           ExportData={ExportData}
-          query={this.state.query}
+          query={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
+          label={this.props.query}
         />
       ) : null;
 
