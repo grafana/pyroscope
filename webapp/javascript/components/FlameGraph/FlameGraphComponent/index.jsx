@@ -158,7 +158,6 @@ class FlameGraph extends React.Component {
     this.selectedLevel = 0;
     this.rangeMin = 0;
     this.rangeMax = 1;
-    this.query = "";
 
     window.addEventListener("resize", this.resizeHandler);
     window.addEventListener("focus", this.focusHandler);
@@ -181,11 +180,11 @@ class FlameGraph extends React.Component {
       this.props.width !== prevProps.width ||
       this.props.height !== prevProps.height ||
       this.props.view !== prevProps.view ||
-      this.props.fitMode !== prevProps.fitMode
-    ) {
+      this.props.fitMode !== prevProps.fitMode) {
       this.updateData();
     }
-    if (this.props.fitMode !== prevProps.fitMode) {
+    if (this.props.fitMode !== prevProps.fitMode ||
+        this.props.query !== prevProps.query) {
       setTimeout(() => this.renderCanvas(), 0);
     }
   }
@@ -226,7 +225,6 @@ class FlameGraph extends React.Component {
   //   j = 6  : position in the main index (jStep)
 
   updateResetStyle = () => {
-    // const emptyQuery = this.query === "";
     const topLevelSelected = this.selectedLevel === 0;
     this.setState({
       resetStyle: { visibility: topLevelSelected ? "hidden" : "visible" },
@@ -317,9 +315,9 @@ class FlameGraph extends React.Component {
         let numBarTicks = ff.getBarTotal(level, j);
 
         // For this particular bar, there is a match
-        const queryExists = this.query.length > 0;
+        const queryExists = this.props.query.length > 0;
         const nodeIsInQuery =
-          (this.query && names[level[j + ff.jName]].indexOf(this.query) >= 0) ||
+          (this.props.query && names[level[j + ff.jName]].indexOf(this.props.query) >= 0) ||
           false;
         // merge very small blocks into big "collapsed" ones for performance
         const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
@@ -334,8 +332,8 @@ class FlameGraph extends React.Component {
             ff.getBarTotal(level, j + ff.jStep) * this.pxPerTick <=
               COLLAPSE_THRESHOLD &&
             nodeIsInQuery ===
-              ((this.query &&
-                names[level[j + ff.jStep + ff.jName]].indexOf(this.query) >=
+              ((this.props.query &&
+                names[level[j + ff.jStep + ff.jName]].indexOf(this.props.query) >=
                   0) ||
                 false)
           ) {

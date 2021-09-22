@@ -48,6 +48,7 @@ class FlameGraphRenderer extends React.Component {
       viewDiff: props.viewType === "diff" ? "diff" : undefined,
       fitMode: props.fitMode ? props.fitMode : "HEAD",
       flamebearer: null,
+      query: "",
     };
   }
 
@@ -118,7 +119,9 @@ class FlameGraphRenderer extends React.Component {
   };
 
   handleSearchChange = (e) => {
-    this.query = e.target.value;
+    this.setState({
+      query: e.target.value
+    });
     this.updateResetStyle();
   };
 
@@ -246,7 +249,7 @@ class FlameGraphRenderer extends React.Component {
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
           ExportData={ExportData}
-          label={this.props.query}
+          query={this.state.query}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
         />
