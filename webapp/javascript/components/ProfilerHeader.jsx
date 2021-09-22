@@ -8,6 +8,8 @@ import { faIcicles } from "@fortawesome/free-solid-svg-icons/faIcicles";
 import { faListUl } from "@fortawesome/free-solid-svg-icons/faListUl";
 import { faTable } from "@fortawesome/free-solid-svg-icons/faTable";
 import { FitModes } from "../util/fitMode";
+import { debounce } from "lodash";
+import { useCallback, useState } from "react";
 
 export default function ProfilerHeader({
   view,
@@ -20,13 +22,22 @@ export default function ProfilerHeader({
   updateView,
   updateViewDiff,
 }) {
+
+  // debounce the search
+  // since rebuilding the canvas on each keystroke is expensive
+  const deb = useCallback(debounce(e => handleSearchChange(e), 250, { maxWait: 1000 }), []);
+  const onChange = (e) => {
+    const q = e.target.value;
+    deb(q);
+  }
+
   return (
     <div className="navbar-2">
       <input
         className="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
-        onChange={handleSearchChange}
+        onChange={onChange}
       />
       &nbsp;
       <select
