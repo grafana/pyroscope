@@ -124,7 +124,7 @@ class FlameGraphRenderer extends React.Component {
 
   handleSearchChange = (e) => {
     this.setState({
-      query: e
+      highlightQuery: e
     });
 //    this.updateResetStyle();
   };
