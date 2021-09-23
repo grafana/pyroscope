@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/valyala/bytebufferpool"
 )
 
 const (
@@ -19,9 +21,11 @@ const (
 	positionOffsetMask = positionLengthMask << 32
 )
 
+var labelsPool = bytebufferpool.Pool{}
+
 var treePool = sync.Pool{New: func() interface{} {
 	return &Tree{
-		labels: make([]byte, 0, initialLabelsBufferSizeBytes),
+		labels: labelsPool.Get(),
 		nodes:  make([]treeNode, 0, initialNodesBufferSizeCount),
 	}
 }}
@@ -29,7 +33,7 @@ var treePool = sync.Pool{New: func() interface{} {
 type Tree struct {
 	sync.RWMutex
 	nodes  []treeNode
-	labels []byte
+	labels *bytebufferpool.ByteBuffer
 }
 
 type treeNode struct {
@@ -44,8 +48,8 @@ func New() *Tree {
 }
 
 func (t *Tree) Reset() {
-	t.labels = t.labels[:0]
 	t.nodes = t.nodes[:0]
+	labelsPool.Put(t.labels)
 	treePool.Put(t)
 }
 
@@ -86,9 +90,9 @@ func (t *Tree) at(idx int) *treeNode {
 func (t *Tree) root() *treeNode { return t.at(0) }
 
 func (t *Tree) insertLabel(v []byte) uint64 {
-	offset := len(t.labels) << 32
-	t.labels = append(t.labels, v...)
-	return uint64(offset | (len(t.labels) & positionLengthMask))
+	offset := t.labels.Len() << 32
+	_, _ = t.labels.Write(v)
+	return uint64(offset | (t.labels.Len() & positionLengthMask))
 }
 
 func (t *Tree) loadNodeLabel(idx int) []byte {
@@ -96,7 +100,7 @@ func (t *Tree) loadNodeLabel(idx int) []byte {
 }
 
 func (t *Tree) loadLabel(k uint64) []byte {
-	return t.labels[((k & positionOffsetMask) >> 32):(k & positionLengthMask)]
+	return t.labels.B[((k & positionOffsetMask) >> 32):(k & positionLengthMask)]
 }
 
 func (t *Tree) Merge(src *Tree) {
@@ -220,10 +224,7 @@ func (t *Tree) clone(m, d uint64) *Tree {
 			ChildrenNodes: c,
 		})
 	}
-	if s := cap(t.labels) - cap(newTrie.labels); s > 0 {
-		newTrie.labels = make([]byte, len(t.labels))
-	}
-	newTrie.labels = append(newTrie.labels, t.labels...)
+	_, _ = newTrie.labels.Write(t.labels.B)
 	return newTrie
 }
 

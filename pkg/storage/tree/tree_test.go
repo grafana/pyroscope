@@ -33,20 +33,13 @@ var _ = Describe("tree package", func() {
 			treeA := New()
 			treeA.Insert([]byte("a;b"), uint64(1))
 			treeA.Insert([]byte("a;c"), uint64(2))
-			It("properly sets up tree A", func() {
-				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 1|"a;c" 2|`)))
-			})
 
 			treeB := New()
 			treeB.Insert([]byte("a;b"), uint64(4))
 			treeB.Insert([]byte("a;c"), uint64(8))
-			It("properly sets up tree B", func() {
-				Expect(treeB.String()).To(Equal(treeStr(`"a;b" 4|"a;c" 8|`)))
-			})
 
 			It("properly merges", func() {
 				treeA.Merge(treeB)
-
 				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 5|"a;c" 10|`)))
 			})
 		})
@@ -83,6 +76,18 @@ var _ = Describe("tree package", func() {
 			tree.Insert([]byte("a;c"), uint64(2))
 			Expect(tree.Clone(big.NewRat(2, 1)).String()).
 				To(Equal("\"a;b\" 2\n\"a;c\" 4\n"))
+		})
+	})
+
+	Context("MarshalJSON", func() {
+		Context("creates a tree copy", func() {
+			tree := New()
+			tree.Insert([]byte("a;b"), uint64(1))
+			tree.Insert([]byte("a;c"), uint64(2))
+
+			s, err := tree.MarshalJSON()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(string(s)).To(Equal(`{"name":"","total":3,"self":0,"children":[{"name":"a","total":3,"self":0,"children":[{"name":"b","total":1,"self":1,"children":[]},{"name":"c","total":2,"self":2,"children":[]}]}]}`))
 		})
 	})
 })
