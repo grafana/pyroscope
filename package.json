@@ -14,6 +14,7 @@
     "test": "jest",
     "lint": "eslint ./ --ext .js,.jsx,.ts,.tsx --cache --fix",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "size-build": "make assets-size-build",
     "cy:open": "cypress open",
     "cy:ci": "cypress run",
