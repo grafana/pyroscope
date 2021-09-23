@@ -1,3 +1,4 @@
+import { BAR_HEIGHT } from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx'
 /// <reference types="cypress" />
 describe('basic test', () => {
   it('successfully loads', () => {
@@ -156,5 +157,19 @@ describe('basic test', () => {
       })
   });
 
+  it('validates "Reset View" works', () => {
+    cy.intercept('**/render*', {
+      fixture: 'simple-golang-app-cpu.json',
+    }).as('render')
+
+    cy.visit('/')
+
+    cy.findByTestId('reset-view').should('not.be.visible');
+    cy.findByTestId('flamegraph-canvas')
+      .click(0, BAR_HEIGHT)
+    cy.findByTestId('reset-view').should('be.visible');
+    cy.findByTestId('reset-view').click();
+    cy.findByTestId('reset-view').should('not.be.visible');
+  });
 })
     
