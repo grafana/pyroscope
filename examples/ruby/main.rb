@@ -2,7 +2,7 @@ require "pyroscope"
 
 Pyroscope.configure do |config|
   config.app_name = "test.ruby.app{}"
-  config.server_address = "http://localhost:4040/"
+  config.server_address = "http://pyroscope:4040/"
 end
 
 def work(n)
@@ -13,11 +13,15 @@ def work(n)
 end
 
 def fast_function
+  Pyroscope.set_tag("function", "fast")
   work(20000)
+  Pyroscope.set_tag("function", "")
 end
 
 def slow_function
+  Pyroscope.set_tag("function", "slow")
   work(80000)
+  Pyroscope.set_tag("function", "")
 end
 
 while true

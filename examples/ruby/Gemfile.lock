@@ -1,13 +1,13 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    pyroscope (0.0.22)
+    pyroscope (0.0.23)
 
 PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  pyroscope (= 0.0.22)
+  pyroscope (= 0.0.23)
 
 BUNDLED WITH
    2.2.22
