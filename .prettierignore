@@ -1,6 +1,5 @@
 webapp/public
 third_party
 *.md
-*.json
 monitoring/gen/*
 .prettierignore

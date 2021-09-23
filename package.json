@@ -17,7 +17,8 @@
     "size-build": "make assets-size-build",
     "cy:open": "cypress open",
     "cy:ci": "cypress run",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "lint-staged": "lint-staged"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
@@ -122,6 +123,6 @@
     "*.{js,jsx,ts,tsx}": [
       "eslint --cache --fix"
     ],
-    "*.{js,jsx,ts,tsx,json}": "prettier --write"
+    "*.{js,jsx,ts,tsx,json,yml,yaml}": "prettier --write"
   }
 }
