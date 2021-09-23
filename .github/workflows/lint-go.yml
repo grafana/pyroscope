@@ -16,4 +16,4 @@ jobs:
         uses: petethepig/revive-action@v5
         with:
           config: revive.toml
-          exclude: "vendor/..."
+          exclude: 'vendor/...'

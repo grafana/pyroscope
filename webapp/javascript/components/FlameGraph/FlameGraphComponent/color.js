@@ -1,6 +1,6 @@
 /* eslint-disable camelcase */
-import Color from "color";
-import murmurhash3_32_gc from "./murmur3";
+import Color from 'color';
+import murmurhash3_32_gc from './murmur3';
 
 const colors = [
   Color.hsl(24, 69, 60),

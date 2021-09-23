@@ -4,6 +4,5 @@ export function isAbortError(err) {
   }
 
   // https://developer.mozilla.org/en-US/docs/Web/API/DOMException
-  return err.name === 'AbortError'
-    || err.code === 20;
+  return err.name === 'AbortError' || err.code === 20;
 }

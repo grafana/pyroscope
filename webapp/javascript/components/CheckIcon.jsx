@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 // https://www.svgrepo.com/vectors/check/
 export default function CheckIcon() {
