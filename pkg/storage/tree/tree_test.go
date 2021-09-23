@@ -1,6 +1,7 @@
 package tree
 
 import (
+	"math/big"
 	"math/rand"
 	"strings"
 
@@ -72,6 +73,16 @@ var _ = Describe("tree package", func() {
 
 				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 5|"a;c" 2|"a;d" 8|"a;e" 15|`)))
 			})
+		})
+	})
+
+	Context("Clone", func() {
+		Context("creates a tree copy", func() {
+			tree := New()
+			tree.Insert([]byte("a;b"), uint64(1))
+			tree.Insert([]byte("a;c"), uint64(2))
+			Expect(tree.Clone(big.NewRat(2, 1)).String()).
+				To(Equal("\"a;b\" 2\n\"a;c\" 4\n"))
 		})
 	})
 })

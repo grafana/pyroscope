@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"io"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
@@ -14,164 +15,92 @@ import (
 const currentVersion = 1
 
 func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
-	t.RLock()
-	defer t.RUnlock()
-
-	varint.Write(w, currentVersion)
-
-	nodes := []*treeNode{t.root}
-	minVal := t.minValue(maxNodes)
-	j := 0
-
-	for len(nodes) > 0 {
-		j++
-		tn := nodes[0]
-		nodes = nodes[1:]
-
-		labelLink := d.Put(t.loadLabel(tn.labelPosition))
-		_, err := varint.Write(w, uint64(len(labelLink)))
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(labelLink)
-		if err != nil {
-			return err
-		}
-
-		val := tn.Self
-		_, err = varint.Write(w, uint64(val))
-		if err != nil {
-			return err
-		}
-		cnl := uint64(0)
-		if tn.Total > minVal {
-			cnl = uint64(len(tn.ChildrenNodes))
-			nodes = append(tn.ChildrenNodes, nodes...)
-		}
-		_, err = varint.Write(w, cnl)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (t *Tree) SerializeTruncate(d *dict.Dict, maxNodes int, w io.Writer) error {
 	t.Lock()
 	defer t.Unlock()
 	vw := varint.NewWriter()
+
+	// TODO: introduce the next version, ensure backward compatibility.
+	// TODO: implement truncation (?).
 	var err error
 	if _, err = vw.Write(w, currentVersion); err != nil {
 		return err
 	}
 
-	minVal := t.minValue(maxNodes)
-	nodes := make([]*treeNode, 1, 128)
-	nodes[0] = t.root
-	for len(nodes) > 0 {
-		tn := nodes[0]
-		nodes = nodes[1:]
+	if _, err = vw.Write(w, uint64(len(t.nodes))); err != nil {
+		return err
+	}
 
-		labelKey := d.Put(t.loadLabel(tn.labelPosition))
+	for _, n := range t.nodes {
+		if _, err = vw.Write(w, uint64(len(n.ChildrenNodes))); err != nil {
+			return err
+		}
+		for _, c := range n.ChildrenNodes {
+			if _, err = vw.Write(w, uint64(c)); err != nil {
+				return err
+			}
+		}
+		// TODO: labels to be written as a blob.
+		// TODO: what if not use dictionaries?
+		labelKey := d.Put(t.loadLabel(n.labelPosition))
 		if _, err = vw.Write(w, uint64(len(labelKey))); err != nil {
 			return err
 		}
 		if _, err = w.Write(labelKey); err != nil {
 			return err
 		}
-		val := tn.Self
-		if _, err = vw.Write(w, val); err != nil {
+		if _, err = vw.Write(w, n.Self); err != nil {
 			return err
 		}
-
-		cNodes := tn.ChildrenNodes
-		tn.ChildrenNodes = tn.ChildrenNodes[:0]
-		for _, cn := range cNodes {
-			if cn.Total >= minVal {
-				tn.ChildrenNodes = append(tn.ChildrenNodes, cn)
-			}
-		}
-		if len(tn.ChildrenNodes) > 0 {
-			nodes = append(tn.ChildrenNodes, nodes...)
-		} else {
-			tn.ChildrenNodes = nil // Just to make it eligible for GC.
-		}
-		if _, err = vw.Write(w, uint64(len(tn.ChildrenNodes))); err != nil {
+		if _, err = vw.Write(w, n.Total); err != nil {
 			return err
 		}
 	}
+
 	return nil
-}
-
-func (t *Tree) SerializeNoDict(maxNodes int, w io.Writer) error {
-	t.RLock()
-	defer t.RUnlock()
-
-	nodes := []*treeNode{t.root}
-	minVal := t.minValue(maxNodes)
-	j := 0
-
-	for len(nodes) > 0 {
-		j++
-		tn := nodes[0]
-		nodes = nodes[1:]
-
-		label := t.loadLabel(tn.labelPosition)
-		_, err := varint.Write(w, uint64(len(label)))
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(label)
-		if err != nil {
-			return err
-		}
-
-		val := tn.Self
-		_, err = varint.Write(w, val)
-		if err != nil {
-			return err
-		}
-		cnl := uint64(0)
-		if tn.Total > minVal {
-			cnl = uint64(len(tn.ChildrenNodes))
-			nodes = append(tn.ChildrenNodes, nodes...)
-		}
-		_, err = varint.Write(w, cnl)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type parentNode struct {
-	node   *treeNode
-	parent *parentNode
 }
 
 func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
-	t := New()
-	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
+	br := bufio.NewReader(r)
 
 	// reads serialization format version, see comment at the top
-	_, err := varint.Read(br)
-	if err != nil {
+	var err error
+	if _, err = binary.ReadUvarint(br); err != nil {
 		return nil, err
 	}
 
-	parents := []*parentNode{{t.root, nil}}
-	j := 0
+	var nodes uint64
+	if nodes, err = varint.Read(br); err != nil {
+		return nil, err
+	}
+
+	t := New()
+	// Trim root.
+	if s := int(nodes) - cap(t.nodes); s > 0 {
+		t.grow(s)
+	}
 
 	var nameBuf bytes.Buffer
-	for len(parents) > 0 {
-		j++
-		parent := parents[0]
-		parents = parents[1:]
+	for i := uint64(0); i < nodes; i++ {
+		var cl uint64
+		if cl, err = binary.ReadUvarint(br); err != nil {
+			return nil, err
+		}
+		var n treeNode
+		for j := uint64(0); j < cl; j++ {
+			var c uint64
+			if c, err = binary.ReadUvarint(br); err != nil {
+				return nil, err
+			}
+			n.ChildrenNodes = append(n.ChildrenNodes, int(c))
+		}
 
-		labelLen, err := varint.Read(br)
-		labelLinkBuf := make([]byte, labelLen) // TODO: there are better ways to do this?
-		_, err = io.ReadAtLeast(br, labelLinkBuf, int(labelLen))
-		if err != nil {
+		var labelLen uint64
+		if labelLen, err = varint.Read(br); err != nil {
+			return nil, err
+		}
+
+		labelLinkBuf := make([]byte, labelLen)
+		if _, err = io.ReadAtLeast(br, labelLinkBuf, int(labelLen)); err != nil {
 			return nil, err
 		}
 
@@ -181,92 +110,16 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 			nameBuf.Reset()
 			nameBuf.WriteString("label not found " + base64.URLEncoding.EncodeToString(labelLinkBuf))
 		}
-		tn := parent.node.insert(t, nameBuf.Bytes())
-		tn.Self, err = varint.Read(br)
-		tn.Total = tn.Self
-		if err != nil {
+		n.labelPosition = t.insertLabel(nameBuf.Bytes())
+
+		if n.Self, err = binary.ReadUvarint(br); err != nil {
 			return nil, err
 		}
-
-		pn := parent
-		for pn != nil {
-			pn.node.Total += tn.Self
-			pn = pn.parent
-		}
-
-		childrenLen, err := varint.Read(br)
-		if err != nil {
+		if n.Total, err = binary.ReadUvarint(br); err != nil {
 			return nil, err
 		}
-
-		for i := uint64(0); i < childrenLen; i++ {
-			parents = append([]*parentNode{{tn, parent}}, parents...)
-		}
+		t.nodes = append(t.nodes, n)
 	}
-
-	t.root = t.root.ChildrenNodes[0]
 
 	return t, nil
-}
-
-func DeserializeNoDict(r io.Reader) (*Tree, error) {
-	t := New()
-	br := bufio.NewReader(r) // TODO if it's already a bytereader skip
-
-	parents := []*parentNode{{t.root, nil}}
-	j := 0
-
-	for len(parents) > 0 {
-		j++
-		parent := parents[0]
-		parents = parents[1:]
-
-		nameLen, err := varint.Read(br)
-		// if err == io.EOF {
-		// 	return t, nil
-		// }
-		nameBuf := make([]byte, nameLen) // TODO: there are better ways to do this?
-		_, err = io.ReadAtLeast(br, nameBuf, int(nameLen))
-		if err != nil {
-			return nil, err
-		}
-		tn := parent.node.insert(t, nameBuf)
-
-		tn.Self, err = varint.Read(br)
-		tn.Total = tn.Self
-		if err != nil {
-			return nil, err
-		}
-
-		pn := parent
-		for pn != nil {
-			pn.node.Total += tn.Self
-			pn = pn.parent
-		}
-
-		childrenLen, err := varint.Read(br)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := uint64(0); i < childrenLen; i++ {
-			parents = append([]*parentNode{{tn, parent}}, parents...)
-		}
-	}
-
-	t.root = t.root.ChildrenNodes[0]
-
-	return t, nil
-}
-
-func (t *Tree) Bytes(d *dict.Dict, maxNodes int) ([]byte, error) {
-	b := bytes.Buffer{}
-	if err := t.Serialize(d, maxNodes, &b); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
-}
-
-func FromBytes(d *dict.Dict, p []byte) (*Tree, error) {
-	return Deserialize(d, bytes.NewReader(p))
 }

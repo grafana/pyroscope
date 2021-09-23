@@ -22,7 +22,7 @@ const (
 var treePool = sync.Pool{New: func() interface{} {
 	return &Tree{
 		labels: make([]byte, 0, initialLabelsBufferSizeBytes),
-		nodes:  make([]treeNode, 1, initialNodesBufferSizeCount), // 1 for the root.
+		nodes:  make([]treeNode, 0, initialNodesBufferSizeCount),
 	}
 }}
 
@@ -76,8 +76,14 @@ func (t *Tree) grow(n int) int {
 // Note that if nodes slice is re-allocated (e.g. due to put or grow),
 // the pointer will be invalid.
 func (t *Tree) at(idx int) *treeNode {
+	if len(t.nodes) == 0 {
+		t.nodes = append(t.nodes, treeNode{})
+	}
 	return &(t.nodes)[idx]
 }
+
+// root returns pointer to the tree root node.
+func (t *Tree) root() *treeNode { return t.at(0) }
 
 func (t *Tree) insertLabel(v []byte) uint64 {
 	offset := len(t.labels) << 32
@@ -94,7 +100,7 @@ func (t *Tree) loadLabel(k uint64) []byte {
 }
 
 func (t *Tree) Merge(src *Tree) {
-	srcNodes := make([]int, 1, 128)
+	srcNodes := make([]int, 1, 128) // 1 for root.
 	dstNodes := make([]int, 1, 128)
 	if cap(t.nodes)-len(t.nodes) < len(src.nodes) {
 		t.grow(len(src.nodes))
@@ -128,7 +134,7 @@ func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 		t.grow(len(labels))
 	}
 
-	node := t.at(0)
+	node := t.root()
 	for _, label := range labels {
 		node.Total += value
 		node, _ = node.insert(t, label)
@@ -187,7 +193,7 @@ func prependBytes(s [][]byte, x []byte) [][]byte {
 }
 
 func (t *Tree) Samples() uint64 {
-	return t.at(0).Total
+	return t.root().Total
 }
 
 func (t *Tree) Clone(r *big.Rat) *Tree {
@@ -203,11 +209,21 @@ func (t *Tree) clone(m, d uint64) *Tree {
 	if s := cap(t.nodes) - cap(newTrie.nodes); s > 0 {
 		newTrie.grow(s)
 	}
-	copy(newTrie.nodes, t.nodes)
+	for i := range t.nodes {
+		x := t.at(i)
+		c := make([]int, len(x.ChildrenNodes))
+		copy(c, x.ChildrenNodes)
+		newTrie.nodes = append(newTrie.nodes, treeNode{
+			labelPosition: x.labelPosition,
+			Total:         x.Total * m / d,
+			Self:          x.Self * m / d,
+			ChildrenNodes: c,
+		})
+	}
 	if s := cap(t.labels) - cap(newTrie.labels); s > 0 {
 		newTrie.labels = make([]byte, len(t.labels))
 	}
-	copy(newTrie.labels, t.labels)
+	newTrie.labels = append(newTrie.labels, t.labels...)
 	return newTrie
 }
 

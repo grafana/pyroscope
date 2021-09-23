@@ -5,7 +5,7 @@ import "encoding/json"
 func (t *Tree) MarshalJSON() ([]byte, error) {
 	t.RLock()
 	defer t.RUnlock()
-	return json.Marshal(t.at(0).toJSONNode(t))
+	return json.Marshal(t.root().toJSONNode(t))
 }
 
 type treeNodeJSON struct {

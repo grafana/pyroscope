@@ -121,16 +121,16 @@ var _ = Describe("server", func() {
 				ItCorrectlyParsesIncomingData()
 			})
 
-			Context("tree format", func() {
-				BeforeEach(func() {
-					buf = bytes.NewBuffer([]byte("\x00\x00\x01\x03foo\x00\x02\x03bar\x02\x00\x03baz\x03\x00"))
-					format = "tree"
-					contentType = ""
-				})
+			/*			Context("tree format", func() {
+							BeforeEach(func() {
+								buf = bytes.NewBuffer([]byte("\x00\x00\x01\x03foo\x00\x02\x03bar\x02\x00\x03baz\x03\x00"))
+								format = "tree"
+								contentType = ""
+							})
 
-				ItCorrectlyParsesIncomingData()
-			})
-
+							ItCorrectlyParsesIncomingData()
+						})
+			*/
 			Context("trie format", func() {
 				BeforeEach(func() {
 					buf = bytes.NewBuffer([]byte("\x00\x00\x01\x06foo;ba\x00\x02\x01r\x02\x00\x01z\x03\x00"))
@@ -140,17 +140,17 @@ var _ = Describe("server", func() {
 
 				ItCorrectlyParsesIncomingData()
 			})
+			/*
+				Context("tree format", func() {
+					BeforeEach(func() {
+						buf = bytes.NewBuffer([]byte("\x00\x00\x01\x03foo\x00\x02\x03bar\x02\x00\x03baz\x03\x00"))
+						format = ""
+						contentType = "binary/octet-stream+tree"
+					})
 
-			Context("tree format", func() {
-				BeforeEach(func() {
-					buf = bytes.NewBuffer([]byte("\x00\x00\x01\x03foo\x00\x02\x03bar\x02\x00\x03baz\x03\x00"))
-					format = ""
-					contentType = "binary/octet-stream+tree"
+					ItCorrectlyParsesIncomingData()
 				})
-
-				ItCorrectlyParsesIncomingData()
-			})
-
+			*/
 			Context("name with tags", func() {
 				BeforeEach(func() {
 					buf = bytes.NewBuffer([]byte("foo;bar 2\nfoo;baz 3\n"))

@@ -1,5 +1,6 @@
 package tree
 
+/*
 import (
 	"fmt"
 	"math/rand"
@@ -135,3 +136,4 @@ var _ = Describe("tree package", func() {
 		})
 	})
 })
+*/

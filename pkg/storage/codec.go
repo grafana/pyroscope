@@ -20,7 +20,7 @@ func (c treeCodec) Serialize(w io.Writer, k string, v interface{}) error {
 	if err != nil {
 		return fmt.Errorf("dicts cache for %v: %w", key, err)
 	}
-	err = v.(*tree.Tree).SerializeTruncate(d.(*dict.Dict), c.config.MaxNodesSerialization, w)
+	err = v.(*tree.Tree).Serialize(d.(*dict.Dict), c.config.MaxNodesSerialization, w)
 	if err != nil {
 		return fmt.Errorf("serialize %v: %w", key, err)
 	}

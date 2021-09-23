@@ -8,54 +8,20 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 )
 
-var dictSerializeExample = []byte("\x01\x00\x00\x01\x02\x00\x01\x00\x02\x02\x01\x01\x01\x00\x02\x02\x01\x02\x00")
-
 var _ = Describe("tree", func() {
-	Describe("Insert", func() {
-		tree := New()
-		tree.Insert([]byte("a;b"), uint64(1))
-		tree.Insert([]byte("a;c"), uint64(2))
-
-		It("correctly sets children nodes", func() {
-			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
-		})
-	})
-
-	Describe("Serialize", func() {
+	Describe("Serialize/Deserialize", func() {
 		d := dict.New()
 		tree := New()
 		tree.Insert([]byte("a;b"), uint64(1))
 		tree.Insert([]byte("a;c"), uint64(2))
+		expected := tree.String()
 
-		It("serializes tree", func() {
-			var buf bytes.Buffer
-			tree.Serialize(d, 1024, &buf)
-			Expect(buf.Bytes()).To(Equal(dictSerializeExample))
-		})
-
-		Context("Ran 1000000 times", func() {
-			var buf1 bytes.Buffer
-			tree.Serialize(d, 1024, &buf1)
-			It("returns the same result", func() {
-				var buf2 bytes.Buffer
-				tree.Serialize(d, 1024, &buf2)
-				Expect(buf2).To(Equal(buf1))
-			})
-		})
-	})
-
-	Describe("Deserialize", func() {
-		// TODO: add a case with a real dictionary
-		It("returns a properly deserialized tree", func() {
-			d := dict.New()
-			r := bytes.NewReader(dictSerializeExample)
-			t, err := Deserialize(d, r)
+		var buf bytes.Buffer
+		It("works correctly", func() {
+			Expect(tree.Serialize(d, 1024, &buf)).ToNot(HaveOccurred())
+			dt, err := Deserialize(d, bytes.NewReader(buf.Bytes()))
 			Expect(err).ToNot(HaveOccurred())
-
-			Expect(string(t.loadLabel(t.root.labelPosition))).To(Equal(""))
-			Expect(string(t.loadLabel(t.root.ChildrenNodes[0].labelPosition))).To(Equal("label not found AAE="))
-			Expect(string(t.loadLabel(t.root.ChildrenNodes[0].ChildrenNodes[0].labelPosition))).To(Equal("label not found AQE="))
-			Expect(string(t.loadLabel(t.root.ChildrenNodes[0].ChildrenNodes[1].labelPosition))).To(Equal("label not found AgE="))
+			Expect(dt.String()).To(Equal(expected))
 		})
 	})
 })

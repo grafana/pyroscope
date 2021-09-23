@@ -31,7 +31,7 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 		Format:   FormatSingle,
 	}
 
-	nodes := []*treeNode{t.root}
+	nodes := []*treeNode{t.root()}
 	xOffsets := []int{0}
 	levels := []int{0}
 	minVal := t.minValue(maxNodes)
@@ -75,7 +75,8 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 
 			xOffset += int(tn.Self)
 			otherTotal := uint64(0)
-			for _, n := range tn.ChildrenNodes {
+			for _, j := range tn.ChildrenNodes {
+				n := t.at(j)
 				if n.Total >= minVal {
 					xOffsets = append([]int{xOffset}, xOffsets...)
 					levels = append([]int{level + 1}, levels...)
