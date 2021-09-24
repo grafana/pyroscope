@@ -19,48 +19,42 @@ describe('basic test', () => {
     cy.location('pathname').should('eq', '/');
   });
 
-  it('app selector works', () => {
-    cy.intercept('**/render*', {
-      fixture: 'render.json',
-      times: 1,
-    }).as('render1');
+  it('changes app via the application dropdown', () => {
+    const intercept = (name: string) => {
+      cy.intercept(`**/render*query=${name}*`, {
+        fixture: name,
+        times: 1,
+      }).as(name);
+    };
 
+    const match = (name: string) => {
+      cy.findByTestId('app-name-selector').select(name);
+      cy.wait(`@${name}`);
+      cy.findByTestId('flamegraph-canvas')
+        .invoke('attr', 'data-appname')
+        .should('eq', `${name}{}`);
+
+      cy.findByTestId('flamegraph-canvas').should('be.visible');
+      // there's a certain delay until the flamegraph is rendered
+      // eslint-disable-next-line cypress/no-unnecessary-waiting
+      cy.wait(500);
+      cy.findByTestId('table-view').matchImageSnapshot(`${name}-table`);
+      cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
+        `${name}-flamegraph`
+      );
+    };
+
+    const names = [
+      'pyroscope.server.alloc_objects',
+      'pyroscope.server.alloc_space',
+      'pyroscope.server.cpu',
+      'pyroscope.server.inuse_objects',
+      'pyroscope.server.inuse_space',
+    ];
+
+    names.forEach(intercept);
     cy.visit('/');
-
-    cy.wait('@render1');
-
-    cy.fixture('render.json').then((data) => {
-      cy.findByTestId('table-view')
-        .contains('td', data.flamebearer.names[0])
-        .should('be.visible');
-      cy.findByTestId('table-view')
-        .contains(
-          'td',
-          data.flamebearer.names[data.flamebearer.names.length - 1]
-        )
-        .should('be.visible');
-    });
-
-    cy.intercept('**/render*', {
-      fixture: 'render2.json',
-      times: 1,
-    }).as('render2');
-
-    cy.findByTestId('app-name-selector').select('pyroscope.server.cpu');
-
-    cy.wait('@render2');
-
-    cy.fixture('render2.json').then((data) => {
-      cy.findByTestId('table-view')
-        .contains('td', data.flamebearer.names[0])
-        .should('be.visible');
-      cy.findByTestId('table-view')
-        .contains(
-          'td',
-          data.flamebearer.names[data.flamebearer.names.length - 1]
-        )
-        .should('be.visible');
-    });
+    names.forEach(match);
   });
 
   it('updates flamegraph on app name change', () => {

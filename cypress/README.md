@@ -27,6 +27,11 @@ yarn cy:ss
 It requires docker installed and available under the `docker` binary in `PATH`.
 (Not tested with `podman` or other alternatives)
 
+To just run without updating the snapshots, run
+```
+CYPRESS_updateSnapshots=false yarn cy:ss
+```
+
 ## Why
 Part of our core functionality revolves around rendering a flamegraph **canvas**,
 which is not straightforward to test.
@@ -42,6 +47,12 @@ By default, visual testing is disabled (we instead log a `Screenshot comparison 
 Therefore we decided to update snapshots via a docker container, which is the same container that runs in ci. That way we have a consistent experience.
 
 If we ever update the docker image (`cypress/included:8.4.1` at the time of this writing). We need to update in 2 places (`scripts/cypress-screenshots.sh` and in `.github/workflows/cypress-tests.yml`)
+
+
+## Debugging visual tests
+These can be very painful. We recommend recording videos (it's enabled by default), they help understand what's going on.
+
+Feel free to add any tips as you learn about them.
 
 ## References
 https://www.thisdot.co/blog/how-to-set-up-screenshot-comparison-testing-with-cypress-inside-an-nx

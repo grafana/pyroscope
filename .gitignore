@@ -27,3 +27,4 @@ benchmark/ci/pr/meta-report
 /.env
 # diff output is stored per test
 cypress/snapshots/**/__diff_output__
+cypress/videos
