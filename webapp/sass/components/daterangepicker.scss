@@ -2,8 +2,8 @@
 @use "../mixins/outline" as *;
 
 // DatePicker Component styles
-@import "../../node_modules/react-datepicker/dist/react-datepicker.css";
-@import "../../node_modules/react-datepicker/dist/react-datepicker-cssmodules.css";
+@import '../../node_modules/react-datepicker/dist/react-datepicker.css';
+@import '../../node_modules/react-datepicker/dist/react-datepicker-cssmodules.css';
 
 .drp-button {
   white-space: nowrap;
@@ -70,7 +70,6 @@
   .drp-preset {
     @include outline;
 
-
     border: none;
     text-align: left;
     padding: 2px 0;
@@ -90,7 +89,7 @@
       background: $btn-hover-color;
     }
 
-    &:hover{
+    &:hover {
       cursor: pointer;
     }
   }

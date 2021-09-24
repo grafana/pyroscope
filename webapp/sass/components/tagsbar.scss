@@ -1,7 +1,7 @@
 @use "../variables" as *;
 
-@import "../../node_modules/@szhsin/react-menu/dist/index.css";
-@import "../prism.scss";
+@import '../../node_modules/@szhsin/react-menu/dist/index.css';
+@import '../prism.scss';
 
 .tags-bar {
   display: flex;
@@ -17,7 +17,7 @@
     margin-right: 5px;
     padding-right: 20px;
     &::after {
-      content: "▾";
+      content: '▾';
       position: absolute;
       top: 3px;
       right: 5px;
@@ -30,7 +30,8 @@
     padding: 0.25rem 0;
   }
 
-  .rc-menu, .rc-menu__item {
+  .rc-menu,
+  .rc-menu__item {
     background-color: $btn-color;
     color: $white;
   }
@@ -72,7 +73,7 @@
     border-bottom-right-radius: 0px;
     border-right: none;
     caret-color: #fff;
-    color: rgba(0,0,0,0);
+    color: rgba(0, 0, 0, 0);
     // color: red;
     letter-spacing: 0;
     font-family: arial;
@@ -83,17 +84,17 @@
     border-top-left-radius: 0px;
     border-bottom-left-radius: 0px;
     caret-color: #fff;
-    background-color: #0074D9;
-    border-color: darken(#0074D9, 10%);
+    background-color: #0074d9;
+    border-color: darken(#0074d9, 10%);
     letter-spacing: 0;
     font-family: arial;
     font-size: 16px;
     &:hover {
-      background-color: lighten(#0074D9, 10%);
+      background-color: lighten(#0074d9, 10%);
     }
   }
 
-  .tags-highlighted{
+  .tags-highlighted {
     height: 0;
     width: 0;
     margin-top: -17px;
@@ -118,7 +119,7 @@
   .rc-menu__item {
     $xpadding: 0.375rem;
     $ypadding: 1.5rem;
-    $ypadding: 1.0rem;
+    $ypadding: 1rem;
 
     padding: $xpadding $ypadding;
   }

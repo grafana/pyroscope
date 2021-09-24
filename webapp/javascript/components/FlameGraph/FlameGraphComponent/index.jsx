@@ -26,26 +26,25 @@ THIS SOFTWARE.
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable react/no-unused-state */
 /* eslint-disable no-restricted-syntax */
-import React from "react";
-import clsx from "clsx";
+import React from 'react';
+import clsx from 'clsx';
 import {
   numberWithCommas,
   formatPercent,
   getPackageNameFromStackTrace,
   getFormatter,
-} from "./format";
+} from './format';
 import {
   colorBasedOnDiff,
   colorBasedOnPackageName,
   colorGreyscale,
   diffColorGreen,
   diffColorRed,
-} from "./color";
-
-import { fitToCanvasRect } from "../../../util/fitMode";
+} from './color';
+import { fitToCanvasRect } from '../../../util/fitMode';
 
 const formatSingle = {
-  format: "single",
+  format: 'single',
   jStep: 4,
   jName: 3,
   getBarOffset: (level, j) => level[j],
@@ -57,7 +56,7 @@ const formatSingle = {
 };
 
 const formatDouble = {
-  format: "double",
+  format: 'double',
   jStep: 7,
   jName: 6,
   getBarOffset: (level, j) => level[j] + level[j + 3],
@@ -83,7 +82,7 @@ export function deltaDiff(levels, start, step) {
 }
 
 export function deltaDiffWrapper(format, levels) {
-  if (format === "double") {
+  if (format === 'double') {
     deltaDiff(levels, 0, 7);
     deltaDiff(levels, 3, 7);
   } else {
@@ -92,7 +91,7 @@ export function deltaDiffWrapper(format, levels) {
 }
 
 export function parseFlamebearerFormat(format) {
-  const isSingle = format !== "double";
+  const isSingle = format !== 'double';
   if (isSingle) return formatSingle;
   return formatDouble;
 }
@@ -100,14 +99,14 @@ export function parseFlamebearerFormat(format) {
 const PX_PER_LEVEL = 18;
 const COLLAPSE_THRESHOLD = 5;
 const LABEL_THRESHOLD = 20;
-const HIGHLIGHT_NODE_COLOR = "#48CE73"; // green
+const HIGHLIGHT_NODE_COLOR = '#48CE73'; // green
 const GAP = 0.5;
 export const BAR_HEIGHT = PX_PER_LEVEL - GAP;
 
 const unitsToFlamegraphTitle = {
-  objects: "amount of objects in RAM per function",
-  bytes: "amount of RAM per function",
-  samples: "CPU time per function",
+  objects: 'amount of objects in RAM per function',
+  bytes: 'amount of RAM per function',
+  samples: 'CPU time per function',
 };
 
 const diffLegend = [
@@ -136,12 +135,12 @@ class FlameGraph extends React.Component {
   constructor(props) {
     super();
     this.state = {
-      highlightStyle: { display: "none" },
-      tooltipStyle: { display: "none" },
-      resetStyle: { visibility: "hidden" },
-      sortBy: "self",
-      sortByDirection: "desc",
-      viewDiff: props.viewType === "diff" ? "diff" : undefined,
+      highlightStyle: { display: 'none' },
+      tooltipStyle: { display: 'none' },
+      resetStyle: { visibility: 'hidden' },
+      sortBy: 'self',
+      sortByDirection: 'desc',
+      viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
       flamebearer: null,
     };
     this.canvasRef = React.createRef();
@@ -152,21 +151,21 @@ class FlameGraph extends React.Component {
 
   componentDidMount() {
     this.canvas = this.canvasRef.current;
-    this.ctx = this.canvas.getContext("2d");
+    this.ctx = this.canvas.getContext('2d');
     this.topLevel = 0; // Todo: could be a constant
     this.selectedLevel = 0;
     this.rangeMin = 0;
     this.rangeMax = 1;
 
-    window.addEventListener("resize", this.resizeHandler);
-    window.addEventListener("focus", this.focusHandler);
+    window.addEventListener('resize', this.resizeHandler);
+    window.addEventListener('focus', this.focusHandler);
 
     if (this.props.shortcut) {
       this.props.shortcut.registerShortcut(
         this.reset,
-        ["escape"],
-        "Reset",
-        "Reset Flamegraph View"
+        ['escape'],
+        'Reset',
+        'Reset Flamegraph View'
       );
     }
     this.updateData();
@@ -179,11 +178,14 @@ class FlameGraph extends React.Component {
       this.props.width !== prevProps.width ||
       this.props.height !== prevProps.height ||
       this.props.view !== prevProps.view ||
-      this.props.fitMode !== prevProps.fitMode) {
+      this.props.fitMode !== prevProps.fitMode
+    ) {
       this.updateData();
     }
-    if (this.props.fitMode !== prevProps.fitMode ||
-        this.props.query !== prevProps.query) {
+    if (
+      this.props.fitMode !== prevProps.fitMode ||
+      this.props.query !== prevProps.query
+    ) {
       setTimeout(() => this.renderCanvas(), 0);
     }
   }
@@ -226,7 +228,7 @@ class FlameGraph extends React.Component {
   updateResetStyle = () => {
     const topLevelSelected = this.selectedLevel === 0;
     this.setState({
-      resetStyle: { visibility: topLevelSelected ? "hidden" : "visible" },
+      resetStyle: { visibility: topLevelSelected ? 'hidden' : 'visible' },
     });
   };
 
@@ -280,7 +282,7 @@ class FlameGraph extends React.Component {
 
     const { names, levels, numTicks, sampleRate } = this.props.flamebearer;
     const ff = this.props.format;
-    const isDiff = this.props.viewType === "diff";
+    const isDiff = this.props.viewType === 'diff';
     this.canvas.width = this.props.width || this.canvas.clientWidth;
     this.graphWidth = this.canvas.width;
     this.pxPerTick =
@@ -289,7 +291,7 @@ class FlameGraph extends React.Component {
       ? this.props.height - 30
       : PX_PER_LEVEL * (levels.length - this.topLevel);
     this.canvas.style.height = `${this.canvas.height}px`;
-    this.canvas.style.cursor = "pointer";
+    this.canvas.style.cursor = 'pointer';
 
     if (devicePixelRatio > 1) {
       this.canvas.width *= 2;
@@ -297,12 +299,12 @@ class FlameGraph extends React.Component {
       this.ctx.scale(2, 2);
     }
 
-    this.ctx.textBaseline = "middle";
+    this.ctx.textBaseline = 'middle';
     this.ctx.font =
-      "400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace";
+      '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
     // Since this is a monospaced font
     // any character would do
-    const characterSize = this.ctx.measureText("a").width;
+    const characterSize = this.ctx.measureText('a').width;
     this.formatter = this.createFormatter();
     // i = level
     for (let i = 0; i < levels.length - this.topLevel; i += 1) {
@@ -316,7 +318,8 @@ class FlameGraph extends React.Component {
         // For this particular bar, there is a match
         const queryExists = this.props.query.length > 0;
         const nodeIsInQuery =
-          (this.props.query && names[level[j + ff.jName]].indexOf(this.props.query) >= 0) ||
+          (this.props.query &&
+            names[level[j + ff.jName]].indexOf(this.props.query) >= 0) ||
           false;
         // merge very small blocks into big "collapsed" ones for performance
         const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
@@ -332,8 +335,9 @@ class FlameGraph extends React.Component {
               COLLAPSE_THRESHOLD &&
             nodeIsInQuery ===
               ((this.props.query &&
-                names[level[j + ff.jStep + ff.jName]].indexOf(this.props.query) >=
-                  0) ||
+                names[level[j + ff.jStep + ff.jName]].indexOf(
+                  this.props.query
+                ) >= 0) ||
                 false)
           ) {
             j += ff.jStep;
@@ -399,7 +403,7 @@ class FlameGraph extends React.Component {
 
           this.ctx.save();
           this.ctx.clip();
-          this.ctx.fillStyle = "black";
+          this.ctx.fillStyle = 'black';
           // when showing the code, give it a space in the beginning
           this.ctx.fillText(
             fitCalc.text,
@@ -440,9 +444,9 @@ class FlameGraph extends React.Component {
     const tooltipTitle = this.state.names[level[j + ff.jName]];
 
     let tooltipText;
-    let tooltipDiffText = "";
-    let tooltipDiffColor = "";
-    if (ff.format !== "double") {
+    let tooltipDiffText = '';
+    let tooltipDiffColor = '';
+    if (ff.format !== 'double') {
       tooltipText = `${percent}, ${numberWithCommas(
         numBarTicks
       )} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
@@ -457,12 +461,12 @@ class FlameGraph extends React.Component {
         totalRght
       )} samples, ${this.formatter.format(totalRght, this.state.sampleRate)}`;
       tooltipDiffColor =
-        totalDiff === 0 ? "" : totalDiff > 0 ? diffColorRed : diffColorGreen;
+        totalDiff === 0 ? '' : totalDiff > 0 ? diffColorRed : diffColorGreen;
       tooltipDiffText = !totalLeft
-        ? " (new)"
+        ? ' (new)'
         : !totalRght
-        ? " (removed)"
-        : ` (${totalDiff > 0 ? "+" : ""}${formatPercent(
+        ? ' (removed)'
+        : ` (${totalDiff > 0 ? '+' : ''}${formatPercent(
             totalDiff / totalLeft
           )})`;
     }
@@ -494,8 +498,8 @@ class FlameGraph extends React.Component {
   };
 
   mouseOutHandler = () => {
-    this.highlightRef.current.style.opacity = "0";
-    this.tooltipRef.current.style.opacity = "0";
+    this.highlightRef.current.style.opacity = '0';
+    this.tooltipRef.current.style.opacity = '0';
   };
 
   updateZoom(i, j) {
@@ -545,23 +549,22 @@ class FlameGraph extends React.Component {
     const { ExportData } = this.props;
     const dataUnavailable =
       !this.props.flamebearer ||
-      (this.props.flamebearer &&
-       this.props.flamebearer.names.length <= 1);
+      (this.props.flamebearer && this.props.flamebearer.names.length <= 1);
 
     return (
       <>
         <div
           key="flamegraph-pane"
           data-testid="flamegraph-view"
-          className={clsx("flamegraph-pane", {
-            "vertical-orientation": this.props.viewType === "double",
+          className={clsx('flamegraph-pane', {
+            'vertical-orientation': this.props.viewType === 'double',
           })}
         >
           <div className="flamegraph-header">
             {!this.state.viewDiff ? (
               <div>
                 <div className="row flamegraph-title">
-                  Frame width represents{" "}
+                  Frame width represents{' '}
                   {unitsToFlamegraphTitle[this.state.units]}
                 </div>
               </div>
@@ -580,7 +583,7 @@ class FlameGraph extends React.Component {
                           backgroundColor: colorBasedOnDiff(v, 100, 0.8),
                         }}
                       >
-                        {v > 0 ? "+" : ""}
+                        {v > 0 ? '+' : ''}
                         {v}%
                       </div>
                     ))}
@@ -591,7 +594,7 @@ class FlameGraph extends React.Component {
             {ExportData && !dataUnavailable ? (
               <ExportData
                 flameCanvas={this.canvasRef}
-                label={this.props.label || ""}
+                label={this.props.label || ''}
               />
             ) : null}
           </div>

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import { bindActionCreators } from "redux";
-import { connect } from "react-redux";
-import "react-dom";
-import { Menu, SubMenu, MenuItem, MenuButton } from "@szhsin/react-menu";
+import React, { useState, useEffect } from 'react';
+import { bindActionCreators } from 'redux';
+import { connect } from 'react-redux';
+import 'react-dom';
+import { Menu, SubMenu, MenuItem, MenuButton } from '@szhsin/react-menu';
 
 import {
   fetchTags,
@@ -10,8 +10,8 @@ import {
   setQuery,
   abortFetchTags,
   abortFetchTagValues,
-} from "../redux/actions";
-import "../util/prism";
+} from '../redux/actions';
+import '../util/prism';
 
 function TagsBar({ query, actions, tags, tagValuesLoading }) {
   const [queryVal, setQuery] = useState(query);
@@ -33,14 +33,14 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
   const inputOnChange = (v) => {
     setQuery(v);
     window.Prism.highlightElement(
-      document.getElementById("highlighting-content")
+      document.getElementById('highlighting-content')
     );
   };
 
   useEffect(() => {
     if (window.Prism) {
       window.Prism.highlightElement(
-        document.getElementById("highlighting-content")
+        document.getElementById('highlighting-content')
       );
     }
   }, [queryVal]);
@@ -60,12 +60,12 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
     const case1Regexp = new RegExp(`${tagKey}=.+?(\\}|,)`);
     if (queryVal.match(case1Regexp)) {
       newQuery = queryVal.replace(case1Regexp, `${tagKey}="${tagValue}"$1`);
-    } else if (queryVal.indexOf("{}") !== -1) {
-      newQuery = queryVal.replace("}", `${tagKey}="${tagValue}"}`);
-    } else if (queryVal.indexOf("}") !== -1) {
-      newQuery = queryVal.replace("}", `, ${tagKey}="${tagValue}"}`);
+    } else if (queryVal.indexOf('{}') !== -1) {
+      newQuery = queryVal.replace('}', `${tagKey}="${tagValue}"}`);
+    } else if (queryVal.indexOf('}') !== -1) {
+      newQuery = queryVal.replace('}', `, ${tagKey}="${tagValue}"}`);
     } else {
-      console.warn("TODO: handle this case");
+      console.warn('TODO: handle this case');
     }
     actions.setQuery(newQuery);
   };
@@ -109,7 +109,7 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
                   value={tagValue}
                   onClick={(e) => onTagsValueChange(tag, e.value)}
                   className={
-                    queryVal.includes(`${tag}="${tagValue}"`) ? "active" : ""
+                    queryVal.includes(`${tag}="${tagValue}"`) ? 'active' : ''
                   }
                 >
                   {tagValue}
