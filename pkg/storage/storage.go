@@ -254,8 +254,10 @@ func (s *Storage) Put(pi *PutInput) error {
 		cachedTree.Lock()
 		cachedTree.Merge(treeClone)
 		cachedTree.Unlock()
+		treeClone.Reset()
 		s.trees.Put(tk, cachedTree)
 	})
+
 	if err != nil {
 		return err
 	}
@@ -305,7 +307,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	s.readsTotal.Add(1)
 
 	var (
-		resultTrie  *tree.Tree
+		resultTree  *tree.Tree
 		lastSegment *segment.Segment
 		writesTotal uint64
 
@@ -336,32 +338,37 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
 			if res, ok = s.trees.Lookup(parsedKey.TreeKey(depth, t)); ok {
-				x := res.(*tree.Tree).Clone(r)
+				tmpTree := res.(*tree.Tree).Clone(r)
 				writesTotal += writes
-				if resultTrie == nil {
-					resultTrie = x
+				if resultTree == nil {
+					resultTree = tmpTree
 					return
 				}
-				resultTrie.Merge(x)
+				resultTree.Merge(tmpTree)
+				tmpTree.Reset()
 			}
 		})
 	}
 
-	if resultTrie == nil {
+	if resultTree == nil {
 		return nil, nil
 	}
 
+	t := resultTree
 	if writesTotal > 0 && aggregationType == averageAggregationType {
-		resultTrie = resultTrie.Clone(big.NewRat(1, int64(writesTotal)))
+		t = resultTree.Clone(big.NewRat(1, int64(writesTotal)))
+		resultTree.Reset()
 	}
 
-	return &GetOutput{
-		Tree:       resultTrie,
+	o := GetOutput{
+		Tree:       t,
 		Timeline:   timeline,
 		SpyName:    lastSegment.SpyName(),
 		SampleRate: lastSegment.SampleRate(),
 		Units:      lastSegment.Units(),
-	}, nil
+	}
+
+	return &o, nil
 }
 
 func (s *Storage) dimensionKeysByKey(key *segment.Key) func() []dimension.Key {

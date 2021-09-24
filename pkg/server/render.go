@@ -56,6 +56,11 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
 		return
 	}
+	defer func() {
+		if out.Tree != nil {
+			out.Tree.Reset()
+		}
+	}()
 	// TODO: handle properly
 	if out == nil {
 		out = &storage.GetOutput{Tree: tree.New()}
@@ -108,10 +113,19 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	out, leftOut, rghtOut, err := ctrl.loadTreeConcurrently(p.gi, p.gi.StartTime, p.gi.EndTime, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
+	defer func() {
+		for _, o := range []*storage.GetOutput{out, leftOut, rghtOut} {
+			if o != nil {
+				o.Tree.Reset()
+			}
+		}
+	}()
+
 	if err != nil {
 		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
 		return
 	}
+
 	// TODO: handle properly, see ctrl.renderHandler
 	if out == nil {
 		ctrl.writeInternalServerError(w, errNoData, "failed to retrieve data")
@@ -262,21 +276,20 @@ func (ctrl *Controller) loadTreeConcurrently(
 	return treeOut, leftOut, rghtOut, nil
 }
 
-func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.Time) (_ *storage.GetOutput, _err error) {
+func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.Time) (out *storage.GetOutput, err error) {
 	defer func() {
-		rerr := recover()
-		if rerr != nil {
-			_err = fmt.Errorf("panic: %v", rerr)
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic: %v", r)
 			ctrl.log.WithFields(logrus.Fields{
-				"recover": rerr,
+				"recover": r,
 				"stack":   string(debug.Stack()),
 			}).Error("loadTree: recovered from panic")
 		}
 	}()
 
-	_gi := *gi // clone the struct
-	_gi.StartTime, _gi.EndTime = startTime, endTime
-	out, err := ctrl.storage.Get(&_gi)
+	c := *gi // clone the struct
+	c.StartTime, c.EndTime = startTime, endTime
+	out, err = ctrl.storage.Get(&c)
 	if err != nil {
 		return nil, err
 	}

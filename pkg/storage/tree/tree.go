@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	separator = byte(';')
+	semicolon = byte(';')
 
 	initialNodesBufferSizeCount  = 128
 	initialLabelsBufferSizeBytes = 512
@@ -18,6 +18,8 @@ const (
 	positionLengthMask = 1<<32 - 1
 	positionOffsetMask = positionLengthMask << 32
 )
+
+var separator = []byte{semicolon}
 
 var treePool = sync.Pool{New: func() interface{} {
 	return &Tree{
@@ -43,7 +45,18 @@ func New() *Tree {
 	return treePool.Get().(*Tree)
 }
 
+func (t *Tree) Samples() uint64 {
+	return t.root().Total
+}
+
+func (t *Tree) Len() int {
+	return len(t.nodes)
+}
+
 func (t *Tree) Reset() {
+	for _, n := range t.nodes {
+		n.ChildrenNodes = nil
+	}
 	t.nodes = t.nodes[:0]
 	t.labels.Reset()
 	treePool.Put(t)
@@ -128,18 +141,23 @@ func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 	// It is important to grow tree before any node pointer
 	// taken. Otherwise, those are invalidated, if the node
 	// slice is changed.
-	// TODO: find a better way.
-	labels := bytes.Split(key, []byte{separator})
-	if cap(t.nodes)-len(t.nodes) < len(labels) {
-		t.grow(len(labels))
+	c := bytes.Count(key, separator)
+	if cap(t.nodes)-len(t.nodes) < c {
+		t.grow(c)
 	}
-
 	node := t.root()
-	for _, label := range labels {
-		node.Total += value
-		node, _ = node.insert(t, label)
+	var offset int
+	for i := 0; i < len(key); i++ {
+		if key[i] == semicolon {
+			node.Total += value
+			node, _ = node.insert(t, key[offset:i])
+			offset = i + 1
+		}
 	}
-
+	if offset < len(key) {
+		node.Total += value
+		node, _ = node.insert(t, key[offset:])
+	}
 	node.Self += value
 	node.Total += value
 }
@@ -161,7 +179,7 @@ func (n *treeNode) insert(t *Tree, targetLabel []byte) (*treeNode, int) {
 }
 
 func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
-	// TODO: simplify.
+	// TODO: Refactor.
 	nodes := []int{0}
 	prefixes := make([][]byte, 1)
 	prefixes[0] = make([]byte, 0)
@@ -172,7 +190,7 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 		prefix := prefixes[0]
 		prefixes = prefixes[1:]
 
-		label := append(prefix, separator) // byte(';'),
+		label := append(prefix, semicolon) // byte(';'),
 		l := t.loadLabel(node.labelPosition)
 		label = append(label, l...) // byte(';'),
 
@@ -192,19 +210,12 @@ func prependBytes(s [][]byte, x []byte) [][]byte {
 	return s
 }
 
-func (t *Tree) Samples() uint64 {
-	return t.root().Total
-}
-
+// Clone creates a tree copy. The copy must be reset once not used.
 func (t *Tree) Clone(r *big.Rat) *Tree {
 	t.RLock()
 	defer t.RUnlock()
 	m := uint64(r.Num().Int64())
 	d := uint64(r.Denom().Int64())
-	return t.clone(m, d)
-}
-
-func (t *Tree) clone(m, d uint64) *Tree {
 	newTrie := New()
 	if s := cap(t.nodes) - cap(newTrie.nodes); s > 0 {
 		newTrie.grow(s)

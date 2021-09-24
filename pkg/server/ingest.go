@@ -53,6 +53,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 		Units:           ip.units,
 		AggregationType: ip.aggregationType,
 	})
+	t.Reset()
 	if err != nil {
 		ctrl.writeInternalServerError(w, err, "error happened while ingesting data")
 		return
