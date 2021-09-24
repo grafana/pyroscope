@@ -66,11 +66,9 @@ func (t *Tree) newNode(label []byte) int {
 	return t.put(treeNode{labelPosition: t.insertLabel(label)})
 }
 
-// put appends the given node to the tree nodes. Note that in case
-// if the append causes an allocation of a new slice, existing node
-// pointer should be invalidated.
-//
-// Check capacity before and grow tree accordingly.
+// put appends the given node to the tree nodes. In case if the append
+// causes an allocation of a new slice, existing node pointers are
+// invalidated. Check capacity before and grow tree accordingly.
 func (t *Tree) put(n treeNode) int {
 	t.nodes = append(t.nodes, n)
 	return len(t.nodes) - 1
@@ -86,8 +84,6 @@ func (t *Tree) grow(n int) int {
 	return copy(t.nodes, p)
 }
 
-// Note that if nodes slice is re-allocated (e.g. due to put or grow),
-// the pointer will be invalid.
 func (t *Tree) at(idx int) *treeNode {
 	if len(t.nodes) == 0 {
 		t.nodes = append(t.nodes, treeNode{})
@@ -95,7 +91,6 @@ func (t *Tree) at(idx int) *treeNode {
 	return &(t.nodes)[idx]
 }
 
-// root returns pointer to the tree root node.
 func (t *Tree) root() *treeNode { return t.at(0) }
 
 func (t *Tree) insertLabel(v []byte) uint64 {
