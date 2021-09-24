@@ -11,13 +11,14 @@ Or run `yarn cy:ci` to run all tests.
 
 # Writing tests
 
-# Snapshot (Visual testing)
-We use [jaredpalmer/cypress-image-snapshot](https://github.com/jaredpalmer/cypress-image-snapshot) to test against snapshots images.
-
-To update the snapshots, add `--env updateSnapshots=true`.
-For instance, `yarn cy:open --env updateSnapshots=true`.
-||||||| f8da10f
 - Try to use [testids](https://kentcdodds.com/blog/making-your-ui-tests-resilient-to-change/) to select DOM elements
 - Since our application is relatively simple, there's no need for Page Objects yet
 - [Don't write small tests with single assertions](https://docs.cypress.io/guides/references/best-practices#Creating-tiny-tests-with-a-single-assertion)
 - [Mock HTTP requests](https://docs.cypress.io/guides/guides/network-requests#Stub-Responses) when appropriate
+
+# Snapshot (Visual testing)
+
+We use [jaredpalmer/cypress-image-snapshot](https://github.com/jaredpalmer/cypress-image-snapshot) to test against snapshots images.
+
+To update the snapshots, add `--env updateSnapshots=true`.
+For instance, `yarn cy:open --env updateSnapshots=true`.
