@@ -53,6 +53,7 @@ export default function ProfilerHeader({
         type="button"
         className={clsx("btn")}
         style={resetStyle}
+        data-testid="reset-view"
         id="reset"
         onClick={reset}
       >

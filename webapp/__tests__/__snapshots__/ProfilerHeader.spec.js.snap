@@ -33,6 +33,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
   </select>
   <button
     className="btn"
+    data-testid="reset-view"
     id="reset"
     type="button"
   >

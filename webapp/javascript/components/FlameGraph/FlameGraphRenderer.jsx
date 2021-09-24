@@ -52,6 +52,10 @@ class FlameGraphRenderer extends React.Component {
       // query used in the 'search' checkbox
       highlightQuery: "",
     };
+
+    // generally not a good idea
+    // but we need to access the graph's reset function
+    this.graphRef = React.createRef();
   }
 
   componentDidMount() {
@@ -114,14 +118,6 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateResetStyle = () => {
-    // const emptyQuery = this.query === "";
-    const topLevelSelected = this.selectedLevel === 0;
-    this.setState({
-      resetStyle: { visibility: topLevelSelected ? "hidden" : "visible" },
-    });
-  };
-
   handleSearchChange = (e) => {
     this.setState({
       highlightQuery: e
@@ -130,7 +126,7 @@ class FlameGraphRenderer extends React.Component {
   };
 
   reset = () => {
-    this.updateZoom(0, 0);
+    this.graphRef.current.reset();
   };
 
   updateView = (newView) => {
@@ -158,24 +154,11 @@ class FlameGraphRenderer extends React.Component {
     });
   }
 
-  updateZoom(i, j) {
-    const ff = this.parseFormat();
-    if (!Number.isNaN(i) && !Number.isNaN(j)) {
-      this.selectedLevel = i;
-      this.topLevel = 0;
-      this.rangeMin =
-        ff.getBarOffset(this.state.levels[i], j) / this.state.numTicks;
-      this.rangeMax =
-        (ff.getBarOffset(this.state.levels[i], j) +
-          ff.getBarTotal(this.state.levels[i], j)) /
-        this.state.numTicks;
-    } else {
-      this.selectedLevel = 0;
-      this.topLevel = 0;
-      this.rangeMin = 0;
-      this.rangeMax = 1;
-    }
-    this.updateResetStyle();
+  onZoom = (selectedLevel) => {
+    const topLevelSelected = selectedLevel === 0;
+    this.setState({
+      resetStyle: { visibility: topLevelSelected ? "hidden" : "visible" },
+    });
   }
 
   parseFormat(format) {
@@ -249,6 +232,7 @@ class FlameGraphRenderer extends React.Component {
       this.state.flamebearer && dataExists ? (
         <Graph
           key="flamegraph-pane"
+          ref={this.graphRef}
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
@@ -256,6 +240,7 @@ class FlameGraphRenderer extends React.Component {
           query={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
+          onZoom={this.onZoom}
           label={this.props.query}
         />
       ) : null;

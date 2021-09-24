@@ -42,8 +42,6 @@ import {
   diffColorRed,
 } from "./color";
 
-import "./styles.css";
-
 import { fitToCanvasRect } from "../../../util/fitMode";
 
 const formatSingle = {
@@ -104,6 +102,7 @@ const COLLAPSE_THRESHOLD = 5;
 const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = "#48CE73"; // green
 const GAP = 0.5;
+export const BAR_HEIGHT = PX_PER_LEVEL - GAP;
 
 const unitsToFlamegraphTitle = {
   objects: "amount of objects in RAM per function",
@@ -343,7 +342,7 @@ class FlameGraph extends React.Component {
         }
         // ticks are samples
         const sw = numBarTicks * this.pxPerTick - (collapsed ? 0 : GAP);
-        const sh = PX_PER_LEVEL - GAP;
+        const sh = BAR_HEIGHT;
 
         // if (x < -1 || x + sw > this.graphWidth + 1 || sw < HIDE_THRESHOLD) continue;
 
@@ -516,7 +515,8 @@ class FlameGraph extends React.Component {
       this.rangeMin = 0;
       this.rangeMax = 1;
     }
-    this.updateResetStyle();
+
+    this.props.onZoom(this.selectedLevel);
   }
 
   // binary search of a block in a stack level

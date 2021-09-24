@@ -21,6 +21,7 @@ import (
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	goHttpMetricsMiddleware "github.com/slok/go-http-metrics/middleware"
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -56,6 +57,9 @@ type Controller struct {
 
 	appStats   *hyperloglog.HyperLogLogPlus
 	metricsMdw goHttpMetricsMiddleware.Middleware
+
+	// Byte buffers are used for deserialization of ingested data.
+	bufferPool bytebufferpool.Pool
 }
 
 func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger, reg prometheus.Registerer) (*Controller, error) {

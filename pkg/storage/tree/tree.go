@@ -138,6 +138,8 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 	return n.ChildrenNodes[i]
 }
 
+func (t *Tree) InsertInt(key []byte, value int) { t.Insert(key, uint64(value)) }
+
 func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 	// TODO: can optimize this, split is not necessary?
 	labels := bytes.Split(key, []byte(";"))
@@ -148,7 +150,6 @@ func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 		l = buf
 
 		n := node.insert(l)
-
 		node.Total += value
 		node = n
 	}
