@@ -35,7 +35,7 @@ addMatchImageSnapshotCommand({
 Cypress.Commands.overwrite(
   'matchImageSnapshot',
   (originalFn, snapshotName, options) => {
-    if (Cypress.env('ALLOW_SCREENSHOT')) {
+    if (Cypress.env('COMPARE_SNAPSHOTS')) {
       originalFn(snapshotName, options);
     } else {
       cy.log(`Screenshot comparison is disabled`);

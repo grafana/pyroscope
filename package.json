@@ -18,6 +18,7 @@
     "size-build": "make assets-size-build",
     "cy:open": "cypress open",
     "cy:ci": "cypress run",
+    "cy:ss": "./scripts/cypress-screenshots.sh",
     "prepare": "husky install",
     "lint-staged": "lint-staged"
   },

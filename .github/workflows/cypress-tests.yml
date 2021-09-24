@@ -27,7 +27,7 @@ jobs:
           PYROSCOPE_LOG_LEVEL: error
           ENABLED_SPIES: none
           CYPRESS_VIDEO: true
-          CYPRESS_ALLOW_SCREENSHOT: true
+          CYPRESS_COMPARE_SNAPSHOTS: true
       - uses: actions/upload-artifact@v2
         if: always()
         with:
