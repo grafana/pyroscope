@@ -1,11 +1,15 @@
 {
   "parser": "babel-eslint",
   "plugins": ["prettier"],
-  "extends": ["airbnb", "prettier"],
+  "extends": [
+    "airbnb",
+    "prettier",
+    "prettier/react",
+    "plugin:cypress/recommended"
+  ],
   "rules": {
     "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
     "no-unused-vars": ["warn"],
-    "prettier/prettier": ["error"],
     "no-param-reassign": ["warn"],
     "no-shadow": ["warn"],
     "no-case-declarations": ["warn"],
@@ -16,15 +20,17 @@
     "jsx-a11y/heading-has-content": ["warn"],
     "jsx-a11y/control-has-associated-label": ["warn"],
     "no-undef": ["warn"],
-    "react/jsx-one-expression-per-line": ["warn"],
     "jsx-a11y/mouse-events-have-key-events": ["warn"],
     "jsx-a11y/click-events-have-key-events": ["warn"],
     "jsx-a11y/no-static-element-interactions": ["warn"],
-    "jsx-a11y/label-has-associated-control": [ "error", {
-      "required": {
-        "some": [ "nesting", "id"  ]
+    "jsx-a11y/label-has-associated-control": [
+      "error",
+      {
+        "required": {
+          "some": ["nesting", "id"]
+        }
       }
-    }]
+    ]
   },
   "env": {
     "browser": true,

@@ -55,7 +55,7 @@ WORKDIR /opt/pyroscope
 
 COPY scripts ./scripts
 COPY webapp ./webapp
-COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore Makefile ./
+COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore .prettierrc Makefile ./
 
 ARG EXTRA_METADATA=""
 RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release

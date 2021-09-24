@@ -19,8 +19,8 @@ import {
   SET_LEFT_UNTIL,
   SET_RIGHT_FROM,
   SET_RIGHT_UNTIL,
-} from "./actionTypes";
-import { isAbortError } from "../util/abort";
+} from './actionTypes';
+import { isAbortError } from '../util/abort';
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
@@ -219,7 +219,7 @@ export function fetchNames() {
     currentNamesController = new AbortController();
 
     dispatch(requestNames());
-    return fetch("/label-values?label=__name__", {
+    return fetch('/label-values?label=__name__', {
       signal: currentNamesController.signal,
     })
       .then((response) => response.json())

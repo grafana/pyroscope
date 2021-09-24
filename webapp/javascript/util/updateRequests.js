@@ -1,4 +1,9 @@
-export function buildRenderURL(state, fromOverride=null, untilOverride=null, side=null) {
+export function buildRenderURL(
+  state,
+  fromOverride = null,
+  untilOverride = null,
+  side = null
+) {
   let { from, until, query } = state;
 
   if (fromOverride) {
@@ -9,7 +14,9 @@ export function buildRenderURL(state, fromOverride=null, untilOverride=null, sid
     until = untilOverride;
   }
 
-  let url = `render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(until)}`;
+  let url = `render?from=${encodeURIComponent(from)}&until=${encodeURIComponent(
+    until
+  )}`;
 
   url += `&query=${encodeURIComponent(query)}`;
 
@@ -22,7 +29,17 @@ export function buildRenderURL(state, fromOverride=null, untilOverride=null, sid
 }
 
 // TODO: merge buildRenderURL and buildDiffRenderURL
-export function buildDiffRenderURL(state, { from: fromOverride, until: untilOverride, leftFrom: leftFromOverride, leftUntil: leftUntilOverride, rightFrom: rightFromOverride, rightUntil: rightUntilOverride } = {}) {
+export function buildDiffRenderURL(
+  state,
+  {
+    from: fromOverride,
+    until: untilOverride,
+    leftFrom: leftFromOverride,
+    leftUntil: leftUntilOverride,
+    rightFrom: rightFromOverride,
+    rightUntil: rightUntilOverride,
+  } = {}
+) {
   let { from, until, leftFrom, leftUntil, rightFrom, rightUntil } = state;
   from = fromOverride || from;
   until = untilOverride || until;

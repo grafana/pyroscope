@@ -3,13 +3,16 @@ package transporttrie
 import (
 	"bytes"
 	"fmt"
+	"hash"
+	"hash/fnv"
 	"math/rand"
-
-	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
-	"github.com/sirupsen/logrus"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
+
+	"github.com/pyroscope-io/pyroscope/pkg/structs/merge"
+	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
 func randStr(l int) []byte {
@@ -20,6 +23,31 @@ func randStr(l int) []byte {
 	// rand.Read(buf)
 
 	return buf
+}
+
+type trieHash struct {
+	w varint.Writer
+	h hash.Hash64
+}
+
+func newTrieHash() trieHash {
+	return trieHash{
+		w: varint.NewWriter(),
+		h: fnv.New64a(),
+	}
+}
+
+func (t *trieHash) addUint64(k []byte, v uint64) {
+	_, _ = t.h.Write(k)
+	_, _ = t.w.Write(t.h, v)
+}
+
+func (t *trieHash) addInt(k []byte, v int) {
+	t.addUint64(k, uint64(v))
+}
+
+func (t trieHash) sum() uint64 {
+	return t.h.Sum64()
 }
 
 var _ = Describe("trie package", func() {
@@ -105,6 +133,71 @@ var _ = Describe("trie package", func() {
 				Expect(trie.String()).To(Equal(t.String()))
 				Expect(strA).To(Equal(strB))
 				logrus.Debug("---/")
+			}
+		})
+	})
+
+	Context("IterateRaw()", func() {
+		compareWithRawIterator := func(t *Trie) {
+			h1 := newTrieHash()
+			t.Iterate(h1.addUint64)
+			var buf bytes.Buffer
+			Expect(t.Serialize(&buf)).ToNot(HaveOccurred())
+
+			r := bytes.NewReader(buf.Bytes())
+			h2 := newTrieHash()
+			tmpBuf := make([]byte, 0, 256)
+			Expect(IterateRaw(r, tmpBuf, h2.addInt)).ToNot(HaveOccurred())
+
+			Expect(h2.sum()).To(Equal(h1.sum()))
+		}
+
+		It("returns correct results", func() {
+			type value struct {
+				k string
+				v uint64
+			}
+
+			values := []value{
+				{"foo;bar;baz", 1},
+				{"foo;bar;baz;a", 1},
+				{"foo;bar;baz;b", 1},
+				{"foo;bar;baz;c", 1},
+				{"foo;bar;bar", 1},
+				{"foo;bar;qux", 1},
+				{"foo;bax;bar", 1},
+				{"zoo;boo", 1},
+				{"zoo;bao", 1},
+			}
+
+			trie := New()
+			for _, v := range values {
+				trie.Insert([]byte(v.k), v.v)
+			}
+
+			compareWithRawIterator(trie)
+		})
+
+		It("handles random tries properly", func() {
+			for j := 0; j < 10; j++ {
+				trie := New()
+				for i := 0; i < 10; i++ {
+					trie.Insert(randStr(10), uint64(i))
+				}
+
+				h1 := newTrieHash()
+				trie.Iterate(h1.addUint64)
+
+				var buf bytes.Buffer
+				err := trie.Serialize(&buf)
+				Expect(err).To(BeNil())
+
+				r := bytes.NewReader(buf.Bytes())
+				h2 := newTrieHash()
+				err = IterateRaw(r, nil, h2.addInt)
+				Expect(err).To(BeNil())
+
+				Expect(h2.sum()).To(Equal(h1.sum()))
 			}
 		})
 	})

@@ -1,6 +1,6 @@
-import React from "react";
-import { connect } from "react-redux";
-import { setMaxNodes } from "../redux/actions";
+import React from 'react';
+import { connect } from 'react-redux';
+import { setMaxNodes } from '../redux/actions';
 
 class MaxNodesSelector extends React.Component {
   select = (event) => {

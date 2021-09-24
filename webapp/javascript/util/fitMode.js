@@ -3,9 +3,9 @@
 // Let's use an Enum in case we want to use new modes,
 // for example a new heuristic based on the language
 export const FitModes = {
-  TAIL: "TAIL",
-  HEAD: "HEAD",
-}
+  TAIL: 'TAIL',
+  HEAD: 'HEAD',
+};
 
 const margin = 3;
 
@@ -18,19 +18,26 @@ const margin = 3;
  * @param {string} fullText - The text that will be first tried.
  * @param {string} shortText - The text that willbe used when fullText can't fit. It's normally a substring of the original text.
  */
-export function fitToCanvasRect({ mode, charSize, rectWidth, fullText, shortText }){
+export function fitToCanvasRect({
+  mode,
+  charSize,
+  rectWidth,
+  fullText,
+  shortText,
+}) {
   switch (mode) {
     case FitModes.TAIL:
       // Case 1:
       // content fits rectangle width
       // | rectangle |
       // | text |
-      if (charSize * fullText.length <= rectWidth) { // assume it's a monospaced font
+      if (charSize * fullText.length <= rectWidth) {
+        // assume it's a monospaced font
         return {
           mode,
           text: fullText,
           marginLeft: margin,
-        }
+        };
       }
 
       // assume it's a monospaced font
@@ -43,12 +50,13 @@ export function fitToCanvasRect({ mode, charSize, rectWidth, fullText, shortText
       // | rectangle |
       // | long_text_text |
       // | shorttext |
-      if (shortTextWidth <= rectWidth) { // assume it's a monospaced font
+      if (shortTextWidth <= rectWidth) {
+        // assume it's a monospaced font
         return {
           mode,
           text: shortText,
           marginLeft: margin,
-        }
+        };
       }
 
       // Case 3:
@@ -60,8 +68,8 @@ export function fitToCanvasRect({ mode, charSize, rectWidth, fullText, shortText
       return {
         mode,
         text: shortText,
-        marginLeft: -((shortTextWidth - rectWidth) + margin),
-      }
+        marginLeft: -(shortTextWidth - rectWidth + margin),
+      };
 
     // Case 3:
     // Normal
@@ -71,10 +79,9 @@ export function fitToCanvasRect({ mode, charSize, rectWidth, fullText, shortText
         mode,
         text: fullText,
         marginLeft: margin,
-      }
+      };
   }
 }
-
 
 /**
  * Returns an inline style in React format
@@ -86,17 +93,17 @@ export function fitIntoTableCell(mode) {
   switch (mode) {
     case FitModes.TAIL:
       return {
-       // prints from right to left
-        direction: "rtl",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
+        // prints from right to left
+        direction: 'rtl',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
       };
 
     case FitModes.HEAD:
     default:
       return {
-        overflow: "hidden",
-        textOverflow: "ellipsis",
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
       };
   }
 }

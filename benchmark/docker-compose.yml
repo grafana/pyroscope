@@ -1,18 +1,18 @@
-version: "3.9"
+version: '3.9'
 services:
   pyrobench:
     env_file:
-    - run-parameters.env
+      - run-parameters.env
     build:
       context: ../
       dockerfile: benchmark/Dockerfile
     # we will be running docker exec against it
     command:
-    - sh
-    - -c
-    - sleep Infinity
+      - sh
+      - -c
+      - sleep Infinity
     volumes:
-    - ./dashboard-screenshots:/screenshots
+      - ./dashboard-screenshots:/screenshots
 
   pyroscope:
     environment:
@@ -28,8 +28,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "${PYROSCOPE_CPUS}"
-          memory: "${PYROSCOPE_MEMORY}"
+          cpus: '${PYROSCOPE_CPUS}'
+          memory: '${PYROSCOPE_MEMORY}'
 
   prometheus:
     image: prom/prometheus:v2.27.1
@@ -53,4 +53,3 @@ services:
 volumes:
   data-prometheus:
     driver: local
-

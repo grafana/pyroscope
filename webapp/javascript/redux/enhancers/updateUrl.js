@@ -1,5 +1,5 @@
-import createSlicer from "redux-localstorage/lib/createSlicer";
-import mergeState from "redux-localstorage/lib/util/mergeState";
+import createSlicer from 'redux-localstorage/lib/createSlicer';
+import mergeState from 'redux-localstorage/lib/util/mergeState';
 
 export default function updateUrl(paths, config) {
   const cfg = {
@@ -13,7 +13,7 @@ export default function updateUrl(paths, config) {
   const { merge } = cfg;
 
   return (next) => (reducer, initialState, enhancer) => {
-    if (typeof initialState === "function" && typeof enhancer === "undefined") {
+    if (typeof initialState === 'function' && typeof enhancer === 'undefined') {
       enhancer = initialState;
       initialState = undefined;
     }
@@ -28,15 +28,15 @@ export default function updateUrl(paths, config) {
       paths.forEach((x) => {
         const val = urlParams.get(x);
         if (val) {
-          persistedState[x] = val.startsWith("json:")
-            ? JSON.parse(val.replace("json:", ""))
+          persistedState[x] = val.startsWith('json:')
+            ? JSON.parse(val.replace('json:', ''))
             : val;
         }
       });
 
       finalInitialState = merge(initialState, persistedState);
     } catch (e) {
-      console.warn("Failed to retrieve initialize state from URL:", e);
+      console.warn('Failed to retrieve initialize state from URL:', e);
     }
 
     const store = next(reducer, finalInitialState, enhancer);
@@ -50,15 +50,15 @@ export default function updateUrl(paths, config) {
         paths.forEach((x) => {
           if (state[x]) {
             const val =
-              typeof state[x] === "string"
+              typeof state[x] === 'string'
                 ? state[x]
                 : `json:${JSON.stringify(state[x])}`;
             urlParams.set(x, val);
           }
         });
-        history.pushState({}, "title", `/?${urlParams.toString()}`);
+        history.pushState({}, 'title', `/?${urlParams.toString()}`);
       } catch (e) {
-        console.warn("Unable to persist state to URL:", e);
+        console.warn('Unable to persist state to URL:', e);
       }
     });
 
