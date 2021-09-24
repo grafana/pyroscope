@@ -58,5 +58,12 @@ module.exports = (on, config) => {
     return launchOptions;
   });
 
+  // force color profile
+  on('before:browser:launch', (browser = {}, launchOptions) => {
+    if (browser.family === 'chromium' && browser.name !== 'electron') {
+      launchOptions.args.push('--force-color-profile=srgb');
+    }
+  });
+
   return config;
 };
