@@ -15,3 +15,9 @@ Or run `yarn cy:ci` to run all tests.
 * [Don't write small tests with single assertions](https://docs.cypress.io/guides/references/best-practices#Creating-tiny-tests-with-a-single-assertion)
 * [Mock HTTP requests](https://docs.cypress.io/guides/guides/network-requests#Stub-Responses) when appropriate
 
+
+# Snapshot (Visual testing)
+We use [jaredpalmer/cypress-image-snapshot](https://github.com/jaredpalmer/cypress-image-snapshot) to test against snapshots images.
+
+To update the snapshots, add `--env updateSnapshots=true`.
+For instance, `yarn cy:open --env updateSnapshots=true`.

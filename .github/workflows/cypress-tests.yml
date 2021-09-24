@@ -36,3 +36,8 @@ jobs:
         with:
           name: cypress-videos
           path: cypress/videos
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-snapshots
+          path: cypress/snapshots

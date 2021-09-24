@@ -31,6 +31,7 @@
     "copy-webpack-plugin": "^6.3.2",
     "css-loader": "^4.0.0",
     "cypress": "^8.3.0",
+    "cypress-image-snapshot": "^4.0.1",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.15.5",
     "eslint": "7.2.0",

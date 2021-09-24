@@ -6,5 +6,7 @@ it('matches snapshot', () => {
   }).as('render')
 
   cy.visit('/');
-  cy.findByTestId('flamegraph-view').toMatchImageSnapshot();
+//  cy.findByTestId('flamegraph-view').toMatchImageSnapshot();
+
+  cy.findByTestId('flamegraph-canvas').matchImageSnapshot();
 });
