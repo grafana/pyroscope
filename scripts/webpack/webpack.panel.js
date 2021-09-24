@@ -1,7 +1,7 @@
 const { merge } = require('webpack-merge');
 
 const path = require('path');
-const prod = require('./webpack.prod.js');
+const prod = require('./webpack.prod');
 
 module.exports = merge(prod, {
   entry: {
