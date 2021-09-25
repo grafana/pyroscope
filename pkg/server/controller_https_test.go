@@ -19,24 +19,23 @@ import (
 
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
-		const test_data_dir string = "testdata"
-		const tlsCertificateFile string = "server.crt"
-		const tlsKeyFile string = "server.key"
-
+		const testDataDir string = "testdata"
+		const tlsCertificateFile string = "cert.pem"
+		const tlsKeyFile string = "key.pem"
 		Describe("HTTPS", func() {
 			It("Should serve HTTPS when TLSCertificateFile and TLSKeyFile is defined",
 				func() {
 					defer GinkgoRecover()
 					const addr = ":10046"
 					(*cfg).Server.APIBindAddr = addr
-					(*cfg).Server.TLSCertificateFile = filepath.Join(test_data_dir, tlsCertificateFile)
-					(*cfg).Server.TLSKeyFile = filepath.Join(test_data_dir, tlsKeyFile)
+					(*cfg).Server.TLSCertificateFile = filepath.Join(testDataDir, tlsCertificateFile)
+					(*cfg).Server.TLSKeyFile = filepath.Join(testDataDir, tlsKeyFile)
 
 					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
 					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
-					c.dir = http.Dir(test_data_dir)
+					c.dir = http.Dir(testDataDir)
 
 					go c.Start()
 					// TODO: Wait for start .There's possibly a better way of doing this
@@ -55,7 +54,6 @@ var _ = Describe("server", func() {
 
 					Expect(resHTTPS.StatusCode).To(Equal(http.StatusOK))
 					Expect(resHTTP.StatusCode).To(Equal(http.StatusBadRequest))
-
 				},
 			)
 			It("Should serve HTTP when TLSCertificateFile & TLSKeyFile is undefined",
@@ -68,7 +66,7 @@ var _ = Describe("server", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
-					c.dir = http.Dir(test_data_dir)
+					c.dir = http.Dir(testDataDir)
 
 					go c.Start()
 					time.Sleep(50 * time.Millisecond)
@@ -85,10 +83,8 @@ var _ = Describe("server", func() {
 
 					Expect(resHTTP.StatusCode).To(Equal(http.StatusOK))
 					Expect(errHTTPS).To(HaveOccurred())
-
 				},
 			)
-
 		})
 	})
 })
