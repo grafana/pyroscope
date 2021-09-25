@@ -119,35 +119,90 @@ var _ = Describe("tree package", func() {
 			Expect(tree.minValue(4)).To(Equal(uint64(0)))
 		})
 	})
+
+	Context("Truncate", func() {
+		It("returns expected value", func() {
+			tree := New()
+			tree.Insert([]byte("foo;baz"), uint64(3))
+			tree.Insert([]byte("foo;bar;a"), uint64(1))
+			tree.Insert([]byte("foo;bar;b"), uint64(1))
+			tree.Insert([]byte("foo;bar;c"), uint64(1))
+			Expect(tree.Len()).To(Equal(7))
+			tree.Truncate(3)
+			Expect(tree.Len()).To(Equal(4))
+			Expect(tree.String()).To(Equal(treeStr(`"foo;bar" 3|"foo;baz" 3|`)))
+		})
+	})
+	/*
+		Context("Truncate", func() {
+			It("returns expected value", func() {
+				tree := New()
+				tree.Insert([]byte("foo;baz"), uint64(3))
+				tree.Insert([]byte("foo;bar;a"), uint64(1))
+				tree.Insert([]byte("foo;bar;b"), uint64(1))
+				tree.Insert([]byte("foo;bar;c"), uint64(1))
+				Expect(tree.Len()).To(Equal(7))
+				tree.TruncateN(3)
+				Expect(tree.Len()).To(Equal(4))
+				Expect(tree.String()).To(Equal(treeStr(`"foo;bar" 3|"foo;baz" 3|`)))
+			})
+		})*/
 })
 
-func BenchmarkClone(b *testing.B) {
-	r := big.NewRat(1, 1)
+func BenchmarkInsert(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		tree := New()
 		for _, l := range rawTreeB {
 			tree.Insert(l.key, l.value)
 		}
-		c := tree.Clone(r)
 		tree.Reset()
-		c.Reset()
 	}
 }
 
+func BenchmarkClone(b *testing.B) {
+	tree := New()
+	for _, l := range rawTreeB {
+		tree.Insert(l.key, l.value)
+	}
+	r := big.NewRat(1, 1)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		tree.Clone(r).Reset()
+	}
+	tree.Reset()
+}
+
 func BenchmarkMerge(b *testing.B) {
+	treeB := New()
+	for _, l := range rawTreeB {
+		treeB.Insert(l.key, l.value)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
 		treeA := New()
 		for _, l := range rawTreeA {
 			treeA.Insert(l.key, l.value)
 		}
-		treeB := New()
-		for _, l := range rawTreeB {
-			treeB.Insert(l.key, l.value)
-		}
 		treeA.Merge(treeB)
 		treeA.Reset()
-		treeB.Reset()
 	}
+	treeB.Reset()
+}
+
+func BenchmarkTruncate(b *testing.B) {
+	tree := New()
+	for _, l := range rawTreeB {
+		tree.Insert(l.key, l.value)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+	// tree.Len() == 2083; A corner case.
+	for i := 0; i < b.N; i++ {
+		tree.Truncate(2048)
+	}
+	tree.Reset()
 }
 
 func treeStr(s string) string {

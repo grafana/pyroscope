@@ -18,14 +18,12 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 	t.Lock()
 	defer t.Unlock()
 	vw := varint.NewWriter()
-
-	// TODO: introduce the next version, ensure backward compatibility.
-	// TODO: implement truncation (?).
 	var err error
 	if _, err = vw.Write(w, currentVersion); err != nil {
 		return err
 	}
 
+	t.Truncate(maxNodes)
 	if _, err = vw.Write(w, uint64(len(t.nodes))); err != nil {
 		return err
 	}
@@ -39,8 +37,6 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 				return err
 			}
 		}
-		// TODO: labels to be written as a blob.
-		// TODO: what if not use dictionaries?
 		labelKey := d.Put(t.loadLabel(n.labelPosition))
 		if _, err = vw.Write(w, uint64(len(labelKey))); err != nil {
 			return err

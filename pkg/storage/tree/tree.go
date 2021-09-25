@@ -251,3 +251,88 @@ func (t *Tree) String() string {
 	})
 	return b.String()
 }
+
+func (t *Tree) Truncate(maxNodes int) {
+	if t.Len() <= maxNodes {
+		return
+	}
+	// A new tree is taken from the pool: there is a
+	// chance it has enough capacity.
+	tmp := New()
+	if f := len(t.nodes) - cap(tmp.nodes); f > 0 {
+		tmp.nodes = make([]treeNode, 0, cap(t.nodes))
+	}
+
+	t.copyNode(tmp, 0, t.minValue(maxNodes))
+	// Swap allocated resources and free ones used by t initially.
+	t.labels, t.nodes = tmp.labels, tmp.nodes
+	tmp.Reset()
+}
+
+// TODO: refactor - make it non-recursive, reduce allocations.
+func (t *Tree) copyNode(dst *Tree, idx int, min uint64) (copyIdx int) {
+	n := t.nodes[idx]
+	if n.Total < min {
+		return -1
+	}
+
+	n.labelPosition = dst.insertLabel(t.loadLabel(n.labelPosition))
+	dst.nodes = append(dst.nodes, n)
+	copyIdx = len(dst.nodes) - 1
+
+	children := make([]int, 0, cap(n.ChildrenNodes))
+	var self uint64
+	for _, j := range n.ChildrenNodes {
+		if c := t.copyNode(dst, j, min); c != -1 {
+			children = append(children, c)
+		} else {
+			self += t.nodes[j].Total
+		}
+	}
+
+	dst.nodes[copyIdx].ChildrenNodes = children
+	if self > 0 {
+		dst.nodes[copyIdx].Self = self
+	}
+
+	return copyIdx
+}
+
+/*
+func (t *Tree) TruncateN(maxNodes int) {
+	if t.Len() <= maxNodes {
+		return
+	}
+	// A new tree is taken from the pool: there is a
+	// chance it has enough capacity.
+	tmp := New()
+	if f := len(t.nodes) - cap(tmp.nodes); f > 0 {
+		tmp.nodes = make([]treeNode, 0, cap(t.nodes))
+	}
+
+	t.copyNodeN(tmp, t.minValue(maxNodes))
+	// Swap allocated resources and free ones used by t initially.
+	t.labels, t.nodes = tmp.labels, tmp.nodes
+	tmp.Reset()
+}
+
+func (t *Tree) copyNodeN(dst *Tree, min uint64) {
+	type ref struct { a, b int }
+	nodes := make([]ref, 0, len(t.nodes))
+
+	for i := 0; i < len(t.nodes); i++ {
+		n := t.nodes[i]
+		if n.Total < min {
+			continue
+		}
+		n.labelPosition = dst.insertLabel(t.loadLabel(n.labelPosition))
+		dst.nodes = append(dst.nodes, n)
+		for
+		nodes = append(nodes, n.ChildrenNodes...)
+	}
+
+	for n := range dst.nodes {
+		_ = n
+	}
+}
+*/
