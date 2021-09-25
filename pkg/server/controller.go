@@ -229,8 +229,8 @@ func (ctrl *Controller) Start() error {
 
 	updates.StartVersionUpdateLoop()
 
-	if ctrl.config.TLSCertificateFile != "" && ctrl.config.TLSCertificateKeyFile != "" {
-		err = ctrl.httpServer.ListenAndServeTLS(ctrl.config.TLSCertificateFile, ctrl.config.TLSCertificateKeyFile)
+	if ctrl.config.TLSCertificateFile != "" && ctrl.config.TLSKeyFile != "" {
+		err = ctrl.httpServer.ListenAndServeTLS(ctrl.config.TLSCertificateFile, ctrl.config.TLSKeyFile)
 	} else {
 		err = ctrl.httpServer.ListenAndServe()
 	}

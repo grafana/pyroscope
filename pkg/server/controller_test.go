@@ -21,8 +21,7 @@ import (
 )
 
 const assetAtCompressionThreshold, assetLtCompressionThreshold = "AssetAtCompressionThreshold", "AssetLTCompressionThreshold"
-const tlsCert = 
-`-----BEGIN CERTIFICATE-----
+const tlsCert = `-----BEGIN CERTIFICATE-----
 MIICpzCCAi6gAwIBAgIUVyJRQWSwWAdra4ndkDYGQ36wnBUwCgYIKoZIzj0EAwIw
 gYoxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJEQzELMAkGA1UEBwwCREMxFTATBgNV
 BAoMDHB5cm9zY29wZS5pbzEVMBMGA1UECwwMcHlyb3Njb3BlLmlvMRIwEAYDVQQD
@@ -40,8 +39,7 @@ Tsw7f3UVBQ9YAjBEy/MSnZ1TEyMb2jr2ItkaBRImuuko4Ksc1u5APiLncOmUJm+2
 KanShH9fNMKOs8w=
 -----END CERTIFICATE-----
 `
-const tlsKey = 
-`-----BEGIN EC PARAMETERS-----
+const tlsKey = `-----BEGIN EC PARAMETERS-----
 BgUrgQQAIg==
 -----END EC PARAMETERS-----
 -----BEGIN EC PRIVATE KEY-----
@@ -55,7 +53,7 @@ XSl1RR/+kchK1i99l8A/5Diobc6/Uwo=
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		var tlsCertificateFile string
-		var tlsCertificateKeyFile string
+		var tlsKeyFile string
 		var temp_asset_dir *testing.TmpDirectory
 
 		BeforeSuite(func() {
@@ -63,7 +61,7 @@ var _ = Describe("server", func() {
 			ioutil.WriteFile(filepath.Join(temp_asset_dir.Path, assetLtCompressionThreshold), make([]byte, gzHttpCompressionThreshold-1), 0644)
 			ioutil.WriteFile(filepath.Join(temp_asset_dir.Path, assetAtCompressionThreshold), make([]byte, gzHttpCompressionThreshold), 0644)
 			tlsCertificateFile = filepath.Join(temp_asset_dir.Path, "tlsCert")
-			tlsCertificateKeyFile = filepath.Join(temp_asset_dir.Path, "tlsKey")
+			tlsKeyFile = filepath.Join(temp_asset_dir.Path, "tlsKey")
 			ioutil.WriteFile(filepath.Join(temp_asset_dir.Path, "tlsCert"), []byte(tlsCert), 0644)
 			ioutil.WriteFile(filepath.Join(temp_asset_dir.Path, "tlsKey"), []byte(tlsKey), 0644)
 			ioutil.WriteFile(filepath.Join(temp_asset_dir.Path, "index.html"), []byte("<!DOCTYPE html>"), 0644)
@@ -99,13 +97,13 @@ var _ = Describe("server", func() {
 			Entry("Should not compress assets less than threshold", assetLtCompressionThreshold, false),
 		)
 		Describe("HTTPS", func() {
-			It("Should serve HTTPS when TLSCertificateFile and TLSCertificateKeyFile is defined",
+			It("Should serve HTTPS when TLSCertificateFile and TLSKeyFile is defined",
 				func() {
 					defer GinkgoRecover()
 					const addr = ":10046"
 					(*cfg).Server.APIBindAddr = addr
 					(*cfg).Server.TLSCertificateFile = tlsCertificateFile
-					(*cfg).Server.TLSCertificateKeyFile = tlsCertificateKeyFile
+					(*cfg).Server.TLSKeyFile = tlsKeyFile
 
 					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
@@ -115,7 +113,7 @@ var _ = Describe("server", func() {
 
 					go c.Start()
 					// TODO: Wait for start .There's possibly a better way of doing this
-					time.Sleep(50 * time.Millisecond) 
+					time.Sleep(50 * time.Millisecond)
 					tr := &http.Transport{
 						TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 					}
@@ -133,7 +131,7 @@ var _ = Describe("server", func() {
 
 				},
 			)
-			It("Should serve HTTP when TLSCertificateFile & TLSCertificateKeyFile is undefined",
+			It("Should serve HTTP when TLSCertificateFile & TLSKeyFile is undefined",
 				func() {
 					defer GinkgoRecover()
 					const addr = ":10046"

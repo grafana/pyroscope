@@ -106,8 +106,8 @@ type Server struct {
 
 	MetricExportRules MetricExportRules `yaml:"metric-export-rules" def:"" desc:"metric export rules" mapstructure:"metric-export-rules"`
 
-	TLSCertificateFile    string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
-	TLSCertificateKeyFile string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-certificate-key-file"`
+	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
+	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 }
 
 type MetricExportRules map[string]MetricExportRule
