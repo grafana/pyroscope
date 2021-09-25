@@ -74,7 +74,8 @@ func (t *Tree) put(n treeNode) int {
 	return len(t.nodes) - 1
 }
 
-// grow increases nodes capacity slice by maximum of n and 2 * cap.
+// grow increases nodes capacity slice.
+// if n < cap, then it doubles capacity.
 func (t *Tree) grow(n int) int {
 	if n < cap(t.nodes) {
 		n = cap(t.nodes)
@@ -136,7 +137,7 @@ func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 	// It is important to grow tree before any node pointer
 	// taken. Otherwise, those are invalidated, if the node
 	// slice is changed.
-	c := bytes.Count(key, separator)
+	c := bytes.Count(key, separator) + 2
 	if cap(t.nodes)-len(t.nodes) < c {
 		t.grow(c)
 	}
