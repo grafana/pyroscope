@@ -41,16 +41,13 @@ type treeNode struct {
 	ChildrenNodes []int
 }
 
+// New gets a tree from pool or creates a new one.
+// The tree has already pre-allocated some space
+// for node labels and nodes themselves.
+//
+// The tree must be Reset after use.
 func New() *Tree {
 	return treePool.Get().(*Tree)
-}
-
-func (t *Tree) Samples() uint64 {
-	return t.root().Total
-}
-
-func (t *Tree) Len() int {
-	return len(t.nodes)
 }
 
 func (t *Tree) Reset() {
@@ -60,6 +57,14 @@ func (t *Tree) Reset() {
 	t.nodes = t.nodes[:0]
 	t.labels.Reset()
 	treePool.Put(t)
+}
+
+func (t *Tree) Len() int {
+	return len(t.nodes)
+}
+
+func (t *Tree) Samples() uint64 {
+	return t.root().Total
 }
 
 func (t *Tree) newNode(label []byte) int {
@@ -109,9 +114,13 @@ func (t *Tree) loadLabel(k uint64) []byte {
 }
 
 func (t *Tree) Merge(src *Tree) {
-	srcNodes := make([]int, 1, 128) // 1 for root.
-	dstNodes := make([]int, 1, 128)
-	if cap(t.nodes)-len(t.nodes) < len(src.nodes) {
+	srcNodes := make([]int, 1, cap(src.nodes)) // 1 for root.
+	dstNodes := make([]int, 1, cap(t.nodes))
+	// Adjust dst nodes slice capacity to make
+	// room for new nodes. Note that the resulting
+	// slice should be able to hold nodes from both
+	// trees.
+	if f := cap(t.nodes) - len(t.nodes); f < len(src.nodes) {
 		t.grow(len(src.nodes))
 	}
 
@@ -138,8 +147,8 @@ func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 	// taken. Otherwise, those are invalidated, if the node
 	// slice is changed.
 	c := bytes.Count(key, separator) + 2
-	if cap(t.nodes)-len(t.nodes) < c {
-		t.grow(c)
+	if f := cap(t.nodes) - len(t.nodes); f < c {
+		t.grow(c - f)
 	}
 	node := t.root()
 	var offset int
@@ -174,6 +183,31 @@ func (n *treeNode) insert(t *Tree, targetLabel []byte) (*treeNode, int) {
 	return t.at(i), i
 }
 
+// Clone creates a tree copy. The copy must be reset once not used.
+func (t *Tree) Clone(r *big.Rat) *Tree {
+	t.RLock()
+	defer t.RUnlock()
+	m := uint64(r.Num().Int64())
+	d := uint64(r.Denom().Int64())
+	newTrie := New()
+	if s := cap(t.nodes) - cap(newTrie.nodes); s > 0 {
+		newTrie.grow(s)
+	}
+	for i := range t.nodes {
+		x := t.at(i)
+		c := make([]int, len(x.ChildrenNodes))
+		copy(c, x.ChildrenNodes)
+		newTrie.nodes = append(newTrie.nodes, treeNode{
+			labelPosition: x.labelPosition,
+			Total:         x.Total * m / d,
+			Self:          x.Self * m / d,
+			ChildrenNodes: c,
+		})
+	}
+	_, _ = newTrie.labels.Write(t.labels.Bytes())
+	return newTrie
+}
+
 func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	// TODO: Refactor.
 	nodes := []int{0}
@@ -204,44 +238,6 @@ func prependBytes(s [][]byte, x []byte) [][]byte {
 	copy(s[1:], s)
 	s[0] = x
 	return s
-}
-
-// Clone creates a tree copy. The copy must be reset once not used.
-func (t *Tree) Clone(r *big.Rat) *Tree {
-	t.RLock()
-	defer t.RUnlock()
-	m := uint64(r.Num().Int64())
-	d := uint64(r.Denom().Int64())
-	newTrie := New()
-	if s := cap(t.nodes) - cap(newTrie.nodes); s > 0 {
-		newTrie.grow(s)
-	}
-	for i := range t.nodes {
-		x := t.at(i)
-		c := make([]int, len(x.ChildrenNodes))
-		copy(c, x.ChildrenNodes)
-		newTrie.nodes = append(newTrie.nodes, treeNode{
-			labelPosition: x.labelPosition,
-			Total:         x.Total * m / d,
-			Self:          x.Self * m / d,
-			ChildrenNodes: c,
-		})
-	}
-	_, _ = newTrie.labels.Write(t.labels.Bytes())
-	return newTrie
-}
-
-func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
-	nodes := []int{0}
-	i := 0
-	for len(nodes) > 0 {
-		node := t.at(nodes[0])
-		nodes = nodes[1:]
-		i++
-		if cb(node.Total) {
-			nodes = append(node.ChildrenNodes, nodes...)
-		}
-	}
 }
 
 func (t *Tree) String() string {

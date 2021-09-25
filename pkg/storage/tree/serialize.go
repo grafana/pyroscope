@@ -74,7 +74,6 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 	}
 
 	t := New()
-	// Trim root.
 	if s := int(nodes) - cap(t.nodes); s > 0 {
 		t.grow(s)
 	}

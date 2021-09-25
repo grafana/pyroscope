@@ -85,7 +85,7 @@ var _ = Describe("tree package", func() {
 	})
 
 	Context("Clone", func() {
-		Context("creates a tree copy", func() {
+		It("creates a tree copy", func() {
 			tree := New()
 			tree.Insert([]byte("a;b"), uint64(1))
 			tree.Insert([]byte("a;c"), uint64(2))
@@ -95,7 +95,7 @@ var _ = Describe("tree package", func() {
 	})
 
 	Context("MarshalJSON", func() {
-		Context("creates a tree copy", func() {
+		It("creates an expected JSON output", func() {
 			tree := New()
 			tree.Insert([]byte("a;b"), uint64(1))
 			tree.Insert([]byte("a;c"), uint64(2))
@@ -103,6 +103,20 @@ var _ = Describe("tree package", func() {
 			s, err := tree.MarshalJSON()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(string(s)).To(Equal(`{"name":"","total":3,"self":0,"children":[{"name":"a","total":3,"self":0,"children":[{"name":"b","total":1,"self":1,"children":[]},{"name":"c","total":2,"self":2,"children":[]}]}]}`))
+		})
+	})
+
+	Context("MinValue", func() {
+		It("returns expected value", func() {
+			tree := New()
+			tree.Insert([]byte("a;b"), uint64(1))
+			tree.Insert([]byte("a;c"), uint64(2))
+
+			Expect(tree.minValue(0)).To(Equal(uint64(3)))
+			Expect(tree.minValue(1)).To(Equal(uint64(3)))
+			Expect(tree.minValue(2)).To(Equal(uint64(2)))
+			Expect(tree.minValue(3)).To(Equal(uint64(1)))
+			Expect(tree.minValue(4)).To(Equal(uint64(0)))
 		})
 	})
 })
