@@ -13,7 +13,7 @@ const (
 	semicolon = byte(';')
 
 	initialNodesBufferSizeCount  = 128
-	initialLabelsBufferSizeBytes = 512
+	initialLabelsBufferSizeBytes = 1 << 10 // 1 KB
 
 	positionLengthMask = 1<<32 - 1
 	positionOffsetMask = positionLengthMask << 32
@@ -114,12 +114,10 @@ func (t *Tree) loadLabel(k uint64) []byte {
 }
 
 func (t *Tree) Merge(src *Tree) {
-	srcNodes := make([]int, 1, cap(src.nodes)) // 1 for root.
+	srcNodes := make([]int, 1, len(src.nodes)) // 1 for root.
 	dstNodes := make([]int, 1, cap(t.nodes))
-	// Adjust dst nodes slice capacity to make
-	// room for new nodes. Note that the resulting
-	// slice should be able to hold nodes from both
-	// trees.
+	// Adjust dst nodes slice capacity to make room for new nodes.
+	// The resulting slice should be able to hold nodes from both trees.
 	if f := cap(t.nodes) - len(t.nodes); f < len(src.nodes) {
 		t.grow(len(src.nodes))
 	}
@@ -252,87 +250,68 @@ func (t *Tree) String() string {
 	return b.String()
 }
 
-func (t *Tree) Truncate(maxNodes int) {
-	if t.Len() <= maxNodes {
+// Truncate removes nodes from t with Total value less than
+// kth-smallest value. Resulting tree will only have appx.
+// k most significant nodes.
+func (t *Tree) Truncate(k int) {
+	if t.Len() <= k {
 		return
 	}
-	// A new tree is taken from the pool: there is a
-	// chance it has enough capacity.
+	// A new tree is taken from the pool not only for
+	// convenience: there is a chance it has enough capacity.
 	tmp := New()
 	if f := len(t.nodes) - cap(tmp.nodes); f > 0 {
+		// t.grow would also copy nodes, therefore is not used.
 		tmp.nodes = make([]treeNode, 0, cap(t.nodes))
 	}
-
-	t.copyNode(tmp, 0, t.minValue(maxNodes))
+	t.truncate(tmp, k)
 	// Swap allocated resources and free ones used by t initially.
-	t.labels, t.nodes = tmp.labels, tmp.nodes
+	t.labels, tmp.labels = tmp.labels, t.labels
+	t.nodes, tmp.nodes = tmp.nodes, t.nodes
 	tmp.Reset()
 }
 
-// TODO: refactor - make it non-recursive, reduce allocations.
-func (t *Tree) copyNode(dst *Tree, idx int, min uint64) (copyIdx int) {
-	n := t.nodes[idx]
-	if n.Total < min {
-		return -1
+func (t *Tree) truncate(dst *Tree, maxNodes int) {
+	// Find kth-smallest node total value (order statistic).
+	nodes := make([]uint64, len(t.nodes))
+	for i := range t.nodes {
+		nodes[i] = t.nodes[i].Total
 	}
-
-	n.labelPosition = dst.insertLabel(t.loadLabel(n.labelPosition))
-	dst.nodes = append(dst.nodes, n)
-	copyIdx = len(dst.nodes) - 1
-
-	children := make([]int, 0, cap(n.ChildrenNodes))
-	var self uint64
-	for _, j := range n.ChildrenNodes {
-		if c := t.copyNode(dst, j, min); c != -1 {
-			children = append(children, c)
-		} else {
-			self += t.nodes[j].Total
-		}
-	}
-
-	dst.nodes[copyIdx].ChildrenNodes = children
-	if self > 0 {
-		dst.nodes[copyIdx].Self = self
-	}
-
-	return copyIdx
-}
-
-/*
-func (t *Tree) TruncateN(maxNodes int) {
-	if t.Len() <= maxNodes {
-		return
-	}
-	// A new tree is taken from the pool: there is a
-	// chance it has enough capacity.
-	tmp := New()
-	if f := len(t.nodes) - cap(tmp.nodes); f > 0 {
-		tmp.nodes = make([]treeNode, 0, cap(t.nodes))
-	}
-
-	t.copyNodeN(tmp, t.minValue(maxNodes))
-	// Swap allocated resources and free ones used by t initially.
-	t.labels, t.nodes = tmp.labels, tmp.nodes
-	tmp.Reset()
-}
-
-func (t *Tree) copyNodeN(dst *Tree, min uint64) {
-	type ref struct { a, b int }
-	nodes := make([]ref, 0, len(t.nodes))
-
-	for i := 0; i < len(t.nodes); i++ {
-		n := t.nodes[i]
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[j] < nodes[i]
+	})
+	min := nodes[maxNodes]
+	// nodes slice is reused for index map: only subset
+	// of t.nodes will migrate to dst.nodes; consequently,
+	// node indexes will change.
+	for i := range t.nodes {
+		n := t.at(i)
 		if n.Total < min {
+			nodes[i] = 0
 			continue
 		}
 		n.labelPosition = dst.insertLabel(t.loadLabel(n.labelPosition))
-		dst.nodes = append(dst.nodes, n)
-		for
-		nodes = append(nodes, n.ChildrenNodes...)
+		dst.nodes = append(dst.nodes, *n)
+		nodes[i] = uint64(len(dst.nodes) - 1)
 	}
-
-	for n := range dst.nodes {
-		_ = n
+	// Lookup correct indexes for children nodes.
+	for i := range dst.nodes {
+		n := dst.nodes[i]
+		if len(n.ChildrenNodes) == 0 {
+			continue
+		}
+		x := 0
+		for _, j := range n.ChildrenNodes {
+			if newIdx := nodes[j]; newIdx > 0 {
+				n.ChildrenNodes[x] = int(newIdx)
+				x++
+				continue
+			}
+			// The node was truncated, count its total as
+			// parent's self.
+			n.Self += t.nodes[j].Total
+		}
+		n.ChildrenNodes = n.ChildrenNodes[:x]
+		dst.nodes[i] = n
 	}
 }
-*/

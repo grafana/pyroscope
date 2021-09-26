@@ -1,14 +1,9 @@
 package tree
 
 import (
-	"bufio"
-	"bytes"
 	"math/big"
 	"math/rand"
-	"os"
-	"strconv"
 	"strings"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -20,16 +15,6 @@ func randStr() []byte {
 		buf[i] = byte(97) + byte(rand.Uint32()%10)
 	}
 	return buf
-}
-
-var (
-	rawTreeA = mustParse("testdata/tree_1.txt")
-	rawTreeB = mustParse("testdata/tree_2.txt")
-)
-
-type line struct {
-	key   []byte
-	value uint64
 }
 
 var _ = Describe("tree package", func() {
@@ -90,7 +75,7 @@ var _ = Describe("tree package", func() {
 			tree.Insert([]byte("a;b"), uint64(1))
 			tree.Insert([]byte("a;c"), uint64(2))
 			Expect(tree.Clone(big.NewRat(2, 1)).String()).
-				To(Equal("\"a;b\" 2\n\"a;c\" 4\n"))
+				To(Equal(treeStr(`"a;b" 2|"a;c" 4|`)))
 		})
 	})
 
@@ -133,102 +118,8 @@ var _ = Describe("tree package", func() {
 			Expect(tree.String()).To(Equal(treeStr(`"foo;bar" 3|"foo;baz" 3|`)))
 		})
 	})
-	/*
-		Context("Truncate", func() {
-			It("returns expected value", func() {
-				tree := New()
-				tree.Insert([]byte("foo;baz"), uint64(3))
-				tree.Insert([]byte("foo;bar;a"), uint64(1))
-				tree.Insert([]byte("foo;bar;b"), uint64(1))
-				tree.Insert([]byte("foo;bar;c"), uint64(1))
-				Expect(tree.Len()).To(Equal(7))
-				tree.TruncateN(3)
-				Expect(tree.Len()).To(Equal(4))
-				Expect(tree.String()).To(Equal(treeStr(`"foo;bar" 3|"foo;baz" 3|`)))
-			})
-		})*/
 })
-
-func BenchmarkInsert(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		tree := New()
-		for _, l := range rawTreeB {
-			tree.Insert(l.key, l.value)
-		}
-		tree.Reset()
-	}
-}
-
-func BenchmarkClone(b *testing.B) {
-	tree := New()
-	for _, l := range rawTreeB {
-		tree.Insert(l.key, l.value)
-	}
-	r := big.NewRat(1, 1)
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		tree.Clone(r).Reset()
-	}
-	tree.Reset()
-}
-
-func BenchmarkMerge(b *testing.B) {
-	treeB := New()
-	for _, l := range rawTreeB {
-		treeB.Insert(l.key, l.value)
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		treeA := New()
-		for _, l := range rawTreeA {
-			treeA.Insert(l.key, l.value)
-		}
-		treeA.Merge(treeB)
-		treeA.Reset()
-	}
-	treeB.Reset()
-}
-
-func BenchmarkTruncate(b *testing.B) {
-	tree := New()
-	for _, l := range rawTreeB {
-		tree.Insert(l.key, l.value)
-	}
-	b.ResetTimer()
-	b.ReportAllocs()
-	// tree.Len() == 2083; A corner case.
-	for i := 0; i < b.N; i++ {
-		tree.Truncate(2048)
-	}
-	tree.Reset()
-}
 
 func treeStr(s string) string {
 	return strings.ReplaceAll(s, "|", "\n")
-}
-
-func mustParse(path string) (lines []line) {
-	f, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	defer func() {
-		_ = f.Close()
-	}()
-	w := []byte{' '}
-	s := bufio.NewScanner(bufio.NewReader(f))
-	for s.Scan() {
-		i := bytes.LastIndex(s.Bytes(), w)
-		n, err := strconv.Atoi(s.Text()[i+1:])
-		if err != nil {
-			panic(err)
-		}
-		lines = append(lines, line{
-			key:   []byte(s.Text())[:i],
-			value: uint64(n),
-		})
-	}
-	return lines
 }
