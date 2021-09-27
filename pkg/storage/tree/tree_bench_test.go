@@ -85,7 +85,7 @@ func BenchmarkTruncate(b *testing.B) {
 		for _, l := range rawTreeB {
 			tree.Insert(l.key, l.value)
 		}
-		// tree.Len() == 2083
-		tree.Truncate(2048)
+		// tree.Len() == 1195
+		tree.Truncate(512)
 	}
 }

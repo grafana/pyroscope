@@ -79,6 +79,8 @@ func (t *Tree) grow(n int) int {
 	return copy(t.nodes, p)
 }
 
+// at references node at idx. If t.nodes slice changes due
+// to re-allocation, the reference invalidates.
 func (t *Tree) at(idx int) *treeNode {
 	if len(t.nodes) == 0 {
 		t.nodes = append(t.nodes, treeNode{})
@@ -174,7 +176,6 @@ func (t *Tree) insert(n *treeNode, targetLabel []byte) (*treeNode, int) {
 	return t.at(i), i
 }
 
-// Clone creates a tree copy. The copy must be reset once not used.
 func (t *Tree) Clone(r *big.Rat) *Tree {
 	t.RLock()
 	defer t.RUnlock()

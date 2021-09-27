@@ -9,6 +9,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 )
 
+func expectLabel(t *Tree, idx int, label string) {
+	Expect(string(t.loadNodeLabel(idx))).To(Equal(label))
+}
+
 var _ = Describe("tree", func() {
 	Describe("Serialize/Deserialize", func() {
 		d := dict.New()

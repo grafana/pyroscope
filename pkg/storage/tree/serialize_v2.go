@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
+	"fmt"
 	"io"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
@@ -12,7 +13,7 @@ import (
 )
 
 // serialization format version. it's not very useful right now, but it will be in the future
-const currentVersion = 1
+const currentVersion = 2
 
 func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 	t.Lock()
@@ -57,15 +58,24 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 
 func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 	br := bufio.NewReader(r)
-
-	// reads serialization format version, see comment at the top
-	var err error
-	if _, err = binary.ReadUvarint(br); err != nil {
+	// reads serialization format version, see comment at the top.
+	version, err := binary.ReadUvarint(br)
+	if err != nil {
 		return nil, err
 	}
+	switch version {
+	case 1:
+		return DeserializeV1(d, br)
+	case 2:
+		return DeserializeV2(d, br)
+	default:
+		return nil, fmt.Errorf("unknown format version")
+	}
+}
 
-	var nodes uint64
-	if nodes, err = varint.Read(br); err != nil {
+func DeserializeV2(d *dict.Dict, br *bufio.Reader) (*Tree, error) {
+	nodes, err := varint.Read(br)
+	if err != nil {
 		return nil, err
 	}
 
