@@ -1,47 +1,52 @@
 package tree
 
+import (
+	"bytes"
+
+	"github.com/pyroscope-io/pyroscope/pkg/structs/cappedarr"
+)
+
 // CombineTree aligns 2 trees by making them having the same structure with the
 // same number of nodes
 // TODO: create a new struct?
 func CombineTree(leftTree, rightTree *Tree) (*Tree, *Tree) {
-	/*	leftTree.Lock()
-		defer leftTree.Unlock()
-		rightTree.Lock()
-		defer rightTree.Unlock()
+	leftTree.Lock()
+	defer leftTree.Unlock()
+	rightTree.Lock()
+	defer rightTree.Unlock()
 
-		leftNodes := []*treeNode{leftTree.root}
-		rghtNodes := []*treeNode{rightTree.root}
+	leftNodes := []int{0}
+	rghtNodes := []int{0}
 
-		for len(leftNodes) > 0 {
-			left, rght := leftNodes[0], rghtNodes[0]
-			leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
+	for len(leftNodes) > 0 {
+		left, rght := leftTree.at(leftNodes[0]), rightTree.at(rghtNodes[0])
+		leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
 
-			left.ChildrenNodes, rght.ChildrenNodes = combineNodes(leftTree, rightTree, left.ChildrenNodes, rght.ChildrenNodes)
-			leftNodes = append(leftNodes, left.ChildrenNodes...)
-			rghtNodes = append(rghtNodes, rght.ChildrenNodes...)
-		}*/
+		left.ChildrenNodes, rght.ChildrenNodes = combineNodes(leftTree, rightTree, left.ChildrenNodes, rght.ChildrenNodes)
+		leftNodes = append(leftNodes, left.ChildrenNodes...)
+		rghtNodes = append(rghtNodes, rght.ChildrenNodes...)
+	}
 	return leftTree, rightTree
 }
 
-/*
-func combineNodes(leftTree, rightTree *Tree, leftNodes, rghtNodes []*treeNode) ([]*treeNode, []*treeNode) {
+func combineNodes(leftTree, rightTree *Tree, leftNodes, rghtNodes []int) ([]int, []int) {
 	size := nextPow2(max(len(leftNodes), len(rghtNodes)))
-	leftResult := make([]*treeNode, 0, size)
-	rghtResult := make([]*treeNode, 0, size)
+	leftResult := make([]int, 0, size)
+	rghtResult := make([]int, 0, size)
 
 	for len(leftNodes) != 0 && len(rghtNodes) != 0 {
 		left, rght := leftNodes[0], rghtNodes[0]
-		switch bytes.Compare(leftTree.loadLabel(left.labelPosition), rightTree.loadLabel(rght.labelPosition)) {
+		switch bytes.Compare(leftTree.loadNodeLabel(left), rightTree.loadNodeLabel(rght)) {
 		case 0:
 			leftResult = append(leftResult, left)
 			rghtResult = append(rghtResult, rght)
 			leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
 		case -1:
 			leftResult = append(leftResult, left)
-			rghtResult = append(rghtResult, rightTree.newNode(leftTree.loadLabel(left.labelPosition)))
+			rghtResult = append(rghtResult, rightTree.newNode(leftTree.loadNodeLabel(left)))
 			leftNodes = leftNodes[1:]
 		case 1:
-			leftResult = append(leftResult, leftTree.newNode(rightTree.loadLabel(rght.labelPosition)))
+			leftResult = append(leftResult, leftTree.newNode(rightTree.loadNodeLabel(rght)))
 			rghtResult = append(rghtResult, rght)
 			rghtNodes = rghtNodes[1:]
 		}
@@ -49,14 +54,13 @@ func combineNodes(leftTree, rightTree *Tree, leftNodes, rghtNodes []*treeNode) (
 	leftResult = append(leftResult, leftNodes...)
 	rghtResult = append(rghtResult, rghtNodes...)
 	for _, left := range leftNodes {
-		rghtResult = append(rghtResult, rightTree.newNode(leftTree.loadLabel(left.labelPosition)))
+		rghtResult = append(rghtResult, rightTree.newNode(leftTree.loadNodeLabel(left)))
 	}
 	for _, rght := range rghtNodes {
-		leftResult = append(leftResult, leftTree.newNode(rightTree.loadLabel(rght.labelPosition)))
+		leftResult = append(leftResult, leftTree.newNode(rightTree.loadNodeLabel(rght)))
 	}
 	return leftResult, rghtResult
 }
-*/
 
 // CombineToFlamebearerStruct generates the Flamebearer struct from 2 trees.
 // They must be the response trees from CombineTree (i.e. all children nodes
@@ -84,107 +88,106 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 		MaxSelf:  int(0),
 		Format:   FormatDouble,
 	}
-	/*
-		leftNodes, xLeftOffsets := []*treeNode{leftTree.root}, []int{0}
-		rghtNodes, xRghtOffsets := []*treeNode{rightTree.root}, []int{0}
-		levels := []int{0}
-		minVal := combineMinValues(leftTree, rightTree, maxNodes)
-		nameLocationCache := map[string]int{}
 
-		for len(leftNodes) > 0 {
-			left, rght := leftNodes[0], rghtNodes[0]
-			leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
+	leftNodes, xLeftOffsets := []*treeNode{leftTree.at(0)}, []int{0}
+	rghtNodes, xRghtOffsets := []*treeNode{rightTree.at(0)}, []int{0}
+	levels := []int{0}
+	minVal := combineMinValues(leftTree, rightTree, maxNodes)
+	nameLocationCache := map[string]int{}
 
-			xLeftOffset, xRghtOffset := xLeftOffsets[0], xRghtOffsets[0]
-			xLeftOffsets, xRghtOffsets = xLeftOffsets[1:], xRghtOffsets[1:]
+	for len(leftNodes) > 0 {
+		left, rght := leftNodes[0], rghtNodes[0]
+		leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
 
-			level := levels[0]
-			levels = levels[1:]
+		xLeftOffset, xRghtOffset := xLeftOffsets[0], xRghtOffsets[0]
+		xLeftOffsets, xRghtOffsets = xLeftOffsets[1:], xRghtOffsets[1:]
 
-			// both left.Name and rght.Name must be the same
-			name := string(rightTree.loadLabel(rght.labelPosition))
-			if left.Total >= minVal || rght.Total >= minVal || name == "other" {
-				i, ok := nameLocationCache[name]
-				if !ok {
-					i = len(res.Names)
-					nameLocationCache[name] = i
-					if i == 0 {
-						name = "total"
-					}
-					res.Names = append(res.Names, name)
+		level := levels[0]
+		levels = levels[1:]
+
+		// both left.Name and rght.Name must be the same
+		name := string(rightTree.loadLabel(rght.labelPosition))
+		if left.Total >= minVal || rght.Total >= minVal || name == "other" {
+			i, ok := nameLocationCache[name]
+			if !ok {
+				i = len(res.Names)
+				nameLocationCache[name] = i
+				if i == 0 {
+					name = "total"
 				}
+				res.Names = append(res.Names, name)
+			}
 
-				if level == len(res.Levels) {
-					res.Levels = append(res.Levels, []int{})
-				}
-				res.MaxSelf = max(res.MaxSelf, int(left.Self))
-				res.MaxSelf = max(res.MaxSelf, int(rght.Self))
+			if level == len(res.Levels) {
+				res.Levels = append(res.Levels, []int{})
+			}
+			res.MaxSelf = max(res.MaxSelf, int(left.Self))
+			res.MaxSelf = max(res.MaxSelf, int(rght.Self))
 
-				// i+0 = x offset, left  tree
-				// i+1 = total   , left  tree
-				// i+2 = self    , left  tree
-				// i+3 = x offset, right tree
-				// i+4 = total   , right tree
-				// i+5 = self    , right tree
-				// i+6 = index in the names array
-				values := []int{
-					xLeftOffset, int(left.Total), int(left.Self),
-					xRghtOffset, int(rght.Total), int(rght.Self),
-					i,
-				}
-				res.Levels[level] = append(values, res.Levels[level]...)
+			// i+0 = x offset, left  tree
+			// i+1 = total   , left  tree
+			// i+2 = self    , left  tree
+			// i+3 = x offset, right tree
+			// i+4 = total   , right tree
+			// i+5 = self    , right tree
+			// i+6 = index in the names array
+			values := []int{
+				xLeftOffset, int(left.Total), int(left.Self),
+				xRghtOffset, int(rght.Total), int(rght.Self),
+				i,
+			}
+			res.Levels[level] = append(values, res.Levels[level]...)
 
-				xLeftOffset += int(left.Self)
-				xRghtOffset += int(rght.Self)
-				otherLeftTotal, otherRghtTotal := uint64(0), uint64(0)
+			xLeftOffset += int(left.Self)
+			xRghtOffset += int(rght.Self)
+			otherLeftTotal, otherRghtTotal := uint64(0), uint64(0)
 
-				// both left and right must have the same number of children nodes
-				for ni := range left.ChildrenNodes {
-					leftNode, rghtNode := left.ChildrenNodes[ni], rght.ChildrenNodes[ni]
-					if leftNode.Total >= minVal || rghtNode.Total >= minVal {
-						levels = prependInt(levels, level+1)
-						xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
-						xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
-						leftNodes = prependTreeNode(leftNodes, leftNode)
-						rghtNodes = prependTreeNode(rghtNodes, rghtNode)
-						xLeftOffset += int(leftNode.Total)
-						xRghtOffset += int(rghtNode.Total)
-					} else {
-						otherLeftTotal += leftNode.Total
-						otherRghtTotal += rghtNode.Total
-					}
-				}
-				if otherLeftTotal != 0 || otherRghtTotal != 0 {
+			// both left and right must have the same number of children nodes
+			for ni := range left.ChildrenNodes {
+				leftNode, rghtNode := leftTree.at(left.ChildrenNodes[ni]), rightTree.at(rght.ChildrenNodes[ni])
+				if leftNode.Total >= minVal || rghtNode.Total >= minVal {
 					levels = prependInt(levels, level+1)
-					{
-						leftNode := &treeNode{
-							labelPosition: leftTree.insertLabel([]byte("other")),
-							Total:         otherLeftTotal,
-							Self:          otherLeftTotal,
-						}
-						xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
-						leftNodes = prependTreeNode(leftNodes, leftNode)
+					xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
+					xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
+					leftNodes = prependTreeNode(leftNodes, leftTree.at(left.ChildrenNodes[ni]))
+					rghtNodes = prependTreeNode(rghtNodes, rightTree.at(rght.ChildrenNodes[ni]))
+					xLeftOffset += int(leftNode.Total)
+					xRghtOffset += int(rghtNode.Total)
+				} else {
+					otherLeftTotal += leftNode.Total
+					otherRghtTotal += rghtNode.Total
+				}
+			}
+			if otherLeftTotal != 0 || otherRghtTotal != 0 {
+				levels = prependInt(levels, level+1)
+				{
+					leftNode := &treeNode{
+						labelPosition: leftTree.insertLabel([]byte("other")),
+						Total:         otherLeftTotal,
+						Self:          otherLeftTotal,
 					}
-					{
-						rghtNode := &treeNode{
-							labelPosition: rightTree.insertLabel([]byte("other")),
-							Total:         otherRghtTotal,
-							Self:          otherRghtTotal,
-						}
-						xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
-						rghtNodes = prependTreeNode(rghtNodes, rghtNode)
+					xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
+					leftNodes = prependTreeNode(leftNodes, leftNode)
+				}
+				{
+					rghtNode := &treeNode{
+						labelPosition: rightTree.insertLabel([]byte("other")),
+						Total:         otherRghtTotal,
+						Self:          otherRghtTotal,
 					}
+					xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
+					rghtNodes = prependTreeNode(rghtNodes, rghtNode)
 				}
 			}
 		}
+	}
 
-		// delta encoding
-		deltaEncoding(res.Levels, 0, 7)
-		deltaEncoding(res.Levels, 3, 7)*/
+	// delta encoding
+	deltaEncoding(res.Levels, 0, 7)
+	deltaEncoding(res.Levels, 3, 7)
 	return &res
 }
 
-/*
 func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
 	c := cappedarr.New(maxNodes)
 	combineIterateWithTotal(leftTree, rightTree, func(left uint64, right uint64) bool {
@@ -195,10 +198,10 @@ func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
 
 // iterate both trees, both trees must be returned from CombineTree
 func combineIterateWithTotal(leftTree, rightTree *Tree, cb func(uint64, uint64) bool) {
-	leftNodes, rghtNodes := []*treeNode{leftTree.root}, []*treeNode{rightTree.root}
+	leftNodes, rghtNodes := []int{0}, []int{0}
 	i := 0
 	for len(leftNodes) > 0 {
-		leftNode, rghtNode := leftNodes[0], rghtNodes[0]
+		leftNode, rghtNode := leftTree.at(leftNodes[0]), rightTree.at(rghtNodes[0])
 		leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
 		i++
 		if cb(leftNode.Total, rghtNode.Total) {
@@ -232,4 +235,17 @@ func nextPow2(a int) int {
 	a++
 	return a
 }
-*/
+
+func prependTreeNode(s []*treeNode, x *treeNode) []*treeNode {
+	s = append(s, nil)
+	copy(s[1:], s)
+	s[0] = x
+	return s
+}
+
+func prependInt(s []int, x int) []int {
+	s = append(s, 0)
+	copy(s[1:], s)
+	s[0] = x
+	return s
+}
