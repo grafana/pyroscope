@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "private": true,
   "name": "pyroscope",
-  "version": "0.0.40",
+  "version": "0.0.41",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",

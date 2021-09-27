@@ -1,3 +1,9 @@
+## <small>0.0.41 (2021-09-24)</small>
+
+* fixes mac builds ([5f4e0e3](https://github.com/pyroscope-io/pyroscope/commit/5f4e0e3))
+
+
+
 ## <small>0.0.40 (2021-09-24)</small>
 
 * Add placeholder for agent / server communication ([de9e4f8](https://github.com/pyroscope-io/pyroscope/commit/de9e4f8))
