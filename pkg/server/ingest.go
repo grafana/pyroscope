@@ -38,15 +38,19 @@ type parserFunc func(io.Reader, []byte) (*tree.Tree, error)
 func wrapConvertFunction(f convertFunc) parserFunc {
 	return func(r io.Reader, _ []byte) (*tree.Tree, error) {
 		t := tree.New()
-		return t, f(r, t.InsertInt)
+		return t, f(r, treeInsert(t))
 	}
 }
 
 func wrapConvertFunctionBuf(f convertFuncBuf) parserFunc {
 	return func(r io.Reader, tmpBuf []byte) (*tree.Tree, error) {
 		t := tree.New()
-		return t, f(r, tmpBuf, t.InsertInt)
+		return t, f(r, tmpBuf, treeInsert(t))
 	}
+}
+
+func treeInsert(t *tree.Tree) func([]byte, int) {
+	return func(k []byte, v int) { t.Insert(k, uint64(v)) }
 }
 
 func wrapConvertFunctionReader(f convertFuncReader) parserFunc {
