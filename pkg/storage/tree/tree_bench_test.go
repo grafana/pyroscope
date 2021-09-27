@@ -49,7 +49,6 @@ func BenchmarkInsert(b *testing.B) {
 		for _, l := range rawTreeB {
 			tree.Insert(l.key, l.value)
 		}
-		tree.Reset()
 	}
 }
 
@@ -61,8 +60,7 @@ func BenchmarkClone(b *testing.B) {
 		for _, l := range rawTreeB {
 			tree.Insert(l.key, l.value)
 		}
-		tree.Clone(r).Reset()
-		tree.Reset()
+		tree.Clone(r)
 	}
 }
 
@@ -78,9 +76,7 @@ func BenchmarkMerge(b *testing.B) {
 			treeA.Insert(l.key, l.value)
 		}
 		treeB.Merge(treeA)
-		treeB.Reset()
 	}
-	treeA.Reset()
 }
 
 func BenchmarkTruncate(b *testing.B) {
@@ -91,6 +87,5 @@ func BenchmarkTruncate(b *testing.B) {
 		}
 		// tree.Len() == 2083
 		tree.Truncate(2048)
-		tree.Reset()
 	}
 }

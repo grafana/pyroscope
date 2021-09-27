@@ -236,12 +236,6 @@ func (s *Storage) Put(pi *PutInput) error {
 
 	err = st.Put(pi.StartTime, pi.EndTime, samples, func(depth int, t time.Time, r *big.Rat, addons []segment.Addon) {
 		tk := pi.Key.TreeKey(depth, t)
-		res, err := s.trees.GetOrCreate(tk)
-		if err != nil {
-			logrus.Errorf("trees cache for %v: %v", tk, err)
-			return
-		}
-		cachedTree := res.(*tree.Tree)
 		treeClone := pi.Val.Clone(r)
 		for _, addon := range addons {
 			if res, ok := s.trees.Lookup(pi.Key.TreeKey(addon.Depth, addon.T)); ok {
@@ -251,11 +245,15 @@ func (s *Storage) Put(pi *PutInput) error {
 				ta.RUnlock()
 			}
 		}
-		cachedTree.Lock()
-		cachedTree.Merge(treeClone)
-		cachedTree.Unlock()
-		treeClone.Reset()
-		s.trees.Put(tk, cachedTree)
+		if res, found := s.trees.Lookup(tk); found {
+			cachedTree := res.(*tree.Tree)
+			cachedTree.Lock()
+			cachedTree.Merge(treeClone)
+			cachedTree.Unlock()
+			s.trees.Put(tk, cachedTree)
+			return
+		}
+		s.trees.Put(tk, treeClone)
 	})
 
 	if err != nil {
@@ -345,7 +343,6 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 					return
 				}
 				resultTree.Merge(tmpTree)
-				tmpTree.Reset()
 			}
 		})
 	}
@@ -357,7 +354,6 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	t := resultTree
 	if writesTotal > 0 && aggregationType == averageAggregationType {
 		t = resultTree.Clone(big.NewRat(1, int64(writesTotal)))
-		resultTree.Reset()
 	}
 
 	o := GetOutput{

@@ -47,10 +47,6 @@ type Codec interface {
 	New(key string) interface{}
 }
 
-type Resettable interface {
-	Reset()
-}
-
 type Metrics struct {
 	MissCounter         prometheus.Counter
 	ReadCounter         prometheus.Counter
@@ -82,9 +78,6 @@ func New(c Config) *Cache {
 				break
 			}
 			cache.saveToDisk(e.Key, e.Value)
-			if r, ok := e.Value.(Resettable); ok {
-				r.Reset()
-			}
 		}
 		cache.evictionsDone <- struct{}{}
 	}()

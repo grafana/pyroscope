@@ -37,8 +37,6 @@ type treeNode struct {
 // New gets a tree from pool or creates a new one.
 // The tree has already pre-allocated some space
 // for node labels and nodes themselves.
-//
-// The tree must be Reset after use.
 func New() *Tree {
 	return NewSize(initialNodesBufferSizeCount)
 }
@@ -49,8 +47,6 @@ func NewSize(n int) *Tree {
 		nodes:  make([]treeNode, 0, n),
 	}
 }
-
-func (t *Tree) Reset() {}
 
 func (t *Tree) Len() int {
 	return len(t.nodes)

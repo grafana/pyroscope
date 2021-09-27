@@ -56,11 +56,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
 		return
 	}
-	defer func() {
-		if out.Tree != nil {
-			out.Tree.Reset()
-		}
-	}()
 	// TODO: handle properly
 	if out == nil {
 		out = &storage.GetOutput{Tree: tree.New()}
@@ -113,14 +108,6 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	out, leftOut, rghtOut, err := ctrl.loadTreeConcurrently(p.gi, p.gi.StartTime, p.gi.EndTime, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
-	defer func() {
-		for _, o := range []*storage.GetOutput{out, leftOut, rghtOut} {
-			if o != nil {
-				o.Tree.Reset()
-			}
-		}
-	}()
-
 	if err != nil {
 		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
 		return

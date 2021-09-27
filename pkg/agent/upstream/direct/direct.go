@@ -76,7 +76,6 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 	if err = u.ingester.Put(pi); err != nil {
 		logrus.WithError(err).Error("failed to store a local profile")
 	}
-	t.Reset()
 }
 
 func (u *Direct) uploadLoop() {
