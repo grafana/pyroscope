@@ -79,7 +79,11 @@ func DeserializeV2(d *dict.Dict, br *bufio.Reader) (*Tree, error) {
 		return nil, err
 	}
 
-	t := NewSize(int(nodes))
+	t := &Tree{
+		labels: bytes.NewBuffer(make([]byte, 0, initialLabelsBufferSizeBytes)),
+		nodes:  make([]treeNode, int(nodes)),
+	}
+
 	var nameBuf bytes.Buffer
 	for i := uint64(0); i < nodes; i++ {
 		var cl uint64
@@ -119,7 +123,7 @@ func DeserializeV2(d *dict.Dict, br *bufio.Reader) (*Tree, error) {
 		if n.Total, err = binary.ReadUvarint(br); err != nil {
 			return nil, err
 		}
-		t.nodes = append(t.nodes, n)
+		t.nodes[i] = n
 	}
 
 	return t, nil

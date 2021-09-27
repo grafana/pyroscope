@@ -46,10 +46,8 @@ func DeserializeV1(d *dict.Dict, br *bufio.Reader) (*Tree, error) {
 			nameBuf.Reset()
 			nameBuf.WriteString("label not found " + base64.URLEncoding.EncodeToString(labelLinkBuf))
 		}
-		if cap(t.nodes)-len(t.nodes) == 0 {
-			t.grow(1)
-		}
-		tn, z := t.insert(t.at(parent.node), nameBuf.Bytes())
+		p := t.insert(parent.node, nameBuf.Bytes())
+		tn := t.at(p)
 		tn.Self, err = varint.Read(br)
 		tn.Total = tn.Self
 		if err != nil {
@@ -68,7 +66,7 @@ func DeserializeV1(d *dict.Dict, br *bufio.Reader) (*Tree, error) {
 		}
 
 		for i := uint64(0); i < childrenLen; i++ {
-			parents = append([]*parentNode{{z, parent}}, parents...)
+			parents = append([]*parentNode{{p, parent}}, parents...)
 		}
 	}
 
@@ -98,10 +96,8 @@ func DeserializeV1NoDict(r io.Reader) (*Tree, error) {
 		if err != nil {
 			return nil, err
 		}
-		if cap(t.nodes)-len(t.nodes) == 0 {
-			t.grow(1)
-		}
-		tn, z := t.insert(t.at(parent.node), label)
+		p := t.insert(parent.node, label)
+		tn := t.at(p)
 		tn.Self, err = varint.Read(br)
 		tn.Total = tn.Self
 		if err != nil {
@@ -120,7 +116,7 @@ func DeserializeV1NoDict(r io.Reader) (*Tree, error) {
 		}
 
 		for i := uint64(0); i < childrenLen; i++ {
-			parents = append([]*parentNode{{z, parent}}, parents...)
+			parents = append([]*parentNode{{p, parent}}, parents...)
 		}
 	}
 

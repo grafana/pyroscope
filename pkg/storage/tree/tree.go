@@ -12,14 +12,12 @@ import (
 const (
 	semicolon = byte(';')
 
-	initialNodesBufferSizeCount  = 128
+	initialNodesBufferSizeCount  = 512
 	initialLabelsBufferSizeBytes = 1 << 10 // 1 KB
 
 	positionLengthMask = 1<<32 - 1
 	positionOffsetMask = positionLengthMask << 32
 )
-
-var separator = []byte{semicolon}
 
 type Tree struct {
 	sync.RWMutex
@@ -34,61 +32,28 @@ type treeNode struct {
 	ChildrenNodes []int
 }
 
-// New gets a tree from pool or creates a new one.
-// The tree has already pre-allocated some space
-// for node labels and nodes themselves.
 func New() *Tree {
-	return NewSize(initialNodesBufferSizeCount)
-}
-
-func NewSize(n int) *Tree {
 	return &Tree{
 		labels: bytes.NewBuffer(make([]byte, 0, initialLabelsBufferSizeBytes)),
-		nodes:  make([]treeNode, 0, n),
+		nodes:  make([]treeNode, 1, initialNodesBufferSizeCount), // 1 for root.
 	}
 }
 
-func (t *Tree) Len() int {
-	return len(t.nodes)
-}
+func (t *Tree) Len() int { return len(t.nodes) }
 
-func (t *Tree) Samples() uint64 {
-	return t.root().Total
-}
+func (t *Tree) Samples() uint64 { return t.at(0).Total }
 
+// newNode creates a new tree node and appends it to the tree nodes slice.
+// In case if the append causes an allocation of a new slice, existing
+// node pointers obtained with 'at' are invalidated.
 func (t *Tree) newNode(label []byte) int {
-	return t.put(treeNode{labelPosition: t.insertLabel(label)})
-}
-
-// put appends the given node to the tree nodes. In case if the append
-// causes an allocation of a new slice, existing node pointers are
-// invalidated. Check capacity before and grow tree accordingly.
-func (t *Tree) put(n treeNode) int {
-	t.nodes = append(t.nodes, n)
+	t.nodes = append(t.nodes, treeNode{labelPosition: t.insertLabel(label)})
 	return len(t.nodes) - 1
-}
-
-// grow increases nodes capacity slice.
-// if n < cap, then it doubles capacity.
-func (t *Tree) grow(n int) int {
-	if n < cap(t.nodes) {
-		n = cap(t.nodes)
-	}
-	p := t.nodes
-	t.nodes = make([]treeNode, len(t.nodes), cap(t.nodes)+n)
-	return copy(t.nodes, p)
 }
 
 // at references node at idx. If t.nodes slice changes due
 // to re-allocation, the reference invalidates.
-func (t *Tree) at(idx int) *treeNode {
-	if len(t.nodes) == 0 {
-		t.nodes = append(t.nodes, treeNode{})
-	}
-	return &(t.nodes)[idx]
-}
-
-func (t *Tree) root() *treeNode { return t.at(0) }
+func (t *Tree) at(idx int) *treeNode { return &(t.nodes)[idx] }
 
 func (t *Tree) insertLabel(v []byte) uint64 {
 	return insertLabel(t.labels, v)
@@ -110,25 +75,18 @@ func insertLabel(buf *bytes.Buffer, v []byte) uint64 {
 
 func (t *Tree) Merge(src *Tree) {
 	srcNodes := make([]int, 1, len(src.nodes)) // 1 for root.
-	dstNodes := make([]int, 1, cap(t.nodes))
-	// Adjust dst nodes slice capacity to make room for new nodes.
-	// The resulting slice should be able to hold nodes from both trees.
-	if f := cap(t.nodes) - len(t.nodes); f < len(src.nodes) {
-		t.grow(len(src.nodes))
-	}
-
+	dstNodes := make([]int, 1, len(t.nodes))
 	for len(srcNodes) > 0 {
-		st := src.at(srcNodes[0])
+		si := srcNodes[0]
+		di := dstNodes[0]
 		srcNodes = srcNodes[1:]
-
-		dt := t.at(dstNodes[0])
 		dstNodes = dstNodes[1:]
-
-		dt.Self += st.Self
-		dt.Total += st.Total
-
-		for _, sci := range st.ChildrenNodes {
-			_, dci := t.insert(dt, src.loadNodeLabel(sci))
+		sn := src.at(si)
+		dn := t.at(di)
+		dn.Self += sn.Self
+		dn.Total += sn.Total
+		for _, sci := range sn.ChildrenNodes {
+			dci := t.insert(di, src.loadNodeLabel(sci))
 			srcNodes = append(srcNodes, sci)
 			dstNodes = append(dstNodes, dci)
 		}
@@ -136,31 +94,25 @@ func (t *Tree) Merge(src *Tree) {
 }
 
 func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
-	// It is important to grow tree before any node pointer
-	// taken. Otherwise, those are invalidated, if the node
-	// slice is changed.
-	c := bytes.Count(key, separator) + 2
-	if f := cap(t.nodes) - len(t.nodes); f < c {
-		t.grow(c - f)
-	}
-	node := t.root()
+	var idx int
 	var offset int
 	for i := 0; i < len(key); i++ {
 		if key[i] == semicolon {
-			node.Total += value
-			node, _ = t.insert(node, key[offset:i])
+			t.nodes[idx].Total += value
+			idx = t.insert(idx, key[offset:i])
 			offset = i + 1
 		}
 	}
 	if offset < len(key) {
-		node.Total += value
-		node, _ = t.insert(node, key[offset:])
+		t.nodes[idx].Total += value
+		idx = t.insert(idx, key[offset:])
 	}
-	node.Self += value
-	node.Total += value
+	t.nodes[idx].Self += value
+	t.nodes[idx].Total += value
 }
 
-func (t *Tree) insert(n *treeNode, targetLabel []byte) (*treeNode, int) {
+func (t *Tree) insert(idx int, targetLabel []byte) int {
+	n := t.nodes[idx]
 	i := sort.Search(len(n.ChildrenNodes), func(i int) bool {
 		return bytes.Compare(t.loadNodeLabel(n.ChildrenNodes[i]), targetLabel) >= 0
 	})
@@ -170,10 +122,10 @@ func (t *Tree) insert(n *treeNode, targetLabel []byte) (*treeNode, int) {
 		n.ChildrenNodes = append(n.ChildrenNodes, child)
 		copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
 		n.ChildrenNodes[i] = child
+		t.nodes[idx].ChildrenNodes = n.ChildrenNodes
 	}
 
-	i = n.ChildrenNodes[i]
-	return t.at(i), i
+	return n.ChildrenNodes[i]
 }
 
 func (t *Tree) Clone(r *big.Rat) *Tree {
@@ -266,14 +218,14 @@ func (t *Tree) Truncate(k int) {
 	dstNodes := make([]treeNode, 0, k)
 	labels := bytes.NewBuffer(make([]byte, 0, initialLabelsBufferSizeBytes))
 	for i := range t.nodes {
-		n := t.at(i)
+		n := t.nodes[i]
 		if n.Total < min {
 			nodes[i] = 0
 			n.ChildrenNodes = nil
 			continue
 		}
 		n.labelPosition = insertLabel(labels, t.loadLabel(n.labelPosition))
-		dstNodes = append(dstNodes, *n)
+		dstNodes = append(dstNodes, n)
 		nodes[i] = uint64(len(dstNodes) - 1)
 	}
 	// Lookup correct indexes for children nodes.

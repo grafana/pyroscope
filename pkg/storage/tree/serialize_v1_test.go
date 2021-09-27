@@ -19,9 +19,9 @@ var _ = Describe("tree", func() {
 			t, err := Deserialize(d, r)
 			Expect(err).ToNot(HaveOccurred())
 			expectLabel(t, 0, "")
-			expectLabel(t, t.root().ChildrenNodes[0], "label not found AAE=")
-			expectLabel(t, t.at(t.root().ChildrenNodes[0]).ChildrenNodes[0], "label not found AQE=")
-			expectLabel(t, t.at(t.root().ChildrenNodes[0]).ChildrenNodes[1], "label not found AgE=")
+			expectLabel(t, t.at(0).ChildrenNodes[0], "label not found AAE=")
+			expectLabel(t, t.at(t.at(0).ChildrenNodes[0]).ChildrenNodes[0], "label not found AQE=")
+			expectLabel(t, t.at(t.at(0).ChildrenNodes[0]).ChildrenNodes[1], "label not found AgE=")
 		})
 
 		It("supports decoding w/o dictionary", func() {
