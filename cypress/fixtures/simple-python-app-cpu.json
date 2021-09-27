@@ -1,0 +1,48 @@
+{
+  "flamebearer": {
+    "names": [
+      "total",
+      "main.py:26 - \u003cmodule\u003e",
+      "main.py:21 - slow_function",
+      "pyroscope_io/__init__.py:80 - set_tag",
+      "main.py:11 - work",
+      "main.py:10 - work",
+      "main.py:20 - slow_function",
+      "main.py:19 - slow_function",
+      "main.py:25 - \u003cmodule\u003e",
+      "main.py:16 - fast_function",
+      "main.py:15 - fast_function",
+      "main.py:14 - fast_function"
+    ],
+    "levels": [
+      [0, 1000, 0, 0],
+      [0, 202, 0, 8, 0, 798, 0, 1],
+      [
+        0, 2, 0, 11, 0, 144, 0, 10, 0, 56, 0, 9, 0, 1, 0, 7, 0, 745, 0, 6, 0,
+        52, 0, 2
+      ],
+      [
+        0, 2, 2, 3, 0, 65, 65, 5, 0, 79, 79, 4, 0, 2, 2, 5, 0, 2, 2, 4, 0, 52,
+        52, 3, 0, 1, 1, 3, 0, 320, 320, 5, 0, 425, 425, 4, 0, 1, 1, 5, 0, 1, 1,
+        4, 0, 50, 50, 3
+      ]
+    ],
+    "numTicks": 1000,
+    "maxSelf": 425,
+    "spyName": "pyspy",
+    "sampleRate": 100,
+    "units": "samples",
+    "format": "single"
+  },
+  "metadata": {
+    "format": "single",
+    "sampleRate": 100,
+    "spyName": "pyspy",
+    "units": "samples"
+  },
+  "timeline": {
+    "startTime": 1632504210,
+    "samples": [1001],
+    "durationDelta": 10
+  }
+}

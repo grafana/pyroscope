@@ -484,7 +484,8 @@ var _self =
     ],
     keyword: new RegExp('\\b(?:' + a.join('|') + ')\\b', 'i'),
     function: /\b[a-z_]\w*(?=\s*\()/i,
-    number: /[-+]?(?:(?:\b\d+(?:\.\d+)?|\B\.\d+)(?:e[-+]?\d+)?\b|\b(?:0x[0-9a-f]+|nan|inf)\b)/i,
+    number:
+      /[-+]?(?:(?:\b\d+(?:\.\d+)?|\B\.\d+)(?:e[-+]?\d+)?\b|\b(?:0x[0-9a-f]+|nan|inf)\b)/i,
     operator: /[\^*/%+-]|==|!=|<=|<|>=|>|\b(?:and|unless|or)\b/i,
     punctuation: /[{};()`,.[\]]/,
   };

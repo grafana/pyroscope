@@ -110,23 +110,7 @@ const unitsToFlamegraphTitle = {
 };
 
 const diffLegend = [
-  100,
-  50,
-  20,
-  10,
-  5,
-  3,
-  2,
-  1,
-  0,
-  -1,
-  -2,
-  -3,
-  -5,
-  -10,
-  -20,
-  -50,
-  -100,
+  100, 50, 20, 10, 5, 3, 2, 1, 0, -1, -2, -3, -5, -10, -20, -50, -100,
 ];
 
 const rect = (ctx, x, y, w, h) => ctx.rect(x, y, w, h);
@@ -191,14 +175,8 @@ class FlameGraph extends React.Component {
   }
 
   updateData = () => {
-    const {
-      names,
-      levels,
-      numTicks,
-      sampleRate,
-      units,
-      format,
-    } = this.props.flamebearer;
+    const { names, levels, numTicks, sampleRate, units, format } =
+      this.props.flamebearer;
     this.setState(
       {
         names,

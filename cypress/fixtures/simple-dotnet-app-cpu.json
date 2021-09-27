@@ -1,0 +1,32 @@
+{
+  "flamebearer": {
+    "names": [
+      "total",
+      "example!Example.Program.Main(class System.String[])",
+      "example!Slow.Work..ctor()",
+      "example!Fast.Work..ctor()"
+    ],
+    "levels": [
+      [0, 45, 0, 0],
+      [0, 45, 0, 1],
+      [0, 10, 10, 3, 0, 35, 35, 2]
+    ],
+    "numTicks": 45,
+    "maxSelf": 35,
+    "spyName": "dotnetspy",
+    "sampleRate": 100,
+    "units": "samples",
+    "format": "single"
+  },
+  "metadata": {
+    "format": "single",
+    "sampleRate": 100,
+    "spyName": "dotnetspy",
+    "units": "samples"
+  },
+  "timeline": {
+    "startTime": 1632504460,
+    "samples": [0, 46],
+    "durationDelta": 10
+  }
+}

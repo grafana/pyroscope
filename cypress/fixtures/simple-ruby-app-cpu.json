@@ -1,0 +1,37 @@
+{
+  "flamebearer": {
+    "names": [
+      "total",
+      "main.rb:29 - \u003cmain\u003e",
+      "main.rb:25 - slow_function",
+      "main.rb:13 - work",
+      "gems/pyroscope-0.0.23/lib/pyroscope.rb:31 - set_tag",
+      "(unknown):0 - _set_tag [c function]",
+      "main.rb:19 - fast_function"
+    ],
+    "levels": [
+      [0, 1941, 0, 0],
+      [0, 1941, 0, 1],
+      [0, 404, 1, 6, 0, 1537, 0, 2],
+      [1, 53, 6, 4, 0, 350, 350, 3, 0, 36, 4, 4, 0, 1501, 1501, 3],
+      [7, 47, 47, 5, 354, 32, 32, 5]
+    ],
+    "numTicks": 1941,
+    "maxSelf": 1501,
+    "spyName": "rbspy",
+    "sampleRate": 100,
+    "units": "samples",
+    "format": "single"
+  },
+  "metadata": {
+    "format": "single",
+    "sampleRate": 100,
+    "spyName": "rbspy",
+    "units": "samples"
+  },
+  "timeline": {
+    "startTime": 1632504320,
+    "samples": [942, 1001],
+    "durationDelta": 10
+  }
+}
