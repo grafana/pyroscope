@@ -21,13 +21,6 @@ const (
 
 var separator = []byte{semicolon}
 
-var treePool = sync.Pool{New: func() interface{} {
-	return &Tree{
-		labels: bytes.NewBuffer(make([]byte, 0, initialLabelsBufferSizeBytes)),
-		nodes:  make([]treeNode, 0, initialNodesBufferSizeCount),
-	}
-}}
-
 type Tree struct {
 	sync.RWMutex
 	nodes  []treeNode
@@ -47,17 +40,17 @@ type treeNode struct {
 //
 // The tree must be Reset after use.
 func New() *Tree {
-	return treePool.Get().(*Tree)
+	return NewSize(initialNodesBufferSizeCount)
 }
 
-func (t *Tree) Reset() {
-	for _, n := range t.nodes {
-		n.ChildrenNodes = nil
+func NewSize(n int) *Tree {
+	return &Tree{
+		labels: bytes.NewBuffer(make([]byte, 0, initialLabelsBufferSizeBytes)),
+		nodes:  make([]treeNode, 0, n),
 	}
-	t.nodes = t.nodes[:0]
-	t.labels.Reset()
-	treePool.Put(t)
 }
+
+func (t *Tree) Reset() {}
 
 func (t *Tree) Len() int {
 	return len(t.nodes)
@@ -100,9 +93,7 @@ func (t *Tree) at(idx int) *treeNode {
 func (t *Tree) root() *treeNode { return t.at(0) }
 
 func (t *Tree) insertLabel(v []byte) uint64 {
-	offset := t.labels.Len() << 32
-	_, _ = t.labels.Write(v)
-	return uint64(offset | (t.labels.Len() & positionLengthMask))
+	return insertLabel(t.labels, v)
 }
 
 func (t *Tree) loadNodeLabel(idx int) []byte {
@@ -111,6 +102,12 @@ func (t *Tree) loadNodeLabel(idx int) []byte {
 
 func (t *Tree) loadLabel(k uint64) []byte {
 	return t.labels.Bytes()[((k & positionOffsetMask) >> 32):(k & positionLengthMask)]
+}
+
+func insertLabel(buf *bytes.Buffer, v []byte) uint64 {
+	offset := buf.Len() << 32
+	_, _ = buf.Write(v)
+	return uint64(offset | (buf.Len() & positionLengthMask))
 }
 
 func (t *Tree) Merge(src *Tree) {
@@ -133,7 +130,7 @@ func (t *Tree) Merge(src *Tree) {
 		dt.Total += st.Total
 
 		for _, sci := range st.ChildrenNodes {
-			_, dci := dt.insert(t, src.loadNodeLabel(sci))
+			_, dci := t.insert(dt, src.loadNodeLabel(sci))
 			srcNodes = append(srcNodes, sci)
 			dstNodes = append(dstNodes, dci)
 		}
@@ -153,19 +150,19 @@ func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 	for i := 0; i < len(key); i++ {
 		if key[i] == semicolon {
 			node.Total += value
-			node, _ = node.insert(t, key[offset:i])
+			node, _ = t.insert(node, key[offset:i])
 			offset = i + 1
 		}
 	}
 	if offset < len(key) {
 		node.Total += value
-		node, _ = node.insert(t, key[offset:])
+		node, _ = t.insert(node, key[offset:])
 	}
 	node.Self += value
 	node.Total += value
 }
 
-func (n *treeNode) insert(t *Tree, targetLabel []byte) (*treeNode, int) {
+func (t *Tree) insert(n *treeNode, targetLabel []byte) (*treeNode, int) {
 	i := sort.Search(len(n.ChildrenNodes), func(i int) bool {
 		return bytes.Compare(t.loadNodeLabel(n.ChildrenNodes[i]), targetLabel) >= 0
 	})
@@ -187,22 +184,23 @@ func (t *Tree) Clone(r *big.Rat) *Tree {
 	defer t.RUnlock()
 	m := uint64(r.Num().Int64())
 	d := uint64(r.Denom().Int64())
-	newTrie := New()
-	if s := cap(t.nodes) - cap(newTrie.nodes); s > 0 {
-		newTrie.grow(s)
+	labels := make([]byte, t.labels.Len())
+	copy(labels, t.labels.Bytes())
+	newTrie := &Tree{
+		labels: bytes.NewBuffer(labels),
+		nodes:  make([]treeNode, t.Len()),
 	}
 	for i := range t.nodes {
-		x := t.at(i)
-		c := make([]int, len(x.ChildrenNodes))
-		copy(c, x.ChildrenNodes)
-		newTrie.nodes = append(newTrie.nodes, treeNode{
-			labelPosition: x.labelPosition,
-			Total:         x.Total * m / d,
-			Self:          x.Self * m / d,
+		n := t.at(i)
+		c := make([]int, len(n.ChildrenNodes))
+		copy(c, n.ChildrenNodes)
+		newTrie.nodes[i] = treeNode{
+			labelPosition: n.labelPosition,
+			Total:         n.Total * m / d,
+			Self:          n.Self * m / d,
 			ChildrenNodes: c,
-		})
+		}
 	}
-	_, _ = newTrie.labels.Write(t.labels.Bytes())
 	return newTrie
 }
 
@@ -257,21 +255,6 @@ func (t *Tree) Truncate(k int) {
 	if t.Len() <= k {
 		return
 	}
-	// A new tree is taken from the pool not only for
-	// convenience: there is a chance it has enough capacity.
-	tmp := New()
-	if f := len(t.nodes) - cap(tmp.nodes); f > 0 {
-		// t.grow would also copy nodes, therefore is not used.
-		tmp.nodes = make([]treeNode, 0, cap(t.nodes))
-	}
-	t.truncate(tmp, k)
-	// Swap allocated resources and free ones used by t initially.
-	t.labels, tmp.labels = tmp.labels, t.labels
-	t.nodes, tmp.nodes = tmp.nodes, t.nodes
-	tmp.Reset()
-}
-
-func (t *Tree) truncate(dst *Tree, maxNodes int) {
 	// Find kth-smallest node total value (order statistic).
 	nodes := make([]uint64, len(t.nodes))
 	for i := range t.nodes {
@@ -280,23 +263,25 @@ func (t *Tree) truncate(dst *Tree, maxNodes int) {
 	sort.Slice(nodes, func(i, j int) bool {
 		return nodes[j] < nodes[i]
 	})
-	min := nodes[maxNodes]
-	// nodes slice is reused for index map: only subset
-	// of t.nodes will migrate to dst.nodes; consequently,
-	// node indexes will change.
+	// nodes slice is to be then reused for index map: only subset of t.nodes
+	// will migrate to dst.nodes; consequently, node indexes will change.
+	min := nodes[k]
+	dstNodes := make([]treeNode, 0, k)
+	labels := bytes.NewBuffer(make([]byte, 0, initialLabelsBufferSizeBytes))
 	for i := range t.nodes {
 		n := t.at(i)
 		if n.Total < min {
 			nodes[i] = 0
+			n.ChildrenNodes = nil
 			continue
 		}
-		n.labelPosition = dst.insertLabel(t.loadLabel(n.labelPosition))
-		dst.nodes = append(dst.nodes, *n)
-		nodes[i] = uint64(len(dst.nodes) - 1)
+		n.labelPosition = insertLabel(labels, t.loadLabel(n.labelPosition))
+		dstNodes = append(dstNodes, *n)
+		nodes[i] = uint64(len(dstNodes) - 1)
 	}
 	// Lookup correct indexes for children nodes.
-	for i := range dst.nodes {
-		n := dst.nodes[i]
+	for i := range dstNodes {
+		n := dstNodes[i]
 		if len(n.ChildrenNodes) == 0 {
 			continue
 		}
@@ -312,6 +297,8 @@ func (t *Tree) truncate(dst *Tree, maxNodes int) {
 			n.Self += t.nodes[j].Total
 		}
 		n.ChildrenNodes = n.ChildrenNodes[:x]
-		dst.nodes[i] = n
+		dstNodes[i] = n
 	}
+	t.nodes = dstNodes
+	t.labels = labels
 }

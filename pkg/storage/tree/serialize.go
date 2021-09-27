@@ -69,11 +69,7 @@ func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 		return nil, err
 	}
 
-	t := New()
-	if s := int(nodes) - cap(t.nodes); s > 0 {
-		t.grow(s)
-	}
-
+	t := NewSize(int(nodes))
 	var nameBuf bytes.Buffer
 	for i := uint64(0); i < nodes; i++ {
 		var cl uint64
