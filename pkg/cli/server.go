@@ -99,11 +99,6 @@ func (svc *serverService) Start() error {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
 	}
 
-	svc.logger.Debug("collecting local profiles")
-	if err := svc.storage.CollectLocalProfiles(); err != nil {
-		svc.logger.WithError(err).Error("failed to collect local profiles")
-	}
-
 	defer close(svc.done)
 	select {
 	case <-svc.stopped:

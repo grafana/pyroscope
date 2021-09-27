@@ -101,7 +101,7 @@ func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParam
 	contentType := r.Header.Get("Content-Type")
 	switch {
 	case format == "tree", contentType == "binary/octet-stream+tree":
-		ip.parserFunc = wrapConvertFunctionReader(tree.DeserializeNoDict)
+		ip.parserFunc = wrapConvertFunctionReader(tree.DeserializeV1NoDict)
 	case format == "trie", contentType == "binary/octet-stream+trie":
 		ip.parserFunc = wrapConvertFunctionBuf(convert.ParseTrieBuf)
 	case format == "lines":

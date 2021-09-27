@@ -39,7 +39,7 @@ func parse(input io.Reader, format string) error {
 		parser(input, func(name []byte, val int) {
 			t.Insert(name, uint64(val))
 		})
-		return t.SerializeNoDict(4096, os.Stdout)
+		return t.SerializeV1NoDict(4096, os.Stdout)
 	case "trie":
 		t := transporttrie.New()
 		parser(input, func(name []byte, val int) {

@@ -22,7 +22,7 @@ var _ = Describe("tree", func() {
 		expected := tree.String()
 
 		var buf bytes.Buffer
-		It("works correctly", func() {
+		It("reversible", func() {
 			Expect(tree.Serialize(d, 1024, &buf)).ToNot(HaveOccurred())
 			dt, err := Deserialize(d, bytes.NewReader(buf.Bytes()))
 			Expect(err).ToNot(HaveOccurred())
