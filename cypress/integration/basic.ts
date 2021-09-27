@@ -1,4 +1,5 @@
 import { BAR_HEIGHT } from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent';
+
 /// <reference types="cypress" />
 describe('basic test', () => {
   it('successfully loads', () => {
@@ -27,7 +28,38 @@ describe('basic test', () => {
       }).as(name);
     };
 
+    const tries = 10;
+    function waitUntilNameSelectorExists(name: string) {
+      if (tries <= 0) {
+        throw Error(`application selector ${name} not found within 10 tries`);
+      }
+
+      cy.findByTestId('app-name-selector')
+        .find('option')
+        .then((b) => {
+          let found = false;
+          b.each((i, n) => {
+            if (n.value === name) {
+              found = true;
+            }
+          });
+
+          if (!found) {
+            cy.log(
+              `Refreshing the page since option with ${name} was not found`
+            );
+            // eslint-disable-next-line cypress/no-unnecessary-waiting
+            cy.wait(1000);
+            cy.reload().then(() => waitUntilNameSelectorExists(name));
+          }
+        });
+    }
+
     const match = (name: string) => {
+      // it's possible that the selector hasn't been populated yet
+      // in that case we need to keep refreshing the page
+      waitUntilNameSelectorExists(name);
+
       cy.findByTestId('app-name-selector').select(name);
       cy.wait(`@${name}`);
       cy.findByTestId('flamegraph-canvas')
