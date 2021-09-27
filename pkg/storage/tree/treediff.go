@@ -16,50 +16,50 @@ func CombineTree(leftTree, rightTree *Tree) (*Tree, *Tree) {
 	defer rightTree.Unlock()
 
 	leftNodes := []int{0}
-	rghtNodes := []int{0}
+	rightNodes := []int{0}
 
 	for len(leftNodes) > 0 {
-		left, rght := leftTree.at(leftNodes[0]), rightTree.at(rghtNodes[0])
-		leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
+		left, right := leftTree.at(leftNodes[0]), rightTree.at(rightNodes[0])
+		leftNodes, rightNodes = leftNodes[1:], rightNodes[1:]
 
-		left.ChildrenNodes, rght.ChildrenNodes = combineNodes(leftTree, rightTree, left.ChildrenNodes, rght.ChildrenNodes)
+		left.ChildrenNodes, right.ChildrenNodes = combineNodes(leftTree, rightTree, left.ChildrenNodes, right.ChildrenNodes)
 		leftNodes = append(leftNodes, left.ChildrenNodes...)
-		rghtNodes = append(rghtNodes, rght.ChildrenNodes...)
+		rightNodes = append(rightNodes, right.ChildrenNodes...)
 	}
 	return leftTree, rightTree
 }
 
-func combineNodes(leftTree, rightTree *Tree, leftNodes, rghtNodes []int) ([]int, []int) {
-	size := nextPow2(max(len(leftNodes), len(rghtNodes)))
+func combineNodes(leftTree, rightTree *Tree, leftNodes, rightNodes []int) ([]int, []int) {
+	size := nextPow2(max(len(leftNodes), len(rightNodes)))
 	leftResult := make([]int, 0, size)
-	rghtResult := make([]int, 0, size)
+	rightResult := make([]int, 0, size)
 
-	for len(leftNodes) != 0 && len(rghtNodes) != 0 {
-		left, rght := leftNodes[0], rghtNodes[0]
-		switch bytes.Compare(leftTree.loadNodeLabel(left), rightTree.loadNodeLabel(rght)) {
+	for len(leftNodes) != 0 && len(rightNodes) != 0 {
+		left, right := leftNodes[0], rightNodes[0]
+		switch bytes.Compare(leftTree.loadNodeLabel(left), rightTree.loadNodeLabel(right)) {
 		case 0:
 			leftResult = append(leftResult, left)
-			rghtResult = append(rghtResult, rght)
-			leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
+			rightResult = append(rightResult, right)
+			leftNodes, rightNodes = leftNodes[1:], rightNodes[1:]
 		case -1:
 			leftResult = append(leftResult, left)
-			rghtResult = append(rghtResult, rightTree.newNode(leftTree.loadNodeLabel(left)))
+			rightResult = append(rightResult, rightTree.newNode(leftTree.loadNodeLabel(left)))
 			leftNodes = leftNodes[1:]
 		case 1:
-			leftResult = append(leftResult, leftTree.newNode(rightTree.loadNodeLabel(rght)))
-			rghtResult = append(rghtResult, rght)
-			rghtNodes = rghtNodes[1:]
+			leftResult = append(leftResult, leftTree.newNode(rightTree.loadNodeLabel(right)))
+			rightResult = append(rightResult, right)
+			rightNodes = rightNodes[1:]
 		}
 	}
 	leftResult = append(leftResult, leftNodes...)
-	rghtResult = append(rghtResult, rghtNodes...)
+	rightResult = append(rightResult, rightNodes...)
 	for _, left := range leftNodes {
-		rghtResult = append(rghtResult, rightTree.newNode(leftTree.loadNodeLabel(left)))
+		rightResult = append(rightResult, rightTree.newNode(leftTree.loadNodeLabel(left)))
 	}
-	for _, rght := range rghtNodes {
-		leftResult = append(leftResult, leftTree.newNode(rightTree.loadNodeLabel(rght)))
+	for _, right := range rightNodes {
+		leftResult = append(leftResult, leftTree.newNode(rightTree.loadNodeLabel(right)))
 	}
-	return leftResult, rghtResult
+	return leftResult, rightResult
 }
 
 // CombineToFlamebearerStruct generates the Flamebearer struct from 2 trees.
@@ -90,24 +90,24 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 	}
 
 	leftNodes, xLeftOffsets := []*treeNode{leftTree.at(0)}, []int{0}
-	rghtNodes, xRghtOffsets := []*treeNode{rightTree.at(0)}, []int{0}
+	rightNodes, xRightOffsets := []*treeNode{rightTree.at(0)}, []int{0}
 	levels := []int{0}
 	minVal := combineMinValues(leftTree, rightTree, maxNodes)
 	nameLocationCache := map[string]int{}
 
 	for len(leftNodes) > 0 {
-		left, rght := leftNodes[0], rghtNodes[0]
-		leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
+		left, right := leftNodes[0], rightNodes[0]
+		leftNodes, rightNodes = leftNodes[1:], rightNodes[1:]
 
-		xLeftOffset, xRghtOffset := xLeftOffsets[0], xRghtOffsets[0]
-		xLeftOffsets, xRghtOffsets = xLeftOffsets[1:], xRghtOffsets[1:]
+		xLeftOffset, xRightOffset := xLeftOffsets[0], xRightOffsets[0]
+		xLeftOffsets, xRightOffsets = xLeftOffsets[1:], xRightOffsets[1:]
 
 		level := levels[0]
 		levels = levels[1:]
 
-		// both left.Name and rght.Name must be the same
-		name := string(rightTree.loadLabel(rght.labelPosition))
-		if left.Total >= minVal || rght.Total >= minVal || name == "other" {
+		// both left.Name and right.Name must be the same
+		name := string(rightTree.loadLabel(right.labelPosition))
+		if left.Total >= minVal || right.Total >= minVal || name == "other" {
 			i, ok := nameLocationCache[name]
 			if !ok {
 				i = len(res.Names)
@@ -122,7 +122,7 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 				res.Levels = append(res.Levels, []int{})
 			}
 			res.MaxSelf = max(res.MaxSelf, int(left.Self))
-			res.MaxSelf = max(res.MaxSelf, int(rght.Self))
+			res.MaxSelf = max(res.MaxSelf, int(right.Self))
 
 			// i+0 = x offset, left  tree
 			// i+1 = total   , left  tree
@@ -133,51 +133,45 @@ func CombineToFlamebearerStruct(leftTree, rightTree *Tree, maxNodes int) *Flameb
 			// i+6 = index in the names array
 			values := []int{
 				xLeftOffset, int(left.Total), int(left.Self),
-				xRghtOffset, int(rght.Total), int(rght.Self),
+				xRightOffset, int(right.Total), int(right.Self),
 				i,
 			}
 			res.Levels[level] = append(values, res.Levels[level]...)
 
 			xLeftOffset += int(left.Self)
-			xRghtOffset += int(rght.Self)
-			otherLeftTotal, otherRghtTotal := uint64(0), uint64(0)
+			xRightOffset += int(right.Self)
+			otherLeftTotal, otherRightTotal := uint64(0), uint64(0)
 
 			// both left and right must have the same number of children nodes
 			for ni := range left.ChildrenNodes {
-				leftNode, rghtNode := leftTree.at(left.ChildrenNodes[ni]), rightTree.at(rght.ChildrenNodes[ni])
-				if leftNode.Total >= minVal || rghtNode.Total >= minVal {
+				leftNode, rightNode := leftTree.at(left.ChildrenNodes[ni]), rightTree.at(right.ChildrenNodes[ni])
+				if leftNode.Total >= minVal || rightNode.Total >= minVal {
 					levels = prependInt(levels, level+1)
 					xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
-					xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
+					xRightOffsets = prependInt(xRightOffsets, xRightOffset)
 					leftNodes = prependTreeNode(leftNodes, leftTree.at(left.ChildrenNodes[ni]))
-					rghtNodes = prependTreeNode(rghtNodes, rightTree.at(rght.ChildrenNodes[ni]))
+					rightNodes = prependTreeNode(rightNodes, rightTree.at(right.ChildrenNodes[ni]))
 					xLeftOffset += int(leftNode.Total)
-					xRghtOffset += int(rghtNode.Total)
+					xRightOffset += int(rightNode.Total)
 				} else {
 					otherLeftTotal += leftNode.Total
-					otherRghtTotal += rghtNode.Total
+					otherRightTotal += rightNode.Total
 				}
 			}
-			if otherLeftTotal != 0 || otherRghtTotal != 0 {
+			if otherLeftTotal != 0 || otherRightTotal != 0 {
 				levels = prependInt(levels, level+1)
-				{
-					leftNode := &treeNode{
-						labelPosition: leftTree.insertLabel([]byte("other")),
-						Total:         otherLeftTotal,
-						Self:          otherLeftTotal,
-					}
-					xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
-					leftNodes = prependTreeNode(leftNodes, leftNode)
-				}
-				{
-					rghtNode := &treeNode{
-						labelPosition: rightTree.insertLabel([]byte("other")),
-						Total:         otherRghtTotal,
-						Self:          otherRghtTotal,
-					}
-					xRghtOffsets = prependInt(xRghtOffsets, xRghtOffset)
-					rghtNodes = prependTreeNode(rghtNodes, rghtNode)
-				}
+				xLeftOffsets = prependInt(xLeftOffsets, xLeftOffset)
+				leftNodes = prependTreeNode(leftNodes, &treeNode{
+					labelPosition: leftTree.insertLabel([]byte("other")),
+					Total:         otherLeftTotal,
+					Self:          otherLeftTotal,
+				})
+				xRightOffsets = prependInt(xRightOffsets, xRightOffset)
+				rightNodes = prependTreeNode(rightNodes, &treeNode{
+					labelPosition: rightTree.insertLabel([]byte("other")),
+					Total:         otherRightTotal,
+					Self:          otherRightTotal,
+				})
 			}
 		}
 	}
@@ -198,15 +192,15 @@ func combineMinValues(leftTree, rightTree *Tree, maxNodes int) uint64 {
 
 // iterate both trees, both trees must be returned from CombineTree
 func combineIterateWithTotal(leftTree, rightTree *Tree, cb func(uint64, uint64) bool) {
-	leftNodes, rghtNodes := []int{0}, []int{0}
+	leftNodes, rightNodes := []int{0}, []int{0}
 	i := 0
 	for len(leftNodes) > 0 {
-		leftNode, rghtNode := leftTree.at(leftNodes[0]), rightTree.at(rghtNodes[0])
-		leftNodes, rghtNodes = leftNodes[1:], rghtNodes[1:]
+		left, right := leftTree.at(leftNodes[0]), rightTree.at(rightNodes[0])
+		leftNodes, rightNodes = leftNodes[1:], rightNodes[1:]
 		i++
-		if cb(leftNode.Total, rghtNode.Total) {
-			leftNodes = append(leftNode.ChildrenNodes, leftNodes...)
-			rghtNodes = append(rghtNode.ChildrenNodes, rghtNodes...)
+		if cb(left.Total, right.Total) {
+			leftNodes = append(left.ChildrenNodes, leftNodes...)
+			rightNodes = append(right.ChildrenNodes, rightNodes...)
 		}
 	}
 }
