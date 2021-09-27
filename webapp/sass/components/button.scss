@@ -28,7 +28,7 @@
   border-right-color: $active-color;
   border-top-color: $active-color;
   border-bottom-color: $active-color;
-  transition: 0.3s cubic-bezier(.17,.67,.83,.67);
+  transition: 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
   font-weight: 600;
 
   &:hover {

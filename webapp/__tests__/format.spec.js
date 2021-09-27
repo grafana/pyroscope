@@ -1,5 +1,4 @@
-import {DurationFormatter} from '../javascript/util/format';
-
+import { DurationFormatter } from '../javascript/util/format';
 
 describe('DurationFormatter', () => {
   it('correctly formats duration', () => {

@@ -1,16 +1,16 @@
-import React from "react";
-import { connect } from "react-redux";
-import { bindActionCreators } from "redux";
-import { setQuery } from "../redux/actions";
+import React from 'react';
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
+import { setQuery } from '../redux/actions';
 
-const defKey = "Select an app...";
+const defKey = 'Select an app...';
 
 function NameSelector(props) {
   const { actions, names, query } = props;
   const selectAppName = (event) => {
     actions.setQuery(`${event.target.value}{}`);
   };
-  let defaultValue = (query || "").replace(/\{.*/g, "");
+  let defaultValue = (query || '').replace(/\{.*/g, '');
   if (names && names.indexOf(defaultValue) === -1) {
     defaultValue = defKey;
   }

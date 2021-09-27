@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
-import { connect } from "react-redux";
+import React, { useEffect } from 'react';
+import { connect } from 'react-redux';
 
-import { withShortcut, ShortcutConsumer } from "react-keybind";
+import { withShortcut, ShortcutConsumer } from 'react-keybind';
 
 function ShortcutsModal(props) {
   const { closeModal } = props;
@@ -15,9 +15,9 @@ function ShortcutsModal(props) {
   };
 
   useEffect(() => {
-    window.document.addEventListener("keydown", handleKeyDown);
+    window.document.addEventListener('keydown', handleKeyDown);
     return function cleanup() {
-      window.document.removeEventListener("keydown", handleKeyDown);
+      window.document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -29,10 +29,10 @@ function ShortcutsModal(props) {
           <table className="shortcuts">
             <tbody>
               {shortcuts
-                .filter((x) => x.title !== "Skip")
+                .filter((x) => x.title !== 'Skip')
                 .map((x) => (
                   <tr key={x.id} className="shortcut">
-                    <td style={{ paddingRight: "20px" }}>
+                    <td style={{ paddingRight: '20px' }}>
                       <tt>{x.keys}</tt>
                     </td>
                     <td>

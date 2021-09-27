@@ -5,20 +5,20 @@
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
 
-import React from "react";
-import clsx from "clsx";
-import Graph from "./FlameGraphComponent";
-import TimelineChartWrapper from "../TimelineChartWrapper";
-import ProfilerTable from "../ProfilerTable";
-import ProfilerHeader from "../ProfilerHeader";
+import React from 'react';
+import clsx from 'clsx';
+import Graph from './FlameGraphComponent';
+import TimelineChartWrapper from '../TimelineChartWrapper';
+import ProfilerTable from '../ProfilerTable';
+import ProfilerHeader from '../ProfilerHeader';
 import {
   deltaDiffWrapper,
   parseFlamebearerFormat,
-} from "../../util/flamebearer";
-import ExportData from "../ExportData";
-import { isAbortError } from "../../util/abort";
+} from '../../util/flamebearer';
+import ExportData from '../ExportData';
+import { isAbortError } from '../../util/abort';
 
-import InstructionText from "./InstructionText";
+import InstructionText from './InstructionText';
 
 const paramsToObject = (entries) => {
   const result = {};
@@ -41,22 +41,29 @@ class FlameGraphRenderer extends React.Component {
   constructor(props) {
     super();
     this.state = {
-      resetStyle: { visibility: "hidden" },
-      sortBy: "self",
-      sortByDirection: "desc",
-      view: "both",
-      viewDiff: props.viewType === "diff" ? "diff" : undefined,
-      fitMode: props.fitMode ? props.fitMode : "HEAD",
+      resetStyle: { visibility: 'hidden' },
+      sortBy: 'self',
+      sortByDirection: 'desc',
+      view: 'both',
+      viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
+      fitMode: props.fitMode ? props.fitMode : 'HEAD',
       flamebearer: null,
+
+      // query used in the 'search' checkbox
+      highlightQuery: '',
     };
+
+    // generally not a good idea
+    // but we need to access the graph's reset function
+    this.graphRef = React.createRef();
   }
 
   componentDidMount() {
-    if (this.props.viewSide === "left" || this.props.viewSide === "right") {
+    if (this.props.viewSide === 'left' || this.props.viewSide === 'right') {
       this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`]);
-    } else if (this.props.viewType === "single") {
+    } else if (this.props.viewType === 'single') {
       this.fetchFlameBearerData(this.props.renderURL);
-    } else if (this.props.viewType === "diff") {
+    } else if (this.props.viewType === 'diff') {
       this.fetchFlameBearerData(this.props.diffRenderURL);
     }
   }
@@ -77,16 +84,16 @@ class FlameGraphRenderer extends React.Component {
       prevProps[`${this.props.viewSide}Until`] !==
         this.props[`${this.props.viewSide}Until`]
     ) {
-      if (this.props.viewSide === "left" || this.props.viewSide === "right") {
+      if (this.props.viewSide === 'left' || this.props.viewSide === 'right') {
         this.fetchFlameBearerData(
           this.props[`${this.props.viewSide}RenderURL`]
         );
-      } else if (this.props.viewType === "single") {
+      } else if (this.props.viewType === 'single') {
         this.fetchFlameBearerData(this.props.renderURL);
       }
     }
 
-    if (this.props.viewType === "diff") {
+    if (this.props.viewType === 'diff') {
       if (
         propsChanged ||
         prevProps.leftFrom !== this.props.leftFrom ||
@@ -113,17 +120,19 @@ class FlameGraphRenderer extends React.Component {
     // const emptyQuery = this.query === "";
     const topLevelSelected = this.selectedLevel === 0;
     this.setState({
-      resetStyle: { visibility: topLevelSelected ? "hidden" : "visible" },
+      resetStyle: { visibility: topLevelSelected ? 'hidden' : 'visible' },
     });
   };
 
   handleSearchChange = (e) => {
-    this.query = e.target.value;
-    this.updateResetStyle();
+    this.setState({
+      highlightQuery: e,
+    });
+    //    this.updateResetStyle();
   };
 
   reset = () => {
-    this.updateZoom(0, 0);
+    this.graphRef.current.reset();
   };
 
   updateView = (newView) => {
@@ -138,38 +147,25 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateSortBy(newSortBy) {
+  updateSortBy = (newSortBy) => {
     let dir = this.state.sortByDirection;
     if (this.state.sortBy === newSortBy) {
-      dir = dir === "asc" ? "desc" : "asc";
+      dir = dir === 'asc' ? 'desc' : 'asc';
     } else {
-      dir = "desc";
+      dir = 'desc';
     }
     this.setState({
       sortBy: newSortBy,
       sortByDirection: dir,
     });
-  }
+  };
 
-  updateZoom(i, j) {
-    const ff = this.parseFormat();
-    if (!Number.isNaN(i) && !Number.isNaN(j)) {
-      this.selectedLevel = i;
-      this.topLevel = 0;
-      this.rangeMin =
-        ff.getBarOffset(this.state.levels[i], j) / this.state.numTicks;
-      this.rangeMax =
-        (ff.getBarOffset(this.state.levels[i], j) +
-          ff.getBarTotal(this.state.levels[i], j)) /
-        this.state.numTicks;
-    } else {
-      this.selectedLevel = 0;
-      this.topLevel = 0;
-      this.rangeMin = 0;
-      this.rangeMax = 1;
-    }
-    this.updateResetStyle();
-  }
+  onZoom = (selectedLevel) => {
+    const topLevelSelected = selectedLevel === 0;
+    this.setState({
+      resetStyle: { visibility: topLevelSelected ? 'hidden' : 'visible' },
+    });
+  };
 
   parseFormat(format) {
     return parseFlamebearerFormat(format || this.state.format);
@@ -212,12 +208,12 @@ class FlameGraphRenderer extends React.Component {
     const tablePane = (
       <div
         key="table-pane"
-        className={clsx("pane", {
+        className={clsx('pane', {
           hidden:
-            this.state.view === "icicle" ||
+            this.state.view === 'icicle' ||
             !this.state.flamebearer ||
             this.state.flamebearer.names.length <= 1,
-          "vertical-orientation": this.props.viewType === "double",
+          'vertical-orientation': this.props.viewType === 'double',
         })}
       >
         <ProfilerTable
@@ -233,27 +229,28 @@ class FlameGraphRenderer extends React.Component {
       </div>
     );
     const dataExists =
-      this.state.view !== "table" || (
-        this.state.flamebearer &&
-        this.state.flamebearer.names.length <= 1
-      );
+      this.state.view !== 'table' ||
+      (this.state.flamebearer && this.state.flamebearer.names.length <= 1);
 
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
           key="flamegraph-pane"
+          ref={this.graphRef}
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
           ExportData={ExportData}
-          label={this.props.query}
+          query={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
+          onZoom={this.onZoom}
+          label={this.props.query}
         />
       ) : null;
 
     const panes =
-      this.props.viewType === "double"
+      this.props.viewType === 'double'
         ? [flameGraphPane, tablePane]
         : [tablePane, flameGraphPane];
 
@@ -263,8 +260,8 @@ class FlameGraphRenderer extends React.Component {
 
     return (
       <div
-        className={clsx("canvas-renderer", {
-          double: this.props.viewType === "double",
+        className={clsx('canvas-renderer', {
+          double: this.props.viewType === 'double',
         })}
       >
         <div className="canvas-container">
@@ -279,7 +276,7 @@ class FlameGraphRenderer extends React.Component {
             updateFitMode={this.updateFitMode}
             fitMode={this.state.fitMode}
           />
-          {this.props.viewType === "double" ? (
+          {this.props.viewType === 'double' ? (
             <>
               <InstructionText {...this.props} />
               <TimelineChartWrapper
@@ -288,7 +285,7 @@ class FlameGraphRenderer extends React.Component {
                 viewSide={this.props.viewSide}
               />
             </>
-          ) : this.props.viewType === "diff" ? (
+          ) : this.props.viewType === 'diff' ? (
             <>
               <div className="diff-instructions-wrapper">
                 <div className="diff-instructions-wrapper-side">
@@ -311,8 +308,8 @@ class FlameGraphRenderer extends React.Component {
             </>
           ) : null}
           <div
-            className={clsx("flamegraph-container panes-wrapper", {
-              "vertical-orientation": this.props.viewType === "double",
+            className={clsx('flamegraph-container panes-wrapper', {
+              'vertical-orientation': this.props.viewType === 'double',
             })}
           >
             {panes.map((pane) => pane)}

@@ -23,7 +23,10 @@ export function encodeLabels(v) {
   } else {
     res += 'unknown{';
   }
-  res += v.filter((x) => x.name !== '__name__').map((x) => `${x.name}=${x.value}`).join(',');
+  res += v
+    .filter((x) => x.name !== '__name__')
+    .map((x) => `${x.name}=${x.value}`)
+    .join(',');
   res += '}';
   return res;
 }

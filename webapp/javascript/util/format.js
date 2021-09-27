@@ -2,17 +2,12 @@ export function numberWithCommas(x) {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-const suffixes = [
-  "K",
-  "M",
-  "G",
-  "T",
-];
+const suffixes = ['K', 'M', 'G', 'T'];
 
 export function shortNumber(x) {
   let suffix = '';
 
-  for(var i = 0; x > 1000 && i < suffixes.length; i++) {
+  for (var i = 0; x > 1000 && i < suffixes.length; i++) {
     suffix = suffixes[i];
     x /= 1000;
   }
@@ -22,15 +17,15 @@ export function shortNumber(x) {
 
 export function formatPercent(ratio) {
   const percent = Math.round(10000 * ratio) / 100;
-  return percent+'%';
+  return percent + '%';
 }
 
 const durations = [
-  [60, "minute"],
-  [60, "hour"],
-  [24, "day"],
-  [30, "month"],
-  [12, "year"],
+  [60, 'minute'],
+  [60, 'hour'],
+  [24, 'day'],
+  [30, 'month'],
+  [12, 'year'],
 ];
 
 // this is a class and not a function because we can save some time by
@@ -39,7 +34,7 @@ export class DurationFormatter {
   constructor(maxDur) {
     this.divider = 1;
     this.suffix = 'second';
-    for(var i = 0; i < durations.length; i++) {
+    for (var i = 0; i < durations.length; i++) {
       if (maxDur >= durations[i][0]) {
         this.divider *= durations[i][0];
         maxDur /= durations[i][0];
@@ -63,20 +58,19 @@ export class DurationFormatter {
   }
 }
 
-
 const bytes = [
-  [1024, "KB"],
-  [1024, "MB"],
-  [1024, "GB"],
-  [1024, "TB"],
-  [1024, "PB"],
+  [1024, 'KB'],
+  [1024, 'MB'],
+  [1024, 'GB'],
+  [1024, 'TB'],
+  [1024, 'PB'],
 ];
 
 export class BytesFormatter {
   constructor(maxBytes) {
     this.divider = 1;
     this.suffix = 'bytes';
-    for(var i = 0; i < bytes.length; i++) {
+    for (var i = 0; i < bytes.length; i++) {
       if (maxBytes >= bytes[i][0]) {
         this.divider *= bytes[i][0];
         maxBytes /= bytes[i][0];
@@ -101,18 +95,18 @@ export class BytesFormatter {
 }
 
 const objects = [
-  [1000, "K"],
-  [1000, "M"],
-  [1000, "G"],
-  [1000, "T"],
-  [1000, "P"],
+  [1000, 'K'],
+  [1000, 'M'],
+  [1000, 'G'],
+  [1000, 'T'],
+  [1000, 'P'],
 ];
 
 export class ObjectsFormatter {
   constructor(maxObjects) {
     this.divider = 1;
     this.suffix = '';
-    for(var i = 0; i < objects.length; i++) {
+    for (var i = 0; i < objects.length; i++) {
       if (maxObjects >= objects[i][0]) {
         this.divider *= objects[i][0];
         maxObjects /= objects[i][0];
@@ -135,7 +129,6 @@ export class ObjectsFormatter {
     return `${number} ${this.suffix}`;
   }
 }
-
 
 export function getPackageNameFromStackTrace(spyName, stackTrace) {
   // TODO: actually make sure these make sense and add tests
@@ -160,13 +153,13 @@ export function getPackageNameFromStackTrace(spyName, stackTrace) {
   return stackTrace;
 }
 
-export function getFormatter(max, sampleRate, units){
+export function getFormatter(max, sampleRate, units) {
   switch (units) {
-    case "samples":
+    case 'samples':
       return new DurationFormatter(max / sampleRate);
-    case "objects":
+    case 'objects':
       return new ObjectsFormatter(max);
-    case "bytes":
+    case 'bytes':
       return new BytesFormatter(max);
     default:
       return new DurationFormatter(max / sampleRate);
