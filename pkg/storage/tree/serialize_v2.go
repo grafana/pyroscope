@@ -12,7 +12,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
 
-// serialization format version. it's not very useful right now, but it will be in the future
+// serialization format version.
 const currentVersion = 2
 
 func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
@@ -58,7 +58,6 @@ func (t *Tree) Serialize(d *dict.Dict, maxNodes int, w io.Writer) error {
 
 func Deserialize(d *dict.Dict, r io.Reader) (*Tree, error) {
 	br := bufio.NewReader(r)
-	// reads serialization format version, see comment at the top.
 	version, err := binary.ReadUvarint(br)
 	if err != nil {
 		return nil, err

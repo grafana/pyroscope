@@ -126,8 +126,8 @@ func DeserializeV1NoDict(r io.Reader) (*Tree, error) {
 }
 
 func (t *Tree) SerializeV1NoDict(maxNodes int, w io.Writer) error {
-	t.RLock()
-	defer t.RUnlock()
+	t.Lock()
+	defer t.Unlock()
 
 	nodes := []int{0}
 	minVal := t.minValue(maxNodes)
