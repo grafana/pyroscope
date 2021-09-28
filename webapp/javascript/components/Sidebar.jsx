@@ -1,33 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { connect } from "react-redux";
-import "react-dom";
+import React, { useState, useEffect } from 'react';
+import { connect } from 'react-redux';
+import 'react-dom';
 
-import { withShortcut } from "react-keybind";
-import Modal from "react-modal";
-import clsx from "clsx";
+import { withShortcut } from 'react-keybind';
+import Modal from 'react-modal';
+import clsx from 'clsx';
 
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFileAlt } from "@fortawesome/free-solid-svg-icons/faFileAlt";
-import { faKeyboard } from "@fortawesome/free-solid-svg-icons/faKeyboard";
-import { faColumns } from "@fortawesome/free-solid-svg-icons/faColumns";
-import { faBell } from "@fortawesome/free-solid-svg-icons/faBell";
-import { faSignOutAlt } from "@fortawesome/free-solid-svg-icons/faSignOutAlt";
-import { faChartBar } from "@fortawesome/free-solid-svg-icons/faChartBar";
-import { faWindowMaximize } from "@fortawesome/free-regular-svg-icons";
-import { faGithub } from "@fortawesome/free-brands-svg-icons/faGithub";
-import ShortcutsModal from "./ShortcutsModal";
-import SlackIcon from "./SlackIcon";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
+import { faKeyboard } from '@fortawesome/free-solid-svg-icons/faKeyboard';
+import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
+import { faBell } from '@fortawesome/free-solid-svg-icons/faBell';
+import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons/faSignOutAlt';
+import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
+import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
+import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
+import ShortcutsModal from './ShortcutsModal';
+import SlackIcon from './SlackIcon';
 
-import { fetchNames } from "../redux/actions";
-import history from "../util/history";
+import { fetchNames } from '../redux/actions';
+import history from '../util/history';
 
 const modalStyle = {
   overlay: {
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: 'rgba(0,0,0,0.75)',
   },
   content: {
-    background: "#222",
-    border: "1px solid #111",
+    background: '#222',
+    border: '1px solid #111',
   },
 };
 
@@ -44,10 +44,10 @@ function SidebarItem(props) {
 }
 
 function signOut() {
-  const form = document.createElement("form");
+  const form = document.createElement('form');
 
-  form.method = "POST";
-  form.action = "/logout";
+  form.method = 'POST';
+  form.action = '/logout';
 
   document.body.appendChild(form);
 
@@ -56,7 +56,7 @@ function signOut() {
 
 const initialState = {
   shortcutsModalOpen: false,
-  currentRoute: "/",
+  currentRoute: '/',
 };
 
 function Sidebar(props) {
@@ -84,9 +84,9 @@ function Sidebar(props) {
   useEffect(() => {
     shortcut.registerShortcut(
       showShortcutsModal,
-      ["shift+?"],
-      "Shortcuts",
-      "Show Keyboard Shortcuts Modal"
+      ['shift+?'],
+      'Shortcuts',
+      'Show Keyboard Shortcuts Modal'
     );
 
     // console.log('history: ', history.location.pathname);
@@ -95,13 +95,13 @@ function Sidebar(props) {
 
   return (
     <div className="sidebar">
-      <span className="logo" onClick={() => updateRoute("/")} />
+      <span className="logo" onClick={() => updateRoute('/')} />
       <SidebarItem tooltipText="Single View">
         <button
-          className={clsx({ "active-route": state.currentRoute === "/" })}
+          className={clsx({ 'active-route': state.currentRoute === '/' })}
           type="button"
           data-testid="sidebar-root"
-          onClick={() => updateRoute("/")}
+          onClick={() => updateRoute('/')}
         >
           <FontAwesomeIcon icon={faWindowMaximize} />
         </button>
@@ -109,11 +109,11 @@ function Sidebar(props) {
       <SidebarItem tooltipText="Comparison View">
         <button
           className={clsx({
-            "active-route": state.currentRoute === "/comparison",
+            'active-route': state.currentRoute === '/comparison',
           })}
           data-testid="sidebar-comparison"
           type="button"
-          onClick={() => updateRoute("/comparison")}
+          onClick={() => updateRoute('/comparison')}
         >
           <FontAwesomeIcon icon={faColumns} />
         </button>
@@ -121,11 +121,11 @@ function Sidebar(props) {
       <SidebarItem tooltipText="Diff View">
         <button
           className={clsx({
-            "active-route": state.currentRoute === "/comparison-diff",
+            'active-route': state.currentRoute === '/comparison-diff',
           })}
           type="button"
           data-testid="sidebar-comparison-diff"
-          onClick={() => updateRoute("/comparison-diff")}
+          onClick={() => updateRoute('/comparison-diff')}
         >
           <FontAwesomeIcon icon={faChartBar} />
         </button>
@@ -164,15 +164,19 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faKeyboard} />
         </button>
       </SidebarItem>
-      <SidebarItem tooltipText="Sign Out">
-        <button type="button" onClick={() => signOut()}>
-          <FontAwesomeIcon icon={faSignOutAlt} />
-        </button>
-      </SidebarItem>
+      {window.isAuthRequired ? (
+        <SidebarItem tooltipText="Sign Out">
+          <button type="button" onClick={() => signOut()}>
+            <FontAwesomeIcon icon={faSignOutAlt} />
+          </button>
+        </SidebarItem>
+      ) : (
+        []
+      )}
       <Modal
         isOpen={state.shortcutsModalOpen}
         style={modalStyle}
-        appElement={document.getElementById("root")}
+        appElement={document.getElementById('root')}
         ariaHideApp={false}
       >
         <div className="modal-close-btn" onClick={closeShortcutsModal} />

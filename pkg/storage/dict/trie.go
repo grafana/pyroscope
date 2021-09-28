@@ -33,6 +33,8 @@ func (tn *trieNode) findNodeAt(key []byte, w io.Writer) {
 	// TODO: remove
 	copy(key2, key)
 	key = key2
+	vw := varint.NewWriter()
+
 OuterLoop:
 	for {
 		// log.Debug("findNodeAt, key", string(key))
@@ -66,8 +68,8 @@ OuterLoop:
 			newTn := newTrieNode(key)
 			tn.insert(newTn)
 			i := len(tn.children) - 1
-			varint.Write(w, uint64(i))
-			varint.Write(w, uint64(len(key)))
+			vw.Write(w, uint64(i))
+			vw.Write(w, uint64(len(key)))
 			// fn(newTn)
 			return
 		}
@@ -81,8 +83,8 @@ OuterLoop:
 				// log.Debug("case 4")
 				tn = tn.children[leadIndex]
 				key = key[llk:]
-				varint.Write(w, uint64(leadIndex))
-				varint.Write(w, uint64(llk))
+				vw.Write(w, uint64(leadIndex))
+				vw.Write(w, uint64(llk))
 				continue OuterLoop
 			}
 			if leadKey[i] != key[i] { // 3
@@ -95,8 +97,8 @@ OuterLoop:
 				tn = newTn
 				key = key[i:]
 
-				varint.Write(w, uint64(leadIndex))
-				varint.Write(w, uint64(i))
+				vw.Write(w, uint64(leadIndex))
+				vw.Write(w, uint64(i))
 				continue OuterLoop
 			}
 		}
@@ -111,14 +113,14 @@ OuterLoop:
 			tn = newTn
 			key = key[lk:]
 
-			varint.Write(w, uint64(leadIndex))
-			varint.Write(w, uint64(lk))
+			vw.Write(w, uint64(leadIndex))
+			vw.Write(w, uint64(lk))
 			continue OuterLoop
 		}
 
 		// 2
-		varint.Write(w, uint64(leadIndex))
-		varint.Write(w, uint64(len(leadKey)))
+		vw.Write(w, uint64(leadIndex))
+		vw.Write(w, uint64(len(leadKey)))
 		return
 	}
 }

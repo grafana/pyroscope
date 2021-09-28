@@ -1,21 +1,22 @@
-@use "variables"as *;
-@use "mixins/outline"as *;
-@use "components/daterangepicker";
-@use "components/labels";
-@use "components/exportdata";
-@use "components/tagsbar";
-@use "components/button";
+@use 'variables' as *;
+@use 'mixins/outline' as *;
+@use 'components/daterangepicker';
+@use 'components/labels';
+@use 'components/exportdata';
+@use 'components/tagsbar';
+@use 'components/button';
 
-@import "~sanitize.css";
-@import "~sanitize.css/forms.css";
-@import "~sanitize.css/typography.css";
+@import '~sanitize.css';
+@import '~sanitize.css/forms.css';
+@import '~sanitize.css/typography.css';
 
-@import "flamebearer.scss";
-@import "login.scss";
+@import 'login.scss';
+
+@import '../javascript/components/FlameGraph/FlameGraphComponent/styles.css';
 
 body {
-  font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
-    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
+    Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
 
   background-color: $bg-color;
   color: white;
@@ -64,14 +65,14 @@ tt {
     margin: 0;
     padding: 0;
     font-weight: 400;
-    background-image: url("../images/logo-v3-small.svg");
+    background-image: url('../images/logo-v3-small.svg');
     background-size: 40px 40px;
     background-position: 0px 8px;
     background-repeat: no-repeat;
   }
 
   .logo::after {
-    content: "Pyroscope";
+    content: 'Pyroscope';
     font-weight: 400;
     padding-left: 44px;
     font-size: 25px;
@@ -134,7 +135,7 @@ input {
 
   &.double {
     display: flex;
-    width: 50%
+    width: 50%;
   }
 }
 
@@ -169,7 +170,7 @@ body {
 }
 @media only screen and (max-width: 1023px) {
   .logo::after {
-    content: "";
+    content: '';
   }
   .labels {
     margin-left: 5px;
@@ -234,7 +235,8 @@ $pane-width: 6px;
         width: 35px;
         text-align: center;
 
-        &:first-child, &:last-child {
+        &:first-child,
+        &:last-child {
           width: 40px;
         }
       }
@@ -340,7 +342,6 @@ $pane-width: 6px;
       max-width: auto;
 
       white-space: nowrap;
-
     }
 
     &:first-child .color-reference {
@@ -404,7 +405,7 @@ $pane-width: 6px;
   right: 20px;
   cursor: pointer;
   &:after {
-    content: "✕";
+    content: '✕';
     position: absolute;
     top: 0;
     right: 0;
@@ -416,7 +417,7 @@ $pane-width: 6px;
   }
   // hit-area
   &:before {
-    content: "";
+    content: '';
     cursor: pointer;
     top: -20px;
     right: -20px;
@@ -575,14 +576,14 @@ $sidebar-tooltip-color: #777;
     margin: 0;
     padding: 0;
     font-weight: 400;
-    background-image: url("../images/logo-v3-small.svg");
+    background-image: url('../images/logo-v3-small.svg');
     background-size: $logo-width $logo-width;
     background-position: $logo-offset $logo-offset;
     background-repeat: no-repeat;
   }
 
   .logo::after {
-    content: "";
+    content: '';
     font-weight: 400;
     padding-left: 44px;
     font-size: 25px;
@@ -593,7 +594,8 @@ $sidebar-tooltip-color: #777;
     flex-grow: 1;
   }
 
-  .logo, .sidebar-item {
+  .logo,
+  .sidebar-item {
     width: $sidebar-size;
     height: $sidebar-size;
 
@@ -613,10 +615,11 @@ $sidebar-tooltip-color: #777;
       font-size: 14px;
       color: rgba(#fff, 0.66);
     }
-    &:active, &:hover {
+    &:active,
+    &:hover {
       opacity: 1;
       .sidebar-external-link {
-        display:block;
+        display: block;
       }
     }
 
@@ -641,7 +644,8 @@ $sidebar-tooltip-color: #777;
     //   }
     // }
 
-    a, button {
+    a,
+    button {
       display: block;
       line-height: $sidebar-size;
       height: $sidebar-size;
@@ -655,11 +659,12 @@ $sidebar-tooltip-color: #777;
       padding: 0;
       width: 100%;
       cursor: pointer;
-      &:active, &:hover{
+      &:active,
+      &:hover {
         opacity: 1;
       }
 
-      &.active-route  {
+      &.active-route {
         opacity: 1;
         color: white;
         background-color: rgba(#000, 0.33);
@@ -737,7 +742,7 @@ $sidebar-tooltip-color: #777;
       text-align: center;
       font-weight: bold;
       cursor: pointer;
-      background-color: rgba(0,0,0,0.1);
+      background-color: rgba(0, 0, 0, 0.1);
       padding: 15px;
       &::before {
         content: '×';
@@ -746,7 +751,6 @@ $sidebar-tooltip-color: #777;
     }
   }
 }
-
 
 .fit-mode-select {
   margin: 0 10px;

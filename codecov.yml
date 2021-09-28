@@ -1,2 +1,2 @@
 ignore:
-  - "**/*.pb.go" # auto-generated code
+  - '**/*.pb.go' # auto-generated code

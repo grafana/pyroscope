@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
-  "dependencies": {
-    "puppeteer": "^9.1.1"
+  "dependencies": {},
+  "devDependencies": {
+    "danger": "^10.6.6"
   }
 }

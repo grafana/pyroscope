@@ -2,18 +2,25 @@
   "author": "Pyroscope Team",
   "private": true,
   "name": "pyroscope",
-  "version": "0.0.38",
+  "version": "0.0.41",
+  "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
     "url": "https://github.com/pyroscope-io/pyroscope.git"
   },
   "scripts": {
+    "postinstall": "./scripts/web-postinstall.sh",
     "dev": "webpack --progress --config scripts/webpack/webpack.dev.js",
     "test": "jest",
-    "lint": "eslint ./ --ext .js,.jsx --cache --fix",
+    "lint": "eslint ./ --ext .js,.jsx,.ts,.tsx --cache --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "size-build": "make assets-size-build",
     "cy:open": "cypress open",
-    "cy:ci": "cypress run"
+    "cy:ci": "cypress run",
+    "cy:ss": "./scripts/cypress-screenshots.sh",
+    "prepare": "husky install",
+    "lint-staged": "lint-staged"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
@@ -30,11 +37,13 @@
     "copy-webpack-plugin": "^6.3.2",
     "css-loader": "^4.0.0",
     "cypress": "^8.3.0",
+    "cypress-image-snapshot": "^4.0.1",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.15.5",
     "eslint": "7.2.0",
     "eslint-config-airbnb": "18.2.1",
     "eslint-config-prettier": "^7.1.0",
+    "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-jsx-a11y": "^6.4.1",
     "eslint-plugin-prettier": "^3.3.1",
@@ -42,7 +51,9 @@
     "eslint-plugin-react-hooks": "4.0.0",
     "eslint-webpack-plugin": "^2.4.1",
     "html-webpack-plugin": "^5.3.2",
+    "husky": "^7.0.2",
     "jest": "^26.6.3",
+    "lint-staged": "^11.1.2",
     "mini-css-extract-plugin": "^2.2.0",
     "monaco-editor-webpack-plugin": "^1.9.0",
     "postcss-browser-reporter": "^0.6.0",
@@ -54,7 +65,7 @@
     "sass-loader": "^9.0.2",
     "size-limit": "^5.0.3",
     "typescript": "3.9.3",
-    "webpack": "^5.51.1",
+    "webpack": "~5.51.1",
     "webpack-bundle-analyzer": "^4.4.2",
     "webpack-cli": "^4.8.0",
     "webpack-merge": "^5.0.9",
@@ -99,7 +110,8 @@
     "redux-promise": "^0.6.0",
     "redux-query-sync": "^0.1.10",
     "redux-thunk": "^2.3.0",
-    "sanitize.css": "^11.0.1"
+    "sanitize.css": "^11.0.1",
+    "style-loader": "^3.2.1"
   },
   "engines": {
     "node": ">=11"
@@ -109,5 +121,11 @@
       "path": "webapp/public/assets/app.js",
       "limit": "750 kB"
     }
-  ]
+  ],
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --cache --fix"
+    ],
+    "*.{js,jsx,ts,tsx,json,yml,yaml,eslintrc,prettierrc}": "prettier --write"
+  }
 }

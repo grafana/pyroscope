@@ -1,9 +1,9 @@
-import React from "react";
-import { useDispatch } from "react-redux";
+import React from 'react';
+import { useDispatch } from 'react-redux';
 
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSyncAlt } from "@fortawesome/free-solid-svg-icons/faSyncAlt";
-import { refresh } from "../redux/actions";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
+import { refresh } from '../redux/actions';
 
 function RefreshButton() {
   const dispatch = useDispatch();

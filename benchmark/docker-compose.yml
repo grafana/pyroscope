@@ -1,14 +1,18 @@
-version: "3.9"
+version: '3.9'
 services:
-  client:
+  pyrobench:
     env_file:
-      - git-info.env
       - run-parameters.env
-    ports:
-      - 8081:8081
     build:
       context: ../
       dockerfile: benchmark/Dockerfile
+    # we will be running docker exec against it
+    command:
+      - sh
+      - -c
+      - sleep Infinity
+    volumes:
+      - ./dashboard-screenshots:/screenshots
 
   pyroscope:
     environment:
@@ -24,8 +28,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "${PYROSCOPE_CPUS}"
-          memory: "${PYROSCOPE_MEMORY}"
+          cpus: '${PYROSCOPE_CPUS}'
+          memory: '${PYROSCOPE_MEMORY}'
 
   prometheus:
     image: prom/prometheus:v2.27.1
@@ -33,7 +37,9 @@ services:
       - ./prometheus:/etc/prometheus/
       - data-prometheus:/prometheus
     ports:
-      - 9090:9090
+      - 4090:9090
+  pushgateway:
+    image: prom/pushgateway:v1.4.1
 
   grafana:
     image: grafana/grafana:7.5.7

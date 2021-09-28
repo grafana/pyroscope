@@ -1,4 +1,4 @@
-import uniqBy from "lodash/fp/uniqBy";
+import uniqBy from 'lodash/fp/uniqBy';
 import {
   SET_DATE_RANGE,
   SET_FROM,
@@ -20,20 +20,20 @@ import {
   SET_LEFT_UNTIL,
   SET_RIGHT_UNTIL,
   SET_QUERY,
-} from "../actionTypes";
+} from '../actionTypes';
 
 const defaultName = window.initialState.appNames.find(
-  (x) => x !== "pyroscope.server.cpu"
+  (x) => x !== 'pyroscope.server.cpu'
 );
 
 const initialState = {
-  from: "now-1h",
-  leftFrom: "now-1h",
-  rightFrom: "now-30m",
-  until: "now",
-  leftUntil: "now-30m",
-  rightUntil: "now",
-  query: `${defaultName || "pyroscope.server.cpu"}{}`,
+  from: 'now-1h',
+  leftFrom: 'now-1h',
+  rightFrom: 'now-30m',
+  until: 'now',
+  leftUntil: 'now-30m',
+  rightUntil: 'now',
+  query: `${defaultName || 'pyroscope.server.cpu'}{}`,
   names: window.initialState.appNames,
   timeline: null,
   isJSONLoading: false,
@@ -137,7 +137,7 @@ export default function (state = initialState, action) {
         ...state,
         areTagsLoading: false,
         tags: action.payload.tags.reduce((acc, tag) => {
-          if (tag !== "__name__") {
+          if (tag !== '__name__') {
             acc[tag] = [];
           }
           return acc;
@@ -152,7 +152,7 @@ export default function (state = initialState, action) {
     case RECEIVE_TAG_VALUES:
       return {
         ...state,
-        tagValuesLoading: "",
+        tagValuesLoading: '',
         tags: {
           ...state.tags,
           [action.payload.tag]: action.payload.values,

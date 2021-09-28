@@ -18,3 +18,5 @@ jobs:
         run: yarn run test
       - name: Run Webapp lints
         run: yarn lint
+      - name: Run Webapp Format check
+        run: yarn format:check

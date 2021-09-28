@@ -1,0 +1,57 @@
+{
+  "flamebearer": {
+    "names": [
+      "total",
+      "java/lang/Thread.run",
+      "io/pyroscope/javaagent/Uploader.run",
+      "io/pyroscope/javaagent/Uploader.uploadSnapshot",
+      "io/pyroscope/javaagent/Uploader.sendRequest",
+      "sun/net/www/protocol/http/HttpURLConnection.getOutputStream",
+      "sun/net/www/protocol/http/HttpURLConnection.getOutputStream0",
+      "sun/net/www/protocol/http/HttpURLConnection.connect",
+      "sun/net/www/protocol/http/HttpURLConnection.plainConnect",
+      "sun/net/www/protocol/http/HttpURLConnection.plainConnect0",
+      "sun/net/www/protocol/http/HttpURLConnection.getNewHttpClient",
+      "sun/net/NetworkClient.\u003cclinit\u003e",
+      "sun/net/NetworkClient.isASCIISuperset",
+      "java/util/Arrays.equals",
+      "jdk/internal/util/ArraysSupport.\u003cclinit\u003e",
+      "jdk/internal/util/ArraysSupport.exactLog2",
+      "Main.main",
+      "Main.work",
+      "Main.slowFunction",
+      "Main.fastFunction"
+    ],
+    "levels": [
+      [0, 990, 0, 0],
+      [0, 2, 2, 19, 0, 987, 766, 16, 0, 1, 0, 1],
+      [768, 84, 43, 19, 0, 106, 68, 18, 0, 31, 31, 17, 0, 1, 0, 2],
+      [811, 41, 41, 17, 68, 38, 38, 17, 31, 1, 0, 3],
+      [989, 1, 0, 4],
+      [989, 1, 0, 5],
+      [989, 1, 0, 6],
+      [989, 1, 0, 7],
+      [989, 1, 0, 8],
+      [989, 1, 0, 9],
+      [989, 1, 0, 10],
+      [989, 1, 0, 11],
+      [989, 1, 0, 12],
+      [989, 1, 0, 13],
+      [989, 1, 0, 14],
+      [989, 1, 1, 15]
+    ],
+    "numTicks": 990,
+    "maxSelf": 766,
+    "spyName": "javaspy",
+    "sampleRate": 100,
+    "units": "samples",
+    "format": "single"
+  },
+  "metadata": {
+    "format": "single",
+    "sampleRate": 100,
+    "spyName": "javaspy",
+    "units": "samples"
+  },
+  "timeline": { "startTime": 1632504610, "samples": [991], "durationDelta": 10 }
+}

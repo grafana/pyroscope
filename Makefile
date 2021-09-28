@@ -100,6 +100,10 @@ build: ## Builds the binary
 build-release: embedded-assets ## Builds the release build
 	EXTRA_GO_TAGS=,embedassets $(MAKE) build
 
+.PHONY: build-panel
+build-panel:
+	NODE_ENV=production $(shell yarn bin webpack) --config scripts/webpack/webpack.panel.js
+
 .PHONY: build-rust-dependencies
 build-rust-dependencies:
 ifeq ("$(OS)", "Linux")

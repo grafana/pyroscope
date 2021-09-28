@@ -1,15 +1,16 @@
-import murmurhash3_32_gc from './murmur3';
+/* eslint-disable camelcase */
 import Color from 'color';
+import murmurhash3_32_gc from './murmur3';
 
 const colors = [
-  Color.hsl(24,  69,  60),
-  Color.hsl(34,  65,  65),
-  Color.hsl(194, 52,  61),
-  Color.hsl(163, 45,  55),
-  Color.hsl(211, 48,  60),
-  Color.hsl(246, 40,  65),
-  Color.hsl(305, 63,  79),
-  Color.hsl(47,  100, 73),
+  Color.hsl(24, 69, 60),
+  Color.hsl(34, 65, 65),
+  Color.hsl(194, 52, 61),
+  Color.hsl(163, 45, 55),
+  Color.hsl(211, 48, 60),
+  Color.hsl(246, 40, 65),
+  Color.hsl(305, 63, 79),
+  Color.hsl(47, 100, 73),
 
   Color.rgb(183, 219, 171),
   Color.rgb(244, 213, 152),
@@ -24,10 +25,10 @@ const colors = [
   Color.rgb(101, 197, 219),
   Color.rgb(249, 147, 78),
   Color.rgb(234, 100, 96),
-  Color.rgb(81,  149, 206),
+  Color.rgb(81, 149, 206),
   Color.rgb(214, 131, 206),
   Color.rgb(128, 110, 183),
-]
+];
 
 export const defaultColor = Color.rgb(148, 142, 142);
 export const diffColorRed = Color.rgb(200, 0, 0);
@@ -43,10 +44,12 @@ export function colorBasedOnPackageName(name, a) {
 // assume: left >= 0 && Math.abs(diff) <= left so diff / left is in [0...1]
 // if left == 0 || Math.abs(diff) > left, we use the color of 100%
 export function colorBasedOnDiff(diff, left, a) {
-  const v = !left || Math.abs(diff) > left ? 1
-    : 200 * Math.sqrt(Math.abs(diff / left));
-  if (diff >= 0) return Color.rgb(200,  200-v,200-v).alpha(a);
-  return Color.rgb(200-v, 200, 200-v).alpha(a);
+  const v =
+    !left || Math.abs(diff) > left
+      ? 200
+      : 200 * Math.sqrt(Math.abs(diff / left));
+  if (diff >= 0) return Color.rgb(200, 200 - v, 200 - v).alpha(a);
+  return Color.rgb(200 - v, 200, 200 - v).alpha(a);
 }
 
 export function colorGreyscale(v, a) {

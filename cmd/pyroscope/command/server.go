@@ -11,9 +11,10 @@ func newServerCmd(cfg *config.Server) *cobra.Command {
 	vpr := newViper()
 	serverCmd := &cobra.Command{
 		Use:   "server [flags]",
-		Args:  cobra.NoArgs,
 		Short: "Start pyroscope server. This is the database + web-based user interface",
-		RunE: createCmdRunFn(cfg, vpr, func(cmd *cobra.Command, args []string) error {
+
+		DisableFlagParsing: true,
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
 			return cli.StartServer(cfg)
 		}),
 	}

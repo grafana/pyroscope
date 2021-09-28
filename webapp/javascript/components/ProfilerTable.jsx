@@ -1,12 +1,17 @@
 /* eslint no-nested-ternary: 0 */
 /* eslint prettier/prettier: 0 */
 
-import React from "react";
-import clsx from "clsx";
-import { getFormatter, getPackageNameFromStackTrace } from "../util/format";
-import { colorBasedOnPackageName, defaultColor, diffColorGreen, diffColorRed } from "../util/color";
-import { parseFlamebearerFormat } from "../util/flamebearer";
-import { fitIntoTableCell } from "../util/fitMode";
+import React from 'react';
+import clsx from 'clsx';
+import { getFormatter, getPackageNameFromStackTrace } from '../util/format';
+import {
+  colorBasedOnPackageName,
+  defaultColor,
+  diffColorGreen,
+  diffColorRed,
+} from './FlameGraph/FlameGraphComponent/color';
+import { parseFlamebearerFormat } from '../util/flamebearer';
+import { fitIntoTableCell } from '../util/fitMode';
 
 const zero = (v) => v || 0;
 
@@ -39,7 +44,7 @@ const generateTable = (flamebearer) => {
   const { names, levels, format } = flamebearer;
   const ff = parseFlamebearerFormat(format);
   const generateCell =
-    format !== "double" ? generateCellSingle : generateCellDouble;
+    format !== 'double' ? generateCellSingle : generateCellDouble;
 
   const hash = {};
   // eslint-disable-next-line no-plusplus
@@ -48,7 +53,7 @@ const generateTable = (flamebearer) => {
     for (let j = 0; j < level.length; j += ff.jStep) {
       const key = ff.getBarName(level, j);
       const name = names[key];
-      hash[name] = hash[name] || { name: name || "<empty>" };
+      hash[name] = hash[name] || { name: name || '<empty>' };
       generateCell(ff, hash[name], level, j);
     }
   }
@@ -56,7 +61,9 @@ const generateTable = (flamebearer) => {
 };
 
 // the value must be negative or zero
-function neg(v) { return Math.min(0, v); }
+function neg(v) {
+  return Math.min(0, v);
+}
 
 function backgroundImageStyle(a, b, color) {
   const w = 148;
@@ -66,7 +73,7 @@ function backgroundImageStyle(a, b, color) {
     // backgroundColor: 'transparent',
     backgroundImage: `linear-gradient(${clr}, ${clr})`,
     backgroundPosition: `-${k}px 0px`,
-    backgroundRepeat: "no-repeat",
+    backgroundRepeat: 'no-repeat',
   };
 }
 
@@ -79,8 +86,7 @@ function backgroundImageDiffStyle(a, b, total, color, side) {
   const k = w - (Math.min(a, b) / total) * w;
   const kd = w - (Math.max(a, b) / total) * w;
   const clr = color.alpha(1.0);
-  const cld = b < a ? diffColorGreen.alpha(0.8)
-                    : diffColorRed.alpha(0.8);
+  const cld = b < a ? diffColorGreen.alpha(0.8) : diffColorRed.alpha(0.8);
 
   if (side === 'L' && a < b) {
     return `
@@ -126,36 +132,42 @@ export default function ProfilerTable({
 }
 
 const tableFormatSingle = [
-  { sortable: 1, name: "name", label: "Location" },
-  { sortable: 1, name: "self", label: "Self" },
-  { sortable: 1, name: "total", label: "Total" },
+  { sortable: 1, name: 'name', label: 'Location' },
+  { sortable: 1, name: 'self', label: 'Self' },
+  { sortable: 1, name: 'total', label: 'Total' },
 ];
 
 const tableFormatDiffDef = {
-  name:      { sortable: 1, name: "name", label: "Location" },
-  selfLeft:  { sortable: 1, name: "selfLeft", label: "Self (Left)" },
-  selfRght:  { sortable: 1, name: "selfRght", label: "Self (Right)" },
-  selfDiff:  { sortable: 1, name: "selfDiff", label: "Self (Diff)" },
-  totalLeft: { sortable: 1, name: "totalLeft", label: "Total (Left)" },
-  totalRght: { sortable: 1, name: "totalRght", label: "Total (Right)" },
-  totalDiff: { sortable: 1, name: "totalDiff", label: "Total (Diff)" },
+  name: { sortable: 1, name: 'name', label: 'Location' },
+  selfLeft: { sortable: 1, name: 'selfLeft', label: 'Self (Left)' },
+  selfRght: { sortable: 1, name: 'selfRght', label: 'Self (Right)' },
+  selfDiff: { sortable: 1, name: 'selfDiff', label: 'Self (Diff)' },
+  totalLeft: { sortable: 1, name: 'totalLeft', label: 'Total (Left)' },
+  totalRght: { sortable: 1, name: 'totalRght', label: 'Total (Right)' },
+  totalDiff: { sortable: 1, name: 'totalDiff', label: 'Total (Diff)' },
 };
 
 const tableFormatDiff = ((def) => ({
-  diff:  [def.name, def.selfDiff,  def.totalDiff],
-  self:  [def.name, def.selfLeft,  def.selfRght],
+  diff: [def.name, def.selfDiff, def.totalDiff],
+  self: [def.name, def.selfLeft, def.selfRght],
   total: [def.name, def.totalLeft, def.totalRght],
 }))(tableFormatDiffDef);
 
-function Table({ flamebearer, updateSortBy, sortBy, sortByDirection, viewDiff, fitMode }) {
+function Table({
+  flamebearer,
+  updateSortBy,
+  sortBy,
+  sortByDirection,
+  viewDiff,
+  fitMode,
+}) {
   if (!flamebearer || flamebearer.numTicks === 0) {
     return [];
   }
-  const tableFormat =
-    !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
+  const tableFormat = !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
 
   return (
-    <table className="flamegraph-table">
+    <table className="flamegraph-table" data-testid="table-view">
       <thead>
         <tr>
           {tableFormat.map((v, idx) =>
@@ -171,7 +183,7 @@ function Table({ flamebearer, updateSortBy, sortBy, sortByDirection, viewDiff, f
               >
                 {v.label}
                 <span
-                  className={clsx("sort-arrow", {
+                  className={clsx('sort-arrow', {
                     [sortByDirection]: sortBy === v.name,
                   })}
                 />
@@ -193,14 +205,20 @@ function Table({ flamebearer, updateSortBy, sortBy, sortByDirection, viewDiff, f
   );
 }
 
-function TableBody({ flamebearer, sortBy, sortByDirection, viewDiff, fitMode }) {
+function TableBody({
+  flamebearer,
+  sortBy,
+  sortByDirection,
+  viewDiff,
+  fitMode,
+}) {
   const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
   const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
 
-  const m = sortByDirection === "asc" ? 1 : -1;
+  const m = sortByDirection === 'asc' ? 1 : -1;
   let sorted;
-  if (sortBy === "name") {
+  if (sortBy === 'name') {
     sorted = table.sort((a, b) => m * a[sortBy].localeCompare(b[sortBy]));
   } else {
     sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
@@ -216,12 +234,18 @@ function TableBody({ flamebearer, sortBy, sortByDirection, viewDiff, fitMode }) 
   const nameCell = (x, style) => (
     <td>
       <span className="color-reference" style={style} />
-      <div className="symbol-name" title={x.name} style={fitIntoTableCell(fitMode)}>{x.name}</div>
+      <div
+        className="symbol-name"
+        title={x.name}
+        style={fitIntoTableCell(fitMode)}
+      >
+        {x.name}
+      </div>
     </td>
   );
 
-  const renderRow =
-    !viewDiff ? (x, color, style) => (
+  const renderRow = !viewDiff ? (
+    (x, color, style) => (
       <tr key={x.name + renderID}>
         {nameCell(x, style)}
         <td style={backgroundImageStyle(x.self, maxSelf, color)}>
@@ -243,51 +267,106 @@ function TableBody({ flamebearer, sortBy, sortByDirection, viewDiff, fitMode }) 
           </span>
         </td>
       </tr>
-    ) : viewDiff === 'self' ? (x, color, style) => (
+    )
+  ) : viewDiff === 'self' ? (
+    (x, color, style) => (
       <tr key={x.name + renderID}>
         {nameCell(x, style)}
         {/* NOTE: it seems React does not understand multiple backgrounds, have to workaround:  */}
         {/*   The `style` prop expects a mapping from style properties to values, not a string. */}
-        <td STYLE={backgroundImageDiffStyle(x.selfLeft, x.selfRght, maxSelf, color, 'L')}>
+        <td
+          STYLE={backgroundImageDiffStyle(
+            x.selfLeft,
+            x.selfRght,
+            maxSelf,
+            color,
+            'L'
+          )}
+        >
           <span title={formatter.format(x.selfLeft, sampleRate)}>
             {formatter.format(x.selfLeft, sampleRate)}
           </span>
         </td>
-        <td STYLE={backgroundImageDiffStyle(x.selfLeft, x.selfRght, maxSelf, color, 'R')}>
+        <td
+          STYLE={backgroundImageDiffStyle(
+            x.selfLeft,
+            x.selfRght,
+            maxSelf,
+            color,
+            'R'
+          )}
+        >
           <span title={formatter.format(x.selfRght, sampleRate)}>
             {formatter.format(x.selfRght, sampleRate)}
           </span>
         </td>
       </tr>
-    ) : viewDiff === 'total' ? (x, color, style) => (
+    )
+  ) : viewDiff === 'total' ? (
+    (x, color, style) => (
       <tr key={x.name + renderID}>
         {nameCell(x, style)}
-        <td STYLE={backgroundImageDiffStyle(x.totalLeft, x.totalRght, numTicks / 2, color, 'L')}>
+        <td
+          STYLE={backgroundImageDiffStyle(
+            x.totalLeft,
+            x.totalRght,
+            numTicks / 2,
+            color,
+            'L'
+          )}
+        >
           <span title={formatter.format(x.totalLeft, sampleRate)}>
             {formatter.format(x.totalLeft, sampleRate)}
           </span>
         </td>
-        <td STYLE={backgroundImageDiffStyle(x.totalLeft, x.totalRght, numTicks / 2, color, 'R')}>
+        <td
+          STYLE={backgroundImageDiffStyle(
+            x.totalLeft,
+            x.totalRght,
+            numTicks / 2,
+            color,
+            'R'
+          )}
+        >
           <span title={formatter.format(x.totalRght, sampleRate)}>
             {formatter.format(x.totalRght, sampleRate)}
           </span>
         </td>
       </tr>
-    ) : viewDiff === 'diff' ? (x, color, style) => (
+    )
+  ) : viewDiff === 'diff' ? (
+    (x, color, style) => (
       <tr key={x.name + renderID}>
         {nameCell(x, style)}
-        <td STYLE={backgroundImageDiffStyle(x.selfLeft, x.selfRght, maxSelf, defaultColor)}>
+        <td
+          STYLE={backgroundImageDiffStyle(
+            x.selfLeft,
+            x.selfRght,
+            maxSelf,
+            defaultColor
+          )}
+        >
           <span title={formatter.format(x.selfDiff, sampleRate)}>
             {formatter.format(x.selfDiff, sampleRate)}
           </span>
         </td>
-        <td STYLE={backgroundImageDiffStyle(x.totalLeft, x.totalRght, numTicks / 2, color)}>
+        <td
+          STYLE={backgroundImageDiffStyle(
+            x.totalLeft,
+            x.totalRght,
+            numTicks / 2,
+            color
+          )}
+        >
           <span title={formatter.format(x.totalDiff, sampleRate)}>
             {formatter.format(x.totalDiff, sampleRate)}
           </span>
         </td>
       </tr>
-    ) : <div>invalid</div>;
+    )
+  ) : (
+    <div>invalid</div>
+  );
 
   return sorted.map((x) => {
     const pn = getPackageNameFromStackTrace(spyName, x.name);

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,12 +14,14 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	goHttpMetricsMiddleware "github.com/slok/go-http-metrics/middleware"
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -28,9 +31,10 @@ import (
 )
 
 const (
-	jwtCookieName   = "pyroscopeJWT"
-	stateCookieName = "pyroscopeState"
-	oauthGoogle     = iota
+	jwtCookieName              = "pyroscopeJWT"
+	stateCookieName            = "pyroscopeState"
+	gzHttpCompressionThreshold = 2000
+	oauthGoogle                = iota
 	oauthGithub
 	oauthGitlab
 )
@@ -53,6 +57,9 @@ type Controller struct {
 
 	appStats   *hyperloglog.HyperLogLogPlus
 	metricsMdw goHttpMetricsMiddleware.Middleware
+
+	// Byte buffers are used for deserialization of ingested data.
+	bufferPool bytebufferpool.Pool
 }
 
 func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger, reg prometheus.Registerer) (*Controller, error) {
@@ -191,12 +198,24 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	return authRoutes, nil
 }
 
+func (ctrl *Controller) getHandler() (http.Handler, error) {
+	handler, err := ctrl.mux()
+	if err != nil {
+		return nil, err
+	}
+
+	gzhttpMiddleware, err := gzhttp.NewWrapper(gzhttp.MinSize(gzHttpCompressionThreshold), gzhttp.CompressionLevel(gzip.BestSpeed))
+	if err != nil {
+		return nil, err
+	}
+	return gzhttpMiddleware(handler), nil
+}
+
 func (ctrl *Controller) Start() error {
 	logger := logrus.New()
 	w := logger.Writer()
 	defer w.Close()
-
-	handler, err := ctrl.mux()
+	handler, err := ctrl.getHandler()
 	if err != nil {
 		return err
 	}

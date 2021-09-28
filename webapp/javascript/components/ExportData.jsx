@@ -1,12 +1,12 @@
-import React, { useState } from "react";
-import { connect } from "react-redux";
+import React, { useState } from 'react';
+import { connect } from 'react-redux';
 
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBars } from "@fortawesome/free-solid-svg-icons/faBars";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 
-import clsx from "clsx";
-import { jsPDF as JSPDF } from "jspdf";
-import "jspdf-autotable";
+import clsx from 'clsx';
+import { jsPDF as JSPDF } from 'jspdf';
+import 'jspdf-autotable';
 
 function ExportData(props) {
   const [toggleMenu, setToggleMenu] = useState(false);
@@ -20,19 +20,18 @@ function ExportData(props) {
   };
 
   const formatPdfTitle = () => {
-    const { value } = props.labels.filter((x) => x.name === "__name__")[0];
     const { from, until } = props;
 
-    return `${value} - from: ${from} - to ${until}`;
+    return `${props.label} - from: ${from} - to ${until}`;
   };
 
   // export flamegraph canvas element
   const exportCanvas = (mimeType) => {
-    if (mimeType === "pdf") {
-      const canvas = document.querySelector(".flamegraph-canvas");
-      const myImage = canvas.toDataURL("image/jpeg,1.0");
+    if (mimeType === 'pdf') {
+      const canvas = document.querySelector('.flamegraph-canvas');
+      const myImage = canvas.toDataURL('image/jpeg,1.0');
 
-      const pdf = new JSPDF("p", "mm", "a4");
+      const pdf = new JSPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
 
       // reduce canvas width to a fit on the pdf
@@ -53,7 +52,7 @@ function ExportData(props) {
       const pdfYOffset = 30;
       pdf.addImage(
         myImage,
-        "JPEG",
+        'JPEG',
         pdfXOffset,
         pdfYOffset,
         canvas.width / count,
@@ -69,15 +68,15 @@ function ExportData(props) {
       return;
     }
 
-    const canvasElement = document.querySelector(".flamegraph-canvas");
+    const canvasElement = document.querySelector('.flamegraph-canvas');
     const MIME_TYPE = `image/${mimeType}`;
     const imgURL = canvasElement.toDataURL();
-    const dlLink = document.createElement("a");
+    const dlLink = document.createElement('a');
 
     dlLink.download = `flamegraph_visual_${formattedDate()}`;
     dlLink.href = imgURL;
     dlLink.dataset.downloadurl = [MIME_TYPE, dlLink.download, dlLink.href].join(
-      ":"
+      ':'
     );
 
     document.body.appendChild(dlLink);
@@ -88,11 +87,11 @@ function ExportData(props) {
 
   // export the flamegraph table element
   const exportTable = () => {
-    const pdf = new JSPDF("p", "mm", "a4");
+    const pdf = new JSPDF('p', 'mm', 'a4');
     pdf.text(12, 7, formatPdfTitle());
     pdf.autoTable({
-      html: ".flamegraph-table",
-      theme: "grid",
+      html: '.flamegraph-table',
+      theme: 'grid',
     });
     pdf.save(`table_visual_${formattedDate()}`);
     setToggleMenu(!toggleMenu);
@@ -110,14 +109,14 @@ function ExportData(props) {
       </button>
 
       <div
-        className={clsx({ "menu-show": toggleMenu, "menu-hide": !toggleMenu })}
+        className={clsx({ 'menu-show': toggleMenu, 'menu-hide': !toggleMenu })}
       >
         <div className="dropdown-header">Export Flamegraph</div>
         <div>
           <button
             className="dropdown-menu-item"
-            onClick={() => exportCanvas("pdf")}
-            onKeyPress={() => exportCanvas("pdf")}
+            onClick={() => exportCanvas('pdf')}
+            onKeyPress={() => exportCanvas('pdf')}
             type="button"
           >
             PDF
@@ -126,8 +125,8 @@ function ExportData(props) {
         <div>
           <button
             className="dropdown-menu-item"
-            onClick={() => exportCanvas("png")}
-            onKeyPress={() => exportCanvas("png")}
+            onClick={() => exportCanvas('png')}
+            onKeyPress={() => exportCanvas('png')}
             type="button"
           >
             PNG
@@ -138,8 +137,8 @@ function ExportData(props) {
         <div>
           <button
             className="dropdown-menu-item"
-            onClick={() => exportTable("pdf")}
-            onKeyPress={() => exportTable("pdf")}
+            onClick={() => exportTable('pdf')}
+            onKeyPress={() => exportTable('pdf')}
             type="button"
           >
             PDF

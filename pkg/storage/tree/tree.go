@@ -128,13 +128,17 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 	})
 
 	if i > len(n.ChildrenNodes)-1 || !bytes.Equal(n.ChildrenNodes[i].Name, targetLabel) {
-		child := newNode(targetLabel)
+		l := make([]byte, len(targetLabel))
+		copy(l, targetLabel)
+		child := newNode(l)
 		n.ChildrenNodes = append(n.ChildrenNodes, child)
 		copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
 		n.ChildrenNodes[i] = child
 	}
 	return n.ChildrenNodes[i]
 }
+
+func (t *Tree) InsertInt(key []byte, value int) { t.Insert(key, uint64(value)) }
 
 func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 	// TODO: can optimize this, split is not necessary?
@@ -146,7 +150,6 @@ func (t *Tree) Insert(key []byte, value uint64, _ ...bool) {
 		l = buf
 
 		n := node.insert(l)
-
 		node.Total += value
 		node = n
 	}
@@ -178,7 +181,7 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	}
 }
 
-func (t *Tree) iterateWithCum(cb func(cum uint64) bool) {
+func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
 	nodes := []*treeNode{t.root}
 	i := 0
 	for len(nodes) > 0 {

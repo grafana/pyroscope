@@ -1,0 +1,26 @@
+{
+  "flamebearer": {
+    "names": ["total", "\u003cinternal\u003e - sleep"],
+    "levels": [
+      [0, 1, 0, 0],
+      [0, 1, 1, 1]
+    ],
+    "numTicks": 1,
+    "maxSelf": 1,
+    "spyName": "phpspy",
+    "sampleRate": 100,
+    "units": "samples",
+    "format": "single"
+  },
+  "metadata": {
+    "format": "single",
+    "sampleRate": 100,
+    "spyName": "phpspy",
+    "units": "samples"
+  },
+  "timeline": {
+    "startTime": 1632504370,
+    "samples": [0, 2],
+    "durationDelta": 10
+  }
+}

@@ -1,16 +1,16 @@
-import React from "react";
-import { connect } from "react-redux";
-import "react-dom";
+import React from 'react';
+import { connect } from 'react-redux';
+import 'react-dom';
 
-import Spinner from "react-svg-spinner";
+import Spinner from 'react-svg-spinner';
 
-import classNames from "classnames";
-import DateRangePicker from "./DateRangePicker";
-import RefreshButton from "./RefreshButton";
-import NameSelector from "./NameSelector";
-import TagsBar from "./TagsBar";
+import classNames from 'classnames';
+import DateRangePicker from './DateRangePicker';
+import RefreshButton from './RefreshButton';
+import NameSelector from './NameSelector';
+import TagsBar from './TagsBar';
 
-import { fetchNames } from "../redux/actions";
+import { fetchNames } from '../redux/actions';
 
 function Header(props) {
   const { areNamesLoading, isJSONLoading } = props;
@@ -18,7 +18,7 @@ function Header(props) {
     <>
       <div className="navbar">
         <div
-          className={classNames("labels", {
+          className={classNames('labels', {
             visible: !areNamesLoading,
           })}
         >
@@ -26,7 +26,7 @@ function Header(props) {
         </div>
         <div className="navbar-space-filler" />
         <div
-          className={classNames("navbar-spinner-container", {
+          className={classNames('navbar-spinner-container', {
             visible: isJSONLoading,
           })}
         >

@@ -9,12 +9,13 @@ on:
 jobs:
   cypress-tests:
     runs-on: ubuntu-latest
+    container: cypress/included:8.4.1
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
-          go-version: '^1.16.3'
+          go-version: '^1.17.0'
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
@@ -26,6 +27,7 @@ jobs:
           PYROSCOPE_LOG_LEVEL: error
           ENABLED_SPIES: none
           CYPRESS_VIDEO: true
+          CYPRESS_COMPARE_SNAPSHOTS: true
       - uses: actions/upload-artifact@v2
         if: always()
         with:
@@ -36,3 +38,8 @@ jobs:
         with:
           name: cypress-videos
           path: cypress/videos
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-snapshots
+          path: cypress/snapshots

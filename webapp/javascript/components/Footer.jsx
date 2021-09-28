@@ -1,9 +1,9 @@
-import React from "react";
-import { connect } from "react-redux";
+import React from 'react';
+import { connect } from 'react-redux';
 
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDownload } from "@fortawesome/free-solid-svg-icons/faDownload";
-import { version } from "../../../package.json";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faDownload } from '@fortawesome/free-solid-svg-icons/faDownload';
+import { version } from '../../../package.json';
 
 const START_YEAR = 2020;
 const PYROSCOPE_VERSION = version;
@@ -25,7 +25,7 @@ function buildInfo() {
     gitSHA: ${window.buildInfo.gitSHA}
     gitDirty: ${window.buildInfo.gitDirty}
     embeddedAssets: ${window.buildInfo.useEmbeddedAssets}
-`.replace(/^\s+/gm, "");
+`.replace(/^\s+/gm, '');
 }
 
 function Footer() {
@@ -48,7 +48,9 @@ function Footer() {
             rel="noreferrer"
             target="_blank"
           >
-            <FontAwesomeIcon icon={faDownload} />&nbsp;<span>Newer Version Available ({latestVersion})</span>
+            <FontAwesomeIcon icon={faDownload} />
+            &nbsp;
+            <span>{`Newer Version Available (${latestVersion})`}</span>
           </a>
         </span>
       )}

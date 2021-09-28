@@ -1,0 +1,14 @@
+## Parameters
+
+<details>
+  <summary>Details</summary>
+
+
+|  Name       | Value      |
+|-------------|------------|
+{{ range .Meta -}}
+| `{{ .Key }}` | `{{ .Val }}` |
+{{ end -}}
+
+
+</details>

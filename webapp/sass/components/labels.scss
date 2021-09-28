@@ -1,11 +1,9 @@
-@use "../variables" as *;
-@use "../mixins/outline" as *;
-
+@use '../variables' as *;
+@use '../mixins/outline' as *;
 
 .labels {
   min-width: 350px;
   visibility: none;
-
 
   &.visible {
     visibility: block;
@@ -31,7 +29,7 @@
     padding: 0 6px;
     margin-right: 10px;
     line-height: 1.6;
-    &:hover{
+    &:hover {
       background: $btn-hover-color;
     }
     .label-name {
@@ -43,7 +41,6 @@
       }
     }
     .label-value {
-
     }
     .label-delete-btn {
       border: none;
@@ -59,7 +56,7 @@
 
         top: -30px;
         right: -16px;
-        background: #FF4136;
+        background: #ff4136;
         padding: 5px;
         line-height: 0.65;
         border-radius: 50%;
@@ -81,7 +78,5 @@
     margin-right: 10px;
   }
   .labels-new-btn {
-
   }
 }
-

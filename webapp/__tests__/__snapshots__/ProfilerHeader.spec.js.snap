@@ -7,6 +7,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
   <input
     className="flamegraph-search"
     name="flamegraph-search"
+    onChange={[Function]}
     placeholder="Search…"
   />
    
@@ -32,6 +33,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
   </select>
   <button
     className="btn"
+    data-testid="reset-view"
     id="reset"
     type="button"
   >
@@ -45,6 +47,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
   >
     <button
       className="btn"
+      data-testid="btn-table-view"
       onClick={[Function]}
       type="button"
     >
@@ -69,6 +72,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
     </button>
     <button
       className="btn"
+      data-testid="btn-both-view"
       onClick={[Function]}
       type="button"
     >
@@ -93,6 +97,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
     </button>
     <button
       className="btn"
+      data-testid="btn-flamegraph-view"
       onClick={[Function]}
       type="button"
     >

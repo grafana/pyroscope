@@ -1,0 +1,39 @@
+{
+  "flamebearer": {
+    "names": [
+      "function_0",
+      "function_1",
+      "function_2",
+      "function_3",
+      "function_4",
+      "function_5",
+      "function_6"
+    ],
+    "levels": [
+      [32, 508, 500, 0],
+      [82, 50, 135, 1],
+      [32, 508, 10, 2],
+      [12, 8, 100, 2],
+      [32, 32, 47, 3],
+      [320, 50, 100, 3],
+      [11, 375, 320, 4],
+      [74, 298, 70, 5],
+      [77, 111, 55, 6]
+    ],
+    "numTicks": 50,
+    "maxSelf": 58,
+    "spyName": "gospy",
+    "sampleRate": 100,
+    "units": "samples"
+  },
+  "metadata": {
+    "sampleRate": 100,
+    "spyName": "gospy",
+    "units": "samples"
+  },
+  "timeline": {
+    "startTime": 1631138160,
+    "samples": [1, 3, 1, 2, 2, 4, 2, 3, 1, 1, 3, 4],
+    "durationDelta": 10
+  }
+}

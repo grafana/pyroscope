@@ -19,7 +19,8 @@ import {
   SET_LEFT_UNTIL,
   SET_RIGHT_FROM,
   SET_RIGHT_UNTIL,
-} from "./actionTypes";
+} from './actionTypes';
+import { isAbortError } from '../util/abort';
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
@@ -103,7 +104,15 @@ export const setQuery = (query) => ({
   payload: { query },
 });
 
+/**
+ * ATTENTION! There may be race conditions:
+ * Since a new controller is created every time a 'fetch' action is called
+ * A badly timed 'abort' action may cancel the brand new 'fetch' action!
+ */
 let currentTimelineController;
+let fetchTagController;
+let fetchTagValuesController;
+
 export function fetchTimeline(url) {
   return (dispatch) => {
     if (currentTimelineController) {
@@ -118,24 +127,62 @@ export function fetchTimeline(url) {
       .then((data) => {
         dispatch(receiveTimeline(data));
       })
+      .catch((e) => {
+        // AbortErrors are fine
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
       .finally();
+  };
+}
+
+export function abortTimelineRequest() {
+  return () => {
+    if (currentTimelineController) {
+      currentTimelineController.abort();
+    }
   };
 }
 
 export function fetchTags(query) {
   return (dispatch) => {
+    if (fetchTagController) {
+      fetchTagController.abort();
+    }
+    fetchTagController = new AbortController();
+
     dispatch(requestTags());
     return fetch(`/labels?query=${encodeURIComponent(query)}`)
       .then((response) => response.json())
       .then((data) => {
         dispatch(receiveTags(data));
       })
+      .catch((e) => {
+        // AbortErrors are fine
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
       .finally();
+  };
+}
+
+export function abortFetchTags() {
+  return () => {
+    if (fetchTagController) {
+      fetchTagController.abort();
+    }
   };
 }
 
 export function fetchTagValues(query, tag) {
   return (dispatch) => {
+    if (fetchTagValuesController) {
+      fetchTagValuesController.abort();
+    }
+    fetchTagValuesController = new AbortController();
+
     dispatch(requestTagValues(tag));
     return fetch(
       `/label-values?label=${encodeURIComponent(
@@ -146,7 +193,20 @@ export function fetchTagValues(query, tag) {
       .then((data) => {
         dispatch(receiveTagValues(data, tag));
       })
+      .catch((e) => {
+        // AbortErrors are fine
+        if (!fetchTagValuesController.signal.aborted) {
+          throw e;
+        }
+      })
       .finally();
+  };
+}
+export function abortFetchTagValues() {
+  return () => {
+    if (fetchTagValuesController) {
+      fetchTagValuesController.abort();
+    }
   };
 }
 
@@ -159,13 +219,26 @@ export function fetchNames() {
     currentNamesController = new AbortController();
 
     dispatch(requestNames());
-    return fetch("/label-values?label=__name__", {
+    return fetch('/label-values?label=__name__', {
       signal: currentNamesController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
         dispatch(receiveNames(data));
       })
+      .catch((e) => {
+        // AbortErrors are fine
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
       .finally();
+  };
+}
+export function abortFetchNames() {
+  return () => {
+    if (abortFetchNames) {
+      abortFetchNames.abort();
+    }
   };
 }

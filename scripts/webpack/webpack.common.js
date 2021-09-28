@@ -1,15 +1,15 @@
-const webpack = require("webpack");
-const path = require("path");
-const glob = require("glob");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const CopyPlugin = require("copy-webpack-plugin");
-const ESLintPlugin = require("eslint-webpack-plugin");
+const webpack = require('webpack');
+const path = require('path');
+const glob = require('glob');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
+const ESLintPlugin = require('eslint-webpack-plugin');
 
-const fs = require("fs");
+const fs = require('fs');
 
 const pages = glob
-  .sync("./webapp/templates/*.html")
+  .sync('./webapp/templates/*.html')
   .map((x) => path.basename(x));
 const pagePlugins = pages.map(
   (name) =>
@@ -17,11 +17,11 @@ const pagePlugins = pages.map(
       filename: path.resolve(__dirname, `../../webapp/public/${name}`),
       template: path.resolve(__dirname, `../../webapp/templates/${name}`),
       inject: false,
-      chunksSortMode: "none",
+      chunksSortMode: 'none',
       templateParameters: (compilation, assets, options) => ({
         extra_metadata: process.env.EXTRA_METADATA
           ? fs.readFileSync(process.env.EXTRA_METADATA)
-          : "",
+          : '',
         mode: process.env.NODE_ENV,
         webpack: compilation.getStats().toJson(),
         compilation,
@@ -35,31 +35,31 @@ const pagePlugins = pages.map(
 );
 
 module.exports = {
-  target: "web",
+  target: 'web',
 
   entry: {
-    app: "./webapp/javascript/index.jsx",
-    styles: "./webapp/sass/profile.scss",
+    app: './webapp/javascript/index.jsx',
+    styles: './webapp/sass/profile.scss',
   },
 
   output: {
-    publicPath: "",
-    path: path.resolve(__dirname, "../../webapp/public/assets"),
-    filename: "[name].[hash].js",
+    publicPath: '',
+    path: path.resolve(__dirname, '../../webapp/public/assets'),
+    filename: '[name].[hash].js',
     clean: true,
   },
 
   resolve: {
-    extensions: [".ts", ".tsx", ".es6", ".js", ".jsx", ".json", ".svg"],
+    extensions: ['.ts', '.tsx', '.es6', '.js', '.jsx', '.json', '.svg'],
     alias: {
       // rc-trigger uses babel-runtime which has internal dependency to core-js@2
       // this alias maps that dependency to core-js@t3
-      "core-js/library/fn": "core-js/stable",
+      'core-js/library/fn': 'core-js/stable',
     },
     modules: [
-      "node_modules",
-      path.resolve("webapp"),
-      path.resolve("node_modules"),
+      'node_modules',
+      path.resolve('webapp'),
+      path.resolve('node_modules'),
     ],
   },
 
@@ -78,33 +78,32 @@ module.exports = {
     rules: [
       {
         test: /\.jsx?$/,
-        exclude: /node_modules/,
         use: [
           {
-            loader: "babel-loader",
+            loader: 'babel-loader',
             options: {
               cacheDirectory: true,
               babelrc: true,
               // Note: order is bottom-to-top and/or right-to-left
               presets: [
                 [
-                  "@babel/preset-env",
+                  '@babel/preset-env',
                   {
                     targets: {
-                      browsers: "last 3 versions",
+                      browsers: 'last 3 versions',
                     },
-                    useBuiltIns: "entry",
+                    useBuiltIns: 'entry',
                     corejs: 3,
                     modules: false,
                   },
                 ],
                 [
-                  "@babel/preset-typescript",
+                  '@babel/preset-typescript',
                   {
                     allowNamespaces: true,
                   },
                 ],
-                "@babel/preset-react",
+                '@babel/preset-react',
               ],
             },
           },
@@ -114,9 +113,9 @@ module.exports = {
         test: /\.js$/,
         use: [
           {
-            loader: "babel-loader",
+            loader: 'babel-loader',
             options: {
-              presets: [["@babel/preset-env"]],
+              presets: [['@babel/preset-env']],
             },
           },
         ],
@@ -124,14 +123,14 @@ module.exports = {
       {
         test: /\.css$/,
         // include: MONACO_DIR, // https://github.com/react-monaco-editor/react-monaco-editor
-        use: ["style-loader", "css-loader"],
+        use: ['style-loader', 'css-loader'],
       },
       {
         test: /\.scss$/,
         use: [
           MiniCssExtractPlugin.loader,
           {
-            loader: "css-loader",
+            loader: 'css-loader',
             options: {
               importLoaders: 2,
               url: true,
@@ -139,14 +138,14 @@ module.exports = {
             },
           },
           {
-            loader: "postcss-loader",
+            loader: 'postcss-loader',
             options: {
               sourceMap: true,
               config: { path: __dirname },
             },
           },
           {
-            loader: "sass-loader",
+            loader: 'sass-loader',
             options: {
               sourceMap: true,
             },
@@ -155,8 +154,8 @@ module.exports = {
       },
       {
         test: /\.(svg|ico|jpg|jpeg|png|gif|eot|otf|webp|ttf|woff|woff2|cur|ani|pdf)(\?.*)?$/,
-        loader: "file-loader",
-        options: { name: "static/img/[name].[hash:8].[ext]" },
+        loader: 'file-loader',
+        options: { name: 'static/img/[name].[hash:8].[ext]' },
       },
     ],
   },
@@ -164,19 +163,19 @@ module.exports = {
   plugins: [
     new ESLintPlugin(),
     new webpack.ProvidePlugin({
-      $: "jquery",
-      jQuery: "jquery",
+      $: 'jquery',
+      jQuery: 'jquery',
     }),
     ...pagePlugins,
     new MiniCssExtractPlugin({
-      filename: "[name].[hash].css",
+      filename: '[name].[hash].css',
     }),
     new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/),
     new CopyPlugin({
       patterns: [
         {
-          from: "webapp/images",
-          to: "images",
+          from: 'webapp/images',
+          to: 'images',
         },
       ],
     }),
