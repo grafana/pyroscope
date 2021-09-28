@@ -11,7 +11,7 @@ import (
 
 var (
 	rawTreeA = mustParse("testdata/tree_1.txt")
-	rawTreeB = mustParse("testdata/tree_2.txt")
+	rawTreeB = mustParse("testdata/tree_2.txt") // tree.Len() == 1195
 )
 
 type line struct {
@@ -43,6 +43,16 @@ func mustParse(path string) (lines []line) {
 	return lines
 }
 
+func createTree(b *testing.B, input []line) *Tree {
+	b.StopTimer()
+	tree := New()
+	for _, l := range input {
+		tree.Insert(l.key, l.value)
+	}
+	b.StartTimer()
+	return tree
+}
+
 func BenchmarkInsert(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		tree := New()
@@ -54,13 +64,8 @@ func BenchmarkInsert(b *testing.B) {
 
 func BenchmarkClone(b *testing.B) {
 	r := big.NewRat(1, 1)
-	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		tree := New()
-		for _, l := range rawTreeB {
-			tree.Insert(l.key, l.value)
-		}
-		tree.Clone(r)
+		createTree(b, rawTreeB).Clone(r)
 	}
 }
 
@@ -71,21 +76,12 @@ func BenchmarkMerge(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		treeB := New()
-		for _, l := range rawTreeB {
-			treeA.Insert(l.key, l.value)
-		}
-		treeB.Merge(treeA)
+		createTree(b, rawTreeB).Merge(treeA)
 	}
 }
 
 func BenchmarkTruncate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		tree := New()
-		for _, l := range rawTreeB {
-			tree.Insert(l.key, l.value)
-		}
-		// tree.Len() == 1195
-		tree.Truncate(512)
+		createTree(b, rawTreeB).Truncate(512)
 	}
 }
