@@ -21,8 +21,10 @@
   <a href="https://pyroscope.io/slack">Slack</a>
 </h2>
 
+
+### 什么是 Pyroscope?
 Pyroscope 是一个开源的持续性能剖析平台。它能够帮你：
-* 找出源代码中的性能问题
+* 找出源代码中的性能问题和瓶颈
 * 解决 CPU 利用率高的问题
 * 理解应用程序的调用树（call tree）
 * 追踪随一段时间内变化的情况
@@ -39,24 +41,25 @@ Pyroscope 是一个开源的持续性能剖析平台。它能够帮你：
 * 较低的 CPU 开销
 * 数据压缩效率高，磁盘空间要求低
 * 快捷的 UI 界面
-* 支持 Go、Ruby 和 Python
 
-## 只需3个步骤在本地使用 Pyroscope:
-
+## 通过2个步骤在本地添加 Pyroscope Server:
+Pyroscope 支持所有主要的计算机架构，并且非常容易安装。作为例子，以下是在 Mac 上的安装方法:
 ```shell
 # 安装 pyroscope
 brew install pyroscope-io/brew/pyroscope
 
 # 启动 pyroscope server:
 pyroscope server
-
-# 在另外一个终端页面，启动 profilling 应用：
-pyroscope exec python manage.py runserver # 如果使用 Python
-pyroscope exec rails server               # 如果使用 Ruby
-# 如果使用 Pyroscope cloud，添加服务器地址和授权令牌的 `flags`
-# pyroscope exec -server-address "https://your_company.pyroscope.cloud" -auth-token "ps-key-1234567890" python manage.py runserver
 ```
 
+## 通过 Pyroscope agent 发送数据到 server（特定语言）
+关于如何将 Pyroscope agent 添加到你的代码中的更多信息，请参见我们网站上的[agent 文档](https://pyroscope.io/docs/agent-overview) 。
+- [Golang Agent](https://pyroscope.io/docs/golang)
+- [Python Agent (pip)](https://pyroscope.io/docs/python)
+- [Ruby Agent (gem)](https://pyroscope.io/docs/ruby)
+- [eBPF Agent](https://pyroscope.io/docs/ebpf)
+- [PHP Agent](https://pyroscope.io/docs/php)
+- [.NET Agent](https://pyroscope.io/docs/dotnet)
 
 ## 文档
 
@@ -85,6 +88,7 @@ pyroscope exec rails server               # 如果使用 Ruby
 * [x] PHP (通过 `phpspy`)
 * [x] .NET (通过 `dotnet trace`)
 * [x] Java (通过 `async-profiler`)
+* [ ] Node [(寻找贡献者)](https://github.com/pyroscope-io/pyroscope/issues/8)
 
 
 你也可以在 [issue](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) 或者我们的 [slack](https://pyroscope.io/slack) 中来告诉我们你还想支持的平台。
