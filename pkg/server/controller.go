@@ -208,6 +208,7 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return gzhttpMiddleware(handler), nil
 }
 
@@ -232,9 +233,14 @@ func (ctrl *Controller) Start() error {
 
 	updates.StartVersionUpdateLoop()
 
+	if ctrl.config.TLSCertificateFile != "" && ctrl.config.TLSKeyFile != "" {
+		err = ctrl.httpServer.ListenAndServeTLS(ctrl.config.TLSCertificateFile, ctrl.config.TLSKeyFile)
+	} else {
+		err = ctrl.httpServer.ListenAndServe()
+	}
+
 	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
 	// the returned error is ErrServerClosed.
-	err = ctrl.httpServer.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}
