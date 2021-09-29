@@ -109,50 +109,22 @@ func Intersection(input ...*Dimension) []Key {
 		return input[0].Keys
 	}
 
-	result := []Key{}
-
-	dims := []*sortableDim{}
-
+	// TODO(kolesnikov): shouldn't a bitmap be used?
+	r := make(map[string]int)
 	for _, v := range input {
-		if len(v.Keys) == 0 {
-			return []Key{}
-		}
-		dims = append(dims, &sortableDim{
-			keys: v.Keys,
-			i:    0,
-			l:    len(v.Keys),
-		})
-	}
-
-	for {
-		// step 1: find the dimension with the smallest element
-		sd := sortableDims(dims)
-		sort.Sort(sd)
-
-		// step 2: for each other dimension move the pointer until found the matching element or an element higher
-		val := dims[0].current()
-		allMatch := true
-		for _, dim := range sd[1:] {
-			res := dim.advance(val)
-			switch res {
-			case noMatch:
-				allMatch = false
-			case end:
-				return result
-			}
-		}
-
-		// step 3: if all series are on the same matching element, add it to result
-		if allMatch {
-			result = append(result, val)
-		}
-		for _, dim := range sd {
-			dim.i++
-			if dim.i == dim.l {
-				return result
-			}
+		for _, k := range v.Keys {
+			r[string(k)]++
 		}
 	}
+
+	var res []Key
+	for k, v := range r {
+		if v == len(input) {
+			res = append(res, []byte(k))
+		}
+	}
+
+	return res
 }
 
 // TODO: we need to take advantage of the fact that these are sorted arrays
