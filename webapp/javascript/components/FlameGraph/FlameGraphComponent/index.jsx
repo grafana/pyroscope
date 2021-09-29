@@ -33,10 +33,13 @@ import {
   formatPercent,
   getPackageNameFromStackTrace,
   getFormatter,
+  ratioToPercent,
 } from './format';
 import {
   colorBasedOnDiff,
+  colorBasedOnDiffPercent,
   colorBasedOnPackageName,
+  colorFromPercentage,
   colorGreyscale,
   diffColorGreen,
   diffColorRed,
@@ -63,7 +66,12 @@ const formatDouble = {
   getBarTotal: (level, j) => level[j + 4] + level[j + 1],
   getBarTotalLeft: (level, j) => level[j + 1],
   getBarTotalRght: (level, j) => level[j + 4],
-  getBarTotalDiff: (level, j) => level[j + 4] - level[j + 1],
+  getBarTotalDiff: (level, j) => {
+    console.log('level[j + 4]', level[j + 4]);
+    console.log('level[j + 1]', level[j + 1]);
+
+    return level[j + 4] - level[j + 1];
+  },
   getBarSelf: (level, j) => level[j + 5] + level[j + 2],
   getBarSelfLeft: (level, j) => level[j + 2],
   getBarSelfRght: (level, j) => level[j + 5],
@@ -303,6 +311,25 @@ class FlameGraph extends React.Component {
         const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
         const numBarDiff = collapsed ? 0 : ff.getBarTotalDiff(level, j);
 
+        //        console.log('ff.getBarTotalDiff', ff.getBarTotalDiff(level, j));
+        //        console.log('ratio', numBarTicks / numTicks);
+        //
+        if (isDiff) {
+          //          console.log({
+          //            'j': j,
+          //            'level[j + 4] (right)': level[j + 4],
+          //            'level[j + 1] (imagino q left)': level[j + 1],
+          //            'name': names[level[j + ff.jName]],
+          //           'left': ff.getBarTotalLeft(level, j),
+          //          'right': ff.getBarTotalRght(level, j),
+          //          'diff': ff.getBarTotalDiff(level, j),
+          //           'numBarTicks': ff.getBarTotal(level, j),
+          //            'ratio': numBarTicks / numTicks,
+          //            'ratio left': ff.getBarTotalLeft(level, j)/this.props.flamebearer.leftTicks,
+          //            'ratio right': ff.getBarTotalRght(level, j)/this.props.flamebearer.rightTicks,
+          //          });
+        }
+
         // const collapsed = false;
         if (collapsed) {
           // TODO: fix collapsed code
@@ -341,11 +368,46 @@ class FlameGraph extends React.Component {
         if (isDiff && collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (isDiff) {
+          console.log('is diff');
+
+          const leftRatio =
+            ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
+          const rightRatio =
+            ff.getBarTotalRght(level, j) / this.props.flamebearer.rightTicks;
+
+          //          console.log({
+          //            'name': names[level[j + ff.jName]],
+          //            'leftRatio': leftRatio,
+          //            'rightRatio': rightRatio,
+          //            'percent diff': (rightRatio - leftRatio)/((leftRatio + rightRatio)/2) * 100
+          //          })
           nodeColor = colorBasedOnDiff(
-            numBarDiff,
+            leftRatio,
             ff.getBarTotalLeft(level, j),
             a
           );
+
+          const leftPercent = ratioToPercent(leftRatio);
+          const rightPercent = ratioToPercent(rightRatio);
+
+          nodeColor = colorBasedOnDiffPercent(leftPercent, rightPercent, a);
+
+          //          nodeColor = colorBasedOnDiff(
+          //            (rightRatio - leftRatio)/((leftRatio + rightRatio)/2) * 100,
+          //            ff.getBarTotalLeft(level, j),
+          //            a
+          //          );
+
+          // nodeColor = colorBasedOnDiff(
+          //  numBarDiff,
+          //  ff.getBarTotalLeft(level, j),
+          //  a
+          // );
+          // console.log('ff.getBarTotalLeft(level, j)', ff.getBarTotalLeft(level, j))
+          // console.log('numBarDiff', numBarDiff);
+          // console.log('a', a);
+          // console.log('nodeColor', nodeColor)
+          // console.log('---------------')
         } else if (collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (queryExists && nodeIsInQuery) {
@@ -558,7 +620,7 @@ class FlameGraph extends React.Component {
                         key={v}
                         className="flamegraph-legend-item"
                         style={{
-                          backgroundColor: colorBasedOnDiff(v, 100, 0.8),
+                          backgroundColor: colorFromPercentage(v, 0.8),
                         }}
                       >
                         {v > 0 ? '+' : ''}

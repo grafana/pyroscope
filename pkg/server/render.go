@@ -120,8 +120,37 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 
 	leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
 	fs := tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
-	res := renderResponse(fs, out)
+
+	var merged mergedFlamebearer
+	merged = mergedFlamebearer{
+		fs,
+		int(leftOut.Tree.Samples()),
+		int(rghtOut.Tree.Samples()),
+	}
+
+	// TODO
+	merged.SpyName = out.SpyName
+	merged.SampleRate = out.SampleRate
+	merged.Units = out.Units
+	res := map[string]interface{}{
+		"timeline":    out.Timeline,
+		"flamebearer": merged,
+		"metadata": map[string]interface{}{
+			"format":     fs.Format, // "single" | "double"
+			"spyName":    out.SpyName,
+			"sampleRate": out.SampleRate,
+			"units":      out.Units,
+		},
+	}
+
+	//	res := renderResponse(merged, out)
 	ctrl.writeResponseJSON(w, res)
+}
+
+type mergedFlamebearer struct {
+	*tree.Flamebearer
+	LeftTicks  int `json:"leftTicks"`
+	RightTicks int `json:"rightTicks"`
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {

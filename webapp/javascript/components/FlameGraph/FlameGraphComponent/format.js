@@ -18,8 +18,11 @@ export function shortNumber(x) {
   return Math.round(x).toString() + suffix;
 }
 
+export function ratioToPercent(ratio) {
+  return Math.round(10000 * ratio) / 100;
+}
 export function formatPercent(ratio) {
-  const percent = Math.round(10000 * ratio) / 100;
+  const percent = ratioToPercent(ratio);
   return `${percent}%`;
 }
 
