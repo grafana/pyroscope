@@ -25,9 +25,9 @@
 #### _Read this in other languages._
 <kbd>[<img title="中文 (Simplified)" alt="中文 (Simplified)" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/cn.svg" width="22">](translations/README.ch.md)</kbd>
 
-
+### What is Pyroscope?
 Pyroscope is an open source continuous profiling platform. It will help you:
-* Find performance issues in your code
+* Find performance issues and bottlenecks in your code
 * Resolve issues with high CPU utilization
 * Understand the call tree of your application
 * Track changes over time
@@ -45,24 +45,26 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 * Low CPU overhead
 * Efficient compression, low disk space requirements
 * Snappy UI
-* Support for Go, Ruby and Python
 
-## Try Pyroscope locally in 3 steps:
-
+## Add Pyroscope Server locally in 2 steps:
+Pyroscope supports all major architectures and is very easy to install. for example here is how you install on a mac:
 ```shell
 # install pyroscope
 brew install pyroscope-io/brew/pyroscope
 
 # start pyroscope server:
 pyroscope server
-
-# in a separate tab, start profiling your app:
-pyroscope exec python manage.py runserver # If using Python
-pyroscope exec rails server               # If using Ruby
-
-# If using Pyroscope cloud add flags for server address and auth token
-# pyroscope exec -server-address "https://your_company.pyroscope.cloud" -auth-token "ps-key-1234567890" python manage.py runserver
 ```
+
+## Send data to server via Pyroscope agent (language specific)
+For more information how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website.
+- [Golang Agent](https://pyroscope.io/docs/golang)
+- [Python Agent (pip)](https://pyroscope.io/docs/python)
+- [Ruby Agent (gem)](https://pyroscope.io/docs/ruby)
+- [eBPF Agent](https://pyroscope.io/docs/ebpf)
+- [PHP Agent](https://pyroscope.io/docs/php)
+- [.NET Agent](https://pyroscope.io/docs/dotnet)
+
 
 ## Documentation
 
@@ -91,6 +93,7 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [x] PHP (via `phpspy`)
 * [x] .NET (via `dotnet trace`)
 * [x] Java (via `async-profiler`)
+* [ ] Node [(seeking contributors)](https://github.com/pyroscope-io/pyroscope/issues/8)
 
 Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
 
