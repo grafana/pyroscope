@@ -1,19 +1,12 @@
-FROM ruby:3.0.1
+FROM ruby:3
 
-WORKDIR /usr/src/app
+WORKDIR /opt/app
 
-RUN adduser --disabled-password --gecos --quiet pyroscope
-USER pyroscope
-
-COPY --from=pyroscope/pyroscope:latest /usr/bin/pyroscope /usr/bin/pyroscope
-COPY main.rb ./main.rb
 COPY Gemfile ./Gemfile
 COPY Gemfile.lock ./Gemfile.lock
-
-ENV PYROSCOPE_APPLICATION_NAME=simple.ruby.app
-ENV PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040/
-ENV PYROSCOPE_LOG_LEVEL=debug
-
+# RUN bundle config set --local deployment true
 RUN bundle install
 
-CMD ["ruby", "main.rb"]
+COPY main.rb ./main.rb
+
+CMD [ "ruby", "main.rb" ]
