@@ -11,7 +11,7 @@ We also simulate running 3 distinct servers in 3 different regions (via docker-c
 
 One of the most useful capabilities of Pyroscope is the ability to tag your data in a way that is meaningful to you. In this case, we have two natural divisions and so we "tag" our data to represent those:
 - `region`: statically tags the region of the server running the code
-- `vehicle`: dynamically tags the endpoint (similar to tagging a controller rails)
+- `vehicle`: dynamically tags the endpoint (similar to how one might tag a controller rails)
 
 ### Tagging static region
 Tagging something static, like the `region`, can be done in the initialization code in the `config.tags` variable:
