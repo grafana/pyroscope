@@ -44,6 +44,7 @@ func (ll *Labels) Put(key, val string) {
 	// }
 }
 
+//revive:disable-next-line:get-return A callback is fine
 func (ll *Labels) GetKeys(cb func(k string) bool) {
 	err := ll.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -67,6 +68,7 @@ func (ll *Labels) GetKeys(cb func(k string) bool) {
 	}
 }
 
+//revive:disable-next-line:get-return A callback is fine
 func (ll *Labels) GetValues(key string, cb func(v string) bool) {
 	err := ll.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
