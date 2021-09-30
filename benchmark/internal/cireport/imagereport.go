@@ -156,7 +156,7 @@ func (*ImageReporter) tpl(panels []screenshotPanel) (string, error) {
 	return tpl.String(), nil
 }
 
-func decideTimestamp(fromInt, toInt int) (from int64, to int64) {
+func decideTimestamp(fromInt, toInt int) (from, to int64) {
 	now := time.Now()
 	from = int64(fromInt)
 	to = int64(toInt)

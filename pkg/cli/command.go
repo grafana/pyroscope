@@ -53,7 +53,7 @@ func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn CmdRunFn) CmdRunFn {
 			if cmd.Flags().Lookup("config").Changed {
 				configPath = c.Path()
 			}
-			if err = loadConfigFile(configPath, cmd, vpr, cfg); err != nil {
+			if err = loadConfigFile(configPath, cmd, vpr); err != nil {
 				return fmt.Errorf("loading configuration file: %w", err)
 			}
 		}
@@ -136,7 +136,7 @@ func NewViper(prefix string) *viper.Viper {
 	return v
 }
 
-func loadConfigFile(path string, cmd *cobra.Command, vpr *viper.Viper, _ interface{}) error {
+func loadConfigFile(path string, cmd *cobra.Command, vpr *viper.Viper) error {
 	if path == "" {
 		return nil
 	}

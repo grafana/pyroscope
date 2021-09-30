@@ -30,17 +30,6 @@ func (*FsWriter) WriteFile(dest string, data []byte) (string, error) {
 		return "", err
 	}
 
-	// not really useful since we don't have the full path
-	if _, err := os.Stat(dest); err == nil {
-		// file exists
-		logrus.Debugf("file %s exists\n", dest)
-	} else if os.IsNotExist(err) {
-		// file does not exist
-		logrus.Debugf("file %s does not exist\n", dest)
-	} else {
-		// unkown error
-		return "", err
-	}
 	return "file://" + dest, nil
 }
 
