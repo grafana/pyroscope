@@ -472,7 +472,7 @@ class FlameGraph extends React.Component {
     const { i, j } = this.xyToBar(x, y);
 
     const level = this.state.levels[i];
-    const {units} = this.state;
+    const { units } = this.state;
     const title = this.state.names[level[j + ff.jName]];
 
     switch (format) {
@@ -482,10 +482,8 @@ class FlameGraph extends React.Component {
 
         return {
           title,
-          format,
           numBarTicks,
           percent,
-          units,
         };
       }
 
@@ -494,12 +492,10 @@ class FlameGraph extends React.Component {
         const totalRight = ff.getBarTotalRght(level, j);
 
         return {
-          format,
           left: totalLeft,
           right: totalRight,
           title,
           sampleRate: this.state.sampleRate,
-          units,
         };
       }
 
@@ -745,6 +741,9 @@ class FlameGraph extends React.Component {
           xyToData={this.xyToData}
           isWithinBounds={this.isWithinBounds}
           graphWidth={this.graphWidth}
+          numTick={this.state.numTicks}
+          sampleRate={this.state.sampleRate}
+          units={this.state.units}
         />
         <div
           className="flamegraph-tooltip"

@@ -1,12 +1,16 @@
 import React from 'react';
-import { numberWithCommas } from './format';
+import { numberWithCommas, getFormatter } from './format';
 
 export default function Tooltip(props) {
-  const { format, canvasRef, xyToData, isWithinBounds, formatter } = props;
+  const { format, canvasRef, xyToData, isWithinBounds } = props;
   const [body, setBody] = React.useState('');
   const [title, setTitle] = React.useState('');
   const [style, setStyle] = React.useState();
   const tooltipEl = React.useRef(null);
+
+  const { numTicks, sampleRate, units } = props;
+  // TODO cache this to not have to instantiate all the time?
+  const formatter = getFormatter(numTicks, sampleRate, units);
 
   const onMouseMove = (e) => {
     if (!isWithinBounds(e.offsetX, e.offsetY)) {
@@ -14,7 +18,6 @@ export default function Tooltip(props) {
       return;
     }
 
-    //    const { left, right } = xyToData(e.offsetX, e.offsetX);
     const data = xyToData(format, e.offsetX, e.offsetY);
 
     // where to position
@@ -25,11 +28,7 @@ export default function Tooltip(props) {
     const top = e.clientY + 20;
 
     setTitle(data.title);
-    setStyle({
-      top,
-      left,
-      opacity: 1,
-    });
+    setStyle({ top, left, opacity: 1 });
 
     // format is either single, double or something else
     switch (format) {
@@ -38,9 +37,8 @@ export default function Tooltip(props) {
           formatter,
           data.percent,
           data.numBarTicks,
-          data.sampleRate
+          props.sampleRate
         );
-        console.log({ d });
 
         setBody(d.tooltipText);
         break;
@@ -60,20 +58,33 @@ export default function Tooltip(props) {
   };
 
   React.useEffect(() => {
+    // use closure to "cache" the current canvas reference
+    // so that the clean up points to a valid canvas
+    // (otherwise it would be null)
+    const canvasEl = canvasRef.current;
+    if (!canvasEl) {
+      return {};
+    }
+
     // watch for mouse events on the bar
-    canvasRef.current.addEventListener('mousemove', onMouseMove);
-    canvasRef.current.addEventListener('mouseout', onMouseOut);
+    canvasEl.addEventListener('mousemove', onMouseMove);
+    canvasEl.addEventListener('mouseout', onMouseOut);
 
     return () => {
-      canvasRef.current.removeEventListener('mousemove', onMouseMove);
-      canvasRef.current.removeEventListener('mouseout', onMouseOut);
+      canvasEl.removeEventListener('mousemove', onMouseMove);
+      canvasEl.removeEventListener('mouseout', onMouseOut);
     };
-  });
+  }, [canvasRef.current]);
 
   return (
     <div className="flamegraph-tooltip" style={style} ref={tooltipEl}>
-      <div className="flamegraph-tooltip-name">{title}</div>
-      <div>{body}</div>
+      <div
+        data-testid="flamegraph-tooltip-title"
+        className="flamegraph-tooltip-name"
+      >
+        {title}
+      </div>
+      <div data-testid="flamegraph-tooltip-body">{body}</div>
     </div>
   );
 }
