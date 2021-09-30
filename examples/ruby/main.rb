@@ -20,7 +20,7 @@ def work(n)
 end
 
 def order_bike(n)
-  Pyroscope.tag({ "vehicle" => "bike" }) do
+  Pyroscope.tag_wrapper({ "vehicle" => "bike" }) do
     work(n)
   end
 end
