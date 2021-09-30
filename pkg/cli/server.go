@@ -123,6 +123,7 @@ func (svc *serverService) Stop() {
 	<-svc.done
 }
 
+//revive:disable-next-line:confusing-naming methods are different
 func (svc *serverService) stop() {
 	svc.controller.Drain()
 	svc.debugReporter.Stop()

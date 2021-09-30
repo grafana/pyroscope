@@ -36,7 +36,7 @@ func (i *arrayFlags) Set(value string) error {
 	return nil
 }
 
-func (i *arrayFlags) Type() string {
+func (*arrayFlags) Type() string {
 	t := reflect.TypeOf([]string{})
 	return t.String()
 }
@@ -98,7 +98,7 @@ func (m *mapFlags) Set(s string) error {
 	return nil
 }
 
-func (m *mapFlags) Type() string {
+func (*mapFlags) Type() string {
 	t := reflect.TypeOf(map[string]string{})
 	return t.String()
 }
@@ -226,6 +226,7 @@ func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, vpr *viper.Viper, 
 	return flagSet
 }
 
+//revive:disable-next-line:argument-limit,cognitive-complexity necessary complexity
 func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t reflect.Type, v reflect.Value, o *options) {
 	num := t.NumField()
 	for i := 0; i < num; i++ {

@@ -16,9 +16,9 @@ import (
 // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html#tag_12_02
 const OptionsEnd = "--"
 
-type cmdRunFn func(cmd *cobra.Command, args []string) error
+type CmdRunFn func(cmd *cobra.Command, args []string) error
 
-func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn cmdRunFn) cmdRunFn {
+func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn CmdRunFn) CmdRunFn {
 	return func(cmd *cobra.Command, args []string) error {
 		var err error
 		var xargs []string
@@ -136,7 +136,7 @@ func NewViper(prefix string) *viper.Viper {
 	return v
 }
 
-func loadConfigFile(path string, cmd *cobra.Command, vpr *viper.Viper, v interface{}) error {
+func loadConfigFile(path string, cmd *cobra.Command, vpr *viper.Viper, _ interface{}) error {
 	if path == "" {
 		return nil
 	}
