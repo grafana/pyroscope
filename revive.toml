@@ -2,7 +2,7 @@
 # https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md
 
 ignoreGeneratedHeader = false
-severity = "warning"
+severity = "error"
 confidence = 0.8
 errorCode = 1
 warningCode = 0
