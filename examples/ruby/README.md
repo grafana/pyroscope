@@ -40,7 +40,7 @@ What this block does, is:
 2. execute the `find_nearest_vehicle()` function
 3. Before the block ends it will (behind the scenes) remove the `{ "vehicle" => "car" }` from the application since that block is complete
 
-### Resulting flamgraph from the example
+### Resulting flamgraph / performance results from the example
 To run the example run the following commands:
 ```
 # Pull latest pyroscope image:
@@ -63,19 +63,22 @@ In the real world, it's possible that _the region_ of a server is, for some reas
 
 [ Picture of region selected ]
 
+If we wanted to select both a specific `region` and and a specific `vehicle` then we can simply select both from the dropdown and see the performance characteristics of that selection. 
 
-### Usage
-to pull latest pyroscope image:
-```
-docker pull pyroscope/pyroscope:latest
-```
+[ Picture of region and vehicle ]
 
-to run this example project:
-```
-docker-compose up --build
-```
 
-to reset the database:
-```
-docker-compose down
-```
+### More use cases
+We have been beta testing this feature with several different companies and some of the ways that we've seen companies tag their performance data:
+- Tagging controllers
+- Tagging regions
+- Tagging jobs from a redis or sidekiq queue
+- Tagging commits
+- Tagging staging / production environments
+- Tagging different parts of their testing suites
+- Etc...
+
+### Future Roadmap
+We would love for you to try out this example and see what ways you can adapt this to your ruby application. Continuous profiling has become an increasingly popular tool for the monitoring and debugging of performance issues (arguably the fourth pillar of observability). 
+
+We'd love to continue to improve this gem by adding things like integrations with popular tools, memory profiling, etc. and we would love to hear what features _you would like to see_. 
