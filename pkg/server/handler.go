@@ -272,7 +272,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	})
 }
 
-func (ctrl *Controller) NotificationText() string {
+func (*Controller) NotificationText() string {
 	// TODO: implement backend support for alert text
 	return ""
 }

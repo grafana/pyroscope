@@ -25,8 +25,8 @@ var _ = Describe("server", func() {
 		var tempAssetDir *testing.TmpDirectory
 		BeforeSuite(func() {
 			tempAssetDir = testing.TmpDirSync()
-			ioutil.WriteFile(filepath.Join(tempAssetDir.Path, assetLtCompressionThreshold), make([]byte, gzHttpCompressionThreshold-1), 0644)
-			ioutil.WriteFile(filepath.Join(tempAssetDir.Path, assetAtCompressionThreshold), make([]byte, gzHttpCompressionThreshold), 0644)
+			ioutil.WriteFile(filepath.Join(tempAssetDir.Path, assetLtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold-1), 0644)
+			ioutil.WriteFile(filepath.Join(tempAssetDir.Path, assetAtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold), 0644)
 		})
 		AfterSuite(func() {
 			tempAssetDir.Close()
