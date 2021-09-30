@@ -12,6 +12,6 @@ COPY bike/bike.rb ./bike/bike.rb
 COPY car/car.rb ./car/car.rb
 COPY utility/utility.rb ./utility/utility.rb
 
-COPY main.rb ./main.rb
+COPY server.rb ./server.rb
 
-CMD [ "ruby", "main.rb" ]
+CMD [ "ruby", "server.rb" ]
