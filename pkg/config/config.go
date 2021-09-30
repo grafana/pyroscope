@@ -1,5 +1,8 @@
 package config
 
+//revive:disable:line-length-limit Most of line length is documentation
+//revive:disable:max-public-structs Those names mimics system constants names
+
 import (
 	"time"
 
