@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newRootCmd(cfg *config.Config) *cobra.Command {
+func newRootCmd(*config.Config) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use: "pyrobench [flags] <subcommand>",
 	}

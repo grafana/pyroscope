@@ -28,7 +28,7 @@ type DashboardScreenshotter interface {
 	AllPanels(ctx context.Context, dashboardUID string, from int64, to int64) ([]Panel, error)
 }
 
-type imageReporter struct {
+type ImageReporter struct {
 	uploader      Uploader
 	screenshotter DashboardScreenshotter
 }
@@ -50,7 +50,7 @@ func ImageReportCLI(cfg config.ImageReport) (string, error) {
 
 	return r.Report(
 		context.Background(),
-		cfg.DashboardUid,
+		cfg.DashboardUID,
 		cfg.UploadDest,
 		from,
 		to,
@@ -59,17 +59,17 @@ func ImageReportCLI(cfg config.ImageReport) (string, error) {
 
 type screenshotPanel struct {
 	Title string
-	Url   string
+	URL   string
 }
 
-func NewImageReporter(screenshotter GrafanaScreenshotter, uploader Uploader) *imageReporter {
-	return &imageReporter{
+func NewImageReporter(screenshotter GrafanaScreenshotter, uploader Uploader) *ImageReporter {
+	return &ImageReporter{
 		uploader,
 		&screenshotter,
 	}
 }
 
-func (r *imageReporter) Report(ctx context.Context, dashboardUID string, dir string, from int64, to int64) (string, error) {
+func (r *ImageReporter) Report(ctx context.Context, dashboardUID string, dir string, from int64, to int64) (string, error) {
 	// screenshot all panes
 	logrus.Debug("taking screenshot of all panels")
 	panels, err := r.screenshotter.AllPanels(ctx, dashboardUID, from, to)
@@ -87,14 +87,14 @@ func (r *imageReporter) Report(ctx context.Context, dashboardUID string, dir str
 		i := i
 
 		g.Go(func() error {
-			publicUrl, err := r.uploader.WriteFile(filename(dir, p.Title), p.Data)
+			publicURL, err := r.uploader.WriteFile(filename(dir, p.Title), p.Data)
 			if err != nil {
 				return err
 			}
 
 			// TODO lock this?
 			sp[i].Title = p.Title
-			sp[i].Url = publicUrl
+			sp[i].URL = publicURL
 			return nil
 		})
 	}
@@ -104,7 +104,7 @@ func (r *imageReporter) Report(ctx context.Context, dashboardUID string, dir str
 	}
 
 	logrus.Debug("generating markdown report")
-	return r.template(sp)
+	return r.tpl(sp)
 }
 
 func filename(dir string, s string) string {
@@ -131,7 +131,7 @@ func normalizeWord(s string) string {
 	return result
 }
 
-func (r *imageReporter) template(panels []screenshotPanel) (string, error) {
+func (*ImageReporter) tpl(panels []screenshotPanel) (string, error) {
 	var tpl bytes.Buffer
 
 	data := struct {
@@ -156,10 +156,10 @@ func (r *imageReporter) template(panels []screenshotPanel) (string, error) {
 	return tpl.String(), nil
 }
 
-func decideTimestamp(fromInt, toInt int) (int64, int64) {
+func decideTimestamp(fromInt, toInt int) (from int64, to int64) {
 	now := time.Now()
-	from := int64(fromInt)
-	to := int64(toInt)
+	from = int64(fromInt)
+	to = int64(toInt)
 
 	// set defaults if appropriate
 	if to == 0 {
@@ -186,7 +186,7 @@ func decideUploader(uploadType string, uploadBucket string) (Uploader, error) {
 			return nil, err
 		}
 	case "fs":
-		uploader = NewFsWriter()
+		uploader = &FsWriter{}
 	default:
 		return nil, fmt.Errorf("invalid upload type: '%s'", uploadType)
 	}
