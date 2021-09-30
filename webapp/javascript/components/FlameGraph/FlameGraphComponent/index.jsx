@@ -45,6 +45,8 @@ import {
   diffColorRed,
 } from './color';
 import { fitToCanvasRect } from '../../../util/fitMode';
+import { percentDiff } from '../../../util/format';
+import DiffLegend from './DiffLegend';
 
 const formatSingle = {
   format: 'single',
@@ -116,10 +118,6 @@ const unitsToFlamegraphTitle = {
   bytes: 'amount of RAM per function',
   samples: 'CPU time per function',
 };
-
-const diffLegend = [
-  100, 50, 20, 10, 5, 3, 2, 1, 0, -1, -2, -3, -5, -10, -20, -50, -100,
-];
 
 const rect = (ctx, x, y, w, h) => ctx.rect(x, y, w, h);
 
@@ -253,6 +251,17 @@ class FlameGraph extends React.Component {
   };
 
   tickToX = (i) => (i - this.state.numTicks * this.rangeMin) * this.pxPerTick;
+
+  // TODO
+  // move this to somewhere else
+  getRatios = (ff, level, j) => {
+    const leftRatio =
+      ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
+    const rightRatio =
+      ff.getBarTotalRght(level, j) / this.props.flamebearer.rightTicks;
+
+    return { leftRatio, rightRatio };
+  };
 
   createFormatter = () =>
     getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
@@ -494,21 +503,43 @@ class FlameGraph extends React.Component {
       const totalLeft = ff.getBarTotalLeft(level, j);
       const totalRght = ff.getBarTotalRght(level, j);
       const totalDiff = ff.getBarTotalDiff(level, j);
+
+      // TODO
+      const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
+      const leftPercent = ratioToPercent(leftRatio);
+      const rightPercent = ratioToPercent(rightRatio);
+
       tooltipText = `Left: ${numberWithCommas(
         totalLeft
-      )} samples, ${this.formatter.format(totalLeft, this.state.sampleRate)}`;
+      )} samples, ${this.formatter.format(
+        totalLeft,
+        this.state.sampleRate
+      )} (${leftPercent}%)`;
+
       tooltipText += `\nRight: ${numberWithCommas(
         totalRght
-      )} samples, ${this.formatter.format(totalRght, this.state.sampleRate)}`;
+      )} samples, ${this.formatter.format(
+        totalRght,
+        this.state.sampleRate
+      )} (${rightPercent}%)`;
+
       tooltipDiffColor =
         totalDiff === 0 ? '' : totalDiff > 0 ? diffColorRed : diffColorGreen;
+
+      const diffPercent = percentDiff(leftPercent, rightPercent);
+
       tooltipDiffText = !totalLeft
         ? ' (new)'
         : !totalRght
         ? ' (removed)'
-        : ` (${totalDiff > 0 ? '+' : ''}${formatPercent(
-            totalDiff / totalLeft
-          )})`;
+        : ` (${totalDiff > 0 ? '+' : ''}${diffPercent})`;
+      //      tooltipDiffText = !totalLeft
+      //        ? ' (new)'
+      //        : !totalRght
+      //        ? ' (removed)'
+      //        : ` (${totalDiff > 0 ? '+' : ''}${formatPercent(
+      //            totalDiff / totalLeft
+      //          )})`;
     }
 
     // Before you change all of this to React consider performance implications.
@@ -613,22 +644,7 @@ class FlameGraph extends React.Component {
                 <div className="row">
                   Base graph: left - Comparison graph: right
                 </div>
-                <div className="row flamegraph-legend">
-                  <div className="flamegraph-legend-list">
-                    {diffLegend.map((v) => (
-                      <div
-                        key={v}
-                        className="flamegraph-legend-item"
-                        style={{
-                          backgroundColor: colorFromPercentage(v, 0.8),
-                        }}
-                      >
-                        {v > 0 ? '+' : ''}
-                        {v}%
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <DiffLegend />
               </div>
             )}
             {ExportData && !dataUnavailable ? (

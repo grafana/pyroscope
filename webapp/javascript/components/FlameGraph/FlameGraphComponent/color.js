@@ -50,12 +50,6 @@ export function colorBasedOnDiff(diff, left, a) {
       : 200 * Math.sqrt(Math.abs(diff / left));
   if (diff >= 0) return Color.rgb(200, 200 - v, 200 - v).alpha(a);
 
-  console.log({
-    diff,
-    left,
-    v,
-    color: Color.rgb(200 - v, 200, 200 - v).alpha(a),
-  });
   return Color.rgb(200 - v, 200, 200 - v).alpha(a);
 }
 
