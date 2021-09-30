@@ -1,6 +1,9 @@
 require "sinatra"
 require "thin"
 require "pyroscope"
+require_relative 'scooter/scooter'  
+require_relative 'bike/bike'
+require_relative 'car/car'
 
 
 Pyroscope.configure do |config|
@@ -9,32 +12,6 @@ Pyroscope.configure do |config|
   config.tags = {
     "region": ENV["REGION"],
   }
-end
-
-def work(n)
-  i = 0
-  start_time = Time.new
-  while Time.new - start_time < n do
-    i += 1
-  end
-end
-
-def order_bike(n)
-  Pyroscope.tag_wrapper({ "vehicle" => "bike" }) do
-    work(n)
-  end
-end
-
-def order_scooter(n)
-  Pyroscope.tag_wrapper({ "vehicle" => "scooter" }) do
-    work(n)
-  end
-end
-
-def order_car(n)
-  Pyroscope.tag_wrapper({ "vehicle" => "car" }) do
-    work(n)
-  end
 end
 
 get "/bike" do
