@@ -1,4 +1,5 @@
 ### Pyroscope Rideshare Example
+## Backround
 In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `server.rb`:
 - `/bike`    : calls the `order_bike(search_radius)` function to order a bike
 - `/car`     : calls the `order_car(search_radius)` function to order a car
@@ -13,7 +14,8 @@ One of the most useful capabilities of Pyroscope is the ability to tag your data
 - `region`: statically tags the region of the server running the code
 - `vehicle`: dynamically tags the endpoint (similar to how one might tag a controller rails)
 
-### Tagging static region
+
+## Tagging static region
 Tagging something static, like the `region`, can be done in the initialization code in the `config.tags` variable:
 ```
 Pyroscope.configure do |config|
@@ -25,7 +27,7 @@ Pyroscope.configure do |config|
 end
 ```
 
-### Tagging dynamically within functions
+## Tagging dynamically within functions
 Tagging something more dynamically, like we do for the `vehicle` tag can be done inside our utility `find_nearest_vehicle()` function using a `Pyroscope.tag_wrapper` block
 ```
 def find_nearest_vehicle(n, vehicle)
@@ -40,7 +42,8 @@ What this block does, is:
 2. execute the `find_nearest_vehicle()` function
 3. Before the block ends it will (behind the scenes) remove the `{ "vehicle" => "car" }` from the application since that block is complete
 
-### Resulting flamgraph / performance results from the example
+## Resulting flamgraph / performance results from the example
+### Running the example
 To run the example run the following commands:
 ```
 # Pull latest pyroscope image:
@@ -53,19 +56,18 @@ docker-compose up --build
 # docker-compose down
 ```
 
-What this example will do is run all of the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this:
+What this example will do is run all of the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this. After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
-[ Picture ]
+![image](https://user-images.githubusercontent.com/23323466/135525201-b50d819a-278f-4693-a523-a4731b9c0306.png)
 
-After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
 In the real world, it's possible that _the region_ of a server is, for some reason, causing difference performance behavior than other regions. To inspect this, we can select our various regions from the "tag" dropdown:
 
-[ Picture of region selected ]
+![image](https://user-images.githubusercontent.com/23323466/135525308-b81e87b0-6ffb-4ef0-a6bf-3338483d0fc4.png)
 
-If we wanted to select both a specific `region` and and a specific `vehicle` then we can simply select both from the dropdown and see the performance characteristics of that selection. 
+If we wanted to select both a specific `region` and and a specific `vehicle` then we can simply select both from the dropdown and see the performance characteristics of that selection. Notice that we can also see how much CPU utilization was attributed to this specific combination of tags via the timeline at the top.
 
-[ Picture of region and vehicle ]
+![image](https://user-images.githubusercontent.com/23323466/135525626-3d558bf3-169f-4295-989f-b422fff3f87f.png)
 
 
 ### More use cases
