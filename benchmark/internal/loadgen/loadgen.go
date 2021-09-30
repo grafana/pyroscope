@@ -39,7 +39,7 @@ type GatewayPusher interface {
 }
 type NoopGatewayPusher struct{}
 
-func (n NoopGatewayPusher) Push() error {
+func (NoopGatewayPusher) Push() error {
 	return nil
 }
 

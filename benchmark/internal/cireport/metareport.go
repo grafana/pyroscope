@@ -9,13 +9,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type metaReport struct {
+type MetaReport struct {
 	allowlist map[string]bool
 }
 
 // NewMetaReport creates a meta report
 // the allowlist parameter refers to which keys are valid
-func NewMetaReport(allowlist []string) (*metaReport, error) {
+func NewMetaReport(allowlist []string) (*MetaReport, error) {
 	if len(allowlist) <= 0 {
 		return nil, fmt.Errorf("at least one item should be allowed")
 	}
@@ -25,7 +25,7 @@ func NewMetaReport(allowlist []string) (*metaReport, error) {
 		a[v] = true
 	}
 
-	return &metaReport{
+	return &MetaReport{
 		allowlist: a,
 	}, nil
 }
@@ -36,7 +36,7 @@ type meta struct {
 }
 
 // Report generates a markdown report
-func (mr *metaReport) Report(vars []string) (string, error) {
+func (mr *MetaReport) Report(vars []string) (string, error) {
 	if len(vars) <= 0 {
 		return "", fmt.Errorf("at least one item should be reported")
 	}
@@ -62,7 +62,7 @@ func (mr *metaReport) Report(vars []string) (string, error) {
 	}
 
 	logrus.Debug("generating template")
-	report, err := mr.template(m)
+	report, err := mr.tpl(m)
 	if err != nil {
 		return "", err
 	}
@@ -70,7 +70,7 @@ func (mr *metaReport) Report(vars []string) (string, error) {
 	return report, nil
 }
 
-func (mr *metaReport) breakOnEqual(s string) (string, string, error) {
+func (*MetaReport) breakOnEqual(s string) (key string, value string, err error) {
 	split := strings.Split(s, "=")
 	if len(split) != 2 {
 		return "", "", fmt.Errorf("expect value in format A=B")
@@ -83,7 +83,7 @@ func (mr *metaReport) breakOnEqual(s string) (string, string, error) {
 	return split[0], split[1], nil
 }
 
-func (mr *metaReport) validate(m []meta) error {
+func (mr *MetaReport) validate(m []meta) error {
 	for _, v := range m {
 		if _, ok := mr.allowlist[v.Key]; !ok {
 			return fmt.Errorf("key is not allowed: '%s'", v.Key)
@@ -93,7 +93,7 @@ func (mr *metaReport) validate(m []meta) error {
 	return nil
 }
 
-func (mr *metaReport) template(m []meta) (string, error) {
+func (*MetaReport) tpl(m []meta) (string, error) {
 	var tpl bytes.Buffer
 
 	data := struct {
