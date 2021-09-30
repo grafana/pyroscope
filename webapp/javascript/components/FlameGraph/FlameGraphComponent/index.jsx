@@ -47,6 +47,7 @@ import {
 import { fitToCanvasRect } from '../../../util/fitMode';
 import { percentDiff } from '../../../util/format';
 import DiffLegend from './DiffLegend';
+import Tooltip from './Tooltip';
 
 const formatSingle = {
   format: 'single',
@@ -465,6 +466,61 @@ class FlameGraph extends React.Component {
     }
   };
 
+  // TODO(eh-am): need a better name
+  xyToData = (format, x, y) => {
+    const ff = this.props.format;
+    const { i, j } = this.xyToBar(x, y);
+
+    const level = this.state.levels[i];
+    const {units} = this.state;
+    const title = this.state.names[level[j + ff.jName]];
+
+    switch (format) {
+      case 'single': {
+        const numBarTicks = ff.getBarTotal(level, j);
+        const percent = formatPercent(numBarTicks / this.state.numTicks);
+
+        return {
+          title,
+          format,
+          numBarTicks,
+          percent,
+          units,
+        };
+      }
+
+      case 'double': {
+        const totalLeft = ff.getBarTotalLeft(level, j);
+        const totalRight = ff.getBarTotalRght(level, j);
+
+        return {
+          format,
+          left: totalLeft,
+          right: totalRight,
+          title,
+          sampleRate: this.state.sampleRate,
+          units,
+        };
+      }
+
+      default:
+        throw new Error(`Wrong format ${format}`);
+    }
+  };
+
+  isWithinBounds = (x, y) => {
+    if (x < 0 || x > this.graphWidth) {
+      return false;
+    }
+
+    const { j } = this.xyToBar(x, y);
+    if (j === -1) {
+      return false;
+    }
+
+    return true;
+  };
+
   mouseMoveHandler = (e) => {
     const ff = this.props.format;
     const { i, j } = this.xyToBar(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
@@ -491,6 +547,8 @@ class FlameGraph extends React.Component {
     const numBarTicks = ff.getBarTotal(level, j);
     const percent = formatPercent(numBarTicks / this.state.numTicks);
     const tooltipTitle = this.state.names[level[j + ff.jName]];
+
+    //    console.log("no velho, title", { tooltipTitle });
 
     let tooltipText;
     let tooltipDiffText = '';
@@ -680,7 +738,19 @@ class FlameGraph extends React.Component {
             <div className="flamegraph-highlight" ref={this.highlightRef} />
           </div>
         </div>
-        <div className="flamegraph-tooltip" ref={this.tooltipRef}>
+        <Tooltip
+          formatter={this.formatter}
+          format={this.props.format.format}
+          canvasRef={this.canvasRef}
+          xyToData={this.xyToData}
+          isWithinBounds={this.isWithinBounds}
+          graphWidth={this.graphWidth}
+        />
+        <div
+          className="flamegraph-tooltip"
+          style={{ visibility: 'hidden' }}
+          ref={this.tooltipRef}
+        >
           <div className="flamegraph-tooltip-name" />
           <div>
             <span />
