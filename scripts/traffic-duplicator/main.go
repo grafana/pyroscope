@@ -63,7 +63,7 @@ func startProxy() {
 	logrus.WithError(err).WithField("bindAddr", bindAddr).Error("error listening")
 }
 
-func handleConn(w http.ResponseWriter, r *http.Request) {
+func handleConn(_ http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		logrus.WithError(err).Error("failed to read body")
@@ -123,7 +123,7 @@ func generateTargets(r io.Reader) []target {
 			arr = append(arr, ".*")
 		}
 
-		url, err := url.ParseRequestURI(arr[0])
+		u, err := url.ParseRequestURI(arr[0])
 		if err != nil {
 			continue
 		}
@@ -132,7 +132,7 @@ func generateTargets(r io.Reader) []target {
 			continue
 		}
 		targets = append(targets, target{
-			url:     url,
+			url:     u,
 			matcher: matcher,
 		})
 	}
