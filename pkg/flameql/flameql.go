@@ -21,6 +21,7 @@ type TagMatcher struct {
 
 type Op int
 
+//revive:disable:var-naming Those names mimics constants names
 const (
 	// The order should respect operator priority and cost.
 	// Negating operators go first. See IsNegation.
@@ -30,6 +31,8 @@ const (
 	EQL          // =
 	EQL_REGEX    // =~
 )
+
+//revive:enable:var-naming
 
 const (
 	ReservedTagKeyName = "__name__"

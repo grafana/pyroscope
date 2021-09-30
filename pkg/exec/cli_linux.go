@@ -16,7 +16,8 @@ func performOSChecks(spyName string) error {
 		}
 	} else {
 		if !caps.HasSysPtraceCap() {
-			return errors.New("if you're running pyroscope in a Docker container, add --cap-add=sys_ptrace. See our Docker Guide for more information: https://pyroscope.io/docs/docker-guide")
+			return errors.New("if you're running pyroscope in a Docker container, add --cap-add=sys_ptrace. " +
+				"See our Docker Guide for more information: https://pyroscope.io/docs/docker-guide")
 		}
 	}
 	return nil
