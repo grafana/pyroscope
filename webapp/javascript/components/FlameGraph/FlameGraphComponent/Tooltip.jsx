@@ -4,9 +4,6 @@ import { diffColorRed, diffColorGreen } from './color';
 
 export default function Tooltip(props) {
   const { format, canvasRef, xyToData, isWithinBounds } = props;
-  const [body, setBody] = React.useState([]);
-
-  const [leftBody, setLeftBody] = React.useState('');
   const [content, setContent] = React.useState({
     title: {
       text: '',
@@ -19,7 +16,6 @@ export default function Tooltip(props) {
     right: '',
   });
 
-  const [title, setTitle] = React.useState('');
   const [style, setStyle] = React.useState();
   const tooltipEl = React.useRef(null);
 
@@ -42,7 +38,6 @@ export default function Tooltip(props) {
     );
     const top = e.clientY + 20;
 
-    //    setTitle(data.title);
     setStyle({
       top,
       left,
@@ -123,6 +118,7 @@ export default function Tooltip(props) {
 
   return (
     <div
+      role="tooltip"
       data-testid="flamegraph-tooltip"
       className="flamegraph-tooltip"
       style={style}
@@ -133,7 +129,10 @@ export default function Tooltip(props) {
         className="flamegraph-tooltip-name"
       >
         {content.title.text}
-        <span style={{ color: content.title?.diff?.color }}>
+        <span
+          data-testid="flamegraph-tooltip-title-diff"
+          style={{ color: content.title?.diff?.color }}
+        >
           {`${content.title.diff.text.length > 0 ? ' ' : ''}${
             content.title.diff.text
           }`}
@@ -188,10 +187,10 @@ function formatDouble({
 
   // TODO unit test this
   let tooltipDiffText = '';
-  if (!left) {
+  if (!totalLeft) {
     // this is a new function
     tooltipDiffText = '(new)';
-  } else if (!right) {
+  } else if (!totalRight) {
     // this function has been removed
     tooltipDiffText = '(removed)';
   } else if (totalDiff > 0) {
