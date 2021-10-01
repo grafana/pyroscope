@@ -16,10 +16,7 @@ func (t Threshold) deleteNode(sn *streeNode) bool {
 	if sn.isBefore(t.absolute) {
 		return true
 	}
-	if v, ok := t.levels[sn.depth]; ok && v != zeroTime {
-		return sn.isBefore(v)
-	}
-	return false
+	return sn.isBefore(t.levelThreshold(sn.depth))
 }
 
 func (t *Threshold) timeBefore(age time.Duration) time.Time {
@@ -48,4 +45,11 @@ func (t *Threshold) SetLevelMaxAge(level int, maxAge time.Duration) *Threshold {
 	}
 	t.levels[level] = t.timeBefore(maxAge)
 	return t
+}
+
+func (t *Threshold) levelThreshold(depth int) time.Time {
+	if t.levels == nil {
+		return zeroTime
+	}
+	return t.levels[depth]
 }

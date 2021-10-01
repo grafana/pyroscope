@@ -48,21 +48,16 @@ func (sn streeNode) populateTimeline(tl *Timeline, t *Threshold) {
 	}
 
 	currentDuration := durations[sn.depth]
-	var hasDataBefore bool
-
 	if len(sn.children) > 0 && currentDuration >= tl.durationDelta {
 		for i, v := range sn.children {
 			if v != nil {
 				v.populateTimeline(tl, t)
-				// Remaining missing children must not be "made up",
-				// as they could not be removed due to a retention policy.
-				hasDataBefore = true
 				continue
 			}
-			// Populate timeline with a down-sampled node if it is not beyond
-			// the absolute retention threshold, and there are no neighbors on
-			// the left hand (past time).
-			if sn.depth > 0 && sn.time.After(t.absolute) && !hasDataBefore {
+			if sn.depth == 0 || sn.isBefore(t.absolute) {
+				continue
+			}
+			if sn.isBefore(t.levelThreshold(sn.depth)) {
 				sn.createSampledChild(i).populateTimeline(tl, t)
 			}
 		}
