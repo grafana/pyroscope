@@ -31,7 +31,7 @@ export default function Tooltip(props) {
 
     const data = xyToData(format, e.offsetX, e.offsetY);
 
-    // where to position
+    // makes it so that tooltip is always visible even if mouse is close to the right edge
     const left = Math.min(
       e.clientX + 12,
       window.innerWidth - tooltipEl.current.clientWidth - 20
