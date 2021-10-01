@@ -1,0 +1,67 @@
+{
+  "flamebearer": {
+    "names": [
+      "total",
+      "runtime.main",
+      "main.main",
+      "main.becomesAdded",
+      "main.becomesSlower",
+      "main.work",
+      "runtime.asyncPreempt",
+      "main.becomesFaster",
+      "github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote.(*Remote).handleJobs",
+      "github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote.(*Remote).safeUpload",
+      "net/http.(*Client).Do",
+      "net/http.(*Client).do",
+      "net/http.(*Client).send",
+      "net/http.send",
+      "net/http.(*Transport).RoundTrip",
+      "net/http.setupRewindBody",
+      "runtime.newobject",
+      "runtime.mallocgc",
+      "runtime.arenaIndex",
+      "github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).takeSnapshots",
+      "runtime.heapBitsSetType"
+    ],
+    "levels": [
+      [0, 991, 0, 0, 987, 0, 0],
+      [0, 0, 0, 0, 1, 0, 19, 0, 0, 0, 0, 1, 0, 8, 0, 991, 0, 0, 985, 0, 1],
+      [
+        0, 0, 0, 0, 1, 0, 16, 0, 0, 0, 0, 1, 0, 9, 0, 217, 0, 0, 229, 0, 3, 0,
+        165, 0, 0, 147, 0, 7, 0, 603, 1, 0, 604, 0, 4, 0, 6, 6, 0, 5, 4, 2
+      ],
+      [
+        0, 0, 0, 0, 1, 0, 17, 0, 0, 0, 0, 1, 0, 10, 0, 217, 217, 0, 229, 229, 5,
+        0, 165, 165, 0, 147, 147, 5, 1, 602, 601, 0, 604, 604, 5, 6, 0, 0, 4, 1,
+        1, 3
+      ],
+      [0, 0, 0, 0, 1, 1, 20, 0, 0, 0, 0, 1, 0, 11, 984, 1, 1, 980, 0, 0, 6],
+      [0, 0, 0, 1, 1, 0, 12],
+      [0, 0, 0, 1, 1, 0, 13],
+      [0, 0, 0, 1, 1, 0, 14],
+      [0, 0, 0, 1, 1, 0, 15],
+      [0, 0, 0, 1, 1, 0, 16],
+      [0, 0, 0, 1, 1, 0, 17],
+      [0, 0, 0, 1, 1, 1, 18]
+    ],
+    "numTicks": 1978,
+    "maxSelf": 604,
+    "spyName": "gospy",
+    "sampleRate": 100,
+    "units": "samples",
+    "format": "double",
+    "leftTicks": 991,
+    "rightTicks": 987
+  },
+  "metadata": {
+    "format": "double",
+    "sampleRate": 100,
+    "spyName": "gospy",
+    "units": "samples"
+  },
+  "timeline": {
+    "startTime": 1633024290,
+    "samples": [992, 988],
+    "durationDelta": 10
+  }
+}
