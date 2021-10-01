@@ -1,0 +1,38 @@
+{
+  "flamebearer": {
+    "names": [
+      "total",
+      "runtime.main",
+      "main.main",
+      "main.becomesSlower",
+      "main.work",
+      "runtime.asyncPreempt",
+      "main.becomesFaster",
+      "main.becomesAdded"
+    ],
+    "levels": [
+      [0, 991, 0, 0],
+      [0, 991, 0, 1],
+      [0, 217, 0, 7, 0, 165, 0, 6, 0, 603, 1, 3, 0, 6, 6, 2],
+      [0, 217, 217, 4, 0, 165, 165, 4, 1, 602, 601, 4],
+      [984, 1, 1, 5]
+    ],
+    "numTicks": 991,
+    "maxSelf": 601,
+    "spyName": "gospy",
+    "sampleRate": 100,
+    "units": "samples",
+    "format": "single"
+  },
+  "metadata": {
+    "format": "single",
+    "sampleRate": 100,
+    "spyName": "gospy",
+    "units": "samples"
+  },
+  "timeline": {
+    "startTime": 1633024290,
+    "samples": [992],
+    "durationDelta": 10
+  }
+}
