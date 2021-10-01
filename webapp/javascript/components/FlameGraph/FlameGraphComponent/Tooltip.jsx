@@ -28,7 +28,11 @@ export default function Tooltip(props) {
     const top = e.clientY + 20;
 
     setTitle(data.title);
-    setStyle({ top, left, opacity: 1 });
+    setStyle({
+      top,
+      left,
+      visibility: 'visible',
+    });
 
     // format is either single, double or something else
     switch (format) {
@@ -50,10 +54,8 @@ export default function Tooltip(props) {
   };
 
   const onMouseOut = () => {
-    // Set visibility
-    //    console.log("mouse out");
     setStyle({
-      opacity: 0,
+      visibility: 'hidden',
     });
   };
 
@@ -77,7 +79,12 @@ export default function Tooltip(props) {
   }, [canvasRef.current]);
 
   return (
-    <div className="flamegraph-tooltip" style={style} ref={tooltipEl}>
+    <div
+      data-testid="flamegraph-tooltip"
+      className="flamegraph-tooltip"
+      style={style}
+      ref={tooltipEl}
+    >
       <div
         data-testid="flamegraph-tooltip-title"
         className="flamegraph-tooltip-name"

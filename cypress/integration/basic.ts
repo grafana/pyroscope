@@ -213,4 +213,23 @@ describe('basic test', () => {
     cy.findByTestId('reset-view').click();
     cy.findByTestId('reset-view').should('not.be.visible');
   });
+
+  it.only('validates tooltip works', () => {
+    cy.intercept('**/render*', {
+      fixture: 'simple-golang-app-cpu.json',
+    }).as('render');
+
+    cy.visit('/');
+
+    cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+
+    cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
+    cy.findByTestId('flamegraph-tooltip').should('be.visible');
+
+    cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
+    cy.findByTestId('flamegraph-tooltip-body').should(
+      'have.text',
+      '100%, 988 samples, 9.88 seconds'
+    );
+  });
 });

@@ -727,8 +727,8 @@ class FlameGraph extends React.Component {
               data-appname={this.props.label}
               ref={this.canvasRef}
               onClick={this.clickHandler}
-              onMouseMove={this.mouseMoveHandler}
-              onMouseOut={this.mouseOutHandler}
+              //              onMouseMove={this.mouseMoveHandler}
+              //              onMouseOut={this.mouseOutHandler}
               onBlur={() => {}}
             />
             <div className="flamegraph-highlight" ref={this.highlightRef} />
@@ -745,6 +745,7 @@ class FlameGraph extends React.Component {
           sampleRate={this.state.sampleRate}
           units={this.state.units}
         />
+        {/*
         <div
           className="flamegraph-tooltip"
           style={{ visibility: 'hidden' }}
@@ -756,6 +757,7 @@ class FlameGraph extends React.Component {
             <span />
           </div>
         </div>
+      */}
       </>
     );
   };
