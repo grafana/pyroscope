@@ -157,18 +157,14 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		return nil, err
 	}
 
-	s.wg.Add(2)
-	go s.periodicTask(evictInterval, s.evictionTask(memTotal))
-	go s.periodicTask(writeBackInterval, s.writeBackTask)
-	if s.config.Retention > 0 {
-		s.wg.Add(1)
-		go s.periodicTask(retentionInterval, s.retentionTask)
-	}
-
 	if err = s.migrate(); err != nil {
 		return nil, err
 	}
 
+	s.wg.Add(3)
+	go s.periodicTask(evictInterval, s.evictionTask(memTotal))
+	go s.periodicTask(writeBackInterval, s.writeBackTask)
+	go s.periodicTask(retentionInterval, s.retentionTask)
 	return s, nil
 }
 
@@ -194,7 +190,7 @@ func (s *Storage) Put(pi *PutInput) error {
 		return err
 	}
 
-	if pi.StartTime.Before(s.lifetimeBasedRetentionThreshold()) {
+	if pi.StartTime.Before(s.retentionThreshold()) {
 		return errRetention
 	}
 
@@ -310,6 +306,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		writesTotal uint64
 
 		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
+		threshold       = segment.NewThreshold().SetAbsoluteMaxAge(s.config.Retention)
 		aggregationType = "sum"
 	)
 
@@ -331,7 +328,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 			aggregationType = averageAggregationType
 		}
 
-		timeline.PopulateTimeline(st)
+		timeline.PopulateTimeline(st, threshold)
 		lastSegment = st
 
 		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
@@ -423,25 +420,18 @@ func (s *Storage) iterateOverAllSegments(cb func(*segment.Key, *segment.Segment)
 	return nil
 }
 
-func (s *Storage) DeleteDataBefore(threshold time.Time) error {
+func (s *Storage) DeleteDataBefore(t *segment.Threshold) error {
 	return s.iterateOverAllSegments(func(sk *segment.Key, st *segment.Segment) error {
 		var err error
-		deletedRoot := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
-			tk := sk.TreeKey(depth, t)
-			if delErr := s.trees.Delete(tk); delErr != nil {
+		deletedRoot := st.DeleteDataBefore(t, func(depth int, t time.Time) {
+			if delErr := s.trees.Delete(sk.TreeKey(depth, t)); delErr != nil {
 				err = delErr
 			}
 		})
-		if err != nil {
-			return err
+		if err == nil && deletedRoot {
+			return s.deleteSegmentAndRelatedData(sk)
 		}
-
-		if deletedRoot {
-			if err = s.deleteSegmentAndRelatedData(sk); err != nil {
-				return err
-			}
-		}
-		return nil
+		return err
 	})
 }
 
@@ -666,12 +656,25 @@ func (s *Storage) CacheStats() map[string]interface{} {
 
 var zeroTime time.Time
 
-func (s *Storage) lifetimeBasedRetentionThreshold() time.Time {
-	var t time.Time
-	if s.config.Retention != 0 {
-		t = time.Now().Add(-1 * s.config.Retention)
+func (s *Storage) retentionThreshold() time.Time {
+	if s.config.Retention > 0 {
+		return time.Now().Add(-1 * s.config.Retention)
 	}
-	return t
+	return zeroTime
+}
+
+func (s *Storage) lifetimeBasedRetentionThreshold() *segment.Threshold {
+	// TODO: think about configuration options:
+	//  --retention 365d
+	//  --retention-levels 7d:30d:180d
+	//  --retention-levels 7d;30d;180d
+	//  --retention-levels 7d,30d,180d
+	//  --retention-levels "7d 30d 180d"
+	//  --retention-levels 7d
+	return segment.NewThreshold().
+		SetAbsoluteMaxAge(s.config.Retention).
+		SetLevelMaxAge(0, time.Hour*3).
+		SetLevelMaxAge(1, time.Hour*6)
 }
 
 func (s *Storage) performFreeSpaceCheck() error {

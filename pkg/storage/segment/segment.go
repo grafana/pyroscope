@@ -161,25 +161,20 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.
 }
 
 // deleteDataBefore returns true if the node should be deleted
-func (sn *streeNode) deleteDataBefore(retentionThreshold time.Time, cb func(depth int, t time.Time)) bool {
-	if !sn.isAfter(retentionThreshold) {
-		isBefore := sn.isBefore(retentionThreshold)
-		if isBefore {
-			cb(sn.depth, sn.time)
-		}
-
-		for i, v := range sn.children {
-			if v != nil {
-				deletedData := v.deleteDataBefore(retentionThreshold, cb)
-				if deletedData {
-					sn.children[i] = nil
-				}
-			}
-		}
-		return isBefore
+func (sn *streeNode) deleteDataBefore(t *Threshold, cb func(depth int, t time.Time)) bool {
+	if sn.isAfter(t.absolute) && t.levels == nil {
+		return false
 	}
-
-	return false
+	ok := t.deleteNode(sn)
+	if ok {
+		cb(sn.depth, sn.time)
+	}
+	for i, v := range sn.children {
+		if v != nil && v.deleteDataBefore(t, cb) {
+			sn.children[i] = nil
+		}
+	}
+	return ok
 }
 
 type Segment struct {
@@ -307,25 +302,13 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-get-%s-%s.html", st.String(), et.String())))
 }
 
-func (s *Segment) DeleteDataBefore(retentionThreshold time.Time, cb func(depth int, t time.Time)) bool {
+func (s *Segment) DeleteDataBefore(t *Threshold, cb func(depth int, t time.Time)) bool {
 	s.m.Lock()
 	defer s.m.Unlock()
-
-	if s.root == nil {
-		return true
-	}
-
-	retentionThreshold = normalizeTime(retentionThreshold)
-	shouldDeleteRoot := s.root.deleteDataBefore(retentionThreshold, func(depth int, t time.Time) {
-		cb(depth, t)
-	})
-
-	if shouldDeleteRoot {
+	if s.root != nil && s.root.deleteDataBefore(t.normalize(), cb) {
 		s.root = nil
-		return true
 	}
-
-	return false
+	return s.root == nil
 }
 
 // TODO: this should be refactored

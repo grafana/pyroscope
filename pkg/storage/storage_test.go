@@ -377,7 +377,8 @@ var _ = Describe("DeleteDataBefore", func() {
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(s.DeleteDataBefore(time.Now().Add(-1 * time.Hour))).ToNot(HaveOccurred())
+				threshold := segment.NewThreshold().SetAbsoluteMaxAge(time.Hour)
+				Expect(s.DeleteDataBefore(threshold)).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
@@ -400,7 +401,8 @@ var _ = Describe("DeleteDataBefore", func() {
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(s.DeleteDataBefore(time.Now().Add(-1 * time.Hour))).ToNot(HaveOccurred())
+				threshold := segment.NewThreshold().SetAbsoluteMaxAge(time.Hour)
+				Expect(s.DeleteDataBefore(threshold)).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
