@@ -34,6 +34,7 @@ import {
   getPackageNameFromStackTrace,
   getFormatter,
   ratioToPercent,
+  percentDiff,
 } from './format';
 import {
   colorBasedOnDiff,
@@ -45,7 +46,6 @@ import {
   diffColorRed,
 } from './color';
 import { fitToCanvasRect } from '../../../util/fitMode';
-import { percentDiff } from '../../../util/format';
 import DiffLegend from './DiffLegend';
 import Tooltip from './Tooltip';
 
@@ -237,7 +237,7 @@ class FlameGraph extends React.Component {
 
     this.updateZoom(i, j);
     this.renderCanvas();
-    this.mouseOutHandler();
+    //    this.mouseOutHandler();
   };
 
   resizeHandler = () => {
@@ -491,11 +491,17 @@ class FlameGraph extends React.Component {
         const totalLeft = ff.getBarTotalLeft(level, j);
         const totalRight = ff.getBarTotalRght(level, j);
 
+        const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
+        const leftPercent = ratioToPercent(leftRatio);
+        const rightPercent = ratioToPercent(rightRatio);
+
         return {
           left: totalLeft,
           right: totalRight,
           title,
           sampleRate: this.state.sampleRate,
+          leftPercent,
+          rightPercent,
         };
       }
 

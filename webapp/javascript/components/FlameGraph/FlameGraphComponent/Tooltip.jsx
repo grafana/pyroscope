@@ -1,9 +1,24 @@
 import React from 'react';
-import { numberWithCommas, getFormatter } from './format';
+import { percentDiff, numberWithCommas, getFormatter } from './format';
+import { diffColorRed, diffColorGreen } from './color';
 
 export default function Tooltip(props) {
   const { format, canvasRef, xyToData, isWithinBounds } = props;
-  const [body, setBody] = React.useState('');
+  const [body, setBody] = React.useState([]);
+
+  const [leftBody, setLeftBody] = React.useState('');
+  const [content, setContent] = React.useState({
+    title: {
+      text: '',
+      diff: {
+        text: '',
+        color: '',
+      },
+    },
+    left: '',
+    right: '',
+  });
+
   const [title, setTitle] = React.useState('');
   const [style, setStyle] = React.useState();
   const tooltipEl = React.useRef(null);
@@ -27,7 +42,7 @@ export default function Tooltip(props) {
     );
     const top = e.clientY + 20;
 
-    setTitle(data.title);
+    //    setTitle(data.title);
     setStyle({
       top,
       left,
@@ -44,7 +59,35 @@ export default function Tooltip(props) {
           props.sampleRate
         );
 
-        setBody(d.tooltipText);
+        setContent({
+          title: {
+            text: data.title,
+            diff: {
+              text: '',
+              color: '',
+            },
+          },
+          left: d.left,
+        });
+        break;
+      }
+
+      case 'double': {
+        const d = formatDouble({
+          formatter,
+          sampleRate: props.sampleRate,
+          totalLeft: data.left,
+          totalRight: data.right,
+          leftPercent: data.leftPercent,
+          rightPercent: data.rightPercent,
+          title: data.title,
+        });
+
+        setContent({
+          title: d.title,
+          left: d.left,
+          right: d.right,
+        });
         break;
       }
 
@@ -61,7 +104,7 @@ export default function Tooltip(props) {
 
   React.useEffect(() => {
     // use closure to "cache" the current canvas reference
-    // so that the clean up points to a valid canvas
+    // so that when cleaning up, it points to a valid canvas
     // (otherwise it would be null)
     const canvasEl = canvasRef.current;
     if (!canvasEl) {
@@ -89,21 +132,83 @@ export default function Tooltip(props) {
         data-testid="flamegraph-tooltip-title"
         className="flamegraph-tooltip-name"
       >
-        {title}
+        {content.title.text}
+        <span style={{ color: content.title?.diff?.color }}>
+          {`${content.title.diff.text.length > 0 ? ' ' : ''}${
+            content.title.diff.text
+          }`}
+        </span>
       </div>
-      <div data-testid="flamegraph-tooltip-body">{body}</div>
+      <div data-testid="flamegraph-tooltip-body">
+        <div data-testid="flamegraph-tooltip-left">{content.left}</div>
+        <div data-testid="flamegraph-tooltip-right">{content.right}</div>
+      </div>
     </div>
   );
 }
 
 function formatSingle(formatter, percent, numBarTicks, sampleRate) {
-  const tooltipText = `${percent}, ${numberWithCommas(
-    numBarTicks
-  )} samples, ${formatter.format(numBarTicks, sampleRate)}`;
+  const left = [
+    `${percent}, ${numberWithCommas(numBarTicks)} samples, ${formatter.format(
+      numBarTicks,
+      sampleRate
+    )}`,
+  ];
 
   return {
-    tooltipText,
+    left,
   };
 }
 
-function formatDouble() {}
+function formatDouble({
+  formatter,
+  sampleRate,
+  totalLeft,
+  leftPercent,
+  totalRight,
+  rightPercent,
+  title,
+}) {
+  const left = `Left: ${numberWithCommas(
+    totalLeft
+  )} samples, ${formatter.format(totalLeft, sampleRate)} (${leftPercent}%)`;
+
+  const right = `Right: ${numberWithCommas(
+    totalRight
+  )} samples, ${formatter.format(totalRight, sampleRate)} (${rightPercent}%)`;
+
+  const totalDiff = percentDiff(leftPercent, rightPercent).toFixed(2);
+
+  let tooltipDiffColor = '';
+  if (totalDiff > 0) {
+    tooltipDiffColor = diffColorRed;
+  } else if (totalDiff < 0) {
+    tooltipDiffColor = diffColorGreen;
+  }
+
+  // TODO unit test this
+  let tooltipDiffText = '';
+  if (!left) {
+    // this is a new function
+    tooltipDiffText = '(new)';
+  } else if (!right) {
+    // this function has been removed
+    tooltipDiffText = '(removed)';
+  } else if (totalDiff > 0) {
+    tooltipDiffText = `(+${totalDiff}%)`;
+  } else if (totalDiff < 0) {
+    tooltipDiffText = `(${totalDiff}%)`;
+  }
+
+  return {
+    title: {
+      text: title,
+      diff: {
+        text: tooltipDiffText,
+        color: tooltipDiffColor,
+      },
+    },
+    left,
+    right,
+  };
+}

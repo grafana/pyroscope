@@ -165,9 +165,3 @@ export function getFormatter(max, sampleRate, units) {
       return new DurationFormatter(max / sampleRate);
   }
 }
-
-export function percentDiff(leftPercent, rightPercent) {
-  // difference between 2 percents
-  // https://en.wikipedia.org/wiki/Relative_change_and_difference
-  return ((rightPercent - leftPercent) / leftPercent) * 100;
-}

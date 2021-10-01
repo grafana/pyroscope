@@ -54,10 +54,15 @@ export function colorBasedOnDiff(diff, left, a) {
 }
 
 export function colorBasedOnDiffPercent(leftPercent, rightPercent, alpha) {
-  // difference between 2 percents
-  // https://en.wikipedia.org/wiki/Relative_change_and_difference
-  const result = ((rightPercent - leftPercent) / leftPercent) * 100;
+  const result = diffPercent(leftPercent, rightPercent);
   return colorFromPercentage(result, alpha);
+}
+
+// TODO move to a different file
+// difference between 2 percents
+export function diffPercent(leftPercent, rightPercent) {
+  // https://en.wikipedia.org/wiki/Relative_change_and_difference
+  return ((rightPercent - leftPercent) / leftPercent) * 100;
 }
 
 export function colorFromPercentage(p, alpha) {
