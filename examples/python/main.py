@@ -2,7 +2,7 @@
 
 import os
 
-import pyroscope_io as pyroscope
+import pyroscope
 
 pyroscope.configure(
 	app_name       = "simple.python.app",
