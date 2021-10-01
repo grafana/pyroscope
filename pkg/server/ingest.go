@@ -91,7 +91,7 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	ctrl.appStats.Add(hashString(k.AppName()))
 }
 
-func (ctrl *Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParams) error {
+func (*Controller) ingestParamsFromRequest(r *http.Request, ip *ingestParams) error {
 	q := r.URL.Query()
 	format := q.Get("format")
 	contentType := r.Header.Get("Content-Type")

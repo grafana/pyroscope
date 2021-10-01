@@ -20,12 +20,12 @@ type agentService struct {
 	tgtMgr *target.Manager
 }
 
-func newAgentService(logger *logrus.Logger, config *config.Agent) (*agentService, error) {
+func newAgentService(logger *logrus.Logger, cfg *config.Agent) (*agentService, error) {
 	rc := remote.RemoteConfig{
-		AuthToken:              config.AuthToken,
-		UpstreamThreads:        config.UpstreamThreads,
-		UpstreamAddress:        config.ServerAddress,
-		UpstreamRequestTimeout: config.UpstreamRequestTimeout,
+		AuthToken:              cfg.AuthToken,
+		UpstreamThreads:        cfg.UpstreamThreads,
+		UpstreamAddress:        cfg.ServerAddress,
+		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
 		ManualStart:            true,
 	}
 	upstream, err := remote.New(rc, logger)
@@ -33,7 +33,7 @@ func newAgentService(logger *logrus.Logger, config *config.Agent) (*agentService
 		return nil, fmt.Errorf("upstream configuration: %w", err)
 	}
 	s := agentService{
-		tgtMgr: target.NewManager(logger, upstream, config),
+		tgtMgr: target.NewManager(logger, upstream, cfg),
 		remote: upstream,
 	}
 	return &s, nil
@@ -89,20 +89,20 @@ func mergeTags(a, b map[string]string) map[string]string {
 	return t
 }
 
-func createLogger(config *config.Agent) (*logrus.Logger, error) {
-	if config.NoLogging {
+func createLogger(cfg *config.Agent) (*logrus.Logger, error) {
+	if cfg.NoLogging {
 		logrus.SetOutput(ioutil.Discard)
 		return logrus.StandardLogger(), nil
 	}
-	l, err := logrus.ParseLevel(config.LogLevel)
+	l, err := logrus.ParseLevel(cfg.LogLevel)
 	if err != nil {
 		return nil, fmt.Errorf("parsing log level: %w", err)
 	}
 	logrus.SetLevel(l)
-	if service.Interactive() || config.LogFilePath == "" {
+	if service.Interactive() || cfg.LogFilePath == "" {
 		return logrus.StandardLogger(), nil
 	}
-	f, err := ensureLogFile(config.LogFilePath)
+	f, err := ensureLogFile(cfg.LogFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("log file: %w", err)
 	}

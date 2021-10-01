@@ -11,17 +11,17 @@ import (
 	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
 )
 
-type promQuery struct {
+type PromQuery struct {
 	Config *config.PromQuery
 }
 
-func New(cfg *config.PromQuery) *promQuery {
-	return &promQuery{
+func New(cfg *config.PromQuery) *PromQuery {
+	return &PromQuery{
 		Config: cfg,
 	}
 }
 
-func (pq *promQuery) Instant(query string, t time.Time) (float64, error) {
+func (pq *PromQuery) Instant(query string, t time.Time) (float64, error) {
 	client, err := api.NewClient(api.Config{
 		Address: pq.Config.PrometheusAddress,
 	})
@@ -54,6 +54,6 @@ func (pq *promQuery) Instant(query string, t time.Time) (float64, error) {
 	case *model.Scalar:
 		return float64(v.(*model.Scalar).Value), nil
 	default:
-		return 0, fmt.Errorf("invalid type %T\n", t)
+		return 0, fmt.Errorf("invalid type %T", t)
 	}
 }

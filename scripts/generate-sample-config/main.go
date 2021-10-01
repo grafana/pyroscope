@@ -130,6 +130,7 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 		val = new(config.MetricExportRule)
 		cli.PopulateFlagSet(val, flagSet, v, opts...)
 	default:
+		//revive:disable-next-line:deep-exit fine for now
 		log.Fatalf("Unknown subcommand %q", subcommand)
 	}
 
