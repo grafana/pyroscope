@@ -170,7 +170,7 @@ var _ = Describe("Querying", func() {
 						Expect(r).To(BeEmpty())
 						continue
 					}
-					Expect(r).To(Equal(tc.segmentKeys))
+					Expect(r).To(ConsistOf(tc.segmentKeys))
 				}
 			})
 		})
