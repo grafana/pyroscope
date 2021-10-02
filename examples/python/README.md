@@ -63,8 +63,7 @@ docker-compose up --build
 
 What this example will do is run all of the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this (below). After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
-![image](https://user-images.githubusercontent.com/23323466/135525201-b50d819a-278f-4693-a523-a4731b9c0306.png)
-
+![image](https://user-images.githubusercontent.com/23323466/135729138-bddb1542-303d-4efd-aa62-f7a067ef9a93.png)
 
 In the real world, it's possible that _the region_ of a server is, for some reason, causing difference performance behavior than other regions. To inspect this, we can select our various regions from the "tag" dropdown:
 
