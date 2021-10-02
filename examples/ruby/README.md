@@ -68,7 +68,7 @@ In the real world, it's possible that _the region_ of a server is, for some reas
 
 ![image](https://user-images.githubusercontent.com/23323466/135525308-b81e87b0-6ffb-4ef0-a6bf-3338483d0fc4.png)
 
-If we wanted to select both a specific `region` and and a specific `vehicle` then we can simply select both from the dropdown and see the performance characteristics of that selection. Notice that we can also see how much CPU utilization was attributed to this specific combination of tags via the timeline at the top.
+If we wanted to select both a specific `region` and and a specific `vehicle` then we can simply select both from the dropdown and see the performance characteristics of that combination. Notice that we can also see how much CPU utilization was attributed to this specific combination of tags via the timeline at the top of the page.
 
 ![image](https://user-images.githubusercontent.com/23323466/135525626-3d558bf3-169f-4295-989f-b422fff3f87f.png)
 
