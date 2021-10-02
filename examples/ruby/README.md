@@ -1,13 +1,14 @@
 ### Pyroscope Rideshare Example
 ![ruby_example_architecture_05](https://user-images.githubusercontent.com/23323466/135726784-0c367d3f-c9e5-4e3f-91be-761d4d6d21b1.gif)
 
+Note: For documentation on the Pyroscope ruby gem visit [our website](https://pyroscope.io/docs/ruby/)
 ## Backround
 In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `server.rb`:
 - `/bike`    : calls the `order_bike(search_radius)` function to order a bike
 - `/car`     : calls the `order_car(search_radius)` function to order a car
 - `/scooter` : calls the `order_scooter(search_radius)` function to order a scooter
 
-We also simulate running 3 distinct servers in 3 different regions (via docker-compose.yml)
+We also simulate running 3 distinct servers in 3 different regions (via [docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/update-ruby-example/examples/ruby/docker-compose.yml))
 - us-east-1
 - us-west-1
 - eu-west-1
