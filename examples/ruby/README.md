@@ -1,4 +1,6 @@
 ### Pyroscope Rideshare Example
+![ruby_example_architecture_05](https://user-images.githubusercontent.com/23323466/135726784-0c367d3f-c9e5-4e3f-91be-761d4d6d21b1.gif)
+
 ## Backround
 In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `server.rb`:
 - `/bike`    : calls the `order_bike(search_radius)` function to order a bike
