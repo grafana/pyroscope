@@ -48,17 +48,24 @@ func (sn streeNode) populateTimeline(tl *Timeline, t *Threshold) {
 	}
 
 	currentDuration := durations[sn.depth]
+	var hasDataBefore bool
+	var levelThreshold time.Time
+	if sn.depth > 0 {
+		levelThreshold = t.levelThreshold(sn.depth - 1)
+	}
+
 	if len(sn.children) > 0 && currentDuration >= tl.durationDelta {
 		for i, v := range sn.children {
 			if v != nil {
 				v.populateTimeline(tl, t)
+				hasDataBefore = true
 				continue
 			}
-			if sn.depth == 0 || sn.isBefore(t.absolute) {
+			if levelThreshold.IsZero() || sn.isBefore(t.absolute) || hasDataBefore {
 				continue
 			}
-			if sn.isBefore(t.levelThreshold(sn.depth)) {
-				sn.createSampledChild(i).populateTimeline(tl, t)
+			if c := sn.createSampledChild(i); c.isBefore(levelThreshold) {
+				c.populateTimeline(tl, t)
 			}
 		}
 		return

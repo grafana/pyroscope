@@ -305,9 +305,9 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		lastSegment *segment.Segment
 		writesTotal uint64
 
-		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
-		threshold       = segment.NewThreshold().SetAbsoluteMaxAge(s.config.Retention)
 		aggregationType = "sum"
+		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
+		threshold       = s.lifetimeBasedRetentionThreshold()
 	)
 
 	for _, k := range dimensionKeys() {
