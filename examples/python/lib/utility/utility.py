@@ -1,5 +1,5 @@
 import time
-import pyroscope_io as pyroscope
+import pyroscope
 
 def find_nearest_vehicle(n, vehicle):
     with pyroscope.tag_wrapper({ "vehicle": vehicle}):
