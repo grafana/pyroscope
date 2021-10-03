@@ -24,6 +24,7 @@ import (
 	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
@@ -60,6 +61,8 @@ type Controller struct {
 
 	// Byte buffers are used for deserialization of ingested data.
 	bufferPool bytebufferpool.Pool
+
+	controller health.Controller
 }
 
 func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger, reg prometheus.Registerer) (*Controller, error) {
@@ -75,6 +78,16 @@ func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Log
 		}),
 	})
 
+	var condition health.Condition = &health.DiskPressure{
+		WarningThreshold:  500,
+		CriticalThreshold: 200,
+		Config:            c,
+	}
+	controller := health.Controller{
+		C: []*health.Condition{&condition},
+	}
+	controller.Start()
+
 	ctrl := Controller{
 		config:     c,
 		log:        l,
@@ -83,6 +96,7 @@ func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Log
 		stats:      make(map[string]int),
 		appStats:   appStats,
 		metricsMdw: mdw,
+		controller: controller,
 	}
 
 	ctrl.dir, err = webapp.Assets()
@@ -246,6 +260,7 @@ func (ctrl *Controller) Start() error {
 
 func (ctrl *Controller) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctrl.controller.Stop()
 	defer cancel()
 	return ctrl.httpServer.Shutdown(ctx)
 }

@@ -272,9 +272,8 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	})
 }
 
-func (*Controller) NotificationText() string {
-	// TODO: implement backend support for alert text
-	return ""
+func (c *Controller) NotificationText() string {
+	return c.controller.NotificationText()
 }
 
 func mustExecute(t *template.Template, w io.Writer, v interface{}) {
