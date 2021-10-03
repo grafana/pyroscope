@@ -78,6 +78,7 @@ module.exports = {
     rules: [
       {
         test: /\.jsx?$/,
+        exclude: /node_modules/,
         use: [
           {
             loader: 'babel-loader',
@@ -105,17 +106,6 @@ module.exports = {
                 ],
                 '@babel/preset-react',
               ],
-            },
-          },
-        ],
-      },
-      {
-        test: /\.js$/,
-        use: [
-          {
-            loader: 'babel-loader',
-            options: {
-              presets: [['@babel/preset-env']],
             },
           },
         ],
