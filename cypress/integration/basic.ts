@@ -336,4 +336,24 @@ describe('basic test', () => {
       );
     });
   });
+
+  describe('tooltip', () => {
+    it('works in diff view', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu-diff.json',
+        times: 1,
+      }).as('render');
+
+      cy.visit(
+        'http://localhost:4041/comparison-diff?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300'
+      );
+
+      cy.wait('@render');
+
+      cy.findByTestId('flamegraph-highlight').should('not.be.visible');
+
+      cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
+      cy.findByTestId('flamegraph-highlight').should('be.visible');
+    });
+  });
 });
