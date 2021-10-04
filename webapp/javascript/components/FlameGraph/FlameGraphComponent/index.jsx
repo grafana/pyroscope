@@ -238,7 +238,6 @@ class FlameGraph extends React.Component {
 
     this.updateZoom(i, j);
     this.renderCanvas();
-    //    this.mouseOutHandler();
   };
 
   resizeHandler = () => {
@@ -322,26 +321,6 @@ class FlameGraph extends React.Component {
         const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
         const numBarDiff = collapsed ? 0 : ff.getBarTotalDiff(level, j);
 
-        //        console.log('ff.getBarTotalDiff', ff.getBarTotalDiff(level, j));
-        //        console.log('ratio', numBarTicks / numTicks);
-        //
-        if (isDiff) {
-          //          console.log({
-          //            'j': j,
-          //            'level[j + 4] (right)': level[j + 4],
-          //            'level[j + 1] (imagino q left)': level[j + 1],
-          //            'name': names[level[j + ff.jName]],
-          //           'left': ff.getBarTotalLeft(level, j),
-          //          'right': ff.getBarTotalRght(level, j),
-          //          'diff': ff.getBarTotalDiff(level, j),
-          //           'numBarTicks': ff.getBarTotal(level, j),
-          //            'ratio': numBarTicks / numTicks,
-          //            'ratio left': ff.getBarTotalLeft(level, j)/this.props.flamebearer.leftTicks,
-          //            'ratio right': ff.getBarTotalRght(level, j)/this.props.flamebearer.rightTicks,
-          //          });
-        }
-
-        // const collapsed = false;
         if (collapsed) {
           // TODO: fix collapsed code
           while (
@@ -379,19 +358,11 @@ class FlameGraph extends React.Component {
         if (isDiff && collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (isDiff) {
-          console.log('is diff');
-
           const leftRatio =
             ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
           const rightRatio =
             ff.getBarTotalRght(level, j) / this.props.flamebearer.rightTicks;
 
-          //          console.log({
-          //            'name': names[level[j + ff.jName]],
-          //            'leftRatio': leftRatio,
-          //            'rightRatio': rightRatio,
-          //            'percent diff': (rightRatio - leftRatio)/((leftRatio + rightRatio)/2) * 100
-          //          })
           nodeColor = colorBasedOnDiff(
             leftRatio,
             ff.getBarTotalLeft(level, j),
@@ -402,23 +373,6 @@ class FlameGraph extends React.Component {
           const rightPercent = ratioToPercent(rightRatio);
 
           nodeColor = colorBasedOnDiffPercent(leftPercent, rightPercent, a);
-
-          //          nodeColor = colorBasedOnDiff(
-          //            (rightRatio - leftRatio)/((leftRatio + rightRatio)/2) * 100,
-          //            ff.getBarTotalLeft(level, j),
-          //            a
-          //          );
-
-          // nodeColor = colorBasedOnDiff(
-          //  numBarDiff,
-          //  ff.getBarTotalLeft(level, j),
-          //  a
-          // );
-          // console.log('ff.getBarTotalLeft(level, j)', ff.getBarTotalLeft(level, j))
-          // console.log('numBarDiff', numBarDiff);
-          // console.log('a', a);
-          // console.log('nodeColor', nodeColor)
-          // console.log('---------------')
         } else if (collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (queryExists && nodeIsInQuery) {
@@ -468,12 +422,11 @@ class FlameGraph extends React.Component {
   };
 
   // TODO(eh-am): need a better name
-  xyToData = (format, x, y) => {
+  xyToTooltipData = (format, x, y) => {
     const ff = this.props.format;
     const { i, j } = this.xyToBar(x, y);
 
     const level = this.state.levels[i];
-    const { units } = this.state;
     const title = this.state.names[level[j + ff.jName]];
 
     switch (format) {
@@ -543,116 +496,6 @@ class FlameGraph extends React.Component {
     }
 
     return true;
-  };
-
-  mouseMoveHandler = (e) => {
-    const ff = this.props.format;
-    const { i, j } = this.xyToBar(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
-
-    if (
-      j === -1 ||
-      e.nativeEvent.offsetX < 0 ||
-      e.nativeEvent.offsetX > this.graphWidth
-    ) {
-      this.mouseOutHandler();
-      return;
-    }
-
-    const level = this.state.levels[i];
-    const x = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
-    const y = (i - this.topLevel) * PX_PER_LEVEL;
-    const sw = Math.min(
-      this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - x,
-      this.graphWidth
-    );
-
-    const highlightEl = this.highlightRef.current;
-    const tooltipEl = this.tooltipRef.current;
-    const numBarTicks = ff.getBarTotal(level, j);
-    const percent = formatPercent(numBarTicks / this.state.numTicks);
-    const tooltipTitle = this.state.names[level[j + ff.jName]];
-
-    //    console.log("no velho, title", { tooltipTitle });
-
-    let tooltipText;
-    let tooltipDiffText = '';
-    let tooltipDiffColor = '';
-    if (ff.format !== 'double') {
-      tooltipText = `${percent}, ${numberWithCommas(
-        numBarTicks
-      )} samples, ${this.formatter.format(numBarTicks, this.state.sampleRate)}`;
-    } else {
-      const totalLeft = ff.getBarTotalLeft(level, j);
-      const totalRght = ff.getBarTotalRght(level, j);
-      const totalDiff = ff.getBarTotalDiff(level, j);
-
-      // TODO
-      const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
-      const leftPercent = ratioToPercent(leftRatio);
-      const rightPercent = ratioToPercent(rightRatio);
-
-      tooltipText = `Left: ${numberWithCommas(
-        totalLeft
-      )} samples, ${this.formatter.format(
-        totalLeft,
-        this.state.sampleRate
-      )} (${leftPercent}%)`;
-
-      tooltipText += `\nRight: ${numberWithCommas(
-        totalRght
-      )} samples, ${this.formatter.format(
-        totalRght,
-        this.state.sampleRate
-      )} (${rightPercent}%)`;
-
-      tooltipDiffColor =
-        totalDiff === 0 ? '' : totalDiff > 0 ? diffColorRed : diffColorGreen;
-
-      const diffPercent = percentDiff(leftPercent, rightPercent);
-
-      tooltipDiffText = !totalLeft
-        ? ' (new)'
-        : !totalRght
-        ? ' (removed)'
-        : ` (${totalDiff > 0 ? '+' : ''}${diffPercent})`;
-      //      tooltipDiffText = !totalLeft
-      //        ? ' (new)'
-      //        : !totalRght
-      //        ? ' (removed)'
-      //        : ` (${totalDiff > 0 ? '+' : ''}${formatPercent(
-      //            totalDiff / totalLeft
-      //          )})`;
-    }
-
-    // Before you change all of this to React consider performance implications.
-    // Doing this with setState leads to significant lag.
-    // See this issue https://github.com/pyroscope-io/pyroscope/issues/205
-    //   and this PR https://github.com/pyroscope-io/pyroscope/pull/266 for more info.
-    highlightEl.style.opacity = 1;
-    highlightEl.style.left = `${this.canvas.offsetLeft + x}px`;
-    highlightEl.style.top = `${this.canvas.offsetTop + y}px`;
-    highlightEl.style.width = `${sw}px`;
-    highlightEl.style.height = `${PX_PER_LEVEL}px`;
-
-    tooltipEl.style.opacity = 1;
-
-    tooltipEl.children[0].innerText = tooltipTitle;
-    tooltipEl.children[1].children[0].innerText = tooltipText;
-    tooltipEl.children[1].children[1].innerText = tooltipDiffText;
-    tooltipEl.children[1].children[1].style.color = tooltipDiffColor;
-
-    // makes it so that tooltip is always visible even if mouse is close to the right edge
-    const tooltipX = Math.min(
-      e.clientX + 12,
-      window.innerWidth - tooltipEl.clientWidth - 20
-    );
-    tooltipEl.style.left = `${tooltipX}px`;
-    tooltipEl.style.top = `${e.clientY + 20}px`;
-  };
-
-  mouseOutHandler = () => {
-    this.highlightRef.current.style.opacity = '0';
-    this.tooltipRef.current.style.opacity = '0';
   };
 
   updateZoom(i, j) {
@@ -755,11 +598,8 @@ class FlameGraph extends React.Component {
               data-appname={this.props.label}
               ref={this.canvasRef}
               onClick={this.clickHandler}
-              //              onMouseMove={this.mouseMoveHandler}
-              //              onMouseOut={this.mouseOutHandler}
               onBlur={() => {}}
             />
-            {/* ]<div className="flamegraph-highlight" ref={this.highlightRef} /> */}
             <Highlight
               height={PX_PER_LEVEL}
               canvasRef={this.canvasRef}
@@ -772,26 +612,13 @@ class FlameGraph extends React.Component {
           formatter={this.formatter}
           format={this.props.format.format}
           canvasRef={this.canvasRef}
-          xyToData={this.xyToData}
+          xyToData={this.xyToTooltipData}
           isWithinBounds={this.isWithinBounds}
           graphWidth={this.graphWidth}
           numTick={this.state.numTicks}
           sampleRate={this.state.sampleRate}
           units={this.state.units}
         />
-        {/*
-        <div
-          className="flamegraph-tooltip"
-          style={{ visibility: 'hidden' }}
-          ref={this.tooltipRef}
-        >
-          <div className="flamegraph-tooltip-name" />
-          <div>
-            <span />
-            <span />
-          </div>
-        </div>
-      */}
       </>
     );
   };
