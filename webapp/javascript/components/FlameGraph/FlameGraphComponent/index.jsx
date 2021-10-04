@@ -48,6 +48,7 @@ import {
 import { fitToCanvasRect } from '../../../util/fitMode';
 import DiffLegend from './DiffLegend';
 import Tooltip from './Tooltip';
+import Highlight from './Highlight';
 
 const formatSingle = {
   format: 'single',
@@ -510,6 +511,27 @@ class FlameGraph extends React.Component {
     }
   };
 
+  xyToHighlightData = (x, y) => {
+    const ff = this.props.format;
+    const { i, j } = this.xyToBar(x, y);
+
+    const level = this.state.levels[i];
+
+    const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
+    const posY = (i - this.topLevel) * PX_PER_LEVEL;
+
+    const sw = Math.min(
+      this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
+      this.graphWidth
+    );
+
+    return {
+      left: this.canvas.offsetLeft + posX,
+      top: this.canvas.offsetTop + posY,
+      width: sw,
+    };
+  };
+
   isWithinBounds = (x, y) => {
     if (x < 0 || x > this.graphWidth) {
       return false;
@@ -737,7 +759,13 @@ class FlameGraph extends React.Component {
               //              onMouseOut={this.mouseOutHandler}
               onBlur={() => {}}
             />
-            <div className="flamegraph-highlight" ref={this.highlightRef} />
+            {/* ]<div className="flamegraph-highlight" ref={this.highlightRef} /> */}
+            <Highlight
+              height={PX_PER_LEVEL}
+              canvasRef={this.canvasRef}
+              xyToHighlightData={this.xyToHighlightData}
+              isWithinBounds={this.isWithinBounds}
+            />
           </div>
         </div>
         <Tooltip
