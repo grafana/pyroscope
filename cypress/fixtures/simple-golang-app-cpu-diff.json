@@ -1,4 +1,6 @@
 {
+  "leftTicks": 991,
+  "rightTicks": 987,
   "flamebearer": {
     "names": [
       "total",
@@ -49,9 +51,7 @@
     "spyName": "gospy",
     "sampleRate": 100,
     "units": "samples",
-    "format": "double",
-    "leftTicks": 991,
-    "rightTicks": 987
+    "format": "double"
   },
   "metadata": {
     "format": "double",
