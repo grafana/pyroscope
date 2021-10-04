@@ -63,16 +63,18 @@ docker-compose up --build
 
 What this example will do is run all of the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this (below). After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
-![image](https://user-images.githubusercontent.com/23323466/135729138-bddb1542-303d-4efd-aa62-f7a067ef9a93.png)
+![python_first_slide_05](https://user-images.githubusercontent.com/23323466/135805880-5b6d155c-8760-4bd3-82eb-58861b43cbdc.jpg)
 
 In the real world, it's possible that _the region_ of a server is, for some reason, causing difference performance behavior than other regions. To inspect this, we can select our various regions from the "tag" dropdown:
 
 ![image](https://user-images.githubusercontent.com/23323466/135525308-b81e87b0-6ffb-4ef0-a6bf-3338483d0fc4.png)
 
 If we wanted to select both a specific `region` and and a specific `vehicle` then we can simply select both from the dropdown and see the performance characteristics of that combination. Notice that we can also see how much CPU utilization was attributed to this specific combination of tags via the timeline at the top of the page.
+![python_second_slide_05](https://user-images.githubusercontent.com/23323466/135805908-ae9a1650-51fc-457a-8c47-0b56e8538b08.jpg)
 
-![image](https://user-images.githubusercontent.com/23323466/135729246-13a6684f-a8e5-4c52-b667-9465a29999b5.png)
+![python_third_slide_05](https://user-images.githubusercontent.com/23323466/135805969-55fdee40-fe0c-412d-9ec0-0bbc6a748ed4.jpg)
 
+![python_fourth_slide_05](https://user-images.githubusercontent.com/23323466/135805986-594ffa3b-e735-4f91-875d-4f76fdff2b60.jpg)
 
 ### More use cases
 We have been beta testing this feature with several different companies and some of the ways that we've seen companies tag their performance data:
