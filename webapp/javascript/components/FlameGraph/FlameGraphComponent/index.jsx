@@ -615,7 +615,7 @@ class FlameGraph extends React.Component {
           xyToData={this.xyToTooltipData}
           isWithinBounds={this.isWithinBounds}
           graphWidth={this.graphWidth}
-          numTick={this.state.numTicks}
+          numTicks={this.state.numTicks}
           sampleRate={this.state.sampleRate}
           units={this.state.units}
         />
