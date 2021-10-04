@@ -33,7 +33,7 @@ import (
 const (
 	jwtCookieName              = "pyroscopeJWT"
 	stateCookieName            = "pyroscopeState"
-	gzHttpCompressionThreshold = 2000
+	gzHTTPCompressionThreshold = 2000
 	oauthGoogle                = iota
 	oauthGithub
 	oauthGitlab
@@ -164,7 +164,6 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 			{"/auth/google/callback", ctrl.callbackHandler(googleHandler.redirectRoute)},
 			{"/auth/google/redirect", ctrl.callbackRedirectHandler(googleHandler)},
 		}...)
-
 	}
 
 	if ctrl.config.Auth.Github.Enabled {
@@ -178,7 +177,6 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 			{"/auth/github/callback", ctrl.callbackHandler(githubHandler.redirectRoute)},
 			{"/auth/github/redirect", ctrl.callbackRedirectHandler(githubHandler)},
 		}...)
-
 	}
 
 	if ctrl.config.Auth.Gitlab.Enabled {
@@ -192,7 +190,6 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 			{"/auth/gitlab/callback", ctrl.callbackHandler(gitlabHandler.redirectRoute)},
 			{"/auth/gitlab/redirect", ctrl.callbackRedirectHandler(gitlabHandler)},
 		}...)
-
 	}
 
 	return authRoutes, nil
@@ -204,7 +201,7 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 		return nil, err
 	}
 
-	gzhttpMiddleware, err := gzhttp.NewWrapper(gzhttp.MinSize(gzHttpCompressionThreshold), gzhttp.CompressionLevel(gzip.BestSpeed))
+	gzhttpMiddleware, err := gzhttp.NewWrapper(gzhttp.MinSize(gzHTTPCompressionThreshold), gzhttp.CompressionLevel(gzip.BestSpeed))
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +309,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (ctrl *Controller) expectJSON(format string) error {
+func (*Controller) expectJSON(format string) error {
 	switch format {
 	case "json", "":
 		return nil

@@ -1,18 +1,15 @@
 FROM python:3.9
 
-WORKDIR /usr/src/app
+# RUN pip3 install pipenv
+# COPY Pipfile ./Pipfile
+# COPY Pipfile.lock ./Pipfile.lock
+# RUN pipenv install
 
-RUN adduser --disabled-password --gecos --quiet pyroscope
-USER pyroscope
+RUN pip3 install flask pyroscope-io==0.3.2
 
-COPY --from=pyroscope/pyroscope:latest /usr/bin/pyroscope /usr/bin/pyroscope
-COPY main.py ./main.py
-COPY requirements.txt ./requirements.txt
+ENV FLASK_ENV=development
+ENV PYTHONUNBUFFERED=1
 
-ENV PYROSCOPE_APPLICATION_NAME=simple.python.app
-ENV PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040/
-ENV PYROSCOPE_LOG_LEVEL=debug
+COPY lib ./lib
+CMD [ "python", "lib/server.py" ]
 
-RUN pip install -r requirements.txt
-
-CMD ["python", "main.py"]

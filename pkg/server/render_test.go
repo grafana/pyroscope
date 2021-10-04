@@ -19,7 +19,6 @@ import (
 )
 
 var _ = Describe("server", func() {
-
 	query := "pyroscope.server.alloc_objects{}"
 	formedBody := &RenderDiffParams{
 		Query: &query,
@@ -97,7 +96,6 @@ var _ = Describe("server", func() {
 				resp, err = http.Post(fmt.Sprintf("%s/render-diff", httpServer.URL), "application/json", bytes.NewBuffer(malFormedBodyJSON))
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusBadRequest))
-
 			})
 		})
 	})

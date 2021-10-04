@@ -169,6 +169,7 @@ func mergeTagsWithAppName(appName string, tags map[string]string) (string, error
 	return k.Normalized(), nil
 }
 
+// revive:disable-next-line:cognitive-complexity complexity is fine
 func (ps *ProfileSession) takeSnapshots() {
 	ticker := time.NewTicker(time.Second / time.Duration(ps.sampleRate))
 	defer ticker.Stop()

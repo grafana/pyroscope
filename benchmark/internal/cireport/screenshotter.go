@@ -20,7 +20,7 @@ type GrafanaScreenshotter struct {
 
 type ScreenshotPanelConfig struct {
 	DashboardUID string
-	PanelId      int
+	PanelID      int
 	From         int64
 	To           int64
 	Width        int
@@ -39,7 +39,7 @@ func (gs *GrafanaScreenshotter) ScreenshotPanel(ctx context.Context, cfg Screens
 	q := req.URL.Query()
 	q.Add("from", strconv.FormatInt(cfg.From, 10))
 	q.Add("to", strconv.FormatInt(cfg.To, 10))
-	q.Add("panelId", strconv.Itoa(cfg.PanelId))
+	q.Add("panelId", strconv.Itoa(cfg.PanelID))
 
 	req.URL.RawQuery = q.Encode()
 
@@ -131,7 +131,7 @@ func (gs *GrafanaScreenshotter) AllPanels(ctx context.Context, dashboardUID stri
 			d, err := gs.ScreenshotPanel(ctx,
 				ScreenshotPanelConfig{
 					DashboardUID: dashboardUID,
-					PanelId:      id,
+					PanelID:      id,
 					From:         from,
 					To:           to,
 				})

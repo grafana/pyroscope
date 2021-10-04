@@ -16,4 +16,5 @@ jobs:
         uses: petethepig/revive-action@v5
         with:
           config: revive.toml
-          exclude: 'vendor/...'
+          # same as in the `lint` rule of Makefile
+          exclude: 'vendor/...;./pkg/agent/pprof/...'
