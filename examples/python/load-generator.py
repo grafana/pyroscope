@@ -23,4 +23,4 @@ if __name__ == "__main__":
         print(f"requesting {vehicle} from {host}")
         resp = requests.get(f'http://{host}:5000/{vehicle}')
         print(f"received {resp}")
-        time.sleep(random.uniform(0.4, 0.8))
+        time.sleep(random.uniform(0.2, 0.4))
