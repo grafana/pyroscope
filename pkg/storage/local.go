@@ -111,9 +111,6 @@ func (s *Storage) PutLocal(po *PutInput) error {
 	if err := t.SerializeNoDict(s.config.MaxNodesSerialization, &buf); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(filepath.Join(s.localProfilesDir, name), buf.Bytes(), 0600); err != nil {
-		return err
-	}
 
-	return nil
+	return ioutil.WriteFile(filepath.Join(s.localProfilesDir, name), buf.Bytes(), 0600)
 }

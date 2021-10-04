@@ -1,3 +1,16 @@
+## 0.1.0 (2021-09-30)
+
+* docs: update deployment image ([59c459c](https://github.com/pyroscope-io/pyroscope/commit/59c459c))
+* docs: update readme (#426) ([1dd94cb](https://github.com/pyroscope-io/pyroscope/commit/1dd94cb)), closes [#426](https://github.com/pyroscope-io/pyroscope/issues/426)
+* docs: update the translation to keep up with the original (#423) ([544f49e](https://github.com/pyroscope-io/pyroscope/commit/544f49e)), closes [#423](https://github.com/pyroscope-io/pyroscope/issues/423)
+* docs: updates ruby / python example (#422) ([0dd5756](https://github.com/pyroscope-io/pyroscope/commit/0dd5756)), closes [#422](https://github.com/pyroscope-io/pyroscope/issues/422)
+* bug: fix issues with tag intersections in query engine (#425) ([bf34937](https://github.com/pyroscope-io/pyroscope/commit/bf34937)), closes [#425](https://github.com/pyroscope-io/pyroscope/issues/425)
+* add basic visual testing test (#419) ([e3e170d](https://github.com/pyroscope-io/pyroscope/commit/e3e170d)), closes [#419](https://github.com/pyroscope-io/pyroscope/issues/419)
+* Visual testing (#421) ([af91c14](https://github.com/pyroscope-io/pyroscope/commit/af91c14)), closes [#421](https://github.com/pyroscope-io/pyroscope/issues/421)
+* feat: TLS support for the server #185 (#404) ([6eb4a6c](https://github.com/pyroscope-io/pyroscope/commit/6eb4a6c)), closes [#185](https://github.com/pyroscope-io/pyroscope/issues/185) [#404](https://github.com/pyroscope-io/pyroscope/issues/404)
+
+
+
 ## <small>0.0.41 (2021-09-24)</small>
 
 * fixes mac builds ([5f4e0e3](https://github.com/pyroscope-io/pyroscope/commit/5f4e0e3))

@@ -22,14 +22,14 @@ const assetAtCompressionThreshold, assetLtCompressionThreshold = "AssetAtCompres
 
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
-		var temp_asset_dir *testing.TmpDirectory
+		var tempAssetDir *testing.TmpDirectory
 		BeforeSuite(func() {
-			temp_asset_dir = testing.TmpDirSync()
-			ioutil.WriteFile(filepath.Join(temp_asset_dir.Path, assetLtCompressionThreshold), make([]byte, gzHttpCompressionThreshold-1), 0644)
-			ioutil.WriteFile(filepath.Join(temp_asset_dir.Path, assetAtCompressionThreshold), make([]byte, gzHttpCompressionThreshold), 0644)
+			tempAssetDir = testing.TmpDirSync()
+			ioutil.WriteFile(filepath.Join(tempAssetDir.Path, assetLtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold-1), 0644)
+			ioutil.WriteFile(filepath.Join(tempAssetDir.Path, assetAtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold), 0644)
 		})
 		AfterSuite(func() {
-			temp_asset_dir.Close()
+			tempAssetDir.Close()
 		})
 		DescribeTable("compress assets",
 			func(filename string, uncompressed bool) {
@@ -41,7 +41,7 @@ var _ = Describe("server", func() {
 					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
-					c.dir = http.Dir(temp_asset_dir.Path)
+					c.dir = http.Dir(tempAssetDir.Path)
 					h, _ := c.getHandler()
 					httpServer := httptest.NewServer(h)
 					defer httpServer.Close()

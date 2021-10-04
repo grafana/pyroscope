@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 
-import pyroscope_io
+import os
 
-pyroscope_io.configure(pyroscope_io.Config("simple.python.app", "http://pyroscope:4040"))
-pyroscope_io.start()
+import pyroscope
+
+pyroscope.configure(
+	app_name       = "simple.python.app",
+	server_address = "http://pyroscope:4040",
+	tags           = {
+    "hostname": os.getenv("HOSTNAME"),
+	}
+)
 
 def work(n):
 	i = 0
@@ -11,14 +18,13 @@ def work(n):
 		i += 1
 
 def fast_function():
-	pyroscope_io.set_tag("function", "fast")
-	work(20000)
-	pyroscope_io.set_tag("function", "")
+	with pyroscope.tag_wrapper({ "function": "fast" }):
+		work(20000)
 
 def slow_function():
-	pyroscope_io.set_tag("function", "slow")
+	pyroscope.tag({ "function": "slow" })
 	work(80000)
-	pyroscope_io.set_tag("function", "")
+	pyroscope.remove_tags("function")
 
 if __name__ == "__main__":
 	while True:

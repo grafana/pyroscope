@@ -1,5 +1,8 @@
 package config
 
+//revive:disable:line-length-limit Most of line length is documentation
+//revive:disable:max-public-structs Config structs
+
 import (
 	"time"
 
@@ -74,7 +77,7 @@ type Server struct {
 	BadgerLogLevel string `def:"error" desc:"log level: debug|info|warn|error" mapstructure:"badger-log-level"`
 
 	StoragePath string `def:"<installPrefix>/var/lib/pyroscope" desc:"directory where pyroscope stores profiling data" mapstructure:"storage-path"`
-	APIBindAddr string `def:":4040" desc:"port for the HTTP server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
+	APIBindAddr string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
 	BaseURL     string `def:"" desc:"base URL for when the server is behind a reverse proxy with a different path" mapstructure:"base-url"`
 
 	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start" mapstructure:"cache-evict-threshold"`
@@ -105,6 +108,9 @@ type Server struct {
 	Auth Auth `mapstructure:"auth"`
 
 	MetricExportRules MetricExportRules `yaml:"metric-export-rules" def:"" desc:"metric export rules" mapstructure:"metric-export-rules"`
+
+	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
+	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 }
 
 type MetricExportRules map[string]MetricExportRule

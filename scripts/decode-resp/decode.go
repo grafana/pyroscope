@@ -1,5 +1,7 @@
 package main
 
+//revive:disable:max-public-structs Config structs
+
 import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -74,7 +76,6 @@ func decodeLevels(in *Input) *Output {
 					Self:   row[i+2],
 					Name:   names[row[i+3]],
 				}
-
 			} else {
 				offsetLeft += row[i+0]
 				offsetRght += row[i+3]

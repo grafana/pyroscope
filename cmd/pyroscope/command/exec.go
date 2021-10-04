@@ -25,6 +25,7 @@ func newExecCmd(cfg *config.Exec) *cobra.Command {
 			// the exit code must be preserved. Otherwise, the error originates from
 			// pyroscope and will be printed.
 			if e, ok := err.(*goexec.ExitError); ok {
+				// revive:disable-next-line:deep-exit for all effects this is main
 				os.Exit(e.ExitCode())
 			}
 			return err

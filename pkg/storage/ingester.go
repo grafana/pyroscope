@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	exp "github.com/pyroscope-io/pyroscope/pkg/exporter"
 )
 
 type Ingester interface {
@@ -10,10 +10,10 @@ type Ingester interface {
 
 type IngestionObserver struct {
 	storage  *Storage
-	exporter *exporter.MetricsExporter
+	exporter *exp.MetricsExporter
 }
 
-func NewIngestionObserver(storage *Storage, exporter *exporter.MetricsExporter) IngestionObserver {
+func NewIngestionObserver(storage *Storage, exporter *exp.MetricsExporter) IngestionObserver {
 	return IngestionObserver{
 		storage:  storage,
 		exporter: exporter,

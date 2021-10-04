@@ -1,5 +1,7 @@
 package storage
 
+// revive:disable:max-public-structs complex package
+
 import (
 	"context"
 	"errors"
@@ -545,10 +547,12 @@ func (s *Storage) Close() error {
 	return nil
 }
 
+//revive:disable-next-line:get-return A callback is fine
 func (s *Storage) GetKeys(cb func(_k string) bool) {
 	s.labels.GetKeys(cb)
 }
 
+//revive:disable-next-line:get-return A callback is fine
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
 		if key != "__name__" || !slices.StringContains(s.config.HideApplications, v) {

@@ -84,6 +84,7 @@ func (d *Reporter) Stop() {
 	<-d.done
 }
 
+// revive:disable-next-line:cognitive-complexity complexity is fine
 func (d *Reporter) Start() {
 	defer close(d.done)
 	ticker := time.NewTicker(debugInfoReportingInterval)

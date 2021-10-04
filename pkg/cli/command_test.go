@@ -35,7 +35,7 @@ func (cfg TestConfig) Path() string {
 	return cfg.Config
 }
 
-func runTestNoChecks(args []string, env map[string]string, cb func(*TestConfig)) (error, bool) {
+func runTestNoChecks(args []string, env map[string]string, cb func(*TestConfig)) (bool, error) {
 	cfg := &TestConfig{
 		FooStruct: SubStruct{},
 	}
@@ -46,7 +46,7 @@ func runTestNoChecks(args []string, env map[string]string, cb func(*TestConfig))
 		os.Setenv(k, v)
 	}
 	defer func() {
-		for k, _ := range env {
+		for k := range env {
 			os.Setenv(k, prevValues[k])
 		}
 	}()
@@ -65,11 +65,11 @@ func runTestNoChecks(args []string, env map[string]string, cb func(*TestConfig))
 	PopulateFlagSet(cfg, cmd.Flags(), vpr)
 
 	err := cmd.Execute()
-	return err, ran
+	return ran, err
 }
 
 func runTest(args []string, env map[string]string, cb func(*TestConfig)) {
-	err, ran := runTestNoChecks(args, env, cb)
+	ran, err := runTestNoChecks(args, env, cb)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ran).To(BeTrue())
@@ -103,7 +103,7 @@ var _ = Describe("CreateCmdRunFn", func() {
 		})
 		Context("config file that doesn't exist", func() {
 			It("sets value from config file", func() {
-				err, ran := runTestNoChecks([]string{}, map[string]string{"PYROSCOPE_CONFIG": "testdata/doesntexist"}, func(cfg *TestConfig) {
+				ran, err := runTestNoChecks([]string{}, map[string]string{"PYROSCOPE_CONFIG": "testdata/doesntexist"}, func(cfg *TestConfig) {
 					Expect(cfg.Foo).To(Equal("config-value"))
 				})
 				Expect(err).To(HaveOccurred())
