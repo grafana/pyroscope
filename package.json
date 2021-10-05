@@ -52,6 +52,7 @@
     "eslint-config-airbnb-typescript": "^14.0.0",
     "eslint-config-airbnb-typescript-prettier": "^4.2.0",
     "eslint-config-prettier": "^7.1.0",
+    "eslint-plugin-css-modules": "^2.11.0",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-jsx-a11y": "^6.4.1",

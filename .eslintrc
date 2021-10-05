@@ -1,11 +1,12 @@
 {
-  "plugins": ["prettier"],
+  "plugins": ["prettier", "css-modules"],
   "extends": [
     "airbnb-typescript-prettier",
     "plugin:cypress/recommended",
     "plugin:import/typescript",
     "prettier",
-    "prettier/react"
+    "prettier/react",
+    "plugin:css-modules/recommended"
   ],
   "rules": {
     "@typescript-eslint/no-unused-vars": "warn",
