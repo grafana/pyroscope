@@ -18,14 +18,9 @@ export interface HighlightProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }
 export default function Highlight(props: HighlightProps) {
-  const {
-    canvasRef,
-    isWithinBounds,
-    barHeight: height,
-    xyToHighlightData,
-  } = props;
+  const { canvasRef, isWithinBounds, barHeight, xyToHighlightData } = props;
   const [style, setStyle] = React.useState<React.CSSProperties>({
-    height: `0px`,
+    height: '0px',
     visibility: 'hidden',
   });
 
@@ -37,7 +32,7 @@ export default function Highlight(props: HighlightProps) {
 
     setStyle({
       visibility: 'visible',
-      height: `${height}px`,
+      height: `${barHeight}px`,
       ...xyToHighlightData(e.offsetX, e.offsetY),
     });
   };

@@ -609,7 +609,7 @@ class FlameGraph extends React.Component {
               onBlur={() => {}}
             />
             <Highlight
-              height={PX_PER_LEVEL}
+              barHeight={PX_PER_LEVEL}
               canvasRef={this.canvasRef}
               xyToHighlightData={this.xyToHighlightData}
               isWithinBounds={this.isWithinBounds}

@@ -5,7 +5,8 @@
     "airbnb",
     "prettier",
     "prettier/react",
-    "plugin:cypress/recommended"
+    "plugin:cypress/recommended",
+    "plugin:import/typescript"
   ],
   "rules": {
     "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
@@ -34,7 +35,7 @@
     "react/jsx-filename-extension": [1, { "extensions": [".tsx", ".ts"] }],
     "import/extensions": [
       "error",
-      "ignorePackages",
+      "always",
       {
         "js": "never",
         "jsx": "never",

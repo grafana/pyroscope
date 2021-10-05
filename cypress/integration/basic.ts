@@ -1,4 +1,8 @@
-import { BAR_HEIGHT } from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent';
+// copied from the source code
+// TODO move those definitions to a different shareable file
+const PX_PER_LEVEL = 18;
+const GAP = 0.5;
+const BAR_HEIGHT = PX_PER_LEVEL - GAP;
 
 /// <reference types="cypress" />
 describe('basic test', () => {
@@ -337,7 +341,7 @@ describe('basic test', () => {
     });
   });
 
-  describe('tooltip', () => {
+  describe('highlight', () => {
     it('works in diff view', () => {
       cy.intercept('**/render*', {
         fixture: 'simple-golang-app-cpu-diff.json',

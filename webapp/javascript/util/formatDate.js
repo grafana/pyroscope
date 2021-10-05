@@ -1,6 +1,8 @@
 /* eslint-disable no-underscore-dangle */
 // we import moment/src/moment instead of moment because we don't want to load locales
-import moment from 'moment/src/moment';
+//
+// TODO: don't import locales
+import moment from 'moment';
 
 const multiplierMapping = {
   s: 'second',
