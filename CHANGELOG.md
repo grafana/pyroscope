@@ -1,3 +1,16 @@
+## 0.2.0 (2021-10-05)
+
+* docs: Cleanup docs for Pip package and Ruby gem (#438) ([314dc4b](https://github.com/pyroscope-io/pyroscope/commit/314dc4b)), closes [#438](https://github.com/pyroscope-io/pyroscope/issues/438)
+* docs: update Pyroscope example with pip package (#434) ([c705f38](https://github.com/pyroscope-io/pyroscope/commit/c705f38)), closes [#434](https://github.com/pyroscope-io/pyroscope/issues/434)
+* docs: Update Ruby Example with new Ruby gem (#429) ([50b3e38](https://github.com/pyroscope-io/pyroscope/commit/50b3e38)), closes [#429](https://github.com/pyroscope-io/pyroscope/issues/429)
+* 408 switch from samples to percentages for diff view (#432) ([a175714](https://github.com/pyroscope-io/pyroscope/commit/a175714)), closes [#432](https://github.com/pyroscope-io/pyroscope/issues/432)
+* updates python example ([f461d0c](https://github.com/pyroscope-io/pyroscope/commit/f461d0c))
+* chore: fix flaky query test (#430) ([8dbfe94](https://github.com/pyroscope-io/pyroscope/commit/8dbfe94)), closes [#430](https://github.com/pyroscope-io/pyroscope/issues/430)
+* chore(webapp): implement live reload (#435) ([8f06505](https://github.com/pyroscope-io/pyroscope/commit/8f06505)), closes [#435](https://github.com/pyroscope-io/pyroscope/issues/435)
+* ci: make go lint fail build (#427) ([bac1171](https://github.com/pyroscope-io/pyroscope/commit/bac1171)), closes [#427](https://github.com/pyroscope-io/pyroscope/issues/427) [#430](https://github.com/pyroscope-io/pyroscope/issues/430)
+
+
+
 ## 0.1.0 (2021-09-30)
 
 * docs: update deployment image ([59c459c](https://github.com/pyroscope-io/pyroscope/commit/59c459c))
