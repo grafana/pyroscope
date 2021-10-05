@@ -1,13 +1,33 @@
----
 version: '3.9'
 services:
+  us-east-1:
+    environment:
+      - REGION=us-east-1
+    build:
+      context: .
+
+  us-west-1:
+    environment:
+      - REGION=us-west-1
+    build:
+      context: .
+
+  eu-west-1:
+    environment:
+      - REGION=eu-west-1
+    build:
+      context: .
+
   pyroscope:
-    image: 'pyroscope/pyroscope:latest'
+    image: pyroscope/pyroscope
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
     ports:
       - '4040:4040'
     command:
       - 'server'
-  app:
-    build: .
-    cap_add:
-      - SYS_PTRACE
+
+  load-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator
