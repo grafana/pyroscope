@@ -443,6 +443,7 @@ class FlameGraph extends React.Component {
         const percent = formatPercent(numBarTicks / this.state.numTicks);
 
         return {
+          format: 'single',
           title,
           numBarTicks,
           percent,
@@ -458,6 +459,7 @@ class FlameGraph extends React.Component {
         const rightPercent = ratioToPercent(rightRatio);
 
         return {
+          format: 'double',
           left: totalLeft,
           right: totalRight,
           title,
