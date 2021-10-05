@@ -28,10 +28,9 @@ function deltaDiff(levels, start, step) {
 }
 
 export function deltaDiffWrapper(format, levels) {
-  if (format === "double") {
+  if (format === 'double') {
     deltaDiff(levels, 0, 7);
     deltaDiff(levels, 3, 7);
-
   } else {
     deltaDiff(levels, 0, 4);
   }
@@ -49,35 +48,40 @@ export function deltaDiffWrapper(format, levels) {
 //   j = 6  : position in the main index (jStep)
 
 const formatSingle = {
-  format: "single",
-  jStep : 4,
-  jName : 3,
-  getBarOffset:    (level, j) => level[j],
-  getBarTotal:     (level, j) => level[j + 1],
+  format: 'single',
+  jStep: 4,
+  jName: 3,
+  getBarOffset: (level, j) => level[j],
+  getBarTotal: (level, j) => level[j + 1],
   getBarTotalDiff: (level, j) => 0,
-  getBarSelf:      (level, j) => level[j + 2],
-  getBarSelfDiff:  (level, j) => 0,
-  getBarName:      (level, j) => level[j + 3],
-}
+  getBarSelf: (level, j) => level[j + 2],
+  getBarSelfDiff: (level, j) => 0,
+  getBarName: (level, j) => level[j + 3],
+};
 
 const formatDouble = {
-  format: "double",
-  jStep : 7,
-  jName : 6,
-  getBarOffset:    (level, j) => (level[j]     + level[j + 3]),
-  getBarTotal:     (level, j) => (level[j + 4] + level[j + 1]),
-  getBarTotalLeft: (level, j) =>  level[j + 1],
-  getBarTotalRght: (level, j) =>  level[j + 4],
-  getBarTotalDiff: (level, j) => (level[j + 4] - level[j + 1]),
-  getBarSelf:      (level, j) => (level[j + 5] + level[j + 2]),
-  getBarSelfLeft:  (level, j) =>  level[j + 2],
-  getBarSelfRght:  (level, j) =>  level[j + 5],
-  getBarSelfDiff:  (level, j) => (level[j + 5] - level[j + 2]),
-  getBarName:      (level, j) =>  level[j + 6],
-}
+  format: 'double',
+  jStep: 7,
+  jName: 6,
+  getBarOffset: (level, j) => level[j] + level[j + 3],
+  getBarTotal: (level, j) => level[j + 4] + level[j + 1],
+  getBarTotalLeft: (level, j) => level[j + 1],
+  getBarTotalRght: (level, j) => level[j + 4],
+  getBarTotalDiff: (level, j) => {
+    //  console.log('level[j + 4]', level[j + 4] )
+    //  console.log( 'level[j + 1]', level[j + 1])
+
+    return level[j + 4] - level[j + 1];
+  },
+  getBarSelf: (level, j) => level[j + 5] + level[j + 2],
+  getBarSelfLeft: (level, j) => level[j + 2],
+  getBarSelfRght: (level, j) => level[j + 5],
+  getBarSelfDiff: (level, j) => level[j + 5] - level[j + 2],
+  getBarName: (level, j) => level[j + 6],
+};
 
 export function parseFlamebearerFormat(format) {
-  const isSingle = format !== "double";
+  const isSingle = format !== 'double';
   if (isSingle) return formatSingle;
   else return formatDouble;
 }

@@ -2,13 +2,13 @@
 /* eslint-disable prefer-destructuring */
 /* eslint-disable max-classes-per-file */
 export function numberWithCommas(x) {
-  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-const suffixes = ["K", "M", "G", "T"];
+const suffixes = ['K', 'M', 'G', 'T'];
 
 export function shortNumber(x) {
-  let suffix = "";
+  let suffix = '';
 
   for (let i = 0; x > 1000 && i < suffixes.length; i++) {
     suffix = suffixes[i];
@@ -18,17 +18,20 @@ export function shortNumber(x) {
   return Math.round(x).toString() + suffix;
 }
 
+export function ratioToPercent(ratio) {
+  return Math.round(10000 * ratio) / 100;
+}
 export function formatPercent(ratio) {
-  const percent = Math.round(10000 * ratio) / 100;
+  const percent = ratioToPercent(ratio);
   return `${percent}%`;
 }
 
 const durations = [
-  [60, "minute"],
-  [60, "hour"],
-  [24, "day"],
-  [30, "month"],
-  [12, "year"],
+  [60, 'minute'],
+  [60, 'hour'],
+  [24, 'day'],
+  [30, 'month'],
+  [12, 'year'],
 ];
 
 // this is a class and not a function because we can save some time by
@@ -36,7 +39,7 @@ const durations = [
 export class DurationFormatter {
   constructor(maxDur) {
     this.divider = 1;
-    this.suffix = "second";
+    this.suffix = 'second';
     for (let i = 0; i < durations.length; i++) {
       if (maxDur >= durations[i][0]) {
         this.divider *= durations[i][0];
@@ -51,28 +54,28 @@ export class DurationFormatter {
   format(samples, sampleRate) {
     let number = samples / sampleRate / this.divider;
     if (number >= 0 && number < 0.01) {
-      number = "< 0.01";
+      number = '< 0.01';
     } else if (number <= 0 && number > -0.01) {
-      number = "< 0.01";
+      number = '< 0.01';
     } else {
       number = number.toFixed(2);
     }
-    return `${number} ${this.suffix}${number === 1 ? "" : "s"}`;
+    return `${number} ${this.suffix}${number === 1 ? '' : 's'}`;
   }
 }
 
 const bytes = [
-  [1024, "KB"],
-  [1024, "MB"],
-  [1024, "GB"],
-  [1024, "TB"],
-  [1024, "PB"],
+  [1024, 'KB'],
+  [1024, 'MB'],
+  [1024, 'GB'],
+  [1024, 'TB'],
+  [1024, 'PB'],
 ];
 
 export class BytesFormatter {
   constructor(maxBytes) {
     this.divider = 1;
-    this.suffix = "bytes";
+    this.suffix = 'bytes';
     for (let i = 0; i < bytes.length; i++) {
       if (maxBytes >= bytes[i][0]) {
         this.divider *= bytes[i][0];
@@ -87,9 +90,9 @@ export class BytesFormatter {
   format(samples, sampleRate) {
     let number = samples / this.divider;
     if (number >= 0 && number < 0.01) {
-      number = "< 0.01";
+      number = '< 0.01';
     } else if (number <= 0 && number > -0.01) {
-      number = "< 0.01";
+      number = '< 0.01';
     } else {
       number = number.toFixed(2);
     }
@@ -98,17 +101,17 @@ export class BytesFormatter {
 }
 
 const objects = [
-  [1000, "K"],
-  [1000, "M"],
-  [1000, "G"],
-  [1000, "T"],
-  [1000, "P"],
+  [1000, 'K'],
+  [1000, 'M'],
+  [1000, 'G'],
+  [1000, 'T'],
+  [1000, 'P'],
 ];
 
 export class ObjectsFormatter {
   constructor(maxObjects) {
     this.divider = 1;
-    this.suffix = "";
+    this.suffix = '';
     for (let i = 0; i < objects.length; i++) {
       if (maxObjects >= objects[i][0]) {
         this.divider *= objects[i][0];
@@ -123,9 +126,9 @@ export class ObjectsFormatter {
   format(samples, sampleRate) {
     let number = samples / this.divider;
     if (number >= 0 && number < 0.01) {
-      number = "< 0.01";
+      number = '< 0.01';
     } else if (number <= 0 && number > -0.01) {
-      number = "< 0.01";
+      number = '< 0.01';
     } else {
       number = number.toFixed(2);
     }
@@ -158,13 +161,19 @@ export function getPackageNameFromStackTrace(spyName, stackTrace) {
 
 export function getFormatter(max, sampleRate, units) {
   switch (units) {
-    case "samples":
+    case 'samples':
       return new DurationFormatter(max / sampleRate);
-    case "objects":
+    case 'objects':
       return new ObjectsFormatter(max);
-    case "bytes":
+    case 'bytes':
       return new BytesFormatter(max);
     default:
       return new DurationFormatter(max / sampleRate);
   }
+}
+
+export function percentDiff(leftPercent, rightPercent) {
+  // difference between 2 percents
+  // https://en.wikipedia.org/wiki/Relative_change_and_difference
+  return ((rightPercent - leftPercent) / leftPercent) * 100;
 }

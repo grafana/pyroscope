@@ -1,0 +1,150 @@
+{
+  "flamebearer": {
+    "names": [
+      "total",
+      "runtime/pprof.profileWriter",
+      "runtime/pprof.(*profileBuilder).build",
+      "compress/gzip.(*Writer).Write",
+      "compress/flate.NewWriter",
+      "compress/flate.(*compressor).init",
+      "net/http.(*conn).serve",
+      "net/http.serverHandler.ServeHTTP",
+      "net/http.HandlerFunc.ServeHTTP",
+      "github.com/klauspost/compress/gzhttp.NewWrapper.func1.1",
+      "net/http.(*ServeMux).ServeHTTP",
+      "github.com/slok/go-http-metrics/middleware/std.Handler.func1",
+      "github.com/slok/go-http-metrics/middleware.Middleware.Measure",
+      "github.com/slok/go-http-metrics/middleware/std.Handler.func1.1",
+      "github.com/pyroscope-io/pyroscope/pkg/server.(*Controller).ingestHandler",
+      "github.com/pyroscope-io/pyroscope/pkg/server.wrapConvertFunctionBuf.func1",
+      "github.com/pyroscope-io/pyroscope/pkg/convert.ParseTrieBuf",
+      "github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.IterateRaw",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/tree.(*Tree).InsertInt",
+      "bufio.NewReaderSize",
+      "github.com/pyroscope-io/pyroscope/pkg/util/debug.(*Reporter).Start",
+      "github.com/pyroscope-io/pyroscope/pkg/util/debug.DiskUsage",
+      "github.com/pyroscope-io/pyroscope/pkg/util/debug.dirSize",
+      "path/filepath.Walk",
+      "path/filepath.walk",
+      "path/filepath.readDirNames",
+      "os.(*File).Readdirnames",
+      "os.(*File).readdir",
+      "github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct.(*Direct).uploadLoop",
+      "github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct.(*Direct).safeUpload",
+      "github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct.(*Direct).uploadProfile",
+      "github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie.(*Trie).Iterate",
+      "github.com/pyroscope-io/pyroscope/pkg/storage.IngestionObserver.Put",
+      "github.com/pyroscope-io/pyroscope/pkg/storage.(*Storage).Put",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/segment.(*Segment).Put",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/segment.(*streeNode).put",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/segment.(*Segment).Put.func1",
+      "github.com/pyroscope-io/pyroscope/pkg/storage.(*Storage).Put.func1",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/tree.(*Tree).Clone",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/tree.(*treeNode).clone",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/cache.(*Cache).GetOrCreate",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/cache.(*Cache).get",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/cache/lfu.(*Cache).GetOrSet",
+      "github.com/pyroscope-io/pyroscope/pkg/storage/cache/lfu.(*Cache).increment",
+      "github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).takeSnapshots",
+      "github.com/pyroscope-io/pyroscope/pkg/agent/gospy.(*GoSpy).Snapshot",
+      "runtime/pprof.writeHeap",
+      "runtime/pprof.writeHeapInternal",
+      "runtime/pprof.writeHeapProto",
+      "runtime/pprof.(*profileBuilder).pbSample",
+      "runtime/pprof.(*profileBuilder).flush",
+      "compress/flate.newDeflateFast",
+      "runtime/pprof.(*profileBuilder).appendLocsForStack",
+      "runtime/pprof.(*profileBuilder).stringIndex",
+      "runtime/pprof.(*profileBuilder).emitLocation",
+      "github.com/pyroscope-io/pyroscope/pkg/agent/gospy.getHeapProfile",
+      "io/ioutil.ReadAll",
+      "io.ReadAll",
+      "github.com/pyroscope-io/pyroscope/pkg/convert.ParsePprof",
+      "google.golang.org/protobuf/proto.Unmarshal",
+      "google.golang.org/protobuf/proto.UnmarshalOptions.unmarshal",
+      "google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshal",
+      "google.golang.org/protobuf/internal/impl.(*MessageInfo).unmarshalPointer",
+      "google.golang.org/protobuf/internal/impl.consumeMessageSliceInfo",
+      "reflect.New",
+      "github.com/pyroscope-io/pyroscope/pkg/agent/gospy.(*GoSpy).Snapshot.func1",
+      "github.com/pyroscope-io/pyroscope/pkg/agent/gospy.startCPUProfile",
+      "runtime/pprof.StartCPUProfile"
+    ],
+    "levels": [
+      [0, 12520922, 0, 0],
+      [
+        0, 5667556, 0, 44, 0, 2097456, 0, 28, 0, 524300, 0, 20, 0, 1050638, 0,
+        6, 0, 3180972, 0, 1
+      ],
+      [
+        0, 5667556, 0, 45, 0, 2097456, 0, 29, 0, 524300, 0, 21, 0, 526338,
+        526338, 19, 0, 524300, 0, 7, 0, 3180972, 0, 2
+      ],
+      [
+        0, 1212697, 0, 65, 0, 1062382, 0, 55, 0, 3392477, 0, 46, 0, 2097456, 0,
+        30, 0, 524300, 0, 22, 526338, 524300, 0, 8, 0, 3180972, 0, 3
+      ],
+      [
+        0, 1212697, 0, 66, 0, 524344, 0, 58, 0, 538038, 0, 56, 0, 3392477, 0,
+        47, 0, 1048648, 0, 32, 0, 1048808, 1048808, 31, 0, 524300, 0, 23,
+        526338, 524300, 0, 9, 0, 3180972, 1848497, 4
+      ],
+      [
+        0, 1212697, 1212697, 67, 0, 524344, 0, 59, 0, 538038, 538038, 57, 0,
+        3392477, 0, 48, 0, 1048648, 0, 33, 1048808, 524300, 0, 24, 526338,
+        524300, 0, 10, 1848497, 1332475, 1332475, 5
+      ],
+      [
+        1212697, 524344, 0, 60, 538038, 1204992, 0, 52, 0, 2187485, 0, 49, 0,
+        524328, 0, 40, 0, 524320, 0, 34, 1048808, 524300, 0, 25, 526338, 524300,
+        0, 8
+      ],
+      [
+        1212697, 524344, 0, 61, 538038, 666238, 0, 54, 0, 538754, 538754, 53, 0,
+        2187485, 0, 50, 0, 524328, 0, 41, 0, 524320, 0, 35, 1048808, 524300, 0,
+        26, 526338, 524300, 0, 8
+      ],
+      [
+        1212697, 524344, 0, 62, 538038, 666238, 0, 50, 538754, 2187485, 0, 3, 0,
+        524328, 0, 42, 0, 524320, 0, 36, 1048808, 524300, 524300, 27, 526338,
+        524300, 0, 11
+      ],
+      [
+        1212697, 524344, 0, 63, 538038, 666238, 0, 3, 538754, 2187485, 924248,
+        4, 0, 524328, 524328, 43, 0, 524320, 0, 37, 2099446, 524300, 0, 12
+      ],
+      [
+        1212697, 524344, 524344, 64, 538038, 666238, 0, 4, 1463002, 666238,
+        666238, 5, 0, 596999, 596999, 51, 524328, 524320, 0, 38, 2099446,
+        524300, 0, 13
+      ],
+      [
+        2275079, 666238, 666238, 5, 3250567, 524320, 0, 39, 2099446, 524300, 0,
+        8
+      ],
+      [6191884, 524320, 0, 39, 2099446, 524300, 0, 8],
+      [6191884, 524320, 0, 39, 2099446, 524300, 0, 14],
+      [6191884, 524320, 0, 39, 2099446, 524300, 0, 15],
+      [6191884, 524320, 0, 39, 2099446, 524300, 0, 16],
+      [6191884, 524320, 0, 39, 2099446, 524300, 0, 17],
+      [6191884, 524320, 524320, 39, 2099446, 524300, 524300, 18]
+    ],
+    "numTicks": 12520922,
+    "maxSelf": 1848497,
+    "spyName": "gospy",
+    "sampleRate": 100,
+    "units": "bytes",
+    "format": "single"
+  },
+  "metadata": {
+    "format": "single",
+    "sampleRate": 100,
+    "spyName": "gospy",
+    "units": "bytes"
+  },
+  "timeline": {
+    "startTime": 1632505880,
+    "samples": [7116106, 5404818],
+    "durationDelta": 10
+  }
+}

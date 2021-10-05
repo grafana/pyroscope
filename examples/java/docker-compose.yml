@@ -1,13 +1,13 @@
 ---
-version: "3.9"
+version: '3.9'
 services:
   pyroscope:
-    image: "pyroscope/pyroscope:latest"
+    image: 'pyroscope/pyroscope:latest'
     environment:
-      - "PYROSCOPE_LOG_LEVEL=debug"
+      - 'PYROSCOPE_LOG_LEVEL=debug'
     ports:
-      - "4040:4040"
+      - '4040:4040'
     command:
-      - "server"
+      - 'server'
   app:
     build: .

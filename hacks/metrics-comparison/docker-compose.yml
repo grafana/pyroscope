@@ -1,4 +1,4 @@
-version: "3.9"
+version: '3.9'
 services:
   pyroscope_dev:
     environment:
@@ -15,7 +15,6 @@ services:
           cpus: 1
           memory: 2048MB
 
-
   pyroscope_reference:
     environment:
       - PYROSCOPE_LOG_LEVEL=debug
@@ -24,7 +23,7 @@ services:
     command:
       - server
     ports:
-    - 4041:4040
+      - 4041:4040
     deploy:
       resources:
         limits:
@@ -37,14 +36,14 @@ services:
       - ./grafana-provisioning:/etc/grafana/provisioning
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
     environment:
-    - "GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel"
+      - 'GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel'
     ports:
-    - 3000:3000
+      - 3000:3000
 
   prometheus:
     image: prom/prometheus:latest
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
+      - '--config.file=/etc/prometheus/prometheus.yml'
     volumes:
       - ./prometheus:/etc/prometheus/
       - data-prometheus:/prometheus
@@ -53,13 +52,13 @@ services:
     build:
       context: ./golang
     environment:
-    - "PYROSCOPE_URL=pyroscope_dev:4040"
+      - 'PYROSCOPE_URL=pyroscope_dev:4040'
 
   go-agent-ref:
     build:
       context: ./golang
     environment:
-    - "PYROSCOPE_URL=pyroscope_reference:4040"
+      - 'PYROSCOPE_URL=pyroscope_reference:4040'
 
 volumes:
   data-prometheus:

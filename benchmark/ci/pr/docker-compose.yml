@@ -2,7 +2,7 @@
 x-PYROSCOPE_CPUS: &PYROSCOPE_CPUS 1
 x-PYROSCOPE_MEMORY: &PYROSCOPE_MEMORY 4096MB
 
-version: "3.9"
+version: '3.9'
 services:
   client:
     build:
@@ -10,12 +10,12 @@ services:
       dockerfile: benchmark/Dockerfile
     # we will be running docker exec against it
     command:
-    - sh
-    - -c
-    - sleep Infinity
+      - sh
+      - -c
+      - sleep Infinity
     volumes:
-    - ./dashboard-screenshots:/screenshots
-    - ./report.yaml:/report.yaml
+      - ./dashboard-screenshots:/screenshots
+      - ./report.yaml:/report.yaml
   pyroscope:
     environment:
       - PYROSCOPE_LOG_LEVEL=info

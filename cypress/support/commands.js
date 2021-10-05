@@ -23,4 +23,22 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-import "@testing-library/cypress/add-commands";
+import '@testing-library/cypress/add-commands';
+
+import { addMatchImageSnapshotCommand } from 'cypress-image-snapshot/command';
+
+addMatchImageSnapshotCommand({
+  capture: 'viewport',
+});
+
+// We also overwrite the command, so it does not take a screenshot if we run the tests inside the test runner
+Cypress.Commands.overwrite(
+  'matchImageSnapshot',
+  (originalFn, snapshotName, options) => {
+    if (Cypress.env('COMPARE_SNAPSHOTS')) {
+      originalFn(snapshotName, options);
+    } else {
+      cy.log(`Screenshot comparison is disabled`);
+    }
+  }
+);

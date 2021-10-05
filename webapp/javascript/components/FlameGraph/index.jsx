@@ -5,12 +5,12 @@
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
 
-import { connect } from "react-redux";
-import { bindActionCreators } from "redux";
-import { withShortcut } from "react-keybind";
-import { buildDiffRenderURL, buildRenderURL } from "../../util/updateRequests";
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
+import { withShortcut } from 'react-keybind';
+import { buildDiffRenderURL, buildRenderURL } from '../../util/updateRequests';
 
-import FlameGraphRenderer from "./FlameGraphRenderer";
+import FlameGraphRenderer from './FlameGraphRenderer';
 
 const mapStateToProps = (state) => ({
   ...state,

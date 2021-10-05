@@ -1,4 +1,4 @@
-version: "3.9"
+version: '3.9'
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -14,12 +14,12 @@ services:
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
       - ./grafana/home.json:/default-dashboard.json
     environment:
-    - "GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel"
+      - 'GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel'
     ports:
       - 3000:3000
 
   pyroscope:
-    image: "pyroscope/pyroscope:latest"
+    image: 'pyroscope/pyroscope:latest'
     ports:
       - 4040:4040
     command:
@@ -27,7 +27,6 @@ services:
     environment:
       - PYROSCOPE_LOG_LEVEL=info
       - PYROSCOPE_WAIT_AFTER_STOP=true
-
 
   go-agent:
     build:

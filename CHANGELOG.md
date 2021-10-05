@@ -1,3 +1,77 @@
+## 0.2.0 (2021-10-05)
+
+* docs: Cleanup docs for Pip package and Ruby gem (#438) ([314dc4b](https://github.com/pyroscope-io/pyroscope/commit/314dc4b)), closes [#438](https://github.com/pyroscope-io/pyroscope/issues/438)
+* docs: update Pyroscope example with pip package (#434) ([c705f38](https://github.com/pyroscope-io/pyroscope/commit/c705f38)), closes [#434](https://github.com/pyroscope-io/pyroscope/issues/434)
+* docs: Update Ruby Example with new Ruby gem (#429) ([50b3e38](https://github.com/pyroscope-io/pyroscope/commit/50b3e38)), closes [#429](https://github.com/pyroscope-io/pyroscope/issues/429)
+* 408 switch from samples to percentages for diff view (#432) ([a175714](https://github.com/pyroscope-io/pyroscope/commit/a175714)), closes [#432](https://github.com/pyroscope-io/pyroscope/issues/432)
+* updates python example ([f461d0c](https://github.com/pyroscope-io/pyroscope/commit/f461d0c))
+* chore: fix flaky query test (#430) ([8dbfe94](https://github.com/pyroscope-io/pyroscope/commit/8dbfe94)), closes [#430](https://github.com/pyroscope-io/pyroscope/issues/430)
+* chore(webapp): implement live reload (#435) ([8f06505](https://github.com/pyroscope-io/pyroscope/commit/8f06505)), closes [#435](https://github.com/pyroscope-io/pyroscope/issues/435)
+* ci: make go lint fail build (#427) ([bac1171](https://github.com/pyroscope-io/pyroscope/commit/bac1171)), closes [#427](https://github.com/pyroscope-io/pyroscope/issues/427) [#430](https://github.com/pyroscope-io/pyroscope/issues/430)
+
+
+
+## 0.1.0 (2021-09-30)
+
+* docs: update deployment image ([59c459c](https://github.com/pyroscope-io/pyroscope/commit/59c459c))
+* docs: update readme (#426) ([1dd94cb](https://github.com/pyroscope-io/pyroscope/commit/1dd94cb)), closes [#426](https://github.com/pyroscope-io/pyroscope/issues/426)
+* docs: update the translation to keep up with the original (#423) ([544f49e](https://github.com/pyroscope-io/pyroscope/commit/544f49e)), closes [#423](https://github.com/pyroscope-io/pyroscope/issues/423)
+* docs: updates ruby / python example (#422) ([0dd5756](https://github.com/pyroscope-io/pyroscope/commit/0dd5756)), closes [#422](https://github.com/pyroscope-io/pyroscope/issues/422)
+* bug: fix issues with tag intersections in query engine (#425) ([bf34937](https://github.com/pyroscope-io/pyroscope/commit/bf34937)), closes [#425](https://github.com/pyroscope-io/pyroscope/issues/425)
+* add basic visual testing test (#419) ([e3e170d](https://github.com/pyroscope-io/pyroscope/commit/e3e170d)), closes [#419](https://github.com/pyroscope-io/pyroscope/issues/419)
+* Visual testing (#421) ([af91c14](https://github.com/pyroscope-io/pyroscope/commit/af91c14)), closes [#421](https://github.com/pyroscope-io/pyroscope/issues/421)
+* feat: TLS support for the server #185 (#404) ([6eb4a6c](https://github.com/pyroscope-io/pyroscope/commit/6eb4a6c)), closes [#185](https://github.com/pyroscope-io/pyroscope/issues/185) [#404](https://github.com/pyroscope-io/pyroscope/issues/404)
+
+
+
+## <small>0.0.41 (2021-09-24)</small>
+
+* fixes mac builds ([5f4e0e3](https://github.com/pyroscope-io/pyroscope/commit/5f4e0e3))
+
+
+
+## <small>0.0.40 (2021-09-24)</small>
+
+* Add placeholder for agent / server communication ([de9e4f8](https://github.com/pyroscope-io/pyroscope/commit/de9e4f8))
+* adds a java example (#410) ([1a4741c](https://github.com/pyroscope-io/pyroscope/commit/1a4741c)), closes [#410](https://github.com/pyroscope-io/pyroscope/issues/410)
+* Adds gem and pip examples to the repo (#420) ([7a74083](https://github.com/pyroscope-io/pyroscope/commit/7a74083)), closes [#420](https://github.com/pyroscope-io/pyroscope/issues/420)
+* basic pyrobench cli reusing config/config.go ([8841206](https://github.com/pyroscope-io/pyroscope/commit/8841206))
+* basic pyrobench cli using its own config.go ([a0659df](https://github.com/pyroscope-io/pyroscope/commit/a0659df))
+* better naming ([7a466e6](https://github.com/pyroscope-io/pyroscope/commit/7a466e6))
+* Bump go version to 1.17.0 (#372) ([e650f3e](https://github.com/pyroscope-io/pyroscope/commit/e650f3e)), closes [#372](https://github.com/pyroscope-io/pyroscope/issues/372)
+* Config fixes, test cases (#376) ([6b7911e](https://github.com/pyroscope-io/pyroscope/commit/6b7911e)), closes [#376](https://github.com/pyroscope-io/pyroscope/issues/376)
+* Enhancement/split flamegraphrenderer (#360) ([230699f](https://github.com/pyroscope-io/pyroscope/commit/230699f)), closes [#360](https://github.com/pyroscope-io/pyroscope/issues/360) [#382](https://github.com/pyroscope-io/pyroscope/issues/382)
+* fix env var prefix ([6ac82b9](https://github.com/pyroscope-io/pyroscope/commit/6ac82b9))
+* fix race conditions that were crashing cypress tests (#389) ([86778e5](https://github.com/pyroscope-io/pyroscope/commit/86778e5)), closes [#389](https://github.com/pyroscope-io/pyroscope/issues/389)
+* Fix reset view (#414) ([f8da10f](https://github.com/pyroscope-io/pyroscope/commit/f8da10f)), closes [#414](https://github.com/pyroscope-io/pyroscope/issues/414)
+* Fix search bar (#413) ([0b17e11](https://github.com/pyroscope-io/pyroscope/commit/0b17e11)), closes [#413](https://github.com/pyroscope-io/pyroscope/issues/413)
+* fix search bar (#415) ([8f86341](https://github.com/pyroscope-io/pyroscope/commit/8f86341)), closes [#415](https://github.com/pyroscope-io/pyroscope/issues/415)
+* Fixes diff view color issue (#383) ([897de97](https://github.com/pyroscope-io/pyroscope/commit/897de97)), closes [#383](https://github.com/pyroscope-io/pyroscope/issues/383)
+* generate a random prefix for server bench pr docker-compose (#392) ([8993204](https://github.com/pyroscope-io/pyroscope/commit/8993204)), closes [#392](https://github.com/pyroscope-io/pyroscope/issues/392)
+* makes it so that sign out button is hidden when there's no auth methods set up (#377) ([ce5fb76](https://github.com/pyroscope-io/pyroscope/commit/ce5fb76)), closes [#377](https://github.com/pyroscope-io/pyroscope/issues/377)
+* move cmd/logging stuff to /pkg/cli for better reuse ([9f28783](https://github.com/pyroscope-io/pyroscope/commit/9f28783))
+* move command.go stuff to /pkg ([f8a6f57](https://github.com/pyroscope-io/pyroscope/commit/f8a6f57))
+* move gradient banner generation to pkg/cli ([1b82733](https://github.com/pyroscope-io/pyroscope/commit/1b82733))
+* move usage.go to pkg/cli for better reuse ([2d2007e](https://github.com/pyroscope-io/pyroscope/commit/2d2007e))
+* Optimize cache persistence (#385) ([106ebde](https://github.com/pyroscope-io/pyroscope/commit/106ebde)), closes [#385](https://github.com/pyroscope-io/pyroscope/issues/385)
+* Optimize ingestion allocations (#411) ([ec880c5](https://github.com/pyroscope-io/pyroscope/commit/ec880c5)), closes [#411](https://github.com/pyroscope-io/pyroscope/issues/411)
+* serve assets gzipped #342 (#381) ([0039ec5](https://github.com/pyroscope-io/pyroscope/commit/0039ec5)), closes [#342](https://github.com/pyroscope-io/pyroscope/issues/342) [#381](https://github.com/pyroscope-io/pyroscope/issues/381) [#342](https://github.com/pyroscope-io/pyroscope/issues/342)
+* Server PR benchmark (#373) ([0403cee](https://github.com/pyroscope-io/pyroscope/commit/0403cee)), closes [#373](https://github.com/pyroscope-io/pyroscope/issues/373)
+* support taking screenshot of dashboard with rows (#395) ([c2d922f](https://github.com/pyroscope-io/pyroscope/commit/c2d922f)), closes [#395](https://github.com/pyroscope-io/pyroscope/issues/395)
+* tests for app change dropdown (issue #356) (#386) ([2332075](https://github.com/pyroscope-io/pyroscope/commit/2332075)), closes [#356](https://github.com/pyroscope-io/pyroscope/issues/356) [#386](https://github.com/pyroscope-io/pyroscope/issues/386)
+* tests for table sorting (issue #356) (#407) ([9bdabca](https://github.com/pyroscope-io/pyroscope/commit/9bdabca)), closes [#356](https://github.com/pyroscope-io/pyroscope/issues/356) [#407](https://github.com/pyroscope-io/pyroscope/issues/407)
+* tests for table/both/flamegraph buttons (issue #356) (#375) ([75b0357](https://github.com/pyroscope-io/pyroscope/commit/75b0357)), closes [#356](https://github.com/pyroscope-io/pyroscope/issues/356) [#375](https://github.com/pyroscope-io/pyroscope/issues/375)
+* Updates README with info about Java integration ([a6e010b](https://github.com/pyroscope-io/pyroscope/commit/a6e010b))
+* frontend: apply prettier to cypress/webapp (#417) ([fffac60](https://github.com/pyroscope-io/pyroscope/commit/fffac60)), closes [#417](https://github.com/pyroscope-io/pyroscope/issues/417)
+* benchmark: add cmd to generate a meta report (#396) ([239b28b](https://github.com/pyroscope-io/pyroscope/commit/239b28b)), closes [#396](https://github.com/pyroscope-io/pyroscope/issues/396)
+* cypress: cleanup nasty waitInDevMode (#380) ([c831911](https://github.com/pyroscope-io/pyroscope/commit/c831911)), closes [#380](https://github.com/pyroscope-io/pyroscope/issues/380)
+* pyrobench: basic load generation ([1536b75](https://github.com/pyroscope-io/pyroscope/commit/1536b75))
+* pyrobench: copy over refactor from main ([387170c](https://github.com/pyroscope-io/pyroscope/commit/387170c))
+* pyrobench: make cli style same as the original cli ([580ed5f](https://github.com/pyroscope-io/pyroscope/commit/580ed5f))
+* pyrobench: use a wrapper config ([e0e614c](https://github.com/pyroscope-io/pyroscope/commit/e0e614c))
+
+
+
 ## <small>0.0.39 (2021-09-01)</small>
 
 * Add tests for exec command ([70164d6](https://github.com/pyroscope-io/pyroscope/commit/70164d6))

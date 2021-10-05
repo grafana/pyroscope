@@ -36,7 +36,7 @@ func newNode(expr string) (node, error) {
 	return f, nil
 }
 
-func (f node) valueTotal(t *tree.Tree) (float64, bool) {
+func (node) valueTotal(t *tree.Tree) (float64, bool) {
 	x := t.Samples()
 	return float64(x), x != 0
 }

@@ -25,9 +25,9 @@
 #### _Read this in other languages._
 <kbd>[<img title="中文 (Simplified)" alt="中文 (Simplified)" src="https://cdn.staticaly.com/gh/hjnilsson/country-flags/master/svg/cn.svg" width="22">](translations/README.ch.md)</kbd>
 
-
+### What is Pyroscope?
 Pyroscope is an open source continuous profiling platform. It will help you:
-* Find performance issues in your code
+* Find performance issues and bottlenecks in your code
 * Resolve issues with high CPU utilization
 * Understand the call tree of your application
 * Track changes over time
@@ -45,27 +45,41 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 * Low CPU overhead
 * Efficient compression, low disk space requirements
 * Snappy UI
-* Support for Go, Ruby and Python
 
-## Try Pyroscope locally in 3 steps:
-
+## Add Pyroscope Server locally in 2 steps:
+Pyroscope supports all major architectures and is very easy to install. for example here is how you install on a mac:
 ```shell
 # install pyroscope
 brew install pyroscope-io/brew/pyroscope
 
 # start pyroscope server:
 pyroscope server
-
-# in a separate tab, start profiling your app:
-pyroscope exec python manage.py runserver # If using Python
-pyroscope exec rails server               # If using Ruby
-
-# If using Pyroscope cloud add flags for server address and auth token
-# pyroscope exec -server-address "https://your_company.pyroscope.cloud" -auth-token "ps-key-1234567890" python manage.py runserver
 ```
 
-## Documentation
+## Send data to server via Pyroscope agent (language specific)
+For more documentation on how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website.
+- [Golang Agent](https://pyroscope.io/docs/golang)
+- [Python Agent (pip)](https://pyroscope.io/docs/python)
+- [Ruby Agent (gem)](https://pyroscope.io/docs/ruby)
+- [eBPF Agent](https://pyroscope.io/docs/ebpf)
+- [PHP Agent](https://pyroscope.io/docs/php)
+- [.NET Agent](https://pyroscope.io/docs/dotnet)
 
+## Example Code
+We also have language-specific examples (using Docker) of how to run the *server and agent together*
+- [Golang Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang)
+- [Python Pip Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/python)
+- [Ruby Gem Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/ruby)
+- [Grafana Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
+- [Java Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/java)
+- [PHP example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/php)
+- [.NET Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/dotnet)
+
+## Deployment Diagram
+
+![Deployment Diagram](.github/markdown-images/deployment.svg)
+
+## Documentation
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
 
 * [Public Roadmap](https://github.com/pyroscope-io/pyroscope/projects/1)
@@ -73,10 +87,6 @@ For more information on how to use Pyroscope with other programming languages, i
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
 * [Developer Guide](https://pyroscope.io/docs/developer-guide)
 
-
-## Deployment Diagram
-
-![Deployment Diagram](.github/markdown-images/deployment.svg)
 
 ## Downloads
 
@@ -90,7 +100,8 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [x] Linux eBPF (via `profile.py` from `bcc-tools`)
 * [x] PHP (via `phpspy`)
 * [x] .NET (via `dotnet trace`)
-* [ ] Java (coming soon)
+* [x] Java (via `async-profiler`)
+* [ ] Node [(seeking contributors)](https://github.com/pyroscope-io/pyroscope/issues/8)
 
 Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
 
@@ -117,8 +128,8 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/petethepig"><img src="https://avatars.githubusercontent.com/u/662636?v=4" title="petethepig" width="80" height="80"></a>
 <a href="https://github.com/Rperry2174"><img src="https://avatars.githubusercontent.com/u/23323466?v=4" title="Rperry2174" width="80" height="80"></a>
 <a href="https://github.com/kolesnikovae"><img src="https://avatars.githubusercontent.com/u/12090599?v=4" title="kolesnikovae" width="80" height="80"></a>
-<a href="https://github.com/LouisInFlow"><img src="https://avatars.githubusercontent.com/u/84481279?v=4" title="LouisInFlow" width="80" height="80"></a>
 <a href="https://github.com/eh-am"><img src="https://avatars.githubusercontent.com/u/6951209?v=4" title="eh-am" width="80" height="80"></a>
+<a href="https://github.com/LouisInFlow"><img src="https://avatars.githubusercontent.com/u/84481279?v=4" title="LouisInFlow" width="80" height="80"></a>
 <a href="https://github.com/abaali"><img src="https://avatars.githubusercontent.com/u/37961057?v=4" title="abaali" width="80" height="80"></a>
 <a href="https://github.com/olvrng"><img src="https://avatars.githubusercontent.com/u/6618620?v=4" title="olvrng" width="80" height="80"></a>
 <a href="https://github.com/alonlong"><img src="https://avatars.githubusercontent.com/u/3090383?v=4" title="alonlong" width="80" height="80"></a>
@@ -137,9 +148,11 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/yashrsharma44"><img src="https://avatars.githubusercontent.com/u/31438680?v=4" title="yashrsharma44" width="80" height="80"></a>
 <a href="https://github.com/wusphinx"><img src="https://avatars.githubusercontent.com/u/1380777?v=4" title="wusphinx" width="80" height="80"></a>
 <a href="https://github.com/ayeniblessing101"><img src="https://avatars.githubusercontent.com/u/29165344?v=4" title="ayeniblessing101" width="80" height="80"></a>
+<a href="https://github.com/gawicks"><img src="https://avatars.githubusercontent.com/u/1481491?v=4" title="gawicks" width="80" height="80"></a>
 <a href="https://github.com/appleboy"><img src="https://avatars.githubusercontent.com/u/21979?v=4" title="appleboy" width="80" height="80"></a>
 <a href="https://github.com/highb"><img src="https://avatars.githubusercontent.com/u/759848?v=4" title="highb" width="80" height="80"></a>
 <a href="https://github.com/cwalv"><img src="https://avatars.githubusercontent.com/u/887222?v=4" title="cwalv" width="80" height="80"></a>
+<a href="https://github.com/Cluas"><img src="https://avatars.githubusercontent.com/u/10056928?v=4" title="Cluas" width="80" height="80"></a>
 <a href="https://github.com/Faria-Ejaz"><img src="https://avatars.githubusercontent.com/u/14238844?v=4" title="Faria-Ejaz" width="80" height="80"></a>
 <a href="https://github.com/yveshield"><img src="https://avatars.githubusercontent.com/u/8733258?v=4" title="yveshield" width="80" height="80"></a>
 <a href="https://github.com/czeslavo"><img src="https://avatars.githubusercontent.com/u/8835851?v=4" title="czeslavo" width="80" height="80"></a>
@@ -148,7 +161,6 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/teivah"><img src="https://avatars.githubusercontent.com/u/934784?v=4" title="teivah" width="80" height="80"></a>
 <a href="https://github.com/NSObjects"><img src="https://avatars.githubusercontent.com/u/17995427?v=4" title="NSObjects" width="80" height="80"></a>
 <a href="https://github.com/vbehar"><img src="https://avatars.githubusercontent.com/u/6251?v=4" title="vbehar" width="80" height="80"></a>
-<a href="https://github.com/gawicks"><img src="https://avatars.githubusercontent.com/u/1481491?v=4" title="gawicks" width="80" height="80"></a>
 <a href="https://github.com/hiyanxu"><img src="https://avatars.githubusercontent.com/u/15027927?v=4" title="hiyanxu" width="80" height="80"></a>
 <a href="https://github.com/miravtmehta"><img src="https://avatars.githubusercontent.com/u/54740656?v=4" title="miravtmehta" width="80" height="80"></a>
 <a href="https://github.com/lzh2nix"><img src="https://avatars.githubusercontent.com/u/7421004?v=4" title="lzh2nix" width="80" height="80"></a>

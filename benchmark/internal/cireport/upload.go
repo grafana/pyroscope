@@ -11,14 +11,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type fs struct {
-}
+type FsWriter struct{}
 
-func NewFsWriter() *fs {
-	return &fs{}
-}
-
-func (rs *fs) WriteFile(dest string, data []byte) (string, error) {
+func (*FsWriter) WriteFile(dest string, data []byte) (string, error) {
 	if _, err := os.Stat(dest); err != nil && !os.IsNotExist(err) {
 		// unkown error
 		return "", err
@@ -35,25 +30,16 @@ func (rs *fs) WriteFile(dest string, data []byte) (string, error) {
 		return "", err
 	}
 
-	// not really useful since we don't have the full path
-	if _, err := os.Stat(dest); err == nil {
-		// file exists
-	} else if os.IsNotExist(err) {
-		// file does not exist
-	} else {
-		// unkown error
-		return "", err
-	}
 	return "file://" + dest, nil
 }
 
-type s3Writer struct {
+type S3Writer struct {
 	bucket *s3go.Bucket
 }
 
-// NewS3Writer creates a s3
+// NewS3Writer creates a s3 writer
 // it assumes AWS environment variables are setup correctly
-func NewS3Writer(bucketName string) (*s3Writer, error) {
+func NewS3Writer(bucketName string) (*S3Writer, error) {
 	if bucketName == "" {
 		return nil, fmt.Errorf("bucket name can't be empty")
 	}
@@ -66,12 +52,12 @@ func NewS3Writer(bucketName string) (*s3Writer, error) {
 	s3 := s3go.New("", keys)
 	b := s3.Bucket(bucketName)
 
-	return &s3Writer{
+	return &S3Writer{
 		bucket: b,
 	}, nil
 }
 
-func (s3Writer *s3Writer) WriteFile(dest string, data []byte) (string, error) {
+func (s3Writer *S3Writer) WriteFile(dest string, data []byte) (string, error) {
 	if dest == "" {
 		return "", fmt.Errorf("filename can't be null")
 	}

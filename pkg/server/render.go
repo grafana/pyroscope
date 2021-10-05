@@ -67,7 +67,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
-
 	var (
 		p  renderParams
 		rP RenderDiffParams
@@ -120,8 +119,31 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 
 	leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
 	fs := tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
-	res := renderResponse(fs, out)
+
+	// TODO
+	fs.SpyName = out.SpyName
+	fs.SampleRate = out.SampleRate
+	fs.Units = out.Units
+	res := map[string]interface{}{
+		"leftTicks":   leftOut.Tree.Samples(),
+		"rightTicks":  rghtOut.Tree.Samples(),
+		"timeline":    out.Timeline,
+		"flamebearer": fs,
+		"metadata": map[string]interface{}{
+			"format":     fs.Format, // "single" | "double"
+			"spyName":    out.SpyName,
+			"sampleRate": out.SampleRate,
+			"units":      out.Units,
+		},
+	}
+
 	ctrl.writeResponseJSON(w, res)
+}
+
+type mergedFlamebearer struct {
+	*tree.Flamebearer
+	LeftTicks  int `json:"leftTicks"`
+	RightTicks int `json:"rightTicks"`
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {
@@ -157,15 +179,10 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	p.gi.EndTime = attime.Parse(v.Get("until"))
 	p.format = v.Get("format")
 
-	if err := ctrl.expectJSON(p.format); err != nil {
-		return err
-	}
-
-	return nil
+	return ctrl.expectJSON(p.format)
 }
 
 func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams, rP *RenderDiffParams) error {
-
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(rP); err != nil {
 		return err
@@ -198,11 +215,7 @@ func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *rend
 	p.gi.EndTime = attime.Parse(rP.Until)
 	p.format = rP.Format
 
-	if err := ctrl.expectJSON(p.format); err != nil {
-		return err
-	}
-
-	return nil
+	return ctrl.expectJSON(p.format)
 }
 
 func renderResponse(fs *tree.Flamebearer, out *storage.GetOutput) map[string]interface{} {
@@ -224,7 +237,6 @@ func renderResponse(fs *tree.Flamebearer, out *storage.GetOutput) map[string]int
 }
 
 func parseRenderRangeParams(r *http.Request, from, until string) (startTime, endTime time.Time, ok bool) {
-
 	switch r.Method {
 	case http.MethodGet:
 		fromStr, untilStr := r.URL.Query().Get(from), r.URL.Query().Get(until)
@@ -236,16 +248,15 @@ func parseRenderRangeParams(r *http.Request, from, until string) (startTime, end
 	}
 
 	return time.Now(), time.Now(), false
-
 }
 
+//revive:disable-next-line:argument-limit 7 parameters here is fine
 func (ctrl *Controller) loadTreeConcurrently(
 	gi *storage.GetInput,
 	treeStartTime, treeEndTime time.Time,
 	leftStartTime, leftEndTime time.Time,
 	rghtStartTime, rghtEndTime time.Time,
 ) (treeOut, leftOut, rghtOut *storage.GetOutput, _ error) {
-
 	var treeErr, leftErr, rghtErr error
 	var wg sync.WaitGroup
 	wg.Add(3)

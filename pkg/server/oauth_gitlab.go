@@ -91,12 +91,12 @@ func (o oauthHanlderGitlab) userAuth(client *http.Client) (string, error) {
 }
 
 func (o oauthHanlderGitlab) fetchGroups(client *http.Client) ([]gitlabGroups, error) {
-	url := o.apiURL + "/groups"
+	groupsURL := o.apiURL + "/groups"
 	more := true
 	groups := make([]gitlabGroups, 0)
 
 	for more {
-		resp, err := client.Get(url)
+		resp, err := client.Get(groupsURL)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +110,7 @@ func (o oauthHanlderGitlab) fetchGroups(client *http.Client) ([]gitlabGroups, er
 
 		groups = append(groups, grp...)
 
-		url, more = hasMoreLinkResults(resp.Header)
+		groupsURL, more = hasMoreLinkResults(resp.Header)
 		if err != nil {
 			return nil, err
 		}

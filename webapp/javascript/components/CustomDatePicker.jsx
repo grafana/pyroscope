@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 // we import moment/src/moment instead of moment because we don't want to load locales
-import moment from "moment/src/moment";
-import { useSelector } from "react-redux";
-import DatePicker from "react-datepicker";
-import { readableRange, formatAsOBject } from "../util/formatDate";
+import moment from 'moment/src/moment';
+import { useSelector } from 'react-redux';
+import DatePicker from 'react-datepicker';
+import { readableRange, formatAsOBject } from '../util/formatDate';
 
 function CustomDatePicker({ setRange, dispatch, setDateRange }) {
   const from = useSelector((state) => state.from);
@@ -69,7 +69,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
           dateFormat="yyyy-MM-dd hh:mm aa"
         />
       </div>
-      {warning && <p style={{ color: "red" }}>Warning: invalid date Range</p>}
+      {warning && <p style={{ color: 'red' }}>Warning: invalid date Range</p>}
 
       <button
         type="submit"
