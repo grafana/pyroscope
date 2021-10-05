@@ -75,6 +75,9 @@ We also have language-specific examples (using Docker) of how to run the *server
 - [PHP example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/php)
 - [.NET Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/dotnet)
 
+## Deployment Diagram
+
+![Deployment Diagram](.github/markdown-images/deployment.svg)
 
 ## Documentation
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
@@ -84,10 +87,6 @@ For more information on how to use Pyroscope with other programming languages, i
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
 * [Developer Guide](https://pyroscope.io/docs/developer-guide)
 
-
-## Deployment Diagram
-
-![Deployment Diagram](.github/markdown-images/deployment.svg)
 
 ## Downloads
 
