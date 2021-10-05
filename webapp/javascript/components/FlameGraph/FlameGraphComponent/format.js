@@ -18,8 +18,11 @@ export function shortNumber(x) {
   return Math.round(x).toString() + suffix;
 }
 
+export function ratioToPercent(ratio) {
+  return Math.round(10000 * ratio) / 100;
+}
 export function formatPercent(ratio) {
-  const percent = Math.round(10000 * ratio) / 100;
+  const percent = ratioToPercent(ratio);
   return `${percent}%`;
 }
 
@@ -167,4 +170,10 @@ export function getFormatter(max, sampleRate, units) {
     default:
       return new DurationFormatter(max / sampleRate);
   }
+}
+
+export function percentDiff(leftPercent, rightPercent) {
+  // difference between 2 percents
+  // https://en.wikipedia.org/wiki/Relative_change_and_difference
+  return ((rightPercent - leftPercent) / leftPercent) * 100;
 }

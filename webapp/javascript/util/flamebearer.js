@@ -67,7 +67,12 @@ const formatDouble = {
   getBarTotal: (level, j) => level[j + 4] + level[j + 1],
   getBarTotalLeft: (level, j) => level[j + 1],
   getBarTotalRght: (level, j) => level[j + 4],
-  getBarTotalDiff: (level, j) => level[j + 4] - level[j + 1],
+  getBarTotalDiff: (level, j) => {
+    //  console.log('level[j + 4]', level[j + 4] )
+    //  console.log( 'level[j + 1]', level[j + 1])
+
+    return level[j + 4] - level[j + 1];
+  },
   getBarSelf: (level, j) => level[j + 5] + level[j + 2],
   getBarSelfLeft: (level, j) => level[j + 2],
   getBarSelfRght: (level, j) => level[j + 5],
