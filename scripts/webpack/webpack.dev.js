@@ -12,6 +12,7 @@ const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
 module.exports = merge(common, {
   watch: true,
+  devtool: 'eval-source-map',
   mode: 'development',
   entry: {
     serve: 'webpack-plugin-serve/client',
