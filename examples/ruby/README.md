@@ -61,16 +61,34 @@ docker-compose up --build
 
 What this example will do is run all of the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this. After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
-![image](https://user-images.githubusercontent.com/23323466/135525201-b50d819a-278f-4693-a523-a4731b9c0306.png)
+## Where's the performance bottlenck?
+![ruby_first_slide_00](https://user-images.githubusercontent.com/23323466/135945825-a1d793e8-ecd9-4143-88d8-de08837a4761.jpg)
 
+The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `order_car` function. 
 
-In the real world, it's possible that _the region_ of a server is, for some reason, causing difference performance behavior than other regions. To inspect this, we can select our various regions from the "tag" dropdown:
+The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `order_car()` function is problematic. Tagging both `region` and `vehicle` allows us to test two good hypotheses:
+- Something is wrong with the `/car` endpoint code
+- Something is wrong with one of our regions
+
+To analyze this we can select one or more tags from the "Select Tag" dropdown:
 
 ![image](https://user-images.githubusercontent.com/23323466/135525308-b81e87b0-6ffb-4ef0-a6bf-3338483d0fc4.png)
 
-If we wanted to select both a specific `region` and and a specific `vehicle` then we can simply select both from the dropdown and see the performance characteristics of that combination. Notice that we can also see how much CPU utilization was attributed to this specific combination of tags via the timeline at the top of the page.
+## Narrowing in on the Issue Using Tags
+Knowing there is an issue with the `order_car()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `us-west-1` region, where it alternates between high-cpu times and low-cpu times.
 
-![image](https://user-images.githubusercontent.com/23323466/135525626-3d558bf3-169f-4295-989f-b422fff3f87f.png)
+We can also see that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period. 
+![ruby_second_slide_00](https://user-images.githubusercontent.com/23323466/135946038-32ff05dd-2909-4bef-ba46-05a16c57410a.jpg)
+
+## Comparing two time periods
+Using Pyroscope's "comparison view" we can actually select two different time ranges from the timeline to compare the resulting flamegraphs. The pink section on the left timeline results in the left flamegraph and the blue section on the right represents the right flamegraph.
+
+When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutex_lock()` function where it takes **51% of CPU** during low-cpu times and **78% of CPU** during high-cpu times.
+![ruby_third_slide_00](https://user-images.githubusercontent.com/23323466/135946117-05a15195-6e3c-499c-b98d-f1b9db2844e6.jpg)
+
+## Visualizing Diff Between Two Flamegraphs
+While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flamegraphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
+![ruby_fourth_slide_00](https://user-images.githubusercontent.com/23323466/135946209-e44ff6f6-22d6-41e0-bb08-693675257b84.jpg)
 
 
 ### More use cases
