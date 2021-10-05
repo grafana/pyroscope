@@ -31,7 +31,7 @@ const pagePlugins = pages.map(
           options,
         },
       }),
-    })
+    }),
 );
 
 module.exports = {
@@ -77,7 +77,7 @@ module.exports = {
     // Note: order is bottom-to-top and/or right-to-left
     rules: [
       {
-        test: /\.jsx?$/,
+        test: /\.(js|ts)x?$/,
         exclude: /node_modules/,
         use: [
           {

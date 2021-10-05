@@ -33,14 +33,14 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
   const inputOnChange = (v) => {
     setQuery(v);
     window.Prism.highlightElement(
-      document.getElementById('highlighting-content')
+      document.getElementById('highlighting-content'),
     );
   };
 
   useEffect(() => {
     if (window.Prism) {
       window.Prism.highlightElement(
-        document.getElementById('highlighting-content')
+        document.getElementById('highlighting-content'),
       );
     }
   }, [queryVal]);
@@ -52,7 +52,7 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
     () =>
       // since fetchTagValues may be running
       actions.abortFetchTagValues,
-    []
+    [],
   );
 
   const onTagsValueChange = (tagKey, tagValue) => {
@@ -152,7 +152,7 @@ const mapDispatchToProps = (dispatch) => ({
       abortFetchTags,
       setQuery,
     },
-    dispatch
+    dispatch,
   ),
 });
 

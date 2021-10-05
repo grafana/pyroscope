@@ -61,7 +61,7 @@ const mapDispatchToProps = (dispatch) => ({
       fetchTimeline,
       fetchNames,
     },
-    dispatch
+    dispatch,
   ),
 });
 

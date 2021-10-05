@@ -50,7 +50,7 @@ const mapDispatchToProps = (dispatch) => ({
       fetchNames,
       abortTimelineRequest,
     },
-    dispatch
+    dispatch,
   ),
 });
 

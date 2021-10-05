@@ -23,7 +23,7 @@ import {
 } from '../actionTypes';
 
 const defaultName = window.initialState.appNames.find(
-  (x) => x !== 'pyroscope.server.cpu'
+  (x) => x !== 'pyroscope.server.cpu',
 );
 
 const initialState = {

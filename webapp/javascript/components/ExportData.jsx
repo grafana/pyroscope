@@ -56,7 +56,7 @@ function ExportData(props) {
         pdfXOffset,
         pdfYOffset,
         canvas.width / count,
-        canvas.height / count
+        canvas.height / count,
       );
 
       const textXOffset = pdfXOffset;
@@ -76,7 +76,7 @@ function ExportData(props) {
     dlLink.download = `flamegraph_visual_${formattedDate()}`;
     dlLink.href = imgURL;
     dlLink.dataset.downloadurl = [MIME_TYPE, dlLink.download, dlLink.href].join(
-      ':'
+      ':',
     );
 
     document.body.appendChild(dlLink);

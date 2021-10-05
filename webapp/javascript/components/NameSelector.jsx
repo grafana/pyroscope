@@ -47,7 +47,7 @@ const mapDispatchToProps = (dispatch) => ({
     {
       setQuery,
     },
-    dispatch
+    dispatch,
   ),
 });
 

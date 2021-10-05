@@ -35,7 +35,7 @@ describe('Tooltip', () => {
           sampleRate={100}
           isWithinBounds={isWithinBounds}
           xyToData={xyToData}
-        />
+        />,
       );
 
       // since we are mocking the result
@@ -43,10 +43,10 @@ describe('Tooltip', () => {
       userEvent.hover(screen.getByTestId('canvas'));
 
       expect(screen.getByTestId('flamegraph-tooltip-title')).toHaveTextContent(
-        'function_title'
+        'function_title',
       );
       expect(screen.getByTestId('flamegraph-tooltip-body')).toHaveTextContent(
-        '1, 10 samples, 0.10 seconds'
+        '1, 10 samples, 0.10 seconds',
       );
     });
   });
@@ -67,28 +67,28 @@ describe('Tooltip', () => {
           sampleRate={100}
           isWithinBounds={isWithinBounds}
           xyToData={xyToData}
-        />
+        />,
       );
     }
 
     function assertTooltipContent({ title, diffColor, left, right }) {
       expect(screen.getByTestId('flamegraph-tooltip-title')).toHaveTextContent(
-        title
+        title,
       );
 
       if (diffColor) {
         expect(screen.getByTestId('flamegraph-tooltip-title-diff')).toHaveStyle(
           {
             color: diffColor,
-          }
+          },
         );
       }
 
       expect(screen.getByTestId('flamegraph-tooltip-left')).toHaveTextContent(
-        left
+        left,
       );
       expect(screen.getByTestId('flamegraph-tooltip-right')).toHaveTextContent(
-        right
+        right,
       );
     }
 

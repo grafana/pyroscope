@@ -22,17 +22,17 @@ class TimelineChart extends ReactFlot {
       if (this.props.viewSide === 'both' || this.props.viewSide === 'none') {
         this.props.actions.setDateRange(
           Math.round(ranges.xaxis.from / 1000),
-          Math.round(ranges.xaxis.to / 1000)
+          Math.round(ranges.xaxis.to / 1000),
         );
       } else if (this.props.viewSide === 'left') {
         this.props.actions.setLeftDateRange(
           Math.round(ranges.xaxis.from / 1000),
-          Math.round(ranges.xaxis.to / 1000)
+          Math.round(ranges.xaxis.to / 1000),
         );
       } else if (this.props.viewSide === 'right') {
         this.props.actions.setRightDateRange(
           Math.round(ranges.xaxis.from / 1000),
-          Math.round(ranges.xaxis.to / 1000)
+          Math.round(ranges.xaxis.to / 1000),
         );
       }
     });
@@ -65,7 +65,7 @@ const mapDispatchToProps = (dispatch) => ({
       setLeftDateRange,
       setRightDateRange,
     },
-    dispatch
+    dispatch,
   ),
 });
 

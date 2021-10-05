@@ -186,8 +186,8 @@ export function fetchTagValues(query, tag) {
     dispatch(requestTagValues(tag));
     return fetch(
       `/label-values?label=${encodeURIComponent(
-        tag
-      )}&query=${encodeURIComponent(query)}`
+        tag,
+      )}&query=${encodeURIComponent(query)}`,
     )
       .then((response) => response.json())
       .then((data) => {
