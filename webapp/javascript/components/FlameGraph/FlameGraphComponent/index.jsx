@@ -262,9 +262,13 @@ class FlameGraph extends React.Component {
       !this.props.flamebearer.leftTicks ||
       !this.props.flamebearer.rightTicks
     ) {
-      throw new Error(
-        "Properties 'rightTicks' and 'leftTicks' required. Can't calculate ratio."
+      // ideally this should never happen
+      // however there must be a race condition caught in CI
+      // https://github.com/pyroscope-io/pyroscope/pull/439/checks?check_run_id=3808581168
+      console.error(
+        "Properties 'rightTicks' and 'leftTicks' are required. Can't calculate ratio."
       );
+      return { leftRatio: 0, rightRatio: 0 };
     }
 
     const leftRatio =
