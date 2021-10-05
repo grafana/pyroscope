@@ -1,10 +1,35 @@
 import React from 'react';
 
-export default function Highlight(props) {
-  const { canvasRef, isWithinBounds, height, xyToHighlightData } = props;
-  const [style, setStyle] = React.useState();
+export interface HighlightProps {
+  isWithinBounds: (x: number, y: number) => boolean;
 
-  const onMouseMove = (e) => {
+  // probably the same as the bar height
+  barHeight: number;
+
+  xyToHighlightData: (
+    x: number,
+    y: number
+  ) => {
+    left: number;
+    top: number;
+    width: number;
+  };
+
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+}
+export default function Highlight(props: HighlightProps) {
+  const {
+    canvasRef,
+    isWithinBounds,
+    barHeight: height,
+    xyToHighlightData,
+  } = props;
+  const [style, setStyle] = React.useState<React.CSSProperties>({
+    height: `0px`,
+    visibility: 'hidden',
+  });
+
+  const onMouseMove = (e: MouseEvent) => {
     if (!isWithinBounds(e.offsetX, e.offsetY)) {
       onMouseOut();
       return;
@@ -12,13 +37,14 @@ export default function Highlight(props) {
 
     setStyle({
       visibility: 'visible',
-      height,
+      height: `${height}px`,
       ...xyToHighlightData(e.offsetX, e.offsetY),
     });
   };
 
   const onMouseOut = () => {
     setStyle({
+      ...style,
       visibility: 'hidden',
     });
   };
@@ -29,7 +55,7 @@ export default function Highlight(props) {
     // (otherwise it would be null)
     const canvasEl = canvasRef.current;
     if (!canvasEl) {
-      return {};
+      return () => {};
     }
 
     // watch for mouse events on the bar
