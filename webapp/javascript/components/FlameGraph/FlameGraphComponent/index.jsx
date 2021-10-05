@@ -157,7 +157,7 @@ class FlameGraph extends React.Component {
         this.reset,
         ['escape'],
         'Reset',
-        'Reset Flamegraph View',
+        'Reset Flamegraph View'
       );
     }
     this.updateData();
@@ -196,7 +196,7 @@ class FlameGraph extends React.Component {
       },
       () => {
         this.renderCanvas();
-      },
+      }
     );
   };
 
@@ -263,7 +263,7 @@ class FlameGraph extends React.Component {
       !this.props.flamebearer.rightTicks
     ) {
       throw new Error(
-        "Properties 'rightTicks' and 'leftTicks' required. Can't calculate ratio.",
+        "Properties 'rightTicks' and 'leftTicks' required. Can't calculate ratio."
       );
     }
 
@@ -342,7 +342,7 @@ class FlameGraph extends React.Component {
             nodeIsInQuery ===
               ((this.props.query &&
                 names[level[j + ff.jStep + ff.jName]].indexOf(
-                  this.props.query,
+                  this.props.query
                 ) >= 0) ||
                 false)
           ) {
@@ -374,7 +374,7 @@ class FlameGraph extends React.Component {
           nodeColor = colorBasedOnDiff(
             leftRatio,
             ff.getBarTotalLeft(level, j),
-            a,
+            a
           );
 
           const leftPercent = ratioToPercent(leftRatio);
@@ -390,7 +390,7 @@ class FlameGraph extends React.Component {
         } else {
           nodeColor = colorBasedOnPackageName(
             getPackageNameFromStackTrace(spyName, names[level[j + ff.jName]]),
-            a,
+            a
           );
         }
 
@@ -402,7 +402,7 @@ class FlameGraph extends React.Component {
           const shortName = names[level[j + ff.jName]];
           const longName = `${shortName} (${percent}, ${this.formatter.format(
             numBarTicks,
-            sampleRate,
+            sampleRate
           )})`;
 
           const namePosX = Math.round(Math.max(x, 0));
@@ -421,7 +421,7 @@ class FlameGraph extends React.Component {
           this.ctx.fillText(
             fitCalc.text,
             namePosX + fitCalc.marginLeft,
-            y + sh / 2 + 1,
+            y + sh / 2 + 1
           );
           this.ctx.restore();
         }
@@ -483,7 +483,7 @@ class FlameGraph extends React.Component {
 
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
-      this.graphWidth,
+      this.graphWidth
     );
 
     return {

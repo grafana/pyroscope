@@ -31,7 +31,7 @@ const pagePlugins = pages.map(
           options,
         },
       }),
-    }),
+    })
 );
 
 module.exports = {

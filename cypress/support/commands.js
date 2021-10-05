@@ -40,5 +40,5 @@ Cypress.Commands.overwrite(
     } else {
       cy.log('Screenshot comparison is disabled');
     }
-  },
+  }
 );

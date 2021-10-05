@@ -26,7 +26,7 @@ describe('Highlight', () => {
         barHeight={50}
         isWithinBounds={isWithinBounds}
         xyToHighlightData={xyToHighlightData}
-      />,
+      />
     );
 
     // hover over a bar

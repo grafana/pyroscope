@@ -86,7 +86,7 @@ class FlameGraphRenderer extends React.Component {
     ) {
       if (this.props.viewSide === 'left' || this.props.viewSide === 'right') {
         this.fetchFlameBearerData(
-          this.props[`${this.props.viewSide}RenderURL`],
+          this.props[`${this.props.viewSide}RenderURL`]
         );
       } else if (this.props.viewType === 'single') {
         this.fetchFlameBearerData(this.props.renderURL);

@@ -50,7 +50,7 @@ describe('basic test', () => {
 
           if (!found) {
             cy.log(
-              `Refreshing the page since option with ${name} was not found`,
+              `Refreshing the page since option with ${name} was not found`
             );
             // eslint-disable-next-line cypress/no-unnecessary-waiting
             cy.wait(1000);
@@ -76,7 +76,7 @@ describe('basic test', () => {
       cy.wait(500);
       cy.findByTestId('table-view').matchImageSnapshot(`${name}-table`);
       cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
-        `${name}-flamegraph`,
+        `${name}-flamegraph`
       );
     };
 
@@ -234,7 +234,7 @@ describe('basic test', () => {
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
       cy.findByTestId('flamegraph-tooltip-body').should(
         'have.text',
-        '100%, 988 samples, 9.88 seconds',
+        '100%, 988 samples, 9.88 seconds'
       );
 
       cy.findByTestId('flamegraph-canvas').trigger('mouseout');
@@ -259,7 +259,7 @@ describe('basic test', () => {
       }).as('render-left');
 
       cy.visit(
-        '/comparison?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300',
+        '/comparison?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300'
       );
 
       cy.wait('@render-right');
@@ -319,7 +319,7 @@ describe('basic test', () => {
       }).as('render');
 
       cy.visit(
-        '/comparison-diff?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300',
+        '/comparison-diff?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300'
       );
 
       cy.wait('@render');
@@ -332,11 +332,11 @@ describe('basic test', () => {
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
       cy.findByTestId('flamegraph-tooltip-left').should(
         'have.text',
-        'Left: 991 samples, 9.91 seconds (100%)',
+        'Left: 991 samples, 9.91 seconds (100%)'
       );
       cy.findByTestId('flamegraph-tooltip-right').should(
         'have.text',
-        'Right: 987 samples, 9.87 seconds (100%)',
+        'Right: 987 samples, 9.87 seconds (100%)'
       );
     });
   });
@@ -349,7 +349,7 @@ describe('basic test', () => {
       }).as('render');
 
       cy.visit(
-        '/comparison-diff?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300',
+        '/comparison-diff?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300'
       );
 
       cy.wait('@render');

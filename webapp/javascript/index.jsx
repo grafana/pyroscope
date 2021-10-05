@@ -45,5 +45,5 @@ ReactDOM.render(
     </Router>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
   </Provider>,
-  document.getElementById('root'),
+  document.getElementById('root')
 );

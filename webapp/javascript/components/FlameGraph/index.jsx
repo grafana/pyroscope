@@ -22,7 +22,7 @@ const mapStateToProps = (state) => ({
     state.leftFrom,
     state.leftUntil,
     state.rightFrom,
-    state.rightUntil,
+    state.rightUntil
   ),
 });
 
@@ -32,5 +32,5 @@ const mapDispatchToProps = (dispatch) => ({
 
 export default connect(
   mapStateToProps,
-  mapDispatchToProps,
+  mapDispatchToProps
 )(withShortcut(FlameGraphRenderer));

@@ -21,8 +21,8 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
     dispatch(
       setDateRange(
         Math.round(selectedDate.from / 1000),
-        Math.round(selectedDate.until / 1000),
-      ),
+        Math.round(selectedDate.until / 1000)
+      )
     );
     return setWarning(false);
   };

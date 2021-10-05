@@ -188,7 +188,7 @@ function Table({
                   })}
                 />
               </th>
-            ),
+            )
           )}
         </tr>
       </thead>
@@ -280,7 +280,7 @@ function TableBody({
             x.selfRght,
             maxSelf,
             color,
-            'L',
+            'L'
           )}
         >
           <span title={formatter.format(x.selfLeft, sampleRate)}>
@@ -293,7 +293,7 @@ function TableBody({
             x.selfRght,
             maxSelf,
             color,
-            'R',
+            'R'
           )}
         >
           <span title={formatter.format(x.selfRght, sampleRate)}>
@@ -312,7 +312,7 @@ function TableBody({
             x.totalRght,
             numTicks / 2,
             color,
-            'L',
+            'L'
           )}
         >
           <span title={formatter.format(x.totalLeft, sampleRate)}>
@@ -325,7 +325,7 @@ function TableBody({
             x.totalRght,
             numTicks / 2,
             color,
-            'R',
+            'R'
           )}
         >
           <span title={formatter.format(x.totalRght, sampleRate)}>
@@ -343,7 +343,7 @@ function TableBody({
             x.selfLeft,
             x.selfRght,
             maxSelf,
-            defaultColor,
+            defaultColor
           )}
         >
           <span title={formatter.format(x.selfDiff, sampleRate)}>
@@ -355,7 +355,7 @@ function TableBody({
             x.totalLeft,
             x.totalRght,
             numTicks / 2,
-            color,
+            color
           )}
         >
           <span title={formatter.format(x.totalDiff, sampleRate)}>

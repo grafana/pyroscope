@@ -1,18 +1,20 @@
 {
   "plugins": ["prettier"],
   "extends": [
-    "airbnb",
-    "airbnb-typescript",
-    "prettier",
-    "prettier/react",
+    "airbnb-typescript-prettier",
     "plugin:cypress/recommended",
-    "plugin:import/typescript"
+    "plugin:import/typescript",
+    "prettier",
+    "prettier/react"
   ],
   "rules": {
     "@typescript-eslint/no-unused-vars": "warn",
     "@typescript-eslint/no-shadow": "warn",
     "@typescript-eslint/no-use-before-define": "warn",
     "@typescript-eslint/naming-convention": "warn",
+    "@typescript-eslint/no-empty-function": "warn",
+    "@typescript-eslint/no-var-requires": "warn",
+    "react-hooks/exhaustive-deps": "warn",
 
     "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
     "no-param-reassign": ["warn"],

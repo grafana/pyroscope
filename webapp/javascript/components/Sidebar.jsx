@@ -86,7 +86,7 @@ function Sidebar(props) {
       showShortcutsModal,
       ['shift+?'],
       'Shortcuts',
-      'Show Keyboard Shortcuts Modal',
+      'Show Keyboard Shortcuts Modal'
     );
 
     // console.log('history: ', history.location.pathname);

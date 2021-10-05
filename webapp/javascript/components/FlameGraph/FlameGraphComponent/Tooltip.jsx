@@ -34,7 +34,7 @@ export default function Tooltip(props) {
     // makes it so that tooltip is always visible even if mouse is close to the right edge
     const left = Math.min(
       e.clientX + 12,
-      window.innerWidth - tooltipEl.current.clientWidth - 20,
+      window.innerWidth - tooltipEl.current.clientWidth - 20
     );
     const top = e.clientY + 20;
 
@@ -51,7 +51,7 @@ export default function Tooltip(props) {
           formatter,
           data.percent,
           data.numBarTicks,
-          props.sampleRate,
+          props.sampleRate
         );
 
         setContent({
@@ -150,7 +150,7 @@ function formatSingle(formatter, percent, numBarTicks, sampleRate) {
   const left = [
     `${percent}, ${numberWithCommas(numBarTicks)} samples, ${formatter.format(
       numBarTicks,
-      sampleRate,
+      sampleRate
     )}`,
   ];
 
@@ -169,11 +169,11 @@ function formatDouble({
   title,
 }) {
   const left = `Left: ${numberWithCommas(
-    totalLeft,
+    totalLeft
   )} samples, ${formatter.format(totalLeft, sampleRate)} (${leftPercent}%)`;
 
   const right = `Right: ${numberWithCommas(
-    totalRight,
+    totalRight
   )} samples, ${formatter.format(totalRight, sampleRate)} (${rightPercent}%)`;
 
   const totalDiff = percentDiff(leftPercent, rightPercent).toFixed(2);

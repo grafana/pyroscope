@@ -22,7 +22,7 @@ import {
 import { parseLabels, encodeLabels } from '../util/key';
 
 const enhancer = composeWithDevTools(
-  applyMiddleware(thunkMiddleware),
+  applyMiddleware(thunkMiddleware)
   // updateUrl(["from", "until", "labels"]),
   // persistState(["from", "until", "labels"]),
 );
@@ -30,7 +30,7 @@ const enhancer = composeWithDevTools(
 const store = createStore(rootReducer, enhancer);
 
 const defaultName = window.initialState.appNames.find(
-  (x) => x !== 'pyroscope.server.cpu',
+  (x) => x !== 'pyroscope.server.cpu'
 );
 
 ReduxQuerySync({

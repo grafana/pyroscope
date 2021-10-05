@@ -26,7 +26,7 @@ module.exports = merge(common, {
         do {
           if (maxTries <= 0) {
             throw new Error(
-              'Could not find pyroscope instance running on http://localhost:4040',
+              'Could not find pyroscope instance running on http://localhost:4040'
             );
           }
           res = request('GET', 'http://localhost:4040');
@@ -47,11 +47,11 @@ module.exports = merge(common, {
         // this sucks, maybe update endpoints to prefix with /api?
         app.use(builtins.proxy('/render', { target: 'http://localhost:4040' }));
         app.use(
-          builtins.proxy('/render-diff', { target: 'http://localhost:4040' }),
+          builtins.proxy('/render-diff', { target: 'http://localhost:4040' })
         );
         app.use(builtins.proxy('/labels', { target: 'http://localhost:4040' }));
         app.use(
-          builtins.proxy('/labels-diff', { target: 'http://localhost:4040' }),
+          builtins.proxy('/labels-diff', { target: 'http://localhost:4040' })
         );
 
         // serve index for all pages
@@ -62,9 +62,9 @@ module.exports = merge(common, {
               path.resolve(__dirname, '../../webapp/public/assets/index.html'),
               {
                 encoding: 'utf-8',
-              },
+              }
             );
-          }),
+          })
         );
       },
     }),

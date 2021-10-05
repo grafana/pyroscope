@@ -25,7 +25,7 @@ export default function ProfilerHeader({
   // since rebuilding the canvas on each keystroke is expensive
   const deb = useCallback(
     debounce((e) => handleSearchChange(e), 250, { maxWait: 1000 }),
-    [],
+    []
   );
   const onChange = (e) => {
     const q = e.target.value;
