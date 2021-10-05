@@ -55,6 +55,7 @@ var _ = Describe("agent.Session", func() {
 				Expect(val).To(BeNumerically("~", 11, 2))
 			})
 			close(done)
+			Expect(u.uploads[0].Name).To(Equal("test-app.cpu{}"))
 		})
 
 		When("tags specified", func() {
@@ -153,7 +154,7 @@ var _ = Describe("agent.Session", func() {
 				s.Stop()
 
 				Expect(u.uploads).To(HaveLen(3))
-				Expect(u.uploads[0].Name).To(Equal("test-app.cpu"))
+				Expect(u.uploads[0].Name).To(Equal("test-app.cpu{}"))
 			})
 		})
 	})
