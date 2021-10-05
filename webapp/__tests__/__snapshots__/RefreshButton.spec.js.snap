@@ -4,6 +4,7 @@ exports[`RefreshButton render correctly RefreshButton component 1`] = `
 <div>
   <button
     className="btn refresh-btn"
+    data-testid="refresh-btn"
     onClick={[Function]}
     type="button"
   >

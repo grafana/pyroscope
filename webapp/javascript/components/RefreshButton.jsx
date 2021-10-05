@@ -10,6 +10,7 @@ function RefreshButton() {
   return (
     <div>
       <button
+        data-testid="refresh-btn"
         type="button"
         className="btn refresh-btn"
         onClick={() => dispatch(refresh())}

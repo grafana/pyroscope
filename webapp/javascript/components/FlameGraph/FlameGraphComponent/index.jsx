@@ -256,6 +256,17 @@ class FlameGraph extends React.Component {
   // TODO
   // move this to somewhere else
   getRatios = (ff, level, j) => {
+    // throw an error
+    // since otherwise there's no way to calculate a diff
+    if (
+      !this.props.flamebearer.leftTicks ||
+      !this.props.flamebearer.rightTicks
+    ) {
+      throw new Error(
+        `Properties 'rightTicks' and 'leftTicks' required. Can't calculate ratio.`
+      );
+    }
+
     const leftRatio =
       ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
     const rightRatio =
@@ -358,10 +369,7 @@ class FlameGraph extends React.Component {
         if (isDiff && collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (isDiff) {
-          const leftRatio =
-            ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
-          const rightRatio =
-            ff.getBarTotalRght(level, j) / this.props.flamebearer.rightTicks;
+          const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
 
           nodeColor = colorBasedOnDiff(
             leftRatio,
