@@ -134,30 +134,54 @@ func normalizeTime(t time.Time) time.Time {
 	return t.Truncate(durations[0])
 }
 
+// get traverses through the tree searching for the nodes satisfying
+// the given time range. If no nodes were found, the most precise
+// down-sampling root node will be passed to the callback function,
+// and relationship r will be proportional to the down-sampling factor.
+//
 //  relationship                               overlap read             overlap write
 // 	inside  rel = iota   // | S E |            <1                       1/1
 // 	match                // matching ranges    1/1                      1/1
 // 	outside              // | | S E            0/1                      0/1
 // 	overlap              // | S | E            <1                       <1
 // 	contain              // S | | E            1/1                      <1
-func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.Time, r *big.Rat)) {
+func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, relationship *big.Rat)) {
 	rel := sn.relationship(st, et)
 	if sn.present && (rel == contain || rel == match) {
-		cb(sn, sn.depth, sn.time, big.NewRat(1, 1))
-	} else if rel != outside { // inside or overlap
-		if sn.present && len(sn.children) == 0 {
-			// TODO: I did not test this logic as extensively as I would love to.
-			//   See https://github.com/pyroscope-io/pyroscope/issues/28 for more context and ideas on what to do
-			cb(sn, sn.depth, sn.time, sn.overlapRead(st, et))
-		} else {
-			// if current node doesn't have a tree present or has children, defer to children
-			for _, v := range sn.children {
-				if v != nil {
-					v.get(st, et, cb)
-				}
-			}
+		cb(sn, big.NewRat(1, 1))
+		return
+	}
+	if rel == outside {
+		return
+	}
+
+	// inside or overlap
+	if sn.present && sn.isLeaf() {
+		// TODO: I did not test this logic as extensively as I would love to.
+		//   See https://github.com/pyroscope-io/pyroscope/issues/28 for more context and ideas on what to do
+		cb(sn, sn.overlapRead(st, et))
+		return
+	}
+
+	// if current node doesn't have a tree present or has children, defer to children
+	for _, v := range sn.children {
+		if v != nil {
+			v.get(st, et, cb)
 		}
 	}
+}
+
+func (sn *streeNode) isLeaf() bool {
+	if len(sn.children) == 0 {
+		return true
+	}
+	var x int
+	for i := range sn.children {
+		if sn.children[i] == nil {
+			x++
+		}
+	}
+	return x == len(sn.children)
 }
 
 // deleteDataBefore returns true if the node should be deleted
@@ -294,10 +318,10 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 	}
 	// divider := int(et.Sub(st) / durations[0])
 	v := newVis()
-	s.root.get(st, et, func(sn *streeNode, depth int, t time.Time, r *big.Rat) {
+	s.root.get(st, et, func(sn *streeNode, r *big.Rat) {
 		// TODO: pass m / d from .get() ?
 		v.add(sn, r, true)
-		cb(depth, sn.samples, sn.writes, t, r)
+		cb(sn.depth, sn.samples, sn.writes, sn.time, r)
 	})
 	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-get-%s-%s.html", st.String(), et.String())))
 }
