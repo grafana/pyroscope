@@ -108,10 +108,3 @@ THIS SOFTWARE.
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.flamegraph-highlight {
-  position: absolute;
-  pointer-events: none;
-  background: #ffffff40;
-  mix-blend-mode: overlay;
-}

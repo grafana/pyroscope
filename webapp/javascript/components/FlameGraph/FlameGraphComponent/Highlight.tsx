@@ -1,5 +1,7 @@
 import React from 'react';
+import styles from './Highlight.module.css';
 
+console.log({ styles });
 export interface HighlightProps {
   isWithinBounds: (x: number, y: number) => boolean;
 
@@ -65,9 +67,9 @@ export default function Highlight(props: HighlightProps) {
 
   return (
     <div
+      className={styles.highlight}
       style={style}
       data-testid="flamegraph-highlight"
-      className="flamegraph-highlight"
     />
   );
 }
