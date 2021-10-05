@@ -57,7 +57,7 @@ pyroscope server
 ```
 
 ## Send data to server via Pyroscope agent (language specific)
-For more information how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website.
+For more documentation on how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website.
 - [Golang Agent](https://pyroscope.io/docs/golang)
 - [Python Agent (pip)](https://pyroscope.io/docs/python)
 - [Ruby Agent (gem)](https://pyroscope.io/docs/ruby)
@@ -65,9 +65,18 @@ For more information how to add the Pyroscope agent to your code see the [agent 
 - [PHP Agent](https://pyroscope.io/docs/php)
 - [.NET Agent](https://pyroscope.io/docs/dotnet)
 
+## Example Code
+We also have language-specific examples (using Docker) of how to run the *server and agent together*
+- [Golang Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang)
+- [Python Pip Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/python)
+- [Ruby Gem Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/ruby)
+- [Grafana Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
+- [Java Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/java)
+- [PHP example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/php)
+- [.NET Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/dotnet)
+
 
 ## Documentation
-
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
 
 * [Public Roadmap](https://github.com/pyroscope-io/pyroscope/projects/1)

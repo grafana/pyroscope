@@ -9,7 +9,7 @@ In this example we show a simplified, basic use case of Pyroscope. We simulate a
 - `/car`     : calls the `order_car(search_radius)` function to order a car
 - `/scooter` : calls the `order_scooter(search_radius)` function to order a scooter
 
-We also simulate running 3 distinct servers in 3 different regions (via docker-compose.yml)
+We also simulate running 3 distinct servers in 3 different regions (via [docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/python/docker-compose.yml))
 - us-east-1
 - us-west-1
 - eu-west-1
