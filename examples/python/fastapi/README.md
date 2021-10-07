@@ -1,3 +1,5 @@
+## Fastapi Example
+
 To run the example run the following commands:
 ```
 # Pull latest pyroscope image:
