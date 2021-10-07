@@ -1,14 +1,5 @@
 # Examples
-
-We set up these examples to help you try out Pyroscope. You'll need `docker` + `docker-compose` to run them:
-
-```shell
-cd python
-docker-compose up --build
-```
-
-These are very simple projects where the application is basically one `while true` loop and inside that loop it calls a slow function and a fast function. Slow function takes about 75% of the time and the fast one takes about 25%. See [debug_python_with_pyroscope.md](https://github.com/pyroscope-io/pyroscope/blob/main/examples/debug_python_with_pyroscope.md) for a full example of how improving one function can decrease overall CPU utilization and ultimately save cut server costs by 66%!
-
+Choose a language folder to select an example for your language of choice
 
 # How Pyroscope works
 Pyroscope identifies performance issues in your application by continuously profiling the code.
