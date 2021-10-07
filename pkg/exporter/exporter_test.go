@@ -83,7 +83,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestObserve(t *testing.T) {
-	rules := config.MetricExportRules{
+	rules := config.MetricsExportRules{
 		"app_name_cpu_total": {
 			Expr:   `app.name.cpu{foo="bar"}`,
 			Node:   "total",
@@ -121,7 +121,7 @@ func TestObserve(t *testing.T) {
 
 func TestGroupBy(t *testing.T) {
 	const rule = "app_name_cpu_total"
-	rules := config.MetricExportRules{
+	rules := config.MetricsExportRules{
 		rule: {
 			Expr:   `app.name.cpu{foo=~"bar"}`,
 			Labels: []string{"foo"},

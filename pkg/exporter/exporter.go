@@ -30,7 +30,7 @@ type rule struct {
 }
 
 // NewExporter validates configuration and creates a new prometheus MetricsExporter.
-func NewExporter(rules config.MetricExportRules, reg prometheus.Registerer) (*MetricsExporter, error) {
+func NewExporter(rules config.MetricsExportRules, reg prometheus.Registerer) (*MetricsExporter, error) {
 	var e MetricsExporter
 	if rules == nil {
 		return &e, nil
