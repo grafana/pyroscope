@@ -256,6 +256,21 @@ class FlameGraph extends React.Component {
   // TODO
   // move this to somewhere else
   getRatios = (ff, level, j) => {
+    // throw an error
+    // since otherwise there's no way to calculate a diff
+    if (
+      !this.props.flamebearer.leftTicks ||
+      !this.props.flamebearer.rightTicks
+    ) {
+      // ideally this should never happen
+      // however there must be a race condition caught in CI
+      // https://github.com/pyroscope-io/pyroscope/pull/439/checks?check_run_id=3808581168
+      console.error(
+        "Properties 'rightTicks' and 'leftTicks' are required. Can't calculate ratio."
+      );
+      return { leftRatio: 0, rightRatio: 0 };
+    }
+
     const leftRatio =
       ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
     const rightRatio =
@@ -358,10 +373,7 @@ class FlameGraph extends React.Component {
         if (isDiff && collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (isDiff) {
-          const leftRatio =
-            ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
-          const rightRatio =
-            ff.getBarTotalRght(level, j) / this.props.flamebearer.rightTicks;
+          const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
 
           nodeColor = colorBasedOnDiff(
             leftRatio,
@@ -435,6 +447,7 @@ class FlameGraph extends React.Component {
         const percent = formatPercent(numBarTicks / this.state.numTicks);
 
         return {
+          format: 'single',
           title,
           numBarTicks,
           percent,
@@ -450,6 +463,7 @@ class FlameGraph extends React.Component {
         const rightPercent = ratioToPercent(rightRatio);
 
         return {
+          format: 'double',
           left: totalLeft,
           right: totalRight,
           title,
@@ -601,7 +615,7 @@ class FlameGraph extends React.Component {
               onBlur={() => {}}
             />
             <Highlight
-              height={PX_PER_LEVEL}
+              barHeight={PX_PER_LEVEL}
               canvasRef={this.canvasRef}
               xyToHighlightData={this.xyToHighlightData}
               isWithinBounds={this.isWithinBounds}

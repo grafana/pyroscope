@@ -1,4 +1,8 @@
-import { BAR_HEIGHT } from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent';
+// copied from the source code
+// TODO move those definitions to a different shareable file
+const PX_PER_LEVEL = 18;
+const GAP = 0.5;
+const BAR_HEIGHT = PX_PER_LEVEL - GAP;
 
 /// <reference types="cypress" />
 describe('basic test', () => {
@@ -328,16 +332,16 @@ describe('basic test', () => {
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
       cy.findByTestId('flamegraph-tooltip-left').should(
         'have.text',
-        `Left: 991 samples, 9.91 seconds (100%)`
+        'Left: 991 samples, 9.91 seconds (100%)'
       );
       cy.findByTestId('flamegraph-tooltip-right').should(
         'have.text',
-        `Right: 987 samples, 9.87 seconds (100%)`
+        'Right: 987 samples, 9.87 seconds (100%)'
       );
     });
   });
 
-  describe('tooltip', () => {
+  describe('highlight', () => {
     it('works in diff view', () => {
       cy.intercept('**/render*', {
         fixture: 'simple-golang-app-cpu-diff.json',

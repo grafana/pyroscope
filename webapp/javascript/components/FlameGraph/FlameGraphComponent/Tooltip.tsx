@@ -2,7 +2,41 @@ import React from 'react';
 import { percentDiff, numberWithCommas, getFormatter } from './format';
 import { diffColorRed, diffColorGreen } from './color';
 
-export default function Tooltip(props) {
+type xyToData = (
+  format: 'single' | 'double',
+  x: number,
+  y: number
+) =>
+  | {
+      format: 'double';
+      left: number;
+      right: number;
+      title: string;
+      sampleRate: number;
+      leftPercent: number;
+      rightPercent: number;
+    }
+  | {
+      format: 'single';
+      title: string;
+      numBarTicks: number;
+      percent: number;
+    };
+
+export interface TooltipProps {
+  format: 'single' | 'double';
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+
+  xyToData: xyToData;
+  isWithinBounds: (x: number, y: number) => boolean;
+
+  // TODO we have an enum somewhere
+  units: string;
+  sampleRate: number;
+  numTicks: number;
+}
+
+export default function Tooltip(props: TooltipProps) {
   const { format, canvasRef, xyToData, isWithinBounds } = props;
   const [content, setContent] = React.useState({
     title: {
@@ -16,14 +50,14 @@ export default function Tooltip(props) {
     right: '',
   });
 
-  const [style, setStyle] = React.useState();
+  const [style, setStyle] = React.useState<React.CSSProperties>();
   const tooltipEl = React.useRef(null);
 
   const { numTicks, sampleRate, units } = props;
   // TODO cache this to not have to instantiate all the time?
   const formatter = getFormatter(numTicks, sampleRate, units);
 
-  const onMouseMove = (e) => {
+  const onMouseMove = (e: MouseEvent) => {
     if (!isWithinBounds(e.offsetX, e.offsetY)) {
       onMouseOut();
       return;
@@ -45,7 +79,7 @@ export default function Tooltip(props) {
     });
 
     // format is either single, double or something else
-    switch (format) {
+    switch (data.format) {
       case 'single': {
         const d = formatSingle(
           formatter,
@@ -63,6 +97,7 @@ export default function Tooltip(props) {
             },
           },
           left: d.left,
+          right: '',
         });
         break;
       }
@@ -87,7 +122,7 @@ export default function Tooltip(props) {
       }
 
       default:
-        throw new Error(`Unsupported format ${format}`);
+        throw new Error(`Unsupported format: '${JSON.stringify(data)}'`);
     }
   };
 
@@ -103,7 +138,7 @@ export default function Tooltip(props) {
     // (otherwise it would be null)
     const canvasEl = canvasRef.current;
     if (!canvasEl) {
-      return {};
+      return () => {};
     }
 
     // watch for mouse events on the bar
@@ -146,13 +181,19 @@ export default function Tooltip(props) {
   );
 }
 
-function formatSingle(formatter, percent, numBarTicks, sampleRate) {
-  const left = [
-    `${percent}, ${numberWithCommas(numBarTicks)} samples, ${formatter.format(
-      numBarTicks,
-      sampleRate
-    )}`,
-  ];
+interface Formatter {
+  format(samples: number, sampleRate: number): string;
+}
+
+function formatSingle(
+  formatter: Formatter,
+  percent: number,
+  numBarTicks: number,
+  sampleRate: number
+) {
+  const left = `${percent}, ${numberWithCommas(
+    numBarTicks
+  )} samples, ${formatter.format(numBarTicks, sampleRate)}`;
 
   return {
     left,
@@ -167,6 +208,14 @@ function formatDouble({
   totalRight,
   rightPercent,
   title,
+}: {
+  formatter: Formatter;
+  sampleRate: number;
+  totalLeft: number;
+  leftPercent: number;
+  totalRight: number;
+  rightPercent: number;
+  title: string;
 }) {
   const left = `Left: ${numberWithCommas(
     totalLeft

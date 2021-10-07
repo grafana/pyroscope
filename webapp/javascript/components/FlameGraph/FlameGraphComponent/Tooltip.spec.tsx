@@ -4,15 +4,20 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { diffColorRed, diffColorGreen } from './color';
 
-import Tooltip from './Tooltip';
+import Tooltip, { TooltipProps } from './Tooltip';
 
-function TestCanvas(props) {
+function TestCanvas(props: Omit<TooltipProps, 'canvasRef' | 'numTicks'>) {
   const canvasRef = React.useRef();
 
   return (
     <>
       <canvas data-testid="canvas" ref={canvasRef} />
-      <Tooltip data-testid="tooltip" canvasRef={canvasRef} {...props} />
+      <Tooltip
+        data-testid="tooltip"
+        canvasRef={canvasRef}
+        {...props}
+        numTicks={10}
+      />
     </>
   );
 }
@@ -22,7 +27,8 @@ describe('Tooltip', () => {
 
   describe('"single" mode', () => {
     it('renders correctly', () => {
-      const xyToData = () => ({
+      const xyToData = (format: 'single', x: number, y: number) => ({
+        format,
         title: 'function_title',
         numBarTicks: 10,
         percent: 1,
@@ -57,6 +63,7 @@ describe('Tooltip', () => {
         title: 'my_function',
         numBarTicks: 10,
         percent: 1,
+        format: 'double',
         ...d,
       });
 
@@ -106,6 +113,7 @@ describe('Tooltip', () => {
 
       assertTooltipContent({
         title: 'my_function',
+        diffColor: undefined,
         left: 'Left: 100 samples, 1.00 seconds (10%)',
         right: 'Right: 100 samples, 1.00 seconds (10%)',
       });

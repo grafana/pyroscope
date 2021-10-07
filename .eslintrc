@@ -1,17 +1,24 @@
 {
-  "parser": "babel-eslint",
-  "plugins": ["prettier"],
+  "plugins": ["prettier", "css-modules"],
   "extends": [
-    "airbnb",
+    "airbnb-typescript-prettier",
+    "plugin:cypress/recommended",
+    "plugin:import/typescript",
     "prettier",
     "prettier/react",
-    "plugin:cypress/recommended"
+    "plugin:css-modules/recommended"
   ],
   "rules": {
+    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-shadow": "warn",
+    "@typescript-eslint/no-use-before-define": "warn",
+    "@typescript-eslint/naming-convention": "warn",
+    "@typescript-eslint/no-empty-function": "warn",
+    "@typescript-eslint/no-var-requires": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+
     "import/no-extraneous-dependencies": ["error", { "devDependencies": true }],
-    "no-unused-vars": ["warn"],
     "no-param-reassign": ["warn"],
-    "no-shadow": ["warn"],
     "no-case-declarations": ["warn"],
     "no-use-before-define": ["warn"],
     "no-restricted-globals": ["warn"],
@@ -30,11 +37,25 @@
           "some": ["nesting", "id"]
         }
       }
+    ],
+    "react/jsx-filename-extension": [1, { "extensions": [".tsx", ".ts"] }],
+    "import/extensions": [
+      "error",
+      "always",
+      {
+        "js": "never",
+        "jsx": "never",
+        "ts": "never",
+        "tsx": "never"
+      }
     ]
   },
   "env": {
     "browser": true,
     "node": true,
     "jquery": true
+  },
+  "parserOptions": {
+    "project": "./tsconfig.json"
   }
 }
