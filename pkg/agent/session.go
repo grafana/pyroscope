@@ -88,7 +88,8 @@ type ProfileSession struct {
 }
 
 type SessionConfig struct {
-	Upstream         upstream.Upstream
+	upstream.Upstream
+	Logger
 	AppName          string
 	Tags             map[string]string
 	ProfilingTypes   []spy.ProfileType
@@ -101,7 +102,7 @@ type SessionConfig struct {
 	ClibIntegration  bool
 }
 
-func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
+func NewSession(c SessionConfig) (*ProfileSession, error) {
 	appName, err := mergeTagsWithAppName(c.AppName, c.Tags)
 	if err != nil {
 		return nil, err
@@ -120,7 +121,7 @@ func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 		stopCh:           make(chan struct{}),
 		withSubprocesses: c.WithSubprocesses,
 		clibIntegration:  c.ClibIntegration,
-		logger:           logger,
+		logger:           c.Logger,
 		throttler:        throttle.New(errorThrottlerPeriod),
 
 		// string is appName, int is index in pids
@@ -291,10 +292,12 @@ func (ps *ProfileSession) SetTags(tags map[string]string) error {
 	}
 	return ps.ChangeName(newName)
 }
+
 // SetTag - add a new tag to the session.
 func (ps *ProfileSession) SetTag(key, val string) error {
 	return ps.SetTags(map[string]string{key: val})
 }
+
 // RemoveTags - remove tags from the session.
 func (ps *ProfileSession) RemoveTags(keys ...string) error {
 	removals := make(map[string]string)

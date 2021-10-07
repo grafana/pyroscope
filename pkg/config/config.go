@@ -107,7 +107,7 @@ type Server struct {
 
 	Auth Auth `mapstructure:"auth"`
 
-	MetricExportRules MetricsExportRules `yaml:"metrics-export-rules" def:"" desc:"metrics export rules" mapstructure:"metrics-export-rules"`
+	MetricsExportRules MetricsExportRules `yaml:"metrics-export-rules" def:"" desc:"metrics export rules" mapstructure:"metrics-export-rules"`
 
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`

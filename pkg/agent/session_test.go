@@ -26,7 +26,7 @@ var _ = Describe("agent.Session", func() {
 		It("creates a new session and performs chunking", func(done Done) {
 			u := &upstreamMock{}
 			uploadRate := 200 * time.Millisecond
-			s, _ := NewSession(&SessionConfig{
+			s, _ := NewSession(SessionConfig{
 				Upstream:         u,
 				AppName:          "test-app",
 				ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
@@ -35,7 +35,8 @@ var _ = Describe("agent.Session", func() {
 				UploadRate:       uploadRate,
 				Pid:              os.Getpid(),
 				WithSubprocesses: true,
-			}, logrus.StandardLogger())
+				Logger:           logrus.StandardLogger(),
+			})
 			now := time.Now()
 			time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 			err := s.Start()
@@ -62,7 +63,7 @@ var _ = Describe("agent.Session", func() {
 			It("name ", func() {
 				u := &upstreamMock{}
 				uploadRate := 200 * time.Millisecond
-				c := &SessionConfig{
+				c := SessionConfig{
 					Upstream:         u,
 					AppName:          "test-app{bar=xxx}",
 					ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
@@ -70,6 +71,7 @@ var _ = Describe("agent.Session", func() {
 					SampleRate:       100,
 					UploadRate:       uploadRate,
 					Pid:              os.Getpid(),
+					Logger:           logrus.StandardLogger(),
 					WithSubprocesses: true,
 					Tags: map[string]string{
 						"foo": "bar",
@@ -77,7 +79,7 @@ var _ = Describe("agent.Session", func() {
 					},
 				}
 
-				s, _ := NewSession(c, logrus.StandardLogger())
+				s, _ := NewSession(c)
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()
@@ -95,7 +97,7 @@ var _ = Describe("agent.Session", func() {
 			It("name ", func() {
 				u := &upstreamMock{}
 				uploadRate := 200 * time.Millisecond
-				c := &SessionConfig{
+				c := SessionConfig{
 					Upstream:         u,
 					AppName:          "test-app",
 					ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
@@ -104,13 +106,14 @@ var _ = Describe("agent.Session", func() {
 					UploadRate:       uploadRate,
 					Pid:              os.Getpid(),
 					WithSubprocesses: true,
+					Logger:           logrus.StandardLogger(),
 					Tags: map[string]string{
 						"foo": "bar",
 						"baz": "qux",
 					},
 				}
 
-				s, _ := NewSession(c, logrus.StandardLogger())
+				s, _ := NewSession(c)
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()
@@ -127,7 +130,7 @@ var _ = Describe("agent.Session", func() {
 			It("name ", func() {
 				u := &upstreamMock{}
 				uploadRate := 200 * time.Millisecond
-				c := &SessionConfig{
+				c := SessionConfig{
 					Upstream:         u,
 					AppName:          "test-app{bar=xxx}",
 					ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
@@ -136,12 +139,13 @@ var _ = Describe("agent.Session", func() {
 					UploadRate:       uploadRate,
 					Pid:              os.Getpid(),
 					WithSubprocesses: true,
+					Logger:           logrus.StandardLogger(),
 					Tags: map[string]string{
 						"foo": "bar",
 					},
 				}
 
-				s, _ := NewSession(c, logrus.StandardLogger())
+				s, _ := NewSession(c)
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()

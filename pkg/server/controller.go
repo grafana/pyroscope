@@ -19,8 +19,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
-	goHttpMetricsMiddleware "github.com/slok/go-http-metrics/middleware"
-	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
+	"github.com/slok/go-http-metrics/middleware"
+	"github.com/slok/go-http-metrics/middleware/std"
 	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -39,58 +39,71 @@ const (
 	oauthGitlab
 )
 
-type decodeResponseFunc func(*http.Response) (string, error)
-
 type Controller struct {
 	drained uint32
 
-	config     *config.Server
-	storage    *storage.Storage
-	ingester   storage.Ingester
-	log        *logrus.Logger
-	httpServer *http.Server
+	config          *config.Server
+	storage         *storage.Storage
+	ingester        storage.Ingester
+	log             *logrus.Logger
+	httpServer      *http.Server
+	exportedMetrics *prometheus.Registry
+	metricsMdw      middleware.Middleware
 
 	dir http.FileSystem
 
 	statsMutex sync.Mutex
 	stats      map[string]int
 
-	appStats   *hyperloglog.HyperLogLogPlus
-	metricsMdw goHttpMetricsMiddleware.Middleware
+	appStats *hyperloglog.HyperLogLogPlus
 
 	// Byte buffers are used for deserialization of ingested data.
 	bufferPool bytebufferpool.Pool
 }
 
-func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger, reg prometheus.Registerer) (*Controller, error) {
-	appStats, err := hyperloglog.NewPlus(uint8(18))
-	if err != nil {
-		return nil, err
-	}
+type Config struct {
+	Configuration *config.Server
+	Storage       *storage.Storage
+	Ingester      storage.Ingester
+	Logger        *logrus.Logger
 
-	mdw := goHttpMetricsMiddleware.New(goHttpMetricsMiddleware.Config{
-		Recorder: metrics.NewRecorder(metrics.Config{
-			Prefix:   "pyroscope",
-			Registry: reg,
-		}),
-	})
+	MetricsRegisterer       prometheus.Registerer
+	ExportedMetricsRegistry *prometheus.Registry
+}
 
+func New(c Config) (*Controller, error) {
 	ctrl := Controller{
-		config:     c,
-		log:        l,
-		storage:    s,
-		ingester:   i,
-		stats:      make(map[string]int),
-		appStats:   appStats,
-		metricsMdw: mdw,
+		config:   c.Configuration,
+		log:      c.Logger,
+		storage:  c.Storage,
+		ingester: c.Ingester,
+		stats:    make(map[string]int),
+		appStats: mustNewHLL(),
+
+		exportedMetrics: c.ExportedMetricsRegistry,
+		metricsMdw: middleware.New(middleware.Config{
+			Recorder: metrics.NewRecorder(metrics.Config{
+				Prefix:   "pyroscope",
+				Registry: c.MetricsRegisterer,
+			}),
+		}),
 	}
 
+	var err error
 	ctrl.dir, err = webapp.Assets()
 	if err != nil {
 		return nil, err
 	}
 
 	return &ctrl, nil
+}
+
+func mustNewHLL() *hyperloglog.HyperLogLogPlus {
+	hll, err := hyperloglog.NewPlus(uint8(18))
+	if err != nil {
+		panic(err)
+	}
+	return hll
 }
 
 func (ctrl *Controller) assetsFilesHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +124,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/forbidden", ctrl.forbiddenHandler()},
 		{"/assets/", ctrl.assetsFilesHandler},
 	}...)
-	addRoutes(mux, ctrl.trackMetrics, insecureRoutes, ctrl.drainMiddleware)
+	ctrl.addRoutes(mux, insecureRoutes, ctrl.drainMiddleware)
 
 	// Protected routes:
 	protectedRoutes := []route{
@@ -121,7 +134,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 	}
-	addRoutes(mux, ctrl.trackMetrics, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
+	ctrl.addRoutes(mux, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
@@ -138,13 +151,20 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		}...)
 	}
 
-	addRoutes(mux, ctrl.trackMetrics, diagnosticSecureRoutes, ctrl.authMiddleware)
-	addRoutes(mux, ctrl.trackMetrics, []route{
+	ctrl.addRoutes(mux, diagnosticSecureRoutes, ctrl.authMiddleware)
+	ctrl.addRoutes(mux, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
+		{"/exported-metrics", ctrl.exportedMetricsHandler},
 		{"/healthz", ctrl.healthz},
 	})
 
 	return mux, nil
+}
+
+func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	promhttp.InstrumentMetricHandler(ctrl.exportedMetrics,
+		promhttp.HandlerFor(ctrl.exportedMetrics, promhttp.HandlerOpts{})).
+		ServeHTTP(w, r)
 }
 
 func (ctrl *Controller) getAuthRoutes() ([]route, error) {
@@ -266,8 +286,7 @@ func (ctrl *Controller) drainMiddleware(next http.HandlerFunc) http.HandlerFunc 
 
 func (ctrl *Controller) trackMetrics(route string) func(next http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
-		h := middlewarestd.Handler(route, ctrl.metricsMdw, next)
-		return h.ServeHTTP
+		return std.Handler(route, ctrl.metricsMdw, next).ServeHTTP
 	}
 }
 
