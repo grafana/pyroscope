@@ -65,6 +65,22 @@ type Storage struct {
 	wg   sync.WaitGroup
 }
 
+// MetricsExporter exports values of particular stack traces sample from profiling
+// data as a Prometheus metrics.
+type MetricsExporter interface {
+	// Evaluate evaluates metrics export rules against the input key and creates
+	// prometheus counters for new time series, if required. Returned observer can
+	// be used to evaluate and observe particular samples.
+	//
+	// If there are no matching rules, the function returns false.
+	Evaluate(*PutInput) (SampleObserver, bool)
+}
+
+type SampleObserver interface {
+	// Observe adds v to the matched counters if k satisfies node selector.
+	Observe(k []byte, v int)
+}
+
 func (s *Storage) newBadger(name string) (*badger.DB, error) {
 	badgerPath := filepath.Join(s.config.StoragePath, name)
 	err := os.MkdirAll(badgerPath, 0o755)

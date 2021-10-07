@@ -2,6 +2,8 @@ package exporter
 
 import (
 	"fmt"
+	"hash/fnv"
+	"regexp"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -9,8 +11,8 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
 // MetricsExporter exports profiling metrics via Prometheus.
@@ -22,14 +24,22 @@ type rule struct {
 
 	name   string
 	qry    *flameql.Query
+	node   *regexp.Regexp
 	labels []string
-	node
 
 	sync.RWMutex
 	counters map[uint64]prometheus.Counter
 }
 
+type observer struct {
+	expr []*regexp.Regexp
+	ctr  []prometheus.Counter
+	m    float64
+}
+
 // NewExporter validates configuration and creates a new prometheus MetricsExporter.
+// It is safe to initialize MetricsExporter without rules, then registry can be nil,
+// Evaluate call will be a noop.
 func NewExporter(rules config.MetricsExportRules, reg prometheus.Registerer) (*MetricsExporter, error) {
 	var e MetricsExporter
 	if rules == nil {
@@ -43,9 +53,12 @@ func NewExporter(rules config.MetricsExportRules, reg prometheus.Registerer) (*M
 		if err != nil {
 			return nil, fmt.Errorf("rule %q: invalid expression %q: %w", name, r.Expr, err)
 		}
-		n, err := newNode(r.Node)
-		if err != nil {
-			return nil, fmt.Errorf("rule %q: invalid node %q: %w", name, r.Node, err)
+		var node *regexp.Regexp
+		if !(r.Node == "total" || r.Node == "") {
+			node, err = regexp.Compile(r.Node)
+			if err != nil {
+				return nil, fmt.Errorf("node must be either 'total' or a valid regexp: %w", err)
+			}
 		}
 		g, err := validateTagKeys(r.Labels)
 		if err != nil {
@@ -55,7 +68,7 @@ func NewExporter(rules config.MetricsExportRules, reg prometheus.Registerer) (*M
 			name:     name,
 			qry:      qry,
 			reg:      reg,
-			node:     n,
+			node:     node,
 			labels:   g,
 			counters: make(map[uint64]prometheus.Counter),
 		})
@@ -63,21 +76,38 @@ func NewExporter(rules config.MetricsExportRules, reg prometheus.Registerer) (*M
 	return &e, nil
 }
 
-// Observe ingested segment key and tree.
-//
-// The call evaluates export rules against the key k and creates prometheus
-// counters for new time series, if required. Every export rule has an
-// expression to evaluate a dimension key, and a filter, which allow to
-// retrieve metric value for particular nodes.
-func (e MetricsExporter) Observe(k *segment.Key, t *tree.Tree, multiplier float64) {
+func (e MetricsExporter) Evaluate(input *storage.PutInput) (storage.SampleObserver, bool) {
+	if len(e.rules) == 0 {
+		return nil, false
+	}
+	o := observer{m: 1}
 	for _, r := range e.rules {
-		c, ok := r.eval(k)
+		c, ok := r.eval(input.Key)
 		if !ok {
 			continue
 		}
-		if val, ok := r.value(t); ok {
-			c.Add(val * multiplier)
+		o.expr = append(o.expr, r.node)
+		o.ctr = append(o.ctr, c)
+	}
+	if len(o.expr) == 0 {
+		return nil, false
+	}
+	if input.Units == "" {
+		// Sample duration in nanoseconds.
+		o.m = 1e9 / float64(input.SampleRate)
+	}
+	return o, true
+}
+
+func (o observer) Observe(k []byte, v int) {
+	if k == nil || v == 0 {
+		return
+	}
+	for i, e := range o.expr {
+		if e != nil && !e.Match(k) {
+			continue
 		}
+		o.ctr[i].Add(float64(v) * o.m)
 	}
 }
 
@@ -88,26 +118,28 @@ func (r *rule) eval(k *segment.Key) (prometheus.Counter, bool) {
 	if !ok {
 		return nil, false
 	}
-	h := m.hash()
 	r.RLock()
+	defer r.RUnlock()
+	if !match(r.qry, m) {
+		return nil, false
+	}
+	var h uint64
+	if len(r.labels) == 0 {
+		h = hash(k.AppName())
+	} else {
+		h = m.hash()
+	}
 	c, ok := r.counters[h]
 	if ok {
-		r.RUnlock()
 		return c, true
 	}
-	r.RUnlock()
-	if match(r.qry, m) {
-		c = prometheus.NewCounter(prometheus.CounterOpts{
-			Name:        r.name,
-			ConstLabels: promLabels(k, r.labels...),
-		})
-		r.reg.MustRegister(c)
-		r.Lock()
-		r.counters[h] = c
-		r.Unlock()
-		return c, true
-	}
-	return nil, false
+	c = prometheus.NewCounter(prometheus.CounterOpts{
+		Name:        r.name,
+		ConstLabels: promLabels(k, r.labels...),
+	})
+	r.reg.MustRegister(c)
+	r.counters[h] = c
+	return c, true
 }
 
 func validateTagKeys(tagKeys []string) ([]string, error) {
@@ -158,4 +190,71 @@ func match(qry *flameql.Query, labels labels) bool {
 		}
 	}
 	return true
+}
+
+// matchLabelNames returns map of KV pairs from the given key that match
+// tag matchers keys of the rule regardless of their values, e.g.:
+//   key:     app{foo=bar,baz=qux}
+//   query:   app{foo="xxx"}
+//   matched: {__name__: app, foo: bar}
+//
+// The key must include labels required by the rule expression, otherwise
+// the function returns empty labels and false.
+func (r *rule) matchLabelNames(key *segment.Key) (labels, bool) {
+	appName := key.AppName()
+	if appName != r.qry.AppName {
+		return nil, false
+	}
+	// This is required for a case when there are no tag matchers.
+	z := labels{{flameql.ReservedTagKeyName, appName}}
+	l := key.Labels()
+	// If no matchers specified (only application name),
+	// all the allowed labels are considered matched.
+	if len(r.qry.Matchers) == 0 {
+		for _, k := range r.labels {
+			if v, ok := l[k]; ok {
+				z = append(z, label{k, v})
+			}
+		}
+		return z, true
+	}
+	// Matchers may refer the same labels, duplicates should be removed.
+	set := map[string]struct{}{}
+	for _, m := range r.qry.Matchers {
+		v, ok := l[m.Key]
+		if !ok {
+			// If the matcher label is required (e.g. the matcher
+			// operator is EQL or EQL_REGEX) but not present, return.
+			if m.IsNegation() {
+				continue
+			}
+			return nil, false
+		}
+		if _, ok = set[m.Key]; !ok {
+			// Note that Matchers are sorted.
+			z = append(z, label{m.Key, v})
+			set[m.Key] = struct{}{}
+		}
+	}
+	return z, true
+}
+
+// labels contain KV label pairs from a segment key.
+type labels []label
+
+type label struct{ key, value string }
+
+func hash(v string) uint64 {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(v))
+	return h.Sum64()
+}
+
+// hash returns FNV-1a hash of labels key value pairs.
+func (l labels) hash() uint64 {
+	h := fnv.New64a()
+	for _, x := range l {
+		_, _ = h.Write([]byte(x.key + ":" + x.value))
+	}
+	return h.Sum64()
 }

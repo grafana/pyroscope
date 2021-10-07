@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -28,10 +29,11 @@ var _ = Describe("server", func() {
 					(*cfg).Server.APIBindAddr = ":10044"
 					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
+					e, _ := exporter.NewExporter(nil, nil)
 					c, _ := New(Config{
 						Configuration:           &(*cfg).Server,
 						Storage:                 s,
-						Ingester:                s,
+						MetricsExporter:         e,
 						Logger:                  logrus.New(),
 						MetricsRegisterer:       prometheus.NewRegistry(),
 						ExportedMetricsRegistry: prometheus.NewRegistry(),

@@ -50,14 +50,13 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	exportedMetricsRegistry := prometheus.NewRegistry()
-	observer, err := exporter.NewExporter(svc.config.MetricsExportRules, exportedMetricsRegistry)
+	metricsExporter, err := exporter.NewExporter(svc.config.MetricsExportRules, exportedMetricsRegistry)
 	if err != nil {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
-	ingester := storage.NewIngestionObserver(svc.storage, observer)
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config, prometheus.DefaultRegisterer)
-	svc.directUpstream = direct.New(ingester)
+	svc.directUpstream = direct.New(svc.storage, metricsExporter)
 	svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
 		Upstream:       svc.directUpstream,
 		AppName:        "pyroscope.server",
@@ -71,7 +70,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	svc.controller, err = server.New(server.Config{
 		Configuration:           svc.config,
 		Storage:                 svc.storage,
-		Ingester:                ingester,
+		MetricsExporter:         metricsExporter,
 		Logger:                  svc.logger,
 		MetricsRegisterer:       prometheus.DefaultRegisterer,
 		ExportedMetricsRegistry: exportedMetricsRegistry,

@@ -6,6 +6,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
@@ -102,9 +103,7 @@ func TestObserve(t *testing.T) {
 	}
 
 	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
-	k, _ := segment.ParseKey(`app.name.cpu{foo=bar,bar=baz}`)
-	v := createTree()
-	exporter.Observe(k, v, 1)
+	k := observe(exporter, "app.name.cpu{foo=bar,bar=baz}")
 
 	if total := getRuleCounterValue(exporter, "app_name_cpu_total", k); total != 5 {
 		t.Fatalf("Total counter must be 5, got %v", total)
@@ -181,7 +180,13 @@ func getRuleCounterValue(e *MetricsExporter, name string, k *segment.Key) float6
 
 func observe(e *MetricsExporter, key string) *segment.Key {
 	k, _ := segment.ParseKey(key)
-	e.Observe(k, createTree(), 1)
+	o, _ := e.Evaluate(&storage.PutInput{Key: k, Units: "samples"})
+	createTree().Iterate(func(key []byte, val uint64) {
+		// Key has ;; suffix.
+		if len(key) > 2 && val != 0 {
+			o.Observe(key[2:], int(val))
+		}
+	})
 	return k
 }
 

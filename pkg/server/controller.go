@@ -42,15 +42,12 @@ const (
 type Controller struct {
 	drained uint32
 
-	config          *config.Server
-	storage         *storage.Storage
-	ingester        storage.Ingester
-	log             *logrus.Logger
-	httpServer      *http.Server
-	exportedMetrics *prometheus.Registry
-	metricsMdw      middleware.Middleware
-
-	dir http.FileSystem
+	config     *config.Server
+	storage    *storage.Storage
+	log        *logrus.Logger
+	httpServer *http.Server
+	metricsMdw middleware.Middleware
+	dir        http.FileSystem
 
 	statsMutex sync.Mutex
 	stats      map[string]int
@@ -59,16 +56,23 @@ type Controller struct {
 
 	// Byte buffers are used for deserialization of ingested data.
 	bufferPool bytebufferpool.Pool
+
+	// Exported metrics.
+	exportedMetrics *prometheus.Registry
+	exporter        storage.MetricsExporter
 }
 
 type Config struct {
 	Configuration *config.Server
-	Storage       *storage.Storage
-	Ingester      storage.Ingester
-	Logger        *logrus.Logger
+	*logrus.Logger
+	*storage.Storage
 
-	MetricsRegisterer       prometheus.Registerer
+	// The registerer is used for exposing server metrics.
+	MetricsRegisterer prometheus.Registerer
+
+	// Exported metrics registry and exported.
 	ExportedMetricsRegistry *prometheus.Registry
+	storage.MetricsExporter
 }
 
 func New(c Config) (*Controller, error) {
@@ -76,7 +80,7 @@ func New(c Config) (*Controller, error) {
 		config:   c.Configuration,
 		log:      c.Logger,
 		storage:  c.Storage,
-		ingester: c.Ingester,
+		exporter: c.MetricsExporter,
 		stats:    make(map[string]int),
 		appStats: mustNewHLL(),
 
@@ -344,8 +348,13 @@ func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}
 	}
 }
 
-func (ctrl *Controller) writeInvalidMethodError(w http.ResponseWriter, err error) {
-	ctrl.writeError(w, http.StatusMethodNotAllowed, err, "method not supported")
+func (ctrl *Controller) writeError(w http.ResponseWriter, code int, err error, msg string) {
+	ctrl.log.WithError(err).Error(msg)
+	writeMessage(w, code, "%s: %q", msg, err)
+}
+
+func (ctrl *Controller) writeInvalidMethodError(w http.ResponseWriter) {
+	ctrl.writeErrorMessage(w, http.StatusMethodNotAllowed, "method not allowed")
 }
 
 func (ctrl *Controller) writeInvalidParameterError(w http.ResponseWriter, err error) {
@@ -358,11 +367,6 @@ func (ctrl *Controller) writeInternalServerError(w http.ResponseWriter, err erro
 
 func (ctrl *Controller) writeJSONEncodeError(w http.ResponseWriter, err error) {
 	ctrl.writeInternalServerError(w, err, "encoding response body")
-}
-
-func (ctrl *Controller) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	ctrl.log.WithError(err).Error(msg)
-	writeMessage(w, code, "%s: %q", msg, err)
 }
 
 func (ctrl *Controller) writeErrorMessage(w http.ResponseWriter, code int, msg string) {

@@ -66,7 +66,7 @@ func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 			invalidateCookie(w, jwtCookieName)
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 		default:
-			ctrl.writeErrorMessage(w, http.StatusMethodNotAllowed, "only POST and DELETE methods are allowed")
+			ctrl.writeInvalidMethodError(w)
 		}
 	}
 }
