@@ -5,7 +5,7 @@ FROM python:3.9
 # COPY Pipfile.lock ./Pipfile.lock
 # RUN pipenv install
 
-RUN pip3 install flask pyroscope-io==0.3.2
+RUN pip3 install flask pyroscope-io==0.4.0
 
 ENV FLASK_ENV=development
 ENV PYTHONUNBUFFERED=1
