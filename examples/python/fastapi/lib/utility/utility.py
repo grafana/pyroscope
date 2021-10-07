@@ -3,17 +3,22 @@ import pyroscope
 import os
 from datetime import datetime
 
+# How much time mutex_lock() takes relative to search_radius()
+MUTEX_LOCK_MULTIPLIER = 2
+
+# How much time check_driver_availability() takes relative to search_radius()
+DRIVER_AVAILABILITY_MULTIPLIER = 0.5
 
 def mutex_lock(n):
     i = 0
     start_time = time.time()
-    while time.time() - start_time < n * 10:
+    while time.time() - start_time < n * MUTEX_LOCK_MULTIPLIER:
         i += 1
 
 def check_driver_availability(n):
     i = 0
     start_time = time.time()
-    while time.time() - start_time < n / 2:
+    while time.time() - start_time < n * DRIVER_AVAILABILITY_MULTIPLIER:
         i += 1
 
     # Every 4 minutes this will artificially create make requests in us-west-1 region slow
