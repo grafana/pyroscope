@@ -114,8 +114,8 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function',
         diffColor: undefined,
-        left: 'Left: 100 samples, 1.00 seconds (10%)',
-        right: 'Right: 100 samples, 1.00 seconds (10%)',
+        left: 'Left: 100 samples, 1.00 second (10%)',
+        right: 'Right: 100 samples, 1.00 second (10%)',
       });
     });
 
@@ -135,7 +135,7 @@ describe('Tooltip', () => {
         title: 'my_function (new)',
         diffColor: diffColorRed,
         left: 'Left: 0 samples, < 0.01 seconds (0%)',
-        right: 'Right: 100 samples, 1.00 seconds (10%)',
+        right: 'Right: 100 samples, 1.00 second (10%)',
       });
     });
 
@@ -154,7 +154,7 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function (removed)',
         diffColor: diffColorGreen,
-        left: 'Left: 100 samples, 1.00 seconds (10%)',
+        left: 'Left: 100 samples, 1.00 second (10%)',
         right: 'Right: 0 samples, < 0.01 seconds (0%)',
       });
     });
@@ -174,8 +174,8 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function (+100.00%)',
         diffColor: diffColorRed,
-        left: 'Left: 100 samples, 1.00 seconds (10%)',
-        right: 'Right: 100 samples, 1.00 seconds (20%)',
+        left: 'Left: 100 samples, 1.00 second (10%)',
+        right: 'Right: 100 samples, 1.00 second (20%)',
       });
     });
 
@@ -194,8 +194,8 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function (-50.00%)',
         diffColor: diffColorGreen,
-        left: 'Left: 100 samples, 1.00 seconds (20%)',
-        right: 'Right: 100 samples, 1.00 seconds (10%)',
+        left: 'Left: 100 samples, 1.00 second (20%)',
+        right: 'Right: 100 samples, 1.00 second (10%)',
       });
     });
   });
