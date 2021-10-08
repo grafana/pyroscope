@@ -16,10 +16,9 @@ describe('format', () => {
   });
 
   describe('format', () => {
-    // TODO is this correct?
-    // it would be better to require
+    // TODO is this correct, since we have an enum?
     // unfortunately until we fully migrate to TS
-    // i don't see this being possible
+    // we still need to check for a default value
     it('its constructor should default to DurationFormatter', () => {
       const df = getFormatter(80, 2, '' as any);
 

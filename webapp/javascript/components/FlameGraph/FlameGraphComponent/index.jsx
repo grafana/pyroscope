@@ -621,7 +621,6 @@ class FlameGraph extends React.Component {
           </div>
         </div>
         <Tooltip
-          formatter={this.formatter}
           format={this.props.format.format}
           canvasRef={this.canvasRef}
           xyToData={this.xyToTooltipData}
