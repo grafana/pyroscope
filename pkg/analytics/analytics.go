@@ -70,33 +70,36 @@ type Service struct {
 }
 
 type metrics struct {
-	InstallID        string    `json:"install_id"`
-	RunID            string    `json:"run_id"`
-	Version          string    `json:"version"`
-	Timestamp        time.Time `json:"timestamp"`
-	UploadIndex      int       `json:"upload_index"`
-	GOOS             string    `json:"goos"`
-	GOARCH           string    `json:"goarch"`
-	GoVersion        string    `json:"go_version"`
-	MemAlloc         int       `json:"mem_alloc"`
-	MemTotalAlloc    int       `json:"mem_total_alloc"`
-	MemSys           int       `json:"mem_sys"`
-	MemNumGC         int       `json:"mem_num_gc"`
-	BadgerMain       int       `json:"badger_main"`
-	BadgerTrees      int       `json:"badger_trees"`
-	BadgerDicts      int       `json:"badger_dicts"`
-	BadgerDimensions int       `json:"badger_dimensions"`
-	BadgerSegments   int       `json:"badger_segments"`
-	ControllerIndex  int       `json:"controller_index"`
-	ControllerIngest int       `json:"controller_ingest"`
-	ControllerRender int       `json:"controller_render"`
-	SpyRbspy         int       `json:"spy_rbspy"`
-	SpyPyspy         int       `json:"spy_pyspy"`
-	SpyGospy         int       `json:"spy_gospy"`
-	SpyEbpfspy       int       `json:"spy_ebpfspy"`
-	SpyPhpspy        int       `json:"spy_phpspy"`
-	SpyDotnetspy     int       `json:"spy_dotnetspy"`
-	AppsCount        int       `json:"apps_count"`
+	InstallID            string    `json:"install_id"`
+	RunID                string    `json:"run_id"`
+	Version              string    `json:"version"`
+	Timestamp            time.Time `json:"timestamp"`
+	UploadIndex          int       `json:"upload_index"`
+	GOOS                 string    `json:"goos"`
+	GOARCH               string    `json:"goarch"`
+	GoVersion            string    `json:"go_version"`
+	MemAlloc             int       `json:"mem_alloc"`
+	MemTotalAlloc        int       `json:"mem_total_alloc"`
+	MemSys               int       `json:"mem_sys"`
+	MemNumGC             int       `json:"mem_num_gc"`
+	BadgerMain           int       `json:"badger_main"`
+	BadgerTrees          int       `json:"badger_trees"`
+	BadgerDicts          int       `json:"badger_dicts"`
+	BadgerDimensions     int       `json:"badger_dimensions"`
+	BadgerSegments       int       `json:"badger_segments"`
+	ControllerIndex      int       `json:"controller_index"`
+	ControllerComparison int       `json:"controller_comparison"`
+	ControllerDiff       int       `json:"controller_diff"`
+	ControllerIngest     int       `json:"controller_ingest"`
+	ControllerRender     int       `json:"controller_render"`
+	SpyRbspy             int       `json:"spy_rbspy"`
+	SpyPyspy             int       `json:"spy_pyspy"`
+	SpyGospy             int       `json:"spy_gospy"`
+	SpyEbpfspy           int       `json:"spy_ebpfspy"`
+	SpyPhpspy            int       `json:"spy_phpspy"`
+	SpyDotnetspy         int       `json:"spy_dotnetspy"`
+	SpyJavaspy           int       `json:"spy_javaspy"`
+	AppsCount            int       `json:"apps_count"`
 }
 
 func (s *Service) Start() {
@@ -134,33 +137,36 @@ func (s *Service) sendReport() {
 	controllerStats := s.p.Stats()
 
 	m := metrics{
-		InstallID:        s.s.InstallID(),
-		RunID:            uuid.New().String(),
-		Version:          build.Version,
-		Timestamp:        time.Now(),
-		UploadIndex:      s.uploads,
-		GOOS:             runtime.GOOS,
-		GOARCH:           runtime.GOARCH,
-		GoVersion:        runtime.Version(),
-		MemAlloc:         int(ms.Alloc),
-		MemTotalAlloc:    int(ms.TotalAlloc),
-		MemSys:           int(ms.Sys),
-		MemNumGC:         int(ms.NumGC),
-		BadgerMain:       int(du["main"]),
-		BadgerTrees:      int(du["trees"]),
-		BadgerDicts:      int(du["dicts"]),
-		BadgerDimensions: int(du["dimensions"]),
-		BadgerSegments:   int(du["segments"]),
-		ControllerIndex:  controllerStats["index"],
-		ControllerIngest: controllerStats["ingest"],
-		ControllerRender: controllerStats["render"],
-		SpyRbspy:         controllerStats["ingest:rbspy"],
-		SpyPyspy:         controllerStats["ingest:pyspy"],
-		SpyGospy:         controllerStats["ingest:gospy"],
-		SpyEbpfspy:       controllerStats["ingest:ebpfspy"],
-		SpyPhpspy:        controllerStats["ingest:phpspy"],
-		SpyDotnetspy:     controllerStats["ingest:dotnetspy"],
-		AppsCount:        s.p.AppsCount(),
+		InstallID:            s.s.InstallID(),
+		RunID:                uuid.New().String(),
+		Version:              build.Version,
+		Timestamp:            time.Now(),
+		UploadIndex:          s.uploads,
+		GOOS:                 runtime.GOOS,
+		GOARCH:               runtime.GOARCH,
+		GoVersion:            runtime.Version(),
+		MemAlloc:             int(ms.Alloc),
+		MemTotalAlloc:        int(ms.TotalAlloc),
+		MemSys:               int(ms.Sys),
+		MemNumGC:             int(ms.NumGC),
+		BadgerMain:           int(du["main"]),
+		BadgerTrees:          int(du["trees"]),
+		BadgerDicts:          int(du["dicts"]),
+		BadgerDimensions:     int(du["dimensions"]),
+		BadgerSegments:       int(du["segments"]),
+		ControllerIndex:      controllerStats["index"],
+		ControllerComparison: controllerStats["comparison"],
+		ControllerDiff:       controllerStats["diff"],
+		ControllerIngest:     controllerStats["ingest"],
+		ControllerRender:     controllerStats["render"],
+		SpyRbspy:             controllerStats["ingest:rbspy"],
+		SpyPyspy:             controllerStats["ingest:pyspy"],
+		SpyGospy:             controllerStats["ingest:gospy"],
+		SpyEbpfspy:           controllerStats["ingest:ebpfspy"],
+		SpyPhpspy:            controllerStats["ingest:phpspy"],
+		SpyDotnetspy:         controllerStats["ingest:dotnetspy"],
+		SpyJavaspy:           controllerStats["ingest:javaspy"],
+		AppsCount:            s.p.AppsCount(),
 	}
 
 	buf, err := json.Marshal(m)
