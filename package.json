@@ -19,6 +19,7 @@
     "cy:open": "cypress open",
     "cy:ci": "cypress run",
     "cy:ss": "./scripts/cypress-screenshots.sh",
+    "cy:ss-check": "CYPRESS_updateSnapshots=false ./scripts/cypress-screenshots.sh",
     "prepare": "husky install",
     "lint-staged": "lint-staged"
   },
@@ -80,6 +81,7 @@
     "sync-request": "^6.1.0",
     "ts-jest": "^27.0.5",
     "typescript": "^4.4.3",
+    "uuid": "^8.3.2",
     "webpack": "~5.51.1",
     "webpack-bundle-analyzer": "^4.4.2",
     "webpack-cli": "^4.8.0",
