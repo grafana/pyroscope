@@ -73,6 +73,7 @@ export default function Tooltip(props: TooltipProps) {
         x: e.offsetX,
         y: e.offsetY,
 
+        clientX: e.clientX,
         clientY: e.clientY,
         windowWidth: window.innerWidth,
         tooltipWidth: tooltipEl.current.clientWidth,
@@ -233,6 +234,7 @@ function percentDiff(leftPercent: number, rightPercent: number): number {
 interface onMouseMoveArgs {
   x: number;
   y: number;
+  clientX: number;
   clientY: number;
   windowWidth: number;
   tooltipWidth: number;
@@ -248,7 +250,10 @@ interface onMouseMoveArgs {
 function onMouseMove(args: onMouseMoveArgs) {
   const data = args.xyToData(args.format, args.x, args.y);
 
-  const left = Math.min(args.x + 12, args.windowWidth - args.tooltipWidth - 20);
+  const left = Math.min(
+    args.clientX + 12,
+    args.windowWidth - args.tooltipWidth - 20
+  );
   const top = args.clientY + 20;
 
   const style: React.CSSProperties = {
