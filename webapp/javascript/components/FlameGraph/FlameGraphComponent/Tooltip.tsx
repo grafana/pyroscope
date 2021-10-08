@@ -54,77 +54,6 @@ export default function Tooltip(props: TooltipProps) {
 
   const { numTicks, sampleRate, units } = props;
 
-  const onMouseMove = (e: MouseEvent) => {
-    if (!isWithinBounds(e.offsetX, e.offsetY)) {
-      onMouseOut();
-      return;
-    }
-
-    const data = xyToData(format, e.offsetX, e.offsetY);
-
-    // makes it so that tooltip is always visible even if mouse is close to the right edge
-    const left = Math.min(
-      e.clientX + 12,
-      window.innerWidth - tooltipEl.current.clientWidth - 20
-    );
-    const top = e.clientY + 20;
-
-    setStyle({
-      top,
-      left,
-      visibility: 'visible',
-    });
-
-    const formatter = getFormatter(numTicks, sampleRate, units);
-
-    // format is either single, double or something else
-    switch (data.format) {
-      case 'single': {
-        const d = formatSingle(
-          formatter,
-          data.percent,
-          data.numBarTicks,
-          props.sampleRate
-        );
-
-        setContent({
-          title: {
-            text: data.title,
-            diff: {
-              text: '',
-              color: '',
-            },
-          },
-          left: d.left,
-          right: '',
-        });
-        break;
-      }
-
-      case 'double': {
-        const d = formatDouble({
-          formatter,
-          sampleRate: props.sampleRate,
-          totalLeft: data.left,
-          totalRight: data.right,
-          leftPercent: data.leftPercent,
-          rightPercent: data.rightPercent,
-          title: data.title,
-        });
-
-        setContent({
-          title: d.title,
-          left: d.left,
-          right: d.right,
-        });
-        break;
-      }
-
-      default:
-        throw new Error(`Unsupported format: '${JSON.stringify(data)}'`);
-    }
-  };
-
   const onMouseOut = () => {
     setStyle({
       visibility: 'hidden',
@@ -135,9 +64,34 @@ export default function Tooltip(props: TooltipProps) {
   // that's to evict stale props
   const memoizedOnMouseMove = React.useCallback(
     (e: MouseEvent) => {
-      onMouseMove(e);
+      if (!isWithinBounds(e.offsetX, e.offsetY)) {
+        onMouseOut();
+        return;
+      }
+
+      const d = onMouseMove({
+        x: e.offsetX,
+        y: e.offsetY,
+
+        clientY: e.clientY,
+        windowWidth: window.innerWidth,
+        tooltipWidth: tooltipEl.current.clientWidth,
+
+        numTicks,
+        sampleRate,
+        units,
+        format,
+
+        xyToData,
+      });
+
+      setStyle(d.style);
+      setContent(d.content);
     },
-    [numTicks, sampleRate, units]
+
+    // these are the dependencies from props
+    // that are going to be used in onMouseMove
+    [numTicks, sampleRate, units, format, xyToData]
   );
 
   React.useEffect(() => {
@@ -274,4 +228,85 @@ function percentDiff(leftPercent: number, rightPercent: number): number {
   // difference between 2 percents
   // https://en.wikipedia.org/wiki/Relative_change_and_difference
   return ((rightPercent - leftPercent) / leftPercent) * 100;
+}
+
+interface onMouseMoveArgs {
+  x: number;
+  y: number;
+  clientY: number;
+  windowWidth: number;
+  tooltipWidth: number;
+  format: 'single' | 'double';
+
+  numTicks: number;
+  sampleRate: number;
+  units: Units;
+
+  xyToData: xyToData;
+}
+
+function onMouseMove(args: onMouseMoveArgs) {
+  const data = args.xyToData(args.format, args.x, args.y);
+
+  const left = Math.min(args.x + 12, args.windowWidth - args.tooltipWidth - 20);
+  const top = args.clientY + 20;
+
+  const style: React.CSSProperties = {
+    top,
+    left,
+    visibility: 'visible',
+  };
+
+  const formatter = getFormatter(args.numTicks, args.sampleRate, args.units);
+
+  // format is either single, double or something else
+  switch (data.format) {
+    case 'single': {
+      const d = formatSingle(
+        formatter,
+        data.percent,
+        data.numBarTicks,
+        args.sampleRate
+      );
+
+      return {
+        style,
+        content: {
+          title: {
+            text: data.title,
+            diff: {
+              text: '',
+              color: '',
+            },
+          },
+          left: d.left,
+          right: '',
+        },
+      };
+    }
+
+    case 'double': {
+      const d = formatDouble({
+        formatter,
+        sampleRate: args.sampleRate,
+        totalLeft: data.left,
+        totalRight: data.right,
+        leftPercent: data.leftPercent,
+        rightPercent: data.rightPercent,
+        title: data.title,
+      });
+
+      return {
+        style,
+        content: {
+          title: d.title,
+          left: d.left,
+          right: d.right,
+        },
+      };
+    }
+
+    default:
+      throw new Error(`Unsupported format: '${JSON.stringify(data)}'`);
+  }
 }
