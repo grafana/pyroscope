@@ -161,7 +161,7 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	nodes := []*treeNode{t.root}
 	prefixes := make([][]byte, 1)
 	prefixes[0] = make([]byte, 0)
-	for len(nodes) > 0 {
+	for len(nodes) > 0 { // bfs
 		node := nodes[0]
 		nodes = nodes[1:]
 

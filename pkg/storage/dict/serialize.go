@@ -15,7 +15,10 @@ func (t *Dict) Serialize(w io.Writer) error {
 	t.m.RLock()
 	defer t.m.RUnlock()
 
-	varint.Write(w, currentVersion)
+	_, err := varint.Write(w, currentVersion)
+	if err != nil {
+		return err
+	}
 
 	nodes := []*trieNode{t.root}
 	for len(nodes) > 0 {
