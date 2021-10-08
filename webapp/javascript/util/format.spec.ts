@@ -15,14 +15,17 @@ describe('format', () => {
     });
   });
 
-  //  describe('numberWithCommas()', () => {
-  //
-  //  });
-  //
-  //
-  // TODO: don't export duration formatter
-  // let us interact strictly via the constructor
   describe('format', () => {
+    // TODO is this correct?
+    // it would be better to require
+    // unfortunately until we fully migrate to TS
+    // i don't see this being possible
+    it('its constructor should default to DurationFormatter', () => {
+      const df = getFormatter(80, 2, '');
+
+      expect(df.format(0.001, 100)).toBe('< 0.01 seconds');
+    });
+
     describe('DurationFormatter', () => {
       it('correctly formats duration when maxdur = 40', () => {
         const df = getFormatter(80, 2, 'samples');
@@ -97,6 +100,40 @@ describe('format', () => {
             // sampleRate is not used
             const sampleRate = NaN;
             const f = getFormatter(maxObjects, sampleRate, 'objects');
+
+            expect(f.format(samples, sampleRate)).toBe(expected);
+          });
+        }
+      );
+    });
+
+    describe('BytesFormatter', () => {
+      describe.each([
+        [1, -1, '-1.00 bytes'], // TODO is this correct?
+        [1024, -1, '< 0.01 KB'],
+        [Math.pow(1024, 2), -1, '< 0.01 MB'],
+        [Math.pow(1024, 3), -1, '< 0.01 GB'],
+        [Math.pow(1024, 4), -1, '< 0.01 TB'],
+
+        [1, 1, '1.00 bytes'],
+        [1024, 1, '< 0.01 KB'],
+        [Math.pow(1024, 2), 1, '< 0.01 MB'],
+        [Math.pow(1024, 3), 1, '< 0.01 GB'],
+        [Math.pow(1024, 4), 1, '< 0.01 TB'],
+
+        // if the tests here feel random, that's because they are
+        // input and outputs were reproduced from real data
+        [338855357, 269094260, '256.63 MB'],
+        [338855357, 21498656, '20.50 MB'],
+        [33261774660, 2369569091, '2.21 GB'],
+        [33261774660, 12110767522, '11.28 GB'],
+      ])(
+        'new BytesFormatter(%i).format(%i, %i)',
+        (maxObjects: number, samples: number, expected: string) => {
+          it(`returns ${expected}`, () => {
+            // sampleRate is not used
+            const sampleRate = NaN;
+            const f = getFormatter(maxObjects, sampleRate, 'bytes');
 
             expect(f.format(samples, sampleRate)).toBe(expected);
           });

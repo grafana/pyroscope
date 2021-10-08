@@ -22,41 +22,7 @@ export function numberWithCommas(x: number): string {
 //
 //
 //
-//const bytes = [
-//  [1024, 'KB'],
-//  [1024, 'MB'],
-//  [1024, 'GB'],
-//  [1024, 'TB'],
-//  [1024, 'PB'],
-//];
 //
-//export class BytesFormatter {
-//  constructor(maxBytes) {
-//    this.divider = 1;
-//    this.suffix = 'bytes';
-//    for (var i = 0; i < bytes.length; i++) {
-//      if (maxBytes >= bytes[i][0]) {
-//        this.divider *= bytes[i][0];
-//        maxBytes /= bytes[i][0];
-//        this.suffix = bytes[i][1];
-//      } else {
-//        break;
-//      }
-//    }
-//  }
-//
-//  format(samples, sampleRate) {
-//    let number = samples / this.divider;
-//    if (number >= 0 && number < 0.01) {
-//      number = '< 0.01';
-//    } else if (number <= 0 && number > -0.01) {
-//      number = '< 0.01';
-//    } else {
-//      number = number.toFixed(2);
-//    }
-//    return `${number} ${this.suffix}`;
-//  }
-//}
 //
 //
 //
@@ -91,8 +57,8 @@ export function getFormatter(max: number, sampleRate: number, units: string) {
       return new DurationFormatter(max / sampleRate);
     case 'objects':
       return new ObjectsFormatter(max);
-    //    case 'bytes':
-    //      return new BytesFormatter(max);
+    case 'bytes':
+      return new BytesFormatter(max);
     default:
       //  throw new Error(`Unsupported unit: ${units}`);
       return new DurationFormatter(max / sampleRate);
@@ -170,6 +136,42 @@ export class ObjectsFormatter {
     } else if (n <= 0 && n > -0.01) {
       nStr = '< 0.01';
     }
+    return `${nStr} ${this.suffix}`;
+  }
+}
+
+export class BytesFormatter {
+  divider = 1;
+  suffix = 'bytes';
+  bytes: [number, string][] = [
+    [1024, 'KB'],
+    [1024, 'MB'],
+    [1024, 'GB'],
+    [1024, 'TB'],
+    [1024, 'PB'],
+  ];
+  constructor(maxBytes: number) {
+    for (var i = 0; i < this.bytes.length; i++) {
+      if (maxBytes >= this.bytes[i][0]) {
+        this.divider *= this.bytes[i][0];
+        maxBytes /= this.bytes[i][0];
+        this.suffix = this.bytes[i][1];
+      } else {
+        break;
+      }
+    }
+  }
+
+  format(samples: number, sampleRate: number) {
+    let n = samples / this.divider;
+    let nStr = n.toFixed(2);
+
+    if (n >= 0 && n < 0.01) {
+      nStr = '< 0.01';
+    } else if (n <= 0 && n > -0.01) {
+      nStr = '< 0.01';
+    }
+
     return `${nStr} ${this.suffix}`;
   }
 }
