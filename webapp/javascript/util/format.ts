@@ -1,54 +1,15 @@
 export function numberWithCommas(x: number): string {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
-//
-//const suffixes = ['K', 'M', 'G', 'T'];
-//
-//export function shortNumber(x) {
-//  let suffix = '';
-//
-//  for (var i = 0; x > 1000 && i < suffixes.length; i++) {
-//    suffix = suffixes[i];
-//    x /= 1000;
-//  }
-//
-//  return Math.round(x).toString() + suffix;
-//}
-//
-//export function formatPercent(ratio) {
-//  const percent = Math.round(10000 * ratio) / 100;
-//  return percent + '%';
-//}
-//
-//
-//
-//
-//
-//
-//
-export function getPackageNameFromStackTrace(spyName, stackTrace) {
-  // TODO: actually make sure these make sense and add tests
-  const regexpLookup = {
-    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-    dotnetspy: /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/,
-    ebpfspy: /^(?<packageName>.+)$/,
-    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
-    phpspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
-    pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
-    rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
-  };
 
-  if (stackTrace.length === 0) {
-    return stackTrace;
-  }
-  const regexp = regexpLookup[spyName] || regexpLookup.default;
-  const fullStackGroups = stackTrace.match(regexp);
-  if (fullStackGroups) {
-    return fullStackGroups.groups.packageName;
-  }
-  return stackTrace;
+export function formatPercent(ratio: number) {
+  const percent = ratioToPercent(ratio);
+  return `${percent}%`;
 }
-//
+
+export function ratioToPercent(ratio: number) {
+  return Math.round(10000 * ratio) / 100;
+}
 
 // TODO add an enum for the units
 export function getFormatter(max: number, sampleRate: number, units: string) {

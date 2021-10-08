@@ -1,5 +1,4 @@
 import React from 'react';
-import { percentDiff } from './format';
 import { numberWithCommas, getFormatter } from '../../../util/format';
 import { diffColorRed, diffColorGreen } from './color';
 
@@ -226,7 +225,8 @@ function formatDouble({
     totalRight
   )} samples, ${formatter.format(totalRight, sampleRate)} (${rightPercent}%)`;
 
-  const totalDiff = percentDiff(leftPercent, rightPercent).toFixed(2);
+  //  const totalDiff = percentDiff(leftPercent, rightPercent).toFixed(2);
+  const totalDiff = percentDiff(leftPercent, rightPercent);
 
   let tooltipDiffColor = '';
   if (totalDiff > 0) {
@@ -244,9 +244,9 @@ function formatDouble({
     // this function has been removed
     tooltipDiffText = '(removed)';
   } else if (totalDiff > 0) {
-    tooltipDiffText = `(+${totalDiff}%)`;
+    tooltipDiffText = `(+${totalDiff.toFixed(2)}%)`;
   } else if (totalDiff < 0) {
-    tooltipDiffText = `(${totalDiff}%)`;
+    tooltipDiffText = `(${totalDiff.toFixed(2)}%)`;
   }
 
   return {
@@ -260,4 +260,10 @@ function formatDouble({
     left,
     right,
   };
+}
+
+function percentDiff(leftPercent: number, rightPercent: number): number {
+  // difference between 2 percents
+  // https://en.wikipedia.org/wiki/Relative_change_and_difference
+  return ((rightPercent - leftPercent) / leftPercent) * 100;
 }

@@ -29,12 +29,10 @@ THIS SOFTWARE.
 import React from 'react';
 import clsx from 'clsx';
 import {
-  formatPercent,
-  getPackageNameFromStackTrace,
+  getFormatter,
   ratioToPercent,
-  percentDiff,
-} from './format';
-import { getFormatter, numberWithCommas } from '../../../util/format';
+  formatPercent,
+} from '../../../util/format';
 import {
   colorBasedOnDiff,
   colorBasedOnDiffPercent,
@@ -43,6 +41,7 @@ import {
   colorGreyscale,
   diffColorGreen,
   diffColorRed,
+  getPackageNameFromStackTrace,
 } from './color';
 import { fitToCanvasRect } from '../../../util/fitMode';
 import DiffLegend from './DiffLegend';
