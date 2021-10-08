@@ -1,9 +1,9 @@
 /* eslint-disable no-plusplus */
 /* eslint-disable prefer-destructuring */
 /* eslint-disable max-classes-per-file */
-export function numberWithCommas(x) {
-  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
+// export function numberWithCommas(x) {
+//  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+// }
 
 const suffixes = ['K', 'M', 'G', 'T'];
 

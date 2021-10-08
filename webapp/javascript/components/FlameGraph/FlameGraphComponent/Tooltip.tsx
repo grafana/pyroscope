@@ -1,5 +1,6 @@
 import React from 'react';
-import { percentDiff, numberWithCommas, getFormatter } from './format';
+import { percentDiff, getFormatter } from './format';
+import { numberWithCommas } from '../../../util/format';
 import { diffColorRed, diffColorGreen } from './color';
 
 type xyToData = (
