@@ -1,5 +1,5 @@
 import React from 'react';
-import { numberWithCommas, getFormatter } from '../../../util/format';
+import { numberWithCommas, getFormatter, Units } from '../../../util/format';
 import { diffColorRed, diffColorGreen } from './color';
 
 type xyToData = (
@@ -30,8 +30,7 @@ export interface TooltipProps {
   xyToData: xyToData;
   isWithinBounds: (x: number, y: number) => boolean;
 
-  // TODO we have an enum somewhere
-  units: string;
+  units: Units;
   sampleRate: number;
   numTicks: number;
 }

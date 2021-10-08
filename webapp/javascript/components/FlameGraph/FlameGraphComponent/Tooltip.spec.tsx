@@ -3,6 +3,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { diffColorRed, diffColorGreen } from './color';
+import { Units } from '../../../util/format';
 
 import Tooltip, { TooltipProps } from './Tooltip';
 
@@ -33,7 +34,7 @@ describe('Tooltip', () => {
     const { rerender } = render(
       <TestCanvas
         format="single"
-        units="samples"
+        units={Units.Samples}
         sampleRate={100}
         numTicks={100}
         isWithinBounds={isWithinBounds}
@@ -55,7 +56,7 @@ describe('Tooltip', () => {
     rerender(
       <TestCanvas
         format="single"
-        units="objects"
+        units={Units.Objects}
         numTicks={1000}
         sampleRate={100}
         isWithinBounds={isWithinBounds}
@@ -85,7 +86,7 @@ describe('Tooltip', () => {
       render(
         <TestCanvas
           format="single"
-          units="samples"
+          units={Units.Samples}
           numTicks={100}
           sampleRate={100}
           isWithinBounds={isWithinBounds}
@@ -119,7 +120,7 @@ describe('Tooltip', () => {
       render(
         <TestCanvas
           format="double"
-          units="samples"
+          units={Units.Samples}
           numTicks={100}
           sampleRate={100}
           isWithinBounds={isWithinBounds}

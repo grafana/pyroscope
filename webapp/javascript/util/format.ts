@@ -11,14 +11,18 @@ export function ratioToPercent(ratio: number) {
   return Math.round(10000 * ratio) / 100;
 }
 
-// TODO add an enum for the units
-export function getFormatter(max: number, sampleRate: number, units: string) {
+export enum Units {
+  Samples = 'samples',
+  Objects = 'objects',
+  Bytes = 'bytes',
+}
+export function getFormatter(max: number, sampleRate: number, units: Units) {
   switch (units) {
-    case 'samples':
+    case Units.Samples:
       return new DurationFormatter(max / sampleRate);
-    case 'objects':
+    case Units.Objects:
       return new ObjectsFormatter(max);
-    case 'bytes':
+    case Units.Bytes:
       return new BytesFormatter(max);
     default:
       //  throw new Error(`Unsupported unit: ${units}`);

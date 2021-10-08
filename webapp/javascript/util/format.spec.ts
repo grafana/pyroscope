@@ -1,4 +1,4 @@
-import { numberWithCommas, getFormatter } from './format';
+import { numberWithCommas, getFormatter, Units } from './format';
 
 describe('format', () => {
   describe.each([
@@ -21,14 +21,14 @@ describe('format', () => {
     // unfortunately until we fully migrate to TS
     // i don't see this being possible
     it('its constructor should default to DurationFormatter', () => {
-      const df = getFormatter(80, 2, '');
+      const df = getFormatter(80, 2, '' as any);
 
       expect(df.format(0.001, 100)).toBe('< 0.01 seconds');
     });
 
     describe('DurationFormatter', () => {
       it('correctly formats duration when maxdur = 40', () => {
-        const df = getFormatter(80, 2, 'samples');
+        const df = getFormatter(80, 2, Units.Samples);
 
         expect(df.format(0.001, 100)).toBe('< 0.01 seconds');
         expect(df.format(100, 100)).toBe('1.00 second');
@@ -38,7 +38,7 @@ describe('format', () => {
       });
 
       it('correctly formats duration when maxdur = 80', () => {
-        const df = getFormatter(160, 2, 'samples');
+        const df = getFormatter(160, 2, Units.Samples);
 
         expect(df.format(6000, 100)).toBe('1.00 minute');
         expect(df.format(100, 100)).toBe('0.02 minutes');
@@ -99,7 +99,7 @@ describe('format', () => {
           it(`returns ${expected}`, () => {
             // sampleRate is not used
             const sampleRate = NaN;
-            const f = getFormatter(maxObjects, sampleRate, 'objects');
+            const f = getFormatter(maxObjects, sampleRate, Units.Objects);
 
             expect(f.format(samples, sampleRate)).toBe(expected);
           });
@@ -133,7 +133,7 @@ describe('format', () => {
           it(`returns ${expected}`, () => {
             // sampleRate is not used
             const sampleRate = NaN;
-            const f = getFormatter(maxObjects, sampleRate, 'bytes');
+            const f = getFormatter(maxObjects, sampleRate, Units.Bytes);
 
             expect(f.format(samples, sampleRate)).toBe(expected);
           });
