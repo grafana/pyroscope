@@ -20,43 +20,7 @@ export function numberWithCommas(x: number): string {
 //  return percent + '%';
 //}
 //
-//const durations = [
-//  [60, 'minute'],
-//  [60, 'hour'],
-//  [24, 'day'],
-//  [30, 'month'],
-//  [12, 'year'],
-//];
 //
-//// this is a class and not a function because we can save some time by
-////   precalculating divider and suffix and not doing it on each iteration
-//export class DurationFormatter {
-//  constructor(maxDur) {
-//    this.divider = 1;
-//    this.suffix = 'second';
-//    for (var i = 0; i < durations.length; i++) {
-//      if (maxDur >= durations[i][0]) {
-//        this.divider *= durations[i][0];
-//        maxDur /= durations[i][0];
-//        this.suffix = durations[i][1];
-//      } else {
-//        break;
-//      }
-//    }
-//  }
-//
-//  format(samples, sampleRate) {
-//    let number = samples / sampleRate / this.divider;
-//    if (number >= 0 && number < 0.01) {
-//      number = '< 0.01';
-//    } else if (number <= 0 && number > -0.01) {
-//      number = '< 0.01';
-//    } else {
-//      number = number.toFixed(2);
-//    }
-//    return `${number} ${this.suffix}` + (number == 1 ? '' : 's');
-//  }
-//}
 //
 //const bytes = [
 //  [1024, 'KB'],
@@ -153,15 +117,56 @@ export function numberWithCommas(x: number): string {
 //  return stackTrace;
 //}
 //
-//export function getFormatter(max, sampleRate, units) {
-//  switch (units) {
-//    case 'samples':
-//      return new DurationFormatter(max / sampleRate);
-//    case 'objects':
-//      return new ObjectsFormatter(max);
-//    case 'bytes':
-//      return new BytesFormatter(max);
-//    default:
-//      return new DurationFormatter(max / sampleRate);
-//  }
-//}
+
+// TODO add an enum for the units
+export function getFormatter(max: number, sampleRate: number, units: string) {
+  switch (units) {
+    case 'samples':
+      return new DurationFormatter(max / sampleRate);
+    //    case 'objects':
+    //      return new ObjectsFormatter(max);
+    //    case 'bytes':
+    //      return new BytesFormatter(max);
+    default:
+      throw new Error(`Unsupported unit: ${units}`);
+    //      return new DurationFormatter(max / sampleRate);
+  }
+}
+
+//// this is a class and not a function because we can save some time by
+////   precalculating divider and suffix and not doing it on each iteration
+class DurationFormatter {
+  divider = 1;
+  suffix: string = 'second';
+  durations: [number, string][] = [
+    [60, 'minute'],
+    [60, 'hour'],
+    [24, 'day'],
+    [30, 'month'],
+    [12, 'year'],
+  ];
+  constructor(maxDur: number) {
+    for (var i = 0; i < this.durations.length; i++) {
+      if (maxDur >= this.durations[i][0]) {
+        this.divider *= this.durations[i][0];
+        maxDur /= this.durations[i][0];
+        this.suffix = this.durations[i][1];
+      } else {
+        break;
+      }
+    }
+  }
+
+  format(samples: number, sampleRate: number) {
+    let n: any = samples / sampleRate / this.divider;
+    let nStr = n.toFixed(2);
+
+    if (n >= 0 && n < 0.01) {
+      nStr = '< 0.01';
+    } else if (n <= 0 && n > -0.01) {
+      nStr = '< 0.01';
+    }
+
+    return `${nStr} ${this.suffix}` + (n == 1 ? '' : 's');
+  }
+}
