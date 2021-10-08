@@ -6,24 +6,72 @@ import { diffColorRed, diffColorGreen } from './color';
 
 import Tooltip, { TooltipProps } from './Tooltip';
 
-function TestCanvas(props: Omit<TooltipProps, 'canvasRef' | 'numTicks'>) {
+function TestCanvas(props: Omit<TooltipProps, 'canvasRef'>) {
   const canvasRef = React.useRef();
 
   return (
     <>
       <canvas data-testid="canvas" ref={canvasRef} />
-      <Tooltip
-        data-testid="tooltip"
-        canvasRef={canvasRef}
-        {...props}
-        numTicks={10}
-      />
+      <Tooltip data-testid="tooltip" canvasRef={canvasRef} {...props} />
     </>
   );
 }
 
 describe('Tooltip', () => {
   const isWithinBounds = () => true;
+
+  // this test handles a case where the app has changed
+  // but the unit stayed the same
+  it('updates units correctly', () => {
+    const xyToData = (format: 'single', x: number, y: number) => ({
+      format,
+      title: 'function_title',
+      numBarTicks: 10,
+      percent: 1,
+    });
+
+    const { rerender } = render(
+      <TestCanvas
+        format="single"
+        units="samples"
+        sampleRate={100}
+        numTicks={100}
+        isWithinBounds={isWithinBounds}
+        xyToData={xyToData}
+      />
+    );
+
+    // since we are mocking the result
+    // we don't care exactly where it's hovered
+    userEvent.hover(screen.getByTestId('canvas'));
+
+    expect(screen.getByTestId('flamegraph-tooltip-title')).toHaveTextContent(
+      'function_title'
+    );
+    expect(screen.getByTestId('flamegraph-tooltip-body')).toHaveTextContent(
+      '1, 10 samples, 0.10 seconds'
+    );
+
+    rerender(
+      <TestCanvas
+        format="single"
+        units="objects"
+        numTicks={1000}
+        sampleRate={100}
+        isWithinBounds={isWithinBounds}
+        xyToData={xyToData}
+      />
+    );
+
+    userEvent.hover(screen.getByTestId('canvas'));
+
+    expect(screen.getByTestId('flamegraph-tooltip-title')).toHaveTextContent(
+      'function_title'
+    );
+    expect(screen.getByTestId('flamegraph-tooltip-body')).toHaveTextContent(
+      '1, 10 samples, 0.01 K'
+    );
+  });
 
   describe('"single" mode', () => {
     it('renders correctly', () => {
@@ -38,6 +86,7 @@ describe('Tooltip', () => {
         <TestCanvas
           format="single"
           units="samples"
+          numTicks={100}
           sampleRate={100}
           isWithinBounds={isWithinBounds}
           xyToData={xyToData}
@@ -71,6 +120,7 @@ describe('Tooltip', () => {
         <TestCanvas
           format="double"
           units="samples"
+          numTicks={100}
           sampleRate={100}
           isWithinBounds={isWithinBounds}
           xyToData={xyToData}

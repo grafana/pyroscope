@@ -54,8 +54,6 @@ export default function Tooltip(props: TooltipProps) {
   const tooltipEl = React.useRef(null);
 
   const { numTicks, sampleRate, units } = props;
-  // TODO cache this to not have to instantiate all the time?
-  const formatter = getFormatter(numTicks, sampleRate, units);
 
   const onMouseMove = (e: MouseEvent) => {
     if (!isWithinBounds(e.offsetX, e.offsetY)) {
@@ -77,6 +75,8 @@ export default function Tooltip(props: TooltipProps) {
       left,
       visibility: 'visible',
     });
+
+    const formatter = getFormatter(numTicks, sampleRate, units);
 
     // format is either single, double or something else
     switch (data.format) {
@@ -132,6 +132,15 @@ export default function Tooltip(props: TooltipProps) {
     });
   };
 
+  // recreate the callback when the dependency changes
+  // that's to evict stale props
+  const memoizedOnMouseMove = React.useCallback(
+    (e: MouseEvent) => {
+      onMouseMove(e);
+    },
+    [numTicks, sampleRate, units]
+  );
+
   React.useEffect(() => {
     // use closure to "cache" the current canvas reference
     // so that when cleaning up, it points to a valid canvas
@@ -142,14 +151,14 @@ export default function Tooltip(props: TooltipProps) {
     }
 
     // watch for mouse events on the bar
-    canvasEl.addEventListener('mousemove', onMouseMove);
+    canvasEl.addEventListener('mousemove', memoizedOnMouseMove);
     canvasEl.addEventListener('mouseout', onMouseOut);
 
     return () => {
-      canvasEl.removeEventListener('mousemove', onMouseMove);
+      canvasEl.removeEventListener('mousemove', memoizedOnMouseMove);
       canvasEl.removeEventListener('mouseout', onMouseOut);
     };
-  }, [canvasRef.current]);
+  }, [canvasRef.current, memoizedOnMouseMove]);
 
   return (
     <div
