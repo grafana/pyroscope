@@ -29,13 +29,12 @@ THIS SOFTWARE.
 import React from 'react';
 import clsx from 'clsx';
 import {
-  numberWithCommas,
   formatPercent,
   getPackageNameFromStackTrace,
-  getFormatter,
   ratioToPercent,
   percentDiff,
 } from './format';
+import { getFormatter, numberWithCommas } from '../../../util/format';
 import {
   colorBasedOnDiff,
   colorBasedOnDiffPercent,
