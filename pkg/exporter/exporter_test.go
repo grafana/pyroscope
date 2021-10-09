@@ -158,6 +158,20 @@ func TestGroupBy(t *testing.T) {
 	}
 }
 
+func TestSampleUnits(t *testing.T) {
+	const rule = "app_name_cpu_total"
+	rules := config.MetricsExportRules{rule: {Expr: "app.name.cpu"}}
+
+	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
+	k, _ := segment.ParseKey("app.name.cpu")
+	o, _ := exporter.Evaluate(&storage.PutInput{Key: k, SampleRate: 100})
+	createTree().Iterate(observeCallback(o))
+
+	if v := testutil.ToFloat64(getRuleCounter(exporter, rule, k)); v != 0.05 {
+		t.Fatalf("Expected counter value 0.05, got %v", v)
+	}
+}
+
 func getRuleCounter(e *MetricsExporter, name string, k *segment.Key) prometheus.Counter {
 	for _, r := range e.rules {
 		if r.name != name {
@@ -167,7 +181,13 @@ func getRuleCounter(e *MetricsExporter, name string, k *segment.Key) prometheus.
 		if !ok {
 			continue
 		}
-		if c, ok := r.counters[m.hash()]; ok {
+		var h uint64
+		if len(r.labels) == 0 {
+			h = hash(k.AppName())
+		} else {
+			h = m.hash()
+		}
+		if c, ok := r.counters[h]; ok {
 			return c
 		}
 	}
@@ -181,12 +201,7 @@ func getRuleCounterValue(e *MetricsExporter, name string, k *segment.Key) float6
 func observe(e *MetricsExporter, key string) *segment.Key {
 	k, _ := segment.ParseKey(key)
 	o, _ := e.Evaluate(&storage.PutInput{Key: k, Units: "samples"})
-	createTree().Iterate(func(key []byte, val uint64) {
-		// Key has ;; suffix.
-		if len(key) > 2 && val != 0 {
-			o.Observe(key[2:], int(val))
-		}
-	})
+	createTree().Iterate(observeCallback(o))
 	return k
 }
 
@@ -196,4 +211,13 @@ func createTree() *tree.Tree {
 	t.Insert([]byte("a;c"), uint64(2))
 	t.Insert([]byte("a;b;c"), uint64(2))
 	return t
+}
+
+func observeCallback(o storage.SampleObserver) func([]byte, uint64) {
+	return func(key []byte, val uint64) {
+		// Key has ;; prefix.
+		if len(key) > 2 && val != 0 {
+			o.Observe(key[2:], int(val))
+		}
+	}
 }

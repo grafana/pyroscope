@@ -32,9 +32,12 @@ type rule struct {
 }
 
 type observer struct {
+	// Regular expressions of matched rules.
 	expr []*regexp.Regexp
-	ctr  []prometheus.Counter
-	m    float64
+	// Counters corresponding matching rules.
+	ctr []prometheus.Counter
+	// Sample value multiplier.
+	m float64
 }
 
 // NewExporter validates configuration and creates a new prometheus MetricsExporter.
@@ -60,8 +63,7 @@ func NewExporter(rules config.MetricsExportRules, reg prometheus.Registerer) (*M
 				return nil, fmt.Errorf("node must be either 'total' or a valid regexp: %w", err)
 			}
 		}
-		g, err := validateTagKeys(r.Labels)
-		if err != nil {
+		if err = validateTagKeys(r.Labels); err != nil {
 			return nil, fmt.Errorf("rule %q: invalid label: %w", name, err)
 		}
 		e.rules = append(e.rules, &rule{
@@ -69,7 +71,7 @@ func NewExporter(rules config.MetricsExportRules, reg prometheus.Registerer) (*M
 			qry:      qry,
 			reg:      reg,
 			node:     node,
-			labels:   g,
+			labels:   r.Labels,
 			counters: make(map[uint64]prometheus.Counter),
 		})
 	}
@@ -90,11 +92,12 @@ func (e MetricsExporter) Evaluate(input *storage.PutInput) (storage.SampleObserv
 		o.ctr = append(o.ctr, c)
 	}
 	if len(o.expr) == 0 {
+		// No rules matched.
 		return nil, false
 	}
 	if input.Units == "" {
-		// Sample duration in nanoseconds.
-		o.m = 1e9 / float64(input.SampleRate)
+		// Sample duration in seconds.
+		o.m = 1 / float64(input.SampleRate)
 	}
 	return o, true
 }
@@ -142,13 +145,13 @@ func (r *rule) eval(k *segment.Key) (prometheus.Counter, bool) {
 	return c, true
 }
 
-func validateTagKeys(tagKeys []string) ([]string, error) {
+func validateTagKeys(tagKeys []string) error {
 	for _, l := range tagKeys {
 		if err := flameql.ValidateTagKey(l); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return tagKeys, nil
+	return nil
 }
 
 // promLabels converts key to prometheus.Labels ignoring reserved tag keys.
@@ -223,15 +226,14 @@ func (r *rule) matchLabelNames(key *segment.Key) (labels, bool) {
 	for _, m := range r.qry.Matchers {
 		v, ok := l[m.Key]
 		if !ok {
-			// If the matcher label is required (e.g. the matcher
-			// operator is EQL or EQL_REGEX) but not present, return.
+			// If the matcher label is required (e.g. the matcher operator
+			// is OpEqual or OpEqualRegex) but not present, return.
 			if m.IsNegation() {
 				continue
 			}
 			return nil, false
 		}
 		if _, ok = set[m.Key]; !ok {
-			// Note that Matchers are sorted.
 			z = append(z, label{m.Key, v})
 			set[m.Key] = struct{}{}
 		}

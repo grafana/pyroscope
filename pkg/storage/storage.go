@@ -78,6 +78,8 @@ type MetricsExporter interface {
 
 type SampleObserver interface {
 	// Observe adds v to the matched counters if k satisfies node selector.
+	// k is a sample stack trace where frames are delimited by semicolon.
+	// v is the sample value.
 	Observe(k []byte, v int)
 }
 
