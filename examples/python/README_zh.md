@@ -6,7 +6,7 @@
 
 注意：关于Pyroscope pip包的文档，请访问[我们的网站](https://pyroscope.io/docs/python/)
 ## 背景介绍
- 
+
 在这个例子中，我们展示了 Pyroscope 的一个简化的基本用例。我们模拟了一个 "骑行共享" 公司，它有三个请求端点，可以在`server.py`中找到：
 - `/bike`：调用`order_bike(search_radius)`函数来订购一辆自行车。
 - `/car` : 调用`order_car(search_radius)`函数来订购汽车。
@@ -63,13 +63,13 @@ docker-compose up --build
 # docker-compose down
 ```
 
- 
+
 这个例子要做的是运行上面提到的所有代码，同时向3个服务器以及它们各自的3个端点发送一些模拟负载。如果你从下拉菜单中选择我们的应用程序：`rid-sharing-app.cpu`，你应该看到一个看起来像这样的火焰图（见下文）。在我们给予20-30秒的时间来更新火焰图之后，点击刷新按钮，我们看到火焰图底部的3个函数占用的CPU资源与它们各自的`search_radius`参数 _大小成正比_。
 ## 性能瓶颈在哪里?
 ![python_first_slide_05](https://user-images.githubusercontent.com/23323466/135881284-c75a5b65-6151-44fb-a459-c1f9559cb51a.jpg)
 
 当分析从你的应用程序输出的剖析文件时，第一步是注意 _最大的节点_，这是你的应用程序花费最多资源的地方。在这个例子中，它恰好是 `order_car` 函数。
-  
+
 使用 Pyroscope 包的好处是，现在我们可以进一步调查为什么 `order_car()` 函数有问题。同时标记 `region`和 `vehicle`使我们能够测试两个好的假设：
 - `/car` 端点的代码出了问题
 - 我们的一个区域出了问题
