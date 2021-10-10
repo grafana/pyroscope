@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package disk
@@ -15,5 +16,5 @@ func FreeSpace(storagePath string) (bytesize.ByteSize, error) {
 		return 0, err
 	}
 
-	return bytesize.ByteSize(fs.Bfree) * bytesize.ByteSize(fs.Bsize), nil
+	return bytesize.ByteSize(fs.Bavail) * bytesize.ByteSize(fs.Bsize), nil
 }
