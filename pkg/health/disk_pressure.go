@@ -1,5 +1,3 @@
-// pkg/server/health/disk.go
-
 package health
 
 import (

@@ -1,5 +1,3 @@
-// pkg/server/health/health.go
-
 package health
 
 // Condition represents an aspect of pyroscope server health.

@@ -1,5 +1,3 @@
-// pkg/server/health/controller.go
-
 package health
 
 import (
