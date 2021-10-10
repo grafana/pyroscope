@@ -62,9 +62,6 @@ func (c *Controller) Sample() {
 
 			c.mutex.Unlock()
 
-			for _, status := range c.statusHistory[condition] {
-				println(status.message)
-			}
 		}
 	}
 }
@@ -88,7 +85,6 @@ func (c *Controller) aggregate() map[Condition]HealthStatusMessage {
 func (c *Controller) Notification() []string {
 	var messages []string = make([]string, 0)
 	for _, status := range c.aggregate() {
-		println(status.message)
 		if status.healthStatus > Healthy {
 			messages = append(messages, status.message)
 		}
