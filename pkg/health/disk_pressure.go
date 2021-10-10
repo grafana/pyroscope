@@ -31,14 +31,14 @@ func (d *DiskPressure) Stop() {
 func (d *DiskPressure) Probe() (HealthStatusMessage, error) {
 	freeSpace, err := disk.FreeSpace(d.Config.StoragePath)
 	if err == nil {
-		state := d.state(freeSpace)
-		message := d.message(state)
-		return HealthStatusMessage{state, message}, nil
+		status := d.status(freeSpace)
+		message := d.message(status)
+		return HealthStatusMessage{status, message}, nil
 	}
 	return HealthStatusMessage{NoData, ""}, err
 }
 
-func (d *DiskPressure) state(available bytesize.ByteSize) HealthStatus {
+func (d *DiskPressure) status(available bytesize.ByteSize) HealthStatus {
 	if available < d.CriticalThreshold {
 		return Critical
 	} else if available < d.WarningThreshold {
@@ -48,6 +48,6 @@ func (d *DiskPressure) state(available bytesize.ByteSize) HealthStatus {
 	}
 }
 
-func (*DiskPressure) message(state HealthStatus) string {
-	return fmt.Sprintf("Disk Pressure %s", state.ToString())
+func (*DiskPressure) message(status HealthStatus) string {
+	return fmt.Sprintf("Disk Pressure %s", status.ToString())
 }
