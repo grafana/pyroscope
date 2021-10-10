@@ -2,7 +2,6 @@ package health
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -14,16 +13,10 @@ type DiskPressure struct {
 	CriticalThreshold bytesize.ByteSize
 	Name              string
 	Config            *config.Server
-
-	ticker *time.Ticker
 }
 
 func (d *DiskPressure) GetName() string {
 	return d.Name
-}
-
-func (d *DiskPressure) Stop() {
-	d.ticker.Stop()
 }
 
 func (d *DiskPressure) Probe() (HealthStatusMessage, error) {

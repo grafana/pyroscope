@@ -4,7 +4,6 @@ package health
 type Condition interface {
 	GetName() string
 	Probe() (HealthStatusMessage, error)
-	Stop()
 }
 type HealthStatusMessage struct {
 	healthStatus HealthStatus
