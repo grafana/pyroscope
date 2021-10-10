@@ -12,22 +12,22 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
-var dataMisc []HealthStatusMessage = []HealthStatusMessage{
+var dataMisc = []HealthStatusMessage{
 	{Critical, "Critical"},
 	{NoData, "NoData"},
 	{Healthy, "Healthy"},
 	{Warning, "Warning"},
 }
 
-var dataHealthy []HealthStatusMessage = []HealthStatusMessage{
+var dataHealthy = []HealthStatusMessage{
 	{Healthy, "Healthy"},
 }
 
-var dataWarning []HealthStatusMessage = []HealthStatusMessage{
+var dataWarning = []HealthStatusMessage{
 	{Warning, "Warning"},
 }
 
-var dataCritical []HealthStatusMessage = []HealthStatusMessage{
+var dataCritical = []HealthStatusMessage{
 	{Critical, "Critical"},
 }
 
@@ -39,10 +39,9 @@ type MockCondition struct {
 }
 
 func (d *MockCondition) Probe() (HealthStatusMessage, error) {
-	var status HealthStatusMessage = d.MockData[d.index]
+	var status = d.MockData[d.index]
 	status.message = fmt.Sprintf("%s %s", status.message, d.name)
 	d.index = (d.index + 1) % len(d.MockData)
-	println(d.index)
 	return status, nil
 }
 
@@ -50,53 +49,12 @@ func (d *MockCondition) GetName() string {
 	return d.name
 }
 
-func (d *MockCondition) Stop() {}
+func (*MockCondition) Stop() {}
 
 var _ = Describe("health", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		Describe("Controller", func() {
-			It("Should be critical",
-				func() {
-					defer GinkgoRecover()
-					var condition = MockCondition{
-						name:     "MockCondition",
-						MockData: dataMisc,
-					}
-					var healthController = Controller{
-						Interval:   time.Millisecond,
-						Conditions: []Condition{&condition},
-					}
-					healthController.Start()
-					var notifications []string
-					for i := 0; i < 3; i++ {
-						time.Sleep(2 * time.Millisecond)
-						notifications = append(notifications, healthController.Notification()[0])
-					}
-					healthController.Stop()
-					expectedNotification := "Critical MockCondition"
-					Expect(notifications).To(Equal([]string{expectedNotification, expectedNotification, expectedNotification}))
-				},
-			)
-			It("Should be healthy",
-				func() {
-					defer GinkgoRecover()
-					var condition = MockCondition{
-						name:     "MockCondition",
-						MockData: dataHealthy,
-					}
-					var healthController = Controller{
-						Interval:   time.Millisecond,
-						Conditions: []Condition{&condition},
-					}
-					healthController.Start()
-					time.Sleep(2 * time.Millisecond)
-					notification := healthController.Notification()
-					healthController.Stop()
-					emptyNotification := make([]string, 0)
-					Expect(notification).To(Equal(emptyNotification))
-				},
-			)
-			It("Should be healthy",
+			It("Should support listening on multiple Conditions",
 				func() {
 					defer GinkgoRecover()
 					var condition1 = MockCondition{
@@ -120,13 +78,60 @@ var _ = Describe("health", func() {
 					time.Sleep(2 * time.Millisecond)
 					notification := healthController.Notification()
 					healthController.Stop()
+
 					expectedNotification := []string{"Critical MockCondition2", "Warning MockCondition3"}
 					Expect(notification).To(ContainElements(expectedNotification))
 				},
 			)
 
-			It("Should",
+			It("Should suppress 'flapping' on rapid status changes",
 				func() {
+					defer GinkgoRecover()
+					var condition = MockCondition{
+						name:     "MockCondition",
+						MockData: dataMisc,
+					}
+					var healthController = Controller{
+						Interval:   time.Millisecond,
+						Conditions: []Condition{&condition},
+					}
+					healthController.Start()
+					var notifications []string
+					for i := 0; i < 3; i++ {
+						time.Sleep(2 * time.Millisecond)
+						notifications = append(notifications, healthController.Notification()[0])
+					}
+					healthController.Stop()
+
+					expectedNotification := "Critical MockCondition"
+					Expect(notifications).To(Equal([]string{expectedNotification, expectedNotification, expectedNotification}))
+				},
+			)
+
+			It("Should return empty notification if status healthy",
+				func() {
+					defer GinkgoRecover()
+					var condition = MockCondition{
+						name:     "MockCondition",
+						MockData: dataHealthy,
+					}
+					var healthController = Controller{
+						Interval:   time.Millisecond,
+						Conditions: []Condition{&condition},
+					}
+					healthController.Start()
+					time.Sleep(2 * time.Millisecond)
+					notification := healthController.Notification()
+					healthController.Stop()
+
+					emptyNotification := make([]string, 0)
+					Expect(notification).To(Equal(emptyNotification))
+				},
+			)
+
+			It("Should format notification as JSON",
+				func() {
+					defer GinkgoRecover()
 					var condition1 = MockCondition{
 						name:     "MockCondition1",
 						MockData: dataCritical,
@@ -142,17 +147,15 @@ var _ = Describe("health", func() {
 					}
 					healthController.Start()
 					time.Sleep(2 * time.Millisecond)
-					jsonNotification := healthController.NotificationJson()
+					jsonNotification := healthController.NotificationJSON()
 					healthController.Stop()
 					var arr []string
 					_ = json.Unmarshal([]byte(jsonNotification), &arr)
+
 					expectedNotification := []string{"Critical MockCondition1", "Warning MockCondition2"}
-
 					Expect(arr).To(ContainElements(expectedNotification))
-
 				},
 			)
 		})
-
 	})
 })

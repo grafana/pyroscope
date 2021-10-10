@@ -47,7 +47,6 @@ func (c *Controller) Stop() {
 func (c *Controller) Sample() {
 	for ; true; <-c.ticker.C {
 		for _, condition := range c.Conditions {
-
 			c.mutex.Lock()
 
 			history := c.statusHistory[condition]
@@ -61,7 +60,6 @@ func (c *Controller) Sample() {
 			}
 
 			c.mutex.Unlock()
-
 		}
 	}
 }
@@ -69,9 +67,9 @@ func (c *Controller) Sample() {
 func (c *Controller) aggregate() map[Condition]HealthStatusMessage {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
-	var statusAggregate map[Condition]HealthStatusMessage = make(map[Condition]HealthStatusMessage)
+	var statusAggregate = make(map[Condition]HealthStatusMessage)
 	for _, condition := range c.Conditions {
-		var accumilator HealthStatusMessage = HealthStatusMessage{NoData, ""}
+		var accumilator = HealthStatusMessage{NoData, ""}
 		for _, status := range c.statusHistory[condition] {
 			if status.healthStatus > accumilator.healthStatus {
 				accumilator = status
@@ -80,10 +78,10 @@ func (c *Controller) aggregate() map[Condition]HealthStatusMessage {
 		statusAggregate[condition] = accumilator
 	}
 	return statusAggregate
-
 }
+
 func (c *Controller) Notification() []string {
-	var messages []string = make([]string, 0)
+	var messages = make([]string, 0)
 	for _, status := range c.aggregate() {
 		if status.healthStatus > Healthy {
 			messages = append(messages, status.message)
@@ -92,7 +90,7 @@ func (c *Controller) Notification() []string {
 	return messages
 }
 
-func (c *Controller) NotificationJson() string {
+func (c *Controller) NotificationJSON() string {
 	notification := c.Notification()
 	msg, _ := json.Marshal(notification)
 	return string(msg)
