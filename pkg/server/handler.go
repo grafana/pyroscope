@@ -273,7 +273,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 }
 
 func (c *Controller) NotificationText() string {
-	return c.controller.NotificationText()
+	return (*c.healthController).NotificationJson()
 }
 
 func mustExecute(t *template.Template, w io.Writer, v interface{}) {
