@@ -62,7 +62,7 @@ type Controller struct {
 	// Byte buffers are used for deserialization of ingested data.
 	bufferPool bytebufferpool.Pool
 
-	controller health.Controller
+	healthController *health.ControllerBase
 }
 
 func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger, reg prometheus.Registerer) (*Controller, error) {
@@ -78,25 +78,29 @@ func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Log
 		}),
 	})
 
-	var condition health.Condition = &health.DiskPressure{
-		WarningThreshold:  500,
-		CriticalThreshold: 200,
+	var diskPressure health.Condition = &health.DiskPressure{
+		Name:              "DiskPressure",
+		WarningThreshold:  2 * storage.OutOfSpaceThreshold,
+		CriticalThreshold: storage.OutOfSpaceThreshold,
 		Config:            c,
 	}
-	controller := health.Controller{
-		C: []*health.Condition{&condition},
+
+	var healthController health.ControllerBase = &health.Controller{
+		Interval:   time.Minute,
+		Conditions: []health.Condition{diskPressure},
 	}
-	controller.Start()
+
+	healthController.Start()
 
 	ctrl := Controller{
-		config:     c,
-		log:        l,
-		storage:    s,
-		ingester:   i,
-		stats:      make(map[string]int),
-		appStats:   appStats,
-		metricsMdw: mdw,
-		controller: controller,
+		config:           c,
+		log:              l,
+		storage:          s,
+		ingester:         i,
+		stats:            make(map[string]int),
+		appStats:         appStats,
+		metricsMdw:       mdw,
+		healthController: &healthController,
 	}
 
 	ctrl.dir, err = webapp.Assets()
@@ -260,7 +264,7 @@ func (ctrl *Controller) Start() error {
 
 func (ctrl *Controller) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	ctrl.controller.Stop()
+	(*ctrl.healthController).Stop()
 	defer cancel()
 	return ctrl.httpServer.Shutdown(ctx)
 }
