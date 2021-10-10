@@ -737,6 +737,9 @@ $sidebar-tooltip-color: #777;
     .notification-body {
       padding: 15px;
       max-width: 30vw;
+      >.notification-list{
+        margin: 0;
+      }
     }
     .notification-close-btn {
       text-align: center;
