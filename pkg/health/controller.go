@@ -20,7 +20,7 @@ type ControllerBase interface {
 	Start()
 	Stop()
 	Notification() []string
-	NotificationJson() string
+	NotificationJSON() string
 }
 type Controller struct {
 	Conditions []Condition
