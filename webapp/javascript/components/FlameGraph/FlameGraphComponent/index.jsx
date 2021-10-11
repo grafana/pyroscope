@@ -29,13 +29,10 @@ THIS SOFTWARE.
 import React from 'react';
 import clsx from 'clsx';
 import {
-  numberWithCommas,
-  formatPercent,
-  getPackageNameFromStackTrace,
   getFormatter,
   ratioToPercent,
-  percentDiff,
-} from './format';
+  formatPercent,
+} from '../../../util/format';
 import {
   colorBasedOnDiff,
   colorBasedOnDiffPercent,
@@ -44,6 +41,7 @@ import {
   colorGreyscale,
   diffColorGreen,
   diffColorRed,
+  getPackageNameFromStackTrace,
 } from './color';
 import { fitToCanvasRect } from '../../../util/fitMode';
 import DiffLegend from './DiffLegend';
@@ -623,7 +621,6 @@ class FlameGraph extends React.Component {
           </div>
         </div>
         <Tooltip
-          formatter={this.formatter}
           format={this.props.format.format}
           canvasRef={this.canvasRef}
           xyToData={this.xyToTooltipData}

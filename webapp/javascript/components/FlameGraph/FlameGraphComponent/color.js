@@ -34,13 +34,6 @@ export const defaultColor = Color.rgb(148, 142, 142);
 export const diffColorRed = Color.rgb(200, 0, 0);
 export const diffColorGreen = Color.rgb(0, 170, 0);
 
-export function colorBasedOnPackageName(name, a) {
-  const hash = murmurhash3_32_gc(name);
-  const colorIndex = hash % colors.length;
-  const baseClr = colors[colorIndex];
-  return baseClr.alpha(a);
-}
-
 // assume: left >= 0 && Math.abs(diff) <= left so diff / left is in [0...1]
 // if left == 0 || Math.abs(diff) > left, we use the color of 100%
 export function colorBasedOnDiff(diff, left, a) {
@@ -90,4 +83,34 @@ export function colorFromPercentage(p, alpha) {
 
 export function colorGreyscale(v, a) {
   return Color.rgb(v, v, v).alpha(a);
+}
+
+export function getPackageNameFromStackTrace(spyName, stackTrace) {
+  // TODO: actually make sure these make sense and add tests
+  const regexpLookup = {
+    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    dotnetspy: /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/,
+    ebpfspy: /^(?<packageName>.+)$/,
+    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    phpspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
+    pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
+    rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
+  };
+
+  if (stackTrace.length === 0) {
+    return stackTrace;
+  }
+  const regexp = regexpLookup[spyName] || regexpLookup.default;
+  const fullStackGroups = stackTrace.match(regexp);
+  if (fullStackGroups) {
+    return fullStackGroups.groups.packageName;
+  }
+  return stackTrace;
+}
+
+export function colorBasedOnPackageName(name, a) {
+  const hash = murmurhash3_32_gc(name);
+  const colorIndex = hash % colors.length;
+  const baseClr = colors[colorIndex];
+  return baseClr.alpha(a);
 }
