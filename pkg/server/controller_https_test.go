@@ -34,7 +34,7 @@ var _ = Describe("server", func() {
 					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
-					config := ControllerArgs{
+					config := ControllerConfig{
 						ServerConfig:     &(*cfg).Server,
 						Storage:          s,
 						Ingester:         s,
@@ -73,7 +73,7 @@ var _ = Describe("server", func() {
 					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
-					config := ControllerArgs{
+					config := ControllerConfig{
 						ServerConfig:     &(*cfg).Server,
 						Storage:          s,
 						Ingester:         s,

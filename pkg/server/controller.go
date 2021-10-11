@@ -47,7 +47,7 @@ type HealthController interface {
 	NotificationJSON() string
 }
 
-type ControllerArgs struct {
+type ControllerConfig struct {
 	ServerConfig     *config.Server
 	Storage          *storage.Storage
 	Ingester         storage.Ingester
@@ -78,7 +78,7 @@ type Controller struct {
 	healthController HealthController
 }
 
-func New(args ControllerArgs) (*Controller, error) {
+func New(args ControllerConfig) (*Controller, error) {
 	appStats, err := hyperloglog.NewPlus(uint8(18))
 	if err != nil {
 		return nil, err

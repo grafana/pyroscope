@@ -68,7 +68,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 
 	healthController.Start()
 
-	controllerArgs := server.ControllerArgs{
+	controllerArgs := server.ControllerConfig{
 		ServerConfig:     svc.config,
 		Storage:          svc.storage,
 		Ingester:         ingester,

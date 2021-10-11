@@ -67,7 +67,7 @@ var _ = Describe("server", func() {
 				(*cfg).Server.APIBindAddr = ":10044"
 				s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 				Expect(err).ToNot(HaveOccurred())
-				config := ControllerArgs{
+				config := ControllerConfig{
 					ServerConfig:     &(*cfg).Server,
 					Storage:          s,
 					Ingester:         s,
