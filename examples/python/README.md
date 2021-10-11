@@ -65,7 +65,7 @@ docker-compose up --build
 
 What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this (below). After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
-## Where's the performance bottlenck?
+## Where's the performance bottleneck?
 ![python_first_slide_05](https://user-images.githubusercontent.com/23323466/135881284-c75a5b65-6151-44fb-a459-c1f9559cb51a.jpg)
 
 The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `order_car` function. 
