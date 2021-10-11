@@ -24,9 +24,3 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           skip_step: install
-
-          # TODO: delete below after PR is merged
-          # since by default it runs `yarn build` against the PR
-          # AND against the `main` branch
-          # so it will fail in main since the comman is introduced in this pr itself!
-          build_script: './node_modules/.bin/webpack --config scripts/webpack/webpack.prod.js'
