@@ -68,7 +68,15 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 
 	healthController.Start()
 
-	svc.controller, err = server.New(svc.config, svc.storage, ingester, svc.logger, prometheus.DefaultRegisterer, healthController)
+	controllerArgs := server.ControllerArgs{
+		ServerConfig:     svc.config,
+		Storage:          svc.storage,
+		Ingester:         ingester,
+		Logger:           svc.logger,
+		Registerer:       prometheus.DefaultRegisterer,
+		HealthController: healthController,
+	}
+	svc.controller, err = server.New(controllerArgs)
 	if err != nil {
 		return nil, fmt.Errorf("new server: %w", err)
 	}

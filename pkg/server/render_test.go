@@ -67,7 +67,15 @@ var _ = Describe("server", func() {
 				(*cfg).Server.APIBindAddr = ":10044"
 				s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 				Expect(err).ToNot(HaveOccurred())
-				c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry(), &mockHealthController{})
+				config := ControllerArgs{
+					ServerConfig:     &(*cfg).Server,
+					Storage:          s,
+					Ingester:         s,
+					Logger:           logrus.New(),
+					Registerer:       prometheus.NewRegistry(),
+					HealthController: &mockHealthController{},
+				}
+				c, _ := New(config)
 				h, _ := c.mux()
 				httpServer = httptest.NewServer(h)
 				defer httpServer.Close()

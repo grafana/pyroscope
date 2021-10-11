@@ -47,6 +47,14 @@ type HealthController interface {
 	NotificationJSON() string
 }
 
+type ControllerArgs struct {
+	ServerConfig     *config.Server
+	Storage          *storage.Storage
+	Ingester         storage.Ingester
+	Logger           *logrus.Logger
+	Registerer       prometheus.Registerer
+	HealthController HealthController
+}
 type Controller struct {
 	drained uint32
 
@@ -70,7 +78,7 @@ type Controller struct {
 	healthController HealthController
 }
 
-func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger, reg prometheus.Registerer, healthController HealthController) (*Controller, error) {
+func New(args ControllerArgs) (*Controller, error) {
 	appStats, err := hyperloglog.NewPlus(uint8(18))
 	if err != nil {
 		return nil, err
@@ -79,19 +87,19 @@ func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Log
 	mdw := goHttpMetricsMiddleware.New(goHttpMetricsMiddleware.Config{
 		Recorder: metrics.NewRecorder(metrics.Config{
 			Prefix:   "pyroscope",
-			Registry: reg,
+			Registry: args.Registerer,
 		}),
 	})
 
 	ctrl := Controller{
-		config:           c,
-		log:              l,
-		storage:          s,
-		ingester:         i,
+		config:           args.ServerConfig,
+		log:              args.Logger,
+		storage:          args.Storage,
+		ingester:         args.Ingester,
 		stats:            make(map[string]int),
 		appStats:         appStats,
 		metricsMdw:       mdw,
-		healthController: healthController,
+		healthController: args.HealthController,
 	}
 
 	ctrl.dir, err = webapp.Assets()
