@@ -189,7 +189,7 @@ func (sn *streeNode) deleteDataBefore(t *Threshold, cb func(depth int, t time.Ti
 	if sn.isAfter(t.absolute) && t.levels == nil {
 		return false
 	}
-	ok := t.deleteNode(sn)
+	ok := t.isBefore(sn)
 	if ok {
 		cb(sn.depth, sn.time)
 	}

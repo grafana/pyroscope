@@ -12,7 +12,7 @@ type Threshold struct {
 
 func NewThreshold() *Threshold { return &Threshold{now: time.Now()} }
 
-func (t Threshold) deleteNode(sn *streeNode) bool {
+func (t Threshold) isBefore(sn *streeNode) bool {
 	if sn.isBefore(t.absolute) {
 		return true
 	}
