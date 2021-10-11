@@ -9,6 +9,7 @@ module.exports = merge(prod, {
 
     // build WITHOUT hash
     // otherwise size-limit won't know what to compare to
+    //
     // https://github.com/andresz1/size-limit-action/issues/47
     filename: '[name].js',
     clean: true,
