@@ -12,6 +12,7 @@
     "postinstall": "./scripts/web-postinstall.sh",
     "dev": "webpack --progress --config scripts/webpack/webpack.dev.js",
     "build": "NODE_ENV=production webpack --config scripts/webpack/webpack.prod.js",
+    "build:size-limit": "NODE_ENV=production webpack --config scripts/webpack/webpack.size-limit.js",
     "test": "jest",
     "lint": "eslint ./ --ext .js,.jsx,.ts,.tsx --cache --fix",
     "format": "prettier --write .",
