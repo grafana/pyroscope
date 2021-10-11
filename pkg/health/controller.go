@@ -55,6 +55,7 @@ func (c *Controller) run() {
 				history[len(history)-1] = probe
 			} else {
 				errMessage := fmt.Sprintf("Error in Probing Condition %T", condition)
+				history[len(history)-1] = HealthStatusMessage{HealthStatus: NoData, Message: errMessage}
 				c.logger.WithError(err).Error(errMessage)
 			}
 
