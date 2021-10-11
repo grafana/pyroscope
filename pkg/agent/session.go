@@ -282,12 +282,30 @@ func (ps *ProfileSession) initializeTries() {
 		}
 	}
 }
-func (ps *ProfileSession) SetTag(key, val string) error {
-	newName, err := mergeTagsWithAppName(ps.appName, map[string]string{key: val})
+
+// SetTags - add new tags to the session.
+func (ps *ProfileSession) SetTags(tags map[string]string) error {
+	newName, err := mergeTagsWithAppName(ps.appName, tags)
 	if err != nil {
 		return err
 	}
-
+	return ps.ChangeName(newName)
+}
+// SetTag - add a new tag to the session.
+func (ps *ProfileSession) SetTag(key, val string) error {
+	return ps.SetTags(map[string]string{key: val})
+}
+// RemoveTags - remove tags from the session.
+func (ps *ProfileSession) RemoveTags(keys ...string) error {
+	removals := make(map[string]string)
+	for _, key := range keys {
+		// 'Adding' a key with an empty string triggers a key removal.
+		removals[key] = ""
+	}
+	newName, err := mergeTagsWithAppName(ps.appName, removals)
+	if err != nil {
+		return err
+	}
 	return ps.ChangeName(newName)
 }
 

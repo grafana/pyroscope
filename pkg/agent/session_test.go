@@ -55,6 +55,7 @@ var _ = Describe("agent.Session", func() {
 				Expect(val).To(BeNumerically("~", 11, 2))
 			})
 			close(done)
+			Expect(u.uploads[0].Name).To(Equal("test-app.cpu{}"))
 		})
 
 		When("tags specified", func() {
@@ -86,6 +87,74 @@ var _ = Describe("agent.Session", func() {
 
 				Expect(u.uploads).To(HaveLen(3))
 				Expect(u.uploads[0].Name).To(Equal("test-app.cpu{bar=xxx,baz=qux,foo=bar}"))
+			})
+		})
+	})
+	Describe("Session", func() {
+		When("tags added", func() {
+			It("name ", func() {
+				u := &upstreamMock{}
+				uploadRate := 200 * time.Millisecond
+				c := &SessionConfig{
+					Upstream:         u,
+					AppName:          "test-app",
+					ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
+					SpyName:          "debugspy",
+					SampleRate:       100,
+					UploadRate:       uploadRate,
+					Pid:              os.Getpid(),
+					WithSubprocesses: true,
+					Tags: map[string]string{
+						"foo": "bar",
+						"baz": "qux",
+					},
+				}
+
+				s, _ := NewSession(c, logrus.StandardLogger())
+				now := time.Now()
+				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
+				err := s.Start()
+				Expect(err).ToNot(HaveOccurred())
+				s.SetTags(map[string]string{"bar": "xxx"})
+				time.Sleep(500 * time.Millisecond)
+				s.Stop()
+
+				Expect(u.uploads).To(HaveLen(3))
+				Expect(u.uploads[0].Name).To(Equal("test-app.cpu{bar=xxx,baz=qux,foo=bar}"))
+			})
+		})
+		When("tags removed", func() {
+			It("name ", func() {
+				u := &upstreamMock{}
+				uploadRate := 200 * time.Millisecond
+				c := &SessionConfig{
+					Upstream:         u,
+					AppName:          "test-app{bar=xxx}",
+					ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
+					SpyName:          "debugspy",
+					SampleRate:       100,
+					UploadRate:       uploadRate,
+					Pid:              os.Getpid(),
+					WithSubprocesses: true,
+					Tags: map[string]string{
+						"foo": "bar",
+					},
+				}
+
+				s, _ := NewSession(c, logrus.StandardLogger())
+				now := time.Now()
+				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
+				err := s.Start()
+				Expect(err).ToNot(HaveOccurred())
+				err = s.RemoveTags("bar")
+				Expect(err).ToNot(HaveOccurred())
+				err = s.RemoveTags("foo")
+				Expect(err).ToNot(HaveOccurred())
+				time.Sleep(500 * time.Millisecond)
+				s.Stop()
+
+				Expect(u.uploads).To(HaveLen(3))
+				Expect(u.uploads[0].Name).To(Equal("test-app.cpu{}"))
 			})
 		})
 	})

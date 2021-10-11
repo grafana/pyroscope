@@ -77,7 +77,8 @@ module.exports = {
     // Note: order is bottom-to-top and/or right-to-left
     rules: [
       {
-        test: /\.jsx?$/,
+        test: /\.(js|ts)x?$/,
+        exclude: /node_modules/,
         use: [
           {
             loader: 'babel-loader',
@@ -105,17 +106,6 @@ module.exports = {
                 ],
                 '@babel/preset-react',
               ],
-            },
-          },
-        ],
-      },
-      {
-        test: /\.js$/,
-        use: [
-          {
-            loader: 'babel-loader',
-            options: {
-              presets: [['@babel/preset-env']],
             },
           },
         ],

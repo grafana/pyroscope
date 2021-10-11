@@ -49,7 +49,43 @@ export function colorBasedOnDiff(diff, left, a) {
       ? 200
       : 200 * Math.sqrt(Math.abs(diff / left));
   if (diff >= 0) return Color.rgb(200, 200 - v, 200 - v).alpha(a);
+
   return Color.rgb(200 - v, 200, 200 - v).alpha(a);
+}
+
+export function colorBasedOnDiffPercent(leftPercent, rightPercent, alpha) {
+  const result = diffPercent(leftPercent, rightPercent);
+  return colorFromPercentage(result, alpha);
+}
+
+// TODO move to a different file
+// difference between 2 percents
+export function diffPercent(leftPercent, rightPercent) {
+  // https://en.wikipedia.org/wiki/Relative_change_and_difference
+  return ((rightPercent - leftPercent) / leftPercent) * 100;
+}
+
+export function colorFromPercentage(p, alpha) {
+  // calculated by drawing a line (https://en.wikipedia.org/wiki/Line_drawing_algorithm)
+  // where p1 = (0, 180) and p2 = (100, 0)
+  // where x is the absolute percentage
+  // and y is the color variation
+  let v = 180 - 1.8 * Math.abs(p);
+
+  if (v > 200) {
+    v = 200;
+  }
+
+  // red
+  if (p > 0) {
+    return Color.rgb(200, v, v).alpha(alpha);
+  }
+  // green
+  if (p < 0) {
+    return Color.rgb(v, 200, v).alpha(alpha);
+  }
+  // grey
+  return Color.rgb(200, 200, 200).alpha(alpha);
 }
 
 export function colorGreyscale(v, a) {

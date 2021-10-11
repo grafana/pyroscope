@@ -187,8 +187,13 @@ class FlameGraphRenderer extends React.Component {
     fetch(`${url}&format=json`, { signal: this.currentJSONController.signal })
       .then((response) => response.json())
       .then((data) => {
-        const { flamebearer } = data;
+        const { flamebearer, leftTicks, rightTicks } = data;
         deltaDiffWrapper(flamebearer.format, flamebearer.levels);
+
+        // conceptually makes sense grouping them at frontend level
+        // since these ticks are used to compute stuff (eg colors)
+        flamebearer.leftTicks = leftTicks;
+        flamebearer.rightTicks = rightTicks;
 
         this.setState({
           flamebearer,

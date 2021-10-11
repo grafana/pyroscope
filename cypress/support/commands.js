@@ -38,7 +38,7 @@ Cypress.Commands.overwrite(
     if (Cypress.env('COMPARE_SNAPSHOTS')) {
       originalFn(snapshotName, options);
     } else {
-      cy.log(`Screenshot comparison is disabled`);
+      cy.log('Screenshot comparison is disabled');
     }
   }
 );

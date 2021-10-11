@@ -29,9 +29,20 @@ function ComparisonApp(props) {
       <div className="main-wrapper">
         <Header />
         <TimelineChartWrapper id="timeline-chart-double" viewSide="both" />
-        <div className="comparison-container">
-          <FlameGraphRenderer viewType="double" viewSide="left" />
-          <FlameGraphRenderer viewType="double" viewSide="right" />
+        <div
+          className="comparison-container"
+          data-testid="comparison-container"
+        >
+          <FlameGraphRenderer
+            viewType="double"
+            viewSide="left"
+            data-testid="flamegraph-renderer-left"
+          />
+          <FlameGraphRenderer
+            viewType="double"
+            viewSide="right"
+            data-testid="flamegraph-renderer-right"
+          />
         </div>
       </div>
       <Footer />

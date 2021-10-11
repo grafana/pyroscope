@@ -1,4 +1,8 @@
-import { BAR_HEIGHT } from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent';
+// copied from the source code
+// TODO move those definitions to a different shareable file
+const PX_PER_LEVEL = 18;
+const GAP = 0.5;
+const BAR_HEIGHT = PX_PER_LEVEL - GAP;
 
 /// <reference types="cypress" />
 describe('basic test', () => {
@@ -212,5 +216,148 @@ describe('basic test', () => {
     cy.findByTestId('reset-view').should('be.visible');
     cy.findByTestId('reset-view').click();
     cy.findByTestId('reset-view').should('not.be.visible');
+  });
+
+  describe('tooltip', () => {
+    it('works in single view', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+      }).as('render');
+
+      cy.visit('/');
+
+      cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+
+      cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
+      cy.findByTestId('flamegraph-tooltip').should('be.visible');
+
+      cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
+      cy.findByTestId('flamegraph-tooltip-body').should(
+        'have.text',
+        '100%, 988 samples, 9.88 seconds'
+      );
+
+      cy.findByTestId('flamegraph-canvas').trigger('mouseout');
+      cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+    });
+
+    it('works in comparison view', () => {
+      const findFlamegraph = (n: number) => {
+        const query = `> :nth-child(${n})`;
+
+        return cy.findByTestId('comparison-container').find(query);
+      };
+
+      cy.intercept('**/render*from=1633024300&until=1633024300*', {
+        fixture: 'simple-golang-app-cpu.json',
+        times: 1,
+      }).as('render-right');
+
+      cy.intercept('**/render*from=1633024290&until=1633024290*', {
+        fixture: 'simple-golang-app-cpu2.json',
+        times: 1,
+      }).as('render-left');
+
+      cy.visit(
+        '/comparison?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300'
+      );
+
+      cy.wait('@render-right');
+      cy.wait('@render-left');
+
+      // flamegraph 1 (the left one)
+      findFlamegraph(1)
+        .findByTestId('flamegraph-tooltip')
+        .should('not.be.visible');
+
+      findFlamegraph(1)
+        .findByTestId('flamegraph-canvas')
+        .trigger('mousemove', 0, 0);
+
+      findFlamegraph(1).findByTestId('flamegraph-tooltip').should('be.visible');
+
+      findFlamegraph(1)
+        .findByTestId('flamegraph-tooltip-title')
+        .should('have.text', 'total');
+      findFlamegraph(1)
+        .findByTestId('flamegraph-tooltip-body')
+        .should('have.text', '100%, 991 samples, 9.91 seconds');
+
+      findFlamegraph(1).findByTestId('flamegraph-canvas').trigger('mouseout');
+      findFlamegraph(1)
+        .findByTestId('flamegraph-tooltip')
+        .should('not.be.visible');
+
+      // flamegraph 2 (right one)
+      findFlamegraph(2)
+        .findByTestId('flamegraph-tooltip')
+        .should('not.be.visible');
+
+      findFlamegraph(2)
+        .findByTestId('flamegraph-canvas')
+        .trigger('mousemove', 0, 0);
+
+      findFlamegraph(2).findByTestId('flamegraph-tooltip').should('be.visible');
+
+      findFlamegraph(2)
+        .findByTestId('flamegraph-tooltip-title')
+        .should('have.text', 'total');
+      findFlamegraph(2)
+        .findByTestId('flamegraph-tooltip-body')
+        .should('have.text', '100%, 988 samples, 9.88 seconds');
+
+      findFlamegraph(2).findByTestId('flamegraph-canvas').trigger('mouseout');
+      findFlamegraph(2)
+        .findByTestId('flamegraph-tooltip')
+        .should('not.be.visible');
+    });
+
+    it('works in diff view', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu-diff.json',
+        times: 1,
+      }).as('render');
+
+      cy.visit(
+        '/comparison-diff?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300'
+      );
+
+      cy.wait('@render');
+
+      cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
+
+      cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
+      cy.findByTestId('flamegraph-tooltip').should('be.visible');
+
+      cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
+      cy.findByTestId('flamegraph-tooltip-left').should(
+        'have.text',
+        'Left: 991 samples, 9.91 seconds (100%)'
+      );
+      cy.findByTestId('flamegraph-tooltip-right').should(
+        'have.text',
+        'Right: 987 samples, 9.87 seconds (100%)'
+      );
+    });
+  });
+
+  describe('highlight', () => {
+    it('works in diff view', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu-diff.json',
+        times: 1,
+      }).as('render');
+
+      cy.visit(
+        '/comparison-diff?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300'
+      );
+
+      cy.wait('@render');
+
+      cy.findByTestId('flamegraph-highlight').should('not.be.visible');
+
+      cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
+      cy.findByTestId('flamegraph-highlight').should('be.visible');
+    });
   });
 });

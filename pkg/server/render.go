@@ -119,7 +119,23 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 
 	leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
 	fs := tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
-	res := renderResponse(fs, out)
+
+	fs.SpyName = out.SpyName
+	fs.SampleRate = out.SampleRate
+	fs.Units = out.Units
+	res := map[string]interface{}{
+		"leftTicks":   leftOut.Tree.Samples(),
+		"rightTicks":  rghtOut.Tree.Samples(),
+		"timeline":    out.Timeline,
+		"flamebearer": fs,
+		"metadata": map[string]interface{}{
+			"format":     fs.Format, // "single" | "double"
+			"spyName":    out.SpyName,
+			"sampleRate": out.SampleRate,
+			"units":      out.Units,
+		},
+	}
+
 	ctrl.writeResponseJSON(w, res)
 }
 

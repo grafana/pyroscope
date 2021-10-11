@@ -1,0 +1,7 @@
+.highlight {
+  color: red;
+  position: absolute;
+  pointer-events: none;
+  background: #ffffff40;
+  mix-blend-mode: overlay;
+}

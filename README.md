@@ -57,7 +57,7 @@ pyroscope server
 ```
 
 ## Send data to server via Pyroscope agent (language specific)
-For more information how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website.
+For more documentation on how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website.
 - [Golang Agent](https://pyroscope.io/docs/golang)
 - [Python Agent (pip)](https://pyroscope.io/docs/python)
 - [Ruby Agent (gem)](https://pyroscope.io/docs/ruby)
@@ -65,9 +65,21 @@ For more information how to add the Pyroscope agent to your code see the [agent 
 - [PHP Agent](https://pyroscope.io/docs/php)
 - [.NET Agent](https://pyroscope.io/docs/dotnet)
 
+## Example Code
+We also have language-specific examples (using Docker) of how to run the *server and agent together*
+- [Golang Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang)
+- [Python Pip Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/python)
+- [Ruby Gem Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/ruby)
+- [Grafana Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
+- [Java Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/java)
+- [PHP example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/php)
+- [.NET Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/dotnet)
+
+## Deployment Diagram
+
+![Deployment Diagram](.github/markdown-images/deployment.svg)
 
 ## Documentation
-
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
 
 * [Public Roadmap](https://github.com/pyroscope-io/pyroscope/projects/1)
@@ -75,10 +87,6 @@ For more information on how to use Pyroscope with other programming languages, i
 * [Deployment Guide](https://pyroscope.io/docs/deployment)
 * [Developer Guide](https://pyroscope.io/docs/developer-guide)
 
-
-## Deployment Diagram
-
-![Deployment Diagram](.github/markdown-images/deployment.svg)
 
 ## Downloads
 
@@ -141,6 +149,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/wusphinx"><img src="https://avatars.githubusercontent.com/u/1380777?v=4" title="wusphinx" width="80" height="80"></a>
 <a href="https://github.com/ayeniblessing101"><img src="https://avatars.githubusercontent.com/u/29165344?v=4" title="ayeniblessing101" width="80" height="80"></a>
 <a href="https://github.com/gawicks"><img src="https://avatars.githubusercontent.com/u/1481491?v=4" title="gawicks" width="80" height="80"></a>
+<a href="https://github.com/awwalker"><img src="https://avatars.githubusercontent.com/u/11507633?v=4" title="awwalker" width="80" height="80"></a>
 <a href="https://github.com/appleboy"><img src="https://avatars.githubusercontent.com/u/21979?v=4" title="appleboy" width="80" height="80"></a>
 <a href="https://github.com/highb"><img src="https://avatars.githubusercontent.com/u/759848?v=4" title="highb" width="80" height="80"></a>
 <a href="https://github.com/cwalv"><img src="https://avatars.githubusercontent.com/u/887222?v=4" title="cwalv" width="80" height="80"></a>
