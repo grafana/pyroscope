@@ -2,12 +2,11 @@ package health
 
 // Condition represents an aspect of pyroscope server health.
 type Condition interface {
-	GetName() string
 	Probe() (HealthStatusMessage, error)
 }
 type HealthStatusMessage struct {
-	healthStatus HealthStatus
-	message      string
+	HealthStatus HealthStatus
+	Message      string
 }
 
 type HealthStatus int
@@ -19,7 +18,7 @@ const (
 	Critical
 )
 
-func (e HealthStatus) ToString() string {
+func (e HealthStatus) String() string {
 	switch e {
 	case Healthy:
 		return "Healthy"

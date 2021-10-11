@@ -7,6 +7,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -40,7 +41,7 @@ type MockCondition struct {
 
 func (d *MockCondition) Probe() (HealthStatusMessage, error) {
 	var status = d.MockData[d.index]
-	status.message = fmt.Sprintf("%s %s", status.message, d.name)
+	status.Message = fmt.Sprintf("%s %s", status.Message, d.name)
 	d.index = (d.index + 1) % len(d.MockData)
 	return status, nil
 }
@@ -57,25 +58,23 @@ var _ = Describe("health", func() {
 			It("Should support listening on multiple Conditions",
 				func() {
 					defer GinkgoRecover()
-					var condition1 = MockCondition{
+					condition1 := MockCondition{
 						name:     "MockCondition1",
 						MockData: dataHealthy,
 					}
-					var condition2 = MockCondition{
+					condition2 := MockCondition{
 						name:     "MockCondition2",
 						MockData: dataCritical,
 					}
-					var condition3 = MockCondition{
+					condition3 := MockCondition{
 						name:     "MockCondition3",
 						MockData: dataWarning,
 					}
 
-					var healthController = Controller{
-						Interval:   time.Millisecond,
-						Conditions: []Condition{&condition1, &condition2, &condition3},
-					}
+					healthController := NewController([]Condition{&condition1, &condition2, &condition3}, time.Millisecond, logrus.New())
 					healthController.Start()
 					time.Sleep(2 * time.Millisecond)
+
 					notification := healthController.Notification()
 					healthController.Stop()
 
@@ -87,15 +86,14 @@ var _ = Describe("health", func() {
 			It("Should suppress 'flapping' on rapid status changes",
 				func() {
 					defer GinkgoRecover()
-					var condition = MockCondition{
+					condition := MockCondition{
 						name:     "MockCondition",
 						MockData: dataMisc,
 					}
-					var healthController = Controller{
-						Interval:   time.Millisecond,
-						Conditions: []Condition{&condition},
-					}
+
+					healthController := NewController([]Condition{&condition}, time.Millisecond, logrus.New())
 					healthController.Start()
+
 					var notifications []string
 					for i := 0; i < 3; i++ {
 						time.Sleep(2 * time.Millisecond)
@@ -111,16 +109,15 @@ var _ = Describe("health", func() {
 			It("Should return empty notification if status healthy",
 				func() {
 					defer GinkgoRecover()
-					var condition = MockCondition{
+					condition := MockCondition{
 						name:     "MockCondition",
 						MockData: dataHealthy,
 					}
-					var healthController = Controller{
-						Interval:   time.Millisecond,
-						Conditions: []Condition{&condition},
-					}
+
+					healthController := NewController([]Condition{&condition}, time.Millisecond, logrus.New())
 					healthController.Start()
 					time.Sleep(2 * time.Millisecond)
+
 					notification := healthController.Notification()
 					healthController.Stop()
 
@@ -132,21 +129,19 @@ var _ = Describe("health", func() {
 			It("Should format notification as JSON",
 				func() {
 					defer GinkgoRecover()
-					var condition1 = MockCondition{
+					condition1 := MockCondition{
 						name:     "MockCondition1",
 						MockData: dataCritical,
 					}
-					var condition2 = MockCondition{
+					condition2 := MockCondition{
 						name:     "MockCondition2",
 						MockData: dataWarning,
 					}
 
-					var healthController = Controller{
-						Interval:   time.Millisecond,
-						Conditions: []Condition{&condition1, &condition2},
-					}
+					healthController := NewController([]Condition{&condition1, &condition2}, time.Millisecond, logrus.New())
 					healthController.Start()
 					time.Sleep(2 * time.Millisecond)
+
 					jsonNotification := healthController.NotificationJSON()
 					healthController.Stop()
 					var arr []string

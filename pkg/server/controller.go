@@ -24,7 +24,6 @@ import (
 	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
@@ -41,6 +40,12 @@ const (
 )
 
 type decodeResponseFunc func(*http.Response) (string, error)
+
+type HealthController interface {
+	Start()
+	Stop()
+	NotificationJSON() string
+}
 
 type Controller struct {
 	drained uint32
@@ -62,10 +67,10 @@ type Controller struct {
 	// Byte buffers are used for deserialization of ingested data.
 	bufferPool bytebufferpool.Pool
 
-	healthController *health.ControllerBase
+	healthController HealthController
 }
 
-func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger, reg prometheus.Registerer) (*Controller, error) {
+func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Logger, reg prometheus.Registerer, healthController HealthController) (*Controller, error) {
 	appStats, err := hyperloglog.NewPlus(uint8(18))
 	if err != nil {
 		return nil, err
@@ -78,20 +83,6 @@ func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Log
 		}),
 	})
 
-	var diskPressure health.Condition = &health.DiskPressure{
-		Name:              "DiskPressure",
-		WarningThreshold:  2 * storage.OutOfSpaceThreshold,
-		CriticalThreshold: storage.OutOfSpaceThreshold,
-		Config:            c,
-	}
-
-	var healthController health.ControllerBase = &health.Controller{
-		Interval:   time.Minute,
-		Conditions: []health.Condition{diskPressure},
-	}
-
-	healthController.Start()
-
 	ctrl := Controller{
 		config:           c,
 		log:              l,
@@ -100,7 +91,7 @@ func New(c *config.Server, s *storage.Storage, i storage.Ingester, l *logrus.Log
 		stats:            make(map[string]int),
 		appStats:         appStats,
 		metricsMdw:       mdw,
-		healthController: &healthController,
+		healthController: healthController,
 	}
 
 	ctrl.dir, err = webapp.Assets()
@@ -264,7 +255,7 @@ func (ctrl *Controller) Start() error {
 
 func (ctrl *Controller) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	(*ctrl.healthController).Stop()
+	ctrl.healthController.Stop()
 	defer cancel()
 	return ctrl.httpServer.Shutdown(ctx)
 }

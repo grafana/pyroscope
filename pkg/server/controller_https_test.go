@@ -34,7 +34,7 @@ var _ = Describe("server", func() {
 					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
-					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
+					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry(), &mockHealthController{})
 					c.dir = http.Dir(testDataDir)
 
 					go c.Start()
@@ -65,7 +65,7 @@ var _ = Describe("server", func() {
 					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
-					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
+					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry(), &mockHealthController{})
 					c.dir = http.Dir(testDataDir)
 
 					go c.Start()

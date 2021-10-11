@@ -11,12 +11,7 @@ import (
 type DiskPressure struct {
 	WarningThreshold  bytesize.ByteSize
 	CriticalThreshold bytesize.ByteSize
-	Name              string
 	Config            *config.Server
-}
-
-func (d *DiskPressure) GetName() string {
-	return d.Name
 }
 
 func (d *DiskPressure) Probe() (HealthStatusMessage, error) {
@@ -40,5 +35,5 @@ func (d *DiskPressure) status(available bytesize.ByteSize) HealthStatus {
 }
 
 func (*DiskPressure) message(status HealthStatus) string {
-	return fmt.Sprintf("Disk Pressure %s", status.ToString())
+	return fmt.Sprintf("Disk Pressure %s", status.String())
 }

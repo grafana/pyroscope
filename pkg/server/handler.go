@@ -270,13 +270,13 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 		"LatestVersionInfo": updates.LatestVersionJSON(),
 		"ExtraMetadata":     extraMetadataStr,
 		"BaseURL":           ctrl.config.BaseURL,
-		"NotificationText":  ctrl.NotificationText(),
+		"Notification":      ctrl.NotificationJSON(),
 		"IsAuthRequired":    strconv.FormatBool(ctrl.isAuthRequired()),
 	})
 }
 
-func (ctrl *Controller) NotificationText() string {
-	return (*ctrl.healthController).NotificationJSON()
+func (ctrl *Controller) NotificationJSON() string {
+	return ctrl.healthController.NotificationJSON()
 }
 
 func mustExecute(t *template.Template, w io.Writer, v interface{}) {

@@ -15,6 +15,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
@@ -56,7 +57,18 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	ingester := storage.NewIngestionObserver(svc.storage, observer)
-	svc.controller, err = server.New(svc.config, svc.storage, ingester, svc.logger, prometheus.DefaultRegisterer)
+
+	diskPressure := &health.DiskPressure{
+		WarningThreshold:  2 * storage.OutOfSpaceThreshold,
+		CriticalThreshold: storage.OutOfSpaceThreshold,
+		Config:            c,
+	}
+
+	healthController := health.NewController([]health.Condition{diskPressure}, time.Minute, svc.logger)
+
+	healthController.Start()
+
+	svc.controller, err = server.New(svc.config, svc.storage, ingester, svc.logger, prometheus.DefaultRegisterer, healthController)
 	if err != nil {
 		return nil, fmt.Errorf("new server: %w", err)
 	}
