@@ -263,7 +263,6 @@ func (ctrl *Controller) Start() error {
 
 func (ctrl *Controller) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	ctrl.healthController.Stop()
 	defer cancel()
 	return ctrl.httpServer.Shutdown(ctx)
 }

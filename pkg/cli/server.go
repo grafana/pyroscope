@@ -30,6 +30,7 @@ type serverService struct {
 	analyticsService *analytics.Service
 	selfProfiling    *agent.ProfileSession
 	debugReporter    *debug.Reporter
+	healthController server.HealthController
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -65,8 +66,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	healthController := health.NewController([]health.Condition{diskPressure}, time.Minute, svc.logger)
-
-	healthController.Start()
+	svc.healthController = healthController
 
 	controllerArgs := server.ControllerConfig{
 		ServerConfig:     svc.config,
@@ -115,6 +115,8 @@ func (svc *serverService) Start() error {
 	}
 
 	svc.directUpstream.Start()
+	svc.healthController.Start()
+
 	if err := svc.selfProfiling.Start(); err != nil {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
 	}
@@ -152,6 +154,7 @@ func (svc *serverService) stop() {
 	}
 	svc.selfProfiling.Stop()
 	svc.directUpstream.Stop()
+	svc.healthController.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
