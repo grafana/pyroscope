@@ -2,6 +2,6 @@ module.exports = [
   {
     path: 'webapp/public/assets/app*.js',
     // ugly
-    limit: '15000ms',
+    limit: '13000ms',
   },
 ];
