@@ -368,9 +368,11 @@ describe('basic test', () => {
 
       // until we focus on a specific, it should not be enabled
       cy.findByTestId('flamegraph-canvas').rightclick();
-      cy.findByRole('menuitem')
-        .contains('Reset View')
-        .should('have.attr', 'aria-disabled', 'true');
+      cy.findByRole('menuitem', { name: /Reset View/ }).should(
+        'have.attr',
+        'aria-disabled',
+        'true'
+      );
 
       // click on the second item
       cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
@@ -378,7 +380,7 @@ describe('basic test', () => {
       cy.findByRole('menuitem')
         .contains('Reset View')
         .should('not.have.attr', 'aria-disabled');
-      cy.findByRole('menuitem').contains('Reset View').click();
+      cy.findByRole('menuitem', { name: /Reset View/ }).click();
       // TODO assert that it was indeed reset?
 
       // should be disabled again
@@ -386,6 +388,20 @@ describe('basic test', () => {
       cy.findByRole('menuitem')
         .contains('Reset View')
         .should('have.attr', 'aria-disabled', 'true');
+    });
+
+    it.only('it focus on a specific stack trace tree', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+        times: 1,
+      }).as('render');
+
+      //      cy.visit('/');
+      cy.visit('http://localhost:4041');
+
+      cy.findByTestId('flamegraph-canvas').rightclick(0, BAR_HEIGHT * 4);
+
+      cy.findByRole('menuitem', { name: /Focus/ }).contains('Focus').click();
     });
   });
 });

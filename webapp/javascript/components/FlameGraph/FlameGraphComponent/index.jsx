@@ -377,12 +377,6 @@ class FlameGraph extends React.Component {
         } else if (isDiff) {
           const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
 
-          nodeColor = colorBasedOnDiff(
-            leftRatio,
-            ff.getBarTotalLeft(level, j),
-            a
-          );
-
           const leftPercent = ratioToPercent(leftRatio);
           const rightPercent = ratioToPercent(rightRatio);
 
@@ -514,6 +508,10 @@ class FlameGraph extends React.Component {
     return true;
   };
 
+  focusOnNode = (e) => {
+    console.log('focused on node', e);
+  };
+
   xyToContextMenuItems = (x, y) => {
     const isFocused = this.selectedLevel !== 0;
 
@@ -522,6 +520,9 @@ class FlameGraph extends React.Component {
     return [
       <MenuItem key="reset" disabled={!isFocused} onClick={this.reset}>
         Reset View
+      </MenuItem>,
+      <MenuItem key="focus" onClick={this.focusOnNode}>
+        Focus
       </MenuItem>,
     ];
   };
