@@ -36,6 +36,14 @@ type serverService struct {
 }
 
 func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, error) {
+	// TODO(kolesnikovae): remove after testing.
+	const day = time.Hour * 24
+	c.RetentionLevels = map[int]time.Duration{
+		0: 7 * day,
+		1: 30 * day,
+		2: 180 * day,
+	}
+
 	svc := serverService{
 		config:  c,
 		logger:  logger,

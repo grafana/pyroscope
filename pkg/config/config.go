@@ -93,6 +93,9 @@ type Server struct {
 
 	Retention time.Duration `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" mapstructure:"retention"`
 
+	// TODO(kolesnikovae): implement.
+	RetentionLevels map[int]time.Duration `mapstructure:"-"`
+
 	// Deprecated fields. They can be set (for backwards compatibility) but have no effect
 	// TODO: we should print some warning messages when people try to use these
 	SampleRate          uint              `deprecated:"true" mapstructure:"sample-rate"`

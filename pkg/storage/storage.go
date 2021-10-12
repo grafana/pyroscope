@@ -179,7 +179,10 @@ type PutInput struct {
 	AggregationType string
 }
 
-var OutOfSpaceThreshold = 512 * bytesize.MB
+var (
+	OutOfSpaceThreshold = 512 * bytesize.MB
+	zeroTime            time.Time
+)
 
 func (s *Storage) Put(pi *PutInput) error {
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
@@ -190,7 +193,7 @@ func (s *Storage) Put(pi *PutInput) error {
 		return err
 	}
 
-	if pi.StartTime.Before(s.retentionThreshold()) {
+	if pi.StartTime.Before(s.lifetimeBasedRetentionThreshold().LowerBoundary()) {
 		return errRetention
 	}
 
@@ -407,7 +410,10 @@ func (s *Storage) iterateOverAllSegments(cb func(*segment.Key, *segment.Segment)
 	})
 
 	for _, rawSk := range dimension.Union(dimensions...) {
-		sk, _ := segment.ParseKey(string(rawSk))
+		sk, err := segment.ParseKey(string(rawSk))
+		if err != nil {
+			continue
+		}
 		stInt, ok := s.segments.Lookup(sk.SegmentKey())
 		if !ok {
 			continue
@@ -654,27 +660,12 @@ func (s *Storage) CacheStats() map[string]interface{} {
 	}
 }
 
-var zeroTime time.Time
-
-func (s *Storage) retentionThreshold() time.Time {
-	if s.config.Retention > 0 {
-		return time.Now().Add(-1 * s.config.Retention)
-	}
-	return zeroTime
-}
-
 func (s *Storage) lifetimeBasedRetentionThreshold() *segment.Threshold {
-	// TODO: think about configuration options:
-	//  --retention 365d
-	//  --retention-levels 7d:30d:180d
-	//  --retention-levels 7d;30d;180d
-	//  --retention-levels 7d,30d,180d
-	//  --retention-levels "7d 30d 180d"
-	//  --retention-levels 7d
-	return segment.NewThreshold().
-		SetAbsoluteMaxAge(s.config.Retention).
-		SetLevelMaxAge(0, time.Hour*3).
-		SetLevelMaxAge(1, time.Hour*6)
+	t := segment.NewThreshold().SetAbsoluteMaxAge(s.config.Retention)
+	for level, threshold := range s.config.RetentionLevels {
+		t.SetLevelMaxAge(level, threshold)
+	}
+	return t
 }
 
 func (s *Storage) performFreeSpaceCheck() error {

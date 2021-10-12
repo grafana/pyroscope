@@ -11,12 +11,14 @@ type metrics struct {
 	writesTotal prometheus.Counter
 	readsTotal  prometheus.Counter
 
+	// TODO(kolesnikovae): Taking into account that all periodic tasks
+	//	 are performed sequentially, shouldn't these (and all timers we use)
+	//	 be of gauge type?
 	retentionTimer   prometheus.Histogram
 	badgerCloseTimer prometheus.Histogram
 
-	// TODO: I think we should make metrics below db-specific.
+	// TODO(kolesnikovae): I think we should make metrics below db-specific.
 	//  Perhaps, we could even move those to cache metrics.
-
 	evictionsTimer      prometheus.Histogram
 	evictionsAllocBytes prometheus.Gauge
 	evictionsTotalBytes prometheus.Gauge

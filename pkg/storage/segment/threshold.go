@@ -12,26 +12,11 @@ type Threshold struct {
 
 func NewThreshold() *Threshold { return &Threshold{now: time.Now()} }
 
-func (t Threshold) isBefore(sn *streeNode) bool {
-	if sn.isBefore(t.absolute) {
-		return true
+func (t Threshold) LowerBoundary() time.Time {
+	if t.levels == nil {
+		return t.absolute
 	}
-	return sn.isBefore(t.levelThreshold(sn.depth))
-}
-
-func (t *Threshold) timeBefore(age time.Duration) time.Time {
-	if age == 0 {
-		return zeroTime
-	}
-	return t.now.Add(-1 * age)
-}
-
-func (t *Threshold) normalize() *Threshold {
-	t.absolute = normalizeTime(t.absolute)
-	for i := range t.levels {
-		t.levels[i] = normalizeTime(t.levels[i])
-	}
-	return t
+	return t.levels[0]
 }
 
 func (t *Threshold) SetAbsoluteMaxAge(maxAge time.Duration) *Threshold {
@@ -47,7 +32,29 @@ func (t *Threshold) SetLevelMaxAge(level int, maxAge time.Duration) *Threshold {
 	return t
 }
 
-func (t *Threshold) levelThreshold(depth int) time.Time {
+func (t Threshold) isBefore(sn *streeNode) bool {
+	if sn.isBefore(t.absolute) {
+		return true
+	}
+	return sn.isBefore(t.levelThreshold(sn.depth))
+}
+
+func (t Threshold) timeBefore(age time.Duration) time.Time {
+	if age == 0 {
+		return zeroTime
+	}
+	return t.now.Add(-1 * age)
+}
+
+func (t *Threshold) normalize() *Threshold {
+	t.absolute = normalizeTime(t.absolute)
+	for i := range t.levels {
+		t.levels[i] = normalizeTime(t.levels[i])
+	}
+	return t
+}
+
+func (t Threshold) levelThreshold(depth int) time.Time {
 	if t.levels == nil {
 		return zeroTime
 	}

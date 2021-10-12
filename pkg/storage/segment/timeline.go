@@ -48,6 +48,7 @@ func (sn streeNode) populateTimeline(tl *Timeline, t *Threshold) {
 	}
 
 	currentDuration := durations[sn.depth]
+	// TODO(kolesnikovae): use "watermarks" instead of thresholds as those may change.
 	var hasDataBefore bool
 	var levelThreshold time.Time
 	if sn.depth > 0 {
