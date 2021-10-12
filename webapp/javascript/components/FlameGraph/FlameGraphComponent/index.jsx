@@ -28,6 +28,7 @@ THIS SOFTWARE.
 /* eslint-disable no-restricted-syntax */
 import React from 'react';
 import clsx from 'clsx';
+import { MenuItem, SubMenu } from '@szhsin/react-menu';
 import {
   getFormatter,
   ratioToPercent,
@@ -47,6 +48,14 @@ import { fitToCanvasRect } from '../../../util/fitMode';
 import DiffLegend from './DiffLegend';
 import Tooltip from './Tooltip';
 import Highlight from './Highlight';
+import ContextMenu from './ContextMenu';
+import {
+  PX_PER_LEVEL,
+  COLLAPSE_THRESHOLD,
+  LABEL_THRESHOLD,
+  GAP,
+  BAR_HEIGHT,
+} from './constants';
 
 const formatSingle = {
   format: 'single',
@@ -106,12 +115,7 @@ export function parseFlamebearerFormat(format) {
   return formatDouble;
 }
 
-const PX_PER_LEVEL = 18;
-const COLLAPSE_THRESHOLD = 5;
-const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = '#48CE73'; // green
-const GAP = 0.5;
-export const BAR_HEIGHT = PX_PER_LEVEL - GAP;
 
 const unitsToFlamegraphTitle = {
   objects: 'amount of objects in RAM per function',
@@ -510,6 +514,18 @@ class FlameGraph extends React.Component {
     return true;
   };
 
+  xyToContextMenuItems = (x, y) => {
+    const isFocused = this.selectedLevel !== 0;
+
+    // Depending on what item we clicked
+    // The menu items will be completely different
+    return [
+      <MenuItem key="reset" disabled={!isFocused} onClick={this.reset}>
+        Reset View
+      </MenuItem>,
+    ];
+  };
+
   updateZoom(i, j) {
     const ff = this.props.format;
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
@@ -620,6 +636,13 @@ class FlameGraph extends React.Component {
             />
           </div>
         </div>
+
+        <ContextMenu
+          canvasRef={this.canvasRef}
+          items={this.contextMenuItems}
+          xyToMenuItems={this.xyToContextMenuItems}
+        />
+
         <Tooltip
           format={this.props.format.format}
           canvasRef={this.canvasRef}
