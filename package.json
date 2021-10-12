@@ -82,7 +82,6 @@
     "sync-request": "^6.1.0",
     "ts-jest": "^27.0.5",
     "typescript": "^4.4.3",
-    "uuid": "^8.3.2",
     "webpack": "~5.51.1",
     "webpack-bundle-analyzer": "^4.4.2",
     "webpack-cli": "^4.8.0",
