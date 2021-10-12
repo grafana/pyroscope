@@ -57,3 +57,14 @@ Feel free to add any tips as you learn about them.
 ## References
 https://www.thisdot.co/blog/how-to-set-up-screenshot-comparison-testing-with-cypress-inside-an-nx
 https://www.youtube.com/watch?v=1XQbGtRITys&list=PLP9o9QNnQuAYhotnIDEUQNXuvXL7ZmlyZ&index=14
+
+# Updating cypress
+There are 3 places to update:
+
+- `package.json`
+- `scripts/cypress-screenshots.sh`
+- `.github/workflows/cypress-tests.yml`
+
+They should be ALL in sync, otherwise you gonna have weird failures, specially with snapshot tests.
+
+Don't forget to regenerate the snapshots (`yarn cy:ss`).
