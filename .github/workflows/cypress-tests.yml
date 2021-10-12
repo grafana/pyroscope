@@ -9,7 +9,7 @@ on:
 jobs:
   cypress-tests:
     runs-on: ubuntu-latest
-    container: cypress/included:8.4.1
+    container: cypress/included:8.6.0
     steps:
       - name: Checkout
         uses: actions/checkout@v2
