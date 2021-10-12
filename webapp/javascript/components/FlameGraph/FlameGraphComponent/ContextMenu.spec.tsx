@@ -50,7 +50,7 @@ describe('ContextMenu', () => {
     expect(hasBeenClicked).toBe(true);
   });
 
-  it.only('shows different items depending on the clicked node', () => {
+  it('shows different items depending on the clicked node', () => {
     const xyToMenuItems = jest.fn();
 
     render(<TestCanvas xyToMenuItems={xyToMenuItems} />);
