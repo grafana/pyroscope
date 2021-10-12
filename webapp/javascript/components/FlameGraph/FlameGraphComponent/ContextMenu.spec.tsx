@@ -49,4 +49,24 @@ describe('ContextMenu', () => {
     userEvent.click(queryByRole('menuitem'));
     expect(hasBeenClicked).toBe(true);
   });
+
+  it.only('shows different items depending on the clicked node', () => {
+    const xyToMenuItems = jest.fn();
+
+    render(<TestCanvas xyToMenuItems={xyToMenuItems} />);
+
+    expect(queryByRole('menu')).not.toBeInTheDocument();
+
+    // trigger a right click
+    xyToMenuItems.mockReturnValueOnce([<MenuItem key="1">1</MenuItem>]);
+    userEvent.click(screen.getByTestId('canvas'), { buttons: 2 });
+    expect(queryAllByRole('menuitem')).toHaveLength(1);
+
+    xyToMenuItems.mockReturnValueOnce([
+      <MenuItem key="1">1</MenuItem>,
+      <MenuItem key="2">2</MenuItem>,
+    ]);
+    userEvent.click(screen.getByTestId('canvas'), { buttons: 2 });
+    expect(queryAllByRole('menuitem')).toHaveLength(2);
+  });
 });
