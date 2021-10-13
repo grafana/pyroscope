@@ -1,8 +1,4 @@
-// copied from the source code
-// TODO move those definitions to a different shareable file
-const PX_PER_LEVEL = 18;
-const GAP = 0.5;
-const BAR_HEIGHT = PX_PER_LEVEL - GAP;
+import { BAR_HEIGHT } from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent/constants';
 
 /// <reference types="cypress" />
 describe('basic test', () => {
@@ -204,7 +200,7 @@ describe('basic test', () => {
       });
   });
 
-  it('validates "Reset View" works', () => {
+  it('validates "Reset View" button works', () => {
     cy.intercept('**/render*', {
       fixture: 'simple-golang-app-cpu.json',
     }).as('render');
@@ -212,7 +208,7 @@ describe('basic test', () => {
     cy.visit('/');
 
     cy.findByTestId('reset-view').should('not.be.visible');
-    cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT);
+    cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
     cy.findByTestId('reset-view').should('be.visible');
     cy.findByTestId('reset-view').click();
     cy.findByTestId('reset-view').should('not.be.visible');
@@ -358,6 +354,38 @@ describe('basic test', () => {
 
       cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-highlight').should('be.visible');
+    });
+  });
+
+  describe('contextmenu', () => {
+    it("it works when 'clear view' is clicked", () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+        times: 1,
+      }).as('render');
+
+      cy.visit('/');
+
+      // until we focus on a specific, it should not be enabled
+      cy.findByTestId('flamegraph-canvas').rightclick();
+      cy.findByRole('menuitem')
+        .contains('Reset View')
+        .should('have.attr', 'aria-disabled', 'true');
+
+      // click on the second item
+      cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
+      cy.findByTestId('flamegraph-canvas').rightclick();
+      cy.findByRole('menuitem')
+        .contains('Reset View')
+        .should('not.have.attr', 'aria-disabled');
+      cy.findByRole('menuitem').contains('Reset View').click();
+      // TODO assert that it was indeed reset?
+
+      // should be disabled again
+      cy.findByTestId('flamegraph-canvas').rightclick();
+      cy.findByRole('menuitem')
+        .contains('Reset View')
+        .should('have.attr', 'aria-disabled', 'true');
     });
   });
 });
