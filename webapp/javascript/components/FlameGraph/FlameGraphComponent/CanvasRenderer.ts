@@ -1,6 +1,22 @@
 import { PX_PER_LEVEL, COLLAPSE_THRESHOLD, BAR_HEIGHT, GAP } from './constants';
-import { formatPercent, getFormatter, Units } from '../../../util/format';
+import {
+  formatPercent,
+  getFormatter,
+  Units,
+  ratioToPercent,
+} from '../../../util/format';
 import { fitToCanvasRect } from '../../../util/fitMode';
+import { createFF, getRatios } from './utils';
+import {
+  colorBasedOnDiff,
+  colorBasedOnDiffPercent,
+  colorBasedOnPackageName,
+  colorFromPercentage,
+  colorGreyscale,
+  diffColorGreen,
+  diffColorRed,
+  getPackageNameFromStackTrace,
+} from './color';
 
 export interface CanvasRendererConfig {
   //  context: CanvasRenderingContext2D;
@@ -96,7 +112,21 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       ctx.beginPath();
       ctx.rect(x, y, sw, sh);
       // TODO color
-      ctx.fillStyle = '#48CE73'; // green
+      //      ctx.fillStyle = '#48CE73'; // green
+      //
+      ctx.fillStyle = getColor({
+        viewType,
+        level,
+        j,
+        i,
+        names,
+        // TODO
+        collapsed: false,
+        selectedLevel: 0,
+        queryExists: false,
+        nodeIsInQuery: false,
+        spyName: 'gospy',
+      });
       ctx.fill();
 
       ctx.save();
@@ -139,49 +169,74 @@ function getLongName(
   return longName;
 }
 
-function createFF(viewType: CanvasRendererConfig['viewType']) {
-  switch (viewType) {
-    case 'single': {
-      return formatSingle;
-    }
-    case 'diff': {
-      return formatDouble;
-    }
+// TODO use dependant types
+function getColor({
+  viewType,
+  collapsed,
+  level,
+  j,
+  leftTicks,
+  rightTicks,
+  selectedLevel,
+  i,
+  queryExists,
+  nodeIsInQuery,
+  names,
+  spyName,
+}: {
+  viewType: CanvasRendererConfig['viewType'];
+  collapsed: boolean;
+  level: number[];
+  j: number;
+  leftTicks?: number;
+  rightTicks?: number;
+  selectedLevel: number;
+  i: number;
+  queryExists: boolean;
+  nodeIsInQuery: boolean;
+  names: string[];
+  spyName: string;
+}) {
+  const HIGHLIGHT_NODE_COLOR = '#48CE73'; // green
+  const ff = createFF(viewType);
 
-    default:
-      throw new Error(`Format not supported: '${viewType}'`);
+  // all above selected level should be dimmed
+  const a = selectedLevel > i ? 0.33 : 1;
+
+  // Collapsed
+  if (collapsed) {
+    return colorGreyscale(200, 0.66);
   }
+
+  // Diff mode
+  if (viewType === 'diff') {
+    const { leftRatio, rightRatio } = getRatios(
+      viewType,
+      level,
+      j,
+      leftTicks,
+      rightTicks
+    );
+
+    const leftPercent = ratioToPercent(leftRatio);
+    const rightPercent = ratioToPercent(rightRatio);
+
+    return colorBasedOnDiffPercent(leftPercent, rightPercent, a);
+  }
+
+  // We are in a search
+  if (queryExists) {
+    if (nodeIsInQuery) {
+      return HIGHLIGHT_NODE_COLOR;
+    }
+    return colorGreyscale(200, 0.66);
+  }
+
+  return colorBasedOnPackageName(
+    getPackageNameFromStackTrace(spyName, names[level[j + ff.jName]]),
+    a
+  );
 }
-
-const formatSingle = {
-  format: 'single',
-  jStep: 4,
-  jName: 3,
-  getBarOffset: (level: number[], j: number) => level[j],
-  getBarTotal: (level: number[], j: number) => level[j + 1],
-  getBarTotalDiff: (level: number[], j: number) => 0,
-  getBarSelf: (level: number[], j: number) => level[j + 2],
-  getBarSelfDiff: (level: number[], j: number) => 0,
-  getBarName: (level: number[], j: number) => level[j + 3],
-};
-
-const formatDouble = {
-  format: 'double',
-  jStep: 7,
-  jName: 6,
-  getBarOffset: (level: number[], j: number) => level[j] + level[j + 3],
-  getBarTotal: (level: number[], j: number) => level[j + 4] + level[j + 1],
-  getBarTotalLeft: (level: number[], j: number) => level[j + 1],
-  getBarTotalRght: (level: number[], j: number) => level[j + 4],
-  getBarTotalDiff: (level: number[], j: number) => {
-    return level[j + 4] - level[j + 1];
-  },
-  getBarSelf: (level: number[], j: number) => level[j + 5] + level[j + 2],
-  getBarSelfLeft: (level: number[], j: number) => level[j + 2],
-  getBarSelfRght: (level: number[], j: number) => level[j + 5],
-  getBarSelfDiff: (level: number[], j: number) => level[j + 5] - level[j + 2],
-  getBarName: (level: number[], j: number) => level[j + 6],
-};
 
 function tickToX(
   numTicks: number,
