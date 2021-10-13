@@ -46,6 +46,15 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   const { names, levels, topLevel } = props;
   const formatter = getFormatter(numTicks, sampleRate, units);
 
+  // Set the font syle
+  // It's important to set the font before hand
+  // Since it will be used to calculate how many characters can fit
+  ctx.textBaseline = 'middle';
+  ctx.font =
+    '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
+  // Since this is a monospaced font any character would do
+  const characterSize = ctx.measureText('a').width;
+
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
@@ -61,25 +70,17 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       const sw = numBarTicks * pxPerTick - (collapsed ? 0 : GAP);
       const sh = BAR_HEIGHT;
 
-      // Decide the name
-      const ratio = numBarTicks / numTicks;
-
-      const percent = formatPercent(ratio);
-      const shortName = names[level[j + ff.jName]];
-      const longName = `${shortName} (${percent}, ${formatter.format(
+      /*********************/
+      /*      N a m e      */
+      /*********************/
+      const shortName = getFunctionName(names, j, viewType, level);
+      const longName = getLongName(
+        shortName,
         numBarTicks,
-        sampleRate
-      )})`;
-
-      const namePosX = Math.round(Math.max(x, 0));
-
-      // It's important to set the font before hand
-      // Since it will be used to calculate how many characters can fit
-      ctx.textBaseline = 'middle';
-      ctx.font =
-        '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
-      // Since this is a monospaced font any character would do
-      const characterSize = ctx.measureText('a').width;
+        numTicks,
+        sampleRate,
+        formatter
+      );
 
       const fitCalc = fitToCanvasRect({
         mode: fitMode,
@@ -89,7 +90,9 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         shortText: shortName,
       });
 
-      // Draw the block
+      /*********************/
+      /*      D r a w      */
+      /*********************/
       ctx.beginPath();
       ctx.rect(x, y, sw, sh);
       // TODO color
@@ -99,11 +102,41 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       ctx.save();
       ctx.clip();
       ctx.fillStyle = 'black';
-      // when showing the code, give it a space in the beginning
+
+      const namePosX = Math.round(Math.max(x, 0));
       ctx.fillText(fitCalc.text, namePosX + fitCalc.marginLeft, y + sh / 2 + 1);
       ctx.restore();
     }
   }
+}
+
+function getFunctionName(
+  names: CanvasRendererConfig['names'],
+  j: number,
+  viewType: CanvasRendererConfig['viewType'],
+  level: number[]
+) {
+  const ff = createFF(viewType);
+  const shortName = names[level[j + ff.jName]];
+  return shortName;
+}
+
+function getLongName(
+  shortName: string,
+  numBarTicks: number,
+  numTicks: number,
+  sampleRate: number,
+  formatter: ReturnType<typeof getFormatter>
+) {
+  const ratio = numBarTicks / numTicks;
+  const percent = formatPercent(ratio);
+
+  const longName = `${shortName} (${percent}, ${formatter.format(
+    numBarTicks,
+    sampleRate
+  )})`;
+
+  return longName;
 }
 
 function createFF(viewType: CanvasRendererConfig['viewType']) {
