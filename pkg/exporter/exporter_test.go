@@ -1,129 +1,73 @@
 package exporter
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-func TestEval(t *testing.T) {
-	type testCase struct {
-		query string
-		match bool
-		key   string
-	}
-
-	testCases := []testCase{
-		// No matchers specified except app name.
-		{`app.name`, true, `app.name{foo=bar}`},
-		{`app.name{}`, true, `app.name{foo=bar}`},
-		{`app.name`, false, `x.name{foo=bar}`},
-		{`app.name{}`, false, `x.name{foo=bar}`},
-
-		{`app.name{foo="bar"}`, true, `app.name{foo=bar}`},
-		{`app.name{foo!="bar"}`, true, `app.name{foo=baz}`},
-		{`app.name{foo="bar"}`, false, `app.name{foo=baz}`},
-		{`app.name{foo!="bar"}`, false, `app.name{foo=bar}`},
-
-		// Tag key not present.
-		{`app.name{foo="bar"}`, false, `app.name{bar=baz}`},
-		{`app.name{foo!="bar"}`, true, `app.name{bar=baz}`},
-
-		{`app.name{foo="bar",baz="qux"}`, true, `app.name{foo=bar,baz=qux}`},
-		{`app.name{foo="bar",baz!="qux"}`, true, `app.name{foo=bar,baz=fred}`},
-		{`app.name{foo="bar",baz="qux"}`, false, `app.name{foo=bar}`},
-		{`app.name{foo="bar",baz!="qux"}`, false, `app.name{foo=bar,baz=qux}`},
-		{`app.name{foo="bar",baz!="qux"}`, false, `app.name{baz=fred,bar=baz}`},
-	}
-
-	for _, tc := range testCases {
-		qry, _ := flameql.ParseQuery(tc.query)
-		k, _ := segment.ParseKey(tc.key)
-		r := &rule{
-			qry:      qry,
-			name:     "test",
-			counters: make(map[uint64]prometheus.Counter),
-			reg:      prometheus.NewRegistry(),
-		}
-
-		_, matched := r.eval(k)
-		if matched != tc.match {
-			t.Fatalf("Expect matches: %v, actual: %v\n\tQuery: %s\n\tKey: %v",
-				tc.match, matched, tc.query, tc.key)
-		}
-	}
-}
-
-// MustRegister causes panic if the same counter (name+labels) is registered
-// twice. The test is aimed to ensure that a counter is created once per unique
-// labels set (matching query).
-func TestRegister(t *testing.T) {
-	qry, _ := flameql.ParseQuery(`app.name{foo=~"bar"}`)
-	k, _ := segment.ParseKey(`app.name{foo=barbar,bar=bar}`)
-	r := &rule{
-		qry:      qry,
-		name:     "test",
-		counters: make(map[uint64]prometheus.Counter),
-		reg:      prometheus.NewRegistry(),
-	}
-
-	r.eval(k)
-	r.eval(k)
-
-	if len(r.counters) != 1 {
-		t.Fatalf("Expected exactly one counter, got %d", len(r.counters))
-	}
-}
-
 func TestObserve(t *testing.T) {
 	rules := config.MetricsExportRules{
 		"app_name_cpu_total": {
-			Expr:   `app.name.cpu{foo="bar"}`,
-			Node:   "total",
-			Labels: []string{"foo"},
+			Expr: `app.name.cpu`,
+		},
+		"app_name_cpu_total_foo": {
+			Expr:    `app.name.cpu{foo="bar"}`,
+			Node:    "total",
+			GroupBy: []string{"foo"},
 		},
 		"app_name_cpu_abc": {
-			Expr:   `app.name.cpu{foo=~"b.*"}`,
-			Node:   "^a;b;c$",
-			Labels: []string{"foo"},
+			Expr:    `app.name.cpu{foo=~"b.*"}`,
+			Node:    "^a;b;c$",
+			GroupBy: []string{"foo"},
 		},
 		"app_name_cpu_ab": {
-			Expr:   `app.name.cpu{foo=~"b.*"}`,
-			Node:   "a;b",
-			Labels: []string{"foo"},
+			Expr:    `app.name.cpu{foo=~"b.*"}`,
+			Node:    "a;b",
+			GroupBy: []string{"foo"},
+		},
+		"another_app": {
+			Expr:    `another.app.cpu`,
+			GroupBy: []string{"foo"},
 		},
 	}
 
 	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
 	k := observe(exporter, "app.name.cpu{foo=bar,bar=baz}")
 
-	if total := getRuleCounterValue(exporter, "app_name_cpu_total", k); total != 5 {
-		t.Fatalf("Total counter must be 5, got %v", total)
+	requireRuleCounterValue(t, exporter, "app_name_cpu_total", k, 5)
+	requireRuleCounterValue(t, exporter, "app_name_cpu_total_foo", k, 5)
+	requireRuleCounterValue(t, exporter, "app_name_cpu_abc", k, 2)
+	requireRuleCounterValue(t, exporter, "app_name_cpu_ab", k, 3)
+	requireNoCounter(t, exporter, "another_app", k)
+}
+
+const testRuleName = "app_name_cpu_total"
+
+func TestObserveNoMatch(t *testing.T) {
+	rules := config.MetricsExportRules{
+		testRuleName: {
+			Expr: `app.name.cpu`,
+		},
 	}
 
-	if abc := getRuleCounterValue(exporter, "app_name_cpu_abc", k); abc != 2 {
-		t.Fatalf("a;b;c counter must be 2, got %v", abc)
-	}
+	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
+	k := observe(exporter, "another.app.name.cpu{foo=bar,bar=baz}")
 
-	if ab := getRuleCounterValue(exporter, "app_name_cpu_ab", k); ab != 3 {
-		t.Fatalf("a;b counter must be 3, got %v", ab)
-	}
+	requireNoCounter(t, exporter, testRuleName, k)
 }
 
 func TestGroupBy(t *testing.T) {
-	const rule = "app_name_cpu_total"
 	rules := config.MetricsExportRules{
-		rule: {
-			Expr:   `app.name.cpu{foo=~"bar"}`,
-			Labels: []string{"foo"},
+		testRuleName: {
+			Expr:    `app.name.cpu`,
+			GroupBy: []string{"foo"},
 		},
 	}
 
@@ -131,77 +75,68 @@ func TestGroupBy(t *testing.T) {
 	k1 := observe(exporter, `app.name.cpu{foo=bar_a,bar=a}`)
 	k2 := observe(exporter, `app.name.cpu{foo=bar_a,bar=b}`)
 	k3 := observe(exporter, `app.name.cpu{foo=bar_b,bar=c}`)
+	k4 := observe(exporter, `app.name.cpu{}`)
 
-	counters := len(exporter.rules[0].counters)
-	if counters != 2 {
-		t.Fatalf("Expected 2 counters, got %v", counters)
+	requireRuleCounterValue(t, exporter, testRuleName, k1, 10)
+	requireRuleCounterValue(t, exporter, testRuleName, k2, 10)
+	requireRuleCounterValue(t, exporter, testRuleName, k3, 5)
+	requireRuleCounterValue(t, exporter, testRuleName, k4, 5)
+}
+
+func TestNoGroupBy(t *testing.T) {
+	rules := config.MetricsExportRules{
+		testRuleName: {
+			Expr: `app.name.cpu`,
+		},
 	}
 
-	c1 := getRuleCounter(exporter, rule, k1)
-	c2 := getRuleCounter(exporter, rule, k2)
-	c3 := getRuleCounter(exporter, rule, k3)
+	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
+	k1 := observe(exporter, "app.name.cpu{foo=bar}")
+	k2 := observe(exporter, "app.name.cpu{foo=baz}")
 
-	if !reflect.DeepEqual(c1, c2) {
-		t.Fatalf("Expected c1 and c2 is the same counter")
-	}
-
-	if t1 := testutil.ToFloat64(c1); t1 != 10 {
-		t.Fatalf("Total counter for k1 must be 10, got %v", t1)
-	}
-
-	if t2 := testutil.ToFloat64(c2); t2 != 10 {
-		t.Fatalf("Total counter for k2 must be 10, got %v", t2)
-	}
-
-	if t3 := testutil.ToFloat64(c3); t3 != 5 {
-		t.Fatalf("Total counter for k3 must be 5, got %v", t3)
-	}
+	requireRuleCounterValue(t, exporter, testRuleName, k1, 10)
+	requireRuleCounterValue(t, exporter, testRuleName, k2, 10)
 }
 
 func TestSampleUnits(t *testing.T) {
-	const rule = "app_name_cpu_total"
-	rules := config.MetricsExportRules{rule: {Expr: "app.name.cpu"}}
+	rules := config.MetricsExportRules{
+		testRuleName: {Expr: "app.name.cpu"},
+	}
 
 	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
 	k, _ := segment.ParseKey("app.name.cpu")
 	o, _ := exporter.Evaluate(&storage.PutInput{Key: k, SampleRate: 100})
 	createTree().Iterate(observeCallback(o))
 
-	if v := testutil.ToFloat64(getRuleCounter(exporter, rule, k)); v != 0.05 {
-		t.Fatalf("Expected counter value 0.05, got %v", v)
+	requireRuleCounterValue(t, exporter, testRuleName, k, 0.05)
+}
+
+func getCounter(e *MetricsExporter, name string, k *segment.Key) prometheus.Counter {
+	r, ok := e.rules[name]
+	if !ok {
+		return nil
+	}
+	return r.counterForKey(k)
+}
+
+func requireNoCounter(t *testing.T, e *MetricsExporter, name string, k *segment.Key) {
+	r, ok := e.rules[name]
+	if !ok || r.ctr.Delete(r.promLabels(k)) {
+		t.Fatalf("Unexpected counter %s (%v)", name, k)
 	}
 }
 
-func getRuleCounter(e *MetricsExporter, name string, k *segment.Key) prometheus.Counter {
-	for _, r := range e.rules {
-		if r.name != name {
-			continue
-		}
-		m, ok := r.matchLabelNames(k)
-		if !ok {
-			continue
-		}
-		var h uint64
-		if len(r.labels) == 0 {
-			h = hash(k.AppName())
-		} else {
-			h = m.hash()
-		}
-		if c, ok := r.counters[h]; ok {
-			return c
-		}
+func requireRuleCounterValue(t *testing.T, e *MetricsExporter, name string, k *segment.Key, v float64) {
+	if actual := testutil.ToFloat64(getCounter(e, name, k)); v != actual {
+		t.Fatalf("Expected value %v got %v; counter %s (%v)", v, actual, name, k)
 	}
-	return nil
-}
-
-func getRuleCounterValue(e *MetricsExporter, name string, k *segment.Key) float64 {
-	return testutil.ToFloat64(getRuleCounter(e, name, k))
 }
 
 func observe(e *MetricsExporter, key string) *segment.Key {
 	k, _ := segment.ParseKey(key)
-	o, _ := e.Evaluate(&storage.PutInput{Key: k, Units: "samples"})
-	createTree().Iterate(observeCallback(o))
+	if o, ok := e.Evaluate(&storage.PutInput{Key: k, Units: "samples"}); ok {
+		createTree().Iterate(observeCallback(o))
+	}
 	return k
 }
 

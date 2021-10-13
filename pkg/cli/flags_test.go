@@ -246,8 +246,9 @@ var _ = Describe("flags", func() {
 
 					MetricsExportRules: config.MetricsExportRules{
 						"my_metric_name": {
-							Expr: `app.name{foo=~"bar"}`,
-							Node: "a;b;c",
+							Expr:    `app.name{foo=~"bar"}`,
+							Node:    "a;b;c",
+							GroupBy: []string{"foo"},
 						},
 					},
 				}))

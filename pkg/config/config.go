@@ -116,9 +116,9 @@ type Server struct {
 type MetricsExportRules map[string]MetricsExportRule
 
 type MetricsExportRule struct {
-	Expr   string   `def:"" desc:"expression in FlameQL syntax to be evaluated against samples" mapstructure:"expr"`
-	Node   string   `def:"total" desc:"tree node filter expression. Should be either 'total' or a valid regexp" mapstructure:"node"`
-	Labels []string `def:"" desc:"list of tags to be exported as prometheus labels" mapstructure:"labels"`
+	Expr    string   `def:"" desc:"expression in FlameQL syntax to be evaluated against samples" mapstructure:"expr"`
+	Node    string   `def:"total" desc:"tree node filter expression. Should be either 'total' or a valid regexp" mapstructure:"node"`
+	GroupBy []string `def:"" desc:"list of tags to be used for aggregation. The tags are exported as prometheus labels" mapstructure:"group_by"`
 }
 
 type Auth struct {
