@@ -74,13 +74,27 @@ export interface CanvasRendererConfig {
   font?: string;
 
   // TODO type this
-  spyName: string;
+  spyName:
+    | 'dotneyspy'
+    | 'ebpfspy'
+    | 'gospy'
+    | 'phpspy'
+    | 'pyspy'
+    | 'rbspy'
+    | string;
+
+  /**
+   * What level has been "selected" (TODO: find a better name)
+   * All nodes above will be dimmed out
+   */
+  selectedLevel?: number;
 }
 
 // TODO
 // this shouldn't really be a component
 // so don't call it props
 export function RenderCanvas(props: CanvasRendererConfig) {
+  console.log({ ...props });
   const { canvas } = props;
   const { numTicks, rangeMin, rangeMax, sampleRate } = props;
   const { fitMode } = props;
@@ -96,6 +110,7 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
 
   const ctx = canvas.getContext('2d');
+  const { selectedLevel } = props;
 
   // TODO what does ff mean?
   const { viewType } = props;
@@ -198,7 +213,7 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         names,
         // TODO
         collapsed,
-        selectedLevel: 0,
+        selectedLevel,
         highlightModeOn,
         isHighlighted,
         spyName,
