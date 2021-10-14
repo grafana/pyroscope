@@ -58,6 +58,8 @@ describe('CanvasRenderer', () => {
       rangeMax: 1,
       units: Units.Samples,
       fitMode: 'HEAD',
+
+      font: 'monospace',
     });
 
     //    const context = canvas.getContext('2d');

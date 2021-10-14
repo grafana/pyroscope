@@ -38,6 +38,8 @@ export interface CanvasRendererConfig {
   fitMode: 'TAIL' | 'HEAD'; // TODO import from fitMode
 
   canvasWidth?: number;
+  // needed in CI
+  font?: string;
 }
 
 // TODO
@@ -71,8 +73,9 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   // It's important to set the font before hand
   // Since it will be used to calculate how many characters can fit
   ctx.textBaseline = 'middle';
-  ctx.font =
-    '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
+  ctx.font = props.font
+    ? props.font
+    : '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
   // Since this is a monospaced font any character would do
   const characterSize = ctx.measureText('a').width;
 
