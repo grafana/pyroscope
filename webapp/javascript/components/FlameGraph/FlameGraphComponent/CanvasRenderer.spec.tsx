@@ -3,6 +3,7 @@ import CanvasConverter from 'canvas-to-buffer';
 import { createCanvas } from 'canvas';
 import { Units } from '../../../util/format';
 import { RenderCanvas } from './CanvasRenderer';
+import TestData from './testData';
 
 const { toMatchImageSnapshot } = require('jest-image-snapshot');
 
@@ -16,7 +17,6 @@ describe('CanvasRenderer', () => {
       canvasWidth: 800,
       topLevel: 0,
       rangeMin: 0,
-      pxPerTick: 0.43724696356275305,
       viewType: 'single',
       numTicks: 988,
       sampleRate: 100,
@@ -40,6 +40,36 @@ describe('CanvasRenderer', () => {
       fitMode: 'HEAD',
 
       font: 'monospace',
+      spyName: 'gospy',
+    });
+
+    expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
+  });
+
+  it('collapses small blocks into one', () => {
+    const canvas = createCanvas(800, 600) as unknown as HTMLCanvasElement;
+
+    const data = TestData.ComplexTree;
+
+    RenderCanvas({
+      canvas,
+      // necessary, otherwise `clientWidth` is undefined
+      canvasWidth: 800,
+      topLevel: 0,
+
+      viewType: 'single',
+      numTicks: data.numTicks,
+      sampleRate: data.sampleRate,
+      names: data.names,
+      levels: data.levels,
+
+      rangeMin: 0,
+      rangeMax: 1,
+      units: Units.Samples,
+      fitMode: 'HEAD',
+
+      spyName: data.spyName,
+      font: 'monospace',
     });
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
@@ -54,7 +84,6 @@ describe('CanvasRenderer', () => {
       canvasWidth: 800,
       topLevel: 0,
       rangeMin: 0,
-      pxPerTick: 0.43724696356275305,
       viewType: 'single',
       numTicks: 988,
       sampleRate: 100,
@@ -77,6 +106,7 @@ describe('CanvasRenderer', () => {
       rangeMax: 1,
       units: Units.Samples,
       fitMode: 'HEAD',
+      spyName: 'gospy',
 
       font: 'monospace',
     });

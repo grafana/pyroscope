@@ -1,4 +1,34 @@
-import { PX_PER_LEVEL, COLLAPSE_THRESHOLD, BAR_HEIGHT, GAP } from './constants';
+/*
+
+This component is based on code from flamebearer project
+  https://github.com/mapbox/flamebearer
+
+ISC License
+
+Copyright (c) 2018, Mapbox
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+*/
+
+/* eslint-disable no-continue */
+import {
+  PX_PER_LEVEL,
+  COLLAPSE_THRESHOLD,
+  LABEL_THRESHOLD,
+  BAR_HEIGHT,
+  GAP,
+} from './constants';
 import {
   formatPercent,
   getFormatter,
@@ -8,19 +38,14 @@ import {
 import { fitToCanvasRect } from '../../../util/fitMode';
 import { createFF, getRatios } from './utils';
 import {
-  colorBasedOnDiff,
   colorBasedOnDiffPercent,
   colorBasedOnPackageName,
-  colorFromPercentage,
   colorGreyscale,
-  diffColorGreen,
-  diffColorRed,
   getPackageNameFromStackTrace,
   highlightColor,
 } from './color';
 
 export interface CanvasRendererConfig {
-  //  context: CanvasRenderingContext2D;
   canvas: HTMLCanvasElement;
   numTicks: number;
   sampleRate: number;
@@ -29,8 +54,6 @@ export interface CanvasRendererConfig {
 
   viewType: 'single' | 'diff';
 
-  pxPerTick: number;
-
   topLevel: number;
   rangeMin: number;
   rangeMax: number;
@@ -38,11 +61,20 @@ export interface CanvasRendererConfig {
   units: Units;
   fitMode: 'TAIL' | 'HEAD'; // TODO import from fitMode
 
+  /**
+   * The query used to match against the node name.
+   * For each node,
+   * if it matches it will be highlighted,
+   * otherwise it will be greyish.
+   */
   highlightQuery?: string;
 
   canvasWidth?: number;
   // needed in CI
   font?: string;
+
+  // TODO type this
+  spyName: string;
 }
 
 // TODO
@@ -86,22 +118,50 @@ export function RenderCanvas(props: CanvasRendererConfig) {
     const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
       const barIndex = ff.getBarOffset(level, j);
-      const numBarTicks = ff.getBarTotal(level, j);
+
+      let numBarTicks = ff.getBarTotal(level, j);
 
       const x = tickToX(numTicks, rangeMin, pxPerTick, barIndex);
       const y = i * PX_PER_LEVEL;
 
-      // merge very small blocks into big "collapsed" ones for performance
-      const collapsed = numBarTicks * pxPerTick <= COLLAPSE_THRESHOLD;
-
-      const sw = numBarTicks * pxPerTick - (collapsed ? 0 : GAP);
       const sh = BAR_HEIGHT;
 
       // Highlight stuff
       const highlightModeOn =
         props.highlightQuery && props.highlightQuery.length > 0;
-      const nodeIsInQuery =
-        names[level[j + ff.jName]].indexOf(props.highlightQuery) >= 0;
+
+      const isHighlighted = nodeIsInQuery(
+        j + ff.jName,
+        level,
+        names,
+        props.highlightQuery
+      );
+
+      // merge very small blocks into big "collapsed" ones for performance
+      const collapsed = numBarTicks * pxPerTick <= COLLAPSE_THRESHOLD;
+      if (collapsed) {
+        // TODO: refactor this
+        while (
+          j < level.length - ff.jStep &&
+          barIndex + numBarTicks === ff.getBarOffset(level, j + ff.jStep) &&
+          ff.getBarTotal(level, j + ff.jStep) * pxPerTick <=
+            COLLAPSE_THRESHOLD &&
+          isHighlighted ===
+            ((props.highlightQuery &&
+              nodeIsInQuery(
+                j + ff.jStep + ff.jName,
+                level,
+                names,
+                props.highlightQuery
+              )) ||
+              false)
+        ) {
+          j += ff.jStep;
+          numBarTicks += ff.getBarTotal(level, j);
+        }
+      }
+
+      const sw = numBarTicks * pxPerTick - (collapsed ? 0 : GAP);
 
       /*********************/
       /*      N a m e      */
@@ -129,6 +189,7 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       ctx.beginPath();
       ctx.rect(x, y, sw, sh);
 
+      const { spyName } = props;
       const color = getColor({
         viewType,
         level,
@@ -136,17 +197,24 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         i,
         names,
         // TODO
-        collapsed: false,
+        collapsed,
         selectedLevel: 0,
         highlightModeOn,
-        nodeIsInQuery,
-        spyName: 'gospy',
+        isHighlighted,
+        spyName,
       });
 
-      // hex is necessary for node-canvas (and therefore tests) to work
-      // bear in mind this is pure conjecture
-      ctx.fillStyle = color.hex();
+      ctx.fillStyle = color.string();
       ctx.fill();
+
+      // don't write text if there's not enough space for a single letter
+      if (collapsed) {
+        continue;
+      }
+
+      if (sw < LABEL_THRESHOLD) {
+        continue;
+      }
 
       ctx.save();
       ctx.clip();
@@ -154,6 +222,7 @@ export function RenderCanvas(props: CanvasRendererConfig) {
 
       const namePosX = Math.round(Math.max(x, 0));
       ctx.fillText(fitCalc.text, namePosX + fitCalc.marginLeft, y + sh / 2 + 1);
+
       ctx.restore();
     }
   }
@@ -199,7 +268,7 @@ function getColor({
   selectedLevel,
   i,
   highlightModeOn,
-  nodeIsInQuery,
+  isHighlighted,
   names,
   spyName,
 }: {
@@ -212,7 +281,7 @@ function getColor({
   selectedLevel: number;
   i: number;
   highlightModeOn: boolean;
-  nodeIsInQuery: boolean;
+  isHighlighted: boolean;
   names: string[];
   spyName: string;
 }) {
@@ -244,7 +313,7 @@ function getColor({
 
   // We are in a search
   if (highlightModeOn) {
-    if (nodeIsInQuery) {
+    if (isHighlighted) {
       return highlightColor;
     }
     return colorGreyscale(200, 0.66);
@@ -263,4 +332,15 @@ function tickToX(
   i: number
 ) {
   return (i - numTicks * rangeMin) * pxPerTick;
+}
+
+//  tickToX = (i) => (i - this.state.numTicks * this.rangeMin) * this.pxPerTick;
+//
+function nodeIsInQuery(
+  index: number,
+  level: number[],
+  names: string[],
+  query: string
+) {
+  return names[level[index]].indexOf(query) >= 0;
 }
