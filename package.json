@@ -42,7 +42,6 @@
     "autoprefixer": "^9.8.5",
     "babel-eslint": "^10.1.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
-    "canvas": "^2.8.0",
     "canvas-to-buffer": "^1.1.1",
     "clean-webpack-plugin": "^3.0.0",
     "contributor-faces": "^1.1.0",
@@ -139,7 +138,8 @@
   "optionalDependencies": {
     "@size-limit/file": "^6.0.3",
     "@size-limit/time": "^6.0.3",
-    "size-limit": "^6.0.3"
+    "size-limit": "^6.0.3",
+    "canvas": "^2.8.0"
   },
   "engines": {
     "node": ">=11"
