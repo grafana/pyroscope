@@ -6,6 +6,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
@@ -86,13 +87,13 @@ func (e MetricsExporter) Evaluate(input *storage.PutInput) (storage.SampleObserv
 			continue
 		}
 		o.expr = append(o.expr, r.node)
-		o.ctr = append(o.ctr, r.counterForKey(input.Key))
+		o.ctr = append(o.ctr, r.ctr.With(r.promLabels(input.Key)))
 	}
 	if len(o.expr) == 0 {
 		// No rules matched.
 		return nil, false
 	}
-	if input.Units == "" {
+	if input.Units == spy.ProfileCPU.Units() {
 		// Sample duration in seconds.
 		o.m = 1 / float64(input.SampleRate)
 	}
@@ -118,10 +119,6 @@ func validateTagKeys(tagKeys []string) error {
 		}
 	}
 	return nil
-}
-
-func (r rule) counterForKey(key *segment.Key) prometheus.Counter {
-	return r.ctr.With(r.promLabels(key))
 }
 
 // promLabels converts key to prometheus.Labels ignoring reserved tag keys.

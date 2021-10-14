@@ -6,6 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -105,7 +106,8 @@ func TestSampleUnits(t *testing.T) {
 
 	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
 	k, _ := segment.ParseKey("app.name.cpu")
-	o, _ := exporter.Evaluate(&storage.PutInput{Key: k, SampleRate: 100})
+	i := &storage.PutInput{Key: k, SampleRate: 100, Units: spy.ProfileCPU.Units()}
+	o, _ := exporter.Evaluate(i)
 	createTree().Iterate(observeCallback(o))
 
 	requireRuleCounterValue(t, exporter, testRuleName, k, 0.05)
@@ -116,7 +118,7 @@ func getCounter(e *MetricsExporter, name string, k *segment.Key) prometheus.Coun
 	if !ok {
 		return nil
 	}
-	return r.counterForKey(k)
+	return r.ctr.With(r.promLabels(k))
 }
 
 func requireNoCounter(t *testing.T, e *MetricsExporter, name string, k *segment.Key) {
@@ -134,7 +136,8 @@ func requireRuleCounterValue(t *testing.T, e *MetricsExporter, name string, k *s
 
 func observe(e *MetricsExporter, key string) *segment.Key {
 	k, _ := segment.ParseKey(key)
-	if o, ok := e.Evaluate(&storage.PutInput{Key: k, Units: "samples"}); ok {
+	i := &storage.PutInput{Key: k, Units: spy.ProfileInuseObjects.Units()}
+	if o, ok := e.Evaluate(i); ok {
 		createTree().Iterate(observeCallback(o))
 	}
 	return k
