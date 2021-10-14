@@ -16,6 +16,7 @@ import {
   diffColorGreen,
   diffColorRed,
   getPackageNameFromStackTrace,
+  highlightColor,
 } from './color';
 
 export interface CanvasRendererConfig {
@@ -36,6 +37,8 @@ export interface CanvasRendererConfig {
 
   units: Units;
   fitMode: 'TAIL' | 'HEAD'; // TODO import from fitMode
+
+  highlightQuery?: string;
 
   canvasWidth?: number;
   // needed in CI
@@ -94,6 +97,12 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       const sw = numBarTicks * pxPerTick - (collapsed ? 0 : GAP);
       const sh = BAR_HEIGHT;
 
+      // Highlight stuff
+      const highlightModeOn =
+        props.highlightQuery && props.highlightQuery.length > 0;
+      const nodeIsInQuery =
+        names[level[j + ff.jName]].indexOf(props.highlightQuery) >= 0;
+
       /*********************/
       /*      N a m e      */
       /*********************/
@@ -129,8 +138,8 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         // TODO
         collapsed: false,
         selectedLevel: 0,
-        queryExists: false,
-        nodeIsInQuery: false,
+        highlightModeOn,
+        nodeIsInQuery,
         spyName: 'gospy',
       });
 
@@ -189,7 +198,7 @@ function getColor({
   rightTicks,
   selectedLevel,
   i,
-  queryExists,
+  highlightModeOn,
   nodeIsInQuery,
   names,
   spyName,
@@ -202,12 +211,11 @@ function getColor({
   rightTicks?: number;
   selectedLevel: number;
   i: number;
-  queryExists: boolean;
+  highlightModeOn: boolean;
   nodeIsInQuery: boolean;
   names: string[];
   spyName: string;
 }) {
-  const HIGHLIGHT_NODE_COLOR = '#48CE73'; // green
   const ff = createFF(viewType);
 
   // all above selected level should be dimmed
@@ -235,9 +243,9 @@ function getColor({
   }
 
   // We are in a search
-  if (queryExists) {
+  if (highlightModeOn) {
     if (nodeIsInQuery) {
-      return HIGHLIGHT_NODE_COLOR;
+      return highlightColor;
     }
     return colorGreyscale(200, 0.66);
   }
