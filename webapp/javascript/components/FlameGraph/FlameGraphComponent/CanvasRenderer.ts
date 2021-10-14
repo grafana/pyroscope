@@ -36,6 +36,8 @@ export interface CanvasRendererConfig {
 
   units: Units;
   fitMode: 'TAIL' | 'HEAD'; // TODO import from fitMode
+
+  canvasWidth?: number;
 }
 
 // TODO
@@ -47,10 +49,13 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   const { fitMode } = props;
   const { units } = props;
 
-  const graphWidth = canvas.clientWidth;
+  const graphWidth = canvas.clientWidth || props.canvasWidth;
   // TODO: why is this needed? otherwise height is all messed up
   canvas.width = graphWidth;
 
+  if (rangeMin >= rangeMax) {
+    throw new Error(`'rangeMin' should be strictly smaller than 'rangeMax'`);
+  }
   const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
 
   const ctx = canvas.getContext('2d');
@@ -109,12 +114,16 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       /*********************/
       /*      D r a w      */
       /*********************/
+      console.info('drawing rect', {
+        x,
+        y,
+        sw,
+        sh,
+      });
       ctx.beginPath();
       ctx.rect(x, y, sw, sh);
-      // TODO color
-      //      ctx.fillStyle = '#48CE73'; // green
-      //
-      ctx.fillStyle = getColor({
+
+      const color = getColor({
         viewType,
         level,
         j,
@@ -126,7 +135,11 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         queryExists: false,
         nodeIsInQuery: false,
         spyName: 'gospy',
-      });
+      }).hex();
+
+      // hex is necessary for node-canvas (and therefore tests) to work
+      // bear in mind this is pure conjecture
+      ctx.fillStyle = color.hex();
       ctx.fill();
 
       ctx.save();
