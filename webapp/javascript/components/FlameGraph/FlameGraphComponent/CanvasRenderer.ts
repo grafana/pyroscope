@@ -114,12 +114,6 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       /*********************/
       /*      D r a w      */
       /*********************/
-      console.info('drawing rect', {
-        x,
-        y,
-        sw,
-        sh,
-      });
       ctx.beginPath();
       ctx.rect(x, y, sw, sh);
 
@@ -135,7 +129,7 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         queryExists: false,
         nodeIsInQuery: false,
         spyName: 'gospy',
-      }).hex();
+      });
 
       // hex is necessary for node-canvas (and therefore tests) to work
       // bear in mind this is pure conjecture
