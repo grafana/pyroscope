@@ -3,3 +3,4 @@ third_party
 *.md
 monitoring/gen/*
 .prettierignore
+coverage
