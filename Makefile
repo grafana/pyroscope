@@ -150,7 +150,7 @@ assets-watch: install-web-dependencies ## Configure the assets with live reloadi
 assets-release: install-web-dependencies ## Configure the assets for release
 	rm -rf webapp/public/assets
 	rm -rf webapp/public/*.html
-	NODE_ENV=production $(shell yarn bin webpack) --config scripts/webpack/webpack.prod.js
+	yarn build
 
 .PHONY: assets-size-build
 assets-size-build: assets-release ## Build assets for the size report

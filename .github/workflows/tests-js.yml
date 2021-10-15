@@ -15,7 +15,13 @@ jobs:
       - name: Install Webapp dependencies
         run: yarn install
       - name: Run Webapp tests
-        run: yarn run test
+        run: yarn run test --coverage
+      - name: Upload codecov coverage
+        uses: codecov/codecov-action@v1
+        with:
+          name: js coverage
+          fail_ci_if_error: false
+          verbose: true
       - name: Run Webapp lints
         run: yarn lint
       - name: Run Webapp Format check

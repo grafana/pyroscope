@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"sync"
 	"time"
@@ -83,10 +84,9 @@ type SampleObserver interface {
 	Observe(k []byte, v int)
 }
 
-func (s *Storage) newBadger(name string) (*badger.DB, error) {
+func (s *Storage) newBadger(name string) (db *badger.DB, err error) {
 	badgerPath := filepath.Join(s.config.StoragePath, name)
-	err := os.MkdirAll(badgerPath, 0o755)
-	if err != nil {
+	if err = os.MkdirAll(badgerPath, 0o755); err != nil {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
@@ -99,7 +99,17 @@ func (s *Storage) newBadger(name string) (*badger.DB, error) {
 		badgerLevel = l
 	}
 	badgerOptions = badgerOptions.WithLogger(badgerLogger{name: name, logLevel: badgerLevel})
-	db, err := badger.Open(badgerOptions)
+	defer func() {
+		if r := recover(); r != nil {
+			// BadgerDB may panic because of file system access permissions. In particular,
+			// if is running in kubernetes with incorrect/unset fsGroup security context:
+			// https://github.com/pyroscope-io/pyroscope/issues/350.
+			err = fmt.Errorf("failed to open database\n\n"+
+				"Please make sure Pyroscope Server has write access permissions to %s directory.\n\n"+
+				"Recovered from panic: %v\n%v", badgerPath, r, string(debug.Stack()))
+		}
+	}()
+	db, err = badger.Open(badgerOptions)
 	if err != nil {
 		return nil, err
 	}

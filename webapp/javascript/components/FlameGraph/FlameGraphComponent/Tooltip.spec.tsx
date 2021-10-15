@@ -3,10 +3,11 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { diffColorRed, diffColorGreen } from './color';
+import { Units } from '../../../util/format';
 
-import Tooltip from './Tooltip';
+import Tooltip, { TooltipProps } from './Tooltip';
 
-function TestCanvas(props) {
+function TestCanvas(props: Omit<TooltipProps, 'canvasRef'>) {
   const canvasRef = React.useRef();
 
   return (
@@ -20,9 +21,63 @@ function TestCanvas(props) {
 describe('Tooltip', () => {
   const isWithinBounds = () => true;
 
+  // this test handles a case where the app has changed
+  // but the unit stayed the same
+  it('updates units correctly', () => {
+    const xyToData = (format: 'single', x: number, y: number) => ({
+      format,
+      title: 'function_title',
+      numBarTicks: 10,
+      percent: 1,
+    });
+
+    const { rerender } = render(
+      <TestCanvas
+        format="single"
+        units={Units.Samples}
+        sampleRate={100}
+        numTicks={100}
+        isWithinBounds={isWithinBounds}
+        xyToData={xyToData}
+      />
+    );
+
+    // since we are mocking the result
+    // we don't care exactly where it's hovered
+    userEvent.hover(screen.getByTestId('canvas'));
+
+    expect(screen.getByTestId('flamegraph-tooltip-title')).toHaveTextContent(
+      'function_title'
+    );
+    expect(screen.getByTestId('flamegraph-tooltip-body')).toHaveTextContent(
+      '1, 10 samples, 0.10 seconds'
+    );
+
+    rerender(
+      <TestCanvas
+        format="single"
+        units={Units.Objects}
+        numTicks={1000}
+        sampleRate={100}
+        isWithinBounds={isWithinBounds}
+        xyToData={xyToData}
+      />
+    );
+
+    userEvent.hover(screen.getByTestId('canvas'));
+
+    expect(screen.getByTestId('flamegraph-tooltip-title')).toHaveTextContent(
+      'function_title'
+    );
+    expect(screen.getByTestId('flamegraph-tooltip-body')).toHaveTextContent(
+      '1, 10 samples, 0.01 K'
+    );
+  });
+
   describe('"single" mode', () => {
     it('renders correctly', () => {
-      const xyToData = () => ({
+      const xyToData = (format: 'single', x: number, y: number) => ({
+        format,
         title: 'function_title',
         numBarTicks: 10,
         percent: 1,
@@ -31,7 +86,8 @@ describe('Tooltip', () => {
       render(
         <TestCanvas
           format="single"
-          units="samples"
+          units={Units.Samples}
+          numTicks={100}
           sampleRate={100}
           isWithinBounds={isWithinBounds}
           xyToData={xyToData}
@@ -57,13 +113,15 @@ describe('Tooltip', () => {
         title: 'my_function',
         numBarTicks: 10,
         percent: 1,
+        format: 'double',
         ...d,
       });
 
       render(
         <TestCanvas
           format="double"
-          units="samples"
+          units={Units.Samples}
+          numTicks={100}
           sampleRate={100}
           isWithinBounds={isWithinBounds}
           xyToData={xyToData}
@@ -106,8 +164,9 @@ describe('Tooltip', () => {
 
       assertTooltipContent({
         title: 'my_function',
-        left: 'Left: 100 samples, 1.00 seconds (10%)',
-        right: 'Right: 100 samples, 1.00 seconds (10%)',
+        diffColor: undefined,
+        left: 'Left: 100 samples, 1.00 second (10%)',
+        right: 'Right: 100 samples, 1.00 second (10%)',
       });
     });
 
@@ -127,7 +186,7 @@ describe('Tooltip', () => {
         title: 'my_function (new)',
         diffColor: diffColorRed,
         left: 'Left: 0 samples, < 0.01 seconds (0%)',
-        right: 'Right: 100 samples, 1.00 seconds (10%)',
+        right: 'Right: 100 samples, 1.00 second (10%)',
       });
     });
 
@@ -146,7 +205,7 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function (removed)',
         diffColor: diffColorGreen,
-        left: 'Left: 100 samples, 1.00 seconds (10%)',
+        left: 'Left: 100 samples, 1.00 second (10%)',
         right: 'Right: 0 samples, < 0.01 seconds (0%)',
       });
     });
@@ -166,8 +225,8 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function (+100.00%)',
         diffColor: diffColorRed,
-        left: 'Left: 100 samples, 1.00 seconds (10%)',
-        right: 'Right: 100 samples, 1.00 seconds (20%)',
+        left: 'Left: 100 samples, 1.00 second (10%)',
+        right: 'Right: 100 samples, 1.00 second (20%)',
       });
     });
 
@@ -186,8 +245,8 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function (-50.00%)',
         diffColor: diffColorGreen,
-        left: 'Left: 100 samples, 1.00 seconds (20%)',
-        right: 'Right: 100 samples, 1.00 seconds (10%)',
+        left: 'Left: 100 samples, 1.00 second (20%)',
+        right: 'Right: 100 samples, 1.00 second (10%)',
       });
     });
   });

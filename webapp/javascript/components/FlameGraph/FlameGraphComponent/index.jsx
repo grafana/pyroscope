@@ -28,14 +28,12 @@ THIS SOFTWARE.
 /* eslint-disable no-restricted-syntax */
 import React from 'react';
 import clsx from 'clsx';
+import { MenuItem, SubMenu } from '@szhsin/react-menu';
 import {
-  numberWithCommas,
-  formatPercent,
-  getPackageNameFromStackTrace,
   getFormatter,
   ratioToPercent,
-  percentDiff,
-} from './format';
+  formatPercent,
+} from '../../../util/format';
 import {
   colorBasedOnDiff,
   colorBasedOnDiffPercent,
@@ -44,11 +42,20 @@ import {
   colorGreyscale,
   diffColorGreen,
   diffColorRed,
+  getPackageNameFromStackTrace,
 } from './color';
 import { fitToCanvasRect } from '../../../util/fitMode';
 import DiffLegend from './DiffLegend';
 import Tooltip from './Tooltip';
 import Highlight from './Highlight';
+import ContextMenu from './ContextMenu';
+import {
+  PX_PER_LEVEL,
+  COLLAPSE_THRESHOLD,
+  LABEL_THRESHOLD,
+  GAP,
+  BAR_HEIGHT,
+} from './constants';
 
 const formatSingle = {
   format: 'single',
@@ -108,12 +115,7 @@ export function parseFlamebearerFormat(format) {
   return formatDouble;
 }
 
-const PX_PER_LEVEL = 18;
-const COLLAPSE_THRESHOLD = 5;
-const LABEL_THRESHOLD = 20;
 const HIGHLIGHT_NODE_COLOR = '#48CE73'; // green
-const GAP = 0.5;
-export const BAR_HEIGHT = PX_PER_LEVEL - GAP;
 
 const unitsToFlamegraphTitle = {
   objects: 'amount of objects in RAM per function',
@@ -256,6 +258,21 @@ class FlameGraph extends React.Component {
   // TODO
   // move this to somewhere else
   getRatios = (ff, level, j) => {
+    // throw an error
+    // since otherwise there's no way to calculate a diff
+    if (
+      !this.props.flamebearer.leftTicks ||
+      !this.props.flamebearer.rightTicks
+    ) {
+      // ideally this should never happen
+      // however there must be a race condition caught in CI
+      // https://github.com/pyroscope-io/pyroscope/pull/439/checks?check_run_id=3808581168
+      console.error(
+        "Properties 'rightTicks' and 'leftTicks' are required. Can't calculate ratio."
+      );
+      return { leftRatio: 0, rightRatio: 0 };
+    }
+
     const leftRatio =
       ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
     const rightRatio =
@@ -358,10 +375,7 @@ class FlameGraph extends React.Component {
         if (isDiff && collapsed) {
           nodeColor = colorGreyscale(200, 0.66);
         } else if (isDiff) {
-          const leftRatio =
-            ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
-          const rightRatio =
-            ff.getBarTotalRght(level, j) / this.props.flamebearer.rightTicks;
+          const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
 
           nodeColor = colorBasedOnDiff(
             leftRatio,
@@ -435,6 +449,7 @@ class FlameGraph extends React.Component {
         const percent = formatPercent(numBarTicks / this.state.numTicks);
 
         return {
+          format: 'single',
           title,
           numBarTicks,
           percent,
@@ -450,6 +465,7 @@ class FlameGraph extends React.Component {
         const rightPercent = ratioToPercent(rightRatio);
 
         return {
+          format: 'double',
           left: totalLeft,
           right: totalRight,
           title,
@@ -496,6 +512,18 @@ class FlameGraph extends React.Component {
     }
 
     return true;
+  };
+
+  xyToContextMenuItems = (x, y) => {
+    const isFocused = this.selectedLevel !== 0;
+
+    // Depending on what item we clicked
+    // The menu items will be completely different
+    return [
+      <MenuItem key="reset" disabled={!isFocused} onClick={this.reset}>
+        Reset View
+      </MenuItem>,
+    ];
   };
 
   updateZoom(i, j) {
@@ -601,15 +629,21 @@ class FlameGraph extends React.Component {
               onBlur={() => {}}
             />
             <Highlight
-              height={PX_PER_LEVEL}
+              barHeight={PX_PER_LEVEL}
               canvasRef={this.canvasRef}
               xyToHighlightData={this.xyToHighlightData}
               isWithinBounds={this.isWithinBounds}
             />
           </div>
         </div>
+
+        <ContextMenu
+          canvasRef={this.canvasRef}
+          items={this.contextMenuItems}
+          xyToMenuItems={this.xyToContextMenuItems}
+        />
+
         <Tooltip
-          formatter={this.formatter}
           format={this.props.format.format}
           canvasRef={this.canvasRef}
           xyToData={this.xyToTooltipData}

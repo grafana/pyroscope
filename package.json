@@ -11,6 +11,8 @@
   "scripts": {
     "postinstall": "./scripts/web-postinstall.sh",
     "dev": "webpack --progress --config scripts/webpack/webpack.dev.js",
+    "build": "NODE_ENV=production webpack --config scripts/webpack/webpack.prod.js",
+    "build:size-limit": "NODE_ENV=production webpack --config scripts/webpack/webpack.size-limit.js",
     "test": "jest",
     "lint": "eslint ./ --ext .js,.jsx,.ts,.tsx --cache --fix",
     "format": "prettier --write .",
@@ -19,19 +21,23 @@
     "cy:open": "cypress open",
     "cy:ci": "cypress run",
     "cy:ss": "./scripts/cypress-screenshots.sh",
+    "cy:ss-check": "CYPRESS_updateSnapshots=false ./scripts/cypress-screenshots.sh",
     "prepare": "husky install",
-    "lint-staged": "lint-staged"
+    "lint-staged": "lint-staged",
+    "size": "yarn build && size-limit"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "7.8.3",
-    "@size-limit/file": "^5.0.3",
     "@testing-library/cypress": "^8.0.0",
     "@testing-library/dom": "^8.7.1",
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^12.1.1",
     "@testing-library/user-event": "^13.2.1",
+    "@types/jest": "^27.0.2",
+    "@typescript-eslint/eslint-plugin": "^4.29.3",
+    "@typescript-eslint/parser": "^4.29.3",
     "autoprefixer": "^9.8.5",
     "babel-eslint": "^10.1.0",
     "babel-plugin-transform-class-properties": "^6.24.1",
@@ -46,7 +52,10 @@
     "enzyme-adapter-react-16": "^1.15.5",
     "eslint": "7.2.0",
     "eslint-config-airbnb": "18.2.1",
+    "eslint-config-airbnb-typescript": "^14.0.0",
+    "eslint-config-airbnb-typescript-prettier": "^4.2.0",
     "eslint-config-prettier": "^7.1.0",
+    "eslint-plugin-css-modules": "^2.11.0",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-jsx-a11y": "^6.4.1",
@@ -56,7 +65,8 @@
     "eslint-webpack-plugin": "^2.4.1",
     "html-webpack-plugin": "^5.3.2",
     "husky": "^7.0.2",
-    "jest": "^26.6.3",
+    "jest": "^27.2.4",
+    "jest-css-modules-transform": "^4.3.0",
     "koa-route": "^3.2.0",
     "lint-staged": "^11.1.2",
     "mini-css-extract-plugin": "^2.2.0",
@@ -69,9 +79,10 @@
     "regenerator-runtime": "^0.13.9",
     "sass": "^1.26.10",
     "sass-loader": "^9.0.2",
-    "size-limit": "^5.0.3",
     "sync-request": "^6.1.0",
-    "typescript": "3.9.3",
+    "ts-jest": "^27.0.5",
+    "typescript": "^4.4.3",
+    "uuid": "^8.3.2",
     "webpack": "~5.51.1",
     "webpack-bundle-analyzer": "^4.4.2",
     "webpack-cli": "^4.8.0",
@@ -121,15 +132,14 @@
     "sanitize.css": "^11.0.1",
     "style-loader": "^3.2.1"
   },
+  "optionalDependencies": {
+    "@size-limit/file": "^6.0.3",
+    "@size-limit/time": "^6.0.3",
+    "size-limit": "^6.0.3"
+  },
   "engines": {
     "node": ">=11"
   },
-  "size-limit": [
-    {
-      "path": "webapp/public/assets/app.js",
-      "limit": "750 kB"
-    }
-  ],
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
       "eslint --cache --fix"

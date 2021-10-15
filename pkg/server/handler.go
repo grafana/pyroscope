@@ -198,8 +198,11 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 		if path == "/" {
 			ctrl.statsInc("index")
 			ctrl.renderIndexPage(rw, r)
-		} else if path == "/comparison" || path == "/comparison-diff" {
-			ctrl.statsInc("index")
+		} else if path == "/comparison" {
+			ctrl.statsInc("comparison")
+			ctrl.renderIndexPage(rw, r)
+		} else if path == "/comparison-diff" {
+			ctrl.statsInc("diff")
 			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)

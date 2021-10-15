@@ -3,9 +3,9 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import Highlight from './Highlight';
+import Highlight, { HighlightProps } from './Highlight';
 
-function TestComponent(props) {
+function TestComponent(props: Omit<HighlightProps, 'canvasRef'>) {
   const canvasRef = React.useRef();
 
   return (
@@ -23,7 +23,7 @@ describe('Highlight', () => {
     const xyToHighlightData = jest.fn();
     render(
       <TestComponent
-        height={50}
+        barHeight={50}
         isWithinBounds={isWithinBounds}
         xyToHighlightData={xyToHighlightData}
       />

@@ -119,7 +119,6 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 	leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
 	fs := tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
 
-	// TODO
 	fs.SpyName = out.SpyName
 	fs.SampleRate = out.SampleRate
 	fs.Units = out.Units
@@ -137,12 +136,6 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	ctrl.writeResponseJSON(w, res)
-}
-
-type mergedFlamebearer struct {
-	*tree.Flamebearer
-	LeftTicks  int `json:"leftTicks"`
-	RightTicks int `json:"rightTicks"`
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {

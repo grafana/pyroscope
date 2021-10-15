@@ -3,12 +3,13 @@
 
 import React from 'react';
 import clsx from 'clsx';
-import { getFormatter, getPackageNameFromStackTrace } from '../util/format';
+import { getFormatter } from '../util/format';
 import {
   colorBasedOnPackageName,
   defaultColor,
   diffColorGreen,
   diffColorRed,
+  getPackageNameFromStackTrace,
 } from './FlameGraph/FlameGraphComponent/color';
 import { parseFlamebearerFormat } from '../util/flamebearer';
 import { fitIntoTableCell } from '../util/fitMode';

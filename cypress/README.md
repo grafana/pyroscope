@@ -29,7 +29,7 @@ It requires docker installed and available under the `docker` binary in `PATH`.
 
 To just run without updating the snapshots, run
 ```
-CYPRESS_updateSnapshots=false yarn cy:ss
+yarn cy:ss-check
 ```
 
 ## Why
