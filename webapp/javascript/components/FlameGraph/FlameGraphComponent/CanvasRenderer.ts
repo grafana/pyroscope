@@ -141,16 +141,6 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   const { names, levels, topLevel } = props;
   const formatter = getFormatter(numTicks, sampleRate, units);
 
-  // Set the font syle
-  // It's important to set the font before hand
-  // Since it will be used to calculate how many characters can fit
-  ctx.textBaseline = 'middle';
-  ctx.font = props.font
-    ? props.font
-    : '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
-  // Since this is a monospaced font any character would do
-  const characterSize = ctx.measureText('a').width;
-
   // setup height
   //    this.canvas.height = this.props.height
   //      ? this.props.height - 30
@@ -158,12 +148,17 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   //
   const canvasHeight = PX_PER_LEVEL * (levels.length - topLevel);
   canvas.height = canvasHeight;
-  // not sure this is required
-  //  canvas.style.height = `${canvasHeight}px`;
+
+  if (devicePixelRatio > 1) {
+    canvas.width *= 2;
+    canvas.height *= 2;
+    ctx.scale(2, 2);
+  }
 
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
+      // WTF?
       const barIndex = ff.getBarOffset(level, j);
 
       let numBarTicks = ff.getBarTotal(level, j);
@@ -221,6 +216,17 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         sampleRate,
         formatter
       );
+
+      // Set the font syle
+      // It's important to set the font BEFORE calculating 'characterSize'
+      // Since it will be used to calculate how many characters can fit
+      ctx.textBaseline = 'middle';
+      ctx.font = props.font
+        ? props.font
+        : '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
+
+      // Since this is a monospaced font any character would do
+      const characterSize = ctx.measureText('a').width;
 
       const fitCalc = fitToCanvasRect({
         mode: fitMode,
