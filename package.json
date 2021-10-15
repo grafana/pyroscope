@@ -14,6 +14,8 @@
     "build": "NODE_ENV=production webpack --config scripts/webpack/webpack.prod.js",
     "build:size-limit": "NODE_ENV=production webpack --config scripts/webpack/webpack.size-limit.js",
     "test": "jest",
+    "test:ss": "UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-docker.sh",
+    "test:ss-check": "./scripts/jest-snapshots/run-docker.sh",
     "lint": "eslint ./ --ext .js,.jsx,.ts,.tsx --cache --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

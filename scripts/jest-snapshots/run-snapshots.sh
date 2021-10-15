@@ -1,24 +1,14 @@
 #!/usr/bin/env bash
 
-#set -euo pipefail
+set -euo pipefail
 
-set -x
 
-#tmp=$(mktemp -d)
-#trap "rm -R $tmp" EXIT
-#
-#
-#cp yarn.lock "$tmp"
-#
-# remove cypress from (temporary) package.json
-# that's so that yarn install is faster
-#cat package.json | \
-#  sed '/cypress/d' |
-#  sed '/postinstall/d' > "$tmp/package.json"
-#
+updateArg=""
 
-#yarn install --cwd "$tmp"
+if [ "$UPDATE_SNAPSHOTS" = true ]; then
+  updateArg="-u"
+fi
 
 yarn install
-RUN_SNAPSHOTS=true yarn test --testNamePattern='group:snapshot' --verbose
+RUN_SNAPSHOTS=true yarn test --testNamePattern='group:snapshot' --verbose "$updateArg"
 
