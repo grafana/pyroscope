@@ -2,7 +2,6 @@ package health
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -94,10 +93,13 @@ func (c *Controller) Unhealthy() []StatusMessage {
 }
 
 // NotificationText satisfies server.Notifier.
+//
+// TODO(kolesnikovae): I think we need to make UI notifications
+//  structured (explicit status field) and support multiple messages.
+//  At the moment there can be only one notification.
 func (c *Controller) NotificationText() string {
-	var b strings.Builder
-	for _, s := range c.Unhealthy() {
-		b.WriteString(s.Message)
+	if u := c.Unhealthy(); len(u) > 0 {
+		return u[0].Message
 	}
-	return b.String()
+	return ""
 }
