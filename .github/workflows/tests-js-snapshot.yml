@@ -17,10 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Install Webapp dependencies
-        run: yarn install
       - name: Run Webapp Snapshot tests
-        run: RUN_SNAPSHOTS=true yarn test --testNamePattern='group:snapshot'
+        run: UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-snapshots.sh
       # since there are snapshot tests (for the flamegraph)
       # store their diff when it fails, plus the original image
       # to make it easier to compare
