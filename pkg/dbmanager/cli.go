@@ -9,6 +9,7 @@ import (
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
@@ -66,17 +67,19 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 		return err
 	}
 
+	e, _ := exporter.NewExporter(nil, nil)
 	if dbCfg.EnableProfiling {
-		upstream := direct.New(s)
-		selfProfilingConfig := &agent.SessionConfig{
+		upstream := direct.New(s, e)
+		selfProfilingConfig := agent.SessionConfig{
 			Upstream:       upstream,
 			AppName:        "pyroscope.dbmanager.cpu{}",
 			ProfilingTypes: types.DefaultProfileTypes,
 			SpyName:        types.GoSpy,
 			SampleRate:     100,
 			UploadRate:     10 * time.Second,
+			Logger:         logrus.StandardLogger(),
 		}
-		session, _ := agent.NewSession(selfProfilingConfig, logrus.StandardLogger())
+		session, _ := agent.NewSession(selfProfilingConfig)
 		upstream.Start()
 		_ = session.Start()
 	}

@@ -108,9 +108,9 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 		}
 	case "server":
 		val = new(config.Server)
-		// Skip `metric-export-rules` only from CLI reference.
+		// Skip `metrics-export-rules` only from CLI reference.
 		if format == "md" {
-			cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("metric-export-rules"))...)
+			cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("metrics-export-rules"))...)
 		} else {
 			cli.PopulateFlagSet(val, flagSet, v, opts...)
 		}
@@ -127,7 +127,7 @@ func writeConfigDocs(w io.Writer, subcommand, format string) {
 		val = new(config.Target)
 		cli.PopulateFlagSet(val, flagSet, v, append(opts, cli.WithSkip("tags"))...)
 	case "metric-export-rule":
-		val = new(config.MetricExportRule)
+		val = new(config.MetricsExportRule)
 		cli.PopulateFlagSet(val, flagSet, v, opts...)
 	default:
 		//revive:disable-next-line:deep-exit fine for now

@@ -1,0 +1,35 @@
+---
+log-level: debug
+
+metrics-export-rules:
+  # The metrics is a sum of all observed CPU samples of 'slowFunction'
+  # of production app instance.
+  app_slow_function_prod_cpu_seconds_total:
+    expr: simple.golang.app.cpu{env="prod"}
+    node: slowFunction
+
+  # The metrics is a sum of all observed CPU samples of 'slowFunction'
+  # with break down by 'env' tag.
+  app_slow_function_env_cpu_seconds_total:
+    expr: simple.golang.app.cpu
+    node: slowFunction
+    group_by: [env]
+
+  # The metrics below are listed for demonstration purpose.
+  # It's better to collect them via runtime instrumentation,
+  # for example, using Prometheus.
+
+  app_cpu_seconds_total:
+    expr: simple.golang.app.cpu
+
+  app_alloc_space_bytes:
+    expr: simple.golang.app.alloc_space
+
+  app_alloc_objects_total:
+    expr: simple.golang.app.alloc_objects
+
+  app_inuse_space_bytes:
+    expr: simple.golang.app.inuse_space
+
+  app_inuse_objects_total:
+    expr: simple.golang.app.inuse_objects

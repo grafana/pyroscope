@@ -15,15 +15,17 @@ import (
 const upstreamThreads = 1
 
 type Direct struct {
-	ingester storage.Ingester
+	storage  *storage.Storage
+	exporter storage.MetricsExporter
 	queue    chan *upstream.UploadJob
 	stop     chan struct{}
 	wg       sync.WaitGroup
 }
 
-func New(i storage.Ingester) *Direct {
+func New(s *storage.Storage, e storage.MetricsExporter) *Direct {
 	return &Direct{
-		ingester: i,
+		storage:  s,
+		exporter: e,
 		queue:    make(chan *upstream.UploadJob, 100),
 		stop:     make(chan struct{}),
 	}
@@ -58,22 +60,27 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 		return
 	}
 
-	t := tree.New()
-	j.Trie.Iterate(func(name []byte, val uint64) {
-		t.Insert(name, val, false)
-	})
-
 	pi := &storage.PutInput{
 		StartTime:       j.StartTime,
 		EndTime:         j.EndTime,
 		Key:             key,
-		Val:             t,
+		Val:             tree.New(),
 		SpyName:         j.SpyName,
 		SampleRate:      j.SampleRate,
 		Units:           j.Units,
 		AggregationType: j.AggregationType,
 	}
-	if err = u.ingester.Put(pi); err != nil {
+
+	cb := pi.Val.Insert
+	if o, ok := u.exporter.Evaluate(pi); ok {
+		cb = func(k []byte, v uint64) {
+			o.Observe(k, int(v))
+			cb(k, v)
+		}
+	}
+
+	j.Trie.Iterate(cb)
+	if err = u.storage.Put(pi); err != nil {
 		logrus.WithError(err).Error("failed to store a local profile")
 	}
 }

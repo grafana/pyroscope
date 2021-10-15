@@ -49,29 +49,36 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
 
-	// TODO: make registerer configurable: let users to decide how their metrics are exported.
-	observer, err := exporter.NewExporter(svc.config.MetricExportRules, prometheus.DefaultRegisterer)
+	exportedMetricsRegistry := prometheus.NewRegistry()
+	metricsExporter, err := exporter.NewExporter(svc.config.MetricsExportRules, exportedMetricsRegistry)
 	if err != nil {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
-	ingester := storage.NewIngestionObserver(svc.storage, observer)
-	svc.controller, err = server.New(svc.config, svc.storage, ingester, svc.logger, prometheus.DefaultRegisterer)
-	if err != nil {
-		return nil, fmt.Errorf("new server: %w", err)
-	}
-
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config, prometheus.DefaultRegisterer)
-	svc.directUpstream = direct.New(ingester)
-	selfProfilingConfig := &agent.SessionConfig{
+	svc.directUpstream = direct.New(svc.storage, metricsExporter)
+	svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
 		Upstream:       svc.directUpstream,
 		AppName:        "pyroscope.server",
 		ProfilingTypes: types.DefaultProfileTypes,
 		SpyName:        types.GoSpy,
 		SampleRate:     100,
 		UploadRate:     10 * time.Second,
+		Logger:         logger,
+	})
+
+	svc.controller, err = server.New(server.Config{
+		Configuration:           svc.config,
+		Storage:                 svc.storage,
+		MetricsExporter:         metricsExporter,
+		Logger:                  svc.logger,
+		MetricsRegisterer:       prometheus.DefaultRegisterer,
+		ExportedMetricsRegistry: exportedMetricsRegistry,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("new server: %w", err)
 	}
-	svc.selfProfiling, _ = agent.NewSession(selfProfilingConfig, svc.logger)
+
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
 	}

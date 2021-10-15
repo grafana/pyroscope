@@ -62,6 +62,7 @@ func Start(cfg Config) (*Profiler, error) {
 
 	sc := agent.SessionConfig{
 		Upstream:         upstream,
+		Logger:           cfg.Logger,
 		AppName:          cfg.ApplicationName,
 		Tags:             cfg.Tags,
 		ProfilingTypes:   cfg.ProfileTypes,
@@ -72,7 +73,7 @@ func Start(cfg Config) (*Profiler, error) {
 		Pid:              0,
 		WithSubprocesses: false,
 	}
-	session, err := agent.NewSession(&sc, cfg.Logger)
+	session, err := agent.NewSession(sc)
 	if err != nil {
 		return nil, fmt.Errorf("new session: %w", err)
 	}
