@@ -9,6 +9,10 @@ on:
 jobs:
   js-snapshot-tests:
     runs-on: ubuntu-latest
+    # ATTENTION
+    # if you ever update this container
+    # remember to update the container that runs locally
+    # (ie ./scripts/jest-snapshots)
     container: node:current-slim
     steps:
       - name: Checkout
