@@ -158,7 +158,7 @@ describe('CanvasRenderer', () => {
       canvas,
       topLevel: 0,
 
-      viewType: 'diff',
+      viewType: 'double',
       numTicks: data.numTicks,
       sampleRate: data.sampleRate,
       names: data.names,

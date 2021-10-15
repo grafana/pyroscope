@@ -59,7 +59,7 @@ export interface CanvasRendererConfig {
    */
   levels: number[][];
 
-  viewType: 'single' | 'diff';
+  viewType: 'single' | 'double';
 
   topLevel: number;
   rangeMin: number;
@@ -345,7 +345,7 @@ function getColor({
   }
 
   // Diff mode
-  if (viewType === 'diff') {
+  if (viewType === 'double') {
     const { leftRatio, rightRatio } = getRatios(
       viewType,
       level,

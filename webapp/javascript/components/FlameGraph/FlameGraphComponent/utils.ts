@@ -2,7 +2,7 @@
 
 export function getRatios(
   // Just to provide some help, so that people don't run getRatios on viewType 'single'
-  viewType: 'diff',
+  viewType: 'double',
   level: number[],
   j: number,
   leftTicks: number,
@@ -22,20 +22,19 @@ export function getRatios(
     return { leftRatio: 0, rightRatio: 0 };
   }
 
-  const leftRatio =
-    ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
-  const rightRatio =
-    ff.getBarTotalRght(level, j) / this.props.flamebearer.rightTicks;
+  const leftRatio = ff.getBarTotalLeft(level, j) / leftTicks;
+  const rightRatio = ff.getBarTotalRght(level, j) / rightTicks;
 
   return { leftRatio, rightRatio };
 }
 
-export function createFF(viewType: 'single' | 'diff') {
+export function createFF(viewType: 'single' | 'diff' | 'double') {
   switch (viewType) {
     case 'single': {
       return formatSingle;
     }
-    case 'diff': {
+
+    case 'double': {
       return formatDouble;
     }
 
