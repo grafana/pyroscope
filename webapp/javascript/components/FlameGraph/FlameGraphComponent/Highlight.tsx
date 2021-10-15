@@ -1,7 +1,6 @@
 import React from 'react';
 import styles from './Highlight.module.css';
 
-console.log({ styles });
 export interface HighlightProps {
   isWithinBounds: (x: number, y: number) => boolean;
 

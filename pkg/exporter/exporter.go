@@ -2,36 +2,46 @@ package exporter
 
 import (
 	"fmt"
-	"sync"
+	"regexp"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
 // MetricsExporter exports profiling metrics via Prometheus.
 // It is safe for concurrent use.
-type MetricsExporter struct{ rules []*rule }
+type MetricsExporter struct{ rules map[string]*rule }
 
 type rule struct {
-	reg prometheus.Registerer
-
 	name   string
 	qry    *flameql.Query
+	node   *regexp.Regexp
 	labels []string
-	node
+	ctr    *prometheus.CounterVec
+}
 
-	sync.RWMutex
-	counters map[uint64]prometheus.Counter
+type observer struct {
+	// Regular expressions of matched rules.
+	expr []*regexp.Regexp
+	// Counters corresponding matching rules.
+	ctr []prometheus.Counter
+	// Sample value multiplier.
+	m float64
 }
 
 // NewExporter validates configuration and creates a new prometheus MetricsExporter.
-func NewExporter(rules config.MetricExportRules, reg prometheus.Registerer) (*MetricsExporter, error) {
-	var e MetricsExporter
+// It is safe to initialize MetricsExporter without rules, then registry can be nil,
+// Evaluate call will be a noop.
+func NewExporter(rules config.MetricsExportRules, reg prometheus.Registerer) (*MetricsExporter, error) {
+	e := MetricsExporter{
+		rules: make(map[string]*rule),
+	}
 	if rules == nil {
 		return &e, nil
 	}
@@ -43,119 +53,85 @@ func NewExporter(rules config.MetricExportRules, reg prometheus.Registerer) (*Me
 		if err != nil {
 			return nil, fmt.Errorf("rule %q: invalid expression %q: %w", name, r.Expr, err)
 		}
-		n, err := newNode(r.Node)
-		if err != nil {
-			return nil, fmt.Errorf("rule %q: invalid node %q: %w", name, r.Node, err)
+		var node *regexp.Regexp
+		if !(r.Node == "total" || r.Node == "") {
+			node, err = regexp.Compile(r.Node)
+			if err != nil {
+				return nil, fmt.Errorf("node must be either 'total' or a valid regexp: %w", err)
+			}
 		}
-		g, err := validateTagKeys(r.Labels)
-		if err != nil {
+		if err = validateTagKeys(r.GroupBy); err != nil {
 			return nil, fmt.Errorf("rule %q: invalid label: %w", name, err)
 		}
-		e.rules = append(e.rules, &rule{
-			name:     name,
-			qry:      qry,
-			reg:      reg,
-			node:     n,
-			labels:   g,
-			counters: make(map[uint64]prometheus.Counter),
-		})
+		c := prometheus.NewCounterVec(prometheus.CounterOpts{Name: name}, r.GroupBy)
+		if err = reg.Register(c); err != nil {
+			return nil, err
+		}
+		e.rules[name] = &rule{
+			qry:    qry,
+			node:   node,
+			labels: r.GroupBy,
+			ctr:    c,
+		}
 	}
 	return &e, nil
 }
 
-// Observe ingested segment key and tree.
-//
-// The call evaluates export rules against the key k and creates prometheus
-// counters for new time series, if required. Every export rule has an
-// expression to evaluate a dimension key, and a filter, which allow to
-// retrieve metric value for particular nodes.
-func (e MetricsExporter) Observe(k *segment.Key, t *tree.Tree, multiplier float64) {
-	for _, r := range e.rules {
-		c, ok := r.eval(k)
-		if !ok {
-			continue
-		}
-		if val, ok := r.value(t); ok {
-			c.Add(val * multiplier)
-		}
-	}
-}
-
-// eval returns existing counter for the key or creates a new one,
-// if the key satisfies the rule expression.
-func (r *rule) eval(k *segment.Key) (prometheus.Counter, bool) {
-	m, ok := r.matchLabelNames(k)
-	if !ok {
+func (e MetricsExporter) Evaluate(input *storage.PutInput) (storage.SampleObserver, bool) {
+	if len(e.rules) == 0 {
 		return nil, false
 	}
-	h := m.hash()
-	r.RLock()
-	c, ok := r.counters[h]
-	if ok {
-		r.RUnlock()
-		return c, true
+	o := observer{m: 1}
+	for _, r := range e.rules {
+		if !input.Key.Match(r.qry) {
+			continue
+		}
+		o.expr = append(o.expr, r.node)
+		o.ctr = append(o.ctr, r.ctr.With(r.promLabels(input.Key)))
 	}
-	r.RUnlock()
-	if match(r.qry, m) {
-		c = prometheus.NewCounter(prometheus.CounterOpts{
-			Name:        r.name,
-			ConstLabels: promLabels(k, r.labels...),
-		})
-		r.reg.MustRegister(c)
-		r.Lock()
-		r.counters[h] = c
-		r.Unlock()
-		return c, true
+	if len(o.expr) == 0 {
+		// No rules matched.
+		return nil, false
 	}
-	return nil, false
+	if input.Units == spy.ProfileCPU.Units() {
+		// Sample duration in seconds.
+		o.m = 1 / float64(input.SampleRate)
+	}
+	return o, true
 }
 
-func validateTagKeys(tagKeys []string) ([]string, error) {
+func (o observer) Observe(k []byte, v int) {
+	if k == nil || v == 0 {
+		return
+	}
+	for i, e := range o.expr {
+		if e != nil && !e.Match(k) {
+			continue
+		}
+		o.ctr[i].Add(float64(v) * o.m)
+	}
+}
+
+func validateTagKeys(tagKeys []string) error {
 	for _, l := range tagKeys {
 		if err := flameql.ValidateTagKey(l); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return tagKeys, nil
+	return nil
 }
 
 // promLabels converts key to prometheus.Labels ignoring reserved tag keys.
 // Only explicitly listed labels are converted.
-func promLabels(key *segment.Key, labels ...string) prometheus.Labels {
-	if len(labels) == 0 {
+func (r rule) promLabels(key *segment.Key) prometheus.Labels {
+	if len(r.labels) == 0 {
 		return nil
 	}
-	l := key.Labels()
-	p := make(prometheus.Labels, len(labels))
 	// labels are guarantied to be valid.
-	for _, k := range labels {
-		if v, ok := l[k]; ok {
-			p[k] = v
-		}
+	l := key.Labels()
+	p := make(prometheus.Labels, len(r.labels))
+	for _, k := range r.labels {
+		p[k] = l[k]
 	}
 	return p
-}
-
-// match reports whether the key matches the query.
-func match(qry *flameql.Query, labels labels) bool {
-	for _, m := range qry.Matchers {
-		var ok bool
-		for _, l := range labels {
-			if m.Key != l.key {
-				continue
-			}
-			if m.Match(l.value) {
-				if !m.IsNegation() {
-					ok = true
-					break
-				}
-			} else if m.IsNegation() {
-				return false
-			}
-		}
-		if !ok && !m.IsNegation() {
-			return false
-		}
-	}
-	return true
 }

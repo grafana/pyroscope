@@ -8,9 +8,9 @@
 ## 背景介绍
 
 在这个例子中，我们展示了 Pyroscope 的一个简化的基本用例。我们模拟了一个 "骑行共享" 公司，它有三个请求端点，可以在`server.py`中找到：
-- `/bike`：调用`order_bike(search_radius)`函数来订购一辆自行车。
-- `/car` : 调用`order_car(search_radius)`函数来订购汽车。
-- `/scooter` : 调用`order_scooter(search_radius)'函数来订购摩托车。
+- `/bike`：调用`order_bike(search_radius)`函数来订购共享自行车
+- `/car` : 调用`order_car(search_radius)`函数来订购共享汽车
+- `/scooter` : 调用`order_scooter(search_radius)`函数来订购共享摩托车
 
 我们还模拟了在3个不同地区运行3个不同的服务器（通过[docker-compose.yml](https://github.com/pyroscope-io/pyroscope/blob/main/examples/python/docker-compose.yml))
 - us-east-1
@@ -23,7 +23,7 @@ Pyroscope最有用的功能之一是能够以对你有意义的方式来标记�
 - `vehicle`: 动态标记端点（类似于标记控制器轨道的方式）
 
 ## 标记静态区域
-标记一些静态的东西，如`区域`，可以在初始化代码中的`config.tags`变量中完成:
+标记一些静态的东西，如`reigon`，可以在初始化代码中的`config.tags`变量中完成:
 ```
 pyroscope.configure(
     app_name       = "ride-sharing-app",

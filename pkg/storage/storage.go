@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"sync"
 	"time"
@@ -65,10 +66,27 @@ type Storage struct {
 	wg   sync.WaitGroup
 }
 
-func (s *Storage) newBadger(name string) (*badger.DB, error) {
+// MetricsExporter exports values of particular stack traces sample from profiling
+// data as a Prometheus metrics.
+type MetricsExporter interface {
+	// Evaluate evaluates metrics export rules against the input key and creates
+	// prometheus counters for new time series, if required. Returned observer can
+	// be used to evaluate and observe particular samples.
+	//
+	// If there are no matching rules, the function returns false.
+	Evaluate(*PutInput) (SampleObserver, bool)
+}
+
+type SampleObserver interface {
+	// Observe adds v to the matched counters if k satisfies node selector.
+	// k is a sample stack trace where frames are delimited by semicolon.
+	// v is the sample value.
+	Observe(k []byte, v int)
+}
+
+func (s *Storage) newBadger(name string) (db *badger.DB, err error) {
 	badgerPath := filepath.Join(s.config.StoragePath, name)
-	err := os.MkdirAll(badgerPath, 0o755)
-	if err != nil {
+	if err = os.MkdirAll(badgerPath, 0o755); err != nil {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
@@ -81,7 +99,17 @@ func (s *Storage) newBadger(name string) (*badger.DB, error) {
 		badgerLevel = l
 	}
 	badgerOptions = badgerOptions.WithLogger(badgerLogger{name: name, logLevel: badgerLevel})
-	db, err := badger.Open(badgerOptions)
+	defer func() {
+		if r := recover(); r != nil {
+			// BadgerDB may panic because of file system access permissions. In particular,
+			// if is running in kubernetes with incorrect/unset fsGroup security context:
+			// https://github.com/pyroscope-io/pyroscope/issues/350.
+			err = fmt.Errorf("failed to open database\n\n"+
+				"Please make sure Pyroscope Server has write access permissions to %s directory.\n\n"+
+				"Recovered from panic: %v\n%v", badgerPath, r, string(debug.Stack()))
+		}
+	}()
+	db, err = badger.Open(badgerOptions)
 	if err != nil {
 		return nil, err
 	}

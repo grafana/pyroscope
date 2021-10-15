@@ -3,6 +3,8 @@ package segment
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 )
 
 var _ = Describe("segment key", func() {
@@ -44,6 +46,49 @@ var _ = Describe("segment key", func() {
 				k, err := ParseKey("foo{baz=1,bar=2}")
 				Expect(err).ToNot(HaveOccurred())
 				Expect(k.Normalized()).To(Equal("foo{bar=2,baz=1}"))
+			})
+		})
+	})
+
+	Context("Key", func() {
+		Context("Match", func() {
+			It("reports whether a segments key satisfies tag matchers", func() {
+				type evalTestCase struct {
+					query string
+					match bool
+					key   string
+				}
+
+				testCases := []evalTestCase{
+					// No matchers specified except app name.
+					{`app.name`, true, `app.name{foo=bar}`},
+					{`app.name{}`, true, `app.name{foo=bar}`},
+					{`app.name`, false, `x.name{foo=bar}`},
+					{`app.name{}`, false, `x.name{foo=bar}`},
+
+					{`app.name{foo="bar"}`, true, `app.name{foo=bar}`},
+					{`app.name{foo!="bar"}`, true, `app.name{foo=baz}`},
+					{`app.name{foo="bar"}`, false, `app.name{foo=baz}`},
+					{`app.name{foo!="bar"}`, false, `app.name{foo=bar}`},
+
+					// Tag key not present.
+					{`app.name{foo="bar"}`, false, `app.name{bar=baz}`},
+					{`app.name{foo!="bar"}`, true, `app.name{bar=baz}`},
+
+					{`app.name{foo="bar",baz="qux"}`, true, `app.name{foo=bar,baz=qux}`},
+					{`app.name{foo="bar",baz!="qux"}`, true, `app.name{foo=bar,baz=fred}`},
+					{`app.name{foo="bar",baz="qux"}`, false, `app.name{foo=bar}`},
+					{`app.name{foo="bar",baz!="qux"}`, false, `app.name{foo=bar,baz=qux}`},
+					{`app.name{foo="bar",baz!="qux"}`, false, `app.name{baz=fred,bar=baz}`},
+				}
+
+				for _, tc := range testCases {
+					qry, _ := flameql.ParseQuery(tc.query)
+					k, _ := ParseKey(tc.key)
+					if matched := k.Match(qry); matched != tc.match {
+						Expect(matched).To(Equal(tc.match), tc.query, tc.key)
+					}
+				}
 			})
 		})
 	})

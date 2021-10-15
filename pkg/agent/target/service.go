@@ -25,22 +25,24 @@ var (
 type service struct {
 	logger *logrus.Logger
 	target config.Target
-	sc     *agent.SessionConfig
+	sc     agent.SessionConfig
 }
 
 func newServiceTarget(logger *logrus.Logger, upstream *remote.Remote, t config.Target) *service {
 	return &service{
 		logger: logger,
 		target: t,
-		sc: &agent.SessionConfig{
-			Upstream:         upstream,
-			AppName:          t.ApplicationName,
-			Tags:             t.Tags,
+		sc: agent.SessionConfig{
+			Upstream: upstream,
+			AppName:  t.ApplicationName,
+			Tags:     t.Tags,
+			// TODO(kolesnikovae): target config should support specifying profile types.
 			ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 			SpyName:          t.SpyName,
 			SampleRate:       uint32(t.SampleRate),
 			UploadRate:       10 * time.Second,
 			WithSubprocesses: t.DetectSubprocesses,
+			Logger:           logger,
 			// PID to be specified.
 		},
 	}
@@ -69,7 +71,7 @@ func (s *service) wait(ctx context.Context) error {
 	pyspy.Blocking = s.target.PyspyBlocking
 	rbspy.Blocking = s.target.RbspyBlocking
 
-	session, err := agent.NewSession(s.sc, s.logger)
+	session, err := agent.NewSession(s.sc)
 	if err != nil {
 		return err
 	}
