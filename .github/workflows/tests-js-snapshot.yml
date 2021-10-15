@@ -1,0 +1,34 @@
+name: JS Snapshot Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  js-snapshot-tests:
+    runs-on: ubuntu-latest
+    container: node:current-slim
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install Webapp dependencies
+        run: yarn install
+      - name: Run Webapp Snapshot tests
+        run: RUN_SNAPSHOTS=true yarn test --testNamePattern='group:snapshot'
+      # since there are snapshot tests (for the flamegraph)
+      # store their diff when it fails, plus the original image
+      # to make it easier to compare
+      - uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: image-snapshots
+          path: '**/__image_snapshots__/*'
+      - name: Upload codecov coverage
+        if: always()
+        uses: codecov/codecov-action@v1
+        with:
+          name: js coverage
+          fail_ci_if_error: false
+          verbose: true

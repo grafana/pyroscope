@@ -7,7 +7,11 @@ import TestData from './testData';
 
 const { toMatchImageSnapshot } = require('jest-image-snapshot');
 
-describe('CanvasRenderer', () => {
+const desc = process.env.RUN_SNAPSHOTS ? describe : describe.skip;
+
+// We skip this suite by default
+// So that's only run in docker (using 'group:snapshot' as a tag)
+desc('CanvasRenderer -- group:snapshot', () => {
   it('works with normal flamegraph', () => {
     const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
 
@@ -37,7 +41,7 @@ describe('CanvasRenderer', () => {
       units: Units.Samples,
       fitMode: 'HEAD',
 
-      font: 'monospace',
+      //      font: 'monospace',
       spyName: 'gospy',
     });
 
@@ -65,7 +69,7 @@ describe('CanvasRenderer', () => {
       fitMode: 'HEAD',
 
       spyName: data.spyName,
-      font: 'monospace',
+      //      font: 'monospace',
     });
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
@@ -102,7 +106,7 @@ describe('CanvasRenderer', () => {
       fitMode: 'HEAD',
       spyName: 'gospy',
 
-      font: 'monospace',
+      //      font: 'monospace',
     });
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
@@ -137,7 +141,7 @@ describe('CanvasRenderer', () => {
       fitMode: 'HEAD',
       spyName: 'gospy',
 
-      font: 'monospace',
+      //      font: 'monospace',
 
       selectedLevel: 2,
       topLevel: 0,
@@ -170,7 +174,7 @@ describe('CanvasRenderer', () => {
       fitMode: 'HEAD',
 
       spyName: data.spyName,
-      font: 'monospace',
+      //      font: 'monospace',
 
       rightTicks: data.rightTicks,
       leftTicks: data.leftTicks,
