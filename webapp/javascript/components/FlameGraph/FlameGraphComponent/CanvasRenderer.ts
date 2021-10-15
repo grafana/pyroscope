@@ -50,6 +50,13 @@ export interface CanvasRendererConfig {
   numTicks: number;
   sampleRate: number;
   names: string[];
+
+  /**
+   * It's important to remember that this is NOT the same flamebearer
+   * that we receive from the server.
+   * As in there are some transformations required
+   * (see deltaDiffWrapper)
+   */
   levels: number[][];
 
   viewType: 'single' | 'diff';
@@ -88,17 +95,21 @@ export interface CanvasRendererConfig {
    * All nodes above will be dimmed out
    */
   selectedLevel?: number;
+
+  leftTicks?: number;
+  rightTicks?: number;
 }
 
 // TODO
 // this shouldn't really be a component
 // so don't call it props
 export function RenderCanvas(props: CanvasRendererConfig) {
-  console.log({ ...props });
   const { canvas } = props;
   const { numTicks, rangeMin, rangeMax, sampleRate } = props;
   const { fitMode } = props;
   const { units } = props;
+
+  const { leftTicks, rightTicks } = props;
 
   const graphWidth = canvas.clientWidth || props.canvasWidth;
   // TODO: why is this needed? otherwise height is all messed up
@@ -217,6 +228,8 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         highlightModeOn,
         isHighlighted,
         spyName,
+        leftTicks,
+        rightTicks,
       });
 
       ctx.fillStyle = color.string();
@@ -349,8 +362,6 @@ function tickToX(
   return (i - numTicks * rangeMin) * pxPerTick;
 }
 
-//  tickToX = (i) => (i - this.state.numTicks * this.rangeMin) * this.pxPerTick;
-//
 function nodeIsInQuery(
   index: number,
   level: number[],
