@@ -84,9 +84,6 @@ func (s *Storage) CollectLocalProfiles() error {
 
 func (s *Storage) PutLocal(po *PutInput) error {
 	logrus.Debug("PutLocal")
-	if err := s.performFreeSpaceCheck(); err != nil {
-		return err
-	}
 
 	name := fmt.Sprintf("%d-%s.profile", po.StartTime.Unix(), po.Key.AppName())
 

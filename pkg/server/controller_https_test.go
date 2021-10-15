@@ -42,6 +42,7 @@ var _ = Describe("server", func() {
 						Logger:                  logrus.New(),
 						MetricsRegisterer:       prometheus.NewRegistry(),
 						ExportedMetricsRegistry: prometheus.NewRegistry(),
+						Notifier:                mockNotifier{},
 					})
 					c.dir = http.Dir(testDataDir)
 
@@ -80,6 +81,7 @@ var _ = Describe("server", func() {
 						Logger:                  logrus.New(),
 						MetricsRegisterer:       prometheus.NewRegistry(),
 						ExportedMetricsRegistry: prometheus.NewRegistry(),
+						Notifier:                mockNotifier{},
 					})
 					c.dir = http.Dir(testDataDir)
 

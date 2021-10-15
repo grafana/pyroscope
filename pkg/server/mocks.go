@@ -1,5 +1,5 @@
 package server
 
-type mockHealthController struct{}
+type mockNotifier struct{}
 
-func (mockHealthController) Notification() []string { return nil }
+func (mockNotifier) NotificationText() string { return "" }

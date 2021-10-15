@@ -18,6 +18,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
 
@@ -57,13 +58,12 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
-	diskPressure := &health.DiskPressure{
-		WarningThreshold:  2 * storage.OutOfSpaceThreshold,
-		CriticalThreshold: storage.OutOfSpaceThreshold,
-		Path:              c.StoragePath,
+	diskPressure := health.DiskPressure{
+		Threshold: 512 * bytesize.MB,
+		Path:      c.StoragePath,
 	}
 
-	svc.healthController = health.NewController([]health.Condition{diskPressure}, time.Minute, svc.logger)
+	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config, prometheus.DefaultRegisterer)
 	svc.directUpstream = direct.New(svc.storage, metricsExporter)
 	svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
@@ -80,10 +80,10 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		Configuration:           svc.config,
 		Storage:                 svc.storage,
 		MetricsExporter:         metricsExporter,
+		Notifier:                svc.healthController,
 		Logger:                  svc.logger,
 		MetricsRegisterer:       prometheus.DefaultRegisterer,
 		ExportedMetricsRegistry: exportedMetricsRegistry,
-		Notifier:     healthController,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new server: %w", err)
@@ -107,11 +107,11 @@ func (svc *serverService) Start() error {
 	})
 
 	go svc.debugReporter.Start()
-	go svc.healthController.Start()
 	if svc.analyticsService != nil {
 		go svc.analyticsService.Start()
 	}
 
+	svc.healthController.Start()
 	svc.directUpstream.Start()
 	if err := svc.selfProfiling.Start(); err != nil {
 		svc.logger.WithError(err).Error("failed to start self-profiling")

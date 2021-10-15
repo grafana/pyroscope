@@ -2,6 +2,7 @@ package health
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,7 +14,7 @@ type Controller struct {
 	m          sync.RWMutex
 	conditions []Condition
 	history    [][]StatusMessage
-	current    []int
+	current    []StatusMessage
 
 	interval time.Duration
 	logger   *logrus.Logger
@@ -23,11 +24,11 @@ type Controller struct {
 
 const historySize = 5
 
-func NewController(conditions []Condition, interval time.Duration, logger *logrus.Logger) *Controller {
+func NewController(logger *logrus.Logger, interval time.Duration, conditions ...Condition) *Controller {
 	c := Controller{
 		conditions: conditions,
 		history:    make([][]StatusMessage, len(conditions)),
-		current:    make([]int, len(conditions)),
+		current:    make([]StatusMessage, len(conditions)),
 		interval:   interval,
 		logger:     logger,
 		close:      make(chan struct{}),
@@ -39,16 +40,19 @@ func NewController(conditions []Condition, interval time.Duration, logger *logru
 }
 
 func (c *Controller) Start() {
-	t := time.NewTicker(c.interval)
-	defer t.Stop()
-	for {
-		select {
-		case <-c.close:
-			return
-		case <-t.C:
-			c.probe()
+	c.probe()
+	go func() {
+		t := time.NewTicker(c.interval)
+		defer t.Stop()
+		for {
+			select {
+			case <-c.close:
+				return
+			case <-t.C:
+				c.probe()
+			}
 		}
-	}
+	}()
 }
 
 func (c *Controller) Stop() { close(c.close) }
@@ -67,23 +71,33 @@ func (c *Controller) probe() {
 				Warn("failed to make probe")
 		}
 		history[len(history)-1] = s
-		for j, x := range history {
-			if x.Status > history[c.current[i]].Status {
-				c.current[i] = j
+		var worst StatusMessage
+		for _, x := range history {
+			if x.Status > c.current[i].Status {
+				worst = x
 			}
 		}
+		c.current[i] = worst
 	}
 }
 
-func (c *Controller) Notification() []string {
+func (c *Controller) Unhealthy() []StatusMessage {
 	c.m.RLock()
 	defer c.m.RUnlock()
-	messages := make([]string, 0, len(c.conditions))
-	for i, j := range c.current {
-		s := c.history[i][j]
-		if s.Status > Healthy {
-			messages = append(messages, s.Message)
+	m := make([]StatusMessage, 0, len(c.current))
+	for _, x := range c.current {
+		if x.Status > Healthy {
+			m = append(m, x)
 		}
 	}
-	return messages
+	return m
+}
+
+// NotificationText satisfies server.Notifier.
+func (c *Controller) NotificationText() string {
+	var b strings.Builder
+	for _, s := range c.Unhealthy() {
+		b.WriteString(s.Message)
+	}
+	return b.String()
 }

@@ -27,7 +27,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
-	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
@@ -213,16 +212,10 @@ type PutInput struct {
 	AggregationType string
 }
 
-var OutOfSpaceThreshold = 512 * bytesize.MB
-
 func (s *Storage) Put(pi *PutInput) error {
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
-
-	if err := s.performFreeSpaceCheck(); err != nil {
-		return err
-	}
 
 	if pi.StartTime.Before(s.lifetimeBasedRetentionThreshold()) {
 		return errRetention
@@ -704,14 +697,4 @@ func (s *Storage) lifetimeBasedRetentionThreshold() time.Time {
 		t = time.Now().Add(-1 * s.config.Retention)
 	}
 	return t
-}
-
-func (s *Storage) performFreeSpaceCheck() error {
-	freeSpace, err := disk.FreeSpace(s.config.StoragePath)
-	if err == nil {
-		if freeSpace < OutOfSpaceThreshold {
-			return errOutOfSpace
-		}
-	}
-	return nil
 }

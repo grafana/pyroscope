@@ -8,25 +8,21 @@ import (
 )
 
 type DiskPressure struct {
-	WarningThreshold  bytesize.ByteSize
-	CriticalThreshold bytesize.ByteSize
-	Path              string
+	Threshold bytesize.ByteSize
+	Path      string
 }
 
-func (d *DiskPressure) Probe() (StatusMessage, error) {
+func (d DiskPressure) Probe() (StatusMessage, error) {
 	var m StatusMessage
 	available, err := disk.FreeSpace(d.Path)
 	if err != nil {
 		return m, err
 	}
-	switch {
-	case available < d.CriticalThreshold:
+	if available < d.Threshold {
 		m.Status = Critical
-	case available < d.WarningThreshold:
-		m.Status = Warning
-	default:
+	} else {
 		m.Status = Healthy
 	}
-	m.Message = fmt.Sprintf("%v! Running out of disk space. Only %v is available", m.Status, available)
+	m.Message = fmt.Sprintf("Disk space is running low: %v available", available)
 	return m, nil
 }

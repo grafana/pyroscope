@@ -12,7 +12,7 @@ import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons/faExcla
 function Notifications(props) {
   const { notificationText } = window;
 
-  const [hidden, setHidden] = useState(notificationText.length === 0);
+  const [hidden, setHidden] = useState(notificationText === '');
 
   return (
     <div className={clsx('notifications', { hidden })}>
@@ -20,13 +20,7 @@ function Notifications(props) {
         <div className="notification-icon">
           <FontAwesomeIcon icon={faExclamationTriangle} />
         </div>
-        <div className="notification-body">
-          <ul className="notification-list">
-            {notificationText.map((notification) => (
-              <li>{notification}</li>
-            ))}
-          </ul>
-        </div>
+        <div className="notification-body">{notificationText}</div>
         <div
           className="notification-close-btn"
           onClick={function () {

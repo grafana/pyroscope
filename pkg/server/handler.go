@@ -264,13 +264,13 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	}
 
 	w.Header().Add("Content-Type", "text/html")
-	mustExecute(tmpl, w, map[string]interface{}{
+	mustExecute(tmpl, w, map[string]string{
 		"InitialState":      initialStateStr,
 		"BuildInfo":         build.JSON(),
 		"LatestVersionInfo": updates.LatestVersionJSON(),
 		"ExtraMetadata":     extraMetadataStr,
 		"BaseURL":           ctrl.config.BaseURL,
-		"Notification":      ctrl.notifier.Notification(),
+		"NotificationText":  ctrl.notifier.NotificationText(),
 		"IsAuthRequired":    strconv.FormatBool(ctrl.isAuthRequired()),
 	})
 }

@@ -10,17 +10,17 @@ import (
 
 type ByteSize int64
 
-var Byte ByteSize = 1
+const Byte ByteSize = 1
 
-var (
+const (
+	// TODO: fix units - SI and IEC standards swapped.
+
 	KB = 1024 * Byte
 	MB = 1024 * KB
 	GB = 1024 * MB
 	TB = 1024 * GB
 	PB = 1024 * TB
-)
 
-var (
 	KiB = 1000 * Byte
 	MiB = 1000 * KiB
 	GiB = 1000 * MiB

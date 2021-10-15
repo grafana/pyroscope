@@ -20,8 +20,8 @@ const (
 	Critical
 )
 
-func (e Status) String() string {
-	switch e {
+func (s Status) String() string {
+	switch s {
 	case Healthy:
 		return "Healthy"
 	case Warning:
