@@ -76,7 +76,6 @@ export interface CanvasRendererConfig {
    */
   highlightQuery?: string;
 
-  canvasWidth?: number;
   // needed in CI
   font?: string;
 
@@ -111,7 +110,19 @@ export function RenderCanvas(props: CanvasRendererConfig) {
 
   const { leftTicks, rightTicks } = props;
 
-  const graphWidth = canvas.clientWidth || props.canvasWidth;
+  //  console.log('canvas', JSON.stringify(Object.keys(obj)canvas));
+  //  Object.keys(canvas).forEach((prop) => console.log(prop));
+
+  // clientWidth includes padding
+  // however it's not present in node-canvas
+  // so we also fallback to canvas.width
+  const graphWidth = canvas.clientWidth || canvas.width;
+  if (!graphWidth) {
+    throw new Error(
+      `Could not infer canvasWidth. Tried 'canvas.clientWidth' and 'canvas.width'`
+    );
+  }
+
   // TODO: why is this needed? otherwise height is all messed up
   canvas.width = graphWidth;
 
@@ -139,6 +150,16 @@ export function RenderCanvas(props: CanvasRendererConfig) {
     : '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
   // Since this is a monospaced font any character would do
   const characterSize = ctx.measureText('a').width;
+
+  // setup height
+  //    this.canvas.height = this.props.height
+  //      ? this.props.height - 30
+  //      : PX_PER_LEVEL * (levels.length - this.topLevel);
+  //
+  const canvasHeight = PX_PER_LEVEL * (levels.length - topLevel);
+  canvas.height = canvasHeight;
+  // not sure this is required
+  //  canvas.style.height = `${canvasHeight}px`;
 
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];

@@ -9,12 +9,10 @@ const { toMatchImageSnapshot } = require('jest-image-snapshot');
 
 describe('CanvasRenderer', () => {
   it('works with normal flamegraph', () => {
-    const canvas = createCanvas(800, 600) as unknown as HTMLCanvasElement;
+    const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
 
     RenderCanvas({
       canvas,
-      // necessary, otherwise `clientWidth` is undefined
-      canvasWidth: 800,
       topLevel: 0,
       rangeMin: 0,
       viewType: 'single',
@@ -47,14 +45,12 @@ describe('CanvasRenderer', () => {
   });
 
   it('collapses small blocks into one', () => {
-    const canvas = createCanvas(800, 600) as unknown as HTMLCanvasElement;
+    const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
 
     const data = TestData.ComplexTree;
 
     RenderCanvas({
       canvas,
-      // necessary, otherwise `clientWidth` is undefined
-      canvasWidth: 800,
       topLevel: 0,
 
       viewType: 'single',
@@ -76,12 +72,10 @@ describe('CanvasRenderer', () => {
   });
 
   it('works with highlighted flamegraph', () => {
-    const canvas = createCanvas(800, 600) as unknown as HTMLCanvasElement;
+    const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
 
     RenderCanvas({
       canvas,
-      // necessary, otherwise `clientWidth` is undefined
-      canvasWidth: 800,
       topLevel: 0,
       rangeMin: 0,
       viewType: 'single',
@@ -115,12 +109,10 @@ describe('CanvasRenderer', () => {
   });
 
   it(`works with "selected" node`, () => {
-    const canvas = createCanvas(800, 600) as unknown as HTMLCanvasElement;
+    const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
 
     RenderCanvas({
       canvas,
-      // necessary, otherwise `clientWidth` is undefined
-      canvasWidth: 800,
       //      topLevel: 0,
       rangeMin: 0,
       viewType: 'single',
@@ -158,14 +150,12 @@ describe('CanvasRenderer', () => {
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
   });
 
-  it.only('works with "diff" mode', () => {
-    const canvas = createCanvas(800, 600) as unknown as HTMLCanvasElement;
+  it('works with "diff" mode', () => {
+    const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
     const data = TestData.DiffTree;
 
     RenderCanvas({
       canvas,
-      // necessary, otherwise `clientWidth` is undefined
-      canvasWidth: 800,
       topLevel: 0,
 
       viewType: 'diff',
@@ -190,8 +180,6 @@ describe('CanvasRenderer', () => {
     // const canvas = createCanvas(800, 600) as unknown as HTMLCanvasElement;
     // RenderCanvas({
     //  canvas,
-    //  // necessary, otherwise `clientWidth` is undefined
-    //  canvasWidth: 800,
     //  //      topLevel: 0,
     //  rangeMin: 0,
     //  viewType: 'single',
