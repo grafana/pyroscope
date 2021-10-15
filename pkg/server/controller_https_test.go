@@ -35,12 +35,12 @@ var _ = Describe("server", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					config := ControllerConfig{
-						ServerConfig:     &(*cfg).Server,
-						Storage:          s,
-						Ingester:         s,
-						Logger:           logrus.New(),
-						Registerer:       prometheus.NewRegistry(),
-						HealthController: &mockHealthController{},
+						ServerConfig: &(*cfg).Server,
+						Storage:      s,
+						Ingester:     s,
+						Logger:       logrus.New(),
+						Registerer:   prometheus.NewRegistry(),
+						Notifier:     &mockHealthController{},
 					}
 					c, _ := New(config)
 					c.dir = http.Dir(testDataDir)
@@ -74,12 +74,12 @@ var _ = Describe("server", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					config := ControllerConfig{
-						ServerConfig:     &(*cfg).Server,
-						Storage:          s,
-						Ingester:         s,
-						Logger:           logrus.New(),
-						Registerer:       prometheus.NewRegistry(),
-						HealthController: &mockHealthController{},
+						ServerConfig: &(*cfg).Server,
+						Storage:      s,
+						Ingester:     s,
+						Logger:       logrus.New(),
+						Registerer:   prometheus.NewRegistry(),
+						Notifier:     &mockHealthController{},
 					}
 					c, _ := New(config)
 					c.dir = http.Dir(testDataDir)

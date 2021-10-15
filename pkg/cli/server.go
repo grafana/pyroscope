@@ -30,7 +30,7 @@ type serverService struct {
 	analyticsService *analytics.Service
 	selfProfiling    *agent.ProfileSession
 	debugReporter    *debug.Reporter
-	healthController server.HealthController
+	healthController *health.Controller
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -62,19 +62,19 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	diskPressure := &health.DiskPressure{
 		WarningThreshold:  2 * storage.OutOfSpaceThreshold,
 		CriticalThreshold: storage.OutOfSpaceThreshold,
-		Config:            c,
+		Path:              c.StoragePath,
 	}
 
 	healthController := health.NewController([]health.Condition{diskPressure}, time.Minute, svc.logger)
 	svc.healthController = healthController
 
 	controllerArgs := server.ControllerConfig{
-		ServerConfig:     svc.config,
-		Storage:          svc.storage,
-		Ingester:         ingester,
-		Logger:           svc.logger,
-		Registerer:       prometheus.DefaultRegisterer,
-		HealthController: healthController,
+		ServerConfig: svc.config,
+		Storage:      svc.storage,
+		Ingester:     ingester,
+		Logger:       svc.logger,
+		Registerer:   prometheus.DefaultRegisterer,
+		Notifier:     healthController,
 	}
 	svc.controller, err = server.New(controllerArgs)
 	if err != nil {
@@ -110,12 +110,12 @@ func (svc *serverService) Start() error {
 	})
 
 	go svc.debugReporter.Start()
+	go svc.healthController.Start()
 	if svc.analyticsService != nil {
 		go svc.analyticsService.Start()
 	}
 
 	svc.directUpstream.Start()
-	svc.healthController.Start()
 
 	if err := svc.selfProfiling.Start(); err != nil {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
@@ -149,12 +149,12 @@ func (svc *serverService) Stop() {
 func (svc *serverService) stop() {
 	svc.controller.Drain()
 	svc.debugReporter.Stop()
+	svc.healthController.Stop()
 	if svc.analyticsService != nil {
 		svc.analyticsService.Stop()
 	}
 	svc.selfProfiling.Stop()
 	svc.directUpstream.Stop()
-	svc.healthController.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")

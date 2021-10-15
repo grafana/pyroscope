@@ -2,23 +2,25 @@ package health
 
 // Condition represents an aspect of pyroscope server health.
 type Condition interface {
-	Probe() (HealthStatusMessage, error)
-}
-type HealthStatusMessage struct {
-	HealthStatus HealthStatus
-	Message      string
+	Probe() (StatusMessage, error)
 }
 
-type HealthStatus int
+type StatusMessage struct {
+	Status
+	// The message is displayed to users.
+	Message string
+}
+
+type Status int
 
 const (
-	NoData HealthStatus = iota
+	NoData Status = iota
 	Healthy
 	Warning
 	Critical
 )
 
-func (e HealthStatus) String() string {
+func (e Status) String() string {
 	switch e {
 	case Healthy:
 		return "Healthy"

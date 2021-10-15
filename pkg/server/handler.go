@@ -264,19 +264,15 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	}
 
 	w.Header().Add("Content-Type", "text/html")
-	mustExecute(tmpl, w, map[string]string{
+	mustExecute(tmpl, w, map[string]interface{}{
 		"InitialState":      initialStateStr,
 		"BuildInfo":         build.JSON(),
 		"LatestVersionInfo": updates.LatestVersionJSON(),
 		"ExtraMetadata":     extraMetadataStr,
 		"BaseURL":           ctrl.config.BaseURL,
-		"Notification":      ctrl.NotificationJSON(),
+		"Notification":      ctrl.notifier.Notification(),
 		"IsAuthRequired":    strconv.FormatBool(ctrl.isAuthRequired()),
 	})
-}
-
-func (ctrl *Controller) NotificationJSON() string {
-	return ctrl.healthController.NotificationJSON()
 }
 
 func mustExecute(t *template.Template, w io.Writer, v interface{}) {

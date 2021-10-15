@@ -41,12 +41,12 @@ var _ = Describe("server", func() {
 					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 					config := ControllerConfig{
-						ServerConfig:     &(*cfg).Server,
-						Storage:          s,
-						Ingester:         s,
-						Logger:           logrus.New(),
-						Registerer:       prometheus.NewRegistry(),
-						HealthController: &mockHealthController{},
+						ServerConfig: &(*cfg).Server,
+						Storage:      s,
+						Ingester:     s,
+						Logger:       logrus.New(),
+						Registerer:   prometheus.NewRegistry(),
+						Notifier:     &mockHealthController{},
 					}
 					c, _ := New(config)
 					c.dir = http.Dir(tempAssetDir.Path)

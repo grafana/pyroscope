@@ -3,7 +3,6 @@ package health
 import (
 	"fmt"
 
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 )
@@ -11,29 +10,23 @@ import (
 type DiskPressure struct {
 	WarningThreshold  bytesize.ByteSize
 	CriticalThreshold bytesize.ByteSize
-	Config            *config.Server
+	Path              string
 }
 
-func (d *DiskPressure) Probe() (HealthStatusMessage, error) {
-	freeSpace, err := disk.FreeSpace(d.Config.StoragePath)
-	if err == nil {
-		status := d.status(freeSpace)
-		message := d.message(status)
-		return HealthStatusMessage{status, message}, nil
+func (d *DiskPressure) Probe() (StatusMessage, error) {
+	var m StatusMessage
+	available, err := disk.FreeSpace(d.Path)
+	if err != nil {
+		return m, err
 	}
-	return HealthStatusMessage{NoData, ""}, err
-}
-
-func (d *DiskPressure) status(available bytesize.ByteSize) HealthStatus {
-	if available < d.CriticalThreshold {
-		return Critical
-	} else if available < d.WarningThreshold {
-		return Warning
-	} else {
-		return Healthy
+	switch {
+	case available < d.CriticalThreshold:
+		m.Status = Critical
+	case available < d.WarningThreshold:
+		m.Status = Warning
+	default:
+		m.Status = Healthy
 	}
-}
-
-func (*DiskPressure) message(status HealthStatus) string {
-	return fmt.Sprintf("Disk Pressure %s", status.String())
+	m.Message = fmt.Sprintf("%v! Running out of disk space. Only %v is available", m.Status, available)
+	return m, nil
 }

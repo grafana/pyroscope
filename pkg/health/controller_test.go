@@ -1,7 +1,6 @@
 package health
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -13,66 +12,51 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
-var dataMisc = []HealthStatusMessage{
-	{Critical, "Critical"},
-	{NoData, "NoData"},
-	{Healthy, "Healthy"},
-	{Warning, "Warning"},
+type mockCondition struct {
+	mockData []StatusMessage
+	name     string
+	index    int
 }
 
-var dataHealthy = []HealthStatusMessage{
-	{Healthy, "Healthy"},
-}
-
-var dataWarning = []HealthStatusMessage{
-	{Warning, "Warning"},
-}
-
-var dataCritical = []HealthStatusMessage{
-	{Critical, "Critical"},
-}
-
-type MockCondition struct {
-	MockData []HealthStatusMessage
-
-	name  string
-	index int
-}
-
-func (d *MockCondition) Probe() (HealthStatusMessage, error) {
-	var status = d.MockData[d.index]
+func (d *mockCondition) Probe() (StatusMessage, error) {
+	var status = d.mockData[d.index]
 	status.Message = fmt.Sprintf("%s %s", status.Message, d.name)
-	d.index = (d.index + 1) % len(d.MockData)
+	d.index = (d.index + 1) % len(d.mockData)
 	return status, nil
 }
 
-func (d *MockCondition) GetName() string {
-	return d.name
-}
-
-func (*MockCondition) Stop() {}
-
 var _ = Describe("health", func() {
+	dataMisc := []StatusMessage{
+		{Critical, "Critical"},
+		{NoData, "NoData"},
+		{Healthy, "Healthy"},
+		{Warning, "Warning"},
+	}
+
+	dataHealthy := []StatusMessage{{Healthy, "Healthy"}}
+	dataWarning := []StatusMessage{{Warning, "Warning"}}
+	dataCritical := []StatusMessage{{Critical, "Critical"}}
+
 	testing.WithConfig(func(cfg **config.Config) {
 		Describe("Controller", func() {
 			It("Should support listening on multiple Conditions",
 				func() {
 					defer GinkgoRecover()
-					condition1 := MockCondition{
+					condition1 := mockCondition{
 						name:     "MockCondition1",
-						MockData: dataHealthy,
+						mockData: dataHealthy,
 					}
-					condition2 := MockCondition{
+					condition2 := mockCondition{
 						name:     "MockCondition2",
-						MockData: dataCritical,
+						mockData: dataCritical,
 					}
-					condition3 := MockCondition{
+					condition3 := mockCondition{
 						name:     "MockCondition3",
-						MockData: dataWarning,
+						mockData: dataWarning,
 					}
 
 					healthController := NewController([]Condition{&condition1, &condition2, &condition3}, time.Millisecond, logrus.New())
-					healthController.Start()
+					go healthController.Start()
 					time.Sleep(2 * time.Millisecond)
 
 					notification := healthController.Notification()
@@ -86,13 +70,13 @@ var _ = Describe("health", func() {
 			It("Should suppress 'flapping' on rapid status changes",
 				func() {
 					defer GinkgoRecover()
-					condition := MockCondition{
+					condition := mockCondition{
 						name:     "MockCondition",
-						MockData: dataMisc,
+						mockData: dataMisc,
 					}
 
 					healthController := NewController([]Condition{&condition}, time.Millisecond, logrus.New())
-					healthController.Start()
+					go healthController.Start()
 
 					var notifications []string
 					for i := 0; i < 3; i++ {
@@ -109,13 +93,13 @@ var _ = Describe("health", func() {
 			It("Should return empty notification if status healthy",
 				func() {
 					defer GinkgoRecover()
-					condition := MockCondition{
+					condition := mockCondition{
 						name:     "MockCondition",
-						MockData: dataHealthy,
+						mockData: dataHealthy,
 					}
 
 					healthController := NewController([]Condition{&condition}, time.Millisecond, logrus.New())
-					healthController.Start()
+					go healthController.Start()
 					time.Sleep(2 * time.Millisecond)
 
 					notification := healthController.Notification()
@@ -129,26 +113,24 @@ var _ = Describe("health", func() {
 			It("Should format notification as JSON",
 				func() {
 					defer GinkgoRecover()
-					condition1 := MockCondition{
+					condition1 := mockCondition{
 						name:     "MockCondition1",
-						MockData: dataCritical,
+						mockData: dataCritical,
 					}
-					condition2 := MockCondition{
+					condition2 := mockCondition{
 						name:     "MockCondition2",
-						MockData: dataWarning,
+						mockData: dataWarning,
 					}
 
 					healthController := NewController([]Condition{&condition1, &condition2}, time.Millisecond, logrus.New())
-					healthController.Start()
+					go healthController.Start()
 					time.Sleep(2 * time.Millisecond)
 
-					jsonNotification := healthController.NotificationJSON()
+					actualNotification := healthController.Notification()
 					healthController.Stop()
-					var arr []string
-					_ = json.Unmarshal([]byte(jsonNotification), &arr)
 
 					expectedNotification := []string{"Critical MockCondition1", "Warning MockCondition2"}
-					Expect(arr).To(ContainElements(expectedNotification))
+					Expect(actualNotification).To(ConsistOf(expectedNotification))
 				},
 			)
 		})

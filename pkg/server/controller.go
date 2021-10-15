@@ -39,22 +39,19 @@ const (
 	oauthGitlab
 )
 
-type decodeResponseFunc func(*http.Response) (string, error)
-
-type HealthController interface {
-	Start()
-	Stop()
-	NotificationJSON() string
+type Notifier interface {
+	Notification() []string
 }
 
 type ControllerConfig struct {
-	ServerConfig     *config.Server
-	Storage          *storage.Storage
-	Ingester         storage.Ingester
-	Logger           *logrus.Logger
-	Registerer       prometheus.Registerer
-	HealthController HealthController
+	ServerConfig *config.Server
+	Storage      *storage.Storage
+	Ingester     storage.Ingester
+	Logger       *logrus.Logger
+	Registerer   prometheus.Registerer
+	Notifier
 }
+
 type Controller struct {
 	drained uint32
 
@@ -75,7 +72,7 @@ type Controller struct {
 	// Byte buffers are used for deserialization of ingested data.
 	bufferPool bytebufferpool.Pool
 
-	healthController HealthController
+	notifier Notifier
 }
 
 func New(args ControllerConfig) (*Controller, error) {
@@ -92,14 +89,14 @@ func New(args ControllerConfig) (*Controller, error) {
 	})
 
 	ctrl := Controller{
-		config:           args.ServerConfig,
-		log:              args.Logger,
-		storage:          args.Storage,
-		ingester:         args.Ingester,
-		stats:            make(map[string]int),
-		appStats:         appStats,
-		metricsMdw:       mdw,
-		healthController: args.HealthController,
+		config:     args.ServerConfig,
+		log:        args.Logger,
+		storage:    args.Storage,
+		ingester:   args.Ingester,
+		stats:      make(map[string]int),
+		appStats:   appStats,
+		metricsMdw: mdw,
+		notifier:   args.Notifier,
 	}
 
 	ctrl.dir, err = webapp.Assets()

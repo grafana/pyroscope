@@ -1,7 +1,6 @@
 package health
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -9,89 +8,82 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type healthStatusHistory []HealthStatusMessage
-
 // Controller performs probes of health conditions.
 type Controller struct {
+	m          sync.RWMutex
 	conditions []Condition
-	interval   time.Duration
+	history    [][]StatusMessage
+	current    []int
 
-	mutex         sync.Mutex
-	ticker        *time.Ticker
-	statusHistory map[Condition]healthStatusHistory
-	logger        *logrus.Logger
+	interval time.Duration
+	logger   *logrus.Logger
+
+	close chan struct{}
 }
 
+const historySize = 5
+
 func NewController(conditions []Condition, interval time.Duration, logger *logrus.Logger) *Controller {
-	return &Controller{
+	c := Controller{
 		conditions: conditions,
+		history:    make([][]StatusMessage, len(conditions)),
+		current:    make([]int, len(conditions)),
 		interval:   interval,
 		logger:     logger,
+		close:      make(chan struct{}),
 	}
+	for i := range c.history {
+		c.history[i] = make([]StatusMessage, historySize)
+	}
+	return &c
 }
 
 func (c *Controller) Start() {
-	c.ticker = time.NewTicker(c.interval)
-	c.statusHistory = make(map[Condition]healthStatusHistory)
-	for _, condition := range c.conditions {
-		c.statusHistory[condition] = make(healthStatusHistory, 5)
-	}
-	go c.run()
-}
-
-func (c *Controller) Stop() {
-	c.ticker.Stop()
-}
-
-func (c *Controller) run() {
-	for ; true; <-c.ticker.C {
-		for _, condition := range c.conditions {
-			c.mutex.Lock()
-
-			history := c.statusHistory[condition]
-			copy(history, history[1:])
-			probe, err := condition.Probe()
-			if err == nil {
-				history[len(history)-1] = probe
-			} else {
-				errMessage := fmt.Sprintf("Error in Probing Condition %T", condition)
-				history[len(history)-1] = HealthStatusMessage{HealthStatus: NoData, Message: errMessage}
-				c.logger.WithError(err).Error(errMessage)
-			}
-
-			c.mutex.Unlock()
+	t := time.NewTicker(c.interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-c.close:
+			return
+		case <-t.C:
+			c.probe()
 		}
 	}
 }
 
-func (c *Controller) aggregate() map[Condition]HealthStatusMessage {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	statusAggregate := make(map[Condition]HealthStatusMessage)
-	for _, condition := range c.conditions {
-		accumilator := HealthStatusMessage{NoData, ""}
-		for _, status := range c.statusHistory[condition] {
-			if status.HealthStatus > accumilator.HealthStatus {
-				accumilator = status
+func (c *Controller) Stop() { close(c.close) }
+
+func (c *Controller) probe() {
+	c.m.Lock()
+	defer c.m.Unlock()
+	for i, condition := range c.conditions {
+		history := c.history[i]
+		copy(history, history[1:])
+		s, err := condition.Probe()
+		if err != nil {
+			s = StatusMessage{Message: err.Error()}
+			c.logger.WithError(err).
+				WithField("probe_name", fmt.Sprintf("%T", condition)).
+				Warn("failed to make probe")
+		}
+		history[len(history)-1] = s
+		for j, x := range history {
+			if x.Status > history[c.current[i]].Status {
+				c.current[i] = j
 			}
 		}
-		statusAggregate[condition] = accumilator
 	}
-	return statusAggregate
 }
 
 func (c *Controller) Notification() []string {
-	messages := make([]string, 0)
-	for _, status := range c.aggregate() {
-		if status.HealthStatus > Healthy {
-			messages = append(messages, status.Message)
+	c.m.RLock()
+	defer c.m.RUnlock()
+	messages := make([]string, 0, len(c.conditions))
+	for i, j := range c.current {
+		s := c.history[i][j]
+		if s.Status > Healthy {
+			messages = append(messages, s.Message)
 		}
 	}
 	return messages
-}
-
-func (c *Controller) NotificationJSON() string {
-	notification := c.Notification()
-	msg, _ := json.Marshal(notification)
-	return string(msg)
 }
