@@ -193,9 +193,9 @@ function formatDouble({
 
   let tooltipDiffColor = '';
   if (totalDiff > 0) {
-    tooltipDiffColor = diffColorRed;
+    tooltipDiffColor = diffColorRed.rgb().string();
   } else if (totalDiff < 0) {
-    tooltipDiffColor = diffColorGreen;
+    tooltipDiffColor = diffColorGreen.rgb().string();
   }
 
   // TODO unit test this

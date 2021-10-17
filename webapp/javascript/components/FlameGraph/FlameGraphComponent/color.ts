@@ -38,7 +38,7 @@ export const highlightColor = Color('#48CE73');
 
 // assume: left >= 0 && Math.abs(diff) <= left so diff / left is in [0...1]
 // if left == 0 || Math.abs(diff) > left, we use the color of 100%
-export function colorBasedOnDiff(diff, left, a) {
+export function colorBasedOnDiff(diff: number, left: number, a: number) {
   const v =
     !left || Math.abs(diff) > left
       ? 200
@@ -48,19 +48,23 @@ export function colorBasedOnDiff(diff, left, a) {
   return Color.rgb(200 - v, 200, 200 - v).alpha(a);
 }
 
-export function colorBasedOnDiffPercent(leftPercent, rightPercent, alpha) {
+export function colorBasedOnDiffPercent(
+  leftPercent: number,
+  rightPercent: number,
+  alpha: number
+) {
   const result = diffPercent(leftPercent, rightPercent);
   return colorFromPercentage(result, alpha);
 }
 
 // TODO move to a different file
 // difference between 2 percents
-export function diffPercent(leftPercent, rightPercent) {
+export function diffPercent(leftPercent: number, rightPercent: number) {
   // https://en.wikipedia.org/wiki/Relative_change_and_difference
   return ((rightPercent - leftPercent) / leftPercent) * 100;
 }
 
-export function colorFromPercentage(p, alpha) {
+export function colorFromPercentage(p: number, alpha: number) {
   // calculated by drawing a line (https://en.wikipedia.org/wiki/Line_drawing_algorithm)
   // where p1 = (0, 180) and p2 = (100, 0)
   // where x is the absolute percentage
@@ -83,11 +87,15 @@ export function colorFromPercentage(p, alpha) {
   return Color.rgb(200, 200, 200).alpha(alpha);
 }
 
-export function colorGreyscale(v, a) {
+export function colorGreyscale(v: number, a: number) {
   return Color.rgb(v, v, v).alpha(a);
 }
 
-export function getPackageNameFromStackTrace(spyName, stackTrace) {
+// TODO spy names?
+export function getPackageNameFromStackTrace(
+  spyName: string,
+  stackTrace: string
+) {
   // TODO: actually make sure these make sense and add tests
   const regexpLookup = {
     default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
@@ -110,7 +118,7 @@ export function getPackageNameFromStackTrace(spyName, stackTrace) {
   return stackTrace;
 }
 
-export function colorBasedOnPackageName(name, a) {
+export function colorBasedOnPackageName(name: string, a: number) {
   const hash = murmurhash3_32_gc(name);
   const colorIndex = hash % colors.length;
   const baseClr = colors[colorIndex];
