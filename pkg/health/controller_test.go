@@ -26,95 +26,110 @@ func (d *mockCondition) Probe() (StatusMessage, error) {
 }
 
 var _ = Describe("health", func() {
-	dataMisc := []StatusMessage{
-		{Critical, "Critical"},
-		{NoData, "NoData"},
-		{Healthy, "Healthy"},
-		{Warning, "Warning"},
-	}
-
 	dataHealthy := []StatusMessage{{Healthy, "Healthy"}}
 	dataWarning := []StatusMessage{{Warning, "Warning"}}
 	dataCritical := []StatusMessage{{Critical, "Critical"}}
 
 	testing.WithConfig(func(cfg **config.Config) {
 		Describe("Controller", func() {
-			It("Should support listening on multiple Conditions",
-				func() {
-					defer GinkgoRecover()
-					condition1 := &mockCondition{name: "MockCondition1", mockData: dataHealthy}
-					condition2 := &mockCondition{name: "MockCondition2", mockData: dataCritical}
-					condition3 := &mockCondition{name: "MockCondition3", mockData: dataWarning}
+			It("Should support listening on multiple Conditions", func() {
+				defer GinkgoRecover()
 
-					healthController := NewController(logrus.New(), time.Millisecond, condition1, condition2, condition3)
-					healthController.Start()
+				condition1 := &mockCondition{name: "MockCondition1", mockData: dataHealthy}
+				condition2 := &mockCondition{name: "MockCondition2", mockData: dataCritical}
+				condition3 := &mockCondition{name: "MockCondition3", mockData: dataWarning}
 
-					notification := healthController.Unhealthy()
-					healthController.Stop()
+				healthController := NewController(logrus.New(), time.Millisecond, condition1, condition2, condition3)
+				healthController.Start()
 
-					Expect(notification).To(ContainElements([]StatusMessage{
-						{Critical, "Critical MockCondition2"},
-						{Warning, "Warning MockCondition3"},
-					}))
-				},
-			)
+				notification := healthController.Unhealthy()
+				healthController.Stop()
 
-			It("Should suppress 'flapping' on rapid status changes",
-				func() {
-					defer GinkgoRecover()
-					condition := &mockCondition{name: "MockCondition", mockData: dataMisc}
+				Expect(notification).To(ContainElements([]StatusMessage{
+					{Critical, "Critical MockCondition2"},
+					{Warning, "Warning MockCondition3"},
+				}))
+			})
 
-					healthController := NewController(logrus.New(), time.Millisecond, condition)
-					healthController.Start()
+			It("Should suppress 'flapping' on rapid status changes", func() {
+				defer GinkgoRecover()
 
-					var notifications []StatusMessage
-					for i := 0; i < 3; i++ {
-						notifications = append(notifications, healthController.Unhealthy()[0])
-					}
-					healthController.Stop()
+				condition := &mockCondition{mockData: []StatusMessage{
+					{Status: Healthy},
+					{Status: Healthy},
+					{Status: Warning},
+					{Status: Healthy},
+					{Status: Critical},
+					{Status: Healthy},
+					{Status: Critical},
+					{Status: Healthy},
+					{Status: Healthy},
+					{Status: Healthy},
+					{Status: Healthy},
+				}}
 
-					expectedNotification := StatusMessage{Critical, "Critical MockCondition"}
-					Expect(notifications).To(Equal([]StatusMessage{
-						expectedNotification,
-						expectedNotification,
-						expectedNotification,
-					}))
-				},
-			)
+				healthController := NewController(logrus.New(), time.Minute, condition)
+				healthController.Start()
+				Expect(healthController.Unhealthy()).To(BeEmpty())
+				healthController.probe()
+				Expect(healthController.Unhealthy()).To(BeEmpty())
 
-			It("Should return empty notification if status healthy",
-				func() {
-					defer GinkgoRecover()
-					condition := &mockCondition{name: "MockCondition", mockData: dataHealthy}
+				healthController.probe()
+				requireStatus(healthController.Unhealthy(), Warning)
+				healthController.probe()
+				requireStatus(healthController.Unhealthy(), Warning)
+				healthController.probe()
+				requireStatus(healthController.Unhealthy(), Critical)
+				healthController.probe()
+				requireStatus(healthController.Unhealthy(), Critical)
+				healthController.probe()
+				requireStatus(healthController.Unhealthy(), Critical)
+				healthController.probe()
+				healthController.probe()
+				healthController.probe()
+				healthController.probe()
+				healthController.probe()
 
-					healthController := NewController(logrus.New(), time.Millisecond, condition)
-					healthController.Start()
+				Expect(healthController.Unhealthy()).To(BeEmpty())
+				healthController.Stop()
+			})
 
-					notification := healthController.Unhealthy()
-					healthController.Stop()
+			It("Should return empty notification if status healthy", func() {
+				defer GinkgoRecover()
 
-					Expect(notification).To(BeEmpty())
-				},
-			)
+				condition := &mockCondition{name: "MockCondition", mockData: dataHealthy}
 
-			It("Should format notification as JSON",
-				func() {
-					defer GinkgoRecover()
-					condition1 := &mockCondition{name: "MockCondition1", mockData: dataCritical}
-					condition2 := &mockCondition{name: "MockCondition2", mockData: dataWarning}
+				healthController := NewController(logrus.New(), time.Millisecond, condition)
+				healthController.Start()
 
-					healthController := NewController(logrus.New(), time.Millisecond, condition1, condition2)
-					healthController.Start()
+				notification := healthController.Unhealthy()
+				healthController.Stop()
 
-					actualNotification := healthController.Unhealthy()
-					healthController.Stop()
+				Expect(notification).To(BeEmpty())
+			})
 
-					Expect(actualNotification).To(ConsistOf([]StatusMessage{
-						{Critical, "Critical MockCondition1"},
-						{Warning, "Warning MockCondition2"},
-					}))
-				},
-			)
+			It("Satisfies notifier interface", func() {
+				defer GinkgoRecover()
+
+				condition1 := &mockCondition{name: "MockCondition1", mockData: dataCritical}
+				condition2 := &mockCondition{name: "MockCondition2", mockData: dataWarning}
+
+				healthController := NewController(logrus.New(), time.Millisecond, condition1, condition2)
+				healthController.Start()
+
+				actualNotification := healthController.Unhealthy()
+				healthController.Stop()
+
+				Expect(actualNotification).To(ConsistOf([]StatusMessage{
+					{Critical, "Critical MockCondition1"},
+					{Warning, "Warning MockCondition2"},
+				}))
+			})
 		})
 	})
 })
+
+func requireStatus(s []StatusMessage, x Status) {
+	Expect(len(s)).To(Equal(1))
+	Expect(s[0].Status).To(Equal(x))
+}

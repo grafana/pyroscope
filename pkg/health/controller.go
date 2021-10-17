@@ -66,17 +66,17 @@ func (c *Controller) probe() {
 		if err != nil {
 			s = StatusMessage{Message: err.Error()}
 			c.logger.WithError(err).
-				WithField("probe_name", fmt.Sprintf("%T", condition)).
+				WithField("probe-name", fmt.Sprintf("%T", condition)).
 				Warn("failed to make probe")
 		}
 		history[len(history)-1] = s
-		var worst StatusMessage
+		current := s
 		for _, x := range history {
-			if x.Status > c.current[i].Status {
-				worst = x
+			if x.Status > current.Status {
+				current = x
 			}
 		}
-		c.current[i] = worst
+		c.current[i] = current
 	}
 }
 
