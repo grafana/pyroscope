@@ -52,7 +52,7 @@ export type CanvasRendererConfig = {
   names: string[];
 
   /**
-   * It's important to remember that this is NOT the same flamebearer
+   * This is NOT the same as in the flamebearer
    * that we receive from the server.
    * As in there are some transformations required
    * (see deltaDiffWrapper)
@@ -151,10 +151,8 @@ export function RenderCanvas(props: CanvasRendererConfig) {
 
       const sh = BAR_HEIGHT;
 
-      // Highlight stuff
       const highlightModeOn =
         props.highlightQuery && props.highlightQuery.length > 0;
-
       const isHighlighted = nodeIsInQuery(
         j + ff.jName,
         level,
@@ -188,44 +186,10 @@ export function RenderCanvas(props: CanvasRendererConfig) {
 
       const sw = numBarTicks * pxPerTick - (collapsed ? 0 : GAP);
 
-      /*********************/
-      /*      N a m e      */
-      /*********************/
-      const shortName = getFunctionName(names, j, viewType, level);
-      const longName = getLongName(
-        shortName,
-        numBarTicks,
-        numTicks,
-        sampleRate,
-        formatter
-      );
-
-      // Set the font syle
-      // It's important to set the font BEFORE calculating 'characterSize'
-      // Since it will be used to calculate how many characters can fit
-      ctx.textBaseline = 'middle';
-      ctx.font =
-        '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
-
-      // Since this is a monospaced font any character would do
-      const characterSize = ctx.measureText('a').width;
-
-      const fitCalc = fitToCanvasRect({
-        mode: fitMode,
-        charSize: characterSize,
-        rectWidth: sw,
-        fullText: longName,
-        shortText: shortName,
-      });
-
-      /*********************/
-      /*      D r a w      */
-      /*********************/
-      ctx.beginPath();
-      ctx.rect(x, y, sw, sh);
-
+      /*******************************/
+      /*      D r a w   R e c t      */
+      /*******************************/
       const { spyName } = props;
-
       let leftTicks: number | undefined;
       if (props.viewType === 'double') {
         leftTicks = props.leftTicks;
@@ -234,7 +198,6 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       if (props.viewType === 'double') {
         rightTicks = props.rightTicks;
       }
-
       const color = getColor({
         viewType,
         level,
@@ -250,9 +213,14 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         rightTicks,
       });
 
+      ctx.beginPath();
+      ctx.rect(x, y, sw, sh);
       ctx.fillStyle = color.string();
       ctx.fill();
 
+      /*******************************/
+      /*      D r a w   T e x t      */
+      /*******************************/
       // don't write text if there's not enough space for a single letter
       if (collapsed) {
         continue;
@@ -262,13 +230,36 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         continue;
       }
 
+      const shortName = getFunctionName(names, j, viewType, level);
+      const longName = getLongName(
+        shortName,
+        numBarTicks,
+        numTicks,
+        sampleRate,
+        formatter
+      );
+
+      // Set the font syle
+      // It's important to set the font BEFORE calculating 'characterSize'
+      // Since it will be used to calculate how many characters can fit
+      ctx.textBaseline = 'middle';
+      ctx.font =
+        '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
+      // Since this is a monospaced font any character would do
+      const characterSize = ctx.measureText('a').width;
+      const fitCalc = fitToCanvasRect({
+        mode: fitMode,
+        charSize: characterSize,
+        rectWidth: sw,
+        fullText: longName,
+        shortText: shortName,
+      });
+
       ctx.save();
       ctx.clip();
       ctx.fillStyle = 'black';
-
       const namePosX = Math.round(Math.max(x, 0));
       ctx.fillText(fitCalc.text, namePosX + fitCalc.marginLeft, y + sh / 2 + 1);
-
       ctx.restore();
     }
   }
