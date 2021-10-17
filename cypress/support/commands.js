@@ -28,6 +28,7 @@ import '@testing-library/cypress/add-commands';
 import { addMatchImageSnapshotCommand } from 'cypress-image-snapshot/command';
 
 addMatchImageSnapshotCommand({
+  failureThreshold: 0.05,
   capture: 'viewport',
 });
 

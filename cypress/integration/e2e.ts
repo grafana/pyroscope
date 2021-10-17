@@ -1,7 +1,17 @@
 // Following tests should have NO mocking involved.
 // The objective involve validating server/webapp interaction is working correctly
-import { v4 as uuidv4 } from 'uuid';
+
 import * as moment from 'moment';
+
+function randomName() {
+  const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const num = 5;
+
+  return Array(num)
+    .fill(0)
+    .map(() => letters.substr(Math.floor(Math.random() * num + 1), 1))
+    .join('');
+}
 
 describe('E2E Tests', () => {
   // TODO:
@@ -16,7 +26,7 @@ describe('E2E Tests', () => {
   const t4 = moment().startOf('day').add(10, 'minutes').unix();
 
   before(() => {
-    appName = uuidv4();
+    appName = randomName();
 
     // populate the db with 2 items
     //
