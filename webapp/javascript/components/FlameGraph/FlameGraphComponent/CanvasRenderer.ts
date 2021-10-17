@@ -45,7 +45,7 @@ import {
   highlightColor,
 } from './color';
 
-export interface CanvasRendererConfig {
+export type CanvasRendererConfig = {
   canvas: HTMLCanvasElement;
   numTicks: number;
   sampleRate: number;
@@ -58,8 +58,6 @@ export interface CanvasRendererConfig {
    * (see deltaDiffWrapper)
    */
   levels: number[][];
-
-  viewType: 'single' | 'double';
 
   topLevel: number;
   rangeMin: number;
@@ -76,9 +74,6 @@ export interface CanvasRendererConfig {
    */
   highlightQuery?: string;
 
-  // needed in CI
-  font?: string;
-
   // TODO type this
   spyName:
     | 'dotneyspy'
@@ -94,24 +89,18 @@ export interface CanvasRendererConfig {
    * All nodes above will be dimmed out
    */
   selectedLevel?: number;
+} & addTicks;
 
-  leftTicks?: number;
-  rightTicks?: number;
-}
+// if it's type double (diff), we also require `left` and `right` ticks
+type addTicks =
+  | { viewType: 'double'; leftTicks: number; rightTicks: number }
+  | { viewType: 'single' };
 
-// TODO
-// this shouldn't really be a component
-// so don't call it props
 export function RenderCanvas(props: CanvasRendererConfig) {
   const { canvas } = props;
   const { numTicks, rangeMin, rangeMax, sampleRate } = props;
   const { fitMode } = props;
   const { units } = props;
-
-  const { leftTicks, rightTicks } = props;
-
-  //  console.log('canvas', JSON.stringify(Object.keys(obj)canvas));
-  //  Object.keys(canvas).forEach((prop) => console.log(prop));
 
   // clientWidth includes padding
   // however it's not present in node-canvas
@@ -141,11 +130,6 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   const { names, levels, topLevel } = props;
   const formatter = getFormatter(numTicks, sampleRate, units);
 
-  // setup height
-  //    this.canvas.height = this.props.height
-  //      ? this.props.height - 30
-  //      : PX_PER_LEVEL * (levels.length - this.topLevel);
-  //
   const canvasHeight = PX_PER_LEVEL * (levels.length - topLevel);
   canvas.height = canvasHeight;
 
@@ -158,7 +142,6 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
-      // WTF?
       const barIndex = ff.getBarOffset(level, j);
 
       let numBarTicks = ff.getBarTotal(level, j);
@@ -221,9 +204,8 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       // It's important to set the font BEFORE calculating 'characterSize'
       // Since it will be used to calculate how many characters can fit
       ctx.textBaseline = 'middle';
-      ctx.font = props.font
-        ? props.font
-        : '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
+      ctx.font =
+        '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
 
       // Since this is a monospaced font any character would do
       const characterSize = ctx.measureText('a').width;
@@ -243,13 +225,22 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       ctx.rect(x, y, sw, sh);
 
       const { spyName } = props;
+
+      let leftTicks: number | undefined;
+      if (props.viewType === 'double') {
+        leftTicks = props.leftTicks;
+      }
+      let rightTicks: number | undefined;
+      if (props.viewType === 'double') {
+        rightTicks = props.rightTicks;
+      }
+
       const color = getColor({
         viewType,
         level,
         j,
         i,
         names,
-        // TODO
         collapsed,
         selectedLevel,
         highlightModeOn,
@@ -312,52 +303,37 @@ function getLongName(
   return longName;
 }
 
-// TODO use dependant types
-function getColor({
-  viewType,
-  collapsed,
-  level,
-  j,
-  leftTicks,
-  rightTicks,
-  selectedLevel,
-  i,
-  highlightModeOn,
-  isHighlighted,
-  names,
-  spyName,
-}: {
-  viewType: CanvasRendererConfig['viewType'];
+type getColorCfg = {
   collapsed: boolean;
   level: number[];
   j: number;
-  leftTicks?: number;
-  rightTicks?: number;
   selectedLevel: number;
   i: number;
   highlightModeOn: boolean;
   isHighlighted: boolean;
   names: string[];
   spyName: string;
-}) {
-  const ff = createFF(viewType);
+} & addTicks;
+
+function getColor(cfg: getColorCfg) {
+  const ff = createFF(cfg.viewType);
 
   // all above selected level should be dimmed
-  const a = selectedLevel > i ? 0.33 : 1;
+  const a = cfg.selectedLevel > cfg.i ? 0.33 : 1;
 
   // Collapsed
-  if (collapsed) {
+  if (cfg.collapsed) {
     return colorGreyscale(200, 0.66);
   }
 
   // Diff mode
-  if (viewType === 'double') {
+  if (cfg.viewType === 'double') {
     const { leftRatio, rightRatio } = getRatios(
-      viewType,
-      level,
-      j,
-      leftTicks,
-      rightTicks
+      cfg.viewType,
+      cfg.level,
+      cfg.j,
+      cfg.leftTicks,
+      cfg.rightTicks
     );
 
     const leftPercent = ratioToPercent(leftRatio);
@@ -367,15 +343,18 @@ function getColor({
   }
 
   // We are in a search
-  if (highlightModeOn) {
-    if (isHighlighted) {
+  if (cfg.highlightModeOn) {
+    if (cfg.isHighlighted) {
       return highlightColor;
     }
     return colorGreyscale(200, 0.66);
   }
 
   return colorBasedOnPackageName(
-    getPackageNameFromStackTrace(spyName, names[level[j + ff.jName]]),
+    getPackageNameFromStackTrace(
+      cfg.spyName,
+      cfg.names[cfg.level[cfg.j + ff.jName]]
+    ),
     a
   );
 }
