@@ -1,6 +1,6 @@
 import { BAR_HEIGHT } from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent/constants';
 
-/// <reference types="cypress" />
+// / <reference types="cypress" />
 describe('basic test', () => {
   it('successfully loads', () => {
     cy.visit('/');
@@ -385,23 +385,11 @@ describe('basic test', () => {
 
       // should be disabled again
       cy.findByTestId('flamegraph-canvas').rightclick();
-      cy.findByRole('menuitem')
-        .contains('Reset View')
-        .should('have.attr', 'aria-disabled', 'true');
-    });
-
-    it.only('it focus on a specific stack trace tree', () => {
-      cy.intercept('**/render*', {
-        fixture: 'simple-golang-app-cpu.json',
-        times: 1,
-      }).as('render');
-
-      //      cy.visit('/');
-      cy.visit('http://localhost:4041');
-
-      cy.findByTestId('flamegraph-canvas').rightclick(0, BAR_HEIGHT * 4);
-
-      cy.findByRole('menuitem', { name: /Focus/ }).contains('Focus').click();
+      cy.findByRole('menuitem', { name: /Reset View/ }).should(
+        'have.attr',
+        'aria-disabled',
+        'true'
+      );
     });
   });
 });

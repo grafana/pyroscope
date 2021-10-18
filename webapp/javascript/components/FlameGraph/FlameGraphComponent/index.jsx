@@ -341,10 +341,6 @@ class FlameGraph extends React.Component {
     return true;
   };
 
-  focusOnNode = (e) => {
-    console.log('focused on node', e);
-  };
-
   xyToContextMenuItems = (x, y) => {
     const isFocused = this.selectedLevel !== 0;
 
@@ -353,9 +349,6 @@ class FlameGraph extends React.Component {
     return [
       <MenuItem key="reset" disabled={!isFocused} onClick={this.reset}>
         Reset View
-      </MenuItem>,
-      <MenuItem key="focus" onClick={this.focusOnNode}>
-        Focus
       </MenuItem>,
     ];
   };
