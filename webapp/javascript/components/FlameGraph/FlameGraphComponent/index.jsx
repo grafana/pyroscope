@@ -41,25 +41,6 @@ import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL, COLLAPSE_THRESHOLD } from './constants';
 import { RenderCanvas } from './CanvasRenderer';
 
-export function deltaDiff(levels, start, step) {
-  for (const level of levels) {
-    let prev = 0;
-    for (let i = start; i < level.length; i += step) {
-      level[i] += prev;
-      prev = level[i] + level[i + 1];
-    }
-  }
-}
-
-export function deltaDiffWrapper(format, levels) {
-  if (format === 'double') {
-    deltaDiff(levels, 0, 7);
-    deltaDiff(levels, 3, 7);
-  } else {
-    deltaDiff(levels, 0, 4);
-  }
-}
-
 const unitsToFlamegraphTitle = {
   objects: 'amount of objects in RAM per function',
   bytes: 'amount of RAM per function',
@@ -111,6 +92,9 @@ class FlameGraph extends React.Component {
       );
     }
     this.updateData();
+
+    console.log('this.props.format', this.props.format);
+    console.log('this.props.flamebearer.format', this.props.flamebearer.format);
   }
 
   componentDidUpdate(prevProps) {

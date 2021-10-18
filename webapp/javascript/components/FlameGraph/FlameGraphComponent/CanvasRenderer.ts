@@ -36,7 +36,8 @@ import {
   ratioToPercent,
 } from '../../../util/format';
 import { fitToCanvasRect } from '../../../util/fitMode';
-import { createFF, getRatios } from './utils';
+import { getRatios } from './utils';
+import { createFF } from '../../../util/flamebearer';
 import {
   colorBasedOnDiffPercent,
   colorBasedOnPackageName,

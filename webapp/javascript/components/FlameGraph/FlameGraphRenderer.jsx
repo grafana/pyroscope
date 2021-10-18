@@ -11,10 +11,8 @@ import Graph from './FlameGraphComponent';
 import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
 import ProfilerHeader from '../ProfilerHeader';
-import {
-  deltaDiffWrapper,
-  parseFlamebearerFormat,
-} from '../../util/flamebearer';
+import { createFF } from '../../util/flamebearer';
+
 import ExportData from '../ExportData';
 import { isAbortError } from '../../util/abort';
 
@@ -168,7 +166,7 @@ class FlameGraphRenderer extends React.Component {
   };
 
   parseFormat(format) {
-    return parseFlamebearerFormat(format || this.state.format);
+    return createFF(format || this.state.format);
   }
 
   abortCurrentJSONController() {
@@ -178,6 +176,28 @@ class FlameGraphRenderer extends React.Component {
   }
 
   fetchFlameBearerData(url) {
+    // TODO(eh-am):
+    // move all this request fetching to a data service layer
+    /* eslint-disable no-restricted-syntax*/
+    function deltaDiff(levels, start, step) {
+      for (const level of levels) {
+        let prev = 0;
+        for (let i = start; i < level.length; i += step) {
+          level[i] += prev;
+          prev = level[i] + level[i + 1];
+        }
+      }
+    }
+    /* eslint-enable no-restricted-syntax*/
+
+    function deltaDiffWrapper(format, levels) {
+      if (format === 'double') {
+        deltaDiff(levels, 0, 7);
+        deltaDiff(levels, 3, 7);
+      } else {
+        deltaDiff(levels, 0, 4);
+      }
+    }
     this.abortCurrentJSONController();
     if (this.currentJSONController) {
       this.currentJSONController.abort();
