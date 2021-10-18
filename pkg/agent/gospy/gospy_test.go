@@ -27,7 +27,7 @@ var _ = Describe("analytics", func() {
 				}()
 
 				time.Sleep(50 * time.Millisecond)
-				s.Snapshot(func(name []byte, samples uint64, err error) {
+				s.Snapshot(func(labels map[string]string, name []byte, samples uint64, err error) {
 					log.Println("name", string(name))
 				})
 				close(done)

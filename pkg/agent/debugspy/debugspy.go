@@ -23,9 +23,9 @@ func (s *DebugSpy) Stop() error {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *DebugSpy) Snapshot(cb func([]byte, uint64, error)) {
+func (s *DebugSpy) Snapshot(cb func(map[string]string, []byte, uint64, error)) {
 	stacktrace := fmt.Sprintf("debug_%d;debug", s.pid)
-	cb([]byte(stacktrace), 1, nil)
+	cb(nil, []byte(stacktrace), 1, nil)
 }
 
 func init() {

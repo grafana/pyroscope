@@ -29,12 +29,12 @@ func (s *DotnetSpy) Reset() {
 	s.reset = true
 }
 
-func (s *DotnetSpy) Snapshot(cb func([]byte, uint64, error)) {
+func (s *DotnetSpy) Snapshot(cb func(map[string]string, []byte, uint64, error)) {
 	if !s.reset {
 		return
 	}
 	s.reset = false
 	_ = s.session.flush(func(name []byte, v uint64) {
-		cb(name, v, nil)
+		cb(nil, name, v, nil)
 	})
 }
