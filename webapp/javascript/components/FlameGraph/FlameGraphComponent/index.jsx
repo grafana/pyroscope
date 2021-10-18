@@ -41,6 +41,7 @@ import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL, COLLAPSE_THRESHOLD } from './constants';
 import { RenderCanvas } from './CanvasRenderer';
 import { getRatios } from './utils';
+import styles from './canvas.module.css';
 
 const unitsToFlamegraphTitle = {
   objects: 'amount of objects in RAM per function',
@@ -409,10 +410,10 @@ class FlameGraph extends React.Component {
             }}
           >
             <canvas
-              className="flamegraph-canvas"
               height="0"
               data-testid="flamegraph-canvas"
               data-appname={this.props.label}
+              className={`flamegraph-canvas ${styles.hover}`}
               ref={this.canvasRef}
               onClick={this.clickHandler}
               onBlur={() => {}}
