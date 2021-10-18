@@ -40,6 +40,7 @@ import Highlight from './Highlight';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL, COLLAPSE_THRESHOLD } from './constants';
 import { RenderCanvas } from './CanvasRenderer';
+import { getRatios } from './utils';
 
 const unitsToFlamegraphTitle = {
   objects: 'amount of objects in RAM per function',
@@ -187,32 +188,6 @@ class FlameGraph extends React.Component {
 
   tickToX = (i) => (i - this.state.numTicks * this.rangeMin) * this.pxPerTick;
 
-  // TODO
-  // move this to somewhere else
-  getRatios = (ff, level, j) => {
-    // throw an error
-    // since otherwise there's no way to calculate a diff
-    if (
-      !this.props.flamebearer.leftTicks ||
-      !this.props.flamebearer.rightTicks
-    ) {
-      // ideally this should never happen
-      // however there must be a race condition caught in CI
-      // https://github.com/pyroscope-io/pyroscope/pull/439/checks?check_run_id=3808581168
-      console.error(
-        "Properties 'rightTicks' and 'leftTicks' are required. Can't calculate ratio."
-      );
-      return { leftRatio: 0, rightRatio: 0 };
-    }
-
-    const leftRatio =
-      ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
-    const rightRatio =
-      ff.getBarTotalRght(level, j) / this.props.flamebearer.rightTicks;
-
-    return { leftRatio, rightRatio };
-  };
-
   createFormatter = () =>
     getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
 
@@ -271,7 +246,7 @@ class FlameGraph extends React.Component {
         const totalLeft = ff.getBarTotalLeft(level, j);
         const totalRight = ff.getBarTotalRght(level, j);
 
-        const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
+        const { leftRatio, rightRatio } = getRatios(viewType, ff, level, j);
         const leftPercent = ratioToPercent(leftRatio);
         const rightPercent = ratioToPercent(rightRatio);
 
