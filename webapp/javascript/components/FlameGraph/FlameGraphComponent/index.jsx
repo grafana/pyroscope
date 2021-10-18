@@ -199,6 +199,7 @@ class FlameGraph extends React.Component {
       names: this.props.flamebearer.names,
       levels: this.props.flamebearer.levels,
       topLevel: this.topLevel,
+      spyName: this.props.flamebearer.spyName,
 
       rangeMin: this.rangeMin,
       rangeMax: this.rangeMax,
