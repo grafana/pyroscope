@@ -8,7 +8,9 @@ module.exports = {
     '**/__tests__/**/*.+(ts|tsx|js)',
     '**/?(*.)+(spec|test).+(ts|tsx|js)',
   ],
-
+  moduleNameMapper: {
+    '@utils(.*)$': '<rootDir>/webapp/javascript/util/$1',
+  },
   transform: {
     '\\.module\\.css$': 'jest-css-modules-transform',
   },
