@@ -255,8 +255,6 @@ class FlameGraph extends React.Component {
       rightTicks: this.props.flamebearer.rightTicks,
     });
 
-    // TODO:
-    // maybe this isn't needed after all?
     this.graphWidth = this.canvas.width;
     this.pxPerTick =
       this.graphWidth /

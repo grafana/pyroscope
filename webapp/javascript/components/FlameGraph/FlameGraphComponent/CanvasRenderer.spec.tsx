@@ -5,8 +5,6 @@ import { Units } from '../../../util/format';
 import { RenderCanvas } from './CanvasRenderer';
 import TestData from './testData';
 
-const { toMatchImageSnapshot } = require('jest-image-snapshot');
-
 describe('CanvasRenderer -- group:snapshot', () => {
   it('works with normal flamegraph', () => {
     const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
@@ -37,7 +35,6 @@ describe('CanvasRenderer -- group:snapshot', () => {
       units: Units.Samples,
       fitMode: 'HEAD',
 
-      //      font: 'monospace',
       spyName: 'gospy',
     });
 
@@ -65,7 +62,6 @@ describe('CanvasRenderer -- group:snapshot', () => {
       fitMode: 'HEAD',
 
       spyName: data.spyName,
-      //      font: 'monospace',
     });
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
@@ -101,8 +97,6 @@ describe('CanvasRenderer -- group:snapshot', () => {
       units: Units.Samples,
       fitMode: 'HEAD',
       spyName: 'gospy',
-
-      //      font: 'monospace',
     });
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
@@ -113,7 +107,6 @@ describe('CanvasRenderer -- group:snapshot', () => {
 
     RenderCanvas({
       canvas,
-      //      topLevel: 0,
       rangeMin: 0,
       viewType: 'single',
       numTicks: 988,
@@ -136,8 +129,6 @@ describe('CanvasRenderer -- group:snapshot', () => {
       units: Units.Samples,
       fitMode: 'HEAD',
       spyName: 'gospy',
-
-      //      font: 'monospace',
 
       selectedLevel: 2,
       topLevel: 0,
@@ -170,7 +161,6 @@ describe('CanvasRenderer -- group:snapshot', () => {
       fitMode: 'HEAD',
 
       spyName: data.spyName,
-      //      font: 'monospace',
 
       rightTicks: data.rightTicks,
       leftTicks: data.leftTicks,
@@ -180,8 +170,6 @@ describe('CanvasRenderer -- group:snapshot', () => {
   });
 });
 
-// since this is the only test that uses snapshot testing
-// expect.extend({ toMatchImageSnapshot });
 function canvasToBuffer(canvas: HTMLCanvasElement) {
   const converter = new CanvasConverter(canvas, {
     image: { types: ['png'] },

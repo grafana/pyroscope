@@ -48,10 +48,20 @@ import {
 export type CanvasRendererConfig = {
   canvas: HTMLCanvasElement;
   numTicks: number;
+
+  /**
+   * Sample Rate, used in text information
+   */
   sampleRate: number;
+
+  /**
+   * List of names
+   */
   names: string[];
 
   /**
+   * List of level
+   *
    * This is NOT the same as in the flamebearer
    * that we receive from the server.
    * As in there are some transformations required
@@ -59,8 +69,20 @@ export type CanvasRendererConfig = {
    */
   levels: number[][];
 
+  /**
+   * What level to start from
+   */
   topLevel: number;
+
+  /**
+   * Used when zooming, values between 0 and 1.
+   * For illustration, in a non zoomed in state it has the value of 0
+   */
   rangeMin: number;
+  /**
+   * Used when zooming, values between 0 and 1.
+   * For illustration, in a non zoomed in state it has the value of 1
+   */
   rangeMax: number;
 
   units: Units;
@@ -85,7 +107,7 @@ export type CanvasRendererConfig = {
     | string;
 
   /**
-   * What level has been "selected" (TODO: find a better name)
+   * What level has been "selected"
    * All nodes above will be dimmed out
    */
   selectedLevel?: number;
@@ -103,7 +125,7 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   const { units } = props;
 
   // clientWidth includes padding
-  // however it's not present in node-canvas
+  // however it's not present in node-canvas (used for testing)
   // so we also fallback to canvas.width
   const graphWidth = canvas.clientWidth || canvas.width;
   if (!graphWidth) {
@@ -118,6 +140,7 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   if (rangeMin >= rangeMax) {
     throw new Error(`'rangeMin' should be strictly smaller than 'rangeMax'`);
   }
+
   const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
 
   const ctx = canvas.getContext('2d');
@@ -133,6 +156,7 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   const canvasHeight = PX_PER_LEVEL * (levels.length - topLevel);
   canvas.height = canvasHeight;
 
+  // increase pixel ratio, otherwise it looks bad in high resolution devices
   if (devicePixelRatio > 1) {
     canvas.width *= 2;
     canvas.height *= 2;
@@ -143,8 +167,6 @@ export function RenderCanvas(props: CanvasRendererConfig) {
     const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
       const barIndex = ff.getBarOffset(level, j);
-
-      let numBarTicks = ff.getBarTotal(level, j);
 
       const x = tickToX(numTicks, rangeMin, pxPerTick, barIndex);
       const y = i * PX_PER_LEVEL;
@@ -159,6 +181,8 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         names,
         props.highlightQuery
       );
+
+      let numBarTicks = ff.getBarTotal(level, j);
 
       // merge very small blocks into big "collapsed" ones for performance
       const collapsed = numBarTicks * pxPerTick <= COLLAPSE_THRESHOLD;

@@ -9,6 +9,9 @@ expect.extend({
       return toMatchImageSnapshot.call(this, received, options);
     }
 
+    console.info(
+      `Skipping 'toMatchImageSnapshot' assertion since env var 'RUN_SNAPSHOTS' is not set.`
+    );
     return { pass: true };
   },
 });
