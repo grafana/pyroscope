@@ -35,10 +35,13 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 			_, _ = b.WriteString(name)
 		}
 
-		labels := spy.NewLabels()
-		for _, l := range s.Label {
-			if l.Str != 0 {
-				labels.Set(x.StringTable[l.Key], x.StringTable[l.Str])
+		var labels *spy.Labels
+		if len(s.Label) > 0 {
+			labels = spy.NewLabels()
+			for _, l := range s.Label {
+				if l.Str != 0 {
+					labels.Set(x.StringTable[l.Key], x.StringTable[l.Str])
+				}
 			}
 		}
 

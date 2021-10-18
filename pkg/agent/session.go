@@ -128,7 +128,7 @@ func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 		tries:         make(map[string][]*transporttrie.Trie),
 	}
 
-	ps.initializeTries()
+	ps.initializeTries(ps.appName)
 
 	return ps, nil
 }
@@ -193,6 +193,20 @@ func (ps *ProfileSession) takeSnapshots() {
 			for pid, sarr := range ps.spies {
 				for i, s := range sarr {
 					s.Snapshot(func(labels *spy.Labels, stack []byte, v uint64, err error) {
+						appName := ps.appName
+						if labels != nil {
+							if newAppName, err := mergeTagsWithAppName(appName, labels.Tags()); err == nil {
+								appName = newAppName
+							} else {
+								ps.throttler.Run(func(skipped int) {
+									if skipped > 0 {
+										ps.logger.Errorf("error setting tags: %v, %d messages skipped due to throttling", err, skipped)
+									} else {
+										ps.logger.Errorf("error setting tags: %v", err)
+									}
+								})
+							}
+						}
 						if err != nil {
 							if ok, pidErr := process.PidExists(int32(pid)); !ok || pidErr != nil {
 								ps.logger.Debugf("error taking snapshot: process doesn't exist?")
@@ -209,7 +223,10 @@ func (ps *ProfileSession) takeSnapshots() {
 							return
 						}
 						if len(stack) > 0 {
-							ps.tries[ps.appName][i].Insert(stack, v, true)
+							if _, ok := ps.tries[appName]; !ok {
+								ps.initializeTries(appName)
+							}
+							ps.tries[appName][i].Insert(stack, v, true)
 						}
 					})
 				}
@@ -266,19 +283,19 @@ func (ps *ProfileSession) ChangeName(newName string) error {
 	}
 
 	ps.appName = newName
-	ps.initializeTries()
+	ps.initializeTries(ps.appName)
 
 	return nil
 }
 
-func (ps *ProfileSession) initializeTries() {
-	if _, ok := ps.previousTries[ps.appName]; !ok {
+func (ps *ProfileSession) initializeTries(appName string) {
+	if _, ok := ps.previousTries[appName]; !ok {
 		// TODO Only set the trie if it's not already set
-		ps.previousTries[ps.appName] = []*transporttrie.Trie{}
-		ps.tries[ps.appName] = []*transporttrie.Trie{}
+		ps.previousTries[appName] = []*transporttrie.Trie{}
+		ps.tries[appName] = []*transporttrie.Trie{}
 		for i := 0; i < len(ps.profileTypes); i++ {
-			ps.previousTries[ps.appName] = append(ps.previousTries[ps.appName], nil)
-			ps.tries[ps.appName] = append(ps.tries[ps.appName], transporttrie.New())
+			ps.previousTries[appName] = append(ps.previousTries[appName], nil)
+			ps.tries[appName] = append(ps.tries[appName], transporttrie.New())
 		}
 	}
 }

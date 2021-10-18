@@ -140,7 +140,7 @@ func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 			return
 		}
 		profile.Get("samples", func(labels *spy.Labels, name []byte, val int) {
-			cb(nil, name, uint64(val), nil)
+			cb(labels, name, uint64(val), nil)
 		})
 	} else {
 		// this is current GC generation
@@ -158,7 +158,7 @@ func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 		//   in such case it does not make sense to upload the same profile twice
 		if currentGCGeneration != s.lastGCGeneration {
 			getHeapProfile(s.buf).Get(string(s.profileType), func(labels *spy.Labels, name []byte, val int) {
-				cb(nil, name, uint64(val), nil)
+				cb(labels, name, uint64(val), nil)
 			})
 			s.lastGCGeneration = currentGCGeneration
 		}
