@@ -185,20 +185,30 @@ func (sn *streeNode) isLeaf() bool {
 }
 
 // deleteDataBefore returns true if the node should be deleted
-func (sn *streeNode) deleteDataBefore(t *Threshold, cb func(depth int, t time.Time)) bool {
+func (sn *streeNode) deleteDataBefore(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
 	if sn.isAfter(t.absolute) && t.levels == nil {
-		return false
+		return false, nil
 	}
+	var err error
 	ok := t.isBefore(sn)
 	if ok {
-		cb(sn.depth, sn.time)
+		if err = cb(sn.depth, sn.time); err != nil {
+			return false, err
+		}
 	}
 	for i, v := range sn.children {
-		if v != nil && v.deleteDataBefore(t, cb) {
+		if v == nil {
+			continue
+		}
+		ok, err = v.deleteDataBefore(t, cb)
+		if err != nil {
+			return false, err
+		}
+		if ok {
 			sn.children[i] = nil
 		}
 	}
-	return ok
+	return ok, nil
 }
 
 type Segment struct {
@@ -326,13 +336,21 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-get-%s-%s.html", st.String(), et.String())))
 }
 
-func (s *Segment) DeleteDataBefore(t *Threshold, cb func(depth int, t time.Time)) bool {
+func (s *Segment) DeleteDataBefore(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if s.root != nil && s.root.deleteDataBefore(t.normalize(), cb) {
-		s.root = nil
+	if s.root == nil {
+		return false, nil
 	}
-	return s.root == nil
+	ok, err := s.root.deleteDataBefore(t.normalize(), cb)
+	if err != nil {
+		return false, err
+	}
+	if ok {
+		s.root = nil
+		return true, nil
+	}
+	return false, nil
 }
 
 // TODO: this should be refactored

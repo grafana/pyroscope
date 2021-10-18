@@ -93,7 +93,7 @@ func (s *Storage) retentionTask() {
 	}))
 	defer timer.ObserveDuration()
 
-	if err := s.DeleteDataBefore(s.lifetimeBasedRetentionThreshold()); err != nil {
+	if err := s.DeleteDataBefore(s.retentionPolicy()); err != nil {
 		logrus.WithError(err).Warn("retention task failed")
 	}
 }

@@ -36,13 +36,13 @@ func GenerateTimeline(st, et time.Time) *Timeline {
 	}
 }
 
-func (tl *Timeline) PopulateTimeline(s *Segment, t *Threshold) {
+func (tl *Timeline) PopulateTimeline(s *Segment, t *RetentionPolicy) {
 	if s.root != nil {
 		s.root.populateTimeline(tl, t)
 	}
 }
 
-func (sn streeNode) populateTimeline(tl *Timeline, t *Threshold) {
+func (sn streeNode) populateTimeline(tl *Timeline, t *RetentionPolicy) {
 	if sn.relationship(tl.st, tl.et) == outside {
 		return
 	}

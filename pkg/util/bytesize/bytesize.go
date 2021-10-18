@@ -44,6 +44,8 @@ func (b ByteSize) String() string {
 	return fmt.Sprintf("%.2f %s", bf, suffixes[len(suffixes)-1])
 }
 
+func (b ByteSize) Bytes() int { return int(b) }
+
 var multipliers = map[string]ByteSize{
 	"":    Byte,
 	"b":   Byte,

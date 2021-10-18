@@ -193,7 +193,7 @@ func (s *Storage) Put(pi *PutInput) error {
 		return err
 	}
 
-	if pi.StartTime.Before(s.lifetimeBasedRetentionThreshold().LowerBoundary()) {
+	if pi.StartTime.Before(s.retentionPolicy().LowerTimeBoundary()) {
 		return errRetention
 	}
 
@@ -310,7 +310,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 		aggregationType = "sum"
 		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
-		threshold       = s.lifetimeBasedRetentionThreshold()
+		threshold       = s.retentionPolicy()
 	)
 
 	for _, k := range dimensionKeys() {
@@ -397,6 +397,8 @@ func (s *Storage) dimensionKeysByQuery(qry *flameql.Query) func() []dimension.Ke
 }
 
 func (s *Storage) iterateOverAllSegments(cb func(*segment.Key, *segment.Segment) error) error {
+	// TODO: use badger iterator
+
 	nameKey := "__name__"
 
 	var dimensions []*dimension.Dimension
@@ -419,20 +421,57 @@ func (s *Storage) iterateOverAllSegments(cb func(*segment.Key, *segment.Segment)
 			continue
 		}
 		st := stInt.(*segment.Segment)
-		if err := cb(sk, st); err != nil {
+		if err = cb(sk, st); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *Storage) DeleteDataBefore(t *segment.Threshold) error {
+func (s *Storage) Reclaim(ctx context.Context, rp *segment.RetentionPolicy) error {
+	// TODO:
+	//	 Retain data based on the volume capacity?
+	//	 Given:
+	//	   D - capacity in bytes need to be reclaimed.
+	//     S - total number of segments.
+	//     Ts - average tree size in bytes for given segment.
+	//   Thus, X = D/S/Ts trees to be removed per segment.
+	//
 	return s.iterateOverAllSegments(func(sk *segment.Key, st *segment.Segment) error {
-		var err error
-		deletedRoot := st.DeleteDataBefore(t, func(depth int, t time.Time) {
-			if delErr := s.trees.Delete(sk.TreeKey(depth, t)); delErr != nil {
-				err = delErr
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if rp.IsPeriodBased() {
+			deletedRoot, err := st.DeleteDataBefore(rp, func(depth int, t time.Time) error {
+				if err := s.trees.Delete(sk.TreeKey(depth, t)); err != nil {
+					return err
+				}
+				// TODO: Count deleted trees R.
+				return nil
+			})
+			if err != nil {
+				return err
 			}
+			if deletedRoot {
+				return s.deleteSegmentAndRelatedData(sk)
+			}
+		}
+		if rp.IsSizeBased() {
+			// TODO: Remove
+			//  X-R trees
+			//  corresponding segment nodes
+			//  cached entries
+		}
+		return nil
+	})
+}
+
+// TODO: remove
+
+func (s *Storage) DeleteDataBefore(t *segment.RetentionPolicy) error {
+	return s.iterateOverAllSegments(func(sk *segment.Key, st *segment.Segment) error {
+		deletedRoot, err := st.DeleteDataBefore(t, func(depth int, t time.Time) error {
+			return s.trees.Delete(sk.TreeKey(depth, t))
 		})
 		if err == nil && deletedRoot {
 			return s.deleteSegmentAndRelatedData(sk)
@@ -660,8 +699,10 @@ func (s *Storage) CacheStats() map[string]interface{} {
 	}
 }
 
-func (s *Storage) lifetimeBasedRetentionThreshold() *segment.Threshold {
-	t := segment.NewThreshold().SetAbsoluteMaxAge(s.config.Retention)
+func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
+	t := segment.NewRetentionPolicy().
+		SetAbsoluteMaxAge(s.config.Retention).
+		SetAbsoluteSize(s.config.RetentionSize.Bytes())
 	for level, threshold := range s.config.RetentionLevels {
 		t.SetLevelMaxAge(level, threshold)
 	}
