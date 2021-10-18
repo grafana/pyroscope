@@ -9,6 +9,61 @@ import (
 	"github.com/valyala/bytebufferpool"
 )
 
+type cacheKey []int64
+
+type cacheEntry struct {
+	key cacheKey
+	val *spy.Labels
+}
+type cache struct {
+	data []*cacheEntry
+}
+
+func newCache() *cache {
+	return &cache{
+		data: []*cacheEntry{},
+	}
+}
+
+func getCacheKey(l []*Label) cacheKey {
+	r := []int64{}
+	for _, x := range l {
+		if x.Str > 0 {
+			r = append(r, x.Key, x.Str)
+		}
+	}
+	return r
+}
+
+func eq(a, b []int64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *cache) getLabels(labels []*Label) *spy.Labels {
+	k := getCacheKey(labels)
+	for _, e := range c.data {
+		if eq(e.key, k) {
+			return e.val
+		}
+	}
+
+	l := spy.NewLabels()
+	newVal := &cacheEntry{
+		key: k,
+		val: l,
+	}
+	c.data = append(c.data, newVal)
+	return l
+}
+
 func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte, val int)) error {
 	valueIndex := 0
 	if sampleType != "" {
@@ -19,6 +74,8 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 			}
 		}
 	}
+
+	labelsCache := newCache()
 
 	b := bytebufferpool.Get()
 	defer bytebufferpool.Put(b)
@@ -35,17 +92,7 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 			_, _ = b.WriteString(name)
 		}
 
-		var labels *spy.Labels
-		if len(s.Label) > 0 {
-			labels = spy.NewLabels()
-			for _, l := range s.Label {
-				if l.Str != 0 {
-					labels.Set(x.StringTable[l.Key], x.StringTable[l.Str])
-				}
-			}
-		}
-
-		cb(labels, b.Bytes(), int(s.Value[valueIndex]))
+		cb(labelsCache.getLabels(s.Label), b.Bytes(), int(s.Value[valueIndex]))
 
 		b.Reset()
 	}

@@ -192,11 +192,15 @@ func (ps *ProfileSession) takeSnapshots() {
 			pidsToRemove := []int{}
 			for pid, sarr := range ps.spies {
 				for i, s := range sarr {
+					labelsCache := map[string]string{}
 					s.Snapshot(func(labels *spy.Labels, stack []byte, v uint64, err error) {
 						appName := ps.appName
 						if labels != nil {
-							if newAppName, err := mergeTagsWithAppName(appName, labels.Tags()); err == nil {
+							if newAppName, ok := labelsCache[labels.ID()]; ok {
 								appName = newAppName
+							} else if newAppName, err := mergeTagsWithAppName(appName, labels.Tags()); err == nil {
+								appName = newAppName
+								labelsCache[labels.ID()] = appName
 							} else {
 								ps.throttler.Run(func(skipped int) {
 									if skipped > 0 {
