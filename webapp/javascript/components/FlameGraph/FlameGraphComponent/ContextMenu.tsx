@@ -29,7 +29,7 @@ export default function ContextMenu(props: ContextMenuProps) {
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
 
-    const items = props.xyToMenuItems(e.clientX, e.clientY);
+    const items = props.xyToMenuItems(e.offsetX, e.offsetY);
     setMenuItems(items);
 
     // TODO

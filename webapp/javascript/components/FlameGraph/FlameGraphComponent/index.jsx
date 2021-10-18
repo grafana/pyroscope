@@ -38,7 +38,7 @@ import DiffLegend from './DiffLegend';
 import Tooltip from './Tooltip';
 import Highlight from './Highlight';
 import ContextMenu from './ContextMenu';
-import { PX_PER_LEVEL, COLLAPSE_THRESHOLD } from './constants';
+import { PX_PER_LEVEL, COLLAPSE_THRESHOLD, BAR_HEIGHT } from './constants';
 import { RenderCanvas } from './CanvasRenderer';
 import { getRatios } from './utils';
 import styles from './canvas.module.css';
@@ -62,7 +62,6 @@ class FlameGraph extends React.Component {
       flamebearer: null,
     };
     this.canvasRef = React.createRef();
-    this.canvasRef2 = React.createRef();
     this.highlightRef = React.createRef();
     this.tooltipRef = React.createRef();
     this.currentJSONController = null;
@@ -157,7 +156,11 @@ class FlameGraph extends React.Component {
   };
 
   xyToBar = (x, y) => {
-    const i = Math.floor(y / PX_PER_LEVEL) + this.topLevel;
+    // in focused mode there's a "fake" bar at the top
+    // so we must discount for it
+    const computedY = this.isFocused() ? y - BAR_HEIGHT : y;
+
+    const i = Math.floor(computedY / PX_PER_LEVEL) + this.topLevel;
     if (i >= 0 && i < this.state.levels.length) {
       const j = this.binarySearchLevel(x, this.state.levels[i], this.tickToX);
       return { i, j };
@@ -278,7 +281,8 @@ class FlameGraph extends React.Component {
     const level = this.state.levels[i];
 
     const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
-    const posY = (i - this.topLevel) * PX_PER_LEVEL;
+    const posY =
+      (i - this.topLevel) * PX_PER_LEVEL + (this.isFocused() ? BAR_HEIGHT : 0);
 
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
@@ -305,14 +309,37 @@ class FlameGraph extends React.Component {
     return true;
   };
 
-  xyToContextMenuItems = (x, y) => {
-    const isFocused = this.selectedLevel !== 0;
+  focusOnNode = (x, y) => {
+    const ff = this.props.format;
+    const { i, j } = this.xyToBar(x, y);
 
-    // Depending on what item we clicked
-    // The menu items will be completely different
+    this.topLevel = i;
+    this.rangeMin =
+      ff.getBarOffset(this.state.levels[i], j) / this.state.numTicks;
+    this.rangeMax =
+      (ff.getBarOffset(this.state.levels[i], j) +
+        ff.getBarTotal(this.state.levels[i], j)) /
+      this.state.numTicks;
+
+    // TODO(eh-am): pass something else?
+    // this.props.onZoom(this.selectedLevel);
+    this.props.onZoom(this.topLevel || this.selectedLevel);
+    this.renderCanvas();
+  };
+
+  isFocused = () => {
+    return this.topLevel > 0;
+  };
+
+  xyToContextMenuItems = (x, y) => {
+    const isSelected = this.selectedLevel !== 0 || this.topLevel !== 0;
+
     return [
-      <MenuItem key="reset" disabled={!isFocused} onClick={this.reset}>
+      <MenuItem key="reset" disabled={!isSelected} onClick={this.reset}>
         Reset View
+      </MenuItem>,
+      <MenuItem key="focus" onClick={() => this.focusOnNode(x, y)}>
+        Focus
       </MenuItem>,
     ];
   };

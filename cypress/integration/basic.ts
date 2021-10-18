@@ -392,4 +392,46 @@ describe('basic test', () => {
       );
     });
   });
+
+  describe('focus', () => {
+    it.only('works via context menu', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+        times: 1,
+      }).as('render');
+
+      cy.visit('/');
+
+      // reset view should be disabled
+      cy.findByTestId('flamegraph-canvas').rightclick();
+      cy.findByRole('menuitem', { name: /Reset View/ }).should(
+        'have.attr',
+        'aria-disabled',
+        'true'
+      );
+
+      cy.findByTestId('flamegraph-canvas').rightclick(0, BAR_HEIGHT * 3);
+      cy.findByRole('menuitem', { name: /Focus/ }).click();
+
+      cy.findByTestId('table-view').matchImageSnapshot(
+        `simple-golang-cpu-focused-fast-function`
+      );
+
+      // reset view in the toolbar should be visible
+      cy.findByTestId('reset-view').should('be.visible');
+
+      // reset view should be visible
+      cy.findByTestId('flamegraph-canvas').rightclick();
+      cy.findByRole('menuitem', { name: /Reset View/ }).should(
+        'not.have.attr',
+        'aria-disabled'
+      );
+
+      // click on reset
+      cy.findByRole('menuitem', { name: /Reset View/ }).click();
+      cy.findByTestId('table-view').matchImageSnapshot(
+        `simple-golang-cpu-not-focused-fast-function`
+      );
+    });
+  });
 });

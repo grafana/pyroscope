@@ -168,6 +168,43 @@ describe('CanvasRenderer -- group:snapshot', () => {
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
   });
+
+  it.only('focuses on a specific node', () => {
+    const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
+    const data = TestData.DiffTree;
+
+    RenderCanvas({
+      canvas,
+      rangeMin: 0,
+      viewType: 'single',
+      numTicks: 988,
+      sampleRate: 100,
+      names: [
+        'total',
+        'runtime.main',
+        'main.slowFunction',
+        'main.work',
+        'main.main',
+        'main.fastFunction',
+      ],
+      levels: [
+        [0, 988, 0, 0],
+        [0, 988, 0, 1],
+        [0, 214, 0, 5, 214, 3, 2, 4, 217, 771, 0, 2],
+        [0, 214, 214, 3, 216, 1, 1, 5, 217, 771, 771, 3],
+      ],
+
+      units: Units.Samples,
+      fitMode: 'HEAD',
+
+      spyName: 'gospy',
+
+      topLevel: 2,
+      rangeMax: 0.2165991902834008,
+    });
+
+    expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
+  });
 });
 
 function canvasToBuffer(canvas: HTMLCanvasElement) {
