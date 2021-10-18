@@ -1,3 +1,28 @@
+## <small>0.2.1 (2021-10-18)</small>
+
+* Cleanup (#439) ([29781f8](https://github.com/pyroscope-io/pyroscope/commit/29781f8)), closes [#439](https://github.com/pyroscope-io/pyroscope/issues/439)
+* cleanup / tooltip issues (#452) ([9486ee0](https://github.com/pyroscope-io/pyroscope/commit/9486ee0)), closes [#452](https://github.com/pyroscope-io/pyroscope/issues/452)
+* fix: handle a BadgerDB panic related to incorrectly set permissions (#464) ([840cf03](https://github.com/pyroscope-io/pyroscope/commit/840cf03)), closes [#464](https://github.com/pyroscope-io/pyroscope/issues/464)
+* fix(dotnet): enable dotnetspy for macos build (#469) ([c155ddc](https://github.com/pyroscope-io/pyroscope/commit/c155ddc)), closes [#469](https://github.com/pyroscope-io/pyroscope/issues/469)
+* fix(python): updates py-spy version (#440) ([1d5868b](https://github.com/pyroscope-io/pyroscope/commit/1d5868b)), closes [#440](https://github.com/pyroscope-io/pyroscope/issues/440) [#428](https://github.com/pyroscope-io/pyroscope/issues/428)
+* ci: adds basic e2e tests (#446) ([2fd51d1](https://github.com/pyroscope-io/pyroscope/commit/2fd51d1)), closes [#446](https://github.com/pyroscope-io/pyroscope/issues/446)
+* ci: generate random app name in Cypress test (#463) ([bc427f2](https://github.com/pyroscope-io/pyroscope/commit/bc427f2)), closes [#463](https://github.com/pyroscope-io/pyroscope/issues/463)
+* chore: add codecov for js tests (#467) ([a673aea](https://github.com/pyroscope-io/pyroscope/commit/a673aea)), closes [#467](https://github.com/pyroscope-io/pyroscope/issues/467)
+* chore: add size-limit action ([56c519d](https://github.com/pyroscope-io/pyroscope/commit/56c519d))
+* chore: add yarn build command ([02e3b1e](https://github.com/pyroscope-io/pyroscope/commit/02e3b1e))
+* chore: FlameQL code refactoring (#453) ([ec5b5fa](https://github.com/pyroscope-io/pyroscope/commit/ec5b5fa)), closes [#453](https://github.com/pyroscope-io/pyroscope/issues/453)
+* chore: refactor metrics exporter (#444) ([8fd0d63](https://github.com/pyroscope-io/pyroscope/commit/8fd0d63)), closes [#444](https://github.com/pyroscope-io/pyroscope/issues/444)
+* chore: separate size-limit into its own workflow (#465) ([224ac5c](https://github.com/pyroscope-io/pyroscope/commit/224ac5c)), closes [#465](https://github.com/pyroscope-io/pyroscope/issues/465)
+* chore(analytics): adds java to list of integrations we track (#450) ([65358d9](https://github.com/pyroscope-io/pyroscope/commit/65358d9)), closes [#450](https://github.com/pyroscope-io/pyroscope/issues/450)
+* feat: add basic context menu (#460) ([3df5d9d](https://github.com/pyroscope-io/pyroscope/commit/3df5d9d)), closes [#460](https://github.com/pyroscope-io/pyroscope/issues/460)
+* feat(profiler): add support for dynamic tags (#437) ([4ab01ce](https://github.com/pyroscope-io/pyroscope/commit/4ab01ce)), closes [#437](https://github.com/pyroscope-io/pyroscope/issues/437)
+* docs: add chinese translation for Python docs (#455) ([4e01c0a](https://github.com/pyroscope-io/pyroscope/commit/4e01c0a)), closes [#455](https://github.com/pyroscope-io/pyroscope/issues/455)
+* docs: add Chinese translation for Ruby docs (#457) ([d1ab6da](https://github.com/pyroscope-io/pyroscope/commit/d1ab6da)), closes [#457](https://github.com/pyroscope-io/pyroscope/issues/457)
+* docs: Add FastAPI Example to Python Examples Folder (#443) ([1292277](https://github.com/pyroscope-io/pyroscope/commit/1292277)), closes [#443](https://github.com/pyroscope-io/pyroscope/issues/443)
+* dos: Add FastAPI Example to Python Examples Folder (#443) ([720c935](https://github.com/pyroscope-io/pyroscope/commit/720c935)), closes [#443](https://github.com/pyroscope-io/pyroscope/issues/443)
+
+
+
 ## 0.2.0 (2021-10-05)
 
 * docs: Cleanup docs for Pip package and Ruby gem (#438) ([314dc4b](https://github.com/pyroscope-io/pyroscope/commit/314dc4b)), closes [#438](https://github.com/pyroscope-io/pyroscope/issues/438)
