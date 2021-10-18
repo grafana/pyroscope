@@ -93,9 +93,6 @@ class FlameGraph extends React.Component {
       );
     }
     this.updateData();
-
-    console.log('this.props.format', this.props.format);
-    console.log('this.props.flamebearer.format', this.props.flamebearer.format);
   }
 
   componentDidUpdate(prevProps) {
@@ -235,7 +232,7 @@ class FlameGraph extends React.Component {
         const percent = formatPercent(numBarTicks / this.state.numTicks);
 
         return {
-          format: 'single',
+          format,
           title,
           numBarTicks,
           percent,
@@ -246,12 +243,18 @@ class FlameGraph extends React.Component {
         const totalLeft = ff.getBarTotalLeft(level, j);
         const totalRight = ff.getBarTotalRght(level, j);
 
-        const { leftRatio, rightRatio } = getRatios(viewType, ff, level, j);
+        const { leftRatio, rightRatio } = getRatios(
+          format,
+          level,
+          j,
+          totalLeft,
+          totalRight
+        );
         const leftPercent = ratioToPercent(leftRatio);
         const rightPercent = ratioToPercent(rightRatio);
 
         return {
-          format: 'double',
+          format,
           left: totalLeft,
           right: totalRight,
           title,

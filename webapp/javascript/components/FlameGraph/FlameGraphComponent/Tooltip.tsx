@@ -188,7 +188,6 @@ function formatDouble({
     totalRight
   )} samples, ${formatter.format(totalRight, sampleRate)} (${rightPercent}%)`;
 
-  //  const totalDiff = percentDiff(leftPercent, rightPercent).toFixed(2);
   const totalDiff = percentDiff(leftPercent, rightPercent);
 
   let tooltipDiffColor = '';
