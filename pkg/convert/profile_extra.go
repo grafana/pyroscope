@@ -28,7 +28,7 @@ func newCache() *cache {
 func getCacheKey(l []*Label) cacheKey {
 	r := []int64{}
 	for _, x := range l {
-		if x.Str > 0 {
+		if x.Str != 0 {
 			r = append(r, x.Key, x.Str)
 		}
 	}
@@ -47,8 +47,8 @@ func eq(a, b []int64) bool {
 	return true
 }
 
-func (c *cache) getLabels(labels []*Label) *spy.Labels {
-	k := getCacheKey(labels)
+func (c *cache) pprofLabelsToSpyLabels(x *Profile, pprofLabels []*Label) *spy.Labels {
+	k := getCacheKey(pprofLabels)
 	for _, e := range c.data {
 		if eq(e.key, k) {
 			return e.val
@@ -56,6 +56,11 @@ func (c *cache) getLabels(labels []*Label) *spy.Labels {
 	}
 
 	l := spy.NewLabels()
+	for _, pl := range pprofLabels {
+		if pl.Str != 0 {
+			l.Set(x.StringTable[pl.Key], x.StringTable[pl.Str])
+		}
+	}
 	newVal := &cacheEntry{
 		key: k,
 		val: l,
@@ -92,7 +97,8 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 			_, _ = b.WriteString(name)
 		}
 
-		cb(labelsCache.getLabels(s.Label), b.Bytes(), int(s.Value[valueIndex]))
+		labels := labelsCache.pprofLabelsToSpyLabels(x, s.Label)
+		cb(labels, b.Bytes(), int(s.Value[valueIndex]))
 
 		b.Reset()
 	}
