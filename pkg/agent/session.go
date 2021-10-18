@@ -192,7 +192,7 @@ func (ps *ProfileSession) takeSnapshots() {
 			pidsToRemove := []int{}
 			for pid, sarr := range ps.spies {
 				for i, s := range sarr {
-					s.Snapshot(func(labels map[string]string, stack []byte, v uint64, err error) {
+					s.Snapshot(func(labels *spy.Labels, stack []byte, v uint64, err error) {
 						if err != nil {
 							if ok, pidErr := process.PidExists(int32(pid)); !ok || pidErr != nil {
 								ps.logger.Debugf("error taking snapshot: process doesn't exist?")

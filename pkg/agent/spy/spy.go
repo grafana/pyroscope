@@ -7,7 +7,7 @@ import (
 
 type Spy interface {
 	Stop() error
-	Snapshot(cb func(map[string]string, []byte, uint64, error))
+	Snapshot(cb func(*Labels, []byte, uint64, error))
 }
 
 type Resettable interface {
@@ -105,4 +105,22 @@ func SupportedExecSpies() []string {
 	}
 
 	return supportedSpies
+}
+
+type Labels struct {
+	m map[string]string
+}
+
+func NewLabels() *Labels {
+	return &Labels{
+		m: make(map[string]string),
+	}
+}
+
+func (l *Labels) Set(key, val string) {
+	l.m[key] = val
+}
+
+func (l *Labels) Tags() map[string]string {
+	return l.m
 }

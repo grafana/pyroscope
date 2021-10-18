@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 )
 
 var _ = Describe("convert", func() {
@@ -34,7 +35,7 @@ var _ = Describe("convert", func() {
 			p, err := ParsePprof(g)
 			Expect(err).ToNot(HaveOccurred())
 
-			p.Get("samples", func(labels map[string]string, name []byte, val int) {
+			p.Get("samples", func(labels *spy.Labels, name []byte, val int) {
 				result = append(result, fmt.Sprintf("%s %d", name, val))
 			})
 			Expect(result).To(ContainElement("runtime.main;main.work 1"))

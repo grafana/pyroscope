@@ -5,10 +5,11 @@ package convert
 import (
 	"sort"
 
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/valyala/bytebufferpool"
 )
 
-func (x *Profile) Get(sampleType string, cb func(labels map[string]string, name []byte, val int)) error {
+func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte, val int)) error {
 	valueIndex := 0
 	if sampleType != "" {
 		for i, v := range x.SampleType {
@@ -34,10 +35,10 @@ func (x *Profile) Get(sampleType string, cb func(labels map[string]string, name 
 			_, _ = b.WriteString(name)
 		}
 
-		labels := make(map[string]string)
+		labels := spy.NewLabels()
 		for _, l := range s.Label {
 			if l.Str != 0 {
-				labels[x.StringTable[l.Key]] = x.StringTable[l.Str]
+				labels.Set(x.StringTable[l.Key], x.StringTable[l.Str])
 			}
 		}
 

@@ -39,7 +39,7 @@ func (s *EbpfSpy) Stop() error {
 	return nil
 }
 
-func (s *EbpfSpy) Snapshot(cb func(map[string]string, []byte, uint64, error)) {
+func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 	s.resetMutex.Lock()
 	defer s.resetMutex.Unlock()
 

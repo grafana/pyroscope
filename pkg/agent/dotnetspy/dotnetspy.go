@@ -29,7 +29,7 @@ func (s *DotnetSpy) Reset() {
 	s.reset = true
 }
 
-func (s *DotnetSpy) Snapshot(cb func(map[string]string, []byte, uint64, error)) {
+func (s *DotnetSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 	if !s.reset {
 		return
 	}
