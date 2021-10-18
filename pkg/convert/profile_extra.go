@@ -8,7 +8,7 @@ import (
 	"github.com/valyala/bytebufferpool"
 )
 
-func (x *Profile) Get(sampleType string, cb func(name []byte, val int)) error {
+func (x *Profile) Get(sampleType string, cb func(labels map[string]string, name []byte, val int)) error {
 	valueIndex := 0
 	if sampleType != "" {
 		for i, v := range x.SampleType {
@@ -33,7 +33,16 @@ func (x *Profile) Get(sampleType string, cb func(name []byte, val int)) error {
 			}
 			_, _ = b.WriteString(name)
 		}
-		cb(b.Bytes(), int(s.Value[valueIndex]))
+
+		labels := make(map[string]string)
+		for _, l := range s.Label {
+			if l.Str != 0 {
+				labels[x.StringTable[l.Key]] = x.StringTable[l.Str]
+			}
+		}
+
+		cb(labels, b.Bytes(), int(s.Value[valueIndex]))
+
 		b.Reset()
 	}
 

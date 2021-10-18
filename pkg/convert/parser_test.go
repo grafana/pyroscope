@@ -34,7 +34,7 @@ var _ = Describe("convert", func() {
 			p, err := ParsePprof(g)
 			Expect(err).ToNot(HaveOccurred())
 
-			p.Get("samples", func(name []byte, val int) {
+			p.Get("samples", func(labels map[string]string, name []byte, val int) {
 				result = append(result, fmt.Sprintf("%s %d", name, val))
 			})
 			Expect(result).To(ContainElement("runtime.main;main.work 1"))

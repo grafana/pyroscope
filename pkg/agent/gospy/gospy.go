@@ -139,7 +139,7 @@ func (s *GoSpy) Snapshot(cb func(map[string]string, []byte, uint64, error)) {
 			cb(nil, nil, uint64(0), fmt.Errorf("parse pprof: %v", err))
 			return
 		}
-		profile.Get("samples", func(name []byte, val int) {
+		profile.Get("samples", func(labels map[string]string, name []byte, val int) {
 			cb(nil, name, uint64(val), nil)
 		})
 	} else {
@@ -157,7 +157,7 @@ func (s *GoSpy) Snapshot(cb func(map[string]string, []byte, uint64, error)) {
 		// if there's no GC run then the profile is gonna be the same
 		//   in such case it does not make sense to upload the same profile twice
 		if currentGCGeneration != s.lastGCGeneration {
-			getHeapProfile(s.buf).Get(string(s.profileType), func(name []byte, val int) {
+			getHeapProfile(s.buf).Get(string(s.profileType), func(labels map[string]string, name []byte, val int) {
 				cb(nil, name, uint64(val), nil)
 			})
 			s.lastGCGeneration = currentGCGeneration
