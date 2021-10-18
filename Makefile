@@ -20,7 +20,7 @@ ALL_SPIES = ebpfspy,rbspy,pyspy,dotnetspy,debugspy
 ifeq ("$(OS)", "Linux")
 	ENABLED_SPIES ?= ebpfspy,rbspy,pyspy,phpspy,dotnetspy
 else
-	ENABLED_SPIES ?= rbspy,pyspy
+	ENABLED_SPIES ?= rbspy,pyspy,dotnetspy
 endif
 
 ifeq ("$(OS)", "Linux")
