@@ -184,11 +184,14 @@ class FlameGraph extends React.Component {
   };
 
   clickHandler = (e) => {
-    const { i, j } = this.xyToBar(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    const { i, j } = this.flamegraph.xyToBar(
+      e.nativeEvent.offsetX,
+      e.nativeEvent.offsetY
+    );
     if (j === -1) return;
 
-    this.updateZoom(i, j);
-    this.renderCanvas();
+    this.flamegraph.zoom(i, j);
+    this.flamegraph.render();
   };
 
   resizeHandler = () => {
@@ -460,6 +463,7 @@ class FlameGraph extends React.Component {
               data-appname={this.props.label}
               className={`flamegraph-canvas ${styles.hover}`}
               ref={this.canvasRef2}
+              onClick={this.clickHandler}
               onBlur={() => {}}
             />
 
