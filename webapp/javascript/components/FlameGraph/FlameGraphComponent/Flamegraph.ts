@@ -106,6 +106,11 @@ export default class Flamegraph {
     return (i - this.flamebearer.numTicks * this.rangeMin) * this.pxPerTick();
   }
 
+  private getCanvasWidth() {
+    // bit of a hack, but clientWidth is not available in node-canvas
+    return this.canvas.clientWidth || this.canvas.width;
+  }
+
   private isFocused() {
     return this.topLevel > 0;
   }
@@ -138,6 +143,10 @@ export default class Flamegraph {
   }
 
   xyToBar(x: number, y: number) {
+    if (x < 0 || y < 0) {
+      throw new Error(`x and y must be bigger than 0. x = ${x}, y = ${y}`);
+    }
+
     // in focused mode there's a "fake" bar at the top
     // so we must discount for it
     const computedY = this.isFocused() ? y - BAR_HEIGHT : y;
@@ -172,5 +181,22 @@ export default class Flamegraph {
       (ff.getBarOffset(this.flamebearer.levels[i], j) +
         ff.getBarTotal(this.flamebearer.levels[i], j)) /
       this.flamebearer.numTicks;
+  }
+
+  isWithinBounds(x: number, y: number) {
+    if (x < 0 || x > this.getCanvasWidth()) {
+      return false;
+    }
+
+    try {
+      const { i, j } = this.xyToBar(x, y);
+      if (j === -1 || i === -1) {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+
+    return true;
   }
 }

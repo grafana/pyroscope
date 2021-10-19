@@ -31,10 +31,13 @@ const flamebearer = {
 describe('Flamegraph', () => {
   let canvas: any;
   let flame: Flamegraph;
+  const CANVAS_WIDTH = 600;
+  const CANVAS_HEIGHT = 300;
 
   beforeEach(() => {
     canvas = document.createElement('canvas');
-    canvas.width = 600;
+    canvas.width = CANVAS_WIDTH;
+    canvas.height = CANVAS_HEIGHT;
 
     flame = new Flamegraph(flamebearer, canvas, 'HEAD');
   });
@@ -79,5 +82,20 @@ describe('Flamegraph', () => {
     });
 
     // TODO tests for focused item
+  });
+
+  describe.only('isWithinBounds', () => {
+    it('handles within canvas', () => {
+      expect(flame.isWithinBounds(0, 0)).toBe(true);
+      expect(flame.isWithinBounds(CANVAS_WIDTH, 0)).toBe(true);
+      expect(flame.isWithinBounds(-1, 0)).toBe(false);
+      expect(flame.isWithinBounds(0, -1)).toBe(false);
+      expect(flame.isWithinBounds(-1, -1)).toBe(false);
+    });
+
+    //    it('returns false when is within canvas but outside a bar', () => {
+    //      // TODO: this shouldn have worked...
+    //      expect(flame.isWithinBounds(CANVAS_WIDTH, CANVAS_HEIGHT)).toBe(false);
+    //    });
   });
 });
