@@ -3,7 +3,9 @@
 package profiler
 
 import (
+	"context"
 	"fmt"
+	"runtime/pprof"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
@@ -89,35 +91,10 @@ func (p *Profiler) Stop() error {
 	return nil
 }
 
-// Tag - Adds tags to the current profiler session.
-func (p *Profiler) Tag(tags map[string]string) error {
-	err := p.session.SetTags(tags)
-	if err != nil {
-		return fmt.Errorf("tag: %w", err)
-	}
-	return nil
-}
+type LabelSet = pprof.LabelSet
 
-// TagWrapper - wrap the given function with the provided tags.
-func (p *Profiler) TagWrapper(tags map[string]string, cb func()) error {
-	err := p.Tag(tags)
-	if err != nil {
-		return err
-	}
-	cb()
-	var tagKeys []string
-	for key := range tags {
-		tagKeys = append(tagKeys, key)
-	}
-	err = p.RemoveTags(tagKeys...)
-	return err
-}
+var Labels = pprof.Labels
 
-// RemoveTags - remove the given tags from the profiling session.
-func (p *Profiler) RemoveTags(tags ...string) error {
-	err := p.session.RemoveTags(tags...)
-	if err != nil {
-		return fmt.Errorf("remove tag: %w", err)
-	}
-	return nil
+func TagWrapper(ctx context.Context, labels LabelSet, cb func(context.Context)) {
+	pprof.Do(ctx, labels, func(c context.Context) { cb(c) })
 }

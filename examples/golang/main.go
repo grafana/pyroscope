@@ -13,17 +13,18 @@ func work(n int) {
 	// revive:disable:empty-block this is fine because this is a example app, not real production code
 	for i := 0; i < n; i++ {
 	}
-	fmt.Printf("performing work\n")
+	fmt.Printf("work\n")
 	// revive:enable:empty-block
 }
 
 func fastFunction(c context.Context) {
-	pprof.Do(c, pprof.Labels("function", "fast"), func(c context.Context) {
+	profiler.TagWrapper(c, profiler.Labels("function", "fast"), func(c context.Context) {
 		work(20000000)
 	})
 }
 
 func slowFunction(c context.Context) {
+	// standard pprof.Do wrappers work as well
 	pprof.Do(c, pprof.Labels("function", "slow"), func(c context.Context) {
 		work(80000000)
 	})
@@ -34,7 +35,7 @@ func main() {
 		ApplicationName: "simple.golang.app",
 		ServerAddress:   "http://localhost:4040", // this will run inside docker-compose, hence `pyroscope` for hostname
 	})
-	pprof.Do(context.Background(), pprof.Labels("function", "main", "foo", "bar"), func(c context.Context) {
+	profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
 		for {
 			fastFunction(c)
 			slowFunction(c)
