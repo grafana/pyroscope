@@ -1,3 +1,11 @@
+## <small>0.2.2 (2021-10-19)</small>
+
+* feat(golang): support for golang profiling labels (#470) ([3286f05](https://github.com/pyroscope-io/pyroscope/commit/3286f05)), closes [#470](https://github.com/pyroscope-io/pyroscope/issues/470)
+* feat(ops): implement out of space notification #348 (#456) ([e33e0b3](https://github.com/pyroscope-io/pyroscope/commit/e33e0b3)), closes [#348](https://github.com/pyroscope-io/pyroscope/issues/348) [#456](https://github.com/pyroscope-io/pyroscope/issues/456)
+* refactor(flamegraph): abstracts canvas out of flamegraph renderer (#466) ([8b7bf9d](https://github.com/pyroscope-io/pyroscope/commit/8b7bf9d)), closes [#466](https://github.com/pyroscope-io/pyroscope/issues/466)
+
+
+
 ## <small>0.2.1 (2021-10-18)</small>
 
 * Cleanup (#439) ([29781f8](https://github.com/pyroscope-io/pyroscope/commit/29781f8)), closes [#439](https://github.com/pyroscope-io/pyroscope/issues/439)
