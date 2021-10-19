@@ -7,8 +7,8 @@ import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 
 // if it's type double (diff), we also require `left` and `right` ticks
 type addTicks =
-  | { viewType: 'double'; leftTicks: number; rightTicks: number }
-  | { viewType: 'single' };
+  | { format: 'double'; leftTicks: number; rightTicks: number }
+  | { format: 'single' };
 
 type Flamebearer = {
   names: string[];
@@ -16,7 +16,6 @@ type Flamebearer = {
   numTicks: number;
   sampleRate: number;
   units: Units;
-  viewType: 'single' | 'double';
   spyName: string;
 } & addTicks;
 
@@ -43,7 +42,7 @@ export default class Flamegraph {
     canvas: HTMLCanvasElement,
     fitMode: 'HEAD' | 'TAIL'
   ) {
-    this.ff = createFF(flamebearer.viewType);
+    this.ff = createFF(flamebearer.format);
 
     this.fitMode = fitMode;
 
@@ -60,7 +59,7 @@ export default class Flamegraph {
     const props = {
       canvas: this.canvas,
 
-      viewType: this.flamebearer.viewType,
+      viewType: this.flamebearer.format,
       numTicks: this.flamebearer.numTicks,
       sampleRate: this.flamebearer.sampleRate,
       names: this.flamebearer.names,
@@ -75,7 +74,9 @@ export default class Flamegraph {
       selectedLevel: this.selectedLevel,
     };
 
-    switch (this.flamebearer.viewType) {
+    const { format: viewType } = this.flamebearer;
+
+    switch (viewType) {
       case 'single': {
         RenderCanvas({ ...props, viewType: 'single' });
         break;
@@ -89,7 +90,7 @@ export default class Flamegraph {
         break;
       }
       default: {
-        throw new Error(`Invalid format`);
+        throw new Error(`Invalid format: '${viewType}'`);
       }
     }
   }
@@ -198,5 +199,37 @@ export default class Flamegraph {
     }
 
     return true;
+  }
+
+  /*
+   * Given x and y coordinates
+   * identify the bar position and width
+   *
+   * This can be used for highlighting
+   */
+  xyToBarPosition(x: number, y: number) {
+    if (!this.isWithinBounds(x, y)) {
+      throw new Error(`Value out of bounds. Can't get bar position`);
+    }
+
+    const { ff } = this;
+    const { i, j } = this.xyToBar(x, y);
+
+    const level = this.flamebearer.levels[i];
+
+    const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
+    const posY =
+      (i - this.topLevel) * PX_PER_LEVEL + (this.isFocused() ? BAR_HEIGHT : 0);
+
+    const sw = Math.min(
+      this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
+      this.getCanvasWidth()
+    );
+
+    return {
+      x: posX,
+      y: posY,
+      width: sw,
+    };
   }
 }

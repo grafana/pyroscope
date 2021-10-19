@@ -5,9 +5,9 @@ import { BAR_HEIGHT } from './constants';
 
 jest.mock('./CanvasRenderer');
 
-const viewType: 'single' | 'double' = 'single';
+const format: 'single' | 'double' = 'single';
 const flamebearer = {
-  viewType,
+  format,
   numTicks: 988,
   sampleRate: 100,
   names: [
@@ -84,7 +84,7 @@ describe('Flamegraph', () => {
     // TODO tests for focused item
   });
 
-  describe.only('isWithinBounds', () => {
+  describe('isWithinBounds', () => {
     it('handles within canvas', () => {
       expect(flame.isWithinBounds(0, 0)).toBe(true);
       expect(flame.isWithinBounds(CANVAS_WIDTH, 0)).toBe(true);
@@ -97,5 +97,33 @@ describe('Flamegraph', () => {
     //      // TODO: this shouldn have worked...
     //      expect(flame.isWithinBounds(CANVAS_WIDTH, CANVAS_HEIGHT)).toBe(false);
     //    });
+  });
+
+  describe.only('xyToBarPosition', () => {
+    it('works with the first bar (total)', () => {
+      expect(flame.xyToBarPosition(0, 0)).toMatchObject({
+        x: 0,
+        y: 0,
+        width: CANVAS_WIDTH,
+      });
+    });
+
+    it('works a full bar', () => {
+      // 2nd line,
+      expect(flame.xyToBarPosition(0, BAR_HEIGHT + 1)).toMatchObject({
+        x: 0,
+        y: 22,
+        width: CANVAS_WIDTH,
+      });
+    });
+
+    it('works with a non full bar', () => {
+      // 3nd line, 'slowFunction'
+      expect(flame.xyToBarPosition(0, BAR_HEIGHT * 2 + 1)).toMatchObject({
+        x: 0,
+        y: 44,
+        width: 129.95951417004048,
+      });
+    });
   });
 });
