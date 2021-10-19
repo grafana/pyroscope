@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  web:
+    build: ./app
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./app/:/usr/src/app/
+    ports:
+      - 8000:8000
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - db
+  db:
+    image: postgres:13.0-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=hello_django
+      - POSTGRES_PASSWORD=hello_django
+      - POSTGRES_DB=hello_django_dev
+  pyroscope:
+    image: pyroscope/pyroscope
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+  load-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.load-generator
+
+volumes:
+  postgres_data:
