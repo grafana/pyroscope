@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import 'jest-canvas-mock';
 
 const { toMatchImageSnapshot } = require('jest-image-snapshot');
 
