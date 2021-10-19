@@ -55,6 +55,7 @@ module.exports = {
       // rc-trigger uses babel-runtime which has internal dependency to core-js@2
       // this alias maps that dependency to core-js@t3
       'core-js/library/fn': 'core-js/stable',
+      '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
     },
     modules: [
       'node_modules',

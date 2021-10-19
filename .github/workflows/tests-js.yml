@@ -17,6 +17,7 @@ jobs:
       - name: Run Webapp tests
         run: yarn run test --coverage
       - name: Upload codecov coverage
+        if: always()
         uses: codecov/codecov-action@v1
         with:
           name: js coverage

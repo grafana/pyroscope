@@ -11,7 +11,7 @@ import {
   diffColorRed,
   getPackageNameFromStackTrace,
 } from './FlameGraph/FlameGraphComponent/color';
-import { parseFlamebearerFormat } from '../util/flamebearer';
+import { createFF } from '../util/flamebearer';
 import { fitIntoTableCell } from '../util/fitMode';
 
 const zero = (v) => v || 0;
@@ -43,7 +43,7 @@ const generateTable = (flamebearer) => {
     return table;
   }
   const { names, levels, format } = flamebearer;
-  const ff = parseFlamebearerFormat(format);
+  const ff = createFF(format);
   const generateCell =
     format !== 'double' ? generateCellSingle : generateCellDouble;
 

@@ -28,102 +28,26 @@ THIS SOFTWARE.
 /* eslint-disable no-restricted-syntax */
 import React from 'react';
 import clsx from 'clsx';
-import { MenuItem, SubMenu } from '@szhsin/react-menu';
+import { MenuItem } from '@szhsin/react-menu';
 import {
   getFormatter,
   ratioToPercent,
   formatPercent,
 } from '../../../util/format';
-import {
-  colorBasedOnDiff,
-  colorBasedOnDiffPercent,
-  colorBasedOnPackageName,
-  colorFromPercentage,
-  colorGreyscale,
-  diffColorGreen,
-  diffColorRed,
-  getPackageNameFromStackTrace,
-} from './color';
-import { fitToCanvasRect } from '../../../util/fitMode';
 import DiffLegend from './DiffLegend';
 import Tooltip from './Tooltip';
 import Highlight from './Highlight';
 import ContextMenu from './ContextMenu';
-import {
-  PX_PER_LEVEL,
-  COLLAPSE_THRESHOLD,
-  LABEL_THRESHOLD,
-  GAP,
-  BAR_HEIGHT,
-} from './constants';
-
-const formatSingle = {
-  format: 'single',
-  jStep: 4,
-  jName: 3,
-  getBarOffset: (level, j) => level[j],
-  getBarTotal: (level, j) => level[j + 1],
-  getBarTotalDiff: (level, j) => 0,
-  getBarSelf: (level, j) => level[j + 2],
-  getBarSelfDiff: (level, j) => 0,
-  getBarName: (level, j) => level[j + 3],
-};
-
-const formatDouble = {
-  format: 'double',
-  jStep: 7,
-  jName: 6,
-  getBarOffset: (level, j) => level[j] + level[j + 3],
-  getBarTotal: (level, j) => level[j + 4] + level[j + 1],
-  getBarTotalLeft: (level, j) => level[j + 1],
-  getBarTotalRght: (level, j) => level[j + 4],
-  getBarTotalDiff: (level, j) => {
-    console.log('level[j + 4]', level[j + 4]);
-    console.log('level[j + 1]', level[j + 1]);
-
-    return level[j + 4] - level[j + 1];
-  },
-  getBarSelf: (level, j) => level[j + 5] + level[j + 2],
-  getBarSelfLeft: (level, j) => level[j + 2],
-  getBarSelfRght: (level, j) => level[j + 5],
-  getBarSelfDiff: (level, j) => level[j + 5] - level[j + 2],
-  getBarName: (level, j) => level[j + 6],
-};
-
-export function deltaDiff(levels, start, step) {
-  for (const level of levels) {
-    let prev = 0;
-    for (let i = start; i < level.length; i += step) {
-      level[i] += prev;
-      prev = level[i] + level[i + 1];
-    }
-  }
-}
-
-export function deltaDiffWrapper(format, levels) {
-  if (format === 'double') {
-    deltaDiff(levels, 0, 7);
-    deltaDiff(levels, 3, 7);
-  } else {
-    deltaDiff(levels, 0, 4);
-  }
-}
-
-export function parseFlamebearerFormat(format) {
-  const isSingle = format !== 'double';
-  if (isSingle) return formatSingle;
-  return formatDouble;
-}
-
-const HIGHLIGHT_NODE_COLOR = '#48CE73'; // green
+import { PX_PER_LEVEL, COLLAPSE_THRESHOLD } from './constants';
+import { RenderCanvas } from './CanvasRenderer';
+import { getRatios } from './utils';
+import styles from './canvas.module.css';
 
 const unitsToFlamegraphTitle = {
   objects: 'amount of objects in RAM per function',
   bytes: 'amount of RAM per function',
   samples: 'CPU time per function',
 };
-
-const rect = (ctx, x, y, w, h) => ctx.rect(x, y, w, h);
 
 class FlameGraph extends React.Component {
   constructor(props) {
@@ -138,6 +62,7 @@ class FlameGraph extends React.Component {
       flamebearer: null,
     };
     this.canvasRef = React.createRef();
+    this.canvasRef2 = React.createRef();
     this.highlightRef = React.createRef();
     this.tooltipRef = React.createRef();
     this.currentJSONController = null;
@@ -145,11 +70,17 @@ class FlameGraph extends React.Component {
 
   componentDidMount() {
     this.canvas = this.canvasRef.current;
+
     this.ctx = this.canvas.getContext('2d');
     this.topLevel = 0; // Todo: could be a constant
-    this.selectedLevel = 0;
     this.rangeMin = 0;
     this.rangeMax = 1;
+
+    // TODO(eh-am): rename this?
+    // selected = when you left click
+    // focused = when you right click and "Focus"
+    this.selectedLevel = 0;
+    this.focusedNode = null;
 
     window.addEventListener('resize', this.resizeHandler);
     window.addEventListener('focus', this.focusHandler);
@@ -255,184 +186,38 @@ class FlameGraph extends React.Component {
 
   tickToX = (i) => (i - this.state.numTicks * this.rangeMin) * this.pxPerTick;
 
-  // TODO
-  // move this to somewhere else
-  getRatios = (ff, level, j) => {
-    // throw an error
-    // since otherwise there's no way to calculate a diff
-    if (
-      !this.props.flamebearer.leftTicks ||
-      !this.props.flamebearer.rightTicks
-    ) {
-      // ideally this should never happen
-      // however there must be a race condition caught in CI
-      // https://github.com/pyroscope-io/pyroscope/pull/439/checks?check_run_id=3808581168
-      console.error(
-        "Properties 'rightTicks' and 'leftTicks' are required. Can't calculate ratio."
-      );
-      return { leftRatio: 0, rightRatio: 0 };
-    }
-
-    const leftRatio =
-      ff.getBarTotalLeft(level, j) / this.props.flamebearer.leftTicks;
-    const rightRatio =
-      ff.getBarTotalRght(level, j) / this.props.flamebearer.rightTicks;
-
-    return { leftRatio, rightRatio };
-  };
-
   createFormatter = () =>
     getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
 
   renderCanvas = () => {
-    if (
-      !this.props.flamebearer ||
-      !this.props.flamebearer.names ||
-      this.props.flamebearer.names.length <= 1
-    ) {
-      return;
-    }
+    RenderCanvas({
+      canvas: this.canvas,
+      viewType: this.props.flamebearer.format,
 
-    const { names, levels, numTicks, sampleRate } = this.props.flamebearer;
-    const ff = this.props.format;
-    const isDiff = this.props.viewType === 'diff';
-    this.canvas.width = this.props.width || this.canvas.clientWidth;
+      numTicks: this.props.flamebearer.numTicks,
+      sampleRate: this.props.flamebearer.sampleRate,
+      names: this.props.flamebearer.names,
+      levels: this.props.flamebearer.levels,
+      topLevel: this.topLevel,
+      spyName: this.props.flamebearer.spyName,
+
+      rangeMin: this.rangeMin,
+      rangeMax: this.rangeMax,
+
+      units: this.state.units,
+      fitMode: this.props.fitMode,
+
+      selectedLevel: this.selectedLevel,
+
+      leftTicks: this.props.flamebearer.leftTicks,
+      rightTicks: this.props.flamebearer.rightTicks,
+    });
+
     this.graphWidth = this.canvas.width;
     this.pxPerTick =
-      this.graphWidth / numTicks / (this.rangeMax - this.rangeMin);
-    this.canvas.height = this.props.height
-      ? this.props.height - 30
-      : PX_PER_LEVEL * (levels.length - this.topLevel);
-    this.canvas.style.height = `${this.canvas.height}px`;
-    this.canvas.style.cursor = 'pointer';
-
-    if (devicePixelRatio > 1) {
-      this.canvas.width *= 2;
-      this.canvas.height *= 2;
-      this.ctx.scale(2, 2);
-    }
-
-    this.ctx.textBaseline = 'middle';
-    this.ctx.font =
-      '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
-    // Since this is a monospaced font
-    // any character would do
-    const characterSize = this.ctx.measureText('a').width;
-    this.formatter = this.createFormatter();
-    // i = level
-    for (let i = 0; i < levels.length - this.topLevel; i += 1) {
-      const level = levels[this.topLevel + i];
-      for (let j = 0; j < level.length; j += ff.jStep) {
-        const barIndex = ff.getBarOffset(level, j);
-        const x = this.tickToX(barIndex);
-        const y = i * PX_PER_LEVEL;
-        let numBarTicks = ff.getBarTotal(level, j);
-
-        // For this particular bar, there is a match
-        const queryExists = this.props.query.length > 0;
-        const nodeIsInQuery =
-          (this.props.query &&
-            names[level[j + ff.jName]].indexOf(this.props.query) >= 0) ||
-          false;
-        // merge very small blocks into big "collapsed" ones for performance
-        const collapsed = numBarTicks * this.pxPerTick <= COLLAPSE_THRESHOLD;
-        const numBarDiff = collapsed ? 0 : ff.getBarTotalDiff(level, j);
-
-        if (collapsed) {
-          // TODO: fix collapsed code
-          while (
-            j < level.length - ff.jStep &&
-            barIndex + numBarTicks === ff.getBarOffset(level, j + ff.jStep) &&
-            ff.getBarTotal(level, j + ff.jStep) * this.pxPerTick <=
-              COLLAPSE_THRESHOLD &&
-            nodeIsInQuery ===
-              ((this.props.query &&
-                names[level[j + ff.jStep + ff.jName]].indexOf(
-                  this.props.query
-                ) >= 0) ||
-                false)
-          ) {
-            j += ff.jStep;
-            numBarTicks += ff.getBarTotal(level, j);
-          }
-        }
-        // ticks are samples
-        const sw = numBarTicks * this.pxPerTick - (collapsed ? 0 : GAP);
-        const sh = BAR_HEIGHT;
-
-        // if (x < -1 || x + sw > this.graphWidth + 1 || sw < HIDE_THRESHOLD) continue;
-
-        this.ctx.beginPath();
-        rect(this.ctx, x, y, sw, sh, 3);
-
-        const ratio = numBarTicks / numTicks;
-
-        const a = this.selectedLevel > i ? 0.33 : 1;
-
-        const { spyName } = this.props.flamebearer;
-
-        let nodeColor;
-        if (isDiff && collapsed) {
-          nodeColor = colorGreyscale(200, 0.66);
-        } else if (isDiff) {
-          const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
-
-          nodeColor = colorBasedOnDiff(
-            leftRatio,
-            ff.getBarTotalLeft(level, j),
-            a
-          );
-
-          const leftPercent = ratioToPercent(leftRatio);
-          const rightPercent = ratioToPercent(rightRatio);
-
-          nodeColor = colorBasedOnDiffPercent(leftPercent, rightPercent, a);
-        } else if (collapsed) {
-          nodeColor = colorGreyscale(200, 0.66);
-        } else if (queryExists && nodeIsInQuery) {
-          nodeColor = HIGHLIGHT_NODE_COLOR;
-        } else if (queryExists && !nodeIsInQuery) {
-          nodeColor = colorGreyscale(200, 0.66);
-        } else {
-          nodeColor = colorBasedOnPackageName(
-            getPackageNameFromStackTrace(spyName, names[level[j + ff.jName]]),
-            a
-          );
-        }
-
-        this.ctx.fillStyle = nodeColor;
-        this.ctx.fill();
-
-        if (!collapsed && sw >= LABEL_THRESHOLD) {
-          const percent = formatPercent(ratio);
-          const shortName = names[level[j + ff.jName]];
-          const longName = `${shortName} (${percent}, ${this.formatter.format(
-            numBarTicks,
-            sampleRate
-          )})`;
-
-          const namePosX = Math.round(Math.max(x, 0));
-          const fitCalc = fitToCanvasRect({
-            mode: this.props.fitMode,
-            charSize: characterSize,
-            rectWidth: sw,
-            fullText: longName,
-            shortText: shortName,
-          });
-
-          this.ctx.save();
-          this.ctx.clip();
-          this.ctx.fillStyle = 'black';
-          // when showing the code, give it a space in the beginning
-          this.ctx.fillText(
-            fitCalc.text,
-            namePosX + fitCalc.marginLeft,
-            y + sh / 2 + 1
-          );
-          this.ctx.restore();
-        }
-      }
-    }
+      this.graphWidth /
+      this.props.flamebearer.numTicks /
+      (this.rangeMax - this.rangeMin);
   };
 
   // TODO(eh-am): need a better name
@@ -449,7 +234,7 @@ class FlameGraph extends React.Component {
         const percent = formatPercent(numBarTicks / this.state.numTicks);
 
         return {
-          format: 'single',
+          format,
           title,
           numBarTicks,
           percent,
@@ -460,12 +245,18 @@ class FlameGraph extends React.Component {
         const totalLeft = ff.getBarTotalLeft(level, j);
         const totalRight = ff.getBarTotalRght(level, j);
 
-        const { leftRatio, rightRatio } = this.getRatios(ff, level, j);
+        const { leftRatio, rightRatio } = getRatios(
+          format,
+          level,
+          j,
+          totalLeft,
+          totalRight
+        );
         const leftPercent = ratioToPercent(leftRatio);
         const rightPercent = ratioToPercent(rightRatio);
 
         return {
-          format: 'double',
+          format,
           left: totalLeft,
           right: totalRight,
           title,
@@ -491,7 +282,7 @@ class FlameGraph extends React.Component {
 
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
-      this.graphWidth
+      this.canvas.clientWidth
     );
 
     return {
@@ -502,7 +293,7 @@ class FlameGraph extends React.Component {
   };
 
   isWithinBounds = (x, y) => {
-    if (x < 0 || x > this.graphWidth) {
+    if (x < 0 || x > this.canvas.clientWidth) {
       return false;
     }
 
@@ -620,14 +411,15 @@ class FlameGraph extends React.Component {
             }}
           >
             <canvas
-              className="flamegraph-canvas"
               height="0"
               data-testid="flamegraph-canvas"
               data-appname={this.props.label}
+              className={`flamegraph-canvas ${styles.hover}`}
               ref={this.canvasRef}
               onClick={this.clickHandler}
               onBlur={() => {}}
             />
+
             <Highlight
               barHeight={PX_PER_LEVEL}
               canvasRef={this.canvasRef}
@@ -643,16 +435,18 @@ class FlameGraph extends React.Component {
           xyToMenuItems={this.xyToContextMenuItems}
         />
 
-        <Tooltip
-          format={this.props.format.format}
-          canvasRef={this.canvasRef}
-          xyToData={this.xyToTooltipData}
-          isWithinBounds={this.isWithinBounds}
-          graphWidth={this.graphWidth}
-          numTicks={this.state.numTicks}
-          sampleRate={this.state.sampleRate}
-          units={this.state.units}
-        />
+        {this.canvas && (
+          <Tooltip
+            format={this.props.format.format}
+            canvasRef={this.canvasRef}
+            xyToData={this.xyToTooltipData}
+            isWithinBounds={this.isWithinBounds}
+            graphWidth={this.canvas.clientWidth}
+            numTicks={this.state.numTicks}
+            sampleRate={this.state.sampleRate}
+            units={this.state.units}
+          />
+        )}
       </>
     );
   };
