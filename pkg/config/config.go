@@ -93,8 +93,8 @@ type Server struct {
 
 	// TODO(kolesnikovae): implement.
 	Retention       time.Duration         `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" mapstructure:"retention"`
-	RetentionSize   bytesize.ByteSize     `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" mapstructure:"retention"`
-	RetentionLevels map[int]time.Duration `mapstructure:"-"`
+	RetentionSize   bytesize.ByteSize     `def:"" desc:"" mapstructure:"retention-size"`
+	RetentionLevels map[int]time.Duration `def:"" desc:"" mapstructure:"-"`
 
 	// Deprecated fields. They can be set (for backwards compatibility) but have no effect
 	// TODO: we should print some warning messages when people try to use these

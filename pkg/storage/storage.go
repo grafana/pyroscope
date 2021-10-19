@@ -35,14 +35,20 @@ var (
 	badgerGCInterval  = 5 * time.Minute
 	cacheTTL          = 2 * time.Minute
 	writeBackInterval = time.Minute
-	retentionInterval = time.Minute
+	retentionInterval = 5 * time.Second // time.Minute
 	evictInterval     = 20 * time.Second
 )
 
 type Storage struct {
-	putMutex sync.Mutex
+	putMutex    sync.Mutex
+	maintenance sync.Mutex
 
-	config           *config.Server
+	config *config.Server
+
+	// TODO(kolesnikovae): don't use global logger.
+	// log    *logrus.Logger
+
+	// TODO(kolesnikovae): unused, to be removed.
 	localProfilesDir string
 
 	db           *badger.DB
@@ -83,8 +89,6 @@ func (s *Storage) newBadger(name string) (*badger.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.wg.Add(1)
-	go s.periodicTask(badgerGCInterval, s.badgerGCTask(db))
 	return db, nil
 }
 
@@ -161,10 +165,11 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 		return nil, err
 	}
 
-	s.wg.Add(3)
+	s.wg.Add(4)
 	go s.periodicTask(evictInterval, s.evictionTask(memTotal))
 	go s.periodicTask(writeBackInterval, s.writeBackTask)
 	go s.periodicTask(retentionInterval, s.retentionTask)
+	go s.periodicTask(badgerGCInterval, s.badgerGCTask)
 	return s, nil
 }
 
@@ -396,90 +401,6 @@ func (s *Storage) dimensionKeysByQuery(qry *flameql.Query) func() []dimension.Ke
 	return func() []dimension.Key { return s.exec(context.TODO(), qry) }
 }
 
-func (s *Storage) iterateOverAllSegments(cb func(*segment.Key, *segment.Segment) error) error {
-	// TODO: use badger iterator
-
-	nameKey := "__name__"
-
-	var dimensions []*dimension.Dimension
-	s.labels.GetValues(nameKey, func(v string) bool {
-		dmInt, ok := s.dimensions.Lookup(nameKey + ":" + v)
-		if !ok {
-			return true
-		}
-		dimensions = append(dimensions, dmInt.(*dimension.Dimension))
-		return true
-	})
-
-	for _, rawSk := range dimension.Union(dimensions...) {
-		sk, err := segment.ParseKey(string(rawSk))
-		if err != nil {
-			continue
-		}
-		stInt, ok := s.segments.Lookup(sk.SegmentKey())
-		if !ok {
-			continue
-		}
-		st := stInt.(*segment.Segment)
-		if err = cb(sk, st); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *Storage) Reclaim(ctx context.Context, rp *segment.RetentionPolicy) error {
-	// TODO:
-	//	 Retain data based on the volume capacity?
-	//	 Given:
-	//	   D - capacity in bytes need to be reclaimed.
-	//     S - total number of segments.
-	//     Ts - average tree size in bytes for given segment.
-	//   Thus, X = D/S/Ts trees to be removed per segment.
-	//
-	return s.iterateOverAllSegments(func(sk *segment.Key, st *segment.Segment) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if rp.IsPeriodBased() {
-			deletedRoot, err := st.DeleteDataBefore(rp, func(depth int, t time.Time) error {
-				if err := s.trees.Delete(sk.TreeKey(depth, t)); err != nil {
-					return err
-				}
-				// TODO: Count deleted trees R.
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-			if deletedRoot {
-				return s.deleteSegmentAndRelatedData(sk)
-			}
-		}
-		if rp.IsSizeBased() {
-			// TODO: Remove
-			//  X-R trees
-			//  corresponding segment nodes
-			//  cached entries
-		}
-		return nil
-	})
-}
-
-// TODO: remove
-
-func (s *Storage) DeleteDataBefore(t *segment.RetentionPolicy) error {
-	return s.iterateOverAllSegments(func(sk *segment.Key, st *segment.Segment) error {
-		deletedRoot, err := st.DeleteDataBefore(t, func(depth int, t time.Time) error {
-			return s.trees.Delete(sk.TreeKey(depth, t))
-		})
-		if err == nil && deletedRoot {
-			return s.deleteSegmentAndRelatedData(sk)
-		}
-		return err
-	})
-}
-
 type DeleteInput struct {
 	Key *segment.Key
 }
@@ -498,6 +419,7 @@ func (s *Storage) Delete(di *DeleteInput) error {
 		i++
 	}
 
+	// TODO(kolesnikovae): drop trees using DropPrefix.
 	for _, sk := range dimension.Intersection(dimensions...) {
 		skk, _ := segment.ParseKey(string(sk))
 		stInt, ok := s.segments.Lookup(skk.SegmentKey())

@@ -36,13 +36,13 @@ func GenerateTimeline(st, et time.Time) *Timeline {
 	}
 }
 
-func (tl *Timeline) PopulateTimeline(s *Segment, t *RetentionPolicy) {
+func (tl *Timeline) PopulateTimeline(s *Segment, r *RetentionPolicy) {
 	if s.root != nil {
-		s.root.populateTimeline(tl, t)
+		s.root.populateTimeline(tl, r)
 	}
 }
 
-func (sn streeNode) populateTimeline(tl *Timeline, t *RetentionPolicy) {
+func (sn streeNode) populateTimeline(tl *Timeline, r *RetentionPolicy) {
 	if sn.relationship(tl.st, tl.et) == outside {
 		return
 	}
@@ -50,23 +50,23 @@ func (sn streeNode) populateTimeline(tl *Timeline, t *RetentionPolicy) {
 	currentDuration := durations[sn.depth]
 	// TODO(kolesnikovae): use "watermarks" instead of thresholds as those may change.
 	var hasDataBefore bool
-	var levelThreshold time.Time
+	var levelRetentionPeriod time.Time
 	if sn.depth > 0 {
-		levelThreshold = t.levelThreshold(sn.depth - 1)
+		levelRetentionPeriod = r.levelRetentionPeriod(sn.depth - 1)
 	}
 
 	if len(sn.children) > 0 && currentDuration >= tl.durationDelta {
 		for i, v := range sn.children {
 			if v != nil {
-				v.populateTimeline(tl, t)
+				v.populateTimeline(tl, r)
 				hasDataBefore = true
 				continue
 			}
-			if levelThreshold.IsZero() || sn.isBefore(t.absolute) || hasDataBefore {
+			if levelRetentionPeriod.IsZero() || sn.isBefore(r.absolute) || hasDataBefore {
 				continue
 			}
-			if c := sn.createSampledChild(i); c.isBefore(levelThreshold) {
-				c.populateTimeline(tl, t)
+			if c := sn.createSampledChild(i); c.isBefore(levelRetentionPeriod) {
+				c.populateTimeline(tl, r)
 			}
 		}
 		return

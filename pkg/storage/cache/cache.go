@@ -143,6 +143,10 @@ func (cache *Cache) Delete(key string) error {
 	})
 }
 
+func (cache *Cache) RemoveFromCache(key string) {
+	cache.lfu.Delete(key)
+}
+
 func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
 	v, err := cache.get(key) // find the key from cache first
 	if err != nil {

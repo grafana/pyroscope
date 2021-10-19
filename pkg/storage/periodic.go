@@ -1,7 +1,10 @@
 package storage
 
 import (
+	"context"
+	"fmt"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
@@ -25,20 +28,51 @@ func (s *Storage) periodicTask(interval time.Duration, cb func()) {
 			case <-s.stop:
 				return
 			default:
+				s.maintenance.Lock()
 				cb()
+				s.maintenance.Unlock()
 				timer.Reset(interval)
 			}
 		}
 	}
 }
 
-func (*Storage) badgerGCTask(db *badger.DB) func() {
-	return func() {
-		logrus.Debug("starting badger garbage collection")
-		for {
-			if err := db.RunValueLogGC(0.7); err != nil {
-				return
-			}
+func (s *Storage) badgerGCTask() {
+	databases := []*badger.DB{
+		s.dbTrees,
+		s.dbDicts,
+		s.dbDimensions,
+		s.dbSegments,
+		s.db,
+	}
+	var wg sync.WaitGroup
+	for _, db := range databases {
+		db := db
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			runBadgerGC(logrus.New(), db)
+		}()
+	}
+	wg.Wait()
+}
+
+func runBadgerGC(logger *logrus.Logger, db *badger.DB) {
+	fmt.Println("> starting GC")
+	lsm, vlog := db.Size()
+	fmt.Println(">>> before", lsm, vlog)
+	defer func() {
+		lsm, vlog = db.Size()
+		fmt.Println(">>> after", lsm, vlog)
+	}()
+	if err := db.Flatten(runtime.NumCPU()); err != nil {
+		logger.WithError(err).Error("failed to flatten database")
+	}
+
+	logger.Debug("starting badger garbage collection")
+	for {
+		if err := db.RunValueLogGC(0.5); err != nil {
+			return
 		}
 	}
 }
@@ -53,22 +87,24 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		s.evictionsTotalBytes.Set(float64(memTotal))
 
 		percent := s.config.CacheEvictVolume
-		if used > s.config.CacheEvictThreshold {
-			func() {
-				timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
-					logrus.Debugf("eviction task took %f seconds\n", v)
-					s.evictionsTimer.Observe(v)
-				}))
-				defer timer.ObserveDuration()
-				s.trees.Evict(percent)
-				// Do not evict those as it will cause even more allocations
-				// to serialize and then load them back again.
-				// s.dimensions.Evict(percent / 4)
-				// s.dicts.Evict(percent / 4)
-				// s.segments.Evict(percent / 2)
-				runtime.GC()
-			}()
+		if used < s.config.CacheEvictThreshold {
+			return
 		}
+
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+			logrus.Debugf("eviction task took %f seconds\n", v)
+			s.evictionsTimer.Observe(v)
+		}))
+		// TODO(kolesnikovae): at eviction some trees are persisted,
+		//   in case of a crash, dictionaries may be corrupted.
+		s.trees.Evict(percent)
+		timer.ObserveDuration()
+		// Do not evict those as it will cause even more allocations
+		// to serialize and then load them back again.
+		// s.dimensions.Evict(percent / 4)
+		// s.dicts.Evict(percent / 4)
+		// s.segments.Evict(percent / 2)
+		runtime.GC()
 	}
 }
 
@@ -77,9 +113,7 @@ func (s *Storage) writeBackTask() {
 		logrus.Debugf("writeback task took %f seconds\n", v)
 		s.writeBackTimer.Observe(v)
 	}))
-
 	defer timer.ObserveDuration()
-
 	s.dimensions.WriteBack()
 	s.segments.WriteBack()
 	s.dicts.WriteBack()
@@ -87,13 +121,14 @@ func (s *Storage) writeBackTask() {
 }
 
 func (s *Storage) retentionTask() {
+	runBadgerGC(logrus.WithField("db", "trees").Logger, s.dbTrees)
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		logrus.Debugf("retention task %f seconds\n", v)
 		s.retentionTimer.Observe(v)
 	}))
 	defer timer.ObserveDuration()
-
-	if err := s.DeleteDataBefore(s.retentionPolicy()); err != nil {
+	if err := s.Reclaim(context.Background(), s.retentionPolicy()); err != nil {
 		logrus.WithError(err).Warn("retention task failed")
 	}
+	s.dbTrees.Sync()
 }

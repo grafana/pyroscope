@@ -351,6 +351,7 @@ var _ = Describe("storage package", func() {
 	})
 })
 
+/*
 var _ = Describe("DeleteDataBefore", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
@@ -408,3 +409,4 @@ var _ = Describe("DeleteDataBefore", func() {
 		})
 	})
 })
+*/
