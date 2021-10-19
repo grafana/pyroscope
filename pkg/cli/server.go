@@ -15,8 +15,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
 
@@ -29,6 +31,7 @@ type serverService struct {
 	analyticsService *analytics.Service
 	selfProfiling    *agent.ProfileSession
 	debugReporter    *debug.Reporter
+	healthController *health.Controller
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -55,6 +58,12 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
+	diskPressure := health.DiskPressure{
+		Threshold: 512 * bytesize.MB,
+		Path:      c.StoragePath,
+	}
+
+	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config, prometheus.DefaultRegisterer)
 	svc.directUpstream = direct.New(svc.storage, metricsExporter)
 	svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
@@ -71,6 +80,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		Configuration:           svc.config,
 		Storage:                 svc.storage,
 		MetricsExporter:         metricsExporter,
+		Notifier:                svc.healthController,
 		Logger:                  svc.logger,
 		MetricsRegisterer:       prometheus.DefaultRegisterer,
 		ExportedMetricsRegistry: exportedMetricsRegistry,
@@ -101,6 +111,7 @@ func (svc *serverService) Start() error {
 		go svc.analyticsService.Start()
 	}
 
+	svc.healthController.Start()
 	svc.directUpstream.Start()
 	if err := svc.selfProfiling.Start(); err != nil {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
@@ -134,6 +145,7 @@ func (svc *serverService) Stop() {
 func (svc *serverService) stop() {
 	svc.controller.Drain()
 	svc.debugReporter.Stop()
+	svc.healthController.Stop()
 	if svc.analyticsService != nil {
 		svc.analyticsService.Stop()
 	}

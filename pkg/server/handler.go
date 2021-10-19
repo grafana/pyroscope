@@ -270,14 +270,9 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 		"LatestVersionInfo": updates.LatestVersionJSON(),
 		"ExtraMetadata":     extraMetadataStr,
 		"BaseURL":           ctrl.config.BaseURL,
-		"NotificationText":  ctrl.NotificationText(),
+		"NotificationText":  ctrl.notifier.NotificationText(),
 		"IsAuthRequired":    strconv.FormatBool(ctrl.isAuthRequired()),
 	})
-}
-
-func (*Controller) NotificationText() string {
-	// TODO: implement backend support for alert text
-	return ""
 }
 
 func mustExecute(t *template.Template, w io.Writer, v interface{}) {

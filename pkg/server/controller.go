@@ -46,6 +46,7 @@ type Controller struct {
 	storage    *storage.Storage
 	log        *logrus.Logger
 	httpServer *http.Server
+	notifier   Notifier
 	metricsMdw middleware.Middleware
 	dir        http.FileSystem
 
@@ -66,6 +67,7 @@ type Config struct {
 	Configuration *config.Server
 	*logrus.Logger
 	*storage.Storage
+	Notifier
 
 	// The registerer is used for exposing server metrics.
 	MetricsRegisterer prometheus.Registerer
@@ -75,12 +77,20 @@ type Config struct {
 	storage.MetricsExporter
 }
 
+type Notifier interface {
+	// NotificationText returns message that will be displayed to user
+	// on index page load. The message should point user to a critical problem.
+	// TODO(kolesnikovae): we should poll for notifications (or subscribe).
+	NotificationText() string
+}
+
 func New(c Config) (*Controller, error) {
 	ctrl := Controller{
 		config:   c.Configuration,
 		log:      c.Logger,
 		storage:  c.Storage,
 		exporter: c.MetricsExporter,
+		notifier: c.Notifier,
 		stats:    make(map[string]int),
 		appStats: mustNewHLL(),
 

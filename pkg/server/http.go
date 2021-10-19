@@ -14,11 +14,6 @@ func (ctrl *Controller) addRoutes(mux *http.ServeMux, routes []route,
 	}
 }
 
-// the metrics middleware needs to be explicit passed
-// since it requires access to the pattern string
-// otherwise it would infer route from the url, which would explode the cardinality
-type metricsMiddleware func(name string) func(http.HandlerFunc) http.HandlerFunc
-
 func chain(f http.HandlerFunc, middleware ...func(http.HandlerFunc) http.HandlerFunc) http.HandlerFunc {
 	if len(middleware) == 0 {
 		return f
