@@ -61,6 +61,23 @@ describe('Flamegraph', () => {
       });
     });
 
+    it('maps correctly even when zoomed in', () => {
+      // third row, last item (main.slowFunction)
+      expect(flame.xyToBar(canvas.width, BAR_HEIGHT * 3)).toMatchObject({
+        i: 2,
+        j: 8,
+      });
+      // zoom on that item
+      flame.zoom(2, 8);
+
+      // now that same item should be available under 0,0
+      // the 20px there is due to the calculations being messed up when it's right on the border
+      expect(flame.xyToBar(0 + 20, BAR_HEIGHT * 3)).toMatchObject({
+        i: 2,
+        j: 8,
+      });
+    });
+
     // TODO tests for focused item
   });
 });

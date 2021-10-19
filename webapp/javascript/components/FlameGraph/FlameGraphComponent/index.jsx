@@ -163,8 +163,11 @@ class FlameGraph extends React.Component {
     const i = Math.floor(computedY / PX_PER_LEVEL) + this.topLevel;
     if (i >= 0 && i < this.state.levels.length) {
       const j = this.binarySearchLevel(x, this.state.levels[i], this.tickToX);
+
+      console.log({ i, j });
       return { i, j };
     }
+    console.log({ i: 0, j: 0 });
     return { i: 0, j: 0 };
   };
 
@@ -345,6 +348,8 @@ class FlameGraph extends React.Component {
   };
 
   updateZoom(i, j) {
+    console.log('i amzooming in on', i, j);
+
     const ff = this.props.format;
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
       this.selectedLevel = i;
@@ -355,6 +360,11 @@ class FlameGraph extends React.Component {
         (ff.getBarOffset(this.state.levels[i], j) +
           ff.getBarTotal(this.state.levels[i], j)) /
         this.state.numTicks;
+
+      console.log('selectedlevel', this.selectedLevel);
+      console.log('topLevel', this.topLevel);
+      console.log('rangeMin', this.rangeMin);
+      console.log('rangeMax', this.rangeMax);
     } else {
       this.selectedLevel = 0;
       this.topLevel = 0;
@@ -371,11 +381,19 @@ class FlameGraph extends React.Component {
 
     let i = 0;
     let j = level.length - ff.jStep;
+    console.log('inbinarysearch', { i, j });
     while (i <= j) {
       const m = ff.jStep * ((i / ff.jStep + j / ff.jStep) >> 1);
       const x0 = tickToX(ff.getBarOffset(level, m));
       const x1 = tickToX(ff.getBarOffset(level, m) + ff.getBarTotal(level, m));
+      console.log({ m, x0, x1 });
+
       if (x0 <= x && x1 >= x) {
+        console.log('returning early');
+        console.log({
+          menos: x1 - x0,
+          COLLAPSE_THRESHOLD,
+        });
         return x1 - x0 > COLLAPSE_THRESHOLD ? m : -1;
       }
       if (x0 > x) {
@@ -383,6 +401,7 @@ class FlameGraph extends React.Component {
       } else {
         i = m + ff.jStep;
       }
+      console.log('inbinarysearch', { i, j });
     }
     return -1;
   }

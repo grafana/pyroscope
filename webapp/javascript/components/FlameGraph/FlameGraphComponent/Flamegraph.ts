@@ -111,6 +111,7 @@ export default class Flamegraph {
   }
 
   // binary search of a block in a stack level
+  // TODO(eh-am): calculations seem wrong when x is 0
   private binarySearchLevel(x: number, level: number[]) {
     const { ff } = this;
 
@@ -123,6 +124,7 @@ export default class Flamegraph {
       const x1 = this.tickToX(
         ff.getBarOffset(level, m) + ff.getBarTotal(level, m)
       );
+
       if (x0 <= x && x1 >= x) {
         return x1 - x0 > COLLAPSE_THRESHOLD ? m : -1;
       }
@@ -141,8 +143,10 @@ export default class Flamegraph {
     const computedY = this.isFocused() ? y - BAR_HEIGHT : y;
 
     const i = Math.floor(computedY / PX_PER_LEVEL) + this.topLevel;
+
     if (i >= 0 && i < this.flamebearer.levels.length) {
       const j = this.binarySearchLevel(x, this.flamebearer.levels[i]);
+
       return { i, j };
     }
 
@@ -154,5 +158,19 @@ export default class Flamegraph {
     this.topLevel = 0;
     this.rangeMin = 0;
     this.rangeMax = 1;
+  }
+
+  zoom(i: number, j: number) {
+    const { ff } = this;
+
+    this.selectedLevel = i;
+    this.topLevel = 0;
+    this.rangeMin =
+      ff.getBarOffset(this.flamebearer.levels[i], j) /
+      this.flamebearer.numTicks;
+    this.rangeMax =
+      (ff.getBarOffset(this.flamebearer.levels[i], j) +
+        ff.getBarTotal(this.flamebearer.levels[i], j)) /
+      this.flamebearer.numTicks;
   }
 }
