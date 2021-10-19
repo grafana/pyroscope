@@ -42,6 +42,7 @@ import { PX_PER_LEVEL, COLLAPSE_THRESHOLD, BAR_HEIGHT } from './constants';
 import { RenderCanvas } from './CanvasRenderer';
 import { getRatios } from './utils';
 import styles from './canvas.module.css';
+import Flamegraph from './Flamegraph';
 
 const unitsToFlamegraphTitle = {
   objects: 'amount of objects in RAM per function',
@@ -62,6 +63,7 @@ class FlameGraph extends React.Component {
       flamebearer: null,
     };
     this.canvasRef = React.createRef();
+    this.canvasRef2 = React.createRef();
     this.highlightRef = React.createRef();
     this.tooltipRef = React.createRef();
     this.currentJSONController = null;
@@ -93,6 +95,16 @@ class FlameGraph extends React.Component {
       );
     }
     this.updateData();
+
+    console.log({ flamebearer: this.props.flamebearer });
+    console.log('canvasRef2.current', this.canvasRef2);
+
+    this.flamegraph = new Flamegraph(
+      this.props.flamebearer,
+      this.canvasRef2.current,
+      'HEAD'
+    );
+    this.flamegraph.render();
   }
 
   componentDidUpdate(prevProps) {
@@ -196,29 +208,31 @@ class FlameGraph extends React.Component {
     getFormatter(this.state.numTicks, this.state.sampleRate, this.state.units);
 
   renderCanvas = () => {
-    RenderCanvas({
-      canvas: this.canvas,
-      viewType: this.props.flamebearer.format,
+    this.flamegraph.render();
 
-      numTicks: this.props.flamebearer.numTicks,
-      sampleRate: this.props.flamebearer.sampleRate,
-      names: this.props.flamebearer.names,
-      levels: this.props.flamebearer.levels,
-      topLevel: this.topLevel,
-      spyName: this.props.flamebearer.spyName,
-
-      rangeMin: this.rangeMin,
-      rangeMax: this.rangeMax,
-
-      units: this.state.units,
-      fitMode: this.props.fitMode,
-
-      selectedLevel: this.selectedLevel,
-
-      leftTicks: this.props.flamebearer.leftTicks,
-      rightTicks: this.props.flamebearer.rightTicks,
-    });
-
+    //    RenderCanvas({
+    //      canvas: this.canvas,
+    //      viewType: this.props.flamebearer.format,
+    //
+    //      numTicks: this.props.flamebearer.numTicks,
+    //      sampleRate: this.props.flamebearer.sampleRate,
+    //      names: this.props.flamebearer.names,
+    //      levels: this.props.flamebearer.levels,
+    //      topLevel: this.topLevel,
+    //      spyName: this.props.flamebearer.spyName,
+    //
+    //      rangeMin: this.rangeMin,
+    //      rangeMax: this.rangeMax,
+    //
+    //      units: this.state.units,
+    //      fitMode: this.props.fitMode,
+    //
+    //      selectedLevel: this.selectedLevel,
+    //
+    //      leftTicks: this.props.flamebearer.leftTicks,
+    //      rightTicks: this.props.flamebearer.rightTicks,
+    //    });
+    //
     this.graphWidth = this.canvas.width;
     this.pxPerTick =
       this.graphWidth /
@@ -278,24 +292,12 @@ class FlameGraph extends React.Component {
   };
 
   xyToHighlightData = (x, y) => {
-    const ff = this.props.format;
-    const { i, j } = this.xyToBar(x, y);
-
-    const level = this.state.levels[i];
-
-    const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
-    const posY =
-      (i - this.topLevel) * PX_PER_LEVEL + (this.isFocused() ? BAR_HEIGHT : 0);
-
-    const sw = Math.min(
-      this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
-      this.canvas.clientWidth
-    );
+    const bar = this.flamegraph.xyToBarPosition(x, y);
 
     return {
-      left: this.canvas.offsetLeft + posX,
-      top: this.canvas.offsetTop + posY,
-      width: sw,
+      left: this.flamegraph.getCanvas().offsetLeft + bar.x,
+      top: this.flamegraph.getCanvas().offsetTop + bar.y,
+      width: bar.width,
     };
   };
 
@@ -348,8 +350,6 @@ class FlameGraph extends React.Component {
   };
 
   updateZoom(i, j) {
-    console.log('i amzooming in on', i, j);
-
     const ff = this.props.format;
     if (!Number.isNaN(i) && !Number.isNaN(j)) {
       this.selectedLevel = i;
@@ -360,11 +360,6 @@ class FlameGraph extends React.Component {
         (ff.getBarOffset(this.state.levels[i], j) +
           ff.getBarTotal(this.state.levels[i], j)) /
         this.state.numTicks;
-
-      console.log('selectedlevel', this.selectedLevel);
-      console.log('topLevel', this.topLevel);
-      console.log('rangeMin', this.rangeMin);
-      console.log('rangeMax', this.rangeMax);
     } else {
       this.selectedLevel = 0;
       this.topLevel = 0;
@@ -381,7 +376,6 @@ class FlameGraph extends React.Component {
 
     let i = 0;
     let j = level.length - ff.jStep;
-    console.log('inbinarysearch', { i, j });
     while (i <= j) {
       const m = ff.jStep * ((i / ff.jStep + j / ff.jStep) >> 1);
       const x0 = tickToX(ff.getBarOffset(level, m));
@@ -389,11 +383,6 @@ class FlameGraph extends React.Component {
       console.log({ m, x0, x1 });
 
       if (x0 <= x && x1 >= x) {
-        console.log('returning early');
-        console.log({
-          menos: x1 - x0,
-          COLLAPSE_THRESHOLD,
-        });
         return x1 - x0 > COLLAPSE_THRESHOLD ? m : -1;
       }
       if (x0 > x) {
@@ -401,7 +390,6 @@ class FlameGraph extends React.Component {
       } else {
         i = m + ff.jStep;
       }
-      console.log('inbinarysearch', { i, j });
     }
     return -1;
   }
@@ -466,12 +454,23 @@ class FlameGraph extends React.Component {
               onBlur={() => {}}
             />
 
-            <Highlight
-              barHeight={PX_PER_LEVEL}
-              canvasRef={this.canvasRef}
-              xyToHighlightData={this.xyToHighlightData}
-              isWithinBounds={this.isWithinBounds}
+            <canvas
+              height="0"
+              data-testid="flamegraph-canvas"
+              data-appname={this.props.label}
+              className={`flamegraph-canvas ${styles.hover}`}
+              ref={this.canvasRef2}
+              onBlur={() => {}}
             />
+
+            {this.flamegraph && (
+              <Highlight
+                barHeight={PX_PER_LEVEL}
+                canvasRef={this.canvasRef2}
+                xyToHighlightData={this.xyToHighlightData}
+                isWithinBounds={this.flamegraph.isWithinBounds}
+              />
+            )}
           </div>
         </div>
 
@@ -481,7 +480,7 @@ class FlameGraph extends React.Component {
           xyToMenuItems={this.xyToContextMenuItems}
         />
 
-        {this.canvas && (
+        {this.canvasRef2.current && (
           <Tooltip
             format={this.props.format.format}
             canvasRef={this.canvasRef}

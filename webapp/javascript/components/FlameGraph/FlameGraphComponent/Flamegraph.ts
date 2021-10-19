@@ -184,7 +184,12 @@ export default class Flamegraph {
       this.flamebearer.numTicks;
   }
 
-  isWithinBounds(x: number, y: number) {
+  // TODO: should this be exposed?
+  getCanvas() {
+    return this.canvas;
+  }
+
+  isWithinBounds = (x: number, y: number) => {
     if (x < 0 || x > this.getCanvasWidth()) {
       return false;
     }
@@ -199,7 +204,7 @@ export default class Flamegraph {
     }
 
     return true;
-  }
+  };
 
   /*
    * Given x and y coordinates
@@ -207,7 +212,7 @@ export default class Flamegraph {
    *
    * This can be used for highlighting
    */
-  xyToBarPosition(x: number, y: number) {
+  xyToBarPosition = (x: number, y: number) => {
     if (!this.isWithinBounds(x, y)) {
       throw new Error(`Value out of bounds. Can't get bar position`);
     }
@@ -220,6 +225,13 @@ export default class Flamegraph {
     const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
     const posY =
       (i - this.topLevel) * PX_PER_LEVEL + (this.isFocused() ? BAR_HEIGHT : 0);
+    console.log({
+      i,
+      topLevel: this.topLevel,
+      PX_PER_LEVEL,
+      isFocused: this.isFocused(),
+      BAR_HEIGHT,
+    });
 
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
@@ -231,5 +243,5 @@ export default class Flamegraph {
       y: posY,
       width: sw,
     };
-  }
+  };
 }
