@@ -75,15 +75,15 @@ func (s *PySpy) Stop() error {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *PySpy) Snapshot(cb func([]byte, uint64, error)) {
+func (s *PySpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 	r := C.pyspy_snapshot(C.int(s.pid), s.dataPtr, C.int(bufferLength), s.errorPtr, C.int(bufferLength))
 	if r < 0 {
-		cb(nil, 0, errors.New(string(s.errorBuf[:-r])))
+		cb(nil, nil, 0, errors.New(string(s.errorBuf[:-r])))
 	} else {
 		arr := bytes.Split(s.dataBuf[:r], []byte("\n;"))
 		for _, s := range arr {
 			if len(s) > 0 {
-				cb(s, 1, nil)
+				cb(nil, s, 1, nil)
 			}
 		}
 	}
