@@ -143,8 +143,16 @@ func (cache *Cache) Delete(key string) error {
 	})
 }
 
-func (cache *Cache) RemoveFromCache(key string) {
+func (cache *Cache) Discard(key string) {
 	cache.lfu.Delete(key)
+}
+
+func (cache *Cache) DiscardBatch(keys []string) {
+	cache.lfu.DeleteBatch(keys)
+}
+
+func (cache *Cache) DiscardPrefix(prefix string) {
+	cache.lfu.DeletePrefix(prefix)
 }
 
 func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
