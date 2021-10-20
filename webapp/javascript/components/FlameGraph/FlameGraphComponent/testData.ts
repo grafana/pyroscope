@@ -1,3 +1,5 @@
+import { Units } from '@utils/format';
+
 const TestData = {
   ComplexTree: {
     names: [
@@ -376,8 +378,8 @@ const TestData = {
     maxSelf: 604,
     spyName: 'gospy',
     sampleRate: 100,
-    units: 'samples',
-    format: 'double',
+    units: Units.Samples,
+    format: 'double' as const,
     leftTicks: 991,
     rightTicks: 987,
   },

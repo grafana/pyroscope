@@ -1,7 +1,8 @@
 import { createFF } from '@utils/flamebearer';
-import { Units } from '@utils/format';
+import { Units, ratioToPercent, formatPercent } from '@utils/format';
 import { RenderCanvas } from './CanvasRenderer';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
+import { getRatios } from './utils';
 
 /* eslint-disable no-useless-constructor */
 
@@ -43,6 +44,7 @@ export default class Flamegraph {
     fitMode: 'HEAD' | 'TAIL'
   ) {
     this.ff = createFF(flamebearer.format);
+    console.log({ ff: this.ff });
 
     this.fitMode = fitMode;
 
@@ -244,4 +246,70 @@ export default class Flamegraph {
       width: sw,
     };
   };
+
+  /*
+   * Given x and y coordinates
+   * return the data needed by the tooltip
+   */
+  xyToTooltipData = (format: 'single' | 'double', x: number, y: number) => {
+    const { ff } = this;
+    const { i, j } = this.xyToBar(x, y);
+
+    const level = this.flamebearer.levels[i];
+    const title = this.flamebearer.names[level[j + ff.jName]];
+
+    switch (format) {
+      case 'single': {
+        const numBarTicks = ff.getBarTotal(level, j);
+        const percent = formatPercent(numBarTicks / this.flamebearer.numTicks);
+
+        return {
+          format,
+          title,
+          numBarTicks,
+          percent,
+        };
+      }
+
+      case 'double': {
+        const totalLeft = ff.getBarTotalLeft(level, j);
+        const totalRight = ff.getBarTotalRght(level, j);
+
+        console.log({ j, i, totalLeft, totalRight });
+
+        const { leftRatio, rightRatio } = getRatios(
+          format,
+          level,
+          j,
+          totalLeft,
+          totalRight
+        );
+        const leftPercent = ratioToPercent(leftRatio);
+        const rightPercent = ratioToPercent(rightRatio);
+
+        return {
+          format,
+          left: totalLeft,
+          right: totalRight,
+          title,
+          sampleRate: this.flamebearer.sampleRate,
+          leftPercent,
+          rightPercent,
+        };
+      }
+
+      default:
+        throw new Error(`Wrong format ${format}`);
+    }
+  };
+
+  barToTitle(i: number, j: number) {
+    const { ff } = this;
+
+    const level = this.flamebearer.levels[i];
+    console.log({ level, j, jName: ff.jName });
+    const title = this.flamebearer.names[level[j + ff.jName]];
+    //
+    return { title };
+  }
 }

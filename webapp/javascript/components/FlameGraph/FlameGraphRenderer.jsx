@@ -216,6 +216,7 @@ class FlameGraphRenderer extends React.Component {
         flamebearer.leftTicks = leftTicks;
         flamebearer.rightTicks = rightTicks;
 
+        console.log('flamebearer', JSON.stringify(flamebearer));
         this.setState({
           flamebearer,
         });

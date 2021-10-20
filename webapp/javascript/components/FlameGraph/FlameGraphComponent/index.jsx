@@ -29,6 +29,7 @@ THIS SOFTWARE.
 import React from 'react';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
+import { createFF } from '@utils/flamebearer';
 import {
   getFormatter,
   ratioToPercent,
@@ -163,7 +164,7 @@ class FlameGraph extends React.Component {
   };
 
   reset = () => {
-    this.updateZoom(0, 0);
+    //    this.updateZoom(0, 0);
     this.renderCanvas();
   };
 
@@ -245,11 +246,11 @@ class FlameGraph extends React.Component {
 
   // TODO(eh-am): need a better name
   xyToTooltipData = (format, x, y) => {
-    const ff = this.props.format;
-    const { i, j } = this.xyToBar(x, y);
+    const ff = createFF(format);
+    const { i, j } = this.flamegraph.xyToBar(x, y);
 
-    const level = this.state.levels[i];
-    const title = this.state.names[level[j + ff.jName]];
+    const level = this.flamebearer.levels[i];
+    const title = this.flamebearer.names[level[j + ff.jName]];
 
     switch (format) {
       case 'single': {
@@ -352,26 +353,26 @@ class FlameGraph extends React.Component {
     ];
   };
 
-  updateZoom(i, j) {
-    const ff = this.props.format;
-    if (!Number.isNaN(i) && !Number.isNaN(j)) {
-      this.selectedLevel = i;
-      this.topLevel = 0;
-      this.rangeMin =
-        ff.getBarOffset(this.state.levels[i], j) / this.state.numTicks;
-      this.rangeMax =
-        (ff.getBarOffset(this.state.levels[i], j) +
-          ff.getBarTotal(this.state.levels[i], j)) /
-        this.state.numTicks;
-    } else {
-      this.selectedLevel = 0;
-      this.topLevel = 0;
-      this.rangeMin = 0;
-      this.rangeMax = 1;
-    }
-
-    this.props.onZoom(this.selectedLevel);
-  }
+  //  updateZoom(i, j) {
+  //    const ff = this.props.format;
+  //    if (!Number.isNaN(i) && !Number.isNaN(j)) {
+  //      this.selectedLevel = i;
+  //      this.topLevel = 0;
+  //      this.rangeMin =
+  //        ff.getBarOffset(this.state.levels[i], j) / this.state.numTicks;
+  //      this.rangeMax =
+  //        (ff.getBarOffset(this.state.levels[i], j) +
+  //          ff.getBarTotal(this.state.levels[i], j)) /
+  //        this.state.numTicks;
+  //    } else {
+  //      this.selectedLevel = 0;
+  //      this.topLevel = 0;
+  //      this.rangeMin = 0;
+  //      this.rangeMax = 1;
+  //    }
+  //
+  //    this.props.onZoom(this.selectedLevel);
+  // }
 
   // binary search of a block in a stack level
   binarySearchLevel(x, level, tickToX) {
