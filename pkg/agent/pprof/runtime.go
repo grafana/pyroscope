@@ -4,30 +4,23 @@
 
 package pprof
 
-import (
-	"runtime/pprof"
-	"unsafe"
-)
+import "unsafe"
 
 //go:linkname runtime_getProfLabel runtime/pprof.runtime_getProfLabel
 func runtime_getProfLabel() unsafe.Pointer
 
+//go:linkname runtime_setProfLabel runtime/pprof.runtime_setProfLabel
+func runtime_setProfLabel(unsafe.Pointer)
+
 // GetGoroutineLabels retrieves labels associated with the running goroutine.
 // The original labels order is not preserved.
-func GetGoroutineLabels() pprof.LabelSet {
-	var s pprof.LabelSet
-	p := (*map[string]string)(runtime_getProfLabel())
-	if p == nil {
-		return s
+func GetGoroutineLabels() map[string]string {
+	if p := (*map[string]string)(runtime_getProfLabel()); p != nil {
+		return *p
 	}
-	m := *p
-	if len(m) == 0 {
-		return s
-	}
-	l := make([]string, 0, len(m)*2)
-	for k, v := range m {
-		l = append(l, k)
-		l = append(l, v)
-	}
-	return pprof.Labels(l...)
+	return nil
+}
+
+func SetGoroutineLabels(m map[string]string) {
+	runtime_setProfLabel(unsafe.Pointer(&m))
 }

@@ -15,165 +15,139 @@ var _ = Describe("WithLabels", func() {
 	RegisterFailHandler(Fail)
 
 	It("Propagates goroutine labels implicitly", func() {
-		c := make(chan struct{})
-		Expect(pprof.GetGoroutineLabels()).To(Equal(profiler.LabelSet{}))
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
 
-		profiler.WithLabels(profiler.Labels("foo", "bar"), func() {
-			expectLabels(profiler.Labels(
-				"foo", "bar",
-			))
+		profiler.WithLabels(profiler.Labels{"foo": "bar"}, func() {
+			expectLabels(profiler.Labels{
+				"foo": "bar",
+			})
 
-			profiler.WithLabels(profiler.Labels("baz", "qux"), func() {
+			profiler.WithLabels(profiler.Labels{"baz": "qux"}, func() {
+				c := make(chan struct{})
 				go func() {
-					expectLabels(profiler.Labels(
-						"foo", "bar",
-						"baz", "qux",
-					))
+					expectLabels(profiler.Labels{
+						"foo": "bar",
+						"baz": "qux",
+					})
 					close(c)
 				}()
 				<-c
 			})
 
-			expectLabels(profiler.Labels(
-				"foo", "bar",
-			))
+			expectLabels(profiler.Labels{
+				"foo": "bar",
+			})
 		})
 
-		Expect(pprof.GetGoroutineLabels()).To(Equal(profiler.LabelSet{}))
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
 	})
 })
 
-var _ = Describe("WithLabelsContext", func() {
+var _ = Describe("Interoperability with runtime/pprof", func() {
 	RegisterFailHandler(Fail)
 
-	It("Propagates goroutine labels explicitly via context", func() {
-		c := make(chan struct{})
+	It("pprof.Do does not propagate goroutine labels implicitly", func() {
 		ctx := context.Background()
-		Expect(pprof.GetGoroutineLabels()).To(Equal(profiler.LabelSet{}))
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
 
-		profiler.WithLabelsContext(ctx, profiler.Labels("foo", "bar"), func(ctx context.Context) {
-			expectLabels(profiler.Labels(
-				"foo", "bar",
-			))
-
-			profiler.WithLabelsContext(ctx, profiler.Labels("baz", "qux"), func(ctx context.Context) {
-				go func() {
-					expectLabels(profiler.Labels(
-						"foo", "bar",
-						"baz", "qux",
-					))
-					close(c)
-				}()
-				<-c
+		profiler.WithLabels(profiler.Labels{"foo": "bar"}, func() {
+			expectLabels(profiler.Labels{
+				"foo": "bar",
 			})
 
-			expectLabels(profiler.Labels(
-				"foo", "bar",
-			))
-		})
-
-		Expect(pprof.GetGoroutineLabels()).To(Equal(profiler.LabelSet{}))
-	})
-})
-
-var _ = Describe("WithLabelsContext is interchangeable with pprof.Do", func() {
-	RegisterFailHandler(Fail)
-
-	It("Preserves API compatibility", func() {
-		ctx := context.Background()
-		Expect(pprof.GetGoroutineLabels()).To(Equal(profiler.LabelSet{}))
-
-		profiler.WithLabelsContext(ctx, profiler.Labels("foo", "bar"), func(ctx context.Context) {
-			expectLabels(profiler.Labels(
-				"foo", "bar",
-			))
-
-			gopprof.Do(ctx, profiler.Labels("baz", "qux"), func(ctx context.Context) {
-				expectLabels(profiler.Labels(
-					"foo", "bar",
-					"baz", "qux",
-				))
-
-				gopprof.Do(ctx, gopprof.Labels("zoo", "ooz"), func(ctx context.Context) {
-					expectLabels(profiler.Labels(
-						"foo", "bar",
-						"baz", "qux",
-						"zoo", "ooz",
-					))
-				})
-
-				profiler.WithLabelsContext(ctx, gopprof.Labels("zoo", "ooz"), func(ctx context.Context) {
-					expectLabels(profiler.Labels(
-						"foo", "bar",
-						"baz", "qux",
-						"zoo", "ooz",
-					))
-				})
-
-				expectLabels(profiler.Labels(
-					"foo", "bar",
-					"baz", "qux",
-				))
-			})
-
-			expectLabels(profiler.Labels(
-				"foo", "bar",
-			))
-		})
-
-		Expect(pprof.GetGoroutineLabels()).To(Equal(profiler.LabelSet{}))
-	})
-})
-
-var _ = Describe("WithLabels should not be used with WithLabelsContext and/or pprof.Do", func() {
-	RegisterFailHandler(Fail)
-
-	It("Does not propagate goroutine labels", func() {
-		ctx := context.Background()
-		Expect(pprof.GetGoroutineLabels()).To(Equal(profiler.LabelSet{}))
-
-		profiler.WithLabels(profiler.Labels("foo", "bar"), func() {
-			expectLabels(profiler.Labels(
-				"foo", "bar",
-			))
-
-			// The ctx is empty meaning that WithLabelsContext/pprof.Do
+			// The ctx is empty meaning that Do/pprof.Do
 			// remove/replace the current label set.
-
-			gopprof.Do(ctx, profiler.Labels("baz", "qux"), func(ctx context.Context) {
-				expectLabels(profiler.Labels(
-					// "foo", "bar",
-					"baz", "qux",
-				))
+			gopprof.Do(ctx, gopprof.Labels("baz", "qux"), func(ctx context.Context) {
+				expectLabels(profiler.Labels{
+					// "foo": "bar",
+					"baz": "qux",
+				})
 			})
 
-			profiler.WithLabelsContext(ctx, gopprof.Labels("baz", "qux"), func(ctx context.Context) {
-				expectLabels(profiler.Labels(
-					// "foo", "bar",
-					"baz", "qux",
-				))
-			})
-
-			expectLabels(profiler.Labels(
-			// "foo", "bar",
-			))
+			Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
+			// It would contain foo=bar label.
 		})
 
-		Expect(pprof.GetGoroutineLabels()).To(Equal(profiler.LabelSet{}))
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
+	})
+
+	It("Labels propagate via Context", func() {
+		ctx := context.Background()
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
+
+		profiler.WithLabels(profiler.Labels{"foo": "bar"}, func() {
+			expectLabels(profiler.Labels{
+				"foo": "bar",
+			})
+
+			// The ctx is enriched with the current labels.
+			gopprof.Do(profiler.Context(ctx), gopprof.Labels("baz", "qux"), func(ctx context.Context) {
+				expectLabels(profiler.Labels{
+					"foo": "bar",
+					"baz": "qux",
+				})
+
+				profiler.WithLabels(profiler.Labels{"zoo": "ooz"}, func() {
+					c := make(chan struct{})
+					go func() {
+						expectLabels(profiler.Labels{
+							"foo": "bar",
+							"baz": "qux",
+							"zoo": "ooz",
+						})
+						close(c)
+					}()
+					<-c
+				})
+
+				expectLabels(profiler.Labels{
+					"foo": "bar",
+					"baz": "qux",
+				})
+			})
+
+			expectLabels(profiler.Labels{
+				"foo": "bar",
+			})
+		})
+
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
 	})
 })
 
-func expectLabels(labels profiler.LabelSet) {
-	Expect(labelsSlice(pprof.GetGoroutineLabels())).
-		To(ConsistOf(labelsSlice(labels)))
-}
+var _ = Describe("SetLabels", func() {
+	RegisterFailHandler(Fail)
 
-func labelsSlice(labels profiler.LabelSet) []string {
-	var s []string
-	ctx := gopprof.WithLabels(context.Background(), labels)
-	gopprof.ForLabels(ctx, func(k, v string) bool {
-		s = append(s, k+"="+v)
-		return true
+	It("Overrides goroutine labels implicitly", func() {
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
+
+		profiler.WithLabels(profiler.Labels{"foo": "bar"}, func() {
+			expectLabels(profiler.Labels{
+				"foo": "bar",
+			})
+
+			profiler.WithLabels(profiler.Labels{"baz": "qux"}, func() {
+				expectLabels(profiler.Labels{
+					"foo": "bar",
+					"baz": "qux",
+				})
+				profiler.SetLabels(profiler.Labels{
+					"zoo": "ooz",
+				})
+				expectLabels(profiler.Labels{
+					"zoo": "ooz",
+				})
+			})
+
+			expectLabels(profiler.Labels{
+				"foo": "bar",
+			})
+		})
+
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
 	})
-	return s
+})
+
+func expectLabels(labels map[string]string) {
+	Expect(pprof.GetGoroutineLabels()).To(Equal(labels))
 }

@@ -17,14 +17,16 @@ func work(n int) {
 	// revive:enable:empty-block
 }
 
-func fastFunction(ctx context.Context) {
-	profiler.WithLabelsContext(ctx, profiler.Labels("function", "fast"), func(context.Context) {
+func fastFunction() {
+	profiler.WithLabels(profiler.Labels{"function": "fast"}, func() {
 		work(20000000)
 	})
 }
 
-func slowFunction(ctx context.Context) {
-	// standard pprof.Do wrappers work as well
+func slowFunction() {
+	// Standard pprof.Do wrapper works as well. A context with
+	// the current labels can be retrieved via profiler.Context call:
+	ctx := profiler.Context(context.Background())
 	pprof.Do(ctx, pprof.Labels("function", "slow"), func(context.Context) {
 		work(80000000)
 	})
@@ -35,10 +37,10 @@ func main() {
 		ApplicationName: "simple.golang.app",
 		ServerAddress:   "http://localhost:4040", // this will run inside docker-compose, hence `pyroscope` for hostname
 	})
-	profiler.WithLabelsContext(context.Background(), profiler.Labels("foo", "bar"), func(ctx context.Context) {
+	profiler.WithLabels(profiler.Labels{"foo": "bar"}, func() {
 		for {
-			fastFunction(ctx)
-			slowFunction(ctx)
+			fastFunction()
+			slowFunction()
 		}
 	})
 }

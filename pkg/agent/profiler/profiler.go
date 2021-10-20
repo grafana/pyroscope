@@ -93,9 +93,22 @@ func (p *Profiler) Stop() error {
 	return nil
 }
 
-type LabelSet = pprof.LabelSet
+type Labels map[string]string
 
-func Labels(args ...string) LabelSet { return pprof.Labels(args...) }
+// SetLabels overrides goroutine labels.
+func SetLabels(labels Labels) { pyprof.SetGoroutineLabels(labels) }
+
+// Context returns a new context.Context with the goroutine labels added.
+// The context is intended for interoperability with pprof.Do call.
+func Context(ctx context.Context) context.Context {
+	gl := pyprof.GetGoroutineLabels()
+	pl := make([]string, 0, len(gl)*2)
+	for k, v := range gl {
+		pl = append(pl, k)
+		pl = append(pl, v)
+	}
+	return pprof.WithLabels(ctx, pprof.Labels(pl...))
+}
 
 // WithLabels calls f with the given labels added to the parent's label map.
 //
@@ -105,23 +118,16 @@ func Labels(args ...string) LabelSet { return pprof.Labels(args...) }
 //
 // The augmented label map will be set for the duration of the call to f
 // and restored once f returns.
-func WithLabels(labels LabelSet, f func()) {
-	ctx := pprof.WithLabels(context.Background(), pyprof.GetGoroutineLabels())
-	pprof.SetGoroutineLabels(ctx)
-	pprof.Do(ctx, labels, func(context.Context) {
-		f()
-	})
-}
-
-// WithLabelsContext calls f with a copy of the parent context with the
-// given labels added to the parent's label map.
-//
-// Goroutines spawned while executing f will inherit the augmented label-set.
-// Each key/value pair in labels is inserted into the label map in the order
-// provided, overriding any previous value for the same key.
-//
-// The augmented label map will be set for the duration of the call to f
-// and restored once f returns.
-func WithLabelsContext(ctx context.Context, labels LabelSet, f func(context.Context)) {
-	pprof.Do(ctx, labels, f)
+func WithLabels(labels Labels, f func()) {
+	m := pyprof.GetGoroutineLabels()
+	defer pyprof.SetGoroutineLabels(m)
+	c := make(Labels)
+	for k, v := range m {
+		c[k] = v
+	}
+	for k, v := range labels {
+		c[k] = v
+	}
+	pyprof.SetGoroutineLabels(c)
+	f()
 }
