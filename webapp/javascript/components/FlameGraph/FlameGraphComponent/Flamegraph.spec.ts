@@ -28,60 +28,59 @@ const flamebearerSingle = {
   units: Units.Samples,
   spyName: 'gospy',
 };
+
 const flamebearerDouble = {
   names: [
     'total',
+    'runtime/pprof.profileWriter',
+    'runtime.mcall',
+    'runtime.park_m',
+    'runtime.schedule',
+    'runtime.findrunnable',
+    'runtime.netpoll',
+    'runtime.epollwait',
     'runtime.main',
-    'main.main',
-    'main.becomesAdded',
-    'main.becomesSlower',
+    'main.slowFunction',
     'main.work',
-    'runtime.asyncPreempt',
-    'main.becomesFaster',
-    'github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote.(*Remote).handleJobs',
-    'github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote.(*Remote).safeUpload',
-    'net/http.(*Client).Do',
-    'net/http.(*Client).do',
-    'net/http.(*Client).send',
-    'net/http.send',
-    'net/http.(*Transport).RoundTrip',
-    'net/http.setupRewindBody',
-    'runtime.newobject',
-    'runtime.mallocgc',
-    'runtime.arenaIndex',
-    'github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).takeSnapshots',
-    'runtime.heapBitsSetType',
+    'fmt.Printf',
+    'fmt.Fprintf',
+    'os.(*File).write',
+    'syscall.Write',
+    'syscall.write',
+    'syscall.Syscall',
+    'runtime.exitsyscall',
+    'runtime.exitsyscallfast',
+    'runtime.wirep',
+    'main.fastFunction',
   ],
   levels: [
-    [0, 991, 0, 0, 987, 0, 0],
-    [0, 0, 0, 0, 1, 0, 19, 0, 0, 0, 1, 1, 0, 8, 0, 991, 0, 2, 985, 0, 1],
+    [0, 246, 0, 0, 986, 0, 0],
+    [0, 245, 0, 0, 985, 0, 8, 245, 1, 0, 985, 0, 0, 2, 246, 0, 0, 985, 1, 1, 1],
     [
-      0, 0, 0, 0, 1, 0, 16, 0, 0, 0, 1, 1, 0, 9, 0, 217, 0, 2, 229, 0, 3, 217,
-      165, 0, 231, 147, 0, 7, 382, 603, 1, 378, 604, 0, 4, 985, 6, 6, 982, 5, 4,
-      2,
+      0, 49, 0, 0, 181, 0, 20, 49, 196, 0, 181, 804, 0, 9, 245, 1, 0, 985, 0, 0,
+      3,
     ],
     [
-      0, 0, 0, 0, 1, 0, 17, 0, 0, 0, 1, 1, 0, 10, 0, 217, 217, 2, 229, 229, 5,
-      217, 165, 165, 231, 147, 147, 5, 383, 602, 601, 378, 604, 604, 5, 991, 0,
-      0, 986, 1, 1, 3,
+      0, 49, 49, 0, 181, 181, 10, 49, 0, 0, 181, 1, 0, 11, 49, 196, 196, 182,
+      803, 803, 10, 245, 1, 0, 985, 0, 0, 4,
     ],
-    [0, 0, 0, 0, 1, 1, 20, 0, 0, 0, 1, 1, 0, 11, 984, 1, 1, 982, 0, 0, 6],
-    [0, 0, 0, 1, 1, 0, 12],
-    [0, 0, 0, 1, 1, 0, 13],
-    [0, 0, 0, 1, 1, 0, 14],
-    [0, 0, 0, 1, 1, 0, 15],
-    [0, 0, 0, 1, 1, 0, 16],
-    [0, 0, 0, 1, 1, 0, 17],
-    [0, 0, 0, 1, 1, 1, 18],
+    [49, 0, 0, 181, 1, 0, 12, 245, 1, 0, 985, 0, 0, 5],
+    [49, 0, 0, 181, 1, 0, 13, 245, 1, 0, 985, 0, 0, 6],
+    [49, 0, 0, 181, 1, 0, 14, 245, 1, 1, 985, 0, 0, 7],
+    [49, 0, 0, 181, 1, 0, 15],
+    [49, 0, 0, 181, 1, 0, 16],
+    [49, 0, 0, 181, 1, 0, 17],
+    [49, 0, 0, 181, 1, 0, 18],
+    [49, 0, 0, 181, 1, 1, 19],
   ],
-  numTicks: 1978,
-  maxSelf: 604,
+  numTicks: 1232,
+  maxSelf: 803,
   spyName: 'gospy',
   sampleRate: 100,
   units: Units.Samples,
   format: 'double' as const,
-  leftTicks: 991,
-  rightTicks: 987,
+  leftTicks: 246,
+  rightTicks: 986,
 };
 
 describe('Flamegraph', () => {
@@ -101,7 +100,7 @@ describe('Flamegraph', () => {
     expect(RenderCanvas).toHaveBeenCalled();
   });
 
-  describe('xyToBar', () => {
+  describe('xyToBarData', () => {
     describe('single', () => {
       beforeEach(() => {
         canvas = document.createElement('canvas');
@@ -111,42 +110,74 @@ describe('Flamegraph', () => {
         flame = new Flamegraph(flamebearerSingle, canvas, 'HEAD');
       });
 
-      it('maps correcly', () => {
-        expect(flame.xyToBar(0, 0)).toMatchObject({ i: 0, j: 0 });
+      it('maps total correctly', () => {
+        expect(flame.xyToBarData(0, 0)).toStrictEqual({
+          name: 'total',
+          offset: 0,
+          self: 0,
+          total: 988,
+        });
+      });
 
-        // second row
-        expect(flame.xyToBar(0, BAR_HEIGHT * 2)).toMatchObject({ i: 1, j: 0 });
+      it('maps a full row correctly', () => {
+        expect(flame.xyToBarData(1, BAR_HEIGHT + 1)).toStrictEqual({
+          name: 'runtime.main',
+          offset: 0,
+          self: 0,
+          total: 988,
+        });
+      });
 
-        // third row
-        expect(flame.xyToBar(0, BAR_HEIGHT * 3)).toMatchObject({ i: 2, j: 0 });
+      it('maps a row with more items', () => {
+        expect(flame.xyToBarData(1, BAR_HEIGHT * 2 + 1)).toStrictEqual({
+          name: 'main.fastFunction',
+          offset: 0,
+          self: 0,
+          total: 214,
+        });
 
-        // third row, last item
-        expect(flame.xyToBar(canvas.width, BAR_HEIGHT * 3)).toMatchObject({
-          i: 2,
-          j: 8,
+        expect(
+          flame.xyToBarData(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1)
+        ).toStrictEqual({
+          name: 'main.slowFunction',
+          offset: 217,
+          self: 0,
+          total: 771,
         });
       });
 
       it('maps correctly even when zoomed in', () => {
         // third row, last item (main.slowFunction)
-        expect(flame.xyToBar(canvas.width, BAR_HEIGHT * 3)).toMatchObject({
-          i: 2,
-          j: 8,
+        expect(flame.xyToBarData(canvas.width, BAR_HEIGHT * 3)).toStrictEqual({
+          name: 'main.slowFunction',
+          offset: 217,
+          self: 0,
+          total: 771,
         });
+
+        // there's a different item under x=0
+        expect(flame.xyToBarData(1, BAR_HEIGHT * 3)).not.toMatchObject({
+          name: 'main.slowFunction',
+          offset: 217,
+          self: 0,
+          total: 771,
+        });
+
         // zoom on that item
         flame.zoom(2, 8);
 
-        // now that same item should be available under 0,0
-        // the 20px there is due to the calculations being messed up when it's right on the border
-        expect(flame.xyToBar(0 + 20, BAR_HEIGHT * 3)).toMatchObject({
-          i: 2,
-          j: 8,
+        // now that same item should be available on x=0
+        expect(flame.xyToBarData(1, BAR_HEIGHT * 3)).toMatchObject({
+          name: 'main.slowFunction',
+          offset: 217,
+          self: 0,
+          total: 771,
         });
       });
     });
 
-    describe.only('double', () => {
-      beforeEach(() => {
+    describe('double', () => {
+      beforeAll(() => {
         canvas = document.createElement('canvas');
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
@@ -155,14 +186,47 @@ describe('Flamegraph', () => {
       });
 
       it('maps total correctly', () => {
-        expect(flame.xyToBar(0, 0)).toMatchObject({ i: 0, j: 0 });
+        expect(flame.xyToBarData(0, 0)).toStrictEqual({
+          name: 'total',
+          totalLeft: 246,
+          totalRight: 986,
+          barTotal: 1232,
+          totalDiff: 740,
+        });
       });
 
-      // TODO
-      // figure out this
-      it('maps second row correctly', () => {
-        expect(flame.xyToBar(0, BAR_HEIGHT * 2)).toMatchObject({ i: 1, j: 0 });
+      it('maps a full row correctly', () => {
+        expect(flame.xyToBarData(1, BAR_HEIGHT + 1)).toStrictEqual({
+          name: 'runtime.main',
+          totalLeft: 245,
+          totalRight: 985,
+          barTotal: 1230,
+          totalDiff: 740,
+        });
       });
+
+      it('maps a row with more items', () => {
+        expect(flame.xyToBarData(1, BAR_HEIGHT * 2 + 1)).toStrictEqual({
+          name: 'main.fastFunction',
+          totalLeft: 49,
+          totalRight: 181,
+          barTotal: 230,
+          totalDiff: 132,
+        });
+
+        expect(
+          flame.xyToBarData(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1)
+        ).toStrictEqual({
+          name: 'main.slowFunction',
+          totalDiff: 608,
+          totalLeft: 196,
+          totalRight: 804,
+          barTotal: 1000,
+        });
+      });
+
+      // TODO:
+      // test when it's zoomed?
     });
 
     // TODO tests for focused item
@@ -265,98 +329,44 @@ describe('Flamegraph', () => {
   //      });
   //    });
   //
-  //    describe.only('double', () => {
+  //    describe('double', () => {
   //      beforeEach(() => {
-  //        //        flame = new Flamegraph({ ...data, format: 'double' }, canvas, 'HEAD');
-  //      });
+  //        canvas = document.createElement('canvas');
+  //        canvas.width = CANVAS_WIDTH;
+  //        canvas.height = CANVAS_HEIGHT;
   //
-  //      it('works with full row', () => {
-  //        const data = {
-  //          names: [
-  //            'total',
-  //            'runtime.main',
-  //            'main.main',
-  //            'main.becomesAdded',
-  //            'main.becomesSlower',
-  //            'main.work',
-  //            'runtime.asyncPreempt',
-  //            'main.becomesFaster',
-  //            'github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote.(*Remote).handleJobs',
-  //            'github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote.(*Remote).safeUpload',
-  //            'net/http.(*Client).Do',
-  //            'net/http.(*Client).do',
-  //            'net/http.(*Client).send',
-  //            'net/http.send',
-  //            'net/http.(*Transport).RoundTrip',
-  //            'net/http.setupRewindBody',
-  //            'runtime.newobject',
-  //            'runtime.mallocgc',
-  //            'runtime.arenaIndex',
-  //            'github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).takeSnapshots',
-  //            'runtime.heapBitsSetType',
-  //          ],
-  //          levels: [
-  //            [0, 991, 0, 0, 987, 0, 0],
-  //            [
-  //              0, 0, 0, 0, 1, 0, 19, 0, 0, 0, 1, 1, 0, 8, 0, 991, 0, 2, 985, 0,
-  //              1,
-  //            ],
-  //            [
-  //              0, 0, 0, 0, 1, 0, 16, 0, 0, 0, 1, 1, 0, 9, 0, 217, 0, 2, 229, 0,
-  //              3, 217, 165, 0, 231, 147, 0, 7, 382, 603, 1, 378, 604, 0, 4, 985,
-  //              6, 6, 982, 5, 4, 2,
-  //            ],
-  //            [
-  //              0, 0, 0, 0, 1, 0, 17, 0, 0, 0, 1, 1, 0, 10, 0, 217, 217, 2, 229,
-  //              229, 5, 217, 165, 165, 231, 147, 147, 5, 383, 602, 601, 378, 604,
-  //              604, 5, 991, 0, 0, 986, 1, 1, 3,
-  //            ],
-  //            [
-  //              0, 0, 0, 0, 1, 1, 20, 0, 0, 0, 1, 1, 0, 11, 984, 1, 1, 982, 0, 0,
-  //              6,
-  //            ],
-  //            [0, 0, 0, 1, 1, 0, 12],
-  //            [0, 0, 0, 1, 1, 0, 13],
-  //            [0, 0, 0, 1, 1, 0, 14],
-  //            [0, 0, 0, 1, 1, 0, 15],
-  //            [0, 0, 0, 1, 1, 0, 16],
-  //            [0, 0, 0, 1, 1, 0, 17],
-  //            [0, 0, 0, 1, 1, 1, 18],
-  //          ],
-  //          numTicks: 1978,
-  //          maxSelf: 604,
-  //          spyName: 'gospy',
-  //          sampleRate: 100,
-  //          units: Units.Samples,
-  //          format: 'double',
-  //          leftTicks: 991,
-  //          rightTicks: 987,
-  //        };
-  //        console.log('creating double');
-  //        const flame2 = new Flamegraph(
-  //          { ...data, format: 'double' },
+  //        flame = new Flamegraph(
+  //          { ...flamebearerDouble, format: 'double' },
   //          canvas,
   //          'HEAD'
   //        );
-  //
-  //        const { i, j } = flame2.xyToBar(0, BAR_HEIGHT * 2);
-  //        console.log({ i, j });
-  //        //        expect(flame2.barToTitle(i, j)).toBe(true);
-  //
-  //        //        expect(
-  //        //          flame2.xyToTooltipData('double', 0, BAR_HEIGHT * 4)
-  //        //        ).toMatchObject({
-  //        //          format: 'double',
-  //        //          title: 'bla',
-  //        //          numBarTicks: 988,
-  //        //          percent: '100%',
-  //        //          left: '',
-  //        //          right: '',
-  //        //          leftPercent: '',
-  //        //          rightPercent: '',
-  //        //        });
   //      });
   //
+  //      it('works with full row', () => {
+  //        expect(
+  //          flame.xyToTooltipData('double', 1, BAR_HEIGHT + 1)
+  //        ).toMatchObject({
+  //          format: 'double',
+  //          title: 'runtime.main',
+  //          left: 991,
+  //          right: 985,
+  //          leftPercent: 100,
+  //          rightPercent: 100,
+  //        });
+  //      });
+  //
+  //      it('works with divided row', () => {
+  //        expect(
+  //          flame.xyToTooltipData('double', CANVAS_WIDTH - 2, BAR_HEIGHT * 2 + 1)
+  //        ).toMatchObject({
+  //          format: 'double',
+  //          title: 'runtime.main',
+  //          left: 991,
+  //          right: 985,
+  //          leftPercent: 100,
+  //          rightPercent: 100,
+  //        });
+  //      });
   //      // TODO
   //      //        expect(() => flame.xyToTooltipData('single', 0, 0)).toThrow();
   //      //      });

@@ -44,7 +44,7 @@ export default class Flamegraph {
     fitMode: 'HEAD' | 'TAIL'
   ) {
     this.ff = createFF(flamebearer.format);
-    console.log({ ff: this.ff });
+    //    console.log({ ff: this.ff });
 
     this.fitMode = fitMode;
 
@@ -119,12 +119,14 @@ export default class Flamegraph {
   }
 
   // binary search of a block in a stack level
-  // TODO(eh-am): calculations seem wrong when x is 0
+  // TODO(eh-am): calculations seem wrong when x is 0 and y != 0,
+  // also when on the border
   private binarySearchLevel(x: number, level: number[]) {
     const { ff } = this;
 
     let i = 0;
     let j = level.length - ff.jStep;
+
     while (i <= j) {
       /* eslint-disable-next-line no-bitwise */
       const m = ff.jStep * ((i / ff.jStep + j / ff.jStep) >> 1);
@@ -227,14 +229,14 @@ export default class Flamegraph {
     const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
     const posY =
       (i - this.topLevel) * PX_PER_LEVEL + (this.isFocused() ? BAR_HEIGHT : 0);
-    console.log({
-      i,
-      topLevel: this.topLevel,
-      PX_PER_LEVEL,
-      isFocused: this.isFocused(),
-      BAR_HEIGHT,
-    });
-
+    //    console.log({
+    //      i,
+    //      topLevel: this.topLevel,
+    //      PX_PER_LEVEL,
+    //      isFocused: this.isFocused(),
+    //      BAR_HEIGHT,
+    //    });
+    //
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
       this.getCanvasWidth()
@@ -275,8 +277,6 @@ export default class Flamegraph {
         const totalLeft = ff.getBarTotalLeft(level, j);
         const totalRight = ff.getBarTotalRght(level, j);
 
-        console.log({ j, i, totalLeft, totalRight });
-
         const { leftRatio, rightRatio } = getRatios(
           format,
           level,
@@ -307,9 +307,48 @@ export default class Flamegraph {
     const { ff } = this;
 
     const level = this.flamebearer.levels[i];
-    console.log({ level, j, jName: ff.jName });
     const title = this.flamebearer.names[level[j + ff.jName]];
-    //
-    return { title };
+
+    return title;
+  }
+
+  // TODO rename this
+  // this should be only interface
+  xyToBarData(x: number, y: number) {
+    if (!this.isWithinBounds(x, y)) {
+      throw new Error(`Value out of bounds. Can't get bar position`);
+    }
+
+    const { i, j } = this.xyToBar(x, y);
+    const level = this.flamebearer.levels[i];
+
+    const { ff } = this;
+
+    switch (this.flamebearer.format) {
+      case 'single': {
+        return {
+          name: this.flamebearer.names[ff.getBarName(level, j)],
+          self: ff.getBarSelf(level, j),
+          offset: ff.getBarOffset(level, j),
+          total: ff.getBarTotal(level, j),
+        };
+      }
+      case 'double': {
+        // TODO:
+        // return more stuff
+        //        console.log('ff', ff);
+        return {
+          barTotal: ff.getBarTotal(level, j),
+          totalLeft: ff.getBarTotalLeft(level, j),
+          totalRight: ff.getBarTotalRght(level, j),
+          totalDiff: ff.getBarTotalDiff(level, j),
+          name: this.flamebearer.names[ff.getBarName(level, j)],
+        };
+      }
+
+      default: {
+        throw new Error(`Unsupported type`);
+      }
+    }
   }
 }
