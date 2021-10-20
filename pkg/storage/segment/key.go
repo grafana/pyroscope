@@ -107,12 +107,12 @@ func (k *Key) SegmentKey() string {
 	return k.Normalized()
 }
 
-func segmentKeyToTreeKey(k string, depth int, t time.Time) string {
+func TreeKey(k string, depth int, t time.Time) string {
 	return k + ":" + strconv.Itoa(depth) + ":" + strconv.Itoa(int(t.Unix()))
 }
 
 func (k *Key) TreeKey(depth int, t time.Time) string {
-	return segmentKeyToTreeKey(k.Normalized(), depth, t)
+	return TreeKey(k.Normalized(), depth, t)
 }
 
 func (k *Key) DictKey() string {
@@ -126,12 +126,6 @@ func (k *Key) DictKey() string {
 // has been used to reference a dictionary (trie).
 func FromTreeToDictKey(k string) string {
 	return k[0:strings.IndexAny(k, "{")]
-}
-
-func FromTreeToMainKey(k string) string {
-	i := strings.LastIndex(k, ":")
-	i = strings.LastIndex(k[:i-1], ":")
-	return k[:i]
 }
 
 func (k *Key) Normalized() string {

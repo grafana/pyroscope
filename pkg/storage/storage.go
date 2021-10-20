@@ -186,6 +186,7 @@ type PutInput struct {
 
 var (
 	OutOfSpaceThreshold = 512 * bytesize.MB
+	maxTime             = time.Unix(1<<62, 999999999)
 	zeroTime            time.Time
 )
 
@@ -402,64 +403,48 @@ func (s *Storage) dimensionKeysByQuery(qry *flameql.Query) func() []dimension.Ke
 }
 
 type DeleteInput struct {
-	Key *segment.Key
+	// Keys must match exactly one segment.
+	Keys []*segment.Key
 }
-
-var maxTime = time.Unix(1<<62, 999999999)
 
 func (s *Storage) Delete(di *DeleteInput) error {
-	dimensions := make([]*dimension.Dimension, len(di.Key.Labels()))
-	i := 0
-	for k, v := range di.Key.Labels() {
-		dInt, ok := s.dimensions.Lookup(k + ":" + v)
-		if !ok {
-			return nil
-		}
-		dimensions[i] = dInt.(*dimension.Dimension)
-		i++
-	}
-
-	// TODO(kolesnikovae): drop trees using DropPrefix.
-	for _, sk := range dimension.Intersection(dimensions...) {
-		skk, _ := segment.ParseKey(string(sk))
-		stInt, ok := s.segments.Lookup(skk.SegmentKey())
-		if !ok {
-			continue
-		}
-		st := stInt.(*segment.Segment)
-		var err error
-		st.Get(zeroTime, maxTime, func(depth int, _, _ uint64, t time.Time, _ *big.Rat) {
-			treeKey := skk.TreeKey(depth, t)
-			err = s.trees.Delete(treeKey)
-		})
-		if err != nil {
-			return err
-		}
-
-		if err := s.deleteSegmentAndRelatedData(skk); err != nil {
+	for _, sk := range di.Keys {
+		if err := s.deleteSegmentAndRelatedData(sk); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
-func (s *Storage) deleteSegmentAndRelatedData(key *segment.Key) error {
-	if err := s.dicts.Delete(key.DictKey()); err != nil {
+func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
+	sk := k.SegmentKey()
+	seg, ok := s.segments.Lookup(sk)
+	if !ok {
+		return nil
+	}
+
+	// Drop trees from disk and cache.
+	if err := s.dbTrees.DropPrefix([]byte("t:" + sk)); err != nil {
 		return err
 	}
-	if err := s.segments.Delete(key.SegmentKey()); err != nil {
-		return err
-	}
-	for k, v := range key.Labels() {
-		dInt, ok := s.dimensions.Lookup(k + ":" + v)
-		if !ok {
-			continue
+	seg.(*segment.Segment).Get(zeroTime, maxTime, func(depth int, _, _ uint64, t time.Time, _ *big.Rat) {
+		s.trees.RemoveFromCache(segment.TreeKey(sk, depth, t))
+	})
+
+	// Only remove dictionary if there are no more segments referencing it.
+	if apps, ok := s.lookupAppDimension(k.AppName()); ok && len(apps.Keys) == 1 {
+		if err := s.dicts.Delete(k.DictKey()); err != nil {
+			return err
 		}
-		d := dInt.(*dimension.Dimension)
-		d.Delete(dimension.Key(key.SegmentKey()))
 	}
-	return nil
+
+	for key, value := range k.Labels() {
+		if d, ok := s.lookupDimensionKV(key, value); ok {
+			d.Delete(dimension.Key(sk))
+		}
+	}
+
+	return s.segments.Delete(k.SegmentKey())
 }
 
 func (s *Storage) Close() error {
@@ -502,9 +487,7 @@ func (s *Storage) Close() error {
 	return nil
 }
 
-func (s *Storage) GetKeys(cb func(_k string) bool) {
-	s.labels.GetKeys(cb)
-}
+func (s *Storage) GetKeys(cb func(string) bool) { s.labels.GetKeys(cb) }
 
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
