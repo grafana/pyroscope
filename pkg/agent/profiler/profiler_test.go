@@ -43,10 +43,43 @@ var _ = Describe("WithLabels", func() {
 	})
 })
 
+var _ = Describe("SetLabels", func() {
+	RegisterFailHandler(Fail)
+
+	It("Overrides goroutine labels explicitly", func() {
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
+
+		profiler.WithLabels(profiler.Labels{"foo": "bar"}, func() {
+			expectLabels(profiler.Labels{
+				"foo": "bar",
+			})
+
+			profiler.WithLabels(profiler.Labels{"baz": "qux"}, func() {
+				expectLabels(profiler.Labels{
+					"foo": "bar",
+					"baz": "qux",
+				})
+				profiler.SetLabels(profiler.Labels{
+					"zoo": "ooz",
+				})
+				expectLabels(profiler.Labels{
+					"zoo": "ooz",
+				})
+			})
+
+			expectLabels(profiler.Labels{
+				"foo": "bar",
+			})
+		})
+
+		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
+	})
+})
+
 var _ = Describe("Interoperability with runtime/pprof", func() {
 	RegisterFailHandler(Fail)
 
-	It("pprof.Do does not propagate goroutine labels implicitly", func() {
+	It("Does not propagate goroutine labels implicitly", func() {
 		ctx := context.Background()
 		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
 
@@ -71,7 +104,7 @@ var _ = Describe("Interoperability with runtime/pprof", func() {
 		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
 	})
 
-	It("Labels propagate via Context", func() {
+	It("Propagates goroutine labels explicitly via Context", func() {
 		ctx := context.Background()
 		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
 
@@ -103,39 +136,6 @@ var _ = Describe("Interoperability with runtime/pprof", func() {
 				expectLabels(profiler.Labels{
 					"foo": "bar",
 					"baz": "qux",
-				})
-			})
-
-			expectLabels(profiler.Labels{
-				"foo": "bar",
-			})
-		})
-
-		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
-	})
-})
-
-var _ = Describe("SetLabels", func() {
-	RegisterFailHandler(Fail)
-
-	It("Overrides goroutine labels implicitly", func() {
-		Expect(pprof.GetGoroutineLabels()).To(BeEmpty())
-
-		profiler.WithLabels(profiler.Labels{"foo": "bar"}, func() {
-			expectLabels(profiler.Labels{
-				"foo": "bar",
-			})
-
-			profiler.WithLabels(profiler.Labels{"baz": "qux"}, func() {
-				expectLabels(profiler.Labels{
-					"foo": "bar",
-					"baz": "qux",
-				})
-				profiler.SetLabels(profiler.Labels{
-					"zoo": "ooz",
-				})
-				expectLabels(profiler.Labels{
-					"zoo": "ooz",
 				})
 			})
 
