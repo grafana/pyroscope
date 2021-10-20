@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 	"github.com/sirupsen/logrus"
 )
 
@@ -36,7 +37,7 @@ var _ = Describe("agent.Session", func() {
 				Pid:              os.Getpid(),
 				WithSubprocesses: true,
 				Logger:           logrus.StandardLogger(),
-			})
+			}, process.Helper)
 			now := time.Now()
 			time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 			err := s.Start()
@@ -79,7 +80,7 @@ var _ = Describe("agent.Session", func() {
 					},
 				}
 
-				s, _ := NewSession(c)
+				s, _ := NewSession(c, process.Helper)
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()
@@ -113,7 +114,7 @@ var _ = Describe("agent.Session", func() {
 					},
 				}
 
-				s, _ := NewSession(c)
+				s, _ := NewSession(c, process.Helper)
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()
@@ -145,7 +146,7 @@ var _ = Describe("agent.Session", func() {
 					},
 				}
 
-				s, _ := NewSession(c)
+				s, _ := NewSession(c, process.Helper)
 				now := time.Now()
 				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
 				err := s.Start()

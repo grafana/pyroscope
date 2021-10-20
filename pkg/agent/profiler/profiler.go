@@ -81,7 +81,7 @@ func Start(cfg Config) (*Profiler, error) {
 		Pid:              0,
 		WithSubprocesses: false,
 	}
-	session, err := agent.NewSession(sc)
+	session, err := agent.NewSession(sc, agent.NoopProcessHelper)
 	if err != nil {
 		return nil, fmt.Errorf("new session: %w", err)
 	}

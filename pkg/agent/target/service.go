@@ -8,6 +8,7 @@ import (
 
 	"github.com/mitchellh/go-ps"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
@@ -71,7 +72,7 @@ func (s *service) wait(ctx context.Context) error {
 	pyspy.Blocking = s.target.PyspyBlocking
 	rbspy.Blocking = s.target.RbspyBlocking
 
-	session, err := agent.NewSession(s.sc)
+	session, err := agent.NewSession(s.sc, process.Helper)
 	if err != nil {
 		return err
 	}

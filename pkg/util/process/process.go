@@ -1,8 +1,13 @@
-package agent
+package process
 
-import "github.com/mitchellh/go-ps"
+import (
+	"github.com/mitchellh/go-ps"
+	psutilprocess "github.com/shirou/gopsutil/process"
+)
 
-func findAllSubprocesses(pid int) []int {
+type processHelper struct{}
+
+func (processHelper) FindAllSubprocesses(pid int) []int {
 	res := []int{}
 
 	childrenLookup := map[int][]int{}
@@ -34,3 +39,9 @@ func findAllSubprocesses(pid int) []int {
 
 	return res
 }
+
+func (processHelper) PidExists(pid int32) (bool, error) {
+	return psutilprocess.PidExists(pid)
+}
+
+var Helper = processHelper{}

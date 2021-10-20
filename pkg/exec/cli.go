@@ -22,6 +22,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
 
 // used in tests
@@ -163,7 +164,7 @@ func Cli(cfg *config.Exec, args []string) error {
 		WithSubprocesses: cfg.DetectSubprocesses,
 		Logger:           logrus.StandardLogger(),
 	}
-	session, err := agent.NewSession(sc)
+	session, err := agent.NewSession(sc, process.Helper)
 	if err != nil {
 		return fmt.Errorf("new session: %w", err)
 	}

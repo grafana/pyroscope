@@ -10,6 +10,7 @@ import (
 	"github.com/cheggaaa/pb/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
@@ -79,7 +80,7 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 			UploadRate:     10 * time.Second,
 			Logger:         logrus.StandardLogger(),
 		}
-		session, _ := agent.NewSession(selfProfilingConfig)
+		session, _ := agent.NewSession(selfProfilingConfig, process.Helper)
 		upstream.Start()
 		_ = session.Start()
 	}

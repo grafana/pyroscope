@@ -18,7 +18,6 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
-	"github.com/shirou/gopsutil/process"
 )
 
 // Each Session can deal with:
@@ -63,11 +62,12 @@ type ProfileSession struct {
 	noForkDetection  bool
 	pid              int
 
-	logger    Logger
-	throttler *throttle.Throttler
-	stopOnce  sync.Once
-	stopCh    chan struct{}
-	trieMutex sync.Mutex
+	logger        Logger
+	throttler     *throttle.Throttler
+	stopOnce      sync.Once
+	stopCh        chan struct{}
+	trieMutex     sync.Mutex
+	processHelper ProcessHelper
 
 	// these things do change:
 	appName   string
@@ -96,7 +96,7 @@ type SessionConfig struct {
 	ClibIntegration  bool
 }
 
-func NewSession(c SessionConfig) (*ProfileSession, error) {
+func NewSession(c SessionConfig, processHelper ProcessHelper) (*ProfileSession, error) {
 	appName, err := mergeTagsWithAppName(c.AppName, c.Tags)
 	if err != nil {
 		return nil, err
@@ -117,6 +117,7 @@ func NewSession(c SessionConfig) (*ProfileSession, error) {
 		clibIntegration:  c.ClibIntegration,
 		logger:           c.Logger,
 		throttler:        throttle.New(errorThrottlerPeriod),
+		processHelper:    processHelper,
 
 		// string is appName, int is index in pids
 		previousTries: make(map[string][]*transporttrie.Trie),
@@ -207,7 +208,7 @@ func (ps *ProfileSession) takeSnapshots() {
 							}
 						}
 						if err != nil {
-							if ok, pidErr := process.PidExists(int32(pid)); !ok || pidErr != nil {
+							if ok, pidErr := ps.processHelper.PidExists(int32(pid)); !ok || pidErr != nil {
 								ps.logger.Debugf("error taking snapshot: process doesn't exist?")
 								pidsToRemove = append(pidsToRemove, pid)
 							} else {
@@ -439,7 +440,7 @@ func (ps *ProfileSession) isForked() bool {
 }
 
 func (ps *ProfileSession) addSubprocesses() {
-	newPids := findAllSubprocesses(ps.pid)
+	newPids := ps.processHelper.FindAllSubprocesses(ps.pid)
 	for _, newPid := range newPids {
 		if _, ok := ps.spies[newPid]; !ok {
 			newSpies, err := ps.initializeSpies(newPid)

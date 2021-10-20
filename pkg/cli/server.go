@@ -20,6 +20,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
 
 type serverService struct {
@@ -74,7 +75,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		SampleRate:     100,
 		UploadRate:     10 * time.Second,
 		Logger:         logger,
-	})
+	}, process.Helper)
 
 	svc.controller, err = server.New(server.Config{
 		Configuration:           svc.config,
