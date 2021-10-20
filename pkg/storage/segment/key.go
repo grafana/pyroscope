@@ -107,12 +107,12 @@ func (k *Key) SegmentKey() string {
 	return k.Normalized()
 }
 
-func TreeKey(k string, depth int, t time.Time) string {
-	return k + ":" + strconv.Itoa(depth) + ":" + strconv.Itoa(int(t.Unix()))
+func TreeKey(k string, depth int, unixTime int64) string {
+	return k + ":" + strconv.Itoa(depth) + ":" + strconv.FormatInt(unixTime, 10)
 }
 
 func (k *Key) TreeKey(depth int, t time.Time) string {
-	return TreeKey(k.Normalized(), depth, t)
+	return TreeKey(k.Normalized(), depth, t.Unix())
 }
 
 func (k *Key) DictKey() string {

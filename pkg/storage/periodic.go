@@ -121,14 +121,18 @@ func (s *Storage) writeBackTask() {
 }
 
 func (s *Storage) retentionTask() {
-	runBadgerGC(logrus.WithField("db", "trees").Logger, s.dbTrees)
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		logrus.Debugf("retention task %f seconds\n", v)
 		s.retentionTimer.Observe(v)
 	}))
 	defer timer.ObserveDuration()
-	if err := s.Reclaim(context.Background(), s.retentionPolicy()); err != nil {
+
+	if err := s.DeleteDataBefore(context.TODO(), s.retentionPolicy()); err != nil {
 		logrus.WithError(err).Warn("retention task failed")
 	}
-	s.dbTrees.Sync()
+
+	// TODO(kolesnikovae): Wait for GC to clean value log files.
+	if err := s.Reclaim(context.TODO(), s.retentionPolicy()); err != nil {
+		logrus.WithError(err).Warn("retention task failed")
+	}
 }

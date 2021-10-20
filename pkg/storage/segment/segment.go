@@ -185,22 +185,16 @@ func (sn *streeNode) isLeaf() bool {
 }
 
 // deleteDataBefore returns true if the node should be deleted
-func (sn *streeNode) deleteDataBefore(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
+func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
 	if sn.isAfter(t.absolute) && t.levels == nil {
 		return false, nil
 	}
-	var err error
-	ok := t.isBefore(sn)
-	if ok {
-		if err = cb(sn.depth, sn.time); err != nil {
-			return false, err
-		}
-	}
+	isBefore := t.isBefore(sn)
 	for i, v := range sn.children {
 		if v == nil {
 			continue
 		}
-		ok, err = v.deleteDataBefore(t, cb)
+		ok, err := v.deleteNodesBefore(t)
 		if err != nil {
 			return false, err
 		}
@@ -208,7 +202,29 @@ func (sn *streeNode) deleteDataBefore(t *RetentionPolicy, cb func(depth int, t t
 			sn.children[i] = nil
 		}
 	}
-	return ok, nil
+	return isBefore, nil
+}
+
+func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
+	if sn.isAfter(t.absolute) && t.levels == nil {
+		return false, nil
+	}
+	var err error
+	isBefore := t.isBefore(sn)
+	if isBefore {
+		if err = cb(sn.depth, sn.time); err != nil {
+			return false, err
+		}
+	}
+	for _, v := range sn.children {
+		if v == nil {
+			continue
+		}
+		if _, err = v.walkNodesToDelete(t, cb); err != nil {
+			return false, err
+		}
+	}
+	return isBefore, nil
 }
 
 type Segment struct {
@@ -336,21 +352,29 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-get-%s-%s.html", st.String(), et.String())))
 }
 
-func (s *Segment) DeleteDataBefore(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
+func (s *Segment) DeleteNodesBefore(t *RetentionPolicy) (bool, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	if s.root == nil {
-		return false, nil
+		return true, nil
 	}
-	ok, err := s.root.deleteDataBefore(t.normalize(), cb)
+	ok, err := s.root.deleteNodesBefore(t.normalize())
 	if err != nil {
 		return false, err
 	}
 	if ok {
 		s.root = nil
+	}
+	return ok, nil
+}
+
+func (s *Segment) WalkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if s.root == nil {
 		return true, nil
 	}
-	return false, nil
+	return s.root.walkNodesToDelete(t.normalize(), cb)
 }
 
 // TODO: this should be refactored
