@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
+	pyprof "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
@@ -86,7 +87,7 @@ func Start(cfg Config) (*Profiler, error) {
 	return &Profiler{session: session}, nil
 }
 
-// Stop stops continious profiling session
+// Stop stops continuous profiling session
 func (p *Profiler) Stop() error {
 	p.session.Stop()
 	return nil
@@ -94,8 +95,33 @@ func (p *Profiler) Stop() error {
 
 type LabelSet = pprof.LabelSet
 
-var Labels = pprof.Labels
+func Labels(args ...string) LabelSet { return pprof.Labels(args...) }
 
-func TagWrapper(ctx context.Context, labels LabelSet, cb func(context.Context)) {
-	pprof.Do(ctx, labels, func(c context.Context) { cb(c) })
+// WithLabels calls f with the given labels added to the parent's label map.
+//
+// Goroutines spawned while executing f will inherit the augmented label-set.
+// Each key/value pair in labels is inserted into the label map in the order
+// provided, overriding any previous value for the same key.
+//
+// The augmented label map will be set for the duration of the call to f
+// and restored once f returns.
+func WithLabels(labels LabelSet, f func()) {
+	ctx := pprof.WithLabels(context.Background(), pyprof.GetGoroutineLabels())
+	pprof.SetGoroutineLabels(ctx)
+	pprof.Do(ctx, labels, func(context.Context) {
+		f()
+	})
+}
+
+// WithLabelsContext calls f with a copy of the parent context with the
+// given labels added to the parent's label map.
+//
+// Goroutines spawned while executing f will inherit the augmented label-set.
+// Each key/value pair in labels is inserted into the label map in the order
+// provided, overriding any previous value for the same key.
+//
+// The augmented label map will be set for the duration of the call to f
+// and restored once f returns.
+func WithLabelsContext(ctx context.Context, labels LabelSet, f func(context.Context)) {
+	pprof.Do(ctx, labels, f)
 }

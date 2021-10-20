@@ -17,15 +17,15 @@ func work(n int) {
 	// revive:enable:empty-block
 }
 
-func fastFunction(c context.Context) {
-	profiler.TagWrapper(c, profiler.Labels("function", "fast"), func(c context.Context) {
+func fastFunction(ctx context.Context) {
+	profiler.WithLabelsContext(ctx, profiler.Labels("function", "fast"), func(context.Context) {
 		work(20000000)
 	})
 }
 
-func slowFunction(c context.Context) {
+func slowFunction(ctx context.Context) {
 	// standard pprof.Do wrappers work as well
-	pprof.Do(c, pprof.Labels("function", "slow"), func(c context.Context) {
+	pprof.Do(ctx, pprof.Labels("function", "slow"), func(context.Context) {
 		work(80000000)
 	})
 }
@@ -35,10 +35,10 @@ func main() {
 		ApplicationName: "simple.golang.app",
 		ServerAddress:   "http://localhost:4040", // this will run inside docker-compose, hence `pyroscope` for hostname
 	})
-	profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
+	profiler.WithLabelsContext(context.Background(), profiler.Labels("foo", "bar"), func(ctx context.Context) {
 		for {
-			fastFunction(c)
-			slowFunction(c)
+			fastFunction(ctx)
+			slowFunction(ctx)
 		}
 	})
 }
