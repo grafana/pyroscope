@@ -9,18 +9,12 @@ import (
 	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
 
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/debugspy"
-	_ "github.com/pyroscope-io/pyroscope/pkg/agent/dotnetspy"
-	_ "github.com/pyroscope-io/pyroscope/pkg/agent/ebpfspy"
-	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
-	_ "github.com/pyroscope-io/pyroscope/pkg/agent/phpspy"
-	_ "github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
-	_ "github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
+	// revive:enable:blank-imports
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/throttle"
-
-	// revive:enable:blank-imports
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"

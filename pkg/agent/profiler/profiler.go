@@ -8,6 +8,12 @@ import (
 	"runtime/pprof"
 	"time"
 
+	// revive:disable:blank-imports Depending on configuration these packages may or may not be used.
+	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
+	_ "github.com/pyroscope-io/pyroscope/pkg/agent/gospy"
+
+	// revive:enable:blank-imports
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
