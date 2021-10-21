@@ -29,7 +29,6 @@ type xyToDataDouble = (
 export type TooltipProps = {
   canvasRef: React.RefObject<HTMLCanvasElement>;
 
-  //  xyToData: xyToData;
   isWithinBounds: (x: number, y: number) => boolean;
 
   units: Units;
