@@ -112,6 +112,7 @@ describe('Flamegraph', () => {
 
       it('maps total correctly', () => {
         expect(flame.xyToBarData(0, 0)).toStrictEqual({
+          format: 'single',
           name: 'total',
           offset: 0,
           self: 0,
@@ -121,6 +122,7 @@ describe('Flamegraph', () => {
 
       it('maps a full row correctly', () => {
         expect(flame.xyToBarData(1, BAR_HEIGHT + 1)).toStrictEqual({
+          format: 'single',
           name: 'runtime.main',
           offset: 0,
           self: 0,
@@ -130,6 +132,7 @@ describe('Flamegraph', () => {
 
       it('maps a row with more items', () => {
         expect(flame.xyToBarData(1, BAR_HEIGHT * 2 + 1)).toStrictEqual({
+          format: 'single',
           name: 'main.fastFunction',
           offset: 0,
           self: 0,
@@ -139,6 +142,7 @@ describe('Flamegraph', () => {
         expect(
           flame.xyToBarData(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1)
         ).toStrictEqual({
+          format: 'single',
           name: 'main.slowFunction',
           offset: 217,
           self: 0,
@@ -149,6 +153,7 @@ describe('Flamegraph', () => {
       it('maps correctly even when zoomed in', () => {
         // third row, last item (main.slowFunction)
         expect(flame.xyToBarData(canvas.width, BAR_HEIGHT * 3)).toStrictEqual({
+          format: 'single',
           name: 'main.slowFunction',
           offset: 217,
           self: 0,
@@ -157,6 +162,7 @@ describe('Flamegraph', () => {
 
         // there's a different item under x=0
         expect(flame.xyToBarData(1, BAR_HEIGHT * 3)).not.toMatchObject({
+          format: 'single',
           name: 'main.slowFunction',
           offset: 217,
           self: 0,
@@ -168,6 +174,7 @@ describe('Flamegraph', () => {
 
         // now that same item should be available on x=0
         expect(flame.xyToBarData(1, BAR_HEIGHT * 3)).toMatchObject({
+          format: 'single',
           name: 'main.slowFunction',
           offset: 217,
           self: 0,
@@ -187,6 +194,7 @@ describe('Flamegraph', () => {
 
       it('maps total correctly', () => {
         expect(flame.xyToBarData(0, 0)).toStrictEqual({
+          format: 'double',
           name: 'total',
           totalLeft: 246,
           totalRight: 986,
@@ -197,6 +205,7 @@ describe('Flamegraph', () => {
 
       it('maps a full row correctly', () => {
         expect(flame.xyToBarData(1, BAR_HEIGHT + 1)).toStrictEqual({
+          format: 'double',
           name: 'runtime.main',
           totalLeft: 245,
           totalRight: 985,
@@ -207,6 +216,7 @@ describe('Flamegraph', () => {
 
       it('maps a row with more items', () => {
         expect(flame.xyToBarData(1, BAR_HEIGHT * 2 + 1)).toStrictEqual({
+          format: 'double',
           name: 'main.fastFunction',
           totalLeft: 49,
           totalRight: 181,
@@ -217,6 +227,7 @@ describe('Flamegraph', () => {
         expect(
           flame.xyToBarData(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1)
         ).toStrictEqual({
+          format: 'double',
           name: 'main.slowFunction',
           totalDiff: 608,
           totalLeft: 196,

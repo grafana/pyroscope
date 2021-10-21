@@ -327,6 +327,7 @@ export default class Flamegraph {
     switch (this.flamebearer.format) {
       case 'single': {
         return {
+          format: 'single',
           name: this.flamebearer.names[ff.getBarName(level, j)],
           self: ff.getBarSelf(level, j),
           offset: ff.getBarOffset(level, j),
@@ -338,6 +339,7 @@ export default class Flamegraph {
         // return more stuff
         //        console.log('ff', ff);
         return {
+          format: 'double',
           barTotal: ff.getBarTotal(level, j),
           totalLeft: ff.getBarTotalLeft(level, j),
           totalRight: ff.getBarTotalRght(level, j),
