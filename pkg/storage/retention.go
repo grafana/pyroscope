@@ -3,12 +3,31 @@ package storage
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
-
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
+
+type reclamationRequest struct {
+	rp    *segment.RetentionPolicy
+	sk    *segment.Key
+	sks   string        // Segment key string.
+	nodes []segmentNode // Segment nodes to delete.
+	size  int           // Capacity to reclaim per segment.
+}
+
+type segmentNode struct {
+	depth int
+	time  int64
+}
+
+const batchSize = 1024
+
+// TODO(kolesnikovae): add metrics.
 
 func (s *Storage) Reclaim(ctx context.Context, rp *segment.RetentionPolicy) error {
 	if rp.SizeLimit() == 0 {
@@ -21,23 +40,33 @@ func (s *Storage) Reclaim(ctx context.Context, rp *segment.RetentionPolicy) erro
 	}
 
 	var (
-		// Occupied disk space.
+		// Occupied disk space. The value should be as relevant as possible,
+		// therefore use of Size() is not acceptable (calculated periodically).
 		used = dirSize(s.config.StoragePath)
 		// Size in bytes to be reclaimed.
 		rs = rp.CapacityToReclaim(used, 0.05).Bytes()
-		// Size in bytes to be reclaimed per segment, if applicable.
+		// Size in bytes to be reclaimed per segment.
 		rsps = rs / len(segmentKeys)
-		// Counters for deleted data.
-		stats reclaimStats
 	)
 
+	logger := s.logger.
+		WithField("used", used).
+		WithField("requested", rs)
+
+	if rsps == 0 {
+		logger.Info("skipping reclaim")
+		return nil
+	}
+
+	logger.Info("reclaiming disk space")
+
+	// TODO(kolesnikovae): make reclaim fair:
+	//   If a segment occupies less than rsps, the leftover
+	//   should be then removed with additional request.
+	//   Can we run it concurrently with some throttling?
 	for k := range segmentKeys {
-		r := &reclaim{
-			stats: &stats,
-			sks:   k,
-			size:  rsps,
-		}
-		if err = s.deleteDataBefore(ctx, r); err != nil {
+		r := &reclamationRequest{sks: k, size: rsps}
+		if err = s.reclaimSpace(ctx, r); err != nil {
 			return err
 		}
 	}
@@ -55,14 +84,8 @@ func (s *Storage) DeleteDataBefore(ctx context.Context, rp *segment.RetentionPol
 		return err
 	}
 
-	var stats reclaimStats
 	for k, v := range segmentKeys {
-		r := &reclaim{
-			stats: &stats,
-			rp:    rp,
-			sks:   k,
-			sk:    v,
-		}
+		r := &reclamationRequest{rp: rp, sks: k, sk: v}
 		if err = s.deleteDataBefore(ctx, r); err != nil {
 			return err
 		}
@@ -71,28 +94,7 @@ func (s *Storage) DeleteDataBefore(ctx context.Context, rp *segment.RetentionPol
 	return nil
 }
 
-type reclaim struct {
-	stats *reclaimStats
-	rp    *segment.RetentionPolicy
-	sk    *segment.Key
-	nodes []segmentNode // Segment nodes to delete.
-	sks   string        // Segment key string.
-	size  int           // Capacity to reclaim for the segment.
-}
-
-type reclaimStats struct {
-	removedTrees            int
-	estimatedReclaimedSpace int
-}
-
-type segmentNode struct {
-	depth int
-	time  int64
-}
-
-const batchSize = 1024
-
-func (s *Storage) reclaimSpace(ctx context.Context, r *reclaim) (err error) {
+func (s *Storage) reclaimSpace(ctx context.Context, r *reclamationRequest) (err error) {
 	var (
 		batch     = s.dbTrees.NewWriteBatch()
 		removed   int
@@ -100,20 +102,25 @@ func (s *Storage) reclaimSpace(ctx context.Context, r *reclaim) (err error) {
 	)
 	defer func() {
 		err = batch.Flush()
-		r.stats.removedTrees += removed
-		r.stats.estimatedReclaimedSpace += reclaimed
 	}()
 
+	// TODO(kolesnikovae):
+	//   Don't forget to remove corresponding segment nodes!
+	//   Keep track of the most recent node and reuse DeleteNodesBefore
+	//   when a batch is successfully committed?  This may(?) result in the
+	//   tree still being stored, but not present in the segment; the tree will
+	//   be removed from the storage eventually.
+
 	return s.dbTrees.View(func(txn *badger.Txn) error {
-		// Lower-level trees go first because of the lexicographical order.
+		// Lower-level trees come first because of the lexicographical order:
+		// from the very first tree to the most recent one.
 		it := txn.NewIterator(badger.IteratorOptions{
-			PrefetchValues: false,
-			// The prefix matches all trees of the segment.
-			Prefix: []byte("t:" + r.sks),
 			// We count all version so that our estimation is more precise
 			// but slightly higher than the actual size in practice,
 			// meaning that we delete less data (and reclaim less space).
 			AllVersions: true,
+			// The prefix matches all trees in the segment.
+			Prefix: treePrefix.key(r.sks),
 		})
 		defer it.Close()
 		for it.Rewind(); it.Valid(); it.Next() {
@@ -121,14 +128,12 @@ func (s *Storage) reclaimSpace(ctx context.Context, r *reclaim) (err error) {
 				return nil
 			}
 
+			// A copy must be taken. The slice is reused
+			// by iterator but is also used in the batch.
 			item := it.Item()
-			// A copy must be taken. The slice is reused by iterator but
-			// also put to the batch.
 			tk := item.KeyCopy(nil)
-			// A sanity check – a tree key can not be shorter 18 bytes:
-			// t:<segment_key>{}:0:1234567890
-			if len(tk) <= 18 {
-				continue
+			if k, ok := treePrefix.trim(tk); ok {
+				s.trees.Discard(string(k))
 			}
 
 			switch err = batch.Delete(tk); {
@@ -140,55 +145,43 @@ func (s *Storage) reclaimSpace(ctx context.Context, r *reclaim) (err error) {
 			}
 
 			reclaimed += int(item.EstimatedSize())
-			if removed++; removed%batchSize != 0 {
-				continue
+			if removed++; removed%batchSize == 0 {
+				if batch, err = s.flushTreeBatch(ctx, batch); err != nil {
+					return err
+				}
 			}
-
-			s.trees.Discard(string(tk[2:]))
-			// TODO(kolesnikovae): remove corresponding segment nodes
-
-			// Once per batch check if the context has been cancelled.
-			// If that's the case, the batch is to be flushed in defer
-			// section. Otherwise, flush it and create a new batch.
-			if err = ctx.Err(); err != nil {
-				return err
-			}
-			if err = batch.Flush(); err != nil {
-				return err
-			}
-			batch = s.dbTrees.NewWriteBatch()
 		}
 
 		return nil
 	})
 }
 
-// Instead of removing every tree in an individual transaction for each
-// of them, blocking the segment for a long time, we remember them and
-// drop in batches after the segment is released.
-//
-// There is a better way of removing these trees: we could calculate
-// non-overlapping prefixes for depth levels, e.g:
-//     0:163474....
-//     1:1634745...
-//     2:16347456..
-//
-// And drop the data (both in cache and on disk) using these prefixes via
-// db.DropPrefix and cache.DiscardPrefix. Remaining trees (with overlapping
-// prefixes) would be removed in batches. Only after successful commit,
-// segment nodes can be safely removed.
-//
-// That would be especially efficient in cases when data removed for a very
-// long period. For example, when retention-period is enabled for the first
-// time on a server with historical data.
-func (s *Storage) deleteDataBefore(ctx context.Context, r *reclaim) (err error) {
+func (s *Storage) deleteDataBefore(ctx context.Context, r *reclamationRequest) error {
 	cached, ok := s.segments.Lookup(r.sks)
 	if !ok {
 		return nil
 	}
 
-	// To avoid a potential inconsistency when DeleteNodesBefore
-	// fails in the process, trees should be removed first.
+	// Instead of removing every tree in an individual transaction for each
+	// of them, blocking the segment for a long time, we remember them and
+	// drop in batches after the segment is released.
+	//
+	// To avoid a potential inconsistency when DeleteNodesBefore fails in the
+	// process, trees should be removed first. Only after successful commit,
+	// segment nodes can be safely removed, to guaranty eventual idempotency.
+
+	// There is a better way of removing these trees: we could calculate
+	// non-overlapping prefixes for depth levels, e.g:
+	//     0:163474....
+	//     1:1634745...
+	//     2:16347456..
+	//
+	// And drop the data (both in cache and on disk) using these prefixes.
+	// Remaining trees (with overlapping prefixes) would be removed in batches.
+	// That would be especially efficient in cases when data removed for a very
+	// long period. For example, when retention-period is enabled for the first
+	// time on a server with historical data.
+
 	seg := cached.(*segment.Segment)
 	r.nodes = r.nodes[:0]
 	deleted, err := seg.WalkNodesToDelete(r.rp, func(d int, t time.Time) error {
@@ -202,34 +195,48 @@ func (s *Storage) deleteDataBefore(ctx context.Context, r *reclaim) (err error) 
 		return s.deleteSegmentAndRelatedData(r.sk)
 	}
 
+	var removed int
 	batch := s.dbTrees.NewWriteBatch()
 	defer batch.Cancel()
 
 	for _, n := range r.nodes {
 		treeKey := segment.TreeKey(r.sks, n.depth, n.time)
-		switch err = batch.Delete([]byte("t:" + treeKey)); {
+		s.trees.Discard(treeKey)
+		switch err = batch.Delete(treePrefix.key(treeKey)); {
 		case err == nil:
 		case errors.Is(err, badger.ErrKeyNotFound):
 			continue
 		default:
 			return err
 		}
-		if r.stats.removedTrees++; r.stats.removedTrees%batchSize != 0 {
-			// Once per batch check if the context has been cancelled.
-			// If that's the case, the batch is to be flushed in defer
-			// section. Otherwise, flush it and create a new batch.
-			if err = ctx.Err(); err != nil {
+		// It is not possible to make size estimation without reading
+		// the item. Therefore, the call does not report reclaimed space.
+		if removed++; removed%batchSize == 0 {
+			if batch, err = s.flushTreeBatch(ctx, batch); err != nil {
 				return err
 			}
-			if err = batch.Flush(); err != nil {
-				return err
-			}
-			batch = s.dbTrees.NewWriteBatch()
+		}
+	}
+
+	// Flush remaining items, if any: it's important to make sure
+	// all trees were removed before deleting segment nodes - see
+	// note on a potential inconsistency above.
+	if removed%batchSize != 0 {
+		if err = batch.Flush(); err != nil {
+			return err
 		}
 	}
 
 	_, err = seg.DeleteNodesBefore(r.rp)
 	return err
+}
+
+// flushTreeBatch commits the changes and returns a new batch.
+func (s *Storage) flushTreeBatch(ctx context.Context, batch *badger.WriteBatch) (*badger.WriteBatch, error) {
+	if err := batch.Flush(); err != nil {
+		return batch, err
+	}
+	return s.dbTrees.NewWriteBatch(), ctx.Err()
 }
 
 // segmentKeys returns a map of valid segment keys found in the storage.
@@ -238,14 +245,13 @@ func (s *Storage) segmentKeys() (map[string]*segment.Key, error) {
 	segmentKeys := make(map[string]*segment.Key)
 	return segmentKeys, s.dbSegments.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{
-			PrefetchValues: false,
-			Prefix:         []byte("s:"),
+			Prefix: segmentPrefix.bytes(),
 		})
 		defer it.Close()
 		for it.Rewind(); it.Valid(); it.Next() {
-			if k := it.Item().Key(); len(k) > 2 {
+			if k, ok := segmentPrefix.trim(it.Item().Key()); ok {
 				// k must not be reused outside of the transaction.
-				key, err := segment.ParseKey(string(k[2:]))
+				key, err := segment.ParseKey(string(k))
 				if err != nil {
 					continue
 				}
@@ -254,4 +260,22 @@ func (s *Storage) segmentKeys() (map[string]*segment.Key, error) {
 		}
 		return nil
 	})
+}
+
+// TODO(kolesnikovae): filepath.Walk is notoriously slow.
+//  Consider use of https://github.com/karrick/godirwalk.
+//  Although, every badger.DB calculates its size (reported
+//  via Size) in the same way every minute.
+func dirSize(path string) bytesize.ByteSize {
+	var result int64
+	_ = filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			result += info.Size()
+		}
+		return nil
+	})
+	return bytesize.ByteSize(result)
 }

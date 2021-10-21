@@ -67,10 +67,6 @@ func (s *Storage) setDbVersion(v int) error {
 	})
 }
 
-const dictionaryKeyPrefix = "d:"
-
-func toDictKey(k string) []byte { return []byte(dictionaryKeyPrefix + k) }
-
 // In 0.0.34 we changed dictionary key format from normalized segment key
 // (e.g, app.name{foo=bar}) to just app name. See e756a200a for details.
 // On deserialization, when a dictionary is loaded from disk to cache, the
@@ -91,7 +87,7 @@ func migrateDictionaryKeys(s *Storage) error {
 	segmentNameKeys := map[string][]byte{}
 	return s.dbDicts.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
-		opts.Prefix = []byte(dictionaryKeyPrefix)
+		opts.Prefix = dictionaryPrefix.bytes()
 		it := txn.NewIterator(opts)
 		defer it.Close()
 		// Find all dicts with keys:
@@ -101,10 +97,10 @@ func migrateDictionaryKeys(s *Storage) error {
 			item := it.Item()
 			k := item.Key()
 			item.ExpiresAt()
-			if len(k) < len(dictionaryKeyPrefix) {
+			k, ok := dictionaryPrefix.trim(k)
+			if !ok {
 				continue
 			}
-			k = k[len(dictionaryKeyPrefix):]
 			// Make sure the dictionary is valid.
 			b, err := item.ValueCopy(nil)
 			if err != nil {
@@ -132,11 +128,11 @@ func migrateDictionaryKeys(s *Storage) error {
 				continue
 			}
 			// Migration from version before 0.0.34.
-			if err := txn.Set(toDictKey(dictKey), v); err != nil {
+			if err := txn.Set(dictionaryPrefix.key(dictKey), v); err != nil {
 				return err
 			}
 			// Remove dict stored with old keys.
-			if err := txn.Delete(toDictKey(k)); err != nil {
+			if err := txn.Delete(dictionaryPrefix.key(k)); err != nil {
 				return err
 			}
 		}

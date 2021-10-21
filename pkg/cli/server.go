@@ -17,6 +17,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
 
@@ -38,10 +39,13 @@ type serverService struct {
 func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, error) {
 	// TODO(kolesnikovae): remove after testing.
 	const day = time.Hour * 24
+	c.Retention = 8 * time.Hour
+	c.RetentionSize = 2 * bytesize.GB
 	c.RetentionLevels = map[int]time.Duration{
-		0: 7 * day,
-		1: 30 * day,
-		2: 180 * day,
+		0: 4 * time.Hour,
+		//		0: 7 * day,
+		//		1: 30 * day,
+		//		2: 180 * day,
 	}
 
 	svc := serverService{
@@ -52,7 +56,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	var err error
-	svc.storage, err = storage.New(svc.config, prometheus.DefaultRegisterer)
+	svc.storage, err = storage.New(svc.config, svc.logger, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}

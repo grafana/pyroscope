@@ -17,37 +17,11 @@ func NewRetentionPolicy() *RetentionPolicy {
 	return &RetentionPolicy{now: time.Now()}
 }
 
-// CapacityToReclaim reports disk space capacity in bytes needs to be reclaimed.
-// The function reserves share t of the available capacity, reported value
-// includes this size.
-//
-// Example: used 10GB   available 10GB  t 0.05 – the function returns 512MB.
-//          used 9.5GB  available 10GB  t 0.05 – the function returns 0.
-//          used 9GB    available 10GB  t 0.05 – the function returns 0.
-func (r RetentionPolicy) CapacityToReclaim(used bytesize.ByteSize, t float64) bytesize.ByteSize {
-	if r.size == 0 {
-		return 0
-	}
-	if v := used + bytesize.ByteSize(float64(r.size)*t) - bytesize.ByteSize(r.size); v > 0 {
-		return v
-	}
-	return 0
-}
-
 func (r RetentionPolicy) LowerTimeBoundary() time.Time {
 	if r.levels == nil {
 		return r.absolute
 	}
 	return r.levels[0]
-}
-
-func (r *RetentionPolicy) SizeLimit() bytesize.ByteSize {
-	return bytesize.ByteSize(r.size)
-}
-
-func (r *RetentionPolicy) SetAbsoluteSize(s int) *RetentionPolicy {
-	r.size = s
-	return r
 }
 
 func (r *RetentionPolicy) SetAbsoluteMaxAge(maxAge time.Duration) *RetentionPolicy {
@@ -90,4 +64,31 @@ func (r RetentionPolicy) levelRetentionPeriod(depth int) time.Time {
 		return zeroTime
 	}
 	return r.levels[depth]
+}
+
+func (r *RetentionPolicy) SizeLimit() bytesize.ByteSize {
+	return bytesize.ByteSize(r.size)
+}
+
+func (r *RetentionPolicy) SetAbsoluteSize(s int) *RetentionPolicy {
+	r.size = s
+	return r
+}
+
+// CapacityToReclaim reports disk space capacity in bytes needs to be reclaimed.
+// The function reserves share t of the available capacity, reported value
+// includes this size.
+//
+// Example: used 9GB    available 10GB  t 0.05 – the function returns 0.
+//          used 9.5GB  available 10GB  t 0.05 – the function returns 0.
+//          used 9.6GB  available 10GB  t 0.05 – the function returns 0.1GB.
+//          used 10GB   available 10GB  t 0.05 – the function returns 0.5GB.
+func (r RetentionPolicy) CapacityToReclaim(used bytesize.ByteSize, t float64) bytesize.ByteSize {
+	if r.size <= 0 || used <= 0 {
+		return 0
+	}
+	if v := used + bytesize.ByteSize(float64(r.size)*t) - bytesize.ByteSize(r.size); v > 0 {
+		return v
+	}
+	return 0
 }

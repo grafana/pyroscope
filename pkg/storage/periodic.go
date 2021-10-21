@@ -2,15 +2,12 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"runtime"
-	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/sirupsen/logrus"
-
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 )
 
 func (s *Storage) periodicTask(interval time.Duration, cb func()) {
@@ -37,42 +34,28 @@ func (s *Storage) periodicTask(interval time.Duration, cb func()) {
 	}
 }
 
-func (s *Storage) badgerGCTask() {
-	databases := []*badger.DB{
-		s.dbTrees,
-		s.dbDicts,
-		s.dbDimensions,
-		s.dbSegments,
-		s.db,
-	}
-	var wg sync.WaitGroup
-	for _, db := range databases {
-		db := db
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			runBadgerGC(logrus.New(), db)
-		}()
-	}
-	wg.Wait()
+func defaultBadgerGCTask(db *badger.DB, logger logrus.FieldLogger) func() {
+	return func() { runBadgerGC(db, logger) }
 }
 
-func runBadgerGC(logger *logrus.Logger, db *badger.DB) {
-	fmt.Println("> starting GC")
-	lsm, vlog := db.Size()
-	fmt.Println(">>> before", lsm, vlog)
-	defer func() {
-		lsm, vlog = db.Size()
-		fmt.Println(">>> after", lsm, vlog)
-	}()
-	if err := db.Flatten(runtime.NumCPU()); err != nil {
+func runBadgerGC(db *badger.DB, logger logrus.FieldLogger) (reclaimed bool) {
+	// TODO(kolesnikovae): implement size check - run GC only when
+	//  used disk space (db.Size) has increased by some value?
+	logger.Debug("starting badger garbage collection")
+	// BadgerDB uses 2 compactors by default.
+	if err := db.Flatten(2); err != nil {
 		logger.WithError(err).Error("failed to flatten database")
 	}
-
-	logger.Debug("starting badger garbage collection")
 	for {
-		if err := db.RunValueLogGC(0.5); err != nil {
-			return
+		switch err := db.RunValueLogGC(0.5); err {
+		default:
+			logger.WithError(err).Warn("failed to run GC")
+			return false
+		case badger.ErrNoRewrite:
+			return false
+		case nil:
+			reclaimed = true
+			continue
 		}
 	}
 }
@@ -95,8 +78,11 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 			logrus.Debugf("eviction task took %f seconds\n", v)
 			s.evictionsTimer.Observe(v)
 		}))
-		// TODO(kolesnikovae): at eviction some trees are persisted,
-		//   in case of a crash, dictionaries may be corrupted.
+		// At eviction some trees are persisted. To ensure all
+		// the symbols are present in the database, dictionaries
+		// must be written first. Otherwise, in case of a crash,
+		// dictionaries may be corrupted.
+		s.dicts.WriteBack()
 		s.trees.Evict(percent)
 		timer.ObserveDuration()
 		// Do not evict those as it will cause even more allocations
@@ -120,19 +106,15 @@ func (s *Storage) writeBackTask() {
 	s.trees.WriteBack()
 }
 
-func (s *Storage) retentionTask() {
+func (s *Storage) retentionTask(ctx context.Context) func() {
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 		logrus.Debugf("retention task %f seconds\n", v)
 		s.retentionTimer.Observe(v)
 	}))
 	defer timer.ObserveDuration()
-
-	if err := s.DeleteDataBefore(context.TODO(), s.retentionPolicy()); err != nil {
-		logrus.WithError(err).Warn("retention task failed")
-	}
-
-	// TODO(kolesnikovae): Wait for GC to clean value log files.
-	if err := s.Reclaim(context.TODO(), s.retentionPolicy()); err != nil {
-		logrus.WithError(err).Warn("retention task failed")
+	return func() {
+		if err := s.DeleteDataBefore(ctx, s.retentionPolicy()); err != nil {
+			logrus.WithError(err).Warn("retention task failed")
+		}
 	}
 }

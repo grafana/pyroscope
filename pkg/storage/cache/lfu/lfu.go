@@ -102,17 +102,11 @@ func (c *Cache) Delete(key string) {
 	}
 }
 
-func (c *Cache) DeleteBatch(keys []string) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	for _, key := range keys {
-		if e, ok := c.values[key]; ok {
-			c.delete(e)
-		}
-	}
-}
-
 func (c *Cache) DeletePrefix(prefix string) {
+	// TODO(kolesnikovae): perhaps it will be better to discard cached items
+	//   lazily, only pinning this prefix, so that matching keys would be
+	//   discarded at Evict or WriteBack call, but that would require cache to
+	//   handle conflicting insertions.
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for k, e := range c.values {

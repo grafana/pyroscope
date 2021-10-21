@@ -25,7 +25,7 @@ var _ = Describe("server", func() {
 					defer GinkgoRecover()
 
 					(*cfg).Server.APIBindAddr = ":10045"
-					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
+					s, err := storage.New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
 					h, _ := c.mux()

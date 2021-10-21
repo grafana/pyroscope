@@ -31,7 +31,7 @@ var _ = Describe("server", func() {
 					(*cfg).Server.TLSCertificateFile = filepath.Join(testDataDir, tlsCertificateFile)
 					(*cfg).Server.TLSKeyFile = filepath.Join(testDataDir, tlsKeyFile)
 
-					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
+					s, err := storage.New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
 					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
@@ -62,7 +62,7 @@ var _ = Describe("server", func() {
 					const addr = ":10046"
 					(*cfg).Server.APIBindAddr = addr
 
-					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
+					s, err := storage.New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
 					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())

@@ -39,7 +39,7 @@ var _ = Describe("server", func() {
 					go func() {
 						defer GinkgoRecover()
 
-						s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
+						s, err := storage.New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 						Expect(err).ToNot(HaveOccurred())
 						c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
 						h, _ := c.mux()

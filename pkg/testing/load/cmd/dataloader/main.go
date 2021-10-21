@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -48,7 +49,7 @@ func openStorage(path string) (*storage.Storage, error) {
 		CacheEvictVolume:      0.10,
 		MaxNodesSerialization: 2048,
 		MaxNodesRender:        2048,
-	}, prometheus.NewRegistry())
+	}, logrus.StandardLogger(), prometheus.NewRegistry())
 }
 
 func main() {

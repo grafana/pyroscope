@@ -7,6 +7,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 )
 
+// TODO(kolesnikovae): refactor storage and cache metrics.
+
 type metrics struct {
 	writesTotal prometheus.Counter
 	readsTotal  prometheus.Counter

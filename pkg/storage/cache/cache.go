@@ -147,11 +147,6 @@ func (cache *Cache) Discard(key string) {
 	cache.lfu.Delete(key)
 }
 
-func (cache *Cache) DiscardBatch(keys []string) {
-	// TODO(kolesnikovae): do we need this?
-	cache.lfu.DeleteBatch(keys)
-}
-
 func (cache *Cache) DiscardPrefix(prefix string) {
 	cache.lfu.DeletePrefix(prefix)
 }

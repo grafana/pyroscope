@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"runtime"
 	"strconv"
 	"time"
@@ -34,7 +35,7 @@ var _ = Describe("storage package", func() {
 			evictInterval = 2 * time.Second
 
 			var err error
-			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
+			s, err = New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -60,7 +61,7 @@ var _ = Describe("storage package", func() {
 					})
 
 					err := s.Delete(&DeleteInput{
-						Key: key,
+						Keys: []*segment.Key{key},
 					})
 					Expect(err).ToNot(HaveOccurred())
 
@@ -108,7 +109,7 @@ var _ = Describe("storage package", func() {
 					})
 
 					err := s.Delete(&DeleteInput{
-						Key: key,
+						Keys: []*segment.Key{key},
 					})
 					Expect(err).ToNot(HaveOccurred())
 
@@ -147,7 +148,7 @@ var _ = Describe("storage package", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					err = s.Delete(&DeleteInput{
-						Key: key,
+						Keys: []*segment.Key{key},
 					})
 					Expect(err).ToNot(HaveOccurred())
 
@@ -333,7 +334,7 @@ var _ = Describe("storage package", func() {
 					Expect(o.Tree.String()).To(Equal(tree.String()))
 					Expect(s.Close()).ToNot(HaveOccurred())
 
-					s2, err := New(&(*cfg).Server, prometheus.NewRegistry())
+					s2, err := New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
 					o2, err := s2.Get(&GetInput{
@@ -351,12 +352,11 @@ var _ = Describe("storage package", func() {
 	})
 })
 
-/*
 var _ = Describe("DeleteDataBefore", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
+			s, err = New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -379,7 +379,7 @@ var _ = Describe("DeleteDataBefore", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				threshold := segment.NewRetentionPolicy().SetAbsoluteMaxAge(time.Hour)
-				Expect(s.DeleteDataBefore(threshold)).ToNot(HaveOccurred())
+				Expect(s.DeleteDataBefore(context.Background(), threshold)).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
@@ -403,10 +403,9 @@ var _ = Describe("DeleteDataBefore", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				threshold := segment.NewRetentionPolicy().SetAbsoluteMaxAge(time.Hour)
-				Expect(s.DeleteDataBefore(threshold)).ToNot(HaveOccurred())
+				Expect(s.DeleteDataBefore(context.Background(), threshold)).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
 })
-*/
