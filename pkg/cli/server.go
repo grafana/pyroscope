@@ -73,7 +73,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		return nil, fmt.Errorf("new server: %w", err)
 	}
 
-	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config, prometheus.DefaultRegisterer)
+	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
 	svc.directUpstream = direct.New(ingester)
 	selfProfilingConfig := &agent.SessionConfig{
 		Upstream:       svc.directUpstream,
@@ -109,11 +109,6 @@ func (svc *serverService) Start() error {
 	svc.directUpstream.Start()
 	if err := svc.selfProfiling.Start(); err != nil {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
-	}
-
-	svc.logger.Debug("collecting local profiles")
-	if err := svc.storage.CollectLocalProfiles(); err != nil {
-		svc.logger.WithError(err).Error("failed to collect local profiles")
 	}
 
 	defer close(svc.done)

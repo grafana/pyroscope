@@ -186,7 +186,7 @@ func (sn *streeNode) isLeaf() bool {
 
 // deleteDataBefore returns true if the node should be deleted
 func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
-	if sn.isAfter(t.absolute) && t.levels == nil {
+	if sn.isAfter(t.absolutePeriod) && t.levels == nil {
 		return false, nil
 	}
 	isBefore := t.isBefore(sn)
@@ -206,7 +206,7 @@ func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
 }
 
 func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
-	if sn.isAfter(t.absolute) && t.levels == nil {
+	if sn.isAfter(t.absolutePeriod) && t.levels == nil {
 		return false, nil
 	}
 	var err error

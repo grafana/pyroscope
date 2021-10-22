@@ -5,73 +5,60 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
-	"path/filepath"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/options"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
-	"github.com/pyroscope-io/pyroscope/pkg/util/disk"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
 var (
-	errOutOfSpace = errors.New("running out of space")
-	errRetention  = errors.New("could not write because of retention settings")
+	errRetention = errors.New("could not write because of retention settings")
+	errClosed    = errors.New("storage closed")
+)
 
-	badgerGCInterval  = 5 * time.Minute
-	cacheTTL          = 2 * time.Minute
-	writeBackInterval = time.Minute
-	retentionInterval = time.Minute
-	evictInterval     = 20 * time.Second
+var (
+	maxTime  = time.Unix(1<<62, 999999999)
+	zeroTime time.Time
 )
 
 type Storage struct {
-	putMutex sync.Mutex
+	*options
 
 	config *config.Server
 	logger *logrus.Logger
 
-	// TODO(kolesnikovae): unused, to be removed.
-	localProfilesDir string
-
-	db           *badger.DB
-	dbTrees      *badger.DB
-	dbDicts      *badger.DB
-	dbDimensions *badger.DB
-	dbSegments   *badger.DB
-
-	// TODO(kolesnikovae): use cache?
+	main       *db
+	segments   *db
+	dimensions *db
+	dicts      *db
+	trees      *db
 	labels     *labels.Labels
-	segments   *cache.Cache
-	dimensions *cache.Cache
-	dicts      *cache.Cache
-	trees      *cache.Cache
 
 	*metrics
+	*cacheMetrics
 
-	cancel context.CancelFunc
-	stop   chan struct{}
-	wg     sync.WaitGroup
+	size bytesize.ByteSize
 
-	// Periodic tasks are executed exclusively to avoid competition:
+	// Maintenance tasks are executed exclusively to avoid competition:
 	// extensive writing during GC is harmful and deteriorates the
 	// overall performance. Same for write back, eviction, and retention
 	// tasks.
 	maintenance sync.Mutex
+	stop        chan struct{}
+	wg          sync.WaitGroup
+
+	putMutex sync.Mutex
 }
 
 type prefix string
@@ -94,150 +81,73 @@ func (p prefix) trim(k []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer) (*Storage, error) {
+func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer, options ...Option) (*Storage, error) {
 	s := &Storage{
-		config:           c,
-		logger:           logger,
-		stop:             make(chan struct{}),
-		localProfilesDir: filepath.Join(c.StoragePath, "local-profiles"),
-		metrics:          newStorageMetrics(reg),
+		config:  c,
+		options: defaultOptions(),
+
+		logger:       logger,
+		stop:         make(chan struct{}),
+		metrics:      newStorageMetrics(reg),
+		cacheMetrics: newCacheMetrics(reg),
 	}
 
-	cm := newCacheMetrics(reg)
-	ctx, cancel := context.WithCancel(context.Background())
-	s.cancel = cancel
+	for _, option := range options {
+		option(s)
+	}
 
-	// TODO(kolesnikovae): unused, to be removed.
-	err := os.MkdirAll(s.localProfilesDir, 0o755)
-	if err != nil {
+	var err error
+	if s.main, err = s.newBadger("main", "", nil); err != nil {
+		return nil, err
+	}
+	if s.dicts, err = s.newBadger("dicts", dictionaryPrefix, dictionaryCodec{}); err != nil {
+		return nil, err
+	}
+	if s.dimensions, err = s.newBadger("dimensions", dimensionPrefix, dimensionCodec{}); err != nil {
+		return nil, err
+	}
+	if s.segments, err = s.newBadger("segments", segmentPrefix, segmentCodec{}); err != nil {
+		return nil, err
+	}
+	if s.trees, err = s.newBadger("trees", treePrefix, treeCodec{s}); err != nil {
 		return nil, err
 	}
 
-	if s.db, err = s.newBadger("main", defaultBadgerGCTask); err != nil {
-		return nil, err
-	}
-	s.labels = labels.New(s.db)
-
-	if s.dbDicts, err = s.newBadger("dicts", defaultBadgerGCTask); err != nil {
-		return nil, err
-	}
-	s.dicts = cache.New(cache.Config{
-		DB:      s.dbDicts,
-		Metrics: cm.createInstance("dicts"),
-		Codec:   dictionaryCodec{},
-		Prefix:  "d:",
-		TTL:     cacheTTL,
-	})
-
-	if s.dbDimensions, err = s.newBadger("dimensions", defaultBadgerGCTask); err != nil {
-		return nil, err
-	}
-	s.dimensions = cache.New(cache.Config{
-		DB:      s.dbDimensions,
-		Metrics: cm.createInstance("dimensions"),
-		Codec:   dimensionCodec{},
-		Prefix:  dimensionPrefix.String(),
-		TTL:     cacheTTL,
-	})
-
-	if s.dbSegments, err = s.newBadger("segments", defaultBadgerGCTask); err != nil {
-		return nil, err
-	}
-	s.segments = cache.New(cache.Config{
-		DB:      s.dbSegments,
-		Metrics: cm.createInstance("segments"),
-		Codec:   segmentCodec{},
-		Prefix:  segmentPrefix.String(),
-		TTL:     cacheTTL,
-	})
-
-	// Trees DB is handled is a very own specific way because only trees are
-	// removed to reclaim space in accordance to the size-based retention
-	// policy configuration.
-	badgerGCTaskTrees := func(db *badger.DB, logger logrus.FieldLogger) func() {
-		return func() {
-			if runBadgerGC(db, logger) {
-				// The volume to reclaim is determined by approximation
-				// on the key-value pairs size, which is very close to the
-				// actual occupied disk space only when garbage collector
-				// has discarded unclaimed space in value log files.
-				//
-				// At this point size estimations are quite precise and we
-				// can remove items from the database safely.
-				if err = s.Reclaim(ctx, s.retentionPolicy()); err != nil {
-					logger.WithError(err).Warn("failed to reclaim disk space")
-				}
-			}
-		}
-	}
-
-	if s.dbTrees, err = s.newBadger("trees", badgerGCTaskTrees); err != nil {
-		return nil, err
-	}
-	s.trees = cache.New(cache.Config{
-		DB:      s.dbTrees,
-		Metrics: cm.createInstance("trees"),
-		Codec:   treeCodec{s},
-		Prefix:  treePrefix.String(),
-		TTL:     cacheTTL,
-	})
+	s.labels = labels.New(s.main.DB)
 
 	if err = s.migrate(); err != nil {
 		return nil, err
 	}
 
-	// TODO(kolesnikovae): allow failure and skip evictionTask?
+	// TODO(kolesnikovae): Allow failure and skip evictionTask?
 	memTotal, err := getMemTotal()
 	if err != nil {
 		return nil, err
 	}
 
-	s.wg.Add(3)
-	go s.periodicTask(evictInterval, s.evictionTask(memTotal))
-	go s.periodicTask(writeBackInterval, s.writeBackTask)
-	go s.periodicTask(retentionInterval, s.retentionTask(ctx))
+	// TODO(kolesnikovae): Make it possible to run CollectGarbage
+	//  without starting any other maintenance tasks at server start.
+	s.wg.Add(4)
+	go s.maintenanceTask(s.gcInterval, s.watchDBSize(s.gcSizeDiff, s.CollectGarbage))
+	go s.maintenanceTask(s.evictInterval, s.evictionTask(memTotal))
+	go s.maintenanceTask(s.writeBackInterval, s.writeBackTask)
+	go s.periodicTask(s.writeBackInterval, s.updateMetricsTask)
 
 	return s, nil
 }
 
-type badgerGCTask func(*badger.DB, logrus.FieldLogger) func()
-
-func (s *Storage) newBadger(name string, f badgerGCTask) (*badger.DB, error) {
-	badgerPath := filepath.Join(s.config.StoragePath, name)
-	if err := os.MkdirAll(badgerPath, 0o755); err != nil {
-		return nil, err
-	}
-
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-	if level, err := logrus.ParseLevel(s.config.BadgerLogLevel); err == nil {
-		logger.SetLevel(level)
-	}
-
-	db, err := badger.Open(badger.DefaultOptions(badgerPath).
-		WithTruncate(!s.config.BadgerNoTruncate).
-		WithSyncWrites(false).
-		WithCompactL0OnClose(false).
-		WithCompression(options.ZSTD).
-		WithLogger(logger.WithField("badger", name)))
-
-	if err != nil {
-		return nil, err
-	}
-
-	s.wg.Add(1)
-	go s.periodicTask(badgerGCInterval, f(db, s.logger.WithField("db", name)))
-	return db, nil
-}
-
-func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
-	t := segment.NewRetentionPolicy().
-		SetAbsoluteMaxAge(s.config.Retention).
-		SetAbsoluteSize(s.config.RetentionSize.Bytes())
-	for level, threshold := range s.config.RetentionLevels {
-		t.SetLevelMaxAge(level, threshold)
-	}
-	return t
+func (s *Storage) Close() error {
+	// Stop all periodic and maintenance tasks.
+	close(s.stop)
+	s.wg.Wait()
+	// Dictionaries DB has to close last because trees depend on it.
+	s.goDB(func(d *db) {
+		if d != s.dicts {
+			d.close()
+		}
+	})
+	s.dicts.close()
+	return nil
 }
 
 type PutInput struct {
@@ -251,25 +161,16 @@ type PutInput struct {
 	AggregationType string
 }
 
-var (
-	OutOfSpaceThreshold = 512 * bytesize.MB
-	maxTime             = time.Unix(1<<62, 999999999)
-	zeroTime            time.Time
-)
-
 func (s *Storage) Put(pi *PutInput) error {
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
 
-	if err := s.performFreeSpaceCheck(); err != nil {
-		return err
-	}
-
 	if pi.StartTime.Before(s.retentionPolicy().LowerTimeBoundary()) {
 		return errRetention
 	}
 
+	s.putTotal.Inc()
 	s.logger.WithFields(logrus.Fields{
 		"startTime":       pi.StartTime.String(),
 		"endTime":         pi.EndTime.String(),
@@ -278,8 +179,6 @@ func (s *Storage) Put(pi *PutInput) error {
 		"units":           pi.Units,
 		"aggregationType": pi.AggregationType,
 	}).Debug("storage.Put")
-
-	s.writesTotal.Add(1.0)
 
 	for k, v := range pi.Key.Labels() {
 		s.labels.Put(k, v)
@@ -372,9 +271,8 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		return nil, fmt.Errorf("key or query must be specified")
 	}
 
+	s.getTotal.Inc()
 	logger.Debug("storage.Get")
-
-	s.readsTotal.Add(1)
 
 	var (
 		resultTrie  *tree.Tree
@@ -420,7 +318,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		})
 	}
 
-	if resultTrie == nil {
+	if resultTrie == nil || lastSegment == nil {
 		return nil, nil
 	}
 
@@ -470,17 +368,12 @@ func (s *Storage) dimensionKeysByQuery(qry *flameql.Query) func() []dimension.Ke
 }
 
 type DeleteInput struct {
-	// Keys must match exactly one segment.
-	Keys []*segment.Key
+	// Key must match exactly one segment.
+	Key *segment.Key
 }
 
 func (s *Storage) Delete(di *DeleteInput) error {
-	for _, sk := range di.Keys {
-		if err := s.deleteSegmentAndRelatedData(sk); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.deleteSegmentAndRelatedData(di.Key)
 }
 
 func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
@@ -489,7 +382,7 @@ func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 		return nil
 	}
 	// Drop trees from disk.
-	if err := s.dbTrees.DropPrefix(treePrefix.key(sk)); err != nil {
+	if err := s.trees.DropPrefix(treePrefix.key(sk)); err != nil {
 		return err
 	}
 	// Discarding cached items is necessary because otherwise those would
@@ -506,50 +399,7 @@ func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 			d.Delete(dimension.Key(sk))
 		}
 	}
-	return s.segments.Delete(k.SegmentKey())
-}
-
-func (s *Storage) Close() error {
-	// Cancel ongoing long-running procedures.
-	s.cancel()
-	// Stop periodic tasks.
-	close(s.stop)
-	s.wg.Wait()
-
-	func() {
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.cacheFlushTimer.Observe))
-		defer timer.ObserveDuration()
-
-		wg := sync.WaitGroup{}
-		wg.Add(3)
-		go func() { defer wg.Done(); s.dimensions.Flush() }()
-		go func() { defer wg.Done(); s.segments.Flush() }()
-		go func() { defer wg.Done(); s.trees.Flush() }()
-		wg.Wait()
-
-		// dictionary has to flush last because trees write to dictionaries
-		s.dicts.Flush()
-	}()
-
-	func() {
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.badgerCloseTimer.Observe))
-		defer timer.ObserveDuration()
-
-		wg := sync.WaitGroup{}
-		wg.Add(5)
-		go func() { defer wg.Done(); s.dbTrees.Close() }()
-		go func() { defer wg.Done(); s.dbDicts.Close() }()
-		go func() { defer wg.Done(); s.dbDimensions.Close() }()
-		go func() { defer wg.Done(); s.dbSegments.Close() }()
-		go func() { defer wg.Done(); s.db.Close() }()
-		wg.Wait()
-	}()
-
-	// this allows prometheus to collect metrics before pyroscope exits
-	if os.Getenv("PYROSCOPE_WAIT_AFTER_STOP") != "" {
-		time.Sleep(5 * time.Second)
-	}
-	return nil
+	return s.segments.Delete(sk)
 }
 
 func (s *Storage) GetKeys(cb func(string) bool) { s.labels.GetKeys(cb) }
@@ -634,35 +484,19 @@ func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string)
 }
 
 func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
-	return map[string]bytesize.ByteSize{
-		"main":       dbSize(s.db),
-		"trees":      dbSize(s.dbTrees),
-		"dicts":      dbSize(s.dbDicts),
-		"dimensions": dbSize(s.dbDimensions),
-		"segments":   dbSize(s.dbSegments),
+	m := make(map[string]bytesize.ByteSize)
+	for _, d := range s.databases() {
+		m[d.name] = dbSize(d)
 	}
+	return m
 }
 
 func (s *Storage) CacheStats() map[string]interface{} {
-	return map[string]interface{}{
-		"dimensions_size": s.dimensions.Size(),
-		"segments_size":   s.segments.Size(),
-		"dicts_size":      s.dicts.Size(),
-		"trees_size":      s.trees.Size(),
-	}
-}
-
-func (s *Storage) performFreeSpaceCheck() error {
-	freeSpace, err := disk.FreeSpace(s.config.StoragePath)
-	if err == nil {
-		if freeSpace < OutOfSpaceThreshold {
-			return errOutOfSpace
+	m := make(map[string]interface{})
+	for _, d := range s.databases() {
+		if d.Cache != nil {
+			m[d.name+"_size"] = s.dimensions.Cache.Size()
 		}
 	}
-	return nil
-}
-
-func dbSize(db *badger.DB) bytesize.ByteSize {
-	lsm, vlog := db.Size()
-	return bytesize.ByteSize(lsm + vlog)
+	return m
 }

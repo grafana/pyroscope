@@ -7,10 +7,11 @@ import (
 )
 
 type RetentionPolicy struct {
-	now      time.Time
-	absolute time.Time
-	levels   map[int]time.Time
-	size     int
+	sizeLimit bytesize.ByteSize
+
+	now            time.Time
+	absolutePeriod time.Time
+	levels         map[int]time.Time
 }
 
 func NewRetentionPolicy() *RetentionPolicy {
@@ -19,13 +20,13 @@ func NewRetentionPolicy() *RetentionPolicy {
 
 func (r RetentionPolicy) LowerTimeBoundary() time.Time {
 	if r.levels == nil {
-		return r.absolute
+		return r.absolutePeriod
 	}
 	return r.levels[0]
 }
 
 func (r *RetentionPolicy) SetAbsoluteMaxAge(maxAge time.Duration) *RetentionPolicy {
-	r.absolute = r.timeBefore(maxAge)
+	r.absolutePeriod = r.timeBefore(maxAge)
 	return r
 }
 
@@ -38,7 +39,7 @@ func (r *RetentionPolicy) SetLevelMaxAge(level int, maxAge time.Duration) *Reten
 }
 
 func (r RetentionPolicy) isBefore(sn *streeNode) bool {
-	if sn.isBefore(r.absolute) {
+	if sn.isBefore(r.absolutePeriod) {
 		return true
 	}
 	return sn.isBefore(r.levelRetentionPeriod(sn.depth))
@@ -52,7 +53,7 @@ func (r RetentionPolicy) timeBefore(age time.Duration) time.Time {
 }
 
 func (r *RetentionPolicy) normalize() *RetentionPolicy {
-	r.absolute = normalizeTime(r.absolute)
+	r.absolutePeriod = normalizeTime(r.absolutePeriod)
 	for i := range r.levels {
 		r.levels[i] = normalizeTime(r.levels[i])
 	}
@@ -67,27 +68,29 @@ func (r RetentionPolicy) levelRetentionPeriod(depth int) time.Time {
 }
 
 func (r *RetentionPolicy) SizeLimit() bytesize.ByteSize {
-	return bytesize.ByteSize(r.size)
+	return r.sizeLimit
 }
 
-func (r *RetentionPolicy) SetAbsoluteSize(s int) *RetentionPolicy {
-	r.size = s
+func (r *RetentionPolicy) SetSizeLimit(x bytesize.ByteSize) *RetentionPolicy {
+	r.sizeLimit = x
 	return r
 }
 
-// CapacityToReclaim reports disk space capacity in bytes needs to be reclaimed.
-// The function reserves share t of the available capacity, reported value
-// includes this size.
+// CapacityToReclaim reports disk space capacity to reclaim,
+// calculated as follows: used - limit + limit*ratio.
 //
-// Example: used 9GB    available 10GB  t 0.05 – the function returns 0.
-//          used 9.5GB  available 10GB  t 0.05 – the function returns 0.
-//          used 9.6GB  available 10GB  t 0.05 – the function returns 0.1GB.
-//          used 10GB   available 10GB  t 0.05 – the function returns 0.5GB.
-func (r RetentionPolicy) CapacityToReclaim(used bytesize.ByteSize, t float64) bytesize.ByteSize {
-	if r.size <= 0 || used <= 0 {
+// The call never returns a negative value.
+//
+// Example: limit 10GB  used 9GB    t 0.05 = 0
+//          limit 10GB  used 9.5GB  t 0.05 = 0
+//          limit 10GB  used 9.6GB  t 0.05 = 0.1GB
+//          limit 10GB  used 10GB   t 0.05 = 0.5GB
+//          limit 10GB  used 20GB   t 0.05 = 10.5GB
+func (r RetentionPolicy) CapacityToReclaim(used bytesize.ByteSize, ratio float64) bytesize.ByteSize {
+	if r.sizeLimit <= 0 || used <= 0 {
 		return 0
 	}
-	if v := used + bytesize.ByteSize(float64(r.size)*t) - bytesize.ByteSize(r.size); v > 0 {
+	if v := used + bytesize.ByteSize(float64(r.sizeLimit)*ratio) - r.sizeLimit; v > 0 {
 		return v
 	}
 	return 0

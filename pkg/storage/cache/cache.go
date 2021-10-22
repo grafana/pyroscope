@@ -48,10 +48,12 @@ type Codec interface {
 }
 
 type Metrics struct {
-	MissCounter         prometheus.Counter
-	ReadCounter         prometheus.Counter
-	DiskWritesHistogram prometheus.Observer
-	DiskReadsHistogram  prometheus.Observer
+	MissesCounter     prometheus.Counter
+	ReadsCounter      prometheus.Counter
+	DBWrites          prometheus.Observer
+	DBReads           prometheus.Observer
+	WriteBackDuration prometheus.Observer
+	EvictionsDuration prometheus.Observer
 }
 
 func New(c Config) *Cache {
@@ -70,6 +72,10 @@ func New(c Config) *Cache {
 	cache.lfu.TTL = int64(c.TTL.Seconds())
 
 	// start a goroutine for saving the evicted cache items to disk
+	// TODO(kolesnikovae): these errors should be at least logged.
+	//  Perhaps, it will be better if we move it outside of the cache.
+	//  Taking into account that writes almost always happen in batches,
+	//  We should definitely take advantage of BadgerDB write batch API.
 
 	go func() {
 		for {
@@ -106,7 +112,7 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 	if err := cache.Serialize(b, key, val); err != nil {
 		return fmt.Errorf("serialization: %w", err)
 	}
-	cache.DiskWritesHistogram.Observe(float64(b.Len()))
+	cache.DBWrites.Observe(float64(b.Len()))
 	return cache.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(cache.Prefix+key), b.Bytes())
 	})
@@ -129,11 +135,15 @@ func (cache *Cache) Flush() {
 // above allowed threshold and write-back calls happen constantly, making pyroscope more crash-resilient.
 // See https://github.com/pyroscope-io/pyroscope/issues/210 for more context
 func (cache *Cache) Evict(percent float64) {
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(cache.EvictionsDuration.Observe))
 	cache.lfu.Evict(int(float64(cache.lfu.Len()) * percent))
+	timer.ObserveDuration()
 }
 
 func (cache *Cache) WriteBack() {
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(cache.WriteBackDuration.Observe))
 	cache.lfu.WriteBack()
+	timer.ObserveDuration()
 }
 
 func (cache *Cache) Delete(key string) error {
@@ -173,9 +183,9 @@ func (cache *Cache) Lookup(key string) (interface{}, bool) {
 }
 
 func (cache *Cache) get(key string) (interface{}, error) {
-	cache.ReadCounter.Add(1)
+	cache.ReadsCounter.Inc()
 	return cache.lfu.GetOrSet(key, func() (interface{}, error) {
-		cache.MissCounter.Add(1)
+		cache.MissesCounter.Inc()
 		var buf []byte
 		err := cache.View(func(txn *badger.Txn) error {
 			item, err := txn.Get([]byte(cache.Prefix + key))
@@ -194,7 +204,7 @@ func (cache *Cache) get(key string) (interface{}, error) {
 			return nil, err
 		}
 
-		cache.DiskReadsHistogram.Observe(float64(len(buf)))
+		cache.DBReads.Observe(float64(len(buf)))
 		return cache.Deserialize(bytes.NewReader(buf), key)
 	})
 }

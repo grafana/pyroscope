@@ -62,7 +62,7 @@ func (sn streeNode) populateTimeline(tl *Timeline, r *RetentionPolicy) {
 				hasDataBefore = true
 				continue
 			}
-			if levelRetentionPeriod.IsZero() || sn.isBefore(r.absolute) || hasDataBefore {
+			if levelRetentionPeriod.IsZero() || sn.isBefore(r.absolutePeriod) || hasDataBefore {
 				continue
 			}
 			if c := sn.createSampledChild(i); c.isBefore(levelRetentionPeriod) {

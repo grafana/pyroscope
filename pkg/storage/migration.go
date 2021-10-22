@@ -42,7 +42,7 @@ func (s *Storage) migrate() error {
 // dbVersion returns the number of migrations applied to the storage.
 func (s *Storage) dbVersion() (int, error) {
 	var version int
-	err := s.db.View(func(txn *badger.Txn) error {
+	err := s.main.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(dbVersionKey))
 		if err != nil {
 			return err
@@ -59,7 +59,7 @@ func (s *Storage) dbVersion() (int, error) {
 }
 
 func (s *Storage) setDbVersion(v int) error {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.main.Update(func(txn *badger.Txn) error {
 		return txn.SetEntry(&badger.Entry{
 			Key:   []byte(dbVersionKey),
 			Value: []byte(strconv.Itoa(v)),
@@ -85,7 +85,7 @@ func (s *Storage) setDbVersion(v int) error {
 func migrateDictionaryKeys(s *Storage) error {
 	appNameKeys := map[string]struct{}{}
 	segmentNameKeys := map[string][]byte{}
-	return s.dbDicts.Update(func(txn *badger.Txn) error {
+	return s.dicts.Update(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.Prefix = dictionaryPrefix.bytes()
 		it := txn.NewIterator(opts)

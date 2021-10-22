@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"context"
 	"runtime"
 	"strconv"
 	"time"
@@ -25,6 +24,8 @@ import (
 // 21:22:08      air |  (time.Duration) 2777h46m40s,
 // 21:22:08      air |  (time.Duration) 27777h46m40s
 
+// TODO(kolesnikovae): Refactor tests.
+
 var s *Storage
 
 var _ = Describe("storage package", func() {
@@ -32,10 +33,9 @@ var _ = Describe("storage package", func() {
 
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
-			evictInterval = 2 * time.Second
-
 			var err error
-			s, err = New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry(),
+				WithEvictionInterval(2*time.Second))
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -60,11 +60,7 @@ var _ = Describe("storage package", func() {
 						SampleRate: 100,
 					})
 
-					err := s.Delete(&DeleteInput{
-						Keys: []*segment.Key{key},
-					})
-					Expect(err).ToNot(HaveOccurred())
-
+					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
 					gOut, err := s.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
@@ -108,11 +104,7 @@ var _ = Describe("storage package", func() {
 						SampleRate: 100,
 					})
 
-					err := s.Delete(&DeleteInput{
-						Keys: []*segment.Key{key},
-					})
-					Expect(err).ToNot(HaveOccurred())
-
+					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
 					gOut, err := s.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
@@ -147,11 +139,7 @@ var _ = Describe("storage package", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 
-					err = s.Delete(&DeleteInput{
-						Keys: []*segment.Key{key},
-					})
-					Expect(err).ToNot(HaveOccurred())
-
+					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
 					s.Put(&PutInput{
 						StartTime:  st,
 						EndTime:    et,
@@ -296,7 +284,7 @@ var _ = Describe("storage package", func() {
 
 						var m runtime.MemStats
 						runtime.ReadMemStats(&m)
-						time.Sleep(evictInterval)
+						time.Sleep(2 * time.Second)
 					}
 				})
 			})
@@ -352,6 +340,7 @@ var _ = Describe("storage package", func() {
 	})
 })
 
+/*
 var _ = Describe("DeleteDataBefore", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
@@ -379,7 +368,7 @@ var _ = Describe("DeleteDataBefore", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				threshold := segment.NewRetentionPolicy().SetAbsoluteMaxAge(time.Hour)
-				Expect(s.DeleteDataBefore(context.Background(), threshold)).ToNot(HaveOccurred())
+				Expect(s.deleteDataBefore(context.Background(), threshold)).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
@@ -409,3 +398,4 @@ var _ = Describe("DeleteDataBefore", func() {
 		})
 	})
 })
+*/
