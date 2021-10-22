@@ -33,7 +33,7 @@ import DiffLegend from './DiffLegend';
 import Tooltip from './Tooltip';
 import Highlight from './Highlight';
 import ContextMenu from './ContextMenu';
-import { PX_PER_LEVEL, COLLAPSE_THRESHOLD, BAR_HEIGHT } from './constants';
+import { PX_PER_LEVEL } from './constants';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 
@@ -47,13 +47,7 @@ class FlameGraph extends React.Component {
   constructor(props) {
     super();
     this.state = {
-      highlightStyle: { display: 'none' },
-      tooltipStyle: { display: 'none' },
-      resetStyle: { visibility: 'hidden' },
-      sortBy: 'self',
-      sortByDirection: 'desc',
       viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
-      flamebearer: null,
     };
     this.canvasRef = React.createRef();
     this.highlightRef = React.createRef();
@@ -63,6 +57,7 @@ class FlameGraph extends React.Component {
 
   componentDidMount() {
     this.selectedLevel = 0;
+    this.topLevel = 0;
     this.focusedNode = null;
 
     window.addEventListener('resize', this.resizeHandler);
@@ -78,31 +73,28 @@ class FlameGraph extends React.Component {
     }
     this.updateData();
 
-    this.flamegraph = new Flamegraph(
-      this.props.flamebearer,
-      this.canvasRef.current,
-      'HEAD'
-    );
+    this.createFlamegraph();
     this.flamegraph.render();
   }
 
   componentDidUpdate(prevProps) {
-    if (
-      (this.props.flamebearer &&
-        prevProps.flamebearer !== this.props.flamebearer) ||
-      this.props.width !== prevProps.width ||
-      this.props.height !== prevProps.height ||
-      this.props.view !== prevProps.view ||
-      this.props.fitMode !== prevProps.fitMode
-    ) {
-      this.updateData();
+    // a new flamebearer is a new flamegraph
+    if (prevProps.flamebearer !== this.props.flamebearer) {
+      this.createFlamegraph();
     }
-    if (
-      this.props.fitMode !== prevProps.fitMode ||
-      this.props.query !== prevProps.query
-    ) {
-      setTimeout(() => this.renderCanvas(), 0);
+
+    // there's no need to recreate the flamegraph
+    // when we are just changing a property
+
+    if (this.props.fitMode !== prevProps.fitMode) {
+      this.flamegraph.setFitMode(this.props.fitMode);
     }
+
+    if (this.props.query !== prevProps.query) {
+      this.flamegraph.setHighlightQuery(this.props.query);
+    }
+
+    this.flamegraph.render();
   }
 
   updateData = () => {
@@ -121,24 +113,6 @@ class FlameGraph extends React.Component {
         this.renderCanvas();
       }
     );
-  };
-
-  // format=single
-  //   j = 0: x start of bar
-  //   j = 1: width of bar
-  //   j = 3: position in the main index (jStep)
-  //
-  // format=double
-  //   j = 0,3: x start of bar =>     x = (level[0] + level[3]) / 2
-  //   j = 1,4: width of bar   => width = (level[1] + level[4]) / 2
-  //                           =>  diff = (level[4] - level[1]) / (level[1] + level[4])
-  //   j = 6  : position in the main index (jStep)
-
-  updateResetStyle = () => {
-    const topLevelSelected = this.selectedLevel === 0;
-    this.setState({
-      resetStyle: { visibility: topLevelSelected ? 'hidden' : 'visible' },
-    });
   };
 
   reset = () => {
@@ -170,12 +144,6 @@ class FlameGraph extends React.Component {
 
   renderCanvas = () => {
     this.flamegraph.render();
-
-    this.graphWidth = this.canvasRef.current.width;
-    this.pxPerTick =
-      this.graphWidth /
-      this.props.flamebearer.numTicks /
-      (this.rangeMax - this.rangeMin);
   };
 
   xyToTooltipData = (format, x, y) => {
@@ -193,7 +161,7 @@ class FlameGraph extends React.Component {
   };
 
   xyToContextMenuItems = (x, y) => {
-    const isSelected = this.selectedLevel !== 0 || this.topLevel !== 0;
+    const isSelected = this.selectedLevel !== 0 || this.flamegraph.isZoomed();
 
     return [
       <MenuItem key="reset" disabled={!isSelected} onClick={this.reset}>
@@ -204,6 +172,19 @@ class FlameGraph extends React.Component {
       </MenuItem>,
     ];
   };
+
+  createFlamegraph() {
+    this.flamegraph = new Flamegraph(
+      this.props.flamebearer,
+      this.canvasRef.current,
+      this.topLevel, // TODO shouldn't this be in a state?
+      this.rangeMin,
+      this.rangeMax,
+      this.selectedLevel,
+      this.props.fitMode,
+      this.props.query
+    );
+  }
 
   render = () => {
     const { ExportData } = this.props;

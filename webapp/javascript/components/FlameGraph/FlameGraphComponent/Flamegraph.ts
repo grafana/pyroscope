@@ -23,30 +23,20 @@ type Flamebearer = {
 export default class Flamegraph {
   private ff: ReturnType<typeof createFF>;
 
-  private topLevel: number;
-
-  private rangeMin: number;
-
-  private rangeMax: number;
-
-  private selectedLevel: number;
-
-  private pxPerWidth: number;
-
-  private fitMode: 'HEAD' | 'TAIL';
-
-  private canvas: HTMLCanvasElement;
-  //  private readonly flamebearer: Flamebearer;
-
   constructor(
     private readonly flamebearer: Flamebearer,
-    canvas: HTMLCanvasElement,
-    fitMode: 'HEAD' | 'TAIL'
+    private canvas: HTMLCanvasElement,
+    private topLevel: number,
+    private rangeMin: number,
+    private rangeMax: number,
+    private selectedLevel: number,
+    private fitMode: 'HEAD' | 'TAIL',
+    private highlightQuery: string
   ) {
     this.ff = createFF(flamebearer.format);
     //    console.log({ ff: this.ff });
 
-    this.fitMode = fitMode;
+    //   this.fitMode = fitMode;
 
     this.topLevel = 0;
     this.rangeMin = 0;
@@ -54,7 +44,7 @@ export default class Flamegraph {
 
     this.selectedLevel = 0;
 
-    this.canvas = canvas;
+    //    this.canvas = canvas;
   }
 
   render() {
@@ -74,6 +64,7 @@ export default class Flamegraph {
       rangeMax: this.rangeMax,
       fitMode: this.fitMode,
       selectedLevel: this.selectedLevel,
+      highlightQuery: this.highlightQuery,
     };
 
     const { format: viewType } = this.flamebearer;
@@ -274,9 +265,6 @@ export default class Flamegraph {
         };
       }
       case 'double': {
-        // TODO:
-        // return more stuff
-        //        console.log('ff', ff);
         return {
           format: 'double',
           barTotal: ff.getBarTotal(level, j),
@@ -291,5 +279,17 @@ export default class Flamegraph {
         throw new Error(`Unsupported type`);
       }
     }
+  }
+
+  setFitMode(fitMode: 'HEAD' | 'TAIL') {
+    this.fitMode = fitMode;
+  }
+
+  setHighlightQuery(query: string) {
+    this.highlightQuery = query;
+  }
+
+  isZoomed() {
+    return this.rangeMin > 0 && this.rangeMax < 1;
   }
 }

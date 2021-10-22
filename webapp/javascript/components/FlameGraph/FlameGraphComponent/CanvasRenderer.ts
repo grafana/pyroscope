@@ -95,7 +95,7 @@ export type CanvasRendererConfig = {
    * if it matches it will be highlighted,
    * otherwise it will be greyish.
    */
-  highlightQuery?: string;
+  highlightQuery: string;
 
   // TODO type this
   spyName:

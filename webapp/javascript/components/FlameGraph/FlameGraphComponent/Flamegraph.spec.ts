@@ -2,7 +2,6 @@ import { Units } from '@utils/format';
 import Flamegraph from './Flamegraph';
 import { RenderCanvas } from './CanvasRenderer';
 import { BAR_HEIGHT } from './constants';
-import TestData from './testData';
 
 jest.mock('./CanvasRenderer');
 
@@ -301,86 +300,4 @@ describe('Flamegraph', () => {
       });
     });
   });
-
-  //  describe('xyToTooltippData', () => {
-  //    describe('single', () => {
-  //      it('works with total row', () => {
-  //        expect(flame.xyToTooltipData('single', 0, 0)).toMatchObject({
-  //          format: 'single',
-  //          title: 'total',
-  //          numBarTicks: 988,
-  //          percent: '100%',
-  //        });
-  //      });
-  //
-  //      it('works with full row', () => {
-  //        expect(
-  //          flame.xyToTooltipData('single', 0, BAR_HEIGHT + 1)
-  //        ).toMatchObject({
-  //          format: 'single',
-  //          title: 'runtime.main',
-  //          numBarTicks: 988,
-  //          percent: '100%',
-  //        });
-  //      });
-  //
-  //      it('works with divided row', () => {
-  //        expect(
-  //          flame.xyToTooltipData('single', CANVAS_WIDTH, BAR_HEIGHT * 3)
-  //        ).toMatchObject({
-  //          format: 'single',
-  //          title: 'main.slowFunction',
-  //          numBarTicks: 771,
-  //          percent: '78.04%',
-  //        });
-  //      });
-  //
-  //      it('throws an error if format is incompatible', () => {
-  //        expect(() => flame.xyToTooltipData('double', 0, 0)).toThrow();
-  //      });
-  //    });
-  //
-  //    describe('double', () => {
-  //      beforeEach(() => {
-  //        canvas = document.createElement('canvas');
-  //        canvas.width = CANVAS_WIDTH;
-  //        canvas.height = CANVAS_HEIGHT;
-  //
-  //        flame = new Flamegraph(
-  //          { ...flamebearerDouble, format: 'double' },
-  //          canvas,
-  //          'HEAD'
-  //        );
-  //      });
-  //
-  //      it('works with full row', () => {
-  //        expect(
-  //          flame.xyToTooltipData('double', 1, BAR_HEIGHT + 1)
-  //        ).toMatchObject({
-  //          format: 'double',
-  //          title: 'runtime.main',
-  //          left: 991,
-  //          right: 985,
-  //          leftPercent: 100,
-  //          rightPercent: 100,
-  //        });
-  //      });
-  //
-  //      it('works with divided row', () => {
-  //        expect(
-  //          flame.xyToTooltipData('double', CANVAS_WIDTH - 2, BAR_HEIGHT * 2 + 1)
-  //        ).toMatchObject({
-  //          format: 'double',
-  //          title: 'runtime.main',
-  //          left: 991,
-  //          right: 985,
-  //          leftPercent: 100,
-  //          rightPercent: 100,
-  //        });
-  //      });
-  //      // TODO
-  //      //        expect(() => flame.xyToTooltipData('single', 0, 0)).toThrow();
-  //      //      });
-  //    });
-  //  });
 });
