@@ -52,20 +52,15 @@ class FlameGraph extends React.Component {
     this.canvasRef = React.createRef();
     this.highlightRef = React.createRef();
     this.tooltipRef = React.createRef();
-    this.currentJSONController = null;
   }
 
   componentDidMount() {
-    this.selectedLevel = 0;
-    this.topLevel = 0;
-    this.focusedNode = null;
-
     window.addEventListener('resize', this.resizeHandler);
     window.addEventListener('focus', this.focusHandler);
 
     if (this.props.shortcut) {
       this.props.shortcut.registerShortcut(
-        this.reset,
+        this.props.onReset,
         ['escape'],
         'Reset',
         'Reset Flamegraph View'
@@ -90,9 +85,10 @@ class FlameGraph extends React.Component {
       this.flamegraph.setFitMode(this.props.fitMode);
     }
 
-    if (this.props.query !== prevProps.query) {
-      this.flamegraph.setHighlightQuery(this.props.query);
-    }
+    this.flamegraph.setHighlightQuery(this.props.query);
+    this.flamegraph.setRangeMin(this.props.rangeMin);
+    this.flamegraph.setRangeMax(this.props.rangeMax);
+    this.flamegraph.setSelectedLevel(this.props.selectedLevel);
 
     this.flamegraph.render();
   }
@@ -115,20 +111,25 @@ class FlameGraph extends React.Component {
     );
   };
 
-  reset = () => {
-    this.flamegraph.reset();
-    this.renderCanvas();
-  };
-
+  //  reset = () => {
+  //    this.props.reset();
+  //
+  //    //this.flamegraph.reset();
+  //    //this.renderCanvas();
+  //  };
+  //
   onClick = (e) => {
-    const { i, j } = this.flamegraph.xyToBar(
-      e.nativeEvent.offsetX,
-      e.nativeEvent.offsetY
+    this.props.onZoom(
+      this.flamegraph.xyToZoom(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
     );
-    if (j === -1) return;
-
-    this.flamegraph.zoom(i, j);
-    this.flamegraph.render();
+    //    const { i, j } = this.flamegraph.xyToBar(
+    //      e.nativeEvent.offsetX,
+    //      e.nativeEvent.offsetY
+    //    );
+    //    if (j === -1) return;
+    //
+    //    this.flamegraph.zoom(i, j);
+    //    this.flamegraph.render();
   };
 
   resizeHandler = () => {
@@ -161,10 +162,10 @@ class FlameGraph extends React.Component {
   };
 
   xyToContextMenuItems = (x, y) => {
-    const isSelected = this.selectedLevel !== 0 || this.flamegraph.isZoomed();
+    const isSelected = !this.flamegraph.isPristine();
 
     return [
-      <MenuItem key="reset" disabled={!isSelected} onClick={this.reset}>
+      <MenuItem key="reset" disabled={!isSelected} onClick={this.props.onReset}>
         Reset View
       </MenuItem>,
       <MenuItem key="focus" onClick={() => this.focusOnNode(x, y)}>
@@ -173,14 +174,18 @@ class FlameGraph extends React.Component {
     ];
   };
 
+  isDirty() {
+    return !this.flamegraph.isPristine();
+  }
+
   createFlamegraph() {
     this.flamegraph = new Flamegraph(
       this.props.flamebearer,
       this.canvasRef.current,
-      this.topLevel, // TODO shouldn't this be in a state?
-      this.rangeMin,
-      this.rangeMax,
-      this.selectedLevel,
+      this.props.topLevel,
+      this.props.rangeMin,
+      this.props.rangeMax,
+      this.props.selectedLevel,
       this.props.fitMode,
       this.props.query
     );

@@ -34,17 +34,6 @@ export default class Flamegraph {
     private highlightQuery: string
   ) {
     this.ff = createFF(flamebearer.format);
-    //    console.log({ ff: this.ff });
-
-    //   this.fitMode = fitMode;
-
-    this.topLevel = 0;
-    this.rangeMin = 0;
-    this.rangeMax = 1;
-
-    this.selectedLevel = 0;
-
-    //    this.canvas = canvas;
   }
 
   render() {
@@ -158,27 +147,6 @@ export default class Flamegraph {
     return { i: 0, j: 0 };
   }
 
-  reset() {
-    this.selectedLevel = 0;
-    this.topLevel = 0;
-    this.rangeMin = 0;
-    this.rangeMax = 1;
-  }
-
-  zoom(i: number, j: number) {
-    const { ff } = this;
-
-    this.selectedLevel = i;
-    this.topLevel = 0;
-    this.rangeMin =
-      ff.getBarOffset(this.flamebearer.levels[i], j) /
-      this.flamebearer.numTicks;
-    this.rangeMax =
-      (ff.getBarOffset(this.flamebearer.levels[i], j) +
-        ff.getBarTotal(this.flamebearer.levels[i], j)) /
-      this.flamebearer.numTicks;
-  }
-
   // TODO: should this be exposed?
   getCanvas() {
     return this.canvas;
@@ -220,14 +188,7 @@ export default class Flamegraph {
     const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
     const posY =
       (i - this.topLevel) * PX_PER_LEVEL + (this.isFocused() ? BAR_HEIGHT : 0);
-    //    console.log({
-    //      i,
-    //      topLevel: this.topLevel,
-    //      PX_PER_LEVEL,
-    //      isFocused: this.isFocused(),
-    //      BAR_HEIGHT,
-    //    });
-    //
+
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
       this.getCanvasWidth()
@@ -281,6 +242,25 @@ export default class Flamegraph {
     }
   }
 
+  xyToZoom(x: number, y: number) {
+    const { i, j } = this.xyToBar(x, y);
+    // TODO what if
+    //    if (j === -1) return;
+    const { ff } = this;
+
+    return {
+      selectedLevel: i,
+      //  topLevel: 0,
+      rangeMin:
+        ff.getBarOffset(this.flamebearer.levels[i], j) /
+        this.flamebearer.numTicks,
+      rangeMax:
+        (ff.getBarOffset(this.flamebearer.levels[i], j) +
+          ff.getBarTotal(this.flamebearer.levels[i], j)) /
+        this.flamebearer.numTicks,
+    };
+  }
+
   setFitMode(fitMode: 'HEAD' | 'TAIL') {
     this.fitMode = fitMode;
   }
@@ -289,7 +269,24 @@ export default class Flamegraph {
     this.highlightQuery = query;
   }
 
+  setRangeMin(n: number) {
+    this.rangeMin = n;
+  }
+
+  setRangeMax(n: number) {
+    this.rangeMax = n;
+  }
+
+  setSelectedLevel(n: number) {
+    this.selectedLevel = n;
+  }
+
   isZoomed() {
     return this.rangeMin > 0 && this.rangeMax < 1;
+  }
+
+  isPristine() {
+    // TODO there are more conditions here
+    return this.rangeMin === 0 && this.rangeMax === 1;
   }
 }
