@@ -4,11 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"strconv"
 
-	"google.golang.org/protobuf/proto"
-
+	"github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
@@ -26,17 +24,7 @@ func ParseTreeNoDict(r io.Reader, cb func(name []byte, val int)) error {
 }
 
 // format is pprof. See https://github.com/google/pprof/blob/master/proto/profile.proto
-func ParsePprof(r io.Reader) (*Profile, error) {
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-	profile := &Profile{}
-	if err := proto.Unmarshal(b, profile); err != nil {
-		return nil, err
-	}
-	return profile, nil
-}
+var ParsePprof = pprof.ParsePprof
 
 // format:
 // stack-trace-foo 1

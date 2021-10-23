@@ -42,7 +42,7 @@
 // 	protoc        v3.14.0
 // source: pkg/convert/profile.proto
 
-package convert
+package pprof
 
 import (
 	proto "github.com/golang/protobuf/proto"

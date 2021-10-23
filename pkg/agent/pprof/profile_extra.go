@@ -1,12 +1,15 @@
-package convert
+package pprof
 
 // These functions are kept separately as profile.pb.go is a generated file
 
 import (
+	"io"
+	"io/ioutil"
 	"sort"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/valyala/bytebufferpool"
+	"google.golang.org/protobuf/proto"
 )
 
 type cacheKey []int64
@@ -140,4 +143,16 @@ func (x *Profile) findFunction(fid uint64) (*Function, bool) {
 		}
 	}
 	return nil, false
+}
+
+func ParsePprof(r io.Reader) (*Profile, error) {
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	profile := &Profile{}
+	if err := proto.Unmarshal(b, profile); err != nil {
+		return nil, err
+	}
+	return profile, nil
 }

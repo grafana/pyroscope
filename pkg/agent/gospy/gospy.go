@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	pprof_parser "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 )
@@ -69,11 +70,11 @@ func (s *GoSpy) Stop() error {
 //   the idea here is that we can reuse heap profiles
 var (
 	lastProfileMutex     sync.Mutex
-	lastProfile          *convert.Profile
+	lastProfile          *pprof_parser.Profile
 	lastProfileCreatedAt time.Time
 )
 
-func getHeapProfile(b *bytes.Buffer) *convert.Profile {
+func getHeapProfile(b *bytes.Buffer) *pprof_parser.Profile {
 	lastProfileMutex.Lock()
 	defer lastProfileMutex.Unlock()
 
