@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	custom_pprof "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 )
@@ -37,22 +36,11 @@ type GoSpy struct {
 }
 
 func startCPUProfile(w io.Writer, hz uint32) error {
-	// idea here is that for most people we're starting the default profiler
-	//   but if you want to use a different sampling rate we use our experimental profiler
-	if hz == 100 {
-		return pprof.StartCPUProfile(w)
-	}
-	return custom_pprof.StartCPUProfile(w, hz)
+	return pprof.StartCPUProfile(w)
 }
 
 func stopCPUProfile(hz uint32) {
-	// idea here is that for most people we're starting the default profiler
-	//   but if you want to use a different sampling rate we use our experimental profiler
-	if hz == 100 {
-		pprof.StopCPUProfile()
-		return
-	}
-	custom_pprof.StopCPUProfile()
+	pprof.StopCPUProfile()
 }
 
 func Start(_ int, profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error) {
