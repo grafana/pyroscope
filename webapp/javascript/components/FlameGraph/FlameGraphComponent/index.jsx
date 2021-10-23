@@ -103,9 +103,15 @@ class FlameGraph extends React.Component {
   //  };
   //
   onClick = (e) => {
-    this.props.onZoom(
-      this.flamegraph.xyToZoom(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
+    const { i, j } = this.flamegraph.xyToBar(
+      e.nativeEvent.offsetX,
+      e.nativeEvent.offsetY
     );
+    this.props.onZoom2(i, j);
+
+    //    this.props.onZoom(
+    //      this.flamegraph.xyToZoom(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
+    //    );
   };
 
   resizeHandler = () => {
@@ -140,19 +146,22 @@ class FlameGraph extends React.Component {
   xyToContextMenuItems = (x, y) => {
     const isDirty = this.props.isDirty();
 
+    //
+    //      <MenuItem key="focus" onClick={() => this.focusOnNode(x, y)}>
+    //        Focus
+    //      </MenuItem>,
     return [
       <MenuItem key="reset" disabled={!isDirty} onClick={this.props.onReset}>
         Reset View
       </MenuItem>,
-      {
-        /*
-
-      <MenuItem key="focus" onClick={() => this.focusOnNode(x, y)}>
-        Focus
-      </MenuItem>,
-      */
-      },
     ];
+  };
+
+  // this is required
+  // otherwise may get stale props
+  // eg. thinking that a zoomed flamegraph is not zoomed
+  isWithinBounds = (x, y) => {
+    return this.flamegraph.isWithinBounds(x, y);
   };
 
   createFlamegraph() {
@@ -164,7 +173,8 @@ class FlameGraph extends React.Component {
       this.props.rangeMax,
       this.props.selectedLevel,
       this.props.fitMode,
-      this.props.query
+      this.props.query,
+      this.props.zoom
     );
   }
 
@@ -233,7 +243,7 @@ class FlameGraph extends React.Component {
                 barHeight={PX_PER_LEVEL}
                 canvasRef={this.canvasRef}
                 xyToHighlightData={this.xyToHighlightData}
-                isWithinBounds={this.flamegraph.isWithinBounds}
+                isWithinBounds={this.isWithinBounds}
               />
             )}
           </div>
@@ -250,7 +260,7 @@ class FlameGraph extends React.Component {
             format={this.props.format.format}
             canvasRef={this.canvasRef}
             xyToData={this.xyToTooltipData}
-            isWithinBounds={this.flamegraph.isWithinBounds}
+            isWithinBounds={this.isWithinBounds}
             numTicks={this.props.flamebearer.numTicks}
             sampleRate={this.props.flamebearer.sampleRate}
             leftTicks={this.props.flamebearer.leftTicks}

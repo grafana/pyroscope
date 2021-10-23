@@ -44,6 +44,11 @@ class FlameGraphRenderer extends React.Component {
     // zoom
     rangeMin: 0,
     rangeMax: 1,
+
+    zoom: {
+      i: -1,
+      j: -1,
+    },
   };
 
   constructor(props) {
@@ -179,6 +184,19 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
+  onFlamegraphZoom2 = (i, j) => {
+    this.setState({
+      ...this.state,
+      flamegraphConfigs: {
+        ...this.state.flamegraphConfigs,
+        zoom: {
+          i,
+          j,
+        },
+      },
+    });
+  };
+
   updateSortBy = (newSortBy) => {
     let dir = this.state.sortByDirection;
     if (this.state.sortBy === newSortBy) {
@@ -192,13 +210,13 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  isDirty() {
+  isDirty = () => {
     return (
       JSON.stringify(this.initialFlamegraphState) !==
       JSON.stringify(this.state.flamegraphConfigs)
     );
     // return this.rangeMin === 0 && this.rangeMax === 1;
-  }
+  };
 
   parseFormat(format) {
     return createFF(format || this.state.format);
@@ -308,9 +326,11 @@ class FlameGraphRenderer extends React.Component {
           topLevel={this.state.flamegraphConfigs.topLevel}
           rangeMin={this.state.flamegraphConfigs.rangeMin}
           rangeMax={this.state.flamegraphConfigs.rangeMax}
+          zoom={this.state.flamegraphConfigs.zoom}
           selectedLevel={this.state.flamegraphConfigs.selectedLevel}
           label={this.props.query}
           onZoom={this.onFlamegraphZoom}
+          onZoom2={this.onFlamegraphZoom2}
           onReset={this.onReset}
           isDirty={this.isDirty}
         />

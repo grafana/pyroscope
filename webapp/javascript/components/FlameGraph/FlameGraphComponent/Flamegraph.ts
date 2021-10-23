@@ -31,9 +31,34 @@ export default class Flamegraph {
     private rangeMax: number,
     private selectedLevel: number,
     private fitMode: 'HEAD' | 'TAIL',
-    private highlightQuery: string
+    private highlightQuery: string,
+    private zoom: { i: number; j: number }
   ) {
     this.ff = createFF(flamebearer.format);
+
+    this.setupZoom(zoom.i, zoom.j, flamebearer);
+  }
+
+  private setupZoom(i: number, j: number, flamebearer: Flamebearer) {
+    const { ff } = this;
+
+    // no zoom
+    if (i === -1 || j === -1) {
+      this.rangeMin = 0;
+      this.rangeMax = 1;
+      this.selectedLevel = 0;
+      this.topLevel = 0;
+      return;
+    }
+
+    this.topLevel = 0;
+    this.selectedLevel = i;
+    this.rangeMin =
+      ff.getBarOffset(flamebearer.levels[i], j) / flamebearer.numTicks;
+    this.rangeMax =
+      (ff.getBarOffset(flamebearer.levels[i], j) +
+        ff.getBarTotal(flamebearer.levels[i], j)) /
+      this.flamebearer.numTicks;
   }
 
   public render() {
