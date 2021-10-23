@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
@@ -287,6 +288,20 @@ func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
 		t.SetLevelMaxAge(level, threshold)
 	}
 	return t
+}
+
+func (s *Storage) runGC(discardRatio float64) {
+	m := new(sync.Mutex)
+	reclaimed := make(map[string]interface{})
+	s.goDB(func(x *db) {
+		if x.runGC(discardRatio) {
+			m.Lock()
+			reclaimed[x.name] = true
+			m.Unlock()
+		}
+	})
+
+	s.logger.WithFields(reclaimed).Info("badger db garbage collection")
 }
 
 // TODO(kolesnikovae): filepath.Walk is notoriously slow.

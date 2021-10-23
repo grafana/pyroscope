@@ -1,7 +1,6 @@
 package segment
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -13,10 +12,6 @@ import (
 type Key struct {
 	labels map[string]string
 }
-
-var nameParser = regexp.MustCompile("^(.+)\\{(.+)\\}.*$")
-
-const seed = 6231912
 
 type ParserState int
 
@@ -120,7 +115,7 @@ func (k *Key) DictKey() string {
 }
 
 // FromTreeToDictKey returns app name from tree key k: given tree key
-// "foo{}:0:-62135596790", the call returns "foo".
+// "foo{}:0:1234567890", the call returns "foo".
 //
 // Before tags support, segment key form (i.e. app name + tags: foo{key=value})
 // has been used to reference a dictionary (trie).

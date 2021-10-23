@@ -21,6 +21,26 @@ type db struct {
 	*cache.Cache
 }
 
+type prefix string
+
+const (
+	segmentPrefix    prefix = "s:"
+	treePrefix       prefix = "t:"
+	dictionaryPrefix prefix = "d:"
+	dimensionPrefix  prefix = "i:"
+)
+
+func (p prefix) String() string      { return string(p) }
+func (p prefix) bytes() []byte       { return []byte(p) }
+func (p prefix) key(k string) []byte { return []byte(string(p) + k) }
+
+func (p prefix) trim(k []byte) ([]byte, bool) {
+	if len(k) > len(p) {
+		return k[len(p):], true
+	}
+	return nil, false
+}
+
 func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, error) {
 	badgerPath := filepath.Join(s.config.StoragePath, name)
 	if err := os.MkdirAll(badgerPath, 0o755); err != nil {
@@ -53,7 +73,7 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, erro
 	if codec != nil {
 		d.Cache = cache.New(cache.Config{
 			DB:      badgerDB,
-			Metrics: s.cacheMetrics.createInstance(name),
+			Metrics: s.dbMetrics.createInstance(name),
 			TTL:     s.cacheTTL,
 			Prefix:  p.String(),
 			Codec:   codec,
@@ -91,7 +111,7 @@ func (d *db) runGC(discardRatio float64) (reclaimed bool) {
 }
 
 func (s *Storage) databases() []*db {
-	// order matters.
+	// Order matters.
 	return []*db{
 		s.main,
 		s.dimensions,
@@ -118,7 +138,7 @@ func (s *Storage) goDB(f func(*db)) {
 func dbSize(dbs ...*db) bytesize.ByteSize {
 	var s bytesize.ByteSize
 	for _, d := range dbs {
-		// DB.Size() size is updated once per minute.
+		// The value is updated once per minute.
 		lsm, vlog := d.DB.Size()
 		s += bytesize.ByteSize(lsm + vlog)
 	}

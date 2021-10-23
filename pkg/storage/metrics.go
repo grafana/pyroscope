@@ -14,12 +14,15 @@ type metrics struct {
 	gcDuration prometheus.Summary
 }
 
-type cacheMetrics struct {
+type dbMetrics struct {
 	cacheMisses *prometheus.CounterVec
 	cacheReads  *prometheus.CounterVec
 
 	cacheDBWrites *prometheus.HistogramVec
 	cacheDBReads  *prometheus.HistogramVec
+
+	dbSize    *prometheus.CounterVec
+	cacheSize *prometheus.CounterVec
 
 	evictionsDuration *prometheus.SummaryVec
 	writeBackDuration *prometheus.SummaryVec
@@ -43,9 +46,9 @@ func newStorageMetrics(r prometheus.Registerer) *metrics {
 	}
 }
 
-func newCacheMetrics(r prometheus.Registerer) *cacheMetrics {
+func newCacheMetrics(r prometheus.Registerer) *dbMetrics {
 	name := []string{"name"}
-	return &cacheMetrics{
+	return &dbMetrics{
 		cacheMisses: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_storage_cache_misses_total",
 			Help: "total number of cache misses",
@@ -79,7 +82,7 @@ func newCacheMetrics(r prometheus.Registerer) *cacheMetrics {
 	}
 }
 
-func (m cacheMetrics) createInstance(name string) cache.Metrics {
+func (m dbMetrics) createInstance(name string) cache.Metrics {
 	l := prometheus.Labels{"name": name}
 	return cache.Metrics{
 		MissesCounter:     m.cacheMisses.With(l),

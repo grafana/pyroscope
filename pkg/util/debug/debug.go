@@ -10,8 +10,9 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
+
+// TODO(kolesnikovae): Get rid of it.
 
 const debugInfoReportingInterval = time.Minute
 
@@ -62,16 +63,6 @@ func (d *Reporter) Start() {
 			return
 		case <-ticker.C:
 			d.logger.WithField("utilization", CPUUsage(debugInfoReportingInterval)).Debug("cpu stats")
-			d.logger.WithFields(toFields(d.storage.DiskUsage())).Debug("disk stats")
-			d.logger.WithFields(d.storage.CacheStats()).Debug("cache stats")
 		}
 	}
-}
-
-func toFields(m map[string]bytesize.ByteSize) logrus.Fields {
-	f := make(logrus.Fields)
-	for k, v := range m {
-		f[k] = v
-	}
-	return f
 }

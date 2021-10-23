@@ -15,6 +15,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache/lfu"
 )
 
+// TODO(kolesnikovae): Move this stuff to db?
+
 type Cache struct {
 	Config
 	lfu *lfu.Cache

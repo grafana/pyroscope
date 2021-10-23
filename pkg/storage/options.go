@@ -8,7 +8,7 @@ import (
 
 type Option func(*Storage)
 
-type options struct {
+type storageOptions struct {
 	writeBackInterval time.Duration
 	evictInterval     time.Duration
 	cacheTTL          time.Duration
@@ -18,8 +18,8 @@ type options struct {
 	reclaimSizeRatio float64
 }
 
-func defaultOptions() *options {
-	return &options{
+func defaultOptions() *storageOptions {
+	return &storageOptions{
 		writeBackInterval: time.Minute,
 		evictInterval:     20 * time.Second,
 		cacheTTL:          2 * time.Minute,
