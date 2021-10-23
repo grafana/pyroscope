@@ -7,7 +7,6 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/throttle"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -124,7 +123,7 @@ func NewSession(c SessionConfig, processHelper ProcessHelper) (*ProfileSession, 
 }
 
 func addSuffix(name string, ptype spy.ProfileType) (string, error) {
-	k, err := segment.ParseKey(name)
+	k, err := flameql.ParseKey(name)
 	if err != nil {
 		return "", err
 	}
@@ -143,7 +142,7 @@ func addSuffix(name string, ptype spy.ProfileType) (string, error) {
 // App name may be an empty string. Tags must not contain reserved keys,
 // the map is modified in place.
 func mergeTagsWithAppName(appName string, tags map[string]string) (string, error) {
-	k, err := segment.ParseKey(appName)
+	k, err := flameql.ParseKey(appName)
 	if err != nil {
 		return "", err
 	}

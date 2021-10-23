@@ -11,7 +11,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
 
 // MetricsExporter exports profiling metrics via Prometheus.
@@ -123,7 +122,7 @@ func validateTagKeys(tagKeys []string) error {
 
 // promLabels converts key to prometheus.Labels ignoring reserved tag keys.
 // Only explicitly listed labels are converted.
-func (r rule) promLabels(key *segment.Key) prometheus.Labels {
+func (r rule) promLabels(key *flameql.Key) prometheus.Labels {
 	if len(r.labels) == 0 {
 		return nil
 	}

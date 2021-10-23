@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -15,7 +16,7 @@ type treeCodec struct{ *Storage }
 func (treeCodec) New(_ string) interface{} { return tree.New() }
 
 func (c treeCodec) Serialize(w io.Writer, k string, v interface{}) error {
-	key := segment.FromTreeToDictKey(k)
+	key := flameql.FromTreeToDictKey(k)
 	d, err := c.dicts.GetOrCreate(key)
 	if err != nil {
 		return fmt.Errorf("dicts cache for %v: %w", key, err)
@@ -29,7 +30,7 @@ func (c treeCodec) Serialize(w io.Writer, k string, v interface{}) error {
 }
 
 func (c treeCodec) Deserialize(r io.Reader, k string) (interface{}, error) {
-	key := segment.FromTreeToDictKey(k)
+	key := flameql.FromTreeToDictKey(k)
 	d, err := c.dicts.GetOrCreate(key)
 	if err != nil {
 		return nil, fmt.Errorf("dicts cache for %v: %w", key, err)

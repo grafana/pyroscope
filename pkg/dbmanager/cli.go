@@ -10,6 +10,7 @@ import (
 	"github.com/cheggaaa/pb/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 	"github.com/sirupsen/logrus"
 
@@ -18,7 +19,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
 
 func Cli(dbCfg *config.DbManager, srvCfg *config.Server, args []string) error {
@@ -85,7 +85,7 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 		_ = session.Start()
 	}
 
-	sk, err := segment.ParseKey(appName)
+	sk, err := flameql.ParseKey(appName)
 	if err != nil {
 		return err
 	}

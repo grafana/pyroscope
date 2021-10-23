@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -48,7 +48,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := segment.ParseKey("foo")
+					key, _ := flameql.ParseKey("foo")
 
 					s.Put(&PutInput{
 						StartTime:  st,
@@ -87,7 +87,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := segment.ParseKey("foo")
+					key, _ := flameql.ParseKey("foo")
 
 					s.Put(&PutInput{
 						StartTime:  st,
@@ -134,7 +134,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := segment.ParseKey("foo")
+					key, _ := flameql.ParseKey("foo")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -188,7 +188,7 @@ var _ = Describe("storage package", func() {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
-						key, _ := segment.ParseKey("tree_key" + strconv.Itoa(i+1))
+						key, _ := flameql.ParseKey("tree_key" + strconv.Itoa(i+1))
 						err := s.Put(&PutInput{
 							Key:        key,
 							Val:        tree,
@@ -209,7 +209,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := segment.ParseKey("foo")
+					key, _ := flameql.ParseKey("foo")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -242,7 +242,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(29)
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
-					key, _ := segment.ParseKey("foo")
+					key, _ := flameql.ParseKey("foo")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -279,7 +279,7 @@ var _ = Describe("storage package", func() {
 						k := string(treeKey) + strconv.Itoa(i+1)
 						tree.Insert([]byte(k), uint64(i+1))
 
-						key, _ := segment.ParseKey("tree_key" + strconv.Itoa(i+1))
+						key, _ := flameql.ParseKey("tree_key" + strconv.Itoa(i+1))
 						err := s.Put(&PutInput{
 							Key:        key,
 							Val:        tree,
@@ -309,8 +309,8 @@ var _ = Describe("storage package", func() {
 					st2 := testing.SimpleTime(0)
 					et2 := testing.SimpleTime(30)
 
-					appKey, _ := segment.ParseKey("foo")
-					key, _ := segment.ParseKey("foo{tag=value}")
+					appKey, _ := flameql.ParseKey("foo")
+					key, _ := flameql.ParseKey("foo{tag=value}")
 
 					err := s.Put(&PutInput{
 						StartTime:  st,
@@ -366,7 +366,7 @@ var _ = Describe("DeleteDataBefore", func() {
 				tree.Insert([]byte("a;c"), uint64(2))
 				st := time.Now().Add(time.Hour * 24 * 10 * -1)
 				et := st.Add(time.Second * 10)
-				key, _ := segment.ParseKey("foo")
+				key, _ := flameql.ParseKey("foo")
 
 				err := s.Put(&PutInput{
 					StartTime:  st,
@@ -389,7 +389,7 @@ var _ = Describe("DeleteDataBefore", func() {
 				tree.Insert([]byte("a;c"), uint64(2))
 				st := testing.SimpleTime(10)
 				et := testing.SimpleTime(20)
-				key, _ := segment.ParseKey("foo")
+				key, _ := flameql.ParseKey("foo")
 
 				err := s.Put(&PutInput{
 					StartTime:  st,

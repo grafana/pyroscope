@@ -8,8 +8,8 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
 
 var migrations = []migration{
@@ -125,7 +125,7 @@ func migrateDictionaryKeys(s *Storage) error {
 		}
 
 		for k, v := range segmentNameKeys {
-			dictKey := segment.FromTreeToDictKey(k)
+			dictKey := flameql.FromTreeToDictKey(k)
 			if _, ok := appNameKeys[dictKey]; ok {
 				// The dictionary is most likely incomplete and causes
 				// the problem described in the function comment.

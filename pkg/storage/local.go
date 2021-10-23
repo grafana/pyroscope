@@ -10,7 +10,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/varint"
 )
@@ -60,7 +60,7 @@ func (s *Storage) collectLocalProfile(path string) error {
 		return err
 	}
 
-	pi.Key, err = segment.ParseKey(string(nameBuf))
+	pi.Key, err = flameql.ParseKey(string(nameBuf))
 	if err != nil {
 		return err
 	}

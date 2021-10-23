@@ -1,10 +1,8 @@
-package segment
+package flameql
 
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 )
 
 var _ = Describe("segment key", func() {
@@ -83,7 +81,7 @@ var _ = Describe("segment key", func() {
 				}
 
 				for _, tc := range testCases {
-					qry, _ := flameql.ParseQuery(tc.query)
+					qry, _ := ParseQuery(tc.query)
 					k, _ := ParseKey(tc.key)
 					if matched := k.Match(qry); matched != tc.match {
 						Expect(matched).To(Equal(tc.match), tc.query, tc.key)

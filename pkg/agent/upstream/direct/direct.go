@@ -7,8 +7,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
@@ -54,7 +54,7 @@ func (u *Direct) Upload(j *upstream.UploadJob) {
 }
 
 func (u *Direct) uploadProfile(j *upstream.UploadJob) {
-	key, err := segment.ParseKey(j.Name)
+	key, err := flameql.ParseKey(j.Name)
 	if err != nil {
 		logrus.WithField("key", key).Error("invalid key:")
 		return

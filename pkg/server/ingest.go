@@ -10,8 +10,8 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
@@ -75,7 +75,7 @@ func ingestParamsFromRequest(r *http.Request) (*storage.PutInput, error) {
 		err error
 	)
 
-	pi.Key, err = segment.ParseKey(q.Get("name"))
+	pi.Key, err = flameql.ParseKey(q.Get("name"))
 	if err != nil {
 		return nil, fmt.Errorf("name: %w", err)
 	}

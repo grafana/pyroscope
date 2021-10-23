@@ -204,7 +204,7 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 type PutInput struct {
 	StartTime       time.Time
 	EndTime         time.Time
-	Key             *segment.Key
+	Key             *flameql.Key
 	Val             *tree.Tree
 	SpyName         string
 	SampleRate      uint32
@@ -290,7 +290,7 @@ func (s *Storage) Put(pi *PutInput) error {
 type GetInput struct {
 	StartTime time.Time
 	EndTime   time.Time
-	Key       *segment.Key
+	Key       *flameql.Key
 	Query     *flameql.Query
 }
 
@@ -338,7 +338,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 	for _, k := range dimensionKeys() {
 		// TODO: refactor, store `Key`s in dimensions
-		parsedKey, err := segment.ParseKey(string(k))
+		parsedKey, err := flameql.ParseKey(string(k))
 		if err != nil {
 			logrus.Errorf("parse key: %v: %v", string(k), err)
 			continue
@@ -387,7 +387,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}, nil
 }
 
-func (s *Storage) dimensionKeysByKey(key *segment.Key) func() []dimension.Key {
+func (s *Storage) dimensionKeysByKey(key *flameql.Key) func() []dimension.Key {
 	return func() []dimension.Key {
 		d, ok := s.lookupAppDimension(key.AppName())
 		if !ok {
@@ -419,7 +419,7 @@ func (s *Storage) dimensionKeysByQuery(qry *flameql.Query) func() []dimension.Ke
 	return func() []dimension.Key { return s.exec(context.TODO(), qry) }
 }
 
-func (s *Storage) iterateOverAllSegments(cb func(*segment.Key, *segment.Segment) error) error {
+func (s *Storage) iterateOverAllSegments(cb func(*flameql.Key, *segment.Segment) error) error {
 	nameKey := "__name__"
 
 	var dimensions []*dimension.Dimension
@@ -433,7 +433,7 @@ func (s *Storage) iterateOverAllSegments(cb func(*segment.Key, *segment.Segment)
 	})
 
 	for _, rawSk := range dimension.Union(dimensions...) {
-		sk, _ := segment.ParseKey(string(rawSk))
+		sk, _ := flameql.ParseKey(string(rawSk))
 		stInt, ok := s.segments.Lookup(sk.SegmentKey())
 		if !ok {
 			continue
@@ -447,7 +447,7 @@ func (s *Storage) iterateOverAllSegments(cb func(*segment.Key, *segment.Segment)
 }
 
 func (s *Storage) DeleteDataBefore(threshold time.Time) error {
-	return s.iterateOverAllSegments(func(sk *segment.Key, st *segment.Segment) error {
+	return s.iterateOverAllSegments(func(sk *flameql.Key, st *segment.Segment) error {
 		var err error
 		deletedRoot := st.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 			tk := sk.TreeKey(depth, t)
@@ -469,7 +469,7 @@ func (s *Storage) DeleteDataBefore(threshold time.Time) error {
 }
 
 type DeleteInput struct {
-	Key *segment.Key
+	Key *flameql.Key
 }
 
 var maxTime = time.Unix(1<<62, 999999999)
@@ -487,7 +487,7 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	}
 
 	for _, sk := range dimension.Intersection(dimensions...) {
-		skk, _ := segment.ParseKey(string(sk))
+		skk, _ := flameql.ParseKey(string(sk))
 		stInt, ok := s.segments.Lookup(skk.SegmentKey())
 		if !ok {
 			continue
@@ -510,7 +510,7 @@ func (s *Storage) Delete(di *DeleteInput) error {
 	return nil
 }
 
-func (s *Storage) deleteSegmentAndRelatedData(key *segment.Key) error {
+func (s *Storage) deleteSegmentAndRelatedData(key *flameql.Key) error {
 	if err := s.dicts.Delete(key.DictKey()); err != nil {
 		return err
 	}
@@ -589,7 +589,7 @@ func (s *Storage) GetKeysByQuery(query string, cb func(_k string) bool) error {
 		return err
 	}
 
-	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
+	segmentKey, err := flameql.ParseKey(parsedQuery.AppName + "{}")
 	if err != nil {
 		return err
 	}
@@ -597,7 +597,7 @@ func (s *Storage) GetKeysByQuery(query string, cb func(_k string) bool) error {
 
 	resultSet := map[string]bool{}
 	for _, dk := range dimensionKeys() {
-		dkParsed, _ := segment.ParseKey(string(dk))
+		dkParsed, _ := flameql.ParseKey(string(dk))
 		if dkParsed.AppName() == parsedQuery.AppName {
 			for k := range dkParsed.Labels() {
 				resultSet[k] = true
@@ -625,7 +625,7 @@ func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string)
 		return err
 	}
 
-	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
+	segmentKey, err := flameql.ParseKey(parsedQuery.AppName + "{}")
 	if err != nil {
 		return err
 	}
@@ -633,7 +633,7 @@ func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string)
 
 	resultSet := map[string]bool{}
 	for _, dk := range dimensionKeys() {
-		dkParsed, _ := segment.ParseKey(string(dk))
+		dkParsed, _ := flameql.ParseKey(string(dk))
 		if v, ok := dkParsed.Labels()[label]; ok {
 			resultSet[v] = true
 		}

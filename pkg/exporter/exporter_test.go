@@ -8,8 +8,8 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
@@ -105,7 +105,7 @@ func TestSampleUnits(t *testing.T) {
 	}
 
 	exporter, _ := NewExporter(rules, prometheus.NewRegistry())
-	k, _ := segment.ParseKey("app.name.cpu")
+	k, _ := flameql.ParseKey("app.name.cpu")
 	i := &storage.PutInput{Key: k, SampleRate: 100, Units: spy.ProfileCPU.Units()}
 	o, _ := exporter.Evaluate(i)
 	createTree().Iterate(observeCallback(o))
@@ -113,7 +113,7 @@ func TestSampleUnits(t *testing.T) {
 	requireRuleCounterValue(t, exporter, testRuleName, k, 0.05)
 }
 
-func getCounter(e *MetricsExporter, name string, k *segment.Key) prometheus.Counter {
+func getCounter(e *MetricsExporter, name string, k *flameql.Key) prometheus.Counter {
 	r, ok := e.rules[name]
 	if !ok {
 		return nil
@@ -121,21 +121,21 @@ func getCounter(e *MetricsExporter, name string, k *segment.Key) prometheus.Coun
 	return r.ctr.With(r.promLabels(k))
 }
 
-func requireNoCounter(t *testing.T, e *MetricsExporter, name string, k *segment.Key) {
+func requireNoCounter(t *testing.T, e *MetricsExporter, name string, k *flameql.Key) {
 	r, ok := e.rules[name]
 	if !ok || r.ctr.Delete(r.promLabels(k)) {
 		t.Fatalf("Unexpected counter %s (%v)", name, k)
 	}
 }
 
-func requireRuleCounterValue(t *testing.T, e *MetricsExporter, name string, k *segment.Key, v float64) {
+func requireRuleCounterValue(t *testing.T, e *MetricsExporter, name string, k *flameql.Key, v float64) {
 	if actual := testutil.ToFloat64(getCounter(e, name, k)); v != actual {
 		t.Fatalf("Expected value %v got %v; counter %s (%v)", v, actual, name, k)
 	}
 }
 
-func observe(e *MetricsExporter, key string) *segment.Key {
-	k, _ := segment.ParseKey(key)
+func observe(e *MetricsExporter, key string) *flameql.Key {
+	k, _ := flameql.ParseKey(key)
 	i := &storage.PutInput{Key: k, Units: spy.ProfileInuseObjects.Units()}
 	if o, ok := e.Evaluate(i); ok {
 		createTree().Iterate(observeCallback(o))

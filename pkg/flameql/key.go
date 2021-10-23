@@ -1,4 +1,4 @@
-package segment
+package flameql
 
 import (
 	"regexp"
@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
 )
 
@@ -61,7 +60,7 @@ func (p *parser) nameParserCase(r int32, k *Key) error {
 	case '{':
 		p.parserState = tagKeyParserState
 		appName := strings.TrimSpace(p.value)
-		if err := flameql.ValidateAppName(appName); err != nil {
+		if err := ValidateAppName(appName); err != nil {
 			return err
 		}
 		k.labels["__name__"] = appName
@@ -90,8 +89,8 @@ func (p *parser) tagValueParserCase(r int32, k *Key) error {
 	case ',', '}':
 		p.parserState = tagKeyParserState
 		key := strings.TrimSpace(p.key)
-		if !flameql.IsTagKeyReserved(key) {
-			if err := flameql.ValidateTagKey(key); err != nil {
+		if !IsTagKeyReserved(key) {
+			if err := ValidateTagKey(key); err != nil {
 				return err
 			}
 		}
@@ -178,7 +177,7 @@ func (k *Key) Add(key, value string) {
 }
 
 // Match reports whether the key matches the query.
-func (k *Key) Match(q *flameql.Query) bool {
+func (k *Key) Match(q *Query) bool {
 	if k.AppName() != q.AppName {
 		return false
 	}
