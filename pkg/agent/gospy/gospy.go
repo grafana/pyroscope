@@ -15,7 +15,6 @@ import (
 
 	pprof_parser "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
-	"github.com/pyroscope-io/pyroscope/pkg/convert"
 )
 
 // TODO: make this configurable
@@ -82,7 +81,7 @@ func getHeapProfile(b *bytes.Buffer) *pprof_parser.Profile {
 		pprof.WriteHeapProfile(b)
 		g, _ := gzip.NewReader(bytes.NewReader(b.Bytes()))
 
-		lastProfile, _ = convert.ParsePprof(g)
+		lastProfile, _ = pprof_parser.ParsePprof(g)
 		lastProfileCreatedAt = time.Now()
 	}
 
@@ -124,7 +123,7 @@ func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 		}
 
 		// parse the read data with pprof format
-		profile, err := convert.ParsePprof(r)
+		profile, err := pprof_parser.ParsePprof(r)
 		if err != nil {
 			cb(nil, nil, uint64(0), fmt.Errorf("parse pprof: %v", err))
 			return
