@@ -21,7 +21,6 @@ require (
 	github.com/felixge/fgprof v0.9.1
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
-	github.com/golang/protobuf v1.5.2
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/go-jsonnet v0.17.0
 	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5
