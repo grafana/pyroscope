@@ -27,7 +27,7 @@ var _ = Describe("convert", func() {
 			p.Get("samples", func(labels *spy.Labels, name []byte, val int) {
 				result = append(result, fmt.Sprintf("%s %d", name, val))
 			})
-			Expect(result).To(ContainElement("runtime.main;main.work 1"))
+			Expect(result).To(ContainElement("runtime.main;main.main;main.slowFunction;main.work 1"))
 		})
 	})
 

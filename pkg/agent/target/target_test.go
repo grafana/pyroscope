@@ -1,3 +1,4 @@
+//go:build debugspy
 // +build debugspy
 
 package target
@@ -9,6 +10,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
+
+	// revive:disable:blank-imports Depending on configuration these packages may or may not be used.
+	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
+
+	_ "github.com/pyroscope-io/pyroscope/pkg/agent/debugspy"
+	// revive:enable:blank-imports
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
