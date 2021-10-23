@@ -45,24 +45,28 @@ export default function Highlight(props: HighlightProps) {
     });
   };
 
-  React.useEffect(() => {
-    // use closure to "cache" the current canvas reference
-    // so that when cleaning up, it points to a valid canvas
-    // (otherwise it would be null)
-    const canvasEl = canvasRef.current;
-    if (!canvasEl) {
-      return () => {};
-    }
+  React.useEffect(
+    () => {
+      // use closure to "cache" the current canvas reference
+      // so that when cleaning up, it points to a valid canvas
+      // (otherwise it would be null)
+      const canvasEl = canvasRef.current;
+      if (!canvasEl) {
+        return () => {};
+      }
 
-    // watch for mouse events on the bar
-    canvasEl.addEventListener('mousemove', onMouseMove);
-    canvasEl.addEventListener('mouseout', onMouseOut);
+      // watch for mouse events on the bar
+      canvasEl.addEventListener('mousemove', onMouseMove);
+      canvasEl.addEventListener('mouseout', onMouseOut);
 
-    return () => {
-      canvasEl.removeEventListener('mousemove', onMouseMove);
-      canvasEl.removeEventListener('mouseout', onMouseOut);
-    };
-  }, [canvasRef.current]);
+      return () => {
+        canvasEl.removeEventListener('mousemove', onMouseMove);
+        canvasEl.removeEventListener('mouseout', onMouseOut);
+      };
+    },
+    // refresh callback functions when they change
+    [canvasRef.current, onMouseMove, onMouseOut]
+  );
 
   return (
     <div

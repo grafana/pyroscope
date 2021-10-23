@@ -3,28 +3,14 @@ import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
-
-//        <Graph
-//          key="flamegraph-pane"
-//          flamebearer={this.state.flamebearer}
-//          format={this.parseFormat(this.state.flamebearer.format)}
-//          view={this.state.view}
-//          ExportData={ExportData}
-//          query={this.state.highlightQuery}
-//          fitMode={this.state.fitMode}
-//          viewType={this.props.viewType}
-//          topLevel={this.state.flamegraphConfigs.topLevel}
-//          zoom={this.state.flamegraphConfigs.zoom}
-//          selectedLevel={this.state.flamegraphConfigs.selectedLevel}
-//          label={this.props.query}
-//          onZoom={this.onFlamegraphZoom}
-//          onReset={this.onReset}
-//          isDirty={this.isDirty}
+import Highlight from './Highlight';
+import Tooltip from './Tooltip';
+import { PX_PER_LEVEL } from './constants';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
   fitMode: typeof Flamegraph.fitMode;
-  zoom: typeof Flamegraph.zoom;
+  zoom: typeof Flamegraph.zoom; // TODO call it zoom level?
   topLevel: typeof Flamegraph.topLevel;
   selectedLevel: typeof Flamegraph.selectedLevel;
   query: typeof Flamegraph.highlightQuery;
@@ -50,34 +36,51 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     viewType,
   } = props;
 
+  const { onZoom } = props;
+
   const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { i, j } = flamegraph.xyToBar(
       e.nativeEvent.offsetX,
       e.nativeEvent.offsetY
     );
 
-    props.onZoom(i, j);
+    onZoom(i, j);
   };
 
-  React.useEffect(() => {
-    if (!canvasRef.current) {
-      return () => {};
-    }
+  const xyToHighlightData = (x: number, y: number) => {
+    const bar = flamegraph.xyToBarPosition(x, y);
 
-    const f = new Flamegraph(
-      props.flamebearer,
-      canvasRef.current,
-      props.topLevel,
-      props.selectedLevel,
-      props.fitMode,
-      props.query,
-      props.zoom
-    );
-    //
-    setFlamegraph(f);
-    //
-    // do we need to clear the flamegraph?
-    return () => {};
+    return {
+      left: canvasRef?.current?.offsetLeft + bar.x,
+      top: canvasRef?.current?.offsetTop + bar.y,
+      width: bar.width,
+    };
+  };
+
+  const xyToTooltipData = (format: string, x: number, y: number) => {
+    return flamegraph.xyToBarData(x, y);
+  };
+
+  // this level of indirection is required
+  // otherwise may get stale props
+  // eg. thinking that a zoomed flamegraph is not zoomed
+  const isWithinBounds = (x: number, y: number) =>
+    flamegraph.isWithinBounds(x, y);
+
+  React.useEffect(() => {
+    if (canvasRef.current) {
+      const f = new Flamegraph(
+        flamebearer,
+        canvasRef.current,
+        topLevel,
+        selectedLevel,
+        fitMode,
+        query,
+        zoom
+      );
+
+      setFlamegraph(f);
+    }
   }, [
     canvasRef.current,
     flamebearer,
@@ -90,11 +93,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
   React.useEffect(() => {
     if (flamegraph) {
-      console.log('rendering');
       flamegraph.render();
     }
   }, [flamegraph]);
-
   return (
     <>
       <div
@@ -112,6 +113,27 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             onClick={onClick}
           />
         </div>
+        {flamegraph && (
+          <Highlight
+            barHeight={PX_PER_LEVEL}
+            canvasRef={canvasRef}
+            xyToHighlightData={xyToHighlightData}
+            isWithinBounds={isWithinBounds}
+          />
+        )}
+        {flamegraph && (
+          <Tooltip
+            format={flamebearer.format}
+            canvasRef={canvasRef}
+            xyToData={xyToTooltipData}
+            isWithinBounds={isWithinBounds}
+            numTicks={flamebearer.numTicks}
+            sampleRate={flamebearer.sampleRate}
+            leftTicks={flamebearer.leftTicks}
+            rightTicks={flamebearer.rightTicks}
+            units={flamebearer.units}
+          />
+        )}
       </div>
     </>
   );
