@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var latestVersionStructMutex sync.RWMutex
 var latestVersionStruct struct {
 	LatestVersion string `json:"latest_version"`
 }
@@ -17,6 +18,9 @@ var latestVersionStruct struct {
 var runOnce sync.Once
 
 func LatestVersionJSON() string {
+	latestVersionStructMutex.RLock()
+	defer latestVersionStructMutex.RUnlock()
+
 	b, _ := json.Marshal(latestVersionStruct)
 	return string(b)
 }
@@ -31,6 +35,9 @@ func updateLatestVersion() error {
 	if err != nil {
 		return err
 	}
+
+	latestVersionStructMutex.Lock()
+	defer latestVersionStructMutex.Unlock()
 
 	err = json.Unmarshal(b, &latestVersionStruct)
 	if err != nil {
