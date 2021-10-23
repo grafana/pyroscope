@@ -312,6 +312,7 @@ class FlameGraphRenderer extends React.Component {
           label={this.props.query}
           onZoom={this.onFlamegraphZoom}
           onReset={this.onReset}
+          isDirty={this.isDirty}
         />
       ) : null;
 

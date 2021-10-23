@@ -72,24 +72,8 @@ class FlameGraph extends React.Component {
     this.flamegraph.render();
   }
 
-  componentDidUpdate(prevProps) {
-    // a new flamebearer is a new flamegraph
-    if (prevProps.flamebearer !== this.props.flamebearer) {
-      this.createFlamegraph();
-    }
-
-    // there's no need to recreate the flamegraph
-    // when we are just changing a property
-
-    if (this.props.fitMode !== prevProps.fitMode) {
-      this.flamegraph.setFitMode(this.props.fitMode);
-    }
-
-    this.flamegraph.setHighlightQuery(this.props.query);
-    this.flamegraph.setRangeMin(this.props.rangeMin);
-    this.flamegraph.setRangeMax(this.props.rangeMax);
-    this.flamegraph.setSelectedLevel(this.props.selectedLevel);
-
+  componentDidUpdate() {
+    this.createFlamegraph();
     this.flamegraph.render();
   }
 
@@ -122,14 +106,6 @@ class FlameGraph extends React.Component {
     this.props.onZoom(
       this.flamegraph.xyToZoom(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
     );
-    //    const { i, j } = this.flamegraph.xyToBar(
-    //      e.nativeEvent.offsetX,
-    //      e.nativeEvent.offsetY
-    //    );
-    //    if (j === -1) return;
-    //
-    //    this.flamegraph.zoom(i, j);
-    //    this.flamegraph.render();
   };
 
   resizeHandler = () => {
@@ -155,28 +131,29 @@ class FlameGraph extends React.Component {
     const bar = this.flamegraph.xyToBarPosition(x, y);
 
     return {
-      left: this.flamegraph.getCanvas().offsetLeft + bar.x,
-      top: this.flamegraph.getCanvas().offsetTop + bar.y,
+      left: this.canvasRef.current.offsetLeft + bar.x,
+      top: this.canvasRef.current.offsetTop + bar.y,
       width: bar.width,
     };
   };
 
   xyToContextMenuItems = (x, y) => {
-    const isSelected = !this.flamegraph.isPristine();
+    const isDirty = this.props.isDirty();
 
     return [
-      <MenuItem key="reset" disabled={!isSelected} onClick={this.props.onReset}>
+      <MenuItem key="reset" disabled={!isDirty} onClick={this.props.onReset}>
         Reset View
       </MenuItem>,
+      {
+        /*
+
       <MenuItem key="focus" onClick={() => this.focusOnNode(x, y)}>
         Focus
       </MenuItem>,
+      */
+      },
     ];
   };
-
-  isDirty() {
-    return !this.flamegraph.isPristine();
-  }
 
   createFlamegraph() {
     this.flamegraph = new Flamegraph(
@@ -274,7 +251,6 @@ class FlameGraph extends React.Component {
             canvasRef={this.canvasRef}
             xyToData={this.xyToTooltipData}
             isWithinBounds={this.flamegraph.isWithinBounds}
-            graphWidth={this.graphWidth}
             numTicks={this.props.flamebearer.numTicks}
             sampleRate={this.props.flamebearer.sampleRate}
             leftTicks={this.props.flamebearer.leftTicks}

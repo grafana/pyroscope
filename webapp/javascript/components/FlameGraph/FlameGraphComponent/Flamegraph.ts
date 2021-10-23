@@ -36,7 +36,7 @@ export default class Flamegraph {
     this.ff = createFF(flamebearer.format);
   }
 
-  render() {
+  public render() {
     const props = {
       canvas: this.canvas,
 
@@ -127,7 +127,7 @@ export default class Flamegraph {
     return -1;
   }
 
-  xyToBar(x: number, y: number) {
+  public xyToBar(x: number, y: number) {
     if (x < 0 || y < 0) {
       throw new Error(`x and y must be bigger than 0. x = ${x}, y = ${y}`);
     }
@@ -147,12 +147,7 @@ export default class Flamegraph {
     return { i: 0, j: 0 };
   }
 
-  // TODO: should this be exposed?
-  getCanvas() {
-    return this.canvas;
-  }
-
-  isWithinBounds = (x: number, y: number) => {
+  public isWithinBounds = (x: number, y: number) => {
     if (x < 0 || x > this.getCanvasWidth()) {
       return false;
     }
@@ -175,7 +170,7 @@ export default class Flamegraph {
    *
    * This can be used for highlighting
    */
-  xyToBarPosition = (x: number, y: number) => {
+  public xyToBarPosition = (x: number, y: number) => {
     if (!this.isWithinBounds(x, y)) {
       throw new Error(`Value out of bounds. Can't get bar position`);
     }
@@ -203,7 +198,7 @@ export default class Flamegraph {
 
   // TODO rename this
   // this should be only interface
-  xyToBarData(x: number, y: number) {
+  public xyToBarData(x: number, y: number) {
     if (!this.isWithinBounds(x, y)) {
       throw new Error(
         `Value out of bounds. Can't get bar position. x: '${x}', y: '${y}'`
@@ -242,7 +237,7 @@ export default class Flamegraph {
     }
   }
 
-  xyToZoom(x: number, y: number) {
+  public xyToZoom(x: number, y: number) {
     const { i, j } = this.xyToBar(x, y);
     // TODO what if
     //    if (j === -1) return;
@@ -259,34 +254,5 @@ export default class Flamegraph {
           ff.getBarTotal(this.flamebearer.levels[i], j)) /
         this.flamebearer.numTicks,
     };
-  }
-
-  setFitMode(fitMode: 'HEAD' | 'TAIL') {
-    this.fitMode = fitMode;
-  }
-
-  setHighlightQuery(query: string) {
-    this.highlightQuery = query;
-  }
-
-  setRangeMin(n: number) {
-    this.rangeMin = n;
-  }
-
-  setRangeMax(n: number) {
-    this.rangeMax = n;
-  }
-
-  setSelectedLevel(n: number) {
-    this.selectedLevel = n;
-  }
-
-  isZoomed() {
-    return this.rangeMin > 0 && this.rangeMax < 1;
-  }
-
-  isPristine() {
-    // TODO there are more conditions here
-    return this.rangeMin === 0 && this.rangeMax === 1;
   }
 }
