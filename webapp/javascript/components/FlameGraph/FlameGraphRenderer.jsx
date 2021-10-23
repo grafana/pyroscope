@@ -250,6 +250,8 @@ class FlameGraphRenderer extends React.Component {
         flamebearer.leftTicks = leftTicks;
         flamebearer.rightTicks = rightTicks;
 
+        // the new flamegraph shouldn't have zoom etc
+        this.onReset();
         this.setState({
           flamebearer,
         });
