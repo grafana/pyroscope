@@ -16,6 +16,8 @@ type storageOptions struct {
 	gcInterval       time.Duration
 	gcSizeDiff       bytesize.ByteSize
 	reclaimSizeRatio float64
+
+	metricsUpdateInterval time.Duration
 }
 
 func defaultOptions() *storageOptions {
@@ -27,6 +29,8 @@ func defaultOptions() *storageOptions {
 		gcInterval:       5 * time.Minute,
 		gcSizeDiff:       bytesize.GB,
 		reclaimSizeRatio: 0.05,
+
+		metricsUpdateInterval: 10 * time.Second,
 	}
 }
 
@@ -51,6 +55,12 @@ func WithCacheTTL(cacheTTL time.Duration) Option {
 func WithGCInterval(interval time.Duration) Option {
 	return func(s *Storage) {
 		s.gcInterval = interval
+	}
+}
+
+func WithMetricsUpdateInterval(interval time.Duration) Option {
+	return func(s *Storage) {
+		s.metricsUpdateInterval = interval
 	}
 }
 

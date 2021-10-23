@@ -132,11 +132,15 @@ func (svc *serverService) Stop() {
 
 func (svc *serverService) stop() {
 	svc.controller.Drain()
+	svc.logger.Debug("stopping debug reporter")
 	svc.debugReporter.Stop()
 	if svc.analyticsService != nil {
+		svc.logger.Debug("stopping analytics service")
 		svc.analyticsService.Stop()
 	}
+	svc.logger.Debug("stopping profiling")
 	svc.selfProfiling.Stop()
+	svc.logger.Debug("stopping upstream")
 	svc.directUpstream.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {

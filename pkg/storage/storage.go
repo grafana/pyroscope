@@ -3,7 +3,6 @@ package storage
 import (
 	"errors"
 	"runtime"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -31,7 +30,6 @@ type Storage struct {
 
 	logger *logrus.Logger
 	*metrics
-	*dbMetrics
 
 	segments   *db
 	dimensions *db
@@ -58,10 +56,9 @@ func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer, opt
 		config:         c,
 		storageOptions: defaultOptions(),
 
-		logger:    logger,
-		metrics:   newStorageMetrics(reg),
-		dbMetrics: newCacheMetrics(reg),
-		stop:      make(chan struct{}),
+		logger:  logger,
+		metrics: newMetrics(reg),
+		stop:    make(chan struct{}),
 	}
 
 	for _, option := range options {
@@ -103,7 +100,7 @@ func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer, opt
 	go s.maintenanceTask(s.gcInterval, s.watchDBSize(s.gcSizeDiff, s.CollectGarbage))
 	go s.maintenanceTask(s.evictInterval, s.evictionTask(memTotal))
 	go s.maintenanceTask(s.writeBackInterval, s.writeBackTask)
-	go s.periodicTask(s.writeBackInterval, s.updateMetricsTask)
+	go s.periodicTask(s.metricsUpdateInterval, s.updateMetricsTask)
 
 	return s, nil
 }
@@ -111,7 +108,9 @@ func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer, opt
 func (s *Storage) Close() error {
 	// Stop all periodic and maintenance tasks.
 	close(s.stop)
+	s.logger.Debug("waiting for storage tasks to finish")
 	s.wg.Wait()
+	s.logger.Debug("storage tasks to finished")
 	// Dictionaries DB has to close last because trees depend on it.
 	s.goDB(func(d *db) {
 		if d != s.dicts {
@@ -122,22 +121,18 @@ func (s *Storage) Close() error {
 	return nil
 }
 
-func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
-	m := make(map[string]bytesize.ByteSize)
-	for _, d := range s.databases() {
-		m[d.name] = dbSize(d)
+// goDB runs f for all DBs concurrently.
+func (s *Storage) goDB(f func(*db)) {
+	dbs := s.databases()
+	wg := new(sync.WaitGroup)
+	wg.Add(len(dbs))
+	for _, d := range dbs {
+		go func(db *db) {
+			defer wg.Done()
+			f(db)
+		}(d)
 	}
-	return m
-}
-
-func (s *Storage) CacheStats() map[string]uint64 {
-	m := make(map[string]uint64)
-	for _, d := range s.databases() {
-		if d.Cache != nil {
-			m[d.name+"_size"] = s.dimensions.Cache.Size()
-		}
-	}
-	return m
+	wg.Wait()
 }
 
 func (s *Storage) maintenanceTask(interval time.Duration, f func()) {
@@ -182,9 +177,10 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		}
 
 		// Dimensions, dictionaries, and segments should not be evicted,
-		// as they are almost 100% in use. Unused items should be unloaded
-		// from cache by TTL expiration. Although, these objects must be
-		// written to disk (order matters).
+		// as they are almost 100% in use and will be loaded back, causing
+		// more allocations. Unused items should be unloaded from cache by
+		// TTL expiration. Although, these objects must be written to disk,
+		// order matters.
 		//
 		// It should be noted that in case of a crash or kill, data may become
 		// inconsistent: we should unite databases and do this in a transaction.
@@ -193,14 +189,9 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		s.segments.WriteBack()
 		s.dicts.WriteBack()
 		s.trees.Evict(percent)
-		debug.FreeOSMemory()
+		// debug.FreeOSMemory()
+		runtime.GC()
 	}
-}
-
-func (s *Storage) updateMetricsTask() {
-	// TODO(kolesnikovae): update disk and cache size metrics.
-	// s.logger.WithFields(s.DiskUsage()).Debug("disk stats")
-	// s.logger.WithFields(s.CacheStats()).Debug("cache stats")
 }
 
 func (s *Storage) writeBackTask() {
@@ -213,10 +204,51 @@ func (s *Storage) writeBackTask() {
 
 func (s *Storage) watchDBSize(diff bytesize.ByteSize, f func()) func() {
 	return func() {
-		n := dbSize(s.databases()...)
+		var n bytesize.ByteSize
+		for _, d := range s.databases() {
+			n += d.size()
+		}
 		if s.size-n > diff {
 			f()
 		}
 		s.size = n
 	}
+}
+
+func (s *Storage) updateMetricsTask() {
+	for _, d := range s.databases() {
+		s.metrics.dbSize.WithLabelValues(d.name).Set(float64(d.size()))
+		if d.Cache != nil {
+			s.metrics.cacheSize.WithLabelValues(d.name).Set(float64(d.Cache.Size()))
+		}
+	}
+}
+
+func (s *Storage) databases() []*db {
+	// Order matters.
+	return []*db{
+		s.main,
+		s.dimensions,
+		s.segments,
+		s.dicts,
+		s.trees,
+	}
+}
+
+func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
+	m := make(map[string]bytesize.ByteSize)
+	for _, d := range s.databases() {
+		m[d.name] = d.size()
+	}
+	return m
+}
+
+func (s *Storage) CacheStats() map[string]uint64 {
+	m := make(map[string]uint64)
+	for _, d := range s.databases() {
+		if d.Cache != nil {
+			m[d.name] = d.Cache.Size()
+		}
+	}
+	return m
 }

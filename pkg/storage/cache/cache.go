@@ -15,11 +15,16 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache/lfu"
 )
 
-// TODO(kolesnikovae): Move this stuff to db?
+// TODO(kolesnikovae): Move to storage/db?
 
 type Cache struct {
-	Config
-	lfu *lfu.Cache
+	db      *badger.DB
+	lfu     *lfu.Cache
+	metrics *Metrics
+	codec   Codec
+
+	prefix string
+	ttl    time.Duration
 
 	evictionsDone chan struct{}
 	flushOnce     sync.Once
@@ -27,7 +32,7 @@ type Cache struct {
 
 type Config struct {
 	*badger.DB
-	Metrics
+	*Metrics
 	Codec
 
 	// Prefix for badger DB keys.
@@ -60,8 +65,12 @@ type Metrics struct {
 
 func New(c Config) *Cache {
 	cache := &Cache{
-		Config:        c,
 		lfu:           lfu.New(),
+		db:            c.DB,
+		codec:         c.Codec,
+		metrics:       c.Metrics,
+		prefix:        c.Prefix,
+		ttl:           c.TTL,
 		evictionsDone: make(chan struct{}),
 	}
 
@@ -111,12 +120,12 @@ func (cache *Cache) Put(key string, val interface{}) {
 func (cache *Cache) saveToDisk(key string, val interface{}) error {
 	b := bytebufferpool.Get()
 	defer bytebufferpool.Put(b)
-	if err := cache.Serialize(b, key, val); err != nil {
+	if err := cache.codec.Serialize(b, key, val); err != nil {
 		return fmt.Errorf("serialization: %w", err)
 	}
-	cache.DBWrites.Observe(float64(b.Len()))
-	return cache.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(cache.Prefix+key), b.Bytes())
+	cache.metrics.DBWrites.Observe(float64(b.Len()))
+	return cache.db.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(cache.prefix+key), b.Bytes())
 	})
 }
 
@@ -137,21 +146,21 @@ func (cache *Cache) Flush() {
 // above allowed threshold and write-back calls happen constantly, making pyroscope more crash-resilient.
 // See https://github.com/pyroscope-io/pyroscope/issues/210 for more context
 func (cache *Cache) Evict(percent float64) {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(cache.EvictionsDuration.Observe))
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(cache.metrics.EvictionsDuration.Observe))
 	cache.lfu.Evict(int(float64(cache.lfu.Len()) * percent))
 	timer.ObserveDuration()
 }
 
 func (cache *Cache) WriteBack() {
-	timer := prometheus.NewTimer(prometheus.ObserverFunc(cache.WriteBackDuration.Observe))
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(cache.metrics.WriteBackDuration.Observe))
 	cache.lfu.WriteBack()
 	timer.ObserveDuration()
 }
 
 func (cache *Cache) Delete(key string) error {
 	cache.lfu.Delete(key)
-	return cache.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte(cache.Prefix + key))
+	return cache.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(cache.prefix + key))
 	})
 }
 
@@ -171,7 +180,7 @@ func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
 	if v != nil {
 		return v, nil
 	}
-	v = cache.New(key)
+	v = cache.codec.New(key)
 	cache.lfu.Set(key, v)
 	return v, nil
 }
@@ -185,12 +194,12 @@ func (cache *Cache) Lookup(key string) (interface{}, bool) {
 }
 
 func (cache *Cache) get(key string) (interface{}, error) {
-	cache.ReadsCounter.Inc()
+	cache.metrics.ReadsCounter.Inc()
 	return cache.lfu.GetOrSet(key, func() (interface{}, error) {
-		cache.MissesCounter.Inc()
+		cache.metrics.MissesCounter.Inc()
 		var buf []byte
-		err := cache.View(func(txn *badger.Txn) error {
-			item, err := txn.Get([]byte(cache.Prefix + key))
+		err := cache.db.View(func(txn *badger.Txn) error {
+			item, err := txn.Get([]byte(cache.prefix + key))
 			if err != nil {
 				return err
 			}
@@ -206,8 +215,8 @@ func (cache *Cache) get(key string) (interface{}, error) {
 			return nil, err
 		}
 
-		cache.DBReads.Observe(float64(len(buf)))
-		return cache.Deserialize(bytes.NewReader(buf), key)
+		cache.metrics.DBReads.Observe(float64(len(buf)))
+		return cache.codec.Deserialize(bytes.NewReader(buf), key)
 	})
 }
 

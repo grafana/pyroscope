@@ -3,7 +3,6 @@ package storage
 import (
 	"os"
 	"path/filepath"
-	"sync"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
@@ -73,7 +72,7 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, erro
 	if codec != nil {
 		d.Cache = cache.New(cache.Config{
 			DB:      badgerDB,
-			Metrics: s.dbMetrics.createInstance(name),
+			Metrics: s.metrics.createCacheMetrics(name),
 			TTL:     s.cacheTTL,
 			Prefix:  p.String(),
 			Codec:   codec,
@@ -84,10 +83,18 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, erro
 }
 
 func (d *db) close() {
-	d.Cache.Flush()
+	if d.Cache != nil {
+		d.Cache.Flush()
+	}
 	if err := d.DB.Close(); err != nil {
 		d.logger.WithError(err).Error("closing database")
 	}
+}
+
+func (d *db) size() bytesize.ByteSize {
+	// The value is updated once per minute.
+	lsm, vlog := d.DB.Size()
+	return bytesize.ByteSize(lsm + vlog)
 }
 
 func (d *db) runGC(discardRatio float64) (reclaimed bool) {
@@ -108,39 +115,4 @@ func (d *db) runGC(discardRatio float64) (reclaimed bool) {
 			continue
 		}
 	}
-}
-
-func (s *Storage) databases() []*db {
-	// Order matters.
-	return []*db{
-		s.main,
-		s.dimensions,
-		s.segments,
-		s.dicts,
-		s.trees,
-	}
-}
-
-// goDB runs f for all DBs concurrently.
-func (s *Storage) goDB(f func(*db)) {
-	dbs := s.databases()
-	wg := new(sync.WaitGroup)
-	wg.Add(len(dbs))
-	for _, d := range dbs {
-		go func(db *db) {
-			defer wg.Done()
-			f(db)
-		}(d)
-	}
-	wg.Wait()
-}
-
-func dbSize(dbs ...*db) bytesize.ByteSize {
-	var s bytesize.ByteSize
-	for _, d := range dbs {
-		// The value is updated once per minute.
-		lsm, vlog := d.DB.Size()
-		s += bytesize.ByteSize(lsm + vlog)
-	}
-	return s
 }

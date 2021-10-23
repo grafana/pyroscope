@@ -12,9 +12,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
-// TODO(kolesnikovae): Get rid of it.
+// TODO(kolesnikovae): Get rid of it?
 
-const debugInfoReportingInterval = time.Minute
+const debugInfoReportingInterval = 30 * time.Second
 
 type Reporter struct {
 	logger  *logrus.Logger
@@ -41,13 +41,6 @@ func NewReporter(l *logrus.Logger, s *storage.Storage, reg prometheus.Registerer
 	}
 }
 
-func CPUUsage(interval time.Duration) float64 {
-	if v, err := cpu.Percent(interval, false); err == nil && len(v) > 0 {
-		return v[0]
-	}
-	return 0
-}
-
 func (d *Reporter) Stop() {
 	close(d.stop)
 	<-d.done
@@ -62,7 +55,33 @@ func (d *Reporter) Start() {
 		case <-d.stop:
 			return
 		case <-ticker.C:
-			d.logger.WithField("utilization", CPUUsage(debugInfoReportingInterval)).Debug("cpu stats")
+			// TODO(kolesnikovae): refactor CPUUsage blocks for debugInfoReportingInterval.
+			// d.logger.WithField("utilization", CPUUsage(debugInfoReportingInterval)).Debug("cpu stats")
+			d.logger.WithFields(d.diskUsageFields()).Debug("disk usage")
+			d.logger.WithFields(d.cacheStatsFields()).Debug("cache stats")
 		}
 	}
+}
+
+func CPUUsage(interval time.Duration) float64 {
+	if v, err := cpu.Percent(interval, false); err == nil && len(v) > 0 {
+		return v[0]
+	}
+	return 0
+}
+
+func (d *Reporter) diskUsageFields() logrus.Fields {
+	fields := make(logrus.Fields)
+	for k, v := range d.storage.DiskUsage() {
+		fields[k] = v
+	}
+	return fields
+}
+
+func (d *Reporter) cacheStatsFields() logrus.Fields {
+	fields := make(logrus.Fields)
+	for k, v := range d.storage.CacheStats() {
+		fields[k] = v
+	}
+	return fields
 }

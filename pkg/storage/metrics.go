@@ -8,27 +8,24 @@ import (
 )
 
 type metrics struct {
-	putTotal prometheus.Counter
-	getTotal prometheus.Counter
-
+	putTotal   prometheus.Counter
+	getTotal   prometheus.Counter
 	gcDuration prometheus.Summary
-}
 
-type dbMetrics struct {
-	cacheMisses *prometheus.CounterVec
-	cacheReads  *prometheus.CounterVec
+	dbSize    *prometheus.GaugeVec
+	cacheSize *prometheus.GaugeVec
 
+	cacheMisses   *prometheus.CounterVec
+	cacheReads    *prometheus.CounterVec
 	cacheDBWrites *prometheus.HistogramVec
 	cacheDBReads  *prometheus.HistogramVec
-
-	dbSize    *prometheus.CounterVec
-	cacheSize *prometheus.CounterVec
 
 	evictionsDuration *prometheus.SummaryVec
 	writeBackDuration *prometheus.SummaryVec
 }
 
-func newStorageMetrics(r prometheus.Registerer) *metrics {
+func newMetrics(r prometheus.Registerer) *metrics {
+	name := []string{"name"}
 	return &metrics{
 		putTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_storage_writes_total",
@@ -43,12 +40,27 @@ func newStorageMetrics(r prometheus.Registerer) *metrics {
 			Help:       "duration of old data deletion",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
-	}
-}
 
-func newCacheMetrics(r prometheus.Registerer) *dbMetrics {
-	name := []string{"name"}
-	return &dbMetrics{
+		dbSize: promauto.With(r).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "pyroscope_storage_db_size_bytes",
+			Help: "size of items in disk",
+		}, name),
+		cacheSize: promauto.With(r).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "pyroscope_storage_cache_size",
+			Help: "number of items in cache",
+		}, name),
+
+		cacheDBWrites: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "pyroscope_storage_cache_db_write_bytes",
+			Help:    "bytes written to db from cache",
+			Buckets: prometheus.ExponentialBuckets(1024, 2, 10),
+		}, name),
+		cacheDBReads: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "pyroscope_storage_cache_db_read_bytes",
+			Help:    "bytes read from db to cache",
+			Buckets: prometheus.ExponentialBuckets(1024, 2, 10),
+		}, name),
+
 		cacheMisses: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_storage_cache_misses_total",
 			Help: "total number of cache misses",
@@ -56,17 +68,6 @@ func newCacheMetrics(r prometheus.Registerer) *dbMetrics {
 		cacheReads: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_storage_cache_reads_total",
 			Help: "total number of cache reads",
-		}, name),
-
-		cacheDBWrites: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_cache_db_write_bytes",
-			Help:    "bytes written to db from cache",
-			Buckets: []float64{1 << 10, 1 << 12, 1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22, 1 << 24, 1 << 26},
-		}, name),
-		cacheDBReads: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_cache_db_read_bytes",
-			Help:    "bytes read from db to cache",
-			Buckets: []float64{1 << 10, 1 << 12, 1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22, 1 << 24, 1 << 26},
 		}, name),
 
 		evictionsDuration: promauto.With(r).NewSummaryVec(prometheus.SummaryOpts{
@@ -82,9 +83,9 @@ func newCacheMetrics(r prometheus.Registerer) *dbMetrics {
 	}
 }
 
-func (m dbMetrics) createInstance(name string) cache.Metrics {
+func (m *metrics) createCacheMetrics(name string) *cache.Metrics {
 	l := prometheus.Labels{"name": name}
-	return cache.Metrics{
+	return &cache.Metrics{
 		MissesCounter:     m.cacheMisses.With(l),
 		ReadsCounter:      m.cacheReads.With(l),
 		DBWrites:          m.cacheDBWrites.With(l),
