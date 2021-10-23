@@ -5,12 +5,6 @@ import (
 	"sync"
 	"time"
 
-	// revive:disable:blank-imports Depending on configuration these packages may or may not be used.
-	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
-
-	_ "github.com/pyroscope-io/pyroscope/pkg/agent/debugspy"
-	// revive:enable:blank-imports
-
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
