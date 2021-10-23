@@ -10,6 +10,7 @@ module.exports = {
   ],
   moduleNameMapper: {
     '@utils(.*)$': '<rootDir>/webapp/javascript/util/$1',
+    '@models(.*)$': '<rootDir>/webapp/javascript/models/$1',
   },
   transform: {
     '\\.module\\.css$': 'jest-css-modules-transform',
