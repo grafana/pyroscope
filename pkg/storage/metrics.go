@@ -36,7 +36,7 @@ func newMetrics(r prometheus.Registerer) *metrics {
 			Help: "number of calls to storage.Get",
 		}),
 		gcDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
-			Name:       "pyroscope_storage_retention_duration_seconds",
+			Name:       "pyroscope_storage_gc_duration_seconds",
 			Help:       "duration of old data deletion",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
@@ -90,7 +90,7 @@ func (m *metrics) createCacheMetrics(name string) *cache.Metrics {
 		ReadsCounter:      m.cacheReads.With(l),
 		DBWrites:          m.cacheDBWrites.With(l),
 		DBReads:           m.cacheDBReads.With(l),
-		EvictionsDuration: m.writeBackDuration.With(l),
-		WriteBackDuration: m.evictionsDuration.With(l),
+		EvictionsDuration: m.evictionsDuration.With(l),
+		WriteBackDuration: m.writeBackDuration.With(l),
 	}
 }
