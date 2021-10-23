@@ -41,9 +41,6 @@ class FlameGraphRenderer extends React.Component {
   initialFlamegraphState = {
     selectedLevel: 0,
     topLevel: 0,
-    // zoom
-    rangeMin: 0,
-    rangeMax: 1,
 
     zoom: {
       i: -1,
@@ -67,10 +64,6 @@ class FlameGraphRenderer extends React.Component {
 
       flamegraphConfigs: this.initialFlamegraphState,
     };
-
-    // generally not a good idea
-    // but we need to access the graph's reset function
-    this.graphRef = React.createRef();
   }
 
   componentDidMount() {
@@ -130,15 +123,6 @@ class FlameGraphRenderer extends React.Component {
     this.abortCurrentJSONController();
   }
 
-  onFlamegraphZoom = (configs) => {
-    this.setState({
-      flamegraphConfigs: {
-        ...this.state.flamegraphConfigs,
-        ...configs,
-      },
-    });
-  };
-
   updateFitMode = (newFitMode) => {
     this.setState({
       fitMode: newFitMode,
@@ -184,15 +168,12 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  onFlamegraphZoom2 = (i, j) => {
+  onFlamegraphZoom = (i, j) => {
     this.setState({
       ...this.state,
       flamegraphConfigs: {
         ...this.state.flamegraphConfigs,
-        zoom: {
-          i,
-          j,
-        },
+        zoom: { i, j },
       },
     });
   };
@@ -211,11 +192,11 @@ class FlameGraphRenderer extends React.Component {
   };
 
   isDirty = () => {
+    // TODO: is this a good idea?
     return (
       JSON.stringify(this.initialFlamegraphState) !==
       JSON.stringify(this.state.flamegraphConfigs)
     );
-    // return this.rangeMin === 0 && this.rangeMax === 1;
   };
 
   parseFormat(format) {
@@ -315,7 +296,6 @@ class FlameGraphRenderer extends React.Component {
       this.state.flamebearer && dataExists ? (
         <Graph
           key="flamegraph-pane"
-          ref={this.graphRef}
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
@@ -324,13 +304,10 @@ class FlameGraphRenderer extends React.Component {
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
           topLevel={this.state.flamegraphConfigs.topLevel}
-          rangeMin={this.state.flamegraphConfigs.rangeMin}
-          rangeMax={this.state.flamegraphConfigs.rangeMax}
           zoom={this.state.flamegraphConfigs.zoom}
           selectedLevel={this.state.flamegraphConfigs.selectedLevel}
           label={this.props.query}
           onZoom={this.onFlamegraphZoom}
-          onZoom2={this.onFlamegraphZoom2}
           onReset={this.onReset}
           isDirty={this.isDirty}
         />

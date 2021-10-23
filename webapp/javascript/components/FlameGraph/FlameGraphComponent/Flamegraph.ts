@@ -1,8 +1,7 @@
 import { createFF } from '@utils/flamebearer';
-import { Units, ratioToPercent, formatPercent } from '@utils/format';
+import { Units } from '@utils/format';
 import { RenderCanvas } from './CanvasRenderer';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
-import { getRatios } from './utils';
 
 /* eslint-disable no-useless-constructor */
 
@@ -23,12 +22,16 @@ type Flamebearer = {
 export default class Flamegraph {
   private ff: ReturnType<typeof createFF>;
 
+  // used in zoom
+  private rangeMin: number;
+
+  // used in zoom
+  private rangeMax: number;
+
   constructor(
     private readonly flamebearer: Flamebearer,
     private canvas: HTMLCanvasElement,
     private topLevel: number,
-    private rangeMin: number,
-    private rangeMax: number,
     private selectedLevel: number,
     private fitMode: 'HEAD' | 'TAIL',
     private highlightQuery: string,

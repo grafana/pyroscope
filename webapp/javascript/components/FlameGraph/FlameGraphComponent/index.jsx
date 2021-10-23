@@ -95,23 +95,12 @@ class FlameGraph extends React.Component {
     );
   };
 
-  //  reset = () => {
-  //    this.props.reset();
-  //
-  //    //this.flamegraph.reset();
-  //    //this.renderCanvas();
-  //  };
-  //
   onClick = (e) => {
     const { i, j } = this.flamegraph.xyToBar(
       e.nativeEvent.offsetX,
       e.nativeEvent.offsetY
     );
-    this.props.onZoom2(i, j);
-
-    //    this.props.onZoom(
-    //      this.flamegraph.xyToZoom(e.nativeEvent.offsetX, e.nativeEvent.offsetY)
-    //    );
+    this.props.onZoom(i, j);
   };
 
   resizeHandler = () => {
@@ -169,8 +158,6 @@ class FlameGraph extends React.Component {
       this.props.flamebearer,
       this.canvasRef.current,
       this.props.topLevel,
-      this.props.rangeMin,
-      this.props.rangeMax,
       this.props.selectedLevel,
       this.props.fitMode,
       this.props.query,
