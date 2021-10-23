@@ -87,14 +87,13 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 
 	for _, s := range x.Sample {
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			name, ok := x.findFunctionName(s.LocationId[i])
-			if !ok {
-				continue
+			names := x.findFunctionNames(s.LocationId[i])
+			for _, name := range names {
+				if b.Len() > 0 {
+					_ = b.WriteByte(';')
+				}
+				_, _ = b.WriteString(name)
 			}
-			if b.Len() > 0 {
-				_ = b.WriteByte(';')
-			}
-			_, _ = b.WriteString(name)
 		}
 
 		labels := labelsCache.pprofLabelsToSpyLabels(x, s.Label)
@@ -106,13 +105,17 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 	return nil
 }
 
-func (x *Profile) findFunctionName(locID uint64) (string, bool) {
+func (x *Profile) findFunctionNames(locID uint64) []string {
+	res := []string{}
 	if loc, ok := x.findLocation(locID); ok {
-		if fn, ok := x.findFunction(loc.Line[0].FunctionId); ok {
-			return x.StringTable[fn.Name], true
+		for _, line := range loc.Line {
+			if fn, ok := x.findFunction(line.FunctionId); ok {
+				name := x.StringTable[fn.Name]
+				res = append([]string{name}, res...)
+			}
 		}
 	}
-	return "", false
+	return res
 }
 
 func (x *Profile) findLocation(lid uint64) (*Location, bool) {
