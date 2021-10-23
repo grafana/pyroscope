@@ -1,10 +1,12 @@
 import React from 'react';
 import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
+import { MenuItem } from '@szhsin/react-menu';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
 import Tooltip from './Tooltip';
+import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
 
 interface FlamegraphProps {
@@ -20,6 +22,9 @@ interface FlamegraphProps {
   viewType: string; // TODO
 
   onZoom: (i: number, j: number) => void;
+
+  onReset: () => void;
+  isDirty: () => boolean;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -37,6 +42,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   } = props;
 
   const { onZoom } = props;
+  const { onReset, isDirty } = props;
 
   const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { i, j } = flamegraph.xyToBar(
@@ -59,6 +65,21 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
   const xyToTooltipData = (format: string, x: number, y: number) => {
     return flamegraph.xyToBarData(x, y);
+  };
+
+  // Context Menu stuff
+  const xyToContextMenuItems = (x: number, y: number) => {
+    const dirty = isDirty();
+
+    //
+    //      <MenuItem key="focus" onClick={() => this.focusOnNode(x, y)}>
+    //        Focus
+    //      </MenuItem>,
+    return [
+      <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
+        Reset View
+      </MenuItem>,
+    ];
   };
 
   // this level of indirection is required
@@ -134,6 +155,11 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             units={flamebearer.units}
           />
         )}
+
+        <ContextMenu
+          canvasRef={canvasRef}
+          xyToMenuItems={xyToContextMenuItems}
+        />
       </div>
     </>
   );

@@ -10,7 +10,7 @@ import {
 // we only support these
 type SupportedItems = typeof MenuItem | typeof SubMenu;
 
-type xyToMenuItems = (x: number, y: number) => SupportedItems[];
+type xyToMenuItems = (x: number, y: number) => JSX.Element[];
 
 export interface ContextMenuProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
