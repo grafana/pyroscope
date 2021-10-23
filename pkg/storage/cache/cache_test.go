@@ -44,7 +44,7 @@ var _ = Describe("cache", func() {
 			DB:     db,
 			Codec:  fakeCodec{},
 			Prefix: "p:",
-			Metrics: Metrics{
+			Metrics: &Metrics{
 				MissesCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 					Name: "cache_test_miss",
 				}),

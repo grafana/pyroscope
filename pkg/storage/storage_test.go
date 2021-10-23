@@ -327,6 +327,7 @@ var _ = Describe("storage package", func() {
 
 					s2, err := New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
+					time.Sleep(100 * time.Millisecond)
 
 					o2, err := s2.Get(&GetInput{
 						StartTime: st2,
@@ -343,7 +344,7 @@ var _ = Describe("storage package", func() {
 	})
 })
 
-var _ = Describe("Querying", func() {
+var _ = Describe("querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
