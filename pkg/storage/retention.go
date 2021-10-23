@@ -4,21 +4,18 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
-
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
 const (
-	// The value is valid for ValueLogSize == 1GB (default).
 	// This ratio implies that even if a byte can be discarded, it will be.
-	forceDiscardRatio float64 = 1 / (1 << 40) // 10GB
+	forceDiscardRatio = 0.0000000000000001
 	// Recommended discardRatio.
-	defaultDiscardRatio float64 = 0.5
+	defaultDiscardRatio = 0.5
 
 	batchSize = 1024
 )
@@ -28,7 +25,7 @@ const (
 func (s *Storage) CollectGarbage() {
 	rp := s.retentionPolicy()
 	if rp.LowerTimeBoundary() == zeroTime && rp.SizeLimit() == 0 {
-		s.runGC(defaultDiscardRatio)
+		s.main.runGC(defaultDiscardRatio)
 		return
 	}
 
@@ -50,6 +47,8 @@ func (s *Storage) CollectGarbage() {
 					Warn("failed to enforce time-based retention policy")
 			case nil:
 			case errClosed:
+				s.logger.WithField("segment", k).
+					Warn("enforcing time-based retention policy canceled")
 				return
 			}
 		}
@@ -62,7 +61,10 @@ func (s *Storage) CollectGarbage() {
 	// The volume to reclaim is determined by approximation on the key-value
 	// pairs size, which is very close to the actual occupied disk space only
 	// when garbage collector has discarded unclaimed space in value log files.
-	s.runGC(forceDiscardRatio)
+	if !s.main.runGC(forceDiscardRatio) {
+		s.logger.Info("garbage collection did not result in reclaimed space")
+		return
+	}
 
 	// At this point size estimations should be quite precise and we can remove
 	// items from the database safely. Effectively, only trees are removed to
@@ -70,7 +72,7 @@ func (s *Storage) CollectGarbage() {
 	var (
 		// Occupied disk space. The value should be as accurate as possible,
 		// therefore dbSize() can not be used as it updates once per minute.
-		used = dirSize(s.config.StoragePath)
+		used = dirSize(filepath.Join(s.config.StoragePath, "pyroscope"))
 		// Size in bytes to be reclaimed.
 		rs = rp.CapacityToReclaim(used, s.reclaimSizeRatio).Bytes()
 		// Size in bytes to be reclaimed per segment.
@@ -79,7 +81,7 @@ func (s *Storage) CollectGarbage() {
 
 	logger := s.logger.
 		WithField("used", used).
-		WithField("requested", rs)
+		WithField("requested", bytesize.ByteSize(rs))
 	if rsps == 0 {
 		logger.Info("skipping reclaim")
 		return
@@ -99,6 +101,8 @@ func (s *Storage) CollectGarbage() {
 				Warn("failed to enforce size-based retention policy")
 		case nil:
 		case errClosed:
+			s.logger.WithField("segment", k).
+				Warn("enforcing size-based retention policy canceled")
 			return
 		}
 	}
@@ -288,20 +292,6 @@ func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
 		t.SetLevelMaxAge(level, threshold)
 	}
 	return t
-}
-
-func (s *Storage) runGC(discardRatio float64) {
-	m := new(sync.Mutex)
-	reclaimed := make(map[string]interface{})
-	s.goDB(func(x *db) {
-		if x.runGC(discardRatio) {
-			m.Lock()
-			reclaimed[x.name] = true
-			m.Unlock()
-		}
-	})
-
-	s.logger.WithFields(reclaimed).Info("badger db garbage collection")
 }
 
 // TODO(kolesnikovae): filepath.Walk is notoriously slow.

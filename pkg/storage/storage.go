@@ -65,24 +65,18 @@ func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer, opt
 		option(s)
 	}
 
-	var err error
-	if s.main, err = s.newBadger("main", "", nil); err != nil {
-		return nil, err
-	}
-	if s.dicts, err = s.newBadger("dicts", dictionaryPrefix, dictionaryCodec{}); err != nil {
-		return nil, err
-	}
-	if s.dimensions, err = s.newBadger("dimensions", dimensionPrefix, dimensionCodec{}); err != nil {
-		return nil, err
-	}
-	if s.segments, err = s.newBadger("segments", segmentPrefix, segmentCodec{}); err != nil {
-		return nil, err
-	}
-	if s.trees, err = s.newBadger("trees", treePrefix, treeCodec{s}); err != nil {
+	badgerDB, err := s.openBadgerDB("pyroscope")
+	if err != nil {
 		return nil, err
 	}
 
+	s.main = s.newDB(badgerDB, "main", "", nil)
 	s.labels = labels.New(s.main.DB)
+
+	s.dicts = s.newDB(badgerDB, "dicts", dictionaryPrefix, dictionaryCodec{})
+	s.dimensions = s.newDB(badgerDB, "dimensions", dimensionPrefix, dimensionCodec{})
+	s.segments = s.newDB(badgerDB, "segments", segmentPrefix, segmentCodec{})
+	s.trees = s.newDB(badgerDB, "trees", treePrefix, treeCodec{s})
 
 	if err = s.migrate(); err != nil {
 		return nil, err
@@ -110,29 +104,24 @@ func (s *Storage) Close() error {
 	close(s.stop)
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.wg.Wait()
-	s.logger.Debug("storage tasks to finished")
+	s.logger.Debug("storage tasks finished")
 	// Dictionaries DB has to close last because trees depend on it.
-	s.goDB(func(d *db) {
-		if d != s.dicts {
-			d.close()
-		}
-	})
-	s.dicts.close()
-	return nil
-}
-
-// goDB runs f for all DBs concurrently.
-func (s *Storage) goDB(f func(*db)) {
-	dbs := s.databases()
+	dbs := []*db{
+		s.dimensions,
+		s.segments,
+		s.trees,
+		s.dicts,
+	}
 	wg := new(sync.WaitGroup)
 	wg.Add(len(dbs))
 	for _, d := range dbs {
 		go func(db *db) {
-			defer wg.Done()
-			f(db)
+			db.Cache.Flush()
+			wg.Done()
 		}(d)
 	}
 	wg.Wait()
+	return s.main.DB.Close()
 }
 
 func (s *Storage) maintenanceTask(interval time.Duration, f func()) {
@@ -204,14 +193,15 @@ func (s *Storage) writeBackTask() {
 
 func (s *Storage) watchDBSize(diff bytesize.ByteSize, f func()) func() {
 	return func() {
-		var n bytesize.ByteSize
-		for _, d := range s.databases() {
-			n += d.size()
-		}
-		if s.size-n > diff {
+		n := s.main.size()
+		s.logger.
+			WithField("used", n).
+			WithField("last-gc", s.size).
+			Info("db size watcher")
+		if s.size == 0 || s.size-n > diff {
+			s.size = n
 			f()
 		}
-		s.size = n
 	}
 }
 
