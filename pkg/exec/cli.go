@@ -18,7 +18,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
@@ -149,7 +148,7 @@ func Cli(cfg *config.Exec, args []string) error {
 
 	// if the sample rate is zero, use the default value
 	if cfg.SampleRate == 0 {
-		cfg.SampleRate = types.DefaultSampleRate
+		cfg.SampleRate = spy.DefaultSampleRate
 	}
 
 	sc := agent.SessionConfig{
@@ -211,7 +210,7 @@ func waitForProcessToExit(c chan os.Signal, pid int) {
 }
 
 func performChecks(spyName string) error {
-	if spyName == types.GoSpy {
+	if spyName == "gospy" {
 		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.GreenString("https://pyroscope.io/docs/"))
 	}
 

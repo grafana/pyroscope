@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -74,8 +74,8 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 		selfProfilingConfig := agent.SessionConfig{
 			Upstream:       upstream,
 			AppName:        "pyroscope.dbmanager.cpu{}",
-			ProfilingTypes: types.DefaultProfileTypes,
-			SpyName:        types.GoSpy,
+			ProfilingTypes: spy.DefaultProfileTypes,
+			SpyName:        "gospy",
 			SampleRate:     100,
 			UploadRate:     10 * time.Second,
 			Logger:         logrus.StandardLogger(),

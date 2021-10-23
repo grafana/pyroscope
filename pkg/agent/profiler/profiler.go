@@ -16,7 +16,6 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 )
 
@@ -48,10 +47,10 @@ type Profiler struct {
 // Start starts continuously profiling go code
 func Start(cfg Config) (*Profiler, error) {
 	if len(cfg.ProfileTypes) == 0 {
-		cfg.ProfileTypes = types.DefaultProfileTypes
+		cfg.ProfileTypes = spy.DefaultProfileTypes
 	}
 	if cfg.SampleRate == 0 {
-		cfg.SampleRate = types.DefaultSampleRate
+		cfg.SampleRate = spy.DefaultSampleRate
 	}
 	if cfg.Logger == nil {
 		cfg.Logger = &agent.NoopLogger{}
@@ -75,7 +74,7 @@ func Start(cfg Config) (*Profiler, error) {
 		Tags:             cfg.Tags,
 		ProfilingTypes:   cfg.ProfileTypes,
 		DisableGCRuns:    cfg.DisableGCRuns,
-		SpyName:          types.GoSpy,
+		SpyName:          "gospy",
 		SampleRate:       cfg.SampleRate,
 		UploadRate:       10 * time.Second,
 		Pid:              0,

@@ -10,7 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -70,8 +70,8 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
 		Upstream:       svc.directUpstream,
 		AppName:        "pyroscope.server",
-		ProfilingTypes: types.DefaultProfileTypes,
-		SpyName:        types.GoSpy,
+		ProfilingTypes: spy.DefaultProfileTypes,
+		SpyName:        "gospy",
 		SampleRate:     100,
 		UploadRate:     10 * time.Second,
 		Logger:         logger,

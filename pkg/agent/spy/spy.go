@@ -23,10 +23,16 @@ const (
 	ProfileInuseSpace   ProfileType = "inuse_space"
 	ProfileAllocSpace   ProfileType = "alloc_space"
 
-	Go     = "gospy"
-	Python = "pyspy"
-	Ruby   = "rbspy"
+	DefaultSampleRate = 100
 )
+
+var DefaultProfileTypes = []ProfileType{
+	ProfileCPU,
+	ProfileAllocObjects,
+	ProfileAllocSpace,
+	ProfileInuseObjects,
+	ProfileInuseSpace,
+}
 
 func (t ProfileType) IsCumulative() bool {
 	return t == ProfileAllocObjects || t == ProfileAllocSpace
@@ -99,7 +105,7 @@ func ResolveAutoName(s string) string {
 func SupportedExecSpies() []string {
 	supportedSpies := []string{}
 	for _, s := range SupportedSpies {
-		if s != Go {
+		if s != "gospy" {
 			supportedSpies = append(supportedSpies, s)
 		}
 	}

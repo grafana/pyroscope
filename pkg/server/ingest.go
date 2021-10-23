@@ -8,7 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -96,12 +96,12 @@ func ingestParamsFromRequest(r *http.Request) (*storage.PutInput, error) {
 		sampleRate, err := strconv.Atoi(sr)
 		if err != nil {
 			logrus.WithError(err).Errorf("invalid sample rate: %q", sr)
-			pi.SampleRate = types.DefaultSampleRate
+			pi.SampleRate = spy.DefaultSampleRate
 		} else {
 			pi.SampleRate = uint32(sampleRate)
 		}
 	} else {
-		pi.SampleRate = types.DefaultSampleRate
+		pi.SampleRate = spy.DefaultSampleRate
 	}
 
 	if sn := q.Get("spyName"); sn != "" {

@@ -11,7 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
@@ -56,7 +55,7 @@ func NewManager(l *logrus.Logger, r *remote.Remote, c *config.Agent) *Manager {
 }
 
 func (mgr *Manager) canonise(t *config.Target) error {
-	if t.SpyName == types.GoSpy {
+	if t.SpyName == "gospy" {
 		return fmt.Errorf("gospy can not profile other processes")
 	}
 	var found bool
@@ -70,7 +69,7 @@ func (mgr *Manager) canonise(t *config.Target) error {
 		return fmt.Errorf("spy %q is not supported", t.SpyName)
 	}
 	if t.SampleRate == 0 {
-		t.SampleRate = types.DefaultSampleRate
+		t.SampleRate = spy.DefaultSampleRate
 	}
 	if t.ApplicationName == "" {
 		t.ApplicationName = t.SpyName + "." + names.GetRandomName(generateSeed(t.ServiceName, t.SpyName))
