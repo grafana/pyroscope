@@ -167,6 +167,7 @@ export default class Flamegraph {
     const i = Math.floor(computedY / PX_PER_LEVEL) + this.topLevel;
 
     if (i >= 0 && i < this.flamebearer.levels.length) {
+      console.log('making binary search, levels ', this.flamebearer.levels[i]);
       const j = this.binarySearchLevel(x, this.flamebearer.levels[i]);
 
       return { i, j };

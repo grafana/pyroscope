@@ -112,11 +112,26 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     zoom,
   ]);
 
+  const renderCanvas = () => {
+    flamegraph.render();
+  };
+
   React.useEffect(() => {
-    if (flamegraph) {
-      flamegraph.render();
+    if (!flamegraph) {
+      return () => {};
     }
+
+    window.addEventListener('resize', () => {
+      renderCanvas();
+    });
+
+    renderCanvas();
+
+    return () => {
+      window.removeEventListener('resize', flamegraph.render);
+    };
   }, [flamegraph]);
+
   return (
     <>
       <div

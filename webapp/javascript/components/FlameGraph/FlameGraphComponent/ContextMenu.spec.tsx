@@ -33,7 +33,7 @@ describe('ContextMenu', () => {
         >
           Test
         </MenuItem>,
-      ] as unknown[] as typeof MenuItem[]; // nasty conversion
+      ];
     };
 
     render(<TestCanvas xyToMenuItems={xyToMenuItems} />);
