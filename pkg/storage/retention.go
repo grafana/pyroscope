@@ -7,41 +7,31 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
-const (
-	// This ratio implies that even if a byte can be discarded, it will be.
-	forceDiscardRatio = 0.0000000000000001
-	// Recommended discardRatio.
-	defaultDiscardRatio = 0.5
-
-	batchSize = 1024
-)
+const batchSize = 1024
 
 // TODO(kolesnikovae): add metrics.
 
 func (s *Storage) CollectGarbage() {
+	s.logger.Info("starting garbage collection")
 	rp := s.retentionPolicy()
-	if rp.LowerTimeBoundary() == zeroTime && rp.SizeLimit() == 0 {
-		s.main.runGC(defaultDiscardRatio)
-		return
-	}
+	var segmentKeys []*segment.Key
 
-	segmentKeys, err := s.segmentKeys()
-	if err != nil {
-		s.logger.WithError(err).Error("failed to fetch segment keys")
-		return
-	}
-	if len(segmentKeys) == 0 {
-		return
-	}
-
-	if rp.LowerTimeBoundary() != zeroTime {
+	if !rp.LowerTimeBoundary().IsZero() {
+		s.logger.Info("enforcing time-based retention policy")
+		var err error
+		if segmentKeys, err = s.segmentKeys(); err != nil {
+			s.logger.WithError(err).Error("failed to fetch segment keys")
+			return
+		}
 		// TODO(kolesnikovae): Should it run concurrently with some throttling?
 		for _, k := range segmentKeys {
-			switch s.deleteSegmentDataBefore(k, rp) {
+			switch err = s.deleteSegmentDataBefore(k, rp); err {
 			default:
 				s.logger.WithError(err).WithField("segment", k).
 					Warn("failed to enforce time-based retention policy")
@@ -54,6 +44,11 @@ func (s *Storage) CollectGarbage() {
 		}
 	}
 
+	if !s.main.runGC(0.000001) {
+		s.logger.Info("garbage collection did not result in reclaimed space")
+		return
+	}
+
 	if rp.SizeLimit() == 0 {
 		return
 	}
@@ -61,17 +56,13 @@ func (s *Storage) CollectGarbage() {
 	// The volume to reclaim is determined by approximation on the key-value
 	// pairs size, which is very close to the actual occupied disk space only
 	// when garbage collector has discarded unclaimed space in value log files.
-	if !s.main.runGC(forceDiscardRatio) {
-		s.logger.Info("garbage collection did not result in reclaimed space")
-		return
-	}
-
+	//
 	// At this point size estimations should be quite precise and we can remove
 	// items from the database safely. Effectively, only trees are removed to
 	// reclaim space in accordance to the size-based retention policy.
 	var (
 		// Occupied disk space. The value should be as accurate as possible,
-		// therefore dbSize() can not be used as it updates once per minute.
+		// therefore db.size() can not be used as it updates once per minute.
 		used = dirSize(filepath.Join(s.config.StoragePath, "pyroscope"))
 		// Size in bytes to be reclaimed.
 		rs = rp.CapacityToReclaim(used, s.reclaimSizeRatio).Bytes()
@@ -79,9 +70,11 @@ func (s *Storage) CollectGarbage() {
 		rsps = rs / len(segmentKeys)
 	)
 
-	logger := s.logger.
-		WithField("used", used).
-		WithField("requested", bytesize.ByteSize(rs))
+	logger := s.logger.WithFields(logrus.Fields{
+		"used":      used,
+		"requested": bytesize.ByteSize(rs),
+	})
+
 	if rsps == 0 {
 		logger.Info("skipping reclaim")
 		return
@@ -93,9 +86,9 @@ func (s *Storage) CollectGarbage() {
 	//   Another point is that if the procedure has been
 	//   interrupted, data will be removed disproportionally.
 
-	logger.Info("reclaiming disk space")
+	s.logger.Info("enforcing size-based retention policy")
 	for _, k := range segmentKeys {
-		switch s.reclaimSegmentSpace(k, rsps) {
+		switch err := s.reclaimSegmentSpace(k, rsps); err {
 		default:
 			s.logger.WithError(err).WithField("segment", k).
 				Warn("failed to enforce size-based retention policy")

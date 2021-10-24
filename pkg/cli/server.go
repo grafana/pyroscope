@@ -40,7 +40,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	// TODO(kolesnikovae): remove after testing.
 	const day = time.Hour * 24
 	c.Retention = 8 * time.Hour
-	c.RetentionSize = 2 * bytesize.GB
+	c.RetentionSize = bytesize.GB
 	c.RetentionLevels = map[int]time.Duration{
 		0: 4 * time.Hour,
 		//		0: 7 * day,

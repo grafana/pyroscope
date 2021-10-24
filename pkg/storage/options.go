@@ -27,7 +27,7 @@ func defaultOptions() *storageOptions {
 		cacheTTL:          2 * time.Minute,
 
 		gcInterval:       5 * time.Minute,
-		gcSizeDiff:       bytesize.GB,
+		gcSizeDiff:       100 * bytesize.MB,
 		reclaimSizeRatio: 0.05,
 
 		metricsUpdateInterval: 10 * time.Second,

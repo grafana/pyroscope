@@ -31,6 +31,8 @@ import (
 
 var s *Storage
 
+var maxTime = time.Unix(1<<62, 999999999)
+
 var _ = Describe("storage package", func() {
 	logrus.SetLevel(logrus.InfoLevel)
 

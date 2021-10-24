@@ -19,11 +19,6 @@ var (
 	errClosed    = errors.New("storage closed")
 )
 
-var (
-	maxTime  = time.Unix(1<<62, 999999999)
-	zeroTime time.Time
-)
-
 type Storage struct {
 	config *config.Server
 	*storageOptions
@@ -115,10 +110,11 @@ func (s *Storage) Close() error {
 	wg := new(sync.WaitGroup)
 	wg.Add(len(dbs))
 	for _, d := range dbs {
-		go func(db *db) {
-			db.Cache.Flush()
+		d := d
+		go func() {
+			d.Cache.Flush()
 			wg.Done()
-		}(d)
+		}()
 	}
 	wg.Wait()
 	return s.main.DB.Close()
@@ -164,7 +160,6 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		if used < s.config.CacheEvictThreshold {
 			return
 		}
-
 		// Dimensions, dictionaries, and segments should not be evicted,
 		// as they are almost 100% in use and will be loaded back, causing
 		// more allocations. Unused items should be unloaded from cache by
@@ -172,12 +167,12 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		// order matters.
 		//
 		// It should be noted that in case of a crash or kill, data may become
-		// inconsistent: we should unite databases and do this in a transaction.
+		// inconsistent: we should unite databases and do this in a tx.
 		// This is also applied to writeBack task.
+		s.trees.Evict(percent)
+		s.dicts.WriteBack()
 		s.dimensions.WriteBack()
 		s.segments.WriteBack()
-		s.dicts.WriteBack()
-		s.trees.Evict(percent)
 		// debug.FreeOSMemory()
 		runtime.GC()
 	}
@@ -194,11 +189,17 @@ func (s *Storage) writeBackTask() {
 func (s *Storage) watchDBSize(diff bytesize.ByteSize, f func()) func() {
 	return func() {
 		n := s.main.size()
-		s.logger.
-			WithField("used", n).
-			WithField("last-gc", s.size).
-			Info("db size watcher")
-		if s.size == 0 || s.size-n > diff {
+		d := n - s.size
+		if s.size == 0 {
+			s.size = n
+			return
+		}
+		s.logger.WithFields(logrus.Fields{
+			"last-gc": s.size,
+			"used":    n,
+			"diff":    d,
+		}).Info("db size watcher")
+		if d > diff {
 			s.size = n
 			f()
 		}
