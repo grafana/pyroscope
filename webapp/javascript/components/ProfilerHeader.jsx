@@ -35,6 +35,7 @@ export default function ProfilerHeader({
   return (
     <div className="navbar-2">
       <input
+        data-testid="flamegraph-search"
         className="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
