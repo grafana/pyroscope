@@ -8,8 +8,7 @@ import Highlight from './Highlight';
 import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
-import { colorFromPercentage } from './color';
-import ExportData from '../../ExportData';
+import Header from './Header';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
@@ -26,7 +25,7 @@ interface FlamegraphProps {
 
   // the reason this is exposed as a parameter
   // is to not have to connect to the redux store from here
-  ExportData: ExportData;
+  ExportData: () => React.ReactElement;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -178,81 +177,5 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         />
       </div>
     </>
-  );
-}
-
-function Header({
-  format,
-  units,
-  ExportData,
-}: {
-  format: Flamebearer['format'];
-  units: Flamebearer['units'];
-  ExportData: FlamegraphProps['ExportData'];
-}) {
-  const unitsToFlamegraphTitle = {
-    objects: 'amount of objects in RAM per function',
-    bytes: 'amount of RAM per function',
-    samples: 'CPU time per function',
-  };
-
-  const getTitle = () => {
-    switch (format) {
-      case 'single': {
-        return (
-          <div>
-            <div className="row flamegraph-title" role="heading" aria-level={2}>
-              Frame width represents {unitsToFlamegraphTitle[units]}
-            </div>
-          </div>
-        );
-      }
-
-      case 'double': {
-        return (
-          <div>
-            <div className="row" role="heading" aria-level={2}>
-              Base graph: left - Comparison graph: right
-            </div>
-            <DiffLegend />
-          </div>
-        );
-      }
-
-      default:
-        throw new Error(`unexpected format ${format}`);
-    }
-  };
-
-  const title = getTitle();
-
-  return (
-    <div className="flamegraph-header">
-      <div>{title}</div>
-      <ExportData />
-    </div>
-  );
-}
-
-function DiffLegend() {
-  const values = [100, 80, 60, 40, 20, 10, 0, -10, -20, -40, -60, -80, -100];
-
-  return (
-    <div className="row flamegraph-legend" data-testid="flamegraph-legend">
-      <div className="flamegraph-legend-list">
-        {values.map((v) => (
-          <div
-            key={v}
-            className="flamegraph-legend-item"
-            style={{
-              backgroundColor: colorFromPercentage(v, 0.8).string(),
-            }}
-          >
-            {v > 0 ? '+' : ''}
-            {v}%
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
