@@ -164,8 +164,7 @@ RUN mkdir -p \
         "/etc/pyroscope"
 
 COPY scripts/packages/server.yml "/etc/pyroscope/server.yml"
-COPY --from=go-builder /opt/pyroscope/bin/pyroscope /usr/bin/pyroscope
-RUN chmod 777 /usr/bin/pyroscope
+COPY --from=go-builder --chmod=0777 /opt/pyroscope/bin/pyroscope /usr/bin/pyroscope
 
 USER pyroscope
 EXPOSE 4040/tcp
