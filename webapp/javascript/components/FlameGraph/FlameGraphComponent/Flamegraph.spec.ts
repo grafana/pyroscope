@@ -1,6 +1,6 @@
 import { Units } from '@utils/format';
 import Flamegraph from './Flamegraph';
-import { RenderCanvas } from './Flamegraph_render';
+import RenderCanvas from './Flamegraph_render';
 import { BAR_HEIGHT } from './constants';
 
 jest.mock('./Flamegraph_render');
