@@ -57,7 +57,7 @@ func (s *Storage) openBadgerDB(name string) (*badger.DB, error) {
 		WithSyncWrites(false).
 		WithCompactL0OnClose(false).
 		WithCompression(options.ZSTD).
-		//		WithValueLogFileSize(8<<20).
+		WithValueLogFileSize(128 << 20).
 		WithLogger(logger))
 }
 
