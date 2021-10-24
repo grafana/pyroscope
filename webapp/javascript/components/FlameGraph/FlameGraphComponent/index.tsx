@@ -2,6 +2,7 @@ import React from 'react';
 import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
+import useResizeObserver from '@react-hook/resize-observer';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
@@ -36,6 +37,15 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
   const { onZoom, onReset, isDirty } = props;
   const { ExportData } = props;
+
+  // rerender whenever the canvas size changes
+  // eg window resize, or simply changing the view
+  // to display the flamegraph isolated from the table
+  useResizeObserver(canvasRef, () => {
+    if (flamegraph) {
+      renderCanvas();
+    }
+  });
 
   const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { i, j } = flamegraph.xyToBar(
@@ -110,19 +120,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   };
 
   React.useEffect(() => {
-    if (!flamegraph) {
-      return () => {};
-    }
-
-    window.addEventListener('resize', () => {
+    if (flamegraph) {
       renderCanvas();
-    });
-
-    renderCanvas();
-
-    return () => {
-      window.removeEventListener('resize', flamegraph.render);
-    };
+    }
   }, [flamegraph]);
 
   return (
