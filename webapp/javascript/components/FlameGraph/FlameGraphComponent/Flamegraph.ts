@@ -241,7 +241,7 @@ export default class Flamegraph {
     switch (this.flamebearer.format) {
       case 'single': {
         return {
-          format: 'single',
+          format: 'single' as const,
           name: this.flamebearer.names[ff.getBarName(level, j)],
           self: ff.getBarSelf(level, j),
           offset: ff.getBarOffset(level, j),
@@ -250,7 +250,7 @@ export default class Flamegraph {
       }
       case 'double': {
         return {
-          format: 'double',
+          format: 'double' as const,
           barTotal: ff.getBarTotal(level, j),
           totalLeft: ff.getBarTotalLeft(level, j),
           totalRight: ff.getBarTotalRght(level, j),

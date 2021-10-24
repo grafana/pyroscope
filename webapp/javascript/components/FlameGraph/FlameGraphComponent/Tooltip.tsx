@@ -9,13 +9,11 @@ import {
 import { diffColorRed, diffColorGreen } from './color';
 
 type xyToDataSingle = (
-  format: 'single',
   x: number,
   y: number
 ) => { format: 'single'; name: string; total: number };
 
 type xyToDataDouble = (
-  format: 'double',
   x: number,
   y: number
 ) => {
@@ -100,7 +98,7 @@ export default function Tooltip(props: TooltipProps) {
       // set the content
       switch (props.format) {
         case 'single': {
-          const data = props.xyToData(props.format, e.offsetX, e.offsetY);
+          const data = props.xyToData(e.offsetX, e.offsetY);
 
           const d = formatSingle(
             formatter,
@@ -125,7 +123,7 @@ export default function Tooltip(props: TooltipProps) {
         }
 
         case 'double': {
-          const data = props.xyToData('double', e.offsetX, e.offsetY);
+          const data = props.xyToData(e.offsetX, e.offsetY);
 
           const d = formatDouble({
             formatter,

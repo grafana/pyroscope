@@ -11,11 +11,11 @@ import { PX_PER_LEVEL } from './constants';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
-  fitMode: typeof Flamegraph.fitMode;
-  zoom: typeof Flamegraph.zoom; // TODO call it zoom level?
-  topLevel: typeof Flamegraph.topLevel;
-  selectedLevel: typeof Flamegraph.selectedLevel;
-  query: typeof Flamegraph.highlightQuery;
+  topLevel: ConstructorParameters<typeof Flamegraph>[2];
+  selectedLevel: ConstructorParameters<typeof Flamegraph>[3];
+  fitMode: ConstructorParameters<typeof Flamegraph>[4];
+  query: ConstructorParameters<typeof Flamegraph>[5];
+  zoom: ConstructorParameters<typeof Flamegraph>[6]; // TODO call it zoom level?
 
   // TODO
   // format: any;
@@ -28,7 +28,7 @@ interface FlamegraphProps {
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
-  const canvasRef = React.useRef();
+  const canvasRef = React.useRef<HTMLCanvasElement>();
   const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
 
   const {
@@ -57,13 +57,13 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     const bar = flamegraph.xyToBarPosition(x, y);
 
     return {
-      left: canvasRef?.current?.offsetLeft + bar.x,
-      top: canvasRef?.current?.offsetTop + bar.y,
+      left: canvasRef.current.offsetLeft + bar.x,
+      top: canvasRef.current.offsetTop + bar.y,
       width: bar.width,
     };
   };
 
-  const xyToTooltipData = (format: string, x: number, y: number) => {
+  const xyToTooltipData = (x: number, y: number) => {
     return flamegraph.xyToBarData(x, y);
   };
 
@@ -146,12 +146,14 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           <Tooltip
             format={flamebearer.format}
             canvasRef={canvasRef}
-            xyToData={xyToTooltipData}
+            xyToData={xyToTooltipData as any /* TODO */}
             isWithinBounds={isWithinBounds}
             numTicks={flamebearer.numTicks}
             sampleRate={flamebearer.sampleRate}
-            leftTicks={flamebearer.leftTicks}
-            rightTicks={flamebearer.rightTicks}
+            leftTicks={flamebearer.format === 'double' && flamebearer.leftTicks}
+            rightTicks={
+              flamebearer.format === 'double' && flamebearer.rightTicks
+            }
             units={flamebearer.units}
           />
         )}

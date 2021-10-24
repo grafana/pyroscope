@@ -15,8 +15,11 @@ type xyToMenuItems = (x: number, y: number) => JSX.Element[];
 export interface ContextMenuProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
 
-  // The menu should be built dynamically
-  // Based on the cell's contents
+  /**
+   * The menu is built dynamically
+   * Based on the cell's contents
+   * only MenuItem and SubMenu should be supported
+   */
   xyToMenuItems: xyToMenuItems;
 }
 
@@ -24,7 +27,7 @@ export default function ContextMenu(props: ContextMenuProps) {
   const { toggleMenu, openMenu, closeMenu, ...menuProps } = useMenuState(false);
   const [anchorPoint, setAnchorPoint] = React.useState({ x: 0, y: 0 });
   const { canvasRef } = props;
-  const [menuItems, setMenuItems] = React.useState<SupportedItems[]>([]);
+  const [menuItems, setMenuItems] = React.useState<JSX.Element[]>([]);
 
   const onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
