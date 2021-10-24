@@ -227,8 +227,11 @@ export default class Flamegraph {
     };
   };
 
-  // TODO rename this
-  // this should be only interface
+  // TODO maybe we should combine xyToBarPosition with this?
+  /*
+   * Given x and y coordinates
+   * return all node data available in the flamegraph
+   */
   public xyToBarData(x: number, y: number) {
     if (!this.isWithinBounds(x, y)) {
       throw new Error(
@@ -266,24 +269,5 @@ export default class Flamegraph {
         throw new Error(`Unsupported type`);
       }
     }
-  }
-
-  public xyToZoom(x: number, y: number) {
-    const { i, j } = this.xyToBar(x, y);
-    // TODO what if
-    //    if (j === -1) return;
-    const { ff } = this;
-
-    return {
-      selectedLevel: i,
-      //  topLevel: 0,
-      rangeMin:
-        ff.getBarOffset(this.flamebearer.levels[i], j) /
-        this.flamebearer.numTicks,
-      rangeMax:
-        (ff.getBarOffset(this.flamebearer.levels[i], j) +
-          ff.getBarTotal(this.flamebearer.levels[i], j)) /
-        this.flamebearer.numTicks,
-    };
   }
 }

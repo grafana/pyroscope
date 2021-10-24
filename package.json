@@ -152,6 +152,6 @@
     "*.{js,jsx,ts,tsx}": [
       "eslint --cache --fix"
     ],
-    "*.{js,jsx,ts,tsx,json,yml,yaml,eslintrc,prettierrc}": "prettier --write"
+    "*.{js,jsx,ts,tsx,json,yml,yaml,eslintrc,prettierrc,css}": "prettier --write"
   }
 }
