@@ -85,6 +85,19 @@ describe('basic test', () => {
     names.forEach(match);
   });
 
+  it('highlights nodes that match a search query', () => {
+    cy.intercept('**/render*', {
+      fixture: 'simple-golang-app-cpu.json',
+    }).as('render');
+
+    cy.visit('/');
+
+    cy.findByTestId('flamegraph-search').type('main');
+    cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
+      'simple-golang-app-cpu-highlight'
+    );
+  });
+
   it('view buttons should change view when clicked', () => {
     // mock data since the first preselected application
     // could have no data
