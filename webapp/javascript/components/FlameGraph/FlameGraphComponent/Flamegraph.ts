@@ -200,7 +200,9 @@ export default class Flamegraph {
    */
   public xyToBarPosition = (x: number, y: number) => {
     if (!this.isWithinBounds(x, y)) {
-      throw new Error(`Value out of bounds. Can't get bar position`);
+      throw new Error(
+        `Value out of bounds. Can't get bar position x:'${x}', y:'${y}'`
+      );
     }
 
     const { ff } = this;

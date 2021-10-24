@@ -93,7 +93,21 @@ describe('Flamegraph', () => {
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;
 
-    flame = new Flamegraph(flamebearerSingle, canvas, 'HEAD');
+    const topLevel = 0;
+    const selectedLevel = 0;
+    const fitMode = 'HEAD';
+    const highlightQuery = '';
+    const zoom = { i: -1, j: -1 };
+
+    flame = new Flamegraph(
+      flamebearerSingle,
+      canvas,
+      topLevel,
+      selectedLevel,
+      fitMode,
+      highlightQuery,
+      zoom
+    );
 
     flame.render();
     expect(RenderCanvas).toHaveBeenCalled();
@@ -106,10 +120,24 @@ describe('Flamegraph', () => {
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
 
-        flame = new Flamegraph(flamebearerSingle, canvas, 'HEAD');
+        const topLevel = 0;
+        const selectedLevel = 0;
+        const fitMode = 'HEAD';
+        const highlightQuery = '';
+        const zoom = { i: -1, j: -1 };
+
+        flame = new Flamegraph(
+          flamebearerSingle,
+          canvas,
+          topLevel,
+          selectedLevel,
+          fitMode,
+          highlightQuery,
+          zoom
+        );
       });
 
-      it('maps total correctly', () => {
+      it('maps total row correctly', () => {
         expect(flame.xyToBarData(0, 0)).toStrictEqual({
           format: 'single',
           name: 'total',
@@ -169,7 +197,21 @@ describe('Flamegraph', () => {
         });
 
         // zoom on that item
-        flame.zoom(2, 8);
+        const topLevel = 0;
+        const selectedLevel = 0;
+        const fitMode = 'HEAD';
+        const highlightQuery = '';
+        const zoom = { i: 2, j: 8 };
+
+        flame = new Flamegraph(
+          flamebearerSingle,
+          canvas,
+          topLevel,
+          selectedLevel,
+          fitMode,
+          highlightQuery,
+          zoom
+        );
 
         // now that same item should be available on x=0
         expect(flame.xyToBarData(1, BAR_HEIGHT * 3)).toMatchObject({
@@ -188,7 +230,21 @@ describe('Flamegraph', () => {
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
 
-        flame = new Flamegraph(flamebearerDouble, canvas, 'HEAD');
+        const topLevel = 0;
+        const selectedLevel = 0;
+        const fitMode = 'HEAD';
+        const highlightQuery = '';
+        const zoom = { i: -1, j: -1 };
+
+        flame = new Flamegraph(
+          flamebearerDouble,
+          canvas,
+          topLevel,
+          selectedLevel,
+          fitMode,
+          highlightQuery,
+          zoom
+        );
       });
 
       it('maps total correctly', () => {
@@ -238,9 +294,7 @@ describe('Flamegraph', () => {
       // TODO:
       // test when it's zoomed?
     });
-
     // TODO tests for focused item
-    // TODO tests for double
   });
 
   describe('isWithinBounds', () => {
@@ -249,20 +303,31 @@ describe('Flamegraph', () => {
       canvas.width = CANVAS_WIDTH;
       canvas.height = CANVAS_HEIGHT;
 
-      flame = new Flamegraph(flamebearerSingle, canvas, 'HEAD');
+      const topLevel = 0;
+      const selectedLevel = 0;
+      const fitMode = 'HEAD';
+      const highlightQuery = '';
+      const zoom = { i: 2, j: 8 };
+
+      flame = new Flamegraph(
+        flamebearerSingle,
+        canvas,
+        topLevel,
+        selectedLevel,
+        fitMode,
+        highlightQuery,
+        zoom
+      );
+
+      flame.render();
     });
     it('handles within canvas', () => {
       expect(flame.isWithinBounds(0, 0)).toBe(true);
-      expect(flame.isWithinBounds(CANVAS_WIDTH, 0)).toBe(true);
+      expect(flame.isWithinBounds(CANVAS_WIDTH - 1, 0)).toBe(true);
       expect(flame.isWithinBounds(-1, 0)).toBe(false);
       expect(flame.isWithinBounds(0, -1)).toBe(false);
       expect(flame.isWithinBounds(-1, -1)).toBe(false);
     });
-
-    //    it('returns false when is within canvas but outside a bar', () => {
-    //      // TODO: this shouldn have worked...
-    //      expect(flame.isWithinBounds(CANVAS_WIDTH, CANVAS_HEIGHT)).toBe(false);
-    //    });
   });
 
   describe('xyToBarPosition', () => {
@@ -271,33 +336,52 @@ describe('Flamegraph', () => {
       canvas.width = CANVAS_WIDTH;
       canvas.height = CANVAS_HEIGHT;
 
-      flame = new Flamegraph(flamebearerSingle, canvas, 'HEAD');
+      const topLevel = 0;
+      const selectedLevel = 0;
+      const fitMode = 'HEAD';
+      const highlightQuery = '';
+      const zoom = { i: -1, j: -1 };
+
+      flame = new Flamegraph(
+        flamebearerSingle,
+        canvas,
+        topLevel,
+        selectedLevel,
+        fitMode,
+        highlightQuery,
+        zoom
+      );
+
+      flame.render();
     });
 
     it('works with the first bar (total)', () => {
-      expect(flame.xyToBarPosition(0, 0)).toMatchObject({
+      const got = flame.xyToBarPosition(0, 0);
+      expect(got).toMatchObject({
         x: 0,
         y: 0,
-        width: CANVAS_WIDTH,
       });
     });
 
     it('works a full bar', () => {
       // 2nd line,
-      expect(flame.xyToBarPosition(0, BAR_HEIGHT + 1)).toMatchObject({
+      const got = flame.xyToBarPosition(0, BAR_HEIGHT + 1);
+      expect(got).toMatchObject({
         x: 0,
         y: 22,
-        width: CANVAS_WIDTH,
       });
+      expect(got.width).toBeCloseTo(CANVAS_WIDTH);
     });
 
     it('works with a non full bar', () => {
       // 3nd line, 'slowFunction'
-      expect(flame.xyToBarPosition(0, BAR_HEIGHT * 2 + 1)).toMatchObject({
+      const got = flame.xyToBarPosition(1, BAR_HEIGHT * 3);
+
+      expect(got).toMatchObject({
         x: 0,
         y: 44,
-        width: 129.95951417004048,
       });
+      expect(got.width).toBeCloseTo(129.95951417004048);
     });
   });
 });
