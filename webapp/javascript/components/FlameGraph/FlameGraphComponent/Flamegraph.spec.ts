@@ -88,31 +88,6 @@ describe('Flamegraph', () => {
   const CANVAS_WIDTH = 600;
   const CANVAS_HEIGHT = 300;
 
-  it.only('renders canvas using RenderCanvas', () => {
-    canvas = document.createElement('canvas');
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
-
-    const topLevel = 0;
-    const selectedLevel = 0;
-    const fitMode = 'HEAD';
-    const highlightQuery = '';
-    const zoom = { i: -1, j: -1 };
-
-    flame = new Flamegraph(
-      flamebearerSingle,
-      canvas,
-      topLevel,
-      selectedLevel,
-      fitMode,
-      highlightQuery,
-      zoom
-    );
-
-    flame.render();
-    expect(RenderCanvas).toHaveBeenCalled();
-  });
-
   describe('xyToBarData', () => {
     describe('single', () => {
       beforeEach(() => {

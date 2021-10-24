@@ -62,10 +62,6 @@ describe('basic test', () => {
 
       cy.findByTestId('app-name-selector').select(name);
       cy.wait(`@${name}`);
-      cy.findByTestId('flamegraph-canvas')
-        .invoke('attr', 'data-appname')
-        .should('eq', `${name}{}`);
-
       cy.findByTestId('flamegraph-canvas').should('be.visible');
       // there's a certain delay until the flamegraph is rendered
       // eslint-disable-next-line cypress/no-unnecessary-waiting
@@ -87,15 +83,6 @@ describe('basic test', () => {
     names.forEach(intercept);
     cy.visit('/');
     names.forEach(match);
-  });
-
-  it('updates flamegraph on app name change', () => {
-    cy.visit('/');
-
-    cy.findByTestId('app-name-selector').select('pyroscope.server.cpu');
-    cy.findByTestId('flamegraph-canvas')
-      .invoke('attr', 'data-appname')
-      .should('eq', 'pyroscope.server.cpu{}');
   });
 
   it('view buttons should change view when clicked', () => {
@@ -389,48 +376,6 @@ describe('basic test', () => {
         'have.attr',
         'aria-disabled',
         'true'
-      );
-    });
-  });
-
-  describe('focus', () => {
-    it.only('works via context menu', () => {
-      cy.intercept('**/render*', {
-        fixture: 'simple-golang-app-cpu.json',
-        times: 1,
-      }).as('render');
-
-      cy.visit('/');
-
-      // reset view should be disabled
-      cy.findByTestId('flamegraph-canvas').rightclick();
-      cy.findByRole('menuitem', { name: /Reset View/ }).should(
-        'have.attr',
-        'aria-disabled',
-        'true'
-      );
-
-      cy.findByTestId('flamegraph-canvas').rightclick(0, BAR_HEIGHT * 3);
-      cy.findByRole('menuitem', { name: /Focus/ }).click();
-
-      cy.findByTestId('table-view').matchImageSnapshot(
-        `simple-golang-cpu-focused-fast-function`
-      );
-
-      // reset view in the toolbar should be visible
-      cy.findByTestId('reset-view').should('be.visible');
-
-      // reset view should be visible
-      cy.findByTestId('flamegraph-canvas').rightclick();
-      cy.findByRole('menuitem', { name: /Reset View/ }).should(
-        'not.have.attr',
-        'aria-disabled'
-      );
-
-      // click on reset
-      cy.findByRole('menuitem', { name: /Reset View/ }).click();
-      cy.findByTestId('table-view').matchImageSnapshot(
-        `simple-golang-cpu-not-focused-fast-function`
       );
     });
   });

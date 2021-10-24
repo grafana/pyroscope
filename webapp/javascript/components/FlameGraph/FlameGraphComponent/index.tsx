@@ -128,6 +128,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   return (
     <>
       <div
+        data-testid="flamegraph-view"
         className={clsx('flamegraph-pane', {
           'vertical-orientation': flamebearer.format === 'double',
         })}
