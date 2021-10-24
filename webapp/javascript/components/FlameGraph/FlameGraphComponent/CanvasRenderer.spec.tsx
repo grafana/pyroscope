@@ -36,6 +36,8 @@ describe('CanvasRenderer -- group:snapshot', () => {
       fitMode: 'HEAD',
 
       spyName: 'gospy',
+
+      highlightQuery: '',
     });
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
@@ -62,6 +64,7 @@ describe('CanvasRenderer -- group:snapshot', () => {
       fitMode: 'HEAD',
 
       spyName: data.spyName,
+      highlightQuery: '',
     });
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
@@ -136,6 +139,7 @@ describe('CanvasRenderer -- group:snapshot', () => {
       // horrible api
       // TODO, receive the i/j ?
       rangeMax: 0.2165991902834008,
+      highlightQuery: '',
     });
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
@@ -164,6 +168,7 @@ describe('CanvasRenderer -- group:snapshot', () => {
 
       rightTicks: data.rightTicks,
       leftTicks: data.leftTicks,
+      highlightQuery: '',
     });
 
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
