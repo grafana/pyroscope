@@ -25,8 +25,8 @@ describe('Tooltip', () => {
 
   describe('"single" mode', () => {
     it('renders correctly', () => {
-      const xyToData = (format: 'single', x: number, y: number) => ({
-        format,
+      const xyToData = (x: number, y: number) => ({
+        format: 'single' as const,
         name: 'function_title',
         total: 10,
       });
@@ -79,15 +79,14 @@ describe('Tooltip', () => {
     }
 
     it("works with a function that hasn't changed", () => {
-      const myxyToData = (format: 'double', x: number, y: number) => ({
-        format: 'double',
+      const myxyToData = (x: number, y: number) => ({
+        format: 'double' as const,
         name: 'my_function',
         totalLeft: 100,
         totalRight: 100,
         barTotal: 100,
       });
 
-      // TODO why is the cast necessary?
       render(
         <TestCanvas
           canvasRef={undefined}
@@ -98,7 +97,7 @@ describe('Tooltip', () => {
           isWithinBounds={isWithinBounds}
           leftTicks={1000}
           rightTicks={1000}
-          xyToData={myxyToData as any}
+          xyToData={myxyToData}
         />
       );
 
@@ -115,15 +114,14 @@ describe('Tooltip', () => {
     });
 
     it('works with a function that has been added', () => {
-      const myxyToData = (format: 'double', x: number, y: number) => ({
-        format: 'double',
+      const myxyToData = (x: number, y: number) => ({
+        format: 'double' as const,
         name: 'my_function',
         totalLeft: 0,
         totalRight: 100,
         barTotal: 100,
       });
 
-      // TODO why is the cast necessary?
       render(
         <TestCanvas
           canvasRef={undefined}
@@ -150,15 +148,14 @@ describe('Tooltip', () => {
     });
 
     it('works with a function that has been removed', () => {
-      const myxyToData = (format: 'double', x: number, y: number) => ({
-        format: 'double',
+      const myxyToData = (x: number, y: number) => ({
+        format: 'double' as const,
         name: 'my_function',
         totalLeft: 100,
         totalRight: 0,
         barTotal: 100,
       });
 
-      // TODO why is the cast necessary?
       render(
         <TestCanvas
           canvasRef={undefined}
@@ -169,7 +166,7 @@ describe('Tooltip', () => {
           isWithinBounds={isWithinBounds}
           leftTicks={1000}
           rightTicks={1000}
-          xyToData={myxyToData as any}
+          xyToData={myxyToData}
         />
       );
       // since we are mocking the result
@@ -185,15 +182,14 @@ describe('Tooltip', () => {
     });
 
     it('works with a function that became slower', () => {
-      const myxyToData = (format: 'double', x: number, y: number) => ({
-        format: 'double',
+      const myxyToData = (x: number, y: number) => ({
+        format: 'double' as const,
         name: 'my_function',
         totalLeft: 100,
         totalRight: 200,
         barTotal: 100,
       });
 
-      // TODO why is the cast necessary?
       render(
         <TestCanvas
           canvasRef={undefined}
@@ -204,7 +200,7 @@ describe('Tooltip', () => {
           isWithinBounds={isWithinBounds}
           leftTicks={1000}
           rightTicks={1000}
-          xyToData={myxyToData as any}
+          xyToData={myxyToData}
         />
       );
       // since we are mocking the result
@@ -220,15 +216,14 @@ describe('Tooltip', () => {
     });
 
     it('works with a function that became faster', () => {
-      const myxyToData = (format: 'double', x: number, y: number) => ({
-        format: 'double',
+      const myxyToData = (x: number, y: number) => ({
+        format: 'double' as const,
         name: 'my_function',
         totalLeft: 200,
         totalRight: 100,
         barTotal: 100,
       });
 
-      // TODO why is the cast necessary?
       render(
         <TestCanvas
           canvasRef={undefined}
@@ -239,7 +234,7 @@ describe('Tooltip', () => {
           isWithinBounds={isWithinBounds}
           leftTicks={1000}
           rightTicks={1000}
-          xyToData={myxyToData as any}
+          xyToData={myxyToData}
         />
       );
       // since we are mocking the result
