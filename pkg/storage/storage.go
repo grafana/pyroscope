@@ -2,6 +2,8 @@ package storage
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -186,20 +188,22 @@ func (s *Storage) writeBackTask() {
 	}
 }
 
+// watchDBSize keeps track of the database size and call f once it's size
+// increases by diff. Function f must call garbage collection.
 func (s *Storage) watchDBSize(diff bytesize.ByteSize, f func()) func() {
 	return func() {
-		n := s.main.size()
-		d := n - s.size
-		if s.size == 0 {
-			s.size = n
-			return
+		n := s.calculateDBSize()
+		d := n - s.size // Size diff since the last gc.
+		fields := logrus.Fields{"current": n}
+		if s.size != 0 {
+			fields["diff"] = d
+			fields["last-gc"] = s.size
 		}
-		s.logger.WithFields(logrus.Fields{
-			"last-gc": s.size,
-			"used":    n,
-			"diff":    d,
-		}).Info("db size watcher")
+		s.logger.WithFields(fields).Info("db size watcher")
 		if d > diff {
+			// The value should be updated regardless of whether GC reclaimed
+			// any space: if it did not, GC is to be called next time the diff
+			// exceeds the allowed value.
 			s.size = n
 			f()
 		}
@@ -213,6 +217,26 @@ func (s *Storage) updateMetricsTask() {
 			s.metrics.cacheSize.WithLabelValues(d.name).Set(float64(d.Cache.Size()))
 		}
 	}
+}
+
+// TODO(kolesnikovae): filepath.Walk is notoriously slow.
+//  Consider use of https://github.com/karrick/godirwalk.
+//  Although, every badger.DB calculates its size (reported
+//  via Size) in the same way every minute.
+func (s *Storage) calculateDBSize() bytesize.ByteSize {
+	var size int64
+	p := filepath.Join(s.config.StoragePath, "pyroscope")
+	_ = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		switch filepath.Ext(path) {
+		case ".sst", ".vlog":
+			size += info.Size()
+		}
+		return nil
+	})
+	return bytesize.ByteSize(size)
 }
 
 func (s *Storage) databases() []*db {

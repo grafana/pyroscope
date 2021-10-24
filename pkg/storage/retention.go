@@ -2,15 +2,12 @@ package storage
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
 const batchSize = 1024
@@ -49,6 +46,10 @@ func (s *Storage) CollectGarbage() {
 		return
 	}
 
+	// Occupied disk space. The value should be as accurate
+	// as possible and needs to be updated when GC succeeds.
+	s.size = s.calculateDBSize()
+	// No need to proceed if there is no limit on the db size.
 	if rp.SizeLimit() == 0 {
 		return
 	}
@@ -61,18 +62,15 @@ func (s *Storage) CollectGarbage() {
 	// items from the database safely. Effectively, only trees are removed to
 	// reclaim space in accordance to the size-based retention policy.
 	var (
-		// Occupied disk space. The value should be as accurate as possible,
-		// therefore db.size() can not be used as it updates once per minute.
-		used = dirSize(filepath.Join(s.config.StoragePath, "pyroscope"))
 		// Size in bytes to be reclaimed.
-		rs = rp.CapacityToReclaim(used, s.reclaimSizeRatio).Bytes()
+		rs = rp.CapacityToReclaim(s.size, s.reclaimSizeRatio)
 		// Size in bytes to be reclaimed per segment.
-		rsps = rs / len(segmentKeys)
+		rsps = rs.Bytes() / len(segmentKeys)
 	)
 
 	logger := s.logger.WithFields(logrus.Fields{
-		"used":      used,
-		"requested": bytesize.ByteSize(rs),
+		"used":      s.size,
+		"requested": rs,
 	})
 
 	if rsps == 0 {
@@ -101,11 +99,6 @@ func (s *Storage) CollectGarbage() {
 	}
 }
 
-type segmentNode struct {
-	depth int
-	time  int64
-}
-
 func (s *Storage) deleteSegmentDataBefore(k *segment.Key, rp *segment.RetentionPolicy) error {
 	sk := k.Normalized()
 	cached, ok := s.segments.Lookup(sk)
@@ -130,8 +123,13 @@ func (s *Storage) deleteSegmentDataBefore(k *segment.Key, rp *segment.RetentionP
 	//  removed for a very long period. For example, when retention-period
 	//  is enabled for the first time on a server with historical data.
 
-	seg := cached.(*segment.Segment)
+	type segmentNode struct {
+		depth int
+		time  int64
+	}
+
 	nodes := make([]segmentNode, 0)
+	seg := cached.(*segment.Segment)
 	deleted, err := seg.WalkNodesToDelete(rp, func(d int, t time.Time) error {
 		nodes = append(nodes, segmentNode{d, t.Unix()})
 		return nil
@@ -285,23 +283,4 @@ func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
 		t.SetLevelMaxAge(level, threshold)
 	}
 	return t
-}
-
-// TODO(kolesnikovae): filepath.Walk is notoriously slow.
-//  Consider use of https://github.com/karrick/godirwalk.
-//  Although, every badger.DB calculates its size (reported
-//  via Size) in the same way every minute.
-func dirSize(path string) bytesize.ByteSize {
-	var size int64
-	_ = filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		switch filepath.Ext(path) {
-		case ".sst", ".vlog":
-			size += info.Size()
-		}
-		return nil
-	})
-	return bytesize.ByteSize(size)
 }

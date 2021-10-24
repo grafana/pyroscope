@@ -56,7 +56,8 @@ func (s *Storage) openBadgerDB(name string) (*badger.DB, error) {
 		WithTruncate(!s.config.BadgerNoTruncate).
 		WithSyncWrites(false).
 		WithCompactL0OnClose(false).
-		WithCompression(options.ZSTD))
+		WithCompression(options.ZSTD).
+		WithLogger(logger))
 }
 
 func (s *Storage) newDB(badgerDB *badger.DB, name string, p prefix, codec cache.Codec) *db {
