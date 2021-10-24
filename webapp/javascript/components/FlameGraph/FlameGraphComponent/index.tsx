@@ -8,6 +8,7 @@ import Highlight from './Highlight';
 import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
+import { colorFromPercentage } from './color';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
@@ -16,10 +17,6 @@ interface FlamegraphProps {
   fitMode: ConstructorParameters<typeof Flamegraph>[4];
   query: ConstructorParameters<typeof Flamegraph>[5];
   zoom: ConstructorParameters<typeof Flamegraph>[6]; // TODO call it zoom level?
-
-  // TODO
-  // format: any;
-  viewType: string; // TODO
 
   onZoom: (i: number, j: number) => void;
 
@@ -31,15 +28,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>();
   const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
 
-  const {
-    flamebearer,
-    topLevel,
-    selectedLevel,
-    fitMode,
-    query,
-    zoom,
-    viewType,
-  } = props;
+  const { flamebearer, topLevel, selectedLevel, fitMode, query, zoom } = props;
 
   const { onZoom } = props;
   const { onReset, isDirty } = props;
@@ -136,10 +125,13 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     <>
       <div
         className={clsx('flamegraph-pane', {
-          'vertical-orientation': viewType === 'double',
+          'vertical-orientation': flamebearer.format === 'double',
         })}
       >
-        <div />
+        <div className="flamegraph-header">
+          <Header format={flamebearer.format} units={flamebearer.units} />
+        </div>
+
         <div>
           <canvas
             height="0"
@@ -179,5 +171,66 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         />
       </div>
     </>
+  );
+}
+
+function Header({
+  format,
+  units,
+}: {
+  format: Flamebearer['format'];
+  units: Flamebearer['units'];
+}) {
+  const unitsToFlamegraphTitle = {
+    objects: 'amount of objects in RAM per function',
+    bytes: 'amount of RAM per function',
+    samples: 'CPU time per function',
+  };
+
+  switch (format) {
+    case 'single': {
+      return (
+        <div className="row flamegraph-title" role="heading" aria-level={2}>
+          Frame width represents {unitsToFlamegraphTitle[units]}
+        </div>
+      );
+    }
+
+    case 'double': {
+      return (
+        <div>
+          <div className="row" role="heading" aria-level={2}>
+            Base graph: left - Comparison graph: right
+          </div>
+          <DiffLegend />
+        </div>
+      );
+    }
+
+    default:
+      throw new Error(`unexpected format ${format}`);
+  }
+}
+
+function DiffLegend() {
+  const values = [100, 80, 60, 40, 20, 10, 0, -10, -20, -40, -60, -80, -100];
+
+  return (
+    <div className="row flamegraph-legend" data-testid="flamegraph-legend">
+      <div className="flamegraph-legend-list">
+        {values.map((v) => (
+          <div
+            key={v}
+            className="flamegraph-legend-item"
+            style={{
+              backgroundColor: colorFromPercentage(v, 0.8).string(),
+            }}
+          >
+            {v > 0 ? '+' : ''}
+            {v}%
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

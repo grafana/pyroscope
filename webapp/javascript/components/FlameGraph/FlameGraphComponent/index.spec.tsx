@@ -16,7 +16,6 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
-        viewType="single"
         fitMode="HEAD"
         zoom={{ i: -1, j: -1 }}
         topLevel={0}
@@ -37,7 +36,6 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
-        viewType="single"
         fitMode="HEAD"
         zoom={{ i: -1, j: -1 }}
         topLevel={0}
@@ -69,7 +67,6 @@ describe('FlamegraphComponent', () => {
 
     render(
       <FlamegraphComponent
-        viewType="single"
         fitMode="HEAD"
         zoom={{ i: -1, j: -1 }}
         topLevel={0}
@@ -98,7 +95,6 @@ describe('FlamegraphComponent', () => {
 
       const { rerender } = render(
         <FlamegraphComponent
-          viewType="single"
           fitMode="HEAD"
           zoom={{ i: -1, j: -1 }}
           topLevel={0}
@@ -124,7 +120,6 @@ describe('FlamegraphComponent', () => {
 
       rerender(
         <FlamegraphComponent
-          viewType="single"
           fitMode="HEAD"
           zoom={{ i: -1, j: -1 }}
           topLevel={0}
@@ -145,6 +140,59 @@ describe('FlamegraphComponent', () => {
       expect(
         screen.queryByRole('menuitem', { name: /Reset View/ })
       ).not.toHaveAttribute('aria-disabled', 'true');
+    });
+  });
+
+  describe('header', () => {
+    it('renders when type is single', () => {
+      const onZoom = jest.fn();
+      const onReset = jest.fn();
+      const isDirty = jest.fn();
+
+      render(
+        <FlamegraphComponent
+          fitMode="HEAD"
+          zoom={{ i: -1, j: -1 }}
+          topLevel={0}
+          selectedLevel={0}
+          query=""
+          onZoom={onZoom}
+          onReset={onReset}
+          isDirty={isDirty}
+          flamebearer={TestData.SimpleTree}
+        />
+      );
+
+      expect(screen.queryByRole('heading', { level: 2 })).toHaveTextContent(
+        'Frame width represents CPU time per function'
+      );
+    });
+
+    it('renders when type is "double"', () => {
+      const onZoom = jest.fn();
+      const onReset = jest.fn();
+      const isDirty = jest.fn();
+
+      const flamebearer = TestData.DiffTree;
+      render(
+        <FlamegraphComponent
+          fitMode="HEAD"
+          zoom={{ i: -1, j: -1 }}
+          topLevel={0}
+          selectedLevel={0}
+          query=""
+          onZoom={onZoom}
+          onReset={onReset}
+          isDirty={isDirty}
+          flamebearer={flamebearer}
+        />
+      );
+
+      expect(screen.queryByRole('heading', { level: 2 })).toHaveTextContent(
+        'Base graph: left - Comparison graph: right'
+      );
+
+      expect(screen.getByTestId('flamegraph-legend')).toBeInTheDocument();
     });
   });
 });
