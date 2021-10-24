@@ -9,6 +9,8 @@ import { BAR_HEIGHT } from './constants';
 // this is just to guarantee code is compiling
 // and the callbacks are being called correctly
 describe('FlamegraphComponent', () => {
+  const ExportData = () => <div>ExportData</div>;
+
   it('renders', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
@@ -25,6 +27,7 @@ describe('FlamegraphComponent', () => {
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
+        ExportData={ExportData}
       />
     );
   });
@@ -45,6 +48,7 @@ describe('FlamegraphComponent', () => {
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
+        ExportData={ExportData}
       />
     );
 
@@ -76,6 +80,7 @@ describe('FlamegraphComponent', () => {
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
+        ExportData={ExportData}
       />
     );
 
@@ -104,6 +109,7 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
+          ExportData={ExportData}
         />
       );
 
@@ -129,6 +135,7 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
+          ExportData={ExportData}
         />
       );
 
@@ -144,11 +151,11 @@ describe('FlamegraphComponent', () => {
   });
 
   describe('header', () => {
-    it('renders when type is single', () => {
-      const onZoom = jest.fn();
-      const onReset = jest.fn();
-      const isDirty = jest.fn();
+    const onZoom = jest.fn();
+    const onReset = jest.fn();
+    const isDirty = jest.fn();
 
+    it('renders when type is single', () => {
       render(
         <FlamegraphComponent
           fitMode="HEAD"
@@ -160,19 +167,17 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
+          ExportData={ExportData}
         />
       );
 
       expect(screen.queryByRole('heading', { level: 2 })).toHaveTextContent(
         'Frame width represents CPU time per function'
       );
+      expect(screen.getByText('ExportData')).toBeInTheDocument();
     });
 
     it('renders when type is "double"', () => {
-      const onZoom = jest.fn();
-      const onReset = jest.fn();
-      const isDirty = jest.fn();
-
       const flamebearer = TestData.DiffTree;
       render(
         <FlamegraphComponent
@@ -185,6 +190,7 @@ describe('FlamegraphComponent', () => {
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={flamebearer}
+          ExportData={ExportData}
         />
       );
 
@@ -193,6 +199,7 @@ describe('FlamegraphComponent', () => {
       );
 
       expect(screen.getByTestId('flamegraph-legend')).toBeInTheDocument();
+      expect(screen.getByText('ExportData')).toBeInTheDocument();
     });
   });
 });

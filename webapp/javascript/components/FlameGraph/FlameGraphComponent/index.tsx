@@ -9,6 +9,7 @@ import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
 import { colorFromPercentage } from './color';
+import ExportData from '../../ExportData';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
@@ -22,6 +23,10 @@ interface FlamegraphProps {
 
   onReset: () => void;
   isDirty: () => boolean;
+
+  // the reason this is exposed as a parameter
+  // is to not have to connect to the redux store from here
+  ExportData: ExportData;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -30,8 +35,8 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
   const { flamebearer, topLevel, selectedLevel, fitMode, query, zoom } = props;
 
-  const { onZoom } = props;
-  const { onReset, isDirty } = props;
+  const { onZoom, onReset, isDirty } = props;
+  const { ExportData } = props;
 
   const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const { i, j } = flamegraph.xyToBar(
@@ -128,9 +133,11 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           'vertical-orientation': flamebearer.format === 'double',
         })}
       >
-        <div className="flamegraph-header">
-          <Header format={flamebearer.format} units={flamebearer.units} />
-        </div>
+        <Header
+          format={flamebearer.format}
+          units={flamebearer.units}
+          ExportData={ExportData}
+        />
 
         <div>
           <canvas
@@ -177,9 +184,11 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 function Header({
   format,
   units,
+  ExportData,
 }: {
   format: Flamebearer['format'];
   units: Flamebearer['units'];
+  ExportData: FlamegraphProps['ExportData'];
 }) {
   const unitsToFlamegraphTitle = {
     objects: 'amount of objects in RAM per function',
@@ -187,29 +196,42 @@ function Header({
     samples: 'CPU time per function',
   };
 
-  switch (format) {
-    case 'single': {
-      return (
-        <div className="row flamegraph-title" role="heading" aria-level={2}>
-          Frame width represents {unitsToFlamegraphTitle[units]}
-        </div>
-      );
-    }
-
-    case 'double': {
-      return (
-        <div>
-          <div className="row" role="heading" aria-level={2}>
-            Base graph: left - Comparison graph: right
+  const getTitle = () => {
+    switch (format) {
+      case 'single': {
+        return (
+          <div>
+            <div className="row flamegraph-title" role="heading" aria-level={2}>
+              Frame width represents {unitsToFlamegraphTitle[units]}
+            </div>
           </div>
-          <DiffLegend />
-        </div>
-      );
-    }
+        );
+      }
 
-    default:
-      throw new Error(`unexpected format ${format}`);
-  }
+      case 'double': {
+        return (
+          <div>
+            <div className="row" role="heading" aria-level={2}>
+              Base graph: left - Comparison graph: right
+            </div>
+            <DiffLegend />
+          </div>
+        );
+      }
+
+      default:
+        throw new Error(`unexpected format ${format}`);
+    }
+  };
+
+  const title = getTitle();
+
+  return (
+    <div className="flamegraph-header">
+      <div>{title}</div>
+      <ExportData />
+    </div>
+  );
 }
 
 function DiffLegend() {
