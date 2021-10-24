@@ -1,6 +1,7 @@
 import React from 'react';
 import { Flamebearer } from '@models/flamebearer';
 import DiffLegend from './DiffLegend';
+import styles from './Header.module.css';
 
 export default function Header({
   format,
@@ -22,7 +23,11 @@ export default function Header({
       case 'single': {
         return (
           <div>
-            <div className="row flamegraph-title" role="heading" aria-level={2}>
+            <div
+              className={`${styles.row} ${styles['flamegraph-title']}`}
+              role="heading"
+              aria-level={2}
+            >
               Frame width represents {unitsToFlamegraphTitle[units]}
             </div>
           </div>
@@ -32,7 +37,7 @@ export default function Header({
       case 'double': {
         return (
           <div>
-            <div className="row" role="heading" aria-level={2}>
+            <div className={styles.row} role="heading" aria-level={2}>
               Base graph: left - Comparison graph: right
             </div>
             <DiffLegend />
@@ -48,7 +53,7 @@ export default function Header({
   const title = getTitle();
 
   return (
-    <div className="flamegraph-header">
+    <div className={styles['flamegraph-header']}>
       <div>{title}</div>
       <ExportData />
     </div>
