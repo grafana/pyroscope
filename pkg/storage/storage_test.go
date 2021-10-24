@@ -39,9 +39,9 @@ var _ = Describe("storage package", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry(),
-				WithEvictionInterval(2*time.Second))
+			s, err = New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
+			s.evictInterval = 2 * time.Second
 		})
 
 		Context("delete tests", func() {

@@ -102,7 +102,7 @@ var _ = Describe("stree", func() {
 				s := New()
 
 				keys := []string{}
-				threshold := &RetentionPolicy{absolutePeriod: testing.SimpleTime(19)}
+				threshold := &RetentionPolicy{AbsoluteTime: testing.SimpleTime(19)}
 				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
 				})
@@ -119,7 +119,7 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{absolutePeriod: testing.SimpleUTime(21)}
+				threshold := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(21)}
 				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
 				})
@@ -138,7 +138,7 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(1020), testing.SimpleUTime(1029), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{absolutePeriod: testing.SimpleUTime(21)}
+				threshold := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(21)}
 				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
 				})
@@ -157,7 +157,7 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{absolutePeriod: testing.SimpleUTime(200)}
+				threshold := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(200)}
 				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
 				})
@@ -178,7 +178,7 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{levels: map[int]time.Time{0: time.Now()}}
+				threshold := &RetentionPolicy{Levels: map[int]time.Time{0: time.Now()}}
 				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
 				})
@@ -197,7 +197,7 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{levels: map[int]time.Time{0: time.Now(), 1: time.Now()}}
+				threshold := &RetentionPolicy{Levels: map[int]time.Time{0: time.Now(), 1: time.Now()}}
 				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
 				})

@@ -63,7 +63,7 @@ var _ = Describe("timeline", func() {
 				close(done)
 			}, 5)
 		})
-		Context("multiple levels", func() {
+		Context("multiple Levels", func() {
 			BeforeEach(func() {
 				st = 0
 				et = 365 * 24 * 60 * 60

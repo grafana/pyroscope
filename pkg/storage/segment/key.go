@@ -1,6 +1,7 @@
 package segment
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -108,6 +109,25 @@ func TreeKey(k string, depth int, unixTime int64) string {
 
 func (k *Key) TreeKey(depth int, t time.Time) string {
 	return TreeKey(k.Normalized(), depth, t.Unix())
+}
+
+var errKeyInvalid = errors.New("invalid key")
+
+// ParseTreeKey retrieves tree time and depth level from the given key.
+func ParseTreeKey(k string) (time.Time, int, error) {
+	a := strings.Split(k, ":")
+	if len(a) < 3 {
+		return time.Time{}, 0, errKeyInvalid
+	}
+	level, err := strconv.Atoi(a[1])
+	if err != nil {
+		return time.Time{}, 0, err
+	}
+	v, err := strconv.Atoi(a[2])
+	if err != nil {
+		return time.Time{}, 0, err
+	}
+	return time.Unix(int64(v), 0), level, err
 }
 
 func (k *Key) DictKey() string {

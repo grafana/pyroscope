@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
@@ -100,7 +101,7 @@ func (s *Storage) CollectGarbage() {
 }
 
 func (s *Storage) deleteSegmentDataBefore(k *segment.Key, rp *segment.RetentionPolicy) error {
-	sk := k.Normalized()
+	sk := k.SegmentKey()
 	cached, ok := s.segments.Lookup(sk)
 	if !ok {
 		return nil
@@ -177,24 +178,18 @@ func (s *Storage) deleteSegmentDataBefore(k *segment.Key, rp *segment.RetentionP
 	return err
 }
 
-func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) (err error) {
+func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) error {
+	batch := s.trees.NewWriteBatch()
+	defer batch.Cancel() // TODO(kolesnikovae): make sure argument is captured.
 	var (
-		batch     = s.trees.NewWriteBatch()
 		removed   int
 		reclaimed int
+		err       error
 	)
-	defer func() {
-		err = batch.Flush()
-	}()
 
-	// TODO(kolesnikovae):
-	//   Don't forget to remove corresponding segment nodes!
-	//   Keep track of the most recent node and reuse DeleteNodesBefore
-	//   when a batch is successfully committed?  This may(?) result in the
-	//   tree still being stored, but not present in the segment; the tree will
-	//   be removed from the storage eventually.
-
-	return s.trees.View(func(txn *badger.Txn) error {
+	// Keep track of the most recent removed tree time per every segment level.
+	rp := &segment.RetentionPolicy{Levels: make(map[int]time.Time)}
+	err = s.trees.View(func(txn *badger.Txn) error {
 		// Lower-level trees come first because of the lexicographical order:
 		// from the very first tree to the most recent one.
 		it := txn.NewIterator(badger.IteratorOptions{
@@ -213,7 +208,16 @@ func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) (err error) {
 
 			item := it.Item()
 			if tk, ok := treePrefix.trim(item.Key()); ok {
-				s.trees.Discard(string(tk))
+				treeKey := string(tk)
+				s.trees.Discard(treeKey)
+				// Update time boundary for the segment level.
+				t, level, err := segment.ParseTreeKey(treeKey)
+				if err != nil {
+					return fmt.Errorf("unable to parse tree key %q: %w", treeKey, err)
+				}
+				if t.After(rp.Levels[level]) {
+					rp.Levels[level] = t
+				}
 			}
 
 			// A key copy must be taken. The slice is reused
@@ -233,9 +237,30 @@ func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) (err error) {
 				}
 			}
 		}
-
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	// Flush remaining items, if any: it's important to make sure
+	// all trees were removed before deleting segment nodes - see
+	// note on a potential inconsistency above.
+	if removed%batchSize != 0 {
+		if err = batch.Flush(); err != nil {
+			return err
+		}
+	}
+
+	if len(rp.Levels) > 0 {
+		if cached, ok := s.segments.Lookup(k.SegmentKey()); ok {
+			if ok, err = cached.(*segment.Segment).DeleteNodesBefore(rp); ok {
+				err = s.deleteSegmentAndRelatedData(k)
+			}
+		}
+	}
+
+	return err
 }
 
 // flushTreeBatch commits the changes and returns a new batch. The call returns

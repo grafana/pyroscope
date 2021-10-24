@@ -62,7 +62,6 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 		aggregationType = "sum"
 		timeline        = segment.GenerateTimeline(gi.StartTime, gi.EndTime)
-		threshold       = s.retentionPolicy()
 	)
 
 	for _, k := range dimensionKeys() {
@@ -83,7 +82,7 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 			aggregationType = averageAggregationType
 		}
 
-		timeline.PopulateTimeline(st, threshold)
+		timeline.PopulateTimeline(st)
 		lastSegment = st
 
 		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {

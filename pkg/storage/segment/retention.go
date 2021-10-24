@@ -6,40 +6,67 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
+// TODO(kolesnikovae): refactor.
+
 type RetentionPolicy struct {
 	sizeLimit bytesize.ByteSize
+	now       time.Time
 
-	now            time.Time
-	absolutePeriod time.Time
-	levels         map[int]time.Time
+	AbsoluteTime time.Time
+	Levels       map[int]time.Time
 }
 
 func NewRetentionPolicy() *RetentionPolicy {
 	return &RetentionPolicy{now: time.Now()}
 }
 
-func (r RetentionPolicy) LowerTimeBoundary() time.Time {
-	if r.levels == nil {
-		return r.absolutePeriod
+func (r *RetentionPolicy) watermark() RetentionPolicy {
+	w := RetentionPolicy{AbsoluteTime: r.AbsoluteTime}
+	if len(r.Levels) == 0 {
+		return w
 	}
-	return r.levels[0]
+	w.Levels = make(map[int]time.Time, len(r.Levels))
+	for k, v := range r.Levels {
+		w.Levels[k] = v
+	}
+	return w
+}
+
+func (r RetentionPolicy) LowerTimeBoundary() time.Time {
+	if r.Levels == nil {
+		return r.AbsoluteTime
+	}
+	return r.Levels[0]
+}
+
+func (r *RetentionPolicy) SetAbsoluteTime(t time.Time) *RetentionPolicy {
+	r.AbsoluteTime = t
+	return r
 }
 
 func (r *RetentionPolicy) SetAbsoluteMaxAge(maxAge time.Duration) *RetentionPolicy {
-	r.absolutePeriod = r.timeBefore(maxAge)
+	r.AbsoluteTime = r.timeBefore(maxAge)
+	return r
+}
+
+func (r *RetentionPolicy) SetLevelMaxTime(level int, t time.Time) *RetentionPolicy {
+	if r.Levels == nil {
+		r.Levels = make(map[int]time.Time)
+	}
+	r.Levels[level] = t
 	return r
 }
 
 func (r *RetentionPolicy) SetLevelMaxAge(level int, maxAge time.Duration) *RetentionPolicy {
-	if r.levels == nil {
-		r.levels = make(map[int]time.Time)
+	if r.Levels == nil {
+		r.Levels = make(map[int]time.Time)
 	}
-	r.levels[level] = r.timeBefore(maxAge)
+	r.Levels[level] = r.timeBefore(maxAge)
 	return r
 }
 
 func (r RetentionPolicy) isBefore(sn *streeNode) bool {
-	if sn.isBefore(r.absolutePeriod) {
+	if sn.isBefore(r.AbsoluteTime) {
 		return true
 	}
 	return sn.isBefore(r.levelRetentionPeriod(sn.depth))
@@ -53,18 +80,18 @@ func (r RetentionPolicy) timeBefore(age time.Duration) time.Time {
 }
 
 func (r *RetentionPolicy) normalize() *RetentionPolicy {
-	r.absolutePeriod = normalizeTime(r.absolutePeriod)
-	for i := range r.levels {
-		r.levels[i] = normalizeTime(r.levels[i])
+	r.AbsoluteTime = normalizeTime(r.AbsoluteTime)
+	for i := range r.Levels {
+		r.Levels[i] = normalizeTime(r.Levels[i])
 	}
 	return r
 }
 
 func (r RetentionPolicy) levelRetentionPeriod(depth int) time.Time {
-	if r.levels == nil {
+	if r.Levels == nil {
 		return zeroTime
 	}
-	return r.levels[depth]
+	return r.Levels[depth]
 }
 
 func (r *RetentionPolicy) SizeLimit() bytesize.ByteSize {

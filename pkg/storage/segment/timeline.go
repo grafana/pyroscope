@@ -36,13 +36,13 @@ func GenerateTimeline(st, et time.Time) *Timeline {
 	}
 }
 
-func (tl *Timeline) PopulateTimeline(s *Segment, r *RetentionPolicy) {
+func (tl *Timeline) PopulateTimeline(s *Segment) {
 	if s.root != nil {
-		s.root.populateTimeline(tl, r)
+		s.root.populateTimeline(tl, s)
 	}
 }
 
-func (sn streeNode) populateTimeline(tl *Timeline, r *RetentionPolicy) {
+func (sn streeNode) populateTimeline(tl *Timeline, s *Segment) {
 	if sn.relationship(tl.st, tl.et) == outside {
 		return
 	}
@@ -52,21 +52,21 @@ func (sn streeNode) populateTimeline(tl *Timeline, r *RetentionPolicy) {
 	var hasDataBefore bool
 	var levelRetentionPeriod time.Time
 	if sn.depth > 0 {
-		levelRetentionPeriod = r.levelRetentionPeriod(sn.depth - 1)
+		levelRetentionPeriod = s.watermark.levelRetentionPeriod(sn.depth - 1)
 	}
 
 	if len(sn.children) > 0 && currentDuration >= tl.durationDelta {
 		for i, v := range sn.children {
 			if v != nil {
-				v.populateTimeline(tl, r)
+				v.populateTimeline(tl, s)
 				hasDataBefore = true
 				continue
 			}
-			if levelRetentionPeriod.IsZero() || sn.isBefore(r.absolutePeriod) || hasDataBefore {
+			if levelRetentionPeriod.IsZero() || sn.isBefore(s.watermark.AbsoluteTime) || hasDataBefore {
 				continue
 			}
 			if c := sn.createSampledChild(i); c.isBefore(levelRetentionPeriod) {
-				c.populateTimeline(tl, r)
+				c.populateTimeline(tl, s)
 			}
 		}
 		return

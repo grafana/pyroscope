@@ -186,7 +186,7 @@ func (sn *streeNode) isLeaf() bool {
 
 // deleteDataBefore returns true if the node should be deleted
 func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
-	if sn.isAfter(t.absolutePeriod) && t.levels == nil {
+	if sn.isAfter(t.AbsoluteTime) && t.Levels == nil {
 		return false, nil
 	}
 	isBefore := t.isBefore(sn)
@@ -206,7 +206,7 @@ func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
 }
 
 func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
-	if sn.isAfter(t.absolutePeriod) && t.levels == nil {
+	if sn.isAfter(t.AbsoluteTime) && t.Levels == nil {
 		return false, nil
 	}
 	var err error
@@ -235,6 +235,8 @@ type Segment struct {
 	sampleRate      uint32
 	units           string
 	aggregationType string
+
+	watermark RetentionPolicy
 }
 
 func newNode(t time.Time, depth, multiplier int) *streeNode {
@@ -365,7 +367,24 @@ func (s *Segment) DeleteNodesBefore(t *RetentionPolicy) (bool, error) {
 	if ok {
 		s.root = nil
 	}
+	s.updateWatermarks(t)
 	return ok, nil
+}
+
+func (s *Segment) updateWatermarks(t *RetentionPolicy) {
+	if t.AbsoluteTime.After(s.watermark.AbsoluteTime) {
+		s.watermark.AbsoluteTime = t.AbsoluteTime
+	}
+	if len(s.watermark.Levels) == 0 && len(t.Levels) != 0 {
+		s.watermark.Levels = make(map[int]time.Time, len(t.Levels))
+	}
+	for k, v := range t.Levels {
+		if o, ok := s.watermark.Levels[k]; ok && v.Before(o) {
+			continue
+		}
+		s.watermark.Levels[k] = v
+	}
+	t.watermark()
 }
 
 func (s *Segment) WalkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {

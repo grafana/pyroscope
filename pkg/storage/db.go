@@ -57,6 +57,7 @@ func (s *Storage) openBadgerDB(name string) (*badger.DB, error) {
 		WithSyncWrites(false).
 		WithCompactL0OnClose(false).
 		WithCompression(options.ZSTD).
+		//		WithValueLogFileSize(8<<20).
 		WithLogger(logger))
 }
 
@@ -98,7 +99,7 @@ func (d *db) runGC(discardRatio float64) (reclaimed bool) {
 			d.logger.WithError(err).Warn("failed to run GC")
 			return false
 		case badger.ErrNoRewrite:
-			return false
+			return reclaimed
 		case nil:
 			reclaimed = true
 			continue

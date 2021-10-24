@@ -48,18 +48,42 @@ type Storage struct {
 	putMutex sync.Mutex
 }
 
-func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer, options ...Option) (*Storage, error) {
+type storageOptions struct {
+	metricsUpdateInterval time.Duration
+	writeBackInterval     time.Duration
+	evictInterval         time.Duration
+	cacheTTL              time.Duration
+
+	gcInterval       time.Duration
+	gcSizeDiff       bytesize.ByteSize
+	reclaimSizeRatio float64
+}
+
+func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer) (*Storage, error) {
 	s := &Storage{
-		config:         c,
-		storageOptions: defaultOptions(),
+		config: c,
+		storageOptions: &storageOptions{
+			metricsUpdateInterval: 10 * time.Second,
+			writeBackInterval:     time.Minute,
+			evictInterval:         20 * time.Second,
+			cacheTTL:              2 * time.Minute,
+
+			// Interval at which GC happen if the db size has increase more
+			// than by gcSizeDiff since the last probe.
+			gcInterval: 5 * time.Minute, // 10 * time.Second,
+			// gcSizeDiff specifies the minimal storage size difference that
+			// causes garbage collection to trigger.
+			gcSizeDiff: 100 * bytesize.MB, // 0,
+			// reclaimSizeRatio determines the share of the storage size limit
+			// to be reclaimed when size-based retention policy enforced. The
+			// volume to reclaim is calculated as follows:
+			//   used - limit + limit*ratio.
+			reclaimSizeRatio: 0.05,
+		},
 
 		logger:  logger,
 		metrics: newMetrics(reg),
 		stop:    make(chan struct{}),
-	}
-
-	for _, option := range options {
-		option(s)
 	}
 
 	badgerDB, err := s.openBadgerDB("pyroscope")
