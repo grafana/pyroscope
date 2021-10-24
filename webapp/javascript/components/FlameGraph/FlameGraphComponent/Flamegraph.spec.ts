@@ -1,9 +1,9 @@
 import { Units } from '@utils/format';
 import Flamegraph from './Flamegraph';
-import { RenderCanvas } from './CanvasRenderer';
+import { RenderCanvas } from './Flamegraph_render';
 import { BAR_HEIGHT } from './constants';
 
-jest.mock('./CanvasRenderer');
+jest.mock('./Flamegraph_render');
 
 const format: 'single' | 'double' = 'single';
 const flamebearerSingle = {
@@ -88,7 +88,7 @@ describe('Flamegraph', () => {
   const CANVAS_WIDTH = 600;
   const CANVAS_HEIGHT = 300;
 
-  it('renders canvas using RenderCanvas', () => {
+  it.only('renders canvas using RenderCanvas', () => {
     canvas = document.createElement('canvas');
     canvas.width = CANVAS_WIDTH;
     canvas.height = CANVAS_HEIGHT;

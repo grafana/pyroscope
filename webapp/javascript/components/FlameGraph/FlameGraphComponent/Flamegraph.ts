@@ -1,23 +1,11 @@
 import { createFF } from '@utils/flamebearer';
-import { Units } from '@utils/format';
-import { RenderCanvas } from './CanvasRenderer';
+import { Flamebearer } from '@models/flamebearer';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
+// there's a dependency cycle here but it should be fine
+/* eslint-disable-next-line import/no-cycle */
+import RenderCanvas from './Flamegraph_render';
 
 /* eslint-disable no-useless-constructor */
-
-// if it's type double (diff), we also require `left` and `right` ticks
-type addTicks =
-  | { format: 'double'; leftTicks: number; rightTicks: number }
-  | { format: 'single' };
-
-type Flamebearer = {
-  names: string[];
-  levels: number[][];
-  numTicks: number;
-  sampleRate: number;
-  units: Units;
-  spyName: string;
-} & addTicks;
 
 export default class Flamegraph {
   private ff: ReturnType<typeof createFF>;
@@ -31,11 +19,24 @@ export default class Flamegraph {
   constructor(
     private readonly flamebearer: Flamebearer,
     private canvas: HTMLCanvasElement,
+    /**
+     * What level to start from
+     */
     private topLevel: number,
+    /**
+     * What level has been "selected"
+     * All nodes above will be dimmed out
+     */
     private selectedLevel: number,
     private fitMode: 'HEAD' | 'TAIL',
+    /**
+     * The query used to match against the node name.
+     * For each node,
+     * if it matches it will be highlighted,
+     * otherwise it will be greyish.
+     */
     private highlightQuery: string,
-    private zoom: { i: number; j: number }
+    zoom: { i: number; j: number }
   ) {
     this.ff = createFF(flamebearer.format);
 
@@ -68,7 +69,7 @@ export default class Flamegraph {
     const props = {
       canvas: this.canvas,
 
-      viewType: this.flamebearer.format,
+      format: this.flamebearer.format,
       numTicks: this.flamebearer.numTicks,
       sampleRate: this.flamebearer.sampleRate,
       names: this.flamebearer.names,
@@ -88,7 +89,7 @@ export default class Flamegraph {
 
     switch (viewType) {
       case 'single': {
-        RenderCanvas({ ...props, viewType: 'single' });
+        RenderCanvas({ ...props, format: 'single' });
         break;
       }
       case 'double': {

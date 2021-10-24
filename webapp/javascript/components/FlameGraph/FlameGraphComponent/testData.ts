@@ -352,8 +352,8 @@ const TestData = {
     maxSelf: 16,
     spyName: 'gospy',
     sampleRate: 100,
-    units: 'samples',
-    format: 'single',
+    units: Units.Samples,
+    format: 'single' as const,
   },
   DiffTree: {
     names: [
