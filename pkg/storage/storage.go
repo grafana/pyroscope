@@ -70,7 +70,7 @@ func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer) (*S
 
 			// Interval at which GC happen if the db size has increase more
 			// than by gcSizeDiff since the last probe.
-			gcInterval: 5 * time.Minute, // 10 * time.Second,
+			gcInterval: time.Minute, // 10 * time.Second,
 			// gcSizeDiff specifies the minimal storage size difference that
 			// causes garbage collection to trigger.
 			gcSizeDiff: 100 * bytesize.MB, // 0,
@@ -222,9 +222,10 @@ func (s *Storage) watchDBSize(diff bytesize.ByteSize, f func()) func() {
 		if s.size != 0 {
 			fields["diff"] = d
 			fields["last-gc"] = s.size
+			fields["db.size"] = s.main.size()
 		}
 		s.logger.WithFields(fields).Info("db size watcher")
-		if d > diff {
+		if diff == 0 || d > diff {
 			// The value should be updated regardless of whether GC reclaimed
 			// any space: if it did not, GC is to be called next time the diff
 			// exceeds the allowed value.

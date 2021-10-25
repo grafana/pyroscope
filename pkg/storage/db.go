@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dgraph-io/badger/v2"
-	"github.com/dgraph-io/badger/v2/options"
+	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v3/options"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
@@ -53,11 +53,11 @@ func (s *Storage) openBadgerDB(name string) (*badger.DB, error) {
 	}
 
 	return badger.Open(badger.DefaultOptions(badgerPath).
-		WithTruncate(!s.config.BadgerNoTruncate).
+		// WithTruncate(!s.config.BadgerNoTruncate).
 		WithSyncWrites(false).
 		WithCompactL0OnClose(false).
 		WithCompression(options.ZSTD).
-		WithValueLogFileSize(128 << 20).
+		WithValueLogFileSize(8 << 20).
 		WithLogger(logger))
 }
 

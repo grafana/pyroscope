@@ -2,10 +2,9 @@ package storage
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -212,11 +211,10 @@ func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) error {
 				s.trees.Discard(treeKey)
 				// Update time boundary for the segment level.
 				t, level, err := segment.ParseTreeKey(treeKey)
-				if err != nil {
-					return fmt.Errorf("unable to parse tree key %q: %w", treeKey, err)
-				}
-				if t.After(rp.Levels[level]) {
-					rp.Levels[level] = t
+				if err == nil {
+					if t.After(rp.Levels[level]) {
+						rp.Levels[level] = t
+					}
 				}
 			}
 
