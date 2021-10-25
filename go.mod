@@ -72,4 +72,4 @@ require (
 
 replace github.com/mgechev/revive v1.0.3 => github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1
 
-replace github.com/dgraph-io/badger/v2 v2.2007.2 => ./pkg/storage/badger
+// replace github.com/dgraph-io/badger/v2 v2.2007.2 => ./pkg/storage/badger
