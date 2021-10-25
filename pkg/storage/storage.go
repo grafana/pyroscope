@@ -64,7 +64,7 @@ func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer) (*S
 		config: c,
 		storageOptions: &storageOptions{
 			metricsUpdateInterval: 10 * time.Second,
-			writeBackInterval:     time.Minute,
+			writeBackInterval:     time.Minute, // 10 * time.Second,
 			evictInterval:         20 * time.Second,
 			cacheTTL:              2 * time.Minute,
 
