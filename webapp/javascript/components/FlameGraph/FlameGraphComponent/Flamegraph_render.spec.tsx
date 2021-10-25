@@ -8,8 +8,7 @@ import Flamegraph from './Flamegraph';
 describe("render group:snapshot'", () => {
   // TODO i'm thinking here if we can simply reuse this?
   const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
-  const topLevel = 0;
-  const selectedLevel = 0;
+  const focusedNode = { i: -1, j: -1 };
   const fitMode = 'HEAD';
   const highlightQuery = '';
   const zoom = { i: -1, j: -1 };
@@ -18,8 +17,7 @@ describe("render group:snapshot'", () => {
     const flame = new Flamegraph(
       TestData.SimpleTree,
       canvas,
-      topLevel,
-      selectedLevel,
+      focusedNode,
       fitMode,
       highlightQuery,
       zoom
@@ -34,8 +32,7 @@ describe("render group:snapshot'", () => {
     const flame = new Flamegraph(
       TestData.ComplexTree,
       canvas,
-      topLevel,
-      selectedLevel,
+      focusedNode,
       fitMode,
       highlightQuery,
       zoom
@@ -49,8 +46,7 @@ describe("render group:snapshot'", () => {
     const flame = new Flamegraph(
       TestData.DiffTree,
       canvas,
-      topLevel,
-      selectedLevel,
+      focusedNode,
       fitMode,
       highlightQuery,
       zoom
@@ -62,12 +58,12 @@ describe("render group:snapshot'", () => {
 
   it('renders a highlighted flamegraph', () => {
     const highlightQuery = 'main';
+    const focusedNode = { i: -1, j: -1 };
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
       canvas,
-      topLevel,
-      selectedLevel,
+      focusedNode,
       fitMode,
       highlightQuery,
       zoom
@@ -79,12 +75,12 @@ describe("render group:snapshot'", () => {
 
   it('renders a zoomed flamegraph', () => {
     const zoom = { i: 2, j: 8 };
+    const focusedNode = { i: -1, j: -1 };
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
       canvas,
-      topLevel,
-      selectedLevel,
+      focusedNode,
       fitMode,
       highlightQuery,
       zoom
@@ -99,12 +95,12 @@ describe("render group:snapshot'", () => {
     // so that the function names don't fit
     const canvas = createCanvas(300, 0) as unknown as HTMLCanvasElement;
     const fitMode = 'TAIL';
+    const focusedNode = { i: -1, j: -1 };
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
       canvas,
-      topLevel,
-      selectedLevel,
+      focusedNode,
       fitMode,
       highlightQuery,
       zoom
@@ -112,6 +108,61 @@ describe("render group:snapshot'", () => {
 
     flame.render();
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
+  });
+
+  describe.only('focused', () => {
+    it('renders a focused node in the beginning', () => {
+      const zoom = { i: -1, j: -1 };
+
+      const focusedNode = { i: 2, j: 0 };
+
+      const flame = new Flamegraph(
+        TestData.SimpleTree,
+        canvas,
+        focusedNode,
+        fitMode,
+        highlightQuery,
+        zoom
+      );
+
+      flame.render();
+      expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
+    });
+
+    it('renders a focused node (when node is not in the beginning)', () => {
+      const zoom = { i: -1, j: -1 };
+
+      const focusedNode = { i: 2, j: 8 };
+
+      const flame = new Flamegraph(
+        TestData.SimpleTree,
+        canvas,
+        focusedNode,
+        fitMode,
+        highlightQuery,
+        zoom
+      );
+
+      flame.render();
+      expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
+    });
+
+    it.only('also zooms', () => {
+      const focusedNode = { i: 1, j: 0 };
+      const zoom = { i: 2, j: 0 }; // main.fastFunction
+
+      const flame = new Flamegraph(
+        TestData.SimpleTree,
+        canvas,
+        focusedNode,
+        fitMode,
+        highlightQuery,
+        zoom
+      );
+
+      flame.render();
+      expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
+    });
   });
 });
 

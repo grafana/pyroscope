@@ -15,15 +15,16 @@ describe('FlamegraphComponent', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
     const isDirty = jest.fn();
+    const onFocusOnNode = jest.fn();
 
     render(
       <FlamegraphComponent
         fitMode="HEAD"
         zoom={{ i: -1, j: -1 }}
-        topLevel={0}
-        selectedLevel={0}
-        query=""
+        focusedNode={{ i: -1, j: -1 }}
+        highlightQuery=""
         onZoom={onZoom}
+        onFocusOnNode={onFocusOnNode}
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
@@ -36,15 +37,16 @@ describe('FlamegraphComponent', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
     const isDirty = jest.fn();
+    const onFocusOnNode = jest.fn();
 
     render(
       <FlamegraphComponent
         fitMode="HEAD"
         zoom={{ i: -1, j: -1 }}
-        topLevel={0}
-        selectedLevel={0}
-        query=""
+        focusedNode={{ i: -1, j: -1 }}
+        highlightQuery=""
         onZoom={onZoom}
+        onFocusOnNode={onFocusOnNode}
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
@@ -68,15 +70,16 @@ describe('FlamegraphComponent', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
     const isDirty = jest.fn();
+    const onFocusOnNode = jest.fn();
 
     render(
       <FlamegraphComponent
         fitMode="HEAD"
         zoom={{ i: -1, j: -1 }}
-        topLevel={0}
-        selectedLevel={0}
-        query=""
+        focusedNode={{ i: -1, j: -1 }}
+        highlightQuery=""
         onZoom={onZoom}
+        onFocusOnNode={onFocusOnNode}
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
@@ -97,15 +100,16 @@ describe('FlamegraphComponent', () => {
       const onZoom = jest.fn();
       const onReset = jest.fn();
       const isDirty = jest.fn();
+      const onFocusOnNode = jest.fn();
 
       const { rerender } = render(
         <FlamegraphComponent
           fitMode="HEAD"
           zoom={{ i: -1, j: -1 }}
-          topLevel={0}
-          selectedLevel={0}
-          query=""
+          focusedNode={{ i: -1, j: -1 }}
+          highlightQuery=""
           onZoom={onZoom}
+          onFocusOnNode={onFocusOnNode}
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
@@ -128,10 +132,10 @@ describe('FlamegraphComponent', () => {
         <FlamegraphComponent
           fitMode="HEAD"
           zoom={{ i: -1, j: -1 }}
-          topLevel={0}
-          selectedLevel={0}
-          query=""
+          focusedNode={{ i: -1, j: -1 }}
+          highlightQuery=""
           onZoom={onZoom}
+          onFocusOnNode={onFocusOnNode}
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
@@ -154,16 +158,17 @@ describe('FlamegraphComponent', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
     const isDirty = jest.fn();
+    const onFocusOnNode = jest.fn();
 
     it('renders when type is single', () => {
       render(
         <FlamegraphComponent
           fitMode="HEAD"
           zoom={{ i: -1, j: -1 }}
-          topLevel={0}
-          selectedLevel={0}
-          query=""
+          focusedNode={{ i: -1, j: -1 }}
+          highlightQuery=""
           onZoom={onZoom}
+          onFocusOnNode={onFocusOnNode}
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
@@ -183,10 +188,10 @@ describe('FlamegraphComponent', () => {
         <FlamegraphComponent
           fitMode="HEAD"
           zoom={{ i: -1, j: -1 }}
-          topLevel={0}
-          selectedLevel={0}
-          query=""
+          focusedNode={{ i: -1, j: -1 }}
+          highlightQuery=""
           onZoom={onZoom}
+          onFocusOnNode={onFocusOnNode}
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={flamebearer}

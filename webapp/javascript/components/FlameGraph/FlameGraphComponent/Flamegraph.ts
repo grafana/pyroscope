@@ -20,14 +20,15 @@ export default class Flamegraph {
     private readonly flamebearer: Flamebearer,
     private canvas: HTMLCanvasElement,
     /**
-     * What level to start from
+     * What node to be 'focused'
+     * ie what node to start the tree
      */
-    private topLevel: number,
+    private focusedNode: { i: number; j: number },
     /**
      * What level has been "selected"
      * All nodes above will be dimmed out
      */
-    private selectedLevel: number,
+    //    private selectedLevel: number,
     private fitMode: 'HEAD' | 'TAIL',
     /**
      * The query used to match against the node name.
@@ -36,7 +37,7 @@ export default class Flamegraph {
      * otherwise it will be greyish.
      */
     private highlightQuery: string,
-    zoom: { i: number; j: number }
+    private zoom: { i: number; j: number }
   ) {
     this.ff = createFF(flamebearer.format);
 
@@ -50,13 +51,13 @@ export default class Flamegraph {
     if (i === -1 || j === -1) {
       this.rangeMin = 0;
       this.rangeMax = 1;
-      this.selectedLevel = 0;
-      this.topLevel = 0;
+      //      this.selectedLevel = 0;
+      //     this.topLevel = 0;
       return;
     }
 
-    this.topLevel = 0;
-    this.selectedLevel = i;
+    //    this.topLevel = 0;
+    //  this.selectedLevel = i;
     this.rangeMin =
       ff.getBarOffset(flamebearer.levels[i], j) / flamebearer.numTicks;
     this.rangeMax =
@@ -77,12 +78,13 @@ export default class Flamegraph {
       spyName: this.flamebearer.spyName,
       units: this.flamebearer.units,
 
-      topLevel: this.topLevel,
+      //      topLevel: this.topLevel,
       rangeMin: this.rangeMin,
       rangeMax: this.rangeMax,
       fitMode: this.fitMode,
-      selectedLevel: this.selectedLevel,
       highlightQuery: this.highlightQuery,
+      zoom: this.zoom,
+      focusedNode: this.focusedNode,
     };
 
     const { format: viewType } = this.flamebearer;
@@ -124,7 +126,14 @@ export default class Flamegraph {
   }
 
   private isFocused() {
-    return this.topLevel > 0;
+    if (this.focusedNode.i === -1 && this.focusedNode.j === -1) {
+      return false;
+    }
+    if (this.focusedNode.i === 0 && this.focusedNode.j === 0) {
+      return false;
+    }
+
+    return true;
   }
 
   // binary search of a block in a stack level
@@ -165,7 +174,11 @@ export default class Flamegraph {
     // so we must discount for it
     const computedY = this.isFocused() ? y - BAR_HEIGHT : y;
 
-    const i = Math.floor(computedY / PX_PER_LEVEL) + this.topLevel;
+    // TODO
+    // shouldn't have to normalize the zoom here
+    const i =
+      Math.floor(computedY / PX_PER_LEVEL) +
+      (this.zoom.i <= 0 ? 0 : this.zoom.i);
 
     if (i >= 0 && i < this.flamebearer.levels.length) {
       const j = this.binarySearchLevel(x, this.flamebearer.levels[i]);
@@ -212,8 +225,10 @@ export default class Flamegraph {
     const level = this.flamebearer.levels[i];
 
     const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
+    // TODO shouldn't have to normalize this
     const posY =
-      (i - this.topLevel) * PX_PER_LEVEL + (this.isFocused() ? BAR_HEIGHT : 0);
+      (i - (this.zoom.i <= 0 ? 0 : this.zoom.i)) * PX_PER_LEVEL +
+      (this.isFocused() ? BAR_HEIGHT : 0);
 
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,

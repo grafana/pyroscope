@@ -13,13 +13,13 @@ import Header from './Header';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
-  topLevel: ConstructorParameters<typeof Flamegraph>[2];
-  selectedLevel: ConstructorParameters<typeof Flamegraph>[3];
-  fitMode: ConstructorParameters<typeof Flamegraph>[4];
-  query: ConstructorParameters<typeof Flamegraph>[5];
-  zoom: ConstructorParameters<typeof Flamegraph>[6]; // TODO call it zoom level?
+  focusedNode: ConstructorParameters<typeof Flamegraph>[2];
+  fitMode: ConstructorParameters<typeof Flamegraph>[3];
+  highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
+  zoom: ConstructorParameters<typeof Flamegraph>[5];
 
   onZoom: (i: number, j: number) => void;
+  onFocusOnNode: (i: number, j: number) => void;
 
   onReset: () => void;
   isDirty: () => boolean;
@@ -33,9 +33,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>();
   const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
 
-  const { flamebearer, topLevel, selectedLevel, fitMode, query, zoom } = props;
+  const { flamebearer, focusedNode, fitMode, highlightQuery, zoom } = props;
 
-  const { onZoom, onReset, isDirty } = props;
+  const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
 
   // rerender whenever the canvas size changes
@@ -74,14 +74,31 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const xyToContextMenuItems = (x: number, y: number) => {
     const dirty = isDirty();
 
-    //
-    //      <MenuItem key="focus" onClick={() => this.focusOnNode(x, y)}>
-    //        Focus
-    //      </MenuItem>,
+    const FocusItem = () => {
+      let onClick = () => {};
+      let hoveredOnValidNode = false;
+
+      // bit ugly
+      try {
+        const { i, j } = flamegraph.xyToBar(x, y);
+        onClick = onFocusOnNode.bind(null, i, j);
+        hoveredOnValidNode = true;
+      } catch (e) {
+        hoveredOnValidNode = false;
+      }
+
+      return (
+        <MenuItem key="focus" disabled={!hoveredOnValidNode} onClick={onClick}>
+          Focus on this node
+        </MenuItem>
+      );
+    };
+
     return [
       <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
         Reset View
       </MenuItem>,
+      FocusItem(),
     ];
   };
 
@@ -96,10 +113,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       const f = new Flamegraph(
         flamebearer,
         canvasRef.current,
-        topLevel,
-        selectedLevel,
+        focusedNode,
         fitMode,
-        query,
+        highlightQuery,
         zoom
       );
 
@@ -108,10 +124,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   }, [
     canvasRef.current,
     flamebearer,
-    topLevel,
-    selectedLevel,
+    focusedNode,
     fitMode,
-    query,
+    highlightQuery,
     zoom,
   ]);
 
@@ -172,10 +187,12 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           />
         )}
 
-        <ContextMenu
-          canvasRef={canvasRef}
-          xyToMenuItems={xyToContextMenuItems}
-        />
+        {flamegraph && (
+          <ContextMenu
+            canvasRef={canvasRef}
+            xyToMenuItems={xyToContextMenuItems}
+          />
+        )}
       </div>
     </>
   );

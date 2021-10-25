@@ -1,7 +1,7 @@
 import { Units } from '@utils/format';
 import Flamegraph from './Flamegraph';
-import RenderCanvas from './Flamegraph_render';
 import { BAR_HEIGHT } from './constants';
+import TestData from './testData';
 
 jest.mock('./Flamegraph_render');
 
@@ -95,17 +95,15 @@ describe('Flamegraph', () => {
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
 
-        const topLevel = 0;
-        const selectedLevel = 0;
         const fitMode = 'HEAD';
         const highlightQuery = '';
         const zoom = { i: -1, j: -1 };
+        const focusedNode = { i: -1, j: -1 };
 
         flame = new Flamegraph(
           flamebearerSingle,
           canvas,
-          topLevel,
-          selectedLevel,
+          focusedNode,
           fitMode,
           highlightQuery,
           zoom
@@ -172,17 +170,15 @@ describe('Flamegraph', () => {
         });
 
         // zoom on that item
-        const topLevel = 0;
-        const selectedLevel = 0;
         const fitMode = 'HEAD';
         const highlightQuery = '';
         const zoom = { i: 2, j: 8 };
+        const focusedNode = { i: -1, j: -1 };
 
         flame = new Flamegraph(
           flamebearerSingle,
           canvas,
-          topLevel,
-          selectedLevel,
+          focusedNode,
           fitMode,
           highlightQuery,
           zoom
@@ -197,6 +193,43 @@ describe('Flamegraph', () => {
           total: 771,
         });
       });
+
+      it.only('maps even when focused on a node', () => {
+        // canvas = document.createElement('canvas');
+        // canvas.width = CANVAS_WIDTH;
+        // canvas.height = CANVAS_HEIGHT;
+
+        const fitMode = 'HEAD';
+        const highlightQuery = '';
+        const zoom = { i: -1, j: -1 };
+
+        const focusedNode = { i: 2, j: 0 };
+
+        flame = new Flamegraph(
+          TestData.SimpleTree,
+          canvas,
+          focusedNode,
+          fitMode,
+          highlightQuery,
+          zoom
+        );
+
+        expect(flame.xyToBarData(1, 0)).toMatchObject({
+          format: 'single',
+          name: 'total',
+          offset: 217,
+          self: 0,
+          total: 771,
+        });
+
+        expect(flame.xyToBarData(1, BAR_HEIGHT)).toMatchObject({
+          format: 'single',
+          name: 'main.fastFunction',
+          offset: 217,
+          self: 0,
+          total: 771,
+        });
+      });
     });
 
     describe('double', () => {
@@ -205,17 +238,15 @@ describe('Flamegraph', () => {
         canvas.width = CANVAS_WIDTH;
         canvas.height = CANVAS_HEIGHT;
 
-        const topLevel = 0;
-        const selectedLevel = 0;
         const fitMode = 'HEAD';
         const highlightQuery = '';
         const zoom = { i: -1, j: -1 };
+        const focusedNode = { i: -1, j: -1 };
 
         flame = new Flamegraph(
           flamebearerDouble,
           canvas,
-          topLevel,
-          selectedLevel,
+          focusedNode,
           fitMode,
           highlightQuery,
           zoom
@@ -278,17 +309,15 @@ describe('Flamegraph', () => {
       canvas.width = CANVAS_WIDTH;
       canvas.height = CANVAS_HEIGHT;
 
-      const topLevel = 0;
-      const selectedLevel = 0;
       const fitMode = 'HEAD';
       const highlightQuery = '';
+      const focusedNode = { i: -1, j: -1 };
       const zoom = { i: 2, j: 8 };
 
       flame = new Flamegraph(
         flamebearerSingle,
         canvas,
-        topLevel,
-        selectedLevel,
+        focusedNode,
         fitMode,
         highlightQuery,
         zoom
@@ -311,17 +340,15 @@ describe('Flamegraph', () => {
       canvas.width = CANVAS_WIDTH;
       canvas.height = CANVAS_HEIGHT;
 
-      const topLevel = 0;
-      const selectedLevel = 0;
       const fitMode = 'HEAD';
       const highlightQuery = '';
       const zoom = { i: -1, j: -1 };
+      const focusedNode = { i: -1, j: -1 };
 
       flame = new Flamegraph(
         flamebearerSingle,
         canvas,
-        topLevel,
-        selectedLevel,
+        focusedNode,
         fitMode,
         highlightQuery,
         zoom

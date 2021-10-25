@@ -39,9 +39,10 @@ class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
   // eg localstorage
   initialFlamegraphState = {
-    selectedLevel: 0,
-    topLevel: 0,
-
+    focusedNode: {
+      i: -1,
+      j: -1,
+    },
     zoom: {
       i: -1,
       j: -1,
@@ -184,6 +185,21 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
+  onFocusOnNode = (i, j) => {
+    if (i === 0 && j === 0) {
+      this.onReset();
+      return;
+    }
+
+    this.setState({
+      ...this.state,
+      flamegraphConfigs: {
+        ...this.state.flamegraphConfigs,
+        focusedNode: { i, j },
+      },
+    });
+  };
+
   updateSortBy = (newSortBy) => {
     let dir = this.state.sortByDirection;
     if (this.state.sortBy === newSortBy) {
@@ -311,11 +327,11 @@ class FlameGraphRenderer extends React.Component {
           query={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
-          topLevel={this.state.flamegraphConfigs.topLevel}
           zoom={this.state.flamegraphConfigs.zoom}
-          selectedLevel={this.state.flamegraphConfigs.selectedLevel}
+          focusedNode={this.state.flamegraphConfigs.focusedNode}
           label={this.props.query}
           onZoom={this.onFlamegraphZoom}
+          onFocusOnNode={this.onFocusOnNode}
           onReset={this.onReset}
           isDirty={this.isDirty}
         />

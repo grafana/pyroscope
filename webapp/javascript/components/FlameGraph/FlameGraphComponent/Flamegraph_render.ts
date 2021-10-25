@@ -51,10 +51,10 @@ import Flamegraph from './Flamegraph';
 
 type CanvasRendererConfig = Flamebearer & {
   canvas: HTMLCanvasElement;
-  topLevel: ConstructorParameters<typeof Flamegraph>[2];
-  selectedLevel: ConstructorParameters<typeof Flamegraph>[3];
-  fitMode: ConstructorParameters<typeof Flamegraph>[4];
-  highlightQuery: ConstructorParameters<typeof Flamegraph>[5];
+  focusedNode: ConstructorParameters<typeof Flamegraph>[2];
+  fitMode: ConstructorParameters<typeof Flamegraph>[3];
+  highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
+  zoom: ConstructorParameters<typeof Flamegraph>[5];
 
   /**
    * Used when zooming, values between 0 and 1.
@@ -70,9 +70,10 @@ type CanvasRendererConfig = Flamebearer & {
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
   const { canvas } = props;
-  const { numTicks, rangeMin, rangeMax, sampleRate } = props;
+  const { numTicks, sampleRate, zoom } = props;
   const { fitMode } = props;
   const { units } = props;
+  let { rangeMin, rangeMax } = props;
 
   // clientWidth includes padding
   // however it's not present in node-canvas (used for testing)
@@ -91,27 +92,81 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     throw new Error(`'rangeMin' should be strictly smaller than 'rangeMax'`);
   }
 
-  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
-
-  const ctx = canvas.getContext('2d');
-  const { selectedLevel } = props;
-
   // TODO what does ff mean?
   const { format } = props;
   const ff = createFF(format);
 
-  const { topLevel } = props;
+  const { levels } = props;
+  const { focusedNode } = props;
+
+  // TODO
+  // this shouldn't be needed
+  if (focusedNode.i === -1) {
+    focusedNode.i = 0;
+  }
+  if (focusedNode.j === -1) {
+    focusedNode.j = 0;
+  }
+
+  const focusMin =
+    ff.getBarOffset(levels[focusedNode.i], focusedNode.j) / numTicks;
+
+  const focusMax =
+    (ff.getBarOffset(levels[focusedNode.i], focusedNode.j) +
+      ff.getBarTotal(levels[focusedNode.i], focusedNode.j)) /
+    numTicks;
+
+  // in case we are focusing
+  // if focus is set but rangemin is not
+  // or zoom is smaller
+  if (
+    (focusMin !== 0 && rangeMin === 0) ||
+    (focusMax !== 1 && rangeMax === 1) ||
+    rangeMin < focusMin
+  ) {
+    rangeMin = focusMin;
+    rangeMax = focusMax;
+    console.log('focus min is smaller than rageMin');
+  }
+  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
+
+  //  const pxPerTick = graphWidth / numTicks / (focusMax - focusMin);
+
+  //  console.log({
+  //    focusedNode,
+  //    focusMax,
+  //    focusMin,
+  //    rangeMax,
+  //    rangeMin,
+  //    pxPerTick,
+  //  });
+  //
+  const ctx = canvas.getContext('2d');
+  //  const { selectedLevel } = props;
+  const selectedLevel = zoom.i;
+
+  //  const { topLevel } = props;
+  //  TODO
+  //  const topLevel = 0;
   const formatter = getFormatter(numTicks, sampleRate, units);
 
-  const { levels } = props;
-
   let focused = false;
-  if (topLevel > 0) {
+
+  // normalize this
+  // TODO
+  if (focusedNode.i < 0) {
+    focusedNode.i = 0;
+  }
+  if (focusedNode.j < 0) {
+    focusedNode.j = 0;
+  }
+
+  if (focusedNode.i > 0 || focusedNode.j > 0) {
     focused = true;
   }
 
   const canvasHeight =
-    PX_PER_LEVEL * (levels.length - topLevel) + (focused ? BAR_HEIGHT : 0);
+    PX_PER_LEVEL * (levels.length - focusedNode.i) + (focused ? BAR_HEIGHT : 0);
   canvas.height = canvasHeight;
 
   // increase pixel ratio, otherwise it looks bad in high resolution devices
@@ -130,10 +185,11 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     ctx.beginPath();
     ctx.rect(0, 0, numTicks * pxPerTick, BAR_HEIGHT);
     // TODO find a neutral color
-    ctx.fillStyle = 'grey';
+    // TODO use getColor ?
+    ctx.fillStyle = colorGreyscale(200, 1).rgb().string();
     ctx.fill();
 
-    const shortName = `total (${topLevel} level(s) skipped)`;
+    const shortName = `total (${focusedNode.i - 1} level(s) collapsed)`;
 
     // Set the font syle
     // It's important to set the font BEFORE calculating 'characterSize'
@@ -163,12 +219,25 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     ctx.restore();
   }
 
-  for (let i = 0; i < levels.length - topLevel; i += 1) {
-    const level = levels[topLevel + i];
+  for (let i = 0; i < levels.length - focusedNode.i; i += 1) {
+    const level = levels[focusedNode.i + i];
+    for (let j = 0; j < level.length; j += ff.jStep) {
+      const min = ff.getBarOffset(level, j) / numTicks;
+      const max =
+        (ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) / numTicks;
+    }
+  }
+
+  console.log('starting loop');
+  for (let i = 0; i < levels.length - focusedNode.i; i += 1) {
+    const level = levels[focusedNode.i + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
       const barIndex = ff.getBarOffset(level, j);
 
+      const n = getFunctionName(names, j, format, level);
+      //      console.log('functino', n);
       const x = tickToX(numTicks, rangeMin, pxPerTick, barIndex);
+      //      const x = tickToX(numTicks, focusMin, pxPerTick, barIndex);
       const y = i * PX_PER_LEVEL + (focused ? BAR_HEIGHT : 0);
 
       const sh = BAR_HEIGHT;
@@ -186,6 +255,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
 
       // merge very small blocks into big "collapsed" ones for performance
       const collapsed = numBarTicks * pxPerTick <= COLLAPSE_THRESHOLD;
+      //      console.log('function with name', n, 'is collapsed', collapsed);
       if (collapsed) {
         // TODO: refactor this
         while (
@@ -209,24 +279,35 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       }
 
       const sw = numBarTicks * pxPerTick - (collapsed ? 0 : GAP);
-
+      //      console.log('function', n, {
+      //        sw,
+      //        x,
+      //        y,
+      //        sh,
+      //        canvasWidth: canvas.width,
+      //        numTicks,
+      //        rangeMin,
+      //        pxPerTick,
+      //        barIndex,
+      //      });
+      //
       /*******************************/
       /*      D r a w   R e c t      */
       /*******************************/
       const { spyName } = props;
       let leftTicks: number | undefined;
-      if (format === 'double') {
-        leftTicks = props.leftTicks;
-      }
       let rightTicks: number | undefined;
       if (format === 'double') {
+        leftTicks = props.leftTicks;
         rightTicks = props.rightTicks;
       }
       const color = getColor({
         format,
         level,
         j,
-        i,
+        // discount for the levels we skipped
+        // otherwise it will dim out all nodes
+        i: i + focusedNode.i,
         names,
         collapsed,
         selectedLevel,
@@ -287,6 +368,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       ctx.restore();
     }
   }
+  console.log('finishihng loop');
 }
 
 function getFunctionName(
@@ -378,9 +460,17 @@ function tickToX(
   numTicks: number,
   rangeMin: number,
   pxPerTick: number,
-  i: number
+  barTicks: number
 ) {
-  return (i - numTicks * rangeMin) * pxPerTick;
+  // barticks is euqal to the offset?
+  //  console.log({
+  //    barTicks,
+  //    numTicks,
+  //    rangeMin,
+  //    pxPerTick,
+  //    total: (barTicks - numTicks * rangeMin) * pxPerTick,
+  //  });
+  return (barTicks - numTicks * rangeMin) * pxPerTick;
 }
 
 function nodeIsInQuery(
