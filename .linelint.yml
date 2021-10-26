@@ -9,7 +9,6 @@ ignore:
   - node_modules/
   - /webapp/public
   - /third_party/*/target
-  - pkged.go
   - .DS_Store
   - /scripts/packages/
   - .eslintcache
