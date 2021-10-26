@@ -1,5 +1,6 @@
 import { createFF } from '@utils/flamebearer';
 import { Flamebearer } from '@models/flamebearer';
+import { DeepReadonly } from 'ts-essentials';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
@@ -23,25 +24,23 @@ export default class Flamegraph {
      * What node to be 'focused'
      * ie what node to start the tree
      */
-    private focusedNode: { i: number; j: number },
+    private focusedNode: DeepReadonly<{ i: number; j: number }>,
     /**
      * What level has been "selected"
      * All nodes above will be dimmed out
      */
     //    private selectedLevel: number,
-    private fitMode: 'HEAD' | 'TAIL',
+    private readonly fitMode: 'HEAD' | 'TAIL',
     /**
      * The query used to match against the node name.
      * For each node,
      * if it matches it will be highlighted,
      * otherwise it will be greyish.
      */
-    private highlightQuery: string,
-    private zoom: { i: number; j: number }
+    private readonly highlightQuery: string,
+    private readonly zoom: { i: number; j: number }
   ) {
     this.ff = createFF(flamebearer.format);
-
-    //    this.setupZoom(zoom.i, zoom.j, flamebearer);
   }
 
   // private setupZoom(i: number, j: number, flamebearer: Flamebearer) {
@@ -193,7 +192,7 @@ export default class Flamegraph {
     const z = calculatedZoomRange();
 
     // focus is smaller, let's use it
-    if (f.rangeMin < z.rangeMin) {
+    if (f.rangeMax - f.rangeMin < z.rangeMax - z.rangeMin) {
       return calculatedFocusRange();
     }
 
@@ -274,7 +273,7 @@ export default class Flamegraph {
 
     // both are set, prefer focus
     if (isSet(this.zoom) && isSet(this.focusedNode)) {
-      //      console.info('using focused because both are set');
+      //    console.info('using focused because both are set');
       compensation = compensatedFocusedY;
     }
 
@@ -286,8 +285,9 @@ export default class Flamegraph {
 
     // only zoom is set
     if (isSet(this.zoom) && !isSet(this.focusedNode)) {
-      //    console.info('using zoom because only zoom is set');
-      compensation = compensatedZoomY;
+      //      console.info('using zoom because only zoom is set');
+      compensation = 0;
+      //      compensation = -compensatedZoomY;
     }
 
     // TODO
@@ -298,7 +298,7 @@ export default class Flamegraph {
 
     // if we are zoomed or focused, the root has changed
     // so we must add back these numbers
-    const i = Math.floor(computedY / PX_PER_LEVEL) + compensation;
+    const i = Math.round(computedY / PX_PER_LEVEL) + compensation;
 
     if (i >= 0 && i < this.flamebearer.levels.length) {
       const j = this.binarySearchLevel(x, this.flamebearer.levels[i]);
@@ -342,13 +342,39 @@ export default class Flamegraph {
     const { ff } = this;
     const { i, j } = this.xyToBar(x, y);
 
-    const level = this.flamebearer.levels[i];
+    //    const topLevel = this.zoom.i < 0 ? 0 : this.zoom.i;
+    const topLevel = 0;
 
+    //    console.log({ levels: this.flamebearer.levels, i, topLevel });
+    const level = this.flamebearer.levels[i];
     const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
+
     // TODO shouldn't have to normalize this
-    const posY =
-      (i - (this.zoom.i <= 0 ? 0 : this.zoom.i)) * PX_PER_LEVEL +
-      (this.isFocused() ? BAR_HEIGHT : 0);
+    //    const posY =
+    //      (i - (this.zoom.i <= 0 ? 0 : this.zoom.i)) * PX_PER_LEVEL +
+    //      (this.isFocused() ? BAR_HEIGHT : 0);
+    //
+    // const posY = (i - topLevel) * PX_PER_LEVEL;
+    const posY = (i - topLevel) * PX_PER_LEVEL;
+
+    //   console.log({
+    //     zoomI: this.zoom.i,
+    //     topLevel,
+    //     i,
+    //     PX_PER_LEVEL,
+    //     posY,
+    //   });
+    //   //  (this.isFocused() ? BAR_HEIGHT : 0);
+
+    console.log({
+      barOffset: ff.getBarOffset(level, j),
+      barTotal: ff.getBarTotal(level, j),
+      tickToX: this.tickToX(
+        ff.getBarOffset(level, j) + ff.getBarTotal(level, j)
+      ),
+      posX,
+      canvasWidth: this.getCanvasWidth(),
+    });
 
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
@@ -404,5 +430,16 @@ export default class Flamegraph {
         throw new Error(`Unsupported type`);
       }
     }
+  }
+
+  public xyToBar2(x: number, y: number) {
+    const { i, j } = this.xyToBar(x, y);
+    const position = this.xyToBarPosition(x, y);
+
+    return {
+      i,
+      j,
+      ...position,
+    };
   }
 }

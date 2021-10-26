@@ -60,12 +60,12 @@ type CanvasRendererConfig = Flamebearer & {
    * Used when zooming, values between 0 and 1.
    * For illustration, in a non zoomed state it has the value of 0
    */
-  rangeMin: number;
+  readonly rangeMin: number;
   /**
    * Used when zooming, values between 0 and 1.
    * For illustration, in a non zoomed state it has the value of 1
    */
-  rangeMax: number;
+  readonly rangeMax: number;
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
@@ -101,13 +101,13 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
 
   // TODO
   // this shouldn't be needed
-  if (focusedNode.i === -1) {
-    focusedNode.i = 0;
-  }
-  if (focusedNode.j === -1) {
-    focusedNode.j = 0;
-  }
-
+  //  if (focusedNode.i === -1) {
+  //    focusedNode.i = 0;
+  //  }
+  //  if (focusedNode.j === -1) {
+  //    focusedNode.j = 0;
+  //  }
+  //
   //  const focusMin =
   //    ff.getBarOffset(levels[focusedNode.i], focusedNode.j) / numTicks;
   //
@@ -150,23 +150,26 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   //  const topLevel = 0;
   const formatter = getFormatter(numTicks, sampleRate, units);
 
-  let focused = false;
+  let isFocused = false;
 
   // normalize this
   // TODO
-  if (focusedNode.i < 0) {
-    focusedNode.i = 0;
-  }
-  if (focusedNode.j < 0) {
-    focusedNode.j = 0;
-  }
+  //  if (focusedNode.i < 0) {
+  //    focusedNode.i = 0;
+  //  }
+  //  if (focusedNode.j < 0) {
+  //    focusedNode.j = 0;
+  //  }
 
   if (focusedNode.i > 0 || focusedNode.j > 0) {
-    focused = true;
+    isFocused = true;
   }
 
+  const topLevel = focusedNode.i < 0 ? 0 : focusedNode.i;
+
   const canvasHeight =
-    PX_PER_LEVEL * (levels.length - focusedNode.i) + (focused ? BAR_HEIGHT : 0);
+    PX_PER_LEVEL * (levels.length - topLevel) + (isFocused ? BAR_HEIGHT : 0);
+  //  const canvasHeight = PX_PER_LEVEL * (levels.length - topLevel);
   canvas.height = canvasHeight;
 
   // increase pixel ratio, otherwise it looks bad in high resolution devices
@@ -180,7 +183,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   // are we focused?
   // if so, add an initial bar telling it's a collapsed one
   // TODO clean this up
-  if (focused) {
+  if (isFocused) {
     const width = numTicks * pxPerTick;
     ctx.beginPath();
     ctx.rect(0, 0, numTicks * pxPerTick, BAR_HEIGHT);
@@ -219,18 +222,20 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     ctx.restore();
   }
 
-  for (let i = 0; i < levels.length - focusedNode.i; i += 1) {
-    const level = levels[focusedNode.i + i];
-    for (let j = 0; j < level.length; j += ff.jStep) {
-      const min = ff.getBarOffset(level, j) / numTicks;
-      const max =
-        (ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) / numTicks;
-    }
-  }
+  //  console.log('topLevel', topLevel);
+
+  //  for (let i = 0; i < levels.length - focusedNode.i; i += 1) {
+  //    const level = levels[topLevel + i];
+  //    for (let j = 0; j < level.length; j += ff.jStep) {
+  //      const min = ff.getBarOffset(level, j) / numTicks;
+  //      const max =
+  //        (ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) / numTicks;
+  //    }
+  //  }
 
   console.log('starting loop');
-  for (let i = 0; i < levels.length - focusedNode.i; i += 1) {
-    const level = levels[focusedNode.i + i];
+  for (let i = 0; i < levels.length - topLevel; i += 1) {
+    const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
       const barIndex = ff.getBarOffset(level, j);
 
@@ -238,7 +243,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       //      console.log('functino', n);
       const x = tickToX(numTicks, rangeMin, pxPerTick, barIndex);
       //      const x = tickToX(numTicks, focusMin, pxPerTick, barIndex);
-      const y = i * PX_PER_LEVEL + (focused ? BAR_HEIGHT : 0);
+      const y = i * PX_PER_LEVEL + (isFocused ? BAR_HEIGHT : 0);
 
       const sh = BAR_HEIGHT;
 
@@ -251,8 +256,6 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
         props.highlightQuery
       );
 
-      // TODO
-      // this is wroooooooooooooooong
       let numBarTicks = ff.getBarTotal(level, j);
 
       // merge very small blocks into big "collapsed" ones for performance
@@ -309,7 +312,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
         j,
         // discount for the levels we skipped
         // otherwise it will dim out all nodes
-        i: i + focusedNode.i,
+        i: i + (isFocused ? focusedNode.i : 0),
         names,
         collapsed,
         selectedLevel,

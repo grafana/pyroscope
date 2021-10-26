@@ -138,7 +138,8 @@
     "redux-query-sync": "^0.1.10",
     "redux-thunk": "^2.3.0",
     "sanitize.css": "^11.0.1",
-    "style-loader": "^3.2.1"
+    "style-loader": "^3.2.1",
+    "ts-essentials": "^9.0.0"
   },
   "optionalDependencies": {
     "@size-limit/file": "^6.0.3",
