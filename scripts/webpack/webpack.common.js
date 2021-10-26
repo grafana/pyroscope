@@ -56,6 +56,7 @@ module.exports = {
       // this alias maps that dependency to core-js@t3
       'core-js/library/fn': 'core-js/stable',
       '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
+      '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
     },
     modules: [
       'node_modules',

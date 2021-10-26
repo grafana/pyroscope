@@ -62,10 +62,6 @@ describe('basic test', () => {
 
       cy.findByTestId('app-name-selector').select(name);
       cy.wait(`@${name}`);
-      cy.findByTestId('flamegraph-canvas')
-        .invoke('attr', 'data-appname')
-        .should('eq', `${name}{}`);
-
       cy.findByTestId('flamegraph-canvas').should('be.visible');
       // there's a certain delay until the flamegraph is rendered
       // eslint-disable-next-line cypress/no-unnecessary-waiting
@@ -89,13 +85,17 @@ describe('basic test', () => {
     names.forEach(match);
   });
 
-  it('updates flamegraph on app name change', () => {
+  it('highlights nodes that match a search query', () => {
+    cy.intercept('**/render*', {
+      fixture: 'simple-golang-app-cpu.json',
+    }).as('render');
+
     cy.visit('/');
 
-    cy.findByTestId('app-name-selector').select('pyroscope.server.cpu');
-    cy.findByTestId('flamegraph-canvas')
-      .invoke('attr', 'data-appname')
-      .should('eq', 'pyroscope.server.cpu{}');
+    cy.findByTestId('flamegraph-search').type('main');
+    cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
+      'simple-golang-app-cpu-highlight'
+    );
   });
 
   it('view buttons should change view when clicked', () => {

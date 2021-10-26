@@ -36,6 +36,18 @@ const getParamsFromRenderURL = (inputURL) => {
 };
 
 class FlameGraphRenderer extends React.Component {
+  // TODO: this could come from some other state
+  // eg localstorage
+  initialFlamegraphState = {
+    selectedLevel: 0,
+    topLevel: 0,
+
+    zoom: {
+      i: -1,
+      j: -1,
+    },
+  };
+
   constructor(props) {
     super();
     this.state = {
@@ -49,11 +61,9 @@ class FlameGraphRenderer extends React.Component {
 
       // query used in the 'search' checkbox
       highlightQuery: '',
-    };
 
-    // generally not a good idea
-    // but we need to access the graph's reset function
-    this.graphRef = React.createRef();
+      flamegraphConfigs: this.initialFlamegraphState,
+    };
   }
 
   componentDidMount() {
@@ -102,6 +112,11 @@ class FlameGraphRenderer extends React.Component {
         this.fetchFlameBearerData(this.props.diffRenderURL);
       }
     }
+
+    // flamegraph configs changed
+    if (prevState.flamegraphConfigs !== this.state.flamegraphConfigs) {
+      this.updateResetStyle();
+    }
   }
 
   componentWillUnmount() {
@@ -115,10 +130,12 @@ class FlameGraphRenderer extends React.Component {
   };
 
   updateResetStyle = () => {
-    // const emptyQuery = this.query === "";
-    const topLevelSelected = this.selectedLevel === 0;
+    const isDirty = this.isDirty();
+
+    // TODO(eh-am): this is a bad idea
+    // let's use disabled instead
     this.setState({
-      resetStyle: { visibility: topLevelSelected ? 'hidden' : 'visible' },
+      resetStyle: { visibility: isDirty ? 'visible' : 'hidden' },
     });
   };
 
@@ -129,8 +146,14 @@ class FlameGraphRenderer extends React.Component {
     //    this.updateResetStyle();
   };
 
-  reset = () => {
-    this.graphRef.current.reset();
+  onReset = () => {
+    this.setState({
+      ...this.state,
+      flamegraphConfigs: {
+        ...this.state.flamegraphConfigs,
+        ...this.initialFlamegraphState,
+      },
+    });
   };
 
   updateView = (newView) => {
@@ -142,6 +165,22 @@ class FlameGraphRenderer extends React.Component {
   updateViewDiff = (newView) => {
     this.setState({
       viewDiff: newView,
+    });
+  };
+
+  onFlamegraphZoom = (i, j) => {
+    // zooming on the topmost bar is equivalent to resetting to the original state
+    if (i === 0 && j === 0) {
+      this.onReset();
+      return;
+    }
+
+    this.setState({
+      ...this.state,
+      flamegraphConfigs: {
+        ...this.state.flamegraphConfigs,
+        zoom: { i, j },
+      },
     });
   };
 
@@ -158,11 +197,12 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  onZoom = (selectedLevel) => {
-    const topLevelSelected = selectedLevel === 0;
-    this.setState({
-      resetStyle: { visibility: topLevelSelected ? 'hidden' : 'visible' },
-    });
+  isDirty = () => {
+    // TODO: is this a good idea?
+    return (
+      JSON.stringify(this.initialFlamegraphState) !==
+      JSON.stringify(this.state.flamegraphConfigs)
+    );
   };
 
   parseFormat(format) {
@@ -216,6 +256,8 @@ class FlameGraphRenderer extends React.Component {
         flamebearer.leftTicks = leftTicks;
         flamebearer.rightTicks = rightTicks;
 
+        // the new flamegraph shouldn't have zoom etc
+        this.onReset();
         this.setState({
           flamebearer,
         });
@@ -262,7 +304,6 @@ class FlameGraphRenderer extends React.Component {
       this.state.flamebearer && dataExists ? (
         <Graph
           key="flamegraph-pane"
-          ref={this.graphRef}
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
@@ -270,8 +311,13 @@ class FlameGraphRenderer extends React.Component {
           query={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
-          onZoom={this.onZoom}
+          topLevel={this.state.flamegraphConfigs.topLevel}
+          zoom={this.state.flamegraphConfigs.zoom}
+          selectedLevel={this.state.flamegraphConfigs.selectedLevel}
           label={this.props.query}
+          onZoom={this.onFlamegraphZoom}
+          onReset={this.onReset}
+          isDirty={this.isDirty}
         />
       ) : null;
 
@@ -295,7 +341,7 @@ class FlameGraphRenderer extends React.Component {
             view={this.state.view}
             viewDiff={this.state.viewDiff}
             handleSearchChange={this.handleSearchChange}
-            reset={this.reset}
+            reset={this.onReset}
             updateView={this.updateView}
             updateViewDiff={this.updateViewDiff}
             resetStyle={this.state.resetStyle}

@@ -22,6 +22,7 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
+import { Flamebearer, addTicks } from '@models/flamebearer';
 import {
   PX_PER_LEVEL,
   COLLAPSE_THRESHOLD,
@@ -32,7 +33,6 @@ import {
 import {
   formatPercent,
   getFormatter,
-  Units,
   ratioToPercent,
 } from '../../../util/format';
 import { fitToCanvasRect } from '../../../util/fitMode';
@@ -45,81 +45,30 @@ import {
   getPackageNameFromStackTrace,
   highlightColor,
 } from './color';
+// there's a dependency cycle here but it should be fine
+/* eslint-disable-next-line import/no-cycle */
+import Flamegraph from './Flamegraph';
 
-export type CanvasRendererConfig = {
+type CanvasRendererConfig = Flamebearer & {
   canvas: HTMLCanvasElement;
-  numTicks: number;
-
-  /**
-   * Sample Rate, used in text information
-   */
-  sampleRate: number;
-
-  /**
-   * List of names
-   */
-  names: string[];
-
-  /**
-   * List of level
-   *
-   * This is NOT the same as in the flamebearer
-   * that we receive from the server.
-   * As in there are some transformations required
-   * (see deltaDiffWrapper)
-   */
-  levels: number[][];
-
-  /**
-   * What level to start from
-   */
-  topLevel: number;
+  topLevel: ConstructorParameters<typeof Flamegraph>[2];
+  selectedLevel: ConstructorParameters<typeof Flamegraph>[3];
+  fitMode: ConstructorParameters<typeof Flamegraph>[4];
+  highlightQuery: ConstructorParameters<typeof Flamegraph>[5];
 
   /**
    * Used when zooming, values between 0 and 1.
-   * For illustration, in a non zoomed in state it has the value of 0
+   * For illustration, in a non zoomed state it has the value of 0
    */
   rangeMin: number;
   /**
    * Used when zooming, values between 0 and 1.
-   * For illustration, in a non zoomed in state it has the value of 1
+   * For illustration, in a non zoomed state it has the value of 1
    */
   rangeMax: number;
+};
 
-  units: Units;
-  fitMode: 'TAIL' | 'HEAD'; // TODO import from fitMode
-
-  /**
-   * The query used to match against the node name.
-   * For each node,
-   * if it matches it will be highlighted,
-   * otherwise it will be greyish.
-   */
-  highlightQuery?: string;
-
-  // TODO type this
-  spyName:
-    | 'dotneyspy'
-    | 'ebpfspy'
-    | 'gospy'
-    | 'phpspy'
-    | 'pyspy'
-    | 'rbspy'
-    | string;
-
-  /**
-   * What level has been "selected"
-   * All nodes above will be dimmed out
-   */
-  selectedLevel?: number;
-} & addTicks;
-
-// if it's type double (diff), we also require `left` and `right` ticks
-type addTicks =
-  | { viewType: 'double'; leftTicks: number; rightTicks: number }
-  | { viewType: 'single' };
-
-export function RenderCanvas(props: CanvasRendererConfig) {
+export default function RenderCanvas(props: CanvasRendererConfig) {
   const { canvas } = props;
   const { numTicks, rangeMin, rangeMax, sampleRate } = props;
   const { fitMode } = props;
@@ -148,13 +97,21 @@ export function RenderCanvas(props: CanvasRendererConfig) {
   const { selectedLevel } = props;
 
   // TODO what does ff mean?
-  const { viewType } = props;
-  const ff = createFF(viewType);
+  const { format } = props;
+  const ff = createFF(format);
 
-  const { names, levels, topLevel } = props;
+  const { topLevel } = props;
   const formatter = getFormatter(numTicks, sampleRate, units);
 
-  const canvasHeight = PX_PER_LEVEL * (levels.length - topLevel);
+  const { levels } = props;
+
+  let focused = false;
+  if (topLevel > 0) {
+    focused = true;
+  }
+
+  const canvasHeight =
+    PX_PER_LEVEL * (levels.length - topLevel) + (focused ? BAR_HEIGHT : 0);
   canvas.height = canvasHeight;
 
   // increase pixel ratio, otherwise it looks bad in high resolution devices
@@ -164,13 +121,55 @@ export function RenderCanvas(props: CanvasRendererConfig) {
     ctx.scale(2, 2);
   }
 
+  const { names } = props;
+  // are we focused?
+  // if so, add an initial bar telling it's a collapsed one
+  // TODO clean this up
+  if (focused) {
+    const width = numTicks * pxPerTick;
+    ctx.beginPath();
+    ctx.rect(0, 0, numTicks * pxPerTick, BAR_HEIGHT);
+    // TODO find a neutral color
+    ctx.fillStyle = 'grey';
+    ctx.fill();
+
+    const shortName = `total (${topLevel} level(s) skipped)`;
+
+    // Set the font syle
+    // It's important to set the font BEFORE calculating 'characterSize'
+    // Since it will be used to calculate how many characters can fit
+    ctx.textBaseline = 'middle';
+    ctx.font =
+      '400 11.5px SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace';
+    // Since this is a monospaced font any character would do
+    const characterSize = ctx.measureText('a').width;
+    const fitCalc = fitToCanvasRect({
+      mode: fitMode,
+      charSize: characterSize,
+      rectWidth: width,
+      fullText: shortName,
+      shortText: shortName,
+    });
+
+    const x = 0;
+    const y = 0;
+    const sh = BAR_HEIGHT;
+
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = 'black';
+    const namePosX = Math.round(Math.max(x, 0));
+    ctx.fillText(fitCalc.text, namePosX + fitCalc.marginLeft, y + sh / 2 + 1);
+    ctx.restore();
+  }
+
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
       const barIndex = ff.getBarOffset(level, j);
 
       const x = tickToX(numTicks, rangeMin, pxPerTick, barIndex);
-      const y = i * PX_PER_LEVEL;
+      const y = i * PX_PER_LEVEL + (focused ? BAR_HEIGHT : 0);
 
       const sh = BAR_HEIGHT;
 
@@ -216,15 +215,15 @@ export function RenderCanvas(props: CanvasRendererConfig) {
       /*******************************/
       const { spyName } = props;
       let leftTicks: number | undefined;
-      if (props.viewType === 'double') {
+      if (format === 'double') {
         leftTicks = props.leftTicks;
       }
       let rightTicks: number | undefined;
-      if (props.viewType === 'double') {
+      if (format === 'double') {
         rightTicks = props.rightTicks;
       }
       const color = getColor({
-        viewType,
+        format,
         level,
         j,
         i,
@@ -255,7 +254,7 @@ export function RenderCanvas(props: CanvasRendererConfig) {
         continue;
       }
 
-      const shortName = getFunctionName(names, j, viewType, level);
+      const shortName = getFunctionName(names, j, format, level);
       const longName = getLongName(
         shortName,
         numBarTicks,
@@ -293,10 +292,10 @@ export function RenderCanvas(props: CanvasRendererConfig) {
 function getFunctionName(
   names: CanvasRendererConfig['names'],
   j: number,
-  viewType: CanvasRendererConfig['viewType'],
+  format: CanvasRendererConfig['format'],
   level: number[]
 ) {
-  const ff = createFF(viewType);
+  const ff = createFF(format);
   const shortName = names[level[j + ff.jName]];
   return shortName;
 }
@@ -332,7 +331,7 @@ type getColorCfg = {
 } & addTicks;
 
 function getColor(cfg: getColorCfg) {
-  const ff = createFF(cfg.viewType);
+  const ff = createFF(cfg.format);
 
   // all above selected level should be dimmed
   const a = cfg.selectedLevel > cfg.i ? 0.33 : 1;
@@ -343,9 +342,9 @@ function getColor(cfg: getColorCfg) {
   }
 
   // Diff mode
-  if (cfg.viewType === 'double') {
+  if (cfg.format === 'double') {
     const { leftRatio, rightRatio } = getRatios(
-      cfg.viewType,
+      cfg.format,
       cfg.level,
       cfg.j,
       cfg.leftTicks,

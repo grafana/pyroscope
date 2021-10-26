@@ -8,7 +8,8 @@
     "esModuleInterop": true,
     "sourceMap": true,
     "paths": {
-      "@utils/*": ["./webapp/javascript/util/*"]
+      "@utils/*": ["./webapp/javascript/util/*"],
+      "@models/*": ["./webapp/javascript/models/*"]
     }
   },
   "exclude": ["node_modules"]

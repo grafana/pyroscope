@@ -1,39 +1,46 @@
 import React from 'react';
-import { numberWithCommas, getFormatter, Units } from '../../../util/format';
+import {
+  getFormatter,
+  Units,
+  numberWithCommas,
+  formatPercent,
+  ratioToPercent,
+} from '@utils/format';
 import { diffColorRed, diffColorGreen } from './color';
 
-type xyToData = (
-  format: 'single' | 'double',
+type xyToDataSingle = (
   x: number,
   y: number
-) =>
-  | {
-      format: 'double';
-      left: number;
-      right: number;
-      title: string;
-      sampleRate: number;
-      leftPercent: number;
-      rightPercent: number;
-    }
-  | {
-      format: 'single';
-      title: string;
-      numBarTicks: number;
-      percent: number;
-    };
+) => { format: 'single'; name: string; total: number };
 
-export interface TooltipProps {
-  format: 'single' | 'double';
+type xyToDataDouble = (
+  x: number,
+  y: number
+) => {
+  format: 'double';
+  name: string;
+  totalLeft: number;
+  totalRight: number;
+  barTotal: number;
+};
+
+export type TooltipProps = {
   canvasRef: React.RefObject<HTMLCanvasElement>;
 
-  xyToData: xyToData;
   isWithinBounds: (x: number, y: number) => boolean;
 
   units: Units;
   sampleRate: number;
   numTicks: number;
-}
+} & (
+  | { format: 'single'; xyToData: xyToDataSingle }
+  | {
+      format: 'double';
+      leftTicks: number;
+      rightTicks: number;
+      xyToData: xyToDataDouble;
+    }
+);
 
 export default function Tooltip(props: TooltipProps) {
   const { format, canvasRef, xyToData, isWithinBounds } = props;
@@ -69,25 +76,76 @@ export default function Tooltip(props: TooltipProps) {
         return;
       }
 
-      const d = onMouseMove({
-        x: e.offsetX,
-        y: e.offsetY,
+      const formatter = getFormatter(
+        props.numTicks,
+        props.sampleRate,
+        props.units
+      );
 
-        clientX: e.clientX,
-        clientY: e.clientY,
-        windowWidth: window.innerWidth,
-        tooltipWidth: tooltipEl.current.clientWidth,
+      const left = Math.min(
+        e.clientX + 12,
+        window.innerWidth - tooltipEl.current.clientWidth - 20
+      );
+      const top = e.clientY + 20;
 
-        numTicks,
-        sampleRate,
-        units,
-        format,
+      const style: React.CSSProperties = {
+        top,
+        left,
+        visibility: 'visible',
+      };
+      setStyle(style);
 
-        xyToData,
-      });
+      // set the content
+      switch (props.format) {
+        case 'single': {
+          const data = props.xyToData(e.offsetX, e.offsetY);
 
-      setStyle(d.style);
-      setContent(d.content);
+          const d = formatSingle(
+            formatter,
+            data.total,
+            props.sampleRate,
+            props.numTicks
+          );
+
+          setContent({
+            title: {
+              text: data.name,
+              diff: {
+                text: '',
+                color: '',
+              },
+            },
+            left: d.left,
+            right: '',
+          });
+
+          break;
+        }
+
+        case 'double': {
+          const data = props.xyToData(e.offsetX, e.offsetY);
+
+          const d = formatDouble({
+            formatter,
+            sampleRate: props.sampleRate,
+            totalLeft: data.totalLeft,
+            leftTicks: props.leftTicks,
+            totalRight: data.totalRight,
+            rightTicks: props.rightTicks,
+            title: data.name,
+          });
+
+          setContent({
+            title: d.title,
+            left: d.left,
+            right: d.right,
+          });
+
+          break;
+        }
+        default:
+          throw new Error(`Unsupported format:'`);
+      }
     },
 
     // these are the dependencies from props
@@ -150,13 +208,14 @@ interface Formatter {
 
 function formatSingle(
   formatter: Formatter,
-  percent: number,
-  numBarTicks: number,
-  sampleRate: number
+  total: number,
+  sampleRate: number,
+  numTicks: number
 ) {
+  const percent = formatPercent(total / numTicks);
   const left = `${percent}, ${numberWithCommas(
-    numBarTicks
-  )} samples, ${formatter.format(numBarTicks, sampleRate)}`;
+    total
+  )} samples, ${formatter.format(total, sampleRate)}`;
 
   return {
     left,
@@ -167,19 +226,25 @@ function formatDouble({
   formatter,
   sampleRate,
   totalLeft,
-  leftPercent,
+  leftTicks,
   totalRight,
-  rightPercent,
+  rightTicks,
   title,
 }: {
   formatter: Formatter;
   sampleRate: number;
   totalLeft: number;
-  leftPercent: number;
+  leftTicks: number;
   totalRight: number;
-  rightPercent: number;
+  rightTicks: number;
   title: string;
 }) {
+  const leftRatio = totalLeft / leftTicks;
+  const rightRatio = totalRight / rightTicks;
+
+  const leftPercent = ratioToPercent(leftRatio);
+  const rightPercent = ratioToPercent(rightRatio);
+
   const left = `Left: ${numberWithCommas(
     totalLeft
   )} samples, ${formatter.format(totalLeft, sampleRate)} (${leftPercent}%)`;
@@ -228,89 +293,4 @@ function percentDiff(leftPercent: number, rightPercent: number): number {
   // difference between 2 percents
   // https://en.wikipedia.org/wiki/Relative_change_and_difference
   return ((rightPercent - leftPercent) / leftPercent) * 100;
-}
-
-interface onMouseMoveArgs {
-  x: number;
-  y: number;
-  clientX: number;
-  clientY: number;
-  windowWidth: number;
-  tooltipWidth: number;
-  format: 'single' | 'double';
-
-  numTicks: number;
-  sampleRate: number;
-  units: Units;
-
-  xyToData: xyToData;
-}
-
-function onMouseMove(args: onMouseMoveArgs) {
-  const data = args.xyToData(args.format, args.x, args.y);
-
-  const left = Math.min(
-    args.clientX + 12,
-    args.windowWidth - args.tooltipWidth - 20
-  );
-  const top = args.clientY + 20;
-
-  const style: React.CSSProperties = {
-    top,
-    left,
-    visibility: 'visible',
-  };
-
-  const formatter = getFormatter(args.numTicks, args.sampleRate, args.units);
-
-  // format is either single, double or something else
-  switch (data.format) {
-    case 'single': {
-      const d = formatSingle(
-        formatter,
-        data.percent,
-        data.numBarTicks,
-        args.sampleRate
-      );
-
-      return {
-        style,
-        content: {
-          title: {
-            text: data.title,
-            diff: {
-              text: '',
-              color: '',
-            },
-          },
-          left: d.left,
-          right: '',
-        },
-      };
-    }
-
-    case 'double': {
-      const d = formatDouble({
-        formatter,
-        sampleRate: args.sampleRate,
-        totalLeft: data.left,
-        totalRight: data.right,
-        leftPercent: data.leftPercent,
-        rightPercent: data.rightPercent,
-        title: data.title,
-      });
-
-      return {
-        style,
-        content: {
-          title: d.title,
-          left: d.left,
-          right: d.right,
-        },
-      };
-    }
-
-    default:
-      throw new Error(`Unsupported format: '${JSON.stringify(data)}'`);
-  }
 }
