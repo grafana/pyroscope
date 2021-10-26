@@ -3,6 +3,8 @@ package spy
 
 import (
 	"fmt"
+
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 )
 
 type Spy interface {
@@ -58,7 +60,7 @@ func (t ProfileType) AggregationType() string {
 }
 
 // TODO: this interface is not the best as different spies have different arguments
-type SpyIntitializer func(pid int, profileType ProfileType, sampleRate uint32, disableGCRuns bool) (Spy, error)
+type SpyIntitializer func(pid int, profileType ProfileType, sampleRate uint32, disableGCRuns bool, u upstream.Upstream) (Spy, error)
 
 var (
 	supportedSpiesMap map[string]SpyIntitializer

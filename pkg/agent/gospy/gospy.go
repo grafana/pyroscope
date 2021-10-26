@@ -15,6 +15,7 @@ import (
 
 	pprof_parser "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 )
 
 // TODO: make this configurable
@@ -28,6 +29,7 @@ type GoSpy struct {
 	profileType   spy.ProfileType
 	disableGCRuns bool
 	sampleRate    uint32
+	upstream      upstream.Upstream
 
 	lastGCGeneration uint32
 
@@ -43,13 +45,14 @@ func stopCPUProfile(hz uint32) {
 	pprof.StopCPUProfile()
 }
 
-func Start(_ int, profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool) (spy.Spy, error) {
+func Start(_ int, profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool, u upstream.Upstream) (spy.Spy, error) {
 	s := &GoSpy{
 		stopCh:        make(chan struct{}),
 		buf:           &bytes.Buffer{},
 		profileType:   profileType,
 		disableGCRuns: disableGCRuns,
 		sampleRate:    sampleRate,
+		upstream:      u,
 	}
 	if s.profileType == spy.ProfileCPU {
 		if err := startCPUProfile(s.buf, sampleRate); err != nil {

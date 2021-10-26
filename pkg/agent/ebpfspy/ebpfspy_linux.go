@@ -1,3 +1,4 @@
+//go:build ebpfspy
 // +build ebpfspy
 
 // Package ebpfspy provides integration with Linux eBPF. It calls profile.py from BCC tools:
@@ -9,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 )
 
 type EbpfSpy struct {
@@ -21,7 +23,7 @@ type EbpfSpy struct {
 	stopCh chan struct{}
 }
 
-func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
+func Start(pid int, _ spy.ProfileType, _ uint32, _ bool, _ upstream.Upstream) (spy.Spy, error) {
 	s := newSession(pid)
 	err := s.Start()
 	if err != nil {

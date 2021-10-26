@@ -1,9 +1,11 @@
+//go:build dotnetspy
 // +build dotnetspy
 
 package dotnetspy
 
 import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 )
 
 type DotnetSpy struct {
@@ -15,7 +17,7 @@ func init() {
 	spy.RegisterSpy("dotnetspy", Start)
 }
 
-func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
+func Start(pid int, _ spy.ProfileType, _ uint32, _ bool, _ upstream.Upstream) (spy.Spy, error) {
 	s := newSession(pid)
 	_ = s.start()
 	return &DotnetSpy{session: s}, nil

@@ -255,7 +255,7 @@ func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
 	}
 
 	for _, pt := range ps.profileTypes {
-		s, err := sf(pid, pt, ps.sampleRate, ps.disableGCRuns)
+		s, err := sf(pid, pt, ps.sampleRate, ps.disableGCRuns, ps.upstream)
 
 		if err != nil {
 			return res, err

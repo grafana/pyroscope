@@ -1,3 +1,4 @@
+//go:build debugspy
 // +build debugspy
 
 package debugspy
@@ -6,13 +7,14 @@ import (
 	"fmt"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 )
 
 type DebugSpy struct {
 	pid int
 }
 
-func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
+func Start(pid int, _ spy.ProfileType, _ uint32, _ bool, _ upstream.Upstream) (spy.Spy, error) {
 	return &DebugSpy{
 		pid: pid,
 	}, nil

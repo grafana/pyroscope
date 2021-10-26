@@ -1,3 +1,4 @@
+//go:build pyspy
 // +build pyspy
 
 // Package pyspy is a wrapper around this library called pyspy written in Rust
@@ -17,6 +18,7 @@ import (
 	"unsafe"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 )
 
 // TODO: make this configurable
@@ -36,7 +38,7 @@ type PySpy struct {
 	pid int
 }
 
-func Start(pid int, _ spy.ProfileType, _ uint32, _ bool) (spy.Spy, error) {
+func Start(pid int, _ spy.ProfileType, _ uint32, _ bool, _ upstream.Upstream) (spy.Spy, error) {
 	dataBuf := make([]byte, bufferLength)
 	dataPtr := unsafe.Pointer(&dataBuf[0])
 
