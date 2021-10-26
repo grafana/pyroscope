@@ -221,7 +221,7 @@ update-changelog: ## Update the changelog
 .PHONY: update-protobuf
 update-protobuf: ## Update the protobuf
 	go install google.golang.org/protobuf/cmd/protoc-gen-go
-	protoc --go_out=. pkg/convert/profile.proto
+	protoc --go_out=. pkg/agent/pprof/profile.proto
 
 .PHONY: docker-dev
 docker-dev: ## Build the docker dev
