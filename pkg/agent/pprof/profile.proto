@@ -40,7 +40,7 @@ syntax = "proto3";
 
 package perftools.profiles;
 
-option go_package = "pkg/convert";
+option go_package = "pkg/agent/pprof";
 
 message Profile {
   // A description of the samples associated with each Sample.value.
