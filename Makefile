@@ -201,6 +201,11 @@ go-deps-graph: ## Generate the deps graph
 	sh scripts/dependency-graph.sh
 	open -a "/Applications/Google Chrome.app" tmp/go-deps-graph.svg
 
+.PHONY: client-deps-graph
+client-deps-graph: ## Generate client dependencies graph
+	sh scripts/client-dependency-graph.sh
+	open -a "/Applications/Google Chrome.app" tmp/client-deps-graph.svg
+
 .PHONY: clean
 clean: ## Clean up storage
 	rm -rf tmp/pyroscope-storage
