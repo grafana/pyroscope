@@ -194,42 +194,43 @@ describe('Flamegraph', () => {
         });
       });
 
-      it.only('maps even when focused on a node', () => {
-        // canvas = document.createElement('canvas');
-        // canvas.width = CANVAS_WIDTH;
-        // canvas.height = CANVAS_HEIGHT;
-
-        const fitMode = 'HEAD';
-        const highlightQuery = '';
-        const zoom = { i: -1, j: -1 };
-
-        const focusedNode = { i: 2, j: 0 };
-
-        flame = new Flamegraph(
-          TestData.SimpleTree,
-          canvas,
-          focusedNode,
-          fitMode,
-          highlightQuery,
-          zoom
-        );
-
-        expect(flame.xyToBarData(1, 0)).toMatchObject({
-          format: 'single',
-          name: 'total',
-          offset: 217,
-          self: 0,
-          total: 771,
-        });
-
-        expect(flame.xyToBarData(1, BAR_HEIGHT)).toMatchObject({
-          format: 'single',
-          name: 'main.fastFunction',
-          offset: 217,
-          self: 0,
-          total: 771,
-        });
-      });
+      //      it.only('maps even when focused on a node', () => {
+      //        // canvas = document.createElement('canvas');
+      //        // canvas.width = CANVAS_WIDTH;
+      //        // canvas.height = CANVAS_HEIGHT;
+      //
+      //        const fitMode = 'HEAD';
+      //        const highlightQuery = '';
+      //        const zoom = { i: -1, j: -1 };
+      //
+      //        // main.fastFunction
+      //        const focusedNode = { i: 2, j: 0 };
+      //
+      //        flame = new Flamegraph(
+      //          TestData.SimpleTree,
+      //          canvas,
+      //          focusedNode,
+      //          fitMode,
+      //          highlightQuery,
+      //          zoom
+      //        );
+      //
+      //        //        expect(flame.xyToBarData(1, 0)).toMatchObject({
+      //        //          format: 'single',
+      //        //          name: 'total',
+      //        //          offset: 217,
+      //        //          self: 0,
+      //        //          total: 771,
+      //        //        });
+      //
+      //        expect(flame.xyToBarData(1, BAR_HEIGHT + 1)).toMatchObject({
+      //          format: 'single',
+      //          name: 'main.fastFunction',
+      //          offset: 217,
+      //          self: 0,
+      //          total: 771,
+      //        });
+      //      });
     });
 
     describe('double', () => {
@@ -384,6 +385,109 @@ describe('Flamegraph', () => {
         y: 44,
       });
       expect(got.width).toBeCloseTo(129.95951417004048);
+    });
+
+    //        expect(flame.xyToBarData(1, BAR_HEIGHT + 1)).toMatchObject({
+    //          format: 'single',
+    //          name: 'main.fastFunction',
+    //          offset: 217,
+    //          self: 0,
+    //          total: 771,
+    //        });
+  });
+  describe.only('xyToBar', () => {
+    beforeAll(() => {
+      canvas = document.createElement('canvas');
+      canvas.width = CANVAS_WIDTH;
+      canvas.height = CANVAS_HEIGHT;
+    });
+
+    describe.only('focused', () => {
+      beforeAll(() => {
+        const fitMode = 'HEAD';
+        const highlightQuery = '';
+        const zoom = { i: -1, j: -1 };
+
+        // main.main
+        const focusedNode = { i: 1, j: 0 };
+
+        flame = new Flamegraph(
+          TestData.SimpleTree,
+          canvas,
+          focusedNode,
+          fitMode,
+          highlightQuery,
+          zoom
+        );
+      });
+
+      it('matches the total bar', () => {
+        expect(flame.xyToBar(1, 0)).toMatchObject({ i: 0, j: 0 });
+      });
+
+      it('matches the focused node on the first row', () => {
+        expect(flame.xyToBar(1, BAR_HEIGHT + 1)).toMatchObject({
+          i: 1,
+          j: 0,
+        });
+      });
+
+      it('matches the focused node on the second row', () => {
+        expect(flame.xyToBar(1, BAR_HEIGHT * 2 + 1)).toMatchObject({
+          i: 2,
+          j: 0,
+        });
+      });
+    });
+
+    // TODO (only zoomed)
+
+    describe('focused and zoomed', () => {
+      beforeAll(() => {
+        const fitMode = 'HEAD';
+        const highlightQuery = '';
+        const zoom = { i: 2, j: 0 };
+
+        // main.main
+        const focusedNode = { i: 1, j: 0 };
+
+        flame = new Flamegraph(
+          TestData.SimpleTree,
+          canvas,
+          focusedNode,
+          fitMode,
+          highlightQuery,
+          zoom
+        );
+      });
+
+      it('matches the total bar', () => {
+        expect(flame.xyToBar(1, 0)).toMatchObject({ i: 0, j: 0 });
+      });
+
+      it('matches the focused node on the first row', () => {
+        expect(flame.xyToBar(1, BAR_HEIGHT + 1)).toMatchObject({
+          i: 1,
+          j: 0,
+        });
+      });
+
+      it('matches a node on the left on the second row', () => {
+        expect(flame.xyToBar(1, BAR_HEIGHT * 2 + 1)).toMatchObject({
+          i: 2,
+          j: 0,
+        });
+      });
+
+      // that same node should've been expanded to full width
+      it('matches a node on the right on the second row', () => {
+        expect(
+          flame.xyToBar(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1)
+        ).toMatchObject({
+          i: 2,
+          j: 0,
+        });
+      });
     });
   });
 });

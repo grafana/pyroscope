@@ -53,6 +53,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       e.nativeEvent.offsetY
     );
 
+    console.log('zooming on ', { i, j });
     onZoom(i, j);
   };
 

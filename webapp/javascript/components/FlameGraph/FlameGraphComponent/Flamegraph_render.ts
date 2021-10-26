@@ -73,7 +73,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   const { numTicks, sampleRate, zoom } = props;
   const { fitMode } = props;
   const { units } = props;
-  let { rangeMin, rangeMax } = props;
+  const { rangeMin, rangeMax } = props;
 
   // clientWidth includes padding
   // however it's not present in node-canvas (used for testing)
@@ -108,26 +108,26 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     focusedNode.j = 0;
   }
 
-  const focusMin =
-    ff.getBarOffset(levels[focusedNode.i], focusedNode.j) / numTicks;
-
-  const focusMax =
-    (ff.getBarOffset(levels[focusedNode.i], focusedNode.j) +
-      ff.getBarTotal(levels[focusedNode.i], focusedNode.j)) /
-    numTicks;
-
-  // in case we are focusing
-  // if focus is set but rangemin is not
-  // or zoom is smaller
-  if (
-    (focusMin !== 0 && rangeMin === 0) ||
-    (focusMax !== 1 && rangeMax === 1) ||
-    rangeMin < focusMin
-  ) {
-    rangeMin = focusMin;
-    rangeMax = focusMax;
-    console.log('focus min is smaller than rageMin');
-  }
+  //  const focusMin =
+  //    ff.getBarOffset(levels[focusedNode.i], focusedNode.j) / numTicks;
+  //
+  //  const focusMax =
+  //    (ff.getBarOffset(levels[focusedNode.i], focusedNode.j) +
+  //      ff.getBarTotal(levels[focusedNode.i], focusedNode.j)) /
+  //    numTicks;
+  //
+  //  // in case we are focusing
+  //  // if focus is set but rangemin is not
+  //  // or zoom is smaller
+  //  if (
+  //    (focusMin !== 0 && rangeMin === 0) ||
+  //    (focusMax !== 1 && rangeMax === 1) ||
+  //    rangeMin < focusMin
+  //  ) {
+  //    rangeMin = focusMin;
+  //    rangeMax = focusMax;
+  //    console.log('focus min is smaller than rageMin');
+  //  }
   const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
 
   //  const pxPerTick = graphWidth / numTicks / (focusMax - focusMin);
@@ -251,6 +251,8 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
         props.highlightQuery
       );
 
+      // TODO
+      // this is wroooooooooooooooong
       let numBarTicks = ff.getBarTotal(level, j);
 
       // merge very small blocks into big "collapsed" ones for performance
