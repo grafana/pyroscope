@@ -549,7 +549,182 @@ describe('Flamegraph', () => {
       });
     });
 
-    describe.only('zoomed', () => {
+    describe.only('focused', () => {
+      describe('on the first row (runtime.main)', () => {
+        beforeAll(() => {
+          canvas = document.createElement('canvas');
+          canvas.width = CANVAS_WIDTH;
+          canvas.height = CANVAS_HEIGHT;
+
+          const fitMode = 'HEAD';
+          const highlightQuery = '';
+          const zoom = { i: -1, j: -1 };
+          const focusedNode = { i: 1, j: 0 };
+
+          flame = new Flamegraph(
+            TestData.SimpleTree,
+            canvas,
+            focusedNode,
+            fitMode,
+            highlightQuery,
+            zoom
+          );
+
+          flame.render();
+        });
+
+        it('works with the first bar (total)', () => {
+          const got = flame.xyToBar2(0, 0);
+          expect(got.x).toBe(0);
+          expect(got.y).toBe(0);
+          expect(got.width).toBeCloseTo(CANVAS_WIDTH);
+        });
+
+        it('works with a full bar (runtime.main)', () => {
+          // 2nd line,
+          const got = flame.xyToBar2(0, BAR_HEIGHT + 1);
+
+          expect(got).toMatchObject({
+            i: 1,
+            j: 0,
+            x: 0,
+            y: 22,
+          });
+
+          expect(got.width).toBeCloseTo(CANVAS_WIDTH);
+        });
+        //
+        //
+        it('works with (main.fastFunction)', () => {
+          // 3nd line, 'slowFunction'
+          const got = flame.xyToBar2(1, BAR_HEIGHT * 2 + 1);
+
+          expect(got).toMatchObject({
+            i: 2,
+            j: 0,
+            x: 0,
+            y: 44,
+          });
+
+          expect(got.width).toBeCloseTo(129.95951417004048);
+        });
+        //
+        it('works with (main.slowFunction)', () => {
+          // 3nd line, 'slowFunction'
+          const got = flame.xyToBar2(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1);
+
+          expect(got).toMatchObject({
+            i: 2,
+            j: 8,
+          });
+          expect(got.x).toBeCloseTo(131.78);
+          expect(got.y).toBe(44);
+          expect(got.width).toBeCloseTo(468.218);
+        });
+      });
+
+      describe('on main.slowFunction', () => {
+        beforeAll(() => {
+          canvas = document.createElement('canvas');
+          canvas.width = CANVAS_WIDTH;
+          canvas.height = CANVAS_HEIGHT;
+
+          const fitMode = 'HEAD';
+          const highlightQuery = '';
+          const zoom = { i: -1, j: -1 };
+          const focusedNode = { i: 2, j: 8 };
+
+          flame = new Flamegraph(
+            TestData.SimpleTree,
+            canvas,
+            focusedNode,
+            fitMode,
+            highlightQuery,
+            zoom
+          );
+
+          flame.render();
+        });
+
+        it('works with the first row (total)', () => {
+          const got = flame.xyToBar2(0, 0);
+          expect(got.x).toBe(0);
+          expect(got.y).toBe(0);
+          expect(got.width).toBeCloseTo(CANVAS_WIDTH);
+        });
+
+        it('works with itself as second row (main.slowFunction)', () => {
+          // 2nd line,
+          const got = flame.xyToBar2(1, BAR_HEIGHT + 1);
+
+          expect(got).toMatchObject({
+            i: 2,
+            j: 8,
+            x: 0,
+            y: 22,
+          });
+
+          expect(got.width).toBeCloseTo(CANVAS_WIDTH);
+        });
+
+        it('works withs child as third row (main.work)', () => {
+          // 2nd line,
+          const got = flame.xyToBar2(1, BAR_HEIGHT * 2 + 1);
+
+          expect(got).toMatchObject({
+            i: 3,
+            j: 8,
+            x: 0,
+            y: 44,
+          });
+
+          expect(got.width).toBeCloseTo(CANVAS_WIDTH);
+        });
+        //
+
+        //        it('works with (main.fastFunction)', () => {
+        //          // 3nd line, 'slowFunction'
+        //          const got = flame.xyToBar2(1, BAR_HEIGHT * 2 + 1);
+        //
+        //          expect(got).toMatchObject({
+        //            i: 2,
+        //            j: 8,
+        //            x: 0,
+        //            y: 44,
+        //          });
+        //
+        //          expect(got.width).toBeCloseTo(CANVAS_WIDTH);
+        //        });
+        //
+        //        it('works with (main.slowFunction)', () => {
+        //          // 3nd line, 'slowFunction'
+        //          const got = flame.xyToBar2(1, BAR_HEIGHT * 2 + 1);
+        //
+        //          expect(got).toMatchObject({
+        //            i: 2,
+        //            j: 8,
+        //            x: 0,
+        //            y: 44,
+        //          });
+        //
+        //          expect(got.width).toBeCloseTo(CANVAS_WIDTH);
+        //        });
+        //  it('works with main.work (child of main.slowFunction)', () => {
+        //    // 3nd line, 'slowFunction'
+        //    const got = flame.xyToBar2(1, BAR_HEIGHT * 3 + 1);
+
+        //    expect(got).toMatchObject({
+        //      i: 3,
+        //      j: 8,
+        //      x: 0,
+        //      y: 66,
+        //    });
+        //    expect(got.width).toBeCloseTo(CANVAS_WIDTH);
+        //  });
+      });
+    });
+
+    describe('zoomed', () => {
       describe('on the first row (runtime.main)', () => {
         beforeAll(() => {
           canvas = document.createElement('canvas');

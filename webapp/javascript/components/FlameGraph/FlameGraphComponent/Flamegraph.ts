@@ -314,15 +314,15 @@ export default class Flamegraph {
       return false;
     }
 
-    try {
-      const { i, j } = this.xyToBar(x, y);
-      if (j === -1 || i === -1) {
-        return false;
-      }
-    } catch (e) {
-      return false;
-    }
-
+    //    try {
+    //      const { i, j } = this.xyToBar(x, y);
+    //      if (j === -1 || i === -1) {
+    //        return false;
+    //      }
+    //    } catch (e) {
+    //      return false;
+    //    }
+    //
     return true;
   };
 
@@ -342,8 +342,17 @@ export default class Flamegraph {
     const { ff } = this;
     const { i, j } = this.xyToBar(x, y);
 
-    //    const topLevel = this.zoom.i < 0 ? 0 : this.zoom.i;
-    const topLevel = 0;
+    //    const topLevel = this.focusedNode.i < 0 ? 0 : this.focusedNode.i - 1;
+    // let topLevel = this.focusedNode.i < 0 ? 0 : this.focusedNode.i;
+    const topLevel = this.focusedNode.i < 0 ? 0 : this.focusedNode.i - 1;
+
+    // compensate
+    //    if (topLevel > 0) {
+    //      topLevel += 1;
+    //    }
+
+    //    console.log({ topLevel, i, j, focusedNodeI: this.focusedNode.i });
+    //    const topLevel = 0;
 
     //    console.log({ levels: this.flamebearer.levels, i, topLevel });
     const level = this.flamebearer.levels[i];
@@ -355,7 +364,9 @@ export default class Flamegraph {
     //      (this.isFocused() ? BAR_HEIGHT : 0);
     //
     // const posY = (i - topLevel) * PX_PER_LEVEL;
-    const posY = (i - topLevel) * PX_PER_LEVEL;
+
+    // lower bound is 0
+    const posY = Math.max((i - topLevel) * PX_PER_LEVEL, 0);
 
     //   console.log({
     //     zoomI: this.zoom.i,
@@ -366,16 +377,16 @@ export default class Flamegraph {
     //   });
     //   //  (this.isFocused() ? BAR_HEIGHT : 0);
 
-    console.log({
-      barOffset: ff.getBarOffset(level, j),
-      barTotal: ff.getBarTotal(level, j),
-      tickToX: this.tickToX(
-        ff.getBarOffset(level, j) + ff.getBarTotal(level, j)
-      ),
-      posX,
-      canvasWidth: this.getCanvasWidth(),
-    });
-
+    //    console.log({
+    //      barOffset: ff.getBarOffset(level, j),
+    //      barTotal: ff.getBarTotal(level, j),
+    //      tickToX: this.tickToX(
+    //        ff.getBarOffset(level, j) + ff.getBarTotal(level, j)
+    //      ),
+    //      posX,
+    //      canvasWidth: this.getCanvasWidth(),
+    //    });
+    //
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
       this.getCanvasWidth()
