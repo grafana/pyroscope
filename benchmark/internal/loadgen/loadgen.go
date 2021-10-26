@@ -173,7 +173,8 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 			SampleRate:      100,
 			Units:           "samples",
 			AggregationType: "sum",
-			Trie:            t,
+			Format:          upstream.Trie,
+			Payload:         t,
 		})
 		if err != nil {
 			l.uploadErrors.Add(1)

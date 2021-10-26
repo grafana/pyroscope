@@ -11,6 +11,8 @@ import (
 	//   That's why we do a blank import here and then packages themselves register with the rest of the code.
 
 	_ "github.com/pyroscope-io/pyroscope/pkg/agent/debugspy"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
+
 	// revive:enable:blank-imports
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -54,13 +56,13 @@ var _ = Describe("agent.Session", func() {
 			s.Stop()
 
 			Expect(u.uploads).To(HaveLen(3))
-			u.uploads[0].Trie.Iterate(func(name []byte, val uint64) {
+			u.uploads[0].Payload.(*transporttrie.Trie).Iterate(func(name []byte, val uint64) {
 				Expect(val).To(BeNumerically("~", 19, 2))
 			})
-			u.uploads[1].Trie.Iterate(func(name []byte, val uint64) {
+			u.uploads[1].Payload.(*transporttrie.Trie).Iterate(func(name []byte, val uint64) {
 				Expect(val).To(BeNumerically("~", 20, 2))
 			})
-			u.uploads[2].Trie.Iterate(func(name []byte, val uint64) {
+			u.uploads[2].Payload.(*transporttrie.Trie).Iterate(func(name []byte, val uint64) {
 				Expect(val).To(BeNumerically("~", 11, 2))
 			})
 			close(done)

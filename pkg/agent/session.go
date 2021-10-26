@@ -416,7 +416,8 @@ func (ps *ProfileSession) uploadTries(now time.Time) {
 						SampleRate:      ps.sampleRate,
 						Units:           profileType.Units(),
 						AggregationType: profileType.AggregationType(),
-						Trie:            uploadTrie,
+						Format:          upstream.Trie,
+						Payload:         uploadTrie,
 					})
 				}
 				if profileType.IsCumulative() {

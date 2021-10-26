@@ -46,7 +46,7 @@ type RemoteConfig struct {
 func New(cfg RemoteConfig, logger agent.Logger) (*Remote, error) {
 	remote := &Remote{
 		cfg:  cfg,
-		jobs: make(chan *upstream.UploadJob, 100),
+		jobs: make(chan *upstream.UploadJob, 20),
 		client: &http.Client{
 			Transport: &http.Transport{
 				MaxConnsPerHost: cfg.UpstreamThreads,
@@ -119,13 +119,14 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	q.Set("sampleRate", strconv.Itoa(int(j.SampleRate)))
 	q.Set("units", j.Units)
 	q.Set("aggregationType", j.AggregationType)
+	q.Set("format", string(j.Format))
 
 	u.Path = path.Join(u.Path, "/ingest")
 	u.RawQuery = q.Encode()
 
 	r.Logger.Debugf("uploading at %s", u.String())
 	// new a request for the job
-	request, err := http.NewRequest("POST", u.String(), bytes.NewReader(j.Trie.Bytes()))
+	request, err := http.NewRequest("POST", u.String(), bytes.NewReader(j.Payload.Bytes()))
 	if err != nil {
 		return fmt.Errorf("new http request: %v", err)
 	}

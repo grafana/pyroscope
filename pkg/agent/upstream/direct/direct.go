@@ -10,6 +10,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
 const upstreamThreads = 1
@@ -26,7 +27,7 @@ func New(s *storage.Storage, e storage.MetricsExporter) *Direct {
 	return &Direct{
 		storage:  s,
 		exporter: e,
-		queue:    make(chan *upstream.UploadJob, 100),
+		queue:    make(chan *upstream.UploadJob, 20),
 		stop:     make(chan struct{}),
 	}
 }
@@ -79,9 +80,13 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 		}
 	}
 
-	j.Trie.Iterate(cb)
-	if err = u.storage.Put(pi); err != nil {
-		logrus.WithError(err).Error("failed to store a local profile")
+	if t, ok := j.Payload.(*transporttrie.Trie); ok {
+		t.Iterate(cb)
+		if err = u.storage.Put(pi); err != nil {
+			logrus.WithError(err).Error("failed to store a local profile")
+		}
+	} else {
+		logrus.Error("Direct only supports transporttrie.Trie")
 	}
 }
 

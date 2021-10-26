@@ -2,8 +2,16 @@ package upstream
 
 import (
 	"time"
+)
 
-	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
+type UploadFormat string
+type Payload interface {
+	Bytes() []byte
+}
+
+const (
+	Pprof UploadFormat = "pprof"
+	Trie               = "trie"
 )
 
 type UploadJob struct {
@@ -14,7 +22,8 @@ type UploadJob struct {
 	SampleRate      uint32
 	Units           string
 	AggregationType string
-	Trie            *transporttrie.Trie
+	Format          UploadFormat
+	Payload         Payload
 }
 
 type Upstream interface {

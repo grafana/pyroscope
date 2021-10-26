@@ -61,7 +61,8 @@ var _ = Describe("remote.Remote", func() {
 						SpyName:    "debugspy",
 						SampleRate: 100,
 						Units:      "samples",
-						Trie:       t,
+						Format:     upstream.Trie,
+						Payload:    t,
 					})
 				}
 

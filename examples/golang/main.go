@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"runtime/pprof"
+	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/profiler"
 )
@@ -35,10 +37,20 @@ func main() {
 		ApplicationName: "simple.golang.app",
 		ServerAddress:   "http://localhost:4040", // this will run inside docker-compose, hence `pyroscope` for hostname
 	})
-	profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
-		for {
-			fastFunction(c)
-			slowFunction(c)
-		}
-	})
+
+	recursion(0)
+	// profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
+	// 	for {
+	// 		fastFunction(c)
+	// 		slowFunction(c)
+	// 	}
+	// })
+}
+
+func recursion(n int) {
+	if n%100000 == 0 {
+		log.Printf("recursion %d", n)
+		time.Sleep(time.Duration(n) * time.Microsecond)
+	}
+	recursion(n + 1)
 }
