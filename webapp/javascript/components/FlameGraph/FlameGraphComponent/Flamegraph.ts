@@ -279,7 +279,6 @@ export default class Flamegraph {
 
     // only focus is set
     if (isSet(this.focusedNode) && !isSet(this.zoom)) {
-      //     console.info('using focused because only focus is set');
       compensation = compensatedFocusedY;
     }
 
@@ -298,8 +297,16 @@ export default class Flamegraph {
 
     // if we are zoomed or focused, the root has changed
     // so we must add back these numbers
-    const i = Math.round(computedY / PX_PER_LEVEL) + compensation;
-
+    //    const i = Math.round(computedY / PX_PER_LEVEL) + compensation;
+    const i = Math.floor(computedY / PX_PER_LEVEL) + compensation;
+    //    console.log({
+    //      computedY,
+    //      PX_PER_LEVEL,
+    //      compensation,
+    //      total: computedY / PX_PER_LEVEL + compensation,
+    //      rounded: Math.round(computedY / PX_PER_LEVEL + compensation),
+    //    });
+    //
     if (i >= 0 && i < this.flamebearer.levels.length) {
       const j = this.binarySearchLevel(x, this.flamebearer.levels[i]);
 
@@ -446,11 +453,13 @@ export default class Flamegraph {
   public xyToBar2(x: number, y: number) {
     const { i, j } = this.xyToBar(x, y);
     const position = this.xyToBarPosition(x, y);
+    const data = this.xyToBarData(x, y);
 
     return {
       i,
       j,
       ...position,
+      ...data,
     };
   }
 }

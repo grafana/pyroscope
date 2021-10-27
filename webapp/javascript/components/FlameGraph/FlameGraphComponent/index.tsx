@@ -53,12 +53,11 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       e.nativeEvent.offsetY
     );
 
-    console.log('zooming on ', { i, j });
     onZoom(i, j);
   };
 
   const xyToHighlightData = (x: number, y: number) => {
-    const bar = flamegraph.xyToBarPosition(x, y);
+    const bar = flamegraph.xyToBar2(x, y);
 
     return {
       left: canvasRef.current.offsetLeft + bar.x,

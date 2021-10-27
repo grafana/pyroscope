@@ -516,7 +516,7 @@ describe('Flamegraph', () => {
       });
 
       it('works with the first bar (total)', () => {
-        const got = flame.xyToBarPosition(0, 0);
+        const got = flame.xyToBar2(0, 0);
         expect(got.x).toBe(0);
         expect(got.y).toBe(0);
         expect(got.width).toBeCloseTo(CANVAS_WIDTH);
@@ -524,7 +524,7 @@ describe('Flamegraph', () => {
 
       it('works a full bar (runtime.main)', () => {
         // 2nd line,
-        const got = flame.xyToBarPosition(0, BAR_HEIGHT + 1);
+        const got = flame.xyToBar2(0, BAR_HEIGHT + 1);
         expect(got.x).toBe(0);
         expect(got.y).toBe(22);
         expect(got.width).toBeCloseTo(CANVAS_WIDTH);
@@ -532,7 +532,7 @@ describe('Flamegraph', () => {
 
       it('works with (main.fastFunction)', () => {
         // 3nd line, 'slowFunction'
-        const got = flame.xyToBarPosition(1, BAR_HEIGHT * 2 + 1);
+        const got = flame.xyToBar2(1, BAR_HEIGHT * 2 + 1);
 
         expect(got.x).toBe(0);
         expect(got.y).toBe(44);
@@ -541,15 +541,39 @@ describe('Flamegraph', () => {
 
       it('works with (main.slowFunction)', () => {
         // 3nd line, 'slowFunction'
-        const got = flame.xyToBarPosition(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1);
+        const got = flame.xyToBar2(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1);
 
         expect(got.x).toBeCloseTo(131.78);
         expect(got.y).toBe(44);
         expect(got.width).toBeCloseTo(468.218);
       });
+
+      describe('boundary testing', () => {
+        const cases = [
+          [0, 0],
+          [CANVAS_WIDTH, 0],
+          [1, BAR_HEIGHT],
+          [CANVAS_WIDTH, BAR_HEIGHT],
+          [CANVAS_WIDTH / 2, BAR_HEIGHT / 2],
+        ];
+        test.each(cases)(
+          'given %p and %p as arguments, returns the total bar',
+          (i: number, j: number) => {
+            const got = flame.xyToBar2(i, j);
+            expect(got).toMatchObject({
+              i: 0,
+              j: 0,
+              x: 0,
+              y: 0,
+            });
+
+            expect(got.width).toBeCloseTo(CANVAS_WIDTH);
+          }
+        );
+      });
     });
 
-    describe.only('focused', () => {
+    describe('focused', () => {
       describe('on the first row (runtime.main)', () => {
         beforeAll(() => {
           canvas = document.createElement('canvas');
@@ -667,7 +691,7 @@ describe('Flamegraph', () => {
           expect(got.width).toBeCloseTo(CANVAS_WIDTH);
         });
 
-        it('works withs child as third row (main.work)', () => {
+        it('works with its child as third row (main.work)', () => {
           // 2nd line,
           const got = flame.xyToBar2(1, BAR_HEIGHT * 2 + 1);
 
@@ -858,8 +882,9 @@ describe('Flamegraph', () => {
         });
 
         it('works with main.work (child of main.slowFunction)', () => {
-          // 3nd line, 'slowFunction'
-          const got = flame.xyToBar2(1, BAR_HEIGHT * 3 + 1);
+          // 4th line, 'main.work'
+          // TODO why 2??
+          const got = flame.xyToBar2(1, BAR_HEIGHT * 3 + 2);
 
           expect(got).toMatchObject({
             i: 3,

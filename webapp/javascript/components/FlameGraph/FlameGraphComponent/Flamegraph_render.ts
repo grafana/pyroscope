@@ -222,18 +222,6 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     ctx.restore();
   }
 
-  //  console.log('topLevel', topLevel);
-
-  //  for (let i = 0; i < levels.length - focusedNode.i; i += 1) {
-  //    const level = levels[topLevel + i];
-  //    for (let j = 0; j < level.length; j += ff.jStep) {
-  //      const min = ff.getBarOffset(level, j) / numTicks;
-  //      const max =
-  //        (ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) / numTicks;
-  //    }
-  //  }
-
-  console.log('starting loop');
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
@@ -373,7 +361,6 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       ctx.restore();
     }
   }
-  console.log('finishihng loop');
 }
 
 function getFunctionName(
