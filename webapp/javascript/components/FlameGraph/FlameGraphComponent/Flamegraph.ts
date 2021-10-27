@@ -1,6 +1,7 @@
 import { createFF } from '@utils/flamebearer';
 import { Flamebearer } from '@models/flamebearer';
 import { DeepReadonly } from 'ts-essentials';
+import { Option } from 'prelude-ts';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
@@ -8,14 +9,14 @@ import RenderCanvas from './Flamegraph_render';
 
 /* eslint-disable no-useless-constructor */
 
+// branded type
+type XYWithinBounds = { x: number; y: number } & { __brand: 'XYWithinBounds' };
+
+type BarData = { xy: XYWithinBounds };
+// & typeof Flamegraph.xyToBarPosition & this.xyToBarData;
+
 export default class Flamegraph {
   private ff: ReturnType<typeof createFF>;
-
-  // used in zoom
-  //  private rangeMin: number;
-
-  // used in zoom
-  // private rangeMax: number;
 
   constructor(
     private readonly flamebearer: Flamebearer,
@@ -244,7 +245,7 @@ export default class Flamegraph {
     return -1;
   }
 
-  public xyToBar(x: number, y: number) {
+  private xyToBarIndex(x: number, y: number) {
     if (x < 0 || y < 0) {
       throw new Error(`x and y must be bigger than 0. x = ${x}, y = ${y}`);
     }
@@ -268,12 +269,8 @@ export default class Flamegraph {
 
     let compensation = 0;
 
-    //    console.info('zoom', this.zoom);
-    //    console.log('focusedNode', this.focusedNode);
-
     // both are set, prefer focus
     if (isSet(this.zoom) && isSet(this.focusedNode)) {
-      //    console.info('using focused because both are set');
       compensation = compensatedFocusedY;
     }
 
@@ -284,29 +281,11 @@ export default class Flamegraph {
 
     // only zoom is set
     if (isSet(this.zoom) && !isSet(this.focusedNode)) {
-      //      console.info('using zoom because only zoom is set');
       compensation = 0;
-      //      compensation = -compensatedZoomY;
     }
 
-    // TODO
-    // shouldn't have to normalize the zoom here
-
-    // TODO logic here
-    // prefer to use focus
-
-    // if we are zoomed or focused, the root has changed
-    // so we must add back these numbers
-    //    const i = Math.round(computedY / PX_PER_LEVEL) + compensation;
     const i = Math.floor(computedY / PX_PER_LEVEL) + compensation;
-    //    console.log({
-    //      computedY,
-    //      PX_PER_LEVEL,
-    //      compensation,
-    //      total: computedY / PX_PER_LEVEL + compensation,
-    //      rounded: Math.round(computedY / PX_PER_LEVEL + compensation),
-    //    });
-    //
+
     if (i >= 0 && i < this.flamebearer.levels.length) {
       const j = this.binarySearchLevel(x, this.flamebearer.levels[i]);
 
@@ -321,25 +300,37 @@ export default class Flamegraph {
       return false;
     }
 
-    //    try {
-    //      const { i, j } = this.xyToBar(x, y);
-    //      if (j === -1 || i === -1) {
-    //        return false;
-    //      }
-    //    } catch (e) {
-    //      return false;
-    //    }
-    //
+    try {
+      const { i, j } = this.xyToBarIndex(x, y);
+      if (j === -1 || i === -1) {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+
     return true;
   };
+
+  private parseXY(x: number, y: number) {
+    const withinBounds = this.isWithinBounds(x, y);
+
+    const v = { x, y } as XYWithinBounds;
+
+    if (withinBounds) {
+      return Option.of(v);
+    }
+
+    return Option.none<typeof v>();
+  }
 
   /*
    * Given x and y coordinates
    * identify the bar position and width
    *
-   * This can be used for highlighting
+   * Invariants: x and y are within bound
    */
-  public xyToBarPosition = (x: number, y: number) => {
+  private xyToBarPosition = (x: number, y: number) => {
     if (!this.isWithinBounds(x, y)) {
       throw new Error(
         `Value out of bounds. Can't get bar position x:'${x}', y:'${y}'`
@@ -347,53 +338,16 @@ export default class Flamegraph {
     }
 
     const { ff } = this;
-    const { i, j } = this.xyToBar(x, y);
+    const { i, j } = this.xyToBarIndex(x, y);
 
-    //    const topLevel = this.focusedNode.i < 0 ? 0 : this.focusedNode.i - 1;
-    // let topLevel = this.focusedNode.i < 0 ? 0 : this.focusedNode.i;
     const topLevel = this.focusedNode.i < 0 ? 0 : this.focusedNode.i - 1;
 
-    // compensate
-    //    if (topLevel > 0) {
-    //      topLevel += 1;
-    //    }
-
-    //    console.log({ topLevel, i, j, focusedNodeI: this.focusedNode.i });
-    //    const topLevel = 0;
-
-    //    console.log({ levels: this.flamebearer.levels, i, topLevel });
     const level = this.flamebearer.levels[i];
     const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
-
-    // TODO shouldn't have to normalize this
-    //    const posY =
-    //      (i - (this.zoom.i <= 0 ? 0 : this.zoom.i)) * PX_PER_LEVEL +
-    //      (this.isFocused() ? BAR_HEIGHT : 0);
-    //
-    // const posY = (i - topLevel) * PX_PER_LEVEL;
 
     // lower bound is 0
     const posY = Math.max((i - topLevel) * PX_PER_LEVEL, 0);
 
-    //   console.log({
-    //     zoomI: this.zoom.i,
-    //     topLevel,
-    //     i,
-    //     PX_PER_LEVEL,
-    //     posY,
-    //   });
-    //   //  (this.isFocused() ? BAR_HEIGHT : 0);
-
-    //    console.log({
-    //      barOffset: ff.getBarOffset(level, j),
-    //      barTotal: ff.getBarTotal(level, j),
-    //      tickToX: this.tickToX(
-    //        ff.getBarOffset(level, j) + ff.getBarTotal(level, j)
-    //      ),
-    //      posX,
-    //      canvasWidth: this.getCanvasWidth(),
-    //    });
-    //
     const sw = Math.min(
       this.tickToX(ff.getBarOffset(level, j) + ff.getBarTotal(level, j)) - posX,
       this.getCanvasWidth()
@@ -406,19 +360,14 @@ export default class Flamegraph {
     };
   };
 
-  // TODO maybe we should combine xyToBarPosition with this?
-  /*
-   * Given x and y coordinates
-   * return all node data available in the flamegraph
-   */
-  public xyToBarData(x: number, y: number) {
-    if (!this.isWithinBounds(x, y)) {
-      throw new Error(
-        `Value out of bounds. Can't get bar position. x: '${x}', y: '${y}'`
-      );
-    }
-
-    const { i, j } = this.xyToBar(x, y);
+  private xyToBarData(x: number, y: number) {
+    //    if (!this.isWithinBounds(x, y)) {
+    //      throw new Error(
+    //        `Value out of bounds. Can't get bar position. x: '${x}', y: '${y}'`
+    //      );
+    //    }
+    //
+    const { i, j } = this.xyToBarIndex(x, y);
     const level = this.flamebearer.levels[i];
 
     const { ff } = this;
@@ -451,15 +400,38 @@ export default class Flamegraph {
   }
 
   public xyToBar2(x: number, y: number) {
-    const { i, j } = this.xyToBar(x, y);
+    const xy = this.parseXY(x, y);
+
+    if (xy.isNone()) {
+      throw new Error('Values x and y are not valid');
+    }
+
+    const { i, j } = this.xyToBarIndex(x, y);
     const position = this.xyToBarPosition(x, y);
     const data = this.xyToBarData(x, y);
 
     return {
+      xy,
       i,
       j,
       ...position,
       ...data,
     };
+  }
+
+  public xyToBar3(x: number, y: number) {
+    return this.parseXY(x, y).map((xy) => {
+      const { i, j } = this.xyToBarIndex(x, y);
+      const position = this.xyToBarPosition(x, y);
+      const data = this.xyToBarData(x, y);
+
+      return {
+        xy,
+        i,
+        j,
+        ...position,
+        ...data,
+      };
+    });
   }
 }

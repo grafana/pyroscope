@@ -48,26 +48,32 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   });
 
   const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const { i, j } = flamegraph.xyToBar(
+    const opt = flamegraph.xyToBar3(
       e.nativeEvent.offsetX,
       e.nativeEvent.offsetY
     );
 
-    onZoom(i, j);
+    // only run if it's a valid value
+    if (opt.isSome()) {
+      const bar = opt.get();
+      onZoom(bar.i, bar.j);
+    }
   };
 
   const xyToHighlightData = (x: number, y: number) => {
-    const bar = flamegraph.xyToBar2(x, y);
+    const opt = flamegraph.xyToBar3(x, y);
 
-    return {
-      left: canvasRef.current.offsetLeft + bar.x,
-      top: canvasRef.current.offsetTop + bar.y,
-      width: bar.width,
-    };
+    return opt.map((bar) => {
+      return {
+        left: canvasRef.current.offsetLeft + bar.x,
+        top: canvasRef.current.offsetTop + bar.y,
+        width: bar.width,
+      };
+    });
   };
 
   const xyToTooltipData = (x: number, y: number) => {
-    return flamegraph.xyToBarData(x, y);
+    return flamegraph.xyToBar3(x, y);
   };
 
   // Context Menu stuff
@@ -80,7 +86,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
       // bit ugly
       try {
-        const { i, j } = flamegraph.xyToBar(x, y);
+        const { i, j } = flamegraph.xyToBar2(x, y);
         onClick = onFocusOnNode.bind(null, i, j);
         hoveredOnValidNode = true;
       } catch (e) {
@@ -101,12 +107,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       FocusItem(),
     ];
   };
-
-  // this level of indirection is required
-  // otherwise may get stale props
-  // eg. thinking that a zoomed flamegraph is not zoomed
-  const isWithinBounds = (x: number, y: number) =>
-    flamegraph.isWithinBounds(x, y);
 
   React.useEffect(() => {
     if (canvasRef.current) {
@@ -168,7 +168,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             barHeight={PX_PER_LEVEL}
             canvasRef={canvasRef}
             xyToHighlightData={xyToHighlightData}
-            isWithinBounds={isWithinBounds}
           />
         )}
         {flamegraph && (
@@ -176,7 +175,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             format={flamebearer.format}
             canvasRef={canvasRef}
             xyToData={xyToTooltipData as any /* TODO */}
-            isWithinBounds={isWithinBounds}
             numTicks={flamebearer.numTicks}
             sampleRate={flamebearer.sampleRate}
             leftTicks={flamebearer.format === 'double' && flamebearer.leftTicks}
