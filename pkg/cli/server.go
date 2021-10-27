@@ -17,7 +17,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
 
@@ -38,14 +37,11 @@ type serverService struct {
 
 func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, error) {
 	// TODO(kolesnikovae): remove after testing.
-	const day = time.Hour * 24
-	c.Retention = 8 * time.Hour
-	c.RetentionSize = bytesize.MB * 256
+	c.Retention = 16 * time.Hour
 	c.RetentionLevels = map[int]time.Duration{
 		0: 4 * time.Hour,
-		//		0: 7 * day,
-		//		1: 30 * day,
-		//		2: 180 * day,
+		1: 8 * time.Hour,
+		2: 12 * time.Hour,
 	}
 
 	svc := serverService{

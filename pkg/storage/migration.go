@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v2"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"

@@ -4,8 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dgraph-io/badger/v3"
-	"github.com/dgraph-io/badger/v3/options"
+	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/options"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
@@ -40,7 +40,7 @@ func (p prefix) trim(k []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func (s *Storage) openBadgerDB(name string) (*badger.DB, error) {
+func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, error) {
 	badgerPath := filepath.Join(s.config.StoragePath, name)
 	if err := os.MkdirAll(badgerPath, 0o755); err != nil {
 		return nil, err
@@ -52,16 +52,17 @@ func (s *Storage) openBadgerDB(name string) (*badger.DB, error) {
 		logger.SetLevel(level)
 	}
 
-	return badger.Open(badger.DefaultOptions(badgerPath).
-		// WithTruncate(!s.config.BadgerNoTruncate).
+	badgerDB, err := badger.Open(badger.DefaultOptions(badgerPath).
+		WithTruncate(!s.config.BadgerNoTruncate).
 		WithSyncWrites(false).
 		WithCompactL0OnClose(false).
 		WithCompression(options.ZSTD).
-		WithValueLogFileSize(8 << 20).
-		WithLogger(logger))
-}
+		WithLogger(logger.WithField("badger", name)))
 
-func (s *Storage) newDB(badgerDB *badger.DB, name string, p prefix, codec cache.Codec) *db {
+	if err != nil {
+		return nil, err
+	}
+
 	d := db{
 		name:   name,
 		DB:     badgerDB,
@@ -78,7 +79,16 @@ func (s *Storage) newDB(badgerDB *badger.DB, name string, p prefix, codec cache.
 		})
 	}
 
-	return &d
+	return &d, nil
+}
+
+func (d *db) close() {
+	if d.Cache != nil {
+		d.Cache.Flush()
+	}
+	if err := d.DB.Close(); err != nil {
+		d.logger.WithError(err).Error("closing database")
+	}
 }
 
 func (d *db) size() bytesize.ByteSize {

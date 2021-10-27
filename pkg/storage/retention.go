@@ -2,25 +2,25 @@ package storage
 
 import (
 	"errors"
+	"sync/atomic"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
-
-const batchSize = 1024
 
 // TODO(kolesnikovae): add metrics.
 
 func (s *Storage) CollectGarbage() {
-	s.logger.Info("starting garbage collection")
+	s.logger.Debug("starting garbage collection")
 	rp := s.retentionPolicy()
 	var segmentKeys []*segment.Key
 
 	if !rp.LowerTimeBoundary().IsZero() {
-		s.logger.Info("enforcing time-based retention policy")
+		s.logger.Debug("enforcing time-based retention policy")
 		var err error
 		if segmentKeys, err = s.segmentKeys(); err != nil {
 			s.logger.WithError(err).Error("failed to fetch segment keys")
@@ -41,14 +41,20 @@ func (s *Storage) CollectGarbage() {
 		}
 	}
 
-	if !s.main.runGC(0.000001) {
-		s.logger.Info("garbage collection did not result in reclaimed space")
-		return
-	}
-
-	// Occupied disk space. The value should be as accurate
+	// Overall occupied disk space. The value should be as accurate
 	// as possible and needs to be updated when GC succeeds.
-	s.size = s.calculateDBSize()
+	var size int64
+	s.goDB(func(d *db) {
+		if !d.runGC(0.5) {
+			d.logger.Debug("garbage collection did not result in reclaimed space")
+			return
+		}
+		atomic.AddInt64(&size, s.calculateDBSize(d))
+	})
+	s.size = bytesize.ByteSize(size)
+
+	// TODO(kolesnikovae): explain why this should not be used.
+
 	// No need to proceed if there is no limit on the db size.
 	if rp.SizeLimit() == 0 {
 		return
@@ -65,7 +71,7 @@ func (s *Storage) CollectGarbage() {
 		// Size in bytes to be reclaimed.
 		rs = rp.CapacityToReclaim(s.size, s.reclaimSizeRatio)
 		// Size in bytes to be reclaimed per segment.
-		rsps = rs.Bytes() / len(segmentKeys)
+		rsps = int64(rs.Bytes() / len(segmentKeys))
 	)
 
 	logger := s.logger.WithFields(logrus.Fields{
@@ -74,7 +80,7 @@ func (s *Storage) CollectGarbage() {
 	})
 
 	if rsps == 0 {
-		logger.Info("skipping reclaim")
+		logger.Debug("skipping reclaim")
 		return
 	}
 
@@ -84,7 +90,7 @@ func (s *Storage) CollectGarbage() {
 	//   Another point is that if the procedure has been
 	//   interrupted, data will be removed disproportionally.
 
-	s.logger.Info("enforcing size-based retention policy")
+	s.logger.Debug("enforcing size-based retention policy")
 	for _, k := range segmentKeys {
 		switch err := s.reclaimSegmentSpace(k, rsps); err {
 		default:
@@ -141,7 +147,8 @@ func (s *Storage) deleteSegmentDataBefore(k *segment.Key, rp *segment.RetentionP
 		return s.deleteSegmentAndRelatedData(k)
 	}
 
-	var removed int
+	var removed int64
+	batchSize := s.trees.MaxBatchSize()
 	batch := s.trees.NewWriteBatch()
 	defer batch.Cancel()
 
@@ -177,12 +184,13 @@ func (s *Storage) deleteSegmentDataBefore(k *segment.Key, rp *segment.RetentionP
 	return err
 }
 
-func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) error {
+func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int64) error {
 	batch := s.trees.NewWriteBatch()
 	defer batch.Cancel() // TODO(kolesnikovae): make sure argument is captured.
+	batchSize := s.trees.MaxBatchSize()
 	var (
-		removed   int
-		reclaimed int
+		removed   int64
+		reclaimed int64
 		err       error
 	)
 
@@ -190,11 +198,13 @@ func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) error {
 	rp := &segment.RetentionPolicy{Levels: make(map[int]time.Time)}
 	err = s.trees.View(func(txn *badger.Txn) error {
 		// Lower-level trees come first because of the lexicographical order:
-		// from the very first tree to the most recent one.
+		// from the very first tree to the most recent one, from the lowest
+		// level (with highest resolution) to the highest.
 		it := txn.NewIterator(badger.IteratorOptions{
 			// We count all version so that our estimation is more precise
 			// but slightly higher than the actual size in practice,
-			// meaning that we delete less data (and reclaim less space).
+			// meaning that we delete less data (and reclaim less space);
+			// otherwise there is a chance to remove more trees than needed.
 			AllVersions: true,
 			// The prefix matches all trees in the segment.
 			Prefix: treePrefix.key(k.SegmentKey()),
@@ -209,7 +219,7 @@ func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) error {
 			if tk, ok := treePrefix.trim(item.Key()); ok {
 				treeKey := string(tk)
 				s.trees.Discard(treeKey)
-				// Update time boundary for the segment level.
+				// Update the time boundary for the segment level.
 				t, level, err := segment.ParseTreeKey(treeKey)
 				if err == nil {
 					if t.After(rp.Levels[level]) {
@@ -228,7 +238,7 @@ func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) error {
 				return err
 			}
 
-			reclaimed += int(item.EstimatedSize())
+			reclaimed += item.EstimatedSize()
 			if removed++; removed%batchSize == 0 {
 				if batch, err = s.flushTreeBatch(batch); err != nil {
 					return err
@@ -262,7 +272,7 @@ func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int) error {
 }
 
 // flushTreeBatch commits the changes and returns a new batch. The call returns
-// the batch unchanged in case of an error.
+// the batch unchanged in case of an error so that it can be safely cancelled.
 //
 // If the storage was requested to close, errClosed will be returned.
 func (s *Storage) flushTreeBatch(batch *badger.WriteBatch) (*badger.WriteBatch, error) {
@@ -296,14 +306,4 @@ func (s *Storage) segmentKeys() ([]*segment.Key, error) {
 		}
 		return nil
 	})
-}
-
-func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
-	t := segment.NewRetentionPolicy().
-		SetAbsoluteMaxAge(s.config.Retention).
-		SetSizeLimit(s.config.RetentionSize)
-	for level, threshold := range s.config.RetentionLevels {
-		t.SetLevelMaxAge(level, threshold)
-	}
-	return t
 }

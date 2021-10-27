@@ -13,6 +13,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -64,16 +65,16 @@ func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer) (*S
 		config: c,
 		storageOptions: &storageOptions{
 			metricsUpdateInterval: 10 * time.Second,
-			writeBackInterval:     time.Minute, // 10 * time.Second,
+			writeBackInterval:     time.Minute,
 			evictInterval:         20 * time.Second,
 			cacheTTL:              2 * time.Minute,
 
 			// Interval at which GC happen if the db size has increase more
 			// than by gcSizeDiff since the last probe.
-			gcInterval: time.Minute, // 10 * time.Second,
+			gcInterval: 5 * time.Minute,
 			// gcSizeDiff specifies the minimal storage size difference that
 			// causes garbage collection to trigger.
-			gcSizeDiff: 100 * bytesize.MB, // 0,
+			gcSizeDiff: 256 * bytesize.MB,
 			// reclaimSizeRatio determines the share of the storage size limit
 			// to be reclaimed when size-based retention policy enforced. The
 			// volume to reclaim is calculated as follows:
@@ -86,18 +87,24 @@ func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer) (*S
 		stop:    make(chan struct{}),
 	}
 
-	badgerDB, err := s.openBadgerDB("pyroscope")
-	if err != nil {
+	var err error
+	if s.main, err = s.newBadger("main", "", nil); err != nil {
+		return nil, err
+	}
+	if s.dicts, err = s.newBadger("dicts", dictionaryPrefix, dictionaryCodec{}); err != nil {
+		return nil, err
+	}
+	if s.dimensions, err = s.newBadger("dimensions", dimensionPrefix, dimensionCodec{}); err != nil {
+		return nil, err
+	}
+	if s.segments, err = s.newBadger("segments", segmentPrefix, segmentCodec{}); err != nil {
+		return nil, err
+	}
+	if s.trees, err = s.newBadger("trees", treePrefix, treeCodec{s}); err != nil {
 		return nil, err
 	}
 
-	s.main = s.newDB(badgerDB, "main", "", nil)
 	s.labels = labels.New(s.main.DB)
-
-	s.dicts = s.newDB(badgerDB, "dicts", dictionaryPrefix, dictionaryCodec{})
-	s.dimensions = s.newDB(badgerDB, "dimensions", dimensionPrefix, dimensionCodec{})
-	s.segments = s.newDB(badgerDB, "segments", segmentPrefix, segmentCodec{})
-	s.trees = s.newDB(badgerDB, "trees", treePrefix, treeCodec{s})
 
 	if err = s.migrate(); err != nil {
 		return nil, err
@@ -125,25 +132,49 @@ func (s *Storage) Close() error {
 	close(s.stop)
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.wg.Wait()
-	s.logger.Debug("storage tasks finished")
+	s.logger.Debug("storage tasks to finished")
 	// Dictionaries DB has to close last because trees depend on it.
-	dbs := []*db{
-		s.dimensions,
-		s.segments,
-		s.trees,
-		s.dicts,
-	}
+	s.goDB(func(d *db) {
+		if d != s.dicts {
+			d.close()
+		}
+	})
+	s.dicts.close()
+	return nil
+}
+
+// goDB runs f for all DBs concurrently.
+func (s *Storage) goDB(f func(*db)) {
+	dbs := s.databases()
 	wg := new(sync.WaitGroup)
 	wg.Add(len(dbs))
 	for _, d := range dbs {
-		d := d
-		go func() {
-			d.Cache.Flush()
-			wg.Done()
-		}()
+		go func(db *db) {
+			defer wg.Done()
+			f(db)
+		}(d)
 	}
 	wg.Wait()
-	return s.main.DB.Close()
+}
+
+// TODO(kolesnikovae): filepath.Walk is notoriously slow.
+//  Consider use of https://github.com/karrick/godirwalk.
+//  Although, every badger.DB calculates its size (reported
+//  via Size) in the same way every minute.
+func (s *Storage) calculateDBSize(d *db) int64 {
+	var size int64
+	p := filepath.Join(s.config.StoragePath, d.name)
+	_ = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		switch filepath.Ext(path) {
+		case ".sst", ".vlog":
+			size += info.Size()
+		}
+		return nil
+	})
+	return size
 }
 
 func (s *Storage) maintenanceTask(interval time.Duration, f func()) {
@@ -216,19 +247,11 @@ func (s *Storage) writeBackTask() {
 // increases by diff. Function f must call garbage collection.
 func (s *Storage) watchDBSize(diff bytesize.ByteSize, f func()) func() {
 	return func() {
-		n := s.calculateDBSize()
-		d := n - s.size // Size diff since the last gc.
-		fields := logrus.Fields{"current": n}
-		if s.size != 0 {
-			fields["diff"] = d
-			fields["last-gc"] = s.size
-			fields["db.size"] = s.main.size()
+		var n bytesize.ByteSize
+		for _, v := range s.DiskUsage() {
+			n += v
 		}
-		s.logger.WithFields(fields).Info("db size watcher")
-		if diff == 0 || d > diff {
-			// The value should be updated regardless of whether GC reclaimed
-			// any space: if it did not, GC is to be called next time the diff
-			// exceeds the allowed value.
+		if diff == 0 || n-s.size > diff {
 			s.size = n
 			f()
 		}
@@ -244,24 +267,14 @@ func (s *Storage) updateMetricsTask() {
 	}
 }
 
-// TODO(kolesnikovae): filepath.Walk is notoriously slow.
-//  Consider use of https://github.com/karrick/godirwalk.
-//  Although, every badger.DB calculates its size (reported
-//  via Size) in the same way every minute.
-func (s *Storage) calculateDBSize() bytesize.ByteSize {
-	var size int64
-	p := filepath.Join(s.config.StoragePath, "pyroscope")
-	_ = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		switch filepath.Ext(path) {
-		case ".sst", ".vlog":
-			size += info.Size()
-		}
-		return nil
-	})
-	return bytesize.ByteSize(size)
+func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
+	t := segment.NewRetentionPolicy().
+		SetAbsoluteMaxAge(s.config.Retention).
+		SetSizeLimit(s.config.RetentionSize)
+	for level, threshold := range s.config.RetentionLevels {
+		t.SetLevelMaxAge(level, threshold)
+	}
+	return t
 }
 
 func (s *Storage) databases() []*db {

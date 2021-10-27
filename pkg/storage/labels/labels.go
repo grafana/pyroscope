@@ -3,7 +3,7 @@ package labels
 import (
 	"strings"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v2"
 )
 
 type Labels struct {

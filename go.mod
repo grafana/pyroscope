@@ -16,12 +16,13 @@ require (
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger/v2 v2.2007.2
-	github.com/dgraph-io/badger/v3 v3.2103.2
+	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/protobuf v1.5.2
+	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/go-jsonnet v0.17.0
 	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5
 	github.com/google/uuid v1.1.2
@@ -71,5 +72,3 @@ require (
 )
 
 replace github.com/mgechev/revive v1.0.3 => github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1
-
-// replace github.com/dgraph-io/badger/v2 v2.2007.2 => ./pkg/storage/badger
