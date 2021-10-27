@@ -89,7 +89,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
       return (
         <MenuItem key="focus" disabled={!hoveredOnValidNode} onClick={onClick}>
-          Focus on this node
+          Focus on this subtree
         </MenuItem>
       );
     };
