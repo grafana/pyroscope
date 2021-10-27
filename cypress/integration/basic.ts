@@ -377,9 +377,10 @@ describe('basic test', () => {
       // click on the second item
       cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
       cy.findByTestId('flamegraph-canvas').rightclick();
-      cy.findByRole('menuitem')
-        .contains('Reset View')
-        .should('not.have.attr', 'aria-disabled');
+      cy.findByRole('menuitem', { name: /Reset View/ }).should(
+        'not.have.attr',
+        'aria-disabled'
+      );
       cy.findByRole('menuitem', { name: /Reset View/ }).click();
       // TODO assert that it was indeed reset?
 
