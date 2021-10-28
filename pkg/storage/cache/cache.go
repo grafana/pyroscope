@@ -15,8 +15,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache/lfu"
 )
 
-// TODO(kolesnikovae): Move to storage/db?
-
 type Cache struct {
 	db      *badger.DB
 	lfu     *lfu.Cache
@@ -27,6 +25,7 @@ type Cache struct {
 	ttl    time.Duration
 
 	evictionsDone chan struct{}
+	writeBackDone chan struct{}
 	flushOnce     sync.Once
 }
 
@@ -72,6 +71,7 @@ func New(c Config) *Cache {
 		prefix:        c.Prefix,
 		ttl:           c.TTL,
 		evictionsDone: make(chan struct{}),
+		writeBackDone: make(chan struct{}),
 	}
 
 	evictionChannel := make(chan lfu.Eviction)
@@ -83,31 +83,25 @@ func New(c Config) *Cache {
 	cache.lfu.TTL = int64(c.TTL.Seconds())
 
 	// start a goroutine for saving the evicted cache items to disk
-	// TODO(kolesnikovae): these errors should be at least logged.
-	//  Perhaps, it will be better if we move it outside of the cache.
-	//  Taking into account that writes almost always happen in batches,
-	//  We should definitely take advantage of BadgerDB write batch API.
-
 	go func() {
-		for {
-			e, ok := <-evictionChannel
-			if !ok {
-				break
-			}
+		for e := range evictionChannel {
+			// TODO(kolesnikovae): these errors should be at least logged.
+			//  Perhaps, it will be better if we move it outside of the cache.
+			//  Taking into account that writes almost always happen in batches,
+			//  We should definitely take advantage of BadgerDB write batch API.
+			//  Also, WriteBack and Evict could be combined. We also could
+			//  consider moving caching to storage/db.
 			cache.saveToDisk(e.Key, e.Value)
 		}
-		cache.evictionsDone <- struct{}{}
+		close(cache.evictionsDone)
 	}()
 
 	// start a goroutine for saving the evicted cache items to disk
 	go func() {
-		for {
-			e, ok := <-writeBackChannel
-			if !ok {
-				break
-			}
+		for e := range writeBackChannel {
 			cache.saveToDisk(e.Key, e.Value)
 		}
+		close(cache.writeBackDone)
 	}()
 
 	return cache
@@ -131,12 +125,12 @@ func (cache *Cache) saveToDisk(key string, val interface{}) error {
 
 func (cache *Cache) Flush() {
 	cache.flushOnce.Do(func() {
+		// Make sure there is no pending items.
+		close(cache.lfu.WriteBackChannel)
+		<-cache.writeBackDone
 		// evict all the items in cache
 		cache.lfu.Evict(cache.lfu.Len())
-
 		close(cache.lfu.EvictionChannel)
-		close(cache.lfu.WriteBackChannel)
-
 		// wait until all evictions are done
 		<-cache.evictionsDone
 	})

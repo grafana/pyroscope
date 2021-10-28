@@ -18,6 +18,8 @@ type db struct {
 
 	*badger.DB
 	*cache.Cache
+
+	lastGC bytesize.ByteSize
 }
 
 type prefix string
@@ -79,6 +81,14 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, erro
 		})
 	}
 
+	s.maintenanceTask(s.badgerGCTaskInterval, func() {
+		diff := calculateDBSize(badgerPath) - d.lastGC
+		if d.lastGC == 0 || s.gcSizeDiff == 0 || diff > s.gcSizeDiff {
+			d.runGC(0.7)
+			d.lastGC = calculateDBSize(badgerPath)
+		}
+	})
+
 	return &d, nil
 }
 
@@ -115,4 +125,23 @@ func (d *db) runGC(discardRatio float64) (reclaimed bool) {
 			continue
 		}
 	}
+}
+
+// TODO(kolesnikovae): filepath.Walk is notoriously slow.
+//  Consider use of https://github.com/karrick/godirwalk.
+//  Although, every badger.DB calculates its size (reported
+//  via Size) in the same way every minute.
+func calculateDBSize(path string) bytesize.ByteSize {
+	var size int64
+	_ = filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		switch filepath.Ext(path) {
+		case ".sst", ".vlog":
+			size += info.Size()
+		}
+		return nil
+	})
+	return bytesize.ByteSize(size)
 }

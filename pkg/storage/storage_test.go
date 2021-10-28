@@ -27,8 +27,6 @@ import (
 // 21:22:08      air |  (time.Duration) 2777h46m40s,
 // 21:22:08      air |  (time.Duration) 27777h46m40s
 
-// TODO(kolesnikovae): Refactor tests.
-
 var s *Storage
 
 var maxTime = time.Unix(1<<62, 999999999)
@@ -41,7 +39,6 @@ var _ = Describe("storage package", func() {
 			var err error
 			s, err = New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
-			s.evictInterval = 2 * time.Second
 		})
 
 		Context("delete tests", func() {
@@ -289,7 +286,7 @@ var _ = Describe("storage package", func() {
 
 						var m runtime.MemStats
 						runtime.ReadMemStats(&m)
-						time.Sleep(2 * time.Second)
+						time.Sleep(time.Second)
 					}
 				})
 			})
@@ -329,7 +326,6 @@ var _ = Describe("storage package", func() {
 
 					s2, err := New(&(*cfg).Server, logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
-					time.Sleep(100 * time.Millisecond)
 
 					o2, err := s2.Get(&GetInput{
 						StartTime: st2,
@@ -507,8 +503,7 @@ var _ = Describe("querying", func() {
 	})
 })
 
-/*
-var _ = Describe("DeleteDataBefore", func() {
+var _ = Describe("CollectGarbage", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
@@ -516,53 +511,57 @@ var _ = Describe("DeleteDataBefore", func() {
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		Context("simple case 1", func() {
-			It("does not return errors", func() {
+		Context("RetentionPolicy", func() {
+			It("removes data outside retention period", func() {
+				key, _ := segment.ParseKey("foo")
 				tree := tree.New()
 				tree.Insert([]byte("a;b"), uint64(1))
 				tree.Insert([]byte("a;c"), uint64(2))
-				st := time.Now().Add(time.Hour * 24 * 10 * -1)
-				et := st.Add(time.Second * 10)
-				key, _ := segment.ParseKey("foo")
+				now := time.Now()
 
 				err := s.Put(&PutInput{
-					StartTime:  st,
-					EndTime:    et,
+					StartTime:  now.Add(-3 * time.Hour),
+					EndTime:    now.Add(-3 * time.Hour).Add(time.Second * 10),
 					Key:        key,
 					Val:        tree,
 					SpyName:    "testspy",
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				threshold := segment.NewRetentionPolicy().SetAbsolutePeriod(time.Hour)
-				Expect(s.deleteDataBefore(context.Background(), threshold)).ToNot(HaveOccurred())
-				Expect(s.Close()).ToNot(HaveOccurred())
-			})
-		})
 
-		Context("simple case 2", func() {
-			It("does not return errors", func() {
-				tree := tree.New()
-				tree.Insert([]byte("a;b"), uint64(1))
-				tree.Insert([]byte("a;c"), uint64(2))
-				st := testing.SimpleTime(10)
-				et := testing.SimpleTime(20)
-				key, _ := segment.ParseKey("foo")
-
-				err := s.Put(&PutInput{
-					StartTime:  st,
-					EndTime:    et,
+				err = s.Put(&PutInput{
+					StartTime:  now.Add(-time.Minute),
+					EndTime:    now.Add(-time.Minute).Add(time.Second * 10),
 					Key:        key,
 					Val:        tree,
 					SpyName:    "testspy",
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				threshold := segment.NewRetentionPolicy().SetAbsolutePeriod(time.Hour)
-				Expect(s.DeleteDataBefore(context.Background(), threshold)).ToNot(HaveOccurred())
+
+				err = s.EnforceRetentionPolicy(segment.NewRetentionPolicy().SetAbsolutePeriod(time.Hour))
+				Expect(err).ToNot(HaveOccurred())
+
+				o, err := s.Get(&GetInput{
+					StartTime: now.Add(-3 * time.Hour),
+					EndTime:   now.Add(-3 * time.Hour).Add(time.Second * 10),
+					Key:       key,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o).To(BeNil())
+
+				o, err = s.Get(&GetInput{
+					StartTime: now.Add(-time.Minute),
+					EndTime:   now.Add(-time.Minute).Add(time.Second * 10),
+					Key:       key,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o).ToNot(BeNil())
+
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
 })
-*/
