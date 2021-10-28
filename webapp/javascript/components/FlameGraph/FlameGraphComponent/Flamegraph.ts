@@ -359,12 +359,6 @@ export default class Flamegraph {
   };
 
   private xyToBarData(x: number, y: number) {
-    //    if (!this.isWithinBounds(x, y)) {
-    //      throw new Error(
-    //        `Value out of bounds. Can't get bar position. x: '${x}', y: '${y}'`
-    //      );
-    //    }
-    //
     const { i, j } = this.xyToBarIndex(x, y);
     const level = this.flamebearer.levels[i];
 

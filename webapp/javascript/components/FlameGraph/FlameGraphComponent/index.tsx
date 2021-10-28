@@ -79,19 +79,13 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   // Context Menu stuff
   const xyToContextMenuItems = (x: number, y: number) => {
     const dirty = isDirty();
+    const bar = flamegraph.xyToBar3(x, y);
 
     const FocusItem = () => {
-      let onClick = () => {};
-      let hoveredOnValidNode = false;
-
-      // bit ugly
-      try {
-        const { i, j } = flamegraph.xyToBar2(x, y);
-        onClick = onFocusOnNode.bind(null, i, j);
-        hoveredOnValidNode = true;
-      } catch (e) {
-        hoveredOnValidNode = false;
-      }
+      const hoveredOnValidNode = bar.map(() => true).getOrElse(false);
+      const onClick = bar
+        .map((f) => onFocusOnNode.bind(null, f.i, f.j))
+        .getOrElse(() => {});
 
       return (
         <MenuItem key="focus" disabled={!hoveredOnValidNode} onClick={onClick}>

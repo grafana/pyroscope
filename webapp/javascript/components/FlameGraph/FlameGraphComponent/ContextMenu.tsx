@@ -1,14 +1,5 @@
 import React from 'react';
-import {
-  ControlledMenu,
-  useMenuState,
-  MenuItem,
-  SubMenu,
-} from '@szhsin/react-menu';
-
-// even though the library support many different types
-// we only support these
-type SupportedItems = typeof MenuItem | typeof SubMenu;
+import { ControlledMenu, useMenuState } from '@szhsin/react-menu';
 
 type xyToMenuItems = (x: number, y: number) => JSX.Element[];
 
@@ -28,21 +19,7 @@ export default function ContextMenu(props: ContextMenuProps) {
   const [anchorPoint, setAnchorPoint] = React.useState({ x: 0, y: 0 });
   const { canvasRef } = props;
   const [menuItems, setMenuItems] = React.useState<JSX.Element[]>([]);
-
-  const onContextMenu = (e: MouseEvent) => {
-    e.preventDefault();
-
-    const items = props.xyToMenuItems(e.offsetX, e.offsetY);
-    setMenuItems(items);
-
-    // TODO
-    // if the menu becomes too large, it may overflow to outside the screen
-    const x = e.clientX;
-    const y = e.clientY + 20;
-
-    setAnchorPoint({ x, y });
-    openMenu();
-  };
+  const { xyToMenuItems } = props;
 
   React.useEffect(() => {
     closeMenu();
@@ -55,13 +32,28 @@ export default function ContextMenu(props: ContextMenuProps) {
       return () => {};
     }
 
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+
+      const items = xyToMenuItems(e.offsetX, e.offsetY);
+      setMenuItems(items);
+
+      // TODO
+      // if the menu becomes too large, it may overflow to outside the screen
+      const x = e.clientX;
+      const y = e.clientY + 20;
+
+      setAnchorPoint({ x, y });
+      openMenu();
+    };
+
     // watch for mouse events on the bar
     canvasEl.addEventListener('contextmenu', onContextMenu);
 
     return () => {
       canvasEl.removeEventListener('contextmenu', onContextMenu);
     };
-  }, []);
+  }, [xyToMenuItems]);
   return (
     <ControlledMenu
       menuItemFocus={menuProps.menuItemFocus}
