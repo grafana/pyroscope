@@ -142,30 +142,17 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   //  });
   //
   const ctx = canvas.getContext('2d');
-  //  const { selectedLevel } = props;
-  const selectedLevel = zoom.i;
+  const selectedLevel = zoom.map((z) => z.i).getOrElse(0);
 
   //  const { topLevel } = props;
   //  TODO
   //  const topLevel = 0;
   const formatter = getFormatter(numTicks, sampleRate, units);
 
-  let isFocused = false;
+  const isFocused = focusedNode.isSome();
 
-  // normalize this
-  // TODO
-  //  if (focusedNode.i < 0) {
-  //    focusedNode.i = 0;
-  //  }
-  //  if (focusedNode.j < 0) {
-  //    focusedNode.j = 0;
-  //  }
-
-  if (focusedNode.i > 0 || focusedNode.j > 0) {
-    isFocused = true;
-  }
-
-  const topLevel = focusedNode.i < 0 ? 0 : focusedNode.i;
+  const topLevel = focusedNode.map((f) => f.i).getOrElse(0);
+  //    focusedNode.i < 0 ? 0 : focusedNode.i;
 
   const canvasHeight =
     PX_PER_LEVEL * (levels.length - topLevel) + (isFocused ? BAR_HEIGHT : 0);
@@ -192,7 +179,10 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     ctx.fillStyle = colorGreyscale(200, 1).rgb().string();
     ctx.fill();
 
-    const shortName = `total (${focusedNode.i - 1} level(s) collapsed)`;
+    // TODO show the samples too?
+    const shortName = focusedNode
+      .map((f) => `total (${f.i - 1} level(s) collapsed)`)
+      .getOrElse('total');
 
     // Set the font syle
     // It's important to set the font BEFORE calculating 'characterSize'
@@ -227,7 +217,6 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     for (let j = 0; j < level.length; j += ff.jStep) {
       const barIndex = ff.getBarOffset(level, j);
 
-      const n = getFunctionName(names, j, format, level);
       //      console.log('functino', n);
       const x = tickToX(numTicks, rangeMin, pxPerTick, barIndex);
       //      const x = tickToX(numTicks, focusMin, pxPerTick, barIndex);
@@ -300,7 +289,8 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
         j,
         // discount for the levels we skipped
         // otherwise it will dim out all nodes
-        i: i + (isFocused ? focusedNode.i : 0),
+        i: i + focusedNode.map((f) => f.i).getOrElse(0),
+        //        i: i + (isFocused ? focusedNode.i : 0),
         names,
         collapsed,
         selectedLevel,

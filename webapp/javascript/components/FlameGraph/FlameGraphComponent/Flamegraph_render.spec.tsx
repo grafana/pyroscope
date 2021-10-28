@@ -1,17 +1,21 @@
 import CanvasConverter from 'canvas-to-buffer';
 import { createCanvas } from 'canvas';
+import { Option } from 'prelude-ts';
 import TestData from './testData';
 import Flamegraph from './Flamegraph';
+
+type focusedNodeType = ConstructorParameters<typeof Flamegraph>[2];
+type zoomType = ConstructorParameters<typeof Flamegraph>[5];
 
 // All tests here refer strictly to the rendering bit of "Flamegraph"
 
 describe("render group:snapshot'", () => {
   // TODO i'm thinking here if we can simply reuse this?
   const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
-  const focusedNode = { i: -1, j: -1 };
   const fitMode = 'HEAD';
   const highlightQuery = '';
-  const zoom = { i: -1, j: -1 };
+  const zoom: zoomType = Option.none();
+  const focusedNode: focusedNodeType = Option.none();
 
   it('renders a simple flamegraph', () => {
     const flame = new Flamegraph(
@@ -58,7 +62,7 @@ describe("render group:snapshot'", () => {
 
   it('renders a highlighted flamegraph', () => {
     const highlightQuery = 'main';
-    const focusedNode = { i: -1, j: -1 };
+    const focusedNode: focusedNodeType = Option.none();
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
@@ -74,8 +78,8 @@ describe("render group:snapshot'", () => {
   });
 
   it('renders a zoomed flamegraph', () => {
-    const zoom = { i: 2, j: 8 };
-    const focusedNode = { i: -1, j: -1 };
+    const zoom = Option.some({ i: 2, j: 8 });
+    const focusedNode: focusedNodeType = Option.none();
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
@@ -95,7 +99,7 @@ describe("render group:snapshot'", () => {
     // so that the function names don't fit
     const canvas = createCanvas(300, 0) as unknown as HTMLCanvasElement;
     const fitMode = 'TAIL';
-    const focusedNode = { i: -1, j: -1 };
+    const focusedNode: focusedNodeType = Option.none();
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
@@ -112,9 +116,8 @@ describe("render group:snapshot'", () => {
 
   describe.only('focused', () => {
     it('renders a focused node in the beginning', () => {
-      const zoom = { i: -1, j: -1 };
-
-      const focusedNode = { i: 2, j: 0 };
+      const zoom: zoomType = Option.none();
+      const focusedNode = Option.some({ i: 2, j: 0 });
 
       const flame = new Flamegraph(
         TestData.SimpleTree,
@@ -130,9 +133,8 @@ describe("render group:snapshot'", () => {
     });
 
     it('renders a focused node (when node is not in the beginning)', () => {
-      const zoom = { i: -1, j: -1 };
-
-      const focusedNode = { i: 2, j: 8 };
+      const zoom: zoomType = Option.none();
+      const focusedNode = Option.some({ i: 2, j: 8 });
 
       const flame = new Flamegraph(
         TestData.SimpleTree,
@@ -148,8 +150,8 @@ describe("render group:snapshot'", () => {
     });
 
     it.only('also zooms', () => {
-      const focusedNode = { i: 1, j: 0 };
-      const zoom = { i: 2, j: 0 }; // main.fastFunction
+      const focusedNode = Option.some({ i: 1, j: 0 });
+      const zoom = Option.some({ i: 2, j: 0 }); // main.fastFunction
 
       const flame = new Flamegraph(
         TestData.SimpleTree,

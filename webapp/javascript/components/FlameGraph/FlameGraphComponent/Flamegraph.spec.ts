@@ -1,8 +1,12 @@
+import { Option } from 'prelude-ts';
 import Flamegraph from './Flamegraph';
 import { BAR_HEIGHT } from './constants';
 import TestData from './testData';
 
 jest.mock('./Flamegraph_render');
+
+type focusedNodeType = ConstructorParameters<typeof Flamegraph>[2];
+type zoomType = ConstructorParameters<typeof Flamegraph>[5];
 
 describe('Flamegraph', () => {
   let canvas: any;
@@ -18,8 +22,8 @@ describe('Flamegraph', () => {
 
       const fitMode = 'HEAD';
       const highlightQuery = '';
-      const focusedNode = { i: -1, j: -1 };
-      const zoom = { i: 2, j: 8 };
+      const focusedNode: focusedNodeType = Option.none();
+      const zoom = Option.of({ i: 2, j: 8 });
 
       flame = new Flamegraph(
         TestData.SimpleTree,
@@ -50,8 +54,8 @@ describe('Flamegraph', () => {
 
         const fitMode = 'HEAD';
         const highlightQuery = '';
-        const zoom = { i: -1, j: -1 };
-        const focusedNode = { i: -1, j: -1 };
+        const zoom: zoomType = Option.none();
+        const focusedNode: focusedNodeType = Option.none();
 
         flame = new Flamegraph(
           TestData.SimpleTree,
@@ -135,8 +139,8 @@ describe('Flamegraph', () => {
 
           const fitMode = 'HEAD';
           const highlightQuery = '';
-          const zoom = { i: -1, j: -1 };
-          const focusedNode = { i: 1, j: 0 };
+          const zoom: zoomType = Option.none();
+          const focusedNode = Option.some({ i: 1, j: 0 });
 
           flame = new Flamegraph(
             TestData.SimpleTree,
@@ -210,8 +214,8 @@ describe('Flamegraph', () => {
 
           const fitMode = 'HEAD';
           const highlightQuery = '';
-          const zoom = { i: -1, j: -1 };
-          const focusedNode = { i: 2, j: 8 };
+          const zoom: zoomType = Option.none();
+          const focusedNode = Option.some({ i: 2, j: 8 });
 
           flame = new Flamegraph(
             TestData.SimpleTree,
@@ -271,8 +275,9 @@ describe('Flamegraph', () => {
 
           const fitMode = 'HEAD';
           const highlightQuery = '';
-          const zoom = { i: 1, j: 0 };
-          const focusedNode = { i: -1, j: -1 };
+
+          const zoom: zoomType = Option.of({ i: 1, j: 0 });
+          const focusedNode: focusedNodeType = Option.none();
 
           flame = new Flamegraph(
             TestData.SimpleTree,
@@ -346,8 +351,8 @@ describe('Flamegraph', () => {
 
           const fitMode = 'HEAD';
           const highlightQuery = '';
-          const zoom = { i: 2, j: 8 };
-          const focusedNode = { i: -1, j: -1 };
+          const zoom = Option.of({ i: 2, j: 8 });
+          const focusedNode: focusedNodeType = Option.none();
 
           flame = new Flamegraph(
             TestData.SimpleTree,

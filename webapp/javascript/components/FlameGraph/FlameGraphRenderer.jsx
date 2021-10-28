@@ -7,6 +7,7 @@
 
 import React from 'react';
 import clsx from 'clsx';
+import { Option } from 'prelude-ts';
 import Graph from './FlameGraphComponent';
 import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
@@ -39,14 +40,8 @@ class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
   // eg localstorage
   initialFlamegraphState = {
-    focusedNode: {
-      i: -1,
-      j: -1,
-    },
-    zoom: {
-      i: -1,
-      j: -1,
-    },
+    focusedNode: Option.none(),
+    zoom: Option.none(),
   };
 
   constructor(props) {
@@ -180,7 +175,7 @@ class FlameGraphRenderer extends React.Component {
       ...this.state,
       flamegraphConfigs: {
         ...this.state.flamegraphConfigs,
-        zoom: { i, j },
+        zoom: Option.some({ i, j }),
       },
     });
   };
@@ -195,7 +190,7 @@ class FlameGraphRenderer extends React.Component {
       ...this.state,
       flamegraphConfigs: {
         ...this.state.flamegraphConfigs,
-        focusedNode: { i, j },
+        focusedNode: Option.some({ i, j }),
       },
     });
   };

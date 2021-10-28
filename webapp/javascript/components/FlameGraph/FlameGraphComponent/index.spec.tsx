@@ -1,11 +1,12 @@
 import React from 'react';
 import userEvent from '@testing-library/user-event';
 import { render, screen } from '@testing-library/react';
+import { Option } from 'prelude-ts';
 import FlamegraphComponent from './index';
 import TestData from './testData';
 import { BAR_HEIGHT } from './constants';
 
-// the leafs have already been tested
+// the leaves have already been tested
 // this is just to guarantee code is compiling
 // and the callbacks are being called correctly
 describe('FlamegraphComponent', () => {
@@ -20,8 +21,8 @@ describe('FlamegraphComponent', () => {
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={{ i: -1, j: -1 }}
-        focusedNode={{ i: -1, j: -1 }}
+        zoom={Option.none()}
+        focusedNode={Option.none()}
         highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
@@ -42,8 +43,8 @@ describe('FlamegraphComponent', () => {
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={{ i: -1, j: -1 }}
-        focusedNode={{ i: -1, j: -1 }}
+        zoom={Option.none()}
+        focusedNode={Option.none()}
         highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
@@ -75,8 +76,8 @@ describe('FlamegraphComponent', () => {
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={{ i: -1, j: -1 }}
-        focusedNode={{ i: -1, j: -1 }}
+        zoom={Option.none()}
+        focusedNode={Option.none()}
         highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
@@ -105,8 +106,8 @@ describe('FlamegraphComponent', () => {
       const { rerender } = render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={{ i: -1, j: -1 }}
-          focusedNode={{ i: -1, j: -1 }}
+          zoom={Option.none()}
+          focusedNode={Option.none()}
           highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
@@ -131,8 +132,8 @@ describe('FlamegraphComponent', () => {
       rerender(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={{ i: -1, j: -1 }}
-          focusedNode={{ i: -1, j: -1 }}
+          zoom={Option.none()}
+          focusedNode={Option.none()}
           highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
@@ -164,8 +165,8 @@ describe('FlamegraphComponent', () => {
       render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={{ i: -1, j: -1 }}
-          focusedNode={{ i: -1, j: -1 }}
+          zoom={Option.none()}
+          focusedNode={Option.none()}
           highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
@@ -187,8 +188,8 @@ describe('FlamegraphComponent', () => {
       render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={{ i: -1, j: -1 }}
-          focusedNode={{ i: -1, j: -1 }}
+          zoom={Option.none()}
+          focusedNode={Option.none()}
           highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
