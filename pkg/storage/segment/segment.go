@@ -236,7 +236,12 @@ type Segment struct {
 	units           string
 	aggregationType string
 
-	watermark RetentionPolicy
+	watermarks
+}
+
+type watermarks struct {
+	absoluteTime time.Time
+	levels       map[int]time.Time
 }
 
 func newNode(t time.Time, depth, multiplier int) *streeNode {
@@ -251,9 +256,9 @@ func newNode(t time.Time, depth, multiplier int) *streeNode {
 }
 
 func New() *Segment {
-	st := &Segment{}
-
-	return st
+	return &Segment{watermarks: watermarks{
+		levels: make(map[int]time.Time),
+	}}
 }
 
 // TODO: DRY
@@ -372,19 +377,15 @@ func (s *Segment) DeleteNodesBefore(t *RetentionPolicy) (bool, error) {
 }
 
 func (s *Segment) updateWatermarks(t *RetentionPolicy) {
-	if t.AbsoluteTime.After(s.watermark.AbsoluteTime) {
-		s.watermark.AbsoluteTime = t.AbsoluteTime
-	}
-	if len(s.watermark.Levels) == 0 && len(t.Levels) != 0 {
-		s.watermark.Levels = make(map[int]time.Time, len(t.Levels))
+	if t.AbsoluteTime.After(s.watermarks.absoluteTime) {
+		s.watermarks.absoluteTime = t.AbsoluteTime
 	}
 	for k, v := range t.Levels {
-		if o, ok := s.watermark.Levels[k]; ok && v.Before(o) {
+		if level, ok := s.watermarks.levels[k]; ok && v.Before(level) {
 			continue
 		}
-		s.watermark.Levels[k] = v
+		s.watermarks.levels[k] = v
 	}
-	t.watermark()
 }
 
 func (s *Segment) WalkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {

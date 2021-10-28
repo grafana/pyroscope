@@ -2,31 +2,27 @@ package storage
 
 import (
 	"errors"
-	"sync/atomic"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
-// TODO(kolesnikovae): add metrics.
-
+// CollectGarbage removes data according to the retention policies
+// configured and discards garbage data from Badger databases.
 func (s *Storage) CollectGarbage() {
 	s.logger.Debug("starting garbage collection")
-	rp := s.retentionPolicy()
-	var segmentKeys []*segment.Key
 
+	rp := s.retentionPolicy()
 	if !rp.LowerTimeBoundary().IsZero() {
 		s.logger.Debug("enforcing time-based retention policy")
-		var err error
-		if segmentKeys, err = s.segmentKeys(); err != nil {
+		segmentKeys, err := s.validSegmentKeys()
+		if err != nil {
 			s.logger.WithError(err).Error("failed to fetch segment keys")
 			return
 		}
-		// TODO(kolesnikovae): Should it run concurrently with some throttling?
+		// It may make sense running it concurrently with some throttling.
 		for _, k := range segmentKeys {
 			switch err = s.deleteSegmentDataBefore(k, rp); err {
 			default:
@@ -41,68 +37,20 @@ func (s *Storage) CollectGarbage() {
 		}
 	}
 
-	// Overall occupied disk space. The value should be as accurate
-	// as possible and needs to be updated when GC succeeds.
-	var size int64
 	s.goDB(func(d *db) {
-		if !d.runGC(0.5) {
+		if !d.runGC(0.7) {
 			d.logger.Debug("garbage collection did not result in reclaimed space")
 			return
 		}
-		atomic.AddInt64(&size, s.calculateDBSize(d))
 	})
-	s.size = bytesize.ByteSize(size)
 
-	// TODO(kolesnikovae): explain why this should not be used.
-
-	// No need to proceed if there is no limit on the db size.
-	if rp.SizeLimit() == 0 {
-		return
-	}
-
-	// The volume to reclaim is determined by approximation on the key-value
-	// pairs size, which is very close to the actual occupied disk space only
-	// when garbage collector has discarded unclaimed space in value log files.
+	// At this point, if it was possible to reconcile storage disk size with
+	// estimated size of KV items in databases, size-based retention policy
+	// should be enforced (see reclaimSegmentSpace).
 	//
-	// At this point size estimations should be quite precise and we can remove
-	// items from the database safely. Effectively, only trees are removed to
-	// reclaim space in accordance to the size-based retention policy.
-	var (
-		// Size in bytes to be reclaimed.
-		rs = rp.CapacityToReclaim(s.size, s.reclaimSizeRatio)
-		// Size in bytes to be reclaimed per segment.
-		rsps = int64(rs.Bytes() / len(segmentKeys))
-	)
-
-	logger := s.logger.WithFields(logrus.Fields{
-		"used":      s.size,
-		"requested": rs,
-	})
-
-	if rsps == 0 {
-		logger.Debug("skipping reclaim")
-		return
-	}
-
-	// TODO(kolesnikovae): make reclaim more fair:
-	//   If a segment occupies less than rsps, the leftover
-	//   should be then removed with an additional request.
-	//   Another point is that if the procedure has been
-	//   interrupted, data will be removed disproportionally.
-
-	s.logger.Debug("enforcing size-based retention policy")
-	for _, k := range segmentKeys {
-		switch err := s.reclaimSegmentSpace(k, rsps); err {
-		default:
-			s.logger.WithError(err).WithField("segment", k).
-				Warn("failed to enforce size-based retention policy")
-		case nil:
-		case errClosed:
-			s.logger.WithField("segment", k).
-				Warn("enforcing size-based retention policy canceled")
-			return
-		}
-	}
+	// Unfortunately, due to the fact that badger DB reclaims disk space
+	// eventually, there is no way to juxtapose the actual occupied disk size
+	// and the number of items to remove based on their estimated size.
 }
 
 func (s *Storage) deleteSegmentDataBefore(k *segment.Key, rp *segment.RetentionPolicy) error {
@@ -184,6 +132,9 @@ func (s *Storage) deleteSegmentDataBefore(k *segment.Key, rp *segment.RetentionP
 	return err
 }
 
+// reclaimSegmentSpace is aimed to reclaim specified size by removing
+// trees for the given segment. The amount of deleted trees is determined
+// based on the KV item size estimation.
 func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int64) error {
 	batch := s.trees.NewWriteBatch()
 	defer batch.Cancel() // TODO(kolesnikovae): make sure argument is captured.
@@ -287,9 +238,7 @@ func (s *Storage) flushTreeBatch(batch *badger.WriteBatch) (*badger.WriteBatch, 
 	}
 }
 
-// segmentKeys returns a map of valid segment keys found in the storage.
-// It returns both parsed, and string representation.
-func (s *Storage) segmentKeys() ([]*segment.Key, error) {
+func (s *Storage) validSegmentKeys() ([]*segment.Key, error) {
 	keys := make([]*segment.Key, 0)
 	return keys, s.segments.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{
@@ -298,7 +247,6 @@ func (s *Storage) segmentKeys() ([]*segment.Key, error) {
 		defer it.Close()
 		for it.Rewind(); it.Valid(); it.Next() {
 			if k, ok := segmentPrefix.trim(it.Item().Key()); ok {
-				// k must not be reused outside of the transaction.
 				if key, err := segment.ParseKey(string(k)); err == nil {
 					keys = append(keys, key)
 				}

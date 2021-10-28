@@ -47,12 +47,14 @@ func (sn streeNode) populateTimeline(tl *Timeline, s *Segment) {
 		return
 	}
 
-	currentDuration := durations[sn.depth]
-	// TODO(kolesnikovae): use "watermarks" instead of thresholds as those may change.
-	var hasDataBefore bool
-	var levelRetentionPeriod time.Time
+	var (
+		currentDuration = durations[sn.depth]
+		levelWatermark  time.Time
+		hasDataBefore   bool
+	)
+
 	if sn.depth > 0 {
-		levelRetentionPeriod = s.watermark.levelRetentionPeriod(sn.depth - 1)
+		levelWatermark = s.watermarks.levels[sn.depth-1]
 	}
 
 	if len(sn.children) > 0 && currentDuration >= tl.durationDelta {
@@ -62,10 +64,10 @@ func (sn streeNode) populateTimeline(tl *Timeline, s *Segment) {
 				hasDataBefore = true
 				continue
 			}
-			if levelRetentionPeriod.IsZero() || sn.isBefore(s.watermark.AbsoluteTime) || hasDataBefore {
+			if hasDataBefore || levelWatermark.IsZero() || sn.isBefore(s.watermarks.absoluteTime) {
 				continue
 			}
-			if c := sn.createSampledChild(i); c.isBefore(levelRetentionPeriod) {
+			if c := sn.createSampledChild(i); c.isBefore(levelWatermark) {
 				c.populateTimeline(tl, s)
 			}
 		}

@@ -74,12 +74,7 @@ func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer) (*S
 			gcInterval: 5 * time.Minute,
 			// gcSizeDiff specifies the minimal storage size difference that
 			// causes garbage collection to trigger.
-			gcSizeDiff: 256 * bytesize.MB,
-			// reclaimSizeRatio determines the share of the storage size limit
-			// to be reclaimed when size-based retention policy enforced. The
-			// volume to reclaim is calculated as follows:
-			//   used - limit + limit*ratio.
-			reclaimSizeRatio: 0.05,
+			gcSizeDiff: bytesize.GB,
 		},
 
 		logger:  logger,
@@ -268,11 +263,9 @@ func (s *Storage) updateMetricsTask() {
 }
 
 func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
-	t := segment.NewRetentionPolicy().
-		SetAbsoluteMaxAge(s.config.Retention).
-		SetSizeLimit(s.config.RetentionSize)
+	t := segment.NewRetentionPolicy().SetAbsolutePeriod(s.config.Retention)
 	for level, threshold := range s.config.RetentionLevels {
-		t.SetLevelMaxAge(level, threshold)
+		t.SetLevelPeriod(level, threshold)
 	}
 	return t
 }

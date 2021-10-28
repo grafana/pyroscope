@@ -48,6 +48,8 @@ func (s *Segment) Serialize(w io.Writer) error {
 
 	serialization.WriteMetadata(w, s.generateMetadata())
 
+	// TODO(kolesnikovae): watermarks serialisation.
+
 	if s.root == nil {
 		return nil
 	}
@@ -102,6 +104,7 @@ func Deserialize(r io.Reader) (*Segment, error) {
 		return nil, err
 	}
 	s.populateFromMetadata(metadata)
+	// TODO(kolesnikovae): watermarks de-serialisation.
 
 	parents := []*streeNode{nil}
 	for len(parents) > 0 {

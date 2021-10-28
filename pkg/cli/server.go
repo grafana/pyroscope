@@ -37,11 +37,12 @@ type serverService struct {
 
 func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, error) {
 	// TODO(kolesnikovae): remove after testing.
+	// TODO(kolesnikovae): run storage garbage collection before start?
 	c.Retention = 16 * time.Hour
 	c.RetentionLevels = map[int]time.Duration{
-		0: 4 * time.Hour,
-		1: 8 * time.Hour,
-		2: 12 * time.Hour,
+		0: 30 * time.Minute,
+		1: 1 * time.Hour,
+		2: 3 * time.Hour,
 	}
 
 	svc := serverService{

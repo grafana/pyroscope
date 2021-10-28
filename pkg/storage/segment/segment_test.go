@@ -1,6 +1,5 @@
 package segment
 
-/*
 import (
 	"bufio"
 	"log"
@@ -12,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
@@ -102,9 +102,10 @@ var _ = Describe("stree", func() {
 				s := New()
 
 				keys := []string{}
-				threshold := &RetentionPolicy{AbsoluteTime: testing.SimpleTime(19)}
-				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
+				rp := &RetentionPolicy{AbsoluteTime: testing.SimpleTime(19)}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeTrue())
@@ -119,9 +120,10 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(21)}
-				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
+				rp := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(21)}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeFalse())
@@ -138,9 +140,10 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(1020), testing.SimpleUTime(1029), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(21)}
-				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
+				rp := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(21)}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeFalse())
@@ -157,9 +160,10 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(200)}
-				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
+				rp := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(200)}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeTrue())
@@ -178,9 +182,10 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{Levels: map[int]time.Time{0: time.Now()}}
-				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
+				rp := &RetentionPolicy{Levels: map[int]time.Time{0: time.Now()}}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeFalse())
@@ -197,13 +202,13 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				threshold := &RetentionPolicy{Levels: map[int]time.Time{0: time.Now(), 1: time.Now()}}
-				r := s.DeleteDataBefore(threshold, func(depth int, t time.Time) {
+				rp := &RetentionPolicy{Levels: map[int]time.Time{0: time.Now(), 1: time.Now()}}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeTrue())
-				Expect(s.root).To(BeNil())
 				Expect(keys).To(ConsistOf([]string{
 					"1:0",
 					"0:10",
@@ -386,4 +391,3 @@ var _ = Describe("stree", func() {
 		})
 	})
 })
-*/

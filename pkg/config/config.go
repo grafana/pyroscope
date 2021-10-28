@@ -91,9 +91,8 @@ type Server struct {
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated" mapstructure:"hide-applications"`
 
+	Retention time.Duration `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" mapstructure:"retention"`
 	// TODO(kolesnikovae): implement.
-	Retention       time.Duration         `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" mapstructure:"retention"`
-	RetentionSize   bytesize.ByteSize     `def:"" desc:"" mapstructure:"retention-size"`
 	RetentionLevels map[int]time.Duration `def:"" desc:"" mapstructure:"-"`
 
 	// Deprecated fields. They can be set (for backwards compatibility) but have no effect

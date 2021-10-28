@@ -534,7 +534,7 @@ var _ = Describe("DeleteDataBefore", func() {
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				threshold := segment.NewRetentionPolicy().SetAbsoluteMaxAge(time.Hour)
+				threshold := segment.NewRetentionPolicy().SetAbsolutePeriod(time.Hour)
 				Expect(s.deleteDataBefore(context.Background(), threshold)).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
@@ -558,7 +558,7 @@ var _ = Describe("DeleteDataBefore", func() {
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				threshold := segment.NewRetentionPolicy().SetAbsoluteMaxAge(time.Hour)
+				threshold := segment.NewRetentionPolicy().SetAbsolutePeriod(time.Hour)
 				Expect(s.DeleteDataBefore(context.Background(), threshold)).ToNot(HaveOccurred())
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})

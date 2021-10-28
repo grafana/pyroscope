@@ -1,6 +1,5 @@
 package segment
 
-/*
 import (
 	"math/big"
 	"time"
@@ -32,7 +31,7 @@ var _ = Describe("timeline", func() {
 		Context("empty segment", func() {
 			It("works as expected", func(done Done) {
 				s := New()
-				timeline.PopulateTimeline(s, new(RetentionPolicy))
+				timeline.PopulateTimeline(s)
 				Expect(timeline.Samples).To(Equal([]uint64{
 					0,
 					0,
@@ -52,7 +51,7 @@ var _ = Describe("timeline", func() {
 				s.Put(testing.SimpleTime(20),
 					testing.SimpleTime(29), 0, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
-				timeline.PopulateTimeline(s, new(RetentionPolicy))
+				timeline.PopulateTimeline(s)
 				Expect(timeline.Samples).To(Equal([]uint64{
 					3,
 					6,
@@ -78,7 +77,7 @@ var _ = Describe("timeline", func() {
 				s.Put(testing.SimpleTime(20),
 					testing.SimpleTime(29), 0, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
-				timeline.PopulateTimeline(s, new(RetentionPolicy))
+				timeline.PopulateTimeline(s)
 				expected := make([]uint64, 3153)
 				expected[0] = 8
 				Expect(timeline.Samples).To(Equal(expected))
@@ -106,11 +105,12 @@ var _ = Describe("timeline", func() {
 					now, 0, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				threshold := NewRetentionPolicy().
-					SetLevelMaxAge(0, time.Second).
-					SetLevelMaxAge(1, time.Minute)
+					SetLevelPeriod(0, time.Second).
+					SetLevelPeriod(1, time.Minute)
 
-				s.DeleteDataBefore(threshold, func(int, time.Time) {})
-				timeline.PopulateTimeline(s, threshold)
+				_, err := s.DeleteNodesBefore(threshold)
+				Expect(err).ToNot(HaveOccurred())
+				timeline.PopulateTimeline(s)
 				expected := make([]uint64, 3153)
 				expected[0] = 8
 				Expect(timeline.Samples).To(Equal(expected))
@@ -120,4 +120,3 @@ var _ = Describe("timeline", func() {
 		})
 	})
 })
-*/
