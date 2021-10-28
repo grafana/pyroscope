@@ -11,7 +11,6 @@ const common = require('./webpack.common');
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
 module.exports = merge(common, {
-  watch: true,
   devtool: 'eval-source-map',
   mode: 'development',
   entry: {
@@ -27,7 +26,7 @@ module.exports = merge(common, {
         do {
           if (maxTries <= 0) {
             throw new Error(
-              'Could not find pyroscope instance running on http://localhost:4040'
+              'Could not find pyroscope instance running on http://localhost:4040. Make sure you have pyroscope server running on port :4040 (run `make build server`)'
             );
           }
           res = request('GET', 'http://localhost:4040');
