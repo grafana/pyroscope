@@ -186,10 +186,23 @@ class FlameGraphRenderer extends React.Component {
       return;
     }
 
+    let flamegraphConfigs = { ...this.state.flamegraphConfigs };
+
+    // reset zoom if we are focusing below the zoom
+    const { zoom } = this.state.flamegraphConfigs;
+    if (zoom.isSome()) {
+      if (zoom.get().i < i) {
+        flamegraphConfigs = {
+          ...flamegraphConfigs,
+          zoom: this.initialFlamegraphState.zoom,
+        };
+      }
+    }
+
     this.setState({
       ...this.state,
       flamegraphConfigs: {
-        ...this.state.flamegraphConfigs,
+        ...flamegraphConfigs,
         focusedNode: Option.some({ i, j }),
       },
     });

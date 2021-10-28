@@ -9,11 +9,10 @@ import RenderCanvas from './Flamegraph_render';
 
 /* eslint-disable no-useless-constructor */
 
-// branded type
+/*
+ * Branded Type to distinguish between x,y that were validated to be within bounds or not.
+ */
 type XYWithinBounds = { x: number; y: number } & { __brand: 'XYWithinBounds' };
-
-type BarData = { xy: XYWithinBounds };
-// & typeof Flamegraph.xyToBarPosition & this.xyToBarData;
 
 export default class Flamegraph {
   private ff: ReturnType<typeof createFF>;
@@ -42,6 +41,14 @@ export default class Flamegraph {
     private zoom: Option<DeepReadonly<{ i: number; j: number }>>
   ) {
     this.ff = createFF(flamebearer.format);
+
+    // don't allow to have a zoom smaller than the focus
+    // since it does not make sense
+    if (focusedNode.isSome() && zoom.isSome()) {
+      if (zoom.get().i < focusedNode.get().i) {
+        throw new Error('Zoom i level should be bigger than Focus');
+      }
+    }
   }
 
   public render() {
@@ -60,9 +67,6 @@ export default class Flamegraph {
 
       rangeMin,
       rangeMax,
-      //      topLevel: this.topLevel,
-      //      rangeMin: this.rangeMin,
-      //      rangeMax: this.rangeMax,
       fitMode: this.fitMode,
       highlightQuery: this.highlightQuery,
       zoom: this.zoom,
@@ -161,6 +165,9 @@ export default class Flamegraph {
               fRange.rangeMax - fRange.rangeMin <
               zRange.rangeMax - zRange.rangeMin
             ) {
+              console.warn(
+                'Focus is smaller than range, this shouldnt happen. Verify that the zoom is always bigger than the focus.'
+              );
               return calculatedFocusRange(f);
             }
 
@@ -291,23 +298,6 @@ export default class Flamegraph {
     return { i: 0, j: 0 };
   }
 
-  public isWithinBounds = (x: number, y: number) => {
-    if (x < 0 || x > this.getCanvasWidth()) {
-      return false;
-    }
-
-    try {
-      const { i, j } = this.xyToBarIndex(x, y);
-      if (j === -1 || i === -1) {
-        return false;
-      }
-    } catch (e) {
-      return false;
-    }
-
-    return true;
-  };
-
   private parseXY(x: number, y: number) {
     const withinBounds = this.isWithinBounds(x, y);
 
@@ -320,21 +310,9 @@ export default class Flamegraph {
     return Option.none<typeof v>();
   }
 
-  /*
-   * Given x and y coordinates
-   * identify the bar position and width
-   *
-   * Invariants: x and y are within bound
-   */
-  private xyToBarPosition = (x: number, y: number) => {
-    if (!this.isWithinBounds(x, y)) {
-      throw new Error(
-        `Value out of bounds. Can't get bar position x:'${x}', y:'${y}'`
-      );
-    }
-
+  private xyToBarPosition = (xy: XYWithinBounds) => {
     const { ff } = this;
-    const { i, j } = this.xyToBarIndex(x, y);
+    const { i, j } = this.xyToBarIndex(xy.x, xy.y);
 
     const topLevel = this.focusedNode
       .map((node) => (node.i < 0 ? 0 : node.i - 1))
@@ -358,8 +336,8 @@ export default class Flamegraph {
     };
   };
 
-  private xyToBarData(x: number, y: number) {
-    const { i, j } = this.xyToBarIndex(x, y);
+  private xyToBarData = (xy: XYWithinBounds) => {
+    const { i, j } = this.xyToBarIndex(xy.x, xy.y);
     const level = this.flamebearer.levels[i];
 
     const { ff } = this;
@@ -389,36 +367,38 @@ export default class Flamegraph {
         throw new Error(`Unsupported type`);
       }
     }
-  }
+  };
 
-  public xyToBar2(x: number, y: number) {
-    const xy = this.parseXY(x, y);
-
-    if (xy.isNone()) {
-      throw new Error('Values x and y are not valid');
+  public isWithinBounds = (x: number, y: number) => {
+    if (x < 0 || x > this.getCanvasWidth()) {
+      return false;
     }
 
-    const { i, j } = this.xyToBarIndex(x, y);
-    const position = this.xyToBarPosition(x, y);
-    const data = this.xyToBarData(x, y);
-
-    return {
-      xy,
-      i,
-      j,
-      ...position,
-      ...data,
-    };
-  }
-
-  public xyToBar3(x: number, y: number) {
-    return this.parseXY(x, y).map((xy) => {
+    try {
       const { i, j } = this.xyToBarIndex(x, y);
-      const position = this.xyToBarPosition(x, y);
-      const data = this.xyToBarData(x, y);
+      if (j === -1 || i === -1) {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+
+    return true;
+  };
+
+  /*
+   * Given x and y coordinates
+   * return all information about the bar under those coordinates
+   */
+  public xyToBar3(x: number, y: number) {
+    return this.parseXY(x, y).map((xyWithinBounds) => {
+      const { i, j } = this.xyToBarIndex(x, y);
+      const position = this.xyToBarPosition(xyWithinBounds);
+      const data = this.xyToBarData(xyWithinBounds);
 
       return {
-        xy,
+        x: xyWithinBounds.x,
+        y: xyWithinBounds.y,
         i,
         j,
         ...position,

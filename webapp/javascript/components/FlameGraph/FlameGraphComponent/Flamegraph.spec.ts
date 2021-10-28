@@ -26,7 +26,7 @@ describe('Flamegraph', () => {
       const zoom = Option.of({ i: 2, j: 8 });
 
       flame = new Flamegraph(
-        TestData.SimpleTree,
+        TestData.ComplexTree,
         canvas,
         focusedNode,
         fitMode,
@@ -36,6 +36,7 @@ describe('Flamegraph', () => {
 
       flame.render();
     });
+
     it('handles within canvas', () => {
       expect(flame.isWithinBounds(0, 0)).toBe(true);
       expect(flame.isWithinBounds(CANVAS_WIDTH - 1, 0)).toBe(true);
@@ -43,9 +44,21 @@ describe('Flamegraph', () => {
       expect(flame.isWithinBounds(0, -1)).toBe(false);
       expect(flame.isWithinBounds(-1, -1)).toBe(false);
     });
+
+    it('handles within canvas but outside the flamegraph', () => {
+      // this test is a bit difficult to visually
+      // you just have to know that it has the format such as
+      //
+      // | | (level 3)
+      // |_| (level 4)
+      //     (level 5)
+      expect(flame.isWithinBounds(0, BAR_HEIGHT * 3 + 1)).toBe(true);
+      expect(flame.isWithinBounds(0, BAR_HEIGHT * 4 + 1)).toBe(true);
+      expect(flame.isWithinBounds(0, BAR_HEIGHT * 5 + 1)).toBe(false);
+    });
   });
 
-  describe.only('xyToBarPosition 2', () => {
+  describe('xyToBarData', () => {
     describe('normal', () => {
       beforeAll(() => {
         canvas = document.createElement('canvas');
@@ -443,7 +456,7 @@ describe('Flamegraph', () => {
         });
 
         it('works with the first bar (total)', () => {
-          const got = flame.xyToBar2(0, 0);
+          const got = flame.xyToBar3(0, 0).getOrThrow();
           expect(got).toMatchObject({
             x: 0,
             y: 0,
@@ -455,7 +468,7 @@ describe('Flamegraph', () => {
 
         it('works with a full bar (runtime.main)', () => {
           // 2nd line,
-          const got = flame.xyToBar2(0, BAR_HEIGHT + 1);
+          const got = flame.xyToBar3(0, BAR_HEIGHT + 1).getOrThrow();
 
           expect(got).toMatchObject({
             i: 1,
@@ -469,7 +482,7 @@ describe('Flamegraph', () => {
 
         it('works with (main.slowFunction)', () => {
           // 3nd line, 'slowFunction'
-          const got = flame.xyToBar2(1, BAR_HEIGHT * 2 + 1);
+          const got = flame.xyToBar3(1, BAR_HEIGHT * 2 + 1).getOrThrow();
 
           expect(got).toMatchObject({
             i: 2,
@@ -482,7 +495,7 @@ describe('Flamegraph', () => {
         });
         it('works with (main.slowFunction)', () => {
           // 3nd line, 'slowFunction'
-          const got = flame.xyToBar2(1, BAR_HEIGHT * 3 + 1);
+          const got = flame.xyToBar3(1, BAR_HEIGHT * 3 + 1).getOrThrow();
 
           expect(got).toMatchObject({
             i: 3,
