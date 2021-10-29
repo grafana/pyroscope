@@ -72,9 +72,11 @@ func (s *Storage) deleteSegmentData(k *segment.Key, rp *segment.RetentionPolicy)
 	}
 
 	var removed int64
-	batchSize := s.trees.MaxBatchSize()
+	batchSize := s.trees.MaxBatchCount()
 	batch := s.trees.NewWriteBatch()
-	defer batch.Cancel()
+	defer func() {
+		batch.Cancel()
+	}()
 
 	for _, n := range nodes {
 		treeKey := segment.TreeKey(sk, n.depth, n.time)
@@ -116,9 +118,12 @@ func (s *Storage) deleteSegmentData(k *segment.Key, rp *segment.RetentionPolicy)
 // eventually, there is no way to juxtapose the actual occupied disk size
 // and the number of items to remove based on their estimated size.
 func (s *Storage) reclaimSegmentSpace(k *segment.Key, size int64) error {
+	batchSize := s.trees.MaxBatchCount()
 	batch := s.trees.NewWriteBatch()
-	defer batch.Cancel() // TODO(kolesnikovae): make sure argument is captured.
-	batchSize := s.trees.MaxBatchSize()
+	defer func() {
+		batch.Cancel()
+	}()
+
 	var (
 		removed   int64
 		reclaimed int64
