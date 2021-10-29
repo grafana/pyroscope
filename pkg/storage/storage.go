@@ -201,6 +201,8 @@ func (s *Storage) periodicTask(interval time.Duration, f func()) {
 func (s *Storage) evictionTask(memTotal uint64) func() {
 	var m runtime.MemStats
 	return func() {
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.retentionTaskDuration.Observe))
+		defer timer.ObserveDuration()
 		runtime.ReadMemStats(&m)
 		used := float64(m.Alloc) / float64(memTotal)
 		percent := s.config.CacheEvictVolume
@@ -228,6 +230,8 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 }
 
 func (s *Storage) writeBackTask() {
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.writeBackTaskDuration.Observe))
+	defer timer.ObserveDuration()
 	for _, d := range s.databases() {
 		if d.Cache != nil {
 			d.WriteBack()
@@ -245,6 +249,8 @@ func (s *Storage) updateMetricsTask() {
 }
 
 func (s *Storage) retentionTask() {
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.retentionTaskDuration.Observe))
+	defer timer.ObserveDuration()
 	if err := s.EnforceRetentionPolicy(s.retentionPolicy()); err != nil {
 		s.logger.WithError(err).Error("failed to enforce retention policy")
 	}

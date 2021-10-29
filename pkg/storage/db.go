@@ -6,6 +6,7 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
@@ -19,7 +20,8 @@ type db struct {
 	*badger.DB
 	*cache.Cache
 
-	lastGC bytesize.ByteSize
+	lastGC  bytesize.ByteSize
+	gcCount prometheus.Counter
 }
 
 type prefix string
@@ -66,9 +68,10 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, erro
 	}
 
 	d := db{
-		name:   name,
-		DB:     badgerDB,
-		logger: s.logger.WithField("db", name),
+		name:    name,
+		DB:      badgerDB,
+		logger:  s.logger.WithField("db", name),
+		gcCount: s.metrics.gcCount.WithLabelValues(name),
 	}
 
 	if codec != nil {
@@ -85,6 +88,7 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, erro
 		diff := calculateDBSize(badgerPath) - d.lastGC
 		if d.lastGC == 0 || s.gcSizeDiff == 0 || diff > s.gcSizeDiff {
 			d.runGC(0.7)
+			d.gcCount.Inc()
 			d.lastGC = calculateDBSize(badgerPath)
 		}
 	})

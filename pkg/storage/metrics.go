@@ -8,12 +8,15 @@ import (
 )
 
 type metrics struct {
-	putTotal   prometheus.Counter
-	getTotal   prometheus.Counter
-	gcDuration prometheus.Summary
+	putTotal              prometheus.Counter
+	getTotal              prometheus.Counter
+	retentionTaskDuration prometheus.Summary
+	evictionTaskDuration  prometheus.Summary
+	writeBackTaskDuration prometheus.Summary
 
 	dbSize    *prometheus.GaugeVec
 	cacheSize *prometheus.GaugeVec
+	gcCount   *prometheus.CounterVec
 
 	cacheMisses   *prometheus.CounterVec
 	cacheReads    *prometheus.CounterVec
@@ -35,9 +38,20 @@ func newMetrics(r prometheus.Registerer) *metrics {
 			Name: "pyroscope_storage_reads_total",
 			Help: "number of calls to storage.Get",
 		}),
-		gcDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
-			Name:       "pyroscope_storage_gc_duration_seconds",
+
+		retentionTaskDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_retention_task_duration_seconds",
 			Help:       "duration of old data deletion",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}),
+		evictionTaskDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_eviction_task_duration_seconds",
+			Help:       "duration of evictions (triggered when there's memory pressure)",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}),
+		writeBackTaskDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_writeback_task_duration_seconds",
+			Help:       "duration of write-back writes (triggered periodically)",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
 
@@ -45,28 +59,32 @@ func newMetrics(r prometheus.Registerer) *metrics {
 			Name: "pyroscope_storage_db_size_bytes",
 			Help: "size of items in disk",
 		}, name),
+		gcCount: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscope_storage_db_gc_total",
+			Help: "number of GC runs",
+		}, name),
 		cacheSize: promauto.With(r).NewGaugeVec(prometheus.GaugeOpts{
-			Name: "pyroscope_storage_cache_size",
+			Name: "pyroscope_storage_db_cache_size",
 			Help: "number of items in cache",
 		}, name),
 
 		cacheDBWrites: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_cache_db_write_bytes",
+			Name:    "pyroscope_storage_db_cache_write_bytes",
 			Help:    "bytes written to db from cache",
 			Buckets: prometheus.ExponentialBuckets(1024, 2, 10),
 		}, name),
 		cacheDBReads: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_cache_db_read_bytes",
+			Name:    "pyroscope_storage_db_cache_read_bytes",
 			Help:    "bytes read from db to cache",
 			Buckets: prometheus.ExponentialBuckets(1024, 2, 10),
 		}, name),
 
 		cacheMisses: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_storage_cache_misses_total",
+			Name: "pyroscope_storage_db_cache_misses_total",
 			Help: "total number of cache misses",
 		}, name),
 		cacheReads: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_storage_cache_reads_total",
+			Name: "pyroscope_storage_db_cache_reads_total",
 			Help: "total number of cache reads",
 		}, name),
 
@@ -84,13 +102,12 @@ func newMetrics(r prometheus.Registerer) *metrics {
 }
 
 func (m *metrics) createCacheMetrics(name string) *cache.Metrics {
-	l := prometheus.Labels{"name": name}
 	return &cache.Metrics{
-		MissesCounter:     m.cacheMisses.With(l),
-		ReadsCounter:      m.cacheReads.With(l),
-		DBWrites:          m.cacheDBWrites.With(l),
-		DBReads:           m.cacheDBReads.With(l),
-		EvictionsDuration: m.evictionsDuration.With(l),
-		WriteBackDuration: m.writeBackDuration.With(l),
+		MissesCounter:     m.cacheMisses.WithLabelValues(name),
+		ReadsCounter:      m.cacheReads.WithLabelValues(name),
+		DBWrites:          m.cacheDBWrites.WithLabelValues(name),
+		DBReads:           m.cacheDBReads.WithLabelValues(name),
+		EvictionsDuration: m.evictionsDuration.WithLabelValues(name),
+		WriteBackDuration: m.writeBackDuration.WithLabelValues(name),
 	}
 }
