@@ -164,18 +164,20 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  onFlamegraphZoom = (i, j) => {
+  onFlamegraphZoom = (bar) => {
     // zooming on the topmost bar is equivalent to resetting to the original state
-    if (i === 0 && j === 0) {
+    if (bar.isSome() && bar.get().i === 0 && bar.get().j === 0) {
       this.onReset();
       return;
     }
 
+    // otherwise just pass it up to the state
+    // doesn't matter if it's some or none
     this.setState({
       ...this.state,
       flamegraphConfigs: {
         ...this.state.flamegraphConfigs,
-        zoom: Option.some({ i, j }),
+        zoom: bar,
       },
     });
   };

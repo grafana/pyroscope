@@ -3,6 +3,7 @@ import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
+import { Option } from 'prelude-ts';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
@@ -18,7 +19,7 @@ interface FlamegraphProps {
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
 
-  onZoom: (i: number, j: number) => void;
+  onZoom: (bar: Option<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
 
   onReset: () => void;
@@ -53,11 +54,31 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       e.nativeEvent.offsetY
     );
 
-    // only run if it's a valid value
-    if (opt.isSome()) {
-      const bar = opt.get();
-      onZoom(bar.i, bar.j);
-    }
+    opt.match({
+      // clicked on an invalid node
+      None: () => {},
+      Some: (bar) => {
+        zoom.match({
+          // there's no existing zoom
+          // so just zoom on the clicked node
+          None: () => {
+            onZoom(opt);
+          },
+
+          // it's already zoomed
+          Some: (z) => {
+            // TODO there mya be stale props here...
+            // we are clicking on the same node that's zoomed
+            if (bar.i === z.i && bar.j === z.j) {
+              // undo that zoom
+              onZoom(Option.none());
+            } else {
+              onZoom(opt);
+            }
+          },
+        });
+      },
+    });
   };
 
   const xyToHighlightData = (x: number, y: number) => {
