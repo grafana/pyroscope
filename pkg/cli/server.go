@@ -40,9 +40,9 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	// TODO(kolesnikovae): run storage garbage collection before start?
 	c.Retention = 16 * time.Hour
 	c.RetentionLevels = map[int]time.Duration{
-		0: 3 * time.Minute,
-		1: 15 * time.Minute,
-		2: 30 * time.Minute,
+		0: time.Hour,
+		1: 4 * time.Hour,
+		2: 8 * time.Hour,
 	}
 
 	svc := serverService{
