@@ -71,13 +71,15 @@ export default class Flamegraph {
       highlightQuery: this.highlightQuery,
       zoom: this.zoom,
       focusedNode: this.focusedNode,
+      pxPerTick: this.pxPerTick(),
+      tickToX: this.tickToX,
     };
 
     const { format: viewType } = this.flamebearer;
 
     switch (viewType) {
       case 'single': {
-        RenderCanvas({ ...props, format: 'single', tickToX: this.tickToX });
+        RenderCanvas({ ...props, format: 'single' });
         break;
       }
       case 'double': {
@@ -85,7 +87,6 @@ export default class Flamegraph {
           ...props,
           leftTicks: this.flamebearer.leftTicks,
           rightTicks: this.flamebearer.rightTicks,
-          tickToX: this.tickToX,
         });
         break;
       }
@@ -97,7 +98,8 @@ export default class Flamegraph {
 
   private pxPerTick() {
     const { rangeMin, rangeMax } = this.getRange();
-    const graphWidth = this.canvas.width;
+    //    const graphWidth = this.canvas.width;
+    const graphWidth = this.getCanvasWidth();
 
     return graphWidth / this.flamebearer.numTicks / (rangeMax - rangeMin);
   }

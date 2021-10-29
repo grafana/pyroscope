@@ -68,26 +68,19 @@ type CanvasRendererConfig = Flamebearer & {
   readonly rangeMax: number;
 
   tickToX: (i: number) => number;
+
+  pxPerTick: number;
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
   const { canvas } = props;
-  const { numTicks, sampleRate, zoom } = props;
+  const { numTicks, sampleRate, pxPerTick } = props;
   const { fitMode } = props;
   const { units } = props;
   const { rangeMin, rangeMax } = props;
   const { tickToX } = props;
 
-  // clientWidth includes padding
-  // however it's not present in node-canvas (used for testing)
-  // so we also fallback to canvas.width
-  const graphWidth = canvas.clientWidth || canvas.width;
-  if (!graphWidth) {
-    throw new Error(
-      `Could not infer canvasWidth. Tried 'canvas.clientWidth' and 'canvas.width'`
-    );
-  }
-
+  const graphWidth = getCanvasWidth(canvas);
   // TODO: why is this needed? otherwise height is all messed up
   canvas.width = graphWidth;
 
@@ -99,9 +92,9 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   const ff = createFF(format);
 
   const { levels } = props;
-  const { focusedNode } = props;
+  const { focusedNode, zoom } = props;
 
-  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
+  //  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
   const ctx = canvas.getContext('2d');
   const selectedLevel = zoom.map((z) => z.i).getOrElse(0);
   const formatter = getFormatter(numTicks, sampleRate, units);
@@ -169,8 +162,8 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
+      const name = getFunctionName(names, j, format, level);
       const barIndex = ff.getBarOffset(level, j);
-
       const x = tickToX(barIndex);
       const y = i * PX_PER_LEVEL + (isFocused ? BAR_HEIGHT : 0);
 
@@ -384,4 +377,11 @@ function nodeIsInQuery(
   query: string
 ) {
   return names[level[index]].indexOf(query) >= 0;
+}
+
+function getCanvasWidth(canvas: HTMLCanvasElement) {
+  // clientWidth includes padding
+  // however it's not present in node-canvas (used for testing)
+  // so we also fallback to canvas.width
+  return canvas.clientWidth || canvas.width;
 }
