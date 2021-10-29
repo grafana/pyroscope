@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
@@ -7,6 +7,7 @@ import { Option } from 'prelude-ts';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
+import ContextMenuHighlight from './ContextMenuHighlight';
 import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
@@ -33,6 +34,9 @@ interface FlamegraphProps {
 export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>();
   const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
+  const [rightClickedNode, setRightClickedNode] = React.useState(
+    Option.none<{ top: number; left: number; width: number }>()
+  );
 
   const { flamebearer, focusedNode, fitMode, highlightQuery, zoom } = props;
 
@@ -97,31 +101,46 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     return flamegraph.xyToBar(x, y);
   };
 
-  // Context Menu stuff
-  const xyToContextMenuItems = (x: number, y: number) => {
-    const dirty = isDirty();
-    const bar = flamegraph.xyToBar(x, y);
-
-    const FocusItem = () => {
-      const hoveredOnValidNode = bar.map(() => true).getOrElse(false);
-      const onClick = bar
-        .map((f) => onFocusOnNode.bind(null, f.i, f.j))
-        .getOrElse(() => {});
-
-      return (
-        <MenuItem key="focus" disabled={!hoveredOnValidNode} onClick={onClick}>
-          Focus on this subtree
-        </MenuItem>
-      );
-    };
-
-    return [
-      <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
-        Reset View
-      </MenuItem>,
-      FocusItem(),
-    ];
+  const onContextMenuClose = () => {
+    setRightClickedNode(Option.none());
   };
+
+  const onContextMenuOpen = (x: number, y: number) => {
+    setRightClickedNode(xyToHighlightData(x, y));
+  };
+
+  // Context Menu stuff
+  const xyToContextMenuItems = useCallback(
+    (x: number, y: number) => {
+      const dirty = isDirty();
+      const bar = flamegraph.xyToBar(x, y);
+
+      const FocusItem = () => {
+        const hoveredOnValidNode = bar.map(() => true).getOrElse(false);
+        const onClick = bar
+          .map((f) => onFocusOnNode.bind(null, f.i, f.j))
+          .getOrElse(() => {});
+
+        return (
+          <MenuItem
+            key="focus"
+            disabled={!hoveredOnValidNode}
+            onClick={onClick}
+          >
+            Focus on this subtree
+          </MenuItem>
+        );
+      };
+
+      return [
+        <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
+          Reset View
+        </MenuItem>,
+        FocusItem(),
+      ];
+    },
+    [flamegraph]
+  );
 
   React.useEffect(() => {
     if (canvasRef.current) {
@@ -186,6 +205,12 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           />
         )}
         {flamegraph && (
+          <ContextMenuHighlight
+            barHeight={PX_PER_LEVEL}
+            node={rightClickedNode}
+          />
+        )}
+        {flamegraph && (
           <Tooltip
             format={flamebearer.format}
             canvasRef={canvasRef}
@@ -204,6 +229,8 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           <ContextMenu
             canvasRef={canvasRef}
             xyToMenuItems={xyToContextMenuItems}
+            onClose={onContextMenuClose}
+            onOpen={onContextMenuOpen}
           />
         )}
       </div>

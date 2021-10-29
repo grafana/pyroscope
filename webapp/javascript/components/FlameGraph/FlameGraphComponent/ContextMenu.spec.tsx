@@ -36,7 +36,13 @@ describe('ContextMenu', () => {
       ];
     };
 
-    render(<TestCanvas xyToMenuItems={xyToMenuItems} />);
+    render(
+      <TestCanvas
+        xyToMenuItems={xyToMenuItems}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />
+    );
 
     expect(queryByRole('menu')).not.toBeInTheDocument();
 
@@ -53,7 +59,13 @@ describe('ContextMenu', () => {
   it('shows different items depending on the clicked node', () => {
     const xyToMenuItems = jest.fn();
 
-    render(<TestCanvas xyToMenuItems={xyToMenuItems} />);
+    render(
+      <TestCanvas
+        xyToMenuItems={xyToMenuItems}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />
+    );
 
     expect(queryByRole('menu')).not.toBeInTheDocument();
 

@@ -36,7 +36,7 @@ export default function Highlight(props: HighlightProps) {
       });
     } else {
       // it doesn't map to a valid xy
-      // so it mean we are hovering out
+      // so it means we are hovering out
       onMouseOut();
     }
   };

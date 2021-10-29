@@ -12,6 +12,9 @@ export interface ContextMenuProps {
    * only MenuItem and SubMenu should be supported
    */
   xyToMenuItems: xyToMenuItems;
+
+  onClose: () => void;
+  onOpen: (x: number, y: number) => void;
 }
 
 export default function ContextMenu(props: ContextMenuProps) {
@@ -19,7 +22,17 @@ export default function ContextMenu(props: ContextMenuProps) {
   const [anchorPoint, setAnchorPoint] = React.useState({ x: 0, y: 0 });
   const { canvasRef } = props;
   const [menuItems, setMenuItems] = React.useState<JSX.Element[]>([]);
-  const { xyToMenuItems } = props;
+  const {
+    xyToMenuItems,
+    onClose: onCloseCallback,
+    onOpen: onOpenCallback,
+  } = props;
+
+  const onClose = () => {
+    closeMenu();
+
+    onCloseCallback();
+  };
 
   React.useEffect(() => {
     closeMenu();
@@ -38,6 +51,8 @@ export default function ContextMenu(props: ContextMenuProps) {
       const items = xyToMenuItems(e.offsetX, e.offsetY);
       setMenuItems(items);
 
+      //      console.log('set menu items', items);
+
       // TODO
       // if the menu becomes too large, it may overflow to outside the screen
       const x = e.clientX;
@@ -45,6 +60,8 @@ export default function ContextMenu(props: ContextMenuProps) {
 
       setAnchorPoint({ x, y });
       openMenu();
+
+      onOpenCallback(e.offsetX, e.offsetY);
     };
 
     // watch for mouse events on the bar
@@ -54,13 +71,14 @@ export default function ContextMenu(props: ContextMenuProps) {
       canvasEl.removeEventListener('contextmenu', onContextMenu);
     };
   }, [xyToMenuItems]);
+
   return (
     <ControlledMenu
       menuItemFocus={menuProps.menuItemFocus}
       isMounted={menuProps.isMounted}
       isOpen={menuProps.isOpen}
       anchorPoint={anchorPoint}
-      onClose={closeMenu}
+      onClose={onClose}
     >
       {menuItems}
     </ControlledMenu>
