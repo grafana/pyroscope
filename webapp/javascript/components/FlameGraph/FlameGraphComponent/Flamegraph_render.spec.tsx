@@ -114,7 +114,7 @@ describe("render group:snapshot'", () => {
     expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
   });
 
-  describe.only('focused', () => {
+  describe('focused', () => {
     it('renders a focused node in the beginning', () => {
       const zoom: zoomType = Option.none();
       const focusedNode = Option.some({ i: 2, j: 0 });
@@ -149,7 +149,7 @@ describe("render group:snapshot'", () => {
       expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
     });
 
-    it.only('also zooms', () => {
+    it('also zooms', () => {
       const focusedNode = Option.some({ i: 1, j: 0 });
       const zoom = Option.some({ i: 2, j: 0 }); // main.fastFunction
 
