@@ -49,7 +49,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   });
 
   const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const opt = flamegraph.xyToBar3(
+    const opt = flamegraph.xyToBar(
       e.nativeEvent.offsetX,
       e.nativeEvent.offsetY
     );
@@ -82,7 +82,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   };
 
   const xyToHighlightData = (x: number, y: number) => {
-    const opt = flamegraph.xyToBar3(x, y);
+    const opt = flamegraph.xyToBar(x, y);
 
     return opt.map((bar) => {
       return {
@@ -94,13 +94,13 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   };
 
   const xyToTooltipData = (x: number, y: number) => {
-    return flamegraph.xyToBar3(x, y);
+    return flamegraph.xyToBar(x, y);
   };
 
   // Context Menu stuff
   const xyToContextMenuItems = (x: number, y: number) => {
     const dirty = isDirty();
-    const bar = flamegraph.xyToBar3(x, y);
+    const bar = flamegraph.xyToBar(x, y);
 
     const FocusItem = () => {
       const hoveredOnValidNode = bar.map(() => true).getOrElse(false);

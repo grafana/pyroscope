@@ -77,7 +77,7 @@ export default class Flamegraph {
 
     switch (viewType) {
       case 'single': {
-        RenderCanvas({ ...props, format: 'single' });
+        RenderCanvas({ ...props, format: 'single', tickToX: this.tickToX });
         break;
       }
       case 'double': {
@@ -85,6 +85,7 @@ export default class Flamegraph {
           ...props,
           leftTicks: this.flamebearer.leftTicks,
           rightTicks: this.flamebearer.rightTicks,
+          tickToX: this.tickToX,
         });
         break;
       }
@@ -101,10 +102,10 @@ export default class Flamegraph {
     return graphWidth / this.flamebearer.numTicks / (rangeMax - rangeMin);
   }
 
-  private tickToX(i: number) {
+  private tickToX = (i: number) => {
     const { rangeMin } = this.getRange();
     return (i - this.flamebearer.numTicks * rangeMin) * this.pxPerTick();
-  }
+  };
 
   private getRange() {
     const { ff } = this;
@@ -390,7 +391,7 @@ export default class Flamegraph {
    * Given x and y coordinates
    * return all information about the bar under those coordinates
    */
-  public xyToBar3(x: number, y: number) {
+  public xyToBar(x: number, y: number) {
     return this.parseXY(x, y).map((xyWithinBounds) => {
       const { i, j } = this.xyToBarIndex(x, y);
       const position = this.xyToBarPosition(xyWithinBounds);

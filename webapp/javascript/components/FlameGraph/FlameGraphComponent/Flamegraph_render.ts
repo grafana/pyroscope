@@ -66,6 +66,8 @@ type CanvasRendererConfig = Flamebearer & {
    * For illustration, in a non zoomed state it has the value of 1
    */
   readonly rangeMax: number;
+
+  tickToX: (i: number) => number;
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
@@ -74,6 +76,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   const { fitMode } = props;
   const { units } = props;
   const { rangeMin, rangeMax } = props;
+  const { tickToX } = props;
 
   // clientWidth includes padding
   // however it's not present in node-canvas (used for testing)
@@ -92,67 +95,18 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     throw new Error(`'rangeMin' should be strictly smaller than 'rangeMax'`);
   }
 
-  // TODO what does ff mean?
   const { format } = props;
   const ff = createFF(format);
 
   const { levels } = props;
   const { focusedNode } = props;
 
-  // TODO
-  // this shouldn't be needed
-  //  if (focusedNode.i === -1) {
-  //    focusedNode.i = 0;
-  //  }
-  //  if (focusedNode.j === -1) {
-  //    focusedNode.j = 0;
-  //  }
-  //
-  //  const focusMin =
-  //    ff.getBarOffset(levels[focusedNode.i], focusedNode.j) / numTicks;
-  //
-  //  const focusMax =
-  //    (ff.getBarOffset(levels[focusedNode.i], focusedNode.j) +
-  //      ff.getBarTotal(levels[focusedNode.i], focusedNode.j)) /
-  //    numTicks;
-  //
-  //  // in case we are focusing
-  //  // if focus is set but rangemin is not
-  //  // or zoom is smaller
-  //  if (
-  //    (focusMin !== 0 && rangeMin === 0) ||
-  //    (focusMax !== 1 && rangeMax === 1) ||
-  //    rangeMin < focusMin
-  //  ) {
-  //    rangeMin = focusMin;
-  //    rangeMax = focusMax;
-  //    console.log('focus min is smaller than rageMin');
-  //  }
   const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
-
-  //  const pxPerTick = graphWidth / numTicks / (focusMax - focusMin);
-
-  //  console.log({
-  //    focusedNode,
-  //    focusMax,
-  //    focusMin,
-  //    rangeMax,
-  //    rangeMin,
-  //    pxPerTick,
-  //  });
-  //
   const ctx = canvas.getContext('2d');
   const selectedLevel = zoom.map((z) => z.i).getOrElse(0);
-
-  //  const { topLevel } = props;
-  //  TODO
-  //  const topLevel = 0;
   const formatter = getFormatter(numTicks, sampleRate, units);
-
   const isFocused = focusedNode.isSome();
-
   const topLevel = focusedNode.map((f) => f.i).getOrElse(0);
-  //    focusedNode.i < 0 ? 0 : focusedNode.i;
 
   const canvasHeight =
     PX_PER_LEVEL * (levels.length - topLevel) + (isFocused ? BAR_HEIGHT : 0);
@@ -217,9 +171,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     for (let j = 0; j < level.length; j += ff.jStep) {
       const barIndex = ff.getBarOffset(level, j);
 
-      //      console.log('functino', n);
-      const x = tickToX(numTicks, rangeMin, pxPerTick, barIndex);
-      //      const x = tickToX(numTicks, focusMin, pxPerTick, barIndex);
+      const x = tickToX(barIndex);
       const y = i * PX_PER_LEVEL + (isFocused ? BAR_HEIGHT : 0);
 
       const sh = BAR_HEIGHT;
@@ -237,7 +189,6 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
 
       // merge very small blocks into big "collapsed" ones for performance
       const collapsed = numBarTicks * pxPerTick <= COLLAPSE_THRESHOLD;
-      //      console.log('function with name', n, 'is collapsed', collapsed);
       if (collapsed) {
         // TODO: refactor this
         while (
@@ -261,18 +212,6 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       }
 
       const sw = numBarTicks * pxPerTick - (collapsed ? 0 : GAP);
-      //      console.log('function', n, {
-      //        sw,
-      //        x,
-      //        y,
-      //        sh,
-      //        canvasWidth: canvas.width,
-      //        numTicks,
-      //        rangeMin,
-      //        pxPerTick,
-      //        barIndex,
-      //      });
-      //
       /*******************************/
       /*      D r a w   R e c t      */
       /*******************************/
@@ -436,23 +375,6 @@ function getColor(cfg: getColorCfg) {
     ),
     a
   );
-}
-
-function tickToX(
-  numTicks: number,
-  rangeMin: number,
-  pxPerTick: number,
-  barTicks: number
-) {
-  // barticks is euqal to the offset?
-  //  console.log({
-  //    barTicks,
-  //    numTicks,
-  //    rangeMin,
-  //    pxPerTick,
-  //    total: (barTicks - numTicks * rangeMin) * pxPerTick,
-  //  });
-  return (barTicks - numTicks * rangeMin) * pxPerTick;
 }
 
 function nodeIsInQuery(
