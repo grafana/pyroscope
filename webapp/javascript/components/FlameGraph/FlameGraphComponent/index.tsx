@@ -192,7 +192,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         />
 
         {dataUnavailable ? (
-          <div className="error-message">
+          <div className={styles.error}>
             <span>
               No profiling data available for this application / time range.
             </span>
