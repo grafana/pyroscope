@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
+import { Option } from 'prelude-ts';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
+import ContextMenuHighlight from './ContextMenuHighlight';
 import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
@@ -13,13 +15,13 @@ import Header from './Header';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
-  topLevel: ConstructorParameters<typeof Flamegraph>[2];
-  selectedLevel: ConstructorParameters<typeof Flamegraph>[3];
-  fitMode: ConstructorParameters<typeof Flamegraph>[4];
-  query: ConstructorParameters<typeof Flamegraph>[5];
-  zoom: ConstructorParameters<typeof Flamegraph>[6]; // TODO call it zoom level?
+  focusedNode: ConstructorParameters<typeof Flamegraph>[2];
+  fitMode: ConstructorParameters<typeof Flamegraph>[3];
+  highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
+  zoom: ConstructorParameters<typeof Flamegraph>[5];
 
-  onZoom: (i: number, j: number) => void;
+  onZoom: (bar: Option<{ i: number; j: number }>) => void;
+  onFocusOnNode: (i: number, j: number) => void;
 
   onReset: () => void;
   isDirty: () => boolean;
@@ -32,74 +34,122 @@ interface FlamegraphProps {
 export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>();
   const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
+  const [rightClickedNode, setRightClickedNode] = React.useState(
+    Option.none<{ top: number; left: number; width: number }>()
+  );
 
-  const { flamebearer, topLevel, selectedLevel, fitMode, query, zoom } = props;
+  const { flamebearer, focusedNode, fitMode, highlightQuery, zoom } = props;
 
-  const { onZoom, onReset, isDirty } = props;
+  const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
 
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
   // to display the flamegraph isolated from the table
-  useResizeObserver(canvasRef, () => {
+  useResizeObserver(canvasRef, (e) => {
     if (flamegraph) {
       renderCanvas();
     }
   });
 
   const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const { i, j } = flamegraph.xyToBar(
+    const opt = flamegraph.xyToBar(
       e.nativeEvent.offsetX,
       e.nativeEvent.offsetY
     );
 
-    onZoom(i, j);
+    opt.match({
+      // clicked on an invalid node
+      None: () => {},
+      Some: (bar) => {
+        zoom.match({
+          // there's no existing zoom
+          // so just zoom on the clicked node
+          None: () => {
+            onZoom(opt);
+          },
+
+          // it's already zoomed
+          Some: (z) => {
+            // TODO there mya be stale props here...
+            // we are clicking on the same node that's zoomed
+            if (bar.i === z.i && bar.j === z.j) {
+              // undo that zoom
+              onZoom(Option.none());
+            } else {
+              onZoom(opt);
+            }
+          },
+        });
+      },
+    });
   };
 
   const xyToHighlightData = (x: number, y: number) => {
-    const bar = flamegraph.xyToBarPosition(x, y);
+    const opt = flamegraph.xyToBar(x, y);
 
-    return {
-      left: canvasRef.current.offsetLeft + bar.x,
-      top: canvasRef.current.offsetTop + bar.y,
-      width: bar.width,
-    };
+    return opt.map((bar) => {
+      return {
+        left: canvasRef.current.offsetLeft + bar.x,
+        top: canvasRef.current.offsetTop + bar.y,
+        width: bar.width,
+      };
+    });
   };
 
   const xyToTooltipData = (x: number, y: number) => {
-    return flamegraph.xyToBarData(x, y);
+    return flamegraph.xyToBar(x, y);
+  };
+
+  const onContextMenuClose = () => {
+    setRightClickedNode(Option.none());
+  };
+
+  const onContextMenuOpen = (x: number, y: number) => {
+    setRightClickedNode(xyToHighlightData(x, y));
   };
 
   // Context Menu stuff
-  const xyToContextMenuItems = (x: number, y: number) => {
-    const dirty = isDirty();
+  const xyToContextMenuItems = useCallback(
+    (x: number, y: number) => {
+      const dirty = isDirty();
+      const bar = flamegraph.xyToBar(x, y);
 
-    //
-    //      <MenuItem key="focus" onClick={() => this.focusOnNode(x, y)}>
-    //        Focus
-    //      </MenuItem>,
-    return [
-      <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
-        Reset View
-      </MenuItem>,
-    ];
-  };
+      const FocusItem = () => {
+        const hoveredOnValidNode = bar.map(() => true).getOrElse(false);
+        const onClick = bar
+          .map((f) => onFocusOnNode.bind(null, f.i, f.j))
+          .getOrElse(() => {});
 
-  // this level of indirection is required
-  // otherwise may get stale props
-  // eg. thinking that a zoomed flamegraph is not zoomed
-  const isWithinBounds = (x: number, y: number) =>
-    flamegraph.isWithinBounds(x, y);
+        return (
+          <MenuItem
+            key="focus"
+            disabled={!hoveredOnValidNode}
+            onClick={onClick}
+          >
+            Focus on this subtree
+          </MenuItem>
+        );
+      };
+
+      return [
+        <MenuItem key="reset" disabled={!dirty} onClick={onReset}>
+          Reset View
+        </MenuItem>,
+        FocusItem(),
+      ];
+    },
+    [flamegraph]
+  );
 
   React.useEffect(() => {
     if (canvasRef.current) {
       const f = new Flamegraph(
         flamebearer,
         canvasRef.current,
-        topLevel,
-        selectedLevel,
+        focusedNode,
         fitMode,
-        query,
+        highlightQuery,
         zoom
       );
 
@@ -108,10 +158,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   }, [
     canvasRef.current,
     flamebearer,
-    topLevel,
-    selectedLevel,
+    focusedNode,
     fitMode,
-    query,
+    highlightQuery,
     zoom,
   ]);
 
@@ -153,7 +202,12 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             barHeight={PX_PER_LEVEL}
             canvasRef={canvasRef}
             xyToHighlightData={xyToHighlightData}
-            isWithinBounds={isWithinBounds}
+          />
+        )}
+        {flamegraph && (
+          <ContextMenuHighlight
+            barHeight={PX_PER_LEVEL}
+            node={rightClickedNode}
           />
         )}
         {flamegraph && (
@@ -161,7 +215,6 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             format={flamebearer.format}
             canvasRef={canvasRef}
             xyToData={xyToTooltipData as any /* TODO */}
-            isWithinBounds={isWithinBounds}
             numTicks={flamebearer.numTicks}
             sampleRate={flamebearer.sampleRate}
             leftTicks={flamebearer.format === 'double' && flamebearer.leftTicks}
@@ -172,10 +225,14 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           />
         )}
 
-        <ContextMenu
-          canvasRef={canvasRef}
-          xyToMenuItems={xyToContextMenuItems}
-        />
+        {flamegraph && (
+          <ContextMenu
+            canvasRef={canvasRef}
+            xyToMenuItems={xyToContextMenuItems}
+            onClose={onContextMenuClose}
+            onOpen={onContextMenuOpen}
+          />
+        )}
       </div>
     </>
   );

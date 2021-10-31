@@ -2,9 +2,10 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Option } from 'prelude-ts';
+
 import { diffColorRed, diffColorGreen } from './color';
 import { Units } from '../../../util/format';
-
 import Tooltip, { TooltipProps } from './Tooltip';
 
 // Omit<TooltipProps, 'canvasRef'>) wasn't working
@@ -21,15 +22,14 @@ function TestCanvas(props: TooltipProps) {
 }
 
 describe('Tooltip', () => {
-  const isWithinBounds = () => true;
-
   describe('"single" mode', () => {
     it('renders correctly', () => {
-      const xyToData = (x: number, y: number) => ({
-        format: 'single' as const,
-        name: 'function_title',
-        total: 10,
-      });
+      const xyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'single' as const,
+          name: 'function_title',
+          total: 10,
+        });
 
       render(
         <TestCanvas
@@ -38,7 +38,6 @@ describe('Tooltip', () => {
           units={Units.Samples}
           numTicks={100}
           sampleRate={100}
-          isWithinBounds={isWithinBounds}
           xyToData={xyToData}
         />
       );
@@ -79,13 +78,14 @@ describe('Tooltip', () => {
     }
 
     it("works with a function that hasn't changed", () => {
-      const myxyToData = (x: number, y: number) => ({
-        format: 'double' as const,
-        name: 'my_function',
-        totalLeft: 100,
-        totalRight: 100,
-        barTotal: 100,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 100,
+          totalRight: 100,
+          barTotal: 100,
+        });
 
       render(
         <TestCanvas
@@ -94,7 +94,6 @@ describe('Tooltip', () => {
           units={Units.Samples}
           numTicks={100}
           sampleRate={100}
-          isWithinBounds={isWithinBounds}
           leftTicks={1000}
           rightTicks={1000}
           xyToData={myxyToData}
@@ -114,13 +113,14 @@ describe('Tooltip', () => {
     });
 
     it('works with a function that has been added', () => {
-      const myxyToData = (x: number, y: number) => ({
-        format: 'double' as const,
-        name: 'my_function',
-        totalLeft: 0,
-        totalRight: 100,
-        barTotal: 100,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 0,
+          totalRight: 100,
+          barTotal: 100,
+        });
 
       render(
         <TestCanvas
@@ -129,10 +129,9 @@ describe('Tooltip', () => {
           units={Units.Samples}
           numTicks={100}
           sampleRate={100}
-          isWithinBounds={isWithinBounds}
           leftTicks={1000}
           rightTicks={1000}
-          xyToData={myxyToData as any}
+          xyToData={myxyToData}
         />
       );
       // since we are mocking the result
@@ -148,13 +147,14 @@ describe('Tooltip', () => {
     });
 
     it('works with a function that has been removed', () => {
-      const myxyToData = (x: number, y: number) => ({
-        format: 'double' as const,
-        name: 'my_function',
-        totalLeft: 100,
-        totalRight: 0,
-        barTotal: 100,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 100,
+          totalRight: 0,
+          barTotal: 100,
+        });
 
       render(
         <TestCanvas
@@ -163,7 +163,6 @@ describe('Tooltip', () => {
           units={Units.Samples}
           numTicks={100}
           sampleRate={100}
-          isWithinBounds={isWithinBounds}
           leftTicks={1000}
           rightTicks={1000}
           xyToData={myxyToData}
@@ -182,13 +181,14 @@ describe('Tooltip', () => {
     });
 
     it('works with a function that became slower', () => {
-      const myxyToData = (x: number, y: number) => ({
-        format: 'double' as const,
-        name: 'my_function',
-        totalLeft: 100,
-        totalRight: 200,
-        barTotal: 100,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 100,
+          totalRight: 200,
+          barTotal: 100,
+        });
 
       render(
         <TestCanvas
@@ -197,7 +197,6 @@ describe('Tooltip', () => {
           units={Units.Samples}
           numTicks={100}
           sampleRate={100}
-          isWithinBounds={isWithinBounds}
           leftTicks={1000}
           rightTicks={1000}
           xyToData={myxyToData}
@@ -216,13 +215,14 @@ describe('Tooltip', () => {
     });
 
     it('works with a function that became faster', () => {
-      const myxyToData = (x: number, y: number) => ({
-        format: 'double' as const,
-        name: 'my_function',
-        totalLeft: 200,
-        totalRight: 100,
-        barTotal: 100,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 200,
+          totalRight: 100,
+          barTotal: 100,
+        });
 
       render(
         <TestCanvas
@@ -231,7 +231,6 @@ describe('Tooltip', () => {
           units={Units.Samples}
           numTicks={100}
           sampleRate={100}
-          isWithinBounds={isWithinBounds}
           leftTicks={1000}
           rightTicks={1000}
           xyToData={myxyToData}

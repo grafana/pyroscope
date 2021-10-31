@@ -357,6 +357,27 @@ describe('basic test', () => {
     });
   });
 
+  describe('focus', () => {
+    it('it toggles when clicked again', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+        times: 1,
+      }).as('render');
+
+      cy.visit('/');
+
+      // click once once
+      cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
+
+      // click again
+      cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
+
+      cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
+        `simple-golang-app-focus-toggle`
+      );
+    });
+  });
+
   describe('contextmenu', () => {
     it("it works when 'clear view' is clicked", () => {
       cy.intercept('**/render*', {
@@ -377,9 +398,10 @@ describe('basic test', () => {
       // click on the second item
       cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
       cy.findByTestId('flamegraph-canvas').rightclick();
-      cy.findByRole('menuitem')
-        .contains('Reset View')
-        .should('not.have.attr', 'aria-disabled');
+      cy.findByRole('menuitem', { name: /Reset View/ }).should(
+        'not.have.attr',
+        'aria-disabled'
+      );
       cy.findByRole('menuitem', { name: /Reset View/ }).click();
       // TODO assert that it was indeed reset?
 

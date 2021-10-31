@@ -1,11 +1,12 @@
 import React from 'react';
 import userEvent from '@testing-library/user-event';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { Option } from 'prelude-ts';
 import FlamegraphComponent from './index';
 import TestData from './testData';
 import { BAR_HEIGHT } from './constants';
 
-// the leafs have already been tested
+// the leaves have already been tested
 // this is just to guarantee code is compiling
 // and the callbacks are being called correctly
 describe('FlamegraphComponent', () => {
@@ -15,15 +16,16 @@ describe('FlamegraphComponent', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
     const isDirty = jest.fn();
+    const onFocusOnNode = jest.fn();
 
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={{ i: -1, j: -1 }}
-        topLevel={0}
-        selectedLevel={0}
-        query=""
+        zoom={Option.none()}
+        focusedNode={Option.none()}
+        highlightQuery=""
         onZoom={onZoom}
+        onFocusOnNode={onFocusOnNode}
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
@@ -36,15 +38,16 @@ describe('FlamegraphComponent', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
     const isDirty = jest.fn();
+    const onFocusOnNode = jest.fn();
 
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={{ i: -1, j: -1 }}
-        topLevel={0}
-        selectedLevel={0}
-        query=""
+        zoom={Option.none()}
+        focusedNode={Option.none()}
+        highlightQuery=""
         onZoom={onZoom}
+        onFocusOnNode={onFocusOnNode}
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
@@ -68,15 +71,16 @@ describe('FlamegraphComponent', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
     const isDirty = jest.fn();
+    const onFocusOnNode = jest.fn();
 
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={{ i: -1, j: -1 }}
-        topLevel={0}
-        selectedLevel={0}
-        query=""
+        zoom={Option.none()}
+        focusedNode={Option.none()}
+        highlightQuery=""
         onZoom={onZoom}
+        onFocusOnNode={onFocusOnNode}
         onReset={onReset}
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
@@ -93,19 +97,20 @@ describe('FlamegraphComponent', () => {
   });
 
   describe('context menu', () => {
-    it('enables "reset view" menuitem when its dirty', () => {
+    it(`enables "reset view" menuitem when it's dirty`, async () => {
       const onZoom = jest.fn();
       const onReset = jest.fn();
       const isDirty = jest.fn();
+      const onFocusOnNode = jest.fn();
 
       const { rerender } = render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={{ i: -1, j: -1 }}
-          topLevel={0}
-          selectedLevel={0}
-          query=""
+          zoom={Option.none()}
+          focusedNode={Option.none()}
+          highlightQuery=""
           onZoom={onZoom}
+          onFocusOnNode={onFocusOnNode}
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
@@ -115,11 +120,16 @@ describe('FlamegraphComponent', () => {
 
       userEvent.click(screen.getByTestId('flamegraph-canvas'), {
         button: 2,
+        clientX: 1,
+        clientY: 1,
       });
+
       // should not be available unless we zoom
-      expect(
-        screen.queryByRole('menuitem', { name: /Reset View/ })
-      ).toHaveAttribute('aria-disabled', 'true');
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('menuitem', { name: /Reset View/ })
+        ).toHaveAttribute('aria-disabled', 'true')
+      );
 
       // it's dirty now
       isDirty.mockReturnValue(true);
@@ -127,11 +137,11 @@ describe('FlamegraphComponent', () => {
       rerender(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={{ i: -1, j: -1 }}
-          topLevel={0}
-          selectedLevel={0}
-          query=""
+          zoom={Option.none()}
+          focusedNode={Option.none()}
+          highlightQuery=""
           onZoom={onZoom}
+          onFocusOnNode={onFocusOnNode}
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
@@ -148,22 +158,58 @@ describe('FlamegraphComponent', () => {
         screen.queryByRole('menuitem', { name: /Reset View/ })
       ).not.toHaveAttribute('aria-disabled', 'true');
     });
+
+    it('triggers a highlight', () => {
+      const onZoom = jest.fn();
+      const onReset = jest.fn();
+      const isDirty = jest.fn();
+      const onFocusOnNode = jest.fn();
+
+      render(
+        <FlamegraphComponent
+          fitMode="HEAD"
+          zoom={Option.none()}
+          focusedNode={Option.none()}
+          highlightQuery=""
+          onZoom={onZoom}
+          onFocusOnNode={onFocusOnNode}
+          onReset={onReset}
+          isDirty={isDirty}
+          flamebearer={TestData.SimpleTree}
+          ExportData={ExportData}
+        />
+      );
+
+      // initially the context highlight is not visible
+      expect(
+        screen.getByTestId('flamegraph-highlight-contextmenu')
+      ).not.toBeVisible();
+
+      // then we click
+      userEvent.click(screen.getByTestId('flamegraph-canvas'), { button: 2 });
+
+      // should be visible now
+      expect(
+        screen.getByTestId('flamegraph-highlight-contextmenu')
+      ).toBeVisible();
+    });
   });
 
   describe('header', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
     const isDirty = jest.fn();
+    const onFocusOnNode = jest.fn();
 
     it('renders when type is single', () => {
       render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={{ i: -1, j: -1 }}
-          topLevel={0}
-          selectedLevel={0}
-          query=""
+          zoom={Option.none()}
+          focusedNode={Option.none()}
+          highlightQuery=""
           onZoom={onZoom}
+          onFocusOnNode={onFocusOnNode}
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
@@ -182,11 +228,11 @@ describe('FlamegraphComponent', () => {
       render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={{ i: -1, j: -1 }}
-          topLevel={0}
-          selectedLevel={0}
-          query=""
+          zoom={Option.none()}
+          focusedNode={Option.none()}
+          highlightQuery=""
           onZoom={onZoom}
+          onFocusOnNode={onFocusOnNode}
           onReset={onReset}
           isDirty={isDirty}
           flamebearer={flamebearer}

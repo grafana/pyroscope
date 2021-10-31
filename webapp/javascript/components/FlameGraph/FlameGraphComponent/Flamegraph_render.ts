@@ -51,39 +51,36 @@ import Flamegraph from './Flamegraph';
 
 type CanvasRendererConfig = Flamebearer & {
   canvas: HTMLCanvasElement;
-  topLevel: ConstructorParameters<typeof Flamegraph>[2];
-  selectedLevel: ConstructorParameters<typeof Flamegraph>[3];
-  fitMode: ConstructorParameters<typeof Flamegraph>[4];
-  highlightQuery: ConstructorParameters<typeof Flamegraph>[5];
+  focusedNode: ConstructorParameters<typeof Flamegraph>[2];
+  fitMode: ConstructorParameters<typeof Flamegraph>[3];
+  highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
+  zoom: ConstructorParameters<typeof Flamegraph>[5];
 
   /**
    * Used when zooming, values between 0 and 1.
    * For illustration, in a non zoomed state it has the value of 0
    */
-  rangeMin: number;
+  readonly rangeMin: number;
   /**
    * Used when zooming, values between 0 and 1.
    * For illustration, in a non zoomed state it has the value of 1
    */
-  rangeMax: number;
+  readonly rangeMax: number;
+
+  tickToX: (i: number) => number;
+
+  pxPerTick: number;
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
   const { canvas } = props;
-  const { numTicks, rangeMin, rangeMax, sampleRate } = props;
+  const { numTicks, sampleRate, pxPerTick } = props;
   const { fitMode } = props;
   const { units } = props;
+  const { rangeMin, rangeMax } = props;
+  const { tickToX } = props;
 
-  // clientWidth includes padding
-  // however it's not present in node-canvas (used for testing)
-  // so we also fallback to canvas.width
-  const graphWidth = canvas.clientWidth || canvas.width;
-  if (!graphWidth) {
-    throw new Error(
-      `Could not infer canvasWidth. Tried 'canvas.clientWidth' and 'canvas.width'`
-    );
-  }
-
+  const graphWidth = getCanvasWidth(canvas);
   // TODO: why is this needed? otherwise height is all messed up
   canvas.width = graphWidth;
 
@@ -91,27 +88,22 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     throw new Error(`'rangeMin' should be strictly smaller than 'rangeMax'`);
   }
 
-  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
-
-  const ctx = canvas.getContext('2d');
-  const { selectedLevel } = props;
-
-  // TODO what does ff mean?
   const { format } = props;
   const ff = createFF(format);
 
-  const { topLevel } = props;
-  const formatter = getFormatter(numTicks, sampleRate, units);
-
   const { levels } = props;
+  const { focusedNode, zoom } = props;
 
-  let focused = false;
-  if (topLevel > 0) {
-    focused = true;
-  }
+  //  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
+  const ctx = canvas.getContext('2d');
+  const selectedLevel = zoom.map((z) => z.i).getOrElse(0);
+  const formatter = getFormatter(numTicks, sampleRate, units);
+  const isFocused = focusedNode.isSome();
+  const topLevel = focusedNode.map((f) => f.i).getOrElse(0);
 
   const canvasHeight =
-    PX_PER_LEVEL * (levels.length - topLevel) + (focused ? BAR_HEIGHT : 0);
+    PX_PER_LEVEL * (levels.length - topLevel) + (isFocused ? BAR_HEIGHT : 0);
+  //  const canvasHeight = PX_PER_LEVEL * (levels.length - topLevel);
   canvas.height = canvasHeight;
 
   // increase pixel ratio, otherwise it looks bad in high resolution devices
@@ -125,15 +117,19 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   // are we focused?
   // if so, add an initial bar telling it's a collapsed one
   // TODO clean this up
-  if (focused) {
+  if (isFocused) {
     const width = numTicks * pxPerTick;
     ctx.beginPath();
     ctx.rect(0, 0, numTicks * pxPerTick, BAR_HEIGHT);
     // TODO find a neutral color
-    ctx.fillStyle = 'grey';
+    // TODO use getColor ?
+    ctx.fillStyle = colorGreyscale(200, 1).rgb().string();
     ctx.fill();
 
-    const shortName = `total (${topLevel} level(s) skipped)`;
+    // TODO show the samples too?
+    const shortName = focusedNode
+      .map((f) => `total (${f.i - 1} level(s) collapsed)`)
+      .getOrElse('total');
 
     // Set the font syle
     // It's important to set the font BEFORE calculating 'characterSize'
@@ -166,10 +162,10 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];
     for (let j = 0; j < level.length; j += ff.jStep) {
+      const name = getFunctionName(names, j, format, level);
       const barIndex = ff.getBarOffset(level, j);
-
-      const x = tickToX(numTicks, rangeMin, pxPerTick, barIndex);
-      const y = i * PX_PER_LEVEL + (focused ? BAR_HEIGHT : 0);
+      const x = tickToX(barIndex);
+      const y = i * PX_PER_LEVEL + (isFocused ? BAR_HEIGHT : 0);
 
       const sh = BAR_HEIGHT;
 
@@ -209,24 +205,24 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       }
 
       const sw = numBarTicks * pxPerTick - (collapsed ? 0 : GAP);
-
       /*******************************/
       /*      D r a w   R e c t      */
       /*******************************/
       const { spyName } = props;
       let leftTicks: number | undefined;
-      if (format === 'double') {
-        leftTicks = props.leftTicks;
-      }
       let rightTicks: number | undefined;
       if (format === 'double') {
+        leftTicks = props.leftTicks;
         rightTicks = props.rightTicks;
       }
       const color = getColor({
         format,
         level,
         j,
-        i,
+        // discount for the levels we skipped
+        // otherwise it will dim out all nodes
+        i: i + focusedNode.map((f) => f.i).getOrElse(0),
+        //        i: i + (isFocused ? focusedNode.i : 0),
         names,
         collapsed,
         selectedLevel,
@@ -374,15 +370,6 @@ function getColor(cfg: getColorCfg) {
   );
 }
 
-function tickToX(
-  numTicks: number,
-  rangeMin: number,
-  pxPerTick: number,
-  i: number
-) {
-  return (i - numTicks * rangeMin) * pxPerTick;
-}
-
 function nodeIsInQuery(
   index: number,
   level: number[],
@@ -390,4 +377,11 @@ function nodeIsInQuery(
   query: string
 ) {
   return names[level[index]].indexOf(query) >= 0;
+}
+
+function getCanvasWidth(canvas: HTMLCanvasElement) {
+  // clientWidth includes padding
+  // however it's not present in node-canvas (used for testing)
+  // so we also fallback to canvas.width
+  return canvas.clientWidth || canvas.width;
 }

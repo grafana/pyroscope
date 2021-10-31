@@ -6,28 +6,27 @@ import {
   formatPercent,
   ratioToPercent,
 } from '@utils/format';
+import { Option } from 'prelude-ts';
 import { diffColorRed, diffColorGreen } from './color';
 
 type xyToDataSingle = (
   x: number,
   y: number
-) => { format: 'single'; name: string; total: number };
+) => Option<{ format: 'single'; name: string; total: number }>;
 
 type xyToDataDouble = (
   x: number,
   y: number
-) => {
+) => Option<{
   format: 'double';
   name: string;
   totalLeft: number;
   totalRight: number;
   barTotal: number;
-};
+}>;
 
 export type TooltipProps = {
   canvasRef: React.RefObject<HTMLCanvasElement>;
-
-  isWithinBounds: (x: number, y: number) => boolean;
 
   units: Units;
   sampleRate: number;
@@ -43,7 +42,7 @@ export type TooltipProps = {
 );
 
 export default function Tooltip(props: TooltipProps) {
-  const { format, canvasRef, xyToData, isWithinBounds } = props;
+  const { format, canvasRef, xyToData } = props;
   const [content, setContent] = React.useState({
     title: {
       text: '',
@@ -71,11 +70,6 @@ export default function Tooltip(props: TooltipProps) {
   // that's to evict stale props
   const memoizedOnMouseMove = React.useCallback(
     (e: MouseEvent) => {
-      if (!isWithinBounds(e.offsetX, e.offsetY)) {
-        onMouseOut();
-        return;
-      }
-
       const formatter = getFormatter(
         props.numTicks,
         props.sampleRate,
@@ -93,13 +87,20 @@ export default function Tooltip(props: TooltipProps) {
         left,
         visibility: 'visible',
       };
-      setStyle(style);
+
+      const opt = props.xyToData(e.offsetX, e.offsetY);
+      const isNone = opt.isNone();
+
+      if (isNone) {
+        onMouseOut();
+        return;
+      }
+
+      const data = opt.get();
 
       // set the content
-      switch (props.format) {
+      switch (data.format) {
         case 'single': {
-          const data = props.xyToData(e.offsetX, e.offsetY);
-
           const d = formatSingle(
             formatter,
             data.total,
@@ -123,7 +124,11 @@ export default function Tooltip(props: TooltipProps) {
         }
 
         case 'double': {
-          const data = props.xyToData(e.offsetX, e.offsetY);
+          if (props.format === 'single') {
+            throw new Error(
+              "props format is 'single' but it has been mapped to 'double'"
+            );
+          }
 
           const d = formatDouble({
             formatter,
@@ -146,6 +151,8 @@ export default function Tooltip(props: TooltipProps) {
         default:
           throw new Error(`Unsupported format:'`);
       }
+
+      setStyle(style);
     },
 
     // these are the dependencies from props
@@ -262,7 +269,6 @@ function formatDouble({
     tooltipDiffColor = diffColorGreen.rgb().string();
   }
 
-  // TODO unit test this
   let tooltipDiffText = '';
   if (!totalLeft) {
     // this is a new function

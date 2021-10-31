@@ -7,6 +7,7 @@
 
 import React from 'react';
 import clsx from 'clsx';
+import { Option } from 'prelude-ts';
 import Graph from './FlameGraphComponent';
 import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
@@ -39,13 +40,8 @@ class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
   // eg localstorage
   initialFlamegraphState = {
-    selectedLevel: 0,
-    topLevel: 0,
-
-    zoom: {
-      i: -1,
-      j: -1,
-    },
+    focusedNode: Option.none(),
+    zoom: Option.none(),
   };
 
   constructor(props) {
@@ -168,18 +164,48 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  onFlamegraphZoom = (i, j) => {
+  onFlamegraphZoom = (bar) => {
     // zooming on the topmost bar is equivalent to resetting to the original state
+    if (bar.isSome() && bar.get().i === 0 && bar.get().j === 0) {
+      this.onReset();
+      return;
+    }
+
+    // otherwise just pass it up to the state
+    // doesn't matter if it's some or none
+    this.setState({
+      ...this.state,
+      flamegraphConfigs: {
+        ...this.state.flamegraphConfigs,
+        zoom: bar,
+      },
+    });
+  };
+
+  onFocusOnNode = (i, j) => {
     if (i === 0 && j === 0) {
       this.onReset();
       return;
     }
 
+    let flamegraphConfigs = { ...this.state.flamegraphConfigs };
+
+    // reset zoom if we are focusing below the zoom
+    const { zoom } = this.state.flamegraphConfigs;
+    if (zoom.isSome()) {
+      if (zoom.get().i < i) {
+        flamegraphConfigs = {
+          ...flamegraphConfigs,
+          zoom: this.initialFlamegraphState.zoom,
+        };
+      }
+    }
+
     this.setState({
       ...this.state,
       flamegraphConfigs: {
-        ...this.state.flamegraphConfigs,
-        zoom: { i, j },
+        ...flamegraphConfigs,
+        focusedNode: Option.some({ i, j }),
       },
     });
   };
@@ -311,11 +337,11 @@ class FlameGraphRenderer extends React.Component {
           query={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
-          topLevel={this.state.flamegraphConfigs.topLevel}
           zoom={this.state.flamegraphConfigs.zoom}
-          selectedLevel={this.state.flamegraphConfigs.selectedLevel}
+          focusedNode={this.state.flamegraphConfigs.focusedNode}
           label={this.props.query}
           onZoom={this.onFlamegraphZoom}
+          onFocusOnNode={this.onFocusOnNode}
           onReset={this.onReset}
           isDirty={this.isDirty}
         />

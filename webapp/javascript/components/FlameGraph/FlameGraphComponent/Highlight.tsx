@@ -1,41 +1,44 @@
+import { Option } from 'prelude-ts';
 import React from 'react';
 import styles from './Highlight.module.css';
 
 export interface HighlightProps {
-  isWithinBounds: (x: number, y: number) => boolean;
-
   // probably the same as the bar height
   barHeight: number;
 
   xyToHighlightData: (
     x: number,
     y: number
-  ) => {
+  ) => Option<{
     left: number;
     top: number;
     width: number;
-  };
+  }>;
 
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }
 export default function Highlight(props: HighlightProps) {
-  const { canvasRef, isWithinBounds, barHeight, xyToHighlightData } = props;
+  const { canvasRef, barHeight, xyToHighlightData } = props;
   const [style, setStyle] = React.useState<React.CSSProperties>({
     height: '0px',
     visibility: 'hidden',
   });
 
   const onMouseMove = (e: MouseEvent) => {
-    if (!isWithinBounds(e.offsetX, e.offsetY)) {
-      onMouseOut();
-      return;
-    }
+    const opt = xyToHighlightData(e.offsetX, e.offsetY);
 
-    setStyle({
-      visibility: 'visible',
-      height: `${barHeight}px`,
-      ...xyToHighlightData(e.offsetX, e.offsetY),
-    });
+    if (opt.isSome()) {
+      const data = opt.get();
+      setStyle({
+        visibility: 'visible',
+        height: `${barHeight}px`,
+        ...data,
+      });
+    } else {
+      // it doesn't map to a valid xy
+      // so it means we are hovering out
+      onMouseOut();
+    }
   };
 
   const onMouseOut = () => {
