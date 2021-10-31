@@ -2,44 +2,42 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { diffColorRed, diffColorGreen } from './color';
+import { Option } from 'prelude-ts';
 
+import { diffColorRed, diffColorGreen } from './color';
+import { Units } from '../../../util/format';
 import Tooltip, { TooltipProps } from './Tooltip';
 
-function TestCanvas(props: Omit<TooltipProps, 'canvasRef' | 'numTicks'>) {
+// Omit<TooltipProps, 'canvasRef'>) wasn't working
+// so for testing let's pass canvasRef = undefined
+function TestCanvas(props: TooltipProps) {
   const canvasRef = React.useRef();
 
   return (
     <>
       <canvas data-testid="canvas" ref={canvasRef} />
-      <Tooltip
-        data-testid="tooltip"
-        canvasRef={canvasRef}
-        {...props}
-        numTicks={10}
-      />
+      <Tooltip data-testid="tooltip" {...props} canvasRef={canvasRef} />
     </>
   );
 }
 
 describe('Tooltip', () => {
-  const isWithinBounds = () => true;
-
   describe('"single" mode', () => {
     it('renders correctly', () => {
-      const xyToData = (format: 'single', x: number, y: number) => ({
-        format,
-        title: 'function_title',
-        numBarTicks: 10,
-        percent: 1,
-      });
+      const xyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'single' as const,
+          name: 'function_title',
+          total: 10,
+        });
 
       render(
         <TestCanvas
+          canvasRef={undefined}
           format="single"
-          units="samples"
+          units={Units.Samples}
+          numTicks={100}
           sampleRate={100}
-          isWithinBounds={isWithinBounds}
           xyToData={xyToData}
         />
       );
@@ -52,32 +50,12 @@ describe('Tooltip', () => {
         'function_title'
       );
       expect(screen.getByTestId('flamegraph-tooltip-body')).toHaveTextContent(
-        '1, 10 samples, 0.10 seconds'
+        '10%, 10 samples, 0.10 seconds'
       );
     });
   });
 
   describe('"double" mode', () => {
-    function renderComponent(d) {
-      const xyToData = () => ({
-        title: 'my_function',
-        numBarTicks: 10,
-        percent: 1,
-        format: 'double',
-        ...d,
-      });
-
-      render(
-        <TestCanvas
-          format="double"
-          units="samples"
-          sampleRate={100}
-          isWithinBounds={isWithinBounds}
-          xyToData={xyToData}
-        />
-      );
-    }
-
     function assertTooltipContent({ title, diffColor, left, right }) {
       expect(screen.getByTestId('flamegraph-tooltip-title')).toHaveTextContent(
         title
@@ -100,12 +78,27 @@ describe('Tooltip', () => {
     }
 
     it("works with a function that hasn't changed", () => {
-      renderComponent({
-        left: 100,
-        right: 100,
-        leftPercent: 10,
-        rightPercent: 10,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 100,
+          totalRight: 100,
+          barTotal: 100,
+        });
+
+      render(
+        <TestCanvas
+          canvasRef={undefined}
+          format="double"
+          units={Units.Samples}
+          numTicks={100}
+          sampleRate={100}
+          leftTicks={1000}
+          rightTicks={1000}
+          xyToData={myxyToData}
+        />
+      );
 
       // since we are mocking the result
       // we don't care exactly where it's hovered
@@ -114,19 +107,33 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function',
         diffColor: undefined,
-        left: 'Left: 100 samples, 1.00 seconds (10%)',
-        right: 'Right: 100 samples, 1.00 seconds (10%)',
+        left: 'Left: 100 samples, 1.00 second (10%)',
+        right: 'Right: 100 samples, 1.00 second (10%)',
       });
     });
 
     it('works with a function that has been added', () => {
-      renderComponent({
-        left: 0,
-        right: 100,
-        leftPercent: 0,
-        rightPercent: 10,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 0,
+          totalRight: 100,
+          barTotal: 100,
+        });
 
+      render(
+        <TestCanvas
+          canvasRef={undefined}
+          format="double"
+          units={Units.Samples}
+          numTicks={100}
+          sampleRate={100}
+          leftTicks={1000}
+          rightTicks={1000}
+          xyToData={myxyToData}
+        />
+      );
       // since we are mocking the result
       // we don't care exactly where it's hovered
       userEvent.hover(screen.getByTestId('canvas'));
@@ -135,18 +142,32 @@ describe('Tooltip', () => {
         title: 'my_function (new)',
         diffColor: diffColorRed,
         left: 'Left: 0 samples, < 0.01 seconds (0%)',
-        right: 'Right: 100 samples, 1.00 seconds (10%)',
+        right: 'Right: 100 samples, 1.00 second (10%)',
       });
     });
 
     it('works with a function that has been removed', () => {
-      renderComponent({
-        left: 100,
-        right: 0,
-        leftPercent: 10,
-        rightPercent: 0,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 100,
+          totalRight: 0,
+          barTotal: 100,
+        });
 
+      render(
+        <TestCanvas
+          canvasRef={undefined}
+          format="double"
+          units={Units.Samples}
+          numTicks={100}
+          sampleRate={100}
+          leftTicks={1000}
+          rightTicks={1000}
+          xyToData={myxyToData}
+        />
+      );
       // since we are mocking the result
       // we don't care exactly where it's hovered
       userEvent.hover(screen.getByTestId('canvas'));
@@ -154,19 +175,33 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function (removed)',
         diffColor: diffColorGreen,
-        left: 'Left: 100 samples, 1.00 seconds (10%)',
+        left: 'Left: 100 samples, 1.00 second (10%)',
         right: 'Right: 0 samples, < 0.01 seconds (0%)',
       });
     });
 
     it('works with a function that became slower', () => {
-      renderComponent({
-        left: 100,
-        right: 100,
-        leftPercent: 10,
-        rightPercent: 20,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 100,
+          totalRight: 200,
+          barTotal: 100,
+        });
 
+      render(
+        <TestCanvas
+          canvasRef={undefined}
+          format="double"
+          units={Units.Samples}
+          numTicks={100}
+          sampleRate={100}
+          leftTicks={1000}
+          rightTicks={1000}
+          xyToData={myxyToData}
+        />
+      );
       // since we are mocking the result
       // we don't care exactly where it's hovered
       userEvent.hover(screen.getByTestId('canvas'));
@@ -174,19 +209,33 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function (+100.00%)',
         diffColor: diffColorRed,
-        left: 'Left: 100 samples, 1.00 seconds (10%)',
-        right: 'Right: 100 samples, 1.00 seconds (20%)',
+        left: 'Left: 100 samples, 1.00 second (10%)',
+        right: 'Right: 200 samples, 2.00 seconds (20%)',
       });
     });
 
     it('works with a function that became faster', () => {
-      renderComponent({
-        left: 100,
-        right: 100,
-        leftPercent: 20,
-        rightPercent: 10,
-      });
+      const myxyToData = (x: number, y: number) =>
+        Option.of({
+          format: 'double' as const,
+          name: 'my_function',
+          totalLeft: 200,
+          totalRight: 100,
+          barTotal: 100,
+        });
 
+      render(
+        <TestCanvas
+          canvasRef={undefined}
+          format="double"
+          units={Units.Samples}
+          numTicks={100}
+          sampleRate={100}
+          leftTicks={1000}
+          rightTicks={1000}
+          xyToData={myxyToData}
+        />
+      );
       // since we are mocking the result
       // we don't care exactly where it's hovered
       userEvent.hover(screen.getByTestId('canvas'));
@@ -194,8 +243,8 @@ describe('Tooltip', () => {
       assertTooltipContent({
         title: 'my_function (-50.00%)',
         diffColor: diffColorGreen,
-        left: 'Left: 100 samples, 1.00 seconds (20%)',
-        right: 'Right: 100 samples, 1.00 seconds (10%)',
+        left: 'Left: 200 samples, 2.00 seconds (20%)',
+        right: 'Right: 100 samples, 1.00 second (10%)',
       });
     });
   });

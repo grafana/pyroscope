@@ -8,20 +8,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 )
 
 var _ = Describe("convert", func() {
-	Describe("ParseTrie", func() {
-		It("parses data correctly", func() {
-			r := bytes.NewReader([]byte("\x00\x00\x01\x06foo;ba\x00\x02\x01r\x01\x00\x01z\x01\x00"))
-			result := []string{}
-			ParseTrie(r, func(name []byte, val int) {
-				result = append(result, fmt.Sprintf("%s %d", name, val))
-			})
-			Expect(result).To(ConsistOf("foo;bar 1", "foo;baz 1"))
-		})
-	})
-
 	Describe("ParsePprof", func() {
 		It("parses data correctly", func() {
 			result := []string{}
@@ -34,7 +24,7 @@ var _ = Describe("convert", func() {
 			p, err := ParsePprof(g)
 			Expect(err).ToNot(HaveOccurred())
 
-			p.Get("samples", func(name []byte, val int) {
+			p.Get("samples", func(labels *spy.Labels, name []byte, val int) {
 				result = append(result, fmt.Sprintf("%s %d", name, val))
 			})
 			Expect(result).To(ContainElement("runtime.main;main.work 1"))

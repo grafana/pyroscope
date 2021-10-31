@@ -20,6 +20,6 @@ func newServerCmd(cfg *config.Server) *cobra.Command {
 	}
 
 	cli.PopulateFlagSet(cfg, serverCmd.Flags(), vpr)
-	_ = serverCmd.Flags().MarkHidden("metric-export-rules")
+	_ = serverCmd.Flags().MarkHidden("metrics-export-rules")
 	return serverCmd
 }

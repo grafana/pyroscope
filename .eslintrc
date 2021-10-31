@@ -48,7 +48,8 @@
         "ts": "never",
         "tsx": "never"
       }
-    ]
+    ],
+    "spaced-comment": [2, "always", { "exceptions": ["*"] }]
   },
   "env": {
     "browser": true,
@@ -57,5 +58,12 @@
   },
   "parserOptions": {
     "project": "./tsconfig.json"
+  },
+  "settings": {
+    "import/resolver": {
+      "webpack": {
+        "config": "scripts/webpack/webpack.dev.js"
+      }
+    }
   }
 }

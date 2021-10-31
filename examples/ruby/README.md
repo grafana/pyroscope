@@ -2,7 +2,7 @@
 ![ruby_example_architecture_05](https://user-images.githubusercontent.com/23323466/135726784-0c367d3f-c9e5-4e3f-91be-761d4d6d21b1.gif)
 
 Note: For documentation on the Pyroscope ruby gem visit [our website](https://pyroscope.io/docs/ruby/)
-## Backround
+## Background
 In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `server.rb`:
 - `/bike`    : calls the `order_bike(search_radius)` function to order a bike
 - `/car`     : calls the `order_car(search_radius)` function to order a car
@@ -13,7 +13,7 @@ We also simulate running 3 distinct servers in 3 different regions (via [docker-
 - us-west-1
 - eu-west-1
 
-One of the most useful capabilities of Pyroscope is the ability to tag your data in a way that is meaningful to you. In this case, we have two natural divisions and so we "tag" our data to represent those:
+One of the most useful capabilities of Pyroscope is the ability to tag your data in a way that is meaningful to you. In this case, we have two natural divisions, and so we "tag" our data to represent those:
 - `region`: statically tags the region of the server running the code
 - `vehicle`: dynamically tags the endpoint (similar to how one might tag a controller rails)
 
@@ -59,10 +59,11 @@ docker-compose up --build
 # docker-compose down
 ```
 
-What this example will do is run all of the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this. After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
+What this example will do is run all the code mentioned above and also send some mock-load to the 3 servers as well as their respective 3 endpoints. If you select our application: `ride-sharing-app.cpu` from the dropdown, you should see a flamegraph that looks like this. After we give 20-30 seconds for the flamegraph to update and then click the refresh button we see our 3 functions at the bottom of the flamegraph taking CPU resources _proportional to the size_ of their respective `search_radius` parameters.
 
-## Where's the performance bottlenck?
-![ruby_first_slide_00](https://user-images.githubusercontent.com/23323466/135945825-a1d793e8-ecd9-4143-88d8-de08837a4761.jpg)
+## Where's the performance bottleneck?
+![ruby_first_slide_01-01](https://user-images.githubusercontent.com/23323466/139566972-2f04b826-d05c-4307-9b60-4376840001ab.jpg)
+
 
 The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `order_car` function. 
 
@@ -78,17 +79,20 @@ To analyze this we can select one or more tags from the "Select Tag" dropdown:
 Knowing there is an issue with the `order_car()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `us-west-1` region, where it alternates between high-cpu times and low-cpu times.
 
 We can also see that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period. 
-![ruby_second_slide_00](https://user-images.githubusercontent.com/23323466/135946038-32ff05dd-2909-4bef-ba46-05a16c57410a.jpg)
+
+![ruby_second_slide_01](https://user-images.githubusercontent.com/23323466/139566994-f3f8c2f3-6bc4-40ca-ac4e-8fc862d0c0ad.jpg)
 
 ## Comparing two time periods
 Using Pyroscope's "comparison view" we can actually select two different time ranges from the timeline to compare the resulting flamegraphs. The pink section on the left timeline results in the left flamegraph and the blue section on the right represents the right flamegraph.
 
-When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutex_lock()` function where it takes **51% of CPU** during low-cpu times and **78% of CPU** during high-cpu times.
-![ruby_third_slide_00](https://user-images.githubusercontent.com/23323466/135946117-05a15195-6e3c-499c-b98d-f1b9db2844e6.jpg)
+When we select a period of low-cpu utilization, and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutex_lock()` function where it takes **23% of CPU** during low-cpu times and **70% of CPU** during high-cpu times.
+
+![ruby_third_slide_01-01](https://user-images.githubusercontent.com/23323466/139567004-96064c5b-570c-48a4-aa9a-07a46a0646a5.jpg)
 
 ## Visualizing Diff Between Two Flamegraphs
 While the difference _in this case_ is stark enough to see in the comparison view, sometimes the diff between the two flamegraphs is better visualized with them overlayed over each other. Without changing any parameters, we can simply select the diff view tab and see the difference represented in a color-coded diff flamegraph.
-![ruby_fourth_slide_00](https://user-images.githubusercontent.com/23323466/135946209-e44ff6f6-22d6-41e0-bb08-693675257b84.jpg)
+
+![ruby_fourth_slide_01-01](https://user-images.githubusercontent.com/23323466/139567016-3f738923-2429-4f93-8fe0-cc0ca8c765fd.jpg)
 
 
 ### More use cases

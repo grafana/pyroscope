@@ -20,7 +20,7 @@ ALL_SPIES = ebpfspy,rbspy,pyspy,dotnetspy,debugspy
 ifeq ("$(OS)", "Linux")
 	ENABLED_SPIES ?= ebpfspy,rbspy,pyspy,phpspy,dotnetspy
 else
-	ENABLED_SPIES ?= rbspy,pyspy
+	ENABLED_SPIES ?= rbspy,pyspy,dotnetspy
 endif
 
 ifeq ("$(OS)", "Linux")
@@ -150,7 +150,7 @@ assets-watch: install-web-dependencies ## Configure the assets with live reloadi
 assets-release: install-web-dependencies ## Configure the assets for release
 	rm -rf webapp/public/assets
 	rm -rf webapp/public/*.html
-	NODE_ENV=production $(shell yarn bin webpack) --config scripts/webpack/webpack.prod.js
+	yarn build
 
 .PHONY: assets-size-build
 assets-size-build: assets-release ## Build assets for the size report
@@ -216,6 +216,7 @@ update-contributors: ## Update the contributors
 update-changelog: ## Update the changelog
 	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -s
 	sed -i '/Updates the list of contributors in README/d' CHANGELOG.md
+	sed -i '/docs: updates the list of contributors in README/d' CHANGELOG.md
 	sed -i '/Update README.md/d' CHANGELOG.md
 
 .PHONY: update-protobuf

@@ -1,0 +1,18 @@
+---
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+
+  - job_name: pyroscope
+    static_configs:
+      - targets: [pyroscope:4040]
+
+  - job_name: pyroscope-exported-metrics
+    metrics_path: /exported-metrics
+    static_configs:
+      - targets: [pyroscope:4040]

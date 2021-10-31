@@ -1,11 +1,16 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "jsx": "react",
-    "lib": ["dom", "esnext"],
+    "lib": ["dom", "esnext", "ES2015.Iterable"],
     "module": "esnext",
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "paths": {
+      "@utils/*": ["./webapp/javascript/util/*"],
+      "@models/*": ["./webapp/javascript/models/*"]
+    }
   },
   "exclude": ["node_modules"]
 }

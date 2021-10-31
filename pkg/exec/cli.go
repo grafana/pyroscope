@@ -161,8 +161,9 @@ func Cli(cfg *config.Exec, args []string) error {
 		UploadRate:       10 * time.Second,
 		Pid:              pid,
 		WithSubprocesses: cfg.DetectSubprocesses,
+		Logger:           logrus.StandardLogger(),
 	}
-	session, err := agent.NewSession(&sc, logrus.StandardLogger())
+	session, err := agent.NewSession(sc)
 	if err != nil {
 		return fmt.Errorf("new session: %w", err)
 	}

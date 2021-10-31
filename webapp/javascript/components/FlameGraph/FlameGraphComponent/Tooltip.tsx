@@ -1,43 +1,48 @@
 import React from 'react';
-import { percentDiff, numberWithCommas, getFormatter } from './format';
+import {
+  getFormatter,
+  Units,
+  numberWithCommas,
+  formatPercent,
+  ratioToPercent,
+} from '@utils/format';
+import { Option } from 'prelude-ts';
 import { diffColorRed, diffColorGreen } from './color';
 
-type xyToData = (
-  format: 'single' | 'double',
+type xyToDataSingle = (
   x: number,
   y: number
-) =>
-  | {
-      format: 'double';
-      left: number;
-      right: number;
-      title: string;
-      sampleRate: number;
-      leftPercent: number;
-      rightPercent: number;
-    }
-  | {
-      format: 'single';
-      title: string;
-      numBarTicks: number;
-      percent: number;
-    };
+) => Option<{ format: 'single'; name: string; total: number }>;
 
-export interface TooltipProps {
-  format: 'single' | 'double';
+type xyToDataDouble = (
+  x: number,
+  y: number
+) => Option<{
+  format: 'double';
+  name: string;
+  totalLeft: number;
+  totalRight: number;
+  barTotal: number;
+}>;
+
+export type TooltipProps = {
   canvasRef: React.RefObject<HTMLCanvasElement>;
 
-  xyToData: xyToData;
-  isWithinBounds: (x: number, y: number) => boolean;
-
-  // TODO we have an enum somewhere
-  units: string;
+  units: Units;
   sampleRate: number;
   numTicks: number;
-}
+} & (
+  | { format: 'single'; xyToData: xyToDataSingle }
+  | {
+      format: 'double';
+      leftTicks: number;
+      rightTicks: number;
+      xyToData: xyToDataDouble;
+    }
+);
 
 export default function Tooltip(props: TooltipProps) {
-  const { format, canvasRef, xyToData, isWithinBounds } = props;
+  const { format, canvasRef, xyToData } = props;
   const [content, setContent] = React.useState({
     title: {
       text: '',
@@ -54,83 +59,106 @@ export default function Tooltip(props: TooltipProps) {
   const tooltipEl = React.useRef(null);
 
   const { numTicks, sampleRate, units } = props;
-  // TODO cache this to not have to instantiate all the time?
-  const formatter = getFormatter(numTicks, sampleRate, units);
-
-  const onMouseMove = (e: MouseEvent) => {
-    if (!isWithinBounds(e.offsetX, e.offsetY)) {
-      onMouseOut();
-      return;
-    }
-
-    const data = xyToData(format, e.offsetX, e.offsetY);
-
-    // makes it so that tooltip is always visible even if mouse is close to the right edge
-    const left = Math.min(
-      e.clientX + 12,
-      window.innerWidth - tooltipEl.current.clientWidth - 20
-    );
-    const top = e.clientY + 20;
-
-    setStyle({
-      top,
-      left,
-      visibility: 'visible',
-    });
-
-    // format is either single, double or something else
-    switch (data.format) {
-      case 'single': {
-        const d = formatSingle(
-          formatter,
-          data.percent,
-          data.numBarTicks,
-          props.sampleRate
-        );
-
-        setContent({
-          title: {
-            text: data.title,
-            diff: {
-              text: '',
-              color: '',
-            },
-          },
-          left: d.left,
-          right: '',
-        });
-        break;
-      }
-
-      case 'double': {
-        const d = formatDouble({
-          formatter,
-          sampleRate: props.sampleRate,
-          totalLeft: data.left,
-          totalRight: data.right,
-          leftPercent: data.leftPercent,
-          rightPercent: data.rightPercent,
-          title: data.title,
-        });
-
-        setContent({
-          title: d.title,
-          left: d.left,
-          right: d.right,
-        });
-        break;
-      }
-
-      default:
-        throw new Error(`Unsupported format: '${JSON.stringify(data)}'`);
-    }
-  };
 
   const onMouseOut = () => {
     setStyle({
       visibility: 'hidden',
     });
   };
+
+  // recreate the callback when the dependency changes
+  // that's to evict stale props
+  const memoizedOnMouseMove = React.useCallback(
+    (e: MouseEvent) => {
+      const formatter = getFormatter(
+        props.numTicks,
+        props.sampleRate,
+        props.units
+      );
+
+      const left = Math.min(
+        e.clientX + 12,
+        window.innerWidth - tooltipEl.current.clientWidth - 20
+      );
+      const top = e.clientY + 20;
+
+      const style: React.CSSProperties = {
+        top,
+        left,
+        visibility: 'visible',
+      };
+
+      const opt = props.xyToData(e.offsetX, e.offsetY);
+      const isNone = opt.isNone();
+
+      if (isNone) {
+        onMouseOut();
+        return;
+      }
+
+      const data = opt.get();
+
+      // set the content
+      switch (data.format) {
+        case 'single': {
+          const d = formatSingle(
+            formatter,
+            data.total,
+            props.sampleRate,
+            props.numTicks
+          );
+
+          setContent({
+            title: {
+              text: data.name,
+              diff: {
+                text: '',
+                color: '',
+              },
+            },
+            left: d.left,
+            right: '',
+          });
+
+          break;
+        }
+
+        case 'double': {
+          if (props.format === 'single') {
+            throw new Error(
+              "props format is 'single' but it has been mapped to 'double'"
+            );
+          }
+
+          const d = formatDouble({
+            formatter,
+            sampleRate: props.sampleRate,
+            totalLeft: data.totalLeft,
+            leftTicks: props.leftTicks,
+            totalRight: data.totalRight,
+            rightTicks: props.rightTicks,
+            title: data.name,
+          });
+
+          setContent({
+            title: d.title,
+            left: d.left,
+            right: d.right,
+          });
+
+          break;
+        }
+        default:
+          throw new Error(`Unsupported format:'`);
+      }
+
+      setStyle(style);
+    },
+
+    // these are the dependencies from props
+    // that are going to be used in onMouseMove
+    [numTicks, sampleRate, units, format, xyToData]
+  );
 
   React.useEffect(() => {
     // use closure to "cache" the current canvas reference
@@ -142,14 +170,14 @@ export default function Tooltip(props: TooltipProps) {
     }
 
     // watch for mouse events on the bar
-    canvasEl.addEventListener('mousemove', onMouseMove);
+    canvasEl.addEventListener('mousemove', memoizedOnMouseMove);
     canvasEl.addEventListener('mouseout', onMouseOut);
 
     return () => {
-      canvasEl.removeEventListener('mousemove', onMouseMove);
+      canvasEl.removeEventListener('mousemove', memoizedOnMouseMove);
       canvasEl.removeEventListener('mouseout', onMouseOut);
     };
-  }, [canvasRef.current]);
+  }, [canvasRef.current, memoizedOnMouseMove]);
 
   return (
     <div
@@ -187,13 +215,14 @@ interface Formatter {
 
 function formatSingle(
   formatter: Formatter,
-  percent: number,
-  numBarTicks: number,
-  sampleRate: number
+  total: number,
+  sampleRate: number,
+  numTicks: number
 ) {
+  const percent = formatPercent(total / numTicks);
   const left = `${percent}, ${numberWithCommas(
-    numBarTicks
-  )} samples, ${formatter.format(numBarTicks, sampleRate)}`;
+    total
+  )} samples, ${formatter.format(total, sampleRate)}`;
 
   return {
     left,
@@ -204,19 +233,25 @@ function formatDouble({
   formatter,
   sampleRate,
   totalLeft,
-  leftPercent,
+  leftTicks,
   totalRight,
-  rightPercent,
+  rightTicks,
   title,
 }: {
   formatter: Formatter;
   sampleRate: number;
   totalLeft: number;
-  leftPercent: number;
+  leftTicks: number;
   totalRight: number;
-  rightPercent: number;
+  rightTicks: number;
   title: string;
 }) {
+  const leftRatio = totalLeft / leftTicks;
+  const rightRatio = totalRight / rightTicks;
+
+  const leftPercent = ratioToPercent(leftRatio);
+  const rightPercent = ratioToPercent(rightRatio);
+
   const left = `Left: ${numberWithCommas(
     totalLeft
   )} samples, ${formatter.format(totalLeft, sampleRate)} (${leftPercent}%)`;
@@ -225,16 +260,15 @@ function formatDouble({
     totalRight
   )} samples, ${formatter.format(totalRight, sampleRate)} (${rightPercent}%)`;
 
-  const totalDiff = percentDiff(leftPercent, rightPercent).toFixed(2);
+  const totalDiff = percentDiff(leftPercent, rightPercent);
 
   let tooltipDiffColor = '';
   if (totalDiff > 0) {
-    tooltipDiffColor = diffColorRed;
+    tooltipDiffColor = diffColorRed.rgb().string();
   } else if (totalDiff < 0) {
-    tooltipDiffColor = diffColorGreen;
+    tooltipDiffColor = diffColorGreen.rgb().string();
   }
 
-  // TODO unit test this
   let tooltipDiffText = '';
   if (!totalLeft) {
     // this is a new function
@@ -243,9 +277,9 @@ function formatDouble({
     // this function has been removed
     tooltipDiffText = '(removed)';
   } else if (totalDiff > 0) {
-    tooltipDiffText = `(+${totalDiff}%)`;
+    tooltipDiffText = `(+${totalDiff.toFixed(2)}%)`;
   } else if (totalDiff < 0) {
-    tooltipDiffText = `(${totalDiff}%)`;
+    tooltipDiffText = `(${totalDiff.toFixed(2)}%)`;
   }
 
   return {
@@ -259,4 +293,10 @@ function formatDouble({
     left,
     right,
   };
+}
+
+function percentDiff(leftPercent: number, rightPercent: number): number {
+  // difference between 2 percents
+  // https://en.wikipedia.org/wiki/Relative_change_and_difference
+  return ((rightPercent - leftPercent) / leftPercent) * 100;
 }

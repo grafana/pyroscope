@@ -106,7 +106,7 @@ func numGC() uint32 {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
+func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 	s.resetMutex.Lock()
 	defer s.resetMutex.Unlock()
 
@@ -122,25 +122,25 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 		defer func() {
 			// start a new cycle of sample collection
 			if err := startCPUProfile(s.buf, s.sampleRate); err != nil {
-				cb(nil, uint64(0), err)
+				cb(nil, nil, uint64(0), err)
 			}
 		}()
 
 		// new gzip reader with the read data in buffer
 		r, err := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
 		if err != nil {
-			cb(nil, uint64(0), fmt.Errorf("new gzip reader: %v", err))
+			cb(nil, nil, uint64(0), fmt.Errorf("new gzip reader: %v", err))
 			return
 		}
 
 		// parse the read data with pprof format
 		profile, err := convert.ParsePprof(r)
 		if err != nil {
-			cb(nil, uint64(0), fmt.Errorf("parse pprof: %v", err))
+			cb(nil, nil, uint64(0), fmt.Errorf("parse pprof: %v", err))
 			return
 		}
-		profile.Get("samples", func(name []byte, val int) {
-			cb(name, uint64(val), nil)
+		profile.Get("samples", func(labels *spy.Labels, name []byte, val int) {
+			cb(labels, name, uint64(val), nil)
 		})
 	} else {
 		// this is current GC generation
@@ -157,8 +157,8 @@ func (s *GoSpy) Snapshot(cb func([]byte, uint64, error)) {
 		// if there's no GC run then the profile is gonna be the same
 		//   in such case it does not make sense to upload the same profile twice
 		if currentGCGeneration != s.lastGCGeneration {
-			getHeapProfile(s.buf).Get(string(s.profileType), func(name []byte, val int) {
-				cb(name, uint64(val), nil)
+			getHeapProfile(s.buf).Get(string(s.profileType), func(labels *spy.Labels, name []byte, val int) {
+				cb(labels, name, uint64(val), nil)
 			})
 			s.lastGCGeneration = currentGCGeneration
 		}

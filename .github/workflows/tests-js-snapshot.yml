@@ -1,0 +1,36 @@
+name: JS Snapshot Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  js-snapshot-tests:
+    runs-on: ubuntu-latest
+    # ATTENTION
+    # if you ever update this container
+    # remember to update the container that runs locally
+    # (ie ./scripts/jest-snapshots)
+    container: node:14.15-slim
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Run Webapp Snapshot tests
+        run: UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-snapshots.sh
+      # since there are snapshot tests (for the flamegraph)
+      # store their diff when it fails, plus the original image
+      # to make it easier to compare
+      - uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: image-snapshots
+          path: '**/__image_snapshots__/*'
+      - name: Upload codecov coverage
+        if: always()
+        uses: codecov/codecov-action@v1
+        with:
+          name: js coverage
+          fail_ci_if_error: false
+          verbose: true

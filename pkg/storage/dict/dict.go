@@ -24,25 +24,25 @@ type Dict struct {
 	root *trieNode
 }
 
-func (td *Dict) GetValue(key Key, value io.Writer) bool {
-	td.m.RLock()
-	defer td.m.RUnlock()
-	return td.readValue(key, value)
+func (t *Dict) GetValue(key Key, value io.Writer) bool {
+	t.m.RLock()
+	defer t.m.RUnlock()
+	return t.readValue(key, value)
 }
 
-func (td *Dict) Get(key Key) (Value, bool) {
-	td.m.RLock()
-	defer td.m.RUnlock()
+func (t *Dict) Get(key Key) (Value, bool) {
+	t.m.RLock()
+	defer t.m.RUnlock()
 	var labelBuf bytes.Buffer
-	if td.readValue(key, &labelBuf) {
+	if t.readValue(key, &labelBuf) {
 		return labelBuf.Bytes(), true
 	}
 	return nil, false
 }
 
-func (td *Dict) readValue(key Key, w io.Writer) bool {
+func (t *Dict) readValue(key Key, w io.Writer) bool {
 	r := bytes.NewReader(key)
-	tn := td.root
+	tn := t.root
 	for {
 		v, err := varint.Read(r)
 		if err != nil {
@@ -69,10 +69,10 @@ func (td *Dict) readValue(key Key, w io.Writer) bool {
 	}
 }
 
-func (td *Dict) Put(val Value) Key {
-	td.m.Lock()
-	defer td.m.Unlock()
+func (t *Dict) Put(val Value) Key {
+	t.m.Lock()
+	defer t.m.Unlock()
 	var buf bytes.Buffer
-	td.root.findNodeAt(val, &buf)
+	t.root.findNodeAt(val, &buf)
 	return buf.Bytes()
 }

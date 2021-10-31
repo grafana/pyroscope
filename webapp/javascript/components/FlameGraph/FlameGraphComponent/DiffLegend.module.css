@@ -1,0 +1,17 @@
+.flamegraph-legend {
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.flamegraph-legend-list {
+  display: flex;
+  justify-content: center;
+}
+
+.flamegraph-legend-item {
+  width: 35px;
+  text-align: center;
+}

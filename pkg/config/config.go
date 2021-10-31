@@ -107,18 +107,18 @@ type Server struct {
 
 	Auth Auth `mapstructure:"auth"`
 
-	MetricExportRules MetricExportRules `yaml:"metric-export-rules" def:"" desc:"metric export rules" mapstructure:"metric-export-rules"`
+	MetricsExportRules MetricsExportRules `yaml:"metrics-export-rules" def:"" desc:"metrics export rules" mapstructure:"metrics-export-rules"`
 
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 }
 
-type MetricExportRules map[string]MetricExportRule
+type MetricsExportRules map[string]MetricsExportRule
 
-type MetricExportRule struct {
-	Expr   string   `def:"" desc:"expression in FlameQL syntax to be evaluated against samples" mapstructure:"expr"`
-	Node   string   `def:"total" desc:"tree node filter expression. Should be either 'total' or a valid regexp" mapstructure:"node"`
-	Labels []string `def:"" desc:"list of tags to be exported as prometheus labels" mapstructure:"labels"`
+type MetricsExportRule struct {
+	Expr    string   `def:"" desc:"expression in FlameQL syntax to be evaluated against samples" mapstructure:"expr"`
+	Node    string   `def:"total" desc:"tree node filter expression. Should be either 'total' or a valid regexp" mapstructure:"node"`
+	GroupBy []string `def:"" desc:"list of tags to be used for aggregation. The tags are exported as prometheus labels" mapstructure:"group_by"`
 }
 
 type Auth struct {
