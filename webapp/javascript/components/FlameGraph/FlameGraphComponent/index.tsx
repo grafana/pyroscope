@@ -174,6 +174,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     }
   }, [flamegraph]);
 
+  const dataUnavailable =
+    !flamebearer || (flamebearer && flamebearer.names.length <= 1);
+
   return (
     <>
       <div
@@ -188,7 +191,18 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           ExportData={ExportData}
         />
 
-        <div>
+        {dataUnavailable ? (
+          <div className="error-message">
+            <span>
+              No profiling data available for this application / time range.
+            </span>
+          </div>
+        ) : null}
+        <div
+          style={{
+            opacity: dataUnavailable ? 0 : 1,
+          }}
+        >
           <canvas
             height="0"
             data-testid="flamegraph-canvas"
