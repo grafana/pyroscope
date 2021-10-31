@@ -3,3 +3,7 @@ metric-export-rules:
   my_metric_name:
     expr: app.name{foo=~"bar"}
     node: a;b;c
+
+retention-levels:
+  0: 100s
+  1: 1000s

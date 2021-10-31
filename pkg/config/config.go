@@ -91,9 +91,8 @@ type Server struct {
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated" mapstructure:"hide-applications"`
 
-	Retention time.Duration `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" mapstructure:"retention"`
-	// TODO(kolesnikovae): implement.
-	RetentionLevels map[int]time.Duration `def:"" desc:"" mapstructure:"-"`
+	Retention       time.Duration   `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" mapstructure:"retention"`
+	RetentionLevels RetentionLevels `def:"" desc:"specifies how long the profiling data stored per aggregation level. Disabled by default" mapstructure:"retention-levels"`
 
 	// Deprecated fields. They can be set (for backwards compatibility) but have no effect
 	// TODO: we should print some warning messages when people try to use these
@@ -118,6 +117,12 @@ type MetricExportRule struct {
 	Expr   string   `def:"" desc:"expression in FlameQL syntax to be evaluated against samples" mapstructure:"expr"`
 	Node   string   `def:"total" desc:"tree node filter expression. Should be either 'total' or a valid regexp" mapstructure:"node"`
 	Labels []string `def:"" desc:"list of tags to be exported as prometheus labels" mapstructure:"labels"`
+}
+
+type RetentionLevels struct {
+	Zero time.Duration `name:"0" deprecated:"true" mapstructure:"0"`
+	One  time.Duration `name:"1" deprecated:"true" mapstructure:"1"`
+	Two  time.Duration `name:"2" deprecated:"true" mapstructure:"2"`
 }
 
 type Auth struct {
