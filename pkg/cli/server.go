@@ -15,8 +15,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
 
@@ -29,6 +31,7 @@ type serverService struct {
 	analyticsService *analytics.Service
 	selfProfiling    *agent.ProfileSession
 	debugReporter    *debug.Reporter
+	healthController *health.Controller
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -49,29 +52,43 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
 
-	// TODO: make registerer configurable: let users to decide how their metrics are exported.
-	observer, err := exporter.NewExporter(svc.config.MetricExportRules, prometheus.DefaultRegisterer)
+	exportedMetricsRegistry := prometheus.NewRegistry()
+	metricsExporter, err := exporter.NewExporter(svc.config.MetricsExportRules, exportedMetricsRegistry)
 	if err != nil {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
-	ingester := storage.NewIngestionObserver(svc.storage, observer)
-	svc.controller, err = server.New(svc.config, svc.storage, ingester, svc.logger, prometheus.DefaultRegisterer)
-	if err != nil {
-		return nil, fmt.Errorf("new server: %w", err)
+	diskPressure := health.DiskPressure{
+		Threshold: 512 * bytesize.MB,
+		Path:      c.StoragePath,
 	}
 
+	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
-	svc.directUpstream = direct.New(ingester)
-	selfProfilingConfig := &agent.SessionConfig{
+	svc.directUpstream = direct.New(svc.storage, metricsExporter)
+	svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
 		Upstream:       svc.directUpstream,
 		AppName:        "pyroscope.server",
 		ProfilingTypes: types.DefaultProfileTypes,
 		SpyName:        types.GoSpy,
 		SampleRate:     100,
 		UploadRate:     10 * time.Second,
+		Logger:         logger,
+	})
+
+	svc.controller, err = server.New(server.Config{
+		Configuration:           svc.config,
+		Storage:                 svc.storage,
+		MetricsExporter:         metricsExporter,
+		Notifier:                svc.healthController,
+		Logger:                  svc.logger,
+		MetricsRegisterer:       prometheus.DefaultRegisterer,
+		ExportedMetricsRegistry: exportedMetricsRegistry,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("new server: %w", err)
 	}
-	svc.selfProfiling, _ = agent.NewSession(selfProfilingConfig, svc.logger)
+
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
 	}
@@ -94,6 +111,7 @@ func (svc *serverService) Start() error {
 		go svc.analyticsService.Start()
 	}
 
+	svc.healthController.Start()
 	svc.directUpstream.Start()
 	if err := svc.selfProfiling.Start(); err != nil {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
@@ -118,10 +136,12 @@ func (svc *serverService) Stop() {
 	<-svc.done
 }
 
+//revive:disable-next-line:confusing-naming methods are different
 func (svc *serverService) stop() {
 	svc.controller.Drain()
 	svc.logger.Debug("stopping debug reporter")
 	svc.debugReporter.Stop()
+	svc.healthController.Stop()
 	if svc.analyticsService != nil {
 		svc.logger.Debug("stopping analytics service")
 		svc.analyticsService.Stop()

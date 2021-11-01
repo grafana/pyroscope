@@ -28,6 +28,7 @@ import '@testing-library/cypress/add-commands';
 import { addMatchImageSnapshotCommand } from 'cypress-image-snapshot/command';
 
 addMatchImageSnapshotCommand({
+  failureThreshold: 0.05,
   capture: 'viewport',
 });
 
@@ -38,7 +39,7 @@ Cypress.Commands.overwrite(
     if (Cypress.env('COMPARE_SNAPSHOTS')) {
       originalFn(snapshotName, options);
     } else {
-      cy.log(`Screenshot comparison is disabled`);
+      cy.log('Screenshot comparison is disabled');
     }
   }
 );

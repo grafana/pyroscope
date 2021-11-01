@@ -46,12 +46,12 @@ type QueriesConfig struct {
 
 	Queries []Query `yaml:"queries"`
 }
-type tableReport struct {
+type TableReport struct {
 	q Querier
 }
 
-func NewTableReport(q Querier) *tableReport {
-	return &tableReport{
+func NewTableReport(q Querier) *TableReport {
+	return &TableReport{
 		q,
 	}
 }
@@ -75,7 +75,7 @@ func TableReportCli(q Querier, queriesFile string) (string, error) {
 }
 
 // TableReport reports query results from prometheus in markdown format
-func (r *tableReport) Report(ctx context.Context, qCfg *QueriesConfig) (string, error) {
+func (r *TableReport) Report(ctx context.Context, qCfg *QueriesConfig) (string, error) {
 	// TODO: treat each error individually?
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -149,18 +149,20 @@ func formatDiff(q Query) string {
 	// is threshold relevant?
 	if math.Abs(diffPercent) > q.DiffThreshold {
 		if q.BiggerIsBetter { // higher is better
+			emoji := badEmoji
 			if q.TargetResult > q.BaseResult {
-				return fmt.Sprintf("%s %s", goodEmoji, res)
-			} else {
-				return fmt.Sprintf("%s %s", badEmoji, res)
+				emoji = goodEmoji
 			}
-		} else { // lower is better
-			if q.TargetResult < q.BaseResult {
-				return fmt.Sprintf("%s %s", goodEmoji, res)
-			} else {
-				return fmt.Sprintf("%s %s", badEmoji, res)
-			}
+
+			return fmt.Sprintf("%s %s", emoji, res)
 		}
+
+		// lower is better
+		emoji := badEmoji
+		if q.TargetResult < q.BaseResult {
+			emoji = goodEmoji
+		}
+		return fmt.Sprintf("%s %s", emoji, res)
 	}
 
 	return res

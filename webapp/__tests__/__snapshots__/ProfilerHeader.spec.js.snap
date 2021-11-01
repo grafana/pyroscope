@@ -6,6 +6,7 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
 >
   <input
     className="flamegraph-search"
+    data-testid="flamegraph-search"
     name="flamegraph-search"
     onChange={[Function]}
     placeholder="Search…"

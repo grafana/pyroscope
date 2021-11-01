@@ -88,7 +88,8 @@ type ProfileSession struct {
 }
 
 type SessionConfig struct {
-	Upstream         upstream.Upstream
+	upstream.Upstream
+	Logger
 	AppName          string
 	Tags             map[string]string
 	ProfilingTypes   []spy.ProfileType
@@ -101,7 +102,7 @@ type SessionConfig struct {
 	ClibIntegration  bool
 }
 
-func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
+func NewSession(c SessionConfig) (*ProfileSession, error) {
 	appName, err := mergeTagsWithAppName(c.AppName, c.Tags)
 	if err != nil {
 		return nil, err
@@ -120,7 +121,7 @@ func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 		stopCh:           make(chan struct{}),
 		withSubprocesses: c.WithSubprocesses,
 		clibIntegration:  c.ClibIntegration,
-		logger:           logger,
+		logger:           c.Logger,
 		throttler:        throttle.New(errorThrottlerPeriod),
 
 		// string is appName, int is index in pids
@@ -128,7 +129,7 @@ func NewSession(c *SessionConfig, logger Logger) (*ProfileSession, error) {
 		tries:         make(map[string][]*transporttrie.Trie),
 	}
 
-	ps.initializeTries()
+	ps.initializeTries(ps.appName)
 
 	return ps, nil
 }
@@ -169,6 +170,7 @@ func mergeTagsWithAppName(appName string, tags map[string]string) (string, error
 	return k.Normalized(), nil
 }
 
+// revive:disable-next-line:cognitive-complexity complexity is fine
 func (ps *ProfileSession) takeSnapshots() {
 	ticker := time.NewTicker(time.Second / time.Duration(ps.sampleRate))
 	defer ticker.Stop()
@@ -191,7 +193,25 @@ func (ps *ProfileSession) takeSnapshots() {
 			pidsToRemove := []int{}
 			for pid, sarr := range ps.spies {
 				for i, s := range sarr {
-					s.Snapshot(func(stack []byte, v uint64, err error) {
+					labelsCache := map[string]string{}
+					s.Snapshot(func(labels *spy.Labels, stack []byte, v uint64, err error) {
+						appName := ps.appName
+						if labels != nil {
+							if newAppName, ok := labelsCache[labels.ID()]; ok {
+								appName = newAppName
+							} else if newAppName, err := mergeTagsWithAppName(appName, labels.Tags()); err == nil {
+								appName = newAppName
+								labelsCache[labels.ID()] = appName
+							} else {
+								ps.throttler.Run(func(skipped int) {
+									if skipped > 0 {
+										ps.logger.Errorf("error setting tags: %v, %d messages skipped due to throttling", err, skipped)
+									} else {
+										ps.logger.Errorf("error setting tags: %v", err)
+									}
+								})
+							}
+						}
 						if err != nil {
 							if ok, pidErr := process.PidExists(int32(pid)); !ok || pidErr != nil {
 								ps.logger.Debugf("error taking snapshot: process doesn't exist?")
@@ -208,7 +228,10 @@ func (ps *ProfileSession) takeSnapshots() {
 							return
 						}
 						if len(stack) > 0 {
-							ps.tries[ps.appName][i].Insert(stack, v, true)
+							if _, ok := ps.tries[appName]; !ok {
+								ps.initializeTries(appName)
+							}
+							ps.tries[appName][i].Insert(stack, v, true)
 						}
 					})
 				}
@@ -265,28 +288,48 @@ func (ps *ProfileSession) ChangeName(newName string) error {
 	}
 
 	ps.appName = newName
-	ps.initializeTries()
+	ps.initializeTries(ps.appName)
 
 	return nil
 }
 
-func (ps *ProfileSession) initializeTries() {
-	if _, ok := ps.previousTries[ps.appName]; !ok {
+func (ps *ProfileSession) initializeTries(appName string) {
+	if _, ok := ps.previousTries[appName]; !ok {
 		// TODO Only set the trie if it's not already set
-		ps.previousTries[ps.appName] = []*transporttrie.Trie{}
-		ps.tries[ps.appName] = []*transporttrie.Trie{}
+		ps.previousTries[appName] = []*transporttrie.Trie{}
+		ps.tries[appName] = []*transporttrie.Trie{}
 		for i := 0; i < len(ps.profileTypes); i++ {
-			ps.previousTries[ps.appName] = append(ps.previousTries[ps.appName], nil)
-			ps.tries[ps.appName] = append(ps.tries[ps.appName], transporttrie.New())
+			ps.previousTries[appName] = append(ps.previousTries[appName], nil)
+			ps.tries[appName] = append(ps.tries[appName], transporttrie.New())
 		}
 	}
 }
-func (ps *ProfileSession) SetTag(key, val string) error {
-	newName, err := mergeTagsWithAppName(ps.appName, map[string]string{key: val})
+
+// SetTags - add new tags to the session.
+func (ps *ProfileSession) SetTags(tags map[string]string) error {
+	newName, err := mergeTagsWithAppName(ps.appName, tags)
 	if err != nil {
 		return err
 	}
+	return ps.ChangeName(newName)
+}
 
+// SetTag - add a new tag to the session.
+func (ps *ProfileSession) SetTag(key, val string) error {
+	return ps.SetTags(map[string]string{key: val})
+}
+
+// RemoveTags - remove tags from the session.
+func (ps *ProfileSession) RemoveTags(keys ...string) error {
+	removals := make(map[string]string)
+	for _, key := range keys {
+		// 'Adding' a key with an empty string triggers a key removal.
+		removals[key] = ""
+	}
+	newName, err := mergeTagsWithAppName(ps.appName, removals)
+	if err != nil {
+		return err
+	}
 	return ps.ChangeName(newName)
 }
 

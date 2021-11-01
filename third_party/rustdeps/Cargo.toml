@@ -11,7 +11,7 @@ crate-type = ["staticlib"]
 # rbspy = { path = "../../../rbspy" }
 
 # if you change the format of these make sure generate-git-info.sh still works
-py-spy = { git = "https://github.com/pyroscope-io/py-spy", rev = "f990f0b" }
+py-spy = { git = "https://github.com/pyroscope-io/py-spy", rev = "dc29dde" }
 rbspy = { git = "https://github.com/pyroscope-io/rbspy", rev = "eb54c23" }
 
 [patch.crates-io]

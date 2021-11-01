@@ -7,24 +7,22 @@ import (
 	"io/ioutil"
 	"strconv"
 
-	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-// format is a Serialized trie (see transporttrie.Serialize implementation)
-func ParseTrie(r io.Reader, cb func(name []byte, val int)) error {
-	trie, err := transporttrie.Deserialize(r)
+func ParseTreeNoDict(r io.Reader, cb func(name []byte, val int)) error {
+	t, err := tree.DeserializeNoDict(r)
 	if err != nil {
 		return err
 	}
-	trie.Iterate(func(name []byte, val uint64) {
-		cb(name, int(val))
+	t.Iterate(func(name []byte, val uint64) {
+		if len(name) > 2 && val != 0 {
+			cb(name[2:], int(val))
+		}
 	})
 	return nil
-}
-
-func ParseTrieBuf(r io.Reader, buf []byte, cb func([]byte, int)) error {
-	return transporttrie.IterateRaw(r, buf, cb)
 }
 
 // format is pprof. See https://github.com/google/pprof/blob/master/proto/profile.proto

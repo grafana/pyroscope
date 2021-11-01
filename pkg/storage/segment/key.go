@@ -185,3 +185,30 @@ func (k *Key) Add(key, value string) {
 		k.labels[key] = value
 	}
 }
+
+// Match reports whether the key matches the query.
+func (k *Key) Match(q *flameql.Query) bool {
+	if k.AppName() != q.AppName {
+		return false
+	}
+	for _, m := range q.Matchers {
+		var ok bool
+		for labelKey, labelValue := range k.labels {
+			if m.Key != labelKey {
+				continue
+			}
+			if m.Match(labelValue) {
+				if !m.IsNegation() {
+					ok = true
+					break
+				}
+			} else if m.IsNegation() {
+				return false
+			}
+		}
+		if !ok && !m.IsNegation() {
+			return false
+		}
+	}
+	return true
+}

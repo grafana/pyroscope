@@ -24,11 +24,11 @@ type Op int
 const (
 	// The order should respect operator priority and cost.
 	// Negating operators go first. See IsNegation.
-	_         Op = iota
-	NEQ          // !=
-	NEQ_REGEX    // !~
-	EQL          // =
-	EQL_REGEX    // =~
+	_               Op = iota
+	OpNotEqual         // !=
+	OpNotEqualRegex    // !~
+	OpEqual            // =
+	OpEqualRegex       // =~
 )
 
 const (
@@ -40,7 +40,7 @@ var reservedTagKeys = []string{
 }
 
 // IsNegation reports whether the operator assumes negation.
-func (o Op) IsNegation() bool { return o < EQL }
+func (o Op) IsNegation() bool { return o < OpEqual }
 
 // ByPriority is a supplemental type for sorting tag matchers.
 type ByPriority []*TagMatcher
@@ -51,13 +51,13 @@ func (p ByPriority) Less(i, j int) bool { return p[i].Op < p[j].Op }
 
 func (m *TagMatcher) Match(v string) bool {
 	switch m.Op {
-	case EQL:
+	case OpEqual:
 		return m.Value == v
-	case NEQ:
+	case OpNotEqual:
 		return m.Value != v
-	case EQL_REGEX:
+	case OpEqualRegex:
 		return m.R.Match([]byte(v))
-	case NEQ_REGEX:
+	case OpNotEqualRegex:
 		return !m.R.Match([]byte(v))
 	default:
 		panic("invalid match operator")
@@ -101,7 +101,7 @@ func IsTagKeyRuneAllowed(r rune) bool {
 }
 
 func IsAppNameRuneAllowed(r rune) bool {
-	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' || r == '.'
+	return r == '-' || r == '.' || IsTagKeyRuneAllowed(r)
 }
 
 func IsTagKeyReserved(k string) bool {

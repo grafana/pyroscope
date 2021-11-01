@@ -10,11 +10,7 @@ import (
 
 func main() {
 	if err := command.Initialize(); err != nil {
-		fatalf("%s %v\n\n", color.RedString("Error:"), err)
+		fmt.Fprintf(os.Stderr, "%s %v\n\n", color.RedString("Error:"), err)
+		os.Exit(1)
 	}
-}
-
-func fatalf(format string, args ...interface{}) {
-	_, _ = fmt.Fprintf(os.Stderr, format, args...)
-	os.Exit(1)
 }

@@ -24,12 +24,14 @@
     "maxSelf": 58,
     "spyName": "gospy",
     "sampleRate": 100,
-    "units": "samples"
+    "units": "samples",
+    "format": "single"
   },
   "metadata": {
     "sampleRate": 100,
     "spyName": "gospy",
-    "units": "samples"
+    "units": "samples",
+    "format": "single"
   },
   "timeline": {
     "startTime": 1631138160,

@@ -91,12 +91,12 @@ func (o oauthHanlderGithub) userAuth(client *http.Client) (string, error) {
 }
 
 func (o oauthHanlderGithub) fetchOrganizations(client *http.Client) ([]githubOrganizations, error) {
-	url := o.apiURL + "/user/orgs"
+	orgsURL := o.apiURL + "/user/orgs"
 	more := true
 	organizations := make([]githubOrganizations, 0)
 
 	for more {
-		resp, err := client.Get(url)
+		resp, err := client.Get(orgsURL)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +110,7 @@ func (o oauthHanlderGithub) fetchOrganizations(client *http.Client) ([]githubOrg
 
 		organizations = append(organizations, orgs...)
 
-		url, more = hasMoreLinkResults(resp.Header)
+		orgsURL, more = hasMoreLinkResults(resp.Header)
 		if err != nil {
 			return nil, err
 		}

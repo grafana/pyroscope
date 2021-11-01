@@ -7,7 +7,7 @@ import (
 
 type Spy interface {
 	Stop() error
-	Snapshot(cb func([]byte, uint64, error))
+	Snapshot(cb func(*Labels, []byte, uint64, error))
 }
 
 type Resettable interface {
@@ -52,10 +52,10 @@ func (t ProfileType) AggregationType() string {
 }
 
 // TODO: this interface is not the best as different spies have different arguments
-type spyIntitializer func(pid int, profileType ProfileType, sampleRate uint32, disableGCRuns bool) (Spy, error)
+type SpyIntitializer func(pid int, profileType ProfileType, sampleRate uint32, disableGCRuns bool) (Spy, error)
 
 var (
-	supportedSpiesMap map[string]spyIntitializer
+	supportedSpiesMap map[string]SpyIntitializer
 	SupportedSpies    []string
 )
 
@@ -77,20 +77,19 @@ var autoDetectionMapping = map[string]string{
 }
 
 func init() {
-	supportedSpiesMap = make(map[string]spyIntitializer)
+	supportedSpiesMap = make(map[string]SpyIntitializer)
 }
 
-func RegisterSpy(name string, cb spyIntitializer) {
+func RegisterSpy(name string, cb SpyIntitializer) {
 	SupportedSpies = append(SupportedSpies, name)
 	supportedSpiesMap[name] = cb
 }
 
-func StartFunc(name string) (spyIntitializer, error) {
+func StartFunc(name string) (SpyIntitializer, error) {
 	if s, ok := supportedSpiesMap[name]; ok {
 		return s, nil
 	}
 	return nil, fmt.Errorf("unknown spy \"%s\". Make sure it's supported (run `pyroscope version` to check if your version supports it)", name)
-
 }
 
 func ResolveAutoName(s string) string {

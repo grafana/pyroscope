@@ -112,6 +112,7 @@ func (c *Cache) DeletePrefix(prefix string) {
 	}
 }
 
+//revive:disable-next-line:confusing-naming methods are different
 func (c *Cache) delete(entry *cacheEntry) {
 	delete(c.values, entry.key)
 	c.remEntry(entry.freqNode, entry)
@@ -137,6 +138,7 @@ func (c *Cache) WriteBack() (persisted, evicted int) {
 	return c.writeBack()
 }
 
+//revive:disable-next-line:confusing-naming methods are different
 func (c *Cache) evict(count int) int {
 	// No lock here so it can be called
 	// from within the lock (during Set)
@@ -162,6 +164,7 @@ func (c *Cache) evict(count int) int {
 	return evicted
 }
 
+//revive:disable-next-line:confusing-naming methods are different
 func (c *Cache) writeBack() (persisted, evicted int) {
 	now := time.Now().Unix()
 	for k, entry := range c.values {

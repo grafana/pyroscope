@@ -1,5 +1,7 @@
 package config
 
+//revive:disable:line-length-limit Most of line length is documentation
+//revive:disable:max-public-structs Config structs
 type Config struct {
 	LoadGen             LoadGen             `skip:"true" mapstructure:",squash"`
 	PromQuery           PromQuery           `skip:"true" mapstructure:",squash"`
@@ -42,7 +44,7 @@ type TableReport struct {
 
 type ImageReport struct {
 	GrafanaAddress string `def:"http://localhost:4050" desc:"address of the grafana instance"`
-	DashboardUid   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
+	DashboardUID   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
 	UploadType     string `def:"fs" desc:"where to upload to: s3|fs" mapstructure:"upload-type"`
 	UploadBucket   string `def:"" desc:"bucket name if applicable" mapstructure:"upload-bucket"`
 	UploadDest     string `def:"dashboard-screenshots" desc:"name of the output directory" mapstructure:"upload-dest"`
@@ -62,7 +64,7 @@ type DashboardScreenshot struct {
 	TimeoutSeconds int    `def:"300" desc:"timeout in seconds of each call"`
 
 	GrafanaAddress string `def:"http://localhost:4050" desc:"address of the grafana instance"`
-	DashboardUid   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
+	DashboardUID   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
 	Destination    string `def:"fs" desc:"where to upload to: s3|fs"`
 }
 

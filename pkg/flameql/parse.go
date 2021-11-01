@@ -78,12 +78,12 @@ loop:
 			case r <= 2:
 				return nil, newErr(ErrInvalidTagValueSyntax, s)
 			case s[offset+1] == '"':
-				tm.Op = EQL
+				tm.Op = OpEqual
 			case s[offset+1] == '~':
 				if r <= 3 {
 					return nil, newErr(ErrInvalidTagValueSyntax, s)
 				}
-				tm.Op = EQL_REGEX
+				tm.Op = OpEqualRegex
 			default:
 				// Just for more meaningful error message.
 				if s[offset+2] != '"' {
@@ -98,9 +98,9 @@ loop:
 			}
 			switch s[offset+1] {
 			case '=':
-				tm.Op = NEQ
+				tm.Op = OpNotEqual
 			case '~':
-				tm.Op = NEQ_REGEX
+				tm.Op = OpNotEqualRegex
 			default:
 				return nil, newErr(ErrUnknownOp, s)
 			}
@@ -122,9 +122,9 @@ loop:
 	switch tm.Op {
 	default:
 		return nil, newErr(ErrMatchOperatorIsRequired, s)
-	case EQL:
+	case OpEqual:
 		v, ok = unquote(s[offset+1:])
-	case NEQ, EQL_REGEX, NEQ_REGEX:
+	case OpNotEqual, OpEqualRegex, OpNotEqualRegex:
 		v, ok = unquote(s[offset+2:])
 	}
 	if !ok {
@@ -133,7 +133,7 @@ loop:
 
 	// Compile regex, if applicable.
 	switch tm.Op {
-	case EQL_REGEX, NEQ_REGEX:
+	case OpEqualRegex, OpNotEqualRegex:
 		r, err := regexp.Compile(v)
 		if err != nil {
 			return nil, newErr(err, v)

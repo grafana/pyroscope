@@ -8,7 +8,7 @@
 FROM alpine:3.12 as rust-builder
 
 RUN apk update &&\
-    apk add --no-cache git gcc g++ make build-base openssl-dev musl musl-dev curl
+    apk add --no-cache git gcc g++ make build-base openssl-dev musl musl-dev curl zlib-static
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN /root/.cargo/bin/rustup target add $(uname -m)-unknown-linux-musl
@@ -22,7 +22,7 @@ COPY third_party/rustdeps /opt/rustdeps
 
 WORKDIR /opt/rustdeps
 
-RUN RUSTFLAGS="-C target-feature=+crt-static" /root/.cargo/bin/cargo build --release --target $(uname -m)-unknown-linux-musl
+RUN RUSTFLAGS="-L /lib -C target-feature=+crt-static" /root/.cargo/bin/cargo build --release --target $(uname -m)-unknown-linux-musl
 RUN mv /opt/rustdeps/target/$(uname -m)-unknown-linux-musl/release/librustdeps.a /opt/rustdeps/librustdeps.a
 
 #        _
@@ -55,7 +55,7 @@ WORKDIR /opt/pyroscope
 
 COPY scripts ./scripts
 COPY webapp ./webapp
-COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore .prettierrc Makefile ./
+COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore .prettierrc tsconfig.json Makefile ./
 
 ARG EXTRA_METADATA=""
 RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
@@ -145,6 +145,8 @@ LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 WORKDIR /var/lib/pyroscope
 
 RUN apk add --no-cache ca-certificates bash tzdata openssl musl-utils
+RUN apk add --no-cache bcc-tools python3
+RUN ln -s $(which python3) /usr/bin/python
 
 RUN addgroup -S pyroscope && adduser -S pyroscope -G pyroscope
 
@@ -164,8 +166,7 @@ RUN mkdir -p \
         "/etc/pyroscope"
 
 COPY scripts/packages/server.yml "/etc/pyroscope/server.yml"
-COPY --from=go-builder /opt/pyroscope/bin/pyroscope /usr/bin/pyroscope
-RUN chmod 777 /usr/bin/pyroscope
+COPY --from=go-builder --chmod=0777 /opt/pyroscope/bin/pyroscope /usr/bin/pyroscope
 
 USER pyroscope
 EXPOSE 4040/tcp

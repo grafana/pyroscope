@@ -248,10 +248,11 @@ var _ = Describe("flags", func() {
 						LoginMaximumLifetimeDays: 0,
 					},
 
-					MetricExportRules: config.MetricExportRules{
+					MetricsExportRules: config.MetricsExportRules{
 						"my_metric_name": {
-							Expr: `app.name{foo=~"bar"}`,
-							Node: "a;b;c",
+							Expr:    `app.name{foo=~"bar"}`,
+							Node:    "a;b;c",
+							GroupBy: []string{"foo"},
 						},
 					},
 				}))

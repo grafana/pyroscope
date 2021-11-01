@@ -1,8 +1,10 @@
 log-level: error
-metric-export-rules:
+metrics-export-rules:
   my_metric_name:
     expr: app.name{foo=~"bar"}
     node: a;b;c
+    group_by:
+      - foo
 
 retention-levels:
   0: 100s

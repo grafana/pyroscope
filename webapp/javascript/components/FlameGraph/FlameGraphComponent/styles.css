@@ -71,12 +71,6 @@ THIS SOFTWARE.
   width: 40px;
 }
 
-.flamegraph-title {
-  width: 100%;
-  display: block;
-  text-align: center;
-}
-
 .error-message {
   width: 100%;
   height: 100%;
@@ -91,7 +85,6 @@ THIS SOFTWARE.
   max-width: 80%;
 
   position: fixed;
-  pointer-events: none;
   background: #ffffff;
   white-space: nowrap;
   box-shadow: 1px 2px 4px 0px rgba(0, 0, 0, 0.3);
@@ -99,7 +92,7 @@ THIS SOFTWARE.
   padding: 3px 5px;
   color: #333;
   font-size: 12px;
-  opacity: 0;
+  visibility: hidden;
   z-index: 1;
 }
 
@@ -108,11 +101,4 @@ THIS SOFTWARE.
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.flamegraph-highlight {
-  position: absolute;
-  pointer-events: none;
-  background: #ffffff40;
-  mix-blend-mode: overlay;
 }

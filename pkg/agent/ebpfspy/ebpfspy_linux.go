@@ -39,7 +39,7 @@ func (s *EbpfSpy) Stop() error {
 	return nil
 }
 
-func (s *EbpfSpy) Snapshot(cb func([]byte, uint64, error)) {
+func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 	s.resetMutex.Lock()
 	defer s.resetMutex.Unlock()
 
@@ -49,7 +49,7 @@ func (s *EbpfSpy) Snapshot(cb func([]byte, uint64, error)) {
 
 	s.reset = false
 	s.profilingSession.Reset(func(name []byte, v uint64) {
-		cb(name, v, nil)
+		cb(nil, name, v, nil)
 	})
 	if s.stop {
 		s.stopCh <- struct{}{}

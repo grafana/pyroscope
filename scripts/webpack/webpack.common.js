@@ -55,6 +55,8 @@ module.exports = {
       // rc-trigger uses babel-runtime which has internal dependency to core-js@2
       // this alias maps that dependency to core-js@t3
       'core-js/library/fn': 'core-js/stable',
+      '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
+      '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
     },
     modules: [
       'node_modules',
@@ -77,7 +79,8 @@ module.exports = {
     // Note: order is bottom-to-top and/or right-to-left
     rules: [
       {
-        test: /\.jsx?$/,
+        test: /\.(js|ts)x?$/,
+        exclude: /node_modules/,
         use: [
           {
             loader: 'babel-loader',
@@ -105,17 +108,6 @@ module.exports = {
                 ],
                 '@babel/preset-react',
               ],
-            },
-          },
-        ],
-      },
-      {
-        test: /\.js$/,
-        use: [
-          {
-            loader: 'babel-loader',
-            options: {
-              presets: [['@babel/preset-env']],
             },
           },
         ],

@@ -100,12 +100,13 @@ While Pyroscope currently supports 4 languages, we would love to add more.
 
 Any sampling profiler that can export data in the "raw" format linked above can become a Profiling agent with Pyroscope. We'd love your help building out profilers for other languages!
 
-- [x] Go
-- [x] Python
-- [x] eBPF
-- [x] Ruby
-- [x] PHP
-- [ ] [Java](https://github.com/pyroscope-io/pyroscope/issues/94)
+- [x] [Go](https://pyroscope.io/docs/golang)
+- [x] [Python](https://pyroscope.io/docs/python)
+- [x] [eBPF](https://pyroscope.io/docs/ebpf)
+- [x] [Ruby](https://pyroscope.io/docs/ruby)
+- [x] [PHP](https://pyroscope.io/docs/php)
+- [x] [Java](https://pyroscope.io/docs/java)
+- [x] [.NET](https://pyroscope.io/docs/dotnet)
 - [ ] [Rust](https://github.com/pyroscope-io/pyroscope/issues/83#issuecomment-784947654)
 - [ ] [Node](https://github.com/pyroscope-io/pyroscope/issues/8)
 

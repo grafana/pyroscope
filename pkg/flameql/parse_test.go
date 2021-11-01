@@ -21,11 +21,11 @@ var _ = Describe("ParseQuery", func() {
 			{`app.name`, nil, &Query{AppName: "app.name", q: `app.name`}},
 			{`app.name{}`, nil, &Query{AppName: "app.name", q: `app.name{}`}},
 			{`app.name{foo="bar"}`, nil,
-				&Query{"app.name", []*TagMatcher{{"foo", "bar", EQL, nil}}, `app.name{foo="bar"}`}},
+				&Query{"app.name", []*TagMatcher{{"foo", "bar", OpEqual, nil}}, `app.name{foo="bar"}`}},
 			{`app.name{foo="bar,baz"}`, nil,
-				&Query{"app.name", []*TagMatcher{{"foo", "bar,baz", EQL, nil}}, `app.name{foo="bar,baz"}`}},
+				&Query{"app.name", []*TagMatcher{{"foo", "bar,baz", OpEqual, nil}}, `app.name{foo="bar,baz"}`}},
 			{`app.name{foo="bar",baz!="quo"}`, nil,
-				&Query{"app.name", []*TagMatcher{{"baz", "quo", NEQ, nil}, {"foo", "bar", EQL, nil}}, `app.name{foo="bar",baz!="quo"}`}},
+				&Query{"app.name", []*TagMatcher{{"baz", "quo", OpNotEqual, nil}, {"foo", "bar", OpEqual, nil}}, `app.name{foo="bar",baz!="quo"}`}},
 
 			{"", ErrAppNameIsRequired, nil},
 			{"{}", ErrAppNameIsRequired, nil},
@@ -57,36 +57,36 @@ var _ = Describe("ParseMatcher", func() {
 		}
 
 		testCases := []testCase{
-			{expr: `foo="bar"`, m: &TagMatcher{"foo", "bar", EQL, nil}},
-			{expr: `foo="z"`, m: &TagMatcher{"foo", "z", EQL, nil}},
+			{expr: `foo="bar"`, m: &TagMatcher{"foo", "bar", OpEqual, nil}},
+			{expr: `foo="z"`, m: &TagMatcher{"foo", "z", OpEqual, nil}},
 			{expr: `foo=""`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo="`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo="z`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo=`, err: ErrInvalidTagValueSyntax},
 
-			{expr: `foo!="bar"`, m: &TagMatcher{"foo", "bar", NEQ, nil}},
-			{expr: `foo!="z"`, m: &TagMatcher{"foo", "z", NEQ, nil}},
+			{expr: `foo!="bar"`, m: &TagMatcher{"foo", "bar", OpNotEqual, nil}},
+			{expr: `foo!="z"`, m: &TagMatcher{"foo", "z", OpNotEqual, nil}},
 			{expr: `foo=~""`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo=~"`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo=~"z`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo=~`, err: ErrInvalidTagValueSyntax},
 
-			{expr: `foo=~"bar"`, m: &TagMatcher{"foo", "bar", EQL_REGEX, nil}},
-			{expr: `foo=~"z"`, m: &TagMatcher{"foo", "z", EQL_REGEX, nil}},
+			{expr: `foo=~"bar"`, m: &TagMatcher{"foo", "bar", OpEqualRegex, nil}},
+			{expr: `foo=~"z"`, m: &TagMatcher{"foo", "z", OpEqualRegex, nil}},
 			{expr: `foo!=""`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo!="`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo!="z`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo!=`, err: ErrInvalidTagValueSyntax},
 
-			{expr: `foo!~"bar"`, m: &TagMatcher{"foo", "bar", NEQ_REGEX, nil}},
-			{expr: `foo!~"z"`, m: &TagMatcher{"foo", "z", NEQ_REGEX, nil}},
+			{expr: `foo!~"bar"`, m: &TagMatcher{"foo", "bar", OpNotEqualRegex, nil}},
+			{expr: `foo!~"z"`, m: &TagMatcher{"foo", "z", OpNotEqualRegex, nil}},
 			{expr: `foo!~""`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo!~"`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo!~"z`, err: ErrInvalidTagValueSyntax},
 			{expr: `foo!~`, err: ErrInvalidTagValueSyntax},
 
-			{expr: `foo="bar,baz"`, m: &TagMatcher{"foo", "bar,baz", EQL, nil}},
-			{expr: `foo="bar\",\"baz"`, m: &TagMatcher{"foo", "bar\\\",\\\"baz", EQL, nil}},
+			{expr: `foo="bar,baz"`, m: &TagMatcher{"foo", "bar,baz", OpEqual, nil}},
+			{expr: `foo="bar\",\"baz"`, m: &TagMatcher{"foo", "bar\\\",\\\"baz", OpEqual, nil}},
 
 			{expr: `foo;bar="baz"`, err: ErrInvalidTagKey},
 			{expr: `foo""`, err: ErrInvalidTagKey},
@@ -119,10 +119,10 @@ var _ = Describe("ParseMatcher", func() {
 		Expect(err).ToNot(HaveOccurred())
 		x := regexp.MustCompile("x")
 		Expect(m).To(Equal([]*TagMatcher{
-			{"1", "x", NEQ, nil},
-			{"2", "x", NEQ_REGEX, x},
-			{"3", "x", EQL, nil},
-			{"4", "x", EQL_REGEX, x},
+			{"1", "x", OpNotEqual, nil},
+			{"2", "x", OpNotEqualRegex, x},
+			{"3", "x", OpEqual, nil},
+			{"4", "x", OpEqualRegex, x},
 		}))
 	})
 })
