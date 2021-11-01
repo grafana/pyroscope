@@ -1,4 +1,5 @@
 import uniqBy from 'lodash/fp/uniqBy';
+import { deltaDiffWrapper } from '../../util/flamebearer';
 import {
   SET_DATE_RANGE,
   SET_FROM,
@@ -122,9 +123,21 @@ export default function (state = initialState, action) {
         isJSONLoading: true,
       };
     case RECEIVE_TIMELINE:
+      const { flamebearer, leftTicks, rightTicks, timeline } = action.payload;
+      const calculatedLevels = deltaDiffWrapper(
+        flamebearer.format,
+        flamebearer.levels
+      );
+
       return {
         ...state,
-        timeline: decodeTimelineData(action.payload.timeline),
+        timeline: decodeTimelineData(timeline),
+        flamebearer: {
+          leftTicks,
+          rightTicks,
+          levels: calculatedLevels,
+          ...flamebearer,
+        },
         isJSONLoading: false,
       };
     case REQUEST_TAGS:
