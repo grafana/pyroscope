@@ -37,11 +37,11 @@ var _ = Describe("stree", func() {
 				testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 			s.watermarks = watermarks{
-				absoluteTime: time.Now(),
+				absoluteTime: time.Time{},
 				levels: map[int]time.Time{
-					0: time.Now().Add(time.Hour),
-					1: time.Now().Add(2 * time.Hour),
-					2: time.Now().Add(4 * time.Hour),
+					0: {},
+					1: {},
+					2: {},
 				},
 			}
 
