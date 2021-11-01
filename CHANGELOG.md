@@ -1,3 +1,20 @@
+## <small>0.2.3 (2021-11-01)</small>
+
+* feat: improves ebpf integration (#490) ([24f5872](https://github.com/pyroscope-io/pyroscope/commit/24f5872)), closes [#490](https://github.com/pyroscope-io/pyroscope/issues/490)
+* Feature/441 "focus on this subtree" (#480) ([cfe0ae8](https://github.com/pyroscope-io/pyroscope/commit/cfe0ae8)), closes [#480](https://github.com/pyroscope-io/pyroscope/issues/480)
+* Flamegraph refactor (#477) ([deaed44](https://github.com/pyroscope-io/pyroscope/commit/deaed44)), closes [#477](https://github.com/pyroscope-io/pyroscope/issues/477)
+* docs: Add Django Example to Python Examples Folder (#472) ([0dab599](https://github.com/pyroscope-io/pyroscope/commit/0dab599)), closes [#472](https://github.com/pyroscope-io/pyroscope/issues/472)
+* docs: add java to agent diagram ([8653517](https://github.com/pyroscope-io/pyroscope/commit/8653517))
+* docs: adds license scan badge ([5dbd5e7](https://github.com/pyroscope-io/pyroscope/commit/5dbd5e7))
+* docs: delete extra blog post doc ([6d807ae](https://github.com/pyroscope-io/pyroscope/commit/6d807ae))
+* docs: update ruby example images (#486) ([38554ac](https://github.com/pyroscope-io/pyroscope/commit/38554ac)), closes [#486](https://github.com/pyroscope-io/pyroscope/issues/486)
+* docs: update supported languages ([4cd06a2](https://github.com/pyroscope-io/pyroscope/commit/4cd06a2))
+* build: optimizes dockerfile, cuts docker image size in half (#476) ([ad94706](https://github.com/pyroscope-io/pyroscope/commit/ad94706)), closes [#476](https://github.com/pyroscope-io/pyroscope/issues/476)
+* build(frontend): disables watch mode, improves error message (#482) ([67dc7f1](https://github.com/pyroscope-io/pyroscope/commit/67dc7f1)), closes [#482](https://github.com/pyroscope-io/pyroscope/issues/482)
+* ci: adopts conventional commit convention for changelog update commits ([8bccd3d](https://github.com/pyroscope-io/pyroscope/commit/8bccd3d))
+
+
+
 ## <small>0.2.2 (2021-10-19)</small>
 
 * feat(golang): support for golang profiling labels (#470) ([3286f05](https://github.com/pyroscope-io/pyroscope/commit/3286f05)), closes [#470](https://github.com/pyroscope-io/pyroscope/issues/470)
