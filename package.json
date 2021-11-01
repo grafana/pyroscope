@@ -115,8 +115,6 @@
     "file-loader": "^6.2.0",
     "glob": "^7.1.7",
     "humanize-duration": "^3.25.1",
-    "jspdf": "^2.3.1",
-    "jspdf-autotable": "^3.5.14",
     "lodash": "^4.17.20",
     "moment": "^2.27.0",
     "normalize.css": "^8.0.1",
