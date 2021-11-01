@@ -7,6 +7,7 @@ import { ShortcutProvider } from 'react-keybind';
 
 import ShortcutsModal from '../javascript/components/ShortcutsModal';
 import Sidebar from '../javascript/components/Sidebar';
+import { MemoryRouter } from 'react-router';
 
 const mockStore = configureMockStore();
 configure({ adapter: new Adapter() });
@@ -18,7 +19,9 @@ describe('ShortcutsModal', () => {
     const wrapper = mount(
       <Provider store={store}>
         <ShortcutProvider>
-          <Sidebar />
+          <MemoryRouter>
+            <Sidebar />
+          </MemoryRouter>
         </ShortcutProvider>
       </Provider>
     );
