@@ -107,6 +107,7 @@
     "@react-hook/resize-observer": "^1.2.4",
     "@szhsin/react-menu": "^1.10.1",
     "@types/react": "^17.0.0",
+    "@types/react-redux": "^7.1.20",
     "babel-loader": "^8.1.0",
     "classnames": "^2.2.6",
     "clsx": "^1.1.1",

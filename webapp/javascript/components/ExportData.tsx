@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { connect } from 'react-redux';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
@@ -18,8 +17,11 @@ function ExportData() {
   };
 
   // export flamegraph canvas element
-  const exportCanvas = (mimeType) => {
-    const canvasElement = document.querySelector('.flamegraph-canvas');
+  const exportCanvas = (mimeType: 'png') => {
+    // TODO use ref
+    const canvasElement = document.querySelector(
+      '.flamegraph-canvas'
+    ) as HTMLCanvasElement;
     const MIME_TYPE = `image/${mimeType}`;
     const imgURL = canvasElement.toDataURL();
     const dlLink = document.createElement('a');
@@ -36,7 +38,7 @@ function ExportData() {
     setToggleMenu(!toggleMenu);
   };
 
-  const handleToggleMenu = (event) => {
+  const handleToggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     setToggleMenu(!toggleMenu);
   };
@@ -66,8 +68,4 @@ function ExportData() {
   );
 }
 
-const mapStateToProps = (state) => ({
-  ...state,
-});
-
-export default connect(mapStateToProps)(ExportData);
+export default ExportData;
