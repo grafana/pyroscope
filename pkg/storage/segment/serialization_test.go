@@ -36,14 +36,7 @@ var _ = Describe("stree", func() {
 			s.Put(testing.SimpleTime(20),
 				testing.SimpleTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
-			s.watermarks = watermarks{
-				absoluteTime: time.Time{},
-				levels: map[int]time.Time{
-					0: {},
-					1: {},
-					2: {},
-				},
-			}
+			s.watermarks = watermarks{absoluteTime: testing.SimpleTime(100)}
 
 			var buf bytes.Buffer
 			s.Serialize(&buf)
@@ -109,6 +102,27 @@ var _ = Describe("stree", func() {
 				Expect(s.root.children[3]).To(BeNil())
 				Expect(s.root.writes).To(Equal(uint64(3)))
 			})
+		})
+	})
+
+	Context("watermarks serialize / deserialize", func() {
+		It("both functions work properly", func() {
+			w := watermarks{
+				absoluteTime: testing.SimpleTime(100),
+				levels: map[int]time.Time{
+					0: testing.SimpleTime(100),
+					1: testing.SimpleTime(1000),
+				},
+			}
+
+			var buf bytes.Buffer
+			err := w.serialize(&buf)
+			Expect(err).ToNot(HaveOccurred())
+
+			s := New()
+			err = deserializeWatermarks(bytes.NewReader(buf.Bytes()), &s.watermarks)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w).To(Equal(s.watermarks))
 		})
 	})
 })

@@ -185,7 +185,7 @@ func FromBytes(p []byte) (*Segment, error) {
 
 func (w watermarks) serialize(dst io.Writer) error {
 	vw := varint.NewWriter()
-	if _, err := vw.Write(dst, uint64(w.absoluteTime.Unix())); err != nil {
+	if _, err := vw.Write(dst, uint64(w.absoluteTime.UTC().Unix())); err != nil {
 		return err
 	}
 	if _, err := vw.Write(dst, uint64(len(w.levels))); err != nil {
@@ -195,7 +195,7 @@ func (w watermarks) serialize(dst io.Writer) error {
 		if _, err := vw.Write(dst, uint64(k)); err != nil {
 			return err
 		}
-		if _, err := vw.Write(dst, uint64(v.Unix())); err != nil {
+		if _, err := vw.Write(dst, uint64(v.UTC().Unix())); err != nil {
 			return err
 		}
 	}
@@ -207,7 +207,7 @@ func deserializeWatermarks(r io.ByteReader, w *watermarks) error {
 	if err != nil {
 		return err
 	}
-	w.absoluteTime = time.Unix(int64(a), 0)
+	w.absoluteTime = time.Unix(int64(a), 0).UTC()
 	l, err := varint.Read(r)
 	if err != nil {
 		return err
@@ -222,7 +222,7 @@ func deserializeWatermarks(r io.ByteReader, w *watermarks) error {
 		if err != nil {
 			return err
 		}
-		w.levels[int(k)] = time.Unix(int64(v), 0)
+		w.levels[int(k)] = time.Unix(int64(v), 0).UTC()
 	}
 	return nil
 }
