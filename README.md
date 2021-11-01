@@ -159,6 +159,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/yveshield"><img src="https://avatars.githubusercontent.com/u/8733258?v=4" title="yveshield" width="80" height="80"></a>
 <a href="https://github.com/czeslavo"><img src="https://avatars.githubusercontent.com/u/8835851?v=4" title="czeslavo" width="80" height="80"></a>
 <a href="https://github.com/johnduhart"><img src="https://avatars.githubusercontent.com/u/113642?v=4" title="johnduhart" width="80" height="80"></a>
+<a href="https://github.com/clovis1122"><img src="https://avatars.githubusercontent.com/u/22270042?v=4" title="clovis1122" width="80" height="80"></a>
 <a href="https://github.com/radixdev"><img src="https://avatars.githubusercontent.com/u/2373546?v=4" title="radixdev" width="80" height="80"></a>
 <a href="https://github.com/proggga"><img src="https://avatars.githubusercontent.com/u/12262156?v=4" title="proggga" width="80" height="80"></a>
 <a href="https://github.com/teivah"><img src="https://avatars.githubusercontent.com/u/934784?v=4" title="teivah" width="80" height="80"></a>
