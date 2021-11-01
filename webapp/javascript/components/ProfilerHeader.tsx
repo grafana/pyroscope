@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
@@ -24,10 +24,10 @@ export default function ProfilerHeader({
   // debounce the search
   // since rebuilding the canvas on each keystroke is expensive
   const deb = useCallback(
-    debounce((e) => handleSearchChange(e), 250, { maxWait: 1000 }),
+    debounce((s: string) => handleSearchChange(s), 250, { maxWait: 1000 }),
     []
   );
-  const onChange = (e) => {
+  const onHighlightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
     deb(q);
   };
@@ -39,7 +39,7 @@ export default function ProfilerHeader({
         className="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
-        onChange={onChange}
+        onChange={onHighlightChange}
       />
       &nbsp;
       <select

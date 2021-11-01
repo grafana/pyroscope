@@ -40,6 +40,7 @@
     "@types/color": "^3.0.2",
     "@types/jest": "^27.0.2",
     "@types/jest-image-snapshot": "^4.3.1",
+    "@types/lodash": "^4.14.176",
     "@typescript-eslint/eslint-plugin": "^4.29.3",
     "@typescript-eslint/parser": "^4.29.3",
     "autoprefixer": "^9.8.5",
