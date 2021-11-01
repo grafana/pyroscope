@@ -8,6 +8,7 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Option } from 'prelude-ts';
+import { connect } from 'react-redux';
 import Graph from './FlameGraphComponent';
 import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
@@ -15,7 +16,6 @@ import ProfilerHeader from '../ProfilerHeader';
 import { createFF } from '../../util/flamebearer';
 
 import ExportData from '../ExportData';
-import { isAbortError } from '../../util/abort';
 
 import InstructionText from './InstructionText';
 
@@ -53,7 +53,7 @@ class FlameGraphRenderer extends React.Component {
       view: 'both',
       viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
       fitMode: props.fitMode ? props.fitMode : 'HEAD',
-      flamebearer: null,
+      flamebearer: props.flamebearer,
 
       // query used in the 'search' checkbox
       highlightQuery: '',
@@ -62,51 +62,9 @@ class FlameGraphRenderer extends React.Component {
     };
   }
 
-  componentDidMount() {
-    if (this.props.viewSide === 'left' || this.props.viewSide === 'right') {
-      this.fetchFlameBearerData(this.props[`${this.props.viewSide}RenderURL`]);
-    } else if (this.props.viewType === 'single') {
-      this.fetchFlameBearerData(this.props.renderURL);
-    } else if (this.props.viewType === 'diff') {
-      this.fetchFlameBearerData(this.props.diffRenderURL);
-    }
-  }
-
   componentDidUpdate(prevProps, prevState) {
-    const propsChanged =
-      getParamsFromRenderURL(this.props.renderURL).query !==
-        getParamsFromRenderURL(prevProps.renderURL).query ||
-      prevProps.maxNodes !== this.props.maxNodes ||
-      prevProps.refreshToken !== this.props.refreshToken;
-
-    if (
-      propsChanged ||
-      prevProps.from !== this.props.from ||
-      prevProps.until !== this.props.until ||
-      prevProps[`${this.props.viewSide}From`] !==
-        this.props[`${this.props.viewSide}From`] ||
-      prevProps[`${this.props.viewSide}Until`] !==
-        this.props[`${this.props.viewSide}Until`]
-    ) {
-      if (this.props.viewSide === 'left' || this.props.viewSide === 'right') {
-        this.fetchFlameBearerData(
-          this.props[`${this.props.viewSide}RenderURL`]
-        );
-      } else if (this.props.viewType === 'single') {
-        this.fetchFlameBearerData(this.props.renderURL);
-      }
-    }
-
-    if (this.props.viewType === 'diff') {
-      if (
-        propsChanged ||
-        prevProps.leftFrom !== this.props.leftFrom ||
-        prevProps.leftUntil !== this.props.leftUntil ||
-        prevProps.rightFrom !== this.props.rightFrom ||
-        prevProps.rightUntil !== this.props.rightUntil
-      ) {
-        this.fetchFlameBearerData(this.props.diffRenderURL);
-      }
+    if (prevProps.flamebearer !== this.props.flamebearer) {
+      this.updateFlamebearerData();
     }
 
     // flamegraph configs changed
@@ -123,6 +81,10 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       fitMode: newFitMode,
     });
+  };
+
+  updateFlamebearerData = () => {
+    this.setState({ flamebearer: this.props.flamebearer });
   };
 
   updateResetStyle = () => {
@@ -239,62 +201,6 @@ class FlameGraphRenderer extends React.Component {
     if (this.currentJSONController) {
       this.currentJSONController.abort();
     }
-  }
-
-  fetchFlameBearerData(url) {
-    // TODO(eh-am):
-    // move all this request fetching to a data service layer
-    /* eslint-disable no-restricted-syntax*/
-    function deltaDiff(levels, start, step) {
-      for (const level of levels) {
-        let prev = 0;
-        for (let i = start; i < level.length; i += step) {
-          level[i] += prev;
-          prev = level[i] + level[i + 1];
-        }
-      }
-    }
-    /* eslint-enable no-restricted-syntax*/
-
-    function deltaDiffWrapper(format, levels) {
-      if (format === 'double') {
-        deltaDiff(levels, 0, 7);
-        deltaDiff(levels, 3, 7);
-      } else {
-        deltaDiff(levels, 0, 4);
-      }
-    }
-    this.abortCurrentJSONController();
-    if (this.currentJSONController) {
-      this.currentJSONController.abort();
-    }
-    this.currentJSONController = new AbortController();
-
-    fetch(`${url}&format=json`, { signal: this.currentJSONController.signal })
-      .then((response) => response.json())
-      .then((data) => {
-        const { flamebearer, leftTicks, rightTicks } = data;
-
-        deltaDiffWrapper(flamebearer.format, flamebearer.levels);
-
-        // conceptually makes sense grouping them at frontend level
-        // since these ticks are used to compute stuff (eg colors)
-        flamebearer.leftTicks = leftTicks;
-        flamebearer.rightTicks = rightTicks;
-
-        // the new flamegraph shouldn't have zoom etc
-        this.onReset();
-        this.setState({
-          flamebearer,
-        });
-      })
-      .catch((e) => {
-        // AbortErrors are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
-      .finally();
   }
 
   render = () => {
@@ -420,4 +326,8 @@ class FlameGraphRenderer extends React.Component {
   };
 }
 
-export default FlameGraphRenderer;
+const mapStateToProps = (state) => ({
+  ...state,
+});
+
+export default connect(mapStateToProps)(FlameGraphRenderer);
