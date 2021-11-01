@@ -334,7 +334,7 @@ class FlameGraphRenderer extends React.Component {
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
           ExportData={ExportData}
-          query={this.state.highlightQuery}
+          highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
           zoom={this.state.flamegraphConfigs.zoom}
