@@ -191,7 +191,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(
-            'pyroscope_cpu_utilization{instance="$instance"}',
+            'process_cpu_seconds_total{instance="$instance"}',
           )
         )
       )

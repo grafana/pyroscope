@@ -441,7 +441,7 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "pyroscope_cpu_utilization{instance=\"$instance\"}",
+                     "expr": "process_cpu_seconds_total{instance=\"$instance\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "",

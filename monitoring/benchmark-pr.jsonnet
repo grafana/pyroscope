@@ -45,7 +45,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'sum(pyroscope_storage_disk_bytes) by (instance)',
+        'sum(pyroscope_storage_db_size_bytes) by (instance)',
         legendFormat='total {{ instance }}',
       )
     ),
@@ -66,16 +66,10 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'pyroscope_storage_evictions_alloc_bytes',
+        'go_memstats_heap_alloc_bytes{job="pyropscope"}',
         legendFormat='heap size {{ instance  }}',
       ),
     )
-    .addTarget(
-      grafana.prometheus.target(
-        'pyroscope_storage_evictions_total_mem_bytes',
-        legendFormat='total memory {{ instance }}',
-      ),
-    ),
   )
   .addPanel(
     grafana.graphPanel.new(
@@ -111,7 +105,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'pyroscope_cpu_utilization',
+        'process_cpu_seconds_total{job="pyropscope"}',
       )
     )
   )

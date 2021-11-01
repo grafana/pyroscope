@@ -135,7 +135,7 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "sum(pyroscope_storage_disk_bytes) by (instance)",
+                     "expr": "sum(pyroscope_storage_db_size_bytes) by (instance)",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "total {{ instance }}",
@@ -217,18 +217,11 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "pyroscope_storage_evictions_alloc_bytes",
+                     "expr": "go_memstats_heap_alloc_bytes{job=\"pyropscope\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "heap size {{ instance  }}",
                      "refId": "A"
-                  },
-                  {
-                     "expr": "pyroscope_storage_evictions_total_mem_bytes",
-                     "format": "time_series",
-                     "intervalFactor": 2,
-                     "legendFormat": "total memory {{ instance }}",
-                     "refId": "B"
                   }
                ],
                "thresholds": [ ],
@@ -466,7 +459,7 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "pyroscope_cpu_utilization",
+                     "expr": "process_cpu_seconds_total{job=\"pyropscope\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "",
