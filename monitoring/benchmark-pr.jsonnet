@@ -66,7 +66,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'go_memstats_heap_alloc_bytes{job="pyropscope"}',
+        'go_memstats_heap_alloc_bytes{job="pyroscope"}',
         legendFormat='heap size {{ instance  }}',
       ),
     )
@@ -105,7 +105,7 @@ grafana.dashboard.new(
     )
     .addTarget(
       grafana.prometheus.target(
-        'process_cpu_seconds_total{job="pyropscope"}',
+        'process_cpu_seconds_total{job="pyroscope"}',
       )
     )
   )
