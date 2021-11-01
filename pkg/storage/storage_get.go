@@ -115,8 +115,10 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 	}, nil
 }
 
+//revive:disable-next-line:get-return callback is used
 func (s *Storage) GetKeys(cb func(string) bool) { s.labels.GetKeys(cb) }
 
+//revive:disable-next-line:get-return callback is used
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
 		if key != "__name__" || !slices.StringContains(s.config.HideApplications, v) {
@@ -210,23 +212,23 @@ func (s *Storage) execQuery(_ context.Context, qry *flameql.Query) []dimension.K
 
 	for _, m := range qry.Matchers {
 		switch m.Op {
-		case flameql.EQL:
+		case flameql.OpEqual:
 			if d, ok := s.lookupDimension(m); ok {
 				r = append(r, d)
 			} else {
 				return nil
 			}
-		case flameql.NEQ:
+		case flameql.OpNotEqual:
 			if d, ok := s.lookupDimension(m); ok {
 				n = append(n, d)
 			}
-		case flameql.EQL_REGEX:
+		case flameql.OpEqualRegex:
 			if d, ok := s.lookupDimensionRegex(m); ok {
 				r = append(r, d)
 			} else {
 				return nil
 			}
-		case flameql.NEQ_REGEX:
+		case flameql.OpNotEqualRegex:
 			if d, ok := s.lookupDimensionRegex(m); ok {
 				n = append(n, d)
 			}

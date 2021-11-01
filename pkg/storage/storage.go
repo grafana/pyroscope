@@ -1,5 +1,7 @@
 package storage
 
+// revive:disable:max-public-structs complex package
+
 import (
 	"errors"
 	"runtime"
@@ -53,6 +55,24 @@ type storageOptions struct {
 	retentionTaskInterval     time.Duration
 	cacheTTL                  time.Duration
 	gcSizeDiff                bytesize.ByteSize
+}
+
+// MetricsExporter exports values of particular stack traces sample from profiling
+// data as a Prometheus metrics.
+type MetricsExporter interface {
+	// Evaluate evaluates metrics export rules against the input key and creates
+	// prometheus counters for new time series, if required. Returned observer can
+	// be used to evaluate and observe particular samples.
+	//
+	// If there are no matching rules, the function returns false.
+	Evaluate(*PutInput) (SampleObserver, bool)
+}
+
+type SampleObserver interface {
+	// Observe adds v to the matched counters if k satisfies node selector.
+	// k is a sample stack trace where frames are delimited by semicolon.
+	// v is the sample value.
+	Observe(k []byte, v int)
 }
 
 func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer) (*Storage, error) {

@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
@@ -44,9 +46,9 @@ func (p prefix) trim(k []byte) ([]byte, bool) {
 	return nil, false
 }
 
-func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, error) {
+func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (d *db, err error) {
 	badgerPath := filepath.Join(s.config.StoragePath, name)
-	if err := os.MkdirAll(badgerPath, 0o755); err != nil {
+	if err = os.MkdirAll(badgerPath, 0o755); err != nil {
 		return nil, err
 	}
 
@@ -55,6 +57,17 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, erro
 	if level, err := logrus.ParseLevel(s.config.BadgerLogLevel); err == nil {
 		logger.SetLevel(level)
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			// BadgerDB may panic because of file system access permissions. In particular,
+			// if is running in kubernetes with incorrect/unset fsGroup security context:
+			// https://github.com/pyroscope-io/pyroscope/issues/350.
+			err = fmt.Errorf("failed to open database\n\n"+
+				"Please make sure Pyroscope Server has write access permissions to %s directory.\n\n"+
+				"Recovered from panic: %v\n%v", badgerPath, r, string(debug.Stack()))
+		}
+	}()
 
 	badgerDB, err := badger.Open(badger.DefaultOptions(badgerPath).
 		WithTruncate(!s.config.BadgerNoTruncate).
@@ -67,7 +80,7 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, erro
 		return nil, err
 	}
 
-	d := db{
+	d = &db{
 		name:    name,
 		DB:      badgerDB,
 		logger:  s.logger.WithField("db", name),
@@ -93,7 +106,7 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (*db, erro
 		}
 	})
 
-	return &d, nil
+	return d, nil
 }
 
 func (d *db) close() {
