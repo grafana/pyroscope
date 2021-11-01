@@ -145,6 +145,8 @@ LABEL maintainer="Pyroscope team <hello@pyroscope.io>"
 WORKDIR /var/lib/pyroscope
 
 RUN apk add --no-cache ca-certificates bash tzdata openssl musl-utils
+RUN apk add --no-cache bcc-tools python3
+RUN ln -s $(which python3) /usr/bin/python
 
 RUN addgroup -S pyroscope && adduser -S pyroscope -G pyroscope
 

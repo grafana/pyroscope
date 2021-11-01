@@ -1,0 +1,23 @@
+---
+version: '3.9'
+services:
+  pyroscope:
+    image: 'pyroscope/pyroscope:latest'
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+  app:
+    image: 'pyroscope/pyroscope:latest'
+    user: root
+    privileged: true
+    volumes:
+      - /lib/modules:/lib/modules
+    command:
+      - 'connect'
+      - '--spy-name'
+      - 'ebpfspy'
+      - '--pid'
+      - '-1'
+      - '--server-address'
+      - 'http://pyroscope:4040'
