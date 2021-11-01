@@ -93,6 +93,12 @@ describe('basic test', () => {
     cy.visit('/');
 
     cy.findByTestId('flamegraph-search').type('main');
+
+    // if we take a screenshot right away, the canvas may not have been re-renderer yet
+    // therefore we also assert for this attribute
+    // which cypress will retry a few times if necessary
+    cy.findByTestId('flamegraph-canvas').get('[data-highlightquery="main"]');
+
     cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
       'simple-golang-app-cpu-highlight'
     );
