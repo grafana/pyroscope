@@ -163,6 +163,7 @@ export function ProfilerHeader({
 function ResizableViewSection({ view, updateView, showMode }) {
   const Select = (
     <select
+      aria-label="view"
       value={view}
       onChange={(e) => {
         updateView(e.target.value);
