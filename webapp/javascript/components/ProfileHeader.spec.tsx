@@ -83,6 +83,101 @@ describe('ProfileHeader', () => {
     expect(asFragment()).toMatchSnapshot();
   });
 
+  describe('DiffSection', () => {
+    const updateViewDiff = jest.fn();
+    const component = (
+      <ProfileHeader
+        view="both"
+        viewDiff="diff"
+        handleSearchChange={() => {}}
+        resetStyle={{}}
+        reset={() => {}}
+        updateFitMode={() => {}}
+        fitMode={FitModes.HEAD}
+        updateView={() => {}}
+        updateViewDiff={updateViewDiff}
+      />
+    );
+
+    it('doesnt render if viewDiff is not set', () => {
+      render(
+        <ProfileHeader
+          view="both"
+          handleSearchChange={() => {}}
+          resetStyle={{}}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+        />
+      );
+
+      expect(screen.queryByTestId('diff-view')).toBeNull();
+    });
+
+    describe('large mode', () => {
+      beforeEach(() => {
+        setWindowSize('large');
+        render(component);
+      });
+
+      afterEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('changes to Self View', () => {
+        screen.getByRole('button', { name: /Self/ }).click();
+        expect(updateViewDiff).toHaveBeenCalledWith('self');
+      });
+
+      it('changes to Total View', () => {
+        screen.getByRole('button', { name: /Total/ }).click();
+        expect(updateViewDiff).toHaveBeenCalledWith('total');
+      });
+
+      it('changes to Diff View', () => {
+        screen.getByRole('button', { name: /Diff/ }).click();
+        expect(updateViewDiff).toHaveBeenCalledWith('diff');
+      });
+    });
+
+    describe('small mode', () => {
+      beforeEach(() => {
+        setWindowSize('small');
+        render(component);
+      });
+
+      afterEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('changes to Self view', () => {
+        userEvent.selectOptions(
+          screen.getByRole('combobox', { name: /view-diff/ }),
+          screen.getByRole('option', { name: /Self/ })
+        );
+        expect(updateViewDiff).toHaveBeenCalledWith('self');
+      });
+
+      it('changes to Total view', () => {
+        userEvent.selectOptions(
+          screen.getByRole('combobox', { name: /view-diff/ }),
+          screen.getByRole('option', { name: /Total/ })
+        );
+        expect(updateViewDiff).toHaveBeenCalledWith('total');
+      });
+
+      it('changes to Diff view', () => {
+        userEvent.selectOptions(
+          screen.getByRole('combobox', { name: /view-diff/ }),
+          screen.getByRole('option', { name: /Diff/ })
+        );
+        expect(updateViewDiff).toHaveBeenCalledWith('diff');
+      });
+    });
+  });
+
   describe('ViewSection', () => {
     const updateView = jest.fn();
     const component = (
@@ -102,6 +197,10 @@ describe('ProfileHeader', () => {
       beforeEach(() => {
         setWindowSize('large');
         render(component);
+      });
+
+      afterEach(() => {
+        jest.clearAllMocks();
       });
 
       it('changes to Table View', () => {
@@ -124,6 +223,10 @@ describe('ProfileHeader', () => {
       beforeEach(() => {
         setWindowSize('small');
         render(component);
+      });
+
+      afterEach(() => {
+        jest.clearAllMocks();
       });
 
       it('changes to Table view', () => {

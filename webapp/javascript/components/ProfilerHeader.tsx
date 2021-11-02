@@ -118,36 +118,83 @@ export function ProfilerHeader({
           Reset View
         </button>
         <div className="navbar-space-filler" />
-        {!viewDiff ? null : (
-          <div className="btn-group viz-switch">
-            <button
-              type="button"
-              className={clsx('btn', { active: viewDiff === 'self' })}
-              onClick={() => updateViewDiff('self')}
-            >
-              <FontAwesomeIcon icon={faListUl} />
-              &nbsp;&thinsp;Self
-            </button>
-            <button
-              type="button"
-              className={clsx('btn', { active: viewDiff === 'total' })}
-              onClick={() => updateViewDiff('total')}
-            >
-              <FontAwesomeIcon icon={faBars} />
-              &nbsp;&thinsp;Total
-            </button>
-            <button
-              type="button"
-              className={clsx('btn', { active: viewDiff === 'diff' })}
-              onClick={() => updateViewDiff('diff')}
-            >
-              <FontAwesomeIcon icon={faAlignLeft} />
-              &nbsp;&thinsp;Diff
-            </button>
-          </div>
-        )}
+        <DiffView
+          showMode={showMode}
+          viewDiff={viewDiff}
+          updateViewDiff={updateViewDiff}
+        />
         <ViewSection showMode={showMode} view={view} updateView={updateView} />
       </div>
+    </div>
+  );
+}
+
+function DiffView({ viewDiff, updateViewDiff, showMode }) {
+  if (!viewDiff) {
+    return null;
+  }
+
+  const Select = (
+    <select
+      aria-label="view-diff"
+      value={viewDiff}
+      onChange={(e) => {
+        updateViewDiff(e.target.value);
+      }}
+    >
+      <option value="self">Self</option>
+      <option value="total">Total</option>
+      <option value="diff">Diff</option>
+    </select>
+  );
+
+  const Buttons = (
+    <>
+      <button
+        type="button"
+        className={clsx('btn', { active: viewDiff === 'self' })}
+        onClick={() => updateViewDiff('self')}
+      >
+        <FontAwesomeIcon icon={faListUl} />
+        &nbsp;&thinsp;Self
+      </button>
+      <button
+        type="button"
+        className={clsx('btn', { active: viewDiff === 'total' })}
+        onClick={() => updateViewDiff('total')}
+      >
+        <FontAwesomeIcon icon={faBars} />
+        &nbsp;&thinsp;Total
+      </button>
+      <button
+        type="button"
+        className={clsx('btn', { active: viewDiff === 'diff' })}
+        onClick={() => updateViewDiff('diff')}
+      >
+        <FontAwesomeIcon icon={faAlignLeft} />
+        &nbsp;&thinsp;Diff
+      </button>
+    </>
+  );
+
+  const decideWhatToShow = () => {
+    switch (showMode) {
+      case 'small': {
+        return Select;
+      }
+      case 'large': {
+        return Buttons;
+      }
+
+      default: {
+        throw new Error(`Invalid option: '${showMode}'`);
+      }
+    }
+  };
+
+  return (
+    <div className="btn-group viz-switch" data-testid="diff-view">
+      {decideWhatToShow()}
     </div>
   );
 }
