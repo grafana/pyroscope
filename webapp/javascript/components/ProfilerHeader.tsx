@@ -98,15 +98,6 @@ export function ProfilerHeader({
           onChange={onHighlightChange}
         />
         &nbsp;
-        <select
-          className="fit-mode-select"
-          value={fitMode}
-          onChange={(event) => updateFitMode(event.target.value)}
-        >
-          <option disabled>Prefer to fit</option>
-          <option value={FitModes.HEAD}>Head First</option>
-          <option value={FitModes.TAIL}>Tail First</option>
-        </select>
         <button
           type="button"
           className={clsx('btn')}
@@ -117,6 +108,7 @@ export function ProfilerHeader({
         >
           Reset View
         </button>
+        <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
         <div className="navbar-space-filler" />
         <DiffView
           showMode={showMode}
@@ -126,6 +118,21 @@ export function ProfilerHeader({
         <ViewSection showMode={showMode} view={view} updateView={updateView} />
       </div>
     </div>
+  );
+}
+
+function FitMode({ fitMode, updateFitMode }) {
+  return (
+    <select
+      aria-label="fit-mode"
+      className="fit-mode-select"
+      value={fitMode}
+      onChange={(event) => updateFitMode(event.target.value)}
+    >
+      <option disabled>Prefer to fit</option>
+      <option value={FitModes.HEAD}>Head First</option>
+      <option value={FitModes.TAIL}>Tail First</option>
+    </select>
   );
 }
 

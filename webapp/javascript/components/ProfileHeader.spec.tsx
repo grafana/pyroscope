@@ -83,6 +83,48 @@ describe('ProfileHeader', () => {
     expect(asFragment()).toMatchSnapshot();
   });
 
+  describe('FitMode', () => {
+    const updateFitMode = jest.fn();
+    const component = (
+      <ProfileHeader
+        view="both"
+        viewDiff="diff"
+        handleSearchChange={() => {}}
+        resetStyle={{}}
+        reset={() => {}}
+        updateFitMode={updateFitMode}
+        fitMode={FitModes.HEAD}
+        updateView={() => {}}
+        updateViewDiff={() => {}}
+      />
+    );
+
+    beforeEach(() => {
+      render(component);
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('updates to HEAD first', () => {
+      userEvent.selectOptions(
+        screen.getByRole('combobox', { name: /fit-mode/ }),
+        screen.getByRole('option', { name: /Head/ })
+      );
+      expect(updateFitMode).toHaveBeenCalledWith(FitModes.HEAD);
+    });
+
+    it('updates to TAIL first', () => {
+      userEvent.selectOptions(
+        screen.getByRole('combobox', { name: /fit-mode/ }),
+        screen.getByRole('option', { name: /Tail/ })
+      );
+
+      expect(updateFitMode).toHaveBeenCalledWith(FitModes.TAIL);
+    });
+  });
+
   describe('DiffSection', () => {
     const updateViewDiff = jest.fn();
     const component = (
