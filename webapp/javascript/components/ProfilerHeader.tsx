@@ -90,12 +90,6 @@ const ProfilerHeader = React.memo(
     const toolbarRef = React.useRef();
     const showMode = useSizeMode(toolbarRef);
 
-    //    const onFocusOnSubtree = () => {
-    //      console.log('clicked');
-    //    };
-    //
-    //    const selectedNode = Option.none();
-
     return (
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className="navbar-2">
