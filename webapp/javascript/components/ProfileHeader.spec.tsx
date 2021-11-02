@@ -1,8 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import lodash from 'lodash';
 import ProfileHeader, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './ProfilerHeader';
 import { FitModes } from '../util/fitMode';
+
+lodash.debounce = jest.fn((fn) => fn) as any;
 
 function setWindowSize(s: 'small' | 'large') {
   const boundingClientRect = {
@@ -131,6 +134,30 @@ describe('ProfileHeader', () => {
       screen.getByRole('button', { name: /Reset View/ }).click();
 
       expect(onReset).toHaveBeenCalled();
+    });
+  });
+
+  describe('HighlightSearch', () => {
+    it('calls callback when typed', () => {
+      const onChange = jest.fn();
+
+      const component = (
+        <ProfileHeader
+          view="both"
+          viewDiff="diff"
+          isFlamegraphDirty
+          handleSearchChange={onChange}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+        />
+      );
+
+      render(component);
+      userEvent.type(screen.getByRole('searchbox'), 'foobar');
+      expect(onChange).toHaveBeenCalledWith('foobar');
     });
   });
 

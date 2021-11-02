@@ -77,30 +77,13 @@ const ProfilerHeader = React.memo(
     updateView,
     updateViewDiff,
   }: ProfileHeaderProps) => {
-    // debounce the search
-    // since rebuilding the canvas on each keystroke is expensive
-    const deb = useCallback(
-      debounce((s: string) => handleSearchChange(s), 250, { maxWait: 1000 }),
-      []
-    );
-    const onHighlightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const q = e.target.value;
-      deb(q);
-    };
-
     const toolbarRef = React.useRef();
     const showMode = useSizeMode(toolbarRef);
 
     return (
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className="navbar-2">
-          <input
-            data-testid="flamegraph-search"
-            className="flamegraph-search"
-            name="flamegraph-search"
-            placeholder="Search…"
-            onChange={onHighlightChange}
-          />
+          <HighlightSearch onHighlightChange={handleSearchChange} />
           &nbsp;
           <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
           <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
@@ -120,6 +103,37 @@ const ProfilerHeader = React.memo(
     );
   }
 );
+
+function HighlightSearch({ onHighlightChange }) {
+  // debounce the search
+  // since rebuilding the canvas on each keystroke is expensive
+  const deb = useCallback(
+    debounce(
+      (s: string) => {
+        onHighlightChange(s);
+      },
+      250,
+      { maxWait: 1000 }
+    ),
+    []
+  );
+
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    deb(q);
+  };
+
+  return (
+    <input
+      type="search"
+      data-testid="flamegraph-search"
+      className="flamegraph-search"
+      name="flamegraph-search"
+      placeholder="Search…"
+      onChange={onChange}
+    />
+  );
+}
 
 function ResetView({ isFlamegraphDirty, reset }) {
   return (
