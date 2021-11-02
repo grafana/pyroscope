@@ -186,10 +186,7 @@ func waitForSpawnedProcessToExit(c chan os.Signal, cmd *goexec.Cmd) error {
 	for {
 		select {
 		case s := <-c:
-			if s != syscall.SIGCHLD {
-				_ = sendSignal(cmd.Process, s)
-			}
-
+			_ = sendSignal(cmd.Process, s)
 		case <-ticker.C:
 			if !processExists(cmd.Process.Pid) {
 				logrus.Debug("child process exited")

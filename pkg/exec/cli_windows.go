@@ -13,37 +13,47 @@ import (
 )
 
 var (
-	kernel32          = syscall.NewLazyDLL("kernel32.dll")
-	procAttachConsole = kernel32.NewProc("AttachConsole")
-	procFreeConsole   = kernel32.NewProc("FreeConsole")
+	kernel32                  = syscall.NewLazyDLL("kernel32.dll")
+	procAttachConsole         = kernel32.NewProc("AttachConsole")
+	procFreeConsole           = kernel32.NewProc("FreeConsole")
+	procSetConsoleCtrlHandler = kernel32.NewProc("SetConsoleCtrlHandler")
 )
 
-func performOSChecks(_ string) error {
-	return nil
-}
+func performOSChecks(_ string) error { return nil }
 
-func adjustCmd(cmd *exec.Cmd, _ config.Exec) error {
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CreationFlags: windows.CREATE_NEW_PROCESS_GROUP,
-	}
-	return nil
-}
+func adjustCmd(_ *exec.Cmd, _ config.Exec) error { return nil }
 
 func processExists(pid int) bool {
-	p, err := os.FindProcess(pid)
+	const da = syscall.STANDARD_RIGHTS_READ |
+		syscall.PROCESS_QUERY_INFORMATION |
+		syscall.SYNCHRONIZE
+	h, err := syscall.OpenProcess(da, false, uint32(pid))
 	if err != nil {
 		return false
 	}
-	_ = p.Release()
-	return true
+	defer func() {
+		_ = windows.Close(windows.Handle(h))
+	}()
+	// Refer to Microsoft documentation:
+	// https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getexitcodeprocess
+	var exitCode uint32
+	err = windows.GetExitCodeProcess(windows.Handle(h), &exitCode)
+	if err != nil {
+		return false
+	}
+	const STILL_ACTIVE = 259
+	return exitCode == STILL_ACTIVE
 }
 
 func sendSignal(p *os.Process, s os.Signal) error {
 	if p == nil || p.Pid == 0 {
 		return nil
 	}
+	// On Windows Go runtime does not handle signals (events) other than SIGINT.
 	if s == syscall.SIGINT {
-		return sendEvent(p.Pid, windows.CTRL_BREAK_EVENT)
+		if err := sendCtrlC(p.Pid); err == nil {
+			return nil
+		}
 	}
 	return p.Kill()
 }
@@ -52,9 +62,9 @@ func sendSignal(p *os.Process, s os.Signal) error {
 // Refer to https://docs.microsoft.com/en-us/windows/console/attachconsole.
 var console sync.Mutex
 
-// Interrupt sends CTRL+BREAK signal to the command process group.
+// Interrupt sends CTRL+C signal to the console.
 // Refer to https://github.com/golang/go/issues/6720 for details.
-func sendEvent(pid int, e uint32) (err error) {
+func sendCtrlC(pid int) (err error) {
 	console.Lock()
 	defer console.Unlock()
 	ret, _, err := procAttachConsole.Call(uintptr(pid))
@@ -67,17 +77,24 @@ func sendEvent(pid int, e uint32) (err error) {
 		// ERROR_INVALID_PARAMETER (87).
 		return fmt.Errorf("AttachConsole: %w", err)
 	}
-	defer func() {
-		// A process can use the FreeConsole function to detach itself from its
-		// console. If other processes share the console, the console is not
-		// destroyed, but the process that called FreeConsole cannot refer to it.
-		// If the calling process is not already attached to a console,
-		// the error code returned is ERROR_INVALID_PARAMETER (87).
-		_, _, _ = procFreeConsole.Call()
-	}()
+	// Disable events handling for the current process
+	ret, _, err = procSetConsoleCtrlHandler.Call(0, 1)
+	if ret == 0 {
+		return fmt.Errorf("SetConsoleCtrlHandler: %w", err)
+	}
 	// Note on CTRL_C_EVENT: This signal cannot be generated for process
 	// groups. If dwProcessGroupId is nonzero, this function will succeed, but
 	// the CTRL+C signal will not be received by processes within the specified
 	// process group.
-	return windows.GenerateConsoleCtrlEvent(e, uint32(pid))
+	if err = windows.GenerateConsoleCtrlEvent(windows.CTRL_C_EVENT, 0); err != nil {
+		return fmt.Errorf("GenerateConsoleCtrlEvent: %w", err)
+	}
+	// A process can use the FreeConsole function to detach itself from its
+	// console. If other processes share the console, the console is not
+	// destroyed, but the process that called FreeConsole cannot refer to it.
+	// If the calling process is not already attached to a console,
+	// the error code returned is ERROR_INVALID_PARAMETER (87).
+	// The console must be released immediately after GenerateConsoleCtrlEvent.
+	_, _, _ = procFreeConsole.Call()
+	return nil
 }

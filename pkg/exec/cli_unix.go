@@ -119,5 +119,8 @@ func processExists(pid int) bool {
 }
 
 func sendSignal(p *os.Process, s os.Signal) error {
-	return p.Signal(s)
+	if s != syscall.SIGCHLD {
+		return p.Signal(s)
+	}
+	return nil
 }
