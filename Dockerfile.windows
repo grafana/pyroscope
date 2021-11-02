@@ -19,7 +19,7 @@ RUN source scripts/packages/git-info && go run scripts/windows/generate-windows-
 ## Build for Windows x64 only.
 RUN GOOS=windows GOARCH=amd64 go build \
   -trimpath -ldflags "$(scripts/generate-build-flags.sh)" \
-  -tags dotnetspy,debugspy \
+  -tags dotnetspy \
   -o pyroscope.exe \
   ./cmd/pyroscope
 
