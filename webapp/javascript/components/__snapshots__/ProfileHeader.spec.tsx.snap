@@ -16,7 +16,17 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         placeholder="Search…"
       />
        
+      <button
+        class="btn"
+        data-testid="reset-view"
+        disabled=""
+        id="reset"
+        type="button"
+      >
+        Reset View
+      </button>
       <select
+        aria-label="fit-mode"
         class="fit-mode-select"
       >
         <option
@@ -35,14 +45,6 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
           Tail First
         </option>
       </select>
-      <button
-        class="btn"
-        data-testid="reset-view"
-        id="reset"
-        type="button"
-      >
-        Reset View
-      </button>
       <div
         class="navbar-space-filler"
       />
@@ -137,7 +139,17 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         placeholder="Search…"
       />
        
+      <button
+        class="btn"
+        data-testid="reset-view"
+        disabled=""
+        id="reset"
+        type="button"
+      >
+        Reset View
+      </button>
       <select
+        aria-label="fit-mode"
         class="fit-mode-select"
       >
         <option
@@ -156,14 +168,6 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
           Tail First
         </option>
       </select>
-      <button
-        class="btn"
-        data-testid="reset-view"
-        id="reset"
-        type="button"
-      >
-        Reset View
-      </button>
       <div
         class="navbar-space-filler"
       />

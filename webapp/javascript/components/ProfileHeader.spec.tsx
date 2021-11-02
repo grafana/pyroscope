@@ -52,7 +52,6 @@ describe('ProfileHeader', () => {
       <ProfileHeader
         view="both"
         handleSearchChange={() => {}}
-        resetStyle={{}}
         reset={() => {}}
         updateFitMode={() => {}}
         fitMode={FitModes.HEAD}
@@ -71,7 +70,6 @@ describe('ProfileHeader', () => {
       <ProfileHeader
         view="both"
         handleSearchChange={() => {}}
-        resetStyle={{}}
         reset={() => {}}
         updateFitMode={() => {}}
         fitMode={FitModes.HEAD}
@@ -101,7 +99,6 @@ describe('ProfileHeader', () => {
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
-          resetStyle={{}}
           reset={onReset}
           updateFitMode={() => {}}
           fitMode={FitModes.HEAD}
@@ -120,7 +117,6 @@ describe('ProfileHeader', () => {
           viewDiff="diff"
           isFlamegraphDirty
           handleSearchChange={() => {}}
-          resetStyle={{}}
           reset={onReset}
           updateFitMode={() => {}}
           fitMode={FitModes.HEAD}
@@ -145,7 +141,6 @@ describe('ProfileHeader', () => {
         view="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
-        resetStyle={{}}
         reset={() => {}}
         updateFitMode={updateFitMode}
         fitMode={FitModes.HEAD}
@@ -188,7 +183,6 @@ describe('ProfileHeader', () => {
         view="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
-        resetStyle={{}}
         reset={() => {}}
         updateFitMode={() => {}}
         fitMode={FitModes.HEAD}
@@ -203,7 +197,6 @@ describe('ProfileHeader', () => {
         <ProfileHeader
           view="both"
           handleSearchChange={() => {}}
-          resetStyle={{}}
           reset={() => {}}
           updateFitMode={() => {}}
           fitMode={FitModes.HEAD}
@@ -284,7 +277,6 @@ describe('ProfileHeader', () => {
       <ProfileHeader
         view="both"
         handleSearchChange={() => {}}
-        resetStyle={{}}
         reset={() => {}}
         updateFitMode={() => {}}
         fitMode={FitModes.HEAD}

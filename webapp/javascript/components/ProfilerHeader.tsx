@@ -57,7 +57,6 @@ interface ProfileHeaderProps {
 
   /** Whether the flamegraph is different from its original state */
   isFlamegraphDirty: boolean;
-  resetStyle: React.CSSProperties;
   reset: () => void;
 
   updateFitMode: (f: FitModes) => void;
@@ -66,62 +65,63 @@ interface ProfileHeaderProps {
   updateViewDiff: (s: 'diff' | 'total' | 'self') => void;
 }
 
-export function ProfilerHeader({
-  view,
-  viewDiff,
-  handleSearchChange,
-  isFlamegraphDirty,
-  resetStyle,
-  reset,
-  updateFitMode,
-  fitMode,
-  updateView,
-  updateViewDiff,
-}: ProfileHeaderProps) {
-  // debounce the search
-  // since rebuilding the canvas on each keystroke is expensive
-  const deb = useCallback(
-    debounce((s: string) => handleSearchChange(s), 250, { maxWait: 1000 }),
-    []
-  );
-  const onHighlightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const q = e.target.value;
-    deb(q);
-  };
+const ProfilerHeader = React.memo(
+  ({
+    view,
+    viewDiff,
+    handleSearchChange,
+    isFlamegraphDirty,
+    reset,
+    updateFitMode,
+    fitMode,
+    updateView,
+    updateViewDiff,
+  }: ProfileHeaderProps) => {
+    // debounce the search
+    // since rebuilding the canvas on each keystroke is expensive
+    const deb = useCallback(
+      debounce((s: string) => handleSearchChange(s), 250, { maxWait: 1000 }),
+      []
+    );
+    const onHighlightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const q = e.target.value;
+      deb(q);
+    };
 
-  const toolbarRef = React.useRef();
-  const showMode = useSizeMode(toolbarRef);
+    const toolbarRef = React.useRef();
+    const showMode = useSizeMode(toolbarRef);
 
-  return (
-    <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
-      <div className="navbar-2">
-        <input
-          data-testid="flamegraph-search"
-          className="flamegraph-search"
-          name="flamegraph-search"
-          placeholder="Search…"
-          onChange={onHighlightChange}
-        />
-        &nbsp;
-        <ResetView
-          isFlamegraphDirty={isFlamegraphDirty}
-          resetStyle={resetStyle}
-          reset={reset}
-        />
-        <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
-        <div className="navbar-space-filler" />
-        <DiffView
-          showMode={showMode}
-          viewDiff={viewDiff}
-          updateViewDiff={updateViewDiff}
-        />
-        <ViewSection showMode={showMode} view={view} updateView={updateView} />
+    return (
+      <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
+        <div className="navbar-2">
+          <input
+            data-testid="flamegraph-search"
+            className="flamegraph-search"
+            name="flamegraph-search"
+            placeholder="Search…"
+            onChange={onHighlightChange}
+          />
+          &nbsp;
+          <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
+          <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
+          <div className="navbar-space-filler" />
+          <DiffView
+            showMode={showMode}
+            viewDiff={viewDiff}
+            updateViewDiff={updateViewDiff}
+          />
+          <ViewSection
+            showMode={showMode}
+            view={view}
+            updateView={updateView}
+          />
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
+);
 
-function ResetView({ isFlamegraphDirty, resetStyle, reset }) {
+function ResetView({ isFlamegraphDirty, reset }) {
   return (
     <button
       type="button"
@@ -286,5 +286,4 @@ function ViewSection({ view, updateView, showMode }) {
   return <div className="btn-group viz-switch">{decideWhatToShow()}</div>;
 }
 
-const Memoized = React.memo(ProfilerHeader);
-export default Memoized;
+export default ProfilerHeader;

@@ -47,7 +47,7 @@ class FlameGraphRenderer extends React.Component {
   constructor(props) {
     super();
     this.state = {
-      resetStyle: { visibility: 'hidden' },
+      isFlamegraphDirty: false,
       sortBy: 'self',
       sortByDirection: 'desc',
       view: 'both',
@@ -111,7 +111,7 @@ class FlameGraphRenderer extends React.Component {
 
     // flamegraph configs changed
     if (prevState.flamegraphConfigs !== this.state.flamegraphConfigs) {
-      this.updateResetStyle();
+      this.updateFlamegraphDirtiness();
     }
   }
 
@@ -125,13 +125,11 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateResetStyle = () => {
+  updateFlamegraphDirtiness = () => {
     const isDirty = this.isDirty();
 
-    // TODO(eh-am): this is a bad idea
-    // let's use disabled instead
     this.setState({
-      resetStyle: { visibility: isDirty ? 'visible' : 'hidden' },
+      isFlamegraphDirty: isDirty,
     });
   };
 
@@ -139,7 +137,6 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       highlightQuery: e,
     });
-    //    this.updateResetStyle();
   };
 
   onReset = () => {
@@ -319,6 +316,7 @@ class FlameGraphRenderer extends React.Component {
           view={this.state.view}
           viewDiff={this.state.viewDiff}
           fitMode={this.state.fitMode}
+          isFlamegraphDirty={this.state.isFlamegraphDirty}
         />
       </div>
     );
@@ -370,9 +368,9 @@ class FlameGraphRenderer extends React.Component {
             reset={this.onReset}
             updateView={this.updateView}
             updateViewDiff={this.updateViewDiff}
-            resetStyle={this.state.resetStyle}
             updateFitMode={this.updateFitMode}
             fitMode={this.state.fitMode}
+            isFlamegraphDirty={this.state.isFlamegraphDirty}
           />
           {this.props.viewType === 'double' ? (
             <>
