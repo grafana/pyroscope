@@ -14,6 +14,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         data-testid="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
+        type="search"
       />
        
       <button
@@ -45,6 +46,12 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
           Tail First
         </option>
       </select>
+      <button
+        class="btn"
+        disabled=""
+      >
+        Focus on Subtree
+      </button>
       <div
         class="navbar-space-filler"
       />
@@ -137,6 +144,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         data-testid="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
+        type="search"
       />
        
       <button
@@ -168,6 +176,12 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
           Tail First
         </option>
       </select>
+      <button
+        class="btn"
+        disabled=""
+      >
+        Focus on Subtree
+      </button>
       <div
         class="navbar-space-filler"
       />
