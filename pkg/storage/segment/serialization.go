@@ -49,9 +49,6 @@ func (s *Segment) Serialize(w io.Writer) error {
 	if err := serialization.WriteMetadata(w, s.generateMetadata()); err != nil {
 		return err
 	}
-	if err := s.watermarks.serialize(w); err != nil {
-		return err
-	}
 
 	if s.root == nil {
 		return nil
@@ -87,7 +84,8 @@ func (s *Segment) Serialize(w io.Writer) error {
 		vw.Write(w, uint64(l))
 		nodes = append(r, nodes...)
 	}
-	return nil
+
+	return s.watermarks.serialize(w)
 }
 
 var errMaxDepth = errors.New("depth is too high")
@@ -106,12 +104,8 @@ func Deserialize(r io.Reader) (*Segment, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	s.populateFromMetadata(metadata)
-	if version >= 3 {
-		if err = deserializeWatermarks(br, &s.watermarks); err != nil {
-			return nil, err
-		}
-	}
 
 	parents := []*streeNode{nil}
 	for len(parents) > 0 {
@@ -166,6 +160,12 @@ func Deserialize(r io.Reader) (*Segment, error) {
 			r = append(r, node)
 		}
 		parents = append(r, parents...)
+	}
+
+	if version >= 3 {
+		if err = deserializeWatermarks(br, &s.watermarks); err != nil {
+			return nil, err
+		}
 	}
 
 	return s, nil
