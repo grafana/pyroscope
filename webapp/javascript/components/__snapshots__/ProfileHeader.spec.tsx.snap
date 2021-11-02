@@ -7,10 +7,10 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
     role="toolbar"
   >
     <div
-      class="navbar-2"
+      class="navbar"
     >
       <input
-        class="flamegraph-search"
+        class="search"
         data-testid="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
@@ -53,7 +53,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         Focus on Subtree
       </button>
       <div
-        class="navbar-space-filler"
+        class="space-filler"
       />
       <div
         class="btn-group viz-switch"
@@ -137,10 +137,10 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
     role="toolbar"
   >
     <div
-      class="navbar-2"
+      class="navbar"
     >
       <input
-        class="flamegraph-search"
+        class="search"
         data-testid="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
@@ -183,7 +183,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         Focus on Subtree
       </button>
       <div
-        class="navbar-space-filler"
+        class="space-filler"
       />
       <div
         class="btn-group viz-switch"

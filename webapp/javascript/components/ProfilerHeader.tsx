@@ -92,7 +92,7 @@ const ProfilerHeader = React.memo(
 
     return (
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
-        <div className="navbar-2">
+        <div className={styles.navbar}>
           <HighlightSearch onHighlightChange={handleSearchChange} />
           &nbsp;
           <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
@@ -101,7 +101,7 @@ const ProfilerHeader = React.memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
-          <div className="navbar-space-filler" />
+          <div className={styles['space-filler']} />
           <DiffView
             showMode={showMode}
             viewDiff={viewDiff}
@@ -160,7 +160,7 @@ function HighlightSearch({ onHighlightChange }) {
     <input
       type="search"
       data-testid="flamegraph-search"
-      className="flamegraph-search"
+      className={styles.search}
       name="flamegraph-search"
       placeholder="Search…"
       onChange={onChange}
@@ -187,7 +187,7 @@ function FitMode({ fitMode, updateFitMode }) {
   return (
     <select
       aria-label="fit-mode"
-      className="fit-mode-select"
+      className={styles['fit-mode-select']}
       value={fitMode}
       onChange={(event) => updateFitMode(event.target.value)}
     >
