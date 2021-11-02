@@ -371,6 +371,10 @@ class FlameGraphRenderer extends React.Component {
             updateFitMode={this.updateFitMode}
             fitMode={this.state.fitMode}
             isFlamegraphDirty={this.state.isFlamegraphDirty}
+            selectedNode={this.state.flamegraphConfigs.zoom}
+            onFocusOnSubtree={(i, j) => {
+              this.onFocusOnNode(i, j);
+            }}
           />
           {this.props.viewType === 'double' ? (
             <>

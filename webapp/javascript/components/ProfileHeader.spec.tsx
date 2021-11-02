@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import lodash from 'lodash';
+import { Option } from 'prelude-ts';
 import ProfileHeader, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './ProfilerHeader';
 import { FitModes } from '../util/fitMode';
 
@@ -61,6 +62,8 @@ describe('ProfileHeader', () => {
         updateView={() => {}}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
+        selectedNode={Option.none()}
+        onFocusOnSubtree={() => {}}
       />
     );
 
@@ -79,6 +82,8 @@ describe('ProfileHeader', () => {
         updateView={() => {}}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
+        selectedNode={Option.none()}
+        onFocusOnSubtree={() => {}}
       />
     );
 
@@ -107,6 +112,8 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
+          selectedNode={Option.none()}
+          onFocusOnSubtree={() => {}}
         />
       );
       render(component);
@@ -125,6 +132,8 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
+          selectedNode={Option.none()}
+          onFocusOnSubtree={() => {}}
         />
       );
       render(component);
@@ -152,6 +161,8 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
+          selectedNode={Option.none()}
+          onFocusOnSubtree={() => {}}
         />
       );
 
@@ -174,6 +185,8 @@ describe('ProfileHeader', () => {
         updateView={() => {}}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
+        selectedNode={Option.none()}
+        onFocusOnSubtree={() => {}}
       />
     );
 
@@ -203,6 +216,52 @@ describe('ProfileHeader', () => {
     });
   });
 
+  describe('Focus on subtree', () => {
+    it('renders as disabled when theres no selected node', () => {
+      const component = (
+        <ProfileHeader
+          view="both"
+          viewDiff="diff"
+          isFlamegraphDirty={false}
+          handleSearchChange={() => {}}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          selectedNode={Option.none()}
+          onFocusOnSubtree={() => {}}
+        />
+      );
+      render(component);
+      expect(screen.getByRole('button', { name: /Focus/ })).toBeDisabled();
+    });
+
+    it('calls callback when clicked', () => {
+      const onFocusOnSubtree = jest.fn();
+      const component = (
+        <ProfileHeader
+          view="both"
+          viewDiff="diff"
+          isFlamegraphDirty={false}
+          handleSearchChange={() => {}}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          selectedNode={Option.some({ i: 999, j: 999 })}
+          onFocusOnSubtree={onFocusOnSubtree}
+        />
+      );
+
+      render(component);
+      screen.getByRole('button', { name: /Focus/ }).click();
+
+      expect(onFocusOnSubtree).toHaveBeenCalledWith(999, 999);
+    });
+  });
+
   describe('DiffSection', () => {
     const updateViewDiff = jest.fn();
     const component = (
@@ -216,6 +275,8 @@ describe('ProfileHeader', () => {
         updateView={() => {}}
         updateViewDiff={updateViewDiff}
         isFlamegraphDirty={false}
+        selectedNode={Option.none()}
+        onFocusOnSubtree={() => {}}
       />
     );
 
@@ -230,6 +291,8 @@ describe('ProfileHeader', () => {
           updateView={() => {}}
           updateViewDiff={() => {}}
           isFlamegraphDirty={false}
+          selectedNode={Option.none()}
+          onFocusOnSubtree={() => {}}
         />
       );
 
@@ -310,6 +373,8 @@ describe('ProfileHeader', () => {
         updateView={updateView}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
+        selectedNode={Option.none()}
+        onFocusOnSubtree={() => {}}
       />
     );
 

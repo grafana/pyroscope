@@ -9,6 +9,7 @@ import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { debounce } from 'lodash';
 import useResizeObserver from '@react-hook/resize-observer';
+import { Option } from 'prelude-ts';
 import { FitModes } from '../util/fitMode';
 import styles from './ProfilerHeader.module.css';
 
@@ -63,6 +64,12 @@ interface ProfileHeaderProps {
   fitMode: FitModes;
   updateView: (s: 'both' | 'icicle' | 'table') => void;
   updateViewDiff: (s: 'diff' | 'total' | 'self') => void;
+
+  /**
+   * Refers to the node that has been selected in the flamegraph
+   */
+  selectedNode: Option<{ i: number; j: number }>;
+  onFocusOnSubtree: (node: { i: number; j: number }) => void;
 }
 
 const ProfilerHeader = React.memo(
@@ -76,9 +83,18 @@ const ProfilerHeader = React.memo(
     fitMode,
     updateView,
     updateViewDiff,
+
+    selectedNode,
+    onFocusOnSubtree,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef();
     const showMode = useSizeMode(toolbarRef);
+
+    //    const onFocusOnSubtree = () => {
+    //      console.log('clicked');
+    //    };
+    //
+    //    const selectedNode = Option.none();
 
     return (
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
@@ -87,6 +103,10 @@ const ProfilerHeader = React.memo(
           &nbsp;
           <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
           <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
+          <FocusOnSubtree
+            selectedNode={selectedNode}
+            onFocusOnSubtree={onFocusOnSubtree}
+          />
           <div className="navbar-space-filler" />
           <DiffView
             showMode={showMode}
@@ -103,6 +123,25 @@ const ProfilerHeader = React.memo(
     );
   }
 );
+
+function FocusOnSubtree({ onFocusOnSubtree, selectedNode }) {
+  const f = selectedNode;
+  const onClick = f.isNone()
+    ? () => {}
+    : () => {
+        onFocusOnSubtree(f.get().i, f.get().j);
+      };
+
+  return (
+    <button
+      className={clsx('btn')}
+      disabled={!selectedNode.isSome()}
+      onClick={onClick}
+    >
+      Focus on Subtree
+    </button>
+  );
+}
 
 function HighlightSearch({ onHighlightChange }) {
   // debounce the search
