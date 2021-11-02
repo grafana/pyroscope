@@ -1,4 +1,3 @@
-import uniqBy from 'lodash/fp/uniqBy';
 import {
   SET_DATE_RANGE,
   SET_FROM,
@@ -40,8 +39,6 @@ const initialState = {
   maxNodes: 1024,
   tags: [],
 };
-
-window.uniqBy = uniqBy;
 
 function decodeTimelineData(timelineData) {
   if (!timelineData) {
