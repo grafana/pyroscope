@@ -146,21 +146,13 @@ export function ProfilerHeader({
             </button>
           </div>
         )}
-        <ResizableViewSection
-          showMode={showMode}
-          view={view}
-          updateView={updateView}
-        />
+        <ViewSection showMode={showMode} view={view} updateView={updateView} />
       </div>
     </div>
   );
 }
 
-/**
- * A section for the 'view'
- * It resizes into a select when container is small
- */
-function ResizableViewSection({ view, updateView, showMode }) {
+function ViewSection({ view, updateView, showMode }) {
   const Select = (
     <select
       aria-label="view"
