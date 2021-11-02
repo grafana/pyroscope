@@ -58,6 +58,7 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={() => {}}
         updateViewDiff={() => {}}
+        isFlamegraphDirty={false}
       />
     );
 
@@ -76,11 +77,65 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={() => {}}
         updateViewDiff={() => {}}
+        isFlamegraphDirty={false}
       />
     );
 
     expect(screen.getByRole('toolbar')).toHaveAttribute('data-mode', 'small');
     expect(asFragment()).toMatchSnapshot();
+  });
+
+  describe('Reset button', () => {
+    const onReset = jest.fn();
+
+    beforeEach(() => {});
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('renders as disabled when flamegraph is not dirty', () => {
+      const component = (
+        <ProfileHeader
+          view="both"
+          viewDiff="diff"
+          isFlamegraphDirty={false}
+          handleSearchChange={() => {}}
+          resetStyle={{}}
+          reset={onReset}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+        />
+      );
+      render(component);
+      expect(screen.getByRole('button', { name: /Reset View/ })).toBeDisabled();
+    });
+
+    it('calls onReset when clicked (and enabled)', () => {
+      const component = (
+        <ProfileHeader
+          view="both"
+          viewDiff="diff"
+          isFlamegraphDirty
+          handleSearchChange={() => {}}
+          resetStyle={{}}
+          reset={onReset}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+        />
+      );
+      render(component);
+      expect(
+        screen.getByRole('button', { name: /Reset View/ })
+      ).not.toBeDisabled();
+      screen.getByRole('button', { name: /Reset View/ }).click();
+
+      expect(onReset).toHaveBeenCalled();
+    });
   });
 
   describe('FitMode', () => {
@@ -96,6 +151,7 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={() => {}}
         updateViewDiff={() => {}}
+        isFlamegraphDirty={false}
       />
     );
 
@@ -138,6 +194,7 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={() => {}}
         updateViewDiff={updateViewDiff}
+        isFlamegraphDirty={false}
       />
     );
 
@@ -152,6 +209,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
+          isFlamegraphDirty={false}
         />
       );
 
@@ -232,6 +290,7 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={updateView}
         updateViewDiff={() => {}}
+        isFlamegraphDirty={false}
       />
     );
 

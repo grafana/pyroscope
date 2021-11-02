@@ -54,8 +54,12 @@ interface ProfileHeaderProps {
   view: 'both' | 'icicle' | 'table';
   viewDiff?: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
+
+  /** Whether the flamegraph is different from its original state */
+  isFlamegraphDirty: boolean;
   resetStyle: React.CSSProperties;
   reset: () => void;
+
   updateFitMode: (f: FitModes) => void;
   fitMode: FitModes;
   updateView: (s: 'both' | 'icicle' | 'table') => void;
@@ -66,6 +70,7 @@ export function ProfilerHeader({
   view,
   viewDiff,
   handleSearchChange,
+  isFlamegraphDirty,
   resetStyle,
   reset,
   updateFitMode,
@@ -98,16 +103,11 @@ export function ProfilerHeader({
           onChange={onHighlightChange}
         />
         &nbsp;
-        <button
-          type="button"
-          className={clsx('btn')}
-          style={resetStyle}
-          data-testid="reset-view"
-          id="reset"
-          onClick={reset}
-        >
-          Reset View
-        </button>
+        <ResetView
+          isFlamegraphDirty={isFlamegraphDirty}
+          resetStyle={resetStyle}
+          reset={reset}
+        />
         <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
         <div className="navbar-space-filler" />
         <DiffView
@@ -118,6 +118,21 @@ export function ProfilerHeader({
         <ViewSection showMode={showMode} view={view} updateView={updateView} />
       </div>
     </div>
+  );
+}
+
+function ResetView({ isFlamegraphDirty, resetStyle, reset }) {
+  return (
+    <button
+      type="button"
+      className={clsx('btn')}
+      disabled={!isFlamegraphDirty}
+      data-testid="reset-view"
+      id="reset"
+      onClick={reset}
+    >
+      Reset View
+    </button>
   );
 }
 
