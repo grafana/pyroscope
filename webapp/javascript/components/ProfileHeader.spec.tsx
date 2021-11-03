@@ -96,7 +96,7 @@ describe('ProfileHeader', () => {
     expect(asFragment()).toMatchSnapshot();
   });
 
-  describe.only('Reset button', () => {
+  describe('Reset button', () => {
     const onReset = jest.fn();
 
     beforeEach(() => {});
@@ -308,6 +308,50 @@ describe('ProfileHeader', () => {
       screen.getByRole('button', { name: /Focus/ }).click();
 
       expect(onFocusOnSubtree).toHaveBeenCalledWith(999, 999);
+    });
+
+    it('shows short text', () => {
+      setWindowSize('small');
+      const component = (
+        <ProfileHeader
+          view="both"
+          viewDiff="diff"
+          isFlamegraphDirty={false}
+          handleSearchChange={() => {}}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          selectedNode={Option.none()}
+          onFocusOnSubtree={() => {}}
+        />
+      );
+      render(component);
+      expect(screen.getByRole('button', { name: 'Focus' })).toBeDisabled();
+    });
+
+    it('shows long text', () => {
+      setWindowSize('large');
+      const component = (
+        <ProfileHeader
+          view="both"
+          viewDiff="diff"
+          isFlamegraphDirty={false}
+          handleSearchChange={() => {}}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          selectedNode={Option.none()}
+          onFocusOnSubtree={() => {}}
+        />
+      );
+      render(component);
+      expect(
+        screen.getByRole('button', { name: 'Focus on subtree' })
+      ).toBeDisabled();
     });
   });
 

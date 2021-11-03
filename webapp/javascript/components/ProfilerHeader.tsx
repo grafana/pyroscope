@@ -100,6 +100,7 @@ const ProfilerHeader = React.memo(
             reset={reset}
           />
           <FocusOnSubtree
+            showMode={showMode}
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
@@ -120,7 +121,22 @@ const ProfilerHeader = React.memo(
   }
 );
 
-function FocusOnSubtree({ onFocusOnSubtree, selectedNode }) {
+function FocusOnSubtree({ onFocusOnSubtree, selectedNode, showMode }) {
+  let text = '';
+  switch (showMode) {
+    case 'small': {
+      text = 'Focus';
+      break;
+    }
+    case 'large': {
+      text = 'Focus on subtree';
+      break;
+    }
+
+    default:
+      throw new Error('Wrong mode');
+  }
+
   const f = selectedNode;
   const onClick = f.isNone()
     ? () => {}
@@ -135,7 +151,7 @@ function FocusOnSubtree({ onFocusOnSubtree, selectedNode }) {
       onClick={onClick}
     >
       <FontAwesomeIcon icon={faCompressAlt} />
-      &nbsp;&thinsp;Focus on Subtree
+      &nbsp;&thinsp;{text}
     </button>
   );
 }

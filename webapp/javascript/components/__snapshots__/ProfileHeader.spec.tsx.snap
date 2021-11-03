@@ -17,16 +17,6 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         type="search"
         value=""
       />
-       
-      <button
-        class="btn"
-        data-testid="reset-view"
-        disabled=""
-        id="reset"
-        type="button"
-      >
-        Reset View
-      </button>
       <select
         aria-label="fit-mode"
         class="fit-mode-select"
@@ -49,9 +39,48 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
       </select>
       <button
         class="btn"
+        data-testid="reset-view"
+        disabled=""
+        id="reset"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="svg-inline--fa fa-undo fa-w-16 "
+          data-icon="undo"
+          data-prefix="fas"
+          focusable="false"
+          role="img"
+          viewBox="0 0 512 512"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M212.333 224.333H12c-6.627 0-12-5.373-12-12V12C0 5.373 5.373 0 12 0h48c6.627 0 12 5.373 12 12v78.112C117.773 39.279 184.26 7.47 258.175 8.007c136.906.994 246.448 111.623 246.157 248.532C504.041 393.258 393.12 504 256.333 504c-64.089 0-122.496-24.313-166.51-64.215-5.099-4.622-5.334-12.554-.467-17.42l33.967-33.967c4.474-4.474 11.662-4.717 16.401-.525C170.76 415.336 211.58 432 256.333 432c97.268 0 176-78.716 176-176 0-97.267-78.716-176-176-176-58.496 0-110.28 28.476-142.274 72.333h98.274c6.627 0 12 5.373 12 12v48c0 6.627-5.373 12-12 12z"
+            fill="currentColor"
+          />
+        </svg>
+          Reset View
+      </button>
+      <button
+        class="btn"
         disabled=""
       >
-        Focus on Subtree
+        <svg
+          aria-hidden="true"
+          class="svg-inline--fa fa-compress-alt fa-w-14 "
+          data-icon="compress-alt"
+          data-prefix="fas"
+          focusable="false"
+          role="img"
+          viewBox="0 0 448 512"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M4.686 427.314L104 328l-32.922-31.029C55.958 281.851 66.666 256 88.048 256h112C213.303 256 224 266.745 224 280v112c0 21.382-25.803 32.09-40.922 16.971L152 376l-99.314 99.314c-6.248 6.248-16.379 6.248-22.627 0L4.686 449.941c-6.248-6.248-6.248-16.379 0-22.627zM443.314 84.686L344 184l32.922 31.029c15.12 15.12 4.412 40.971-16.97 40.971h-112C234.697 256 224 245.255 224 232V120c0-21.382 25.803-32.09 40.922-16.971L296 136l99.314-99.314c6.248-6.248 16.379-6.248 22.627 0l25.373 25.373c6.248 6.248 6.248 16.379 0 22.627z"
+            fill="currentColor"
+          />
+        </svg>
+          Focus on subtree
       </button>
       <div
         class="space-filler"
@@ -60,7 +89,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         class="btn-group viz-switch"
       >
         <button
-          class="btn"
+          class="btn visualization-buttons "
           data-testid="btn-table-view"
           type="button"
         >
@@ -82,7 +111,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
             Table
         </button>
         <button
-          class="btn active"
+          class="btn active visualization-buttons "
           data-testid="btn-both-view"
           type="button"
         >
@@ -104,7 +133,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
             Both
         </button>
         <button
-          class="btn"
+          class="btn visualization-buttons "
           data-testid="btn-flamegraph-view"
           type="button"
         >
@@ -148,16 +177,6 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         type="search"
         value=""
       />
-       
-      <button
-        class="btn"
-        data-testid="reset-view"
-        disabled=""
-        id="reset"
-        type="button"
-      >
-        Reset View
-      </button>
       <select
         aria-label="fit-mode"
         class="fit-mode-select"
@@ -180,9 +199,48 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
       </select>
       <button
         class="btn"
+        data-testid="reset-view"
+        disabled=""
+        id="reset"
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          class="svg-inline--fa fa-undo fa-w-16 "
+          data-icon="undo"
+          data-prefix="fas"
+          focusable="false"
+          role="img"
+          viewBox="0 0 512 512"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M212.333 224.333H12c-6.627 0-12-5.373-12-12V12C0 5.373 5.373 0 12 0h48c6.627 0 12 5.373 12 12v78.112C117.773 39.279 184.26 7.47 258.175 8.007c136.906.994 246.448 111.623 246.157 248.532C504.041 393.258 393.12 504 256.333 504c-64.089 0-122.496-24.313-166.51-64.215-5.099-4.622-5.334-12.554-.467-17.42l33.967-33.967c4.474-4.474 11.662-4.717 16.401-.525C170.76 415.336 211.58 432 256.333 432c97.268 0 176-78.716 176-176 0-97.267-78.716-176-176-176-58.496 0-110.28 28.476-142.274 72.333h98.274c6.627 0 12 5.373 12 12v48c0 6.627-5.373 12-12 12z"
+            fill="currentColor"
+          />
+        </svg>
+          Reset
+      </button>
+      <button
+        class="btn"
         disabled=""
       >
-        Focus on Subtree
+        <svg
+          aria-hidden="true"
+          class="svg-inline--fa fa-compress-alt fa-w-14 "
+          data-icon="compress-alt"
+          data-prefix="fas"
+          focusable="false"
+          role="img"
+          viewBox="0 0 448 512"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M4.686 427.314L104 328l-32.922-31.029C55.958 281.851 66.666 256 88.048 256h112C213.303 256 224 266.745 224 280v112c0 21.382-25.803 32.09-40.922 16.971L152 376l-99.314 99.314c-6.248 6.248-16.379 6.248-22.627 0L4.686 449.941c-6.248-6.248-6.248-16.379 0-22.627zM443.314 84.686L344 184l32.922 31.029c15.12 15.12 4.412 40.971-16.97 40.971h-112C234.697 256 224 245.255 224 232V120c0-21.382 25.803-32.09 40.922-16.971L296 136l99.314-99.314c6.248-6.248 16.379-6.248 22.627 0l25.373 25.373c6.248 6.248 6.248 16.379 0 22.627z"
+            fill="currentColor"
+          />
+        </svg>
+          Focus
       </button>
       <div
         class="space-filler"
