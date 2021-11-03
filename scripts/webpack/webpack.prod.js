@@ -6,10 +6,4 @@ module.exports = merge(common, {
 
   // Recommended choice for production builds with high quality SourceMaps.
   devtool: 'source-map',
-
-  optimization: {
-    splitChunks: {
-      chunks: 'all',
-    },
-  },
 });
