@@ -7,9 +7,11 @@ import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faIcicles } from '@fortawesome/free-solid-svg-icons/faIcicles';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
-import useResizeObserver from '@react-hook/resize-observer';
+import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
+import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { DebounceInput } from 'react-debounce-input';
 import { Option } from 'prelude-ts';
+import useResizeObserver from '@react-hook/resize-observer';
 import { FitModes } from '../util/fitMode';
 import styles from './ProfilerHeader.module.css';
 
@@ -92,7 +94,11 @@ const ProfilerHeader = React.memo(
         <div className={styles.navbar}>
           <HighlightSearch onHighlightChange={handleSearchChange} />
           <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
-          <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
+          <ResetView
+            showMode={showMode}
+            isFlamegraphDirty={isFlamegraphDirty}
+            reset={reset}
+          />
           <FocusOnSubtree
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
@@ -128,7 +134,8 @@ function FocusOnSubtree({ onFocusOnSubtree, selectedNode }) {
       disabled={!selectedNode.isSome()}
       onClick={onClick}
     >
-      Focus on Subtree
+      <FontAwesomeIcon icon={faCompressAlt} />
+      &nbsp;&thinsp;Focus on Subtree
     </button>
   );
 }
@@ -150,7 +157,21 @@ function HighlightSearch({ onHighlightChange }) {
   );
 }
 
-function ResetView({ isFlamegraphDirty, reset }) {
+function ResetView({ isFlamegraphDirty, reset, showMode }) {
+  let text = '';
+  switch (showMode) {
+    case 'small': {
+      text = 'Reset';
+      break;
+    }
+    case 'large': {
+      text = 'Reset View';
+      break;
+    }
+
+    default:
+      throw new Error('Wrong mode');
+  }
   return (
     <button
       type="button"
@@ -160,7 +181,8 @@ function ResetView({ isFlamegraphDirty, reset }) {
       id="reset"
       onClick={reset}
     >
-      Reset View
+      <FontAwesomeIcon icon={faUndo} />
+      &nbsp;&thinsp;{text}
     </button>
   );
 }

@@ -96,7 +96,7 @@ describe('ProfileHeader', () => {
     expect(asFragment()).toMatchSnapshot();
   });
 
-  describe('Reset button', () => {
+  describe.only('Reset button', () => {
     const onReset = jest.fn();
 
     beforeEach(() => {});
@@ -122,7 +122,7 @@ describe('ProfileHeader', () => {
         />
       );
       render(component);
-      expect(screen.getByRole('button', { name: /Reset View/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Reset/ })).toBeDisabled();
     });
 
     it('calls onReset when clicked (and enabled)', () => {
@@ -142,12 +142,56 @@ describe('ProfileHeader', () => {
         />
       );
       render(component);
-      expect(
-        screen.getByRole('button', { name: /Reset View/ })
-      ).not.toBeDisabled();
-      screen.getByRole('button', { name: /Reset View/ }).click();
+      expect(screen.getByRole('button', { name: /Reset/ })).not.toBeDisabled();
+      screen.getByRole('button', { name: /Reset/ }).click();
 
       expect(onReset).toHaveBeenCalled();
+    });
+
+    it('renders full text when in large screens', () => {
+      setWindowSize('large');
+
+      const component = (
+        <ProfileHeader
+          view="both"
+          viewDiff="diff"
+          isFlamegraphDirty
+          handleSearchChange={() => {}}
+          reset={onReset}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          selectedNode={Option.none()}
+          onFocusOnSubtree={() => {}}
+        />
+      );
+      render(component);
+      expect(
+        screen.getByRole('button', { name: 'Reset View' })
+      ).toBeInTheDocument();
+    });
+
+    it('renders short text when in small screens', () => {
+      setWindowSize('small');
+
+      const component = (
+        <ProfileHeader
+          view="both"
+          viewDiff="diff"
+          isFlamegraphDirty
+          handleSearchChange={() => {}}
+          reset={onReset}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          selectedNode={Option.none()}
+          onFocusOnSubtree={() => {}}
+        />
+      );
+      render(component);
+      expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument();
     });
   });
 
