@@ -27,17 +27,17 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         <option
           disabled=""
         >
-          Prefer to fit
+          Prefer to Fit
         </option>
         <option
           value="HEAD"
         >
-          Head First
+          Head first
         </option>
         <option
           value="TAIL"
         >
-          Tail First
+          Tail first
         </option>
       </select>
       <button
@@ -187,17 +187,17 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         <option
           disabled=""
         >
-          Prefer to fit
+          Fit
         </option>
         <option
           value="HEAD"
         >
-          Head First
+          Head
         </option>
         <option
           value="TAIL"
         >
-          Tail First
+          Tail
         </option>
       </select>
       <button
@@ -264,7 +264,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
           <option
             value="icicle"
           >
-            Flamegraph
+            Flame
           </option>
         </select>
       </div>

@@ -518,7 +518,7 @@ describe('ProfileHeader', () => {
       it('changes to Flamegraph view', () => {
         userEvent.selectOptions(
           screen.getByRole('combobox', { name: /view/ }),
-          screen.getByRole('option', { name: /Flamegraph/ })
+          screen.getByRole('option', { name: /Flame/ })
         );
         expect(updateView).toHaveBeenCalledWith('icicle');
       });

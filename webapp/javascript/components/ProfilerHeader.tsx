@@ -102,7 +102,11 @@ const ProfilerHeader = React.memo(
             updateViewDiff={updateViewDiff}
           />
           <div className={styles['space-filler']} />
-          <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
+          <FitMode
+            showMode={showMode}
+            fitMode={fitMode}
+            updateFitMode={updateFitMode}
+          />
           <ResetView
             showMode={showMode}
             isFlamegraphDirty={isFlamegraphDirty}
@@ -208,7 +212,35 @@ function ResetView({ isFlamegraphDirty, reset, showMode }) {
   );
 }
 
-function FitMode({ fitMode, updateFitMode }) {
+function FitMode({ fitMode, updateFitMode, showMode }) {
+  let texts = {
+    header: '',
+    head: '',
+    tail: '',
+  };
+
+  switch (showMode) {
+    case 'small': {
+      texts = {
+        header: 'Fit',
+        head: 'Head',
+        tail: 'Tail',
+      };
+      break;
+    }
+    case 'large': {
+      texts = {
+        header: 'Prefer to Fit',
+        head: 'Head first',
+        tail: 'Tail first',
+      };
+      break;
+    }
+
+    default:
+      throw new Error('Wrong mode');
+  }
+
   return (
     <select
       aria-label="fit-mode"
@@ -216,9 +248,9 @@ function FitMode({ fitMode, updateFitMode }) {
       value={fitMode}
       onChange={(event) => updateFitMode(event.target.value)}
     >
-      <option disabled>Prefer to fit</option>
-      <option value={FitModes.HEAD}>Head First</option>
-      <option value={FitModes.TAIL}>Tail First</option>
+      <option disabled>{texts.header}</option>
+      <option value={FitModes.HEAD}>{texts.head}</option>
+      <option value={FitModes.TAIL}>{texts.tail}</option>
     </select>
   );
 }
@@ -310,7 +342,7 @@ function ViewSection({ view, updateView, showMode }) {
     >
       <option value="table">Table</option>
       <option value="both">Both</option>
-      <option value="icicle">Flamegraph</option>
+      <option value="icicle">Flame</option>
     </select>
   );
 
