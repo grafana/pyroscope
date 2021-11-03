@@ -93,6 +93,12 @@ const ProfilerHeader = React.memo(
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className={styles.navbar}>
           <HighlightSearch onHighlightChange={handleSearchChange} />
+          <DiffView
+            showMode={showMode}
+            viewDiff={viewDiff}
+            updateViewDiff={updateViewDiff}
+          />
+          <div className={styles['space-filler']} />
           <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
           <ResetView
             showMode={showMode}
@@ -103,12 +109,6 @@ const ProfilerHeader = React.memo(
             showMode={showMode}
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
-          />
-          <div className={styles['space-filler']} />
-          <DiffView
-            showMode={showMode}
-            viewDiff={viewDiff}
-            updateViewDiff={updateViewDiff}
           />
           <ViewSection
             showMode={showMode}

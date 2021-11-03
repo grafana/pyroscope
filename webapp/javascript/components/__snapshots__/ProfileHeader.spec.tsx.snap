@@ -17,6 +17,9 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         type="search"
         value=""
       />
+      <div
+        class="space-filler"
+      />
       <select
         aria-label="fit-mode"
         class="fit-mode-select"
@@ -82,9 +85,6 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         </svg>
           Focus on subtree
       </button>
-      <div
-        class="space-filler"
-      />
       <div
         class="btn-group viz-switch"
       >
@@ -177,6 +177,9 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         type="search"
         value=""
       />
+      <div
+        class="space-filler"
+      />
       <select
         aria-label="fit-mode"
         class="fit-mode-select"
@@ -242,9 +245,6 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         </svg>
           Focus
       </button>
-      <div
-        class="space-filler"
-      />
       <div
         class="btn-group viz-switch"
       >
