@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
@@ -71,7 +71,7 @@ interface ProfileHeaderProps {
   onFocusOnSubtree: (node: { i: number; j: number }) => void;
 }
 
-const ProfilerHeader = React.memo(
+const Toolbar = React.memo(
   ({
     view,
     viewDiff,
@@ -402,4 +402,4 @@ function ViewSection({ view, updateView, showMode }) {
   return <div className="btn-group viz-switch">{decideWhatToShow()}</div>;
 }
 
-export default ProfilerHeader;
+export default Toolbar;

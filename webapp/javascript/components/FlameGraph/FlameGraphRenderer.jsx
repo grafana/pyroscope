@@ -11,7 +11,7 @@ import { Option } from 'prelude-ts';
 import Graph from './FlameGraphComponent';
 import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
-import ProfilerHeader from '../ProfilerHeader';
+import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
 
 import ExportData from '../ExportData';
@@ -362,7 +362,7 @@ class FlameGraphRenderer extends React.Component {
         })}
       >
         <div className="canvas-container">
-          <ProfilerHeader
+          <Toolbar
             view={this.state.view}
             viewDiff={this.state.viewDiff}
             handleSearchChange={this.handleSearchChange}

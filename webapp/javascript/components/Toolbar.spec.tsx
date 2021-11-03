@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Option } from 'prelude-ts';
-import ProfileHeader, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './ProfilerHeader';
+import Toolbar, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './Toolbar';
 import { FitModes } from '../util/fitMode';
 
 // since 'react-debounce-input' uses lodash.debounce under the hood
@@ -58,7 +58,7 @@ describe('ProfileHeader', () => {
     setWindowSize('large');
 
     const { asFragment, rerender } = render(
-      <ProfileHeader
+      <Toolbar
         view="both"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -78,7 +78,7 @@ describe('ProfileHeader', () => {
     setWindowSize('small');
 
     rerender(
-      <ProfileHeader
+      <Toolbar
         view="both"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -107,7 +107,7 @@ describe('ProfileHeader', () => {
 
     it('renders as disabled when flamegraph is not dirty', () => {
       const component = (
-        <ProfileHeader
+        <Toolbar
           view="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
@@ -127,7 +127,7 @@ describe('ProfileHeader', () => {
 
     it('calls onReset when clicked (and enabled)', () => {
       const component = (
-        <ProfileHeader
+        <Toolbar
           view="both"
           viewDiff="diff"
           isFlamegraphDirty
@@ -152,7 +152,7 @@ describe('ProfileHeader', () => {
       setWindowSize('large');
 
       const component = (
-        <ProfileHeader
+        <Toolbar
           view="both"
           viewDiff="diff"
           isFlamegraphDirty
@@ -176,7 +176,7 @@ describe('ProfileHeader', () => {
       setWindowSize('small');
 
       const component = (
-        <ProfileHeader
+        <Toolbar
           view="both"
           viewDiff="diff"
           isFlamegraphDirty
@@ -200,7 +200,7 @@ describe('ProfileHeader', () => {
       const onChange = jest.fn();
 
       const component = (
-        <ProfileHeader
+        <Toolbar
           view="both"
           viewDiff="diff"
           isFlamegraphDirty
@@ -224,7 +224,7 @@ describe('ProfileHeader', () => {
   describe('FitMode', () => {
     const updateFitMode = jest.fn();
     const component = (
-      <ProfileHeader
+      <Toolbar
         view="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
@@ -268,7 +268,7 @@ describe('ProfileHeader', () => {
   describe('Focus on subtree', () => {
     it('renders as disabled when theres no selected node', () => {
       const component = (
-        <ProfileHeader
+        <Toolbar
           view="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
@@ -289,7 +289,7 @@ describe('ProfileHeader', () => {
     it('calls callback when clicked', () => {
       const onFocusOnSubtree = jest.fn();
       const component = (
-        <ProfileHeader
+        <Toolbar
           view="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
@@ -313,7 +313,7 @@ describe('ProfileHeader', () => {
     it('shows short text', () => {
       setWindowSize('small');
       const component = (
-        <ProfileHeader
+        <Toolbar
           view="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
@@ -334,7 +334,7 @@ describe('ProfileHeader', () => {
     it('shows long text', () => {
       setWindowSize('large');
       const component = (
-        <ProfileHeader
+        <Toolbar
           view="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
@@ -358,7 +358,7 @@ describe('ProfileHeader', () => {
   describe('DiffSection', () => {
     const updateViewDiff = jest.fn();
     const component = (
-      <ProfileHeader
+      <Toolbar
         view="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
@@ -375,7 +375,7 @@ describe('ProfileHeader', () => {
 
     it('doesnt render if viewDiff is not set', () => {
       render(
-        <ProfileHeader
+        <Toolbar
           view="both"
           handleSearchChange={() => {}}
           reset={() => {}}
@@ -457,7 +457,7 @@ describe('ProfileHeader', () => {
   describe('ViewSection', () => {
     const updateView = jest.fn();
     const component = (
-      <ProfileHeader
+      <Toolbar
         view="both"
         handleSearchChange={() => {}}
         reset={() => {}}
