@@ -5,6 +5,11 @@
   align-items: center;
 }
 
+/* Give same amount of space between all children */
+.navbar > * {
+  margin: 0 8px;
+}
+
 .space-filler {
   flex-grow: 1;
 }
@@ -13,9 +18,14 @@
   background: rgba(255, 255, 255, 0.8);
   color: #333;
   transition: background-color ease-out 0.1s;
-  &:focus {
-    background: rgba(255, 255, 255, 1);
-  }
+  margin-right: 8px;
+}
+.search:focus {
+  background: rgba(255, 255, 255, 1);
+}
+
+.search-small {
+  width: 100px;
 }
 
 .fit-mode-select {
@@ -23,5 +33,5 @@
 }
 
 .visualization-buttons {
-  margin: 0 !important;
+  margin: 0;
 }

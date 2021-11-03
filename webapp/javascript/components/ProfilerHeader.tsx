@@ -92,7 +92,10 @@ const ProfilerHeader = React.memo(
     return (
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className={styles.navbar}>
-          <HighlightSearch onHighlightChange={handleSearchChange} />
+          <HighlightSearch
+            showMode={showMode}
+            onHighlightChange={handleSearchChange}
+          />
           <DiffView
             showMode={showMode}
             viewDiff={viewDiff}
@@ -156,11 +159,13 @@ function FocusOnSubtree({ onFocusOnSubtree, selectedNode, showMode }) {
   );
 }
 
-function HighlightSearch({ onHighlightChange }) {
+function HighlightSearch({ onHighlightChange, showMode }) {
   return (
     <DebounceInput
       data-testid="flamegraph-search"
-      className={styles.search}
+      className={`${styles.search} ${
+        showMode === 'small' ? styles['search-small'] : ''
+      }`}
       type="search"
       name="flamegraph-search"
       placeholder="Search…"
@@ -241,7 +246,9 @@ function DiffView({ viewDiff, updateViewDiff, showMode }) {
     <>
       <button
         type="button"
-        className={clsx('btn', { active: viewDiff === 'self' })}
+        className={`${clsx('btn', {
+          active: viewDiff === 'self',
+        })} ${styles['visualization-buttons']} `}
         onClick={() => updateViewDiff('self')}
       >
         <FontAwesomeIcon icon={faListUl} />
@@ -249,7 +256,9 @@ function DiffView({ viewDiff, updateViewDiff, showMode }) {
       </button>
       <button
         type="button"
-        className={clsx('btn', { active: viewDiff === 'total' })}
+        className={`${clsx('btn', {
+          active: viewDiff === 'total',
+        })} ${styles['visualization-buttons']} `}
         onClick={() => updateViewDiff('total')}
       >
         <FontAwesomeIcon icon={faBars} />
@@ -257,7 +266,9 @@ function DiffView({ viewDiff, updateViewDiff, showMode }) {
       </button>
       <button
         type="button"
-        className={clsx('btn', { active: viewDiff === 'diff' })}
+        className={`${clsx('btn', {
+          active: viewDiff === 'diff',
+        })} ${styles['visualization-buttons']} `}
         onClick={() => updateViewDiff('diff')}
       >
         <FontAwesomeIcon icon={faAlignLeft} />
