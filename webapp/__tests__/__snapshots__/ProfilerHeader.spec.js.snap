@@ -8,8 +8,12 @@ exports[`ProfilerHeader render correctly ProfilerHeader component 1`] = `
     className="flamegraph-search"
     data-testid="flamegraph-search"
     name="flamegraph-search"
+    onBlur={[Function]}
     onChange={[Function]}
+    onKeyDown={[Function]}
     placeholder="Search…"
+    type="text"
+    value=""
   />
    
   <select

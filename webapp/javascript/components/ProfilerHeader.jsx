@@ -7,7 +7,7 @@ import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faIcicles } from '@fortawesome/free-solid-svg-icons/faIcicles';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
-import { debounce } from 'lodash';
+import { DebounceInput } from 'react-debounce-input';
 import { FitModes } from '../util/fitMode';
 
 export default function ProfilerHeader({
@@ -21,25 +21,18 @@ export default function ProfilerHeader({
   updateView,
   updateViewDiff,
 }) {
-  // debounce the search
-  // since rebuilding the canvas on each keystroke is expensive
-  const deb = useCallback(
-    debounce((e) => handleSearchChange(e), 250, { maxWait: 1000 }),
-    []
-  );
-  const onChange = (e) => {
-    const q = e.target.value;
-    deb(q);
-  };
-
   return (
     <div className="navbar-2">
-      <input
+      <DebounceInput
         data-testid="flamegraph-search"
         className="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
-        onChange={onChange}
+        minLength={2}
+        debounceTimeout={100}
+        onChange={(e) => {
+          handleSearchChange(e.target.value);
+        }}
       />
       &nbsp;
       <select
