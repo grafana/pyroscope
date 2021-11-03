@@ -91,9 +91,8 @@ const ProfilerHeader = React.memo(
       <div role="toolbar" ref={toolbarRef} data-mode={showMode}>
         <div className={styles.navbar}>
           <HighlightSearch onHighlightChange={handleSearchChange} />
-          &nbsp;
-          <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
           <FitMode fitMode={fitMode} updateFitMode={updateFitMode} />
+          <ResetView isFlamegraphDirty={isFlamegraphDirty} reset={reset} />
           <FocusOnSubtree
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
@@ -271,7 +270,9 @@ function ViewSection({ view, updateView, showMode }) {
       <button
         type="button"
         data-testid="btn-table-view"
-        className={clsx('btn', { active: view === 'table' })}
+        className={`${clsx('btn', {
+          active: view === 'table',
+        })} ${styles['visualization-buttons']} `}
         onClick={() => updateView('table')}
       >
         <FontAwesomeIcon icon={faTable} />
@@ -280,7 +281,9 @@ function ViewSection({ view, updateView, showMode }) {
       <button
         data-testid="btn-both-view"
         type="button"
-        className={clsx('btn', { active: view === 'both' })}
+        className={`${clsx('btn', {
+          active: view === 'both',
+        })} ${styles['visualization-buttons']} `}
         onClick={() => updateView('both')}
       >
         <FontAwesomeIcon icon={faColumns} />
@@ -289,7 +292,9 @@ function ViewSection({ view, updateView, showMode }) {
       <button
         data-testid="btn-flamegraph-view"
         type="button"
-        className={clsx('btn', { active: view === 'icicle' })}
+        className={`${clsx('btn', {
+          active: view === 'icicle',
+        })} ${styles['visualization-buttons']} `}
         onClick={() => updateView('icicle')}
       >
         <FontAwesomeIcon icon={faIcicles} />
