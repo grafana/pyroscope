@@ -15,6 +15,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         name="flamegraph-search"
         placeholder="Search…"
         type="search"
+        value=""
       />
        
       <button
@@ -145,6 +146,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         name="flamegraph-search"
         placeholder="Search…"
         type="search"
+        value=""
       />
        
       <button

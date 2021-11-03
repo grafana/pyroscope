@@ -139,6 +139,7 @@ function HighlightSearch({ onHighlightChange }) {
     <DebounceInput
       data-testid="flamegraph-search"
       className={styles.search}
+      type="search"
       name="flamegraph-search"
       placeholder="Search…"
       minLength={2}

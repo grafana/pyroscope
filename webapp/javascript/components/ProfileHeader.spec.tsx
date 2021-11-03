@@ -1,12 +1,17 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import lodash from 'lodash';
 import { Option } from 'prelude-ts';
 import ProfileHeader, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './ProfilerHeader';
 import { FitModes } from '../util/fitMode';
 
-lodash.debounce = jest.fn((fn) => fn) as any;
+// since 'react-debounce-input' uses lodash.debounce under the hood
+jest.mock('lodash.debounce', () =>
+  jest.fn((fn) => {
+    fn.flush = () => {};
+    return fn;
+  })
+);
 
 function setWindowSize(s: 'small' | 'large') {
   const boundingClientRect = {
