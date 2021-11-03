@@ -122,7 +122,7 @@ describe('basic test', () => {
     cy.findByTestId('table-view').should('be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
 
-    cy.findByRole('combobox', { name: /view/ }).select('Flamegraph');
+    cy.findByRole('combobox', { name: /view/ }).select('Flame');
     cy.findByTestId('table-view').should('not.be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
