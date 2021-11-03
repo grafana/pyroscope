@@ -7,8 +7,8 @@ import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faIcicles } from '@fortawesome/free-solid-svg-icons/faIcicles';
 import { faListUl } from '@fortawesome/free-solid-svg-icons/faListUl';
 import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
-import { debounce } from 'lodash';
 import useResizeObserver from '@react-hook/resize-observer';
+import { DebounceInput } from 'react-debounce-input';
 import { Option } from 'prelude-ts';
 import { FitModes } from '../util/fitMode';
 import styles from './ProfilerHeader.module.css';
@@ -18,16 +18,13 @@ import styles from './ProfilerHeader.module.css';
 // and see when the buttons start to overlap
 export const TOOLBAR_MODE_WIDTH_THRESHOLD = 900;
 
-// items may have 2 modes: large and small
-type ItemMode = 'large' | 'small';
-
 /**
- * Custom hook that returns the ItemMode
+ * Custom hook that returns the size ('large' | 'small')
  * that should be displayed
  * based on the toolbar width
  */
 const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
-  const [size, setSize] = React.useState<ItemMode>('large');
+  const [size, setSize] = React.useState<'large' | 'small'>('large');
 
   const calcMode = (width: number) => {
     if (width < TOOLBAR_MODE_WIDTH_THRESHOLD) {
@@ -138,32 +135,17 @@ function FocusOnSubtree({ onFocusOnSubtree, selectedNode }) {
 }
 
 function HighlightSearch({ onHighlightChange }) {
-  // debounce the search
-  // since rebuilding the canvas on each keystroke is expensive
-  const deb = useCallback(
-    debounce(
-      (s: string) => {
-        onHighlightChange(s);
-      },
-      250,
-      { maxWait: 1000 }
-    ),
-    []
-  );
-
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const q = e.target.value;
-    deb(q);
-  };
-
   return (
-    <input
-      type="search"
+    <DebounceInput
       data-testid="flamegraph-search"
       className={styles.search}
       name="flamegraph-search"
       placeholder="Search…"
-      onChange={onChange}
+      minLength={2}
+      debounceTimeout={100}
+      onChange={(e) => {
+        onHighlightChange(e.target.value);
+      }}
     />
   );
 }

@@ -1,3 +1,11 @@
+## <small>0.2.4 (2021-11-01)</small>
+
+* Fix sidebar getting out of sync (#488) ([29c0153](https://github.com/pyroscope-io/pyroscope/commit/29c0153)), closes [#488](https://github.com/pyroscope-io/pyroscope/issues/488)
+* fix: fix highlight and its test (#491) ([dd6d6b5](https://github.com/pyroscope-io/pyroscope/commit/dd6d6b5)), closes [#491](https://github.com/pyroscope-io/pyroscope/issues/491)
+* perf: improve flamegraph by memoizing table (#484) ([76cd773](https://github.com/pyroscope-io/pyroscope/commit/76cd773)), closes [#484](https://github.com/pyroscope-io/pyroscope/issues/484)
+
+
+
 ## <small>0.2.3 (2021-11-01)</small>
 
 * feat: improves ebpf integration (#490) ([24f5872](https://github.com/pyroscope-io/pyroscope/commit/24f5872)), closes [#490](https://github.com/pyroscope-io/pyroscope/issues/490)

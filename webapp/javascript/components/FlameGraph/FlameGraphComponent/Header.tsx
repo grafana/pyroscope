@@ -28,7 +28,9 @@ export default function Header({
               role="heading"
               aria-level={2}
             >
-              Frame width represents {unitsToFlamegraphTitle[units]}
+              {unitsToFlamegraphTitle[units] && (
+                <>Frame width represents {unitsToFlamegraphTitle[units]}</>
+              )}
             </div>
           </div>
         );
