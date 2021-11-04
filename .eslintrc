@@ -49,7 +49,8 @@
         "tsx": "never"
       }
     ],
-    "spaced-comment": [2, "always", { "exceptions": ["*"] }]
+    "spaced-comment": [2, "always", { "exceptions": ["*"] }],
+    "react/require-default-props": "off"
   },
   "env": {
     "browser": true,

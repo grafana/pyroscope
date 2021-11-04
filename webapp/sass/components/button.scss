@@ -13,9 +13,16 @@
   border: 1px solid $btn-border-color;
   border-radius: 4px;
   background: $btn-color;
+  margin: 0 8px;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: $btn-hover-color;
+  }
+
+  &:disabled {
+    color: rgba(255, 255, 255, 0.3);
+    color: 1px solid rgba(255, 255, 255, 0.12);
+    pointer-events: none;
   }
 }
 
