@@ -15,7 +15,7 @@ import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons/faSignOutAlt';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
-import { Link, NavLink } from 'react-router-dom';
+import { useLocation, NavLink } from 'react-router-dom';
 import ShortcutsModal from './ShortcutsModal';
 import SlackIcon from './SlackIcon';
 
@@ -61,6 +61,8 @@ function Sidebar(props) {
   const [shortcutsModalOpen, setShortcutsModalOpen] =
     useState(shortcutsModalOpen);
 
+  const { search } = useLocation();
+
   const showShortcutsModal = () => {
     setShortcutsModalOpen(true);
   };
@@ -85,7 +87,7 @@ function Sidebar(props) {
         <NavLink
           activeClassName="active-route"
           data-testid="sidebar-root"
-          to="/"
+          to={`/${search}`}
           exact
         >
           <FontAwesomeIcon icon={faWindowMaximize} />
@@ -95,7 +97,7 @@ function Sidebar(props) {
         <NavLink
           activeClassName="active-route"
           data-testid="sidebar-comparison"
-          to="/comparison"
+          to={`/comparison${search}`}
           exact
         >
           <FontAwesomeIcon icon={faColumns} />
@@ -105,7 +107,7 @@ function Sidebar(props) {
         <NavLink
           activeClassName="active-route"
           data-testid="sidebar-comparison-diff"
-          to="/comparison-diff"
+          to={`/comparison-diff${search}`}
           exact
         >
           <FontAwesomeIcon icon={faChartBar} />
