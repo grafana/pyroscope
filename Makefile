@@ -1,6 +1,6 @@
 GOBUILD=go build -trimpath
 
-ARCH ?= $(shell arch)
+ARCH ?= $(shell uname -m)
 OS ?= $(shell uname)
 
 # if you change the name of this variable please change it in generate-git-info.sh file
