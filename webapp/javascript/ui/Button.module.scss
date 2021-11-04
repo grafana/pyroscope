@@ -13,6 +13,9 @@
   background: $btn-color;
   margin: 0 8px;
 
+  // when we have an icon only button
+  min-width: 48px;
+
   &:hover:not(:disabled) {
     background: $btn-hover-color;
   }

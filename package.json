@@ -34,6 +34,7 @@
     "@babel/core": "7.8.4",
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "7.8.3",
+    "@fortawesome/fontawesome-common-types": "^0.2.36",
     "@storybook/addon-actions": "^6.3.12",
     "@storybook/addon-essentials": "^6.3.12",
     "@storybook/addon-links": "^6.3.12",
