@@ -12,6 +12,11 @@
 }
 
 .flamegraph-legend-item {
-  width: 35px;
+  width: 37px;
   text-align: center;
+
+  /* if for some reason the contents can't fit 
+   * don't break into 2 lines */
+  white-space: nowrap;
+  overflow: hidden;
 }

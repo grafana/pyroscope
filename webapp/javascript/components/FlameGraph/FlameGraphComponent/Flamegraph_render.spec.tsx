@@ -8,7 +8,6 @@ type focusedNodeType = ConstructorParameters<typeof Flamegraph>[2];
 type zoomType = ConstructorParameters<typeof Flamegraph>[5];
 
 // All tests here refer strictly to the rendering bit of "Flamegraph"
-
 describe("render group:snapshot'", () => {
   // TODO i'm thinking here if we can simply reuse this?
   const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
@@ -66,6 +65,23 @@ describe("render group:snapshot'", () => {
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
+      canvas,
+      focusedNode,
+      fitMode,
+      highlightQuery,
+      zoom
+    );
+
+    flame.render();
+    expect(canvasToBuffer(canvas)).toMatchImageSnapshot();
+  });
+
+  it('renders a highlighted double flamegraph', () => {
+    const highlightQuery = 'main';
+    const focusedNode: focusedNodeType = Option.none();
+
+    const flame = new Flamegraph(
+      TestData.DiffTree,
       canvas,
       focusedNode,
       fitMode,
