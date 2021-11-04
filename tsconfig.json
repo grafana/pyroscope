@@ -9,7 +9,8 @@
     "sourceMap": true,
     "paths": {
       "@utils/*": ["./webapp/javascript/util/*"],
-      "@models/*": ["./webapp/javascript/models/*"]
+      "@models/*": ["./webapp/javascript/models/*"],
+      "@ui/*": ["./webapp/javascript/ui/*"]
     }
   },
   "exclude": ["node_modules"]
