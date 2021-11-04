@@ -26,12 +26,20 @@
     "cy:ss-check": "CYPRESS_updateSnapshots=false ./scripts/cypress-screenshots.sh",
     "prepare": "husky install",
     "lint-staged": "lint-staged",
-    "size": "yarn build && size-limit"
+    "size": "yarn build && size-limit",
+    "storybook": "start-storybook -p 6006",
+    "build-storybook": "build-storybook"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "7.8.3",
+    "@storybook/addon-actions": "^6.3.12",
+    "@storybook/addon-essentials": "^6.3.12",
+    "@storybook/addon-links": "^6.3.12",
+    "@storybook/builder-webpack5": "^6.3.12",
+    "@storybook/manager-webpack5": "^6.3.12",
+    "@storybook/react": "^6.3.12",
     "@testing-library/cypress": "^8.0.0",
     "@testing-library/dom": "^8.7.1",
     "@testing-library/jest-dom": "^5.14.1",
