@@ -4,9 +4,10 @@
 package pyspy
 
 // #cgo darwin LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
-// #cgo linux,!musl,amd64 LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps -ldl -lunwind -lunwind-ptrace -lunwind-x86_64 -lrt -lm
-// #cgo linux,!musl,arm64 LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps -ldl -lunwind -lunwind-ptrace -lunwind-aarch64 -lrt -lm
-// #cgo linux,musl LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
+// #cgo linux,!musl,amd64 LDFLAGS: -L../../../third_party/rustdeps/target/x86_64-unknown-linux-gnu/release -lrustdeps -ldl -lunwind -lunwind-ptrace -lunwind-x86_64 -lrt -lm
+// #cgo linux,!musl,arm64 LDFLAGS: -L../../../third_party/rustdeps/target/aarch64-unknown-linux-gnu/release -lrustdeps -ldl -lunwind -lunwind-ptrace -lunwind-aarch64 -lrt -lm
+// #cgo linux,musl,amd64 LDFLAGS: -L../../../third_party/rustdeps/target/x86_64-unknown-linux-musl/release -lrustdeps
+// #cgo linux,musl,arm64 LDFLAGS: -L../../../third_party/rustdeps/target/aarch64-unknown-linux-musl/release -lrustdeps
 // #include "../../../third_party/rustdeps/pyspy.h"
 import "C"
 

@@ -84,7 +84,9 @@ RUN apk upgrade elfutils
 WORKDIR /opt/pyroscope
 
 RUN mkdir -p /opt/pyroscope/third_party/rustdeps/target/release
-COPY --from=rust-builder /opt/rustdeps/librustdeps.a /opt/pyroscope/third_party/rustdeps/target/release/librustdeps.a
+# TODO: find a way to determine the architecture in the copy command, we copy once per architecture for now.
+COPY --from=rust-builder /opt/rustdeps/librustdeps.a /opt/pyroscope/third_party/rustdeps/target/x86_64-unknown-linux-musl/release/librustdeps.a
+COPY --from=rust-builder /opt/rustdeps/librustdeps.a /opt/pyroscope/third_party/rustdeps/target/aarch64-unknown-linux-musl/release/librustdeps.a
 COPY third_party/rustdeps/rbspy.h /opt/pyroscope/third_party/rustdeps/rbspy.h
 COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
 COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
