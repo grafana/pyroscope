@@ -93,6 +93,12 @@ describe('basic test', () => {
     cy.visit('/');
 
     cy.findByTestId('flamegraph-search').type('main');
+
+    // if we take a screenshot right away, the canvas may not have been re-renderer yet
+    // therefore we also assert for this attribute
+    // which cypress will retry a few times if necessary
+    cy.findByTestId('flamegraph-canvas').get('[data-highlightquery="main"]');
+
     cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
       'simple-golang-app-cpu-highlight'
     );
@@ -107,15 +113,16 @@ describe('basic test', () => {
     }).as('render1');
 
     cy.visit('/');
-    cy.findByTestId('btn-table-view').click();
+
+    cy.findByRole('combobox', { name: /view/ }).select('Table');
     cy.findByTestId('table-view').should('be.visible');
     cy.findByTestId('flamegraph-view').should('not.exist');
 
-    cy.findByTestId('btn-both-view').click();
+    cy.findByRole('combobox', { name: /view/ }).select('Both');
     cy.findByTestId('table-view').should('be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
 
-    cy.findByTestId('btn-flamegraph-view').click();
+    cy.findByRole('combobox', { name: /view/ }).select('Flame');
     cy.findByTestId('table-view').should('not.be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
@@ -207,11 +214,11 @@ describe('basic test', () => {
 
     cy.visit('/');
 
-    cy.findByTestId('reset-view').should('not.be.visible');
+    cy.findByTestId('reset-view').should('not.be.enabled');
     cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
     cy.findByTestId('reset-view').should('be.visible');
     cy.findByTestId('reset-view').click();
-    cy.findByTestId('reset-view').should('not.be.visible');
+    cy.findByTestId('reset-view').should('not.be.enabled');
   });
 
   describe('tooltip', () => {

@@ -175,17 +175,25 @@ func Cli(cfg *config.Exec, args []string) error {
 	if isExec {
 		return waitForSpawnedProcessToExit(c, cmd)
 	}
+
 	waitForProcessToExit(c, pid)
 	return nil
 }
 
 func waitForSpawnedProcessToExit(c chan os.Signal, cmd *goexec.Cmd) error {
-	go func() {
-		for s := range c {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case s := <-c:
 			_ = sendSignal(cmd.Process, s)
+		case <-ticker.C:
+			if !processExists(cmd.Process.Pid) {
+				logrus.Debug("child process exited")
+				return cmd.Wait()
+			}
 		}
-	}()
-	return cmd.Wait()
+	}
 }
 
 func waitForProcessToExit(c chan os.Signal, pid int) {

@@ -337,6 +337,14 @@ function getColor(cfg: getColorCfg) {
     return colorGreyscale(200, 0.66);
   }
 
+  // We are in a search
+  if (cfg.highlightModeOn) {
+    if (cfg.isHighlighted) {
+      return highlightColor;
+    }
+    return colorGreyscale(200, 0.66);
+  }
+
   // Diff mode
   if (cfg.format === 'double') {
     const { leftRatio, rightRatio } = getRatios(
@@ -351,14 +359,6 @@ function getColor(cfg: getColorCfg) {
     const rightPercent = ratioToPercent(rightRatio);
 
     return colorBasedOnDiffPercent(leftPercent, rightPercent, a);
-  }
-
-  // We are in a search
-  if (cfg.highlightModeOn) {
-    if (cfg.isHighlighted) {
-      return highlightColor;
-    }
-    return colorGreyscale(200, 0.66);
   }
 
   return colorBasedOnPackageName(

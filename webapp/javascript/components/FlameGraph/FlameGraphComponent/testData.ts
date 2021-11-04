@@ -1,6 +1,15 @@
 import { Units } from '@utils/format';
 
 const TestData = {
+  empty: {
+    names: [],
+    levels: [],
+    numTicks: 0,
+    sampleRate: 0,
+    units: Units.Samples,
+    spyName: '',
+    format: 'single' as const,
+  },
   SimpleTree: {
     topLevel: 0,
     rangeMin: 0,

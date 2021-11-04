@@ -91,6 +91,16 @@ function Sidebar(props) {
 
     // console.log('history: ', history.location.pathname);
     setState({ currentRoute: history.location.pathname });
+
+    function updatePath(location, action) {
+      setState({ currentRoute: location.pathname });
+    }
+
+    const removeupdatePath = history.listen(updatePath);
+
+    return () => {
+      removeupdatePath();
+    };
   }, []);
 
   return (

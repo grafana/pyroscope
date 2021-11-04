@@ -10,7 +10,7 @@ expect.extend({
   toMatchImageSnapshot(received: any, options: any) {
     // If these checks pass, assume we're in a JSDOM environment with the 'canvas' package.
     if (process.env.RUN_SNAPSHOTS) {
-      const customConfig = { threshold: 0.01 };
+      const customConfig = { threshold: 0.02 };
       const toMatchImageSnapshot = configureToMatchImageSnapshot({
         customDiffConfig: customConfig,
       });

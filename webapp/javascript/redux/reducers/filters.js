@@ -1,4 +1,3 @@
-import uniqBy from 'lodash/fp/uniqBy';
 import { deltaDiffWrapper } from '../../util/flamebearer';
 import {
   SET_DATE_RANGE,
@@ -41,8 +40,6 @@ const initialState = {
   maxNodes: 1024,
   tags: [],
 };
-
-window.uniqBy = uniqBy;
 
 function decodeTimelineData(timelineData) {
   if (!timelineData) {

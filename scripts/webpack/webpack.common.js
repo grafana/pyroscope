@@ -4,7 +4,6 @@ const glob = require('glob');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
-const ESLintPlugin = require('eslint-webpack-plugin');
 
 const fs = require('fs');
 
@@ -153,7 +152,6 @@ module.exports = {
   },
 
   plugins: [
-    new ESLintPlugin(),
     new webpack.ProvidePlugin({
       $: 'jquery',
       jQuery: 'jquery',
