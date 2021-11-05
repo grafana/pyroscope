@@ -16,12 +16,16 @@ export interface ButtonProps {
 
   onClick?: () => void;
 
+  // TODO
+  // for the full list use refer to https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
+  type: 'button' | 'submit';
   ['data-testid']: string;
 }
 
 export default function Button({
   disabled = false,
   kind = 'default',
+  type = 'button',
   icon,
   children,
   grouped,
@@ -30,6 +34,7 @@ export default function Button({
 }: ButtonProps) {
   return (
     <button
+      type={type}
       data-testid={props['data-testid']}
       disabled={disabled}
       onClick={onClick}
