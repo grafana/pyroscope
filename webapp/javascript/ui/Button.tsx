@@ -20,6 +20,8 @@ export interface ButtonProps {
   // for the full list use refer to https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
   type: 'button' | 'submit';
   ['data-testid']: string;
+
+  className?: string;
 }
 
 export default function Button({
@@ -30,6 +32,7 @@ export default function Button({
   children,
   grouped,
   onClick,
+  className,
   ...props
 }: ButtonProps) {
   return (
@@ -40,7 +43,7 @@ export default function Button({
       onClick={onClick}
       className={`${styles.button} ${
         grouped ? styles.grouped : ''
-      } ${getKindStyles(kind)}`}
+      } ${getKindStyles(kind)} ${className}`}
     >
       {icon ? (
         <FontAwesomeIcon
