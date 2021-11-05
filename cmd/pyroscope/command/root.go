@@ -17,7 +17,7 @@ func Execute() error {
 	rootCmd.SilenceErrors = true
 
 	subcommands := []*cobra.Command{
-		newAdhocCmd(&cfg.Adhoc),
+		newAdhocCmd(&config.Adhoc{Exec: &cfg.Exec, Server: &cfg.Server}),
 		newAgentCmd(&cfg.Agent),
 		newConnectCmd(&cfg.Exec),
 		newConvertCmd(&cfg.Convert),

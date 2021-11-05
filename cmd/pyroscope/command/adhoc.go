@@ -22,15 +22,16 @@ func newAdhocCmd(cfg *config.Adhoc) *cobra.Command {
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 			g, ctx := errgroup.WithContext(context.Background())
 			g.Go(func() error {
-				return cli.StartServer(ctx, &cfg.Server)
+				return cli.StartServer(ctx, cfg.Server)
 			})
 			g.Go(func() error {
-				return exec.Cli(&cfg.Exec, args)
+				return exec.Cli(cfg.Exec, args)
 			})
 			return g.Wait()
 		}),
 	}
 
-	cli.PopulateFlagSet(cfg, adhocCmd.Flags(), vpr, cli.WithSkip("exec.pid"))
+	cli.PopulateFlagSet(cfg.Exec, adhocCmd.Flags(), vpr, cli.WithSkip("pid"))
+	cli.PopulateFlagSet(cfg.Server, adhocCmd.Flags(), vpr, cli.WithSkip("log-level", "sample-rate"))
 	return adhocCmd
 }

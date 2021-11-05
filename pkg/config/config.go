@@ -12,7 +12,6 @@ import (
 type Config struct {
 	Version bool `mapstructure:"version"`
 
-	Adhoc     Adhoc     `skip:"true" mapstructure:",squash"`
 	Agent     Agent     `skip:"true" mapstructure:",squash"`
 	Server    Server    `skip:"true" mapstructure:",squash"`
 	Convert   Convert   `skip:"true" mapstructure:",squash"`
@@ -23,6 +22,10 @@ type Config struct {
 
 // File can be read from file system.
 type File interface{ Path() string }
+
+func (cfg Adhoc) Path() string {
+	return cfg.Server.Config
+}
 
 func (cfg Agent) Path() string {
 	return cfg.Config
@@ -37,9 +40,8 @@ func (cfg CombinedDbManager) Path() string {
 }
 
 type Adhoc struct {
-	Exec Exec `name:""`
-	// TODO: This is hacky but needed as "config" is hardcoded without prefix at lookup time. Figure out a more robust way to handle this.
-	Server Server `name:""`
+	*Exec   `mapstructure:",squash"`
+	*Server `mapstructure:",squash"`
 }
 
 type Agent struct {
