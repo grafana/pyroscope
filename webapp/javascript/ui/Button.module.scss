@@ -24,15 +24,10 @@ $dark-text: #222;
   //min-width: 48px;
 }
 
-.icon {
+.iconWithText {
   // icon is on the left
   // some space between the icon and text
   margin-right: 5px;
-}
-// undo the margin right
-// for when the icon is alone
-.icon:only-child {
-  margin-right: 0;
 }
 
 .default {

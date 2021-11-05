@@ -14,7 +14,7 @@ export interface ButtonProps {
   /** Buttons are grouped so that only the first and last have clear limits */
   grouped?: boolean;
 
-  onClick: () => void;
+  onClick?: () => void;
 
   ['data-testid']: string;
 }
@@ -37,7 +37,12 @@ export default function Button({
         grouped ? styles.grouped : ''
       } ${getKindStyles(kind)}`}
     >
-      {icon ? <FontAwesomeIcon icon={icon} className={styles.icon} /> : null}
+      {icon ? (
+        <FontAwesomeIcon
+          icon={icon}
+          className={children ? styles.iconWithText : ''}
+        />
+      ) : null}
       {children}
     </button>
   );
