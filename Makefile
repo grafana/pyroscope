@@ -108,6 +108,7 @@ build-panel:
 build-rust-dependencies:
 ifeq ("$(OS)", "Linux")
 	cd third_party/rustdeps && RUSTFLAGS="-C relocation-model=pic -C target-feature=+crt-static" cargo build --release --target $(RUST_TARGET) || $(MAKE) print-deps-error-message
+	cp third_party/rustdeps/target/$(patsubst "%",%,$(RUST_TARGET))/release/librustdeps.a third_party/rustdeps/target/release/librustdeps.a
 else
 	cd third_party/rustdeps && RUSTFLAGS="-C target-feature=+crt-static" cargo build --release || $(MAKE) print-deps-error-message
 endif
