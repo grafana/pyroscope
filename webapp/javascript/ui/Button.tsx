@@ -14,7 +14,7 @@ export interface ButtonProps {
   /** Buttons are grouped so that only the first and last have clear limits */
   grouped?: boolean;
 
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 
   // TODO
   // for the full list use refer to https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
