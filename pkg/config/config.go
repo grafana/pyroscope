@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Version bool `mapstructure:"version"`
 
+	Adhoc     Adhoc     `skip:"true" mapstructure:",squash"`
 	Agent     Agent     `skip:"true" mapstructure:",squash"`
 	Server    Server    `skip:"true" mapstructure:",squash"`
 	Convert   Convert   `skip:"true" mapstructure:",squash"`
@@ -33,6 +34,12 @@ func (cfg Server) Path() string {
 
 func (cfg CombinedDbManager) Path() string {
 	return cfg.Server.Config
+}
+
+type Adhoc struct {
+	Exec Exec `name:""`
+	// TODO: This is hacky but needed as "config" is hardcoded without prefix at lookup time. Figure out a more robust way to handle this.
+	Server Server `name:""`
 }
 
 type Agent struct {
