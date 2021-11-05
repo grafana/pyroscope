@@ -2,15 +2,15 @@
 import React from 'react';
 import Button from '@ui/Button';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
-import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
+import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 
 const Template: ComponentStory<typeof Button> = (args) => (
   <Button {...args}>Button</Button>
 );
 
 export default {
-  title: 'Pyroscope/Button',
+  title: 'Components/Button',
   component: Button,
 } as ComponentMeta<typeof Button>;
 
@@ -20,12 +20,13 @@ Default.args = {
 };
 
 export const DefaultWithIcon = () => (
-  <Button disabled icon={faAlignLeft}>
-    Button with icon
-  </Button>
+  <Button icon={faClock}>Button with icon</Button>
 );
 
 export const IconOnly = () => <Button icon={faSyncAlt} />;
+
+export const Primary = () => <Button kind="primary">Primary</Button>;
+export const Secondary = () => <Button kind="secondary">Secondary</Button>;
 
 export const GroupedButtons = () => (
   <>

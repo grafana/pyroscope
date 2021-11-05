@@ -4,10 +4,9 @@ import { IconDefinition } from '@fortawesome/fontawesome-common-types';
 import styles from './Button.module.scss';
 
 export interface ButtonProps {
+  kind?: 'default' | 'primary' | 'secondary';
   /** Whether the button is disabled or not */
   disabled?: boolean;
-  /** Whether the button is disabled or not */
-  primary?: boolean;
   icon?: IconDefinition;
   children?: React.ReactNode;
 
@@ -17,7 +16,7 @@ export interface ButtonProps {
 
 export default function Button({
   disabled = false,
-  primary = false,
+  kind = 'default',
   icon,
   children,
   grouped,
@@ -26,10 +25,32 @@ export default function Button({
   return (
     <button
       disabled={disabled}
-      className={`${styles.button} ${grouped ? styles.grouped : ''}`}
+      className={`${styles.button} ${
+        grouped ? styles.grouped : ''
+      } ${getKindStyles(kind)}`}
     >
-      {icon ? <FontAwesomeIcon icon={icon} /> : null}
+      {icon ? <FontAwesomeIcon icon={icon} className={styles.icon} /> : null}
       {children}
     </button>
   );
+}
+
+function getKindStyles(kind: ButtonProps['kind']) {
+  switch (kind) {
+    case 'default': {
+      return styles.default;
+    }
+
+    case 'primary': {
+      return styles.primary;
+    }
+
+    case 'secondary': {
+      return styles.secondary;
+    }
+
+    default: {
+      throw Error(`Unsupported kind ${kind}`);
+    }
+  }
 }
