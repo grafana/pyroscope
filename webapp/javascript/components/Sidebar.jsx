@@ -97,7 +97,7 @@ function Sidebar(props) {
         <NavLink
           activeClassName="active-route"
           data-testid="sidebar-comparison"
-          to={`/comparison${search}`}
+          to={{ pathname: '/comparison', search }}
           exact
         >
           <FontAwesomeIcon icon={faColumns} />
@@ -107,7 +107,7 @@ function Sidebar(props) {
         <NavLink
           activeClassName="active-route"
           data-testid="sidebar-comparison-diff"
-          to={`/comparison-diff${search}`}
+          to={{ pathname: '/comparison-diff', search }}
           exact
         >
           <FontAwesomeIcon icon={faChartBar} />
