@@ -12,6 +12,7 @@ import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { DebounceInput } from 'react-debounce-input';
 import { Option } from 'prelude-ts';
 import useResizeObserver from '@react-hook/resize-observer';
+import Button from '@ui/Button';
 import { FitModes } from '../util/fitMode';
 import styles from './ProfilerHeader.module.css';
 
@@ -152,14 +153,13 @@ function FocusOnSubtree({ onFocusOnSubtree, selectedNode, showMode }) {
       };
 
   return (
-    <button
-      className={clsx('btn')}
+    <Button
       disabled={!selectedNode.isSome()}
       onClick={onClick}
+      icon={faCompressAlt}
     >
-      <FontAwesomeIcon icon={faCompressAlt} />
-      &nbsp;&thinsp;{text}
-    </button>
+      {text}
+    </Button>
   );
 }
 
@@ -198,17 +198,17 @@ function ResetView({ isFlamegraphDirty, reset, showMode }) {
       throw new Error('Wrong mode');
   }
   return (
-    <button
-      type="button"
-      className={clsx('btn')}
-      disabled={!isFlamegraphDirty}
-      data-testid="reset-view"
-      id="reset"
-      onClick={reset}
-    >
-      <FontAwesomeIcon icon={faUndo} />
-      &nbsp;&thinsp;{text}
-    </button>
+    <>
+      <Button
+        id="reset"
+        data-testid="reset-view"
+        disabled={!isFlamegraphDirty}
+        onClick={reset}
+        icon={faUndo}
+      >
+        {text}
+      </Button>
+    </>
   );
 }
 
@@ -274,38 +274,39 @@ function DiffView({ viewDiff, updateViewDiff, showMode }) {
     </select>
   );
 
+  const kindByState = (name: string) => {
+    if (viewDiff === name) {
+      return 'primary';
+    }
+    return 'default';
+  };
+
   const Buttons = (
     <>
-      <button
-        type="button"
-        className={`${clsx('btn', {
-          active: viewDiff === 'self',
-        })} ${styles['visualization-buttons']} `}
+      <Button
+        grouped
+        icon={faListUl}
+        kind={kindByState('self')}
         onClick={() => updateViewDiff('self')}
       >
-        <FontAwesomeIcon icon={faListUl} />
-        &nbsp;&thinsp;Self
-      </button>
-      <button
-        type="button"
-        className={`${clsx('btn', {
-          active: viewDiff === 'total',
-        })} ${styles['visualization-buttons']} `}
+        Self
+      </Button>
+      <Button
+        grouped
+        icon={faBars}
+        kind={kindByState('total')}
         onClick={() => updateViewDiff('total')}
       >
-        <FontAwesomeIcon icon={faBars} />
-        &nbsp;&thinsp;Total
-      </button>
-      <button
-        type="button"
-        className={`${clsx('btn', {
-          active: viewDiff === 'diff',
-        })} ${styles['visualization-buttons']} `}
+        Total
+      </Button>
+      <Button
+        grouped
+        icon={faAlignLeft}
+        kind={kindByState('diff')}
         onClick={() => updateViewDiff('diff')}
       >
-        <FontAwesomeIcon icon={faAlignLeft} />
-        &nbsp;&thinsp;Diff
-      </button>
+        Diff
+      </Button>
     </>
   );
 
@@ -346,41 +347,39 @@ function ViewSection({ view, updateView, showMode }) {
     </select>
   );
 
+  const kindByState = (name: string) => {
+    if (view === name) {
+      return 'primary';
+    }
+    return 'default';
+  };
+
   const Buttons = (
     <>
-      <button
-        type="button"
-        data-testid="btn-table-view"
-        className={`${clsx('btn', {
-          active: view === 'table',
-        })} ${styles['visualization-buttons']} `}
+      <Button
+        grouped
+        kind={kindByState('table')}
+        icon={faTable}
         onClick={() => updateView('table')}
       >
-        <FontAwesomeIcon icon={faTable} />
-        &nbsp;&thinsp;Table
-      </button>
-      <button
-        data-testid="btn-both-view"
-        type="button"
-        className={`${clsx('btn', {
-          active: view === 'both',
-        })} ${styles['visualization-buttons']} `}
+        Table
+      </Button>
+      <Button
+        grouped
+        kind={kindByState('both')}
+        icon={faTable}
         onClick={() => updateView('both')}
       >
-        <FontAwesomeIcon icon={faColumns} />
-        &nbsp;&thinsp;Both
-      </button>
-      <button
-        data-testid="btn-flamegraph-view"
-        type="button"
-        className={`${clsx('btn', {
-          active: view === 'icicle',
-        })} ${styles['visualization-buttons']} `}
+        Both
+      </Button>
+      <Button
+        grouped
+        kind={kindByState('icicle')}
+        icon={faTable}
         onClick={() => updateView('icicle')}
       >
-        <FontAwesomeIcon icon={faIcicles} />
-        &nbsp;&thinsp;Flamegraph
-      </button>
+        Flamegraph
+      </Button>
     </>
   );
 
