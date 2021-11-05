@@ -367,7 +367,7 @@ function ViewSection({ view, updateView, showMode }) {
       <Button
         grouped
         kind={kindByState('both')}
-        icon={faTable}
+        icon={faColumns}
         onClick={() => updateView('both')}
       >
         Both
@@ -375,7 +375,7 @@ function ViewSection({ view, updateView, showMode }) {
       <Button
         grouped
         kind={kindByState('icicle')}
-        icon={faTable}
+        icon={faIcicles}
         onClick={() => updateView('icicle')}
       >
         Flamegraph

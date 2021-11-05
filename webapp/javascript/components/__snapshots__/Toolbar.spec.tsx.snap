@@ -41,7 +41,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
         </option>
       </select>
       <button
-        class="btn"
+        class="button  default undefined"
         data-testid="reset-view"
         disabled=""
         id="reset"
@@ -49,7 +49,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
       >
         <svg
           aria-hidden="true"
-          class="svg-inline--fa fa-undo fa-w-16 "
+          class="svg-inline--fa fa-undo fa-w-16 iconWithText"
           data-icon="undo"
           data-prefix="fas"
           focusable="false"
@@ -62,15 +62,16 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
             fill="currentColor"
           />
         </svg>
-          Reset View
+        Reset View
       </button>
       <button
-        class="btn"
+        class="button  default undefined"
         disabled=""
+        type="button"
       >
         <svg
           aria-hidden="true"
-          class="svg-inline--fa fa-compress-alt fa-w-14 "
+          class="svg-inline--fa fa-compress-alt fa-w-14 iconWithText"
           data-icon="compress-alt"
           data-prefix="fas"
           focusable="false"
@@ -83,19 +84,18 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
             fill="currentColor"
           />
         </svg>
-          Focus on subtree
+        Focus on subtree
       </button>
       <div
         class="btn-group viz-switch"
       >
         <button
-          class="btn visualization-buttons "
-          data-testid="btn-table-view"
+          class="button grouped default undefined"
           type="button"
         >
           <svg
             aria-hidden="true"
-            class="svg-inline--fa fa-table fa-w-16 "
+            class="svg-inline--fa fa-table fa-w-16 iconWithText"
             data-icon="table"
             data-prefix="fas"
             focusable="false"
@@ -108,16 +108,15 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
               fill="currentColor"
             />
           </svg>
-            Table
+          Table
         </button>
         <button
-          class="btn active visualization-buttons "
-          data-testid="btn-both-view"
+          class="button grouped primary undefined"
           type="button"
         >
           <svg
             aria-hidden="true"
-            class="svg-inline--fa fa-columns fa-w-16 "
+            class="svg-inline--fa fa-columns fa-w-16 iconWithText"
             data-icon="columns"
             data-prefix="fas"
             focusable="false"
@@ -130,16 +129,15 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
               fill="currentColor"
             />
           </svg>
-            Both
+          Both
         </button>
         <button
-          class="btn visualization-buttons "
-          data-testid="btn-flamegraph-view"
+          class="button grouped default undefined"
           type="button"
         >
           <svg
             aria-hidden="true"
-            class="svg-inline--fa fa-icicles fa-w-16 "
+            class="svg-inline--fa fa-icicles fa-w-16 iconWithText"
             data-icon="icicles"
             data-prefix="fas"
             focusable="false"
@@ -152,7 +150,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
               fill="currentColor"
             />
           </svg>
-            Flamegraph
+          Flamegraph
         </button>
       </div>
     </div>
@@ -201,7 +199,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
         </option>
       </select>
       <button
-        class="btn"
+        class="button  default undefined"
         data-testid="reset-view"
         disabled=""
         id="reset"
@@ -209,7 +207,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
       >
         <svg
           aria-hidden="true"
-          class="svg-inline--fa fa-undo fa-w-16 "
+          class="svg-inline--fa fa-undo fa-w-16 iconWithText"
           data-icon="undo"
           data-prefix="fas"
           focusable="false"
@@ -222,15 +220,16 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
             fill="currentColor"
           />
         </svg>
-          Reset
+        Reset
       </button>
       <button
-        class="btn"
+        class="button  default undefined"
         disabled=""
+        type="button"
       >
         <svg
           aria-hidden="true"
-          class="svg-inline--fa fa-compress-alt fa-w-14 "
+          class="svg-inline--fa fa-compress-alt fa-w-14 iconWithText"
           data-icon="compress-alt"
           data-prefix="fas"
           focusable="false"
@@ -243,7 +242,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
             fill="currentColor"
           />
         </svg>
-          Focus
+        Focus
       </button>
       <div
         class="btn-group viz-switch"
