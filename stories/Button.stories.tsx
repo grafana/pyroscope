@@ -26,3 +26,11 @@ export const DefaultWithIcon = () => (
 );
 
 export const IconOnly = () => <Button icon={faSyncAlt} />;
+
+export const GroupedButtons = () => (
+  <>
+    <Button grouped>Button</Button>
+    <Button grouped>Button 2</Button>
+    <Button grouped>Button 3</Button>
+  </>
+);

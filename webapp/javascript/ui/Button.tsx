@@ -1,6 +1,5 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
 import { IconDefinition } from '@fortawesome/fontawesome-common-types';
 import styles from './Button.module.scss';
 
@@ -9,8 +8,11 @@ export interface ButtonProps {
   disabled?: boolean;
   /** Whether the button is disabled or not */
   primary?: boolean;
-  icon: IconDefinition;
-  children: React.ReactNode;
+  icon?: IconDefinition;
+  children?: React.ReactNode;
+
+  /** Buttons are grouped so that only the first and last have clear limits */
+  grouped?: boolean;
 }
 
 export default function Button({
@@ -18,10 +20,14 @@ export default function Button({
   primary = false,
   icon,
   children,
+  grouped,
   ...props
 }: ButtonProps) {
   return (
-    <button disabled={disabled} className={styles.button}>
+    <button
+      disabled={disabled}
+      className={`${styles.button} ${grouped ? styles.grouped : ''}`}
+    >
       {icon ? <FontAwesomeIcon icon={icon} /> : null}
       {children}
     </button>
