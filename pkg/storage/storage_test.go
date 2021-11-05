@@ -34,7 +34,7 @@ var _ = Describe("storage package", func() {
 			evictInterval = 2 * time.Second
 
 			var err error
-			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -333,7 +333,7 @@ var _ = Describe("storage package", func() {
 					Expect(o.Tree.String()).To(Equal(tree.String()))
 					Expect(s.Close()).ToNot(HaveOccurred())
 
-					s2, err := New(&(*cfg).Server, prometheus.NewRegistry())
+					s2, err := New(NewConfig(&(*cfg).Server), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
 					o2, err := s2.Get(&GetInput{
@@ -355,7 +355,7 @@ var _ = Describe("DeleteDataBefore", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 

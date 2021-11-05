@@ -66,7 +66,7 @@ var _ = Describe("server", func() {
 			It("supports name and query parameters", func() {
 				var httpServer *httptest.Server
 				(*cfg).Server.APIBindAddr = ":10044"
-				s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
+				s, err := storage.New(storage.NewConfig(&(*cfg).Server), prometheus.NewRegistry())
 				Expect(err).ToNot(HaveOccurred())
 				e, _ := exporter.NewExporter(nil, nil)
 				c, _ := New(Config{

@@ -20,7 +20,7 @@ var _ = Describe("Querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 			keys := []string{
 				"app.name{foo=bar,baz=qux}",
