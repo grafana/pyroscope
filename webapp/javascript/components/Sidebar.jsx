@@ -87,7 +87,7 @@ function Sidebar(props) {
         <NavLink
           activeClassName="active-route"
           data-testid="sidebar-root"
-          to={`/${search}`}
+          to={{ pathname: '/', search }}
           exact
         >
           <FontAwesomeIcon icon={faWindowMaximize} />
