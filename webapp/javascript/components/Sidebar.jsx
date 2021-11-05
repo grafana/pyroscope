@@ -15,6 +15,7 @@ import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons/faSignOutAlt';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
+import { useLocation, NavLink } from 'react-router-dom';
 import ShortcutsModal from './ShortcutsModal';
 import SlackIcon from './SlackIcon';
 
@@ -54,31 +55,20 @@ function signOut() {
   form.submit();
 }
 
-const initialState = {
-  shortcutsModalOpen: false,
-  currentRoute: '/',
-};
-
 function Sidebar(props) {
   const { shortcut } = props;
 
-  const [state, setState] = useState(initialState);
+  const [shortcutsModalOpen, setShortcutsModalOpen] =
+    useState(shortcutsModalOpen);
+
+  const { search } = useLocation();
 
   const showShortcutsModal = () => {
-    setState({ shortcutsModalOpen: true });
+    setShortcutsModalOpen(true);
   };
 
   const closeShortcutsModal = () => {
-    setState({ shortcutsModalOpen: false });
-  };
-
-  const updateRoute = (newRoute) => {
-    history.push({
-      pathname: newRoute,
-      search: history.location.search,
-    });
-
-    setState({ currentRoute: newRoute });
+    setShortcutsModalOpen(false);
   };
 
   useEffect(() => {
@@ -88,57 +78,40 @@ function Sidebar(props) {
       'Shortcuts',
       'Show Keyboard Shortcuts Modal'
     );
-
-    // console.log('history: ', history.location.pathname);
-    setState({ currentRoute: history.location.pathname });
-
-    function updatePath(location, action) {
-      setState({ currentRoute: location.pathname });
-    }
-
-    const removeupdatePath = history.listen(updatePath);
-
-    return () => {
-      removeupdatePath();
-    };
   }, []);
 
   return (
     <div className="sidebar">
-      <span className="logo" onClick={() => updateRoute('/')} />
+      <span className="logo" onClick={() => history.push('/')} />
       <SidebarItem tooltipText="Single View">
-        <button
-          className={clsx({ 'active-route': state.currentRoute === '/' })}
-          type="button"
+        <NavLink
+          activeClassName="active-route"
           data-testid="sidebar-root"
-          onClick={() => updateRoute('/')}
+          to={{ pathname: '/', search }}
+          exact
         >
           <FontAwesomeIcon icon={faWindowMaximize} />
-        </button>
+        </NavLink>
       </SidebarItem>
       <SidebarItem tooltipText="Comparison View">
-        <button
-          className={clsx({
-            'active-route': state.currentRoute === '/comparison',
-          })}
+        <NavLink
+          activeClassName="active-route"
           data-testid="sidebar-comparison"
-          type="button"
-          onClick={() => updateRoute('/comparison')}
+          to={{ pathname: '/comparison', search }}
+          exact
         >
           <FontAwesomeIcon icon={faColumns} />
-        </button>
+        </NavLink>
       </SidebarItem>
       <SidebarItem tooltipText="Diff View">
-        <button
-          className={clsx({
-            'active-route': state.currentRoute === '/comparison-diff',
-          })}
-          type="button"
+        <NavLink
+          activeClassName="active-route"
           data-testid="sidebar-comparison-diff"
-          onClick={() => updateRoute('/comparison-diff')}
+          to={{ pathname: '/comparison-diff', search }}
+          exact
         >
           <FontAwesomeIcon icon={faChartBar} />
-        </button>
+        </NavLink>
       </SidebarItem>
       <SidebarItem tooltipText="Alerts - Coming Soon">
         <button type="button">
@@ -184,7 +157,7 @@ function Sidebar(props) {
         []
       )}
       <Modal
-        isOpen={state.shortcutsModalOpen}
+        isOpen={shortcutsModalOpen}
         style={modalStyle}
         appElement={document.getElementById('root')}
         ariaHideApp={false}
