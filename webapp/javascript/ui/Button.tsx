@@ -8,10 +8,15 @@ export interface ButtonProps {
   /** Whether the button is disabled or not */
   disabled?: boolean;
   icon?: IconDefinition;
+
   children?: React.ReactNode;
 
   /** Buttons are grouped so that only the first and last have clear limits */
   grouped?: boolean;
+
+  onClick: () => void;
+
+  ['data-testid']: string;
 }
 
 export default function Button({
@@ -20,11 +25,14 @@ export default function Button({
   icon,
   children,
   grouped,
+  onClick,
   ...props
 }: ButtonProps) {
   return (
     <button
+      data-testid={props['data-testid']}
       disabled={disabled}
+      onClick={onClick}
       className={`${styles.button} ${
         grouped ? styles.grouped : ''
       } ${getKindStyles(kind)}`}
