@@ -3,6 +3,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -14,7 +15,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func StartServer(c *config.Server) error {
+func StartServer(ctx context.Context, c *config.Server) error {
 	logLevel, err := logrus.ParseLevel(c.LogLevel)
 	if err != nil {
 		return err
@@ -39,7 +40,7 @@ func StartServer(c *config.Server) error {
 
 	exited := make(chan error)
 	go func() {
-		exited <- srv.Start()
+		exited <- srv.Start(ctx)
 		close(exited)
 	}()
 

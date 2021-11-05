@@ -122,8 +122,8 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	return &svc, nil
 }
 
-func (svc *serverService) Start() error {
-	g, ctx := errgroup.WithContext(context.Background())
+func (svc *serverService) Start(ctx context.Context) error {
+	g, ctx := errgroup.WithContext(ctx)
 	svc.group = g
 	g.Go(func() error {
 		// if you ever change this line, make sure to update this homebrew test:
