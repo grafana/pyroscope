@@ -20,7 +20,7 @@ function PyroscopeApp(props) {
 
   useEffect(() => {
     if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchTimeline(renderURL);
+      actions.fetchTimeline(renderURL, 'single');
     }
 
     return actions.abortTimelineRequest;
