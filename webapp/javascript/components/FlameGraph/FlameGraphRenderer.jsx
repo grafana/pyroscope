@@ -19,23 +19,6 @@ import ExportData from '../ExportData';
 
 import InstructionText from './InstructionText';
 
-const paramsToObject = (entries) => {
-  const result = {};
-  entries.forEach(([key, value]) => {
-    result[key] = value;
-  });
-  return result;
-};
-
-const getParamsFromRenderURL = (inputURL) => {
-  const urlParamsRegexp = /(.*render\?)(?<urlParams>(.*))/;
-  const paramsString = inputURL.match(urlParamsRegexp);
-
-  const params = new URLSearchParams(paramsString.groups.urlParams);
-  const paramsObj = paramsToObject([...params.entries()]);
-  return paramsObj;
-};
-
 class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
   // eg localstorage
@@ -53,7 +36,7 @@ class FlameGraphRenderer extends React.Component {
       view: 'both',
       viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
       fitMode: props.fitMode ? props.fitMode : 'HEAD',
-      flamebearer: props.flamebearer,
+      flamebearer: this.getFlameBearerFromProps(props),
 
       // query used in the 'search' checkbox
       highlightQuery: '',
@@ -63,7 +46,9 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (prevProps.flamebearer !== this.props.flamebearer) {
+    const previousFlamebearer = this.getFlameBearerFromProps(prevProps);
+    const actualFlamebearer = this.getFlameBearerFromProps();
+    if (previousFlamebearer !== actualFlamebearer) {
       this.updateFlamebearerData();
     }
 
@@ -75,6 +60,20 @@ class FlameGraphRenderer extends React.Component {
 
   componentWillUnmount() {
     this.abortCurrentJSONController();
+  }
+
+  getFlameBearerFromProps(props) {
+    const actualProps = props ?? this.props;
+    switch (actualProps.viewType) {
+      case 'single':
+        return actualProps.single.flamebearer;
+      case 'double':
+        return actualProps.comparison[actualProps.viewSide].flamebearer;
+      case 'diff':
+        return actualProps.diff.flamebearer;
+      default:
+        return null;
+    }
   }
 
   updateFitMode = (newFitMode) => {
@@ -186,6 +185,12 @@ class FlameGraphRenderer extends React.Component {
       JSON.stringify(this.state.flamegraphConfigs)
     );
   };
+
+  updateFlamebearerData() {
+    this.setState({
+      flamebearer: this.getFlameBearerFromProps(),
+    });
+  }
 
   parseFormat(format) {
     return createFF(format || this.state.format);
