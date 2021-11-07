@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/shirou/gopsutil/process"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -102,25 +101,4 @@ func generateCredentials(userName, groupName string) (*syscall.Credential, error
 	}
 
 	return &c, nil
-}
-
-func processExists(pid int) bool {
-	p, err := process.NewProcess(int32(pid))
-	if err != nil {
-		return false
-	}
-
-	s, err := p.Status()
-	if err != nil {
-		return false
-	}
-
-	return s != "Z"
-}
-
-func sendSignal(p *os.Process, s os.Signal) error {
-	if s != syscall.SIGCHLD {
-		return p.Signal(s)
-	}
-	return nil
 }
