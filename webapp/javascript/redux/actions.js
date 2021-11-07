@@ -65,14 +65,14 @@ export const setMaxNodes = (maxNodes) => ({
 
 export const refresh = (url) => ({ type: REFRESH, payload: { url } });
 
-export const requestTimeline = (url) => ({
+export const requestTimeline = (url, viewType, viewSide) => ({
   type: REQUEST_TIMELINE,
-  payload: { url },
+  payload: { url, viewType, viewSide },
 });
 
-export const receiveTimeline = (data) => ({
+export const receiveTimeline = (data, viewType, viewSide) => ({
   type: RECEIVE_TIMELINE,
-  payload: data,
+  payload: { data, viewType, viewSide },
 });
 
 export const requestTags = () => ({ type: REQUEST_TAGS });
@@ -113,19 +113,19 @@ let currentTimelineController;
 let fetchTagController;
 let fetchTagValuesController;
 
-export function fetchTimeline(url) {
+export function fetchTimeline(url, viewType, viewSide) {
   return (dispatch) => {
     if (currentTimelineController) {
       currentTimelineController.abort();
     }
     currentTimelineController = new AbortController();
-    dispatch(requestTimeline(url));
+    dispatch(requestTimeline(url, viewType, viewSide));
     return fetch(`${url}&format=json`, {
       signal: currentTimelineController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
-        dispatch(receiveTimeline(data));
+        dispatch(receiveTimeline(data, viewType, viewSide));
       })
       .catch((e) => {
         // AbortErrors are fine
