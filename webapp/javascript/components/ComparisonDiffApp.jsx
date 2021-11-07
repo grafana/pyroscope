@@ -14,7 +14,7 @@ function ComparisonDiffApp(props) {
 
   useEffect(() => {
     if (prevPropsRef.diffRenderURL !== diffRenderURL) {
-      actions.fetchTimeline(diffRenderURL);
+      actions.fetchTimeline(diffRenderURL, 'diff');
     }
     return actions.abortTimelineRequest;
   }, [diffRenderURL]);

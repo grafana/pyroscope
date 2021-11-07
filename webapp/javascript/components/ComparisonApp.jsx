@@ -13,16 +13,28 @@ import { fetchNames, fetchTimeline } from '../redux/actions';
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
 function ComparisonApp(props) {
-  const { actions, renderURL } = props;
+  const { actions, renderURL, leftRenderURL, rightRenderURL } = props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
     if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchTimeline(renderURL);
+      // When ComparisonApp is loaded only renderURL is set so
+      // by using viewType = 'comparison' and not giving a viewSide
+      // populates both left and right side keys
+      // as shown in redux/reducers/filters.js:RECEIVE_TIMELINE case.
+      actions.fetchTimeline(renderURL, 'comparison');
+    }
+
+    if (prevPropsRef.leftRenderURL !== leftRenderURL) {
+      actions.fetchTimeline(leftRenderURL, 'comparison', 'left');
+    }
+
+    if (prevPropsRef.rightRenderURL !== rightRenderURL) {
+      actions.fetchTimeline(rightRenderURL, 'comparison', 'right');
     }
 
     return actions.abortTimelineRequest;
-  }, [renderURL]);
+  }, [renderURL, leftRenderURL, rightRenderURL]);
 
   return (
     <div className="pyroscope-app">
