@@ -36,6 +36,20 @@ const initialState = {
   query: `${defaultName || 'pyroscope.server.cpu'}{}`,
   names: window.initialState.appNames,
   timeline: null,
+  single: {
+    flamebearer: null,
+  },
+  comparison: {
+    left: {
+      flamebearer: null,
+    },
+    right: {
+      flamebearer: null,
+    },
+  },
+  diff: {
+    flamebearer: null,
+  },
   isJSONLoading: false,
   maxNodes: 1024,
   tags: [],
@@ -120,21 +134,42 @@ export default function (state = initialState, action) {
         isJSONLoading: true,
       };
     case RECEIVE_TIMELINE:
-      const { flamebearer, leftTicks, rightTicks, timeline } = action.payload;
+      const { data, viewType, viewSide } = action.payload;
+      const { flamebearer, leftTicks, rightTicks, timeline } = data;
       const calculatedLevels = deltaDiffWrapper(
         flamebearer.format,
         flamebearer.levels
       );
 
-      return {
-        ...state,
-        timeline: decodeTimelineData(timeline),
+      const flamebearerData = {
         flamebearer: {
           leftTicks,
           rightTicks,
           levels: calculatedLevels,
           ...flamebearer,
         },
+      };
+
+      // When viewType = 'comparison' and no viewSide is given
+      // then both left and right keys are populated.
+      // This happens only on initialization as seen on components/ComparisonApp.jsx
+      const viewData = () => {
+        if (viewType === 'comparison' && !viewSide)
+          return {
+            left: flamebearerData,
+            right: flamebearerData,
+          };
+        return viewSide
+          ? {
+              [viewSide]: flamebearerData,
+            }
+          : flamebearerData;
+      };
+
+      return {
+        ...state,
+        timeline: decodeTimelineData(timeline),
+        [viewType]: viewData(),
         isJSONLoading: false,
       };
     case REQUEST_TAGS:
