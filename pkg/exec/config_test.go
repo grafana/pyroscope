@@ -5,8 +5,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/sirupsen/logrus"
+
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
 var _ = Describe("Exec config", func() {
