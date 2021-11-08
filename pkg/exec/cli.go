@@ -34,7 +34,7 @@ func Cli(cfg *Config, args []string) error {
 		if len(args) == 0 {
 			return errors.New("no arguments passed")
 		}
-	} else if (cfg.Pid != -1 && cfg.SpyName == "ebpfspy") && !process.Exists(cfg.Pid) {
+	} else if (cfg.pid != -1 && cfg.spyName == "ebpfspy") && !process.Exists(cfg.Pid) {
 		return errors.New("process not found")
 	}
 
