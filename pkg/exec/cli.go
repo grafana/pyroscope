@@ -21,6 +21,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
 
 // used in tests
@@ -33,7 +34,7 @@ func Cli(cfg *Config, args []string) error {
 		if len(args) == 0 {
 			return errors.New("no arguments passed")
 		}
-	} else if (cfg.pid != -1 && cfg.spyName == "ebpfspy") && !processExists(cfg.pid) {
+	} else if (cfg.pid != -1 && cfg.spyName == "ebpfspy") && !process.Exists(cfg.pid) {
 		return errors.New("process not found")
 	}
 
@@ -168,9 +169,9 @@ func waitForSpawnedProcessToExit(c chan os.Signal, cmd *goexec.Cmd) error {
 	for {
 		select {
 		case s := <-c:
-			_ = sendSignal(cmd.Process, s)
+			_ = process.SendSignal(cmd.Process, s)
 		case <-ticker.C:
-			if !processExists(cmd.Process.Pid) {
+			if !process.Exists(cmd.Process.Pid) {
 				logrus.Debug("child process exited")
 				return cmd.Wait()
 			}
@@ -191,7 +192,7 @@ func waitForProcessToExit(c chan os.Signal, pid int) {
 		case <-c:
 			return
 		case <-ticker.C:
-			if !processExists(pid) {
+			if !process.Exists(pid) {
 				logrus.Debug("child process exited")
 				return
 			}
