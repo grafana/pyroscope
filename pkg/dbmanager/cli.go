@@ -60,7 +60,7 @@ func copyData(dbCfg *config.DbManager, stCfg *storage.Config) error {
 			"src start: %q end: %q, dst start: %q end: %q", srcSt, srcEt, dstSt, dstEt)
 	}
 
-	s, err := storage.New(stCfg, prometheus.DefaultRegisterer)
+	s, err := storage.New(stCfg, logrus.StandardLogger(), prometheus.DefaultRegisterer)
 	if err != nil {
 		return err
 	}

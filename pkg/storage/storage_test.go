@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"runtime"
 	"strconv"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -26,15 +29,15 @@ import (
 
 var s *Storage
 
+var maxTime = time.Unix(1<<62, 999999999)
+
 var _ = Describe("storage package", func() {
 	logrus.SetLevel(logrus.InfoLevel)
 
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
-			evictInterval = 2 * time.Second
-
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -59,11 +62,7 @@ var _ = Describe("storage package", func() {
 						SampleRate: 100,
 					})
 
-					err := s.Delete(&DeleteInput{
-						Key: key,
-					})
-					Expect(err).ToNot(HaveOccurred())
-
+					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
 					gOut, err := s.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
@@ -107,11 +106,7 @@ var _ = Describe("storage package", func() {
 						SampleRate: 100,
 					})
 
-					err := s.Delete(&DeleteInput{
-						Key: key,
-					})
-					Expect(err).ToNot(HaveOccurred())
-
+					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
 					gOut, err := s.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
@@ -146,11 +141,7 @@ var _ = Describe("storage package", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 
-					err = s.Delete(&DeleteInput{
-						Key: key,
-					})
-					Expect(err).ToNot(HaveOccurred())
-
+					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
 					s.Put(&PutInput{
 						StartTime:  st,
 						EndTime:    et,
@@ -295,7 +286,7 @@ var _ = Describe("storage package", func() {
 
 						var m runtime.MemStats
 						runtime.ReadMemStats(&m)
-						time.Sleep(evictInterval)
+						time.Sleep(time.Second)
 					}
 				})
 			})
@@ -333,7 +324,7 @@ var _ = Describe("storage package", func() {
 					Expect(o.Tree.String()).To(Equal(tree.String()))
 					Expect(s.Close()).ToNot(HaveOccurred())
 
-					s2, err := New(NewConfig(&(*cfg).Server), prometheus.NewRegistry())
+					s2, err := New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
 
 					o2, err := s2.Get(&GetInput{
@@ -351,56 +342,224 @@ var _ = Describe("storage package", func() {
 	})
 })
 
-var _ = Describe("DeleteDataBefore", func() {
+var _ = Describe("querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			Expect(err).ToNot(HaveOccurred())
+			keys := []string{
+				"app.name{foo=bar,baz=qux}",
+				"app.name{foo=bar,baz=xxx}",
+				"app.name{waldo=fred,baz=xxx}",
+			}
+			for _, k := range keys {
+				t := tree.New()
+				t.Insert([]byte("a;b"), uint64(1))
+				t.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(19)
+				key, err := segment.ParseKey(k)
+				Expect(err).ToNot(HaveOccurred())
+				err = s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        t,
+					SpyName:    "testspy",
+					SampleRate: 100,
+				})
+				Expect(err).ToNot(HaveOccurred())
+			}
+		})
+
+		Context("basic queries", func() {
+			It("get returns result with query", func() {
+				qry, err := flameql.ParseQuery(`app.name{foo="bar"}`)
+				Expect(err).ToNot(HaveOccurred())
+				output, err := s.Get(&GetInput{
+					StartTime: time.Time{},
+					EndTime:   maxTime,
+					Query:     qry,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output).ToNot(BeNil())
+				Expect(output.Tree).ToNot(BeNil())
+				Expect(output.Tree.Samples()).To(Equal(uint64(6)))
+			})
+
+			It("get returns a particular tree for a fully qualified key", func() {
+				k, err := segment.ParseKey(`app.name{foo=bar,baz=qux}`)
+				Expect(err).ToNot(HaveOccurred())
+				output, err := s.Get(&GetInput{
+					StartTime: time.Time{},
+					EndTime:   maxTime,
+					Key:       k,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output).ToNot(BeNil())
+				Expect(output.Tree).ToNot(BeNil())
+				Expect(output.Tree.Samples()).To(Equal(uint64(3)))
+			})
+
+			It("get returns all results for a key containing only app name", func() {
+				k, err := segment.ParseKey(`app.name`)
+				Expect(err).ToNot(HaveOccurred())
+				output, err := s.Get(&GetInput{
+					StartTime: time.Time{},
+					EndTime:   maxTime,
+					Key:       k,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(output).ToNot(BeNil())
+				Expect(output.Tree).ToNot(BeNil())
+				Expect(output.Tree.Samples()).To(Equal(uint64(9)))
+			})
+
+			It("query returns expected results", func() {
+				type testCase struct {
+					query       string
+					segmentKeys []dimension.Key
+				}
+
+				testCases := []testCase{
+					{`app.name`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{foo="bar"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+					}},
+					{`app.name{foo=~"^b.*"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+					}},
+					{`app.name{baz=~"xxx|qux"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{baz!="xxx"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+					}},
+					{`app.name{foo!="bar"}`, []dimension.Key{
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{foo!~".*"}`, []dimension.Key{
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{baz!~"^x.*"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+					}},
+					{`app.name{foo="bar",baz!~"^x.*"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+					}},
+
+					{`app.name{foo=~"b.*",foo!~".*r"}`, nil},
+
+					{`app.name{foo!="non-existing-value"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{foo!~"non-existing-.*"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{non_existing_key!="bar"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+					{`app.name{non_existing_key!~"bar"}`, []dimension.Key{
+						dimension.Key("app.name{baz=qux,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,foo=bar}"),
+						dimension.Key("app.name{baz=xxx,waldo=fred}"),
+					}},
+
+					{`app.name{foo="non-existing-value"}`, nil},
+					{`app.name{foo=~"non-existing-.*"}`, nil},
+					{`app.name{non_existing_key="bar"}`, nil},
+					{`app.name{non_existing_key=~"bar"}`, nil},
+
+					{`non-existing-app{}`, nil},
+				}
+
+				for _, tc := range testCases {
+					qry, err := flameql.ParseQuery(tc.query)
+					Expect(err).ToNot(HaveOccurred())
+					r := s.execQuery(context.TODO(), qry)
+					if tc.segmentKeys == nil {
+						Expect(r).To(BeEmpty())
+						continue
+					}
+					Expect(r).To(ConsistOf(tc.segmentKeys))
+				}
+			})
+		})
+	})
+})
+
+var _ = Describe("CollectGarbage", func() {
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		Context("simple case 1", func() {
-			It("does not return errors", func() {
+		Context("RetentionPolicy", func() {
+			It("removes data outside retention period", func() {
+				key, _ := segment.ParseKey("foo")
 				tree := tree.New()
 				tree.Insert([]byte("a;b"), uint64(1))
 				tree.Insert([]byte("a;c"), uint64(2))
-				st := time.Now().Add(time.Hour * 24 * 10 * -1)
-				et := st.Add(time.Second * 10)
-				key, _ := segment.ParseKey("foo")
+				now := time.Now()
 
 				err := s.Put(&PutInput{
-					StartTime:  st,
-					EndTime:    et,
+					StartTime:  now.Add(-3 * time.Hour),
+					EndTime:    now.Add(-3 * time.Hour).Add(time.Second * 10),
 					Key:        key,
 					Val:        tree,
 					SpyName:    "testspy",
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(s.DeleteDataBefore(time.Now().Add(-1 * time.Hour))).ToNot(HaveOccurred())
-				Expect(s.Close()).ToNot(HaveOccurred())
-			})
-		})
 
-		Context("simple case 2", func() {
-			It("does not return errors", func() {
-				tree := tree.New()
-				tree.Insert([]byte("a;b"), uint64(1))
-				tree.Insert([]byte("a;c"), uint64(2))
-				st := testing.SimpleTime(10)
-				et := testing.SimpleTime(20)
-				key, _ := segment.ParseKey("foo")
-
-				err := s.Put(&PutInput{
-					StartTime:  st,
-					EndTime:    et,
+				err = s.Put(&PutInput{
+					StartTime:  now.Add(-time.Minute),
+					EndTime:    now.Add(-time.Minute).Add(time.Second * 10),
 					Key:        key,
 					Val:        tree,
 					SpyName:    "testspy",
 					SampleRate: 100,
 				})
 				Expect(err).ToNot(HaveOccurred())
-				Expect(s.DeleteDataBefore(time.Now().Add(-1 * time.Hour))).ToNot(HaveOccurred())
+
+				err = s.EnforceRetentionPolicy(segment.NewRetentionPolicy().SetAbsolutePeriod(time.Hour))
+				Expect(err).ToNot(HaveOccurred())
+
+				o, err := s.Get(&GetInput{
+					StartTime: now.Add(-3 * time.Hour),
+					EndTime:   now.Add(-3 * time.Hour).Add(time.Second * 10),
+					Key:       key,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o).To(BeNil())
+
+				o, err = s.Get(&GetInput{
+					StartTime: now.Add(-time.Minute),
+					EndTime:   now.Add(-time.Minute).Add(time.Second * 10),
+					Key:       key,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o).ToNot(BeNil())
+
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})

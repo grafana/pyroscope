@@ -44,17 +44,17 @@ var _ = Describe("cache", func() {
 			DB:     db,
 			Codec:  fakeCodec{},
 			Prefix: "p:",
-			Metrics: Metrics{
-				MissCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Metrics: &Metrics{
+				MissesCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 					Name: "cache_test_miss",
 				}),
-				ReadCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				ReadsCounter: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 					Name: "storage_test_read",
 				}),
-				DiskWritesHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+				DBWrites: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
 					Name: "storage_test_write",
 				}),
-				DiskReadsHistogram: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+				DBReads: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
 					Name: "storage_test_reads",
 				}),
 			},
