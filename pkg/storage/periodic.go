@@ -52,8 +52,8 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		s.evictionsAllocBytes.Set(float64(m.Alloc))
 		s.evictionsTotalBytes.Set(float64(memTotal))
 
-		percent := s.config.CacheEvictVolume
-		if used > s.config.CacheEvictThreshold {
+		percent := s.config.cacheEvictVolume
+		if used > s.config.cacheEvictThreshold {
 			func() {
 				timer := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
 					logrus.Debugf("eviction task took %f seconds\n", v)

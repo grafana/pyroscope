@@ -19,7 +19,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/cache"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
@@ -44,7 +43,7 @@ var (
 type Storage struct {
 	putMutex sync.Mutex
 
-	config           *config.Server
+	config           *Config
 	localProfilesDir string
 
 	db           *badger.DB
@@ -84,17 +83,17 @@ type SampleObserver interface {
 }
 
 func (s *Storage) newBadger(name string) (db *badger.DB, err error) {
-	badgerPath := filepath.Join(s.config.StoragePath, name)
+	badgerPath := filepath.Join(s.config.badgerBasePath, name)
 	if err = os.MkdirAll(badgerPath, 0o755); err != nil {
 		return nil, err
 	}
 	badgerOptions := badger.DefaultOptions(badgerPath)
-	badgerOptions = badgerOptions.WithTruncate(!s.config.BadgerNoTruncate)
+	badgerOptions = badgerOptions.WithTruncate(!s.config.badgerNoTruncate)
 	badgerOptions = badgerOptions.WithSyncWrites(false)
 	badgerOptions = badgerOptions.WithCompactL0OnClose(false)
 	badgerOptions = badgerOptions.WithCompression(options.ZSTD)
 	badgerLevel := logrus.ErrorLevel
-	if l, err := logrus.ParseLevel(s.config.BadgerLogLevel); err == nil {
+	if l, err := logrus.ParseLevel(s.config.badgerLogLevel); err == nil {
 		badgerLevel = l
 	}
 	badgerOptions = badgerOptions.WithLogger(badgerLogger{name: name, logLevel: badgerLevel})
@@ -117,11 +116,11 @@ func (s *Storage) newBadger(name string) (db *badger.DB, err error) {
 	return db, nil
 }
 
-func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
+func New(c *Config, reg prometheus.Registerer) (*Storage, error) {
 	s := &Storage{
 		config:           c,
 		stop:             make(chan struct{}),
-		localProfilesDir: filepath.Join(c.StoragePath, "local-profiles"),
+		localProfilesDir: filepath.Join(c.badgerBasePath, "local-profiles"),
 		metrics:          newStorageMetrics(reg),
 	}
 
@@ -189,7 +188,7 @@ func New(c *config.Server, reg prometheus.Registerer) (*Storage, error) {
 	s.wg.Add(2)
 	go s.periodicTask(evictInterval, s.evictionTask(memTotal))
 	go s.periodicTask(writeBackInterval, s.writeBackTask)
-	if s.config.Retention > 0 {
+	if s.config.retention > 0 {
 		s.wg.Add(1)
 		go s.periodicTask(retentionInterval, s.retentionTask)
 	}
@@ -576,7 +575,7 @@ func (s *Storage) GetKeys(cb func(_k string) bool) {
 //revive:disable-next-line:get-return A callback is fine
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
-		if key != "__name__" || !slices.StringContains(s.config.HideApplications, v) {
+		if key != "__name__" || !slices.StringContains(s.config.hideApplications, v) {
 			return cb(v)
 		}
 		return true
@@ -662,7 +661,7 @@ func (s *Storage) DiskUsage() map[string]bytesize.ByteSize {
 		"segments":   0,
 	}
 	for k := range res {
-		res[k] = dirSize(filepath.Join(s.config.StoragePath, k))
+		res[k] = dirSize(filepath.Join(s.config.badgerBasePath, k))
 	}
 	return res
 }
@@ -693,8 +692,8 @@ var zeroTime time.Time
 
 func (s *Storage) lifetimeBasedRetentionThreshold() time.Time {
 	var t time.Time
-	if s.config.Retention != 0 {
-		t = time.Now().Add(-1 * s.config.Retention)
+	if s.config.retention != 0 {
+		t = time.Now().Add(-1 * s.config.retention)
 	}
 	return t
 }

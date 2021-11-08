@@ -42,13 +42,12 @@ func openStorage(path string) (*storage.Storage, error) {
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return nil, err
 	}
-	return storage.New(&config.Server{
+	return storage.New(storage.NewConfig(&config.Server{
 		StoragePath:           path,
 		CacheEvictThreshold:   0.02,
 		CacheEvictVolume:      0.10,
 		MaxNodesSerialization: 2048,
-		MaxNodesRender:        2048,
-	}, prometheus.NewRegistry())
+	}), prometheus.NewRegistry())
 }
 
 func main() {

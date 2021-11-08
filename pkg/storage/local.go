@@ -105,7 +105,7 @@ func (s *Storage) PutLocal(po *PutInput) error {
 	varint.Write(&buf, uint64(len(mb)))
 	buf.Write(mb)
 
-	if err := t.SerializeNoDict(s.config.MaxNodesSerialization, &buf); err != nil {
+	if err := t.SerializeNoDict(s.config.maxNodesSerialization, &buf); err != nil {
 		return err
 	}
 
