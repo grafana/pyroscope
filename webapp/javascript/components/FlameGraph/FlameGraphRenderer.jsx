@@ -11,7 +11,7 @@ import { Option } from 'prelude-ts';
 import Graph from './FlameGraphComponent';
 import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
-import ProfilerHeader from '../ProfilerHeader';
+import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
 
 import ExportData from '../ExportData';
@@ -47,7 +47,7 @@ class FlameGraphRenderer extends React.Component {
   constructor(props) {
     super();
     this.state = {
-      resetStyle: { visibility: 'hidden' },
+      isFlamegraphDirty: false,
       sortBy: 'self',
       sortByDirection: 'desc',
       view: 'both',
@@ -111,7 +111,7 @@ class FlameGraphRenderer extends React.Component {
 
     // flamegraph configs changed
     if (prevState.flamegraphConfigs !== this.state.flamegraphConfigs) {
-      this.updateResetStyle();
+      this.updateFlamegraphDirtiness();
     }
   }
 
@@ -125,13 +125,11 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateResetStyle = () => {
+  updateFlamegraphDirtiness = () => {
     const isDirty = this.isDirty();
 
-    // TODO(eh-am): this is a bad idea
-    // let's use disabled instead
     this.setState({
-      resetStyle: { visibility: isDirty ? 'visible' : 'hidden' },
+      isFlamegraphDirty: isDirty,
     });
   };
 
@@ -139,7 +137,6 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       highlightQuery: e,
     });
-    //    this.updateResetStyle();
   };
 
   onReset = () => {
@@ -191,9 +188,10 @@ class FlameGraphRenderer extends React.Component {
     let flamegraphConfigs = { ...this.state.flamegraphConfigs };
 
     // reset zoom if we are focusing below the zoom
+    // or the same one we were zoomed
     const { zoom } = this.state.flamegraphConfigs;
     if (zoom.isSome()) {
-      if (zoom.get().i < i) {
+      if (zoom.get().i <= i) {
         flamegraphConfigs = {
           ...flamegraphConfigs,
           zoom: this.initialFlamegraphState.zoom,
@@ -319,6 +317,7 @@ class FlameGraphRenderer extends React.Component {
           view={this.state.view}
           viewDiff={this.state.viewDiff}
           fitMode={this.state.fitMode}
+          isFlamegraphDirty={this.state.isFlamegraphDirty}
         />
       </div>
     );
@@ -334,7 +333,7 @@ class FlameGraphRenderer extends React.Component {
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
           ExportData={ExportData}
-          query={this.state.highlightQuery}
+          highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
           zoom={this.state.flamegraphConfigs.zoom}
@@ -363,16 +362,20 @@ class FlameGraphRenderer extends React.Component {
         })}
       >
         <div className="canvas-container">
-          <ProfilerHeader
+          <Toolbar
             view={this.state.view}
             viewDiff={this.state.viewDiff}
             handleSearchChange={this.handleSearchChange}
             reset={this.onReset}
             updateView={this.updateView}
             updateViewDiff={this.updateViewDiff}
-            resetStyle={this.state.resetStyle}
             updateFitMode={this.updateFitMode}
             fitMode={this.state.fitMode}
+            isFlamegraphDirty={this.state.isFlamegraphDirty}
+            selectedNode={this.state.flamegraphConfigs.zoom}
+            onFocusOnSubtree={(i, j) => {
+              this.onFocusOnNode(i, j);
+            }}
           />
           {this.props.viewType === 'double' ? (
             <>

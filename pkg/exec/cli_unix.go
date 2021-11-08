@@ -10,15 +10,14 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/shirou/gopsutil/process"
 	"github.com/sirupsen/logrus"
-
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func adjustCmd(cmd *goexec.Cmd, cfg config.Exec) error {
+func adjustCmd(cmd *goexec.Cmd, cfg Config) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	// permissions drop
-	if isRoot() && !cfg.NoRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
+	if isRoot() && !cfg.noRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
 		creds, err := generateCredentialsDrop()
 		if err != nil {
 			logrus.Errorf("failed to drop permissions, %q", err)
@@ -27,8 +26,8 @@ func adjustCmd(cmd *goexec.Cmd, cfg config.Exec) error {
 		}
 	}
 
-	if cfg.UserName != "" || cfg.GroupName != "" {
-		creds, err := generateCredentials(cfg.UserName, cfg.GroupName)
+	if cfg.userName != "" || cfg.groupName != "" {
+		creds, err := generateCredentials(cfg.userName, cfg.groupName)
 		if err != nil {
 			logrus.Errorf("failed to generate credentials: %q", err)
 		} else {
@@ -104,9 +103,22 @@ func generateCredentials(userName, groupName string) (*syscall.Credential, error
 }
 
 func processExists(pid int) bool {
-	return nil == syscall.Kill(pid, 0)
+	p, err := process.NewProcess(int32(pid))
+	if err != nil {
+		return false
+	}
+
+	s, err := p.Status()
+	if err != nil {
+		return false
+	}
+
+	return s != "Z"
 }
 
 func sendSignal(p *os.Process, s os.Signal) error {
-	return p.Signal(s)
+	if s != syscall.SIGCHLD {
+		return p.Signal(s)
+	}
+	return nil
 }
