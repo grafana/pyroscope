@@ -223,24 +223,6 @@ func (s *Storage) flushTreeBatch(batch *badger.WriteBatch) (*badger.WriteBatch, 
 	}
 }
 
-func (s *Storage) validSegmentKeys() ([]*segment.Key, error) {
-	keys := make([]*segment.Key, 0)
-	return keys, s.segments.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.IteratorOptions{
-			Prefix: segmentPrefix.bytes(),
-		})
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			if k, ok := segmentPrefix.trim(it.Item().Key()); ok {
-				if key, err := segment.ParseKey(string(k)); err == nil {
-					keys = append(keys, key)
-				}
-			}
-		}
-		return nil
-	})
-}
-
 func (s *Storage) iterateOverAllSegments(cb func(*segment.Key) error) error {
 	nameKey := "__name__"
 

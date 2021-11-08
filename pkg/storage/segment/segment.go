@@ -156,7 +156,7 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, relationship *
 	}
 
 	// inside or overlap
-	if sn.present && len(sn.children) == 0 { // sn.isLeaf() {
+	if sn.present && sn.isLeaf() {
 		// TODO: I did not test this logic as extensively as I would love to.
 		//   See https://github.com/pyroscope-io/pyroscope/issues/28 for more context and ideas on what to do
 		cb(sn, sn.overlapRead(st, et))
