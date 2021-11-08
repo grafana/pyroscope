@@ -664,7 +664,7 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "pyroscope_cpu_utilization{instance=\"$instance\"}",
+                     "expr": "process_cpu_seconds_total{instance=\"$instance\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "",
@@ -759,7 +759,7 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "(rate(pyroscope_storage_cache_reads_total[$__rate_interval])-\nrate(pyroscope_storage_cache_misses_total[$__rate_interval]))\n/\nrate(pyroscope_storage_cache_reads_total[$__rate_interval])\n",
+                     "expr": "(rate(pyroscope_storage_db_cache_reads_total[$__rate_interval])-\nrate(pyroscope_storage_db_cache_misses_total[$__rate_interval]))\n/\nrate(pyroscope_storage_db_cache_reads_total[$__rate_interval])\n",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "{{ name }}",
@@ -841,14 +841,14 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "rate(pyroscope_storage_cache_disk_writes_sum[$__rate_interval])*-1",
+                     "expr": "rate(pyroscope_storage_db_cache_write_bytes_sum[$__rate_interval])*-1",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "Writes - {{name}}",
                      "refId": "A"
                   },
                   {
-                     "expr": "rate(pyroscope_storage_cache_disk_reads_sum[$__rate_interval])",
+                     "expr": "rate(pyroscope_storage_db_cache_read_bytes_sum[$__rate_interval])",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "Reads - {{name}}",
@@ -1015,21 +1015,21 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "histogram_quantile(0.9, pyroscope_storage_evictions_duration_seconds_bucket)",
+                     "expr": "pyroscope_storage_eviction_task_duration_seconds{quantile=\"0.99\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "evictions",
                      "refId": "A"
                   },
                   {
-                     "expr": "histogram_quantile(0.9, pyroscope_storage_writeback_duration_seconds_bucket)",
+                     "expr": "pyroscope_storage_writeback_task_duration_seconds{quantile=\"0.99\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "write-back",
                      "refId": "B"
                   },
                   {
-                     "expr": "histogram_quantile(0.9, pyroscope_storage_retention_duration_seconds_bucket)",
+                     "expr": "pyroscope_storage_retention_task_duration_seconds{quantile=\"0.99\"}",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "retention",
@@ -1058,16 +1058,16 @@
                      "format": "seconds",
                      "label": null,
                      "logBase": 2,
-                     "max": "10",
-                     "min": "0.001",
+                     "max": null,
+                     "min": null,
                      "show": true
                   },
                   {
                      "format": "seconds",
                      "label": null,
                      "logBase": 1,
-                     "max": "10",
-                     "min": "0.001",
+                     "max": null,
+                     "min": null,
                      "show": true
                   }
                ]
@@ -1111,14 +1111,14 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "pyroscope_storage_disk_bytes",
+                     "expr": "pyroscope_storage_db_size_bytes",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "{{ name }}",
                      "refId": "A"
                   },
                   {
-                     "expr": "sum without(name)(pyroscope_storage_disk_bytes)",
+                     "expr": "sum without(name)(pyroscope_storage_db_size_bytes)",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "total",
@@ -1200,14 +1200,14 @@
                "steppedLine": false,
                "targets": [
                   {
-                     "expr": "pyroscope_storage_cache_size",
+                     "expr": "pyroscope_storage_db_cache_size",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "{{ name }}",
                      "refId": "A"
                   },
                   {
-                     "expr": "sum without(name)(pyroscope_storage_cache_size)",
+                     "expr": "sum without(name)(pyroscope_storage_db_cache_size)",
                      "format": "time_series",
                      "intervalFactor": 2,
                      "legendFormat": "total",
@@ -1249,95 +1249,6 @@
                      "show": true
                   }
                ]
-            },
-            {
-               "aliasColors": { },
-               "bars": false,
-               "dashLength": 10,
-               "dashes": false,
-               "datasource": "$PROMETHEUS_DS",
-               "fill": 1,
-               "fillGradient": 0,
-               "gridPos": { },
-               "id": 17,
-               "legend": {
-                  "alignAsTable": "true",
-                  "avg": false,
-                  "current": true,
-                  "max": true,
-                  "min": false,
-                  "rightSide": "true",
-                  "show": true,
-                  "sideWidth": null,
-                  "sort": "current",
-                  "sortDesc": true,
-                  "total": false,
-                  "values": "true"
-               },
-               "lines": true,
-               "linewidth": 1,
-               "links": [ ],
-               "nullPointMode": "null",
-               "percentage": false,
-               "pointradius": 5,
-               "points": false,
-               "renderer": "flot",
-               "repeat": null,
-               "seriesOverrides": [ ],
-               "spaceLength": 10,
-               "stack": false,
-               "steppedLine": false,
-               "targets": [
-                  {
-                     "expr": "pyroscope_storage_evictions_alloc_bytes",
-                     "format": "time_series",
-                     "intervalFactor": 2,
-                     "legendFormat": "heap size",
-                     "refId": "A"
-                  },
-                  {
-                     "expr": "pyroscope_storage_evictions_total_mem_bytes",
-                     "format": "time_series",
-                     "intervalFactor": 2,
-                     "legendFormat": "total memory",
-                     "refId": "B"
-                  }
-               ],
-               "thresholds": [ ],
-               "timeFrom": null,
-               "timeShift": null,
-               "title": "Cache Size (Approximation)",
-               "tooltip": {
-                  "shared": true,
-                  "sort": 0,
-                  "value_type": "individual"
-               },
-               "type": "graph",
-               "xaxis": {
-                  "buckets": null,
-                  "mode": "time",
-                  "name": null,
-                  "show": true,
-                  "values": [ ]
-               },
-               "yaxes": [
-                  {
-                     "format": "bytes",
-                     "label": null,
-                     "logBase": 2,
-                     "max": null,
-                     "min": null,
-                     "show": true
-                  },
-                  {
-                     "format": "bytes",
-                     "label": null,
-                     "logBase": 1,
-                     "max": null,
-                     "min": null,
-                     "show": true
-                  }
-               ]
             }
          ],
          "repeat": null,
@@ -1361,7 +1272,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 18,
+               "id": 17,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1490,7 +1401,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 19,
+               "id": 18,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1598,7 +1509,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 20,
+               "id": 19,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1685,7 +1596,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 21,
+               "id": 20,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1765,7 +1676,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 22,
+               "id": 21,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1845,7 +1756,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 23,
+               "id": 22,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -1925,7 +1836,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 24,
+               "id": 23,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -2005,7 +1916,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 25,
+               "id": 24,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -2085,7 +1996,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 26,
+               "id": 25,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,
@@ -2165,7 +2076,7 @@
                "fill": 1,
                "fillGradient": 0,
                "gridPos": { },
-               "id": 27,
+               "id": 26,
                "legend": {
                   "alignAsTable": false,
                   "avg": false,

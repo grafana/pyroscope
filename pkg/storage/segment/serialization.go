@@ -12,7 +12,7 @@ import (
 )
 
 // serialization format version. it's not very useful right now, but it will be in the future
-const currentVersion = 2
+const currentVersion = 3
 
 func (s *Segment) populateFromMetadata(metadata map[string]interface{}) {
 	if v, ok := metadata["sampleRate"]; ok {
@@ -43,10 +43,12 @@ func (s *Segment) Serialize(w io.Writer) error {
 	defer s.m.RUnlock()
 
 	vw := varint.NewWriter()
-
-	vw.Write(w, currentVersion)
-
-	serialization.WriteMetadata(w, s.generateMetadata())
+	if _, err := vw.Write(w, currentVersion); err != nil {
+		return err
+	}
+	if err := serialization.WriteMetadata(w, s.generateMetadata()); err != nil {
+		return err
+	}
 
 	if s.root == nil {
 		return nil
@@ -82,7 +84,8 @@ func (s *Segment) Serialize(w io.Writer) error {
 		vw.Write(w, uint64(l))
 		nodes = append(r, nodes...)
 	}
-	return nil
+
+	return s.watermarks.serialize(w)
 }
 
 var errMaxDepth = errors.New("depth is too high")
@@ -101,6 +104,7 @@ func Deserialize(r io.Reader) (*Segment, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	s.populateFromMetadata(metadata)
 
 	parents := []*streeNode{nil}
@@ -158,6 +162,12 @@ func Deserialize(r io.Reader) (*Segment, error) {
 		parents = append(r, parents...)
 	}
 
+	if version >= 3 {
+		if err = deserializeWatermarks(br, &s.watermarks); err != nil {
+			return nil, err
+		}
+	}
+
 	return s, nil
 }
 
@@ -171,4 +181,48 @@ func (s *Segment) Bytes() ([]byte, error) {
 
 func FromBytes(p []byte) (*Segment, error) {
 	return Deserialize(bytes.NewReader(p))
+}
+
+func (w watermarks) serialize(dst io.Writer) error {
+	vw := varint.NewWriter()
+	if _, err := vw.Write(dst, uint64(w.absoluteTime.UTC().Unix())); err != nil {
+		return err
+	}
+	if _, err := vw.Write(dst, uint64(len(w.levels))); err != nil {
+		return err
+	}
+	for k, v := range w.levels {
+		if _, err := vw.Write(dst, uint64(k)); err != nil {
+			return err
+		}
+		if _, err := vw.Write(dst, uint64(v.UTC().Unix())); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func deserializeWatermarks(r io.ByteReader, w *watermarks) error {
+	a, err := varint.Read(r)
+	if err != nil {
+		return err
+	}
+	w.absoluteTime = time.Unix(int64(a), 0).UTC()
+	l, err := varint.Read(r)
+	if err != nil {
+		return err
+	}
+	levels := int(l)
+	for i := 0; i < levels; i++ {
+		k, err := varint.Read(r)
+		if err != nil {
+			return err
+		}
+		v, err := varint.Read(r)
+		if err != nil {
+			return err
+		}
+		w.levels[int(k)] = time.Unix(int64(v), 0).UTC()
+	}
+	return nil
 }

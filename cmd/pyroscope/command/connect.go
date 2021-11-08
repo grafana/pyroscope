@@ -16,7 +16,7 @@ func newConnectCmd(cfg *config.Exec) *cobra.Command {
 
 		DisableFlagParsing: true,
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
-			return exec.Cli(cfg, args)
+			return exec.Cli(exec.NewConfig(cfg).WithConnect(), args)
 		}),
 	}
 

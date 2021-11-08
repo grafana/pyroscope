@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width" />
     <title>Pyroscope</title>
     <link rel="stylesheet" href="/assets/styles.<%= webpack.hash %>.css" />
+    <link rel="stylesheet" href="/assets/app.<%= webpack.hash %>.css" />
     {{- if .BaseURL }}
     <base href="{{ .BaseURL }}" />
     {{- end }} {{ .ExtraMetadata }} <%= extra_metadata %>
