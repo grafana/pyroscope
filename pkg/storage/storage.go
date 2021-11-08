@@ -11,7 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -23,7 +22,7 @@ var (
 )
 
 type Storage struct {
-	config *config.Server
+	config *Config
 	*storageOptions
 
 	logger *logrus.Logger
@@ -75,7 +74,7 @@ type SampleObserver interface {
 	Observe(k []byte, v int)
 }
 
-func New(c *config.Server, logger *logrus.Logger, reg prometheus.Registerer) (*Storage, error) {
+func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage, error) {
 	s := &Storage{
 		config: c,
 		storageOptions: &storageOptions{
@@ -225,8 +224,8 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		defer timer.ObserveDuration()
 		runtime.ReadMemStats(&m)
 		used := float64(m.Alloc) / float64(memTotal)
-		percent := s.config.CacheEvictVolume
-		if used < s.config.CacheEvictThreshold {
+		percent := s.config.cacheEvictVolume
+		if used < s.config.cacheEvictThreshold {
 			return
 		}
 		// Dimensions, dictionaries, and segments should not be evicted,
@@ -278,10 +277,10 @@ func (s *Storage) retentionTask() {
 
 func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
 	return segment.NewRetentionPolicy().
-		SetAbsolutePeriod(s.config.Retention).
-		SetLevelPeriod(0, s.config.RetentionLevels.Zero).
-		SetLevelPeriod(1, s.config.RetentionLevels.One).
-		SetLevelPeriod(2, s.config.RetentionLevels.Two)
+		SetAbsolutePeriod(s.config.retention).
+		SetLevelPeriod(0, s.config.retentionLevels.Zero).
+		SetLevelPeriod(1, s.config.retentionLevels.One).
+		SetLevelPeriod(2, s.config.retentionLevels.Two)
 }
 
 func (s *Storage) databases() []*db {

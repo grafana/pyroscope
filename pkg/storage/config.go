@@ -15,6 +15,7 @@ type Config struct {
 	maxNodesSerialization int
 	retention             time.Duration
 	hideApplications      []string
+	retentionLevels       config.RetentionLevels
 }
 
 // NewConfig returns a new storage config from a server config
@@ -27,6 +28,7 @@ func NewConfig(server *config.Server) *Config {
 		cacheEvictVolume:      server.CacheEvictVolume,
 		maxNodesSerialization: server.MaxNodesSerialization,
 		retention:             server.Retention,
+		retentionLevels:       server.RetentionLevels,
 		hideApplications:      server.HideApplications,
 	}
 }

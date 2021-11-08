@@ -121,7 +121,7 @@ func (s *Storage) GetKeys(cb func(string) bool) { s.labels.GetKeys(cb) }
 //revive:disable-next-line:get-return callback is used
 func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
-		if key != "__name__" || !slices.StringContains(s.config.HideApplications, v) {
+		if key != "__name__" || !slices.StringContains(s.config.hideApplications, v) {
 			return cb(v)
 		}
 		return true
