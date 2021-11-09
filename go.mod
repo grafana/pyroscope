@@ -42,10 +42,12 @@ require (
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/morikuni/aec v1.0.0 // indirect
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.29.0
+	github.com/prometheus/prometheus v2.5.0+incompatible
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rlmcpherson/s3gof3r v0.5.0
