@@ -9,7 +9,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO get this from parameters?
 type Controller struct {
 	log        *logrus.Logger
 	svc        *AdminService
@@ -51,8 +50,6 @@ func (ctrl *Controller) Start() error {
 		return err
 	}
 
-	// TODO
-	// is this blocking?
 	return adminServer.Serve(adminListener)
 }
 
