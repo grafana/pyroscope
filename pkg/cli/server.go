@@ -128,6 +128,11 @@ func (svc *serverService) Start() error {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
 	}
 
+	g.Go(func() error {
+		svc.logger.Info("starting admin server")
+		return svc.adminController.Start()
+	})
+
 	defer close(svc.done)
 	select {
 	case <-svc.stopped:
