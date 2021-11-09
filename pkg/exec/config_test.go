@@ -34,7 +34,7 @@ var _ = Describe("Exec config", func() {
 
 		It("NewConfig returns exec config", func() {
 			c := NewConfig(&cfg)
-			Expect(c.kind).To(Equal(exec))
+			Expect(c.mode).To(Equal(modeExec))
 			Expect(c.spyName).To(Equal("spy-name"))
 			Expect(c.applicationName).To(Equal("application-name"))
 			Expect(c.sampleRate).To(Equal(uint32(100)))
@@ -56,7 +56,7 @@ var _ = Describe("Exec config", func() {
 
 		It("WithConnect returns connect config", func() {
 			c := NewConfig(&cfg).WithConnect()
-			Expect(c.kind).To(Equal(connect))
+			Expect(c.mode).To(Equal(modeConnect))
 		})
 	})
 
