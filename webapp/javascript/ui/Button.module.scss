@@ -1,0 +1,100 @@
+// Variables were intentionally scoped
+// So that we can later refactor into a common variables.scss
+$btn-default-color: #272727; // grey
+$btn-primary-color: #2ecc40; // green
+$btn-secondary-color: #0074d9; // azul
+
+$border-color: #4d4d4d;
+
+$border: 1px solid $border-color;
+$border-radius: 4px;
+
+$light-text: #fff;
+$dark-text: #222;
+
+.button {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  border: $border;
+  border-radius: $border-radius;
+
+  /* when we have an icon only button */
+  //min-width: 48px;
+}
+
+.iconWithText {
+  // icon is on the left
+  // some space between the icon and text
+  margin-right: 5px;
+}
+
+.default {
+  background: $btn-default-color;
+
+  &:hover:not(:disabled) {
+    background-color: lighten($btn-default-color, 10%);
+  }
+
+  &:disabled {
+    color: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+  }
+}
+
+.primary {
+  color: $dark-text;
+  background-color: $btn-primary-color;
+  border-left-color: $btn-primary-color;
+  border-right-color: $btn-primary-color;
+  border-top-color: $btn-primary-color;
+  border-bottom-color: $btn-primary-color;
+
+  &:hover {
+    background-color: lighten($btn-primary-color, 10%);
+  }
+  &:disabled {
+    border-color: lighten($btn-primary-color, 20%);
+    background-color: lighten($btn-primary-color, 20%);
+    pointer-events: none;
+  }
+}
+
+.secondary {
+  background-color: $btn-secondary-color;
+  border-left-color: $btn-secondary-color;
+  border-right-color: $btn-secondary-color;
+  border-top-color: $btn-secondary-color;
+  border-bottom-color: $btn-secondary-color;
+
+  &:hover {
+    background-color: lighten($btn-secondary-color, 10%);
+  }
+  &:disabled {
+    border-color: lighten($btn-secondary-color, 20%);
+    background-color: lighten($btn-secondary-color, 20%);
+    pointer-events: none;
+  }
+}
+
+// only the first and last elements should have styling
+.grouped {
+  margin: 0;
+  border-right: 0;
+  border-radius: 0;
+
+  // give it a bit more room to breath
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.grouped:first-child {
+  border-left: $border;
+
+  border-radius: $border-radius 0 0 $border-radius;
+}
+.grouped:last-child {
+  border-right: $border;
+
+  border-radius: 0 $border-radius $border-radius 0;
+}

@@ -9,8 +9,10 @@
     "sourceMap": true,
     "paths": {
       "@utils/*": ["./webapp/javascript/util/*"],
-      "@models/*": ["./webapp/javascript/models/*"]
-    }
+      "@models/*": ["./webapp/javascript/models/*"],
+      "@ui/*": ["./webapp/javascript/ui/*"]
+    },
+    "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
   "exclude": ["node_modules"]
 }

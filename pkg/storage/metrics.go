@@ -8,115 +8,106 @@ import (
 )
 
 type metrics struct {
-	writesTotal prometheus.Counter
-	readsTotal  prometheus.Counter
+	putTotal              prometheus.Counter
+	getTotal              prometheus.Counter
+	retentionTaskDuration prometheus.Summary
+	evictionTaskDuration  prometheus.Summary
+	writeBackTaskDuration prometheus.Summary
 
-	retentionTimer   prometheus.Histogram
-	badgerCloseTimer prometheus.Histogram
+	dbSize    *prometheus.GaugeVec
+	cacheSize *prometheus.GaugeVec
+	gcCount   *prometheus.CounterVec
 
-	// TODO: I think we should make metrics below db-specific.
-	//  Perhaps, we could even move those to cache metrics.
+	cacheMisses   *prometheus.CounterVec
+	cacheReads    *prometheus.CounterVec
+	cacheDBWrites *prometheus.HistogramVec
+	cacheDBReads  *prometheus.HistogramVec
 
-	evictionsTimer      prometheus.Histogram
-	evictionsAllocBytes prometheus.Gauge
-	evictionsTotalBytes prometheus.Gauge
-
-	writeBackTimer prometheus.Histogram
-
-	cacheFlushTimer prometheus.Histogram
+	evictionsDuration *prometheus.SummaryVec
+	writeBackDuration *prometheus.SummaryVec
 }
 
-type cacheMetrics struct {
-	missCounterMetrics        *prometheus.CounterVec
-	storageReadCounterMetrics *prometheus.CounterVec
-	diskWritesCounterMetrics  *prometheus.HistogramVec
-	diskReadsCounterMetrics   *prometheus.HistogramVec
-}
-
-func newStorageMetrics(r prometheus.Registerer) *metrics {
+func newMetrics(r prometheus.Registerer) *metrics {
+	name := []string{"name"}
 	return &metrics{
-		writesTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
+		putTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_storage_writes_total",
 			Help: "number of calls to storage.Put",
 		}),
-		readsTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
+		getTotal: promauto.With(r).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_storage_reads_total",
 			Help: "number of calls to storage.Get",
 		}),
 
-		// Evictions
-		evictionsTimer: promauto.With(r).NewHistogram(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_evictions_duration_seconds",
-			Help:    "duration of evictions (triggered when there's memory pressure)",
-			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		retentionTaskDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_retention_task_duration_seconds",
+			Help:       "duration of old data deletion",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
-		// The following 2 metrics are somewhat broad
-		// Nevertheless they are still useful to grasp evictions
-		evictionsAllocBytes: promauto.With(r).NewGauge(prometheus.GaugeOpts{
-			Name: "pyroscope_storage_evictions_alloc_bytes",
-			Help: "number of bytes allocated in the heap",
+		evictionTaskDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_eviction_task_duration_seconds",
+			Help:       "duration of evictions (triggered when there's memory pressure)",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
-		evictionsTotalBytes: promauto.With(r).NewGauge(prometheus.GaugeOpts{
-			Name: "pyroscope_storage_evictions_total_mem_bytes",
-			Help: "total number of memory bytes",
-		}),
-
-		cacheFlushTimer: promauto.With(r).NewHistogram(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_caches_flush_duration_seconds",
-			Help:    "duration of storage caches flush (triggered when server is closing)",
-			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
-		}),
-		badgerCloseTimer: promauto.With(r).NewHistogram(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_db_close_duration_seconds",
-			Help:    "duration of db close (triggered when server is closing)",
-			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		writeBackTaskDuration: promauto.With(r).NewSummary(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_writeback_task_duration_seconds",
+			Help:       "duration of write-back writes (triggered periodically)",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		}),
 
-		writeBackTimer: promauto.With(r).NewHistogram(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_writeback_duration_seconds",
-			Help:    "duration of write-back writes (triggered periodically)",
-			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
-		}),
-		retentionTimer: promauto.With(r).NewHistogram(prometheus.HistogramOpts{
-			Name: "pyroscope_storage_retention_duration_seconds",
-			Help: "duration of old data deletion",
-			// TODO what buckets to use here?
-			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
-		}),
-	}
-}
+		dbSize: promauto.With(r).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "pyroscope_storage_db_size_bytes",
+			Help: "size of items in disk",
+		}, name),
+		gcCount: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscope_storage_db_gc_total",
+			Help: "number of GC runs",
+		}, name),
+		cacheSize: promauto.With(r).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "pyroscope_storage_db_cache_size",
+			Help: "number of items in cache",
+		}, name),
 
-func newCacheMetrics(r prometheus.Registerer) cacheMetrics {
-	partitionBy := []string{"name"}
-	return cacheMetrics{
-		missCounterMetrics: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_storage_cache_misses_total",
+		cacheDBWrites: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "pyroscope_storage_db_cache_write_bytes",
+			Help:    "bytes written to db from cache",
+			Buckets: prometheus.ExponentialBuckets(1024, 2, 10),
+		}, name),
+		cacheDBReads: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
+			Name:    "pyroscope_storage_db_cache_read_bytes",
+			Help:    "bytes read from db to cache",
+			Buckets: prometheus.ExponentialBuckets(1024, 2, 10),
+		}, name),
+
+		cacheMisses: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscope_storage_db_cache_misses_total",
 			Help: "total number of cache misses",
-		}, partitionBy),
-		storageReadCounterMetrics: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
-			Name: "pyroscope_storage_cache_reads_total",
-			Help: "total number of cache queries",
-		}, partitionBy),
+		}, name),
+		cacheReads: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
+			Name: "pyroscope_storage_db_cache_reads_total",
+			Help: "total number of cache reads",
+		}, name),
 
-		diskWritesCounterMetrics: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_cache_disk_writes",
-			Help:    "items unloaded from cache to disk",
-			Buckets: []float64{1 << 10, 1 << 12, 1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22, 1 << 24, 1 << 26},
-		}, partitionBy),
-		diskReadsCounterMetrics: promauto.With(r).NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "pyroscope_storage_cache_disk_reads",
-			Help:    "items loaded from disk to cache",
-			Buckets: []float64{1 << 10, 1 << 12, 1 << 14, 1 << 16, 1 << 18, 1 << 20, 1 << 22, 1 << 24, 1 << 26},
-		}, partitionBy),
+		evictionsDuration: promauto.With(r).NewSummaryVec(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_cache_evictions_duration_seconds",
+			Help:       "duration of evictions (triggered when there's memory pressure)",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}, name),
+		writeBackDuration: promauto.With(r).NewSummaryVec(prometheus.SummaryOpts{
+			Name:       "pyroscope_storage_cache_writeback_duration_seconds",
+			Help:       "duration of write-back writes (triggered periodically)",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}, name),
 	}
 }
 
-func (m cacheMetrics) createInstance(name string) cache.Metrics {
-	l := prometheus.Labels{"name": name}
-	return cache.Metrics{
-		MissCounter:         m.missCounterMetrics.With(l),
-		ReadCounter:         m.storageReadCounterMetrics.With(l),
-		DiskWritesHistogram: m.diskWritesCounterMetrics.With(l),
-		DiskReadsHistogram:  m.diskReadsCounterMetrics.With(l),
+func (m *metrics) createCacheMetrics(name string) *cache.Metrics {
+	return &cache.Metrics{
+		MissesCounter:     m.cacheMisses.WithLabelValues(name),
+		ReadsCounter:      m.cacheReads.WithLabelValues(name),
+		DBWrites:          m.cacheDBWrites.WithLabelValues(name),
+		DBReads:           m.cacheDBReads.WithLabelValues(name),
+		EvictionsDuration: m.evictionsDuration.WithLabelValues(name),
+		WriteBackDuration: m.writeBackDuration.WithLabelValues(name),
 	}
 }

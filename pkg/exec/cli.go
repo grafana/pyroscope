@@ -20,35 +20,35 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
 
 // used in tests
-var disableMacOSChecks bool
-var disableLinuxChecks bool
+var (
+	disableMacOSChecks bool
+	disableLinuxChecks bool
+)
+
+// TODO(kolesnikovae): separate exec and connect.
 
 // Cli is command line interface for both exec and connect commands
-func Cli(cfg *config.Exec, args []string) error {
-	// isExec = true means we need to start the process first (pyroscope exec)
-	// isExec = false means the process is already there (pyroscope connect)
-	isExec := cfg.Pid == 0
-
-	if isExec {
+func Cli(cfg *Config, args []string) error {
+	if cfg.mode == modeExec {
 		if len(args) == 0 {
 			return errors.New("no arguments passed")
 		}
-	} else if (cfg.Pid != -1 && cfg.SpyName == "ebpfspy") && !processExists(cfg.Pid) {
+	} else if (cfg.pid != -1 && cfg.spyName == "ebpfspy") && !process.Exists(cfg.pid) {
 		return errors.New("process not found")
 	}
 
 	// TODO: this is somewhat hacky, we need to find a better way to configure agents
-	pyspy.Blocking = cfg.PyspyBlocking
-	rbspy.Blocking = cfg.RbspyBlocking
+	pyspy.Blocking = cfg.pyspyBlocking
+	rbspy.Blocking = cfg.rbspyBlocking
 
-	spyName := cfg.SpyName
+	spyName := cfg.spyName
 	if spyName == "auto" {
-		if isExec {
+		if cfg.mode == modeExec {
 			baseName := path.Base(args[0])
 			spyName = spy.ResolveAutoName(baseName)
 			if spyName == "" {
@@ -80,31 +80,23 @@ func Cli(cfg *config.Exec, args []string) error {
 	if err := performChecks(spyName); err != nil {
 		return err
 	}
-	if cfg.NoLogging {
-		logrus.SetLevel(logrus.PanicLevel)
-	} else if l, err := logrus.ParseLevel(cfg.LogLevel); err == nil {
-		logrus.SetLevel(l)
+	logrus.SetLevel(cfg.logLevel)
+	if cfg.logLevel != logrus.PanicLevel {
 		logrus.Info("to disable logging from pyroscope, specify " + color.YellowString("-no-logging") + " flag")
 	}
 
-	if cfg.ApplicationName == "" {
+	if cfg.applicationName == "" {
 		logrus.Infof("we recommend specifying application name via %s flag or env variable %s",
 			color.YellowString("-application-name"), color.YellowString("PYROSCOPE_APPLICATION_NAME"))
-		cfg.ApplicationName = spyName + "." + names.GetRandomName(generateSeed(args))
-		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.ApplicationName))
+		cfg.applicationName = spyName + "." + names.GetRandomName(generateSeed(args))
+		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.applicationName))
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"args": fmt.Sprintf("%q", args),
 	}).Debug("starting command")
 
-	rc := remote.RemoteConfig{
-		AuthToken:              cfg.AuthToken,
-		UpstreamAddress:        cfg.ServerAddress,
-		UpstreamThreads:        cfg.UpstreamThreads,
-		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
-	}
-	u, err := remote.New(rc, logrus.StandardLogger())
+	u, err := remote.New(cfg.RemoteConfig, logrus.StandardLogger())
 	if err != nil {
 		return fmt.Errorf("new remote upstream: %v", err)
 	}
@@ -114,9 +106,9 @@ func Cli(cfg *config.Exec, args []string) error {
 	// the expected signal rate (in case of Exec all the signals to be relayed
 	// to the child process)
 	c := make(chan os.Signal, 10)
-	pid := cfg.Pid
+	pid := cfg.pid
 	var cmd *goexec.Cmd
-	if isExec {
+	if cfg.mode == modeExec {
 		// Note that we don't specify which signals to be sent: any signal to be
 		// relayed to the child process (including SIGINT and SIGTERM).
 		signal.Notify(c)
@@ -140,27 +132,22 @@ func Cli(cfg *config.Exec, args []string) error {
 	}()
 
 	logrus.WithFields(logrus.Fields{
-		"app-name":            cfg.ApplicationName,
+		"app-name":            cfg.applicationName,
 		"spy-name":            spyName,
 		"pid":                 pid,
-		"detect-subprocesses": cfg.DetectSubprocesses,
+		"detect-subprocesses": cfg.detectSubprocesses,
 	}).Debug("starting agent session")
-
-	// if the sample rate is zero, use the default value
-	if cfg.SampleRate == 0 {
-		cfg.SampleRate = types.DefaultSampleRate
-	}
 
 	sc := agent.SessionConfig{
 		Upstream:         u,
-		AppName:          cfg.ApplicationName,
-		Tags:             cfg.Tags,
+		AppName:          cfg.applicationName,
+		Tags:             cfg.tags,
 		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
 		SpyName:          spyName,
-		SampleRate:       uint32(cfg.SampleRate),
+		SampleRate:       cfg.sampleRate,
 		UploadRate:       10 * time.Second,
 		Pid:              pid,
-		WithSubprocesses: cfg.DetectSubprocesses,
+		WithSubprocesses: cfg.detectSubprocesses,
 		Logger:           logrus.StandardLogger(),
 	}
 	session, err := agent.NewSession(sc)
@@ -172,7 +159,7 @@ func Cli(cfg *config.Exec, args []string) error {
 	}
 	defer session.Stop()
 
-	if isExec {
+	if cfg.mode == modeExec {
 		return waitForSpawnedProcessToExit(c, cmd)
 	}
 
@@ -186,9 +173,9 @@ func waitForSpawnedProcessToExit(c chan os.Signal, cmd *goexec.Cmd) error {
 	for {
 		select {
 		case s := <-c:
-			_ = sendSignal(cmd.Process, s)
+			_ = process.SendSignal(cmd.Process, s)
 		case <-ticker.C:
-			if !processExists(cmd.Process.Pid) {
+			if !process.Exists(cmd.Process.Pid) {
 				logrus.Debug("child process exited")
 				return cmd.Wait()
 			}
@@ -209,7 +196,7 @@ func waitForProcessToExit(c chan os.Signal, pid int) {
 		case <-c:
 			return
 		case <-ticker.C:
-			if !processExists(pid) {
+			if !process.Exists(pid) {
 				logrus.Debug("child process exited")
 				return
 			}
