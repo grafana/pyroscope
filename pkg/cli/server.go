@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/pyroscope-io/pyroscope/pkg/admin"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
@@ -32,6 +33,7 @@ type serverService struct {
 	selfProfiling    *agent.ProfileSession
 	debugReporter    *debug.Reporter
 	healthController *health.Controller
+	adminController  *admin.Controller
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -74,6 +76,11 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		SampleRate:     100,
 		UploadRate:     10 * time.Second,
 		Logger:         logger,
+	})
+
+	// TODO check if we want to disable this
+	svc.adminController = admin.NewController(admin.Config{
+		Logger: svc.logger,
 	})
 
 	svc.controller, err = server.New(server.Config{
@@ -121,6 +128,11 @@ func (svc *serverService) Start() error {
 	if err := svc.storage.CollectLocalProfiles(); err != nil {
 		svc.logger.WithError(err).Error("failed to collect local profiles")
 	}
+
+	g.Go(func() error {
+		svc.logger.Info("starting admin server")
+		return svc.adminController.Start()
+	})
 
 	defer close(svc.done)
 	select {
