@@ -115,7 +115,8 @@ type Server struct {
 
 	// TODO(eh-am): this is not where I want to put it
 	// but /var/run requires root
-	AdminSocketPath string `def:"<installPrefix>/tmp/pyroscope.sock" desc:"path where the admin UDS will be created" mapstructure:"admin-socket-path"`
+	AdminSocketPath         string `def:"<installPrefix>/tmp/pyroscope.sock" desc:"path where the admin UDS will be created" mapstructure:"admin-socket-path"`
+	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule
