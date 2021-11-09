@@ -126,10 +126,6 @@ func (d *db) size() bytesize.ByteSize {
 
 func (d *db) runGC(discardRatio float64) (reclaimed bool) {
 	d.logger.Debug("starting badger garbage collection")
-	// BadgerDB uses 2 compactors by default.
-	if err := d.Flatten(2); err != nil {
-		d.logger.WithError(err).Error("failed to flatten database")
-	}
 	for {
 		switch err := d.RunValueLogGC(discardRatio); err {
 		default:
