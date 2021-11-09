@@ -39,7 +39,7 @@ function createFF(viewType: 'single' | 'double') {
 }
 
 function deltaDiffWrapper(format, levels) {
-  let mutable_levels = levels;
+  let mutable_levels = [...levels];
 
   function deltaDiff(levels, start, step) {
     for (const level of levels) {
