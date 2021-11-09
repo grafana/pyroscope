@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -9,51 +10,57 @@ import (
 )
 
 // TODO get this from parameters?
-const socketAddr = "/tmp/pyroscope.sock"
 
 type Controller struct {
-	log   *logrus.Logger
-	close chan struct{}
+	log        *logrus.Logger
+	close      chan struct{}
+	svc        *AdminService
+	SocketAddr string
 }
 
 type Config struct {
+	SocketAddr string
 	*logrus.Logger
 }
 
-func NewController(c Config) *Controller {
-	ctrl := &Controller{
-		log:   c.Logger,
-		close: make(chan struct{}),
+func NewController(c Config, svc *AdminService) (*Controller, error) {
+	if c.SocketAddr == "" {
+		return nil, fmt.Errorf("A socket path must be defined")
 	}
 
-	return ctrl
+	ctrl := &Controller{
+		log:        c.Logger,
+		close:      make(chan struct{}),
+		SocketAddr: c.SocketAddr,
+		svc:        svc,
+	}
+
+	return ctrl, nil
 }
 
-func (c *Controller) Start() error {
-	if err := os.RemoveAll(socketAddr); err != nil {
+func (ctrl *Controller) Start() error {
+	if err := os.RemoveAll(ctrl.SocketAddr); err != nil {
 		return err
 	}
 
-	admin := &Admin{}
 	mux := http.NewServeMux()
 
 	// Routes
-	mux.HandleFunc("/foo", admin.GetApps)
+	mux.HandleFunc("/v1/apps", ctrl.GetApps)
 
 	adminServer := http.Server{Handler: mux}
-	adminListener, err := net.Listen("unix", socketAddr)
+	adminListener, err := net.Listen("unix", ctrl.SocketAddr)
 	if err != nil {
 		return err
 	}
 
 	// TODO
 	// is this blocking?
-	adminServer.Serve(adminListener)
-	return nil
+	return adminServer.Serve(adminListener)
 }
 
-type Admin struct{}
+func (ctrl *Controller) GetApps(w http.ResponseWriter, r *http.Request) {
+	appNames := ctrl.svc.GetAppNames()
 
-func (a *Admin) GetApps(w http.ResponseWriter, r *http.Request) {
-	println("get apps")
+	ctrl.writeResponseJSON(w, appNames)
 }

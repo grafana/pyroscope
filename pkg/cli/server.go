@@ -79,9 +79,13 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	})
 
 	// TODO check if we want to disable this
-	svc.adminController = admin.NewController(admin.Config{
-		Logger: svc.logger,
-	})
+	svc.adminController, err = admin.NewController(admin.Config{
+		Logger:     svc.logger,
+		SocketAddr: "/tmp/pyroscope.sock",
+	}, admin.NewService(svc.storage))
+	if err != nil {
+		return nil, fmt.Errorf("admin: %w", err)
+	}
 
 	svc.controller, err = server.New(server.Config{
 		Configuration:           svc.config,
