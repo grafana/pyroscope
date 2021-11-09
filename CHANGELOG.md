@@ -1,3 +1,23 @@
+## <small>0.2.5 (2021-11-09)</small>
+
+* fix: highlight in diff view (#498) ([fbb826a](https://github.com/pyroscope-io/pyroscope/commit/fbb826a)), closes [#498](https://github.com/pyroscope-io/pyroscope/issues/498)
+* fix: linking flags in the linux build system (#499) ([d7446be](https://github.com/pyroscope-io/pyroscope/commit/d7446be)), closes [#499](https://github.com/pyroscope-io/pyroscope/issues/499)
+* fix(agent): snapshotting error handling (#510) ([d0e477a](https://github.com/pyroscope-io/pyroscope/commit/d0e477a)), closes [#510](https://github.com/pyroscope-io/pyroscope/issues/510)
+* fix(exec): pyspy and rbspy are hanging in blocking mode (#436) ([653a1e3](https://github.com/pyroscope-io/pyroscope/commit/653a1e3)), closes [#436](https://github.com/pyroscope-io/pyroscope/issues/436)
+* docs: fix typo in deployment diagram ([297e3da](https://github.com/pyroscope-io/pyroscope/commit/297e3da))
+* docs: update deployment diagram for eBPF ([1620650](https://github.com/pyroscope-io/pyroscope/commit/1620650))
+* feat: segment level-based retention (#431) ([2a9834f](https://github.com/pyroscope-io/pyroscope/commit/2a9834f)), closes [#431](https://github.com/pyroscope-io/pyroscope/issues/431)
+* refactor(config): decouple internal config from public CLI config in exec and server/storage (#508) ([95ceb71](https://github.com/pyroscope-io/pyroscope/commit/95ceb71)), closes [#508](https://github.com/pyroscope-io/pyroscope/issues/508)
+* Components lib (#509) ([4b6ca15](https://github.com/pyroscope-io/pyroscope/commit/4b6ca15)), closes [#509](https://github.com/pyroscope-io/pyroscope/issues/509)
+* Improve text when there is no data available (#487) ([dcbc39f](https://github.com/pyroscope-io/pyroscope/commit/dcbc39f)), closes [#487](https://github.com/pyroscope-io/pyroscope/issues/487)
+* Make sidebar links (#489) ([44c5ac0](https://github.com/pyroscope-io/pyroscope/commit/44c5ac0)), closes [#489](https://github.com/pyroscope-io/pyroscope/issues/489)
+* Reduce bundle size (#496) ([4f8ed1b](https://github.com/pyroscope-io/pyroscope/commit/4f8ed1b)), closes [#496](https://github.com/pyroscope-io/pyroscope/issues/496)
+* Refactor toolbar/Add "focus on subtree" button (#495) ([b804d57](https://github.com/pyroscope-io/pyroscope/commit/b804d57)), closes [#495](https://github.com/pyroscope-io/pyroscope/issues/495)
+* remove unnecessary margin for the buttons (#505) ([2f0efaf](https://github.com/pyroscope-io/pyroscope/commit/2f0efaf)), closes [#505](https://github.com/pyroscope-io/pyroscope/issues/505)
+* chore: get rid of pdf export (#493) ([6879d45](https://github.com/pyroscope-io/pyroscope/commit/6879d45)), closes [#493](https://github.com/pyroscope-io/pyroscope/issues/493)
+
+
+
 ## <small>0.2.4 (2021-11-01)</small>
 
 * Fix sidebar getting out of sync (#488) ([29c0153](https://github.com/pyroscope-io/pyroscope/commit/29c0153)), closes [#488](https://github.com/pyroscope-io/pyroscope/issues/488)
