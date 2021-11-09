@@ -10,10 +10,8 @@ import (
 )
 
 // TODO get this from parameters?
-
 type Controller struct {
 	log        *logrus.Logger
-	close      chan struct{}
 	svc        *AdminService
 	SocketAddr string
 }
@@ -30,7 +28,6 @@ func NewController(c Config, svc *AdminService) (*Controller, error) {
 
 	ctrl := &Controller{
 		log:        c.Logger,
-		close:      make(chan struct{}),
 		SocketAddr: c.SocketAddr,
 		svc:        svc,
 	}
