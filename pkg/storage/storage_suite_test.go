@@ -5,12 +5,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	testing2 "github.com/pyroscope-io/pyroscope/pkg/testing"
+	testutils "github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
 func TestStorage(t *testing.T) {
-	testing2.SetupLogging()
+	testutils.SetupLogging()
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Storage Suite")

@@ -11,6 +11,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
@@ -101,8 +102,10 @@ var _ = Describe("stree", func() {
 				s := New()
 
 				keys := []string{}
-				r := s.DeleteDataBefore(testing.SimpleUTime(19), func(depth int, t time.Time) {
+				rp := &RetentionPolicy{AbsoluteTime: testing.SimpleTime(19)}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeTrue())
@@ -117,8 +120,10 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				r := s.DeleteDataBefore(testing.SimpleUTime(21), func(depth int, t time.Time) {
+				rp := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(21)}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeFalse())
@@ -135,8 +140,10 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(1020), testing.SimpleUTime(1029), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				r := s.DeleteDataBefore(testing.SimpleUTime(21), func(depth int, t time.Time) {
+				rp := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(21)}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeFalse())
@@ -153,8 +160,52 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
 				keys := []string{}
-				r := s.DeleteDataBefore(testing.SimpleUTime(200), func(depth int, t time.Time) {
+				rp := &RetentionPolicy{AbsoluteTime: testing.SimpleUTime(200)}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
+				})
+
+				Expect(r).To(BeTrue())
+				Expect(keys).To(ConsistOf([]string{
+					"1:0",
+					"0:10",
+					"0:20",
+				}))
+			})
+		})
+
+		Context("level-based retention", func() {
+			It("correctly deletes data partially", func() {
+				s := New()
+				s.Put(testing.SimpleUTime(10), testing.SimpleUTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+
+				keys := []string{}
+				rp := &RetentionPolicy{Levels: map[int]time.Time{0: time.Now()}}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
+				})
+
+				Expect(r).To(BeFalse())
+				Expect(s.root).ToNot(BeNil())
+				Expect(keys).To(ConsistOf([]string{
+					"0:10",
+					"0:20",
+				}))
+			})
+
+			It("correctly deletes data completely", func() {
+				s := New()
+				s.Put(testing.SimpleUTime(10), testing.SimpleUTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+
+				keys := []string{}
+				rp := &RetentionPolicy{Levels: map[int]time.Time{0: time.Now(), 1: time.Now()}}
+				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
+					return nil
 				})
 
 				Expect(r).To(BeTrue())

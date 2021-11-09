@@ -56,6 +56,7 @@ module.exports = {
       'core-js/library/fn': 'core-js/stable',
       '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
       '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
+      '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
     },
     modules: [
       'node_modules',
