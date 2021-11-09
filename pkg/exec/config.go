@@ -8,15 +8,15 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-type kind int
+type mode int
 
 const (
-	exec kind = iota
-	connect
+	modeExec mode = iota + 1
+	modeConnect
 )
 
 type Config struct {
-	kind     kind
+	mode     mode
 	logLevel logrus.Level
 
 	// Spies
@@ -55,7 +55,7 @@ func NewConfig(c *config.Exec) *Config {
 	}
 
 	return &Config{
-		kind:          exec,
+		mode:          modeExec,
 		logLevel:      logLevel,
 		pyspyBlocking: c.PyspyBlocking,
 		rbspyBlocking: c.RbspyBlocking,
@@ -78,6 +78,6 @@ func NewConfig(c *config.Exec) *Config {
 }
 
 func (c *Config) WithConnect() *Config {
-	c.kind = connect
+	c.mode = modeConnect
 	return c
 }

@@ -25,12 +25,16 @@ import (
 )
 
 // used in tests
-var disableMacOSChecks bool
-var disableLinuxChecks bool
+var (
+	disableMacOSChecks bool
+	disableLinuxChecks bool
+)
+
+// TODO(kolesnikovae): separate exec and connect.
 
 // Cli is command line interface for both exec and connect commands
 func Cli(cfg *Config, args []string) error {
-	if cfg.kind == exec {
+	if cfg.mode == modeExec {
 		if len(args) == 0 {
 			return errors.New("no arguments passed")
 		}
@@ -44,7 +48,7 @@ func Cli(cfg *Config, args []string) error {
 
 	spyName := cfg.spyName
 	if spyName == "auto" {
-		if cfg.kind == exec {
+		if cfg.mode == modeExec {
 			baseName := path.Base(args[0])
 			spyName = spy.ResolveAutoName(baseName)
 			if spyName == "" {
@@ -104,7 +108,7 @@ func Cli(cfg *Config, args []string) error {
 	c := make(chan os.Signal, 10)
 	pid := cfg.pid
 	var cmd *goexec.Cmd
-	if cfg.kind == exec {
+	if cfg.mode == modeExec {
 		// Note that we don't specify which signals to be sent: any signal to be
 		// relayed to the child process (including SIGINT and SIGTERM).
 		signal.Notify(c)
@@ -155,7 +159,7 @@ func Cli(cfg *Config, args []string) error {
 	}
 	defer session.Stop()
 
-	if cfg.kind == exec {
+	if cfg.mode == modeExec {
 		return waitForSpawnedProcessToExit(c, cmd)
 	}
 
