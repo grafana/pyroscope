@@ -36,7 +36,7 @@ class FlameGraphRenderer extends React.Component {
       view: 'both',
       viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
       fitMode: props.fitMode ? props.fitMode : 'HEAD',
-      flamebearer: this.getFlameBearerFromProps(props),
+      flamebearer: props.flamebearer,
 
       // query used in the 'search' checkbox
       highlightQuery: '',
@@ -46,8 +46,8 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    const previousFlamebearer = this.getFlameBearerFromProps(prevProps);
-    const actualFlamebearer = this.getFlameBearerFromProps();
+    const previousFlamebearer = prevProps.flamebearer;
+    const actualFlamebearer = this.props.flamebearer;
     if (previousFlamebearer !== actualFlamebearer) {
       this.updateFlamebearerData();
     }
@@ -60,20 +60,6 @@ class FlameGraphRenderer extends React.Component {
 
   componentWillUnmount() {
     this.abortCurrentJSONController();
-  }
-
-  getFlameBearerFromProps(props) {
-    const actualProps = props ?? this.props;
-    switch (actualProps.viewType) {
-      case 'single':
-        return actualProps.single.flamebearer;
-      case 'double':
-        return actualProps.comparison[actualProps.viewSide].flamebearer;
-      case 'diff':
-        return actualProps.diff.flamebearer;
-      default:
-        return null;
-    }
   }
 
   updateFitMode = (newFitMode) => {
@@ -188,7 +174,7 @@ class FlameGraphRenderer extends React.Component {
 
   updateFlamebearerData() {
     this.setState({
-      flamebearer: this.getFlameBearerFromProps(),
+      flamebearer: this.props.flamebearer,
     });
   }
 
@@ -330,8 +316,4 @@ class FlameGraphRenderer extends React.Component {
   };
 }
 
-const mapStateToProps = (state) => ({
-  ...state,
-});
-
-export default connect(mapStateToProps)(FlameGraphRenderer);
+export default FlameGraphRenderer;
