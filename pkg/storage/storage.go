@@ -583,6 +583,18 @@ func (s *Storage) GetValues(key string, cb func(v string) bool) {
 	})
 }
 
+// GetAppNames returns the list of all app's names
+func (s *Storage) GetAppNames() []string {
+	var appNames []string
+
+	s.GetValues("__name__", func(v string) bool {
+		appNames = append(appNames, v)
+		return true
+	})
+
+	return appNames
+}
+
 func (s *Storage) GetKeysByQuery(query string, cb func(_k string) bool) error {
 	parsedQuery, err := flameql.ParseQuery(query)
 	if err != nil {

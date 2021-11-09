@@ -406,3 +406,36 @@ var _ = Describe("DeleteDataBefore", func() {
 		})
 	})
 })
+
+var _ = Describe("Getters", func() {
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(&(*cfg).Server, prometheus.NewRegistry())
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("gets app names correctly", func() {
+			tree := tree.New()
+			tree.Insert([]byte("a;b"), uint64(1))
+			tree.Insert([]byte("a;c"), uint64(2))
+			st := testing.SimpleTime(10)
+			et := testing.SimpleTime(19)
+			key, _ := segment.ParseKey("foo")
+
+			s.Put(&PutInput{
+				StartTime:  st,
+				EndTime:    et,
+				Key:        key,
+				Val:        tree,
+				SpyName:    "testspy",
+				SampleRate: 100,
+			})
+
+			want := []string{"foo"}
+			Expect(s.GetAppNames()).To(Equal(
+				want,
+			))
+		})
+	})
+})

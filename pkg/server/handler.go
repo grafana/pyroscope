@@ -240,10 +240,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	}
 
 	initialStateObj := indexPageJSON{}
-	ctrl.storage.GetValues("__name__", func(v string) bool {
-		initialStateObj.AppNames = append(initialStateObj.AppNames, v)
-		return true
-	})
+	initialStateObj.AppNames = ctrl.storage.GetAppNames()
 
 	var b []byte
 	b, err = json.Marshal(initialStateObj)
