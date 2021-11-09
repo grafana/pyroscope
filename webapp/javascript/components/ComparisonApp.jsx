@@ -8,29 +8,26 @@ import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
 import Footer from './Footer';
 import { buildRenderURL } from '../util/updateRequests';
-import { fetchNames, fetchTimeline } from '../redux/actions';
+import { fetchNames, fetchComparisonAppData } from '../redux/actions';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
 function ComparisonApp(props) {
-  const { actions, renderURL, leftRenderURL, rightRenderURL } = props;
+  const { actions, renderURL, leftRenderURL, rightRenderURL, comparison } =
+    props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
     if (prevPropsRef.renderURL !== renderURL) {
-      // When ComparisonApp is loaded only renderURL is set so
-      // by using viewType = 'comparison' and not giving a viewSide
-      // populates both left and right side keys
-      // as shown in redux/reducers/filters.js:RECEIVE_TIMELINE case.
-      actions.fetchTimeline(renderURL, 'comparison');
+      actions.fetchComparisonAppData(renderURL, 'both');
     }
 
     if (prevPropsRef.leftRenderURL !== leftRenderURL) {
-      actions.fetchTimeline(leftRenderURL, 'comparison', 'left');
+      actions.fetchComparisonAppData(leftRenderURL, 'left');
     }
 
     if (prevPropsRef.rightRenderURL !== rightRenderURL) {
-      actions.fetchTimeline(rightRenderURL, 'comparison', 'right');
+      actions.fetchComparisonAppData(rightRenderURL, 'right');
     }
 
     return actions.abortTimelineRequest;
@@ -48,11 +45,13 @@ function ComparisonApp(props) {
           <FlameGraphRenderer
             viewType="double"
             viewSide="left"
+            flamebearer={comparison.left.flamebearer}
             data-testid="flamegraph-renderer-left"
           />
           <FlameGraphRenderer
             viewType="double"
             viewSide="right"
+            flamebearer={comparison.right.flamebearer}
             data-testid="flamegraph-renderer-right"
           />
         </div>
@@ -70,7 +69,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchTimeline,
+      fetchComparisonAppData,
       fetchNames,
     },
     dispatch

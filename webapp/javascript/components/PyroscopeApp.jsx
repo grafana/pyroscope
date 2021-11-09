@@ -10,17 +10,17 @@ import Footer from './Footer';
 import { buildRenderURL } from '../util/updateRequests';
 import {
   fetchNames,
-  fetchTimeline,
+  fetchPyrescopeAppData,
   abortTimelineRequest,
 } from '../redux/actions';
 
 function PyroscopeApp(props) {
-  const { actions, renderURL } = props;
+  const { actions, renderURL, single } = props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
     if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchTimeline(renderURL, 'single');
+      actions.fetchPyrescopeAppData(renderURL);
     }
 
     return actions.abortTimelineRequest;
@@ -31,7 +31,10 @@ function PyroscopeApp(props) {
       <div className="main-wrapper">
         <Header />
         <TimelineChartWrapper id="timeline-chart-single" viewSide="none" />
-        <FlameGraphRenderer viewType="single" />
+        <FlameGraphRenderer
+          flamebearer={single.flamebearer}
+          viewType="single"
+        />
       </div>
       <Footer />
     </div>
@@ -46,7 +49,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchTimeline,
+      fetchPyrescopeAppData,
       fetchNames,
       abortTimelineRequest,
     },

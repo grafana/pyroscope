@@ -6,15 +6,15 @@ import Header from './Header';
 import Footer from './Footer';
 import TimelineChartWrapper from './TimelineChartWrapper';
 import { buildDiffRenderURL } from '../util/updateRequests';
-import { fetchNames, fetchTimeline } from '../redux/actions';
+import { fetchNames, fetchComparisonDiffAppData } from '../redux/actions';
 
 function ComparisonDiffApp(props) {
-  const { actions, diffRenderURL } = props;
+  const { actions, diffRenderURL, diff } = props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
     if (prevPropsRef.diffRenderURL !== diffRenderURL) {
-      actions.fetchTimeline(diffRenderURL, 'diff');
+      actions.fetchComparisonDiffAppData(diffRenderURL);
     }
     return actions.abortTimelineRequest;
   }, [diffRenderURL]);
@@ -24,7 +24,7 @@ function ComparisonDiffApp(props) {
       <div className="main-wrapper">
         <Header />
         <TimelineChartWrapper id="timeline-chart-diff" viewSide="both" />
-        <FlameGraphRenderer viewType="diff" />
+        <FlameGraphRenderer viewType="diff" flamebearer={diff.flamebearer} />
       </div>
       <Footer />
     </div>
@@ -39,7 +39,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchTimeline,
+      fetchComparisonDiffAppData,
       fetchNames,
     },
     dispatch
