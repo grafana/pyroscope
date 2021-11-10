@@ -181,6 +181,33 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	}
 }
 
+func (t *Tree) Iterate2(cb func(name string, self uint64, stack []string)) {
+	t.RLock()
+	defer t.RUnlock()
+
+	nodes := []*treeNode{t.root}
+	parents := make(map[*treeNode]*treeNode)
+	for len(nodes) > 0 {
+		node := nodes[0]
+		self := node.Self
+		label := string(node.Name)
+		if self > 0 {
+			current := node
+			stack := []string{}
+			for current != nil && current != t.root {
+				stack = append(stack, string(current.Name))
+				current = parents[current]
+			}
+			cb(label, self, stack)
+		}
+		nodes = nodes[1:]
+		for _, child := range node.ChildrenNodes {
+			nodes = append([]*treeNode{child}, nodes...)
+			parents[child] = node
+		}
+	}
+}
+
 func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
 	nodes := []*treeNode{t.root}
 	i := 0

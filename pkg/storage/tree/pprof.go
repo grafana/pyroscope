@@ -1,7 +1,6 @@
 package tree
 
 import (
-	"fmt"
 	"io/ioutil"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -18,7 +17,7 @@ type Pprof struct {
 }
 
 type PprofMetadata struct {
-	SpyName   string
+	Type      string
 	Unit      string
 	StartTime int64
 	Duration  int64
@@ -29,47 +28,41 @@ func (t *Tree) PprofStruct(metadata *PprofMetadata) *Pprof {
 		locations: make(map[string]uint64),
 		functions: make(map[string]uint64),
 		strings:   make(map[string]int64),
-		profile:   &Profile{},
-		tree:      t,
-		metadata:  metadata,
+		profile: &Profile{
+			StringTable: []string{""},
+		},
+		tree:     t,
+		metadata: metadata,
 	}
 	return pprof
 }
 
 func (p *Pprof) Pprof() *Profile {
-	p.profile.SampleType = []*ValueType{{Type: p.newString("cpu"), Unit: p.newString(p.metadata.Unit)}}
-	p.profile.DurationNanos = 454545433
-	nodes := []*treeNode{p.tree.root}
-	parents := make(map[*treeNode]*treeNode)
-	for len(nodes) > 0 {
-		node := nodes[0]
-		if node.Self > 0 {
-			current := node
-			stack := []uint64{}
-			for current != nil && current != p.tree.root {
-				stack = append(stack, uint64(p.newLocation(string(current.Name))))
-				current = parents[current]
-			}
-			self := int64(node.Self)
-			p.profile.Sample = append(p.profile.Sample, &Sample{LocationId: stack, Value: []int64{self}})
+	p.profile.SampleType = []*ValueType{{Type: p.newString(p.metadata.Type), Unit: p.newString(p.metadata.Unit)}}
+	p.profile.TimeNanos = p.metadata.StartTime
+	p.profile.DurationNanos = p.metadata.Duration
+
+	p.tree.Iterate2(func(name string, self uint64, stack []string) {
+		value := []int64{int64(self)}
+		loc := []uint64{}
+		for _, l := range stack {
+			loc = append(loc, uint64(p.newLocation(l)))
 		}
-		nodes = nodes[1:]
-		for _, child := range node.ChildrenNodes {
-			nodes = append([]*treeNode{child}, nodes...)
-			parents[child] = node
-		}
-	}
+		sample := &Sample{LocationId: loc, Value: value}
+		p.profile.Sample = append(p.profile.Sample, sample)
+	})
+
 	/* TODO: Remove */
 	out, err := proto.Marshal(p.profile)
 	if err == nil {
-		err2 := ioutil.WriteFile("pprof.pb", out, 0600)
-		if err2 == nil {
-			fmt.Println("Success")
-		}
+		ioutil.WriteFile("pprof.pb", out, 0600)
 		m := jsonpb.Marshaler{}
 		result, _ :=
 			m.MarshalToString(p.profile)
 		ioutil.WriteFile("./pprof.json", []byte(result), 0600)
+		ioutil.WriteFile("collapsed.txt", []byte(p.tree.Collapsed()), 0600)
+		ioutil.WriteFile("collapsed2.txt", []byte(p.tree.String()), 0600)
+
 	}
 	//
 
@@ -80,7 +73,7 @@ func (p *Pprof) Pprof() *Profile {
 func (p *Pprof) newString(value string) int64 {
 	id, ok := p.strings[value]
 	if !ok {
-		id = int64(len(p.profile.StringTable) + 1)
+		id = int64(len(p.profile.StringTable))
 		p.profile.StringTable = append(p.profile.StringTable, value)
 		p.strings[value] = id
 	}
