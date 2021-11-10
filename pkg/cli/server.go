@@ -33,7 +33,7 @@ type serverService struct {
 	selfProfiling    *agent.ProfileSession
 	debugReporter    *debug.Reporter
 	healthController *health.Controller
-	adminController  *admin.Controller
+	adminServer      *admin.Server
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -79,10 +79,16 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	})
 
 	// TODO check if we want to disable this
-	svc.adminController, err = admin.NewController(admin.Config{
-		Logger:     svc.logger,
-		SocketAddr: svc.config.AdminSocketPath,
-	}, admin.NewService(svc.storage))
+	adminSvc := admin.NewService(svc.storage)
+	adminCtrl := admin.NewController(svc.logger, adminSvc)
+
+	svc.adminServer, err = admin.NewServer(
+		admin.Config{
+			Log:        svc.logger,
+			SocketAddr: svc.config.AdminSocketPath,
+		},
+		adminCtrl,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("admin: %w", err)
 	}
@@ -131,7 +137,7 @@ func (svc *serverService) Start() error {
 	if svc.config.EnableExperimentalAdmin {
 		g.Go(func() error {
 			svc.logger.Info("starting admin server")
-			return svc.adminController.Start()
+			return svc.adminServer.Start()
 		})
 	}
 

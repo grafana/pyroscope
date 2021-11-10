@@ -13,7 +13,7 @@ type Config struct {
 	Log        *logrus.Logger
 }
 
-type AdminServer struct {
+type Server struct {
 	log  *logrus.Logger
 	ctrl *Controller
 
@@ -24,12 +24,12 @@ type AdminServer struct {
 // NewServer creates an AdminServer and returns an error
 // Is also does basic verifications:
 // - Checks if the SocketAddress is non empty
-func NewServer(c Config, ctrl *Controller) (*AdminServer, error) {
+func NewServer(c Config, ctrl *Controller) (*Server, error) {
 	if c.SocketAddr == "" {
 		return nil, fmt.Errorf("A socket path must be defined")
 	}
 
-	as := &AdminServer{
+	as := &Server{
 		log:    c.Log,
 		ctrl:   ctrl,
 		Config: c,
@@ -46,9 +46,7 @@ func NewServer(c Config, ctrl *Controller) (*AdminServer, error) {
 	return as, nil
 }
 
-func (as *AdminServer) Start() error {
-	println("stargint the admin server", as.SocketAddr)
-	as.log.Debug("starting the admin server")
+func (as *Server) Start() error {
 	adminServer := http.Server{Handler: as.Handler}
 
 	// we listen on a unix domain socket
