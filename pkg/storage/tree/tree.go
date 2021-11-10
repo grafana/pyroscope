@@ -181,7 +181,7 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	}
 }
 
-func (t *Tree) Iterate2(cb func(name string, self uint64, stack []string)) {
+func (t *Tree) Iterate2(cb func(name string, self uint64, stack []string)) { // TODO
 	t.RLock()
 	defer t.RUnlock()
 
