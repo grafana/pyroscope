@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -44,7 +45,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := ctrl.expectJSON(p.format); err != nil {
+	if err := ctrl.expectFormats(p.format); err != nil {
 		ctrl.writeInvalidParameterError(w, errUnknownFormat)
 		return
 	}
@@ -60,15 +61,26 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		out = &storage.GetOutput{Tree: tree.New()}
 	}
 
-	fs := out.Tree.FlamebearerStruct(p.maxNodes)
-	res := renderResponse(fs, out)
-	ctrl.writeResponseJSON(w, res)
-
-	pprof := out.Tree.PprofStruct(&tree.PprofMetadata{
-		SpyName: out.SpyName,
-		Unit:    out.Units,
-	})
-	_ = pprof.Pprof()
+	switch p.format {
+	case "json":
+		fs := out.Tree.FlamebearerStruct(p.maxNodes)
+		res := renderResponse(fs, out)
+		ctrl.writeResponseJSON(w, res)
+	case "pprof":
+		pprof := out.Tree.PprofStruct(&tree.PprofMetadata{
+			Type: out.SpyName,
+			Unit: out.Units,
+		})
+		out, err := proto.Marshal(pprof.Pprof())
+		if err == nil {
+			ctrl.writeResponseFile(w, "profile.pb", out)
+		} else {
+			ctrl.writeInternalServerError(w, err, "")
+		}
+	case "collapsed":
+		collapsed := out.Tree.Collapsed()
+		ctrl.writeResponseFile(w, "profile.collapsed", []byte(collapsed))
+	}
 
 }
 
@@ -178,7 +190,7 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	p.gi.EndTime = attime.Parse(v.Get("until"))
 	p.format = v.Get("format")
 
-	return ctrl.expectJSON(p.format)
+	return ctrl.expectFormats(p.format)
 }
 
 func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams, rP *RenderDiffParams) error {
@@ -214,7 +226,7 @@ func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *rend
 	p.gi.EndTime = attime.Parse(rP.Until)
 	p.format = rP.Format
 
-	return ctrl.expectJSON(p.format)
+	return ctrl.expectFormats(p.format)
 }
 
 func renderResponse(fs *tree.Flamebearer, out *storage.GetOutput) map[string]interface{} {
