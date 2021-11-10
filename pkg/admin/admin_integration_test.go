@@ -18,7 +18,7 @@ import (
 // The idea for these tests is to have client and server
 // communicating over the unix socket
 var _ = Describe("integration", func() {
-	var server *admin.AdminServer
+	var server *admin.Server
 	var httpC http.Client
 	var socketAddr string
 

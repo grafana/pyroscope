@@ -113,9 +113,8 @@ type Server struct {
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 
-	// TODO(eh-am): this is not where I want to put it
-	// but /var/run requires root
-	AdminSocketPath         string `def:"<installPrefix>/tmp/pyroscope.sock" desc:"path where the admin UDS will be created" mapstructure:"admin-socket-path"`
+	// TODO: use <storagePath> somehow
+	AdminSocketPath         string `def:"<installPrefix>/var/lib/pyroscope/pyroscope.sock" desc:"path where the admin UDS will be created" mapstructure:"admin-socket-path"`
 	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 }
 

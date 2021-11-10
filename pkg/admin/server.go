@@ -39,7 +39,7 @@ func NewServer(c Config, ctrl *Controller) (*Server, error) {
 
 	// Routes
 	mux.HandleFunc("/check", as.ctrl.Check(as.SocketAddr))
-	mux.HandleFunc("/v1/apps", as.ctrl.GetApps)
+	mux.HandleFunc("/v1/apps", as.ctrl.HandleGetApps)
 
 	as.Handler = mux
 

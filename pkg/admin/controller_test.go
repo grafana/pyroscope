@@ -31,7 +31,7 @@ var _ = Describe("controller", func() {
 	// this can become an integration test
 
 	Context("/v1/apps", func() {
-		var svr *admin.AdminServer
+		var svr *admin.Server
 		var response *httptest.ResponseRecorder
 
 		// create a server

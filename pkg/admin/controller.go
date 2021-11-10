@@ -20,7 +20,7 @@ func NewController(log *logrus.Logger, svc *AdminService) *Controller {
 	return ctrl
 }
 
-func (ctrl *Controller) GetApps(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		{
@@ -36,7 +36,7 @@ func (ctrl *Controller) GetApps(w http.ResponseWriter, r *http.Request) {
 }
 
 // Check is mostly used to validate the socket communication is working
-func (ctrl *Controller) Check(socketAddr string) http.HandlerFunc {
+func (*Controller) Check(socketAddr string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		writeMessage(w, 200, "it works!\nsocket location: %s", socketAddr)
 	}
