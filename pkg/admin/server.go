@@ -38,6 +38,7 @@ func NewServer(c Config, ctrl *Controller) (*AdminServer, error) {
 	mux := http.NewServeMux()
 
 	// Routes
+	mux.HandleFunc("/check", as.ctrl.Check(as.SocketAddr))
 	mux.HandleFunc("/v1/apps", as.ctrl.GetApps)
 
 	as.Handler = mux
@@ -46,6 +47,7 @@ func NewServer(c Config, ctrl *Controller) (*AdminServer, error) {
 }
 
 func (as *AdminServer) Start() error {
+	println("stargint the admin server", as.SocketAddr)
 	as.log.Debug("starting the admin server")
 	adminServer := http.Server{Handler: as.Handler}
 

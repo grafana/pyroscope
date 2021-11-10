@@ -34,3 +34,10 @@ func (ctrl *Controller) GetApps(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
+
+// Check is mostly used to validate the socket communication is working
+func (ctrl *Controller) Check(socketAddr string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		writeMessage(w, 200, "it works!\nsocket location: %s", socketAddr)
+	}
+}

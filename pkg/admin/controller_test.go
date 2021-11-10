@@ -1,9 +1,7 @@
 package admin_test
 
 import (
-	"context"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httptest"
 
@@ -31,59 +29,6 @@ var _ = Describe("controller", func() {
 	// TODO
 	// since this talks with socket and stuff
 	// this can become an integration test
-	//	Context("/v1/apps", func() {
-	//		var (
-	//			httpC http.Client
-	//
-	//			socketAddr string
-	//		)
-	//
-	//		BeforeEach(func() {
-	//			file, err := ioutil.TempFile("", "pyroscope.sock")
-	//			must(err)
-	//			socketAddr = file.Name()
-	//
-	//			cfg := admin.Config{
-	//				SocketAddr: socketAddr,
-	//			}
-	//			svc := admin.NewService(mockAppsGetter{})
-	//			ctrl, err := admin.NewController(cfg, svc)
-	//			must(err)
-	//
-	//			go func() {
-	//				err := ctrl.Start()
-	//				if err != nil {
-	//					panic(err)
-	//				}
-	//			}()
-	//
-	//			httpC = newHttpClient(socketAddr)
-	//			// TODO
-	//			// for some reason it takes some time until server is ready
-	//			// we could add retries?
-	//			time.Sleep(time.Millisecond * 10)
-	//		})
-	//
-	//		AfterEach(func() {
-	//			os.Remove(socketAddr)
-	//		})
-	//
-	//		It("returns app names", func() {
-	//			req, err := httpC.Get("http://dummy/v1/apps")
-	//			Expect(err).To(BeNil())
-	//
-	//			body, err := ioutil.ReadAll(req.Body)
-	//			Expect(err).To(BeNil())
-	//
-	//			Expect(string(body)).To(Equal(`["app1","app2"]
-	//`))
-	//		})
-	//
-	//		It("only accepts GET requests", func() {
-	//
-	//			Expect(true).To(Equal(true))
-	//		})
-	//	})
 
 	Context("/v1/apps", func() {
 		var svr *admin.AdminServer
@@ -131,13 +76,3 @@ var _ = Describe("controller", func() {
 		)
 	})
 })
-
-func newHttpClient(socketAddr string) http.Client {
-	return http.Client{
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", socketAddr)
-			},
-		},
-	}
-}
