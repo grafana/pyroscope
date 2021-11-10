@@ -137,11 +137,6 @@ func Cli(cfg *Config, args []string) error {
 		"detect-subprocesses": cfg.detectSubprocesses,
 	}).Debug("starting agent session")
 
-	// if the sample rate is zero, use the default value
-	if cfg.sampleRate == 0 {
-		cfg.sampleRate = spy.DefaultSampleRate
-	}
-
 	sc := agent.SessionConfig{
 		Upstream:         u,
 		AppName:          cfg.applicationName,

@@ -348,34 +348,29 @@ var _ = Describe("querying", func() {
 			var err error
 			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
-		})
-
-		Context("simple case 1", func() {
-			It("does not return errors", func() {
-				keys := []string{
-					"app.name{foo=bar,baz=qux}",
-					"app.name{foo=bar,baz=xxx}",
-					"app.name{waldo=fred,baz=xxx}",
-				}
-				for _, k := range keys {
-					t := tree.New()
-					t.Insert([]byte("a;b"), uint64(1))
-					t.Insert([]byte("a;c"), uint64(2))
-					st := testing.SimpleTime(10)
-					et := testing.SimpleTime(19)
-					key, err := flameql.ParseKey(k)
-					Expect(err).ToNot(HaveOccurred())
-					err = s.Put(&PutInput{
-						StartTime:  st,
-						EndTime:    et,
-						Key:        key,
-						Val:        t,
-						SpyName:    "testspy",
-						SampleRate: 100,
-					})
-					Expect(err).ToNot(HaveOccurred())
-				}
-			})
+			keys := []string{
+				"app.name{foo=bar,baz=qux}",
+				"app.name{foo=bar,baz=xxx}",
+				"app.name{waldo=fred,baz=xxx}",
+			}
+			for _, k := range keys {
+				t := tree.New()
+				t.Insert([]byte("a;b"), uint64(1))
+				t.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(19)
+				key, err := flameql.ParseKey(k)
+				Expect(err).ToNot(HaveOccurred())
+				err = s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        t,
+					SpyName:    "testspy",
+					SampleRate: 100,
+				})
+				Expect(err).ToNot(HaveOccurred())
+			}
 		})
 
 		Context("basic queries", func() {
