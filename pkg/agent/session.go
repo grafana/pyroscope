@@ -89,6 +89,11 @@ type SessionConfig struct {
 	ClibIntegration  bool
 }
 
+// TODO: horrible API, change this
+type SetAppNamer interface {
+	SetAppName(string)
+}
+
 func NewSession(c SessionConfig, processHelper ProcessHelper) (*ProfileSession, error) {
 	appName, err := mergeTagsWithAppName(c.AppName, c.Tags)
 	if err != nil {
@@ -256,6 +261,10 @@ func (ps *ProfileSession) initializeSpies(pid int) ([]spy.Spy, error) {
 
 	for _, pt := range ps.profileTypes {
 		s, err := sf(pid, pt, ps.sampleRate, ps.disableGCRuns, ps.upstream)
+
+		if ssan, ok := s.(SetAppNamer); ok {
+			ssan.SetAppName(ps.appName)
+		}
 
 		if err != nil {
 			return res, err

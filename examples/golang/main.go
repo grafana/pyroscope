@@ -38,13 +38,13 @@ func main() {
 		ServerAddress:   "http://localhost:4040", // this will run inside docker-compose, hence `pyroscope` for hostname
 	})
 
-	recursion(0)
-	// profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
-	// 	for {
-	// 		fastFunction(c)
-	// 		slowFunction(c)
-	// 	}
-	// })
+	// recursion(0)
+	profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
+		for {
+			fastFunction(c)
+			slowFunction(c)
+		}
+	})
 }
 
 func recursion(n int) {

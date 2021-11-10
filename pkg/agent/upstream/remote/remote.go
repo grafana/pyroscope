@@ -119,7 +119,6 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	q.Set("sampleRate", strconv.Itoa(int(j.SampleRate)))
 	q.Set("units", j.Units)
 	q.Set("aggregationType", j.AggregationType)
-	q.Set("format", string(j.Format))
 
 	u.Path = path.Join(u.Path, "/ingest")
 	u.RawQuery = q.Encode()
@@ -130,7 +129,7 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	if err != nil {
 		return fmt.Errorf("new http request: %v", err)
 	}
-	request.Header.Set("Content-Type", "binary/octet-stream+trie")
+	request.Header.Set("Content-Type", "binary/octet-stream+"+string(j.Format))
 
 	if r.cfg.AuthToken != "" {
 		request.Header.Set("Authorization", "Bearer "+r.cfg.AuthToken)

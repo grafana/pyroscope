@@ -177,6 +177,14 @@ func (k *Key) Add(key, value string) {
 }
 
 // Match reports whether the key matches the query.
+func (k *Key) Clone() *Key {
+	newMap := make(map[string]string)
+	for k, v := range k.labels {
+		newMap[k] = v
+	}
+	return &Key{labels: newMap}
+}
+
 func (k *Key) Match(q *Query) bool {
 	if k.AppName() != q.AppName {
 		return false

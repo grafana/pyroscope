@@ -28,6 +28,14 @@ const (
 	DefaultSampleRate = 100
 )
 
+var TypesLookupTable = map[string]ProfileType{
+	string(ProfileCPU):          ProfileCPU,
+	string(ProfileInuseObjects): ProfileInuseObjects,
+	string(ProfileAllocObjects): ProfileAllocObjects,
+	string(ProfileInuseSpace):   ProfileInuseSpace,
+	string(ProfileAllocSpace):   ProfileAllocSpace,
+}
+
 var DefaultProfileTypes = []ProfileType{
 	ProfileCPU,
 	ProfileAllocObjects,

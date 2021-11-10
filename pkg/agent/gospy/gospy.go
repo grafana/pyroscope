@@ -5,15 +5,12 @@ package gospy
 
 import (
 	"bytes"
-	"compress/gzip"
-	"fmt"
-	"io"
+	"encoding/binary"
 	"runtime"
 	"runtime/pprof"
 	"sync"
 	"time"
 
-	pprof_parser "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 )
@@ -31,18 +28,36 @@ type GoSpy struct {
 	sampleRate    uint32
 	upstream      upstream.Upstream
 
+	appName          string
 	lastGCGeneration uint32
 
 	stopCh chan struct{}
 	buf    *bytes.Buffer
 }
 
-func startCPUProfile(w io.Writer, hz uint32) error {
-	return pprof.StartCPUProfile(w)
+// implements upstream.Payload
+type Single []byte
+
+func (s Single) Bytes() []byte {
+	return s
 }
 
-func stopCPUProfile(hz uint32) {
-	pprof.StopCPUProfile()
+// TODO: I don't think append is very efficient
+func (s Single) BytesWithLength() []byte {
+	lenBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(lenBytes, uint64(len(s)))
+	return append(lenBytes, s...)
+}
+
+// implements upstream.Payload
+type Double struct {
+	prev    Single
+	current Single
+}
+
+// TODO: I don't think append is very efficient
+func (d Double) Bytes() []byte {
+	return append(d.prev.BytesWithLength(), d.current.BytesWithLength()...)
 }
 
 func Start(_ int, profileType spy.ProfileType, sampleRate uint32, disableGCRuns bool, u upstream.Upstream) (spy.Spy, error) {
@@ -55,7 +70,7 @@ func Start(_ int, profileType spy.ProfileType, sampleRate uint32, disableGCRuns 
 		upstream:      u,
 	}
 	if s.profileType == spy.ProfileCPU {
-		if err := startCPUProfile(s.buf, sampleRate); err != nil {
+		if err := pprof.StartCPUProfile(s.buf); err != nil {
 			return nil, err
 		}
 	}
@@ -72,19 +87,17 @@ func (s *GoSpy) Stop() error {
 //   the idea here is that we can reuse heap profiles
 var (
 	lastProfileMutex     sync.Mutex
-	lastProfile          *pprof_parser.Profile
+	lastProfile          Single
 	lastProfileCreatedAt time.Time
 )
 
-func getHeapProfile(b *bytes.Buffer) *pprof_parser.Profile {
+func getHeapProfile(b *bytes.Buffer) Single {
 	lastProfileMutex.Lock()
 	defer lastProfileMutex.Unlock()
 
 	if lastProfile == nil || !lastProfileCreatedAt.After(time.Now().Add(-1*time.Second)) {
 		pprof.WriteHeapProfile(b)
-		g, _ := gzip.NewReader(bytes.NewReader(b.Bytes()))
-
-		lastProfile, _ = pprof_parser.ParsePprof(g)
+		lastProfile = Single(b.Bytes())
 		lastProfileCreatedAt = time.Now()
 	}
 
@@ -95,6 +108,11 @@ func numGC() uint32 {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
 	return memStats.NumGC
+}
+
+// TODO: horrible API, change this soon
+func (s *GoSpy) SetAppName(an string) {
+	s.appName = an
 }
 
 // Snapshot calls callback function with stack-trace or error.
@@ -108,31 +126,30 @@ func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 	}
 	s.reset = false
 
+	// TODO: this is hacky. startTime and endTime should be passed from session?
+	endTime := time.Now().Truncate(10 * time.Second)
+	startTime := endTime.Add(-10 * time.Second)
+
 	if s.profileType == spy.ProfileCPU {
 		// stop the previous cycle of sample collection
-		stopCPUProfile(s.sampleRate)
+		pprof.StopCPUProfile()
 		defer func() {
 			// start a new cycle of sample collection
-			if err := startCPUProfile(s.buf, s.sampleRate); err != nil {
+			if err := pprof.StartCPUProfile(s.buf); err != nil {
 				cb(nil, nil, uint64(0), err)
 			}
 		}()
 
-		// new gzip reader with the read data in buffer
-		r, err := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
-		if err != nil {
-			cb(nil, nil, uint64(0), fmt.Errorf("new gzip reader: %v", err))
-			return
-		}
-
-		// parse the read data with pprof format
-		profile, err := pprof_parser.ParsePprof(r)
-		if err != nil {
-			cb(nil, nil, uint64(0), fmt.Errorf("parse pprof: %v", err))
-			return
-		}
-		profile.Get("samples", func(labels *spy.Labels, name []byte, val int) {
-			cb(labels, name, uint64(val), nil)
+		s.upstream.Upload(&upstream.UploadJob{
+			Name:            s.appName,
+			StartTime:       startTime,
+			EndTime:         endTime,
+			SpyName:         "gospy",
+			SampleRate:      100,
+			Units:           "samples",
+			AggregationType: "sum",
+			Format:          upstream.Pprof,
+			Payload:         Single(s.buf.Bytes()),
 		})
 	} else {
 		// this is current GC generation
@@ -149,8 +166,14 @@ func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 		// if there's no GC run then the profile is gonna be the same
 		//   in such case it does not make sense to upload the same profile twice
 		if currentGCGeneration != s.lastGCGeneration {
-			getHeapProfile(s.buf).Get(string(s.profileType), func(labels *spy.Labels, name []byte, val int) {
-				cb(labels, name, uint64(val), nil)
+			s.upstream.Upload(&upstream.UploadJob{
+				Name:       s.appName,
+				StartTime:  startTime,
+				EndTime:    endTime,
+				SpyName:    "gospy",
+				SampleRate: 100,
+				Format:     upstream.Pprof,
+				Payload:    getHeapProfile(s.buf),
 			})
 			s.lastGCGeneration = currentGCGeneration
 		}

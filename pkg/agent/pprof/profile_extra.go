@@ -72,6 +72,14 @@ func (c *cache) pprofLabelsToSpyLabels(x *Profile, pprofLabels []*Label) *spy.La
 	return l
 }
 
+func (x *Profile) SampleTypes() []string {
+	r := []string{}
+	for _, v := range x.SampleType {
+		r = append(r, x.StringTable[v.Type])
+	}
+	return r
+}
+
 func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte, val int)) error {
 	valueIndex := 0
 	if sampleType != "" {
