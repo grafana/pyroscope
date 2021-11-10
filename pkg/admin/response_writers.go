@@ -38,28 +38,3 @@ func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}
 		ctrl.writeJSONEncodeError(w, err)
 	}
 }
-
-func (as *AdminServer) writeJSONEncodeError(w http.ResponseWriter, err error) {
-	as.writeInternalServerError(w, err, "encoding response body")
-}
-
-func (as *AdminServer) writeInternalServerError(w http.ResponseWriter, err error, msg string) {
-	as.writeError(w, http.StatusInternalServerError, err, msg)
-}
-
-func (as *AdminServer) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
-	as.log.Error(msg)
-	writeMessage(w, code, msg)
-}
-
-func (as *AdminServer) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	as.log.WithError(err).Error(msg)
-	writeMessage(w, code, "%s: %q", msg, err)
-}
-
-func (as *AdminServer) writeResponseJSON(w http.ResponseWriter, res interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		as.writeJSONEncodeError(w, err)
-	}
-}
