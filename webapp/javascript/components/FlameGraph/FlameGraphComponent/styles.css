@@ -71,22 +71,6 @@ THIS SOFTWARE.
   width: 40px;
 }
 
-.flamegraph-title {
-  width: 100%;
-  display: block;
-  text-align: center;
-}
-
-.error-message {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  position: relative;
-  padding: 60px 0;
-}
-
 .flamegraph-tooltip {
   max-width: 80%;
 

@@ -24,10 +24,8 @@ import (
 func Cli(dbCfg *config.DbManager, srvCfg *config.Server, args []string) error {
 	switch args[0] {
 	case "copy":
-		// TODO: this is meh, I think config.Config should be separate from storage config
-		srvCfg.StoragePath = dbCfg.StoragePath
-		srvCfg.LogLevel = "error"
-		err := copyData(dbCfg, srvCfg)
+		stCfg := storage.NewConfig(srvCfg).WithPath(dbCfg.StoragePath)
+		err := copyData(dbCfg, stCfg)
 		if err != nil {
 			return err
 		}
@@ -42,7 +40,7 @@ func Cli(dbCfg *config.DbManager, srvCfg *config.Server, args []string) error {
 const resolution = 10 * time.Second
 
 // src start time, src end time, dst start time
-func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
+func copyData(dbCfg *config.DbManager, stCfg *storage.Config) error {
 	appName := dbCfg.ApplicationName
 	srcSt := dbCfg.SrcStartTime.Truncate(resolution)
 	dstSt := dbCfg.DstStartTime.Truncate(resolution)
@@ -63,7 +61,7 @@ func copyData(dbCfg *config.DbManager, srvCfg *config.Server) error {
 			"src start: %q end: %q, dst start: %q end: %q", srcSt, srcEt, dstSt, dstEt)
 	}
 
-	s, err := storage.New(srvCfg, prometheus.DefaultRegisterer)
+	s, err := storage.New(stCfg, logrus.StandardLogger(), prometheus.DefaultRegisterer)
 	if err != nil {
 		return err
 	}

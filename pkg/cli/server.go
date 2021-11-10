@@ -48,7 +48,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	var err error
-	svc.storage, err = storage.New(svc.config, prometheus.DefaultRegisterer)
+	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
@@ -65,7 +65,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	}
 
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
-	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, svc.config, prometheus.DefaultRegisterer)
+	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
 	svc.directUpstream = direct.New(svc.storage, metricsExporter)
 	svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
 		Upstream:       svc.directUpstream,
@@ -118,11 +118,6 @@ func (svc *serverService) Start() error {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
 	}
 
-	svc.logger.Debug("collecting local profiles")
-	if err := svc.storage.CollectLocalProfiles(); err != nil {
-		svc.logger.WithError(err).Error("failed to collect local profiles")
-	}
-
 	defer close(svc.done)
 	select {
 	case <-svc.stopped:
@@ -145,12 +140,16 @@ func (svc *serverService) Stop() {
 //revive:disable-next-line:confusing-naming methods are different
 func (svc *serverService) stop() {
 	svc.controller.Drain()
+	svc.logger.Debug("stopping debug reporter")
 	svc.debugReporter.Stop()
 	svc.healthController.Stop()
 	if svc.analyticsService != nil {
+		svc.logger.Debug("stopping analytics service")
 		svc.analyticsService.Stop()
 	}
+	svc.logger.Debug("stopping profiling")
 	svc.selfProfiling.Stop()
+	svc.logger.Debug("stopping upstream")
 	svc.directUpstream.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {

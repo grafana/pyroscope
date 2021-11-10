@@ -134,52 +134,97 @@ func normalizeTime(t time.Time) time.Time {
 	return t.Truncate(durations[0])
 }
 
+// get traverses through the tree searching for the nodes satisfying
+// the given time range. If no nodes were found, the most precise
+// down-sampling root node will be passed to the callback function,
+// and relationship r will be proportional to the down-sampling factor.
+//
 //  relationship                               overlap read             overlap write
 // 	inside  rel = iota   // | S E |            <1                       1/1
 // 	match                // matching ranges    1/1                      1/1
 // 	outside              // | | S E            0/1                      0/1
 // 	overlap              // | S | E            <1                       <1
 // 	contain              // S | | E            1/1                      <1
-func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, d int, t time.Time, r *big.Rat)) {
+func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, relationship *big.Rat)) {
 	rel := sn.relationship(st, et)
 	if sn.present && (rel == contain || rel == match) {
-		cb(sn, sn.depth, sn.time, big.NewRat(1, 1))
-	} else if rel != outside { // inside or overlap
-		if sn.present && len(sn.children) == 0 {
-			// TODO: I did not test this logic as extensively as I would love to.
-			//   See https://github.com/pyroscope-io/pyroscope/issues/28 for more context and ideas on what to do
-			cb(sn, sn.depth, sn.time, sn.overlapRead(st, et))
-		} else {
-			// if current node doesn't have a tree present or has children, defer to children
-			for _, v := range sn.children {
-				if v != nil {
-					v.get(st, et, cb)
-				}
-			}
+		cb(sn, big.NewRat(1, 1))
+		return
+	}
+	if rel == outside {
+		return
+	}
+
+	// inside or overlap
+	if sn.present && sn.isLeaf() {
+		// TODO: I did not test this logic as extensively as I would love to.
+		//   See https://github.com/pyroscope-io/pyroscope/issues/28 for more context and ideas on what to do
+		cb(sn, sn.overlapRead(st, et))
+		return
+	}
+
+	// if current node doesn't have a tree present or has children, defer to children
+	for _, v := range sn.children {
+		if v != nil {
+			v.get(st, et, cb)
 		}
 	}
 }
 
-// deleteDataBefore returns true if the node should be deleted
-func (sn *streeNode) deleteDataBefore(retentionThreshold time.Time, cb func(depth int, t time.Time)) bool {
-	if !sn.isAfter(retentionThreshold) {
-		isBefore := sn.isBefore(retentionThreshold)
-		if isBefore {
-			cb(sn.depth, sn.time)
-		}
-
-		for i, v := range sn.children {
-			if v != nil {
-				deletedData := v.deleteDataBefore(retentionThreshold, cb)
-				if deletedData {
-					sn.children[i] = nil
-				}
-			}
-		}
-		return isBefore
+func (sn *streeNode) isLeaf() bool {
+	if len(sn.children) == 0 {
+		return true
 	}
+	var x int
+	for i := range sn.children {
+		if sn.children[i] == nil {
+			x++
+		}
+	}
+	return x == len(sn.children)
+}
 
-	return false
+// deleteDataBefore returns true if the node should be deleted
+func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
+	if sn.isAfter(t.AbsoluteTime) && t.Levels == nil {
+		return false, nil
+	}
+	isBefore := t.isBefore(sn)
+	for i, v := range sn.children {
+		if v == nil {
+			continue
+		}
+		ok, err := v.deleteNodesBefore(t)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			sn.children[i] = nil
+		}
+	}
+	return isBefore, nil
+}
+
+func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
+	if sn.isAfter(t.AbsoluteTime) && t.Levels == nil {
+		return false, nil
+	}
+	var err error
+	isBefore := t.isBefore(sn)
+	if isBefore {
+		if err = cb(sn.depth, sn.time); err != nil {
+			return false, err
+		}
+	}
+	for _, v := range sn.children {
+		if v == nil {
+			continue
+		}
+		if _, err = v.walkNodesToDelete(t, cb); err != nil {
+			return false, err
+		}
+	}
+	return isBefore, nil
 }
 
 type Segment struct {
@@ -190,6 +235,13 @@ type Segment struct {
 	sampleRate      uint32
 	units           string
 	aggregationType string
+
+	watermarks
+}
+
+type watermarks struct {
+	absoluteTime time.Time
+	levels       map[int]time.Time
 }
 
 func newNode(t time.Time, depth, multiplier int) *streeNode {
@@ -204,9 +256,9 @@ func newNode(t time.Time, depth, multiplier int) *streeNode {
 }
 
 func New() *Segment {
-	st := &Segment{}
-
-	return st
+	return &Segment{watermarks: watermarks{
+		levels: make(map[int]time.Time),
+	}}
 }
 
 // TODO: DRY
@@ -299,33 +351,50 @@ func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint6
 	}
 	// divider := int(et.Sub(st) / durations[0])
 	v := newVis()
-	s.root.get(st, et, func(sn *streeNode, depth int, t time.Time, r *big.Rat) {
+	s.root.get(st, et, func(sn *streeNode, r *big.Rat) {
 		// TODO: pass m / d from .get() ?
 		v.add(sn, r, true)
-		cb(depth, sn.samples, sn.writes, t, r)
+		cb(sn.depth, sn.samples, sn.writes, sn.time, r)
 	})
 	v.print(filepath.Join(os.TempDir(), fmt.Sprintf("0-get-%s-%s.html", st.String(), et.String())))
 }
 
-func (s *Segment) DeleteDataBefore(retentionThreshold time.Time, cb func(depth int, t time.Time)) bool {
+func (s *Segment) DeleteNodesBefore(t *RetentionPolicy) (bool, error) {
 	s.m.Lock()
 	defer s.m.Unlock()
-
 	if s.root == nil {
-		return true
+		return true, nil
 	}
-
-	retentionThreshold = normalizeTime(retentionThreshold)
-	shouldDeleteRoot := s.root.deleteDataBefore(retentionThreshold, func(depth int, t time.Time) {
-		cb(depth, t)
-	})
-
-	if shouldDeleteRoot {
+	ok, err := s.root.deleteNodesBefore(t.normalize())
+	if err != nil {
+		return false, err
+	}
+	if ok {
 		s.root = nil
-		return true
 	}
+	s.updateWatermarks(t)
+	return ok, nil
+}
 
-	return false
+func (s *Segment) updateWatermarks(t *RetentionPolicy) {
+	if t.AbsoluteTime.After(s.watermarks.absoluteTime) {
+		s.watermarks.absoluteTime = t.AbsoluteTime
+	}
+	for k, v := range t.Levels {
+		if level, ok := s.watermarks.levels[k]; ok && v.Before(level) {
+			continue
+		}
+		s.watermarks.levels[k] = v
+	}
+}
+
+func (s *Segment) WalkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if s.root == nil {
+		return true, nil
+	}
+	return s.root.walkNodesToDelete(t.normalize(), cb)
 }
 
 // TODO: this should be refactored

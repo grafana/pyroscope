@@ -36,13 +36,6 @@ tt {
   background-color: rgba(255, 255, 255, 0.3);
 }
 
-.navbar-2 {
-  display: flex;
-  padding: 0 0 10px 0;
-  height: 60px;
-  align-items: center;
-}
-
 .navbar {
   display: flex;
   padding: 0 15px 0 15px;
@@ -78,10 +71,6 @@ tt {
     font-size: 25px;
     vertical-align: text-top;
   }
-}
-
-.navbar-space-filler {
-  flex-grow: 1;
 }
 
 .fx-1 {
@@ -216,29 +205,6 @@ $pane-width: 6px;
       .row {
         display: flex;
         justify-content: center;
-      }
-
-      .flamegraph-legend {
-        display: flex;
-        align-items: center;
-        font-size: 11px;
-        justify-content: center;
-        margin-bottom: 10px;
-      }
-
-      .flamegraph-legend-list {
-        display: flex;
-        justify-content: center;
-      }
-
-      .flamegraph-legend-item {
-        width: 35px;
-        text-align: center;
-
-        &:first-child,
-        &:last-child {
-          width: 40px;
-        }
       }
     }
 
@@ -387,15 +353,6 @@ $pane-width: 6px;
   border-radius: 2px;
   display: inline-block;
   margin-right: 5px;
-}
-
-.flamegraph-search {
-  background: rgba(255, 255, 255, 0.8);
-  color: #333;
-  transition: background-color ease-out 0.1s;
-  &:focus {
-    background: rgba(255, 255, 255, 1);
-  }
 }
 
 .modal-close-btn {
@@ -752,6 +709,6 @@ $sidebar-tooltip-color: #777;
   }
 }
 
-.fit-mode-select {
-  margin: 0 10px;
+.navbar-space-filler {
+  flex-grow: 1;
 }

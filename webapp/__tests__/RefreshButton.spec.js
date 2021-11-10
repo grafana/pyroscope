@@ -4,7 +4,7 @@ import renderer from 'react-test-renderer';
 import { configure, mount, shallow, render } from 'enzyme';
 import Adapter from 'enzyme-adapter-react-16';
 
-import RefreshButton from '../javascript/components/RefreshButton.jsx';
+import RefreshButton from '../javascript/components/RefreshButton';
 
 jest.mock('react-redux', () => ({
   useDispatch: () => jest.fn(),
@@ -19,7 +19,7 @@ describe('RefreshButton', () => {
   });
   it('When refresh button is clicked, Flamegraph component should update', () => {
     const wrapper = shallow(<RefreshButton />);
-    expect(wrapper.find('button').length).toEqual(1);
-    wrapper.find('button').simulate('click');
+    expect(wrapper.find('Button').length).toEqual(1);
+    wrapper.find('Button').simulate('click');
   });
 });

@@ -1,7 +1,7 @@
 package flameql
 
 import (
-	"regexp"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -12,10 +12,6 @@ import (
 type Key struct {
 	labels map[string]string
 }
-
-var nameParser = regexp.MustCompile("^(.+)\\{(.+)\\}.*$")
-
-const seed = 6231912
 
 type ParserState int
 
@@ -106,12 +102,31 @@ func (k *Key) SegmentKey() string {
 	return k.Normalized()
 }
 
-func segmentKeyToTreeKey(k string, depth int, t time.Time) string {
-	return k + ":" + strconv.Itoa(depth) + ":" + strconv.Itoa(int(t.Unix()))
+func TreeKey(k string, depth int, unixTime int64) string {
+	return k + ":" + strconv.Itoa(depth) + ":" + strconv.FormatInt(unixTime, 10)
 }
 
 func (k *Key) TreeKey(depth int, t time.Time) string {
-	return segmentKeyToTreeKey(k.Normalized(), depth, t)
+	return TreeKey(k.Normalized(), depth, t.Unix())
+}
+
+var errKeyInvalid = errors.New("invalid key")
+
+// ParseTreeKey retrieves tree time and depth level from the given key.
+func ParseTreeKey(k string) (time.Time, int, error) {
+	a := strings.Split(k, ":")
+	if len(a) < 3 {
+		return time.Time{}, 0, errKeyInvalid
+	}
+	level, err := strconv.Atoi(a[1])
+	if err != nil {
+		return time.Time{}, 0, err
+	}
+	v, err := strconv.Atoi(a[2])
+	if err != nil {
+		return time.Time{}, 0, err
+	}
+	return time.Unix(int64(v), 0), level, err
 }
 
 func (k *Key) DictKey() string {
@@ -119,18 +134,12 @@ func (k *Key) DictKey() string {
 }
 
 // FromTreeToDictKey returns app name from tree key k: given tree key
-// "foo{}:0:-62135596790", the call returns "foo".
+// "foo{}:0:1234567890", the call returns "foo".
 //
 // Before tags support, segment key form (i.e. app name + tags: foo{key=value})
 // has been used to reference a dictionary (trie).
 func FromTreeToDictKey(k string) string {
 	return k[0:strings.IndexAny(k, "{")]
-}
-
-func FromTreeToMainKey(k string) string {
-	i := strings.LastIndex(k, ":")
-	i = strings.LastIndex(k[:i-1], ":")
-	return k[:i]
 }
 
 func (k *Key) Normalized() string {

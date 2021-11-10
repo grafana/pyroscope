@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
+import Button from '@ui/Button';
 import 'react-dom';
 import { Menu, SubMenu, MenuItem, MenuButton } from '@szhsin/react-menu';
 
@@ -12,6 +13,7 @@ import {
   abortFetchTagValues,
 } from '../redux/actions';
 import '../util/prism';
+import styles from './TagsBar.module.css';
 
 function TagsBar({ query, actions, tags, tagValuesLoading }) {
   const [queryVal, setQuery] = useState(query);
@@ -138,7 +140,14 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
           onChange={(e) => inputOnChange(e.target.value)}
           onBlur={(e) => submitTagsValue(queryVal)}
         />
-        <button className="btn tags-query-execute">Execute</button>
+        <Button
+          type="submit"
+          kind="secondary"
+          grouped
+          className={styles.executeButton}
+        >
+          Execute
+        </Button>
       </form>
     </div>
   );

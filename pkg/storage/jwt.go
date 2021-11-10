@@ -14,7 +14,7 @@ const (
 
 func (s *Storage) JWT() (string, error) {
 	var secret []byte
-	err := s.db.View(func(txn *badger.Txn) error {
+	err := s.main.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(jwtSecret))
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
@@ -42,7 +42,7 @@ func (s *Storage) JWT() (string, error) {
 			return "", err
 		}
 		secret = []byte(generatedJWT)
-		err = s.db.Update(func(txn *badger.Txn) error {
+		err = s.main.Update(func(txn *badger.Txn) error {
 			return txn.SetEntry(badger.NewEntry([]byte(jwtSecret), secret))
 		})
 		if err != nil {

@@ -1,5 +1,7 @@
 package process
 
+// TODO: dedup with the stuff Anton wrote
+
 import (
 	"github.com/mitchellh/go-ps"
 	psutilprocess "github.com/shirou/gopsutil/process"

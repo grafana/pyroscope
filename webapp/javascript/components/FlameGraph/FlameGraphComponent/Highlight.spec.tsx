@@ -2,6 +2,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { Option } from 'prelude-ts';
 
 import Highlight, { HighlightProps } from './Highlight';
 
@@ -18,24 +19,19 @@ function TestComponent(props: Omit<HighlightProps, 'canvasRef'>) {
 
 describe('Highlight', () => {
   it('works', () => {
-    const isWithinBounds = jest.fn();
-
     const xyToHighlightData = jest.fn();
     render(
-      <TestComponent
-        barHeight={50}
-        isWithinBounds={isWithinBounds}
-        xyToHighlightData={xyToHighlightData}
-      />
+      <TestComponent barHeight={50} xyToHighlightData={xyToHighlightData} />
     );
 
     // hover over a bar
-    isWithinBounds.mockReturnValueOnce(true);
-    xyToHighlightData.mockReturnValueOnce({
-      left: 10,
-      top: 5,
-      width: 100,
-    });
+    xyToHighlightData.mockReturnValueOnce(
+      Option.of({
+        left: 10,
+        top: 5,
+        width: 100,
+      })
+    );
     userEvent.hover(screen.getByTestId('canvas'));
     expect(screen.getByTestId('flamegraph-highlight')).toBeVisible();
     expect(screen.getByTestId('flamegraph-highlight')).toHaveStyle({
@@ -46,7 +42,7 @@ describe('Highlight', () => {
     });
 
     // hover outside the canvas
-    isWithinBounds.mockReturnValueOnce(false);
+    xyToHighlightData.mockReturnValueOnce(Option.none());
     userEvent.hover(screen.getByTestId('canvas'));
     expect(screen.getByTestId('flamegraph-highlight')).not.toBeVisible();
   });
