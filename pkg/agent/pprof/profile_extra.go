@@ -3,6 +3,8 @@ package pprof
 // These functions are kept separately as profile.pb.go is a generated file
 
 import (
+	"bufio"
+	"compress/gzip"
 	"io"
 	"io/ioutil"
 	"sort"
@@ -13,6 +15,8 @@ import (
 )
 
 type cacheKey []int64
+
+var gzipMagicBytes = []byte{0x1f, 0x8b}
 
 type cacheEntry struct {
 	key cacheKey
@@ -154,6 +158,22 @@ func (x *Profile) findFunction(fid uint64) (*Function, bool) {
 }
 
 func ParsePprof(r io.Reader) (*Profile, error) {
+	// this allows us to support both gzipped and not gzipped pprof
+	// TODO: this might be allocating too much extra memory, maybe optimize later
+	bufioReader := bufio.NewReader(r)
+	header, err := bufioReader.Peek(2)
+	if err != nil {
+		return nil, err
+	}
+	if header[0] == gzipMagicBytes[0] && header[1] == gzipMagicBytes[1] {
+		r, err = gzip.NewReader(bufioReader)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		r = bufioReader
+	}
+
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
