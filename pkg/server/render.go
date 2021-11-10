@@ -63,6 +63,13 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	fs := out.Tree.FlamebearerStruct(p.maxNodes)
 	res := renderResponse(fs, out)
 	ctrl.writeResponseJSON(w, res)
+
+	pprof := out.Tree.PprofStruct(&tree.PprofMetadata{
+		SpyName: out.SpyName,
+		Unit:    out.Units,
+	})
+	_ = pprof.Pprof()
+
 }
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {

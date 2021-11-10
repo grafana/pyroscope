@@ -8,52 +8,110 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func (t *Tree) Pprof() []byte {
-	var pprof Profile = Profile{
-		StringTable: []string{""},
-	}
-	var i int64 = 0
+type Pprof struct {
+	locations map[string]uint64
+	functions map[string]uint64
+	strings   map[string]int64
+	profile   *Profile
+	tree      *Tree
+	metadata  *PprofMetadata
+}
 
-	t.Iterate(func(k []byte, v uint64) {
-		if v > 0 {
-			i++
-			pprof.StringTable = append(pprof.StringTable, string(k))
-			label := Label{Key: i, Str: i}
-			pprof.Sample = append(pprof.Sample, &Sample{Label: []*Label{&label}, Value: []int64{int64(v)}})
-		}
-	})
-	out, err := proto.Marshal(&pprof)
-	if err == nil {
-		m := jsonpb.Marshaler{}
-		result, _ := m.MarshalToString(&pprof)
-		ioutil.WriteFile("./pprof.json", []byte(result), 0600)
-		fmt.Println(result)
-		return out
+type PprofMetadata struct {
+	SpyName   string
+	Unit      string
+	StartTime int64
+	Duration  int64
+}
+
+func (t *Tree) PprofStruct(metadata *PprofMetadata) *Pprof {
+	pprof := &Pprof{
+		locations: make(map[string]uint64),
+		functions: make(map[string]uint64),
+		strings:   make(map[string]int64),
+		profile:   &Profile{},
+		tree:      t,
+		metadata:  metadata,
 	}
-	panic("error")
+	return pprof
+}
+
+func (p *Pprof) Pprof() *Profile {
+	p.profile.SampleType = []*ValueType{{Type: p.newString("cpu"), Unit: p.newString(p.metadata.Unit)}}
+	p.profile.DurationNanos = 454545433
+	nodes := []*treeNode{p.tree.root}
+	parents := make(map[*treeNode]*treeNode)
+	for len(nodes) > 0 {
+		node := nodes[0]
+		if node.Self > 0 {
+			current := node
+			stack := []uint64{}
+			for current != nil && current != p.tree.root {
+				stack = append(stack, uint64(p.newLocation(string(current.Name))))
+				current = parents[current]
+			}
+			self := int64(node.Self)
+			p.profile.Sample = append(p.profile.Sample, &Sample{LocationId: stack, Value: []int64{self}})
+		}
+		nodes = nodes[1:]
+		for _, child := range node.ChildrenNodes {
+			nodes = append([]*treeNode{child}, nodes...)
+			parents[child] = node
+		}
+	}
+	/* TODO: Remove */
+	out, err := proto.Marshal(p.profile)
+	if err == nil {
+		err2 := ioutil.WriteFile("pprof.pb", out, 0600)
+		if err2 == nil {
+			fmt.Println("Success")
+		}
+		m := jsonpb.Marshaler{}
+		result, _ :=
+			m.MarshalToString(p.profile)
+		ioutil.WriteFile("./pprof.json", []byte(result), 0600)
+	}
+	//
+
+	return p.profile
 
 }
 
-func (t *Tree) Iterate2(cb func(key []byte, val uint64)) {
-	nodes := []*treeNode{t.root}
-	prefixes := make([][]byte, 1)
-	prefixes[0] = make([]byte, 0)
-	for len(nodes) > 0 { // bfs
-		node := nodes[0]
-		nodes = nodes[1:]
-
-		prefix := prefixes[0]
-		prefixes = prefixes[1:]
-
-		label := append(prefix, semicolon) // byte(';'),
-		l := node.Name
-		label = append(label, l...) // byte(';'),
-
-		cb(label, node.Self)
-
-		nodes = append(node.ChildrenNodes, nodes...)
-		for i := 0; i < len(node.ChildrenNodes); i++ {
-			prefixes = prependBytes(prefixes, label)
-		}
+func (p *Pprof) newString(value string) int64 {
+	id, ok := p.strings[value]
+	if !ok {
+		id = int64(len(p.profile.StringTable) + 1)
+		p.profile.StringTable = append(p.profile.StringTable, value)
+		p.strings[value] = id
 	}
+	return id
+}
+
+func (p *Pprof) newLocation(location string) uint64 {
+	id, ok := p.locations[location]
+	if !ok {
+		id = uint64(len(p.profile.Location) + 1)
+		newLoc := &Location{
+			Id:   id,
+			Line: []*Line{{FunctionId: p.newFunction(location)}},
+		}
+		p.profile.Location = append(p.profile.Location, newLoc)
+		p.locations[location] = newLoc.Id
+	}
+	return id
+}
+
+func (p *Pprof) newFunction(function string) uint64 {
+	id, ok := p.functions[function]
+	if !ok {
+		id = uint64(len(p.profile.Function) + 1)
+		newFn := &Function{
+			Id:         id,
+			Name:       int64(p.newString(function)),
+			SystemName: int64(p.newString(function)),
+		}
+		p.functions[function] = id
+		p.profile.Function = append(p.profile.Function, newFn)
+	}
+	return id
 }
