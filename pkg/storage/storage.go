@@ -120,16 +120,19 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 		return nil, err
 	}
 
-	// TODO(kolesnikovae): Allow failure and skip evictionTask?
-	memTotal, err := getMemTotal()
-	if err != nil {
-		return nil, err
-	}
-
-	s.maintenanceTask(s.evictionTaskInterval, s.evictionTask(memTotal))
-	s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
 	s.maintenanceTask(s.writeBackTaskInterval, s.writeBackTask)
-	s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
+
+	if !s.config.inMemory {
+		// TODO(kolesnikovae): Allow failure and skip evictionTask?
+		memTotal, err := getMemTotal()
+		if err != nil {
+			return nil, err
+		}
+
+		s.maintenanceTask(s.evictionTaskInterval, s.evictionTask(memTotal))
+		s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
+		s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
+	}
 
 	return s, nil
 }

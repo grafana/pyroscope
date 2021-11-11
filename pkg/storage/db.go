@@ -50,6 +50,32 @@ func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (d *db, er
 	logger := logrus.New()
 	logger.SetLevel(s.config.badgerLogLevel)
 
+	if s.config.inMemory {
+		badgerDB, err := badger.Open(badger.DefaultOptions("").
+			WithInMemory(true).
+			WithLogger(logger.WithField("badger", name)))
+		if err != nil {
+			return nil, err
+		}
+
+		d = &db{
+			name:   name,
+			DB:     badgerDB,
+			logger: s.logger.WithField("db", name),
+		}
+
+		if codec != nil {
+			d.Cache = cache.New(cache.Config{
+				DB:      badgerDB,
+				Metrics: s.metrics.createCacheMetrics(name),
+				TTL:     s.cacheTTL,
+				Prefix:  p.String(),
+				Codec:   codec,
+			})
+		}
+		return d, nil
+	}
+
 	badgerPath := filepath.Join(s.config.badgerBasePath, name)
 	if err = os.MkdirAll(badgerPath, 0o755); err != nil {
 		return nil, err

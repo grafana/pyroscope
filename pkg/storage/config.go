@@ -17,6 +17,7 @@ type Config struct {
 	retention             time.Duration
 	hideApplications      []string
 	retentionLevels       config.RetentionLevels
+	inMemory              bool
 }
 
 // NewConfig returns a new storage config from a server config
@@ -35,11 +36,18 @@ func NewConfig(server *config.Server) *Config {
 		retention:             server.Retention,
 		retentionLevels:       server.RetentionLevels,
 		hideApplications:      server.HideApplications,
+		inMemory:              false,
 	}
 }
 
 // WithPath sets the storage base path
 func (c *Config) WithPath(path string) *Config {
 	c.badgerBasePath = path
+	return c
+}
+
+// WithInMemory makes the storage in-memory.
+func (c *Config) WithInMemory() *Config {
+	c.inMemory = true
 	return c
 }
