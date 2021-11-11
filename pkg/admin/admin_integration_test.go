@@ -21,6 +21,7 @@ var _ = Describe("integration", func() {
 	var server *admin.Server
 	var httpC http.Client
 	var socketAddr string
+	var cleanup func()
 
 	BeforeEach(func() {
 		logger, _ := test.NewNullLogger()
@@ -29,22 +30,25 @@ var _ = Describe("integration", func() {
 		// so we first create a temporary directory
 		// and pass a well-known file name
 		// that way tests can be run concurrently
-		dir, err := ioutil.TempDir("", "")
+		clean, dir := genRandomDir()
+		cleanup = clean
 		socketAddr = dir + "/pyroscope.tmp.sock"
-		must(err)
 
+		httpServer, err := admin.NewUdsHTTPServer(socketAddr)
+		must(err)
 		cfg := admin.Config{SocketAddr: socketAddr, Log: logger}
 
 		svc := admin.NewService(mockAppsGetter{})
 		ctrl := admin.NewController(logger, svc)
-		server, err = admin.NewServer(cfg, ctrl)
+		s, err := admin.NewServer(cfg, ctrl, httpServer)
 		must(err)
+		server = s
 
 		httpC = newHttpClient(socketAddr)
 	})
 
 	AfterEach(func() {
-		os.Remove(socketAddr)
+		cleanup()
 	})
 
 	It("works", func() {
@@ -78,4 +82,17 @@ func newHttpClient(socketAddr string) http.Client {
 			},
 		},
 	}
+}
+
+func genRandomDir() (func(), string) {
+	// the bind syscall will create the socket file
+	// so we first create a temporary directory
+	// and pass a well-known file name
+	// that way tests can be run concurrently
+	dir, err := ioutil.TempDir("", "")
+	must(err)
+
+	return func() {
+		os.RemoveAll(dir)
+	}, dir
 }

@@ -2,7 +2,6 @@ package admin
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 
 	"github.com/sirupsen/logrus"
@@ -16,15 +15,20 @@ type Config struct {
 type Server struct {
 	log  *logrus.Logger
 	ctrl *Controller
+	Mux  *http.ServeMux
 
 	Config
-	http.Handler
+	HTTPServer
+}
+
+type HTTPServer interface {
+	Start(*http.ServeMux) error
 }
 
 // NewServer creates an AdminServer and returns an error
 // Is also does basic verifications:
 // - Checks if the SocketAddress is non empty
-func NewServer(c Config, ctrl *Controller) (*Server, error) {
+func NewServer(c Config, ctrl *Controller, httpServer HTTPServer) (*Server, error) {
 	if c.SocketAddr == "" {
 		return nil, fmt.Errorf("A socket path must be defined")
 	}
@@ -34,6 +38,7 @@ func NewServer(c Config, ctrl *Controller) (*Server, error) {
 		ctrl:   ctrl,
 		Config: c,
 	}
+	as.HTTPServer = httpServer
 
 	mux := http.NewServeMux()
 
@@ -41,21 +46,11 @@ func NewServer(c Config, ctrl *Controller) (*Server, error) {
 	mux.HandleFunc("/check", as.ctrl.Check(as.SocketAddr))
 	mux.HandleFunc("/v1/apps", as.ctrl.HandleGetApps)
 
-	as.Handler = mux
+	as.Mux = mux
 
 	return as, nil
 }
 
 func (as *Server) Start() error {
-	adminServer := http.Server{Handler: as.Handler}
-
-	// we listen on a unix domain socket
-	// which will be created by the os
-	// https://man7.org/linux/man-pages/man2/bind.2.html
-	adminListener, err := net.Listen("unix", as.SocketAddr)
-	if err != nil {
-		return err
-	}
-
-	return adminServer.Serve(adminListener)
+	return as.HTTPServer.Start(as.Mux)
 }

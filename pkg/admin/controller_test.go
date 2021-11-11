@@ -26,10 +26,6 @@ func must(err error) {
 }
 
 var _ = Describe("controller", func() {
-	// TODO
-	// since this talks with socket and stuff
-	// this can become an integration test
-
 	Context("/v1/apps", func() {
 		var svr *admin.Server
 		var response *httptest.ResponseRecorder
@@ -43,7 +39,8 @@ var _ = Describe("controller", func() {
 
 			svc := admin.NewService(mockAppsGetter{})
 			ctrl := admin.NewController(logger, svc)
-			server, err := admin.NewServer(cfg, ctrl)
+			httpServer := &admin.UdsHTTPServer{}
+			server, err := admin.NewServer(cfg, ctrl, httpServer)
 
 			must(err)
 			svr = server
@@ -53,7 +50,7 @@ var _ = Describe("controller", func() {
 		It("returns list of apps", func() {
 			request, _ := http.NewRequest(http.MethodGet, "/v1/apps", nil)
 
-			svr.Handler.ServeHTTP(response, request)
+			svr.Mux.ServeHTTP(response, request)
 
 			body, err := ioutil.ReadAll(response.Body)
 			Expect(err).To(BeNil())
@@ -66,7 +63,7 @@ var _ = Describe("controller", func() {
 		DescribeTable("Non GET requests return 405 (method not allowed)",
 			func(method string) {
 				request, _ := http.NewRequest(method, "/v1/apps", nil)
-				svr.Handler.ServeHTTP(response, request)
+				svr.Mux.ServeHTTP(response, request)
 				Expect(response.Code).To(Equal(405))
 			},
 			Entry("POST", http.MethodPost),
