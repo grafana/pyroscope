@@ -81,19 +81,26 @@ func (f *Function) toBlock() string {
 	if len(f.calls) != 0 {
 		callBlock = strings.Join(f.calls, "()\n" + indentation()) + "()"
 	}
-	untrimmed := fmt.Sprintf(`
-func %s() {
+	workBlock := ""
+	if f.workAmount != 0 {
+		workBlock = fmt.Sprintf(`
 	for i := 0; i < %d; i++ {
 		// noop
 	}
-	%s
-}
-		`,
-		f.name,
-		f.workAmount,
-		callBlock,
-	)
-	return strings.TrimSpace(untrimmed)
+			`, f.workAmount)
+		workBlock = strings.TrimSpace(workBlock)
+	}
+	nonEmptySubBlocks := make([]string, 0)
+	for _, subBlock := range []string{workBlock, callBlock} {
+		if subBlock != "" {
+			nonEmptySubBlocks = append(nonEmptySubBlocks, subBlock)
+		}
+	}
+	subBlocks :=
+		"\n" + indentation() +
+		strings.Join(nonEmptySubBlocks, "\n" + indentation()) +
+		"\n"
+	return fmt.Sprintf(`func %s() {%s}`, f.name, subBlocks)
 }
 
 func generateGoCode(program *Program) string {
