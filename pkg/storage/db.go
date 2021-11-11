@@ -47,15 +47,12 @@ func (p prefix) trim(k []byte) ([]byte, bool) {
 }
 
 func (s *Storage) newBadger(name string, p prefix, codec cache.Codec) (d *db, err error) {
+	logger := logrus.New()
+	logger.SetLevel(s.config.badgerLogLevel)
+
 	badgerPath := filepath.Join(s.config.badgerBasePath, name)
 	if err = os.MkdirAll(badgerPath, 0o755); err != nil {
 		return nil, err
-	}
-
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-	if level, err := logrus.ParseLevel(s.config.badgerLogLevel); err == nil {
-		logger.SetLevel(level)
 	}
 
 	defer func() {

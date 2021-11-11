@@ -4,10 +4,11 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/sirupsen/logrus"
 )
 
 type Config struct {
-	badgerLogLevel        string
+	badgerLogLevel        logrus.Level
 	badgerNoTruncate      bool
 	badgerBasePath        string
 	cacheEvictThreshold   float64
@@ -20,8 +21,12 @@ type Config struct {
 
 // NewConfig returns a new storage config from a server config
 func NewConfig(server *config.Server) *Config {
+	level := logrus.ErrorLevel
+	if l, err := logrus.ParseLevel(server.BadgerLogLevel); err == nil {
+		level = l
+	}
 	return &Config{
-		badgerLogLevel:        server.BadgerLogLevel,
+		badgerLogLevel:        level,
 		badgerBasePath:        server.StoragePath,
 		badgerNoTruncate:      server.BadgerNoTruncate,
 		cacheEvictThreshold:   server.CacheEvictThreshold,
