@@ -44,11 +44,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := ctrl.expectJSON(p.format); err != nil {
-		ctrl.writeInvalidParameterError(w, errUnknownFormat)
-		return
-	}
-
 	out, err := ctrl.storage.Get(p.gi)
 	ctrl.statsInc("render")
 	if err != nil {
@@ -171,7 +166,12 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	p.gi.EndTime = attime.Parse(v.Get("until"))
 	p.format = v.Get("format")
 
-	return ctrl.expectJSON(p.format)
+	// TODO refactor format param handling to allow programming language targets
+	if err := ctrl.expectJSON(p.format); err != nil {
+		return errUnknownFormat
+	}
+
+	return nil
 }
 
 func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams, rP *RenderDiffParams) error {
