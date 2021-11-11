@@ -181,6 +181,57 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	}
 }
 
+// TODO consider moving
+func keyWithPrefix(node *treeNode, prefix []byte) []byte {
+	label := append(prefix, semicolon) // byte(';'),
+	l := node.Name
+	label = append(label, l...) // byte(';'),
+	return label
+}
+
+// TODO consider moving
+func keysWithPrefix(nodes []*treeNode, prefix []byte) [][]byte {
+	keys := [][]byte{}
+	for _, node := range nodes {
+		key := keyWithPrefix(node, prefix)
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func firstPrefix() []byte {
+	return make([]byte, 0)
+}
+
+// TODO look for ways to deduplicate logic in these Iterate methods
+func (t *Tree) IterateWithChildKeys(cb func(key []byte, val uint64, childKeys [][]byte)) {
+	nodes := []*treeNode{t.root}
+	prefixes := make([][]byte, 1)
+	prefixes[0] = firstPrefix()
+	for len(nodes) > 0 { // bfs
+		node := nodes[0]
+		nodes = nodes[1:]
+
+		prefix := prefixes[0]
+		prefixes = prefixes[1:]
+
+		label := keyWithPrefix(node, prefix)
+
+		children := node.ChildrenNodes
+
+		// TODO notice semantic conflict between key and label
+		prefixForChildren := label
+		childKeys := keysWithPrefix(children, prefixForChildren)
+
+		cb(label, node.Self, childKeys)
+
+		nodes = append(children, nodes...)
+		for i := 0; i < len(children); i++ {
+			prefixes = prependBytes(prefixes, label)
+		}
+	}
+}
+
 func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
 	nodes := []*treeNode{t.root}
 	i := 0
@@ -196,6 +247,10 @@ func (t *Tree) iterateWithTotal(cb func(total uint64) bool) {
 
 func (t *Tree) Samples() uint64 {
 	return t.root.Total
+}
+
+func (t *Tree) RootKey() []byte {
+	return keyWithPrefix(t.root, firstPrefix())
 }
 
 func (t *Tree) Clone(r *big.Rat) *Tree {
