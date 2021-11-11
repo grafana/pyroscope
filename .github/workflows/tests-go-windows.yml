@@ -1,4 +1,4 @@
-name: Go Tests
+name: Go Tests Windows
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   go-tests:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -27,9 +27,4 @@ jobs:
       - name: Ensure logrus is not used by pkg/agent/profiler
         run: make ensure-logrus-not-used
       - name: Run Go tests
-        run: go test -tags debugspy -coverprofile=coverage.txt -covermode=atomic ./...
-      - name: Upload codecov coverage
-        uses: codecov/codecov-action@v1
-        with:
-          fail_ci_if_error: false
-          verbose: true
+        run: go test -tags debugspy ./...

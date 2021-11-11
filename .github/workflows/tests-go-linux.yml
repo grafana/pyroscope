@@ -1,0 +1,35 @@
+name: Go Tests Linux
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  go-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.17.0'
+      - name: Cache go mod directories
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: install dev-tools
+        run: make install-dev-tools
+      - name: Ensure logrus is not used by pkg/agent/profiler
+        run: make ensure-logrus-not-used
+      - name: Run Go tests
+        run: go test -tags debugspy -coverprofile=coverage.txt -covermode=atomic ./...
+      - name: Upload codecov coverage
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: false
+          verbose: true
