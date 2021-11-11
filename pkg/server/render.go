@@ -39,7 +39,7 @@ type renderParams struct {
 	rghtStartTime time.Time
 	rghtEndTime   time.Time
 
-	lang	 string
+	lang	 proggen.Language
 }
 
 func writeResponseCode(w http.ResponseWriter, code string) {
@@ -73,7 +73,8 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		case "code":
 			cpuUtilizationTarget := 0.75
 			program := proggen.TreeToProgram(out.Tree, cpuUtilizationTarget)
-			code := program.toLanguage(p.lang)
+			// p.lang validity already checked
+			code, _ := program.ToCode(p.lang)
 			writeResponseCode(w, code)
 	}
 }
@@ -164,18 +165,6 @@ func expectRenderFormat(format string) error {
 	}
 }
 
-// TODO look up available code language targets automatically
-func expectCodeLang(lang string) error {
-	switch lang {
-	case "go":
-		return nil
-	case "":
-		return nil
-	default:
-		return errUnknownLang
-	}
-}
-
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {
 	v := r.URL.Query()
 	p.gi = new(storage.GetInput)
@@ -213,12 +202,16 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 		return err
 	}
 
-	p.lang = v.Get("lang")
+	langShouldBeDefined := false
 
 	if p.format == "code" {
-		if err := expectCodeLang(p.lang); err != nil {
-			return err
-		}
+		langShouldBeDefined = true
+	}
+
+	if lang, err := proggen.LookupLanguage(v.Get("lang")); err != nil && langShouldBeDefined {
+		return err
+	} else {
+		p.lang = lang
 	}
 
 	return nil

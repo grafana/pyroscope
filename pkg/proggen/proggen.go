@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"errors"
 )
 
 type Function struct {
@@ -20,6 +21,7 @@ type Program struct {
 	entryFunctionName string
 }
 
+// TODO introduce name generation routine that uses hash(...)
 func hash(key []byte) string {
 	checksum := sha256.Sum224(key)
 	return hex.EncodeToString(checksum[:])
@@ -69,9 +71,16 @@ func TreeToProgram(tree *tree.Tree, cpuUtilizationTarget float64) Program {
 	}
 }
 
+func indentation() string {
+	return "\t"
+}
+
 // TODO Accomodate Function.cpuUtilizationTarget
 func (f *Function) toBlock() string {
-	callBlock := strings.Join(f.calls, "()\n") + "()"
+	callBlock := ""
+	if len(f.calls) != 0 {
+		callBlock = strings.Join(f.calls, "()\n" + indentation()) + "()"
+	}
 	untrimmed := fmt.Sprintf(`
 func %s() {
 	for i := 0; i < %d; i++ {
@@ -87,7 +96,7 @@ func %s() {
 	return strings.TrimSpace(untrimmed)
 }
 
-func generateGoCode(program Program) string {
+func generateGoCode(program *Program) string {
 	blocks := make([]string, 0)
 
 	for _, function := range program.functions {
@@ -102,4 +111,46 @@ func generateGoCode(program Program) string {
 	code := strings.Join(blocks, "\n")
 
 	return code
+}
+
+type Language string
+
+const (
+	InvalidTarget Language = ""
+	Go = "go"
+	Ruby = "ruby"
+)
+
+func knownLanguages() []Language {
+	return []Language {Go, Ruby}
+}
+
+func (lang Language) String() string {
+	return string(lang)
+}
+
+func LookupLanguage(s string) (Language, error) {
+	s = strings.TrimSpace(s)
+	if (s == "") {
+		return InvalidTarget, errors.New("language unspecified")
+	}
+	s = strings.ToLower(s)
+	matches := func(lang Language, s string) bool {
+		return lang.String() == s
+	}
+	for _, lang := range knownLanguages() {
+		if matches(lang, s) {
+			return lang, nil
+		}
+	}
+	return InvalidTarget, errors.New("language unknown")
+}
+
+func (program *Program) ToCode(lang Language) (string, error) {
+	switch lang {
+	case Go:
+		return generateGoCode(program), nil
+	default:
+		return "", errors.New("invalid language passed")
+	}
 }
