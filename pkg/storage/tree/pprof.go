@@ -41,7 +41,6 @@ func (p *Pprof) Pprof() *Profile {
 	p.profile.SampleType = []*ValueType{{Type: p.newString(p.metadata.Type), Unit: p.newString(p.metadata.Unit)}}
 	p.profile.TimeNanos = p.metadata.StartTime
 	p.profile.DurationNanos = p.metadata.Duration
-
 	p.tree.Iterate2(func(name string, self uint64, stack []string) {
 		value := []int64{int64(self)}
 		loc := []uint64{}
@@ -62,12 +61,9 @@ func (p *Pprof) Pprof() *Profile {
 		ioutil.WriteFile("./pprof.json", []byte(result), 0600)
 		ioutil.WriteFile("collapsed.txt", []byte(p.tree.Collapsed()), 0600)
 		ioutil.WriteFile("collapsed2.txt", []byte(p.tree.String()), 0600)
-
 	}
 	//
-
 	return p.profile
-
 }
 
 func (p *Pprof) newString(value string) int64 {

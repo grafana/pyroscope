@@ -73,7 +73,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		out, err := proto.Marshal(pprof.Pprof())
 		if err == nil {
-			ctrl.writeResponseFile(w, "profile.pb", out)
+			ctrl.writeResponseFile(w, "profile.pprof", out)
 		} else {
 			ctrl.writeInternalServerError(w, err, "")
 		}
@@ -81,7 +81,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		collapsed := out.Tree.Collapsed()
 		ctrl.writeResponseFile(w, "profile.collapsed", []byte(collapsed))
 	}
-
 }
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {

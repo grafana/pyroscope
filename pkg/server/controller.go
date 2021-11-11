@@ -358,7 +358,7 @@ func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}
 	}
 }
 
-func (ctrl *Controller) writeResponseFile(w http.ResponseWriter, filename string, content []byte) {
+func (*Controller) writeResponseFile(w http.ResponseWriter, filename string, content []byte) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(content)
