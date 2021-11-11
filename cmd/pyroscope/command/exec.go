@@ -20,7 +20,7 @@ func newExecCmd(cfg *config.Exec) *cobra.Command {
 
 		DisableFlagParsing: true,
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
-			err := exec.Cli(exec.NewConfig(cfg), args)
+			err := exec.Cli(exec.NewConfig(cfg), args, nil, nil)
 			// Normally, if the program ran, the call should return ExitError and
 			// the exit code must be preserved. Otherwise, the error originates from
 			// pyroscope and will be printed.

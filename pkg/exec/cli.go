@@ -19,7 +19,11 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
+	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
 	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
@@ -30,11 +34,11 @@ var (
 	disableLinuxChecks bool
 )
 
-// TODO(kolesnikovae): separate exec and connect.
+// TODO(kolesnikovae): separate exec, connect and adhoc.
 
-// Cli is command line interface for both exec and connect commands
-func Cli(cfg *Config, args []string) error {
-	if cfg.mode == modeExec {
+// Cli is command line interface for both exec, connect and adhoc commands
+func Cli(cfg *Config, args []string, storage *storage.Storage, logger *logrus.Logger) error {
+	if cfg.mode != modeConnect {
 		if len(args) == 0 {
 			return errors.New("no arguments passed")
 		}
@@ -48,7 +52,7 @@ func Cli(cfg *Config, args []string) error {
 
 	spyName := cfg.spyName
 	if spyName == "auto" {
-		if cfg.mode == modeExec {
+		if cfg.mode != modeConnect {
 			baseName := path.Base(args[0])
 			spyName = spy.ResolveAutoName(baseName)
 			if spyName == "" {
@@ -80,25 +84,37 @@ func Cli(cfg *Config, args []string) error {
 	if err := performChecks(spyName); err != nil {
 		return err
 	}
-	logrus.SetLevel(cfg.logLevel)
-	if cfg.logLevel != logrus.PanicLevel {
-		logrus.Info("to disable logging from pyroscope, specify " + color.YellowString("-no-logging") + " flag")
+
+	if logger == nil {
+		logger = logrus.StandardLogger()
+		logger.SetLevel(cfg.logLevel)
+		if cfg.logLevel != logrus.PanicLevel {
+			logger.Info("to disable logging from pyroscope, specify " + color.YellowString("-no-logging") + " flag")
+		}
 	}
 
 	if cfg.applicationName == "" {
-		logrus.Infof("we recommend specifying application name via %s flag or env variable %s",
+		logger.Infof("we recommend specifying application name via %s flag or env variable %s",
 			color.YellowString("-application-name"), color.YellowString("PYROSCOPE_APPLICATION_NAME"))
 		cfg.applicationName = spyName + "." + names.GetRandomName(generateSeed(args))
-		logrus.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.applicationName))
+		logger.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.applicationName))
 	}
 
-	logrus.WithFields(logrus.Fields{
+	logger.WithFields(logrus.Fields{
 		"args": fmt.Sprintf("%q", args),
 	}).Debug("starting command")
 
-	u, err := remote.New(cfg.RemoteConfig, logrus.StandardLogger())
-	if err != nil {
-		return fmt.Errorf("new remote upstream: %v", err)
+	var u upstream.Upstream
+	if cfg.mode == modeAdhoc {
+		d := direct.New(storage, exporter.MetricsExporter{})
+		d.Start()
+		u = d
+	} else {
+		var err error
+		u, err = remote.New(cfg.RemoteConfig, logger)
+		if err != nil {
+			return fmt.Errorf("new remote upstream: %v", err)
+		}
 	}
 	defer u.Stop()
 
@@ -108,7 +124,7 @@ func Cli(cfg *Config, args []string) error {
 	c := make(chan os.Signal, 10)
 	pid := cfg.pid
 	var cmd *goexec.Cmd
-	if cfg.mode == modeExec {
+	if cfg.mode != modeConnect {
 		// Note that we don't specify which signals to be sent: any signal to be
 		// relayed to the child process (including SIGINT and SIGTERM).
 		signal.Notify(c)
@@ -116,10 +132,10 @@ func Cli(cfg *Config, args []string) error {
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
 		cmd.Stdin = os.Stdin
-		if err = adjustCmd(cmd, *cfg); err != nil {
+		if err := adjustCmd(cmd, *cfg); err != nil {
 			logrus.Error(err)
 		}
-		if err = cmd.Start(); err != nil {
+		if err := cmd.Start(); err != nil {
 			return err
 		}
 		pid = cmd.Process.Pid
@@ -159,7 +175,7 @@ func Cli(cfg *Config, args []string) error {
 	}
 	defer session.Stop()
 
-	if cfg.mode == modeExec {
+	if cfg.mode != modeConnect {
 		return waitForSpawnedProcessToExit(c, cmd)
 	}
 

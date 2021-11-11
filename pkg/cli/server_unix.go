@@ -10,9 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
 func StartServer(ctx context.Context, c *config.Server) error {
@@ -22,7 +24,13 @@ func StartServer(ctx context.Context, c *config.Server) error {
 	}
 	logrus.SetLevel(logLevel)
 	logger := logrus.StandardLogger()
-	srv, err := newServerService(logger, c)
+
+	storage, err := storage.New(storage.NewConfig(c), logger, prometheus.DefaultRegisterer)
+	if err != nil {
+		return fmt.Errorf("new storage: %w", err)
+	}
+
+	srv, err := newServerService(storage, logger, c, false)
 	if err != nil {
 		return fmt.Errorf("could not initialize server: %w", err)
 	}
@@ -34,6 +42,24 @@ func StartServer(ctx context.Context, c *config.Server) error {
 		}
 	}
 
+	err = run(ctx, srv, logger)
+	logger.Debug("stopping storage")
+	if err := storage.Close(); err != nil {
+		logger.WithError(err).Error("storage close")
+	}
+	return err
+}
+
+func StartAdhocServer(ctx context.Context, c *config.Server, storage *storage.Storage, logger *logrus.Logger) error {
+	srv, err := newServerService(storage, logger, c, true)
+	if err != nil {
+		return fmt.Errorf("could not initialize server: %w", err)
+	}
+
+	return run(ctx, srv, logger)
+}
+
+func run(ctx context.Context, srv *serverService, logger *logrus.Logger) error {
 	var stopTime time.Time
 	s := make(chan os.Signal, 1)
 	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)
@@ -49,14 +75,14 @@ func StartServer(ctx context.Context, c *config.Server) error {
 		logger.Info("stopping server")
 		stopTime = time.Now()
 		srv.Stop()
-		if err = <-exited; err != nil {
+		if err := <-exited; err != nil {
 			logger.WithError(err).Error("failed to stop server gracefully")
 			return err
 		}
 		logger.WithField("duration", time.Since(stopTime)).Info("server stopped gracefully")
 		return nil
 
-	case err = <-exited:
+	case err := <-exited:
 		if err == nil {
 			// Should never happen.
 			logger.Error("server exited")
