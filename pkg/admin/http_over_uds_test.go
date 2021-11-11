@@ -1,7 +1,9 @@
 package admin_test
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -68,10 +70,56 @@ var _ = Describe("HTTP Over UDS", func() {
 					server.Start(http.NewServeMux())
 				}()
 
+				waitUntilServerIsReady(socketAddr)
+
 				// create server 2
 				_, err = admin.NewUdsHTTPServer(socketAddr)
 				Expect(err).To(MatchError(admin.ErrSocketStillResponding))
 			})
 		})
 	})
+
+	When("server is closed", func() {
+		It("shutsdown properly", func() {
+			cleanup, dir = genRandomDir()
+			socketAddr = dir + "/pyroscope.sock"
+			defer cleanup()
+
+			// start the server
+			server, err := admin.NewUdsHTTPServer(socketAddr)
+			must(err)
+			go func() {
+				server.Start(http.NewServeMux())
+			}()
+
+			waitUntilServerIsReady(socketAddr)
+
+			server.Stop()
+
+			Expect(socketAddr).ToNot(BeAnExistingFile())
+		})
+	})
 })
+
+func waitUntilServerIsReady(socketAddr string) error {
+	const MaxReadinessRetries = 5
+	client := admin.NewHttpClient(socketAddr)
+	retries := 0
+
+	for {
+		_, err := client.Get(admin.HealthAddress)
+
+		// all good?
+		if err == nil {
+			return nil
+		}
+		if retries >= MaxReadinessRetries {
+			break
+		}
+
+		time.Sleep(time.Millisecond * 300)
+		retries++
+	}
+
+	return fmt.Errorf("maximum retries exceeded ('%d') waiting for server ('%s') to respond", retries, admin.HealthAddress)
+}

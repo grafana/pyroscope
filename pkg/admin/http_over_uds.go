@@ -1,12 +1,14 @@
 package admin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"syscall"
+	"time"
 )
 
 var (
@@ -21,6 +23,7 @@ var (
 
 	// Anything works here
 	SocketHTTPAddress = "http://pyroscope"
+	HealthAddress     = SocketHTTPAddress + "/health"
 )
 
 type UdsHTTPServer struct {
@@ -85,8 +88,8 @@ func createListener(socketAddr string) (net.Listener, error) {
 		if isErrorAddressAlreadyInUse(err) {
 			// that socket is already being used
 			// let's check if the server is also responding
-			httpClient := newHttpClient(socketAddr)
-			resp, err := httpClient.Get(SocketHTTPAddress + "/health")
+			httpClient := NewHttpClient(socketAddr)
+			resp, err := httpClient.Get(HealthAddress)
 
 			// the httpclient failed
 			// let's take over
@@ -114,9 +117,9 @@ func createListener(socketAddr string) (net.Listener, error) {
 }
 
 func (u *UdsHTTPServer) Stop() error {
-	// TODO
-	// drain these connections?
-	err := u.server.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	err := u.server.Shutdown(ctx)
 	if err != nil {
 		return err
 	}

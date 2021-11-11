@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -61,10 +60,7 @@ var _ = Describe("integration", func() {
 			}
 		}()
 
-		// TODO
-		// for some reason it takes some time until server is ready
-		// we could add retries?
-		time.Sleep(time.Millisecond * 10)
+		waitUntilServerIsReady(socketAddr)
 
 		resp, err := httpC.Get("http://dummy/check")
 		Expect(err).To(BeNil())

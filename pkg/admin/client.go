@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func newHttpClient(socketAddr string) http.Client {
+func NewHttpClient(socketAddr string) http.Client {
 	return http.Client{
 		// since this is an IPC call
 		// this is incredibly generous
