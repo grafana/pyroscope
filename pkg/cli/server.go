@@ -193,5 +193,4 @@ func (svc *serverService) stop() {
 	}
 	svc.logger.Debug("stopping admin server")
 	svc.adminServer.Stop()
-
 }
