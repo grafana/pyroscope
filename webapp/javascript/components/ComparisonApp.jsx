@@ -64,6 +64,8 @@ function ComparisonApp(props) {
 const mapStateToProps = (state) => ({
   ...state,
   renderURL: buildRenderURL(state),
+  leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
+  rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),
 });
 
 const mapDispatchToProps = (dispatch) => ({
