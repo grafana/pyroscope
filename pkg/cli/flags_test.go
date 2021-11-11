@@ -256,7 +256,7 @@ var _ = Describe("flags", func() {
 							GroupBy: []string{"foo"},
 						},
 					},
-					AdminSocketPath: "",
+					AdminSocketPath: "/tmp/pyroscope.sock",
 				}))
 			})
 
