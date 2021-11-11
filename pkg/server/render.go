@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"io"
 
 	"github.com/sirupsen/logrus"
 
@@ -17,10 +18,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
+	"github.com/pyroscope-io/pyroscope/pkg/proggen"
 )
 
 var (
-	errUnknownFormat         = errors.New("unknown format")
+	errUnknownFormat         = errors.New("format: unknown or unspecified format")
+	errUnknownLang         = errors.New("lang: unknown or unspecified code language")
 	errLabelIsRequired       = errors.New("label parameter is required")
 	errNoData                = errors.New("no data")
 	errTimeParamsAreRequired = errors.New("leftFrom,leftUntil,rightFrom,rightUntil are required")
@@ -35,6 +38,13 @@ type renderParams struct {
 	leftEndTime   time.Time
 	rghtStartTime time.Time
 	rghtEndTime   time.Time
+
+	lang	 string
+}
+
+func writeResponseCode(w http.ResponseWriter, code string) {
+	w.Header().Set("Content-Type", "text/plain")
+	io.WriteString(w, code)
 }
 
 func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
@@ -55,9 +65,17 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		out = &storage.GetOutput{Tree: tree.New()}
 	}
 
-	fs := out.Tree.FlamebearerStruct(p.maxNodes)
-	res := renderResponse(fs, out)
-	ctrl.writeResponseJSON(w, res)
+	switch p.format {
+		case "", "json":
+			fs := out.Tree.FlamebearerStruct(p.maxNodes)
+			res := renderResponse(fs, out)
+			ctrl.writeResponseJSON(w, res)
+		case "code":
+			cpuUtilizationTarget := 0.75
+			program := proggen.TreeToProgram(out.Tree, cpuUtilizationTarget)
+			code := program.toLanguage(p.lang)
+			writeResponseCode(w, code)
+	}
 }
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
@@ -133,6 +151,31 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 	ctrl.writeResponseJSON(w, res)
 }
 
+func expectRenderFormat(format string) error {
+	switch format {
+	case "json":
+		return nil
+	case "":
+		return nil
+	case "code":
+		return nil
+	default:
+		return errUnknownFormat
+	}
+}
+
+// TODO look up available code language targets automatically
+func expectCodeLang(lang string) error {
+	switch lang {
+	case "go":
+		return nil
+	case "":
+		return nil
+	default:
+		return errUnknownLang
+	}
+}
+
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {
 	v := r.URL.Query()
 	p.gi = new(storage.GetInput)
@@ -166,9 +209,16 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	p.gi.EndTime = attime.Parse(v.Get("until"))
 	p.format = v.Get("format")
 
-	// TODO refactor format param handling to allow programming language targets
-	if err := ctrl.expectJSON(p.format); err != nil {
-		return errUnknownFormat
+	if err := expectRenderFormat(p.format); err != nil {
+		return err
+	}
+
+	p.lang = v.Get("lang")
+
+	if p.format == "code" {
+		if err := expectCodeLang(p.lang); err != nil {
+			return err
+		}
 	}
 
 	return nil

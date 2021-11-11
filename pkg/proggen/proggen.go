@@ -60,7 +60,7 @@ func treeToFunctions(tree *tree.Tree, cpuUtilizationTarget float64) []Function {
 	return functions
 }
 
-func treeToProgram(tree *tree.Tree, cpuUtilizationTarget float64) Program {
+func TreeToProgram(tree *tree.Tree, cpuUtilizationTarget float64) Program {
 	entryFunctionKey := tree.RootKey()
 	entryFunctionName := hash(entryFunctionKey)
 	return Program {
