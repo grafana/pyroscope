@@ -1,23 +1,39 @@
 package admin
 
 import (
-	"context"
-	"net"
+	"encoding/json"
+	"fmt"
 	"net/http"
-	"time"
 )
 
-// NewHTTPOverUDSClient creates a http client that communicates via UDS
-func NewHTTPOverUDSClient(socketAddr string) http.Client {
-	return http.Client{
-		// since this is an IPC call
-		// this is incredibly generous
-		Timeout: 500 * time.Millisecond,
+type Client struct {
+	httpClient *http.Client
+}
 
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial("unix", socketAddr)
-			},
-		},
+func NewClient(socketAddr string) (*Client, error) {
+	httpClient, err := NewHTTPOverUDSClient(socketAddr)
+	if err != nil {
+		return nil, err
 	}
+
+	return &Client{
+		httpClient,
+	}, nil
+}
+
+type AppNames []string
+
+func (c *Client) GetAppsNames() (names AppNames, err error) {
+	// TODO: retrieve the route from somewhere else
+	resp, err := c.httpClient.Get("http://pyroscope/v1/apps")
+	if err != nil {
+		return names, fmt.Errorf("error making the request %w", err)
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&names)
+	if err != nil {
+		return names, fmt.Errorf("error decoding response %w", err)
+	}
+
+	return names, nil
 }

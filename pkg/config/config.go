@@ -17,6 +17,7 @@ type Config struct {
 	Convert   Convert   `skip:"true" mapstructure:",squash"`
 	Exec      Exec      `skip:"true" mapstructure:",squash"`
 	DbManager DbManager `skip:"true" mapstructure:",squash"`
+	Admin     Admin     `skip:"true" mapstructure:",squash"`
 }
 
 // File can be read from file system.
@@ -114,7 +115,7 @@ type Server struct {
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 
 	// TODO: use <storagePath> somehow
-	AdminSocketPath         string `def:"" desc:"path where the admin UDS will be created. if nothign is defined it will reuse the same value as storagePath" mapstructure:"admin-socket-path"`
+	AdminSocketPath         string `def:"/tmp/pyroscope.sock" desc:"path where the admin UDS will be created. if nothign is defined it will reuse the same value as storagePath" mapstructure:"admin-socket-path"`
 	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 }
 
@@ -215,4 +216,9 @@ type Exec struct {
 	RbspyBlocking          bool          `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+}
+
+type Admin struct {
+	// TODO: use <storagePath> somehow
+	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin UDS will be created." mapstructure:"admin-socket-path"`
 }

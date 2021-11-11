@@ -49,6 +49,13 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		done:    make(chan struct{}),
 	}
 
+	var err error
+	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer)
+	if err != nil {
+		return nil, fmt.Errorf("new storage: %w", err)
+	}
+
+	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
 		socketPath := svc.config.AdminSocketPath
 		if socketPath == "" {
@@ -69,11 +76,6 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
 		}
-	}
-	var err error
-	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer)
-	if err != nil {
-		return nil, fmt.Errorf("new storage: %w", err)
 	}
 
 	exportedMetricsRegistry := prometheus.NewRegistry()

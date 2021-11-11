@@ -88,7 +88,11 @@ func createListener(socketAddr string) (net.Listener, error) {
 		if isErrorAddressAlreadyInUse(err) {
 			// that socket is already being used
 			// let's check if the server is also responding
-			httpClient := NewHTTPOverUDSClient(socketAddr)
+			httpClient, err := NewHTTPOverUDSClient(socketAddr)
+			if err != nil {
+				return nil, err
+			}
+
 			resp, err := httpClient.Get(HealthAddress)
 
 			// the httpclient failed
