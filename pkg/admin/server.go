@@ -23,6 +23,7 @@ type Server struct {
 
 type HTTPServer interface {
 	Start(*http.ServeMux) error
+	Stop() error
 }
 
 // NewServer creates an AdminServer and returns an error
@@ -53,4 +54,8 @@ func NewServer(c Config, ctrl *Controller, httpServer HTTPServer) (*Server, erro
 
 func (as *Server) Start() error {
 	return as.HTTPServer.Start(as.Mux)
+}
+
+func (as *Server) Stop() error {
+	return as.HTTPServer.Stop()
 }

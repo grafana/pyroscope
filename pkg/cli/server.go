@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -48,6 +49,30 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		done:    make(chan struct{}),
 	}
 
+	if svc.config.EnableExperimentalAdmin {
+		socketPath := svc.config.AdminSocketPath
+		if socketPath == "" {
+			socketPath = filepath.Join(svc.config.StoragePath, "/pyroscope.sock")
+		}
+		adminSvc := admin.NewService(svc.storage)
+		adminCtrl := admin.NewController(svc.logger, adminSvc)
+		adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("admin: %w", err)
+		}
+
+		svc.adminServer, err = admin.NewServer(
+			admin.Config{
+				Log:        svc.logger,
+				SocketAddr: socketPath,
+			},
+			adminCtrl,
+			adminHTTPOverUDS,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("admin: %w", err)
+		}
+	}
 	var err error
 	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer)
 	if err != nil {
@@ -77,21 +102,6 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		UploadRate:     10 * time.Second,
 		Logger:         logger,
 	})
-
-	// TODO check if we want to disable this
-	adminSvc := admin.NewService(svc.storage)
-	adminCtrl := admin.NewController(svc.logger, adminSvc)
-
-	svc.adminServer, err = admin.NewServer(
-		admin.Config{
-			Log:        svc.logger,
-			SocketAddr: svc.config.AdminSocketPath,
-		},
-		adminCtrl,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("admin: %w", err)
-	}
 
 	svc.controller, err = server.New(server.Config{
 		Configuration:           svc.config,
@@ -182,4 +192,7 @@ func (svc *serverService) stop() {
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
+	svc.logger.Debug("stopping admin server")
+	svc.adminServer.Stop()
+
 }

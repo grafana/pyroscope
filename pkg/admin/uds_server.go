@@ -10,8 +10,9 @@ import (
 )
 
 type UdsHTTPServer struct {
-	server   *http.Server
-	listener net.Listener
+	server     *http.Server
+	listener   net.Listener
+	socketAddr string
 }
 
 func NewUdsHTTPServer(socketAddr string) (*UdsHTTPServer, error) {
@@ -19,16 +20,14 @@ func NewUdsHTTPServer(socketAddr string) (*UdsHTTPServer, error) {
 		return nil, errors.New("socket address must be defined")
 	}
 
-	// we listen on a unix domain socket
-	// which will be created by the os
-	// https://man7.org/linux/man-pages/man2/bind.2.html
-	listener, err := net.Listen("unix", socketAddr)
-	if handleListenError(socketAddr, err); err != nil {
-		return nil, err
+	listener, err := createListener(socketAddr)
+	if err != nil {
+		return nil, fmt.Errorf("error while creating listener: %w", err)
 	}
 
 	return &UdsHTTPServer{
-		listener: listener,
+		listener:   listener,
+		socketAddr: socketAddr,
 	}, nil
 }
 
@@ -38,13 +37,63 @@ func (u *UdsHTTPServer) Start(handler *http.ServeMux) error {
 	})
 
 	u.server = &http.Server{Handler: handler}
+
 	return u.server.Serve(u.listener)
 }
 
-func (u *UdsHTTPServer) Close() error {
+func createListener(socketAddr string) (net.Listener, error) {
+	takeOver := func(socketAddr string) (net.Listener, error) {
+		err := os.Remove(socketAddr)
+		if err != nil {
+			return nil, err
+		}
+
+		return net.Listen("unix", socketAddr)
+	}
+
+	// we listen on a unix domain socket
+	// which will be created by the os
+	// https://man7.org/linux/man-pages/man2/bind.2.html
+	listener, err := net.Listen("unix", socketAddr)
+
+	if err != nil {
+		if isErrorAddressAlreadyInUse(err) {
+			// that socket is already being used
+
+			// let's check if the server is also responding
+			httpClient := newHttpClient(socketAddr)
+			resp, err := httpClient.Get("http://pyroscope/health")
+			// if not, then we take over
+			// TODO identify what kind of error happened
+			if err != nil {
+				return takeOver(socketAddr)
+			}
+
+			// if yes, then we fail
+			if resp.StatusCode == http.StatusOK {
+				return nil, errors.New(fmt.Sprintf("a server is still running and responding to socket %s. please stop that server first", socketAddr))
+			}
+
+			// if any other kind of error, we also take over
+			return takeOver(socketAddr)
+		}
+
+		return nil, fmt.Errorf("another error happened %w", err)
+	}
+
+	// no errors happened
+	return listener, err
+}
+
+func (u *UdsHTTPServer) Stop() error {
 	// TODO
 	// drain these connections?
-	return u.server.Close()
+	err := u.server.Close()
+	if err != nil {
+		return err
+	}
+
+	return os.Remove(u.socketAddr)
 }
 
 func handleListenError(socketAddr string, err error) error {
@@ -54,8 +103,10 @@ func handleListenError(socketAddr string, err error) error {
 		// let's check if the server is also responding
 		httpClient := newHttpClient(socketAddr)
 		resp, err := httpClient.Get("http://pyroscope/health")
+		// if not, then we take over
+		// TODO identify what kind of error happened
 		if err != nil {
-			return err
+			return nil
 		}
 
 		// if yes, then we fail
@@ -69,7 +120,7 @@ func handleListenError(socketAddr string, err error) error {
 
 	// it's some other error
 	if err != nil {
-		return err
+		return fmt.Errorf("another error happened %w", err)
 	}
 
 	return nil

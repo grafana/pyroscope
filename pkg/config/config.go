@@ -114,7 +114,7 @@ type Server struct {
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 
 	// TODO: use <storagePath> somehow
-	AdminSocketPath         string `def:"<installPrefix>/var/lib/pyroscope/pyroscope.sock" desc:"path where the admin UDS will be created" mapstructure:"admin-socket-path"`
+	AdminSocketPath         string `def:"" desc:"path where the admin UDS will be created. if nothign is defined it will reuse the same value as storagePath" mapstructure:"admin-socket-path"`
 	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 }
 
