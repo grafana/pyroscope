@@ -103,7 +103,7 @@ var _ = Describe("HTTP Over UDS", func() {
 
 func waitUntilServerIsReady(socketAddr string) error {
 	const MaxReadinessRetries = 5
-	client := admin.NewHttpClient(socketAddr)
+	client := admin.NewHTTPOverUDSClient(socketAddr)
 	retries := 0
 
 	for {

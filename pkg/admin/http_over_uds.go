@@ -15,7 +15,7 @@ var (
 	// ErrSocketStillResponding refers to when
 	// a) an instance of the server is still running normally; or
 	// b) server was not closed properly
-	ErrSocketStillResponding = errors.New("a server is still running and responding to socket.")
+	ErrSocketStillResponding = errors.New("a server is still running and responding to socket")
 	// ErrInvalidSocketPathname refers to when the socket filepath is obviously invalid (eg empty string)
 	ErrInvalidSocketPathname = errors.New("the socket filepath is invalid")
 	// ErrListenerBind refers to generic errors
@@ -88,7 +88,7 @@ func createListener(socketAddr string) (net.Listener, error) {
 		if isErrorAddressAlreadyInUse(err) {
 			// that socket is already being used
 			// let's check if the server is also responding
-			httpClient := NewHttpClient(socketAddr)
+			httpClient := NewHTTPOverUDSClient(socketAddr)
 			resp, err := httpClient.Get(HealthAddress)
 
 			// the httpclient failed

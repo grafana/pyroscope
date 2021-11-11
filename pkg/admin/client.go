@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-func NewHttpClient(socketAddr string) http.Client {
+// NewHTTPOverUDSClient creates a http client that communicates via UDS
+func NewHTTPOverUDSClient(socketAddr string) http.Client {
 	return http.Client{
 		// since this is an IPC call
 		// this is incredibly generous
