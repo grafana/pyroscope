@@ -23,6 +23,6 @@ func newDbManagerCmd(cfg *config.CombinedDbManager) *cobra.Command {
 	}
 
 	cli.PopulateFlagSet(cfg.DbManager, dbmanagerCmd.Flags(), vpr)
-	cli.PopulateFlagSet(cfg.Server, dbmanagerCmd.Flags(), vpr, cli.WithSkip("log-level", "storage-path", "metric-export-rules"))
+	cli.PopulateFlagSet(cfg.Server, dbmanagerCmd.Flags(), vpr, cli.WithSkip("log-level", "storage-path", "metrics-export-rules"))
 	return dbmanagerCmd
 }

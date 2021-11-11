@@ -205,12 +205,16 @@ var _ = Describe("flags", func() {
 					MaxNodesRender:        8192,
 					HideApplications:      []string{},
 					Retention:             0,
-					SampleRate:            0,
-					OutOfSpaceThreshold:   0,
-					CacheDimensionSize:    0,
-					CacheDictionarySize:   0,
-					CacheSegmentSize:      0,
-					CacheTreeSize:         0,
+					RetentionLevels: config.RetentionLevels{
+						Zero: 100 * time.Second,
+						One:  1000 * time.Second,
+					},
+					SampleRate:          0,
+					OutOfSpaceThreshold: 0,
+					CacheDimensionSize:  0,
+					CacheDictionarySize: 0,
+					CacheSegmentSize:    0,
+					CacheTreeSize:       0,
 					Auth: config.Auth{
 						Google: config.GoogleOauth{
 							Enabled:        false,
@@ -244,10 +248,11 @@ var _ = Describe("flags", func() {
 						LoginMaximumLifetimeDays: 0,
 					},
 
-					MetricExportRules: config.MetricExportRules{
+					MetricsExportRules: config.MetricsExportRules{
 						"my_metric_name": {
-							Expr: `app.name{foo=~"bar"}`,
-							Node: "a;b;c",
+							Expr:    `app.name{foo=~"bar"}`,
+							Node:    "a;b;c",
+							GroupBy: []string{"foo"},
 						},
 					},
 				}))

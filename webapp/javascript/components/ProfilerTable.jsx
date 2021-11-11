@@ -3,14 +3,15 @@
 
 import React from 'react';
 import clsx from 'clsx';
-import { getFormatter, getPackageNameFromStackTrace } from '../util/format';
+import { getFormatter } from '../util/format';
 import {
   colorBasedOnPackageName,
   defaultColor,
   diffColorGreen,
   diffColorRed,
+  getPackageNameFromStackTrace,
 } from './FlameGraph/FlameGraphComponent/color';
-import { parseFlamebearerFormat } from '../util/flamebearer';
+import { createFF } from '../util/flamebearer';
 import { fitIntoTableCell } from '../util/fitMode';
 
 const zero = (v) => v || 0;
@@ -42,7 +43,7 @@ const generateTable = (flamebearer) => {
     return table;
   }
   const { names, levels, format } = flamebearer;
-  const ff = parseFlamebearerFormat(format);
+  const ff = createFF(format);
   const generateCell =
     format !== 'double' ? generateCellSingle : generateCellDouble;
 
@@ -205,175 +206,171 @@ function Table({
   );
 }
 
-function TableBody({
-  flamebearer,
-  sortBy,
-  sortByDirection,
-  viewDiff,
-  fitMode,
-}) {
-  const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
+const TableBody = React.memo(
+  ({ flamebearer, sortBy, sortByDirection, viewDiff, fitMode }) => {
+    const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
-  const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
+    const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
 
-  const m = sortByDirection === 'asc' ? 1 : -1;
-  let sorted;
-  if (sortBy === 'name') {
-    sorted = table.sort((a, b) => m * a[sortBy].localeCompare(b[sortBy]));
-  } else {
-    sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
-  }
+    const m = sortByDirection === 'asc' ? 1 : -1;
+    let sorted;
+    if (sortBy === 'name') {
+      sorted = table.sort((a, b) => m * a[sortBy].localeCompare(b[sortBy]));
+    } else {
+      sorted = table.sort((a, b) => m * (a[sortBy] - b[sortBy]));
+    }
 
-  // The problem is that when you switch apps or time-range and the function
-  //   names stay the same it leads to an issue where rows don't get re-rendered
-  // So we force a rerender each time.
-  const renderID = Math.random();
+    // The problem is that when you switch apps or time-range and the function
+    //   names stay the same it leads to an issue where rows don't get re-rendered
+    // So we force a rerender each time.
+    const renderID = Math.random();
 
-  const formatter = getFormatter(numTicks, sampleRate, units);
+    const formatter = getFormatter(numTicks, sampleRate, units);
 
-  const nameCell = (x, style) => (
-    <td>
-      <span className="color-reference" style={style} />
-      <div
-        className="symbol-name"
-        title={x.name}
-        style={fitIntoTableCell(fitMode)}
-      >
-        {x.name}
-      </div>
-    </td>
-  );
+    const nameCell = (x, style) => (
+      <td>
+        <span className="color-reference" style={style} />
+        <div
+          className="symbol-name"
+          title={x.name}
+          style={fitIntoTableCell(fitMode)}
+        >
+          {x.name}
+        </div>
+      </td>
+    );
 
-  const renderRow = !viewDiff ? (
-    (x, color, style) => (
-      <tr key={x.name + renderID}>
-        {nameCell(x, style)}
-        <td style={backgroundImageStyle(x.self, maxSelf, color)}>
-          {/* <span>{ formatPercent(x.self / numTicks) }</span>
+    const renderRow = !viewDiff ? (
+      (x, color, style) => (
+        <tr key={x.name + renderID}>
+          {nameCell(x, style)}
+          <td style={backgroundImageStyle(x.self, maxSelf, color)}>
+            {/* <span>{ formatPercent(x.self / numTicks) }</span>
       &nbsp;
       <span>{ shortNumber(x.self) }</span>
       &nbsp; */}
-          <span title={formatter.format(x.self, sampleRate)}>
-            {formatter.format(x.self, sampleRate)}
-          </span>
-        </td>
-        <td style={backgroundImageStyle(x.total, numTicks, color)}>
-          {/* <span>{ formatPercent(x.total / numTicks) }</span>
+            <span title={formatter.format(x.self, sampleRate)}>
+              {formatter.format(x.self, sampleRate)}
+            </span>
+          </td>
+          <td style={backgroundImageStyle(x.total, numTicks, color)}>
+            {/* <span>{ formatPercent(x.total / numTicks) }</span>
       &nbsp;
       <span>{ shortNumber(x.total) }</span>
       &nbsp; */}
-          <span title={formatter.format(x.total, sampleRate)}>
-            {formatter.format(x.total, sampleRate)}
-          </span>
-        </td>
-      </tr>
-    )
-  ) : viewDiff === 'self' ? (
-    (x, color, style) => (
-      <tr key={x.name + renderID}>
-        {nameCell(x, style)}
-        {/* NOTE: it seems React does not understand multiple backgrounds, have to workaround:  */}
-        {/*   The `style` prop expects a mapping from style properties to values, not a string. */}
-        <td
-          STYLE={backgroundImageDiffStyle(
-            x.selfLeft,
-            x.selfRght,
-            maxSelf,
-            color,
-            'L'
-          )}
-        >
-          <span title={formatter.format(x.selfLeft, sampleRate)}>
-            {formatter.format(x.selfLeft, sampleRate)}
-          </span>
-        </td>
-        <td
-          STYLE={backgroundImageDiffStyle(
-            x.selfLeft,
-            x.selfRght,
-            maxSelf,
-            color,
-            'R'
-          )}
-        >
-          <span title={formatter.format(x.selfRght, sampleRate)}>
-            {formatter.format(x.selfRght, sampleRate)}
-          </span>
-        </td>
-      </tr>
-    )
-  ) : viewDiff === 'total' ? (
-    (x, color, style) => (
-      <tr key={x.name + renderID}>
-        {nameCell(x, style)}
-        <td
-          STYLE={backgroundImageDiffStyle(
-            x.totalLeft,
-            x.totalRght,
-            numTicks / 2,
-            color,
-            'L'
-          )}
-        >
-          <span title={formatter.format(x.totalLeft, sampleRate)}>
-            {formatter.format(x.totalLeft, sampleRate)}
-          </span>
-        </td>
-        <td
-          STYLE={backgroundImageDiffStyle(
-            x.totalLeft,
-            x.totalRght,
-            numTicks / 2,
-            color,
-            'R'
-          )}
-        >
-          <span title={formatter.format(x.totalRght, sampleRate)}>
-            {formatter.format(x.totalRght, sampleRate)}
-          </span>
-        </td>
-      </tr>
-    )
-  ) : viewDiff === 'diff' ? (
-    (x, color, style) => (
-      <tr key={x.name + renderID}>
-        {nameCell(x, style)}
-        <td
-          STYLE={backgroundImageDiffStyle(
-            x.selfLeft,
-            x.selfRght,
-            maxSelf,
-            defaultColor
-          )}
-        >
-          <span title={formatter.format(x.selfDiff, sampleRate)}>
-            {formatter.format(x.selfDiff, sampleRate)}
-          </span>
-        </td>
-        <td
-          STYLE={backgroundImageDiffStyle(
-            x.totalLeft,
-            x.totalRght,
-            numTicks / 2,
-            color
-          )}
-        >
-          <span title={formatter.format(x.totalDiff, sampleRate)}>
-            {formatter.format(x.totalDiff, sampleRate)}
-          </span>
-        </td>
-      </tr>
-    )
-  ) : (
-    <div>invalid</div>
-  );
+            <span title={formatter.format(x.total, sampleRate)}>
+              {formatter.format(x.total, sampleRate)}
+            </span>
+          </td>
+        </tr>
+      )
+    ) : viewDiff === 'self' ? (
+      (x, color, style) => (
+        <tr key={x.name + renderID}>
+          {nameCell(x, style)}
+          {/* NOTE: it seems React does not understand multiple backgrounds, have to workaround:  */}
+          {/*   The `style` prop expects a mapping from style properties to values, not a string. */}
+          <td
+            STYLE={backgroundImageDiffStyle(
+              x.selfLeft,
+              x.selfRght,
+              maxSelf,
+              color,
+              'L'
+            )}
+          >
+            <span title={formatter.format(x.selfLeft, sampleRate)}>
+              {formatter.format(x.selfLeft, sampleRate)}
+            </span>
+          </td>
+          <td
+            STYLE={backgroundImageDiffStyle(
+              x.selfLeft,
+              x.selfRght,
+              maxSelf,
+              color,
+              'R'
+            )}
+          >
+            <span title={formatter.format(x.selfRght, sampleRate)}>
+              {formatter.format(x.selfRght, sampleRate)}
+            </span>
+          </td>
+        </tr>
+      )
+    ) : viewDiff === 'total' ? (
+      (x, color, style) => (
+        <tr key={x.name + renderID}>
+          {nameCell(x, style)}
+          <td
+            STYLE={backgroundImageDiffStyle(
+              x.totalLeft,
+              x.totalRght,
+              numTicks / 2,
+              color,
+              'L'
+            )}
+          >
+            <span title={formatter.format(x.totalLeft, sampleRate)}>
+              {formatter.format(x.totalLeft, sampleRate)}
+            </span>
+          </td>
+          <td
+            STYLE={backgroundImageDiffStyle(
+              x.totalLeft,
+              x.totalRght,
+              numTicks / 2,
+              color,
+              'R'
+            )}
+          >
+            <span title={formatter.format(x.totalRght, sampleRate)}>
+              {formatter.format(x.totalRght, sampleRate)}
+            </span>
+          </td>
+        </tr>
+      )
+    ) : viewDiff === 'diff' ? (
+      (x, color, style) => (
+        <tr key={x.name + renderID}>
+          {nameCell(x, style)}
+          <td
+            STYLE={backgroundImageDiffStyle(
+              x.selfLeft,
+              x.selfRght,
+              maxSelf,
+              defaultColor
+            )}
+          >
+            <span title={formatter.format(x.selfDiff, sampleRate)}>
+              {formatter.format(x.selfDiff, sampleRate)}
+            </span>
+          </td>
+          <td
+            STYLE={backgroundImageDiffStyle(
+              x.totalLeft,
+              x.totalRght,
+              numTicks / 2,
+              color
+            )}
+          >
+            <span title={formatter.format(x.totalDiff, sampleRate)}>
+              {formatter.format(x.totalDiff, sampleRate)}
+            </span>
+          </td>
+        </tr>
+      )
+    ) : (
+      <div>invalid</div>
+    );
 
-  return sorted.map((x) => {
-    const pn = getPackageNameFromStackTrace(spyName, x.name);
-    const color = viewDiff ? defaultColor : colorBasedOnPackageName(pn, 1);
-    const style = {
-      backgroundColor: color,
-    };
-    return renderRow(x, color, style);
-  });
-}
+    return sorted.map((x) => {
+      const pn = getPackageNameFromStackTrace(spyName, x.name);
+      const color = viewDiff ? defaultColor : colorBasedOnPackageName(pn, 1);
+      const style = {
+        backgroundColor: color,
+      };
+      return renderRow(x, color, style);
+    });
+  }
+);

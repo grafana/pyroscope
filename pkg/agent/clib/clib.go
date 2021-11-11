@@ -4,11 +4,11 @@
 package main
 
 import (
-	"C"
-	"time"
-
 	"os"
 	"sync"
+	"time"
+
+	"C"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -55,8 +55,9 @@ func Start(applicationName *C.char, spyName *C.char, serverAddress *C.char, auth
 		Pid:              os.Getpid(),
 		WithSubprocesses: withSubprocesses != 0,
 		ClibIntegration:  true,
+		Logger:           logger,
 	}
-	session, err = agent.NewSession(&sc, logger)
+	session, err = agent.NewSession(sc)
 	if err != nil {
 		logger.Errorf("error happened when starting profiling session: %v", err)
 		return -1

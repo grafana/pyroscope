@@ -191,7 +191,7 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(
-            'pyroscope_cpu_utilization{instance="$instance"}',
+            'process_cpu_seconds_total{instance="$instance"}',
           )
         )
       )
@@ -217,10 +217,10 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(|||
-            (rate(pyroscope_storage_cache_reads_total[$__rate_interval])-
-            rate(pyroscope_storage_cache_misses_total[$__rate_interval]))
+            (rate(pyroscope_storage_db_cache_reads_total[$__rate_interval])-
+            rate(pyroscope_storage_db_cache_misses_total[$__rate_interval]))
             /
-            rate(pyroscope_storage_cache_reads_total[$__rate_interval])
+            rate(pyroscope_storage_db_cache_reads_total[$__rate_interval])
           |||,
             legendFormat='{{ name }}',
           )
@@ -240,13 +240,13 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(
-            'rate(pyroscope_storage_cache_disk_writes_sum[$__rate_interval])*-1',
+            'rate(pyroscope_storage_db_cache_write_bytes_sum[$__rate_interval])*-1',
             legendFormat="Writes - {{name}}",
           )
         )
         .addTarget(
           grafana.prometheus.target(
-            'rate(pyroscope_storage_cache_disk_reads_sum[$__rate_interval])',
+            'rate(pyroscope_storage_db_cache_read_bytes_sum[$__rate_interval])',
             legendFormat="Reads - {{name}}",
           )
         )
@@ -276,25 +276,23 @@ local grafana = import 'grafonnet/grafana.libsonnet';
           datasource='$PROMETHEUS_DS',
           legend_values='true',
           format='seconds',
-          min='0.001', // as as the bucket minimum
-          max='10', // same as the maximum bucket
           logBase1Y=2,
         )
         .addTarget(
           grafana.prometheus.target(
-            'histogram_quantile(0.9, pyroscope_storage_evictions_duration_seconds_bucket)',
+            'pyroscope_storage_eviction_task_duration_seconds{quantile="0.99"}',
             legendFormat='evictions',
           ),
         )
         .addTarget(
           grafana.prometheus.target(
-            'histogram_quantile(0.9, pyroscope_storage_writeback_duration_seconds_bucket)',
+            'pyroscope_storage_writeback_task_duration_seconds{quantile="0.99"}',
             legendFormat='write-back',
           ),
         )
         .addTarget(
           grafana.prometheus.target(
-            'histogram_quantile(0.9, pyroscope_storage_retention_duration_seconds_bucket)',
+            'pyroscope_storage_retention_task_duration_seconds{quantile="0.99"}',
             legendFormat='retention',
           ),
         )
@@ -314,13 +312,13 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(
-            'pyroscope_storage_disk_bytes',
+            'pyroscope_storage_db_size_bytes',
             legendFormat='{{ name }}',
           ),
         )
         .addTarget(
           grafana.prometheus.target(
-            'sum without(name)(pyroscope_storage_disk_bytes)',
+            'sum without(name)(pyroscope_storage_db_size_bytes)',
             legendFormat='total',
           ),
         )
@@ -339,42 +337,14 @@ local grafana = import 'grafonnet/grafana.libsonnet';
         )
         .addTarget(
           grafana.prometheus.target(
-            'pyroscope_storage_cache_size',
+            'pyroscope_storage_db_cache_size',
             legendFormat='{{ name }}',
           ),
         )
         .addTarget(
           grafana.prometheus.target(
-            'sum without(name)(pyroscope_storage_cache_size)',
+            'sum without(name)(pyroscope_storage_db_cache_size)',
             legendFormat='total',
-          ),
-        )
-      )
-
-      .addPanel(
-        grafana.graphPanel.new(
-          'Cache Size (Approximation)',
-          datasource='$PROMETHEUS_DS',
-          format='bytes',
-          legend_values='true',
-          legend_rightSide='true',
-          legend_alignAsTable='true',
-          legend_current=true,
-          legend_max=true,
-          legend_sort='current',
-          legend_sortDesc=true,
-          logBase1Y=2,
-        )
-        .addTarget(
-          grafana.prometheus.target(
-            'pyroscope_storage_evictions_alloc_bytes',
-            legendFormat='heap size',
-          ),
-        )
-        .addTarget(
-          grafana.prometheus.target(
-            'pyroscope_storage_evictions_total_mem_bytes',
-            legendFormat='total memory',
           ),
         )
       )

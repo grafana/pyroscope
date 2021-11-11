@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -31,10 +32,18 @@ var _ = Describe("server", func() {
 					(*cfg).Server.TLSCertificateFile = filepath.Join(testDataDir, tlsCertificateFile)
 					(*cfg).Server.TLSKeyFile = filepath.Join(testDataDir, tlsKeyFile)
 
-					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
+					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
-
-					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
+					e, _ := exporter.NewExporter(nil, nil)
+					c, _ := New(Config{
+						Configuration:           &(*cfg).Server,
+						Storage:                 s,
+						MetricsExporter:         e,
+						Logger:                  logrus.New(),
+						MetricsRegisterer:       prometheus.NewRegistry(),
+						ExportedMetricsRegistry: prometheus.NewRegistry(),
+						Notifier:                mockNotifier{},
+					})
 					c.dir = http.Dir(testDataDir)
 
 					go c.Start()
@@ -62,10 +71,18 @@ var _ = Describe("server", func() {
 					const addr = ":10046"
 					(*cfg).Server.APIBindAddr = addr
 
-					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
+					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
-
-					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
+					e, _ := exporter.NewExporter(nil, nil)
+					c, _ := New(Config{
+						Configuration:           &(*cfg).Server,
+						Storage:                 s,
+						MetricsExporter:         e,
+						Logger:                  logrus.New(),
+						MetricsRegisterer:       prometheus.NewRegistry(),
+						ExportedMetricsRegistry: prometheus.NewRegistry(),
+						Notifier:                mockNotifier{},
+					})
 					c.dir = http.Dir(testDataDir)
 
 					go c.Start()

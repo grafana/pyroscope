@@ -379,9 +379,9 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 			}
 			flagSet.UintVar(val, nameVal, defaultVal, descVal)
 			vpr.SetDefault(nameVal, defaultVal)
-		case reflect.TypeOf(config.MetricExportRules{}):
+		case reflect.TypeOf(config.MetricsExportRules{}):
 			flagSet.Var(new(mapFlags), nameVal, descVal)
-			vpr.SetDefault(nameVal, config.MetricExportRules{})
+			vpr.SetDefault(nameVal, config.MetricsExportRules{})
 		case reflect.TypeOf([]config.Target{}):
 			flagSet.Var(new(arrayFlags), nameVal, descVal)
 			vpr.SetDefault(nameVal, []config.Target{})

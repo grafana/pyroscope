@@ -12,11 +12,20 @@ import (
 const currentVersion = 1
 
 func (s *Dimension) Serialize(w io.Writer) error {
-	varint.Write(w, currentVersion)
+	_, err := varint.Write(w, currentVersion)
+	if err != nil {
+		return err
+	}
 
 	for _, k := range s.Keys {
-		varint.Write(w, uint64(len(k)))
-		w.Write([]byte(k))
+		_, err = varint.Write(w, uint64(len(k)))
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(k)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

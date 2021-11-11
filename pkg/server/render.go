@@ -24,7 +24,6 @@ var (
 	errLabelIsRequired       = errors.New("label parameter is required")
 	errNoData                = errors.New("no data")
 	errTimeParamsAreRequired = errors.New("leftFrom,leftUntil,rightFrom,rightUntil are required")
-	errMethodNotAllowed      = errors.New("Method not allowed")
 )
 
 type renderParams struct {
@@ -95,7 +94,7 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		rghtStartParam, rghtEndParam = rP.Right.From, rP.Right.Until
 
 	default:
-		ctrl.writeInvalidMethodError(w, errMethodNotAllowed)
+		ctrl.writeInvalidMethodError(w)
 		return
 	}
 
@@ -120,7 +119,6 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 	leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
 	fs := tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
 
-	// TODO
 	fs.SpyName = out.SpyName
 	fs.SampleRate = out.SampleRate
 	fs.Units = out.Units
@@ -138,12 +136,6 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	ctrl.writeResponseJSON(w, res)
-}
-
-type mergedFlamebearer struct {
-	*tree.Flamebearer
-	LeftTicks  int `json:"leftTicks"`
-	RightTicks int `json:"rightTicks"`
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {
@@ -298,7 +290,6 @@ func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.T
 	return out, nil
 }
 
-// Request Body Interface
 type RenderDiffParams struct {
 	Name  *string `json:"name,omitempty"`
 	Query *string `json:"query,omitempty"`

@@ -66,7 +66,7 @@ func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 			invalidateCookie(w, jwtCookieName)
 			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
 		default:
-			ctrl.writeErrorMessage(w, http.StatusMethodNotAllowed, "only POST and DELETE methods are allowed")
+			ctrl.writeInvalidMethodError(w)
 		}
 	}
 }
@@ -198,8 +198,11 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 		if path == "/" {
 			ctrl.statsInc("index")
 			ctrl.renderIndexPage(rw, r)
-		} else if path == "/comparison" || path == "/comparison-diff" {
-			ctrl.statsInc("index")
+		} else if path == "/comparison" {
+			ctrl.statsInc("comparison")
+			ctrl.renderIndexPage(rw, r)
+		} else if path == "/comparison-diff" {
+			ctrl.statsInc("diff")
 			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)
@@ -267,14 +270,9 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 		"LatestVersionInfo": updates.LatestVersionJSON(),
 		"ExtraMetadata":     extraMetadataStr,
 		"BaseURL":           ctrl.config.BaseURL,
-		"NotificationText":  ctrl.NotificationText(),
+		"NotificationText":  ctrl.notifier.NotificationText(),
 		"IsAuthRequired":    strconv.FormatBool(ctrl.isAuthRequired()),
 	})
-}
-
-func (*Controller) NotificationText() string {
-	// TODO: implement backend support for alert text
-	return ""
 }
 
 func mustExecute(t *template.Template, w io.Writer, v interface{}) {

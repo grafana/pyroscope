@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -38,9 +39,18 @@ var _ = Describe("server", func() {
 					defer GinkgoRecover()
 
 					(*cfg).Server.APIBindAddr = ":10045"
-					s, err := storage.New(&(*cfg).Server, prometheus.NewRegistry())
+					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 					Expect(err).ToNot(HaveOccurred())
-					c, _ := New(&(*cfg).Server, s, s, logrus.New(), prometheus.NewRegistry())
+					e, _ := exporter.NewExporter(nil, nil)
+					c, _ := New(Config{
+						Configuration:           &(*cfg).Server,
+						Storage:                 s,
+						MetricsExporter:         e,
+						Logger:                  logrus.New(),
+						MetricsRegisterer:       prometheus.NewRegistry(),
+						ExportedMetricsRegistry: prometheus.NewRegistry(),
+						Notifier:                mockNotifier{},
+					})
 					c.dir = http.Dir(tempAssetDir.Path)
 					h, _ := c.getHandler()
 					httpServer := httptest.NewServer(h)

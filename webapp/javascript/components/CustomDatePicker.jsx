@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-// we import moment/src/moment instead of moment because we don't want to load locales
-import moment from 'moment/src/moment';
+// TODO: don't import locales
+import moment from 'moment';
 import { useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
+import Button from '@ui/Button';
 import { readableRange, formatAsOBject } from '../util/formatDate';
 
 function CustomDatePicker({ setRange, dispatch, setDateRange }) {
@@ -71,13 +72,9 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
       </div>
       {warning && <p style={{ color: 'red' }}>Warning: invalid date Range</p>}
 
-      <button
-        type="submit"
-        className="btn primary"
-        onClick={() => updateDateRange()}
-      >
+      <Button type="submit" kind="primary" onClick={() => updateDateRange()}>
         Apply range
-      </button>
+      </Button>
     </div>
   );
 }

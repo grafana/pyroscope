@@ -94,7 +94,8 @@ type Server struct {
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated" mapstructure:"hide-applications"`
 
-	Retention time.Duration `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" mapstructure:"retention"`
+	Retention       time.Duration   `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" mapstructure:"retention"`
+	RetentionLevels RetentionLevels `def:"" desc:"specifies how long the profiling data stored per aggregation level. Disabled by default" mapstructure:"retention-levels"`
 
 	// Deprecated fields. They can be set (for backwards compatibility) but have no effect
 	// TODO: we should print some warning messages when people try to use these
@@ -107,18 +108,24 @@ type Server struct {
 
 	Auth Auth `mapstructure:"auth"`
 
-	MetricExportRules MetricExportRules `yaml:"metric-export-rules" def:"" desc:"metric export rules" mapstructure:"metric-export-rules"`
+	MetricsExportRules MetricsExportRules `yaml:"metrics-export-rules" def:"" desc:"metrics export rules" mapstructure:"metrics-export-rules"`
 
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 }
 
-type MetricExportRules map[string]MetricExportRule
+type MetricsExportRules map[string]MetricsExportRule
 
-type MetricExportRule struct {
-	Expr   string   `def:"" desc:"expression in FlameQL syntax to be evaluated against samples" mapstructure:"expr"`
-	Node   string   `def:"total" desc:"tree node filter expression. Should be either 'total' or a valid regexp" mapstructure:"node"`
-	Labels []string `def:"" desc:"list of tags to be exported as prometheus labels" mapstructure:"labels"`
+type MetricsExportRule struct {
+	Expr    string   `def:"" desc:"expression in FlameQL syntax to be evaluated against samples" mapstructure:"expr"`
+	Node    string   `def:"total" desc:"tree node filter expression. Should be either 'total' or a valid regexp" mapstructure:"node"`
+	GroupBy []string `def:"" desc:"list of tags to be used for aggregation. The tags are exported as prometheus labels" mapstructure:"group_by"`
+}
+
+type RetentionLevels struct {
+	Zero time.Duration `name:"0" deprecated:"true" mapstructure:"0"`
+	One  time.Duration `name:"1" deprecated:"true" mapstructure:"1"`
+	Two  time.Duration `name:"2" deprecated:"true" mapstructure:"2"`
 }
 
 type Auth struct {

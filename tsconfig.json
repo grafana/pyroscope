@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "jsx": "react",
+    "lib": ["dom", "esnext", "ES2015.Iterable"],
+    "module": "esnext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "paths": {
+      "@utils/*": ["./webapp/javascript/util/*"],
+      "@models/*": ["./webapp/javascript/models/*"],
+      "@ui/*": ["./webapp/javascript/ui/*"]
+    },
+    "plugins": [{ "name": "typescript-plugin-css-modules" }]
+  },
+  "exclude": ["node_modules"]
+}

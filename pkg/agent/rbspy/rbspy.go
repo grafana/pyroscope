@@ -4,7 +4,8 @@
 package rbspy
 
 // #cgo darwin LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
-// #cgo linux,!musl LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps -ldl -lunwind -lrt
+// #cgo linux,!musl,amd64 LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps -ldl -lunwind -lunwind-ptrace -lunwind-x86_64 -lrt -lm
+// #cgo linux,!musl,arm64 LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps -ldl -lunwind -lunwind-ptrace -lunwind-aarch64 -lrt -lm
 // #cgo linux,musl LDFLAGS: -L../../../third_party/rustdeps/target/release -lrustdeps
 // #include "../../../third_party/rustdeps/rbspy.h"
 import "C"
@@ -73,12 +74,12 @@ func (s *RbSpy) Stop() error {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *RbSpy) Snapshot(cb func([]byte, uint64, error)) {
+func (s *RbSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 	r := C.rbspy_snapshot(C.int(s.pid), s.dataPtr, C.int(bufferLength), s.errorPtr, C.int(bufferLength))
 	if r < 0 {
-		cb(nil, 0, errors.New(string(s.errorBuf[:-r])))
+		cb(nil, nil, 0, errors.New(string(s.errorBuf[:-r])))
 	} else {
-		cb(s.dataBuf[:r], 1, nil)
+		cb(nil, s.dataBuf[:r], 1, nil)
 	}
 }
 

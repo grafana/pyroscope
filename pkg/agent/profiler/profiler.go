@@ -3,7 +3,9 @@
 package profiler
 
 import (
+	"context"
 	"fmt"
+	"runtime/pprof"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
@@ -62,6 +64,7 @@ func Start(cfg Config) (*Profiler, error) {
 
 	sc := agent.SessionConfig{
 		Upstream:         upstream,
+		Logger:           cfg.Logger,
 		AppName:          cfg.ApplicationName,
 		Tags:             cfg.Tags,
 		ProfilingTypes:   cfg.ProfileTypes,
@@ -72,7 +75,7 @@ func Start(cfg Config) (*Profiler, error) {
 		Pid:              0,
 		WithSubprocesses: false,
 	}
-	session, err := agent.NewSession(&sc, cfg.Logger)
+	session, err := agent.NewSession(sc)
 	if err != nil {
 		return nil, fmt.Errorf("new session: %w", err)
 	}
@@ -87,4 +90,12 @@ func Start(cfg Config) (*Profiler, error) {
 func (p *Profiler) Stop() error {
 	p.session.Stop()
 	return nil
+}
+
+type LabelSet = pprof.LabelSet
+
+var Labels = pprof.Labels
+
+func TagWrapper(ctx context.Context, labels LabelSet, cb func(context.Context)) {
+	pprof.Do(ctx, labels, func(c context.Context) { cb(c) })
 }

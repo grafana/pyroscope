@@ -98,12 +98,13 @@ net/http.request;net/io.write 200 samples
 任何能够以上面链接中的“原始”格式导出数据的采样分析器都有可能成为Pyroscope的分析客户端。我们热切地希望你能帮助我们开发其他语言的分析工具!
 
 
-- [x] Go
-- [x] Python
-- [x] eBPF
-- [x] Ruby
-- [x] PHP
-- [ ] [Java](https://github.com/pyroscope-io/pyroscope/issues/94)
+- [x] [Go](https://pyroscope.io/docs/golang)
+- [x] [Python](https://pyroscope.io/docs/python)
+- [x] [eBPF](https://pyroscope.io/docs/ebpf)
+- [x] [Ruby](https://pyroscope.io/docs/ruby)
+- [x] [PHP](https://pyroscope.io/docs/php)
+- [x] [Java](https://pyroscope.io/docs/java)
+- [x] [.NET](https://pyroscope.io/docs/dotnet)
 - [ ] [Rust](https://github.com/pyroscope-io/pyroscope/issues/83#issuecomment-784947654)
 - [ ] [Node](https://github.com/pyroscope-io/pyroscope/issues/8)
 

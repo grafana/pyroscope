@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus:/etc/prometheus/
+      - data-prometheus:/prometheus
+
+  grafana:
+    image: grafana/grafana:8.1.1
+    volumes:
+      - ./grafana:/etc/grafana
+    ports:
+      - 3000:3000
+
+  pyroscope:
+    image: pyroscope/pyroscope:latest
+    ports:
+      - 4040:4040
+    command: ['server', '--config', '/etc/pyroscope/server.yml']
+    volumes:
+      - ./pyroscope:/etc/pyroscope
+
+  app-staging:
+    build:
+      context: app
+    environment:
+      APP_ENV: staging
+
+  app-prod:
+    build:
+      context: app
+    environment:
+      APP_ENV: prod
+
+volumes:
+  data-prometheus:
+    driver: local

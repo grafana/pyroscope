@@ -4,7 +4,6 @@ const glob = require('glob');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
-const ESLintPlugin = require('eslint-webpack-plugin');
 
 const fs = require('fs');
 
@@ -55,6 +54,9 @@ module.exports = {
       // rc-trigger uses babel-runtime which has internal dependency to core-js@2
       // this alias maps that dependency to core-js@t3
       'core-js/library/fn': 'core-js/stable',
+      '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
+      '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
+      '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
     },
     modules: [
       'node_modules',
@@ -77,7 +79,7 @@ module.exports = {
     // Note: order is bottom-to-top and/or right-to-left
     rules: [
       {
-        test: /\.jsx?$/,
+        test: /\.(js|ts)x?$/,
         exclude: /node_modules/,
         use: [
           {
@@ -151,7 +153,6 @@ module.exports = {
   },
 
   plugins: [
-    new ESLintPlugin(),
     new webpack.ProvidePlugin({
       $: 'jquery',
       jQuery: 'jquery',
