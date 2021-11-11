@@ -62,10 +62,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		}
 
 		svc.adminServer, err = admin.NewServer(
-			admin.Config{
-				Log:        svc.logger,
-				SocketAddr: socketPath,
-			},
+			svc.logger,
 			adminCtrl,
 			adminHTTPOverUDS,
 		)

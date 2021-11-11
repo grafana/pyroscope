@@ -35,12 +35,10 @@ var _ = Describe("controller", func() {
 			// create a null logger, since we aren't interested
 			logger, _ := test.NewNullLogger()
 
-			cfg := admin.Config{SocketAddr: "foo", Log: logger}
-
 			svc := admin.NewService(mockAppsGetter{})
 			ctrl := admin.NewController(logger, svc)
 			httpServer := &admin.UdsHTTPServer{}
-			server, err := admin.NewServer(cfg, ctrl, httpServer)
+			server, err := admin.NewServer(logger, ctrl, httpServer)
 
 			must(err)
 			svr = server

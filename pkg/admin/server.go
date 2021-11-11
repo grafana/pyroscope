@@ -1,23 +1,16 @@
 package admin
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/sirupsen/logrus"
 )
-
-type Config struct {
-	SocketAddr string
-	Log        *logrus.Logger
-}
 
 type Server struct {
 	log  *logrus.Logger
 	ctrl *Controller
 	Mux  *http.ServeMux
 
-	Config
 	HTTPServer
 }
 
@@ -29,25 +22,18 @@ type HTTPServer interface {
 // NewServer creates an AdminServer and returns an error
 // Is also does basic verifications:
 // - Checks if the SocketAddress is non empty
-func NewServer(c Config, ctrl *Controller, httpServer HTTPServer) (*Server, error) {
-	if c.SocketAddr == "" {
-		return nil, fmt.Errorf("A socket path must be defined")
-	}
-
+func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (*Server, error) {
 	as := &Server{
-		log:    c.Log,
-		ctrl:   ctrl,
-		Config: c,
+		log:  logger,
+		ctrl: ctrl,
 	}
 	as.HTTPServer = httpServer
 
 	mux := http.NewServeMux()
+	as.Mux = mux
 
 	// Routes
-	mux.HandleFunc("/check", as.ctrl.Check(as.SocketAddr))
 	mux.HandleFunc("/v1/apps", as.ctrl.HandleGetApps)
-
-	as.Mux = mux
 
 	return as, nil
 }

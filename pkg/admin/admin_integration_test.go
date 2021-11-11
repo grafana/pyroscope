@@ -35,11 +35,10 @@ var _ = Describe("integration", func() {
 
 		httpServer, err := admin.NewUdsHTTPServer(socketAddr)
 		must(err)
-		cfg := admin.Config{SocketAddr: socketAddr, Log: logger}
 
 		svc := admin.NewService(mockAppsGetter{})
 		ctrl := admin.NewController(logger, svc)
-		s, err := admin.NewServer(cfg, ctrl, httpServer)
+		s, err := admin.NewServer(logger, ctrl, httpServer)
 		must(err)
 		server = s
 
@@ -62,7 +61,7 @@ var _ = Describe("integration", func() {
 
 		waitUntilServerIsReady(socketAddr)
 
-		resp, err := httpC.Get("http://dummy/check")
+		resp, err := httpC.Get("http://dummy/health")
 		Expect(err).To(BeNil())
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 	})
