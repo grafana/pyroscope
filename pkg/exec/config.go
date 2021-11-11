@@ -13,6 +13,7 @@ type mode int
 const (
 	modeExec mode = iota + 1
 	modeConnect
+	modeAdhoc
 )
 
 type Config struct {
@@ -79,5 +80,10 @@ func NewConfig(c *config.Exec) *Config {
 
 func (c *Config) WithConnect() *Config {
 	c.mode = modeConnect
+	return c
+}
+
+func (c *Config) WithAdhoc() *Config {
+	c.mode = modeAdhoc
 	return c
 }
