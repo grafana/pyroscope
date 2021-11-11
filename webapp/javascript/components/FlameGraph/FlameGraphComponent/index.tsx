@@ -34,6 +34,7 @@ interface FlamegraphProps {
 export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>();
   const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
+  const [zoomed, setZoomed] = React.useState<boolean>();
   const [rightClickedNode, setRightClickedNode] = React.useState(
     Option.none<{ top: number; left: number; width: number }>()
   );
@@ -67,6 +68,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           // so just zoom on the clicked node
           None: () => {
             onZoom(opt);
+            setZoomed(true);
           },
 
           // it's already zoomed
@@ -76,6 +78,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
             if (bar.i === z.i && bar.j === z.j) {
               // undo that zoom
               onZoom(Option.none());
+              setZoomed(false);
             } else {
               onZoom(opt);
             }
@@ -216,6 +219,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           <Highlight
             barHeight={PX_PER_LEVEL}
             canvasRef={canvasRef}
+            zoomed={zoomed}
             xyToHighlightData={xyToHighlightData}
           />
         )}
