@@ -25,8 +25,6 @@ export default function Highlight(props: HighlightProps) {
   });
 
   React.useEffect(() => {
-    console.log(zoom);
-
     if (!zoom) return;
     setStyle({
       height: '0px',

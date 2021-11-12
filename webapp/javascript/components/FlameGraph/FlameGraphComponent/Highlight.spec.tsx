@@ -21,7 +21,11 @@ describe('Highlight', () => {
   it('works', () => {
     const xyToHighlightData = jest.fn();
     render(
-      <TestComponent barHeight={50} xyToHighlightData={xyToHighlightData} />
+      <TestComponent
+        barHeight={50}
+        xyToHighlightData={xyToHighlightData}
+        zoom={undefined}
+      />
     );
 
     // hover over a bar
