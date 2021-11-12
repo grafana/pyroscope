@@ -216,6 +216,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           <Highlight
             barHeight={PX_PER_LEVEL}
             canvasRef={canvasRef}
+            zoom={zoom}
             xyToHighlightData={xyToHighlightData}
           />
         )}
