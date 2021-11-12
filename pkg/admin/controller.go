@@ -41,7 +41,7 @@ func (ctrl *Controller) HandleApps(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleGetApps handles GET requests
-func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, _ *http.Request) {
 	appNames := ctrl.svc.GetAppNames()
 
 	w.WriteHeader(200)
