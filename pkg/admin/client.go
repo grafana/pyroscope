@@ -51,7 +51,7 @@ func (c *Client) DeleteApp(name string) (err error) {
 		return fmt.Errorf("error marshalling the payload")
 	}
 
-	req, err := http.NewRequest("DELETE", "http://pyroscope/v1/apps", bytes.NewBuffer(marshalledPayload))
+	req, err := http.NewRequest(http.MethodDelete, "http://pyroscope/v1/apps", bytes.NewBuffer(marshalledPayload))
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}

@@ -1,6 +1,8 @@
 package admin_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -52,7 +54,8 @@ var _ = Describe("controller", func() {
 
 		Context("GET", func() {
 			It("returns list of apps", func() {
-				request, _ := http.NewRequest(http.MethodGet, "/v1/apps", nil)
+				request, err := http.NewRequest(http.MethodGet, "/v1/apps", nil)
+				must(err)
 
 				svr.Mux.ServeHTTP(response, request)
 
@@ -62,6 +65,20 @@ var _ = Describe("controller", func() {
 				Expect(response.Code).To(Equal(200))
 				Expect(string(body)).To(Equal(`["app1","app2"]
 `))
+			})
+		})
+
+		Context("DELETE", func() {
+			It("deletes an app", func() {
+				// we are kinda robbing here
+				// since the server and client are defined in the same package
+				payload := admin.DeleteAppInput{Name: "myapp"}
+				marshalledPayload, err := json.Marshal(payload)
+				request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
+				must(err)
+
+				svr.Mux.ServeHTTP(response, request)
+				Expect(response.Code).To(Equal(200))
 			})
 		})
 
