@@ -26,7 +26,9 @@ export default function Highlight(props: HighlightProps) {
   });
 
   React.useEffect(() => {
-    // hiddens highlight every time a node is zoomed or unzoomed
+    // stops highlighting every time a node is zoomed or unzoomed
+    // then, when a mouse move event is detected,
+    // listeners are triggered and highlighting becomes visible again
     setStyle({
       height: '0px',
       visibility: 'hidden',
