@@ -11,6 +11,10 @@ type Client struct {
 	httpClient *http.Client
 }
 
+// TODO since this is shared between client/server
+// maybe we could share it?
+const AppsEndpoint = "http://pyroscope/v1/apps"
+
 func NewClient(socketAddr string) (*Client, error) {
 	httpClient, err := NewHTTPOverUDSClient(socketAddr)
 	if err != nil {
@@ -26,9 +30,13 @@ type AppNames []string
 
 func (c *Client) GetAppsNames() (names AppNames, err error) {
 	// TODO: retrieve the route from somewhere else
-	resp, err := c.httpClient.Get("http://pyroscope/v1/apps")
+	resp, err := c.httpClient.Get(AppsEndpoint)
 	if err != nil {
 		return names, fmt.Errorf("error making the request %w", err)
+	}
+
+	if err := checkStatusCodeOK(resp.StatusCode); err != nil {
+		return names, err
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&names)
@@ -51,18 +59,27 @@ func (c *Client) DeleteApp(name string) (err error) {
 		return fmt.Errorf("error marshalling the payload")
 	}
 
-	req, err := http.NewRequest(http.MethodDelete, "http://pyroscope/v1/apps", bytes.NewBuffer(marshalledPayload))
+	req, err := http.NewRequest(http.MethodDelete, AppsEndpoint, bytes.NewBuffer(marshalledPayload))
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}
 
-	_, err = c.httpClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("error making the request: %w", err)
 	}
 
-	// TODO
-	// what if this returns something different than 500?
+	if err := checkStatusCodeOK(resp.StatusCode); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func checkStatusCodeOK(statusCode int) error {
+	statusOK := statusCode >= 200 && statusCode < 300
+	if !statusOK {
+		return fmt.Errorf("Received non 2xx status code: %d", statusCode)
+	}
 	return nil
 }

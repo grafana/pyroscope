@@ -67,7 +67,7 @@ func (ctrl *Controller) HandleDeleteApp(w http.ResponseWriter, r *http.Request) 
 		// TODO how to distinguish
 		// it was a bad request
 		// or an internal server error
-		ctrl.writeError(w, http.StatusBadRequest, err, "")
+		ctrl.writeError(w, http.StatusInternalServerError, err, "")
 		return
 	}
 

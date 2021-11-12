@@ -6,15 +6,15 @@ import (
 )
 
 type AdminService struct {
-	AppNamesGetter
+	Storage
 }
 
-type AppNamesGetter interface {
+type Storage interface {
 	GetAppNames() []string
 	Delete(di *storage.DeleteInput) error
 }
 
-func NewService(v AppNamesGetter) *AdminService {
+func NewService(v Storage) *AdminService {
 	m := &AdminService{
 		v,
 	}

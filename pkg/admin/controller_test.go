@@ -3,6 +3,7 @@ package admin_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -16,14 +17,17 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
-type mockStorage struct{}
-
-func (mockStorage) GetAppNames() []string {
-	return []string{"app1", "app2"}
+type mockStorage struct {
+	getAppNamesResult []string
+	deleteResult      error
 }
 
-func (mockStorage) Delete(di *storage.DeleteInput) error {
-	return nil
+func (m mockStorage) GetAppNames() []string {
+	return m.getAppNamesResult
+}
+
+func (m mockStorage) Delete(di *storage.DeleteInput) error {
+	return m.deleteResult
 }
 
 func must(err error) {
@@ -33,16 +37,24 @@ func must(err error) {
 }
 
 var _ = Describe("controller", func() {
-	Context("/v1/apps", func() {
+	Describe("/v1/apps", func() {
 		var svr *admin.Server
 		var response *httptest.ResponseRecorder
+		var storage admin.Storage
 
 		// create a server
 		BeforeEach(func() {
+			storage = mockStorage{
+				getAppNamesResult: []string{"app1", "app2"},
+				deleteResult:      nil,
+			}
+		})
+
+		JustBeforeEach(func() {
 			// create a null logger, since we aren't interested
 			logger, _ := test.NewNullLogger()
 
-			svc := admin.NewService(mockStorage{})
+			svc := admin.NewService(storage)
 			ctrl := admin.NewController(logger, svc)
 			httpServer := &admin.UdsHTTPServer{}
 			server, err := admin.NewServer(logger, ctrl, httpServer)
@@ -52,33 +64,70 @@ var _ = Describe("controller", func() {
 			response = httptest.NewRecorder()
 		})
 
-		Context("GET", func() {
-			It("returns list of apps", func() {
-				request, err := http.NewRequest(http.MethodGet, "/v1/apps", nil)
-				must(err)
+		Describe("GET", func() {
+			Context("when everything is right", func() {
+				It("returns list of apps successfully", func() {
+					request, err := http.NewRequest(http.MethodGet, "/v1/apps", nil)
+					must(err)
 
-				svr.Mux.ServeHTTP(response, request)
+					svr.Mux.ServeHTTP(response, request)
 
-				body, err := ioutil.ReadAll(response.Body)
-				Expect(err).To(BeNil())
+					body, err := ioutil.ReadAll(response.Body)
+					Expect(err).To(BeNil())
 
-				Expect(response.Code).To(Equal(200))
-				Expect(string(body)).To(Equal(`["app1","app2"]
+					Expect(response.Code).To(Equal(http.StatusOK))
+					Expect(string(body)).To(Equal(`["app1","app2"]
 `))
+				})
+
 			})
 		})
 
-		Context("DELETE", func() {
-			It("deletes an app", func() {
-				// we are kinda robbing here
-				// since the server and client are defined in the same package
-				payload := admin.DeleteAppInput{Name: "myapp"}
-				marshalledPayload, err := json.Marshal(payload)
-				request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
-				must(err)
+		Describe("DELETE", func() {
+			Context("when everything is right", func() {
+				It("returns StatusOK", func() {
+					// we are kinda robbing here
+					// since the server and client are defined in the same package
+					payload := admin.DeleteAppInput{Name: "myapp"}
+					marshalledPayload, err := json.Marshal(payload)
+					request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
+					must(err)
 
-				svr.Mux.ServeHTTP(response, request)
-				Expect(response.Code).To(Equal(200))
+					svr.Mux.ServeHTTP(response, request)
+					Expect(response.Code).To(Equal(http.StatusOK))
+				})
+			})
+
+			Context("when there's an error", func() {
+				Context("with the payload", func() {
+					It("returns BadRequest", func() {
+						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer([]byte(``)))
+						must(err)
+
+						svr.Mux.ServeHTTP(response, request)
+						Expect(response.Code).To(Equal(http.StatusBadRequest))
+					})
+				})
+
+				Context("with the server", func() {
+					BeforeEach(func() {
+						storage = mockStorage{
+							deleteResult: fmt.Errorf("error"),
+						}
+					})
+
+					It("returns InternalServerError", func() {
+						// we are kinda robbing here
+						// since the server and client are defined in the same package
+						payload := admin.DeleteAppInput{Name: "myapp"}
+						marshalledPayload, err := json.Marshal(payload)
+						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
+						must(err)
+
+						svr.Mux.ServeHTTP(response, request)
+						Expect(response.Code).To(Equal(http.StatusInternalServerError))
+					})
+				})
 			})
 		})
 
