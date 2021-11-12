@@ -191,6 +191,9 @@ func (svc *serverService) stop() {
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
-	svc.logger.Debug("stopping admin server")
-	svc.adminServer.Stop()
+
+	if svc.config.EnableExperimentalAdmin {
+		svc.logger.Debug("stopping admin server")
+		svc.adminServer.Stop()
+	}
 }

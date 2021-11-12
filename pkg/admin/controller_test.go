@@ -11,12 +11,17 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
-type mockAppsGetter struct{}
+type mockStorage struct{}
 
-func (mockAppsGetter) GetAppNames() []string {
+func (mockStorage) GetAppNames() []string {
 	return []string{"app1", "app2"}
+}
+
+func (mockStorage) Delete(di *storage.DeleteInput) error {
+	return nil
 }
 
 func must(err error) {
@@ -35,7 +40,7 @@ var _ = Describe("controller", func() {
 			// create a null logger, since we aren't interested
 			logger, _ := test.NewNullLogger()
 
-			svc := admin.NewService(mockAppsGetter{})
+			svc := admin.NewService(mockStorage{})
 			ctrl := admin.NewController(logger, svc)
 			httpServer := &admin.UdsHTTPServer{}
 			server, err := admin.NewServer(logger, ctrl, httpServer)
@@ -45,20 +50,22 @@ var _ = Describe("controller", func() {
 			response = httptest.NewRecorder()
 		})
 
-		It("returns list of apps", func() {
-			request, _ := http.NewRequest(http.MethodGet, "/v1/apps", nil)
+		Context("GET", func() {
+			It("returns list of apps", func() {
+				request, _ := http.NewRequest(http.MethodGet, "/v1/apps", nil)
 
-			svr.Mux.ServeHTTP(response, request)
+				svr.Mux.ServeHTTP(response, request)
 
-			body, err := ioutil.ReadAll(response.Body)
-			Expect(err).To(BeNil())
+				body, err := ioutil.ReadAll(response.Body)
+				Expect(err).To(BeNil())
 
-			Expect(response.Code).To(Equal(200))
-			Expect(string(body)).To(Equal(`["app1","app2"]
+				Expect(response.Code).To(Equal(200))
+				Expect(string(body)).To(Equal(`["app1","app2"]
 `))
+			})
 		})
 
-		DescribeTable("Non GET requests return 405 (method not allowed)",
+		DescribeTable("Non supported requests return 405 (method not allowed)",
 			func(method string) {
 				request, _ := http.NewRequest(method, "/v1/apps", nil)
 				svr.Mux.ServeHTTP(response, request)
@@ -66,7 +73,6 @@ var _ = Describe("controller", func() {
 			},
 			Entry("POST", http.MethodPost),
 			Entry("PUT", http.MethodPost),
-			Entry("DELETE", http.MethodPost),
 			Entry("NON_VALID_METHOD", http.MethodPost),
 		)
 	})

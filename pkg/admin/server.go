@@ -33,7 +33,8 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 	as.Mux = mux
 
 	// Routes
-	mux.HandleFunc("/v1/apps", as.ctrl.HandleGetApps)
+	// TODO maybe use gorilla?
+	mux.HandleFunc("/v1/apps", as.ctrl.HandleApps)
 
 	return as, nil
 }
@@ -43,5 +44,9 @@ func (as *Server) Start() error {
 }
 
 func (as *Server) Stop() error {
-	return as.HTTPServer.Stop()
+	if as.HTTPServer != nil {
+		return as.HTTPServer.Stop()
+	}
+
+	return nil
 }
