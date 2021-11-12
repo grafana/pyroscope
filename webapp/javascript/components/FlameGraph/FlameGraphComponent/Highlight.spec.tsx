@@ -24,7 +24,7 @@ describe('Highlight', () => {
       <TestComponent
         barHeight={50}
         xyToHighlightData={xyToHighlightData}
-        zoom={undefined}
+        zoom={Option.none()}
       />
     );
 

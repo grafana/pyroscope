@@ -1,11 +1,12 @@
 import { Option } from 'prelude-ts';
 import React from 'react';
+import { DeepReadonly } from 'ts-essentials';
 import styles from './Highlight.module.css';
 
 export interface HighlightProps {
   // probably the same as the bar height
   barHeight: number;
-  zoom: any;
+  zoom: Option<DeepReadonly<{ i: number; j: number }>>;
   xyToHighlightData: (
     x: number,
     y: number
@@ -25,7 +26,7 @@ export default function Highlight(props: HighlightProps) {
   });
 
   React.useEffect(() => {
-    if (!zoom) return;
+    // hiddens highlight every time a node is zoomed or unzoomed
     setStyle({
       height: '0px',
       visibility: 'hidden',
