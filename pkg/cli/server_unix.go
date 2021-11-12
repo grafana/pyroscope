@@ -25,12 +25,12 @@ func StartServer(ctx context.Context, c *config.Server) error {
 	logrus.SetLevel(logLevel)
 	logger := logrus.StandardLogger()
 
-	storage, err := storage.New(storage.NewConfig(c), logger, prometheus.DefaultRegisterer)
+	st, err := storage.New(storage.NewConfig(c), logger, prometheus.DefaultRegisterer)
 	if err != nil {
 		return fmt.Errorf("new storage: %w", err)
 	}
 
-	srv, err := newServerService(storage, logger, c, false)
+	srv, err := newServerService(st, logger, c, false)
 	if err != nil {
 		return fmt.Errorf("could not initialize server: %w", err)
 	}
@@ -44,14 +44,14 @@ func StartServer(ctx context.Context, c *config.Server) error {
 
 	err = run(ctx, srv, logger)
 	logger.Debug("stopping storage")
-	if err := storage.Close(); err != nil {
+	if err := st.Close(); err != nil {
 		logger.WithError(err).Error("storage close")
 	}
 	return err
 }
 
-func StartAdhocServer(ctx context.Context, c *config.Server, storage *storage.Storage, logger *logrus.Logger) error {
-	srv, err := newServerService(storage, logger, c, true)
+func StartAdhocServer(ctx context.Context, c *config.Server, st *storage.Storage, logger *logrus.Logger) error {
+	srv, err := newServerService(st, logger, c, true)
 	if err != nil {
 		return fmt.Errorf("could not initialize server: %w", err)
 	}

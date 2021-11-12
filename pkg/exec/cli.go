@@ -37,7 +37,7 @@ var (
 // TODO(kolesnikovae): separate exec, connect and adhoc.
 
 // Cli is command line interface for both exec, connect and adhoc commands
-func Cli(cfg *Config, args []string, storage *storage.Storage, logger *logrus.Logger) error {
+func Cli(cfg *Config, args []string, st *storage.Storage, logger *logrus.Logger) error {
 	if cfg.mode != modeConnect {
 		if len(args) == 0 {
 			return errors.New("no arguments passed")
@@ -106,7 +106,7 @@ func Cli(cfg *Config, args []string, storage *storage.Storage, logger *logrus.Lo
 
 	var u upstream.Upstream
 	if cfg.mode == modeAdhoc {
-		d := direct.New(storage, exporter.MetricsExporter{})
+		d := direct.New(st, exporter.MetricsExporter{})
 		d.Start()
 		u = d
 	} else {

@@ -41,11 +41,11 @@ type serverService struct {
 	group   *errgroup.Group
 }
 
-func newServerService(storage *storage.Storage, logger *logrus.Logger, c *config.Server, adhoc bool) (*serverService, error) {
+func newServerService(st *storage.Storage, logger *logrus.Logger, c *config.Server, adhoc bool) (*serverService, error) {
 	svc := serverService{
 		config:  c,
 		logger:  logger,
-		storage: storage,
+		storage: st,
 		stopped: make(chan struct{}),
 		done:    make(chan struct{}),
 	}
@@ -143,7 +143,6 @@ func (svc *serverService) Start(ctx context.Context) error {
 	if svc.selfProfiling != nil {
 		if err := svc.selfProfiling.Start(); err != nil {
 			svc.logger.WithError(err).Error("failed to start self-profiling")
-
 		}
 	}
 
