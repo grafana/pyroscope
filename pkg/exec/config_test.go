@@ -58,6 +58,11 @@ var _ = Describe("Exec config", func() {
 			c := NewConfig(&cfg).WithConnect()
 			Expect(c.mode).To(Equal(modeConnect))
 		})
+
+		It("WithAdhoc returns adhoc config", func() {
+			c := NewConfig(&cfg).WithAdhoc()
+			Expect(c.mode).To(Equal(modeAdhoc))
+		})
 	})
 
 	Context("Config with no logging", func() {
