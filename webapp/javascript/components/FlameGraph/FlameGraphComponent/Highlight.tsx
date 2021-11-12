@@ -5,7 +5,7 @@ import styles from './Highlight.module.css';
 export interface HighlightProps {
   // probably the same as the bar height
   barHeight: number;
-  zoomed: boolean;
+  zoom: any;
   xyToHighlightData: (
     x: number,
     y: number
@@ -18,19 +18,21 @@ export interface HighlightProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }
 export default function Highlight(props: HighlightProps) {
-  const { canvasRef, barHeight, xyToHighlightData, zoomed } = props;
+  const { canvasRef, barHeight, xyToHighlightData, zoom } = props;
   const [style, setStyle] = React.useState<React.CSSProperties>({
     height: '0px',
     visibility: 'hidden',
   });
 
   React.useEffect(() => {
-    if (!zoomed) return;
+    console.log(zoom);
+
+    if (!zoom) return;
     setStyle({
       height: '0px',
       visibility: 'hidden',
     });
-  }, [zoomed]);
+  }, [zoom]);
 
   const onMouseMove = (e: MouseEvent) => {
     const opt = xyToHighlightData(e.offsetX, e.offsetY);
