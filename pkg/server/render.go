@@ -75,7 +75,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			ctrl.writeResponseFile(w, "profile.pprof", out)
 		} else {
-			ctrl.writeInternalServerError(w, err, "")
+			ctrl.writeInternalServerError(w, err, "failed to serialize data")
 		}
 	case "collapsed":
 		collapsed := out.Tree.Collapsed()
