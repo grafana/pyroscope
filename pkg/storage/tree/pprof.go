@@ -94,10 +94,11 @@ func (p *Pprof) newFunction(function string) uint64 {
 	id, ok := p.functions[function]
 	if !ok {
 		id = uint64(len(p.profile.Function) + 1)
+		name := int64(p.newString(function))
 		newFn := &Function{
 			Id:         id,
-			Name:       int64(p.newString(function)),
-			SystemName: int64(p.newString(function)),
+			Name:       name,
+			SystemName: name,
 		}
 		p.functions[function] = id
 		p.profile.Function = append(p.profile.Function, newFn)
