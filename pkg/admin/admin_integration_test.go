@@ -31,38 +31,43 @@ var _ = Describe("integration", func() {
 		cleanup = clean
 		socketAddr = dir + "/pyroscope.tmp.sock"
 
+		// create the server
 		httpServer, err := admin.NewUdsHTTPServer(socketAddr)
 		Expect(err).ToNot(HaveOccurred())
-
 		svc := admin.NewService(mockStorage{})
 		ctrl := admin.NewController(logger, svc)
 		s, err := admin.NewServer(logger, ctrl, httpServer)
 		Expect(err).ToNot(HaveOccurred())
 		server = s
 
+		// create the client
 		httpClient, err := admin.NewHTTPOverUDSClient(socketAddr)
 		Expect(err).ToNot(HaveOccurred())
 		httpC = httpClient
+
+		go (func() {
+			defer GinkgoRecover()
+			// we don't care if the server is closed
+			_ = server.Start()
+		})()
+		waitUntilServerIsReady(socketAddr)
 	})
 
 	AfterEach(func() {
+		server.Stop()
 		cleanup()
 	})
 
 	It("works", func() {
-		go func() {
-			defer GinkgoRecover()
-
-			err := server.Start()
-			if err != nil {
-				Expect(err).To(BeNil())
-			}
-		}()
-
-		waitUntilServerIsReady(socketAddr)
+		//		go func() {
+		//			defer GinkgoRecover()
+		//
+		//			err := server.Start()
+		//			Expect(err).ToNot(HaveOccurred())
+		//		}()
 
 		resp, err := httpC.Get("http://dummy/health")
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		Expect(resp.StatusCode).To(Equal(http.StatusOK))
 	})
 })
