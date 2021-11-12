@@ -68,7 +68,7 @@ var _ = Describe("controller", func() {
 			Context("when everything is right", func() {
 				It("returns list of apps successfully", func() {
 					request, err := http.NewRequest(http.MethodGet, "/v1/apps", nil)
-					must(err)
+					Expect(err).To(BeNil())
 
 					svr.Mux.ServeHTTP(response, request)
 

@@ -44,9 +44,5 @@ func (as *Server) Start() error {
 }
 
 func (as *Server) Stop() error {
-	if as.HTTPServer != nil {
-		return as.HTTPServer.Stop()
-	}
-
-	return nil
+	return as.HTTPServer.Stop()
 }

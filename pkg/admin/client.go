@@ -29,7 +29,6 @@ func NewClient(socketAddr string) (*Client, error) {
 type AppNames []string
 
 func (c *Client) GetAppsNames() (names AppNames, err error) {
-	// TODO: retrieve the route from somewhere else
 	resp, err := c.httpClient.Get(AppsEndpoint)
 	if err != nil {
 		return names, fmt.Errorf("error making the request %w", err)

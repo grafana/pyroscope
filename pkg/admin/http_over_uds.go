@@ -123,6 +123,7 @@ func createListener(socketAddr string) (net.Listener, error) {
 func (u *UdsHTTPServer) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
+
 	err := u.server.Shutdown(ctx)
 	if err != nil {
 		return err
