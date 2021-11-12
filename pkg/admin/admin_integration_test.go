@@ -32,16 +32,16 @@ var _ = Describe("integration", func() {
 		socketAddr = dir + "/pyroscope.tmp.sock"
 
 		httpServer, err := admin.NewUdsHTTPServer(socketAddr)
-		must(err)
+		Expect(err).ToNot(HaveOccurred())
 
 		svc := admin.NewService(mockStorage{})
 		ctrl := admin.NewController(logger, svc)
 		s, err := admin.NewServer(logger, ctrl, httpServer)
-		must(err)
+		Expect(err).ToNot(HaveOccurred())
 		server = s
 
 		httpClient, err := admin.NewHTTPOverUDSClient(socketAddr)
-		must(err)
+		Expect(err).ToNot(HaveOccurred())
 		httpC = httpClient
 	})
 
@@ -73,7 +73,7 @@ func genRandomDir() (func(), string) {
 	// and pass a well-known file name
 	// that way tests can be run concurrently
 	dir, err := ioutil.TempDir("", "")
-	must(err)
+	Expect(err).ToNot(HaveOccurred())
 
 	return func() {
 		os.RemoveAll(dir)

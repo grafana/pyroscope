@@ -29,7 +29,7 @@ var _ = Describe("client", func() {
 
 	JustBeforeEach(func() {
 		s, err := admin.NewUdsHTTPServer(socketAddr)
-		must(err)
+		Expect(err).ToNot(HaveOccurred())
 		server = s
 		go server.Start(handler)
 		waitUntilServerIsReady(socketAddr)
@@ -39,6 +39,13 @@ var _ = Describe("client", func() {
 	AfterEach(func() {
 		server.Stop()
 		cleanup()
+	})
+
+	Context("when socket address is empty", func() {
+		It("fails", func() {
+			_, err := admin.NewClient("")
+			Expect(err).To(HaveOccurred())
+		})
 	})
 
 	Describe("GetAppNames", func() {
@@ -54,7 +61,6 @@ var _ = Describe("client", func() {
 			It("works", func() {
 				client, err := admin.NewClient(socketAddr)
 				Expect(err).ToNot(HaveOccurred())
-				must(err)
 
 				_, err = client.GetAppsNames()
 				Expect(err).ToNot(HaveOccurred())
@@ -71,8 +77,6 @@ var _ = Describe("client", func() {
 
 			It("fails", func() {
 				client, err := admin.NewClient(socketAddr)
-				Expect(err).ToNot(HaveOccurred())
-				must(err)
 
 				_, err = client.GetAppsNames()
 				// TODO
@@ -129,7 +133,7 @@ var _ = Describe("client", func() {
 			It("works", func() {
 				client, err := admin.NewClient(socketAddr)
 				Expect(err).ToNot(HaveOccurred())
-				must(err)
+				Expect(err).ToNot(HaveOccurred())
 
 				err = client.DeleteApp("appname")
 				Expect(err).ToNot(HaveOccurred())
@@ -161,7 +165,6 @@ var _ = Describe("client", func() {
 		It("fails", func() {
 			client, err := admin.NewClient(socketAddr)
 			Expect(err).ToNot(HaveOccurred())
-			must(err)
 
 			err = client.DeleteApp("appname")
 			// TODO

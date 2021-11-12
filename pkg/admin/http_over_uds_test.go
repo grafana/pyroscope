@@ -51,9 +51,11 @@ var _ = Describe("HTTP Over UDS", func() {
 		When("that socket does not respond", func() {
 			It("should take over that socket", func() {
 				// create server 1
+				By("creating server 1 that's not running")
 				_, err := admin.NewUdsHTTPServer(socketAddr)
-				must(err)
+				Expect(err).ToNot(HaveOccurred())
 
+				By("creating server 2")
 				// create server 2
 				_, err = admin.NewUdsHTTPServer(socketAddr)
 				Expect(err).ToNot(HaveOccurred())
@@ -62,9 +64,9 @@ var _ = Describe("HTTP Over UDS", func() {
 
 		When("that socket is still responding", func() {
 			It("should error", func() {
-				// create server 1
+				By("creating server 1 and running it")
 				server, err := admin.NewUdsHTTPServer(socketAddr)
-				must(err)
+				Expect(err).ToNot(HaveOccurred())
 
 				go func() {
 					server.Start(http.NewServeMux())
@@ -73,6 +75,7 @@ var _ = Describe("HTTP Over UDS", func() {
 				waitUntilServerIsReady(socketAddr)
 
 				// create server 2
+				By("creating server 2")
 				_, err = admin.NewUdsHTTPServer(socketAddr)
 				Expect(err).To(MatchError(admin.ErrSocketStillResponding))
 			})
@@ -87,7 +90,7 @@ var _ = Describe("HTTP Over UDS", func() {
 
 			// start the server
 			server, err := admin.NewUdsHTTPServer(socketAddr)
-			must(err)
+			Expect(err).ToNot(HaveOccurred())
 			go func() {
 				server.Start(http.NewServeMux())
 			}()

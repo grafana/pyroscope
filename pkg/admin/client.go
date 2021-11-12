@@ -55,7 +55,7 @@ func (c *Client) DeleteApp(name string) (err error) {
 
 	marshalledPayload, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("error marshalling the payload")
+		return fmt.Errorf("error marshalling the payload: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, AppsEndpoint, bytes.NewBuffer(marshalledPayload))
@@ -68,11 +68,7 @@ func (c *Client) DeleteApp(name string) (err error) {
 		return fmt.Errorf("error making the request: %w", err)
 	}
 
-	if err := checkStatusCodeOK(resp.StatusCode); err != nil {
-		return err
-	}
-
-	return nil
+	return checkStatusCodeOK(resp.StatusCode)
 }
 
 func checkStatusCodeOK(statusCode int) error {

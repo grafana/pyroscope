@@ -30,12 +30,6 @@ func (m mockStorage) Delete(di *storage.DeleteInput) error {
 	return m.deleteResult
 }
 
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 var _ = Describe("controller", func() {
 	Describe("/v1/apps", func() {
 		var svr *admin.Server
@@ -59,7 +53,7 @@ var _ = Describe("controller", func() {
 			httpServer := &admin.UdsHTTPServer{}
 			server, err := admin.NewServer(logger, ctrl, httpServer)
 
-			must(err)
+			Expect(err).ToNot(HaveOccurred())
 			svr = server
 			response = httptest.NewRecorder()
 		})
@@ -68,7 +62,7 @@ var _ = Describe("controller", func() {
 			Context("when everything is right", func() {
 				It("returns list of apps successfully", func() {
 					request, err := http.NewRequest(http.MethodGet, "/v1/apps", nil)
-					Expect(err).To(BeNil())
+					Expect(err).ToNot(HaveOccurred())
 
 					svr.Mux.ServeHTTP(response, request)
 
@@ -91,7 +85,7 @@ var _ = Describe("controller", func() {
 					payload := admin.DeleteAppInput{Name: "myapp"}
 					marshalledPayload, err := json.Marshal(payload)
 					request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
-					must(err)
+					Expect(err).ToNot(HaveOccurred())
 
 					svr.Mux.ServeHTTP(response, request)
 					Expect(response.Code).To(Equal(http.StatusOK))
@@ -102,7 +96,7 @@ var _ = Describe("controller", func() {
 				Context("with the payload", func() {
 					It("returns BadRequest", func() {
 						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer([]byte(``)))
-						must(err)
+						Expect(err).ToNot(HaveOccurred())
 
 						svr.Mux.ServeHTTP(response, request)
 						Expect(response.Code).To(Equal(http.StatusBadRequest))
@@ -122,7 +116,7 @@ var _ = Describe("controller", func() {
 						payload := admin.DeleteAppInput{Name: "myapp"}
 						marshalledPayload, err := json.Marshal(payload)
 						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
-						must(err)
+						Expect(err).ToNot(HaveOccurred())
 
 						svr.Mux.ServeHTTP(response, request)
 						Expect(response.Code).To(Equal(http.StatusInternalServerError))
