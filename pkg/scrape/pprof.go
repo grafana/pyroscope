@@ -53,12 +53,10 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 	if err := proto.Unmarshal(b, &p); err != nil {
 		return err
 	}
-
-	// Time of collection (UTC) represented as nanoseconds
-	// past the epoch reported by profiler.
+	// TimeNanos is the time of collection (UTC) represented
+	// as nanoseconds past the epoch reported by profiler.
 	profileTime := time.Unix(0, p.TimeNanos).UTC()
 	c := make(triesCache)
-
 	for _, st := range p.GetSampleType() {
 		pt := spy.ProfileType(p.StringTable[st.Type])
 		if pt == spy.ProfileCPU {
@@ -68,21 +66,18 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 			continue
 		}
 		_ = p.Get(string(pt), func(labels *spy.Labels, name []byte, val int) {
-			c.getOrCreate(pt, labels.ID()).Insert(name, uint64(val))
+			c.getOrCreate(pt, labels).Insert(name, uint64(val))
 		})
 		// Remove cache entries for discontinued series.
-		for name := range w.tries[pt] {
-			if _, ok := c.get(pt, name); !ok {
-				w.tries.reset(pt, name)
+		for id := range w.tries[pt] {
+			if _, ok := c.get(pt, id); !ok {
+				w.tries.reset(pt, id)
 				continue
 			}
 		}
-		for name, entry := range c[pt] {
-			j := &upstream.UploadJob{
-				Name:    name,
-				SpyName: "scrape",
-				Trie:    entry.Trie,
-			}
+		for id, entry := range c[pt] {
+			// TODO(kolesnikovae): get spy name from profile?
+			j := &upstream.UploadJob{SpyName: "scrape", Trie: entry.Trie}
 			// CPU ("samples") sample type. This is the only type
 			// that requires SampleRate.
 			if pt == "samples" && p.Period > 0 {
@@ -101,14 +96,14 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 			// the data if the profile is cumulative (can be only generated
 			// from two consecutive samples.)
 			if pt.IsCumulative() {
-				prev, found := w.tries.get(pt, name)
-				w.tries.put(pt, name, entry)
+				prev, found := w.tries.get(pt, id)
+				w.tries.put(pt, entry)
 				if !found {
 					continue
 				}
 				j.Trie = entry.Trie.Diff(prev.Trie)
 			}
-			w.write(pt, j)
+			w.write(pt, entry.labels, j)
 		}
 	}
 
@@ -116,10 +111,24 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 	return nil
 }
 
-func (w *pprofWriter) write(pt spy.ProfileType, j *upstream.UploadJob) {
-	// TODO(kolesnikovae): Refactor.
-	n := segment.NewKey(w.labels.Map())
-	appName := n.AppName()
+func (w *pprofWriter) write(pt spy.ProfileType, labels *spy.Labels, j *upstream.UploadJob) {
+	j.Name = w.buildAppName(pt, labels)
+	j.Units = pt.Units()
+	j.AggregationType = pt.AggregationType()
+	w.upstream.Upload(j)
+}
+
+func (w *pprofWriter) buildAppName(pt spy.ProfileType, labels *spy.Labels) string {
+	nameLabels := make(map[string]string)
+	if labels != nil {
+		for k, v := range labels.Tags() {
+			nameLabels[k] = v
+		}
+	}
+	for _, label := range w.labels {
+		nameLabels[label.Name] = label.Value
+	}
+	appName := nameLabels[AppNameLabel]
 	if pt == "samples" {
 		// Substitute "samples" sample type with "cpu" so as to
 		// preserve current UX (basically, "cpu" profile type suffix).
@@ -127,26 +136,15 @@ func (w *pprofWriter) write(pt spy.ProfileType, j *upstream.UploadJob) {
 	} else {
 		appName += "." + string(pt)
 	}
-	n.Add(AppNameLabel, appName)
-	if z, err := segment.ParseKey(j.Name); err == nil {
-		for k, v := range z.Labels() {
-			n.Add(k, v)
-		}
-	}
-
-	j.Name = n.Normalized()
-	j.Units = pt.Units()
-	j.AggregationType = pt.AggregationType()
-	w.upstream.Upload(j)
+	nameLabels[AppNameLabel] = appName
+	return segment.NewKey(nameLabels).Normalized()
 }
 
-// TODO(kolesnikovae): Refactor.
-// 	spy.ProfileType -> labels hash -> trie + labels.
 type triesCache map[spy.ProfileType]map[string]*cacheEntry
 
 type cacheEntry struct {
 	*transporttrie.Trie
-	// labels
+	labels *spy.Labels
 }
 
 func (t triesCache) get(pt spy.ProfileType, name string) (*cacheEntry, bool) {
@@ -158,32 +156,36 @@ func (t triesCache) get(pt spy.ProfileType, name string) (*cacheEntry, bool) {
 	return x, ok
 }
 
-func (t triesCache) put(pt spy.ProfileType, name string, x *cacheEntry) {
+func (t triesCache) put(pt spy.ProfileType, x *cacheEntry) {
 	p, ok := t[pt]
 	if !ok {
 		p = make(map[string]*cacheEntry)
 		t[pt] = p
 	}
-	p[name] = x
+	p[x.labels.ID()] = x
 }
 
-func (t triesCache) getOrCreate(pt spy.ProfileType, name string) *cacheEntry {
+func (t triesCache) getOrCreate(pt spy.ProfileType, labels *spy.Labels) *cacheEntry {
 	p, ok := t[pt]
 	if !ok {
-		x := &cacheEntry{Trie: transporttrie.New()}
-		t[pt] = map[string]*cacheEntry{name: x}
+		x := newCacheEntry(labels)
+		t[pt] = map[string]*cacheEntry{labels.ID(): x}
 		return x
 	}
-	x, ok := p[name]
+	x, ok := p[labels.ID()]
 	if !ok {
-		x = &cacheEntry{Trie: transporttrie.New()}
-		p[name] = x
+		x = newCacheEntry(labels)
+		p[labels.ID()] = x
 	}
 	return x
 }
 
-func (t triesCache) reset(pt spy.ProfileType, name string) {
+func newCacheEntry(labels *spy.Labels) *cacheEntry {
+	return &cacheEntry{Trie: transporttrie.New(), labels: labels}
+}
+
+func (t triesCache) reset(pt spy.ProfileType, id string) {
 	if p, ok := t[pt]; ok {
-		delete(p, name)
+		delete(p, id)
 	}
 }

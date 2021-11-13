@@ -36,17 +36,16 @@ import (
 )
 
 const (
-	SchemeLabel  = "__scheme__"
-	AddressLabel = "__address__"
-	AppNameLabel = "__name__"
-
-	ScrapeIntervalLabel = "__scrape_interval__"
-	ScrapeTimeoutLabel  = "__scrape_timeout__"
 	ReservedLabelPrefix = "__"
 	MetaLabelPrefix     = "__meta_"
+	SchemeLabel         = "__scheme__"
+	AddressLabel        = "__address__"
+	ScrapeIntervalLabel = "__scrape_interval__"
+	ScrapeTimeoutLabel  = "__scrape_timeout__"
 	JobLabel            = "job"
 	InstanceLabel       = "instance"
 
+	AppNameLabel     = "__name__"
 	ProfilePathLabel = "__profile_path__"
 )
 
@@ -230,26 +229,31 @@ func (sp *scrapePool) sync(targets []*Target) {
 	for _, t := range targets {
 		hash := t.hash()
 		_, ok := sp.activeTargets[hash]
-		if !ok {
-			// TODO: handle error
-			interval, timeout, _ = t.intervalAndTimeout(interval, timeout)
-			s := &scraper{
-				Target:        t,
-				client:        sp.client,
-				timeout:       timeout,
-				bodySizeLimit: bodySizeLimit,
-				pprofWriter:   newPprofWriter(sp.upstream, t.Labels()),
-			}
-
-			l := sp.newScrapeLoop(s, interval, timeout)
-			sp.activeTargets[hash] = t
-			sp.loops[hash] = l
-			uniqueLoops[hash] = l
-		} else {
+		if ok {
 			if _, ok := uniqueLoops[hash]; !ok {
 				uniqueLoops[hash] = nil
 			}
+			continue
 		}
+
+		var err error
+		interval, timeout, err = t.intervalAndTimeout(interval, timeout)
+		if err != nil {
+			sp.logger.WithError(err).Errorf("invalid target label")
+		}
+
+		s := &scraper{
+			Target:        t,
+			client:        sp.client,
+			timeout:       timeout,
+			bodySizeLimit: bodySizeLimit,
+			pprofWriter:   newPprofWriter(sp.upstream, t.Labels()),
+		}
+
+		l := sp.newScrapeLoop(s, interval, timeout)
+		sp.activeTargets[hash] = t
+		sp.loops[hash] = l
+		uniqueLoops[hash] = l
 	}
 
 	var wg sync.WaitGroup
@@ -308,15 +312,7 @@ func (sl *scrapeLoop) run() {
 			return
 		case <-ticker.C:
 			start := time.Now()
-			if err := sl.scrape(); err != nil {
-				sl.logger.WithError(err).Errorf("scrape")
-				sl.scraper.Target.health = HealthBad
-				sl.scraper.Target.lastError = err
-				continue
-			}
-			sl.scraper.Target.lastScrapeDuration = time.Since(start)
-			sl.scraper.Target.health = HealthGood
-			sl.scraper.Target.lastError = nil
+			sl.scraper.report(start, time.Since(start), sl.scrape())
 		}
 	}
 }

@@ -99,7 +99,7 @@ func (t *Target) offset(interval time.Duration) time.Duration {
 func (t *Target) Labels() labels.Labels {
 	lset := make(labels.Labels, 0, len(t.labels))
 	for _, l := range t.labels {
-		if l.Name == "__name__" || !strings.HasPrefix(l.Name, ReservedLabelPrefix) {
+		if l.Name == AppNameLabel || !strings.HasPrefix(l.Name, ReservedLabelPrefix) {
 			lset = append(lset, l)
 		}
 	}
@@ -139,8 +139,8 @@ func (t *Target) URL() *url.URL {
 	}
 }
 
-// Report sets target data about the last scrape.
-func (t *Target) Report(start time.Time, dur time.Duration, err error) {
+// report sets target data about the last scrape.
+func (t *Target) report(start time.Time, dur time.Duration, err error) {
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
 
@@ -159,7 +159,6 @@ func (t *Target) Report(start time.Time, dur time.Duration, err error) {
 func (t *Target) LastError() error {
 	t.mtx.RLock()
 	defer t.mtx.RUnlock()
-
 	return t.lastError
 }
 
@@ -167,7 +166,6 @@ func (t *Target) LastError() error {
 func (t *Target) LastScrape() time.Time {
 	t.mtx.RLock()
 	defer t.mtx.RUnlock()
-
 	return t.lastScrape
 }
 
@@ -175,7 +173,6 @@ func (t *Target) LastScrape() time.Time {
 func (t *Target) LastScrapeDuration() time.Duration {
 	t.mtx.RLock()
 	defer t.mtx.RUnlock()
-
 	return t.lastScrapeDuration
 }
 
@@ -183,7 +180,6 @@ func (t *Target) LastScrapeDuration() time.Duration {
 func (t *Target) Health() TargetHealth {
 	t.mtx.RLock()
 	defer t.mtx.RUnlock()
-
 	return t.health
 }
 
@@ -363,7 +359,7 @@ func (sp *scrapePool) TargetsFromGroup(tg Group, cfg *ScrapeConfig) ([]*Target, 
 			}
 		}
 
-		for _, profileType := range cfg.EnabledProfiles {
+		for _, profileName := range cfg.EnabledProfiles {
 			lset := labels.New(lbls...)
 			lbls, origLabels, err := PopulateLabels(lset, cfg)
 			if err != nil {
@@ -374,35 +370,44 @@ func (sp *scrapePool) TargetsFromGroup(tg Group, cfg *ScrapeConfig) ([]*Target, 
 			}
 			lbls = append(lbls, labels.Label{
 				Name:  ProfilePathLabel,
-				Value: cfg.ProfilingConfigs[profileType].Path,
+				Value: cfg.ProfilingConfigs[profileName].Path,
 			})
-
-			// TODO(kolesnikovae): Refactor.
-			params := cfg.ProfilingConfigs[profileType].Params
-			switch profileType {
-			case ProfileCPU:
-				scrapeInterval, _ := time.ParseDuration(lbls.Get(ScrapeIntervalLabel))
-				s, ok := params["seconds"]
-				if !ok || len(s) == 0 {
-					params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
-					break
-				}
-				scrapeDurationSeconds, err := strconv.Atoi(s[0])
-				if err != nil {
-					sp.logger.WithError(err).WithField("target", lbls).Errorf("invalid scrape duration")
-					params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
-					break
-				}
-				if scrapeDurationSeconds == 0 || scrapeDurationSeconds > int(scrapeInterval.Seconds()) {
-					sp.logger.WithField("target", lbls).
-						Errorf("scrape duration can not be zero or greater than scrape interval")
-					params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
-				}
-			}
-
+			params := sp.buildParams(cfg, profileName, lbls)
 			targets = append(targets, NewTarget(lbls, origLabels, params))
 		}
 	}
 
 	return targets, failures
+}
+
+func (sp *scrapePool) buildParams(cfg *ScrapeConfig, p ProfileName, lbls labels.Labels) url.Values {
+	// TODO(kolesnikovae): Refactor.
+	params := make(url.Values, len(cfg.ProfilingConfigs[p].Params))
+	for k, v := range cfg.ProfilingConfigs[p].Params {
+		params[k] = v
+	}
+	switch p {
+	case ProfileCPU:
+		scrapeInterval, err := time.ParseDuration(lbls.Get(ScrapeIntervalLabel))
+		if err != nil || scrapeInterval == 0 {
+			scrapeInterval = cfg.ScrapeInterval
+		}
+		s, ok := params["seconds"]
+		if !ok || len(s) == 0 {
+			params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
+			break
+		}
+		scrapeDurationSeconds, err := strconv.Atoi(s[0])
+		if err != nil {
+			sp.logger.WithError(err).WithField("target", lbls).Errorf("invalid scrape duration")
+			params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
+			break
+		}
+		if scrapeDurationSeconds == 0 || scrapeDurationSeconds > int(scrapeInterval.Seconds()) {
+			sp.logger.WithField("target", lbls).
+				Errorf("scrape duration can not be zero or greater than scrape interval")
+			params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
+		}
+	}
+	return params
 }
