@@ -182,9 +182,6 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 }
 
 func (t *Tree) Iterate2(cb func(name string, self uint64, stack []string)) { // TODO
-	t.RLock()
-	defer t.RUnlock()
-
 	nodes := []*treeNode{t.root}
 	parents := make(map[*treeNode]*treeNode)
 	for len(nodes) > 0 {

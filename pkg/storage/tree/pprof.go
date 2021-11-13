@@ -24,6 +24,9 @@ type PprofMetadata struct {
 }
 
 func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
+	t.RLock()
+	defer t.RUnlock()
+
 	p := &pprof{
 		locations: make(map[string]uint64),
 		functions: make(map[string]uint64),
