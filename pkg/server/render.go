@@ -67,11 +67,11 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		res := renderResponse(fs, out)
 		ctrl.writeResponseJSON(w, res)
 	case "pprof":
-		pprof := out.Tree.PprofStruct(&tree.PprofMetadata{
+		pprof := out.Tree.Pprof(&tree.PprofMetadata{
 			Type: out.SpyName, // TODO
 			Unit: out.Units,
 		})
-		out, err := proto.Marshal(pprof.Pprof())
+		out, err := proto.Marshal(pprof)
 		if err == nil {
 			ctrl.writeResponseFile(w, "profile.pprof", out)
 		} else {

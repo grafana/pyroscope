@@ -7,7 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Pprof struct {
+type pprof struct {
 	locations map[string]uint64
 	functions map[string]uint64
 	strings   map[string]int64
@@ -23,21 +23,16 @@ type PprofMetadata struct {
 	Duration  int64
 }
 
-func (t *Tree) PprofStruct(metadata *PprofMetadata) *Pprof {
-	pprof := &Pprof{
+func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
+	p := &pprof{
 		locations: make(map[string]uint64),
 		functions: make(map[string]uint64),
 		strings:   make(map[string]int64),
 		profile: &Profile{
 			StringTable: []string{""},
 		},
-		tree:     t,
-		metadata: metadata,
 	}
-	return pprof
-}
 
-func (p *Pprof) Pprof() *Profile {
 	p.profile.SampleType = []*ValueType{{Type: p.newString(p.metadata.Type), Unit: p.newString(p.metadata.Unit)}}
 	p.profile.TimeNanos = p.metadata.StartTime
 	p.profile.DurationNanos = p.metadata.Duration
@@ -66,7 +61,7 @@ func (p *Pprof) Pprof() *Profile {
 	return p.profile
 }
 
-func (p *Pprof) newString(value string) int64 {
+func (p *pprof) newString(value string) int64 {
 	id, ok := p.strings[value]
 	if !ok {
 		id = int64(len(p.profile.StringTable))
@@ -76,7 +71,7 @@ func (p *Pprof) newString(value string) int64 {
 	return id
 }
 
-func (p *Pprof) newLocation(location string) uint64 {
+func (p *pprof) newLocation(location string) uint64 {
 	id, ok := p.locations[location]
 	if !ok {
 		id = uint64(len(p.profile.Location) + 1)
@@ -90,7 +85,7 @@ func (p *Pprof) newLocation(location string) uint64 {
 	return id
 }
 
-func (p *Pprof) newFunction(function string) uint64 {
+func (p *pprof) newFunction(function string) uint64 {
 	id, ok := p.functions[function]
 	if !ok {
 		id = uint64(len(p.profile.Function) + 1)
