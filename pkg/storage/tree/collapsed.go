@@ -2,7 +2,6 @@ package tree
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -13,7 +12,9 @@ func (t *Tree) Collapsed() string {
 	var res strings.Builder
 
 	t.Iterate2(func(_ string, self uint64, stack []string) {
-		sort.Sort(sort.Reverse(sort.StringSlice(stack)))
+		for i, j := 0, len(stack)-1; i < j; i, j = i+1, j-1 {
+			stack[i], stack[j] = stack[j], stack[i]
+		}
 		v2 := fmt.Sprintf("%s %d\n", strings.Join(stack, ";"), self)
 		res.WriteString(v2)
 	})

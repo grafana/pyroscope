@@ -3,7 +3,6 @@ package tree
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"sort"
 	"sync"
@@ -109,17 +108,7 @@ func prependInt(s []int, x int) []int {
 }
 
 func (t *Tree) String() string {
-	t.RLock()
-	defer t.RUnlock()
-
-	res := ""
-	t.Iterate(func(k []byte, v uint64) {
-		if v > 0 {
-			res += fmt.Sprintf("%q %d\n", k[2:], v)
-		}
-	})
-
-	return res
+	return t.Collapsed()
 }
 
 func (n *treeNode) insert(targetLabel []byte) *treeNode {
@@ -199,7 +188,7 @@ func (t *Tree) Iterate2(cb func(name string, self uint64, stack []string)) { // 
 		}
 		nodes = nodes[1:]
 		for _, child := range node.ChildrenNodes {
-			nodes = append([]*treeNode{child}, nodes...)
+			nodes = append(nodes, child)
 			parents[child] = node
 		}
 	}
