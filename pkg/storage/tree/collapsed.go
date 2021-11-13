@@ -11,7 +11,7 @@ func (t *Tree) Collapsed() string {
 
 	var res strings.Builder
 
-	t.Iterate2(func(_ string, self uint64, stack []string) {
+	t.IterateStacks(func(_ string, self uint64, stack []string) {
 		for i, j := 0, len(stack)-1; i < j; i, j = i+1, j-1 {
 			stack[i], stack[j] = stack[j], stack[i]
 		}

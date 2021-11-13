@@ -38,7 +38,7 @@ func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
 	p.profile.SampleType = []*ValueType{{Type: p.newString(metadata.Type), Unit: p.newString(metadata.Unit)}}
 	p.profile.TimeNanos = metadata.StartTime.UnixNano()
 	p.profile.DurationNanos = metadata.Duration.Nanoseconds()
-	t.Iterate2(func(name string, self uint64, stack []string) {
+	t.IterateStacks(func(name string, self uint64, stack []string) {
 		value := []int64{int64(self)}
 		loc := []uint64{}
 		for _, l := range stack {

@@ -170,7 +170,7 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	}
 }
 
-func (t *Tree) Iterate2(cb func(name string, self uint64, stack []string)) { // TODO
+func (t *Tree) IterateStacks(cb func(name string, self uint64, stack []string)) {
 	nodes := []*treeNode{t.root}
 	parents := make(map[*treeNode]*treeNode)
 	for len(nodes) > 0 {
