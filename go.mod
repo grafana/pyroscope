@@ -68,6 +68,7 @@ require (
 	golang.org/x/text v0.3.6
 	golang.org/x/tools v0.1.2
 	google.golang.org/protobuf v1.26.0
+	gopkg.in/fsnotify/fsnotify.v1 v1.4.7
 	gopkg.in/yaml.v2 v2.4.0
 	honnef.co/go/tools v0.0.1-2020.1.6
 )
