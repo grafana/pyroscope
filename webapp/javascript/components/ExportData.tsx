@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 
+import Button from '@ui/Button';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 
@@ -45,9 +46,7 @@ function ExportData() {
 
   return (
     <div className="dropdown-container">
-      <button type="button" className="btn" onClick={handleToggleMenu}>
-        <FontAwesomeIcon icon={faBars} />
-      </button>
+      <Button icon={faBars} onClick={handleToggleMenu} />
 
       <div
         className={clsx({ 'menu-show': toggleMenu, 'menu-hide': !toggleMenu })}

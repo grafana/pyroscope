@@ -16,16 +16,22 @@ import (
 )
 
 type Cache struct {
-	Config
-	lfu *lfu.Cache
+	db      *badger.DB
+	lfu     *lfu.Cache
+	metrics *Metrics
+	codec   Codec
+
+	prefix string
+	ttl    time.Duration
 
 	evictionsDone chan struct{}
+	writeBackDone chan struct{}
 	flushOnce     sync.Once
 }
 
 type Config struct {
 	*badger.DB
-	Metrics
+	*Metrics
 	Codec
 
 	// Prefix for badger DB keys.
@@ -48,17 +54,24 @@ type Codec interface {
 }
 
 type Metrics struct {
-	MissCounter         prometheus.Counter
-	ReadCounter         prometheus.Counter
-	DiskWritesHistogram prometheus.Observer
-	DiskReadsHistogram  prometheus.Observer
+	MissesCounter     prometheus.Counter
+	ReadsCounter      prometheus.Counter
+	DBWrites          prometheus.Observer
+	DBReads           prometheus.Observer
+	WriteBackDuration prometheus.Observer
+	EvictionsDuration prometheus.Observer
 }
 
 func New(c Config) *Cache {
 	cache := &Cache{
-		Config:        c,
 		lfu:           lfu.New(),
+		db:            c.DB,
+		codec:         c.Codec,
+		metrics:       c.Metrics,
+		prefix:        c.Prefix,
+		ttl:           c.TTL,
 		evictionsDone: make(chan struct{}),
+		writeBackDone: make(chan struct{}),
 	}
 
 	evictionChannel := make(chan lfu.Eviction)
@@ -70,27 +83,25 @@ func New(c Config) *Cache {
 	cache.lfu.TTL = int64(c.TTL.Seconds())
 
 	// start a goroutine for saving the evicted cache items to disk
-
 	go func() {
-		for {
-			e, ok := <-evictionChannel
-			if !ok {
-				break
-			}
+		for e := range evictionChannel {
+			// TODO(kolesnikovae): these errors should be at least logged.
+			//  Perhaps, it will be better if we move it outside of the cache.
+			//  Taking into account that writes almost always happen in batches,
+			//  We should definitely take advantage of BadgerDB write batch API.
+			//  Also, WriteBack and Evict could be combined. We also could
+			//  consider moving caching to storage/db.
 			cache.saveToDisk(e.Key, e.Value)
 		}
-		cache.evictionsDone <- struct{}{}
+		close(cache.evictionsDone)
 	}()
 
 	// start a goroutine for saving the evicted cache items to disk
 	go func() {
-		for {
-			e, ok := <-writeBackChannel
-			if !ok {
-				break
-			}
+		for e := range writeBackChannel {
 			cache.saveToDisk(e.Key, e.Value)
 		}
+		close(cache.writeBackDone)
 	}()
 
 	return cache
@@ -103,23 +114,23 @@ func (cache *Cache) Put(key string, val interface{}) {
 func (cache *Cache) saveToDisk(key string, val interface{}) error {
 	b := bytebufferpool.Get()
 	defer bytebufferpool.Put(b)
-	if err := cache.Serialize(b, key, val); err != nil {
+	if err := cache.codec.Serialize(b, key, val); err != nil {
 		return fmt.Errorf("serialization: %w", err)
 	}
-	cache.DiskWritesHistogram.Observe(float64(b.Len()))
-	return cache.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(cache.Prefix+key), b.Bytes())
+	cache.metrics.DBWrites.Observe(float64(b.Len()))
+	return cache.db.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(cache.prefix+key), b.Bytes())
 	})
 }
 
 func (cache *Cache) Flush() {
 	cache.flushOnce.Do(func() {
+		// Make sure there is no pending items.
+		close(cache.lfu.WriteBackChannel)
+		<-cache.writeBackDone
 		// evict all the items in cache
 		cache.lfu.Evict(cache.lfu.Len())
-
 		close(cache.lfu.EvictionChannel)
-		close(cache.lfu.WriteBackChannel)
-
 		// wait until all evictions are done
 		<-cache.evictionsDone
 	})
@@ -129,18 +140,30 @@ func (cache *Cache) Flush() {
 // above allowed threshold and write-back calls happen constantly, making pyroscope more crash-resilient.
 // See https://github.com/pyroscope-io/pyroscope/issues/210 for more context
 func (cache *Cache) Evict(percent float64) {
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(cache.metrics.EvictionsDuration.Observe))
 	cache.lfu.Evict(int(float64(cache.lfu.Len()) * percent))
+	timer.ObserveDuration()
 }
 
 func (cache *Cache) WriteBack() {
+	timer := prometheus.NewTimer(prometheus.ObserverFunc(cache.metrics.WriteBackDuration.Observe))
 	cache.lfu.WriteBack()
+	timer.ObserveDuration()
 }
 
 func (cache *Cache) Delete(key string) error {
 	cache.lfu.Delete(key)
-	return cache.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte(cache.Prefix + key))
+	return cache.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(cache.prefix + key))
 	})
+}
+
+func (cache *Cache) Discard(key string) {
+	cache.lfu.Delete(key)
+}
+
+func (cache *Cache) DiscardPrefix(prefix string) {
+	cache.lfu.DeletePrefix(prefix)
 }
 
 func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
@@ -151,7 +174,7 @@ func (cache *Cache) GetOrCreate(key string) (interface{}, error) {
 	if v != nil {
 		return v, nil
 	}
-	v = cache.New(key)
+	v = cache.codec.New(key)
 	cache.lfu.Set(key, v)
 	return v, nil
 }
@@ -165,12 +188,12 @@ func (cache *Cache) Lookup(key string) (interface{}, bool) {
 }
 
 func (cache *Cache) get(key string) (interface{}, error) {
-	cache.ReadCounter.Add(1)
+	cache.metrics.ReadsCounter.Inc()
 	return cache.lfu.GetOrSet(key, func() (interface{}, error) {
-		cache.MissCounter.Add(1)
+		cache.metrics.MissesCounter.Inc()
 		var buf []byte
-		err := cache.View(func(txn *badger.Txn) error {
-			item, err := txn.Get([]byte(cache.Prefix + key))
+		err := cache.db.View(func(txn *badger.Txn) error {
+			item, err := txn.Get([]byte(cache.prefix + key))
 			if err != nil {
 				return err
 			}
@@ -186,8 +209,8 @@ func (cache *Cache) get(key string) (interface{}, error) {
 			return nil, err
 		}
 
-		cache.DiskReadsHistogram.Observe(float64(len(buf)))
-		return cache.Deserialize(bytes.NewReader(buf), key)
+		cache.metrics.DBReads.Observe(float64(len(buf)))
+		return cache.codec.Deserialize(bytes.NewReader(buf), key)
 	})
 }
 

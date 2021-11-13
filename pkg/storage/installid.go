@@ -9,7 +9,7 @@ const installID = "installID"
 
 func (s *Storage) InstallID() string {
 	var id []byte
-	err := s.db.View(func(txn *badger.Txn) error {
+	err := s.main.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(installID))
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
@@ -33,7 +33,7 @@ func (s *Storage) InstallID() string {
 
 	if id == nil {
 		id = []byte(newID())
-		err = s.db.Update(func(txn *badger.Txn) error {
+		err = s.main.Update(func(txn *badger.Txn) error {
 			return txn.SetEntry(badger.NewEntry([]byte(installID), id))
 		})
 		if err != nil {

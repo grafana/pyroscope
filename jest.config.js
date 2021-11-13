@@ -11,8 +11,17 @@ module.exports = {
   moduleNameMapper: {
     '@utils(.*)$': '<rootDir>/webapp/javascript/util/$1',
     '@models(.*)$': '<rootDir>/webapp/javascript/models/$1',
+    '@ui(.*)$': '<rootDir>/webapp/javascript/ui/$1',
   },
   transform: {
-    '\\.module\\.css$': 'jest-css-modules-transform',
+    '\\.module\\.(css|scss)$': 'jest-css-modules-transform',
+  },
+  globals: {
+    'ts-jest': {
+      diagnostics: {
+        // https://github.com/kulshekhar/ts-jest/issues/1647#issuecomment-832577036
+        pathRegex: /\.(test)\.tsx$/,
+      },
+    },
   },
 };

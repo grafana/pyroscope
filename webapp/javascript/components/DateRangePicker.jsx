@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import Button from '@ui/Button';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import OutsideClickHandler from 'react-outside-click-handler';
 import CustomDatePicker from './CustomDatePicker';
@@ -52,14 +52,9 @@ function DateRangePicker() {
   return (
     <div className={opened ? 'drp-container opened' : 'drp-container'}>
       <OutsideClickHandler onOutsideClick={hideDropdown}>
-        <button
-          type="button"
-          className="btn drp-button"
-          onClick={toggleDropdown}
-        >
-          <FontAwesomeIcon icon={faClock} />
-          <span>{range}</span>
-        </button>
+        <Button icon={faClock} onClick={toggleDropdown}>
+          {range}
+        </Button>
         <div className="drp-dropdown">
           <div className="drp-quick-presets">
             <h4>Quick Presets</h4>

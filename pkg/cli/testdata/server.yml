@@ -5,3 +5,7 @@ metrics-export-rules:
     node: a;b;c
     group_by:
       - foo
+
+retention-levels:
+  0: 100s
+  1: 1000s

@@ -2,6 +2,7 @@ package lfu
 
 import (
 	"container/list"
+	"strings"
 	"sync"
 	"time"
 )
@@ -98,6 +99,16 @@ func (c *Cache) Delete(key string) {
 	defer c.lock.Unlock()
 	if e, ok := c.values[key]; ok {
 		c.delete(e)
+	}
+}
+
+func (c *Cache) DeletePrefix(prefix string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	for k, e := range c.values {
+		if strings.HasPrefix(k, prefix) {
+			c.delete(e)
+		}
 	}
 }
 

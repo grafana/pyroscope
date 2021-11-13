@@ -90,7 +90,9 @@
     font-family: arial;
     font-size: 16px;
     &:hover {
-      background-color: lighten(#0074d9, 10%);
+      // the important is not optimal but should be fine for now
+      // until we implement a component library
+      background-color: lighten(#0074d9, 10%) !important;
     }
   }
 

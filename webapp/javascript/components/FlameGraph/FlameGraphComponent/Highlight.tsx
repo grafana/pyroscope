@@ -1,11 +1,12 @@
 import { Option } from 'prelude-ts';
 import React from 'react';
+import { DeepReadonly } from 'ts-essentials';
 import styles from './Highlight.module.css';
 
 export interface HighlightProps {
   // probably the same as the bar height
   barHeight: number;
-
+  zoom: Option<DeepReadonly<{ i: number; j: number }>>;
   xyToHighlightData: (
     x: number,
     y: number
@@ -18,17 +19,28 @@ export interface HighlightProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }
 export default function Highlight(props: HighlightProps) {
-  const { canvasRef, barHeight, xyToHighlightData } = props;
+  const { canvasRef, barHeight, xyToHighlightData, zoom } = props;
   const [style, setStyle] = React.useState<React.CSSProperties>({
     height: '0px',
     visibility: 'hidden',
   });
+
+  React.useEffect(() => {
+    // stops highlighting every time a node is zoomed or unzoomed
+    // then, when a mouse move event is detected,
+    // listeners are triggered and highlighting becomes visible again
+    setStyle({
+      height: '0px',
+      visibility: 'hidden',
+    });
+  }, [zoom]);
 
   const onMouseMove = (e: MouseEvent) => {
     const opt = xyToHighlightData(e.offsetX, e.offsetY);
 
     if (opt.isSome()) {
       const data = opt.get();
+
       setStyle({
         visibility: 'visible',
         height: `${barHeight}px`,
@@ -67,6 +79,7 @@ export default function Highlight(props: HighlightProps) {
         canvasEl.removeEventListener('mouseout', onMouseOut);
       };
     },
+
     // refresh callback functions when they change
     [canvasRef.current, onMouseMove, onMouseOut]
   );

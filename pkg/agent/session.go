@@ -18,13 +18,13 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 	"github.com/pyroscope-io/pyroscope/pkg/util/throttle"
 
 	// revive:enable:blank-imports
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
-	"github.com/shirou/gopsutil/process"
 )
 
 // Each Session can deal with:
@@ -213,8 +213,8 @@ func (ps *ProfileSession) takeSnapshots() {
 							}
 						}
 						if err != nil {
-							if ok, pidErr := process.PidExists(int32(pid)); !ok || pidErr != nil {
-								ps.logger.Debugf("error taking snapshot: process doesn't exist?")
+							if !process.Exists(pid) {
+								ps.logger.Debugf("error taking snapshot: PID %d: process doesn't exist?", pid)
 								pidsToRemove = append(pidsToRemove, pid)
 							} else {
 								ps.throttler.Run(func(skipped int) {

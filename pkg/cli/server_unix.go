@@ -48,8 +48,7 @@ func StartServer(c *config.Server) error {
 		logger.Info("stopping server")
 		stopTime = time.Now()
 		srv.Stop()
-		err = <-exited
-		if err != nil {
+		if err = <-exited; err != nil {
 			logger.WithError(err).Error("failed to stop server gracefully")
 			return err
 		}
