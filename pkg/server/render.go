@@ -51,6 +51,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out, err := ctrl.storage.Get(p.gi)
+	filename := fmt.Sprintf("%v %v", p.gi.Query.AppName, p.gi.StartTime.UTC().Format(time.RFC3339))
 	ctrl.statsInc("render")
 	if err != nil {
 		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
@@ -68,18 +69,18 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		ctrl.writeResponseJSON(w, res)
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
-			Type: out.SpyName, // TODO
-			Unit: out.Units,
+			Unit:      out.Units,
+			StartTime: p.gi.StartTime,
 		})
 		out, err := proto.Marshal(pprof)
 		if err == nil {
-			ctrl.writeResponseFile(w, "profile.pprof", out)
+			ctrl.writeResponseFile(w, fmt.Sprintf("%v.pprof", filename), out)
 		} else {
 			ctrl.writeInternalServerError(w, err, "failed to serialize data")
 		}
 	case "collapsed":
 		collapsed := out.Tree.Collapsed()
-		ctrl.writeResponseFile(w, "profile.collapsed", []byte(collapsed))
+		ctrl.writeResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	}
 }
 

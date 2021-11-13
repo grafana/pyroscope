@@ -2,6 +2,7 @@ package tree
 
 import (
 	"io/ioutil"
+	"time"
 
 	"github.com/golang/protobuf/jsonpb"
 	"google.golang.org/protobuf/proto"
@@ -12,15 +13,13 @@ type pprof struct {
 	functions map[string]uint64
 	strings   map[string]int64
 	profile   *Profile
-	tree      *Tree
-	metadata  *PprofMetadata
 }
 
 type PprofMetadata struct {
 	Type      string
 	Unit      string
-	StartTime int64
-	Duration  int64
+	StartTime time.Time
+	Duration  time.Duration
 }
 
 func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
@@ -36,10 +35,10 @@ func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
 		},
 	}
 
-	p.profile.SampleType = []*ValueType{{Type: p.newString(p.metadata.Type), Unit: p.newString(p.metadata.Unit)}}
-	p.profile.TimeNanos = p.metadata.StartTime
-	p.profile.DurationNanos = p.metadata.Duration
-	p.tree.Iterate2(func(name string, self uint64, stack []string) {
+	p.profile.SampleType = []*ValueType{{Type: p.newString(metadata.Type), Unit: p.newString(metadata.Unit)}}
+	p.profile.TimeNanos = metadata.StartTime.UnixNano()
+	p.profile.DurationNanos = metadata.Duration.Nanoseconds()
+	t.Iterate2(func(name string, self uint64, stack []string) {
 		value := []int64{int64(self)}
 		loc := []uint64{}
 		for _, l := range stack {
@@ -57,8 +56,8 @@ func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
 		result, _ :=
 			m.MarshalToString(p.profile)
 		ioutil.WriteFile("./pprof.json", []byte(result), 0600)
-		ioutil.WriteFile("collapsed.txt", []byte(p.tree.Collapsed()), 0600)
-		ioutil.WriteFile("collapsed2.txt", []byte(p.tree.String()), 0600)
+		ioutil.WriteFile("collapsed.txt", []byte(t.Collapsed()), 0600)
+		ioutil.WriteFile("collapsed2.txt", []byte(t.String()), 0600)
 	}
 	//
 	return p.profile
