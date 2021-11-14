@@ -1,11 +1,7 @@
 package tree
 
 import (
-	"io/ioutil"
 	"time"
-
-	"github.com/golang/protobuf/jsonpb"
-	"google.golang.org/protobuf/proto"
 )
 
 type pprof struct {
@@ -48,18 +44,6 @@ func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
 		p.profile.Sample = append(p.profile.Sample, sample)
 	})
 
-	/* TODO: Remove */
-	out, err := proto.Marshal(p.profile)
-	if err == nil {
-		ioutil.WriteFile("pprof.pb", out, 0600)
-		m := jsonpb.Marshaler{}
-		result, _ :=
-			m.MarshalToString(p.profile)
-		ioutil.WriteFile("./pprof.json", []byte(result), 0600)
-		ioutil.WriteFile("collapsed.txt", []byte(t.Collapsed()), 0600)
-		ioutil.WriteFile("collapsed2.txt", []byte(t.String()), 0600)
-	}
-	//
 	return p.profile
 }
 
