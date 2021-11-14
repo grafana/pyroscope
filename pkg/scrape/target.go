@@ -57,9 +57,9 @@ type Target struct {
 }
 
 // NewTarget creates a reasonably configured target for querying.
-func NewTarget(labels, discoveredLabels labels.Labels, params url.Values) *Target {
+func NewTarget(origLabels, discoveredLabels labels.Labels, params url.Values) *Target {
 	return &Target{
-		labels:           labels,
+		labels:           origLabels,
 		discoveredLabels: discoveredLabels,
 		params:           params,
 		health:           HealthUnknown,
@@ -386,28 +386,30 @@ func (sp *scrapePool) buildParams(cfg *ScrapeConfig, p ProfileName, lbls labels.
 	for k, v := range cfg.ProfilingConfigs[p].Params {
 		params[k] = v
 	}
-	switch p {
-	case ProfileCPU:
-		scrapeInterval, err := time.ParseDuration(lbls.Get(ScrapeIntervalLabel))
-		if err != nil || scrapeInterval == 0 {
-			scrapeInterval = cfg.ScrapeInterval
-		}
-		s, ok := params["seconds"]
-		if !ok || len(s) == 0 {
-			params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
-			break
-		}
-		scrapeDurationSeconds, err := strconv.Atoi(s[0])
-		if err != nil {
-			sp.logger.WithError(err).WithField("target", lbls).Errorf("invalid scrape duration")
-			params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
-			break
-		}
-		if scrapeDurationSeconds == 0 || scrapeDurationSeconds > int(scrapeInterval.Seconds()) {
-			sp.logger.WithField("target", lbls).
-				Errorf("scrape duration can not be zero or greater than scrape interval")
-			params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
-		}
+	if p != ProfileCPU {
+		return params
 	}
+
+	scrapeInterval, err := time.ParseDuration(lbls.Get(ScrapeIntervalLabel))
+	if err != nil || scrapeInterval == 0 {
+		scrapeInterval = cfg.ScrapeInterval
+	}
+	s, ok := params["seconds"]
+	if !ok || len(s) == 0 {
+		params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
+		return params
+	}
+	scrapeDurationSeconds, err := strconv.Atoi(s[0])
+	if err != nil {
+		sp.logger.WithError(err).WithField("target", lbls).Errorf("invalid scrape duration")
+		params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
+		return params
+	}
+	if scrapeDurationSeconds == 0 || scrapeDurationSeconds > int(scrapeInterval.Seconds()) {
+		sp.logger.WithField("target", lbls).
+			Errorf("scrape duration can not be zero or greater than scrape interval")
+		params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
+	}
+
 	return params
 }

@@ -111,17 +111,17 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 	return nil
 }
 
-func (w *pprofWriter) write(pt spy.ProfileType, labels *spy.Labels, j *upstream.UploadJob) {
-	j.Name = w.buildAppName(pt, labels)
+func (w *pprofWriter) write(pt spy.ProfileType, l *spy.Labels, j *upstream.UploadJob) {
+	j.Name = w.buildAppName(pt, l)
 	j.Units = pt.Units()
 	j.AggregationType = pt.AggregationType()
 	w.upstream.Upload(j)
 }
 
-func (w *pprofWriter) buildAppName(pt spy.ProfileType, labels *spy.Labels) string {
+func (w *pprofWriter) buildAppName(pt spy.ProfileType, l *spy.Labels) string {
 	nameLabels := make(map[string]string)
-	if labels != nil {
-		for k, v := range labels.Tags() {
+	if l != nil {
+		for k, v := range l.Tags() {
 			nameLabels[k] = v
 		}
 	}
@@ -165,23 +165,23 @@ func (t triesCache) put(pt spy.ProfileType, x *cacheEntry) {
 	p[x.labels.ID()] = x
 }
 
-func (t triesCache) getOrCreate(pt spy.ProfileType, labels *spy.Labels) *cacheEntry {
+func (t triesCache) getOrCreate(pt spy.ProfileType, l *spy.Labels) *cacheEntry {
 	p, ok := t[pt]
 	if !ok {
-		x := newCacheEntry(labels)
-		t[pt] = map[string]*cacheEntry{labels.ID(): x}
+		x := newCacheEntry(l)
+		t[pt] = map[string]*cacheEntry{l.ID(): x}
 		return x
 	}
-	x, ok := p[labels.ID()]
+	x, ok := p[l.ID()]
 	if !ok {
-		x = newCacheEntry(labels)
-		p[labels.ID()] = x
+		x = newCacheEntry(l)
+		p[l.ID()] = x
 	}
 	return x
 }
 
-func newCacheEntry(labels *spy.Labels) *cacheEntry {
-	return &cacheEntry{Trie: transporttrie.New(), labels: labels}
+func newCacheEntry(l *spy.Labels) *cacheEntry {
+	return &cacheEntry{Trie: transporttrie.New(), labels: l}
 }
 
 func (t triesCache) reset(pt spy.ProfileType, id string) {

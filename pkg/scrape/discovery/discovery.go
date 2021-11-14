@@ -25,6 +25,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
 
+// revive:disable:max-public-structs complex package
+
 // Discoverer provides information about target groups. It maintains a set
 // of sources from which TargetGroups can originate. Whenever a discovery provider
 // detects a potential change, it sends the TargetGroup through its channel.

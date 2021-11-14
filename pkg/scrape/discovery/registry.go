@@ -58,6 +58,7 @@ func init() {
 	registerConfig(staticConfigsKey, elemTyp, StaticConfig{})
 }
 
+// revive:disable:confusing-naming private
 func registerConfig(yamlKey string, elemType reflect.Type, config Config) {
 	name := config.Name()
 	if _, ok := configNames[name]; ok {

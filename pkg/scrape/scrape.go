@@ -217,6 +217,8 @@ func (sp *scrapePool) Sync(tgs []Group) {
 	sp.sync(all)
 }
 
+// revive:disable:confusing-naming private
+// revive:disable:import-shadowing methods don't shadow imports
 func (sp *scrapePool) sync(targets []*Target) {
 	var (
 		uniqueLoops   = make(map[uint64]*scrapeLoop)

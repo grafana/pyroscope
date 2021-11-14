@@ -24,6 +24,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
+// revive:disable:max-public-structs complex domain
+
 type Config struct {
 	ScrapeInterval time.Duration     `yaml:"scrape_interval,omitempty"`
 	ScrapeTimeout  time.Duration     `yaml:"scrape_timeout,omitempty"`
