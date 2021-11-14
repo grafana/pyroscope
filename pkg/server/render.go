@@ -51,7 +51,13 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out, err := ctrl.storage.Get(p.gi)
-	filename := fmt.Sprintf("%v %v", p.gi.Query.AppName, p.gi.StartTime.UTC().Format(time.RFC3339))
+	var appName string
+	if p.gi.Key != nil {
+		appName = p.gi.Key.AppName()
+	} else if p.gi.Query != nil {
+		appName = p.gi.Query.AppName
+	}
+	filename := fmt.Sprintf("%v %v", appName, p.gi.StartTime.UTC().Format(time.RFC3339))
 	ctrl.statsInc("render")
 	if err != nil {
 		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
