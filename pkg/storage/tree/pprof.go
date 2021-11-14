@@ -38,7 +38,7 @@ func (t *Tree) Pprof(metadata *PprofMetadata) *Profile {
 		value := []int64{int64(self)}
 		loc := []uint64{}
 		for _, l := range stack {
-			loc = append(loc, uint64(p.newLocation(l)))
+			loc = append(loc, p.newLocation(l))
 		}
 		sample := &Sample{LocationId: loc, Value: value}
 		p.profile.Sample = append(p.profile.Sample, sample)
@@ -75,7 +75,7 @@ func (p *pprof) newFunction(function string) uint64 {
 	id, ok := p.functions[function]
 	if !ok {
 		id = uint64(len(p.profile.Function) + 1)
-		name := int64(p.newString(function))
+		name := p.newString(function)
 		newFn := &Function{
 			Id:         id,
 			Name:       name,

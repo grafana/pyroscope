@@ -342,7 +342,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (*Controller) expectFormats(format string) error { //TODO
+func (*Controller) expectFormats(format string) error {
 	switch format {
 	case "json", "pprof", "collapsed", "":
 		return nil
