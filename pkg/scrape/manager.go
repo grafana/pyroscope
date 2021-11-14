@@ -24,14 +24,12 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
 
 // NewManager is the Manager constructor
-func NewManager(logger *logrus.Logger, u upstream.Upstream, scrapeConfigs []*ScrapeConfig) *Manager {
-	c := make(map[string]*ScrapeConfig)
-	for _, scfg := range scrapeConfigs {
-		c[scfg.JobName] = scfg
-	}
+func NewManager(logger *logrus.Logger, u upstream.Upstream) *Manager {
+	c := make(map[string]*Config)
 	return &Manager{
 		upstream:      u,
 		logger:        logger,
@@ -52,16 +50,16 @@ type Manager struct {
 	jitterSeed uint64     // Global jitterSeed seed is used to spread scrape workload across HA setup.
 	mtxScrape  sync.Mutex // Guards the fields below.
 
-	scrapeConfigs map[string]*ScrapeConfig
+	scrapeConfigs map[string]*Config
 	scrapePools   map[string]*scrapePool
-	targetSets    map[string][]Group
+	targetSets    map[string][]*targetgroup.Group
 
 	reloadC chan struct{}
 }
 
 // Run receives and saves target set updates and triggers the scraping loops reloading.
 // Reloading happens in the background so that it doesn't block receiving targets updates.
-func (m *Manager) Run(tsets <-chan map[string][]Group) error {
+func (m *Manager) Run(tsets <-chan map[string][]*targetgroup.Group) error {
 	m.reload()
 	for {
 		select {
@@ -100,7 +98,7 @@ func (m *Manager) reload() {
 
 		wg.Add(1)
 		// Run the sync in parallel as these take a while and at high load can't catch up.
-		go func(sp *scrapePool, groups []Group) {
+		go func(sp *scrapePool, groups []*targetgroup.Group) {
 			sp.Sync(groups)
 			wg.Done()
 		}(m.scrapePools[setName], groups)
@@ -120,16 +118,14 @@ func (m *Manager) Stop() {
 }
 
 // ApplyConfig resets the manager's target providers and job configurations as defined by the new cfg.
-func (m *Manager) ApplyConfig(cfg *Config) error {
+func (m *Manager) ApplyConfig(cfg []*Config) error {
 	m.mtxScrape.Lock()
 	defer m.mtxScrape.Unlock()
-
-	c := make(map[string]*ScrapeConfig)
-	for _, scfg := range cfg.ScrapeConfigs {
-		c[scfg.JobName] = scfg
+	c := make(map[string]*Config)
+	for _, x := range cfg {
+		c[x.JobName] = x
 	}
 	m.scrapeConfigs = c
-
 	// Cleanup and reload pool if the configuration has changed.
 	var failed bool
 	for name, sp := range m.scrapePools {

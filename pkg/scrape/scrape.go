@@ -33,6 +33,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
 
 const (
@@ -63,7 +64,7 @@ type scrapePool struct {
 
 	// mtx must not be taken after targetMtx.
 	mtx    sync.Mutex
-	config *ScrapeConfig
+	config *Config
 	client *http.Client
 	loops  map[uint64]*scrapeLoop
 
@@ -74,7 +75,7 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *ScrapeConfig, u upstream.Upstream, logger *logrus.Logger) (*scrapePool, error) {
+func newScrapePool(cfg *Config, u upstream.Upstream, logger *logrus.Logger) (*scrapePool, error) {
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		return nil, fmt.Errorf("creating HTTP client: %w", err)
@@ -147,7 +148,7 @@ func (sp *scrapePool) stop() {
 
 // reload the scrape pool with the given scrape configuration. The target state is preserved
 // but all scrapers are restarted with the new scrape configuration.
-func (sp *scrapePool) reload(cfg *ScrapeConfig) error {
+func (sp *scrapePool) reload(cfg *Config) error {
 	sp.mtx.Lock()
 	defer sp.mtx.Unlock()
 
@@ -194,7 +195,7 @@ func (sp *scrapePool) reload(cfg *ScrapeConfig) error {
 
 // Sync converts target groups into actual scrape targets and synchronizes
 // the currently running scraper with the resulting set and returns all scraped and dropped targets.
-func (sp *scrapePool) Sync(tgs []Group) {
+func (sp *scrapePool) Sync(tgs []*targetgroup.Group) {
 	sp.mtx.Lock()
 	defer sp.mtx.Unlock()
 	sp.targetMtx.Lock()
@@ -328,6 +329,9 @@ func (sl *scrapeLoop) scrape() error {
 	}()
 	if err := sl.scraper.scrape(ctx, buf); err != nil {
 		sl.scraper.pprofWriter.Reset()
+		sl.logger.WithError(err).
+			WithField("target", sl.scraper.Target.String()).
+			Debug("scrapping failed")
 		return err
 	}
 	return sl.scraper.pprofWriter.WriteProfile(buf.Bytes())

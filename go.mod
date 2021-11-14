@@ -13,7 +13,6 @@ require (
 	github.com/cheggaaa/pb/v3 v3.0.5
 	github.com/clarkduvall/hyperloglog v0.0.0-20171127014514-a0107a5d8004
 	github.com/cosmtrek/air v1.12.2
-	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgraph-io/badger/v2 v2.2007.2
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
@@ -22,18 +21,16 @@ require (
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/protobuf v1.5.2
-	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/go-jsonnet v0.17.0
-	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5
-	github.com/google/uuid v1.1.2
+	github.com/google/pprof v0.0.0-20211008130755-947d60d73cc0
+	github.com/google/uuid v1.2.0
 	github.com/iancoleman/strcase v0.2.0
-	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/imdario/mergo v0.3.11
 	github.com/josephspurrier/goversioninfo v1.2.0
 	github.com/jsonnet-bundler/jsonnet-bundler v0.4.0
 	github.com/kardianos/service v1.2.0
 	github.com/kisielk/godepgraph v0.0.0-20190626013829-57a7e4a651a9
 	github.com/klauspost/compress v1.13.5
-	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kyoh86/richgo v0.3.3
 	github.com/kyoh86/xdg v1.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.10 // indirect
@@ -41,13 +38,12 @@ require (
 	github.com/mgechev/revive v1.0.3
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/mitchellh/mapstructure v1.4.1
-	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
 	github.com/prometheus/client_golang v1.11.0
-	github.com/prometheus/common v0.29.0
-	github.com/prometheus/prometheus v2.5.0+incompatible
+	github.com/prometheus/common v0.32.1
+	github.com/prometheus/prometheus v1.8.2-0.20211102100715-d4c83da6d252
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rlmcpherson/s3gof3r v0.5.0
@@ -62,12 +58,12 @@ require (
 	github.com/twmb/murmur3 v1.1.5
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/wacul/ptr v1.0.0 // indirect
-	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
+	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+	golang.org/x/sys v0.0.0-20211020174200-9d6173849985
 	golang.org/x/text v0.3.6
-	golang.org/x/tools v0.1.2
-	google.golang.org/protobuf v1.26.0
+	golang.org/x/tools v0.1.7
+	google.golang.org/protobuf v1.27.1
 	gopkg.in/fsnotify/fsnotify.v1 v1.4.7
 	gopkg.in/yaml.v2 v2.4.0
 	honnef.co/go/tools v0.0.1-2020.1.6

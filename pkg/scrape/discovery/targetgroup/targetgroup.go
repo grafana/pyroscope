@@ -29,12 +29,8 @@ type Group struct {
 	Targets []model.LabelSet
 	// Labels is a set of labels that is common across all targets in the group.
 	Labels model.LabelSet
-
 	// Source is an identifier that describes a group of targets.
 	Source string
-
-	// TODO
-	AppName string
 }
 
 func (tg Group) String() string {
@@ -44,6 +40,7 @@ func (tg Group) String() string {
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (tg *Group) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	g := struct {
+		AppName string         `yaml:"application"`
 		Targets []string       `yaml:"targets"`
 		Labels  model.LabelSet `yaml:"labels"`
 	}{}
@@ -53,13 +50,16 @@ func (tg *Group) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	tg.Targets = make([]model.LabelSet, 0, len(g.Targets))
 	for _, t := range g.Targets {
 		tg.Targets = append(tg.Targets, model.LabelSet{
-			model.AddressLabel: model.LabelValue(t),
+			// TODO: switch to pyroscope model.
+			model.AddressLabel:    model.LabelValue(t),
+			model.MetricNameLabel: model.LabelValue(g.AppName),
 		})
 	}
 	tg.Labels = g.Labels
 	return nil
 }
 
+/*
 // MarshalYAML implements the yaml.Marshaler interface.
 func (tg Group) MarshalYAML() (interface{}, error) {
 	g := &struct {
@@ -74,10 +74,12 @@ func (tg Group) MarshalYAML() (interface{}, error) {
 	}
 	return g, nil
 }
+*/
 
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (tg *Group) UnmarshalJSON(b []byte) error {
 	g := struct {
+		AppName string         `json:"application"`
 		Targets []string       `json:"targets"`
 		Labels  model.LabelSet `json:"labels"`
 	}{}
@@ -90,8 +92,8 @@ func (tg *Group) UnmarshalJSON(b []byte) error {
 	tg.Targets = make([]model.LabelSet, 0, len(g.Targets))
 	for _, t := range g.Targets {
 		tg.Targets = append(tg.Targets, model.LabelSet{
-			model.AddressLabel: model.LabelValue(t),
-			// TODO: app name?
+			model.AddressLabel:    model.LabelValue(t),
+			model.MetricNameLabel: model.LabelValue(g.AppName),
 		})
 	}
 	tg.Labels = g.Labels

@@ -28,6 +28,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/prometheus/prometheus/pkg/labels"
+	"github.com/prometheus/prometheus/pkg/relabel"
+
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
 
 // TargetHealth describes the health state of a target.
@@ -218,7 +221,7 @@ func (ts Targets) Swap(i, j int)      { ts[i], ts[j] = ts[j], ts[i] }
 // PopulateLabels builds a label set from the given label set and scrape configuration.
 // It returns a label set before relabeling was applied as the second return value.
 // Returns the original discovered label set found before relabelling was applied if the target is dropped during relabeling.
-func PopulateLabels(lset labels.Labels, cfg *ScrapeConfig) (res, orig labels.Labels, err error) {
+func PopulateLabels(lset labels.Labels, cfg *Config) (res, orig labels.Labels, err error) {
 	// Copy labels into the labelset for the target if they are not set already.
 	scrapeLabels := []labels.Label{
 		{Name: JobLabel, Value: cfg.JobName},
@@ -235,9 +238,8 @@ func PopulateLabels(lset labels.Labels, cfg *ScrapeConfig) (res, orig labels.Lab
 	}
 
 	preRelabelLabels := lb.Labels()
-	// TODO(kolesnikovae): Add support for relabeling
-	//	lset = relabel.Process(preRelabelLabels, cfg.RelabelConfigs...)
-	lset = lb.Labels()
+	lset = relabel.Process(preRelabelLabels, cfg.RelabelConfigs...)
+
 	// Check if the target was dropped.
 	if lset == nil {
 		return nil, preRelabelLabels, nil
@@ -344,18 +346,18 @@ func checkTargetAddress(address string) error {
 }
 
 // TargetsFromGroup builds targets based on the given TargetGroup and config.
-func (sp *scrapePool) TargetsFromGroup(tg Group, cfg *ScrapeConfig) ([]*Target, []error) {
+func (sp *scrapePool) TargetsFromGroup(tg *targetgroup.Group, cfg *Config) ([]*Target, []error) {
 	targets := make([]*Target, 0, len(tg.Targets))
 	failures := []error{}
 
 	for i, tlset := range tg.Targets {
 		lbls := make([]labels.Label, 0, len(tlset)+len(tg.Labels))
 		for ln, lv := range tlset {
-			lbls = append(lbls, labels.Label{Name: ln, Value: lv})
+			lbls = append(lbls, labels.Label{Name: string(ln), Value: string(lv)})
 		}
 		for ln, lv := range tg.Labels {
 			if _, ok := tlset[ln]; !ok {
-				lbls = append(lbls, labels.Label{Name: ln, Value: lv})
+				lbls = append(lbls, labels.Label{Name: string(ln), Value: string(lv)})
 			}
 		}
 
@@ -380,7 +382,7 @@ func (sp *scrapePool) TargetsFromGroup(tg Group, cfg *ScrapeConfig) ([]*Target, 
 	return targets, failures
 }
 
-func (sp *scrapePool) buildParams(cfg *ScrapeConfig, p ProfileName, lbls labels.Labels) url.Values {
+func (sp *scrapePool) buildParams(cfg *Config, p ProfileName, lbls labels.Labels) url.Values {
 	// TODO(kolesnikovae): Refactor.
 	params := make(url.Values, len(cfg.ProfilingConfigs[p].Params))
 	for k, v := range cfg.ProfilingConfigs[p].Params {
