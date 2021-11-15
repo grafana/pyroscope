@@ -46,7 +46,7 @@ var _ = Describe("client", func() {
 	Context("when socket address is empty", func() {
 		It("fails", func() {
 			_, err := admin.NewClient("")
-			Expect(err).To(MatchError(admin.ErrHttpClientCreation))
+			Expect(err).To(MatchError(admin.ErrHTTPClientCreation))
 		})
 	})
 
