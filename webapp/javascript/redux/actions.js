@@ -149,6 +149,12 @@ export function fetchComparisonAppData(url, viewSide) {
     })
       .then((response) => response.json())
       .then((data) => {
+        const calculatedLevels = deltaDiffWrapper(
+          data.flamebearer.format,
+          data.flamebearer.levels
+        );
+
+        data.flamebearer.levels = calculatedLevels;
         dispatch(receiveComparisonAppData(data, viewSide));
       })
       .catch((e) => {
@@ -173,6 +179,12 @@ export function fetchPyrescopeAppData(url) {
     })
       .then((response) => response.json())
       .then((data) => {
+        const calculatedLevels = deltaDiffWrapper(
+          data.flamebearer.format,
+          data.flamebearer.levels
+        );
+
+        data.flamebearer.levels = calculatedLevels;
         dispatch(receivePyrescopeAppData(data));
       })
       .catch((e) => {
@@ -197,6 +209,12 @@ export function fetchComparisonDiffAppData(url) {
     })
       .then((response) => response.json())
       .then((data) => {
+        const calculatedLevels = deltaDiffWrapper(
+          data.flamebearer.format,
+          data.flamebearer.levels
+        );
+
+        data.flamebearer.levels = calculatedLevels;
         dispatch(receiveComparisonDiffAppData(data));
       })
       .catch((e) => {
