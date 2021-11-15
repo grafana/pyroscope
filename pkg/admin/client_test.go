@@ -33,7 +33,6 @@ var _ = Describe("client", func() {
 		server = s
 		go server.Start(handler)
 		waitUntilServerIsReady(socketAddr)
-		// TODO wait for server to be up?
 	})
 
 	AfterEach(func() {
@@ -41,10 +40,13 @@ var _ = Describe("client", func() {
 		cleanup()
 	})
 
+	// this test isn't super useful since this is already tested in the actual http client
+	// but I wanted to test instantiaton error
+	// without requiring dependency injection
 	Context("when socket address is empty", func() {
 		It("fails", func() {
 			_, err := admin.NewClient("")
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(admin.ErrHttpClientCreation))
 		})
 	})
 
@@ -67,7 +69,7 @@ var _ = Describe("client", func() {
 			})
 		})
 
-		Context("when server responds with error", func() {
+		Context("when server responds with 500 error", func() {
 			BeforeEach(func() {
 				handler = http.NewServeMux()
 				handler.HandleFunc("/v1/apps", func(w http.ResponseWriter, r *http.Request) {
@@ -79,9 +81,7 @@ var _ = Describe("client", func() {
 				client, err := admin.NewClient(socketAddr)
 
 				_, err = client.GetAppsNames()
-				// TODO
-				// how to test for specific errors
-				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(admin.ErrStatusCodeNotOK))
 			})
 		})
 
@@ -101,9 +101,7 @@ var _ = Describe("client", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				_, err = client.GetAppsNames()
-				// TODO
-				// how to test for specific errors
-				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(admin.ErrDecodingResponse))
 			})
 		})
 
@@ -114,9 +112,7 @@ var _ = Describe("client", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				_, err = client.GetAppsNames()
-				//// TODO
-				//// how to test for specific errors
-				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(admin.ErrMakingRequest))
 			})
 		})
 	})
@@ -133,7 +129,6 @@ var _ = Describe("client", func() {
 			It("works", func() {
 				client, err := admin.NewClient(socketAddr)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(err).ToNot(HaveOccurred())
 
 				err = client.DeleteApp("appname")
 				Expect(err).ToNot(HaveOccurred())
@@ -147,29 +142,26 @@ var _ = Describe("client", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				err = client.DeleteApp("appname")
-				//// TODO
-				//// how to test for specific errors
-				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(admin.ErrMakingRequest))
+			})
+		})
+
+		Context("when server responds with error", func() {
+			BeforeEach(func() {
+				handler = http.NewServeMux()
+				handler.HandleFunc("/v1/apps", func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(500)
+				})
+			})
+
+			It("fails", func() {
+				client, err := admin.NewClient(socketAddr)
+				Expect(err).ToNot(HaveOccurred())
+
+				err = client.DeleteApp("appname")
+				Expect(err).To(MatchError(admin.ErrStatusCodeNotOK))
 			})
 		})
 	})
 
-	Context("when server responds with error", func() {
-		BeforeEach(func() {
-			handler = http.NewServeMux()
-			handler.HandleFunc("/v1/apps", func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(500)
-			})
-		})
-
-		It("fails", func() {
-			client, err := admin.NewClient(socketAddr)
-			Expect(err).ToNot(HaveOccurred())
-
-			err = client.DeleteApp("appname")
-			// TODO
-			// how to test for specific errors
-			Expect(err).To(HaveOccurred())
-		})
-	})
 })

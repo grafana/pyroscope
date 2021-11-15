@@ -3,8 +3,11 @@ package admin
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 type Client struct {
@@ -15,10 +18,18 @@ type Client struct {
 // maybe we could share it?
 const AppsEndpoint = "http://pyroscope/v1/apps"
 
+var (
+	ErrHttpClientCreation = errors.New("failed to create http over uds client")
+	ErrMakingRequest      = errors.New("failed while making a request")
+	ErrStatusCodeNotOK    = errors.New("failed to get a response with a valid status code")
+	ErrDecodingResponse   = errors.New("error while decoding a (assumed) json response")
+	ErrMarshalingPayload  = errors.New("error while marshalling the payload")
+)
+
 func NewClient(socketAddr string) (*Client, error) {
 	httpClient, err := NewHTTPOverUDSClient(socketAddr)
 	if err != nil {
-		return nil, err
+		return nil, multierror.Append(ErrHttpClientCreation, err)
 	}
 
 	return &Client{
@@ -31,16 +42,16 @@ type AppNames []string
 func (c *Client) GetAppsNames() (names AppNames, err error) {
 	resp, err := c.httpClient.Get(AppsEndpoint)
 	if err != nil {
-		return names, fmt.Errorf("error making the request %w", err)
+		return names, multierror.Append(ErrMakingRequest, err)
 	}
 
 	if err := checkStatusCodeOK(resp.StatusCode); err != nil {
-		return names, err
+		return names, multierror.Append(ErrStatusCodeNotOK, err)
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&names)
 	if err != nil {
-		return names, fmt.Errorf("error decoding response %w", err)
+		return names, multierror.Append(ErrDecodingResponse, err)
 	}
 
 	return names, nil
@@ -55,7 +66,7 @@ func (c *Client) DeleteApp(name string) (err error) {
 
 	marshalledPayload, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("error marshalling the payload: %w", err)
+		return multierror.Append(ErrMarshalingPayload, err)
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, AppsEndpoint, bytes.NewBuffer(marshalledPayload))
@@ -65,10 +76,14 @@ func (c *Client) DeleteApp(name string) (err error) {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("error making the request: %w", err)
+		return multierror.Append(ErrMakingRequest, err)
 	}
 
-	return checkStatusCodeOK(resp.StatusCode)
+	err = checkStatusCodeOK(resp.StatusCode)
+	if err != nil {
+		return multierror.Append(ErrStatusCodeNotOK, err)
+	}
+	return nil
 }
 
 func checkStatusCodeOK(statusCode int) error {
