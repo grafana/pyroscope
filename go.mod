@@ -38,7 +38,7 @@ require (
 	github.com/mgechev/revive v1.0.3
 	github.com/mitchellh/go-ps v1.0.0
 	github.com/mitchellh/mapstructure v1.4.1
-	github.com/olekukonko/tablewriter v0.0.5
+	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
 	github.com/prometheus/client_golang v1.11.0
@@ -58,6 +58,7 @@ require (
 	github.com/twmb/murmur3 v1.1.5
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/wacul/ptr v1.0.0 // indirect
+	golang.org/x/net v0.0.0-20211020060615-d418f374d309
 	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211020174200-9d6173849985

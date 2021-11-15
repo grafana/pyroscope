@@ -3,11 +3,13 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+	"gopkg.in/yaml.v2"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
@@ -16,6 +18,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -32,6 +36,8 @@ type serverService struct {
 	selfProfiling    *agent.ProfileSession
 	debugReporter    *debug.Reporter
 	healthController *health.Controller
+	discoveryManager *discovery.Manager
+	scrapeManager    *scrape.Manager
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -89,6 +95,13 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		return nil, fmt.Errorf("new server: %w", err)
 	}
 
+	svc.discoveryManager = discovery.NewManager(
+		svc.logger.WithField("component", "discovery-manager"))
+
+	svc.scrapeManager = scrape.NewManager(
+		svc.logger.WithField("component", "scrape-manager"),
+		svc.directUpstream)
+
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
 	}
@@ -104,6 +117,23 @@ func (svc *serverService) Start() error {
 		// https://github.com/pyroscope-io/homebrew-brew/blob/main/Formula/pyroscope.rb#L94
 		svc.logger.Info("starting HTTP server")
 		return svc.controller.Start()
+	})
+
+	// Scrape and Discovery managers have to be initialized
+	// with ApplyConfig before starting running.
+	if err := svc.discoveryManager.ApplyConfig(discoveryConfigs(svc.config.ScrapeConfigs)); err != nil {
+		return err
+	}
+	if err := svc.scrapeManager.ApplyConfig(svc.config.ScrapeConfigs); err != nil {
+		return err
+	}
+	g.Go(func() error {
+		svc.logger.Debug("starting discovery manager")
+		return svc.discoveryManager.Run()
+	})
+	g.Go(func() error {
+		svc.logger.Debug("starting scrape manager")
+		return svc.scrapeManager.Run(svc.discoveryManager.SyncCh())
 	})
 
 	go svc.debugReporter.Start()
@@ -150,6 +180,10 @@ func (svc *serverService) stop() {
 	svc.selfProfiling.Stop()
 	svc.logger.Debug("stopping upstream")
 	svc.directUpstream.Stop()
+	svc.logger.Debug("stopping discovery manager")
+	svc.discoveryManager.Stop()
+	svc.logger.Debug("stopping scrape manager")
+	svc.scrapeManager.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
@@ -158,4 +192,31 @@ func (svc *serverService) stop() {
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
+}
+
+func discoveryConfigs(cfg []*scrape.Config) map[string]discovery.Configs {
+	c := make(map[string]discovery.Configs)
+	for _, x := range cfg {
+		c[x.JobName] = x.ServiceDiscoveryConfigs
+	}
+	return c
+}
+
+func loadServerConfig(c *config.Server) error {
+	b, err := os.ReadFile(c.Config)
+	switch {
+	case err == nil:
+	case os.IsNotExist(err):
+		return nil
+	default:
+		return err
+	}
+	var s config.Server
+	if err = yaml.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	// Populate scrape configs.
+	c.ScrapeConfigs = s.ScrapeConfigs
+	return nil
 }

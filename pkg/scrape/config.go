@@ -22,10 +22,9 @@ import (
 	"time"
 
 	"github.com/imdario/mergo"
-	"github.com/prometheus/common/config"
-	"github.com/prometheus/prometheus/pkg/relabel"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/relabel"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -50,7 +49,7 @@ func defaultConfig() *Config {
 			},
 		},
 
-		HTTPClientConfig: config.DefaultHTTPClientConfig,
+		HTTPClientConfig: DefaultHTTPClientConfig,
 		Scheme:           "http",
 		BodySizeLimit:    0,
 
@@ -80,8 +79,8 @@ type Config struct {
 	// We cannot do proper Go type embedding below as the parser will then parse
 	// values arbitrarily into the overflow maps of further-down types.
 
-	ServiceDiscoveryConfigs discovery.Configs       `yaml:"-"`
-	HTTPClientConfig        config.HTTPClientConfig `yaml:",inline"`
+	ServiceDiscoveryConfigs discovery.Configs `yaml:"-"`
+	HTTPClientConfig        HTTPClientConfig  `yaml:",inline"`
 
 	// List of target relabel configurations.
 	RelabelConfigs []*relabel.Config `yaml:"relabel_configs,omitempty"`

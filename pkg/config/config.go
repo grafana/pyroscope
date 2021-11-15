@@ -6,6 +6,7 @@ package config
 import (
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -112,6 +113,8 @@ type Server struct {
 
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
+
+	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule

@@ -28,9 +28,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/prometheus/prometheus/pkg/labels"
-	"github.com/prometheus/prometheus/pkg/relabel"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/relabel"
 )
 
 // TargetHealth describes the health state of a target.

@@ -27,7 +27,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/prometheus/common/config"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/bytebufferpool"
 
@@ -57,7 +56,7 @@ var errBodySizeLimit = errors.New("body size limit exceeded")
 // scrapePool manages scrapes for sets of targets.
 type scrapePool struct {
 	upstream upstream.Upstream
-	logger   *logrus.Logger
+	logger   logrus.FieldLogger
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -75,8 +74,8 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *Config, u upstream.Upstream, logger *logrus.Logger) (*scrapePool, error) {
-	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
+func newScrapePool(cfg *Config, u upstream.Upstream, logger logrus.FieldLogger) (*scrapePool, error) {
+	client, err := NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		return nil, fmt.Errorf("creating HTTP client: %w", err)
 	}
@@ -152,7 +151,7 @@ func (sp *scrapePool) reload(cfg *Config) error {
 	sp.mtx.Lock()
 	defer sp.mtx.Unlock()
 
-	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
+	client, err := NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		return fmt.Errorf("creating HTTP client: %w", err)
 	}
@@ -307,6 +306,8 @@ func (sl *scrapeLoop) run() {
 	case <-sl.ctx.Done():
 		return
 	}
+	start := time.Now()
+	sl.scraper.report(start, time.Since(start), sl.scrape())
 	ticker := time.NewTicker(sl.interval)
 	defer ticker.Stop()
 	for {
@@ -314,7 +315,7 @@ func (sl *scrapeLoop) run() {
 		case <-sl.ctx.Done():
 			return
 		case <-ticker.C:
-			start := time.Now()
+			start = time.Now()
 			sl.scraper.report(start, time.Since(start), sl.scrape())
 		}
 	}
@@ -327,14 +328,16 @@ func (sl *scrapeLoop) scrape() error {
 		bufPool.Put(buf)
 		cancel()
 	}()
-	if err := sl.scraper.scrape(ctx, buf); err != nil {
+	switch err := sl.scraper.scrape(ctx, buf); {
+	case err == nil:
+		return sl.scraper.pprofWriter.WriteProfile(buf.Bytes())
+	case errors.Is(err, context.Canceled):
+		return nil
+	default:
+		sl.logger.WithError(err).WithField("target", sl.scraper.Target.String()).Debug("scrapping failed")
 		sl.scraper.pprofWriter.Reset()
-		sl.logger.WithError(err).
-			WithField("target", sl.scraper.Target.String()).
-			Debug("scrapping failed")
 		return err
 	}
-	return sl.scraper.pprofWriter.WriteProfile(buf.Bytes())
 }
 
 func (sl *scrapeLoop) stop() {

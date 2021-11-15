@@ -98,15 +98,15 @@ func (p *provider) IsStarted() bool {
 }
 
 // NewManager is the Discovery Manager constructor.
-func NewManager(ctx context.Context, logger *logrus.Logger, options ...func(*Manager)) *Manager {
+func NewManager(logger logrus.FieldLogger, options ...func(*Manager)) *Manager {
 	mgr := &Manager{
 		logger:      logger,
 		syncCh:      make(chan map[string][]*targetgroup.Group),
 		targets:     make(map[poolKey]map[string]*targetgroup.Group),
-		ctx:         ctx,
 		updatert:    5 * time.Second,
 		triggerSend: make(chan struct{}, 1),
 	}
+	mgr.ctx, mgr.cancel = context.WithCancel(context.Background())
 	for _, option := range options {
 		option(mgr)
 	}
@@ -125,10 +125,11 @@ func Name(n string) func(*Manager) {
 // Manager maintains a set of discovery providers and sends each update to a map channel.
 // Targets are grouped by the target set name.
 type Manager struct {
-	logger *logrus.Logger
+	logger logrus.FieldLogger
 	name   string
 	mtx    sync.RWMutex
 	ctx    context.Context
+	cancel context.CancelFunc
 
 	// Some Discoverers(e.g. k8s) send only the updates for a given target group,
 	// so we use map[tg.Source]*targetgroup.Group to know which group to update.
@@ -159,6 +160,12 @@ func (m *Manager) Run() error {
 		return m.ctx.Err()
 	}
 	return nil
+}
+
+func (m *Manager) Stop() {
+	if m.cancel != nil {
+		m.cancel()
+	}
 }
 
 // SyncCh returns a read only channel used by all the clients to receive target updates.

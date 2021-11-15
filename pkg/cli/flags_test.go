@@ -8,6 +8,9 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/common/model"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -170,6 +173,7 @@ var _ = Describe("flags", func() {
 								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
 							}
 
+							Expect(loadServerConfig(&cfg)).ToNot(HaveOccurred())
 							fmt.Printf("configuration is %+v \n", cfg)
 						}
 
@@ -177,7 +181,7 @@ var _ = Describe("flags", func() {
 					},
 				}
 
-				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr, WithSkip("scrape-configs"))
 				vpr.BindPFlags(exampleCommand.Flags())
 
 				b := bytes.NewBufferString("")
@@ -253,6 +257,41 @@ var _ = Describe("flags", func() {
 							Expr:    `app.name{foo=~"bar"}`,
 							Node:    "a;b;c",
 							GroupBy: []string{"foo"},
+						},
+					},
+
+					ScrapeConfigs: []*scrape.Config{
+						{
+							JobName: "testing",
+							EnabledProfiles: []scrape.ProfileName{
+								scrape.ProfileCPU,
+								scrape.ProfileHeap,
+							},
+							ProfilingConfigs: scrape.ProfilingConfigs{
+								scrape.ProfileCPU: {
+									Path:   "/debug/pprof/profile",
+									Params: nil,
+								},
+								scrape.ProfileHeap: {
+									Path:   "/debug/pprof/heap",
+									Params: nil,
+								},
+							},
+							ScrapeInterval:   10 * time.Second,
+							ScrapeTimeout:    15 * time.Second,
+							Scheme:           "http",
+							HTTPClientConfig: scrape.DefaultHTTPClientConfig,
+							ServiceDiscoveryConfigs: []discovery.Config{
+								discovery.StaticConfig{
+									{
+										Targets: []model.LabelSet{
+											{"__address__": "localhost:6060", "__name__": "app"},
+										},
+										Labels: model.LabelSet{"zzz": "xxx"},
+										Source: "0",
+									},
+								},
+							},
 						},
 					},
 				}))

@@ -28,7 +28,7 @@ import (
 )
 
 // NewManager is the Manager constructor
-func NewManager(logger *logrus.Logger, u upstream.Upstream) *Manager {
+func NewManager(logger logrus.FieldLogger, u upstream.Upstream) *Manager {
 	c := make(map[string]*Config)
 	return &Manager{
 		upstream:      u,
@@ -43,7 +43,7 @@ func NewManager(logger *logrus.Logger, u upstream.Upstream) *Manager {
 // Manager maintains a set of scrape pools and manages start/stop cycles
 // when receiving new target groups from the discovery manager.
 type Manager struct {
-	logger   *logrus.Logger
+	logger   logrus.FieldLogger
 	upstream upstream.Upstream
 	stop     chan struct{}
 

@@ -15,6 +15,7 @@
 package scrape
 
 import (
+	"strings"
 	"time"
 
 	"github.com/prometheus/prometheus/pkg/labels"
@@ -23,7 +24,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
@@ -44,8 +45,8 @@ func newPprofWriter(u upstream.Upstream, l labels.Labels) *pprofWriter {
 }
 
 func (w *pprofWriter) Reset() {
-	w.tries = nil
 	w.time = time.Time{}
+	w.tries = make(triesCache)
 }
 
 func (w *pprofWriter) WriteProfile(b []byte) error {
@@ -76,25 +77,9 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 			}
 		}
 		for id, entry := range c[pt] {
-			// TODO(kolesnikovae): get spy name from profile?
 			j := &upstream.UploadJob{SpyName: "scrape", Trie: entry.Trie}
-			// CPU ("samples") sample type. This is the only type
-			// that requires SampleRate.
-			if pt == "samples" && p.Period > 0 {
-				j.SampleRate = uint32(time.Second / time.Duration(p.Period))
-			}
-			// Without DurationNanos we can not deduce the time range
-			// of the profile and need the previous profile time.
-			if p.DurationNanos > 0 {
-				j.StartTime = profileTime
-				j.EndTime = profileTime.Add(time.Duration(p.DurationNanos))
-			} else if !w.time.IsZero() {
-				j.StartTime = w.time
-				j.EndTime = profileTime
-			}
-			// If we don't hold info on the previous profile, we need to cache
-			// the data if the profile is cumulative (can be only generated
-			// from two consecutive samples.)
+			// Cumulative profiles require two consecutive samples,
+			// therefore we have to cache this trie.
 			if pt.IsCumulative() {
 				prev, found := w.tries.get(pt, id)
 				w.tries.put(pt, entry)
@@ -103,7 +88,30 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 				}
 				j.Trie = entry.Trie.Diff(prev.Trie)
 			}
-			w.write(pt, entry.labels, j)
+
+			// CPU ("samples") sample type. This is the only type
+			// that requires SampleRate.
+			if pt == "samples" && p.Period > 0 {
+				j.SampleRate = uint32(time.Second / time.Duration(p.Period))
+			}
+
+			switch {
+			case p.DurationNanos > 0:
+				j.StartTime = profileTime
+				j.EndTime = profileTime.Add(time.Duration(p.DurationNanos))
+			case !w.time.IsZero():
+				// Without DurationNanos we can not deduce the time range
+				// of the profile and therefore need the previous profile time.
+				j.StartTime = w.time
+				j.EndTime = profileTime
+			default:
+				continue
+			}
+
+			j.Name = w.buildName(pt, entry.labels)
+			j.Units = pt.Units()
+			j.AggregationType = pt.AggregationType()
+			w.upstream.Upload(j)
 		}
 	}
 
@@ -111,14 +119,7 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 	return nil
 }
 
-func (w *pprofWriter) write(pt spy.ProfileType, l *spy.Labels, j *upstream.UploadJob) {
-	j.Name = w.buildAppName(pt, l)
-	j.Units = pt.Units()
-	j.AggregationType = pt.AggregationType()
-	w.upstream.Upload(j)
-}
-
-func (w *pprofWriter) buildAppName(pt spy.ProfileType, l *spy.Labels) string {
+func (w *pprofWriter) buildName(pt spy.ProfileType, l *spy.Labels) string {
 	nameLabels := make(map[string]string)
 	if l != nil {
 		for k, v := range l.Tags() {
@@ -137,7 +138,29 @@ func (w *pprofWriter) buildAppName(pt spy.ProfileType, l *spy.Labels) string {
 		appName += "." + string(pt)
 	}
 	nameLabels[AppNameLabel] = appName
-	return segment.NewKey(nameLabels).Normalized()
+	// TODO(kolesnikovae): a copy of segment.Key.Normalize().
+	//   To be refactored once pyroscope model package emerges.
+	var sb strings.Builder
+	sortedMap := sortedmap.New()
+	for k, v := range nameLabels {
+		if k == AppNameLabel {
+			sb.WriteString(v)
+		} else {
+			sortedMap.Put(k, v)
+		}
+	}
+	sb.WriteString("{")
+	for i, k := range sortedMap.Keys() {
+		v := sortedMap.Get(k).(string)
+		if i != 0 {
+			sb.WriteString(",")
+		}
+		sb.WriteString(k)
+		sb.WriteString("=")
+		sb.WriteString(v)
+	}
+	sb.WriteString("}")
+	return sb.String()
 }
 
 type triesCache map[spy.ProfileType]map[string]*cacheEntry
@@ -147,12 +170,12 @@ type cacheEntry struct {
 	labels *spy.Labels
 }
 
-func (t triesCache) get(pt spy.ProfileType, name string) (*cacheEntry, bool) {
+func (t triesCache) get(pt spy.ProfileType, id string) (*cacheEntry, bool) {
 	p, ok := t[pt]
 	if !ok {
 		return nil, false
 	}
-	x, ok := p[name]
+	x, ok := p[id]
 	return x, ok
 }
 
