@@ -107,11 +107,17 @@ var _ = Describe("storage package", func() {
 					})
 
 					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
+					s.GetValues("__name__", func(v string) bool {
+						Fail("app name label was not removed")
+						return false
+					})
+
 					gOut, err := s.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
 						Key:       key,
 					})
+
 					Expect(err).ToNot(HaveOccurred())
 					Expect(gOut).To(BeNil())
 					Expect(s.Close()).ToNot(HaveOccurred())
