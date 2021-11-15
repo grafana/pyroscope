@@ -19,7 +19,7 @@ type Client struct {
 const AppsEndpoint = "http://pyroscope/v1/apps"
 
 var (
-	ErrHttpClientCreation = errors.New("failed to create http over uds client")
+	ErrHTTPClientCreation = errors.New("failed to create http over uds client")
 	ErrMakingRequest      = errors.New("failed while making a request")
 	ErrStatusCodeNotOK    = errors.New("failed to get a response with a valid status code")
 	ErrDecodingResponse   = errors.New("error while decoding a (assumed) json response")
@@ -29,7 +29,7 @@ var (
 func NewClient(socketAddr string) (*Client, error) {
 	httpClient, err := NewHTTPOverUDSClient(socketAddr)
 	if err != nil {
-		return nil, multierror.Append(ErrHttpClientCreation, err)
+		return nil, multierror.Append(ErrHTTPClientCreation, err)
 	}
 
 	return &Client{
