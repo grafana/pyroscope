@@ -114,8 +114,7 @@ type Server struct {
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 
-	// TODO: use <storagePath> somehow
-	AdminSocketPath         string `def:"/tmp/pyroscope.sock" desc:"path where the admin UDS will be created. if nothign is defined it will reuse the same value as storagePath" mapstructure:"admin-socket-path"`
+	AdminSocketPath         string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
 	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 }
 
@@ -219,6 +218,5 @@ type Exec struct {
 }
 
 type Admin struct {
-	// TODO: use <storagePath> somehow
-	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin UDS will be created." mapstructure:"admin-socket-path"`
+	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
 }

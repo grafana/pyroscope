@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// NewHTTPOverUDSClient creates a http client that communicates via UDS
+// NewHTTPOverUDSClient creates a http client that communicates via UDS (unix domain sockets)
 func NewHTTPOverUDSClient(socketAddr string) (*http.Client, error) {
 	if socketAddr == "" {
 		return nil, ErrInvalidSocketPathname

@@ -32,6 +32,7 @@ type UdsHTTPServer struct {
 	socketAddr string
 }
 
+// NewUdsHttpServer creates a http server that responds over UDS (unix domain socket)
 func NewUdsHTTPServer(socketAddr string) (*UdsHTTPServer, error) {
 	if err := validateSocketAddress(socketAddr); err != nil {
 		return nil, err
