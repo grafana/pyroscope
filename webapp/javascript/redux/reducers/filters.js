@@ -167,20 +167,24 @@ export default function (state = initialState, action) {
 
       let left;
       let right;
+      let timelineData;
       switch (viewSide) {
         case 'left':
           left = { flamebearer };
           right = state.comparison.right;
+          timelineData = state.timeline;
           break;
 
         case 'right': {
           left = state.comparison.left;
           right = { flamebearer };
+          timelineData = state.timeline;
           break;
         }
         case 'both': {
           left = { flamebearer };
           right = { flamebearer };
+          timelineData = decodeTimelineData(timeline);
           break;
         }
         default:
@@ -189,7 +193,7 @@ export default function (state = initialState, action) {
 
       return {
         ...state,
-        timeline: decodeTimelineData(timeline),
+        timeline: timelineData,
         comparison: {
           left,
           right,
