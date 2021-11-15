@@ -18,20 +18,19 @@ function ComparisonApp(props) {
   const prevPropsRef = useRef();
 
   useEffect(() => {
-    if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchComparisonAppData(renderURL, 'both');
-    }
-
-    if (prevPropsRef.leftRenderURL !== leftRenderURL) {
-      actions.fetchComparisonAppData(leftRenderURL, 'left');
-    }
-
-    if (prevPropsRef.rightRenderURL !== rightRenderURL) {
-      actions.fetchComparisonAppData(rightRenderURL, 'right');
-    }
-
+    actions.fetchComparisonAppData(renderURL, 'both');
     return actions.abortTimelineRequest;
-  }, [renderURL, leftRenderURL, rightRenderURL]);
+  }, [renderURL]);
+
+  useEffect(() => {
+    actions.fetchComparisonAppData(leftRenderURL, 'left');
+    return actions.abortTimelineRequest;
+  }, [leftRenderURL]);
+
+  useEffect(() => {
+    actions.fetchComparisonAppData(rightRenderURL, 'right');
+    return actions.abortTimelineRequest;
+  }, [rightRenderURL]);
 
   return (
     <div className="pyroscope-app">
