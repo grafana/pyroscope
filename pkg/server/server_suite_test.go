@@ -1,3 +1,6 @@
+//go:build linux && !windows
+// +build linux,!windows
+
 package server_test
 
 import (

@@ -1,3 +1,6 @@
+//go:build linux && !windows
+// +build linux,!windows
+
 package cireport_test
 
 import (
