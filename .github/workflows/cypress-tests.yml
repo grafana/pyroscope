@@ -25,6 +25,7 @@ jobs:
           wait-on: http://localhost:4040
           start: make server
         env:
+          DEBUG: '@cypress/github-action'
           # keep the server quiet
           PYROSCOPE_LOG_LEVEL: error
           ENABLED_SPIES: none
