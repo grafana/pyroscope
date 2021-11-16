@@ -17,7 +17,6 @@ package scrape
 
 import (
 	"bufio"
-	"bytes"
 	"compress/gzip"
 	"context"
 	"errors"
@@ -359,8 +358,6 @@ type scraper struct {
 	bodySizeLimit int64
 }
 
-var gzipMagic = []byte{0x1f, 0x8b}
-
 func (s *scraper) scrape(ctx context.Context, w io.Writer) error {
 	if s.req == nil {
 		req, err := http.NewRequest("GET", s.URL().String(), nil)
@@ -394,21 +391,19 @@ func (s *scraper) scrape(ctx context.Context, w io.Writer) error {
 		s.buf.Reset(resp.Body)
 	}
 
-	header, err := s.buf.Peek(len(gzipMagic))
+	header, err := s.buf.Peek(2)
 	if err != nil {
 		return err
 	}
 
-	var r io.Reader
-	if bytes.Equal(header, gzipMagic) {
+	r := resp.Body
+	if header[0] == 0x1f && header[1] == 0x8b {
 		gzipr, err := gzip.NewReader(s.buf)
 		if err != nil {
 			return err
 		}
 		r = gzipr
 		defer gzipr.Close()
-	} else {
-		r = resp.Body
 	}
 
 	n, err := io.Copy(w, io.LimitReader(r, s.bodySizeLimit))
