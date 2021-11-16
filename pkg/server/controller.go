@@ -342,9 +342,9 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (*Controller) expectJSON(format string) error {
+func (*Controller) expectFormats(format string) error {
 	switch format {
-	case "json", "":
+	case "json", "pprof", "collapsed", "":
 		return nil
 	default:
 		return errUnknownFormat
@@ -356,6 +356,13 @@ func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}
 	if err := json.NewEncoder(w).Encode(res); err != nil {
 		ctrl.writeJSONEncodeError(w, err)
 	}
+}
+
+func (*Controller) writeResponseFile(w http.ResponseWriter, filename string, content []byte) {
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Write(content)
+	w.(http.Flusher).Flush()
 }
 
 func (ctrl *Controller) writeError(w http.ResponseWriter, code int, err error, msg string) {
