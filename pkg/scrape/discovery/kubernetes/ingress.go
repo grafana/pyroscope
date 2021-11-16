@@ -86,7 +86,10 @@ func (i *Ingress) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 	}
 
 	go func() {
-		for i.process(ctx, ch) {
+		for {
+			if !i.process(ctx, ch) {
+				return
+			}
 		}
 	}()
 
@@ -189,7 +192,7 @@ func pathsFromIngressPaths(ingressPaths []string) []string {
 	return paths
 }
 
-func (i *Ingress) buildIngress(ingress ingressAdaptor) *targetgroup.Group {
+func (*Ingress) buildIngress(ingress ingressAdaptor) *targetgroup.Group {
 	tg := &targetgroup.Group{
 		Source: ingressSource(ingress),
 	}

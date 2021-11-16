@@ -36,7 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilversion "k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/kubernetes"
+	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -46,6 +46,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
+
+// revive:disable:max-public-structs complex domain
+// revive:disable:cognitive-complexity preserve original implementation
 
 const (
 	// kubernetesMetaLabelPrefix is the meta prefix used for all meta labels.
@@ -244,7 +247,7 @@ func (c *NamespaceDiscovery) UnmarshalYAML(unmarshal func(interface{}) error) er
 // targets from Kubernetes.
 type Discovery struct {
 	sync.RWMutex
-	client             kubernetes.Interface
+	client             k8s.Interface
 	role               Role
 	logger             logrus.FieldLogger
 	namespaceDiscovery *NamespaceDiscovery
@@ -292,7 +295,7 @@ func New(l logrus.FieldLogger, conf *SDConfig) (*Discovery, error) {
 
 	kcfg.UserAgent = userAgent
 
-	c, err := kubernetes.NewForConfig(kcfg)
+	c, err := k8s.NewForConfig(kcfg)
 	if err != nil {
 		return nil, err
 	}
@@ -614,7 +617,7 @@ func retryOnError(ctx context.Context, interval time.Duration, f func() error) (
 	}
 }
 
-func checkNetworkingV1Supported(client kubernetes.Interface) (bool, error) {
+func checkNetworkingV1Supported(client k8s.Interface) (bool, error) {
 	k8sVer, err := client.Discovery().ServerVersion()
 	if err != nil {
 		return false, err

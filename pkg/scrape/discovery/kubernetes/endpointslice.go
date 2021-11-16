@@ -38,6 +38,8 @@ var (
 	epslDeleteCount = eventCount.WithLabelValues("endpointslice", "delete")
 )
 
+// revive:disable:cognitive-complexity preserve original implementation
+
 // EndpointSlice discovers new endpoint targets.
 type EndpointSlice struct {
 	logger logrus.FieldLogger
@@ -137,7 +139,10 @@ func (e *EndpointSlice) Run(ctx context.Context, ch chan<- []*targetgroup.Group)
 	}
 
 	go func() {
-		for e.process(ctx, ch) {
+		for {
+			if !e.process(ctx, ch) {
+				return
+			}
 		}
 	}()
 

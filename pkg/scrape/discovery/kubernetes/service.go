@@ -86,7 +86,10 @@ func (s *Service) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 	}
 
 	go func() {
-		for s.process(ctx, ch) {
+		for {
+			if !s.process(ctx, ch) {
+				return
+			}
 		}
 	}()
 
@@ -174,7 +177,7 @@ func serviceLabels(svc *apiv1.Service) model.LabelSet {
 	return ls
 }
 
-func (s *Service) buildService(svc *apiv1.Service) *targetgroup.Group {
+func (*Service) buildService(svc *apiv1.Service) *targetgroup.Group {
 	tg := &targetgroup.Group{
 		Source: serviceSource(svc),
 	}

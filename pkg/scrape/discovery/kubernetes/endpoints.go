@@ -31,6 +31,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
 
+// revive:disable:cognitive-complexity preserve original implementation
+
 var (
 	epAddCount    = eventCount.WithLabelValues("endpoints", "add")
 	epUpdateCount = eventCount.WithLabelValues("endpoints", "update")
@@ -140,7 +142,10 @@ func (e *Endpoints) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 	}
 
 	go func() {
-		for e.process(ctx, ch) {
+		for {
+			if !e.process(ctx, ch) {
+				return
+			}
 		}
 	}()
 

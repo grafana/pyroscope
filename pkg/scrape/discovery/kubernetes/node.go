@@ -91,7 +91,10 @@ func (n *Node) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 	}
 
 	go func() {
-		for n.process(ctx, ch) {
+		for {
+			if !n.process(ctx, ch) {
+				return
+			}
 		}
 	}()
 

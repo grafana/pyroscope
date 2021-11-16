@@ -93,7 +93,10 @@ func (p *Pod) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 	}
 
 	go func() {
-		for p.process(ctx, ch) {
+		for {
+			if !p.process(ctx, ch) {
+				return
+			}
 		}
 	}()
 
@@ -208,7 +211,7 @@ func podLabels(pod *apiv1.Pod) model.LabelSet {
 	return ls
 }
 
-func (p *Pod) buildPod(pod *apiv1.Pod) *targetgroup.Group {
+func (*Pod) buildPod(pod *apiv1.Pod) *targetgroup.Group {
 	tg := &targetgroup.Group{
 		Source: podSource(pod),
 	}
