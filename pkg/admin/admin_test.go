@@ -1,3 +1,6 @@
+//go:build linux && !windows
+// +build linux,!windows
+
 package admin_test
 
 import (
