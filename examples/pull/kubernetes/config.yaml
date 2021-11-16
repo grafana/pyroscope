@@ -1,0 +1,69 @@
+---
+scrape-configs:
+  # A scrape configuration for running Pyroscope on a Kubernetes cluster.
+  # This uses separate scrape configs for cluster components (i.e. API server, node)
+  # and services to allow each to use different authentication configs.
+  #
+  # Kubernetes labels will be added as Pyroscope labels on metrics via the
+  # `labelmap` relabeling action.
+
+  # Example scrape config for pods
+  #
+  # The relabeling allows the actual pod scrape endpoint to be configured via the
+  # following annotations:
+  #
+  # * `pyroscope.io/scrape`: Only scrape pods that have a value of `true`
+  # * `pyroscope.io/scheme`: If the metrics endpoint is secured then you will need
+  # to set this to `https` & most likely set the `tls_config` of the scrape config.
+  # * `pyroscope.io/path`: If the metrics path is not `/metrics` override this.
+  # * `pyroscope.io/port`: Scrape the pod on the indicated port instead of the default of `9102`.
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_pyroscope_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_pyroscope_io_scheme]
+        action: replace
+        regex: (https?)
+        target_label: __scheme__
+      - source_labels:
+          [__address__, __meta_kubernetes_pod_annotation_pyroscope_io_port]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
+      - source_labels: [__meta_kubernetes_pod_phase]
+        regex: Pending|Succeeded|Failed|Completed
+        action: drop
+
+      # TODO(kolesnikovae): Add support for profile settings overrides
+      - source_labels:
+          [__meta_kubernetes_pod_annotation_pyroscope_io_profile_cpu_enabled]
+        action: replace
+        target_label: __profile_cpu_enabled__
+        regex: (.+)
+      - source_labels:
+          [__meta_kubernetes_pod_annotation_pyroscope_io_profile_heap_enabled]
+        action: replace
+        target_label: __profile_heap_enabled__
+        regex: (.+)
+      - source_labels:
+          [__meta_kubernetes_pod_annotation_pyroscope_io_profile_cpu_path]
+        action: replace
+        target_label: __profile_cpu_path__
+        regex: (.+)
+      - source_labels:
+          [__meta_kubernetes_pod_annotation_pyroscope_io_profile_heap_params_gc]
+        action: replace
+        target_label: __profile_heap_params_gc__
+        regex: (.+)
