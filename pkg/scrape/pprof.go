@@ -264,15 +264,16 @@ func (t cache) reset(pt spy.ProfileType, h uint64) {
 }
 
 func labelsHash(l []*convert.Label) uint64 {
-	const es = 16
-	b := make([]byte, len(l)*es)
-	t := make([]byte, es)
+	h := xxhash.New()
+	t := make([]byte, 16)
 	for _, x := range l {
-		if x.Str != 0 {
-			binary.LittleEndian.PutUint64(t[0:8], uint64(x.Key))
-			binary.LittleEndian.PutUint64(t[8:16], uint64(x.Str))
+		if x.Str == 0 {
+			// Only string label values are supported.
+			continue
 		}
-		b = append(b, t...)
+		binary.LittleEndian.PutUint64(t[0:8], uint64(x.Key))
+		binary.LittleEndian.PutUint64(t[8:16], uint64(x.Str))
+		_, _ = h.Write(t)
 	}
-	return xxhash.Sum64(b)
+	return h.Sum64()
 }
