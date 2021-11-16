@@ -209,27 +209,18 @@ export default function (state = initialState, action) {
     case RECEIVE_COMPARISON_DIFF_APP_DATA:
       data = action.payload.data;
       timeline = data.timeline;
-      flamebearer = data.flamebearer;
       const { leftTicks, rightTicks } = data;
-
-      const calculatedLevels = deltaDiffWrapper(
-        flamebearer.format,
-        flamebearer.levels
-      );
-
-      const flamebearerData = {
-        flamebearer: {
-          leftTicks,
-          rightTicks,
-          levels: calculatedLevels,
-          ...flamebearer,
-        },
-      };
 
       return {
         ...state,
         timeline: decodeTimelineData(timeline),
-        diff: flamebearerData,
+        diff: {
+          flamebearer: {
+            leftTicks,
+            rightTicks,
+            ...data.flamebearer,
+          },
+        },
         isJSONLoading: false,
       };
 
