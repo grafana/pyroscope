@@ -68,6 +68,14 @@ func (ll *Labels) GetKeys(cb func(k string) bool) {
 	}
 }
 
+// Delete removes key value label pair from the storage.
+// If the pair can not be found, no error is returned.
+func (ll *Labels) Delete(key, value string) error {
+	return ll.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte("v:" + key + ":" + value))
+	})
+}
+
 //revive:disable-next-line:get-return A callback is fine
 func (ll *Labels) GetValues(key string, cb func(v string) bool) {
 	err := ll.db.View(func(txn *badger.Txn) error {

@@ -25,6 +25,7 @@ func Execute() error {
 		newServerCmd(&cfg.Server),
 		newVersionCmd(),
 		completionCmd,
+		newAdminCmd(&cfg.Admin),
 	}
 
 	for _, c := range subcommands {
