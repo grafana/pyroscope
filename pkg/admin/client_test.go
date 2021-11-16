@@ -1,3 +1,6 @@
+//go:build linux && !windows
+// +build linux,!windows
+
 package admin_test
 
 import (
@@ -32,7 +35,7 @@ var _ = Describe("client", func() {
 		Expect(err).ToNot(HaveOccurred())
 		server = s
 		go server.Start(handler)
-		// waitUntilServerIsReady(socketAddr)
+		waitUntilServerIsReady(socketAddr)
 	})
 
 	AfterEach(func() {
