@@ -50,7 +50,7 @@ var _ = Describe("integration", func() {
 			// we don't care if the server is closed
 			_ = server.Start()
 		})()
-		waitUntilServerIsReady(socketAddr)
+		// waitUntilServerIsReady(socketAddr)
 	})
 
 	AfterEach(func() {
