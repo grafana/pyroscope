@@ -4,8 +4,6 @@ import {
   SET_UNTIL,
   SET_MAX_NODES,
   REFRESH,
-  REQUEST_TIMELINE,
-  RECEIVE_TIMELINE,
   REQUEST_TAGS,
   RECEIVE_TAGS,
   REQUEST_TAG_VALUES,
@@ -19,8 +17,15 @@ import {
   SET_LEFT_UNTIL,
   SET_RIGHT_FROM,
   SET_RIGHT_UNTIL,
+  RECEIVE_COMPARISON_APP_DATA,
+  REQUEST_COMPARISON_APP_DATA,
+  REQUEST_PYRESCOPE_APP_DATA,
+  RECEIVE_PYRESCOPE_APP_DATA,
+  REQUEST_COMPARISON_DIFF_APP_DATA,
+  RECEIVE_COMPARISON_DIFF_APP_DATA,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
+import { deltaDiffWrapper } from '../util/flamebearer';
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
@@ -65,14 +70,34 @@ export const setMaxNodes = (maxNodes) => ({
 
 export const refresh = (url) => ({ type: REFRESH, payload: { url } });
 
-export const requestTimeline = (url) => ({
-  type: REQUEST_TIMELINE,
+export const requestPyrescopeAppData = (url) => ({
+  type: REQUEST_PYRESCOPE_APP_DATA,
   payload: { url },
 });
 
-export const receiveTimeline = (data) => ({
-  type: RECEIVE_TIMELINE,
-  payload: data,
+export const receivePyrescopeAppData = (data) => ({
+  type: RECEIVE_PYRESCOPE_APP_DATA,
+  payload: { data },
+});
+
+export const requestComparisonAppData = (url, viewSide) => ({
+  type: REQUEST_COMPARISON_APP_DATA,
+  payload: { url, viewSide },
+});
+
+export const receiveComparisonAppData = (data, viewSide) => ({
+  type: RECEIVE_COMPARISON_APP_DATA,
+  payload: { data, viewSide },
+});
+
+export const requestComparisonDiffAppData = (url) => ({
+  type: REQUEST_COMPARISON_DIFF_APP_DATA,
+  payload: { url },
+});
+
+export const receiveComparisonDiffAppData = (data) => ({
+  type: RECEIVE_COMPARISON_DIFF_APP_DATA,
+  payload: { data },
 });
 
 export const requestTags = () => ({ type: REQUEST_TAGS });
@@ -110,22 +135,119 @@ export const setQuery = (query) => ({
  * A badly timed 'abort' action may cancel the brand new 'fetch' action!
  */
 let currentTimelineController;
+const currentComparisonTimelineController = {
+  left: null,
+  right: null,
+};
 let fetchTagController;
 let fetchTagValuesController;
 
-export function fetchTimeline(url) {
+export function fetchComparisonAppData(url, viewSide) {
+  return (dispatch) => {
+    const getTimelineController = () => {
+      switch (viewSide) {
+        case 'left':
+          return currentComparisonTimelineController.left;
+        case 'right':
+          return currentComparisonTimelineController.right;
+        case 'both':
+          return currentTimelineController;
+        default:
+          throw new Error(`Invalid viewSide: '${viewSide}'`);
+      }
+    };
+    let timelineController = getTimelineController();
+    if (timelineController) {
+      timelineController.abort();
+    }
+
+    switch (viewSide) {
+      case 'left':
+        currentComparisonTimelineController.left = new AbortController();
+        break;
+      case 'right':
+        currentComparisonTimelineController.right = new AbortController();
+        break;
+      case 'both':
+        currentTimelineController = new AbortController();
+        break;
+      default:
+        throw new Error(`Invalid viewSide: '${viewSide}'`);
+    }
+    dispatch(requestComparisonAppData(url, viewSide));
+    timelineController = getTimelineController();
+    return fetch(`${url}&format=json`, {
+      signal: timelineController.signal,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        const calculatedLevels = deltaDiffWrapper(
+          data.flamebearer.format,
+          data.flamebearer.levels
+        );
+
+        data.flamebearer.levels = calculatedLevels;
+        dispatch(receiveComparisonAppData(data, viewSide));
+      })
+      .catch((e) => {
+        // AbortError are fine
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
+      .finally();
+  };
+}
+
+export function fetchPyrescopeAppData(url) {
   return (dispatch) => {
     if (currentTimelineController) {
       currentTimelineController.abort();
     }
     currentTimelineController = new AbortController();
-    dispatch(requestTimeline(url));
+    dispatch(requestPyrescopeAppData(url));
     return fetch(`${url}&format=json`, {
       signal: currentTimelineController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
-        dispatch(receiveTimeline(data));
+        const calculatedLevels = deltaDiffWrapper(
+          data.flamebearer.format,
+          data.flamebearer.levels
+        );
+
+        data.flamebearer.levels = calculatedLevels;
+        dispatch(receivePyrescopeAppData(data));
+      })
+      .catch((e) => {
+        // AbortErrors are fine
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
+      .finally();
+  };
+}
+
+export function fetchComparisonDiffAppData(url) {
+  return (dispatch) => {
+    if (currentTimelineController) {
+      currentTimelineController.abort();
+    }
+    currentTimelineController = new AbortController();
+    dispatch(requestComparisonDiffAppData(url));
+    return fetch(`${url}&format=json`, {
+      signal: currentTimelineController.signal,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        const calculatedLevels = deltaDiffWrapper(
+          data.flamebearer.format,
+          data.flamebearer.levels
+        );
+
+        data.flamebearer.levels = calculatedLevels;
+        dispatch(receiveComparisonDiffAppData(data));
       })
       .catch((e) => {
         // AbortErrors are fine

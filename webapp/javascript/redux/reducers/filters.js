@@ -1,11 +1,10 @@
+import { deltaDiffWrapper } from '../../util/flamebearer';
 import {
   SET_DATE_RANGE,
   SET_FROM,
   SET_UNTIL,
   SET_MAX_NODES,
   REFRESH,
-  RECEIVE_TIMELINE,
-  REQUEST_TIMELINE,
   REQUEST_TAGS,
   RECEIVE_TAGS,
   REQUEST_TAG_VALUES,
@@ -19,6 +18,12 @@ import {
   SET_LEFT_UNTIL,
   SET_RIGHT_UNTIL,
   SET_QUERY,
+  RECEIVE_COMPARISON_APP_DATA,
+  RECEIVE_PYRESCOPE_APP_DATA,
+  REQUEST_PYRESCOPE_APP_DATA,
+  REQUEST_COMPARISON_APP_DATA,
+  REQUEST_COMPARISON_DIFF_APP_DATA,
+  RECEIVE_COMPARISON_DIFF_APP_DATA,
 } from '../actionTypes';
 
 const defaultName = window.initialState.appNames.find(
@@ -35,6 +40,20 @@ const initialState = {
   query: `${defaultName || 'pyroscope.server.cpu'}{}`,
   names: window.initialState.appNames,
   timeline: null,
+  single: {
+    flamebearer: null,
+  },
+  comparison: {
+    left: {
+      flamebearer: null,
+    },
+    right: {
+      flamebearer: null,
+    },
+  },
+  diff: {
+    flamebearer: null,
+  },
   isJSONLoading: false,
   maxNodes: 1024,
   tags: [],
@@ -54,6 +73,10 @@ function decodeTimelineData(timelineData) {
 }
 
 export default function (state = initialState, action) {
+  let flamebearer;
+  let timeline;
+  let data;
+  let viewSide;
   switch (action.type) {
     case SET_DATE_RANGE:
       return {
@@ -113,17 +136,94 @@ export default function (state = initialState, action) {
         ...state,
         refreshToken: Math.random(),
       };
-    case REQUEST_TIMELINE:
+
+    case REQUEST_PYRESCOPE_APP_DATA:
       return {
         ...state,
         isJSONLoading: true,
       };
-    case RECEIVE_TIMELINE:
+    case RECEIVE_PYRESCOPE_APP_DATA:
+      data = action.payload.data;
+      timeline = data.timeline;
+      flamebearer = data.flamebearer;
+
       return {
         ...state,
-        timeline: decodeTimelineData(action.payload.timeline),
+        timeline: decodeTimelineData(timeline),
+        single: { flamebearer },
         isJSONLoading: false,
       };
+
+    case REQUEST_COMPARISON_APP_DATA:
+      return {
+        ...state,
+        isJSONLoading: true,
+      };
+    case RECEIVE_COMPARISON_APP_DATA:
+      data = action.payload.data;
+      viewSide = action.payload.viewSide;
+      timeline = data.timeline;
+      flamebearer = data.flamebearer;
+
+      let left;
+      let right;
+      let timelineData;
+      switch (viewSide) {
+        case 'left':
+          left = { flamebearer };
+          right = state.comparison.right;
+          timelineData = state.timeline;
+          break;
+
+        case 'right': {
+          left = state.comparison.left;
+          right = { flamebearer };
+          timelineData = state.timeline;
+          break;
+        }
+        case 'both': {
+          left = { flamebearer };
+          right = { flamebearer };
+          timelineData = decodeTimelineData(timeline);
+          break;
+        }
+        default:
+          throw new Error(`Invalid viewSide: '${viewSide}'`);
+      }
+
+      return {
+        ...state,
+        timeline: timelineData,
+        comparison: {
+          left,
+          right,
+        },
+        isJSONLoading: false,
+      };
+
+    case REQUEST_COMPARISON_DIFF_APP_DATA:
+      return {
+        ...state,
+        isJSONLoading: true,
+      };
+    case RECEIVE_COMPARISON_DIFF_APP_DATA:
+      data = action.payload.data;
+      timeline = data.timeline;
+      const { leftTicks, rightTicks } = data;
+
+      return {
+        ...state,
+        timeline: decodeTimelineData(timeline),
+        diff: {
+          flamebearer: {
+            leftTicks,
+            rightTicks,
+            ...data.flamebearer,
+          },
+        },
+        isJSONLoading: false,
+      };
+
     case REQUEST_TAGS:
       return {
         ...state,

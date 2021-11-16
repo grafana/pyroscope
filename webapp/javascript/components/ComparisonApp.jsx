@@ -8,21 +8,29 @@ import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
 import Footer from './Footer';
 import { buildRenderURL } from '../util/updateRequests';
-import { fetchNames, fetchTimeline } from '../redux/actions';
+import { fetchNames, fetchComparisonAppData } from '../redux/actions';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
 function ComparisonApp(props) {
-  const { actions, renderURL } = props;
+  const { actions, renderURL, leftRenderURL, rightRenderURL, comparison } =
+    props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
-    if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchTimeline(renderURL);
-    }
-
+    actions.fetchComparisonAppData(renderURL, 'both');
     return actions.abortTimelineRequest;
   }, [renderURL]);
+
+  useEffect(() => {
+    actions.fetchComparisonAppData(leftRenderURL, 'left');
+    return actions.abortTimelineRequest;
+  }, [leftRenderURL]);
+
+  useEffect(() => {
+    actions.fetchComparisonAppData(rightRenderURL, 'right');
+    return actions.abortTimelineRequest;
+  }, [rightRenderURL]);
 
   return (
     <div className="pyroscope-app">
@@ -36,11 +44,13 @@ function ComparisonApp(props) {
           <FlameGraphRenderer
             viewType="double"
             viewSide="left"
+            flamebearer={comparison.left.flamebearer}
             data-testid="flamegraph-renderer-left"
           />
           <FlameGraphRenderer
             viewType="double"
             viewSide="right"
+            flamebearer={comparison.right.flamebearer}
             data-testid="flamegraph-renderer-right"
           />
         </div>
@@ -53,12 +63,14 @@ function ComparisonApp(props) {
 const mapStateToProps = (state) => ({
   ...state,
   renderURL: buildRenderURL(state),
+  leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
+  rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),
 });
 
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchTimeline,
+      fetchComparisonAppData,
       fetchNames,
     },
     dispatch
