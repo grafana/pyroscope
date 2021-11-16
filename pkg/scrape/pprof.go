@@ -15,10 +15,13 @@
 package scrape
 
 import (
+	"encoding/binary"
 	"strings"
 	"time"
 
+	"github.com/cespare/xxhash"
 	"github.com/prometheus/prometheus/pkg/labels"
+	"github.com/valyala/bytebufferpool"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -33,12 +36,12 @@ type pprofWriter struct {
 	upstream upstream.Upstream
 
 	time  time.Time
-	tries triesCache
+	cache cache
 }
 
 func newPprofWriter(u upstream.Upstream, l labels.Labels) *pprofWriter {
 	return &pprofWriter{
-		tries:    make(triesCache),
+		cache:    make(cache),
 		labels:   l,
 		upstream: u,
 	}
@@ -46,7 +49,7 @@ func newPprofWriter(u upstream.Upstream, l labels.Labels) *pprofWriter {
 
 func (w *pprofWriter) Reset() {
 	w.time = time.Time{}
-	w.tries = make(triesCache)
+	w.cache = make(cache)
 }
 
 func (w *pprofWriter) WriteProfile(b []byte) error {
@@ -57,7 +60,8 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 	// TimeNanos is the time of collection (UTC) represented
 	// as nanoseconds past the epoch reported by profiler.
 	profileTime := time.Unix(0, p.TimeNanos).UTC()
-	c := make(triesCache)
+	c := make(cache)
+
 	for _, st := range p.GetSampleType() {
 		pt := spy.ProfileType(p.StringTable[st.Type])
 		if pt == spy.ProfileCPU {
@@ -66,23 +70,14 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 			// In Pyroscope, CPU profiles are built from "samples".
 			continue
 		}
-		_ = p.Get(string(pt), func(labels *spy.Labels, name []byte, val int) {
-			c.getOrCreate(pt, labels).Insert(name, uint64(val))
-		})
-		// Remove cache entries for discontinued series.
-		for id := range w.tries[pt] {
-			if _, ok := c.get(pt, id); !ok {
-				w.tries.reset(pt, id)
-				continue
-			}
-		}
-		for id, entry := range c[pt] {
+
+		c.writeProfiles(&p, string(pt))
+		for hash, entry := range c[pt] {
 			j := &upstream.UploadJob{SpyName: "scrape", Trie: entry.Trie}
 			// Cumulative profiles require two consecutive samples,
 			// therefore we have to cache this trie.
 			if pt.IsCumulative() {
-				prev, found := w.tries.get(pt, id)
-				w.tries.put(pt, entry)
+				prev, found := w.cache.get(pt, hash)
 				if !found {
 					continue
 				}
@@ -108,24 +103,21 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 				continue
 			}
 
-			j.Name = w.buildName(pt, entry.labels)
+			j.Name = w.buildName(pt, resolveLabels(&p, entry))
 			j.Units = pt.Units()
 			j.AggregationType = pt.AggregationType()
 			w.upstream.Upload(j)
 		}
 	}
 
+	// We don't need to keep CPU profile cache anymore.
+	delete(c, "samples")
+	w.cache = c
 	w.time = profileTime
 	return nil
 }
 
-func (w *pprofWriter) buildName(pt spy.ProfileType, l *spy.Labels) string {
-	nameLabels := make(map[string]string)
-	if l != nil {
-		for k, v := range l.Tags() {
-			nameLabels[k] = v
-		}
-	}
+func (w *pprofWriter) buildName(pt spy.ProfileType, nameLabels map[string]string) string {
 	for _, label := range w.labels {
 		nameLabels[label.Name] = label.Value
 	}
@@ -163,52 +155,124 @@ func (w *pprofWriter) buildName(pt spy.ProfileType, l *spy.Labels) string {
 	return sb.String()
 }
 
-type triesCache map[spy.ProfileType]map[string]*cacheEntry
+var samplesPool = bytebufferpool.Pool{}
+
+type cache map[spy.ProfileType]map[uint64]*cacheEntry
 
 type cacheEntry struct {
+	labels []*convert.Label
 	*transporttrie.Trie
-	labels *spy.Labels
 }
 
-func (t triesCache) get(pt spy.ProfileType, id string) (*cacheEntry, bool) {
+func newCacheEntry(l []*convert.Label) *cacheEntry {
+	return &cacheEntry{Trie: transporttrie.New(), labels: l}
+}
+
+func (t *cache) writeProfiles(x *convert.Profile, sampleType string) {
+	valueIndex := 0
+	if sampleType != "" {
+		for i, v := range x.SampleType {
+			if x.StringTable[v.Type] == sampleType {
+				valueIndex = i
+				break
+			}
+		}
+	}
+
+	b := samplesPool.Get()
+	defer samplesPool.Put(b)
+
+	for _, s := range x.Sample {
+		entry := t.getOrCreate(spy.ProfileType(sampleType), s.Label)
+		for i := len(s.LocationId) - 1; i >= 0; i-- {
+			loc, ok := convert.FindLocation(x, s.LocationId[i])
+			if !ok {
+				continue
+			}
+			// Multiple line indicates this location has inlined functions,
+			// where the last entry represents the caller into which the
+			// preceding entries were inlined.
+			//
+			// E.g., if memcpy() is inlined into printf:
+			//    line[0].function_name == "memcpy"
+			//    line[1].function_name == "printf"
+			//
+			// Therefore iteration goes in reverse order.
+			for j := len(loc.Line) - 1; j >= 0; j-- {
+				fn, found := convert.FindFunction(x, loc.Line[j].FunctionId)
+				if !found {
+					continue
+				}
+				if b.Len() > 0 {
+					_ = b.WriteByte(';')
+				}
+				_, _ = b.WriteString(x.StringTable[fn.Name])
+			}
+		}
+
+		entry.Insert(b.Bytes(), uint64(s.Value[valueIndex]))
+		b.Reset()
+	}
+}
+
+func resolveLabels(x *convert.Profile, entry *cacheEntry) map[string]string {
+	m := make(map[string]string)
+	for _, label := range entry.labels {
+		m[x.StringTable[label.Key]] = x.StringTable[label.Str]
+	}
+	return m
+}
+
+func (t cache) getOrCreate(pt spy.ProfileType, l []*convert.Label) *cacheEntry {
+	p, ok := t[pt]
+	if !ok {
+		e := newCacheEntry(l)
+		t[pt] = map[uint64]*cacheEntry{labelsHash(l): e}
+		return e
+	}
+	h := labelsHash(l)
+	e, found := p[h]
+	if !found {
+		e = newCacheEntry(l)
+		p[h] = e
+	}
+	return e
+}
+
+func (t cache) get(pt spy.ProfileType, h uint64) (*cacheEntry, bool) {
 	p, ok := t[pt]
 	if !ok {
 		return nil, false
 	}
-	x, ok := p[id]
+	x, ok := p[h]
 	return x, ok
 }
 
-func (t triesCache) put(pt spy.ProfileType, x *cacheEntry) {
+func (t cache) put(pt spy.ProfileType, e *cacheEntry) {
 	p, ok := t[pt]
 	if !ok {
-		p = make(map[string]*cacheEntry)
+		p = make(map[uint64]*cacheEntry)
 		t[pt] = p
 	}
-	p[x.labels.ID()] = x
+	p[labelsHash(e.labels)] = e
 }
 
-func (t triesCache) getOrCreate(pt spy.ProfileType, l *spy.Labels) *cacheEntry {
-	p, ok := t[pt]
-	if !ok {
-		x := newCacheEntry(l)
-		t[pt] = map[string]*cacheEntry{l.ID(): x}
-		return x
-	}
-	x, ok := p[l.ID()]
-	if !ok {
-		x = newCacheEntry(l)
-		p[l.ID()] = x
-	}
-	return x
-}
-
-func newCacheEntry(l *spy.Labels) *cacheEntry {
-	return &cacheEntry{Trie: transporttrie.New(), labels: l}
-}
-
-func (t triesCache) reset(pt spy.ProfileType, id string) {
+func (t cache) reset(pt spy.ProfileType, h uint64) {
 	if p, ok := t[pt]; ok {
-		delete(p, id)
+		delete(p, h)
 	}
+}
+
+func labelsHash(l []*convert.Label) uint64 {
+	const es = 16
+	b := make([]byte, len(l)*es)
+	t := make([]byte, es)
+	for _, x := range l {
+		if x.Str != 0 {
+			binary.LittleEndian.PutUint64(t[0:8], uint64(x.Key))
+			binary.LittleEndian.PutUint64(t[8:16], uint64(x.Str))
+		}
+		b = append(b, t...)
+	}
+	return xxhash.Sum64(b)
 }

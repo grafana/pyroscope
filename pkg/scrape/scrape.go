@@ -17,6 +17,7 @@ package scrape
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"errors"
@@ -353,11 +354,11 @@ type scraper struct {
 	req     *http.Request
 	timeout time.Duration
 
-	gzipr *gzip.Reader
-	buf   *bufio.Reader
-
+	buf           *bufio.Reader
 	bodySizeLimit int64
 }
+
+var gzipMagic = []byte{0x1f, 0x8b}
 
 func (s *scraper) scrape(ctx context.Context, w io.Writer) error {
 	if s.req == nil {
@@ -386,21 +387,30 @@ func (s *scraper) scrape(ctx context.Context, w io.Writer) error {
 		s.bodySizeLimit = math.MaxInt64
 	}
 
-	if s.gzipr == nil {
+	if s.buf == nil {
 		s.buf = bufio.NewReader(resp.Body)
-		s.gzipr, err = gzip.NewReader(s.buf)
+	} else {
+		s.buf.Reset(resp.Body)
+	}
+
+	header, err := s.buf.Peek(len(gzipMagic))
+	if err != nil {
+		return err
+	}
+
+	var r io.Reader
+	if bytes.Equal(header, gzipMagic) {
+		gzipr, err := gzip.NewReader(s.buf)
 		if err != nil {
 			return err
 		}
+		r = gzipr
+		defer gzipr.Close()
 	} else {
-		s.buf.Reset(resp.Body)
-		if err = s.gzipr.Reset(s.buf); err != nil {
-			return err
-		}
+		r = resp.Body
 	}
 
-	n, err := io.Copy(w, io.LimitReader(s.gzipr, s.bodySizeLimit))
-	_ = s.gzipr.Close()
+	n, err := io.Copy(w, io.LimitReader(r, s.bodySizeLimit))
 	if err != nil {
 		return err
 	}
