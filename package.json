@@ -159,7 +159,7 @@
     "size-limit": "^6.0.3"
   },
   "engines": {
-    "node": ">=11"
+    "node": ">=10"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
