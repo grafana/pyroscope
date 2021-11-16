@@ -24,6 +24,7 @@ jobs:
           build: make e2e-build
           wait-on: http://localhost:4040
           start: make server
+          command-prefix: yarn dlx
         env:
           DEBUG: '@cypress/github-action'
           # keep the server quiet
