@@ -3,7 +3,6 @@ package tree
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"sort"
 	"sync"
@@ -109,17 +108,7 @@ func prependInt(s []int, x int) []int {
 }
 
 func (t *Tree) String() string {
-	t.RLock()
-	defer t.RUnlock()
-
-	res := ""
-	t.Iterate(func(k []byte, v uint64) {
-		if v > 0 {
-			res += fmt.Sprintf("%q %d\n", k[2:], v)
-		}
-	})
-
-	return res
+	return t.Collapsed()
 }
 
 func (n *treeNode) insert(targetLabel []byte) *treeNode {
@@ -177,6 +166,30 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 		nodes = append(node.ChildrenNodes, nodes...)
 		for i := 0; i < len(node.ChildrenNodes); i++ {
 			prefixes = prependBytes(prefixes, label)
+		}
+	}
+}
+
+func (t *Tree) IterateStacks(cb func(name string, self uint64, stack []string)) {
+	nodes := []*treeNode{t.root}
+	parents := make(map[*treeNode]*treeNode)
+	for len(nodes) > 0 {
+		node := nodes[0]
+		self := node.Self
+		label := string(node.Name)
+		if self > 0 {
+			current := node
+			stack := []string{}
+			for current != nil && current != t.root {
+				stack = append(stack, string(current.Name))
+				current = parents[current]
+			}
+			cb(label, self, stack)
+		}
+		nodes = nodes[1:]
+		for _, child := range node.ChildrenNodes {
+			nodes = append(nodes, child)
+			parents[child] = node
 		}
 	}
 }

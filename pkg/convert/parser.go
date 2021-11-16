@@ -26,12 +26,12 @@ func ParseTreeNoDict(r io.Reader, cb func(name []byte, val int)) error {
 }
 
 // format is pprof. See https://github.com/google/pprof/blob/master/proto/profile.proto
-func ParsePprof(r io.Reader) (*Profile, error) {
+func ParsePprof(r io.Reader) (*tree.Profile, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
-	profile := &Profile{}
+	profile := &tree.Profile{}
 	if err := proto.Unmarshal(b, profile); err != nil {
 		return nil, err
 	}
