@@ -24,12 +24,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
 
 // NewManager is the Manager constructor
 func NewManager(logger logrus.FieldLogger, u upstream.Upstream) *Manager {
-	c := make(map[string]*Config)
+	c := make(map[string]*config.Config)
 	return &Manager{
 		upstream:      u,
 		logger:        logger,
@@ -50,7 +51,7 @@ type Manager struct {
 	jitterSeed uint64     // Global jitterSeed seed is used to spread scrape workload across HA setup.
 	mtxScrape  sync.Mutex // Guards the fields below.
 
-	scrapeConfigs map[string]*Config
+	scrapeConfigs map[string]*config.Config
 	scrapePools   map[string]*scrapePool
 	targetSets    map[string][]*targetgroup.Group
 
@@ -118,10 +119,10 @@ func (m *Manager) Stop() {
 }
 
 // ApplyConfig resets the manager's target providers and job configurations as defined by the new cfg.
-func (m *Manager) ApplyConfig(cfg []*Config) error {
+func (m *Manager) ApplyConfig(cfg []*config.Config) error {
 	m.mtxScrape.Lock()
 	defer m.mtxScrape.Unlock()
-	c := make(map[string]*Config)
+	c := make(map[string]*config.Config)
 	for _, x := range cfg {
 		c[x.JobName] = x
 	}

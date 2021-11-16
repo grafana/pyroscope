@@ -15,7 +15,7 @@
 
 // +build go1.8
 
-package scrape
+package config
 
 import (
 	"bytes"

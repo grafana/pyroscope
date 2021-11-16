@@ -13,12 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package scrape
+package config
 
 import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/imdario/mergo"
@@ -192,11 +193,18 @@ func checkStaticTargets(configs discovery.Configs) error {
 		}
 		for _, tg := range sc {
 			for _, t := range tg.Targets {
-				if err := checkTargetAddress(string(t[AddressLabel])); err != nil {
+				if err := CheckTargetAddress(string(t["__name__"])); err != nil {
 					return err
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func CheckTargetAddress(address string) error {
+	if strings.Contains(address, "/") {
+		return fmt.Errorf("%q is not a valid hostname", address)
 	}
 	return nil
 }

@@ -6,7 +6,7 @@ package config
 import (
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/scrape"
+	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 

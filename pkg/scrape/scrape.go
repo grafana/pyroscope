@@ -33,6 +33,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
 
@@ -64,7 +65,7 @@ type scrapePool struct {
 
 	// mtx must not be taken after targetMtx.
 	mtx    sync.Mutex
-	config *Config
+	config *config.Config
 	client *http.Client
 	loops  map[uint64]*scrapeLoop
 
@@ -75,8 +76,8 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *Config, u upstream.Upstream, logger logrus.FieldLogger) (*scrapePool, error) {
-	client, err := NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
+func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldLogger) (*scrapePool, error) {
+	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		return nil, fmt.Errorf("creating HTTP client: %w", err)
 	}
@@ -148,11 +149,11 @@ func (sp *scrapePool) stop() {
 
 // reload the scrape pool with the given scrape configuration. The target state is preserved
 // but all scrapers are restarted with the new scrape configuration.
-func (sp *scrapePool) reload(cfg *Config) error {
+func (sp *scrapePool) reload(cfg *config.Config) error {
 	sp.mtx.Lock()
 	defer sp.mtx.Unlock()
 
-	client, err := NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
+	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		return fmt.Errorf("creating HTTP client: %w", err)
 	}

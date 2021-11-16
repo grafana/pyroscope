@@ -29,6 +29,7 @@ import (
 
 	"github.com/prometheus/prometheus/pkg/labels"
 
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/relabel"
 )
@@ -221,7 +222,7 @@ func (ts Targets) Swap(i, j int)      { ts[i], ts[j] = ts[j], ts[i] }
 // PopulateLabels builds a label set from the given label set and scrape configuration.
 // It returns a label set before relabeling was applied as the second return value.
 // Returns the original discovered label set found before relabelling was applied if the target is dropped during relabeling.
-func PopulateLabels(lset labels.Labels, cfg *Config) (res, orig labels.Labels, err error) {
+func PopulateLabels(lset labels.Labels, cfg *config.Config) (res, orig labels.Labels, err error) {
 	// Copy labels into the labelset for the target if they are not set already.
 	scrapeLabels := []labels.Label{
 		{Name: JobLabel, Value: cfg.JobName},
@@ -280,7 +281,7 @@ func PopulateLabels(lset labels.Labels, cfg *Config) (res, orig labels.Labels, e
 		lb.Set(AddressLabel, addr)
 	}
 
-	if err = checkTargetAddress(addr); err != nil {
+	if err = config.CheckTargetAddress(addr); err != nil {
 		return nil, nil, err
 	}
 
@@ -338,15 +339,8 @@ func PopulateLabels(lset labels.Labels, cfg *Config) (res, orig labels.Labels, e
 
 func isValidLabelValue(v string) bool { return utf8.ValidString(v) }
 
-func checkTargetAddress(address string) error {
-	if strings.Contains(address, "/") {
-		return fmt.Errorf("%q is not a valid hostname", address)
-	}
-	return nil
-}
-
 // TargetsFromGroup builds targets based on the given TargetGroup and config.
-func (sp *scrapePool) TargetsFromGroup(tg *targetgroup.Group, cfg *Config) ([]*Target, []error) {
+func (sp *scrapePool) TargetsFromGroup(tg *targetgroup.Group, cfg *config.Config) ([]*Target, []error) {
 	targets := make([]*Target, 0, len(tg.Targets))
 	failures := []error{}
 
@@ -382,13 +376,13 @@ func (sp *scrapePool) TargetsFromGroup(tg *targetgroup.Group, cfg *Config) ([]*T
 	return targets, failures
 }
 
-func (sp *scrapePool) buildParams(cfg *Config, p ProfileName, lbls labels.Labels) url.Values {
+func (sp *scrapePool) buildParams(cfg *config.Config, p config.ProfileName, lbls labels.Labels) url.Values {
 	// TODO(kolesnikovae): Refactor.
 	params := make(url.Values, len(cfg.ProfilingConfigs[p].Params))
 	for k, v := range cfg.ProfilingConfigs[p].Params {
 		params[k] = v
 	}
-	if p != ProfileCPU {
+	if p != config.ProfileCPU {
 		return params
 	}
 

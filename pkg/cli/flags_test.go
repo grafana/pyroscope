@@ -9,12 +9,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/common/model"
-	"github.com/pyroscope-io/pyroscope/pkg/scrape"
-	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 

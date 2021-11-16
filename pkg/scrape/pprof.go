@@ -32,11 +32,12 @@ import (
 )
 
 type pprofWriter struct {
-	labels   labels.Labels
+	labels labels.Labels
+	time   time.Time
+	cache  cache
+	// Instead of the upstream (which requires transporttrie.Trie)
+	// we could have a more generic samples consumer.
 	upstream upstream.Upstream
-
-	time  time.Time
-	cache cache
 }
 
 func newPprofWriter(u upstream.Upstream, l labels.Labels) *pprofWriter {
@@ -66,8 +67,8 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 		pt := spy.ProfileType(p.StringTable[st.Type])
 		if pt == spy.ProfileCPU {
 			// spy.ProfileType denotes sample type, and spy.ProfileCPU
-			// refers to "cpu" sample type which measures in seconds.
-			// In Pyroscope, CPU profiles are built from "samples".
+			// refers to "cpu" which is measured seconds. But in Pyroscope
+			// CPU profiles are built from "samples".
 			continue
 		}
 

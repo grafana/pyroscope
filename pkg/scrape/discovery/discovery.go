@@ -19,7 +19,6 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/prometheus/common/config"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
@@ -64,7 +63,7 @@ type Configs []Config
 // SetDirectory joins any relative file paths with dir.
 func (c *Configs) SetDirectory(dir string) {
 	for _, c := range *c {
-		if v, ok := c.(config.DirectorySetter); ok {
+		if v, ok := c.(interface{ SetDirectory(string) }); ok {
 			v.SetDirectory(dir)
 		}
 	}

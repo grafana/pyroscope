@@ -19,6 +19,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
+	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -194,7 +195,7 @@ func (svc *serverService) stop() {
 	}
 }
 
-func discoveryConfigs(cfg []*scrape.Config) map[string]discovery.Configs {
+func discoveryConfigs(cfg []*sc.Config) map[string]discovery.Configs {
 	c := make(map[string]discovery.Configs)
 	for _, x := range cfg {
 		c[x.JobName] = x.ServiceDiscoveryConfigs
