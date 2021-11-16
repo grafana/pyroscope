@@ -190,21 +190,22 @@ var _ = Describe("flags", func() {
 				err := exampleCommand.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg).To(Equal(config.Server{
-					AnalyticsOptOut:       false,
-					Config:                "testdata/server.yml",
-					LogLevel:              "debug",
-					BadgerLogLevel:        "error",
-					StoragePath:           "/var/lib/pyroscope",
-					APIBindAddr:           ":4040",
-					BaseURL:               "",
-					CacheEvictThreshold:   0.25,
-					CacheEvictVolume:      0.33,
-					BadgerNoTruncate:      false,
-					DisablePprofEndpoint:  false,
-					MaxNodesSerialization: 2048,
-					MaxNodesRender:        8192,
-					HideApplications:      []string{},
-					Retention:             0,
+					AnalyticsOptOut:         false,
+					Config:                  "testdata/server.yml",
+					LogLevel:                "debug",
+					BadgerLogLevel:          "error",
+					StoragePath:             "/var/lib/pyroscope",
+					APIBindAddr:             ":4040",
+					BaseURL:                 "",
+					CacheEvictThreshold:     0.25,
+					CacheEvictVolume:        0.33,
+					BadgerNoTruncate:        false,
+					DisablePprofEndpoint:    false,
+					EnableExperimentalAdmin: false,
+					MaxNodesSerialization:   2048,
+					MaxNodesRender:          8192,
+					HideApplications:        []string{},
+					Retention:               0,
 					RetentionLevels: config.RetentionLevels{
 						Zero: 100 * time.Second,
 						One:  1000 * time.Second,
@@ -255,6 +256,7 @@ var _ = Describe("flags", func() {
 							GroupBy: []string{"foo"},
 						},
 					},
+					AdminSocketPath: "/tmp/pyroscope.sock",
 				}))
 			})
 

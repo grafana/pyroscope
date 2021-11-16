@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -44,12 +45,19 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := ctrl.expectJSON(p.format); err != nil {
+	if err := ctrl.expectFormats(p.format); err != nil {
 		ctrl.writeInvalidParameterError(w, errUnknownFormat)
 		return
 	}
 
 	out, err := ctrl.storage.Get(p.gi)
+	var appName string
+	if p.gi.Key != nil {
+		appName = p.gi.Key.AppName()
+	} else if p.gi.Query != nil {
+		appName = p.gi.Query.AppName
+	}
+	filename := fmt.Sprintf("%v %v", appName, p.gi.StartTime.UTC().Format(time.RFC3339))
 	ctrl.statsInc("render")
 	if err != nil {
 		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
@@ -60,9 +68,26 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		out = &storage.GetOutput{Tree: tree.New()}
 	}
 
-	fs := out.Tree.FlamebearerStruct(p.maxNodes)
-	res := renderResponse(fs, out)
-	ctrl.writeResponseJSON(w, res)
+	switch p.format {
+	case "json":
+		fs := out.Tree.FlamebearerStruct(p.maxNodes)
+		res := renderResponse(fs, out)
+		ctrl.writeResponseJSON(w, res)
+	case "pprof":
+		pprof := out.Tree.Pprof(&tree.PprofMetadata{
+			Unit:      out.Units,
+			StartTime: p.gi.StartTime,
+		})
+		out, err := proto.Marshal(pprof)
+		if err == nil {
+			ctrl.writeResponseFile(w, fmt.Sprintf("%v.pprof", filename), out)
+		} else {
+			ctrl.writeInternalServerError(w, err, "failed to serialize data")
+		}
+	case "collapsed":
+		collapsed := out.Tree.Collapsed()
+		ctrl.writeResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
+	}
 }
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +196,7 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	p.gi.EndTime = attime.Parse(v.Get("until"))
 	p.format = v.Get("format")
 
-	return ctrl.expectJSON(p.format)
+	return ctrl.expectFormats(p.format)
 }
 
 func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams, rP *RenderDiffParams) error {
@@ -207,7 +232,7 @@ func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *rend
 	p.gi.EndTime = attime.Parse(rP.Until)
 	p.format = rP.Format
 
-	return ctrl.expectJSON(p.format)
+	return ctrl.expectFormats(p.format)
 }
 
 func renderResponse(fs *tree.Flamebearer, out *storage.GetOutput) map[string]interface{} {
