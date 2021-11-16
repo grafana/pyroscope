@@ -25,6 +25,7 @@ import {
   RECEIVE_COMPARISON_DIFF_APP_DATA,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
+import { deltaDiffWrapper } from '../util/flamebearer';
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
@@ -134,15 +135,47 @@ export const setQuery = (query) => ({
  * A badly timed 'abort' action may cancel the brand new 'fetch' action!
  */
 let currentTimelineController;
+const currentComparisonTimelineController = {
+  left: null,
+  right: null,
+};
 let fetchTagController;
 let fetchTagValuesController;
 
 export function fetchComparisonAppData(url, viewSide) {
   return (dispatch) => {
-    if (currentTimelineController) {
-      currentTimelineController.abort();
+    let timelineController;
+    switch (viewSide) {
+      case 'left':
+        timelineController = currentComparisonTimelineController.left;
+        break;
+      case 'right':
+        timelineController = currentComparisonTimelineController.right;
+        break;
+      case 'both':
+        timelineController = currentTimelineController;
+        break;
+      default:
+        throw new Error(`Invalid viewSide: '${viewSide}'`);
     }
-    currentTimelineController = new AbortController();
+    if (timelineController) {
+      timelineController.abort();
+    }
+
+    switch (viewSide) {
+      case 'left':
+        currentComparisonTimelineController.left = new AbortController();
+        break;
+      case 'right':
+        currentComparisonTimelineController.right = new AbortController();
+        break;
+      case 'both':
+        currentTimelineController = new AbortController();
+        break;
+      default:
+        throw new Error(`Invalid viewSide: '${viewSide}'`);
+    }
+
     dispatch(requestComparisonAppData(url, viewSide));
     return fetch(`${url}&format=json`, {
       signal: currentTimelineController.signal,
