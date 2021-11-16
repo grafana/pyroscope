@@ -144,20 +144,19 @@ let fetchTagValuesController;
 
 export function fetchComparisonAppData(url, viewSide) {
   return (dispatch) => {
-    let timelineController;
-    switch (viewSide) {
-      case 'left':
-        timelineController = currentComparisonTimelineController.left;
-        break;
-      case 'right':
-        timelineController = currentComparisonTimelineController.right;
-        break;
-      case 'both':
-        timelineController = currentTimelineController;
-        break;
-      default:
-        throw new Error(`Invalid viewSide: '${viewSide}'`);
-    }
+    const getTimelineController = () => {
+      switch (viewSide) {
+        case 'left':
+          return currentComparisonTimelineController.left;
+        case 'right':
+          return currentComparisonTimelineController.right;
+        case 'both':
+          return currentTimelineController;
+        default:
+          throw new Error(`Invalid viewSide: '${viewSide}'`);
+      }
+    };
+    let timelineController = getTimelineController();
     if (timelineController) {
       timelineController.abort();
     }
@@ -175,10 +174,10 @@ export function fetchComparisonAppData(url, viewSide) {
       default:
         throw new Error(`Invalid viewSide: '${viewSide}'`);
     }
-
     dispatch(requestComparisonAppData(url, viewSide));
+    timelineController = getTimelineController();
     return fetch(`${url}&format=json`, {
-      signal: currentTimelineController.signal,
+      signal: timelineController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
