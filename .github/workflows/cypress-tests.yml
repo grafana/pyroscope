@@ -17,14 +17,13 @@ jobs:
         with:
           go-version: '^1.17.0'
       - name: Install Cypress
-        run: yarn add cypress
+        run: npm install cypress
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
           build: make e2e-build
           wait-on: http://localhost:4040
           start: make server
-          command-prefix: yarn dlx
         env:
           DEBUG: '@cypress/github-action'
           # keep the server quiet
