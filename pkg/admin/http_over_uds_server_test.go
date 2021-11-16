@@ -3,6 +3,7 @@ package admin_test
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -31,6 +32,11 @@ var _ = Describe("HTTP Over UDS", func() {
 
 	When("passed a non existing socket address", func() {
 		It("should give an error", func() {
+			// if user is root, s/he can create the socket anywhere
+			if os.Getuid() == 0 {
+				Skip("test is invalid when running as root")
+			}
+
 			_, err := admin.NewUdsHTTPServer("/non_existing_path")
 
 			// TODO how to test for wrapped errors?
