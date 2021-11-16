@@ -31,7 +31,6 @@ jobs:
       - name: Ensure logrus is not used by pkg/agent/profiler
         run: make ensure-logrus-not-used
       - name: Run Go tests
-        run: make coverage
       - name: Upload codecov coverage
         uses: codecov/codecov-action@v1
         with:
