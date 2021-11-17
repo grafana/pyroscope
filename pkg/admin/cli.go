@@ -81,9 +81,14 @@ func (c *CLI) CompleteApp(_ string) (appNames []string, err error) {
 	return appNames, err
 }
 
-func (c *CLI) enhanceError(err error) error {
+func (*CLI) enhanceError(err error) error {
 	if errors.Is(err, ErrMakingRequest) {
-		return fmt.Errorf("failed to contact the admin socket server. \nthis may happen if \na) the admin socket server is not running \nb) the socket path is incorrect \n\nadditional info: %w", err)
+		return fmt.Errorf(`failed to contact the admin socket server. 
+this may happen if 
+a) the admin socket server is not running
+b) the socket path is incorrect
+
+additional info: %w`, err)
 	}
 
 	return err
