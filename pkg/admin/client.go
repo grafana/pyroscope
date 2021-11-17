@@ -20,7 +20,7 @@ const AppsEndpoint = "http://pyroscope/v1/apps"
 
 var (
 	ErrHTTPClientCreation = errors.New("failed to create http over uds client")
-	ErrMakingRequest      = errors.New("failed while making a request")
+	ErrMakingRequest      = errors.New("failed to make a request")
 	ErrStatusCodeNotOK    = errors.New("failed to get a response with a valid status code")
 	ErrDecodingResponse   = errors.New("error while decoding a (assumed) json response")
 	ErrMarshalingPayload  = errors.New("error while marshalling the payload")

@@ -2,6 +2,7 @@ package admin
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -26,7 +27,7 @@ func NewCLI(socketPath string) (*CLI, error) {
 func (c *CLI) GetAppsNames() error {
 	appNames, err := c.client.GetAppsNames()
 	if err != nil {
-		return err
+		return c.enhanceError(err)
 	}
 
 	for _, name := range appNames {
@@ -60,7 +61,7 @@ func (c *CLI) DeleteApp(appname string) error {
 	// finally delete the app
 	err = c.client.DeleteApp(appname)
 	if err != nil {
-		return fmt.Errorf("failed to delete app: %w", err)
+		return c.enhanceError(err)
 	}
 
 	fmt.Println(fmt.Sprintf("Deleted app '%s'.", appname))
@@ -78,4 +79,12 @@ func (c *CLI) CompleteApp(_ string) (appNames []string, err error) {
 	}
 
 	return appNames, err
+}
+
+func (c *CLI) enhanceError(err error) error {
+	if errors.Is(err, ErrMakingRequest) {
+		return fmt.Errorf("failed to contact the admin socket server. \nthis may happen if \na) the admin socket server is not running \nb) the socket path is incorrect \n\nadditional info: %w", err)
+	}
+
+	return err
 }
