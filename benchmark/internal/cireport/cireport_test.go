@@ -1,5 +1,5 @@
-//go:build linux && !windows
-// +build linux,!windows
+//go:build !windows
+// +build !windows
 
 package cireport_test
 
