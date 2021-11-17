@@ -152,7 +152,7 @@ assets-watch: install-web-dependencies ## Configure the assets with live reloadi
 	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js --watch
 
 .PHONY: assets
-assets-release: install-build-web-dependencies ## Configure the assets for release
+assets-release: install-web-dependencies ## Configure the assets for release
 	rm -rf webapp/public/assets
 	rm -rf webapp/public/*.html
 	yarn build
