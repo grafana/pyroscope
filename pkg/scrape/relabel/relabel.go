@@ -74,7 +74,7 @@ func (a *Action) UnmarshalYAML(unmarshal func(interface{}) error) error {
 type Config struct {
 	// A list of labels from which values are taken and concatenated
 	// with the configured separator in order.
-	SourceLabels model.LabelNames `yaml:"source_labels,flow,omitempty"`
+	SourceLabels model.LabelNames `yaml:"source-labels,flow,omitempty"`
 	// Separator is the string between concatenated values from the source labels.
 	Separator string `yaml:"separator,omitempty"`
 	// Regex against which the concatenation is matched.
@@ -83,7 +83,7 @@ type Config struct {
 	Modulus uint64 `yaml:"modulus,omitempty"`
 	// TargetLabel is the label to which the resulting string is written in a replacement.
 	// Regexp interpolation is allowed for the replace action.
-	TargetLabel string `yaml:"target_label,omitempty"`
+	TargetLabel string `yaml:"target-label,omitempty"`
 	// Replacement is the regex replacement pattern to be used.
 	Replacement string `yaml:"replacement,omitempty"`
 	// Action is the action to be performed for the relabeling.
@@ -107,16 +107,16 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return fmt.Errorf("relabel configuration for hashmod requires non-zero modulus")
 	}
 	if (c.Action == Replace || c.Action == HashMod) && c.TargetLabel == "" {
-		return fmt.Errorf("relabel configuration for %s action requires 'target_label' value", c.Action)
+		return fmt.Errorf("relabel configuration for %s action requires 'target-label' value", c.Action)
 	}
 	if c.Action == Replace && !relabelTarget.MatchString(c.TargetLabel) {
-		return fmt.Errorf("%q is invalid 'target_label' for %s action", c.TargetLabel, c.Action)
+		return fmt.Errorf("%q is invalid 'target-label' for %s action", c.TargetLabel, c.Action)
 	}
 	if c.Action == LabelMap && !relabelTarget.MatchString(c.Replacement) {
 		return fmt.Errorf("%q is invalid 'replacement' for %s action", c.Replacement, c.Action)
 	}
 	if c.Action == HashMod && !model.LabelName(c.TargetLabel).IsValid() {
-		return fmt.Errorf("%q is invalid 'target_label' for %s action", c.TargetLabel, c.Action)
+		return fmt.Errorf("%q is invalid 'target-label' for %s action", c.TargetLabel, c.Action)
 	}
 
 	if c.Action == LabelDrop || c.Action == LabelKeep {

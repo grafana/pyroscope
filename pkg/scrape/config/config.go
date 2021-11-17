@@ -31,115 +31,114 @@ import (
 
 // revive:disable:max-public-structs complex domain
 
-// ProfileName designates profiles provided by the runtime/pprof package.
-// https://golang.org/doc/diagnostics#profiling
-type ProfileName string
-
-const (
-	// ProfileCPU determines where a program spends its time while actively
-	// consuming CPU cycles (as opposed to while sleeping or waiting for I/O).
-	ProfileCPU ProfileName = "cpu"
-	// ProfileHeap reports memory allocation samples; used to monitor current
-	// and historical memory usage, and to check for memory leaks.
-	ProfileHeap ProfileName = "heap"
-
-	// Unsupported yet profile types.
-
-	// ProfileThreadCreate reports the sections of the program that lead
-	// the creation of new OS threads.
-	ProfileThreadCreate ProfileName = "threadcreate"
-	// ProfileGoroutine reports the stack traces of all current goroutines.
-	ProfileGoroutine ProfileName = "goroutine"
-	// ProfileBlock profile shows where goroutines block waiting on
-	// synchronization primitives (including timer channels). Block profile
-	// is not enabled by default; use runtime.SetBlockProfileRate to enable it.
-	ProfileBlock ProfileName = "block"
-	// ProfileMutex profile reports the lock contentions. When you think your
-	// CPU is not fully utilized due to a mutex contention, use this profile.
-	// Mutex profile is not enabled by default,
-	// see runtime.SetMutexProfileFraction to enable it.
-	ProfileMutex ProfileName = "mutex"
-)
-
-var SupportedProfiles = []ProfileName{ProfileCPU, ProfileHeap}
-
-func IsSupportedProfileName(p ProfileName) bool {
-	switch p {
-	case ProfileCPU, ProfileHeap:
-		return true
-	default:
-		return false
-	}
-}
-
-// defaultConfig returns the default scrape configuration.
-func defaultConfig() *Config {
+// DefaultConfig returns the default scrape configuration.
+func DefaultConfig() *Config {
 	return &Config{
-		JobName:        "",
 		ScrapeInterval: 10 * time.Second,
 		ScrapeTimeout:  15 * time.Second,
 
-		EnabledProfiles: nil,
-		ProfilingConfigs: ProfilingConfigs{
-			ProfileCPU: {
+		Profiles: map[string]*Profile{
+			"cpu": {
 				Path: "/debug/pprof/profile",
 				Params: url.Values{
 					"seconds": []string{"10"},
 				},
+				SampleTypes: map[string]*SampleTypeConfig{
+					"samples": {
+						DisplayName: "cpu",
+						Units:       "samples",
+						Sampled:     true,
+					},
+				},
 			},
-			ProfileHeap: {
+			"mem": {
 				Path:   "/debug/pprof/heap",
 				Params: nil, // url.Values{"gc": []string{"1"}},
+				SampleTypes: map[string]*SampleTypeConfig{
+					"inuse_objects": {
+						Units:       "objects",
+						Aggregation: "avg",
+					},
+					"alloc_objects": {
+						Units:      "objects",
+						Cumulative: true,
+					},
+					"inuse_space": {
+						Units:       "bytes",
+						Aggregation: "avg",
+					},
+					"alloc_space": {
+						Units:      "bytes",
+						Cumulative: true,
+					},
+				},
 			},
 		},
 
 		HTTPClientConfig: DefaultHTTPClientConfig,
 		Scheme:           "http",
-		BodySizeLimit:    0,
-
-		ServiceDiscoveryConfigs: nil,
-		RelabelConfigs:          nil,
 	}
 }
 
 type Config struct {
 	// The job name to which the job label is set by default.
-	JobName string `yaml:"job_name"`
-
-	EnabledProfiles  []ProfileName    `yaml:"enabled_profiles,omitempty"`
-	ProfilingConfigs ProfilingConfigs `yaml:"profiling_configs,omitempty"`
-
+	JobName string `yaml:"job-name"`
 	// How frequently to scrape the targets of this scrape config.
-	ScrapeInterval time.Duration `yaml:"scrape_interval,omitempty"`
+	ScrapeInterval time.Duration `yaml:"scrape-interval,omitempty"`
 	// The timeout for scraping targets of this config.
-	ScrapeTimeout time.Duration `yaml:"scrape_timeout,omitempty"`
+	ScrapeTimeout time.Duration `yaml:"scrape-timeout,omitempty"`
 
 	// The URL scheme with which to fetch metrics from targets.
 	Scheme string `yaml:"scheme,omitempty"`
 	// An uncompressed response body larger than this many bytes will cause the
 	// scrape to fail. 0 means no limit.
-	BodySizeLimit bytesize.ByteSize `yaml:"body_size_limit,omitempty"`
+	BodySizeLimit bytesize.ByteSize `yaml:"body-size-limit,omitempty"`
+	// TODO(kolesnikovae): Label limits.
 
 	// We cannot do proper Go type embedding below as the parser will then parse
 	// values arbitrarily into the overflow maps of further-down types.
-
 	ServiceDiscoveryConfigs discovery.Configs `yaml:"-"`
 	HTTPClientConfig        HTTPClientConfig  `yaml:",inline"`
 
 	// List of target relabel configurations.
-	RelabelConfigs []*relabel.Config `yaml:"relabel_configs,omitempty"`
+	RelabelConfigs []*relabel.Config `yaml:"relabel-configs,omitempty"`
+
+	// List of profiles to be scraped.
+	EnabledProfiles []string `yaml:"enabled-profiles,omitempty"`
+	// Profiles parameters.
+	Profiles map[string]*Profile `yaml:"profiles,omitempty"`
 
 	// TODO(kolesnikovae): Implement.
-	// List of profile relabel configurations.
-	// ProfileRelabelConfigs []*relabel.Config `yaml:"profile_relabel_configs,omitempty"`
+	// List of profiles relabel configurations.
+	// ProfilesRelabelConfigs []*relabel.Config `yaml:"profiles-relabel-configs,omitempty"`
+	// List of profiles filter configurations.
+	// ProfilesFilterConfigs []*ProfilesFilterConfig `yaml:"profiles-filter-configs,omitempty"`
 }
 
-type ProfilingConfigs map[ProfileName]ProfilingConfig
-
-type ProfilingConfig struct {
+type Profile struct {
 	Path string `yaml:"path,omitempty"`
 	// A set of query parameters with which the target is scraped.
 	Params url.Values `yaml:"params,omitempty"`
+	// SampleTypes contains overrides for pprof sample types.
+	SampleTypes map[string]*SampleTypeConfig `yaml:"sample-types,omitempty"`
+	// AllSampleTypes specifies whether to parse samples of
+	// types not listed in SampleTypes member.
+	AllSampleTypes bool `yaml:"all-sample-types,omitempty"`
+	// TODO(kolesnikovae): Overrides for interval, timeout, and limits?
+}
+
+type SampleTypeConfig struct {
+	Units       string `yaml:"units,omitempty"`
+	DisplayName string `yaml:"display-name,omitempty"`
+
+	// TODO(kolesnikovae): Introduce Kind?
+	//  In Go, we have at least the following combinations:
+	//  instant:    Aggregation:avg && !Cumulative && !Sampled
+	//  cumulative: Aggregation:sum && Cumulative  && !Sampled
+	//  delta:      Aggregation:sum && !Cumulative && Sampled
+	Aggregation string `yaml:"aggregation,omitempty"`
+	Cumulative  bool   `yaml:"cumulative,omitempty"`
+	Sampled     bool   `yaml:"sampled,omitempty"`
 }
 
 // SetDirectory joins any relative file paths with dir.
@@ -148,22 +147,26 @@ func (c *Config) SetDirectory(dir string) {
 	c.HTTPClientConfig.SetDirectory(dir)
 }
 
+// IsProfileEnabled reports whether the given profile is enabled.
+func (c *Config) IsProfileEnabled(p string) bool {
+	for _, v := range c.EnabledProfiles {
+		if v == p {
+			return true
+		}
+	}
+	return false
+}
+
 // UnmarshalYAML implements the yaml.Unmarshaler interface.
 func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := discovery.UnmarshalYAMLWithInlineConfigs(c, unmarshal); err != nil {
 		return err
 	}
 	if len(c.JobName) == 0 {
-		return errors.New("job_name is empty")
+		return errors.New("job-name is empty")
 	}
-	if err := mergo.Merge(c, defaultConfig()); err != nil {
+	if err := mergo.Merge(c, DefaultConfig()); err != nil {
 		return fmt.Errorf("failed to apply defaults: %w", err)
-	}
-
-	for x := range c.ProfilingConfigs {
-		if !IsSupportedProfileName(x) {
-			return fmt.Errorf("unsupported profile %q", x)
-		}
 	}
 
 	// The UnmarshalYAML method of HTTPClientConfig is not being called because it's not a pointer.

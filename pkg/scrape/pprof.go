@@ -24,36 +24,38 @@ import (
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
 type pprofWriter struct {
-	labels labels.Labels
-	time   time.Time
-	cache  cache
 	// Instead of the upstream (which requires transporttrie.Trie)
 	// we could have a more generic samples consumer.
 	upstream upstream.Upstream
+	labels   labels.Labels
+	config   *config.Profile
+	time     time.Time
+	cache    cache
 }
 
-func newPprofWriter(u upstream.Upstream, l labels.Labels) *pprofWriter {
+func newPprofWriter(u upstream.Upstream, target *Target) *pprofWriter {
 	return &pprofWriter{
-		cache:    make(cache),
-		labels:   l,
 		upstream: u,
+		labels:   target.Labels(),
+		config:   target.profile,
+		cache:    make(cache),
 	}
 }
 
-func (w *pprofWriter) Reset() {
+func (w *pprofWriter) reset() {
 	w.time = time.Time{}
 	w.cache = make(cache)
 }
 
-func (w *pprofWriter) WriteProfile(b []byte) error {
+func (w *pprofWriter) writeProfile(b []byte) error {
 	var p convert.Profile
 	if err := proto.Unmarshal(b, &p); err != nil {
 		return err
@@ -69,41 +71,24 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 		profileTime = time.Now()
 	}
 
-	// TODO(kolesnikovae): We need to make it pyroscope-agnostic:
-	//  the implementation should not depend on "spy" package, and
-	//  must not make assumptions on sample properties (e.g. whether
-	//  it is cumulative).
-
-	for _, st := range p.GetSampleType() {
-		pt := spy.ProfileType(p.StringTable[st.Type])
-		if pt == spy.ProfileCPU {
-			// spy.ProfileType denotes sample type, and spy.ProfileCPU
-			// refers to "cpu" which is measured seconds. But in Pyroscope
-			// CPU profiles are built from "samples".
+	for _, s := range p.GetSampleType() {
+		sampleTypeName := p.StringTable[s.Type]
+		sampleTypeConfig, ok := w.config.SampleTypes[sampleTypeName]
+		if !ok && !w.config.AllSampleTypes {
 			continue
 		}
 
-		c.writeProfiles(&p, string(pt))
-		for hash, entry := range c[pt] {
+		c.writeProfiles(&p, s.Type)
+		for hash, entry := range c[s.Type] {
 			j := &upstream.UploadJob{SpyName: "scrape", Trie: entry.Trie}
 			// Cumulative profiles require two consecutive samples,
 			// therefore we have to cache this trie.
-			if pt.IsCumulative() {
-				prev, found := w.cache.get(pt, hash)
+			if sampleTypeConfig.Cumulative {
+				prev, found := w.cache.get(s.Type, hash)
 				if !found {
 					continue
 				}
 				j.Trie = entry.Trie.Diff(prev.Trie)
-			}
-
-			// CPU ("samples") sample type. This is the only type
-			// that requires SampleRate.
-			if pt == "samples" {
-				if p.Period > 0 {
-					j.SampleRate = uint32(time.Second / time.Duration(p.Period))
-				} else {
-					j.SampleRate = 100 // Defaults to 100Hz.
-				}
 			}
 
 			switch {
@@ -119,33 +104,36 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 				continue
 			}
 
-			j.Name = w.buildName(pt, resolveLabels(&p, entry))
-			j.Units = pt.Units()
-			j.AggregationType = pt.AggregationType()
+			j.AggregationType = sampleTypeConfig.Aggregation
+			if sampleTypeConfig.Sampled && p.Period > 0 {
+				j.SampleRate = uint32(time.Second / time.Duration(p.Period))
+			}
+			if sampleTypeConfig.DisplayName != "" {
+				sampleTypeName = sampleTypeConfig.DisplayName
+			}
+			j.Name = w.buildName(sampleTypeName, resolveLabels(&p, entry))
+			if sampleTypeConfig.Units != "" {
+				j.Units = sampleTypeConfig.Units
+			} else {
+				j.Units = p.StringTable[s.Unit]
+			}
+
 			w.upstream.Upload(j)
 		}
 	}
 
-	// We don't need to keep CPU profile cache anymore.
-	delete(c, "samples")
+	// TODO(kolesnikovae):
+	//  Not all profiles need to be kept in cache (e.g. "samples").
 	w.cache = c
 	w.time = profileTime
 	return nil
 }
 
-func (w *pprofWriter) buildName(pt spy.ProfileType, nameLabels map[string]string) string {
+func (w *pprofWriter) buildName(sampleTypeName string, nameLabels map[string]string) string {
 	for _, label := range w.labels {
 		nameLabels[label.Name] = label.Value
 	}
-	appName := nameLabels[AppNameLabel]
-	if pt == "samples" {
-		// Substitute "samples" sample type with "cpu" so as to
-		// preserve current UX (basically, "cpu" profile type suffix).
-		appName += ".cpu"
-	} else {
-		appName += "." + string(pt)
-	}
-	nameLabels[AppNameLabel] = appName
+	nameLabels[AppNameLabel] += "." + sampleTypeName
 	// TODO(kolesnikovae): a copy of segment.Key.Normalize().
 	//   To be refactored once pyroscope model package emerges.
 	var sb strings.Builder
@@ -173,7 +161,8 @@ func (w *pprofWriter) buildName(pt spy.ProfileType, nameLabels map[string]string
 
 var samplesPool = bytebufferpool.Pool{}
 
-type cache map[spy.ProfileType]map[uint64]*cacheEntry
+// sample type -> labels hash -> entry
+type cache map[int64]map[uint64]*cacheEntry
 
 type cacheEntry struct {
 	labels []*convert.Label
@@ -184,11 +173,11 @@ func newCacheEntry(l []*convert.Label) *cacheEntry {
 	return &cacheEntry{Trie: transporttrie.New(), labels: l}
 }
 
-func (t *cache) writeProfiles(x *convert.Profile, sampleType string) {
+func (t *cache) writeProfiles(x *convert.Profile, sampleType int64) {
 	valueIndex := 0
-	if sampleType != "" {
+	if sampleType != 0 {
 		for i, v := range x.SampleType {
-			if x.StringTable[v.Type] == sampleType {
+			if v.Type == sampleType {
 				valueIndex = i
 				break
 			}
@@ -199,7 +188,7 @@ func (t *cache) writeProfiles(x *convert.Profile, sampleType string) {
 	defer samplesPool.Put(b)
 
 	for _, s := range x.Sample {
-		entry := t.getOrCreate(spy.ProfileType(sampleType), s.Label)
+		entry := t.getOrCreate(sampleType, s.Label)
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
 			loc, ok := convert.FindLocation(x, s.LocationId[i])
 			if !ok {
@@ -239,11 +228,11 @@ func resolveLabels(x *convert.Profile, entry *cacheEntry) map[string]string {
 	return m
 }
 
-func (t cache) getOrCreate(pt spy.ProfileType, l []*convert.Label) *cacheEntry {
-	p, ok := t[pt]
+func (t cache) getOrCreate(sampleType int64, l []*convert.Label) *cacheEntry {
+	p, ok := t[sampleType]
 	if !ok {
 		e := newCacheEntry(l)
-		t[pt] = map[uint64]*cacheEntry{labelsHash(l): e}
+		t[sampleType] = map[uint64]*cacheEntry{labelsHash(l): e}
 		return e
 	}
 	h := labelsHash(l)
@@ -255,8 +244,8 @@ func (t cache) getOrCreate(pt spy.ProfileType, l []*convert.Label) *cacheEntry {
 	return e
 }
 
-func (t cache) get(pt spy.ProfileType, h uint64) (*cacheEntry, bool) {
-	p, ok := t[pt]
+func (t cache) get(sampleType int64, h uint64) (*cacheEntry, bool) {
+	p, ok := t[sampleType]
 	if !ok {
 		return nil, false
 	}
@@ -264,19 +253,13 @@ func (t cache) get(pt spy.ProfileType, h uint64) (*cacheEntry, bool) {
 	return x, ok
 }
 
-func (t cache) put(pt spy.ProfileType, e *cacheEntry) {
-	p, ok := t[pt]
+func (t cache) put(sampleType int64, e *cacheEntry) {
+	p, ok := t[sampleType]
 	if !ok {
 		p = make(map[uint64]*cacheEntry)
-		t[pt] = p
+		t[sampleType] = p
 	}
 	p[labelsHash(e.labels)] = e
-}
-
-func (t cache) reset(pt spy.ProfileType, h uint64) {
-	if p, ok := t[pt]; ok {
-		delete(p, h)
-	}
 }
 
 func labelsHash(l []*convert.Label) uint64 {

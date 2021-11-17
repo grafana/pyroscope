@@ -31,35 +31,35 @@ import (
 var (
 	failedConfigs = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "prometheus_sd_failed_configs",
+			Name: "pyroscope_sd_failed_configs",
 			Help: "Current number of service discovery configurations that failed to load.",
 		},
 		[]string{"name"},
 	)
 	discoveredTargets = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "prometheus_sd_discovered_targets",
+			Name: "pyroscope_sd_discovered_targets",
 			Help: "Current number of discovered targets.",
 		},
 		[]string{"name", "config"},
 	)
 	receivedUpdates = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "prometheus_sd_received_updates_total",
+			Name: "pyroscope_sd_received_updates_total",
 			Help: "Total number of update events received from the SD providers.",
 		},
 		[]string{"name"},
 	)
 	delayedUpdates = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "prometheus_sd_updates_delayed_total",
+			Name: "pyroscope_sd_updates_delayed_total",
 			Help: "Total number of update events that couldn't be sent immediately.",
 		},
 		[]string{"name"},
 	)
 	sentUpdates = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "prometheus_sd_updates_total",
+			Name: "pyroscope_sd_updates_total",
 			Help: "Total number of update events sent to the SD consumers.",
 		},
 		[]string{"name"},

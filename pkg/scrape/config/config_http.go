@@ -66,7 +66,7 @@ type closeIdler interface {
 type BasicAuth struct {
 	Username     string `yaml:"username" json:"username"`
 	Password     Secret `yaml:"password,omitempty" json:"password,omitempty"`
-	PasswordFile string `yaml:"password_file,omitempty" json:"password_file,omitempty"`
+	PasswordFile string `yaml:"password-file,omitempty" json:"password-file,omitempty"`
 }
 
 // SetDirectory joins any relative file paths with dir.
@@ -81,7 +81,7 @@ func (a *BasicAuth) SetDirectory(dir string) {
 type Authorization struct {
 	Type            string `yaml:"type,omitempty" json:"type,omitempty"`
 	Credentials     Secret `yaml:"credentials,omitempty" json:"credentials,omitempty"`
-	CredentialsFile string `yaml:"credentials_file,omitempty" json:"credentials_file,omitempty"`
+	CredentialsFile string `yaml:"credentials-file,omitempty" json:"credentials-file,omitempty"`
 }
 
 // SetDirectory joins any relative file paths with dir.
@@ -158,15 +158,15 @@ func (u URL) MarshalJSON() ([]byte, error) {
 
 // OAuth2 is the oauth2 client configuration.
 type OAuth2 struct {
-	ClientID         string            `yaml:"client_id" json:"client_id"`
-	ClientSecret     Secret            `yaml:"client_secret" json:"client_secret"`
-	ClientSecretFile string            `yaml:"client_secret_file" json:"client_secret_file"`
+	ClientID         string            `yaml:"client-id" json:"client-id"`
+	ClientSecret     Secret            `yaml:"client-secret" json:"client-secret"`
+	ClientSecretFile string            `yaml:"client-secret-file" json:"client-secret-file"`
 	Scopes           []string          `yaml:"scopes,omitempty" json:"scopes,omitempty"`
-	TokenURL         string            `yaml:"token_url" json:"token_url"`
-	EndpointParams   map[string]string `yaml:"endpoint_params,omitempty" json:"endpoint_params,omitempty"`
+	TokenURL         string            `yaml:"token-url" json:"token-url"`
+	EndpointParams   map[string]string `yaml:"endpoint-params,omitempty" json:"endpoint-params,omitempty"`
 
 	// TLSConfig is used to connect to the token URL.
-	TLSConfig TLSConfig `yaml:"tls_config,omitempty"`
+	TLSConfig TLSConfig `yaml:"tls-config,omitempty"`
 }
 
 // SetDirectory joins any relative file paths with dir.
@@ -181,25 +181,25 @@ func (a *OAuth2) SetDirectory(dir string) {
 // HTTPClientConfig configures an HTTP client.
 type HTTPClientConfig struct {
 	// The HTTP basic authentication credentials for the targets.
-	BasicAuth *BasicAuth `yaml:"basic_auth,omitempty" json:"basic_auth,omitempty"`
+	BasicAuth *BasicAuth `yaml:"basic-auth,omitempty" json:"basic-auth,omitempty"`
 	// The HTTP authorization credentials for the targets.
 	Authorization *Authorization `yaml:"authorization,omitempty" json:"authorization,omitempty"`
 	// The OAuth2 client credentials used to fetch a token for the targets.
 	OAuth2 *OAuth2 `yaml:"oauth2,omitempty" json:"oauth2,omitempty"`
 	// The bearer token for the targets. Deprecated in favour of
 	// Authorization.Credentials.
-	BearerToken Secret `yaml:"bearer_token,omitempty" json:"bearer_token,omitempty"`
+	BearerToken Secret `yaml:"bearer-token,omitempty" json:"bearer-token,omitempty"`
 	// The bearer token file for the targets. Deprecated in favour of
 	// Authorization.CredentialsFile.
-	BearerTokenFile string `yaml:"bearer_token_file,omitempty" json:"bearer_token_file,omitempty"`
+	BearerTokenFile string `yaml:"bearer-token-file,omitempty" json:"bearer-token-file,omitempty"`
 	// HTTP proxy server to use to connect to the targets.
-	ProxyURL URL `yaml:"proxy_url,omitempty" json:"proxy_url,omitempty"`
+	ProxyURL URL `yaml:"proxy-url,omitempty" json:"proxy-url,omitempty"`
 	// TLSConfig to use to connect to the targets.
-	TLSConfig TLSConfig `yaml:"tls_config,omitempty" json:"tls_config,omitempty"`
+	TLSConfig TLSConfig `yaml:"tls-config,omitempty" json:"tls-config,omitempty"`
 	// FollowRedirects specifies whether the client should follow HTTP 3xx redirects.
 	// The omitempty flag is not set, because it would be hidden from the
 	// marshalled configuration when set to false.
-	FollowRedirects bool `yaml:"follow_redirects" json:"follow_redirects"`
+	FollowRedirects bool `yaml:"follow-redirects" json:"follow-redirects"`
 }
 
 // SetDirectory joins any relative file paths with dir.
@@ -217,32 +217,32 @@ func (c *HTTPClientConfig) SetDirectory(dir string) {
 // Validate validates the HTTPClientConfig to check only one of BearerToken,
 // BasicAuth and BearerTokenFile is configured.
 func (c *HTTPClientConfig) Validate() error {
-	// Backwards compatibility with the bearer_token field.
+	// Backwards compatibility with the bearer-token field.
 	if len(c.BearerToken) > 0 && len(c.BearerTokenFile) > 0 {
-		return fmt.Errorf("at most one of bearer_token & bearer_token_file must be configured")
+		return fmt.Errorf("at most one of bearer-token & bearer-token-file must be configured")
 	}
 	if (c.BasicAuth != nil || c.OAuth2 != nil) && (len(c.BearerToken) > 0 || len(c.BearerTokenFile) > 0) {
-		return fmt.Errorf("at most one of basic_auth, oauth2, bearer_token & bearer_token_file must be configured")
+		return fmt.Errorf("at most one of basic-auth, oauth2, bearer-token & bearer-token-file must be configured")
 	}
 	if c.BasicAuth != nil && (string(c.BasicAuth.Password) != "" && c.BasicAuth.PasswordFile != "") {
-		return fmt.Errorf("at most one of basic_auth password & password_file must be configured")
+		return fmt.Errorf("at most one of basic-auth password & password-file must be configured")
 	}
 	if c.Authorization != nil {
 		if len(c.BearerToken) > 0 || len(c.BearerTokenFile) > 0 {
-			return fmt.Errorf("authorization is not compatible with bearer_token & bearer_token_file")
+			return fmt.Errorf("authorization is not compatible with bearer-token & bearer-token-file")
 		}
 		if string(c.Authorization.Credentials) != "" && c.Authorization.CredentialsFile != "" {
-			return fmt.Errorf("at most one of authorization credentials & credentials_file must be configured")
+			return fmt.Errorf("at most one of authorization credentials & credentials-file must be configured")
 		}
 		c.Authorization.Type = strings.TrimSpace(c.Authorization.Type)
 		if len(c.Authorization.Type) == 0 {
 			c.Authorization.Type = "Bearer"
 		}
 		if strings.ToLower(c.Authorization.Type) == "basic" {
-			return fmt.Errorf(`authorization type cannot be set to "basic", use "basic_auth" instead`)
+			return fmt.Errorf(`authorization type cannot be set to "basic", use "basic-auth" instead`)
 		}
 		if c.BasicAuth != nil || c.OAuth2 != nil {
-			return fmt.Errorf("at most one of basic_auth, oauth2 & authorization must be configured")
+			return fmt.Errorf("at most one of basic-auth, oauth2 & authorization must be configured")
 		}
 	} else {
 		if len(c.BearerToken) > 0 {
@@ -258,19 +258,19 @@ func (c *HTTPClientConfig) Validate() error {
 	}
 	if c.OAuth2 != nil {
 		if c.BasicAuth != nil {
-			return fmt.Errorf("at most one of basic_auth, oauth2 & authorization must be configured")
+			return fmt.Errorf("at most one of basic-auth, oauth2 & authorization must be configured")
 		}
 		if len(c.OAuth2.ClientID) == 0 {
-			return fmt.Errorf("oauth2 client_id must be configured")
+			return fmt.Errorf("oauth2 client-id must be configured")
 		}
 		if len(c.OAuth2.ClientSecret) == 0 && len(c.OAuth2.ClientSecretFile) == 0 {
-			return fmt.Errorf("either oauth2 client_secret or client_secret_file must be configured")
+			return fmt.Errorf("either oauth2 client-secret or client-secret-file must be configured")
 		}
 		if len(c.OAuth2.TokenURL) == 0 {
-			return fmt.Errorf("oauth2 token_url must be configured")
+			return fmt.Errorf("oauth2 token-url must be configured")
 		}
 		if len(c.OAuth2.ClientSecret) > 0 && len(c.OAuth2.ClientSecretFile) > 0 {
-			return fmt.Errorf("at most one of oauth2 client_secret & client_secret_file must be configured")
+			return fmt.Errorf("at most one of oauth2 client-secret & client-secret-file must be configured")
 		}
 	}
 	return nil
@@ -403,7 +403,7 @@ func NewRoundTripperFromConfig(cfg HTTPClientConfig, name string, optFuncs ...HT
 			ExpectContinueTimeout: 1 * time.Second,
 			DialContext:           dialContext,
 		}
-		if opts.http2Enabled && os.Getenv("PROMETHEUS_COMMON_DISABLE_HTTP2") == "" {
+		if opts.http2Enabled && os.Getenv("PYROSCOPE_DISABLE_HTTP2") == "" {
 			// HTTP/2 support is golang had many problematic cornercases where
 			// dead connections would be kept and used in connection pools.
 			// https://github.com/golang/go/issues/32388
@@ -411,7 +411,7 @@ func NewRoundTripperFromConfig(cfg HTTPClientConfig, name string, optFuncs ...HT
 			// https://github.com/golang/go/issues/39750
 
 			// Do not enable HTTP2 if the environment variable
-			// PROMETHEUS_COMMON_DISABLE_HTTP2 is set to a non-empty value.
+			// PYROSCOPE_DISABLE_HTTP2 is set to a non-empty value.
 			// This allows users to easily disable HTTP2 in case they run into
 			// issues again, but will be removed once we are confident that
 			// things work as expected.
@@ -423,7 +423,7 @@ func NewRoundTripperFromConfig(cfg HTTPClientConfig, name string, optFuncs ...HT
 			http2t.ReadIdleTimeout = time.Minute
 		}
 
-		// If a authorization_credentials is provided, create a round tripper that will set the
+		// If a authorization-credentials is provided, create a round tripper that will set the
 		// Authorization header correctly on each request.
 		if cfg.Authorization != nil && len(cfg.Authorization.Credentials) > 0 {
 			rt = NewAuthorizationCredentialsRoundTripper(cfg.Authorization.Type, cfg.Authorization.Credentials, rt)
@@ -706,15 +706,15 @@ func NewTLSConfig(cfg *TLSConfig) (*tls.Config, error) {
 // TLSConfig configures the options for TLS connections.
 type TLSConfig struct {
 	// The CA cert to use for the targets.
-	CAFile string `yaml:"ca_file,omitempty" json:"ca_file,omitempty"`
+	CAFile string `yaml:"ca-file,omitempty" json:"ca-file,omitempty"`
 	// The client cert file for the targets.
-	CertFile string `yaml:"cert_file,omitempty" json:"cert_file,omitempty"`
+	CertFile string `yaml:"cert-file,omitempty" json:"cert-file,omitempty"`
 	// The client key file for the targets.
-	KeyFile string `yaml:"key_file,omitempty" json:"key_file,omitempty"`
+	KeyFile string `yaml:"key-file,omitempty" json:"key-file,omitempty"`
 	// Used to verify the hostname for the targets.
-	ServerName string `yaml:"server_name,omitempty" json:"server_name,omitempty"`
+	ServerName string `yaml:"server-name,omitempty" json:"server-name,omitempty"`
 	// Disable target certificate validation.
-	InsecureSkipVerify bool `yaml:"insecure_skip_verify" json:"insecure_skip_verify"`
+	InsecureSkipVerify bool `yaml:"insecure-skip-verify" json:"insecure-skip-verify"`
 }
 
 // SetDirectory joins any relative file paths with dir.

@@ -48,7 +48,7 @@ const (
 
 	AppNameLabel       = "__name__"
 	ProfileLabelPrefix = "__profile_"
-	ProfilePathLabel   = ProfileLabelPrefix + "_path__"
+	ProfilePathLabel   = ProfileLabelPrefix + "path__"
 )
 
 var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
@@ -174,7 +174,7 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 		wg.Add(1)
 		s := &scraper{
 			Target:        sp.activeTargets[fp],
-			pprofWriter:   newPprofWriter(sp.upstream, sp.activeTargets[fp].Labels()),
+			pprofWriter:   newPprofWriter(sp.upstream, sp.activeTargets[fp]),
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
@@ -251,7 +251,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
-			pprofWriter:   newPprofWriter(sp.upstream, t.Labels()),
+			pprofWriter:   newPprofWriter(sp.upstream, t),
 		}
 
 		l := sp.newScrapeLoop(s, interval, timeout)
@@ -330,12 +330,12 @@ func (sl *scrapeLoop) scrape() error {
 	}()
 	switch err := sl.scraper.scrape(ctx, buf); {
 	case err == nil:
-		return sl.scraper.pprofWriter.WriteProfile(buf.Bytes())
+		return sl.scraper.pprofWriter.writeProfile(buf.Bytes())
 	case errors.Is(err, context.Canceled):
 		return nil
 	default:
 		sl.logger.WithError(err).WithField("target", sl.scraper.Target.String()).Debug("scrapping failed")
-		sl.scraper.pprofWriter.Reset()
+		sl.scraper.pprofWriter.reset()
 		return err
 	}
 }

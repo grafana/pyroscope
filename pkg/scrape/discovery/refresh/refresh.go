@@ -28,14 +28,14 @@ import (
 var (
 	failuresCount = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "prometheus_sd_refresh_failures_total",
+			Name: "pyroscope_sd_refresh_failures_total",
 			Help: "Number of refresh failures for the given SD mechanism.",
 		},
 		[]string{"mechanism"},
 	)
 	duration = prometheus.NewSummaryVec(
 		prometheus.SummaryOpts{
-			Name:       "prometheus_sd_refresh_duration_seconds",
+			Name:       "pyroscope_sd_refresh_duration_seconds",
 			Help:       "The duration of a refresh in seconds for the given SD mechanism.",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		},

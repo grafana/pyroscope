@@ -55,7 +55,7 @@ const (
 	// in this discovery.
 	metaLabelPrefix  = model.MetaLabelPrefix + "kubernetes_"
 	namespaceLabel   = metaLabelPrefix + "namespace"
-	metricsNamespace = "prometheus_sd_kubernetes"
+	metricsNamespace = "pyroscope_sd_kubernetes"
 	presentValue     = model.LabelValue("true")
 )
 
@@ -118,9 +118,9 @@ func (c *Role) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // SDConfig is the configuration for Kubernetes service discovery.
 type SDConfig struct {
-	APIServer          config.URL              `yaml:"api_server,omitempty"`
+	APIServer          config.URL              `yaml:"api-server,omitempty"`
 	Role               Role                    `yaml:"role"`
-	KubeConfig         string                  `yaml:"kubeconfig_file"`
+	KubeConfig         string                  `yaml:"kubeconfig-file"`
 	HTTPClientConfig   config.HTTPClientConfig `yaml:",inline"`
 	NamespaceDiscovery NamespaceDiscovery      `yaml:"namespaces,omitempty"`
 	Selectors          []SelectorConfig        `yaml:"selectors,omitempty"`
@@ -176,15 +176,15 @@ func (c *SDConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 	if c.APIServer.URL != nil && c.KubeConfig != "" {
-		// Api-server and kubeconfig_file are mutually exclusive
-		return fmt.Errorf("cannot use 'kubeconfig_file' and 'api_server' simultaneously")
+		// Api-server and kubeconfig-file are mutually exclusive
+		return fmt.Errorf("cannot use 'kubeconfig-file' and 'api-server' simultaneously")
 	}
 	if c.KubeConfig != "" && !reflect.DeepEqual(c.HTTPClientConfig, config.DefaultHTTPClientConfig) {
-		// Kubeconfig_file and custom http config are mutually exclusive
-		return fmt.Errorf("cannot use a custom HTTP client configuration together with 'kubeconfig_file'")
+		// Kubeconfig-file and custom http config are mutually exclusive
+		return fmt.Errorf("cannot use a custom HTTP client configuration together with 'kubeconfig-file'")
 	}
 	if c.APIServer.URL == nil && !reflect.DeepEqual(c.HTTPClientConfig, config.DefaultHTTPClientConfig) {
-		return fmt.Errorf("to use custom HTTP client configuration please provide the 'api_server' URL explicitly")
+		return fmt.Errorf("to use custom HTTP client configuration please provide the 'api-server' URL explicitly")
 	}
 
 	foundSelectorRoles := make(map[Role]struct{})
@@ -283,7 +283,7 @@ func New(l logrus.FieldLogger, conf *SDConfig) (*Discovery, error) {
 		}
 		l.Debug("using pod service account via in-cluster config")
 	} else {
-		rt, err := config.NewRoundTripperFromConfig(conf.HTTPClientConfig, "kubernetes_sd")
+		rt, err := config.NewRoundTripperFromConfig(conf.HTTPClientConfig, "kubernetes-sd")
 		if err != nil {
 			return nil, err
 		}

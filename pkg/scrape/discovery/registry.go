@@ -30,7 +30,7 @@ import (
 
 const (
 	configFieldPrefix      = "AUTO_DISCOVERY_"
-	staticConfigsKey       = "static_configs"
+	staticConfigsKey       = "static-configs"
 	staticConfigsFieldName = configFieldPrefix + staticConfigsKey
 )
 
@@ -48,7 +48,7 @@ var (
 
 // RegisterConfig registers the given Config type for YAML marshaling and unmarshaling.
 func RegisterConfig(config Config) {
-	registerConfig(config.Name()+"_sd_configs", reflect.TypeOf(config), config)
+	registerConfig(config.Name()+"-sd-configs", reflect.TypeOf(config), config)
 }
 
 func init() {
@@ -67,6 +67,8 @@ func registerConfig(yamlKey string, elemType reflect.Type, config Config) {
 	configNames[name] = config
 
 	fieldName := configFieldPrefix + yamlKey // Field must be exported.
+	// Kebab style workaround.
+	fieldName = strings.ReplaceAll(fieldName, "-", "_")
 	configFieldNames[elemType] = fieldName
 
 	// Insert fields in sorted order.
@@ -174,7 +176,7 @@ func readConfigs(structVal reflect.Value, startField int) (Configs, error) {
 			val := field.Index(k)
 			if val.IsZero() || (val.Kind() == reflect.Ptr && val.Elem().IsZero()) {
 				key := configFieldNames[field.Type().Elem()]
-				key = strings.TrimPrefix(key, configFieldPrefix)
+				key = strings.TrimPrefix(key, strings.ReplaceAll(configFieldPrefix, "_", "-"))
 				return nil, fmt.Errorf("empty or null section in %s", key)
 			}
 			switch c := val.Interface().(type) {

@@ -262,21 +262,9 @@ var _ = Describe("flags", func() {
 
 					ScrapeConfigs: []*scrape.Config{
 						{
-							JobName: "testing",
-							EnabledProfiles: []scrape.ProfileName{
-								scrape.ProfileCPU,
-								scrape.ProfileHeap,
-							},
-							ProfilingConfigs: scrape.ProfilingConfigs{
-								scrape.ProfileCPU: {
-									Path:   "/debug/pprof/profile",
-									Params: nil,
-								},
-								scrape.ProfileHeap: {
-									Path:   "/debug/pprof/heap",
-									Params: nil,
-								},
-							},
+							JobName:          "testing",
+							EnabledProfiles:  []string{"cpu", "mem"},
+							Profiles:         scrape.DefaultConfig().Profiles,
 							ScrapeInterval:   10 * time.Second,
 							ScrapeTimeout:    15 * time.Second,
 							Scheme:           "http",
@@ -287,7 +275,7 @@ var _ = Describe("flags", func() {
 										Targets: []model.LabelSet{
 											{"__address__": "localhost:6060", "__name__": "app"},
 										},
-										Labels: model.LabelSet{"zzz": "xxx"},
+										Labels: model.LabelSet{"foo": "bar"},
 										Source: "0",
 									},
 								},

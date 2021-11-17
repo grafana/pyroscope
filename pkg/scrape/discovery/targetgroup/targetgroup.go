@@ -59,23 +59,6 @@ func (tg *Group) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-/*
-// MarshalYAML implements the yaml.Marshaler interface.
-func (tg Group) MarshalYAML() (interface{}, error) {
-	g := &struct {
-		Targets []string       `yaml:"targets"`
-		Labels  model.LabelSet `yaml:"labels,omitempty"`
-	}{
-		Targets: make([]string, 0, len(tg.Targets)),
-		Labels:  tg.Labels,
-	}
-	for _, t := range tg.Targets {
-		g.Targets = append(g.Targets, string(t[model.AddressLabel]))
-	}
-	return g, nil
-}
-*/
-
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (tg *Group) UnmarshalJSON(b []byte) error {
 	g := struct {

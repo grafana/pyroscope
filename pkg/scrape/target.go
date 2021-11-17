@@ -49,8 +49,9 @@ type Target struct {
 	discoveredLabels labels.Labels
 	// Any labels that are added to this target and its metrics.
 	labels labels.Labels
-	// Additional URL parameters that are part of the target URL.
-	params url.Values
+	// Additional parameters including profile path, URL params,
+	// and sample-type settings.
+	profile *config.Profile
 
 	mtx                sync.RWMutex
 	lastError          error
@@ -60,11 +61,11 @@ type Target struct {
 }
 
 // NewTarget creates a reasonably configured target for querying.
-func NewTarget(origLabels, discoveredLabels labels.Labels, params url.Values) *Target {
+func NewTarget(origLabels, discoveredLabels labels.Labels, profile *config.Profile) *Target {
 	return &Target{
 		labels:           origLabels,
 		discoveredLabels: discoveredLabels,
-		params:           params,
+		profile:          profile,
 		health:           HealthUnknown,
 	}
 }
@@ -127,19 +128,15 @@ func (t *Target) SetDiscoveredLabels(l labels.Labels) {
 
 // URL returns a copy of the target's URL.
 func (t *Target) URL() *url.URL {
-	params := url.Values{}
-
-	for k, v := range t.params {
-		params[k] = make([]string, len(v))
-		copy(params[k], v)
+	u := url.URL{
+		Scheme: t.labels.Get(SchemeLabel),
+		Host:   t.labels.Get(AddressLabel),
+		Path:   t.profile.Path,
 	}
-
-	return &url.URL{
-		Scheme:   t.labels.Get(SchemeLabel),
-		Host:     t.labels.Get(AddressLabel),
-		Path:     t.labels.Get(ProfilePathLabel),
-		RawQuery: params.Encode(),
+	if t.profile.Params != nil {
+		u.RawQuery = t.profile.Params.Encode()
 	}
+	return &u
 }
 
 // report sets target data about the last scrape.
@@ -367,52 +364,52 @@ func TargetsFromGroup(tg *targetgroup.Group, cfg *config.Config) ([]*Target, []e
 			continue
 		}
 
-		for _, profileName := range config.SupportedProfiles {
-			c, ok := buildConfig(cfg, profileName, lbls)
-			if !ok {
-				continue
+		// TODO(kolesnikovae):
+		//  Should we allow overrides for sample types, limits, etc?
+		//  Add all the configuration prams (e.g. URL params) to labels?
+		m := labels.Labels(lbls).Map()
+		for profileName := range cfg.Profiles {
+			if c, ok := buildConfig(cfg, profileName, m); ok {
+				// Targets should not have identical labels.
+				// origLabels is immutable.
+				labelsCopy := make([]labels.Label, len(lbls), len(lbls)+1)
+				copy(labelsCopy, lbls)
+				labelsCopy = append(lbls, labels.Label{Name: ProfilePathLabel, Value: c.Path})
+				targets = append(targets, NewTarget(labelsCopy, origLabels, c))
 			}
-			labelsCopy := make([]labels.Label, len(lbls), len(lbls)+1)
-			copy(labelsCopy, lbls)
-			// origLabels is immutable.
-			labelsCopy = append(lbls, labels.Label{
-				Name:  ProfilePathLabel,
-				Value: c.Path,
-			})
-			// TODO: add URL params to labels?
-			targets = append(targets, NewTarget(labelsCopy, origLabels, c.Params))
 		}
 	}
 
 	return targets, failures
 }
 
-func buildConfig(cfg *config.Config, p config.ProfileName, lbls labels.Labels) (c config.ProfilingConfig, ok bool) {
-	m := lbls.Map()
-	prefix := ProfileLabelPrefix + string(p) + "_"
-	switch m[prefix+"enabled__"] {
+func buildConfig(cfg *config.Config, profileName string, lbls map[string]string) (*config.Profile, bool) {
+	prefix := ProfileLabelPrefix + profileName + "_"
+	switch lbls[prefix+"enabled__"] {
 	case "true":
 	case "false":
-		return c, false
+		return nil, false
 	default:
-		for _, v := range cfg.EnabledProfiles {
-			if v == p {
-				break
-			}
-			return c, false
+		if !cfg.IsProfileEnabled(profileName) {
+			return nil, false
 		}
 	}
-
-	c = cfg.ProfilingConfigs[p]
-	if path, ok := m[prefix+"path__"]; ok {
+	defaultConfig, ok := cfg.Profiles[profileName]
+	if !ok {
+		return nil, false
+	}
+	// It is assumed SampleTypes is immutable,
+	// therefore we can copy Profile value safely.
+	var c config.Profile
+	c = *defaultConfig
+	if path, ok := lbls[prefix+"path__"]; ok {
 		c.Path = path
 	}
-
-	params := make(url.Values, len(cfg.ProfilingConfigs[p].Params))
-	for k, v := range cfg.ProfilingConfigs[p].Params {
+	params := make(url.Values, len(c.Params))
+	for k, v := range c.Params {
 		params[k] = v
 	}
-	for k, v := range m {
+	for k, v := range lbls {
 		pp := prefix + "param"
 		if !strings.HasPrefix(k, pp) {
 			continue
@@ -425,6 +422,6 @@ func buildConfig(cfg *config.Config, p config.ProfileName, lbls labels.Labels) (
 			params[ks] = []string{v}
 		}
 	}
-
-	return c, true
+	c.Params = params
+	return &c, true
 }
