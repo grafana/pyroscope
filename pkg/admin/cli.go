@@ -8,6 +8,21 @@ import (
 	"strings"
 )
 
+type CLIError struct{ err error }
+
+func (e CLIError) Error() string {
+	if errors.Is(e.err, ErrMakingRequest) {
+		return fmt.Sprintf(`failed to contact the admin socket server. 
+this may happen if
+a) the admin socket server is not running
+b) the socket path is incorrect
+
+%v`, e.err)
+	}
+
+	return fmt.Sprintf("%v", e.err)
+}
+
 type CLI struct {
 	client *Client
 }
@@ -27,7 +42,7 @@ func NewCLI(socketPath string) (*CLI, error) {
 func (c *CLI) GetAppsNames() error {
 	appNames, err := c.client.GetAppsNames()
 	if err != nil {
-		return c.enhanceError(err)
+		return CLIError{err}
 	}
 
 	for _, name := range appNames {
@@ -61,7 +76,7 @@ func (c *CLI) DeleteApp(appname string) error {
 	// finally delete the app
 	err = c.client.DeleteApp(appname)
 	if err != nil {
-		return c.enhanceError(err)
+		return CLIError{err}
 	}
 
 	fmt.Println(fmt.Sprintf("Deleted app '%s'.", appname))
@@ -79,17 +94,4 @@ func (c *CLI) CompleteApp(_ string) (appNames []string, err error) {
 	}
 
 	return appNames, err
-}
-
-func (*CLI) enhanceError(err error) error {
-	if errors.Is(err, ErrMakingRequest) {
-		return fmt.Errorf(`failed to contact the admin socket server. 
-this may happen if 
-a) the admin socket server is not running
-b) the socket path is incorrect
-
-additional info: %w`, err)
-	}
-
-	return err
 }
