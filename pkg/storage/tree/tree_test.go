@@ -32,7 +32,7 @@ var _ = Describe("tree package", func() {
 			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(2)))
 			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(1)))
 			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(2)))
-			Expect(tree.String()).To(Equal("\"a;b\" 1\n\"a;c\" 2\n"))
+			Expect(tree.String()).To(Equal("a;b 1\na;c 2\n"))
 		})
 	})
 
@@ -42,14 +42,14 @@ var _ = Describe("tree package", func() {
 			treeA.Insert([]byte("a;b"), uint64(1))
 			treeA.Insert([]byte("a;c"), uint64(2))
 			It("properly sets up tree A", func() {
-				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 1|"a;c" 2|`)))
+				Expect(treeA.String()).To(Equal(treeStr(`a;b 1|a;c 2|`)))
 			})
 
 			treeB := New()
 			treeB.Insert([]byte("a;b"), uint64(4))
 			treeB.Insert([]byte("a;c"), uint64(8))
 			It("properly sets up tree B", func() {
-				Expect(treeB.String()).To(Equal(treeStr(`"a;b" 4|"a;c" 8|`)))
+				Expect(treeB.String()).To(Equal(treeStr(`a;b 4|a;c 8|`)))
 			})
 
 			It("properly merges", func() {
@@ -63,7 +63,7 @@ var _ = Describe("tree package", func() {
 				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(10)))
 				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(5)))
 				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(10)))
-				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 5|"a;c" 10|`)))
+				Expect(treeA.String()).To(Equal(treeStr(`a;b 5|a;c 10|`)))
 			})
 		})
 
@@ -73,7 +73,7 @@ var _ = Describe("tree package", func() {
 			treeA.Insert([]byte("a;c"), uint64(2))
 			treeA.Insert([]byte("a;e"), uint64(3))
 			It("properly sets up tree A", func() {
-				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 1|"a;c" 2|"a;e" 3|`)))
+				Expect(treeA.String()).To(Equal(treeStr(`a;b 1|a;c 2|a;e 3|`)))
 			})
 
 			treeB := New()
@@ -81,7 +81,7 @@ var _ = Describe("tree package", func() {
 			treeB.Insert([]byte("a;d"), uint64(8))
 			treeB.Insert([]byte("a;e"), uint64(12))
 			It("properly sets up tree B", func() {
-				Expect(treeB.String()).To(Equal(treeStr(`"a;b" 4|"a;d" 8|"a;e" 12|`)))
+				Expect(treeB.String()).To(Equal(treeStr(`a;b 4|a;d 8|a;e 12|`)))
 			})
 
 			It("properly merges", func() {
@@ -99,7 +99,7 @@ var _ = Describe("tree package", func() {
 				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(2)))
 				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[2].Total).To(Equal(uint64(8)))
 				Expect(treeA.root.ChildrenNodes[0].ChildrenNodes[3].Total).To(Equal(uint64(15)))
-				Expect(treeA.String()).To(Equal(treeStr(`"a;b" 5|"a;c" 2|"a;d" 8|"a;e" 15|`)))
+				Expect(treeA.String()).To(Equal(treeStr(`a;b 5|a;c 2|a;d 8|a;e 15|`)))
 			})
 		})
 	})

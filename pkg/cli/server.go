@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,6 +15,7 @@ import (
 	// revive:disable:blank-imports register kubernetes discoverer
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
+	"github.com/pyroscope-io/pyroscope/pkg/admin"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
@@ -40,6 +42,7 @@ type serverService struct {
 	selfProfiling    *agent.ProfileSession
 	debugReporter    *debug.Reporter
 	healthController *health.Controller
+	adminServer      *admin.Server
 	discoveryManager *discovery.Manager
 	scrapeManager    *scrape.Manager
 
@@ -60,6 +63,29 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
+	}
+
+	// this needs to happen after storage is initiated!
+	if svc.config.EnableExperimentalAdmin {
+		socketPath := svc.config.AdminSocketPath
+		if socketPath == "" {
+			socketPath = filepath.Join(svc.config.StoragePath, "/pyroscope.sock")
+		}
+		adminSvc := admin.NewService(svc.storage)
+		adminCtrl := admin.NewController(svc.logger, adminSvc)
+		adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("admin: %w", err)
+		}
+
+		svc.adminServer, err = admin.NewServer(
+			svc.logger,
+			adminCtrl,
+			adminHTTPOverUDS,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("admin: %w", err)
+		}
 	}
 
 	exportedMetricsRegistry := prometheus.NewRegistry()
@@ -151,6 +177,13 @@ func (svc *serverService) Start() error {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
 	}
 
+	if svc.config.EnableExperimentalAdmin {
+		g.Go(func() error {
+			svc.logger.Info("starting admin server")
+			return svc.adminServer.Start()
+		})
+	}
+
 	defer close(svc.done)
 	select {
 	case <-svc.stopped:
@@ -195,6 +228,11 @@ func (svc *serverService) stop() {
 	svc.logger.Debug("stopping http server")
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
+	}
+
+	if svc.config.EnableExperimentalAdmin {
+		svc.logger.Debug("stopping admin server")
+		svc.adminServer.Stop()
 	}
 }
 

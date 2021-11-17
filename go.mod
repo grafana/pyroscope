@@ -23,6 +23,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-jsonnet v0.17.0
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/google/pprof v0.0.0-20211008130755-947d60d73cc0
 	github.com/google/uuid v1.2.0
 	github.com/iancoleman/strcase v0.2.0

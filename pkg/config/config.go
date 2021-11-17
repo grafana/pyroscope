@@ -18,6 +18,7 @@ type Config struct {
 	Convert   Convert   `skip:"true" mapstructure:",squash"`
 	Exec      Exec      `skip:"true" mapstructure:",squash"`
 	DbManager DbManager `skip:"true" mapstructure:",squash"`
+	Admin     Admin     `skip:"true" mapstructure:",squash"`
 }
 
 // File can be read from file system.
@@ -113,6 +114,9 @@ type Server struct {
 
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
+
+	AdminSocketPath         string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
+	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 }
@@ -214,4 +218,8 @@ type Exec struct {
 	RbspyBlocking          bool          `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+}
+
+type Admin struct {
+	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
 }

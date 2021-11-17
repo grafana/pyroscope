@@ -1,4 +1,4 @@
-package convert
+package tree
 
 // These functions are kept separately as profile.pb.go is a generated file
 

@@ -107,11 +107,17 @@ var _ = Describe("storage package", func() {
 					})
 
 					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
+					s.GetValues("__name__", func(v string) bool {
+						Fail("app name label was not removed")
+						return false
+					})
+
 					gOut, err := s.Get(&GetInput{
 						StartTime: st2,
 						EndTime:   et2,
 						Key:       key,
 					})
+
 					Expect(err).ToNot(HaveOccurred())
 					Expect(gOut).To(BeNil())
 					Expect(s.Close()).ToNot(HaveOccurred())
@@ -288,6 +294,7 @@ var _ = Describe("storage package", func() {
 						runtime.ReadMemStats(&m)
 						time.Sleep(time.Second)
 					}
+					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
 			Context("persist data between restarts", func() {
@@ -386,6 +393,7 @@ var _ = Describe("querying", func() {
 				Expect(output).ToNot(BeNil())
 				Expect(output.Tree).ToNot(BeNil())
 				Expect(output.Tree.Samples()).To(Equal(uint64(6)))
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 
 			It("get returns a particular tree for a fully qualified key", func() {
@@ -400,6 +408,7 @@ var _ = Describe("querying", func() {
 				Expect(output).ToNot(BeNil())
 				Expect(output.Tree).ToNot(BeNil())
 				Expect(output.Tree.Samples()).To(Equal(uint64(3)))
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 
 			It("get returns all results for a key containing only app name", func() {
@@ -414,6 +423,7 @@ var _ = Describe("querying", func() {
 				Expect(output).ToNot(BeNil())
 				Expect(output.Tree).ToNot(BeNil())
 				Expect(output.Tree.Samples()).To(Equal(uint64(9)))
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 
 			It("query returns expected results", func() {
@@ -498,6 +508,7 @@ var _ = Describe("querying", func() {
 					}
 					Expect(r).To(ConsistOf(tc.segmentKeys))
 				}
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -562,6 +573,40 @@ var _ = Describe("CollectGarbage", func() {
 
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
+		})
+	})
+})
+
+var _ = Describe("Getters", func() {
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("gets app names correctly", func() {
+			tree := tree.New()
+			tree.Insert([]byte("a;b"), uint64(1))
+			tree.Insert([]byte("a;c"), uint64(2))
+			st := testing.SimpleTime(10)
+			et := testing.SimpleTime(19)
+			key, _ := segment.ParseKey("foo")
+
+			s.Put(&PutInput{
+				StartTime:  st,
+				EndTime:    et,
+				Key:        key,
+				Val:        tree,
+				SpyName:    "testspy",
+				SampleRate: 100,
+			})
+
+			want := []string{"foo"}
+			Expect(s.GetAppNames()).To(Equal(
+				want,
+			))
+			Expect(s.Close()).ToNot(HaveOccurred())
 		})
 	})
 })

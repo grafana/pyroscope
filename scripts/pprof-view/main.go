@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -15,7 +15,7 @@ import (
 //   cat heap.pprof.gz | go run scripts/pprof-view/main.go
 // and the script will print a json version of a given profile
 func main() {
-	profile := &convert.Profile{}
+	profile := &tree.Profile{}
 	g, err := gzip.NewReader(os.Stdin)
 	if err != nil {
 		panic(err)
