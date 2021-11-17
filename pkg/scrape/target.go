@@ -372,9 +372,11 @@ func TargetsFromGroup(tg *targetgroup.Group, cfg *config.Config) ([]*Target, []e
 			if c, ok := buildConfig(cfg, profileName, m); ok {
 				// Targets should not have identical labels.
 				// origLabels is immutable.
-				labelsCopy := make([]labels.Label, len(lbls), len(lbls)+1)
+				labelsCopy := make([]labels.Label, len(lbls), len(lbls)+2)
 				copy(labelsCopy, lbls)
-				labelsCopy = append(lbls, labels.Label{Name: ProfilePathLabel, Value: c.Path})
+				labelsCopy = append(labelsCopy,
+					labels.Label{Name: ProfilePathLabel, Value: c.Path},
+					labels.Label{Name: ProfileNameLabel, Value: profileName})
 				targets = append(targets, NewTarget(labelsCopy, origLabels, c))
 			}
 		}

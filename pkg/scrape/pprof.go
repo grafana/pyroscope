@@ -223,7 +223,9 @@ func (t *cache) writeProfiles(x *convert.Profile, sampleType int64) {
 func resolveLabels(x *convert.Profile, entry *cacheEntry) map[string]string {
 	m := make(map[string]string)
 	for _, label := range entry.labels {
-		m[x.StringTable[label.Key]] = x.StringTable[label.Str]
+		if label.Str != 0 {
+			m[x.StringTable[label.Key]] = x.StringTable[label.Str]
+		}
 	}
 	return m
 }
@@ -267,7 +269,6 @@ func labelsHash(l []*convert.Label) uint64 {
 	t := make([]byte, 16)
 	for _, x := range l {
 		if x.Str == 0 {
-			// Only string label values are supported.
 			continue
 		}
 		binary.LittleEndian.PutUint64(t[0:8], uint64(x.Key))

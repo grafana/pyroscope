@@ -49,6 +49,7 @@ const (
 	AppNameLabel       = "__name__"
 	ProfileLabelPrefix = "__profile_"
 	ProfilePathLabel   = ProfileLabelPrefix + "path__"
+	ProfileNameLabel   = ProfileLabelPrefix + "name__"
 )
 
 var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
