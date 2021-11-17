@@ -173,7 +173,7 @@ var _ = Describe("flags", func() {
 								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
 							}
 
-							Expect(loadServerConfig(&cfg)).ToNot(HaveOccurred())
+							Expect(loadScrapeConfigsFromFile(&cfg)).ToNot(HaveOccurred())
 							fmt.Printf("configuration is %+v \n", cfg)
 						}
 

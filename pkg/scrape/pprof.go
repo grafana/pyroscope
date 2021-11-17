@@ -25,8 +25,8 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
-	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
@@ -56,7 +56,7 @@ func (w *pprofWriter) reset() {
 }
 
 func (w *pprofWriter) writeProfile(b []byte) error {
-	var p convert.Profile
+	var p tree.Profile
 	if err := proto.Unmarshal(b, &p); err != nil {
 		return err
 	}
@@ -165,15 +165,15 @@ var samplesPool = bytebufferpool.Pool{}
 type cache map[int64]map[uint64]*cacheEntry
 
 type cacheEntry struct {
-	labels []*convert.Label
+	labels []*tree.Label
 	*transporttrie.Trie
 }
 
-func newCacheEntry(l []*convert.Label) *cacheEntry {
+func newCacheEntry(l []*tree.Label) *cacheEntry {
 	return &cacheEntry{Trie: transporttrie.New(), labels: l}
 }
 
-func (t *cache) writeProfiles(x *convert.Profile, sampleType int64) {
+func (t *cache) writeProfiles(x *tree.Profile, sampleType int64) {
 	valueIndex := 0
 	if sampleType != 0 {
 		for i, v := range x.SampleType {
@@ -190,7 +190,7 @@ func (t *cache) writeProfiles(x *convert.Profile, sampleType int64) {
 	for _, s := range x.Sample {
 		entry := t.getOrCreate(sampleType, s.Label)
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			loc, ok := convert.FindLocation(x, s.LocationId[i])
+			loc, ok := tree.FindLocation(x, s.LocationId[i])
 			if !ok {
 				continue
 			}
@@ -204,7 +204,7 @@ func (t *cache) writeProfiles(x *convert.Profile, sampleType int64) {
 			//
 			// Therefore iteration goes in reverse order.
 			for j := len(loc.Line) - 1; j >= 0; j-- {
-				fn, found := convert.FindFunction(x, loc.Line[j].FunctionId)
+				fn, found := tree.FindFunction(x, loc.Line[j].FunctionId)
 				if !found {
 					continue
 				}
@@ -220,7 +220,7 @@ func (t *cache) writeProfiles(x *convert.Profile, sampleType int64) {
 	}
 }
 
-func resolveLabels(x *convert.Profile, entry *cacheEntry) map[string]string {
+func resolveLabels(x *tree.Profile, entry *cacheEntry) map[string]string {
 	m := make(map[string]string)
 	for _, label := range entry.labels {
 		if label.Str != 0 {
@@ -230,7 +230,7 @@ func resolveLabels(x *convert.Profile, entry *cacheEntry) map[string]string {
 	return m
 }
 
-func (t cache) getOrCreate(sampleType int64, l []*convert.Label) *cacheEntry {
+func (t cache) getOrCreate(sampleType int64, l []*tree.Label) *cacheEntry {
 	p, ok := t[sampleType]
 	if !ok {
 		e := newCacheEntry(l)
@@ -264,7 +264,7 @@ func (t cache) put(sampleType int64, e *cacheEntry) {
 	p[labelsHash(e.labels)] = e
 }
 
-func labelsHash(l []*convert.Label) uint64 {
+func labelsHash(l []*tree.Label) uint64 {
 	h := xxhash.New()
 	t := make([]byte, 16)
 	for _, x := range l {

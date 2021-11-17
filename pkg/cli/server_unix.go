@@ -9,62 +9,56 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func StartServer(c *config.Server) error {
-	logLevel, err := logrus.ParseLevel(c.LogLevel)
+func NewServer(prov ConfigProvider) (*Server, error) {
+	svc, err := newServerService(prov)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("could not initialize server: %w", err)
 	}
-	logrus.SetLevel(logLevel)
-	logger := logrus.StandardLogger()
-	if err = loadServerConfig(c); err != nil {
-		return fmt.Errorf("could not load server config: %w", err)
-	}
-	srv, err := newServerService(logger, c)
-	if err != nil {
-		return fmt.Errorf("could not initialize server: %w", err)
-	}
+	return &Server{prov: prov, svc: svc}, nil
+}
 
-	if srv.config.Auth.JWTSecret == "" {
-		srv.config.Auth.JWTSecret, err = srv.storage.JWT()
-		if err != nil {
-			return err
-		}
-	}
+func (s *Server) Stop() { s.svc.Stop() }
 
-	var stopTime time.Time
-	s := make(chan os.Signal, 1)
-	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)
-
+func (s *Server) Start() error {
 	exited := make(chan error)
 	go func() {
-		exited <- srv.Start()
+		exited <- s.svc.Start()
 		close(exited)
 	}()
 
-	select {
-	case <-s:
-		logger.Info("stopping server")
-		stopTime = time.Now()
-		srv.Stop()
-		if err = <-exited; err != nil {
-			logger.WithError(err).Error("failed to stop server gracefully")
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	for {
+		select {
+		case err := <-exited:
 			return err
-		}
-		logger.WithField("duration", time.Since(stopTime)).Info("server stopped gracefully")
-		return nil
 
-	case err = <-exited:
-		if err == nil {
-			// Should never happen.
-			logger.Error("server exited")
+		case sig := <-sigs:
+			if sig == syscall.SIGHUP {
+				var c config.Server
+				if err := s.prov.Load(&c); err != nil {
+					s.svc.logger.WithError(err).Error("failed to reload configuration")
+					continue
+				}
+				s.svc.logger.Info("reloading configuration")
+				if err := s.svc.ApplyConfig(&c); err != nil {
+					s.svc.logger.WithError(err).Error("failed to apply configuration")
+				}
+				continue
+			}
+
+			s.svc.logger.Info("stopping server")
+			stopTime := time.Now()
+			s.svc.Stop()
+			if err := <-exited; err != nil {
+				s.svc.logger.WithError(err).Error("failed to stop server gracefully")
+				return err
+			}
+			s.svc.logger.WithField("duration", time.Since(stopTime)).Info("server stopped gracefully")
 			return nil
 		}
-		logger.WithError(err).Error("server failed")
-		return err
 	}
 }

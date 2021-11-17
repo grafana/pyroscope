@@ -32,6 +32,11 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
 
+type Server struct {
+	prov ConfigProvider
+	svc  *serverService
+}
+
 type serverService struct {
 	config           *config.Server
 	logger           *logrus.Logger
@@ -51,18 +56,42 @@ type serverService struct {
 	group   *errgroup.Group
 }
 
-func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, error) {
+func newServerService(prov ConfigProvider) (*serverService, error) {
+	var c config.Server
+	if err := prov.Load(&c); err != nil {
+		return nil, err
+	}
+
+	// TODO(kolesnikovae): ConfigProvider can be used to trigger
+	//  configuration reload via http handler.
+
+	logLevel, err := logrus.ParseLevel(c.LogLevel)
+	if err != nil {
+		return nil, err
+	}
+	logrus.SetLevel(logLevel)
+	logger := logrus.StandardLogger()
+
+	if err = loadScrapeConfigsFromFile(&c); err != nil {
+		return nil, fmt.Errorf("could not load scrape config: %w", err)
+	}
+
 	svc := serverService{
-		config:  c,
+		config:  &c,
 		logger:  logger,
 		stopped: make(chan struct{}),
 		done:    make(chan struct{}),
 	}
 
-	var err error
 	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
+	}
+
+	if svc.config.Auth.JWTSecret == "" {
+		if svc.config.Auth.JWTSecret, err = svc.storage.JWT(); err != nil {
+			return nil, err
+		}
 	}
 
 	// this needs to happen after storage is initiated!
@@ -133,7 +162,7 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		svc.directUpstream)
 
 	if !c.AnalyticsOptOut {
-		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
+		svc.analyticsService = analytics.NewService(&c, svc.storage, svc.controller)
 	}
 
 	return &svc, nil
@@ -148,23 +177,12 @@ func (svc *serverService) Start() error {
 		svc.logger.Info("starting HTTP server")
 		return svc.controller.Start()
 	})
-
-	// Scrape and Discovery managers have to be initialized
-	// with ApplyConfig before starting running.
-	if err := svc.discoveryManager.ApplyConfig(discoveryConfigs(svc.config.ScrapeConfigs)); err != nil {
-		return err
+	if svc.config.EnableExperimentalAdmin {
+		g.Go(func() error {
+			svc.logger.Info("starting admin server")
+			return svc.adminServer.Start()
+		})
 	}
-	if err := svc.scrapeManager.ApplyConfig(svc.config.ScrapeConfigs); err != nil {
-		return err
-	}
-	g.Go(func() error {
-		svc.logger.Debug("starting discovery manager")
-		return svc.discoveryManager.Run()
-	})
-	g.Go(func() error {
-		svc.logger.Debug("starting scrape manager")
-		return svc.scrapeManager.Run(svc.discoveryManager.SyncCh())
-	})
 
 	go svc.debugReporter.Start()
 	if svc.analyticsService != nil {
@@ -177,12 +195,19 @@ func (svc *serverService) Start() error {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
 	}
 
-	if svc.config.EnableExperimentalAdmin {
-		g.Go(func() error {
-			svc.logger.Info("starting admin server")
-			return svc.adminServer.Start()
-		})
+	// Scrape and Discovery managers have to be initialized
+	// with ApplyConfig before starting running.
+	if err := svc.applyScrapeConfigs(svc.config); err != nil {
+		return err
 	}
+	g.Go(func() error {
+		svc.logger.Debug("starting discovery manager")
+		return svc.discoveryManager.Run()
+	})
+	g.Go(func() error {
+		svc.logger.Debug("starting scrape manager")
+		return svc.scrapeManager.Run(svc.discoveryManager.SyncCh())
+	})
 
 	defer close(svc.done)
 	select {
@@ -206,6 +231,10 @@ func (svc *serverService) Stop() {
 //revive:disable-next-line:confusing-naming methods are different
 func (svc *serverService) stop() {
 	svc.controller.Drain()
+	svc.logger.Debug("stopping discovery manager")
+	svc.discoveryManager.Stop()
+	svc.logger.Debug("stopping scrape manager")
+	svc.scrapeManager.Stop()
 	svc.logger.Debug("stopping debug reporter")
 	svc.debugReporter.Stop()
 	svc.healthController.Stop()
@@ -217,10 +246,6 @@ func (svc *serverService) stop() {
 	svc.selfProfiling.Stop()
 	svc.logger.Debug("stopping upstream")
 	svc.directUpstream.Stop()
-	svc.logger.Debug("stopping discovery manager")
-	svc.discoveryManager.Stop()
-	svc.logger.Debug("stopping scrape manager")
-	svc.scrapeManager.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
@@ -229,11 +254,27 @@ func (svc *serverService) stop() {
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
-
 	if svc.config.EnableExperimentalAdmin {
 		svc.logger.Debug("stopping admin server")
-		svc.adminServer.Stop()
+		if err := svc.adminServer.Stop(); err != nil {
+			svc.logger.WithError(err).Error("admin server stop")
+		}
 	}
+}
+
+func (svc *serverService) ApplyConfig(c *config.Server) error {
+	return svc.applyScrapeConfigs(c)
+}
+
+func (svc *serverService) applyScrapeConfigs(c *config.Server) error {
+	if err := loadScrapeConfigsFromFile(c); err != nil {
+		return fmt.Errorf("could not load scrape configs from %s: %w", c.Config, err)
+	}
+	if err := svc.discoveryManager.ApplyConfig(discoveryConfigs(c.ScrapeConfigs)); err != nil {
+		// discoveryManager.ApplyConfig never return errors.
+		return err
+	}
+	return svc.scrapeManager.ApplyConfig(c.ScrapeConfigs)
 }
 
 func discoveryConfigs(cfg []*sc.Config) map[string]discovery.Configs {
@@ -244,7 +285,7 @@ func discoveryConfigs(cfg []*sc.Config) map[string]discovery.Configs {
 	return c
 }
 
-func loadServerConfig(c *config.Server) error {
+func loadScrapeConfigsFromFile(c *config.Server) error {
 	b, err := os.ReadFile(c.Config)
 	switch {
 	case err == nil:
@@ -257,7 +298,6 @@ func loadServerConfig(c *config.Server) error {
 	if err = yaml.Unmarshal(b, &s); err != nil {
 		return err
 	}
-
 	// Populate scrape configs.
 	c.ScrapeConfigs = s.ScrapeConfigs
 	return nil
