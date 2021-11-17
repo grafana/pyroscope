@@ -46,8 +46,9 @@ const (
 	JobLabel            = "job"
 	InstanceLabel       = "instance"
 
-	AppNameLabel     = "__name__"
-	ProfilePathLabel = "__profile_path__"
+	AppNameLabel       = "__name__"
+	ProfileLabelPrefix = "__profile_"
+	ProfilePathLabel   = ProfileLabelPrefix + "_path__"
 )
 
 var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
@@ -202,7 +203,7 @@ func (sp *scrapePool) Sync(tgs []*targetgroup.Group) {
 	var all []*Target
 	sp.droppedTargets = []*Target{}
 	for _, tg := range tgs {
-		targets, failures := sp.TargetsFromGroup(tg, sp.config)
+		targets, failures := TargetsFromGroup(tg, sp.config)
 		for _, err := range failures {
 			sp.logger.WithError(err).Errorf("creating target")
 		}
@@ -307,8 +308,7 @@ func (sl *scrapeLoop) run() {
 	case <-sl.ctx.Done():
 		return
 	}
-	start := time.Now()
-	sl.scraper.report(start, time.Since(start), sl.scrape())
+	sl.scraper.report(sl.scrape)
 	ticker := time.NewTicker(sl.interval)
 	defer ticker.Stop()
 	for {
@@ -316,8 +316,7 @@ func (sl *scrapeLoop) run() {
 		case <-sl.ctx.Done():
 			return
 		case <-ticker.C:
-			start = time.Now()
-			sl.scraper.report(start, time.Since(start), sl.scrape())
+			sl.scraper.report(sl.scrape)
 		}
 	}
 }

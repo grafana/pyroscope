@@ -21,7 +21,6 @@ import (
 	"hash/fnv"
 	"net"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -144,7 +143,11 @@ func (t *Target) URL() *url.URL {
 }
 
 // report sets target data about the last scrape.
-func (t *Target) report(start time.Time, dur time.Duration, err error) {
+func (t *Target) report(f func() error) {
+	start := time.Now()
+	err := f()
+	dur := time.Since(start)
+
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
 
@@ -340,7 +343,7 @@ func PopulateLabels(lset labels.Labels, cfg *config.Config) (res, orig labels.La
 func isValidLabelValue(v string) bool { return utf8.ValidString(v) }
 
 // TargetsFromGroup builds targets based on the given TargetGroup and config.
-func (sp *scrapePool) TargetsFromGroup(tg *targetgroup.Group, cfg *config.Config) ([]*Target, []error) {
+func TargetsFromGroup(tg *targetgroup.Group, cfg *config.Config) ([]*Target, []error) {
 	targets := make([]*Target, 0, len(tg.Targets))
 	failures := []error{}
 
@@ -355,57 +358,73 @@ func (sp *scrapePool) TargetsFromGroup(tg *targetgroup.Group, cfg *config.Config
 			}
 		}
 
-		for _, profileName := range cfg.EnabledProfiles {
-			lset := labels.New(lbls...)
-			lbls, origLabels, err := PopulateLabels(lset, cfg)
-			if err != nil {
-				failures = append(failures, fmt.Errorf("instance %d in group %s: %w", i, tg.Source, err))
-			}
-			if lbls == nil || origLabels == nil {
+		lset := labels.New(lbls...)
+		lbls, origLabels, err := PopulateLabels(lset, cfg)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("instance %d in group %s: %w", i, tg.Source, err))
+		}
+		if lbls == nil || origLabels == nil {
+			continue
+		}
+
+		for _, profileName := range config.SupportedProfiles {
+			c, ok := buildConfig(cfg, profileName, lbls)
+			if !ok {
 				continue
 			}
-			lbls = append(lbls, labels.Label{
+			labelsCopy := make([]labels.Label, len(lbls), len(lbls)+1)
+			copy(labelsCopy, lbls)
+			// origLabels is immutable.
+			labelsCopy = append(lbls, labels.Label{
 				Name:  ProfilePathLabel,
-				Value: cfg.ProfilingConfigs[profileName].Path,
+				Value: c.Path,
 			})
-			params := sp.buildParams(cfg, profileName, lbls)
-			targets = append(targets, NewTarget(lbls, origLabels, params))
+			// TODO: add URL params to labels?
+			targets = append(targets, NewTarget(labelsCopy, origLabels, c.Params))
 		}
 	}
 
 	return targets, failures
 }
 
-func (sp *scrapePool) buildParams(cfg *config.Config, p config.ProfileName, lbls labels.Labels) url.Values {
-	// TODO(kolesnikovae): Refactor.
+func buildConfig(cfg *config.Config, p config.ProfileName, lbls labels.Labels) (c config.ProfilingConfig, ok bool) {
+	m := lbls.Map()
+	prefix := ProfileLabelPrefix + string(p) + "_"
+	switch m[prefix+"enabled__"] {
+	case "true":
+	case "false":
+		return c, false
+	default:
+		for _, v := range cfg.EnabledProfiles {
+			if v == p {
+				break
+			}
+			return c, false
+		}
+	}
+
+	c = cfg.ProfilingConfigs[p]
+	if path, ok := m[prefix+"path__"]; ok {
+		c.Path = path
+	}
+
 	params := make(url.Values, len(cfg.ProfilingConfigs[p].Params))
 	for k, v := range cfg.ProfilingConfigs[p].Params {
 		params[k] = v
 	}
-	if p != config.ProfileCPU {
-		return params
+	for k, v := range m {
+		pp := prefix + "param"
+		if !strings.HasPrefix(k, pp) {
+			continue
+		}
+		// Note that URL param labels don't have '__' suffix.
+		ks := k[len(pp):]
+		if len(params[k]) > 0 {
+			params[ks][0] = v
+		} else {
+			params[ks] = []string{v}
+		}
 	}
 
-	scrapeInterval, err := time.ParseDuration(lbls.Get(ScrapeIntervalLabel))
-	if err != nil || scrapeInterval == 0 {
-		scrapeInterval = cfg.ScrapeInterval
-	}
-	s, ok := params["seconds"]
-	if !ok || len(s) == 0 {
-		params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
-		return params
-	}
-	scrapeDurationSeconds, err := strconv.Atoi(s[0])
-	if err != nil {
-		sp.logger.WithError(err).WithField("target", lbls).Errorf("invalid scrape duration")
-		params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
-		return params
-	}
-	if scrapeDurationSeconds == 0 || scrapeDurationSeconds > int(scrapeInterval.Seconds()) {
-		sp.logger.WithField("target", lbls).
-			Errorf("scrape duration can not be zero or greater than scrape interval")
-		params["seconds"] = []string{strconv.Itoa(int(scrapeInterval.Seconds()))}
-	}
-
-	return params
+	return c, true
 }

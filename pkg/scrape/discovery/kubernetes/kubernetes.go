@@ -281,7 +281,7 @@ func New(l logrus.FieldLogger, conf *SDConfig) (*Discovery, error) {
 		if err != nil {
 			return nil, err
 		}
-		l.Info("using pod service account via in-cluster config")
+		l.Debug("using pod service account via in-cluster config")
 	} else {
 		rt, err := config.NewRoundTripperFromConfig(conf.HTTPClientConfig, "kubernetes_sd")
 		if err != nil {

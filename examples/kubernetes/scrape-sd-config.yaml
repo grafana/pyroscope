@@ -12,11 +12,13 @@ scrape-configs:
   # The relabeling allows the actual pod scrape endpoint to be configured via the
   # following annotations:
   #
-  # * `pyroscope.io/scrape`: Only scrape pods that have a value of `true`
+  # * `pyroscope.io/scrape`: Only scrape pods that have a value of `true`.
+  # * `pyroscope.io/application-name`: Name of the application being profiled.
   # * `pyroscope.io/scheme`: If the metrics endpoint is secured then you will need
   # to set this to `https` & most likely set the `tls_config` of the scrape config.
-  # * `pyroscope.io/path`: If the metrics path is not `/metrics` override this.
-  # * `pyroscope.io/port`: Scrape the pod on the indicated port instead of the default of `9102`.
+  # * `pyroscope.io/port`: Scrape the pod on the indicated port.
+  # * `pyroscope.io/profile-{profile_name}-path`: Specifies URL path exposing pprof profile.
+  # * `pyroscope.io/profile-{profile_name}-param-{param_key}`: Overrides scrape URL parameters.
   - job_name: 'kubernetes-pods'
     kubernetes_sd_configs:
       - role: pod
@@ -24,6 +26,10 @@ scrape-configs:
       - source_labels: [__meta_kubernetes_pod_annotation_pyroscope_io_scrape]
         action: keep
         regex: true
+      - source_labels:
+          [__meta_kubernetes_pod_annotation_pyroscope_io_application_name]
+        action: replace
+        target_label: __name__
       - source_labels: [__meta_kubernetes_pod_annotation_pyroscope_io_scheme]
         action: replace
         regex: (https?)
@@ -45,25 +51,6 @@ scrape-configs:
       - source_labels: [__meta_kubernetes_pod_phase]
         regex: Pending|Succeeded|Failed|Completed
         action: drop
-
-      # TODO(kolesnikovae): Add support for profile settings overrides
-      - source_labels:
-          [__meta_kubernetes_pod_annotation_pyroscope_io_profile_cpu_enabled]
-        action: replace
-        target_label: __profile_cpu_enabled__
-        regex: (.+)
-      - source_labels:
-          [__meta_kubernetes_pod_annotation_pyroscope_io_profile_heap_enabled]
-        action: replace
-        target_label: __profile_heap_enabled__
-        regex: (.+)
-      - source_labels:
-          [__meta_kubernetes_pod_annotation_pyroscope_io_profile_cpu_path]
-        action: replace
-        target_label: __profile_cpu_path__
-        regex: (.+)
-      - source_labels:
-          [__meta_kubernetes_pod_annotation_pyroscope_io_profile_heap_params_gc]
-        action: replace
-        target_label: __profile_heap_params_gc__
-        regex: (.+)
+      - action: labelmap
+        regex: __meta_kubernetes_pod_annotation_pyroscope_io_profile_(.+)
+        replacement: __profile_$1

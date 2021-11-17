@@ -31,6 +31,47 @@ import (
 
 // revive:disable:max-public-structs complex domain
 
+// ProfileName designates profiles provided by the runtime/pprof package.
+// https://golang.org/doc/diagnostics#profiling
+type ProfileName string
+
+const (
+	// ProfileCPU determines where a program spends its time while actively
+	// consuming CPU cycles (as opposed to while sleeping or waiting for I/O).
+	ProfileCPU ProfileName = "cpu"
+	// ProfileHeap reports memory allocation samples; used to monitor current
+	// and historical memory usage, and to check for memory leaks.
+	ProfileHeap ProfileName = "heap"
+
+	// Unsupported yet profile types.
+
+	// ProfileThreadCreate reports the sections of the program that lead
+	// the creation of new OS threads.
+	ProfileThreadCreate ProfileName = "threadcreate"
+	// ProfileGoroutine reports the stack traces of all current goroutines.
+	ProfileGoroutine ProfileName = "goroutine"
+	// ProfileBlock profile shows where goroutines block waiting on
+	// synchronization primitives (including timer channels). Block profile
+	// is not enabled by default; use runtime.SetBlockProfileRate to enable it.
+	ProfileBlock ProfileName = "block"
+	// ProfileMutex profile reports the lock contentions. When you think your
+	// CPU is not fully utilized due to a mutex contention, use this profile.
+	// Mutex profile is not enabled by default,
+	// see runtime.SetMutexProfileFraction to enable it.
+	ProfileMutex ProfileName = "mutex"
+)
+
+var SupportedProfiles = []ProfileName{ProfileCPU, ProfileHeap}
+
+func IsSupportedProfileName(p ProfileName) bool {
+	switch p {
+	case ProfileCPU, ProfileHeap:
+		return true
+	default:
+		return false
+	}
+}
+
 // defaultConfig returns the default scrape configuration.
 func defaultConfig() *Config {
 	return &Config{
@@ -41,12 +82,14 @@ func defaultConfig() *Config {
 		EnabledProfiles: nil,
 		ProfilingConfigs: ProfilingConfigs{
 			ProfileCPU: {
-				Path:   "/debug/pprof/profile",
-				Params: nil,
+				Path: "/debug/pprof/profile",
+				Params: url.Values{
+					"seconds": []string{"10"},
+				},
 			},
 			ProfileHeap: {
 				Path:   "/debug/pprof/heap",
-				Params: nil,
+				Params: nil, // url.Values{"gc": []string{"1"}},
 			},
 		},
 
@@ -99,45 +142,6 @@ type ProfilingConfig struct {
 	Params url.Values `yaml:"params,omitempty"`
 }
 
-// ProfileName designates profiles provided by the runtime/pprof package.
-// https://golang.org/doc/diagnostics#profiling
-type ProfileName string
-
-const (
-	// ProfileCPU determines where a program spends its time while actively
-	// consuming CPU cycles (as opposed to while sleeping or waiting for I/O).
-	ProfileCPU ProfileName = "cpu"
-	// ProfileHeap reports memory allocation samples; used to monitor current
-	// and historical memory usage, and to check for memory leaks.
-	ProfileHeap ProfileName = "heap"
-
-	// Unsupported yet profile types.
-
-	// ProfileThreadCreate reports the sections of the program that lead
-	// the creation of new OS threads.
-	ProfileThreadCreate ProfileName = "threadcreate"
-	// ProfileGoroutine reports the stack traces of all current goroutines.
-	ProfileGoroutine ProfileName = "goroutine"
-	// ProfileBlock profile shows where goroutines block waiting on
-	// synchronization primitives (including timer channels). Block profile
-	// is not enabled by default; use runtime.SetBlockProfileRate to enable it.
-	ProfileBlock ProfileName = "block"
-	// ProfileMutex profile reports the lock contentions. When you think your
-	// CPU is not fully utilized due to a mutex contention, use this profile.
-	// Mutex profile is not enabled by default,
-	// see runtime.SetMutexProfileFraction to enable it.
-	ProfileMutex ProfileName = "mutex"
-)
-
-func isSupportedProfileName(p ProfileName) bool {
-	switch p {
-	case ProfileCPU, ProfileHeap:
-		return true
-	default:
-		return false
-	}
-}
-
 // SetDirectory joins any relative file paths with dir.
 func (c *Config) SetDirectory(dir string) {
 	c.ServiceDiscoveryConfigs.SetDirectory(dir)
@@ -157,7 +161,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	for x := range c.ProfilingConfigs {
-		if !isSupportedProfileName(x) {
+		if !IsSupportedProfileName(x) {
 			return fmt.Errorf("unsupported profile %q", x)
 		}
 	}

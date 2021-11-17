@@ -58,10 +58,21 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 	if err := proto.Unmarshal(b, &p); err != nil {
 		return err
 	}
+	var profileTime time.Time
+	c := make(cache)
 	// TimeNanos is the time of collection (UTC) represented
 	// as nanoseconds past the epoch reported by profiler.
-	profileTime := time.Unix(0, p.TimeNanos).UTC()
-	c := make(cache)
+	if p.TimeNanos > 0 {
+		profileTime = time.Unix(0, p.TimeNanos).UTC()
+	} else {
+		// An extreme measure.
+		profileTime = time.Now()
+	}
+
+	// TODO(kolesnikovae): We need to make it pyroscope-agnostic:
+	//  the implementation should not depend on "spy" package, and
+	//  must not make assumptions on sample properties (e.g. whether
+	//  it is cumulative).
 
 	for _, st := range p.GetSampleType() {
 		pt := spy.ProfileType(p.StringTable[st.Type])
@@ -87,8 +98,12 @@ func (w *pprofWriter) WriteProfile(b []byte) error {
 
 			// CPU ("samples") sample type. This is the only type
 			// that requires SampleRate.
-			if pt == "samples" && p.Period > 0 {
-				j.SampleRate = uint32(time.Second / time.Duration(p.Period))
+			if pt == "samples" {
+				if p.Period > 0 {
+					j.SampleRate = uint32(time.Second / time.Duration(p.Period))
+				} else {
+					j.SampleRate = 100 // Defaults to 100Hz.
+				}
 			}
 
 			switch {

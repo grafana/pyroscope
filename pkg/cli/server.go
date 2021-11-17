@@ -11,6 +11,9 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 
+	// revive:disable:blank-imports register kubernetes discoverer
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
