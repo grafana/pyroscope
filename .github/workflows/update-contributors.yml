@@ -21,5 +21,9 @@ jobs:
 
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
+          # these are credentials for https://github.com/pyroscopebot
+          commit_user_name: Pyroscope Bot
+          commit_user_email: dmitry+bot@pyroscope.io
+          commit_author: 'Pyroscope Bot <dmitry+bot@pyroscope.io>'
           commit_message: 'docs: updates the list of contributors in README'
           file_pattern: README.md
