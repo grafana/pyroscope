@@ -66,3 +66,16 @@ func (c *CLI) DeleteApp(appname string) error {
 	fmt.Println(fmt.Sprintf("Deleted app '%s'.", appname))
 	return nil
 }
+
+// CompleteApp returns the list of apps
+// it's meant for cobra's autocompletion
+// TODO use the parameter for fuzzy search?
+func (c *CLI) CompleteApp(_ string) (appNames []string, err error) {
+	appNames, err = c.client.GetAppsNames()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return appNames, err
+}

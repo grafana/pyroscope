@@ -80,6 +80,23 @@ func newAdminAppDeleteCmd(cfg *config.Admin) *cobra.Command {
 		Short: "delete an app",
 		Long:  "delete an app",
 		Args:  cobra.ExactArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if len(args) != 0 {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			cli, err := admin.NewCLI(cfg.SocketPath)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			appNames, err := cli.CompleteApp(toComplete)
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			return appNames, cobra.ShellCompDirectiveNoFileComp
+		},
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, arg []string) error {
 			cli, err := admin.NewCLI(cfg.SocketPath)
 			if err != nil {
