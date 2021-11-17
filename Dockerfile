@@ -58,7 +58,8 @@ COPY webapp ./webapp
 COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore .prettierrc tsconfig.json Makefile ./
 
 ARG EXTRA_METADATA=""
-RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
+# we only need the dependencies required to BUILD the application
+RUN EXTRA_METADATA=$EXTRA_METADATA make install-build-web-dependencies assets-release
 
 
 #              _

@@ -137,7 +137,7 @@ server: ## Start the Pyroscope Server
 
 .PHONY: install-web-dependencies
 install-web-dependencies: ## Install the web dependencies
-	NODE_ENV=development yarn install --ignore-engines
+	yarn install --ignore-engines
 
 .PHONY: install-build-web-dependencies
 install-build-web-dependencies: ## Install web dependencies only necessary for a build
@@ -151,8 +151,8 @@ assets: install-web-dependencies ## Configure the assets
 assets-watch: install-web-dependencies ## Configure the assets with live reloading
 	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js --watch
 
-.PHONY: assets
-assets-release: install-build-web-dependencies ## Configure the assets for release
+.PHONY: assets-release
+assets-release: ## Configure the assets for release
 	rm -rf webapp/public/assets
 	rm -rf webapp/public/*.html
 	yarn build
@@ -245,9 +245,7 @@ print-deps-error-message:
 	@echo ""
 	exit 1
 
-# install all dependencies since we require cypress
-e2e-build: install-web-dependencies assets-release build
-	yarn list
+e2e-build: assets-release build
 
 help: ## Show this help
 	@egrep '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | sed 's/Makefile://' | awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-z0-9A-Z_-]+:.*?##/ { printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2 }'
