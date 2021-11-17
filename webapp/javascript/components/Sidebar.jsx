@@ -113,6 +113,16 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faChartBar} />
         </NavLink>
       </SidebarItem>
+      <SidebarItem tooltipText="Adhoc">
+        <NavLink
+          activeClassName="active-route"
+          data-testid="achoc-single"
+          to={{ pathname: '/adhoc-single', search }}
+          exact
+        >
+          <FontAwesomeIcon icon={faWindowMaximize} />
+        </NavLink>
+      </SidebarItem>
       <SidebarItem tooltipText="Alerts - Coming Soon">
         <button type="button">
           <FontAwesomeIcon icon={faBell} />
