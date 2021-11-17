@@ -294,6 +294,7 @@ var _ = Describe("storage package", func() {
 						runtime.ReadMemStats(&m)
 						time.Sleep(time.Second)
 					}
+					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
 			Context("persist data between restarts", func() {
@@ -392,6 +393,7 @@ var _ = Describe("querying", func() {
 				Expect(output).ToNot(BeNil())
 				Expect(output.Tree).ToNot(BeNil())
 				Expect(output.Tree.Samples()).To(Equal(uint64(6)))
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 
 			It("get returns a particular tree for a fully qualified key", func() {
@@ -406,6 +408,7 @@ var _ = Describe("querying", func() {
 				Expect(output).ToNot(BeNil())
 				Expect(output.Tree).ToNot(BeNil())
 				Expect(output.Tree.Samples()).To(Equal(uint64(3)))
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 
 			It("get returns all results for a key containing only app name", func() {
@@ -420,6 +423,7 @@ var _ = Describe("querying", func() {
 				Expect(output).ToNot(BeNil())
 				Expect(output.Tree).ToNot(BeNil())
 				Expect(output.Tree.Samples()).To(Equal(uint64(9)))
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 
 			It("query returns expected results", func() {
@@ -504,6 +508,7 @@ var _ = Describe("querying", func() {
 					}
 					Expect(r).To(ConsistOf(tc.segmentKeys))
 				}
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -601,6 +606,7 @@ var _ = Describe("Getters", func() {
 			Expect(s.GetAppNames()).To(Equal(
 				want,
 			))
+			Expect(s.Close()).ToNot(HaveOccurred())
 		})
 	})
 })
