@@ -2,10 +2,27 @@ package admin
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type CLIError struct{ err error }
+
+func (e CLIError) Error() string {
+	if errors.Is(e.err, ErrMakingRequest) {
+		return fmt.Sprintf(`failed to contact the admin socket server. 
+this may happen if
+a) pyroscope server is not running
+b) the socket path is incorrect
+c) admin features are not enabled, in that case check the server flags
+
+%v`, e.err)
+	}
+
+	return fmt.Sprintf("%v", e.err)
+}
 
 type CLI struct {
 	client *Client
@@ -26,7 +43,7 @@ func NewCLI(socketPath string) (*CLI, error) {
 func (c *CLI) GetAppsNames() error {
 	appNames, err := c.client.GetAppsNames()
 	if err != nil {
-		return err
+		return CLIError{err}
 	}
 
 	for _, name := range appNames {
@@ -60,7 +77,7 @@ func (c *CLI) DeleteApp(appname string) error {
 	// finally delete the app
 	err = c.client.DeleteApp(appname)
 	if err != nil {
-		return fmt.Errorf("failed to delete app: %w", err)
+		return CLIError{err}
 	}
 
 	fmt.Println(fmt.Sprintf("Deleted app '%s'.", appname))
