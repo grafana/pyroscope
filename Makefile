@@ -4,7 +4,7 @@ ARCH ?= $(shell uname -m)
 OS ?= $(shell uname)
 
 # if you change the name of this variable please change it in generate-git-info.sh file
-PHPSPY_VERSION ?= 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
+PHPSPY_VERSION ?= be3abd72e8e2dd5dd4e61008fcd702f90c6eb238
 
 ifeq ("$(OS)", "Darwin")
 	ifeq ("$(ARCH)", "arm64")
