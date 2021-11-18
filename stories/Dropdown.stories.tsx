@@ -5,7 +5,7 @@ import Dropdown from '@ui/Dropdown';
 import { MenuItem, SubMenu } from '@szhsin/react-menu';
 
 const Template: ComponentStory<typeof Dropdown> = (args) => (
-  <Selectable {...args} />
+  <DropdownSelect {...args} />
 );
 
 export default {
@@ -18,7 +18,7 @@ Default.args = {
   disabled: false,
 };
 
-const Selectable = (args) => {
+const DropdownSelect = (args) => {
   const [country, setCountry] = useState(null);
   return (
     <Dropdown
