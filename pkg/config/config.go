@@ -40,8 +40,9 @@ func (cfg CombinedDbManager) Path() string {
 }
 
 type Adhoc struct {
-	*Exec   `mapstructure:",squash"`
-	*Server `mapstructure:",squash"`
+	OutputFormat string `def:"json" desc:"format to export profiling data" mapstructure:"output-format"`
+	*Exec        `mapstructure:",squash"`
+	*Server      `mapstructure:",squash"`
 }
 
 type Agent struct {

@@ -1,18 +1,11 @@
 package command
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 
+	"github.com/pyroscope-io/pyroscope/pkg/adhoc"
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/exec"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
 func newAdhocCmd(cfg *config.Adhoc) *cobra.Command {
@@ -24,34 +17,11 @@ func newAdhocCmd(cfg *config.Adhoc) *cobra.Command {
 
 		DisableFlagParsing: true,
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
-			logLevel, err := logrus.ParseLevel(cfg.Server.LogLevel)
-			if err != nil {
-				return fmt.Errorf("could not parse log level: %w", err)
-			}
-			logrus.SetLevel(logLevel)
-			logger := logrus.StandardLogger()
-
-			storage, err := storage.New(storage.NewConfig(cfg.Server).WithInMemory(), logger, prometheus.DefaultRegisterer)
-			if err != nil {
-				return fmt.Errorf("could not initialize storage: %w", err)
-			}
-
-			g, ctx := errgroup.WithContext(context.Background())
-			g.Go(func() error {
-				return cli.StartAdhocServer(ctx, cfg.Server, storage, logger)
-			})
-			g.Go(func() error {
-				return exec.Cli(exec.NewConfig(cfg.Exec).WithAdhoc(), args, storage, logger)
-			})
-			err = g.Wait()
-			logger.Debug("stopping storage")
-			if err := storage.Close(); err != nil {
-				logger.WithError(err).Error("storage close")
-			}
-			return err
+			return adhoc.Cli(cfg, args)
 		}),
 	}
 
+	cli.PopulateFlagSet(cfg, adhocCmd.Flags(), vpr)
 	cli.PopulateFlagSet(cfg.Exec, adhocCmd.Flags(), vpr, cli.WithSkip(
 		"auth-token",
 		"log-level",
