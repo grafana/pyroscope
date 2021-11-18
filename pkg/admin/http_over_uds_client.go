@@ -18,7 +18,7 @@ func NewHTTPOverUDSClient(socketAddr string) (*http.Client, error) {
 	return &http.Client{
 		// since this is an IPC call
 		// this is incredibly generous
-		Timeout: 500 * time.Millisecond,
+		Timeout: 30 * time.Second,
 
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
