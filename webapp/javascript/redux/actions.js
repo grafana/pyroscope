@@ -150,8 +150,6 @@ export function fetchComparisonAppData(url, viewSide) {
           return currentComparisonTimelineController.left;
         case 'right':
           return currentComparisonTimelineController.right;
-        case 'both':
-          return currentTimelineController;
         default:
           throw new Error(`Invalid viewSide: '${viewSide}'`);
       }
@@ -167,9 +165,6 @@ export function fetchComparisonAppData(url, viewSide) {
         break;
       case 'right':
         currentComparisonTimelineController.right = new AbortController();
-        break;
-      case 'both':
-        currentTimelineController = new AbortController();
         break;
       default:
         throw new Error(`Invalid viewSide: '${viewSide}'`);
