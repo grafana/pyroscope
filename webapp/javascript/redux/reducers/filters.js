@@ -181,12 +181,6 @@ export default function (state = initialState, action) {
           timelineData = state.timeline;
           break;
         }
-        case 'both': {
-          left = { flamebearer };
-          right = { flamebearer };
-          timelineData = decodeTimelineData(timeline);
-          break;
-        }
         default:
           throw new Error(`Invalid viewSide: '${viewSide}'`);
       }
