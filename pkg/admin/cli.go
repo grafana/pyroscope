@@ -14,8 +14,9 @@ func (e CLIError) Error() string {
 	if errors.Is(e.err, ErrMakingRequest) {
 		return fmt.Sprintf(`failed to contact the admin socket server. 
 this may happen if
-a) the admin socket server is not running
+a) pyroscope server is not running
 b) the socket path is incorrect
+c) admin features are not enabled, in that case check the server flags
 
 %v`, e.err)
 	}
