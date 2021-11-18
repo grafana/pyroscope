@@ -55,7 +55,6 @@ func (c *CLI) GetAppsNames() error {
 
 // DeleteApp deletes an app if a matching app exists
 func (c *CLI) DeleteApp(appname string, skipVerification bool) error {
-
 	if !skipVerification {
 		// since this is a very destructive action
 		// we ask the user to type it out the app name as a form of validation
