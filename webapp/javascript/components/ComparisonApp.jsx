@@ -15,12 +15,6 @@ import { fetchNames, fetchComparisonAppData } from '../redux/actions';
 function ComparisonApp(props) {
   const { actions, renderURL, leftRenderURL, rightRenderURL, comparison } =
     props;
-  const prevPropsRef = useRef();
-
-  useEffect(() => {
-    actions.fetchComparisonAppData(renderURL, 'both');
-    return actions.abortTimelineRequest;
-  }, [renderURL]);
 
   useEffect(() => {
     actions.fetchComparisonAppData(leftRenderURL, 'left');
