@@ -101,7 +101,12 @@ COPY webapp/assets_embedded.go ./webapp/assets_embedded.go
 COPY webapp/assets.go ./webapp/assets.go
 COPY scripts ./scripts
 
-RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
+# Alpine's default stack size too small for pyspy, causing exec mode with pyspy to segfault.
+# See https://github.com/pyroscope-io/pyroscope/issues/503
+RUN EMBEDDED_ASSETS_DEPS="" \
+    CGO_LDFLAGS_ALLOW="-Wl,-z,stack-size=0x200000" \
+    EXTRA_LDFLAGS="-linkmode external -extldflags '-static -Wl,-z,stack-size=0x200000'" \
+    make build-release
 
 #      _        _   _        _ _ _
 #     | |      | | (_)      | (_) |
