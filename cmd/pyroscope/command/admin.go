@@ -103,7 +103,7 @@ func newAdminAppDeleteCmd(cfg *config.AdminAppDelete) *cobra.Command {
 				return err
 			}
 
-			return cli.DeleteApp(arg[0], cfg.SkipVerification)
+			return cli.DeleteApp(arg[0], cfg.Force)
 		}),
 	}
 

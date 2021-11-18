@@ -230,6 +230,6 @@ type AdminAppGet struct {
 }
 
 type AdminAppDelete struct {
-	SocketPath       string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
-	SkipVerification bool   `def:"false" desc:"skip the verification that asks to retype the app name" mapstructure:"skip-verification"`
+	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+	Force      bool   `def:"false" desc:"don't prompt for confirmation of dangerous actions" mapstructure:"force"`
 }
