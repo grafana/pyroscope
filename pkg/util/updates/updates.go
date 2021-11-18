@@ -15,8 +15,11 @@ var latestVersionStruct struct {
 }
 
 var runOnce sync.Once
+var m sync.RWMutex
 
 func LatestVersionJSON() string {
+	m.RLock()
+	defer m.RUnlock()
 	b, _ := json.Marshal(latestVersionStruct)
 	return string(b)
 }
@@ -32,6 +35,8 @@ func updateLatestVersion() error {
 		return err
 	}
 
+	m.Lock()
+	defer m.Unlock()
 	err = json.Unmarshal(b, &latestVersionStruct)
 	if err != nil {
 		return err
