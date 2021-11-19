@@ -49,15 +49,24 @@ func NewUdsHTTPServer(socketAddr string) (*UdsHTTPServer, error) {
 	}, nil
 }
 
-func (u *UdsHTTPServer) Start(handler *http.ServeMux) error {
+type myHandler struct {
+	originalHandler http.Handler
+}
+
+func (m myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// enrich with an additional endpoint
 	// that we will use to probe when starting a new instance
-	handler.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/health" {
 		writeMessage(w, 200, "it works!")
-	})
+		return
+	}
 
-	u.server = &http.Server{Handler: handler}
+	m.originalHandler.ServeHTTP(w, r)
+}
 
+func (u *UdsHTTPServer) Start(handler http.Handler) error {
+	h := myHandler{handler}
+	u.server = &http.Server{Handler: h}
 	return u.server.Serve(u.listener)
 }
 
