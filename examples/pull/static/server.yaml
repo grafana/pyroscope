@@ -1,9 +1,11 @@
 ---
+log-level: debug
 scrape-configs:
   - job-name: testing
     enabled-profiles: [cpu, mem]
 
-    # Optional. Default profile configs (Go):
+    # Optional. Default profile configs (Go)
+    # To be moved to docs.
     profiles:
       cpu:
         path: /debug/pprof/profile
@@ -33,6 +35,6 @@ scrape-configs:
     static-configs:
       - application: app
         targets:
-          - localhost:6060
+          - hotrod:6060
         labels:
           env: dev

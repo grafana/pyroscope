@@ -1,6 +1,6 @@
-# Pyroscope pull mode in Kubernetes
+# Pyroscope pull mode and Kubernetes Discovery
 
-This example demonstrates how Pyroscope can be used to scrape pprof profiles from remote targets.
+This example demonstrates how Pyroscope can be used to scrape pprof profiles from Kubernetes pods.
 
 ### 1. Run minikube kubernetes cluster locally (optional)
 
