@@ -75,47 +75,6 @@ func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn CmdRunFn) CmdRunFn {
 	}
 }
 
-type ConfigProvider interface {
-	Load(cfg interface{}) error
-}
-
-type ViperConfigProvider struct {
-	vpr  *viper.Viper
-	cmd  *cobra.Command
-	args []string
-}
-
-func NewViperConfigProvider(vpr *viper.Viper, cmd *cobra.Command, args []string) ViperConfigProvider {
-	return ViperConfigProvider{
-		vpr:  vpr,
-		cmd:  cmd,
-		args: args,
-	}
-}
-
-func (p ViperConfigProvider) Load(cfg interface{}) error {
-	_, xargs := splitArgs(p.cmd.Flags(), p.args)
-	if err := p.vpr.BindPFlags(p.cmd.Flags()); err != nil {
-		return err
-	}
-	if err := p.cmd.Flags().Parse(prependDash(xargs)); err != nil {
-		return err
-	}
-	if c, ok := cfg.(config.File); ok {
-		configPath := os.Getenv("PYROSCOPE_CONFIG")
-		if p.cmd.Flags().Lookup("config").Changed {
-			configPath = c.Path()
-		}
-		if err := loadConfigFile(configPath, p.cmd, p.vpr); err != nil {
-			return fmt.Errorf("loading configuration file: %w", err)
-		}
-	}
-	if err := Unmarshal(p.vpr, cfg); err != nil {
-		return err
-	}
-	return p.cmd.Flags().Parse(prependDash(xargs))
-}
-
 func NewViper(prefix string) *viper.Viper {
 	v := viper.New()
 	v.SetEnvPrefix(prefix)

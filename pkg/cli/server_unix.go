@@ -12,12 +12,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func NewServer(prov ConfigProvider) (*Server, error) {
-	svc, err := newServerService(prov)
+func NewServer(c *config.Server) (*Server, error) {
+	svc, err := newServerService(c)
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize server: %w", err)
 	}
-	return &Server{prov: prov, svc: svc}, nil
+	return &Server{svc: svc}, nil
 }
 
 func (s *Server) Stop() { s.svc.Stop() }
@@ -30,26 +30,13 @@ func (s *Server) Start() error {
 	}()
 
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	for {
 		select {
 		case err := <-exited:
 			return err
 
-		case sig := <-sigs:
-			if sig == syscall.SIGHUP {
-				var c config.Server
-				if err := s.prov.Load(&c); err != nil {
-					s.svc.logger.WithError(err).Error("failed to reload configuration")
-					continue
-				}
-				s.svc.logger.Info("reloading configuration")
-				if err := s.svc.ApplyConfig(&c); err != nil {
-					s.svc.logger.WithError(err).Error("failed to apply configuration")
-				}
-				continue
-			}
-
+		case <-sigs:
 			s.svc.logger.Info("stopping server")
 			stopTime := time.Now()
 			s.svc.Stop()

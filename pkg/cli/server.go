@@ -32,8 +32,7 @@ import (
 )
 
 type Server struct {
-	prov ConfigProvider
-	svc  *serverService
+	svc *serverService
 }
 
 type serverService struct {
@@ -55,28 +54,21 @@ type serverService struct {
 	group   *errgroup.Group
 }
 
-func newServerService(prov ConfigProvider) (*serverService, error) {
-	var c config.Server
-	if err := prov.Load(&c); err != nil {
-		return nil, err
-	}
-
-	// TODO(kolesnikovae): ConfigProvider can be used to trigger
-	//  configuration reload via http handler.
-
+func newServerService(c *config.Server) (*serverService, error) {
 	logLevel, err := logrus.ParseLevel(c.LogLevel)
 	if err != nil {
 		return nil, err
 	}
-	logrus.SetLevel(logLevel)
-	logger := logrus.StandardLogger()
 
-	if err = loadScrapeConfigsFromFile(&c); err != nil {
+	logger := logrus.StandardLogger()
+	logger.SetLevel(logLevel)
+
+	if err = loadScrapeConfigsFromFile(c); err != nil {
 		return nil, fmt.Errorf("could not load scrape config: %w", err)
 	}
 
 	svc := serverService{
-		config:  &c,
+		config:  c,
 		logger:  logger,
 		stopped: make(chan struct{}),
 		done:    make(chan struct{}),
@@ -158,7 +150,7 @@ func newServerService(prov ConfigProvider) (*serverService, error) {
 		svc.directUpstream)
 
 	if !c.AnalyticsOptOut {
-		svc.analyticsService = analytics.NewService(&c, svc.storage, svc.controller)
+		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
 	}
 
 	return &svc, nil
