@@ -23,6 +23,8 @@ import (
 	"unicode/utf8"
 )
 
+// revive:disable:max-public-structs preserve original implementation
+
 const (
 	// AlertNameLabel is the name of the label containing the an alert's name.
 	AlertNameLabel = "alertname"

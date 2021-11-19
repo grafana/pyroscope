@@ -1,4 +1,6 @@
 // Copyright 2020 The Prometheus Authors
+// Copyright 2021 The Pyroscope Authors
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -80,7 +82,7 @@ func optimizeConcatRegex(r *syntax.Regexp) (prefix, suffix, contains string) {
 	}
 
 	if len(sub) == 0 {
-		return
+		return prefix, suffix, contains
 	}
 
 	// Given Prometheus regex matchers are always anchored to the begin/end
@@ -103,5 +105,5 @@ func optimizeConcatRegex(r *syntax.Regexp) (prefix, suffix, contains string) {
 		}
 	}
 
-	return
+	return prefix, suffix, contains
 }
