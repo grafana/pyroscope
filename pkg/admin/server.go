@@ -2,7 +2,9 @@ package admin
 
 import (
 	"net/http"
+	"os"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -36,9 +38,11 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 	as.Handler = r
 
 	// Routes
-	// TODO maybe use gorilla?
 	r.HandleFunc("/v1/apps", as.ctrl.GetAppsHandler).Methods("GET")
 	r.HandleFunc("/v1/apps", as.ctrl.DeleteAppHandler).Methods("DELETE")
+
+	// Global middlewares
+	r.Use(logginMiddleware)
 
 	return as, nil
 }
@@ -49,4 +53,10 @@ func (as *Server) Start() error {
 
 func (as *Server) Stop() error {
 	return as.HTTPServer.Stop()
+}
+
+func logginMiddleware(next http.Handler) http.Handler {
+	// log to Stdout using Apache Common Log Format
+	// TODO maybe use JSON?
+	return handlers.LoggingHandler(os.Stdout, next)
 }
