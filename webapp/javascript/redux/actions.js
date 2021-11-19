@@ -23,8 +23,8 @@ import {
   RECEIVE_PYRESCOPE_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
-  REQUEST_TIMELINE,
-  RECEIVE_TIMELINE,
+  REQUEST_COMPARISON_TIMELINE,
+  RECEIVE_COMPARISON_TIMELINE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 import { deltaDiffWrapper } from '../util/flamebearer';
@@ -73,12 +73,12 @@ export const setMaxNodes = (maxNodes) => ({
 export const refresh = (url) => ({ type: REFRESH, payload: { url } });
 
 export const requestTimeline = (url) => ({
-  type: REQUEST_TIMELINE,
+  type: REQUEST_COMPARISON_TIMELINE,
   payload: { url },
 });
 
 export const receiveTimeline = (data) => ({
-  type: RECEIVE_TIMELINE,
+  type: RECEIVE_COMPARISON_TIMELINE,
   payload: data,
 });
 

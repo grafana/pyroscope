@@ -24,8 +24,8 @@ import {
   REQUEST_COMPARISON_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
-  RECEIVE_TIMELINE,
-  REQUEST_TIMELINE,
+  RECEIVE_COMPARISON_TIMELINE,
+  REQUEST_COMPARISON_TIMELINE,
 } from '../actionTypes';
 
 const defaultName = window.initialState.appNames.find(
@@ -169,13 +169,13 @@ export default function (state = initialState, action) {
       let right;
       switch (viewSide) {
         case 'left':
-          left = { flamebearer, timeline };
+          left = { flamebearer };
           right = state.comparison.right;
           break;
 
         case 'right': {
           left = state.comparison.left;
-          right = { flamebearer, timeline };
+          right = { flamebearer };
           break;
         }
         default:
@@ -190,12 +190,12 @@ export default function (state = initialState, action) {
         },
         isJSONLoading: false,
       };
-    case REQUEST_TIMELINE:
+    case REQUEST_COMPARISON_TIMELINE:
       return {
         ...state,
         isJSONLoading: true,
       };
-    case RECEIVE_TIMELINE:
+    case RECEIVE_COMPARISON_TIMELINE:
       return {
         ...state,
         timeline: decodeTimelineData(action.payload.timeline),
