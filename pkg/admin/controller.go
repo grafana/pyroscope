@@ -22,7 +22,7 @@ func NewController(log *logrus.Logger, svc *AdminService) *Controller {
 }
 
 // HandleGetApps handles GET requests
-func (ctrl *Controller) GetAppsHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, _ *http.Request) {
 	appNames := ctrl.svc.GetAppNames()
 
 	w.WriteHeader(200)
@@ -34,7 +34,7 @@ type DeleteAppInput struct {
 }
 
 // HandleDeleteApp handles DELETE requests
-func (ctrl *Controller) DeleteAppHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) HandleDeleteApp(w http.ResponseWriter, r *http.Request) {
 	var payload DeleteAppInput
 
 	err := json.NewDecoder(r.Body).Decode(&payload)
