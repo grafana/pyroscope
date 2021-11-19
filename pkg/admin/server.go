@@ -3,19 +3,20 @@ package admin
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
-	log  *logrus.Logger
-	ctrl *Controller
-	Mux  *http.ServeMux
+	log     *logrus.Logger
+	ctrl    *Controller
+	Handler http.Handler
 
 	HTTPServer
 }
 
 type HTTPServer interface {
-	Start(*http.ServeMux) error
+	Start(http.Handler) error
 	Stop() error
 }
 
@@ -29,18 +30,21 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 	}
 	as.HTTPServer = httpServer
 
-	mux := http.NewServeMux()
-	as.Mux = mux
+	// use gorilla mux
+	r := mux.NewRouter()
+
+	as.Handler = r
 
 	// Routes
 	// TODO maybe use gorilla?
-	mux.HandleFunc("/v1/apps", as.ctrl.HandleApps)
+	r.HandleFunc("/v1/apps", as.ctrl.GetAppsHandler).Methods("GET")
+	r.HandleFunc("/v1/apps", as.ctrl.DeleteAppHandler).Methods("DELETE")
 
 	return as, nil
 }
 
 func (as *Server) Start() error {
-	return as.HTTPServer.Start(as.Mux)
+	return as.HTTPServer.Start(as.Handler)
 }
 
 func (as *Server) Stop() error {

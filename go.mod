@@ -26,6 +26,7 @@ require (
 	github.com/google/go-jsonnet v0.17.0
 	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5
 	github.com/google/uuid v1.1.2
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/iancoleman/strcase v0.2.0
 	github.com/imdario/mergo v0.3.11 // indirect
