@@ -24,6 +24,9 @@ Note that we apply configuration defined in `values.yaml`: Pyroscope uses exactl
 Prometheus does in order to ensure smooth user experience, and it fully supports
 [Kubernetes Service Discovery](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#kubernetes_sd_config):
 
+<details>
+    <summary>values.yaml</summary>
+
 ```yaml
 ---
 pyroscopeConfigs:
@@ -67,6 +70,8 @@ pyroscopeConfigs:
         replacement: __profile_$1
 ```
 
+</details>
+
 ### 3. Deploy Hot R.O.D. application
 
 As a sample application we use slightly modified Jaeger [Hot R.O.D.](https://github.com/jaegertracing/jaeger/tree/master/examples/hotrod) demo – 
@@ -86,7 +91,12 @@ pyroscope.io/port: "6060"
 kubectl apply -f manifests.yaml
 ```
 
-### 4. Open Pyroscope UI
+### 4. Observe profiling data
+
+Profiling is more fun when the application does some work. Let's order some rides in our Hot R.O.D. app:
+```shell
+minikube service hotrod-golang
+```
 
 Now that everything is set up, you can browse profiling data via Pyroscope UI:
 ```shell

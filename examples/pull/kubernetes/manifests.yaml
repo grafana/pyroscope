@@ -10,6 +10,7 @@ spec:
     metadata:
       labels:
         app: hotrod-golang
+        app.kubernetes.io/name: hotrod-golang
       annotations:
         pyroscope.io/scrape: 'true'
         pyroscope.io/application-name: 'hotrod'
@@ -46,7 +47,6 @@ metadata:
   labels:
     app: jaeger
     app.kubernetes.io/name: jaeger
-    app.kubernetes.io/component: all-in-one
 spec:
   replicas: 1
   strategy:
@@ -59,7 +59,6 @@ spec:
       labels:
         app: jaeger
         app.kubernetes.io/name: jaeger
-        app.kubernetes.io/component: all-in-one
     spec:
       containers:
         - name: jaeger

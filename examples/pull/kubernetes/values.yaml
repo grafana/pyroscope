@@ -1,4 +1,7 @@
 ---
+# Create Cluster Role and bind it to Pyroscope to enable it watching Kubernetes resources.
+rbac:
+  create: true
 # Pyroscope configuration.
 pyroscopeConfigs:
   log-level: debug
