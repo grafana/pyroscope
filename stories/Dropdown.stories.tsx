@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import Dropdown from '@ui/Dropdown';
-import { MenuItem, SubMenu } from '@szhsin/react-menu';
+import { MenuHeader, MenuItem, SubMenu } from '@szhsin/react-menu';
 
 const Template: ComponentStory<typeof Dropdown> = (args) => (
   <DropdownSelect {...args} />
@@ -26,6 +26,7 @@ const DropdownSelect = (args) => {
       buttonText={country || 'Select a country'}
       onItemClick={(e) => setCountry(e.value)}
     >
+      <MenuHeader>Select a country</MenuHeader>
       <SubMenu label="Europe">
         <MenuItem value="Italy">Italy</MenuItem>
         <MenuItem value="Spain">Spain</MenuItem>
