@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClickEvent, Menu, MenuButton } from '@szhsin/react-menu';
+import { ClickEvent, Menu, MenuButton, MenuHeader } from '@szhsin/react-menu';
 import styles from './Dropdown.module.scss';
 
 export interface DropdownProps {
@@ -10,8 +10,12 @@ export interface DropdownProps {
   ['data-testid']?: string;
   className?: string;
 
-  /** Button text*/
-  buttonText?: string;
+  /** Dropdown label */
+  label: string;
+
+  /** Dropdown value*/
+  value?: string;
+
   children?: JSX.Element[] | JSX.Element;
 
   /** Event that fires when an item is activated*/
@@ -23,7 +27,8 @@ export default function Dropdown({
   children,
   className,
   disabled,
-  buttonText,
+  value,
+  label,
   onItemClick,
   ...props
 }: DropdownProps) {
@@ -38,10 +43,11 @@ export default function Dropdown({
           className={`${styles.dropdownMenuButton}`}
           disabled={disabled}
         >
-          {buttonText}
+          {value || label}
         </MenuButton>
       }
     >
+      <MenuHeader>{label}</MenuHeader>
       {children}
     </Menu>
   );

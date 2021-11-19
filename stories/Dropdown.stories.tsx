@@ -23,10 +23,10 @@ const DropdownSelect = (args) => {
   return (
     <Dropdown
       {...args}
-      buttonText={country || 'Select a country'}
+      label="Select a country"
+      value={country}
       onItemClick={(e) => setCountry(e.value)}
     >
-      <MenuHeader>Select a country</MenuHeader>
       <SubMenu label="Europe">
         <MenuItem value="Italy">Italy</MenuItem>
         <MenuItem value="Spain">Spain</MenuItem>
@@ -39,39 +39,3 @@ const DropdownSelect = (args) => {
     </Dropdown>
   );
 };
-
-export const Menu = () => {
-  const handleClick = (e) => alert(e.value);
-  return (
-    <Dropdown buttonText="Menu">
-      <SubMenu label="Menu 1">
-        <MenuItem onClick={handleClick} value="Item 1.1">
-          Item 1.1
-        </MenuItem>
-        <MenuItem onClick={handleClick} value="Item 1.2">
-          Item 1.2
-        </MenuItem>
-      </SubMenu>
-      <SubMenu label="Menu 2">
-        <MenuItem onClick={handleClick} value="Item 2.1">
-          Item 2.1
-        </MenuItem>
-        <MenuItem onClick={handleClick} value="Item 1.2">
-          Item 2.2
-        </MenuItem>
-      </SubMenu>
-    </Dropdown>
-  );
-};
-
-export const NestedMenu = () => (
-  <Dropdown buttonText="Menu">
-    <SubMenu label="Menu 1">
-      <MenuItem>Item 1.1</MenuItem>
-      <SubMenu label="Item 1.2">
-        <MenuItem>Item 1.2.1</MenuItem>
-        <MenuItem>Item 1.2.2</MenuItem>
-      </SubMenu>
-    </SubMenu>
-  </Dropdown>
-);
