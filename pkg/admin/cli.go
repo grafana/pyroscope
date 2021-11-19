@@ -2,10 +2,27 @@ package admin
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 )
+
+type CLIError struct{ err error }
+
+func (e CLIError) Error() string {
+	if errors.Is(e.err, ErrMakingRequest) {
+		return fmt.Sprintf(`failed to contact the admin socket server. 
+this may happen if
+a) pyroscope server is not running
+b) the socket path is incorrect
+c) admin features are not enabled, in that case check the server flags
+
+%v`, e.err)
+	}
+
+	return fmt.Sprintf("%v", e.err)
+}
 
 type CLI struct {
 	client *Client
@@ -26,7 +43,7 @@ func NewCLI(socketPath string) (*CLI, error) {
 func (c *CLI) GetAppsNames() error {
 	appNames, err := c.client.GetAppsNames()
 	if err != nil {
-		return err
+		return CLIError{err}
 	}
 
 	for _, name := range appNames {
@@ -37,30 +54,32 @@ func (c *CLI) GetAppsNames() error {
 }
 
 // DeleteApp deletes an app if a matching app exists
-func (c *CLI) DeleteApp(appname string) error {
-	// since this is a very destructive action
-	// we ask the user to type it out the app name as a form of validation
-	fmt.Println(fmt.Sprintf("Are you sure you want to delete the app '%s'? This action can not be reversed.", appname))
-	fmt.Println("")
-	fmt.Println("Keep in mind the following:")
-	fmt.Println("a) If an agent is still running, the app will be recreated.")
-	fmt.Println("b) The API is idempotent, ie. if the app already does NOT exist, this command will run just fine.")
-	fmt.Println("")
-	fmt.Println(fmt.Sprintf("Type '%s' to confirm (without quotes).", appname))
-	reader := bufio.NewReader(os.Stdin)
-	text, err := reader.ReadString('\n')
-	if err != nil {
-		return err
-	}
-	trimmed := strings.TrimRight(text, "\n")
-	if trimmed != appname {
-		return fmt.Errorf("The app typed does not match. Want '%s' but got '%s'", appname, trimmed)
+func (c *CLI) DeleteApp(appname string, skipVerification bool) error {
+	if !skipVerification {
+		// since this is a very destructive action
+		// we ask the user to type it out the app name as a form of validation
+		fmt.Println(fmt.Sprintf("Are you sure you want to delete the app '%s'? This action can not be reversed.", appname))
+		fmt.Println("")
+		fmt.Println("Keep in mind the following:")
+		fmt.Println("a) If an agent is still running, the app will be recreated.")
+		fmt.Println("b) The API is idempotent, ie. if the app already does NOT exist, this command will run just fine.")
+		fmt.Println("")
+		fmt.Println(fmt.Sprintf("Type '%s' to confirm (without quotes).", appname))
+		reader := bufio.NewReader(os.Stdin)
+		text, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		trimmed := strings.TrimRight(text, "\n")
+		if trimmed != appname {
+			return fmt.Errorf("The app typed does not match. Want '%s' but got '%s'", appname, trimmed)
+		}
 	}
 
 	// finally delete the app
-	err = c.client.DeleteApp(appname)
+	err := c.client.DeleteApp(appname)
 	if err != nil {
-		return fmt.Errorf("failed to delete app: %w", err)
+		return CLIError{err}
 	}
 
 	fmt.Println(fmt.Sprintf("Deleted app '%s'.", appname))

@@ -2,6 +2,6 @@
   "video": false,
   "baseUrl": "http://localhost:4040",
   "retries": {
-    "runMode": 2
+    "runMode": 5
   }
 }

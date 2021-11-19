@@ -220,6 +220,19 @@ type Exec struct {
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
 }
 
+// TODO how to abstract this better?
 type Admin struct {
+	AdminAppDelete AdminAppDelete `skip:"true" mapstructure:",squash"`
+	AdminAppGet    AdminAppGet    `skip:"true" mapstructure:",squash"`
+}
+type AdminCommon struct {
 	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+}
+type AdminAppGet struct {
+	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+}
+
+type AdminAppDelete struct {
+	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+	Force      bool   `def:"false" desc:"don't prompt for confirmation of dangerous actions" mapstructure:"force"`
 }

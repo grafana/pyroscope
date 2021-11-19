@@ -58,7 +58,8 @@ COPY webapp ./webapp
 COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore .prettierrc tsconfig.json Makefile ./
 
 ARG EXTRA_METADATA=""
-RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
+# we only need the dependencies required to BUILD the application
+RUN EXTRA_METADATA=$EXTRA_METADATA make install-build-web-dependencies assets-release
 
 
 #              _
@@ -101,7 +102,12 @@ COPY webapp/assets_embedded.go ./webapp/assets_embedded.go
 COPY webapp/assets.go ./webapp/assets.go
 COPY scripts ./scripts
 
-RUN EMBEDDED_ASSETS_DEPS="" EXTRA_LDFLAGS="-linkmode external -extldflags '-static'" make build-release
+# Alpine's default stack size too small for pyspy, causing exec mode with pyspy to segfault.
+# See https://github.com/pyroscope-io/pyroscope/issues/503
+RUN EMBEDDED_ASSETS_DEPS="" \
+    CGO_LDFLAGS_ALLOW="-Wl,-z,stack-size=0x200000" \
+    EXTRA_LDFLAGS="-linkmode external -extldflags '-static -Wl,-z,stack-size=0x200000'" \
+    make build-release
 
 #      _        _   _        _ _ _
 #     | |      | | (_)      | (_) |
