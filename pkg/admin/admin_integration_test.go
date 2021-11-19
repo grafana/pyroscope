@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -32,7 +33,10 @@ var _ = Describe("integration", func() {
 		socketAddr = dir + "/pyroscope.tmp.sock"
 
 		// create the server
-		httpServer, err := admin.NewUdsHTTPServer(socketAddr)
+		http, err := admin.NewHTTPOverUDSClient(socketAddr, admin.WithTimeout(time.Millisecond*10))
+		Expect(err).ToNot(HaveOccurred())
+
+		httpServer, err := admin.NewUdsHTTPServer(socketAddr, http)
 		Expect(err).ToNot(HaveOccurred())
 		svc := admin.NewService(mockStorage{})
 		ctrl := admin.NewController(logger, svc)
