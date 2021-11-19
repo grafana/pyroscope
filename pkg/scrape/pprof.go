@@ -19,13 +19,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cespare/xxhash"
-	"github.com/prometheus/prometheus/pkg/labels"
+	"github.com/cespare/xxhash/v2"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
@@ -133,13 +134,13 @@ func (w *pprofWriter) buildName(sampleTypeName string, nameLabels map[string]str
 	for _, label := range w.labels {
 		nameLabels[label.Name] = label.Value
 	}
-	nameLabels[AppNameLabel] += "." + sampleTypeName
+	nameLabels[model.AppNameLabel] += "." + sampleTypeName
 	// TODO(kolesnikovae): a copy of segment.Key.Normalize().
 	//   To be refactored once pyroscope model package emerges.
 	var sb strings.Builder
 	sortedMap := sortedmap.New()
 	for k, v := range nameLabels {
-		if k == AppNameLabel {
+		if k == model.AppNameLabel {
 			sb.WriteString(v)
 		} else {
 			sortedMap.Put(k, v)

@@ -22,8 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/strutil"
 	"github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +29,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 )
 
 var (
@@ -197,13 +196,13 @@ func podLabels(pod *apiv1.Pod) model.LabelSet {
 	}
 
 	for k, v := range pod.Labels {
-		ln := strutil.SanitizeLabelName(k)
+		ln := sanitizeLabelName(k)
 		ls[model.LabelName(podLabelPrefix+ln)] = lv(v)
 		ls[model.LabelName(podLabelPresentPrefix+ln)] = presentValue
 	}
 
 	for k, v := range pod.Annotations {
-		ln := strutil.SanitizeLabelName(k)
+		ln := sanitizeLabelName(k)
 		ls[model.LabelName(podAnnotationPrefix+ln)] = lv(v)
 		ls[model.LabelName(podAnnotationPresentPrefix+ln)] = presentValue
 	}

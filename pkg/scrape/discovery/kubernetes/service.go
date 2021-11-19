@@ -21,14 +21,13 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/strutil"
 	"github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 )
 
 var (
@@ -164,13 +163,13 @@ func serviceLabels(svc *apiv1.Service) model.LabelSet {
 	ls[namespaceLabel] = lv(svc.Namespace)
 
 	for k, v := range svc.Labels {
-		ln := strutil.SanitizeLabelName(k)
+		ln := sanitizeLabelName(k)
 		ls[model.LabelName(serviceLabelPrefix+ln)] = lv(v)
 		ls[model.LabelName(serviceLabelPresentPrefix+ln)] = presentValue
 	}
 
 	for k, v := range svc.Annotations {
-		ln := strutil.SanitizeLabelName(k)
+		ln := sanitizeLabelName(k)
 		ls[model.LabelName(serviceAnnotationPrefix+ln)] = lv(v)
 		ls[model.LabelName(serviceAnnotationPresentPrefix+ln)] = presentValue
 	}

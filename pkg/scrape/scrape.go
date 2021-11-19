@@ -36,22 +36,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 )
 
-const (
-	ReservedLabelPrefix = "__"
-	MetaLabelPrefix     = "__meta_"
-	SchemeLabel         = "__scheme__"
-	AddressLabel        = "__address__"
-	ScrapeIntervalLabel = "__scrape_interval__"
-	ScrapeTimeoutLabel  = "__scrape_timeout__"
-	JobLabel            = "job"
-	InstanceLabel       = "instance"
-
-	AppNameLabel       = "__name__"
-	ProfileLabelPrefix = "__profile_"
-	ProfilePathLabel   = ProfileLabelPrefix + "path__"
-	ProfileNameLabel   = ProfileLabelPrefix + "name__"
-)
-
 var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
 
 var errBodySizeLimit = errors.New("body size limit exceeded")

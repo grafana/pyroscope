@@ -19,12 +19,12 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
 	"github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
 	disv1beta1 "k8s.io/api/discovery/v1beta1"
@@ -45,6 +45,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 )
 
 // revive:disable:max-public-structs complex domain
@@ -629,4 +630,12 @@ func checkNetworkingV1Supported(client k8s.Interface) (bool, error) {
 	// networking.k8s.io/v1 is available since Kubernetes v1.19
 	// https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.19.md
 	return semVer.Major() >= 1 && semVer.Minor() >= 19, nil
+}
+
+var invalidLabelCharRE = regexp.MustCompile(`[^a-zA-Z0-9_]`)
+
+// sanitizeLabelName replaces anything that doesn't match
+// client_label.LabelNameRE with an underscore.
+func sanitizeLabelName(name string) string {
+	return invalidLabelCharRE.ReplaceAllString(name, "_")
 }

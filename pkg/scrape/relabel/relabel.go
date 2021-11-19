@@ -21,8 +21,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/pkg/labels"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 )
 
 var (

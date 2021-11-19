@@ -22,14 +22,13 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/strutil"
 	"github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 )
 
 const (
@@ -165,13 +164,13 @@ func nodeLabels(n *apiv1.Node) model.LabelSet {
 	ls[nodeNameLabel] = lv(n.Name)
 
 	for k, v := range n.Labels {
-		ln := strutil.SanitizeLabelName(k)
+		ln := sanitizeLabelName(k)
 		ls[model.LabelName(nodeLabelPrefix+ln)] = lv(v)
 		ls[model.LabelName(nodeLabelPresentPrefix+ln)] = presentValue
 	}
 
 	for k, v := range n.Annotations {
-		ln := strutil.SanitizeLabelName(k)
+		ln := sanitizeLabelName(k)
 		ls[model.LabelName(nodeAnnotationPrefix+ln)] = lv(v)
 		ls[model.LabelName(nodeAnnotationPresentPrefix+ln)] = presentValue
 	}
@@ -197,7 +196,7 @@ func (n *Node) buildNode(node *apiv1.Node) *targetgroup.Group {
 	}
 
 	for ty, a := range addrMap {
-		ln := strutil.SanitizeLabelName(nodeAddressPrefix + string(ty))
+		ln := sanitizeLabelName(nodeAddressPrefix + string(ty))
 		t[model.LabelName(ln)] = lv(a[0])
 	}
 	tg.Targets = append(tg.Targets, t)

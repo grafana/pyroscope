@@ -19,7 +19,8 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/prometheus/common/model"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 )
 
 // Group is a set of targets with a common label set(production , test, staging etc.).
@@ -47,10 +48,12 @@ func (tg *Group) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err := unmarshal(&g); err != nil {
 		return err
 	}
+	if err := flameql.ValidateAppName(g.AppName); err != nil {
+		return err
+	}
 	tg.Targets = make([]model.LabelSet, 0, len(g.Targets))
 	for _, t := range g.Targets {
 		tg.Targets = append(tg.Targets, model.LabelSet{
-			// TODO: switch to pyroscope model.
 			model.AddressLabel:    model.LabelValue(t),
 			model.MetricNameLabel: model.LabelValue(g.AppName),
 		})
@@ -70,6 +73,9 @@ func (tg *Group) UnmarshalJSON(b []byte) error {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&g); err != nil {
+		return err
+	}
+	if err := flameql.ValidateAppName(g.AppName); err != nil {
 		return err
 	}
 	tg.Targets = make([]model.LabelSet, 0, len(g.Targets))

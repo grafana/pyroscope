@@ -21,14 +21,13 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/strutil"
 	"github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 )
 
 // revive:disable:cognitive-complexity preserve original implementation
@@ -226,7 +225,7 @@ func (e *Endpoints) buildEndpoints(eps *apiv1.Endpoints) *targetgroup.Group {
 	e.addServiceLabels(eps.Namespace, eps.Name, tg)
 	// Add endpoints labels metadata.
 	for k, v := range eps.Labels {
-		ln := strutil.SanitizeLabelName(k)
+		ln := sanitizeLabelName(k)
 		tg.Labels[model.LabelName(endpointsLabelPrefix+ln)] = lv(v)
 		tg.Labels[model.LabelName(endpointsLabelPresentPrefix+ln)] = presentValue
 	}

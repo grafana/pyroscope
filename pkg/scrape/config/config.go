@@ -111,8 +111,6 @@ type Config struct {
 	// TODO(kolesnikovae): Implement.
 	// List of profiles relabel configurations.
 	// ProfilesRelabelConfigs []*relabel.Config `yaml:"profiles-relabel-configs,omitempty"`
-	// List of profiles filter configurations.
-	// ProfilesFilterConfigs []*ProfilesFilterConfig `yaml:"profiles-filter-configs,omitempty"`
 }
 
 type Profile struct {

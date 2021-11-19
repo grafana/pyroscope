@@ -21,8 +21,6 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/strutil"
 	"github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
 	disv1beta1 "k8s.io/api/discovery/v1beta1"
@@ -30,6 +28,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 )
 
 var (
@@ -272,7 +271,7 @@ func (e *EndpointSlice) buildEndpointSlice(eps *disv1beta1.EndpointSlice) *targe
 		}
 
 		for k, v := range ep.Topology {
-			ln := strutil.SanitizeLabelName(k)
+			ln := sanitizeLabelName(k)
 			target[model.LabelName(endpointSliceEndpointTopologyLabelPrefix+ln)] = lv(v)
 			target[model.LabelName(endpointSliceEndpointTopologyLabelPresentPrefix+ln)] = presentValue
 		}

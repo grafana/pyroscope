@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/util/strutil"
 	"github.com/sirupsen/logrus"
 	v1 "k8s.io/api/networking/v1"
 	"k8s.io/api/networking/v1beta1"
@@ -29,6 +27,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 )
 
 var (
@@ -164,13 +163,13 @@ func ingressLabels(ingress ingressAdaptor) model.LabelSet {
 	}
 
 	for k, v := range ingress.labels() {
-		ln := strutil.SanitizeLabelName(k)
+		ln := sanitizeLabelName(k)
 		ls[model.LabelName(ingressLabelPrefix+ln)] = lv(v)
 		ls[model.LabelName(ingressLabelPresentPrefix+ln)] = presentValue
 	}
 
 	for k, v := range ingress.annotations() {
-		ln := strutil.SanitizeLabelName(k)
+		ln := sanitizeLabelName(k)
 		ls[model.LabelName(ingressAnnotationPrefix+ln)] = lv(v)
 		ls[model.LabelName(ingressAnnotationPresentPrefix+ln)] = presentValue
 	}

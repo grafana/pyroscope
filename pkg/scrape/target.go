@@ -26,10 +26,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/prometheus/prometheus/pkg/labels"
-
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/relabel"
 )
 
@@ -103,7 +103,7 @@ func (t *Target) offset(interval time.Duration) time.Duration {
 func (t *Target) Labels() labels.Labels {
 	lset := make(labels.Labels, 0, len(t.labels))
 	for _, l := range t.labels {
-		if l.Name == AppNameLabel || !strings.HasPrefix(l.Name, ReservedLabelPrefix) {
+		if l.Name == model.AppNameLabel || !strings.HasPrefix(l.Name, model.ReservedLabelPrefix) {
 			lset = append(lset, l)
 		}
 	}
@@ -129,8 +129,8 @@ func (t *Target) SetDiscoveredLabels(l labels.Labels) {
 // URL returns a copy of the target's URL.
 func (t *Target) URL() *url.URL {
 	u := url.URL{
-		Scheme: t.labels.Get(SchemeLabel),
-		Host:   t.labels.Get(AddressLabel),
+		Scheme: t.labels.Get(model.SchemeLabel),
+		Host:   t.labels.Get(model.AddressLabel),
 		Path:   t.profile.Path,
 	}
 	if t.profile.Params != nil {
@@ -193,12 +193,12 @@ func (t *Target) intervalAndTimeout(defaultInterval, defaultDuration time.Durati
 	t.mtx.RLock()
 	defer t.mtx.RUnlock()
 
-	intervalLabel := t.labels.Get(ScrapeIntervalLabel)
+	intervalLabel := t.labels.Get(model.ScrapeIntervalLabel)
 	interval, err := time.ParseDuration(intervalLabel)
 	if err != nil {
 		return defaultInterval, defaultDuration, fmt.Errorf("parsing interval label %q: %w", intervalLabel, err)
 	}
-	timeoutLabel := t.labels.Get(ScrapeTimeoutLabel)
+	timeoutLabel := t.labels.Get(model.ScrapeTimeoutLabel)
 	timeout, err := time.ParseDuration(timeoutLabel)
 	if err != nil {
 		return defaultInterval, defaultDuration, fmt.Errorf("parsing timeout label %q: %w", timeoutLabel, err)
@@ -225,10 +225,10 @@ func (ts Targets) Swap(i, j int)      { ts[i], ts[j] = ts[j], ts[i] }
 func PopulateLabels(lset labels.Labels, cfg *config.Config) (res, orig labels.Labels, err error) {
 	// Copy labels into the labelset for the target if they are not set already.
 	scrapeLabels := []labels.Label{
-		{Name: JobLabel, Value: cfg.JobName},
-		{Name: ScrapeIntervalLabel, Value: cfg.ScrapeInterval.String()},
-		{Name: ScrapeTimeoutLabel, Value: cfg.ScrapeTimeout.String()},
-		{Name: SchemeLabel, Value: cfg.Scheme},
+		{Name: model.JobLabel, Value: cfg.JobName},
+		{Name: model.ScrapeIntervalLabel, Value: cfg.ScrapeInterval.String()},
+		{Name: model.ScrapeTimeoutLabel, Value: cfg.ScrapeTimeout.String()},
+		{Name: model.SchemeLabel, Value: cfg.Scheme},
 	}
 	lb := labels.NewBuilder(lset)
 
@@ -245,11 +245,11 @@ func PopulateLabels(lset labels.Labels, cfg *config.Config) (res, orig labels.La
 	if lset == nil {
 		return nil, preRelabelLabels, nil
 	}
-	addr := lset.Get(AddressLabel)
+	addr := lset.Get(model.AddressLabel)
 	if addr == "" {
 		return nil, nil, errors.New("no address")
 	}
-	if v := lset.Get(AppNameLabel); v == "" {
+	if v := lset.Get(model.AppNameLabel); v == "" {
 		return nil, nil, errors.New("no app name")
 	}
 
@@ -270,7 +270,7 @@ func PopulateLabels(lset labels.Labels, cfg *config.Config) (res, orig labels.La
 	// If it's an address with no trailing port, infer it based on the used scheme.
 	if addPort(addr) {
 		// Addresses reaching this point are already wrapped in [] if necessary.
-		switch lset.Get(SchemeLabel) {
+		switch lset.Get(model.SchemeLabel) {
 		case "http", "":
 			addr = addr + ":80"
 		case "https":
@@ -278,7 +278,7 @@ func PopulateLabels(lset labels.Labels, cfg *config.Config) (res, orig labels.La
 		default:
 			return nil, nil, fmt.Errorf("invalid scheme: %q", cfg.Scheme)
 		}
-		lb.Set(AddressLabel, addr)
+		lb.Set(model.AddressLabel, addr)
 	}
 
 	if err = config.CheckTargetAddress(addr); err != nil {
@@ -287,7 +287,7 @@ func PopulateLabels(lset labels.Labels, cfg *config.Config) (res, orig labels.La
 
 	var interval string
 	var intervalDuration time.Duration
-	if interval = lset.Get(ScrapeIntervalLabel); interval != cfg.ScrapeInterval.String() {
+	if interval = lset.Get(model.ScrapeIntervalLabel); interval != cfg.ScrapeInterval.String() {
 		intervalDuration, err = time.ParseDuration(interval)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error parsing scrape interval: %w", err)
@@ -299,7 +299,7 @@ func PopulateLabels(lset labels.Labels, cfg *config.Config) (res, orig labels.La
 
 	var timeout string
 	var timeoutDuration time.Duration
-	if timeout = lset.Get(ScrapeTimeoutLabel); timeout != cfg.ScrapeTimeout.String() {
+	if timeout = lset.Get(model.ScrapeTimeoutLabel); timeout != cfg.ScrapeTimeout.String() {
 		timeoutDuration, err = time.ParseDuration(timeout)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error parsing scrape timeout: %w", err)
@@ -316,14 +316,14 @@ func PopulateLabels(lset labels.Labels, cfg *config.Config) (res, orig labels.La
 	// Meta labels are deleted after relabelling. Other internal labels propagate to
 	// the target which decides whether they will be part of their label set.
 	for _, l := range lset {
-		if strings.HasPrefix(l.Name, MetaLabelPrefix) {
+		if strings.HasPrefix(l.Name, model.MetaLabelPrefix) {
 			lb.Del(l.Name)
 		}
 	}
 
 	// Default the instance label to the target address.
-	if v := lset.Get(InstanceLabel); v == "" {
-		lb.Set(InstanceLabel, addr)
+	if v := lset.Get(model.InstanceLabel); v == "" {
+		lb.Set(model.InstanceLabel, addr)
 	}
 
 	res = lb.Labels()
@@ -375,8 +375,8 @@ func TargetsFromGroup(tg *targetgroup.Group, cfg *config.Config) ([]*Target, []e
 				labelsCopy := make([]labels.Label, len(lbls), len(lbls)+2)
 				copy(labelsCopy, lbls)
 				labelsCopy = append(labelsCopy,
-					labels.Label{Name: ProfilePathLabel, Value: c.Path},
-					labels.Label{Name: ProfileNameLabel, Value: profileName})
+					labels.Label{Name: model.ProfilePathLabel, Value: c.Path},
+					labels.Label{Name: model.ProfileNameLabel, Value: profileName})
 				targets = append(targets, NewTarget(labelsCopy, origLabels, c))
 			}
 		}
@@ -386,7 +386,7 @@ func TargetsFromGroup(tg *targetgroup.Group, cfg *config.Config) ([]*Target, []e
 }
 
 func buildConfig(cfg *config.Config, profileName string, lbls map[string]string) (*config.Profile, bool) {
-	prefix := ProfileLabelPrefix + profileName + "_"
+	prefix := model.ProfileLabelPrefix + profileName + "_"
 	switch lbls[prefix+"enabled__"] {
 	case "true":
 	case "false":
