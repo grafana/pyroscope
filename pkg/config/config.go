@@ -40,7 +40,8 @@ func (cfg CombinedDbManager) Path() string {
 }
 
 type Adhoc struct {
-	OutputFormat string `def:"json" desc:"format to export profiling data" mapstructure:"output-format"`
+	// TODO(abeaumont): supported formats shouldn't be hardcoded.
+	OutputFormat string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
 	*Exec        `mapstructure:",squash"`
 	*Server      `mapstructure:",squash"`
 }

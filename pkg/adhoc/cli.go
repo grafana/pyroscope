@@ -14,8 +14,10 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/protobuf/proto"
 )
 
 func Cli(cfg *config.Adhoc, args []string) error {
@@ -27,9 +29,9 @@ func Cli(cfg *config.Adhoc, args []string) error {
 	logger := logrus.StandardLogger()
 
 	switch cfg.OutputFormat {
-	case "json":
+	case "json", "pprof", "collapsed":
 	default:
-		return fmt.Errorf("invalid output format '%s', the only supported output format is 'json'", cfg.OutputFormat)
+		return fmt.Errorf("invalid output format '%s', the only supported output formats are 'json', 'pprof' and 'collapsed'", cfg.OutputFormat)
 	}
 
 	st, err := storage.New(storage.NewConfig(cfg.Server).WithInMemory(), logger, prometheus.DefaultRegisterer)
@@ -74,16 +76,22 @@ func Cli(cfg *config.Adhoc, args []string) error {
 				continue
 			}
 
+			var ext string
+			if cfg.OutputFormat == "collapsed" {
+				ext = "collapsed.txt"
+			} else {
+				ext = cfg.OutputFormat
+			}
+			filename := fmt.Sprintf("%s-%s.%s", name, t0.UTC().Format(time.RFC3339), ext)
+			path := filepath.Join(dataDir, filename)
+			f, err := os.Create(path)
+			if err != nil {
+				logger.WithError(err).Error("creating output file")
+				continue
+			}
+			defer f.Close()
 			switch cfg.OutputFormat {
 			case "json":
-				filename := fmt.Sprintf("%s-%s.json", name, t0.UTC().Format(time.RFC3339))
-				path := filepath.Join(dataDir, filename)
-				f, err := os.Create(path)
-				if err != nil {
-					logger.WithError(err).Error("creating output file")
-					continue
-				}
-				defer f.Close()
 				// TODO(abeaumont): This is duplicated code, fix the original first.
 				fs := out.Tree.FlamebearerStruct(cfg.Server.MaxNodesRender)
 				fs.SpyName = out.SpyName
@@ -102,8 +110,26 @@ func Cli(cfg *config.Adhoc, args []string) error {
 				if err := json.NewEncoder(f).Encode(res); err != nil {
 					logger.WithError(err).Error("saving output file")
 				}
-				logger.Debugf("exported data to %s", path)
-				f.Close()
+			case "pprof":
+				pprof := out.Tree.Pprof(&tree.PprofMetadata{
+					Unit:      out.Units,
+					StartTime: t0,
+				})
+				out, err := proto.Marshal(pprof)
+				if err != nil {
+					logger.WithError(err).Error("serializing to pprof")
+				}
+				if _, err := f.Write(out); err != nil {
+					logger.WithError(err).Error("saving output file")
+				}
+			case "collapsed":
+				if _, err := f.WriteString(out.Tree.Collapsed()); err != nil {
+					logger.WithError(err).Error("saving output file")
+				}
+			}
+			logger.Debugf("exported data to %s", path)
+			if err := f.Close(); err != nil {
+				logger.WithError(err).Error("closing output file")
 			}
 		}
 		return nil
