@@ -387,7 +387,8 @@ func TargetsFromGroup(tg *targetgroup.Group, cfg *config.Config) ([]*Target, []e
 
 func buildConfig(cfg *config.Config, profileName string, lbls map[string]string) (*config.Profile, bool) {
 	prefix := model.ProfileLabelPrefix + profileName + "_"
-	switch lbls[prefix+"enabled__"] {
+	// Note that input profile labels don't have '__' suffix.
+	switch lbls[prefix+"enabled"] {
 	case "true":
 	case "false":
 		return nil, false
@@ -404,7 +405,7 @@ func buildConfig(cfg *config.Config, profileName string, lbls map[string]string)
 	// therefore we can copy Profile value safely.
 	var c config.Profile
 	c = *defaultConfig
-	if path, ok := lbls[prefix+"path__"]; ok {
+	if path, ok := lbls[prefix+"path"]; ok {
 		c.Path = path
 	}
 	params := make(url.Values, len(c.Params))
@@ -416,7 +417,6 @@ func buildConfig(cfg *config.Config, profileName string, lbls map[string]string)
 		if !strings.HasPrefix(k, pp) {
 			continue
 		}
-		// Note that URL param labels don't have '__' suffix.
 		ks := k[len(pp):]
 		if len(params[k]) > 0 {
 			params[ks][0] = v
