@@ -3,6 +3,7 @@ package tree
 import (
 	"bytes"
 	"encoding/json"
+	//"log"
 	"fmt"
 	"math/big"
 	"sort"
@@ -46,8 +47,9 @@ func newNode(label []byte) *treeNode {
 
 var (
 	placeholderTreeNode = &treeNode{}
-	semicolon           = byte(';')
 )
+
+const semicolon = byte(';')
 
 type Tree struct {
 	sync.RWMutex
@@ -127,7 +129,13 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 		return bytes.Compare(n.ChildrenNodes[i].Name, targetLabel) >= 0
 	})
 
-	if i > len(n.ChildrenNodes)-1 || !bytes.Equal(n.ChildrenNodes[i].Name, targetLabel) {
+	searchFailed := i == len(n.ChildrenNodes)
+
+	if searchFailed || !bytes.Equal(n.ChildrenNodes[i].Name, targetLabel) {
+
+		// Inserts new node at such an index as to maintain ordering
+		// (ordering is required by sort.Search).
+
 		l := make([]byte, len(targetLabel))
 		copy(l, targetLabel)
 		child := newNode(l)
@@ -181,15 +189,20 @@ func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	}
 }
 
-// TODO consider moving
-func keyWithPrefix(node *treeNode, prefix []byte) []byte {
-	label := append(prefix, semicolon) // byte(';'),
-	l := node.Name
-	label = append(label, l...) // byte(';'),
-	return label
+func copiedByteSlice(oldSlice []byte) []byte {
+	newSlice := make([]byte, len(oldSlice))
+	copy(newSlice, oldSlice)
+	return newSlice
 }
 
-// TODO consider moving
+func keyWithPrefix(node *treeNode, prefix []byte) []byte {
+	key := append(prefix, semicolon)
+	key = append(key, node.Name...)
+	// TODO why is this slice copy necessary?
+	// when omitted, some node names become corrupted
+	return copiedByteSlice(key)
+}
+
 func keysWithPrefix(nodes []*treeNode, prefix []byte) [][]byte {
 	keys := [][]byte{}
 	for _, node := range nodes {
@@ -215,19 +228,19 @@ func (t *Tree) IterateWithChildKeys(cb func(key []byte, val uint64, childKeys []
 		prefix := prefixes[0]
 		prefixes = prefixes[1:]
 
-		label := keyWithPrefix(node, prefix)
+		key := keyWithPrefix(node, prefix)
 
 		children := node.ChildrenNodes
 
-		// TODO notice semantic conflict between key and label
-		prefixForChildren := label
+		prefixForChildren := key
 		childKeys := keysWithPrefix(children, prefixForChildren)
 
-		cb(label, node.Self, childKeys)
+		cb(key, node.Self, childKeys)
 
 		nodes = append(children, nodes...)
+
 		for i := 0; i < len(children); i++ {
-			prefixes = prependBytes(prefixes, label)
+			prefixes = prependBytes(prefixes, prefixForChildren)
 		}
 	}
 }
