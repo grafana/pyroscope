@@ -198,6 +198,18 @@ func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string)
 	return nil
 }
 
+// GetAppNames returns the list of all app's names
+func (s *Storage) GetAppNames() []string {
+	var appNames []string
+
+	s.GetValues("__name__", func(v string) bool {
+		appNames = append(appNames, v)
+		return true
+	})
+
+	return appNames
+}
+
 func (s *Storage) execQuery(_ context.Context, qry *flameql.Query) []dimension.Key {
 	app, found := s.lookupAppDimension(qry.AppName)
 	if !found {

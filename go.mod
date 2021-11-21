@@ -19,6 +19,7 @@ require (
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
+	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/protobuf v1.5.2
@@ -26,6 +27,9 @@ require (
 	github.com/google/go-jsonnet v0.17.0
 	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5
 	github.com/google/uuid v1.1.2
+	github.com/gorilla/handlers v1.5.1 // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/iancoleman/strcase v0.2.0
 	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/josephspurrier/goversioninfo v1.2.0
