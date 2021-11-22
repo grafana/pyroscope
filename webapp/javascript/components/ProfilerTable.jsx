@@ -119,6 +119,7 @@ export default function ProfilerTable({
   updateSortBy,
   viewDiff,
   fitMode,
+  handleTableItemClick,
 }) {
   return (
     <Table
@@ -128,6 +129,7 @@ export default function ProfilerTable({
       sortByDirection={sortByDirection}
       viewDiff={viewDiff}
       fitMode={fitMode}
+      handleTableItemClick={handleTableItemClick}
     />
   );
 }
@@ -161,6 +163,7 @@ function Table({
   sortByDirection,
   viewDiff,
   fitMode,
+  handleTableItemClick,
 }) {
   if (!flamebearer || flamebearer.numTicks === 0) {
     return [];
@@ -200,6 +203,7 @@ function Table({
           sortByDirection={sortByDirection}
           viewDiff={viewDiff}
           fitMode={fitMode}
+          handleTableItemClick={handleTableItemClick}
         />
       </tbody>
     </table>
@@ -207,7 +211,14 @@ function Table({
 }
 
 const TableBody = React.memo(
-  ({ flamebearer, sortBy, sortByDirection, viewDiff, fitMode }) => {
+  ({
+    flamebearer,
+    sortBy,
+    sortByDirection,
+    viewDiff,
+    fitMode,
+    handleTableItemClick,
+  }) => {
     const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
     const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
@@ -229,14 +240,19 @@ const TableBody = React.memo(
 
     const nameCell = (x, style) => (
       <td>
-        <span className="color-reference" style={style} />
-        <div
-          className="symbol-name"
-          title={x.name}
-          style={fitIntoTableCell(fitMode)}
+        <button
+          className="table-item-button"
+          onClick={handleTableItemClick ? () => handleTableItemClick(x) : null}
         >
-          {x.name}
-        </div>
+          <span className="color-reference" style={style} />
+          <div
+            className="symbol-name"
+            title={x.name}
+            style={fitIntoTableCell(fitMode)}
+          >
+            {x.name}
+          </div>
+        </button>
       </td>
     );
 
