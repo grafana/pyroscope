@@ -8,7 +8,6 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Option } from 'prelude-ts';
-import { connect } from 'react-redux';
 import Graph from './FlameGraphComponent';
 import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
@@ -43,6 +42,8 @@ class FlameGraphRenderer extends React.Component {
 
       flamegraphConfigs: this.initialFlamegraphState,
     };
+
+    this.onTableItemClick = this.onTableItemClick.bind(this);
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -62,20 +63,6 @@ class FlameGraphRenderer extends React.Component {
     this.abortCurrentJSONController();
   }
 
-  updateFitMode = (newFitMode) => {
-    this.setState({
-      fitMode: newFitMode,
-    });
-  };
-
-  updateFlamegraphDirtiness = () => {
-    const isDirty = this.isDirty();
-
-    this.setState({
-      isFlamegraphDirty: isDirty,
-    });
-  };
-
   handleSearchChange = (e) => {
     this.setState({
       highlightQuery: e,
@@ -89,18 +76,6 @@ class FlameGraphRenderer extends React.Component {
         ...this.state.flamegraphConfigs,
         ...this.initialFlamegraphState,
       },
-    });
-  };
-
-  updateView = (newView) => {
-    this.setState({
-      view: newView,
-    });
-  };
-
-  updateViewDiff = (newView) => {
-    this.setState({
-      viewDiff: newView,
     });
   };
 
@@ -151,6 +126,10 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
+  onTableItemClick(tableItem) {
+    this.handleSearchChange(tableItem.name);
+  }
+
   updateSortBy = (newSortBy) => {
     let dir = this.state.sortByDirection;
     if (this.state.sortBy === newSortBy) {
@@ -161,6 +140,32 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       sortBy: newSortBy,
       sortByDirection: dir,
+    });
+  };
+
+  updateViewDiff = (newView) => {
+    this.setState({
+      viewDiff: newView,
+    });
+  };
+
+  updateView = (newView) => {
+    this.setState({
+      view: newView,
+    });
+  };
+
+  updateFlamegraphDirtiness = () => {
+    const isDirty = this.isDirty();
+
+    this.setState({
+      isFlamegraphDirty: isDirty,
+    });
+  };
+
+  updateFitMode = (newFitMode) => {
+    this.setState({
+      fitMode: newFitMode,
     });
   };
 
@@ -211,6 +216,7 @@ class FlameGraphRenderer extends React.Component {
           viewDiff={this.state.viewDiff}
           fitMode={this.state.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
+          handleTableItemClick={this.onTableItemClick}
         />
       </div>
     );
@@ -269,6 +275,7 @@ class FlameGraphRenderer extends React.Component {
             onFocusOnSubtree={(i, j) => {
               this.onFocusOnNode(i, j);
             }}
+            highlightQuery={this.state.highlightQuery}
           />
           {this.props.viewType === 'double' ? (
             <>
