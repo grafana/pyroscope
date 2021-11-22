@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -58,12 +57,14 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
 		socketPath := svc.config.AdminSocketPath
-		if socketPath == "" {
-			socketPath = filepath.Join(svc.config.StoragePath, "/pyroscope.sock")
-		}
 		adminSvc := admin.NewService(svc.storage)
 		adminCtrl := admin.NewController(svc.logger, adminSvc)
-		adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath)
+		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("admin: %w", err)
+		}
+
+		adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath, httpClient)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
 		}

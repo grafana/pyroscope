@@ -21,25 +21,6 @@ func NewController(log *logrus.Logger, svc *AdminService) *Controller {
 	return ctrl
 }
 
-func (ctrl *Controller) HandleApps(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		{
-			ctrl.HandleGetApps(w, r)
-			return
-		}
-
-	case http.MethodDelete:
-		{
-			ctrl.HandleDeleteApp(w, r)
-			return
-		}
-
-	default:
-		http.Error(w, "Method not allowed: "+r.Method, http.StatusMethodNotAllowed)
-	}
-}
-
 // HandleGetApps handles GET requests
 func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, _ *http.Request) {
 	appNames := ctrl.svc.GetAppNames()

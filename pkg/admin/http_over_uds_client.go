@@ -7,23 +7,37 @@ import (
 	"time"
 )
 
+type ClientOption func(*http.Client)
+
 // NewHTTPOverUDSClient creates a http client that communicates via UDS (unix domain sockets)
-func NewHTTPOverUDSClient(socketAddr string) (*http.Client, error) {
+func NewHTTPOverUDSClient(socketAddr string, opts ...ClientOption) (*http.Client, error) {
 	if socketAddr == "" {
 		return nil, ErrInvalidSocketPathname
 	}
 	// TODO:
 	// other kinds of validations?
 
-	return &http.Client{
+	client := &http.Client{
 		// since this is an IPC call
 		// this is incredibly generous
-		Timeout: 500 * time.Millisecond,
+		Timeout: 30 * time.Second,
 
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
 				return net.Dial("unix", socketAddr)
 			},
 		},
-	}, nil
+	}
+
+	for _, opt := range opts {
+		opt(client)
+	}
+
+	return client, nil
+}
+
+func WithTimeout(d time.Duration) ClientOption {
+	return func(c *http.Client) {
+		c.Timeout = d
+	}
 }

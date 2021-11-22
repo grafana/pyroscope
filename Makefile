@@ -4,7 +4,7 @@ ARCH ?= $(shell uname -m)
 OS ?= $(shell uname)
 
 # if you change the name of this variable please change it in generate-git-info.sh file
-PHPSPY_VERSION ?= 024461fbba5130a1dc7fd4f0b5a458424cf50b3a
+PHPSPY_VERSION ?= be3abd72e8e2dd5dd4e61008fcd702f90c6eb238
 
 ifeq ("$(OS)", "Darwin")
 	ifeq ("$(ARCH)", "arm64")
@@ -139,6 +139,10 @@ server: ## Start the Pyroscope Server
 install-web-dependencies: ## Install the web dependencies
 	yarn install --ignore-engines
 
+.PHONY: install-build-web-dependencies
+install-build-web-dependencies: ## Install web dependencies only necessary for a build
+	NODE_ENV=production yarn install --frozen-lockfile
+
 .PHONY: assets
 assets: install-web-dependencies ## Configure the assets
 	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js
@@ -147,8 +151,8 @@ assets: install-web-dependencies ## Configure the assets
 assets-watch: install-web-dependencies ## Configure the assets with live reloading
 	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js --watch
 
-.PHONY: assets
-assets-release: install-web-dependencies ## Configure the assets for release
+.PHONY: assets-release
+assets-release: ## Configure the assets for release
 	rm -rf webapp/public/assets
 	rm -rf webapp/public/*.html
 	yarn build

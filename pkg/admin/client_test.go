@@ -28,7 +28,7 @@ var _ = Describe("client", func() {
 	})
 
 	JustBeforeEach(func() {
-		s, err := admin.NewUdsHTTPServer(socketAddr)
+		s, err := admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 		Expect(err).ToNot(HaveOccurred())
 		server = s
 		go server.Start(handler)
