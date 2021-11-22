@@ -9,44 +9,44 @@ import (
 )
 
 func newAdhocCmd(cfg *config.Adhoc) *cobra.Command {
-	vpr := newViper()
-	adhocCmd := &cobra.Command{
-		Use:   "adhoc [flags]",
-		Short: "Start a new process from arguments, profile it and view the results",
-		Args:  cobra.MinimumNArgs(1),
+	cmd := &cobra.Command{
+		Use:   "adhoc",
+		Short: "adhoc mode commands",
+	}
+	cmd.AddCommand(newAdhocRecordCmd(&cfg.AdhocRecord))
+	cmd.AddCommand(newAdhocServerCmd(&cfg.AdhocServer))
+	return cmd
+}
 
-		DisableFlagParsing: true,
+func newAdhocRecordCmd(cfg *config.AdhocRecord) *cobra.Command {
+	vpr := newViper()
+
+	cmd := &cobra.Command{
+		Use:   "record [flags]",
+		Short: "Start a new process from arguments, profile it and record the results",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
-			return adhoc.Cli(cfg, args)
+			return adhoc.Record(cfg, args)
 		}),
 	}
 
-	cli.PopulateFlagSet(cfg, adhocCmd.Flags(), vpr)
-	cli.PopulateFlagSet(cfg.Exec, adhocCmd.Flags(), vpr, cli.WithSkip(
-		"auth-token",
-		"log-level",
-		"pid",
-		"server-address",
-		"upstream-threads",
-		"upstream-request-timeout",
-		"tags",
-	))
-	cli.PopulateFlagSet(cfg.Server, adhocCmd.Flags(), vpr, cli.WithSkip(
-		"badger-no-truncate",
-		"cache-evict-threshold",
-		"cache-evict-volume",
-		"cache-dimensions-size",
-		"cache-dictonary-size",
-		"cache-segment-size",
-		"cache-tree-size",
-		"hide-applications",
-		"max-nodes-serialization",
-		"metrics-export-rules",
-		"out-of-space-threshold",
-		"retention",
-		"retention-levels",
-		"sample-rate",
-		"storage-path",
-	))
-	return adhocCmd
+	cli.PopulateFlagSet(cfg, cmd.Flags(), vpr)
+	return cmd
+}
+
+func newAdhocServerCmd(cfg *config.AdhocServer) *cobra.Command {
+	vpr := newViper()
+
+	cmd := &cobra.Command{
+		Use:   "server [flags]",
+		Short: "Start the server to view adhoc results",
+
+		DisableFlagParsing: true,
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+			return adhoc.Server(cfg)
+		}),
+	}
+
+	cli.PopulateFlagSet(cfg, cmd.Flags(), vpr)
+	return cmd
 }

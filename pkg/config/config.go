@@ -18,14 +18,11 @@ type Config struct {
 	Exec      Exec      `skip:"true" mapstructure:",squash"`
 	DbManager DbManager `skip:"true" mapstructure:",squash"`
 	Admin     Admin     `skip:"true" mapstructure:",squash"`
+	Adhoc     Adhoc     `skip:"true" mapstructure:",squash"`
 }
 
 // File can be read from file system.
 type File interface{ Path() string }
-
-func (cfg Adhoc) Path() string {
-	return cfg.Server.Config
-}
 
 func (cfg Agent) Path() string {
 	return cfg.Config
@@ -40,10 +37,37 @@ func (cfg CombinedDbManager) Path() string {
 }
 
 type Adhoc struct {
-	// TODO(abeaumont): supported formats shouldn't be hardcoded.
-	OutputFormat string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
-	*Exec        `mapstructure:",squash"`
-	*Server      `mapstructure:",squash"`
+	AdhocRecord AdhocRecord `skip:"true" mapstructure:",squash"`
+	AdhocServer AdhocServer `skip:"true" mapstructure:",squash"`
+}
+
+type AdhocRecord struct {
+	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
+
+	ApplicationName       string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
+	SampleRate            uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
+	MaxNodesSerialization int    `def:"2048" desc:"max number of nodes used when saving profiles to disk" mapstructure:"max-nodes-serialization"`
+
+	// JSON output configuration
+	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
+	OutputFormat   string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
+
+	// Spy configuration
+	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	SpyName            string `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
+	NoRootDrop         bool   `def:"false" desc:"disables permissions drop when ran under root. use this one if you want to run your command as root" mapstructure:"no-root-drop"`
+	UserName           string `def:"" desc:"starts process under specified user name" mapstructure:"user-name"`
+	GroupName          string `def:"" desc:"starts process under specified group name" mapstructure:"group-name"`
+	PyspyBlocking      bool   `def:"false" desc:"enables blocking mode for pyspy" mapstructure:"pyspy-blocking"`
+	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
+}
+
+type AdhocServer struct {
+	LogLevel string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+
+	APIBindAddr    string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
+	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
 }
 
 type Agent struct {
