@@ -42,6 +42,8 @@ type Adhoc struct {
 }
 
 type AdhocRecord struct {
+	Enable bool `desc:"whether to enable adhoc record, an experimental feature that may change or disappear in the future."`
+
 	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
 
@@ -65,6 +67,8 @@ type AdhocRecord struct {
 }
 
 type AdhocServer struct {
+	Enable bool `desc:"whether to enable adhoc server, an experimental feature that may change or disappear in the future."`
+
 	LogLevel string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 
 	APIBindAddr    string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`

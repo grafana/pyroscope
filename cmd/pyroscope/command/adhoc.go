@@ -1,6 +1,8 @@
 package command
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pyroscope-io/pyroscope/pkg/adhoc"
@@ -26,6 +28,10 @@ func newAdhocRecordCmd(cfg *config.AdhocRecord) *cobra.Command {
 		Short: "Start a new process from arguments, profile it and record the results",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+			if !cfg.Enable {
+				return fmt.Errorf("adhoc record is an experimental feature that may change or disappear in the future, " +
+					"you need to enable it explicitly using '--enable'")
+			}
 			return adhoc.Record(cfg, args)
 		}),
 	}
@@ -43,6 +49,10 @@ func newAdhocServerCmd(cfg *config.AdhocServer) *cobra.Command {
 
 		DisableFlagParsing: true,
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
+			if !cfg.Enable {
+				return fmt.Errorf("adhoc server is an experimental feature that may change or disappear in the future, " +
+					"you need to enable it explicitly using '--enable'")
+			}
 			return adhoc.Server(cfg)
 		}),
 	}
