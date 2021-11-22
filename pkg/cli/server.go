@@ -90,7 +90,12 @@ func newServerService(c *config.Server) (*serverService, error) {
 		socketPath := svc.config.AdminSocketPath
 		adminSvc := admin.NewService(svc.storage)
 		adminCtrl := admin.NewController(svc.logger, adminSvc)
-		adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath)
+		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("admin: %w", err)
+		}
+
+		adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath, httpClient)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
 		}
