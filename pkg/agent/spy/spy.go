@@ -28,6 +28,15 @@ const (
 	Ruby   = "rbspy"
 )
 
+var TypesLookupTable = map[string]ProfileType{
+	// these are not always the same (e.g samples => cpu)
+	"samples":       ProfileCPU,
+	"inuse_objects": ProfileInuseObjects,
+	"alloc_objects": ProfileAllocObjects,
+	"inuse_space":   ProfileInuseSpace,
+	"alloc_space":   ProfileAllocSpace,
+}
+
 func (t ProfileType) IsCumulative() bool {
 	return t == ProfileAllocObjects || t == ProfileAllocSpace
 }

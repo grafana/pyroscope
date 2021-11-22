@@ -106,6 +106,14 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 	return nil
 }
 
+func (x *Profile) SampleTypes() []string {
+	r := []string{}
+	for _, v := range x.SampleType {
+		r = append(r, x.StringTable[v.Type])
+	}
+	return r
+}
+
 func (x *Profile) findFunctionName(locID uint64) (string, bool) {
 	if loc, ok := x.findLocation(locID); ok {
 		if fn, ok := x.findFunction(loc.Line[0].FunctionId); ok {
