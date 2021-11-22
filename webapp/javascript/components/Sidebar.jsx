@@ -16,6 +16,7 @@ import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { useLocation, NavLink } from 'react-router-dom';
+import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import ShortcutsModal from './ShortcutsModal';
 import SlackIcon from './SlackIcon';
 
@@ -80,6 +81,21 @@ function Sidebar(props) {
     );
   }, []);
 
+  const adhoc = (
+    <>
+      <SidebarItem tooltipText="Adhoc Single">
+        <NavLink
+          activeClassName="active-route"
+          data-testid="achoc-single"
+          to={{ pathname: '/adhoc-single', search }}
+          exact
+        >
+          <FontAwesomeIcon icon={faWindowMaximize} />
+        </NavLink>
+      </SidebarItem>
+    </>
+  );
+
   return (
     <div className="sidebar">
       <span className="logo" onClick={() => history.push('/')} />
@@ -113,16 +129,7 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faChartBar} />
         </NavLink>
       </SidebarItem>
-      <SidebarItem tooltipText="Adhoc">
-        <NavLink
-          activeClassName="active-route"
-          data-testid="achoc-single"
-          to={{ pathname: '/adhoc-single', search }}
-          exact
-        >
-          <FontAwesomeIcon icon={faWindowMaximize} />
-        </NavLink>
-      </SidebarItem>
+      {isExperimentalAdhocUIEnabled && adhoc}
       <SidebarItem tooltipText="Alerts - Coming Soon">
         <button type="button">
           <FontAwesomeIcon icon={faBell} />
