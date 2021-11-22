@@ -48,6 +48,7 @@ type AdhocRecord struct {
 	ApplicationName       string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
 	SampleRate            uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	MaxNodesSerialization int    `def:"2048" desc:"max number of nodes used when saving profiles to disk" mapstructure:"max-nodes-serialization"`
+	IngestionMode         string `def:"exec" desc:"ingestion mode to use, supported modes are: 'exec', 'push', 'pull'" mapstructure:"ingestion-mode"`
 
 	// JSON output configuration
 	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`

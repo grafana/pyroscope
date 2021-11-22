@@ -39,8 +39,23 @@ func Record(cfg *config.AdhocRecord, args []string) error {
 	}
 
 	t0 := time.Now()
-	if err := exec.Cli(newExecConfig(cfg), args, st, logger); err != nil {
-		return err
+
+	switch cfg.IngestionMode {
+	case "exec":
+		if err := exec.Cli(newExecConfig(cfg), args, st, logger); err != nil {
+			logger.WithError(err).Error("running profiled program in exec mode")
+			return err
+		}
+	case "push":
+		push := newPush(cfg, args, st, logger)
+		if err := push.run(); err != nil {
+			logger.WithError(err).Error("running profiled program in push mode")
+			return err
+		}
+	case "pull":
+		return fmt.Errorf("pull mode is not yet supported")
+	default:
+		return fmt.Errorf("unsupported ingestion mode: %s", cfg.IngestionMode)
 	}
 	t1 := time.Now()
 	dataDir := dataDirectory()
