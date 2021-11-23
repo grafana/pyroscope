@@ -96,14 +96,14 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 			// TODO: add error handling for all of these
 
 			for _, sampleTypeStr := range profile.SampleTypes() {
-				var t spy.ProfileType
+				var t *SampleTypeConfig
 				var ok bool
-				// TODO switch to DefaultSampleTypeMapping
-				if t, ok = spy.TypesLookupTable[sampleTypeStr]; !ok {
+				if t, ok = DefaultSampleTypeMapping[sampleTypeStr]; !ok {
 					continue
 				}
 				var tries map[string]*transporttrie.Trie
 				var prevTries map[string]*transporttrie.Trie
+
 				if profile != nil {
 					tries = pprofToTries(pi.Key.Normalized(), sampleTypeStr, profile)
 				}
@@ -118,10 +118,14 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 					for k, v := range sk.Labels() {
 						input.Key.Add(k, v)
 					}
-					input.Key = ensureKeyHasSuffix(pi.Key, "."+string(t))
+					suffix := sampleTypeStr
+					if t.DisplayName != "" {
+						suffix = t.DisplayName
+					}
+					input.Key = ensureKeyHasSuffix(pi.Key, "."+suffix)
 					input.Val = tree.New()
 					resTrie := trie
-					if t.IsCumulative() {
+					if t.Cumulative {
 						if prevTrie := prevTries[trieKey]; prevTrie != nil {
 							resTrie = trie.Diff(prevTrie)
 						} else {
@@ -132,8 +136,8 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 					resTrie.Iterate(func(name []byte, val uint64) {
 						input.Val.Insert(name, val)
 					})
-					input.Units = t.Units()
-					input.AggregationType = t.AggregationType()
+					input.Units = t.Units
+					input.AggregationType = t.Aggregation
 					if err = ctrl.storage.Put(&input); err != nil {
 						ctrl.writeInternalServerError(w, err, "error happened while ingesting data")
 						return
