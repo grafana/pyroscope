@@ -242,7 +242,7 @@ const TableBody = React.memo(
       <td>
         <button
           className="table-item-button"
-          onClick={handleTableItemClick ? () => handleTableItemClick(x) : null}
+          onClick={() => handleTableItemClick(x)}
         >
           <span className="color-reference" style={style} />
           <div
