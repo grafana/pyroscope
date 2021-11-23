@@ -15,11 +15,15 @@ func newServerCmd(cfg *config.Server) *cobra.Command {
 
 		DisableFlagParsing: true,
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
-			return cli.StartServer(cfg)
+			srv, err := cli.NewServer(cfg)
+			if err != nil {
+				return err
+			}
+			return srv.Start()
 		}),
 	}
 
-	cli.PopulateFlagSet(cfg, serverCmd.Flags(), vpr)
+	cli.PopulateFlagSet(cfg, serverCmd.Flags(), vpr, cli.WithSkip("scrape-configs"))
 	_ = serverCmd.Flags().MarkHidden("metrics-export-rules")
 	return serverCmd
 }

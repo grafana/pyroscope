@@ -9,59 +9,43 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
-func StartServer(c *config.Server) error {
-	logLevel, err := logrus.ParseLevel(c.LogLevel)
+func NewServer(c *config.Server) (*Server, error) {
+	svc, err := newServerService(c)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("could not initialize server: %w", err)
 	}
-	logrus.SetLevel(logLevel)
-	logger := logrus.StandardLogger()
-	srv, err := newServerService(logger, c)
-	if err != nil {
-		return fmt.Errorf("could not initialize server: %w", err)
-	}
+	return &Server{svc: svc}, nil
+}
 
-	if srv.config.Auth.JWTSecret == "" {
-		srv.config.Auth.JWTSecret, err = srv.storage.JWT()
-		if err != nil {
-			return err
-		}
-	}
+func (s *Server) Stop() { s.svc.Stop() }
 
-	var stopTime time.Time
-	s := make(chan os.Signal, 1)
-	signal.Notify(s, syscall.SIGINT, syscall.SIGTERM)
-
+func (s *Server) Start() error {
 	exited := make(chan error)
 	go func() {
-		exited <- srv.Start()
+		exited <- s.svc.Start()
 		close(exited)
 	}()
 
-	select {
-	case <-s:
-		logger.Info("stopping server")
-		stopTime = time.Now()
-		srv.Stop()
-		if err = <-exited; err != nil {
-			logger.WithError(err).Error("failed to stop server gracefully")
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	for {
+		select {
+		case err := <-exited:
 			return err
-		}
-		logger.WithField("duration", time.Since(stopTime)).Info("server stopped gracefully")
-		return nil
 
-	case err = <-exited:
-		if err == nil {
-			// Should never happen.
-			logger.Error("server exited")
+		case <-sigs:
+			s.svc.logger.Info("stopping server")
+			stopTime := time.Now()
+			s.svc.Stop()
+			if err := <-exited; err != nil {
+				s.svc.logger.WithError(err).Error("failed to stop server gracefully")
+				return err
+			}
+			s.svc.logger.WithField("duration", time.Since(stopTime)).Info("server stopped gracefully")
 			return nil
 		}
-		logger.WithError(err).Error("server failed")
-		return err
 	}
 }

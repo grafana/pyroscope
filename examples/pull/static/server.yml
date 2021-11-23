@@ -1,0 +1,11 @@
+---
+log-level: debug
+scrape-configs:
+  - job-name: testing
+    enabled-profiles: [cpu, mem]
+    static-configs:
+      - application: hotrod
+        targets:
+          - hotrod:6060
+        labels:
+          env: dev

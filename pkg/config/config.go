@@ -6,6 +6,7 @@ package config
 import (
 	"time"
 
+	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -116,6 +117,8 @@ type Server struct {
 
 	AdminSocketPath         string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
 	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
+
+	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule

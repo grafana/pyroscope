@@ -1,0 +1,28 @@
+version: '3.9'
+services:
+  pyroscope:
+    image: 'kolesnikovae/pyroscope:pull'
+    ports:
+      - 4040:4040
+    command:
+      - server
+    volumes:
+      - ./server.yml:/etc/pyroscope/server.yml
+
+  hotrod:
+    image: 'kolesnikovae/hotrod-golang:dev'
+    ports:
+      - 8080:8080
+      - 6060:6060
+    environment:
+      JAEGER_AGENT_HOST: jaeger
+      JAEGER_AGENT_PORT: '6831'
+    command:
+      - all
+
+  # Required for hotrod.
+  jaeger:
+    image: 'jaegertracing/all-in-one:1.11'
+    ports:
+      - '6831:6831/udp'
+      - '16686:16686'

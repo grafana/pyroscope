@@ -87,7 +87,7 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 
 	for _, s := range x.Sample {
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			name, ok := x.findFunctionName(s.LocationId[i])
+			name, ok := FindFunctionName(x, s.LocationId[i])
 			if !ok {
 				continue
 			}
@@ -106,16 +106,16 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 	return nil
 }
 
-func (x *Profile) findFunctionName(locID uint64) (string, bool) {
-	if loc, ok := x.findLocation(locID); ok {
-		if fn, ok := x.findFunction(loc.Line[0].FunctionId); ok {
+func FindFunctionName(x *Profile, locID uint64) (string, bool) {
+	if loc, ok := FindLocation(x, locID); ok {
+		if fn, ok := FindFunction(x, loc.Line[0].FunctionId); ok {
 			return x.StringTable[fn.Name], true
 		}
 	}
 	return "", false
 }
 
-func (x *Profile) findLocation(lid uint64) (*Location, bool) {
+func FindLocation(x *Profile, lid uint64) (*Location, bool) {
 	idx := sort.Search(len(x.Location), func(i int) bool {
 		return x.Location[i].Id >= lid
 	})
@@ -127,7 +127,7 @@ func (x *Profile) findLocation(lid uint64) (*Location, bool) {
 	return nil, false
 }
 
-func (x *Profile) findFunction(fid uint64) (*Function, bool) {
+func FindFunction(x *Profile, fid uint64) (*Function, bool) {
 	idx := sort.Search(len(x.Function), func(i int) bool {
 		return x.Function[i].Id >= fid
 	})
