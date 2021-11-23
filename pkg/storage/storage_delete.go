@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
@@ -30,6 +31,7 @@ func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 			continue
 		}
 		d.Delete(dimension.Key(sk))
+
 		if len(d.Keys) > 0 {
 			continue
 		}
@@ -44,4 +46,242 @@ func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 		}
 	}
 	return s.segments.Delete(sk)
+}
+
+// DeleteApp fully deletes an app
+// That is, it deletes deletes Segment, Dictionary and Trees
+// And also deletes Dimensions and Labels if appropriate,
+// IE when the references do not exist
+//
+// TODO: make this a test?
+// To make it concrete, the comments will use as an example:
+// Key: 'simple.golang.app2.cpu'
+//
+// Dimensions:
+// i:__name__:simple.golang.app2.cpu =>
+//			-simple.golang.app2.cpu{foo=bar,function=fast} (segmentKey)
+//			-simple.golang.app2.cpu{foo=bar,function=slow}
+//			simple.golang.app2.cpu{foo=bar}
+//			simple.golang.app2.cpu{}
+// i:function:fast =>
+//		,simple.golang.app.cpu{foo=bar,function=fast}
+//		-simple.golang.app2.cpu{foo=bar,function=fast}
+// i:function:slow
+//
+// Trees:
+// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637611090
+// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637611100
+// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637626800
+// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637626900
+// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637626920
+// t:simple.golang.app2.cpu{foo=bar,function=fast}:1:1637626900
+// t:simple.golang.app2.cpu{foo=bar,function=fast}:2:1637610200
+// t:simple.golang.app2.cpu{foo=bar,function=fast}:2:1637626200
+// t:simple.golang.app2.cpu{foo=bar,function=fast}:4:1637603200
+// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637611090
+// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637611100
+// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637626800
+// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637626900
+// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637626920
+// t:simple.golang.app2.cpu{foo=bar,function=slow}:1:1637626900
+// t:simple.golang.app2.cpu{foo=bar,function=slow}:2:1637610200
+// t:simple.golang.app2.cpu{foo=bar,function=slow}:2:1637626200
+// t:simple.golang.app2.cpu{foo=bar,function=slow}:4:1637603200
+// t:simple.golang.app2.cpu{foo=bar}:0:1637626800
+// t:simple.golang.app2.cpu{}:0:1637626900
+// t:simple.golang.app2.cpu{}:0:1637626920
+// t:simple.golang.app2.cpu{}:1:1637626900
+//
+// Dictionaries:
+// d:simple.golang.app2.cpu
+//
+// Segments:
+// s:simple.golang.app2.cpu{foo=bar,function=fast}
+// s:simple.golang.app2.cpu{foo=bar,function=slow}
+// s:simple.golang.app2.cpu{foo=bar}
+// s:simple.golang.app2.cpu{}
+
+func (s *Storage) DeleteApp(appname string) error {
+	/***********************************/
+	/*      V a l i d a t i o n s      */
+	/***********************************/
+	s.logger.Debugf("deleting app '%s' \n", appname)
+	key, err := segment.ParseKey(appname)
+	if err != nil {
+		return err
+	}
+
+	// the only label expected is __name__
+	s.logger.Debugf("found %d labels\n", len(key.Labels()))
+	if len(key.Labels()) != 1 {
+		return fmt.Errorf("only app name is supported")
+	}
+
+	s.logger.Debugf("looking for __name__ key\n")
+	nameKey := "__name__"
+	value, ok := key.Labels()[nameKey]
+	if !ok {
+		return fmt.Errorf("could not required find app name")
+	}
+
+	// Invariants
+	// From down below we know:
+	// That there's only one label, '__name__'
+
+	/*****************************/
+	/*      D e l e t i o n      */
+	/*****************************/
+
+	// TODO:
+	// DELETE TREES ONLY AFTER
+	prefix := treePrefix.key(appname + "{")
+	s.logger.Debugf("dropping from DISK all trees with prefix '%s'\n", prefix)
+	if err := s.trees.DropPrefix(prefix); err != nil {
+		return err
+	}
+
+	// Discarding cached items is necessary because otherwise
+	// those would be written back to disk on eviction.
+	s.logger.Debugf("dropping from CACHE all trees with prefix '%s'\n", appname+"{")
+	s.trees.DiscardPrefix(appname + "{")
+
+	// Delete the name dimension
+	// TODO what about the other dimensions?
+	// for example
+	// i:foo:bar
+	// i:function:fast
+	// i:function:slow
+	// we have to figure out if they have
+	s.logger.Debugf("looking up dimensions pointed by '%s:%s'\n", nameKey, value)
+
+	//	s.dimensions.Delete(dimension.Key())
+
+	// TODO
+	// this doesn't seem correct?
+	// it looks like i need to prefix with __name__
+	//	s.logger.Debugf("deleting dimension '%s'\n", dimension.Key(sk))
+	// this is deleting that key
+	//d.Delete(dimension.Key(sk))
+
+	// TODO save back to the db?
+
+	// TODO
+	// not working
+	//s.logger.Debugf("deleting dimension '__name__:%s'\n", appname)
+	//d.Delete(dimension.Key("__name__:" + appname))
+
+	// TODO maybe this namekey is wrong?
+	// i think i need to pass i: ?
+	// BTW TODO what does i: stand for?
+	//d, ok := s.lookupDimensionKV(nameKey, value)
+	s.logger.Debug("appname ", appname)
+	d, ok := s.lookupAppDimension(appname)
+	if !ok {
+		// TODO
+		// this doesn't mean the storage doesn't exist
+		// it just means it failed for some reason
+		return fmt.Errorf("dimensions don't exist")
+	}
+
+	// delete all dimensions our __name__ was pointing to
+	// eg
+	// "simple.golang.app2.cpu{foo=bar,function=fast}"
+	// "simple.golang.app2.cpu{foo=bar,function=slow}"
+	s.logger.Debugf("deleting all dimensions pointed by '%s:%s'", nameKey, value)
+	for _, segmentKey := range d.Keys {
+
+		s.logger.Debug("segmentKey", segmentKey)
+		// segmentKey: simple.golang.app2.cpu{foo=bar,function=fast}
+		//		s.logger.Debugf("deleting dimension %s", myValue)
+		sk2, err := segment.ParseKey(string(segmentKey))
+		if err != nil {
+			return err
+		}
+
+		// labels = foo=bar,function=fast
+		for labelKey, labelValue := range sk2.Labels() {
+			s.logger.Debugf("labelKey %s\n", labelKey)
+			s.logger.Debugf("labelValue %s\n", labelValue)
+
+			// function=fast
+			d2, ok := s.lookupDimensionKV(labelKey, labelValue)
+			if !ok {
+				continue
+			}
+
+			//
+			// d2.Delete(dimension.Key(sk))
+			s.logger.Debugf("deleting segmentKey %s\n", segmentKey)
+			d2.Delete(segmentKey)
+
+			// there are no more keys
+			// so we can remove this dimension
+			if len(d.Keys) > 0 {
+				continue
+			}
+
+			//			s.dimensions.Delete(key)
+			s.dimensions.Delete(labelKey + ":" + labelValue)
+
+			// there's no cache here
+			if err := s.labels.Delete(labelKey, labelValue); err != nil {
+				return err
+			}
+		}
+
+		// There are no more references.
+		//		d.Delete(myValue)
+	}
+
+	s.logger.Debug("deleting dimension", "__name__"+":"+appname)
+	s.dimensions.Delete("__name__" + ":" + appname)
+
+	// delete the dictionary? TODO
+	s.logger.Debugf("deleting dictionary '%s'", key.DictKey())
+	if err := s.dicts.Delete(key.DictKey()); err != nil {
+		return err
+	}
+
+	if err := s.labels.Delete("__name__", appname); err != nil {
+		return err
+	}
+
+	// delete labels? TODO
+	//	s.logger.Debugf("deleting labels '%s:%s'", nameKey, value)
+	//	if err := s.labels.Delete(nameKey, value); err != nil {
+	//		return err
+	//	}
+
+	//
+	// TODO what about dimensions such as
+	// i:foo:bar
+	// i:function:fast
+	// i:function:slow
+
+	// TODO
+	// delete segments
+	// s:simple.golang.app2.cpu{foo=bar,function=fast}
+	// s:simple.golang.app2.cpu{foo=bar,function=slow}
+	// s:simple.golang.app2.cpu{foo=bar}
+
+	//	}
+	// TODO
+	// s:simple.golang.app2.cpu{foo=bar,function=fast}
+	// s:simple.golang.app2.cpu{foo=bar,function=slow}
+	// s:simple.golang.app2.cpu{foo=bar}
+	// s:simple.golang.app2.cpu{}
+	//	return s.segments.Delete(sk)
+
+	// TODO do this after
+	// s.dimensions.Delete(nameKey + ":" + value)
+
+	err = s.segments.DropPrefix(segmentPrefix.key(appname + "{"))
+	if err != nil {
+		return err
+	}
+	// Discarding cached items is necessary because otherwise
+	// those would be written back to disk on eviction.
+	s.logger.Debugf("dropping from CACHE all segments with prefix '%s'\n", appname+"{")
+	s.segments.DiscardPrefix(appname + "{")
+	return nil
 }

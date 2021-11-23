@@ -140,9 +140,9 @@ func (svc *serverService) Start() error {
 
 	svc.healthController.Start()
 	svc.directUpstream.Start()
-	if err := svc.selfProfiling.Start(); err != nil {
-		svc.logger.WithError(err).Error("failed to start self-profiling")
-	}
+	//	if err := svc.selfProfiling.Start(); err != nil {
+	//		svc.logger.WithError(err).Error("failed to start self-profiling")
+	//	}
 
 	if svc.config.EnableExperimentalAdmin {
 		g.Go(func() error {
@@ -172,7 +172,16 @@ func (svc *serverService) Stop() {
 
 //revive:disable-next-line:confusing-naming methods are different
 func (svc *serverService) stop() {
+	if svc.config.EnableExperimentalAdmin {
+		svc.logger.Debug("stopping admin server")
+		svc.adminServer.Stop()
+	}
+
 	svc.controller.Drain()
+	svc.logger.Debug("stopping http server")
+	if err := svc.controller.Stop(); err != nil {
+		svc.logger.WithError(err).Error("controller stop")
+	}
 	svc.logger.Debug("stopping debug reporter")
 	svc.debugReporter.Stop()
 	svc.healthController.Stop()
@@ -188,13 +197,5 @@ func (svc *serverService) stop() {
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
 	}
-	svc.logger.Debug("stopping http server")
-	if err := svc.controller.Stop(); err != nil {
-		svc.logger.WithError(err).Error("controller stop")
-	}
 
-	if svc.config.EnableExperimentalAdmin {
-		svc.logger.Debug("stopping admin server")
-		svc.adminServer.Stop()
-	}
 }

@@ -23,7 +23,7 @@ func NewController(log *logrus.Logger, svc *AdminService) *Controller {
 
 // HandleGetApps handles GET requests
 func (ctrl *Controller) HandleGetApps(w http.ResponseWriter, _ *http.Request) {
-	appNames := ctrl.svc.GetAppNames()
+	appNames := ctrl.svc.GetApps()
 
 	w.WriteHeader(200)
 	ctrl.writeResponseJSON(w, appNames)

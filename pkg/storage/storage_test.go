@@ -169,6 +169,55 @@ var _ = Describe("storage package", func() {
 					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
+			Context("delete app by name", func() {
+				It("works correctly", func() {
+					Expect(true).To(Equal(false))
+					tree1 := tree.New()
+					tree1.Insert([]byte("a;b"), uint64(1))
+
+					//					tree1.Insert([]byte("a;c"), uint64(2))
+
+					//					tree2 := tree.New()
+					//					tree2.Insert([]byte("c;d"), uint64(1))
+					//					tree2.Insert([]byte("e;f"), uint64(2))
+					//					st := testing.SimpleTime(10)
+					//					et := testing.SimpleTime(19)
+					//					st2 := testing.SimpleTime(0)
+					//					et2 := testing.SimpleTime(30)
+					//					key, _ := segment.ParseKey("foo")
+					//
+					//					err := s.Put(&PutInput{
+					//						StartTime:  st,
+					//						EndTime:    et,
+					//						Key:        key,
+					//						Val:        tree1,
+					//						SpyName:    "testspy",
+					//						SampleRate: 100,
+					//					})
+					//					Expect(err).ToNot(HaveOccurred())
+					//
+					//					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
+					//					s.Put(&PutInput{
+					//						StartTime:  st,
+					//						EndTime:    et,
+					//						Key:        key,
+					//						Val:        tree2,
+					//						SpyName:    "testspy",
+					//						SampleRate: 100,
+					//					})
+					//
+					//					gOut, err := s.Get(&GetInput{
+					//						StartTime: st2,
+					//						EndTime:   et2,
+					//						Key:       key,
+					//					})
+					//
+					//					Expect(err).ToNot(HaveOccurred())
+					//					Expect(gOut.Tree).ToNot(BeNil())
+					//					Expect(gOut.Tree.String()).To(Equal(tree2.String()))
+					//					Expect(s.Close()).ToNot(HaveOccurred())
+				})
+			})
 		})
 
 		Context("smoke tests", func() {
