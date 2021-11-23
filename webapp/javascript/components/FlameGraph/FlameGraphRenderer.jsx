@@ -42,8 +42,6 @@ class FlameGraphRenderer extends React.Component {
 
       flamegraphConfigs: this.initialFlamegraphState,
     };
-
-    this.onTableItemClick = this.onTableItemClick.bind(this);
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -126,9 +124,9 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  onTableItemClick(tableItem) {
+  onTableItemClick = (tableItem) => {
     this.handleSearchChange(tableItem.name);
-  }
+  };
 
   updateSortBy = (newSortBy) => {
     let dir = this.state.sortByDirection;
