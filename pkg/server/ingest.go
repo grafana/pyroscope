@@ -138,13 +138,9 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 					})
 					input.Units = t.Units
 					input.AggregationType = t.Aggregation
-					if err = ctrl.storage.Put(&input); err != nil {
-						ctrl.writeInternalServerError(w, err, "error happened while ingesting data")
-						return
-					}
+					inputs = append(inputs, &input)
 				}
 			}
-
 		}
 	default:
 		err = convert.ParseGroups(r.Body, cb)
