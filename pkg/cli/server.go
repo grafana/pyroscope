@@ -140,9 +140,9 @@ func (svc *serverService) Start() error {
 
 	svc.healthController.Start()
 	svc.directUpstream.Start()
-	//	if err := svc.selfProfiling.Start(); err != nil {
-	//		svc.logger.WithError(err).Error("failed to start self-profiling")
-	//	}
+	if err := svc.selfProfiling.Start(); err != nil {
+		svc.logger.WithError(err).Error("failed to start self-profiling")
+	}
 
 	if svc.config.EnableExperimentalAdmin {
 		g.Go(func() error {

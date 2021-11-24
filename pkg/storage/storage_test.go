@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"strconv"
 	"time"
@@ -171,9 +172,110 @@ var _ = Describe("storage package", func() {
 			})
 			Context("delete app by name", func() {
 				It("works correctly", func() {
-					Expect(true).To(Equal(false))
+					appname := "my.app.cpu"
+
+					// We insert info for an app
 					tree1 := tree.New()
 					tree1.Insert([]byte("a;b"), uint64(1))
+
+					st := testing.SimpleTime(10)
+					et := testing.SimpleTime(19)
+					key, _ := segment.ParseKey(appname)
+					err := s.Put(&PutInput{
+						StartTime:  st,
+						EndTime:    et,
+						Key:        key,
+						Val:        tree1,
+						SpyName:    "testspy",
+						SampleRate: 100,
+					})
+					Expect(err).ToNot(HaveOccurred())
+
+					// These assertions are for my own sanity
+					// And to make the test more clear
+
+					s.trees.Dump()
+					_ = fmt.Println
+
+					// Let's flush that to disk
+					// TODO do I need this?
+					// supposedly i need to flush this bc it would serialize
+					// and create a dictionary
+					// however that doesn't seem to be working
+					s.trees.Flush()
+
+					/*************************/
+					/*  D i m e n s i o n s  */
+					/*************************/
+					dimension, ok := s.lookupAppDimension(appname)
+					// TODO is this enough?
+					Expect(ok).To(BeTrue())
+
+					/***************/
+					/*  T r e e s  */
+					/***************/
+					// There's something in the tree cache
+					// And that something is our brand new tree!
+					Expect(s.trees.Cache.Size()).To(Equal(uint64(1)))
+					depth := 0 // TODO for this case is it even possible to have a different depth?
+					treeKeyName := key.TreeKey(depth, st)
+					t, ok := s.trees.Cache.Lookup(treeKeyName)
+					Expect(ok).To(BeTrue())
+					Expect(t).To(Equal(tree1))
+
+					/***************/
+					/*  D i c t s  */
+					/***************/
+
+					// TODO there should be only one right????
+					dimensionKey := dimension.Keys[0]
+					segmentKey, err := segment.ParseKey(string(dimensionKey))
+					Expect(err).ToNot(HaveOccurred())
+
+					fmt.Println("dumping dicts")
+					s.dicts.Dump()
+					fmt.Println("finished dumping dicts")
+					fmt.Println("key dictkey")
+					fmt.Println(key.DictKey())
+					fmt.Println("segmentKey", segmentKey)
+					fmt.Println("dictKey", segmentKey.DictKey())
+
+					Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
+					_, ok = s.dicts.Cache.Lookup(segmentKey.DictKey())
+
+					Expect(ok).To(BeTrue())
+
+					/*************************/
+					/*  D e l e t e   a p p  */
+					/*************************/
+					err = s.DeleteApp(appname)
+					Expect(err).ToNot(HaveOccurred())
+
+					/***************/
+					/*  T r e e s  */
+					/***************/
+					// Trees should've been deleted from CACHE
+					Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
+					_, ok = s.trees.Cache.Lookup(treeKeyName)
+					Expect(ok).To(BeFalse())
+					// Trees should've been also deleted from DISK
+					// TODO: how to check for that?
+
+					/*************************/
+					/*  D i m e n s i o n s  */
+					/*************************/
+					_, ok = s.lookupAppDimension(appname)
+					Expect(ok).To(BeFalse())
+
+					/***************/
+					/*  D i c t s  */
+					/***************/
+					_, ok = s.dicts.Cache.Lookup(key.DictKey())
+					Expect(ok).To(BeFalse())
+
+					// Now all this stuff should've been deleted
+					// Trees should've been deleted
+					// Both in cache and in disk?
 
 					//					tree1.Insert([]byte("a;c"), uint64(2))
 
