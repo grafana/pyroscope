@@ -36,8 +36,7 @@ Pyroscope is an open source continuous profiling platform. It will help you:
 
 ## 🔥 [Pyroscope Live Demo](https://demo.pyroscope.io/?name=hotrod.python.frontend%7B%7D) 🔥
 
-[![Pyroscope GIF Demo](https://user-images.githubusercontent.com/23323466/143321289-20e2c31c-8f2f-48b9-a666-2430e06dff00.mov)](https://demo.pyroscope.io/)
-
+[![Pyroscope GIF Demo](https://user-images.githubusercontent.com/23323466/143324845-16ff72df-231e-412d-bd0a-38ef2e09cba8.gif)](https://demo.pyroscope.io/)
 
 ## Features
 
