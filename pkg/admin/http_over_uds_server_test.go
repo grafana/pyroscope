@@ -113,9 +113,10 @@ var _ = Describe("HTTP Over UDS", func() {
 
 			waitUntilServerIsReady(socketAddr)
 
-			server.Stop()
+			err = server.Stop()
 
 			Expect(socketAddr).ToNot(BeAnExistingFile())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })
