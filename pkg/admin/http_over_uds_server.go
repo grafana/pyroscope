@@ -71,7 +71,15 @@ func (m myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (u *UdsHTTPServer) Start(handler http.Handler) error {
 	h := myHandler{handler}
 	u.server = &http.Server{Handler: h}
-	return u.server.Serve(u.listener)
+	err := u.server.Serve(u.listener)
+
+	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
+	// the returned error is ErrServerClosed.
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+
+	return err
 }
 
 // createListener creates a listener on socketAddr UDS

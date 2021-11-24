@@ -105,7 +105,10 @@ var _ = Describe("HTTP Over UDS", func() {
 			server, err := admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 			Expect(err).ToNot(HaveOccurred())
 			go func() {
-				server.Start(http.NewServeMux())
+				defer GinkgoRecover()
+
+				err := server.Start(http.NewServeMux())
+				Expect(err).ToNot(HaveOccurred())
 			}()
 
 			waitUntilServerIsReady(socketAddr)
