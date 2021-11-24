@@ -257,7 +257,6 @@ func (svc *serverService) stop() {
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
-
 }
 
 func (svc *serverService) ApplyConfig(c *config.Server) error {
