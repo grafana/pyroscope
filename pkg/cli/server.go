@@ -245,16 +245,19 @@ func (svc *serverService) stop() {
 	svc.selfProfiling.Stop()
 	svc.logger.Debug("stopping upstream")
 	svc.directUpstream.Stop()
+	svc.logger.Debug("stopping storage")
+	if err := svc.storage.Close(); err != nil {
+		svc.logger.WithError(err).Error("storage close")
+	}
+	// we stop the http server as the last thing due to:
+	// 1. we may still want to bserve metric values while storage is closing
+	// 2. we want the /healthz endpoint to still be responding while server is shutting down
+	// (we are thinking in a k8s context here, but maybe 'terminationGracePeriodSeconds' makes this unnecessary)
 	svc.logger.Debug("stopping http server")
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
 
-	// storage needs to be the last thing to shutdown
-	svc.logger.Debug("stopping storage")
-	if err := svc.storage.Close(); err != nil {
-		svc.logger.WithError(err).Error("storage close")
-	}
 }
 
 func (svc *serverService) ApplyConfig(c *config.Server) error {
