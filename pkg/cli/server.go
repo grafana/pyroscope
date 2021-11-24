@@ -223,6 +223,12 @@ func (svc *serverService) Stop() {
 
 //revive:disable-next-line:confusing-naming methods are different
 func (svc *serverService) stop() {
+	if svc.config.EnableExperimentalAdmin {
+		svc.logger.Debug("stopping admin server")
+		if err := svc.adminServer.Stop(); err != nil {
+			svc.logger.WithError(err).Error("admin server stop")
+		}
+	}
 	svc.controller.Drain()
 	svc.logger.Debug("stopping discovery manager")
 	svc.discoveryManager.Stop()
@@ -239,19 +245,15 @@ func (svc *serverService) stop() {
 	svc.selfProfiling.Stop()
 	svc.logger.Debug("stopping upstream")
 	svc.directUpstream.Stop()
-	svc.logger.Debug("stopping storage")
-	if err := svc.storage.Close(); err != nil {
-		svc.logger.WithError(err).Error("storage close")
-	}
 	svc.logger.Debug("stopping http server")
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
-	if svc.config.EnableExperimentalAdmin {
-		svc.logger.Debug("stopping admin server")
-		if err := svc.adminServer.Stop(); err != nil {
-			svc.logger.WithError(err).Error("admin server stop")
-		}
+
+	// storage needs to be the last thing to shutdown
+	svc.logger.Debug("stopping storage")
+	if err := svc.storage.Close(); err != nil {
+		svc.logger.WithError(err).Error("storage close")
 	}
 }
 
