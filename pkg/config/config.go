@@ -119,6 +119,8 @@ type Server struct {
 	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
+
+	EnableSelfProfiling bool `def:"true" desc:"enable profiling of pyroscope itself" mapstructure:"enable-self-profiling"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule
