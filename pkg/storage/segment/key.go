@@ -176,6 +176,14 @@ func (k *Key) Normalized() string {
 	return sb.String()
 }
 
+func (k *Key) Clone() *Key {
+	newMap := make(map[string]string)
+	for k, v := range k.labels {
+		newMap[k] = v
+	}
+	return &Key{labels: newMap}
+}
+
 func (k *Key) AppName() string {
 	return k.labels["__name__"]
 }
