@@ -87,6 +87,7 @@ func Start(cfg Config) (*Profiler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("new session: %w", err)
 	}
+	upstream.Start()
 	if err = session.Start(); err != nil {
 		return nil, fmt.Errorf("start session: %w", err)
 	}
@@ -94,9 +95,10 @@ func Start(cfg Config) (*Profiler, error) {
 	return &Profiler{session: session}, nil
 }
 
-// Stop stops continious profiling session
+// Stop stops continuous profiling session
 func (p *Profiler) Stop() error {
 	p.session.Stop()
+	// FIXME(abeaumont): call upstream.Stop()
 	return nil
 }
 
