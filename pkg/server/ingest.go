@@ -59,6 +59,7 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 	},
 }
 
+// revive:disable:cognitive-complexity I don't want to split this into 2 functions just to please the linter
 func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	pi, err := ingestParamsFromRequest(r)
 	if err != nil {
@@ -166,6 +167,8 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	ctrl.statsInc("ingest:" + pi.SpyName)
 	ctrl.appStats.Add(hashString(pi.Key.AppName()))
 }
+
+// revive:enable:cognitive-complexity
 
 func (ctrl *Controller) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 	pi.Val = tree.New()
