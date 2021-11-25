@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 package admin_test
 
 import (
@@ -15,6 +18,8 @@ type mockHandler struct{}
 
 func (m mockHandler) ServeHTTP(http.ResponseWriter, *http.Request) {}
 
+var fastTimeout = admin.WithTimeout(time.Millisecond * 1)
+
 var _ = Describe("HTTP Over UDS", func() {
 	var (
 		socketAddr string
@@ -24,7 +29,8 @@ var _ = Describe("HTTP Over UDS", func() {
 
 	When("passed an empty socket address", func() {
 		It("should give an error", func() {
-			_, err := admin.NewUdsHTTPServer("")
+			httpClient, _ := admin.NewHTTPOverUDSClient("")
+			_, err := admin.NewUdsHTTPServer("", httpClient)
 
 			Expect(err).To(MatchError(admin.ErrInvalidSocketPathname))
 		})
@@ -37,7 +43,8 @@ var _ = Describe("HTTP Over UDS", func() {
 				Skip("test is invalid when running as root")
 			}
 
-			_, err := admin.NewUdsHTTPServer("/non_existing_path")
+			socketAddr := "/non_existing_path"
+			_, err := admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 
 			// TODO how to test for wrapped errors?
 			// Expect(err).To(MatchError(fmt.Errorf("could not bind to socket")))
@@ -58,12 +65,12 @@ var _ = Describe("HTTP Over UDS", func() {
 			It("should take over that socket", func() {
 				// create server 1
 				By("creating server 1 that's not running")
-				_, err := admin.NewUdsHTTPServer(socketAddr)
+				_, err := admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 				Expect(err).ToNot(HaveOccurred())
 
 				By("creating server 2")
 				// create server 2
-				_, err = admin.NewUdsHTTPServer(socketAddr)
+				_, err = admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -71,7 +78,7 @@ var _ = Describe("HTTP Over UDS", func() {
 		When("that socket is still responding", func() {
 			It("should error", func() {
 				By("creating server 1 and running it")
-				server, err := admin.NewUdsHTTPServer(socketAddr)
+				server, err := admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 				Expect(err).ToNot(HaveOccurred())
 
 				go func() {
@@ -82,7 +89,7 @@ var _ = Describe("HTTP Over UDS", func() {
 
 				// create server 2
 				By("creating server 2")
-				_, err = admin.NewUdsHTTPServer(socketAddr)
+				_, err = admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 				Expect(err).To(MatchError(admin.ErrSocketStillResponding))
 			})
 		})
@@ -95,27 +102,29 @@ var _ = Describe("HTTP Over UDS", func() {
 			defer cleanup()
 
 			// start the server
-			server, err := admin.NewUdsHTTPServer(socketAddr)
+			server, err := admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 			Expect(err).ToNot(HaveOccurred())
 			go func() {
-				server.Start(http.NewServeMux())
+				defer GinkgoRecover()
+
+				err := server.Start(http.NewServeMux())
+				Expect(err).ToNot(HaveOccurred())
 			}()
 
 			waitUntilServerIsReady(socketAddr)
 
-			server.Stop()
+			err = server.Stop()
 
 			Expect(socketAddr).ToNot(BeAnExistingFile())
+			Expect(err).ToNot(HaveOccurred())
 		})
 	})
 })
 
 func waitUntilServerIsReady(socketAddr string) error {
 	const MaxReadinessRetries = 5
-	client, err := admin.NewHTTPOverUDSClient(socketAddr)
-	if err != nil {
-		return err
-	}
+
+	client := createHttpClientWithFastTimeout(socketAddr)
 	retries := 0
 
 	for {

@@ -64,7 +64,7 @@ var _ = Describe("controller", func() {
 					request, err := http.NewRequest(http.MethodGet, "/v1/apps", nil)
 					Expect(err).ToNot(HaveOccurred())
 
-					svr.Mux.ServeHTTP(response, request)
+					svr.Handler.ServeHTTP(response, request)
 
 					body, err := ioutil.ReadAll(response.Body)
 					Expect(err).To(BeNil())
@@ -87,7 +87,7 @@ var _ = Describe("controller", func() {
 					request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
 					Expect(err).ToNot(HaveOccurred())
 
-					svr.Mux.ServeHTTP(response, request)
+					svr.Handler.ServeHTTP(response, request)
 					Expect(response.Code).To(Equal(http.StatusOK))
 				})
 			})
@@ -98,7 +98,7 @@ var _ = Describe("controller", func() {
 						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer([]byte(``)))
 						Expect(err).ToNot(HaveOccurred())
 
-						svr.Mux.ServeHTTP(response, request)
+						svr.Handler.ServeHTTP(response, request)
 						Expect(response.Code).To(Equal(http.StatusBadRequest))
 					})
 				})
@@ -118,7 +118,7 @@ var _ = Describe("controller", func() {
 						request, err := http.NewRequest(http.MethodDelete, "/v1/apps", bytes.NewBuffer(marshalledPayload))
 						Expect(err).ToNot(HaveOccurred())
 
-						svr.Mux.ServeHTTP(response, request)
+						svr.Handler.ServeHTTP(response, request)
 						Expect(response.Code).To(Equal(http.StatusInternalServerError))
 					})
 				})
@@ -128,7 +128,7 @@ var _ = Describe("controller", func() {
 		DescribeTable("Non supported requests return 405 (method not allowed)",
 			func(method string) {
 				request, _ := http.NewRequest(method, "/v1/apps", nil)
-				svr.Mux.ServeHTTP(response, request)
+				svr.Handler.ServeHTTP(response, request)
 				Expect(response.Code).To(Equal(405))
 			},
 			Entry("POST", http.MethodPost),

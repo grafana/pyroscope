@@ -1,0 +1,37 @@
+@use '../../sass/variables.scss' as *;
+
+@import '../../../node_modules/@szhsin/react-menu/dist/index.css';
+
+.dropdownMenu {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.33);
+  padding: 0.25rem 0;
+  background-color: $btn-color;
+  color: $white;
+
+  & ul[class*='rc-menu'] {
+    background-color: $btn-color;
+    color: $white;
+  }
+
+  & li[class*='hover'],
+  div[class*='hover'] {
+    background-color: $btn-hover-color;
+  }
+}
+
+.dropdownMenuButton {
+  outline: none;
+  display: inline-block;
+  position: relative;
+  border-radius: 4px;
+  background-color: $btn-color;
+  border: 1px solid $btn-border-color;
+  margin-right: 5px;
+  padding-right: 20px;
+  &::after {
+    content: '▾';
+    position: absolute;
+    top: 3px;
+    right: 5px;
+  }
+}

@@ -3,11 +3,16 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+	"gopkg.in/yaml.v2"
+
+	// revive:disable:blank-imports register kubernetes discoverer
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
@@ -17,11 +22,18 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape"
+	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
 )
+
+type Server struct {
+	svc *serverService
+}
 
 type serverService struct {
 	config           *config.Server
@@ -34,13 +46,27 @@ type serverService struct {
 	debugReporter    *debug.Reporter
 	healthController *health.Controller
 	adminServer      *admin.Server
+	discoveryManager *discovery.Manager
+	scrapeManager    *scrape.Manager
 
 	stopped chan struct{}
 	done    chan struct{}
 	group   *errgroup.Group
 }
 
-func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, error) {
+func newServerService(c *config.Server) (*serverService, error) {
+	logLevel, err := logrus.ParseLevel(c.LogLevel)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := logrus.StandardLogger()
+	logger.SetLevel(logLevel)
+
+	if err = loadScrapeConfigsFromFile(c); err != nil {
+		return nil, fmt.Errorf("could not load scrape config: %w", err)
+	}
+
 	svc := serverService{
 		config:  c,
 		logger:  logger,
@@ -48,10 +74,15 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		done:    make(chan struct{}),
 	}
 
-	var err error
 	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
+	}
+
+	if svc.config.Auth.JWTSecret == "" {
+		if svc.config.Auth.JWTSecret, err = svc.storage.JWT(); err != nil {
+			return nil, err
+		}
 	}
 
 	// this needs to happen after storage is initiated!
@@ -59,7 +90,12 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		socketPath := svc.config.AdminSocketPath
 		adminSvc := admin.NewService(svc.storage)
 		adminCtrl := admin.NewController(svc.logger, adminSvc)
-		adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath)
+		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("admin: %w", err)
+		}
+
+		adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath, httpClient)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
 		}
@@ -111,6 +147,13 @@ func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, 
 		return nil, fmt.Errorf("new server: %w", err)
 	}
 
+	svc.discoveryManager = discovery.NewManager(
+		svc.logger.WithField("component", "discovery-manager"))
+
+	svc.scrapeManager = scrape.NewManager(
+		svc.logger.WithField("component", "scrape-manager"),
+		svc.directUpstream)
+
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
 	}
@@ -127,6 +170,12 @@ func (svc *serverService) Start() error {
 		svc.logger.Info("starting HTTP server")
 		return svc.controller.Start()
 	})
+	if svc.config.EnableExperimentalAdmin {
+		g.Go(func() error {
+			svc.logger.Info("starting admin server")
+			return svc.adminServer.Start()
+		})
+	}
 
 	go svc.debugReporter.Start()
 	if svc.analyticsService != nil {
@@ -139,12 +188,19 @@ func (svc *serverService) Start() error {
 		svc.logger.WithError(err).Error("failed to start self-profiling")
 	}
 
-	if svc.config.EnableExperimentalAdmin {
-		g.Go(func() error {
-			svc.logger.Info("starting admin server")
-			return svc.adminServer.Start()
-		})
+	// Scrape and Discovery managers have to be initialized
+	// with ApplyConfig before starting running.
+	if err := svc.applyScrapeConfigs(svc.config); err != nil {
+		return err
 	}
+	g.Go(func() error {
+		svc.logger.Debug("starting discovery manager")
+		return svc.discoveryManager.Run()
+	})
+	g.Go(func() error {
+		svc.logger.Debug("starting scrape manager")
+		return svc.scrapeManager.Run(svc.discoveryManager.SyncCh())
+	})
 
 	defer close(svc.done)
 	select {
@@ -167,7 +223,17 @@ func (svc *serverService) Stop() {
 
 //revive:disable-next-line:confusing-naming methods are different
 func (svc *serverService) stop() {
+	if svc.config.EnableExperimentalAdmin {
+		svc.logger.Debug("stopping admin server")
+		if err := svc.adminServer.Stop(); err != nil {
+			svc.logger.WithError(err).Error("admin server stop")
+		}
+	}
 	svc.controller.Drain()
+	svc.logger.Debug("stopping discovery manager")
+	svc.discoveryManager.Stop()
+	svc.logger.Debug("stopping scrape manager")
+	svc.scrapeManager.Stop()
 	svc.logger.Debug("stopping debug reporter")
 	svc.debugReporter.Stop()
 	svc.healthController.Stop()
@@ -183,13 +249,53 @@ func (svc *serverService) stop() {
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
 	}
+	// we stop the http server as the last thing due to:
+	// 1. we may still want to bserve metric values while storage is closing
+	// 2. we want the /healthz endpoint to still be responding while server is shutting down
+	// (we are thinking in a k8s context here, but maybe 'terminationGracePeriodSeconds' makes this unnecessary)
 	svc.logger.Debug("stopping http server")
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
 	}
+}
 
-	if svc.config.EnableExperimentalAdmin {
-		svc.logger.Debug("stopping admin server")
-		svc.adminServer.Stop()
+func (svc *serverService) ApplyConfig(c *config.Server) error {
+	return svc.applyScrapeConfigs(c)
+}
+
+func (svc *serverService) applyScrapeConfigs(c *config.Server) error {
+	if err := loadScrapeConfigsFromFile(c); err != nil {
+		return fmt.Errorf("could not load scrape configs from %s: %w", c.Config, err)
 	}
+	if err := svc.discoveryManager.ApplyConfig(discoveryConfigs(c.ScrapeConfigs)); err != nil {
+		// discoveryManager.ApplyConfig never return errors.
+		return err
+	}
+	return svc.scrapeManager.ApplyConfig(c.ScrapeConfigs)
+}
+
+func discoveryConfigs(cfg []*sc.Config) map[string]discovery.Configs {
+	c := make(map[string]discovery.Configs)
+	for _, x := range cfg {
+		c[x.JobName] = x.ServiceDiscoveryConfigs
+	}
+	return c
+}
+
+func loadScrapeConfigsFromFile(c *config.Server) error {
+	b, err := os.ReadFile(c.Config)
+	switch {
+	case err == nil:
+	case os.IsNotExist(err):
+		return nil
+	default:
+		return err
+	}
+	var s config.Server
+	if err = yaml.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	// Populate scrape configs.
+	c.ScrapeConfigs = s.ScrapeConfigs
+	return nil
 }
