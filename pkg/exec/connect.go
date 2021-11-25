@@ -80,9 +80,6 @@ func NewConnect(cfg *config.Connect) (*Connect, error) {
 func (c *Connect) Run() error {
 	c.Logger.Debug("starting command")
 
-	c.Upstream.Start()
-	defer c.Upstream.Stop()
-
 	// The channel buffer capacity should be sufficient to be keep up with
 	// the expected signal rate (in case of Exec all the signals to be relayed
 	// to the child process)
