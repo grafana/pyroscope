@@ -1,7 +1,7 @@
 version: '3.9'
 services:
   pyroscope:
-    image: 'kolesnikovae/pyroscope:pull'
+    image: 'pyroscope/pyroscope:latest'
     ports:
       - 4040:4040
     command:
@@ -10,7 +10,7 @@ services:
       - ./server.yml:/etc/pyroscope/server.yml
 
   hotrod:
-    image: 'kolesnikovae/hotrod-golang:dev'
+    image: 'public.ecr.aws/pyroscope/hotrod-golang:latest'
     ports:
       - 8080:8080
       - 6060:6060

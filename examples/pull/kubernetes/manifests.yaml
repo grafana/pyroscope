@@ -22,7 +22,7 @@ spec:
       terminationGracePeriodSeconds: 5
       containers:
         - name: hotrod-golang
-          image: kolesnikovae/hotrod-golang:dev
+          image: public.ecr.aws/pyroscope/hotrod-golang:latest
           args: ['all']
           ports:
             - containerPort: 8080
