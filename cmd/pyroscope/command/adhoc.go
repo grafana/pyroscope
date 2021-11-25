@@ -12,7 +12,7 @@ func newAdhocCmd(cfg *config.Adhoc) *cobra.Command {
 	vpr := newViper()
 
 	cmd := &cobra.Command{
-		Use:   "adhoc [flags] <args>",
+		Use:   "adhoc [flags] [<args>]",
 		Short: "Profile a process and save the results to be used in adhoc mode",
 		Long: `adhoc command is a complete toolset to profile a process and save the profiling
 results.
@@ -46,10 +46,11 @@ provided. It can also be override the default exec mode with the '--push' flag.
 thorugh '--url' where it tries to retrieve profiling data in any of the
 supported formats. In this case arguments are optional, and if provided,
 they are used to launch a new process before polling the URL.`,
-		Args: cobra.MinimumNArgs(1),
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 			return adhoc.Cli(cfg, args)
 		}),
 	}
+
+	cli.PopulateFlagSet(cfg, cmd.Flags(), vpr)
 	return cmd
 }
