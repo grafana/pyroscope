@@ -24,7 +24,7 @@ func newConnectCmd(cfg *config.Connect) *cobra.Command {
 		}),
 	}
 
-	cli.PopulateFlagSet(cfg, connectCmd.Flags(), vpr, cli.WithSkip("group-name", "user-name", "no-root-drop"))
+	cli.PopulateFlagSet(cfg, connectCmd.Flags(), vpr)
 	_ = connectCmd.MarkFlagRequired("pid")
 	return connectCmd
 }

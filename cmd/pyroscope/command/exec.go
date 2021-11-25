@@ -36,6 +36,6 @@ func newExecCmd(cfg *config.Exec) *cobra.Command {
 		}),
 	}
 
-	cli.PopulateFlagSet(cfg, execCmd.Flags(), vpr, cli.WithSkip("pid"))
+	cli.PopulateFlagSet(cfg, execCmd.Flags(), vpr)
 	return execCmd
 }
