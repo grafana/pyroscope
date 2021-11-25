@@ -10,6 +10,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -23,6 +24,45 @@ var _ = Describe("storage package", func() {
 			var err error
 			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
+		})
+	})
+
+	// Just a sanity check
+	Context("basic delete", func() {
+		It("deletes trees", func() {
+			Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
+			tree := tree.New()
+			s.trees.Put("a;b", tree)
+			Expect(s.trees.Cache.Size()).To(Equal(uint64(1)))
+			s.trees.Delete("a;b")
+			Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
+		})
+
+		It("deletes dictionaries", func() {
+			Expect(s.dicts.Cache.Size()).To(Equal(uint64(0)))
+			d := dict.New()
+			s.dicts.Put("dict", d)
+			Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
+			s.dicts.Delete("dict")
+			Expect(s.dicts.Cache.Size()).To(Equal(uint64(0)))
+		})
+
+		It("deletes segments", func() {
+			Expect(s.segments.Cache.Size()).To(Equal(uint64(0)))
+			d := segment.New()
+			s.segments.Put("segment", d)
+			Expect(s.segments.Cache.Size()).To(Equal(uint64(1)))
+			s.segments.Delete("segment")
+			Expect(s.segments.Cache.Size()).To(Equal(uint64(0)))
+		})
+
+		It("deletes dimensions", func() {
+			Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
+			d := dimension.New()
+			s.dimensions.Put("dimensions", d)
+			Expect(s.dimensions.Cache.Size()).To(Equal(uint64(1)))
+			s.dimensions.Delete("dimensions")
+			Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
 		})
 	})
 
@@ -98,7 +138,6 @@ var _ = Describe("storage package", func() {
 
 		Context("simple app", func() {
 			It("works correctly", func() {
-
 				appname := "my.app.cpu"
 
 				// We insert info for an app
@@ -180,7 +219,6 @@ var _ = Describe("storage package", func() {
 
 		Context("app with labels", func() {
 			It("works correctly", func() {
-
 				appname := "my.app.cpu"
 
 				// We insert info for an app
@@ -290,6 +328,13 @@ var _ = Describe("storage package", func() {
 				// Labels
 				By("checking labels were deleted")
 				checkLabelsPresence(appname, false)
+			})
+		})
+
+		// In this test we have 2 apps with the same label
+		// And deleting one app should not interfer with the labels of the other app
+		Context("multiple apps with labels", func() {
+			It("works correctly", func() {
 			})
 		})
 	})

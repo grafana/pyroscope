@@ -145,6 +145,16 @@ func (s *Storage) DeleteApp(appname string) error {
 	s.logger.Debugf("dropping from CACHE all trees with prefix '%s'\n", appname+"{")
 	s.trees.DiscardPrefix(appname + "{")
 
+	// DO THE SAME THING FOR SEGMENTS
+	// Discarding cached items is necessary because otherwise
+	// those would be written back to disk on eviction.
+	s.logger.Debugf("dropping from DISK all segments with prefix '%s'\n", prefix)
+	if err := s.segments.DropPrefix(segmentPrefix.key(appname + "{")); err != nil {
+		return err
+	}
+	s.logger.Debugf("dropping from CACHE all segments with prefix '%s'\n", appname+"{")
+	s.segments.DiscardPrefix(appname + "{")
+
 	// Delete the name dimension
 	// TODO what about the other dimensions?
 	// for example
@@ -183,6 +193,13 @@ func (s *Storage) DeleteApp(appname string) error {
 		return fmt.Errorf("dimensions don't exist")
 	}
 
+	s.dimensions.Delete("__name__:" + appname)
+
+	err = s.segments.DropPrefix(segmentPrefix.key(appname + "{"))
+	if err != nil {
+		return err
+	}
+
 	// delete all dimensions our __name__ was pointing to
 	// eg
 	// "simple.golang.app2.cpu{foo=bar,function=fast}"
@@ -193,33 +210,77 @@ func (s *Storage) DeleteApp(appname string) error {
 		s.logger.Debug("segmentKey", segmentKey)
 		// segmentKey: simple.golang.app2.cpu{foo=bar,function=fast}
 		//		s.logger.Debugf("deleting dimension %s", myValue)
+
+		// sk2 is
+		//   map[string]string [
+		//     "__name__": "my.app.cpu",
+		//     "foo": "bar",
+		//     "function": "fast",
+		//  ],}
 		sk2, err := segment.ParseKey(string(segmentKey))
 		if err != nil {
 			return err
 		}
 
-		// labels = foo=bar,function=fast
+		fmt.Println("segmentKey", string(segmentKey))
+		//		s.dimensions.Delete(labelKey + ":" + labelValue)
+
+		// iterate over the labels
+		// ["__name__": "my.app.cpu", "foo": "bar", "function": "fast"]
 		for labelKey, labelValue := range sk2.Labels() {
+			// let's use 'function=fast' as an example
 			s.logger.Debugf("labelKey %s\n", labelKey)
 			s.logger.Debugf("labelValue %s\n", labelValue)
 
-			// function=fast
+			fmt.Println("labelKey", labelKey)
+			fmt.Println("labelValue", labelValue)
+
+			// function:fast should still exist
 			d2, ok := s.lookupDimensionKV(labelKey, labelValue)
 			if !ok {
 				continue
 			}
 
-			//
 			// d2.Delete(dimension.Key(sk))
-			s.logger.Debugf("deleting segmentKey %s\n", segmentKey)
-			d2.Delete(segmentKey)
+			//			s.logger.Debugf("deleting segmentKey %s\n", segmentKey)
+			//			d2.Delete(segmentKey)
 
 			// there are no more keys
 			// so we can remove this dimension
-			if len(d.Keys) > 0 {
-				continue
+
+			//			fmt.Println("for key", string(segmentKey))
+			//			for _, b := range d2.Keys {
+			//				fmt.Println("there's key", string(b))
+			//			}
+
+			// if function:fast is pointing to something that still exists
+			// that means we can't delete it yet
+			// TODO i think we gonna have to add another look up
+
+			// TODO
+			// check if all the keys are still pointing to something that exists
+
+			found := false
+			for _, k := range d2.Keys {
+				_, ok := s.segments.Lookup(string(k))
+				if ok {
+					found = true
+				} else {
+					// that key is pointing to something not valid
+					d2.Delete(k)
+				}
 			}
 
+			// there are still keys pointing to valid segments
+			// which means we can't delete it yet
+			if found {
+				continue
+			}
+			//			if len(d2.Keys) > 0 {
+			//				continue
+			//			}
+
+			// THIS DOESNT EVEN SEEM TO BE CALLED
 			//			s.dimensions.Delete(key)
 			s.dimensions.Delete(labelKey + ":" + labelValue)
 
@@ -275,13 +336,5 @@ func (s *Storage) DeleteApp(appname string) error {
 	// TODO do this after
 	// s.dimensions.Delete(nameKey + ":" + value)
 
-	err = s.segments.DropPrefix(segmentPrefix.key(appname + "{"))
-	if err != nil {
-		return err
-	}
-	// Discarding cached items is necessary because otherwise
-	// those would be written back to disk on eviction.
-	s.logger.Debugf("dropping from CACHE all segments with prefix '%s'\n", appname+"{")
-	s.segments.DiscardPrefix(appname + "{")
 	return nil
 }
