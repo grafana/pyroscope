@@ -9,8 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/sirupsen/logrus"
 )
 
 type runner interface {
@@ -64,8 +64,15 @@ func Cli(cfg *config.Adhoc, args []string) error {
 		}
 	}
 
-	// TODO(abeaumont): Move logger configuration to a generic place
-	logger := exec.NewLogger(cfg.LogLevel, cfg.NoLogging)
+	level := logrus.PanicLevel
+	if l, err := logrus.ParseLevel(cfg.LogLevel); err == nil && !cfg.NoLogging {
+		level = l
+	}
+	logger := logrus.StandardLogger()
+	logger.SetLevel(level)
+	// an adhoc run shouldn't be a long-running process, make the output less verbose and more human-friendly.
+	logger.Formatter = &logrus.TextFormatter{DisableTimestamp: true}
+	logger.SetReportCaller(false)
 
 	switch cfg.OutputFormat {
 	case "json", "pprof", "collapsed":

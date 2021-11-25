@@ -49,7 +49,6 @@ func NewLogger(logLevel string, noLogging bool) *logrus.Logger {
 	if level != logrus.PanicLevel {
 		logger.Info("to disable logging from pyroscope, specify " + color.YellowString("-no-logging") + " flag")
 	}
-	// TODO(abeaumont): fix logger configuration
 	return logger
 }
 

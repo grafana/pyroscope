@@ -109,7 +109,7 @@ func (w writer) write(t0, t1 time.Time) error {
 				w.logger.WithError(err).Error("saving output file")
 			}
 		}
-		w.logger.Debugf("exported data to %s", path)
+		w.logger.Infof("profiling data has been saved to %s", path)
 		if err := f.Close(); err != nil {
 			w.logger.WithError(err).Error("closing output file")
 		}
