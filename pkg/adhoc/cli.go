@@ -83,7 +83,7 @@ func Cli(cfg *config.Adhoc, args []string) error {
 	case modeExec:
 		r, err = newExec(cfg, args, st, logger)
 	case modeConnect:
-		r, err = newConnect(cfg, args, st, logger)
+		r, err = newConnect(cfg, st, logger)
 	case modePush:
 		r, err = newPush(cfg, args, st, logger)
 	case modePull:

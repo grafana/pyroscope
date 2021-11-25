@@ -14,16 +14,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func newConnect(cfg *config.Adhoc, args []string, storage *storage.Storage, logger *logrus.Logger) (runner, error) {
+func newConnect(cfg *config.Adhoc, storage *storage.Storage, logger *logrus.Logger) (runner, error) {
 	spyName := cfg.SpyName
 	if cfg.Pid == -1 {
 		if spyName != "" && spyName != "ebpfspy" {
 			return nil, fmt.Errorf("pid -1 can only be used with ebpfspy")
 		}
 		spyName = "ebpfspy"
-	}
-	if spyName == "" {
-		return nil, exec.UnsupportedSpyError{Subcommand: "adhoc", Args: args}
 	}
 	if err := exec.PerformChecks(spyName); err != nil {
 		return nil, err
@@ -42,11 +39,10 @@ func newConnect(cfg *config.Adhoc, args []string, storage *storage.Storage, logg
 	rbspy.Blocking = cfg.RbspyBlocking
 
 	return &exec.Connect{
-		Args:               args,
 		Logger:             logger,
 		Upstream:           upstream,
 		SpyName:            spyName,
-		ApplicationName:    exec.CheckApplicationName(logger, cfg.ApplicationName, spyName, args),
+		ApplicationName:    exec.CheckApplicationName(logger, cfg.ApplicationName, spyName, []string{}),
 		SampleRate:         sampleRate,
 		DetectSubprocesses: cfg.DetectSubprocesses,
 		Pid:                cfg.Pid,

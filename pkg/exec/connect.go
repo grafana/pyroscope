@@ -20,7 +20,6 @@ import (
 )
 
 type Connect struct {
-	Args               []string
 	Logger             *logrus.Logger
 	Upstream           upstream.Upstream
 	SpyName            string
@@ -31,16 +30,13 @@ type Connect struct {
 	Pid                int
 }
 
-func NewConnect(cfg *config.Connect, args []string) (*Connect, error) {
+func NewConnect(cfg *config.Connect) (*Connect, error) {
 	spyName := cfg.SpyName
 	if cfg.Pid == -1 {
 		if spyName != "" && spyName != "ebpfspy" {
 			return nil, fmt.Errorf("pid -1 can only be used with ebpfspy")
 		}
 		spyName = "ebpfspy"
-	}
-	if spyName == "" {
-		return nil, UnsupportedSpyError{Subcommand: "connect", Args: args}
 	}
 	if err := PerformChecks(spyName); err != nil {
 		return nil, err
@@ -70,11 +66,10 @@ func NewConnect(cfg *config.Connect, args []string) (*Connect, error) {
 	rbspy.Blocking = cfg.RbspyBlocking
 
 	return &Connect{
-		Args:               args,
 		Logger:             logger,
 		Upstream:           up,
 		SpyName:            spyName,
-		ApplicationName:    CheckApplicationName(logger, cfg.ApplicationName, spyName, args),
+		ApplicationName:    CheckApplicationName(logger, cfg.ApplicationName, spyName, []string{}),
 		SampleRate:         sampleRate,
 		DetectSubprocesses: cfg.DetectSubprocesses,
 		Tags:               cfg.Tags,
@@ -83,9 +78,7 @@ func NewConnect(cfg *config.Connect, args []string) (*Connect, error) {
 }
 
 func (c *Connect) Run() error {
-	c.Logger.WithFields(logrus.Fields{
-		"args": fmt.Sprintf("%q", c.Args),
-	}).Debug("starting command")
+	c.Logger.Debug("starting command")
 
 	c.Upstream.Start()
 	defer c.Upstream.Stop()

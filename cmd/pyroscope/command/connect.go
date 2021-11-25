@@ -13,10 +13,10 @@ func newConnectCmd(cfg *config.Connect) *cobra.Command {
 	connectCmd := &cobra.Command{
 		Use:   "connect [flags]",
 		Short: "Connect to an existing process and profile it",
+		Args:  cobra.NoArgs,
 
-		DisableFlagParsing: true,
-		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
-			c, err := exec.NewConnect(cfg, args)
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
+			c, err := exec.NewConnect(cfg)
 			if err != nil {
 				return err
 			}

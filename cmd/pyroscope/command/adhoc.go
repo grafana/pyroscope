@@ -12,7 +12,7 @@ func newAdhocCmd(cfg *config.Adhoc) *cobra.Command {
 	vpr := newViper()
 
 	cmd := &cobra.Command{
-		Use:   "adhoc [flags] [args]",
+		Use:   "adhoc [flags] <args>",
 		Short: "Profile a process and save the results to be used in adhoc mode",
 		Long: `adhoc command is a complete toolset to profile a process and save the profiling
 results.
