@@ -30,7 +30,7 @@ import (
 // Each Session can deal with:
 // * multiple processes (one main process and zero or more subprocesses)
 // * multiple profile types (cpu, mem, etc)
-// * multiple names (app.cpu{} or app.cpu{controller=foo}) (one at a a time)
+// * multiple names (app.cpu{} or app.cpu{controller=foo}) (one at a time)
 
 /*
                 PROCESSES

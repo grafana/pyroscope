@@ -201,7 +201,7 @@ func (b *profileBuilder) pbMapping(tag int, id, base, limit, offset uint64, file
 	// TODO: we set HasFunctions if all symbols from samples were symbolized (hasFuncs).
 	// Decide what to do about HasInlineFrames and HasLineNumbers.
 	// Also, another approach to handle the mapping entry with
-	// incomplete symbolization results is to dupliace the mapping
+	// incomplete symbolization results is to duplicate the mapping
 	// entry (but with different Has* fields values) and use
 	// different entries for symbolized locations and unsymbolized locations.
 	if hasFuncs {
@@ -215,7 +215,7 @@ func (b *profileBuilder) pbMapping(tag int, id, base, limit, offset uint64, file
 // that admits incremental immutable modification more efficiently.
 type labelMap map[string]string
 
-// String statisfies Stringer and returns key, value pairs in a consistent
+// String satisfies Stringer and returns key, value pairs in a consistent
 // order.
 func (l *labelMap) String() string {
 	if l == nil {
@@ -476,7 +476,7 @@ func (b *profileBuilder) appendLocsForStack(locs []uint64, stk []uintptr) (newLo
 // pcDeck is a helper to detect a sequence of inlined functions from
 // a stack trace returned by the runtime.
 //
-// The stack traces returned by runtime's trackback functions are fully
+// The stack traces returned by runtime's traceback functions are fully
 // expanded (at least for Go functions) and include the fake pcs representing
 // inlined functions. The profile proto expects the inlined functions to be
 // encoded in one Location message.

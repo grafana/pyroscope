@@ -75,6 +75,15 @@ func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn CmdRunFn) CmdRunFn {
 	}
 }
 
+func NewViper(prefix string) *viper.Viper {
+	v := viper.New()
+	v.SetEnvPrefix(prefix)
+	v.SetConfigType("yaml")
+	v.AutomaticEnv()
+	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
+	return v
+}
+
 // splitArgs splits raw arguments into
 func splitArgs(flags *pflag.FlagSet, args []string) ([]string, []string) {
 	var xargs []string
@@ -125,15 +134,6 @@ func firstArgumentIndex(flags *pflag.FlagSet, args []string) int {
 	}
 	// Should have returned earlier.
 	return -1
-}
-
-func NewViper(prefix string) *viper.Viper {
-	v := viper.New()
-	v.SetEnvPrefix(prefix)
-	v.SetConfigType("yaml")
-	v.AutomaticEnv()
-	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
-	return v
 }
 
 func loadConfigFile(path string, cmd *cobra.Command, vpr *viper.Viper) error {

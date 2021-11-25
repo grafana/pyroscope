@@ -34,7 +34,7 @@ server.py;fast_function;work 2
 server.py;slow_function;work 8
 ```
 
-The first obvious thing we do is we turn this data into a tree. Conviniently, this represenation also makes it easy to later generate flamegraphs.
+The first obvious thing we do is we turn this data into a tree. Conveniently, this representation also makes it easy to later generate flamegraphs.
 
 ![raw_vs_flame_graph](https://user-images.githubusercontent.com/23323466/110378930-0f065180-800b-11eb-9357-71724bc7258c.gif)
 
@@ -57,7 +57,7 @@ Each of these lines can be serialized using a prefix tree as follows. This means
 
 ![storage-design-0](https://user-images.githubusercontent.com/23323466/110520399-446e7600-80c3-11eb-84e9-ecac7c0dbf23.gif)
 
-In this basic example we save ~80% of space going from 39 bytes to 8 bytes. Typically, symbol names are much longer and as the number of symols grows, storage requirements grow logarithmically rather than linearly.
+In this basic example we save ~80% of space going from 39 bytes to 8 bytes. Typically, symbol names are much longer and as the number of symbols grows, storage requirements grow logarithmically rather than linearly.
 
 ## Step 1 + 2: Combining the trees with the tries
 
@@ -110,7 +110,7 @@ Any sampling profiler that can export data in the "raw" format linked above can 
 - [ ] [Rust](https://github.com/pyroscope-io/pyroscope/issues/83#issuecomment-784947654)
 - [ ] [Node](https://github.com/pyroscope-io/pyroscope/issues/8)
 
-If you want to help contribute or need help setting up Pyroscope heres how you can reach us:
+If you want to help contribute or need help setting up Pyroscope here's how you can reach us:
 - Join our [Slack](https://pyroscope.io/slack)
 - Set up a time to meet with us [here](https://pyroscope.io/setup-call)
 - Write an [issue](https://github.com/pyroscope-io/pyroscope/issues)
