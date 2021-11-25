@@ -18,14 +18,14 @@ var _ = Describe("Cli", func() {
 		Describe("Exec", func() {
 			Context("no arguments", func() {
 				It("returns error", func() {
-					_, err := NewExec(&(*cfg).Exec, []string{})
-					Expect(err).To(MatchError("no arguments passed"))
+					_, err := NewConnect(&(*cfg).Connect, []string{})
+					Expect(err).To(MatchError(UnsupportedSpyError{Subcommand: "connect", Args: []string{}}))
 				})
 			})
 			Context("simple case", func() {
 				It("returns nil", func() {
-					(*cfg).Exec.SpyName = "debugspy"
-					_, err := NewExec(&(*cfg).Exec, []string{"ls"})
+					(*cfg).Connect.SpyName = "debugspy"
+					_, err := NewConnect(&(*cfg).Connect, []string{})
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})

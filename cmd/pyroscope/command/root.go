@@ -19,7 +19,7 @@ func Execute() error {
 
 	subcommands := []*cobra.Command{
 		newAgentCmd(&cfg.Agent),
-		newConnectCmd(&cfg.Exec),
+		newConnectCmd(&cfg.Connect),
 		newConvertCmd(&cfg.Convert),
 		newDbManagerCmd(&config.CombinedDbManager{DbManager: &cfg.DbManager, Server: &cfg.Server}),
 		newExecCmd(&cfg.Exec),

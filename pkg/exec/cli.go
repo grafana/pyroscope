@@ -1,31 +1,17 @@
 package exec
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	goexec "os/exec"
-	"os/signal"
 	"path"
 	"strings"
-	"syscall"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/direct"
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
-	"github.com/pyroscope-io/pyroscope/pkg/exporter"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/names"
-	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
 
 // used in tests
@@ -34,193 +20,50 @@ var (
 	disableLinuxChecks bool
 )
 
-// TODO(kolesnikovae): separate exec, connect and adhoc.
+type UnsupportedSpyError struct {
+	Args       []string
+	Subcommand string
+}
 
-// Cli is command line interface for both exec, connect and adhoc commands
-func Cli(cfg *Config, args []string, st *storage.Storage, logger *logrus.Logger) error {
-	if cfg.mode != modeConnect {
-		if len(args) == 0 {
-			return errors.New("no arguments passed")
-		}
-	} else if (cfg.pid != -1 && cfg.spyName == "ebpfspy") && !process.Exists(cfg.pid) {
-		return errors.New("process not found")
+func (e UnsupportedSpyError) Error() string {
+	supportedSpies := spy.SupportedExecSpies()
+	suggestedCommand := fmt.Sprintf("pyroscope %s -spy-name %s %s", e.Subcommand, supportedSpies[0], strings.Join(e.Args, " "))
+	return fmt.Sprintf(
+		"could not automatically find a spy for program \"%s\". Pass spy name via %s argument, for example: \n"+
+			"  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
+		path.Base(e.Args[0]),
+		color.YellowString("-spy-name"),
+		color.YellowString(suggestedCommand),
+		strings.Join(supportedSpies, ","),
+		color.GreenString("https://github.com/pyroscope-io/pyroscope/issues"),
+	)
+}
+
+func NewLogger(logLevel string, noLogging bool) *logrus.Logger {
+	level := logrus.PanicLevel
+	if l, err := logrus.ParseLevel(logLevel); err == nil && !noLogging {
+		level = l
 	}
-
-	// TODO: this is somewhat hacky, we need to find a better way to configure agents
-	pyspy.Blocking = cfg.pyspyBlocking
-	rbspy.Blocking = cfg.rbspyBlocking
-
-	spyName := cfg.spyName
-	if spyName == "auto" {
-		if cfg.mode != modeConnect {
-			baseName := path.Base(args[0])
-			spyName = spy.ResolveAutoName(baseName)
-			if spyName == "" {
-				supportedSpies := spy.SupportedExecSpies()
-				suggestedCommand := fmt.Sprintf("pyroscope exec -spy-name %s %s", supportedSpies[0], strings.Join(args, " "))
-				return fmt.Errorf(
-					"could not automatically find a spy for program \"%s\". Pass spy name via %s argument, for example: \n"+
-						"  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
-					baseName,
-					color.YellowString("-spy-name"),
-					color.YellowString(suggestedCommand),
-					strings.Join(supportedSpies, ","),
-					color.GreenString("https://github.com/pyroscope-io/pyroscope/issues"),
-				)
-			}
-		} else {
-			supportedSpies := spy.SupportedExecSpies()
-			suggestedCommand := fmt.Sprintf("pyroscope connect -spy-name %s %s", supportedSpies[0], strings.Join(args, " "))
-			return fmt.Errorf(
-				"pass spy name via %s argument, for example: \n  %s\n\nAvailable spies are: %s\nIf you believe this is a mistake, please submit an issue at %s",
-				color.YellowString("-spy-name"),
-				color.YellowString(suggestedCommand),
-				strings.Join(supportedSpies, ","),
-				color.GreenString("https://github.com/pyroscope-io/pyroscope/issues"),
-			)
-		}
+	logger := logrus.StandardLogger()
+	logger.SetLevel(level)
+	if level != logrus.PanicLevel {
+		logger.Info("to disable logging from pyroscope, specify " + color.YellowString("-no-logging") + " flag")
 	}
+	// TODO(abeaumont): fix logger configuration
+	return logger
+}
 
-	if err := performChecks(spyName); err != nil {
-		return err
-	}
-
-	if logger == nil {
-		logger = logrus.StandardLogger()
-		logger.SetLevel(cfg.logLevel)
-		if cfg.logLevel != logrus.PanicLevel {
-			logger.Info("to disable logging from pyroscope, specify " + color.YellowString("-no-logging") + " flag")
-		}
-	}
-
-	if cfg.applicationName == "" {
+func CheckApplicationName(logger *logrus.Logger, applicationName string, spyName string, args []string) string {
+	if applicationName == "" {
 		logger.Infof("we recommend specifying application name via %s flag or env variable %s",
 			color.YellowString("-application-name"), color.YellowString("PYROSCOPE_APPLICATION_NAME"))
-		cfg.applicationName = spyName + "." + names.GetRandomName(generateSeed(args))
-		logger.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(cfg.applicationName))
+		applicationName = spyName + "." + names.GetRandomName(generateSeed(args))
+		logger.Infof("for now we chose the name for you and it's \"%s\"", color.GreenString(applicationName))
 	}
-
-	logger.WithFields(logrus.Fields{
-		"args": fmt.Sprintf("%q", args),
-	}).Debug("starting command")
-
-	var u upstream.Upstream
-	if cfg.mode == modeAdhoc {
-		d := direct.New(st, exporter.MetricsExporter{})
-		d.Start()
-		u = d
-	} else {
-		var err error
-		u, err = remote.New(cfg.RemoteConfig, logger)
-		if err != nil {
-			return fmt.Errorf("new remote upstream: %v", err)
-		}
-	}
-	defer u.Stop()
-
-	// The channel buffer capacity should be sufficient to be keep up with
-	// the expected signal rate (in case of Exec all the signals to be relayed
-	// to the child process)
-	c := make(chan os.Signal, 10)
-	pid := cfg.pid
-	var cmd *goexec.Cmd
-	if cfg.mode != modeConnect {
-		// Note that we don't specify which signals to be sent: any signal to be
-		// relayed to the child process (including SIGINT and SIGTERM).
-		signal.Notify(c)
-		cmd = goexec.Command(args[0], args[1:]...)
-		cmd.Stderr = os.Stderr
-		cmd.Stdout = os.Stdout
-		cmd.Stdin = os.Stdin
-		if err := adjustCmd(cmd, *cfg); err != nil {
-			logrus.Error(err)
-		}
-		if err := cmd.Start(); err != nil {
-			return err
-		}
-		pid = cmd.Process.Pid
-	} else {
-		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	}
-	defer func() {
-		signal.Stop(c)
-		close(c)
-	}()
-
-	logrus.WithFields(logrus.Fields{
-		"app-name":            cfg.applicationName,
-		"spy-name":            spyName,
-		"pid":                 pid,
-		"detect-subprocesses": cfg.detectSubprocesses,
-	}).Debug("starting agent session")
-
-	sc := agent.SessionConfig{
-		Upstream:         u,
-		AppName:          cfg.applicationName,
-		Tags:             cfg.tags,
-		ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
-		SpyName:          spyName,
-		SampleRate:       cfg.sampleRate,
-		UploadRate:       10 * time.Second,
-		Pid:              pid,
-		WithSubprocesses: cfg.detectSubprocesses,
-		Logger:           logrus.StandardLogger(),
-	}
-	session, err := agent.NewSession(sc)
-	if err != nil {
-		return fmt.Errorf("new session: %w", err)
-	}
-	if err = session.Start(); err != nil {
-		return fmt.Errorf("start session: %w", err)
-	}
-	defer session.Stop()
-
-	if cfg.mode != modeConnect {
-		return waitForSpawnedProcessToExit(c, cmd)
-	}
-
-	waitForProcessToExit(c, pid)
-	return nil
+	return applicationName
 }
 
-func waitForSpawnedProcessToExit(c chan os.Signal, cmd *goexec.Cmd) error {
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case s := <-c:
-			_ = process.SendSignal(cmd.Process, s)
-		case <-ticker.C:
-			if !process.Exists(cmd.Process.Pid) {
-				logrus.Debug("child process exited")
-				return cmd.Wait()
-			}
-		}
-	}
-}
-
-func waitForProcessToExit(c chan os.Signal, pid int) {
-	// pid == -1 means we're profiling whole system
-	if pid == -1 {
-		<-c
-		return
-	}
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-c:
-			return
-		case <-ticker.C:
-			if !process.Exists(pid) {
-				logrus.Debug("child process exited")
-				return
-			}
-		}
-	}
-}
-
-func performChecks(spyName string) error {
+func PerformChecks(spyName string) error {
 	if spyName == types.GoSpy {
 		return fmt.Errorf("gospy can not profile other processes. See our documentation on using gospy: %s", color.GreenString("https://pyroscope.io/docs/"))
 	}

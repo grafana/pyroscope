@@ -8,7 +8,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 )
 
-func newConnectCmd(cfg *config.Exec) *cobra.Command {
+func newConnectCmd(cfg *config.Connect) *cobra.Command {
 	vpr := newViper()
 	connectCmd := &cobra.Command{
 		Use:   "connect [flags]",
@@ -16,7 +16,11 @@ func newConnectCmd(cfg *config.Exec) *cobra.Command {
 
 		DisableFlagParsing: true,
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
-			return exec.Cli(exec.NewConfig(cfg).WithConnect(), args, nil, nil)
+			c, err := exec.NewConnect(cfg, args)
+			if err != nil {
+				return err
+			}
+			return c.Run()
 		}),
 	}
 
