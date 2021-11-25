@@ -1,8 +1,6 @@
 package command
 
 import (
-	"context"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
@@ -17,7 +15,7 @@ func newServerCmd(cfg *config.Server) *cobra.Command {
 
 		DisableFlagParsing: true,
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
-			return cli.StartServer(context.Background(), cfg)
+			return cli.StartServer(cfg)
 		}),
 	}
 

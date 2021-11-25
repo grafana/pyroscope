@@ -41,13 +41,41 @@ type serverService struct {
 	group   *errgroup.Group
 }
 
-func newServerService(st *storage.Storage, logger *logrus.Logger, c *config.Server, adhoc bool) (*serverService, error) {
+func newServerService(logger *logrus.Logger, c *config.Server) (*serverService, error) {
 	svc := serverService{
 		config:  c,
 		logger:  logger,
-		storage: st,
 		stopped: make(chan struct{}),
 		done:    make(chan struct{}),
+	}
+
+	var err error
+	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer)
+	if err != nil {
+		return nil, fmt.Errorf("new storage: %w", err)
+	}
+
+	// this needs to happen after storage is initiated!
+	if svc.config.EnableExperimentalAdmin {
+		socketPath := svc.config.AdminSocketPath
+		if socketPath == "" {
+			socketPath = filepath.Join(svc.config.StoragePath, "/pyroscope.sock")
+		}
+		adminSvc := admin.NewService(svc.storage)
+		adminCtrl := admin.NewController(svc.logger, adminSvc)
+		adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath)
+		if err != nil {
+			return nil, fmt.Errorf("admin: %w", err)
+		}
+
+		svc.adminServer, err = admin.NewServer(
+			svc.logger,
+			adminCtrl,
+			adminHTTPOverUDS,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("admin: %w", err)
+		}
 	}
 
 	exportedMetricsRegistry := prometheus.NewRegistry()
@@ -56,49 +84,23 @@ func newServerService(st *storage.Storage, logger *logrus.Logger, c *config.Serv
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
-	if adhoc {
-		svc.healthController = health.NewController(svc.logger, time.Minute)
-	} else {
-		if svc.config.EnableExperimentalAdmin {
-			socketPath := svc.config.AdminSocketPath
-			if socketPath == "" {
-				socketPath = filepath.Join(svc.config.StoragePath, "/pyroscope.sock")
-			}
-			adminSvc := admin.NewService(svc.storage)
-			adminCtrl := admin.NewController(svc.logger, adminSvc)
-			adminHTTPOverUDS, err := admin.NewUdsHTTPServer(socketPath)
-			if err != nil {
-				return nil, fmt.Errorf("admin: %w", err)
-			}
-
-			svc.adminServer, err = admin.NewServer(
-				svc.logger,
-				adminCtrl,
-				adminHTTPOverUDS,
-			)
-			if err != nil {
-				return nil, fmt.Errorf("admin: %w", err)
-			}
-		}
-
-		diskPressure := health.DiskPressure{
-			Threshold: 512 * bytesize.MB,
-			Path:      c.StoragePath,
-		}
-
-		svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
-		svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
-		svc.directUpstream = direct.New(svc.storage, metricsExporter)
-		svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
-			Upstream:       svc.directUpstream,
-			AppName:        "pyroscope.server",
-			ProfilingTypes: types.DefaultProfileTypes,
-			SpyName:        types.GoSpy,
-			SampleRate:     100,
-			UploadRate:     10 * time.Second,
-			Logger:         logger,
-		})
+	diskPressure := health.DiskPressure{
+		Threshold: 512 * bytesize.MB,
+		Path:      c.StoragePath,
 	}
+
+	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
+	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
+	svc.directUpstream = direct.New(svc.storage, metricsExporter)
+	svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
+		Upstream:       svc.directUpstream,
+		AppName:        "pyroscope.server",
+		ProfilingTypes: types.DefaultProfileTypes,
+		SpyName:        types.GoSpy,
+		SampleRate:     100,
+		UploadRate:     10 * time.Second,
+		Logger:         logger,
+	})
 
 	svc.controller, err = server.New(server.Config{
 		Configuration:           svc.config,
@@ -120,8 +122,8 @@ func newServerService(st *storage.Storage, logger *logrus.Logger, c *config.Serv
 	return &svc, nil
 }
 
-func (svc *serverService) Start(ctx context.Context) error {
-	g, ctx := errgroup.WithContext(ctx)
+func (svc *serverService) Start() error {
+	g, ctx := errgroup.WithContext(context.Background())
 	svc.group = g
 	g.Go(func() error {
 		// if you ever change this line, make sure to update this homebrew test:
@@ -130,20 +132,15 @@ func (svc *serverService) Start(ctx context.Context) error {
 		return svc.controller.Start()
 	})
 
-	if svc.debugReporter != nil {
-		go svc.debugReporter.Start()
-	}
+	go svc.debugReporter.Start()
 	if svc.analyticsService != nil {
 		go svc.analyticsService.Start()
 	}
+
 	svc.healthController.Start()
-	if svc.directUpstream != nil {
-		svc.directUpstream.Start()
-	}
-	if svc.selfProfiling != nil {
-		if err := svc.selfProfiling.Start(); err != nil {
-			svc.logger.WithError(err).Error("failed to start self-profiling")
-		}
+	svc.directUpstream.Start()
+	if err := svc.selfProfiling.Start(); err != nil {
+		svc.logger.WithError(err).Error("failed to start self-profiling")
 	}
 
 	if svc.config.EnableExperimentalAdmin {
@@ -175,24 +172,20 @@ func (svc *serverService) Stop() {
 //revive:disable-next-line:confusing-naming methods are different
 func (svc *serverService) stop() {
 	svc.controller.Drain()
-	if svc.debugReporter != nil {
-		svc.logger.Debug("stopping debug reporter")
-		svc.debugReporter.Stop()
-	}
-	if svc.healthController != nil {
-		svc.healthController.Stop()
-	}
+	svc.logger.Debug("stopping debug reporter")
+	svc.debugReporter.Stop()
+	svc.healthController.Stop()
 	if svc.analyticsService != nil {
 		svc.logger.Debug("stopping analytics service")
 		svc.analyticsService.Stop()
 	}
-	if svc.selfProfiling != nil {
-		svc.logger.Debug("stopping profiling")
-		svc.selfProfiling.Stop()
-	}
-	if svc.directUpstream != nil {
-		svc.logger.Debug("stopping upstream")
-		svc.directUpstream.Stop()
+	svc.logger.Debug("stopping profiling")
+	svc.selfProfiling.Stop()
+	svc.logger.Debug("stopping upstream")
+	svc.directUpstream.Stop()
+	svc.logger.Debug("stopping storage")
+	if err := svc.storage.Close(); err != nil {
+		svc.logger.WithError(err).Error("storage close")
 	}
 	svc.logger.Debug("stopping http server")
 	if err := svc.controller.Stop(); err != nil {
