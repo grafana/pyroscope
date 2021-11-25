@@ -17,7 +17,7 @@ import (
 
 func newExec(cfg *config.Adhoc, args []string, storage *storage.Storage, logger *logrus.Logger) (runner, error) {
 	spyName := cfg.SpyName
-	if spyName == "" {
+	if spyName == "auto" {
 		baseName := path.Base(args[0])
 		spyName = spy.ResolveAutoName(baseName)
 		if spyName == "" {
