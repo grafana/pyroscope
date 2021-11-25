@@ -2,19 +2,20 @@ package storage
 
 import (
 	"context"
-	"fmt"
-	"runtime"
+	//	"fmt"
+	//	"runtime"
 	"strconv"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/shirou/gopsutil/mem"
+	//	"github.com/shirou/gopsutil/mem"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -170,8 +171,58 @@ var _ = Describe("storage package", func() {
 					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
+
 			Context("delete app by name", func() {
 				It("works correctly", func() {
+					/*************************************/
+					/*  h e l p e r   f u n c t i o n s  */
+					/*************************************/
+					checkSegmentsPresence := func(appname string, presence bool) {
+						segmentKey, err := segment.ParseKey(string(appname))
+						Expect(err).ToNot(HaveOccurred())
+						segmentKeyStr := segmentKey.SegmentKey()
+						Expect(segmentKeyStr).To(Equal(appname + "{}"))
+						_, ok := s.segments.Cache.Lookup(segmentKeyStr)
+
+						if presence {
+							Expect(ok).To(BeTrue())
+						} else {
+							Expect(ok).To(BeFalse())
+						}
+					}
+
+					checkDimensionsPresence := func(appname string, presence bool) {
+						_, ok := s.lookupAppDimension(appname)
+						if presence {
+							Expect(ok).To(BeTrue())
+						} else {
+							Expect(ok).To(BeFalse())
+						}
+					}
+
+					checkTreesPresence := func(appname string, st time.Time, depth int, presence bool) interface{} {
+						key, err := segment.ParseKey(appname)
+						Expect(err).ToNot(HaveOccurred())
+						treeKeyName := key.TreeKey(depth, st)
+						t, ok := s.trees.Cache.Lookup(treeKeyName)
+						if presence {
+							Expect(ok).To(BeTrue())
+						} else {
+							Expect(ok).To(BeFalse())
+						}
+
+						return t
+					}
+
+					checkDictsPresence := func(appname string, presence bool) interface{} {
+						d, ok := s.dicts.Cache.Lookup(appname)
+						if presence {
+							Expect(ok).To(BeTrue())
+						} else {
+							Expect(ok).To(BeFalse())
+						}
+						return d
+					}
 					appname := "my.app.cpu"
 
 					// We insert info for an app
@@ -191,59 +242,32 @@ var _ = Describe("storage package", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 
-					// These assertions are for my own sanity
-					// And to make the test more clear
+					// Since the DeleteApp also removes dictionaries
+					// therefore we need to create them manually here
+					// (they are normally created when TODO)
+					d := dict.New()
+					s.dicts.Put(appname, d)
 
-					s.trees.Dump()
-					_ = fmt.Println
+					/*******************************/
+					/*  S a n i t y   C h e c k s  */
+					/*******************************/
+					// Dimensions
+					Expect(s.dimensions.Cache.Size()).To(Equal(uint64(1)))
+					checkDimensionsPresence(appname, true)
 
-					// Let's flush that to disk
-					// TODO do I need this?
-					// supposedly i need to flush this bc it would serialize
-					// and create a dictionary
-					// however that doesn't seem to be working
-					s.trees.Flush()
-
-					/*************************/
-					/*  D i m e n s i o n s  */
-					/*************************/
-					dimension, ok := s.lookupAppDimension(appname)
-					// TODO is this enough?
-					Expect(ok).To(BeTrue())
-
-					/***************/
-					/*  T r e e s  */
-					/***************/
-					// There's something in the tree cache
-					// And that something is our brand new tree!
+					// Trees
 					Expect(s.trees.Cache.Size()).To(Equal(uint64(1)))
-					depth := 0 // TODO for this case is it even possible to have a different depth?
-					treeKeyName := key.TreeKey(depth, st)
-					t, ok := s.trees.Cache.Lookup(treeKeyName)
-					Expect(ok).To(BeTrue())
+					t := checkTreesPresence(appname, st, 0, true)
 					Expect(t).To(Equal(tree1))
 
-					/***************/
-					/*  D i c t s  */
-					/***************/
+					// Segments
+					Expect(s.segments.Cache.Size()).To(Equal(uint64(1)))
+					checkSegmentsPresence(appname, true)
 
-					// TODO there should be only one right????
-					dimensionKey := dimension.Keys[0]
-					segmentKey, err := segment.ParseKey(string(dimensionKey))
-					Expect(err).ToNot(HaveOccurred())
-
-					fmt.Println("dumping dicts")
-					s.dicts.Dump()
-					fmt.Println("finished dumping dicts")
-					fmt.Println("key dictkey")
-					fmt.Println(key.DictKey())
-					fmt.Println("segmentKey", segmentKey)
-					fmt.Println("dictKey", segmentKey.DictKey())
-
+					// Dicts
+					// I manually inserted a dictionary so it should be fine?
 					Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
-					_, ok = s.dicts.Cache.Lookup(segmentKey.DictKey())
-
-					Expect(ok).To(BeTrue())
+					checkDictsPresence(appname, true)
 
 					/*************************/
 					/*  D e l e t e   a p p  */
@@ -251,73 +275,24 @@ var _ = Describe("storage package", func() {
 					err = s.DeleteApp(appname)
 					Expect(err).ToNot(HaveOccurred())
 
-					/***************/
-					/*  T r e e s  */
-					/***************/
-					// Trees should've been deleted from CACHE
+					// Trees
+					// should've been deleted from CACHE
 					Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
-					_, ok = s.trees.Cache.Lookup(treeKeyName)
-					Expect(ok).To(BeFalse())
+					t = checkTreesPresence(appname, st, 0, false)
 					// Trees should've been also deleted from DISK
 					// TODO: how to check for that?
 
-					/*************************/
-					/*  D i m e n s i o n s  */
-					/*************************/
-					_, ok = s.lookupAppDimension(appname)
-					Expect(ok).To(BeFalse())
+					// Dimensions
+					Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
+					checkDimensionsPresence(appname, false)
 
-					/***************/
-					/*  D i c t s  */
-					/***************/
-					_, ok = s.dicts.Cache.Lookup(key.DictKey())
-					Expect(ok).To(BeFalse())
+					// Dicts
+					Expect(s.dicts.Cache.Size()).To(Equal(uint64(0)))
+					checkDictsPresence(appname, false)
 
-					// Now all this stuff should've been deleted
-					// Trees should've been deleted
-					// Both in cache and in disk?
-
-					//					tree1.Insert([]byte("a;c"), uint64(2))
-
-					//					tree2 := tree.New()
-					//					tree2.Insert([]byte("c;d"), uint64(1))
-					//					tree2.Insert([]byte("e;f"), uint64(2))
-					//					st := testing.SimpleTime(10)
-					//					et := testing.SimpleTime(19)
-					//					st2 := testing.SimpleTime(0)
-					//					et2 := testing.SimpleTime(30)
-					//					key, _ := segment.ParseKey("foo")
-					//
-					//					err := s.Put(&PutInput{
-					//						StartTime:  st,
-					//						EndTime:    et,
-					//						Key:        key,
-					//						Val:        tree1,
-					//						SpyName:    "testspy",
-					//						SampleRate: 100,
-					//					})
-					//					Expect(err).ToNot(HaveOccurred())
-					//
-					//					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
-					//					s.Put(&PutInput{
-					//						StartTime:  st,
-					//						EndTime:    et,
-					//						Key:        key,
-					//						Val:        tree2,
-					//						SpyName:    "testspy",
-					//						SampleRate: 100,
-					//					})
-					//
-					//					gOut, err := s.Get(&GetInput{
-					//						StartTime: st2,
-					//						EndTime:   et2,
-					//						Key:       key,
-					//					})
-					//
-					//					Expect(err).ToNot(HaveOccurred())
-					//					Expect(gOut.Tree).ToNot(BeNil())
-					//					Expect(gOut.Tree.String()).To(Equal(tree2.String()))
-					//					Expect(s.Close()).ToNot(HaveOccurred())
+					// Segments
+					Expect(s.segments.Cache.Size()).To(Equal(uint64(0)))
+					checkSegmentsPresence(appname, false)
 				})
 			})
 		})
@@ -414,40 +389,40 @@ var _ = Describe("storage package", func() {
 					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
-			Context("evict cache items periodically", func() {
-				It("works correctly", func() {
-					tree := tree.New()
+			//	Context("evict cache items periodically", func() {
+			//		It("works correctly", func() {
+			//			tree := tree.New()
 
-					size := 16
-					treeKey := make([]byte, size)
-					for i := 0; i < size; i++ {
-						treeKey[i] = 'a'
-					}
-					for i := 0; i < 200; i++ {
-						k := string(treeKey) + strconv.Itoa(i+1)
-						tree.Insert([]byte(k), uint64(i+1))
+			//			size := 16
+			//			treeKey := make([]byte, size)
+			//			for i := 0; i < size; i++ {
+			//				treeKey[i] = 'a'
+			//			}
+			//			for i := 0; i < 200; i++ {
+			//				k := string(treeKey) + strconv.Itoa(i+1)
+			//				tree.Insert([]byte(k), uint64(i+1))
 
-						key, _ := segment.ParseKey("tree_key" + strconv.Itoa(i+1))
-						err := s.Put(&PutInput{
-							Key:        key,
-							Val:        tree,
-							SpyName:    "testspy",
-							SampleRate: 100,
-						})
-						Expect(err).ToNot(HaveOccurred())
-					}
+			//				key, _ := segment.ParseKey("tree_key" + strconv.Itoa(i+1))
+			//				err := s.Put(&PutInput{
+			//					Key:        key,
+			//					Val:        tree,
+			//					SpyName:    "testspy",
+			//					SampleRate: 100,
+			//				})
+			//				Expect(err).ToNot(HaveOccurred())
+			//			}
 
-					for i := 0; i < 5; i++ {
-						_, err := mem.VirtualMemory()
-						Expect(err).ToNot(HaveOccurred())
+			//			for i := 0; i < 5; i++ {
+			//				_, err := mem.VirtualMemory()
+			//				Expect(err).ToNot(HaveOccurred())
 
-						var m runtime.MemStats
-						runtime.ReadMemStats(&m)
-						time.Sleep(time.Second)
-					}
-					Expect(s.Close()).ToNot(HaveOccurred())
-				})
-			})
+			//				var m runtime.MemStats
+			//				runtime.ReadMemStats(&m)
+			//				time.Sleep(time.Second)
+			//			}
+			//			Expect(s.Close()).ToNot(HaveOccurred())
+			//		})
+			//	})
 			Context("persist data between restarts", func() {
 				It("works correctly", func() {
 					tree := tree.New()
