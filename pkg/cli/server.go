@@ -223,6 +223,12 @@ func (svc *serverService) Stop() {
 
 //revive:disable-next-line:confusing-naming methods are different
 func (svc *serverService) stop() {
+	if svc.config.EnableExperimentalAdmin {
+		svc.logger.Debug("stopping admin server")
+		if err := svc.adminServer.Stop(); err != nil {
+			svc.logger.WithError(err).Error("admin server stop")
+		}
+	}
 	svc.controller.Drain()
 	svc.logger.Debug("stopping discovery manager")
 	svc.discoveryManager.Stop()
@@ -243,15 +249,13 @@ func (svc *serverService) stop() {
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
 	}
+	// we stop the http server as the last thing due to:
+	// 1. we may still want to bserve metric values while storage is closing
+	// 2. we want the /healthz endpoint to still be responding while server is shutting down
+	// (we are thinking in a k8s context here, but maybe 'terminationGracePeriodSeconds' makes this unnecessary)
 	svc.logger.Debug("stopping http server")
 	if err := svc.controller.Stop(); err != nil {
 		svc.logger.WithError(err).Error("controller stop")
-	}
-	if svc.config.EnableExperimentalAdmin {
-		svc.logger.Debug("stopping admin server")
-		if err := svc.adminServer.Stop(); err != nil {
-			svc.logger.WithError(err).Error("admin server stop")
-		}
 	}
 }
 
