@@ -59,7 +59,7 @@ func NewExec(cfg *config.Exec, args []string) (*Exec, error) {
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
 	}
-	upstream, err := remote.New(rc, logger)
+	up, err := remote.New(rc, logger)
 	if err != nil {
 		return nil, fmt.Errorf("new remote upstream: %v", err)
 	}
@@ -77,7 +77,7 @@ func NewExec(cfg *config.Exec, args []string) (*Exec, error) {
 	return &Exec{
 		Args:               args,
 		Logger:             logger,
-		Upstream:           upstream,
+		Upstream:           up,
 		SpyName:            spyName,
 		ApplicationName:    CheckApplicationName(logger, cfg.ApplicationName, spyName, args),
 		SampleRate:         sampleRate,
