@@ -24,23 +24,21 @@ import (
 )
 
 type push struct {
-	config     *config.AdhocRecord
 	args       []string
 	storage    *storage.Storage
 	logger     *logrus.Logger
 	bufferPool bytebufferpool.Pool
 }
 
-func newPush(config *config.AdhocRecord, args []string, storage *storage.Storage, logger *logrus.Logger) push {
+func newPush(_cfg *config.Adhoc, args []string, storage *storage.Storage, logger *logrus.Logger) (runner, error) {
 	return push{
-		config:  config,
 		args:    args,
 		storage: storage,
 		logger:  logger,
-	}
+	}, nil
 }
 
-func (p push) run() error {
+func (p push) Run() error {
 	http.HandleFunc("/ingest", func(w http.ResponseWriter, r *http.Request) {
 		// TODO(abeaumont): The handler is copy-pasted, it needs to be abstracted.
 		pi, err := p.ingestParamsFromRequest(r)

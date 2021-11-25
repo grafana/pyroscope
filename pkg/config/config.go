@@ -41,42 +41,32 @@ func (cfg CombinedDbManager) Path() string {
 }
 
 type Adhoc struct {
-	AdhocRecord AdhocRecord `skip:"true" mapstructure:",squash"`
-	AdhocServer AdhocServer `skip:"true" mapstructure:",squash"`
-}
-
-type AdhocRecord struct {
-	Enable bool `desc:"whether to enable adhoc record, an experimental feature that may change or disappear in the future."`
-
 	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
 
-	ApplicationName       string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
-	SampleRate            uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
-	MaxNodesSerialization int    `def:"2048" desc:"max number of nodes used when saving profiles to disk" mapstructure:"max-nodes-serialization"`
-	IngestionMode         string `def:"exec" desc:"ingestion mode to use, supported modes are: 'exec', 'push', 'pull'" mapstructure:"ingestion-mode"`
+	MaxNodesSerialization int           `def:"2048" desc:"max number of nodes used when saving profiles to disk" mapstructure:"max-nodes-serialization"`
+	Duration              time.Duration `def:"0" desc:"duration of the profiling session, which is the whole execution of the profield process by default" mapstructure:"duration"`
 
 	// JSON output configuration
 	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
 	OutputFormat   string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
 
 	// Spy configuration
-	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	ApplicationName    string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
+	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
 	SpyName            string `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
-	NoRootDrop         bool   `def:"false" desc:"disables permissions drop when ran under root. use this one if you want to run your command as root" mapstructure:"no-root-drop"`
-	UserName           string `def:"" desc:"starts process under specified user name" mapstructure:"user-name"`
-	GroupName          string `def:"" desc:"starts process under specified group name" mapstructure:"group-name"`
+	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
 	PyspyBlocking      bool   `def:"false" desc:"enables blocking mode for pyspy" mapstructure:"pyspy-blocking"`
 	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
-}
 
-type AdhocServer struct {
-	Enable bool `desc:"whether to enable adhoc server, an experimental feature that may change or disappear in the future."`
+	// Connect mode configuration
+	Pid int `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)" mapstructure:"pid"`
 
-	LogLevel string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+	// Push mode configuration
+	Push bool `def:"false" desc:"Use push mode, exposing an ingestion endpoint for the profiled program to use" mapstructure:"push"`
 
-	APIBindAddr    string `def:":4040" desc:"port for the HTTP(S) server used for data ingestion and web UI" mapstructure:"api-bind-addr"`
-	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
+	// Pull mode configuration
+	URL string `def:"" desc:"URL to gather profiling data from" mapstructure:"url"`
 }
 
 type Agent struct {
