@@ -27,57 +27,78 @@ var _ = Describe("storage package", func() {
 	})
 
 	Context("delete app", func() {
+		/*************************************/
+		/*  h e l p e r   f u n c t i o n s  */
+		/*************************************/
+		checkSegmentsPresence := func(appname string, presence bool) {
+			segmentKey, err := segment.ParseKey(string(appname))
+			Expect(err).ToNot(HaveOccurred())
+			segmentKeyStr := segmentKey.SegmentKey()
+			Expect(segmentKeyStr).To(Equal(appname + "{}"))
+			_, ok := s.segments.Cache.Lookup(segmentKeyStr)
+
+			if presence {
+				Expect(ok).To(BeTrue())
+			} else {
+				Expect(ok).To(BeFalse())
+			}
+		}
+
+		checkDimensionsPresence := func(appname string, presence bool) {
+			_, ok := s.lookupAppDimension(appname)
+			if presence {
+				Expect(ok).To(BeTrue())
+			} else {
+				Expect(ok).To(BeFalse())
+			}
+		}
+
+		checkTreesPresence := func(appname string, st time.Time, depth int, presence bool) interface{} {
+			key, err := segment.ParseKey(appname)
+			Expect(err).ToNot(HaveOccurred())
+			treeKeyName := key.TreeKey(depth, st)
+			t, ok := s.trees.Cache.Lookup(treeKeyName)
+			if presence {
+				Expect(ok).To(BeTrue())
+			} else {
+				Expect(ok).To(BeFalse())
+			}
+
+			return t
+		}
+
+		checkDictsPresence := func(appname string, presence bool) interface{} {
+			d, ok := s.dicts.Cache.Lookup(appname)
+			if presence {
+				Expect(ok).To(BeTrue())
+			} else {
+				Expect(ok).To(BeFalse())
+			}
+			return d
+		}
+
+		checkLabelsPresence := func(appname string, presence bool) {
+			// this indirectly calls s.labels
+			appnames := s.GetAppNames()
+
+			// linear scan should be fast enough here
+			found := false
+			for _, v := range appnames {
+				if v == appname {
+					found = true
+				}
+			}
+
+			if presence {
+				Expect(found).To(BeTrue())
+			} else {
+				Expect(found).To(BeFalse())
+			}
+		}
+
 		Context("simple app", func() {
 			It("works correctly", func() {
-				/*************************************/
-				/*  h e l p e r   f u n c t i o n s  */
-				/*************************************/
-				checkSegmentsPresence := func(appname string, presence bool) {
-					segmentKey, err := segment.ParseKey(string(appname))
-					Expect(err).ToNot(HaveOccurred())
-					segmentKeyStr := segmentKey.SegmentKey()
-					Expect(segmentKeyStr).To(Equal(appname + "{}"))
-					_, ok := s.segments.Cache.Lookup(segmentKeyStr)
 
-					if presence {
-						Expect(ok).To(BeTrue())
-					} else {
-						Expect(ok).To(BeFalse())
-					}
-				}
-
-				checkDimensionsPresence := func(appname string, presence bool) {
-					_, ok := s.lookupAppDimension(appname)
-					if presence {
-						Expect(ok).To(BeTrue())
-					} else {
-						Expect(ok).To(BeFalse())
-					}
-				}
-
-				checkTreesPresence := func(appname string, st time.Time, depth int, presence bool) interface{} {
-					key, err := segment.ParseKey(appname)
-					Expect(err).ToNot(HaveOccurred())
-					treeKeyName := key.TreeKey(depth, st)
-					t, ok := s.trees.Cache.Lookup(treeKeyName)
-					if presence {
-						Expect(ok).To(BeTrue())
-					} else {
-						Expect(ok).To(BeFalse())
-					}
-
-					return t
-				}
-
-				checkDictsPresence := func(appname string, presence bool) interface{} {
-					d, ok := s.dicts.Cache.Lookup(appname)
-					if presence {
-						Expect(ok).To(BeTrue())
-					} else {
-						Expect(ok).To(BeFalse())
-					}
-					return d
-				}
 				appname := "my.app.cpu"
 
 				// We insert info for an app
@@ -124,6 +145,9 @@ var _ = Describe("storage package", func() {
 				Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
 				checkDictsPresence(appname, true)
 
+				// Labels
+				checkLabelsPresence(appname, true)
+
 				/*************************/
 				/*  D e l e t e   a p p  */
 				/*************************/
@@ -148,8 +172,10 @@ var _ = Describe("storage package", func() {
 				// Segments
 				Expect(s.segments.Cache.Size()).To(Equal(uint64(0)))
 				checkSegmentsPresence(appname, false)
-			})
 
+				// Labels
+				checkLabelsPresence(appname, false)
+			})
 		})
 	})
 })
