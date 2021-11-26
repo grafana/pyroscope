@@ -6,4 +6,4 @@ import (
 
 func performOSChecks(_ string) error { return nil }
 
-func adjustCmd(_ *exec.Cmd, _ Config) error { return nil }
+func adjustCmd(_ *exec.Cmd, _ bool, _, _ string) error { return nil }

@@ -152,6 +152,7 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 	if err != nil {
 		panic(err)
 	}
+	r.Start()
 
 	requestsCount := l.Config.Requests
 

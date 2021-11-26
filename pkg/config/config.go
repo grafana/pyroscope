@@ -3,6 +3,9 @@ package config
 //revive:disable:line-length-limit Most of line length is documentation
 //revive:disable:max-public-structs Config structs
 
+// TODO(abeaumont): spy and remote configurations could be grouped,
+// but using squash seems to keep the prefix in the CLI.
+
 import (
 	"time"
 
@@ -17,8 +20,10 @@ type Config struct {
 	Server    Server    `skip:"true" mapstructure:",squash"`
 	Convert   Convert   `skip:"true" mapstructure:",squash"`
 	Exec      Exec      `skip:"true" mapstructure:",squash"`
+	Connect   Connect   `skip:"true" mapstructure:",squash"`
 	DbManager DbManager `skip:"true" mapstructure:",squash"`
 	Admin     Admin     `skip:"true" mapstructure:",squash"`
+	Adhoc     Adhoc     `skip:"true" mapstructure:",squash"`
 }
 
 // File can be read from file system.
@@ -34,6 +39,35 @@ func (cfg Server) Path() string {
 
 func (cfg CombinedDbManager) Path() string {
 	return cfg.Server.Config
+}
+
+type Adhoc struct {
+	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
+
+	MaxNodesSerialization int           `def:"2048" desc:"max number of nodes used when saving profiles to disk" mapstructure:"max-nodes-serialization"`
+	Duration              time.Duration `def:"0" desc:"duration of the profiling session, which is the whole execution of the profield process by default" mapstructure:"duration"`
+
+	// JSON output configuration
+	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
+	OutputFormat   string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
+
+	// Spy configuration
+	ApplicationName    string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
+	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
+	SpyName            string `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
+	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	PyspyBlocking      bool   `def:"false" desc:"enables blocking mode for pyspy" mapstructure:"pyspy-blocking"`
+	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
+
+	// Connect mode configuration
+	Pid int `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)" mapstructure:"pid"`
+
+	// Push mode configuration
+	Push bool `def:"false" desc:"Use push mode, exposing an ingestion endpoint for the profiled program to use" mapstructure:"push"`
+
+	// Pull mode configuration
+	URL string `def:"" desc:"URL to gather profiling data from" mapstructure:"url"`
 }
 
 type Agent struct {
@@ -200,24 +234,51 @@ type DbManager struct {
 }
 
 type Exec struct {
-	SpyName                string        `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
-	ApplicationName        string        `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
-	SampleRate             uint          `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
-	DetectSubprocesses     bool          `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
-	LogLevel               string        `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
+
+	// Spy configuration
+	ApplicationName    string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
+	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
+	SpyName            string `def:"auto" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
+	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	PyspyBlocking      bool   `def:"false" desc:"enables blocking mode for pyspy" mapstructure:"pyspy-blocking"`
+	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
+
+	// Remote upstream configuration
 	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
 	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
 	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
 	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
-	NoLogging              bool          `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
-	NoRootDrop             bool          `def:"false" desc:"disables permissions drop when ran under root. use this one if you want to run your command as root" mapstructure:"no-root-drop"`
-	Pid                    int           `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)" mapstructure:"pid"`
-	UserName               string        `def:"" desc:"starts process under specified user name" mapstructure:"user-name"`
-	GroupName              string        `def:"" desc:"starts process under specified group name" mapstructure:"group-name"`
-	PyspyBlocking          bool          `def:"false" desc:"enables blocking mode for pyspy" mapstructure:"pyspy-blocking"`
-	RbspyBlocking          bool          `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
 
 	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+
+	NoRootDrop bool   `def:"false" desc:"disables permissions drop when ran under root. use this one if you want to run your command as root" mapstructure:"no-root-drop"`
+	UserName   string `def:"" desc:"starts process under specified user name" mapstructure:"user-name"`
+	GroupName  string `def:"" desc:"starts process under specified group name" mapstructure:"group-name"`
+}
+
+type Connect struct {
+	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
+	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
+
+	// Spy configuration
+	ApplicationName    string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
+	SampleRate         uint   `def:"100" desc:"sample rate for the profiler in Hz. 100 means reading 100 times per second" mapstructure:"sample-rate"`
+	SpyName            string `def:"" desc:"name of the profiler you want to use. Supported ones are: <supportedProfilers>" mapstructure:"spy-name"`
+	DetectSubprocesses bool   `def:"true" desc:"makes pyroscope keep track of and profile subprocesses of the main process" mapstructure:"detect-subprocesses"`
+	PyspyBlocking      bool   `def:"false" desc:"enables blocking mode for pyspy" mapstructure:"pyspy-blocking"`
+	RbspyBlocking      bool   `def:"false" desc:"enables blocking mode for rbspy" mapstructure:"rbspy-blocking"`
+
+	// Remote upstream configuration
+	ServerAddress          string        `def:"http://localhost:4040" desc:"address of the pyroscope server" mapstructure:"server-address"`
+	AuthToken              string        `def:"" desc:"authorization token used to upload profiling data" mapstructure:"auth-token"`
+	UpstreamThreads        int           `def:"4" desc:"number of upload threads" mapstructure:"upstream-threads"`
+	UpstreamRequestTimeout time.Duration `def:"10s" desc:"profile upload timeout" mapstructure:"upstream-request-timeout"`
+
+	Tags map[string]string `name:"tag" def:"" desc:"tag in key=value form. The flag may be specified multiple times" mapstructure:"tags"`
+
+	Pid int `def:"0" desc:"PID of the process you want to profile. Pass -1 to profile the whole system (only supported by ebpfspy)" mapstructure:"pid"`
 }
 
 // TODO how to abstract this better?

@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package exec
@@ -13,10 +14,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func adjustCmd(cmd *goexec.Cmd, cfg Config) error {
+func adjustCmd(cmd *goexec.Cmd, noRootDrop bool, userName, groupName string) error {
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	// permissions drop
-	if isRoot() && !cfg.noRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
+	if isRoot() && !noRootDrop && os.Getenv("SUDO_UID") != "" && os.Getenv("SUDO_GID") != "" {
 		creds, err := generateCredentialsDrop()
 		if err != nil {
 			logrus.Errorf("failed to drop permissions, %q", err)
@@ -25,8 +26,8 @@ func adjustCmd(cmd *goexec.Cmd, cfg Config) error {
 		}
 	}
 
-	if cfg.userName != "" || cfg.groupName != "" {
-		creds, err := generateCredentials(cfg.userName, cfg.groupName)
+	if userName != "" || groupName != "" {
+		creds, err := generateCredentials(userName, groupName)
 		if err != nil {
 			logrus.Errorf("failed to generate credentials: %q", err)
 		} else {
