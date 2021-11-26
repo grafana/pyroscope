@@ -8,6 +8,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
@@ -16,8 +18,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/util/process"
-	"github.com/sirupsen/logrus"
 )
 
 type Exec struct {
@@ -149,18 +149,5 @@ func (e *Exec) Run() error {
 	}
 	defer session.Stop()
 
-	// Wait for spawned process to exit
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case s := <-c:
-			_ = process.SendSignal(cmd.Process, s)
-		case <-ticker.C:
-			if !process.Exists(cmd.Process.Pid) {
-				logrus.Debug("child process exited")
-				return cmd.Wait()
-			}
-		}
-	}
+	return WaitForProcess(e.Logger, cmd, c, 0, true)
 }

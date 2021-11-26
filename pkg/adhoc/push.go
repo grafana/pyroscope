@@ -5,22 +5,23 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
+	goexec "os/exec"
 	"os/signal"
 	"strconv"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"github.com/valyala/bytebufferpool"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
-	"github.com/pyroscope-io/pyroscope/pkg/util/process"
-	"github.com/sirupsen/logrus"
-	"github.com/valyala/bytebufferpool"
 )
 
 type push struct {
@@ -87,11 +88,11 @@ func (p push) Run() error {
 
 	// start command
 	c := make(chan os.Signal, 10)
-	var cmd *exec.Cmd
+	var cmd *goexec.Cmd
 	// Note that we don't specify which signals to be sent: any signal to be
 	// relayed to the child process (including SIGINT and SIGTERM).
 	signal.Notify(c)
-	cmd = exec.Command(p.args[0], p.args[1:]...)
+	cmd = goexec.Command(p.args[0], p.args[1:]...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PYROSCOPE_SERVER_ADDRESS=http://localhost:%d", listener.Addr().(*net.TCPAddr).Port))
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -103,21 +104,7 @@ func (p push) Run() error {
 		signal.Stop(c)
 		close(c)
 	}()
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case s := <-c:
-			_ = process.SendSignal(cmd.Process, s)
-		case err := <-done:
-			return err
-		case <-ticker.C:
-			if !process.Exists(cmd.Process.Pid) {
-				logrus.Debug("child process exited")
-				return cmd.Wait()
-			}
-		}
-	}
+	return exec.WaitForProcess(p.logger, cmd, c, 0, true)
 }
 
 func (p push) ingestParamsFromRequest(r *http.Request) (*storage.PutInput, error) {
