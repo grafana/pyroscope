@@ -6,5 +6,5 @@ import (
 )
 
 func dataBaseDirectory() string {
-	return filepath.Join(os.GetEnv("USERPROFILE"), os.GetEnv("LOCALAPPDATA"))
+	return filepath.Join(os.Getenv("USERPROFILE"), os.Getenv("LOCALAPPDATA"))
 }
