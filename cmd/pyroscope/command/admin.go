@@ -45,14 +45,14 @@ func newAdminAppCmd(cfg *config.Admin) *cobra.Command {
 		}),
 	}
 
-	cmd.AddCommand(newAdminAppGetCmd(cfg))
-	cmd.AddCommand(newAdminAppDeleteCmd(cfg))
+	cmd.AddCommand(newAdminAppGetCmd(&cfg.AdminAppGet))
+	cmd.AddCommand(newAdminAppDeleteCmd(&cfg.AdminAppDelete))
 
 	return cmd
 }
 
 // admin app get
-func newAdminAppGetCmd(cfg *config.Admin) *cobra.Command {
+func newAdminAppGetCmd(cfg *config.AdminAppGet) *cobra.Command {
 	vpr := newViper()
 	cmd := &cobra.Command{
 		Use:   "get [flags]",
@@ -73,7 +73,7 @@ func newAdminAppGetCmd(cfg *config.Admin) *cobra.Command {
 }
 
 // admin app delete
-func newAdminAppDeleteCmd(cfg *config.Admin) *cobra.Command {
+func newAdminAppDeleteCmd(cfg *config.AdminAppDelete) *cobra.Command {
 	vpr := newViper()
 	cmd := &cobra.Command{
 		Use:   "delete [flags] [app_name]",
@@ -103,7 +103,7 @@ func newAdminAppDeleteCmd(cfg *config.Admin) *cobra.Command {
 				return err
 			}
 
-			return cli.DeleteApp(arg[0])
+			return cli.DeleteApp(arg[0], cfg.Force)
 		}),
 	}
 

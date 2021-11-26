@@ -32,13 +32,17 @@ type UdsHTTPServer struct {
 	socketAddr string
 }
 
+type HTTPClient interface {
+	Get(url string) (resp *http.Response, err error)
+}
+
 // NewUdsHttpServer creates a http server that responds over UDS (unix domain socket)
-func NewUdsHTTPServer(socketAddr string) (*UdsHTTPServer, error) {
+func NewUdsHTTPServer(socketAddr string, httpClient HTTPClient) (*UdsHTTPServer, error) {
 	if err := validateSocketAddress(socketAddr); err != nil {
 		return nil, err
 	}
 
-	listener, err := createListener(socketAddr)
+	listener, err := createListener(socketAddr, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -49,16 +53,33 @@ func NewUdsHTTPServer(socketAddr string) (*UdsHTTPServer, error) {
 	}, nil
 }
 
-func (u *UdsHTTPServer) Start(handler *http.ServeMux) error {
+type myHandler struct {
+	originalHandler http.Handler
+}
+
+func (m myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// enrich with an additional endpoint
 	// that we will use to probe when starting a new instance
-	handler.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/health" {
 		writeMessage(w, 200, "it works!")
-	})
+		return
+	}
 
-	u.server = &http.Server{Handler: handler}
+	m.originalHandler.ServeHTTP(w, r)
+}
 
-	return u.server.Serve(u.listener)
+func (u *UdsHTTPServer) Start(handler http.Handler) error {
+	h := myHandler{handler}
+	u.server = &http.Server{Handler: h}
+	err := u.server.Serve(u.listener)
+
+	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
+	// the returned error is ErrServerClosed.
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+
+	return err
 }
 
 // createListener creates a listener on socketAddr UDS
@@ -70,7 +91,7 @@ func (u *UdsHTTPServer) Start(handler *http.ServeMux) error {
 // keep in mind there's a slight chance for a race condition there
 // where a socket is verified to be not responding
 // but the moment it's taken over, it starts to respond (probably because it was taken over by a different instance)
-func createListener(socketAddr string) (net.Listener, error) {
+func createListener(socketAddr string, httpClient HTTPClient) (net.Listener, error) {
 	takeOver := func(socketAddr string) (net.Listener, error) {
 		err := os.Remove(socketAddr)
 		if err != nil {
@@ -89,11 +110,6 @@ func createListener(socketAddr string) (net.Listener, error) {
 		if isErrorAddressAlreadyInUse(err) {
 			// that socket is already being used
 			// let's check if the server is also responding
-			httpClient, err := NewHTTPOverUDSClient(socketAddr)
-			if err != nil {
-				return nil, err
-			}
-
 			resp, err := httpClient.Get(HealthAddress)
 
 			// the httpclient failed
@@ -125,12 +141,10 @@ func (u *UdsHTTPServer) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	err := u.server.Shutdown(ctx)
-	if err != nil {
-		return err
-	}
-
-	return os.Remove(u.socketAddr)
+	// there's no need to remove the socket
+	// since go does it for us
+	// https://github.com/golang/go/blob/47db3bb443774c0b0df2cab188aa3d76b361dca2/src/net/unixsock_posix.go#L187
+	return u.server.Shutdown(ctx)
 }
 
 // https://stackoverflow.com/a/65865898

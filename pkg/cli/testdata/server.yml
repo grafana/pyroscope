@@ -9,3 +9,13 @@ metrics-export-rules:
 retention-levels:
   0: 100s
   1: 1000s
+
+scrape-configs:
+  - job-name: testing
+    enabled-profiles: [cpu, mem]
+    static-configs:
+      - application: app
+        targets:
+          - localhost:6060
+        labels:
+          foo: bar

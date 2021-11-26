@@ -18,21 +18,25 @@ func (hs hashString) Sum64() uint64 {
 var _ = Describe("Hyperloglog", func() {
 	Context("wrapper implementation", func() {
 		// original implementation panics with "concurrent map writes"
-		It("doesn't panic", func(done Done) {
-			Expect(func() {
-				h, _ := wrapper.NewPlus(18)
-				count := 10000
-				wg := sync.WaitGroup{}
-				wg.Add(count)
-				for i := 0; i < count; i++ {
-					go func() {
-						h.Add(hashString("test"))
-						wg.Done()
-					}()
-				}
-				wg.Wait()
-			}).ToNot(Panic())
-			close(done)
+		It("doesn't panic", func() {
+			done := make(chan interface{})
+			go func() {
+				Expect(func() {
+					h, _ := wrapper.NewPlus(18)
+					count := 10000
+					wg := sync.WaitGroup{}
+					wg.Add(count)
+					for i := 0; i < count; i++ {
+						go func() {
+							h.Add(hashString("test"))
+							wg.Done()
+						}()
+					}
+					wg.Wait()
+				}).ToNot(Panic())
+				close(done)
+			}()
+			Eventually(done).Should(BeClosed())
 		})
 	})
 })

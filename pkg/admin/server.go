@@ -2,20 +2,23 @@ package admin
 
 import (
 	"net/http"
+	"os"
 
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
-	log  *logrus.Logger
-	ctrl *Controller
-	Mux  *http.ServeMux
+	log     *logrus.Logger
+	ctrl    *Controller
+	Handler http.Handler
 
 	HTTPServer
 }
 
 type HTTPServer interface {
-	Start(*http.ServeMux) error
+	Start(http.Handler) error
 	Stop() error
 }
 
@@ -29,20 +32,31 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 	}
 	as.HTTPServer = httpServer
 
-	mux := http.NewServeMux()
-	as.Mux = mux
+	// use gorilla mux
+	r := mux.NewRouter()
+
+	as.Handler = r
 
 	// Routes
-	// TODO maybe use gorilla?
-	mux.HandleFunc("/v1/apps", as.ctrl.HandleApps)
+	r.HandleFunc("/v1/apps", as.ctrl.HandleGetApps).Methods("GET")
+	r.HandleFunc("/v1/apps", as.ctrl.HandleDeleteApp).Methods("DELETE")
+
+	// Global middlewares
+	r.Use(logginMiddleware)
 
 	return as, nil
 }
 
 func (as *Server) Start() error {
-	return as.HTTPServer.Start(as.Mux)
+	return as.HTTPServer.Start(as.Handler)
 }
 
 func (as *Server) Stop() error {
 	return as.HTTPServer.Stop()
+}
+
+func logginMiddleware(next http.Handler) http.Handler {
+	// log to Stdout using Apache Common Log Format
+	// TODO maybe use JSON?
+	return handlers.LoggingHandler(os.Stdout, next)
 }

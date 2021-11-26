@@ -8,19 +8,17 @@ import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
 import Footer from './Footer';
 import { buildRenderURL } from '../util/updateRequests';
-import { fetchNames, fetchComparisonAppData } from '../redux/actions';
+import {
+  fetchNames,
+  fetchComparisonAppData,
+  fetchTimeline,
+} from '../redux/actions';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
 function ComparisonApp(props) {
   const { actions, renderURL, leftRenderURL, rightRenderURL, comparison } =
     props;
-  const prevPropsRef = useRef();
-
-  useEffect(() => {
-    actions.fetchComparisonAppData(renderURL, 'both');
-    return actions.abortTimelineRequest;
-  }, [renderURL]);
 
   useEffect(() => {
     actions.fetchComparisonAppData(leftRenderURL, 'left');
@@ -31,6 +29,12 @@ function ComparisonApp(props) {
     actions.fetchComparisonAppData(rightRenderURL, 'right');
     return actions.abortTimelineRequest;
   }, [rightRenderURL]);
+
+  useEffect(() => {
+    actions.fetchTimeline(renderURL);
+
+    return actions.abortTimelineRequest;
+  }, [renderURL]);
 
   return (
     <div className="pyroscope-app">
@@ -72,6 +76,7 @@ const mapDispatchToProps = (dispatch) => ({
     {
       fetchComparisonAppData,
       fetchNames,
+      fetchTimeline,
     },
     dispatch
   ),

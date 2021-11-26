@@ -15,7 +15,7 @@ type Timeline struct {
 	// Watermarks map contains down-sampling watermarks (Unix timestamps)
 	// describing resolution levels of the timeline.
 	//
-	// Resolution in seconds is calculated as 10^k, where k a the map key.
+	// Resolution in seconds is calculated as 10^k, where k is the map key.
 	// Meaning that any range within these 10^k seconds contains not more
 	// than one sample. Any sub-range less than 10^k shows down-sampled data.
 	//

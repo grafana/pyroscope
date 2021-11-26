@@ -16,9 +16,7 @@ func (s *Storage) Delete(di *DeleteInput) error {
 
 func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 	sk := k.SegmentKey()
-	if _, ok := s.segments.Lookup(sk); !ok {
-		return nil
-	}
+
 	// Drop trees from disk.
 	if err := s.trees.DropPrefix(treePrefix.key(sk)); err != nil {
 		return err

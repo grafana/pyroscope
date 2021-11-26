@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotrod-golang
+spec:
+  selector:
+    matchLabels:
+      app: hotrod-golang
+  template:
+    metadata:
+      labels:
+        app: hotrod-golang
+        app.kubernetes.io/name: hotrod-golang
+      annotations:
+        pyroscope.io/scrape: 'true'
+        pyroscope.io/application-name: 'hotrod'
+        pyroscope.io/profile-cpu-enabled: 'true'
+        pyroscope.io/profile-mem-enabled: 'true'
+        pyroscope.io/port: '6060'
+    spec:
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: hotrod-golang
+          image: public.ecr.aws/pyroscope/hotrod-golang:latest
+          args: ['all']
+          ports:
+            - containerPort: 8080
+            - containerPort: 6060
+          env:
+            - name: JAEGER_AGENT_HOST
+              value: jaeger
+            - name: JAEGER_AGENT_PORT
+              value: '6831'
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  labels:
+    app: jaeger
+    app.kubernetes.io/name: jaeger
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+        app.kubernetes.io/name: jaeger
+    spec:
+      containers:
+        - name: jaeger
+          image: jaegertracing/all-in-one:1.1
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 256Mi
+          ports:
+            - containerPort: 6831
+              protocol: UDP
+            - containerPort: 16686
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hotrod-golang
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: hotrod-golang
+  ports:
+    - name: frontend
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: jaeger
+  ports:
+    - name: agent
+      port: 16686
+      targetPort: 16686
+    - name: agent-compact
+      port: 6831
+      protocol: UDP
+      targetPort: 6831
