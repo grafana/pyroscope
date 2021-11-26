@@ -5,8 +5,9 @@ import (
 	"net"
 	"net/http"
 	"os"
-	goexec "os/exec"
+	"os/exec"
 	"os/signal"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
@@ -17,6 +18,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
 
 type push struct {
@@ -51,11 +53,11 @@ func (p push) Run() error {
 
 	// start command
 	c := make(chan os.Signal, 10)
-	var cmd *goexec.Cmd
+	var cmd *exec.Cmd
 	// Note that we don't specify which signals to be sent: any signal to be
 	// relayed to the child process (including SIGINT and SIGTERM).
 	signal.Notify(c)
-	cmd = goexec.Command(p.args[0], p.args[1:]...)
+	cmd = exec.Command(p.args[0], p.args[1:]...)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PYROSCOPE_SERVER_ADDRESS=http://localhost:%d", listener.Addr().(*net.TCPAddr).Port))
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -67,5 +69,19 @@ func (p push) Run() error {
 		signal.Stop(c)
 		close(c)
 	}()
-	return exec.WaitForProcess(p.logger, cmd, c, 0, true)
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case s := <-c:
+			_ = process.SendSignal(cmd.Process, s)
+		case err := <-done:
+			return err
+		case <-ticker.C:
+			if !process.Exists(cmd.Process.Pid) {
+				logrus.Debug("child process exited")
+				return cmd.Wait()
+			}
+		}
+	}
 }

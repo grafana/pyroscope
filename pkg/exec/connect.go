@@ -17,6 +17,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/util/process"
 )
 
 type Connect struct {
@@ -122,10 +123,23 @@ func (c *Connect) Run() error {
 	}
 	defer session.Stop()
 
+	// wait for process to exit
 	// pid == -1 means we're profiling whole system
 	if c.Pid == -1 {
 		<-ch
 		return nil
 	}
-	return WaitForProcess(c.Logger, nil, ch, 0, false)
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ch:
+			return nil
+		case <-ticker.C:
+			if !process.Exists(c.Pid) {
+				c.Logger.Debugf("child process exited")
+				return nil
+			}
+		}
+	}
 }
