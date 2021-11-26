@@ -21,7 +21,6 @@ import (
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
-	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -54,9 +53,6 @@ type Controller struct {
 	stats      map[string]int
 
 	appStats *hyperloglog.HyperLogLogPlus
-
-	// Byte buffers are used for deserialization of ingested data.
-	bufferPool bytebufferpool.Pool
 
 	// Exported metrics.
 	exportedMetrics *prometheus.Registry
@@ -133,8 +129,14 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	ingestHandler := NewIngestHandler(ctrl.log, ctrl.storage, ctrl.exporter, func(pi *storage.PutInput) {
+		ctrl.statsInc("ingest")
+		ctrl.statsInc("ingest:" + pi.SpyName)
+		ctrl.appStats.Add(hashString(pi.Key.AppName()))
+	})
 	insecureRoutes = append(insecureRoutes, []route{
-		{"/ingest", ctrl.ingestHandler},
+		{"/ingest", ingestHandler.ServeHTTP},
 		{"/forbidden", ctrl.forbiddenHandler()},
 		{"/assets/", ctrl.assetsFilesHandler},
 	}...)
@@ -366,12 +368,11 @@ func (*Controller) writeResponseFile(w http.ResponseWriter, filename string, con
 }
 
 func (ctrl *Controller) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	ctrl.log.WithError(err).Error(msg)
-	writeMessage(w, code, "%s: %q", msg, err)
+	WriteError(ctrl.log, w, code, err, msg)
 }
 
 func (ctrl *Controller) writeInvalidMethodError(w http.ResponseWriter) {
-	ctrl.writeErrorMessage(w, http.StatusMethodNotAllowed, "method not allowed")
+	WriteErrorMessage(ctrl.log, w, http.StatusMethodNotAllowed, "method not allowed")
 }
 
 func (ctrl *Controller) writeInvalidParameterError(w http.ResponseWriter, err error) {
@@ -387,7 +388,16 @@ func (ctrl *Controller) writeJSONEncodeError(w http.ResponseWriter, err error) {
 }
 
 func (ctrl *Controller) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
-	ctrl.log.Error(msg)
+	WriteErrorMessage(ctrl.log, w, code, msg)
+}
+
+func WriteError(log *logrus.Logger, w http.ResponseWriter, code int, err error, msg string) {
+	log.WithError(err).Error(msg)
+	writeMessage(w, code, "%s: %q", msg, err)
+}
+
+func WriteErrorMessage(log *logrus.Logger, w http.ResponseWriter, code int, msg string) {
+	log.Error(msg)
 	writeMessage(w, code, msg)
 }
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
@@ -17,20 +18,37 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
-func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
-	pi, err := ingestParamsFromRequest(r)
+type ingestHandler struct {
+	log        *logrus.Logger
+	storage    *storage.Storage
+	exporter   storage.MetricsExporter
+	bufferPool bytebufferpool.Pool
+	onSuccess  func(pi *storage.PutInput)
+}
+
+func NewIngestHandler(log *logrus.Logger, st *storage.Storage, exporter storage.MetricsExporter, onSuccess func(pi *storage.PutInput)) http.Handler {
+	return ingestHandler{
+		log:       log,
+		storage:   st,
+		exporter:  exporter,
+		onSuccess: onSuccess,
+	}
+}
+
+func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	pi, err := h.ingestParamsFromRequest(r)
 	if err != nil {
-		ctrl.writeInvalidParameterError(w, err)
+		WriteError(h.log, w, http.StatusBadRequest, err, "invalid parameter")
 		return
 	}
 
 	format := r.URL.Query().Get("format")
 	contentType := r.Header.Get("Content-Type")
-	cb := ctrl.createParseCallback(pi)
+	cb := h.createParseCallback(pi)
 	switch {
 	case format == "trie", contentType == "binary/octet-stream+trie":
-		tmpBuf := ctrl.bufferPool.Get()
-		defer ctrl.bufferPool.Put(tmpBuf)
+		tmpBuf := h.bufferPool.Get()
+		defer h.bufferPool.Put(tmpBuf)
 		err = transporttrie.IterateRaw(r.Body, tmpBuf.B, cb)
 	case format == "tree", contentType == "binary/octet-stream+tree":
 		err = convert.ParseTreeNoDict(r.Body, cb)
@@ -41,24 +59,22 @@ func (ctrl *Controller) ingestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		ctrl.writeError(w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
+		WriteError(h.log, w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
 		return
 	}
 
-	if err = ctrl.storage.Put(pi); err != nil {
-		ctrl.writeInternalServerError(w, err, "error happened while ingesting data")
+	if err = h.storage.Put(pi); err != nil {
+		WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while ingesting data")
 		return
 	}
 
-	ctrl.statsInc("ingest")
-	ctrl.statsInc("ingest:" + pi.SpyName)
-	ctrl.appStats.Add(hashString(pi.Key.AppName()))
+	h.onSuccess(pi)
 }
 
-func (ctrl *Controller) createParseCallback(pi *storage.PutInput) func([]byte, int) {
+func (h ingestHandler) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 	pi.Val = tree.New()
 	cb := pi.Val.InsertInt
-	o, ok := ctrl.exporter.Evaluate(pi)
+	o, ok := h.exporter.Evaluate(pi)
 	if !ok {
 		return cb
 	}
@@ -68,7 +84,7 @@ func (ctrl *Controller) createParseCallback(pi *storage.PutInput) func([]byte, i
 	}
 }
 
-func ingestParamsFromRequest(r *http.Request) (*storage.PutInput, error) {
+func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*storage.PutInput, error) {
 	var (
 		q   = r.URL.Query()
 		pi  storage.PutInput
@@ -95,7 +111,7 @@ func ingestParamsFromRequest(r *http.Request) (*storage.PutInput, error) {
 	if sr := q.Get("sampleRate"); sr != "" {
 		sampleRate, err := strconv.Atoi(sr)
 		if err != nil {
-			logrus.WithError(err).Errorf("invalid sample rate: %q", sr)
+			h.log.WithError(err).Errorf("invalid sample rate: %q", sr)
 			pi.SampleRate = types.DefaultSampleRate
 		} else {
 			pi.SampleRate = uint32(sampleRate)

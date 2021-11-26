@@ -7,21 +7,16 @@ import (
 	"os"
 	goexec "os/exec"
 	"os/signal"
-	"strconv"
-	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/bytebufferpool"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
+	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/server"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
-	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
 type push struct {
@@ -40,41 +35,9 @@ func newPush(_cfg *config.Adhoc, args []string, storage *storage.Storage, logger
 }
 
 func (p push) Run() error {
-	http.HandleFunc("/ingest", func(w http.ResponseWriter, r *http.Request) {
-		// TODO(abeaumont): The handler is copy-pasted, it needs to be abstracted.
-		pi, err := p.ingestParamsFromRequest(r)
-		if err != nil {
-			p.writeInvalidParameterError(w, err)
-			return
-		}
-
-		format := r.URL.Query().Get("format")
-		contentType := r.Header.Get("Content-Type")
-		pi.Val = tree.New()
-		cb := pi.Val.InsertInt
-		switch {
-		case format == "trie", contentType == "binary/octet-stream+trie":
-			tmpBuf := p.bufferPool.Get()
-			defer p.bufferPool.Put(tmpBuf)
-			err = transporttrie.IterateRaw(r.Body, tmpBuf.B, cb)
-		case format == "tree", contentType == "binary/octet-stream+tree":
-			err = convert.ParseTreeNoDict(r.Body, cb)
-		case format == "lines":
-			err = convert.ParseIndividualLines(r.Body, cb)
-		default:
-			err = convert.ParseGroups(r.Body, cb)
-		}
-
-		if err != nil {
-			p.writeError(w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
-			return
-		}
-
-		if err = p.storage.Put(pi); err != nil {
-			p.writeInternalServerError(w, err, "error happened while ingesting data")
-			return
-		}
-	})
+	exporter, err := exporter.NewExporter(config.MetricsExportRules{}, prometheus.DefaultRegisterer)
+	handler := server.NewIngestHandler(p.logger, p.storage, exporter, func(_ *storage.PutInput) {})
+	http.Handle("/ingest", handler)
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		return err
@@ -105,94 +68,4 @@ func (p push) Run() error {
 		close(c)
 	}()
 	return exec.WaitForProcess(p.logger, cmd, c, 0, true)
-}
-
-func (p push) ingestParamsFromRequest(r *http.Request) (*storage.PutInput, error) {
-	var (
-		q   = r.URL.Query()
-		pi  storage.PutInput
-		err error
-	)
-
-	pi.Key, err = segment.ParseKey(q.Get("name"))
-	if err != nil {
-		return nil, fmt.Errorf("name: %w", err)
-	}
-
-	if qt := q.Get("from"); qt != "" {
-		pi.StartTime = attime.Parse(qt)
-	} else {
-		pi.StartTime = time.Now()
-	}
-
-	if qt := q.Get("until"); qt != "" {
-		pi.EndTime = attime.Parse(qt)
-	} else {
-		pi.EndTime = time.Now()
-	}
-
-	if sr := q.Get("sampleRate"); sr != "" {
-		sampleRate, err := strconv.Atoi(sr)
-		if err != nil {
-			p.logger.WithError(err).Errorf("invalid sample rate: %q", sr)
-			pi.SampleRate = types.DefaultSampleRate
-		} else {
-			pi.SampleRate = uint32(sampleRate)
-		}
-	} else {
-		pi.SampleRate = types.DefaultSampleRate
-	}
-
-	if sn := q.Get("spyName"); sn != "" {
-		// TODO: error handling
-		pi.SpyName = sn
-	} else {
-		pi.SpyName = "unknown"
-	}
-
-	if u := q.Get("units"); u != "" {
-		pi.Units = u
-	} else {
-		pi.Units = "samples"
-	}
-
-	if at := q.Get("aggregationType"); at != "" {
-		pi.AggregationType = at
-	} else {
-		pi.AggregationType = "sum"
-	}
-
-	return &pi, nil
-}
-
-func (p push) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	p.logger.WithError(err).Error(msg)
-	writeMessage(w, code, "%s: %q", msg, err)
-}
-
-func (p push) writeInvalidMethodError(w http.ResponseWriter) {
-	p.writeErrorMessage(w, http.StatusMethodNotAllowed, "method not allowed")
-}
-
-func (p push) writeInvalidParameterError(w http.ResponseWriter, err error) {
-	p.writeError(w, http.StatusBadRequest, err, "invalid parameter")
-}
-
-func (p push) writeInternalServerError(w http.ResponseWriter, err error, msg string) {
-	p.writeError(w, http.StatusInternalServerError, err, msg)
-}
-
-func (p push) writeJSONEncodeError(w http.ResponseWriter, err error) {
-	p.writeInternalServerError(w, err, "encoding response body")
-}
-
-func (p push) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
-	p.logger.Error(msg)
-	writeMessage(w, code, msg)
-}
-
-func writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
-	w.WriteHeader(code)
-	_, _ = fmt.Fprintf(w, format, args...)
-	_, _ = fmt.Fprintln(w)
 }
