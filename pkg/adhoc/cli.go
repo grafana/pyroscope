@@ -106,7 +106,10 @@ func Cli(cfg *config.Adhoc, args []string) error {
 	}
 
 	t0 := time.Now()
-	r.Run()
+	if err := r.Run(); err != nil {
+		logger.WithError(err).Error("running profiler")
+	}
+
 	newWriter(cfg, st, logger).write(t0, time.Now())
 
 	logger.Debug("stopping storage")
