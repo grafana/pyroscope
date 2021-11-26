@@ -25,14 +25,14 @@ type push struct {
 	logger  *logrus.Logger
 }
 
-func newPush(_cfg *config.Adhoc, args []string, st *storage.Storage, logger *logrus.Logger) (runner, error) {
-	exporter, err := exporter.NewExporter(config.MetricsExportRules{}, prometheus.DefaultRegisterer)
+func newPush(_ *config.Adhoc, args []string, st *storage.Storage, logger *logrus.Logger) (runner, error) {
+	e, err := exporter.NewExporter(config.MetricsExportRules{}, prometheus.DefaultRegisterer)
 	if err != nil {
 		return nil, err
 	}
 	return push{
 		args:    args,
-		handler: server.NewIngestHandler(logger, st, exporter, func(_ *storage.PutInput) {}),
+		handler: server.NewIngestHandler(logger, st, e, func(_ *storage.PutInput) {}),
 		logger:  logger,
 	}, nil
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
-func newConnect(cfg *config.Adhoc, storage *storage.Storage, logger *logrus.Logger) (runner, error) {
+func newConnect(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) (runner, error) {
 	spyName := cfg.SpyName
 	if cfg.Pid == -1 {
 		if spyName != "" && spyName != "ebpfspy" {
@@ -27,7 +27,7 @@ func newConnect(cfg *config.Adhoc, storage *storage.Storage, logger *logrus.Logg
 		return nil, err
 	}
 
-	upstream := direct.New(storage, exporter.MetricsExporter{})
+	upstream := direct.New(st, exporter.MetricsExporter{})
 
 	// if the sample rate is zero, use the default value
 	sampleRate := uint32(types.DefaultSampleRate)

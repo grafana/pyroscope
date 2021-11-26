@@ -23,12 +23,12 @@ type writer struct {
 	storage        *storage.Storage
 }
 
-func newWriter(cfg *config.Adhoc, storage *storage.Storage, logger *logrus.Logger) writer {
+func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) writer {
 	return writer{
 		maxNodesRender: cfg.MaxNodesRender,
 		outputFormat:   cfg.OutputFormat,
 		logger:         logger,
-		storage:        storage,
+		storage:        st,
 	}
 }
 

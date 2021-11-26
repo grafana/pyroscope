@@ -16,7 +16,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
-func newExec(cfg *config.Adhoc, args []string, storage *storage.Storage, logger *logrus.Logger) (runner, error) {
+func newExec(cfg *config.Adhoc, args []string, st *storage.Storage, logger *logrus.Logger) (runner, error) {
 	spyName := cfg.SpyName
 	if spyName == "auto" {
 		baseName := path.Base(args[0])
@@ -29,7 +29,7 @@ func newExec(cfg *config.Adhoc, args []string, storage *storage.Storage, logger 
 		return nil, err
 	}
 
-	upstream := direct.New(storage, exporter.MetricsExporter{})
+	upstream := direct.New(st, exporter.MetricsExporter{})
 
 	// if the sample rate is zero, use the default value
 	sampleRate := uint32(types.DefaultSampleRate)
