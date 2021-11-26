@@ -3,6 +3,8 @@ package adhoc
 import (
 	"path"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent/pyspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/rbspy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -12,7 +14,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/exec"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/sirupsen/logrus"
 )
 
 func newExec(cfg *config.Adhoc, args []string, storage *storage.Storage, logger *logrus.Logger) (runner, error) {

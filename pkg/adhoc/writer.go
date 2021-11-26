@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/proto"
 )
 
 type writer struct {

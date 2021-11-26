@@ -7,10 +7,11 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/sirupsen/logrus"
 )
 
 type runner interface {
