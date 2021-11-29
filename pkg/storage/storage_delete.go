@@ -73,7 +73,7 @@ func (s *Storage) DeleteApp(appname string) error {
 	nameKey := "__name__"
 	_, ok := key.Labels()[nameKey]
 	if !ok {
-		return fmt.Errorf("could not required find app name")
+		return fmt.Errorf("could not __name__ key")
 	}
 
 	/*****************************/
@@ -127,64 +127,80 @@ func (s *Storage) DeleteApp(appname string) error {
 	// include 'my_another_application':
 	//   foo=bar
 	//     my_another_application{foo=bar}
-
+	s.logger.Debugf("looking for app dimension '%s'\n", appname)
 	d, ok := s.lookupAppDimension(appname)
 	if !ok {
 		// Technically this does not necessarily mean the dimension does not exist
 		// Since this could be triggered by an error
-		s.logger.Debug("dimensions could not be found, exiting early")
+		s.logger.Debugf("dimensions could not be found, exiting early")
 		return nil
 	}
 
+	s.logger.Debugf("iterating over dimension keys (aka segments keys)\n")
 	for _, segmentKey := range d.Keys {
 		sk2, err := segment.ParseKey(string(segmentKey))
 		if err != nil {
 			return err
 		}
 
+		s.logger.Debugf("iterating over segment %s labels\n", segmentKey)
 		for labelKey, labelValue := range sk2.Labels() {
 			// skip __name__, since this is the dimension we are already iterating
 			if labelKey == "__name__" {
 				continue
 			}
 
+			s.logger.Debugf("looking up dimension with key='%s' and value='%s'\n", labelKey, labelValue)
 			d2, ok := s.lookupDimensionKV(labelKey, labelValue)
 			if !ok {
+				s.logger.Debugf("skipping since dimension could not be found\n")
 				continue
 			}
 
+			s.logger.Debugf("deleting dimension with key %s\n", segmentKey)
 			d2.Delete(dimension.Key(segmentKey))
 
 			// We can only delete the dimension once it's not pointing to any segments
 			if len(d2.Keys) > 0 {
+				s.logger.Debugf("dimension is still pointing to valid segments. not deleting it. \n")
 				continue
 			}
 
+			s.logger.Debugf("deleting labels %s=%s \n", labelKey, labelValue)
 			if err := s.labels.Delete(labelKey, labelValue); err != nil {
 				return err
 			}
+
+			s.logger.Debugf("deleting dimension %s=%s \n", labelKey, labelValue)
 			if err := s.dimensions.Delete(labelKey + ":" + labelValue); err != nil {
 				return err
 			}
 		}
 	}
 
-	if err = s.trees.DiscardPrefix(appname + "{"); err != nil {
+	appWithCurlyBrackets := appname + "{"
+
+	s.logger.Debugf("deleting trees with prefix %s\n", appWithCurlyBrackets)
+	if err = s.trees.DiscardPrefix(appWithCurlyBrackets); err != nil {
 		return err
 	}
 
-	if err = s.segments.DiscardPrefix(appname + "{"); err != nil {
+	s.logger.Debugf("deleting segments with prefix %s\n", appWithCurlyBrackets)
+	if err = s.segments.DiscardPrefix(appWithCurlyBrackets); err != nil {
 		return err
 	}
 
+	s.logger.Debugf("deleting dicts %s\n", key.DictKey())
 	if err := s.dicts.Delete(key.DictKey()); err != nil {
 		return err
 	}
 
+	s.logger.Debugf("deleting labels\n")
 	if err := s.labels.Delete("__name__", appname); err != nil {
 		return err
 	}
 
+	s.logger.Debugf("deleting dimensions for __name__=%s\n", appname)
 	if err := s.dimensions.Delete("__name__:" + appname); err != nil {
 		return err
 	}
