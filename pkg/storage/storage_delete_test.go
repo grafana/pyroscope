@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -298,6 +299,8 @@ var _ = Describe("storage package", func() {
 
 				// Dimensions
 				By("checking dimensions were deleted")
+				fmt.Println("dumping dimensions!!!!!!!!!!!!!!!")
+				s.dimensions.Dump()
 				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
 				checkDimensionsPresence(appname, false)
 
