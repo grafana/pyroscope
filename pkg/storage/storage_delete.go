@@ -201,9 +201,5 @@ func (s *Storage) DeleteApp(appname string) error {
 	}
 
 	s.logger.Debugf("deleting dimensions for __name__=%s\n", appname)
-	if err := s.dimensions.Delete("__name__:" + appname); err != nil {
-		return err
-	}
-
-	return nil
+	return s.dimensions.Delete("__name__:" + appname)
 }

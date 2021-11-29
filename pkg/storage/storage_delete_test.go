@@ -281,7 +281,6 @@ var _ = Describe("storage package", func() {
 		// And deleting one app should not interfer with the labels of the other app
 		Context("multiple apps with labels", func() {
 			It("deletes the correct data", func() {
-
 				st := testing.SimpleTime(10)
 				insert := func(appname string) {
 					// We insert info for an app
