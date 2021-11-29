@@ -10,6 +10,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
 )
 
+// TODO(kolesnikovae):
+//   Rename tags to labels
+//   Segment key -> LabelSet
+//   Segment key to be moved to /model package
+//   FlameQL to be split.
+
 type Key struct {
 	labels map[string]string
 }
@@ -168,6 +174,14 @@ func (k *Key) Normalized() string {
 	sb.WriteString("}")
 
 	return sb.String()
+}
+
+func (k *Key) Clone() *Key {
+	newMap := make(map[string]string)
+	for k, v := range k.labels {
+		newMap[k] = v
+	}
+	return &Key{labels: newMap}
 }
 
 func (k *Key) AppName() string {

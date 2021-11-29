@@ -39,8 +39,6 @@ type RemoteConfig struct {
 	UpstreamThreads        int
 	UpstreamAddress        string
 	UpstreamRequestTimeout time.Duration
-
-	ManualStart bool
 }
 
 func New(cfg RemoteConfig, logger agent.Logger) (*Remote, error) {
@@ -66,11 +64,6 @@ func New(cfg RemoteConfig, logger agent.Logger) (*Remote, error) {
 	// authorize the token first
 	if cfg.AuthToken == "" && requiresAuthToken(u) {
 		return nil, ErrCloudTokenRequired
-	}
-
-	if !cfg.ManualStart {
-		// start goroutines for uploading profile data
-		remote.Start()
 	}
 
 	return remote, nil

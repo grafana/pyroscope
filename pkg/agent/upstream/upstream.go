@@ -18,6 +18,7 @@ type UploadJob struct {
 }
 
 type Upstream interface {
+	Start()
 	Stop()
 	Upload(u *UploadJob)
 }

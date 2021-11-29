@@ -260,6 +260,21 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 		extraMetadataStr = string(b)
 	}
 
+	// Feature Flags
+	// Add this intermediate layer instead of just exposing as it comes from ctrl.config
+	// Since we may probably want to rename these flags when exposing to the frontend
+	features := struct {
+		EnableExperimentalAdhocUI bool `json:"enableExperimentalAdhocUI"`
+	}{
+		EnableExperimentalAdhocUI: ctrl.config.EnableExperimentalAdhocUI,
+	}
+	b, err = json.Marshal(features)
+	if err != nil {
+		ctrl.writeJSONEncodeError(w, err)
+		return
+	}
+	featuresStr := string(b)
+
 	w.Header().Add("Content-Type", "text/html")
 	mustExecute(tmpl, w, map[string]string{
 		"InitialState":      initialStateStr,
@@ -269,6 +284,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 		"BaseURL":           ctrl.config.BaseURL,
 		"NotificationText":  ctrl.notifier.NotificationText(),
 		"IsAuthRequired":    strconv.FormatBool(ctrl.isAuthRequired()),
+		"Features":          featuresStr,
 	})
 }
 

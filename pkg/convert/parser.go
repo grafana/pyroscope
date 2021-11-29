@@ -3,6 +3,7 @@ package convert
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -25,8 +26,26 @@ func ParseTreeNoDict(r io.Reader, cb func(name []byte, val int)) error {
 	return nil
 }
 
+var gzipMagicBytes = []byte{0x1f, 0x8b}
+
 // format is pprof. See https://github.com/google/pprof/blob/master/proto/profile.proto
 func ParsePprof(r io.Reader) (*tree.Profile, error) {
+	// this allows us to support both gzipped and not gzipped pprof
+	// TODO: this might be allocating too much extra memory, maybe optimize later
+	bufioReader := bufio.NewReader(r)
+	header, err := bufioReader.Peek(2)
+	if err != nil {
+		return nil, err
+	}
+	if header[0] == gzipMagicBytes[0] && header[1] == gzipMagicBytes[1] {
+		r, err = gzip.NewReader(bufioReader)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		r = bufioReader
+	}
+
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err

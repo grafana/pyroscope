@@ -51,6 +51,7 @@ var _ = Describe("remote.Remote", func() {
 					UpstreamRequestTimeout: 3 * time.Second,
 				}
 				r, err := New(cfg, logrus.New())
+				r.Start()
 
 				t := transporttrie.New()
 				for i := 0; i < 3; i++ {

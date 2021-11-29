@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 package storage
 
 import (
@@ -32,15 +35,7 @@ var s *Storage
 var maxTime = time.Unix(1<<62, 999999999)
 
 var _ = Describe("storage package", func() {
-	logrus.SetLevel(logrus.InfoLevel)
-
-	testing.WithConfig(func(cfg **config.Config) {
-		JustBeforeEach(func() {
-			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
-			Expect(err).ToNot(HaveOccurred())
-		})
-
+	suite := func() {
 		Context("delete tests", func() {
 			Context("simple delete", func() {
 				It("works correctly", func() {
@@ -297,89 +292,119 @@ var _ = Describe("storage package", func() {
 					Expect(s.Close()).ToNot(HaveOccurred())
 				})
 			})
-			Context("persist data between restarts", func() {
-				It("works correctly", func() {
-					tree := tree.New()
-					tree.Insert([]byte("a;b"), uint64(1))
-					tree.Insert([]byte("a;c"), uint64(2))
-					st := testing.SimpleTime(10)
-					et := testing.SimpleTime(19)
-					st2 := testing.SimpleTime(0)
-					et2 := testing.SimpleTime(30)
+		})
+	}
 
-					appKey, _ := segment.ParseKey("foo")
-					key, _ := segment.ParseKey("foo{tag=value}")
+	logrus.SetLevel(logrus.InfoLevel)
 
-					err := s.Put(&PutInput{
-						StartTime:  st,
-						EndTime:    et,
-						Key:        key,
-						Val:        tree,
-						SpyName:    "testspy",
-						SampleRate: 100,
-					})
-					Expect(err).ToNot(HaveOccurred())
+	// Disk-based storage
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			Expect(err).ToNot(HaveOccurred())
+		})
+		suite()
+	})
 
-					o, err := s.Get(&GetInput{
-						StartTime: st2,
-						EndTime:   et2,
-						Key:       appKey,
-					})
+	// In-memory storage
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry())
+			Expect(err).ToNot(HaveOccurred())
+		})
+		suite()
+	})
+})
 
-					Expect(err).ToNot(HaveOccurred())
-					Expect(o.Tree).ToNot(BeNil())
-					Expect(o.Tree.String()).To(Equal(tree.String()))
-					Expect(s.Close()).ToNot(HaveOccurred())
+var _ = Describe("persistence", func() {
+	// Disk-based storage
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			Expect(err).ToNot(HaveOccurred())
+		})
+		Context("persist data between restarts", func() {
+			It("works correctly", func() {
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(1))
+				tree.Insert([]byte("a;c"), uint64(2))
+				st := testing.SimpleTime(10)
+				et := testing.SimpleTime(19)
+				st2 := testing.SimpleTime(0)
+				et2 := testing.SimpleTime(30)
 
-					s2, err := New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
-					Expect(err).ToNot(HaveOccurred())
+				appKey, _ := segment.ParseKey("foo")
+				key, _ := segment.ParseKey("foo{tag=value}")
 
-					o2, err := s2.Get(&GetInput{
-						StartTime: st2,
-						EndTime:   et2,
-						Key:       appKey,
-					})
-					Expect(err).ToNot(HaveOccurred())
-					Expect(o2.Tree).ToNot(BeNil())
-					Expect(o2.Tree.String()).To(Equal(tree.String()))
-					Expect(s2.Close()).ToNot(HaveOccurred())
+				err := s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        tree,
+					SpyName:    "testspy",
+					SampleRate: 100,
 				})
+				Expect(err).ToNot(HaveOccurred())
+
+				o, err := s.Get(&GetInput{
+					StartTime: st2,
+					EndTime:   et2,
+					Key:       appKey,
+				})
+
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o.Tree).ToNot(BeNil())
+				Expect(o.Tree.String()).To(Equal(tree.String()))
+				Expect(s.Close()).ToNot(HaveOccurred())
+
+				s2, err := New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+				Expect(err).ToNot(HaveOccurred())
+
+				o2, err := s2.Get(&GetInput{
+					StartTime: st2,
+					EndTime:   et2,
+					Key:       appKey,
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o2.Tree).ToNot(BeNil())
+				Expect(o2.Tree.String()).To(Equal(tree.String()))
+				Expect(s2.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
 })
 
 var _ = Describe("querying", func() {
-	testing.WithConfig(func(cfg **config.Config) {
-		JustBeforeEach(func() {
-			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+	setup := func() {
+		keys := []string{
+			"app.name{foo=bar,baz=qux}",
+			"app.name{foo=bar,baz=xxx}",
+			"app.name{waldo=fred,baz=xxx}",
+		}
+		for _, k := range keys {
+			t := tree.New()
+			t.Insert([]byte("a;b"), uint64(1))
+			t.Insert([]byte("a;c"), uint64(2))
+			st := testing.SimpleTime(10)
+			et := testing.SimpleTime(19)
+			key, err := segment.ParseKey(k)
 			Expect(err).ToNot(HaveOccurred())
-			keys := []string{
-				"app.name{foo=bar,baz=qux}",
-				"app.name{foo=bar,baz=xxx}",
-				"app.name{waldo=fred,baz=xxx}",
-			}
-			for _, k := range keys {
-				t := tree.New()
-				t.Insert([]byte("a;b"), uint64(1))
-				t.Insert([]byte("a;c"), uint64(2))
-				st := testing.SimpleTime(10)
-				et := testing.SimpleTime(19)
-				key, err := segment.ParseKey(k)
-				Expect(err).ToNot(HaveOccurred())
-				err = s.Put(&PutInput{
-					StartTime:  st,
-					EndTime:    et,
-					Key:        key,
-					Val:        t,
-					SpyName:    "testspy",
-					SampleRate: 100,
-				})
-				Expect(err).ToNot(HaveOccurred())
-			}
-		})
+			err = s.Put(&PutInput{
+				StartTime:  st,
+				EndTime:    et,
+				Key:        key,
+				Val:        t,
+				SpyName:    "testspy",
+				SampleRate: 100,
+			})
+			Expect(err).ToNot(HaveOccurred())
+		}
+	}
 
+	suite := func() {
 		Context("basic queries", func() {
 			It("get returns result with query", func() {
 				qry, err := flameql.ParseQuery(`app.name{foo="bar"}`)
@@ -511,17 +536,33 @@ var _ = Describe("querying", func() {
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
-	})
-})
+	}
 
-var _ = Describe("CollectGarbage", func() {
+	// Disk-based storage
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
 			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
+			setup()
 		})
+		suite()
+	})
 
+	// In-memory storage
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry())
+			Expect(err).ToNot(HaveOccurred())
+			setup()
+		})
+		suite()
+	})
+})
+
+var _ = Describe("CollectGarbage", func() {
+	suite := func() {
 		Context("RetentionPolicy", func() {
 			It("removes data outside retention period", func() {
 				key, _ := segment.ParseKey("foo")
@@ -574,6 +615,26 @@ var _ = Describe("CollectGarbage", func() {
 				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
+	}
+
+	// Disk-based storage
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			Expect(err).ToNot(HaveOccurred())
+		})
+		suite()
+	})
+
+	// In-memory storage
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry())
+			Expect(err).ToNot(HaveOccurred())
+		})
+		suite()
 	})
 })
 

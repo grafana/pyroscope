@@ -400,7 +400,7 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 
 		if deprecatedVal == "true" {
 			// TODO: We could specify which flag to use instead but would add code complexity
-			flagSet.MarkDeprecated(nameVal, "repalce this flag as it will be removed in future versions")
+			flagSet.MarkDeprecated(nameVal, "replace this flag as it will be removed in future versions")
 		}
 	}
 }

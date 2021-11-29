@@ -6,6 +6,7 @@ package exec
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -15,17 +16,17 @@ var _ = Describe("Cli", func() {
 	disableLinuxChecks = true
 
 	testing.WithConfig(func(cfg **config.Config) {
-		Describe("Cli", func() {
+		Describe("Exec", func() {
 			Context("no arguments", func() {
 				It("returns error", func() {
-					err := Cli(NewConfig(&(*cfg).Exec), []string{})
+					_, err := NewExec(&(*cfg).Exec, []string{})
 					Expect(err).To(MatchError("no arguments passed"))
 				})
 			})
 			Context("simple case", func() {
 				It("returns nil", func() {
 					(*cfg).Exec.SpyName = "debugspy"
-					err := Cli(NewConfig(&(*cfg).Exec), []string{"ls"})
+					_, err := NewExec(&(*cfg).Exec, []string{"ls"})
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})

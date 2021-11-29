@@ -12,6 +12,7 @@ import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
 import Notifications from './components/Notifications';
+import AdhocSingle from './components/AdhocSingle';
 
 import history from './util/history';
 
@@ -23,6 +24,9 @@ try {
 } catch (e) {
   console.error(e);
 }
+
+// TODO fetch this from localstorage?
+const enableAdhoc = true;
 
 ReactDOM.render(
   <Provider store={store}>
@@ -39,6 +43,11 @@ ReactDOM.render(
           <Route path="/comparison-diff">
             <ComparisonDiffApp />
           </Route>
+          {enableAdhoc && (
+            <Route path="/adhoc-single">
+              <AdhocSingle />
+            </Route>
+          )}
         </Switch>
         <Notifications />
       </ShortcutProvider>
