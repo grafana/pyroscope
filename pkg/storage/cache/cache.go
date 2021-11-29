@@ -162,8 +162,12 @@ func (cache *Cache) Discard(key string) {
 	cache.lfu.Delete(key)
 }
 
-func (cache *Cache) DiscardPrefix(prefix string) {
+// DiscardPrefix deletes all data that matches a certain prefix
+// In both cache and database
+func (cache *Cache) DiscardPrefix(prefix string) error {
 	cache.lfu.DeletePrefix(prefix)
+
+	return cache.db.DropPrefix([]byte(cache.prefix + prefix))
 }
 
 func (cache *Cache) GetOrCreate(key string) (interface{}, error) {

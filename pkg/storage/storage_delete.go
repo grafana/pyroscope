@@ -53,55 +53,6 @@ func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 // That is, it deletes deletes Segment, Dictionary and Trees
 // And also deletes Dimensions and Labels if appropriate,
 // IE when the references do not exist
-//
-// TODO: make this a test?
-// To make it concrete, the comments will use as an example:
-// Key: 'simple.golang.app2.cpu'
-//
-// Dimensions:
-// i:__name__:simple.golang.app2.cpu =>
-//			-simple.golang.app2.cpu{foo=bar,function=fast} (segmentKey)
-//			-simple.golang.app2.cpu{foo=bar,function=slow}
-//			simple.golang.app2.cpu{foo=bar}
-//			simple.golang.app2.cpu{}
-// i:function:fast =>
-//		,simple.golang.app.cpu{foo=bar,function=fast}
-//		-simple.golang.app2.cpu{foo=bar,function=fast}
-// i:function:slow
-//
-// Trees:
-// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637611090
-// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637611100
-// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637626800
-// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637626900
-// t:simple.golang.app2.cpu{foo=bar,function=fast}:0:1637626920
-// t:simple.golang.app2.cpu{foo=bar,function=fast}:1:1637626900
-// t:simple.golang.app2.cpu{foo=bar,function=fast}:2:1637610200
-// t:simple.golang.app2.cpu{foo=bar,function=fast}:2:1637626200
-// t:simple.golang.app2.cpu{foo=bar,function=fast}:4:1637603200
-// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637611090
-// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637611100
-// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637626800
-// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637626900
-// t:simple.golang.app2.cpu{foo=bar,function=slow}:0:1637626920
-// t:simple.golang.app2.cpu{foo=bar,function=slow}:1:1637626900
-// t:simple.golang.app2.cpu{foo=bar,function=slow}:2:1637610200
-// t:simple.golang.app2.cpu{foo=bar,function=slow}:2:1637626200
-// t:simple.golang.app2.cpu{foo=bar,function=slow}:4:1637603200
-// t:simple.golang.app2.cpu{foo=bar}:0:1637626800
-// t:simple.golang.app2.cpu{}:0:1637626900
-// t:simple.golang.app2.cpu{}:0:1637626920
-// t:simple.golang.app2.cpu{}:1:1637626900
-//
-// Dictionaries:
-// d:simple.golang.app2.cpu
-//
-// Segments:
-// s:simple.golang.app2.cpu{foo=bar,function=fast}
-// s:simple.golang.app2.cpu{foo=bar,function=slow}
-// s:simple.golang.app2.cpu{foo=bar}
-// s:simple.golang.app2.cpu{}
-
 func (s *Storage) DeleteApp(appname string) error {
 	/***********************************/
 	/*      V a l i d a t i o n s      */
@@ -133,32 +84,15 @@ func (s *Storage) DeleteApp(appname string) error {
 	/*      D e l e t i o n      */
 	/*****************************/
 
-	// TODO(kolesnikovae):
-	//  I think we need to incorporate db.DropPrefix to cache.DiscardPrefix.
-	//  That will also make testing more simple.
-
 	// TODO:
 	// DELETE TREES ONLY AFTER
-	prefix := treePrefix.key(appname + "{")
-	s.logger.Debugf("dropping from DISK all trees with prefix '%s'\n", prefix)
-	if err := s.trees.DropPrefix(prefix); err != nil {
+	if err = s.trees.DiscardPrefix(appname + "{"); err != nil {
 		return err
 	}
 
-	// Discarding cached items is necessary because otherwise
-	// those would be written back to disk on eviction.
-	s.logger.Debugf("dropping from CACHE all trees with prefix '%s'\n", appname+"{")
-	s.trees.DiscardPrefix(appname + "{")
-
-	// DO THE SAME THING FOR SEGMENTS
-	// Discarding cached items is necessary because otherwise
-	// those would be written back to disk on eviction.
-	s.logger.Debugf("dropping from DISK all segments with prefix '%s'\n", prefix)
-	if err := s.segments.DropPrefix(segmentPrefix.key(appname + "{")); err != nil {
+	if err = s.segments.DiscardPrefix(appname + "{"); err != nil {
 		return err
 	}
-	s.logger.Debugf("dropping from CACHE all segments with prefix '%s'\n", appname+"{")
-	s.segments.DiscardPrefix(appname + "{")
 
 	// Delete the name dimension
 	// TODO what about the other dimensions?
