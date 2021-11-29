@@ -160,8 +160,6 @@ var _ = Describe("storage package", func() {
 				// should've been deleted from CACHE
 				Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
 				t = checkTreesPresence(appname, st, 0, false)
-				// Trees should've been also deleted from DISK
-				// TODO: how to check for that?
 
 				// Dimensions
 				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
@@ -253,8 +251,6 @@ var _ = Describe("storage package", func() {
 				// should've been deleted from CACHE
 				Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
 				checkTreesPresence(appname, st, 0, false)
-				// Trees should've been also deleted from DISK
-				// TODO: how to check for that?
 
 				// Dimensions
 				By("checking dimensions were deleted")
@@ -359,16 +355,6 @@ var _ = Describe("storage package", func() {
 				Expect(s.trees.Cache.Size()).To(Equal(uint64(3)))
 				checkTreesPresence(app1name, st, 0, false)
 				checkTreesPresence(app2name, st, 0, true)
-				// Trees should've been also deleted from DISK
-				// TODO: how to check for that?
-
-				// TODO(kolesnikovae): If this is unit testing (which it does
-				//  seem to be), I don't think we need to check whether
-				//  the data was removed from the disk (badger DB, I suppose)
-				//  or not. We remove items from Cache and we have contract:
-				//  if an item removed from the cache, it also removed from db.
-				//  So it's enough to make sure the item was removed from the cache.
-				//  See my note on 'DropPrefix'.
 
 				// Dimensions
 				By("checking dimensions were deleted")
