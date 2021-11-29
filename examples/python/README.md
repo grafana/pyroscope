@@ -49,7 +49,7 @@ What this block does, is:
 2. execute the `find_nearest_vehicle()` function
 3. Before the block ends it will (behind the scenes) remove the `{ "vehicle" => "car" }` from the application since that block is complete
 
-## Resulting flamgraph / performance results from the example
+## Resulting flamegraph / performance results from the example
 ### Running the example
 To run the example run the following commands:
 ```
