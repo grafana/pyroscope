@@ -231,8 +231,8 @@ $pane-width: 6px;
 
 .left-instructions-wrapper {
   display: flex;
-  width: 50%;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-left: 16px;
 }
 
 .left-instructions-text {
@@ -242,9 +242,8 @@ $pane-width: 6px;
 
 .right-instructions-wrapper {
   display: flex;
-  width: 50%;
-  justify-content: center;
-  margin-left: 50%;
+  justify-content: flex-end;
+  padding-right: 16px;
 }
 
 .right-instructions-text {
