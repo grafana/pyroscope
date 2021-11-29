@@ -85,13 +85,15 @@ var _ = Describe("storage package", func() {
 			}
 		}
 
-		checkDimensionsPresence := func(appname string, presence bool) {
-			_, ok := s.lookupAppDimension(appname)
+		checkDimensionsPresence := func(appname string, presence bool) interface{} {
+			d, ok := s.lookupAppDimension(appname)
 			if presence {
 				Expect(ok).To(BeTrue())
 			} else {
 				Expect(ok).To(BeFalse())
 			}
+
+			return d
 		}
 
 		checkTreesPresence := func(appname string, st time.Time, depth int, presence bool) interface{} {
@@ -410,27 +412,41 @@ var _ = Describe("storage package", func() {
 				//  See my note on 'DropPrefix'.
 
 				// Dimensions
-				// TODO(kolesnikovae): I would also add a check to make sure
-				//  dimensions are valid:
-				//    __name__=myapp2.cpu
-				//      myapp2.cpu{foo=bar,function=fast}
-				//      myapp2.cpu{foo=bar,function=slow}
-				//    foo=bar
-				//      myapp2.cpu{foo=bar,function=fast}
-				//      myapp2.cpu{foo=bar,function=slow}
-				//    function=fast
-				//      myapp2.cpu{foo=bar,function=fast}
-				//    function=slow
-				//      myapp2.cpu{foo=bar,function=slow}
 				By("checking dimensions were deleted")
 				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(4)))
-				checkDimensionsPresence(app1name, false)
-				checkDimensionsPresence(app2name, true)
+
+				// Dimensions that refer to app2 are still intact
+				v, ok := s.dimensions.Lookup("__name__:myapp2.cpu")
+				Expect(ok).To(Equal(true))
+				Expect(v.(*dimension.Dimension).Keys).To(Equal([]dimension.Key{
+					dimension.Key("myapp2.cpu{foo=bar,function=fast}"),
+					dimension.Key("myapp2.cpu{foo=bar,function=slow}"),
+					dimension.Key("myapp2.cpu{}"),
+				}))
+
+				v, ok = s.dimensions.Lookup("foo:bar")
+				Expect(ok).To(Equal(true))
+				Expect(v.(*dimension.Dimension).Keys).To(Equal([]dimension.Key{
+					dimension.Key("myapp2.cpu{foo=bar,function=fast}"),
+					dimension.Key("myapp2.cpu{foo=bar,function=slow}"),
+				}))
+
+				v, ok = s.dimensions.Lookup("function:fast")
+				Expect(ok).To(Equal(true))
+				Expect(v.(*dimension.Dimension).Keys).To(Equal([]dimension.Key{
+					dimension.Key("myapp2.cpu{foo=bar,function=fast}"),
+				}))
+
+				v, ok = s.dimensions.Lookup("function:slow")
+				Expect(ok).To(Equal(true))
+				Expect(v.(*dimension.Dimension).Keys).To(Equal([]dimension.Key{
+					dimension.Key("myapp2.cpu{foo=bar,function=slow}"),
+				}))
 
 				By("checking dicts were deleted")
 				Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
 				checkDictsPresence(app1name, false)
-				checkDimensionsPresence(app2name, true)
+				checkDictsPresence(app2name, true)
 
 				By("checking segments were deleted")
 				Expect(s.segments.Cache.Size()).To(Equal(uint64(3)))
@@ -441,6 +457,80 @@ var _ = Describe("storage package", func() {
 				checkLabelsPresence(app1name, false)
 				checkSegmentsPresence(app2name, true)
 			})
+		})
+
+		// Delete an unrelated app
+		// It should not fail
+		It("is idempotent", func() {
+			appname := "my.app.cpu"
+
+			// We insert info for an app
+			tree1 := tree.New()
+			tree1.Insert([]byte("a;b"), uint64(1))
+
+			// We are mirroring this on the simple.golang.cpu example
+			labels := []string{
+				"",
+				"{foo=bar,function=fast}",
+				"{foo=bar,function=slow}",
+			}
+
+			st := testing.SimpleTime(10)
+			et := testing.SimpleTime(19)
+			for _, l := range labels {
+				key, _ := segment.ParseKey(appname + l)
+				err := s.Put(&PutInput{
+					StartTime:  st,
+					EndTime:    et,
+					Key:        key,
+					Val:        tree1,
+					SpyName:    "testspy",
+					SampleRate: 100,
+				})
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			// Since the DeleteApp also removes dictionaries
+			// therefore we need to create them manually here
+			// (they are normally created when TODO)
+			d := dict.New()
+			s.dicts.Put(appname, d)
+
+			/*******************************/
+			/*  S a n i t y   C h e c k s  */
+			/*******************************/
+			sanityChecks := func() {
+				By("checking dimensions were created")
+				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(4)))
+				checkDimensionsPresence(appname, true)
+
+				By("checking trees were created")
+				Expect(s.trees.Cache.Size()).To(Equal(uint64(3)))
+				checkTreesPresence(appname, st, 0, true)
+
+				By("checking segments were created")
+				Expect(s.segments.Cache.Size()).To(Equal(uint64(3)))
+				checkSegmentsPresence(appname, true)
+
+				By("checking dicts were created")
+				Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
+				checkDictsPresence(appname, true)
+
+				checkLabelsPresence(appname, true)
+			}
+
+			sanityChecks()
+
+			/*************************/
+			/*  D e l e t e   a p p  */
+			/*************************/
+			By("deleting the app")
+			err := s.DeleteApp("random.app")
+			Expect(err).ToNot(HaveOccurred())
+
+			// nothing should have happened
+			// since the deleted app does not exist
+			sanityChecks()
 		})
 	})
 })

@@ -192,10 +192,11 @@ func (s *Storage) DeleteApp(appname string) error {
 	s.logger.Debug("appname ", appname)
 	d, ok := s.lookupAppDimension(appname)
 	if !ok {
-		// TODO
-		// this doesn't mean the storage doesn't exist
-		// it just means it failed for some reason
-		return fmt.Errorf("dimensions don't exist")
+		// TODO(eh-am):
+		// technically this does not necessarily mean the dimension does not exist
+		// since this could be triggered by an error
+		s.logger.Debug("dimensions could not be found, exiting early")
+		return nil
 	}
 
 	// TODO(kolesnikovae):
