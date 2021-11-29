@@ -120,7 +120,7 @@ type Server struct {
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 
-	EnableSelfProfiling bool `def:"true" desc:"enable profiling of pyroscope itself" mapstructure:"enable-self-profiling"`
+	NoSelfProfiling bool `def:"false" desc:"disable profiling of pyroscope itself" mapstructure:"no-self-profiling"`
 }
 
 type MetricsExportRules map[string]MetricsExportRule

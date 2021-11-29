@@ -125,7 +125,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
 	svc.directUpstream = direct.New(svc.storage, metricsExporter)
 
-	if svc.config.EnableSelfProfiling {
+	if !svc.config.NoSelfProfiling {
 		svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
 			Upstream:       svc.directUpstream,
 			AppName:        "pyroscope.server",
@@ -188,7 +188,7 @@ func (svc *serverService) Start() error {
 	svc.healthController.Start()
 	svc.directUpstream.Start()
 
-	if svc.config.EnableSelfProfiling {
+	if !svc.config.NoSelfProfiling {
 		if err := svc.selfProfiling.Start(); err != nil {
 			svc.logger.WithError(err).Error("failed to start self-profiling")
 		}
@@ -242,7 +242,7 @@ func (svc *serverService) stop() {
 		svc.analyticsService.Stop()
 	}
 
-	if svc.config.EnableSelfProfiling {
+	if !svc.config.NoSelfProfiling {
 		svc.logger.Debug("stopping self profiling")
 		svc.selfProfiling.Stop()
 	}
