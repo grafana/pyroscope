@@ -50,9 +50,9 @@ func (s *Storage) deleteSegmentAndRelatedData(k *segment.Key) error {
 }
 
 // DeleteApp fully deletes an app
-// That is, it deletes deletes Segment, Dictionary and Trees
-// And also deletes Dimensions and Labels if appropriate,
-// IE when the references do not exist
+// It does so by deleting Segments, Dictionaries, Trees, Dimensions and Labels
+// It's an idempotent call, ie. if the app already does not exist, no error is triggered.
+// TODO cancelation?
 func (s *Storage) DeleteApp(appname string) error {
 	/***********************************/
 	/*      V a l i d a t i o n s      */
@@ -71,70 +71,15 @@ func (s *Storage) DeleteApp(appname string) error {
 
 	s.logger.Debugf("looking for __name__ key\n")
 	nameKey := "__name__"
-	value, ok := key.Labels()[nameKey]
+	_, ok := key.Labels()[nameKey]
 	if !ok {
 		return fmt.Errorf("could not required find app name")
 	}
-
-	// Invariants
-	// From down below we know:
-	// That there's only one label, '__name__'
 
 	/*****************************/
 	/*      D e l e t i o n      */
 	/*****************************/
 
-	// TODO:
-	// DELETE TREES ONLY AFTER
-	if err = s.trees.DiscardPrefix(appname + "{"); err != nil {
-		return err
-	}
-
-	if err = s.segments.DiscardPrefix(appname + "{"); err != nil {
-		return err
-	}
-
-	// Delete the name dimension
-	// TODO what about the other dimensions?
-	// for example
-	// i:foo:bar
-	// i:function:fast
-	// i:function:slow
-	// we have to figure out if they have
-	s.logger.Debugf("looking up dimensions pointed by '%s:%s'\n", nameKey, value)
-
-	//	s.dimensions.Delete(dimension.Key())
-
-	// TODO
-	// this doesn't seem correct?
-	// it looks like i need to prefix with __name__
-	//	s.logger.Debugf("deleting dimension '%s'\n", dimension.Key(sk))
-	// this is deleting that key
-	//d.Delete(dimension.Key(sk))
-
-	// TODO save back to the db?
-
-	// TODO
-	// not working
-	//s.logger.Debugf("deleting dimension '__name__:%s'\n", appname)
-	//d.Delete(dimension.Key("__name__:" + appname))
-
-	// TODO maybe this namekey is wrong?
-	// i think i need to pass i: ?
-	// BTW TODO what does i: stand for?
-	//d, ok := s.lookupDimensionKV(nameKey, value)
-	s.logger.Debug("appname ", appname)
-	d, ok := s.lookupAppDimension(appname)
-	if !ok {
-		// TODO(eh-am):
-		// technically this does not necessarily mean the dimension does not exist
-		// since this could be triggered by an error
-		s.logger.Debug("dimensions could not be found, exiting early")
-		return nil
-	}
-
-	// TODO(kolesnikovae):
-	//
 	//  d is the dimension of the application. Its 'Keys' member lists all
 	//  the segments of the application. Every segments describes a series –
 	//  a unique combination of the label key-value pairs. These segments have
@@ -182,34 +127,16 @@ func (s *Storage) DeleteApp(appname string) error {
 	// include 'my_another_application':
 	//   foo=bar
 	//     my_another_application{foo=bar}
-	//
 
-	// TODO(kolesnikovae): Too early. If the process was canceled (do we need to add
-	//  support for this?) or if the process was killed for example, we may not be able
-	//  to lookup all the data (associated dimensions and labels first of all.)
-
-	//fmt.Println("---")
-	//s.dimensions.Dump()
-	//fmt.Println("---")
-	//	s.dimensions.Delete("__name__:" + appname)
-	//s.dimensions.Dump()
-	//fmt.Println("---")
-
-	//	err = s.segments.DropPrefix(segmentPrefix.key(appname + "{"))
-	//	if err != nil {
-	//		return err
-	//	}
-
-	// delete all dimensions our __name__ was pointing to
-	// eg
-	// "simple.golang.app2.cpu{foo=bar,function=fast}"
-	// "simple.golang.app2.cpu{foo=bar,function=slow}"
-	s.logger.Debugf("deleting all dimensions pointed by '%s:%s'", nameKey, value)
+	d, ok := s.lookupAppDimension(appname)
+	if !ok {
+		// Technically this does not necessarily mean the dimension does not exist
+		// Since this could be triggered by an error
+		s.logger.Debug("dimensions could not be found, exiting early")
+		return nil
+	}
 
 	for _, segmentKey := range d.Keys {
-		fmt.Println("--")
-		fmt.Println("segmentKey", string(segmentKey))
-
 		sk2, err := segment.ParseKey(string(segmentKey))
 		if err != nil {
 			return err
@@ -227,6 +154,8 @@ func (s *Storage) DeleteApp(appname string) error {
 			}
 
 			d2.Delete(dimension.Key(segmentKey))
+
+			// We can only delete the dimension once it's not pointing to any segments
 			if len(d2.Keys) > 0 {
 				continue
 			}
@@ -240,13 +169,25 @@ func (s *Storage) DeleteApp(appname string) error {
 		}
 	}
 
+	if err = s.trees.DiscardPrefix(appname + "{"); err != nil {
+		return err
+	}
+
+	if err = s.segments.DiscardPrefix(appname + "{"); err != nil {
+		return err
+	}
+
 	if err := s.dicts.Delete(key.DictKey()); err != nil {
 		return err
 	}
+
 	if err := s.labels.Delete("__name__", appname); err != nil {
 		return err
 	}
-	s.dimensions.Delete("__name__:" + appname)
+
+	if err := s.dimensions.Delete("__name__:" + appname); err != nil {
+		return err
+	}
 
 	return nil
 }
