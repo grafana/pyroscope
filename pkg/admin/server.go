@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"errors"
 	"net/http"
 	"os"
 
@@ -49,13 +48,7 @@ func NewServer(logger *logrus.Logger, ctrl *Controller, httpServer HTTPServer) (
 }
 
 func (as *Server) Start() error {
-	err := as.HTTPServer.Start(as.Handler)
-	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
-	// the returned error is ErrServerClosed.
-	if errors.Is(err, http.ErrServerClosed) {
-		return nil
-	}
-	return err
+	return as.HTTPServer.Start(as.Handler)
 }
 
 func (as *Server) Stop() error {
