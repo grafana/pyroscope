@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -25,46 +24,6 @@ var _ = Describe("storage package", func() {
 			var err error
 			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
 			Expect(err).ToNot(HaveOccurred())
-		})
-	})
-
-	// Just a sanity check
-	// I may delete this later
-	Context("basic delete", func() {
-		It("deletes trees", func() {
-			Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
-			tree := tree.New()
-			s.trees.Put("a;b", tree)
-			Expect(s.trees.Cache.Size()).To(Equal(uint64(1)))
-			s.trees.Delete("a;b")
-			Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
-		})
-
-		It("deletes dictionaries", func() {
-			Expect(s.dicts.Cache.Size()).To(Equal(uint64(0)))
-			d := dict.New()
-			s.dicts.Put("dict", d)
-			Expect(s.dicts.Cache.Size()).To(Equal(uint64(1)))
-			s.dicts.Delete("dict")
-			Expect(s.dicts.Cache.Size()).To(Equal(uint64(0)))
-		})
-
-		It("deletes segments", func() {
-			Expect(s.segments.Cache.Size()).To(Equal(uint64(0)))
-			d := segment.New()
-			s.segments.Put("segment", d)
-			Expect(s.segments.Cache.Size()).To(Equal(uint64(1)))
-			s.segments.Delete("segment")
-			Expect(s.segments.Cache.Size()).To(Equal(uint64(0)))
-		})
-
-		It("deletes dimensions", func() {
-			Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
-			d := dimension.New()
-			s.dimensions.Put("dimensions", d)
-			Expect(s.dimensions.Cache.Size()).To(Equal(uint64(1)))
-			s.dimensions.Delete("dimensions")
-			Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
 		})
 	})
 
@@ -299,8 +258,6 @@ var _ = Describe("storage package", func() {
 
 				// Dimensions
 				By("checking dimensions were deleted")
-				fmt.Println("dumping dimensions!!!!!!!!!!!!!!!")
-				s.dimensions.Dump()
 				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))
 				checkDimensionsPresence(appname, false)
 

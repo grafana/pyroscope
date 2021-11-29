@@ -221,11 +221,3 @@ func (cache *Cache) get(key string) (interface{}, error) {
 func (cache *Cache) Size() uint64 {
 	return uint64(cache.lfu.Len())
 }
-
-// TODO find some way to remove this
-// since i am only using to debug
-func (cache *Cache) Dump() {
-	for key, value := range cache.lfu.Dump() {
-		fmt.Println("key:", key, "value:", value)
-	}
-}

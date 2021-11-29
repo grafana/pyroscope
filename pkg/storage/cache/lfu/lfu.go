@@ -225,9 +225,3 @@ func (c *Cache) remEntry(place *list.Element, entry *cacheEntry) {
 		c.freqs.Remove(place)
 	}
 }
-
-// TODO find some way to remove this
-// since i am only using to debug
-func (c *Cache) Dump() map[string]*cacheEntry {
-	return c.values
-}
