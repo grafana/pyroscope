@@ -26,10 +26,14 @@ Congratulations! Now you can monitor application flamegraph on your Grafana dash
 
 
 # developing
-from the root `make build-panel`
 
-then from here:
+1. to build the app:
+`yarn grafana-plugin --watch`
+
+2. open grafana:
 `docker-compose up`
 
-`yarn start`
+3. open the dashboard
+http://localhost:3000/d/ZNBMoutnz/pyroscope-demo?orgId=1
 
+4. every time you change code the app will be rebuilt, and you will have to refresh the dashboard page
