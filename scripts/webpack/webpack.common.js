@@ -63,6 +63,12 @@ module.exports = {
       path.resolve('webapp'),
       path.resolve('node_modules'),
     ],
+    fallback: {
+      os: require.resolve('os-browserify/browser'),
+      crypto: require.resolve('crypto-browserify'),
+      stream: require.resolve('stream-browserify'),
+      fs: false,
+    },
   },
 
   stats: {
@@ -78,6 +84,10 @@ module.exports = {
   module: {
     // Note: order is bottom-to-top and/or right-to-left
     rules: [
+      {
+        test: /\.wasm$/i,
+        type: 'asset/inline',
+      },
       {
         test: /\.(js|ts)x?$/,
         exclude: /node_modules/,

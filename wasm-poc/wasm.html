@@ -4,21 +4,7 @@
     <title>WASM conversiont test</title>
   <body >
     <script src="wasm_exec.js"></script>
-    <script>
-      if (!WebAssembly.instantiateStreaming) {
-        // polyfill
-        WebAssembly.instantiateStreaming = async (resp, importObject) => {
-          const source = await (await resp).arrayBuffer();
-          return await WebAssembly.instantiate(source, importObject);
-        };
-      }
-      const go = new Go();
-      WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then(
-          result => {
-              go.run(result.instance);
-              wasm.print("Hello from go!");
-          }).catch(error => { console.error(error); });
-    </script>
+    <script src="wasm_main.js"></script>
     Check the console for a message written from go.
   </body>
 </html>

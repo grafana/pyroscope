@@ -1,4 +1,5 @@
 /webapp/public/**
 /webapp/javascript/util/**
 /webapp/__tests__/**
+/scripts/**
 /benchmark/**
