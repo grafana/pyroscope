@@ -28,7 +28,8 @@
     "lint-staged": "lint-staged",
     "size": "yarn build && size-limit",
     "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook"
+    "build-storybook": "build-storybook",
+    "grafana-plugin": "webpack --config scripts/webpack/webpack.grafana.ts"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",

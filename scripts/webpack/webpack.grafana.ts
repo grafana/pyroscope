@@ -80,7 +80,7 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
     //
     new ReplaceInFileWebpackPlugin([
       {
-        dir: 'dist',
+        dir: 'grafana-plugin/dist',
         files: ['plugin.json', 'README.md'],
         rules: [
           {
@@ -370,7 +370,7 @@ const getBaseWebpackConfig: any = async (options) => {
     entry: await getEntries(),
     output: {
       filename: '[name].js',
-      path: path.join(process.cwd(), 'dist'),
+      path: path.join(process.cwd(), 'grafana-plugin', 'dist'),
       libraryTarget: 'amd',
       publicPath: '/',
     },

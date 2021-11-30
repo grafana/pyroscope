@@ -26,7 +26,7 @@ export const SimplePanel: React.FC<Props> = ({
     <>
       <div className={styles.app}>
         <div className={`${styles.appContainer} flamegraph-wrapper`}>
-          <h1>Hi</h1>
+          <h1>Hello world</h1>
           {/*
           <FlameGraph
             flamebearer={data.series[data.series.length - 1].fields[0].values.buffer[0]}
