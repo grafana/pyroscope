@@ -1,4 +1,5 @@
-// +build !windows
+//go:build !windows && !js
+// +build !windows,!js
 
 package main
 

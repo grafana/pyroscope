@@ -96,6 +96,10 @@ endif
 build: ## Builds the binary
 	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
 
+.PHONY: build-wasm
+build-wasm: ## Builds WASM app
+	GOOS=js GOARCH=wasm $(GOBUILD) -o wasm-poc/main.wasm ./cmd/pyroscope
+
 .PHONY: build-release
 build-release: embedded-assets ## Builds the release build
 	EXTRA_GO_TAGS=,embedassets $(MAKE) build
