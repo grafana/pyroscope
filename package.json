@@ -29,7 +29,7 @@
     "size": "yarn build && size-limit",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
-    "grafana-plugin": "webpack --config scripts/webpack/webpack.grafana.ts"
+    "grafana-plugin": "NODE_ENV=development webpack --config scripts/webpack/webpack.grafana.ts"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
@@ -136,6 +136,7 @@
     "normalize.css": "^8.0.1",
     "postcss-browser-reporter": "^0.6.0",
     "postcss-loader": "^3.0.0",
+    "postcss-preset-env": "^7.0.1",
     "postcss-reporter": "^6.0.1",
     "prelude-ts": "^1.0.3",
     "react": "16.12.0",

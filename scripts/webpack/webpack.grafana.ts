@@ -275,27 +275,64 @@ const getStyleLoaders = () => {
     },
   };
 
-  const cssLoaders = [
+  const cssLoaders2 = [
     {
-      loader: 'css-loader',
-      options: {
-        importLoaders: 1,
-        sourceMap: true,
-      },
+      test: /\.css$/,
+      // include: MONACO_DIR, // https://github.com/react-monaco-editor/react-monaco-editor
+      use: ['style-loader', 'css-loader'],
     },
     {
-      loader: 'postcss-loader',
-      options: {
-        plugins: () => [
-          require('postcss-flexbugs-fixes'),
-          require('postcss-preset-env')({
-            autoprefixer: { flexbox: 'no-2009', grid: true },
-          }),
-        ],
-      },
+      test: /\.scss$/,
+      use: [
+        MiniCssExtractPlugin.loader,
+        {
+          loader: 'css-loader',
+          options: {
+            importLoaders: 2,
+            url: true,
+            sourceMap: true,
+          },
+        },
+        {
+          loader: 'postcss-loader',
+          options: {
+            sourceMap: true,
+            config: { path: __dirname },
+          },
+        },
+        {
+          loader: 'sass-loader',
+          options: {
+            sourceMap: true,
+          },
+        },
+      ],
     },
   ];
 
+  //  const cssLoaders = [
+  //    {
+  //      loader: 'css-loader',
+  //      options: {
+  //        importLoaders: 1,
+  //        sourceMap: true,
+  //      },
+  //    },
+  //    {
+  //      loader: 'postcss-loader',
+  //      options: {
+  //        plugins: () => [
+  //          require('postcss-flexbugs-fixes'),
+  //          require('postcss-preset-env')({
+  //            autoprefixer: { flexbox: 'no-2009', grid: true },
+  //          }),
+  //        ],
+  //      },
+  //    },
+  //  ];
+  //
+  //
+  const cssLoaders = cssLoaders2;
   const styleDir = path.resolve(process.cwd(), 'src', 'styles') + path.sep;
   const rules = [
     {
@@ -334,7 +371,8 @@ const getStyleLoaders = () => {
     },
   ];
 
-  return rules;
+  return cssLoaders2;
+  //  return rules;
 };
 
 const getBaseWebpackConfig: any = async (options) => {
@@ -412,8 +450,16 @@ const getBaseWebpackConfig: any = async (options) => {
     ],
     plugins,
     resolve: {
-      extensions: ['.ts', '.tsx', '.js'],
+      extensions: ['.ts', '.tsx', '.js', '.jsx'],
       modules: [path.resolve(process.cwd(), 'src'), 'node_modules'],
+      alias: {
+        // rc-trigger uses babel-runtime which has internal dependency to core-js@2
+        // this alias maps that dependency to core-js@t3
+        'core-js/library/fn': 'core-js/stable',
+        '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
+        '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
+        '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
+      },
       fallback: {
         fs: false,
         net: false,
