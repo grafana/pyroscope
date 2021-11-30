@@ -200,7 +200,7 @@ func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string)
 
 // GetAppNames returns the list of all app's names
 func (s *Storage) GetAppNames() []string {
-	var appNames []string
+	appNames := make([]string, 0)
 
 	s.GetValues("__name__", func(v string) bool {
 		appNames = append(appNames, v)

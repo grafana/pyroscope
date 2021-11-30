@@ -124,15 +124,18 @@ func newServerService(c *config.Server) (*serverService, error) {
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
 	svc.directUpstream = direct.New(svc.storage, metricsExporter)
-	svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
-		Upstream:       svc.directUpstream,
-		AppName:        "pyroscope.server",
-		ProfilingTypes: types.DefaultProfileTypes,
-		SpyName:        types.GoSpy,
-		SampleRate:     100,
-		UploadRate:     10 * time.Second,
-		Logger:         logger,
-	})
+
+	if !svc.config.NoSelfProfiling {
+		svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
+			Upstream:       svc.directUpstream,
+			AppName:        "pyroscope.server",
+			ProfilingTypes: types.DefaultProfileTypes,
+			SpyName:        types.GoSpy,
+			SampleRate:     100,
+			UploadRate:     10 * time.Second,
+			Logger:         logger,
+		})
+	}
 
 	svc.controller, err = server.New(server.Config{
 		Configuration:           svc.config,
@@ -184,8 +187,11 @@ func (svc *serverService) Start() error {
 
 	svc.healthController.Start()
 	svc.directUpstream.Start()
-	if err := svc.selfProfiling.Start(); err != nil {
-		svc.logger.WithError(err).Error("failed to start self-profiling")
+
+	if !svc.config.NoSelfProfiling {
+		if err := svc.selfProfiling.Start(); err != nil {
+			svc.logger.WithError(err).Error("failed to start self-profiling")
+		}
 	}
 
 	// Scrape and Discovery managers have to be initialized
@@ -241,8 +247,12 @@ func (svc *serverService) stop() {
 		svc.logger.Debug("stopping analytics service")
 		svc.analyticsService.Stop()
 	}
-	svc.logger.Debug("stopping profiling")
-	svc.selfProfiling.Stop()
+
+	if !svc.config.NoSelfProfiling {
+		svc.logger.Debug("stopping self profiling")
+		svc.selfProfiling.Stop()
+	}
+
 	svc.logger.Debug("stopping upstream")
 	svc.directUpstream.Stop()
 	svc.logger.Debug("stopping storage")
