@@ -65,16 +65,17 @@ type ingestHandler struct {
 	log        *logrus.Logger
 	storage    *storage.Storage
 	exporter   storage.MetricsExporter
-	bufferPool bytebufferpool.Pool
+	bufferPool *bytebufferpool.Pool
 	onSuccess  func(pi *storage.PutInput)
 }
 
 func NewIngestHandler(log *logrus.Logger, st *storage.Storage, exporter storage.MetricsExporter, onSuccess func(pi *storage.PutInput)) http.Handler {
 	return ingestHandler{
-		log:       log,
-		storage:   st,
-		exporter:  exporter,
-		onSuccess: onSuccess,
+		log:        log,
+		storage:    st,
+		exporter:   exporter,
+		bufferPool: &bytebufferpool.Pool{},
+		onSuccess:  onSuccess,
 	}
 }
 
