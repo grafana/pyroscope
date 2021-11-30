@@ -33,7 +33,7 @@ func slowFunction(c context.Context) {
 func main() {
 	profiler.Start(profiler.Config{
 		ApplicationName: "simple.golang.app",
-		ServerAddress:   "http://localhost:4040", // this will run inside docker-compose, hence `pyroscope` for hostname
+		ServerAddress:   "http://localhost:4040",
 	})
 	profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
 		for {
