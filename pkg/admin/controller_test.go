@@ -14,7 +14,6 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
 type mockStorage struct {
@@ -26,7 +25,7 @@ func (m mockStorage) GetAppNames() []string {
 	return m.getAppNamesResult
 }
 
-func (m mockStorage) Delete(di *storage.DeleteInput) error {
+func (m mockStorage) DeleteApp(appname string) error {
 	return m.deleteResult
 }
 

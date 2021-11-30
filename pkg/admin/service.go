@@ -1,17 +1,12 @@
 package admin
 
-import (
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-)
-
 type AdminService struct {
-	Storage
+	storage Storage
 }
 
 type Storage interface {
 	GetAppNames() []string
-	Delete(di *storage.DeleteInput) error
+	DeleteApp(appname string) error
 }
 
 func NewService(v Storage) *AdminService {
@@ -23,16 +18,9 @@ func NewService(v Storage) *AdminService {
 }
 
 func (m *AdminService) GetApps() (appNames []string) {
-	return m.GetAppNames()
+	return m.storage.GetAppNames()
 }
 
 func (m *AdminService) DeleteApp(appname string) error {
-	key, err := segment.ParseKey(appname)
-	if err != nil {
-		return err
-	}
-
-	return m.Delete(&storage.DeleteInput{
-		Key: key,
-	})
+	return m.storage.DeleteApp(appname)
 }
