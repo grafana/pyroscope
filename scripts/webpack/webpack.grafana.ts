@@ -51,9 +51,12 @@ const getStylesheetPaths = (root: string = process.cwd()) => {
 const getCommonPlugins = (options: WebpackConfigurationOptions) => {
   const packageJson = require(path.resolve(process.cwd(), 'package.json'));
   return [
+    //new MiniCssExtractPlugin({
+    //  // both options are optional
+    //  filename: 'styles/[name].css',
+    //}),
     new MiniCssExtractPlugin({
-      // both options are optional
-      filename: 'styles/[name].css',
+      filename: '[name].css',
     }),
     //    new webpack.optimize.OccurrenceOrderPlugin(true),
     //
@@ -209,64 +212,6 @@ const getFileLoaders = () => {
   ];
 };
 
-const getStylesheetEntries = (root: string = process.cwd()) => {
-  const stylesheetsPaths = getStylesheetPaths(root);
-  const entries: { [key: string]: string } = {};
-  supportedExtensions.forEach((e) => {
-    stylesheetsPaths.forEach((p) => {
-      const entryName = p.split('/').slice(-1)[0];
-      if (fs.existsSync(`${p}.${e}`)) {
-        if (entries[entryName]) {
-          console.log(
-            `\nSeems like you have multiple files for ${entryName} theme:`
-          );
-          console.log(entries[entryName]);
-          console.log(`${p}.${e}`);
-          throw new Error('Duplicated stylesheet');
-        } else {
-          entries[entryName] = `${p}.${e}`;
-        }
-      }
-    });
-  });
-
-  return entries;
-};
-
-const getEntries = async () => {
-  const entries: { [key: string]: string } = {};
-  const modules = await getModuleFiles();
-
-  modules.forEach((modFile) => {
-    const mod = getManualChunk(modFile);
-    // @ts-ignore
-    entries[mod.name] = mod.module;
-  });
-  return {
-    ...entries,
-    ...getStylesheetEntries(),
-  };
-};
-
-const getManualChunk = (id: string) => {
-  if (
-    id.endsWith('module.ts') ||
-    id.endsWith('module.js') ||
-    id.endsWith('module.tsx')
-  ) {
-    const idx = id.lastIndexOf(path.sep + 'src' + path.sep);
-    if (idx > 0) {
-      const name = id.substring(idx + 5, id.lastIndexOf('.'));
-
-      return {
-        name,
-        module: id,
-      };
-    }
-  }
-  return null;
-};
-
 const getStyleLoaders = () => {
   const extractionLoader = {
     loader: MiniCssExtractPlugin.loader,
@@ -310,28 +255,6 @@ const getStyleLoaders = () => {
     },
   ];
 
-  //  const cssLoaders = [
-  //    {
-  //      loader: 'css-loader',
-  //      options: {
-  //        importLoaders: 1,
-  //        sourceMap: true,
-  //      },
-  //    },
-  //    {
-  //      loader: 'postcss-loader',
-  //      options: {
-  //        plugins: () => [
-  //          require('postcss-flexbugs-fixes'),
-  //          require('postcss-preset-env')({
-  //            autoprefixer: { flexbox: 'no-2009', grid: true },
-  //          }),
-  //        ],
-  //      },
-  //    },
-  //  ];
-  //
-  //
   const cssLoaders = cssLoaders2;
   const styleDir = path.resolve(process.cwd(), 'src', 'styles') + path.sep;
   const rules = [
@@ -405,7 +328,9 @@ const getBaseWebpackConfig: any = async (options) => {
     //    },
     context: path.join(process.cwd(), 'grafana-plugin', 'src'),
     devtool: 'source-map',
-    entry: await getEntries(),
+    entry: {
+      module: path.join(process.cwd(), 'grafana-plugin', 'src', 'module.ts'),
+    },
     output: {
       filename: '[name].js',
       path: path.join(process.cwd(), 'grafana-plugin', 'dist'),

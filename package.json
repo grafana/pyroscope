@@ -162,6 +162,7 @@
     "sass-loader": "^9.0.2",
     "style-loader": "^3.2.1",
     "ts-essentials": "^9.0.0",
+    "url-loader": "^4.1.1",
     "webpack-cli": "^4.8.0"
   },
   "engines": {
