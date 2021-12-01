@@ -4,7 +4,6 @@ const glob = require('glob');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
-
 // uncomment if you want to see the webpack bundle analysis
 // const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
