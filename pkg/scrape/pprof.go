@@ -216,7 +216,7 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64) {
 			}
 		}
 
-		entry.Insert(b.Bytes(), uint64(s.Value[valueIndex]))
+		entry.Insert(b.Bytes(), uint64(s.Value[valueIndex]), true)
 		b.Reset()
 	}
 }
