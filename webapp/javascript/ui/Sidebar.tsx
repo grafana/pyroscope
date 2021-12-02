@@ -9,6 +9,7 @@ import {
   SidebarHeader as RProHeader,
   SidebarContent as RProContent,
   MenuItemProps,
+  SubMenuProps,
 } from 'react-pro-sidebar';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import styles from './Sidebar.module.css';
@@ -46,9 +47,19 @@ export function MenuItem(props: MenuItemProps) {
   return <RProMenuItem {...props} icon={icon} className={className} />;
 }
 
+export function SubMenu(props: SubMenuProps) {
+  // wrap the received icon with FontAwesomeIcon
+  // to make the API easier to user
+  let { icon } = props;
+  if (icon) {
+    icon = <FontAwesomeIcon icon={props.icon} />;
+  }
+
+  return <RProSubMenu {...props} icon={icon} />;
+}
+
 // Re-export the type so that end users only interact with our abstraction
 export const Menu = RProMenu;
-export const SubMenu = RProSubMenu;
 export const SidebarHeader = RProHeader;
 export const SidebarFooter = RProFooter;
 export const SidebarContent = RProContent;

@@ -6,6 +6,8 @@ import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
 import { faSlack } from '@fortawesome/free-brands-svg-icons/faSlack';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { faKeyboard } from '@fortawesome/free-solid-svg-icons/faKeyboard';
+import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
+import { faSync } from '@fortawesome/free-solid-svg-icons/faSync';
 import Sidebar, {
   MenuItem,
   SidebarHeader,
@@ -55,8 +57,10 @@ export default function Sidebar2() {
 
   const continuousAndAdhoc = (
     <>
-      <SubMenu title="Continuous Profiling">{continuousOnly}</SubMenu>
-      <SubMenu title="Adhoc Profiling">
+      <SubMenu title="Continuous Profiling" icon={faSync}>
+        {continuousOnly}
+      </SubMenu>
+      <SubMenu title="Adhoc Profiling" icon={faHandPointRight}>
         <MenuItem
           active={isRouteActive('/adhoc-single')}
           icon={faWindowMaximize}
