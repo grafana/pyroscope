@@ -13,6 +13,7 @@ import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
 import Notifications from './components/Notifications';
 import AdhocSingle from './components/AdhocSingle';
+import AdhocComparison from './components/AdhocComparison';
 
 import history from './util/history';
 
@@ -46,6 +47,11 @@ ReactDOM.render(
           {enableAdhoc && (
             <Route path="/adhoc-single">
               <AdhocSingle />
+            </Route>
+          )}
+          {enableAdhoc && (
+            <Route path="/adhoc-comparison">
+              <AdhocComparison />
             </Route>
           )}
         </Switch>

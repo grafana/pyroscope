@@ -81,9 +81,9 @@ function Sidebar(props) {
     );
   }, []);
 
-  const adhoc = (
+  const adhocSingle = (
     <>
-      <SidebarItem tooltipText="Adhoc Single">
+      <SidebarItem tooltipText="Adhoc Single View">
         <NavLink
           activeClassName="active-route"
           data-testid="achoc-single"
@@ -91,6 +91,21 @@ function Sidebar(props) {
           exact
         >
           <FontAwesomeIcon icon={faWindowMaximize} />
+        </NavLink>
+      </SidebarItem>
+    </>
+  );
+
+  const adhocComparison = (
+    <>
+      <SidebarItem tooltipText="Adhoc Comparison View">
+        <NavLink
+          activeClassName="active-route"
+          data-testid="adhoc-comparsion"
+          to={{ pathname: '/adhoc-comparison', search }}
+          exact
+        >
+          <FontAwesomeIcon icon={faColumns} />
         </NavLink>
       </SidebarItem>
     </>
@@ -129,7 +144,8 @@ function Sidebar(props) {
           <FontAwesomeIcon icon={faChartBar} />
         </NavLink>
       </SidebarItem>
-      {isExperimentalAdhocUIEnabled && adhoc}
+      {isExperimentalAdhocUIEnabled && adhocSingle}
+      {isExperimentalAdhocUIEnabled && adhocComparison}
       <SidebarItem tooltipText="Alerts - Coming Soon">
         <button type="button">
           <FontAwesomeIcon icon={faBell} />
