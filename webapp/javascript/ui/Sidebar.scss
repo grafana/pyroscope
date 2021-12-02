@@ -1,9 +1,8 @@
 // Unfortunately the lib uses SASS directly
 // So we can't use css modules
-$sidebar-bg-color: #393939;
-//$submenu-bg-color: #333;
-$submenu-bg-color: #393939;
-//#262626
+$sidebar-bg-color: #212124;
+$submenu-bg-color: transparent;
+$sidebar-color: #fff;
 
 @import '~react-pro-sidebar/dist/scss/styles.scss';
 
@@ -31,7 +30,7 @@ $submenu-bg-color: #393939;
 
 // Active effect
 .pro-sidebar .pro-menu .pro-menu-item.active {
-  background: #262626;
+  background: #333;
 }
 
 // for some reason it was inheriting a different background
@@ -41,4 +40,17 @@ $submenu-bg-color: #393939;
   > .pro-inner-item
   > .pro-icon-wrapper {
   background: transparent;
+}
+
+.pro-sidebar .pro-menu .pro-menu-item {
+  font-size: 16px;
+}
+
+// nested menu
+// since we are not setting a background color
+// the extra padding doesn't look good
+.pro-sidebar .pro-menu ul ul {
+  padding: 0 !important;
+
+  padding-bottom: 8px !important;
 }
