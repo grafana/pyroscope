@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
@@ -8,6 +8,7 @@ import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { faKeyboard } from '@fortawesome/free-solid-svg-icons/faKeyboard';
 import Sidebar, {
   MenuItem,
+  SidebarHeader,
   SidebarFooter,
   SidebarContent,
   SubMenu,
@@ -16,6 +17,7 @@ import Sidebar, {
 import { useLocation, NavLink } from 'react-router-dom';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import styles from './Sidebar.module.css';
+import Logo from '../../images/logo-v3-small.svg';
 
 export default function Sidebar2() {
   const { search, pathname } = useLocation();
@@ -73,6 +75,12 @@ export default function Sidebar2() {
 
   return (
     <Sidebar>
+      <SidebarHeader>
+        <div className={styles.logo}>
+          <img src={Logo} alt="Pyroscope logo" width={36} height={36} />
+          <b>Pyroscope</b>
+        </div>
+      </SidebarHeader>
       <SidebarContent>
         <Menu iconShape="square">
           {isExperimentalAdhocUIEnabled ? continuousAndAdhoc : continuousOnly}
@@ -80,9 +88,33 @@ export default function Sidebar2() {
       </SidebarContent>
       <SidebarFooter>
         <Menu iconShape="square">
-          <MenuItem icon={faFileAlt}>Documentation</MenuItem>
-          <MenuItem icon={faSlack}>Slack</MenuItem>
-          <MenuItem icon={faGithub}>Github</MenuItem>
+          <MenuItem icon={faFileAlt}>
+            <a
+              rel="noreferrer"
+              target="_blank"
+              href="https://pyroscope.io/docs"
+            >
+              Documentation
+            </a>
+          </MenuItem>
+          <MenuItem icon={faSlack}>
+            <a
+              rel="noreferrer"
+              target="_blank"
+              href="https://pyroscope.io/slack"
+            >
+              Slack
+            </a>
+          </MenuItem>
+          <MenuItem icon={faGithub}>
+            <a
+              rel="noreferrer"
+              target="_blank"
+              href="https://github.com/pyroscope-io/pyroscope"
+            >
+              Github
+            </a>
+          </MenuItem>
           <MenuItem icon={faKeyboard}>Shortcuts</MenuItem>
         </Menu>
       </SidebarFooter>

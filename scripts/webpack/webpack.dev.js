@@ -40,8 +40,9 @@ module.exports = merge(common, {
 
         // serve index for all pages
         // that are not static (.css, .js) nor live reload (/wps)
+        // TODO: simplify this
         app.use(
-          route.get(/^(.(?!(\.js|\.css|wps)$))+$/, (ctx) => {
+          route.get(/^(.(?!(\.js|\.css|\.svg|wps)$))+$/, (ctx) => {
             ctx.body = fs.readFileSync(
               path.resolve(__dirname, '../../webapp/public/assets/index.html'),
               {

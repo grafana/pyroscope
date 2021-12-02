@@ -10,7 +10,6 @@ import store from './redux/store';
 import PyroscopeApp from './components/PyroscopeApp';
 import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
-// import Sidebar from './components/Sidebar';
 import Sidebar from './components/Sidebar2';
 import Notifications from './components/Notifications';
 import AdhocSingle from './components/AdhocSingle';
