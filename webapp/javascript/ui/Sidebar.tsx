@@ -2,9 +2,12 @@
 import React from 'react';
 import {
   ProSidebar,
-  Menu,
+  Menu as RProMenu,
   MenuItem as RProMenuItem,
   SubMenu as RProSubMenu,
+  SidebarFooter as RProFooter,
+  SidebarHeader as RProHeader,
+  SidebarContent as RProContent,
   MenuItemProps,
 } from 'react-pro-sidebar';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -21,11 +24,8 @@ export interface SidebarProps {
 // So that we can some day reimplement its functinoality ourselves
 export default function Sidebar(props: SidebarProps) {
   const { children, collapsed } = props;
-  return (
-    <ProSidebar collapsed={collapsed}>
-      <Menu iconShape="square">{children}</Menu>
-    </ProSidebar>
-  );
+
+  return <ProSidebar collapsed={collapsed}>{children}</ProSidebar>;
 }
 
 export function MenuItem(props: MenuItemProps) {
@@ -42,4 +42,8 @@ export function MenuItem(props: MenuItemProps) {
 }
 
 // Re-export the type so that end users only interact with our abstraction
+export const Menu = RProMenu;
 export const SubMenu = RProSubMenu;
+export const SidebarHeader = RProHeader;
+export const SidebarFooter = RProFooter;
+export const SidebarContent = RProContent;

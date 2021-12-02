@@ -19,7 +19,7 @@ $submenu-bg-color: #393939;
 }
 
 // Add hover effect
-.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:hover {
+.pro-sidebar .pro-menu .pro-menu-item:not(.active) > .pro-inner-item:hover {
   background: #333;
 }
 // Swap margin and padding
@@ -32,4 +32,13 @@ $submenu-bg-color: #393939;
 // Active effect
 .pro-sidebar .pro-menu .pro-menu-item.active {
   background: #262626;
+}
+
+// for some reason it was inheriting a different background
+.pro-sidebar
+  .pro-menu.shaped
+  .pro-menu-item
+  > .pro-inner-item
+  > .pro-icon-wrapper {
+  background: transparent;
 }
