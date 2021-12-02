@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
@@ -18,11 +18,14 @@ import Sidebar, {
 } from '@ui/Sidebar';
 import { useLocation, NavLink } from 'react-router-dom';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
+import { useWindowWidth } from '@react-hook/window-size';
 import styles from './Sidebar.module.css';
 import Logo from '../../images/logo-v3-small.svg';
 
 export default function Sidebar2() {
   const { search, pathname } = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
+  const windowWidth = useWindowWidth();
 
   // the component doesn't seem to support setting up an active item
   // so we must set it up manually
@@ -31,63 +34,58 @@ export default function Sidebar2() {
     return pathname === route;
   };
 
-  // notice how there's no SubMenu here
-  // since that's only rendered when Adhoc is enabled
-  const continuousOnly = (
-    <>
-      <MenuItem active={isRouteActive('/')} icon={faWindowMaximize}>
-        Single View
-        <NavLink
-          activeClassName="active-route"
-          data-testid="sidebar-root"
-          to={{ pathname: '/', search }}
-          exact
-        />
-      </MenuItem>
-      <MenuItem active={isRouteActive('/comparison')} icon={faColumns}>
-        Comparison View
-        <NavLink to={{ pathname: '/comparison', search }} exact />
-      </MenuItem>
-      <MenuItem active={isRouteActive('/comparison-diff')} icon={faChartBar}>
-        Diff View
-        <NavLink to={{ pathname: '/comparison-diff', search }} exact />
-      </MenuItem>
-    </>
-  );
+  useEffect(() => {
+    const c = windowWidth < 1200;
+    setCollapsed(c);
+  }, [windowWidth]);
 
-  const continuousAndAdhoc = (
-    <>
-      <SubMenu title="Continuous Profiling" icon={faSync}>
-        {continuousOnly}
-      </SubMenu>
-      <SubMenu title="Adhoc Profiling" icon={faHandPointRight}>
-        <MenuItem
-          active={isRouteActive('/adhoc-single')}
-          icon={faWindowMaximize}
-        >
-          Single View
-        </MenuItem>
-        <MenuItem active={isRouteActive('/adhoc-comparison')} icon={faColumns}>
-          Comparison View
-        </MenuItem>
-        <MenuItem active={isRouteActive('/adhoc-diff')} icon={faChartBar}>
-          Diff View
-        </MenuItem>
-      </SubMenu>
-    </>
+  const adhoc = (
+    <SubMenu title="Adhoc Profiling" icon={faHandPointRight}>
+      <MenuItem active={isRouteActive('/adhoc-single')} icon={faWindowMaximize}>
+        Single View
+      </MenuItem>
+      <MenuItem active={isRouteActive('/adhoc-comparison')} icon={faColumns}>
+        Comparison View
+      </MenuItem>
+      <MenuItem active={isRouteActive('/adhoc-diff')} icon={faChartBar}>
+        Diff View
+      </MenuItem>
+    </SubMenu>
   );
 
   return (
-    <Sidebar>
+    <Sidebar collapsed={collapsed}>
       <SidebarHeader>
         <div className={styles.logo}>
           <img src={Logo} alt="Pyroscope logo" width={36} height={36} />
-          <b>Pyroscope</b>
+          {!collapsed && <b>Pyroscope</b>}
         </div>
       </SidebarHeader>
       <SidebarContent>
         <Menu iconShape="square">
-          {isExperimentalAdhocUIEnabled ? continuousAndAdhoc : continuousOnly}
+          <SubMenu title="Continuous Profiling" icon={faSync}>
+            <MenuItem active={isRouteActive('/')} icon={faWindowMaximize}>
+              Single View
+              <NavLink
+                activeClassName="active-route"
+                data-testid="sidebar-root"
+                to={{ pathname: '/', search }}
+                exact
+              />
+            </MenuItem>
+            <MenuItem active={isRouteActive('/comparison')} icon={faColumns}>
+              Comparison View
+              <NavLink to={{ pathname: '/comparison', search }} exact />
+            </MenuItem>
+            <MenuItem
+              active={isRouteActive('/comparison-diff')}
+              icon={faChartBar}
+            >
+              Diff View
+              <NavLink to={{ pathname: '/comparison-diff', search }} exact />
+            </MenuItem>
+          </SubMenu>
+          {isExperimentalAdhocUIEnabled && adhoc}
         </Menu>
       </SidebarContent>
       <SidebarFooter>

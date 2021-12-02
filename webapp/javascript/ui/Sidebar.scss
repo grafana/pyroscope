@@ -3,6 +3,7 @@
 $sidebar-bg-color: #212124;
 $submenu-bg-color: transparent;
 $sidebar-color: #fff;
+$submenu-bg-color-collapsed: #212124;
 
 @import '~react-pro-sidebar/dist/scss/styles.scss';
 
@@ -18,6 +19,9 @@ $sidebar-color: #fff;
 }
 
 // Add hover effect
+.pro-sidebar .pro-menu .pro-menu-item:not(.active) > .pro-inner-item:hover {
+  background: #333;
+}
 .pro-sidebar .pro-menu .pro-menu-item:not(.active) > .pro-inner-item:hover {
   background: #333;
 }
@@ -50,7 +54,14 @@ $sidebar-color: #fff;
 // since we are not setting a background color
 // the extra padding doesn't look good
 .pro-sidebar .pro-menu ul ul {
-  padding: 0 !important;
-
+  padding-top: 8px !important;
   padding-bottom: 8px !important;
+}
+
+// when it's minimized
+.pro-sidebar .pro-menu .popper-inner {
+  padding-left: 0 !important;
+}
+.pro-sidebar .pro-menu .popper-inner .pro-inner-item {
+  padding-left: 20px !important;
 }

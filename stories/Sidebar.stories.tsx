@@ -76,27 +76,29 @@ export const OurSidebar = (args) => {
   );
 };
 
-// export const OurSidebarCollapsed = (args) => {
-//  return (
-//    <Sidebar collapsed>
-//      <Menu iconShape="square">
-//        <SubMenu title="Continuous Profiling" open>
-//          <MenuItem active icon={faWindowMaximize}>
-//            Single View
-//          </MenuItem>
-//          <MenuItem icon={faColumns}>Comparison View</MenuItem>
-//          <MenuItem icon={faChartBar}>Diff View</MenuItem>
-//        </SubMenu>
-//        <SubMenu title="Adhoc Profiling">
-//          <MenuItem icon={faWindowMaximize}>Single View</MenuItem>
-//          <MenuItem icon={faColumns}>Comparison View</MenuItem>
-//          <MenuItem icon={faChartBar}>Diff View</MenuItem>
-//        </SubMenu>
-//      </Menu>
-//    </Sidebar>
-//  );
-// };
-//
+export const OurSidebarCollapsed = (args) => {
+  return (
+    <Sidebar collapsed>
+      <SidebarContent>
+        <Menu iconShape="square">
+          <SubMenu title="Continuous Profiling" icon={faWindowMaximize}>
+            <MenuItem active icon={faWindowMaximize}>
+              Single View
+            </MenuItem>
+            <MenuItem icon={faColumns}>Comparison View</MenuItem>
+            <MenuItem icon={faChartBar}>Diff View</MenuItem>
+          </SubMenu>
+          <SubMenu title="Adhoc Profiling" icon={faColumns}>
+            <MenuItem icon={faWindowMaximize}>Single View</MenuItem>
+            <MenuItem icon={faColumns}>Comparison View</MenuItem>
+            <MenuItem icon={faChartBar}>Diff View</MenuItem>
+          </SubMenu>
+        </Menu>
+      </SidebarContent>
+    </Sidebar>
+  );
+};
+
 export const SidebarWithHeaderAndFooter = (args) => {
   return (
     <Sidebar>
