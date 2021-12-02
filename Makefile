@@ -166,7 +166,7 @@ embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS)) ## Conf
 
 .PHONY: lint
 lint: ## Run the lint across the codebase
-	go run "$(shell scripts/pinned-tool.sh github.com/mgechev/revive)" -config revive.toml -exclude ./pkg/agent/pprof/... -exclude ./vendor/... -formatter stylish ./...
+	go run "$(shell scripts/pinned-tool.sh github.com/mgechev/revive)" -config revive.toml -exclude ./pkg/agent/pprof/... -exclude ./vendor/... -exclude ./examples/... -formatter stylish ./...
 
 .PHONY: lint-summary
 lint-summary: ## Get the lint summary
