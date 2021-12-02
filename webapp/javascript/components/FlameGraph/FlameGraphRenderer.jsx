@@ -13,6 +13,7 @@ import Graph from './FlameGraphComponent';
 import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
+import FileUploader from '../FileUploader';
 import { createFF } from '../../util/flamebearer';
 
 import ExportData from '../ExportData';
@@ -256,6 +257,11 @@ class FlameGraphRenderer extends React.Component {
         })}
       >
         <div className="canvas-container">
+          {this.props.uploader ? (
+            <>
+              <FileUploader onUpload={this.props.uploader} />
+            </>
+          ) : null}
           <Toolbar
             view={this.state.view}
             viewDiff={this.state.viewDiff}
@@ -271,7 +277,7 @@ class FlameGraphRenderer extends React.Component {
               this.onFocusOnNode(i, j);
             }}
           />
-          {this.props.viewType === 'double' ? (
+          {this.props.viewType === 'double' && !this.props.uploader ? (
             <>
               <InstructionText {...this.props} />
               <TimelineChartWrapper
