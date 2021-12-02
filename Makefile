@@ -129,7 +129,7 @@ build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES)) ## Bui
 
 .PHONY: test
 test: ## Runs the test suite
-	go test -race -tags debugspy ./...
+	go test -race -tags debugspy $(shell go list ./... | grep -v /examples/)
 
 .PHONY: server
 server: ## Start the Pyroscope Server
