@@ -17,4 +17,4 @@ jobs:
         with:
           config: revive.toml
           # same as in the `lint` rule of Makefile
-          exclude: 'vendor/...;./pkg/agent/pprof/...'
+          exclude: 'examples/...;vendor/...;./pkg/agent/pprof/...'
