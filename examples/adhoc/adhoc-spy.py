@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# A simple script that generates some load, to showcase ad-hoc profiling.
 from random import randint
 from math import sqrt
 
@@ -31,7 +30,7 @@ def fast(n):
 
 def run():
     base = randint(1, 10**6)
-    for i in range(10**7):
+    for i in range(2*10**6):
         [fast, slow][is_prime(base + i)](randint(1, 10**4))
 
 
