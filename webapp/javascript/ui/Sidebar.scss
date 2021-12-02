@@ -1,6 +1,9 @@
 // Unfortunately the lib uses SASS directly
 // So we can't use css modules
-$sidebar-bg-color: #2c2c2f;
+$sidebar-bg-color: #393939;
+//$submenu-bg-color: #333;
+$submenu-bg-color: #393939;
+//#262626
 
 @import '~react-pro-sidebar/dist/scss/styles.scss';
 
@@ -13,4 +16,20 @@ $sidebar-bg-color: #2c2c2f;
   .pro-icon-wrapper
   .pro-icon {
   animation: none;
+}
+
+// Add hover effect
+.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:hover {
+  background: #333;
+}
+// Swap margin and padding
+// To make the background not weird
+.pro-sidebar .pro-menu .pro-menu-item.open .pro-menu-item {
+  margin-right: 30px;
+  padding-right: 0;
+}
+
+// Active effect
+.pro-sidebar .pro-menu .pro-menu-item.active {
+  background: #262626;
 }

@@ -13,13 +13,16 @@ import './Sidebar.scss';
 
 export interface SidebarProps {
   children: React.ReactNode[];
+
+  collapsed?: boolean;
 }
 
 // Sidebar is an abstraction over react-pro-sidebar
+// So that we can some day reimplement its functinoality ourselves
 export default function Sidebar(props: SidebarProps) {
-  const { children } = props;
+  const { children, collapsed } = props;
   return (
-    <ProSidebar>
+    <ProSidebar collapsed={collapsed}>
       <Menu iconShape="square">{children}</Menu>
     </ProSidebar>
   );
@@ -27,7 +30,7 @@ export default function Sidebar(props: SidebarProps) {
 
 export function MenuItem(props: MenuItemProps) {
   // wrap the received icon with FontAwesomeIcon
-  // to make the API easier to users
+  // to make the API easier to user
   let { icon } = props;
   let { className } = props;
   if (icon) {

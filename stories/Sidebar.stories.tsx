@@ -4,6 +4,9 @@ import { ComponentStory, ComponentMeta } from '@storybook/react';
 import Sidebar, { MenuItem, SubMenu } from '@ui/Sidebar';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import { faBaby } from '@fortawesome/free-solid-svg-icons/faBaby';
+import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
+import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
+import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 
 const Template: ComponentStory<typeof Sidebar> = (args) => (
   <Sidebar {...args} />
@@ -18,12 +21,49 @@ export const Default = (args) => {
   return (
     <Sidebar>
       <MenuItem>Component 1</MenuItem>
-      {/* <MenuItem icon={<FontAwesomeIcon icon={faClock} />}>Component 2</MenuItem>*/}
       <MenuItem icon={faClock}>Item</MenuItem>
       <MenuItem icon={faBaby}>Item with very very very long name</MenuItem>
       <SubMenu title="Submenu">
         <MenuItem icon={faClock}>Item</MenuItem>
         <MenuItem icon={faBaby}>Item with very very very long name</MenuItem>
+      </SubMenu>
+    </Sidebar>
+  );
+};
+
+export const OurSidebar = (args) => {
+  return (
+    <Sidebar>
+      <SubMenu title="Continuous Profiling" open>
+        <MenuItem active icon={faWindowMaximize}>
+          Single View
+        </MenuItem>
+        <MenuItem icon={faColumns}>Comparison View</MenuItem>
+        <MenuItem icon={faChartBar}>Diff View</MenuItem>
+      </SubMenu>
+      <SubMenu title="Adhoc Profiling">
+        <MenuItem icon={faWindowMaximize}>Single View</MenuItem>
+        <MenuItem icon={faColumns}>Comparison View</MenuItem>
+        <MenuItem icon={faChartBar}>Diff View</MenuItem>
+      </SubMenu>
+    </Sidebar>
+  );
+};
+
+export const OurSidebarCollapsed = (args) => {
+  return (
+    <Sidebar collapsed>
+      <SubMenu title="Continuous Profiling" open>
+        <MenuItem active icon={faWindowMaximize}>
+          Single View
+        </MenuItem>
+        <MenuItem icon={faColumns}>Comparison View</MenuItem>
+        <MenuItem icon={faChartBar}>Diff View</MenuItem>
+      </SubMenu>
+      <SubMenu title="Adhoc Profiling">
+        <MenuItem icon={faWindowMaximize}>Single View</MenuItem>
+        <MenuItem icon={faColumns}>Comparison View</MenuItem>
+        <MenuItem icon={faChartBar}>Diff View</MenuItem>
       </SubMenu>
     </Sidebar>
   );
