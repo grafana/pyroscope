@@ -18,14 +18,19 @@ export interface SidebarProps {
   children: React.ReactNode[];
 
   collapsed?: boolean;
+  className?: string;
 }
 
 // Sidebar is an abstraction over react-pro-sidebar
 // So that we can some day reimplement its functinoality ourselves
 export default function Sidebar(props: SidebarProps) {
-  const { children, collapsed } = props;
+  const { children, collapsed, className } = props;
 
-  return <ProSidebar collapsed={collapsed}>{children}</ProSidebar>;
+  return (
+    <ProSidebar className={className} collapsed={collapsed}>
+      {children}
+    </ProSidebar>
+  );
 }
 
 export function MenuItem(props: MenuItemProps) {
