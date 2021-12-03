@@ -57,7 +57,7 @@ export default function Sidebar2() {
     <Sidebar collapsed={collapsed}>
       <SidebarHeader>
         <div className={styles.logo}>
-          <img src={Logo} alt="Pyroscope logo" width={36} height={36} />
+          <img src={Logo} alt="Logo" width={36} height={36} />
           {!collapsed && <b>Pyroscope</b>}
         </div>
       </SidebarHeader>
