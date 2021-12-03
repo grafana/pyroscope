@@ -18,13 +18,6 @@ $submenu-bg-color-collapsed: #212124;
   animation: none;
 }
 
-// Swap margin and padding
-// To make the background not weird
-.pro-sidebar .pro-menu .pro-menu-item.open .pro-menu-item {
-  margin-right: 30px;
-  padding-right: 0;
-}
-
 // Active and hover
 .pro-sidebar .pro-menu .pro-menu-item.active,
 .pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:hover {
@@ -43,6 +36,7 @@ $submenu-bg-color-collapsed: #212124;
 
 .pro-sidebar .pro-menu .pro-menu-item {
   font-size: 16px;
+  //  line-height: normal;
 }
 
 // nested menu
@@ -58,4 +52,55 @@ $submenu-bg-color-collapsed: #212124;
 }
 .pro-sidebar .pro-menu .popper-inner .pro-inner-item {
   padding-left: 20px !important;
+}
+
+// icon size
+.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item > .pro-icon-wrapper {
+  font-size: 16px;
+}
+
+.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item {
+  padding-left: 10px;
+}
+
+// distance between icon and text
+// for nested elements
+.pro-sidebar
+  .pro-menu
+  .pro-menu-item.pro-sub-menu
+  .pro-menu-item
+  .pro-inner-item
+  > .pro-icon-wrapper {
+  // this is a completely eyeballed, arbitrary value
+  // ideally have to figure out why .pro-icon-wrapper is calculated to have a different value
+  // for nested items
+  margin-right: 20px;
+}
+
+.pro-sidebar .pro-menu .pro-menu-item {
+  font-size: 16px;
+  line-height: initial;
+}
+
+.pro-sidebar
+  .pro-menu
+  .pro-menu-item.pro-sub-menu
+  .pro-inner-list-item
+  .pro-inner-item {
+  padding-bottom: 15px;
+  padding-top: 15px;
+}
+
+// cancel subitems padding
+// since each item will implement itself
+// this will probably break multiple nested items (> 2 levels)
+.pro-sidebar .pro-menu .pro-menu-item.pro-sub-menu .pro-inner-list-item {
+  padding-left: 0;
+}
+.pro-sidebar
+  .pro-menu
+  .pro-menu-item.pro-sub-menu
+  .pro-inner-list-item
+  .pro-inner-item {
+  padding-left: 42px;
 }
