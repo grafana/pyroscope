@@ -2,7 +2,7 @@
 // So we can't use css modules
 $sidebar-bg-color: #212124;
 $submenu-bg-color: transparent;
-$sidebar-color: #fff;
+$sidebar-color: rgba(255, 255, 255, 0.66);
 $submenu-bg-color-collapsed: #212124;
 
 @import '~react-pro-sidebar/dist/scss/styles.scss';
@@ -18,13 +18,6 @@ $submenu-bg-color-collapsed: #212124;
   animation: none;
 }
 
-// Add hover effect
-.pro-sidebar .pro-menu .pro-menu-item:not(.active) > .pro-inner-item:hover {
-  background: #333;
-}
-.pro-sidebar .pro-menu .pro-menu-item:not(.active) > .pro-inner-item:hover {
-  background: #333;
-}
 // Swap margin and padding
 // To make the background not weird
 .pro-sidebar .pro-menu .pro-menu-item.open .pro-menu-item {
@@ -32,9 +25,11 @@ $submenu-bg-color-collapsed: #212124;
   padding-right: 0;
 }
 
-// Active effect
-.pro-sidebar .pro-menu .pro-menu-item.active {
+// Active and hover
+.pro-sidebar .pro-menu .pro-menu-item.active,
+.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:hover {
   background: #333;
+  color: #fff;
 }
 
 // for some reason it was inheriting a different background
@@ -54,8 +49,7 @@ $submenu-bg-color-collapsed: #212124;
 // since we are not setting a background color
 // the extra padding doesn't look good
 .pro-sidebar .pro-menu ul ul {
-  padding-top: 8px !important;
-  padding-bottom: 8px !important;
+  padding: 0px !important;
 }
 
 // when it's minimized
