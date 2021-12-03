@@ -25,6 +25,9 @@ import {
   RECEIVE_COMPARISON_DIFF_APP_DATA,
   REQUEST_COMPARISON_TIMELINE,
   RECEIVE_COMPARISON_TIMELINE,
+  SET_FILE,
+  SET_LEFT_FILE,
+  SET_RIGHT_FILE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 import { deltaDiffWrapper } from '../util/flamebearer';
@@ -139,6 +142,21 @@ export const receiveNames = (names) => ({
 export const setQuery = (query) => ({
   type: SET_QUERY,
   payload: { query },
+});
+
+export const setFile = (file, flamebearer) => ({
+  type: SET_FILE,
+  payload: { file, flamebearer },
+});
+
+export const setLeftFile = (file, flamebearer) => ({
+  type: SET_LEFT_FILE,
+  payload: { file, flamebearer },
+});
+
+export const setRightFile = (file, flamebearer) => ({
+  type: SET_RIGHT_FILE,
+  payload: { file, flamebearer },
 });
 
 /**

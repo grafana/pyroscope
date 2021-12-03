@@ -8,7 +8,6 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Option } from 'prelude-ts';
-import { connect } from 'react-redux';
 import Graph from './FlameGraphComponent';
 import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
@@ -259,7 +258,7 @@ class FlameGraphRenderer extends React.Component {
         <div className="canvas-container">
           {this.props.uploader ? (
             <>
-              <FileUploader onUpload={this.props.uploader} />
+              <FileUploader file={this.props.uploader.file} setFile={this.props.uploader.setFile} />
             </>
           ) : null}
           <Toolbar

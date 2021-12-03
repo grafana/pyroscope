@@ -1,42 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { connect } from 'react-redux';
 import 'react-dom';
 
 import { bindActionCreators } from 'redux';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
-import { buildRenderURL } from '../util/updateRequests';
-import {
-  fetchNames,
-  fetchComparisonAppData,
-  fetchTimeline,
-} from '../redux/actions';
-import FileUploader from './FileUploader';
-import onFileUpload from '../util/onFileUpload';
+import { abortTimelineRequest, setLeftFile, setRightFile } from '../redux/actions';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
 function AdhocComparison(props) {
-  const { actions, renderURL, leftRenderURL, rightRenderURL, comparison } =
-    props;
-
-  const [leftFlamebearer, setLeftFlamebearer] = useState();
-  const [rightFlamebearer, setRightFlamebearer] = useState();
-
-  const onLeftUpload = (data) => onFileUpload(data, setLeftFlamebearer);
-  const onRightUpload = (data) => onFileUpload(data, setRightFlamebearer);
+  const { actions, leftFile, leftFlamebearer, rightFile, rightFlamebearer } = props;
+  const setLeftFile = actions.setLeftFile;
+  const setRightFile = actions.setRightFile;
 
   useEffect(() => {
     return actions.abortTimelineRequest;
-  }, [leftRenderURL]);
-
-  useEffect(() => {
-    return actions.abortTimelineRequest;
-  }, [rightRenderURL]);
-
-  useEffect(() => {
-    return actions.abortTimelineRequest;
-  }, [renderURL]);
+  });
 
   return (
     <div className="pyroscope-app">
@@ -50,14 +30,14 @@ function AdhocComparison(props) {
             viewSide="left"
             flamebearer={leftFlamebearer}
             data-testid="flamegraph-renderer-left"
-            uploader={onLeftUpload}
+            uploader={{ file: leftFile, setFile: setLeftFile }}
           />
           <FlameGraphRenderer
             viewType="double"
             viewSide="right"
             flamebearer={rightFlamebearer}
             data-testid="flamegraph-renderer-right"
-            uploader={onRightUpload}
+            uploader={{ file: rightFile, setFile: setRightFile }}
           />
         </div>
       </div>
@@ -68,20 +48,14 @@ function AdhocComparison(props) {
 
 const mapStateToProps = (state) => ({
   ...state,
-  renderURL: buildRenderURL(state),
-  leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
-  rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),
+  leftFile: state.adhocComparison.left.file,
+  leftFlamebearer: state.adhocComparison.left.flamebearer,
+  rightFile: state.adhocComparison.right.file,
+  rightFlamebearer: state.adhocComparison.right.flamebearer,
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      fetchComparisonAppData,
-      fetchNames,
-      fetchTimeline,
-    },
-    dispatch
-  ),
+  actions: bindActionCreators({ abortTimelineRequest, setLeftFile, setRightFile }, dispatch)
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocComparison);

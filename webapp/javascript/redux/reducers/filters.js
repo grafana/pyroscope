@@ -1,4 +1,3 @@
-import { deltaDiffWrapper } from '../../util/flamebearer';
 import {
   SET_DATE_RANGE,
   SET_FROM,
@@ -26,6 +25,9 @@ import {
   RECEIVE_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_TIMELINE,
   REQUEST_COMPARISON_TIMELINE,
+  SET_FILE,
+  SET_LEFT_FILE,
+  SET_RIGHT_FILE,
 } from '../actionTypes';
 
 const defaultName = window.initialState.appNames.find(
@@ -56,6 +58,20 @@ const initialState = {
   diff: {
     flamebearer: null,
   },
+  adhocSingle: {
+    file: null,
+    flamebearer: null,
+  },
+  adhocComparison: {
+    left: {
+      file: null,
+      flamebearer: null,
+    },
+    right: {
+      file: null,
+      flamebearer: null,
+    }
+  },
   isJSONLoading: false,
   maxNodes: 1024,
   tags: [],
@@ -65,7 +81,6 @@ function decodeTimelineData(timelineData) {
   if (!timelineData) {
     return [];
   }
-  const res = [];
   let time = timelineData.startTime;
   return timelineData.samples.map((x) => {
     const res = [time * 1000, x];
@@ -74,7 +89,7 @@ function decodeTimelineData(timelineData) {
   });
 }
 
-export default function (state = initialState, action) {
+export default function(state = initialState, action) {
   let flamebearer;
   let timeline;
   let data;
@@ -271,6 +286,36 @@ export default function (state = initialState, action) {
       return {
         ...state,
         query: action.payload.query,
+      };
+    case SET_FILE:
+      return {
+        ...state,
+        adhocSingle: {
+          file: action.payload.file,
+          flamebearer: action.payload.flamebearer,
+        },
+      };
+    case SET_LEFT_FILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          left: {
+            file: action.payload.file,
+            flamebearer: action.payload.flamebearer,
+          },
+        },
+      };
+    case SET_RIGHT_FILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          right: {
+            file: action.payload.file,
+            flamebearer: action.payload.flamebearer,
+          },
+        },
       };
     default:
       return state;

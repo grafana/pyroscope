@@ -1,17 +1,17 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
 import Button from '@ui/Button';
 import styles from './FileUploader.module.scss';
+import { deltaDiffWrapper } from '../util/flamebearer';
 
 interface Props {
   onUpload: (s: string) => void;
+  file: File;
+  setFile: (file: File, flamebearer: object) => void;
 }
-export default function FileUploader({ onUpload }: Props) {
-  const [file, setFile] = useState();
-
+export default function FileUploader({ file, setFile }: Props) {
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 1) {
       throw new Error('Only a single file at a time is accepted.');
@@ -30,8 +30,14 @@ export default function FileUploader({ onUpload }: Props) {
           const s = JSON.parse(
             String.fromCharCode.apply(null, new Uint8Array(binaryStr))
           );
-          setFile({ file, ...s });
-          onUpload({ file, ...s });
+          const { flamebearer } = s;
+          const calculatedLevels = deltaDiffWrapper(
+            flamebearer.format,
+            flamebearer.levels
+          );
+
+          flamebearer.levels = calculatedLevels;
+          setFile(file, flamebearer);
         } catch (e) {
           console.log(e);
           alert(e);
@@ -47,8 +53,7 @@ export default function FileUploader({ onUpload }: Props) {
   });
 
   const onRemove = () => {
-    setFile(null);
-    onUpload(null);
+    setFile(null, null);
   };
 
   return (
@@ -68,7 +73,7 @@ export default function FileUploader({ onUpload }: Props) {
       </div>
       {file && (
         <aside>
-          Currently analyzing file {file.file.path}
+          Currently analyzing file {file.path}
           &nbsp;
           <Button icon={faTrash} onClick={onRemove}>
             Remove

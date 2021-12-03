@@ -1,34 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { connect } from 'react-redux';
 import 'react-dom';
 
 import { bindActionCreators } from 'redux';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
-import { buildRenderURL } from '../util/updateRequests';
-import {
-  fetchNames,
-  fetchPyrescopeAppData,
-  abortTimelineRequest,
-} from '../redux/actions';
-import onFileUpload from '../util/onFileUpload';
+import { abortTimelineRequest, setFile } from '../redux/actions';
 
 function AdhocSingle(props) {
-  const { actions, renderURL } = props;
-  const [flamebearer, setFlamebearer] = useState();
+  const { actions, file, flamebearer } = props;
+  const setFile = actions.setFile;
 
   useEffect(() => {
     return actions.abortTimelineRequest;
-  }, [renderURL]);
-
-  const onUpload = (data) => onFileUpload(data, setFlamebearer);
+  });
 
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <FlameGraphRenderer
           flamebearer={flamebearer}
-          uploader={onUpload}
+          uploader={{ file, setFile }}
           viewType="single"
         />
       </div>
@@ -39,18 +31,12 @@ function AdhocSingle(props) {
 
 const mapStateToProps = (state) => ({
   ...state,
-  renderURL: buildRenderURL(state),
+  file: state.adhocSingle.file,
+  flamebearer: state.adhocSingle.flamebearer,
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      fetchPyrescopeAppData,
-      fetchNames,
-      abortTimelineRequest,
-    },
-    dispatch
-  ),
+  actions: bindActionCreators({ abortTimelineRequest, setFile }, dispatch)
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocSingle);
