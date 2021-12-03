@@ -131,6 +131,10 @@ build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES)) ## Bui
 test: ## Runs the test suite
 	go test -race -tags debugspy $(shell go list ./... | grep -v /examples/)
 
+.PHONY: coverage
+coverage: ## Runs the test suite with coverage
+	go test -race -tags debugspy -coverprofile=coverage -covermode=atomic $(shell go list ./... | grep -v /examples/)
+
 .PHONY: server
 server: ## Start the Pyroscope Server
 	bin/pyroscope server
