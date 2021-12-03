@@ -23,7 +23,7 @@ module.exports = merge(common, {
     // and for the endpoints it will redirect to the go server (on port 4040)
     new WebpackPluginServe({
       port: 4041,
-      static: path.resolve(__dirname, '../../webapp/public/assets'),
+      static: path.resolve(__dirname, '../../webapp/public'),
       liveReload: true,
       waitForBuild: true,
       middleware: (app, builtins) => {
@@ -57,7 +57,7 @@ module.exports = merge(common, {
     // serve index.html from the go server
     // and additionally inject anything else required (eg livereload ws)
     new HtmlWebpackPlugin({
-      // fetch index.html from the go server
+      publicPath: '/assets',
       templateContent: () => {
         let res;
         let maxTries = 24;
