@@ -47,10 +47,11 @@ export function MenuItem(props: MenuItemProps) {
   return <RProMenuItem {...props} icon={icon} className={className} />;
 }
 
-export function SubMenu(props: SubMenuProps) {
+export function SubMenu(props: SubMenuProps & { active: boolean }) {
   // wrap the received icon with FontAwesomeIcon
   // to make the API easier to user
-  let { icon, popperarrow } = props;
+  let { icon, popperarrow, className } = props;
+  const { active } = props;
   if (icon) {
     icon = <FontAwesomeIcon icon={props.icon} />;
   }
@@ -60,7 +61,22 @@ export function SubMenu(props: SubMenuProps) {
     popperarrow = true;
   }
 
-  return <RProSubMenu {...props} icon={icon} popperarrow={popperarrow} />;
+  if (active) {
+    if (!className) {
+      className = '';
+    }
+
+    className += ' active';
+  }
+
+  return (
+    <RProSubMenu
+      {...props}
+      icon={icon}
+      popperarrow={popperarrow}
+      className={className}
+    />
+  );
 }
 
 // Re-export the type so that end users only interact with our abstraction

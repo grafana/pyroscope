@@ -27,8 +27,11 @@ $sidebar-collapsed-width: 54px !default;
 }
 
 // Active and hover
-.pro-sidebar .pro-menu .pro-menu-item.active,
-.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:hover {
+// when not collapsed, don't highlight the submenu since it will be expanded already
+.pro-sidebar .pro-menu .pro-menu-item.active:not(.pro-sub-menu),
+.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:hover,
+// when collapsed, highlight since there's nothing visible
+.pro-sidebar.collapsed .pro-menu-item.active, {
   background: #333;
   color: #fff;
 }
@@ -44,7 +47,6 @@ $sidebar-collapsed-width: 54px !default;
 
 .pro-sidebar .pro-menu .pro-menu-item {
   font-size: 16px;
-  //  line-height: normal;
 }
 
 // nested menu

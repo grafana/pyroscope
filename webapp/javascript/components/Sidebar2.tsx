@@ -5,6 +5,8 @@ import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
 import { faSlack } from '@fortawesome/free-brands-svg-icons/faSlack';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
+import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
+import { faChevronRight } from '@fortawesome/free-solid-svg-icons/faChevronRight';
 import { faKeyboard } from '@fortawesome/free-solid-svg-icons/faKeyboard';
 import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
 import { faSync } from '@fortawesome/free-solid-svg-icons/faSync';
@@ -53,17 +55,36 @@ export default function Sidebar2() {
     </SubMenu>
   );
 
+  const toggleCollapse = () => setCollapsed(!collapsed);
+
+  // TODO
+  // simplify this
+  const isContinuousActive =
+    isRouteActive('/') ||
+    isRouteActive('/comparison') ||
+    isRouteActive('/comparison-diff');
+  const isAdhocActive =
+    isRouteActive('/adhoc-single') ||
+    isRouteActive('/adhoc-comparison') ||
+    isRouteActive('/adhoc-diff');
+
   return (
     <Sidebar collapsed={collapsed}>
       <SidebarHeader>
         <div className={styles.logo}>
           <img src={Logo} alt="Logo" width={36} height={36} />
-          {!collapsed && <b>Pyroscope</b>}
+          <b className={`${collapsed ? styles.logoTextCollapsed : ''}`}>
+            Pyroscope
+          </b>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <Menu iconShape="square" popperArrow>
-          <SubMenu title="Continuous Profiling" icon={faSync}>
+          <SubMenu
+            title="Continuous Profiling"
+            icon={faSync}
+            active={isContinuousActive}
+          >
             <MenuItem active={isRouteActive('/')} icon={faWindowMaximize}>
               Single View
               <NavLink
@@ -118,6 +139,15 @@ export default function Sidebar2() {
             </a>
           </MenuItem>
           <MenuItem icon={faKeyboard}>Shortcuts</MenuItem>
+          <MenuItem
+            className={`${styles.collapseIcon} ${
+              collapsed ? styles.collapsedIconCollapsed : ''
+            }`}
+            onClick={toggleCollapse}
+            icon={faChevronLeft}
+          >
+            Collapse Sidebar
+          </MenuItem>
         </Menu>
       </SidebarFooter>
     </Sidebar>
