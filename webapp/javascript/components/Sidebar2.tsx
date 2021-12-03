@@ -41,8 +41,24 @@ export default function Sidebar2() {
     setCollapsed(c);
   }, [windowWidth]);
 
+  // TODO
+  // simplify this
+  const isContinuousActive =
+    isRouteActive('/') ||
+    isRouteActive('/comparison') ||
+    isRouteActive('/comparison-diff');
+  const isAdhocActive =
+    isRouteActive('/adhoc-single') ||
+    isRouteActive('/adhoc-comparison') ||
+    isRouteActive('/adhoc-diff');
+
   const adhoc = (
-    <SubMenu title="Adhoc Profiling" icon={faHandPointRight}>
+    <SubMenu
+      title="Adhoc Profiling"
+      icon={faHandPointRight}
+      active={isAdhocActive}
+      defaultOpen={isAdhocActive}
+    >
       <MenuItem active={isRouteActive('/adhoc-single')} icon={faWindowMaximize}>
         Single View
       </MenuItem>
@@ -56,17 +72,6 @@ export default function Sidebar2() {
   );
 
   const toggleCollapse = () => setCollapsed(!collapsed);
-
-  // TODO
-  // simplify this
-  const isContinuousActive =
-    isRouteActive('/') ||
-    isRouteActive('/comparison') ||
-    isRouteActive('/comparison-diff');
-  const isAdhocActive =
-    isRouteActive('/adhoc-single') ||
-    isRouteActive('/adhoc-comparison') ||
-    isRouteActive('/adhoc-diff');
 
   return (
     <Sidebar collapsed={collapsed}>
@@ -84,6 +89,7 @@ export default function Sidebar2() {
             title="Continuous Profiling"
             icon={faSync}
             active={isContinuousActive}
+            defaultOpen={isContinuousActive}
           >
             <MenuItem active={isRouteActive('/')} icon={faWindowMaximize}>
               Single View
