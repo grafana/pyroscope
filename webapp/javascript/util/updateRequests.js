@@ -1,7 +1,7 @@
 export function buildRenderURL(
   state,
   fromOverride = null,
-  untilOverride = null,
+  untilOverride = null
 ) {
   let { from, until, query } = state;
 
