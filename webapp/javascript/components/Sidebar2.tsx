@@ -62,7 +62,7 @@ export default function Sidebar2() {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <Menu iconShape="square">
+        <Menu iconShape="square" popperArrow>
           <SubMenu title="Continuous Profiling" icon={faSync}>
             <MenuItem active={isRouteActive('/')} icon={faWindowMaximize}>
               Single View

@@ -50,12 +50,17 @@ export function MenuItem(props: MenuItemProps) {
 export function SubMenu(props: SubMenuProps) {
   // wrap the received icon with FontAwesomeIcon
   // to make the API easier to user
-  let { icon } = props;
+  let { icon, popperarrow } = props;
   if (icon) {
     icon = <FontAwesomeIcon icon={props.icon} />;
   }
 
-  return <RProSubMenu {...props} icon={icon} />;
+  if (popperarrow === undefined) {
+    // set arrow between element and menu when collapsed by default, since that makes ux better
+    popperarrow = true;
+  }
+
+  return <RProSubMenu {...props} icon={icon} popperarrow={popperarrow} />;
 }
 
 // Re-export the type so that end users only interact with our abstraction
