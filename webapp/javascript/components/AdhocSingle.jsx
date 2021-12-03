@@ -9,7 +9,7 @@ import { abortTimelineRequest, setFile } from '../redux/actions';
 
 function AdhocSingle(props) {
   const { actions, file, flamebearer } = props;
-  const setFile = actions.setFile;
+  const { setFile } = actions;
 
   useEffect(() => {
     return actions.abortTimelineRequest;
@@ -36,7 +36,7 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators({ abortTimelineRequest, setFile }, dispatch)
+  actions: bindActionCreators({ abortTimelineRequest, setFile }, dispatch),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocSingle);

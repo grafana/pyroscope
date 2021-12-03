@@ -9,7 +9,7 @@ import { deltaDiffWrapper } from '../util/flamebearer';
 interface Props {
   onUpload: (s: string) => void;
   file: File;
-  setFile: (file: File, flamebearer: object) => void;
+  setFile: (file: File, flamebearer: Record<string, unknown>) => void;
 }
 export default function FileUploader({ file, setFile }: Props) {
   const onDrop = useCallback((acceptedFiles) => {

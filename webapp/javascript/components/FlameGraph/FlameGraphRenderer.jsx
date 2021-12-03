@@ -258,7 +258,10 @@ class FlameGraphRenderer extends React.Component {
         <div className="canvas-container">
           {this.props.uploader ? (
             <>
-              <FileUploader file={this.props.uploader.file} setFile={this.props.uploader.setFile} />
+              <FileUploader
+                file={this.props.uploader.file}
+                setFile={this.props.uploader.setFile}
+              />
             </>
           ) : null}
           <Toolbar

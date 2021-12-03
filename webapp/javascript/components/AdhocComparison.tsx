@@ -5,14 +5,19 @@ import 'react-dom';
 import { bindActionCreators } from 'redux';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
-import { abortTimelineRequest, setLeftFile, setRightFile } from '../redux/actions';
+import {
+  abortTimelineRequest,
+  setLeftFile,
+  setRightFile,
+} from '../redux/actions';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
 function AdhocComparison(props) {
-  const { actions, leftFile, leftFlamebearer, rightFile, rightFlamebearer } = props;
-  const setLeftFile = actions.setLeftFile;
-  const setRightFile = actions.setRightFile;
+  const { actions, leftFile, leftFlamebearer, rightFile, rightFlamebearer } =
+    props;
+  const { setLeftFile } = actions;
+  const { setRightFile } = actions;
 
   useEffect(() => {
     return actions.abortTimelineRequest;
@@ -55,7 +60,10 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators({ abortTimelineRequest, setLeftFile, setRightFile }, dispatch)
+  actions: bindActionCreators(
+    { abortTimelineRequest, setLeftFile, setRightFile },
+    dispatch
+  ),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocComparison);

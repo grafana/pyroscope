@@ -70,7 +70,7 @@ const initialState = {
     right: {
       file: null,
       flamebearer: null,
-    }
+    },
   },
   isJSONLoading: false,
   maxNodes: 1024,
@@ -89,7 +89,7 @@ function decodeTimelineData(timelineData) {
   });
 }
 
-export default function(state = initialState, action) {
+export default function (state = initialState, action) {
   let flamebearer;
   let timeline;
   let data;
