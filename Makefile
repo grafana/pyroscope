@@ -129,7 +129,11 @@ build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES)) ## Bui
 
 .PHONY: test
 test: ## Runs the test suite
-	go test -race -tags debugspy ./...
+	go test -race -tags debugspy $(shell go list ./... | grep -v /examples/)
+
+.PHONY: coverage
+coverage: ## Runs the test suite with coverage
+	go test -tags debugspy -coverprofile=coverage -covermode=atomic $(shell go list ./... | grep -v /examples/)
 
 .PHONY: server
 server: ## Start the Pyroscope Server
@@ -166,7 +170,7 @@ embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS)) ## Conf
 
 .PHONY: lint
 lint: ## Run the lint across the codebase
-	go run "$(shell scripts/pinned-tool.sh github.com/mgechev/revive)" -config revive.toml -exclude ./pkg/agent/pprof/... -exclude ./vendor/... -formatter stylish ./...
+	go run "$(shell scripts/pinned-tool.sh github.com/mgechev/revive)" -config revive.toml -exclude ./pkg/agent/pprof/... -exclude ./vendor/... -exclude ./examples/... -formatter stylish ./...
 
 .PHONY: lint-summary
 lint-summary: ## Get the lint summary
