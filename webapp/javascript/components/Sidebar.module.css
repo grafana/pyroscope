@@ -3,6 +3,6 @@
   text-align: center;
 }
 
-.logo img {
-  margin-right: 8px;
+.logo img + * {
+  margin-left: 8px;
 }
