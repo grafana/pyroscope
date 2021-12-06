@@ -149,9 +149,9 @@ type Server struct {
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 
-	AdminSocketPath         string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
-	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
-  EnableExperimentalAdhocUI bool   `def:"false" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
+	AdminSocketPath           string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
+	EnableExperimentalAdmin   bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
+	EnableExperimentalAdhocUI bool   `def:"false" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 
@@ -289,14 +289,13 @@ type Admin struct {
 	AdminAppDelete AdminAppDelete `skip:"true" mapstructure:",squash"`
 	AdminAppGet    AdminAppGet    `skip:"true" mapstructure:",squash"`
 }
-type AdminCommon struct {
-	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
-}
 type AdminAppGet struct {
-	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+	SocketPath string        `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
 }
 
 type AdminAppDelete struct {
-	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
-	Force      bool   `def:"false" desc:"don't prompt for confirmation of dangerous actions" mapstructure:"force"`
+	SocketPath string        `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+	Force      bool          `def:"false" desc:"don't prompt for confirmation of dangerous actions" mapstructure:"force"`
+	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
 }
