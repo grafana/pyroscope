@@ -39,6 +39,7 @@ func main() {
 	pyroscope.Start(pyroscope.Config{
 		ApplicationName: "simple.golang.app",
 		ServerAddress:   serverAddress,
+		Logger:          pyroscope.StandardLogger,
 	})
 	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("foo", "bar"), func(c context.Context) {
 		for {
