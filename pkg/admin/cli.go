@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 type CLIError struct{ err error }
@@ -28,8 +29,8 @@ type CLI struct {
 	client *Client
 }
 
-func NewCLI(socketPath string) (*CLI, error) {
-	client, err := NewClient(socketPath)
+func NewCLI(socketPath string, timeout time.Duration) (*CLI, error) {
+	client, err := NewClient(socketPath, timeout)
 	if err != nil {
 		return nil, err
 	}
