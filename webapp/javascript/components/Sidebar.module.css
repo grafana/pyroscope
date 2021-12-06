@@ -24,3 +24,8 @@
 .collapsedIconCollapsed svg {
   transform: rotate(-180deg);
 }
+
+.collapsedHeader {
+  padding: 10px 0;
+  text-align: center;
+}

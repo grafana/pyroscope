@@ -6,7 +6,6 @@ import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
 import { faSlack } from '@fortawesome/free-brands-svg-icons/faSlack';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
-import { faChevronRight } from '@fortawesome/free-solid-svg-icons/faChevronRight';
 import { faKeyboard } from '@fortawesome/free-solid-svg-icons/faKeyboard';
 import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
 import { faSync } from '@fortawesome/free-solid-svg-icons/faSync';
@@ -59,6 +58,11 @@ export default function Sidebar2() {
       active={isAdhocActive}
       defaultOpen={isAdhocActive}
     >
+      {collapsed && (
+        <SidebarHeader className={styles.collapsedHeader}>
+          Adhoc Profiling
+        </SidebarHeader>
+      )}
       <MenuItem active={isRouteActive('/adhoc-single')} icon={faWindowMaximize}>
         Single View
       </MenuItem>
@@ -91,6 +95,11 @@ export default function Sidebar2() {
             active={isContinuousActive}
             defaultOpen={isContinuousActive}
           >
+            {collapsed && (
+              <SidebarHeader className={styles.collapsedHeader}>
+                Continuous Profiling
+              </SidebarHeader>
+            )}
             <MenuItem active={isRouteActive('/')} icon={faWindowMaximize}>
               Single View
               <NavLink
