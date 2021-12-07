@@ -1,7 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
 import Icon from '@ui/Icon';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import { ComponentMeta } from '@storybook/react';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 
 export default {

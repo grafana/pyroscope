@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   ProSidebar,
   Menu as RProMenu,
@@ -11,12 +11,13 @@ import {
   MenuItemProps,
   SubMenuProps,
 } from 'react-pro-sidebar';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { IconProps } from '@ui/Icon';
+
 import styles from './Sidebar.module.css';
 import './Sidebar.scss';
 
 export interface SidebarProps {
-  children: React.ReactNode[];
+  children: React.ReactNode | React.ReactNode[];
 
   collapsed?: boolean;
   className?: string;
@@ -34,27 +35,26 @@ export default function Sidebar(props: SidebarProps) {
   );
 }
 
-export function MenuItem(props: MenuItemProps) {
-  // wrap the received icon with FontAwesomeIcon
-  // to make the API easier to user
-  let { icon } = props;
+// type check to validate only our Icon component can be used
+type Icon = React.ReactElement<IconProps>;
+
+export function MenuItem(props: MenuItemProps & { icon: Icon }) {
+  const { icon } = props;
   let { className } = props;
   if (icon) {
-    icon = <FontAwesomeIcon icon={props.icon} />;
     className = `${props.className} ${styles.menuWithIcon}`;
   }
 
-  return <RProMenuItem {...props} icon={icon} className={className} />;
+  return <RProMenuItem {...props} className={className} />;
 }
 
-export function SubMenu(props: SubMenuProps & { active: boolean }) {
+export function SubMenu(
+  props: SubMenuProps & { active?: boolean; icon: Icon }
+) {
   // wrap the received icon with FontAwesomeIcon
   // to make the API easier to user
-  let { icon, popperarrow, className } = props;
+  let { popperarrow, className } = props;
   const { active } = props;
-  if (icon) {
-    icon = <FontAwesomeIcon icon={props.icon} />;
-  }
 
   if (popperarrow === undefined) {
     // set arrow between element and menu when collapsed by default, since that makes ux better
@@ -70,12 +70,7 @@ export function SubMenu(props: SubMenuProps & { active: boolean }) {
   }
 
   return (
-    <RProSubMenu
-      {...props}
-      icon={icon}
-      popperarrow={popperarrow}
-      className={className}
-    />
+    <RProSubMenu {...props} popperarrow={popperarrow} className={className} />
   );
 }
 

@@ -19,6 +19,7 @@ import Sidebar, {
 } from '@ui/Sidebar';
 import { useLocation, NavLink } from 'react-router-dom';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
+import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
 import styles from './Sidebar.module.css';
 import Logo from '../../images/logo-v3-small.svg';
@@ -54,7 +55,7 @@ export default function Sidebar2() {
   const adhoc = (
     <SubMenu
       title="Adhoc Profiling"
-      icon={faHandPointRight}
+      icon={<Icon icon={faHandPointRight} />}
       active={isAdhocActive}
       defaultOpen={isAdhocActive}
     >
@@ -63,13 +64,22 @@ export default function Sidebar2() {
           Adhoc Profiling
         </SidebarHeader>
       )}
-      <MenuItem active={isRouteActive('/adhoc-single')} icon={faWindowMaximize}>
+      <MenuItem
+        active={isRouteActive('/adhoc-single')}
+        icon={<Icon icon={faWindowMaximize} />}
+      >
         Single View
       </MenuItem>
-      <MenuItem active={isRouteActive('/adhoc-comparison')} icon={faColumns}>
+      <MenuItem
+        active={isRouteActive('/adhoc-comparison')}
+        icon={<Icon icon={faColumns} />}
+      >
         Comparison View
       </MenuItem>
-      <MenuItem active={isRouteActive('/adhoc-diff')} icon={faChartBar}>
+      <MenuItem
+        active={isRouteActive('/adhoc-diff')}
+        icon={<Icon icon={faChartBar} />}
+      >
         Diff View
       </MenuItem>
     </SubMenu>
@@ -91,7 +101,7 @@ export default function Sidebar2() {
         <Menu iconShape="square" popperArrow>
           <SubMenu
             title="Continuous Profiling"
-            icon={faSync}
+            icon={<Icon icon={faSync} />}
             active={isContinuousActive}
             defaultOpen={isContinuousActive}
           >
@@ -100,7 +110,10 @@ export default function Sidebar2() {
                 Continuous Profiling
               </SidebarHeader>
             )}
-            <MenuItem active={isRouteActive('/')} icon={faWindowMaximize}>
+            <MenuItem
+              active={isRouteActive('/')}
+              icon={<Icon icon={faWindowMaximize} />}
+            >
               Single View
               <NavLink
                 activeClassName="active-route"
@@ -109,13 +122,16 @@ export default function Sidebar2() {
                 exact
               />
             </MenuItem>
-            <MenuItem active={isRouteActive('/comparison')} icon={faColumns}>
+            <MenuItem
+              active={isRouteActive('/comparison')}
+              icon={<Icon icon={faColumns} />}
+            >
               Comparison View
               <NavLink to={{ pathname: '/comparison', search }} exact />
             </MenuItem>
             <MenuItem
               active={isRouteActive('/comparison-diff')}
-              icon={faChartBar}
+              icon={<Icon icon={faChartBar} />}
             >
               Diff View
               <NavLink to={{ pathname: '/comparison-diff', search }} exact />
@@ -126,7 +142,7 @@ export default function Sidebar2() {
       </SidebarContent>
       <SidebarFooter>
         <Menu iconShape="square">
-          <MenuItem icon={faFileAlt}>
+          <MenuItem icon={<Icon icon={faFileAlt} />}>
             <a
               rel="noreferrer"
               target="_blank"
@@ -135,7 +151,7 @@ export default function Sidebar2() {
               Documentation
             </a>
           </MenuItem>
-          <MenuItem icon={faSlack}>
+          <MenuItem icon={<Icon icon={faSlack} />}>
             <a
               rel="noreferrer"
               target="_blank"
@@ -144,7 +160,7 @@ export default function Sidebar2() {
               Slack
             </a>
           </MenuItem>
-          <MenuItem icon={faGithub}>
+          <MenuItem icon={<Icon icon={faGithub} />}>
             <a
               rel="noreferrer"
               target="_blank"
@@ -153,13 +169,12 @@ export default function Sidebar2() {
               Github
             </a>
           </MenuItem>
-          <MenuItem icon={faKeyboard}>Shortcuts</MenuItem>
           <MenuItem
             className={`${styles.collapseIcon} ${
               collapsed ? styles.collapsedIconCollapsed : ''
             }`}
             onClick={toggleCollapse}
-            icon={faChevronLeft}
+            icon={<Icon icon={faChevronLeft} />}
           >
             Collapse Sidebar
           </MenuItem>
