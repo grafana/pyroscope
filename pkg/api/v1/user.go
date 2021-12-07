@@ -136,7 +136,7 @@ func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) 
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
-	params := model.ChangeUserPassword{Password: req.Password}
+	params := model.ChangeUserPasswordParams{Password: req.Password}
 	user, err := h.userService.ChangeUserPasswordByID(r.Context(), id, params)
 	if err != nil {
 		respondWithError(w, err)

@@ -12,7 +12,7 @@ func IsNotFoundError(err error) bool {
 	if err == nil {
 		return false
 	}
-	var v *NotFoundError
+	var v NotFoundError
 	return errors.As(err, &v)
 }
 
@@ -26,6 +26,8 @@ func IsValidationError(err error) bool {
 	if err == nil {
 		return false
 	}
-	var v *ValidationError
+	var v ValidationError
 	return errors.As(err, &v)
 }
+
+func String(s string) *string { return &s }

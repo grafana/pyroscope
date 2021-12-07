@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
 )
@@ -17,7 +18,7 @@ var (
 )
 
 type Error struct {
-	Message string `json:"message"`
+	Errors []error `json:"errors"`
 }
 
 func idFromRequest(r *http.Request) (uint, error) {
@@ -36,16 +37,22 @@ func respondWithError(w http.ResponseWriter, err error) {
 	switch {
 	case err == nil:
 		return
-	case model.IsNotFoundError(err):
-		w.WriteHeader(http.StatusNotFound)
 	case model.IsValidationError(err):
 		w.WriteHeader(http.StatusBadRequest)
+	case model.IsNotFoundError(err):
+		w.WriteHeader(http.StatusNotFound)
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
 		// Internal errors must not be shown.
 		return
 	}
-	respondWithJSON(w, Error{err.Error()})
+	var e Error
+	if m := new(multierror.Error); errors.As(err, &m) {
+		e.Errors = m.Errors
+	} else {
+		e.Errors = []error{err}
+	}
+	respondWithJSON(w, e)
 }
 
 func respondWithJSON(w http.ResponseWriter, v interface{}) {
