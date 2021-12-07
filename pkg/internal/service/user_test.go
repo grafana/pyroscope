@@ -101,13 +101,11 @@ var _ = Describe("UserService", func() {
 				By("id", func() {
 					_, err = svc.FindUserByID(context.Background(), 0)
 					Expect(err).To(MatchError(model.ErrUserNotFound))
-					Expect(model.IsNotFoundError(err)).To(BeTrue())
 				})
 
 				By("email", func() {
 					_, err = svc.FindUserByEmail(context.Background(), params.Email)
 					Expect(err).To(MatchError(model.ErrUserNotFound))
-					Expect(model.IsNotFoundError(err)).To(BeTrue())
 				})
 			})
 		})
@@ -186,8 +184,11 @@ var _ = Describe("UserService", func() {
 				}
 			})
 
-			It("updates user fields", func() {
+			It("does not return error", func() {
 				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("updates user fields", func() {
 				Expect(updated.FullName).To(Equal(*update.FullName))
 				Expect(updated.Email).To(Equal(*update.Email))
 				Expect(updated.Role).To(Equal(*update.Role))
@@ -226,7 +227,6 @@ var _ = Describe("UserService", func() {
 
 			It("returns ErrUserEmailExists error", func() {
 				Expect(err).To(MatchError(model.ErrUserEmailExists))
-				Expect(model.IsValidationError(err)).To(BeTrue())
 			})
 		})
 
@@ -237,7 +237,6 @@ var _ = Describe("UserService", func() {
 
 			It("returns ErrUserNotFound error", func() {
 				Expect(err).To(MatchError(model.ErrUserNotFound))
-				Expect(model.IsNotFoundError(err)).To(BeTrue())
 			})
 		})
 	})
