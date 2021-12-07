@@ -113,9 +113,9 @@ export default function Sidebar2(props: SidebarProps) {
       <SidebarHeader>
         <div className={styles.logo}>
           <img src={Logo} alt="Logo" width={36} height={36} />
-          <b className={`${collapsed ? styles.logoTextCollapsed : ''}`}>
+          <span className={`${collapsed ? styles.logoTextCollapsed : ''}`}>
             Pyroscope
-          </b>
+          </span>
         </div>
       </SidebarHeader>
       <SidebarContent>

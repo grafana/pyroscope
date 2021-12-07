@@ -1,8 +1,6 @@
 .logo {
   margin: 8px;
-  text-align: center;
-
-  font-weight: bold;
+  margin-left: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
