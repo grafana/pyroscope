@@ -101,7 +101,7 @@ function Sidebar(props) {
       <SidebarItem tooltipText="Adhoc Comparison View">
         <NavLink
           activeClassName="active-route"
-          data-testid="adhoc-comparsion"
+          data-testid="adhoc-comparison"
           to={{ pathname: '/adhoc-comparison', search }}
           exact
         >
