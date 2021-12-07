@@ -16078,6 +16078,11 @@ supports-hyperlinks@^2.0.0:
     has-flag "^4.0.0"
     supports-color "^7.0.0"
 
+svg-jest@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/svg-jest/-/svg-jest-1.0.1.tgz#3a820280bfd4c1e0637d68c8d477d37d0ae46abb"
+  integrity sha512-uVbY14nW3IGXkRueduWpQNOVOvC0XE9uu3Y1MIWX6zgweOqPT+hmP/J92yCNBv5kAQzNU7DW2nCO+enZpv+Hsw==
+
 symbol-tree@^3.2.4:
   version "3.2.4"
   resolved "https://registry.yarnpkg.com/symbol-tree/-/symbol-tree-3.2.4.tgz#430637d248ba77e078883951fb9aa0eed7c63fa2"

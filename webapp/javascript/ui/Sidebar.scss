@@ -7,7 +7,7 @@ $submenu-bg-color-collapsed: #212124;
 $sidebar-width: 250px !default;
 $sidebar-collapsed-width: 54px !default;
 
-@import '~react-pro-sidebar/dist/scss/styles.scss';
+@use 'node_modules/react-pro-sidebar/dist/scss/styles.scss';
 
 // Disable the wobble effect
 // https://github.com/azouaoui-med/react-pro-sidebar/issues/20#issuecomment-714750330
