@@ -9,3 +9,5 @@ services:
       - 'server'
   app:
     build: .
+    environment:
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040

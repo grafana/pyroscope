@@ -33,9 +33,16 @@ func Start(applicationName *C.char, spyName *C.char, serverAddress *C.char, auth
 		return -1
 	}
 
+	address := C.GoString(serverAddress)
+	// Override the address to use when the environment variable is defined.
+	// This is useful to support adhoc push ingestion.
+	if addr, ok := os.LookupEnv("PYROSCOPE_ADHOC_SERVER_ADDRESS"); ok {
+		address = addr
+	}
+
 	rc := remote.RemoteConfig{
 		AuthToken:              C.GoString(authToken),
-		UpstreamAddress:        C.GoString(serverAddress),
+		UpstreamAddress:        address,
 		UpstreamThreads:        4,
 		UpstreamRequestTimeout: 10 * time.Second,
 	}

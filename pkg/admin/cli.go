@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 type CLIError struct{ err error }
@@ -28,8 +29,8 @@ type CLI struct {
 	client *Client
 }
 
-func NewCLI(socketPath string) (*CLI, error) {
-	client, err := NewClient(socketPath)
+func NewCLI(socketPath string, timeout time.Duration) (*CLI, error) {
+	client, err := NewClient(socketPath, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +62,10 @@ func (c *CLI) DeleteApp(appname string, skipVerification bool) error {
 		fmt.Println(fmt.Sprintf("Are you sure you want to delete the app '%s'? This action can not be reversed.", appname))
 		fmt.Println("")
 		fmt.Println("Keep in mind the following:")
-		fmt.Println("a) If an agent is still running, the app will be recreated.")
-		fmt.Println("b) The API is idempotent, ie. if the app already does NOT exist, this command will run just fine.")
+		fmt.Println("a) This command may take a while.")
+		fmt.Println("b) While it's running, it may lock the database for writes.")
+		fmt.Println("c) If an agent is still running, the app will be recreated.")
+		fmt.Println("d) The API is idempotent, ie. if the app already does NOT exist, this command will run just fine.")
 		fmt.Println("")
 		fmt.Println(fmt.Sprintf("Type '%s' to confirm (without quotes).", appname))
 		reader := bufio.NewReader(os.Stdin)

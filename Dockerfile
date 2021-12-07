@@ -174,6 +174,9 @@ RUN mkdir -p \
 COPY scripts/packages/server.yml "/etc/pyroscope/server.yml"
 COPY --from=go-builder --chmod=0777 /opt/pyroscope/bin/pyroscope /usr/bin/pyroscope
 
+RUN apk add bash-completion
+RUN pyroscope completion bash > /usr/share/bash-completion/completions/pyroscope
+
 USER pyroscope
 EXPOSE 4040/tcp
 ENTRYPOINT [ "/usr/bin/pyroscope" ]
