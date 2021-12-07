@@ -1,6 +1,5 @@
-/* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import Notification, { store } from '@ui/Notification';
+import Notifications, { store } from '@ui/Notifications';
 import Button from '@ui/Button';
 
 export default {
@@ -34,7 +33,7 @@ export const notifications = () => {
       <Button onClick={() => info()}>Info</Button>
       <Button onClick={() => danger()}>Danger</Button>
       <Button onClick={() => success()}>Success</Button>
-      <Notification />
+      <Notifications />
     </div>
   );
 };

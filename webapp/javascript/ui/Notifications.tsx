@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ReactNotification, {
   store as libStore,
   ReactNotificationOptions,
@@ -6,7 +6,28 @@ import ReactNotification, {
 } from 'react-notifications-component';
 import 'react-notifications-component/dist/theme.css';
 
-export default function Notification() {
+export default function Notifications() {
+  // render notifications from the server
+  // after this component has been initialized
+  useEffect(() => {
+    // the server is supposed to add this
+    // to the index.html
+    const { notificationText } = window as any;
+
+    if (notificationText) {
+      // TODO
+      // distinguish between notification types?
+      store.addNotification({
+        message: notificationText,
+        type: 'danger',
+        dismiss: {
+          duration: 0,
+          showIcon: true,
+        },
+      });
+    }
+  }, []);
+
   return <ReactNotification />;
 }
 
@@ -18,7 +39,7 @@ const defaultParams: Partial<ReactNotificationOptions> = {
 };
 
 export type NotificationOptions = {
-  title: string;
+  title?: string;
   message: string;
   type: 'success' | 'danger' | 'info';
 
