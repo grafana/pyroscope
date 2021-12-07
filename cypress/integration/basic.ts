@@ -10,13 +10,13 @@ describe('basic test', () => {
   it('internal sidebar links work', () => {
     cy.visit('/');
 
-    cy.findByTestId('sidebar-comparison').click();
+    cy.findByTestId('sidebar-continuous-comparison').click();
     cy.location('pathname').should('eq', '/comparison');
 
-    cy.findByTestId('sidebar-comparison-diff').click();
+    cy.findByTestId('sidebar-continuous-comparison-diff').click();
     cy.location('pathname').should('eq', '/comparison-diff');
 
-    cy.findByTestId('sidebar-root').click();
+    cy.findByTestId('sidebar-continuous-single').click();
     cy.location('pathname').should('eq', '/');
   });
 

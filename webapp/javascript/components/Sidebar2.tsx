@@ -62,6 +62,7 @@ export default function Sidebar2(props: SidebarProps) {
       icon={<Icon icon={faHandPointRight} />}
       active={isAdhocActive}
       defaultOpen={isAdhocActive}
+      data-testid="sidebar-adhoc"
     >
       {collapsed && (
         <SidebarHeader className={styles.collapsedHeader}>
@@ -111,6 +112,7 @@ export default function Sidebar2(props: SidebarProps) {
             icon={<Icon icon={faSync} />}
             active={isContinuousActive}
             defaultOpen={isContinuousActive}
+            data-testid="sidebar-continuous"
           >
             {collapsed && (
               <SidebarHeader className={styles.collapsedHeader}>
