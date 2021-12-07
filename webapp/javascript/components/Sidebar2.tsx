@@ -6,7 +6,7 @@ import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
 import { faSlack } from '@fortawesome/free-brands-svg-icons/faSlack';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
-import { faKeyboard } from '@fortawesome/free-solid-svg-icons/faKeyboard';
+import { faSignOutAlt } from '@fortawesome/free-solid-svg-icons/faSignOutAlt';
 import { faHandPointRight } from '@fortawesome/free-solid-svg-icons/faHandPointRight';
 import { faSync } from '@fortawesome/free-solid-svg-icons/faSync';
 import Sidebar, {
@@ -27,6 +27,19 @@ import Logo from '../../images/logo-v3-small.svg';
 export interface SidebarProps {
   initialCollapsed?: boolean;
 }
+
+// TODO: find a better way of doing this?
+function signOut() {
+  const form = document.createElement('form');
+
+  form.method = 'POST';
+  form.action = '/logout';
+
+  document.body.appendChild(form);
+
+  form.submit();
+}
+
 export default function Sidebar2(props: SidebarProps) {
   const { initialCollapsed } = props;
   const { search, pathname } = useLocation();
@@ -181,6 +194,14 @@ export default function Sidebar2(props: SidebarProps) {
               Github
             </a>
           </MenuItem>
+          {window.isAuthRequired && (
+            <MenuItem
+              onClick={() => signOut()}
+              icon={<Icon icon={faSignOutAlt} />}
+            >
+              Sign out
+            </MenuItem>
+          )}
           <MenuItem
             className={`${styles.collapseIcon} ${
               collapsed ? styles.collapsedIconCollapsed : ''
