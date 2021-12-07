@@ -11,7 +11,6 @@ import {
   setRightFile,
 } from '../redux/actions';
 
-// See docs here: https://github.com/flot/flot/blob/master/API.md
 
 function AdhocComparison(props) {
   const { actions, leftFile, leftFlamebearer, rightFile, rightFlamebearer } =
