@@ -39,7 +39,6 @@ export default function FileUploader({ file, setFile }: Props) {
           flamebearer.levels = calculatedLevels;
           setFile(file, flamebearer);
         } catch (e) {
-          console.log(e);
           alert(e);
         }
       };
