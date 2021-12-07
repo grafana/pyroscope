@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { ShortcutProvider } from 'react-keybind';
 import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
+import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import store from './redux/store';
 
 import PyroscopeApp from './components/PyroscopeApp';
@@ -26,9 +27,6 @@ try {
   console.error(e);
 }
 
-// TODO fetch this from localstorage?
-const enableAdhoc = true;
-
 ReactDOM.render(
   <Provider store={store}>
     <Router history={history}>
@@ -44,12 +42,12 @@ ReactDOM.render(
           <Route path="/comparison-diff">
             <ComparisonDiffApp />
           </Route>
-          {enableAdhoc && (
+          {isExperimentalAdhocUIEnabled && (
             <Route path="/adhoc-single">
               <AdhocSingle />
             </Route>
           )}
-          {enableAdhoc && (
+          {isExperimentalAdhocUIEnabled && (
             <Route path="/adhoc-comparison">
               <AdhocComparison />
             </Route>
