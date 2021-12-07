@@ -2,7 +2,6 @@ import ReactDOM from 'react-dom';
 import React from 'react';
 
 import { Provider } from 'react-redux';
-import { ShortcutProvider } from 'react-keybind';
 import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import store from './redux/store';
@@ -31,28 +30,26 @@ const enableAdhoc = true;
 ReactDOM.render(
   <Provider store={store}>
     <Router history={history}>
-      <ShortcutProvider>
-        <div className="app">
-          <Sidebar />
-          <Switch>
-            <Route exact path="/">
-              <PyroscopeApp />
+      <div className="app">
+        <Sidebar />
+        <Switch>
+          <Route exact path="/">
+            <PyroscopeApp />
+          </Route>
+          <Route path="/comparison">
+            <ComparisonApp />
+          </Route>
+          <Route path="/comparison-diff">
+            <ComparisonDiffApp />
+          </Route>
+          {enableAdhoc && (
+            <Route path="/adhoc-single">
+              <AdhocSingle />
             </Route>
-            <Route path="/comparison">
-              <ComparisonApp />
-            </Route>
-            <Route path="/comparison-diff">
-              <ComparisonDiffApp />
-            </Route>
-            {enableAdhoc && (
-              <Route path="/adhoc-single">
-                <AdhocSingle />
-              </Route>
-            )}
-          </Switch>
-        </div>
-        <Notifications />
-      </ShortcutProvider>
+          )}
+        </Switch>
+      </div>
+      <Notifications />
     </Router>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
   </Provider>,

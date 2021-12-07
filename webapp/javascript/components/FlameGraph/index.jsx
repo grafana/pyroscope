@@ -7,7 +7,6 @@
 
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
-import { withShortcut } from 'react-keybind';
 import { buildDiffRenderURL, buildRenderURL } from '../../util/updateRequests';
 
 import FlameGraphRenderer from './FlameGraphRenderer';
@@ -30,7 +29,4 @@ const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators({}, dispatch),
 });
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(withShortcut(FlameGraphRenderer));
+export default connect(mapStateToProps, mapDispatchToProps)(FlameGraphRenderer);
