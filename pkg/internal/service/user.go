@@ -23,7 +23,6 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 		switch {
 		case errors.Is(err, model.ErrUserNotFound):
 		case err == nil:
-			// TODO: Restore user if it was deleted?
 			return model.ErrUserEmailExists
 		default:
 			return err
@@ -49,7 +48,9 @@ func (svc UserService) FindUserByID(ctx context.Context, id uint) (*model.User, 
 }
 
 func findUserByEmail(tx *gorm.DB, email string) (*model.User, error) {
-	// TODO(kolesnikovae): validation
+	if err := model.ValidateEmail(email); err != nil {
+		return nil, err
+	}
 	return findUser(tx, model.User{Email: email})
 }
 
@@ -58,12 +59,13 @@ func findUserByID(tx *gorm.DB, id uint) (*model.User, error) {
 }
 
 func findUser(tx *gorm.DB, user model.User) (*model.User, error) {
-	r := tx.Unscoped().First(&user)
+	var u model.User
+	r := tx.Where(user).First(&u)
 	switch {
 	case errors.Is(r.Error, gorm.ErrRecordNotFound):
 		return nil, model.ErrUserNotFound
 	case r.Error == nil:
-		return &user, nil
+		return &u, nil
 	default:
 		return nil, r.Error
 	}
@@ -109,7 +111,7 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 	})
 }
 
-func (svc UserService) ChangeUserPasswordByID(ctx context.Context, id uint, params model.ChangeUserPassword) (user *model.User, err error) {
+func (svc UserService) ChangeUserPasswordByID(ctx context.Context, id uint, params model.ChangeUserPasswordParams) (user *model.User, err error) {
 	if err = params.Validate(); err != nil {
 		return nil, err
 	}
@@ -124,7 +126,18 @@ func (svc UserService) ChangeUserPasswordByID(ctx context.Context, id uint, para
 	})
 }
 
+func (svc UserService) DisableUserByID(ctx context.Context, id uint) error {
+	// TODO(kolesnikovae)
+	return nil
+}
+
+func (svc UserService) EnableUserByID(ctx context.Context, id uint) error {
+	// TODO(kolesnikovae)
+	return nil
+}
+
+// DeleteUserByID removes user from the database with "hard" delete.
+// This can not be reverted.
 func (svc UserService) DeleteUserByID(ctx context.Context, id uint) error {
-	user := model.User{Model: gorm.Model{ID: id}}
-	return svc.db.WithContext(ctx).Delete(&user).Error
+	return svc.db.Unscoped().WithContext(ctx).Delete(&model.User{}, id).Error
 }
