@@ -1,0 +1,10 @@
+---
+scrape-configs:
+  - job-name: mattermost
+    enabled-profiles: [cpu, mem]
+    static-configs:
+      - application: mattermost
+        targets:
+          - mattermost:8067
+        labels:
+          env: dev
