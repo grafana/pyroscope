@@ -1,12 +1,7 @@
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { ShortcutProvider } from 'react-keybind';
-import Sidebar from './Sidebar2';
-
-jest.mock('react-redux', () => ({
-  connect: () => (Component: any) => Component,
-}));
+import { render, screen } from '@testing-library/react';
+import Sidebar from './Sidebar';
 
 describe('Sidebar', () => {
   describe('active routes highlight', () => {
