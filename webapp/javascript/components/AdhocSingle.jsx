@@ -5,15 +5,11 @@ import 'react-dom';
 import { bindActionCreators } from 'redux';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
-import { abortTimelineRequest, setFile } from '../redux/actions';
+import { setFile } from '../redux/actions';
 
 function AdhocSingle(props) {
   const { actions, file, flamebearer } = props;
   const { setFile } = actions;
-
-  useEffect(() => {
-    return actions.abortTimelineRequest;
-  });
 
   return (
     <div className="pyroscope-app">
@@ -36,7 +32,7 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators({ abortTimelineRequest, setFile }, dispatch),
+  actions: bindActionCreators({ setFile }, dispatch),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocSingle);

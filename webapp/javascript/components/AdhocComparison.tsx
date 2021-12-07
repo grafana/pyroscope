@@ -5,22 +5,13 @@ import 'react-dom';
 import { bindActionCreators } from 'redux';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
-import {
-  abortTimelineRequest,
-  setLeftFile,
-  setRightFile,
-} from '../redux/actions';
-
+import { setLeftFile, setRightFile } from '../redux/actions';
 
 function AdhocComparison(props) {
   const { actions, leftFile, leftFlamebearer, rightFile, rightFlamebearer } =
     props;
   const { setLeftFile } = actions;
   const { setRightFile } = actions;
-
-  useEffect(() => {
-    return actions.abortTimelineRequest;
-  });
 
   return (
     <div className="pyroscope-app">
@@ -59,10 +50,7 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    { abortTimelineRequest, setLeftFile, setRightFile },
-    dispatch
-  ),
+  actions: bindActionCreators({ setLeftFile, setRightFile }, dispatch),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocComparison);
