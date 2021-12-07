@@ -10,7 +10,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faExclamationTriangle } from '@fortawesome/free-solid-svg-icons/faExclamationTriangle';
 
 function Notifications(props) {
-  const { notificationText } = window;
+  //  const { notificationText } = window;
+  const { notificationText } = 'HELLO';
 
   const [hidden, setHidden] = useState(notificationText === '');
 

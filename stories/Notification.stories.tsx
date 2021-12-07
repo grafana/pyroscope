@@ -1,22 +1,40 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import Notification from '@ui/Notification';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
-
-const Template: ComponentStory<typeof Notification> = (args) => (
-  <Notification {...args}>Button</Notification>
-);
+import Notification, { store } from '@ui/Notification';
+import Button from '@ui/Button';
 
 export default {
-  title: 'Components/Notification',
-  component: Notification,
-} as ComponentMeta<typeof Notification>;
-
-export const Default = Template.bind({});
-Default.args = {
-  disabled: false,
+  title: 'Notifications',
 };
 
-export const DefaultNotification = () => (
-  <Notification>Button with icon</Notification>
-);
+export const notifications = () => {
+  const info = () =>
+    store.addNotification({
+      title: 'Info',
+      message: 'Info message',
+      type: 'info',
+    });
+
+  const danger = () =>
+    store.addNotification({
+      title: 'Danger',
+      message: 'Danger message',
+      type: 'danger',
+    });
+
+  const success = () =>
+    store.addNotification({
+      title: 'Success',
+      message: 'Success message',
+      type: 'success',
+    });
+
+  return (
+    <div>
+      <Button onClick={() => info()}>Info</Button>
+      <Button onClick={() => danger()}>Danger</Button>
+      <Button onClick={() => success()}>Success</Button>
+      <Notification />
+    </div>
+  );
+};
