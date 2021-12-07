@@ -53,7 +53,6 @@ func (s *SQLStore) Ping(ctx context.Context) error {
 }
 
 func (s *SQLStore) openSQLiteDB(url string) (err error) {
-	// file::memory:?cache=shared
 	s.orm, err = gorm.Open(sqlite.Open(url), &gorm.Config{Logger: nil})
 	s.db, err = s.orm.DB()
 	return err
