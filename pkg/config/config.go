@@ -26,21 +26,6 @@ type Config struct {
 	Adhoc     Adhoc     `skip:"true" mapstructure:",squash"`
 }
 
-// File can be read from file system.
-type File interface{ Path() string }
-
-func (cfg Agent) Path() string {
-	return cfg.Config
-}
-
-func (cfg Server) Path() string {
-	return cfg.Config
-}
-
-func (cfg CombinedDbManager) Path() string {
-	return cfg.Server.Config
-}
-
 type Adhoc struct {
 	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
