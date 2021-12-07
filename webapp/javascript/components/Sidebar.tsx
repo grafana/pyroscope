@@ -194,7 +194,7 @@ export default function Sidebar2(props: SidebarProps) {
               Github
             </a>
           </MenuItem>
-          {window.isAuthRequired && (
+          {(window as any).isAuthRequired && (
             <MenuItem
               onClick={() => signOut()}
               icon={<Icon icon={faSignOutAlt} />}
