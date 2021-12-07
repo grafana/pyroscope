@@ -317,6 +317,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		// TODO: replace with auth service?
 		jwtCookie, err := r.Cookie(jwtCookieName)
 		if err != nil {
 			ctrl.log.WithFields(logrus.Fields{

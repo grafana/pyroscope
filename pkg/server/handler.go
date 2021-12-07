@@ -28,6 +28,7 @@ func (ctrl *Controller) loginHandler() http.HandlerFunc {
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
+			"BasicAuth":     true, // TODO(kolesnikovae): use config.
 			"GoogleEnabled": ctrl.config.Auth.Google.Enabled,
 			"GithubEnabled": ctrl.config.Auth.Github.Enabled,
 			"GitlabEnabled": ctrl.config.Auth.Gitlab.Enabled,
@@ -177,6 +178,8 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		// delete state cookie and add jwt cookie
 		invalidateCookie(w, stateCookieName)
 		createCookie(w, jwtCookieName, tk)
+
+		// TODO: create user if sign up is allowed.
 
 		tmpl, err := ctrl.getTemplate("/welcome.html")
 		if err != nil {

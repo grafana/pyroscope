@@ -119,6 +119,8 @@ type Server struct {
 	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start" mapstructure:"cache-evict-threshold"`
 	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run" mapstructure:"cache-evict-volume"`
 
+	Database Database `mapstructure:"database"`
+
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.
 	BadgerNoTruncate     bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any" mapstructure:"badger-no-truncate"`
@@ -149,9 +151,9 @@ type Server struct {
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 
-	AdminSocketPath         string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
-	EnableExperimentalAdmin bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
-  EnableExperimentalAdhocUI bool   `def:"false" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
+	AdminSocketPath           string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
+	EnableExperimentalAdmin   bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
+	EnableExperimentalAdhocUI bool   `def:"false" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 
@@ -299,4 +301,9 @@ type AdminAppGet struct {
 type AdminAppDelete struct {
 	SocketPath string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
 	Force      bool   `def:"false" desc:"don't prompt for confirmation of dangerous actions" mapstructure:"force"`
+}
+
+type Database struct {
+	Type string `def:"sqlite3" desc:"" mapstructure:"type"`
+	URL  string `def:"/var/lib/pyroscope/pyroscope.db" desc:"" mapstructure:"url"`
 }
