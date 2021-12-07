@@ -51,10 +51,9 @@ export function MenuItem(props: MenuItemProps & { icon: Icon }) {
 export function SubMenu(
   props: SubMenuProps & { active?: boolean; icon: Icon }
 ) {
-  // wrap the received icon with FontAwesomeIcon
-  // to make the API easier to user
   let { popperarrow, className } = props;
-  const { active } = props;
+  // remove active since underlying component does not use it
+  const { active, ...newProps } = props;
 
   if (popperarrow === undefined) {
     // set arrow between element and menu when collapsed by default, since that makes ux better
@@ -70,7 +69,11 @@ export function SubMenu(
   }
 
   return (
-    <RProSubMenu {...props} popperarrow={popperarrow} className={className} />
+    <RProSubMenu
+      {...newProps}
+      popperarrow={popperarrow}
+      className={className}
+    />
   );
 }
 

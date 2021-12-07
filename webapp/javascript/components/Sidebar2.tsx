@@ -24,9 +24,13 @@ import { useWindowWidth } from '@react-hook/window-size';
 import styles from './Sidebar.module.css';
 import Logo from '../../images/logo-v3-small.svg';
 
-export default function Sidebar2() {
+export interface SidebarProps {
+  initialCollapsed?: boolean;
+}
+export default function Sidebar2(props: SidebarProps) {
+  const { initialCollapsed } = props;
   const { search, pathname } = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
   const windowWidth = useWindowWidth();
 
   // the component doesn't seem to support setting up an active item
@@ -65,18 +69,21 @@ export default function Sidebar2() {
         </SidebarHeader>
       )}
       <MenuItem
+        data-testid="sidebar-adhoc-single"
         active={isRouteActive('/adhoc-single')}
         icon={<Icon icon={faWindowMaximize} />}
       >
         Single View
       </MenuItem>
       <MenuItem
+        data-testid="sidebar-adhoc-comparison"
         active={isRouteActive('/adhoc-comparison')}
         icon={<Icon icon={faColumns} />}
       >
         Comparison View
       </MenuItem>
       <MenuItem
+        data-testid="sidebar-adhoc-diff"
         active={isRouteActive('/adhoc-diff')}
         icon={<Icon icon={faChartBar} />}
       >
@@ -111,6 +118,7 @@ export default function Sidebar2() {
               </SidebarHeader>
             )}
             <MenuItem
+              data-testid="sidebar-continuous-single"
               active={isRouteActive('/')}
               icon={<Icon icon={faWindowMaximize} />}
             >
@@ -123,6 +131,7 @@ export default function Sidebar2() {
               />
             </MenuItem>
             <MenuItem
+              data-testid="sidebar-continuous-comparison"
               active={isRouteActive('/comparison')}
               icon={<Icon icon={faColumns} />}
             >
@@ -130,6 +139,7 @@ export default function Sidebar2() {
               <NavLink to={{ pathname: '/comparison', search }} exact />
             </MenuItem>
             <MenuItem
+              data-testid="sidebar-continuous-diff"
               active={isRouteActive('/comparison-diff')}
               icon={<Icon icon={faChartBar} />}
             >

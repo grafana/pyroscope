@@ -2,30 +2,44 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ShortcutProvider } from 'react-keybind';
-import Sidebar from './Sidebar';
+import Sidebar from './Sidebar2';
 
 jest.mock('react-redux', () => ({
   connect: () => (Component: any) => Component,
 }));
 
 describe('Sidebar', () => {
-  it('Successfully changes location when clicked', () => {
-    render(
-      <ShortcutProvider>
-        <MemoryRouter>
-          <Sidebar />
-        </MemoryRouter>
-      </ShortcutProvider>
-    );
-    const singleView = screen.getByTestId('sidebar-root');
-    const comparisonView = screen.getByTestId('sidebar-comparison');
-    expect(singleView).toHaveClass('active-route');
-    expect(comparisonView).not.toHaveClass('active-route');
-    fireEvent.click(comparisonView);
-    expect(singleView).not.toHaveClass('active-route');
-    expect(comparisonView).toHaveClass('active-route');
-    fireEvent.click(singleView);
-    expect(singleView).toHaveClass('active-route');
-    expect(comparisonView).not.toHaveClass('active-route');
+  describe('active routes highlight', () => {
+    describe.each([
+      ['/', 'sidebar-continuous-single'],
+      ['/comparison', 'sidebar-continuous-comparison'],
+      ['/comparison-diff', 'sidebar-continuous-diff'],
+    ])('visiting route %s', (a, b) => {
+      describe('collapsed', () => {
+        test(`should have menuitem ${b} active`, () => {
+          render(
+            <MemoryRouter initialEntries={[a]}>
+              <Sidebar initialCollapsed />
+            </MemoryRouter>
+          );
+
+          // it should be active
+          expect(screen.getByTestId(b)).toHaveClass('active');
+        });
+      });
+
+      describe('not collapsed', () => {
+        test(`should have menuitem ${b} active`, () => {
+          render(
+            <MemoryRouter initialEntries={[a]}>
+              <Sidebar initialCollapsed={false} />
+            </MemoryRouter>
+          );
+
+          // it should be active
+          expect(screen.getByTestId(b)).toHaveClass('active');
+        });
+      });
+    });
   });
 });
