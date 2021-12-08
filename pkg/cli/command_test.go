@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"os"
 	"time"
 
@@ -21,7 +22,7 @@ type TestConfig struct {
 	// nested field
 	FooStruct SubStruct `mapstructure:"foo-struct"`
 	// config file path
-	Config string `mapstructure:"config"`
+	Config string `mapstructure:"config" def:"testdata/test-config.yml"`
 	// lists
 	Foos []string `mapstructure:"foos" def:"def-1,def-2"`
 	// other types
@@ -31,15 +32,12 @@ type TestConfig struct {
 	FooDur   time.Duration     `mapstructure:"foo-dur"`
 }
 
-func (cfg TestConfig) Path() string {
-	return cfg.Config
+type testConfigFileDoesNotExist struct {
+	Foo    string `mapstructure:"foo" def:"def-value"`
+	Config string `mapstructure:"config" def:"testdata/doesntexist"`
 }
 
-func runTestNoChecks(args []string, env map[string]string, cb func(*TestConfig)) (bool, error) {
-	cfg := &TestConfig{
-		FooStruct: SubStruct{},
-	}
-
+func run(cfg interface{}, args []string, env map[string]string, cb func(interface{})) (bool, error) {
 	prevValues := make(map[string]string)
 	for k, v := range env {
 		prevValues[k] = os.Getenv(k)
@@ -69,10 +67,21 @@ func runTestNoChecks(args []string, env map[string]string, cb func(*TestConfig))
 }
 
 func runTest(args []string, env map[string]string, cb func(*TestConfig)) {
-	ran, err := runTestNoChecks(args, env, cb)
+	cfg := new(TestConfig)
+	ran, err := run(cfg, args, env, func(v interface{}) {
+		cb(v.(*TestConfig))
+	})
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ran).To(BeTrue())
+}
+
+func runErrorTest(args []string, env map[string]string, cb func(err error)) {
+	cfg := new(TestConfig)
+	ran, err := run(cfg, args, env, func(v interface{}) {})
+
+	Expect(ran).ToNot(BeTrue())
+	cb(err)
 }
 
 // runTest([]string{"--foo arg-value"}, map[string]string{}, func(cfg *TestConfig) {
@@ -101,13 +110,22 @@ var _ = Describe("CreateCmdRunFn", func() {
 				})
 			})
 		})
-		Context("config file that doesn't exist", func() {
-			It("sets value from config file", func() {
-				ran, err := runTestNoChecks([]string{}, map[string]string{"PYROSCOPE_CONFIG": "testdata/doesntexist"}, func(cfg *TestConfig) {
-					Expect(cfg.Foo).To(Equal("config-value"))
+		Context("user config file that doesn't exist", func() {
+			It("returns error", func() {
+				runErrorTest(nil, map[string]string{"PYROSCOPE_CONFIG": "testdata/doesntexist"}, func(err error) {
+					Expect(err).To(HaveOccurred())
+					Expect(errors.Is(err, os.ErrNotExist)).To(BeTrue())
 				})
-				Expect(err).To(HaveOccurred())
-				Expect(ran).ToNot(BeTrue())
+			})
+		})
+		Context("default config file that doesn't exist", func() {
+			It("does not return errors and sets values from config file", func() {
+				cfg := new(testConfigFileDoesNotExist)
+				ran, err := run(cfg, nil, nil, func(v interface{}) {
+					Expect(v.(*testConfigFileDoesNotExist).Foo).To(Equal("def-value"))
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(ran).To(BeTrue())
 			})
 		})
 		Context("config file that doesn't have yaml extension", func() {
@@ -119,10 +137,15 @@ var _ = Describe("CreateCmdRunFn", func() {
 		})
 	})
 	Context("configuration sources", func() {
-		Context("with no arguments or env variables or config", func() {
+		Context("with no arguments or env variables or user config", func() {
 			It("sets default value provided via `def` value tag", func() {
 				runTest([]string{}, map[string]string{}, func(cfg *TestConfig) {
-					Expect(cfg.Foo).To(Equal("def-value"))
+					Expect(cfg.FooStruct.Bar).To(Equal("def-value"))
+				})
+			})
+			It("reads values from default config file", func() {
+				runTest([]string{}, map[string]string{}, func(cfg *TestConfig) {
+					Expect(cfg.Foo).To(Equal("value-from-default-config-file"))
 				})
 			})
 		})

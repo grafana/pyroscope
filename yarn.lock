@@ -3870,6 +3870,13 @@
   dependencies:
     "@types/react" "*"
 
+"@types/react-notifications-component@^3.1.1":
+  version "3.1.1"
+  resolved "https://registry.yarnpkg.com/@types/react-notifications-component/-/react-notifications-component-3.1.1.tgz#85691cb425e266eeda1c82b67ca95b36a6566e86"
+  integrity sha512-1b8yPkEOS266q1I5QebG4pcP437Nn9rQ/w8pcHF9kISLbU39HrpFilu9Lmg45FOpskowNzOkKyl/yh71FJwfzg==
+  dependencies:
+    "@types/react" "*"
+
 "@types/react-redux@^7.1.16":
   version "7.1.18"
   resolved "https://registry.yarnpkg.com/@types/react-redux/-/react-redux-7.1.18.tgz#2bf8fd56ebaae679a90ebffe48ff73717c438e04"
@@ -14330,6 +14337,11 @@ react-modal@^3.12.1:
     prop-types "^15.7.2"
     react-lifecycles-compat "^3.0.0"
     warning "^4.0.3"
+
+react-notifications-component@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/react-notifications-component/-/react-notifications-component-3.1.0.tgz#c676b7897a3fb10c554b69dba25fe2a9da6170e2"
+  integrity sha512-qq+zgqVIa2zhlw+RvO2QSPk7xHLvZWTHl9VKRO56sMUef/UrcUTqOswL0DSJtRIpZYZhclquQUfDxD6H2w8aWA==
 
 react-onclickoutside@^6.10.0:
   version "6.12.0"

@@ -503,6 +503,8 @@ github.com/prometheus/procfs v0.1.3/go.mod h1:lV6e/gmhEcM9IjHGsFOCxxuZ+z1YqCvr4O
 github.com/prometheus/procfs v0.6.0 h1:mxy4L2jP6qMonqmq+aTtOx1ifVWUgG/TAmntgbh3xv4=
 github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/prometheus/statsd_exporter v0.15.0/go.mod h1:Dv8HnkoLQkeEjkIE4/2ndAA7WL1zHKK7WMqFQqu72rw=
+github.com/pyroscope-io/client v0.0.0-20211206204731-3fd0a4b8239c h1:QVplAdQO7l4v4b/C2ANubLOMHTSr+5VD5cFpjPgRCJ8=
+github.com/pyroscope-io/client v0.0.0-20211206204731-3fd0a4b8239c/go.mod h1:zRdQXIGxy0H2QbKEkCmZBR6KOLLIFYLWsdzVI0MRm2E=
 github.com/pyroscope-io/dotnetdiag v1.2.1 h1:3XEMrfFJnZ87BiEhozyQKmCUAuMd/Spq7KChPuD2Cf0=
 github.com/pyroscope-io/dotnetdiag v1.2.1/go.mod h1:eFUEHCp4eD1TgcXMlJihC+R4MrqGf7nTRdWxNADbDHA=
 github.com/pyroscope-io/revive v1.0.6-0.20210330033039-4a71146f9dc1 h1:0v9lBNgdmVtpyyk9PP/DfpJlOHkXriu5YgNlrhQw5YE=

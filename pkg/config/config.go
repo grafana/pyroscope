@@ -26,21 +26,6 @@ type Config struct {
 	Adhoc     Adhoc     `skip:"true" mapstructure:",squash"`
 }
 
-// File can be read from file system.
-type File interface{ Path() string }
-
-func (cfg Agent) Path() string {
-	return cfg.Config
-}
-
-func (cfg Server) Path() string {
-	return cfg.Config
-}
-
-func (cfg CombinedDbManager) Path() string {
-	return cfg.Server.Config
-}
-
 type Adhoc struct {
 	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
@@ -150,7 +135,7 @@ type Server struct {
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 
 	AdminSocketPath           string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
-	EnableExperimentalAdmin   bool   `def:"false" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
+	EnableExperimentalAdmin   bool   `def:"true" deprecated:"true" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 	EnableExperimentalAdhocUI bool   `def:"false" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`

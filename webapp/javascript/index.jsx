@@ -4,13 +4,13 @@ import React from 'react';
 import { Provider } from 'react-redux';
 import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
+import Notifications from '@ui/Notifications';
 import store from './redux/store';
 
 import PyroscopeApp from './components/PyroscopeApp';
 import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
-import Notifications from './components/Notifications';
 import AdhocSingle from './components/AdhocSingle';
 
 import history from './util/history';
