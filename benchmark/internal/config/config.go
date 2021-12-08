@@ -67,6 +67,3 @@ type DashboardScreenshot struct {
 	DashboardUID   string `def:"QF9YgRbUbt3BA5Qd" desc:"UUID of the dashboard"`
 	Destination    string `def:"fs" desc:"where to upload to: s3|fs"`
 }
-
-// File can be read from file system.
-type File interface{ Path() string }
