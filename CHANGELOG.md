@@ -1,3 +1,12 @@
+## [0.4.1](https://github.com/pyroscope-io/pyroscope/compare/v0.4.0...v0.4.1) (2021-12-08)
+
+
+### Bug Fixes
+
+* trigger retention task when no levels are configured ([#588](https://github.com/pyroscope-io/pyroscope/issues/588)) ([141d734](https://github.com/pyroscope-io/pyroscope/commit/141d73406f5482ee14f999ee7721403d3e0d3d99))
+
+
+
 # [0.4.0](https://github.com/pyroscope-io/pyroscope/compare/v0.3.1...v0.4.0) (2021-12-08)
 
 
