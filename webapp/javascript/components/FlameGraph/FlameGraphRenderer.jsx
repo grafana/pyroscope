@@ -273,7 +273,6 @@ class FlameGraphRenderer extends React.Component {
           />
           {this.props.viewType === 'double' ? (
             <>
-              <div>double</div>
               <InstructionText {...this.props} />
               <TimelineChartWrapper
                 key={`timeline-chart-${this.props.viewSide}`}
@@ -283,7 +282,6 @@ class FlameGraphRenderer extends React.Component {
             </>
           ) : this.props.viewType === 'diff' ? (
             <>
-              <div>divv</div>
               <div className="diff-instructions-wrapper">
                 <div className="diff-instructions-wrapper-side">
                   <InstructionText {...this.props} viewSide="left" />

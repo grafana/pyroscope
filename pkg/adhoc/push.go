@@ -55,8 +55,9 @@ func (p push) Run() error {
 	// Note that we don't specify which signals to be sent: any signal to be
 	// relayed to the child process (including SIGINT and SIGTERM).
 	signal.Notify(c)
+	env := fmt.Sprintf("PYROSCOPE_ADHOC_SERVER_ADDRESS=http://localhost:%d", listener.Addr().(*net.TCPAddr).Port)
 	cmd := exec.Command(p.args[0], p.args[1:]...)
-	cmd.Env = append(os.Environ(), fmt.Sprintf("PYROSCOPE_SERVER_ADDRESS=http://localhost:%d", listener.Addr().(*net.TCPAddr).Port))
+	cmd.Env = append(os.Environ(), env)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.Stdin = os.Stdin
