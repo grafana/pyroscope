@@ -1,7 +1,8 @@
+/* eslint-disable import/prefer-default-export */
 import { PanelPlugin } from '@grafana/data';
+import { loadPluginCss } from '@grafana/runtime';
 import { SimpleOptions } from './types';
 import { SimplePanel } from './SimplePanel';
-import { loadPluginCss } from '@grafana/runtime';
 import '../../webapp/sass/profile.scss';
 
 // We don't support light mode yet

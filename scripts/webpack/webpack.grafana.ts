@@ -1,6 +1,8 @@
+/* eslint-disable */
 // ATTENTION
 // all this was copied from grafana-toolkit
 import * as webpack from 'webpack';
+
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const util = require('util');
@@ -51,10 +53,10 @@ const getStylesheetPaths = (root: string = process.cwd()) => {
 const getCommonPlugins = (options: WebpackConfigurationOptions) => {
   const packageJson = require(path.resolve(process.cwd(), 'package.json'));
   return [
-    //new MiniCssExtractPlugin({
+    // new MiniCssExtractPlugin({
     //  // both options are optional
     //  filename: 'styles/[name].css',
-    //}),
+    // }),
     new MiniCssExtractPlugin({
       filename: '[name].css',
     }),
@@ -115,10 +117,9 @@ const hasThemeStylesheets = (root: string = process.cwd()) => {
     if (fs.existsSync(`${current}.css`) || fs.existsSync(`${current}.scss`)) {
       stylesheetsSummary.push(true);
       return acc && true;
-    } else {
-      stylesheetsSummary.push(false);
-      return false;
     }
+    stylesheetsSummary.push(false);
+    return false;
   }, true);
 
   const hasMissingStylesheets =
@@ -510,5 +511,5 @@ const loadWebpackConfig: WebpackConfigurationGetter = async (options) => {
   }
 };
 
-//loadWebpackConfig({}).then((a) => console.log(a));
+// loadWebpackConfig({}).then((a) => console.log(a));
 module.exports = loadWebpackConfig({});
