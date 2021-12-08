@@ -26,15 +26,16 @@ type User struct {
 	Email        string `gorm:"type:varchar(255);not null;default:null;index:,unique"`
 	PasswordHash []byte `gorm:"type:varchar(255);not null;default:null"`
 	Role         Role   `gorm:"not null;default:null"`
+	IsDisabled   *bool  `gorm:"not null;default:false"`
 
-	LastSeenAt        time.Time
-	PasswordChangedAt time.Time
+	LastSeenAt        time.Time `gorm:"default:null"`
+	PasswordChangedAt time.Time `gorm:"not null;default:null"`
 }
 
 type CreateUserParams struct {
 	FullName *string
 	Email    string
-	Password []byte
+	Password string
 	Role     Role
 }
 
@@ -58,9 +59,11 @@ func (p CreateUserParams) Validate() error {
 }
 
 type UpdateUserParams struct {
-	FullName *string
-	Email    *string
-	Role     *Role
+	FullName   *string
+	Email      *string
+	Role       *Role
+	Password   *string
+	IsDisabled *bool
 }
 
 func (p UpdateUserParams) Validate() error {
@@ -75,18 +78,22 @@ func (p UpdateUserParams) Validate() error {
 			err = multierror.Append(err, emailErr)
 		}
 	}
+	if p.Password != nil {
+		if pwdErr := ValidatePasswordRequirements(*p.Password); pwdErr != nil {
+			err = multierror.Append(err, pwdErr)
+		}
+	}
 	if p.Role != nil && !p.Role.IsValid() {
 		err = multierror.Append(err, ErrRoleUnknown)
 	}
 	return err
 }
 
-type ChangeUserPasswordParams struct {
-	Password []byte
-}
-
-func (p ChangeUserPasswordParams) Validate() error {
-	return ValidatePasswordRequirements(p.Password)
+func IsUserDisabled(u User) bool {
+	if u.IsDisabled == nil {
+		return false
+	}
+	return *u.IsDisabled
 }
 
 func ValidateUserFullName(fullName string) error {
@@ -100,29 +107,28 @@ func ValidateUserFullName(fullName string) error {
 }
 
 func ValidateEmail(email string) error {
-	// TODO(kolesnikovae): can also force specific domain(s).
 	if !govalidator.IsEmail(email) {
 		return ErrUserEmailInvalid
 	}
 	return nil
 }
 
-func ValidatePasswordRequirements(p []byte) error {
+func ValidatePasswordRequirements(p string) error {
 	// TODO(kolesnikovae): should be configurable.
-	if len(p) == 0 {
+	if p == "" {
 		return ErrUserPasswordEmpty
 	}
 	return nil
 }
 
-func MustPasswordHash(password []byte) []byte {
-	h, err := bcrypt.GenerateFromPassword(password, bcrypt.DefaultCost)
+func MustPasswordHash(password string) []byte {
+	h, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		panic(err)
 	}
 	return h
 }
 
-func VerifyPassword(hashed, password []byte) error {
-	return bcrypt.CompareHashAndPassword(hashed, password)
+func VerifyPassword(hashed []byte, password string) error {
+	return bcrypt.CompareHashAndPassword(hashed, []byte(password))
 }

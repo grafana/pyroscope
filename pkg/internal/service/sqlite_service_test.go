@@ -28,8 +28,10 @@ func (s *testSuite) BeforeEach() {
 }
 
 func (s *testSuite) AfterEach() {
-	if s.path != "" {
-		Expect(os.RemoveAll(s.path)).ToNot(HaveOccurred())
-	}
+	defer func() {
+		if s.path != "" {
+			Expect(os.RemoveAll(s.path)).ToNot(HaveOccurred())
+		}
+	}()
 	Expect(s.Close()).ToNot(HaveOccurred())
 }
