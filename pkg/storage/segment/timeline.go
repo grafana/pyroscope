@@ -88,7 +88,7 @@ func (sn streeNode) populateTimeline(tl *Timeline, s *Segment) {
 			if hasDataBefore || levelWatermark.IsZero() || sn.isBefore(s.watermarks.absoluteTime) {
 				continue
 			}
-			if c := sn.createSampledChild(i); c.isBefore(levelWatermark) {
+			if c := sn.createSampledChild(i); c.isBefore(levelWatermark) && c.isAfter(s.watermarks.absoluteTime) {
 				c.populateTimeline(tl, s)
 				if m := c.time.Add(durations[c.depth]); m.After(tl.st) {
 					tl.Watermarks[c.depth+1] = c.time.Add(durations[c.depth]).Unix()
