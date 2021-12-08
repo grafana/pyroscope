@@ -59,8 +59,8 @@ function AdhocSingle(props) {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
-  renderURL: buildRenderURL(state),
+  ...state.root,
+  renderURL: buildRenderURL(state.root),
 });
 
 const mapDispatchToProps = (dispatch) => ({
