@@ -50,13 +50,19 @@ export const SimplePanel: React.FC<Props> = ({
 }) => {
   const theme = useTheme();
   const styles = getStyles();
+
+  // TODO
+  // this can fail in so many ways
+  // let's handle it better
+  const flamebearer =
+    data.series[data.series.length - 1].fields[0].values.buffer[0];
+
   return (
     <>
       <div className={styles.app}>
         <div className={`${styles.appContainer} flamegraph-wrapper`}>
-          <h1>Hello world!</h1>
           <Flamegraph
-            flamebearer={simpleTree}
+            flamebearer={flamebearer}
             zoom={Option.none()}
             focusedNode={Option.none()}
             highlightQuery=""
@@ -74,18 +80,18 @@ export const SimplePanel: React.FC<Props> = ({
 
 const getStyles = stylesFactory(() => {
   return {
-    app: css`
-      height: 100%;
-      min-height: 100%;
-      display: flex;
-      flex-direction: column;
-      .flamegraph-tooltip {
-        position: fixed;
-      }
-    `,
-    appContainer: css`
-      flex: 1 0 auto;
-      position: relative;
-    `,
+    //    app: css`
+    //      height: 100%;
+    //      min-height: 100%;
+    //      display: flex;
+    //      flex-direction: column;
+    //      .flamegraph-tooltip {
+    //        position: fixed;
+    //      }
+    //    `,
+    //    appContainer: css`
+    //      flex: 1 0 auto;
+    //      position: relative;
+    //    `,
   };
 });

@@ -9,6 +9,7 @@ loadPluginCss({
   dark: 'plugins/pyroscope-panel/module.css',
   light: 'plugins/pyroscope-panel/module.css',
 });
+
 export const plugin = new PanelPlugin<SimpleOptions>(
   SimplePanel
 ).setPanelOptions((builder) => {

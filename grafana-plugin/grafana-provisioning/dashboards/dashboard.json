@@ -21,11 +21,10 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 1,
   "links": [],
   "panels": [
     {
-      "datasource": null,
+      "datasource": "Pyroscope",
       "gridPos": {
         "h": 9,
         "w": 12,
@@ -33,10 +32,19 @@
         "y": 0
       },
       "id": 2,
+      "options": {
+        "seriesCountSize": "sm",
+        "showSeriesCount": false,
+        "text": "Default value of text input option"
+      },
       "targets": [
         {
+          "format": "json",
+          "from": "now-1h",
+          "name": "pyroscope.server.cpu",
           "queryType": "randomWalk",
-          "refId": "A"
+          "refId": "A",
+          "until": "now"
         }
       ],
       "title": "Panel Title",
