@@ -36,14 +36,14 @@ const SimpleTree = {
 };
 
 export const WithToolbar = () => {
-  return <Flamegraph flamebearer={SimpleTree} viewType="grafana" />;
+  return <Flamegraph flamebearer={SimpleTree} display="flamegraph" />;
 };
 
 export const WithoutToolbar = () => {
   return (
     <Flamegraph
       flamebearer={SimpleTree}
-      viewType="grafana"
+      display="flamegraph"
       showToolbar={false}
     />
   );

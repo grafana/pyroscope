@@ -25,8 +25,6 @@ class FlameGraphRenderer extends React.Component {
     zoom: Option.none(),
   };
 
-  showToolbar = true;
-
   constructor(props) {
     super();
     this.state = {
@@ -44,8 +42,12 @@ class FlameGraphRenderer extends React.Component {
       flamegraphConfigs: this.initialFlamegraphState,
     };
 
+    // for situations like in grafana we only display the flamegraph
+    // 'both' | 'flamegraph' | 'table'
+    this.display = props.display !== undefined ? props.display : 'both';
+    // default to true
     this.showToolbar =
-      props.showToolbar !== undefined ? props.showToolbar : this.showToolbar;
+      props.showToolbar !== undefined ? props.showToolbar : true;
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -244,6 +246,7 @@ class FlameGraphRenderer extends React.Component {
 
     const panes = decidePanesOrder(
       this.props.viewType,
+      this.display,
       flameGraphPane,
       tablePane
     );
@@ -258,6 +261,7 @@ class FlameGraphRenderer extends React.Component {
           {this.showToolbar && (
             <Toolbar
               view={this.state.view}
+              showViewSelector={this.props.viewType !== 'grafana'}
               viewDiff={this.state.viewDiff}
               handleSearchChange={this.handleSearchChange}
               reset={this.onReset}
@@ -301,15 +305,24 @@ class FlameGraphRenderer extends React.Component {
   };
 }
 
-// single | double | diff | grafana
-function decidePanesOrder(viewType, flamegraphPane, tablePane) {
-  switch (viewType) {
-    case 'double':
-      return [flamegraphPane, tablePane];
-    case 'grafana':
+function decidePanesOrder(viewType, display, flamegraphPane, tablePane) {
+  switch (display) {
+    case 'table': {
+      return [tablePane];
+    }
+    case 'flamegraph': {
       return [flamegraphPane];
-    default:
-      return [tablePane, flamegraphPane];
+    }
+
+    case 'both':
+    default: {
+      switch (viewType) {
+        case 'double':
+          return [flamegraphPane, tablePane];
+        default:
+          return [tablePane, flamegraphPane];
+      }
+    }
   }
 }
 
