@@ -36,6 +36,7 @@ const TestData = {
     fitMode: 'HEAD',
 
     spyName: 'gospy',
+    version: 1,
   },
   ComplexTree: {
     names: [
@@ -363,6 +364,7 @@ const TestData = {
     sampleRate: 100,
     units: Units.Samples,
     format: 'single' as const,
+    version: 1,
   },
   DiffTree: {
     names: [
@@ -418,6 +420,7 @@ const TestData = {
     format: 'double' as const,
     leftTicks: 991,
     rightTicks: 987,
+    version: 1,
   },
 };
 
