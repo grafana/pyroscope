@@ -43,10 +43,10 @@ function AdhocComparison(props) {
 
 const mapStateToProps = (state) => ({
   ...state.root,
-  leftFile: state.adhocComparison.left.file,
-  leftFlamebearer: state.adhocComparison.left.flamebearer,
-  rightFile: state.adhocComparison.right.file,
-  rightFlamebearer: state.adhocComparison.right.flamebearer,
+  leftFile: state.root.adhocComparison.left.file,
+  leftFlamebearer: state.root.adhocComparison.left.flamebearer,
+  rightFile: state.root.adhocComparison.right.file,
+  rightFlamebearer: state.root.adhocComparison.right.flamebearer,
 });
 
 const mapDispatchToProps = (dispatch) => ({
