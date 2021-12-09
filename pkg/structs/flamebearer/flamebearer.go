@@ -6,6 +6,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
+//revive:disable:max-public-structs Config structs
+
 // FlamebearerProfile is a versioned flambearer based profile.
 // It's the native format both for rendering and file saving (in adhoc mode).
 type FlamebearerProfile struct {
