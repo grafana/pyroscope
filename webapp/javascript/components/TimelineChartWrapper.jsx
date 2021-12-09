@@ -178,7 +178,7 @@ class TimelineChartWrapper extends React.Component {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
+  ...state.root,
 });
 
 const mapDispatchToProps = (dispatch) => ({

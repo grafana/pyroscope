@@ -165,4 +165,7 @@ const mapDispatchToProps = (dispatch) => ({
   ),
 });
 
-export default connect((state) => state, mapDispatchToProps)(TagsBar);
+const mapStateToProps = (state) => ({
+  ...state.root,
+});
+export default connect(mapStateToProps, mapDispatchToProps)(TagsBar);
