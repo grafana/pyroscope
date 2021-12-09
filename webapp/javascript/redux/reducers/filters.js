@@ -74,7 +74,13 @@ function decodeTimelineData(timelineData) {
   });
 }
 
-function decodeFlamebearer({ flamebearer, metadata, leftTicks, rightTicks }) {
+function decodeFlamebearer({
+  flamebearer,
+  metadata,
+  leftTicks,
+  rightTicks,
+  version,
+}) {
   const fb = {
     ...flamebearer,
     format: metadata.format,
@@ -86,6 +92,7 @@ function decodeFlamebearer({ flamebearer, metadata, leftTicks, rightTicks }) {
     fb.leftTicks = leftTicks;
     fb.rightTicks = rightTicks;
   }
+  fb.version = version || 0;
   fb.levels = deltaDiffWrapper(fb.format, fb.levels);
   return fb;
 }
