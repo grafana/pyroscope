@@ -13,6 +13,7 @@ import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
 import AdhocSingle from './components/AdhocSingle';
+import ServerNotifications from './components/ServerNotifications';
 
 import history from './util/history';
 
@@ -33,6 +34,7 @@ ReactDOM.render(
     <Router history={history}>
       <ShortcutProvider>
         <Notifications />
+        <ServerNotifications />
         <Sidebar />
         <Switch>
           <Route exact path="/">
