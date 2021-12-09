@@ -1,6 +1,5 @@
 {
   "id": 1,
-  "full_name": "John Doe",
   "email": "john@example.com",
   "role": "Viewer",
   "is_disabled": false,

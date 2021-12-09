@@ -204,7 +204,7 @@ var _ = Describe("UserService", func() {
 			It("updates user fields", func() {
 				updated, err = svc.FindUserByID(context.Background(), user.ID)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(updated.FullName).To(Equal(*update.FullName))
+				Expect(updated.FullName).To(Equal(update.FullName))
 				Expect(updated.Email).To(Equal(*update.Email))
 				Expect(updated.Role).To(Equal(*update.Role))
 				Expect(*updated.IsDisabled).To(BeTrue())
@@ -349,7 +349,7 @@ func testCreateUserParams() []model.CreateUserParams {
 }
 
 func expectUserMatches(user model.User, params model.CreateUserParams) {
-	Expect(user.FullName).To(Equal(*params.FullName))
+	Expect(user.FullName).To(Equal(params.FullName))
 	Expect(user.Email).To(Equal(params.Email))
 	Expect(user.Role).To(Equal(params.Role))
 	Expect(*user.IsDisabled).To(BeFalse())

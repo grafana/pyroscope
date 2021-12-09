@@ -7,7 +7,6 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 var (
@@ -20,16 +19,18 @@ var (
 )
 
 type User struct {
-	gorm.Model
+	ID           uint    `gorm:"primarykey"`
+	FullName     *string `gorm:"type:varchar(255);default:null"`
+	Email        string  `gorm:"type:varchar(255);not null;default:null;index:,unique"`
+	PasswordHash []byte  `gorm:"type:varchar(255);not null;default:null"`
+	Role         Role    `gorm:"not null;default:null"`
+	IsDisabled   *bool   `gorm:"not null;default:false"`
 
-	FullName     string `gorm:"type:varchar(255);default:null"`
-	Email        string `gorm:"type:varchar(255);not null;default:null;index:,unique"`
-	PasswordHash []byte `gorm:"type:varchar(255);not null;default:null"`
-	Role         Role   `gorm:"not null;default:null"`
-	IsDisabled   *bool  `gorm:"not null;default:false"`
-
-	LastSeenAt        time.Time `gorm:"default:null"`
-	PasswordChangedAt time.Time `gorm:"not null;default:null"`
+	LastSeenAt        *time.Time `gorm:"default:null"`
+	PasswordChangedAt time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	DeletedAt         *time.Time `gorm:"default:null"`
 }
 
 type CreateUserParams struct {

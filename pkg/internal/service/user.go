@@ -25,7 +25,7 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 		PasswordChangedAt: time.Now(),
 	}
 	if params.FullName != nil {
-		user.FullName = *params.FullName
+		user.FullName = params.FullName
 	}
 	err := svc.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		_, err := findUserByEmail(tx, params.Email)
@@ -60,7 +60,7 @@ func findUserByEmail(tx *gorm.DB, email string) (model.User, error) {
 }
 
 func findUserByID(tx *gorm.DB, id uint) (model.User, error) {
-	return findUser(tx, model.User{Model: gorm.Model{ID: id}})
+	return findUser(tx, model.User{ID: id})
 }
 
 func findUser(tx *gorm.DB, user model.User) (model.User, error) {
@@ -116,7 +116,7 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 			}
 		}
 		if params.FullName != nil {
-			columns.FullName = *params.FullName
+			columns.FullName = params.FullName
 		}
 		if params.Role != nil {
 			columns.Role = *params.Role

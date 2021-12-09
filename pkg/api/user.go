@@ -9,8 +9,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
 )
 
-// TODO(kolesnikovae): move to separate package
-//go:generate mockgen -destination api_mocks_test.go -package api_test . UserService
+//go:generate mockgen -destination mocks/user.go -package mocks . UserService
 
 type UserService interface {
 	CreateUser(context.Context, model.CreateUserParams) (model.User, error)
@@ -30,13 +29,13 @@ func NewUserHandler(userService UserService) UserHandler {
 
 type User struct {
 	ID                uint       `json:"id"`
-	FullName          string     `json:"full_name,omitempty"`
+	FullName          *string    `json:"full_name,omitempty"`
 	Email             string     `json:"email"`
 	Role              model.Role `json:"role"`
 	IsDisabled        bool       `json:"is_disabled"`
 	CreatedAt         time.Time  `json:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at"`
-	LastSeenAt        time.Time  `json:"last_seen_at,omitempty"`
+	LastSeenAt        *time.Time `json:"last_seen_at,omitempty"`
 	PasswordChangedAt time.Time  `json:"password_changed_at"`
 }
 
@@ -64,10 +63,10 @@ func userFromModel(u model.User) User {
 		Email:             u.Email,
 		Role:              u.Role,
 		IsDisabled:        model.IsUserDisabled(u),
+		PasswordChangedAt: u.PasswordChangedAt,
+		LastSeenAt:        u.LastSeenAt,
 		CreatedAt:         u.CreatedAt,
 		UpdatedAt:         u.UpdatedAt,
-		LastSeenAt:        u.LastSeenAt,
-		PasswordChangedAt: u.PasswordChangedAt,
 	}
 }
 

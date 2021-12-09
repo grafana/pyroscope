@@ -16,6 +16,33 @@ func TestAPI(t *testing.T) {
 	RunSpecs(t, "API Suite")
 }
 
+// withRequest returns a function than performs an HTTP request
+// with the body specified, and validates response code and
+// the response body.
+//
+// Request and response body ("in" and "out", correspondingly) are
+// specified as a file name relative to the "testdata" directory.
+// Either of "in" and "out" can be an empty string.
+func withRequest(method, url string) func(code int, in, out string) {
+	return func(code int, in, out string) {
+		var reqBody io.Reader
+		if in != "" {
+			reqBody = readFile(in)
+		}
+		req, err := http.NewRequest(method, url, reqBody)
+		Expect(err).ToNot(HaveOccurred())
+		response, err := http.DefaultClient.Do(req)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(response).ToNot(BeNil())
+		Expect(response.StatusCode).To(Equal(code))
+		if out == "" {
+			Expect(readBody(response).String()).To(BeEmpty())
+			return
+		}
+		Expect(readBody(response)).To(MatchJSON(readFile(out)))
+	}
+}
+
 func readFile(path string) *bytes.Buffer {
 	b, err := os.ReadFile("testdata/" + path)
 	Expect(err).ToNot(HaveOccurred())

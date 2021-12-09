@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/hashicorp/go-multierror"
@@ -10,11 +11,10 @@ import (
 )
 
 var (
-	ErrNotAuthorised          = errors.New("not authorised")
-	ErrAuthenticationRequired = errors.New("authentication required")
-
-	errParamIDRequired = model.ValidationError{Err: errors.New("id parameter is required")}
-	errParamIDInvalid  = model.ValidationError{Err: errors.New("id parameter is invalid")}
+	errParamIDRequired     = model.ValidationError{Err: errors.New("id parameter is required")}
+	errParamIDInvalid      = model.ValidationError{Err: errors.New("id parameter is invalid")}
+	errRequestBodyRequired = model.ValidationError{Err: errors.New("request body required")}
+	errRequestBodyInvalid  = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
 )
 
 type Errors struct {
@@ -22,6 +22,13 @@ type Errors struct {
 }
 
 func DecodeError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, io.EOF):
+		err = errRequestBodyRequired
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		// https://github.com/golang/go/issues/25956
+		err = errRequestBodyInvalid
+	}
 	Error(w, model.ValidationError{Err: err})
 }
 

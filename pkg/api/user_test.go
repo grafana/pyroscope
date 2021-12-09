@@ -10,9 +10,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gorm.io/gorm"
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
+	"github.com/pyroscope-io/pyroscope/pkg/api/mocks"
 	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
 )
 
@@ -20,14 +20,19 @@ var _ = Describe("UserHandler", func() {
 	defer GinkgoRecover()
 
 	var (
+		// Mocks setup.
 		ctrl   *gomock.Controller
 		server *httptest.Server
-		m      *MockUserService
+		m      *mocks.MockUserService
+
+		// Default configuration for all scenarios.
+		method, url    string
+		expectResponse func(code int, in, out string)
 	)
 
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
-		m = NewMockUserService(ctrl)
+		m = mocks.NewMockUserService(ctrl)
 		server = httptest.NewServer(api.Router(&api.Services{
 			UserService: m,
 		}))
@@ -39,60 +44,96 @@ var _ = Describe("UserHandler", func() {
 	})
 
 	Describe("create user", func() {
-		checkResponse := func(code int, in, out string) {
-			requestBody := readFile(in)
-			response, err := http.DefaultClient.Post(server.URL+"/api/users", "", requestBody)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(response).ToNot(BeNil())
-			Expect(response.StatusCode).To(Equal(code))
-			expectedResponse := readFile(out)
-			Expect(readBody(response)).To(MatchJSON(expectedResponse))
-		}
+		var (
+			// Expected params passed to the mocked user service.
+			expectedParams model.CreateUserParams
+			// User returned by mocked service.
+			expectedUser model.User
+		)
 
-		Context("when request is valid", func() {
-			var (
-				params model.CreateUserParams
-				user   model.User
-			)
+		BeforeEach(func() {
+			// Defaults for all "create user" scenarios.
+			method = http.MethodPost
+			url = server.URL + "/api/users"
 
-			BeforeEach(func() {
-				// Params passed to the mocked user service.
-				params = model.CreateUserParams{
-					FullName: model.String("John Doe"),
-					Email:    "john@example.com",
-					Password: "qwerty",
-					Role:     model.ViewerRole,
-				}
+			expectedParams = model.CreateUserParams{
+				FullName: model.String("John Doe"),
+				Email:    "john@example.com",
+				Password: "qwerty",
+				Role:     model.ViewerRole,
+			}
 
-				// User returned by mocked service.
-				now := time.Date(2021, 12, 10, 4, 14, 0, 0, time.UTC)
-				user = model.User{
-					Model: gorm.Model{
-						ID:        1,
-						CreatedAt: now,
-						UpdatedAt: now,
-						DeletedAt: gorm.DeletedAt{},
-					},
-					FullName:          *params.FullName,
-					Email:             params.Email,
-					PasswordHash:      model.MustPasswordHash(params.Password),
-					Role:              params.Role,
-					PasswordChangedAt: now,
-				}
-			})
+			now := time.Date(2021, 12, 10, 4, 14, 0, 0, time.UTC)
+			expectedUser = model.User{
+				ID:                1,
+				FullName:          expectedParams.FullName,
+				Email:             expectedParams.Email,
+				PasswordHash:      model.MustPasswordHash(expectedParams.Password),
+				Role:              expectedParams.Role,
+				PasswordChangedAt: now,
+				LastSeenAt:        nil,
+				CreatedAt:         now,
+				UpdatedAt:         now,
+				DeletedAt:         nil,
+			}
+		})
 
-			It("returns expected response", func() {
+		JustBeforeEach(func() {
+			// The function is generated just before It, and should be only
+			// called after the mock is set up with mock.EXPECT call.
+			expectResponse = withRequest(method, url)
+		})
+
+		Context("when request is complete and valid", func() {
+			It("responds with created user", func() {
 				m.EXPECT().
 					CreateUser(gomock.Any(), gomock.Any()).
-					Return(user, nil).
-					Do(func(_ context.Context, user model.CreateUserParams) {
+					Return(expectedUser, nil).
+					Do(func(_ context.Context, actual model.CreateUserParams) {
 						defer GinkgoRecover()
-						Expect(user).To(Equal(params))
+						Expect(actual).To(Equal(expectedParams))
 					})
 
-				checkResponse(http.StatusCreated,
+				expectResponse(http.StatusCreated,
 					"user_create_request.json",
 					"user_create_response.json")
+			})
+		})
+
+		Context("when user full name is not specified", func() {
+			It("responds with created user", func() {
+				expectedParams.FullName = nil
+				expectedUser.FullName = nil
+
+				m.EXPECT().
+					CreateUser(gomock.Any(), gomock.Any()).
+					Return(expectedUser, nil).
+					Do(func(_ context.Context, actual model.CreateUserParams) {
+						defer GinkgoRecover()
+						Expect(actual).To(Equal(expectedParams))
+					})
+
+				expectResponse(http.StatusCreated,
+					"user_create_request_wo_full_name.json",
+					"user_create_response_wo_full_name.json")
+			})
+		})
+
+		Context("when email already exists", func() {
+			It("returns ErrUserEmailExists error", func() {
+				m.EXPECT().
+					CreateUser(gomock.Any(), gomock.Any()).
+					Return(model.User{}, &multierror.Error{Errors: []error{
+						model.ErrUserEmailExists,
+					}}).
+					Do(func(_ context.Context, actual model.CreateUserParams) {
+						defer GinkgoRecover()
+						Expect(actual).To(Equal(expectedParams))
+					})
+
+				expectResponse(http.StatusBadRequest,
+					"user_create_request.json",
+					"user_create_response_email_exists.json")
 			})
 		})
 
@@ -111,8 +152,8 @@ var _ = Describe("UserHandler", func() {
 						Expect(user).To(BeZero())
 					})
 
-				checkResponse(http.StatusBadRequest,
-					"user_create_request_invalid.json",
+				expectResponse(http.StatusBadRequest,
+					"request_empty_object.json",
 					"user_create_response_invalid.json")
 			})
 		})
@@ -123,9 +164,21 @@ var _ = Describe("UserHandler", func() {
 					CreateUser(gomock.Any(), gomock.Any()).
 					Times(0)
 
-				checkResponse(http.StatusBadRequest,
-					"user_create_request.malformed",
-					"user_create_response_malformed.json")
+				expectResponse(http.StatusBadRequest,
+					"request_malformed_json",
+					"response_malformed_request_body.json")
+			})
+		})
+
+		Context("when request has empty body", func() {
+			It("returns error and does not call user service", func() {
+				m.EXPECT().
+					CreateUser(gomock.Any(), gomock.Any()).
+					Times(0)
+
+				expectResponse(http.StatusBadRequest,
+					"", // No request body.
+					"response_empty_request_body.json")
 			})
 		})
 	})
