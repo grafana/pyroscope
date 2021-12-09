@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -22,9 +21,8 @@ type SQLStore struct {
 }
 
 type Config struct {
-	Logger logrus.FieldLogger
-	Type   string
-	URL    string
+	Type string
+	URL  string
 }
 
 func Open(c *Config) (*SQLStore, error) {

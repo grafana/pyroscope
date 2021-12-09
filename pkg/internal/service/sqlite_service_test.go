@@ -15,9 +15,8 @@ type testSuite struct {
 
 func (s *testSuite) BeforeEach() {
 	c := &sqlstore.Config{
-		Logger: nil, // TODO
-		Type:   "sqlite3",
-		URL:    "file::memory:?cache=shared",
+		Type: "sqlite3",
+		URL:  "file::memory:?cache=shared",
 	}
 	if s.path != "" {
 		c.URL = s.path
