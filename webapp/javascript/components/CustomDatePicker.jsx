@@ -7,8 +7,8 @@ import Button from '@ui/Button';
 import { readableRange, formatAsOBject } from '../util/formatDate';
 
 function CustomDatePicker({ setRange, dispatch, setDateRange }) {
-  const from = useSelector((state) => state.from);
-  const until = useSelector((state) => state.until);
+  const from = useSelector((state) => state.root.from);
+  const until = useSelector((state) => state.root.until);
   const [warning, setWarning] = useState(false);
   const [selectedDate, setSelectedDate] = useState({
     from: formatAsOBject(from),

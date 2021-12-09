@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "private": true,
   "name": "pyroscope",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
@@ -111,6 +111,7 @@
     "@fortawesome/react-fontawesome": "^0.1.11",
     "@react-hook/resize-observer": "^1.2.4",
     "@react-hook/window-size": "^3.0.7",
+    "@reduxjs/toolkit": "^1.6.2",
     "@szhsin/react-menu": "^1.10.1",
     "@types/react": "^17.0.0",
     "@types/react-notifications-component": "^3.1.1",

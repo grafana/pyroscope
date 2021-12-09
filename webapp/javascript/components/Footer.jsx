@@ -58,4 +58,8 @@ function Footer() {
   );
 }
 
-export default connect((x) => x, {})(Footer);
+const mapStateToProps = (state) => ({
+  ...state.root,
+});
+
+export default connect(mapStateToProps, {})(Footer);

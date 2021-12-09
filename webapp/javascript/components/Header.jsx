@@ -42,4 +42,8 @@ function Header(props) {
   );
 }
 
-export default connect((x) => x, { fetchNames })(Header);
+const mapStateToProps = (state) => ({
+  ...state.root,
+});
+
+export default connect(mapStateToProps, { fetchNames })(Header);
