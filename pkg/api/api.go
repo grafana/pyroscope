@@ -20,11 +20,17 @@ func Router(s *Services) *mux.Router {
 func registerUserHandlers(r *mux.Router, s *Services) {
 	h := NewUserHandler(s.UserService)
 	registerRoutes(r, []route{
-		{"/", http.MethodPost, h.CreateUser},
-		{"/", http.MethodGet, h.GetUsers},
-		{"/" + patternID, http.MethodGet, h.GetUser},
-		{"/" + patternID, http.MethodPut, h.UpdateUser},
-		{"/" + patternID, http.MethodDelete, h.DeleteUser},
+		{"", http.MethodPost, h.CreateUser},
+		{"", http.MethodGet, h.GetUsers},
+	})
+
+	registerRoutes(r.PathPrefix("/"+patternID).Subrouter(), []route{
+		{"", http.MethodGet, h.GetUser},
+		{"", http.MethodPut, h.UpdateUser},
+		{"", http.MethodDelete, h.DeleteUser},
+		{"/password", http.MethodPut, h.ChangeUserPassword},
+		{"/disable", http.MethodPut, h.DisableUser},
+		{"/enable", http.MethodPut, h.EnableUser},
 	})
 }
 

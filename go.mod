@@ -25,6 +25,7 @@ require (
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang-migrate/migrate/v4 v4.15.1
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-jsonnet v0.17.0
 	github.com/google/pprof v0.0.0-20211008130755-947d60d73cc0

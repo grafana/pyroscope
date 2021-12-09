@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "full_name": "John Doe",
+  "email": "john@example.com",
+  "role": "Viewer",
+  "is_disabled": false,
+  "created_at": "2021-12-10T04:14:00Z",
+  "updated_at": "2021-12-10T04:14:00Z",
+  "last_seen_at": "0001-01-01T00:00:00Z",
+  "password_changed_at": "2021-12-10T04:14:00Z"
+}

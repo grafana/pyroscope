@@ -18,7 +18,7 @@ var (
 )
 
 type Errors struct {
-	Errors []error `json:"errors"`
+	Errors []string `json:"errors"`
 }
 
 func DecodeError(w http.ResponseWriter, err error) {
@@ -56,9 +56,11 @@ func ErrorCode(w http.ResponseWriter, err error, code int) {
 	}
 	var e Errors
 	if m := new(multierror.Error); errors.As(err, &m) {
-		e.Errors = m.Errors
+		for _, x := range m.Errors {
+			e.Errors = append(e.Errors, x.Error())
+		}
 	} else {
-		e.Errors = []error{err}
+		e.Errors = []string{err.Error()}
 	}
 	MustJSON(w, e)
 }

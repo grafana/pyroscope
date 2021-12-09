@@ -9,6 +9,9 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
 )
 
+// TODO(kolesnikovae): move to separate package
+//go:generate mockgen -destination api_mocks_test.go -package api_test . UserService
+
 type UserService interface {
 	CreateUser(context.Context, model.CreateUserParams) (model.User, error)
 	FindUserByID(context.Context, uint) (model.User, error)
@@ -25,7 +28,7 @@ func NewUserHandler(userService UserService) UserHandler {
 	return UserHandler{userService}
 }
 
-type userDTO struct {
+type User struct {
 	ID                uint       `json:"id"`
 	FullName          string     `json:"full_name,omitempty"`
 	Email             string     `json:"email"`
@@ -54,8 +57,8 @@ type changeUserPasswordRequest struct {
 	Password []byte `json:"password"`
 }
 
-func userFromModel(u model.User) userDTO {
-	return userDTO{
+func userFromModel(u model.User) User {
+	return User{
 		ID:                u.ID,
 		FullName:          u.FullName,
 		Email:             u.Email,
@@ -74,12 +77,13 @@ func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		DecodeError(w, err)
 		return
 	}
-	user, err := h.userService.CreateUser(r.Context(), model.CreateUserParams{
+	params := model.CreateUserParams{
 		FullName: req.FullName,
 		Email:    req.Email,
 		Password: string(req.Password),
 		Role:     req.Role,
-	})
+	}
+	user, err := h.userService.CreateUser(r.Context(), params)
 	if err != nil {
 		Error(w, err)
 		return
@@ -108,7 +112,7 @@ func (h UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 		Error(w, err)
 		return
 	}
-	users := make([]userDTO, len(u))
+	users := make([]User, len(u))
 	for i := range u {
 		users[i] = userFromModel(u[i])
 	}
