@@ -9,6 +9,7 @@ const TestData = {
     units: Units.Samples,
     spyName: '',
     format: 'single' as const,
+    version: 0,
   },
   SimpleTree: {
     topLevel: 0,
