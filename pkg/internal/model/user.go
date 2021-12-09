@@ -67,6 +67,16 @@ type UpdateUserParams struct {
 	IsDisabled *bool
 }
 
+func (p UpdateUserParams) SetRole(r Role) UpdateUserParams {
+	p.Role = &r
+	return p
+}
+
+func (p UpdateUserParams) SetIsDisabled(d bool) UpdateUserParams {
+	p.IsDisabled = &d
+	return p
+}
+
 func (p UpdateUserParams) Validate() error {
 	var err error
 	if p.FullName != nil {

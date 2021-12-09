@@ -186,15 +186,12 @@ var _ = Describe("UserService", func() {
 			BeforeEach(func() {
 				user, err = svc.CreateUser(context.Background(), params[0])
 				Expect(err).ToNot(HaveOccurred())
-				adminRole := model.AdminRole
-				disabled := true
 				update = model.UpdateUserParams{
-					FullName:   model.String("Jonny"),
-					Email:      model.String("admin@local.domain"),
-					Role:       &adminRole,
-					Password:   model.String("qwerty"),
-					IsDisabled: &disabled,
-				}
+					FullName: model.String("Jonny"),
+					Email:    model.String("admin@local.domain"),
+					Password: model.String("qwerty")}.
+					SetRole(model.AdminRole).
+					SetIsDisabled(true)
 			})
 
 			It("does not return error", func() {
@@ -221,13 +218,11 @@ var _ = Describe("UserService", func() {
 			BeforeEach(func() {
 				user, err = svc.CreateUser(context.Background(), params[0])
 				Expect(err).ToNot(HaveOccurred())
-				invalidRole := model.Role(0)
 				update = model.UpdateUserParams{
 					FullName: model.String(""),
 					Email:    model.String(""),
-					Role:     &invalidRole,
-					Password: model.String(""),
-				}
+					Password: model.String("")}.
+					SetRole(model.Role(0))
 			})
 
 			It("returns ValidationError", func() {
@@ -243,21 +238,19 @@ var _ = Describe("UserService", func() {
 			BeforeEach(func() {
 				user, err = svc.CreateUser(context.Background(), params[0])
 				Expect(err).ToNot(HaveOccurred())
-				disabled := true
-				update = model.UpdateUserParams{IsDisabled: &disabled}
+				update = model.UpdateUserParams{}.SetIsDisabled(true)
 			})
 
 			It("can be enabled again", func() {
 				Expect(err).ToNot(HaveOccurred())
 
-				disabled := false
-				update = model.UpdateUserParams{IsDisabled: &disabled}
+				update = model.UpdateUserParams{}.SetIsDisabled(false)
 				_, err = svc.UpdateUserByID(context.Background(), user.ID, update)
 				Expect(err).ToNot(HaveOccurred())
 
 				updated, err = svc.FindUserByID(context.Background(), user.ID)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(*updated.IsDisabled).To(BeFalse())
+				Expect(model.IsUserDisabled(updated)).To(BeFalse())
 			})
 		})
 
