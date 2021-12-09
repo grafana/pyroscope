@@ -8,9 +8,7 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Option } from 'prelude-ts';
-import { connect } from 'react-redux';
 import Graph from './FlameGraphComponent';
-import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
@@ -26,6 +24,8 @@ class FlameGraphRenderer extends React.Component {
     focusedNode: Option.none(),
     zoom: Option.none(),
   };
+
+  showToolbar = true;
 
   constructor(props) {
     super();
@@ -43,6 +43,9 @@ class FlameGraphRenderer extends React.Component {
 
       flamegraphConfigs: this.initialFlamegraphState,
     };
+
+    this.showToolbar =
+      props.showToolbar !== undefined ? props.showToolbar : this.showToolbar;
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -239,15 +242,11 @@ class FlameGraphRenderer extends React.Component {
         />
       ) : null;
 
-    const panes =
-      this.props.viewType === 'double'
-        ? [flameGraphPane, tablePane]
-        : [tablePane, flameGraphPane];
-
-    // const flotData = this.props.timeline
-    //   ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
-    //   : [];
-    //
+    const panes = decidePanesOrder(
+      this.props.viewType,
+      flameGraphPane,
+      tablePane
+    );
 
     return (
       <div
@@ -256,48 +255,35 @@ class FlameGraphRenderer extends React.Component {
         })}
       >
         <div className="canvas-container">
-          <Toolbar
-            view={this.state.view}
-            viewDiff={this.state.viewDiff}
-            handleSearchChange={this.handleSearchChange}
-            reset={this.onReset}
-            updateView={this.updateView}
-            updateViewDiff={this.updateViewDiff}
-            updateFitMode={this.updateFitMode}
-            fitMode={this.state.fitMode}
-            isFlamegraphDirty={this.state.isFlamegraphDirty}
-            selectedNode={this.state.flamegraphConfigs.zoom}
-            onFocusOnSubtree={(i, j) => {
-              this.onFocusOnNode(i, j);
-            }}
-          />
+          {this.showToolbar && (
+            <Toolbar
+              view={this.state.view}
+              viewDiff={this.state.viewDiff}
+              handleSearchChange={this.handleSearchChange}
+              reset={this.onReset}
+              updateView={this.updateView}
+              updateViewDiff={this.updateViewDiff}
+              updateFitMode={this.updateFitMode}
+              fitMode={this.state.fitMode}
+              isFlamegraphDirty={this.state.isFlamegraphDirty}
+              selectedNode={this.state.flamegraphConfigs.zoom}
+              onFocusOnSubtree={(i, j) => {
+                this.onFocusOnNode(i, j);
+              }}
+            />
+          )}
           {this.props.viewType === 'double' ? (
             <>
               <InstructionText {...this.props} />
-              <TimelineChartWrapper
-                key={`timeline-chart-${this.props.viewSide}`}
-                id={`timeline-chart-${this.props.viewSide}`}
-                viewSide={this.props.viewSide}
-              />
             </>
           ) : this.props.viewType === 'diff' ? (
             <>
               <div className="diff-instructions-wrapper">
                 <div className="diff-instructions-wrapper-side">
                   <InstructionText {...this.props} viewSide="left" />
-                  <TimelineChartWrapper
-                    key="timeline-chart-left"
-                    id="timeline-chart-left"
-                    viewSide="left"
-                  />
                 </div>
                 <div className="diff-instructions-wrapper-side">
                   <InstructionText {...this.props} viewSide="right" />
-                  <TimelineChartWrapper
-                    key="timeline-chart-right"
-                    id="timeline-chart-right"
-                    viewSide="right"
-                  />
                 </div>
               </div>
             </>
@@ -308,13 +294,23 @@ class FlameGraphRenderer extends React.Component {
             })}
           >
             {panes.map((pane) => pane)}
-            {/* { tablePane }
-            { flameGraphPane } */}
           </div>
         </div>
       </div>
     );
   };
+}
+
+// single | double | diff | grafana
+function decidePanesOrder(viewType, flamegraphPane, tablePane) {
+  switch (viewType) {
+    case 'double':
+      return [flamegraphPane, tablePane];
+    case 'grafana':
+      return [flamegraphPane];
+    default:
+      return [tablePane, flamegraphPane];
+  }
 }
 
 export default FlameGraphRenderer;

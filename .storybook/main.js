@@ -13,6 +13,7 @@ module.exports = {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@ui': path.resolve(__dirname, '../webapp/javascript/ui'),
+      '@utils': path.resolve(__dirname, '../webapp/javascript/util'),
     };
     config.resolve.extensions.push('.ts', '.tsx');
 
