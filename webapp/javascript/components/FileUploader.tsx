@@ -32,9 +32,23 @@ export default function FileUploader({ file, setFile }: Props) {
           );
           const { flamebearer } = s;
           // TODO(abeaumont): Use versioned format checking and notifications system.
-          for (let field in ['names', 'levels', 'numTicks', 'maxSelf', 'format', 'spyName', 'format', 'sampleRate', 'units'])
+          const fields = [
+            'names',
+            'levels',
+            'numTicks',
+            'maxSelf',
+            'format',
+            'spyName',
+            'format',
+            'sampleRate',
+            'units',
+          ];
+          fields.forEach((field) => {
             if (!(field in flamebearer))
-              throw `Unable to parse uploaded file: field {field} missing`;
+              throw new Error(
+                `Unable to parse uploaded file: field {field} missing`
+              );
+          });
           const calculatedLevels = deltaDiffWrapper(
             flamebearer.format,
             flamebearer.levels
