@@ -31,6 +31,10 @@ export default function FileUploader({ file, setFile }: Props) {
             String.fromCharCode.apply(null, new Uint8Array(binaryStr))
           );
           const { flamebearer } = s;
+          // TODO(abeaumont): Use versioned format checking and notifications system.
+          for (let field in ['names', 'levels', 'numTicks', 'maxSelf', 'format', 'spyName', 'format', 'sampleRate', 'units'])
+            if (!(field in flamebearer))
+              throw `Unable to parse uploaded file: field {field} missing`;
           const calculatedLevels = deltaDiffWrapper(
             flamebearer.format,
             flamebearer.levels
