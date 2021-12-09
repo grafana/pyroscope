@@ -75,14 +75,14 @@ function decodeTimelineData(timelineData) {
 }
 
 function decodeFlamebearer({ flamebearer, metadata, leftTicks, rightTicks }) {
-  let fb = {
+  const fb = {
     ...flamebearer,
     format: metadata.format,
     spyName: metadata.spyName,
     sampleRate: metadata.sampleRate,
     units: metadata.units,
   };
-  if (fb.format == 'double') {
+  if (fb.format === 'double') {
     fb.leftTicks = leftTicks;
     fb.rightTicks = rightTicks;
   }
@@ -90,7 +90,7 @@ function decodeFlamebearer({ flamebearer, metadata, leftTicks, rightTicks }) {
   return fb;
 }
 
-export default function(state = initialState, action) {
+export default function (state = initialState, action) {
   let flamebearer;
   let timeline;
   let data;
