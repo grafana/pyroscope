@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore/migrations"
 )
@@ -31,7 +32,7 @@ func Open(c *Config) (*SQLStore, error) {
 	var err error
 	switch s.config.Type {
 	case "sqlite3":
-		err = s.openSQLiteDB(c.URL)
+		err = s.openSQLiteDB()
 	default:
 		return nil, errors.New("unknown db type")
 	}
@@ -52,8 +53,10 @@ func (s *SQLStore) Ping(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }
 
-func (s *SQLStore) openSQLiteDB(url string) (err error) {
-	s.orm, err = gorm.Open(sqlite.Open(url), &gorm.Config{Logger: nil})
+func (s *SQLStore) openSQLiteDB() (err error) {
+	s.orm, err = gorm.Open(sqlite.Open(s.config.URL), &gorm.Config{
+		Logger: logger.Discard,
+	})
 	s.db, err = s.orm.DB()
 	return err
 }
