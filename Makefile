@@ -47,6 +47,13 @@ else
 	endif
 endif
 
+OPEN=
+ifeq ("$(OS)", "Linux")
+	OPEN=xdg-open
+else
+  OPEN=open
+endif
+
 EMBEDDED_ASSETS_DEPS ?= "assets-release"
 EXTRA_LDFLAGS ?= ""
 
@@ -202,7 +209,7 @@ dev: ## dev
 
 .PHONY: godoc
 godoc: ## Generate godoc
-	sleep 5 && open http://localhost:8090/pkg/github.com/pyroscope-io/pyroscope/ &
+	sleep 5 && $(OPEN) http://localhost:8090/pkg/github.com/pyroscope-io/pyroscope/ &
 	godoc -http :8090
 
 .PHONY: go-deps-graph

@@ -32,7 +32,7 @@ function PyroscopeApp(props) {
         <Header />
         <TimelineChartWrapper id="timeline-chart-single" viewSide="none" />
         <FlameGraphRenderer
-          flamebearer={single.flamebearer}
+          flamebearer={single?.flamebearer}
           viewType="single"
         />
       </div>
@@ -42,8 +42,8 @@ function PyroscopeApp(props) {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
-  renderURL: buildRenderURL(state),
+  ...state.root,
+  renderURL: buildRenderURL(state.root),
 });
 
 const mapDispatchToProps = (dispatch) => ({

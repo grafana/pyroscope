@@ -205,7 +205,7 @@ var _ = Describe("flags", func() {
 					CacheEvictVolume:        0.33,
 					BadgerNoTruncate:        false,
 					DisablePprofEndpoint:    false,
-					EnableExperimentalAdmin: false,
+					EnableExperimentalAdmin: true,
 					MaxNodesSerialization:   2048,
 					MaxNodesRender:          8192,
 					HideApplications:        []string{},

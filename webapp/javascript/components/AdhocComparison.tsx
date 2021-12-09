@@ -42,7 +42,7 @@ function AdhocComparison(props) {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
+  ...state.root,
   leftFile: state.adhocComparison.left.file,
   leftFlamebearer: state.adhocComparison.left.flamebearer,
   rightFile: state.adhocComparison.right.file,

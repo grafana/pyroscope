@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 )
@@ -26,8 +27,9 @@ var (
 	ErrMarshalingPayload  = errors.New("error while marshalling the payload")
 )
 
-func NewClient(socketAddr string) (*Client, error) {
-	httpClient, err := NewHTTPOverUDSClient(socketAddr)
+func NewClient(socketAddr string, timeout time.Duration) (*Client, error) {
+	httpClient, err := NewHTTPOverUDSClient(socketAddr, WithTimeout(timeout))
+
 	if err != nil {
 		return nil, multierror.Append(ErrHTTPClientCreation, err)
 	}

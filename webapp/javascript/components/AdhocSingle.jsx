@@ -26,7 +26,7 @@ function AdhocSingle(props) {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
+  ...state.root,
   file: state.adhocSingle.file,
   flamebearer: state.adhocSingle.flamebearer,
 });

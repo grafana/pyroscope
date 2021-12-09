@@ -202,4 +202,7 @@ function Sidebar(props) {
   );
 }
 
-export default connect((x) => x, { fetchNames })(withShortcut(Sidebar));
+const mapStateToProps = (state) => ({
+  ...state.root,
+});
+export default connect(mapStateToProps, { fetchNames })(withShortcut(Sidebar));

@@ -1,3 +1,26 @@
+## [0.4.1](https://github.com/pyroscope-io/pyroscope/compare/v0.4.0...v0.4.1) (2021-12-08)
+
+
+### Bug Fixes
+
+* trigger retention task when no levels are configured ([#588](https://github.com/pyroscope-io/pyroscope/issues/588)) ([141d734](https://github.com/pyroscope-io/pyroscope/commit/141d73406f5482ee14f999ee7721403d3e0d3d99))
+
+
+
+# [0.4.0](https://github.com/pyroscope-io/pyroscope/compare/v0.3.1...v0.4.0) (2021-12-08)
+
+
+### Bug Fixes
+
+* read default config file when it's present ([#585](https://github.com/pyroscope-io/pyroscope/issues/585)) ([7061292](https://github.com/pyroscope-io/pyroscope/commit/7061292ea5cdee9de419e6a99b34f6db2f1eadb2))
+
+
+### Features
+
+* makes admin command available (GA status) ([8eb788f](https://github.com/pyroscope-io/pyroscope/commit/8eb788f4eb37f08f79d5ba83a6789f22b3dc61f1))
+
+
+
 ## [0.3.1](https://github.com/pyroscope-io/pyroscope/compare/v0.3.0...v0.3.1) (2021-12-01)
 
 

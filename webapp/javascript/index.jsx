@@ -6,13 +6,13 @@ import { ShortcutProvider } from 'react-keybind';
 import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
+import Notifications from '@ui/Notifications';
 import store from './redux/store';
 
 import PyroscopeApp from './components/PyroscopeApp';
 import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
-import Notifications from './components/Notifications';
 import AdhocSingle from './components/AdhocSingle';
 import AdhocComparison from './components/AdhocComparison';
 
@@ -31,6 +31,7 @@ ReactDOM.render(
   <Provider store={store}>
     <Router history={history}>
       <ShortcutProvider>
+        <Notifications />
         <Sidebar />
         <Switch>
           <Route exact path="/">
@@ -53,7 +54,6 @@ ReactDOM.render(
             </Route>
           )}
         </Switch>
-        <Notifications />
       </ShortcutProvider>
     </Router>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
