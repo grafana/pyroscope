@@ -40,16 +40,18 @@ type userDTO struct {
 type createUserRequest struct {
 	FullName *string    `json:"full_name,omitempty"`
 	Email    string     `json:"email"`
-	Password string     `json:"password"`
+	Password []byte     `json:"password"`
 	Role     model.Role `json:"role"`
 }
 
 type updateUserRequest struct {
-	FullName   *string     `json:"full_name,omitempty"`
-	Email      *string     `json:"email"`
-	Password   *string     `json:"password"`
-	Role       *model.Role `json:"role"`
-	IsDisabled *bool       `json:"is_disabled"`
+	FullName *string     `json:"full_name,omitempty"`
+	Email    *string     `json:"email"`
+	Role     *model.Role `json:"role"`
+}
+
+type changeUserPasswordRequest struct {
+	Password []byte `json:"password"`
 }
 
 func userFromModel(u model.User) userDTO {
@@ -75,7 +77,7 @@ func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	user, err := h.userService.CreateUser(r.Context(), model.CreateUserParams{
 		FullName: req.FullName,
 		Email:    req.Email,
-		Password: req.Password,
+		Password: string(req.Password),
 		Role:     req.Role,
 	})
 	if err != nil {
@@ -125,11 +127,9 @@ func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := model.UpdateUserParams{
-		FullName:   req.FullName,
-		Email:      req.Email,
-		Role:       req.Role,
-		IsDisabled: req.IsDisabled,
-		Password:   req.Password,
+		FullName: req.FullName,
+		Email:    req.Email,
+		Role:     req.Role,
 	}
 	user, err := h.userService.UpdateUserByID(r.Context(), id, params)
 	if err != nil {
@@ -137,6 +137,47 @@ func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	MustJSON(w, userFromModel(user))
+}
+
+func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
+	id, err := idFromRequest(r)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+	var req changeUserPasswordRequest
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		DecodeError(w, err)
+		return
+	}
+	params := model.UpdateUserParams{Password: model.String(string(req.Password))}
+	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
+		Error(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h UserHandler) DisableUser(w http.ResponseWriter, r *http.Request) {
+	h.setUserDisabled(w, r, true)
+}
+
+func (h UserHandler) EnableUser(w http.ResponseWriter, r *http.Request) {
+	h.setUserDisabled(w, r, false)
+}
+
+func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, disabled bool) {
+	id, err := idFromRequest(r)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+	params := model.UpdateUserParams{IsDisabled: &disabled}
+	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
+		Error(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
