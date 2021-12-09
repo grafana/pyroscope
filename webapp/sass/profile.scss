@@ -1,3 +1,4 @@
+@use 'sass:math';
 @use 'variables' as *;
 @use 'mixins/outline' as *;
 @use 'components/daterangepicker';
@@ -511,8 +512,8 @@ body,
 $sidebar-size: 54px;
 $sidebar-tooltip-height: 30px;
 $sidebar-tooltip-arrow-size: 10px;
-$logo-width: $sidebar-size * 2 / 3;
-$logo-offset: ($sidebar-size - $logo-width) / 2;
+$logo-width: math.div($sidebar-size * 2, 3);
+$logo-offset: math.div($sidebar-size - $logo-width, 2);
 $sidebar-tooltip-color: #777;
 
 .ReactModal__Overlay {
@@ -632,7 +633,7 @@ $sidebar-tooltip-color: #777;
     }
     .sidebar-tooltip-wrapper {
       position: absolute;
-      top: ($sidebar-size - $sidebar-tooltip-height) / 2;
+      top: math.div($sidebar-size - $sidebar-tooltip-height, 2);
       left: $sidebar-size + 10px;
       width: 500px;
       height: $sidebar-tooltip-height;
@@ -656,10 +657,10 @@ $sidebar-tooltip-color: #777;
       &:after {
         content: '';
         position: absolute;
-        border: $sidebar-tooltip-arrow-size / 2 solid transparent;
+        border: math.div($sidebar-tooltip-arrow-size, 2) solid transparent;
         border-right-color: $sidebar-tooltip-color;
         left: -$sidebar-tooltip-arrow-size;
-        top: ($sidebar-tooltip-height - $sidebar-tooltip-arrow-size) / 2;
+        top: math.div($sidebar-tooltip-height - $sidebar-tooltip-arrow-size, 2);
       }
     }
   }
