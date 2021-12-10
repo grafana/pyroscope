@@ -1,10 +1,6 @@
 import React from 'react';
 import { PanelProps } from '@grafana/data';
-import { stylesFactory, useTheme } from '@grafana/ui';
-import { Option } from 'prelude-ts';
-import { FitModes } from '../../webapp/javascript/util/fitMode';
 import { SimpleOptions } from './types';
-import Flamegraph from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent/index';
 import FlamegraphRenderer from '../../webapp/javascript/components/FlameGraph/FlameGraphRenderer';
 import styles from './SimplePanel.module.css';
 
@@ -29,7 +25,7 @@ export const SimplePanel: React.FC<Props> = ({
   return (
     <>
       <div className={`flamegraph-wrapper ${styles.panel}`}>
-        <FlamegraphRenderer flamebearer={flamebearer} viewType="grafana" />
+        <FlamegraphRenderer flamebearer={flamebearer} display="flamegraph" />
       </div>
     </>
   );
