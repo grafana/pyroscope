@@ -54,3 +54,15 @@ export const WithoutToolbar = () => {
     />
   );
 };
+
+// In this case having the toolbar doesn't make much sense?
+export const TableViewWithoutToolbar = () => {
+  return (
+    <Flamegraph
+      flamebearer={SimpleTree}
+      viewType="single"
+      display="table"
+      showToolbar={false}
+    />
+  );
+};
