@@ -1,6 +1,7 @@
 {
-  "full_name": "John Doe",
+  "name": "johndoe",
   "email": "john@example.com",
-  "role": "viewer",
-  "password": "cXdlcnR5"
+  "fullName": "John Doe",
+  "password": "cXdlcnR5",
+  "role": "viewer"
 }

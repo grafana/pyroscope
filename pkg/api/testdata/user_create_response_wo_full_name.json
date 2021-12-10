@@ -1,9 +1,10 @@
 {
   "id": 1,
+  "name": "johndoe",
   "email": "john@example.com",
   "role": "Viewer",
-  "is_disabled": false,
-  "created_at": "2021-12-10T04:14:00Z",
-  "updated_at": "2021-12-10T04:14:00Z",
-  "password_changed_at": "2021-12-10T04:14:00Z"
+  "isDisabled": false,
+  "createdAt": "2021-12-10T04:14:00Z",
+  "updatedAt": "2021-12-10T04:14:00Z",
+  "passwordChangedAt": "2021-12-10T04:14:00Z"
 }

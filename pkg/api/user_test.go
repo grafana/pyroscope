@@ -57,8 +57,9 @@ var _ = Describe("UserHandler", func() {
 			url = server.URL + "/api/users"
 
 			expectedParams = model.CreateUserParams{
-				FullName: model.String("John Doe"),
+				Name:     "johndoe",
 				Email:    "john@example.com",
+				FullName: model.String("John Doe"),
 				Password: "qwerty",
 				Role:     model.ViewerRole,
 			}
@@ -66,10 +67,11 @@ var _ = Describe("UserHandler", func() {
 			now := time.Date(2021, 12, 10, 4, 14, 0, 0, time.UTC)
 			expectedUser = model.User{
 				ID:                1,
-				FullName:          expectedParams.FullName,
+				Name:              expectedParams.Name,
 				Email:             expectedParams.Email,
-				PasswordHash:      model.MustPasswordHash(expectedParams.Password),
+				FullName:          expectedParams.FullName,
 				Role:              expectedParams.Role,
+				PasswordHash:      model.MustPasswordHash(expectedParams.Password),
 				PasswordChangedAt: now,
 				LastSeenAt:        nil,
 				CreatedAt:         now,
@@ -137,15 +139,33 @@ var _ = Describe("UserHandler", func() {
 			})
 		})
 
+		Context("when user name already exists", func() {
+			It("returns ErrUserNameExists error", func() {
+				m.EXPECT().
+					CreateUser(gomock.Any(), gomock.Any()).
+					Return(model.User{}, &multierror.Error{Errors: []error{
+						model.ErrUserNameExists,
+					}}).
+					Do(func(_ context.Context, actual model.CreateUserParams) {
+						defer GinkgoRecover()
+						Expect(actual).To(Equal(expectedParams))
+					})
+
+				expectResponse(http.StatusBadRequest,
+					"user_create_request.json",
+					"user_create_response_user_name_exists.json")
+			})
+		})
+
 		Context("when request does not meet requirements", func() {
 			It("returns validation errors", func() {
 				m.EXPECT().
 					CreateUser(gomock.Any(), gomock.Any()).
 					Return(model.User{}, &multierror.Error{Errors: []error{
-						model.ErrUserPasswordEmpty,
 						model.ErrUserNameEmpty,
-						model.ErrRoleUnknown,
 						model.ErrUserEmailInvalid,
+						model.ErrUserPasswordEmpty,
+						model.ErrRoleUnknown,
 					}}).
 					Do(func(_ context.Context, user model.CreateUserParams) {
 						defer GinkgoRecover()

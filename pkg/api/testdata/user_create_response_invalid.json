@@ -1,8 +1,8 @@
 {
   "errors": [
-    "user password can't be empty",
     "user name can't be empty",
-    "unknown role",
-    "user email is invalid"
+    "user email is invalid",
+    "user password can't be empty",
+    "unknown role"
   ]
 }

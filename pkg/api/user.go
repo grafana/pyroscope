@@ -29,28 +29,29 @@ func NewUserHandler(userService UserService) UserHandler {
 
 type User struct {
 	ID                uint       `json:"id"`
-	FullName          *string    `json:"full_name,omitempty"`
-	Login             string     `json:"login"`
+	Name              string     `json:"name"`
 	Email             string     `json:"email"`
+	FullName          *string    `json:"fullName,omitempty"`
 	Role              model.Role `json:"role"`
-	IsDisabled        bool       `json:"is_disabled"`
-	CreatedAt         time.Time  `json:"created_at"`
-	UpdatedAt         time.Time  `json:"updated_at"`
-	LastSeenAt        *time.Time `json:"last_seen_at,omitempty"`
-	PasswordChangedAt time.Time  `json:"password_changed_at"`
+	IsDisabled        bool       `json:"isDisabled"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	UpdatedAt         time.Time  `json:"updatedAt"`
+	LastSeenAt        *time.Time `json:"lastSeenAt,omitempty"`
+	PasswordChangedAt time.Time  `json:"passwordChangedAt"`
 }
 
 type createUserRequest struct {
-	FullName *string    `json:"full_name,omitempty"`
-	Login    string     `json:"login"`
+	Name     string     `json:"name"`
 	Email    string     `json:"email"`
+	FullName *string    `json:"fullName,omitempty"`
 	Password []byte     `json:"password"`
 	Role     model.Role `json:"role"`
 }
 
 type updateUserRequest struct {
-	FullName *string `json:"full_name,omitempty"`
-	Email    *string `json:"email"`
+	Name     *string `json:"name,omitempty"`
+	Email    *string `json:"email,omitempty"`
+	FullName *string `json:"fullName,omitempty"`
 }
 
 type changeUserPasswordRequest struct {
@@ -64,9 +65,9 @@ type changeUserRoleRequest struct {
 func userFromModel(u model.User) User {
 	return User{
 		ID:                u.ID,
-		FullName:          u.FullName,
-		Login:             "", // TODO
+		Name:              u.Name,
 		Email:             u.Email,
+		FullName:          u.FullName,
 		Role:              u.Role,
 		IsDisabled:        model.IsUserDisabled(u),
 		PasswordChangedAt: u.PasswordChangedAt,
@@ -83,8 +84,9 @@ func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := model.CreateUserParams{
-		FullName: req.FullName,
+		Name:     req.Name,
 		Email:    req.Email,
+		FullName: req.FullName,
 		Password: string(req.Password),
 		Role:     req.Role,
 	}
@@ -140,8 +142,9 @@ func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint)
 		return
 	}
 	params := model.UpdateUserParams{
-		FullName: req.FullName,
+		Name:     req.Name,
 		Email:    req.Email,
+		FullName: req.FullName,
 	}
 	user, err := h.userService.UpdateUserByID(r.Context(), id, params)
 	if err != nil {
