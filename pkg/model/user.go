@@ -12,6 +12,7 @@ import (
 var (
 	ErrUserNotFound        = NotFoundError{errors.New("user not found")}
 	ErrUserNameEmpty       = ValidationError{errors.New("user name can't be empty")}
+	ErrUserNameExists      = ValidationError{errors.New("user with this name already exists")}
 	ErrUserNameTooLong     = ValidationError{errors.New("user name must not exceed 255 characters")}
 	ErrUserFullNameTooLong = ValidationError{errors.New("user full name must not exceed 255 characters")}
 	ErrUserEmailExists     = ValidationError{errors.New("user with this email already exists")}

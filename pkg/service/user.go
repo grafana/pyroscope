@@ -19,6 +19,7 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 		return model.User{}, err
 	}
 	user := model.User{
+		Name:              params.Name,
 		Email:             params.Email,
 		Role:              params.Role,
 		PasswordHash:      model.MustPasswordHash(params.Password),
@@ -44,6 +45,10 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 	return user, nil
 }
 
+func (svc UserService) FindUserByName(ctx context.Context, name string) (model.User, error) {
+	return findUserByName(svc.db.WithContext(ctx), name)
+}
+
 func (svc UserService) FindUserByEmail(ctx context.Context, email string) (model.User, error) {
 	if err := model.ValidateEmail(email); err != nil {
 		return model.User{}, err
@@ -53,6 +58,10 @@ func (svc UserService) FindUserByEmail(ctx context.Context, email string) (model
 
 func (svc UserService) FindUserByID(ctx context.Context, id uint) (model.User, error) {
 	return findUserByID(svc.db.WithContext(ctx), id)
+}
+
+func findUserByName(tx *gorm.DB, name string) (model.User, error) {
+	return findUser(tx, model.User{Name: name})
 }
 
 func findUserByEmail(tx *gorm.DB, email string) (model.User, error) {
@@ -111,6 +120,18 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 				columns.Email = *params.Email
 			case err == nil:
 				return model.ErrUserEmailExists
+			default:
+				return err
+			}
+		}
+		// If the new user name matches the current one, ignore.
+		if params.Name != nil && user.Name != *params.Name {
+			// Make sure it is not in use.
+			switch _, err = findUserByName(tx, *params.Name); {
+			case errors.Is(err, model.ErrUserNotFound):
+				columns.Name = *params.Name
+			case err == nil:
+				return model.ErrUserNameExists
 			default:
 				return err
 			}

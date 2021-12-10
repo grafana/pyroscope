@@ -186,10 +186,11 @@ var _ = Describe("UserService", func() {
 				user, err = svc.CreateUser(context.Background(), params[0])
 				Expect(err).ToNot(HaveOccurred())
 				update = model.UpdateUserParams{
-					FullName: model.String("Jonny"),
-					Email:    model.String("admin@local.domain"),
+					Name:     model.String("johndoe"),
+					Email:    model.String("john.doe@example.com"),
+					FullName: model.String("John Doe"),
 					Password: model.String("qwerty")}.
-					SetRole(model.AdminRole).
+					SetRole(model.ViewerRole).
 					SetIsDisabled(true)
 			})
 
@@ -200,8 +201,9 @@ var _ = Describe("UserService", func() {
 			It("updates user fields", func() {
 				updated, err = svc.FindUserByID(context.Background(), user.ID)
 				Expect(err).ToNot(HaveOccurred())
-				Expect(updated.FullName).To(Equal(update.FullName))
+				Expect(updated.Name).To(Equal(*update.Name))
 				Expect(updated.Email).To(Equal(*update.Email))
+				Expect(updated.FullName).To(Equal(update.FullName))
 				Expect(updated.Role).To(Equal(*update.Role))
 				Expect(*updated.IsDisabled).To(BeTrue())
 				Expect(updated.CreatedAt).ToNot(BeZero())
@@ -218,8 +220,9 @@ var _ = Describe("UserService", func() {
 				user, err = svc.CreateUser(context.Background(), params[0])
 				Expect(err).ToNot(HaveOccurred())
 				update = model.UpdateUserParams{
-					FullName: model.String(""),
+					Name:     model.String(""),
 					Email:    model.String(""),
+					FullName: model.String(""),
 					Password: model.String("")}.
 					SetRole(model.InvalidRole)
 			})
@@ -265,6 +268,21 @@ var _ = Describe("UserService", func() {
 
 			It("returns ErrUserEmailExists error", func() {
 				Expect(err).To(MatchError(model.ErrUserEmailExists))
+			})
+		})
+
+		Context("when user name is already in use", func() {
+			BeforeEach(func() {
+				var user2 model.User
+				user, err = svc.CreateUser(context.Background(), params[0])
+				Expect(err).ToNot(HaveOccurred())
+				user2, err = svc.CreateUser(context.Background(), params[1])
+				Expect(err).ToNot(HaveOccurred())
+				update = model.UpdateUserParams{Name: &user2.Name}
+			})
+
+			It("returns ErrUserNameExists error", func() {
+				Expect(err).To(MatchError(model.ErrUserNameExists))
 			})
 		})
 
@@ -326,23 +344,26 @@ var _ = Describe("UserService", func() {
 func testCreateUserParams() []model.CreateUserParams {
 	return []model.CreateUserParams{
 		{
-			FullName: model.String("John Doe"),
+			Name:     "johndoe",
 			Email:    "john@example.com",
-			Role:     model.ViewerRole,
+			FullName: model.String("John Doe"),
 			Password: "qwerty",
+			Role:     model.ViewerRole,
 		},
 		{
-			FullName: model.String("admin"),
+			Name:     "admin",
 			Email:    "admin@local.domain",
-			Role:     model.AdminRole,
+			FullName: model.String("Administrator"),
 			Password: "qwerty",
+			Role:     model.AdminRole,
 		},
 	}
 }
 
 func expectUserMatches(user model.User, params model.CreateUserParams) {
-	Expect(user.FullName).To(Equal(params.FullName))
+	Expect(user.Name).To(Equal(params.Name))
 	Expect(user.Email).To(Equal(params.Email))
+	Expect(user.FullName).To(Equal(params.FullName))
 	Expect(user.Role).To(Equal(params.Role))
 	Expect(*user.IsDisabled).To(BeFalse())
 	Expect(user.CreatedAt).ToNot(BeZero())
