@@ -140,14 +140,15 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 }
 
 func (l *LoadGen) timeRendering() {
-	url := "http://localhost:4040/render?from=now-7d&until=now&query=2ac732e9f8fcf65d17b0b9962894c8f13d5fda1fec54b3e210%7B%7D&refreshToken=0.8350450435879586&max-nodes=1024&format=json"
+	url := "http://pyroscope:4040/render?from=now-1y&until=now&query=95b4a6859934394b5b488f82c7dab518962b1d88c0d824330a%7B%7D&refreshToken=0.8350450435879586&max-nodes=1024&format=json"
 	for i := 0; i < 1; i++ {
 		st := time.Now()
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			ioutil.ReadAll(req.Body)
+		req, err := http.Get(url)
+		if req != nil && req.Body != nil && err == nil {
+			b, err := ioutil.ReadAll(req.Body)
+			logrus.Debug("body", string(b), err)
 		}
-		logrus.Infof("render req %d time %q", i, time.Now().Sub(st))
+		logrus.Infof("render req %d time %q %q", i, time.Now().Sub(st), err)
 	}
 }
 

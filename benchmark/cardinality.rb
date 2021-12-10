@@ -7,9 +7,11 @@ values = 8
 loop do
   values = values * 2
   env_vars = <<-ENV
+    PYROBENCH_APPS=1
+    PYROBENCH_CLIENTS=1
     PYROBENCH_TAG_KEYS=1
     PYROBENCH_TAG_VALUES=#{values}
-    PYROBENCH_REQUESTS=100
+    PYROBENCH_REQUESTS=#{[values, 10000].max}
   ENV
   env_vars = env_vars.lines.map { |x| x.strip + "\n" }.join("")
   File.write('./run-parameters.env', env_vars)

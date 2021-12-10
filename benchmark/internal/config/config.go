@@ -17,10 +17,10 @@ type LoadGen struct {
 	ProfileWidth        int    `def:"20"`
 	ProfileDepth        int    `def:"20"`
 	ProfileSymbolLength int    `def:"30"`
-	Fixtures            int    `def:"30" desc:"how many different profiles to generate per app"`
-	Apps                int    `def:"20" desc:"how many pyroscope apps to emulate"`
-	Clients             int    `def:"20" desc:"how many pyroscope clients to emulate"`
-	Requests            int    `def:"10000" desc:"how many requests each clients should make"`
+	Fixtures            int    `def:"30" desc:"how many different profiles to generate per app" mapstructure:"fixtures"`
+	Apps                int    `def:"20" desc:"how many pyroscope apps to emulate" mapstructure:"apps"`
+	Clients             int    `def:"20" desc:"how many pyroscope clients to emulate" mapstructure:"clients"`
+	Requests            int    `def:"10000" desc:"how many requests each clients should make" mapstructure:"requests"`
 	TagKeys             int    `def:"2" desc:"how many unique tag keys each app should have" mapstructure:"tag-keys"`
 	TagValues           int    `def:"2" desc:"how many unique tag values each app should have" mapstructure:"tag-values"`
 
