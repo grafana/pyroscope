@@ -8,16 +8,12 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Option } from 'prelude-ts';
-import { connect } from 'react-redux';
 import Graph from './FlameGraphComponent';
-import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
 
 import ExportData from '../ExportData';
-
-import InstructionText from './InstructionText';
 
 class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
@@ -278,32 +274,6 @@ class FlameGraphRenderer extends React.Component {
             }}
           />
           {this.props.children}
-          {this.props.viewType === 'double' ? (
-            <></>
-          ) : this.props.viewType === 'diff' ? (
-            <>
-              <div className="diff-instructions-wrapper">
-                <div className="diff-instructions-wrapper-side">
-                  <InstructionText {...this.props} viewSide="left" />
-                  <TimelineChartWrapper
-                    data-testid="timeline-left"
-                    key="timeline-chart-left"
-                    id="timeline-chart-left"
-                    viewSide="left"
-                  />
-                </div>
-                <div className="diff-instructions-wrapper-side">
-                  <InstructionText {...this.props} viewSide="right" />
-                  <TimelineChartWrapper
-                    data-testid="timeline-right"
-                    key="timeline-chart-right"
-                    id="timeline-chart-right"
-                    viewSide="right"
-                  />
-                </div>
-              </div>
-            </>
-          ) : null}
           <div
             className={clsx('flamegraph-container panes-wrapper', {
               'vertical-orientation': this.props.viewType === 'double',
