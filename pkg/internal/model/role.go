@@ -3,7 +3,6 @@ package model
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -14,7 +13,7 @@ var (
 type Role int
 
 const (
-	_ Role = iota + 1
+	InvalidRole Role = iota
 	ViewerRole
 	EditorRole
 	AdminRole
@@ -27,10 +26,7 @@ var roles = map[Role]string{
 }
 
 func (r Role) String() string {
-	s, ok := roles[r]
-	if !ok {
-		return fmt.Sprintf("invalid role (%d)", r)
-	}
+	s, _ := roles[r]
 	return s
 }
 
@@ -45,7 +41,7 @@ func ParseRole(s string) (Role, error) {
 			return k, nil
 		}
 	}
-	return 0, ErrRoleUnknown
+	return InvalidRole, ErrRoleUnknown
 }
 
 func (r *Role) UnmarshalJSON(b []byte) error {
@@ -53,17 +49,10 @@ func (r *Role) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	x, err := ParseRole(s)
-	if err != nil {
-		return err
-	}
-	*r = x
+	*r, _ = ParseRole(s)
 	return nil
 }
 
 func (r Role) MarshalJSON() ([]byte, error) {
-	if r.IsValid() {
-		return json.Marshal(r.String())
-	}
-	return nil, ErrRoleUnknown
+	return json.Marshal(r.String())
 }
