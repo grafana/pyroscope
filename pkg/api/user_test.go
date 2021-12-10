@@ -13,7 +13,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/mocks"
-	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 var _ = Describe("UserHandler", func() {

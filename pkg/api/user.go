@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 //go:generate mockgen -destination mocks/user.go -package mocks . UserService

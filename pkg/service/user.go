@@ -7,7 +7,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 type UserService struct{ db *gorm.DB }

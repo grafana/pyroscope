@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
 
-	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 var _ = Describe("User password verification", func() {

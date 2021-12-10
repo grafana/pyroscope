@@ -6,8 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
-	"github.com/pyroscope-io/pyroscope/pkg/internal/service"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
 )
 
 var _ = Describe("UserService", func() {

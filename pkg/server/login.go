@@ -3,7 +3,7 @@ package server
 import (
 	"net/http"
 
-	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 type Authenticator interface {

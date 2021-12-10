@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pyroscope-io/pyroscope/pkg/internal/model"
+
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 var (

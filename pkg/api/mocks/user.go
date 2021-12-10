@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	model "github.com/pyroscope-io/pyroscope/pkg/internal/model"
+	model "github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 // MockUserService is a mock of UserService interface.
