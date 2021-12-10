@@ -231,8 +231,8 @@ $pane-width: 6px;
 
 .left-instructions-wrapper {
   display: flex;
-  width: 50%;
-  justify-content: center;
+  justify-content: flex-start;
+  padding-left: 16px;
 }
 
 .left-instructions-text {
@@ -242,9 +242,8 @@ $pane-width: 6px;
 
 .right-instructions-wrapper {
   display: flex;
-  width: 50%;
-  justify-content: center;
-  margin-left: 50%;
+  justify-content: flex-end;
+  padding-right: 16px;
 }
 
 .right-instructions-text {
@@ -676,45 +675,6 @@ $sidebar-tooltip-color: #777;
 
 .main-wrapper {
   margin-left: $sidebar-size;
-}
-
-.notifications {
-  position: fixed;
-  top: 58px;
-  right: 15px;
-
-  &.hidden {
-    display: none;
-  }
-
-  .notifications-container {
-    display: flex;
-    overflow: hidden;
-    background-color: rgb(78, 81, 90);
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-
-    .notification-icon {
-      padding: 15px;
-      background-color: #c43028bb;
-    }
-
-    .notification-body {
-      padding: 15px;
-      max-width: 30vw;
-    }
-    .notification-close-btn {
-      text-align: center;
-      font-weight: bold;
-      cursor: pointer;
-      background-color: rgba(0, 0, 0, 0.1);
-      padding: 15px;
-      &::before {
-        content: '×';
-        display: inline;
-      }
-    }
-  }
 }
 
 .navbar-space-filler {

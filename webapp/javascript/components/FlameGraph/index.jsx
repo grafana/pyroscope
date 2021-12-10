@@ -13,7 +13,7 @@ import { buildDiffRenderURL, buildRenderURL } from '../../util/updateRequests';
 import FlameGraphRenderer from './FlameGraphRenderer';
 
 const mapStateToProps = (state) => ({
-  ...state,
+  ...state.root,
   renderURL: buildRenderURL(state),
   leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
   rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -9,7 +10,6 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
@@ -46,16 +46,9 @@ func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn CmdRunFn) CmdRunFn {
 			return err
 		}
 
-		// some subcommands don't have config files, so we use this File interface
-		// TODO: maybe should we rename this interface? `File` is too generic and confusing imo
-		if c, ok := cfg.(config.File); ok {
-			configPath := os.Getenv("PYROSCOPE_CONFIG")
-			if cmd.Flags().Lookup("config").Changed {
-				configPath = c.Path()
-			}
-			if err = loadConfigFile(configPath, cmd, vpr); err != nil {
-				return fmt.Errorf("loading configuration file: %w", err)
-			}
+		// Read configuration from file, if applicable.
+		if err = loadConfigFile(cmd, vpr); err != nil {
+			return err
 		}
 		// Viper deals with both environment variable mappings as well as config files.
 		// That's why this is not included in the previous if statement
@@ -136,32 +129,35 @@ func firstArgumentIndex(flags *pflag.FlagSet, args []string) int {
 	return -1
 }
 
-func loadConfigFile(path string, cmd *cobra.Command, vpr *viper.Viper) error {
-	if path == "" {
+func loadConfigFile(cmd *cobra.Command, vpr *viper.Viper) error {
+	cf := cmd.Flags().Lookup("config")
+	if cf == nil {
 		return nil
 	}
-
-	vpr.SetConfigFile(path)
-	err := vpr.ReadInConfig()
-	switch {
-	case err == nil:
-		return nil
-	case isUserDefined(cmd.Flag("config"), vpr):
-		// User-defined configuration can not be read.
-		return err
-	case os.IsNotExist(err):
-		// if it's default value and file doesn't exist that's okay
-		// we can't use Flag("config").Changed because it might be set via an env variable
-		if cmd.Flag("config").DefValue == path {
-			return nil
+	var configPath string
+	configPath = cf.Value.String()
+	// Note that Changed is set to true even if the specified flag value
+	// is equal to the default one. For backward compatibility we only
+	// consider an option as user-defined, if its value is different;
+	// which may be unexpected.
+	userDefined := cf.Changed && configPath != cf.DefValue
+	// If configuration file path is overridden with the environment variable
+	// and the flag is not specified, read config by the path from the env var.
+	if !userDefined {
+		if v := os.Getenv("PYROSCOPE_CONFIG"); v != "" {
+			configPath = v
+			userDefined = true
 		}
-		// if user set a custom file name and file doesn't exist that's not okay
-		return err
-	default:
-		return err
 	}
-}
-
-func isUserDefined(f *pflag.Flag, v *viper.Viper) bool {
-	return f.Changed || (f.DefValue != "" && f.DefValue != v.GetString(f.Name))
+	if configPath == "" {
+		// Must never happen.
+		return nil
+	}
+	vpr.SetConfigFile(configPath)
+	err := vpr.ReadInConfig()
+	if err == nil || (errors.Is(err, os.ErrNotExist) && !userDefined) {
+		// The default config file can be missing.
+		return nil
+	}
+	return fmt.Errorf("loading configuration file: %w", err)
 }

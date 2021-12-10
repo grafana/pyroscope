@@ -55,7 +55,7 @@ class TimelineChart extends ReactFlot {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
+  ...state.root,
 });
 
 const mapDispatchToProps = (dispatch) => ({

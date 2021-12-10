@@ -251,6 +251,7 @@ class FlameGraphRenderer extends React.Component {
     // const flotData = this.props.timeline
     //   ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
     //   : [];
+    //
 
     return (
       <div

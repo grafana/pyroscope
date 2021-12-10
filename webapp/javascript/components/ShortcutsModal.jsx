@@ -48,4 +48,8 @@ function ShortcutsModal(props) {
   );
 }
 
-export default connect((x) => x, {})(withShortcut(ShortcutsModal));
+const mapStateToProps = (state) => ({
+  ...state.root,
+});
+
+export default connect(mapStateToProps, {})(withShortcut(ShortcutsModal));

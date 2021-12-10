@@ -29,6 +29,9 @@
     <script type="text/javascript">
       window.latestVersionInfo = {{ .LatestVersionInfo }};
     </script>
+    <script type="text/javascript">
+      window.features = {{ .Features }};
+    </script>
     <script
       src="/assets/app.<%= webpack.hash %>.js"
       type="text/javascript"

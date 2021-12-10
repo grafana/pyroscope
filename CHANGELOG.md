@@ -1,3 +1,71 @@
+## [0.4.1](https://github.com/pyroscope-io/pyroscope/compare/v0.4.0...v0.4.1) (2021-12-08)
+
+
+### Bug Fixes
+
+* trigger retention task when no levels are configured ([#588](https://github.com/pyroscope-io/pyroscope/issues/588)) ([141d734](https://github.com/pyroscope-io/pyroscope/commit/141d73406f5482ee14f999ee7721403d3e0d3d99))
+
+
+
+# [0.4.0](https://github.com/pyroscope-io/pyroscope/compare/v0.3.1...v0.4.0) (2021-12-08)
+
+
+### Bug Fixes
+
+* read default config file when it's present ([#585](https://github.com/pyroscope-io/pyroscope/issues/585)) ([7061292](https://github.com/pyroscope-io/pyroscope/commit/7061292ea5cdee9de419e6a99b34f6db2f1eadb2))
+
+
+### Features
+
+* makes admin command available (GA status) ([8eb788f](https://github.com/pyroscope-io/pyroscope/commit/8eb788f4eb37f08f79d5ba83a6789f22b3dc61f1))
+
+
+
+## [0.3.1](https://github.com/pyroscope-io/pyroscope/compare/v0.3.0...v0.3.1) (2021-12-01)
+
+
+### Bug Fixes
+
+* fixes pprof->trie conversion bug where some samples were dropped ([#575](https://github.com/pyroscope-io/pyroscope/issues/575)) ([cb33851](https://github.com/pyroscope-io/pyroscope/commit/cb33851e55337c0c049d291bf29de8eec860229a))
+* generate trie from pprof at scraping correctly ([#577](https://github.com/pyroscope-io/pyroscope/issues/577)) ([bc704f6](https://github.com/pyroscope-io/pyroscope/commit/bc704f6c64fb2e274f7b425b03ea7bd5ef72fe60))
+* Prevent byte buffer pool copy. ([#570](https://github.com/pyroscope-io/pyroscope/issues/570)) ([3d1122e](https://github.com/pyroscope-io/pyroscope/commit/3d1122e0ac4a02bc2e78d8e0aac04e34337f4a25))
+
+
+### Features
+
+* Add adhoc push mode support in clib. ([#576](https://github.com/pyroscope-io/pyroscope/issues/576)) ([b63079f](https://github.com/pyroscope-io/pyroscope/commit/b63079f7f33e0aefde3bf8a9e122e436696bef63))
+* support for app deletion with tags ([#569](https://github.com/pyroscope-io/pyroscope/issues/569)) ([7eac3d3](https://github.com/pyroscope-io/pyroscope/commit/7eac3d31620926d6ec5825de6a5551cf57596f50))
+
+
+
+# [0.3.0](https://github.com/pyroscope-io/pyroscope/compare/v0.2.5...v0.3.0) (2021-11-29)
+
+
+### Bug Fixes
+
+* **alpine:** fix the stack overflow on Alpine generated binaries. ([#545](https://github.com/pyroscope-io/pyroscope/issues/545)) ([cd5e4f7](https://github.com/pyroscope-io/pyroscope/commit/cd5e4f7a35450429f7e13634e30fb8272a922caf))
+* analytics_test.go on windows ([ad6b20d](https://github.com/pyroscope-io/pyroscope/commit/ad6b20dbe1685b5f56c386fcc2af39b10133d5c3))
+* avoid redundant compaction ([#514](https://github.com/pyroscope-io/pyroscope/issues/514)) ([c87f69a](https://github.com/pyroscope-io/pyroscope/commit/c87f69a144d94b469e5d47df11422754c95c6ed2))
+* comparison view timeline ([#553](https://github.com/pyroscope-io/pyroscope/issues/553)) ([c615bb7](https://github.com/pyroscope-io/pyroscope/commit/c615bb7340202cf53bd37079a23bb66d40c78dce))
+* delete apps functionality ([#551](https://github.com/pyroscope-io/pyroscope/issues/551)) ([09384f3](https://github.com/pyroscope-io/pyroscope/commit/09384f3b186bd7a83ae902a865ed4ff911b0e738))
+* **frontend:** fix comparison view ([#549](https://github.com/pyroscope-io/pyroscope/issues/549)) ([4c9d2f8](https://github.com/pyroscope-io/pyroscope/commit/4c9d2f8d4b7a27ee922afa8d7f8c13b6456b7646))
+* ignore ErrServerClosed when admin server is closed ([#560](https://github.com/pyroscope-io/pyroscope/issues/560)) ([96ad74f](https://github.com/pyroscope-io/pyroscope/commit/96ad74f6bb3d60d415b7aa1ad5ab8238b1b36407))
+* race condition in version update. ([#542](https://github.com/pyroscope-io/pyroscope/issues/542)) ([332a7d5](https://github.com/pyroscope-io/pyroscope/commit/332a7d508aa72453901bfaf654315a79883dca3f))
+* timeline guide text alignment ([#565](https://github.com/pyroscope-io/pyroscope/issues/565)) ([efc94a0](https://github.com/pyroscope-io/pyroscope/commit/efc94a0a3fbc07234113df826dc732d51375f59d))
+* **windows:** redeclared exec ([#513](https://github.com/pyroscope-io/pyroscope/issues/513)) ([d4ab78d](https://github.com/pyroscope-io/pyroscope/commit/d4ab78d3e370f39acaa8a765294569888cfc41bf))
+
+
+### Features
+
+* add shell completion for 'admin app delete' cmd ([#535](https://github.com/pyroscope-io/pyroscope/issues/535)) ([f832f53](https://github.com/pyroscope-io/pyroscope/commit/f832f5303ced4b917976abc2e2b5a1dd514cdf02))
+* adds adhoc single view ([#546](https://github.com/pyroscope-io/pyroscope/issues/546)) ([4983566](https://github.com/pyroscope-io/pyroscope/commit/4983566e9076223b46e0e0d75a101ad4a89173b2))
+* adds support for pprof in /ingest endpoint ([#557](https://github.com/pyroscope-io/pyroscope/issues/557)) ([f233ef3](https://github.com/pyroscope-io/pyroscope/commit/f233ef3c44623e4e0bca143d6d54944fa3723be5))
+* initial support for adhoc mode ([#504](https://github.com/pyroscope-io/pyroscope/issues/504)) ([e5d311e](https://github.com/pyroscope-io/pyroscope/commit/e5d311ef90afe8964b046d9be59a4ff38ce7906d))
+* pull mode ([#527](https://github.com/pyroscope-io/pyroscope/issues/527)) ([a56aacf](https://github.com/pyroscope-io/pyroscope/commit/a56aacfc0dcbad6bdf6a7478212230f9a2bb4d4e))
+* support for pprof and collapsed formats in /render endpoint [#471](https://github.com/pyroscope-io/pyroscope/issues/471) ([#518](https://github.com/pyroscope-io/pyroscope/issues/518)) ([0cbf399](https://github.com/pyroscope-io/pyroscope/commit/0cbf399e441be24520a521732681708b50bf2fde))
+
+
+
 ## <small>0.2.5 (2021-11-09)</small>
 
 * fix: highlight in diff view (#498) ([fbb826a](https://github.com/pyroscope-io/pyroscope/commit/fbb826a)), closes [#498](https://github.com/pyroscope-io/pyroscope/issues/498)
