@@ -12,10 +12,9 @@ import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
+import styles from './FlamegraphRenderer.module.css';
 
 import ExportData from '../ExportData';
-
-import InstructionText from './InstructionText';
 
 class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
@@ -223,10 +222,16 @@ class FlameGraphRenderer extends React.Component {
       this.state.view !== 'table' ||
       (this.state.flamebearer && this.state.flamebearer.names.length <= 1);
 
+    const flamegraphDataTestId = figureFlamegraphDataTestId(
+      this.props.viewType,
+      this.props.viewSide
+    );
+
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
           key="flamegraph-pane"
+          data-testid={flamegraphDataTestId}
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
@@ -261,7 +266,6 @@ class FlameGraphRenderer extends React.Component {
           {this.showToolbar && (
             <Toolbar
               view={this.state.view}
-              showViewSelector={this.props.viewType !== 'grafana'}
               viewDiff={this.state.viewDiff}
               handleSearchChange={this.handleSearchChange}
               reset={this.onReset}
@@ -276,26 +280,14 @@ class FlameGraphRenderer extends React.Component {
               }}
             />
           )}
-          {this.props.viewType === 'double' ? (
-            <>
-              <InstructionText {...this.props} />
-            </>
-          ) : this.props.viewType === 'diff' ? (
-            <>
-              <div className="diff-instructions-wrapper">
-                <div className="diff-instructions-wrapper-side">
-                  <InstructionText {...this.props} viewSide="left" />
-                </div>
-                <div className="diff-instructions-wrapper-side">
-                  <InstructionText {...this.props} viewSide="right" />
-                </div>
-              </div>
-            </>
-          ) : null}
+          {this.props.children}
           <div
-            className={clsx('flamegraph-container panes-wrapper', {
-              'vertical-orientation': this.props.viewType === 'double',
-            })}
+            className={`${styles.flamegraphContainer} ${clsx(
+              'flamegraph-container panes-wrapper',
+              {
+                'vertical-orientation': this.props.viewType === 'double',
+              }
+            )}`}
           >
             {panes.map((pane) => pane)}
           </div>
@@ -323,6 +315,22 @@ function decidePanesOrder(viewType, display, flamegraphPane, tablePane) {
           return [tablePane, flamegraphPane];
       }
     }
+  }
+}
+function figureFlamegraphDataTestId(viewType, viewSide) {
+  switch (viewType) {
+    case 'single': {
+      return `flamegraph-single`;
+    }
+    case 'double': {
+      return `flamegraph-comparison-${viewSide}`;
+    }
+    case 'diff': {
+      return `flamegraph-diff`;
+    }
+
+    default:
+      throw new Error(`Unsupported viewType: ${viewType}`);
   }
 }
 

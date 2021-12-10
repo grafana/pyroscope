@@ -1,6 +1,5 @@
 import React from 'react';
 import { Units } from '@utils/format';
-import { Option } from 'prelude-ts';
 import Flamegraph from '../webapp/javascript/components/FlameGraph/FlameGraphRenderer';
 
 export default {
@@ -36,13 +35,20 @@ const SimpleTree = {
 };
 
 export const WithToolbar = () => {
-  return <Flamegraph flamebearer={SimpleTree} display="flamegraph" />;
+  return (
+    <Flamegraph
+      flamebearer={SimpleTree}
+      display="flamegraph"
+      viewType="single"
+    />
+  );
 };
 
 export const WithoutToolbar = () => {
   return (
     <Flamegraph
       flamebearer={SimpleTree}
+      viewType="single"
       display="flamegraph"
       showToolbar={false}
     />
