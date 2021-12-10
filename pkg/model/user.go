@@ -7,6 +7,7 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 var (
@@ -33,7 +34,7 @@ type User struct {
 	PasswordChangedAt time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	DeletedAt         *time.Time `gorm:"default:null"`
+	DeletedAt         gorm.DeletedAt
 }
 
 type CreateUserParams struct {

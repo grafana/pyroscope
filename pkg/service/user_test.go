@@ -93,6 +93,12 @@ var _ = Describe("UserService", func() {
 					Expect(err).ToNot(HaveOccurred())
 					expectUserMatches(user, params)
 				})
+
+				By("name", func() {
+					user, err = svc.FindUserByName(context.Background(), params.Name)
+					Expect(err).ToNot(HaveOccurred())
+					expectUserMatches(user, params)
+				})
 			})
 		})
 
@@ -105,6 +111,11 @@ var _ = Describe("UserService", func() {
 
 				By("email", func() {
 					_, err = svc.FindUserByEmail(context.Background(), params.Email)
+					Expect(err).To(MatchError(model.ErrUserNotFound))
+				})
+
+				By("name", func() {
+					_, err = svc.FindUserByName(context.Background(), params.Name)
 					Expect(err).To(MatchError(model.ErrUserNotFound))
 				})
 			})
@@ -306,6 +317,7 @@ var _ = Describe("UserService", func() {
 
 		Context("when existing user deleted", func() {
 			BeforeEach(func() {
+				users = users[:0]
 				for _, u := range params {
 					user, err := svc.CreateUser(context.Background(), u)
 					Expect(err).ToNot(HaveOccurred())
@@ -327,9 +339,9 @@ var _ = Describe("UserService", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
-			It("allows user with the same email to be created", func() {
+			It("doesn't allow user with the same email or name to be created", func() {
 				_, err = svc.CreateUser(context.Background(), params[0])
-				Expect(err).ToNot(HaveOccurred())
+				Expect(err).To(MatchError(model.ErrUserEmailExists))
 			})
 		})
 

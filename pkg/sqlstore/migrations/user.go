@@ -21,7 +21,7 @@ func createUserTableMigration() *gormigrate.Migration {
 		PasswordChangedAt time.Time
 		CreatedAt         time.Time
 		UpdatedAt         time.Time
-		DeletedAt         *time.Time `gorm:"default:null"`
+		DeletedAt         gorm.DeletedAt
 	}
 
 	return &gormigrate.Migration{

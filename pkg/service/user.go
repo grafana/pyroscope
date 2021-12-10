@@ -14,6 +14,15 @@ type UserService struct{ db *gorm.DB }
 
 func NewUserService(db *gorm.DB) UserService { return UserService{db} }
 
+// CreateUser creates a new user entry in the database.
+//
+// Soft deletes are tricky when it comes to unique constraints (we could use
+// "delete token" or partial indexes but that does not work well with ORMs).
+//
+// In order to avoid mess with multiple identical user names/emails (e.g, when
+// handling login), once registered, those cannot be used again, therefore
+// CreateUser will fail with model.ErrUserEmailExists or model.ErrUserNameExists
+// error. Instead, users should be disabled.
 func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserParams) (model.User, error) {
 	if err := params.Validate(); err != nil {
 		return model.User{}, err
@@ -29,11 +38,19 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 		user.FullName = params.FullName
 	}
 	err := svc.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		_, err := findUserByEmail(tx, params.Email)
+		_, err := findUserByEmail(tx.Unscoped(), params.Email)
 		switch {
 		case errors.Is(err, model.ErrUserNotFound):
 		case err == nil:
 			return model.ErrUserEmailExists
+		default:
+			return err
+		}
+		_, err = findUserByName(tx.Unscoped(), params.Email)
+		switch {
+		case errors.Is(err, model.ErrUserNotFound):
+		case err == nil:
+			return model.ErrUserNameExists
 		default:
 			return err
 		}
@@ -88,7 +105,7 @@ func findUser(tx *gorm.DB, user model.User) (model.User, error) {
 func (svc UserService) GetAllUsers(ctx context.Context) ([]model.User, error) {
 	var users []model.User
 	db := svc.db.WithContext(ctx)
-	if err := db.Order("full_name").Find(&users).Error; err != nil {
+	if err := db.Find(&users).Error; err != nil {
 		return nil, err
 	}
 	return users, nil
@@ -119,7 +136,7 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 			// that should occur: underlying database driver errors are
 			// not standardized, but service consumers expect friendly
 			// typed errors.
-			switch _, err = findUserByEmail(tx, *params.Email); {
+			switch _, err = findUserByEmail(tx.Unscoped(), *params.Email); {
 			case errors.Is(err, model.ErrUserNotFound):
 				columns.Email = *params.Email
 			case err == nil:
@@ -130,7 +147,7 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		}
 		// Same for user name.
 		if params.Name != nil && user.Name != *params.Name {
-			switch _, err = findUserByName(tx, *params.Name); {
+			switch _, err = findUserByName(tx.Unscoped(), *params.Name); {
 			case errors.Is(err, model.ErrUserNotFound):
 				columns.Name = *params.Name
 			case err == nil:
@@ -160,8 +177,6 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 	return updated, nil
 }
 
-// DeleteUserByID removes user from the database with "hard" delete.
-// This can not be reverted.
 func (svc UserService) DeleteUserByID(ctx context.Context, id uint) error {
-	return svc.db.WithContext(ctx).Unscoped().Delete(&model.User{}, id).Error
+	return svc.db.WithContext(ctx).Delete(&model.User{}, id).Error
 }
