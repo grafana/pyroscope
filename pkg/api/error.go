@@ -39,12 +39,12 @@ func Error(w http.ResponseWriter, err error) {
 // ErrorCode replies to the request with the specified error message
 // as JSON-encoded body.
 //
-// If HTTP code is less than 0, it will be deduced based on the error.
-// If it fails, StatusInternalServerError will be returned without the
-// response body. The error can be of multierror.Error type.
+// If HTTP code is less than or equal zero, it will be deduced based on
+// the error. If it fails, StatusInternalServerError will be returned
+// without the response body. The error can be of 'multierror.Error' type.
 //
-// It does not otherwise end the request; the caller should ensure
-// no further writes are done to w.
+// It does not end the HTTP request; the caller should ensure no further
+// writes are done to w.
 func ErrorCode(w http.ResponseWriter, err error, code int) {
 	switch {
 	case err == nil:

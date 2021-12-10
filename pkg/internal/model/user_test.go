@@ -33,6 +33,7 @@ var _ = Describe("User password verification", func() {
 					Expect(model.VerifyPassword(h, p)).ToNot(HaveOccurred())
 				})
 			})
+
 			Context("when password does not match", func() {
 				It("reports error", func() {
 					Expect(model.VerifyPassword(h, "xxx")).To(HaveOccurred())
@@ -53,6 +54,7 @@ var _ = Describe("User validation", func() {
 			func(c createUserParamsCase) {
 				expectErrOrNil(c.params.Validate(), c.err)
 			},
+
 			Entry("valid params", createUserParamsCase{
 				params: model.CreateUserParams{
 					FullName: model.String("John Doe"),
@@ -61,6 +63,7 @@ var _ = Describe("User validation", func() {
 					Role:     model.ViewerRole,
 				},
 			}),
+
 			Entry("name is too long", createUserParamsCase{
 				params: model.CreateUserParams{
 					FullName: model.String(strings.Repeat("X", 256)),
@@ -72,6 +75,7 @@ var _ = Describe("User validation", func() {
 					model.ErrRoleUnknown,
 				}},
 			}),
+
 			Entry("invalid params", createUserParamsCase{
 				params: model.CreateUserParams{
 					FullName: model.String(""),
@@ -96,9 +100,11 @@ var _ = Describe("User validation", func() {
 			func(c updateUserParamsCase) {
 				expectErrOrNil(c.params.Validate(), c.err)
 			},
+
 			Entry("empty params are valid", updateUserParamsCase{
 				params: model.UpdateUserParams{},
 			}),
+
 			Entry("valid params", updateUserParamsCase{
 				params: model.UpdateUserParams{
 					FullName: model.String("John Doe"),
@@ -107,18 +113,20 @@ var _ = Describe("User validation", func() {
 					SetIsDisabled(false).
 					SetRole(model.ViewerRole),
 			}),
+
 			Entry("name is too long", updateUserParamsCase{
 				params: model.UpdateUserParams{
 					FullName: model.String(strings.Repeat("X", 256)),
 				},
 				err: model.ErrUserNameTooLong,
 			}),
+
 			Entry("invalid params", updateUserParamsCase{
 				params: model.UpdateUserParams{
 					FullName: model.String(""),
 					Email:    model.String(""),
 					Password: model.String("")}.
-					SetRole(model.Role(0)),
+					SetRole(model.InvalidRole),
 				err: &multierror.Error{Errors: []error{
 					model.ErrUserNameEmpty,
 					model.ErrUserEmailInvalid,

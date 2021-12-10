@@ -4,10 +4,13 @@ import (
 	"os"
 
 	. "github.com/onsi/gomega"
+
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 )
 
-// testSuite supposed to be DB-specific.
+// testSuite is supposed to be DB-specific: once we add support for other
+// SQL databases, each of them should have its own one; build tags are to
+// be used in order to run tests with a particular SQL driver.
 type testSuite struct {
 	*sqlstore.SQLStore
 	path string

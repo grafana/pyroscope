@@ -12,7 +12,6 @@ import (
 
 var _ = Describe("UserService", func() {
 	s := new(testSuite)
-	s.path = "/Users/kolesnikovae/Documents/src/pyroscope/out/test.db"
 	BeforeEach(s.BeforeEach)
 	AfterEach(s.AfterEach)
 
@@ -222,7 +221,7 @@ var _ = Describe("UserService", func() {
 					FullName: model.String(""),
 					Email:    model.String(""),
 					Password: model.String("")}.
-					SetRole(model.Role(0))
+					SetRole(model.InvalidRole)
 			})
 
 			It("returns ValidationError", func() {
