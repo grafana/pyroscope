@@ -16,7 +16,7 @@ func NewRetentionPolicy() *RetentionPolicy {
 }
 
 func (r RetentionPolicy) LowerTimeBoundary() time.Time {
-	if r.Levels == nil {
+	if len(r.Levels) == 0 {
 		return r.AbsoluteTime
 	}
 	return r.Levels[0]

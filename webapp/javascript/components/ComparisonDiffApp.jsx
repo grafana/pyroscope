@@ -32,8 +32,8 @@ function ComparisonDiffApp(props) {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
-  diffRenderURL: buildDiffRenderURL(state),
+  ...state.root,
+  diffRenderURL: buildDiffRenderURL(state.root),
 });
 
 const mapDispatchToProps = (dispatch) => ({
