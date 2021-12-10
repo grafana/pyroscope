@@ -115,6 +115,10 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		// If the new email matches the current one, ignore.
 		if params.Email != nil && user.Email != *params.Email {
 			// Make sure it is not in use.
+			// Note that we can't rely on the constraint violation error
+			// that should occur: underlying database driver errors are
+			// not standardized, but service consumers expect friendly
+			// typed errors.
 			switch _, err = findUserByEmail(tx, *params.Email); {
 			case errors.Is(err, model.ErrUserNotFound):
 				columns.Email = *params.Email
@@ -124,9 +128,8 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 				return err
 			}
 		}
-		// If the new user name matches the current one, ignore.
+		// Same for user name.
 		if params.Name != nil && user.Name != *params.Name {
-			// Make sure it is not in use.
 			switch _, err = findUserByName(tx, *params.Name); {
 			case errors.Is(err, model.ErrUserNotFound):
 				columns.Name = *params.Name
