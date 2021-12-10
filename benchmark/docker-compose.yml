@@ -10,7 +10,7 @@ services:
     command:
       - sh
       - -c
-      - sleep Infinity
+      - 'sleep Infinity'
     volumes:
       - ./dashboard-screenshots:/screenshots
 

@@ -3,6 +3,7 @@ package loadgen
 import (
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -27,6 +28,7 @@ type LoadGen struct {
 	Config    *config.LoadGen
 	Rand      *rand.Rand
 	SymbolBuf []byte
+	Tags      []string
 
 	runProgressMetric prometheus.Gauge
 	uploadErrors      prometheus.Counter
@@ -95,6 +97,7 @@ func Cli(cfg *config.LoadGen) error {
 }
 
 func (l *LoadGen) Run(cfg *config.LoadGen) error {
+	logrus.Infof("running loadgenerator with config %+v\n", cfg)
 	logrus.Info("checking server is available...")
 	err := waitUntilEndpointReady(cfg.ServerAddress)
 	if err != nil {
@@ -103,10 +106,18 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 
 	logrus.Info("generating fixtures")
 	fixtures := l.generateFixtures()
+
+	l.Tags = []string{}
+	for i := 0; i < l.Config.TagKeys; i++ {
+		tagName := fmt.Sprintf("key%d", i)
+		for j := 0; j < l.Config.TagValues; j++ {
+			tagValue := fmt.Sprintf("val%d", j)
+			l.Tags = append(l.Tags, fmt.Sprintf("{%s=%s}", tagName, tagValue))
+		}
+	}
 	logrus.Debug("done generating fixtures.")
 
 	logrus.Info("starting sending requests")
-	logrus.Infof("cfg %+v\n", cfg)
 	wg := sync.WaitGroup{}
 	wg.Add(l.Config.Apps * l.Config.Clients)
 	appNameBuf := make([]byte, 25)
@@ -122,7 +133,22 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 	wg.Wait()
 
 	logrus.Debug("done sending requests")
+
+	l.timeRendering()
+
 	return nil
+}
+
+func (l *LoadGen) timeRendering() {
+	url := "http://localhost:4040/render?from=now-7d&until=now&query=2ac732e9f8fcf65d17b0b9962894c8f13d5fda1fec54b3e210%7B%7D&refreshToken=0.8350450435879586&max-nodes=1024&format=json"
+	for i := 0; i < 1; i++ {
+		st := time.Now()
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			ioutil.ReadAll(req.Body)
+		}
+		logrus.Infof("render req %d time %q", i, time.Now().Sub(st))
+	}
 }
 
 func (l *LoadGen) generateFixtures() Fixtures {
@@ -166,8 +192,9 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 
 		st = st.Add(10 * time.Second)
 		et := st.Add(10 * time.Second)
+
 		err := r.UploadSync(&upstream.UploadJob{
-			Name:            appName + "{}",
+			Name:            appName + l.Tags[i%len(l.Tags)],
 			StartTime:       st,
 			EndTime:         et,
 			SpyName:         "gospy",

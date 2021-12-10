@@ -21,6 +21,8 @@ type LoadGen struct {
 	Apps                int    `def:"20" desc:"how many pyroscope apps to emulate"`
 	Clients             int    `def:"20" desc:"how many pyroscope clients to emulate"`
 	Requests            int    `def:"10000" desc:"how many requests each clients should make"`
+	TagKeys             int    `def:"2" desc:"how many unique tag keys each app should have" mapstructure:"tag-keys"`
+	TagValues           int    `def:"2" desc:"how many unique tag values each app should have" mapstructure:"tag-values"`
 
 	PushgatewayAddress string `def:"" desc:"if enabled, pushes data to prometheus pushgateway (assumes it's unauthenticated)" mapstructure:"pushgateway-address"`
 	WaitUntilAvailable bool   `def:"true" desc:"wait until endpoint is available"`
