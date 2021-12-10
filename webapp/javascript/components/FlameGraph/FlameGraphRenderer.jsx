@@ -218,10 +218,16 @@ class FlameGraphRenderer extends React.Component {
       this.state.view !== 'table' ||
       (this.state.flamebearer && this.state.flamebearer.names.length <= 1);
 
+    const flamegraphDataTestId = figureFlamegraphDataTestId(
+      this.props.viewType,
+      this.props.viewSide
+    );
+
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
           key="flamegraph-pane"
+          data-testid={flamegraphDataTestId}
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
@@ -277,6 +283,7 @@ class FlameGraphRenderer extends React.Component {
               <TimelineChartWrapper
                 key={`timeline-chart-${this.props.viewSide}`}
                 id={`timeline-chart-${this.props.viewSide}`}
+                data-testid={`timeline-${this.props.viewSide}`}
                 viewSide={this.props.viewSide}
               />
             </>
@@ -315,6 +322,23 @@ class FlameGraphRenderer extends React.Component {
       </div>
     );
   };
+}
+
+function figureFlamegraphDataTestId(viewType, viewSide) {
+  switch (viewType) {
+    case 'single': {
+      return `flamegraph-single`;
+    }
+    case 'double': {
+      return `flamegraph-comparison-${viewSide}`;
+    }
+    case 'diff': {
+      return `flamegraph-diff-${viewSide}`;
+    }
+
+    default:
+      throw new Error(`Unsupported ${viewType}`);
+  }
 }
 
 export default FlameGraphRenderer;

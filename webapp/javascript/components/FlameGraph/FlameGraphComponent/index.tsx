@@ -29,6 +29,8 @@ interface FlamegraphProps {
   // the reason this is exposed as a parameter
   // is to not have to connect to the redux store from here
   ExportData: () => React.ReactElement;
+
+  ['data-testid']?: string;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -42,6 +44,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
+  const { 'data-testid': dataTestId } = props;
 
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
@@ -180,7 +183,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   return (
     <>
       <div
-        data-testid="flamegraph-view"
+        data-testid={dataTestId || 'flamegraph-view'}
         className={clsx('flamegraph-pane', {
           'vertical-orientation': flamebearer.format === 'double',
         })}

@@ -40,7 +40,11 @@ function ComparisonApp(props) {
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <Header />
-        <TimelineChartWrapper id="timeline-chart-double" viewSide="both" />
+        <TimelineChartWrapper
+          data-testid="timeline-main"
+          id="timeline-chart-double"
+          viewSide="both"
+        />
         <div
           className="comparison-container"
           data-testid="comparison-container"
