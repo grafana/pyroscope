@@ -277,16 +277,9 @@ class FlameGraphRenderer extends React.Component {
               this.onFocusOnNode(i, j);
             }}
           />
+          {this.props.children}
           {this.props.viewType === 'double' ? (
-            <>
-              <InstructionText {...this.props} />
-              <TimelineChartWrapper
-                key={`timeline-chart-${this.props.viewSide}`}
-                id={`timeline-chart-${this.props.viewSide}`}
-                data-testid={`timeline-${this.props.viewSide}`}
-                viewSide={this.props.viewSide}
-              />
-            </>
+            <></>
           ) : this.props.viewType === 'diff' ? (
             <>
               <div className="diff-instructions-wrapper">

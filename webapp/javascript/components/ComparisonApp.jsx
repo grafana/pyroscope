@@ -13,6 +13,7 @@ import {
   fetchComparisonAppData,
   fetchTimeline,
 } from '../redux/actions';
+import InstructionText from './FlameGraph/InstructionText';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
@@ -54,13 +55,30 @@ function ComparisonApp(props) {
             viewSide="left"
             flamebearer={comparison.left.flamebearer}
             data-testid="flamegraph-renderer-left"
-          />
+          >
+            <InstructionText viewType="double" viewSide="left" />
+            <TimelineChartWrapper
+              key="timeline-chart-left"
+              id="timeline-chart-left"
+              data-testid="timeline-left"
+              viewSide="left"
+            />
+          </FlameGraphRenderer>
+
           <FlameGraphRenderer
             viewType="double"
             viewSide="right"
             flamebearer={comparison.right.flamebearer}
             data-testid="flamegraph-renderer-right"
-          />
+          >
+            <InstructionText viewType="double" viewSide="right" />
+            <TimelineChartWrapper
+              key="timeline-chart-right"
+              id="timeline-chart-right"
+              data-testid="timeline-right"
+              viewSide="right"
+            />
+          </FlameGraphRenderer>
         </div>
       </div>
       <Footer />
