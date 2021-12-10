@@ -1,9 +1,10 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
 import { Option } from 'prelude-ts';
+import debounce from 'lodash.debounce';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
 import Highlight from './Highlight';
@@ -33,7 +34,9 @@ interface FlamegraphProps {
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>();
-  const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
+  //  const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
+  const flamegraph = useRef<Flamegraph>();
+
   const [rightClickedNode, setRightClickedNode] = React.useState(
     Option.none<{ top: number; left: number; width: number }>()
   );
@@ -43,17 +46,27 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
 
+  // debounce rendering canvas
+  // used for situations like resizing
+  // triggered by eg collapsing the sidebar
+  const debouncedRenderCanvas = useCallback(
+    debounce(() => {
+      renderCanvas();
+    }, 50),
+    []
+  );
+
   // rerender whenever the canvas size changes
   // eg window resize, or simply changing the view
   // to display the flamegraph isolated from the table
   useResizeObserver(canvasRef, (e) => {
     if (flamegraph) {
-      renderCanvas();
+      debouncedRenderCanvas();
     }
   });
 
   const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const opt = flamegraph.xyToBar(
+    const opt = flamegraph.current.xyToBar(
       e.nativeEvent.offsetX,
       e.nativeEvent.offsetY
     );
@@ -86,7 +99,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   };
 
   const xyToHighlightData = (x: number, y: number) => {
-    const opt = flamegraph.xyToBar(x, y);
+    const opt = flamegraph.current.xyToBar(x, y);
 
     return opt.map((bar) => {
       return {
@@ -98,7 +111,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   };
 
   const xyToTooltipData = (x: number, y: number) => {
-    return flamegraph.xyToBar(x, y);
+    return flamegraph.current.xyToBar(x, y);
   };
 
   const onContextMenuClose = () => {
@@ -113,7 +126,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const xyToContextMenuItems = useCallback(
     (x: number, y: number) => {
       const dirty = isDirty();
-      const bar = flamegraph.xyToBar(x, y);
+      const bar = flamegraph.current.xyToBar(x, y);
 
       const FocusItem = () => {
         const hoveredOnValidNode = bar.map(() => true).getOrElse(false);
@@ -153,7 +166,8 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         zoom
       );
 
-      setFlamegraph(f);
+      flamegraph.current = f;
+      renderCanvas();
     }
   }, [
     canvasRef.current,
@@ -165,14 +179,8 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   ]);
 
   const renderCanvas = () => {
-    flamegraph.render();
+    flamegraph.current.render();
   };
-
-  React.useEffect(() => {
-    if (flamegraph) {
-      renderCanvas();
-    }
-  }, [flamegraph]);
 
   const dataUnavailable =
     !flamebearer || (flamebearer && flamebearer.names.length <= 1);

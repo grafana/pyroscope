@@ -1499,13 +1499,13 @@
   resolved "https://registry.yarnpkg.com/@grafana/aws-sdk/-/aws-sdk-0.0.3.tgz#bc632c6c77971a5474acbe45847420503679fc75"
   integrity sha512-V0PJLk+oU1C33knurXp8BkT5N2ctDu9b21zpK16vkJAs5aOiH/OaOhQ/IP9ipxYhB+b9PFjr8RXagV/8XJ8xwg==
 
-"@grafana/data@8.3.1", "@grafana/data@^8.3.1":
-  version "8.3.1"
-  resolved "https://registry.yarnpkg.com/@grafana/data/-/data-8.3.1.tgz#98a60059ce2d985f792181fbcecae8bad8887f23"
-  integrity sha512-WzUFf2dUO4zh6DNtqWbikmozLj29qOPS+d/SFVCKyZf/LpDtLxj1pp1zVuaxpl5aN/2WcTYeoehWhxmzHgWjBw==
+"@grafana/data@8.3.2", "@grafana/data@^8.3.1":
+  version "8.3.2"
+  resolved "https://registry.yarnpkg.com/@grafana/data/-/data-8.3.2.tgz#97fb215ed025a30f5581579e16ef4219ac390cf2"
+  integrity sha512-Onn/Oh972HwbiduqBUVP1AnL3guyvim3t5k7kVINm0eArNE+3Zs8xeeu5W5RZNESrzQmxLTEBjIo+cUJmmRhtQ==
   dependencies:
     "@braintree/sanitize-url" "5.0.2"
-    "@grafana/schema" "8.3.1"
+    "@grafana/schema" "8.3.2"
     "@types/d3-interpolate" "^1.4.0"
     d3-interpolate "1.4.0"
     date-fns "2.21.3"
@@ -1520,10 +1520,10 @@
     uplot "1.6.16"
     xss "1.0.6"
 
-"@grafana/e2e-selectors@8.3.1":
-  version "8.3.1"
-  resolved "https://registry.yarnpkg.com/@grafana/e2e-selectors/-/e2e-selectors-8.3.1.tgz#80699807694276b1a97990a45812280e2c1ac05f"
-  integrity sha512-SCffWOREGdIVHaVATpIl2MShNWgOr1yNsADFr7s28BhXN08IRmdAziDlYksAMamVSA2QtuMYQomm+TQtSDAzVw==
+"@grafana/e2e-selectors@8.3.2":
+  version "8.3.2"
+  resolved "https://registry.yarnpkg.com/@grafana/e2e-selectors/-/e2e-selectors-8.3.2.tgz#6ff26e6c9de722f591f832cc5e887e296bfcc48d"
+  integrity sha512-J+LMkkhAzCL9UfbClBd8lgj18Nn7pDu3zOcDQQ4NvjjJjF+cnl6jPodQfBT/rwivx234mFQb35EG+e3WKqXGtQ==
   dependencies:
     "@grafana/tsconfig" "^1.0.0-rc1"
     execa "5.1.1"
@@ -1532,14 +1532,14 @@
     yaml "^1.8.3"
 
 "@grafana/runtime@^8.3.1":
-  version "8.3.1"
-  resolved "https://registry.yarnpkg.com/@grafana/runtime/-/runtime-8.3.1.tgz#f260774056c0f4d90e71c7bdf0e0f2ac2ef97388"
-  integrity sha512-qY4GwxAColHulcMN67P14Fw0uNgD08phpd/hcdDG1ok8u23muwsUEwqOx9z7kEi43FRbzWPjZhcOOq9EBlKe4w==
+  version "8.3.2"
+  resolved "https://registry.yarnpkg.com/@grafana/runtime/-/runtime-8.3.2.tgz#2384229a954a7a5311ad8710175fa08a13ab0de6"
+  integrity sha512-wMuCmsCYNBVrN0l6cFt1IGOW4gzjjSFL0baWgiQEnOIp+Q8az97ob0BAs4II90ceAIJ5pOPmN196/2/wsKV0Qg==
   dependencies:
     "@emotion/css" "11.1.3"
-    "@grafana/data" "8.3.1"
-    "@grafana/e2e-selectors" "8.3.1"
-    "@grafana/ui" "8.3.1"
+    "@grafana/data" "8.3.2"
+    "@grafana/e2e-selectors" "8.3.2"
+    "@grafana/ui" "8.3.2"
     "@sentry/browser" "5.25.0"
     history "4.10.1"
     lodash "4.17.21"
@@ -1549,10 +1549,10 @@
     systemjs-plugin-css "0.1.37"
     tslib "2.3.1"
 
-"@grafana/schema@8.3.1":
-  version "8.3.1"
-  resolved "https://registry.yarnpkg.com/@grafana/schema/-/schema-8.3.1.tgz#dc6f0997e1707d36873f2a90125e45e3eb8781d8"
-  integrity sha512-TATMRjqdzbKHcncRDLI3nuCr5+AQh3EnB5pKt3wuZbe2PQSYW+yHTlJ72Rh4YXzSn06ITt1DM8txvDksVo7T+g==
+"@grafana/schema@8.3.2":
+  version "8.3.2"
+  resolved "https://registry.yarnpkg.com/@grafana/schema/-/schema-8.3.2.tgz#30a72804b405b3b3f50f835ae597c9a2d43cd6b1"
+  integrity sha512-gfdTsXK+VVnoVZAajGOzsl5wymUsuPURW80CLQdAWzhbHbf4kDB3WrGeHODqRWpTmI56GDqRZhgoFHGesW1ksQ==
 
 "@grafana/slate-react@0.22.10-grafana":
   version "0.22.10-grafana"
@@ -1581,17 +1581,17 @@
   resolved "https://registry.yarnpkg.com/@grafana/tsconfig/-/tsconfig-1.0.0-rc1.tgz#d07ea16755a50cae21000113f30546b61647a200"
   integrity sha512-nucKPGyzlSKYSiJk5RA8GzMdVWhdYNdF+Hh65AXxjD9PlY69JKr5wANj8bVdQboag6dgg0BFKqgKPyY+YtV4Iw==
 
-"@grafana/ui@8.3.1", "@grafana/ui@^8.3.1":
-  version "8.3.1"
-  resolved "https://registry.yarnpkg.com/@grafana/ui/-/ui-8.3.1.tgz#bd2f4005953b817222570feb19823283608e0f43"
-  integrity sha512-tJu/G/bGVvlzbjT3IFp79a7OGpfHp2MZxa83wSkqjY6QKNqT2k4KyDgYRaIowrSOkMvsuXTw8NTiBwNjG5KMGw==
+"@grafana/ui@8.3.2", "@grafana/ui@^8.3.1":
+  version "8.3.2"
+  resolved "https://registry.yarnpkg.com/@grafana/ui/-/ui-8.3.2.tgz#4ae84890131c43d3fae2b90562b6b5ca8e70566e"
+  integrity sha512-NXcAvk+w/f2rTUl4xBHydFS4qaicOuN+VEIs9rojGk1UafiFfcaRQePd2eJ2jMGVbVuMKAgW8wRjgOPOonenJA==
   dependencies:
     "@emotion/css" "11.1.3"
     "@emotion/react" "11.1.5"
     "@grafana/aws-sdk" "0.0.3"
-    "@grafana/data" "8.3.1"
-    "@grafana/e2e-selectors" "8.3.1"
-    "@grafana/schema" "8.3.1"
+    "@grafana/data" "8.3.2"
+    "@grafana/e2e-selectors" "8.3.2"
+    "@grafana/schema" "8.3.2"
     "@grafana/slate-react" "0.22.10-grafana"
     "@monaco-editor/react" "4.2.2"
     "@popperjs/core" "2.5.4"
@@ -2086,7 +2086,7 @@
   resolved "https://registry.yarnpkg.com/@popperjs/core/-/core-2.5.4.tgz#de25b5da9f727985a3757fd59b5d028aba75841a"
   integrity sha512-ZpKr+WTb8zsajqgDkvCEWgp6d5eJT6Q63Ng2neTbzBO76Lbe91vX/iVIW9dikq+Fs3yEo+ls4cxeXABD2LtcbQ==
 
-"@popperjs/core@^2.5.4", "@popperjs/core@^2.6.0":
+"@popperjs/core@^2.4.0", "@popperjs/core@^2.5.4", "@popperjs/core@^2.6.0":
   version "2.11.0"
   resolved "https://registry.yarnpkg.com/@popperjs/core/-/core-2.11.0.tgz#6734f8ebc106a0860dff7f92bf90df193f0935d7"
   integrity sha512-zrsUxjLOKAzdewIDRWy9nsV1GQsKBCWaGwsZQlCgr6/q+vjyZhFgqedLfFBuI9anTPEUT4APq9Mu0SZBTzIcGQ==
@@ -2167,6 +2167,18 @@
     "@react-aria/utils" "^3.8.2"
     clsx "^1.1.1"
 
+"@react-hook/debounce@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@react-hook/debounce/-/debounce-3.0.0.tgz#9eea8b5d81d4cb67cd72dd8657b3ff724afc7cad"
+  integrity sha512-ir/kPrSfAzY12Gre0sOHkZ2rkEmM4fS5M5zFxCi4BnCeXh2nvx9Ujd+U4IGpKCuPA+EQD0pg1eK2NGLvfWejag==
+  dependencies:
+    "@react-hook/latest" "^1.0.2"
+
+"@react-hook/event@^1.2.1":
+  version "1.2.6"
+  resolved "https://registry.yarnpkg.com/@react-hook/event/-/event-1.2.6.tgz#52f91578add934acc1203328ca09ab14fc7ee58e"
+  integrity sha512-JUL5IluaOdn5w5Afpe/puPa1rj8X6udMlQ9dt4hvMuKmTrBS1Ya6sb4sVgvfe2eU4yDuOfAhik8xhbcCekbg9Q==
+
 "@react-hook/latest@^1.0.2":
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/@react-hook/latest/-/latest-1.0.3.tgz#c2d1d0b0af8b69ec6e2b3a2412ba0768ac82db80"
@@ -2187,6 +2199,22 @@
     "@react-hook/passive-layout-effect" "^1.2.0"
     "@types/raf-schd" "^4.0.0"
     raf-schd "^4.0.2"
+
+"@react-hook/throttle@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@react-hook/throttle/-/throttle-2.2.0.tgz#d0402714a06e1ba0bc1da1fdf5c3c5cd0e08d45a"
+  integrity sha512-LJ5eg+yMV8lXtqK3lR+OtOZ2WH/EfWvuiEEu0M3bhR7dZRfTyEJKxH1oK9uyBxiXPtWXiQggWbZirMCXam51tg==
+  dependencies:
+    "@react-hook/latest" "^1.0.2"
+
+"@react-hook/window-size@^3.0.7":
+  version "3.0.7"
+  resolved "https://registry.yarnpkg.com/@react-hook/window-size/-/window-size-3.0.7.tgz#00d176e7a8eb55814e161eae34aae20afbcbe35d"
+  integrity sha512-bK5ed/jN+cxy0s1jt2CelCnUt7jZRseUvPQ22ZJkUl/QDOsD+7CA/6wcqC3c0QweM/fPBRP6uI56TJ48SnlVww==
+  dependencies:
+    "@react-hook/debounce" "^3.0.0"
+    "@react-hook/event" "^1.2.1"
+    "@react-hook/throttle" "^2.2.0"
 
 "@react-stately/overlays@^3.1.3":
   version "3.1.3"
@@ -11112,11 +11140,11 @@ is-utf8@^0.2.0:
   integrity sha1-Sw2hRCEE0bM2NA6AeX6GXPOffXI=
 
 is-weakref@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/is-weakref/-/is-weakref-1.0.1.tgz#842dba4ec17fa9ac9850df2d6efbc1737274f2a2"
-  integrity sha512-b2jKc2pQZjaeFYWEf7ScFj+Be1I+PXmlu572Q8coTXZ+LD/QQZ7ShPMst8h16riVgyXTQwUsFEl74mDvc/3MHQ==
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/is-weakref/-/is-weakref-1.0.2.tgz#9529f383a9338205e89765e0392efc2f100f06f2"
+  integrity sha512-qctsuLZmIQ0+vSSMfoVvyFe2+GSEvnmZ2ezTup1SBse9+twCCeial6EEi3Nc2KFcf6+qz2FBPnjXsk8xhKSaPQ==
   dependencies:
-    call-bind "^1.0.0"
+    call-bind "^1.0.2"
 
 is-what@^3.12.0:
   version "3.14.1"
@@ -15625,11 +15653,6 @@ react-is@^16.12.0, react-is@^16.13.1, react-is@^16.6.0, react-is@^16.7.0, react-
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
   integrity sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==
 
-react-keybind@^0.8.1:
-  version "0.8.2"
-  resolved "https://registry.yarnpkg.com/react-keybind/-/react-keybind-0.8.2.tgz#5bbccf6bb81fbfd22770e80973ff867dddcacb33"
-  integrity sha512-6Fi0MdvdQP/0uh4SAxaUkXiwW5hNVn5kyKDWNv4QBIherCRhYkOCnxShpwkiKqVbqq7fCb+3YyrKNrf7Iz6wEA==
-
 react-lifecycles-compat@^3.0.0, react-lifecycles-compat@^3.0.4:
   version "3.0.4"
   resolved "https://registry.yarnpkg.com/react-lifecycles-compat/-/react-lifecycles-compat-3.0.4.tgz#4f1a273afdfc8f3488a8c516bfda78f872352362"
@@ -15703,6 +15726,16 @@ react-popper@^2.2.4:
   dependencies:
     react-fast-compare "^3.0.1"
     warning "^4.0.2"
+
+react-pro-sidebar@^0.7.1:
+  version "0.7.1"
+  resolved "https://registry.yarnpkg.com/react-pro-sidebar/-/react-pro-sidebar-0.7.1.tgz#0b5edca0809ff6a23bda188c5db370f880690ee7"
+  integrity sha512-Iy1X8ce4t5Vqz4CsyzjwokGUE3/IObgmYzS0ins7/2eWKle0SMUPaWdgMKFIVjtVrMr5vmjPbRicq8FxnVaf8A==
+  dependencies:
+    "@popperjs/core" "^2.4.0"
+    classnames "^2.2.6"
+    react-slidedown "^2.4.5"
+    resize-observer-polyfill "^1.5.1"
 
 react-redux@^7.2.0, react-redux@^7.2.1:
   version "7.2.6"
@@ -15794,6 +15827,13 @@ react-sizeme@^3.0.1:
     invariant "^2.2.4"
     shallowequal "^1.1.0"
     throttle-debounce "^3.0.1"
+
+react-slidedown@^2.4.5:
+  version "2.4.6"
+  resolved "https://registry.yarnpkg.com/react-slidedown/-/react-slidedown-2.4.6.tgz#2c73980b91c06d61bef745d3192d0549fbccbbb1"
+  integrity sha512-O6cJOQpTwleO4jRlw768dCOZ//K6tHZIjtEhGNcdHm4v5tWD/pFVuNfvBD0n3hnyeMcp9NR+nmHTF4W+VUKzeA==
+  dependencies:
+    tslib "^1.9.0"
 
 react-svg-spinner@^1.0.4:
   version "1.0.4"
@@ -17618,9 +17658,9 @@ stylehacks@^5.0.1:
     postcss-selector-parser "^6.0.4"
 
 stylis@^4.0.10, stylis@^4.0.3, stylis@^4.0.6:
-  version "4.0.11"
-  resolved "https://registry.yarnpkg.com/stylis/-/stylis-4.0.11.tgz#405360034a86acd66241c00bbbc85415a071ed35"
-  integrity sha512-Q7gWFqMXrpDAnqhkFZdgBjXzybYc4WaJNtFdnQQSfww/cIiBUx/3sPGYMKFh3muXA47dhaWfYqc/HQkg8j7+ig==
+  version "4.0.12"
+  resolved "https://registry.yarnpkg.com/stylis/-/stylis-4.0.12.tgz#cad79b30964de9a7e3ca92687a0e73718cbf0e17"
+  integrity sha512-eVXQEZqRRFRvl8Aor1kNWN7ViNss9tYhphVBFNxyCJWKdK+FO5sOVKEHk7Dg/vLAr1xYQBpUb+7weU4AlDUm8g==
 
 stylus@^0.54.8:
   version "0.54.8"
@@ -17674,6 +17714,11 @@ supports-hyperlinks@^2.0.0:
   dependencies:
     has-flag "^4.0.0"
     supports-color "^7.0.0"
+
+svg-jest@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/svg-jest/-/svg-jest-1.0.1.tgz#3a820280bfd4c1e0637d68c8d477d37d0ae46abb"
+  integrity sha512-uVbY14nW3IGXkRueduWpQNOVOvC0XE9uu3Y1MIWX6zgweOqPT+hmP/J92yCNBv5kAQzNU7DW2nCO+enZpv+Hsw==
 
 svgo@^2.7.0:
   version "2.8.0"
