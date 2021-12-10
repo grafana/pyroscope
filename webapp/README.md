@@ -26,3 +26,15 @@ Anything else (local dev, CI) add too `devDependencies`.
 
 The reasoning is that when building the docker image we install only `dependencies` required to build the application, by running `yarn install --production`.
 Linting, testing etc is assumed to be ran in a different CI step.
+
+# Using alias imports
+Alias imports allow importing as if it was an external package, for example:
+```javascript
+import Button from '@ui/Button';
+```
+
+To be able to do that, you need to add the alias to the following files:
+* `.storybook/main.js`
+* `scripts/webpack/webpack.common.js`
+* `tsconfig.json`
+* `jest.config.js`
