@@ -422,20 +422,30 @@ $pane-width: 6px;
 
 html,
 body,
-#root,
-.pyroscope-app {
+#root {
   height: 100%;
   min-height: 100%;
 }
 
-.pyroscope-app {
+// This was used for the sidebar setup
+// The trick here is to have 2 items
+// The sidebar and the app
+// And ONLY scroll the app
+// which should occuppy the rest of screen width
+// making it look like it's the body's toolbar!
+.app {
+  height: 100%;
   display: flex;
-  flex-direction: column;
 }
 
-.sidebar-wrapper {
-  display: flex;
-  flex-direction: column;
+.pyroscope-app {
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.pyroscope-app {
+  //  display: flex;
+  //  flex-direction: column;
 }
 
 .main-wrapper {
@@ -500,174 +510,6 @@ body,
   & + .viz-switch {
     margin-left: 10px;
   }
-}
-
-.sidebar-wrapper {
-  display: flex;
-  > div {
-    // flex: 1;
-  }
-}
-
-$sidebar-size: 54px;
-$sidebar-tooltip-height: 30px;
-$sidebar-tooltip-arrow-size: 10px;
-$logo-width: math.div($sidebar-size * 2, 3);
-$logo-offset: math.div($sidebar-size - $logo-width, 2);
-$sidebar-tooltip-color: #777;
-
-.ReactModal__Overlay {
-  z-index: 2;
-}
-
-.sidebar {
-  width: $sidebar-size;
-  position: fixed;
-  display: flex;
-  flex-direction: column;
-  background-color: rgba(#fff, 0.13);
-  height: 100vh;
-  z-index: 1;
-
-  .logo {
-    margin: 0;
-    padding: 0;
-    font-weight: 400;
-    background-image: url('../images/logo-v3-small.svg');
-    background-size: $logo-width $logo-width;
-    background-position: $logo-offset $logo-offset;
-    background-repeat: no-repeat;
-  }
-
-  .logo::after {
-    content: '';
-    font-weight: 400;
-    padding-left: 44px;
-    font-size: 25px;
-    vertical-align: text-top;
-  }
-
-  .sidebar-space-filler {
-    flex-grow: 1;
-  }
-
-  .logo,
-  .sidebar-item {
-    width: $sidebar-size;
-    height: $sidebar-size;
-
-    cursor: pointer;
-
-    position: relative;
-
-    // border-top: 1px solid #222;
-    // border-bottom: 1px solid #222;
-    // margin-top:-1px;
-
-    .sidebar-external-link {
-      position: absolute;
-      display: none;
-      top: 0;
-      right: 2px;
-      font-size: 14px;
-      color: rgba(#fff, 0.66);
-    }
-    &:active,
-    &:hover {
-      opacity: 1;
-      .sidebar-external-link {
-        display: block;
-      }
-    }
-
-    // &.sidebar-item-external {
-    //   &::after {
-    //     content: 'ᐳ';
-    //     // display: none;
-    //     height: $sidebar-size;
-    //     line-height: $sidebar-size;
-    //     width: $sidebar-size;
-    //     position: absolute;
-    //     top: 0;
-    //     left: 0;
-    //     text-align: right;
-    //     font-size: 10px;
-    //   }
-
-    //   &:active, &:hover {
-    //     &::after {
-    //       display: block;
-    //     }
-    //   }
-    // }
-
-    a,
-    button {
-      display: block;
-      line-height: $sidebar-size;
-      height: $sidebar-size;
-      text-align: center;
-      font-size: 20px;
-      color: white;
-      opacity: 0.66;
-      border: none;
-      outline: none;
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      cursor: pointer;
-      &:active,
-      &:hover {
-        opacity: 1;
-      }
-
-      &.active-route {
-        opacity: 1;
-        color: white;
-        background-color: rgba(#000, 0.33);
-      }
-    }
-
-    &:hover {
-      background-color: rgba(#000, 0.11);
-    }
-    .sidebar-tooltip-wrapper {
-      position: absolute;
-      top: math.div($sidebar-size - $sidebar-tooltip-height, 2);
-      left: $sidebar-size + 10px;
-      width: 500px;
-      height: $sidebar-tooltip-height;
-      line-height: $sidebar-tooltip-height;
-      display: none;
-    }
-
-    &:hover .sidebar-tooltip-wrapper {
-      display: block;
-    }
-
-    .sidebar-tooltip {
-      position: relative;
-      display: inline-block;
-      background-color: $sidebar-tooltip-color;
-      height: $sidebar-tooltip-height;
-      line-height: $sidebar-tooltip-height;
-      padding: 0 8px;
-      border-radius: 4px;
-      box-shadow: 0 0 10px rgba(black, 0.933);
-      &:after {
-        content: '';
-        position: absolute;
-        border: math.div($sidebar-tooltip-arrow-size, 2) solid transparent;
-        border-right-color: $sidebar-tooltip-color;
-        left: -$sidebar-tooltip-arrow-size;
-        top: math.div($sidebar-tooltip-height - $sidebar-tooltip-arrow-size, 2);
-      }
-    }
-  }
-}
-
-.main-wrapper {
-  margin-left: $sidebar-size;
 }
 
 .navbar-space-filler {

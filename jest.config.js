@@ -15,6 +15,8 @@ module.exports = {
   },
   transform: {
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',
+    '\\.(css|scss)$': 'jest-css-modules-transform',
+    '\\.svg$': 'svg-jest',
   },
   globals: {
     'ts-jest': {
