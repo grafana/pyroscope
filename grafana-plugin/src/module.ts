@@ -23,8 +23,8 @@ export const plugin = new PanelPlugin<SimpleOptions>(
       defaultValue: 'Default value of text input option',
     })
     .addBooleanSwitch({
-      path: 'showSeriesCount',
-      name: 'Show series counter',
+      path: 'showToolbar',
+      name: 'Show toolbar',
       defaultValue: false,
     })
     .addRadio({

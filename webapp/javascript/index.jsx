@@ -27,31 +27,39 @@ try {
 // TODO fetch this from localstorage?
 const enableAdhoc = true;
 
-ReactDOM.render(
-  <Provider store={store}>
-    <Router history={history}>
-      <div className="app">
-        <Sidebar />
-        <Switch>
-          <Route exact path="/">
-            <PyroscopeApp />
-          </Route>
-          <Route path="/comparison">
-            <ComparisonApp />
-          </Route>
-          <Route path="/comparison-diff">
-            <ComparisonDiffApp />
-          </Route>
-          {enableAdhoc && (
-            <Route path="/adhoc-single">
-              <AdhocSingle />
+function App() {
+  return (
+    <Provider store={store}>
+      <Router history={history}>
+        <div className="app">
+          <Switch>
+            <Route exact path="/" component={PyroscopeApp}>
+              <Sidebar />
+              {/* <PyroscopeApp />*/}
             </Route>
-          )}
-        </Switch>
-      </div>
-      <Notifications />
-    </Router>
-    {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
-  </Provider>,
-  document.getElementById('root')
-);
+            {/*
+
+            <Route path="/comparison">
+              <ComparisonApp />
+            </Route>
+            <Route path="/comparison-diff">
+              <ComparisonDiffApp />
+            </Route>
+            {enableAdhoc && (
+              <Route path="/adhoc-single">
+                <AdhocSingle />
+              </Route>
+            )}
+    */}
+          </Switch>
+        </div>
+        <Notifications />
+      </Router>
+      {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
+    </Provider>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+
+console.log('version', React.version);

@@ -13,8 +13,9 @@ export const SimplePanel: React.FC<Props> = ({
   width,
   height,
 }) => {
-  const theme = useTheme();
+  //  const theme = useTheme();
 
+  console.log('options', { options });
   // TODO
   // this can fail in so many ways
   // let's handle it better
@@ -22,10 +23,17 @@ export const SimplePanel: React.FC<Props> = ({
     data.series[data.series.length - 1].fields[0].values as any
   ).buffer[0];
 
+  console.log('width', width);
+
   return (
     <>
       <div className={`flamegraph-wrapper ${styles.panel}`}>
-        <FlamegraphRenderer flamebearer={flamebearer} display="flamegraph" />
+        <FlamegraphRenderer
+          flamebearer={flamebearer}
+          display="flamegraph"
+          viewType="single"
+          showToolbar={options.showToolbar}
+        />
       </div>
     </>
   );

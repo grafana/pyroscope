@@ -1,5 +1,5 @@
 ---
-version: "3.9"
+version: '3.9'
 services:
   grafana:
     image: grafana/grafana:8.1.1
@@ -14,9 +14,10 @@ services:
       - 3000:3000
 
   pyroscope:
-    image: "pyroscope/pyroscope:latest"
-    ports:
-      - 4040:4040
+    image:
+      'pyroscope/pyroscope:latest'
+      #    ports:
+      #      - 4040:4040
     command:
       - server
     environment:

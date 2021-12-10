@@ -42,6 +42,10 @@ function signOut() {
 
 export default function Sidebar2(props: SidebarProps) {
   const { initialCollapsed } = props;
+
+  // const search = undefined;
+  // const pathname = undefined;
+
   const { search, pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const windowWidth = useWindowWidth();
