@@ -12,6 +12,7 @@ import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
+import styles from './FlamegraphRenderer.module.css';
 
 import ExportData from '../ExportData';
 
@@ -275,9 +276,12 @@ class FlameGraphRenderer extends React.Component {
           />
           {this.props.children}
           <div
-            className={clsx('flamegraph-container panes-wrapper', {
-              'vertical-orientation': this.props.viewType === 'double',
-            })}
+            className={`${styles.flamegraphContainer} ${clsx(
+              'flamegraph-container panes-wrapper',
+              {
+                'vertical-orientation': this.props.viewType === 'double',
+              }
+            )}`}
           >
             {panes.map((pane) => pane)}
             {/* { tablePane }
