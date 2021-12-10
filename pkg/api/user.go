@@ -30,6 +30,7 @@ func NewUserHandler(userService UserService) UserHandler {
 type User struct {
 	ID                uint       `json:"id"`
 	FullName          *string    `json:"full_name,omitempty"`
+	Login             string     `json:"login"`
 	Email             string     `json:"email"`
 	Role              model.Role `json:"role"`
 	IsDisabled        bool       `json:"is_disabled"`
@@ -41,25 +42,30 @@ type User struct {
 
 type createUserRequest struct {
 	FullName *string    `json:"full_name,omitempty"`
+	Login    string     `json:"login"`
 	Email    string     `json:"email"`
 	Password []byte     `json:"password"`
 	Role     model.Role `json:"role"`
 }
 
 type updateUserRequest struct {
-	FullName *string     `json:"full_name,omitempty"`
-	Email    *string     `json:"email"`
-	Role     *model.Role `json:"role"`
+	FullName *string `json:"full_name,omitempty"`
+	Email    *string `json:"email"`
 }
 
 type changeUserPasswordRequest struct {
 	Password []byte `json:"password"`
 }
 
+type changeUserRoleRequest struct {
+	Role model.Role `json:"role"`
+}
+
 func userFromModel(u model.User) User {
 	return User{
 		ID:                u.ID,
 		FullName:          u.FullName,
+		Login:             "", // TODO
 		Email:             u.Email,
 		Role:              u.Role,
 		IsDisabled:        model.IsUserDisabled(u),
@@ -105,7 +111,7 @@ func (h UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	MustJSON(w, userFromModel(user))
 }
 
-func (h UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
+func (h UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	u, err := h.userService.GetAllUsers(r.Context())
 	if err != nil {
 		Error(w, err)
@@ -124,15 +130,18 @@ func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		Error(w, err)
 		return
 	}
+	h.updateUser(w, r, id)
+}
+
+func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint) {
 	var req updateUserRequest
-	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		DecodeError(w, err)
 		return
 	}
 	params := model.UpdateUserParams{
 		FullName: req.FullName,
 		Email:    req.Email,
-		Role:     req.Role,
 	}
 	user, err := h.userService.UpdateUserByID(r.Context(), id, params)
 	if err != nil {
@@ -148,12 +157,36 @@ func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) 
 		Error(w, err)
 		return
 	}
+	h.changeUserPassword(w, r, id)
+}
+
+func (h UserHandler) changeUserPassword(w http.ResponseWriter, r *http.Request, id uint) {
 	var req changeUserPasswordRequest
-	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		DecodeError(w, err)
 		return
 	}
 	params := model.UpdateUserParams{Password: model.String(string(req.Password))}
+	if _, err := h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
+		Error(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h UserHandler) ChangeUserRole(w http.ResponseWriter, r *http.Request) {
+	id, err := idFromRequest(r)
+	if err != nil {
+		Error(w, err)
+		return
+	}
+	var req changeUserRoleRequest
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		DecodeError(w, err)
+		return
+	}
+	// TODO: Check that admin doesn't revoke it's own Admin role?
+	params := model.UpdateUserParams{Role: &req.Role}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
 		Error(w, err)
 		return
@@ -194,4 +227,31 @@ func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
+	user, ok := model.UserFromContext(r.Context())
+	if !ok {
+		Error(w, ErrAuthenticationRequired)
+		return
+	}
+	MustJSON(w, userFromModel(user))
+}
+
+func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
+	user, ok := model.UserFromContext(r.Context())
+	if !ok {
+		Error(w, ErrAuthenticationRequired)
+		return
+	}
+	h.updateUser(w, r, user.ID)
+}
+
+func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *http.Request) {
+	user, ok := model.UserFromContext(r.Context())
+	if !ok {
+		Error(w, ErrAuthenticationRequired)
+		return
+	}
+	h.changeUserPassword(w, r, user.ID)
 }

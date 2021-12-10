@@ -12,10 +12,12 @@ import (
 )
 
 var (
-	errParamIDRequired     = model.ValidationError{Err: errors.New("id parameter is required")}
-	errParamIDInvalid      = model.ValidationError{Err: errors.New("id parameter is invalid")}
-	errRequestBodyRequired = model.ValidationError{Err: errors.New("request body required")}
-	errRequestBodyInvalid  = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
+	ErrParamIDRequired        = model.ValidationError{Err: errors.New("id parameter is required")}
+	ErrParamIDInvalid         = model.ValidationError{Err: errors.New("id parameter is invalid")}
+	ErrRequestBodyRequired    = model.ValidationError{Err: errors.New("request body required")}
+	ErrRequestBodyInvalid     = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
+	ErrAuthenticationRequired = model.ValidationError{Err: errors.New("authentication required")}
+	ErrPermissionDenied       = model.ValidationError{Err: errors.New("permission denied")}
 )
 
 type Errors struct {
@@ -25,10 +27,10 @@ type Errors struct {
 func DecodeError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, io.EOF):
-		err = errRequestBodyRequired
+		err = ErrRequestBodyRequired
 	case errors.Is(err, io.ErrUnexpectedEOF):
 		// https://github.com/golang/go/issues/25956
-		err = errRequestBodyInvalid
+		err = ErrRequestBodyInvalid
 	}
 	Error(w, model.ValidationError{Err: err})
 }
@@ -52,6 +54,10 @@ func ErrorCode(w http.ResponseWriter, err error, code int) {
 		return
 	case code > 0:
 		w.WriteHeader(code)
+	case errors.Is(err, ErrAuthenticationRequired):
+		w.WriteHeader(http.StatusUnauthorized)
+	case errors.Is(err, ErrPermissionDenied):
+		w.WriteHeader(http.StatusForbidden)
 	case model.IsValidationError(err):
 		w.WriteHeader(http.StatusBadRequest)
 	case model.IsNotFoundError(err):
