@@ -23,7 +23,11 @@ function ComparisonDiffApp(props) {
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <Header />
-        <TimelineChartWrapper id="timeline-chart-diff" viewSide="both" />
+        <TimelineChartWrapper
+          data-testid="timeline-main"
+          id="timeline-chart-diff"
+          viewSide="both"
+        />
         <FlameGraphRenderer viewType="diff" flamebearer={diff.flamebearer} />
       </div>
       <Footer />

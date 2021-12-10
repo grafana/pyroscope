@@ -293,6 +293,7 @@ class FlameGraphRenderer extends React.Component {
                 <div className="diff-instructions-wrapper-side">
                   <InstructionText {...this.props} viewSide="left" />
                   <TimelineChartWrapper
+                    data-testid="timeline-left"
                     key="timeline-chart-left"
                     id="timeline-chart-left"
                     viewSide="left"
@@ -301,6 +302,7 @@ class FlameGraphRenderer extends React.Component {
                 <div className="diff-instructions-wrapper-side">
                   <InstructionText {...this.props} viewSide="right" />
                   <TimelineChartWrapper
+                    data-testid="timeline-right"
                     key="timeline-chart-right"
                     id="timeline-chart-right"
                     viewSide="right"
@@ -333,7 +335,7 @@ function figureFlamegraphDataTestId(viewType, viewSide) {
       return `flamegraph-comparison-${viewSide}`;
     }
     case 'diff': {
-      return `flamegraph-diff-${viewSide}`;
+      return `flamegraph-diff`;
     }
 
     default:

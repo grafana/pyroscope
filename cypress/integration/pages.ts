@@ -12,7 +12,7 @@ describe('pages', () => {
     cy.findByTestId('timeline-single');
   });
 
-  it.only('loads /comparison (single) correctly', () => {
+  it('loads /comparison correctly', () => {
     cy.intercept('**/render*from=1633024298&until=1633024302*', {
       fixture: 'simple-golang-app-cpu.json',
       times: 1,
@@ -42,5 +42,25 @@ describe('pages', () => {
 
     cy.findByTestId('flamegraph-comparison-left');
     cy.findByTestId('flamegraph-comparison-right');
+  });
+
+  it('loads /comparison-diff correctly', () => {
+    cy.intercept('**/render*', {
+      fixture: 'simple-golang-app-cpu-diff.json',
+      times: 1,
+    }).as('render');
+
+    cy.visit(
+      '/comparison-diff?query=simple.golang.app.cpu%7B%7D&from=1633024298&until=1633024302&leftFrom=1633024290&leftUntil=1633024290&rightFrom=1633024300&rightUntil=1633024300'
+    );
+
+    cy.wait('@render');
+
+    // there are 3 timelines
+    cy.findByTestId('timeline-main');
+    cy.findByTestId('timeline-left');
+    cy.findByTestId('timeline-right');
+
+    cy.findByTestId('flamegraph-diff');
   });
 });
