@@ -57,6 +57,7 @@ var _ = Describe("User validation", func() {
 
 			Entry("valid params", createUserParamsCase{
 				params: model.CreateUserParams{
+					Name:     "johndoe",
 					FullName: model.String("John Doe"),
 					Email:    "john@example.com",
 					Password: "qwerty",
@@ -66,24 +67,35 @@ var _ = Describe("User validation", func() {
 
 			Entry("name is too long", createUserParamsCase{
 				params: model.CreateUserParams{
-					FullName: model.String(strings.Repeat("X", 256)),
+					Name: strings.Repeat("X", 256),
 				},
 				err: &multierror.Error{Errors: []error{
 					model.ErrUserNameTooLong,
-					model.ErrUserPasswordEmpty,
 					model.ErrUserEmailInvalid,
+					model.ErrUserPasswordEmpty,
+					model.ErrRoleUnknown,
+				}},
+			}),
+
+			Entry("full name is too long", createUserParamsCase{
+				params: model.CreateUserParams{
+					FullName: model.String(strings.Repeat("X", 256)),
+				},
+				err: &multierror.Error{Errors: []error{
+					model.ErrUserNameEmpty,
+					model.ErrUserEmailInvalid,
+					model.ErrUserFullNameTooLong,
+					model.ErrUserPasswordEmpty,
 					model.ErrRoleUnknown,
 				}},
 			}),
 
 			Entry("invalid params", createUserParamsCase{
-				params: model.CreateUserParams{
-					FullName: model.String(""),
-				},
+				params: model.CreateUserParams{},
 				err: &multierror.Error{Errors: []error{
 					model.ErrUserNameEmpty,
-					model.ErrUserPasswordEmpty,
 					model.ErrUserEmailInvalid,
+					model.ErrUserPasswordEmpty,
 					model.ErrRoleUnknown,
 				}},
 			}),
@@ -107,8 +119,9 @@ var _ = Describe("User validation", func() {
 
 			Entry("valid params", updateUserParamsCase{
 				params: model.UpdateUserParams{
-					FullName: model.String("John Doe"),
+					Name:     model.String("johndoe"),
 					Email:    model.String("john@example.com"),
+					FullName: model.String("John Doe"),
 					Password: model.String("qwerty")}.
 					SetIsDisabled(false).
 					SetRole(model.ViewerRole),
@@ -118,11 +131,12 @@ var _ = Describe("User validation", func() {
 				params: model.UpdateUserParams{
 					FullName: model.String(strings.Repeat("X", 256)),
 				},
-				err: model.ErrUserNameTooLong,
+				err: model.ErrUserFullNameTooLong,
 			}),
 
 			Entry("invalid params", updateUserParamsCase{
 				params: model.UpdateUserParams{
+					Name:     model.String(""),
 					FullName: model.String(""),
 					Email:    model.String(""),
 					Password: model.String("")}.

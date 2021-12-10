@@ -10,8 +10,9 @@ import (
 func createUserTableMigration() *gormigrate.Migration {
 	type User struct {
 		ID           uint    `gorm:"primarykey"`
-		FullName     *string `gorm:"type:varchar(255);default:null"`
+		Name         string  `gorm:"type:varchar(255);not null;default:null;index:,unique"`
 		Email        string  `gorm:"type:varchar(255);not null;default:null;index:,unique"`
+		FullName     *string `gorm:"type:varchar(255);default:null"`
 		PasswordHash []byte  `gorm:"type:varchar(255);not null;default:null"`
 		Role         int     `gorm:"not null;default:null"`
 		IsDisabled   *bool   `gorm:"not null;default:false"`

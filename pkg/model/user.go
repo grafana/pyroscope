@@ -10,18 +10,20 @@ import (
 )
 
 var (
-	ErrUserNotFound      = NotFoundError{errors.New("user not found")}
-	ErrUserEmailExists   = ValidationError{errors.New("user with this email already exists")}
-	ErrUserEmailInvalid  = ValidationError{errors.New("user email is invalid")}
-	ErrUserNameEmpty     = ValidationError{errors.New("user name can't be empty")}
-	ErrUserNameTooLong   = ValidationError{errors.New("user name can't be longer than 255 symbols")}
-	ErrUserPasswordEmpty = ValidationError{errors.New("user password can't be empty")}
+	ErrUserNotFound        = NotFoundError{errors.New("user not found")}
+	ErrUserNameEmpty       = ValidationError{errors.New("user name can't be empty")}
+	ErrUserNameTooLong     = ValidationError{errors.New("user name must not exceed 255 characters")}
+	ErrUserFullNameTooLong = ValidationError{errors.New("user full name must not exceed 255 characters")}
+	ErrUserEmailExists     = ValidationError{errors.New("user with this email already exists")}
+	ErrUserEmailInvalid    = ValidationError{errors.New("user email is invalid")}
+	ErrUserPasswordEmpty   = ValidationError{errors.New("user password can't be empty")}
 )
 
 type User struct {
 	ID           uint    `gorm:"primarykey"`
-	FullName     *string `gorm:"type:varchar(255);default:null"`
+	Name         string  `gorm:"type:varchar(255);not null;default:null;index:,unique"`
 	Email        string  `gorm:"type:varchar(255);not null;default:null;index:,unique"`
+	FullName     *string `gorm:"type:varchar(255);default:null"`
 	PasswordHash []byte  `gorm:"type:varchar(255);not null;default:null"`
 	Role         Role    `gorm:"not null;default:null"`
 	IsDisabled   *bool   `gorm:"not null;default:false"`
@@ -34,14 +36,21 @@ type User struct {
 }
 
 type CreateUserParams struct {
-	FullName *string
+	Name     string
 	Email    string
+	FullName *string
 	Password string
 	Role     Role
 }
 
 func (p CreateUserParams) Validate() error {
 	var err error
+	if nameErr := ValidateUserName(p.Name); nameErr != nil {
+		err = multierror.Append(err, nameErr)
+	}
+	if emailErr := ValidateEmail(p.Email); emailErr != nil {
+		err = multierror.Append(err, emailErr)
+	}
 	if p.FullName != nil {
 		if nameErr := ValidateUserFullName(*p.FullName); nameErr != nil {
 			err = multierror.Append(err, nameErr)
@@ -49,9 +58,6 @@ func (p CreateUserParams) Validate() error {
 	}
 	if pwdErr := ValidatePasswordRequirements(p.Password); pwdErr != nil {
 		err = multierror.Append(err, pwdErr)
-	}
-	if emailErr := ValidateEmail(p.Email); emailErr != nil {
-		err = multierror.Append(err, emailErr)
 	}
 	if !p.Role.IsValid() {
 		err = multierror.Append(err, ErrRoleUnknown)
@@ -61,9 +67,10 @@ func (p CreateUserParams) Validate() error {
 
 type UpdateUserParams struct {
 	FullName   *string
+	Name       *string
 	Email      *string
-	Role       *Role
 	Password   *string
+	Role       *Role
 	IsDisabled *bool
 }
 
@@ -79,14 +86,19 @@ func (p UpdateUserParams) SetIsDisabled(d bool) UpdateUserParams {
 
 func (p UpdateUserParams) Validate() error {
 	var err error
-	if p.FullName != nil {
-		if nameErr := ValidateUserFullName(*p.FullName); nameErr != nil {
+	if p.Name != nil {
+		if nameErr := ValidateUserName(*p.Name); nameErr != nil {
 			err = multierror.Append(err, nameErr)
 		}
 	}
 	if p.Email != nil {
 		if emailErr := ValidateEmail(*p.Email); emailErr != nil {
 			err = multierror.Append(err, emailErr)
+		}
+	}
+	if p.FullName != nil {
+		if nameErr := ValidateUserFullName(*p.FullName); nameErr != nil {
+			err = multierror.Append(err, nameErr)
 		}
 	}
 	if p.Password != nil {
@@ -107,12 +119,19 @@ func IsUserDisabled(u User) bool {
 	return *u.IsDisabled
 }
 
-func ValidateUserFullName(fullName string) error {
-	if len(fullName) == 0 {
+func ValidateUserName(userName string) error {
+	if len(userName) == 0 {
 		return ErrUserNameEmpty
 	}
-	if len(fullName) > 255 {
+	if len(userName) > 255 {
 		return ErrUserNameTooLong
+	}
+	return nil
+}
+
+func ValidateUserFullName(fullName string) error {
+	if len(fullName) > 255 {
+		return ErrUserFullNameTooLong
 	}
 	return nil
 }
