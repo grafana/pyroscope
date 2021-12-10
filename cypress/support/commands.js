@@ -37,6 +37,10 @@ Cypress.Commands.overwrite(
   'matchImageSnapshot',
   (originalFn, snapshotName, options) => {
     if (Cypress.env('COMPARE_SNAPSHOTS')) {
+      // wait a little bit
+      // that's to try to avoid blurry screenshots
+      // eslint-disable-next-line cypress/no-unnecessary-waiting
+      cy.wait(500);
       originalFn(snapshotName, options);
     } else {
       cy.log('Screenshot comparison is disabled');
