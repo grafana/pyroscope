@@ -280,9 +280,7 @@ class FlameGraphRenderer extends React.Component {
               }}
             />
           )}
-          aaaaaaaaaaa
           {this.props.children}
-          bbbbbbb
           <div
             className={`${styles.flamegraphContainer} ${clsx(
               'flamegraph-container panes-wrapper',
