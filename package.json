@@ -182,5 +182,9 @@
       "eslint --cache --fix"
     ],
     "*.{js,jsx,ts,tsx,json,yml,yaml,eslintrc,prettierrc,css,scss}": "prettier --write"
+  },
+  "resolutions": {
+    "react": "16.14.0",
+    "react-dom": "16.14.0"
   }
 }
