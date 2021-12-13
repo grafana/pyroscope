@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"runtime/pprof"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/profiler"
+	"github.com/pyroscope-io/client/pyroscope"
 )
 
 //go:noinline
@@ -18,7 +19,7 @@ func work(n int) {
 }
 
 func fastFunction(c context.Context) {
-	profiler.TagWrapper(c, profiler.Labels("function", "fast"), func(c context.Context) {
+	pyroscope.TagWrapper(c, pyroscope.Labels("function", "fast"), func(c context.Context) {
 		work(20000000)
 	})
 }
@@ -31,11 +32,16 @@ func slowFunction(c context.Context) {
 }
 
 func main() {
-	profiler.Start(profiler.Config{
+	serverAddress := os.Getenv("PYROSCOPE_SERVER_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "http://localhost:4040"
+	}
+	pyroscope.Start(pyroscope.Config{
 		ApplicationName: "simple.golang.app",
-		ServerAddress:   "http://localhost:4040", // this will run inside docker-compose, hence `pyroscope` for hostname
+		ServerAddress:   serverAddress,
+		Logger:          pyroscope.StandardLogger,
 	})
-	profiler.TagWrapper(context.Background(), profiler.Labels("foo", "bar"), func(c context.Context) {
+	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("foo", "bar"), func(c context.Context) {
 		for {
 			fastFunction(c)
 			slowFunction(c)

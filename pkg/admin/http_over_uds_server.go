@@ -71,7 +71,15 @@ func (m myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (u *UdsHTTPServer) Start(handler http.Handler) error {
 	h := myHandler{handler}
 	u.server = &http.Server{Handler: h}
-	return u.server.Serve(u.listener)
+	err := u.server.Serve(u.listener)
+
+	// ListenAndServe always returns a non-nil error. After Shutdown or Close,
+	// the returned error is ErrServerClosed.
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+
+	return err
 }
 
 // createListener creates a listener on socketAddr UDS
@@ -133,12 +141,10 @@ func (u *UdsHTTPServer) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	err := u.server.Shutdown(ctx)
-	if err != nil {
-		return err
-	}
-
-	return os.Remove(u.socketAddr)
+	// there's no need to remove the socket
+	// since go does it for us
+	// https://github.com/golang/go/blob/47db3bb443774c0b0df2cab188aa3d76b361dca2/src/net/unixsock_posix.go#L187
+	return u.server.Shutdown(ctx)
 }
 
 // https://stackoverflow.com/a/65865898

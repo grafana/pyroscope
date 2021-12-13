@@ -64,6 +64,7 @@ export default class Flamegraph {
       levels: this.flamebearer.levels,
       spyName: this.flamebearer.spyName,
       units: this.flamebearer.units,
+      version: this.flamebearer.version,
 
       rangeMin,
       rangeMax,

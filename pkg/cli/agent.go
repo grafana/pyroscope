@@ -26,7 +26,6 @@ func newAgentService(logger *logrus.Logger, cfg *config.Agent) (*agentService, e
 		UpstreamThreads:        cfg.UpstreamThreads,
 		UpstreamAddress:        cfg.ServerAddress,
 		UpstreamRequestTimeout: cfg.UpstreamRequestTimeout,
-		ManualStart:            true,
 	}
 	upstream, err := remote.New(rc, logger)
 	if err != nil {

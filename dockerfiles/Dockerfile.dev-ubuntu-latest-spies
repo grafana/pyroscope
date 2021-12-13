@@ -1,0 +1,12 @@
+FROM ubuntu:latest
+
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -yq git golang-1.16 make nodejs npm \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -yq php-dev rustc \
+    && npm install --global yarn
+RUN git clone https://github.com/pyroscope-io/pyroscope.git
+WORKDIR pyroscope
+RUN PATH=$PATH:/usr/lib/go-1.16/bin/:$(/usr/lib/go-1.16/bin/go env GOPATH)/bin \
+    make install-dev-tools install-web-dependencies \
+    build-third-party-dependencies \
+    assets-release build test

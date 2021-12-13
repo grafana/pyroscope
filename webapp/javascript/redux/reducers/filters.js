@@ -24,6 +24,8 @@ import {
   REQUEST_COMPARISON_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
+  RECEIVE_COMPARISON_TIMELINE,
+  REQUEST_COMPARISON_TIMELINE,
 } from '../actionTypes';
 
 const defaultName = window.initialState.appNames.find(
@@ -70,6 +72,29 @@ function decodeTimelineData(timelineData) {
     time += timelineData.durationDelta;
     return res;
   });
+}
+
+function decodeFlamebearer({
+  flamebearer,
+  metadata,
+  leftTicks,
+  rightTicks,
+  version,
+}) {
+  const fb = {
+    ...flamebearer,
+    format: metadata.format,
+    spyName: metadata.spyName,
+    sampleRate: metadata.sampleRate,
+    units: metadata.units,
+  };
+  if (fb.format === 'double') {
+    fb.leftTicks = leftTicks;
+    fb.rightTicks = rightTicks;
+  }
+  fb.version = version || 0;
+  fb.levels = deltaDiffWrapper(fb.format, fb.levels);
+  return fb;
 }
 
 export default function (state = initialState, action) {
@@ -145,8 +170,7 @@ export default function (state = initialState, action) {
     case RECEIVE_PYRESCOPE_APP_DATA:
       data = action.payload.data;
       timeline = data.timeline;
-      flamebearer = data.flamebearer;
-
+      flamebearer = decodeFlamebearer(data);
       return {
         ...state,
         timeline: decodeTimelineData(timeline),
@@ -160,25 +184,20 @@ export default function (state = initialState, action) {
         isJSONLoading: true,
       };
     case RECEIVE_COMPARISON_APP_DATA:
-      data = action.payload.data;
       viewSide = action.payload.viewSide;
-      timeline = data.timeline;
-      flamebearer = data.flamebearer;
+      flamebearer = decodeFlamebearer(action.payload.data);
 
       let left;
       let right;
-      let timelineData;
       switch (viewSide) {
         case 'left':
           left = { flamebearer };
           right = state.comparison.right;
-          timelineData = state.timeline;
           break;
 
         case 'right': {
           left = state.comparison.left;
           right = { flamebearer };
-          timelineData = state.timeline;
           break;
         }
         default:
@@ -187,11 +206,21 @@ export default function (state = initialState, action) {
 
       return {
         ...state,
-        timeline: timelineData,
         comparison: {
           left,
           right,
         },
+        isJSONLoading: false,
+      };
+    case REQUEST_COMPARISON_TIMELINE:
+      return {
+        ...state,
+        isJSONLoading: true,
+      };
+    case RECEIVE_COMPARISON_TIMELINE:
+      return {
+        ...state,
+        timeline: decodeTimelineData(action.payload.timeline),
         isJSONLoading: false,
       };
 
@@ -203,18 +232,12 @@ export default function (state = initialState, action) {
     case RECEIVE_COMPARISON_DIFF_APP_DATA:
       data = action.payload.data;
       timeline = data.timeline;
-      const { leftTicks, rightTicks } = data;
+      flamebearer = decodeFlamebearer(data);
 
       return {
         ...state,
         timeline: decodeTimelineData(timeline),
-        diff: {
-          flamebearer: {
-            leftTicks,
-            rightTicks,
-            ...data.flamebearer,
-          },
-        },
+        diff: { flamebearer },
         isJSONLoading: false,
       };
 

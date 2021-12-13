@@ -47,6 +47,13 @@ else
 	endif
 endif
 
+OPEN=
+ifeq ("$(OS)", "Linux")
+	OPEN=xdg-open
+else
+  OPEN=open
+endif
+
 EMBEDDED_ASSETS_DEPS ?= "assets-release"
 EXTRA_LDFLAGS ?= ""
 
@@ -129,7 +136,11 @@ build-third-party-dependencies: $(shell echo $(THIRD_PARTY_DEPENDENCIES)) ## Bui
 
 .PHONY: test
 test: ## Runs the test suite
-	go test -race -tags debugspy ./...
+	go test -race -tags debugspy $(shell go list ./... | grep -v /examples/)
+
+.PHONY: coverage
+coverage: ## Runs the test suite with coverage
+	go test -tags debugspy -coverprofile=coverage -covermode=atomic $(shell go list ./... | grep -v /examples/)
 
 .PHONY: server
 server: ## Start the Pyroscope Server
@@ -166,7 +177,7 @@ embedded-assets: install-dev-tools $(shell echo $(EMBEDDED_ASSETS_DEPS)) ## Conf
 
 .PHONY: lint
 lint: ## Run the lint across the codebase
-	go run "$(shell scripts/pinned-tool.sh github.com/mgechev/revive)" -config revive.toml -exclude ./pkg/agent/pprof/... -exclude ./vendor/... -formatter stylish ./...
+	go run "$(shell scripts/pinned-tool.sh github.com/mgechev/revive)" -config revive.toml -exclude ./pkg/agent/pprof/... -exclude ./vendor/... -exclude ./examples/... -formatter stylish ./...
 
 .PHONY: lint-summary
 lint-summary: ## Get the lint summary
@@ -198,7 +209,7 @@ dev: ## dev
 
 .PHONY: godoc
 godoc: ## Generate godoc
-	sleep 5 && open http://localhost:8090/pkg/github.com/pyroscope-io/pyroscope/ &
+	sleep 5 && $(OPEN) http://localhost:8090/pkg/github.com/pyroscope-io/pyroscope/ &
 	godoc -http :8090
 
 .PHONY: go-deps-graph
@@ -219,7 +230,7 @@ update-contributors: ## Update the contributors
 
 .PHONY: update-changelog
 update-changelog: ## Update the changelog
-	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -s
+	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -s -p angular
 	sed -i '/Updates the list of contributors in README/d' CHANGELOG.md
 	sed -i '/docs: updates the list of contributors in README/d' CHANGELOG.md
 	sed -i '/Update README.md/d' CHANGELOG.md

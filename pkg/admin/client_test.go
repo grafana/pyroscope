@@ -1,8 +1,12 @@
+//go:build !windows
+// +build !windows
+
 package admin_test
 
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -10,8 +14,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
 )
 
-// TODO fazer todos esses testes
 var _ = Describe("client", func() {
+	fastTimeout := time.Millisecond * 100
 	var (
 		cleanup    func()
 		socketAddr string
@@ -45,7 +49,7 @@ var _ = Describe("client", func() {
 	// without requiring dependency injection
 	Context("when socket address is empty", func() {
 		It("fails", func() {
-			_, err := admin.NewClient("")
+			_, err := admin.NewClient("", fastTimeout)
 			Expect(err).To(MatchError(admin.ErrHTTPClientCreation))
 		})
 	})
@@ -61,7 +65,7 @@ var _ = Describe("client", func() {
 			})
 
 			It("works", func() {
-				client, err := admin.NewClient(socketAddr)
+				client, err := admin.NewClient(socketAddr, fastTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				_, err = client.GetAppsNames()
@@ -78,7 +82,7 @@ var _ = Describe("client", func() {
 			})
 
 			It("fails", func() {
-				client, err := admin.NewClient(socketAddr)
+				client, err := admin.NewClient(socketAddr, fastTimeout)
 
 				_, err = client.GetAppsNames()
 				Expect(err).To(MatchError(admin.ErrStatusCodeNotOK))
@@ -97,7 +101,7 @@ var _ = Describe("client", func() {
 			})
 
 			It("fails", func() {
-				client, err := admin.NewClient(socketAddr)
+				client, err := admin.NewClient(socketAddr, fastTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				_, err = client.GetAppsNames()
@@ -108,7 +112,7 @@ var _ = Describe("client", func() {
 		Context("when can't talk to server", func() {
 			It("fails", func() {
 				Expect(true).To(Equal(true))
-				client, err := admin.NewClient("foobar.sock")
+				client, err := admin.NewClient("foobar.sock", fastTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				_, err = client.GetAppsNames()
@@ -127,7 +131,7 @@ var _ = Describe("client", func() {
 			})
 
 			It("works", func() {
-				client, err := admin.NewClient(socketAddr)
+				client, err := admin.NewClient(socketAddr, fastTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				err = client.DeleteApp("appname")
@@ -138,7 +142,7 @@ var _ = Describe("client", func() {
 		Context("when can't talk to server", func() {
 			It("fails", func() {
 				Expect(true).To(Equal(true))
-				client, err := admin.NewClient("foobar.sock")
+				client, err := admin.NewClient("foobar.sock", fastTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				err = client.DeleteApp("appname")
@@ -155,7 +159,7 @@ var _ = Describe("client", func() {
 			})
 
 			It("fails", func() {
-				client, err := admin.NewClient(socketAddr)
+				client, err := admin.NewClient(socketAddr, fastTimeout)
 				Expect(err).ToNot(HaveOccurred())
 
 				err = client.DeleteApp("appname")

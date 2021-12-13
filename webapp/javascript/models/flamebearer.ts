@@ -28,6 +28,10 @@ export type Flamebearer = {
     | 'pyspy'
     | 'rbspy'
     | string;
+  /**
+   * Format version.
+   */
+  version: number;
 } & addTicks;
 
 export type addTicks =

@@ -15,7 +15,8 @@ type upstreamMock struct {
 	uploads []*upstream.UploadJob
 }
 
-func (*upstreamMock) Stop() {}
+func (*upstreamMock) Start() {}
+func (*upstreamMock) Stop()  {}
 
 func (u *upstreamMock) Upload(j *upstream.UploadJob) {
 	u.uploads = append(u.uploads, j)

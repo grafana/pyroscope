@@ -120,16 +120,19 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 		return nil, err
 	}
 
-	// TODO(kolesnikovae): Allow failure and skip evictionTask?
-	memTotal, err := getMemTotal()
-	if err != nil {
-		return nil, err
-	}
-
-	s.maintenanceTask(s.evictionTaskInterval, s.evictionTask(memTotal))
-	s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
 	s.maintenanceTask(s.writeBackTaskInterval, s.writeBackTask)
-	s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
+
+	if !s.config.inMemory {
+		// TODO(kolesnikovae): Allow failure and skip evictionTask?
+		memTotal, err := getMemTotal()
+		if err != nil {
+			return nil, err
+		}
+
+		s.maintenanceTask(s.evictionTaskInterval, s.evictionTask(memTotal))
+		s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
+		s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
+	}
 
 	return s, nil
 }
@@ -276,11 +279,18 @@ func (s *Storage) retentionTask() {
 }
 
 func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
-	return segment.NewRetentionPolicy().
-		SetAbsolutePeriod(s.config.retention).
-		SetLevelPeriod(0, s.config.retentionLevels.Zero).
-		SetLevelPeriod(1, s.config.retentionLevels.One).
-		SetLevelPeriod(2, s.config.retentionLevels.Two)
+	rp := segment.NewRetentionPolicy().SetAbsolutePeriod(s.config.retention)
+	levels := []time.Duration{
+		s.config.retentionLevels.Zero,
+		s.config.retentionLevels.One,
+		s.config.retentionLevels.Two,
+	}
+	for i, p := range levels {
+		if p != 0 {
+			rp.SetLevelPeriod(i, p)
+		}
+	}
+	return rp
 }
 
 func (s *Storage) databases() []*db {

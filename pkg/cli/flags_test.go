@@ -12,6 +12,9 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -170,6 +173,7 @@ var _ = Describe("flags", func() {
 								fmt.Fprintln(os.Stderr, "Unable to unmarshal:", err)
 							}
 
+							Expect(loadScrapeConfigsFromFile(&cfg)).ToNot(HaveOccurred())
 							fmt.Printf("configuration is %+v \n", cfg)
 						}
 
@@ -177,7 +181,7 @@ var _ = Describe("flags", func() {
 					},
 				}
 
-				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr)
+				PopulateFlagSet(&cfg, exampleCommand.Flags(), vpr, WithSkip("scrape-configs"))
 				vpr.BindPFlags(exampleCommand.Flags())
 
 				b := bytes.NewBufferString("")
@@ -201,7 +205,7 @@ var _ = Describe("flags", func() {
 					CacheEvictVolume:        0.33,
 					BadgerNoTruncate:        false,
 					DisablePprofEndpoint:    false,
-					EnableExperimentalAdmin: false,
+					EnableExperimentalAdmin: true,
 					MaxNodesSerialization:   2048,
 					MaxNodesRender:          8192,
 					HideApplications:        []string{},
@@ -257,6 +261,29 @@ var _ = Describe("flags", func() {
 						},
 					},
 					AdminSocketPath: "/tmp/pyroscope.sock",
+
+					ScrapeConfigs: []*scrape.Config{
+						{
+							JobName:          "testing",
+							EnabledProfiles:  []string{"cpu", "mem"},
+							Profiles:         scrape.DefaultConfig().Profiles,
+							ScrapeInterval:   10 * time.Second,
+							ScrapeTimeout:    15 * time.Second,
+							Scheme:           "http",
+							HTTPClientConfig: scrape.DefaultHTTPClientConfig,
+							ServiceDiscoveryConfigs: []discovery.Config{
+								discovery.StaticConfig{
+									{
+										Targets: []model.LabelSet{
+											{"__address__": "localhost:6060", "__name__": "app"},
+										},
+										Labels: model.LabelSet{"foo": "bar"},
+										Source: "0",
+									},
+								},
+							},
+						},
+					},
 				}))
 			})
 

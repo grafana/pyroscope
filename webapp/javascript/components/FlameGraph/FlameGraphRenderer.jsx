@@ -8,16 +8,13 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Option } from 'prelude-ts';
-import { connect } from 'react-redux';
 import Graph from './FlameGraphComponent';
-import TimelineChartWrapper from '../TimelineChartWrapper';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
+import styles from './FlamegraphRenderer.module.css';
 
 import ExportData from '../ExportData';
-
-import InstructionText from './InstructionText';
 
 class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
@@ -218,10 +215,16 @@ class FlameGraphRenderer extends React.Component {
       this.state.view !== 'table' ||
       (this.state.flamebearer && this.state.flamebearer.names.length <= 1);
 
+    const flamegraphDataTestId = figureFlamegraphDataTestId(
+      this.props.viewType,
+      this.props.viewSide
+    );
+
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
           key="flamegraph-pane"
+          data-testid={flamegraphDataTestId}
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
@@ -247,6 +250,7 @@ class FlameGraphRenderer extends React.Component {
     // const flotData = this.props.timeline
     //   ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
     //   : [];
+    //
 
     return (
       <div
@@ -270,41 +274,14 @@ class FlameGraphRenderer extends React.Component {
               this.onFocusOnNode(i, j);
             }}
           />
-          {this.props.viewType === 'double' ? (
-            <>
-              <InstructionText {...this.props} />
-              <TimelineChartWrapper
-                key={`timeline-chart-${this.props.viewSide}`}
-                id={`timeline-chart-${this.props.viewSide}`}
-                viewSide={this.props.viewSide}
-              />
-            </>
-          ) : this.props.viewType === 'diff' ? (
-            <>
-              <div className="diff-instructions-wrapper">
-                <div className="diff-instructions-wrapper-side">
-                  <InstructionText {...this.props} viewSide="left" />
-                  <TimelineChartWrapper
-                    key="timeline-chart-left"
-                    id="timeline-chart-left"
-                    viewSide="left"
-                  />
-                </div>
-                <div className="diff-instructions-wrapper-side">
-                  <InstructionText {...this.props} viewSide="right" />
-                  <TimelineChartWrapper
-                    key="timeline-chart-right"
-                    id="timeline-chart-right"
-                    viewSide="right"
-                  />
-                </div>
-              </div>
-            </>
-          ) : null}
+          {this.props.children}
           <div
-            className={clsx('flamegraph-container panes-wrapper', {
-              'vertical-orientation': this.props.viewType === 'double',
-            })}
+            className={`${styles.flamegraphContainer} ${clsx(
+              'flamegraph-container panes-wrapper',
+              {
+                'vertical-orientation': this.props.viewType === 'double',
+              }
+            )}`}
           >
             {panes.map((pane) => pane)}
             {/* { tablePane }
@@ -314,6 +291,23 @@ class FlameGraphRenderer extends React.Component {
       </div>
     );
   };
+}
+
+function figureFlamegraphDataTestId(viewType, viewSide) {
+  switch (viewType) {
+    case 'single': {
+      return `flamegraph-single`;
+    }
+    case 'double': {
+      return `flamegraph-comparison-${viewSide}`;
+    }
+    case 'diff': {
+      return `flamegraph-diff`;
+    }
+
+    default:
+      throw new Error(`Unsupported ${viewType}`);
+  }
 }
 
 export default FlameGraphRenderer;

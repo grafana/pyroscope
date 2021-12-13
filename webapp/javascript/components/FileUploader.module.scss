@@ -1,0 +1,13 @@
+.container {
+  // same color as canvas-container
+  background-color: #212124;
+  // same border as canvas-container
+  border: 1px solid #141414;
+
+  padding: 5px 15px 15px;
+  margin: 15px;
+
+  &:hover {
+    cursor: pointer;
+  }
+}

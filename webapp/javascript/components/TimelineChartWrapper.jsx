@@ -166,6 +166,7 @@ class TimelineChartWrapper extends React.Component {
 
     return (
       <TimelineChart
+        data-testid={this.props['data-testid']}
         id={this.props.id}
         options={this.state.flotOptions}
         viewSide={this.props.viewSide}
@@ -178,7 +179,7 @@ class TimelineChartWrapper extends React.Component {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
+  ...state.root,
 });
 
 const mapDispatchToProps = (dispatch) => ({

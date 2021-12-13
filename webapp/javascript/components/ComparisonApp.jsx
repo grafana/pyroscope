@@ -8,7 +8,12 @@ import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
 import Footer from './Footer';
 import { buildRenderURL } from '../util/updateRequests';
-import { fetchNames, fetchComparisonAppData } from '../redux/actions';
+import {
+  fetchNames,
+  fetchComparisonAppData,
+  fetchTimeline,
+} from '../redux/actions';
+import InstructionText from './FlameGraph/InstructionText';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
@@ -26,11 +31,21 @@ function ComparisonApp(props) {
     return actions.abortTimelineRequest;
   }, [rightRenderURL]);
 
+  useEffect(() => {
+    actions.fetchTimeline(renderURL);
+
+    return actions.abortTimelineRequest;
+  }, [renderURL]);
+
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <Header />
-        <TimelineChartWrapper id="timeline-chart-double" viewSide="both" />
+        <TimelineChartWrapper
+          data-testid="timeline-main"
+          id="timeline-chart-double"
+          viewSide="both"
+        />
         <div
           className="comparison-container"
           data-testid="comparison-container"
@@ -40,13 +55,30 @@ function ComparisonApp(props) {
             viewSide="left"
             flamebearer={comparison.left.flamebearer}
             data-testid="flamegraph-renderer-left"
-          />
+          >
+            <InstructionText viewType="double" viewSide="left" />
+            <TimelineChartWrapper
+              key="timeline-chart-left"
+              id="timeline-chart-left"
+              data-testid="timeline-left"
+              viewSide="left"
+            />
+          </FlameGraphRenderer>
+
           <FlameGraphRenderer
             viewType="double"
             viewSide="right"
             flamebearer={comparison.right.flamebearer}
             data-testid="flamegraph-renderer-right"
-          />
+          >
+            <InstructionText viewType="double" viewSide="right" />
+            <TimelineChartWrapper
+              key="timeline-chart-right"
+              id="timeline-chart-right"
+              data-testid="timeline-right"
+              viewSide="right"
+            />
+          </FlameGraphRenderer>
         </div>
       </div>
       <Footer />
@@ -55,10 +87,18 @@ function ComparisonApp(props) {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
-  renderURL: buildRenderURL(state),
-  leftRenderURL: buildRenderURL(state, state.leftFrom, state.leftUntil),
-  rightRenderURL: buildRenderURL(state, state.rightFrom, state.rightUntil),
+  ...state.root,
+  renderURL: buildRenderURL(state.root),
+  leftRenderURL: buildRenderURL(
+    state.root,
+    state.root.leftFrom,
+    state.root.leftUntil
+  ),
+  rightRenderURL: buildRenderURL(
+    state.root,
+    state.root.rightFrom,
+    state.root.rightUntil
+  ),
 });
 
 const mapDispatchToProps = (dispatch) => ({
@@ -66,6 +106,7 @@ const mapDispatchToProps = (dispatch) => ({
     {
       fetchComparisonAppData,
       fetchNames,
+      fetchTimeline,
     },
     dispatch
   ),

@@ -18,10 +18,6 @@ func NewHTTPOverUDSClient(socketAddr string, opts ...ClientOption) (*http.Client
 	// other kinds of validations?
 
 	client := &http.Client{
-		// since this is an IPC call
-		// this is incredibly generous
-		Timeout: 30 * time.Second,
-
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
 				return net.Dial("unix", socketAddr)

@@ -4,6 +4,8 @@ const glob = require('glob');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
+// uncomment if you want to see the webpack bundle analysis
+// const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 
 const fs = require('fs');
 
@@ -147,12 +149,21 @@ module.exports = {
       {
         test: /\.(svg|ico|jpg|jpeg|png|gif|eot|otf|webp|ttf|woff|woff2|cur|ani|pdf)(\?.*)?$/,
         loader: 'file-loader',
-        options: { name: 'static/img/[name].[hash:8].[ext]' },
+
+        // We output files to assets/static/img, where /assets comes from webpack's output dir
+        // However, we still need to prefix the public URL with /assets/static/img
+        options: {
+          outputPath: 'static/img',
+          publicPath: '/assets/static/img',
+          name: '[name].[hash:8].[ext]',
+        },
       },
     ],
   },
 
   plugins: [
+    // uncomment if you want to see the webpack bundle analysis
+    // new BundleAnalyzerPlugin(),
     new webpack.ProvidePlugin({
       $: 'jquery',
       jQuery: 'jquery',

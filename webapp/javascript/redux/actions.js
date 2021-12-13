@@ -23,9 +23,10 @@ import {
   RECEIVE_PYRESCOPE_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
+  REQUEST_COMPARISON_TIMELINE,
+  RECEIVE_COMPARISON_TIMELINE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
-import { deltaDiffWrapper } from '../util/flamebearer';
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
@@ -69,6 +70,16 @@ export const setMaxNodes = (maxNodes) => ({
 });
 
 export const refresh = (url) => ({ type: REFRESH, payload: { url } });
+
+export const requestTimeline = (url) => ({
+  type: REQUEST_COMPARISON_TIMELINE,
+  payload: { url },
+});
+
+export const receiveTimeline = (data) => ({
+  type: RECEIVE_COMPARISON_TIMELINE,
+  payload: data,
+});
 
 export const requestPyrescopeAppData = (url) => ({
   type: REQUEST_PYRESCOPE_APP_DATA,
@@ -142,6 +153,39 @@ const currentComparisonTimelineController = {
 let fetchTagController;
 let fetchTagValuesController;
 
+export function fetchTimeline(url) {
+  return (dispatch) => {
+    if (currentTimelineController) {
+      currentTimelineController.abort();
+    }
+    currentTimelineController = new AbortController();
+    dispatch(requestTimeline(url));
+
+    return fetch(`${url}&format=json`, {
+      signal: currentTimelineController.signal,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveTimeline(data));
+      })
+      .catch((e) => {
+        // AbortErrors are fine
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
+      .finally();
+  };
+}
+
+export function abortTimelineRequest() {
+  return () => {
+    if (currentTimelineController) {
+      currentTimelineController.abort();
+    }
+  };
+}
+
 export function fetchComparisonAppData(url, viewSide) {
   return (dispatch) => {
     const getTimelineController = () => {
@@ -176,12 +220,6 @@ export function fetchComparisonAppData(url, viewSide) {
     })
       .then((response) => response.json())
       .then((data) => {
-        const calculatedLevels = deltaDiffWrapper(
-          data.flamebearer.format,
-          data.flamebearer.levels
-        );
-
-        data.flamebearer.levels = calculatedLevels;
         dispatch(receiveComparisonAppData(data, viewSide));
       })
       .catch((e) => {
@@ -206,12 +244,6 @@ export function fetchPyrescopeAppData(url) {
     })
       .then((response) => response.json())
       .then((data) => {
-        const calculatedLevels = deltaDiffWrapper(
-          data.flamebearer.format,
-          data.flamebearer.levels
-        );
-
-        data.flamebearer.levels = calculatedLevels;
         dispatch(receivePyrescopeAppData(data));
       })
       .catch((e) => {
@@ -236,12 +268,6 @@ export function fetchComparisonDiffAppData(url) {
     })
       .then((response) => response.json())
       .then((data) => {
-        const calculatedLevels = deltaDiffWrapper(
-          data.flamebearer.format,
-          data.flamebearer.levels
-        );
-
-        data.flamebearer.levels = calculatedLevels;
         dispatch(receiveComparisonDiffAppData(data));
       })
       .catch((e) => {
@@ -251,14 +277,6 @@ export function fetchComparisonDiffAppData(url) {
         }
       })
       .finally();
-  };
-}
-
-export function abortTimelineRequest() {
-  return () => {
-    if (currentTimelineController) {
-      currentTimelineController.abort();
-    }
   };
 }
 
