@@ -12,6 +12,7 @@ import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
 import AdhocSingle from './components/AdhocSingle';
+import ServerNotifications from './components/ServerNotifications';
 
 import history from './util/history';
 
@@ -30,6 +31,8 @@ const enableAdhoc = true;
 ReactDOM.render(
   <Provider store={store}>
     <Router history={history}>
+      <Notifications />
+      <ServerNotifications />
       <div className="app">
         <Sidebar />
         <Switch>
@@ -49,7 +52,6 @@ ReactDOM.render(
           )}
         </Switch>
       </div>
-      <Notifications />
     </Router>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
   </Provider>,
