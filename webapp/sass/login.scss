@@ -1,3 +1,5 @@
+@use 'sass:math';
+
 body.login-page {
   $c0: darken(#feb40e, 10%);
   $c1: darken(#3dc1d3, 10%);
@@ -69,7 +71,7 @@ body.login-page {
   height: $w;
   display: inline-block;
   background-size: $w $w;
-  margin: $w/2 auto $w/4;
+  margin: math.div($w, 2) auto math.div($w, 4);
   background-repeat: no-repeat;
 }
 .welcome-title {

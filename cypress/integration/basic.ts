@@ -7,19 +7,6 @@ describe('basic test', () => {
     cy.title().should('eq', 'Pyroscope');
   });
 
-  it('internal sidebar links work', () => {
-    cy.visit('/');
-
-    cy.findByTestId('sidebar-comparison').click();
-    cy.location('pathname').should('eq', '/comparison');
-
-    cy.findByTestId('sidebar-comparison-diff').click();
-    cy.location('pathname').should('eq', '/comparison-diff');
-
-    cy.findByTestId('sidebar-root').click();
-    cy.location('pathname').should('eq', '/');
-  });
-
   it('changes app via the application dropdown', () => {
     const intercept = (name: string) => {
       cy.intercept(`**/render*query=${name}*`, {

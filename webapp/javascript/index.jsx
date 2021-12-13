@@ -2,7 +2,6 @@ import ReactDOM from 'react-dom';
 import React from 'react';
 
 import { Provider } from 'react-redux';
-import { ShortcutProvider } from 'react-keybind';
 import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import Notifications from '@ui/Notifications';
@@ -20,7 +19,7 @@ import history from './util/history';
 let showFps = false;
 try {
   // run this to enable FPS meter:
-  //   window.localStorage.setItem("showFps", true);
+  //  window.localStorage.setItem('showFps', true);
   showFps = window.localStorage.getItem('showFps');
 } catch (e) {
   console.error(e);
@@ -32,9 +31,9 @@ const enableAdhoc = true;
 ReactDOM.render(
   <Provider store={store}>
     <Router history={history}>
-      <ShortcutProvider>
-        <Notifications />
-        <ServerNotifications />
+      <Notifications />
+      <ServerNotifications />
+      <div className="app">
         <Sidebar />
         <Switch>
           <Route exact path="/">
@@ -52,7 +51,7 @@ ReactDOM.render(
             </Route>
           )}
         </Switch>
-      </ShortcutProvider>
+      </div>
     </Router>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
   </Provider>,
