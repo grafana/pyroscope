@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -43,7 +42,7 @@ func main() {
 	}
 
 	// read file
-	inData, err := ioutil.ReadFile(inFile)
+	inData, err := os.ReadFile(inFile)
 	must(err)
 	var input Input
 	must(json.Unmarshal(inData, &input))
@@ -54,7 +53,7 @@ func main() {
 	// write file
 	outData, err := json.MarshalIndent(output, "", "  ")
 	must(err)
-	must(ioutil.WriteFile(outFile, outData, 0644))
+	must(os.WriteFile(outFile, outData, 0644))
 
 	fmt.Fprintf(os.Stderr, "decoded to %v\n", outFile)
 }

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -121,7 +121,7 @@ var _ = Describe("server", func() {
 				Expect(resp.Header.Get("Content-Disposition")).To(MatchRegexp(
 					"^attachment; filename=.+\\.pprof$",
 				))
-				body, _ := ioutil.ReadAll(resp.Body)
+				body, _ := io.ReadAll(resp.Body)
 				profile := &tree.Profile{}
 				err = proto.Unmarshal(body, profile)
 				Expect(err).ToNot(HaveOccurred())
