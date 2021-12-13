@@ -123,16 +123,6 @@ input {
   visibility: hidden;
 }
 
-.svg-renderer,
-.canvas-renderer {
-  //  padding: 0 15px;
-
-  &.double {
-    display: flex;
-    width: 50%;
-  }
-}
-
 .svg-container,
 .canvas-container {
   //  border-radius: 4px;
@@ -215,7 +205,7 @@ $pane-width: 6px;
 
     &.vertical-orientation {
       width: 100%;
-      padding: 10px;
+      //padding: 10px;
     }
 
     &.hidden {
