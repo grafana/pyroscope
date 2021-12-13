@@ -44,9 +44,6 @@ class FlameGraphRenderer extends React.Component {
     // for situations like in grafana we only display the flamegraph
     // 'both' | 'flamegraph' | 'table'
     this.display = props.display !== undefined ? props.display : 'both';
-    // default to true
-    this.showToolbar =
-      props.showToolbar !== undefined ? props.showToolbar : true;
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -176,6 +173,11 @@ class FlameGraphRenderer extends React.Component {
     );
   };
 
+  shouldShowToolbar() {
+    // default to true
+    return this.props.showToolbar !== undefined ? this.props.showToolbar : true;
+  }
+
   updateFlamebearerData() {
     this.setState({
       flamebearer: this.props.flamebearer,
@@ -263,7 +265,7 @@ class FlameGraphRenderer extends React.Component {
         })}
       >
         <div className="canvas-container">
-          {this.showToolbar && (
+          {this.shouldShowToolbar() && (
             <Toolbar
               view={this.state.view}
               viewDiff={this.state.viewDiff}
