@@ -269,6 +269,7 @@ class FlameGraphRenderer extends React.Component {
             <Toolbar
               view={this.state.view}
               viewDiff={this.state.viewDiff}
+              display={this.props.display}
               handleSearchChange={this.handleSearchChange}
               reset={this.onReset}
               updateView={this.updateView}

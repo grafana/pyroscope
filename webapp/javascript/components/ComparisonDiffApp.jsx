@@ -29,7 +29,11 @@ function ComparisonDiffApp(props) {
           id="timeline-chart-diff"
           viewSide="both"
         />
-        <FlameGraphRenderer viewType="diff" flamebearer={diff.flamebearer}>
+        <FlameGraphRenderer
+          viewType="diff"
+          flamebearer={diff.flamebearer}
+          display="both"
+        >
           <div className="diff-instructions-wrapper">
             <div className="diff-instructions-wrapper-side">
               <InstructionText viewType="diff" viewSide="left" />

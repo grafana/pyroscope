@@ -53,6 +53,7 @@ function ComparisonApp(props) {
           <FlameGraphRenderer
             viewType="double"
             viewSide="left"
+            display="both"
             flamebearer={comparison.left.flamebearer}
             data-testid="flamegraph-renderer-left"
           >
@@ -68,6 +69,7 @@ function ComparisonApp(props) {
           <FlameGraphRenderer
             viewType="double"
             viewSide="right"
+            display="both"
             flamebearer={comparison.right.flamebearer}
             data-testid="flamegraph-renderer-right"
           >

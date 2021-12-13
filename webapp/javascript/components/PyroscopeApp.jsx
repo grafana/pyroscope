@@ -38,6 +38,7 @@ function PyroscopeApp(props) {
         <FlameGraphRenderer
           flamebearer={single?.flamebearer}
           viewType="single"
+          display="both"
         />
       </div>
       <Footer />
