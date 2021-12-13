@@ -100,6 +100,7 @@
     "webpack-plugin-serve": "^1.5.0"
   },
   "dependencies": {
+    "@babel/plugin-transform-runtime": "^7.16.4",
     "@babel/preset-env": "^7.10.4",
     "@babel/preset-react": "^7.12.10",
     "@babel/preset-typescript": "7.8.3",
