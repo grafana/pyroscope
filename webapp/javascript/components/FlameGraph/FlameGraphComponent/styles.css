@@ -29,9 +29,9 @@ THIS SOFTWARE.
   /*  margin: 0 6px; */
 }
 
-.flamegraph-pane.vertical-orientation {
+/*.flamegraph-pane.vertical-orientation {
   padding: 10px;
-}
+}*/
 
 .flamegraph-header {
   padding-bottom: 5px;
