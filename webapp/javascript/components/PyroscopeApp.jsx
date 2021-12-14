@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import 'react-dom';
 
 import { bindActionCreators } from 'redux';
+import Box from '@ui/Box';
 import FlameGraphRenderer from './FlameGraph';
 import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
@@ -35,10 +36,12 @@ function PyroscopeApp(props) {
           id="timeline-chart-single"
           viewSide="none"
         />
-        <FlameGraphRenderer
-          flamebearer={single?.flamebearer}
-          viewType="single"
-        />
+        <Box>
+          <FlameGraphRenderer
+            flamebearer={single?.flamebearer}
+            viewType="single"
+          />
+        </Box>
       </div>
       <Footer />
     </div>

@@ -64,6 +64,7 @@ class TimelineChart extends ReactFlot {
     return (
       <div
         data-testid={this.props['data-testid']}
+        className={this.props.className}
         id={this.props.id}
         style={style}
       />
