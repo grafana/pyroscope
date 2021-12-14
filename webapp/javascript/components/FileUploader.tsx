@@ -1,8 +1,10 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
+import { useDispatch } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
 import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
 import Button from '@ui/Button';
+import { addNotification } from '../redux/reducers/notifications';
 import styles from './FileUploader.module.scss';
 import { deltaDiffWrapper } from '../util/flamebearer';
 
@@ -12,6 +14,8 @@ interface Props {
   setFile: (file: File, flamebearer: Record<string, unknown>) => void;
 }
 export default function FileUploader({ file, setFile }: Props) {
+  const dispatch = useDispatch();
+
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 1) {
       throw new Error('Only a single file at a time is accepted.');
@@ -58,6 +62,16 @@ export default function FileUploader({ file, setFile }: Props) {
           setFile(file, flamebearer);
         } catch (e) {
           alert(e);
+          dispatch(
+            addNotification({
+              message: e,
+              type: 'danger',
+              dismiss: {
+                duration: 0,
+                showIcon: true,
+              },
+            })
+          );
         }
       };
       reader.readAsArrayBuffer(file);
