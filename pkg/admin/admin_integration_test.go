@@ -4,7 +4,6 @@
 package admin_test
 
 import (
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -84,7 +83,7 @@ func genRandomDir() (func(), string) {
 	// so we first create a temporary directory
 	// and pass a well-known file name
 	// that way tests can be run concurrently
-	dir, err := ioutil.TempDir("", "")
+	dir, err := os.MkdirTemp("", "")
 	Expect(err).ToNot(HaveOccurred())
 
 	return func() {
