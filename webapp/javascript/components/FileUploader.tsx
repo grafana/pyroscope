@@ -46,7 +46,7 @@ export default function FileUploader({ file, setFile }: Props) {
           fields.forEach((field) => {
             if (!(field in flamebearer))
               throw new Error(
-                `Unable to parse uploaded file: field {field} missing`
+                `Unable to parse uploaded file: field ${field} missing`
               );
           });
           const calculatedLevels = deltaDiffWrapper(
