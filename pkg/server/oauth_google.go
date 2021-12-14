@@ -18,7 +18,7 @@ type oauthHanlderGoogle struct {
 	allowedDomains []string
 }
 
-func newGoogleHandler(cfg config.GoogleOauth, log *logrus.Logger) (*oauthHanlderGoogle, error) {
+func newGoogleHandler(cfg config.GoogleOauth, baseURL string, log *logrus.Logger) (*oauthHanlderGoogle, error) {
 	authURL, err := url.Parse(cfg.AuthURL)
 	if err != nil {
 		return nil, err
@@ -34,9 +34,10 @@ func newGoogleHandler(cfg config.GoogleOauth, log *logrus.Logger) (*oauthHanlder
 			},
 			authURL:       authURL,
 			log:           log,
-			callbackRoute: "auth/google/callback",
+			callbackRoute: "/auth/google/callback",
 			redirectRoute: "/auth/google/redirect",
 			apiURL:        "https://www.googleapis.com/oauth2/v2",
+			baseURL:       baseURL,
 		},
 		allowedDomains: cfg.AllowedDomains,
 	}

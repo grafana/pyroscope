@@ -64,7 +64,7 @@ func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 		switch r.Method {
 		case http.MethodPost, http.MethodGet:
 			invalidateCookie(w, jwtCookieName)
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
 		default:
 			ctrl.writeInvalidMethodError(w)
 		}
@@ -94,7 +94,7 @@ func (ctrl *Controller) oauthLoginHandler(oh oauthHandler) http.HandlerFunc {
 
 // Instead of this handler that just redirects, Javascript code can be added to load the state and send it to backend
 // this is done so that the state cookie would be send back from browser
-func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
+func (ctrl *Controller) callbackHandler(redirectPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := ctrl.getTemplate("/redirect.html")
 		if err != nil {
@@ -102,8 +102,8 @@ func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
-			"RedirectURL": redirectURL + "?" + r.URL.RawQuery,
-			"BaseURL":     ctrl.config.BaseURL,
+			"RedirectPath": redirectPath + "?" + r.URL.RawQuery,
+			"BaseURL":      ctrl.config.BaseURL,
 		})
 	}
 }
@@ -142,7 +142,7 @@ func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Reque
 		ctrl.log.Error(msg)
 	}
 	invalidateCookie(w, stateCookieName)
-	http.Redirect(w, r, "/forbidden", http.StatusTemporaryRedirect)
+	ctrl.redirectPreservingBaseURL(w, r, "/forbidden", http.StatusTemporaryRedirect)
 }
 
 func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFunc {

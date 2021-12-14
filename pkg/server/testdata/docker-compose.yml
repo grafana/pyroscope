@@ -1,0 +1,37 @@
+# this docker-compose file is used to test base-url functionality
+#   run `docker-compose up --build` and then open http://localhost:8081/pyroscope in your browser
+#   key thing to look for is any sort of errors in the browser console
+---
+version: '3.8'
+
+services:
+  caddy:
+    image: caddy
+    ports:
+      - 8081:8080
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+
+  pyroscope:
+    build:
+      context: ../../../
+    command:
+      - server
+      - -log-level
+      - debug
+    ports:
+      - 4040:4040
+    environment:
+      # - PYROSCOPE_BASE_URL=http://localhost:8081/pyroscope
+      - PYROSCOPE_BASE_URL=https://oauth-test-proxy.pyroscope.io/pyroscope
+    volumes:
+      - ./auth.yml:/etc/pyroscope/server.yml
+
+  # this allows you to test that the version without base-url still works
+  pyroscope-no-base-url:
+    build:
+      context: ../../../
+    command:
+      - server
+    ports:
+      - 4041:4040

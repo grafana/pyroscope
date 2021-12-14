@@ -9,6 +9,8 @@ import (
 	golog "log"
 	"net/http"
 	"net/http/pprof"
+	"net/url"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -81,6 +83,13 @@ type Notifier interface {
 }
 
 func New(c Config) (*Controller, error) {
+	if c.Configuration.BaseURL != "" {
+		_, err := url.Parse(c.Configuration.BaseURL)
+		if err != nil {
+			logrus.Error("base URL is invalid, some redirects might not work as expected")
+		}
+	}
+
 	ctrl := Controller{
 		config:   c.Configuration,
 		log:      c.Logger,
@@ -190,7 +199,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Google.Enabled {
-		googleHandler, err := newGoogleHandler(ctrl.config.Auth.Google, ctrl.log)
+		googleHandler, err := newGoogleHandler(ctrl.config.Auth.Google, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +212,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Github.Enabled {
-		githubHandler, err := newGithubHandler(ctrl.config.Auth.Github, ctrl.log)
+		githubHandler, err := newGithubHandler(ctrl.config.Auth.Github, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +225,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Gitlab.Enabled {
-		gitlabHandler, err := newGitlabHandler(ctrl.config.Auth.Gitlab, ctrl.log)
+		gitlabHandler, err := newGitlabHandler(ctrl.config.Auth.Gitlab, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
@@ -310,6 +319,19 @@ func (ctrl *Controller) isAuthRequired() bool {
 	return ctrl.config.Auth.Google.Enabled || ctrl.config.Auth.Github.Enabled || ctrl.config.Auth.Gitlab.Enabled
 }
 
+func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http.Request, urlStr string, status int) {
+	if ctrl.config.BaseURL != "" {
+		u, err := url.Parse(ctrl.config.BaseURL)
+		if err != nil {
+			logrus.Error("base URL is invalid, some redirects might not work as expected")
+		} else {
+			u.Path = filepath.Join(u.Path, urlStr)
+			urlStr = u.String()
+		}
+	}
+	http.Redirect(w, r, urlStr, status)
+}
+
 func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !ctrl.isAuthRequired() {
@@ -323,7 +345,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				"url":  r.URL.String(),
 				"host": r.Header.Get("Host"),
 			}).Debug("missing jwt cookie")
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
@@ -336,7 +358,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		if err != nil {
 			ctrl.log.WithError(err).Error("invalid jwt token")
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 

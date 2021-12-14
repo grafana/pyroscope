@@ -21,6 +21,7 @@ import { useLocation, NavLink } from 'react-router-dom';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
+import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
 import Logo from '../../images/logo-v3-small.svg';
 
@@ -33,7 +34,7 @@ function signOut() {
   const form = document.createElement('form');
 
   form.method = 'POST';
-  form.action = '/logout';
+  form.action = `${basename()}/logout`;
 
   document.body.appendChild(form);
 

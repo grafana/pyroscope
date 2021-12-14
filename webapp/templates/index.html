@@ -6,12 +6,12 @@
     <meta name="viewport" content="width=device-width" />
     <title>Pyroscope</title>
     {{- if .BaseURL }}
-    <base href="{{ .BaseURL }}" />
+    <meta name="pyroscope-base-url" content="{{ .BaseURL }}" />
     {{- end }}
-    <link rel="stylesheet" href="/assets/styles.<%= webpack.hash %>.css" />
-    <link rel="stylesheet" href="/assets/app.<%= webpack.hash %>.css" />
+    <link rel="stylesheet" href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css" />
+    <link rel="stylesheet" href="{{ .BaseURL }}/assets/app.<%= webpack.hash %>.css" />
     {{ .ExtraMetadata }} <%= extra_metadata %>
-    <link rel="icon" href="/assets/images/favicon.ico" />
+    <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
   </head>
   <body>
     <div id="root"></div>
@@ -34,7 +34,7 @@
       window.features = {{ .Features }};
     </script>
     <script
-      src="/assets/app.<%= webpack.hash %>.js"
+      src="{{ .BaseURL }}/assets/app.<%= webpack.hash %>.js"
       type="text/javascript"
     ></script>
   </body>
