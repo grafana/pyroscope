@@ -1,7 +1,6 @@
 package testing
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -31,7 +30,7 @@ func DirStats(path string) (directories, files int, size bytesize.ByteSize) {
 
 func TmpDir(cb func(name string)) {
 	defer ginkgo.GinkgoRecover()
-	path, err := ioutil.TempDir("", "pyroscope-test-dir")
+	path, err := os.MkdirTemp("", "pyroscope-test-dir")
 	if err != nil {
 		panic(err)
 	}
@@ -50,7 +49,7 @@ func (t *TmpDirectory) Close() {
 
 func TmpDirSync() *TmpDirectory {
 	defer ginkgo.GinkgoRecover()
-	path, err := ioutil.TempDir("", "pyroscope-test-dir")
+	path, err := os.MkdirTemp("", "pyroscope-test-dir")
 	if err != nil {
 		panic(err)
 	}

@@ -89,6 +89,8 @@ module.exports = {
             options: {
               cacheDirectory: true,
               babelrc: true,
+
+              plugins: ['@babel/plugin-transform-runtime'],
               // Note: order is bottom-to-top and/or right-to-left
               presets: [
                 [

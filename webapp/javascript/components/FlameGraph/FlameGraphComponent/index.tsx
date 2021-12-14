@@ -30,6 +30,8 @@ interface FlamegraphProps {
   // the reason this is exposed as a parameter
   // is to not have to connect to the redux store from here
   ExportData: () => React.ReactElement;
+
+  ['data-testid']?: string;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
@@ -45,6 +47,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
+  const { 'data-testid': dataTestId } = props;
 
   // debounce rendering canvas
   // used for situations like resizing
@@ -186,78 +189,75 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     !flamebearer || (flamebearer && flamebearer.names.length <= 1);
 
   return (
-    <>
-      <div
-        data-testid="flamegraph-view"
-        className={clsx('flamegraph-pane', {
-          'vertical-orientation': flamebearer.format === 'double',
-        })}
-      >
-        <Header
-          format={flamebearer.format}
-          units={flamebearer.units}
-          ExportData={ExportData}
-        />
+    <div
+      data-testid="flamegraph-view"
+      className={clsx('flamegraph-pane', {
+        'vertical-orientation': flamebearer.format === 'double',
+      })}
+    >
+      <Header
+        format={flamebearer.format}
+        units={flamebearer.units}
+        ExportData={ExportData}
+      />
 
-        {dataUnavailable ? (
-          <div className={styles.error}>
-            <span>
-              No profiling data available for this application / time range.
-            </span>
-          </div>
-        ) : null}
-        <div
-          style={{
-            opacity: dataUnavailable ? 0 : 1,
-          }}
-        >
-          <canvas
-            height="0"
-            data-testid="flamegraph-canvas"
-            data-highlightquery={highlightQuery}
-            className={`flamegraph-canvas ${styles.hover}`}
-            ref={canvasRef}
-            onClick={onClick}
-          />
+      {dataUnavailable ? (
+        <div className={styles.error}>
+          <span>
+            No profiling data available for this application / time range.
+          </span>
         </div>
-        {flamegraph && (
-          <Highlight
-            barHeight={PX_PER_LEVEL}
-            canvasRef={canvasRef}
-            zoom={zoom}
-            xyToHighlightData={xyToHighlightData}
-          />
-        )}
-        {flamegraph && (
-          <ContextMenuHighlight
-            barHeight={PX_PER_LEVEL}
-            node={rightClickedNode}
-          />
-        )}
-        {flamegraph && (
-          <Tooltip
-            format={flamebearer.format}
-            canvasRef={canvasRef}
-            xyToData={xyToTooltipData as any /* TODO */}
-            numTicks={flamebearer.numTicks}
-            sampleRate={flamebearer.sampleRate}
-            leftTicks={flamebearer.format === 'double' && flamebearer.leftTicks}
-            rightTicks={
-              flamebearer.format === 'double' && flamebearer.rightTicks
-            }
-            units={flamebearer.units}
-          />
-        )}
-
-        {flamegraph && (
-          <ContextMenu
-            canvasRef={canvasRef}
-            xyToMenuItems={xyToContextMenuItems}
-            onClose={onContextMenuClose}
-            onOpen={onContextMenuOpen}
-          />
-        )}
+      ) : null}
+      <div
+        data-testid={dataTestId}
+        style={{
+          opacity: dataUnavailable ? 0 : 1,
+        }}
+      >
+        <canvas
+          height="0"
+          data-testid="flamegraph-canvas"
+          data-highlightquery={highlightQuery}
+          className={`flamegraph-canvas ${styles.hover}`}
+          ref={canvasRef}
+          onClick={onClick}
+        />
       </div>
-    </>
+      {flamegraph && (
+        <Highlight
+          barHeight={PX_PER_LEVEL}
+          canvasRef={canvasRef}
+          zoom={zoom}
+          xyToHighlightData={xyToHighlightData}
+        />
+      )}
+      {flamegraph && (
+        <ContextMenuHighlight
+          barHeight={PX_PER_LEVEL}
+          node={rightClickedNode}
+        />
+      )}
+      {flamegraph && (
+        <Tooltip
+          format={flamebearer.format}
+          canvasRef={canvasRef}
+          xyToData={xyToTooltipData as any /* TODO */}
+          numTicks={flamebearer.numTicks}
+          sampleRate={flamebearer.sampleRate}
+          leftTicks={flamebearer.format === 'double' && flamebearer.leftTicks}
+          rightTicks={flamebearer.format === 'double' && flamebearer.rightTicks}
+          units={flamebearer.units}
+        />
+      )}
+
+      {flamegraph && (
+        <ContextMenu
+          canvasRef={canvasRef}
+          xyToMenuItems={xyToContextMenuItems}
+          onClose={onContextMenuClose}
+          onOpen={onContextMenuOpen}
+        />
+      )}
+    </div>
   );
 }

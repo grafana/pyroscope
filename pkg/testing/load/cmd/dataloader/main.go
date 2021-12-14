@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -26,7 +25,7 @@ type Config struct {
 
 func loadConfig(path string) (Config, error) {
 	var c Config
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return c, err
 	}

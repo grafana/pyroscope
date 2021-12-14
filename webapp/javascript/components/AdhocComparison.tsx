@@ -3,9 +3,11 @@ import { connect } from 'react-redux';
 import 'react-dom';
 
 import { bindActionCreators } from 'redux';
+import Box from '@ui/Box';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
 import { setLeftFile, setRightFile } from '../redux/actions';
+import styles from './ComparisonApp.module.css';
 
 function AdhocComparison(props) {
   const { actions, leftFile, leftFlamebearer, rightFile, rightFlamebearer } =
@@ -20,20 +22,24 @@ function AdhocComparison(props) {
           className="comparison-container"
           data-testid="comparison-container"
         >
-          <FlameGraphRenderer
-            viewType="double"
-            viewSide="left"
-            flamebearer={leftFlamebearer}
-            data-testid="flamegraph-renderer-left"
-            uploader={{ file: leftFile, setFile: setLeftFile }}
-          />
-          <FlameGraphRenderer
-            viewType="double"
-            viewSide="right"
-            flamebearer={rightFlamebearer}
-            data-testid="flamegraph-renderer-right"
-            uploader={{ file: rightFile, setFile: setRightFile }}
-          />
+          <Box className={styles.comparisonPane}>
+            <FlameGraphRenderer
+              viewType="double"
+              viewSide="left"
+              flamebearer={leftFlamebearer}
+              data-testid="flamegraph-renderer-left"
+              uploader={{ file: leftFile, setFile: setLeftFile }}
+            />
+          </Box>
+          <Box className={styles.comparisonPane}>
+            <FlameGraphRenderer
+              viewType="double"
+              viewSide="right"
+              flamebearer={rightFlamebearer}
+              data-testid="flamegraph-renderer-right"
+              uploader={{ file: rightFile, setFile: setRightFile }}
+            />
+          </Box>
         </div>
       </div>
       <Footer />

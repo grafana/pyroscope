@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -61,7 +60,7 @@ var (
 )
 
 func processFile(path string) error {
-	content, err := ioutil.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("reading file: %w", err)
 	}
@@ -80,7 +79,7 @@ func processFile(path string) error {
 	}
 
 	fmt.Println(path)
-	return ioutil.WriteFile(path, newContent, 0640)
+	return os.WriteFile(path, newContent, 0640)
 }
 
 func writeConfigDocs(w io.Writer, subcommand, format string) {

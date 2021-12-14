@@ -30,6 +30,8 @@ import {
   SET_RIGHT_FILE,
 } from '../actionTypes';
 
+import { deltaDiffWrapper } from '../../util/flamebearer';
+
 const defaultName = window.initialState.appNames.find(
   (x) => x !== 'pyroscope.server.cpu'
 );
@@ -87,6 +89,29 @@ function decodeTimelineData(timelineData) {
     time += timelineData.durationDelta;
     return res;
   });
+}
+
+function decodeFlamebearer({
+  flamebearer,
+  metadata,
+  leftTicks,
+  rightTicks,
+  version,
+}) {
+  const fb = {
+    ...flamebearer,
+    format: metadata.format,
+    spyName: metadata.spyName,
+    sampleRate: metadata.sampleRate,
+    units: metadata.units,
+  };
+  if (fb.format === 'double') {
+    fb.leftTicks = leftTicks;
+    fb.rightTicks = rightTicks;
+  }
+  fb.version = version || 0;
+  fb.levels = deltaDiffWrapper(fb.format, fb.levels);
+  return fb;
 }
 
 export default function (state = initialState, action) {
@@ -162,8 +187,7 @@ export default function (state = initialState, action) {
     case RECEIVE_PYRESCOPE_APP_DATA:
       data = action.payload.data;
       timeline = data.timeline;
-      flamebearer = data.flamebearer;
-
+      flamebearer = decodeFlamebearer(data);
       return {
         ...state,
         timeline: decodeTimelineData(timeline),
@@ -178,7 +202,7 @@ export default function (state = initialState, action) {
       };
     case RECEIVE_COMPARISON_APP_DATA:
       viewSide = action.payload.viewSide;
-      flamebearer = action.payload.data.flamebearer;
+      flamebearer = decodeFlamebearer(action.payload.data);
 
       let left;
       let right;
@@ -225,18 +249,12 @@ export default function (state = initialState, action) {
     case RECEIVE_COMPARISON_DIFF_APP_DATA:
       data = action.payload.data;
       timeline = data.timeline;
-      const { leftTicks, rightTicks } = data;
+      flamebearer = decodeFlamebearer(data);
 
       return {
         ...state,
         timeline: decodeTimelineData(timeline),
-        diff: {
-          flamebearer: {
-            leftTicks,
-            rightTicks,
-            ...data.flamebearer,
-          },
-        },
+        diff: { flamebearer },
         isJSONLoading: false,
       };
 

@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import 'react-dom';
 
 import { bindActionCreators } from 'redux';
+import Box from '@ui/Box';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
 import { setFile } from '../redux/actions';
@@ -14,11 +15,13 @@ function AdhocSingle(props) {
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
-        <FlameGraphRenderer
-          flamebearer={flamebearer}
-          uploader={{ file, setFile }}
-          viewType="single"
-        />
+        <Box>
+          <FlameGraphRenderer
+            flamebearer={flamebearer}
+            uploader={{ file, setFile }}
+            viewType="single"
+          />
+        </Box>
       </div>
       <Footer />
     </div>
