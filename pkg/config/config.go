@@ -136,7 +136,7 @@ type Server struct {
 
 	AdminSocketPath           string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
 	EnableExperimentalAdmin   bool   `def:"true" deprecated:"true" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
-	EnableExperimentalAdhocUI bool   `def:"true" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
+	EnableExperimentalAdhocUI bool   `def:"false" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 

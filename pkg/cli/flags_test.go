@@ -206,7 +206,7 @@ var _ = Describe("flags", func() {
 					BadgerNoTruncate:          false,
 					DisablePprofEndpoint:      false,
 					EnableExperimentalAdmin:   true,
-					EnableExperimentalAdhocUI: true,
+					EnableExperimentalAdhocUI: false,
 					MaxNodesSerialization:     2048,
 					MaxNodesRender:            8192,
 					HideApplications:          []string{},
