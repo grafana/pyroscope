@@ -61,10 +61,9 @@ export default function FileUploader({ file, setFile }: Props) {
           flamebearer.levels = calculatedLevels;
           setFile(file, flamebearer);
         } catch (e) {
-          alert(e);
           dispatch(
             addNotification({
-              message: e,
+              message: e.message,
               type: 'danger',
               dismiss: {
                 duration: 0,
