@@ -310,7 +310,7 @@ export default function (state = initialState, action) {
         ...state,
         adhocSingle: {
           file: action.payload.file,
-          flamebearer: action.payload.flamebearer,
+          flamebearer: decodeFlamebearer(action.payload.flamebearer),
         },
       };
     case SET_LEFT_FILE:
@@ -320,7 +320,7 @@ export default function (state = initialState, action) {
           ...state.adhocComparison,
           left: {
             file: action.payload.file,
-            flamebearer: action.payload.flamebearer,
+            flamebearer: decodeFlamebearer(action.payload.flamebearer),
           },
         },
       };
@@ -331,7 +331,7 @@ export default function (state = initialState, action) {
           ...state.adhocComparison,
           right: {
             file: action.payload.file,
-            flamebearer: action.payload.flamebearer,
+            flamebearer: decodeFlamebearer(action.payload.flamebearer),
           },
         },
       };

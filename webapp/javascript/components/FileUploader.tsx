@@ -34,32 +34,15 @@ export default function FileUploader({ file, setFile }: Props) {
           const s = JSON.parse(
             String.fromCharCode.apply(null, new Uint8Array(binaryStr))
           );
-          const { flamebearer } = s;
-          // TODO(abeaumont): Use versioned format checking and notifications system.
-          const fields = [
-            'names',
-            'levels',
-            'numTicks',
-            'maxSelf',
-            'format',
-            'spyName',
-            'format',
-            'sampleRate',
-            'units',
-          ];
+          // Only check for flamebearer fields, the rest of the file format is checked on decoding.
+          const fields = ['names', 'levels', 'numTicks', 'maxSelf'];
           fields.forEach((field) => {
-            if (!(field in flamebearer))
+            if (!(field in s.flamebearer))
               throw new Error(
                 `Unable to parse uploaded file: field ${field} missing`
               );
           });
-          const calculatedLevels = deltaDiffWrapper(
-            flamebearer.format,
-            flamebearer.levels
-          );
-
-          flamebearer.levels = calculatedLevels;
-          setFile(file, flamebearer);
+          setFile(file, s);
         } catch (e) {
           dispatch(
             addNotification({
