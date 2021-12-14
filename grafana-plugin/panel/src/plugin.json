@@ -9,10 +9,7 @@
       "name": "Pyroscope",
       "url": "https://pyroscope.io/"
     },
-    "keywords": [
-      "callstack",
-      "profiling"
-    ],
+    "keywords": ["callstack", "profiling"],
     "logos": {
       "small": "img/logo.svg",
       "large": "img/logo.svg"
@@ -36,4 +33,3 @@
     "plugins": []
   }
 }
-

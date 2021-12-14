@@ -23,6 +23,7 @@ const getPluginId = () => {
     const pluginJson = require(path.resolve(
       process.cwd(),
       'grafana-plugin',
+      'panel',
       'src/plugin.json'
     ));
     PLUGIN_ID = pluginJson.id;
@@ -85,7 +86,7 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
     //
     new ReplaceInFileWebpackPlugin([
       {
-        dir: 'grafana-plugin/dist',
+        dir: 'grafana-plugin/panel/dist',
         files: ['plugin.json', 'README.md'],
         rules: [
           {
@@ -327,14 +328,20 @@ const getBaseWebpackConfig: any = async (options) => {
     //      net: 'empty',
     //      tls: 'empty',
     //    },
-    context: path.join(process.cwd(), 'grafana-plugin', 'src'),
+    context: path.join(process.cwd(), 'grafana-plugin', 'panel', 'src'),
     devtool: 'source-map',
     entry: {
-      module: path.join(process.cwd(), 'grafana-plugin', 'src', 'module.ts'),
+      module: path.join(
+        process.cwd(),
+        'grafana-plugin',
+        'panel',
+        'src',
+        'module.ts'
+      ),
     },
     output: {
       filename: '[name].js',
-      path: path.join(process.cwd(), 'grafana-plugin', 'dist'),
+      path: path.join(process.cwd(), 'grafana-plugin', 'panel', 'dist'),
       libraryTarget: 'amd',
       publicPath: '/',
     },

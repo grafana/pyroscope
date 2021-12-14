@@ -1,7 +1,7 @@
 import React from 'react';
 import { PanelProps } from '@grafana/data';
 import { SimpleOptions } from './types';
-import FlamegraphRenderer from '../../webapp/javascript/components/FlameGraph/FlameGraphRenderer';
+import FlamegraphRenderer from '../../../webapp/javascript/components/FlameGraph/FlameGraphRenderer';
 import styles from './SimplePanel.module.css';
 
 type Props = PanelProps<SimpleOptions>;

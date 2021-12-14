@@ -25,7 +25,7 @@ Congratulations! Now you can monitor application flamegraph on your Grafana dash
 ![dashboard](https://raw.githubusercontent.com/pyroscope-io/grafana-panel-plugin/main/docs/assets/dashboard.jpg)
 
 
-# developing
+# Developing
 
 1. to build the app:
 `yarn grafana-plugin --watch`
