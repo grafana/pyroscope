@@ -320,6 +320,7 @@ function decidePanesOrder(viewType, display, flamegraphPane, tablePane) {
     }
   }
 }
+
 function figureFlamegraphDataTestId(viewType, viewSide) {
   switch (viewType) {
     case 'single': {

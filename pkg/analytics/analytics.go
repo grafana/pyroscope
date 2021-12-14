@@ -18,7 +18,7 @@ package analytics
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"runtime"
 	"time"
@@ -179,7 +179,7 @@ func (s *Service) sendReport() {
 		logrus.WithField("err", err).Error("Error happened when uploading anonymized usage data")
 	}
 	if resp != nil {
-		_, err := ioutil.ReadAll(resp.Body)
+		_, err := io.ReadAll(resp.Body)
 		if err != nil {
 			logrus.WithField("err", err).Error("Error happened when uploading reading server response")
 			return

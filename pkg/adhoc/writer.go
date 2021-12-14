@@ -14,6 +14,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
 type writer struct {
@@ -75,21 +76,7 @@ func (w writer) write(t0, t1 time.Time) error {
 		defer f.Close()
 		switch w.outputFormat {
 		case "json":
-			// TODO(abeaumont): This is duplicated code, fix the original first.
-			fs := out.Tree.FlamebearerStruct(w.maxNodesRender)
-			fs.SpyName = out.SpyName
-			fs.SampleRate = out.SampleRate
-			fs.Units = out.Units
-			res := map[string]interface{}{
-				"timeline":    out.Timeline,
-				"flamebearer": fs,
-				"metadata": map[string]interface{}{
-					"format":     fs.Format, // "single" | "double"
-					"spyName":    out.SpyName,
-					"sampleRate": out.SampleRate,
-					"units":      out.Units,
-				},
-			}
+			res := flamebearer.NewProfile(out, w.maxNodesRender)
 			if err := json.NewEncoder(f).Encode(res); err != nil {
 				w.logger.WithError(err).Error("saving output file")
 			}

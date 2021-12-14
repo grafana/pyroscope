@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -220,7 +219,7 @@ func (ctrl *Controller) getTemplate(path string) (*template.Template, error) {
 		return nil, fmt.Errorf("could not find file %s: %q", path, err)
 	}
 
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("could not read file %s: %q", path, err)
 	}
@@ -253,7 +252,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
 	if extraMetadataPath != "" {
-		b, err = ioutil.ReadFile(extraMetadataPath)
+		b, err = os.ReadFile(extraMetadataPath)
 		if err != nil {
 			logrus.Errorf("failed to read file at %s", extraMetadataPath)
 		}

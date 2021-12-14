@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import 'react-dom';
 
 import { bindActionCreators } from 'redux';
+import Box from '@ui/Box';
 import FlameGraphRenderer from './FlameGraph';
 import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
@@ -14,6 +15,7 @@ import {
   fetchTimeline,
 } from '../redux/actions';
 import InstructionText from './FlameGraph/InstructionText';
+import styles from './ComparisonApp.module.css';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
 
@@ -50,37 +52,41 @@ function ComparisonApp(props) {
           className="comparison-container"
           data-testid="comparison-container"
         >
-          <FlameGraphRenderer
-            viewType="double"
-            viewSide="left"
-            display="both"
-            flamebearer={comparison.left.flamebearer}
-            data-testid="flamegraph-renderer-left"
-          >
-            <InstructionText viewType="double" viewSide="left" />
-            <TimelineChartWrapper
-              key="timeline-chart-left"
-              id="timeline-chart-left"
-              data-testid="timeline-left"
+          <Box className={styles.comparisonPane}>
+            <FlameGraphRenderer
+              viewType="double"
               viewSide="left"
-            />
-          </FlameGraphRenderer>
+              flamebearer={comparison.left.flamebearer}
+              data-testid="flamegraph-renderer-left"
+              display="both"
+            >
+              <InstructionText viewType="double" viewSide="left" />
+              <TimelineChartWrapper
+                key="timeline-chart-left"
+                id="timeline-chart-left"
+                data-testid="timeline-left"
+                viewSide="left"
+              />
+            </FlameGraphRenderer>
+          </Box>
 
-          <FlameGraphRenderer
-            viewType="double"
-            viewSide="right"
-            display="both"
-            flamebearer={comparison.right.flamebearer}
-            data-testid="flamegraph-renderer-right"
-          >
-            <InstructionText viewType="double" viewSide="right" />
-            <TimelineChartWrapper
-              key="timeline-chart-right"
-              id="timeline-chart-right"
-              data-testid="timeline-right"
+          <Box className={styles.comparisonPane}>
+            <FlameGraphRenderer
+              viewType="double"
               viewSide="right"
-            />
-          </FlameGraphRenderer>
+              flamebearer={comparison.right.flamebearer}
+              data-testid="flamegraph-renderer-right"
+              display="both"
+            >
+              <InstructionText viewType="double" viewSide="right" />
+              <TimelineChartWrapper
+                key="timeline-chart-right"
+                id="timeline-chart-right"
+                data-testid="timeline-right"
+                viewSide="right"
+              />
+            </FlameGraphRenderer>
+          </Box>
         </div>
       </div>
       <Footer />

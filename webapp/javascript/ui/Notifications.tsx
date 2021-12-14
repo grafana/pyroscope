@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import ReactNotification, {
   store as libStore,
   ReactNotificationOptions,
@@ -7,27 +7,6 @@ import ReactNotification, {
 import 'react-notifications-component/dist/theme.css';
 
 export default function Notifications() {
-  // render notifications from the server
-  // after this component has been initialized
-  useEffect(() => {
-    // the server is supposed to add this
-    // to the index.html
-    const { notificationText } = window as any;
-
-    if (notificationText) {
-      // TODO
-      // distinguish between notification types?
-      store.addNotification({
-        message: notificationText,
-        type: 'danger',
-        dismiss: {
-          duration: 0,
-          showIcon: true,
-        },
-      });
-    }
-  }, []);
-
   return <ReactNotification />;
 }
 
@@ -44,10 +23,17 @@ export type NotificationOptions = {
   type: 'success' | 'danger' | 'info';
 
   dismiss?: DismissOptions;
+  onRemoval?: ((id: string, removedBy: any) => void) | undefined;
 };
 
 export const store = {
-  addNotification({ title, message, type, dismiss }: NotificationOptions) {
+  addNotification({
+    title,
+    message,
+    type,
+    dismiss,
+    onRemoval,
+  }: NotificationOptions) {
     dismiss = dismiss || {
       duration: 5000,
       showIcon: true,
@@ -59,6 +45,7 @@ export const store = {
       message,
       type,
       dismiss,
+      onRemoval,
       container: 'top-right',
     });
   },
