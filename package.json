@@ -186,7 +186,7 @@
     "webpack-cli": "^4.8.0"
   },
   "engines": {
-    "node": ">=10"
+    "node": ">=14.17.0"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
