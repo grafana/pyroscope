@@ -1,4 +1,4 @@
-import { BAR_HEIGHT } from '../../webapp/javascript/components/FlameGraph/FlameGraphComponent/constants';
+import { BAR_HEIGHT } from '../../../webapp/javascript/components/FlameGraph/FlameGraphComponent/constants';
 
 // / <reference types="cypress" />
 describe('basic test', () => {
