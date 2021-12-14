@@ -7,12 +7,7 @@ import styles from './SimplePanel.module.css';
 type Props = PanelProps<SimpleOptions>;
 
 // eslint-disable-next-line import/prefer-default-export
-export const SimplePanel: React.FC<Props> = ({
-  options,
-  data,
-  width,
-  height,
-}) => {
+export const SimplePanel: React.FC<Props> = ({ options, data, width }) => {
   // TODO
   // this can fail in so many ways
   // let's handle it better
