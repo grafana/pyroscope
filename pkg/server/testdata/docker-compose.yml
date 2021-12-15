@@ -1,6 +1,7 @@
 # this docker-compose file is used to test base-url functionality
 #   run `docker-compose up --build` and then open http://localhost:8081/pyroscope in your browser
 #   key thing to look for is any sort of errors in the browser console
+# ask Dmitry (@petethepig) for oauth-config.yml file
 ---
 version: '3.8'
 
@@ -25,7 +26,7 @@ services:
       # - PYROSCOPE_BASE_URL=http://localhost:8081/pyroscope
       - PYROSCOPE_BASE_URL=https://oauth-test-proxy.pyroscope.io/pyroscope
     volumes:
-      - ./auth.yml:/etc/pyroscope/server.yml
+      - ./oauth-config.yml:/etc/pyroscope/server.yml
 
   # this allows you to test that the version without base-url still works
   pyroscope-no-base-url:
