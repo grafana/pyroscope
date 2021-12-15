@@ -18,31 +18,30 @@ jobs:
           node-version: '14.17'
       - run: yarn
       - run: yarn build:panel
+      - name: run grafana
+        run: docker-compose -f grafana-plugin/panel/docker-compose.yml up -d
 
-        #      - name: Cypress run
-        #        uses: cypress-io/github-action@v2
-        #        with:
-        #          build: make e2e-build
-        #          wait-on: http://localhost:4040
-        #          start: make server
-        #        env:
-        #          # keep the server quiet
-        #          PYROSCOPE_LOG_LEVEL: error
-        #          ENABLED_SPIES: none
-        #          CYPRESS_VIDEO: true
-        #          CYPRESS_COMPARE_SNAPSHOTS: true
-        #      - uses: actions/upload-artifact@v2
-        #        if: always()
-        #        with:
-        #          name: cypress-screenshots
-        #          path: cypress/screenshots
-        #      - uses: actions/upload-artifact@v2
-        #        if: always()
-        #        with:
-        #          name: cypress-videos
-        #          path: cypress/videos
-        #      - uses: actions/upload-artifact@v2
-        #        if: always()
-        #        with:
-        #          name: cypress-snapshots
-        #          path: cypress/snapshots
+      - name: Cypress run
+        uses: cypress-io/github-action@v2
+        with:
+          config-file: grafana-plugin/panel/cypress.json
+          wait-on: http://localhost:3000
+          start: make server
+        env:
+          CYPRESS_VIDEO: true
+          CYPRESS_COMPARE_SNAPSHOTS: true
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-videos
+          path: cypress/videos
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-snapshots
+          path: cypress/snapshots
