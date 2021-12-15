@@ -1,0 +1,49 @@
+name: Cypress Tests for Grafana Panel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cypress-tests:
+    runs-on: ubuntu-latest
+    container: cypress/included:8.6.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: build panel plugin
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14.17'
+      - run: yarn
+      - run: yarn build:panel
+
+        #      - name: Cypress run
+        #        uses: cypress-io/github-action@v2
+        #        with:
+        #          build: make e2e-build
+        #          wait-on: http://localhost:4040
+        #          start: make server
+        #        env:
+        #          # keep the server quiet
+        #          PYROSCOPE_LOG_LEVEL: error
+        #          ENABLED_SPIES: none
+        #          CYPRESS_VIDEO: true
+        #          CYPRESS_COMPARE_SNAPSHOTS: true
+        #      - uses: actions/upload-artifact@v2
+        #        if: always()
+        #        with:
+        #          name: cypress-screenshots
+        #          path: cypress/screenshots
+        #      - uses: actions/upload-artifact@v2
+        #        if: always()
+        #        with:
+        #          name: cypress-videos
+        #          path: cypress/videos
+        #      - uses: actions/upload-artifact@v2
+        #        if: always()
+        #        with:
+        #          name: cypress-snapshots
+        #          path: cypress/snapshots

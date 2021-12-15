@@ -37,7 +37,7 @@
     "size": "yarn build && size-limit",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
-    "grafana-plugin": "NODE_ENV=development webpack --config scripts/webpack/webpack.grafana.ts",
+    "build:panel": "NODE_ENV=development webpack --config scripts/webpack/webpack.grafana.ts",
     "grafana-e2e": "grafana-e2e"
   },
   "devDependencies": {
