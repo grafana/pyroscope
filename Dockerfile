@@ -95,6 +95,7 @@ COPY Makefile ./
 COPY tools ./tools
 COPY go.mod go.sum ./
 RUN make install-dev-tools
+RUN make install-go-dependencies
 
 COPY pkg ./pkg
 COPY cmd ./cmd

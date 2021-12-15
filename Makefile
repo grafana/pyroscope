@@ -99,6 +99,10 @@ ifeq ("$(OS)", "Linux")
 	ranlib ./out/libpyroscope.phpspy.a
 endif
 
+.PHONY: install-go-dependencies
+install-go-dependencies: ## installs golang dependencies
+	go mod download
+
 .PHONY: build
 build: ## Builds the binary
 	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
