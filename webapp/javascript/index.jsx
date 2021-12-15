@@ -4,6 +4,7 @@ import React from 'react';
 import { Provider } from 'react-redux';
 import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
+import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Notifications from '@ui/Notifications';
 import store from './redux/store';
 
@@ -12,6 +13,7 @@ import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
 import AdhocSingle from './components/AdhocSingle';
+import AdhocComparison from './components/AdhocComparison';
 import ServerNotifications from './components/ServerNotifications';
 
 import history from './util/history';
@@ -24,9 +26,6 @@ try {
 } catch (e) {
   console.error(e);
 }
-
-// TODO fetch this from localstorage?
-const enableAdhoc = true;
 
 ReactDOM.render(
   <Provider store={store}>
@@ -45,9 +44,14 @@ ReactDOM.render(
           <Route path="/comparison-diff">
             <ComparisonDiffApp />
           </Route>
-          {enableAdhoc && (
+          {isExperimentalAdhocUIEnabled && (
             <Route path="/adhoc-single">
               <AdhocSingle />
+            </Route>
+          )}
+          {isExperimentalAdhocUIEnabled && (
+            <Route path="/adhoc-comparison">
+              <AdhocComparison />
             </Route>
           )}
         </Switch>
