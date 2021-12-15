@@ -6,6 +6,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 // uncomment if you want to see the webpack bundle analysis
 // const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+//
 
 const fs = require('fs');
 
@@ -52,14 +53,7 @@ module.exports = {
 
   resolve: {
     extensions: ['.ts', '.tsx', '.es6', '.js', '.jsx', '.json', '.svg'],
-    alias: {
-      // rc-trigger uses babel-runtime which has internal dependency to core-js@2
-      // this alias maps that dependency to core-js@t3
-      'core-js/library/fn': 'core-js/stable',
-      '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
-      '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
-      '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
-    },
+    alias: getAlias(),
     modules: [
       'node_modules',
       path.resolve('webapp'),
