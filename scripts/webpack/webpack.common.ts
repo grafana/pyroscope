@@ -1,3 +1,5 @@
+import { getAlias } from './shared';
+
 const webpack = require('webpack');
 const path = require('path');
 const glob = require('glob');

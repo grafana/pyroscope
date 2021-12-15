@@ -1,0 +1,164 @@
+const webpack = require('webpack');
+const path = require('path');
+const glob = require('glob');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
+// uncomment if you want to see the webpack bundle analysis
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
+
+const fs = require('fs');
+
+module.exports = {
+  target: 'web',
+
+  entry: {
+    module: path.join(
+      process.cwd(),
+      'grafana-plugin',
+      'panel',
+      'src',
+      'module.ts'
+    ),
+  },
+  output: {
+    filename: '[name].js',
+    path: path.join(process.cwd(), 'grafana-plugin', 'panel', 'dist'),
+    libraryTarget: 'amd',
+    publicPath: '/',
+  },
+
+  resolve: {
+    extensions: ['.ts', '.tsx', '.es6', '.js', '.jsx', '.json', '.svg'],
+    alias: {
+      // rc-trigger uses babel-runtime which has internal dependency to core-js@2
+      // this alias maps that dependency to core-js@t3
+      'core-js/library/fn': 'core-js/stable',
+      '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
+      '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
+      '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
+    },
+    modules: [
+      'node_modules',
+      path.resolve('webapp'),
+      path.resolve('node_modules'),
+    ],
+  },
+
+  watchOptions: {
+    ignored: /node_modules/,
+  },
+
+  module: {
+    // Note: order is bottom-to-top and/or right-to-left
+    rules: [
+      {
+        test: /\.(js|ts)x?$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: 'babel-loader',
+            options: {
+              cacheDirectory: true,
+              babelrc: true,
+
+              plugins: ['@babel/plugin-transform-runtime'],
+              // Note: order is bottom-to-top and/or right-to-left
+              presets: [
+                [
+                  '@babel/preset-env',
+                  {
+                    targets: {
+                      browsers: 'last 3 versions',
+                    },
+                    useBuiltIns: 'entry',
+                    corejs: 3,
+                    modules: false,
+                  },
+                ],
+                [
+                  '@babel/preset-typescript',
+                  {
+                    allowNamespaces: true,
+                  },
+                ],
+                '@babel/preset-react',
+              ],
+            },
+          },
+        ],
+      },
+      {
+        test: /\.css$/,
+        // include: MONACO_DIR, // https://github.com/react-monaco-editor/react-monaco-editor
+        use: ['style-loader', 'css-loader'],
+      },
+      {
+        test: /\.scss$/,
+        use: [
+          MiniCssExtractPlugin.loader,
+          {
+            loader: 'css-loader',
+            options: {
+              importLoaders: 2,
+              url: true,
+              sourceMap: true,
+            },
+          },
+          {
+            loader: 'postcss-loader',
+            options: {
+              sourceMap: true,
+              config: { path: __dirname },
+            },
+          },
+          {
+            loader: 'sass-loader',
+            options: {
+              sourceMap: true,
+            },
+          },
+        ],
+      },
+      {
+        test: /\.(svg|ico|jpg|jpeg|png|gif|eot|otf|webp|ttf|woff|woff2|cur|ani|pdf)(\?.*)?$/,
+        loader: 'file-loader',
+
+        // We output files to assets/static/img, where /assets comes from webpack's output dir
+        // However, we still need to prefix the public URL with /assets/static/img
+        options: {
+          outputPath: 'static/img',
+          publicPath: '/assets/static/img',
+          name: '[name].[hash:8].[ext]',
+        },
+      },
+    ],
+  },
+
+  plugins: [
+    new MiniCssExtractPlugin({
+      filename: '[name].css',
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        //        // If src/README.md exists use it; otherwise the root README
+        {
+          from: '../README.md',
+          to: '.',
+          force: true,
+        },
+        { from: 'plugin.json', to: '.' },
+        //        //        { from: '../LICENSE', to: '.' },
+        //        //        { from: '../CHANGELOG.md', to: '.', force: true },
+        //        //        { from: '**/*.json', to: '.' },
+        //        //        { from: '**/*.svg', to: '.' },
+        //        //        { from: '**/*.png', to: '.' },
+        //        //        { from: '**/*.html', to: '.' },
+        //        //        { from: 'img/**/*', to: '.' },
+        //        //        { from: 'libs/**/*', to: '.' },
+        //        //        { from: 'static/**/*', to: '.' },
+      ],
+    }),
+  ],
+};
