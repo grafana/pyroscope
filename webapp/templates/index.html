@@ -8,8 +8,14 @@
     {{- if .BaseURL }}
     <meta name="pyroscope-base-url" content="{{ .BaseURL }}" />
     {{- end }}
-    <link rel="stylesheet" href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css" />
-    <link rel="stylesheet" href="{{ .BaseURL }}/assets/app.<%= webpack.hash %>.css" />
+    <link
+      rel="stylesheet"
+      href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ .BaseURL }}/assets/app.<%= webpack.hash %>.css"
+    />
     {{ .ExtraMetadata }} <%= extra_metadata %>
     <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
   </head>

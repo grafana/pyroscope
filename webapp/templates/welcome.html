@@ -8,7 +8,10 @@
     {{- if .BaseURL }}
     <meta name="pyroscope-base-url" content="{{ .BaseURL }}" />
     {{- end }}
-    <link rel="stylesheet" href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css" />
+    <link
+      rel="stylesheet"
+      href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css"
+    />
     <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
   </head>
 
@@ -24,7 +27,9 @@
       // this is copied from index.jsx
       //   TODO: maybe dedup?
       function basename() {
-        const baseURLMetaTag = document.querySelector('meta[name="pyroscope-base-url"]');
+        const baseURLMetaTag = document.querySelector(
+          'meta[name="pyroscope-base-url"]'
+        );
         if (!baseURLMetaTag) {
           return null;
         }
@@ -38,7 +43,7 @@
         return url.pathname;
       }
 
-      window.location.href = basename() || "/";
+      window.location.href = basename() || '/';
     </script>
   </body>
 </html>
