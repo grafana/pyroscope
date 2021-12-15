@@ -47,7 +47,7 @@ RUN make build-phpspy-dependencies
 # | (_| \__ \__ \  __/ |_\__ \
 #  \__,_|___/___/\___|\__|___/
 
-FROM node:14.15.1-alpine3.12 as js-builder
+FROM node:14.17.6-alpine3.12 as js-builder
 
 RUN apk add --no-cache make
 

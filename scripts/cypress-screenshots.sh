@@ -13,5 +13,5 @@ docker run \
   -e CYPRESS_VIDEO=true \
   -e CYPRESS_COMPARE_SNAPSHOTS=true \
   -e CYPRESS_updateSnapshots="$CYPRESS_updateSnapshots" \
-  -v $PWD:/cypress -w /cypress cypress/included:8.6.0
+  -v $PWD:/cypress -w /cypress cypress/included:8.6.0 "$@"
 

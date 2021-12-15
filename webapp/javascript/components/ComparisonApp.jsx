@@ -58,6 +58,7 @@ function ComparisonApp(props) {
               viewSide="left"
               flamebearer={comparison.left.flamebearer}
               data-testid="flamegraph-renderer-left"
+              display="both"
             >
               <InstructionText viewType="double" viewSide="left" />
               <TimelineChartWrapper
@@ -75,6 +76,7 @@ function ComparisonApp(props) {
               viewSide="right"
               flamebearer={comparison.right.flamebearer}
               data-testid="flamegraph-renderer-right"
+              display="both"
             >
               <InstructionText viewType="double" viewSide="right" />
               <TimelineChartWrapper

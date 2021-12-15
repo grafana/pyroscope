@@ -1,0 +1,24 @@
+---
+version: '3.9'
+services:
+  grafana:
+    image: grafana/grafana:8.1.1
+    volumes:
+      - ./dist:/var/lib/grafana/plugins/pyroscope-panel
+      - ./grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=pyroscope-panel
+      - GF_INSTALL_PLUGINS=pyroscope-datasource
+    ports:
+      - 3000:3000
+
+  pyroscope:
+    image:
+      'pyroscope/pyroscope:latest'
+      #    ports:
+      #      - 4040:4040
+    command:
+      - server
+    environment:
+      - PYROSCOPE_LOG_LEVEL=info

@@ -1,0 +1,6 @@
+/* TODO: move this to css modules */
+.flamegraph-wrapper {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
