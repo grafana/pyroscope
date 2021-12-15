@@ -4,6 +4,7 @@ import 'react-dom';
 
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
+import FileUploader from './FileUploader';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
 import { setFile } from '../redux/actions';
@@ -16,6 +17,7 @@ function AdhocSingle(props) {
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <Box>
+          <FileUploader file={file} setFile={setFile} />
           <FlameGraphRenderer
             flamebearer={flamebearer}
             uploader={{ file, setFile }}

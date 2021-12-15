@@ -11,7 +11,6 @@ import { Option } from 'prelude-ts';
 import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
-import FileUploader from '../FileUploader';
 import { createFF } from '../../util/flamebearer';
 import styles from './FlamegraphRenderer.module.css';
 
@@ -266,14 +265,6 @@ class FlameGraphRenderer extends React.Component {
         })}
       >
         <div className="canvas-container">
-          {this.props.uploader ? (
-            <>
-              <FileUploader
-                file={this.props.uploader.file}
-                setFile={this.props.uploader.setFile}
-              />
-            </>
-          ) : null}
           {this.shouldShowToolbar() && (
             <Toolbar
               view={this.state.view}

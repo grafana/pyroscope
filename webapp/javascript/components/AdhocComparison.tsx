@@ -4,6 +4,7 @@ import 'react-dom';
 
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
+import FileUploader from './FileUploader';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
 import { setLeftFile, setRightFile } from '../redux/actions';
@@ -23,21 +24,21 @@ function AdhocComparison(props) {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
+            <FileUploader file={leftFile} setFile={setLeftFile} />
             <FlameGraphRenderer
               viewType="double"
               viewSide="left"
               flamebearer={leftFlamebearer}
               data-testid="flamegraph-renderer-left"
-              uploader={{ file: leftFile, setFile: setLeftFile }}
             />
           </Box>
           <Box className={styles.comparisonPane}>
+            <FileUploader file={rightFile} setFile={setRightFile} />
             <FlameGraphRenderer
               viewType="double"
               viewSide="right"
               flamebearer={rightFlamebearer}
               data-testid="flamegraph-renderer-right"
-              uploader={{ file: rightFile, setFile: setRightFile }}
             />
           </Box>
         </div>
