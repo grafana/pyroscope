@@ -1,4 +1,4 @@
-import { getAlias } from './shared';
+import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
 const webpack = require('webpack');
 const path = require('path');
@@ -76,74 +76,8 @@ module.exports = {
   module: {
     // Note: order is bottom-to-top and/or right-to-left
     rules: [
-      {
-        test: /\.(js|ts)x?$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: 'babel-loader',
-            options: {
-              cacheDirectory: true,
-              babelrc: true,
-
-              plugins: ['@babel/plugin-transform-runtime'],
-              // Note: order is bottom-to-top and/or right-to-left
-              presets: [
-                [
-                  '@babel/preset-env',
-                  {
-                    targets: {
-                      browsers: 'last 3 versions',
-                    },
-                    useBuiltIns: 'entry',
-                    corejs: 3,
-                    modules: false,
-                  },
-                ],
-                [
-                  '@babel/preset-typescript',
-                  {
-                    allowNamespaces: true,
-                  },
-                ],
-                '@babel/preset-react',
-              ],
-            },
-          },
-        ],
-      },
-      {
-        test: /\.css$/,
-        // include: MONACO_DIR, // https://github.com/react-monaco-editor/react-monaco-editor
-        use: ['style-loader', 'css-loader'],
-      },
-      {
-        test: /\.scss$/,
-        use: [
-          MiniCssExtractPlugin.loader,
-          {
-            loader: 'css-loader',
-            options: {
-              importLoaders: 2,
-              url: true,
-              sourceMap: true,
-            },
-          },
-          {
-            loader: 'postcss-loader',
-            options: {
-              sourceMap: true,
-              config: { path: __dirname },
-            },
-          },
-          {
-            loader: 'sass-loader',
-            options: {
-              sourceMap: true,
-            },
-          },
-        ],
-      },
+      ...getJsLoader(),
+      ...getStyleLoaders(),
       {
         test: /\.(svg|ico|jpg|jpeg|png|gif|eot|otf|webp|ttf|woff|woff2|cur|ani|pdf)(\?.*)?$/,
         loader: 'file-loader',
