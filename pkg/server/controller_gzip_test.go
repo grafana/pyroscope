@@ -26,8 +26,9 @@ var _ = Describe("server", func() {
 		var tempAssetDir *testing.TmpDirectory
 		BeforeSuite(func() {
 			tempAssetDir = testing.TmpDirSync()
-			os.WriteFile(filepath.Join(tempAssetDir.Path, assetLtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold-1), 0644)
-			os.WriteFile(filepath.Join(tempAssetDir.Path, assetAtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold), 0644)
+			os.Mkdir(filepath.Join(tempAssetDir.Path, "assets"), 0755)
+			os.WriteFile(filepath.Join(tempAssetDir.Path, "assets", assetLtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold-1), 0644)
+			os.WriteFile(filepath.Join(tempAssetDir.Path, "assets", assetAtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold), 0644)
 		})
 		AfterSuite(func() {
 			tempAssetDir.Close()
@@ -56,7 +57,7 @@ var _ = Describe("server", func() {
 					httpServer := httptest.NewServer(h)
 					defer httpServer.Close()
 
-					res, err := http.Get(fmt.Sprintf("%s/%s", httpServer.URL, filename))
+					res, err := http.Get(fmt.Sprintf("%s/assets/%s", httpServer.URL, filename))
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(http.StatusOK))
 					Expect(res.Uncompressed).To(Equal(uncompressed))

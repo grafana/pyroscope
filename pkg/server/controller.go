@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/mux"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -116,13 +117,8 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 	return hll
 }
 
-func (ctrl *Controller) assetsFilesHandler(w http.ResponseWriter, r *http.Request) {
-	fs := http.FileServer(ctrl.dir)
-	fs.ServeHTTP(w, r)
-}
-
 func (ctrl *Controller) mux() (http.Handler, error) {
-	mux := http.NewServeMux()
+	r := mux.NewRouter()
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()
@@ -135,12 +131,13 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		ctrl.statsInc("ingest:" + pi.SpyName)
 		ctrl.appStats.Add(hashString(pi.Key.AppName()))
 	})
+
 	insecureRoutes = append(insecureRoutes, []route{
 		{"/ingest", ingestHandler.ServeHTTP},
 		{"/forbidden", ctrl.forbiddenHandler()},
-		{"/assets/", ctrl.assetsFilesHandler},
+		{"/assets/", r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP},
 	}...)
-	ctrl.addRoutes(mux, insecureRoutes, ctrl.drainMiddleware)
+	ctrl.addRoutes(r, insecureRoutes, ctrl.drainMiddleware)
 
 	// Protected routes:
 	protectedRoutes := []route{
@@ -150,7 +147,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 	}
-	ctrl.addRoutes(mux, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
+	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
@@ -167,14 +164,14 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		}...)
 	}
 
-	ctrl.addRoutes(mux, diagnosticSecureRoutes, ctrl.authMiddleware)
-	ctrl.addRoutes(mux, []route{
+	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware)
+	ctrl.addRoutes(r, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
 		{"/healthz", ctrl.healthz},
 	})
 
-	return mux, nil
+	return r, nil
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {
