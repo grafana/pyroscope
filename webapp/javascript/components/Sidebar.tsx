@@ -23,7 +23,6 @@ import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
 import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
-import Logo from '../../images/logo-v3-small.svg';
 
 export interface SidebarProps {
   initialCollapsed?: boolean;
@@ -113,7 +112,7 @@ export default function Sidebar2(props: SidebarProps) {
     <Sidebar collapsed={collapsed}>
       <SidebarHeader>
         <div className={styles.logo}>
-          <img src={Logo} alt="Logo" width={36} height={36} />
+          <div className="logo-main" />
           <span className={`${collapsed ? styles.logoTextCollapsed : ''}`}>
             Pyroscope
           </span>

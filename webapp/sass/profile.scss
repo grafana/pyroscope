@@ -54,6 +54,18 @@ tt {
   }
 }
 
+.logo-main {
+  background-image: url('../images/logo-v3-small.svg');
+  background-size: 36px 36px;
+  width: 36px;
+  height: 36px;
+  background-position: 0px 0px;
+  background-repeat: no-repeat;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
 .navbar {
   .logo {
     margin: 0;
