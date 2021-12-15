@@ -40,10 +40,9 @@ func (o oauthBase) getCallbackURL(host, configCallbackURL string, hasTLS bool) (
 		u, err := url.Parse(o.baseURL)
 		if err != nil {
 			return "", err
-		} else {
-			u.Path = filepath.Join(u.Path, o.callbackRoute)
-			return u.String(), nil
 		}
+		u.Path = filepath.Join(u.Path, o.callbackRoute)
+		return u.String(), nil
 	}
 
 	if host == "" {
