@@ -42,7 +42,7 @@ export function MenuItem(props: MenuItemProps & { icon: Icon }) {
   const { icon } = props;
   let { className } = props;
   if (icon) {
-    className = `${props.className} ${styles.menuWithIcon}`;
+    className = `${className} ${styles.menuWithIcon}`;
   }
 
   return <RProMenuItem {...props} className={className} />;

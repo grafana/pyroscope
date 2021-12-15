@@ -29,3 +29,4 @@ benchmark/ci/pr/meta-report
 cypress/snapshots/**/__diff_output__
 cypress/videos
 cypress/screenshots
+dist
