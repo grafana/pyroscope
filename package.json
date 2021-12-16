@@ -196,6 +196,7 @@
   },
   "resolutions": {
     "react": "16.14.0",
-    "react-dom": "16.14.0"
+    "react-dom": "16.14.0",
+    "jquery": "3.1.1"
   }
 }
