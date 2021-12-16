@@ -6,10 +6,6 @@
   white-space: nowrap;
 }
 
-.logo img + * {
-  margin-left: 8px;
-}
-
 .logoTextCollapsed {
   display: none;
 }

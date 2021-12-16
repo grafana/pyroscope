@@ -306,7 +306,7 @@ export function fetchTags(query) {
     fetchTagController = new AbortController();
 
     dispatch(requestTags());
-    return fetch(`/labels?query=${encodeURIComponent(query)}`)
+    return fetch(`./labels?query=${encodeURIComponent(query)}`)
       .then((response) => response.json())
       .then((data) => {
         dispatch(receiveTags(data));

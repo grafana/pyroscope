@@ -3,15 +3,14 @@ import { Flamebearer } from '@models/flamebearer';
 import DiffLegend from './DiffLegend';
 import styles from './Header.module.css';
 
-export default function Header({
-  format,
-  units,
-  ExportData,
-}: {
+interface HeaderProps {
   format: Flamebearer['format'];
   units: Flamebearer['units'];
   ExportData: () => React.ReactElement;
-}) {
+}
+export default function Header(props: HeaderProps) {
+  const { format, units, ExportData } = props;
+
   const unitsToFlamegraphTitle = {
     objects: 'amount of objects in RAM per function',
     bytes: 'amount of RAM per function',

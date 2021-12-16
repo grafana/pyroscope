@@ -186,10 +186,13 @@ export default function (state = initialState, action) {
       };
     case RECEIVE_PYRESCOPE_APP_DATA:
       data = action.payload.data;
+      // since we gonna mutate that data, keep a reference to the old one
+      const raw = JSON.parse(JSON.stringify(data));
       timeline = data.timeline;
-      flamebearer = decodeFlamebearer(data);
+      flamebearer = decodeFlamebearer({ ...data });
       return {
         ...state,
+        raw,
         timeline: decodeTimelineData(timeline),
         single: { flamebearer },
         isJSONLoading: false,
@@ -202,19 +205,29 @@ export default function (state = initialState, action) {
       };
     case RECEIVE_COMPARISON_APP_DATA:
       viewSide = action.payload.viewSide;
-      flamebearer = decodeFlamebearer(action.payload.data);
+      flamebearer = action.payload.data;
 
       let left;
       let right;
+      let rawLeft;
+      let rawRight;
       switch (viewSide) {
         case 'left':
-          left = { flamebearer };
+          // since we gonna mutate that data, keep a reference to the old one
+          rawLeft = JSON.parse(JSON.stringify(flamebearer));
+
+          left = { flamebearer: decodeFlamebearer(flamebearer) };
           right = state.comparison.right;
+          rawRight = state.comparison.rawRight;
           break;
 
         case 'right': {
+          // since we gonna mutate that data, keep a reference to the old one
+          rawRight = JSON.parse(JSON.stringify(flamebearer));
+
           left = state.comparison.left;
-          right = { flamebearer };
+          right = { flamebearer: decodeFlamebearer(flamebearer) };
+          rawLeft = state.comparison.rawLeft;
           break;
         }
         default:
@@ -226,6 +239,8 @@ export default function (state = initialState, action) {
         comparison: {
           left,
           right,
+          rawLeft,
+          rawRight,
         },
         isJSONLoading: false,
       };

@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "private": true,
   "name": "pyroscope",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
@@ -39,6 +39,7 @@
     "size": "yarn build && size-limit",
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
+    "build:panel": "NODE_ENV=development webpack --config scripts/webpack/webpack.grafana.ts",
     "grafana-e2e": "grafana-e2e"
   },
   "devDependencies": {
