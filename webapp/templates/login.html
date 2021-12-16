@@ -5,11 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
     <meta name="viewport" content="width=device-width" />
     <title>Pyroscope</title>
-    <link rel="stylesheet" href="/assets/styles.<%= webpack.hash %>.css" />
     {{- if .BaseURL }}
-    <base href="{{ .BaseURL }}" />
+    <meta name="pyroscope-base-url" content="{{ .BaseURL }}" />
     {{- end }}
-    <link rel="icon" href="/assets/images/favicon.ico" />
+    <link
+      rel="stylesheet"
+      href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css"
+    />
+    <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
   </head>
 
   <body class="login-page">
@@ -23,7 +26,7 @@
         {{if .GoogleEnabled}}
         <a
           id="google-link"
-          href="/auth/google/login"
+          href="./auth/google/login"
           class="sign-in-button sign-in-button-google"
         >
           <svg
@@ -47,7 +50,7 @@
         {{end}} {{if .GithubEnabled}}
         <a
           id="github-link"
-          href="/auth/github/login"
+          href="./auth/github/login"
           class="sign-in-button sign-in-button-github"
         >
           <svg
@@ -71,7 +74,7 @@
         {{end}} {{if .GitlabEnabled}}
         <a
           id="gitlab-link"
-          href="/auth/gitlab/login"
+          href="./auth/gitlab/login"
           class="sign-in-button sign-in-button-gitlab"
         >
           <svg

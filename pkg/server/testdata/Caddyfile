@@ -1,0 +1,32 @@
+{
+    http_port 8080
+    auto_https off
+}
+
+http://localhost {
+    redir /long/path/pyroscope /long/path/pyroscope/
+    route /long/path/pyroscope* {
+        uri strip_prefix pyroscope
+        reverse_proxy pyroscope:4040
+    }
+    redir /pyroscope /pyroscope/
+    route /pyroscope* {
+        uri strip_prefix pyroscope
+        reverse_proxy pyroscope:4040
+    }
+    file_server
+}
+
+http://oauth-test-proxy.pyroscope.io {
+    redir /long/path/pyroscope /long/path/pyroscope/
+    route /long/path/pyroscope* {
+        uri strip_prefix long/path/pyroscope
+        reverse_proxy pyroscope:4040
+    }
+    redir /pyroscope /pyroscope/
+    route /pyroscope* {
+        uri strip_prefix pyroscope
+        reverse_proxy pyroscope:4040
+    }
+    file_server
+}
