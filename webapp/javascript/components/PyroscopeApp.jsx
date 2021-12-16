@@ -16,7 +16,7 @@ import {
 } from '../redux/actions';
 
 function PyroscopeApp(props) {
-  const { actions, renderURL, single } = props;
+  const { actions, renderURL, single, raw } = props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
@@ -41,6 +41,7 @@ function PyroscopeApp(props) {
             flamebearer={single?.flamebearer}
             viewType="single"
             display="both"
+            rawFlamegraph={raw}
           />
         </Box>
       </div>
