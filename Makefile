@@ -232,9 +232,13 @@ update-contributors: ## Update the contributors
 		-l 100 \
 		.
 
+.PHONY: preview-changelog
+preview-changelog: ## Update the changelog
+	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -p angular -u
+
 .PHONY: update-changelog
 update-changelog: ## Update the changelog
-	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -s -p angular
+	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -p angular -s
 	sed -i '/Updates the list of contributors in README/d' CHANGELOG.md
 	sed -i '/docs: updates the list of contributors in README/d' CHANGELOG.md
 	sed -i '/Update README.md/d' CHANGELOG.md

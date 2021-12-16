@@ -36,10 +36,21 @@ func (o oauthBase) getCallbackURL(host, configCallbackURL string, hasTLS bool) (
 		return configCallbackURL, nil
 	}
 
+	schema := "http"
+	if hasTLS {
+		schema = "https"
+	}
+
 	if o.baseURL != "" {
 		u, err := url.Parse(o.baseURL)
 		if err != nil {
 			return "", err
+		}
+		if u.Scheme == "" {
+			u.Scheme = schema
+		}
+		if u.Host == "" {
+			u.Host = host
 		}
 		u.Path = filepath.Join(u.Path, o.callbackRoute)
 		return u.String(), nil
@@ -47,11 +58,6 @@ func (o oauthBase) getCallbackURL(host, configCallbackURL string, hasTLS bool) (
 
 	if host == "" {
 		return "", errors.New("host is empty")
-	}
-
-	schema := "http"
-	if hasTLS {
-		schema = "https"
 	}
 
 	return fmt.Sprintf("%v://%v%v", schema, host, o.callbackRoute), nil

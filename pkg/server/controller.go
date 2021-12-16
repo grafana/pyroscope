@@ -85,7 +85,9 @@ type Notifier interface {
 func New(c Config) (*Controller, error) {
 	if c.Configuration.BaseURL != "" {
 		_, err := url.Parse(c.Configuration.BaseURL)
-		return nil, fmt.Errorf("BaseURL is invalid: %w", err)
+		if err != nil {
+			return nil, fmt.Errorf("BaseURL is invalid: %w", err)
+		}
 	}
 
 	ctrl := Controller{
