@@ -46,6 +46,7 @@ provided. It can also be override the default exec mode with the '--push' flag.
 thorugh '--url' where it tries to retrieve profiling data in any of the
 supported formats. In this case arguments are optional, and if provided,
 they are used to launch a new process before polling the URL.`,
+		DisableFlagParsing: true,
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, args []string) error {
 			return adhoc.Cli(cfg, args)
 		}),

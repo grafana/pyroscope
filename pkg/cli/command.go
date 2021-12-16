@@ -42,7 +42,7 @@ func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn CmdRunFn) CmdRunFn {
 
 		// Parsing arguments for the first time.
 		// The only reason we do this here is so that if you provide -config argument we use the right config path
-		if err = cmd.Flags().Parse(prependDash(xargs)); err != nil {
+		if err = cmd.Flags().Parse(xargs); err != nil {
 			return err
 		}
 
@@ -57,7 +57,7 @@ func CreateCmdRunFn(cfg interface{}, vpr *viper.Viper, fn CmdRunFn) CmdRunFn {
 		}
 
 		// Parsing arguments one more time to override anything set in environment variables or config file
-		if err = cmd.Flags().Parse(prependDash(xargs)); err != nil {
+		if err = cmd.Flags().Parse(xargs); err != nil {
 			return err
 		}
 
@@ -80,7 +80,7 @@ func NewViper(prefix string) *viper.Viper {
 // splitArgs splits raw arguments into
 func splitArgs(flags *pflag.FlagSet, args []string) ([]string, []string) {
 	var xargs []string
-	x := firstArgumentIndex(flags, prependDash(args))
+	x := firstArgumentIndex(flags, args)
 	if x >= 0 {
 		xargs = args[:x]
 		args = args[x:]
@@ -88,14 +88,19 @@ func splitArgs(flags *pflag.FlagSet, args []string) ([]string, []string) {
 		xargs = args
 		args = nil
 	}
-	return args, xargs
+	return args, prependDash(xargs)
+}
+
+func prependDash1(arg string) string {
+	if len(arg) > 2 && strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
+		return "-" + arg
+	}
+	return arg
 }
 
 func prependDash(args []string) []string {
 	for i, arg := range args {
-		if len(arg) > 2 && strings.HasPrefix(arg, "-") && !strings.HasPrefix(arg, "--") {
-			args[i] = "-" + arg
-		}
+		args[i] = prependDash1(arg)
 	}
 	return args
 }
@@ -105,7 +110,7 @@ func prependDash(args []string) []string {
 // the call returns -1.
 func firstArgumentIndex(flags *pflag.FlagSet, args []string) int {
 	for i := 0; i < len(args); i++ {
-		a := args[i]
+		a := prependDash1(args[i])
 		switch {
 		default:
 			return i
