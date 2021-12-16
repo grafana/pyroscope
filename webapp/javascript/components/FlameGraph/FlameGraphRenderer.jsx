@@ -229,6 +229,23 @@ class FlameGraphRenderer extends React.Component {
       this.props.viewSide
     );
 
+    const exportData = () => {
+      if (!this.state.flamebearer) {
+        return <ExportData />;
+      }
+
+      if (!this.props.rawFlamegraph) {
+        return <ExportData />;
+      }
+
+      // we only want to download single ones
+      if (this.state.flamebearer.format === 'double') {
+        return <ExportData />;
+      }
+
+      return <ExportData exportFlamebearer={this.props.rawFlamegraph} />;
+    };
+
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
@@ -237,7 +254,7 @@ class FlameGraphRenderer extends React.Component {
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
-          ExportData={ExportData}
+          ExportData={exportData}
           highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
