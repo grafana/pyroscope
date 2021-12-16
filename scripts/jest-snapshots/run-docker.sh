@@ -11,4 +11,4 @@ docker run \
   -v $PWD:/app \
   -v /app/node_modules \
   -w /app \
-  node:14.15-slim ./scripts/jest-snapshots/run-snapshots.sh
+  node:14.17-slim ./scripts/jest-snapshots/run-snapshots.sh

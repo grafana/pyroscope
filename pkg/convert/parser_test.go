@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -16,7 +16,7 @@ var _ = Describe("convert", func() {
 		It("parses data correctly", func() {
 			result := []string{}
 
-			b, err := ioutil.ReadFile("testdata/cpu.pprof")
+			b, err := os.ReadFile("testdata/cpu.pprof")
 			Expect(err).ToNot(HaveOccurred())
 			r := bytes.NewReader(b)
 			g, err := gzip.NewReader(r)

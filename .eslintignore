@@ -2,3 +2,5 @@
 /webapp/javascript/util/**
 /webapp/__tests__/**
 /benchmark/**
+script/webpack/**
+dist

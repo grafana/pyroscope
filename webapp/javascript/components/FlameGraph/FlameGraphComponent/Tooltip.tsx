@@ -31,6 +31,8 @@ export type TooltipProps = {
   units: Units;
   sampleRate: number;
   numTicks: number;
+  leftTicks: number;
+  rightTicks: number;
 } & (
   | { format: 'single'; xyToData: xyToDataSingle }
   | {
@@ -58,7 +60,7 @@ export default function Tooltip(props: TooltipProps) {
   const [style, setStyle] = React.useState<React.CSSProperties>();
   const tooltipEl = React.useRef(null);
 
-  const { numTicks, sampleRate, units } = props;
+  const { numTicks, sampleRate, units, leftTicks, rightTicks } = props;
 
   const onMouseOut = () => {
     setStyle({
@@ -70,11 +72,7 @@ export default function Tooltip(props: TooltipProps) {
   // that's to evict stale props
   const memoizedOnMouseMove = React.useCallback(
     (e: MouseEvent) => {
-      const formatter = getFormatter(
-        props.numTicks,
-        props.sampleRate,
-        props.units
-      );
+      const formatter = getFormatter(numTicks, sampleRate, units);
 
       const left = Math.min(
         e.clientX + 12,
@@ -88,7 +86,7 @@ export default function Tooltip(props: TooltipProps) {
         visibility: 'visible',
       };
 
-      const opt = props.xyToData(e.offsetX, e.offsetY);
+      const opt = xyToData(e.offsetX, e.offsetY);
       const isNone = opt.isNone();
 
       if (isNone) {
@@ -101,12 +99,7 @@ export default function Tooltip(props: TooltipProps) {
       // set the content
       switch (data.format) {
         case 'single': {
-          const d = formatSingle(
-            formatter,
-            data.total,
-            props.sampleRate,
-            props.numTicks
-          );
+          const d = formatSingle(formatter, data.total, sampleRate, numTicks);
 
           setContent({
             title: {
@@ -124,7 +117,7 @@ export default function Tooltip(props: TooltipProps) {
         }
 
         case 'double': {
-          if (props.format === 'single') {
+          if (format === 'single') {
             throw new Error(
               "props format is 'single' but it has been mapped to 'double'"
             );
@@ -132,11 +125,11 @@ export default function Tooltip(props: TooltipProps) {
 
           const d = formatDouble({
             formatter,
-            sampleRate: props.sampleRate,
+            sampleRate,
             totalLeft: data.totalLeft,
-            leftTicks: props.leftTicks,
+            leftTicks,
             totalRight: data.totalRight,
-            rightTicks: props.rightTicks,
+            rightTicks,
             title: data.name,
           });
 

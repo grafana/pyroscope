@@ -15,6 +15,10 @@
 
 @import '../javascript/components/FlameGraph/FlameGraphComponent/styles.css';
 
+html {
+  width: 100vw;
+}
+
 body {
   font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
     Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
@@ -39,7 +43,7 @@ tt {
 
 .navbar {
   display: flex;
-  padding: 0 15px 0 15px;
+  //  padding: 0 15px 0 15px;
   height: 60px;
   align-items: center;
 
@@ -131,22 +135,12 @@ input {
   visibility: hidden;
 }
 
-.svg-renderer,
-.canvas-renderer {
-  padding: 0 15px;
-
-  &.double {
-    display: flex;
-    width: 50%;
-  }
-}
-
 .svg-container,
 .canvas-container {
-  border-radius: 4px;
-  // box-shadow: 0 1px 2px rgba(0,0,0,0.33);
-  background-color: #212124;
-  border: 1px solid #141414;
+  //  border-radius: 4px;
+  //  // box-shadow: 0 1px 2px rgba(0,0,0,0.33);
+  //  background-color: #212124;
+  //  border: 1px solid #141414;
 }
 
 .comparison-container {
@@ -154,10 +148,10 @@ input {
   flex-direction: row;
 }
 
-.canvas-container {
-  padding: 10px;
-  width: 100%;
-}
+//.canvas-container {
+//  padding: 10px;
+//  width: 100%;
+//}
 
 body {
   // this is the width of GitHub README page. so we're targeting this width so that it looks good for demo gif
@@ -197,7 +191,7 @@ body {
 $pane-width: 6px;
 
 .panes-wrapper {
-  margin: 0 -$pane-width;
+  //  margin: 0 -$pane-width;
   display: flex;
 
   &.vertical-orientation {
@@ -207,7 +201,7 @@ $pane-width: 6px;
 
   .pane {
     flex: 1;
-    margin: 0 $pane-width;
+    //  margin: 0 $pane-width;
     width: 50%;
 
     .flamegraph-header {
@@ -223,7 +217,7 @@ $pane-width: 6px;
 
     &.vertical-orientation {
       width: 100%;
-      padding: 10px;
+      //padding: 10px;
     }
 
     &.hidden {
@@ -234,7 +228,7 @@ $pane-width: 6px;
 
 .diff-instructions-wrapper {
   display: flex;
-  gap: 30px;
+  gap: 15px;
   padding-bottom: 10px;
 }
 
@@ -453,6 +447,10 @@ body,
 .pyroscope-app {
   overflow-y: auto;
   flex-grow: 1;
+
+  // define the padding here instead of each individual component
+  // to make it easier to maintain
+  padding: 0 15px;
 }
 
 .pyroscope-app {
@@ -462,6 +460,11 @@ body,
 
 .main-wrapper {
   flex: 1 0 auto;
+}
+// stretch all main-wrapper children by default
+// so that we don't have to define it for every single page
+.main-wrapper > * {
+  width: 100%;
 }
 
 .no-data-message {

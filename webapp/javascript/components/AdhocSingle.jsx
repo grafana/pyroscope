@@ -1,57 +1,29 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { connect } from 'react-redux';
-import Dropzone from 'react-dropzone';
 import 'react-dom';
 
 import { bindActionCreators } from 'redux';
-import FlameGraphRenderer from './FlameGraph';
-import Header from './Header';
-import Footer from './Footer';
-import { buildRenderURL } from '../util/updateRequests';
-import {
-  fetchNames,
-  fetchPyrescopeAppData,
-  abortTimelineRequest,
-} from '../redux/actions';
+import Box from '@ui/Box';
 import FileUploader from './FileUploader';
-import { deltaDiffWrapper } from '../util/flamebearer';
+import FlameGraphRenderer from './FlameGraph';
+import Footer from './Footer';
+import { setFile } from '../redux/actions';
 
 function AdhocSingle(props) {
-  const { actions, renderURL, single } = props;
-  const prevPropsRef = useRef();
-  const [flamebearer, setFlamebearer] = useState();
-
-  useEffect(() => {
-    if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchPyrescopeAppData(renderURL);
-    }
-
-    return actions.abortTimelineRequest;
-  }, [renderURL]);
-
-  const onFileUpload = (data) => {
-    if (!data) {
-      setFlamebearer(null);
-      return;
-    }
-
-    const { flamebearer } = data;
-
-    const calculatedLevels = deltaDiffWrapper(
-      flamebearer.format,
-      flamebearer.levels
-    );
-
-    flamebearer.levels = calculatedLevels;
-    setFlamebearer(flamebearer);
-  };
+  const { actions, file, flamebearer } = props;
+  const { setFile } = actions;
 
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
-        <Header />
-        <FileUploader onUpload={onFileUpload} />
-        <FlameGraphRenderer flamebearer={flamebearer} viewType="single" />
+        <Box>
+          <FileUploader file={file} setFile={setFile} />
+          <FlameGraphRenderer
+            flamebearer={flamebearer}
+            uploader={{ file, setFile }}
+            viewType="single"
+          />
+        </Box>
       </div>
       <Footer />
     </div>
@@ -60,18 +32,12 @@ function AdhocSingle(props) {
 
 const mapStateToProps = (state) => ({
   ...state.root,
-  renderURL: buildRenderURL(state.root),
+  file: state.root.adhocSingle.file,
+  flamebearer: state.root.adhocSingle.flamebearer,
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      fetchPyrescopeAppData,
-      fetchNames,
-      abortTimelineRequest,
-    },
-    dispatch
-  ),
+  actions: bindActionCreators({ setFile }, dispatch),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocSingle);

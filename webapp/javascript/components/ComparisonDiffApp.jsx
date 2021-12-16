@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
+import Box from '@ui/Box';
 import FlameGraphRenderer from './FlameGraph';
 import Header from './Header';
 import Footer from './Footer';
@@ -29,28 +30,30 @@ function ComparisonDiffApp(props) {
           id="timeline-chart-diff"
           viewSide="both"
         />
-        <FlameGraphRenderer viewType="diff" flamebearer={diff.flamebearer}>
-          <div className="diff-instructions-wrapper">
-            <div className="diff-instructions-wrapper-side">
-              <InstructionText viewType="diff" viewSide="left" />
-              <TimelineChartWrapper
-                data-testid="timeline-left"
-                key="timeline-chart-left"
-                id="timeline-chart-left"
-                viewSide="left"
-              />
+        <Box>
+          <FlameGraphRenderer viewType="diff" flamebearer={diff.flamebearer}>
+            <div className="diff-instructions-wrapper">
+              <div className="diff-instructions-wrapper-side">
+                <InstructionText viewType="diff" viewSide="left" />
+                <TimelineChartWrapper
+                  data-testid="timeline-left"
+                  key="timeline-chart-left"
+                  id="timeline-chart-left"
+                  viewSide="left"
+                />
+              </div>
+              <div className="diff-instructions-wrapper-side">
+                <InstructionText viewType="diff" viewSide="right" />
+                <TimelineChartWrapper
+                  data-testid="timeline-right"
+                  key="timeline-chart-right"
+                  id="timeline-chart-right"
+                  viewSide="right"
+                />
+              </div>
             </div>
-            <div className="diff-instructions-wrapper-side">
-              <InstructionText viewType="diff" viewSide="right" />
-              <TimelineChartWrapper
-                data-testid="timeline-right"
-                key="timeline-chart-right"
-                id="timeline-chart-right"
-                viewSide="right"
-              />
-            </div>
-          </div>
-        </FlameGraphRenderer>
+          </FlameGraphRenderer>
+        </Box>
       </div>
       <Footer />
     </div>

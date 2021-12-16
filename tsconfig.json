@@ -3,10 +3,11 @@
     "baseUrl": ".",
     "jsx": "react",
     "lib": ["dom", "esnext", "ES2015.Iterable"],
-    "module": "esnext",
+    "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
     "paths": {
       "@utils/*": ["./webapp/javascript/util/*"],
       "@models/*": ["./webapp/javascript/models/*"],

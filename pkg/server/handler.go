@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -204,6 +203,15 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 		} else if path == "/comparison-diff" {
 			ctrl.statsInc("diff")
 			ctrl.renderIndexPage(rw, r)
+		} else if path == "/adhoc-single" {
+			ctrl.statsInc("adhoc-index")
+			ctrl.renderIndexPage(rw, r)
+		} else if path == "/adhoc-comparison" {
+			ctrl.statsInc("adhoc-comparison")
+			ctrl.renderIndexPage(rw, r)
+		} else if path == "/adhoc-comparison-diff" {
+			ctrl.statsInc("adhoc-comparison-diff")
+			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)
 		}
@@ -220,7 +228,7 @@ func (ctrl *Controller) getTemplate(path string) (*template.Template, error) {
 		return nil, fmt.Errorf("could not find file %s: %q", path, err)
 	}
 
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("could not read file %s: %q", path, err)
 	}
@@ -253,7 +261,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
 	if extraMetadataPath != "" {
-		b, err = ioutil.ReadFile(extraMetadataPath)
+		b, err = os.ReadFile(extraMetadataPath)
 		if err != nil {
 			logrus.Errorf("failed to read file at %s", extraMetadataPath)
 		}

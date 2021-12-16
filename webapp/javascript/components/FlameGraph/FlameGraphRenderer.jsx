@@ -40,6 +40,10 @@ class FlameGraphRenderer extends React.Component {
 
       flamegraphConfigs: this.initialFlamegraphState,
     };
+
+    // for situations like in grafana we only display the flamegraph
+    // 'both' | 'flamegraph' | 'table'
+    this.display = props.display !== undefined ? props.display : 'both';
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -169,6 +173,11 @@ class FlameGraphRenderer extends React.Component {
     );
   };
 
+  shouldShowToolbar() {
+    // default to true
+    return this.props.showToolbar !== undefined ? this.props.showToolbar : true;
+  }
+
   updateFlamebearerData() {
     this.setState({
       flamebearer: this.props.flamebearer,
@@ -242,15 +251,12 @@ class FlameGraphRenderer extends React.Component {
         />
       ) : null;
 
-    const panes =
-      this.props.viewType === 'double'
-        ? [flameGraphPane, tablePane]
-        : [tablePane, flameGraphPane];
-
-    // const flotData = this.props.timeline
-    //   ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
-    //   : [];
-    //
+    const panes = decidePanesOrder(
+      this.props.viewType,
+      this.display,
+      flameGraphPane,
+      tablePane
+    );
 
     return (
       <div
@@ -259,21 +265,24 @@ class FlameGraphRenderer extends React.Component {
         })}
       >
         <div className="canvas-container">
-          <Toolbar
-            view={this.state.view}
-            viewDiff={this.state.viewDiff}
-            handleSearchChange={this.handleSearchChange}
-            reset={this.onReset}
-            updateView={this.updateView}
-            updateViewDiff={this.updateViewDiff}
-            updateFitMode={this.updateFitMode}
-            fitMode={this.state.fitMode}
-            isFlamegraphDirty={this.state.isFlamegraphDirty}
-            selectedNode={this.state.flamegraphConfigs.zoom}
-            onFocusOnSubtree={(i, j) => {
-              this.onFocusOnNode(i, j);
-            }}
-          />
+          {this.shouldShowToolbar() && (
+            <Toolbar
+              view={this.state.view}
+              viewDiff={this.state.viewDiff}
+              display={this.props.display}
+              handleSearchChange={this.handleSearchChange}
+              reset={this.onReset}
+              updateView={this.updateView}
+              updateViewDiff={this.updateViewDiff}
+              updateFitMode={this.updateFitMode}
+              fitMode={this.state.fitMode}
+              isFlamegraphDirty={this.state.isFlamegraphDirty}
+              selectedNode={this.state.flamegraphConfigs.zoom}
+              onFocusOnSubtree={(i, j) => {
+                this.onFocusOnNode(i, j);
+              }}
+            />
+          )}
           {this.props.children}
           <div
             className={`${styles.flamegraphContainer} ${clsx(
@@ -284,13 +293,32 @@ class FlameGraphRenderer extends React.Component {
             )}`}
           >
             {panes.map((pane) => pane)}
-            {/* { tablePane }
-            { flameGraphPane } */}
           </div>
         </div>
       </div>
     );
   };
+}
+
+function decidePanesOrder(viewType, display, flamegraphPane, tablePane) {
+  switch (display) {
+    case 'table': {
+      return [tablePane];
+    }
+    case 'flamegraph': {
+      return [flamegraphPane];
+    }
+
+    case 'both':
+    default: {
+      switch (viewType) {
+        case 'double':
+          return [flamegraphPane, tablePane];
+        default:
+          return [tablePane, flamegraphPane];
+      }
+    }
+  }
 }
 
 function figureFlamegraphDataTestId(viewType, viewSide) {
@@ -306,7 +334,7 @@ function figureFlamegraphDataTestId(viewType, viewSide) {
     }
 
     default:
-      throw new Error(`Unsupported ${viewType}`);
+      throw new Error(`Unsupported viewType: ${viewType}`);
   }
 }
 

@@ -40,6 +40,14 @@ export default class Flamegraph {
     private readonly highlightQuery: string,
     private zoom: Option<DeepReadonly<{ i: number; j: number }>>
   ) {
+    // TODO
+    // these were only added because storybook is not setting
+    // the property to the component
+    this.zoom = zoom;
+    this.focusedNode = focusedNode;
+    this.flamebearer = flamebearer;
+    this.canvas = canvas;
+    this.highlightQuery = highlightQuery;
     this.ff = createFF(flamebearer.format);
 
     // don't allow to have a zoom smaller than the focus

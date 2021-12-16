@@ -2,7 +2,7 @@ package server
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
@@ -47,7 +47,7 @@ var _ = Describe("server", func() {
 					Expect(err).ToNot(HaveOccurred())
 					Expect(res.StatusCode).To(Equal(200))
 
-					b, err := ioutil.ReadAll(res.Body)
+					b, err := io.ReadAll(res.Body)
 					Expect(err).ToNot(HaveOccurred())
 
 					actual := make(map[string]interface{})

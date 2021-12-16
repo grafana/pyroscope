@@ -1,0 +1,151 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "seriesCountSize": "sm",
+        "showSeriesCount": false,
+        "text": "Default value of text input option"
+      },
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "pyroscope.server.cpu",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "Panel Title",
+      "type": "pyroscope-panel"
+    },
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 8,
+        "w": 7,
+        "x": 0,
+        "y": 10
+      },
+      "id": 3,
+      "options": {
+        "seriesCountSize": "sm",
+        "showSeriesCount": false,
+        "text": "Default value of text input option"
+      },
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "pyroscope.server.cpu",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "Panel Title",
+      "type": "pyroscope-panel"
+    },
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 8,
+        "w": 11,
+        "x": 7,
+        "y": 10
+      },
+      "id": 4,
+      "options": {
+        "seriesCountSize": "sm",
+        "showSeriesCount": false,
+        "text": "Default value of text input option"
+      },
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "pyroscope.server.cpu",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "Panel Title",
+      "type": "pyroscope-panel"
+    },
+    {
+      "datasource": "Pyroscope",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 10
+      },
+      "id": 5,
+      "options": {
+        "seriesCountSize": "sm",
+        "showSeriesCount": false,
+        "text": "Default value of text input option"
+      },
+      "targets": [
+        {
+          "format": "json",
+          "from": "now-1h",
+          "name": "pyroscope.server.cpu",
+          "queryType": "randomWalk",
+          "refId": "A",
+          "until": "now"
+        }
+      ],
+      "title": "Panel Title",
+      "type": "pyroscope-panel"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 30,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-5m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Pyroscope demo",
+  "uid": "ZNBMoutnz",
+  "version": 3
+}
