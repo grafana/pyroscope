@@ -1,3 +1,20 @@
+# [0.5.0](https://github.com/pyroscope-io/pyroscope/compare/v0.4.1...v0.5.0) (2021-12-16)
+
+
+### Bug Fixes
+
+* assets handling when using base-url argument ([#611](https://github.com/pyroscope-io/pyroscope/issues/611)) ([97a6002](https://github.com/pyroscope-io/pyroscope/commit/97a60023e3e9d5b9fa705eacf0900386ee8367c7))
+* avoid converting args to double dash and disable flag parsing for adhoc. ([#609](https://github.com/pyroscope-io/pyroscope/issues/609)) ([f41906d](https://github.com/pyroscope-io/pyroscope/commit/f41906dd23e68de8c861b28b8f40012c6a512901))
+* **integrations:** start upstream in clib. ([#602](https://github.com/pyroscope-io/pyroscope/issues/602)) ([0be03c3](https://github.com/pyroscope-io/pyroscope/commit/0be03c3305ffe2723dbbf3a7e59631df09870c07))
+
+
+### Features
+
+* adhoc comparison UI ([#580](https://github.com/pyroscope-io/pyroscope/issues/580)) ([3272249](https://github.com/pyroscope-io/pyroscope/commit/3272249cfbe308e4b3b2e7ccaa0f446b0ea942e4))
+* **frontend:** new sidebar ([#581](https://github.com/pyroscope-io/pyroscope/issues/581)) ([f373706](https://github.com/pyroscope-io/pyroscope/commit/f37370680047055f6d6be97eeb611873a9b44581))
+
+
+
 ## [0.4.1](https://github.com/pyroscope-io/pyroscope/compare/v0.4.0...v0.4.1) (2021-12-08)
 
 
