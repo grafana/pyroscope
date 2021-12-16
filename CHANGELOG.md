@@ -1,3 +1,17 @@
+## [0.5.1](https://github.com/pyroscope-io/pyroscope/compare/v0.5.0...v0.5.1) (2021-12-16)
+
+
+### Bug Fixes
+
+* **frontend:** fixes Timeline component by pinning dependencies to a specific version ([#619](https://github.com/pyroscope-io/pyroscope/issues/619)) ([0324c7c](https://github.com/pyroscope-io/pyroscope/commit/0324c7c202844f21e9c623255a3e476b2e8fd900))
+
+
+### Features
+
+* **frontend:** allow to export flamegraph json ([#616](https://github.com/pyroscope-io/pyroscope/issues/616)) ([3435a21](https://github.com/pyroscope-io/pyroscope/commit/3435a212aa659d5240f84702926833d351a9d44f))
+
+
+
 # [0.5.0](https://github.com/pyroscope-io/pyroscope/compare/v0.4.1...v0.5.0) (2021-12-16)
 
 
