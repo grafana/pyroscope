@@ -23,6 +23,7 @@ import (
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
 
+	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
@@ -58,6 +59,9 @@ type Controller struct {
 	// Exported metrics.
 	exportedMetrics *prometheus.Registry
 	exporter        storage.MetricsExporter
+
+	// Adhoc mode
+	adhoc adhocserver.Server
 }
 
 type Config struct {
@@ -72,6 +76,8 @@ type Config struct {
 	// Exported metrics registry and exported.
 	ExportedMetricsRegistry *prometheus.Registry
 	storage.MetricsExporter
+
+	Adhoc adhocserver.Server
 }
 
 type Notifier interface {
@@ -98,6 +104,8 @@ func New(c Config) (*Controller, error) {
 				Registry: c.MetricsRegisterer,
 			}),
 		}),
+
+		adhoc: c.Adhoc,
 	}
 
 	var err error
@@ -146,6 +154,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
+		{"/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/adhoc").Subrouter())},
 	}
 	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
