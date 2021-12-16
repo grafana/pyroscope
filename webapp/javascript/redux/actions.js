@@ -390,8 +390,8 @@ export function fetchNames() {
 }
 export function abortFetchNames() {
   return () => {
-    if (abortFetchNames) {
-      abortFetchNames.abort();
+    if (currentNamesController) {
+      currentNamesController.abort();
     }
   };
 }
