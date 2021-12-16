@@ -85,9 +85,7 @@ type Notifier interface {
 func New(c Config) (*Controller, error) {
 	if c.Configuration.BaseURL != "" {
 		_, err := url.Parse(c.Configuration.BaseURL)
-		if err != nil {
-			logrus.Error("base URL is invalid, some redirects might not work as expected")
-		}
+		return nil, fmt.Errorf("BaseURL is invalid: %w", err)
 	}
 
 	ctrl := Controller{
@@ -321,8 +319,10 @@ func (ctrl *Controller) isAuthRequired() bool {
 
 func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http.Request, urlStr string, status int) {
 	if ctrl.config.BaseURL != "" {
+		// we're modifying the URL here so I'm not memoizing it and instead parsing it all over again to create a new object
 		u, err := url.Parse(ctrl.config.BaseURL)
 		if err != nil {
+			// TODO: technically this should never happen because NewController would return an error
 			logrus.Error("base URL is invalid, some redirects might not work as expected")
 		} else {
 			u.Path = filepath.Join(u.Path, urlStr)
