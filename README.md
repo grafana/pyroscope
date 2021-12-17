@@ -58,7 +58,8 @@ pyroscope server
 
 ## Send data to server via Pyroscope agent (language specific)
 For more documentation on how to add the Pyroscope agent to your code see the [agent documentation](https://pyroscope.io/docs/agent-overview) on our website.
-- [Golang Agent](https://pyroscope.io/docs/golang)
+- [Golang Agent (Push)](https://pyroscope.io/docs/golang)
+- [Golang Agent (Pull)](https://pyroscope.io/docs/golang-pull-mode/)
 - [Python Agent (pip)](https://pyroscope.io/docs/python)
 - [Ruby Agent (gem)](https://pyroscope.io/docs/ruby)
 - [eBPF Agent](https://pyroscope.io/docs/ebpf)
