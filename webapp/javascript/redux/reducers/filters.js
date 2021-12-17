@@ -315,32 +315,44 @@ export default function (state = initialState, action) {
         query: action.payload.query,
       };
     case SET_FILE:
+      flamebearer = action.payload.flamebearer
+        ? decodeFlamebearer(action.payload.flamebearer)
+        : null;
       return {
         ...state,
         adhocSingle: {
+          profile: null,
           file: action.payload.file,
-          flamebearer: decodeFlamebearer(action.payload.flamebearer),
+          flamebearer,
         },
       };
     case SET_LEFT_FILE:
+      flamebearer = action.payload.flamebearer
+        ? decodeFlamebearer(action.payload.flamebearer)
+        : null;
       return {
         ...state,
         adhocComparison: {
           ...state.adhocComparison,
           left: {
+            profile: null,
             file: action.payload.file,
-            flamebearer: decodeFlamebearer(action.payload.flamebearer),
+            flamebearer,
           },
         },
       };
     case SET_RIGHT_FILE:
+      flamebearer = action.payload.flamebearer
+        ? decodeFlamebearer(action.payload.flamebearer)
+        : null;
       return {
         ...state,
         adhocComparison: {
           ...state.adhocComparison,
           right: {
+            profile: null,
             file: action.payload.file,
-            flamebearer: decodeFlamebearer(action.payload.flamebearer),
+            flamebearer,
           },
         },
       };
@@ -360,6 +372,7 @@ export default function (state = initialState, action) {
         ...state,
         adhocSingle: {
           ...state.adhocSingle,
+          file: null,
           profile: action.payload.profile,
         },
       };
