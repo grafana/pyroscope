@@ -5,7 +5,7 @@
 # Developing
 
 1. to build the app:
-`yarn grafana-plugin --watch`
+`yarn dev:panel`
 
 2. open grafana:
 `docker-compose up`

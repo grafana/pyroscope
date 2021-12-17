@@ -6,7 +6,7 @@
 
 1. Install the plugin (Installation tab)
 2. Install [datasource plugin](https://grafana.com/grafana/plugins/pyroscope-datasource/)
-3. Open Grafana ang go to **Configuratin -> Plugins**
+3. Open Grafana and go to **Configuratin -> Plugins**
 4. Check that plugins are available
 5. Set up data source plugin:
    * **Configuration -> Data Sources -> Add data source**

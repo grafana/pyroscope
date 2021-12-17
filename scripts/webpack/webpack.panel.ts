@@ -54,6 +54,17 @@ const getStylesheetPaths = (root: string = process.cwd()) => {
 
 const getCommonPlugins = (options: WebpackConfigurationOptions) => {
   const packageJson = require(path.resolve(process.cwd(), 'package.json'));
+
+  let version = 'dev';
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.PYROSCOPE_PANEL_VERSION) {
+      throw new Error(
+        'Environment variable PYROSCOPE_PANEL_VERSION is required'
+      );
+    }
+    version = process.env.PYROSCOPE_PANEL_VERSION;
+  }
+
   return [
     new MiniCssExtractPlugin({
       filename: '[name].css',
@@ -77,7 +88,7 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
         rules: [
           {
             search: '%VERSION%',
-            replace: process.env.PYROSCOPE_PANEL_VERSION || 'dev',
+            replace: version,
           },
           {
             search: '%TODAY%',
