@@ -2,30 +2,24 @@
 
 **Important: Grafana version 7.2 or later required**
 
-# Developing
+## Getting started
 
-1. to build the app:
-`yarn grafana-plugin --watch`
+1. Install the plugin (Installation tab)
+2. Install [datasource plugin](https://grafana.com/grafana/plugins/pyroscope-datasource/)
+3. Open Grafana ang go to **Configuratin -> Plugins**
+4. Check that plugins are available
+5. Set up data source plugin:
+   * **Configuration -> Data Sources -> Add data source**
+   * click on `pyroscope-datasource`
+   * Specify Pyroscope host in `Endpoint` field:
+      ![endpoint](https://raw.githubusercontent.com/pyroscope-io/grafana-panel-plugin/main/docs/assets/endpoint.jpg)
+6. Set up panel plugin:
+    * Add an empty panel on your dashboard
+    * Select `pyroscope-panel` from Visualization list
+    * Under panel view in Query tab select `pyroscope-datasource`
+    * In `Application name` input specify app name
+    * Click `Apply`
+   ![settings](https://raw.githubusercontent.com/pyroscope-io/grafana-panel-plugin/main/docs/assets/settings.jpg)
 
-2. open grafana:
-`docker-compose up`
-
-3. open the dashboard
-http://localhost:3000/d/ZNBMoutnz/pyroscope-demo?orgId=1
-
-4. every time you change code the app will be rebuilt, and you will have to refresh the dashboard page
-
-
-# Testing
-## E2E
-From the root of this repository, run either
-* `cy:panel:open` -> to develop locally
-* `cy:panel:ci` -> to run in ci (it will use headless mode)
-* `cy:panel:ss` -> to take screenshots, it will start a container using `docker`
-* `cy:panel:ss-check` -> to verify the screenshots match, it will start a container using `docker`
-
-All these commands assume:
-* an anonymous grafana instance (as in there's no login required)
-* running on http://localhost:3000
-* a dashboard with UID `single-panel`
-
+Congratulations! Now you can monitor application flamegraph on your Grafana dashboard!
+![dashboard](https://raw.githubusercontent.com/pyroscope-io/grafana-panel-plugin/main/docs/assets/dashboard.jpg)

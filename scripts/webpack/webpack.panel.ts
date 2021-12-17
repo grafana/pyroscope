@@ -68,7 +68,7 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
         rules: [
           {
             search: '%VERSION%',
-            replace: packageJson.version,
+            replace: process.env.PYROSCOPE_PANEL_VERSION || packageJson.version,
           },
           {
             search: '%TODAY%',
