@@ -154,7 +154,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
-		{"/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/adhoc").Subrouter())},
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
 	}
 	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 

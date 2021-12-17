@@ -436,7 +436,7 @@ export function fetchProfiles() {
 
     profilesController = new AbortController();
     dispatch(requestProfiles());
-    return fetch('/adhoc/v1/profiles', {
+    return fetch('/api/adhoc/v1/profiles', {
       signal: profilesController.signal,
     })
       .then((response) => response.json())
@@ -468,7 +468,7 @@ export function fetchProfile(profile) {
 
     profileController = new AbortController();
     dispatch(requestProfile(profile));
-    return fetch(`/adhoc/v1/profile/${profile}`, {
+    return fetch(`/api/adhoc/v1/profile/${profile}`, {
       signal: profileController.signal,
     })
       .then((response) => response.json())
