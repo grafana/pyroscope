@@ -6,7 +6,6 @@ import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
 import Button from '@ui/Button';
 import { addNotification } from '../redux/reducers/notifications';
 import styles from './FileUploader.module.scss';
-import { deltaDiffWrapper } from '../util/flamebearer';
 
 interface Props {
   onUpload: (s: string) => void;
