@@ -59,16 +59,25 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
       filename: '[name].css',
     }),
     new CopyWebpackPlugin({
-      patterns: [{ from: 'plugin.json', to: '.' }],
+      patterns: [
+        // If src/README.md exists use it; otherwise the root README
+        {
+          from: '../README.md',
+          to: '.',
+        },
+        { from: 'plugin.json', to: '.' },
+        { from: '../LICENSE', to: '.' },
+        { from: 'img/**/*', to: '.' },
+      ],
     }),
     new ReplaceInFileWebpackPlugin([
       {
         dir: 'grafana-plugin/panel/dist',
-        files: ['plugin.json'],
+        files: ['plugin.json', 'README.md'],
         rules: [
           {
             search: '%VERSION%',
-            replace: process.env.PYROSCOPE_PANEL_VERSION || packageJson.version,
+            replace: process.env.PYROSCOPE_PANEL_VERSION || 'dev',
           },
           {
             search: '%TODAY%',
