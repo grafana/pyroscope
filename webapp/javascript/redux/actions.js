@@ -19,10 +19,13 @@ import {
   SET_RIGHT_UNTIL,
   RECEIVE_COMPARISON_APP_DATA,
   REQUEST_COMPARISON_APP_DATA,
+  CANCEL_COMPARISON_APP_DATA,
   REQUEST_PYRESCOPE_APP_DATA,
   RECEIVE_PYRESCOPE_APP_DATA,
+  CANCEL_PYRESCOPE_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
+  CANCEL_COMPARISON_DIFF_APP_DATA,
   REQUEST_COMPARISON_TIMELINE,
   RECEIVE_COMPARISON_TIMELINE,
   SET_FILE,
@@ -30,6 +33,7 @@ import {
   SET_RIGHT_FILE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
+import { addNotification } from './reducers/notifications';
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
@@ -93,6 +97,9 @@ export const receivePyrescopeAppData = (data) => ({
   type: RECEIVE_PYRESCOPE_APP_DATA,
   payload: { data },
 });
+export const cancelPyrescopeAppData = () => ({
+  type: CANCEL_PYRESCOPE_APP_DATA,
+});
 
 export const requestComparisonAppData = (url, viewSide) => ({
   type: REQUEST_COMPARISON_APP_DATA,
@@ -103,6 +110,9 @@ export const receiveComparisonAppData = (data, viewSide) => ({
   type: RECEIVE_COMPARISON_APP_DATA,
   payload: { data, viewSide },
 });
+export const cancelComparisonappData = () => ({
+  type: CANCEL_COMPARISON_APP_DATA,
+});
 
 export const requestComparisonDiffAppData = (url) => ({
   type: REQUEST_COMPARISON_DIFF_APP_DATA,
@@ -112,6 +122,10 @@ export const requestComparisonDiffAppData = (url) => ({
 export const receiveComparisonDiffAppData = (data) => ({
   type: RECEIVE_COMPARISON_DIFF_APP_DATA,
   payload: { data },
+});
+
+export const cancelComparisonDiffAppData = () => ({
+  type: CANCEL_COMPARISON_DIFF_APP_DATA,
 });
 
 export const requestTags = () => ({ type: REQUEST_TAGS });
@@ -157,6 +171,43 @@ export const setRightFile = (file, flamebearer) => ({
   type: SET_RIGHT_FILE,
   payload: { file, flamebearer },
 });
+
+// ResponseNotOkError refers to when request is not ok
+// ie when status code is not in the 2xx range
+class ResponseNotOkError extends Error {
+  constructor(response) {
+    super(`Bad Response: ${response.status}`);
+    this.name = 'ResponseNotOkError';
+    this.response = response;
+  }
+}
+
+// dispatchNotificationByError dispatches a notification
+// depending on the error passed
+function dispatchNotificationByError(dispatch, e) {
+  if (e instanceof ResponseNotOkError) {
+    dispatch(
+      addNotification({
+        title: 'Request Failed',
+        message: `Failed to request profile data: status ${e.response.status}`,
+        type: 'danger',
+      })
+    );
+  } else if (!isAbortError(e)) {
+    // AbortErrors are fine
+
+    // Generic case, so we use as message whatever error we got
+    // It's not the best UX, but our users should be experienced enough
+    // to be able to decipher what's going on based on the message
+    dispatch(
+      addNotification({
+        title: 'Error',
+        message: e.message,
+        type: 'danger',
+      })
+    );
+  }
+}
 
 /**
  * ATTENTION! There may be race conditions:
@@ -236,16 +287,18 @@ export function fetchComparisonAppData(url, viewSide) {
     return fetch(`${url}&format=json`, {
       signal: timelineController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new ResponseNotOkError(response);
+        }
+
+        return response.json();
+      })
       .then((data) => {
         dispatch(receiveComparisonAppData(data, viewSide));
       })
-      .catch((e) => {
-        // AbortError are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .catch((e) => dispatchNotificationByError(dispatch, e))
+      .then(() => dispatch(cancelComparisonappData()))
       .finally();
   };
 }
@@ -260,16 +313,18 @@ export function fetchPyrescopeAppData(url) {
     return fetch(`${url}&format=json`, {
       signal: currentTimelineController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new ResponseNotOkError(response);
+        }
+
+        return response.json();
+      })
       .then((data) => {
         dispatch(receivePyrescopeAppData(data));
       })
-      .catch((e) => {
-        // AbortErrors are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .catch((e) => dispatchNotificationByError(dispatch, e))
+      .then(() => dispatch(cancelPyrescopeAppData()))
       .finally();
   };
 }
@@ -284,16 +339,18 @@ export function fetchComparisonDiffAppData(url) {
     return fetch(`${url}&format=json`, {
       signal: currentTimelineController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) {
+          throw new ResponseNotOkError(response);
+        }
+
+        return response.json();
+      })
       .then((data) => {
         dispatch(receiveComparisonDiffAppData(data));
       })
-      .catch((e) => {
-        // AbortErrors are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .catch((e) => dispatchNotificationByError(dispatch, e))
+      .then(() => dispatch(cancelComparisonDiffAppData()))
       .finally();
   };
 }
