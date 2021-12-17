@@ -36,6 +36,8 @@ import {
   SET_LEFT_PROFILE,
   SET_RIGHT_PROFILE,
   REQUEST_LEFT_PROFILE,
+  REQUEST_RIGHT_PROFILE,
+  RECEIVE_LEFT_PROFILE,
   RECEIVE_RIGHT_PROFILE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
@@ -186,6 +188,36 @@ export const requestProfile = (profile) => ({
 
 export const receiveProfile = (flamebearer) => ({
   type: RECEIVE_PROFILE,
+  payload: { flamebearer },
+});
+
+export const setLeftProfile = (profile) => ({
+  type: SET_LEFT_PROFILE,
+  payload: { profile },
+});
+
+export const requestLeftProfile = (profile) => ({
+  type: REQUEST_LEFT_PROFILE,
+  payload: { profile },
+});
+
+export const receiveLeftProfile = (flamebearer) => ({
+  type: RECEIVE_LEFT_PROFILE,
+  payload: { flamebearer },
+});
+
+export const setRightProfile = (profile) => ({
+  type: SET_RIGHT_PROFILE,
+  payload: { profile },
+});
+
+export const requestRightProfile = (profile) => ({
+  type: REQUEST_RIGHT_PROFILE,
+  payload: { profile },
+});
+
+export const receiveRightProfile = (flamebearer) => ({
+  type: RECEIVE_RIGHT_PROFILE,
   payload: { flamebearer },
 });
 
@@ -462,14 +494,14 @@ export function abortFetchProfiles() {
 let profileController;
 export function fetchProfile(profile) {
   return (dispatch) => {
-    if (profileController) {
-      profileController.abort();
+    if (leftProfileController) {
+      leftProfileController.abort();
     }
 
-    profileController = new AbortController();
+    leftProfileController = new AbortController();
     dispatch(requestProfile(profile));
     return fetch(`/api/adhoc/v1/profile/${profile}`, {
-      signal: profileController.signal,
+      signal: leftProfileController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
@@ -485,8 +517,72 @@ export function fetchProfile(profile) {
 }
 export function abortFetchProfile() {
   return () => {
-    if (profileController) {
-      profileController.abort();
+    if (leftProfileController) {
+      leftProfileController.abort();
+    }
+  };
+}
+
+let leftProfileController;
+export function fetchLeftProfile(profile) {
+  return (dispatch) => {
+    if (leftProfileController) {
+      leftProfileController.abort();
+    }
+
+    leftProfileController = new AbortController();
+    dispatch(requestLeftProfile(profile));
+    return fetch(`/api/adhoc/v1/profile/${profile}`, {
+      signal: leftProfileController.signal,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveLeftProfile(data));
+      })
+      .catch((e) => {
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
+      .finally();
+  };
+}
+export function abortFetchLeftProfile() {
+  return () => {
+    if (leftProfileController) {
+      leftProfileController.abort();
+    }
+  };
+}
+
+let rightProfileController;
+export function fetchRightProfile(profile) {
+  return (dispatch) => {
+    if (rightProfileController) {
+      rightProfileController.abort();
+    }
+
+    rightProfileController = new AbortController();
+    dispatch(requestRightProfile(profile));
+    return fetch(`/api/adhoc/v1/profile/${profile}`, {
+      signal: rightProfileController.signal,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveRightProfile(data));
+      })
+      .catch((e) => {
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
+      .finally();
+  };
+}
+export function abortFetchRightProfile() {
+  return () => {
+    if (rightProfileController) {
+      rightProfileController.abort();
     }
   };
 }

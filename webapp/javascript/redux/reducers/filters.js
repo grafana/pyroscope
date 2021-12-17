@@ -33,6 +33,12 @@ import {
   SET_PROFILE,
   REQUEST_PROFILE,
   RECEIVE_PROFILE,
+  SET_LEFT_PROFILE,
+  REQUEST_LEFT_PROFILE,
+  RECEIVE_LEFT_PROFILE,
+  SET_RIGHT_PROFILE,
+  REQUEST_RIGHT_PROFILE,
+  RECEIVE_RIGHT_PROFILE,
 } from '../actionTypes';
 
 import { deltaDiffWrapper } from '../../util/flamebearer';
@@ -74,11 +80,15 @@ const initialState = {
   adhocComparison: {
     left: {
       file: null,
+      profile: null,
       flamebearer: null,
+      isProfileLoading: false,
     },
     right: {
       file: null,
+      profile: null,
       flamebearer: null,
+      isProfileLoading: false,
     },
   },
   isJSONLoading: false,
@@ -123,7 +133,7 @@ function decodeFlamebearer({
   return fb;
 }
 
-export default function (state = initialState, action) {
+export default function(state = initialState, action) {
   let flamebearer;
   let timeline;
   let data;
@@ -335,6 +345,7 @@ export default function (state = initialState, action) {
         adhocComparison: {
           ...state.adhocComparison,
           left: {
+            ...state.adhocComparison.left,
             profile: null,
             file: action.payload.file,
             flamebearer,
@@ -350,6 +361,7 @@ export default function (state = initialState, action) {
         adhocComparison: {
           ...state.adhocComparison,
           right: {
+            ...state.adhocComparison.right,
             profile: null,
             file: action.payload.file,
             flamebearer,
@@ -391,6 +403,76 @@ export default function (state = initialState, action) {
           ...state.adhocSingle,
           flamebearer: decodeFlamebearer(action.payload.flamebearer),
           isProfileLoading: false,
+        },
+      };
+    case SET_LEFT_PROFILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          left: {
+            ...state.adhocComparison.left,
+            file: null,
+            profile: action.payload.profile,
+          },
+        },
+      };
+    case REQUEST_LEFT_PROFILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          left: {
+            ...state.adhocComparison.left,
+            isProfileLoading: true,
+          },
+        },
+      };
+    case RECEIVE_LEFT_PROFILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          left: {
+            ...state.adhocComparison.left,
+            flamebearer: decodeFlamebearer(action.payload.flamebearer),
+            isProfileLoading: false,
+          },
+        },
+      };
+    case SET_RIGHT_PROFILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          right: {
+            ...state.adhocComparison.right,
+            file: null,
+            profile: action.payload.profile,
+          },
+        },
+      };
+    case REQUEST_RIGHT_PROFILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          right: {
+            ...state.adhocComparison.right,
+            isProfileLoading: true,
+          },
+        },
+      };
+    case RECEIVE_RIGHT_PROFILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          right: {
+            ...state.adhocComparison.right,
+            flamebearer: decodeFlamebearer(action.payload.flamebearer),
+            isProfileLoading: false,
+          },
         },
       };
     default:

@@ -31,10 +31,7 @@ function FileList(props) {
               Object.keys(profiles).map((id) => (
                 <tr
                   key={id}
-                  onClick={() => {
-                    console.log('clicked!', id);
-                    setProfile(id);
-                  }}
+                  onClick={() => setProfile(id)}
                   className={classNames('filelist-row', {
                     selected: profile === id,
                   })}

@@ -7,8 +7,8 @@ import Box from '@ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
-import FileUploader from './FileUploader';
 import FileList from './FileList';
+import FileUploader from './FileUploader';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
 
