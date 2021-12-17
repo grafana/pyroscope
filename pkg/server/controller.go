@@ -150,6 +150,11 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	// Protected routes:
 	protectedRoutes := []route{
 		{"/", ctrl.indexHandler()},
+		{"/comparison", ctrl.indexHandler()},
+		{"/comparison-diff", ctrl.indexHandler()},
+		{"/adhoc-single", ctrl.indexHandler()},
+		{"/adhoc-comparison", ctrl.indexHandler()},
+		{"/adhoc-comparison-diff", ctrl.indexHandler()},
 		{"/render", ctrl.renderHandler},
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
