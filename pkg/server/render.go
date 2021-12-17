@@ -105,9 +105,9 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // Enhance the flamebearer with a few additional fields the UI requires
-func (ctrl *Controller) mountRenderResponse(flamebearer flamebearer.FlamebearerProfile, appName string, gi *storage.GetInput, maxNodes int) RenderResponse {
+func (*Controller) mountRenderResponse(flame flamebearer.FlamebearerProfile, appName string, gi *storage.GetInput, maxNodes int) RenderResponse {
 	metadata := renderMetadataResponse{
-		flamebearer.Metadata,
+		flame.Metadata,
 		appName,
 		gi.StartTime.Unix(),
 		gi.EndTime.Unix(),
@@ -116,7 +116,7 @@ func (ctrl *Controller) mountRenderResponse(flamebearer flamebearer.FlamebearerP
 	}
 
 	renderResponse := RenderResponse{
-		flamebearer,
+		flame,
 		metadata,
 	}
 
