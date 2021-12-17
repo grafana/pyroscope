@@ -4,8 +4,12 @@
   // same border as canvas-container
   border: 1px solid #141414;
 
-  padding: 5px 15px 15px;
-  margin: 15px;
+  padding: 5px;
+  margin: 5px;
+  display: flex;
+  justify-content: flex-end;
+  flex-direction: column;
+  max-height: 295px;
 
   &:hover {
     cursor: pointer;

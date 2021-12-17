@@ -28,6 +28,11 @@ import {
   SET_FILE,
   SET_LEFT_FILE,
   SET_RIGHT_FILE,
+  REQUEST_PROFILES,
+  RECEIVE_PROFILES,
+  SET_PROFILE,
+  REQUEST_PROFILE,
+  RECEIVE_PROFILE,
 } from '../actionTypes';
 
 import { deltaDiffWrapper } from '../../util/flamebearer';
@@ -62,7 +67,9 @@ const initialState = {
   },
   adhocSingle: {
     file: null,
+    profile: null,
     flamebearer: null,
+    isProfileLoading: false,
   },
   adhocComparison: {
     left: {
@@ -77,6 +84,8 @@ const initialState = {
   isJSONLoading: false,
   maxNodes: 1024,
   tags: [],
+  profiles: null,
+  areProfilesLoading: false,
 };
 
 function decodeTimelineData(timelineData) {
@@ -333,6 +342,42 @@ export default function (state = initialState, action) {
             file: action.payload.file,
             flamebearer: decodeFlamebearer(action.payload.flamebearer),
           },
+        },
+      };
+    case REQUEST_PROFILES:
+      return {
+        ...state,
+        areProfilesLoading: true,
+      };
+    case RECEIVE_PROFILES:
+      return {
+        ...state,
+        areProfilesLoading: false,
+        profiles: action.payload.profiles,
+      };
+    case SET_PROFILE:
+      return {
+        ...state,
+        adhocSingle: {
+          ...state.adhocSingle,
+          profile: action.payload.profile,
+        },
+      };
+    case REQUEST_PROFILE:
+      return {
+        ...state,
+        adhocSingle: {
+          ...state.adhocSingle,
+          isProfileLoading: true,
+        },
+      };
+    case RECEIVE_PROFILE:
+      return {
+        ...state,
+        adhocSingle: {
+          ...state.adhocSingle,
+          flamebearer: decodeFlamebearer(action.payload.flamebearer),
+          isProfileLoading: false,
         },
       };
     default:

@@ -28,6 +28,15 @@ import {
   SET_FILE,
   SET_LEFT_FILE,
   SET_RIGHT_FILE,
+  REQUEST_PROFILES,
+  RECEIVE_PROFILES,
+  SET_PROFILE,
+  REQUEST_PROFILE,
+  RECEIVE_PROFILE,
+  SET_LEFT_PROFILE,
+  SET_RIGHT_PROFILE,
+  REQUEST_LEFT_PROFILE,
+  RECEIVE_RIGHT_PROFILE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 
@@ -156,6 +165,28 @@ export const setLeftFile = (file, flamebearer) => ({
 export const setRightFile = (file, flamebearer) => ({
   type: SET_RIGHT_FILE,
   payload: { file, flamebearer },
+});
+
+export const requestProfiles = () => ({ type: REQUEST_PROFILES, payload: {} });
+
+export const receiveProfiles = (profiles) => ({
+  type: RECEIVE_PROFILES,
+  payload: { profiles },
+});
+
+export const setProfile = (profile) => ({
+  type: SET_PROFILE,
+  payload: { profile },
+});
+
+export const requestProfile = (profile) => ({
+  type: REQUEST_PROFILE,
+  payload: { profile },
+});
+
+export const receiveProfile = (flamebearer) => ({
+  type: RECEIVE_PROFILE,
+  payload: { flamebearer },
 });
 
 /**
@@ -392,6 +423,70 @@ export function abortFetchNames() {
   return () => {
     if (abortFetchNames) {
       abortFetchNames.abort();
+    }
+  };
+}
+
+let profilesController;
+export function fetchProfiles() {
+  return (dispatch) => {
+    if (profilesController) {
+      profilesController.abort();
+    }
+
+    profilesController = new AbortController();
+    dispatch(requestProfiles());
+    return fetch('/adhoc/v1/profiles', {
+      signal: profilesController.signal,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveProfiles(data));
+      })
+      .catch((e) => {
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
+      .finally();
+  };
+}
+export function abortFetchProfiles() {
+  return () => {
+    if (profilesController) {
+      profilesController.abort();
+    }
+  };
+}
+
+let profileController;
+export function fetchProfile(profile) {
+  return (dispatch) => {
+    if (profileController) {
+      profileController.abort();
+    }
+
+    profileController = new AbortController();
+    dispatch(requestProfile(profile));
+    return fetch(`/adhoc/v1/profile/${profile}`, {
+      signal: profileController.signal,
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        dispatch(receiveProfile(data));
+      })
+      .catch((e) => {
+        if (!isAbortError(e)) {
+          throw e;
+        }
+      })
+      .finally();
+  };
+}
+export function abortFetchProfile() {
+  return () => {
+    if (profileController) {
+      profileController.abort();
     }
   };
 }
