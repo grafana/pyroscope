@@ -72,6 +72,9 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 		profileTime = time.Now()
 	}
 
+	var locs map[uint64]*tree.Location
+	var fns map[uint64]*tree.Function
+
 	for _, s := range p.GetSampleType() {
 		sampleTypeName := p.StringTable[s.Type]
 		sampleTypeConfig, ok := w.config.SampleTypes[sampleTypeName]
@@ -79,7 +82,14 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 			continue
 		}
 
-		c.writeProfiles(&p, s.Type)
+		if locs == nil {
+			locs = tree.Locations(&p)
+		}
+		if fns == nil {
+			fns = tree.Functions(&p)
+		}
+
+		c.writeProfiles(&p, s.Type, locs, fns)
 		for hash, entry := range c[s.Type] {
 			j := &upstream.UploadJob{SpyName: "scrape", Trie: entry.Trie}
 			// Cumulative profiles require two consecutive samples,
@@ -174,7 +184,7 @@ func newCacheEntry(l []*tree.Label) *cacheEntry {
 	return &cacheEntry{Trie: transporttrie.New(), labels: l}
 }
 
-func (t *cache) writeProfiles(x *tree.Profile, sampleType int64) {
+func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, locs map[uint64]*tree.Location, fns map[uint64]*tree.Function) {
 	valueIndex := 0
 	if sampleType != 0 {
 		for i, v := range x.SampleType {
@@ -191,7 +201,7 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64) {
 	for _, s := range x.Sample {
 		entry := t.getOrCreate(sampleType, s.Label)
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			loc, ok := tree.FindLocation(x, s.LocationId[i])
+			loc, ok := locs[s.LocationId[i]]
 			if !ok {
 				continue
 			}
@@ -205,7 +215,7 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64) {
 			//
 			// Therefore iteration goes in reverse order.
 			for j := len(loc.Line) - 1; j >= 0; j-- {
-				fn, found := tree.FindFunction(x, loc.Line[j].FunctionId)
+				fn, found := fns[loc.Line[j].FunctionId]
 				if !found {
 					continue
 				}
