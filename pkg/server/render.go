@@ -41,11 +41,11 @@ type renderParams struct {
 
 type renderMetadataResponse struct {
 	flamebearer.FlamebearerMetadataV1
-	AppName   string    `json:"appName"`
-	StartTime time.Time `json:"startTime"`
-	EndTime   time.Time `json:"endTime"`
-	Query     string    `json:"query"`
-	MaxNodes  int       `json:"maxNodes"`
+	AppName   string `json:"appName"`
+	StartTime int64  `json:"startTime"`
+	EndTime   int64  `json:"endTime"`
+	Query     string `json:"query"`
+	MaxNodes  int    `json:"maxNodes"`
 }
 type RenderResponse struct {
 	flamebearer.FlamebearerProfile
@@ -109,8 +109,8 @@ func (ctrl *Controller) mountRenderResponse(flamebearer flamebearer.FlamebearerP
 	metadata := renderMetadataResponse{
 		flamebearer.Metadata,
 		appName,
-		gi.StartTime,
-		gi.EndTime,
+		gi.StartTime.Unix(),
+		gi.EndTime.Unix(),
 		gi.Query.String(),
 		maxNodes,
 	}
