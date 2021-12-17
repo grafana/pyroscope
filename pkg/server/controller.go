@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/mux"
+	gmux "github.com/gorilla/mux"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -126,7 +126,7 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 }
 
 func (ctrl *Controller) mux() (http.Handler, error) {
-	r := mux.NewRouter()
+	r := gmux.NewRouter()
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()

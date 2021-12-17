@@ -55,7 +55,7 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 //
 // The profiles are retrieved every time the endpoint is requested,
 // which should be good enough as massive access to this auth endpoint is not expected.
-func (s *server) Profiles(w http.ResponseWriter, r *http.Request) {
+func (s *server) Profiles(w http.ResponseWriter, _ *http.Request) {
 	profiles := make(map[string]profile, 0)
 	err := filepath.Walk(util.DataDirectory(), func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
@@ -115,5 +115,5 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO(abeaumont)
-func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
+func (*server) Diff(_ http.ResponseWriter, _ *http.Request) {
 }
