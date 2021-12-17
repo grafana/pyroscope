@@ -102,6 +102,7 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 * [x] PHP (via `phpspy`)
 * [x] .NET (via `dotnet trace`)
 * [x] Java (via `async-profiler`)
+* [ ] Rust ([in progress](https://github.com/tikv/pprof-rs/pull/86) via `pprof-rs`)
 * [ ] Node [(seeking contributors)](https://github.com/pyroscope-io/pyroscope/issues/8)
 
 Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
