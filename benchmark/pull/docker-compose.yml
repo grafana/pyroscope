@@ -1,0 +1,45 @@
+---
+version: '3.9'
+services:
+  pyroscope:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    ports:
+      - 4040:4040
+    command:
+      - server
+      - '--log-level=debug'
+      # - "--no-self-profiling"
+    volumes:
+      - ./server.yml:/etc/pyroscope/server.yml
+
+  pull-target:
+    build:
+      context: ./pull-target
+      dockerfile: Dockerfile
+    ports:
+      - 4042:4042
+
+  prometheus:
+    image: prom/prometheus:v2.27.1
+    volumes:
+      - ../prometheus:/etc/prometheus/
+      - data-prometheus:/prometheus
+    ports:
+      - 4090:9090
+  pushgateway:
+    image: prom/pushgateway:v1.4.1
+
+  grafana:
+    image: grafana/grafana:7.5.7
+    volumes:
+      - ../grafana-provisioning:/etc/grafana/provisioning
+      - ../grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ../../monitoring/gen/benchmark-dashboard.json:/etc/grafana/provisioning/dashboards/benchmark-dashboard.json
+    ports:
+      - 8080:3000
+
+volumes:
+  data-prometheus:
+    driver: local
