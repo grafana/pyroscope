@@ -3,12 +3,12 @@ package loadgen
 import (
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
@@ -24,6 +24,8 @@ const MaxReadinessRetries = 10
 
 type Fixtures [][]*transporttrie.Trie
 
+var defaultDurationBetweenUploads = 10 * time.Second
+
 type LoadGen struct {
 	Config    *config.LoadGen
 	Rand      *rand.Rand
@@ -34,6 +36,14 @@ type LoadGen struct {
 	uploadErrors      prometheus.Counter
 	successfulUploads prometheus.Counter
 	pusher            GatewayPusher
+
+	// RWMutex allows one writer or multiple readers.
+	//  this fits great for the case where we want to pause writes before calling render endpoint
+	//  render thread becomes a "writer", and client upload threads become "readers"
+	pauseMutex sync.RWMutex
+
+	renderAppName string
+	duration      time.Duration
 }
 
 type GatewayPusher interface {
@@ -93,11 +103,18 @@ func Cli(cfg *config.LoadGen) error {
 		func() float64 { return float64(cfg.Apps * cfg.Requests * cfg.Clients) },
 	)
 
+	if cfg.Duration != 0 {
+		cfg.Requests = int(cfg.Duration / defaultDurationBetweenUploads)
+	}
+
+	l.duration = time.Duration(l.Config.Requests) * (defaultDurationBetweenUploads)
+
 	return l.Run(cfg)
 }
 
 func (l *LoadGen) Run(cfg *config.LoadGen) error {
-	logrus.Infof("running loadgenerator with config %+v\n", cfg)
+	logrus.Info("running loadgenerator with config")
+	spew.Dump(cfg)
 	logrus.Info("checking server is available...")
 	err := waitUntilEndpointReady(cfg.ServerAddress)
 	if err != nil {
@@ -118,6 +135,7 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 	logrus.Debug("done generating fixtures.")
 
 	logrus.Info("starting sending requests")
+	st := time.Now()
 	wg := sync.WaitGroup{}
 	wg.Add(l.Config.Apps * l.Config.Clients)
 	appNameBuf := make([]byte, 25)
@@ -126,30 +144,20 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 		// generate a random app name
 		l.Rand.Read(appNameBuf)
 		appName := hex.EncodeToString(appNameBuf)
+		if i == 0 {
+			l.renderAppName = appName
+		}
 		for j := 0; j < l.Config.Clients; j++ {
-			go l.startClientThread(appName, &wg, fixtures[i])
+			go l.startClientThread(j, appName, &wg, fixtures[i])
 		}
 	}
+	doneCh := make(chan struct{})
+	go l.startRenderThread(doneCh)
 	wg.Wait()
-
-	logrus.Debug("done sending requests")
-
-	l.timeRendering()
+	logrus.Info("done sending requests, benchmark took ", time.Since(st))
+	doneCh <- struct{}{}
 
 	return nil
-}
-
-func (l *LoadGen) timeRendering() {
-	url := "http://pyroscope:4040/render?from=now-1y&until=now&query=95b4a6859934394b5b488f82c7dab518962b1d88c0d824330a%7B%7D&refreshToken=0.8350450435879586&max-nodes=1024&format=json"
-	for i := 0; i < 1; i++ {
-		st := time.Now()
-		req, err := http.Get(url)
-		if req != nil && req.Body != nil && err == nil {
-			b, err := ioutil.ReadAll(req.Body)
-			logrus.Debug("body", string(b), err)
-		}
-		logrus.Infof("render req %d time %q %q", i, time.Now().Sub(st), err)
-	}
 }
 
 func (l *LoadGen) generateFixtures() Fixtures {
@@ -168,7 +176,7 @@ func (l *LoadGen) generateFixtures() Fixtures {
 	return f
 }
 
-func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
+func (l *LoadGen) startClientThread(threadID int, appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
 		UpstreamAddress:        l.Config.ServerAddress,
@@ -183,19 +191,37 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 
 	requestsCount := l.Config.Requests
 
-	threadStartTime := time.Now().Truncate(10 * time.Second)
-	threadStartTime = threadStartTime.Add(time.Duration(-1*requestsCount) * (10 * time.Second))
+	threadStartTime := time.Now().Truncate(defaultDurationBetweenUploads)
+	threadStartTime = threadStartTime.Add(-1 * l.duration)
 
 	st := threadStartTime
 
+	var timerChan <-chan time.Time
+	if l.Config.RealTime {
+		timerChan = time.NewTicker(defaultDurationBetweenUploads / time.Duration(l.Config.TimeMultiplier)).C
+	} else {
+		ch := make(chan time.Time)
+		go func() {
+			for i := 0; i < requestsCount; i++ {
+				ch <- time.Now()
+			}
+			close(ch)
+		}()
+		timerChan = ch
+	}
+
 	for i := 0; i < requestsCount; i++ {
+		<-timerChan
+
 		t := appFixtures[i%len(appFixtures)]
 
 		st = st.Add(10 * time.Second)
 		et := st.Add(10 * time.Second)
 
+		l.pauseMutex.RLock()
+		fullName := fmt.Sprintf("%s{pod=pod-%d}", appName, threadID)
 		err := r.UploadSync(&upstream.UploadJob{
-			Name:            appName + l.Tags[i%len(l.Tags)],
+			Name:            fullName,
 			StartTime:       st,
 			EndTime:         et,
 			SpyName:         "gospy",
@@ -204,6 +230,7 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 			AggregationType: "sum",
 			Trie:            t,
 		})
+		l.pauseMutex.RUnlock()
 		if err != nil {
 			l.uploadErrors.Add(1)
 			time.Sleep(time.Second)
