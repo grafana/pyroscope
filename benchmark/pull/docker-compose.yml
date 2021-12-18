@@ -13,6 +13,7 @@ services:
       # - "--no-self-profiling"
     volumes:
       - ./server.yml:/etc/pyroscope/server.yml
+      - data-pyroscope:/var/lib/pyroscope
 
   pull-target:
     build:
@@ -42,4 +43,6 @@ services:
 
 volumes:
   data-prometheus:
+    driver: local
+  data-pyroscope:
     driver: local

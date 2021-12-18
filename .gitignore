@@ -24,6 +24,7 @@ benchmark/ci/pr/dashboard-screenshots
 benchmark/ci/pr/table-report
 benchmark/ci/pr/image-report
 benchmark/ci/pr/meta-report
+benchmark/pull/server.yml
 /.env
 # diff output is stored per test
 cypress/snapshots/**/__diff_output__
