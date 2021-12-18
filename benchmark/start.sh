@@ -45,6 +45,7 @@ function run() {
 
 if [ -f "$LOCKFILE" ]; then
   echo "Already running... will now terminate."
+  echo "Remove lock file (rm $LOCKFILE) if you think this is a mistake."
   exit
 else
   echo "Acquiring lock..."
