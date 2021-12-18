@@ -9,7 +9,7 @@ services:
       - 4040:4040
     command:
       - server
-      - '--log-level=debug'
+      # - '--log-level=debug'
       # - "--no-self-profiling"
     volumes:
       - ./server.yml:/etc/pyroscope/server.yml
