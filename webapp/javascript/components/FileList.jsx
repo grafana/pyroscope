@@ -18,7 +18,7 @@ function FileList(props) {
       )}
       {!areProfilesLoading && (
         <div className={styles.tableContainer}>
-          <table className="flamegraph-table" data-testid="table-view">
+          <table className={styles.profilesTable} data-testid="table-view">
             <thead>
               <tr>
                 <th>Filename</th>
