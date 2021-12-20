@@ -22,6 +22,7 @@ import styles from './ComparisonApp.module.css';
 function ComparisonApp(props) {
   const { actions, renderURL, leftRenderURL, rightRenderURL, comparison } =
     props;
+  const { rawLeft, rawRight } = comparison;
 
   useEffect(() => {
     actions.fetchComparisonAppData(leftRenderURL, 'left');
@@ -59,6 +60,7 @@ function ComparisonApp(props) {
               flamebearer={comparison.left.flamebearer}
               data-testid="flamegraph-renderer-left"
               display="both"
+              rawFlamegraph={rawLeft}
             >
               <InstructionText viewType="double" viewSide="left" />
               <TimelineChartWrapper
@@ -77,6 +79,7 @@ function ComparisonApp(props) {
               flamebearer={comparison.right.flamebearer}
               data-testid="flamegraph-renderer-right"
               display="both"
+              rawFlamegraph={rawRight}
             >
               <InstructionText viewType="double" viewSide="right" />
               <TimelineChartWrapper

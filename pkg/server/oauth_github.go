@@ -16,7 +16,7 @@ type oauthHanlderGithub struct {
 	allowedOrganizations []string
 }
 
-func newGithubHandler(cfg config.GithubOauth, log *logrus.Logger) (*oauthHanlderGithub, error) {
+func newGithubHandler(cfg config.GithubOauth, baseURL string, log *logrus.Logger) (*oauthHanlderGithub, error) {
 	authURL, err := url.Parse(cfg.AuthURL)
 	if err != nil {
 		return nil, err
@@ -32,9 +32,10 @@ func newGithubHandler(cfg config.GithubOauth, log *logrus.Logger) (*oauthHanlder
 			},
 			authURL:       authURL,
 			log:           log,
-			callbackRoute: "auth/github/callback",
+			callbackRoute: "/auth/github/callback",
 			redirectRoute: "/auth/github/redirect",
 			apiURL:        "https://api.github.com",
+			baseURL:       baseURL,
 		},
 		allowedOrganizations: cfg.AllowedOrganizations,
 	}

@@ -2,7 +2,7 @@ import ReactDOM from 'react-dom';
 import React from 'react';
 
 import { Provider } from 'react-redux';
-import { Router, Switch, Route } from 'react-router-dom';
+import { BrowserRouter, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Notifications from '@ui/Notifications';
@@ -17,6 +17,7 @@ import AdhocComparison from './components/AdhocComparison';
 import ServerNotifications from './components/ServerNotifications';
 
 import history from './util/history';
+import basename from './util/baseurl';
 
 let showFps = false;
 try {
@@ -29,9 +30,9 @@ try {
 
 ReactDOM.render(
   <Provider store={store}>
-    <Router history={history}>
-      <Notifications />
+    <BrowserRouter history={history} basename={basename()}>
       <ServerNotifications />
+      <Notifications />
       <div className="app">
         <Sidebar />
         <Switch>
@@ -56,7 +57,7 @@ ReactDOM.render(
           )}
         </Switch>
       </div>
-    </Router>
+    </BrowserRouter>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
   </Provider>,
   document.getElementById('root')

@@ -250,10 +250,13 @@ export default function (state = initialState, action) {
       ({
         payload: { data, timeline },
       } = action);
+      // since we gonna mutate that data, keep a reference to the old one
+      const raw = JSON.parse(JSON.stringify(data));
       return {
         ...state,
+        raw,
         timeline: decodeTimelineData(timeline),
-        single: { flamebearer: decodeFlamebearer(data) },
+        single: { flamebearer: decodeFlamebearer({ ...data }) },
         isJSONLoading: false,
       };
 
@@ -268,15 +271,25 @@ export default function (state = initialState, action) {
       } = action);
       let left;
       let right;
+      let rawLeft;
+      let rawRight;
       switch (viewSide) {
         case 'left':
+          // since we gonna mutate that data, keep a reference to the old one
+          rawLeft = JSON.parse(JSON.stringify(data));
+
           left = { flamebearer: decodeFlamebearer(data) };
           right = state.comparison.right;
+          rawRight = state.comparison.rawRight;
           break;
 
         case 'right': {
+          // since we gonna mutate that data, keep a reference to the old one
+          rawRight = JSON.parse(JSON.stringify(data));
+
           left = state.comparison.left;
           right = { flamebearer: decodeFlamebearer(data) };
+          rawLeft = state.comparison.rawLeft;
           break;
         }
         default:
@@ -288,6 +301,8 @@ export default function (state = initialState, action) {
         comparison: {
           left,
           right,
+          rawLeft,
+          rawRight,
         },
         isJSONLoading: false,
       };
