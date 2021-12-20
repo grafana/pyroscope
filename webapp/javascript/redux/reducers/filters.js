@@ -18,8 +18,8 @@ import {
   SET_RIGHT_UNTIL,
   SET_QUERY,
   RECEIVE_COMPARISON_APP_DATA,
-  RECEIVE_PYRESCOPE_APP_DATA,
-  REQUEST_PYRESCOPE_APP_DATA,
+  RECEIVE_PYROSCOPE_APP_DATA,
+  REQUEST_PYROSCOPE_APP_DATA,
   REQUEST_COMPARISON_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
@@ -241,12 +241,12 @@ export default function (state = initialState, action) {
         refreshToken: Math.random(),
       };
 
-    case REQUEST_PYRESCOPE_APP_DATA:
+    case REQUEST_PYROSCOPE_APP_DATA:
       return {
         ...state,
         isJSONLoading: true,
       };
-    case RECEIVE_PYRESCOPE_APP_DATA:
+    case RECEIVE_PYROSCOPE_APP_DATA:
       ({
         payload: { data },
       } = action);

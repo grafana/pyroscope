@@ -19,8 +19,8 @@ import {
   SET_RIGHT_UNTIL,
   RECEIVE_COMPARISON_APP_DATA,
   REQUEST_COMPARISON_APP_DATA,
-  REQUEST_PYRESCOPE_APP_DATA,
-  RECEIVE_PYRESCOPE_APP_DATA,
+  REQUEST_PYROSCOPE_APP_DATA,
+  RECEIVE_PYROSCOPE_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
   REQUEST_COMPARISON_TIMELINE,
@@ -95,13 +95,13 @@ export const receiveTimeline = (data) => ({
   payload: data,
 });
 
-export const requestPyrescopeAppData = (url) => ({
-  type: REQUEST_PYRESCOPE_APP_DATA,
+export const requestPyroscopeAppData = (url) => ({
+  type: REQUEST_PYROSCOPE_APP_DATA,
   payload: { url },
 });
 
-export const receivePyrescopeAppData = (data) => ({
-  type: RECEIVE_PYRESCOPE_APP_DATA,
+export const receivePyroscopeAppData = (data) => ({
+  type: RECEIVE_PYROSCOPE_APP_DATA,
   payload: { data },
 });
 
@@ -316,19 +316,19 @@ export function fetchComparisonAppData(url, viewSide) {
   };
 }
 
-export function fetchPyrescopeAppData(url) {
+export function fetchPyroscopeAppData(url) {
   return (dispatch) => {
     if (currentTimelineController) {
       currentTimelineController.abort();
     }
     currentTimelineController = new AbortController();
-    dispatch(requestPyrescopeAppData(url));
+    dispatch(requestPyroscopeAppData(url));
     return fetch(`${url}&format=json`, {
       signal: currentTimelineController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
-        dispatch(receivePyrescopeAppData(data));
+        dispatch(receivePyroscopeAppData(data));
       })
       .catch((e) => {
         // AbortErrors are fine
