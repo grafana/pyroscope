@@ -13,27 +13,27 @@ import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
 
 import {
-  fetchProfiles,
-  fetchProfile,
-  setFile,
-  setProfile,
+  fetchAdhocProfiles,
+  fetchAdhocProfile,
+  setAdhocFile,
+  setAdhocProfile,
 } from '../redux/actions';
 import 'react-tabs/style/react-tabs.css';
 
 function AdhocSingle(props) {
   const { actions, file, profile, flamebearer, isProfileLoading } = props;
-  const { setFile, setProfile } = actions;
+  const { setAdhocFile, setAdhocProfile } = actions;
 
   useEffect(() => {
-    actions.fetchProfiles();
-    return actions.abortFetchProfiles;
+    actions.fetchAdhocProfiles();
+    return actions.abortAdhocFetchProfiles;
   }, []);
 
   useEffect(() => {
     if (profile) {
-      actions.fetchProfile(profile);
+      actions.fetchAdhocProfile(profile);
     }
-    return actions.abortFetchProfile;
+    return actions.abortAdhocFetchProfile;
   }, [profile]);
 
   return (
@@ -46,10 +46,10 @@ function AdhocSingle(props) {
               <Tab>Upload</Tab>
             </TabList>
             <TabPanel>
-              <FileList profile={profile} setProfile={setProfile} />
+              <FileList profile={profile} setProfile={setAdhocProfile} />
             </TabPanel>
             <TabPanel>
-              <FileUploader file={file} setFile={setFile} />
+              <FileUploader file={file} setFile={setAdhocFile} />
             </TabPanel>
           </Tabs>
           <div
@@ -82,10 +82,10 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchProfiles,
-      fetchProfile,
-      setFile,
-      setProfile,
+      fetchAdhocProfiles,
+      fetchAdhocProfile,
+      setAdhocFile,
+      setAdhocProfile,
     },
     dispatch
   ),

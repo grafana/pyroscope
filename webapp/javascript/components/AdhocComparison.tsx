@@ -11,31 +11,39 @@ import FileList from './FileList';
 import FileUploader from './FileUploader';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
-import { fetchProfiles, fetchLeftProfile, fetchRightProfile, setLeftFile, setLeftProfile, setRightFile, setRightProfile } from '../redux/actions';
+import {
+  fetchAdhocProfiles,
+  fetchAdhocLeftProfile,
+  fetchAdhocRightProfile,
+  setAdhocLeftFile,
+  setAdhocLeftProfile,
+  setAdhocRightFile,
+  setAdhocRightProfile
+} from '../redux/actions';
 import styles from './ComparisonApp.module.css';
 
 function AdhocComparison(props) {
   const { actions, isLeftProfileLoading, isRightProfileLoading, leftFile, leftFlamebearer, leftProfile, rightFile, rightFlamebearer, rightProfile } =
     props;
-  const { setLeftFile, setLeftProfile, setRightFile, setRightProfile } = actions;
+  const { setAdhocLeftFile, setAdhocLeftProfile, setAdhocRightFile, setAdhocRightProfile } = actions;
 
   useEffect(() => {
-    actions.fetchProfiles();
-    return actions.abortFetchProfiles;
+    actions.fetchAdhocProfiles();
+    return actions.abortFetchAdhocProfiles;
   }, []);
 
   useEffect(() => {
     if (leftProfile) {
-      actions.fetchLeftProfile(leftProfile);
+      actions.fetchAdhocLeftProfile(leftProfile);
     }
-    return actions.abortFetchLeftProfile;
+    return actions.abortFetchAdhocLeftProfile;
   }, [leftProfile]);
 
   useEffect(() => {
     if (rightProfile) {
-      actions.fetchRightProfile(rightProfile);
+      actions.fetchAdhocRightProfile(rightProfile);
     }
-    return actions.abortFetchRightProfile;
+    return actions.abortFetchAdhocRightProfile;
   }, [rightProfile]);
 
   return (
@@ -52,10 +60,10 @@ function AdhocComparison(props) {
                 <Tab>Upload</Tab>
               </TabList>
               <TabPanel>
-                <FileList profile={leftProfile} setProfile={setLeftProfile} />
+                <FileList profile={leftProfile} setProfile={setAdhocLeftProfile} />
               </TabPanel>
               <TabPanel>
-                <FileUploader file={leftFile} setFile={setLeftFile} />
+                <FileUploader file={leftFile} setFile={setAdhocLeftFile} />
               </TabPanel>
             </Tabs>
             <div
@@ -80,10 +88,10 @@ function AdhocComparison(props) {
                 <Tab>Upload</Tab>
               </TabList>
               <TabPanel>
-                <FileList profile={rightProfile} setProfile={setRightProfile} />
+                <FileList profile={rightProfile} setProfile={setAdhocRightProfile} />
               </TabPanel>
               <TabPanel>
-                <FileUploader file={rightFile} setFile={setRightFile} />
+                <FileUploader file={rightFile} setFile={setAdhocRightFile} />
               </TabPanel>
             </Tabs>
             <div
@@ -121,7 +129,15 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators({ fetchProfiles, fetchLeftProfile, fetchRightProfile, setLeftFile, setLeftProfile, setRightFile, setRightProfile }, dispatch),
+  actions: bindActionCreators({
+    fetchAdhocProfiles,
+    fetchAdhocLeftProfile,
+    fetchAdhocRightProfile,
+    setAdhocLeftFile,
+    setAdhocLeftProfile,
+    setAdhocRightFile,
+    setAdhocRightProfile
+  }, dispatch),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocComparison);

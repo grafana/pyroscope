@@ -25,20 +25,20 @@ import {
   RECEIVE_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_TIMELINE,
   REQUEST_COMPARISON_TIMELINE,
-  SET_FILE,
-  SET_LEFT_FILE,
-  SET_RIGHT_FILE,
-  REQUEST_PROFILES,
-  RECEIVE_PROFILES,
-  SET_PROFILE,
-  REQUEST_PROFILE,
-  RECEIVE_PROFILE,
-  SET_LEFT_PROFILE,
-  REQUEST_LEFT_PROFILE,
-  RECEIVE_LEFT_PROFILE,
-  SET_RIGHT_PROFILE,
-  REQUEST_RIGHT_PROFILE,
-  RECEIVE_RIGHT_PROFILE,
+  SET_ADHOC_FILE,
+  SET_ADHOC_LEFT_FILE,
+  SET_ADHOC_RIGHT_FILE,
+  REQUEST_ADHOC_PROFILES,
+  RECEIVE_ADHOC_PROFILES,
+  SET_ADHOC_PROFILE,
+  REQUEST_ADHOC_PROFILE,
+  RECEIVE_ADHOC_PROFILE,
+  SET_ADHOC_LEFT_PROFILE,
+  REQUEST_ADHOC_LEFT_PROFILE,
+  RECEIVE_ADHOC_LEFT_PROFILE,
+  SET_ADHOC_RIGHT_PROFILE,
+  REQUEST_ADHOC_RIGHT_PROFILE,
+  RECEIVE_ADHOC_RIGHT_PROFILE,
 } from '../actionTypes';
 
 import { deltaDiffWrapper } from '../../util/flamebearer';
@@ -324,7 +324,7 @@ export default function(state = initialState, action) {
         ...state,
         query: action.payload.query,
       };
-    case SET_FILE:
+    case SET_ADHOC_FILE:
       flamebearer = action.payload.flamebearer
         ? decodeFlamebearer(action.payload.flamebearer)
         : null;
@@ -336,7 +336,7 @@ export default function(state = initialState, action) {
           flamebearer,
         },
       };
-    case SET_LEFT_FILE:
+    case SET_ADHOC_LEFT_FILE:
       flamebearer = action.payload.flamebearer
         ? decodeFlamebearer(action.payload.flamebearer)
         : null;
@@ -352,7 +352,7 @@ export default function(state = initialState, action) {
           },
         },
       };
-    case SET_RIGHT_FILE:
+    case SET_ADHOC_RIGHT_FILE:
       flamebearer = action.payload.flamebearer
         ? decodeFlamebearer(action.payload.flamebearer)
         : null;
@@ -368,18 +368,18 @@ export default function(state = initialState, action) {
           },
         },
       };
-    case REQUEST_PROFILES:
+    case REQUEST_ADHOC_PROFILES:
       return {
         ...state,
         areProfilesLoading: true,
       };
-    case RECEIVE_PROFILES:
+    case RECEIVE_ADHOC_PROFILES:
       return {
         ...state,
         areProfilesLoading: false,
         profiles: action.payload.profiles,
       };
-    case SET_PROFILE:
+    case SET_ADHOC_PROFILE:
       return {
         ...state,
         adhocSingle: {
@@ -388,7 +388,7 @@ export default function(state = initialState, action) {
           profile: action.payload.profile,
         },
       };
-    case REQUEST_PROFILE:
+    case REQUEST_ADHOC_PROFILE:
       return {
         ...state,
         adhocSingle: {
@@ -396,7 +396,7 @@ export default function(state = initialState, action) {
           isProfileLoading: true,
         },
       };
-    case RECEIVE_PROFILE:
+    case RECEIVE_ADHOC_PROFILE:
       return {
         ...state,
         adhocSingle: {
@@ -405,7 +405,7 @@ export default function(state = initialState, action) {
           isProfileLoading: false,
         },
       };
-    case SET_LEFT_PROFILE:
+    case SET_ADHOC_LEFT_PROFILE:
       return {
         ...state,
         adhocComparison: {
@@ -417,7 +417,7 @@ export default function(state = initialState, action) {
           },
         },
       };
-    case REQUEST_LEFT_PROFILE:
+    case REQUEST_ADHOC_LEFT_PROFILE:
       return {
         ...state,
         adhocComparison: {
@@ -428,7 +428,7 @@ export default function(state = initialState, action) {
           },
         },
       };
-    case RECEIVE_LEFT_PROFILE:
+    case RECEIVE_ADHOC_LEFT_PROFILE:
       return {
         ...state,
         adhocComparison: {
@@ -440,7 +440,7 @@ export default function(state = initialState, action) {
           },
         },
       };
-    case SET_RIGHT_PROFILE:
+    case SET_ADHOC_RIGHT_PROFILE:
       return {
         ...state,
         adhocComparison: {
@@ -452,7 +452,7 @@ export default function(state = initialState, action) {
           },
         },
       };
-    case REQUEST_RIGHT_PROFILE:
+    case REQUEST_ADHOC_RIGHT_PROFILE:
       return {
         ...state,
         adhocComparison: {
@@ -463,7 +463,7 @@ export default function(state = initialState, action) {
           },
         },
       };
-    case RECEIVE_RIGHT_PROFILE:
+    case RECEIVE_ADHOC_RIGHT_PROFILE:
       return {
         ...state,
         adhocComparison: {

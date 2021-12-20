@@ -25,20 +25,20 @@ import {
   RECEIVE_COMPARISON_DIFF_APP_DATA,
   REQUEST_COMPARISON_TIMELINE,
   RECEIVE_COMPARISON_TIMELINE,
-  SET_FILE,
-  SET_LEFT_FILE,
-  SET_RIGHT_FILE,
-  REQUEST_PROFILES,
-  RECEIVE_PROFILES,
-  SET_PROFILE,
-  REQUEST_PROFILE,
-  RECEIVE_PROFILE,
-  SET_LEFT_PROFILE,
-  SET_RIGHT_PROFILE,
-  REQUEST_LEFT_PROFILE,
-  REQUEST_RIGHT_PROFILE,
-  RECEIVE_LEFT_PROFILE,
-  RECEIVE_RIGHT_PROFILE,
+  SET_ADHOC_FILE,
+  SET_ADHOC_LEFT_FILE,
+  SET_ADHOC_RIGHT_FILE,
+  REQUEST_ADHOC_PROFILES,
+  RECEIVE_ADHOC_PROFILES,
+  SET_ADHOC_PROFILE,
+  REQUEST_ADHOC_PROFILE,
+  RECEIVE_ADHOC_PROFILE,
+  SET_ADHOC_LEFT_PROFILE,
+  SET_ADHOC_RIGHT_PROFILE,
+  REQUEST_ADHOC_LEFT_PROFILE,
+  REQUEST_ADHOC_RIGHT_PROFILE,
+  RECEIVE_ADHOC_LEFT_PROFILE,
+  RECEIVE_ADHOC_RIGHT_PROFILE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 
@@ -154,70 +154,70 @@ export const setQuery = (query) => ({
   payload: { query },
 });
 
-export const setFile = (file, flamebearer) => ({
-  type: SET_FILE,
+export const setAdhocFile = (file, flamebearer) => ({
+  type: SET_ADHOC_FILE,
   payload: { file, flamebearer },
 });
 
-export const setLeftFile = (file, flamebearer) => ({
-  type: SET_LEFT_FILE,
+export const setAdhocLeftFile = (file, flamebearer) => ({
+  type: SET_ADHOC_LEFT_FILE,
   payload: { file, flamebearer },
 });
 
-export const setRightFile = (file, flamebearer) => ({
-  type: SET_RIGHT_FILE,
+export const setAdhocRightFile = (file, flamebearer) => ({
+  type: SET_ADHOC_RIGHT_FILE,
   payload: { file, flamebearer },
 });
 
-export const requestProfiles = () => ({ type: REQUEST_PROFILES, payload: {} });
+export const requestAdhocProfiles = () => ({ type: REQUEST_ADHOC_PROFILES, payload: {} });
 
-export const receiveProfiles = (profiles) => ({
-  type: RECEIVE_PROFILES,
+export const receiveAdhocProfiles = (profiles) => ({
+  type: RECEIVE_ADHOC_PROFILES,
   payload: { profiles },
 });
 
-export const setProfile = (profile) => ({
-  type: SET_PROFILE,
+export const setAdhocProfile = (profile) => ({
+  type: SET_ADHOC_PROFILE,
   payload: { profile },
 });
 
-export const requestProfile = (profile) => ({
-  type: REQUEST_PROFILE,
+export const requestAdhocProfile = (profile) => ({
+  type: REQUEST_ADHOC_PROFILE,
   payload: { profile },
 });
 
-export const receiveProfile = (flamebearer) => ({
-  type: RECEIVE_PROFILE,
+export const receiveAdhocProfile = (flamebearer) => ({
+  type: RECEIVE_ADHOC_PROFILE,
   payload: { flamebearer },
 });
 
-export const setLeftProfile = (profile) => ({
-  type: SET_LEFT_PROFILE,
+export const setAdhocLeftProfile = (profile) => ({
+  type: SET_ADHOC_LEFT_PROFILE,
   payload: { profile },
 });
 
-export const requestLeftProfile = (profile) => ({
-  type: REQUEST_LEFT_PROFILE,
+export const requestAdhocLeftProfile = (profile) => ({
+  type: REQUEST_ADHOC_LEFT_PROFILE,
   payload: { profile },
 });
 
-export const receiveLeftProfile = (flamebearer) => ({
-  type: RECEIVE_LEFT_PROFILE,
+export const receiveAdhocLeftProfile = (flamebearer) => ({
+  type: RECEIVE_ADHOC_LEFT_PROFILE,
   payload: { flamebearer },
 });
 
-export const setRightProfile = (profile) => ({
-  type: SET_RIGHT_PROFILE,
+export const setAdhocRightProfile = (profile) => ({
+  type: SET_ADHOC_RIGHT_PROFILE,
   payload: { profile },
 });
 
-export const requestRightProfile = (profile) => ({
-  type: REQUEST_RIGHT_PROFILE,
+export const requestAdhocRightProfile = (profile) => ({
+  type: REQUEST_ADHOC_RIGHT_PROFILE,
   payload: { profile },
 });
 
-export const receiveRightProfile = (flamebearer) => ({
-  type: RECEIVE_RIGHT_PROFILE,
+export const receiveAdhocRightProfile = (flamebearer) => ({
+  type: RECEIVE_ADHOC_RIGHT_PROFILE,
   payload: { flamebearer },
 });
 
@@ -459,21 +459,21 @@ export function abortFetchNames() {
   };
 }
 
-let profilesController;
-export function fetchProfiles() {
+let adhocProfilesController;
+export function fetchAdhocProfiles() {
   return (dispatch) => {
-    if (profilesController) {
-      profilesController.abort();
+    if (adhocProfilesController) {
+      adhocProfilesController.abort();
     }
 
-    profilesController = new AbortController();
-    dispatch(requestProfiles());
+    adhocProfilesController = new AbortController();
+    dispatch(requestAdhocProfiles());
     return fetch('/api/adhoc/v1/profiles', {
-      signal: profilesController.signal,
+      signal: adhocProfilesController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
-        dispatch(receiveProfiles(data));
+        dispatch(receiveAdhocProfiles(data));
       })
       .catch((e) => {
         if (!isAbortError(e)) {
@@ -483,29 +483,29 @@ export function fetchProfiles() {
       .finally();
   };
 }
-export function abortFetchProfiles() {
+export function abortFetchAdhocProfiles() {
   return () => {
-    if (profilesController) {
-      profilesController.abort();
+    if (adhocProfilesController) {
+      adhocProfilesController.abort();
     }
   };
 }
 
-let profileController;
-export function fetchProfile(profile) {
+let adhocProfileController;
+export function fetchAdhocProfile(profile) {
   return (dispatch) => {
-    if (leftProfileController) {
-      leftProfileController.abort();
+    if (adhocProfileController) {
+      adhocProfileController.abort();
     }
 
-    leftProfileController = new AbortController();
-    dispatch(requestProfile(profile));
+    adhocProfileController = new AbortController();
+    dispatch(requestAdhocProfile(profile));
     return fetch(`/api/adhoc/v1/profile/${profile}`, {
-      signal: leftProfileController.signal,
+      signal: adhocProfileController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
-        dispatch(receiveProfile(data));
+        dispatch(receiveAdhocProfile(data));
       })
       .catch((e) => {
         if (!isAbortError(e)) {
@@ -515,29 +515,29 @@ export function fetchProfile(profile) {
       .finally();
   };
 }
-export function abortFetchProfile() {
+export function abortFetchAdhocProfile() {
   return () => {
-    if (leftProfileController) {
-      leftProfileController.abort();
+    if (adhocProfileController) {
+      adhocProfileController.abort();
     }
   };
 }
 
-let leftProfileController;
-export function fetchLeftProfile(profile) {
+let adhocLeftProfileController;
+export function fetchAdhocLeftProfile(profile) {
   return (dispatch) => {
-    if (leftProfileController) {
-      leftProfileController.abort();
+    if (adhocLeftProfileController) {
+      adhocLeftProfileController.abort();
     }
 
-    leftProfileController = new AbortController();
-    dispatch(requestLeftProfile(profile));
+    adhocLeftProfileController = new AbortController();
+    dispatch(requestAdhocLeftProfile(profile));
     return fetch(`/api/adhoc/v1/profile/${profile}`, {
-      signal: leftProfileController.signal,
+      signal: adhocLeftProfileController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
-        dispatch(receiveLeftProfile(data));
+        dispatch(receiveAdhocLeftProfile(data));
       })
       .catch((e) => {
         if (!isAbortError(e)) {
@@ -547,29 +547,29 @@ export function fetchLeftProfile(profile) {
       .finally();
   };
 }
-export function abortFetchLeftProfile() {
+export function abortFetchAdhocLeftProfile() {
   return () => {
-    if (leftProfileController) {
-      leftProfileController.abort();
+    if (adhocLeftProfileController) {
+      adhocLeftProfileController.abort();
     }
   };
 }
 
-let rightProfileController;
-export function fetchRightProfile(profile) {
+let adhocRightProfileController;
+export function fetchAdhocRightProfile(profile) {
   return (dispatch) => {
-    if (rightProfileController) {
-      rightProfileController.abort();
+    if (adhocRightProfileController) {
+      adhocRightProfileController.abort();
     }
 
-    rightProfileController = new AbortController();
-    dispatch(requestRightProfile(profile));
+    adhocRightProfileController = new AbortController();
+    dispatch(requestAdhocRightProfile(profile));
     return fetch(`/api/adhoc/v1/profile/${profile}`, {
-      signal: rightProfileController.signal,
+      signal: adhocRightProfileController.signal,
     })
       .then((response) => response.json())
       .then((data) => {
-        dispatch(receiveRightProfile(data));
+        dispatch(receiveAdhocRightProfile(data));
       })
       .catch((e) => {
         if (!isAbortError(e)) {
@@ -579,10 +579,10 @@ export function fetchRightProfile(profile) {
       .finally();
   };
 }
-export function abortFetchRightProfile() {
+export function abortFetchAdhocRightProfile() {
   return () => {
-    if (rightProfileController) {
-      rightProfileController.abort();
+    if (adhocRightProfileController) {
+      adhocRightProfileController.abort();
     }
   };
 }
