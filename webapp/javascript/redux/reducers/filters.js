@@ -20,6 +20,7 @@ import {
   RECEIVE_COMPARISON_APP_DATA,
   RECEIVE_PYRESCOPE_APP_DATA,
   REQUEST_PYRESCOPE_APP_DATA,
+  CANCEL_PYRESCOPE_APP_DATA,
   REQUEST_COMPARISON_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
@@ -28,6 +29,8 @@ import {
   SET_FILE,
   SET_LEFT_FILE,
   SET_RIGHT_FILE,
+  CANCEL_COMPARISON_APP_DATA,
+  CANCEL_COMPARISON_DIFF_APP_DATA,
 } from '../actionTypes';
 
 import { deltaDiffWrapper } from '../../util/flamebearer';
@@ -184,6 +187,15 @@ export default function (state = initialState, action) {
         ...state,
         isJSONLoading: true,
       };
+
+    case CANCEL_PYRESCOPE_APP_DATA:
+    case CANCEL_COMPARISON_APP_DATA:
+    case CANCEL_COMPARISON_DIFF_APP_DATA:
+      return {
+        ...state,
+        isJSONLoading: false,
+      };
+
     case RECEIVE_PYRESCOPE_APP_DATA:
       data = action.payload.data;
       // since we gonna mutate that data, keep a reference to the old one
@@ -244,6 +256,7 @@ export default function (state = initialState, action) {
         },
         isJSONLoading: false,
       };
+
     case REQUEST_COMPARISON_TIMELINE:
       return {
         ...state,

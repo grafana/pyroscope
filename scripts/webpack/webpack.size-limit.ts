@@ -1,4 +1,5 @@
-const { merge } = require('webpack-merge');
+import { merge } from 'webpack-merge';
+
 const path = require('path');
 const prod = require('./webpack.prod');
 
