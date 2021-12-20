@@ -21,7 +21,7 @@ import (
 type profile struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
-	UpdatedAt time.Time `json:"updated_at"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type server struct {
