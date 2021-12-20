@@ -133,64 +133,107 @@ function decodeFlamebearer({
   return fb;
 }
 
-export default function(state = initialState, action) {
-  let flamebearer;
-  let timeline;
+export default function (state = initialState, action) {
+  const { type } = action;
   let data;
+  let file;
+  let flamebearer;
+  let from;
+  let maxNodes;
+  let names;
+  let profile;
+  let profiles;
+  let query;
+  let tag;
+  let tags;
+  let timeline;
+  let until;
+  let values;
   let viewSide;
-  switch (action.type) {
+
+  switch (type) {
     case SET_DATE_RANGE:
+      ({
+        payload: { from, until },
+      } = action);
       return {
         ...state,
-        from: action.payload.from,
-        until: action.payload.until,
+        from,
+        until,
       };
     case SET_FROM:
+      ({
+        payload: { from },
+      } = action);
       return {
         ...state,
-        from: action.payload.from,
+        from,
       };
     case SET_LEFT_FROM:
+      ({
+        payload: { from },
+      } = action);
       return {
         ...state,
-        leftFrom: action.payload.from,
+        leftFrom: from,
       };
     case SET_RIGHT_FROM:
+      ({
+        payload: { from },
+      } = action);
       return {
         ...state,
-        rightFrom: action.payload.from,
+        rightFrom: from,
       };
     case SET_UNTIL:
+      ({
+        payload: { until },
+      } = action);
       return {
         ...state,
-        until: action.payload.until,
+        until,
       };
     case SET_LEFT_UNTIL:
+      ({
+        payload: { until },
+      } = action);
       return {
         ...state,
-        leftUntil: action.payload.until,
+        leftUntil: until,
       };
     case SET_RIGHT_UNTIL:
+      ({
+        payload: { until },
+      } = action);
       return {
         ...state,
-        rightUntil: action.payload.until,
+        rightUntil: until,
       };
     case SET_LEFT_DATE_RANGE:
+      ({
+        payload: { from, until },
+      } = action);
       return {
         ...state,
-        leftFrom: action.payload.from,
-        leftUntil: action.payload.until,
+        leftFrom: from,
+        leftUntil: until,
       };
     case SET_RIGHT_DATE_RANGE:
+      ({
+        payload: { from, until },
+      } = action);
       return {
         ...state,
-        rightFrom: action.payload.from,
-        rightUntil: action.payload.until,
+        rightFrom: from,
+        rightUntil: until,
       };
     case SET_MAX_NODES:
+      ({
+        payload: { maxNodes },
+      } = action);
       return {
         ...state,
-        maxNodes: action.payload.maxNodes,
+        maxNodes,
       };
     case REFRESH:
       return {
@@ -204,13 +247,13 @@ export default function(state = initialState, action) {
         isJSONLoading: true,
       };
     case RECEIVE_PYRESCOPE_APP_DATA:
-      data = action.payload.data;
-      timeline = data.timeline;
-      flamebearer = decodeFlamebearer(data);
+      ({
+        payload: { data, timeline },
+      } = action);
       return {
         ...state,
         timeline: decodeTimelineData(timeline),
-        single: { flamebearer },
+        single: { flamebearer: decodeFlamebearer(data) },
         isJSONLoading: false,
       };
 
@@ -220,20 +263,20 @@ export default function(state = initialState, action) {
         isJSONLoading: true,
       };
     case RECEIVE_COMPARISON_APP_DATA:
-      viewSide = action.payload.viewSide;
-      flamebearer = decodeFlamebearer(action.payload.data);
-
+      ({
+        payload: { data, viewSide },
+      } = action);
       let left;
       let right;
       switch (viewSide) {
         case 'left':
-          left = { flamebearer };
+          left = { flamebearer: decodeFlamebearer(data) };
           right = state.comparison.right;
           break;
 
         case 'right': {
           left = state.comparison.left;
-          right = { flamebearer };
+          right = { flamebearer: decodeFlamebearer(data) };
           break;
         }
         default:
@@ -254,9 +297,12 @@ export default function(state = initialState, action) {
         isJSONLoading: true,
       };
     case RECEIVE_COMPARISON_TIMELINE:
+      ({
+        payload: { timeline },
+      } = action);
       return {
         ...state,
-        timeline: decodeTimelineData(action.payload.timeline),
+        timeline: decodeTimelineData(timeline),
         isJSONLoading: false,
       };
 
@@ -266,14 +312,13 @@ export default function(state = initialState, action) {
         isJSONLoading: true,
       };
     case RECEIVE_COMPARISON_DIFF_APP_DATA:
-      data = action.payload.data;
-      timeline = data.timeline;
-      flamebearer = decodeFlamebearer(data);
-
+      ({
+        payload: { data, timeline },
+      } = action);
       return {
         ...state,
         timeline: decodeTimelineData(timeline),
-        diff: { flamebearer },
+        diff: { flamebearer: decodeFlamebearer(data) },
         isJSONLoading: false,
       };
 
@@ -283,10 +328,13 @@ export default function(state = initialState, action) {
         areTagsLoading: true,
       };
     case RECEIVE_TAGS: {
+      ({
+        payload: { tags },
+      } = action);
       return {
         ...state,
         areTagsLoading: false,
-        tags: action.payload.tags.reduce((acc, tag) => {
+        tags: tags.reduce((acc, tag) => {
           if (tag !== '__name__') {
             acc[tag] = [];
           }
@@ -295,17 +343,23 @@ export default function(state = initialState, action) {
       };
     }
     case REQUEST_TAG_VALUES:
+      ({
+        payload: { tag },
+      } = action);
       return {
         ...state,
-        tagValuesLoading: action.payload.tag,
+        tagValuesLoading: tag,
       };
     case RECEIVE_TAG_VALUES:
+      ({
+        payload: { tag, values },
+      } = action);
       return {
         ...state,
         tagValuesLoading: '',
         tags: {
           ...state.tags,
-          [action.payload.tag]: action.payload.values,
+          [tag]: values,
         },
       };
     case REQUEST_NAMES:
@@ -314,32 +368,38 @@ export default function(state = initialState, action) {
         areNamesLoading: true,
       };
     case RECEIVE_NAMES:
+      ({
+        payload: { names },
+      } = action);
       return {
         ...state,
-        names: action.payload.names,
+        names,
         areNamesLoading: false,
       };
     case SET_QUERY:
+      ({
+        payload: { query },
+      } = action);
       return {
         ...state,
-        query: action.payload.query,
+        query,
       };
     case SET_ADHOC_FILE:
-      flamebearer = action.payload.flamebearer
-        ? decodeFlamebearer(action.payload.flamebearer)
-        : null;
+      ({
+        payload: { file, flamebearer },
+      } = action);
       return {
         ...state,
         adhocSingle: {
           profile: null,
-          file: action.payload.file,
-          flamebearer,
+          file,
+          flamebearer: flamebearer ? decodeFlamebearer(flamebearer) : null,
         },
       };
     case SET_ADHOC_LEFT_FILE:
-      flamebearer = action.payload.flamebearer
-        ? decodeFlamebearer(action.payload.flamebearer)
-        : null;
+      ({
+        payload: { file, flamebearer },
+      } = action);
       return {
         ...state,
         adhocComparison: {
@@ -347,15 +407,15 @@ export default function(state = initialState, action) {
           left: {
             ...state.adhocComparison.left,
             profile: null,
-            file: action.payload.file,
-            flamebearer,
+            file,
+            flamebearer: flamebearer ? decodeFlamebearer(flamebearer) : null,
           },
         },
       };
     case SET_ADHOC_RIGHT_FILE:
-      flamebearer = action.payload.flamebearer
-        ? decodeFlamebearer(action.payload.flamebearer)
-        : null;
+      ({
+        payload: { file, flamebearer },
+      } = action);
       return {
         ...state,
         adhocComparison: {
@@ -363,8 +423,8 @@ export default function(state = initialState, action) {
           right: {
             ...state.adhocComparison.right,
             profile: null,
-            file: action.payload.file,
-            flamebearer,
+            file,
+            flamebearer: flamebearer ? decodeFlamebearer(flamebearer) : null,
           },
         },
       };
@@ -374,18 +434,24 @@ export default function(state = initialState, action) {
         areProfilesLoading: true,
       };
     case RECEIVE_ADHOC_PROFILES:
+      ({
+        payload: { profiles },
+      } = action);
       return {
         ...state,
         areProfilesLoading: false,
-        profiles: action.payload.profiles,
+        profiles,
       };
     case SET_ADHOC_PROFILE:
+      ({
+        payload: { profile },
+      } = action);
       return {
         ...state,
         adhocSingle: {
           ...state.adhocSingle,
           file: null,
-          profile: action.payload.profile,
+          profile,
         },
       };
     case REQUEST_ADHOC_PROFILE:
@@ -397,15 +463,21 @@ export default function(state = initialState, action) {
         },
       };
     case RECEIVE_ADHOC_PROFILE:
+      ({
+        payload: { flamebearer },
+      } = action);
       return {
         ...state,
         adhocSingle: {
           ...state.adhocSingle,
-          flamebearer: decodeFlamebearer(action.payload.flamebearer),
+          flamebearer: decodeFlamebearer(flamebearer),
           isProfileLoading: false,
         },
       };
     case SET_ADHOC_LEFT_PROFILE:
+      ({
+        payload: { profile },
+      } = action);
       return {
         ...state,
         adhocComparison: {
@@ -413,7 +485,7 @@ export default function(state = initialState, action) {
           left: {
             ...state.adhocComparison.left,
             file: null,
-            profile: action.payload.profile,
+            profile,
           },
         },
       };
@@ -429,18 +501,24 @@ export default function(state = initialState, action) {
         },
       };
     case RECEIVE_ADHOC_LEFT_PROFILE:
+      ({
+        payload: { flamebearer },
+      } = action);
       return {
         ...state,
         adhocComparison: {
           ...state.adhocComparison,
           left: {
             ...state.adhocComparison.left,
-            flamebearer: decodeFlamebearer(action.payload.flamebearer),
+            flamebearer: decodeFlamebearer(flamebearer),
             isProfileLoading: false,
           },
         },
       };
     case SET_ADHOC_RIGHT_PROFILE:
+      ({
+        payload: { profile },
+      } = action);
       return {
         ...state,
         adhocComparison: {
@@ -448,7 +526,7 @@ export default function(state = initialState, action) {
           right: {
             ...state.adhocComparison.right,
             file: null,
-            profile: action.payload.profile,
+            profile,
           },
         },
       };
@@ -464,13 +542,16 @@ export default function(state = initialState, action) {
         },
       };
     case RECEIVE_ADHOC_RIGHT_PROFILE:
+      ({
+        payload: { flamebearer },
+      } = action);
       return {
         ...state,
         adhocComparison: {
           ...state.adhocComparison,
           right: {
             ...state.adhocComparison.right,
-            flamebearer: decodeFlamebearer(action.payload.flamebearer),
+            flamebearer: decodeFlamebearer(flamebearer),
             isProfileLoading: false,
           },
         },

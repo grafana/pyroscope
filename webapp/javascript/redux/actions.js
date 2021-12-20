@@ -169,7 +169,10 @@ export const setAdhocRightFile = (file, flamebearer) => ({
   payload: { file, flamebearer },
 });
 
-export const requestAdhocProfiles = () => ({ type: REQUEST_ADHOC_PROFILES, payload: {} });
+export const requestAdhocProfiles = () => ({
+  type: REQUEST_ADHOC_PROFILES,
+  payload: {},
+});
 
 export const receiveAdhocProfiles = (profiles) => ({
   type: RECEIVE_ADHOC_PROFILES,

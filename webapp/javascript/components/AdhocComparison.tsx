@@ -18,14 +18,28 @@ import {
   setAdhocLeftFile,
   setAdhocLeftProfile,
   setAdhocRightFile,
-  setAdhocRightProfile
+  setAdhocRightProfile,
 } from '../redux/actions';
 import styles from './ComparisonApp.module.css';
 
 function AdhocComparison(props) {
-  const { actions, isLeftProfileLoading, isRightProfileLoading, leftFile, leftFlamebearer, leftProfile, rightFile, rightFlamebearer, rightProfile } =
-    props;
-  const { setAdhocLeftFile, setAdhocLeftProfile, setAdhocRightFile, setAdhocRightProfile } = actions;
+  const {
+    actions,
+    isLeftProfileLoading,
+    isRightProfileLoading,
+    leftFile,
+    leftFlamebearer,
+    leftProfile,
+    rightFile,
+    rightFlamebearer,
+    rightProfile,
+  } = props;
+  const {
+    setAdhocLeftFile,
+    setAdhocLeftProfile,
+    setAdhocRightFile,
+    setAdhocRightProfile,
+  } = actions;
 
   useEffect(() => {
     actions.fetchAdhocProfiles();
@@ -60,7 +74,10 @@ function AdhocComparison(props) {
                 <Tab>Upload</Tab>
               </TabList>
               <TabPanel>
-                <FileList profile={leftProfile} setProfile={setAdhocLeftProfile} />
+                <FileList
+                  profile={leftProfile}
+                  setProfile={setAdhocLeftProfile}
+                />
               </TabPanel>
               <TabPanel>
                 <FileUploader file={leftFile} setFile={setAdhocLeftFile} />
@@ -88,7 +105,10 @@ function AdhocComparison(props) {
                 <Tab>Upload</Tab>
               </TabList>
               <TabPanel>
-                <FileList profile={rightProfile} setProfile={setAdhocRightProfile} />
+                <FileList
+                  profile={rightProfile}
+                  setProfile={setAdhocRightProfile}
+                />
               </TabPanel>
               <TabPanel>
                 <FileUploader file={rightFile} setFile={setAdhocRightFile} />
@@ -129,15 +149,18 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators({
-    fetchAdhocProfiles,
-    fetchAdhocLeftProfile,
-    fetchAdhocRightProfile,
-    setAdhocLeftFile,
-    setAdhocLeftProfile,
-    setAdhocRightFile,
-    setAdhocRightProfile
-  }, dispatch),
+  actions: bindActionCreators(
+    {
+      fetchAdhocProfiles,
+      fetchAdhocLeftProfile,
+      fetchAdhocRightProfile,
+      setAdhocLeftFile,
+      setAdhocLeftProfile,
+      setAdhocRightFile,
+      setAdhocRightProfile,
+    },
+    dispatch
+  ),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocComparison);
