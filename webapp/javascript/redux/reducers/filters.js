@@ -248,8 +248,9 @@ export default function (state = initialState, action) {
       };
     case RECEIVE_PYRESCOPE_APP_DATA:
       ({
-        payload: { data, timeline },
+        payload: { data },
       } = action);
+      ({ timeline } = data);
       // since we gonna mutate that data, keep a reference to the old one
       const raw = JSON.parse(JSON.stringify(data));
       return {
