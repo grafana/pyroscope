@@ -328,8 +328,9 @@ export default function (state = initialState, action) {
       };
     case RECEIVE_COMPARISON_DIFF_APP_DATA:
       ({
-        payload: { data, timeline },
+        payload: { data },
       } = action);
+      ({ timeline } = data);
       return {
         ...state,
         timeline: decodeTimelineData(timeline),
