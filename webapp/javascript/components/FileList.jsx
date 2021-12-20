@@ -36,7 +36,7 @@ function FileList(props) {
                     })}
                   >
                     <td>{profiles[id].name}</td>
-                    <td>{profiles[id].updated_at}</td>
+                    <td>{profiles[id].updatedAt}</td>
                   </tr>
                 ))}
             </tbody>
