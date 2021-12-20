@@ -52,18 +52,18 @@ function AdhocSingle(props) {
               <FileUploader file={file} setFile={setAdhocFile} />
             </TabPanel>
           </Tabs>
-          <div
-            className={classNames('spinner-container', {
-              visible: isProfileLoading,
-            })}
-          >
-            <Spinner color="rgba(255,255,255,0.6)" size="20px" />
-          </div>
-          <FlameGraphRenderer
-            flamebearer={flamebearer}
-            viewType="single"
-            display="both"
-          />
+          {isProfileLoading && (
+            <div className={classNames('spinner-container')}>
+              <Spinner color="rgba(255,255,255,0.6)" size="20px" />
+            </div>
+          )}
+          {!isProfileLoading && (
+            <FlameGraphRenderer
+              flamebearer={flamebearer}
+              viewType="single"
+              display="both"
+            />
+          )}
         </Box>
       </div>
       <Footer />

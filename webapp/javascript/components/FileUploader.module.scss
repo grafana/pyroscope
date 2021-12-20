@@ -7,8 +7,9 @@
   padding: 5px;
   margin: 5px;
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   flex-direction: column;
+  min-height: 120px;
   max-height: 295px;
 
   &:hover {

@@ -11,38 +11,38 @@ function FileList(props) {
   const { areProfilesLoading, profiles, profile, setProfile } = props;
   return (
     <>
-      <div
-        className={classNames('spinner-container', {
-          visible: areProfilesLoading,
-        })}
-      >
-        <Spinner color="rgba(255,255,255,0.6)" size="20px" />
-      </div>
-      <div className={styles.tableContainer}>
-        <table className="flamegraph-table" data-testid="table-view">
-          <thead>
-            <tr>
-              <th>Filename</th>
-              <th>Date Modified</th>
-            </tr>
-          </thead>
-          <tbody>
-            {profiles &&
-              Object.keys(profiles).map((id) => (
-                <tr
-                  key={id}
-                  onClick={() => setProfile(id)}
-                  className={classNames('filelist-row', {
-                    selected: profile === id,
-                  })}
-                >
-                  <td>{profiles[id].name}</td>
-                  <td>{profiles[id].updated_at}</td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
+      {areProfilesLoading && (
+        <div className={classNames('spinner-container')}>
+          <Spinner color="rgba(255,255,255,0.6)" size="20px" />
+        </div>
+      )}
+      {!areProfilesLoading && (
+        <div className={styles.tableContainer}>
+          <table className="flamegraph-table" data-testid="table-view">
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Date Modified</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profiles &&
+                Object.keys(profiles).map((id) => (
+                  <tr
+                    key={id}
+                    onClick={() => setProfile(id)}
+                    className={classNames('filelist-row', {
+                      selected: profile === id,
+                    })}
+                  >
+                    <td>{profiles[id].name}</td>
+                    <td>{profiles[id].updated_at}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }

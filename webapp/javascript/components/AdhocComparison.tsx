@@ -83,20 +83,20 @@ function AdhocComparison(props) {
                 <FileUploader file={leftFile} setFile={setAdhocLeftFile} />
               </TabPanel>
             </Tabs>
-            <div
-              className={classNames('spinner-container', {
-                visible: isLeftProfileLoading,
-              })}
-            >
-              <Spinner color="rgba(255,255,255,0.6)" size="20px" />
-            </div>
-            <FlameGraphRenderer
-              viewType="double"
-              viewSide="left"
-              flamebearer={leftFlamebearer}
-              data-testid="flamegraph-renderer-left"
-              display="both"
-            />
+            {isLeftProfileLoading && (
+              <div className={classNames('spinner-container')}>
+                <Spinner color="rgba(255,255,255,0.6)" size="20px" />
+              </div>
+            )}
+            {!isLeftProfileLoading && (
+              <FlameGraphRenderer
+                viewType="double"
+                viewSide="left"
+                flamebearer={leftFlamebearer}
+                data-testid="flamegraph-renderer-left"
+                display="both"
+              />
+            )}
           </Box>
           <Box className={styles.comparisonPane}>
             <Tabs>
@@ -114,20 +114,20 @@ function AdhocComparison(props) {
                 <FileUploader file={rightFile} setFile={setAdhocRightFile} />
               </TabPanel>
             </Tabs>
-            <div
-              className={classNames('spinner-container', {
-                visible: isRightProfileLoading,
-              })}
-            >
-              <Spinner color="rgba(255,255,255,0.6)" size="20px" />
-            </div>
-            <FlameGraphRenderer
-              viewType="double"
-              viewSide="right"
-              flamebearer={rightFlamebearer}
-              data-testid="flamegraph-renderer-right"
-              display="both"
-            />
+            {isRightProfileLoading && (
+              <div className={classNames('spinner-container')}>
+                <Spinner color="rgba(255,255,255,0.6)" size="20px" />
+              </div>
+            )}
+            {!isRightProfileLoading && (
+              <FlameGraphRenderer
+                viewType="double"
+                viewSide="right"
+                flamebearer={rightFlamebearer}
+                data-testid="flamegraph-renderer-right"
+                display="both"
+              />
+            )}
           </Box>
         </div>
       </div>
