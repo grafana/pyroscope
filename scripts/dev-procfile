@@ -1,2 +1,2 @@
 air: air
-webpack: $(yarn bin)/webpack --config scripts/webpack/webpack.dev.js --watch
+webpack: yarn dev --watch

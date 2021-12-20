@@ -160,11 +160,11 @@ install-build-web-dependencies: ## Install web dependencies only necessary for a
 
 .PHONY: assets
 assets: install-web-dependencies ## Configure the assets
-	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js
+	yarn dev
 
 .PHONY: assets-watch
 assets-watch: install-web-dependencies ## Configure the assets with live reloading
-	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js --watch
+	yarn dev -- --watch
 
 .PHONY: assets-release
 assets-release: ## Configure the assets for release

@@ -1,3 +1,5 @@
+import { getAlias, getJsLoader, getStyleLoaders } from './shared';
+
 const webpack = require('webpack');
 const path = require('path');
 const glob = require('glob');
@@ -6,6 +8,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 // uncomment if you want to see the webpack bundle analysis
 // const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+//
 
 const fs = require('fs');
 
@@ -52,14 +55,7 @@ module.exports = {
 
   resolve: {
     extensions: ['.ts', '.tsx', '.es6', '.js', '.jsx', '.json', '.svg'],
-    alias: {
-      // rc-trigger uses babel-runtime which has internal dependency to core-js@2
-      // this alias maps that dependency to core-js@t3
-      'core-js/library/fn': 'core-js/stable',
-      '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
-      '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
-      '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
-    },
+    alias: getAlias(),
     modules: [
       'node_modules',
       path.resolve('webapp'),
@@ -80,74 +76,8 @@ module.exports = {
   module: {
     // Note: order is bottom-to-top and/or right-to-left
     rules: [
-      {
-        test: /\.(js|ts)x?$/,
-        exclude: /node_modules/,
-        use: [
-          {
-            loader: 'babel-loader',
-            options: {
-              cacheDirectory: true,
-              babelrc: true,
-
-              plugins: ['@babel/plugin-transform-runtime'],
-              // Note: order is bottom-to-top and/or right-to-left
-              presets: [
-                [
-                  '@babel/preset-env',
-                  {
-                    targets: {
-                      browsers: 'last 3 versions',
-                    },
-                    useBuiltIns: 'entry',
-                    corejs: 3,
-                    modules: false,
-                  },
-                ],
-                [
-                  '@babel/preset-typescript',
-                  {
-                    allowNamespaces: true,
-                  },
-                ],
-                '@babel/preset-react',
-              ],
-            },
-          },
-        ],
-      },
-      {
-        test: /\.css$/,
-        // include: MONACO_DIR, // https://github.com/react-monaco-editor/react-monaco-editor
-        use: ['style-loader', 'css-loader'],
-      },
-      {
-        test: /\.scss$/,
-        use: [
-          MiniCssExtractPlugin.loader,
-          {
-            loader: 'css-loader',
-            options: {
-              importLoaders: 2,
-              url: true,
-              sourceMap: true,
-            },
-          },
-          {
-            loader: 'postcss-loader',
-            options: {
-              sourceMap: true,
-              config: { path: __dirname },
-            },
-          },
-          {
-            loader: 'sass-loader',
-            options: {
-              sourceMap: true,
-            },
-          },
-        ],
-      },
+      ...getJsLoader(),
+      ...getStyleLoaders(),
       {
         test: /\.(svg|ico|jpg|jpeg|png|gif|eot|otf|webp|ttf|woff|woff2|cur|ani|pdf)(\?.*)?$/,
         loader: 'file-loader',
@@ -156,8 +86,7 @@ module.exports = {
         // However, we still need to prefix the public URL with /assets/static/img
         options: {
           outputPath: 'static/img',
-          // using relative path to make this work when pyroscope is deployed to a subpath (with BaseURL config option)
-          publicPath: '../assets/static/img',
+          publicPath: '/assets/static/img',
           name: '[name].[hash:8].[ext]',
         },
       },

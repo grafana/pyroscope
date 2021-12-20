@@ -63,7 +63,7 @@
   "settings": {
     "import/resolver": {
       "webpack": {
-        "config": "scripts/webpack/webpack.dev.js"
+        "config": "scripts/webpack/webpack.common.ts"
       }
     }
   }
