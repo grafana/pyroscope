@@ -36,9 +36,8 @@ func getProfile(name string) tree.Profile {
 	return p
 }
 
-func generateHandler(name string, p tree.Profile, sleep int) func(w http.ResponseWriter, r *http.Request) {
+func generateHandler(_ string, p tree.Profile, sleep int) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// log.Println(name)
 		gw := gzip.NewWriter(w)
 		t := time.Now()
 		p.TimeNanos = t.UnixNano()
