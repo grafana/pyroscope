@@ -72,8 +72,8 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 		profileTime = time.Now()
 	}
 
-	var locs map[uint64]*tree.Location
-	var fns map[uint64]*tree.Function
+	var locs []*tree.Location
+	var fns []*tree.Function
 
 	for _, s := range p.GetSampleType() {
 		sampleTypeName := p.StringTable[s.Type]
@@ -184,7 +184,7 @@ func newCacheEntry(l []*tree.Label) *cacheEntry {
 	return &cacheEntry{Trie: transporttrie.New(), labels: l}
 }
 
-func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, locs map[uint64]*tree.Location, fns map[uint64]*tree.Function) {
+func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, locs []*tree.Location, fns []*tree.Function) {
 	valueIndex := 0
 	if sampleType != 0 {
 		for i, v := range x.SampleType {
@@ -201,10 +201,11 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, locs map[uint64
 	for _, s := range x.Sample {
 		entry := t.getOrCreate(sampleType, s.Label)
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			loc, ok := locs[s.LocationId[i]]
-			if !ok {
+			id := s.LocationId[i]
+			if id >= uint64(len(locs)) {
 				continue
 			}
+			loc := locs[id]
 			// Multiple line indicates this location has inlined functions,
 			// where the last entry represents the caller into which the
 			// preceding entries were inlined.
@@ -215,10 +216,11 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, locs map[uint64
 			//
 			// Therefore iteration goes in reverse order.
 			for j := len(loc.Line) - 1; j >= 0; j-- {
-				fn, found := fns[loc.Line[j].FunctionId]
-				if !found {
+				id := loc.Line[j].FunctionId
+				if id >= uint64(len(fns)) {
 					continue
 				}
+				fn := fns[id]
 				if b.Len() > 0 {
 					_ = b.WriteByte(';')
 				}

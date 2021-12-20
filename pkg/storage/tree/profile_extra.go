@@ -147,16 +147,16 @@ func FindFunction(x *Profile, fid uint64) (*Function, bool) {
 	return nil, false
 }
 
-func Locations(x *Profile) map[uint64]*Location {
-	m := make(map[uint64]*Location, len(x.Location))
+func Locations(x *Profile) []*Location {
+	m := make([]*Location, len(x.Location)+1)
 	for _, l := range x.Location {
 		m[l.Id] = l
 	}
 	return m
 }
 
-func Functions(x *Profile) map[uint64]*Function {
-	m := make(map[uint64]*Function, len(x.Function))
+func Functions(x *Profile) []*Function {
+	m := make([]*Function, len(x.Function)+1)
 	for _, f := range x.Function {
 		m[f.Id] = f
 	}

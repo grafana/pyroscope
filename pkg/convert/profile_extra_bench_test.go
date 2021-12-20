@@ -56,15 +56,17 @@ func parseWithCache(p *tree.Profile) int {
 	var b bytes.Buffer
 	for _, s := range p.Sample {
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			loc, ok := locs[s.LocationId[i]]
-			if !ok {
+			id := s.LocationId[i]
+			if id >= uint64(len(locs)) {
 				continue
 			}
+			loc := locs[id]
 			for j := len(loc.Line) - 1; j >= 0; j-- {
-				fn, found := fns[loc.Line[j].FunctionId]
-				if !found {
+				id := loc.Line[j].FunctionId
+				if id >= uint64(len(fns)) {
 					continue
 				}
+				fn := fns[id]
 				if b.Len() > 0 {
 					_ = b.WriteByte(';')
 				}
