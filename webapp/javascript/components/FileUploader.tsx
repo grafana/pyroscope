@@ -8,7 +8,6 @@ import { addNotification } from '../redux/reducers/notifications';
 import styles from './FileUploader.module.scss';
 
 interface Props {
-  onUpload: (s: string) => void;
   file: File;
   setFile: (file: File, flamebearer: Record<string, unknown>) => void;
 }
