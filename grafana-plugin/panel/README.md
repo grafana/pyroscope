@@ -6,20 +6,17 @@
 
 1. Install the plugin (Installation tab)
 2. Install [datasource plugin](https://grafana.com/grafana/plugins/pyroscope-datasource/)
-3. Open Grafana and go to **Configuratin -> Plugins**
+3. Open Grafana and go to **Configuration -> Plugins**
 4. Check that plugins are available
 5. Set up data source plugin:
    * **Configuration -> Data Sources -> Add data source**
    * click on `pyroscope-datasource`
-   * Specify Pyroscope host in `Endpoint` field:
-      ![endpoint](https://raw.githubusercontent.com/pyroscope-io/grafana-panel-plugin/main/docs/assets/endpoint.jpg)
+   * Specify Pyroscope host in `Endpoint` field
 6. Set up panel plugin:
     * Add an empty panel on your dashboard
     * Select `pyroscope-panel` from Visualization list
     * Under panel view in Query tab select `pyroscope-datasource`
     * In `Application name` input specify app name
     * Click `Apply`
-   ![settings](https://raw.githubusercontent.com/pyroscope-io/grafana-panel-plugin/main/docs/assets/settings.jpg)
 
 Congratulations! Now you can monitor application flamegraph on your Grafana dashboard!
-![dashboard](https://raw.githubusercontent.com/pyroscope-io/grafana-panel-plugin/main/docs/assets/dashboard.jpg)
