@@ -25,7 +25,6 @@ THIS SOFTWARE.
 .flamegraph-pane {
   flex: 1;
   position: relative;
-  width: 50%;
 }
 
 /*.flamegraph-pane.vertical-orientation {
