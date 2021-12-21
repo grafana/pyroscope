@@ -20,6 +20,7 @@ PYROBENCH_PROFILE_SYMBOL_LENGTH="${PYROBENCH_PROFILE_SYMBOL_LENGTH:-30}"
 PYROBENCH_APPS="${PYROBENCH_APPS:-20}"
 PYROBENCH_CLIENTS="${PYROBENCH_CLIENTS:-20}"
 PYROBENCH_REQUESTS="${PYROBENCH_REQUESTS:-10000}"
+PYROBENCH_PULL_CLIENTS="${PYROBENCH_PULL_CLIENTS:-300}"
 
 
 # For more info, check the cli documentation
@@ -66,9 +67,9 @@ function run() {
   docker-compose build
 
   # prepare config
-  cat ../../pull/server.yml.example | grep -B 300 'static-configs:' > server.yml
+  cat ../../pull/server.yml.example | grep -B 1000 'static-configs:' > server.yml
 
-  for ((x=0 ; x<$1 ; x++)); do
+  for ((x=0 ; x<$PYROBENCH_PULL_CLIENTS ; x++)); do
     echo "      - application: pull-target" >> server.yml
     echo "        targets:"                 >> server.yml
     echo "          - pull-target:4042"     >> server.yml
