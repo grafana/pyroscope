@@ -35,8 +35,6 @@ services:
     build:
       context: ../../pull/pull-target
       dockerfile: Dockerfile
-    ports:
-      - 4042:4042
   pyroscope_main:
     image: pyroscope/pyroscope-dev:main
     environment:
