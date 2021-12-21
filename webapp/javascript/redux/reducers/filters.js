@@ -33,15 +33,19 @@ import {
   SET_ADHOC_RIGHT_FILE,
   REQUEST_ADHOC_PROFILES,
   RECEIVE_ADHOC_PROFILES,
+  CANCEL_ADHOC_PROFILES,
   SET_ADHOC_PROFILE,
   REQUEST_ADHOC_PROFILE,
   RECEIVE_ADHOC_PROFILE,
+  CANCEL_ADHOC_PROFILE,
   SET_ADHOC_LEFT_PROFILE,
   REQUEST_ADHOC_LEFT_PROFILE,
   RECEIVE_ADHOC_LEFT_PROFILE,
+  CANCEL_ADHOC_LEFT_PROFILE,
   SET_ADHOC_RIGHT_PROFILE,
   REQUEST_ADHOC_RIGHT_PROFILE,
   RECEIVE_ADHOC_RIGHT_PROFILE,
+  CANCEL_ADHOC_RIGHT_PROFILE,
 } from '../actionTypes';
 
 import { deltaDiffWrapper } from '../../util/flamebearer';
@@ -470,6 +474,11 @@ export default function (state = initialState, action) {
         areProfilesLoading: false,
         profiles,
       };
+    case CANCEL_ADHOC_PROFILES:
+      return {
+        ...state,
+        areProfilesLoading: false,
+      };
     case SET_ADHOC_PROFILE:
       ({
         payload: { profile },
@@ -499,6 +508,14 @@ export default function (state = initialState, action) {
         adhocSingle: {
           ...state.adhocSingle,
           flamebearer: decodeFlamebearer(flamebearer),
+          isProfileLoading: false,
+        },
+      };
+    case CANCEL_ADHOC_PROFILE:
+      return {
+        ...state,
+        adhocSingle: {
+          ...state.adhocSingle,
           isProfileLoading: false,
         },
       };
@@ -543,6 +560,17 @@ export default function (state = initialState, action) {
           },
         },
       };
+    case CANCEL_ADHOC_LEFT_PROFILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          left: {
+            ...state.adhocComparison.left,
+            isProfileLoading: false,
+          },
+        },
+      };
     case SET_ADHOC_RIGHT_PROFILE:
       ({
         payload: { profile },
@@ -580,6 +608,17 @@ export default function (state = initialState, action) {
           right: {
             ...state.adhocComparison.right,
             flamebearer: decodeFlamebearer(flamebearer),
+            isProfileLoading: false,
+          },
+        },
+      };
+    case CANCEL_ADHOC_RIGHT_PROFILE:
+      return {
+        ...state,
+        adhocComparison: {
+          ...state.adhocComparison,
+          right: {
+            ...state.adhocComparison.right,
             isProfileLoading: false,
           },
         },

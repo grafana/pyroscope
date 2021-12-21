@@ -33,15 +33,19 @@ import {
   SET_ADHOC_RIGHT_FILE,
   REQUEST_ADHOC_PROFILES,
   RECEIVE_ADHOC_PROFILES,
+  CANCEL_ADHOC_PROFILES,
   SET_ADHOC_PROFILE,
   REQUEST_ADHOC_PROFILE,
   RECEIVE_ADHOC_PROFILE,
+  CANCEL_ADHOC_PROFILE,
   SET_ADHOC_LEFT_PROFILE,
   SET_ADHOC_RIGHT_PROFILE,
   REQUEST_ADHOC_LEFT_PROFILE,
   REQUEST_ADHOC_RIGHT_PROFILE,
   RECEIVE_ADHOC_LEFT_PROFILE,
   RECEIVE_ADHOC_RIGHT_PROFILE,
+  CANCEL_ADHOC_LEFT_PROFILE,
+  CANCEL_ADHOC_RIGHT_PROFILE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 import { addNotification } from './reducers/notifications';
@@ -193,6 +197,8 @@ export const receiveAdhocProfiles = (profiles) => ({
   payload: { profiles },
 });
 
+export const cancelAdhocProfiles = () => ({ type: CANCEL_ADHOC_PROFILES });
+
 export const setAdhocProfile = (profile) => ({
   type: SET_ADHOC_PROFILE,
   payload: { profile },
@@ -207,6 +213,8 @@ export const receiveAdhocProfile = (flamebearer) => ({
   type: RECEIVE_ADHOC_PROFILE,
   payload: { flamebearer },
 });
+
+export const cancelAdhocProfile = () => ({ type: CANCEL_ADHOC_PROFILE });
 
 export const setAdhocLeftProfile = (profile) => ({
   type: SET_ADHOC_LEFT_PROFILE,
@@ -223,6 +231,10 @@ export const receiveAdhocLeftProfile = (flamebearer) => ({
   payload: { flamebearer },
 });
 
+export const cancelAdhocLeftProfile = () => ({
+  type: CANCEL_ADHOC_LEFT_PROFILE,
+});
+
 export const setAdhocRightProfile = (profile) => ({
   type: SET_ADHOC_RIGHT_PROFILE,
   payload: { profile },
@@ -236,6 +248,10 @@ export const requestAdhocRightProfile = (profile) => ({
 export const receiveAdhocRightProfile = (flamebearer) => ({
   type: RECEIVE_ADHOC_RIGHT_PROFILE,
   payload: { flamebearer },
+});
+
+export const cancelAdhocRightProfile = () => ({
+  type: CANCEL_ADHOC_RIGHT_PROFILE,
 });
 
 // ResponseNotOkError refers to when request is not ok
@@ -493,6 +509,7 @@ export function fetchAdhocProfiles() {
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocProfiles(data)))
       .catch((e) => handleError(dispatch, e))
+      .then(() => dispatch(cancelAdhocProfiles()))
       .finally();
   };
 }
@@ -519,6 +536,7 @@ export function fetchAdhocProfile(profile) {
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocProfile(data)))
       .catch((e) => handleError(dispatch, e))
+      .then(() => dispatch(cancelAdhocProfile()))
       .finally();
   };
 }
@@ -545,6 +563,7 @@ export function fetchAdhocLeftProfile(profile) {
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocLeftProfile(data)))
       .catch((e) => handleError(dispatch, e))
+      .then(() => dispatch(cancelAdhocLeftProfile()))
       .finally();
   };
 }
@@ -571,6 +590,7 @@ export function fetchAdhocRightProfile(profile) {
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocRightProfile(data)))
       .catch((e) => handleError(dispatch, e))
+      .then(() => dispatch(cancelAdhocRightProfile()))
       .finally();
   };
 }
