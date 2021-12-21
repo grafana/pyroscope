@@ -249,7 +249,7 @@ export function fetchTimeline(url) {
     return fetch(`${url}&format=json`, {
       signal: currentTimelineController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveTimeline(data)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -296,7 +296,7 @@ export function fetchComparisonAppData(url, viewSide) {
     return fetch(`${url}&format=json`, {
       signal: timelineController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveComparisonAppData(data, viewSide)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -313,7 +313,7 @@ export function fetchPyroscopeAppData(url) {
     return fetch(`${url}&format=json`, {
       signal: currentTimelineController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receivePyroscopeAppData(data)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -330,7 +330,7 @@ export function fetchComparisonDiffAppData(url) {
     return fetch(`${url}&format=json`, {
       signal: currentTimelineController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveComparisonDiffAppData(data)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -346,7 +346,7 @@ export function fetchTags(query) {
 
     dispatch(requestTags());
     return fetch(`./labels?query=${encodeURIComponent(query)}`)
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveTags(data)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -374,7 +374,7 @@ export function fetchTagValues(query, tag) {
         tag
       )}&query=${encodeURIComponent(query)}`
     )
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveTagValues(data, tag)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -400,7 +400,7 @@ export function fetchNames() {
     return fetch('/label-values?label=__name__', {
       signal: currentNamesController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveNames(data)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -426,7 +426,7 @@ export function fetchAdhocProfiles() {
     return fetch('/api/adhoc/v1/profiles', {
       signal: adhocProfilesController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocProfiles(data)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -452,7 +452,7 @@ export function fetchAdhocProfile(profile) {
     return fetch(`/api/adhoc/v1/profile/${profile}`, {
       signal: adhocProfileController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocProfile(data)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -478,7 +478,7 @@ export function fetchAdhocLeftProfile(profile) {
     return fetch(`/api/adhoc/v1/profile/${profile}`, {
       signal: adhocLeftProfileController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocLeftProfile(data)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -504,7 +504,7 @@ export function fetchAdhocRightProfile(profile) {
     return fetch(`/api/adhoc/v1/profile/${profile}`, {
       signal: adhocRightProfileController.signal,
     })
-      .then((response) => response.json())
+      .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocRightProfile(data)))
       .catch((e) => handleError(dispatch, e))
       .finally();
@@ -517,6 +517,17 @@ export function abortFetchAdhocRightProfile() {
     }
   };
 }
+
+const handleResponse = (dispatch, response) => {
+  if (response.ok) {
+    return response.json();
+  }
+  return response.text().then((text) => {
+    throw new Error(
+      `Request failed with status code ${response.status}: ${text}`
+    );
+  });
+};
 
 const handleError = (dispatch, e) => {
   if (!isAbortError(e)) {
