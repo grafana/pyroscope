@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { isAfter, isSameSecond } from 'date-fns';
+import moment from 'moment';
 import { useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import Button from '@ui/Button';
@@ -16,10 +16,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
   });
 
   const updateDateRange = () => {
-    if (
-      isSameSecond(selectedDate.from, selectedDate.until) ||
-      isAfter(selectedDate.from, selectedDate.until)
-    ) {
+    if (moment(selectedDate.from).isSameOrAfter(selectedDate.until)) {
       return setWarning(true);
     }
 
@@ -33,10 +30,26 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
   };
 
   useEffect(() => {
+    console.log('formatAsObject', {
+      input: from,
+      output: formatAsOBject(from),
+      s: formatAsOBject(from).toISOString(),
+    });
+    console.log('formatAsObject', {
+      input: until,
+      output: formatAsOBject(until),
+    });
+
     setSelectedDate({
       ...selectedDate,
       from: formatAsOBject(from),
       until: formatAsOBject(until),
+    });
+
+    console.log('readableRange', {
+      from,
+      until,
+      result: readableRange(from, until),
     });
     setRange(readableRange(from, until));
   }, [from, until]);
