@@ -19,6 +19,7 @@ import {
   setAdhocProfile,
 } from '../redux/actions';
 import 'react-tabs/style/react-tabs.css';
+import adhocStyles from './Adhoc.module.scss';
 
 function AdhocSingle(props) {
   const { actions, file, profile, flamebearer, isProfileLoading } = props;
@@ -46,10 +47,18 @@ function AdhocSingle(props) {
               <Tab>Upload</Tab>
             </TabList>
             <TabPanel>
-              <FileList profile={profile} setProfile={setAdhocProfile} />
+              <FileList
+                className={adhocStyles.tabPanel}
+                profile={profile}
+                setProfile={setAdhocProfile}
+              />
             </TabPanel>
             <TabPanel>
-              <FileUploader file={file} setFile={setAdhocFile} />
+              <FileUploader
+                className={adhocStyles.tabPanel}
+                file={file}
+                setFile={setAdhocFile}
+              />
             </TabPanel>
           </Tabs>
           {isProfileLoading && (

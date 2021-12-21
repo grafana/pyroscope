@@ -10,8 +10,9 @@ import styles from './FileUploader.module.scss';
 interface Props {
   file: File;
   setFile: (file: File, flamebearer: Record<string, unknown>) => void;
+  className?: string;
 }
-export default function FileUploader({ file, setFile }: Props) {
+export default function FileUploader({ file, setFile, className }: Props) {
   const dispatch = useDispatch();
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -68,7 +69,7 @@ export default function FileUploader({ file, setFile }: Props) {
   };
 
   return (
-    <section className={styles.container}>
+    <section className={`${styles.container} ${className}`}>
       <div {...getRootProps()}>
         <input {...getInputProps()} />
         {file ? (

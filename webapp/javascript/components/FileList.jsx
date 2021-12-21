@@ -6,9 +6,16 @@ import Spinner from 'react-svg-spinner';
 
 import classNames from 'classnames';
 import styles from './FileList.module.scss';
+import CheckIcon from './CheckIcon';
 
 function FileList(props) {
-  const { areProfilesLoading, profiles, profile, setProfile } = props;
+  const { areProfilesLoading, profiles, profile, setProfile, className } =
+    props;
+
+  const isRowSelected = (id) => {
+    return profile === id;
+  };
+
   return (
     <>
       {areProfilesLoading && (
@@ -17,7 +24,7 @@ function FileList(props) {
         </div>
       )}
       {!areProfilesLoading && (
-        <div className={styles.tableContainer}>
+        <div className={`${styles.tableContainer} ${className}`}>
           <table className={styles.profilesTable} data-testid="table-view">
             <thead>
               <tr>
@@ -31,11 +38,15 @@ function FileList(props) {
                   <tr
                     key={id}
                     onClick={() => setProfile(id)}
-                    className={classNames('filelist-row', {
-                      selected: profile === id,
-                    })}
+                    className={`${isRowSelected(id) && styles.rowSelected}`}
                   >
-                    <td>{profiles[id].name}</td>
+                    <td>
+                      {profiles[id].name}
+
+                      {isRowSelected(id) && (
+                        <CheckIcon className={styles.checkIcon} />
+                      )}
+                    </td>
                     <td>{profiles[id].updatedAt}</td>
                   </tr>
                 ))}
