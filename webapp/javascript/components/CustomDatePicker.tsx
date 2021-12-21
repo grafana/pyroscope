@@ -30,27 +30,12 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
   };
 
   useEffect(() => {
-    console.log('formatAsObject', {
-      input: from,
-      output: formatAsOBject(from),
-      s: formatAsOBject(from).toISOString(),
-    });
-    console.log('formatAsObject', {
-      input: until,
-      output: formatAsOBject(until),
-    });
-
     setSelectedDate({
       ...selectedDate,
       from: formatAsOBject(from),
       until: formatAsOBject(until),
     });
 
-    console.log('readableRange', {
-      from,
-      until,
-      result: readableRange(from, until),
-    });
     setRange(readableRange(from, until));
   }, [from, until]);
 
