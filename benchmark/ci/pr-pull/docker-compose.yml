@@ -33,7 +33,7 @@ services:
           memory: *PYROSCOPE_MEMORY
   pull-target:
     build:
-      context: ../../pull-target
+      context: ../../pull/pull-target
       dockerfile: Dockerfile
     ports:
       - 4042:4042
