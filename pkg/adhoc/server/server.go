@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
 type profile struct {
@@ -106,8 +107,22 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	defer f.Close()
+	// Validate the format
+	b, err := io.ReadAll(f)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to read profile")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var fb flamebearer.FlamebearerProfile
+	if err := json.Unmarshal(b, &fb); err != nil {
+		s.log.WithError(err).Error("Invalid file format")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := io.Copy(w, f); err != nil {
+	if _, err := w.Write(b); err != nil {
 		s.log.WithError(err).Error("Error sending profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
