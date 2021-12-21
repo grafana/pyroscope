@@ -91,6 +91,7 @@ function run() {
   echo "generating meta report"
   docker exec \
     "${PREFIX}_client_1" ./pyrobench report meta \
+    --title "Server Pull Benchmark" \
     --params "BENCH_RUN_FOR=$BENCH_RUN_FOR" \
     --params "PYROBENCH_RAND_SEED=$PYROBENCH_RAND_SEED" \
     --params "PYROBENCH_PROFILE_WIDTH=$PYROBENCH_PROFILE_WIDTH"\

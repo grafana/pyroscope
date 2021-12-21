@@ -36,7 +36,7 @@ type meta struct {
 }
 
 // Report generates a markdown report
-func (mr *MetaReport) Report(vars []string) (string, error) {
+func (mr *MetaReport) Report(title string, vars []string) (string, error) {
 	if len(vars) <= 0 {
 		return "", fmt.Errorf("at least one item should be reported")
 	}
@@ -62,7 +62,7 @@ func (mr *MetaReport) Report(vars []string) (string, error) {
 	}
 
 	logrus.Debug("generating template")
-	report, err := mr.tpl(m)
+	report, err := mr.tpl(title, m)
 	if err != nil {
 		return "", err
 	}
@@ -93,13 +93,15 @@ func (mr *MetaReport) validate(m []meta) error {
 	return nil
 }
 
-func (*MetaReport) tpl(m []meta) (string, error) {
+func (*MetaReport) tpl(t string, m []meta) (string, error) {
 	var tpl bytes.Buffer
 
 	data := struct {
-		Meta []meta
+		Title string
+		Meta  []meta
 	}{
-		Meta: m,
+		Title: t,
+		Meta:  m,
 	}
 	t, err := template.New("meta-report.gotpl").
 		ParseFS(resources, "resources/meta-report.gotpl")

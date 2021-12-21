@@ -64,6 +64,7 @@ type ImageReport struct {
 type MetaReport struct {
 	LogLevel string   `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	Params   []string `def:"" desc:"the parameters in format A=B. value must be in the allowlist"`
+	Title    string   `def:"Server Benchmark" desc:"title for the markdown report"`
 }
 
 type DashboardScreenshot struct {
