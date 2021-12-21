@@ -41,6 +41,7 @@ import {
   RECEIVE_ADHOC_RIGHT_PROFILE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
+import { addNotification } from './reducers/notifications';
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
@@ -249,15 +250,8 @@ export function fetchTimeline(url) {
       signal: currentTimelineController.signal,
     })
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveTimeline(data));
-      })
-      .catch((e) => {
-        // AbortErrors are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveTimeline(data)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -303,15 +297,8 @@ export function fetchComparisonAppData(url, viewSide) {
       signal: timelineController.signal,
     })
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveComparisonAppData(data, viewSide));
-      })
-      .catch((e) => {
-        // AbortError are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveComparisonAppData(data, viewSide)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -327,15 +314,8 @@ export function fetchPyroscopeAppData(url) {
       signal: currentTimelineController.signal,
     })
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receivePyroscopeAppData(data));
-      })
-      .catch((e) => {
-        // AbortErrors are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receivePyroscopeAppData(data)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -351,15 +331,8 @@ export function fetchComparisonDiffAppData(url) {
       signal: currentTimelineController.signal,
     })
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveComparisonDiffAppData(data));
-      })
-      .catch((e) => {
-        // AbortErrors are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveComparisonDiffAppData(data)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -374,15 +347,8 @@ export function fetchTags(query) {
     dispatch(requestTags());
     return fetch(`./labels?query=${encodeURIComponent(query)}`)
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveTags(data));
-      })
-      .catch((e) => {
-        // AbortErrors are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveTags(data)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -409,15 +375,8 @@ export function fetchTagValues(query, tag) {
       )}&query=${encodeURIComponent(query)}`
     )
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveTagValues(data, tag));
-      })
-      .catch((e) => {
-        // AbortErrors are fine
-        if (!fetchTagValuesController.signal.aborted) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveTagValues(data, tag)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -442,15 +401,8 @@ export function fetchNames() {
       signal: currentNamesController.signal,
     })
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveNames(data));
-      })
-      .catch((e) => {
-        // AbortErrors are fine
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveNames(data)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -475,14 +427,8 @@ export function fetchAdhocProfiles() {
       signal: adhocProfilesController.signal,
     })
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveAdhocProfiles(data));
-      })
-      .catch((e) => {
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveAdhocProfiles(data)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -507,14 +453,8 @@ export function fetchAdhocProfile(profile) {
       signal: adhocProfileController.signal,
     })
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveAdhocProfile(data));
-      })
-      .catch((e) => {
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveAdhocProfile(data)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -539,14 +479,8 @@ export function fetchAdhocLeftProfile(profile) {
       signal: adhocLeftProfileController.signal,
     })
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveAdhocLeftProfile(data));
-      })
-      .catch((e) => {
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveAdhocLeftProfile(data)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -571,14 +505,8 @@ export function fetchAdhocRightProfile(profile) {
       signal: adhocRightProfileController.signal,
     })
       .then((response) => response.json())
-      .then((data) => {
-        dispatch(receiveAdhocRightProfile(data));
-      })
-      .catch((e) => {
-        if (!isAbortError(e)) {
-          throw e;
-        }
-      })
+      .then((data) => dispatch(receiveAdhocRightProfile(data)))
+      .catch((e) => handleError(dispatch, e))
       .finally();
   };
 }
@@ -589,3 +517,18 @@ export function abortFetchAdhocRightProfile() {
     }
   };
 }
+
+const handleError = (dispatch, e) => {
+  if (!isAbortError(e)) {
+    dispatch(
+      addNotification({
+        message: e.message,
+        type: 'danger',
+        dismiss: {
+          duration: 0,
+          showIcon: true,
+        },
+      })
+    );
+  }
+};
