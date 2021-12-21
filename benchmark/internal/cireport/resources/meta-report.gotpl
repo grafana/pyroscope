@@ -1,4 +1,4 @@
-## .Title
+## {{ .Title }}
 
 <details>
   <summary>Details</summary>
