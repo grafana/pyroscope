@@ -20,11 +20,14 @@ import {
   RECEIVE_COMPARISON_APP_DATA,
   RECEIVE_PYROSCOPE_APP_DATA,
   REQUEST_PYROSCOPE_APP_DATA,
+  CANCEL_PYROSCOPE_APP_DATA,
   REQUEST_COMPARISON_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_TIMELINE,
   REQUEST_COMPARISON_TIMELINE,
+  CANCEL_COMPARISON_APP_DATA,
+  CANCEL_COMPARISON_DIFF_APP_DATA,
   SET_ADHOC_FILE,
   SET_ADHOC_LEFT_FILE,
   SET_ADHOC_RIGHT_FILE,
@@ -246,6 +249,13 @@ export default function (state = initialState, action) {
         ...state,
         isJSONLoading: true,
       };
+    case CANCEL_PYROSCOPE_APP_DATA:
+    case CANCEL_COMPARISON_APP_DATA:
+    case CANCEL_COMPARISON_DIFF_APP_DATA:
+      return {
+        ...state,
+        isJSONLoading: false,
+      };
     case RECEIVE_PYROSCOPE_APP_DATA:
       ({
         payload: { data },
@@ -307,6 +317,7 @@ export default function (state = initialState, action) {
         },
         isJSONLoading: false,
       };
+
     case REQUEST_COMPARISON_TIMELINE:
       return {
         ...state,

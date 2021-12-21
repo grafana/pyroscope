@@ -6,6 +6,8 @@ services:
     build:
       context: ../
       dockerfile: benchmark/Dockerfile
+    image: benchmark_pyrobench_1
+    container_name: benchmark_pyrobench_1
     # we will be running docker exec against it
     command:
       - sh

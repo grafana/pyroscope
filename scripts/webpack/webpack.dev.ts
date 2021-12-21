@@ -60,17 +60,32 @@ module.exports = merge(common, {
       publicPath: '/assets',
       templateContent: () => {
         let res;
-        let maxTries = 24;
-        do {
-          if (maxTries <= 0) {
-            throw new Error(
-              'Could not find pyroscope instance running on http://localhost:4040. Make sure you have pyroscope server running on port :4040'
-            );
-          }
-          res = request('GET', 'http://localhost:4040');
-          sleep(1000);
-          maxTries -= 1;
-        } while (res.statusCode !== 200);
+
+        // TODO: accept this to be overwritten?
+        // that's useful for when running on a different port (when you are running multiple pyroscope versions locally)
+        // or when running on ipv6
+        const goServerAddr = 'http://localhost:4040';
+
+        try {
+          console.log(`Trying to access go server on ${goServerAddr}`);
+
+          // makes a request against the go server to retrieve its index.html
+          // it assumes the server will either not respond or respond with 2xx
+          // (ie it doesn't handle != 2xx status codes)
+          // https://www.npmjs.com/package/sync-request
+          res = request('GET', goServerAddr, {
+            timeout: 1000,
+            maxRetries: 30,
+            retryDelay: 1000,
+            retry: true,
+          });
+        } catch (e) {
+          throw new Error(
+            `Could not find pyroscope instance running on ${goServerAddr}. Make sure you have pyroscope server running on port :4040`
+          );
+        }
+
+        console.log('Live reload server is up');
 
         return res.getBody('utf8');
       },

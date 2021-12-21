@@ -19,10 +19,13 @@ import {
   SET_RIGHT_UNTIL,
   RECEIVE_COMPARISON_APP_DATA,
   REQUEST_COMPARISON_APP_DATA,
+  CANCEL_COMPARISON_APP_DATA,
   REQUEST_PYROSCOPE_APP_DATA,
   RECEIVE_PYROSCOPE_APP_DATA,
+  CANCEL_PYROSCOPE_APP_DATA,
   REQUEST_COMPARISON_DIFF_APP_DATA,
   RECEIVE_COMPARISON_DIFF_APP_DATA,
+  CANCEL_COMPARISON_DIFF_APP_DATA,
   REQUEST_COMPARISON_TIMELINE,
   RECEIVE_COMPARISON_TIMELINE,
   SET_ADHOC_FILE,
@@ -105,6 +108,9 @@ export const receivePyroscopeAppData = (data) => ({
   type: RECEIVE_PYROSCOPE_APP_DATA,
   payload: { data },
 });
+export const cancelPyroscopeAppData = () => ({
+  type: CANCEL_PYROSCOPE_APP_DATA,
+});
 
 export const requestComparisonAppData = (url, viewSide) => ({
   type: REQUEST_COMPARISON_APP_DATA,
@@ -115,6 +121,9 @@ export const receiveComparisonAppData = (data, viewSide) => ({
   type: RECEIVE_COMPARISON_APP_DATA,
   payload: { data, viewSide },
 });
+export const cancelComparisonappData = () => ({
+  type: CANCEL_COMPARISON_APP_DATA,
+});
 
 export const requestComparisonDiffAppData = (url) => ({
   type: REQUEST_COMPARISON_DIFF_APP_DATA,
@@ -124,6 +133,10 @@ export const requestComparisonDiffAppData = (url) => ({
 export const receiveComparisonDiffAppData = (data) => ({
   type: RECEIVE_COMPARISON_DIFF_APP_DATA,
   payload: { data },
+});
+
+export const cancelComparisonDiffAppData = () => ({
+  type: CANCEL_COMPARISON_DIFF_APP_DATA,
 });
 
 export const requestTags = () => ({ type: REQUEST_TAGS });
@@ -225,6 +238,53 @@ export const receiveAdhocRightProfile = (flamebearer) => ({
   payload: { flamebearer },
 });
 
+// ResponseNotOkError refers to when request is not ok
+// ie when status code is not in the 2xx range
+class ResponseNotOkError extends Error {
+  constructor(response, text) {
+    super(`Bad Response with code ${response.status}: ${text}`);
+    this.name = 'ResponseNotOkError';
+    this.response = response;
+  }
+}
+
+// dispatchNotificationByError dispatches a notification
+// depending on the error passed
+function handleError(dispatch, e) {
+  if (e instanceof ResponseNotOkError) {
+    dispatch(
+      addNotification({
+        title: 'Request Failed',
+        message: `Failed to request profile data: status ${e.response.status}`,
+        type: 'danger',
+      })
+    );
+  } else if (!isAbortError(e)) {
+    // AbortErrors are fine
+
+    // Generic case, so we use as message whatever error we got
+    // It's not the best UX, but our users should be experienced enough
+    // to be able to decipher what's going on based on the message
+    dispatch(
+      addNotification({
+        title: 'Error',
+        message: e.message,
+        type: 'danger',
+      })
+    );
+  }
+}
+
+// handleResponse retrieves the JSON data on success or raises an ResponseNotOKError otherwise
+function handleResponse(dispatch, response) {
+  if (response.ok) {
+    return response.json();
+  }
+  return response.text().then((text) => {
+    throw new ResponseNotOkError(response, text);
+  });
+}
+
 /**
  * ATTENTION! There may be race conditions:
  * Since a new controller is created every time a 'fetch' action is called
@@ -299,6 +359,7 @@ export function fetchComparisonAppData(url, viewSide) {
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveComparisonAppData(data, viewSide)))
       .catch((e) => handleError(dispatch, e))
+      .then(() => dispatch(cancelComparisonappData()))
       .finally();
   };
 }
@@ -316,6 +377,7 @@ export function fetchPyroscopeAppData(url) {
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receivePyroscopeAppData(data)))
       .catch((e) => handleError(dispatch, e))
+      .then(() => dispatch(cancelPyroscopeAppData()))
       .finally();
   };
 }
@@ -333,6 +395,8 @@ export function fetchComparisonDiffAppData(url) {
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveComparisonDiffAppData(data)))
       .catch((e) => handleError(dispatch, e))
+      .catch((e) => dispatchNotificationByError(dispatch, e))
+      .then(() => dispatch(cancelComparisonDiffAppData()))
       .finally();
   };
 }
@@ -517,29 +581,3 @@ export function abortFetchAdhocRightProfile() {
     }
   };
 }
-
-const handleResponse = (dispatch, response) => {
-  if (response.ok) {
-    return response.json();
-  }
-  return response.text().then((text) => {
-    throw new Error(
-      `Request failed with status code ${response.status}: ${text}`
-    );
-  });
-};
-
-const handleError = (dispatch, e) => {
-  if (!isAbortError(e)) {
-    dispatch(
-      addNotification({
-        message: e.message,
-        type: 'danger',
-        dismiss: {
-          duration: 0,
-          showIcon: true,
-        },
-      })
-    );
-  }
-};

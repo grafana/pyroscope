@@ -17,6 +17,8 @@ jobs:
           node-version: '14.17'
       - run: yarn
       - run: yarn build:panel
+        env:
+          PYROSCOPE_PANEL_VERSION: test
       - name: run grafana
         run: docker-compose -f grafana-plugin/panel/docker-compose.yml up -d
       - name: Cypress run
