@@ -77,8 +77,6 @@ function run() {
     echo "          pod: pod-$x"            >> server.yml
   done
 
-  docker-compose up --build
-
   # Start the docker containers
   docker-compose -p "$PREFIX" up -d --force-recreate --remove-orphans
 
