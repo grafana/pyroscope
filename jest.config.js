@@ -12,6 +12,7 @@ module.exports = {
     '@utils(.*)$': '<rootDir>/webapp/javascript/util/$1',
     '@models(.*)$': '<rootDir>/webapp/javascript/models/$1',
     '@ui(.*)$': '<rootDir>/webapp/javascript/ui/$1',
+    '@pyroscope/redux(.*)$': '<rootDir>/webapp/javascript/redux/$1',
   },
   transform: {
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',

@@ -3,11 +3,12 @@ import { isAfter, isSameSecond } from 'date-fns';
 import { useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import Button from '@ui/Button';
+import { RootState } from '@pyroscope/redux/store';
 import { readableRange, formatAsOBject } from '../util/formatDate';
 
 function CustomDatePicker({ setRange, dispatch, setDateRange }) {
-  const from = useSelector((state) => state.root.from);
-  const until = useSelector((state) => state.root.until);
+  const from = useSelector((state: RootState) => state.root.from);
+  const until = useSelector((state: RootState) => state.root.until);
   const [warning, setWarning] = useState(false);
   const [selectedDate, setSelectedDate] = useState({
     from: formatAsOBject(from),

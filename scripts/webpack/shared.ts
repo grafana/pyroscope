@@ -48,6 +48,10 @@ export function getAlias() {
     '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
     '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
     '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
+    '@pyroscope/redux': path.resolve(
+      __dirname,
+      '../../webapp/javascript/redux'
+    ),
   };
 }
 
