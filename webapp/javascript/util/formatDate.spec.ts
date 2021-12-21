@@ -17,6 +17,7 @@ describe('FormatDate', () => {
       ['now-6M', 'now', 'Last 6 months'],
       ['now-1y', 'now', 'Last 1 year'],
       ['now-2y', 'now', 'Last 2 years'],
+      [1624278889, 1640090089, '2021-06-21 12:34 PM - 2021-12-21 12:34 PM'],
     ];
 
     test.each(cases)(
@@ -25,15 +26,6 @@ describe('FormatDate', () => {
         expect(readableRange(from, until)).toBe(expected);
       }
     );
-
-    // we need to mock
-    // hence why this test is separated
-    test.each([
-      [1624278889, 1640090089, '2021-06-21 12:34 PM - 2021-12-21 12:34 PM'],
-    ])('readableRange(%d, %d) should be %s', (from, until, expected) => {
-      debugger;
-      expect(readableRange(from, until)).toBe(expected);
-    });
   });
 
   describe('formatAsOBject', () => {
