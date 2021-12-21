@@ -1,4 +1,4 @@
-import { readableRange } from '@utils/formatDate';
+import { readableRange, formatAsOBject } from '@utils/formatDate';
 
 describe('FormatDate', () => {
   describe('readableRange', () => {
@@ -23,5 +23,36 @@ describe('FormatDate', () => {
         expect(readableRange(from, until)).toBe(expected);
       }
     );
+  });
+
+  describe('formatAsOBject', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('works with "now"', () => {
+      const mockDate = new Date();
+      jest
+        .spyOn(global, 'Date')
+        .mockImplementation(() => mockDate as unknown as string);
+
+      expect(formatAsOBject('now')).toBe(mockDate);
+    });
+
+    it('works with "now-1m"', () => {
+      const mockDate = new Date('2021-12-21T12:44:01.741Z');
+
+      jest
+        .spyOn(global.Date, 'now')
+        .mockImplementation(() => mockDate as unknown as number);
+
+      expect(formatAsOBject('now-1m')).toBe(1640090581741);
+    });
+
+    it('works with absolute timestamps', () => {
+      expect(formatAsOBject('1624192489')).toEqual(
+        new Date('2021-06-20T12:34:49.000Z')
+      );
+    });
   });
 });
