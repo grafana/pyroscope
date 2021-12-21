@@ -255,7 +255,7 @@ function handleError(dispatch, e) {
     dispatch(
       addNotification({
         title: 'Request Failed',
-        message: `Failed to request profile data: status ${e.response.status}`,
+        message: e.message,
         type: 'danger',
       })
     );
