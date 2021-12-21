@@ -93,14 +93,14 @@ func (mr *MetaReport) validate(m []meta) error {
 	return nil
 }
 
-func (*MetaReport) tpl(t string, m []meta) (string, error) {
+func (*MetaReport) tpl(title string, m []meta) (string, error) {
 	var tpl bytes.Buffer
 
 	data := struct {
 		Title string
 		Meta  []meta
 	}{
-		Title: t,
+		Title: title,
 		Meta:  m,
 	}
 	t, err := template.New("meta-report.gotpl").
