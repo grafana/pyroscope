@@ -57,6 +57,11 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 // The profiles are retrieved every time the endpoint is requested,
 // which should be good enough as massive access to this auth endpoint is not expected.
 func (s *server) Profiles(w http.ResponseWriter, _ *http.Request) {
+	if err := os.MkdirAll(util.DataDirectory(), os.ModeDir|os.ModePerm); err != nil {
+		s.log.WithError(err).Errorf("Unable to create data directory %s", util.DataDirectory())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	profiles := make(map[string]profile, 0)
 	err := filepath.Walk(util.DataDirectory(), func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
