@@ -84,6 +84,8 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
           <SubMenu
             value={tag}
             key={tag}
+            overflow="auto"
+            position="anchor"
             label={(e) => (
               <span
                 className="tag-content"
