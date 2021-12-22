@@ -17,7 +17,7 @@ import styles from './TagsBar.module.css';
 
 function TagsBar({ query, actions, tags, tagValuesLoading }) {
   const [queryVal, setQuery] = useState(query);
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState({});
 
   useEffect(() => {
     setQuery(query);
@@ -108,8 +108,13 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
                     ref={ref}
                     type="text"
                     placeholder="Type a tag"
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value.toLowerCase())}
+                    value={filter[tag] || ''}
+                    onChange={(e) =>
+                      setFilter({
+                        ...filter,
+                        [tag]: e.target.value,
+                      })
+                    }
                   />
                 )}
               </FocusableItem>
@@ -119,7 +124,10 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
               <MenuItem>Loading...</MenuItem>
             ) : (
               tags[tag]
-                .filter((tag) => tag.toLowerCase().includes(filter.trim()))
+                .filter((t) => {
+                  const f = filter[tag] ? filter[tag].trim().toLowerCase() : '';
+                  return t.toLowerCase().includes(f);
+                })
                 .map((tagValue) => (
                   <MenuItem
                     key={tagValue}
