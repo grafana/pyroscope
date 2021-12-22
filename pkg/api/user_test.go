@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/mocks"
+	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
@@ -33,7 +33,7 @@ var _ = Describe("UserHandler", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		m = mocks.NewMockUserService(ctrl)
-		server = httptest.NewServer(api.Router(&api.Services{
+		server = httptest.NewServer(router.New(&router.Services{
 			UserService: m,
 		}))
 	})

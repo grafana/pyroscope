@@ -1,69 +1,94 @@
 package api
 
 import (
+	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/hashicorp/go-multierror"
+
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
-type Services struct {
-	UserService
-}
-
-func Router(s *Services) *mux.Router {
-	r := mux.NewRouter().PathPrefix("/api").Subrouter()
-	registerUserHandlers(r, s)
-	return r
-}
-
-func registerUserHandlers(r *mux.Router, s *Services) {
-	h := NewUserHandler(s.UserService)
-
-	registerRoutes(r.PathPrefix("/users").Subrouter(), []route{
-		{"", http.MethodPost, h.CreateUser},
-		{"", http.MethodGet, h.ListUsers},
-	})
-
-	registerRoutes(r.PathPrefix("/users/"+patternID).Subrouter(), []route{
-		{"", http.MethodGet, h.GetUser},
-		{"", http.MethodPatch, h.UpdateUser},
-		{"/password", http.MethodPut, h.ChangeUserPassword},
-
-		// TODO(kolesnikovae):
-		//  These must not be allowed if id == owner
-		//  in order to prevent self-locking scenarios.
-		{"", http.MethodDelete, h.DeleteUser},
-		{"/disable", http.MethodPut, h.DisableUser},
-		{"/enable", http.MethodPut, h.EnableUser},
-		{"/role", http.MethodPut, h.ChangeUserRoles},
-	})
-
-	// Endpoints available to authenticated users.
-	registerRoutes(r.PathPrefix("/user").Subrouter(), []route{
-		{"", http.MethodGet, h.GetAuthenticatedUser},
-		{"", http.MethodPatch, h.UpdateAuthenticatedUser},
-		{"/password", http.MethodPut, h.ChangeAuthenticatedUserPassword},
-	})
-}
-
-const (
-	patternID = "{id:[0-9]+}"
+var (
+	ErrParamIDRequired        = model.ValidationError{Err: errors.New("id parameter is required")}
+	ErrParamIDInvalid         = model.ValidationError{Err: errors.New("id parameter is invalid")}
+	ErrRequestBodyRequired    = model.ValidationError{Err: errors.New("request body required")}
+	ErrRequestBodyInvalid     = model.ValidationError{Err: errors.New("request body invalid")}
+	ErrRequestBodyJSONInvalid = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
+	ErrAuthenticationRequired = model.ValidationError{Err: errors.New("authentication required")}
+	ErrPermissionDenied       = model.ValidationError{Err: errors.New("permission denied")}
 )
 
-type route struct {
-	path    string
-	method  string
-	handler http.HandlerFunc
+type Errors struct {
+	Errors []string `json:"errors"`
 }
 
-func registerRoutes(r *mux.Router, routes []route) {
-	for _, x := range routes {
-		r.NewRoute().
-			Path(x.path).
-			Methods(x.method).
-			HandlerFunc(x.handler)
+func DecodeError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, io.EOF):
+		err = ErrRequestBodyRequired
+	case errors.Is(err, io.ErrUnexpectedEOF):
+		// https://github.com/golang/go/issues/25956
+		err = ErrRequestBodyJSONInvalid
 	}
+	Error(w, model.ValidationError{Err: err})
+}
+
+func Error(w http.ResponseWriter, err error) {
+	ErrorCode(w, err, -1)
+}
+
+// ErrorCode replies to the request with the specified error message
+// as JSON-encoded body.
+//
+// If HTTP code is less than or equal zero, it will be deduced based on
+// the error. If it fails, StatusInternalServerError will be returned
+// without the response body. The error can be of 'multierror.Error' type.
+//
+// It does not end the HTTP request; the caller should ensure no further
+// writes are done to w.
+func ErrorCode(w http.ResponseWriter, err error, code int) {
+	switch {
+	case err == nil:
+		return
+	case code > 0:
+		w.WriteHeader(code)
+	case errors.Is(err, ErrAuthenticationRequired):
+		w.WriteHeader(http.StatusUnauthorized)
+	case errors.Is(err, ErrPermissionDenied):
+		w.WriteHeader(http.StatusForbidden)
+	case model.IsValidationError(err):
+		w.WriteHeader(http.StatusBadRequest)
+	case model.IsNotFoundError(err):
+		w.WriteHeader(http.StatusNotFound)
+	default:
+		// No response code provided and it can be determined.
+		// Internal errors must not be shown to users.
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var e Errors
+	if m := new(multierror.Error); errors.As(err, &m) {
+		for _, x := range m.Errors {
+			e.Errors = append(e.Errors, x.Error())
+		}
+	} else {
+		e.Errors = []string{err.Error()}
+	}
+	MustJSON(w, e)
+}
+
+func MustJSON(w http.ResponseWriter, v interface{}) {
+	resp, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(resp)
 }
 
 func idFromRequest(r *http.Request) (uint, error) {

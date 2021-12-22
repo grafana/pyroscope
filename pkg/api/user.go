@@ -189,7 +189,7 @@ func (h UserHandler) ChangeUserRoles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.IsAdmin == nil {
-		// TODO(kolesnikovae): Before we add support for fully-fledged RBAC
+		// TODO(kolesnikovae): Before we add support for fully fledged RBAC
 		//  (and multi-tenancy, perhaps), the property must be set. Later we
 		//  can safely extend the request model (in 'one of' fashion).
 		Error(w, ErrRequestBodyInvalid)
@@ -239,28 +239,16 @@ func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
-	user, ok := model.UserFromContext(r.Context())
-	if !ok {
-		Error(w, ErrAuthenticationRequired)
-		return
-	}
+	user := model.MustUserFromContext(r.Context())
 	MustJSON(w, userFromModel(user))
 }
 
 func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
-	user, ok := model.UserFromContext(r.Context())
-	if !ok {
-		Error(w, ErrAuthenticationRequired)
-		return
-	}
+	user := model.MustUserFromContext(r.Context())
 	h.updateUser(w, r, user.ID)
 }
 
 func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *http.Request) {
-	user, ok := model.UserFromContext(r.Context())
-	if !ok {
-		Error(w, ErrAuthenticationRequired)
-		return
-	}
+	user := model.MustUserFromContext(r.Context())
 	h.changeUserPassword(w, r, user.ID)
 }
