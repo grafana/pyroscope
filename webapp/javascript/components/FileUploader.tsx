@@ -6,14 +6,13 @@ import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
 import Button from '@ui/Button';
 import { addNotification } from '../redux/reducers/notifications';
 import styles from './FileUploader.module.scss';
-import { deltaDiffWrapper } from '../util/flamebearer';
 
 interface Props {
-  onUpload: (s: string) => void;
   file: File;
   setFile: (file: File, flamebearer: Record<string, unknown>) => void;
+  className?: string;
 }
-export default function FileUploader({ file, setFile }: Props) {
+export default function FileUploader({ file, setFile, className }: Props) {
   const dispatch = useDispatch();
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -70,7 +69,7 @@ export default function FileUploader({ file, setFile }: Props) {
   };
 
   return (
-    <section className={styles.container}>
+    <section className={`${styles.container} ${className}`}>
       <div {...getRootProps()}>
         <input {...getInputProps()} />
         {file ? (

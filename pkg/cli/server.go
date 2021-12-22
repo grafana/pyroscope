@@ -14,6 +14,7 @@ import (
 	// revive:disable:blank-imports register kubernetes discoverer
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
+	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
@@ -144,6 +145,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		Storage:                 svc.storage,
 		MetricsExporter:         metricsExporter,
 		Notifier:                svc.healthController,
+		Adhoc:                   adhocserver.New(svc.logger, svc.config.EnableExperimentalAdhocUI),
 		Logger:                  svc.logger,
 		MetricsRegisterer:       prometheus.DefaultRegisterer,
 		ExportedMetricsRegistry: exportedMetricsRegistry,

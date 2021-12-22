@@ -173,6 +173,7 @@
     "react-redux": "^7.2.1",
     "react-router-dom": "^5.2.0",
     "react-svg-spinner": "^1.0.4",
+    "react-tabs": "^3.2.3",
     "redux": "^4.0.5",
     "redux-devtools-extension": "^2.13.8",
     "redux-localstorage": "^0.4.1",

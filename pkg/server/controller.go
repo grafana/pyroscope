@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	gmux "github.com/gorilla/mux"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -24,6 +25,7 @@ import (
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
 
+	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
@@ -59,6 +61,9 @@ type Controller struct {
 	// Exported metrics.
 	exportedMetrics *prometheus.Registry
 	exporter        storage.MetricsExporter
+
+	// Adhoc mode
+	adhoc adhocserver.Server
 }
 
 type Config struct {
@@ -73,6 +78,8 @@ type Config struct {
 	// Exported metrics registry and exported.
 	ExportedMetricsRegistry *prometheus.Registry
 	storage.MetricsExporter
+
+	Adhoc adhocserver.Server
 }
 
 type Notifier interface {
@@ -106,6 +113,8 @@ func New(c Config) (*Controller, error) {
 				Registry: c.MetricsRegisterer,
 			}),
 		}),
+
+		adhoc: c.Adhoc,
 	}
 
 	var err error
@@ -125,13 +134,8 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 	return hll
 }
 
-func (ctrl *Controller) assetsFilesHandler(w http.ResponseWriter, r *http.Request) {
-	fs := http.FileServer(ctrl.dir)
-	fs.ServeHTTP(w, r)
-}
-
 func (ctrl *Controller) mux() (http.Handler, error) {
-	mux := http.NewServeMux()
+	r := gmux.NewRouter()
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()
@@ -144,22 +148,29 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		ctrl.statsInc("ingest:" + pi.SpyName)
 		ctrl.appStats.Add(hashString(pi.Key.AppName()))
 	})
+
 	insecureRoutes = append(insecureRoutes, []route{
 		{"/ingest", ingestHandler.ServeHTTP},
 		{"/forbidden", ctrl.forbiddenHandler()},
-		{"/assets/", ctrl.assetsFilesHandler},
+		{"/assets/", r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP},
 	}...)
-	ctrl.addRoutes(mux, insecureRoutes, ctrl.drainMiddleware)
+	ctrl.addRoutes(r, insecureRoutes, ctrl.drainMiddleware)
 
 	// Protected routes:
 	protectedRoutes := []route{
 		{"/", ctrl.indexHandler()},
+		{"/comparison", ctrl.indexHandler()},
+		{"/comparison-diff", ctrl.indexHandler()},
+		{"/adhoc-single", ctrl.indexHandler()},
+		{"/adhoc-comparison", ctrl.indexHandler()},
+		{"/adhoc-comparison-diff", ctrl.indexHandler()},
 		{"/render", ctrl.renderHandler},
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
 	}
-	ctrl.addRoutes(mux, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
+	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
@@ -176,14 +187,14 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		}...)
 	}
 
-	ctrl.addRoutes(mux, diagnosticSecureRoutes, ctrl.authMiddleware)
-	ctrl.addRoutes(mux, []route{
+	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware)
+	ctrl.addRoutes(r, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
 		{"/healthz", ctrl.healthz},
 	})
 
-	return mux, nil
+	return r, nil
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {

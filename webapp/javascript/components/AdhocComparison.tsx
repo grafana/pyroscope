@@ -4,17 +4,61 @@ import 'react-dom';
 
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import Spinner from 'react-svg-spinner';
+import classNames from 'classnames';
+import FileList from './FileList';
 import FileUploader from './FileUploader';
 import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
-import { setLeftFile, setRightFile } from '../redux/actions';
+import {
+  fetchAdhocProfiles,
+  fetchAdhocLeftProfile,
+  fetchAdhocRightProfile,
+  setAdhocLeftFile,
+  setAdhocLeftProfile,
+  setAdhocRightFile,
+  setAdhocRightProfile,
+} from '../redux/actions';
 import styles from './ComparisonApp.module.css';
 
 function AdhocComparison(props) {
-  const { actions, leftFile, leftFlamebearer, rightFile, rightFlamebearer } =
-    props;
-  const { setLeftFile } = actions;
-  const { setRightFile } = actions;
+  const {
+    actions,
+    isLeftProfileLoading,
+    isRightProfileLoading,
+    leftFile,
+    leftFlamebearer,
+    leftProfile,
+    rightFile,
+    rightFlamebearer,
+    rightProfile,
+  } = props;
+  const {
+    setAdhocLeftFile,
+    setAdhocLeftProfile,
+    setAdhocRightFile,
+    setAdhocRightProfile,
+  } = actions;
+
+  useEffect(() => {
+    actions.fetchAdhocProfiles();
+    return actions.abortFetchAdhocProfiles;
+  }, []);
+
+  useEffect(() => {
+    if (leftProfile) {
+      actions.fetchAdhocLeftProfile(leftProfile);
+    }
+    return actions.abortFetchAdhocLeftProfile;
+  }, [leftProfile]);
+
+  useEffect(() => {
+    if (rightProfile) {
+      actions.fetchAdhocRightProfile(rightProfile);
+    }
+    return actions.abortFetchAdhocRightProfile;
+  }, [rightProfile]);
 
   return (
     <div className="pyroscope-app">
@@ -24,22 +68,66 @@ function AdhocComparison(props) {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
-            <FileUploader file={leftFile} setFile={setLeftFile} />
-            <FlameGraphRenderer
-              viewType="double"
-              viewSide="left"
-              flamebearer={leftFlamebearer}
-              data-testid="flamegraph-renderer-left"
-            />
+            <Tabs>
+              <TabList>
+                <Tab>Pyroscope data</Tab>
+                <Tab>Upload</Tab>
+              </TabList>
+              <TabPanel>
+                <FileList
+                  profile={leftProfile}
+                  setProfile={setAdhocLeftProfile}
+                />
+              </TabPanel>
+              <TabPanel>
+                <FileUploader file={leftFile} setFile={setAdhocLeftFile} />
+              </TabPanel>
+            </Tabs>
+            {isLeftProfileLoading && (
+              <div className={classNames('spinner-container')}>
+                <Spinner color="rgba(255,255,255,0.6)" size="20px" />
+              </div>
+            )}
+            {!isLeftProfileLoading && (
+              <FlameGraphRenderer
+                viewType="double"
+                viewSide="left"
+                flamebearer={leftFlamebearer}
+                data-testid="flamegraph-renderer-left"
+                display="both"
+              />
+            )}
           </Box>
           <Box className={styles.comparisonPane}>
-            <FileUploader file={rightFile} setFile={setRightFile} />
-            <FlameGraphRenderer
-              viewType="double"
-              viewSide="right"
-              flamebearer={rightFlamebearer}
-              data-testid="flamegraph-renderer-right"
-            />
+            <Tabs>
+              <TabList>
+                <Tab>Pyroscope data</Tab>
+                <Tab>Upload</Tab>
+              </TabList>
+              <TabPanel>
+                <FileList
+                  profile={rightProfile}
+                  setProfile={setAdhocRightProfile}
+                />
+              </TabPanel>
+              <TabPanel>
+                <FileUploader file={rightFile} setFile={setAdhocRightFile} />
+              </TabPanel>
+            </Tabs>
+            {isRightProfileLoading && (
+              <div className={classNames('spinner-container')}>
+                <Spinner color="rgba(255,255,255,0.6)" size="20px" />
+              </div>
+            )}
+            {!isRightProfileLoading && (
+              <FlameGraphRenderer
+                viewType="double"
+                viewSide="right"
+                flamebearer={rightFlamebearer}
+                data-testid="flamegraph-renderer-right"
+                display="both"
+              />
+            )}
           </Box>
         </div>
       </div>
@@ -52,12 +140,27 @@ const mapStateToProps = (state) => ({
   ...state.root,
   leftFile: state.root.adhocComparison.left.file,
   leftFlamebearer: state.root.adhocComparison.left.flamebearer,
+  leftProfile: state.root.adhocComparison.left.profile,
+  isLeftProfileLoading: state.root.adhocComparison.left.isProfileLoading,
   rightFile: state.root.adhocComparison.right.file,
   rightFlamebearer: state.root.adhocComparison.right.flamebearer,
+  rightProfile: state.root.adhocComparison.right.profile,
+  isRightProfileLoading: state.root.adhocComparison.right.isProfileLoading,
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators({ setLeftFile, setRightFile }, dispatch),
+  actions: bindActionCreators(
+    {
+      fetchAdhocProfiles,
+      fetchAdhocLeftProfile,
+      fetchAdhocRightProfile,
+      setAdhocLeftFile,
+      setAdhocLeftProfile,
+      setAdhocRightFile,
+      setAdhocRightProfile,
+    },
+    dispatch
+  ),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(AdhocComparison);

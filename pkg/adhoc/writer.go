@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -34,7 +35,7 @@ func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) wr
 }
 
 func (w writer) write(t0, t1 time.Time) error {
-	dataDir := dataDirectory()
+	dataDir := util.DataDirectory()
 	if err := os.MkdirAll(dataDir, os.ModeDir|os.ModePerm); err != nil {
 		return fmt.Errorf("could not create data directory: %w", err)
 	}
@@ -103,8 +104,4 @@ func (w writer) write(t0, t1 time.Time) error {
 		}
 	}
 	return nil
-}
-
-func dataDirectory() string {
-	return filepath.Join(dataBaseDirectory(), "pyroscope")
 }

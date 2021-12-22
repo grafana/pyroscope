@@ -1,4 +1,4 @@
-package adhoc
+package util
 
 import (
 	"os"

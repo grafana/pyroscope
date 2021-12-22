@@ -48,14 +48,6 @@ tt {
   align-items: center;
 
   // box-shadow: 0px 1px #fff;
-  .navbar-spinner-container {
-    margin: 0 10px;
-    visibility: hidden;
-
-    &.visible {
-      visibility: visible;
-    }
-  }
 }
 
 .logo-main {
@@ -146,6 +138,15 @@ input {
 .comparison-container {
   display: flex;
   flex-direction: row;
+}
+
+.spinner-container {
+  margin: 0 10px;
+  visibility: hidden;
+
+  &.visible {
+    visibility: visible;
+  }
 }
 
 //.canvas-container {

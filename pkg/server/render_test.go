@@ -79,6 +79,7 @@ var _ = Describe("server", func() {
 				MetricsRegisterer:       prometheus.NewRegistry(),
 				ExportedMetricsRegistry: prometheus.NewRegistry(),
 				Notifier:                mockNotifier{},
+				Adhoc:                   mockAdhocServer{},
 			})
 			h, _ := c.mux()
 			httpServer = httptest.NewServer(h)
