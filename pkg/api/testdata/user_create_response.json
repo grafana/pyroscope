@@ -3,8 +3,8 @@
   "name": "johndoe",
   "email": "john@example.com",
   "fullName": "John Doe",
-  "role": "Viewer",
   "isDisabled": false,
+  "isAdmin": false,
   "createdAt": "2021-12-10T04:14:00Z",
   "updatedAt": "2021-12-10T04:14:00Z",
   "passwordChangedAt": "2021-12-10T04:14:00Z"

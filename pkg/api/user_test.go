@@ -61,7 +61,6 @@ var _ = Describe("UserHandler", func() {
 				Email:    "john@example.com",
 				FullName: model.String("John Doe"),
 				Password: "qwerty",
-				Role:     model.ViewerRole,
 			}
 
 			now := time.Date(2021, 12, 10, 4, 14, 0, 0, time.UTC)
@@ -70,13 +69,11 @@ var _ = Describe("UserHandler", func() {
 				Name:              expectedParams.Name,
 				Email:             expectedParams.Email,
 				FullName:          expectedParams.FullName,
-				Role:              expectedParams.Role,
+				IsAdmin:           &expectedParams.IsAdmin,
 				PasswordHash:      model.MustPasswordHash(expectedParams.Password),
 				PasswordChangedAt: now,
-				LastSeenAt:        nil,
 				CreatedAt:         now,
 				UpdatedAt:         now,
-				DeletedAt:         nil,
 			}
 		})
 
@@ -165,7 +162,6 @@ var _ = Describe("UserHandler", func() {
 						model.ErrUserNameEmpty,
 						model.ErrUserEmailInvalid,
 						model.ErrUserPasswordEmpty,
-						model.ErrRoleUnknown,
 					}}).
 					Do(func(_ context.Context, user model.CreateUserParams) {
 						defer GinkgoRecover()
