@@ -71,9 +71,7 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 		// An extreme measure.
 		profileTime = time.Now()
 	}
-
-	var locs []*tree.Location
-	var fns []*tree.Function
+	finder := tree.NewFinder(&p)
 
 	for _, s := range p.GetSampleType() {
 		sampleTypeName := p.StringTable[s.Type]
@@ -82,14 +80,7 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 			continue
 		}
 
-		if locs == nil {
-			locs = tree.Locations(&p)
-		}
-		if fns == nil {
-			fns = tree.Functions(&p)
-		}
-
-		c.writeProfiles(&p, s.Type, locs, fns)
+		c.writeProfiles(&p, s.Type, finder)
 		for hash, entry := range c[s.Type] {
 			j := &upstream.UploadJob{SpyName: "scrape", Trie: entry.Trie}
 			// Cumulative profiles require two consecutive samples,
@@ -184,7 +175,7 @@ func newCacheEntry(l []*tree.Label) *cacheEntry {
 	return &cacheEntry{Trie: transporttrie.New(), labels: l}
 }
 
-func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, locs []*tree.Location, fns []*tree.Function) {
+func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, finder tree.Finder) {
 	valueIndex := 0
 	if sampleType != 0 {
 		for i, v := range x.SampleType {
@@ -201,11 +192,10 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, locs []*tree.Lo
 	for _, s := range x.Sample {
 		entry := t.getOrCreate(sampleType, s.Label)
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			id := s.LocationId[i]
-			if id >= uint64(len(locs)) {
+			loc, ok := finder.FindLocation(s.LocationId[i])
+			if !ok {
 				continue
 			}
-			loc := locs[id]
 			// Multiple line indicates this location has inlined functions,
 			// where the last entry represents the caller into which the
 			// preceding entries were inlined.
@@ -216,11 +206,10 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, locs []*tree.Lo
 			//
 			// Therefore iteration goes in reverse order.
 			for j := len(loc.Line) - 1; j >= 0; j-- {
-				id := loc.Line[j].FunctionId
-				if id >= uint64(len(fns)) {
+				fn, ok := finder.FindFunction(loc.Line[j].FunctionId)
+				if !ok {
 					continue
 				}
-				fn := fns[id]
 				if b.Len() > 0 {
 					_ = b.WriteByte(';')
 				}

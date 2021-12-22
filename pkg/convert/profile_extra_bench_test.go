@@ -51,22 +51,19 @@ func parse(p *tree.Profile) int {
 
 // parseWithCache is like parse, but locations and functions are tabled first.
 func parseWithCache(p *tree.Profile) int {
-	locs := tree.Locations(p)
-	fns := tree.Functions(p)
+	finder := tree.NewFinder(p)
 	var b bytes.Buffer
 	for _, s := range p.Sample {
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			id := s.LocationId[i]
-			if id >= uint64(len(locs)) {
+			loc, ok := finder.FindLocation(s.LocationId[i])
+			if !ok {
 				continue
 			}
-			loc := locs[id]
 			for j := len(loc.Line) - 1; j >= 0; j-- {
-				id := loc.Line[j].FunctionId
-				if id >= uint64(len(fns)) {
+				fn, ok := finder.FindFunction(loc.Line[j].FunctionId)
+				if !ok {
 					continue
 				}
-				fn := fns[id]
 				if b.Len() > 0 {
 					_ = b.WriteByte(';')
 				}
