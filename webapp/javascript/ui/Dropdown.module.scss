@@ -5,17 +5,27 @@
 .dropdownMenu {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.33);
   padding: 0.25rem 0;
-  background-color: $btn-color;
-  color: $white;
+  background-color: $btn-color !important;
+  color: $white !important;
 
   & ul[class*='rc-menu'] {
     background-color: $btn-color;
-    color: $white;
+    color: $white !important;
   }
 
   & li[class*='hover'],
   div[class*='hover'] {
     background-color: $btn-hover-color;
+  }
+
+  [class*='rc-menu--open']:empty {
+    background: red;
+    display: none;
+  }
+
+  [class*='rc-menu__item active'] {
+    background-color: $btn-hover-color;
+    color: rgb(223, 139, 83);
   }
 }
 

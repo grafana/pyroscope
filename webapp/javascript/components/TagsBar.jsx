@@ -75,6 +75,11 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
   return (
     <div className="tags-bar _rc-menu-container--theme-dark">
       <Dropdown label="Select Tag">
+        {Object.keys(tags).length === 0 ? (
+          <MenuItem>No tags available</MenuItem>
+        ) : (
+          []
+        )}
         {Object.keys(tags).map((tag) => (
           <SubMenu
             value={tag}
