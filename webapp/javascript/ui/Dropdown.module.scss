@@ -19,13 +19,23 @@
   }
 
   [class*='rc-menu--open']:empty {
-    background: red;
     display: none;
   }
 
   [class*='rc-menu__item active'] {
     background-color: $btn-hover-color;
     color: rgb(223, 139, 83);
+  }
+
+  [class*='rc-menu__item--focusable'] {
+    // important to ignore the hover effect
+    background-color: inherit !important;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+
+    input {
+      width: 100%;
+    }
   }
 }
 

@@ -6,6 +6,7 @@ import {
   SubMenu as LibSubmenu,
   MenuItem as LibMenuItem,
   MenuButton as LibMenuButton,
+  FocusableItem as LibFocusableItem,
 } from '@szhsin/react-menu';
 import styles from './Dropdown.module.scss';
 
@@ -63,3 +64,4 @@ export default function Dropdown({
 export const SubMenu = LibSubmenu;
 export const MenuItem = LibMenuItem;
 export const MenuButton = LibMenuButton;
+export const FocusableItem = LibFocusableItem;
