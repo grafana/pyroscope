@@ -486,13 +486,6 @@ export function fetchNames() {
       .finally();
   };
 }
-export function abortFetchNames() {
-  return () => {
-    if (abortFetchNames) {
-      abortFetchNames.abort();
-    }
-  };
-}
 
 let adhocProfilesController;
 export function fetchAdhocProfiles() {
