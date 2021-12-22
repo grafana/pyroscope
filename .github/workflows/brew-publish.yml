@@ -1,11 +1,6 @@
 name: Homebrew
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag name'
-        required: true
-        type: string
 jobs:
   test:
     runs-on: macos-latest
