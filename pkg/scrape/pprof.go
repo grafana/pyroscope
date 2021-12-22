@@ -71,6 +71,7 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 		// An extreme measure.
 		profileTime = time.Now()
 	}
+	finder := tree.NewFinder(&p)
 
 	for _, s := range p.GetSampleType() {
 		sampleTypeName := p.StringTable[s.Type]
@@ -79,7 +80,7 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 			continue
 		}
 
-		c.writeProfiles(&p, s.Type)
+		c.writeProfiles(&p, s.Type, finder)
 		for hash, entry := range c[s.Type] {
 			j := &upstream.UploadJob{SpyName: "scrape", Trie: entry.Trie}
 			// Cumulative profiles require two consecutive samples,
@@ -174,7 +175,7 @@ func newCacheEntry(l []*tree.Label) *cacheEntry {
 	return &cacheEntry{Trie: transporttrie.New(), labels: l}
 }
 
-func (t *cache) writeProfiles(x *tree.Profile, sampleType int64) {
+func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, finder tree.Finder) {
 	valueIndex := 0
 	if sampleType != 0 {
 		for i, v := range x.SampleType {
@@ -191,7 +192,7 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64) {
 	for _, s := range x.Sample {
 		entry := t.getOrCreate(sampleType, s.Label)
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			loc, ok := tree.FindLocation(x, s.LocationId[i])
+			loc, ok := finder.FindLocation(s.LocationId[i])
 			if !ok {
 				continue
 			}
@@ -205,8 +206,8 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64) {
 			//
 			// Therefore iteration goes in reverse order.
 			for j := len(loc.Line) - 1; j >= 0; j-- {
-				fn, found := tree.FindFunction(x, loc.Line[j].FunctionId)
-				if !found {
+				fn, ok := finder.FindFunction(loc.Line[j].FunctionId)
+				if !ok {
 					continue
 				}
 				if b.Len() > 0 {
