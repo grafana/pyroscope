@@ -37,6 +37,9 @@ module.exports = merge(common, {
         app.use(
           builtins.proxy('/labels-diff', { target: 'http://localhost:4040' })
         );
+        app.use(
+          builtins.proxy('/label-values', { target: 'http://localhost:4040' })
+        );
 
         // New Endpoints are implemented under /api
         app.use(builtins.proxy('/api', { target: 'http://localhost:4040' }));
