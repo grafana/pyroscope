@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-// TODO: don't import locales
 import moment from 'moment';
 import { useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import Button from '@ui/Button';
+import { RootState } from '@pyroscope/redux/store';
 import { readableRange, formatAsOBject } from '../util/formatDate';
 
 function CustomDatePicker({ setRange, dispatch, setDateRange }) {
-  const from = useSelector((state) => state.root.from);
-  const until = useSelector((state) => state.root.until);
+  const from = useSelector((state: RootState) => state.root.from);
+  const until = useSelector((state: RootState) => state.root.until);
   const [warning, setWarning] = useState(false);
   const [selectedDate, setSelectedDate] = useState({
     from: formatAsOBject(from),
@@ -19,6 +19,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
     if (moment(selectedDate.from).isSameOrAfter(selectedDate.until)) {
       return setWarning(true);
     }
+
     dispatch(
       setDateRange(
         Math.round(selectedDate.from / 1000),
@@ -34,6 +35,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
       from: formatAsOBject(from),
       until: formatAsOBject(until),
     });
+
     setRange(readableRange(from, until));
   }, [from, until]);
 
