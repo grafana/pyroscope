@@ -12,7 +12,7 @@ jobs:
         with:
           token: ${{ secrets.TOKEN }}
           org: pyroscope-io
-          tap: pyroscope-io/homebrew-brew
+          tap: juliosaraiva/homebrew-brew
           formula: pyroscope
           tag: ${{ github.ref }}
           revision: ${{ github.sha }}
