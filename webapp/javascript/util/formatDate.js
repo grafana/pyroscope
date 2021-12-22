@@ -33,17 +33,6 @@ export function readableRange(from, until) {
     return `Last ${number} ${_multiplier}`;
   }
 
-  if (until === 'now' && !/^now-/.test(from)) {
-    return `${moment(Math.round(from * 1000)).format(dateFormat)} - now`;
-  }
-
-  if (until !== 'now' && /^now-/.test(from)) {
-    const { _from } = convertPresetsToDate(from);
-    return `${moment(Math.round(_from * 1000)).format(dateFormat)} - ${moment(
-      Math.round(until * 1000)
-    ).format(dateFormat)}`;
-  }
-
   return `${moment(Math.round(from * 1000)).format(dateFormat)} - ${moment(
     Math.round(until * 1000)
   ).format(dateFormat)}`;
