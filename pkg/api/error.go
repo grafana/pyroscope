@@ -15,7 +15,8 @@ var (
 	ErrParamIDRequired        = model.ValidationError{Err: errors.New("id parameter is required")}
 	ErrParamIDInvalid         = model.ValidationError{Err: errors.New("id parameter is invalid")}
 	ErrRequestBodyRequired    = model.ValidationError{Err: errors.New("request body required")}
-	ErrRequestBodyInvalid     = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
+	ErrRequestBodyInvalid     = model.ValidationError{Err: errors.New("request body invalid")}
+	ErrRequestBodyJSONInvalid = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
 	ErrAuthenticationRequired = model.ValidationError{Err: errors.New("authentication required")}
 	ErrPermissionDenied       = model.ValidationError{Err: errors.New("permission denied")}
 )
@@ -30,7 +31,7 @@ func DecodeError(w http.ResponseWriter, err error) {
 		err = ErrRequestBodyRequired
 	case errors.Is(err, io.ErrUnexpectedEOF):
 		// https://github.com/golang/go/issues/25956
-		err = ErrRequestBodyInvalid
+		err = ErrRequestBodyJSONInvalid
 	}
 	Error(w, model.ValidationError{Err: err})
 }

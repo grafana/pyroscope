@@ -27,8 +27,8 @@ type User struct {
 	Email        string  `gorm:"type:varchar(255);not null;default:null;index:,unique"`
 	FullName     *string `gorm:"type:varchar(255);default:null"`
 	PasswordHash []byte  `gorm:"type:varchar(255);not null;default:null"`
-	Role         Role    `gorm:"not null;default:null"`
 	IsDisabled   *bool   `gorm:"not null;default:false"`
+	IsAdmin      *bool   `gorm:"not null;default:false"`
 
 	LastSeenAt        *time.Time `gorm:"default:null"`
 	PasswordChangedAt time.Time
@@ -42,7 +42,7 @@ type CreateUserParams struct {
 	Email    string
 	FullName *string
 	Password string
-	Role     Role
+	IsAdmin  bool
 }
 
 func (p CreateUserParams) Validate() error {
@@ -61,9 +61,6 @@ func (p CreateUserParams) Validate() error {
 	if pwdErr := ValidatePasswordRequirements(p.Password); pwdErr != nil {
 		err = multierror.Append(err, pwdErr)
 	}
-	if !p.Role.IsValid() {
-		err = multierror.Append(err, ErrRoleUnknown)
-	}
 	return err
 }
 
@@ -72,18 +69,8 @@ type UpdateUserParams struct {
 	Name       *string
 	Email      *string
 	Password   *string
-	Role       *Role
 	IsDisabled *bool
-}
-
-func (p UpdateUserParams) SetRole(r Role) UpdateUserParams {
-	p.Role = &r
-	return p
-}
-
-func (p UpdateUserParams) SetIsDisabled(d bool) UpdateUserParams {
-	p.IsDisabled = &d
-	return p
+	IsAdmin    *bool
 }
 
 func (p UpdateUserParams) Validate() error {
@@ -108,10 +95,12 @@ func (p UpdateUserParams) Validate() error {
 			err = multierror.Append(err, pwdErr)
 		}
 	}
-	if p.Role != nil && !p.Role.IsValid() {
-		err = multierror.Append(err, ErrRoleUnknown)
-	}
 	return err
+}
+
+func (p UpdateUserParams) SetIsDisabled(d bool) UpdateUserParams {
+	p.IsDisabled = &d
+	return p
 }
 
 func IsUserDisabled(u User) bool {
@@ -119,6 +108,18 @@ func IsUserDisabled(u User) bool {
 		return false
 	}
 	return *u.IsDisabled
+}
+
+func (p UpdateUserParams) SetIsAdmin(d bool) UpdateUserParams {
+	p.IsAdmin = &d
+	return p
+}
+
+func IsUserAdmin(u User) bool {
+	if u.IsAdmin == nil {
+		return false
+	}
+	return *u.IsAdmin
 }
 
 func ValidateUserName(userName string) error {

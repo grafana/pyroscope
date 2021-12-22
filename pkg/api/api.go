@@ -28,13 +28,18 @@ func registerUserHandlers(r *mux.Router, s *Services) {
 	registerRoutes(r.PathPrefix("/users/"+patternID).Subrouter(), []route{
 		{"", http.MethodGet, h.GetUser},
 		{"", http.MethodPatch, h.UpdateUser},
+		{"/password", http.MethodPut, h.ChangeUserPassword},
+
+		// TODO(kolesnikovae):
+		//  These must not be allowed if id == owner
+		//  in order to prevent self-locking scenarios.
 		{"", http.MethodDelete, h.DeleteUser},
 		{"/disable", http.MethodPut, h.DisableUser},
 		{"/enable", http.MethodPut, h.EnableUser},
-		{"/role", http.MethodPut, h.ChangeUserRole},
-		{"/password", http.MethodPut, h.ChangeUserPassword},
+		{"/role", http.MethodPut, h.ChangeUserRoles},
 	})
 
+	// Endpoints available to authenticated users.
 	registerRoutes(r.PathPrefix("/user").Subrouter(), []route{
 		{"", http.MethodGet, h.GetAuthenticatedUser},
 		{"", http.MethodPatch, h.UpdateAuthenticatedUser},
