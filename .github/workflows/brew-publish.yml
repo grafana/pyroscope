@@ -14,7 +14,7 @@ jobs:
           org: pyroscope-io
           tap: pyroscope-io/homebrew-brew
           formula: pyroscope
-          tag: ${{ inputs.tag }}
+          tag: ${{ github.ref }}
           revision: ${{ github.sha }}
 
           
