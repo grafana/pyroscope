@@ -3,7 +3,7 @@ import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 import Button from '@ui/Button';
 import 'react-dom';
-import { Menu, SubMenu, MenuItem, MenuButton } from '@szhsin/react-menu';
+import Dropdown, { SubMenu, MenuItem } from '@ui/Dropdown';
 
 import {
   fetchTags,
@@ -73,17 +73,8 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
   };
 
   return (
-    <div className="tags-bar rc-menu-container--theme-dark">
-      <Menu
-        menuButton={<MenuButton>Select Tag</MenuButton>}
-        theming="dark"
-        keepMounted
-      >
-        {Object.keys(tags).length === 0 ? (
-          <MenuItem>No tags available</MenuItem>
-        ) : (
-          []
-        )}
+    <div className="tags-bar _rc-menu-container--theme-dark">
+      <Dropdown label="Select Tag">
         {Object.keys(tags).map((tag) => (
           <SubMenu
             value={tag}
@@ -120,7 +111,7 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
             )}
           </SubMenu>
         ))}
-      </Menu>
+      </Dropdown>
       <form
         className="tags-query"
         onSubmit={(e) => {

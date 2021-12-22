@@ -2,10 +2,10 @@ import React from 'react';
 import {
   ClickEvent,
   Menu,
-  MenuButton,
   MenuHeader,
   SubMenu as LibSubmenu,
   MenuItem as LibMenuItem,
+  MenuButton as LibMenuButton,
 } from '@szhsin/react-menu';
 import styles from './Dropdown.module.scss';
 
@@ -62,3 +62,4 @@ export default function Dropdown({
 
 export const SubMenu = LibSubmenu;
 export const MenuItem = LibMenuItem;
+export const MenuButton = LibMenuButton;
