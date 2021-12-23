@@ -55,11 +55,14 @@ WORKDIR /opt/pyroscope
 
 COPY scripts ./scripts
 COPY webapp ./webapp
-COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore .prettierrc tsconfig.json Makefile ./
+COPY package.json yarn.lock Makefile ./
+# we only need the dependencies required to BUILD the application
+RUN make install-build-web-dependencies
+COPY babel.config.js .eslintrc .eslintignore .prettierrc tsconfig.json Makefile ./
 
 ARG EXTRA_METADATA=""
-# we only need the dependencies required to BUILD the application
-RUN EXTRA_METADATA=$EXTRA_METADATA make install-build-web-dependencies assets-release
+
+RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 
 
 #              _
