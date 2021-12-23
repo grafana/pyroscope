@@ -141,11 +141,15 @@ func newServerService(c *config.Server) (*serverService, error) {
 	}
 
 	svc.controller, err = server.New(server.Config{
-		Configuration:           svc.config,
-		Storage:                 svc.storage,
-		MetricsExporter:         metricsExporter,
-		Notifier:                svc.healthController,
-		Adhoc:                   adhocserver.New(svc.logger, svc.config.EnableExperimentalAdhocUI),
+		Configuration:   svc.config,
+		Storage:         svc.storage,
+		MetricsExporter: metricsExporter,
+		Notifier:        svc.healthController,
+		Adhoc: adhocserver.New(
+			svc.logger,
+			svc.config.MaxNodesRender,
+			svc.config.EnableExperimentalAdhocUI,
+		),
 		Logger:                  svc.logger,
 		MetricsRegisterer:       prometheus.DefaultRegisterer,
 		ExportedMetricsRegistry: exportedMetricsRegistry,

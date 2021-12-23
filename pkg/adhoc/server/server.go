@@ -27,6 +27,7 @@ type profile struct {
 
 type server struct {
 	log      logrus.FieldLogger
+	maxNodes int
 	enabled  bool
 	profiles map[string]profile
 	mtx      sync.RWMutex
@@ -36,8 +37,13 @@ type Server interface {
 	AddRoutes(router *mux.Router) http.HandlerFunc
 }
 
-func New(log logrus.FieldLogger, enabled bool) Server {
-	return &server{log: log, enabled: enabled, profiles: make(map[string]profile)}
+func New(log logrus.FieldLogger, maxNodes int, enabled bool) Server {
+	return &server{
+		log:      log,
+		maxNodes: maxNodes,
+		enabled:  enabled,
+		profiles: make(map[string]profile),
+	}
 }
 
 func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
@@ -90,7 +96,6 @@ func (s *server) Profiles(w http.ResponseWriter, _ *http.Request) {
 }
 
 // Profile retrieves a local file identified by its ID.
-// TODO(abeaumont): Support other formats, only native JSON is supported for now.
 func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	s.mtx.RLock()
@@ -101,23 +106,15 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	f, err := os.Open(filepath.Join(util.DataDirectory(), p.Name))
+	fb, err := s.profile(p)
 	if err != nil {
-		s.log.WithError(err).Error("Unable to open profile")
+		s.log.WithError(err).Error("Unable to process profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	defer f.Close()
-	// Validate the format
-	b, err := io.ReadAll(f)
+	b, err := json.Marshal(*fb)
 	if err != nil {
-		s.log.WithError(err).Error("Unable to read profile")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	var fb flamebearer.FlamebearerProfile
-	if err := json.Unmarshal(b, &fb); err != nil {
-		s.log.WithError(err).Error("Invalid file format")
+		s.log.WithError(err).Error("Unable to marshall profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -131,4 +128,32 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 
 // TODO(abeaumont)
 func (*server) Diff(_ http.ResponseWriter, _ *http.Request) {
+}
+
+type converterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
+
+func (s *server) profile(p profile) (*flamebearer.FlamebearerProfile, error) {
+	fname := filepath.Join(util.DataDirectory(), p.Name)
+	ext := filepath.Ext(fname)
+	var converter converterFn
+	switch ext {
+	case ".json":
+		converter = jsonToProfile
+	case ".pprof":
+		converter = pprofToProfile
+	case ".txt":
+		converter = collapsedToProfile
+	default:
+		return nil, fmt.Errorf("unsupported file extension %s", ext)
+	}
+	f, err := os.Open(fname)
+	if err != nil {
+		return nil, fmt.Errorf("unable to open profile: %w", err)
+	}
+	defer f.Close()
+	b, err := io.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read profile: %w", err)
+	}
+	return converter(b, p.Name, s.maxNodes)
 }
