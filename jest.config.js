@@ -19,7 +19,8 @@ module.exports = {
     '\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.svg$': 'svg-jest',
   },
-  transformIgnorePatterns: ['/node_modules/.+(js|jsx)$'],
+  transformIgnorePatterns: ['node_modules/(?!(true-myth)/)'],
+  //  transformIgnorePatterns: ['/node_modules/.+(js|jsx)$'],
   globals: {
     'ts-jest': {
       diagnostics: {

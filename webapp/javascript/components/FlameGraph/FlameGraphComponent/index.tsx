@@ -3,7 +3,7 @@ import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import debounce from 'lodash.debounce';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
@@ -21,7 +21,7 @@ interface FlamegraphProps {
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
 
-  onZoom: (bar: Option<{ i: number; j: number }>) => void;
+  onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
 
   onReset: () => void;
@@ -40,7 +40,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const flamegraph = useRef<Flamegraph>();
 
   const [rightClickedNode, setRightClickedNode] = React.useState(
-    Option.none<{ top: number; left: number; width: number }>()
+    Maybe.nothing<{ top: number; left: number; width: number }>()
   );
 
   const { flamebearer, focusedNode, fitMode, highlightQuery, zoom } = props;
@@ -76,22 +76,22 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
     opt.match({
       // clicked on an invalid node
-      None: () => {},
-      Some: (bar) => {
+      Nothing: () => {},
+      Just: (bar) => {
         zoom.match({
           // there's no existing zoom
           // so just zoom on the clicked node
-          None: () => {
+          Nothing: () => {
             onZoom(opt);
           },
 
           // it's already zoomed
-          Some: (z) => {
+          Just: (z) => {
             // TODO there mya be stale props here...
             // we are clicking on the same node that's zoomed
             if (bar.i === z.i && bar.j === z.j) {
               // undo that zoom
-              onZoom(Option.none());
+              onZoom(Maybe.nothing());
             } else {
               onZoom(opt);
             }
@@ -118,7 +118,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   };
 
   const onContextMenuClose = () => {
-    setRightClickedNode(Option.none());
+    setRightClickedNode(Maybe.nothing());
   };
 
   const onContextMenuOpen = (x: number, y: number) => {
@@ -132,10 +132,14 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       const bar = flamegraph.current.xyToBar(x, y);
 
       const FocusItem = () => {
-        const hoveredOnValidNode = bar.map(() => true).getOrElse(false);
-        const onClick = bar
-          .map((f) => onFocusOnNode.bind(null, f.i, f.j))
-          .getOrElse(() => {});
+        const hoveredOnValidNode = bar.mapOrElse(
+          () => false,
+          () => true
+        );
+        const onClick = bar.mapOrElse(
+          () => {},
+          (f) => onFocusOnNode.bind(null, f.i, f.j)
+        );
 
         return (
           <MenuItem

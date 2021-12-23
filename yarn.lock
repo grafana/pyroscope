@@ -10219,11 +10219,6 @@ gzip-size@^6.0.0:
   dependencies:
     duplexer "^0.1.2"
 
-hamt_plus@1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/hamt_plus/-/hamt_plus-1.0.2.tgz#e21c252968c7e33b20f6a1b094cd85787a265601"
-  integrity sha1-4hwlKWjH4zsg9qGwlM2FeHomVgE=
-
 handlebars@^4.7.6, handlebars@^4.7.7:
   version "4.7.7"
   resolved "https://registry.yarnpkg.com/handlebars/-/handlebars-4.7.7.tgz#9ce33416aad02dbd6c8fafa8240d5d98004945a1"
@@ -12682,11 +12677,6 @@ lint-staged@^11.1.2:
     string-argv "0.3.1"
     stringify-object "3.3.0"
     supports-color "8.1.1"
-
-list@2.0.19:
-  version "2.0.19"
-  resolved "https://registry.yarnpkg.com/list/-/list-2.0.19.tgz#370a3d7d3e24cfd5ced2c89cda2baf28e31e2830"
-  integrity sha512-nnVaRp4RaMAQkCpypTThsdxKqgPMiSwJq93eAm2/IbpUa8sd04XKBhkKu+bMk63HmdjK8b8Cuh4xARHWX2ye/Q==
 
 listr2@^3.12.2, listr2@^3.8.3:
   version "3.13.5"
@@ -15332,14 +15322,6 @@ prelude-ls@~1.1.2:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/prelude-ls/-/prelude-ls-1.1.2.tgz#21932a549f5e52ffd9a827f570e04be62a97da54"
   integrity sha1-IZMqVJ9eUv/ZqCf1cOBL5iqX2lQ=
-
-prelude-ts@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/prelude-ts/-/prelude-ts-1.0.3.tgz#61cd6b9f88a6a692e8387c2ec6e66c1c1e303c48"
-  integrity sha512-emZC/dMJmxUDQj4rDONVxEgNBca3WvCRQzXgCVkk9CnWDNfWPYsc6LoVdSqVI5puSesDh5yoauI2oi65ueAUAw==
-  dependencies:
-    hamt_plus "1.0.2"
-    list "2.0.19"
 
 preserve@^0.2.0:
   version "0.2.0"
@@ -18781,6 +18763,11 @@ trough@^1.0.0:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/trough/-/trough-1.0.5.tgz#b8b639cefad7d0bb2abd37d433ff8293efa5f406"
   integrity sha512-rvuRbTarPXmMb79SmzEp8aqXNKcK+y0XaB298IXueQ8I2PsrATcPBCSPyK/dDNa2iWOhKlfNnOjdAOTBU/nkFA==
+
+"true-myth@^5.1.1":
+  version "5.1.1"
+  resolved "https://registry.yarnpkg.com/true-myth/-/true-myth-5.1.1.tgz#9895894e6335f01a7e84413520d0e4f53048122c"
+  integrity sha512-izaKATHiKADw57togcnNIr0/NI8JsamqyVXaWsqiAXdPl3DQhuSunGDYuzhZ5ITzZkt0gxweYVKSRzpnlSpjPg==
 
 ts-dedent@^2.0.0:
   version "2.2.0"
