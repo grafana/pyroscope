@@ -30,7 +30,7 @@ services:
 
   go-agent:
     build:
-      context: ../golang
+      context: ../golang-push/simple
     environment:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
 

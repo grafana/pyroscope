@@ -1,4 +1,4 @@
-module github.com/pyroscope-io/pyroscope/tree/main/examples/golang
+module rideshare
 
 go 1.17
 
