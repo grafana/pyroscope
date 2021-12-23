@@ -106,7 +106,7 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	fb, err := s.profile(p)
+	fb, err := s.convert(p)
 	if err != nil {
 		s.log.WithError(err).Error("Unable to process profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -132,7 +132,7 @@ func (*server) Diff(_ http.ResponseWriter, _ *http.Request) {
 
 type converterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
 
-func (s *server) profile(p profile) (*flamebearer.FlamebearerProfile, error) {
+func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
 	fname := filepath.Join(util.DataDirectory(), p.Name)
 	ext := filepath.Ext(fname)
 	var converter converterFn

@@ -15,7 +15,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
-func jsonToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+func jsonToProfile(b []byte, _ string, _ int) (*flamebearer.FlamebearerProfile, error) {
 	var profile flamebearer.FlamebearerProfile
 	if err := json.Unmarshal(b, &profile); err != nil {
 		return nil, fmt.Errorf("unable to unmarshall JSON: %w", err)
