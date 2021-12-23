@@ -99,15 +99,14 @@ export default function Sidebar2(props: SidebarProps) {
         Comparison View
         <NavLink to={{ pathname: '/adhoc-comparison', search }} exact />
       </MenuItem>
-      {/*
       <MenuItem
         data-testid="sidebar-adhoc-comparison-diff"
         active={isRouteActive('/adhoc-comparison-diff')}
         icon={<Icon icon={faChartBar} />}
       >
         Diff View
+        <NavLink to={{ pathname: '/adhoc-comparison-diff', search }} exact />
       </MenuItem>
-       */}
     </SubMenu>
   );
 
