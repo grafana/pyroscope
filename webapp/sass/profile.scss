@@ -1,3 +1,4 @@
+@use 'sass:math';
 @use 'variables' as *;
 @use 'mixins/outline' as *;
 @use 'components/daterangepicker';
@@ -13,6 +14,10 @@
 @import 'login.scss';
 
 @import '../javascript/components/FlameGraph/FlameGraphComponent/styles.css';
+
+html {
+  width: 100vw;
+}
 
 body {
   font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
@@ -38,19 +43,23 @@ tt {
 
 .navbar {
   display: flex;
-  padding: 0 15px 0 15px;
+  //  padding: 0 15px 0 15px;
   height: 60px;
   align-items: center;
 
   // box-shadow: 0px 1px #fff;
-  .navbar-spinner-container {
-    margin: 0 10px;
-    visibility: hidden;
+}
 
-    &.visible {
-      visibility: visible;
-    }
-  }
+.logo-main {
+  background-image: url('../images/logo-v3-small.svg');
+  background-size: 36px 36px;
+  width: 36px;
+  height: 36px;
+  background-position: 0px 0px;
+  background-repeat: no-repeat;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
 }
 
 .navbar {
@@ -118,22 +127,12 @@ input {
   visibility: hidden;
 }
 
-.svg-renderer,
-.canvas-renderer {
-  padding: 0 15px;
-
-  &.double {
-    display: flex;
-    width: 50%;
-  }
-}
-
 .svg-container,
 .canvas-container {
-  border-radius: 4px;
-  // box-shadow: 0 1px 2px rgba(0,0,0,0.33);
-  background-color: #212124;
-  border: 1px solid #141414;
+  //  border-radius: 4px;
+  //  // box-shadow: 0 1px 2px rgba(0,0,0,0.33);
+  //  background-color: #212124;
+  //  border: 1px solid #141414;
 }
 
 .comparison-container {
@@ -141,10 +140,19 @@ input {
   flex-direction: row;
 }
 
-.canvas-container {
-  padding: 10px;
-  width: 100%;
+.spinner-container {
+  margin: 0 10px;
+  visibility: hidden;
+
+  &.visible {
+    visibility: visible;
+  }
 }
+
+//.canvas-container {
+//  padding: 10px;
+//  width: 100%;
+//}
 
 body {
   // this is the width of GitHub README page. so we're targeting this width so that it looks good for demo gif
@@ -184,7 +192,7 @@ body {
 $pane-width: 6px;
 
 .panes-wrapper {
-  margin: 0 -$pane-width;
+  //  margin: 0 -$pane-width;
   display: flex;
 
   &.vertical-orientation {
@@ -194,7 +202,7 @@ $pane-width: 6px;
 
   .pane {
     flex: 1;
-    margin: 0 $pane-width;
+    //  margin: 0 $pane-width;
     width: 50%;
 
     .flamegraph-header {
@@ -210,7 +218,7 @@ $pane-width: 6px;
 
     &.vertical-orientation {
       width: 100%;
-      padding: 10px;
+      //padding: 10px;
     }
 
     &.hidden {
@@ -221,7 +229,7 @@ $pane-width: 6px;
 
 .diff-instructions-wrapper {
   display: flex;
-  gap: 30px;
+  gap: 15px;
   padding-bottom: 10px;
 }
 
@@ -421,24 +429,43 @@ $pane-width: 6px;
 
 html,
 body,
-#root,
-.pyroscope-app {
+#root {
   height: 100%;
   min-height: 100%;
 }
 
-.pyroscope-app {
+// This was used for the sidebar setup
+// The trick here is to have 2 items
+// The sidebar and the app
+// And ONLY scroll the app
+// which should occuppy the rest of screen width
+// making it look like it's the body's toolbar!
+.app {
+  height: 100%;
   display: flex;
-  flex-direction: column;
 }
 
-.sidebar-wrapper {
-  display: flex;
-  flex-direction: column;
+.pyroscope-app {
+  overflow-y: auto;
+  flex-grow: 1;
+
+  // define the padding here instead of each individual component
+  // to make it easier to maintain
+  padding: 0 15px;
+}
+
+.pyroscope-app {
+  //  display: flex;
+  //  flex-direction: column;
 }
 
 .main-wrapper {
   flex: 1 0 auto;
+}
+// stretch all main-wrapper children by default
+// so that we don't have to define it for every single page
+.main-wrapper > * {
+  width: 100%;
 }
 
 .no-data-message {
@@ -498,213 +525,6 @@ body,
 
   & + .viz-switch {
     margin-left: 10px;
-  }
-}
-
-.sidebar-wrapper {
-  display: flex;
-  > div {
-    // flex: 1;
-  }
-}
-
-$sidebar-size: 54px;
-$sidebar-tooltip-height: 30px;
-$sidebar-tooltip-arrow-size: 10px;
-$logo-width: $sidebar-size * 2 / 3;
-$logo-offset: ($sidebar-size - $logo-width) / 2;
-$sidebar-tooltip-color: #777;
-
-.ReactModal__Overlay {
-  z-index: 2;
-}
-
-.sidebar {
-  width: $sidebar-size;
-  position: fixed;
-  display: flex;
-  flex-direction: column;
-  background-color: rgba(#fff, 0.13);
-  height: 100vh;
-  z-index: 1;
-
-  .logo {
-    margin: 0;
-    padding: 0;
-    font-weight: 400;
-    background-image: url('../images/logo-v3-small.svg');
-    background-size: $logo-width $logo-width;
-    background-position: $logo-offset $logo-offset;
-    background-repeat: no-repeat;
-  }
-
-  .logo::after {
-    content: '';
-    font-weight: 400;
-    padding-left: 44px;
-    font-size: 25px;
-    vertical-align: text-top;
-  }
-
-  .sidebar-space-filler {
-    flex-grow: 1;
-  }
-
-  .logo,
-  .sidebar-item {
-    width: $sidebar-size;
-    height: $sidebar-size;
-
-    cursor: pointer;
-
-    position: relative;
-
-    // border-top: 1px solid #222;
-    // border-bottom: 1px solid #222;
-    // margin-top:-1px;
-
-    .sidebar-external-link {
-      position: absolute;
-      display: none;
-      top: 0;
-      right: 2px;
-      font-size: 14px;
-      color: rgba(#fff, 0.66);
-    }
-    &:active,
-    &:hover {
-      opacity: 1;
-      .sidebar-external-link {
-        display: block;
-      }
-    }
-
-    // &.sidebar-item-external {
-    //   &::after {
-    //     content: 'ᐳ';
-    //     // display: none;
-    //     height: $sidebar-size;
-    //     line-height: $sidebar-size;
-    //     width: $sidebar-size;
-    //     position: absolute;
-    //     top: 0;
-    //     left: 0;
-    //     text-align: right;
-    //     font-size: 10px;
-    //   }
-
-    //   &:active, &:hover {
-    //     &::after {
-    //       display: block;
-    //     }
-    //   }
-    // }
-
-    a,
-    button {
-      display: block;
-      line-height: $sidebar-size;
-      height: $sidebar-size;
-      text-align: center;
-      font-size: 20px;
-      color: white;
-      opacity: 0.66;
-      border: none;
-      outline: none;
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      cursor: pointer;
-      &:active,
-      &:hover {
-        opacity: 1;
-      }
-
-      &.active-route {
-        opacity: 1;
-        color: white;
-        background-color: rgba(#000, 0.33);
-      }
-    }
-
-    &:hover {
-      background-color: rgba(#000, 0.11);
-    }
-    .sidebar-tooltip-wrapper {
-      position: absolute;
-      top: ($sidebar-size - $sidebar-tooltip-height) / 2;
-      left: $sidebar-size + 10px;
-      width: 500px;
-      height: $sidebar-tooltip-height;
-      line-height: $sidebar-tooltip-height;
-      display: none;
-    }
-
-    &:hover .sidebar-tooltip-wrapper {
-      display: block;
-    }
-
-    .sidebar-tooltip {
-      position: relative;
-      display: inline-block;
-      background-color: $sidebar-tooltip-color;
-      height: $sidebar-tooltip-height;
-      line-height: $sidebar-tooltip-height;
-      padding: 0 8px;
-      border-radius: 4px;
-      box-shadow: 0 0 10px rgba(black, 0.933);
-      &:after {
-        content: '';
-        position: absolute;
-        border: $sidebar-tooltip-arrow-size / 2 solid transparent;
-        border-right-color: $sidebar-tooltip-color;
-        left: -$sidebar-tooltip-arrow-size;
-        top: ($sidebar-tooltip-height - $sidebar-tooltip-arrow-size) / 2;
-      }
-    }
-  }
-}
-
-.main-wrapper {
-  margin-left: $sidebar-size;
-}
-
-.notifications {
-  position: fixed;
-  top: 58px;
-  right: 15px;
-
-  &.hidden {
-    display: none;
-  }
-
-  .notifications-container {
-    display: flex;
-    overflow: hidden;
-    background-color: rgb(78, 81, 90);
-    border-radius: 4px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-
-    .notification-icon {
-      padding: 15px;
-      background-color: #c43028bb;
-    }
-
-    .notification-body {
-      padding: 15px;
-      max-width: 30vw;
-    }
-    .notification-close-btn {
-      text-align: center;
-      font-weight: bold;
-      cursor: pointer;
-      background-color: rgba(0, 0, 0, 0.1);
-      padding: 15px;
-      &::before {
-        content: '×';
-        display: inline;
-      }
-    }
   }
 }
 

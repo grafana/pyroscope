@@ -3,7 +3,7 @@
 package storage
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -20,7 +20,7 @@ func getCgroupMemLimit() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return 0, err
 	}

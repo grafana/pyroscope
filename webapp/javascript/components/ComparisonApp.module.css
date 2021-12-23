@@ -1,0 +1,12 @@
+.comparisonPane {
+  flex: 1;
+  width: 50%;
+
+  margin: 0 15px;
+}
+.comparisonPane:first-child {
+  margin-left: 0;
+}
+.comparisonPane:last-child {
+  margin-right: 0;
+}

@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -47,7 +47,7 @@ var _ = Describe("analytics", func() {
 					timestamps := []time.Time{}
 					myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 						timestamps = append(timestamps, time.Now())
-						bytes, err := ioutil.ReadAll(r.Body)
+						bytes, err := io.ReadAll(r.Body)
 						Expect(err).ToNot(HaveOccurred())
 
 						v := make(map[string]interface{})

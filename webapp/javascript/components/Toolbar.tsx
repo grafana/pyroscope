@@ -53,6 +53,10 @@ const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
 
 interface ProfileHeaderProps {
   view: 'both' | 'icicle' | 'table';
+  // what's being displayed
+  // this is needed since the toolbar may show different items depending what is being displayed
+  display: 'flamegraph' | 'table' | 'both';
+
   viewDiff?: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
 
@@ -83,6 +87,7 @@ const Toolbar = React.memo(
     fitMode,
     updateView,
     updateViewDiff,
+    display,
 
     selectedNode,
     onFocusOnSubtree,
@@ -118,11 +123,13 @@ const Toolbar = React.memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
-          <ViewSection
-            showMode={showMode}
-            view={view}
-            updateView={updateView}
-          />
+          {display === 'both' && (
+            <ViewSection
+              showMode={showMode}
+              view={view}
+              updateView={updateView}
+            />
+          )}
         </div>
       </div>
     );

@@ -1,3 +1,74 @@
+## [0.5.1](https://github.com/pyroscope-io/pyroscope/compare/v0.5.0...v0.5.1) (2021-12-16)
+
+
+### Bug Fixes
+
+* **frontend:** fixes Timeline component by pinning dependencies to a specific version ([#619](https://github.com/pyroscope-io/pyroscope/issues/619)) ([0324c7c](https://github.com/pyroscope-io/pyroscope/commit/0324c7c202844f21e9c623255a3e476b2e8fd900))
+
+
+### Features
+
+* **frontend:** allow to export flamegraph json ([#616](https://github.com/pyroscope-io/pyroscope/issues/616)) ([3435a21](https://github.com/pyroscope-io/pyroscope/commit/3435a212aa659d5240f84702926833d351a9d44f))
+
+
+
+# [0.5.0](https://github.com/pyroscope-io/pyroscope/compare/v0.4.1...v0.5.0) (2021-12-16)
+
+
+### Bug Fixes
+
+* assets handling when using base-url argument ([#611](https://github.com/pyroscope-io/pyroscope/issues/611)) ([97a6002](https://github.com/pyroscope-io/pyroscope/commit/97a60023e3e9d5b9fa705eacf0900386ee8367c7))
+* avoid converting args to double dash and disable flag parsing for adhoc. ([#609](https://github.com/pyroscope-io/pyroscope/issues/609)) ([f41906d](https://github.com/pyroscope-io/pyroscope/commit/f41906dd23e68de8c861b28b8f40012c6a512901))
+* **integrations:** start upstream in clib. ([#602](https://github.com/pyroscope-io/pyroscope/issues/602)) ([0be03c3](https://github.com/pyroscope-io/pyroscope/commit/0be03c3305ffe2723dbbf3a7e59631df09870c07))
+
+
+### Features
+
+* adhoc comparison UI ([#580](https://github.com/pyroscope-io/pyroscope/issues/580)) ([3272249](https://github.com/pyroscope-io/pyroscope/commit/3272249cfbe308e4b3b2e7ccaa0f446b0ea942e4))
+* **frontend:** new sidebar ([#581](https://github.com/pyroscope-io/pyroscope/issues/581)) ([f373706](https://github.com/pyroscope-io/pyroscope/commit/f37370680047055f6d6be97eeb611873a9b44581))
+
+
+
+## [0.4.1](https://github.com/pyroscope-io/pyroscope/compare/v0.4.0...v0.4.1) (2021-12-08)
+
+
+### Bug Fixes
+
+* trigger retention task when no levels are configured ([#588](https://github.com/pyroscope-io/pyroscope/issues/588)) ([141d734](https://github.com/pyroscope-io/pyroscope/commit/141d73406f5482ee14f999ee7721403d3e0d3d99))
+
+
+
+# [0.4.0](https://github.com/pyroscope-io/pyroscope/compare/v0.3.1...v0.4.0) (2021-12-08)
+
+
+### Bug Fixes
+
+* read default config file when it's present ([#585](https://github.com/pyroscope-io/pyroscope/issues/585)) ([7061292](https://github.com/pyroscope-io/pyroscope/commit/7061292ea5cdee9de419e6a99b34f6db2f1eadb2))
+
+
+### Features
+
+* makes admin command available (GA status) ([8eb788f](https://github.com/pyroscope-io/pyroscope/commit/8eb788f4eb37f08f79d5ba83a6789f22b3dc61f1))
+
+
+
+## [0.3.1](https://github.com/pyroscope-io/pyroscope/compare/v0.3.0...v0.3.1) (2021-12-01)
+
+
+### Bug Fixes
+
+* fixes pprof->trie conversion bug where some samples were dropped ([#575](https://github.com/pyroscope-io/pyroscope/issues/575)) ([cb33851](https://github.com/pyroscope-io/pyroscope/commit/cb33851e55337c0c049d291bf29de8eec860229a))
+* generate trie from pprof at scraping correctly ([#577](https://github.com/pyroscope-io/pyroscope/issues/577)) ([bc704f6](https://github.com/pyroscope-io/pyroscope/commit/bc704f6c64fb2e274f7b425b03ea7bd5ef72fe60))
+* Prevent byte buffer pool copy. ([#570](https://github.com/pyroscope-io/pyroscope/issues/570)) ([3d1122e](https://github.com/pyroscope-io/pyroscope/commit/3d1122e0ac4a02bc2e78d8e0aac04e34337f4a25))
+
+
+### Features
+
+* Add adhoc push mode support in clib. ([#576](https://github.com/pyroscope-io/pyroscope/issues/576)) ([b63079f](https://github.com/pyroscope-io/pyroscope/commit/b63079f7f33e0aefde3bf8a9e122e436696bef63))
+* support for app deletion with tags ([#569](https://github.com/pyroscope-io/pyroscope/issues/569)) ([7eac3d3](https://github.com/pyroscope-io/pyroscope/commit/7eac3d31620926d6ec5825de6a5551cf57596f50))
+
+
+
 # [0.3.0](https://github.com/pyroscope-io/pyroscope/compare/v0.2.5...v0.3.0) (2021-11-29)
 
 

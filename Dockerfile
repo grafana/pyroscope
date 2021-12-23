@@ -47,7 +47,7 @@ RUN make build-phpspy-dependencies
 # | (_| \__ \__ \  __/ |_\__ \
 #  \__,_|___/___/\___|\__|___/
 
-FROM node:14.15.1-alpine3.12 as js-builder
+FROM node:14.17.6-alpine3.12 as js-builder
 
 RUN apk add --no-cache make
 
@@ -95,6 +95,7 @@ COPY Makefile ./
 COPY tools ./tools
 COPY go.mod go.sum ./
 RUN make install-dev-tools
+RUN make install-go-dependencies
 
 COPY pkg ./pkg
 COPY cmd ./cmd
@@ -173,6 +174,9 @@ RUN mkdir -p \
 
 COPY scripts/packages/server.yml "/etc/pyroscope/server.yml"
 COPY --from=go-builder --chmod=0777 /opt/pyroscope/bin/pyroscope /usr/bin/pyroscope
+
+RUN apk add bash-completion
+RUN pyroscope completion bash > /usr/share/bash-completion/completions/pyroscope
 
 USER pyroscope
 EXPOSE 4040/tcp

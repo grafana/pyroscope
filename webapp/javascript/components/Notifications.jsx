@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { connect } from 'react-redux';
 import 'react-dom';
 
-import { withShortcut } from 'react-keybind';
 import Modal from 'react-modal';
 import clsx from 'clsx';
 

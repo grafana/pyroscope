@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -65,7 +64,7 @@ func (ctrl *Controller) logoutHandler() http.HandlerFunc {
 		switch r.Method {
 		case http.MethodPost, http.MethodGet:
 			invalidateCookie(w, jwtCookieName)
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
 		default:
 			ctrl.writeInvalidMethodError(w)
 		}
@@ -95,7 +94,7 @@ func (ctrl *Controller) oauthLoginHandler(oh oauthHandler) http.HandlerFunc {
 
 // Instead of this handler that just redirects, Javascript code can be added to load the state and send it to backend
 // this is done so that the state cookie would be send back from browser
-func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
+func (ctrl *Controller) callbackHandler(redirectPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tmpl, err := ctrl.getTemplate("/redirect.html")
 		if err != nil {
@@ -103,8 +102,8 @@ func (ctrl *Controller) callbackHandler(redirectURL string) http.HandlerFunc {
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
-			"RedirectURL": redirectURL + "?" + r.URL.RawQuery,
-			"BaseURL":     ctrl.config.BaseURL,
+			"RedirectPath": redirectPath + "?" + r.URL.RawQuery,
+			"BaseURL":      ctrl.config.BaseURL,
 		})
 	}
 }
@@ -143,7 +142,7 @@ func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Reque
 		ctrl.log.Error(msg)
 	}
 	invalidateCookie(w, stateCookieName)
-	http.Redirect(w, r, "/forbidden", http.StatusTemporaryRedirect)
+	ctrl.redirectPreservingBaseURL(w, r, "/forbidden", http.StatusTemporaryRedirect)
 }
 
 func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFunc {
@@ -207,6 +206,15 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 		} else if path == "/comparison-diff" {
 			ctrl.statsInc("diff")
 			ctrl.renderIndexPage(rw, r)
+		} else if path == "/adhoc-single" {
+			ctrl.statsInc("adhoc-index")
+			ctrl.renderIndexPage(rw, r)
+		} else if path == "/adhoc-comparison" {
+			ctrl.statsInc("adhoc-comparison")
+			ctrl.renderIndexPage(rw, r)
+		} else if path == "/adhoc-comparison-diff" {
+			ctrl.statsInc("adhoc-comparison-diff")
+			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)
 		}
@@ -223,7 +231,7 @@ func (ctrl *Controller) getTemplate(path string) (*template.Template, error) {
 		return nil, fmt.Errorf("could not find file %s: %q", path, err)
 	}
 
-	b, err := ioutil.ReadAll(f)
+	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("could not read file %s: %q", path, err)
 	}
@@ -256,7 +264,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
 	if extraMetadataPath != "" {
-		b, err = ioutil.ReadFile(extraMetadataPath)
+		b, err = os.ReadFile(extraMetadataPath)
 		if err != nil {
 			logrus.Errorf("failed to read file at %s", extraMetadataPath)
 		}

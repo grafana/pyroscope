@@ -57,6 +57,7 @@ require (
 	github.com/onsi/gomega v1.12.0
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.32.1
+	github.com/pyroscope-io/client v0.0.0-20211206204731-3fd0a4b8239c
 	github.com/pyroscope-io/dotnetdiag v1.2.1
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rlmcpherson/s3gof3r v0.5.0

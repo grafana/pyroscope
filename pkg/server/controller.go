@@ -9,11 +9,14 @@ import (
 	golog "log"
 	"net/http"
 	"net/http/pprof"
+	"net/url"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/golang-jwt/jwt"
+	gmux "github.com/gorilla/mux"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -22,6 +25,7 @@ import (
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
 
+	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
@@ -57,6 +61,9 @@ type Controller struct {
 	// Exported metrics.
 	exportedMetrics *prometheus.Registry
 	exporter        storage.MetricsExporter
+
+	// Adhoc mode
+	adhoc adhocserver.Server
 }
 
 type Config struct {
@@ -71,6 +78,8 @@ type Config struct {
 	// Exported metrics registry and exported.
 	ExportedMetricsRegistry *prometheus.Registry
 	storage.MetricsExporter
+
+	Adhoc adhocserver.Server
 }
 
 type Notifier interface {
@@ -81,6 +90,13 @@ type Notifier interface {
 }
 
 func New(c Config) (*Controller, error) {
+	if c.Configuration.BaseURL != "" {
+		_, err := url.Parse(c.Configuration.BaseURL)
+		if err != nil {
+			return nil, fmt.Errorf("BaseURL is invalid: %w", err)
+		}
+	}
+
 	ctrl := Controller{
 		config:   c.Configuration,
 		log:      c.Logger,
@@ -97,6 +113,8 @@ func New(c Config) (*Controller, error) {
 				Registry: c.MetricsRegisterer,
 			}),
 		}),
+
+		adhoc: c.Adhoc,
 	}
 
 	var err error
@@ -116,13 +134,8 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 	return hll
 }
 
-func (ctrl *Controller) assetsFilesHandler(w http.ResponseWriter, r *http.Request) {
-	fs := http.FileServer(ctrl.dir)
-	fs.ServeHTTP(w, r)
-}
-
 func (ctrl *Controller) mux() (http.Handler, error) {
-	mux := http.NewServeMux()
+	r := gmux.NewRouter()
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()
@@ -135,22 +148,29 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		ctrl.statsInc("ingest:" + pi.SpyName)
 		ctrl.appStats.Add(hashString(pi.Key.AppName()))
 	})
+
 	insecureRoutes = append(insecureRoutes, []route{
 		{"/ingest", ingestHandler.ServeHTTP},
 		{"/forbidden", ctrl.forbiddenHandler()},
-		{"/assets/", ctrl.assetsFilesHandler},
+		{"/assets/", r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP},
 	}...)
-	ctrl.addRoutes(mux, insecureRoutes, ctrl.drainMiddleware)
+	ctrl.addRoutes(r, insecureRoutes, ctrl.drainMiddleware)
 
 	// Protected routes:
 	protectedRoutes := []route{
 		{"/", ctrl.indexHandler()},
+		{"/comparison", ctrl.indexHandler()},
+		{"/comparison-diff", ctrl.indexHandler()},
+		{"/adhoc-single", ctrl.indexHandler()},
+		{"/adhoc-comparison", ctrl.indexHandler()},
+		{"/adhoc-comparison-diff", ctrl.indexHandler()},
 		{"/render", ctrl.renderHandler},
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
 	}
-	ctrl.addRoutes(mux, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
+	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
@@ -167,14 +187,14 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		}...)
 	}
 
-	ctrl.addRoutes(mux, diagnosticSecureRoutes, ctrl.authMiddleware)
-	ctrl.addRoutes(mux, []route{
+	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware)
+	ctrl.addRoutes(r, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
 		{"/healthz", ctrl.healthz},
 	})
 
-	return mux, nil
+	return r, nil
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {
@@ -190,7 +210,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Google.Enabled {
-		googleHandler, err := newGoogleHandler(ctrl.config.Auth.Google, ctrl.log)
+		googleHandler, err := newGoogleHandler(ctrl.config.Auth.Google, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +223,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Github.Enabled {
-		githubHandler, err := newGithubHandler(ctrl.config.Auth.Github, ctrl.log)
+		githubHandler, err := newGithubHandler(ctrl.config.Auth.Github, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
@@ -216,7 +236,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Gitlab.Enabled {
-		gitlabHandler, err := newGitlabHandler(ctrl.config.Auth.Gitlab, ctrl.log)
+		gitlabHandler, err := newGitlabHandler(ctrl.config.Auth.Gitlab, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
@@ -310,6 +330,21 @@ func (ctrl *Controller) isAuthRequired() bool {
 	return ctrl.config.Auth.Google.Enabled || ctrl.config.Auth.Github.Enabled || ctrl.config.Auth.Gitlab.Enabled
 }
 
+func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http.Request, urlStr string, status int) {
+	if ctrl.config.BaseURL != "" {
+		// we're modifying the URL here so I'm not memoizing it and instead parsing it all over again to create a new object
+		u, err := url.Parse(ctrl.config.BaseURL)
+		if err != nil {
+			// TODO: technically this should never happen because NewController would return an error
+			logrus.Error("base URL is invalid, some redirects might not work as expected")
+		} else {
+			u.Path = filepath.Join(u.Path, urlStr)
+			urlStr = u.String()
+		}
+	}
+	http.Redirect(w, r, urlStr, status)
+}
+
 func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !ctrl.isAuthRequired() {
@@ -324,7 +359,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				"url":  r.URL.String(),
 				"host": r.Header.Get("Host"),
 			}).Debug("missing jwt cookie")
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 
@@ -337,7 +372,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		if err != nil {
 			ctrl.log.WithError(err).Error("invalid jwt token")
-			http.Redirect(w, r, "/login", http.StatusTemporaryRedirect)
+			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
 			return
 		}
 

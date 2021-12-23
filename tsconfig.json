@@ -3,14 +3,16 @@
     "baseUrl": ".",
     "jsx": "react",
     "lib": ["dom", "esnext", "ES2015.Iterable"],
-    "module": "esnext",
+    "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
     "paths": {
       "@utils/*": ["./webapp/javascript/util/*"],
       "@models/*": ["./webapp/javascript/models/*"],
-      "@ui/*": ["./webapp/javascript/ui/*"]
+      "@ui/*": ["./webapp/javascript/ui/*"],
+      "@pyroscope/redux/*": ["./webapp/javascript/redux/*"]
     },
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },

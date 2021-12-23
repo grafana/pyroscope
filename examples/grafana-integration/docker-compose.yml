@@ -31,6 +31,8 @@ services:
   go-agent:
     build:
       context: ../golang
+    environment:
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
 
 volumes:
   data-prometheus:

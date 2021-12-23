@@ -26,7 +26,7 @@ function Header(props) {
         </div>
         <div className="navbar-space-filler" />
         <div
-          className={classNames('navbar-spinner-container', {
+          className={classNames('spinner-container', {
             visible: isJSONLoading,
           })}
         >
@@ -42,4 +42,8 @@ function Header(props) {
   );
 }
 
-export default connect((x) => x, { fetchNames })(Header);
+const mapStateToProps = (state) => ({
+  ...state.root,
+});
+
+export default connect(mapStateToProps, { fetchNames })(Header);

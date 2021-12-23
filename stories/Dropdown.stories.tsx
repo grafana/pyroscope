@@ -1,8 +1,7 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
-import Dropdown from '@ui/Dropdown';
-import { MenuHeader, MenuItem, SubMenu } from '@szhsin/react-menu';
+import Dropdown, { MenuItem, SubMenu } from '@ui/Dropdown';
 
 const Template: ComponentStory<typeof Dropdown> = (args) => (
   <DropdownSelect {...args} />
@@ -35,6 +34,25 @@ const DropdownSelect = (args) => {
       <SubMenu label="Asia">
         <MenuItem value="Japan">Japan</MenuItem>
         <MenuItem value="China">China</MenuItem>
+      </SubMenu>
+    </Dropdown>
+  );
+};
+
+export const DropdownWithLotsOfOptions = (args) => {
+  const times = 100;
+
+  // indirection just to shut up eslint
+  const getKey = (i: number) => i;
+
+  return (
+    <Dropdown {...args} label="Foobar">
+      <SubMenu label="foobar" overflow="auto" position="anchor">
+        {new Array(times).fill(0).map((a, i) => (
+          <MenuItem key={getKey(i)} value="foo">
+            foo
+          </MenuItem>
+        ))}
       </SubMenu>
     </Dropdown>
   );

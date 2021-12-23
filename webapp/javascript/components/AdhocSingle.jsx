@@ -1,57 +1,79 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import { connect } from 'react-redux';
-import Dropzone from 'react-dropzone';
 import 'react-dom';
 
 import { bindActionCreators } from 'redux';
-import FlameGraphRenderer from './FlameGraph';
-import Header from './Header';
-import Footer from './Footer';
-import { buildRenderURL } from '../util/updateRequests';
-import {
-  fetchNames,
-  fetchPyrescopeAppData,
-  abortTimelineRequest,
-} from '../redux/actions';
+import Box from '@ui/Box';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+import Spinner from 'react-svg-spinner';
+import classNames from 'classnames';
+import FileList from './FileList';
 import FileUploader from './FileUploader';
-import { deltaDiffWrapper } from '../util/flamebearer';
+import FlameGraphRenderer from './FlameGraph';
+import Footer from './Footer';
+
+import {
+  fetchAdhocProfiles,
+  fetchAdhocProfile,
+  setAdhocFile,
+  setAdhocProfile,
+} from '../redux/actions';
+import 'react-tabs/style/react-tabs.css';
+import adhocStyles from './Adhoc.module.scss';
 
 function AdhocSingle(props) {
-  const { actions, renderURL, single } = props;
-  const prevPropsRef = useRef();
-  const [flamebearer, setFlamebearer] = useState();
+  const { actions, file, profile, flamebearer, isProfileLoading } = props;
+  const { setAdhocFile, setAdhocProfile } = actions;
 
   useEffect(() => {
-    if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchPyrescopeAppData(renderURL);
+    actions.fetchAdhocProfiles();
+    return actions.abortAdhocFetchProfiles;
+  }, []);
+
+  useEffect(() => {
+    if (profile) {
+      actions.fetchAdhocProfile(profile);
     }
-
-    return actions.abortTimelineRequest;
-  }, [renderURL]);
-
-  const onFileUpload = (data) => {
-    if (!data) {
-      setFlamebearer(null);
-      return;
-    }
-
-    const { flamebearer } = data;
-
-    const calculatedLevels = deltaDiffWrapper(
-      flamebearer.format,
-      flamebearer.levels
-    );
-
-    flamebearer.levels = calculatedLevels;
-    setFlamebearer(flamebearer);
-  };
+    return actions.abortAdhocFetchProfile;
+  }, [profile]);
 
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
-        <Header />
-        <FileUploader onUpload={onFileUpload} />
-        <FlameGraphRenderer flamebearer={flamebearer} viewType="single" />
+        <Box>
+          <Tabs>
+            <TabList>
+              <Tab>Pyroscope data</Tab>
+              <Tab>Upload</Tab>
+            </TabList>
+            <TabPanel>
+              <FileList
+                className={adhocStyles.tabPanel}
+                profile={profile}
+                setProfile={setAdhocProfile}
+              />
+            </TabPanel>
+            <TabPanel>
+              <FileUploader
+                className={adhocStyles.tabPanel}
+                file={file}
+                setFile={setAdhocFile}
+              />
+            </TabPanel>
+          </Tabs>
+          {isProfileLoading && (
+            <div className={classNames('spinner-container')}>
+              <Spinner color="rgba(255,255,255,0.6)" size="20px" />
+            </div>
+          )}
+          {!isProfileLoading && (
+            <FlameGraphRenderer
+              flamebearer={flamebearer}
+              viewType="single"
+              display="both"
+            />
+          )}
+        </Box>
       </div>
       <Footer />
     </div>
@@ -59,16 +81,20 @@ function AdhocSingle(props) {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
-  renderURL: buildRenderURL(state),
+  ...state.root,
+  file: state.root.adhocSingle.file,
+  flamebearer: state.root.adhocSingle.flamebearer,
+  profile: state.root.adhocSingle.profile,
+  isProfileLoading: state.root.adhocSingle.isProfileLoading,
 });
 
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchPyrescopeAppData,
-      fetchNames,
-      abortTimelineRequest,
+      fetchAdhocProfiles,
+      fetchAdhocProfile,
+      setAdhocFile,
+      setAdhocProfile,
     },
     dispatch
   ),

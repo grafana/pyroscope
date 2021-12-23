@@ -2,6 +2,7 @@ package command
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -59,7 +60,7 @@ func newAdminAppGetCmd(cfg *config.AdminAppGet) *cobra.Command {
 		Short: "get the list of all apps",
 		Long:  "get the list of all apps",
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
-			cli, err := admin.NewCLI(cfg.SocketPath)
+			cli, err := admin.NewCLI(cfg.SocketPath, cfg.Timeout)
 			if err != nil {
 				return err
 			}
@@ -85,7 +86,7 @@ func newAdminAppDeleteCmd(cfg *config.AdminAppDelete) *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			cli, err := admin.NewCLI(cfg.SocketPath)
+			cli, err := admin.NewCLI(cfg.SocketPath, time.Second*2)
 			if err != nil {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
@@ -98,7 +99,7 @@ func newAdminAppDeleteCmd(cfg *config.AdminAppDelete) *cobra.Command {
 			return appNames, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, arg []string) error {
-			cli, err := admin.NewCLI(cfg.SocketPath)
+			cli, err := admin.NewCLI(cfg.SocketPath, cfg.Timeout)
 			if err != nil {
 				return err
 			}

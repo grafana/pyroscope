@@ -60,6 +60,7 @@ describe('ProfileHeader', () => {
     const { asFragment, rerender } = render(
       <Toolbar
         view="both"
+        display="both"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
@@ -80,6 +81,7 @@ describe('ProfileHeader', () => {
     rerender(
       <Toolbar
         view="both"
+        display="both"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
@@ -109,6 +111,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -129,6 +132,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty
           handleSearchChange={() => {}}
@@ -154,6 +158,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty
           handleSearchChange={() => {}}
@@ -178,6 +183,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty
           handleSearchChange={() => {}}
@@ -202,6 +208,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty
           handleSearchChange={onChange}
@@ -226,6 +233,7 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
+        display="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -270,6 +278,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -291,6 +300,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -315,6 +325,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -336,6 +347,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -360,6 +372,7 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
+        display="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -377,6 +390,7 @@ describe('ProfileHeader', () => {
       render(
         <Toolbar
           view="both"
+          display="both"
           handleSearchChange={() => {}}
           reset={() => {}}
           updateFitMode={() => {}}
@@ -459,6 +473,7 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
+        display="both"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}

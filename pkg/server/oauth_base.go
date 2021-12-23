@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -26,15 +27,13 @@ type oauthBase struct {
 	log           *logrus.Logger
 	callbackRoute string
 	redirectRoute string
+	baseURL       string
 }
 
 func (o oauthBase) getCallbackURL(host, configCallbackURL string, hasTLS bool) (string, error) {
+	// I don't think this is ever true... but not super sure
 	if configCallbackURL != "" {
 		return configCallbackURL, nil
-	}
-
-	if host == "" {
-		return "", errors.New("host is empty")
 	}
 
 	schema := "http"
@@ -42,7 +41,26 @@ func (o oauthBase) getCallbackURL(host, configCallbackURL string, hasTLS bool) (
 		schema = "https"
 	}
 
-	return fmt.Sprintf("%v://%v/%v", schema, host, o.callbackRoute), nil
+	if o.baseURL != "" {
+		u, err := url.Parse(o.baseURL)
+		if err != nil {
+			return "", err
+		}
+		if u.Scheme == "" {
+			u.Scheme = schema
+		}
+		if u.Host == "" {
+			u.Host = host
+		}
+		u.Path = filepath.Join(u.Path, o.callbackRoute)
+		return u.String(), nil
+	}
+
+	if host == "" {
+		return "", errors.New("host is empty")
+	}
+
+	return fmt.Sprintf("%v://%v%v", schema, host, o.callbackRoute), nil
 }
 
 func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (string, error) {

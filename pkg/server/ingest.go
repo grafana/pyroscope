@@ -135,15 +135,20 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					// copy of pi
 					input := *pi
 
-					sk, _ := segment.ParseKey(trieKey)
-					for k, v := range sk.Labels() {
-						input.Key.Add(k, v)
-					}
 					suffix := sampleTypeStr
 					if t.DisplayName != "" {
 						suffix = t.DisplayName
 					}
-					input.Key = ensureKeyHasSuffix(pi.Key, "."+suffix)
+					// this also clones the key which is important
+					input.Key = ensureKeyHasSuffix(input.Key, "."+suffix)
+
+					sk, _ := segment.ParseKey(trieKey)
+					for k, v := range sk.Labels() {
+						if k != "__name__" {
+							input.Key.Add(k, v)
+						}
+					}
+
 					input.Val = tree.New()
 					resTrie := trie
 					if t.Cumulative {
@@ -282,7 +287,7 @@ func pprofToTries(originalAppName, sampleTypeStr string, pprof *tree.Profile) ma
 		if _, ok := tries[appName]; !ok {
 			tries[appName] = transporttrie.New()
 		}
-		tries[appName].Insert(name, uint64(val))
+		tries[appName].Insert(name, uint64(val), true)
 	})
 
 	return tries

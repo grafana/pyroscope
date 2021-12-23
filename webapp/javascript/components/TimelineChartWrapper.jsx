@@ -5,6 +5,7 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import TimelineChart from './TimelineChart';
 import { formatAsOBject } from '../util/formatDate';
+import styles from './TimelineChartWrapper.module.css';
 class TimelineChartWrapper extends React.Component {
   constructor() {
     super();
@@ -27,10 +28,6 @@ class TimelineChartWrapper extends React.Component {
         },
         grid: {
           borderWidth: 1,
-          margin: {
-            left: 16,
-            right: 16,
-          },
         },
         yaxis: {
           show: false,
@@ -166,6 +163,8 @@ class TimelineChartWrapper extends React.Component {
 
     return (
       <TimelineChart
+        className={styles.wrapper}
+        data-testid={this.props['data-testid']}
         id={this.props.id}
         options={this.state.flotOptions}
         viewSide={this.props.viewSide}
@@ -178,7 +177,7 @@ class TimelineChartWrapper extends React.Component {
 }
 
 const mapStateToProps = (state) => ({
-  ...state,
+  ...state.root,
 });
 
 const mapDispatchToProps = (dispatch) => ({
