@@ -4,10 +4,11 @@ import (
 	"net/http"
 	"os"
 
+	"rideshare/bike"
+	"rideshare/car"
+	"rideshare/scooter"
+
 	"github.com/pyroscope-io/client/pyroscope"
-	"github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push/rideshare/bike"
-	"github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push/rideshare/car"
-	"github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push/rideshare/scooter"
 )
 
 func bikeRoute(w http.ResponseWriter, r *http.Request) {
@@ -49,5 +50,8 @@ func main() {
 	http.HandleFunc("/bike", bikeRoute)
 	http.HandleFunc("/scooter", scooterRoute)
 	http.HandleFunc("/car", carRoute)
-	http.ListenAndServe(":5000", nil)
+	err := http.ListenAndServe(":5000", nil)
+	if err != nil {
+		panic(err)
+	}
 }
