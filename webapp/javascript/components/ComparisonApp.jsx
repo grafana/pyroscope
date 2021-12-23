@@ -61,6 +61,7 @@ function ComparisonApp(props) {
               data-testid="flamegraph-renderer-left"
               display="both"
               rawFlamegraph={rawLeft}
+              exportURL={leftRenderURL}
             >
               <InstructionText viewType="double" viewSide="left" />
               <TimelineChartWrapper
@@ -80,6 +81,7 @@ function ComparisonApp(props) {
               data-testid="flamegraph-renderer-right"
               display="both"
               rawFlamegraph={rawRight}
+              exportURL={rightRenderURL}
             >
               <InstructionText viewType="double" viewSide="right" />
               <TimelineChartWrapper

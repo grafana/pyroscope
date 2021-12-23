@@ -42,6 +42,7 @@ function PyroscopeApp(props) {
             viewType="single"
             display="both"
             rawFlamegraph={raw}
+            exportURL={renderURL}
           />
         </Box>
       </div>

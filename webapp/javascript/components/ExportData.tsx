@@ -9,9 +9,11 @@ import { Flamebearer } from '@models/flamebearer';
 
 interface ExportDataProps {
   exportFlamebearer?: Flamebearer;
+  exportURL?: string;
 }
+
 function ExportData(props: ExportDataProps) {
-  const { exportFlamebearer } = props;
+  const { exportFlamebearer, exportURL } = props;
   const [toggleMenu, setToggleMenu] = useState(false);
 
   const formattedDate = () => {
@@ -91,6 +93,22 @@ function ExportData(props: ExportDataProps) {
             >
               JSON
             </button>
+          )}
+          {exportURL && (
+            <a
+              className="dropdown-menu-item"
+              href={`${exportURL}&format=pprof`}
+            >
+              PPROF
+            </a>
+          )}
+          {exportURL && (
+            <a
+              className="dropdown-menu-item"
+              href={`${exportURL}&format=collapsed`}
+            >
+              TEXT
+            </a>
           )}
         </div>
       </div>

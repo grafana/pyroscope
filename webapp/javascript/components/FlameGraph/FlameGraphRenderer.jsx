@@ -243,7 +243,12 @@ class FlameGraphRenderer extends React.Component {
         return <ExportData />;
       }
 
-      return <ExportData exportFlamebearer={this.props.rawFlamegraph} />;
+      return (
+        <ExportData
+          exportFlamebearer={this.props.rawFlamegraph}
+          exportURL={this.props.exportURL}
+        />
+      );
     };
 
     const flameGraphPane =
