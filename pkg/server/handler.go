@@ -19,21 +19,48 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
-func (ctrl *Controller) loginHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := ctrl.getTemplate("/login.html")
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render login page")
-			return
-		}
-		mustExecute(tmpl, w, map[string]interface{}{
-			"BasicAuth":     true, // TODO(kolesnikovae): use config.
-			"GoogleEnabled": ctrl.config.Auth.Google.Enabled,
-			"GithubEnabled": ctrl.config.Auth.Github.Enabled,
-			"GitlabEnabled": ctrl.config.Auth.Gitlab.Enabled,
-			"BaseURL":       ctrl.config.BaseURL,
-		})
+func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		ctrl.loginViewHandler(w, r)
+	case http.MethodPost:
+		ctrl.loginPostHandler(w, r)
+	default:
+		ctrl.writeInvalidMethodError(w)
+		return
 	}
+}
+
+func (ctrl *Controller) loginViewHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := ctrl.getTemplate("/login.html")
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "could not render login page")
+		return
+	}
+	mustExecute(tmpl, w, map[string]interface{}{
+		"SignupEnabled": ctrl.config.Auth.SignupEnabled,
+		"BasicEnabled":  ctrl.config.Auth.Basic.Enabled,
+		"GoogleEnabled": ctrl.config.Auth.Google.Enabled,
+		"GithubEnabled": ctrl.config.Auth.Github.Enabled,
+		"GitlabEnabled": ctrl.config.Auth.Gitlab.Enabled,
+		"BaseURL":       ctrl.config.BaseURL,
+	})
+}
+
+func (ctrl *Controller) loginPostHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO(kolesnikovae):
+	//  Retrieve user credentials from request
+	//  Retrieve user by email or name
+	//  Verify credentials
+	//  Generate and inject token
+	//  Redirect to index page
+}
+
+func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO(kolesnikovae):
+	//  Insert user from request
+	//  Generate and inject token
+	//  Redirect to index page
 }
 
 func createCookie(w http.ResponseWriter, name, value string) {
@@ -59,15 +86,13 @@ func invalidateCookie(w http.ResponseWriter, name string) {
 	})
 }
 
-func (ctrl *Controller) logoutHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost, http.MethodGet:
-			invalidateCookie(w, jwtCookieName)
-			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-		default:
-			ctrl.writeInvalidMethodError(w)
-		}
+func (ctrl *Controller) logoutHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost, http.MethodGet:
+		invalidateCookie(w, jwtCookieName)
+		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+	default:
+		ctrl.writeInvalidMethodError(w)
 	}
 }
 
@@ -121,12 +146,11 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	}
 }
 
-func (ctrl *Controller) newJWTToken(name string) (string, error) {
-	claims := jwt.MapClaims{
-		"iat":  time.Now().Unix(),
-		"name": name,
+func (ctrl *Controller) newJWTToken(claims jwt.MapClaims) (string, error) {
+	if claims == nil {
+		claims = jwt.MapClaims{}
 	}
-
+	claims["iat"] = time.Now().Unix()
 	if ctrl.config.Auth.LoginMaximumLifetimeDays > 0 {
 		claims["exp"] = time.Now().Add(time.Hour * 24 * time.Duration(ctrl.config.Auth.LoginMaximumLifetimeDays)).Unix()
 	}
@@ -163,22 +187,28 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 			return
 		}
 
-		name, err := oh.userAuth(client)
+		extUser, err := oh.userAuth(client)
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "failed to get user auth info", err)
 		}
+		if extUser.Name == "" {
+			extUser.Name = extUser.Email
+		}
 
-		tk, err := ctrl.newJWTToken(name)
+		tk, err := ctrl.newJWTToken(jwt.MapClaims{
+			"name":  extUser.Name,
+			"email": extUser.Email,
+		})
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "signing jwt failed", err)
 			return
 		}
 
+		// TODO(kolesnikovae): Upsert user.
+
 		// delete state cookie and add jwt cookie
 		invalidateCookie(w, stateCookieName)
 		createCookie(w, jwtCookieName, tk)
-
-		// TODO: create user if sign up is allowed.
 
 		tmpl, err := ctrl.getTemplate("/welcome.html")
 		if err != nil {
@@ -187,7 +217,8 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		}
 
 		mustExecute(tmpl, w, map[string]interface{}{
-			"Name":    name,
+			"Name":    extUser.Name,
+			"Email":   extUser.Email,
 			"BaseURL": ctrl.config.BaseURL,
 		})
 	}

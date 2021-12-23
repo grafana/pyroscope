@@ -39,7 +39,7 @@ type User struct {
 
 type CreateUserParams struct {
 	Name     string
-	Email    string
+	Email    string // TODO(kolesnikovae): Make optional.
 	FullName *string
 	Password string
 	IsAdmin  bool
