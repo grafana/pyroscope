@@ -5,9 +5,9 @@ import (
 	"os"
 
 	"github.com/pyroscope-io/client/pyroscope"
-	"github.com/tree/main/examples/golang-push/rideshare/bike"
-	"github.com/tree/main/examples/golang-push/rideshare/car"
-	"github.com/tree/main/examples/golang-push/rideshare/scooter"
+	"github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push/rideshare/bike"
+	"github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push/rideshare/car"
+	"github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push/rideshare/scooter"
 )
 
 func bikeRoute(w http.ResponseWriter, r *http.Request) {
