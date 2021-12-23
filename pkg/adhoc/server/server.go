@@ -112,15 +112,9 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	b, err := json.Marshal(*fb)
-	if err != nil {
-		s.log.WithError(err).Error("Unable to marshall profile")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
-	if _, err := w.Write(b); err != nil {
-		s.log.WithError(err).Error("Error sending profile")
+	if err := json.NewEncoder(w).Encode(*fb); err != nil {
+		s.log.WithError(err).Error("Unable to marshal profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
