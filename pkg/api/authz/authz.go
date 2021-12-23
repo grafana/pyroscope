@@ -25,6 +25,6 @@ func Require(funcs ...func(r *http.Request) bool) func(next http.HandlerFunc) ht
 	}
 }
 
-func UserAdmin(r *http.Request) bool {
-	return model.IsUserAdmin(model.MustUserFromContext(r.Context()))
+func AdminRole(r *http.Request) bool {
+	return model.MustUserFromContext(r.Context()).Role == model.AdminRole
 }

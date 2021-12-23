@@ -41,28 +41,26 @@ func chain(f http.HandlerFunc, middleware ...middleware) http.HandlerFunc {
 	return middleware[0](chain(f, middleware[1:cap(middleware)]...))
 }
 
-const (
-	patternID = "{id:[0-9]+}"
-)
-
 func registerUserHandlers(r *mux.Router, s *Services) {
 	h := api.NewUserHandler(s.UserService)
 
-	register(authz.Require(authz.UserAdmin), r.PathPrefix("/users").Subrouter(), []route{
+	// TODO(kolesnikovae): authz.Require(authz.AdminRole)
+	register(authz.AllowAny, r.PathPrefix("/users").Subrouter(), []route{
 		{"", http.MethodPost, h.CreateUser},
 		{"", http.MethodGet, h.ListUsers},
 	})
 
-	register(authz.Require(authz.UserAdmin), r.PathPrefix("/users/"+patternID).Subrouter(), []route{
+	// TODO(kolesnikovae): authz.Require(authz.AdminRole)
+	register(authz.AllowAny, r.PathPrefix("/users/{id:[0-9]+}").Subrouter(), []route{
 		{"", http.MethodGet, h.GetUser},
 		{"", http.MethodPatch, h.UpdateUser},
 		{"", http.MethodDelete, h.DeleteUser},
 		{"/password", http.MethodPut, h.ChangeUserPassword},
 		{"/disable", http.MethodPut, h.DisableUser},
 		{"/enable", http.MethodPut, h.EnableUser},
-		{"/role", http.MethodPut, h.ChangeUserRoles},
+		{"/role", http.MethodPut, h.ChangeUserRole},
 		// TODO(kolesnikovae):
-		//   Some operations must not be allowed if user id == owner
+		//   Some operations must not be allowed if user id == current user
 		//   in order to prevent self-locking scenarios.
 	})
 

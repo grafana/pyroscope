@@ -61,6 +61,7 @@ var _ = Describe("User validation", func() {
 					FullName: model.String("John Doe"),
 					Email:    "john@example.com",
 					Password: "qwerty",
+					Role:     model.ViewerRole,
 				},
 			}),
 
@@ -72,6 +73,7 @@ var _ = Describe("User validation", func() {
 					model.ErrUserNameTooLong,
 					model.ErrUserEmailInvalid,
 					model.ErrUserPasswordEmpty,
+					model.ErrRoleUnknown,
 				}},
 			}),
 
@@ -84,6 +86,7 @@ var _ = Describe("User validation", func() {
 					model.ErrUserEmailInvalid,
 					model.ErrUserFullNameTooLong,
 					model.ErrUserPasswordEmpty,
+					model.ErrRoleUnknown,
 				}},
 			}),
 
@@ -93,6 +96,7 @@ var _ = Describe("User validation", func() {
 					model.ErrUserNameEmpty,
 					model.ErrUserEmailInvalid,
 					model.ErrUserPasswordEmpty,
+					model.ErrRoleUnknown,
 				}},
 			}),
 		)
@@ -119,7 +123,8 @@ var _ = Describe("User validation", func() {
 					Email:    model.String("john@example.com"),
 					FullName: model.String("John Doe"),
 					Password: model.String("qwerty")}.
-					SetIsDisabled(false),
+					SetIsDisabled(false).
+					SetRole(model.ViewerRole),
 			}),
 
 			Entry("name is too long", updateUserParamsCase{
@@ -134,11 +139,13 @@ var _ = Describe("User validation", func() {
 					Name:     model.String(""),
 					FullName: model.String(""),
 					Email:    model.String(""),
-					Password: model.String("")},
+					Password: model.String("")}.
+					SetRole(model.InvalidRole),
 				err: &multierror.Error{Errors: []error{
 					model.ErrUserNameEmpty,
 					model.ErrUserEmailInvalid,
 					model.ErrUserPasswordEmpty,
+					model.ErrRoleUnknown,
 				}},
 			}),
 		)

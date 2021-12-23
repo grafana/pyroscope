@@ -201,8 +201,8 @@ var _ = Describe("UserService", func() {
 					Email:    model.String("john.doe@example.com"),
 					FullName: model.String("John Doe"),
 					Password: model.String("qwerty")}.
-					SetIsDisabled(true).
-					SetIsAdmin(true)
+					SetRole(model.ViewerRole).
+					SetIsDisabled(true)
 			})
 
 			It("does not return error", func() {
@@ -215,7 +215,7 @@ var _ = Describe("UserService", func() {
 				Expect(updated.Name).To(Equal(*update.Name))
 				Expect(updated.Email).To(Equal(*update.Email))
 				Expect(updated.FullName).To(Equal(update.FullName))
-				Expect(*updated.IsAdmin).To(BeTrue())
+				Expect(updated.Role).To(Equal(*update.Role))
 				Expect(*updated.IsDisabled).To(BeTrue())
 				Expect(updated.CreatedAt).ToNot(BeZero())
 				Expect(updated.UpdatedAt).ToNot(BeZero())
@@ -234,14 +234,15 @@ var _ = Describe("UserService", func() {
 					Name:     model.String(""),
 					Email:    model.String(""),
 					FullName: model.String(""),
-					Password: model.String(""),
-				}
+					Password: model.String("")}.
+					SetRole(model.InvalidRole)
 			})
 
 			It("returns ValidationError", func() {
 				Expect(model.IsValidationError(err)).To(BeTrue())
 				Expect(err).To(MatchError(model.ErrUserNameEmpty))
 				Expect(err).To(MatchError(model.ErrUserEmailInvalid))
+				Expect(err).To(MatchError(model.ErrRoleUnknown))
 				Expect(err).To(MatchError(model.ErrUserPasswordEmpty))
 			})
 		})
@@ -359,12 +360,14 @@ func testCreateUserParams() []model.CreateUserParams {
 			Email:    "john@example.com",
 			FullName: model.String("John Doe"),
 			Password: "qwerty",
+			Role:     model.ViewerRole,
 		},
 		{
 			Name:     "admin",
 			Email:    "admin@local.domain",
 			FullName: model.String("Administrator"),
 			Password: "qwerty",
+			Role:     model.AdminRole,
 		},
 	}
 }
@@ -373,8 +376,8 @@ func expectUserMatches(user model.User, params model.CreateUserParams) {
 	Expect(user.Name).To(Equal(params.Name))
 	Expect(user.Email).To(Equal(params.Email))
 	Expect(user.FullName).To(Equal(params.FullName))
+	Expect(user.Role).To(Equal(params.Role))
 	Expect(*user.IsDisabled).To(BeFalse())
-	Expect(*user.IsAdmin).To(Equal(params.IsAdmin))
 	Expect(user.CreatedAt).ToNot(BeZero())
 	Expect(user.UpdatedAt).ToNot(BeZero())
 	Expect(user.LastSeenAt).To(BeZero())

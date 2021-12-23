@@ -14,8 +14,8 @@ func createUserTableMigration() *gormigrate.Migration {
 		Email        string  `gorm:"type:varchar(255);not null;default:null;index:,unique"`
 		FullName     *string `gorm:"type:varchar(255);default:null"`
 		PasswordHash []byte  `gorm:"type:varchar(255);not null;default:null"`
+		Role         int     `gorm:"not null;default:null"`
 		IsDisabled   *bool   `gorm:"not null;default:false"`
-		IsAdmin      *bool   `gorm:"not null;default:false"`
 
 		LastSeenAt        *time.Time `gorm:"default:null"`
 		PasswordChangedAt time.Time

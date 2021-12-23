@@ -32,8 +32,8 @@ type User struct {
 	Name              string     `json:"name"`
 	Email             string     `json:"email"`
 	FullName          *string    `json:"fullName,omitempty"`
+	Role              model.Role `json:"role"`
 	IsDisabled        bool       `json:"isDisabled"`
-	IsAdmin           bool       `json:"isAdmin"`
 	CreatedAt         time.Time  `json:"createdAt"`
 	UpdatedAt         time.Time  `json:"updatedAt"`
 	LastSeenAt        *time.Time `json:"lastSeenAt,omitempty"`
@@ -41,11 +41,11 @@ type User struct {
 }
 
 type createUserRequest struct {
-	Name     string  `json:"name"`
-	Email    string  `json:"email"`
-	FullName *string `json:"fullName,omitempty"`
-	Password []byte  `json:"password"`
-	IsAdmin  bool    `json:"isAdmin"`
+	Name     string     `json:"name"`
+	Email    string     `json:"email"`
+	FullName *string    `json:"fullName,omitempty"`
+	Password []byte     `json:"password"`
+	Role     model.Role `json:"role"`
 }
 
 type updateUserRequest struct {
@@ -58,8 +58,8 @@ type changeUserPasswordRequest struct {
 	Password []byte `json:"password"`
 }
 
-type changeUserRolesRequest struct {
-	IsAdmin *bool `json:"isAdmin"`
+type changeUserRoleRequest struct {
+	Role model.Role `json:"role"`
 }
 
 func userFromModel(u model.User) User {
@@ -68,8 +68,8 @@ func userFromModel(u model.User) User {
 		Name:              u.Name,
 		Email:             u.Email,
 		FullName:          u.FullName,
+		Role:              u.Role,
 		IsDisabled:        model.IsUserDisabled(u),
-		IsAdmin:           model.IsUserAdmin(u),
 		PasswordChangedAt: u.PasswordChangedAt,
 		LastSeenAt:        u.LastSeenAt,
 		CreatedAt:         u.CreatedAt,
@@ -88,7 +88,7 @@ func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Email:    req.Email,
 		FullName: req.FullName,
 		Password: string(req.Password),
-		IsAdmin:  req.IsAdmin,
+		Role:     req.Role,
 	}
 	user, err := h.userService.CreateUser(r.Context(), params)
 	if err != nil {
@@ -177,25 +177,19 @@ func (h UserHandler) changeUserPassword(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h UserHandler) ChangeUserRoles(w http.ResponseWriter, r *http.Request) {
+func (h UserHandler) ChangeUserRole(w http.ResponseWriter, r *http.Request) {
 	id, err := idFromRequest(r)
 	if err != nil {
 		Error(w, err)
 		return
 	}
-	var req changeUserRolesRequest
+	var req changeUserRoleRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		DecodeError(w, err)
 		return
 	}
-	if req.IsAdmin == nil {
-		// TODO(kolesnikovae): Before we add support for fully fledged RBAC
-		//  (and multi-tenancy, perhaps), the property must be set. Later we
-		//  can safely extend the request model (in 'one of' fashion).
-		Error(w, ErrRequestBodyInvalid)
-		return
-	}
-	params := model.UpdateUserParams{IsAdmin: req.IsAdmin}
+	// TODO: Check that admin doesn't revoke it's own Admin role?
+	params := model.UpdateUserParams{Role: &req.Role}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
 		Error(w, err)
 		return

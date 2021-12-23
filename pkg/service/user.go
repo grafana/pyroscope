@@ -30,6 +30,7 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 	user := model.User{
 		Name:              params.Name,
 		Email:             params.Email,
+		Role:              params.Role,
 		PasswordHash:      model.MustPasswordHash(params.Password),
 		PasswordChangedAt: time.Now(),
 	}
@@ -158,15 +159,15 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		if params.FullName != nil {
 			columns.FullName = params.FullName
 		}
+		if params.Role != nil {
+			columns.Role = *params.Role
+		}
 		if params.Password != nil {
 			columns.PasswordHash = model.MustPasswordHash(*params.Password)
 			columns.PasswordChangedAt = time.Now()
 		}
 		if params.IsDisabled != nil {
 			columns.IsDisabled = params.IsDisabled
-		}
-		if params.IsAdmin != nil {
-			columns.IsAdmin = params.IsAdmin
 		}
 		return tx.Model(user).Updates(columns).Error
 	})

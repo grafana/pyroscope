@@ -61,6 +61,7 @@ var _ = Describe("UserHandler", func() {
 				Email:    "john@example.com",
 				FullName: model.String("John Doe"),
 				Password: "qwerty",
+				Role:     model.ViewerRole,
 			}
 
 			now := time.Date(2021, 12, 10, 4, 14, 0, 0, time.UTC)
@@ -69,7 +70,7 @@ var _ = Describe("UserHandler", func() {
 				Name:              expectedParams.Name,
 				Email:             expectedParams.Email,
 				FullName:          expectedParams.FullName,
-				IsAdmin:           &expectedParams.IsAdmin,
+				Role:              expectedParams.Role,
 				PasswordHash:      model.MustPasswordHash(expectedParams.Password),
 				PasswordChangedAt: now,
 				CreatedAt:         now,
@@ -94,8 +95,8 @@ var _ = Describe("UserHandler", func() {
 					})
 
 				expectResponse(http.StatusCreated,
-					"user_create_request.json",
-					"user_create_response.json")
+					"user/create_request.json",
+					"user/create_response.json")
 			})
 		})
 
@@ -113,8 +114,8 @@ var _ = Describe("UserHandler", func() {
 					})
 
 				expectResponse(http.StatusCreated,
-					"user_create_request_wo_full_name.json",
-					"user_create_response_wo_full_name.json")
+					"user/create_request_wo_full_name.json",
+					"user/create_response_wo_full_name.json")
 			})
 		})
 
@@ -131,8 +132,8 @@ var _ = Describe("UserHandler", func() {
 					})
 
 				expectResponse(http.StatusBadRequest,
-					"user_create_request.json",
-					"user_create_response_email_exists.json")
+					"user/create_request.json",
+					"user/create_response_email_exists.json")
 			})
 		})
 
@@ -149,8 +150,8 @@ var _ = Describe("UserHandler", func() {
 					})
 
 				expectResponse(http.StatusBadRequest,
-					"user_create_request.json",
-					"user_create_response_user_name_exists.json")
+					"user/create_request.json",
+					"user/create_response_user_name_exists.json")
 			})
 		})
 
@@ -162,6 +163,7 @@ var _ = Describe("UserHandler", func() {
 						model.ErrUserNameEmpty,
 						model.ErrUserEmailInvalid,
 						model.ErrUserPasswordEmpty,
+						model.ErrRoleUnknown,
 					}}).
 					Do(func(_ context.Context, user model.CreateUserParams) {
 						defer GinkgoRecover()
@@ -170,7 +172,7 @@ var _ = Describe("UserHandler", func() {
 
 				expectResponse(http.StatusBadRequest,
 					"request_empty_object.json",
-					"user_create_response_invalid.json")
+					"user/create_response_invalid.json")
 			})
 		})
 
