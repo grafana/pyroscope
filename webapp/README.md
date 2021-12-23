@@ -1,6 +1,7 @@
 # Webapp
 
 # Tests
+
 ## Snapshot tests
 Similar to what we do in cypress, we take snapshots of the canvas.
 
