@@ -57,8 +57,7 @@ COPY scripts ./scripts
 COPY package.json yarn.lock Makefile ./
 
 # we only need the dependencies required to BUILD the application
-# cache the dir /usr/local/lib/node_modules between builds
-RUN --mount=type=cache,target=/usr/local/lib/node_modules make install-build-web-dependencies
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn/v6 make install-build-web-dependencies
 
 COPY babel.config.js .eslintrc .eslintignore .prettierrc tsconfig.json ./
 COPY webapp ./webapp
