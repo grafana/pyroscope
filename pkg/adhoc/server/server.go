@@ -59,7 +59,7 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 func (s *server) Profiles(w http.ResponseWriter, _ *http.Request) {
 	dataDir, err := util.EnsureDataDirectory()
 	if err != nil {
-		s.log.WithError(err).Errorf("Unable to create data directory: %w", err)
+		s.log.WithError(err).Errorf("Unable to create data directory")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -109,7 +109,7 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 	}
 	dataDir, err := util.EnsureDataDirectory()
 	if err != nil {
-		s.log.WithError(err).Errorf("Unable to create data directory: %w", err)
+		s.log.WithError(err).Errorf("Unable to create data directory")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
