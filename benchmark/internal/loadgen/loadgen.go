@@ -1,6 +1,7 @@
 package loadgen
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
@@ -13,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/server"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
@@ -113,9 +115,14 @@ func Cli(cfg *config.LoadGen) error {
 }
 
 func (l *LoadGen) Run(cfg *config.LoadGen) error {
-	logrus.Info("running loadgenerator with config")
+	time.Sleep(5 * time.Second)
+	logrus.Info("running loadgenerator with config:")
 	spew.Dump(cfg)
-	logrus.Info("checking server is available...")
+
+	logrus.Info("starting pull target server")
+	go server.StartServer()
+
+	logrus.Info("checking if server is available...")
 	err := waitUntilEndpointReady(cfg.ServerAddress)
 	if err != nil {
 		return err
@@ -136,23 +143,41 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 
 	logrus.Info("starting sending requests")
 	st := time.Now()
-	wg := sync.WaitGroup{}
-	wg.Add(l.Config.Apps * l.Config.Clients)
 	appNameBuf := make([]byte, 25)
 
-	for i := 0; i < l.Config.Apps; i++ {
-		// generate a random app name
-		l.Rand.Read(appNameBuf)
-		appName := hex.EncodeToString(appNameBuf)
-		if i == 0 {
-			l.renderAppName = appName
-		}
-		for j := 0; j < l.Config.Clients; j++ {
-			go l.startClientThread(j, appName, &wg, fixtures[i])
+	servers := []string{
+		l.Config.ServerAddress,
+	}
+
+	if l.Config.ServerAddress2 != "" {
+		servers = append(servers, l.Config.ServerAddress2)
+	}
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+
+	wg := sync.WaitGroup{}
+	wg.Add(l.Config.Apps * l.Config.Clients * len(servers))
+	for _, s := range servers {
+		for i := 0; i < l.Config.Apps; i++ {
+			// generate a random app name
+			l.Rand.Read(appNameBuf)
+			appName := hex.EncodeToString(appNameBuf)
+			if i == 0 {
+				l.renderAppName = appName
+			}
+			for j := 0; j < l.Config.Clients; j++ {
+				go l.startClientThread(ctx, s, j, appName, &wg, fixtures[i])
+			}
 		}
 	}
 	doneCh := make(chan struct{})
 	go l.startRenderThread(doneCh)
+	if cfg.TimeLimit != 0 {
+		go func() {
+			time.Sleep(cfg.TimeLimit)
+			cancelFn()
+		}()
+	}
 	wg.Wait()
 	logrus.Info("done sending requests, benchmark took ", time.Since(st))
 	doneCh <- struct{}{}
@@ -176,10 +201,10 @@ func (l *LoadGen) generateFixtures() Fixtures {
 	return f
 }
 
-func (l *LoadGen) startClientThread(threadID int, appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
+func (l *LoadGen) startClientThread(ctx context.Context, serverAddress string, threadID int, appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
-		UpstreamAddress:        l.Config.ServerAddress,
+		UpstreamAddress:        serverAddress,
 		UpstreamRequestTimeout: 10 * time.Second,
 	}
 
@@ -210,8 +235,13 @@ func (l *LoadGen) startClientThread(threadID int, appName string, wg *sync.WaitG
 		timerChan = ch
 	}
 
+Outside:
 	for i := 0; i < requestsCount; i++ {
-		<-timerChan
+		select {
+		case <-ctx.Done():
+			break Outside
+		case <-timerChan:
+		}
 
 		t := appFixtures[i%len(appFixtures)]
 

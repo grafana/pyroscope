@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bytes"
@@ -56,9 +56,18 @@ func generateHandler(_ string, p tree.Profile, sleep int) func(w http.ResponseWr
 	}
 }
 
-func main() {
-	http.HandleFunc("/debug/pprof/profile", generateHandler("cpu", getProfile("cpu"), 10))
-	http.HandleFunc("/debug/pprof/heap", generateHandler("heap", getProfile("heap"), 0))
+func StartServer() {
+	m := http.NewServeMux()
+	m.HandleFunc("/debug/pprof/profile", generateHandler("cpu", getProfile("cpu"), 10))
+	m.HandleFunc("/debug/pprof/heap", generateHandler("heap", getProfile("heap"), 0))
 
-	http.ListenAndServe(":4042", nil)
+	s := &http.Server{
+		Addr:           ":4042",
+		Handler:        m,
+		ReadTimeout:    30 * time.Second,
+		WriteTimeout:   30 * time.Second,
+		IdleTimeout:    30 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	s.ListenAndServe()
 }

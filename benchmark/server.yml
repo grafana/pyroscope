@@ -4,8 +4,8 @@ scrape-configs:
   - job-name: testing
     enabled-profiles: [cpu, mem]
     static-configs:
-      - application: pull-target
+      - application: pyrobench
         targets:
-          - pull-target:4042
+          - pyrobench:4042
         labels:
           pod: pod-0

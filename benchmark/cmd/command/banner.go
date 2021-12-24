@@ -4,16 +4,16 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/cli"
 )
 
-// made here http://patorjk.com/software/taag/#p=display&f=Doom&t=Pyrobench
+// made here http://patorjk.com/software/taag/#p=display&f=Doom&t=pyrobench
 var banner = `
-______                _                     _
-| ___ \              | |                   | |
-| |_/ /   _ _ __ ___ | |__   ___ _ __   ___| |__
-|  __/ | | | '__/ _ \| '_ \ / _ \ '_ \ / __| '_ \
-| |  | |_| | | | (_) | |_) |  __/ | | | (__| | | |
-\_|   \__, |_|  \___/|_.__/ \___|_| |_|\___|_| |_|
-       __/ |
-      |___/
+                       _                     _
+                      | |                   | |
+ _ __  _   _ _ __ ___ | |__   ___ _ __   ___| |__
+| '_ \| | | | '__/ _ \| '_ \ / _ \ '_ \ / __| '_ \
+| |_) | |_| | | | (_) | |_) |  __/ | | | (__| | | |
+| .__/ \__, |_|  \___/|_.__/ \___|_| |_|\___|_| |_|
+| |     __/ |
+|_|    |___/
 `
 
 func init() {

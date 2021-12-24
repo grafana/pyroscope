@@ -1,0 +1,7 @@
+---
+# services:
+#   renderer:
+#     image: grafana/grafana-image-renderer:latest
+#   pyrobench:
+#     volumes:
+#       - ./report.md:/report.md

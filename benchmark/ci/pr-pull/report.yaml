@@ -1,9 +1,0 @@
-baseName: main
-targetName: pr
-
-queries:
-  - name: 'memory usage'
-    base: 'go_memstats_sys_bytes{instance="pyroscope:4040"}'
-    target: 'go_memstats_sys_bytes{instance="pyroscope_main:4040"}'
-    diffThresholdPercent: 5
-    biggerIsBetter: false
