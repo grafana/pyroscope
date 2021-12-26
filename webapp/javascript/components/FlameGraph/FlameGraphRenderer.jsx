@@ -57,6 +57,22 @@ class FlameGraphRenderer extends React.Component {
     if (prevState.flamegraphConfigs !== this.state.flamegraphConfigs) {
       this.updateFlamegraphDirtiness();
     }
+
+    if (this.props.isSearchLinked) {
+      if (this.props.linkedSearchQuery !== prevState.highlightQuery) {
+        // eslint-disable-next-line react/no-did-update-set-state
+        this.setState({
+          highlightQuery: this.props.linkedSearchQuery,
+        });
+      }
+      if (this.props.resetLinkedSearchSide === this.props.viewSide) {
+        // eslint-disable-next-line react/no-did-update-set-state
+        this.setState({
+          highlightQuery: '',
+        });
+        this.props.toggleLinkedSearch('both');
+      }
+    }
   }
 
   componentWillUnmount() {
@@ -81,6 +97,10 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       highlightQuery: e,
     });
+
+    if (this.props.isSearchLinked) {
+      this.props.setSearchQuery(e);
+    }
   };
 
   onReset = () => {
@@ -275,6 +295,15 @@ class FlameGraphRenderer extends React.Component {
       tablePane
     );
 
+    const toggleLinkedSearch = () => {
+      if (this.props.isSearchLinked) {
+        this.props.toggleLinkedSearch(this.props.viewSide);
+      } else {
+        this.props.setSearchQuery(this.state.highlightQuery);
+        this.props.toggleLinkedSearch('both');
+      }
+    };
+
     return (
       <div
         className={clsx('canvas-renderer', {
@@ -298,6 +327,11 @@ class FlameGraphRenderer extends React.Component {
               onFocusOnSubtree={(i, j) => {
                 this.onFocusOnNode(i, j);
               }}
+              viewSide={this.props.viewSide}
+              isSearchLinked={this.props.isSearchLinked}
+              linkedSearchQuery={this.props.linkedSearchQuery}
+              toggleLinkedSearch={toggleLinkedSearch}
+              resetLinkedSearchSide={this.props.resetLinkedSearchSide}
             />
           )}
           {this.props.children}

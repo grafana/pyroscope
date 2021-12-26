@@ -24,6 +24,37 @@
   background: rgba(255, 255, 255, 1);
 }
 
+.linked-search-input {
+  border-right: none !important;
+  margin-right: 0 !important;
+  border-top-right-radius: 0%;
+  border-bottom-right-radius: 0%;
+}
+.linked-search-btn {
+  margin-left: 0px !important;
+  border: 1px solid #4d4d4d;
+  background: rgba(255, 255, 255, 0.8);
+  color: #333;
+  border: 1px solid #4d4d4d;
+  border-radius: 4px;
+  z-index: 1;
+  border-top-left-radius: 0%;
+  border-bottom-left-radius: 0%;
+}
+.linked-search-btn.active {
+  margin-left: 0px !important;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #ea6460;
+  border-radius: 4px;
+  z-index: 1;
+  border-top-left-radius: 0%;
+  border-bottom-left-radius: 0%;
+  color: #ea6460;
+}
+.linked-search-input.active {
+  border: 1px solid #ea6460;
+}
+
 .search-small {
   width: 100px;
 }

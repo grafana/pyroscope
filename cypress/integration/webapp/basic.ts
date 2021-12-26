@@ -91,6 +91,33 @@ describe('basic test', () => {
     );
   });
 
+  it('highlights nodes in both comparison views when search is linked', () => {
+    cy.intercept('**/render*', {
+      fixture: 'simple-golang-app-cpu.json',
+    }).as('render');
+
+    cy.visit('/comparison');
+
+    cy.findByTestId('link-search-btn-left').click();
+    cy.get('input[data-testname="flamegraph-search-left"]').type('main');
+
+    cy.findByTestId('flamegraph-comparison-left').get(
+      '[data-highlightquery="main"]'
+    );
+
+    cy.findByTestId('flamegraph-comparison-left')
+      .find('canvas')
+      .matchImageSnapshot('simple-golang-app-cpu-highlight');
+
+    cy.findByTestId('flamegraph-comparison-right').get(
+      '[data-highlightquery="main"]'
+    );
+
+    cy.findByTestId('flamegraph-comparison-right')
+      .find('canvas')
+      .matchImageSnapshot('simple-golang-app-cpu-highlight');
+  });
+
   it('view buttons should change view when clicked', () => {
     // mock data since the first preselected application
     // could have no data

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { connect } from 'react-redux';
 import 'react-dom';
 
@@ -23,6 +23,51 @@ function ComparisonApp(props) {
   const { actions, renderURL, leftRenderURL, rightRenderURL, comparison } =
     props;
   const { rawLeft, rawRight } = comparison;
+
+  const [linkedSearch, setLinkedSearch] = useState({
+    isSearchLinked: false,
+    linkedSearchQuery: '',
+    resetLinkedSearchSide: '',
+  });
+
+  const setSearchQuery = (query) => {
+    setLinkedSearch((x) => {
+      return {
+        ...x,
+        linkedSearchQuery: query,
+      };
+    });
+  };
+  const toggleLinkedSearch = (side) => {
+    const { isSearchLinked } = linkedSearch;
+    if (isSearchLinked) {
+      if (side === 'left') {
+        setLinkedSearch((x) => {
+          return {
+            ...x,
+            resetLinkedSearchSide: 'right',
+          };
+        });
+      }
+      if (side === 'right') {
+        setLinkedSearch((x) => {
+          return {
+            ...x,
+            resetLinkedSearchSide: 'left',
+          };
+        });
+      }
+      if (side === 'both') {
+        setLinkedSearch((x) => {
+          return { ...x, isSearchLinked: false, resetLinkedSearchSide: '' };
+        });
+      }
+    } else {
+      setLinkedSearch((x) => {
+        return { ...x, isSearchLinked: true, resetLinkedSearchSide: '' };
+      });
+    }
+  };
 
   useEffect(() => {
     actions.fetchComparisonAppData(leftRenderURL, 'left');
@@ -61,6 +106,11 @@ function ComparisonApp(props) {
               data-testid="flamegraph-renderer-left"
               display="both"
               rawFlamegraph={rawLeft}
+              isSearchLinked={linkedSearch.isSearchLinked}
+              setSearchQuery={setSearchQuery}
+              linkedSearchQuery={linkedSearch.linkedSearchQuery}
+              toggleLinkedSearch={toggleLinkedSearch}
+              resetLinkedSearchSide={linkedSearch.resetLinkedSearchSide}
             >
               <InstructionText viewType="double" viewSide="left" />
               <TimelineChartWrapper
@@ -80,6 +130,11 @@ function ComparisonApp(props) {
               data-testid="flamegraph-renderer-right"
               display="both"
               rawFlamegraph={rawRight}
+              isSearchLinked={linkedSearch.isSearchLinked}
+              setSearchQuery={setSearchQuery}
+              linkedSearchQuery={linkedSearch.linkedSearchQuery}
+              toggleLinkedSearch={toggleLinkedSearch}
+              resetLinkedSearchSide={linkedSearch.resetLinkedSearchSide}
             >
               <InstructionText viewType="double" viewSide="right" />
               <TimelineChartWrapper
