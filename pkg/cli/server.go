@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	// revive:disable:blank-imports register kubernetes discoverer
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
