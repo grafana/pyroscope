@@ -181,12 +181,12 @@ func (s *Storage) DeleteApp(appname string) error {
 	appWithCurlyBrackets := appname + "{"
 
 	s.logger.Debugf("deleting trees with prefix %s\n", appWithCurlyBrackets)
-	if err = s.trees.DiscardPrefix(appWithCurlyBrackets); err != nil {
+	if err = s.trees.DeletePrefix(appWithCurlyBrackets); err != nil {
 		return err
 	}
 
 	s.logger.Debugf("deleting segments with prefix %s\n", appWithCurlyBrackets)
-	if err = s.segments.DiscardPrefix(appWithCurlyBrackets); err != nil {
+	if err = s.segments.DeletePrefix(appWithCurlyBrackets); err != nil {
 		return err
 	}
 
