@@ -184,6 +184,12 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 			{"/debug/pprof/profile", pprof.Profile},
 			{"/debug/pprof/symbol", pprof.Symbol},
 			{"/debug/pprof/trace", pprof.Trace},
+			// Manually add support for paths linked to by index page at /debug/pprof/
+			{"/debug/pprof/goroutine", pprof.Handler("goroutine").ServeHTTP},
+			{"/debug/pprof/heap", pprof.Handler("heap").ServeHTTP},
+			{"/debug/pprof/threadcreate", pprof.Handler("threadcreate").ServeHTTP},
+			{"/debug/pprof/block", pprof.Handler("block").ServeHTTP},
+			{"/debug/pprof/mutex", pprof.Handler("mutex").ServeHTTP},
 		}...)
 	}
 

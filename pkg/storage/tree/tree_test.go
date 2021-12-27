@@ -2,20 +2,14 @@ package tree
 
 import (
 	"bytes"
-	"math/rand"
+	"encoding/json"
+	"fmt"
 	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/format"
 )
-
-func randStr() []byte {
-	buf := make([]byte, 10)
-	for i := 0; i < 10; i++ {
-		buf[i] = byte(97) + byte(rand.Uint32()%10)
-	}
-	return buf
-}
 
 var _ = Describe("tree package", func() {
 	Context("Insert", func() {
@@ -33,6 +27,38 @@ var _ = Describe("tree package", func() {
 			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(1)))
 			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(2)))
 			Expect(tree.String()).To(Equal("a;b 1\na;c 2\n"))
+		})
+	})
+
+	Context("Diff", func() {
+		a := New()
+		a.Insert([]byte("a;b;c"), uint64(100))
+		a.Insert([]byte("a;b;c;d"), uint64(100))
+		a.Insert([]byte("a;b;d"), uint64(100))
+		a.Insert([]byte("a;e"), uint64(100))
+		a.Insert([]byte("a;f"), uint64(150))
+		a.Insert([]byte("a;h"), uint64(150))
+
+		b := New()
+		b.Insert([]byte("a;b;c"), uint64(120))
+		b.Insert([]byte("a;b;c;d"), uint64(120))
+		b.Insert([]byte("a;b;d"), uint64(120))
+		b.Insert([]byte("a;e"), uint64(100))
+		b.Insert([]byte("a;f"), uint64(150))
+		b.Insert([]byte("a;g"), uint64(20))
+		b.Insert([]byte("a;h"), uint64(170))
+
+		diff := a.Diff(b)
+		z, _ := json.MarshalIndent(diff, "", "\t")
+		fmt.Println(string(z))
+		It("properly sets up a tree", func() {
+			Expect(diff).To(beTree([]stack{
+				{"a;g", 20},
+				{"a;h", 20},
+				{"a;b;c", 20},
+				{"a;b;d", 20},
+				{"a;b;c;d", 20},
+			}))
 		})
 	})
 
@@ -133,3 +159,36 @@ var _ = Describe("prepend", func() {
 		})
 	})
 })
+
+type BeTreeMatcher struct {
+	Expected string
+}
+
+type stack struct {
+	Name  string
+	Value int
+}
+
+func beTree(stacks []stack) *BeTreeMatcher {
+	var b strings.Builder
+	for _, s := range stacks {
+		_, _ = fmt.Fprintf(&b, "%s %d\n", s.Name, s.Value)
+	}
+	return &BeTreeMatcher{Expected: b.String()}
+}
+
+func (m *BeTreeMatcher) Match(actual interface{}) (success bool, err error) {
+	t, ok := actual.(*Tree)
+	if !ok {
+		return false, nil
+	}
+	return t.String() == m.Expected, nil
+}
+
+func (m *BeTreeMatcher) FailureMessage(actual interface{}) string {
+	return format.Message(actual.(*Tree).String(), "to be", m.Expected)
+}
+
+func (m *BeTreeMatcher) NegatedFailureMessage(actual interface{}) string {
+	return format.Message(actual.(*Tree).String(), "not to be", m.Expected)
+}

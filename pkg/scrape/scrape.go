@@ -30,10 +30,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/bytebufferpool"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
 var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
@@ -42,8 +42,8 @@ var errBodySizeLimit = errors.New("body size limit exceeded")
 
 // scrapePool manages scrapes for sets of targets.
 type scrapePool struct {
-	upstream upstream.Upstream
-	logger   logrus.FieldLogger
+	storage *storage.Storage
+	logger  logrus.FieldLogger
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -61,7 +61,7 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldLogger) (*scrapePool, error) {
+func newScrapePool(cfg *config.Config, s *storage.Storage, logger logrus.FieldLogger) (*scrapePool, error) {
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		return nil, fmt.Errorf("creating HTTP client: %w", err)
@@ -71,7 +71,7 @@ func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldL
 	sp := scrapePool{
 		ctx:           ctx,
 		cancel:        cancel,
-		upstream:      u,
+		storage:       s,
 		config:        cfg,
 		client:        client,
 		activeTargets: make(map[uint64]*Target),
@@ -86,7 +86,7 @@ func (sp *scrapePool) newScrapeLoop(s *scraper, i, t time.Duration) *scrapeLoop 
 	x := scrapeLoop{
 		scraper:  s,
 		logger:   sp.logger,
-		upstream: sp.upstream,
+		storage:  sp.storage,
 		stopped:  make(chan struct{}),
 		interval: i,
 		timeout:  t,
@@ -159,7 +159,7 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 		wg.Add(1)
 		s := &scraper{
 			Target:        sp.activeTargets[fp],
-			pprofWriter:   newPprofWriter(sp.upstream, sp.activeTargets[fp]),
+			pprofWriter:   newPprofWriter(sp.storage, sp.activeTargets[fp]),
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
@@ -236,7 +236,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
-			pprofWriter:   newPprofWriter(sp.upstream, t),
+			pprofWriter:   newPprofWriter(sp.storage, t),
 		}
 
 		l := sp.newScrapeLoop(s, interval, timeout)
@@ -269,9 +269,9 @@ func (sp *scrapePool) sync(targets []*Target) {
 }
 
 type scrapeLoop struct {
-	scraper  *scraper
-	logger   logrus.FieldLogger
-	upstream upstream.Upstream
+	scraper *scraper
+	logger  logrus.FieldLogger
+	storage *storage.Storage
 
 	parentCtx context.Context
 	ctx       context.Context

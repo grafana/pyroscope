@@ -223,7 +223,7 @@ func (s *Storage) periodicTask(interval time.Duration, f func()) {
 func (s *Storage) evictionTask(memTotal uint64) func() {
 	var m runtime.MemStats
 	return func() {
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.retentionTaskDuration.Observe))
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.evictionTaskDuration.Observe))
 		defer timer.ObserveDuration()
 		runtime.ReadMemStats(&m)
 		used := float64(m.Alloc) / float64(memTotal)
@@ -242,8 +242,8 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		// This is also applied to writeBack task.
 		s.trees.Evict(percent)
 		s.dicts.WriteBack()
-		s.dimensions.WriteBack()
-		s.segments.WriteBack()
+		// s.dimensions.WriteBack()
+		// s.segments.WriteBack()
 		// GC does not really release OS memory, so relying on MemStats.Alloc
 		// causes cache to evict vast majority of items. debug.FreeOSMemory()
 		// could be used instead, but this can be even more expensive.

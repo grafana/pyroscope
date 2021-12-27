@@ -159,7 +159,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		svc.directScrapeUpstream)
+		svc.storage)
 
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)

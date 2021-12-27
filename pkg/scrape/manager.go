@@ -23,16 +23,16 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
 // NewManager is the Manager constructor
-func NewManager(logger logrus.FieldLogger, u upstream.Upstream) *Manager {
+func NewManager(logger logrus.FieldLogger, s *storage.Storage) *Manager {
 	c := make(map[string]*config.Config)
 	return &Manager{
-		upstream:      u,
+		storage:       s,
 		logger:        logger,
 		scrapeConfigs: c,
 		scrapePools:   make(map[string]*scrapePool),
@@ -44,9 +44,9 @@ func NewManager(logger logrus.FieldLogger, u upstream.Upstream) *Manager {
 // Manager maintains a set of scrape pools and manages start/stop cycles
 // when receiving new target groups from the discovery manager.
 type Manager struct {
-	logger   logrus.FieldLogger
-	upstream upstream.Upstream
-	stop     chan struct{}
+	logger  logrus.FieldLogger
+	storage *storage.Storage
+	stop    chan struct{}
 
 	jitterSeed uint64     // Global jitterSeed seed is used to spread scrape workload across HA setup.
 	mtxScrape  sync.Mutex // Guards the fields below.
@@ -87,7 +87,7 @@ func (m *Manager) reload() {
 					Errorf("reloading target set")
 				continue
 			}
-			sp, err := newScrapePool(scrapeConfig, m.upstream, m.logger)
+			sp, err := newScrapePool(scrapeConfig, m.storage, m.logger)
 			if err != nil {
 				m.logger.WithError(err).
 					WithField("scrape_pool", setName).

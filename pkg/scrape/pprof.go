@@ -16,38 +16,34 @@ package scrape
 
 import (
 	"encoding/binary"
-	"strings"
 	"time"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/valyala/bytebufferpool"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/sortedmap"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 )
 
 type pprofWriter struct {
-	// Instead of the upstream (which requires transporttrie.Trie)
-	// we could have a more generic samples consumer.
-	upstream upstream.Upstream
-	labels   labels.Labels
-	config   *config.Profile
-	time     time.Time
-	cache    cache
+	storage *storage.Storage
+	labels  labels.Labels
+	config  *config.Profile
+	time    time.Time
+	cache   cache
 }
 
-func newPprofWriter(u upstream.Upstream, target *Target) *pprofWriter {
+func newPprofWriter(s *storage.Storage, target *Target) *pprofWriter {
 	return &pprofWriter{
-		upstream: u,
-		labels:   target.Labels(),
-		config:   target.profile,
-		cache:    make(cache),
+		storage: s,
+		labels:  target.Labels(),
+		config:  target.profile,
+		cache:   make(cache),
 	}
 }
 
@@ -82,7 +78,7 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 
 		c.writeProfiles(&p, s.Type, finder)
 		for hash, entry := range c[s.Type] {
-			j := &upstream.UploadJob{SpyName: "scrape", Trie: entry.Trie}
+			pi := &storage.PutInput{SpyName: "scrape", Val: entry.Tree}
 			// Cumulative profiles require two consecutive samples,
 			// therefore we have to cache this trie.
 			if sampleTypeConfig.Cumulative {
@@ -90,37 +86,37 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 				if !found {
 					continue
 				}
-				j.Trie = entry.Trie.Diff(prev.Trie)
+				pi.Val = entry.Tree.Diff(prev.Tree)
 			}
 
 			switch {
 			case p.DurationNanos > 0:
-				j.StartTime = profileTime
-				j.EndTime = profileTime.Add(time.Duration(p.DurationNanos))
+				pi.StartTime = profileTime
+				pi.EndTime = profileTime.Add(time.Duration(p.DurationNanos))
 			case !w.time.IsZero():
 				// Without DurationNanos we can not deduce the time range
 				// of the profile and therefore need the previous profile time.
-				j.StartTime = w.time
-				j.EndTime = profileTime
+				pi.StartTime = w.time
+				pi.EndTime = profileTime
 			default:
 				continue
 			}
 
-			j.AggregationType = sampleTypeConfig.Aggregation
+			pi.AggregationType = sampleTypeConfig.Aggregation
 			if sampleTypeConfig.Sampled && p.Period > 0 {
-				j.SampleRate = uint32(time.Second / time.Duration(p.Period))
+				pi.SampleRate = uint32(time.Second / time.Duration(p.Period))
 			}
 			if sampleTypeConfig.DisplayName != "" {
 				sampleTypeName = sampleTypeConfig.DisplayName
 			}
-			j.Name = w.buildName(sampleTypeName, resolveLabels(&p, entry))
+			pi.Key = w.buildName(sampleTypeName, resolveLabels(&p, entry))
 			if sampleTypeConfig.Units != "" {
-				j.Units = sampleTypeConfig.Units
+				pi.Units = sampleTypeConfig.Units
 			} else {
-				j.Units = p.StringTable[s.Unit]
+				pi.Units = p.StringTable[s.Unit]
 			}
 
-			w.upstream.Upload(j)
+			w.storage.Put(pi)
 		}
 	}
 
@@ -131,34 +127,12 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 	return nil
 }
 
-func (w *pprofWriter) buildName(sampleTypeName string, nameLabels map[string]string) string {
+func (w *pprofWriter) buildName(sampleTypeName string, nameLabels map[string]string) *segment.Key {
 	for _, label := range w.labels {
 		nameLabels[label.Name] = label.Value
 	}
 	nameLabels[model.AppNameLabel] += "." + sampleTypeName
-	// TODO(kolesnikovae): a copy of segment.Key.Normalize().
-	//   To be refactored once pyroscope model package emerges.
-	var sb strings.Builder
-	sortedMap := sortedmap.New()
-	for k, v := range nameLabels {
-		if k == model.AppNameLabel {
-			sb.WriteString(v)
-		} else {
-			sortedMap.Put(k, v)
-		}
-	}
-	sb.WriteString("{")
-	for i, k := range sortedMap.Keys() {
-		v := sortedMap.Get(k).(string)
-		if i != 0 {
-			sb.WriteString(",")
-		}
-		sb.WriteString(k)
-		sb.WriteString("=")
-		sb.WriteString(v)
-	}
-	sb.WriteString("}")
-	return sb.String()
+	return segment.NewKey(nameLabels)
 }
 
 var samplesPool = bytebufferpool.Pool{}
@@ -168,11 +142,11 @@ type cache map[int64]map[uint64]*cacheEntry
 
 type cacheEntry struct {
 	labels []*tree.Label
-	*transporttrie.Trie
+	*tree.Tree
 }
 
 func newCacheEntry(l []*tree.Label) *cacheEntry {
-	return &cacheEntry{Trie: transporttrie.New(), labels: l}
+	return &cacheEntry{Tree: tree.New(), labels: l}
 }
 
 func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, finder tree.Finder) {
@@ -217,7 +191,7 @@ func (t *cache) writeProfiles(x *tree.Profile, sampleType int64, finder tree.Fin
 			}
 		}
 
-		entry.Insert(b.Bytes(), uint64(s.Value[valueIndex]), true)
+		entry.Insert(b.Bytes(), uint64(s.Value[valueIndex]))
 		b.Reset()
 	}
 }
