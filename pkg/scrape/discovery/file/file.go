@@ -40,13 +40,13 @@ import (
 var (
 	fileSDScanDuration = prometheus.NewSummary(
 		prometheus.SummaryOpts{
-			Name:       "pyroscop_sd_file_scan_duration_seconds",
+			Name:       "pyroscope_sd_file_scan_duration_seconds",
 			Help:       "The duration of the File-SD scan in seconds.",
 			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 		})
 	fileSDReadErrorsCount = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "pyroscop_sd_file_read_errors_total",
+			Name: "pyroscope_sd_file_read_errors_total",
 			Help: "The number of File-SD read errors.",
 		})
 	fileSDTimeStamp = NewTimestampCollector()
@@ -67,7 +67,7 @@ func init() {
 // SDConfig is the configuration for file based discovery.
 type SDConfig struct {
 	Files           []string       `yaml:"files"`
-	RefreshInterval model.Duration `yaml:"refresh_interval,omitempty"`
+	RefreshInterval model.Duration `yaml:"refresh-interval,omitempty"`
 }
 
 // Name returns the name of the Config.
@@ -157,7 +157,7 @@ func (t *TimestampCollector) removeDiscoverer(disc *Discovery) {
 func NewTimestampCollector() *TimestampCollector {
 	return &TimestampCollector{
 		Description: prometheus.NewDesc(
-			"prometheus_sd_file_mtime_seconds",
+			"pyroscope_sd_file_mtime_seconds",
 			"Timestamp (mtime) of files read by FileSD. Timestamp is set at read time.",
 			[]string{"filename"},
 			nil,
@@ -202,7 +202,7 @@ func (d *Discovery) listFiles() []string {
 	for _, p := range d.paths {
 		files, err := filepath.Glob(p)
 		if err != nil {
-			d.logger.WithError(err).Error("msg", "Error expanding glob", "glob", p, "err", err)
+			d.logger.WithError(err).WithField("glob", p).Error("Error expanding glob")
 			continue
 		}
 		paths = append(paths, files...)
@@ -223,7 +223,7 @@ func (d *Discovery) watchFiles() {
 			p = "./"
 		}
 		if err := d.watcher.Add(p); err != nil {
-			d.logger.WithError(err).Error("msg", "Error adding file watch", "path", p, "err", err)
+			d.logger.WithError(err).WithField("path", p).Error("Error adding file watch")
 		}
 	}
 }
@@ -232,7 +232,7 @@ func (d *Discovery) watchFiles() {
 func (d *Discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		d.logger.WithError(err).Error("msg", "Error adding file watcher", "err", err)
+		d.logger.WithError(err).Error("Error adding file watcher")
 		return
 	}
 	d.watcher = watcher
@@ -271,7 +271,7 @@ func (d *Discovery) Run(ctx context.Context, ch chan<- []*targetgroup.Group) {
 
 		case err := <-d.watcher.Errors:
 			if err != nil {
-				d.logger.WithError(err).Error("msg", "Error watching file", "err", err)
+				d.logger.WithError(err).Error("Error watching file")
 			}
 		}
 	}
@@ -291,7 +291,7 @@ func (d *Discovery) deleteTimestamp(filename string) {
 
 // stop shuts down the file watcher.
 func (d *Discovery) stop() {
-	d.logger.Debug("msg", "Stopping file discovery...", "paths", fmt.Sprintf("%v", d.paths))
+	d.logger.WithField("paths", fmt.Sprintf("%v", d.paths)).Debug("Stopping file discovery...")
 	done := make(chan struct{})
 	defer close(done)
 
@@ -310,9 +310,9 @@ func (d *Discovery) stop() {
 		}
 	}()
 	if err := d.watcher.Close(); err != nil {
-		d.logger.WithError(err).Error("msg", "Error closing file watcher", "paths", fmt.Sprintf("%v", d.paths), "err", err)
+		d.logger.WithError(err).WithField("paths", fmt.Sprintf("%v", d.paths)).Error("Error closing file watcher")
 	}
-	d.logger.Debug("msg", "File discovery stopped")
+	d.logger.Debug("File discovery stopped")
 }
 
 // refresh reads all files matching the discovery's patterns and sends the respective
@@ -328,7 +328,7 @@ func (d *Discovery) refresh(ctx context.Context, ch chan<- []*targetgroup.Group)
 		if err != nil {
 			fileSDReadErrorsCount.Inc()
 
-			d.logger.WithError(err).Debug("msg", "Error reading file", "path", p, "err", err)
+			d.logger.WithField("path", p).WithError(err).Debug("Error reading file")
 			// Prevent deletion down below.
 			ref[p] = d.lastRefresh[p]
 			continue
