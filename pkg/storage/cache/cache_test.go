@@ -60,6 +60,12 @@ var _ = Describe("cache", func() {
 				DBReads: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
 					Name: "storage_test_reads",
 				}),
+				EvictionsDuration: promauto.With(reg).NewSummary(prometheus.SummaryOpts{
+					Name: "storage_test_evictions",
+				}),
+				WriteBackDuration: promauto.With(reg).NewSummary(prometheus.SummaryOpts{
+					Name: "storage_test_write_back",
+				}),
 			},
 		})
 
