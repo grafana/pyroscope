@@ -194,6 +194,17 @@ func (t *Tree) Insert(key []byte, value uint64) {
 	node.Self += value
 }
 
+func (t *Tree) InsertStack(stack [][]byte, v uint64) {
+	n := t.root
+	for j := range stack {
+		n.Total += v
+		n = n.insert(stack[j])
+	}
+	// Leaf.
+	n.Total += v
+	n.Self += v
+}
+
 func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
 	nodes := []*treeNode{t.root}
 	prefixes := make([][]byte, 1)
