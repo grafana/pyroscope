@@ -185,7 +185,6 @@ type Discovery struct {
 
 // NewDiscovery returns a new file discovery for the given paths.
 func NewDiscovery(conf *SDConfig, logger logrus.FieldLogger) *Discovery {
-
 	disc := &Discovery{
 		paths:      conf.Files,
 		interval:   time.Duration(conf.RefreshInterval),
