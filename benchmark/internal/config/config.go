@@ -14,22 +14,25 @@ type Config struct {
 type LoadGen struct {
 	LogLevel string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 
-	ServerAddress       string        `def:"http://pyroscope:4040" desc:"address of the pyroscope instance" mapstructure:"server-address"`
-	ServerAddress2      string        `def:"http://pyroscope-main:4040" desc:"address of the second pyroscope instance (pyroscope-main)" mapstructure:"server-address2"`
-	RandSeed            int           `def:"23061912" mapstructure:"rand-seed"`
-	RealTime            bool          `def:"false" desc:"uploads profiles on 10 second intervals"  mapstructure:"real-time"`
-	TimeMultiplier      int           `def:"1" desc:"the higher the value the lower the time between uploads. only used when real-time=true"  mapstructure:"time-multiplier"`
-	ProfileWidth        int           `def:"20" mapstructure:"profile-width"`
-	ProfileDepth        int           `def:"20" mapstructure:"profile-depth"`
-	ProfileSymbolLength int           `def:"30" mapstructure:"profile-symbol-length"`
-	Fixtures            int           `def:"30" desc:"how many different profiles to generate per app" mapstructure:"fixtures"`
-	Apps                int           `def:"20" desc:"how many pyroscope apps to emulate" mapstructure:"apps"`
-	Clients             int           `def:"20" desc:"how many pyroscope clients to emulate" mapstructure:"clients"`
-	Requests            int           `def:"10000" desc:"how many requests each clients should make" mapstructure:"requests"`
-	Duration            time.Duration `def:"0s" desc:"specifies how long the simulated time segment will be. if set, requests value is calculated based on duration" mapstructure:"duration"`
-	TimeLimit           time.Duration `def:"1m" desc:"sets the maximum time for the loadgenerator to run. if not set, runs indefinitely" mapstructure:"time-limit"`
-	TagKeys             int           `def:"2" desc:"how many unique tag keys each app should have" mapstructure:"tag-keys"`
-	TagValues           int           `def:"2" desc:"how many unique tag values each app should have" mapstructure:"tag-values"`
+	ServerAddress       string `def:"http://pyroscope:4040" desc:"address of the pyroscope instance" mapstructure:"server-address"`
+	ServerAddress2      string `def:"http://pyroscope-main:4040" desc:"address of the second pyroscope instance (pyroscope-main)" mapstructure:"server-address2"`
+	RandSeed            int    `def:"23061912" mapstructure:"rand-seed"`
+	RealTime            bool   `def:"false" desc:"uploads profiles on 10 second intervals"  mapstructure:"real-time"`
+	NoExitWhenDone      bool   `def:"false" desc:"by default will exit after sending requests, set this to true to override this behavior"  mapstructure:"no-exit-when-done"`
+	TimeMultiplier      int    `def:"1" desc:"the higher the value the lower the time between uploads. only used when real-time=true"  mapstructure:"time-multiplier"`
+	ProfileWidth        int    `def:"20" mapstructure:"profile-width"`
+	ProfileDepth        int    `def:"20" mapstructure:"profile-depth"`
+	ProfileSymbolLength int    `def:"30" mapstructure:"profile-symbol-length"`
+
+	Apps     int `def:"20" desc:"how many pyroscope apps to emulate" mapstructure:"apps"`
+	Clients  int `def:"20" desc:"how many pyroscope clients to emulate" mapstructure:"clients"`
+	Fixtures int `def:"30" desc:"how many different profiles to generate per app" mapstructure:"fixtures"`
+	Requests int `def:"10000" desc:"how many requests each clients should make" mapstructure:"requests"`
+
+	Duration  time.Duration `def:"0s" desc:"specifies how long the simulated time segment will be. if set, requests value is calculated based on duration" mapstructure:"duration"`
+	TimeLimit time.Duration `def:"1m" desc:"sets the maximum time for the loadgenerator to run. if not set, runs indefinitely" mapstructure:"time-limit"`
+	TagKeys   int           `def:"2" desc:"how many unique tag keys each app should have" mapstructure:"tag-keys"`
+	TagValues int           `def:"2" desc:"how many unique tag values each app should have" mapstructure:"tag-values"`
 
 	PushgatewayAddress string `def:"" desc:"if enabled, pushes data to prometheus pushgateway (assumes it's unauthenticated)" mapstructure:"pushgateway-address"`
 	WaitUntilAvailable bool   `def:"true" desc:"wait until endpoint is available"`

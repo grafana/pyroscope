@@ -8,6 +8,11 @@ services:
     ports:
       - 4040:4040
   pyroscope-main:
+    # this one is disabled in dev mode, commend lines below to enable it
+    entrypoint: /bin/sh
+    command:
+      - '-c'
+      - 'sleep infinity'
     ports:
       - 4050:4040
   prometheus:

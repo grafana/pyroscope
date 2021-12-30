@@ -182,6 +182,11 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 	logrus.Info("done sending requests, benchmark took ", time.Since(st))
 	doneCh <- struct{}{}
 
+	if l.Config.NoExitWhenDone {
+		logrus.Info("waiting forever")
+		select {}
+	}
+
 	return nil
 }
 
