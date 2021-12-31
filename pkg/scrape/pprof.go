@@ -17,8 +17,6 @@ package scrape
 import (
 	"time"
 
-	"google.golang.org/protobuf/proto"
-
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
@@ -46,11 +44,13 @@ func newPprofWriter(ingester Ingester, target *Target) *pprofWriter {
 }
 
 func (w *pprofWriter) writeProfile(st, et time.Time, b []byte) error {
-	var p tree.Profile
-	if err := proto.Unmarshal(b, &p); err != nil {
+	p := tree.ProfileFromVTPool()
+	defer p.ReturnToVTPool()
+	p.Reset()
+	if err := p.UnmarshalVT(b); err != nil {
 		return err
 	}
-	return w.r.Read(&p, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
+	return w.r.Read(p, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
 		sampleType := p.StringTable[vt.Type]
 		sampleTypeConfig := w.config.SampleTypes[sampleType]
 		pi := storage.PutInput{
