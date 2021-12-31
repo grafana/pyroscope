@@ -1,16 +1,19 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
+import { useDispatch } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
 import Button from '@ui/Button';
+import { addNotification } from '../redux/reducers/notifications';
 import styles from './FileUploader.module.scss';
 
 interface Props {
-  onUpload: (s: string) => void;
+  file: File;
+  setFile: (file: File, flamebearer: Record<string, unknown>) => void;
+  className?: string;
 }
-export default function FileUploader({ onUpload }: Props) {
-  const [file, setFile] = useState();
+export default function FileUploader({ file, setFile, className }: Props) {
+  const dispatch = useDispatch();
 
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles.length > 1) {
@@ -30,11 +33,26 @@ export default function FileUploader({ onUpload }: Props) {
           const s = JSON.parse(
             String.fromCharCode.apply(null, new Uint8Array(binaryStr))
           );
-          setFile({ file, ...s });
-          onUpload({ file, ...s });
+          // Only check for flamebearer fields, the rest of the file format is checked on decoding.
+          const fields = ['names', 'levels', 'numTicks', 'maxSelf'];
+          fields.forEach((field) => {
+            if (!(field in s.flamebearer))
+              throw new Error(
+                `Unable to parse uploaded file: field ${field} missing`
+              );
+          });
+          setFile(file, s);
         } catch (e) {
-          console.log(e);
-          alert(e);
+          dispatch(
+            addNotification({
+              message: e.message,
+              type: 'danger',
+              dismiss: {
+                duration: 0,
+                showIcon: true,
+              },
+            })
+          );
         }
       };
       reader.readAsArrayBuffer(file);
@@ -47,12 +65,11 @@ export default function FileUploader({ onUpload }: Props) {
   });
 
   const onRemove = () => {
-    setFile(null);
-    onUpload(null);
+    setFile(null, null);
   };
 
   return (
-    <section className={styles.container}>
+    <section className={`${styles.container} ${className}`}>
       <div {...getRootProps()}>
         <input {...getInputProps()} />
         {file ? (
@@ -68,7 +85,7 @@ export default function FileUploader({ onUpload }: Props) {
       </div>
       {file && (
         <aside>
-          Currently analyzing file {file.file.path}
+          Currently analyzing file {file.path}
           &nbsp;
           <Button icon={faTrash} onClick={onRemove}>
             Remove

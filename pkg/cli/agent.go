@@ -2,7 +2,7 @@ package cli
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -54,7 +54,7 @@ func (svc *agentService) Stop(_ service.Service) error {
 // https://github.com/spf13/viper#accessing-nested-keys.
 // TODO(kolesnikovae): find a way to get rid of the function.
 func loadAgentConfig(c *config.Agent) error {
-	b, err := ioutil.ReadFile(c.Config)
+	b, err := os.ReadFile(c.Config)
 	switch {
 	case err == nil:
 	case os.IsNotExist(err):
@@ -90,7 +90,7 @@ func mergeTags(a, b map[string]string) map[string]string {
 
 func createLogger(cfg *config.Agent) (*logrus.Logger, error) {
 	if cfg.NoLogging {
-		logrus.SetOutput(ioutil.Discard)
+		logrus.SetOutput(io.Discard)
 		return logrus.StandardLogger(), nil
 	}
 	l, err := logrus.ParseLevel(cfg.LogLevel)

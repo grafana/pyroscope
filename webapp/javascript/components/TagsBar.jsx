@@ -3,7 +3,7 @@ import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 import Button from '@ui/Button';
 import 'react-dom';
-import { Menu, SubMenu, MenuItem, MenuButton } from '@szhsin/react-menu';
+import Dropdown, { SubMenu, MenuItem, FocusableItem } from '@ui/Dropdown';
 
 import {
   fetchTags,
@@ -17,6 +17,7 @@ import styles from './TagsBar.module.css';
 
 function TagsBar({ query, actions, tags, tagValuesLoading }) {
   const [queryVal, setQuery] = useState(query);
+  const [filter, setFilter] = useState({});
 
   useEffect(() => {
     setQuery(query);
@@ -73,12 +74,8 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
   };
 
   return (
-    <div className="tags-bar rc-menu-container--theme-dark">
-      <Menu
-        menuButton={<MenuButton>Select Tag</MenuButton>}
-        theming="dark"
-        keepMounted
-      >
+    <div className="tags-bar _rc-menu-container--theme-dark">
+      <Dropdown label="Select Tag">
         {Object.keys(tags).length === 0 ? (
           <MenuItem>No tags available</MenuItem>
         ) : (
@@ -88,6 +85,8 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
           <SubMenu
             value={tag}
             key={tag}
+            overflow="auto"
+            position="initial"
             label={(e) => (
               <span
                 className="tag-content"
@@ -102,25 +101,49 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
             )}
             className="active"
           >
+            {tags && tags[tag] && tags[tag].length > 1 && (
+              <FocusableItem>
+                {({ ref }) => (
+                  <input
+                    ref={ref}
+                    type="text"
+                    placeholder="Type a tag"
+                    value={filter[tag] || ''}
+                    onChange={(e) =>
+                      setFilter({
+                        ...filter,
+                        [tag]: e.target.value,
+                      })
+                    }
+                  />
+                )}
+              </FocusableItem>
+            )}
+
             {tagValuesLoading === tag ? (
               <MenuItem>Loading...</MenuItem>
             ) : (
-              tags[tag].map((tagValue) => (
-                <MenuItem
-                  key={tagValue}
-                  value={tagValue}
-                  onClick={(e) => onTagsValueChange(tag, e.value)}
-                  className={
-                    queryVal.includes(`${tag}="${tagValue}"`) ? 'active' : ''
-                  }
-                >
-                  {tagValue}
-                </MenuItem>
-              ))
+              tags[tag]
+                .filter((t) => {
+                  const f = filter[tag] ? filter[tag].trim().toLowerCase() : '';
+                  return t.toLowerCase().includes(f);
+                })
+                .map((tagValue) => (
+                  <MenuItem
+                    key={tagValue}
+                    value={tagValue}
+                    onClick={(e) => onTagsValueChange(tag, e.value)}
+                    className={
+                      queryVal.includes(`${tag}="${tagValue}"`) ? 'active' : ''
+                    }
+                  >
+                    {tagValue}
+                  </MenuItem>
+                ))
             )}
           </SubMenu>
         ))}
-      </Menu>
+      </Dropdown>
       <form
         className="tags-query"
         onSubmit={(e) => {

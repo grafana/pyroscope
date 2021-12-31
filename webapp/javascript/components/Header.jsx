@@ -26,7 +26,7 @@ function Header(props) {
         </div>
         <div className="navbar-space-filler" />
         <div
-          className={classNames('navbar-spinner-container', {
+          className={classNames('spinner-container', {
             visible: isJSONLoading,
           })}
         >

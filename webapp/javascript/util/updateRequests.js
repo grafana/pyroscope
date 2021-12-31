@@ -1,8 +1,7 @@
 export function buildRenderURL(
   state,
   fromOverride = null,
-  untilOverride = null,
-  side = null
+  untilOverride = null
 ) {
   let { from, until, query } = state;
 
@@ -49,8 +48,9 @@ export function buildDiffRenderURL(
   rightUntil = rightUntilOverride || rightUntil;
 
   const urlStr = buildRenderURL(state, from, until);
-  const url = new URL(urlStr, location.origin);
-  url.pathname = '/render-diff'; // TODO: merge with buildRenderURL
+  const url = new URL(urlStr, location.href);
+
+  url.pathname = url.pathname.replace('render', 'render-diff');
 
   const params = url.searchParams;
   params.set('leftFrom', leftFrom);

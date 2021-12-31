@@ -1,0 +1,123 @@
+// Unfortunately the lib uses SASS directly
+// So we can't use css modules
+$sidebar-bg-color: #212124;
+$submenu-bg-color: transparent;
+$sidebar-color: rgba(255, 255, 255, 0.66);
+$submenu-bg-color-collapsed: #212124;
+$sidebar-width: 250px !default;
+$sidebar-collapsed-width: 54px !default;
+
+// using @use seems to break the overwrites
+@import 'node_modules/react-pro-sidebar/dist/scss/styles.scss';
+
+// Disable the wobble effect
+// https://github.com/azouaoui-med/react-pro-sidebar/issues/20#issuecomment-714750330
+.pro-sidebar
+  .pro-menu
+  .pro-menu-item
+  > .pro-inner-item:hover
+  .pro-icon-wrapper
+  .pro-icon,
+.pro-sidebar.collapsed
+  .pro-menu
+  > ul
+  > .pro-menu-item.pro-sub-menu:hover
+  .pro-icon-wrapper
+  .pro-icon {
+  animation: none;
+}
+
+// Active and hover
+// when not collapsed, don't highlight the submenu since it will be expanded already
+.pro-sidebar .pro-menu .pro-menu-item.active:not(.pro-sub-menu),
+.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:hover,
+// when collapsed, highlight since there's nothing visible
+.pro-sidebar.collapsed .pro-menu-item.active, {
+  background: #333;
+  color: #fff;
+}
+
+// for some reason it was inheriting a different background
+.pro-sidebar
+  .pro-menu.shaped
+  .pro-menu-item
+  > .pro-inner-item
+  > .pro-icon-wrapper {
+  background: transparent;
+}
+
+.pro-sidebar .pro-menu .pro-menu-item {
+  font-size: 16px;
+}
+
+// nested menu
+// since we are not setting a background color
+// the extra padding doesn't look good
+.pro-sidebar .pro-menu ul ul {
+  padding: 0px !important;
+}
+
+// when it's minimized
+.pro-sidebar .pro-menu .popper-inner {
+  padding-left: 0 !important;
+}
+.pro-sidebar .pro-menu .popper-inner .pro-inner-item {
+  padding-left: 20px !important;
+}
+
+// icon size
+.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item > .pro-icon-wrapper {
+  font-size: 16px;
+}
+
+.pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item {
+  padding-left: 10px;
+}
+
+// distance between icon and text
+// for nested elements
+.pro-sidebar
+  .pro-menu
+  .pro-menu-item.pro-sub-menu
+  .pro-menu-item
+  .pro-inner-item
+  > .pro-icon-wrapper {
+  // this is a completely eyeballed, arbitrary value
+  // ideally have to figure out why .pro-icon-wrapper is calculated to have a different value
+  // for nested items
+  margin-right: 20px;
+}
+
+.pro-sidebar .pro-menu .pro-menu-item {
+  font-size: 16px;
+  line-height: initial;
+}
+
+.pro-sidebar
+  .pro-menu
+  .pro-menu-item.pro-sub-menu
+  .pro-inner-list-item
+  .pro-inner-item,
+.pro-sidebar.collapsed
+  .pro-menu
+  > ul
+  > .pro-menu-item.pro-sub-menu
+  .pro-inner-list-item
+  .pro-inner-item {
+  padding-bottom: 15px;
+  padding-top: 15px;
+}
+
+// cancel subitems padding
+// since each item will implement itself
+// this will probably break multiple nested items (> 2 levels)
+.pro-sidebar .pro-menu .pro-menu-item.pro-sub-menu .pro-inner-list-item {
+  padding-left: 0;
+}
+.pro-sidebar
+  .pro-menu
+  .pro-menu-item.pro-sub-menu
+  .pro-inner-list-item
+  .pro-inner-item {
+  padding-left: 42px;
+}

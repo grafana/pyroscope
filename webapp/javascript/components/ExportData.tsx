@@ -5,8 +5,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 
 import clsx from 'clsx';
+import { Flamebearer } from '@models/flamebearer';
 
-function ExportData() {
+interface ExportDataProps {
+  exportFlamebearer?: Flamebearer;
+}
+function ExportData(props: ExportDataProps) {
+  const { exportFlamebearer } = props;
   const [toggleMenu, setToggleMenu] = useState(false);
 
   const formattedDate = () => {
@@ -44,6 +49,21 @@ function ExportData() {
     setToggleMenu(!toggleMenu);
   };
 
+  const downloadFlamebearer = function (
+    exportObj: Flamebearer,
+    exportName: string
+  ) {
+    const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
+      JSON.stringify(exportObj)
+    )}`;
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute('href', dataStr);
+    downloadAnchorNode.setAttribute('download', `${exportName}.json`);
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   return (
     <div className="dropdown-container">
       <Button icon={faBars} onClick={handleToggleMenu} />
@@ -61,6 +81,17 @@ function ExportData() {
           >
             PNG
           </button>
+          {exportFlamebearer && (
+            <button
+              className="dropdown-menu-item"
+              type="button"
+              onClick={() =>
+                downloadFlamebearer(exportFlamebearer, 'pyroscope_export')
+              }
+            >
+              JSON
+            </button>
+          )}
         </div>
       </div>
     </div>

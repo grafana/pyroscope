@@ -99,6 +99,10 @@ ifeq ("$(OS)", "Linux")
 	ranlib ./out/libpyroscope.phpspy.a
 endif
 
+.PHONY: install-go-dependencies
+install-go-dependencies: ## installs golang dependencies
+	go mod download
+
 .PHONY: build
 build: ## Builds the binary
 	$(GOBUILD) -tags "$(GO_TAGS)" -ldflags "$(EXTRA_LDFLAGS) $(shell scripts/generate-build-flags.sh)" -o ./bin/pyroscope ./cmd/pyroscope
@@ -156,11 +160,11 @@ install-build-web-dependencies: ## Install web dependencies only necessary for a
 
 .PHONY: assets
 assets: install-web-dependencies ## Configure the assets
-	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js
+	yarn dev
 
 .PHONY: assets-watch
 assets-watch: install-web-dependencies ## Configure the assets with live reloading
-	$(shell yarn bin webpack) --config scripts/webpack/webpack.dev.js --watch
+	yarn dev -- --watch
 
 .PHONY: assets-release
 assets-release: ## Configure the assets for release
@@ -228,9 +232,13 @@ update-contributors: ## Update the contributors
 		-l 100 \
 		.
 
+.PHONY: preview-changelog
+preview-changelog: ## Update the changelog
+	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -p angular -u
+
 .PHONY: update-changelog
 update-changelog: ## Update the changelog
-	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -s -p angular
+	$(shell yarn bin conventional-changelog) -i CHANGELOG.md -p angular -s
 	sed -i '/Updates the list of contributors in README/d' CHANGELOG.md
 	sed -i '/docs: updates the list of contributors in README/d' CHANGELOG.md
 	sed -i '/Update README.md/d' CHANGELOG.md

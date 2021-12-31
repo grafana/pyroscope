@@ -3,7 +3,7 @@ package main
 import (
 	"compress/gzip"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 
@@ -20,7 +20,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	buf, err := ioutil.ReadAll(g)
+	buf, err := io.ReadAll(g)
 	if err != nil {
 		panic(err)
 	}

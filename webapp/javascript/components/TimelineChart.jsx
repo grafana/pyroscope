@@ -52,6 +52,24 @@ class TimelineChart extends ReactFlot {
   componentDidUpdate(prevProps) {
     this.draw();
   }
+
+  // copied directly from ReactFlot implementation
+  // https://github.com/rodrigowirth/react-flot/blob/master/src/ReactFlot.jsx
+  render() {
+    const style = {
+      height: this.props.height || '400px',
+      width: this.props.width || '100%',
+    };
+
+    return (
+      <div
+        data-testid={this.props['data-testid']}
+        className={this.props.className}
+        id={this.props.id}
+        style={style}
+      />
+    );
+  }
 }
 
 const mapStateToProps = (state) => ({

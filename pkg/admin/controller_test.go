@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 
@@ -65,7 +65,7 @@ var _ = Describe("controller", func() {
 
 					svr.Handler.ServeHTTP(response, request)
 
-					body, err := ioutil.ReadAll(response.Body)
+					body, err := io.ReadAll(response.Body)
 					Expect(err).To(BeNil())
 
 					Expect(response.Code).To(Equal(http.StatusOK))

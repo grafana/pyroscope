@@ -1,0 +1,77 @@
+@use '../../sass/variables' as *;
+
+$tdHeight: 25px;
+
+.tableContainer {
+  overflow-y: scroll;
+  padding: 5px;
+  margin-bottom: 10px;
+}
+
+.rowSelected {
+  cursor: pointer;
+  background: #54d964;
+  color: black;
+}
+
+.profilesTable {
+  width: 100%;
+  font-size: 14px;
+
+  tbody tr:not(.rowSelected) {
+    &:hover {
+      cursor: pointer;
+      color: rgba(255, 255, 255, 1);
+      background: $btn-hover-color;
+    }
+  }
+
+  th,
+  td {
+    text-align: right;
+    padding: 0px 10px;
+
+    border-left: 1px solid #333;
+    border-bottom: 1px solid #333;
+    width: 400px;
+    min-width: 400px;
+    max-width: 400px;
+
+    span {
+      // mix-blend-mode: exclusion;
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.33);
+    }
+
+    &:first-child {
+      border-left: none;
+      text-align: left;
+
+      width: auto;
+      min-width: auto;
+      max-width: auto;
+
+      white-space: nowrap;
+    }
+  }
+
+  th {
+    padding: 6px 10px;
+  }
+  tr th,
+  tr:nth-child(2n) td {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  td {
+    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+
+    &:first-child {
+      margin-left: 15px;
+      position: relative;
+    }
+  }
+}
+
+.checkIcon {
+  margin-left: 8px;
+}

@@ -10,10 +10,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
 type writer struct {
@@ -33,8 +35,8 @@ func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) wr
 }
 
 func (w writer) write(t0, t1 time.Time) error {
-	dataDir := dataDirectory()
-	if err := os.MkdirAll(dataDir, os.ModeDir|os.ModePerm); err != nil {
+	dataDir, err := util.EnsureDataDirectory()
+	if err != nil {
 		return fmt.Errorf("could not create data directory: %w", err)
 	}
 
@@ -75,21 +77,7 @@ func (w writer) write(t0, t1 time.Time) error {
 		defer f.Close()
 		switch w.outputFormat {
 		case "json":
-			// TODO(abeaumont): This is duplicated code, fix the original first.
-			fs := out.Tree.FlamebearerStruct(w.maxNodesRender)
-			fs.SpyName = out.SpyName
-			fs.SampleRate = out.SampleRate
-			fs.Units = out.Units
-			res := map[string]interface{}{
-				"timeline":    out.Timeline,
-				"flamebearer": fs,
-				"metadata": map[string]interface{}{
-					"format":     fs.Format, // "single" | "double"
-					"spyName":    out.SpyName,
-					"sampleRate": out.SampleRate,
-					"units":      out.Units,
-				},
-			}
+			res := flamebearer.NewProfile(out, w.maxNodesRender)
 			if err := json.NewEncoder(f).Encode(res); err != nil {
 				w.logger.WithError(err).Error("saving output file")
 			}
@@ -116,8 +104,4 @@ func (w writer) write(t0, t1 time.Time) error {
 		}
 	}
 	return nil
-}
-
-func dataDirectory() string {
-	return filepath.Join(dataBaseDirectory(), "pyroscope")
 }
