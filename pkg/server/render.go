@@ -17,6 +17,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
@@ -70,8 +71,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch p.format {
 	case "json":
-		fs := out.Tree.FlamebearerStruct(p.maxNodes)
-		res := renderResponse(fs, out)
+		res := flamebearer.NewProfile(out, p.maxNodes)
 		ctrl.writeResponseJSON(w, res)
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
@@ -141,26 +141,7 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	leftOut.Tree, rghtOut.Tree = tree.CombineTree(leftOut.Tree, rghtOut.Tree)
-	fs := tree.CombineToFlamebearerStruct(leftOut.Tree, rghtOut.Tree, p.maxNodes)
-
-	fs.SpyName = out.SpyName
-	fs.SampleRate = out.SampleRate
-	fs.Units = out.Units
-	res := map[string]interface{}{
-		"leftTicks":   leftOut.Tree.Samples(),
-		"rightTicks":  rghtOut.Tree.Samples(),
-		"timeline":    out.Timeline,
-		"flamebearer": fs,
-		"metadata": map[string]interface{}{
-			"format":     fs.Format, // "single" | "double"
-			"spyName":    out.SpyName,
-			"sampleRate": out.SampleRate,
-			"units":      out.Units,
-		},
-	}
-
-	ctrl.writeResponseJSON(w, res)
+	ctrl.writeResponseJSON(w, flamebearer.NewCombinedProfile(out, leftOut, rghtOut, p.maxNodes))
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {

@@ -25,3 +25,6 @@ benchmark/report
 cypress/snapshots/**/__diff_output__
 cypress/videos
 cypress/screenshots
+# this file may contain sensitive credentials
+pkg/server/testdata/oauth-config.yml
+dist

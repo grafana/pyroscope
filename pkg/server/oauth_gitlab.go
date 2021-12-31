@@ -16,7 +16,7 @@ type oauthHanlderGitlab struct {
 	allowedGroups []string
 }
 
-func newGitlabHandler(cfg config.GitlabOauth, log *logrus.Logger) (*oauthHanlderGitlab, error) {
+func newGitlabHandler(cfg config.GitlabOauth, baseURL string, log *logrus.Logger) (*oauthHanlderGitlab, error) {
 	authURL, err := url.Parse(cfg.AuthURL)
 	if err != nil {
 		return nil, err
@@ -32,9 +32,10 @@ func newGitlabHandler(cfg config.GitlabOauth, log *logrus.Logger) (*oauthHanlder
 			},
 			authURL:       authURL,
 			log:           log,
-			callbackRoute: "auth/gitlab/callback",
+			callbackRoute: "/auth/gitlab/callback",
 			redirectRoute: "/auth/gitlab/redirect",
 			apiURL:        cfg.APIURL,
+			baseURL:       baseURL,
 		},
 		allowedGroups: cfg.AllowedGroups,
 	}

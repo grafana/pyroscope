@@ -39,6 +39,8 @@ describe('Tooltip', () => {
           numTicks={100}
           sampleRate={100}
           xyToData={xyToData}
+          leftTicks={100}
+          rightTicks={100}
         />
       );
 

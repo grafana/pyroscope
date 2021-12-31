@@ -5,13 +5,14 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"golang.org/x/sync/errgroup"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"math"
+	"os"
 	"sync"
 	"text/template"
 	"time"
+
+	"golang.org/x/sync/errgroup"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -60,7 +61,7 @@ func TableReportCli(q Querier, queriesFile string) (string, error) {
 	var qCfg QueriesConfig
 
 	// read the file
-	yamlFile, err := ioutil.ReadFile(queriesFile)
+	yamlFile, err := os.ReadFile(queriesFile)
 	if err != nil {
 		return "", err
 	}

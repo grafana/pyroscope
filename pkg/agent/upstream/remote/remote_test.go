@@ -3,7 +3,7 @@ package remote
 import (
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -34,7 +34,7 @@ var _ = Describe("remote.Remote", func() {
 					timestampsMutex.Lock()
 					timestamps = append(timestamps, time.Now())
 					timestampsMutex.Unlock()
-					_, err := ioutil.ReadAll(r.Body)
+					_, err := io.ReadAll(r.Body)
 					Expect(err).ToNot(HaveOccurred())
 
 					fmt.Fprintf(w, "Hello, %q", html.EscapeString(r.URL.Path))

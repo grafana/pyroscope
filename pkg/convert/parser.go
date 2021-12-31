@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"io"
-	"io/ioutil"
 	"strconv"
 
 	"google.golang.org/protobuf/proto"
@@ -46,7 +45,7 @@ func ParsePprof(r io.Reader) (*tree.Profile, error) {
 		r = bufioReader
 	}
 
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
