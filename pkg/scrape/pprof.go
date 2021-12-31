@@ -31,7 +31,6 @@ type pprofWriter struct {
 	storage *storage.Storage
 	labels  labels.Labels
 	config  *config.Profile
-	time    time.Time
 
 	r *tree.ProfileReader
 }
@@ -46,24 +45,20 @@ func newPprofWriter(s *storage.Storage, target *Target) *pprofWriter {
 	return &w
 }
 
-func (w *pprofWriter) writeProfile(b []byte) error {
+func (w *pprofWriter) writeProfile(st, et time.Time, b []byte) error {
 	var p tree.Profile
 	if err := proto.Unmarshal(b, &p); err != nil {
 		return err
 	}
-	var profileTime time.Time
-	// TimeNanos is the time of collection (UTC) represented
-	// as nanoseconds past the epoch reported by profiler.
-	if p.TimeNanos > 0 {
-		profileTime = time.Unix(0, p.TimeNanos).UTC()
-	} else {
-		// An extreme measure.
-		profileTime = time.Now()
-	}
-	err := w.r.Read(&p, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
+	return w.r.Read(&p, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
 		sampleType := p.StringTable[vt.Type]
 		sampleTypeConfig := w.config.SampleTypes[sampleType]
-		pi := storage.PutInput{SpyName: "scrape", Val: t}
+		pi := storage.PutInput{
+			StartTime: st,
+			EndTime:   et,
+			Val:       t,
+			SpyName:   "scrape",
+		}
 		// Cumulative profiles require two consecutive samples,
 		// therefore we have to cache this trie.
 		if sampleTypeConfig.Cumulative {
@@ -76,18 +71,6 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 			// The result is written to prev, t is not changed.
 			pi.Val = prev.Diff(t)
 		}
-		switch {
-		case p.DurationNanos > 0:
-			pi.StartTime = profileTime
-			pi.EndTime = profileTime.Add(time.Duration(p.DurationNanos))
-		case !w.time.IsZero():
-			// Without DurationNanos we can not deduce the time range
-			// of the profile and therefore need the previous profile time.
-			pi.StartTime = w.time
-			pi.EndTime = profileTime
-		default:
-			return false, nil
-		}
 		pi.AggregationType = sampleTypeConfig.Aggregation
 		if sampleTypeConfig.Sampled && p.Period > 0 {
 			pi.SampleRate = uint32(time.Second / time.Duration(p.Period))
@@ -95,20 +78,14 @@ func (w *pprofWriter) writeProfile(b []byte) error {
 		if sampleTypeConfig.DisplayName != "" {
 			sampleType = sampleTypeConfig.DisplayName
 		}
-		pi.Key = w.buildName(sampleType, p.ResolveLabels(l))
 		if sampleTypeConfig.Units != "" {
 			pi.Units = sampleTypeConfig.Units
 		} else {
 			pi.Units = p.StringTable[vt.Unit]
 		}
+		pi.Key = w.buildName(sampleType, p.ResolveLabels(l))
 		return sampleTypeConfig.Cumulative, w.storage.Put(&pi)
 	})
-	if err != nil {
-		w.reset()
-		return err
-	}
-	w.time = profileTime
-	return nil
 }
 
 func (w *pprofWriter) filterSampleType(s string) bool {
@@ -126,5 +103,4 @@ func (w *pprofWriter) buildName(sampleTypeName string, nameLabels map[string]str
 
 func (w *pprofWriter) reset() {
 	w.r.Reset()
-	w.time = time.Time{}
 }

@@ -307,6 +307,7 @@ func (sl *scrapeLoop) run() {
 }
 
 func (sl *scrapeLoop) scrape() error {
+	// TODO(kolesnikovae): Throttling / worker pool.
 	buf := bufPool.Get()
 	ctx, cancel := context.WithTimeout(sl.ctx, sl.timeout)
 	defer func() {
@@ -315,7 +316,6 @@ func (sl *scrapeLoop) scrape() error {
 	}()
 	switch err := sl.scraper.scrape(ctx, buf); {
 	case err == nil:
-		return sl.scraper.pprofWriter.writeProfile(buf.Bytes())
 	case errors.Is(err, context.Canceled):
 		return nil
 	default:
@@ -323,6 +323,15 @@ func (sl *scrapeLoop) scrape() error {
 		sl.scraper.pprofWriter.reset()
 		return err
 	}
+	// N.B: Although in some cases we can retrieve timings from
+	// the profile itself (using TimeNanos and DurationNanos fields),
+	// there is a big chance that the period will overlap multiple
+	// segment "slots", hereby producing redundant segment nodes and
+	// trees. Therefore we enforce predictable time range that fits
+	// default 10s slot (with default scrape interval).
+	startTime := time.Now()
+	endTime := time.Now().Add(sl.interval)
+	return sl.scraper.pprofWriter.writeProfile(startTime, endTime, buf.Bytes())
 }
 
 func (sl *scrapeLoop) stop() {
