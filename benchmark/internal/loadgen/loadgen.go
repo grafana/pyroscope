@@ -184,7 +184,7 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 
 	if l.Config.NoExitWhenDone {
 		logrus.Info("waiting forever")
-		select {}
+		time.Sleep(time.Hour * 24 * 365)
 	}
 
 	return nil
@@ -206,6 +206,7 @@ func (l *LoadGen) generateFixtures() Fixtures {
 	return f
 }
 
+//revive:disable:argument-limit it's benchmarking code, so lower standards are fine
 func (l *LoadGen) startClientThread(ctx context.Context, serverAddress string, threadID int, appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
