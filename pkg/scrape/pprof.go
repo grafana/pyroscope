@@ -28,18 +28,18 @@ import (
 )
 
 type pprofWriter struct {
-	storage *storage.Storage
-	labels  labels.Labels
-	config  *config.Profile
+	ingester Ingester
+	labels   labels.Labels
+	config   *config.Profile
 
 	r *tree.ProfileReader
 }
 
-func newPprofWriter(s *storage.Storage, target *Target) *pprofWriter {
+func newPprofWriter(ingester Ingester, target *Target) *pprofWriter {
 	w := pprofWriter{
-		storage: s,
-		labels:  target.Labels(),
-		config:  target.profile,
+		ingester: ingester,
+		labels:   target.Labels(),
+		config:   target.profile,
 	}
 	w.r = tree.NewProfileReader().SampleTypeFilter(w.filterSampleType)
 	return &w
@@ -84,7 +84,8 @@ func (w *pprofWriter) writeProfile(st, et time.Time, b []byte) error {
 			pi.Units = p.StringTable[vt.Unit]
 		}
 		pi.Key = w.buildName(sampleType, p.ResolveLabels(l))
-		return sampleTypeConfig.Cumulative, w.storage.Put(&pi)
+		w.ingester.Enqueue(&pi)
+		return sampleTypeConfig.Cumulative, nil
 	})
 }
 

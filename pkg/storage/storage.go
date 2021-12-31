@@ -43,7 +43,8 @@ type Storage struct {
 	tasksWG    sync.WaitGroup
 	stop       chan struct{}
 
-	putMutex sync.Mutex
+	queueWorkersWG sync.WaitGroup
+	queue          chan *PutInput
 }
 
 type storageOptions struct {
@@ -54,6 +55,8 @@ type storageOptions struct {
 	retentionTaskInterval     time.Duration
 	cacheTTL                  time.Duration
 	gcSizeDiff                bytesize.ByteSize
+	queueLen                  int
+	queueWorkers              int
 }
 
 // MetricsExporter exports values of particular stack traces sample from profiling
@@ -90,12 +93,17 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 			// gcSizeDiff specifies the minimal storage size difference that
 			// causes garbage collection to trigger.
 			gcSizeDiff: bytesize.GB,
+			// in-memory queue params.
+			queueLen:     1 << 10,
+			queueWorkers: runtime.NumCPU(),
 		},
 
 		logger:  logger,
 		metrics: newMetrics(reg),
 		stop:    make(chan struct{}),
 	}
+
+	s.queue = make(chan *PutInput, s.queueLen)
 
 	var err error
 	if s.main, err = s.newBadger("main", "", nil); err != nil {
@@ -121,6 +129,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 	}
 
 	s.maintenanceTask(s.writeBackTaskInterval, s.writeBackTask)
+	s.startQueueWorkers()
 
 	if !s.config.inMemory {
 		// TODO(kolesnikovae): Allow failure and skip evictionTask?
@@ -140,6 +149,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 func (s *Storage) Close() error {
 	// Stop all periodic and maintenance tasks.
 	close(s.stop)
+	s.queueWorkersWG.Wait()
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.tasksWG.Wait()
 	s.logger.Debug("storage tasks finished")

@@ -28,25 +28,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
 
-// NewManager is the Manager constructor
-func NewManager(logger logrus.FieldLogger, s *storage.Storage) *Manager {
-	c := make(map[string]*config.Config)
-	return &Manager{
-		storage:       s,
-		logger:        logger,
-		scrapeConfigs: c,
-		scrapePools:   make(map[string]*scrapePool),
-		stop:          make(chan struct{}),
-		reloadC:       make(chan struct{}, 1),
-	}
-}
-
 // Manager maintains a set of scrape pools and manages start/stop cycles
 // when receiving new target groups from the discovery manager.
 type Manager struct {
-	logger  logrus.FieldLogger
-	storage *storage.Storage
-	stop    chan struct{}
+	logger   logrus.FieldLogger
+	ingester Ingester
+	stop     chan struct{}
 
 	jitterSeed uint64     // Global jitterSeed seed is used to spread scrape workload across HA setup.
 	mtxScrape  sync.Mutex // Guards the fields below.
@@ -56,6 +43,23 @@ type Manager struct {
 	targetSets    map[string][]*targetgroup.Group
 
 	reloadC chan struct{}
+}
+
+type Ingester interface {
+	Enqueue(*storage.PutInput)
+}
+
+// NewManager is the Manager constructor
+func NewManager(logger logrus.FieldLogger, ingester Ingester) *Manager {
+	c := make(map[string]*config.Config)
+	return &Manager{
+		ingester:      ingester,
+		logger:        logger,
+		scrapeConfigs: c,
+		scrapePools:   make(map[string]*scrapePool),
+		stop:          make(chan struct{}),
+		reloadC:       make(chan struct{}, 1),
+	}
 }
 
 // Run receives and saves target set updates and triggers the scraping loops reloading.
@@ -87,7 +91,7 @@ func (m *Manager) reload() {
 					Errorf("reloading target set")
 				continue
 			}
-			sp, err := newScrapePool(scrapeConfig, m.storage, m.logger)
+			sp, err := newScrapePool(scrapeConfig, m.ingester, m.logger)
 			if err != nil {
 				m.logger.WithError(err).
 					WithField("scrape_pool", setName).
