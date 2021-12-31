@@ -12,7 +12,6 @@ services:
       - 'pyroscope-main'
     volumes:
       - ./report:/report
-      - ./internal/server/fixtures:/var/lib/pyrobench/fixtures
       - ./queries.yml:/queries.yml
       - ./pyrobench-entrypoint.sh:/entrypoint.sh
     entrypoint:
@@ -85,7 +84,7 @@ volumes:
     driver: local
   # these volumes are used to store data between runs (it might be useful if you want to compare runs)
   # sometimes you might not want to keep the data
-  # in that case run `docker-compose rm -f` to delete it
+  # in that case run `docker-compose down -v` to delete it
   data-pyroscope:
     driver: local
   data-pyroscope-main:

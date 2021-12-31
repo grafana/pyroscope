@@ -21,8 +21,6 @@ COPY ./benchmark benchmark
 
 RUN go build -o pyrobench ./benchmark/cmd
 
-COPY ./benchmark/internal/server/fixtures fixtures
-
 USER pyrobench
 CMD ["./pyrobench"]
 
@@ -31,6 +29,10 @@ FROM ubuntu:latest
 WORKDIR /var/lib/pyrobench
 
 RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
+RUN apt-get update && apt-get install -y curl
+
+RUN curl https://pyroscope-public.s3.amazonaws.com/benchmark/fixtures.tgz | tar -xzv
+
 # Create a group and user
 #RUN addgroup -S pyrobench && adduser -S pyrobench -G pyrobench
 RUN useradd -ms /bin/bash pyrobench

@@ -72,3 +72,9 @@ This benchmark is also used to benchmark each pull request against the `main` br
 
 * To add more panes edit `monitoring/benchmark-pr.jsonnet` file
 * To add more things to the report update the `queries.yml` file
+
+## TODO
+
+Future improvements:
+* [ ] better options for mock data
+

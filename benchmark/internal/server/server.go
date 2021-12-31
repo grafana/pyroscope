@@ -6,38 +6,50 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
-func getProfile(name string) tree.Profile {
+func getProfiles(name string) []tree.Profile {
+	res := []tree.Profile{}
+
 	var p tree.Profile
 
-	gb, err := os.ReadFile("./fixtures/" + name + ".pprof.gz")
+	paths, err := filepath.Glob("./fixtures/" + name + "-*.pprof")
 	if err != nil {
 		panic(err)
 	}
-
-	gr, err := gzip.NewReader(bytes.NewReader(gb))
-	if err != nil {
-		panic(err)
+	for _, path := range paths {
+		logrus.Infof("parsing profile %s", path)
+		gb, err := os.ReadFile(path)
+		if err != nil {
+			panic(err)
+		}
+		gr, err := gzip.NewReader(bytes.NewReader(gb))
+		if err != nil {
+			panic(err)
+		}
+		b, err := io.ReadAll(gr)
+		if err != nil {
+			panic(err)
+		}
+		if err := proto.Unmarshal(b, &p); err != nil {
+			panic(err)
+		}
+		res = append(res, p)
 	}
-	b, err := io.ReadAll(gr)
-	if err != nil {
-		panic(err)
-	}
 
-	if err := proto.Unmarshal(b, &p); err != nil {
-		panic(err)
-	}
-
-	return p
+	return res
 }
 
-func generateHandler(_ string, p tree.Profile, sleep int) func(w http.ResponseWriter, r *http.Request) {
+func generateHandler(profiles []tree.Profile, sleep int) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		i := int(time.Now().Unix()/10) % len(profiles)
+		p := profiles[i]
 		gw := gzip.NewWriter(w)
 		t := time.Now()
 		p.TimeNanos = t.UnixNano()
@@ -58,8 +70,8 @@ func generateHandler(_ string, p tree.Profile, sleep int) func(w http.ResponseWr
 
 func StartServer() {
 	m := http.NewServeMux()
-	m.HandleFunc("/debug/pprof/profile", generateHandler("cpu", getProfile("cpu"), 10))
-	m.HandleFunc("/debug/pprof/heap", generateHandler("heap", getProfile("heap"), 0))
+	m.HandleFunc("/debug/pprof/profile", generateHandler(getProfiles("cpu"), 10))
+	m.HandleFunc("/debug/pprof/heap", generateHandler(getProfiles("heap"), 0))
 
 	s := &http.Server{
 		Addr:           ":4042",
