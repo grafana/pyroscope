@@ -72,7 +72,7 @@ func newReport(cfg *config.Report) *cobra.Command {
 				return err
 			}
 
-			report, err := mr.Report(cfg.MetaReport.Params)
+			report, err := mr.Report(cfg.MetaReport.Title, cfg.MetaReport.Params)
 			if err != nil {
 				return err
 			}

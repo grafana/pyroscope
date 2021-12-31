@@ -29,4 +29,4 @@ scrape_configs:
     static_configs:
       - targets:
           - 'pyroscope:4040'
-          - 'pyroscope_main:4040'
+          - 'pyroscope-main:4040'
