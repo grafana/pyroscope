@@ -1,3 +1,4 @@
+// this file is used to generate a message for each PR
 import { markdown } from 'danger';
 const fs = require('fs');
 const path = require('path');
