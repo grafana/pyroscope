@@ -159,14 +159,20 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	lf, err := os.Open(filepath.Join(util.DataDirectory(), lp.Name))
+	dataDir, err := util.EnsureDataDirectory()
+	if err != nil {
+		s.log.WithError(err).Errorf("Unable to create data directory")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	lf, err := os.Open(filepath.Join(dataDir, lp.Name))
 	if err != nil {
 		s.log.WithError(err).Error("Unable to open profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer lf.Close()
-	rf, err := os.Open(filepath.Join(util.DataDirectory(), rp.Name))
+	rf, err := os.Open(filepath.Join(dataDir, rp.Name))
 	if err != nil {
 		s.log.WithError(err).Error("Unable to open profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
