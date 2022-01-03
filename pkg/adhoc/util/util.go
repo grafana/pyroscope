@@ -1,7 +1,12 @@
 package util
 
-import "path/filepath"
+import (
+	"os"
+	"path/filepath"
+)
 
-func DataDirectory() string {
-	return filepath.Join(dataBaseDirectory(), "pyroscope")
+// Retrieve pyroscope data directory, creating it if needed.
+func EnsureDataDirectory() (string, error) {
+	dir := filepath.Join(dataBaseDirectory(), "pyroscope")
+	return dir, os.MkdirAll(dir, os.ModeDir|os.ModePerm)
 }
