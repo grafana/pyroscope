@@ -131,7 +131,7 @@ func (n *treeNode) insertString(targetLabel string) *treeNode {
 	equal := false
 	i := sort.Search(len(n.ChildrenNodes), func(i int) bool {
 		for j, b := range []byte(targetLabel) {
-			if j > len(n.ChildrenNodes[i].Name) || b > n.ChildrenNodes[i].Name[j] {
+			if j >= len(n.ChildrenNodes[i].Name) || b > n.ChildrenNodes[i].Name[j] {
 				return true
 			}
 			if n.ChildrenNodes[i].Name[j] < b {
