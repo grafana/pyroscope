@@ -1,0 +1,8 @@
+{
+  "video": false,
+  "baseUrl": "http://localhost:8080/pyroscope/",
+  "integrationFolder": "cypress/integration/webapp",
+  "retries": {
+    "runMode": 5
+  }
+}
