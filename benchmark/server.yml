@@ -1,0 +1,11 @@
+---
+# log-level: debug
+scrape-configs:
+  - job-name: testing
+    enabled-profiles: [cpu, mem]
+    static-configs:
+      - application: pyrobench
+        targets:
+          - pyrobench:4042
+        labels:
+          pod: pod-0

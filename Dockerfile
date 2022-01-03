@@ -54,13 +54,17 @@ RUN apk add --no-cache make
 WORKDIR /opt/pyroscope
 
 COPY scripts ./scripts
+COPY package.json yarn.lock Makefile ./
+
+# we only need the dependencies required to BUILD the application
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn/v6 make install-build-web-dependencies
+
+COPY babel.config.js .eslintrc .eslintignore .prettierrc tsconfig.json ./
 COPY webapp ./webapp
-COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore .prettierrc tsconfig.json Makefile ./
 
 ARG EXTRA_METADATA=""
-# we only need the dependencies required to BUILD the application
-RUN EXTRA_METADATA=$EXTRA_METADATA make install-build-web-dependencies assets-release
 
+RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 
 #              _
 #             | |

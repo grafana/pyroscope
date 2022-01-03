@@ -35,8 +35,8 @@ func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) wr
 }
 
 func (w writer) write(t0, t1 time.Time) error {
-	dataDir := util.DataDirectory()
-	if err := os.MkdirAll(dataDir, os.ModeDir|os.ModePerm); err != nil {
+	dataDir, err := util.EnsureDataDirectory()
+	if err != nil {
 		return fmt.Errorf("could not create data directory: %w", err)
 	}
 

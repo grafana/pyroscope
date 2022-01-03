@@ -13,7 +13,7 @@ var _ = Describe("metareport", func() {
 		mr, err := cireport.NewMetaReport([]string{"execution", "seed"})
 		Expect(err).NotTo(HaveOccurred())
 
-		report, err := mr.Report([]string{"execution=5m", "seed=4"})
+		report, err := mr.Report("Server Benchmark", []string{"execution=5m", "seed=4"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(report).To(goldga.Match())
 	})
@@ -30,7 +30,7 @@ var _ = Describe("metareport", func() {
 			mr, err := cireport.NewMetaReport([]string{"allowed"})
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = mr.Report([]string{})
+			_, err = mr.Report("Server Benchmark", []string{})
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -38,7 +38,7 @@ var _ = Describe("metareport", func() {
 			mr, err := cireport.NewMetaReport([]string{"allowed"})
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = mr.Report([]string{"A=B"})
+			_, err = mr.Report("Server Benchmark", []string{"A=B"})
 			Expect(err).To(HaveOccurred())
 		})
 
@@ -46,16 +46,16 @@ var _ = Describe("metareport", func() {
 			mr, err := cireport.NewMetaReport([]string{"A"})
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = mr.Report([]string{"A"})
+			_, err = mr.Report("Server Benchmark", []string{"A"})
 			Expect(err).To(HaveOccurred())
 
-			_, err = mr.Report([]string{"A="})
+			_, err = mr.Report("Server Benchmark", []string{"A="})
 			Expect(err).To(HaveOccurred())
 
-			_, err = mr.Report([]string{"=B"})
+			_, err = mr.Report("Server Benchmark", []string{"=B"})
 			Expect(err).To(HaveOccurred())
 
-			_, err = mr.Report([]string{"A=B"})
+			_, err = mr.Report("Server Benchmark", []string{"A=B"})
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})

@@ -1,5 +1,13 @@
 import React from 'react';
-import { ClickEvent, Menu, MenuButton, MenuHeader } from '@szhsin/react-menu';
+import {
+  ClickEvent,
+  Menu,
+  MenuHeader,
+  SubMenu as LibSubmenu,
+  MenuItem as LibMenuItem,
+  MenuButton as LibMenuButton,
+  FocusableItem as LibFocusableItem,
+} from '@szhsin/react-menu';
 import styles from './Dropdown.module.scss';
 
 export interface DropdownProps {
@@ -52,3 +60,8 @@ export default function Dropdown({
     </Menu>
   );
 }
+
+export const SubMenu = LibSubmenu;
+export const MenuItem = LibMenuItem;
+export const MenuButton = LibMenuButton;
+export const FocusableItem = LibFocusableItem;

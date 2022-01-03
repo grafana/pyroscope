@@ -63,8 +63,14 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 // The profiles are retrieved every time the endpoint is requested,
 // which should be good enough as massive access to this auth endpoint is not expected.
 func (s *server) Profiles(w http.ResponseWriter, _ *http.Request) {
+	dataDir, err := util.EnsureDataDirectory()
+	if err != nil {
+		s.log.WithError(err).Errorf("Unable to create data directory")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	profiles := make(map[string]profile, 0)
-	err := filepath.Walk(util.DataDirectory(), func(path string, info fs.FileInfo, err error) error {
+	err = filepath.Walk(dataDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -127,7 +133,11 @@ func (*server) Diff(_ http.ResponseWriter, _ *http.Request) {
 type converterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
 
 func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
-	fname := filepath.Join(util.DataDirectory(), p.Name)
+	dataDir, err := util.EnsureDataDirectory()
+	if err != nil {
+		return nil, fmt.Errorf("unable to create data directory: %w", err)
+	}
+	fname := filepath.Join(dataDir, p.Name)
 	ext := filepath.Ext(fname)
 	var converter converterFn
 	switch ext {

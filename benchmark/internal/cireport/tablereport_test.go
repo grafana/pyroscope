@@ -3,8 +3,9 @@ package cireport_test
 import (
 	"context"
 	"fmt"
-	"github.com/pyroscope-io/pyroscope/benchmark/internal/cireport"
 	"time"
+
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/cireport"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
