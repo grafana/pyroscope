@@ -184,6 +184,12 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 			{"/debug/pprof/profile", pprof.Profile},
 			{"/debug/pprof/symbol", pprof.Symbol},
 			{"/debug/pprof/trace", pprof.Trace},
+			{"/debug/pprof/allocs", pprof.Index},
+			{"/debug/pprof/goroutine", pprof.Index},
+			{"/debug/pprof/heap", pprof.Index},
+			{"/debug/pprof/threadcreate", pprof.Index},
+			{"/debug/pprof/block", pprof.Index},
+			{"/debug/pprof/mutex", pprof.Index},
 		}...)
 	}
 
