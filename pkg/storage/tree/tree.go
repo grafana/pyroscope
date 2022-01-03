@@ -127,6 +127,30 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 	return n.ChildrenNodes[i]
 }
 
+func (n *treeNode) insertString(targetLabel string) *treeNode {
+	equal := false
+	i := sort.Search(len(n.ChildrenNodes), func(i int) bool {
+		for j, b := range []byte(targetLabel) {
+			if j > len(n.ChildrenNodes[i].Name) || b > n.ChildrenNodes[i].Name[j] {
+				return true
+			}
+			if n.ChildrenNodes[i].Name[j] < b {
+				return false
+			}
+		}
+		equal = true
+		return true
+	})
+	if i > len(n.ChildrenNodes)-1 || !equal {
+		l := []byte(targetLabel)
+		child := newNode(l)
+		n.ChildrenNodes = append(n.ChildrenNodes, child)
+		copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
+		n.ChildrenNodes[i] = child
+	}
+	return n.ChildrenNodes[i]
+}
+
 func (t *Tree) InsertInt(key []byte, value int) { t.Insert(key, uint64(value)) }
 
 func (t *Tree) Insert(key []byte, value uint64) {
@@ -144,6 +168,17 @@ func (t *Tree) Insert(key []byte, value uint64) {
 	}
 	node.Self += value
 	node.Total += value
+}
+
+func (t *Tree) InsertStackString(stack []string, v uint64) {
+	n := t.root
+	for j := range stack {
+		n.Total += v
+		n = n.insertString(stack[j])
+	}
+	// Leaf.
+	n.Total += v
+	n.Self += v
 }
 
 func (t *Tree) Iterate(cb func(key []byte, val uint64)) {
