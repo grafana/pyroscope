@@ -1,3 +1,13 @@
 import { Maybe } from 'true-myth';
+import type { Unwrapped } from 'true-myth/maybe';
 
-export { Maybe };
+// Should be used in situation where we are absolutely
+// want to throw an exception
+// eg in tests
+// DO NOT USE NORMALLY IN CODE
+const throwUnwrapErr = () => {
+  throw new Error('Failed to unwrap');
+};
+
+export { Maybe, throwUnwrapErr };
+export type { Unwrapped as UnwrapMaybe };

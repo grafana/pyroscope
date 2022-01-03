@@ -1,4 +1,4 @@
-import { Maybe } from '@utils/fp';
+import { Maybe, throwUnwrapErr } from '@utils/fp';
 import Flamegraph from './Flamegraph';
 import { BAR_HEIGHT } from './constants';
 import TestData from './testData';
@@ -83,7 +83,8 @@ describe('Flamegraph', () => {
       });
 
       it('works with the first bar (total)', () => {
-        const got = flame.xyToBar(0, 0).value;
+        const got = flame.xyToBar(0, 0).unwrapOrElse(throwUnwrapErr);
+
         expect(got.x).toBe(0);
         expect(got.y).toBe(0);
         expect(got.width).toBeCloseTo(CANVAS_WIDTH);
@@ -91,7 +92,9 @@ describe('Flamegraph', () => {
 
       it('works a full bar (runtime.main)', () => {
         // 2nd line,
-        const got = flame.xyToBar(0, BAR_HEIGHT + 1).value;
+        const got = flame
+          .xyToBar(0, BAR_HEIGHT + 1)
+          .unwrapOrElse(throwUnwrapErr);
 
         expect(got.x).toBe(0);
         expect(got.y).toBe(22);
@@ -100,7 +103,9 @@ describe('Flamegraph', () => {
 
       it('works with (main.fastFunction)', () => {
         // 3nd line, 'slowFunction'
-        const got = flame.xyToBar(1, BAR_HEIGHT * 2 + 1).value;
+        const got = flame
+          .xyToBar(1, BAR_HEIGHT * 2 + 1)
+          .unwrapOrElse(throwUnwrapErr);
 
         expect(got.x).toBe(0);
         expect(got.y).toBe(44);
@@ -109,7 +114,9 @@ describe('Flamegraph', () => {
 
       it('works with (main.slowFunction)', () => {
         // 3nd line, 'slowFunction'
-        const got = flame.xyToBar(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1).value;
+        const got = flame
+          .xyToBar(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1)
+          .unwrapOrElse(throwUnwrapErr);
 
         expect(got.x).toBeCloseTo(131.78);
         expect(got.y).toBe(44);
@@ -127,7 +134,7 @@ describe('Flamegraph', () => {
         test.each(cases)(
           'given %p and %p as arguments, returns the total bar',
           (i: number, j: number) => {
-            const got = flame.xyToBar(i, j).value;
+            const got = flame.xyToBar(i, j).unwrapOrElse(throwUnwrapErr);
             expect(got).toMatchObject({
               i: 0,
               j: 0,
@@ -166,7 +173,8 @@ describe('Flamegraph', () => {
         });
 
         it('works with the first bar (total)', () => {
-          const got = flame.xyToBar(0, 0).value;
+          const got = flame.xyToBar(0, 0).unwrapOrElse(throwUnwrapErr);
+
           expect(got.x).toBe(0);
           expect(got.y).toBe(0);
           expect(got.width).toBeCloseTo(CANVAS_WIDTH);
@@ -174,7 +182,9 @@ describe('Flamegraph', () => {
 
         it('works with a full bar (runtime.main)', () => {
           // 2nd line,
-          const got = flame.xyToBar(0, BAR_HEIGHT + 1).value;
+          const got = flame
+            .xyToBar(0, BAR_HEIGHT + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 1,
@@ -189,7 +199,9 @@ describe('Flamegraph', () => {
         //
         it('works with (main.fastFunction)', () => {
           // 3nd line, 'slowFunction'
-          const got = flame.xyToBar(1, BAR_HEIGHT * 2 + 1).value;
+          const got = flame
+            .xyToBar(1, BAR_HEIGHT * 2 + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 2,
@@ -203,7 +215,9 @@ describe('Flamegraph', () => {
         //
         it('works with (main.slowFunction)', () => {
           // 3nd line, 'slowFunction'
-          const got = flame.xyToBar(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1).value;
+          const got = flame
+            .xyToBar(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 2,
@@ -239,7 +253,7 @@ describe('Flamegraph', () => {
         });
 
         it('works with the first row (total)', () => {
-          const got = flame.xyToBar(0, 0).value;
+          const got = flame.xyToBar(0, 0).unwrapOrElse(throwUnwrapErr);
           expect(got.x).toBe(0);
           expect(got.y).toBe(0);
           expect(got.width).toBeCloseTo(CANVAS_WIDTH);
@@ -247,7 +261,9 @@ describe('Flamegraph', () => {
 
         it('works with itself as second row (main.slowFunction)', () => {
           // 2nd line,
-          const got = flame.xyToBar(1, BAR_HEIGHT + 1).value;
+          const got = flame
+            .xyToBar(1, BAR_HEIGHT + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 2,
@@ -261,7 +277,9 @@ describe('Flamegraph', () => {
 
         it('works with its child as third row (main.work)', () => {
           // 2nd line,
-          const got = flame.xyToBar(1, BAR_HEIGHT * 2 + 1).value;
+          const got = flame
+            .xyToBar(1, BAR_HEIGHT * 2 + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 3,
@@ -301,7 +319,7 @@ describe('Flamegraph', () => {
         });
 
         it('works with the first bar (total)', () => {
-          const got = flame.xyToBar(0, 0).value;
+          const got = flame.xyToBar(0, 0).unwrapOrElse(throwUnwrapErr);
           expect(got.x).toBe(0);
           expect(got.y).toBe(0);
           expect(got.width).toBeCloseTo(CANVAS_WIDTH);
@@ -309,7 +327,9 @@ describe('Flamegraph', () => {
         //
         it('works with a full bar (runtime.main)', () => {
           // 2nd line,
-          const got = flame.xyToBar(0, BAR_HEIGHT + 1).value;
+          const got = flame
+            .xyToBar(0, BAR_HEIGHT + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 1,
@@ -324,7 +344,9 @@ describe('Flamegraph', () => {
         //
         it('works with (main.fastFunction)', () => {
           // 3nd line, 'slowFunction'
-          const got = flame.xyToBar(1, BAR_HEIGHT * 2 + 1).value;
+          const got = flame
+            .xyToBar(1, BAR_HEIGHT * 2 + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 2,
@@ -338,7 +360,9 @@ describe('Flamegraph', () => {
         //
         it('works with (main.slowFunction)', () => {
           // 3nd line, 'slowFunction'
-          const got = flame.xyToBar(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1).value;
+          const got = flame
+            .xyToBar(CANVAS_WIDTH - 1, BAR_HEIGHT * 2 + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 2,
@@ -374,7 +398,7 @@ describe('Flamegraph', () => {
         });
 
         it('works with the first bar (total)', () => {
-          const got = flame.xyToBar(0, 0).value;
+          const got = flame.xyToBar(0, 0).unwrapOrElse(throwUnwrapErr);
           expect(got.x).toBe(0);
           expect(got.y).toBe(0);
           expect(got.width).toBeCloseTo(CANVAS_WIDTH);
@@ -382,7 +406,9 @@ describe('Flamegraph', () => {
         //
         it('works with a full bar (runtime.main)', () => {
           // 2nd line,
-          const got = flame.xyToBar(0, BAR_HEIGHT + 1).value;
+          const got = flame
+            .xyToBar(0, BAR_HEIGHT + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 1,
@@ -397,7 +423,9 @@ describe('Flamegraph', () => {
         //
         it('works with (main.slowFunction)', () => {
           // 3nd line, 'slowFunction'
-          const got = flame.xyToBar(1, BAR_HEIGHT * 2 + 1).value;
+          const got = flame
+            .xyToBar(1, BAR_HEIGHT * 2 + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 2,
@@ -412,7 +440,9 @@ describe('Flamegraph', () => {
         it('works with main.work (child of main.slowFunction)', () => {
           // 4th line, 'main.work'
           // TODO why 2??
-          const got = flame.xyToBar(1, BAR_HEIGHT * 3 + 2).value;
+          const got = flame
+            .xyToBar(1, BAR_HEIGHT * 3 + 2)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 3,
@@ -450,7 +480,7 @@ describe('Flamegraph', () => {
         });
 
         it('works with the first bar (total)', () => {
-          const got = flame.xyToBar(0, 0).value;
+          const got = flame.xyToBar(0, 0).unwrapOrElse(throwUnwrapErr);
           expect(got).toMatchObject({
             x: 0,
             y: 0,
@@ -462,7 +492,9 @@ describe('Flamegraph', () => {
 
         it('works with a full bar (runtime.main)', () => {
           // 2nd line,
-          const got = flame.xyToBar(0, BAR_HEIGHT + 1).value;
+          const got = flame
+            .xyToBar(0, BAR_HEIGHT + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 1,
@@ -476,7 +508,9 @@ describe('Flamegraph', () => {
 
         it('works with (main.slowFunction)', () => {
           // 3nd line, 'slowFunction'
-          const got = flame.xyToBar(1, BAR_HEIGHT * 2 + 1).value;
+          const got = flame
+            .xyToBar(1, BAR_HEIGHT * 2 + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 2,
@@ -489,7 +523,9 @@ describe('Flamegraph', () => {
         });
         it('works with (main.slowFunction)', () => {
           // 3nd line, 'slowFunction'
-          const got = flame.xyToBar(1, BAR_HEIGHT * 3 + 1).value;
+          const got = flame
+            .xyToBar(1, BAR_HEIGHT * 3 + 1)
+            .unwrapOrElse(throwUnwrapErr);
 
           expect(got).toMatchObject({
             i: 3,

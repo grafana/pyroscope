@@ -39,9 +39,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   //  const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
   const flamegraph = useRef<Flamegraph>();
 
-  const [rightClickedNode, setRightClickedNode] = React.useState(
-    Maybe.nothing<{ top: number; left: number; width: number }>()
-  );
+  const [rightClickedNode, setRightClickedNode] = React.useState<
+    Maybe<{ top: number; left: number; width: number }>
+  >(Maybe.nothing());
 
   const { flamebearer, focusedNode, fitMode, highlightQuery, zoom } = props;
 

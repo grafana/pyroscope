@@ -161,12 +161,12 @@ function FocusOnSubtree({
       throw new Error('Wrong mode');
   }
 
-  const f = selectedNode;
-  const onClick = f.isNothing
-    ? () => {}
-    : () => {
-        onFocusOnSubtree(f.value.i, f.value.j);
-      };
+  const onClick = selectedNode.mapOr(
+    () => {},
+    (f) => {
+      return () => onFocusOnSubtree(f.i, f.j);
+    }
+  );
 
   return (
     <Button

@@ -7,6 +7,7 @@ import {
   ratioToPercent,
 } from '@utils/format';
 import { Maybe } from '@utils/fp';
+import type { UnwrapMaybe } from '@utils/fp';
 import { diffColorRed, diffColorGreen } from './color';
 
 type xyToDataSingle = (
@@ -87,14 +88,16 @@ export default function Tooltip(props: TooltipProps) {
       };
 
       const opt = xyToData(e.offsetX, e.offsetY);
-      const isNone = opt.isNothing;
+      let data: UnwrapMaybe<typeof opt>;
 
-      if (isNone) {
+      // waiting on
+      // https://github.com/true-myth/true-myth/issues/279
+      if (opt.isJust) {
+        data = opt.value;
+      } else {
         onMouseOut();
         return;
       }
-
-      const data = opt.value;
 
       // set the content
       switch (data.format) {
