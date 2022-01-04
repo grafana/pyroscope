@@ -2,7 +2,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 
 import Highlight, { HighlightProps } from './Highlight';
 
@@ -24,13 +24,13 @@ describe('Highlight', () => {
       <TestComponent
         barHeight={50}
         xyToHighlightData={xyToHighlightData}
-        zoom={Option.none()}
+        zoom={Maybe.nothing()}
       />
     );
 
     // hover over a bar
     xyToHighlightData.mockReturnValueOnce(
-      Option.of({
+      Maybe.of({
         left: 10,
         top: 5,
         width: 100,
@@ -46,7 +46,7 @@ describe('Highlight', () => {
     });
 
     // hover outside the canvas
-    xyToHighlightData.mockReturnValueOnce(Option.none());
+    xyToHighlightData.mockReturnValueOnce(Maybe.nothing());
     userEvent.hover(screen.getByTestId('canvas'));
     expect(screen.getByTestId('flamegraph-highlight')).not.toBeVisible();
   });

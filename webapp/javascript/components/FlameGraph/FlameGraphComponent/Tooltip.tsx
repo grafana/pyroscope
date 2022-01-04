@@ -6,18 +6,19 @@ import {
   formatPercent,
   ratioToPercent,
 } from '@utils/format';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
+import type { UnwrapMaybe } from '@utils/fp';
 import { diffColorRed, diffColorGreen } from './color';
 
 type xyToDataSingle = (
   x: number,
   y: number
-) => Option<{ format: 'single'; name: string; total: number }>;
+) => Maybe<{ format: 'single'; name: string; total: number }>;
 
 type xyToDataDouble = (
   x: number,
   y: number
-) => Option<{
+) => Maybe<{
   format: 'double';
   name: string;
   totalLeft: number;
@@ -87,14 +88,16 @@ export default function Tooltip(props: TooltipProps) {
       };
 
       const opt = xyToData(e.offsetX, e.offsetY);
-      const isNone = opt.isNone();
+      let data: UnwrapMaybe<typeof opt>;
 
-      if (isNone) {
+      // waiting on
+      // https://github.com/true-myth/true-myth/issues/279
+      if (opt.isJust) {
+        data = opt.value;
+      } else {
         onMouseOut();
         return;
       }
-
-      const data = opt.get();
 
       // set the content
       switch (data.format) {

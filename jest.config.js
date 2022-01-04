@@ -19,7 +19,10 @@ module.exports = {
     '\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.svg$': 'svg-jest',
   },
-  transformIgnorePatterns: ['/node_modules/.+(js|jsx)$'],
+  transformIgnorePatterns: [
+    // force us to transpile these dependenciesmyth
+    'node_modules/(?!(true-myth|react-notifications-component)/)',
+  ],
   globals: {
     'ts-jest': {
       diagnostics: {

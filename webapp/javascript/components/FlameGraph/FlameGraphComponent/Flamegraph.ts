@@ -1,7 +1,7 @@
 import { createFF } from '@utils/flamebearer';
 import { Flamebearer } from '@models/flamebearer';
 import { DeepReadonly } from 'ts-essentials';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
@@ -24,7 +24,7 @@ export default class Flamegraph {
      * What node to be 'focused'
      * ie what node to start the tree
      */
-    private focusedNode: Option<DeepReadonly<{ i: number; j: number }>>,
+    private focusedNode: Maybe<DeepReadonly<{ i: number; j: number }>>,
     /**
      * What level has been "selected"
      * All nodes above will be dimmed out
@@ -38,7 +38,7 @@ export default class Flamegraph {
      * otherwise it will be greyish.
      */
     private readonly highlightQuery: string,
-    private zoom: Option<DeepReadonly<{ i: number; j: number }>>
+    private zoom: Maybe<DeepReadonly<{ i: number; j: number }>>
   ) {
     // TODO
     // these were only added because storybook is not setting
@@ -52,8 +52,8 @@ export default class Flamegraph {
 
     // don't allow to have a zoom smaller than the focus
     // since it does not make sense
-    if (focusedNode.isSome() && zoom.isSome()) {
-      if (zoom.get().i < focusedNode.get().i) {
+    if (focusedNode.isJust && zoom.isJust) {
+      if (zoom.value.i < focusedNode.value.i) {
         throw new Error('Zoom i level should be bigger than Focus');
       }
     }
@@ -122,9 +122,7 @@ export default class Flamegraph {
     const { ff } = this;
 
     // delay calculation since they may not be set
-    const calculatedZoomRange = (
-      zoom: ReturnType<typeof this.zoom.getOrThrow>
-    ) => {
+    const calculatedZoomRange = (zoom: { i: number; j: number }) => {
       const zoomMin =
         ff.getBarOffset(this.flamebearer.levels[zoom.i], zoom.j) /
         this.flamebearer.numTicks;
@@ -139,9 +137,7 @@ export default class Flamegraph {
       };
     };
 
-    const calculatedFocusRange = (
-      focusedNode: ReturnType<typeof this.focusedNode.getOrThrow>
-    ) => {
+    const calculatedFocusRange = (focusedNode: { i: number; j: number }) => {
       const focusMin =
         ff.getBarOffset(this.flamebearer.levels[focusedNode.i], focusedNode.j) /
         this.flamebearer.numTicks;
@@ -165,10 +161,10 @@ export default class Flamegraph {
     const { zoom, focusedNode } = this;
 
     return zoom.match({
-      Some: (z) => {
+      Just: (z) => {
         return focusedNode.match({
           // both are set
-          Some: (f) => {
+          Just: (f) => {
             const fRange = calculatedFocusRange(f);
             const zRange = calculatedZoomRange(z);
 
@@ -187,19 +183,19 @@ export default class Flamegraph {
           },
 
           // only zoom is set
-          None: () => {
+          Nothing: () => {
             return calculatedZoomRange(z);
           },
         });
       },
 
-      None: () => {
+      Nothing: () => {
         return focusedNode.match({
-          Some: (f) => {
+          Just: (f) => {
             // only focus is set
             return calculatedFocusRange(f);
           },
-          None: () => {
+          Nothing: () => {
             // neither are set
             return {
               rangeMin: 0,
@@ -217,7 +213,7 @@ export default class Flamegraph {
   }
 
   private isFocused() {
-    return this.focusedNode.isSome();
+    return this.focusedNode.isJust;
   }
 
   // binary search of a block in a stack level
@@ -263,35 +259,36 @@ export default class Flamegraph {
     // so we must discount for it
     const computedY = this.isFocused() ? y - BAR_HEIGHT : y;
 
-    const compensatedFocusedY = this.focusedNode
-      .map((node) => {
+    const compensatedFocusedY = this.focusedNode.mapOrElse(
+      () => 0,
+      (node) => {
         return node.i <= 0 ? 0 : node.i;
-      })
-      .getOrElse(0);
+      }
+    );
 
     const compensation = this.zoom.match({
-      Some: () => {
+      Just: () => {
         return this.focusedNode.match({
-          Some: () => {
+          Just: () => {
             // both are set, prefer focus
             return compensatedFocusedY;
           },
 
-          None: () => {
+          Nothing: () => {
             // only zoom is set
             return 0;
           },
         });
       },
 
-      None: () => {
+      Nothing: () => {
         return this.focusedNode.match({
-          Some: () => {
+          Just: () => {
             // only focus is set
             return compensatedFocusedY;
           },
 
-          None: () => {
+          Nothing: () => {
             // none of them are set
             return 0;
           },
@@ -316,19 +313,20 @@ export default class Flamegraph {
     const v = { x, y } as XYWithinBounds;
 
     if (withinBounds) {
-      return Option.of(v);
+      return Maybe.of(v);
     }
 
-    return Option.none<typeof v>();
+    return Maybe.nothing<typeof v>();
   }
 
   private xyToBarPosition = (xy: XYWithinBounds) => {
     const { ff } = this;
     const { i, j } = this.xyToBarIndex(xy.x, xy.y);
 
-    const topLevel = this.focusedNode
-      .map((node) => (node.i < 0 ? 0 : node.i - 1))
-      .getOrElse(0);
+    const topLevel = this.focusedNode.mapOrElse(
+      () => 0,
+      (node) => (node.i < 0 ? 0 : node.i - 1)
+    );
 
     const level = this.flamebearer.levels[i];
     const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);

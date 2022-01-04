@@ -1,0 +1,51 @@
+name: Cypress BaseURL Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cypress-base-url-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14.17'
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.17.0'
+      - name: run nginx with /pyroscope
+        run: docker-compose -f cypress/base-url/base-url-docker-compose.yml up -d
+      - name: Cypress run
+        uses: cypress-io/github-action@v2
+        with:
+          build: make e2e-build
+          wait-on: http://localhost:8080/pyroscope
+          start: make server
+          config-file: cypress/base-url/cypress.json
+        env:
+          # keep the server quiet
+          PYROSCOPE_BASE_URL: 'http://localhost:8080/pyroscope'
+          PYROSCOPE_LOG_LEVEL: error
+          ENABLED_SPIES: none
+          CYPRESS_VIDEO: true
+          CYPRESS_COMPARE_SNAPSHOTS: true
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-videos
+          path: cypress/videos
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: cypress-snapshots
+          path: cypress/snapshots

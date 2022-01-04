@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import 'jest-canvas-mock';
+import timezoneMock from 'timezone-mock';
 
 const {
   toMatchImageSnapshot,
@@ -24,3 +25,5 @@ expect.extend({
     return { pass: true };
   },
 });
+
+timezoneMock.register('UTC');

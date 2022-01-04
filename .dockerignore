@@ -10,3 +10,4 @@ benchmark/runs
 benchmark/docker-compose.yml
 benchmark/grafana-*
 benchmark/node_modules
+benchmark/*.env

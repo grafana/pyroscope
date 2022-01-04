@@ -7,7 +7,7 @@
 
 import React from 'react';
 import clsx from 'clsx';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
@@ -20,8 +20,8 @@ class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
   // eg localstorage
   initialFlamegraphState = {
-    focusedNode: Option.none(),
-    zoom: Option.none(),
+    focusedNode: Maybe.nothing(),
+    zoom: Maybe.nothing(),
   };
 
   constructor(props) {
@@ -127,7 +127,7 @@ class FlameGraphRenderer extends React.Component {
 
   onFlamegraphZoom = (bar) => {
     // zooming on the topmost bar is equivalent to resetting to the original state
-    if (bar.isSome() && bar.get().i === 0 && bar.get().j === 0) {
+    if (bar.isJust && bar.value.i === 0 && bar.value.j === 0) {
       this.onReset();
       return;
     }
@@ -154,8 +154,8 @@ class FlameGraphRenderer extends React.Component {
     // reset zoom if we are focusing below the zoom
     // or the same one we were zoomed
     const { zoom } = this.state.flamegraphConfigs;
-    if (zoom.isSome()) {
-      if (zoom.get().i <= i) {
+    if (zoom.isJust) {
+      if (zoom.value.i <= i) {
         flamegraphConfigs = {
           ...flamegraphConfigs,
           zoom: this.initialFlamegraphState.zoom,
@@ -167,7 +167,7 @@ class FlameGraphRenderer extends React.Component {
       ...this.state,
       flamegraphConfigs: {
         ...flamegraphConfigs,
-        focusedNode: Option.some({ i, j }),
+        focusedNode: Maybe.just({ i, j }),
       },
     });
   };
