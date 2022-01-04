@@ -1,0 +1,14 @@
+# this docker compose file assumes you will be running a local pyroscope instnace
+---
+version: '3.9'
+services:
+  grafana:
+    image: grafana/grafana:8.1.1
+    network_mode: host
+    volumes:
+      - ./dist:/var/lib/grafana/plugins/pyroscope-panel
+      - ./grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=pyroscope-panel
+      - GF_INSTALL_PLUGINS=pyroscope-datasource
