@@ -7,5 +7,6 @@ export default merge(common, {
 
   // Recommended choice for production builds with high quality SourceMaps.
   devtool: 'source-map',
+  // TODO deal with these types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as any);
-// TODO deal with these types
