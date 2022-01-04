@@ -152,8 +152,6 @@ func (sp *scrapePool) stop() {
 	sp.metrics.poolSyncFailed.DeleteLabelValues(sp.config.JobName)
 	sp.metrics.poolTargetsAdded.DeleteLabelValues(sp.config.JobName)
 	sp.metrics.scrapesFailed.DeleteLabelValues(sp.config.JobName)
-	sp.metrics.scrapeDuration.DeleteLabelValues(sp.config.JobName)
-	sp.metrics.scrapeBodySize.DeleteLabelValues(sp.config.JobName)
 }
 
 // reload the scrape pool with the given scrape configuration. The target state is preserved
@@ -341,7 +339,6 @@ func (sl *scrapeLoop) run() {
 			sl.poolMetrics.scrapeIntervalLength.Observe(time.Since(last).Seconds())
 		}
 		last = sl.scraper.report(sl.scrape)
-		sl.poolMetrics.scrapeDuration.Observe(sl.scraper.Target.lastScrapeDuration.Seconds())
 		select {
 		case <-ticker.C:
 		case <-sl.ctx.Done():
@@ -360,7 +357,6 @@ func (sl *scrapeLoop) scrape() error {
 	sl.poolMetrics.scrapes.Inc()
 	switch err := sl.scraper.scrape(ctx, buf); {
 	case err == nil:
-		sl.poolMetrics.scrapeBodySize.Observe(float64(buf.Len()))
 		return sl.scraper.pprofWriter.writeProfile(buf.Bytes())
 	case errors.Is(err, context.Canceled):
 		return nil
