@@ -45,6 +45,11 @@ type scrapePool struct {
 	upstream upstream.Upstream
 	logger   logrus.FieldLogger
 
+	// Global metrics shared by all pools.
+	metrics *metrics
+	// Job-specific metrics.
+	poolMetrics *poolMetrics
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -61,9 +66,12 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldLogger) (*scrapePool, error) {
+func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
+	m.pools.Inc()
+
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
+		m.poolsFailed.Inc()
 		return nil, fmt.Errorf("creating HTTP client: %w", err)
 	}
 
@@ -71,12 +79,15 @@ func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldL
 	sp := scrapePool{
 		ctx:           ctx,
 		cancel:        cancel,
+		logger:        logger,
 		upstream:      u,
 		config:        cfg,
 		client:        client,
 		activeTargets: make(map[uint64]*Target),
 		loops:         make(map[uint64]*scrapeLoop),
-		logger:        logger,
+
+		metrics:     m,
+		poolMetrics: m.poolMetrics(cfg.JobName),
 	}
 
 	return &sp, nil
@@ -84,12 +95,13 @@ func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldL
 
 func (sp *scrapePool) newScrapeLoop(s *scraper, i, t time.Duration) *scrapeLoop {
 	x := scrapeLoop{
-		scraper:  s,
-		logger:   sp.logger,
-		upstream: sp.upstream,
-		stopped:  make(chan struct{}),
-		interval: i,
-		timeout:  t,
+		scraper:     s,
+		logger:      sp.logger,
+		upstream:    sp.upstream,
+		poolMetrics: sp.poolMetrics,
+		stopped:     make(chan struct{}),
+		interval:    i,
+		timeout:     t,
 	}
 	x.ctx, x.cancel = context.WithCancel(sp.ctx)
 	return &x
@@ -130,6 +142,18 @@ func (sp *scrapePool) stop() {
 	sp.targetMtx.Unlock()
 	wg.Wait()
 	sp.client.CloseIdleConnections()
+	if sp.config == nil {
+		return
+	}
+	sp.metrics.scrapeIntervalLength.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolReloadIntervalLength.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolSyncIntervalLength.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolSyncs.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolSyncFailed.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolTargetsAdded.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.scrapesFailed.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.scrapeDuration.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.scrapeBodySize.DeleteLabelValues(sp.config.JobName)
 }
 
 // reload the scrape pool with the given scrape configuration. The target state is preserved
@@ -137,9 +161,12 @@ func (sp *scrapePool) stop() {
 func (sp *scrapePool) reload(cfg *config.Config) error {
 	sp.mtx.Lock()
 	defer sp.mtx.Unlock()
+	sp.metrics.poolReloads.Inc()
+	start := time.Now()
 
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
+		sp.metrics.poolReloadsFailed.Inc()
 		return fmt.Errorf("creating HTTP client: %w", err)
 	}
 
@@ -176,6 +203,7 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 	sp.targetMtx.Unlock()
 	wg.Wait()
 	oldClient.CloseIdleConnections()
+	sp.poolMetrics.poolReloadIntervalLength.Observe(time.Since(start).Seconds())
 	return nil
 }
 
@@ -184,6 +212,8 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 func (sp *scrapePool) Sync(tgs []*targetgroup.Group) {
 	sp.mtx.Lock()
 	defer sp.mtx.Unlock()
+	start := time.Now()
+
 	sp.targetMtx.Lock()
 	var all []*Target
 	sp.droppedTargets = []*Target{}
@@ -192,6 +222,7 @@ func (sp *scrapePool) Sync(tgs []*targetgroup.Group) {
 		for _, err := range failures {
 			sp.logger.WithError(err).Errorf("creating target")
 		}
+		sp.poolMetrics.poolSyncFailed.Add(float64(len(failures)))
 		for _, t := range targets {
 			if t.Labels().Len() > 0 {
 				all = append(all, t)
@@ -202,6 +233,9 @@ func (sp *scrapePool) Sync(tgs []*targetgroup.Group) {
 	}
 	sp.targetMtx.Unlock()
 	sp.sync(all)
+
+	sp.poolMetrics.poolSyncIntervalLength.Observe(time.Since(start).Seconds())
+	sp.poolMetrics.poolSyncs.Inc()
 }
 
 // revive:disable:confusing-naming private
@@ -259,6 +293,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 	}
 
 	sp.targetMtx.Unlock()
+	sp.poolMetrics.poolTargetsAdded.Set(float64(len(uniqueLoops)))
 	for _, l := range uniqueLoops {
 		if l != nil {
 			go l.run()
@@ -273,15 +308,14 @@ type scrapeLoop struct {
 	logger   logrus.FieldLogger
 	upstream upstream.Upstream
 
-	parentCtx context.Context
-	ctx       context.Context
-	cancel    func()
-	stopped   chan struct{}
+	poolMetrics *poolMetrics
 
-	forcedErr    error
-	forcedErrMtx sync.Mutex
-	interval     time.Duration
-	timeout      time.Duration
+	ctx     context.Context
+	cancel  func()
+	stopped chan struct{}
+
+	interval time.Duration
+	timeout  time.Duration
 }
 
 var bufPool = bytebufferpool.Pool{}
@@ -293,15 +327,25 @@ func (sl *scrapeLoop) run() {
 	case <-sl.ctx.Done():
 		return
 	}
-	sl.scraper.report(sl.scrape)
 	ticker := time.NewTicker(sl.interval)
 	defer ticker.Stop()
+	var last time.Time
 	for {
 		select {
+		default:
 		case <-sl.ctx.Done():
 			return
+		}
+
+		if !last.IsZero() {
+			sl.poolMetrics.scrapeIntervalLength.Observe(time.Since(last).Seconds())
+		}
+		last = sl.scraper.report(sl.scrape)
+		sl.poolMetrics.scrapeDuration.Observe(sl.scraper.Target.lastScrapeDuration.Seconds())
+		select {
 		case <-ticker.C:
-			sl.scraper.report(sl.scrape)
+		case <-sl.ctx.Done():
+			return
 		}
 	}
 }
@@ -313,12 +357,15 @@ func (sl *scrapeLoop) scrape() error {
 		bufPool.Put(buf)
 		cancel()
 	}()
+	sl.poolMetrics.scrapes.Inc()
 	switch err := sl.scraper.scrape(ctx, buf); {
 	case err == nil:
+		sl.poolMetrics.scrapeBodySize.Observe(float64(buf.Len()))
 		return sl.scraper.pprofWriter.writeProfile(buf.Bytes())
 	case errors.Is(err, context.Canceled):
 		return nil
 	default:
+		sl.poolMetrics.scrapesFailed.Inc()
 		sl.logger.WithError(err).WithField("target", sl.scraper.Target.String()).Debug("scrapping failed")
 		sl.scraper.pprofWriter.reset()
 		return err

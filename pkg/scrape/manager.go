@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
@@ -29,7 +30,7 @@ import (
 )
 
 // NewManager is the Manager constructor
-func NewManager(logger logrus.FieldLogger, u upstream.Upstream) *Manager {
+func NewManager(logger logrus.FieldLogger, u upstream.Upstream, r prometheus.Registerer) *Manager {
 	c := make(map[string]*config.Config)
 	return &Manager{
 		upstream:      u,
@@ -38,6 +39,7 @@ func NewManager(logger logrus.FieldLogger, u upstream.Upstream) *Manager {
 		scrapePools:   make(map[string]*scrapePool),
 		stop:          make(chan struct{}),
 		reloadC:       make(chan struct{}, 1),
+		metrics:       newMetrics(r),
 	}
 }
 
@@ -48,6 +50,7 @@ type Manager struct {
 	upstream upstream.Upstream
 	stop     chan struct{}
 
+	*metrics
 	jitterSeed uint64     // Global jitterSeed seed is used to spread scrape workload across HA setup.
 	mtxScrape  sync.Mutex // Guards the fields below.
 
@@ -87,7 +90,7 @@ func (m *Manager) reload() {
 					Errorf("reloading target set")
 				continue
 			}
-			sp, err := newScrapePool(scrapeConfig, m.upstream, m.logger)
+			sp, err := newScrapePool(scrapeConfig, m.upstream, m.logger, m.metrics)
 			if err != nil {
 				m.logger.WithError(err).
 					WithField("scrape_pool", setName).
