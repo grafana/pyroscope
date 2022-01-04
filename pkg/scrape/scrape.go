@@ -82,11 +82,14 @@ func newScrapePool(cfg *config.Config, ingester Ingester, logger logrus.FieldLog
 }
 
 func (sp *scrapePool) newScrapeLoop(s *scraper, i, t time.Duration) *scrapeLoop {
+	// TODO(kolesnikovae): Refactor.
+	d, _ := s.Target.deltaDuration()
 	x := scrapeLoop{
 		scraper:  s,
 		logger:   sp.logger,
 		ingester: sp.ingester,
 		stopped:  make(chan struct{}),
+		delta:    d,
 		interval: i,
 		timeout:  t,
 	}
@@ -272,15 +275,13 @@ type scrapeLoop struct {
 	logger   logrus.FieldLogger
 	ingester Ingester
 
-	parentCtx context.Context
-	ctx       context.Context
-	cancel    func()
-	stopped   chan struct{}
+	ctx     context.Context
+	cancel  func()
+	stopped chan struct{}
 
-	forcedErr    error
-	forcedErrMtx sync.Mutex
-	interval     time.Duration
-	timeout      time.Duration
+	delta    time.Duration
+	interval time.Duration
+	timeout  time.Duration
 }
 
 var bufPool = bytebufferpool.Pool{}
@@ -292,21 +293,65 @@ func (sl *scrapeLoop) run() {
 	case <-sl.ctx.Done():
 		return
 	}
-	sl.scraper.report(sl.scrape)
 	ticker := time.NewTicker(sl.interval)
 	defer ticker.Stop()
 	for {
 		select {
+		default:
 		case <-sl.ctx.Done():
 			return
+		}
+		sl.scrapeAndReport(sl.scraper.Target)
+		select {
 		case <-ticker.C:
-			sl.scraper.report(sl.scrape)
+		case <-sl.ctx.Done():
+			return
 		}
 	}
 }
 
-func (sl *scrapeLoop) scrape() error {
-	// TODO(kolesnikovae): Throttling / worker pool.
+func (sl *scrapeLoop) scrapeAndReport(t *Target) {
+	// TODO(kolesnikovae): Time alignment should be moved to storage.
+	now := time.Now().Truncate(time.Second * 10)
+	// There are two possible cases:
+	//  1. "delta" profile that is collected during scrape. In instance,
+	//     Go cpu profile requires "seconds" parameter. Such a profile
+	//     represent a time span since now to now+delta.
+	//  2. Profile is captured immediately. Despite the fact that the
+	//     data represent the current moment, we need to know when it
+	//     was scraped last time.
+	if sl.delta == 0 && t.lastScrape.IsZero() {
+		// Skip this round as we would not figure out time span of the
+		// profile reliably either way.
+		t.lastScrape = now
+		return
+	}
+	// N.B: Although in some cases we can retrieve timings from
+	// the profile itself (using TimeNanos and DurationNanos fields),
+	// there is a big chance that the period will overlap multiple
+	// segment "slots", hereby producing redundant segment nodes and
+	// trees. Therefore, it's better to adhere standard 10s period
+	// that fits segment node size (at level 0).
+	startTime, endTime := now, now
+	if sl.delta > 0 {
+		endTime = now.Add(sl.delta)
+	} else {
+		startTime = now.Add(-1 * sl.interval)
+	}
+	err := sl.scrape(startTime, endTime)
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+	if err == nil {
+		t.health = HealthGood
+	} else {
+		t.health = HealthBad
+	}
+	t.lastError = err
+	t.lastScrape = now
+	t.lastScrapeDuration = time.Since(now)
+}
+
+func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 	buf := bufPool.Get()
 	ctx, cancel := context.WithTimeout(sl.ctx, sl.timeout)
 	defer func() {
@@ -322,14 +367,6 @@ func (sl *scrapeLoop) scrape() error {
 		sl.scraper.pprofWriter.reset()
 		return err
 	}
-	// N.B: Although in some cases we can retrieve timings from
-	// the profile itself (using TimeNanos and DurationNanos fields),
-	// there is a big chance that the period will overlap multiple
-	// segment "slots", hereby producing redundant segment nodes and
-	// trees. Therefore we enforce predictable time range that fits
-	// default 10s slot (with default scrape interval).
-	startTime := time.Now()
-	endTime := time.Now().Add(sl.interval)
 	return sl.scraper.pprofWriter.writeProfile(startTime, endTime, buf.Bytes())
 }
 
