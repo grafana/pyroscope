@@ -48,7 +48,12 @@ describe('E2E Tests', () => {
   });
 
   it('tests single view', () => {
-    cy.visit(`/?query=${appName}&from=${t0}&until=${t4}`);
+    const params = new URLSearchParams();
+    params.set('query', appName);
+    params.set('from', t0);
+    params.set('until', t4);
+
+    cy.visit(`/?${params.toString()}`);
 
     cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
       `e2e-single-flamegraph`
@@ -56,9 +61,16 @@ describe('E2E Tests', () => {
   });
 
   it('tests /comparison view', () => {
-    cy.visit(
-      `/comparison?query=${appName}&leftFrom=${t0}&leftUntil=${t2}&rightFrom=${t2}&rightUntil=${t4}&from=${t0}&until=${t4}`
-    );
+    const params = new URLSearchParams();
+    params.set('query', appName);
+    params.set('from', t0);
+    params.set('until', t4);
+    params.set('leftFrom', t0);
+    params.set('leftUntil', t2);
+    params.set('rightFrom', t2);
+    params.set('rightTo', t4);
+
+    cy.visit(`/comparison?${params.toString()}`);
 
     const findFlamegraph = (n: number) => {
       const query = `> :nth-child(${n})`;
@@ -78,9 +90,16 @@ describe('E2E Tests', () => {
   });
 
   it('tests /comparison-diff view', () => {
-    cy.visit(
-      `/comparison-diff?query=${appName}&from=${t0}&until=${t4}&leftFrom=${t0}&leftUntil=${t2}&rightFrom=${t2}&rightTo=${t4}`
-    );
+    const params = new URLSearchParams();
+    params.set('query', appName);
+    params.set('from', t0);
+    params.set('until', t4);
+    params.set('leftFrom', t0);
+    params.set('leftUntil', t2);
+    params.set('rightFrom', t2);
+    params.set('rightTo', t4);
+
+    cy.visit(`/comparison-diff?${params.toString()}`);
 
     cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
       `e2e-comparison-diff-flamegraph`
