@@ -33,7 +33,7 @@ const pagePlugins = pages.map(
     })
 );
 
-module.exports = {
+export default {
   target: 'web',
 
   entry: {
