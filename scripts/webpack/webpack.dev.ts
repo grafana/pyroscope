@@ -1,14 +1,11 @@
-const { merge } = require('webpack-merge');
-const { WebpackPluginServe } = require('webpack-plugin-serve');
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const request = require('sync-request');
-const fs = require('fs');
-const route = require('koa-route');
-
-const common = require('./webpack.common');
-
-const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+import { merge } from 'webpack-merge';
+import { WebpackPluginServe } from 'webpack-plugin-serve';
+import path from 'path';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import request from 'sync-request';
+import fs from 'fs';
+import route from 'koa-route';
+import common from './webpack.common';
 
 module.exports = merge(common, {
   devtool: 'eval-source-map',
