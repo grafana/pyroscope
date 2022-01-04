@@ -127,6 +127,7 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// Diff retrieves two different local files identified by their IDs and builds a profile diff.
 func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 	lid := mux.Vars(r)["left"]
 	rid := mux.Vars(r)["right"]
@@ -144,48 +145,15 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-	dataDir, err := util.EnsureDataDirectory()
+	lfb, err := s.convert(lp)
 	if err != nil {
-		s.log.WithError(err).Errorf("Unable to create data directory")
+		s.log.WithError(err).Error("Unable to process left profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	lf, err := os.Open(filepath.Join(dataDir, lp.Name))
+	rfb, err := s.convert(rp)
 	if err != nil {
-		s.log.WithError(err).Error("Unable to open profile")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer lf.Close()
-	rf, err := os.Open(filepath.Join(dataDir, rp.Name))
-	if err != nil {
-		s.log.WithError(err).Error("Unable to open profile")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer lf.Close()
-
-	// TODO(abeaumont): Support for other formats
-	lb, err := io.ReadAll(lf)
-	if err != nil {
-		s.log.WithError(err).Error("Unable to read profile")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	rb, err := io.ReadAll(rf)
-	if err != nil {
-		s.log.WithError(err).Error("Unable to read profile")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	var lfb, rfb flamebearer.FlamebearerProfile
-	if err := json.Unmarshal(lb, &lfb); err != nil {
-		s.log.WithError(err).Error("Invalid file format")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := json.Unmarshal(rb, &rfb); err != nil {
-		s.log.WithError(err).Error("Invalid file format")
+		s.log.WithError(err).Error("Unable to process right profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -198,13 +166,13 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 		SpyName:    lfb.Metadata.SpyName,
 		SampleRate: lfb.Metadata.SampleRate,
 	}
-	lt, err := profileToTree(lfb)
+	lt, err := profileToTree(*lfb)
 	if err != nil {
 		s.log.WithError(err).Error("Unable to convert profile to tree")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	rt, err := profileToTree(rfb)
+	rt, err := profileToTree(*rfb)
 	if err != nil {
 		s.log.WithError(err).Error("Unable to convert profile to tree")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -213,8 +181,7 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 	lOut := &storage.GetOutput{Tree: lt}
 	rOut := &storage.GetOutput{Tree: rt}
 
-	// FIXME(abeaumont): Use maxNodes once https://github.com/pyroscope-io/pyroscope/pull/649 is merged
-	fb := flamebearer.NewCombinedProfile(out, lOut, rOut, 2048)
+	fb := flamebearer.NewCombinedProfile(out, lOut, rOut, s.maxNodes)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(fb); err != nil {
 		s.log.WithError(err).Error("Unable to encode the profile diff")
