@@ -79,7 +79,7 @@ describe('E2E Tests', () => {
 
   it('tests /comparison-diff view', () => {
     cy.visit(
-      `/comparison-diff?query=${appName}&from=${t2}&until=${t4}&leftFrom=${t0}&leftUntil=${t2}`
+      `/comparison-diff?query=${appName}&from=${t0}&until=${t4}&leftFrom=${t0}&leftUntil=${t2}&rightFrom=${t2}&rightTo=${t4}`
     );
 
     cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
