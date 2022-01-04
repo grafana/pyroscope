@@ -128,26 +128,35 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 }
 
 func (n *treeNode) insertString(targetLabel string) *treeNode {
-	equal := false
-	i := sort.Search(len(n.ChildrenNodes), func(i int) bool {
-		for j, b := range []byte(targetLabel) {
-			if j >= len(n.ChildrenNodes[i].Name) || b > n.ChildrenNodes[i].Name[j] {
-				return true
+	i, j := 0, len(n.ChildrenNodes)
+	for i < j {
+		m := (i + j) >> 1
+		for k, b := range []byte(targetLabel) {
+			if k >= len(n.ChildrenNodes[m].Name) || b > n.ChildrenNodes[m].Name[k] {
+				// targetLabel > n.ChildrenNodes[m].Name
+				i = m + 1
+				break
 			}
-			if n.ChildrenNodes[i].Name[j] < b {
-				return false
+			if b < n.ChildrenNodes[m].Name[k] {
+				// targetLabel < n.ChildrenNodes[m].Name
+				j = m
+				break
+			}
+			if k == len(targetLabel)-1 {
+				if len(targetLabel) == len(n.ChildrenNodes[m].Name) {
+					// targetLabel == n.ChildrenNodes[m].Name
+					return n.ChildrenNodes[m]
+				}
+				// targetLabel < n.ChildrenNodes[m].Name
+				j = m
 			}
 		}
-		equal = true
-		return true
-	})
-	if i > len(n.ChildrenNodes)-1 || !equal {
-		l := []byte(targetLabel)
-		child := newNode(l)
-		n.ChildrenNodes = append(n.ChildrenNodes, child)
-		copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
-		n.ChildrenNodes[i] = child
 	}
+	l := []byte(targetLabel)
+	child := newNode(l)
+	n.ChildrenNodes = append(n.ChildrenNodes, child)
+	copy(n.ChildrenNodes[i+1:], n.ChildrenNodes[i:])
+	n.ChildrenNodes[i] = child
 	return n.ChildrenNodes[i]
 }
 
