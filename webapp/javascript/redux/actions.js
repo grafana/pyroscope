@@ -458,7 +458,7 @@ export function fetchTagValues(query, tag) {
 
     dispatch(requestTagValues(tag));
     return fetch(
-      `/label-values?label=${encodeURIComponent(
+      `./label-values?label=${encodeURIComponent(
         tag
       )}&query=${encodeURIComponent(query)}`
     )
@@ -485,7 +485,7 @@ export function fetchNames() {
     currentNamesController = new AbortController();
 
     dispatch(requestNames());
-    return fetch('/label-values?label=__name__', {
+    return fetch('./label-values?label=__name__', {
       signal: currentNamesController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -504,7 +504,7 @@ export function fetchAdhocProfiles() {
 
     adhocProfilesController = new AbortController();
     dispatch(requestAdhocProfiles());
-    return fetch('/api/adhoc/v1/profiles', {
+    return fetch('./api/adhoc/v1/profiles', {
       signal: adhocProfilesController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -531,7 +531,7 @@ export function fetchAdhocProfile(profile) {
 
     adhocProfileController = new AbortController();
     dispatch(requestAdhocProfile());
-    return fetch(`/api/adhoc/v1/profile/${profile}`, {
+    return fetch(`./api/adhoc/v1/profile/${profile}`, {
       signal: adhocProfileController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -557,8 +557,8 @@ export function fetchAdhocLeftProfile(profile) {
     }
 
     adhocLeftProfileController = new AbortController();
-    dispatch(requestAdhocLeftProfile(profile));
-    return fetch(`/api/adhoc/v1/profile/${profile}`, {
+    dispatch(requestAdhocLeftProfile());
+    return fetch(`./api/adhoc/v1/profile/${profile}`, {
       signal: adhocLeftProfileController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -584,8 +584,8 @@ export function fetchAdhocRightProfile(profile) {
     }
 
     adhocRightProfileController = new AbortController();
-    dispatch(requestAdhocRightProfile(profile));
-    return fetch(`/api/adhoc/v1/profile/${profile}`, {
+    dispatch(requestAdhocRightProfile());
+    return fetch(`./api/adhoc/v1/profile/${profile}`, {
       signal: adhocRightProfileController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -612,7 +612,7 @@ export function fetchAdhocProfileDiff(left, right) {
 
     adhocProfileDiffController = new AbortController();
     dispatch(requestAdhocProfileDiff());
-    return fetch(`/api/adhoc/v1/diff/${left}/${right}`, {
+    return fetch(`./api/adhoc/v1/diff/${left}/${right}`, {
       signal: adhocProfileDiffController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
