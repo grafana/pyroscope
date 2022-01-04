@@ -107,7 +107,7 @@ describe('basic test', () => {
 
     cy.findByTestId('flamegraph-comparison-left')
       .find('canvas')
-      .matchImageSnapshot('simple-golang-app-cpu-highlight');
+      .matchImageSnapshot('simple-golang-app-cpu-highlight-left');
 
     cy.findByTestId('flamegraph-comparison-right').get(
       '[data-highlightquery="main"]'
@@ -115,7 +115,7 @@ describe('basic test', () => {
 
     cy.findByTestId('flamegraph-comparison-right')
       .find('canvas')
-      .matchImageSnapshot('simple-golang-app-cpu-highlight');
+      .matchImageSnapshot('simple-golang-app-cpu-highlight-right');
   });
 
   it('view buttons should change view when clicked', () => {
