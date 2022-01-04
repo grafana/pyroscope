@@ -6,7 +6,9 @@ import { Router, BrowserRouter, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Notifications from '@ui/Notifications';
-import store from './redux/store';
+import { PersistGate } from 'redux-persist/integration/react';
+
+import store, { persistor } from './redux/store';
 
 import PyroscopeApp from './components/PyroscopeApp';
 import ComparisonApp from './components/ComparisonApp';
@@ -29,34 +31,36 @@ try {
 
 ReactDOM.render(
   <Provider store={store}>
-    <Router history={history}>
-      <ServerNotifications />
-      <Notifications />
-      <div className="app">
-        <Sidebar />
-        <Switch>
-          <Route exact path="/">
-            <PyroscopeApp />
-          </Route>
-          <Route path="/comparison">
-            <ComparisonApp />
-          </Route>
-          <Route path="/comparison-diff">
-            <ComparisonDiffApp />
-          </Route>
-          {isExperimentalAdhocUIEnabled && (
-            <Route path="/adhoc-single">
-              <AdhocSingle />
+    <PersistGate loading={null} persistor={persistor}>
+      <Router history={history}>
+        <ServerNotifications />
+        <Notifications />
+        <div className="app">
+          <Sidebar />
+          <Switch>
+            <Route exact path="/">
+              <PyroscopeApp />
             </Route>
-          )}
-          {isExperimentalAdhocUIEnabled && (
-            <Route path="/adhoc-comparison">
-              <AdhocComparison />
+            <Route path="/comparison">
+              <ComparisonApp />
             </Route>
-          )}
-        </Switch>
-      </div>
-    </Router>
+            <Route path="/comparison-diff">
+              <ComparisonDiffApp />
+            </Route>
+            {isExperimentalAdhocUIEnabled && (
+              <Route path="/adhoc-single">
+                <AdhocSingle />
+              </Route>
+            )}
+            {isExperimentalAdhocUIEnabled && (
+              <Route path="/adhoc-comparison">
+                <AdhocComparison />
+              </Route>
+            )}
+          </Switch>
+        </div>
+      </Router>
+    </PersistGate>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
   </Provider>,
   document.getElementById('root')

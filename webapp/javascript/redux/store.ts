@@ -1,10 +1,12 @@
 import thunkMiddleware from 'redux-thunk';
-import { createStore, applyMiddleware } from 'redux';
+import { applyMiddleware } from 'redux';
 import { composeWithDevTools } from 'redux-devtools-extension';
 
 import ReduxQuerySync from 'redux-query-sync';
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
 
+import { persistStore, persistReducer } from 'redux-persist';
+import storage from 'redux-persist/lib/storage';
 import rootReducer from './reducers';
 import history from '../util/history';
 
@@ -20,21 +22,31 @@ import {
   setQuery,
 } from './actions';
 
-import { parseLabels, encodeLabels } from '../util/key';
+import { parseLabels, encodeLabels } from '../util/key'; // defaults to localStorage for web
+
+const persistConfig = {
+  key: 'pyroscope',
+  storage,
+};
 
 const enhancer = composeWithDevTools(
   applyMiddleware(thunkMiddleware)
   // updateUrl(["from", "until", "labels"]),
   // persistState(["from", "until", "labels"]),
 );
-
-const store = configureStore({
-  reducer: {
+const reducer = persistReducer(
+  persistConfig,
+  combineReducers({
     root: rootReducer,
     views: viewsReducer,
-  },
+  })
+);
+const store = configureStore({
+  reducer,
   // middleware: [thunkMiddleware],
 });
+
+export const persistor = persistStore(store);
 
 const defaultName = window.initialState.appNames.find(
   (x) => x !== 'pyroscope.server.cpu'
