@@ -99,7 +99,7 @@ describe('basic test', () => {
     cy.visit('/comparison');
 
     cy.findByTestId('link-search-btn-left').click();
-    cy.get('input[data-testname="flamegraph-search-left"]').type('main');
+    cy.findByTestId('flamegraph-search-left').type('main');
 
     cy.findByTestId('flamegraph-comparison-left').get(
       '[data-highlightquery="main"]'

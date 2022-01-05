@@ -216,11 +216,12 @@ function HighlightSearch({
     }
   }
 
+  const testId = `flamegraph-search${viewSide ? `-${viewSide}` : ''}`;
+
   return (
     <>
       <DebounceInput
-        data-testid="flamegraph-search"
-        data-testname={`flamegraph-search-${viewSide}`}
+        data-testid={`${testId}`}
         className={`${styles.search} ${
           showMode === 'small' ? styles['search-small'] : ''
         } ${
