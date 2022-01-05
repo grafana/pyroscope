@@ -43,6 +43,13 @@ const reducer = persistReducer(
 );
 const store = configureStore({
   reducer,
+  // Ignore non-serialiable redux-persis actions
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: ['persist/PERSIST'],
+      },
+    }),
   // middleware: [thunkMiddleware],
 });
 

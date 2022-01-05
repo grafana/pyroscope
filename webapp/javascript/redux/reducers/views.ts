@@ -9,8 +9,13 @@ interface ViewState {
   value: number;
 }
 
+const windowWidth =
+  window.innerWidth ||
+  document.documentElement.clientWidth ||
+  document.body.clientWidth;
+
 const initialUIState: UIState = {
-  sidebar: true,
+  sidebar: windowWidth < 1200,
 };
 
 // Define the initial state using that type

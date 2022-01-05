@@ -21,37 +21,11 @@ import { useLocation, NavLink } from 'react-router-dom';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
-import { connect } from 'react-redux';
-import { RootState } from '@pyroscope/redux/store';
-import { selectUIState } from '@pyroscope/redux/reducers/views';
 import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
+import { withCollapsible, ICollapsible } from './enchaners';
 
-import { setCollapsedUI } from '../redux/actions';
-
-// This was quickly authored as a PoC, so there a few things left
-// 1. Move that away from components files
-// 2. It must open sidebar when it's more than 1200px on a first load, but leave it open for a second one
-// 3. Update persistor to save only required data. Although it loads up significantly faster after a refresh now
-export interface ICollapsibleSidebar {
-  collapsed: boolean;
-  setCollapsed: (boolean) => void;
-}
-
-export const withCollapsible = (path) =>
-  connect(
-    (state: RootState) => ({
-      collapsed: selectUIState(state)(path),
-    }),
-    (dispatch) => ({
-      setCollapsed: (value) => {
-        dispatch(setCollapsedUI(path, value));
-      },
-    })
-  );
-
-export default withCollapsible('sidebar')(Sidebar2);
-export interface SidebarProps {
+export interface SidebarProps extends ICollapsible {
   initialCollapsed?: boolean;
 }
 
@@ -67,8 +41,8 @@ function signOut() {
   form.submit();
 }
 
-export function Sidebar2(props: SidebarProps & ICollapsibleSidebar) {
-  const { initialCollapsed, collapsed, setCollapsed } = props;
+export function Sidebar2(props: SidebarProps) {
+  const { collapsed, setCollapsed } = props;
   const { search, pathname } = useLocation();
   const windowWidth = useWindowWidth();
 
@@ -78,11 +52,6 @@ export function Sidebar2(props: SidebarProps & ICollapsibleSidebar) {
   const isRouteActive = function (route: string) {
     return pathname === route;
   };
-
-  // useEffect(() => {
-  //   const c = windowWidth < 1200;
-  //   setCollapsed(c);
-  // }, [windowWidth]);
 
   // TODO
   // simplify this
@@ -246,3 +215,5 @@ export function Sidebar2(props: SidebarProps & ICollapsibleSidebar) {
     </Sidebar>
   );
 }
+
+export default withCollapsible('sidebar')(Sidebar2);
