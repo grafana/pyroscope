@@ -1,7 +1,6 @@
 import { merge } from 'webpack-merge';
-
-const path = require('path');
-const prod = require('./webpack.prod');
+import path from 'path';
+import prod from './webpack.prod';
 
 module.exports = merge(prod, {
   output: {
