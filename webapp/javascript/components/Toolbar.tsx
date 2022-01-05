@@ -218,15 +218,23 @@ function HighlightSearch({
 
   const testId = `flamegraph-search${viewSide ? `-${viewSide}` : ''}`;
 
+  const searchSizeCls = `${
+    showMode === 'small' ? `${styles['search-small']}` : ''
+  }`;
+
+  const inputTypeCls = `${
+    searchInputType === 'linked' ? `${styles['linked-search-input']}` : ''
+  }`;
+
+  const linkedSearchCls = `${
+    isSearchLinked === true ? `${styles.active}` : ''
+  }`;
+
   return (
     <>
       <DebounceInput
         data-testid={`${testId}`}
-        className={`${styles.search} ${
-          showMode === 'small' ? styles['search-small'] : ''
-        } ${
-          searchInputType === 'linked' ? styles['linked-search-input'] : ''
-        } ${isSearchLinked === true ? styles.active : ''}`}
+        className={`${styles.search} ${searchSizeCls} ${inputTypeCls} ${linkedSearchCls}`}
         type="search"
         name="flamegraph-search"
         placeholder="Search…"
