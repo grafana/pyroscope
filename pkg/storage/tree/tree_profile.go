@@ -24,8 +24,8 @@ func (r *ProfileReader) Reset() {
 	r.cache = make(labelsCache)
 }
 
-func (r *ProfileReader) Load(st int, labels Labels) (*Tree, bool) {
-	e, ok := r.cache.get(st, labels.Hash())
+func (r *ProfileReader) Load(sampleType int64, labels Labels) (*Tree, bool) {
+	e, ok := r.cache.get(sampleType, labels.Hash())
 	if !ok {
 		return nil, false
 	}
@@ -33,26 +33,22 @@ func (r *ProfileReader) Load(st int, labels Labels) (*Tree, bool) {
 }
 
 func (r *ProfileReader) Read(x *Profile, fn func(vt *ValueType, l Labels, t *Tree) (keep bool, err error)) error {
-	sampleTypes := make([]int, 0, len(x.SampleType))
-	for i, s := range x.SampleType {
-		if r.sampleTypesFilter != nil && !r.sampleTypesFilter(x.StringTable[s.Type]) {
-			continue
-		}
-		sampleTypes = append(sampleTypes, i)
+	// Reuse cache if it is empty.
+	c := r.cache
+	if len(r.cache) != 0 || r.cache == nil {
+		c = make(labelsCache)
 	}
-	if len(sampleTypes) == 0 {
-		return nil
-	}
-	c := make(labelsCache)
-	readTrees(x, sampleTypes, c, NewFinder(x))
+	r.readTrees(x, c, NewFinder(x))
 	for sampleType, entries := range c {
-		for h, e := range entries {
-			keep, err := fn(x.SampleType[sampleType], e.Labels, e.Tree)
-			if err != nil {
-				return err
-			}
-			if !keep {
-				c.remove(sampleType, h)
+		if t, ok := x.ResolveSampleType(sampleType); ok {
+			for h, e := range entries {
+				keep, err := fn(t, e.Labels, e.Tree)
+				if err != nil {
+					return err
+				}
+				if !keep {
+					c.remove(sampleType, h)
+				}
 			}
 		}
 	}
@@ -61,13 +57,22 @@ func (r *ProfileReader) Read(x *Profile, fn func(vt *ValueType, l Labels, t *Tre
 }
 
 func (x *Profile) ResolveLabels(l Labels) map[string]string {
-	m := make(map[string]string)
+	m := make(map[string]string, len(l))
 	for _, label := range l {
 		if label.Str != 0 {
 			m[x.StringTable[label.Key]] = x.StringTable[label.Str]
 		}
 	}
 	return m
+}
+
+func (x *Profile) ResolveSampleType(v int64) (*ValueType, bool) {
+	for _, vt := range x.SampleType {
+		if vt.Type == v {
+			return vt, true
+		}
+	}
+	return nil, false
 }
 
 type Labels []*Label
@@ -86,7 +91,21 @@ func (l Labels) Hash() uint64 {
 	return h.Sum64()
 }
 
-func readTrees(x *Profile, sampleTypes []int, c labelsCache, f Finder) {
+// readTrees generates trees from the profile populating c.
+func (r *ProfileReader) readTrees(x *Profile, c labelsCache, f Finder) {
+	// SampleType value indexes.
+	indexes := make([]int, 0, len(x.SampleType))
+	// Corresponding type IDs used as the main cache keys.
+	types := make([]int64, 0, len(x.SampleType))
+	for i, s := range x.SampleType {
+		if r.sampleTypesFilter != nil && r.sampleTypesFilter(x.StringTable[s.Type]) {
+			indexes = append(indexes, i)
+			types = append(types, s.Type)
+		}
+	}
+	if len(indexes) == 0 {
+		return
+	}
 	stack := make([][]byte, 0, 16)
 	for _, s := range x.Sample {
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
@@ -113,9 +132,9 @@ func readTrees(x *Profile, sampleTypes []int, c labelsCache, f Finder) {
 			}
 		}
 		// Insert tree nodes.
-		for _, sampleType := range sampleTypes {
-			if v := uint64(s.Value[sampleType]); v != 0 {
-				c.getOrCreate(sampleType, s.Label).InsertStack(stack, v)
+		for i, vi := range indexes {
+			if v := uint64(s.Value[vi]); v != 0 {
+				c.getOrCreate(types[i], s.Label).InsertStack(stack, v)
 			}
 		}
 		stack = stack[:0]
@@ -126,8 +145,8 @@ func unsafeStrToSlice(s string) []byte {
 	return (*[0x7fff0000]byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data))[:len(s):len(s)]
 }
 
-// sample type (index) -> labels hash -> entry
-type labelsCache map[int]map[uint64]*labelsCacheEntry
+// sample type -> labels hash -> entry
+type labelsCache map[int64]map[uint64]*labelsCacheEntry
 
 type labelsCacheEntry struct {
 	Labels
@@ -138,7 +157,7 @@ func newCacheEntry(l Labels) *labelsCacheEntry {
 	return &labelsCacheEntry{Tree: New(), Labels: l}
 }
 
-func (c labelsCache) getOrCreate(sampleType int, l Labels) *labelsCacheEntry {
+func (c labelsCache) getOrCreate(sampleType int64, l Labels) *labelsCacheEntry {
 	p, ok := c[sampleType]
 	if !ok {
 		e := newCacheEntry(l)
@@ -154,7 +173,7 @@ func (c labelsCache) getOrCreate(sampleType int, l Labels) *labelsCacheEntry {
 	return e
 }
 
-func (c labelsCache) get(sampleType int, h uint64) (*labelsCacheEntry, bool) {
+func (c labelsCache) get(sampleType int64, h uint64) (*labelsCacheEntry, bool) {
 	p, ok := c[sampleType]
 	if !ok {
 		return nil, false
@@ -163,7 +182,7 @@ func (c labelsCache) get(sampleType int, h uint64) (*labelsCacheEntry, bool) {
 	return x, ok
 }
 
-func (c labelsCache) put(sampleType int, e *labelsCacheEntry) {
+func (c labelsCache) put(sampleType int64, e *labelsCacheEntry) {
 	p, ok := c[sampleType]
 	if !ok {
 		p = make(map[uint64]*labelsCacheEntry)
@@ -172,10 +191,13 @@ func (c labelsCache) put(sampleType int, e *labelsCacheEntry) {
 	p[e.Hash()] = e
 }
 
-func (c labelsCache) remove(sampleType int, h uint64) {
+func (c labelsCache) remove(sampleType int64, h uint64) {
 	p, ok := c[sampleType]
 	if !ok {
 		return
 	}
 	delete(p, h)
+	if len(p) == 0 {
+		delete(c, sampleType)
+	}
 }

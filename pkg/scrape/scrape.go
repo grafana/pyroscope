@@ -312,7 +312,7 @@ func (sl *scrapeLoop) run() {
 
 func (sl *scrapeLoop) scrapeAndReport(t *Target) {
 	// TODO(kolesnikovae): Time alignment should be moved to storage.
-	now := time.Now().Truncate(time.Second * 10)
+	now := time.Now().Round(time.Second * 10)
 	// There are two possible cases:
 	//  1. "delta" profile that is collected during scrape. In instance,
 	//     Go cpu profile requires "seconds" parameter. Such a profile

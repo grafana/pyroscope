@@ -62,7 +62,7 @@ func (w *pprofWriter) writeProfile(st, et time.Time, b []byte) error {
 		// Cumulative profiles require two consecutive samples,
 		// therefore we have to cache this trie.
 		if sampleTypeConfig.Cumulative {
-			prev, found := w.r.Load(int(vt.Type), l)
+			prev, found := w.r.Load(vt.Type, l)
 			if !found {
 				// Keep the current entry in cache.
 				return true, nil
