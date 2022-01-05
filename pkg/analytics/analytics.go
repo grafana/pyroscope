@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"reflect"
 	"runtime"
 	"time"
 
@@ -32,9 +33,10 @@ import (
 )
 
 var (
-	url             = "https://analytics.pyroscope.io/api/events"
-	gracePeriod     = 5 * time.Minute
-	uploadFrequency = 24 * time.Hour
+	url               = "https://analytics.pyroscope.io/api/events"
+	gracePeriod       = 5 * time.Minute
+	uploadFrequency   = 24 * time.Hour
+	snapshotFrequency = 10 * time.Minute
 )
 
 type StatsProvider interface {
@@ -44,9 +46,10 @@ type StatsProvider interface {
 
 func NewService(cfg *config.Server, s *storage.Storage, p StatsProvider) *Service {
 	return &Service{
-		cfg: cfg,
-		s:   s,
-		p:   p,
+		cfg:  cfg,
+		s:    s,
+		p:    p,
+		base: &storage.Analytics{},
 		httpClient: &http.Client{
 			Transport: &http.Transport{
 				MaxConnsPerHost: 1,
@@ -62,6 +65,7 @@ type Service struct {
 	cfg        *config.Server
 	s          *storage.Storage
 	p          StatsProvider
+	base       *storage.Analytics
 	httpClient *http.Client
 	uploads    int
 
@@ -69,41 +73,13 @@ type Service struct {
 	done chan struct{}
 }
 
-type metrics struct {
-	InstallID            string    `json:"install_id"`
-	RunID                string    `json:"run_id"`
-	Version              string    `json:"version"`
-	Timestamp            time.Time `json:"timestamp"`
-	UploadIndex          int       `json:"upload_index"`
-	GOOS                 string    `json:"goos"`
-	GOARCH               string    `json:"goarch"`
-	GoVersion            string    `json:"go_version"`
-	MemAlloc             int       `json:"mem_alloc"`
-	MemTotalAlloc        int       `json:"mem_total_alloc"`
-	MemSys               int       `json:"mem_sys"`
-	MemNumGC             int       `json:"mem_num_gc"`
-	BadgerMain           int       `json:"badger_main"`
-	BadgerTrees          int       `json:"badger_trees"`
-	BadgerDicts          int       `json:"badger_dicts"`
-	BadgerDimensions     int       `json:"badger_dimensions"`
-	BadgerSegments       int       `json:"badger_segments"`
-	ControllerIndex      int       `json:"controller_index"`
-	ControllerComparison int       `json:"controller_comparison"`
-	ControllerDiff       int       `json:"controller_diff"`
-	ControllerIngest     int       `json:"controller_ingest"`
-	ControllerRender     int       `json:"controller_render"`
-	SpyRbspy             int       `json:"spy_rbspy"`
-	SpyPyspy             int       `json:"spy_pyspy"`
-	SpyGospy             int       `json:"spy_gospy"`
-	SpyEbpfspy           int       `json:"spy_ebpfspy"`
-	SpyPhpspy            int       `json:"spy_phpspy"`
-	SpyDotnetspy         int       `json:"spy_dotnetspy"`
-	SpyJavaspy           int       `json:"spy_javaspy"`
-	AppsCount            int       `json:"apps_count"`
-}
-
 func (s *Service) Start() {
 	defer close(s.done)
+	b, e := s.s.LoadAnalytics()
+	if e == nil {
+		s.base = b
+	}
+
 	timer := time.NewTimer(gracePeriod)
 	select {
 	case <-s.stop:
@@ -111,32 +87,59 @@ func (s *Service) Start() {
 	case <-timer.C:
 	}
 	s.sendReport()
-	ticker := time.NewTicker(uploadFrequency)
-	defer ticker.Stop()
+	upload := time.NewTicker(uploadFrequency)
+	snapshot := time.NewTicker(snapshotFrequency)
+	defer upload.Stop()
+	defer snapshot.Stop()
 	for {
 		select {
-		case <-ticker.C:
+		case <-upload.C:
 			s.sendReport()
+		case <-snapshot.C:
+			s.s.SaveAnalytics(s.getAnalytics())
 		case <-s.stop:
 			return
 		}
 	}
 }
 
+func (*Service) rebaseAnalytics(base *storage.Analytics, current *storage.Analytics) *storage.Analytics {
+	rebased := &storage.Analytics{}
+	vRebased := reflect.ValueOf(rebased).Elem()
+	vCur := reflect.ValueOf(*current)
+	vBase := reflect.ValueOf(*base)
+	tAnalytics := reflect.TypeOf(*base)
+	for i := 0; i < vBase.NumField(); i++ {
+		name := tAnalytics.Field(i).Name
+		tField := tAnalytics.Field(i).Type
+		vBaseField := vBase.FieldByName(name)
+		vCurrentField := vCur.FieldByName(name)
+		vRebasedField := vRebased.FieldByName(name)
+		tag, ok := tAnalytics.Field(i).Tag.Lookup("kind")
+		if ok && tag == "cumulative" {
+			switch tField.Kind() {
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				vRebasedField.SetInt(vBaseField.Int() + vCurrentField.Int())
+			}
+		}
+	}
+	return rebased
+}
+
 func (s *Service) Stop() {
+	s.s.SaveAnalytics(s.getAnalytics())
 	close(s.stop)
 	<-s.done
 }
 
-func (s *Service) sendReport() {
-	logrus.Debug("sending analytics report")
+func (s *Service) getAnalytics() *storage.Analytics {
 	var ms runtime.MemStats
 	runtime.ReadMemStats(&ms)
 	du := s.s.DiskUsage()
 
 	controllerStats := s.p.Stats()
 
-	m := metrics{
+	a := &storage.Analytics{
 		InstallID:            s.s.InstallID(),
 		RunID:                uuid.New().String(),
 		Version:              build.Version,
@@ -168,8 +171,16 @@ func (s *Service) sendReport() {
 		SpyJavaspy:           controllerStats["ingest:javaspy"],
 		AppsCount:            s.p.AppsCount(),
 	}
+	a = s.rebaseAnalytics(s.base, a)
+	return a
+}
 
-	buf, err := json.Marshal(m)
+func (s *Service) sendReport() {
+	logrus.Debug("sending analytics report")
+
+	a := s.getAnalytics()
+
+	buf, err := json.Marshal(a)
 	if err != nil {
 		logrus.WithField("err", err).Error("Error happened when preparing JSON")
 		return
