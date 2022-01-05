@@ -38,6 +38,7 @@ function PyroscopeApp(props) {
         />
         <Box>
           <FlameGraphRenderer
+            name="single"
             flamebearer={single?.flamebearer}
             viewType="single"
             display="both"
@@ -49,6 +50,8 @@ function PyroscopeApp(props) {
     </div>
   );
 }
+
+PyroscopeApp.displayName = 'PyroscopeApp';
 
 const mapStateToProps = (state) => ({
   ...state.root,

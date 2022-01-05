@@ -5,11 +5,14 @@
 /* eslint-disable react/destructuring-assignment */
 /* eslint-disable no-nested-ternary */
 
+import React from 'react';
 import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
+import { bindActionCreators, compose } from 'redux';
+import { withDisplayName } from '@pyroscope/redux/utils';
 import { buildDiffRenderURL, buildRenderURL } from '../../util/updateRequests';
+import { withNamedUpdateableView } from './enchancers';
 
-import FlameGraphRenderer from './FlameGraphRenderer';
+import { FlameGraphRenderer } from './FlameGraphRenderer';
 
 const mapStateToProps = (state) => ({
   ...state.root,
@@ -29,4 +32,16 @@ const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators({}, dispatch),
 });
 
-export default connect(mapStateToProps, mapDispatchToProps)(FlameGraphRenderer);
+export default withDisplayName('NamedFlameGraphRenderer')((props) => {
+  const { name } = props;
+  if (name) {
+    const Component = compose(
+      connect(mapStateToProps, mapDispatchToProps),
+      withNamedUpdateableView(name)
+    )(FlameGraphRenderer);
+    return <Component {...props} />;
+  }
+  // Name here is used to identify different instances to separate persisted data
+  console.error('Please specify `name` property for FlameGraph component');
+  return null;
+});

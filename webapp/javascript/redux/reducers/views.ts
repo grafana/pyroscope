@@ -1,6 +1,6 @@
 import { combineReducers, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '../store';
-import { SET_COLLAPSE_UI } from '../actions';
+import { SET_UI_VALUE } from '../actionTypes';
 
 interface UIState {
   sidebar: boolean;
@@ -25,7 +25,7 @@ const initialViewState: ViewState = {
 
 export const uiReducer = (state: UIState = initialUIState, action) => {
   switch (action.type) {
-    case 'SET_COLLAPSE_UI':
+    case SET_UI_VALUE:
       return { ...state, [action.payload.path]: action.payload.value };
     default:
       return state;

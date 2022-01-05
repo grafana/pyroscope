@@ -32,6 +32,7 @@ function ComparisonDiffApp(props) {
         />
         <Box>
           <FlameGraphRenderer
+            name="diff"
             display="both"
             viewType="diff"
             flamebearer={diff.flamebearer}

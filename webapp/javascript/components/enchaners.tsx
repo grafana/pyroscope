@@ -2,7 +2,7 @@ import { connect } from 'react-redux';
 import { RootState } from '@pyroscope/redux/store';
 import { selectUIState } from '@pyroscope/redux/reducers/views';
 
-import { setCollapsedUI } from '../redux/actions';
+import { setUIValue } from '../redux/actions';
 
 export interface ICollapsible {
   collapsed: boolean;
@@ -16,7 +16,7 @@ export const withCollapsible = (path) =>
     }),
     (dispatch) => ({
       setCollapsed: (value) => {
-        dispatch(setCollapsedUI(path, value));
+        dispatch(setUIValue(path, value));
       },
     })
   );

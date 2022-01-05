@@ -55,6 +55,7 @@ function ComparisonApp(props) {
         >
           <Box className={styles.comparisonPane}>
             <FlameGraphRenderer
+              name="comparisonLeft"
               viewType="double"
               viewSide="left"
               flamebearer={comparison.left.flamebearer}
@@ -74,6 +75,7 @@ function ComparisonApp(props) {
 
           <Box className={styles.comparisonPane}>
             <FlameGraphRenderer
+              name="comparisonRight"
               viewType="double"
               viewSide="right"
               flamebearer={comparison.right.flamebearer}

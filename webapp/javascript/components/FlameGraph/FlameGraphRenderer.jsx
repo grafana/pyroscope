@@ -13,10 +13,10 @@ import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
 import styles from './FlamegraphRenderer.module.css';
-
+import { withUpdateableView } from './enchancers';
 import ExportData from '../ExportData';
 
-class FlameGraphRenderer extends React.Component {
+export class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
   // eg localstorage
   initialFlamegraphState = {
@@ -201,7 +201,7 @@ class FlameGraphRenderer extends React.Component {
         key="table-pane"
         className={clsx('pane', {
           hidden:
-            this.state.view === 'icicle' ||
+            this.props.view === 'icicle' ||
             !this.state.flamebearer ||
             this.state.flamebearer.names.length <= 1,
           'vertical-orientation': this.props.viewType === 'double',
@@ -213,15 +213,15 @@ class FlameGraphRenderer extends React.Component {
           sortByDirection={this.state.sortByDirection}
           sortBy={this.state.sortBy}
           updateSortBy={this.updateSortBy}
-          view={this.state.view}
-          viewDiff={this.state.viewDiff}
+          view={this.props.view}
+          viewDiff={this.props.viewDiff}
           fitMode={this.state.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
         />
       </div>
     );
     const dataExists =
-      this.state.view !== 'table' ||
+      this.props.view !== 'table' ||
       (this.state.flamebearer && this.state.flamebearer.names.length <= 1);
 
     const flamegraphDataTestId = figureFlamegraphDataTestId(
@@ -253,7 +253,7 @@ class FlameGraphRenderer extends React.Component {
           data-testid={flamegraphDataTestId}
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
-          view={this.state.view}
+          view={this.props.view}
           ExportData={exportData}
           highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
@@ -284,12 +284,12 @@ class FlameGraphRenderer extends React.Component {
         <div className="canvas-container">
           {this.shouldShowToolbar() && (
             <Toolbar
-              view={this.state.view}
-              viewDiff={this.state.viewDiff}
+              view={this.props.view}
+              viewDiff={this.props.viewDiff}
               display={this.props.display}
               handleSearchChange={this.handleSearchChange}
               reset={this.onReset}
-              updateView={this.updateView}
+              updateView={this.props.setView}
               updateViewDiff={this.updateViewDiff}
               updateFitMode={this.updateFitMode}
               fitMode={this.state.fitMode}

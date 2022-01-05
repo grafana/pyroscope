@@ -46,7 +46,7 @@ import {
   RECEIVE_ADHOC_RIGHT_PROFILE,
   CANCEL_ADHOC_LEFT_PROFILE,
   CANCEL_ADHOC_RIGHT_PROFILE,
-  SET_COLLAPSE_UI,
+  SET_UI_VALUE,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 import { addNotification } from './reducers/notifications';
@@ -92,8 +92,8 @@ export const setMaxNodes = (maxNodes) => ({
   payload: { maxNodes },
 });
 
-export const setCollapsedUI = (path, value) => ({
-  type: SET_COLLAPSE_UI,
+export const setUIValue = (path, value) => ({
+  type: SET_UI_VALUE,
   payload: { path, value },
 });
 

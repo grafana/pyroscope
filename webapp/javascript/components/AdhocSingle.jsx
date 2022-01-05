@@ -68,6 +68,7 @@ function AdhocSingle(props) {
           )}
           {!isProfileLoading && (
             <FlameGraphRenderer
+              name="single"
               flamebearer={flamebearer}
               viewType="single"
               display="both"
@@ -79,6 +80,8 @@ function AdhocSingle(props) {
     </div>
   );
 }
+
+AdhocSingle.displayName = 'AdhocSingle';
 
 const mapStateToProps = (state) => ({
   ...state.root,
