@@ -40,7 +40,11 @@ function ComparisonApp(props) {
   };
   const toggleLinkedSearch = (side) => {
     const { isSearchLinked } = linkedSearch;
-    if (isSearchLinked) {
+    if (isSearchLinked === false) {
+      setLinkedSearch((x) => {
+        return { ...x, isSearchLinked: true, resetLinkedSearchSide: '' };
+      });
+    } else {
       if (side === 'left') {
         setLinkedSearch((x) => {
           return {
@@ -62,10 +66,6 @@ function ComparisonApp(props) {
           return { ...x, isSearchLinked: false, resetLinkedSearchSide: '' };
         });
       }
-    } else {
-      setLinkedSearch((x) => {
-        return { ...x, isSearchLinked: true, resetLinkedSearchSide: '' };
-      });
     }
   };
 
