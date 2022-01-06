@@ -12,9 +12,13 @@ expect.extend({
       const customConfig = { threshold: 0.02 };
       const toMatchImageSnapshot = configureToMatchImageSnapshot({
         customDiffConfig: customConfig,
-      });
+      }) as any;
 
-      return toMatchImageSnapshot.call(this);
+      // TODO
+      // for some reason it fails with
+      // Expected 1 arguments, but got 3.
+      // hence the any
+      return toMatchImageSnapshot.call(this, received, options);
     }
 
     // This is running in node
