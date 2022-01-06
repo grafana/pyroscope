@@ -3,7 +3,7 @@ import { request } from './base';
 import { setupServer, rest } from './testUtils';
 
 describe('Base HTTP', () => {
-  let server: ReturnType<typeof setupServer>;
+  let server: ReturnType<typeof setupServer> | null;
 
   afterEach(() => {
     if (server) {

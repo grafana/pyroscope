@@ -56,10 +56,14 @@ export async function request(
   try {
     response = await fetch(req, config);
   } catch (e) {
-    // Fetch failed
-    // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
+    // 'e' is unknown, but most cases it should be an Error
+    let message = 'Server failed to respond;';
+    if (e instanceof Error) {
+      message = e.message;
+    }
+
     return Result.err({
-      message: e.message,
+      message,
     });
   }
 

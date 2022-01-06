@@ -14,16 +14,20 @@ expect.extend({
         customDiffConfig: customConfig,
       });
 
-      return toMatchImageSnapshot.call(this, received, options);
+      return toMatchImageSnapshot.call(this);
     }
 
     // This is running in node
     // eslint-disable-next-line no-console
-    console.info(
-      `Skipping 'toMatchImageSnapshot' assertion since env var 'RUN_SNAPSHOTS' is not set.`
-    );
+    //    console.info(
+    //      `Skipping 'toMatchImageSnapshot' assertion since env var 'RUN_SNAPSHOTS' is not set.`
+    //    );
 
-    return { pass: true };
+    return {
+      pass: true,
+      message: () =>
+        `Skipping 'toMatchImageSnapshot' assertion since env var 'RUN_SNAPSHOTS' is not set.`,
+    };
   },
 });
 
