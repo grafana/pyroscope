@@ -45,26 +45,33 @@ function ComparisonApp(props) {
         return { ...x, isSearchLinked: true, resetLinkedSearchSide: '' };
       });
     } else {
-      if (side === 'left') {
-        setLinkedSearch((x) => {
-          return {
-            ...x,
-            resetLinkedSearchSide: 'right',
-          };
-        });
-      }
-      if (side === 'right') {
-        setLinkedSearch((x) => {
-          return {
-            ...x,
-            resetLinkedSearchSide: 'left',
-          };
-        });
-      }
-      if (side === 'both') {
-        setLinkedSearch((x) => {
-          return { ...x, isSearchLinked: false, resetLinkedSearchSide: '' };
-        });
+      switch (side) {
+        case 'left':
+          setLinkedSearch((x) => {
+            return {
+              ...x,
+              resetLinkedSearchSide: 'right',
+            };
+          });
+          break;
+
+        case 'right':
+          setLinkedSearch((x) => {
+            return {
+              ...x,
+              resetLinkedSearchSide: 'left',
+            };
+          });
+          break;
+
+        case 'both':
+          setLinkedSearch((x) => {
+            return { ...x, isSearchLinked: false, resetLinkedSearchSide: '' };
+          });
+          break;
+
+        default:
+          break;
       }
     }
   };
