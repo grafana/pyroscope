@@ -22,6 +22,7 @@ const project = {
     '@models(.*)$': '<rootDir>/webapp/javascript/models/$1',
     '@ui(.*)$': '<rootDir>/webapp/javascript/ui/$1',
     '@pyroscope/redux(.*)$': '<rootDir>/webapp/javascript/redux/$1',
+    '@pyroscope/services(.*)$': '<rootDir>/webapp/javascript/services/$1',
   },
   transform: {
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',

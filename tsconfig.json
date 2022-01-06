@@ -12,7 +12,8 @@
       "@utils/*": ["./webapp/javascript/util/*"],
       "@models/*": ["./webapp/javascript/models/*"],
       "@ui/*": ["./webapp/javascript/ui/*"],
-      "@pyroscope/redux/*": ["./webapp/javascript/redux/*"]
+      "@pyroscope/redux/*": ["./webapp/javascript/redux/*"],
+      "@pyroscope/services/*": ["./webapp/javascript/services/*"]
     },
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
