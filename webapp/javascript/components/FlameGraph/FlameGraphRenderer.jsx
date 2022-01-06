@@ -13,7 +13,6 @@ import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
 import styles from './FlamegraphRenderer.module.css';
-import { withUpdateableView } from './enchancers';
 import ExportData from '../ExportData';
 
 export class FlameGraphRenderer extends React.Component {
@@ -153,16 +152,14 @@ export class FlameGraphRenderer extends React.Component {
   };
 
   updateSortBy = (newSortBy) => {
-    let dir = this.state.sortByDirection;
-    if (this.state.sortBy === newSortBy) {
+    let dir = this.props.sortByDirection;
+    if (this.props.sortBy === newSortBy) {
       dir = dir === 'asc' ? 'desc' : 'asc';
     } else {
       dir = 'desc';
     }
-    this.setState({
-      sortBy: newSortBy,
-      sortByDirection: dir,
-    });
+    this.props.setSortBy(newSortBy);
+    this.props.setSortByDirection(dir);
   };
 
   isDirty = () => {
@@ -210,8 +207,8 @@ export class FlameGraphRenderer extends React.Component {
         <ProfilerTable
           data-testid="table-view"
           flamebearer={this.state.flamebearer}
-          sortByDirection={this.state.sortByDirection}
-          sortBy={this.state.sortBy}
+          sortByDirection={this.props.sortByDirection}
+          sortBy={this.props.sortBy}
           updateSortBy={this.updateSortBy}
           view={this.props.view}
           viewDiff={this.props.viewDiff}

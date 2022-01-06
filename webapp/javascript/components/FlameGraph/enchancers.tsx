@@ -30,9 +30,30 @@ const withUpdateableUIValue = (valueName, savePath) =>
     })
   );
 
-export const withUpdateableView = withUpdateableUIValue(
-  'view',
-  'flamegraphView'
-);
+const withUpdateableUIValues = (valuesMap) =>
+  connect(
+    (state: RootState) =>
+      valuesMap.reduce(
+        (s, i) => ({ ...s, [i.value]: selectUIState(state)(i.path) }),
+        {}
+      ),
+    (dispatch) =>
+      valuesMap.reduce(
+        (s, i) => ({
+          ...s,
+          [`set${capitalize(i.value)}`]: (value) =>
+            dispatch(setUIValue(i.path, value)),
+        }),
+        {}
+      )
+  );
+
 export const withNamedUpdateableView = (name) =>
-  withUpdateableUIValue(`view`, `flamegraphView.${name}`);
+  withUpdateableUIValues([
+    { value: `view`, path: `flamegraphView.${name}.view` },
+    { value: `sortBy`, path: `flamegraphView..${name}.sortBy` },
+    {
+      value: `sortByDirection`,
+      path: `flamegraphView.${name}.sortByDirection`,
+    },
+  ]);

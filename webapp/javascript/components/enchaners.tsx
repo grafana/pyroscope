@@ -1,6 +1,6 @@
 import { connect } from 'react-redux';
 import { RootState } from '@pyroscope/redux/store';
-import { selectUIState } from '@pyroscope/redux/reducers/views';
+import { selectUIState } from '../redux/reducers/views';
 
 import { setUIValue } from '../redux/actions';
 
