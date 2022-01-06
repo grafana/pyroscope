@@ -60,6 +60,7 @@ class FlameGraphRenderer extends React.Component {
 
     if (this.props.isSearchLinked) {
       if (this.props.linkedSearchQuery !== prevState.highlightQuery) {
+        // disable eslint rule to allow updating state inside componentDidUpdate
         // eslint-disable-next-line react/no-did-update-set-state
         this.setState({
           highlightQuery: this.props.linkedSearchQuery,
