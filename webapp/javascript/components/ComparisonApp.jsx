@@ -40,40 +40,32 @@ function ComparisonApp(props) {
   };
   const toggleLinkedSearch = (side) => {
     const { isSearchLinked } = linkedSearch;
+    let args;
+
     if (isSearchLinked === false) {
-      setLinkedSearch((x) => {
-        return { ...x, isSearchLinked: true, resetLinkedSearchSide: '' };
-      });
+      args = { isSearchLinked: true, resetLinkedSearchSide: '' };
     } else {
       switch (side) {
         case 'left':
-          setLinkedSearch((x) => {
-            return {
-              ...x,
-              resetLinkedSearchSide: 'right',
-            };
-          });
+          args = { resetLinkedSearchSide: 'right' };
           break;
 
         case 'right':
-          setLinkedSearch((x) => {
-            return {
-              ...x,
-              resetLinkedSearchSide: 'left',
-            };
-          });
+          args = { resetLinkedSearchSide: 'left' };
+
           break;
 
         case 'both':
-          setLinkedSearch((x) => {
-            return { ...x, isSearchLinked: false, resetLinkedSearchSide: '' };
-          });
+          args = { isSearchLinked: false, resetLinkedSearchSide: '' };
           break;
 
         default:
           break;
       }
     }
+    setLinkedSearch((x) => {
+      return { ...x, ...args };
+    });
   };
 
   useEffect(() => {
