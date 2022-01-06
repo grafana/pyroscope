@@ -24,6 +24,8 @@ export interface ButtonProps {
   className?: string;
 
   id?: string;
+
+  title?: string;
 }
 
 export default function Button({
@@ -36,6 +38,7 @@ export default function Button({
   onClick,
   id,
   className,
+  title,
   ...props
 }: ButtonProps) {
   return (
@@ -48,6 +51,7 @@ export default function Button({
       className={`${styles.button} ${
         grouped ? styles.grouped : ''
       } ${getKindStyles(kind)} ${className}`}
+      title={title}
     >
       {icon ? (
         <FontAwesomeIcon
