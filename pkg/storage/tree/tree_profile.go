@@ -3,6 +3,7 @@ package tree
 import (
 	"encoding/binary"
 	"reflect"
+	"sort"
 	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
@@ -33,12 +34,8 @@ func (r *ProfileReader) Load(sampleType int64, labels Labels) (*Tree, bool) {
 }
 
 func (r *ProfileReader) Read(x *Profile, fn func(vt *ValueType, l Labels, t *Tree) (keep bool, err error)) error {
-	// Reuse cache if it is empty.
-	c := r.cache
-	if len(r.cache) != 0 || r.cache == nil {
-		c = make(labelsCache)
-	}
-	r.readTrees(x, c, NewFinder(x))
+	c := make(labelsCache)
+	r.readTrees(x, c, NewFinder(x), 1024)
 	for sampleType, entries := range c {
 		if t, ok := x.ResolveSampleType(sampleType); ok {
 			for h, e := range entries {
@@ -92,54 +89,41 @@ func (l Labels) Hash() uint64 {
 }
 
 // readTrees generates trees from the profile populating c.
-func (r *ProfileReader) readTrees(x *Profile, c labelsCache, f Finder) {
-	// SampleType value indexes.
-	indexes := make([]int, 0, len(x.SampleType))
-	// Corresponding type IDs used as the main cache keys.
-	types := make([]int64, 0, len(x.SampleType))
-	for i, s := range x.SampleType {
-		if r.sampleTypesFilter != nil && r.sampleTypesFilter(x.StringTable[s.Type]) {
-			indexes = append(indexes, i)
-			types = append(types, s.Type)
-		}
-	}
-	if len(indexes) == 0 {
-		return
-	}
+func (r *ProfileReader) readTrees(x *Profile, c labelsCache, f Finder, l int) {
 	stack := make([][]byte, 0, 16)
-	for _, s := range x.Sample {
-		for i := len(s.LocationId) - 1; i >= 0; i-- {
-			// Resolve stack.
-			loc, ok := f.FindLocation(s.LocationId[i])
-			if !ok {
+	for vi, st := range x.SampleType {
+		if r.sampleTypesFilter != nil && !r.sampleTypesFilter(x.StringTable[st.Type]) {
+			continue
+		}
+		sort.Sort(sort.Reverse(samplesByValue{vi, x.Sample}))
+		for _, s := range x.Sample[:min(len(x.Sample), l)] {
+			v := uint64(s.Value[vi])
+			if v == 0 {
 				continue
 			}
-			// Multiple line indicates this location has inlined functions,
-			// where the last entry represents the caller into which the
-			// preceding entries were inlined.
-			//
-			// E.g., if memcpy() is inlined into printf:
-			//    line[0].function_name == "memcpy"
-			//    line[1].function_name == "printf"
-			//
-			// Therefore iteration goes in reverse order.
-			for j := len(loc.Line) - 1; j >= 0; j-- {
-				fn, ok := f.FindFunction(loc.Line[j].FunctionId)
-				if !ok {
-					continue
+			for i := len(s.LocationId) - 1; i >= 0; i-- {
+				if loc, ok := f.FindLocation(s.LocationId[i]); ok {
+					for j := len(loc.Line) - 1; j >= 0; j-- {
+						if fn, ok := f.FindFunction(loc.Line[j].FunctionId); ok {
+							stack = append(stack, unsafeStrToSlice(x.StringTable[fn.Name]))
+						}
+					}
 				}
-				stack = append(stack, unsafeStrToSlice(x.StringTable[fn.Name]))
 			}
+			c.getOrCreate(st.Type, s.Label).InsertStack(stack, v)
+			stack = stack[:0]
 		}
-		// Insert tree nodes.
-		for i, vi := range indexes {
-			if v := uint64(s.Value[vi]); v != 0 {
-				c.getOrCreate(types[i], s.Label).InsertStack(stack, v)
-			}
-		}
-		stack = stack[:0]
 	}
 }
+
+type samplesByValue struct {
+	i int
+	s []*Sample
+}
+
+func (x samplesByValue) Len() int           { return len(x.s) }
+func (x samplesByValue) Less(i, j int) bool { return x.s[i].Value[x.i] < x.s[j].Value[x.i] }
+func (x samplesByValue) Swap(i, j int)      { x.s[i], x.s[j] = x.s[j], x.s[i] }
 
 func unsafeStrToSlice(s string) []byte {
 	return (*[0x7fff0000]byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data))[:len(s):len(s)]
