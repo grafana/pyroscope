@@ -311,8 +311,7 @@ func (sl *scrapeLoop) run() {
 }
 
 func (sl *scrapeLoop) scrapeAndReport(t *Target) {
-	// TODO(kolesnikovae): Time alignment should be moved to storage.
-	now := time.Now().Round(time.Second * 10)
+	now := time.Now()
 	// There are two possible cases:
 	//  1. "delta" profile that is collected during scrape. In instance,
 	//     Go cpu profile requires "seconds" parameter. Such a profile
@@ -332,11 +331,13 @@ func (sl *scrapeLoop) scrapeAndReport(t *Target) {
 	// segment "slots", hereby producing redundant segment nodes and
 	// trees. Therefore, it's better to adhere standard 10s period
 	// that fits segment node size (at level 0).
-	startTime, endTime := now, now
+	var startTime, endTime time.Time
 	if sl.delta > 0 {
-		endTime = now.Add(sl.delta)
+		startTime = now.Round(sl.delta)
+		endTime = startTime.Add(sl.delta)
 	} else {
-		startTime = now.Add(-1 * sl.interval)
+		endTime = now.Round(sl.interval)
+		startTime = endTime.Add(-1 * sl.interval)
 	}
 	err := sl.scrape(startTime, endTime)
 	t.mtx.Lock()
