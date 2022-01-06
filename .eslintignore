@@ -4,3 +4,4 @@
 /benchmark/**
 script/webpack/**
 dist
+.eslintrc.js

@@ -1,6 +1,5 @@
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
-
-const path = require('path');
+import path from 'path';
 
 // TODO:
 export function getStyleLoaders() {
