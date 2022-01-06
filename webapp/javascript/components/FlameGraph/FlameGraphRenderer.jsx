@@ -62,12 +62,6 @@ export class FlameGraphRenderer extends React.Component {
     this.abortCurrentJSONController();
   }
 
-  updateFitMode = (newFitMode) => {
-    this.setState({
-      fitMode: newFitMode,
-    });
-  };
-
   updateFlamegraphDirtiness = () => {
     const isDirty = this.isDirty();
 
@@ -212,7 +206,7 @@ export class FlameGraphRenderer extends React.Component {
           updateSortBy={this.updateSortBy}
           view={this.props.view}
           viewDiff={this.props.viewDiff}
-          fitMode={this.state.fitMode}
+          fitMode={this.props.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
         />
       </div>
@@ -253,7 +247,7 @@ export class FlameGraphRenderer extends React.Component {
           view={this.props.view}
           ExportData={exportData}
           highlightQuery={this.state.highlightQuery}
-          fitMode={this.state.fitMode}
+          fitMode={this.props.fitMode}
           viewType={this.props.viewType}
           zoom={this.state.flamegraphConfigs.zoom}
           focusedNode={this.state.flamegraphConfigs.focusedNode}
@@ -288,8 +282,8 @@ export class FlameGraphRenderer extends React.Component {
               reset={this.onReset}
               updateView={this.props.setView}
               updateViewDiff={this.updateViewDiff}
-              updateFitMode={this.updateFitMode}
-              fitMode={this.state.fitMode}
+              updateFitMode={this.props.setFitMode}
+              fitMode={this.props.fitMode}
               isFlamegraphDirty={this.state.isFlamegraphDirty}
               selectedNode={this.state.flamegraphConfigs.zoom}
               onFocusOnSubtree={(i, j) => {

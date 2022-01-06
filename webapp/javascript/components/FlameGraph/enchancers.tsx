@@ -51,9 +51,10 @@ const withUpdateableUIValues = (valuesMap) =>
 export const withNamedUpdateableView = (name) =>
   withUpdateableUIValues([
     { value: `view`, path: `flamegraphView.${name}.view` },
-    { value: `sortBy`, path: `flamegraphView..${name}.sortBy` },
+    { value: `sortBy`, path: `flamegraphView.${name}.sortBy` },
     {
       value: `sortByDirection`,
       path: `flamegraphView.${name}.sortByDirection`,
     },
+    { value: 'fitMode', path: `flamegraphView.${name}.fitMode` },
   ]);
