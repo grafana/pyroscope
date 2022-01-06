@@ -1,7 +1,9 @@
 import { Result } from '@utils/fp';
-import { AppNames } from '@models/appNames';
+import { appNamesModel, AppNames } from '@models/appNames';
+import type { ZodError } from 'zod';
 import { request } from './base';
-// import fetch from 'cross-fetch';
+import modelToResult from './modelToResult';
+import type { RequestError } from './base';
 
 /* eslint-disable import/prefer-default-export */
 interface FetchAppNamesProps {
@@ -14,18 +16,12 @@ export interface FetchAppNamesError {
 
 export async function fetchAppNames(
   props?: FetchAppNamesProps
-): Promise<Result<AppNames, FetchAppNamesError>> {
+): Promise<Result<AppNames, RequestError | ZodError>> {
   const response = await request('label-values?label=__name__');
 
-  return response;
-  //  response.map();
-  //  console.log({ response });
-  //  if (!response.ok) {
-  //    return Result.err({
-  //      message: `Response not ok. Status code ${response.status}`,
-  //    });
-  //  }
-  //  //  const data = await response.json();
-  //
-  //  return Result.ok([]);
+  if (response.isOk) {
+    return modelToResult(appNamesModel, response.value);
+  }
+
+  return Result.err<AppNames, RequestError>(response.error);
 }

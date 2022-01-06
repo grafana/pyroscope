@@ -112,10 +112,7 @@ export async function request(
     const data = JSON.parse(textBody);
 
     // We could parse the response
-    return Result.ok({
-      statusCode: response.status,
-      ...data,
-    });
+    return Result.ok(data);
   } catch (e) {
     // We couldn't parse, but there's definitly some data
     return Result.err({
