@@ -40,7 +40,11 @@ export const viewsSlice = createSlice({
 });
 
 export const selectCount = (state: RootState) => state.views.value;
-export const selectUIState = (state: RootState) => (path) =>
-  state.views.ui[path];
+export const selectUIState =
+  (state: RootState) =>
+  (path, defaultValue = undefined) =>
+    typeof state.views.ui[path] === 'undefined'
+      ? defaultValue
+      : state.views.ui[path];
 
 export default combineReducers({ value: viewsSlice.reducer, ui: uiReducer });

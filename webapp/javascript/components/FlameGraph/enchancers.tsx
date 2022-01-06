@@ -18,10 +18,10 @@ interface ICurrentUIView {
 
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const withUpdateableUIValue = (valueName, savePath) =>
+const withUpdateableUIValue = (valueName, savePath, defaultValue = undefined) =>
   connect(
     (state: RootState) => ({
-      [valueName]: selectUIState(state)(savePath),
+      [valueName]: selectUIState(state)(savePath, defaultValue),
     }),
     (dispatch) => ({
       [`set${capitalize(valueName)}`]: (value) => {
@@ -34,7 +34,10 @@ const withUpdateableUIValues = (valuesMap) =>
   connect(
     (state: RootState) =>
       valuesMap.reduce(
-        (s, i) => ({ ...s, [i.value]: selectUIState(state)(i.path) }),
+        (s, i) => ({
+          ...s,
+          [i.value]: selectUIState(state)(i.path, i.default),
+        }),
         {}
       ),
     (dispatch) =>
@@ -50,11 +53,20 @@ const withUpdateableUIValues = (valuesMap) =>
 
 export const withNamedUpdateableView = (name) =>
   withUpdateableUIValues([
-    { value: `view`, path: `flamegraphView.${name}.view` },
-    { value: `sortBy`, path: `flamegraphView.${name}.sortBy` },
+    { value: `view`, path: `flamegraphView.${name}.view`, default: 'both' },
+    {
+      value: `sortBy`,
+      path: `flamegraphView.${name}.sortBy`,
+      default: 'total',
+    },
     {
       value: `sortByDirection`,
       path: `flamegraphView.${name}.sortByDirection`,
+      default: 'asc',
     },
-    { value: 'fitMode', path: `flamegraphView.${name}.fitMode` },
+    {
+      value: 'fitMode',
+      path: `flamegraphView.${name}.fitMode`,
+      default: 'HEAD',
+    },
   ]);
