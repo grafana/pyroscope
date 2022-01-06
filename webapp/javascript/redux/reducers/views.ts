@@ -1,4 +1,4 @@
-import { combineReducers, createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { combineReducers, createSlice } from '@reduxjs/toolkit';
 import type { RootState } from '../store';
 import { SET_UI_VALUE } from '../actionTypes';
 
@@ -14,7 +14,7 @@ const windowWidth =
   document.documentElement.clientWidth ||
   document.body.clientWidth;
 
-const initialUIState: UIState = {
+export const initialUIState: UIState = {
   sidebar: windowWidth < 1200,
 };
 

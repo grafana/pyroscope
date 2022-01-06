@@ -1,7 +1,7 @@
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
-import Sidebar from './Sidebar';
+import { Sidebar } from './Sidebar';
 
 describe('Sidebar', () => {
   describe('active routes highlight', () => {
@@ -14,7 +14,7 @@ describe('Sidebar', () => {
         test(`should have menuitem ${b} active`, () => {
           render(
             <MemoryRouter initialEntries={[a]}>
-              <Sidebar initialCollapsed />
+              <Sidebar collapsed />
             </MemoryRouter>
           );
 
@@ -27,7 +27,7 @@ describe('Sidebar', () => {
         test(`should have menuitem ${b} active`, () => {
           render(
             <MemoryRouter initialEntries={[a]}>
-              <Sidebar initialCollapsed={false} />
+              <Sidebar collapsed={false} />
             </MemoryRouter>
           );
 

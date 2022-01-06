@@ -25,9 +25,7 @@ import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
 import { withCollapsible, ICollapsible } from './enchaners';
 
-export interface SidebarProps extends ICollapsible {
-  initialCollapsed?: boolean;
-}
+export type SidebarProps = Partial<ICollapsible>;
 
 // TODO: find a better way of doing this?
 function signOut() {
@@ -44,7 +42,6 @@ function signOut() {
 export function Sidebar2(props: SidebarProps) {
   const { collapsed, setCollapsed } = props;
   const { search, pathname } = useLocation();
-  const windowWidth = useWindowWidth();
 
   // the component doesn't seem to support setting up an active item
   // so we must set it up manually
@@ -216,4 +213,5 @@ export function Sidebar2(props: SidebarProps) {
   );
 }
 
+export { Sidebar2 as Sidebar };
 export default withCollapsible('sidebar')(Sidebar2);
