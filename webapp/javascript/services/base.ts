@@ -14,6 +14,7 @@ interface RequestIncompleteError {
   message: string;
 }
 
+// ResponseInvalidJSONError refers to when the response is not a valid JSON
 interface ResponseInvalidJSONError {
   message: string;
   data: any;
@@ -24,10 +25,7 @@ type RequestError =
   | RequestIncompleteError
   | ResponseInvalidJSONError;
 
-export async function get(
-  path: string,
-  config?: RequestInit
-): Promise<Result<unknown, RequestError>> {
+function mountRequest(req: RequestInfo): RequestInfo {
   let baseURL = basename();
 
   // There's no explicit baseURL configured
@@ -37,11 +35,26 @@ export async function get(
     baseURL = window.location.href;
   }
 
-  const address = new URL(path, baseURL).href;
+  // TODO:
+  // figure out if there's already a base URL in the request
+  if (typeof req === 'string') {
+    return new URL(req, baseURL).href;
+  }
 
-  let response;
+  return {
+    ...req,
+    url: new URL(req.url, baseURL).href,
+  };
+}
+
+export async function request(
+  request: RequestInfo,
+  config?: RequestInit
+): Promise<Result<unknown, RequestError>> {
+  const req = mountRequest(request);
+  let response: Response;
   try {
-    response = await fetch(address, config);
+    response = await fetch(req, config);
   } catch (e) {
     // Fetch failed
     // https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API

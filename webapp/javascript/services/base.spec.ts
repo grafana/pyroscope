@@ -1,5 +1,5 @@
 import { Result } from '@utils/fp';
-import { get } from './base';
+import { request } from './base';
 import { setupServer, rest } from './testUtils';
 
 describe('Base HTTP', () => {
@@ -25,7 +25,7 @@ describe('Base HTTP', () => {
         })
       );
       server.listen();
-      const res = await get('/test');
+      const res = await request('/test');
 
       expect(res).toMatchObject(
         Result.ok({
@@ -41,7 +41,7 @@ describe('Base HTTP', () => {
         })
       );
       server.listen();
-      const res = await get('/test');
+      const res = await request('/test');
 
       expect(res).toMatchObject(
         Result.err({
@@ -54,7 +54,7 @@ describe('Base HTTP', () => {
 
   describe('Server never responded', () => {
     it('fails', async () => {
-      const res = await get('/test');
+      const res = await request('/test');
 
       expect(res).toMatchObject(
         Result.err({
@@ -85,7 +85,7 @@ describe('Base HTTP', () => {
       );
       server.listen();
 
-      const res = await get('/test');
+      const res = await request('/test');
 
       expect(res).toMatchObject(
         Result.err({
@@ -103,7 +103,7 @@ describe('Base HTTP', () => {
       );
       server.listen();
 
-      const res = await get('/test');
+      const res = await request('/test');
 
       expect(res).toMatchObject(
         Result.err({
@@ -121,7 +121,7 @@ describe('Base HTTP', () => {
       );
       server.listen();
 
-      const res = await get('/test');
+      const res = await request('/test');
 
       expect(res).toMatchObject(
         Result.err({
