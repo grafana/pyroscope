@@ -20,7 +20,7 @@ interface ResponseInvalidJSONError {
   data: any;
 }
 
-type RequestError =
+export type RequestError =
   | RequestNotOkError
   | RequestIncompleteError
   | ResponseInvalidJSONError;
