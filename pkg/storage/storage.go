@@ -45,6 +45,8 @@ type Storage struct {
 
 	queueWorkersWG sync.WaitGroup
 	queue          chan *PutInput
+
+	putMutex sync.Mutex
 }
 
 type storageOptions struct {
