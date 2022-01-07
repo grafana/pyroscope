@@ -34,11 +34,12 @@ function NameSelector(props) {
 
   const dispatch = useAppDispatch();
 
-  let defaultValue = queryToAppName(query).mapOr('', (q) => q);
-  // TODO: don't do this and instead always have a defined query
-  if (names && names.indexOf(defaultValue) === -1) {
-    defaultValue = defKey;
-  }
+  const selectedValue = queryToAppName(query).mapOr('', (q) => {
+    if (appNames.indexOf(q) !== -1) {
+      return q;
+    }
+    return '';
+  });
 
   const filterOptions = (n: string) => {
     const f = filter.mapOr('', (v) => v.trim().toLowerCase());
@@ -61,7 +62,7 @@ function NameSelector(props) {
       <Dropdown
         label="Select application"
         data-testid="app-name-selector"
-        value={defaultValue}
+        value={selectedValue}
         overflow="auto"
         position="anchor"
         menuButtonClassName={styles.menuButton}
