@@ -228,6 +228,36 @@ describe('ProfileHeader', () => {
     });
   });
 
+  describe('LinkedSearch', () => {
+    it('calls callback when search is linked', () => {
+      const toggleLinkedSearch = jest.fn();
+
+      const component = (
+        <Toolbar
+          view="both"
+          display="both"
+          isFlamegraphDirty
+          handleSearchChange={() => {}}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          selectedNode={Maybe.nothing()}
+          onFocusOnSubtree={() => {}}
+          viewSide="left"
+          linkedSearchQuery=""
+          isSearchLinked={false}
+          toggleLinkedSearch={toggleLinkedSearch}
+        />
+      );
+
+      render(component);
+      userEvent.click(screen.getByTestId('link-search-btn-left'));
+      expect(toggleLinkedSearch).toHaveBeenCalled();
+    });
+  });
+
   describe('FitMode', () => {
     const updateFitMode = jest.fn();
     const component = (
