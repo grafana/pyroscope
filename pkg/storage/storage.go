@@ -94,7 +94,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 			// causes garbage collection to trigger.
 			gcSizeDiff: bytesize.GB,
 			// in-memory queue params.
-			queueLen:     1 << 10,
+			queueLen:     100,
 			queueWorkers: runtime.NumCPU(),
 		},
 
