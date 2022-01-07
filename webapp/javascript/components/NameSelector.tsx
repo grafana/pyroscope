@@ -45,18 +45,15 @@ function NameSelector(props) {
     return n.toLowerCase().includes(f);
   };
 
-  const options = appNames.mapOrElse(
-    () => null,
-    (names) => {
-      return names.filter(filterOptions).map((name) => (
-        <MenuItem key={name} value={name} onClick={() => selectAppName(name)}>
-          {name}
-        </MenuItem>
-      ));
-    }
-  );
+  // TODO figure out this any
+  const options = appNames.filter(filterOptions).map((name) => (
+    <MenuItem key={name} value={name} onClick={() => selectAppName(name)}>
+      {name}
+    </MenuItem>
+  )) as any;
 
-  const noApp = <MenuItem>No App available</MenuItem>;
+  const noApp =
+    appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>;
 
   return (
     <div className={styles.container}>
@@ -69,7 +66,7 @@ function NameSelector(props) {
         position="anchor"
         menuButtonClassName={styles.menuButton}
       >
-        {appNames.mapOr(noApp, (names) => (names.length > 0 ? null : noApp))}
+        {noApp}
         <FocusableItem>
           {({ ref }) => (
             <input

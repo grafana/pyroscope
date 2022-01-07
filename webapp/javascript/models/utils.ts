@@ -4,7 +4,8 @@ import { Result } from '@utils/fp';
 /**
  * modelToResult converts a (most likely) zod model into a Result
  */
-export default function modelToResult<T>(
+// eslint-disable-next-line import/prefer-default-export
+export function modelToResult<T>(
   s: ZodType<T>,
   data: unknown
 ): Result<T, ZodError> {

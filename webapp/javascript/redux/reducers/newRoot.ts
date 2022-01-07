@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppNames } from '@models/appNames';
-import { Maybe } from '@utils/fp';
 import { fetchAppNames } from '@pyroscope/services/appNames';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
@@ -16,7 +15,6 @@ interface NewRootState {
 
 // Define the initial state using that type
 const initialState: NewRootState = {
-  // TODO: come from the backend
   appNames: { type: 'loaded', data: (window as any).initialState.appNames },
 };
 
@@ -59,18 +57,7 @@ export const newRootSlice = createSlice({
   },
 });
 
-// TODO use maybe here
 export const selectAppNamesState = (state: RootState) => state.newRoot.appNames;
-export const selectAppNames = (state: RootState) => {
-  switch (state.newRoot.appNames.type) {
-    case 'loaded':
-    case 'reloading': {
-      return Maybe.just(state.newRoot.appNames.data);
-    }
-
-    default:
-      return Maybe.nothing<AppNames>();
-  }
-};
+export const selectAppNames = (state: RootState) => state.newRoot.appNames.data;
 
 export default newRootSlice.reducer;

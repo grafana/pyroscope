@@ -25,8 +25,8 @@ services:
       - 4040:4040
     environment:
       # it should work with all of these variations:
-      - PYROSCOPE_BASE_URL=http://localhost:8081/pyroscope
-      #      - PYROSCOPE_BASE_URL=https://oauth-test-proxy.pyroscope.io/pyroscope
+      # - PYROSCOPE_BASE_URL=http://localhost:8081/pyroscope
+      # - PYROSCOPE_BASE_URL=https://oauth-test-proxy.pyroscope.io/pyroscope
       # - PYROSCOPE_BASE_URL=/long/path/pyroscope
     volumes:
       - ./oauth-config.yml:/etc/pyroscope/server.yml
