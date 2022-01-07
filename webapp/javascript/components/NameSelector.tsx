@@ -48,7 +48,12 @@ function NameSelector(props) {
 
   // TODO figure out this any
   const options = appNames.filter(filterOptions).map((name) => (
-    <MenuItem key={name} value={name} onClick={() => selectAppName(name)}>
+    <MenuItem
+      key={name}
+      value={name}
+      onClick={() => selectAppName(name)}
+      className={selectedValue === name ? 'active' : ''}
+    >
       {name}
     </MenuItem>
   )) as any;
