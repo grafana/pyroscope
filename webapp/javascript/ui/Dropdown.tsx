@@ -2,6 +2,7 @@ import React from 'react';
 import {
   ClickEvent,
   Menu,
+  MenuProps,
   MenuHeader,
   SubMenu as LibSubmenu,
   MenuItem as LibMenuItem,
@@ -17,6 +18,7 @@ export interface DropdownProps {
   disabled?: boolean;
   ['data-testid']?: string;
   className?: string;
+  menuButtonClassName?: string;
 
   /** Dropdown label */
   label: string;
@@ -28,6 +30,9 @@ export interface DropdownProps {
 
   /** Event that fires when an item is activated*/
   onItemClick?: (event: ClickEvent) => void;
+
+  overflow?: MenuProps['overflow'];
+  position?: MenuProps['position'];
 }
 
 export default function Dropdown({
@@ -38,6 +43,9 @@ export default function Dropdown({
   value,
   label,
   onItemClick,
+  overflow,
+  position,
+  menuButtonClassName,
   ...props
 }: DropdownProps) {
   return (
@@ -46,9 +54,11 @@ export default function Dropdown({
       className={`${className} ${styles.dropdownMenu}`}
       data-testid={props['data-testid']}
       onItemClick={onItemClick}
+      overflow={overflow}
+      position={position}
       menuButton={
         <MenuButton
-          className={`${styles.dropdownMenuButton}`}
+          className={`${styles.dropdownMenuButton} ${menuButtonClassName}`}
           disabled={disabled}
         >
           {value || label}

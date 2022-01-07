@@ -1,6 +1,6 @@
 // TODO reenable spreading lint
 /* eslint-disable react/jsx-props-no-spreading */
-import React from 'react';
+import React, { useState } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
@@ -13,7 +13,10 @@ import {
 import Spinner from 'react-svg-spinner';
 import Button from '@ui/Button';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
+import Dropdown, { MenuItem, FocusableItem } from '@ui/Dropdown';
+import { Maybe } from '@utils/fp';
 import { setQuery } from '../redux/actions';
+import styles from './NameSelector.module.scss';
 
 const defKey = 'Select an app...';
 
@@ -22,43 +25,65 @@ function NameSelector(props) {
   const appNamesState = useAppSelector(selectAppNamesState);
   const appNames = useAppSelector(selectAppNames);
 
-  const selectAppName = (event) => {
-    const query = appNameToQuery(event.target.value);
+  const [filter, setFilter] = useState<Maybe<string>>(Maybe.nothing());
+
+  const selectAppName = (name: string) => {
+    const query = appNameToQuery(name);
     actions.setQuery(query);
   };
 
   const dispatch = useAppDispatch();
 
-  let defaultValue = (query || '').replace(/\{.*/g, '');
+  let defaultValue = queryToAppName(query).mapOr('', (q) => q);
+  // TODO: don't do this and instead always have a defined query
   if (names && names.indexOf(defaultValue) === -1) {
     defaultValue = defKey;
   }
 
+  const filterOptions = (n: string) => {
+    const f = filter.mapOr('', (v) => v.trim().toLowerCase());
+    return n.toLowerCase().includes(f);
+  };
+
   const options = appNames.mapOrElse(
     () => null,
     (names) => {
-      return names.map((name) => (
-        <option key={name} value={name}>
+      return names.filter(filterOptions).map((name) => (
+        <MenuItem key={name} value={name} onClick={() => selectAppName(name)}>
           {name}
-        </option>
+        </MenuItem>
       ));
     }
   );
 
+  const noApp = <MenuItem>No App available</MenuItem>;
+
   return (
-    <span>
+    <div className={styles.container}>
       Application:&nbsp;
-      <select
-        className="label-select"
+      <Dropdown
+        label="Select application"
         data-testid="app-name-selector"
         value={defaultValue}
-        onChange={selectAppName}
+        overflow="auto"
+        position="anchor"
+        menuButtonClassName={styles.menuButton}
       >
-        <option disabled key={defKey} value="Select an app...">
-          Select an app...
-        </option>
+        {appNames.mapOr(noApp, (names) => (names.length > 0 ? null : noApp))}
+        <FocusableItem>
+          {({ ref }) => (
+            <input
+              ref={ref}
+              type="text"
+              placeholder="Type an app"
+              value={filter.mapOr('', (v) => v)}
+              onChange={(e) => setFilter(Maybe.just(e.target.value))}
+            />
+          )}
+        </FocusableItem>
+
         {options}
-      </select>
+      </Dropdown>
       <Button
         icon={faSyncAlt}
         onClick={() => {
@@ -66,7 +91,7 @@ function NameSelector(props) {
         }}
       />
       <Loading {...appNamesState} />
-    </span>
+    </div>
   );
 }
 
