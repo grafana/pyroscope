@@ -26,22 +26,19 @@ export const reloadAppNames = createAsyncThunk(
     // TODO, retries?
     const res = await fetchAppNames();
 
-    res.match({
-      Ok: (appNames) => {
-        return Promise.resolve(appNames);
-      },
-      Err: (e) => {
-        thunkAPI.dispatch(
-          addNotification({
-            type: 'danger',
-            title: 'Failed to load app names',
-            message: e.message,
-          })
-        );
+    if (res.isOk) {
+      return Promise.resolve(res.value);
+    }
 
-        return Promise.reject(e);
-      },
-    });
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to load app names',
+        message: res.error.message,
+      })
+    );
+
+    return Promise.reject(res.error);
   }
 );
 
@@ -50,8 +47,8 @@ export const newRootSlice = createSlice({
   initialState,
   reducers: {},
   extraReducers: (builder) => {
-    builder.addCase(reloadAppNames.fulfilled, (state) => {
-      state.appNames = { type: 'loaded', data: state.appNames.data };
+    builder.addCase(reloadAppNames.fulfilled, (state, action) => {
+      state.appNames = { type: 'loaded', data: action.payload };
     });
     builder.addCase(reloadAppNames.pending, (state) => {
       state.appNames = { type: 'reloading', data: state.appNames.data };

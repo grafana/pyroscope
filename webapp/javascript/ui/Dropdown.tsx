@@ -45,7 +45,7 @@ export default function Dropdown({
   onItemClick,
   overflow,
   position,
-  menuButtonClassName,
+  menuButtonClassName = '',
   ...props
 }: DropdownProps) {
   return (

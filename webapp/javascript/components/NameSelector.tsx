@@ -85,6 +85,7 @@ function NameSelector(props) {
         {options}
       </Dropdown>
       <Button
+        aria-label="Refresh Apps"
         icon={faSyncAlt}
         onClick={() => {
           dispatch(reloadAppNames());
