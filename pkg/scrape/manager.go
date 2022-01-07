@@ -52,7 +52,7 @@ type Ingester interface {
 }
 
 // NewManager is the Manager constructor
-func NewManager(logger logrus.FieldLogger, ingester Ingester) *Manager {
+func NewManager(logger logrus.FieldLogger, ingester Ingester, r prometheus.Registerer) *Manager {
 	c := make(map[string]*config.Config)
 	return &Manager{
 		ingester:      ingester,
@@ -61,6 +61,7 @@ func NewManager(logger logrus.FieldLogger, ingester Ingester) *Manager {
 		scrapePools:   make(map[string]*scrapePool),
 		stop:          make(chan struct{}),
 		reloadC:       make(chan struct{}, 1),
+		metrics:       newMetrics(r),
 	}
 }
 

@@ -100,7 +100,7 @@ func (sp *scrapePool) newScrapeLoop(s *scraper, i, t time.Duration) *scrapeLoop 
 		ingester:    sp.ingester,
 		poolMetrics: sp.poolMetrics,
 		stopped:     make(chan struct{}),
-		delta:    d,
+		delta:       d,
 		interval:    i,
 		timeout:     t,
 	}
@@ -334,6 +334,9 @@ func (sl *scrapeLoop) run() {
 		default:
 		case <-sl.ctx.Done():
 			return
+		}
+		if !sl.scraper.Target.lastScrape.IsZero() {
+			sl.poolMetrics.scrapeIntervalLength.Observe(float64(time.Since(sl.scraper.Target.lastScrape)))
 		}
 		sl.scrapeAndReport(sl.scraper.Target)
 		select {
