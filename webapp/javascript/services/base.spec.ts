@@ -1,6 +1,9 @@
 import { Result } from '@utils/fp';
-import { request } from './base';
+import { request, mountRequest } from './base';
 import { setupServer, rest } from './testUtils';
+import basename from '../util/baseurl';
+
+jest.mock('../util/baseurl', () => jest.fn());
 
 describe('Base HTTP', () => {
   let server: ReturnType<typeof setupServer> | null;
@@ -129,6 +132,34 @@ describe('Base HTTP', () => {
           message: 'text error',
         })
       );
+    });
+  });
+});
+
+// Normally this wouldn't be tested
+// But since implementation is complex enough
+// It's better to expose and test it
+// TODO test when req is an object
+describe('mountRequest', () => {
+  describe('basename is set', () => {
+    it('prepends browserURL with basename', () => {
+      (basename as any).mockImplementationOnce(() => {
+        return '/pyroscope';
+      });
+
+      const got = mountRequest('my-request');
+      expect(got).toBe('http://localhost/pyroscope/my-request');
+    });
+  });
+
+  describe('basename is NOT set', () => {
+    it('returns the browser url', () => {
+      (basename as any).mockImplementationOnce(() => {
+        return null;
+      });
+
+      const got = mountRequest('my-request');
+      expect(got).toBe('http://localhost/my-request');
     });
   });
 });

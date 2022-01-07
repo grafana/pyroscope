@@ -25,25 +25,35 @@ export type RequestError =
   | RequestIncompleteError
   | ResponseInvalidJSONError;
 
-function mountRequest(req: RequestInfo): RequestInfo {
-  let baseURL = basename();
+function mountURL(req: RequestInfo): string {
+  const baseName = basename();
 
-  // There's no explicit baseURL configured
-  // So let's try to infer one
-  // This is useful for eg in tests
-  if (!baseURL) {
-    baseURL = window.location.href;
+  if (baseName) {
+    if (typeof req === 'string') {
+      return new URL(`${baseName}/${req}`, window.location.href).href;
+    }
+
+    // req is an object
+    return new URL(`${baseName}/${req.url}`, window.location.href).href;
   }
 
-  // TODO:
-  // figure out if there's already a base URL in the request
+  // no basename
   if (typeof req === 'string') {
-    return new URL(req, baseURL).href;
+    return new URL(req, window.location.href).href;
+  }
+  return new URL(req.url, window.location.href).href;
+}
+
+export function mountRequest(req: RequestInfo): RequestInfo {
+  const url = mountURL(req);
+
+  if (typeof req === 'string') {
+    return url;
   }
 
   return {
     ...req,
-    url: new URL(req.url, baseURL).href,
+    url: new URL(req.url, url).href,
   };
 }
 

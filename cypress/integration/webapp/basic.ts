@@ -7,10 +7,11 @@ describe('basic test', () => {
     cy.title().should('eq', 'Pyroscope');
   });
 
-  it.only('changes app via the application dropdown', () => {
+  it('changes app via the application dropdown', () => {
+    const basePath = Cypress.env('basePath') || '';
     // While the initial values come from the backend
     // We refresh it here so that we can mock with specific values
-    cy.intercept('**/label-values*', {
+    cy.intercept(`${basePath}**/label-values*`, {
       fixture: 'appNames.json',
     }).as('labelValues');
 
