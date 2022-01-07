@@ -100,22 +100,7 @@ describe('basic test', () => {
 
     cy.findByTestId('link-search-btn-left').click();
     cy.findByTestId('flamegraph-search-left').type('main');
-
-    cy.findByTestId('flamegraph-comparison-left').get(
-      '[data-highlightquery="main"]'
-    );
-
-    cy.findByTestId('flamegraph-comparison-left')
-      .find('canvas')
-      .matchImageSnapshot('simple-golang-app-cpu-highlight-left');
-
-    cy.findByTestId('flamegraph-comparison-right').get(
-      '[data-highlightquery="main"]'
-    );
-
-    cy.findByTestId('flamegraph-comparison-right')
-      .find('canvas')
-      .matchImageSnapshot('simple-golang-app-cpu-highlight-right');
+    cy.findByTestId('flamegraph-search-right').should('have.value', 'main');
   });
 
   it('view buttons should change view when clicked', () => {
