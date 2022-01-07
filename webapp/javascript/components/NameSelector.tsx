@@ -10,7 +10,7 @@ import {
   selectAppNamesState,
   reloadAppNames,
 } from '@pyroscope/redux/reducers/newRoot';
-import Spinner from 'react-svg-spinner';
+import LoadingSpinner from '@ui/LoadingSpinner';
 import Button from '@ui/Button';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import Dropdown, { MenuItem, FocusableItem } from '@ui/Dropdown';
@@ -99,7 +99,7 @@ function NameSelector(props) {
 function Loading({ type }: ReturnType<typeof selectAppNamesState>) {
   switch (type) {
     case 'reloading': {
-      return <Spinner color="rgba(255,255,255,0.6)" size="20px" />;
+      return <LoadingSpinner />;
     }
 
     default: {

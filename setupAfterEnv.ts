@@ -38,3 +38,9 @@ expect.extend({
 timezoneMock.register('UTC');
 
 globalThis.fetch = nodeFetch as unknown as typeof fetch;
+
+// When testing redux we can assume this will be populated
+// Which will be used for setting up the initialState
+(globalThis.window as any).initialState = {
+  appNames: [],
+};
