@@ -1,16 +1,12 @@
+import webpack from 'webpack';
+import path from 'path';
+import glob from 'glob';
+import fs from 'fs';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import MiniCssExtractPlugin from 'mini-css-extract-plugin';
+import CopyPlugin from 'copy-webpack-plugin';
+
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
-
-const webpack = require('webpack');
-const path = require('path');
-const glob = require('glob');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
-// uncomment if you want to see the webpack bundle analysis
-// const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-//
-
-const fs = require('fs');
 
 const pages = glob
   .sync('./webapp/templates/*.html')
@@ -21,7 +17,6 @@ const pagePlugins = pages.map(
       filename: path.resolve(__dirname, `../../webapp/public/${name}`),
       template: path.resolve(__dirname, `../../webapp/templates/${name}`),
       inject: false,
-      chunksSortMode: 'none',
       templateParameters: (compilation, assets, options) => ({
         extra_metadata: process.env.EXTRA_METADATA
           ? fs.readFileSync(process.env.EXTRA_METADATA)
@@ -38,7 +33,7 @@ const pagePlugins = pages.map(
     })
 );
 
-module.exports = {
+export default {
   target: 'web',
 
   entry: {
@@ -86,7 +81,8 @@ module.exports = {
         // However, we still need to prefix the public URL with /assets/static/img
         options: {
           outputPath: 'static/img',
-          publicPath: '/assets/static/img',
+          // using relative path to make this work when pyroscope is deployed to a subpath (with BaseURL config option)
+          publicPath: '../assets/static/img',
           name: '[name].[hash:8].[ext]',
         },
       },

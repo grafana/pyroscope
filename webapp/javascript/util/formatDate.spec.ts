@@ -1,11 +1,10 @@
 import { readableRange, formatAsOBject } from '@utils/formatDate';
-import * as moment from 'moment-timezone';
-
-moment.tz.setDefault('UTC');
+import timezoneMock from 'timezone-mock';
 
 describe('FormatDate', () => {
   describe('readableRange', () => {
     const cases = [
+      ['now-1m', 'now', 'Last 1 minute'],
       ['now-5m', 'now', 'Last 5 minutes'],
       ['now-15m', 'now', 'Last 15 minutes'],
       ['now-1h', 'now', 'Last 1 hour'],
@@ -46,10 +45,10 @@ describe('FormatDate', () => {
       const mockDate = new Date('2021-12-21T12:44:01.741Z');
 
       jest
-        .spyOn(global.Date, 'now')
-        .mockImplementation(() => mockDate as unknown as number);
+        .spyOn(global, 'Date')
+        .mockImplementation(() => mockDate as unknown as string);
 
-      expect(formatAsOBject('now-1m')).toBe(1640090581741);
+      expect(formatAsOBject('now-1m')).toBe(1640090641741);
     });
 
     it('works with absolute timestamps', () => {

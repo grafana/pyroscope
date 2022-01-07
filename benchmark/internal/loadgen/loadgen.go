@@ -1,6 +1,7 @@
 package loadgen
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
@@ -8,10 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/pyroscope-io/pyroscope/benchmark/internal/config"
+	"github.com/pyroscope-io/pyroscope/benchmark/internal/server"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream/remote"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
@@ -23,15 +26,26 @@ const MaxReadinessRetries = 10
 
 type Fixtures [][]*transporttrie.Trie
 
+var defaultDurationBetweenUploads = 10 * time.Second
+
 type LoadGen struct {
 	Config    *config.LoadGen
 	Rand      *rand.Rand
 	SymbolBuf []byte
+	Tags      []string
 
 	runProgressMetric prometheus.Gauge
 	uploadErrors      prometheus.Counter
 	successfulUploads prometheus.Counter
 	pusher            GatewayPusher
+
+	// RWMutex allows one writer or multiple readers.
+	//  this fits great for the case where we want to pause writes before calling render endpoint
+	//  render thread becomes a "writer", and client upload threads become "readers"
+	pauseMutex sync.RWMutex
+
+	renderAppName string
+	duration      time.Duration
 }
 
 type GatewayPusher interface {
@@ -91,11 +105,24 @@ func Cli(cfg *config.LoadGen) error {
 		func() float64 { return float64(cfg.Apps * cfg.Requests * cfg.Clients) },
 	)
 
+	if cfg.Duration != 0 {
+		cfg.Requests = int(cfg.Duration / defaultDurationBetweenUploads)
+	}
+
+	l.duration = time.Duration(l.Config.Requests) * (defaultDurationBetweenUploads)
+
 	return l.Run(cfg)
 }
 
 func (l *LoadGen) Run(cfg *config.LoadGen) error {
-	logrus.Info("checking server is available...")
+	time.Sleep(5 * time.Second)
+	logrus.Info("running loadgenerator with config:")
+	spew.Dump(cfg)
+
+	logrus.Info("starting pull target server")
+	go server.StartServer()
+
+	logrus.Info("checking if server is available...")
 	err := waitUntilEndpointReady(cfg.ServerAddress)
 	if err != nil {
 		return err
@@ -103,25 +130,63 @@ func (l *LoadGen) Run(cfg *config.LoadGen) error {
 
 	logrus.Info("generating fixtures")
 	fixtures := l.generateFixtures()
+
+	l.Tags = []string{}
+	for i := 0; i < l.Config.TagKeys; i++ {
+		tagName := fmt.Sprintf("key%d", i)
+		for j := 0; j < l.Config.TagValues; j++ {
+			tagValue := fmt.Sprintf("val%d", j)
+			l.Tags = append(l.Tags, fmt.Sprintf("{%s=%s}", tagName, tagValue))
+		}
+	}
 	logrus.Debug("done generating fixtures.")
 
 	logrus.Info("starting sending requests")
-	logrus.Infof("cfg %+v\n", cfg)
-	wg := sync.WaitGroup{}
-	wg.Add(l.Config.Apps * l.Config.Clients)
+	st := time.Now()
 	appNameBuf := make([]byte, 25)
 
-	for i := 0; i < l.Config.Apps; i++ {
-		// generate a random app name
-		l.Rand.Read(appNameBuf)
-		appName := hex.EncodeToString(appNameBuf)
-		for j := 0; j < l.Config.Clients; j++ {
-			go l.startClientThread(appName, &wg, fixtures[i])
+	servers := []string{
+		l.Config.ServerAddress,
+	}
+
+	if l.Config.ServerAddress2 != "" {
+		servers = append(servers, l.Config.ServerAddress2)
+	}
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+
+	wg := sync.WaitGroup{}
+	wg.Add(l.Config.Apps * l.Config.Clients * len(servers))
+	for _, s := range servers {
+		for i := 0; i < l.Config.Apps; i++ {
+			// generate a random app name
+			l.Rand.Read(appNameBuf)
+			appName := hex.EncodeToString(appNameBuf)
+			if i == 0 {
+				l.renderAppName = appName
+			}
+			for j := 0; j < l.Config.Clients; j++ {
+				go l.startClientThread(ctx, s, j, appName, &wg, fixtures[i])
+			}
 		}
 	}
+	doneCh := make(chan struct{})
+	go l.startRenderThread(doneCh)
+	if cfg.TimeLimit != 0 {
+		go func() {
+			time.Sleep(cfg.TimeLimit)
+			cancelFn()
+		}()
+	}
 	wg.Wait()
+	logrus.Info("done sending requests, benchmark took ", time.Since(st))
+	doneCh <- struct{}{}
 
-	logrus.Debug("done sending requests")
+	if l.Config.NoExitWhenDone {
+		logrus.Info("waiting forever")
+		time.Sleep(time.Hour * 24 * 365)
+	}
+
 	return nil
 }
 
@@ -141,10 +206,11 @@ func (l *LoadGen) generateFixtures() Fixtures {
 	return f
 }
 
-func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
+//revive:disable:argument-limit it's benchmarking code, so lower standards are fine
+func (l *LoadGen) startClientThread(ctx context.Context, serverAddress string, threadID int, appName string, wg *sync.WaitGroup, appFixtures []*transporttrie.Trie) {
 	rc := remote.RemoteConfig{
 		UpstreamThreads:        1,
-		UpstreamAddress:        l.Config.ServerAddress,
+		UpstreamAddress:        serverAddress,
 		UpstreamRequestTimeout: 10 * time.Second,
 	}
 
@@ -156,18 +222,42 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 
 	requestsCount := l.Config.Requests
 
-	threadStartTime := time.Now().Truncate(10 * time.Second)
-	threadStartTime = threadStartTime.Add(time.Duration(-1*requestsCount) * (10 * time.Second))
+	threadStartTime := time.Now().Truncate(defaultDurationBetweenUploads)
+	threadStartTime = threadStartTime.Add(-1 * l.duration)
 
 	st := threadStartTime
 
+	var timerChan <-chan time.Time
+	if l.Config.RealTime {
+		timerChan = time.NewTicker(defaultDurationBetweenUploads / time.Duration(l.Config.TimeMultiplier)).C
+	} else {
+		ch := make(chan time.Time)
+		go func() {
+			for i := 0; i < requestsCount; i++ {
+				ch <- time.Now()
+			}
+			close(ch)
+		}()
+		timerChan = ch
+	}
+
+Outside:
 	for i := 0; i < requestsCount; i++ {
+		select {
+		case <-ctx.Done():
+			break Outside
+		case <-timerChan:
+		}
+
 		t := appFixtures[i%len(appFixtures)]
 
 		st = st.Add(10 * time.Second)
 		et := st.Add(10 * time.Second)
+
+		l.pauseMutex.RLock()
+		fullName := fmt.Sprintf("%s{pod=pod-%d}", appName, threadID)
 		err := r.UploadSync(&upstream.UploadJob{
-			Name:            appName + "{}",
+			Name:            fullName,
 			StartTime:       st,
 			EndTime:         et,
 			SpyName:         "gospy",
@@ -176,6 +266,7 @@ func (l *LoadGen) startClientThread(appName string, wg *sync.WaitGroup, appFixtu
 			AggregationType: "sum",
 			Trie:            t,
 		})
+		l.pauseMutex.RUnlock()
 		if err != nil {
 			l.uploadErrors.Add(1)
 			time.Sleep(time.Second)

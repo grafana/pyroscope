@@ -67,7 +67,7 @@ func (w writer) write(t0, t1 time.Time) error {
 		} else {
 			ext = w.outputFormat
 		}
-		filename := fmt.Sprintf("%s-%s.%s", name, t0.UTC().Format(time.RFC3339), ext)
+		filename := fmt.Sprintf("%s-%s.%s", name, t0.Format("2006-01-02-15-04-05"), ext)
 		path := filepath.Join(dataDir, filename)
 		f, err := os.Create(path)
 		if err != nil {

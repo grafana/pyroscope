@@ -1,10 +1,12 @@
 import { merge } from 'webpack-merge';
 
-const common = require('./webpack.common');
+import common from './webpack.common';
 
-module.exports = merge(common, {
+export default merge(common, {
   mode: 'production',
 
   // Recommended choice for production builds with high quality SourceMaps.
   devtool: 'source-map',
-});
+  // TODO deal with these types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any);

@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
@@ -35,6 +36,7 @@ type Manager struct {
 	ingester Ingester
 	stop     chan struct{}
 
+	*metrics
 	jitterSeed uint64     // Global jitterSeed seed is used to spread scrape workload across HA setup.
 	mtxScrape  sync.Mutex // Guards the fields below.
 
@@ -91,7 +93,7 @@ func (m *Manager) reload() {
 					Errorf("reloading target set")
 				continue
 			}
-			sp, err := newScrapePool(scrapeConfig, m.ingester, m.logger)
+			sp, err := newScrapePool(scrapeConfig, m.ingester, m.logger, m.metrics)
 			if err != nil {
 				m.logger.WithError(err).
 					WithField("scrape_pool", setName).
