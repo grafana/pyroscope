@@ -6,6 +6,8 @@
 /* eslint-disable no-nested-ternary */
 
 import React from 'react';
+import { connect } from 'react-redux';
+import { bindActionCreators } from 'redux';
 import clsx from 'clsx';
 import { Maybe } from '@utils/fp';
 import Graph from './FlameGraphComponent';
@@ -15,6 +17,11 @@ import { createFF } from '../../util/flamebearer';
 import styles from './FlamegraphRenderer.module.css';
 
 import ExportData from '../ExportData';
+
+import {
+  toggleLinkedSearch,
+  setSearchQuery,
+} from '../../redux/reducers/search';
 
 class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
@@ -71,7 +78,7 @@ class FlameGraphRenderer extends React.Component {
         this.setState({
           highlightQuery: '',
         });
-        this.props.toggleLinkedSearch('both');
+        this.props.actions.toggleLinkedSearch('both');
       }
     }
   }
@@ -100,7 +107,7 @@ class FlameGraphRenderer extends React.Component {
     });
 
     if (this.props.isSearchLinked) {
-      this.props.setSearchQuery(e);
+      this.props.actions.setSearchQuery(e);
     }
   };
 
@@ -296,12 +303,12 @@ class FlameGraphRenderer extends React.Component {
       tablePane
     );
 
-    const toggleLinkedSearch = () => {
+    const toggleLinkedSearchAction = () => {
       if (this.props.isSearchLinked) {
-        this.props.toggleLinkedSearch(this.props.viewSide);
+        this.props.actions.toggleLinkedSearch(this.props.viewSide);
       } else {
-        this.props.setSearchQuery(this.state.highlightQuery);
-        this.props.toggleLinkedSearch('both');
+        this.props.actions.setSearchQuery(this.state.highlightQuery);
+        this.props.actions.toggleLinkedSearch('both');
       }
     };
 
@@ -328,11 +335,9 @@ class FlameGraphRenderer extends React.Component {
               onFocusOnSubtree={(i, j) => {
                 this.onFocusOnNode(i, j);
               }}
+              viewType={this.props.viewType}
               viewSide={this.props.viewSide}
-              isSearchLinked={this.props.isSearchLinked}
-              linkedSearchQuery={this.props.linkedSearchQuery}
-              toggleLinkedSearch={toggleLinkedSearch}
-              resetLinkedSearchSide={this.props.resetLinkedSearchSide}
+              toggleLinkedSearch={toggleLinkedSearchAction}
             />
           )}
           {this.props.children}
@@ -390,4 +395,20 @@ function figureFlamegraphDataTestId(viewType, viewSide) {
   }
 }
 
-export default FlameGraphRenderer;
+const mapStateToProps = (state) => ({
+  isSearchLinked: state.search.isSearchLinked,
+  linkedSearchQuery: state.search.linkedSearchQuery,
+  resetLinkedSearchSide: state.search.resetLinkedSearchSide,
+});
+
+const mapDispatchToProps = (dispatch) => ({
+  actions: bindActionCreators(
+    {
+      toggleLinkedSearch,
+      setSearchQuery,
+    },
+    dispatch
+  ),
+});
+
+export default connect(mapStateToProps, mapDispatchToProps)(FlameGraphRenderer);

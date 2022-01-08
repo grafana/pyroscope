@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import clsx from 'clsx';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
@@ -16,6 +17,12 @@ import useResizeObserver from '@react-hook/resize-observer';
 import Button from '@ui/Button';
 import { FitModes } from '../util/fitMode';
 import styles from './ProfilerHeader.module.css';
+
+import {
+  isSearchLinked,
+  linkedSearchQuery,
+  resetLinkedSearchSide,
+} from '../redux/reducers/search';
 
 // arbitrary value
 // as a simple heuristic, try to run the comparison view
@@ -75,11 +82,9 @@ interface ProfileHeaderProps {
    */
   selectedNode: Maybe<{ i: number; j: number }>;
   onFocusOnSubtree: (i: number, j: number) => void;
+  viewType?: 'single' | 'double' | 'diff';
   viewSide?: 'left' | 'right';
-  isSearchLinked?: boolean;
-  linkedSearchQuery?: string;
   toggleLinkedSearch?: () => void;
-  resetLinkedSearchSide?: 'left' | 'right';
 }
 
 const Toolbar = React.memo(
@@ -96,11 +101,9 @@ const Toolbar = React.memo(
     display,
     selectedNode,
     onFocusOnSubtree,
+    viewType,
     viewSide,
-    linkedSearchQuery,
-    isSearchLinked,
     toggleLinkedSearch,
-    resetLinkedSearchSide,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef();
     const showMode = useSizeMode(toolbarRef);
@@ -111,11 +114,9 @@ const Toolbar = React.memo(
           <HighlightSearch
             showMode={showMode}
             onHighlightChange={handleSearchChange}
+            viewType={viewType}
             viewSide={viewSide}
-            isSearchLinked={isSearchLinked}
-            linkedSearchQuery={linkedSearchQuery}
             toggleLinkedSearch={toggleLinkedSearch}
-            resetLinkedSearchSide={resetLinkedSearchSide}
           />
           <DiffView
             showMode={showMode}
@@ -197,23 +198,22 @@ function FocusOnSubtree({
 function HighlightSearch({
   onHighlightChange,
   showMode,
+  viewType,
   viewSide,
-  isSearchLinked,
-  linkedSearchQuery,
   toggleLinkedSearch,
-  resetLinkedSearchSide,
 }) {
   const [text, setText] = useState('');
-  const searchInputType =
-    isSearchLinked === undefined ? 'standalone' : 'linked';
-
-  if (isSearchLinked === true) {
-    if (viewSide === resetLinkedSearchSide) {
+  const isSearchLinkedState = useSelector(isSearchLinked);
+  const linkedSearchQueryState = useSelector(linkedSearchQuery);
+  const resetLinkedSearchSideState = useSelector(resetLinkedSearchSide);
+  const searchInputType = viewType === 'double' ? 'linked' : 'standalone';
+  if (isSearchLinkedState === true) {
+    if (viewSide === resetLinkedSearchSideState) {
       if (text !== '') {
         setText('');
       }
-    } else if (text !== linkedSearchQuery) {
-      setText(linkedSearchQuery);
+    } else if (text !== linkedSearchQueryState) {
+      setText(linkedSearchQueryState);
     }
   }
 
@@ -228,7 +228,7 @@ function HighlightSearch({
   }`;
 
   const linkedSearchCls = `${
-    isSearchLinked === true ? `${styles.active}` : ''
+    isSearchLinkedState === true ? `${styles.active}` : ''
   }`;
 
   return (
@@ -240,7 +240,7 @@ function HighlightSearch({
         name="flamegraph-search"
         placeholder="Search…"
         minLength={2}
-        value={isSearchLinked === true ? linkedSearchQuery : text}
+        value={isSearchLinkedState === true ? linkedSearchQueryState : text}
         debounceTimeout={100}
         onChange={(e) => {
           onHighlightChange(e.target.value);
@@ -252,10 +252,12 @@ function HighlightSearch({
           data-testid={`link-search-btn-${viewSide}`}
           icon={faLink}
           className={`${styles['linked-search-btn']} ${
-            isSearchLinked === true ? styles.active : ''
+            isSearchLinkedState === true ? styles.active : ''
           }`}
           title={`${
-            isSearchLinked === true ? 'Unsync search term' : 'Sync search term'
+            isSearchLinkedState === true
+              ? 'Unsync search term'
+              : 'Sync search term'
           }`}
         />
       )}

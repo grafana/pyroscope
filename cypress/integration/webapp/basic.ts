@@ -91,7 +91,7 @@ describe('basic test', () => {
     );
   });
 
-  it('highlights nodes in both comparison views when search is linked', () => {
+  it('Inputbox text should sync when search is linked', () => {
     cy.intercept('**/render*', {
       fixture: 'simple-golang-app-cpu.json',
     }).as('render');

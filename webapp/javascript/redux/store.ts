@@ -9,6 +9,7 @@ import rootReducer from './reducers';
 import history from '../util/history';
 
 import viewsReducer from './reducers/views';
+import searchReducer from './reducers/search';
 import {
   setLeftFrom,
   setLeftUntil,
@@ -32,6 +33,7 @@ const store = configureStore({
   reducer: {
     root: rootReducer,
     views: viewsReducer,
+    search: searchReducer,
   },
   // middleware: [thunkMiddleware],
 });

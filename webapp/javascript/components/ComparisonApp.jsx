@@ -24,50 +24,6 @@ function ComparisonApp(props) {
     props;
   const { rawLeft, rawRight } = comparison;
 
-  const [linkedSearch, setLinkedSearch] = useState({
-    isSearchLinked: false,
-    linkedSearchQuery: '',
-    resetLinkedSearchSide: '',
-  });
-
-  const setSearchQuery = (query) => {
-    setLinkedSearch((x) => {
-      return {
-        ...x,
-        linkedSearchQuery: query,
-      };
-    });
-  };
-  const toggleLinkedSearch = (side) => {
-    const { isSearchLinked } = linkedSearch;
-    let args;
-
-    if (isSearchLinked === false) {
-      args = { isSearchLinked: true, resetLinkedSearchSide: '' };
-    } else {
-      switch (side) {
-        case 'left':
-          args = { resetLinkedSearchSide: 'right' };
-          break;
-
-        case 'right':
-          args = { resetLinkedSearchSide: 'left' };
-
-          break;
-
-        case 'both':
-          args = { isSearchLinked: false, resetLinkedSearchSide: '' };
-          break;
-
-        default:
-          break;
-      }
-    }
-    setLinkedSearch((x) => {
-      return { ...x, ...args };
-    });
-  };
-
   useEffect(() => {
     actions.fetchComparisonAppData(leftRenderURL, 'left');
     return actions.abortTimelineRequest;
@@ -105,11 +61,6 @@ function ComparisonApp(props) {
               data-testid="flamegraph-renderer-left"
               display="both"
               rawFlamegraph={rawLeft}
-              isSearchLinked={linkedSearch.isSearchLinked}
-              setSearchQuery={setSearchQuery}
-              linkedSearchQuery={linkedSearch.linkedSearchQuery}
-              toggleLinkedSearch={toggleLinkedSearch}
-              resetLinkedSearchSide={linkedSearch.resetLinkedSearchSide}
             >
               <InstructionText viewType="double" viewSide="left" />
               <TimelineChartWrapper
@@ -129,11 +80,6 @@ function ComparisonApp(props) {
               data-testid="flamegraph-renderer-right"
               display="both"
               rawFlamegraph={rawRight}
-              isSearchLinked={linkedSearch.isSearchLinked}
-              setSearchQuery={setSearchQuery}
-              linkedSearchQuery={linkedSearch.linkedSearchQuery}
-              toggleLinkedSearch={toggleLinkedSearch}
-              resetLinkedSearchSide={linkedSearch.resetLinkedSearchSide}
             >
               <InstructionText viewType="double" viewSide="right" />
               <TimelineChartWrapper

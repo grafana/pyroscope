@@ -245,9 +245,8 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          viewType="double"
           viewSide="left"
-          linkedSearchQuery=""
-          isSearchLinked={false}
           toggleLinkedSearch={toggleLinkedSearch}
         />
       );
