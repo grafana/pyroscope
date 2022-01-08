@@ -65,7 +65,7 @@ module.exports = {
     jquery: true,
   },
   parserOptions: {
-    project: './tsconfig.json',
+    project: './tsconfig.eslint.json',
   },
   settings: {
     'import/resolver': {
