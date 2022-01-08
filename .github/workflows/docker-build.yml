@@ -29,7 +29,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          tags: 'pyroscope/pyroscope-dev:${{ env.RUNNER_ARCH }}-git-${{ github.sha }}'
+          tags: 'pyroscope/pyroscope-dev:${{ runner.arch }}-git-${{ github.sha }}'
 
   combine:
     needs: build
