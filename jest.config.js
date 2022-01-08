@@ -25,6 +25,7 @@ module.exports = {
   ],
   globals: {
     'ts-jest': {
+      tsconfig: `tsconfig.test.json`,
       diagnostics: {
         // https://github.com/kulshekhar/ts-jest/issues/1647#issuecomment-832577036
         pathRegex: /\.(test)\.tsx$/,

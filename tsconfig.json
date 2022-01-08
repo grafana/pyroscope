@@ -15,8 +15,14 @@
       "@ui/*": ["./webapp/javascript/ui/*"],
       "@pyroscope/redux/*": ["./webapp/javascript/redux/*"]
     },
+    "types": [],
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
   "include": ["./webapp/javascript/"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "webapp/javascript/**/*.spec.ts",
+    "webapp/javascript/**/*.spec.tsx",
+    "**/node_modules",
+    "**/.*/"
+  ]
 }
