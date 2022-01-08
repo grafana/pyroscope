@@ -150,6 +150,7 @@
     "copy-webpack-plugin": "^6.3.2",
     "css-loader": "^4.0.0",
     "date-fns": "^2.27.0",
+    "esbuild-loader": "^2.18.0",
     "eslint-import-resolver-webpack": "^0.13.2",
     "file-loader": "^6.2.0",
     "glob": "^7.1.7",

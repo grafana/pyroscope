@@ -5,6 +5,7 @@ import fs from 'fs';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import CopyPlugin from 'copy-webpack-plugin';
+import { ESBuildMinifyPlugin } from 'esbuild-loader';
 
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
@@ -68,6 +69,15 @@ export default {
     ignored: /node_modules/,
   },
 
+  optimization: {
+    minimizer: [
+      new ESBuildMinifyPlugin({
+        target: 'es2015',
+        css: true,
+      }),
+    ],
+  },
+
   module: {
     // Note: order is bottom-to-top and/or right-to-left
     rules: [
@@ -99,10 +109,6 @@ export default {
     ...pagePlugins,
     new MiniCssExtractPlugin({
       filename: '[name].[hash].css',
-    }),
-    new webpack.IgnorePlugin({
-      resourceRegExp: /^\.\/locale$/,
-      contextRegExp: /moment$/,
     }),
     new CopyPlugin({
       patterns: [
