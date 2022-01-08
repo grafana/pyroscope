@@ -13,7 +13,6 @@ module.exports = merge(common, {
   entry: {
     serve: 'webpack-plugin-serve/client',
   },
-
   plugins: [
     // create a server on port 4041 with live reload
     // it will serve all static assets com webapp/public/assets
@@ -70,7 +69,7 @@ module.exports = merge(common, {
         const goServerAddr = 'http://localhost:4040';
 
         try {
-          console.log(`Trying to access go server on ${goServerAddr}`);
+          process.stderr.write(`Trying to access go server on ${goServerAddr}`);
 
           // makes a request against the go server to retrieve its index.html
           // it assumes the server will either not respond or respond with 2xx
@@ -88,7 +87,7 @@ module.exports = merge(common, {
           );
         }
 
-        console.log('Live reload server is up');
+        process.stderr.write('Live reload server is up');
 
         return res.getBody('utf8');
       },
