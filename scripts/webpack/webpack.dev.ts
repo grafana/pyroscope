@@ -79,7 +79,7 @@ module.exports = merge(common, {
           res = request('GET', goServerAddr, {
             timeout: 1000,
             maxRetries: 30,
-            retryDelay: 1000,
+            retryDelay: 100,
             retry: true,
           });
         } catch (e) {

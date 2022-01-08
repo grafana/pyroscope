@@ -10,8 +10,18 @@ import { ESBuildMinifyPlugin } from 'esbuild-loader';
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
 const pages = glob
-  .sync('./webapp/templates/*.html')
+  // Most of the cases we will be developing the SPA
+  // So it makes sense only building it
+  // We go from
+  // [webpack.Progress]  |  | 1131 ms asset processing > HtmlWebpackPlugin
+  // To  [webpack.Progress]  |  | 215 ms asset processing > HtmlWebpackPlugin
+  .sync(
+    process.env.NODE_ENV === 'production'
+      ? './webapp/templates/*.html'
+      : './webapp/templates/index.html'
+  )
   .map((x) => path.basename(x));
+
 const pagePlugins = pages.map(
   (name) =>
     new HtmlWebpackPlugin({
