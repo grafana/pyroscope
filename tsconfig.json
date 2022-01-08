@@ -8,6 +8,7 @@
     "esModuleInterop": true,
     "sourceMap": true,
     "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
     "paths": {
       "@utils/*": ["./webapp/javascript/util/*"],
       "@models/*": ["./webapp/javascript/models/*"],
@@ -16,5 +17,6 @@
     },
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
+  "include": ["./webapp/javascript/"],
   "exclude": ["node_modules"]
 }
