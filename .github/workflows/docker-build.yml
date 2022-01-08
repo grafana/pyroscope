@@ -46,6 +46,10 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
+      - name: pull X64 image
+        run: docker pull 'pyroscope/pyroscope:X64-git-${{ github.sha }}'
+      - name: pull ARM64 image
+        run: docker pull 'pyroscope/pyroscope:ARM64-git-${{ github.sha }}'
       - name: create manifest
         run: docker manifest create 'pyroscope/pyroscope-dev:git-${{ github.sha }}' $(docker image inspect pyroscope/pyroscope:X64-git-${{ github.sha }} | jq .[].Id | tr -d '"') $(docker image inspect pyroscope/pyroscope:ARM64-git-${{ github.sha }} | jq .[].Id | tr -d '"')
       - name: push manifest
