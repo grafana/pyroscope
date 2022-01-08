@@ -98,7 +98,6 @@
     "jest-canvas-mock": "^2.3.1",
     "jest-css-modules-transform": "^4.3.0",
     "jest-image-snapshot": "^4.5.1",
-    "koa-route": "^3.2.0",
     "lint-staged": "^11.1.2",
     "monaco-editor-webpack-plugin": "^1.9.0",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
@@ -109,15 +108,14 @@
     "sass": "^1.26.10",
     "size-limit": "^6.0.3",
     "svg-jest": "^1.0.1",
-    "sync-request": "^6.1.0",
     "ts-jest": "^27.0.5",
     "typescript": "^4.5.2",
     "typescript-plugin-css-modules": "^3.4.0",
     "webpack": "^5.64.0",
     "webpack-bundle-analyzer": "^4.4.2",
+    "webpack-livereload-plugin": "^3.0.2",
     "webpack-merge": "^5.0.9",
-    "webpack-plugin-hash-output": "^3.2.1",
-    "webpack-plugin-serve": "^1.5.0"
+    "webpack-plugin-hash-output": "^3.2.1"
   },
   "dependencies": {
     "@babel/plugin-transform-runtime": "^7.16.4",
