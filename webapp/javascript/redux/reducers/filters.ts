@@ -53,7 +53,7 @@ import {
 
 import { deltaDiffWrapper } from '../../util/flamebearer';
 
-const defaultName = window.initialState.appNames.find(
+const defaultName = (window as any).initialState.appNames.find(
   (x) => x !== 'pyroscope.server.cpu'
 );
 
@@ -65,12 +65,14 @@ const initialState = {
   leftUntil: 'now-30m',
   rightUntil: 'now',
   query: `${defaultName || 'pyroscope.server.cpu'}{}`,
-  names: window.initialState.appNames,
+  names: (window as any).initialState.appNames,
   timeline: null,
   single: {
     flamebearer: null,
   },
   comparison: {
+    rawLeft: null,
+    rawRight: null,
     left: {
       flamebearer: null,
     },

@@ -36,7 +36,7 @@ const store = configureStore({
   // middleware: [thunkMiddleware],
 });
 
-const defaultName = window.initialState.appNames.find(
+const defaultName = (window as any).initialState.appNames.find(
   (x) => x !== 'pyroscope.server.cpu'
 );
 
