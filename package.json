@@ -188,6 +188,7 @@
     "sanitize.css": "^11.0.1",
     "sass-loader": "^9.0.2",
     "style-loader": "^3.2.1",
+    "svg-url-loader": "^7.1.1",
     "timezone-mock": "^1.3.0",
     "true-myth": "^5.1.2",
     "ts-essentials": "^9.0.0",
