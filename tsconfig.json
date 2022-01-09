@@ -15,8 +15,14 @@
       "@ui/*": ["./webapp/javascript/ui/*"],
       "@pyroscope/redux/*": ["./webapp/javascript/redux/*"]
     },
-    "types": [],
+    "types": ["node"],
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
+  },
+  // ts-node is currently only used by webpack
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
   },
   "include": ["./webapp/javascript/"],
   "exclude": [
