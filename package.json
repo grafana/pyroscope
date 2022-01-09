@@ -12,8 +12,10 @@
     "postinstall": "./scripts/web-postinstall.sh",
     "dev": "webpack --config scripts/webpack/webpack.dev.ts",
     "dev:panel": "NODE_ENV=development webpack --config scripts/webpack/webpack.panel.ts --watch",
+    "dev:standalone": "webpack --config scripts/webpack/webpack.standalone.ts --watch",
     "build": "NODE_ENV=production webpack --config scripts/webpack/webpack.prod.ts",
     "build:panel": "NODE_ENV=production webpack --config scripts/webpack/webpack.panel.ts",
+    "build:standalone": "webpack --config scripts/webpack/webpack.standalone.ts",
     "build:size-limit": "NODE_ENV=production webpack --config scripts/webpack/webpack.size-limit.ts",
     "test": "jest",
     "test:ss": "UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-docker.sh",
@@ -114,6 +116,7 @@
     "typescript-plugin-css-modules": "^3.4.0",
     "webpack": "^5.64.0",
     "webpack-bundle-analyzer": "^4.4.2",
+    "webpack-livereload-plugin": "^3.0.2",
     "webpack-merge": "^5.0.9",
     "webpack-plugin-hash-output": "^3.2.1",
     "webpack-plugin-serve": "^1.5.0"
