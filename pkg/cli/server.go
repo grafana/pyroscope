@@ -141,6 +141,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		})
 	}
 
+	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.controller, err = server.New(server.Config{
 		Configuration:   svc.config,
 		Storage:         svc.storage,
@@ -152,7 +153,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 			svc.config.EnableExperimentalAdhocUI,
 		),
 		Logger:                  svc.logger,
-		MetricsRegisterer:       prometheus.DefaultRegisterer,
+		MetricsRegisterer:       defaultMetricsRegistry,
 		ExportedMetricsRegistry: exportedMetricsRegistry,
 	})
 	if err != nil {
@@ -164,7 +165,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		svc.directScrapeUpstream)
+		svc.directScrapeUpstream,
+		defaultMetricsRegistry)
 
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
