@@ -7,12 +7,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - run: brew update
       - name: Update Homebrew formulae
         uses: dawidd6/action-homebrew-bump-formula@v3
         with:
+          org: pyroscope
           token: ${{ secrets.TOKEN }}
-          tap: juliosaraiva/homebrew-brew
+          tap: homebrew/core
           formula: pyroscope
           tag: ${{ github.ref }}
           revision: ${{ github.sha }}
