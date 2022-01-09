@@ -16,6 +16,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
@@ -50,7 +51,7 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 	if s.enabled {
 		r.HandleFunc("/v1/profiles", s.Profiles)
 		r.HandleFunc("/v1/profile/{id:[0-9a-f]+}", s.Profile)
-		r.HandleFunc("/v1/diff/{id1[0-9a-f]+}/{id2[0-9a-f]+}", s.Diff)
+		r.HandleFunc("/v1/diff/{left:[0-9a-f]+}/{right:[0-9a-f]+}", s.Diff)
 	}
 	return r.ServeHTTP
 }
@@ -126,8 +127,67 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// TODO(abeaumont)
-func (*server) Diff(_ http.ResponseWriter, _ *http.Request) {
+// Diff retrieves two different local files identified by their IDs and builds a profile diff.
+func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
+	lid := mux.Vars(r)["left"]
+	rid := mux.Vars(r)["right"]
+	s.mtx.RLock()
+	lp, lok := s.profiles[lid]
+	rp, rok := s.profiles[rid]
+	s.mtx.RUnlock()
+	if !lok {
+		s.log.WithField("id", lid).Warning("Profile does not exist")
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	if !rok {
+		s.log.WithField("id", rid).Warning("Profile does not exist")
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	lfb, err := s.convert(lp)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to process left profile")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	rfb, err := s.convert(rp)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to process right profile")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// TODO(abeaumont): Validate that profiles are comparable
+	// TODO(abeaumont): Simplify profile generation
+	out := &storage.GetOutput{
+		Tree:       nil,
+		Units:      lfb.Metadata.Units,
+		SpyName:    lfb.Metadata.SpyName,
+		SampleRate: lfb.Metadata.SampleRate,
+	}
+	lt, err := profileToTree(*lfb)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to convert profile to tree")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	rt, err := profileToTree(*rfb)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to convert profile to tree")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	lOut := &storage.GetOutput{Tree: lt}
+	rOut := &storage.GetOutput{Tree: rt}
+
+	fb := flamebearer.NewCombinedProfile(out, lOut, rOut, s.maxNodes)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(fb); err != nil {
+		s.log.WithError(err).Error("Unable to encode the profile diff")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 type converterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
