@@ -60,6 +60,6 @@ jobs:
       - name: pull ARM64 image
         run: docker pull 'ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-ARM64'
       - name: create manifest
-        run: docker manifest create 'pyroscope/pyroscope-dev:git-${{ github.sha }}' $(docker image inspect ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-X64 | jq .[].Id | tr -d '"') $(docker image inspect ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-ARM64 | jq .[].Id | tr -d '"')
+        run: docker manifest create 'pyroscope/pyroscope-dev:git-${{ github.sha }}' ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-X64 ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-ARM64
       - name: push manifest
         run: docker manifest push 'pyroscope/pyroscope-dev:git-${{ github.sha }}'
