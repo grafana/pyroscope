@@ -11,7 +11,7 @@ jobs:
         uses: dawidd6/action-homebrew-bump-formula@v3
         with:
           org: pyroscope
-          token: ${{ secrets.TOKEN }}
+          token: ${{ secrets.GITHUB_HOMEBREW_TOKEN }}
           tap: homebrew/core
           formula: pyroscope
           tag: ${{ github.ref }}
