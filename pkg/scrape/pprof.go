@@ -43,13 +43,7 @@ func newPprofWriter(ingester Ingester, target *Target) *pprofWriter {
 	return &w
 }
 
-func (w *pprofWriter) writeProfile(st, et time.Time, b []byte) error {
-	p := tree.ProfileFromVTPool()
-	defer p.ReturnToVTPool()
-	p.Reset()
-	if err := p.UnmarshalVT(b); err != nil {
-		return err
-	}
+func (w *pprofWriter) writeProfile(st, et time.Time, p *tree.Profile) error {
 	return w.r.Read(p, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
 		sampleType := p.StringTable[vt.Type]
 		sampleTypeConfig := w.config.SampleTypes[sampleType]

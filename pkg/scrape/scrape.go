@@ -33,6 +33,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
 var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
@@ -139,6 +140,10 @@ func (sp *scrapePool) stop() {
 		}(l)
 		delete(sp.loops, fp)
 		delete(sp.activeTargets, fp)
+		metricsLabels := []string{sp.config.JobName, l.scraper.Target.profile.Path}
+		sp.metrics.profileSize.DeleteLabelValues(metricsLabels...)
+		sp.metrics.profileSamples.DeleteLabelValues(metricsLabels...)
+		sp.metrics.scrapeDuration.DeleteLabelValues(metricsLabels...)
 	}
 	sp.targetMtx.Unlock()
 	wg.Wait()
@@ -189,6 +194,7 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
+			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, sp.activeTargets[fp].profile.Path),
 		}
 		n := sp.newScrapeLoop(s, interval, timeout)
 		go func(oldLoop, newLoop *scrapeLoop) {
@@ -270,6 +276,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
 			pprofWriter:   newPprofWriter(sp.ingester, t),
+			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, t.profile.Path),
 		}
 
 		l := sp.newScrapeLoop(s, interval, timeout)
@@ -336,7 +343,7 @@ func (sl *scrapeLoop) run() {
 			return
 		}
 		if !sl.scraper.Target.lastScrape.IsZero() {
-			sl.poolMetrics.scrapeIntervalLength.Observe(float64(time.Since(sl.scraper.Target.lastScrape)))
+			sl.poolMetrics.scrapeIntervalLength.Observe(time.Since(sl.scraper.Target.lastScrape).Seconds())
 		}
 		sl.scrapeAndReport(sl.scraper.Target)
 		select {
@@ -387,6 +394,7 @@ func (sl *scrapeLoop) scrapeAndReport(t *Target) {
 	t.lastError = err
 	t.lastScrape = now
 	t.lastScrapeDuration = time.Since(now)
+	sl.scraper.targetMetrics.scrapeDuration.Observe(sl.scraper.Target.lastScrapeDuration.Seconds())
 }
 
 func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
@@ -407,7 +415,15 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 		sl.scraper.pprofWriter.reset()
 		return err
 	}
-	return sl.scraper.pprofWriter.writeProfile(startTime, endTime, buf.Bytes())
+	sl.scraper.targetMetrics.profileSize.Observe(float64(buf.Len()))
+	p := tree.ProfileFromVTPool()
+	defer p.ReturnToVTPool()
+	p.Reset()
+	if err := p.UnmarshalVT(buf.Bytes()); err != nil {
+		return err
+	}
+	sl.scraper.targetMetrics.profileSamples.Observe(float64(len(p.Sample)))
+	return sl.scraper.pprofWriter.writeProfile(startTime, endTime, p)
 }
 
 func (sl *scrapeLoop) stop() {
@@ -425,6 +441,8 @@ type scraper struct {
 
 	buf           *bufio.Reader
 	bodySizeLimit int64
+
+	*targetMetrics
 }
 
 func (s *scraper) scrape(ctx context.Context, w io.Writer) error {
