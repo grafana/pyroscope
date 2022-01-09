@@ -1,6 +1,7 @@
 import ReactDOM from 'react-dom';
 import React from 'react';
 import Box from '@ui/Box';
+import { decodeFlamebearer } from '@models/flamebearer';
 import FlameGraphRenderer from './components/FlameGraph/FlameGraphRenderer';
 import styles from './standalone.module.scss';
 
@@ -41,7 +42,8 @@ const defaultFlamegraph = {
   },
 };
 
-(window as any).flamegraph = defaultFlamegraph;
+// Enable this if you are developing and don't want to run a server
+// (window as any).flamegraph = defaultFlamegraph;
 
 if (!(window as any).flamegraph) {
   alert(`'flamegraph' is required`);
@@ -52,10 +54,12 @@ if (!(window as any).flamegraph) {
 const { flamegraph } = window as any;
 
 function AdhocApp() {
+  const flamebearer = decodeFlamebearer(flamegraph);
+
   return (
     <Box className={styles.container}>
       <FlameGraphRenderer
-        flamebearer={flamegraph.flamebearer}
+        flamebearer={flamebearer}
         viewType="single"
         display="both"
         rawFlamegraph={flamegraph}

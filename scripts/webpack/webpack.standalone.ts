@@ -13,9 +13,15 @@ const config = (env, options) => {
     // We will always run in production mode, even when developing locally
     // reason is that we rely on things like ModuleConcatenation, TerserPlugin etc
     mode: 'production',
+    //  devtool: 'eval-source-map',
     entry: {
       app: './webapp/javascript/standalone.tsx',
       styles: './webapp/sass/standalone.scss',
+    },
+
+    optimization: {
+      mangleExports: false,
+      //      minimize: false,
     },
 
     output: {

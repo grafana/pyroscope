@@ -7,10 +7,10 @@
     <meta name="viewport" content="width=device-width" />
     <title>Pyroscope</title>
 
-    <script>
-      window.initialState = {
-            appNames: []
-      }
+    <script type="text/javascript">
+      try {
+        eval('window.flamegraph = {{ .Flamegraph }}');
+      } catch(e) {}
     </script>
   </head>
   <body>
