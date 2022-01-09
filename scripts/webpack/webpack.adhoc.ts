@@ -1,5 +1,6 @@
 import HtmlWebpackPlugin from 'html-webpack-plugin';
-import InlineChunkHtmlPlugin from 'inline-chunk-html-plugin';
+import InlineChunkHtmlPlugin from 'react-dev-utils/InlineChunkHtmlPlugin';
+import HTMLInlineCSSWebpackPlugin from 'html-inline-css-webpack-plugin';
 import path from 'path';
 import { merge } from 'webpack-merge';
 
@@ -13,15 +14,17 @@ const config = merge(common, {
   },
 
   output: {
-    filename: 'client-bundle.[name].js',
+    // Emit to another directory other than webapp/public/assets to not have any conflicts
+    path: path.resolve(__dirname, '../../dist/standalone'),
+    filename: '[name].js',
   },
   plugins: [
     new HtmlWebpackPlugin({
-      //  inject: true,
       filename: path.resolve(__dirname, `../../webapp/public/adhoc.html`),
       template: path.resolve(__dirname, `../../webapp/templates/adhoc.html`),
     }),
-    new InlineChunkHtmlPlugin(HtmlWebpackPlugin, [/client-bundle/]),
+    new InlineChunkHtmlPlugin(HtmlWebpackPlugin, [/.*/]),
+    new HTMLInlineCSSWebpackPlugin(),
   ],
 } as any);
 
