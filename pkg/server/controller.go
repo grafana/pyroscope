@@ -205,9 +205,8 @@ func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Re
 
 func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	authRoutes := []route{
-		{"/signup", ctrl.signupHandler},
-		{"/login", ctrl.loginHandler},
-		{"/logout", ctrl.logoutHandler},
+		{"/login", ctrl.loginHandler()},
+		{"/logout", ctrl.logoutHandler()},
 	}
 
 	if ctrl.config.Auth.Google.Enabled {
@@ -353,7 +352,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// TODO(kolesnikovae): Replace with auth service.
+		// TODO: replace with auth service?
 		jwtCookie, err := r.Cookie(jwtCookieName)
 		if err != nil {
 			ctrl.log.WithFields(logrus.Fields{
@@ -364,7 +363,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		token, err := jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
+		_, err = jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
 			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
@@ -375,16 +374,6 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			ctrl.log.WithError(err).Error("invalid jwt token")
 			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
 			return
-		}
-
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			userName, ok := claims["name"]
-			if !ok {
-				ctrl.log.WithError(err).Error("missing user name token claim")
-				ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-			}
-			// TODO(kolesnikovae): Inject user to the request.
-			_ = userName
 		}
 
 		next.ServeHTTP(w, r)

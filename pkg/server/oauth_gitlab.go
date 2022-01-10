@@ -51,7 +51,7 @@ type gitlabGroups struct {
 	Path string
 }
 
-func (o oauthHanlderGitlab) userAuth(client *http.Client) (*externalUser, error) {
+func (o oauthHanlderGitlab) userAuth(client *http.Client) (string, error) {
 	type userProfileResponse struct {
 		ID        int64
 		Email     string
@@ -61,38 +61,34 @@ func (o oauthHanlderGitlab) userAuth(client *http.Client) (*externalUser, error)
 
 	resp, err := client.Get(o.oauthBase.apiURL + "/user")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get oauth user info: %w", err)
+		return "", fmt.Errorf("failed to get oauth user info: %w", err)
 	}
 	defer resp.Body.Close()
 
 	var userProfile userProfileResponse
 	err = json.NewDecoder(resp.Body).Decode(&userProfile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode user profile response: %w", err)
+		return "", fmt.Errorf("failed to decode user profile response: %w", err)
 	}
 
-	u := externalUser{
-		Name:  userProfile.Username,
-		Email: userProfile.Email,
-	}
 	if len(o.allowedGroups) == 0 {
-		return &u, nil
+		return userProfile.Username, nil
 	}
 
 	groups, err := o.fetchGroups(client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get groups: %w", err)
+		return "", fmt.Errorf("failed to get groups: %w", err)
 	}
 
 	for _, allowed := range o.allowedGroups {
 		for _, member := range groups {
 			if member.Path == allowed {
-				return &u, nil
+				return userProfile.Username, nil
 			}
 		}
 	}
 
-	return nil, errForbidden
+	return "", errForbidden
 }
 
 func (o oauthHanlderGitlab) fetchGroups(client *http.Client) ([]gitlabGroups, error) {

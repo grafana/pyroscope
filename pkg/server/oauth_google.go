@@ -13,18 +13,18 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type oauthHandlerGoogle struct {
+type oauthHanlderGoogle struct {
 	oauthBase
 	allowedDomains []string
 }
 
-func newGoogleHandler(cfg config.GoogleOauth, baseURL string, log *logrus.Logger) (*oauthHandlerGoogle, error) {
+func newGoogleHandler(cfg config.GoogleOauth, baseURL string, log *logrus.Logger) (*oauthHanlderGoogle, error) {
 	authURL, err := url.Parse(cfg.AuthURL)
 	if err != nil {
 		return nil, err
 	}
 
-	h := &oauthHandlerGoogle{
+	h := &oauthHanlderGoogle{
 		oauthBase: oauthBase{
 			config: &oauth2.Config{
 				ClientID:     cfg.ClientID,
@@ -49,7 +49,7 @@ func newGoogleHandler(cfg config.GoogleOauth, baseURL string, log *logrus.Logger
 	return h, nil
 }
 
-func (o oauthHandlerGoogle) userAuth(client *http.Client) (*externalUser, error) {
+func (o oauthHanlderGoogle) userAuth(client *http.Client) (string, error) {
 	type userProfileResponse struct {
 		ID            string
 		Email         string
@@ -59,25 +59,25 @@ func (o oauthHandlerGoogle) userAuth(client *http.Client) (*externalUser, error)
 
 	resp, err := client.Get(o.apiURL + "/userinfo")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get oauth user info: %w", err)
+		return "", fmt.Errorf("failed to get oauth user info: %w", err)
 	}
 	defer resp.Body.Close()
 
 	var userProfile userProfileResponse
 	err = json.NewDecoder(resp.Body).Decode(&userProfile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode user profile response: %w", err)
+		return "", fmt.Errorf("failed to decode user profile response: %w", err)
 	}
 
 	if userProfile.Email == "" {
-		return nil, errors.New("user email is empty")
+		return "", errors.New("user email is empty")
 	}
 
 	if len(o.allowedDomains) == 0 || (len(o.allowedDomains) > 0 && isAllowedDomain(o.allowedDomains, userProfile.Email)) {
-		return &externalUser{Email: userProfile.Email}, nil
+		return userProfile.Email, nil
 	}
 
-	return nil, errForbidden
+	return "", errForbidden
 }
 
 func isAllowedDomain(allowedDomains []string, email string) bool {
@@ -90,6 +90,6 @@ func isAllowedDomain(allowedDomains []string, email string) bool {
 	return false
 }
 
-func (o oauthHandlerGoogle) getOauthBase() oauthBase {
+func (o oauthHanlderGoogle) getOauthBase() oauthBase {
 	return o.oauthBase
 }

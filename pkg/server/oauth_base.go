@@ -15,16 +15,8 @@ import (
 
 var errForbidden = errors.New("access forbidden")
 
-// TODO(kolesnikovae):
-//  Make sure scopes are properly set.
-//  Adjust to include full name.
-type externalUser struct {
-	Name  string
-	Email string
-}
-
 type oauthHandler interface {
-	userAuth(client *http.Client) (*externalUser, error)
+	userAuth(client *http.Client) (string, error)
 	getOauthBase() oauthBase
 }
 

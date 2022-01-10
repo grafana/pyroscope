@@ -167,17 +167,12 @@ type Auth struct {
 	SignupEnabled     bool   `json:"-" deprecated:"true" def:"false" desc:"allows users to register themselves with password credentials" mapstructure:"signup-enabled"`
 	SignupDefaultRole string `json:"-" deprecated:"true" def:"member" desc:"specifies which role will be granted to a newly signed up user. Supported roles: admin, member. Defaults to member" mapstructure:"signup-default-role"`
 
-	Basic  BasicAuth   `mapstructure:"google"`
 	Google GoogleOauth `mapstructure:"google"`
 	Gitlab GitlabOauth `mapstructure:"gitlab"`
 	Github GithubOauth `mapstructure:"github"`
 
 	JWTSecret                string `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
 	LoginMaximumLifetimeDays int    `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
-}
-
-type BasicAuth struct {
-	Enabled bool `json:"-" deprecated:"true" def:"false" desc:"enables basic login password authentication" mapstructure:"enabled"`
 }
 
 // TODO: Maybe merge Oauth structs into one (would have to move def and desc tags somewhere else in code)

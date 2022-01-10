@@ -51,7 +51,7 @@ type githubOrganizations struct {
 	Login string
 }
 
-func (o oauthHanlderGithub) userAuth(client *http.Client) (*externalUser, error) {
+func (o oauthHanlderGithub) userAuth(client *http.Client) (string, error) {
 	type userProfileResponse struct {
 		ID        int64
 		Email     string
@@ -61,38 +61,34 @@ func (o oauthHanlderGithub) userAuth(client *http.Client) (*externalUser, error)
 
 	resp, err := client.Get(o.apiURL + "/user")
 	if err != nil {
-		return nil, fmt.Errorf("failed to get oauth user info: %w", err)
+		return "", fmt.Errorf("failed to get oauth user info: %w", err)
 	}
 	defer resp.Body.Close()
 
 	var userProfile userProfileResponse
 	err = json.NewDecoder(resp.Body).Decode(&userProfile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode user profile response: %w", err)
+		return "", fmt.Errorf("failed to decode user profile response: %w", err)
 	}
 
-	u := externalUser{
-		Name:  userProfile.Login,
-		Email: userProfile.Email,
-	}
 	if len(o.allowedOrganizations) == 0 {
-		return &u, nil
+		return userProfile.Login, nil
 	}
 
 	organizations, err := o.fetchOrganizations(client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get organizations: %w", err)
+		return "", fmt.Errorf("failed to get organizations: %w", err)
 	}
 
 	for _, allowed := range o.allowedOrganizations {
 		for _, member := range organizations {
 			if member.Login == allowed {
-				return &u, nil
+				return userProfile.Login, nil
 			}
 		}
 	}
 
-	return nil, errForbidden
+	return "", errForbidden
 }
 
 func (o oauthHanlderGithub) fetchOrganizations(client *http.Client) ([]githubOrganizations, error) {
