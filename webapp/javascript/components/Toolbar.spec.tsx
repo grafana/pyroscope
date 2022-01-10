@@ -2,9 +2,18 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Maybe } from '@utils/fp';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
 import Toolbar, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './Toolbar';
 import { FitModes } from '../util/fitMode';
+import searchReducer from '../redux/reducers/search';
 
+const store = configureStore({
+  reducer: {
+    search: searchReducer,
+  },
+  // middleware: [thunkMiddleware],
+});
 // since 'react-debounce-input' uses lodash.debounce under the hood
 jest.mock('lodash.debounce', () =>
   jest.fn((fn) => {
@@ -58,19 +67,21 @@ describe('ProfileHeader', () => {
     setWindowSize('large');
 
     const { asFragment, rerender } = render(
-      <Toolbar
-        view="both"
-        display="both"
-        handleSearchChange={() => {}}
-        reset={() => {}}
-        updateFitMode={() => {}}
-        fitMode={FitModes.HEAD}
-        updateView={() => {}}
-        updateViewDiff={() => {}}
-        isFlamegraphDirty={false}
-        selectedNode={Maybe.nothing()}
-        onFocusOnSubtree={() => {}}
-      />
+      <Provider store={store}>
+        <Toolbar
+          view="both"
+          display="both"
+          handleSearchChange={() => {}}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          isFlamegraphDirty={false}
+          selectedNode={Maybe.nothing()}
+          onFocusOnSubtree={() => {}}
+        />
+      </Provider>
     );
 
     expect(screen.getByRole('toolbar')).toHaveAttribute('data-mode', 'large');
@@ -79,19 +90,21 @@ describe('ProfileHeader', () => {
     setWindowSize('small');
 
     rerender(
-      <Toolbar
-        view="both"
-        display="both"
-        handleSearchChange={() => {}}
-        reset={() => {}}
-        updateFitMode={() => {}}
-        fitMode={FitModes.HEAD}
-        updateView={() => {}}
-        updateViewDiff={() => {}}
-        isFlamegraphDirty={false}
-        selectedNode={Maybe.nothing()}
-        onFocusOnSubtree={() => {}}
-      />
+      <Provider store={store}>
+        <Toolbar
+          view="both"
+          display="both"
+          handleSearchChange={() => {}}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          isFlamegraphDirty={false}
+          selectedNode={Maybe.nothing()}
+          onFocusOnSubtree={() => {}}
+        />
+      </Provider>
     );
 
     expect(screen.getByRole('toolbar')).toHaveAttribute('data-mode', 'small');
@@ -109,20 +122,22 @@ describe('ProfileHeader', () => {
 
     it('renders as disabled when flamegraph is not dirty', () => {
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          viewDiff="diff"
-          isFlamegraphDirty={false}
-          handleSearchChange={() => {}}
-          reset={onReset}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            viewDiff="diff"
+            isFlamegraphDirty={false}
+            handleSearchChange={() => {}}
+            reset={onReset}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+          />
+        </Provider>
       );
       render(component);
       expect(screen.getByRole('button', { name: /Reset/ })).toBeDisabled();
@@ -130,20 +145,22 @@ describe('ProfileHeader', () => {
 
     it('calls onReset when clicked (and enabled)', () => {
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          viewDiff="diff"
-          isFlamegraphDirty
-          handleSearchChange={() => {}}
-          reset={onReset}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            viewDiff="diff"
+            isFlamegraphDirty
+            handleSearchChange={() => {}}
+            reset={onReset}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+          />
+        </Provider>
       );
       render(component);
       expect(screen.getByRole('button', { name: /Reset/ })).not.toBeDisabled();
@@ -156,20 +173,22 @@ describe('ProfileHeader', () => {
       setWindowSize('large');
 
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          viewDiff="diff"
-          isFlamegraphDirty
-          handleSearchChange={() => {}}
-          reset={onReset}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            viewDiff="diff"
+            isFlamegraphDirty
+            handleSearchChange={() => {}}
+            reset={onReset}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+          />
+        </Provider>
       );
       render(component);
       expect(
@@ -181,20 +200,22 @@ describe('ProfileHeader', () => {
       setWindowSize('small');
 
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          viewDiff="diff"
-          isFlamegraphDirty
-          handleSearchChange={() => {}}
-          reset={onReset}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            viewDiff="diff"
+            isFlamegraphDirty
+            handleSearchChange={() => {}}
+            reset={onReset}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+          />
+        </Provider>
       );
       render(component);
       expect(screen.getByRole('button', { name: 'Reset' })).toBeInTheDocument();
@@ -206,20 +227,22 @@ describe('ProfileHeader', () => {
       const onChange = jest.fn();
 
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          viewDiff="diff"
-          isFlamegraphDirty
-          handleSearchChange={onChange}
-          reset={() => {}}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            viewDiff="diff"
+            isFlamegraphDirty
+            handleSearchChange={onChange}
+            reset={() => {}}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+          />
+        </Provider>
       );
 
       render(component);
@@ -233,22 +256,24 @@ describe('ProfileHeader', () => {
       const toggleLinkedSearch = jest.fn();
 
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          isFlamegraphDirty
-          handleSearchChange={() => {}}
-          reset={() => {}}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-          viewType="double"
-          viewSide="left"
-          toggleLinkedSearch={toggleLinkedSearch}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            isFlamegraphDirty
+            handleSearchChange={() => {}}
+            reset={() => {}}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+            viewType="double"
+            viewSide="left"
+            toggleLinkedSearch={toggleLinkedSearch}
+          />
+        </Provider>
       );
 
       render(component);
@@ -260,20 +285,22 @@ describe('ProfileHeader', () => {
   describe('FitMode', () => {
     const updateFitMode = jest.fn();
     const component = (
-      <Toolbar
-        view="both"
-        display="both"
-        viewDiff="diff"
-        handleSearchChange={() => {}}
-        reset={() => {}}
-        updateFitMode={updateFitMode}
-        fitMode={FitModes.HEAD}
-        updateView={() => {}}
-        updateViewDiff={() => {}}
-        isFlamegraphDirty={false}
-        selectedNode={Maybe.nothing()}
-        onFocusOnSubtree={() => {}}
-      />
+      <Provider store={store}>
+        <Toolbar
+          view="both"
+          display="both"
+          viewDiff="diff"
+          handleSearchChange={() => {}}
+          reset={() => {}}
+          updateFitMode={updateFitMode}
+          fitMode={FitModes.HEAD}
+          updateView={() => {}}
+          updateViewDiff={() => {}}
+          isFlamegraphDirty={false}
+          selectedNode={Maybe.nothing()}
+          onFocusOnSubtree={() => {}}
+        />
+      </Provider>
     );
 
     beforeEach(() => {
@@ -305,20 +332,22 @@ describe('ProfileHeader', () => {
   describe('Focus on subtree', () => {
     it('renders as disabled when theres no selected node', () => {
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          viewDiff="diff"
-          isFlamegraphDirty={false}
-          handleSearchChange={() => {}}
-          reset={() => {}}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            viewDiff="diff"
+            isFlamegraphDirty={false}
+            handleSearchChange={() => {}}
+            reset={() => {}}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+          />
+        </Provider>
       );
       render(component);
       expect(screen.getByRole('button', { name: /Focus/ })).toBeDisabled();
@@ -327,20 +356,22 @@ describe('ProfileHeader', () => {
     it('calls callback when clicked', () => {
       const onFocusOnSubtree = jest.fn();
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          viewDiff="diff"
-          isFlamegraphDirty={false}
-          handleSearchChange={() => {}}
-          reset={() => {}}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.just({ i: 999, j: 999 })}
-          onFocusOnSubtree={onFocusOnSubtree}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            viewDiff="diff"
+            isFlamegraphDirty={false}
+            handleSearchChange={() => {}}
+            reset={() => {}}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.just({ i: 999, j: 999 })}
+            onFocusOnSubtree={onFocusOnSubtree}
+          />
+        </Provider>
       );
 
       render(component);
@@ -352,20 +383,22 @@ describe('ProfileHeader', () => {
     it('shows short text', () => {
       setWindowSize('small');
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          viewDiff="diff"
-          isFlamegraphDirty={false}
-          handleSearchChange={() => {}}
-          reset={() => {}}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            viewDiff="diff"
+            isFlamegraphDirty={false}
+            handleSearchChange={() => {}}
+            reset={() => {}}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+          />
+        </Provider>
       );
       render(component);
       expect(screen.getByRole('button', { name: 'Focus' })).toBeDisabled();
@@ -374,20 +407,22 @@ describe('ProfileHeader', () => {
     it('shows long text', () => {
       setWindowSize('large');
       const component = (
-        <Toolbar
-          view="both"
-          display="both"
-          viewDiff="diff"
-          isFlamegraphDirty={false}
-          handleSearchChange={() => {}}
-          reset={() => {}}
-          updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
-          updateView={() => {}}
-          updateViewDiff={() => {}}
-          selectedNode={Maybe.nothing()}
-          onFocusOnSubtree={() => {}}
-        />
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            viewDiff="diff"
+            isFlamegraphDirty={false}
+            handleSearchChange={() => {}}
+            reset={() => {}}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+          />
+        </Provider>
       );
       render(component);
       expect(
@@ -399,37 +434,41 @@ describe('ProfileHeader', () => {
   describe('DiffSection', () => {
     const updateViewDiff = jest.fn();
     const component = (
-      <Toolbar
-        view="both"
-        display="both"
-        viewDiff="diff"
-        handleSearchChange={() => {}}
-        reset={() => {}}
-        updateFitMode={() => {}}
-        fitMode={FitModes.HEAD}
-        updateView={() => {}}
-        updateViewDiff={updateViewDiff}
-        isFlamegraphDirty={false}
-        selectedNode={Maybe.nothing()}
-        onFocusOnSubtree={() => {}}
-      />
-    );
-
-    it('doesnt render if viewDiff is not set', () => {
-      render(
+      <Provider store={store}>
         <Toolbar
           view="both"
           display="both"
+          viewDiff="diff"
           handleSearchChange={() => {}}
           reset={() => {}}
           updateFitMode={() => {}}
           fitMode={FitModes.HEAD}
           updateView={() => {}}
-          updateViewDiff={() => {}}
+          updateViewDiff={updateViewDiff}
           isFlamegraphDirty={false}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
         />
+      </Provider>
+    );
+
+    it('doesnt render if viewDiff is not set', () => {
+      render(
+        <Provider store={store}>
+          <Toolbar
+            view="both"
+            display="both"
+            handleSearchChange={() => {}}
+            reset={() => {}}
+            updateFitMode={() => {}}
+            fitMode={FitModes.HEAD}
+            updateView={() => {}}
+            updateViewDiff={() => {}}
+            isFlamegraphDirty={false}
+            selectedNode={Maybe.nothing()}
+            onFocusOnSubtree={() => {}}
+          />
+        </Provider>
       );
 
       expect(screen.queryByTestId('diff-view')).toBeNull();
@@ -500,19 +539,21 @@ describe('ProfileHeader', () => {
   describe('ViewSection', () => {
     const updateView = jest.fn();
     const component = (
-      <Toolbar
-        view="both"
-        display="both"
-        handleSearchChange={() => {}}
-        reset={() => {}}
-        updateFitMode={() => {}}
-        fitMode={FitModes.HEAD}
-        updateView={updateView}
-        updateViewDiff={() => {}}
-        isFlamegraphDirty={false}
-        selectedNode={Maybe.nothing()}
-        onFocusOnSubtree={() => {}}
-      />
+      <Provider store={store}>
+        <Toolbar
+          view="both"
+          display="both"
+          handleSearchChange={() => {}}
+          reset={() => {}}
+          updateFitMode={() => {}}
+          fitMode={FitModes.HEAD}
+          updateView={updateView}
+          updateViewDiff={() => {}}
+          isFlamegraphDirty={false}
+          selectedNode={Maybe.nothing()}
+          onFocusOnSubtree={() => {}}
+        />
+      </Provider>
     );
 
     describe('large mode', () => {

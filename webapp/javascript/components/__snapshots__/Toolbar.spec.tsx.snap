@@ -10,7 +10,7 @@ exports[`ProfileHeader shifts between visualization modes 1`] = `
       class="navbar"
     >
       <input
-        class="search "
+        class="search   "
         data-testid="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
@@ -168,7 +168,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
       class="navbar"
     >
       <input
-        class="search search-small"
+        class="search search-small  "
         data-testid="flamegraph-search"
         name="flamegraph-search"
         placeholder="Search…"
