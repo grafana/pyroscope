@@ -3,7 +3,12 @@ import { createStore, applyMiddleware } from 'redux';
 import { composeWithDevTools } from 'redux-devtools-extension';
 
 import ReduxQuerySync from 'redux-query-sync';
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, getDefaultMiddleware } from '@reduxjs/toolkit';
+
+import createSagaMiddleware from 'redux-saga';
+import createSagaMonitor from '@clarketm/saga-monitor';
+
+import { mainSaga } from './saga';
 
 import rootReducer from './reducers';
 import history from '../util/history';
@@ -24,11 +29,26 @@ import {
 
 import { parseLabels, encodeLabels } from '../util/key';
 
+const sagaMonitorConfig = {
+  level: 'log',
+  effectTrigger: true,
+  effectResolve: true,
+  actionDispatch: false,
+};
+
+const sagaMiddleware = createSagaMiddleware({
+  sagaMonitor: createSagaMonitor(sagaMonitorConfig),
+});
+
 const enhancer = composeWithDevTools(
-  applyMiddleware(thunkMiddleware)
+  applyMiddleware(sagaMiddleware)
+  // applyMiddleware(thunkMiddleware)
   // updateUrl(["from", "until", "labels"]),
   // persistState(["from", "until", "labels"]),
 );
+
+const devMode = process.env.NODE_ENV === 'development';
+const middleware = [...getDefaultMiddleware(), sagaMiddleware];
 
 const store = configureStore({
   reducer: {
@@ -36,12 +56,10 @@ const store = configureStore({
     root: rootReducer,
     views: viewsReducer,
   },
+  middleware,
   // middleware: [thunkMiddleware],
 });
-
-const defaultName = (window as any).initialState.appNames.find(
-  (x) => x !== 'pyroscope.server.cpu'
-);
+sagaMiddleware.run(mainSaga);
 
 ReduxQuerySync({
   store, // your Redux store
@@ -77,7 +95,6 @@ ReduxQuerySync({
       action: setRightUntil,
     },
     query: {
-      defaultValue: `${defaultName || 'pyroscope.server.cpu'}{}`,
       selector: (state) => state.root.query,
       action: setQuery,
     },
@@ -88,9 +105,10 @@ ReduxQuerySync({
     },
   },
   initialTruth: 'location',
-  replaceState: false,
+  replaceState: true,
   history,
 });
+
 export default store;
 
 // Infer the `RootState` and `AppDispatch` types from the store itself
