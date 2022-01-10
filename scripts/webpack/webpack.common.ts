@@ -17,7 +17,7 @@ const pages = glob
   // To  [webpack.Progress]  |  | 215 ms asset processing > HtmlWebpackPlugin
   .sync(
     process.env.NODE_ENV === 'production'
-      ? './webapp/templates/*.html'
+      ? './webapp/templates/!(standalone).html'
       : './webapp/templates/index.html'
   )
   .map((x) => path.basename(x));
