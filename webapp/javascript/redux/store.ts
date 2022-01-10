@@ -27,7 +27,7 @@ import {
   setQuery,
 } from './actions';
 
-import { parseLabels, encodeLabels } from '../util/key';
+const devMode = process.env.NODE_ENV === 'development';
 
 const sagaMonitorConfig = {
   level: 'log',
@@ -37,7 +37,7 @@ const sagaMonitorConfig = {
 };
 
 const sagaMiddleware = createSagaMiddleware({
-  sagaMonitor: createSagaMonitor(sagaMonitorConfig),
+  sagaMonitor: devMode ? createSagaMonitor(sagaMonitorConfig) : undefined,
 });
 
 const enhancer = composeWithDevTools(
@@ -47,7 +47,6 @@ const enhancer = composeWithDevTools(
   // persistState(["from", "until", "labels"]),
 );
 
-const devMode = process.env.NODE_ENV === 'development';
 const middleware = [...getDefaultMiddleware(), sagaMiddleware];
 
 const store = configureStore({
