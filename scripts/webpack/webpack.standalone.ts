@@ -17,6 +17,8 @@ const config = (env, options) => {
     const LiveReloadPlugin = require('webpack-livereload-plugin');
     livereload = [
       new LiveReloadPlugin({
+        // most likely the default port is used by the main webapp
+        port: 35730,
         appendScriptTag: true,
       }),
     ];

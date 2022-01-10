@@ -105,4 +105,21 @@ describe('E2E Tests', () => {
       `e2e-comparison-diff-flamegraph`
     );
   });
+
+  it('works with standalone view', () => {
+    const params = new URLSearchParams();
+    params.set('query', appName);
+    params.set('from', t0);
+    params.set('until', t4);
+    params.set('leftFrom', t0);
+    params.set('leftUntil', t2);
+    params.set('rightFrom', t2);
+    params.set('rightTo', t4);
+    params.set('format', 'html');
+
+    cy.visit(`/render?${params.toString()}`);
+    cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
+      `e2e-render-standalone`
+    );
+  });
 });
