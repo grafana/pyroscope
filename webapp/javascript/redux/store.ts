@@ -10,6 +10,8 @@ import history from '../util/history';
 
 import viewsReducer from './reducers/views';
 import searchReducer from './reducers/search';
+import newRootStore from './reducers/newRoot';
+
 import {
   setLeftFrom,
   setLeftUntil,
@@ -31,6 +33,7 @@ const enhancer = composeWithDevTools(
 
 const store = configureStore({
   reducer: {
+    newRoot: newRootStore,
     root: rootReducer,
     views: viewsReducer,
     search: searchReducer,
@@ -38,7 +41,7 @@ const store = configureStore({
   // middleware: [thunkMiddleware],
 });
 
-const defaultName = window.initialState.appNames.find(
+const defaultName = (window as any).initialState.appNames.find(
   (x) => x !== 'pyroscope.server.cpu'
 );
 

@@ -20,6 +20,7 @@ pkged.go
 vendor/
 benchmark/.env
 benchmark/report
+benchmark/fixtures
 /.env
 # diff output is stored per test
 cypress/snapshots/**/__diff_output__
