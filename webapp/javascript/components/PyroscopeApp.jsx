@@ -11,7 +11,7 @@ import Footer from './Footer';
 import { buildRenderURL } from '../util/updateRequests';
 import {
   fetchNames,
-  fetchPyrescopeAppData,
+  fetchPyroscopeAppData,
   abortTimelineRequest,
 } from '../redux/actions';
 
@@ -21,7 +21,7 @@ function PyroscopeApp(props) {
 
   useEffect(() => {
     if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchPyrescopeAppData(renderURL);
+      actions.fetchPyroscopeAppData(renderURL);
     }
 
     return actions.abortTimelineRequest;
@@ -58,7 +58,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchPyrescopeAppData,
+      fetchPyroscopeAppData,
       fetchNames,
       abortTimelineRequest,
     },

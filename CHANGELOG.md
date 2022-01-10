@@ -1,3 +1,35 @@
+# [0.6.0](https://github.com/pyroscope-io/pyroscope/compare/v0.5.1...v0.6.0) (2022-01-04)
+
+
+### Bug Fixes
+
+* **frontend:** add tab panel styles to adhoc comparison component. ([#650](https://github.com/pyroscope-io/pyroscope/issues/650)) ([6537dfe](https://github.com/pyroscope-io/pyroscope/commit/6537dfe8578768db8aa3e31a13a728d7a480d541))
+* **frontend:** comparison diff ui fixes ([#627](https://github.com/pyroscope-io/pyroscope/issues/627)) ([202835b](https://github.com/pyroscope-io/pyroscope/commit/202835bcc5f41a5b8858d566b1c1917965a510ff))
+* **frontend:** fix flamegraph width in comparison view ([#639](https://github.com/pyroscope-io/pyroscope/issues/639)) ([1e6bef5](https://github.com/pyroscope-io/pyroscope/commit/1e6bef56423b02646f601f19d6c64f7749ef392e))
+* **frontend:** fixes golang package name coloring ([#635](https://github.com/pyroscope-io/pyroscope/issues/635)) ([6c390b5](https://github.com/pyroscope-io/pyroscope/commit/6c390b5d27a2ce1d2b61b7875cfaf6d1846937f8))
+* **frontend:** keep query param when changing routes ([#674](https://github.com/pyroscope-io/pyroscope/issues/674)) ([389019b](https://github.com/pyroscope-io/pyroscope/commit/389019b8c4127ccd738cce74dbf14deebebcb273))
+* **panel:** import @szhsin/react-menu styles in contextmenu ([#669](https://github.com/pyroscope-io/pyroscope/issues/669)) ([2fb0fff](https://github.com/pyroscope-io/pyroscope/commit/2fb0fffd8394c1ec5958a85c0bb2628b946e0ec4))
+* register all pprof http handlers ([#672](https://github.com/pyroscope-io/pyroscope/issues/672)) ([f377cf3](https://github.com/pyroscope-io/pyroscope/commit/f377cf3c455cd7231ba1527ada933696fb9c1495))
+* try to create data directory if it doesn't exist. ([#646](https://github.com/pyroscope-io/pyroscope/issues/646)) ([eac8c4e](https://github.com/pyroscope-io/pyroscope/commit/eac8c4eead754fe14d92aef14300c3cdbb8cf06f))
+* use the correct controller variable. ([#615](https://github.com/pyroscope-io/pyroscope/issues/615)) ([ccd97f9](https://github.com/pyroscope-io/pyroscope/commit/ccd97f9a68a18798c26282e4e74e1bd536b09d87))
+
+
+### Features
+
+* **frontend:** new tags dropdown ([#642](https://github.com/pyroscope-io/pyroscope/issues/642)) ([6290e45](https://github.com/pyroscope-io/pyroscope/commit/6290e45506193ed95566cb4ab7264b81a32bd266))
+* improve datetime format in adhoc output filename. ([f08f498](https://github.com/pyroscope-io/pyroscope/commit/f08f498531c12f8e97007f11d5614a32a433e752))
+* **pull-mode:** adds file discovery mechanism ([#662](https://github.com/pyroscope-io/pyroscope/issues/662)) ([35ce0b5](https://github.com/pyroscope-io/pyroscope/commit/35ce0b5071c67e8ae5503b6bd45c9d88a21cbb1f))
+* support importing adhoc profiles in pprof or collapsed formats ([#649](https://github.com/pyroscope-io/pyroscope/issues/649)) ([14ee845](https://github.com/pyroscope-io/pyroscope/commit/14ee8457a5a115620660f79bd548bb12a08e10d8))
+
+
+### Performance Improvements
+
+* adds another direct upstream to improve performance when scraper is overloaded ([#636](https://github.com/pyroscope-io/pyroscope/issues/636)) ([34cfab5](https://github.com/pyroscope-io/pyroscope/commit/34cfab5cdec7d79c0b0822dd3f501a8f46f53b55))
+* benchmarking code improvements ([#630](https://github.com/pyroscope-io/pyroscope/issues/630)) ([3aa460c](https://github.com/pyroscope-io/pyroscope/commit/3aa460c826cff7b8494e1d429fe3408d64019244))
+* optimize pprof parsing in pull mode. ([#628](https://github.com/pyroscope-io/pyroscope/issues/628)) ([c626be1](https://github.com/pyroscope-io/pyroscope/commit/c626be17f16d9f1132e4f09288dc2495958aff45))
+
+
+
 ## [0.5.1](https://github.com/pyroscope-io/pyroscope/compare/v0.5.0...v0.5.1) (2021-12-16)
 
 

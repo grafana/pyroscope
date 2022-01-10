@@ -31,7 +31,11 @@ function ComparisonDiffApp(props) {
           viewSide="both"
         />
         <Box>
-          <FlameGraphRenderer viewType="diff" flamebearer={diff.flamebearer}>
+          <FlameGraphRenderer
+            display="both"
+            viewType="diff"
+            flamebearer={diff.flamebearer}
+          >
             <div className="diff-instructions-wrapper">
               <div className="diff-instructions-wrapper-side">
                 <InstructionText viewType="diff" viewSide="left" />

@@ -2,7 +2,7 @@ import ReactDOM from 'react-dom';
 import React from 'react';
 
 import { Provider } from 'react-redux';
-import { BrowserRouter, Switch, Route } from 'react-router-dom';
+import { Router, BrowserRouter, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Notifications from '@ui/Notifications';
@@ -14,10 +14,10 @@ import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
 import AdhocSingle from './components/AdhocSingle';
 import AdhocComparison from './components/AdhocComparison';
+import AdhocComparisonDiff from './components/AdhocComparisonDiff';
 import ServerNotifications from './components/ServerNotifications';
 
 import history from './util/history';
-import basename from './util/baseurl';
 
 let showFps = false;
 try {
@@ -30,7 +30,7 @@ try {
 
 ReactDOM.render(
   <Provider store={store}>
-    <BrowserRouter history={history} basename={basename()}>
+    <Router history={history}>
       <ServerNotifications />
       <Notifications />
       <div className="app">
@@ -55,9 +55,14 @@ ReactDOM.render(
               <AdhocComparison />
             </Route>
           )}
+          {isExperimentalAdhocUIEnabled && (
+            <Route path="/adhoc-comparison-diff">
+              <AdhocComparisonDiff />
+            </Route>
+          )}
         </Switch>
       </div>
-    </BrowserRouter>
+    </Router>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
   </Provider>,
   document.getElementById('root')

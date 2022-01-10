@@ -1,55 +1,91 @@
 version: '3.9'
 services:
   pyrobench:
-    env_file:
-      - run-parameters.env
     build:
       context: ../
       dockerfile: benchmark/Dockerfile
-    # we will be running docker exec against it
-    command:
-      - sh
-      - -c
-      - sleep Infinity
+    env_file:
+      - config.env
+    depends_on:
+      - 'pushgateway'
+      - 'pyroscope'
+      - 'pyroscope-main'
     volumes:
-      - ./dashboard-screenshots:/screenshots
+      - ./report:/report
+      - ./queries.yml:/queries.yml
+      - ./pyrobench-entrypoint.sh:/entrypoint.sh
+    entrypoint:
+      - /entrypoint.sh
 
   pyroscope:
-    environment:
-      - PYROSCOPE_LOG_LEVEL=info
-      - PYROSCOPE_WAIT_AFTER_STOP=true
     build:
       context: ../
       dockerfile: Dockerfile
+    env_file:
+      - config.env
     command:
       - server
-    ports:
-      - 4040:4040
+    volumes:
+      - ./server.yml:/tmp/server.yml.example
+      - ./server-entrypoint.sh:/entrypoint.sh
+      - data-pyroscope:/var/lib/pyroscope
+    entrypoint:
+      - /entrypoint.sh
     deploy:
       resources:
         limits:
-          cpus: '${PYROSCOPE_CPUS}'
-          memory: '${PYROSCOPE_MEMORY}'
+          cpus: '${PYROSCOPE_CPUS-1}'
+          memory: '${PYROSCOPE_MEMORY-4096MB}'
+
+  pyroscope-main:
+    image: pyroscope/pyroscope-dev:main
+    env_file:
+      - config.env
+    command:
+      - server
+    volumes:
+      - ./server.yml:/tmp/server.yml.example
+      - ./server-entrypoint.sh:/entrypoint.sh
+      - data-pyroscope-main:/var/lib/pyroscope
+    entrypoint:
+      - /entrypoint.sh
+    deploy:
+      resources:
+        limits:
+          cpus: '${PYROSCOPE_CPUS-1}'
+          memory: '${PYROSCOPE_MEMORY-4096MB}'
 
   prometheus:
     image: prom/prometheus:v2.27.1
     volumes:
       - ./prometheus:/etc/prometheus/
       - data-prometheus:/prometheus
-    ports:
-      - 4090:9090
+
   pushgateway:
     image: prom/pushgateway:v1.4.1
 
   grafana:
     image: grafana/grafana:7.5.7
     volumes:
-      - ./grafana-provisioning:/etc/grafana/provisioning
       - ./grafana/grafana.ini:/etc/grafana/grafana.ini
-      - ../monitoring/gen/benchmark-dashboard.json:/etc/grafana/provisioning/dashboards/benchmark-dashboard.json
-    ports:
-      - 8080:3000
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards/main.yml:/etc/grafana/provisioning/dashboards/main.yml
+      - ./../monitoring/gen/benchmark-pr.json:/etc/grafana/provisioning/dashboards/benchmark-pr.json:ro
+    environment:
+      GF_RENDERING_SERVER_URL: http://renderer:8081/render
+      GF_RENDERING_CALLBACK_URL: http://grafana:3000/
+      GF_LOG_FILTERS: rendering:debug
+
+  renderer:
+    image: grafana/grafana-image-renderer:latest
 
 volumes:
   data-prometheus:
+    driver: local
+  # these volumes are used to store data between runs (it might be useful if you want to compare runs)
+  # sometimes you might not want to keep the data
+  # in that case run `docker-compose down -v` to delete it
+  data-pyroscope:
+    driver: local
+  data-pyroscope-main:
     driver: local

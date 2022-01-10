@@ -1,6 +1,6 @@
 import CanvasConverter from 'canvas-to-buffer';
 import { createCanvas } from 'canvas';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import TestData from './testData';
 import Flamegraph from './Flamegraph';
 
@@ -13,8 +13,8 @@ describe("render group:snapshot'", () => {
   const canvas = createCanvas(800, 0) as unknown as HTMLCanvasElement;
   const fitMode = 'HEAD';
   const highlightQuery = '';
-  const zoom: zoomType = Option.none();
-  const focusedNode: focusedNodeType = Option.none();
+  const zoom: zoomType = Maybe.nothing();
+  const focusedNode: focusedNodeType = Maybe.nothing();
 
   it('renders a simple flamegraph', () => {
     const flame = new Flamegraph(
@@ -61,7 +61,7 @@ describe("render group:snapshot'", () => {
 
   it('renders a highlighted flamegraph', () => {
     const highlightQuery = 'main';
-    const focusedNode: focusedNodeType = Option.none();
+    const focusedNode: focusedNodeType = Maybe.nothing();
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
@@ -78,7 +78,7 @@ describe("render group:snapshot'", () => {
 
   it('renders a highlighted double flamegraph', () => {
     const highlightQuery = 'main';
-    const focusedNode: focusedNodeType = Option.none();
+    const focusedNode: focusedNodeType = Maybe.nothing();
 
     const flame = new Flamegraph(
       TestData.DiffTree,
@@ -94,8 +94,8 @@ describe("render group:snapshot'", () => {
   });
 
   it('renders a zoomed flamegraph', () => {
-    const zoom = Option.some({ i: 2, j: 8 });
-    const focusedNode: focusedNodeType = Option.none();
+    const zoom = Maybe.just({ i: 2, j: 8 });
+    const focusedNode: focusedNodeType = Maybe.nothing();
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
@@ -115,7 +115,7 @@ describe("render group:snapshot'", () => {
     // so that the function names don't fit
     const canvas = createCanvas(300, 0) as unknown as HTMLCanvasElement;
     const fitMode = 'TAIL';
-    const focusedNode: focusedNodeType = Option.none();
+    const focusedNode: focusedNodeType = Maybe.nothing();
 
     const flame = new Flamegraph(
       TestData.SimpleTree,
@@ -132,8 +132,8 @@ describe("render group:snapshot'", () => {
 
   describe('focused', () => {
     it('renders a focused node in the beginning', () => {
-      const zoom: zoomType = Option.none();
-      const focusedNode = Option.some({ i: 2, j: 0 });
+      const zoom: zoomType = Maybe.nothing();
+      const focusedNode = Maybe.just({ i: 2, j: 0 });
 
       const flame = new Flamegraph(
         TestData.SimpleTree,
@@ -149,8 +149,8 @@ describe("render group:snapshot'", () => {
     });
 
     it('renders a focused node (when node is not in the beginning)', () => {
-      const zoom: zoomType = Option.none();
-      const focusedNode = Option.some({ i: 2, j: 8 });
+      const zoom: zoomType = Maybe.nothing();
+      const focusedNode = Maybe.just({ i: 2, j: 8 });
 
       const flame = new Flamegraph(
         TestData.SimpleTree,
@@ -166,8 +166,8 @@ describe("render group:snapshot'", () => {
     });
 
     it('also zooms', () => {
-      const focusedNode = Option.some({ i: 1, j: 0 });
-      const zoom = Option.some({ i: 2, j: 0 }); // main.fastFunction
+      const focusedNode = Maybe.just({ i: 1, j: 0 });
+      const zoom = Maybe.just({ i: 2, j: 0 }); // main.fastFunction
 
       const flame = new Flamegraph(
         TestData.SimpleTree,

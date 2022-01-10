@@ -24,9 +24,7 @@ THIS SOFTWARE.
 .pane-wrapper .flamegraph-pane,
 .flamegraph-pane {
   flex: 1;
-  width: 100%;
   position: relative;
-  /*  margin: 0 6px; */
 }
 
 /*.flamegraph-pane.vertical-orientation {

@@ -5,17 +5,37 @@
 .dropdownMenu {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.33);
   padding: 0.25rem 0;
-  background-color: $btn-color;
-  color: $white;
+  background-color: $btn-color !important;
+  color: $white !important;
 
   & ul[class*='rc-menu'] {
     background-color: $btn-color;
-    color: $white;
+    color: $white !important;
   }
 
   & li[class*='hover'],
   div[class*='hover'] {
     background-color: $btn-hover-color;
+  }
+
+  [class*='rc-menu--open']:empty {
+    display: none;
+  }
+
+  [class*='rc-menu__item active'] {
+    background-color: $btn-hover-color;
+    color: rgb(223, 139, 83);
+  }
+
+  [class*='rc-menu__item--focusable'] {
+    // important to ignore the hover effect
+    background-color: inherit !important;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+
+    input {
+      width: 100%;
+    }
   }
 }
 
@@ -33,5 +53,9 @@
     position: absolute;
     top: 3px;
     right: 5px;
+  }
+
+  &:hover {
+    cursor: pointer;
   }
 }

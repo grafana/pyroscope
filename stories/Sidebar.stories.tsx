@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useState } from 'react';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import React from 'react';
+import { ComponentMeta } from '@storybook/react';
 import Sidebar, {
   MenuItem,
   SidebarHeader,
@@ -13,16 +13,12 @@ import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import { faBaby } from '@fortawesome/free-solid-svg-icons/faBaby';
 import Icon from '@ui/Icon';
 
-const Template: ComponentStory<typeof Sidebar> = (args) => (
-  <Sidebar {...args} />
-);
-
 export default {
   title: 'Components/Sidebar',
   component: Sidebar,
 } as ComponentMeta<typeof Sidebar>;
 
-export const Default = (args) => {
+export const Default = () => {
   return (
     <Sidebar>
       <Menu iconShape="square">
@@ -42,7 +38,7 @@ export const Default = (args) => {
   );
 };
 
-export const SidebarWithHeaderAndFooter = (args) => {
+export const SidebarWithHeaderAndFooter = () => {
   return (
     <Sidebar>
       <SidebarHeader>Header</SidebarHeader>

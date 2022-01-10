@@ -1,5 +1,6 @@
 import React from 'react';
 import { ControlledMenu, useMenuState } from '@szhsin/react-menu';
+import styles from './ContextMenu.module.scss';
 
 type xyToMenuItems = (x: number, y: number) => JSX.Element[];
 
@@ -74,6 +75,7 @@ export default function ContextMenu(props: ContextMenuProps) {
 
   return (
     <ControlledMenu
+      className={styles.dummy}
       menuItemFocus={menuProps.menuItemFocus}
       isMounted={menuProps.isMounted}
       isOpen={menuProps.isOpen}

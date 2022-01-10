@@ -11,9 +11,11 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 
-	// revive:disable:blank-imports register kubernetes discoverer
+	// revive:disable:blank-imports register discoverer
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
+	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
@@ -36,18 +38,19 @@ type Server struct {
 }
 
 type serverService struct {
-	config           *config.Server
-	logger           *logrus.Logger
-	controller       *server.Controller
-	storage          *storage.Storage
-	directUpstream   *direct.Direct
-	analyticsService *analytics.Service
-	selfProfiling    *agent.ProfileSession
-	debugReporter    *debug.Reporter
-	healthController *health.Controller
-	adminServer      *admin.Server
-	discoveryManager *discovery.Manager
-	scrapeManager    *scrape.Manager
+	config               *config.Server
+	logger               *logrus.Logger
+	controller           *server.Controller
+	storage              *storage.Storage
+	directUpstream       *direct.Direct
+	directScrapeUpstream *direct.Direct
+	analyticsService     *analytics.Service
+	selfProfiling        *agent.ProfileSession
+	debugReporter        *debug.Reporter
+	healthController     *health.Controller
+	adminServer          *admin.Server
+	discoveryManager     *discovery.Manager
+	scrapeManager        *scrape.Manager
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -124,6 +127,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
 	svc.directUpstream = direct.New(svc.storage, metricsExporter)
+	svc.directScrapeUpstream = direct.New(svc.storage, metricsExporter)
 
 	if !svc.config.NoSelfProfiling {
 		svc.selfProfiling, _ = agent.NewSession(agent.SessionConfig{
@@ -137,13 +141,19 @@ func newServerService(c *config.Server) (*serverService, error) {
 		})
 	}
 
+	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.controller, err = server.New(server.Config{
-		Configuration:           svc.config,
-		Storage:                 svc.storage,
-		MetricsExporter:         metricsExporter,
-		Notifier:                svc.healthController,
+		Configuration:   svc.config,
+		Storage:         svc.storage,
+		MetricsExporter: metricsExporter,
+		Notifier:        svc.healthController,
+		Adhoc: adhocserver.New(
+			svc.logger,
+			svc.config.MaxNodesRender,
+			svc.config.EnableExperimentalAdhocUI,
+		),
 		Logger:                  svc.logger,
-		MetricsRegisterer:       prometheus.DefaultRegisterer,
+		MetricsRegisterer:       defaultMetricsRegistry,
 		ExportedMetricsRegistry: exportedMetricsRegistry,
 	})
 	if err != nil {
@@ -155,7 +165,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		svc.directUpstream)
+		svc.storage,
+		defaultMetricsRegistry)
 
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)
@@ -187,6 +198,7 @@ func (svc *serverService) Start() error {
 
 	svc.healthController.Start()
 	svc.directUpstream.Start()
+	svc.directScrapeUpstream.Start()
 
 	if !svc.config.NoSelfProfiling {
 		if err := svc.selfProfiling.Start(); err != nil {
@@ -255,6 +267,7 @@ func (svc *serverService) stop() {
 
 	svc.logger.Debug("stopping upstream")
 	svc.directUpstream.Stop()
+	svc.directScrapeUpstream.Stop()
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")

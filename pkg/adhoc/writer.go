@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -34,8 +35,8 @@ func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) wr
 }
 
 func (w writer) write(t0, t1 time.Time) error {
-	dataDir := dataDirectory()
-	if err := os.MkdirAll(dataDir, os.ModeDir|os.ModePerm); err != nil {
+	dataDir, err := util.EnsureDataDirectory()
+	if err != nil {
 		return fmt.Errorf("could not create data directory: %w", err)
 	}
 
@@ -66,7 +67,7 @@ func (w writer) write(t0, t1 time.Time) error {
 		} else {
 			ext = w.outputFormat
 		}
-		filename := fmt.Sprintf("%s-%s.%s", name, t0.UTC().Format(time.RFC3339), ext)
+		filename := fmt.Sprintf("%s-%s.%s", name, t0.Format("2006-01-02-15-04-05"), ext)
 		path := filepath.Join(dataDir, filename)
 		f, err := os.Create(path)
 		if err != nil {
@@ -103,8 +104,4 @@ func (w writer) write(t0, t1 time.Time) error {
 		}
 	}
 	return nil
-}
-
-func dataDirectory() string {
-	return filepath.Join(dataBaseDirectory(), "pyroscope")
 }

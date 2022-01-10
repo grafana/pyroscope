@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/vscode/devcontainers/go:1.15
+FROM mcr.microsoft.com/vscode/devcontainers/go:1.17
 
 USER root
 
@@ -13,13 +13,12 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 # Node
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends nodejs npm
+RUN npm config set unsafe-perm true
 RUN npm install -g yarn
 
 # libunwind
-RUN wget https://github.com/libunwind/libunwind/releases/download/v1.3.1/libunwind-1.3.1.tar.gz && \
-    tar -zxf libunwind-1.3.1.tar.gz && \
-    cd libunwind-1.3.1/ && \
-    ./configure --disable-minidebuginfo --enable-ptrace --disable-tests --disable-documentation && make && make install
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends libunwind8-dev
 
 WORKDIR /workspaces/pyroscope
 
