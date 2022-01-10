@@ -2,6 +2,7 @@
   "video": false,
   "baseUrl": "http://localhost:4040",
   "integrationFolder": "cypress/integration/webapp",
+  "supportFile": "cypress/support/commands.js",
   "retries": {
     "runMode": 5
   }

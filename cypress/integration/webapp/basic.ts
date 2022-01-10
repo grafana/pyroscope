@@ -69,7 +69,9 @@ describe('basic test', () => {
     }).as('render1');
 
     cy.visit('/');
-    cy.findByTestId('flamegraph-canvas').then(ensureAttached);
+    cy.waitUntil(() =>
+      cy.findByTestId('flamegraph-canvas').then(ensureAttached)
+    );
 
     cy.findByRole('combobox', { name: /view/ }).select('Table');
     cy.findByTestId('table-view').should('be.visible');
@@ -204,11 +206,7 @@ describe('basic test', () => {
       const findFlamegraph = (n: number) => {
         const query = `> :nth-child(${n})`;
 
-        return cy
-          .findByTestId('comparison-container')
-          .find(query)
-          .findByTestId('flamegraph-view')
-          .click({ force: true });
+        return cy.findByTestId('comparison-container').find(query);
       };
 
       cy.intercept('**/render*from=1633024300&until=1633024300*', {
@@ -229,52 +227,65 @@ describe('basic test', () => {
       cy.wait('@render-left');
 
       // flamegraph 1 (the left one)
+      cy.waitUntil(() => findFlamegraph(1).as('graph1').then(ensureAttached));
       findFlamegraph(1).findByTestId('flamegraph-tooltip').then(ensureAttached);
 
-      findFlamegraph(1)
+      cy.get('@graph1')
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
 
-      findFlamegraph(1).findByTestId('flamegraph-canvas').then(ensureAttached);
+      cy.waitUntil(() =>
+        findFlamegraph(1)
+          .findByTestId('flamegraph-canvas')
+          .as('canvas1')
+          .then(ensureAttached)
+      );
 
-      findFlamegraph(1)
-        .findByTestId('flamegraph-canvas')
-        .trigger('mousemove', 0, 0);
+      cy.get('@canvas1').trigger('mousemove', 0, 0);
 
-      findFlamegraph(1).findByTestId('flamegraph-tooltip').should('be.visible');
+      cy.get('@graph1').findByTestId('flamegraph-tooltip').should('be.visible');
 
-      findFlamegraph(1)
+      cy.get('@graph1')
         .findByTestId('flamegraph-tooltip-title')
         .should('have.text', 'total');
-      findFlamegraph(1)
+
+      cy.get('@graph1')
         .findByTestId('flamegraph-tooltip-body')
         .should('have.text', '100%, 991 samples, 9.91 seconds');
 
-      findFlamegraph(1).findByTestId('flamegraph-canvas').trigger('mouseout');
-      findFlamegraph(1)
+      cy.get('@graph1').findByTestId('flamegraph-canvas').trigger('mouseout');
+      cy.get('@graph1')
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
 
       // flamegraph 2 (right one)
-      findFlamegraph(2)
+      cy.waitUntil(() => findFlamegraph(2).as('graph2').then(ensureAttached));
+
+      cy.get('@graph2')
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
 
-      findFlamegraph(2)
-        .findByTestId('flamegraph-canvas')
-        .trigger('mousemove', 0, 0);
+      cy.waitUntil(() =>
+        findFlamegraph(2)
+          .findByTestId('flamegraph-canvas')
+          .as('canvas2')
+          .then(ensureAttached)
+      );
 
-      findFlamegraph(2).findByTestId('flamegraph-tooltip').should('be.visible');
+      cy.get('@canvas2').trigger('mousemove', 0, 0);
 
-      findFlamegraph(2)
+      cy.get('@graph2').findByTestId('flamegraph-tooltip').should('be.visible');
+
+      cy.get('@graph2')
         .findByTestId('flamegraph-tooltip-title')
         .should('have.text', 'total');
-      findFlamegraph(2)
+
+      cy.get('@graph2')
         .findByTestId('flamegraph-tooltip-body')
         .should('have.text', '100%, 988 samples, 9.88 seconds');
 
-      findFlamegraph(2).findByTestId('flamegraph-canvas').trigger('mouseout');
-      findFlamegraph(2)
+      cy.get('@graph2').findByTestId('flamegraph-canvas').trigger('mouseout');
+      cy.get('@graph2')
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
     });
