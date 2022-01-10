@@ -104,7 +104,7 @@ ReduxQuerySync({
     },
   },
   initialTruth: 'location',
-  replaceState: true,
+  replaceState: false,
   history,
 });
 
