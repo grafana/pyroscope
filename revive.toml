@@ -33,7 +33,6 @@ warningCode = 0
   arguments = [4]
 [rule.empty-block]
 [rule.superfluous-else]
-[rule.confusing-naming]
 [rule.get-return]
 [rule.modifies-parameter]
 [rule.confusing-results]
