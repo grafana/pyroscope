@@ -44,6 +44,9 @@ describe('basic test', () => {
 
     cy.visit('/');
 
+    // Workaround for detached DOM elements (like Debounced input here)
+    cy.findByTestId('flamegraph-search').click({ force: true });
+
     cy.findByTestId('flamegraph-search').type('main');
 
     // if we take a screenshot right away, the canvas may not have been re-renderer yet
@@ -65,6 +68,7 @@ describe('basic test', () => {
     }).as('render1');
 
     cy.visit('/');
+    cy.findByTestId('flamegraph-canvas');
 
     cy.findByRole('combobox', { name: /view/ }).select('Table');
     cy.findByTestId('table-view').should('be.visible');
@@ -191,8 +195,7 @@ describe('basic test', () => {
         'have.text',
         '100%, 988 samples, 9.88 seconds'
       );
-
-      cy.findByTestId('flamegraph-canvas').trigger('mouseout');
+      cy.findByTestId('flamegraph-canvas').trigger('mouseout', { force: true });
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
     });
 
