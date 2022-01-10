@@ -21,6 +21,8 @@ export interface ButtonProps {
   type?: 'button' | 'submit';
   ['data-testid']?: string;
 
+  ['aria-label']?: string;
+
   className?: string;
 
   id?: string;
@@ -45,6 +47,7 @@ export default function Button({
       data-testid={props['data-testid']}
       disabled={disabled}
       onClick={onClick}
+      aria-label={props['aria-label']}
       className={`${styles.button} ${
         grouped ? styles.grouped : ''
       } ${getKindStyles(kind)} ${className}`}

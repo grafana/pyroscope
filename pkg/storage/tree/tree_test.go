@@ -59,6 +59,143 @@ var _ = Describe("tree package", func() {
 				{"a;b;d", 20},
 				{"a;b;c;d", 20},
 			}))
+	Context("InsertStackString unsorted of length 1", func() {
+		tree := New()
+		tree.InsertStackString([]string{"a", "b"}, uint64(1))
+		tree.InsertStackString([]string{"a", "a"}, uint64(2))
+
+		It("properly sets up a tree", func() {
+			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(2))
+			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(1)))
+			Expect(tree.String()).To(Equal("a;a 2\na;b 1\n"))
+		})
+	})
+
+	Context("InsertStackString equal of length 1", func() {
+		tree := New()
+		tree.InsertStackString([]string{"a", "b"}, uint64(1))
+		tree.InsertStackString([]string{"a", "b"}, uint64(2))
+
+		It("properly sets up a tree", func() {
+			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.String()).To(Equal("a;b 3\n"))
+		})
+	})
+
+	Context("InsertStackString sorted of length 1", func() {
+		tree := New()
+		tree.InsertStackString([]string{"a", "b"}, uint64(1))
+		tree.InsertStackString([]string{"a", "c"}, uint64(2))
+
+		It("properly sets up a tree", func() {
+			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(2))
+			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(2)))
+			Expect(tree.String()).To(Equal("a;b 1\na;c 2\n"))
+		})
+	})
+
+	Context("InsertStackString sorted of different lengths", func() {
+		tree := New()
+		tree.InsertStackString([]string{"a", "b"}, uint64(1))
+		tree.InsertStackString([]string{"a", "ba"}, uint64(2))
+
+		It("properly sets up a tree", func() {
+			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(2))
+			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(2)))
+			Expect(tree.String()).To(Equal("a;b 1\na;ba 2\n"))
+		})
+	})
+
+	Context("InsertStackString unsorted of different lengths", func() {
+		tree := New()
+		tree.InsertStackString([]string{"a", "ba"}, uint64(1))
+		tree.InsertStackString([]string{"a", "b"}, uint64(2))
+
+		It("properly sets up a tree", func() {
+			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(2))
+			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(1)))
+			Expect(tree.String()).To(Equal("a;b 2\na;ba 1\n"))
+		})
+	})
+
+	Context("InsertStackString unsorted of length 2", func() {
+		tree := New()
+		tree.InsertStackString([]string{"a", "bb"}, uint64(1))
+		tree.InsertStackString([]string{"a", "ba"}, uint64(2))
+
+		It("properly sets up a tree", func() {
+			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(2))
+			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(1)))
+			Expect(tree.String()).To(Equal("a;ba 2\na;bb 1\n"))
+		})
+	})
+
+	Context("InsertStackString equal of length 2", func() {
+		tree := New()
+		tree.InsertStackString([]string{"a", "bb"}, uint64(1))
+		tree.InsertStackString([]string{"a", "bb"}, uint64(2))
+
+		It("properly sets up a tree", func() {
+			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.String()).To(Equal("a;bb 3\n"))
+		})
+	})
+
+	Context("InsertStackString sorted of length 2", func() {
+		tree := New()
+		tree.InsertStackString([]string{"a", "bb"}, uint64(1))
+		tree.InsertStackString([]string{"a", "bc"}, uint64(2))
+
+		It("properly sets up a tree", func() {
+			Expect(tree.root.ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(2))
+			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(3)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Self).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[1].Total).To(Equal(uint64(2)))
+			Expect(tree.String()).To(Equal("a;bb 1\na;bc 2\n"))
 		})
 	})
 
