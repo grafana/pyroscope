@@ -59,6 +59,9 @@ var _ = Describe("tree package", func() {
 				{"a;b;d", 20},
 				{"a;b;c;d", 20},
 			}))
+		})
+	})
+
 	Context("InsertStackString unsorted of length 1", func() {
 		tree := New()
 		tree.InsertStackString([]string{"a", "b"}, uint64(1))
