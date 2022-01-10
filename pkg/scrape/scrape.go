@@ -30,10 +30,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/bytebufferpool"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
 var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
@@ -42,7 +42,7 @@ var errBodySizeLimit = errors.New("body size limit exceeded")
 
 // scrapePool manages scrapes for sets of targets.
 type scrapePool struct {
-	upstream upstream.Upstream
+	ingester Ingester
 	logger   logrus.FieldLogger
 
 	// Global metrics shared by all pools.
@@ -66,9 +66,8 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
+func newScrapePool(cfg *config.Config, ingester Ingester, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
 	m.pools.Inc()
-
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
 		m.poolsFailed.Inc()
@@ -80,7 +79,7 @@ func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldL
 		ctx:           ctx,
 		cancel:        cancel,
 		logger:        logger,
-		upstream:      u,
+		ingester:      ingester,
 		config:        cfg,
 		client:        client,
 		activeTargets: make(map[uint64]*Target),
@@ -94,12 +93,15 @@ func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldL
 }
 
 func (sp *scrapePool) newScrapeLoop(s *scraper, i, t time.Duration) *scrapeLoop {
+	// TODO(kolesnikovae): Refactor.
+	d, _ := s.Target.deltaDuration()
 	x := scrapeLoop{
 		scraper:     s,
 		logger:      sp.logger,
-		upstream:    sp.upstream,
+		ingester:    sp.ingester,
 		poolMetrics: sp.poolMetrics,
 		stopped:     make(chan struct{}),
+		delta:       d,
 		interval:    i,
 		timeout:     t,
 	}
@@ -138,6 +140,10 @@ func (sp *scrapePool) stop() {
 		}(l)
 		delete(sp.loops, fp)
 		delete(sp.activeTargets, fp)
+		metricsLabels := []string{sp.config.JobName, l.scraper.Target.profile.Path}
+		sp.metrics.profileSize.DeleteLabelValues(metricsLabels...)
+		sp.metrics.profileSamples.DeleteLabelValues(metricsLabels...)
+		sp.metrics.scrapeDuration.DeleteLabelValues(metricsLabels...)
 	}
 	sp.targetMtx.Unlock()
 	wg.Wait()
@@ -184,10 +190,11 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 		wg.Add(1)
 		s := &scraper{
 			Target:        sp.activeTargets[fp],
-			pprofWriter:   newPprofWriter(sp.upstream, sp.activeTargets[fp]),
+			pprofWriter:   newPprofWriter(sp.ingester, sp.activeTargets[fp]),
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
+			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, sp.activeTargets[fp].profile.Path),
 		}
 		n := sp.newScrapeLoop(s, interval, timeout)
 		go func(oldLoop, newLoop *scrapeLoop) {
@@ -268,7 +275,8 @@ func (sp *scrapePool) sync(targets []*Target) {
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
-			pprofWriter:   newPprofWriter(sp.upstream, t),
+			pprofWriter:   newPprofWriter(sp.ingester, t),
+			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, t.profile.Path),
 		}
 
 		l := sp.newScrapeLoop(s, interval, timeout)
@@ -304,7 +312,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 type scrapeLoop struct {
 	scraper  *scraper
 	logger   logrus.FieldLogger
-	upstream upstream.Upstream
+	ingester Ingester
 
 	poolMetrics *poolMetrics
 
@@ -312,6 +320,7 @@ type scrapeLoop struct {
 	cancel  func()
 	stopped chan struct{}
 
+	delta    time.Duration
 	interval time.Duration
 	timeout  time.Duration
 }
@@ -327,18 +336,16 @@ func (sl *scrapeLoop) run() {
 	}
 	ticker := time.NewTicker(sl.interval)
 	defer ticker.Stop()
-	var last time.Time
 	for {
 		select {
 		default:
 		case <-sl.ctx.Done():
 			return
 		}
-
-		if !last.IsZero() {
-			sl.poolMetrics.scrapeIntervalLength.Observe(time.Since(last).Seconds())
+		if !sl.scraper.Target.lastScrape.IsZero() {
+			sl.poolMetrics.scrapeIntervalLength.Observe(time.Since(sl.scraper.Target.lastScrape).Seconds())
 		}
-		last = sl.scraper.report(sl.scrape)
+		sl.scrapeAndReport(sl.scraper.Target)
 		select {
 		case <-ticker.C:
 		case <-sl.ctx.Done():
@@ -347,7 +354,50 @@ func (sl *scrapeLoop) run() {
 	}
 }
 
-func (sl *scrapeLoop) scrape() error {
+func (sl *scrapeLoop) scrapeAndReport(t *Target) {
+	now := time.Now()
+	// There are two possible cases:
+	//  1. "delta" profile that is collected during scrape. In instance,
+	//     Go cpu profile requires "seconds" parameter. Such a profile
+	//     represent a time span since now to now+delta.
+	//  2. Profile is captured immediately. Despite the fact that the
+	//     data represent the current moment, we need to know when it
+	//     was scraped last time.
+	if sl.delta == 0 && t.lastScrape.IsZero() {
+		// Skip this round as we would not figure out time span of the
+		// profile reliably either way.
+		t.lastScrape = now
+		return
+	}
+	// N.B: Although in some cases we can retrieve timings from
+	// the profile itself (using TimeNanos and DurationNanos fields),
+	// there is a big chance that the period will overlap multiple
+	// segment "slots", hereby producing redundant segment nodes and
+	// trees. Therefore, it's better to adhere standard 10s period
+	// that fits segment node size (at level 0).
+	var startTime, endTime time.Time
+	if sl.delta > 0 {
+		startTime = now.Round(sl.delta)
+		endTime = startTime.Add(sl.delta)
+	} else {
+		endTime = now.Round(sl.interval)
+		startTime = endTime.Add(-1 * sl.interval)
+	}
+	err := sl.scrape(startTime, endTime)
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+	if err == nil {
+		t.health = HealthGood
+	} else {
+		t.health = HealthBad
+	}
+	t.lastError = err
+	t.lastScrape = now
+	t.lastScrapeDuration = time.Since(now)
+	sl.scraper.targetMetrics.scrapeDuration.Observe(sl.scraper.Target.lastScrapeDuration.Seconds())
+}
+
+func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 	buf := bufPool.Get()
 	ctx, cancel := context.WithTimeout(sl.ctx, sl.timeout)
 	defer func() {
@@ -357,7 +407,6 @@ func (sl *scrapeLoop) scrape() error {
 	sl.poolMetrics.scrapes.Inc()
 	switch err := sl.scraper.scrape(ctx, buf); {
 	case err == nil:
-		return sl.scraper.pprofWriter.writeProfile(buf.Bytes())
 	case errors.Is(err, context.Canceled):
 		return nil
 	default:
@@ -366,6 +415,15 @@ func (sl *scrapeLoop) scrape() error {
 		sl.scraper.pprofWriter.reset()
 		return err
 	}
+	sl.scraper.targetMetrics.profileSize.Observe(float64(buf.Len()))
+	p := tree.ProfileFromVTPool()
+	defer p.ReturnToVTPool()
+	p.Reset()
+	if err := p.UnmarshalVT(buf.Bytes()); err != nil {
+		return err
+	}
+	sl.scraper.targetMetrics.profileSamples.Observe(float64(len(p.Sample)))
+	return sl.scraper.pprofWriter.writeProfile(startTime, endTime, p)
 }
 
 func (sl *scrapeLoop) stop() {
@@ -383,6 +441,8 @@ type scraper struct {
 
 	buf           *bufio.Reader
 	bodySizeLimit int64
+
+	*targetMetrics
 }
 
 func (s *scraper) scrape(ctx context.Context, w io.Writer) error {

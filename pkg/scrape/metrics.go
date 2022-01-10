@@ -10,8 +10,9 @@ type metrics struct {
 	poolsFailed       prometheus.Counter
 	poolReloads       prometheus.Counter
 	poolReloadsFailed prometheus.Counter
+
+	// Once pool exits, these metrics should be also unregistered.
 	// Metrics specific to jobs (pools).
-	// Once pool exits, these should be also unregistered.
 	poolReloadIntervalLength *prometheus.SummaryVec
 	poolSyncIntervalLength   *prometheus.SummaryVec
 	poolSyncs                *prometheus.CounterVec
@@ -21,6 +22,10 @@ type metrics struct {
 	scrapes              *prometheus.CounterVec
 	scrapesFailed        *prometheus.CounterVec
 	scrapeIntervalLength *prometheus.SummaryVec
+	// Metrics specific to targets.
+	profileSize    *prometheus.SummaryVec
+	profileSamples *prometheus.SummaryVec
+	scrapeDuration *prometheus.SummaryVec
 }
 
 type poolMetrics struct {
@@ -35,8 +40,15 @@ type poolMetrics struct {
 	scrapeIntervalLength prometheus.Observer
 }
 
+type targetMetrics struct {
+	profileSize    prometheus.Observer
+	profileSamples prometheus.Observer
+	scrapeDuration prometheus.Observer
+}
+
 func newMetrics(r prometheus.Registerer) *metrics {
-	labels := []string{"scrape_job"}
+	poolLabels := []string{"scrape_job"}
+	targetLabels := []string{"scrape_job", "profile_path"}
 	return &metrics{
 		pools: promauto.With(r).NewCounter(prometheus.CounterOpts{
 			Name: "pyroscope_scrape_target_pools_total",
@@ -58,39 +70,55 @@ func newMetrics(r prometheus.Registerer) *metrics {
 		poolSyncs: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_scrape_target_pool_sync_total",
 			Help: "Total number of syncs that were executed on a scrape pool.",
-		}, labels),
+		}, poolLabels),
 		poolSyncFailed: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_scrape_target_pool_sync_failed_total",
 			Help: "Total number of target sync failures.",
-		}, labels),
+		}, poolLabels),
 		poolSyncIntervalLength: promauto.With(r).NewSummaryVec(prometheus.SummaryOpts{
 			Name:       "pyroscope_scrape_target_pool_sync_length_seconds",
 			Help:       "Actual interval to sync the scrape pool.",
 			Objectives: map[float64]float64{0.01: 0.001, 0.05: 0.005, 0.5: 0.05, 0.90: 0.01, 0.99: 0.001},
-		}, labels),
+		}, poolLabels),
 		poolReloadIntervalLength: promauto.With(r).NewSummaryVec(prometheus.SummaryOpts{
 			Name:       "pyroscope_scrape_target_pool_reload_length_seconds",
 			Help:       "Actual interval to reload the scrape pool with a given configuration.",
 			Objectives: map[float64]float64{0.01: 0.001, 0.05: 0.005, 0.5: 0.05, 0.90: 0.01, 0.99: 0.001},
-		}, labels),
+		}, poolLabels),
 		poolTargetsAdded: promauto.With(r).NewGaugeVec(prometheus.GaugeOpts{
 			Name: "pyroscope_scrape_target_pool_targets",
 			Help: "Current number of targets in this scrape pool.",
-		}, labels),
+		}, poolLabels),
 
 		scrapes: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_scrape_target_pool_scrapes_total",
 			Help: "Total number of scrapes that were executed on a scrape pool.",
-		}, labels),
+		}, poolLabels),
 		scrapesFailed: promauto.With(r).NewCounterVec(prometheus.CounterOpts{
 			Name: "pyroscope_scrape_target_pool_scrapes_failed_total",
 			Help: "Total number of scrapes failed.",
-		}, labels),
+		}, poolLabels),
 		scrapeIntervalLength: promauto.With(r).NewSummaryVec(prometheus.SummaryOpts{
 			Name:       "pyroscope_scrape_target_pool_scrape_interval_length_seconds",
 			Help:       "Actual intervals between scrapes.",
 			Objectives: map[float64]float64{0.01: 0.001, 0.05: 0.005, 0.5: 0.05, 0.90: 0.01, 0.99: 0.001},
-		}, labels),
+		}, poolLabels),
+
+		profileSize: promauto.With(r).NewSummaryVec(prometheus.SummaryOpts{
+			Name:       "pyroscope_scrape_target_profile_size_bytes",
+			Help:       "Size of scraped profiles.",
+			Objectives: map[float64]float64{0.01: 0.001, 0.05: 0.005, 0.5: 0.05, 0.90: 0.01, 0.99: 0.001},
+		}, targetLabels),
+		profileSamples: promauto.With(r).NewSummaryVec(prometheus.SummaryOpts{
+			Name:       "pyroscope_scrape_target_profile_samples",
+			Help:       "Number of samples per profile.",
+			Objectives: map[float64]float64{0.01: 0.001, 0.05: 0.005, 0.5: 0.05, 0.90: 0.01, 0.99: 0.001},
+		}, targetLabels),
+		scrapeDuration: promauto.With(r).NewSummaryVec(prometheus.SummaryOpts{
+			Name:       "pyroscope_scrape_target_scrape_duration_seconds",
+			Help:       "Actual duration of profile scraping.",
+			Objectives: map[float64]float64{0.01: 0.001, 0.05: 0.005, 0.5: 0.05, 0.90: 0.01, 0.99: 0.001},
+		}, targetLabels),
 	}
 }
 
@@ -105,5 +133,13 @@ func (m *metrics) poolMetrics(jobName string) *poolMetrics {
 		scrapes:              m.scrapes.WithLabelValues(jobName),
 		scrapesFailed:        m.scrapesFailed.WithLabelValues(jobName),
 		scrapeIntervalLength: m.scrapeIntervalLength.WithLabelValues(jobName),
+	}
+}
+
+func (m *metrics) targetMetrics(jobName, profilePath string) *targetMetrics {
+	return &targetMetrics{
+		profileSize:    m.profileSize.WithLabelValues(jobName, profilePath),
+		profileSamples: m.profileSamples.WithLabelValues(jobName, profilePath),
+		scrapeDuration: m.scrapeDuration.WithLabelValues(jobName, profilePath),
 	}
 }

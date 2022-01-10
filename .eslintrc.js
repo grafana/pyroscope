@@ -61,11 +61,11 @@ module.exports = {
   },
   env: {
     browser: true,
-    node: true,
+    //    node: true,
     jquery: true,
   },
   parserOptions: {
-    project: './tsconfig.json',
+    project: './tsconfig.eslint.json',
   },
   settings: {
     'import/resolver': {
@@ -74,4 +74,16 @@ module.exports = {
       },
     },
   },
+  overrides: [
+    // Tests are completely different
+    // And we shouldn't be so strict
+    {
+      files: ['**/?(*.)+(spec|test).+(ts|tsx|js)'],
+      plugins: ['jest'],
+      env: {
+        node: true,
+        'jest/globals': true,
+      },
+    },
+  ],
 };

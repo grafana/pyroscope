@@ -52,7 +52,7 @@ func newPull(cfg *config.Adhoc, args []string, st *storage.Storage, logger *logr
 	}
 
 	u := direct.New(st, e)
-	m := scrape.NewManager(logger, u, defaultMetricsRegistry)
+	m := scrape.NewManager(logger, st, defaultMetricsRegistry)
 	scrapeCfg := &(*scrapeconfig.DefaultConfig())
 	scrapeCfg.JobName = "adhoc"
 	scrapeCfg.EnabledProfiles = []string{"cpu", "mem"}

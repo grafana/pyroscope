@@ -3,7 +3,8 @@
 function basename() {
   const baseURLMetaTag = document.querySelector(
     'meta[name="pyroscope-base-url"]'
-  );
+  ) as HTMLMetaElement;
+
   if (!baseURLMetaTag) {
     return null;
   }

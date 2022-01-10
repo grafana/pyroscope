@@ -18,7 +18,7 @@
     "build:panel": "NODE_ENV=production webpack --config scripts/webpack/webpack.panel.ts",
     "build:standalone": "webpack --config scripts/webpack/webpack.standalone.ts",
     "build:size-limit": "NODE_ENV=production webpack --config scripts/webpack/webpack.size-limit.ts",
-    "test": "jest",
+    "test": "jest --runInBand",
     "test:ss": "UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-docker.sh",
     "test:ss-check": "./scripts/jest-snapshots/run-docker.sh",
     "lint": "eslint ./ --ext .js,.jsx,.ts,.tsx --cache --fix",
@@ -90,6 +90,7 @@
     "eslint-plugin-css-modules": "^2.11.0",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-jest": "^25.3.4",
     "eslint-plugin-jsx-a11y": "^6.4.1",
     "eslint-plugin-prettier": "^3.3.1",
     "eslint-plugin-react": "^7.21.5",
@@ -100,7 +101,6 @@
     "jest-canvas-mock": "^2.3.1",
     "jest-css-modules-transform": "^4.3.0",
     "jest-image-snapshot": "^4.5.1",
-    "koa-route": "^3.2.0",
     "lint-staged": "^11.1.2",
     "monaco-editor-webpack-plugin": "^1.9.0",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
@@ -111,7 +111,6 @@
     "sass": "^1.26.10",
     "size-limit": "^6.0.3",
     "svg-jest": "^1.0.1",
-    "sync-request": "^6.1.0",
     "ts-jest": "^27.0.5",
     "typescript": "^4.5.2",
     "typescript-plugin-css-modules": "^3.4.0",
@@ -119,8 +118,7 @@
     "webpack-bundle-analyzer": "^4.4.2",
     "webpack-livereload-plugin": "^3.0.2",
     "webpack-merge": "^5.0.9",
-    "webpack-plugin-hash-output": "^3.2.1",
-    "webpack-plugin-serve": "^1.5.0"
+    "webpack-plugin-hash-output": "^3.2.1"
   },
   "dependencies": {
     "@babel/plugin-transform-runtime": "^7.16.4",
@@ -153,15 +151,19 @@
     "copy-webpack-plugin": "^6.3.2",
     "css-loader": "^4.0.0",
     "date-fns": "^2.27.0",
+    "esbuild-loader": "^2.18.0",
     "eslint-import-resolver-webpack": "^0.13.2",
     "file-loader": "^6.2.0",
     "glob": "^7.1.7",
     "html-inline-css-webpack-plugin": "^1.11.1",
     "html-webpack-plugin": "^5.5.0",
     "humanize-duration": "^3.25.1",
+    "jest-fetch-mock": "^3.0.3",
     "lodash.debounce": "^4.0.8",
     "mini-css-extract-plugin": "^2.2.0",
     "moment": "^2.27.0",
+    "msw": "^0.36.3",
+    "node-fetch": "^2.6.6",
     "normalize.css": "^8.0.1",
     "postcss-browser-reporter": "^0.6.0",
     "postcss-loader": "^3.0.0",
@@ -198,7 +200,8 @@
     "ts-essentials": "^9.0.0",
     "ts-node": "^10.4.0",
     "url-loader": "^4.1.1",
-    "webpack-cli": "^4.8.0"
+    "webpack-cli": "^4.8.0",
+    "zod": "^3.11.6"
   },
   "engines": {
     "node": ">=14.17.0"

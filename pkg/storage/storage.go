@@ -43,6 +43,9 @@ type Storage struct {
 	tasksWG    sync.WaitGroup
 	stop       chan struct{}
 
+	queueWorkersWG sync.WaitGroup
+	queue          chan *PutInput
+
 	putMutex sync.Mutex
 }
 
@@ -54,6 +57,8 @@ type storageOptions struct {
 	retentionTaskInterval     time.Duration
 	cacheTTL                  time.Duration
 	gcSizeDiff                bytesize.ByteSize
+	queueLen                  int
+	queueWorkers              int
 }
 
 // MetricsExporter exports values of particular stack traces sample from profiling
@@ -90,12 +95,17 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 			// gcSizeDiff specifies the minimal storage size difference that
 			// causes garbage collection to trigger.
 			gcSizeDiff: bytesize.GB,
+			// in-memory queue params.
+			queueLen:     100,
+			queueWorkers: runtime.NumCPU(),
 		},
 
 		logger:  logger,
 		metrics: newMetrics(reg),
 		stop:    make(chan struct{}),
 	}
+
+	s.queue = make(chan *PutInput, s.queueLen)
 
 	var err error
 	if s.main, err = s.newBadger("main", "", nil); err != nil {
@@ -121,6 +131,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 	}
 
 	s.maintenanceTask(s.writeBackTaskInterval, s.writeBackTask)
+	s.startQueueWorkers()
 
 	if !s.config.inMemory {
 		// TODO(kolesnikovae): Allow failure and skip evictionTask?
@@ -140,6 +151,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 func (s *Storage) Close() error {
 	// Stop all periodic and maintenance tasks.
 	close(s.stop)
+	s.queueWorkersWG.Wait()
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.tasksWG.Wait()
 	s.logger.Debug("storage tasks finished")
@@ -223,7 +235,7 @@ func (s *Storage) periodicTask(interval time.Duration, f func()) {
 func (s *Storage) evictionTask(memTotal uint64) func() {
 	var m runtime.MemStats
 	return func() {
-		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.retentionTaskDuration.Observe))
+		timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.evictionTaskDuration.Observe))
 		defer timer.ObserveDuration()
 		runtime.ReadMemStats(&m)
 		used := float64(m.Alloc) / float64(memTotal)
@@ -242,8 +254,8 @@ func (s *Storage) evictionTask(memTotal uint64) func() {
 		// This is also applied to writeBack task.
 		s.trees.Evict(percent)
 		s.dicts.WriteBack()
-		s.dimensions.WriteBack()
-		s.segments.WriteBack()
+		// s.dimensions.WriteBack()
+		// s.segments.WriteBack()
 		// GC does not really release OS memory, so relying on MemStats.Alloc
 		// causes cache to evict vast majority of items. debug.FreeOSMemory()
 		// could be used instead, but this can be even more expensive.

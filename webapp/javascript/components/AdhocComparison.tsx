@@ -152,11 +152,11 @@ const mapStateToProps = (state) => ({
   ...state.root,
   leftFile: state.root.adhocComparison.left.file,
   leftFlamebearer: state.root.adhocComparison.left.flamebearer,
-  leftProfile: state.root.adhocComparison.left.profile,
+  leftProfile: state.root.adhocShared.left.profile,
   isLeftProfileLoading: state.root.adhocComparison.left.isProfileLoading,
   rightFile: state.root.adhocComparison.right.file,
   rightFlamebearer: state.root.adhocComparison.right.flamebearer,
-  rightProfile: state.root.adhocComparison.right.profile,
+  rightProfile: state.root.adhocShared.right.profile,
   isRightProfileLoading: state.root.adhocComparison.right.isProfileLoading,
 });
 
