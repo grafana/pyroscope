@@ -12,23 +12,7 @@ type IPersistedValueSetters<Type> = {
 
 export type IPersistedValue<T> = IPersistedValueSetters<T> & T;
 
-interface ICurrentUIView {
-  view: string;
-}
-
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-
-const withUpdateableUIValue = (valueName, savePath, defaultValue = undefined) =>
-  connect(
-    (state: RootState) => ({
-      [valueName]: selectUIState(state)(savePath, defaultValue),
-    }),
-    (dispatch) => ({
-      [`set${capitalize(valueName)}`]: (value) => {
-        dispatch(setUIValue(savePath, value));
-      },
-    })
-  );
 
 const withUpdateableUIValues = (valuesMap) =>
   connect(

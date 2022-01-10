@@ -10,7 +10,7 @@ import { connect } from 'react-redux';
 import { bindActionCreators, compose } from 'redux';
 import { withDisplayName } from '@pyroscope/redux/utils';
 import { buildDiffRenderURL, buildRenderURL } from '../../util/updateRequests';
-import { withNamedUpdateableView } from './enchancers';
+import { withNamedUpdateableView } from './enhancer';
 
 import { FlameGraphRenderer } from './FlameGraphRenderer';
 
