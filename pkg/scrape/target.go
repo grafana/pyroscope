@@ -21,6 +21,7 @@ import (
 	"hash/fnv"
 	"net"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -139,26 +140,6 @@ func (t *Target) URL() *url.URL {
 	return &u
 }
 
-// report sets target data about the last scrape.
-func (t *Target) report(f func() error) {
-	start := time.Now()
-	err := f()
-	dur := time.Since(start)
-
-	t.mtx.Lock()
-	defer t.mtx.Unlock()
-
-	if err == nil {
-		t.health = HealthGood
-	} else {
-		t.health = HealthBad
-	}
-
-	t.lastError = err
-	t.lastScrape = start
-	t.lastScrapeDuration = dur
-}
-
 // LastError returns the error encountered during the last scrape.
 func (t *Target) LastError() error {
 	t.mtx.RLock()
@@ -205,6 +186,21 @@ func (t *Target) intervalAndTimeout(defaultInterval, defaultDuration time.Durati
 	}
 
 	return interval, timeout, nil
+}
+
+func (t *Target) deltaDuration() (time.Duration, error) {
+	t.mtx.RLock()
+	defer t.mtx.RUnlock()
+	// TODO(kolesnikovae): Delta duration from/to labels.
+	d, ok := t.profile.Params["seconds"]
+	if !ok || len(d) != 1 {
+		return 0, fmt.Errorf("delta duration is not defined")
+	}
+	seconds, err := strconv.Atoi(d[0])
+	if err != nil {
+		return 0, fmt.Errorf("invlid delta duration format %q: %w", d[0], err)
+	}
+	return time.Second * time.Duration(seconds), nil
 }
 
 // GetValue gets a label value from the entire label set.

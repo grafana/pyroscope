@@ -90,15 +90,14 @@ export function Sidebar2(props: SidebarProps) {
         Comparison View
         <NavLink to={{ pathname: '/adhoc-comparison', search }} exact />
       </MenuItem>
-      {/*
       <MenuItem
         data-testid="sidebar-adhoc-comparison-diff"
         active={isRouteActive('/adhoc-comparison-diff')}
         icon={<Icon icon={faChartBar} />}
       >
         Diff View
+        <NavLink to={{ pathname: '/adhoc-comparison-diff', search }} exact />
       </MenuItem>
-       */}
     </SubMenu>
   );
 
@@ -213,5 +212,5 @@ export function Sidebar2(props: SidebarProps) {
   );
 }
 
-export { Sidebar2 as Sidebar };
+export { Sidebar2 as SidebarComponent };
 export default withCollapsible('sidebar')(Sidebar2);

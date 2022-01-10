@@ -1,0 +1,15 @@
+.container {
+  display: flex;
+
+  // vertical align
+  align-items: center;
+}
+
+.menuButton {
+  // arbitrary value that's big enough for most apps
+  max-width: 350px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: left;
+}

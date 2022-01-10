@@ -45,13 +45,14 @@ func newPull(cfg *config.Adhoc, args []string, st *storage.Storage, logger *logr
 	}
 
 	// build the scrape manager to retrieve data
-	e, err := exporter.NewExporter(config.MetricsExportRules{}, prometheus.DefaultRegisterer)
+	defaultMetricsRegistry := prometheus.DefaultRegisterer
+	e, err := exporter.NewExporter(config.MetricsExportRules{}, defaultMetricsRegistry)
 	if err != nil {
 		return nil, err
 	}
 
 	u := direct.New(st, e)
-	m := scrape.NewManager(logger, u)
+	m := scrape.NewManager(logger, st, defaultMetricsRegistry)
 	scrapeCfg := &(*scrapeconfig.DefaultConfig())
 	scrapeCfg.JobName = "adhoc"
 	scrapeCfg.EnabledProfiles = []string{"cpu", "mem"}

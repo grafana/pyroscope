@@ -11,6 +11,8 @@ import rootReducer from './reducers';
 import history from '../util/history';
 
 import viewsReducer from './reducers/views';
+import newRootStore from './reducers/newRoot';
+
 import {
   setLeftFrom,
   setLeftUntil,
@@ -37,6 +39,7 @@ const enhancer = composeWithDevTools(
 const reducer = persistReducer(
   persistConfig,
   combineReducers({
+    newRoot: newRootStore,
     root: rootReducer,
     views: viewsReducer,
   })
@@ -55,7 +58,7 @@ const store = configureStore({
 
 export const persistor = persistStore(store);
 
-const defaultName = window.initialState.appNames.find(
+const defaultName = (window as any).initialState.appNames.find(
   (x) => x !== 'pyroscope.server.cpu'
 );
 

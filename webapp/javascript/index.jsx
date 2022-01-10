@@ -14,8 +14,7 @@ import PyroscopeApp from './components/PyroscopeApp';
 import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
-import AdhocSingle from './components/AdhocSingle';
-import AdhocComparison from './components/AdhocComparison';
+import AdhocComparisonDiff from './components/AdhocComparisonDiff';
 import ServerNotifications from './components/ServerNotifications';
 
 import history from './util/history';
@@ -48,13 +47,8 @@ ReactDOM.render(
               <ComparisonDiffApp />
             </Route>
             {isExperimentalAdhocUIEnabled && (
-              <Route path="/adhoc-single">
-                <AdhocSingle />
-              </Route>
-            )}
-            {isExperimentalAdhocUIEnabled && (
-              <Route path="/adhoc-comparison">
-                <AdhocComparison />
+              <Route path="/adhoc-comparison-diff">
+                <AdhocComparisonDiff />
               </Route>
             )}
           </Switch>
