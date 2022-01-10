@@ -83,9 +83,12 @@ func handleConn(_ http.ResponseWriter, r *http.Request) {
 			r.URL.Host = t.url.Host
 
 			resp, err := http.Post(r.URL.String(), r.Header.Get("Content-Type"), reader)
-			logrus.WithField("resp", resp).Debug("response")
 			if err != nil {
 				logrus.WithError(err).WithField("target", t).Error("failed to upload to target")
+			}
+			logrus.WithField("resp", resp).Debug("response")
+			if err := resp.Body.Close(); err != nil {
+				logrus.WithError(err).WithField("target", t).Error("failed to close response body")
 			}
 		}
 	}
