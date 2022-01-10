@@ -28,6 +28,10 @@ export default function FileUploader({ file, setFile, className }: Props) {
       reader.onload = () => {
         const binaryStr = reader.result;
 
+        if (typeof binaryStr === 'string') {
+          throw new Error('Expecting file in binary format but got a string');
+        }
+
         try {
           // ArrayBuffer -> JSON
           const s = JSON.parse(
@@ -85,7 +89,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
       </div>
       {file && (
         <aside>
-          Currently analyzing file {file.path}
+          Currently analyzing file {file.name}
           &nbsp;
           <Button icon={faTrash} onClick={onRemove}>
             Remove

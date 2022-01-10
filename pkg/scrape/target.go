@@ -140,7 +140,7 @@ func (t *Target) URL() *url.URL {
 }
 
 // report sets target data about the last scrape.
-func (t *Target) report(f func() error) {
+func (t *Target) report(f func() error) time.Time {
 	start := time.Now()
 	err := f()
 	dur := time.Since(start)
@@ -157,6 +157,7 @@ func (t *Target) report(f func() error) {
 	t.lastError = err
 	t.lastScrape = start
 	t.lastScrapeDuration = dur
+	return start
 }
 
 // LastError returns the error encountered during the last scrape.
