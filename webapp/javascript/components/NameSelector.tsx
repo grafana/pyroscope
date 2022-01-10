@@ -1,8 +1,8 @@
 // TODO reenable spreading lint
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useState } from 'react';
+import React, { useState, Fragment, ReactElement } from 'react';
 import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
+import { AnyAction, bindActionCreators } from 'redux';
 import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
 import { appNameToQuery, queryToAppName } from '@utils/query';
 import {
@@ -84,14 +84,13 @@ function NameSelector(props) {
             />
           )}
         </FocusableItem>
-
         {options}
       </Dropdown>
       <Button
         aria-label="Refresh Apps"
         icon={faSyncAlt}
         onClick={() => {
-          dispatch(reloadAppNames());
+          dispatch(reloadAppNames() as any);
         }}
       />
       <Loading {...appNamesState} />
