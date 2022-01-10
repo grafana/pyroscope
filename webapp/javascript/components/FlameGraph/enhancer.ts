@@ -4,17 +4,21 @@ import { selectUIState } from '@pyroscope/redux/reducers/views';
 
 import { setUIValue } from '@pyroscope/redux/actions';
 
-type IPersistedValueSetters<Type> = {
+type PersistedValueSetters<Type> = {
   [Property in keyof Type as `set${Capitalize<string & Property>}`]: (
     v
   ) => void;
 };
 
-export type IPersistedValue<T> = IPersistedValueSetters<T> & T;
+export type IPersistedValue<T> = PersistedValueSetters<T> & T;
 
-const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const withUpdateableUIValues = (valuesMap) =>
+type UIValue = string | object;
+
+const withUpdateableUIValues = (
+  valuesMap: { value: string; path: string; default: UIValue }[]
+) =>
   connect(
     (state: RootState) =>
       valuesMap.reduce(
@@ -28,14 +32,14 @@ const withUpdateableUIValues = (valuesMap) =>
       valuesMap.reduce(
         (s, i) => ({
           ...s,
-          [`set${capitalize(i.value)}`]: (value) =>
+          [`set${capitalize(i.value)}`]: (value: UIValue) =>
             dispatch(setUIValue(i.path, value)),
         }),
         {}
       )
   );
 
-export const withNamedUpdateableView = (name) =>
+export const withNamedUpdateableView = (name: string) =>
   withUpdateableUIValues([
     { value: `view`, path: `flamegraphView.${name}.view`, default: 'both' },
     {
