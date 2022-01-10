@@ -9,6 +9,8 @@ import rootReducer from './reducers';
 import history from '../util/history';
 
 import viewsReducer from './reducers/views';
+import newRootStore from './reducers/newRoot';
+
 import {
   setLeftFrom,
   setLeftUntil,
@@ -30,6 +32,7 @@ const enhancer = composeWithDevTools(
 
 const store = configureStore({
   reducer: {
+    newRoot: newRootStore,
     root: rootReducer,
     views: viewsReducer,
   },

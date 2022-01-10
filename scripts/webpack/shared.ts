@@ -51,6 +51,10 @@ export function getAlias() {
       __dirname,
       '../../webapp/javascript/redux'
     ),
+    '@pyroscope/services': path.resolve(
+      __dirname,
+      '../../webapp/javascript/services'
+    ),
   };
 }
 

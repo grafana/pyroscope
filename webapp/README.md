@@ -35,7 +35,7 @@ import Button from '@ui/Button';
 
 To be able to do that, you need to add the alias to the following files:
 * `.storybook/main.js`
-* `scripts/webpack/webpack.common.js`
+* `scripts/webpack/shared.ts`
 * `tsconfig.json`
 * `jest.config.js`
 
