@@ -5,7 +5,16 @@ import { composeWithDevTools } from 'redux-devtools-extension';
 import ReduxQuerySync from 'redux-query-sync';
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 
-import { persistStore, persistReducer } from 'redux-persist';
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+} from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import rootReducer from './reducers';
 import history from '../util/history';
@@ -24,8 +33,6 @@ import {
   setQuery,
 } from './actions';
 
-import { parseLabels, encodeLabels } from '../util/key'; // defaults to localStorage for web
-
 const persistConfig = {
   key: 'pyroscope',
   storage,
@@ -36,6 +43,9 @@ const enhancer = composeWithDevTools(
   // updateUrl(["from", "until", "labels"]),
   // persistState(["from", "until", "labels"]),
 );
+
+// Create persisted reducer which would
+// save the state to a storage on every state change
 const reducer = persistReducer(
   persistConfig,
   combineReducers({
@@ -44,13 +54,17 @@ const reducer = persistReducer(
     views: viewsReducer,
   })
 );
+
+// Create redux store
 const store = configureStore({
   reducer,
   // Ignore non-serialiable redux-persis actions
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['persist/PERSIST'],
+        // Based on this issue: https://github.com/rt2zz/redux-persist/issues/988
+        // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     }),
   // middleware: [thunkMiddleware],

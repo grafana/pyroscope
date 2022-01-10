@@ -20,4 +20,25 @@ describe('sidebar', () => {
       cy.location('pathname').should('eq', `${basePath}/`);
     });
   });
+
+  describe('persists', () => {
+    beforeEach(() => {
+      cy.viewport(1440, 900);
+    });
+    it('should have sidebar', () => {
+      cy.visit('/');
+
+      cy.get('.app').find('.pro-sidebar').should('not.have.class', 'collapsed');
+      cy.get('.app')
+        .find('.pro-sidebar')
+        .findByText('Collapse Sidebar')
+        .click();
+
+      cy.get('.app').find('.pro-sidebar').should('have.class', 'collapsed');
+
+      cy.reload();
+
+      cy.get('.app').find('.pro-sidebar').should('have.class', 'collapsed');
+    });
+  });
 });
