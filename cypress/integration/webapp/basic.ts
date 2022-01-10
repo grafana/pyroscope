@@ -2,6 +2,7 @@ import { BAR_HEIGHT } from '../../../webapp/javascript/components/FlameGraph/Fla
 
 // / <reference types="cypress" />
 describe('basic test', () => {
+  const ensureAttached = ($el) => Cypress.dom.isAttached($el);
   it('successfully loads', () => {
     cy.visit('/');
     cy.title().should('eq', 'Pyroscope');
@@ -68,7 +69,7 @@ describe('basic test', () => {
     }).as('render1');
 
     cy.visit('/');
-    cy.findByTestId('flamegraph-canvas');
+    cy.findByTestId('flamegraph-canvas').then(ensureAttached);
 
     cy.findByRole('combobox', { name: /view/ }).select('Table');
     cy.findByTestId('table-view').should('be.visible');
@@ -203,7 +204,11 @@ describe('basic test', () => {
       const findFlamegraph = (n: number) => {
         const query = `> :nth-child(${n})`;
 
-        return cy.findByTestId('comparison-container').find(query);
+        return cy
+          .findByTestId('comparison-container')
+          .find(query)
+          .findByTestId('flamegraph-view')
+          .click({ force: true });
       };
 
       cy.intercept('**/render*from=1633024300&until=1633024300*', {
@@ -224,9 +229,13 @@ describe('basic test', () => {
       cy.wait('@render-left');
 
       // flamegraph 1 (the left one)
+      findFlamegraph(1).findByTestId('flamegraph-tooltip').then(ensureAttached);
+
       findFlamegraph(1)
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
+
+      findFlamegraph(1).findByTestId('flamegraph-canvas').then(ensureAttached);
 
       findFlamegraph(1)
         .findByTestId('flamegraph-canvas')
