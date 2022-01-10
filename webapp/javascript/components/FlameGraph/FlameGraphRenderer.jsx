@@ -230,6 +230,12 @@ class FlameGraphRenderer extends React.Component {
     );
 
     const exportData = () => {
+      // ie nulls are okay
+      // the main idea is to disable exporing that for grafana plugins
+      if (this.props.exportData !== undefined) {
+        return this.props.exportData;
+      }
+
       if (!this.state.flamebearer) {
         return <ExportData />;
       }
