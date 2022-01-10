@@ -59,7 +59,13 @@ jobs:
         run: docker pull 'ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-X64'
       - name: pull ARM64 image
         run: docker pull 'ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-ARM64'
+      # see https://stackoverflow.com/questions/49976188/copy-docker-image-between-repositories for why we're copying these
+      - name: copy X64 image
+        run: docker tag 'ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-X64' 'pyroscope/pyroscope-dev:tmp-${{ github.sha }}-X64'
+      - name: copy ARM64 image
+        run: docker tag 'ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-ARM64' 'pyroscope/pyroscope-dev:tmp-${{ github.sha }}-ARM64'
+      # we have to create a manifest to make it work with different architectures
       - name: create manifest
-        run: docker manifest create 'pyroscope/pyroscope-dev:git-${{ github.sha }}' ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-X64 ghcr.io/${{ github.repository }}:tmp-${{ github.sha }}-ARM64
+        run: docker manifest create 'pyroscope/pyroscope-dev:git-${{ github.sha }}' pyroscope/pyroscope-dev:tmp-${{ github.sha }}-X64 pyroscope/pyroscope-dev:tmp-${{ github.sha }}-ARM64
       - name: push manifest
         run: docker manifest push 'pyroscope/pyroscope-dev:git-${{ github.sha }}'
