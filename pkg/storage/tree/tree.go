@@ -43,10 +43,7 @@ func newNode(label []byte) *treeNode {
 	}
 }
 
-var (
-	placeholderTreeNode = &treeNode{}
-	semicolon           = byte(';')
-)
+const semicolon = byte(';')
 
 type Tree struct {
 	sync.RWMutex
@@ -86,6 +83,52 @@ func (t *Tree) Merge(srcTrieI merge.Merger) {
 	}
 }
 
+func (t *Tree) Diff(x *Tree) *Tree {
+	srcNodes := make([]*treeNode, 1, 128)
+	srcNodes[0] = x.root
+
+	dstNodes := make([]*treeNode, 1, 128)
+	dstNodes[0] = t.root
+
+	for len(srcNodes) > 0 {
+		sn := srcNodes[0]
+		srcNodes = srcNodes[1:]
+
+		dn := dstNodes[0]
+		dstNodes = dstNodes[1:]
+
+		if sn.Total < dn.Total || sn.Self < dn.Self {
+			// src note can not be less than dst node: x always > t.
+			dn.Total = 0
+			dn.Self = 0
+			dn.ChildrenNodes = nil
+			continue
+		}
+
+		dn.Total = sn.Total - dn.Total
+		dn.Self = sn.Self - dn.Self
+
+		var d int
+		for _, sc := range sn.ChildrenNodes {
+			dc := dn.insert(sc.Name)
+			if sc.Total == dc.Total && sc.Self == dc.Self {
+				dn.removeAt(d)
+				continue
+			}
+			dstNodes = prependTreeNode(dstNodes, dc)
+			srcNodes = prependTreeNode(srcNodes, sc)
+			d++
+		}
+		// Reclaim removed nodes space.
+		for i := d; i < len(dn.ChildrenNodes); i++ {
+			dn.ChildrenNodes[i] = nil
+		}
+		dn.ChildrenNodes = dn.ChildrenNodes[:d]
+	}
+
+	return t
+}
+
 func prependTreeNode(s []*treeNode, x *treeNode) []*treeNode {
 	s = append(s, nil)
 	copy(s[1:], s)
@@ -115,7 +158,6 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 	i := sort.Search(len(n.ChildrenNodes), func(i int) bool {
 		return bytes.Compare(n.ChildrenNodes[i].Name, targetLabel) >= 0
 	})
-
 	if i > len(n.ChildrenNodes)-1 || !bytes.Equal(n.ChildrenNodes[i].Name, targetLabel) {
 		l := make([]byte, len(targetLabel))
 		copy(l, targetLabel)
@@ -125,6 +167,11 @@ func (n *treeNode) insert(targetLabel []byte) *treeNode {
 		n.ChildrenNodes[i] = child
 	}
 	return n.ChildrenNodes[i]
+}
+
+func (n *treeNode) removeAt(i int) {
+	n.ChildrenNodes[i] = nil
+	n.ChildrenNodes = append(n.ChildrenNodes[:i], n.ChildrenNodes[i+1:]...)
 }
 
 func (n *treeNode) insertString(targetLabel string) *treeNode {
@@ -163,20 +210,32 @@ func (n *treeNode) insertString(targetLabel string) *treeNode {
 func (t *Tree) InsertInt(key []byte, value int) { t.Insert(key, uint64(value)) }
 
 func (t *Tree) Insert(key []byte, value uint64) {
-	// TODO: can optimize this, split is not necessary?
-	labels := bytes.Split(key, []byte(";"))
 	node := t.root
-	for _, l := range labels {
-		buf := make([]byte, len(l))
-		copy(buf, l)
-		l = buf
-
-		n := node.insert(l)
-		node.Total += value
-		node = n
+	var offset int
+	for i, k := range key {
+		if k == semicolon {
+			node.Total += value
+			node = node.insert(key[offset:i])
+			offset = i + 1
+		}
 	}
-	node.Self += value
+	if offset < len(key) {
+		node.Total += value
+		node = node.insert(key[offset:])
+	}
 	node.Total += value
+	node.Self += value
+}
+
+func (t *Tree) InsertStack(stack [][]byte, v uint64) {
+	n := t.root
+	for j := range stack {
+		n.Total += v
+		n = n.insert(stack[j])
+	}
+	// Leaf.
+	n.Total += v
+	n.Self += v
 }
 
 func (t *Tree) InsertStackString(stack []string, v uint64) {

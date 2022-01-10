@@ -24,30 +24,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 )
-
-// NewManager is the Manager constructor
-func NewManager(logger logrus.FieldLogger, u upstream.Upstream, r prometheus.Registerer) *Manager {
-	c := make(map[string]*config.Config)
-	return &Manager{
-		upstream:      u,
-		logger:        logger,
-		scrapeConfigs: c,
-		scrapePools:   make(map[string]*scrapePool),
-		stop:          make(chan struct{}),
-		reloadC:       make(chan struct{}, 1),
-		metrics:       newMetrics(r),
-	}
-}
 
 // Manager maintains a set of scrape pools and manages start/stop cycles
 // when receiving new target groups from the discovery manager.
 type Manager struct {
 	logger   logrus.FieldLogger
-	upstream upstream.Upstream
+	ingester Ingester
 	stop     chan struct{}
 
 	*metrics
@@ -59,6 +45,24 @@ type Manager struct {
 	targetSets    map[string][]*targetgroup.Group
 
 	reloadC chan struct{}
+}
+
+type Ingester interface {
+	Enqueue(*storage.PutInput)
+}
+
+// NewManager is the Manager constructor
+func NewManager(logger logrus.FieldLogger, ingester Ingester, r prometheus.Registerer) *Manager {
+	c := make(map[string]*config.Config)
+	return &Manager{
+		ingester:      ingester,
+		logger:        logger,
+		scrapeConfigs: c,
+		scrapePools:   make(map[string]*scrapePool),
+		stop:          make(chan struct{}),
+		reloadC:       make(chan struct{}, 1),
+		metrics:       newMetrics(r),
+	}
 }
 
 // Run receives and saves target set updates and triggers the scraping loops reloading.
@@ -90,7 +94,7 @@ func (m *Manager) reload() {
 					Errorf("reloading target set")
 				continue
 			}
-			sp, err := newScrapePool(scrapeConfig, m.upstream, m.logger, m.metrics)
+			sp, err := newScrapePool(scrapeConfig, m.ingester, m.logger, m.metrics)
 			if err != nil {
 				m.logger.WithError(err).
 					WithField("scrape_pool", setName).
