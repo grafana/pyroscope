@@ -20,8 +20,8 @@ jobs:
           version: '1.29.2'
       - name: Install Yarn
         run: npm install -g yarn
-      - name: Run headless test
-        uses: GabrielBB/xvfb-action@v1
+      - name: Install cypress deps
+        run: apt-get install libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.17.0'
