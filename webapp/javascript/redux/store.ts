@@ -39,10 +39,6 @@ const store = configureStore({
   // middleware: [thunkMiddleware],
 });
 
-const defaultName = (window as any).initialState.appNames.find(
-  (x) => x !== 'pyroscope.server.cpu'
-);
-
 ReduxQuerySync({
   store, // your Redux store
   params: {
@@ -77,7 +73,7 @@ ReduxQuerySync({
       action: setRightUntil,
     },
     query: {
-      defaultValue: `${defaultName || 'pyroscope.server.cpu'}{}`,
+      defaultvalue: '',
       selector: (state) => state.root.query,
       action: setQuery,
     },
