@@ -1,5 +1,23 @@
 import { createSlice, createSelector } from '@reduxjs/toolkit';
+import { createMigrate } from 'redux-persist';
+import storage from 'redux-persist/lib/storage';
+import { PersistedState } from 'redux-persist/lib/types';
 import type { RootState } from '../store';
+
+// Persistence Migrations
+// See examples on https://github.com/rt2zz/redux-persist/blob/master/docs/migrations.md
+export const migrations = {
+  0: (state: PersistedState) => {
+    return { ...state };
+  },
+};
+
+export const persistConfig = {
+  key: 'pyroscope:ui',
+  version: 0,
+  storage,
+  migrate: createMigrate(migrations, { debug: true }),
+};
 
 type SidebarState =
   // pristine means user hasn't interacted with it yet

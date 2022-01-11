@@ -7,6 +7,7 @@ import {
   PERSIST,
   PURGE,
   REGISTER,
+  createMigrate,
 } from 'redux-persist';
 import thunkMiddleware from 'redux-thunk';
 import { createStore, applyMiddleware } from 'redux';
@@ -21,7 +22,7 @@ import history from '../util/history';
 
 import viewsReducer from './reducers/views';
 import newRootStore from './reducers/newRoot';
-import uiStore from './reducers/ui';
+import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 import {
   setLeftFrom,
@@ -42,16 +43,11 @@ const enhancer = composeWithDevTools(
   // persistState(["from", "until", "labels"]),
 );
 
-const persistConfig = {
-  key: 'pyroscope',
-  storage,
-};
-
 const reducer = combineReducers({
   newRoot: newRootStore,
   root: rootReducer,
   views: viewsReducer,
-  ui: persistReducer(persistConfig, uiStore),
+  ui: persistReducer(uiPersistConfig, uiStore),
 });
 
 const store = configureStore({
