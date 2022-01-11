@@ -33,9 +33,10 @@ type Adhoc struct {
 	MaxNodesSerialization int           `def:"2048" desc:"max number of nodes used when saving profiles to disk" mapstructure:"max-nodes-serialization"`
 	Duration              time.Duration `def:"0" desc:"duration of the profiling session, which is the whole execution of the profield process by default" mapstructure:"duration"`
 
-	// JSON output configuration
+	// Output configuration
 	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
 	OutputFormat   string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
+	DataPath       string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"data-path"`
 
 	// Spy configuration
 	ApplicationName    string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
@@ -137,6 +138,7 @@ type Server struct {
 	AdminSocketPath           string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
 	EnableExperimentalAdmin   bool   `def:"true" deprecated:"true" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 	EnableExperimentalAdhocUI bool   `def:"false" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
+	AdhocDataPath             string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"adhoc-data-path"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 

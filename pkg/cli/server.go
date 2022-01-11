@@ -149,6 +149,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		Notifier:        svc.healthController,
 		Adhoc: adhocserver.New(
 			svc.logger,
+			svc.config.AdhocDataPath,
 			svc.config.MaxNodesRender,
 			svc.config.EnableExperimentalAdhocUI,
 		),
