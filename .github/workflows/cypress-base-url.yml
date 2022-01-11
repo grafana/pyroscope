@@ -8,7 +8,7 @@ on:
 
 jobs:
   cypress-base-url-tests:
-    runs-on: [self-hosted, linux, ARM64]
+    runs-on: [self-hosted, linux, X64]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
