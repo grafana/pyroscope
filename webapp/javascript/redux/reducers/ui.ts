@@ -12,7 +12,7 @@ type SidebarState =
   | { state: 'userInteracted'; collapsed: true }
   | { state: 'userInteracted'; collapsed: false };
 
-interface UiState {
+export interface UiState {
   sidebar: SidebarState;
 }
 
