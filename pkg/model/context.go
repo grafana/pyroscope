@@ -21,18 +21,18 @@ func UserFromContext(ctx context.Context) (User, bool) {
 func MustUserFromContext(ctx context.Context) User {
 	u, ok := UserFromContext(ctx)
 	if !ok {
-		panic("user not found in context")
+		panic("user not found in the context")
 	}
 	return u
 }
 
-func WithAPIKey(ctx context.Context, key APIKey) context.Context {
+func WithTokenAPIKey(ctx context.Context, key TokenAPIKey) context.Context {
 	return context.WithValue(ctx, ctxAPIKeyKey, key)
 }
 
-func APIKeyFromContext(ctx context.Context) (APIKey, bool) {
-	if key, ok := ctx.Value(ctxAPIKeyKey).(APIKey); ok {
+func APIKeyFromContext(ctx context.Context) (TokenAPIKey, bool) {
+	if key, ok := ctx.Value(ctxAPIKeyKey).(TokenAPIKey); ok {
 		return key, true
 	}
-	return APIKey{}, false
+	return TokenAPIKey{}, false
 }
