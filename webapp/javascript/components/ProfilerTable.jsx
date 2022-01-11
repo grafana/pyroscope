@@ -13,6 +13,7 @@ import {
 } from './FlameGraph/FlameGraphComponent/color';
 import { createFF } from '../util/flamebearer';
 import { fitIntoTableCell } from '../util/fitMode';
+import styles from './ProfilerTable.module.scss';
 
 const zero = (v) => v || 0;
 
@@ -120,6 +121,7 @@ export default function ProfilerTable({
   viewDiff,
   fitMode,
   handleTableItemClick,
+  highlightQuery,
 }) {
   return (
     <Table
@@ -129,6 +131,7 @@ export default function ProfilerTable({
       sortByDirection={sortByDirection}
       viewDiff={viewDiff}
       fitMode={fitMode}
+      highlightQuery={highlightQuery}
       handleTableItemClick={handleTableItemClick}
     />
   );
@@ -164,6 +167,7 @@ function Table({
   viewDiff,
   fitMode,
   handleTableItemClick,
+  highlightQuery,
 }) {
   if (!flamebearer || flamebearer.numTicks === 0) {
     return [];
@@ -171,7 +175,10 @@ function Table({
   const tableFormat = !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
 
   return (
-    <table className="flamegraph-table" data-testid="table-view">
+    <table
+      className={`flamegraph-table ${styles.table}`}
+      data-testid="table-view"
+    >
       <thead>
         <tr>
           {tableFormat.map((v, idx) =>
@@ -204,6 +211,7 @@ function Table({
           viewDiff={viewDiff}
           fitMode={fitMode}
           handleTableItemClick={handleTableItemClick}
+          highlightQuery={highlightQuery}
         />
       </tbody>
     </table>
@@ -218,6 +226,7 @@ const TableBody = React.memo(
     viewDiff,
     fitMode,
     handleTableItemClick,
+    highlightQuery,
   }) => {
     const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
@@ -238,8 +247,12 @@ const TableBody = React.memo(
 
     const formatter = getFormatter(numTicks, sampleRate, units);
 
+    const isRowSelected = (name) => {
+      return name === highlightQuery;
+    };
+
     const nameCell = (x, style) => (
-      <td>
+      <td className={`${isRowSelected(x.name) && styles.rowSelected}`}>
         <button
           className="table-item-button"
           onClick={() => handleTableItemClick(x)}

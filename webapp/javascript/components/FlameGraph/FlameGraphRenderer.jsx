@@ -126,8 +126,14 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
+  // if clicking on the same item, undo the search
   onTableItemClick = (tableItem) => {
-    this.handleSearchChange(tableItem.name);
+    let { name } = tableItem;
+
+    if (tableItem.name === this.state.highlightQuery) {
+      name = '';
+    }
+    this.handleSearchChange(name);
   };
 
   updateSortBy = (newSortBy) => {
@@ -221,6 +227,7 @@ class FlameGraphRenderer extends React.Component {
           viewDiff={this.state.viewDiff}
           fitMode={this.state.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
+          highlightQuery={this.state.highlightQuery}
           handleTableItemClick={this.onTableItemClick}
         />
       </div>
