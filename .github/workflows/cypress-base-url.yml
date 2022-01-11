@@ -21,7 +21,7 @@ jobs:
       - name: Install Yarn
         run: npm install -g yarn
       - name: Install cypress deps
-        run: sudo apt-get install libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb
+        run: sudo apt-get update && sudo apt-get install libgtk2.0-0 libgtk-3-0 libgbm-dev libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.17.0'
