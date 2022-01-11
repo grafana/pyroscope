@@ -71,16 +71,23 @@ func (s *server) Profiles(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	profiles := make(map[string]profile, 0)
-	err = filepath.Walk(dataDir, func(path string, info fs.FileInfo, err error) error {
+	err := filepath.WalkDir(s.dataDir, func(path string, e fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.Mode().IsRegular() {
-			id := fmt.Sprintf("%x", sha256.Sum256([]byte(info.Name())))
+		if e.IsDir() && path != s.dataDir {
+			return fs.SkipDir
+		}
+		if e.Type().IsRegular() {
+			id := fmt.Sprintf("%x", sha256.Sum256([]byte(e.Name())))
 			if p, ok := profiles[id]; ok {
-				return fmt.Errorf("A hash collision detected between %s and %s, please report it", info.Name(), p.Name)
+				return fmt.Errorf("a hash collision detected between %s and %s, please report it", e.Name(), p.Name)
 			}
-			profiles[id] = profile{ID: id, Name: info.Name(), UpdatedAt: info.ModTime()}
+			info, err := e.Info()
+			if err != nil {
+				return fmt.Errorf("unable to retrieve entry information: %w", err)
+			}
+			profiles[id] = profile{ID: id, Name: e.Name(), UpdatedAt: info.ModTime()}
 		}
 		return nil
 	})
