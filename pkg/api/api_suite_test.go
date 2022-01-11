@@ -17,8 +17,7 @@ func TestAPI(t *testing.T) {
 }
 
 // withRequest returns a function than performs an HTTP request
-// with the body specified, and validates response code and
-// the response body.
+// with the body specified, and validates the response code and body.
 //
 // Request and response body ("in" and "out", correspondingly) are
 // specified as a file name relative to the "testdata" directory.
@@ -39,6 +38,8 @@ func withRequest(method, url string) func(code int, in, out string) {
 			Expect(readBody(response).String()).To(BeEmpty())
 			return
 		}
+		// It may also make sense to accept the response as a template
+		// and render non-deterministic values.
 		Expect(readBody(response)).To(MatchJSON(readFile(out)))
 	}
 }

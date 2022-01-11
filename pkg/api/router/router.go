@@ -11,6 +11,7 @@ import (
 
 type Services struct {
 	api.UserService
+	api.APIKeyService
 }
 
 type route struct {
@@ -22,6 +23,7 @@ type route struct {
 func New(s *Services) *mux.Router {
 	r := mux.NewRouter().PathPrefix("/api").Subrouter()
 	registerUserHandlers(r, s)
+	registerAPIKeyHandlers(r, s)
 	return r
 }
 
@@ -69,5 +71,20 @@ func registerUserHandlers(r *mux.Router, s *Services) {
 		{"", http.MethodGet, h.GetAuthenticatedUser},
 		{"", http.MethodPatch, h.UpdateAuthenticatedUser},
 		{"/password", http.MethodPut, h.ChangeAuthenticatedUserPassword},
+	})
+}
+
+func registerAPIKeyHandlers(r *mux.Router, s *Services) {
+	h := api.NewAPIKeyHandler(s.APIKeyService)
+
+	// TODO(kolesnikovae): authz.Require(authz.AdminRole)
+	register(authz.AllowAny, r.PathPrefix("/keys").Subrouter(), []route{
+		{"", http.MethodPost, h.CreateAPIKey},
+		{"", http.MethodGet, h.ListAPIKeys},
+	})
+
+	// TODO(kolesnikovae): authz.Require(authz.AdminRole)
+	register(authz.AllowAny, r.PathPrefix("/keys/{id:[0-9]+}").Subrouter(), []route{
+		{"", http.MethodDelete, h.DeleteAPIKey},
 	})
 }

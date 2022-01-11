@@ -1,0 +1,7 @@
+{
+  "id": 1,
+  "name": "some-api-key",
+  "role": "Viewer",
+  "key": "jwt-token-string",
+  "createdAt": "2021-12-10T04:14:00Z"
+}
