@@ -1,9 +1,20 @@
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+} from 'redux-persist';
 import thunkMiddleware from 'redux-thunk';
 import { createStore, applyMiddleware } from 'redux';
 import { composeWithDevTools } from 'redux-devtools-extension';
 
 import ReduxQuerySync from 'redux-query-sync';
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import storage from 'redux-persist/lib/storage';
 
 import rootReducer from './reducers';
 import history from '../util/history';
@@ -30,18 +41,37 @@ const enhancer = composeWithDevTools(
   // persistState(["from", "until", "labels"]),
 );
 
-const store = configureStore({
-  reducer: {
+const persistConfig = {
+  key: 'pyroscope',
+  storage,
+};
+
+const reducer = persistReducer(
+  persistConfig,
+  combineReducers({
     newRoot: newRootStore,
     root: rootReducer,
     views: viewsReducer,
-  },
-  // middleware: [thunkMiddleware],
+  })
+);
+
+const store = configureStore({
+  reducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        // Based on this issue: https://github.com/rt2zz/redux-persist/issues/988
+        // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+      },
+    }),
 });
 
 const defaultName = (window as any).initialState.appNames.find(
   (x) => x !== 'pyroscope.server.cpu'
 );
+
+export const persistor = persistStore(store);
 
 ReduxQuerySync({
   store, // your Redux store
