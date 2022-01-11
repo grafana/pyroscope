@@ -31,10 +31,6 @@ import { useWindowWidth } from '@react-hook/window-size';
 import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
 
-export interface SidebarProps {
-  initialCollapsed?: boolean;
-}
-
 // TODO: find a better way of doing this?
 function signOut() {
   const form = document.createElement('form');
@@ -47,14 +43,11 @@ function signOut() {
   form.submit();
 }
 
-export default function Sidebar2(props: SidebarProps) {
+export default function Sidebar2() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
   const dispatch = useAppDispatch();
 
-  const { initialCollapsed } = props;
-
   const { search, pathname } = useLocation();
-  //  const [collapsed, setCollapsed] = useState(initialCollapsed);
   const windowWidth = useWindowWidth();
 
   // the component doesn't seem to support setting up an active item
@@ -68,11 +61,6 @@ export default function Sidebar2(props: SidebarProps) {
     dispatch(recalculateSidebar());
   }, [windowWidth]);
 
-  //  useEffect(() => {
-  //    const c = windowWidth < 1200;
-  //    setCollapsed(c);
-  //  }, [windowWidth]);
-  //
   // TODO
   // simplify this
   const isContinuousActive =

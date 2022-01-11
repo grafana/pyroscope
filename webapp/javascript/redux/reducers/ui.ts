@@ -43,11 +43,6 @@ const selectUiState = (state: RootState) => state.ui;
 
 export const selectSidebarCollapsed = createSelector(selectUiState, (state) => {
   return state.sidebar.collapsed;
-  // we are trusting the fact this action will probably only be called once
-  //  if (state.sidebar.state === 'pristine') {
-  //    return window.innerWidth < 1200;
-  //  }
-  //  return state.sidebar.collapsed;
 });
 
 export const { collapseSidebar, uncollapseSidebar, recalculateSidebar } =
