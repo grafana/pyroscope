@@ -20,10 +20,6 @@ function TagsBar({ query, actions, tags, tagValuesLoading }) {
   const [filter, setFilter] = useState({});
 
   useEffect(() => {
-    setQuery(query);
-  }, [query]);
-
-  useEffect(() => {
     actions.fetchTags(query);
 
     return actions.abortFetchTags;

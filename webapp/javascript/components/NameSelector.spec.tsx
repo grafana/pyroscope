@@ -50,4 +50,9 @@ describe('NameSelector', () => {
       .click();
     screen.getByRole('menuitem', { name: 'myapp' });
   });
+
+  //  it('sets the first available app as the default', () => {
+  //    (appNames as any).fetchAppNames.mockResolvedValueOnce(Result.ok(['myapp']));
+  //    render(<NameSelector />);
+  //  })
 });

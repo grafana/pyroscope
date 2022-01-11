@@ -1,6 +1,6 @@
 // TODO reenable spreading lint
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
@@ -14,7 +14,6 @@ import LoadingSpinner from '@ui/LoadingSpinner';
 import Button from '@ui/Button';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import Dropdown, { MenuItem, FocusableItem } from '@ui/Dropdown';
-import { Maybe } from '@utils/fp';
 import { setQuery } from '../redux/actions';
 import styles from './NameSelector.module.scss';
 
@@ -25,7 +24,7 @@ function NameSelector(props) {
   const appNamesState = useAppSelector(selectAppNamesState);
   const appNames = useAppSelector(selectAppNames);
 
-  const [filter, setFilter] = useState<Maybe<string>>(Maybe.nothing());
+  const [filter, setFilter] = useState('');
 
   const selectAppName = (name: string) => {
     const query = appNameToQuery(name);
@@ -33,6 +32,18 @@ function NameSelector(props) {
   };
 
   const dispatch = useAppDispatch();
+
+  // if there's no query set
+  // set the first app as the default (if exists)
+  useEffect(() => {
+    if (!query) {
+      const first = appNames[0];
+      if (first) {
+        const query = appNameToQuery(first);
+        actions.setQuery(query);
+      }
+    }
+  }, [query]);
 
   const selectedValue = queryToAppName(query).mapOr('', (q) => {
     if (appNames.indexOf(q) !== -1) {
@@ -42,7 +53,7 @@ function NameSelector(props) {
   });
 
   const filterOptions = (n: string) => {
-    const f = filter.mapOr('', (v) => v.trim().toLowerCase());
+    const f = filter.trim().toLowerCase();
     return n.toLowerCase().includes(f);
   };
 
@@ -79,8 +90,8 @@ function NameSelector(props) {
               ref={ref}
               type="text"
               placeholder="Type an app"
-              value={filter.mapOr('', (v) => v)}
-              onChange={(e) => setFilter(Maybe.just(e.target.value))}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
             />
           )}
         </FocusableItem>

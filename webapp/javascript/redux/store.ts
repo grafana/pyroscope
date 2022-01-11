@@ -62,10 +62,6 @@ const store = configureStore({
     }),
 });
 
-const defaultName = (window as any).initialState.appNames.find(
-  (x) => x !== 'pyroscope.server.cpu'
-);
-
 export const persistor = persistStore(store);
 
 ReduxQuerySync({
@@ -102,7 +98,7 @@ ReduxQuerySync({
       action: setRightUntil,
     },
     query: {
-      defaultValue: `${defaultName || 'pyroscope.server.cpu'}{}`,
+      defaultvalue: '',
       selector: (state) => state.root.query,
       action: setQuery,
     },
