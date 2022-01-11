@@ -40,6 +40,7 @@ func (w writer) write(t0, t1 time.Time) error {
 		return fmt.Errorf("could not create data directory: %w", err)
 	}
 
+	profiles := 0
 	for _, name := range w.storage.GetAppNames() {
 		skey, err := segment.ParseKey(name)
 		if err != nil {
@@ -99,9 +100,15 @@ func (w writer) write(t0, t1 time.Time) error {
 			}
 		}
 		w.logger.Infof("profiling data has been saved to %s", path)
+		profiles++
 		if err := f.Close(); err != nil {
 			w.logger.WithError(err).Error("closing output file")
 		}
+	}
+	if profiles == 0 {
+		w.logger.Warning("no profiling data was saved, maybe the profiled process didn't run long enough?")
+	} else {
+		w.logger.Info("you can now run `pyroscope server` and see the profiling data at http://localhost:4040/adhoc-single")
 	}
 	return nil
 }
