@@ -21,6 +21,7 @@ import history from '../util/history';
 
 import viewsReducer from './reducers/views';
 import newRootStore from './reducers/newRoot';
+import uiStore from './reducers/ui';
 
 import {
   setLeftFrom,
@@ -46,14 +47,12 @@ const persistConfig = {
   storage,
 };
 
-const reducer = persistReducer(
-  persistConfig,
-  combineReducers({
-    newRoot: newRootStore,
-    root: rootReducer,
-    views: viewsReducer,
-  })
-);
+const reducer = combineReducers({
+  newRoot: newRootStore,
+  root: rootReducer,
+  views: viewsReducer,
+  ui: persistReducer(persistConfig, uiStore),
+});
 
 const store = configureStore({
   reducer,

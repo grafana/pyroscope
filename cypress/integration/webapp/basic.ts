@@ -174,6 +174,10 @@ describe('basic test', () => {
   });
 
   describe('tooltip', () => {
+    // on smaller screens component will be collapsed by default
+    beforeEach(() => {
+      cy.viewport(1440, 900);
+    });
     it('works in single view', () => {
       cy.intercept('**/render*', {
         fixture: 'simple-golang-app-cpu.json',

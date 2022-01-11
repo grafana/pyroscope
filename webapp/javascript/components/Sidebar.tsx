@@ -17,6 +17,13 @@ import Sidebar, {
   SubMenu,
   Menu,
 } from '@ui/Sidebar';
+import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
+import {
+  selectSidebarCollapsed,
+  collapseSidebar,
+  uncollapseSidebar,
+  recalculateSidebar,
+} from '@pyroscope/redux/reducers/ui';
 import { useLocation, NavLink } from 'react-router-dom';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Icon from '@ui/Icon';
@@ -41,10 +48,13 @@ function signOut() {
 }
 
 export default function Sidebar2(props: SidebarProps) {
+  const collapsed = useAppSelector(selectSidebarCollapsed);
+  const dispatch = useAppDispatch();
+
   const { initialCollapsed } = props;
 
   const { search, pathname } = useLocation();
-  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  //  const [collapsed, setCollapsed] = useState(initialCollapsed);
   const windowWidth = useWindowWidth();
 
   // the component doesn't seem to support setting up an active item
@@ -54,11 +64,15 @@ export default function Sidebar2(props: SidebarProps) {
     return pathname === route;
   };
 
-  useEffect(() => {
-    const c = windowWidth < 1200;
-    setCollapsed(c);
+  React.useLayoutEffect(() => {
+    dispatch(recalculateSidebar());
   }, [windowWidth]);
 
+  //  useEffect(() => {
+  //    const c = windowWidth < 1200;
+  //    setCollapsed(c);
+  //  }, [windowWidth]);
+  //
   // TODO
   // simplify this
   const isContinuousActive =
@@ -110,7 +124,10 @@ export default function Sidebar2(props: SidebarProps) {
     </SubMenu>
   );
 
-  const toggleCollapse = () => setCollapsed(!collapsed);
+  const toggleCollapse = () => {
+    const action = collapsed ? uncollapseSidebar : collapseSidebar;
+    dispatch(action());
+  };
 
   return (
     <Sidebar collapsed={collapsed}>
