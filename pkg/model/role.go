@@ -14,15 +14,15 @@ type Role int
 
 const (
 	InvalidRole Role = iota
-	ViewerRole
-	EditorRole
+	ReadOnlyRole
+	AgentRole
 	AdminRole
 )
 
 var roles = map[Role]string{
-	AdminRole:  "Admin",
-	EditorRole: "Editor",
-	ViewerRole: "Viewer",
+	AdminRole:    "Admin",
+	AgentRole:    "Agent",
+	ReadOnlyRole: "ReadOnly",
 }
 
 func (r Role) String() string {

@@ -61,7 +61,7 @@ var _ = Describe("User validation", func() {
 					FullName: model.String("John Doe"),
 					Email:    "john@example.com",
 					Password: "qwerty",
-					Role:     model.ViewerRole,
+					Role:     model.ReadOnlyRole,
 				},
 			}),
 
@@ -124,7 +124,7 @@ var _ = Describe("User validation", func() {
 					FullName: model.String("John Doe"),
 					Password: model.String("qwerty")}.
 					SetIsDisabled(false).
-					SetRole(model.ViewerRole),
+					SetRole(model.ReadOnlyRole),
 			}),
 
 			Entry("name is too long", updateUserParamsCase{

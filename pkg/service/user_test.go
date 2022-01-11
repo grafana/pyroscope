@@ -201,7 +201,7 @@ var _ = Describe("UserService", func() {
 					Email:    model.String("john.doe@example.com"),
 					FullName: model.String("John Doe"),
 					Password: model.String("qwerty")}.
-					SetRole(model.ViewerRole).
+					SetRole(model.ReadOnlyRole).
 					SetIsDisabled(true)
 			})
 
@@ -360,7 +360,7 @@ func testCreateUserParams() []model.CreateUserParams {
 			Email:    "john@example.com",
 			FullName: model.String("John Doe"),
 			Password: "qwerty",
-			Role:     model.ViewerRole,
+			Role:     model.ReadOnlyRole,
 		},
 		{
 			Name:     "admin",

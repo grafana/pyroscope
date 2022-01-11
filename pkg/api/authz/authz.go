@@ -25,8 +25,10 @@ func Require(funcs ...func(r *http.Request) bool) func(next http.HandlerFunc) ht
 	}
 }
 
-func AdminRole(r *http.Request) bool {
-	return model.MustUserFromContext(r.Context()).Role == model.AdminRole
+func Role(role model.Role) func(r *http.Request) bool {
+	return func(r *http.Request) bool {
+		return model.MustUserFromContext(r.Context()).Role == role
+	}
 }
 
 // AuthenticatedUser authorizes any authenticated user.

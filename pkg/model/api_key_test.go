@@ -28,7 +28,7 @@ var _ = Describe("API key validation", func() {
 		Entry("valid params", testCase{
 			params: model.CreateAPIKeyParams{
 				Name: "johndoe",
-				Role: model.ViewerRole,
+				Role: model.ReadOnlyRole,
 			},
 		}),
 

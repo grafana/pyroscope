@@ -3,5 +3,5 @@
   "email": "john@example.com",
   "fullName": "John Doe",
   "password": "cXdlcnR5",
-  "role": "viewer"
+  "role": "ReadOnly"
 }

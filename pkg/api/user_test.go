@@ -61,7 +61,7 @@ var _ = Describe("UserHandler", func() {
 				Email:    "john@example.com",
 				FullName: model.String("John Doe"),
 				Password: "qwerty",
-				Role:     model.ViewerRole,
+				Role:     model.ReadOnlyRole,
 			}
 
 			now := time.Date(2021, 12, 10, 4, 14, 0, 0, time.UTC)

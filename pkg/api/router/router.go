@@ -46,13 +46,11 @@ func chain(f http.HandlerFunc, middleware ...middleware) http.HandlerFunc {
 func registerUserHandlers(r *mux.Router, s *Services) {
 	h := api.NewUserHandler(s.UserService)
 
-	// TODO(kolesnikovae): authz.Require(authz.AdminRole)
 	register(authz.AllowAny, r.PathPrefix("/users").Subrouter(), []route{
 		{"", http.MethodPost, h.CreateUser},
 		{"", http.MethodGet, h.ListUsers},
 	})
 
-	// TODO(kolesnikovae): authz.Require(authz.AdminRole)
 	register(authz.AllowAny, r.PathPrefix("/users/{id:[0-9]+}").Subrouter(), []route{
 		{"", http.MethodGet, h.GetUser},
 		{"", http.MethodPatch, h.UpdateUser},
@@ -61,9 +59,6 @@ func registerUserHandlers(r *mux.Router, s *Services) {
 		{"/disable", http.MethodPut, h.DisableUser},
 		{"/enable", http.MethodPut, h.EnableUser},
 		{"/role", http.MethodPut, h.ChangeUserRole},
-		// TODO(kolesnikovae):
-		//   Some operations must not be allowed if user id == current user
-		//   in order to prevent self-locking scenarios.
 	})
 
 	// Endpoints available to all authenticated users.
@@ -77,13 +72,11 @@ func registerUserHandlers(r *mux.Router, s *Services) {
 func registerAPIKeyHandlers(r *mux.Router, s *Services) {
 	h := api.NewAPIKeyHandler(s.APIKeyService)
 
-	// TODO(kolesnikovae): authz.Require(authz.AdminRole)
 	register(authz.AllowAny, r.PathPrefix("/keys").Subrouter(), []route{
 		{"", http.MethodPost, h.CreateAPIKey},
 		{"", http.MethodGet, h.ListAPIKeys},
 	})
 
-	// TODO(kolesnikovae): authz.Require(authz.AdminRole)
 	register(authz.AllowAny, r.PathPrefix("/keys/{id:[0-9]+}").Subrouter(), []route{
 		{"", http.MethodDelete, h.DeleteAPIKey},
 	})

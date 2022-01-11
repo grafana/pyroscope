@@ -3,7 +3,7 @@
   "name": "johndoe",
   "email": "john@example.com",
   "fullName": "John Doe",
-  "role": "Viewer",
+  "role": "ReadOnly",
   "isDisabled": false,
   "createdAt": "2021-12-10T04:14:00Z",
   "updatedAt": "2021-12-10T04:14:00Z",

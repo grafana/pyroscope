@@ -31,8 +31,8 @@ var _ = Describe("Role validation", func() {
 		validateRole,
 		Entry("Invalid", testCase{model.InvalidRole, false}),
 		Entry("Admin", testCase{model.AdminRole, true}),
-		Entry("Editor", testCase{model.EditorRole, true}),
-		Entry("Viewer", testCase{model.ViewerRole, true}),
+		Entry("Agent", testCase{model.AgentRole, true}),
+		Entry("ReadOnly", testCase{model.ReadOnlyRole, true}),
 	)
 })
 

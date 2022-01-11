@@ -66,7 +66,7 @@ var _ = Describe("APIKeyHandler", func() {
 			expectedJWTToken = "jwt-token-string"
 			expectedParams = model.CreateAPIKeyParams{
 				Name:      "some-api-key",
-				Role:      model.ViewerRole,
+				Role:      model.ReadOnlyRole,
 				ExpiresAt: &expiresAt,
 			}
 
