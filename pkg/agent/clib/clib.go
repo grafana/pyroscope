@@ -69,6 +69,7 @@ func Start(applicationName *C.char, spyName *C.char, serverAddress *C.char, auth
 		logger.Errorf("error happened when starting profiling session: %v", err)
 		return -1
 	}
+	u.Start()
 	if err = session.Start(); err != nil {
 		logger.Errorf("error happened when starting profiling session: %v", err)
 		return -1

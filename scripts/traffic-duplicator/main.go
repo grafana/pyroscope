@@ -6,7 +6,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os/exec"
@@ -64,7 +63,7 @@ func startProxy() {
 }
 
 func handleConn(_ http.ResponseWriter, r *http.Request) {
-	b, err := ioutil.ReadAll(r.Body)
+	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		logrus.WithError(err).Error("failed to read body")
 	}
@@ -84,9 +83,13 @@ func handleConn(_ http.ResponseWriter, r *http.Request) {
 			r.URL.Host = t.url.Host
 
 			resp, err := http.Post(r.URL.String(), r.Header.Get("Content-Type"), reader)
-			logrus.WithField("resp", resp).Debug("response")
 			if err != nil {
 				logrus.WithError(err).WithField("target", t).Error("failed to upload to target")
+				continue
+			}
+			logrus.WithField("resp", resp).Debug("response")
+			if err := resp.Body.Close(); err != nil {
+				logrus.WithError(err).WithField("target", t).Error("failed to close response body")
 			}
 		}
 	}

@@ -3,16 +3,33 @@
     "baseUrl": ".",
     "jsx": "react",
     "lib": ["dom", "esnext", "ES2015.Iterable"],
-    "module": "esnext",
+    "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
     "paths": {
       "@utils/*": ["./webapp/javascript/util/*"],
       "@models/*": ["./webapp/javascript/models/*"],
-      "@ui/*": ["./webapp/javascript/ui/*"]
+      "@ui/*": ["./webapp/javascript/ui/*"],
+      "@pyroscope/redux/*": ["./webapp/javascript/redux/*"],
+      "@pyroscope/services/*": ["./webapp/javascript/services/*"]
     },
+    "types": ["node"],
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
   },
-  "exclude": ["node_modules"]
+  // ts-node is currently only used by webpack
+  "ts-node": {
+    "compilerOptions": {
+      "module": "CommonJS"
+    }
+  },
+  "include": ["./webapp/javascript/"],
+  "exclude": [
+    "webapp/javascript/**/*.spec.ts",
+    "webapp/javascript/**/*.spec.tsx",
+    "**/node_modules",
+    "**/.*/"
+  ]
 }

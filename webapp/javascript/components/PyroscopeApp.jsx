@@ -3,6 +3,7 @@ import { connect } from 'react-redux';
 import 'react-dom';
 
 import { bindActionCreators } from 'redux';
+import Box from '@ui/Box';
 import FlameGraphRenderer from './FlameGraph';
 import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
@@ -10,17 +11,17 @@ import Footer from './Footer';
 import { buildRenderURL } from '../util/updateRequests';
 import {
   fetchNames,
-  fetchPyrescopeAppData,
+  fetchPyroscopeAppData,
   abortTimelineRequest,
 } from '../redux/actions';
 
 function PyroscopeApp(props) {
-  const { actions, renderURL, single } = props;
+  const { actions, renderURL, single, raw } = props;
   const prevPropsRef = useRef();
 
   useEffect(() => {
     if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchPyrescopeAppData(renderURL);
+      actions.fetchPyroscopeAppData(renderURL);
     }
 
     return actions.abortTimelineRequest;
@@ -30,11 +31,19 @@ function PyroscopeApp(props) {
     <div className="pyroscope-app">
       <div className="main-wrapper">
         <Header />
-        <TimelineChartWrapper id="timeline-chart-single" viewSide="none" />
-        <FlameGraphRenderer
-          flamebearer={single?.flamebearer}
-          viewType="single"
+        <TimelineChartWrapper
+          data-testid="timeline-single"
+          id="timeline-chart-single"
+          viewSide="none"
         />
+        <Box>
+          <FlameGraphRenderer
+            flamebearer={single?.flamebearer}
+            viewType="single"
+            display="both"
+            rawFlamegraph={raw}
+          />
+        </Box>
       </div>
       <Footer />
     </div>
@@ -49,7 +58,7 @@ const mapStateToProps = (state) => ({
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators(
     {
-      fetchPyrescopeAppData,
+      fetchPyroscopeAppData,
       fetchNames,
       abortTimelineRequest,
     },

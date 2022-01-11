@@ -1,0 +1,23 @@
+# dev version exposes ports
+version: '3.9'
+services:
+  pyrobench:
+    ports:
+      - 4042:4042
+  pyroscope:
+    ports:
+      - 4040:4040
+  pyroscope-main:
+    # this one is disabled in dev mode, commend lines below to enable it
+    entrypoint: /bin/sh
+    command:
+      - '-c'
+      - 'sleep infinity'
+    ports:
+      - 4050:4040
+  prometheus:
+    ports:
+      - 9090:9090
+  grafana:
+    ports:
+      - 8080:3000

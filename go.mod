@@ -21,6 +21,7 @@ require (
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/mock v1.6.0 // indirect
@@ -53,6 +54,7 @@ require (
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f
 	github.com/onsi/ginkgo v1.16.2
 	github.com/onsi/gomega v1.12.0
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.32.1
 	github.com/pyroscope-io/client v0.0.0-20211206204731-3fd0a4b8239c

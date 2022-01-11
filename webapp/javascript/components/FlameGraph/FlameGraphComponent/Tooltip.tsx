@@ -6,18 +6,19 @@ import {
   formatPercent,
   ratioToPercent,
 } from '@utils/format';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
+import type { UnwrapMaybe } from '@utils/fp';
 import { diffColorRed, diffColorGreen } from './color';
 
 type xyToDataSingle = (
   x: number,
   y: number
-) => Option<{ format: 'single'; name: string; total: number }>;
+) => Maybe<{ format: 'single'; name: string; total: number }>;
 
 type xyToDataDouble = (
   x: number,
   y: number
-) => Option<{
+) => Maybe<{
   format: 'double';
   name: string;
   totalLeft: number;
@@ -31,6 +32,8 @@ export type TooltipProps = {
   units: Units;
   sampleRate: number;
   numTicks: number;
+  leftTicks: number;
+  rightTicks: number;
 } & (
   | { format: 'single'; xyToData: xyToDataSingle }
   | {
@@ -58,7 +61,7 @@ export default function Tooltip(props: TooltipProps) {
   const [style, setStyle] = React.useState<React.CSSProperties>();
   const tooltipEl = React.useRef(null);
 
-  const { numTicks, sampleRate, units } = props;
+  const { numTicks, sampleRate, units, leftTicks, rightTicks } = props;
 
   const onMouseOut = () => {
     setStyle({
@@ -70,11 +73,7 @@ export default function Tooltip(props: TooltipProps) {
   // that's to evict stale props
   const memoizedOnMouseMove = React.useCallback(
     (e: MouseEvent) => {
-      const formatter = getFormatter(
-        props.numTicks,
-        props.sampleRate,
-        props.units
-      );
+      const formatter = getFormatter(numTicks, sampleRate, units);
 
       const left = Math.min(
         e.clientX + 12,
@@ -88,25 +87,22 @@ export default function Tooltip(props: TooltipProps) {
         visibility: 'visible',
       };
 
-      const opt = props.xyToData(e.offsetX, e.offsetY);
-      const isNone = opt.isNone();
+      const opt = xyToData(e.offsetX, e.offsetY);
+      let data: UnwrapMaybe<typeof opt>;
 
-      if (isNone) {
+      // waiting on
+      // https://github.com/true-myth/true-myth/issues/279
+      if (opt.isJust) {
+        data = opt.value;
+      } else {
         onMouseOut();
         return;
       }
 
-      const data = opt.get();
-
       // set the content
       switch (data.format) {
         case 'single': {
-          const d = formatSingle(
-            formatter,
-            data.total,
-            props.sampleRate,
-            props.numTicks
-          );
+          const d = formatSingle(formatter, data.total, sampleRate, numTicks);
 
           setContent({
             title: {
@@ -124,7 +120,7 @@ export default function Tooltip(props: TooltipProps) {
         }
 
         case 'double': {
-          if (props.format === 'single') {
+          if (format === 'single') {
             throw new Error(
               "props format is 'single' but it has been mapped to 'double'"
             );
@@ -132,11 +128,11 @@ export default function Tooltip(props: TooltipProps) {
 
           const d = formatDouble({
             formatter,
-            sampleRate: props.sampleRate,
+            sampleRate,
             totalLeft: data.totalLeft,
-            leftTicks: props.leftTicks,
+            leftTicks,
             totalRight: data.totalRight,
-            rightTicks: props.rightTicks,
+            rightTicks,
             title: data.name,
           });
 

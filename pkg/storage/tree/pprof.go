@@ -4,6 +4,46 @@ import (
 	"time"
 )
 
+// TODO: dedup this with the version in scrape package
+type SampleTypeConfig struct {
+	Units       string `json:"units,omitempty"`
+	DisplayName string `json:"display-name,omitempty"`
+
+	// TODO(kolesnikovae): Introduce Kind?
+	//  In Go, we have at least the following combinations:
+
+	//  instant:    Aggregation:avg && !Cumulative && !Sampled
+	//  cumulative: Aggregation:sum && Cumulative  && !Sampled
+	//  delta:      Aggregation:sum && !Cumulative && Sampled
+	Aggregation string `json:"aggregation,omitempty"`
+	Cumulative  bool   `json:"cumulative,omitempty"`
+	Sampled     bool   `json:"sampled,omitempty"`
+}
+
+var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
+	"samples": {
+		DisplayName: "cpu",
+		Units:       "samples",
+		Sampled:     true,
+	},
+	"inuse_objects": {
+		Units:       "objects",
+		Aggregation: "avg",
+	},
+	"alloc_objects": {
+		Units:      "objects",
+		Cumulative: true,
+	},
+	"inuse_space": {
+		Units:       "bytes",
+		Aggregation: "avg",
+	},
+	"alloc_space": {
+		Units:      "bytes",
+		Cumulative: true,
+	},
+}
+
 type pprof struct {
 	locations map[string]uint64
 	functions map[string]uint64

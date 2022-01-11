@@ -11,3 +11,4 @@ services:
       - 'server'
   app:
     build: .
+    privileged: true

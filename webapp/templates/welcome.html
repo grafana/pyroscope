@@ -5,11 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
     <meta name="viewport" content="width=device-width" />
     <title>Pyroscope</title>
-    <link rel="stylesheet" href="/assets/styles.<%= webpack.hash %>.css" />
     {{- if .BaseURL }}
-    <base href="{{ .BaseURL }}" />
+    <meta name="pyroscope-base-url" content="{{ .BaseURL }}" />
     {{- end }}
-    <link rel="icon" href="/assets/images/favicon.ico" />
+    <link
+      rel="stylesheet"
+      href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css"
+    />
+    <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
   </head>
 
   <body class="login-page">
@@ -21,7 +24,26 @@
     </section>
 
     <script>
-      window.location.href = '/';
+      // this is copied from index.jsx
+      //   TODO: maybe dedup?
+      function basename() {
+        const baseURLMetaTag = document.querySelector(
+          'meta[name="pyroscope-base-url"]'
+        );
+        if (!baseURLMetaTag) {
+          return null;
+        }
+
+        const baseURL = baseURLMetaTag.content;
+
+        if (!baseURL) {
+          return null;
+        }
+        const url = new URL(baseURL, window.location.href);
+        return url.pathname;
+      }
+
+      window.location.href = basename() || '/';
     </script>
   </body>
 </html>

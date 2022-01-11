@@ -2,9 +2,9 @@ import ReactDOM from 'react-dom';
 import React from 'react';
 
 import { Provider } from 'react-redux';
-import { ShortcutProvider } from 'react-keybind';
-import { Router, Switch, Route } from 'react-router-dom';
+import { Router, BrowserRouter, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
+import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Notifications from '@ui/Notifications';
 import store from './redux/store';
 
@@ -13,26 +13,27 @@ import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
 import Sidebar from './components/Sidebar';
 import AdhocSingle from './components/AdhocSingle';
+import AdhocComparison from './components/AdhocComparison';
+import AdhocComparisonDiff from './components/AdhocComparisonDiff';
+import ServerNotifications from './components/ServerNotifications';
 
 import history from './util/history';
 
 let showFps = false;
 try {
   // run this to enable FPS meter:
-  //   window.localStorage.setItem("showFps", true);
+  //  window.localStorage.setItem('showFps', true);
   showFps = window.localStorage.getItem('showFps');
 } catch (e) {
   console.error(e);
 }
 
-// TODO fetch this from localstorage?
-const enableAdhoc = true;
-
 ReactDOM.render(
   <Provider store={store}>
     <Router history={history}>
-      <ShortcutProvider>
-        <Notifications />
+      <ServerNotifications />
+      <Notifications />
+      <div className="app">
         <Sidebar />
         <Switch>
           <Route exact path="/">
@@ -44,13 +45,23 @@ ReactDOM.render(
           <Route path="/comparison-diff">
             <ComparisonDiffApp />
           </Route>
-          {enableAdhoc && (
+          {isExperimentalAdhocUIEnabled && (
             <Route path="/adhoc-single">
               <AdhocSingle />
             </Route>
           )}
+          {isExperimentalAdhocUIEnabled && (
+            <Route path="/adhoc-comparison">
+              <AdhocComparison />
+            </Route>
+          )}
+          {isExperimentalAdhocUIEnabled && (
+            <Route path="/adhoc-comparison-diff">
+              <AdhocComparisonDiff />
+            </Route>
+          )}
         </Switch>
-      </ShortcutProvider>
+      </div>
     </Router>
     {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
   </Provider>,

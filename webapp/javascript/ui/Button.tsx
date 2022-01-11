@@ -1,6 +1,6 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { IconDefinition } from '@fortawesome/fontawesome-common-types';
+import type { IconDefinition } from '@fortawesome/fontawesome-common-types';
 import styles from './Button.module.scss';
 
 export interface ButtonProps {
@@ -20,6 +20,8 @@ export interface ButtonProps {
   // for the full list use refer to https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
   type?: 'button' | 'submit';
   ['data-testid']?: string;
+
+  ['aria-label']?: string;
 
   className?: string;
 
@@ -45,6 +47,7 @@ export default function Button({
       data-testid={props['data-testid']}
       disabled={disabled}
       onClick={onClick}
+      aria-label={props['aria-label']}
       className={`${styles.button} ${
         grouped ? styles.grouped : ''
       } ${getKindStyles(kind)} ${className}`}

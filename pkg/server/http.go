@@ -1,16 +1,20 @@
 package server
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/gorilla/mux"
+)
 
 type route struct {
 	pattern string
 	handler http.HandlerFunc
 }
 
-func (ctrl *Controller) addRoutes(mux *http.ServeMux, routes []route,
+func (ctrl *Controller) addRoutes(router *mux.Router, routes []route,
 	middleware ...func(http.HandlerFunc) http.HandlerFunc) {
 	for _, r := range routes {
-		mux.HandleFunc(r.pattern, ctrl.trackMetrics(r.pattern)(chain(r.handler, middleware...)))
+		router.HandleFunc(r.pattern, ctrl.trackMetrics(r.pattern)(chain(r.handler, middleware...)))
 	}
 }
 

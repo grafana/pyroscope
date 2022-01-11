@@ -1,4 +1,4 @@
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import React from 'react';
 import { DeepReadonly } from 'ts-essentials';
 import styles from './Highlight.module.css';
@@ -6,11 +6,11 @@ import styles from './Highlight.module.css';
 export interface HighlightProps {
   // probably the same as the bar height
   barHeight: number;
-  zoom: Option<DeepReadonly<{ i: number; j: number }>>;
+  zoom: Maybe<DeepReadonly<{ i: number; j: number }>>;
   xyToHighlightData: (
     x: number,
     y: number
-  ) => Option<{
+  ) => Maybe<{
     left: number;
     top: number;
     width: number;
@@ -38,8 +38,8 @@ export default function Highlight(props: HighlightProps) {
   const onMouseMove = (e: MouseEvent) => {
     const opt = xyToHighlightData(e.offsetX, e.offsetY);
 
-    if (opt.isSome()) {
-      const data = opt.get();
+    if (opt.isJust) {
+      const data = opt.value;
 
       setStyle({
         visibility: 'visible',

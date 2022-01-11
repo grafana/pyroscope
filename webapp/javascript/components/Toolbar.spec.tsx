@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import Toolbar, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './Toolbar';
 import { FitModes } from '../util/fitMode';
 
@@ -60,6 +60,7 @@ describe('ProfileHeader', () => {
     const { asFragment, rerender } = render(
       <Toolbar
         view="both"
+        display="both"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
@@ -67,7 +68,7 @@ describe('ProfileHeader', () => {
         updateView={() => {}}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
-        selectedNode={Option.none()}
+        selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
         highlightQuery=""
       />
@@ -81,6 +82,7 @@ describe('ProfileHeader', () => {
     rerender(
       <Toolbar
         view="both"
+        display="both"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
@@ -88,7 +90,7 @@ describe('ProfileHeader', () => {
         updateView={() => {}}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
-        selectedNode={Option.none()}
+        selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
         highlightQuery=""
       />
@@ -111,6 +113,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -119,7 +122,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Option.none()}
+          selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
         />
@@ -132,6 +135,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty
           handleSearchChange={() => {}}
@@ -140,7 +144,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Option.none()}
+          selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
         />
@@ -158,6 +162,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty
           handleSearchChange={() => {}}
@@ -166,7 +171,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Option.none()}
+          selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
         />
@@ -183,6 +188,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty
           handleSearchChange={() => {}}
@@ -191,7 +197,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Option.none()}
+          selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
         />
@@ -208,6 +214,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty
           handleSearchChange={onChange}
@@ -216,7 +223,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Option.none()}
+          selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
         />
@@ -233,6 +240,7 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
+        display="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -241,7 +249,7 @@ describe('ProfileHeader', () => {
         updateView={() => {}}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
-        selectedNode={Option.none()}
+        selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
         highlightQuery=""
       />
@@ -278,6 +286,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -286,7 +295,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Option.none()}
+          selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
         />
@@ -300,6 +309,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -308,7 +318,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Option.some({ i: 999, j: 999 })}
+          selectedNode={Maybe.just({ i: 999, j: 999 })}
           onFocusOnSubtree={onFocusOnSubtree}
           highlightQuery=""
         />
@@ -325,6 +335,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -333,7 +344,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Option.none()}
+          selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
         />
@@ -347,6 +358,7 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
+          display="both"
           viewDiff="diff"
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
@@ -355,7 +367,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
-          selectedNode={Option.none()}
+          selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
         />
@@ -372,6 +384,7 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
+        display="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -380,7 +393,7 @@ describe('ProfileHeader', () => {
         updateView={() => {}}
         updateViewDiff={updateViewDiff}
         isFlamegraphDirty={false}
-        selectedNode={Option.none()}
+        selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
         highlightQuery=""
       />
@@ -390,6 +403,7 @@ describe('ProfileHeader', () => {
       render(
         <Toolbar
           view="both"
+          display="both"
           handleSearchChange={() => {}}
           reset={() => {}}
           updateFitMode={() => {}}
@@ -397,7 +411,7 @@ describe('ProfileHeader', () => {
           updateView={() => {}}
           updateViewDiff={() => {}}
           isFlamegraphDirty={false}
-          selectedNode={Option.none()}
+          selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
           highlightQuery=""
         />
@@ -473,6 +487,7 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
+        display="both"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
@@ -480,7 +495,7 @@ describe('ProfileHeader', () => {
         updateView={updateView}
         updateViewDiff={() => {}}
         isFlamegraphDirty={false}
-        selectedNode={Option.none()}
+        selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
         highlightQuery=""
       />

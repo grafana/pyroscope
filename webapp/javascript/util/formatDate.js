@@ -1,8 +1,5 @@
 /* eslint-disable no-underscore-dangle */
-// we import moment/src/moment instead of moment because we don't want to load locales
-//
-// TODO: don't import locales
-import moment from 'moment';
+import { add, format } from 'date-fns';
 
 const multiplierMapping = {
   s: 'second',
@@ -21,32 +18,25 @@ export function convertPresetsToDate(from) {
   if (number > 1) {
     _multiplier += 's';
   }
-  const _from = moment().add(-number, _multiplier).toDate() / 1000;
+
+  const _from =
+    add(new Date(), {
+      [multiplier + 's']: -number,
+    }) / 1000;
 
   return { _from, number, _multiplier };
 }
 
 export function readableRange(from, until) {
-  const dateFormat = 'YYYY-MM-DD hh:mm A';
+  const dateFormat = 'yyyy-MM-dd hh:mm a';
   if (/^now-/.test(from) && until === 'now') {
     const { number, _multiplier } = convertPresetsToDate(from);
     return `Last ${number} ${_multiplier}`;
   }
 
-  if (until === 'now' && !/^now-/.test(from)) {
-    return `${moment(Math.round(from * 1000)).format(dateFormat)} - now`;
-  }
-
-  if (until !== 'now' && /^now-/.test(from)) {
-    const { _from } = convertPresetsToDate(from);
-    return `${moment(Math.round(_from * 1000)).format(dateFormat)} - ${moment(
-      Math.round(until * 1000)
-    ).format(dateFormat)}`;
-  }
-
-  return `${moment(Math.round(from * 1000)).format(dateFormat)} - ${moment(
-    Math.round(until * 1000)
-  ).format(dateFormat)}`;
+  const d1 = new Date(Math.round(from * 1000));
+  const d2 = new Date(Math.round(until * 1000));
+  return `${format(d1, dateFormat)} - ${format(d2, dateFormat)}`;
 }
 
 /**
@@ -65,7 +55,8 @@ export function formatAsOBject(value) {
     return _from * 1000;
   }
   if (value === 'now') {
-    return moment().toDate();
+    return new Date();
   }
-  return moment(value * 1000).toDate();
+
+  return new Date(value * 1000);
 }

@@ -47,20 +47,24 @@ RUN make build-phpspy-dependencies
 # | (_| \__ \__ \  __/ |_\__ \
 #  \__,_|___/___/\___|\__|___/
 
-FROM node:14.15.1-alpine3.12 as js-builder
+FROM node:14.17.6-alpine3.12 as js-builder
 
 RUN apk add --no-cache make
 
 WORKDIR /opt/pyroscope
 
 COPY scripts ./scripts
+COPY package.json yarn.lock Makefile ./
+
+# we only need the dependencies required to BUILD the application
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn/v6 make install-build-web-dependencies
+
+COPY babel.config.js .eslintrc.js .eslintignore .prettierrc tsconfig.json ./
 COPY webapp ./webapp
-COPY package.json yarn.lock babel.config.js .eslintrc .eslintignore .prettierrc tsconfig.json Makefile ./
 
 ARG EXTRA_METADATA=""
-# we only need the dependencies required to BUILD the application
-RUN EXTRA_METADATA=$EXTRA_METADATA make install-build-web-dependencies assets-release
 
+RUN EXTRA_METADATA=$EXTRA_METADATA make assets-release
 
 #              _
 #             | |
@@ -95,6 +99,7 @@ COPY Makefile ./
 COPY tools ./tools
 COPY go.mod go.sum ./
 RUN make install-dev-tools
+RUN make install-go-dependencies
 
 COPY pkg ./pkg
 COPY cmd ./cmd
