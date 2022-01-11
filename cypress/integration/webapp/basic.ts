@@ -79,7 +79,8 @@ describe('basic test', () => {
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
 
-  it('sorting is working', () => {
+  // TODO make this a unit test
+  it('sorting works', () => {
     /**
      * @param row 'first' | 'last'
      * @param column 'location' | 'self' | 'total'
@@ -107,7 +108,7 @@ describe('basic test', () => {
         .click();
 
     const getCellContent = (row, column) => {
-      const query = `tbody > :nth-child(${row}) > :nth-child(${column.index}) > ${column.selector}`;
+      const query = `tbody > :nth-child(${row}) > :nth-child(${column.index})`;
       return cy
         .findByTestId('table-view')
         .find(query)
@@ -174,6 +175,10 @@ describe('basic test', () => {
   });
 
   describe('tooltip', () => {
+    // on smaller screens component will be collapsed by default
+    beforeEach(() => {
+      cy.viewport(1440, 900);
+    });
     it('works in single view', () => {
       cy.intercept('**/render*', {
         fixture: 'simple-golang-app-cpu.json',

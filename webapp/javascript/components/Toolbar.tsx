@@ -59,6 +59,7 @@ interface ProfileHeaderProps {
 
   viewDiff?: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
+  highlightQuery: string;
 
   /** Whether the flamegraph is different from its original state */
   isFlamegraphDirty: boolean;
@@ -81,6 +82,7 @@ const Toolbar = React.memo(
     view,
     viewDiff,
     handleSearchChange,
+    highlightQuery,
     isFlamegraphDirty,
     reset,
     updateFitMode,
@@ -101,6 +103,7 @@ const Toolbar = React.memo(
           <HighlightSearch
             showMode={showMode}
             onHighlightChange={handleSearchChange}
+            highlightQuery={highlightQuery}
           />
           <DiffView
             showMode={showMode}
@@ -179,7 +182,7 @@ function FocusOnSubtree({
   );
 }
 
-function HighlightSearch({ onHighlightChange, showMode }) {
+function HighlightSearch({ onHighlightChange, showMode, highlightQuery }) {
   return (
     <DebounceInput
       data-testid="flamegraph-search"
@@ -194,6 +197,7 @@ function HighlightSearch({ onHighlightChange, showMode }) {
       onChange={(e) => {
         onHighlightChange(e.target.value);
       }}
+      value={highlightQuery}
     />
   );
 }
