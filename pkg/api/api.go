@@ -14,8 +14,6 @@ import (
 )
 
 var (
-	ErrParamIDRequired        = model.ValidationError{Err: errors.New("id parameter is required")}
-	ErrParamIDInvalid         = model.ValidationError{Err: errors.New("id parameter is invalid")}
 	ErrRequestBodyRequired    = model.ValidationError{Err: errors.New("request body required")}
 	ErrRequestBodyJSONInvalid = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
 	ErrAuthenticationRequired = model.ValidationError{Err: errors.New("authentication required")}
@@ -90,14 +88,19 @@ func MustJSON(w http.ResponseWriter, v interface{}) {
 	_, _ = w.Write(resp)
 }
 
+var (
+	errParamIDRequired = model.ValidationError{Err: errors.New("id parameter is required")}
+	errParamIDInvalid  = model.ValidationError{Err: errors.New("id parameter is invalid")}
+)
+
 func idFromRequest(r *http.Request) (uint, error) {
 	v, ok := mux.Vars(r)["id"]
 	if !ok {
-		return 0, ErrParamIDRequired
+		return 0, errParamIDRequired
 	}
 	id, err := strconv.ParseUint(v, 10, 0)
 	if err != nil {
-		return 0, ErrParamIDInvalid
+		return 0, errParamIDInvalid
 	}
 	return uint(id), nil
 }

@@ -28,3 +28,12 @@ func Require(funcs ...func(r *http.Request) bool) func(next http.HandlerFunc) ht
 func AdminRole(r *http.Request) bool {
 	return model.MustUserFromContext(r.Context()).Role == model.AdminRole
 }
+
+// AuthenticatedUser authorizes any authenticated user.
+//
+// Note that authenticated API key is not linked to a user,
+// therefore this check will fail.
+func AuthenticatedUser(r *http.Request) bool {
+	_, ok := model.UserFromContext(r.Context())
+	return ok
+}

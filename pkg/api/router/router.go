@@ -65,7 +65,7 @@ func registerUserHandlers(r *mux.Router, s *Services) {
 	})
 
 	// Endpoints available to all authenticated users.
-	register(authz.AllowAny, r.PathPrefix("/user").Subrouter(), []route{
+	register(authz.Require(authz.AuthenticatedUser), r.PathPrefix("/user").Subrouter(), []route{
 		{"", http.MethodGet, h.GetAuthenticatedUser},
 		{"", http.MethodPatch, h.UpdateAuthenticatedUser},
 		{"/password", http.MethodPut, h.ChangeAuthenticatedUserPassword},
