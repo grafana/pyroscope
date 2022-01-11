@@ -46,9 +46,15 @@ describe('basic test', () => {
     cy.visit('/');
 
     // Workaround for detached DOM elements (like Debounced input here)
-    cy.findByTestId('flamegraph-search').click({ force: true });
+    cy.waitUntil(() =>
+      cy
+        .findByTestId('flamegraph-search')
+        .as('search')
+        .click({ force: true })
+        .then(ensureAttached)
+    );
 
-    cy.findByTestId('flamegraph-search').type('main');
+    cy.get('@search').type('main');
 
     // if we take a screenshot right away, the canvas may not have been re-renderer yet
     // therefore we also assert for this attribute
@@ -190,7 +196,9 @@ describe('basic test', () => {
 
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
 
-      cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
+      cy.findByTestId('flamegraph-canvas')
+        .should(ensureAttached)
+        .trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-tooltip').should('be.visible');
 
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
@@ -228,17 +236,20 @@ describe('basic test', () => {
 
       // flamegraph 1 (the left one)
       cy.waitUntil(() => findFlamegraph(1).as('graph1').then(ensureAttached));
-      findFlamegraph(1).findByTestId('flamegraph-tooltip').then(ensureAttached);
+      cy.get('@graph1')
+        .findByTestId('flamegraph-tooltip')
+        .should(ensureAttached);
 
       cy.get('@graph1')
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
 
       cy.waitUntil(() =>
-        findFlamegraph(1)
+        cy
+          .get('@graph1')
           .findByTestId('flamegraph-canvas')
           .as('canvas1')
-          .then(ensureAttached)
+          .should(ensureAttached)
       );
 
       cy.get('@canvas1').trigger('mousemove', 0, 0);
@@ -266,7 +277,8 @@ describe('basic test', () => {
         .should('not.be.visible');
 
       cy.waitUntil(() =>
-        findFlamegraph(2)
+        cy
+          .get('@graph2')
           .findByTestId('flamegraph-canvas')
           .as('canvas2')
           .then(ensureAttached)
