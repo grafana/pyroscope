@@ -37,3 +37,15 @@ export type Flamebearer = {
 export type addTicks =
   | { format: 'double'; leftTicks: number; rightTicks: number }
   | { format: 'single' };
+
+export type FlamebearerProfile = {
+  Flamebearer: Flamebearer;
+
+  metadata: {
+    appName: string;
+    startTime: string;
+    endTime: string;
+    query: string;
+    maxNodes: number;
+  };
+};

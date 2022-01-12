@@ -39,6 +39,19 @@ type renderParams struct {
 	rghtEndTime   time.Time
 }
 
+type renderMetadataResponse struct {
+	flamebearer.FlamebearerMetadataV1
+	AppName   string `json:"appName"`
+	StartTime int64  `json:"startTime"`
+	EndTime   int64  `json:"endTime"`
+	Query     string `json:"query"`
+	MaxNodes  int    `json:"maxNodes"`
+}
+type RenderResponse struct {
+	flamebearer.FlamebearerProfile
+	Metadata renderMetadataResponse `json:"metadata"`
+}
+
 func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	var p renderParams
 	if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
@@ -71,7 +84,8 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch p.format {
 	case "json":
-		res := flamebearer.NewProfile(out, p.maxNodes)
+		flame := flamebearer.NewProfile(out, p.maxNodes)
+		res := ctrl.mountRenderResponse(flame, appName, p.gi, p.maxNodes)
 		ctrl.writeResponseJSON(w, res)
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
@@ -88,6 +102,25 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		collapsed := out.Tree.Collapsed()
 		ctrl.writeResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	}
+}
+
+// Enhance the flamebearer with a few additional fields the UI requires
+func (*Controller) mountRenderResponse(flame flamebearer.FlamebearerProfile, appName string, gi *storage.GetInput, maxNodes int) RenderResponse {
+	metadata := renderMetadataResponse{
+		flame.Metadata,
+		appName,
+		gi.StartTime.Unix(),
+		gi.EndTime.Unix(),
+		gi.Query.String(),
+		maxNodes,
+	}
+
+	renderResponse := RenderResponse{
+		flame,
+		metadata,
+	}
+
+	return renderResponse
 }
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
@@ -214,24 +247,6 @@ func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *rend
 	p.format = rP.Format
 
 	return ctrl.expectFormats(p.format)
-}
-
-func renderResponse(fs *tree.Flamebearer, out *storage.GetOutput) map[string]interface{} {
-	// TODO remove this duplication? We're already adding this to metadata
-	fs.SpyName = out.SpyName
-	fs.SampleRate = out.SampleRate
-	fs.Units = out.Units
-	res := map[string]interface{}{
-		"timeline":    out.Timeline,
-		"flamebearer": fs,
-		"metadata": map[string]interface{}{
-			"format":     fs.Format, // "single" | "double"
-			"spyName":    out.SpyName,
-			"sampleRate": out.SampleRate,
-			"units":      out.Units,
-		},
-	}
-	return res
 }
 
 func parseRenderRangeParams(r *http.Request, from, until string) (startTime, endTime time.Time, ok bool) {

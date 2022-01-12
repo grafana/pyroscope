@@ -242,6 +242,11 @@ class FlameGraphRenderer extends React.Component {
     );
 
     const exportData = () => {
+      // the main idea is to disable exporing that for grafana plugins
+      if (this.props.disableExportData) {
+        return null;
+      }
+
       if (!this.state.flamebearer) {
         return <ExportData />;
       }
