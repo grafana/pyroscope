@@ -15,7 +15,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
@@ -28,6 +27,7 @@ type profile struct {
 
 type server struct {
 	log      logrus.FieldLogger
+	dataDir  string
 	maxNodes int
 	enabled  bool
 	profiles map[string]profile
@@ -38,9 +38,10 @@ type Server interface {
 	AddRoutes(router *mux.Router) http.HandlerFunc
 }
 
-func New(log logrus.FieldLogger, maxNodes int, enabled bool) Server {
+func New(log logrus.FieldLogger, dataDir string, maxNodes int, enabled bool) Server {
 	return &server{
 		log:      log,
+		dataDir:  dataDir,
 		maxNodes: maxNodes,
 		enabled:  enabled,
 		profiles: make(map[string]profile),
@@ -64,23 +65,29 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 // The profiles are retrieved every time the endpoint is requested,
 // which should be good enough as massive access to this auth endpoint is not expected.
 func (s *server) Profiles(w http.ResponseWriter, _ *http.Request) {
-	dataDir, err := util.EnsureDataDirectory()
-	if err != nil {
+	if err := os.MkdirAll(s.dataDir, os.ModeDir|os.ModePerm); err != nil {
 		s.log.WithError(err).Errorf("Unable to create data directory")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	profiles := make(map[string]profile, 0)
-	err = filepath.Walk(dataDir, func(path string, info fs.FileInfo, err error) error {
+	err := filepath.WalkDir(s.dataDir, func(path string, e fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.Mode().IsRegular() {
-			id := fmt.Sprintf("%x", sha256.Sum256([]byte(info.Name())))
+		if e.IsDir() && path != s.dataDir {
+			return fs.SkipDir
+		}
+		if e.Type().IsRegular() {
+			id := fmt.Sprintf("%x", sha256.Sum256([]byte(e.Name())))
 			if p, ok := profiles[id]; ok {
-				return fmt.Errorf("A hash collision detected between %s and %s, please report it", info.Name(), p.Name)
+				return fmt.Errorf("a hash collision detected between %s and %s, please report it", e.Name(), p.Name)
 			}
-			profiles[id] = profile{ID: id, Name: info.Name(), UpdatedAt: info.ModTime()}
+			info, err := e.Info()
+			if err != nil {
+				return fmt.Errorf("unable to retrieve entry information: %w", err)
+			}
+			profiles[id] = profile{ID: id, Name: e.Name(), UpdatedAt: info.ModTime()}
 		}
 		return nil
 	})
@@ -193,11 +200,7 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 type converterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
 
 func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
-	dataDir, err := util.EnsureDataDirectory()
-	if err != nil {
-		return nil, fmt.Errorf("unable to create data directory: %w", err)
-	}
-	fname := filepath.Join(dataDir, p.Name)
+	fname := filepath.Join(s.dataDir, p.Name)
 	ext := filepath.Ext(fname)
 	var converter converterFn
 	switch ext {

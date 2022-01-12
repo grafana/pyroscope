@@ -10,7 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -23,6 +22,7 @@ type writer struct {
 	outputFormat   string
 	logger         *logrus.Logger
 	storage        *storage.Storage
+	dataDir        string
 }
 
 func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) writer {
@@ -31,15 +31,16 @@ func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) wr
 		outputFormat:   cfg.OutputFormat,
 		logger:         logger,
 		storage:        st,
+		dataDir:        cfg.DataPath,
 	}
 }
 
 func (w writer) write(t0, t1 time.Time) error {
-	dataDir, err := util.EnsureDataDirectory()
-	if err != nil {
+	if err := os.MkdirAll(w.dataDir, os.ModeDir|os.ModePerm); err != nil {
 		return fmt.Errorf("could not create data directory: %w", err)
 	}
 
+	profiles := 0
 	for _, name := range w.storage.GetAppNames() {
 		skey, err := segment.ParseKey(name)
 		if err != nil {
@@ -68,7 +69,7 @@ func (w writer) write(t0, t1 time.Time) error {
 			ext = w.outputFormat
 		}
 		filename := fmt.Sprintf("%s-%s.%s", name, t0.Format("2006-01-02-15-04-05"), ext)
-		path := filepath.Join(dataDir, filename)
+		path := filepath.Join(w.dataDir, filename)
 		f, err := os.Create(path)
 		if err != nil {
 			w.logger.WithError(err).Error("creating output file")
@@ -99,9 +100,15 @@ func (w writer) write(t0, t1 time.Time) error {
 			}
 		}
 		w.logger.Infof("profiling data has been saved to %s", path)
+		profiles++
 		if err := f.Close(); err != nil {
 			w.logger.WithError(err).Error("closing output file")
 		}
+	}
+	if profiles == 0 {
+		w.logger.Warning("no profiling data was saved, maybe the profiled process didn't run long enough?")
+	} else {
+		w.logger.Info("you can now run `pyroscope server` and see the profiling data at http://localhost:4040/adhoc-single")
 	}
 	return nil
 }
