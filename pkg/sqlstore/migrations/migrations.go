@@ -80,6 +80,7 @@ func createAPIKeyTableMigration() *gormigrate.Migration {
 	type apiKey struct {
 		ID         uint       `gorm:"primarykey"`
 		Name       string     `gorm:"type:varchar(255);not null;default:null;index:,unique"`
+		Signature  string     `gorm:"type:varchar(255);not null;default:null"`
 		Role       int        `gorm:"not null;default:null"`
 		ExpiresAt  *time.Time `gorm:"default:null"`
 		LastSeenAt *time.Time `gorm:"default:null"`

@@ -61,11 +61,11 @@ var _ = Describe("API key JWT encoding", func() {
 		}
 	})
 
-	Context("when a new token is generated for an API key with JWTToken", func() {
+	Context("when a new token is generated for an API key", func() {
 		It("produces a valid JWT token", func() {
 			t := p.JWTToken()
 			s := []byte("signing-key")
-			signed, err := t.SignedString(s)
+			signed, signature, err := model.SignJWTToken(t, s)
 			Expect(err).ToNot(HaveOccurred())
 
 			parsed, parseErr := jwt.Parse(signed, func(token *jwt.Token) (interface{}, error) {
@@ -74,6 +74,7 @@ var _ = Describe("API key JWT encoding", func() {
 			})
 
 			Expect(parseErr).ToNot(HaveOccurred())
+			Expect(parsed.Signature).To(Equal(signature))
 			Expect(parsed.Valid).To(BeTrue())
 		})
 	})

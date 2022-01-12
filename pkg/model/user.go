@@ -122,6 +122,7 @@ func IsUserDisabled(u User) bool {
 }
 
 func ValidateUserName(userName string) error {
+	// TODO(kolesnikovae): restrict allowed chars?
 	if len(userName) == 0 {
 		return ErrUserNameEmpty
 	}

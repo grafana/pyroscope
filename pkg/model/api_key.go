@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -17,9 +18,9 @@ var (
 )
 
 type APIKey struct {
-	ID uint `gorm:"primarykey"`
-
+	ID         uint       `gorm:"primarykey"`
 	Name       string     `gorm:"type:varchar(255);not null;default:null;index:,unique"`
+	Signature  string     `gorm:"type:varchar(255);not null;default:null"`
 	Role       Role       `gorm:"not null;default:null"`
 	ExpiresAt  *time.Time `gorm:"default:null"`
 	LastSeenAt *time.Time `gorm:"default:null"`
@@ -46,6 +47,7 @@ func (p CreateAPIKeyParams) Validate() error {
 }
 
 func ValidateAPIKeyName(apiKeyName string) error {
+	// TODO(kolesnikovae): restrict allowed chars.
 	if len(apiKeyName) == 0 {
 		return ErrAPIKeyNameEmpty
 	}
@@ -62,19 +64,19 @@ type TokenAPIKey struct {
 }
 
 const (
-	jwtClaimName   = "name"
-	jwtClaimRole   = "role"
-	jwtClaimAPIKey = "iak"
+	jwtClaimAPIKeyName = "akn"
+	jwtClaimRole       = "role"
 )
 
-// JWTToken creates a JWT token structure for the given API key params.
+// JWTToken creates a new JWT token structure for the given API
+// key params. The token needs to be signed: use SignJWTToken to
+// get the signature along with with the signed JWT string.
 func (p CreateAPIKeyParams) JWTToken() *jwt.Token {
 	iat := time.Now()
 	claims := jwt.MapClaims{
-		"iat":          iat.Unix(),
-		jwtClaimName:   p.Name,
-		jwtClaimRole:   p.Role.String(),
-		jwtClaimAPIKey: true,
+		"iat":              iat.Unix(),
+		jwtClaimAPIKeyName: p.Name,
+		jwtClaimRole:       p.Role.String(),
 	}
 	if p.ExpiresAt != nil && !p.ExpiresAt.IsZero() {
 		claims["exp"] = p.ExpiresAt
@@ -82,9 +84,22 @@ func (p CreateAPIKeyParams) JWTToken() *jwt.Token {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 }
 
+// SignJWTToken returns the complete, signed token and its signature.
+func SignJWTToken(t *jwt.Token, key []byte) (jwtToken, signature string, err error) {
+	var sig, sstr string
+	if sstr, err = t.SigningString(); err != nil {
+		return "", "", err
+	}
+	if sig, err = t.Method.Sign(sstr, key); err != nil {
+		return "", "", err
+	}
+	return strings.Join([]string{sstr, sig}, "."), sig, nil
+}
+
 // APIKeyFromJWTToken retrieves API key info from the given JWT token.
 // 'name', 'role', and 'api_key' claims must be present and valid,
-// otherwise the function returns false.
+// otherwise the function returns false. The function does not validate
+// the token.
 func APIKeyFromJWTToken(t *jwt.Token) (TokenAPIKey, bool) {
 	var apiKey TokenAPIKey
 	m, ok := t.Claims.(jwt.MapClaims)
@@ -92,36 +107,15 @@ func APIKeyFromJWTToken(t *jwt.Token) (TokenAPIKey, bool) {
 		return apiKey, false
 	}
 	// Make sure the subject is an API Key.
-	v, ok := m[jwtClaimAPIKey]
-	if !ok {
+	if apiKey.Name, ok = m[jwtClaimAPIKeyName].(string); !ok {
 		return apiKey, false
 	}
-	if iak, ok := v.(bool); !ok || !iak {
-		return apiKey, false
-	}
-
-	v, ok = m[jwtClaimName]
-	if !ok {
-		return apiKey, false
-	}
-	apiKey.Name, ok = v.(string)
-	if !ok {
-		return apiKey, false
-	}
-
-	v, ok = m[jwtClaimRole]
-	if !ok {
-		return apiKey, false
-	}
-	s, ok := v.(string)
+	// Parse role.
+	s, ok := m[jwtClaimRole].(string)
 	if !ok {
 		return apiKey, false
 	}
 	var err error
 	apiKey.Role, err = ParseRole(s)
-	if err != nil {
-		return apiKey, false
-	}
-
-	return apiKey, true
+	return apiKey, err == nil
 }
