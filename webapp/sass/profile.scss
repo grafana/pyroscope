@@ -351,6 +351,15 @@ $pane-width: 6px;
     &:first-child .color-reference + div {
       margin-left: 15px;
     }
+
+    .table-item-button {
+      border: none;
+      display: flex;
+      flex-flow: row nowrap;
+      align-items: baseline;
+      width: 100%;
+      cursor: pointer;
+    }
   }
 }
 

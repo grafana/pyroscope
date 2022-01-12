@@ -13,6 +13,9 @@ function randomName() {
     .join('');
 }
 
+// assume this is probably the first app when ordered alphabetically
+const firstApp = 'aaaaa';
+
 describe('E2E Tests', () => {
   // TODO:
   // instead of generating a new application
@@ -33,6 +36,12 @@ describe('E2E Tests', () => {
     // it's important that they are recent
     // otherwise the database may just drop them
     // if they are older than the retention date
+
+    cy.request({
+      method: 'POST',
+      url: `/ingest?name=${firstApp}&sampleRate=100&from=${t1}&until=${t1}`,
+      body: 'foo;bar 100',
+    });
 
     cy.request({
       method: 'POST',
@@ -121,5 +130,16 @@ describe('E2E Tests', () => {
     cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
       `e2e-render-standalone`
     );
+  });
+
+  // This is tested as an e2e test
+  // Since the list of app names comes populated from the database
+  it('sets the first app as the query if nothing is set', () => {
+    cy.visit('/');
+
+    cy.location().should((loc) => {
+      const params = new URLSearchParams(loc.search);
+      expect(params.get('query')).to.eq(`${firstApp}{}`);
+    });
   });
 });

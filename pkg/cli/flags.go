@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -212,6 +213,7 @@ func PopulateFlagSet(obj interface{}, flagSet *pflag.FlagSet, vpr *viper.Viper, 
 	o := &options{
 		replacements: map[string]string{
 			"<installPrefix>":           getInstallPrefix(),
+			"<defaultAdhocDataPath>":    util.DataDirectory(),
 			"<defaultAgentConfigPath>":  defaultAgentConfigPath(),
 			"<defaultAgentLogFilePath>": defaultAgentLogFilePath(),
 			"<supportedProfilers>":      strings.Join(spy.SupportedExecSpies(), ", "),

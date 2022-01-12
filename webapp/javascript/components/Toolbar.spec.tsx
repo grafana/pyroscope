@@ -70,6 +70,7 @@ describe('ProfileHeader', () => {
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
+        highlightQuery=""
       />
     );
 
@@ -91,6 +92,7 @@ describe('ProfileHeader', () => {
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
+        highlightQuery=""
       />
     );
 
@@ -122,6 +124,7 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          highlightQuery=""
         />
       );
       render(component);
@@ -143,6 +146,7 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          highlightQuery=""
         />
       );
       render(component);
@@ -169,6 +173,7 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          highlightQuery=""
         />
       );
       render(component);
@@ -194,6 +199,7 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          highlightQuery=""
         />
       );
       render(component);
@@ -219,6 +225,7 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          highlightQuery=""
         />
       );
 
@@ -244,6 +251,7 @@ describe('ProfileHeader', () => {
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
+        highlightQuery=""
       />
     );
 
@@ -289,6 +297,7 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          highlightQuery=""
         />
       );
       render(component);
@@ -311,6 +320,7 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.just({ i: 999, j: 999 })}
           onFocusOnSubtree={onFocusOnSubtree}
+          highlightQuery=""
         />
       );
 
@@ -336,6 +346,7 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          highlightQuery=""
         />
       );
       render(component);
@@ -358,6 +369,7 @@ describe('ProfileHeader', () => {
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          highlightQuery=""
         />
       );
       render(component);
@@ -383,6 +395,7 @@ describe('ProfileHeader', () => {
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
+        highlightQuery=""
       />
     );
 
@@ -400,6 +413,7 @@ describe('ProfileHeader', () => {
           isFlamegraphDirty={false}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
+          highlightQuery=""
         />
       );
 
@@ -483,6 +497,7 @@ describe('ProfileHeader', () => {
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
+        highlightQuery=""
       />
     );
 

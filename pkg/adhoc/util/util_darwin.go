@@ -10,5 +10,5 @@ func dataBaseDirectory() string {
 	if !ok {
 		homeDir = "/"
 	}
-	return filepath.Join(homeDir, "Library", "Application Support")
+	return filepath.Join(homeDir, ".pyroscope")
 }
