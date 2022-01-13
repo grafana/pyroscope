@@ -9,17 +9,11 @@ import { ESBuildMinifyPlugin } from 'esbuild-loader';
 
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
+// use a fake hash when running locally
+const LOCAL_HASH = 'local';
+
 const pages = glob
-  // Most of the cases we will be developing the SPA
-  // So it makes sense only building it
-  // We go from
-  // [webpack.Progress]  |  | 1131 ms asset processing > HtmlWebpackPlugin
-  // To  [webpack.Progress]  |  | 215 ms asset processing > HtmlWebpackPlugin
-  .sync(
-    process.env.NODE_ENV === 'production'
-      ? './webapp/templates/!(standalone).html'
-      : './webapp/templates/index.html'
-  )
+  .sync('./webapp/templates/!(standalone).html')
   .map((x) => path.basename(x));
 
 const pagePlugins = pages.map(
@@ -28,19 +22,25 @@ const pagePlugins = pages.map(
       filename: path.resolve(__dirname, `../../webapp/public/${name}`),
       template: path.resolve(__dirname, `../../webapp/templates/${name}`),
       inject: false,
-      templateParameters: (compilation, assets, options) => ({
-        extra_metadata: process.env.EXTRA_METADATA
-          ? fs.readFileSync(process.env.EXTRA_METADATA)
-          : '',
-        mode: process.env.NODE_ENV,
-        webpack: compilation.getStats().toJson(),
-        compilation,
-        webpackConfig: compilation.options,
-        htmlWebpackPlugin: {
-          files: assets,
-          options,
-        },
-      }),
+      templateParameters: (compilation) => {
+        // TODO:
+        // ideally we should access via argv
+        // https://webpack.js.org/configuration/mode/
+        const hash =
+          process.env.NODE_ENV === 'production'
+            ? compilation.getstats().toJson().hash
+            : LOCAL_HASH;
+
+        return {
+          extra_metadata: process.env.EXTRA_METADATA
+            ? fs.readFileSync(process.env.EXTRA_METADATA)
+            : '',
+          mode: process.env.NODE_ENV,
+          webpack: {
+            hash,
+          },
+        };
+      },
     })
 );
 
@@ -55,7 +55,12 @@ export default {
   output: {
     publicPath: '',
     path: path.resolve(__dirname, '../../webapp/public/assets'),
-    filename: '[name].[hash].js',
+
+    // https://webpack.js.org/guides/build-performance/#avoid-production-specific-tooling
+    filename:
+      process.env.NODE_ENV === 'production'
+        ? '[name].[hash].js'
+        : `[name].${LOCAL_HASH}.js`,
     clean: true,
   },
 
@@ -118,7 +123,10 @@ export default {
     }),
     ...pagePlugins,
     new MiniCssExtractPlugin({
-      filename: '[name].[hash].css',
+      filename:
+        process.env.NODE_ENV === 'production'
+          ? '[name].[hash].css'
+          : `[name].${LOCAL_HASH}.css`,
     }),
     new CopyPlugin({
       patterns: [
