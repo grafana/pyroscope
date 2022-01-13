@@ -27,6 +27,7 @@ func Require(funcs ...func(r *http.Request) bool) func(next http.HandlerFunc) ht
 
 func Role(role model.Role) func(r *http.Request) bool {
 	return func(r *http.Request) bool {
+		// TODO: Check both user token and API key.
 		return model.MustUserFromContext(r.Context()).Role == role
 	}
 }

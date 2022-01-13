@@ -1,6 +1,7 @@
 package model
 
 import (
+	"crypto/subtle"
 	"errors"
 	"strings"
 	"time"
@@ -27,6 +28,10 @@ type APIKey struct {
 
 	CreatedAt time.Time
 	DeletedAt gorm.DeletedAt
+}
+
+func (k APIKey) VerifySignature(t *jwt.Token) bool {
+	return subtle.ConstantTimeCompare([]byte(k.Signature), []byte(t.Signature)) == 1
 }
 
 type CreateAPIKeyParams struct {
@@ -60,7 +65,7 @@ func ValidateAPIKeyName(apiKeyName string) error {
 // TokenAPIKey represents an API key retrieved from the validated JWT token.
 type TokenAPIKey struct {
 	Name string
-	Role
+	Role Role
 }
 
 const (
@@ -97,9 +102,8 @@ func SignJWTToken(t *jwt.Token, key []byte) (jwtToken, signature string, err err
 }
 
 // APIKeyFromJWTToken retrieves API key info from the given JWT token.
-// 'name', 'role', and 'api_key' claims must be present and valid,
-// otherwise the function returns false. The function does not validate
-// the token.
+// 'akn' and 'role' claims must be present and valid, otherwise the
+// function returns false. The function does not validate the token.
 func APIKeyFromJWTToken(t *jwt.Token) (TokenAPIKey, bool) {
 	var apiKey TokenAPIKey
 	m, ok := t.Claims.(jwt.MapClaims)
