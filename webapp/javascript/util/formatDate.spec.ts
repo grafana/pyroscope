@@ -45,6 +45,12 @@ describe('FormatDate', () => {
       expect(formatAsOBject('now')).toEqual(mockDate);
     });
 
+    it.only('works with "now-1h"', () => {
+      const got = formatAsOBject('now-1h');
+
+      expect(got).toBe(1640087041741);
+    });
+
     it('works with "now-30m"', () => {
       const got = formatAsOBject('now-30m');
 
