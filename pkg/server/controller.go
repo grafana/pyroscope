@@ -216,7 +216,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Google.Enabled {
-		googleHandler, err := newGoogleHandler(ctrl.config.Auth.Google, ctrl.config.BaseURL, ctrl.log)
+		googleHandler, err := newOauthGoogleHandler(ctrl.config.Auth.Google, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +242,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Gitlab.Enabled {
-		gitlabHandler, err := newGitlabHandler(ctrl.config.Auth.Gitlab, ctrl.config.BaseURL, ctrl.log)
+		gitlabHandler, err := newOauthGitlabHandler(ctrl.config.Auth.Gitlab, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
