@@ -158,14 +158,6 @@ install-web-dependencies: ## Install the web dependencies
 install-build-web-dependencies: ## Install web dependencies only necessary for a build
 	NODE_ENV=production yarn install --frozen-lockfile
 
-.PHONY: assets
-assets: install-web-dependencies ## Configure the assets
-	yarn dev
-
-.PHONY: assets-watch
-assets-watch: install-web-dependencies ## Configure the assets with live reloading
-	yarn dev -- --watch
-
 .PHONY: assets-release
 assets-release: ## Configure the assets for release
 	rm -rf webapp/public/assets
@@ -208,7 +200,7 @@ install-dev-tools: ## Install dev tools
 	cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI {} go install {}
 
 .PHONY: dev
-dev: ## dev
+dev: install-web-dependencies
 	goreman -exit-on-error -f scripts/dev-procfile start
 
 .PHONY: godoc
