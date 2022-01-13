@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"sort"
 	"time"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -203,7 +204,11 @@ func (s *Storage) GetAppNames() []string {
 	appNames := make([]string, 0)
 
 	s.GetValues("__name__", func(v string) bool {
-		appNames = append(appNames, v)
+		if strings.TrimSpace(v) != "" {
+			// skip empty app names
+			appNames = append(appNames, v)
+		}
+
 		return true
 	})
 
