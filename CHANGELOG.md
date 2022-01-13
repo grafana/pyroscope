@@ -1,3 +1,13 @@
+## [0.7.1](https://github.com/pyroscope-io/pyroscope/compare/v0.7.0...v0.7.1) (2022-01-13)
+
+
+### Bug Fixes
+
+* **backend:** skip empty app with GetAppNames() ([#724](https://github.com/pyroscope-io/pyroscope/issues/724)) ([b3fadec](https://github.com/pyroscope-io/pyroscope/commit/b3fadeccee1fc7c865b3564d0ce27663e66cd7f5))
+* **frontend:** don't allow selecting empty apps ([#723](https://github.com/pyroscope-io/pyroscope/issues/723)) ([2378ab5](https://github.com/pyroscope-io/pyroscope/commit/2378ab5cff3e10c1ad9f4b4edc423f16f975a3e4))
+
+
+
 # [0.7.0](https://github.com/pyroscope-io/pyroscope/compare/v0.6.0...v0.7.0) (2022-01-13)
 
 
