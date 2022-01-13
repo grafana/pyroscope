@@ -28,7 +28,7 @@ const pagePlugins = pages.map(
         // https://webpack.js.org/configuration/mode/
         const hash =
           process.env.NODE_ENV === 'production'
-            ? compilation.getstats().toJson().hash
+            ? compilation.getStats().toJson().hash
             : LOCAL_HASH;
 
         return {
