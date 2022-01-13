@@ -19,9 +19,11 @@ export function convertPresetsToDate(from) {
     _multiplier += 's';
   }
 
+  const now = new Date();
+
   const _from =
-    add(new Date(), {
-      [multiplier + 's']: -number,
+    add(now, {
+      [_multiplier]: -number,
     }) / 1000;
 
   return { _from, number, _multiplier };

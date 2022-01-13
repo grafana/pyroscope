@@ -28,26 +28,30 @@ describe('FormatDate', () => {
   });
 
   describe('formatAsOBject', () => {
+    const mockDate = new Date('2021-12-21T12:44:01.741Z');
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(mockDate.getTime());
+    });
+
     afterEach(() => {
       jest.restoreAllMocks();
+
+      jest.useRealTimers();
     });
 
     it('works with "now"', () => {
-      const mockDate = new Date();
-      jest
-        .spyOn(global, 'Date')
-        .mockImplementation(() => mockDate as unknown as string);
+      // TODO
+      // not entirely sure this case is even possible to happen in the code
+      expect(formatAsOBject('now')).toEqual(mockDate);
+    });
 
-      expect(formatAsOBject('now')).toBe(mockDate);
+    it('works with "now-30m"', () => {
+      const got = formatAsOBject('now-30m');
+
+      expect(got).toBe(1640088841741);
     });
 
     it('works with "now-1m"', () => {
-      const mockDate = new Date('2021-12-21T12:44:01.741Z');
-
-      jest
-        .spyOn(global, 'Date')
-        .mockImplementation(() => mockDate as unknown as string);
-
       expect(formatAsOBject('now-1m')).toBe(1640090641741);
     });
 
