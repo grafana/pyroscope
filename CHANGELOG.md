@@ -1,3 +1,30 @@
+# [0.7.0](https://github.com/pyroscope-io/pyroscope/compare/v0.6.0...v0.7.0) (2022-01-13)
+
+
+### Bug Fixes
+
+* close response body in traffic-duplicator to fix resource leak. ([#694](https://github.com/pyroscope-io/pyroscope/issues/694)) ([5896982](https://github.com/pyroscope-io/pyroscope/commit/58969821013f15b8f2f425e9d2ffa855f615d8a3))
+* pyrobench report path ([#684](https://github.com/pyroscope-io/pyroscope/issues/684)) ([d88bd10](https://github.com/pyroscope-io/pyroscope/commit/d88bd103b18f66ffabb66890a5dc789ba4ede124))
+
+
+### Features
+
+* add scrape metrics for pull mode ([#678](https://github.com/pyroscope-io/pyroscope/issues/678)) ([0bdb99b](https://github.com/pyroscope-io/pyroscope/commit/0bdb99b2d12eafbedac97565d3579995183e6f84))
+* adhoc comparison diff support ([#652](https://github.com/pyroscope-io/pyroscope/issues/652)) ([65b7372](https://github.com/pyroscope-io/pyroscope/commit/65b7372e74540663a44356fd2302a69f55f27e19))
+* export standalone html ([#691](https://github.com/pyroscope-io/pyroscope/issues/691)) ([8d20863](https://github.com/pyroscope-io/pyroscope/commit/8d20863e26c9ddc45389b2b37bd7cc9b20881247))
+* **frontend:** export pprof format ([#620](https://github.com/pyroscope-io/pyroscope/issues/620)) ([60c305d](https://github.com/pyroscope-io/pyroscope/commit/60c305ddd035a34e319d4b0967e9bb21eb82d5dd))
+* **frontend:** new app name selector component ([#682](https://github.com/pyroscope-io/pyroscope/issues/682)) ([b6282c3](https://github.com/pyroscope-io/pyroscope/commit/b6282c34e4985f8ec82c98a9eaa049455487a53b))
+* **frontend:** persist sidebar collapsed state ([#699](https://github.com/pyroscope-io/pyroscope/issues/699)) ([c552bc2](https://github.com/pyroscope-io/pyroscope/commit/c552bc2c546960e7351134dfa6d7dbc63e4fb8d0))
+* keep existing colors when highlighting ([#714](https://github.com/pyroscope-io/pyroscope/issues/714)) ([ab094c2](https://github.com/pyroscope-io/pyroscope/commit/ab094c258fa3963710dcc137cd9ff046da146be8))
+
+
+### Performance Improvements
+
+* optimize ingestion flow ([#663](https://github.com/pyroscope-io/pyroscope/issues/663)) ([556a4c6](https://github.com/pyroscope-io/pyroscope/commit/556a4c649e9995058e2fedf7161577eb5991a9fb))
+* optimize segment tree serialization ([#695](https://github.com/pyroscope-io/pyroscope/issues/695)) ([091e925](https://github.com/pyroscope-io/pyroscope/commit/091e925ba10dae081059cbc407733413679d3db2))
+
+
+
 # [0.6.0](https://github.com/pyroscope-io/pyroscope/compare/v0.5.1...v0.6.0) (2022-01-04)
 
 
