@@ -142,5 +142,5 @@ func waitUntilServerIsReady(socketAddr string) error {
 		retries++
 	}
 
-	return fmt.Errorf("maximum retries exceeded ('%d') waiting for server ('%s') to respond", retries, admin.HealthAddress)
+	panic(fmt.Sprintf("maximum retries exceeded ('%d') waiting for server ('%s') to respond", retries, admin.HealthAddress))
 }
