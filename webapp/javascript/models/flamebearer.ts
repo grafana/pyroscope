@@ -77,3 +77,15 @@ export function decodeFlamebearer({
   fb.levels = deltaDiffWrapper(fb.format, fb.levels);
   return fb as Flamebearer;
 }
+
+export type FlamebearerProfile = {
+  Flamebearer: Flamebearer;
+
+  metadata: {
+    appName: string;
+    startTime: string;
+    endTime: string;
+    query: string;
+    maxNodes: number;
+  };
+};

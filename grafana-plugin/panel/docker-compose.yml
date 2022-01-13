@@ -9,7 +9,7 @@ services:
       - ./grafana-provisioning:/etc/grafana/provisioning
     environment:
       - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=pyroscope-panel
-      - GF_INSTALL_PLUGINS=pyroscope-datasource
+      - GF_INSTALL_PLUGINS=https://github.com/pyroscope-io/grafana-datasource-plugin/releases/download/v1.1.0/pyroscope-datasource-1.1.0.zip;pyroscope-datasource
     ports:
       - 3000:3000
 
