@@ -101,6 +101,25 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	case "collapsed":
 		collapsed := out.Tree.Collapsed()
 		ctrl.writeResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
+	case "html":
+		res := flamebearer.NewProfile(out, p.maxNodes)
+
+		tmpl, err := ctrl.getTemplate("/standalone.html")
+		if err != nil {
+			ctrl.writeInternalServerError(w, err, "could not render standalone page")
+			return
+		}
+		var flamegraph []byte
+		flamegraph, err = json.Marshal(res)
+		if err != nil {
+			ctrl.writeJSONEncodeError(w, err)
+			return
+		}
+
+		w.Header().Add("Content-Type", "text/html")
+		mustExecute(tmpl, w, map[string]string{
+			"Flamegraph": string(flamegraph),
+		})
 	}
 }
 
