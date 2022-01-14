@@ -38,6 +38,17 @@ export function readableRange(from, until) {
   return `${format(d1, dateFormat)} - ${format(d2, dateFormat)}`;
 }
 
+export function dateForExportFilename(from, until) {
+  const dateFormat = 'yyyy-MM-dd_HHmm';
+  if (/^now-/.test(from) && until === 'now') {
+    const { number, _multiplier } = convertPresetsToDate(from);
+    return `Last ${number} ${_multiplier}`;
+  }
+
+  const d1 = new Date(Math.round(from * 1000));
+  const d2 = new Date(Math.round(until * 1000));
+  return `${format(d1, dateFormat)}-to-${format(d2, dateFormat)}`;
+}
 /**
  * formateAsOBject() returns a Date object
  * based on the passed-in parameter value

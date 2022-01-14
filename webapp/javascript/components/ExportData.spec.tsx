@@ -26,8 +26,13 @@ describe('ExportData', () => {
     });
 
     it('supports a download png button', () => {
-      render(<ExportData exportPNG />);
+      render(<ExportData exportPNG flamebearer={TestData} />);
       screen.getByRole('button', { name: /png/i });
+    });
+
+    it('supports a download html button', () => {
+      render(<ExportData exportHTML flamebearer={TestData} />);
+      screen.getByRole('button', { name: /html/i });
     });
   });
 });
