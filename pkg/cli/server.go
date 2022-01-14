@@ -13,6 +13,7 @@ import (
 
 	// revive:disable:blank-imports register discoverer
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
