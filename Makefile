@@ -212,7 +212,7 @@ install-dev-tools: ## Install dev tools
 	cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI {} go install {}
 
 .PHONY: dev
-dev: install-web-dependencies
+dev: install-web-dependencies ## Start webpack and pyroscope server. Use this one for working on pyroscope
 	goreman -exit-on-error -f scripts/dev-procfile start
 
 .PHONY: godoc
