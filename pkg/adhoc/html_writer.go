@@ -64,7 +64,7 @@ func (w *htmlWriter) write(name string, out *storage.GetOutput) error {
 	defer f.Close()
 
 	fb := flamebearer.NewProfile(out, w.maxNodesRender)
-	if err := flamebearer.FlameberarerToStandaloneHTML(&fb, w.assetsDir, f); err != nil {
+	if err := flamebearer.FlamebearerToStandaloneHTML(&fb, w.assetsDir, f); err != nil {
 		return fmt.Errorf("could not export flambearer as HTML: %w", err)
 	}
 

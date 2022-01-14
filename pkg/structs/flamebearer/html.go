@@ -8,8 +8,8 @@ import (
 	"net/http"
 )
 
-// FlameberarerToStandaloneHTML converts and writes a flamebearer into HTML
-func FlameberarerToStandaloneHTML(fb *FlamebearerProfile, dir http.FileSystem, w io.Writer) error {
+// FlamebearerToStandaloneHTML converts and writes a flamebearer into HTML
+func FlamebearerToStandaloneHTML(fb *FlamebearerProfile, dir http.FileSystem, w io.Writer) error {
 	tmpl, err := getTemplate(dir, "/standalone.html")
 	if err != nil {
 		return fmt.Errorf("unable to get template: %w", err)
