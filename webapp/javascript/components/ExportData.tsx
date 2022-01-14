@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
 import Button from '@ui/Button';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { buildRenderURL } from '@utils/updateRequests';
+import { dateForExportFilename } from '@utils/formatDate';
 
 import clsx from 'clsx';
 import { FlamebearerProfile } from '@models/flamebearer';
@@ -24,7 +24,10 @@ function ExportData(props: ExportDataProps) {
   };
 
   // export flamegraph canvas element
-  const exportCanvas = (mimeType: 'png') => {
+  const exportCanvas = function (
+    flamebearer: FlamebearerProfile,
+    mimeType: 'png',
+  ) {
     // TODO use ref
     const canvasElement = document.querySelector(
       '.flamegraph-canvas'
@@ -32,8 +35,9 @@ function ExportData(props: ExportDataProps) {
     const MIME_TYPE = `image/${mimeType}`;
     const imgURL = canvasElement.toDataURL();
     const dlLink = document.createElement('a');
+    const dateForFilename = dateForExportFilename(flamebearer.metadata.startTime, flamebearer.metadata.endTime);
 
-    dlLink.download = `flamegraph_visual_${formattedDate()}`;
+    dlLink.download = `${flamebearer.metadata.appName}_${dateForFilename}.${mimeType}`;
     dlLink.href = imgURL;
     dlLink.dataset.downloadurl = [MIME_TYPE, dlLink.download, dlLink.href].join(
       ':'
@@ -80,6 +84,24 @@ function ExportData(props: ExportDataProps) {
     downloadAnchorNode.remove();
   };
 
+  const exportHtml = function (flamebearer: FlamebearerProfile) {
+    const url = `${buildRenderURL({
+      from: flamebearer.metadata.startTime,
+      until: flamebearer.metadata.endTime,
+      query: flamebearer.metadata.query,
+      maxNodes: flamebearer.metadata.maxNodes,
+    })}&format=html`;
+
+    const dateForFilename = dateForExportFilename(flamebearer.metadata.startTime, flamebearer.metadata.endTime)
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute('href', url);
+    downloadAnchorNode.setAttribute('download', `${flamebearer.metadata.appName}_${dateForFilename}.html`);
+
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   return (
     <div className="dropdown-container">
       <Button icon={faBars} onClick={handleToggleMenu} />
@@ -91,11 +113,11 @@ function ExportData(props: ExportDataProps) {
         <div>
           <button
             className="dropdown-menu-item"
-            onClick={() => exportCanvas('png')}
-            onKeyPress={() => exportCanvas('png')}
+            onClick={() => exportCanvas(exportFlamebearer, 'png')}
+            onKeyPress={() => exportCanvas(exportFlamebearer, 'png')}
             type="button"
           >
-            PNG
+            Png
           </button>
           {exportFlamebearer && (
             <button
@@ -105,7 +127,7 @@ function ExportData(props: ExportDataProps) {
                 downloadFlamebearer(exportFlamebearer, 'pyroscope_export')
               }
             >
-              JSON
+              Json
             </button>
           )}
 
@@ -115,7 +137,16 @@ function ExportData(props: ExportDataProps) {
               type="button"
               onClick={() => exportPProf(exportFlamebearer)}
             >
-              pprof
+              Pprof
+            </button>
+          )}
+
+          {exportFlamebearer && (
+            <button
+              className="dropdown-menu-item"
+              type="button"
+              onClick={() => exportHtml(exportFlamebearer)}
+            >   Html
             </button>
           )}
         </div>
