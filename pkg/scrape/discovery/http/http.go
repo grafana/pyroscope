@@ -10,7 +10,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package http
 
 import (
@@ -19,8 +18,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
-	"net/url"
+	nhttp "net/http"
+	nurl "net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -81,7 +80,7 @@ func (c *SDConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if c.URL == "" {
 		return fmt.Errorf("URL is missing")
 	}
-	parsedURL, err := url.Parse(c.URL)
+	parsedURL, err := nurl.Parse(c.URL)
 	if err != nil {
 		return err
 	}
@@ -101,7 +100,7 @@ const httpSDURLLabel = model.MetaLabelPrefix + "url"
 type Discovery struct {
 	*refresh.Discovery
 	url             string
-	client          *http.Client
+	client          *nhttp.Client
 	refreshInterval time.Duration
 	tgLastLength    int
 }
@@ -131,7 +130,7 @@ func NewDiscovery(conf *SDConfig, logger logrus.FieldLogger) (*Discovery, error)
 }
 
 func (d *Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error) {
-	req, err := http.NewRequest("GET", d.url, nil)
+	req, err := nhttp.NewRequest("GET", d.url, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +147,7 @@ func (d *Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error) {
 		resp.Body.Close()
 	}()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != nhttp.StatusOK {
 		return nil, errors.Errorf("server returned HTTP status %s", resp.Status)
 	}
 
