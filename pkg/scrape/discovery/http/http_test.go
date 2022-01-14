@@ -16,7 +16,7 @@ package http
 import (
 	"context"
 	"fmt"
-	"net/http"
+	nhttp "net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -30,7 +30,7 @@ import (
 )
 
 func TestHTTPValidRefresh(t *testing.T) {
-	ts := httptest.NewServer(http.FileServer(http.Dir("./fixtures")))
+	ts := httptest.NewServer(nhttp.FileServer(nhttp.Dir("./fixtures")))
 	t.Cleanup(ts.Close)
 
 	cfg := SDConfig{
@@ -65,8 +65,8 @@ func TestHTTPValidRefresh(t *testing.T) {
 }
 
 func TestHTTPInvalidCode(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
+	ts := httptest.NewServer(nhttp.HandlerFunc(func(w nhttp.ResponseWriter, r *nhttp.Request) {
+		w.WriteHeader(nhttp.StatusBadRequest)
 	}))
 
 	t.Cleanup(ts.Close)
@@ -86,7 +86,7 @@ func TestHTTPInvalidCode(t *testing.T) {
 }
 
 func TestHTTPInvalidFormat(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(nhttp.HandlerFunc(func(w nhttp.ResponseWriter, r *nhttp.Request) {
 		fmt.Fprintln(w, "{}")
 	}))
 
@@ -166,7 +166,7 @@ func TestContentTypeRegex(t *testing.T) {
 
 func TestSourceDisappeared(t *testing.T) {
 	var stubResponse string
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewServer(nhttp.HandlerFunc(func(w nhttp.ResponseWriter, r *nhttp.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, stubResponse)
 	}))
