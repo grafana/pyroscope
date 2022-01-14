@@ -284,7 +284,7 @@ func (ctrl *Controller) Start() error {
 		Addr:           ctrl.config.APIBindAddr,
 		Handler:        handler,
 		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		WriteTimeout:   15 * time.Second,
 		IdleTimeout:    30 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
