@@ -1,4 +1,5 @@
-// Copyright 2021 The Prometheus Authors
+//Package http discovery
+//Copyright 2021 The Prometheus Authors
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -29,7 +30,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
-	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/refresh"
+	drefresh "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/refresh"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 	pmodel "github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	"github.com/sirupsen/logrus"
@@ -98,7 +99,7 @@ const httpSDURLLabel = model.MetaLabelPrefix + "url"
 // Discovery provides service discovery functionality based
 // on HTTP endpoints that return target groups in JSON format.
 type Discovery struct {
-	*refresh.Discovery
+	*drefresh.Discovery
 	url             string
 	client          *nhttp.Client
 	refreshInterval time.Duration
@@ -107,7 +108,6 @@ type Discovery struct {
 
 // NewDiscovery returns a new HTTP discovery for the given config.
 func NewDiscovery(conf *SDConfig, logger logrus.FieldLogger) (*Discovery, error) {
-
 	client, err := config.NewClientFromConfig(conf.HTTPClientConfig, "http")
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func NewDiscovery(conf *SDConfig, logger logrus.FieldLogger) (*Discovery, error)
 		refreshInterval: time.Duration(conf.RefreshInterval), // Stored to be sent as headers.
 	}
 
-	d.Discovery = refresh.NewDiscovery(
+	d.Discovery = drefresh.NewDiscovery(
 		logger,
 		"http",
 		time.Duration(conf.RefreshInterval),
