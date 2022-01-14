@@ -146,7 +146,8 @@ function ExportData(props: ExportDataProps) {
               className="dropdown-menu-item"
               type="button"
               onClick={() => exportHtml(exportFlamebearer)}
-            >   Html
+            >
+              Html
             </button>
           )}
         </div>
