@@ -6,6 +6,8 @@ import ReactFlot from 'react-flot';
 import 'react-flot/flot/jquery.flot.time.min';
 import 'react-flot/flot/jquery.flot.selection.min';
 import 'react-flot/flot/jquery.flot.crosshair.min';
+import './TimelineChartPlugin';
+
 import { bindActionCreators } from 'redux';
 import {
   setDateRange,
@@ -34,17 +36,6 @@ class TimelineChart extends ReactFlot {
           Math.round(ranges.xaxis.from / 1000),
           Math.round(ranges.xaxis.to / 1000)
         );
-      }
-    });
-
-    $(`#${this.props.id}`).bind('plothover', (evt, position) => {
-      if (position) {
-        this.lockCrosshair({
-          x: item.datapoint[0],
-          y: item.datapoint[1],
-        });
-      } else {
-        this.unlockCrosshair();
       }
     });
   }
