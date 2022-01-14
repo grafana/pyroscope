@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+
 (function ($) {
   const options = {}; // no options
 
@@ -21,17 +23,24 @@
       // Format labels in accordance with xaxis tick size
       const { xaxis } = plot.getAxes();
 
+      if (!xaxis) {
+        return '';
+      }
+
       const d = new Date(date);
-      if (xaxis.tickSize[1] === 'second') {
-        return `${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
+
+      const hours = Math.abs(xaxis.max - xaxis.min) / 60 / 60 / 1000;
+
+      if (hours < 12) {
+        return format(d, 'HH:mm:ss');
       }
-      if (xaxis.tickSize[1] === 'minute') {
-        return `${d.getHours()}:${d.getMinutes()}`;
+      if (hours > 12 && hours < 24) {
+        return format(d, 'HH:mm');
       }
-      if (xaxis.tickSize[1] === 'hour') {
-        return `${d.getHours()}:${d.getMinutes()}`;
+      if (hours > 24) {
+        return format(d, 'MMM do HH:mm');
       }
-      return `${d.getHours()}`;
+      return format(d, 'MMM do HH:mm');
     }
 
     const onHover = (target, position) => {
@@ -62,38 +71,48 @@
           x: this.selectingFrom.pageX,
           y: this.tooltipY,
         });
+      } else if (
+        (this.selectingTo.pageX - this.selectingFrom.width / 2 >
+          this.selectingFrom.pageX - this.selectingFrom.width &&
+          this.selectingTo.pageX - this.selectingFrom.width / 2 <
+            this.selectingFrom.pageX + this.selectingFrom.width) ||
+        (this.selectingFrom.pageX - this.selectingTo.pageX > 0 &&
+          this.selectingFrom.pageX - this.selectingTo.pageX <
+            this.selectingFrom.width) // Check if tooltips can intersect
+      ) {
+        // Render Intersection
+        this.$tooltip2.hide();
+        this.$tooltip.html(
+          `${getFormatLabel(
+            Math.min(this.selectingFrom.x, this.selectingTo.x)
+          )} - 
+             ${getFormatLabel(
+               Math.max(this.selectingFrom.x, this.selectingTo.x)
+             )}`
+        );
+
+        // Stick to left selection
+        setTooltipPosition(
+          this.$tooltip,
+          {
+            x: Math.min(this.selectingFrom.pageX, this.selectingTo.pageX),
+            y: this.tooltipY,
+          },
+          false
+        );
       } else {
-        const { left } = $(this.$tooltip).offset();
-        if (
-          (this.selectingTo.pageX > left &&
-            this.selectingTo.pageX < left + this.selectingFrom.width) ||
-          (this.selectingTo.pageX < left &&
-            this.selectingTo.pageX + this.selectingFrom.width > left)
-        ) {
-          // Intersection
-          this.$tooltip2.hide();
-          this.$tooltip.html(
-            `${getFormatLabel(this.selectingFrom.x)} - ${getFormatLabel(
-              this.selectingTo.x
-            )}`
-          );
-          setTooltipPosition(this.$tooltip, {
-            x: this.selectingFrom.pageX,
-            y: this.tooltipY,
-          });
-        } else {
-          // No intersection. Display two tooltips
-          this.$tooltip.html(getFormatLabel(this.selectingFrom.x)).show();
-          this.$tooltip2.html(getFormatLabel(this.selectingTo.x)).show();
-          setTooltipPosition(this.$tooltip, {
-            x: this.selectingFrom.pageX,
-            y: this.tooltipY,
-          });
-          setTooltipPosition(this.$tooltip2, {
-            x: this.selectingTo.pageX,
-            y: this.tooltipY,
-          });
-        }
+        // No intersection. Display two tooltips
+        this.$tooltip.html(getFormatLabel(this.selectingFrom.x)).show();
+        this.$tooltip2.html(getFormatLabel(this.selectingTo.x)).show();
+
+        setTooltipPosition(this.$tooltip, {
+          x: this.selectingFrom.pageX,
+          y: this.tooltipY,
+        });
+        setTooltipPosition(this.$tooltip2, {
+          x: this.selectingTo.pageX,
+          y: this.tooltipY,
+        });
       }
     };
 
@@ -107,14 +126,14 @@
 
     function onMove() {}
 
-    const setTooltipPosition = ($tip, pos) => {
+    const setTooltipPosition = ($tip, pos, center = true) => {
       const totalTipWidth = $tip.outerWidth();
       const totalTipHeight = $tip.outerHeight();
       if (
         pos.x - $(window).scrollLeft() >
         $(window).innerWidth() - totalTipWidth
       ) {
-        pos.x -= totalTipWidth;
+        pos.x -= center ? totalTipWidth / 2 : totalTipWidth;
         pos.x = Math.max(pos.x, 0);
         $tip.css({
           left: 'auto',
@@ -131,7 +150,7 @@
       }
 
       $tip.css({
-        left: `${pos.x}px`,
+        left: `${pos.x - (center ? Math.floor(totalTipWidth / 2) : 0)}px`,
         top: `${pos.y}px`,
         right: 'auto',
       });
