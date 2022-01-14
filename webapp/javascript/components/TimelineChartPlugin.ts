@@ -18,6 +18,7 @@
     };
 
     function getFormatLabel(date) {
+      // Format labels in accordance with xaxis tick size
       const { xaxis } = plot.getAxes();
 
       const d = new Date(date);
@@ -33,7 +34,7 @@
       return `${d.getHours()}`;
     }
 
-    const onHover = (target, position, targetPosition) => {
+    const onHover = (target, position) => {
       this.tooltipY = target.currentTarget.getBoundingClientRect().bottom - 28;
 
       if (!this.selecting) {
@@ -97,6 +98,7 @@
     };
 
     const onLeave = () => {
+      // Save tooltips while selecting
       if (!this.selecting) {
         this.$tooltip.hide();
         this.$tooltip2.hide();
@@ -135,11 +137,13 @@
       });
     };
 
-    const onSelecting = (evt, selection) => {
+    const onSelecting = () => {
+      // Save selection state
       this.selecting = true;
     };
 
     const onSelected = () => {
+      // Clean up selection state and hide tooltips
       this.selecting = false;
       this.$tooltip.hide();
       this.$tooltip2.hide();
@@ -177,7 +181,6 @@
 
     function bindEvents(plot, eventHolder) {
       plot.getPlaceholder().bind('plothover', onHover);
-      // plot.getPlaceholder().bind("plotclick", onClick);
       plot.getPlaceholder().bind('plotselecting', onSelecting);
       plot.getPlaceholder().bind('plotselected', onSelected);
 
@@ -187,12 +190,10 @@
 
     function shutdown(plot, eventHolder) {
       plot.getPlaceholder().unbind('plothover', onHover);
-      // plot.getPlaceholder().unbind("plotclick", onClick);
       plot.getPlaceholder().unbind('plotselecting', onSelecting);
       plot.getPlaceholder().unbind('plotselected', onSelected);
       $(eventHolder).unbind('mousemove', onMove);
       $(eventHolder).unbind('mouseout', onLeave);
-      // destroyDomElements();
     }
 
     createDomElement();
