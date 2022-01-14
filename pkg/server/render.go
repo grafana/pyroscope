@@ -104,7 +104,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	case "html":
 		res := flamebearer.NewProfile(out, p.maxNodes)
 		w.Header().Add("Content-Type", "text/html")
-		if err := flamebearer.FlameberarerToHTML(&res, ctrl.dir, w); err != nil {
+		if err := flamebearer.FlameberarerToStandaloneHTML(&res, ctrl.dir, w); err != nil {
 			ctrl.writeJSONEncodeError(w, err)
 			return
 		}
