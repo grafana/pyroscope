@@ -158,6 +158,18 @@ install-web-dependencies: ## Install the web dependencies
 install-build-web-dependencies: ## Install web dependencies only necessary for a build
 	NODE_ENV=production yarn install --frozen-lockfile
 
+.PHONY: assets
+assets: install-web-dependencies ## deprecated
+	@echo "This command is deprecated, please use `make dev` to develop locally"
+	exit 1
+	# yarn dev
+
+.PHONY: assets-watch
+assets-watch: install-web-dependencies ## deprecated
+	@echo "This command is deprecated, please use `make dev` to develop locally"
+	exit 1
+	# yarn dev -- --watch
+
 .PHONY: assets-release
 assets-release: ## Configure the assets for release
 	rm -rf webapp/public/assets
