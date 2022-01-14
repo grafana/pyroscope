@@ -34,9 +34,10 @@ type Adhoc struct {
 	Duration              time.Duration `def:"0" desc:"duration of the profiling session, which is the whole execution of the profield process by default" mapstructure:"duration"`
 
 	// Output configuration
-	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
-	OutputFormat   string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
-	DataPath       string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"data-path"`
+	MaxNodesRender   int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
+	OutputFormat     string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
+	NoStandaloneHTML bool   `def:"false" desc:"disables generating a standalone HTML file(s), only save profiles to pyroscope data directory"`
+	DataPath         string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"data-path"`
 
 	// Spy configuration
 	ApplicationName    string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`

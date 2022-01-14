@@ -20,6 +20,7 @@ import (
 type writer struct {
 	maxNodesRender int
 	outputFormat   string
+	outputHTML     bool
 	logger         *logrus.Logger
 	storage        *storage.Storage
 	dataDir        string
@@ -29,6 +30,7 @@ func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) wr
 	return writer{
 		maxNodesRender: cfg.MaxNodesRender,
 		outputFormat:   cfg.OutputFormat,
+		outputHTML:     !cfg.NoStandaloneHTML,
 		logger:         logger,
 		storage:        st,
 		dataDir:        cfg.DataPath,
@@ -39,6 +41,11 @@ func (w writer) write(t0, t1 time.Time) error {
 	if err := os.MkdirAll(w.dataDir, os.ModeDir|os.ModePerm); err != nil {
 		return fmt.Errorf("could not create data directory: %w", err)
 	}
+	hw, err := newHTMLWriter(w.outputHTML, w.maxNodesRender, t0)
+	if err != nil {
+		return fmt.Errorf("could not create the HTML writer: %w", err)
+	}
+	defer hw.close() // It's fine to call this multiple times
 
 	profiles := 0
 	for _, name := range w.storage.GetAppNames() {
@@ -99,16 +106,35 @@ func (w writer) write(t0, t1 time.Time) error {
 				w.logger.WithError(err).Error("saving output file")
 			}
 		}
+		if err := hw.write(name, out); err != nil {
+			w.logger.WithError(err).Error("saving HTML file")
+		}
 		w.logger.Infof("profiling data has been saved to %s", path)
 		profiles++
 		if err := f.Close(); err != nil {
 			w.logger.WithError(err).Error("closing output file")
 		}
 	}
+	if err := hw.close(); err != nil {
+		w.logger.WithError(err).Error("closing HTML writer")
+	}
 	if profiles == 0 {
 		w.logger.Warning("no profiling data was saved, maybe the profiled process didn't run long enough?")
 	} else {
-		w.logger.Info("you can now run `pyroscope server` and see the profiling data at http://localhost:4040/adhoc-single")
+		switch len(hw.filenames) {
+		case 0:
+			w.logger.Info("you can now run `pyroscope server` and see the profiling data at http://localhost:4040/adhoc-single")
+		case 1:
+			w.logger.Infof(
+				"you can now open the HTML file '%s' or run `pyroscope server` and see the profiling data at http://localhost:4040/adhoc-single",
+				hw.filenames[0],
+			)
+		default:
+			w.logger.Infof(
+				"you can now open the HTML files in 'pyroscope-adhoc-%s' or run `pyroscope server` and see the profiling data at http://localhost:4040/adhoc-single",
+				t0.Format("2006-01-02-15-04-05"),
+			)
+		}
 	}
 	return nil
 }

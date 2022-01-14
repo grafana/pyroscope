@@ -17,8 +17,9 @@ func newAdhocCmd(cfg *config.Adhoc) *cobra.Command {
 		Long: `adhoc command is a complete toolset to profile a process and save the profiling
 results.
 
-These results are then available to be visualized through the 'Adhoc Profiling'
-section in the UI (available through 'pyroscope server').
+These results are then available to be visualized both as standalone HTML files
+(unless '--no-standalone-html' argument is provided) and through the
+ 'Adhoc Profiling' section in the UI (available through 'pyroscope server').
 
 There are multiple ways to gather the profiling data, and not all of them are
 available for all the languages.
