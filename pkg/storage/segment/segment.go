@@ -1,11 +1,13 @@
 package segment
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
+	"runtime/trace"
 	"sync"
 	"time"
 )
@@ -145,9 +147,11 @@ func normalizeTime(t time.Time) time.Time {
 // 	outside              // | | S E            0/1                      0/1
 // 	overlap              // | S | E            <1                       <1
 // 	contain              // S | | E            1/1                      <1
-func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, relationship *big.Rat)) {
+func (sn *streeNode) get(ctx context.Context, st, et time.Time, cb func(sn *streeNode, relationship *big.Rat)) {
 	rel := sn.relationship(st, et)
-	if sn.present && (rel == contain || rel == match) {
+	matches := sn.present && (rel == contain || rel == match)
+	trace.Logf(ctx, traceCatNodeGet, "D=%d T=%v P=%v M=%v R=%v", sn.depth, sn.time.Unix(), sn.present, matches, rel)
+	if matches {
 		cb(sn, big.NewRat(1, 1))
 		return
 	}
@@ -159,14 +163,16 @@ func (sn *streeNode) get(st, et time.Time, cb func(sn *streeNode, relationship *
 	if sn.present && sn.isLeaf() {
 		// TODO: I did not test this logic as extensively as I would love to.
 		//   See https://github.com/pyroscope-io/pyroscope/issues/28 for more context and ideas on what to do
+		trace.Log(ctx, traceCatNodeGet, "leaf")
 		cb(sn, sn.overlapRead(st, et))
 		return
 	}
 
 	// if current node doesn't have a tree present or has children, defer to children
+	trace.Log(ctx, traceCatNodeGet, "drill down")
 	for _, v := range sn.children {
 		if v != nil {
-			v.get(st, et, cb)
+			v.get(ctx, st, et, cb)
 		}
 	}
 }
@@ -339,19 +345,33 @@ func (s *Segment) Put(st, et time.Time, samples uint64, cb func(depth int, t tim
 	return nil
 }
 
-// TODO: simplify arguments
-// TODO: validate st < et
+const (
+	traceRegionGet  = "segment.Get"
+	traceCatGet     = traceRegionGet
+	traceCatNodeGet = "node.get"
+)
+
+//revive:disable-next-line:get-return callback
 func (s *Segment) Get(st, et time.Time, cb func(depth int, samples, writes uint64, t time.Time, r *big.Rat)) {
+	// TODO: simplify arguments
+	// TODO: validate st < et
+	s.GetContext(context.Background(), st, et, cb)
+}
+
+//revive:disable-next-line:get-return callback
+func (s *Segment) GetContext(ctx context.Context, st, et time.Time, cb func(depth int, samples, writes uint64, t time.Time, r *big.Rat)) {
+	defer trace.StartRegion(ctx, traceRegionGet).End()
 	s.m.RLock()
 	defer s.m.RUnlock()
 
 	st, et = normalize(st, et)
 	if s.root == nil {
+		trace.Log(ctx, traceCatGet, "empty")
 		return
 	}
 	// divider := int(et.Sub(st) / durations[0])
 	v := newVis()
-	s.root.get(st, et, func(sn *streeNode, r *big.Rat) {
+	s.root.get(ctx, st, et, func(sn *streeNode, r *big.Rat) {
 		// TODO: pass m / d from .get() ?
 		v.add(sn, r, true)
 		cb(sn.depth, sn.samples, sn.writes, sn.time, r)
