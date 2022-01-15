@@ -24,7 +24,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
-	pmodel "github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -48,15 +47,15 @@ func TestHTTPValidRefresh(t *testing.T) {
 
 	expectedTargets := []*targetgroup.Group{
 		{
-			Targets: []pmodel.LabelSet{
+			Targets: []model.LabelSet{
 				{
-					pmodel.AppNameLabel: pmodel.LabelValue("test"),
-					pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1:9090"),
+					model.AppNameLabel: model.LabelValue("test"),
+					model.AddressLabel: model.LabelValue("127.0.0.1:9090"),
 				},
 			},
-			Labels: pmodel.LabelSet{
-				pmodel.LabelName("__meta_datacenter"): pmodel.LabelValue("bru1"),
-				pmodel.LabelName("__meta_url"):        pmodel.LabelValue(ts.URL + "/http_sd.good.json"),
+			Labels: model.LabelSet{
+				model.LabelName("__meta_datacenter"): model.LabelValue("bru1"),
+				model.LabelName("__meta_url"):        model.LabelValue(ts.URL + "/http_sd.good.json"),
 			},
 			Source: urlSource(ts.URL+"/http_sd.good.json", 0),
 		},
@@ -192,43 +191,43 @@ func TestSourceDisappeared(t *testing.T) {
 			expectedTargets: [][]*targetgroup.Group{
 				{
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AppNameLabel: pmodel.LabelValue("test"),
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
+								model.AppNameLabel: model.LabelValue("test"),
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("1"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("1"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 0),
 					},
 				},
 				{
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AppNameLabel: pmodel.LabelValue("test"),
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
+								model.AppNameLabel: model.LabelValue("test"),
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("1"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("1"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 0),
 					},
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AppNameLabel: pmodel.LabelValue("test1"),
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
+								model.AppNameLabel: model.LabelValue("test1"),
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("2"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("2"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 1),
 					},
@@ -244,43 +243,43 @@ func TestSourceDisappeared(t *testing.T) {
 			expectedTargets: [][]*targetgroup.Group{
 				{
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AppNameLabel: pmodel.LabelValue("test1"),
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
+								model.AppNameLabel: model.LabelValue("test1"),
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("1"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("1"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 0),
 					},
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AppNameLabel: pmodel.LabelValue("test2"),
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
+								model.AppNameLabel: model.LabelValue("test2"),
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("2"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("2"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 1),
 					},
 				},
 				{
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AppNameLabel: pmodel.LabelValue("test1"),
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
+								model.AppNameLabel: model.LabelValue("test1"),
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("1"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("1"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 0),
 					},
@@ -303,56 +302,56 @@ func TestSourceDisappeared(t *testing.T) {
 			expectedTargets: [][]*targetgroup.Group{
 				{
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
-								pmodel.AppNameLabel: "test1",
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
+								model.AppNameLabel: "test1",
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("1"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("1"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 0),
 					},
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
-								pmodel.AppNameLabel: "test2",
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
+								model.AppNameLabel: "test2",
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("2"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("2"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 1),
 					},
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
-								pmodel.AppNameLabel: "test3",
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
+								model.AppNameLabel: "test3",
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("3"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("3"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 2),
 					},
 				},
 				{
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AppNameLabel: "test1",
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.1"),
+								model.AppNameLabel: "test1",
+								model.AddressLabel: model.LabelValue("127.0.0.1"),
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("1"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("1"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 0),
 					},
@@ -369,28 +368,28 @@ func TestSourceDisappeared(t *testing.T) {
 				},
 				{
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.2"),
-								pmodel.AppNameLabel: "testv",
+								model.AddressLabel: model.LabelValue("127.0.0.2"),
+								model.AppNameLabel: "testv",
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("v"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("v"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 0),
 					},
 					{
-						Targets: []pmodel.LabelSet{
+						Targets: []model.LabelSet{
 							{
-								pmodel.AddressLabel: pmodel.LabelValue("127.0.0.3"),
-								pmodel.AppNameLabel: "testvv",
+								model.AddressLabel: model.LabelValue("127.0.0.3"),
+								model.AppNameLabel: "testvv",
 							},
 						},
-						Labels: pmodel.LabelSet{
-							pmodel.LabelName("k"):          pmodel.LabelValue("vv"),
-							pmodel.LabelName("__meta_url"): pmodel.LabelValue(ts.URL),
+						Labels: model.LabelSet{
+							model.LabelName("k"):          model.LabelValue("vv"),
+							model.LabelName("__meta_url"): model.LabelValue(ts.URL),
 						},
 						Source: urlSource(ts.URL, 1),
 					},

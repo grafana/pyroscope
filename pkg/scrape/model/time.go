@@ -179,7 +179,7 @@ func (d *Duration) Set(s string) error {
 }
 
 // Type implements pflag.Value
-func (d *Duration) Type() string {
+func (*Duration) Type() string {
 	return "duration"
 }
 
