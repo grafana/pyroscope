@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/common/model"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	pmodel "github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"

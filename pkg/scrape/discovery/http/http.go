@@ -27,12 +27,12 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/model"
+	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	drefresh "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/refresh"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
-	pmodel "github.com/pyroscope-io/pyroscope/pkg/scrape/model"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	"github.com/sirupsen/logrus"
 )
 
@@ -42,7 +42,7 @@ var (
 		RefreshInterval:  model.Duration(60 * time.Second),
 		HTTPClientConfig: config.DefaultHTTPClientConfig,
 	}
-	userAgent        = fmt.Sprintf("Pyroscope/%s", "0.5.1")
+	userAgent        = fmt.Sprintf("Pyroscope/%s", build.Version)
 	matchContentType = regexp.MustCompile(`^(?i:application\/json(;\s*charset=("utf-8"|utf-8))?)$`)
 )
 
@@ -174,9 +174,9 @@ func (d *Discovery) refresh(ctx context.Context) ([]*targetgroup.Group, error) {
 
 		tg.Source = urlSource(d.url, i)
 		if tg.Labels == nil {
-			tg.Labels = pmodel.LabelSet{}
+			tg.Labels = model.LabelSet{}
 		}
-		tg.Labels[httpSDURLLabel] = pmodel.LabelValue(d.url)
+		tg.Labels[httpSDURLLabel] = model.LabelValue(d.url)
 	}
 
 	// Generate empty updates for sources that disappeared.
