@@ -1,11 +1,7 @@
 ### Pyroscope Rideshare Example
 ![python_example_architecture_05_00](https://user-images.githubusercontent.com/23323466/135728737-0c5e54ca-1e78-4c6d-933c-145f441c96a9.gif)
 
-#### _Read this in other languages._
-<kbd>[简体中文](README_zh.md)</kbd>
-
-Note: For documentation on Pyroscope's golang integration visit [our website](https://pyroscope.io/docs/golang/)
-
+Note: For documentation on Pyroscope's golang integration visit our website for [golang push mode](https://pyroscope.io/docs/golang/) or [golang pull mode](https://pyroscope.io/docs/golang-pull-mode/)
 ## Background
 In this example we show a simplified, basic use case of Pyroscope. We simulate a "ride share" company which has three endpoints found in `main.go`:
 - `/bike`    : calls the `OrderBike(search_radius)` function to order a bike
@@ -34,7 +30,7 @@ Tagging something static, like the `region`, can be done in the initialization c
 ```
 
 ## Tagging dynamically within functions
-Tagging something more dynamically, like we do for the `vehicle` tag can be done inside our utility `find_nearest_vehicle()` function using a `with pyroscope.tag_wrapper()` block
+Tagging something more dynamically, like we do for the `vehicle` tag can be done inside our utility `FindNearestVehicle()` function using a `with pyroscope.tag_wrapper()` block
 ```
 func FindNearestVehicle(search_radius int64, vehicle string) {
 	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("vehicle", vehicle), func(ctx context.Context) {
@@ -76,7 +72,7 @@ What this example will do is run all the code mentioned above and also send some
 
 The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `order_car` function. 
 
-The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `order_car()` function is problematic. Tagging both `region` and `vehicle` allows us to test two good hypotheses:
+The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `OrderCar()` function is problematic. Tagging both `region` and `vehicle` allows us to test two good hypotheses:
 - Something is wrong with the `/car` endpoint code
 - Something is wrong with one of our regions
 
@@ -85,16 +81,16 @@ To analyze this we can select one or more tags from the "Select Tag" dropdown:
 ![image](https://user-images.githubusercontent.com/23323466/135525308-b81e87b0-6ffb-4ef0-a6bf-3338483d0fc4.png)
 
 ## Narrowing in on the Issue Using Tags
-Knowing there is an issue with the `order_car()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `us-west-1` region, where it alternates between high-cpu times and low-cpu times.
+Knowing there is an issue with the `OrderCar()` function we automatically select that tag. Then, after inspecting multiple `region` tags, it becomes clear by looking at the timeline that there is an issue with the `us-west-1` region, where it alternates between high-cpu times and low-cpu times.
 
-We can also see that the `mutex_lock()` function is consuming almost 70% of CPU resources during this time period. 
+We can also see that the `mutexLock()` function is consuming almost 70% of CPU resources during this time period. 
 
 ![golang_second_slide-01](https://user-images.githubusercontent.com/23323466/149689013-2c0afeeb-53e2-4780-b52a-26b140627d9c.jpg)
 
 ## Comparing two time periods
 Using Pyroscope's "comparison view" we can actually select two different time ranges from the timeline to compare the resulting flamegraphs. The pink section on the left timeline results in the left flamegraph, and the blue section on the right represents the right flamegraph.
 
-When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutex_lock()` function where it takes **51% of CPU** during low-cpu times and **78% of CPU** during high-cpu times.
+When we select a period of low-cpu utilization and a period of high-cpu utilization we can see that there is clearly different behavior in the `mutexLock()` function where it takes **33% of CPU** during low-cpu times and **71% of CPU** during high-cpu times.
 
 ![golang_third_slide-01](https://user-images.githubusercontent.com/23323466/149689026-8b4ab3b1-6380-455c-990f-7ff35811f26b.jpg)
 
