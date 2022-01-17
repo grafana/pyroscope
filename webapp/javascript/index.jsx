@@ -4,7 +4,7 @@ import React from 'react';
 import { Provider } from 'react-redux';
 import { Router, BrowserRouter, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
-import { isExperimentalAdhocUIEnabled } from '@utils/features';
+import { isAdhocUIEnabled } from '@utils/features';
 import Notifications from '@ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
 import store, { persistor } from './redux/store';
@@ -47,17 +47,17 @@ ReactDOM.render(
             <Route path="/comparison-diff">
               <ComparisonDiffApp />
             </Route>
-            {isExperimentalAdhocUIEnabled && (
+            {isAdhocUIEnabled && (
               <Route path="/adhoc-single">
                 <AdhocSingle />
               </Route>
             )}
-            {isExperimentalAdhocUIEnabled && (
+            {isAdhocUIEnabled && (
               <Route path="/adhoc-comparison">
                 <AdhocComparison />
               </Route>
             )}
-            {isExperimentalAdhocUIEnabled && (
+            {isAdhocUIEnabled && (
               <Route path="/adhoc-comparison-diff">
                 <AdhocComparisonDiff />
               </Route>
