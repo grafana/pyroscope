@@ -18,7 +18,7 @@ jobs:
       - run: yarn
       - run: yarn build:datasource
         env:
-          PYROSCOPE_PANEL_VERSION: test
+          PYROSCOPE_DATASOURCE_VERSION: test
       - name: run grafana
         run: docker-compose -f grafana-plugin/datasource/docker-compose.yml up -d
       - name: Cypress run
