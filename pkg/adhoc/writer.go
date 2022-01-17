@@ -8,19 +8,17 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
 type writer struct {
 	maxNodesRender int
 	outputFormat   string
-	outputHTML     bool
+	outputJSON     bool
 	logger         *logrus.Logger
 	storage        *storage.Storage
 	dataDir        string
@@ -30,7 +28,7 @@ func newWriter(cfg *config.Adhoc, st *storage.Storage, logger *logrus.Logger) wr
 	return writer{
 		maxNodesRender: cfg.MaxNodesRender,
 		outputFormat:   cfg.OutputFormat,
-		outputHTML:     !cfg.NoStandaloneHTML,
+		outputJSON:     !cfg.NoJSONOutput,
 		logger:         logger,
 		storage:        st,
 		dataDir:        cfg.DataPath,
@@ -41,11 +39,11 @@ func (w writer) write(t0, t1 time.Time) error {
 	if err := os.MkdirAll(w.dataDir, os.ModeDir|os.ModePerm); err != nil {
 		return fmt.Errorf("could not create data directory: %w", err)
 	}
-	hw, err := newHTMLWriter(w.outputHTML, w.maxNodesRender, t0)
+	ew, err := newExternalWriter(w.outputFormat, w.maxNodesRender, t0)
 	if err != nil {
-		return fmt.Errorf("could not create the HTML writer: %w", err)
+		return fmt.Errorf("could not create the external writer: %w", err)
 	}
-	defer hw.close() // It's fine to call this multiple times
+	defer ew.close() // It's fine to call this multiple times
 
 	profiles := 0
 	for _, name := range w.storage.GetAppNames() {
@@ -69,70 +67,49 @@ func (w writer) write(t0, t1 time.Time) error {
 			continue
 		}
 
-		var ext string
-		if w.outputFormat == "collapsed" {
-			ext = "collapsed.txt"
-		} else {
-			ext = w.outputFormat
-		}
-		filename := fmt.Sprintf("%s-%s.%s", name, t0.Format("2006-01-02-15-04-05"), ext)
-		path := filepath.Join(w.dataDir, filename)
-		f, err := os.Create(path)
-		if err != nil {
-			w.logger.WithError(err).Error("creating output file")
+		if err := ew.write(name, out); err != nil {
+			w.logger.WithError(err).Error("saving output file")
 			continue
 		}
-		defer f.Close()
-		switch w.outputFormat {
-		case "json":
+		if w.outputJSON {
+			filename := fmt.Sprintf("%s-%s.json", name, t0.Format("2006-01-02-15-04-05"))
+			path := filepath.Join(w.dataDir, filename)
+			f, err := os.Create(path)
+			if err != nil {
+				w.logger.WithError(err).Error("creating output file")
+				continue
+			}
+			defer f.Close()
+
 			res := flamebearer.NewProfile(out, w.maxNodesRender)
 			if err := json.NewEncoder(f).Encode(res); err != nil {
-				w.logger.WithError(err).Error("saving output file")
+				w.logger.WithError(err).Error("saving JSON file")
+				continue
 			}
-		case "pprof":
-			pprof := out.Tree.Pprof(&tree.PprofMetadata{
-				Unit:      out.Units,
-				StartTime: t0,
-			})
-			out, err := proto.Marshal(pprof)
-			if err != nil {
-				w.logger.WithError(err).Error("serializing to pprof")
+			w.logger.Infof("profiling data has been saved to %s", path)
+			profiles++
+			if err := f.Close(); err != nil {
+				w.logger.WithError(err).Error("closing output file")
 			}
-			if _, err := f.Write(out); err != nil {
-				w.logger.WithError(err).Error("saving output file")
-			}
-		case "collapsed":
-			if _, err := f.WriteString(out.Tree.Collapsed()); err != nil {
-				w.logger.WithError(err).Error("saving output file")
-			}
-		}
-		if err := hw.write(name, out); err != nil {
-			w.logger.WithError(err).Error("saving HTML file")
-		}
-		w.logger.Infof("profiling data has been saved to %s", path)
-		profiles++
-		if err := f.Close(); err != nil {
-			w.logger.WithError(err).Error("closing output file")
 		}
 	}
-	if err := hw.close(); err != nil {
-		w.logger.WithError(err).Error("closing HTML writer")
+	path, err := ew.close()
+	if err != nil {
+		w.logger.WithError(err).Error("closing external writer")
 	}
-	if profiles == 0 {
-		w.logger.Warning("no profiling data was saved, maybe the profiled process didn't run long enough?")
-	} else {
-		switch len(hw.filenames) {
-		case 0:
+	if path == "" {
+		if profiles == 0 {
+			w.logger.Warning("no profiling data was saved, maybe the profiled process didn't run long enough?")
+		} else {
 			w.logger.Info("you can now run `pyroscope server` and see the profiling data at http://localhost:4040/adhoc-single")
-		case 1:
+		}
+	} else {
+		if profiles == 0 {
+			w.logger.Infof("profiling data was saved in '%s'", path)
+		} else {
 			w.logger.Infof(
-				"you can now open the HTML file '%s' or run `pyroscope server` and see the profiling data at http://localhost:4040/adhoc-single",
-				hw.filenames[0],
-			)
-		default:
-			w.logger.Infof(
-				"you can now open the HTML files in 'pyroscope-adhoc-%s' or run `pyroscope server` and see the profiling data at http://localhost:4040/adhoc-single",
-				t0.Format("2006-01-02-15-04-05"),
+				"profiling data was saved in '%s' and you can also run `pyroscope server` to see the profiling data at http://localhost:4040/adhoc-single",
+				path,
 			)
 		}
 	}
