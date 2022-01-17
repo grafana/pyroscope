@@ -1,4 +1,5 @@
-### Pyroscope Rideshare Example
+## Continuous Profiling for Ruby applications
+### Profiling a Ruby Rideshare App with Pyroscope
 ![ruby_example_architecture_05](https://user-images.githubusercontent.com/23323466/135726784-0c367d3f-c9e5-4e3f-91be-761d4d6d21b1.gif)
 
 Note: For documentation on the Pyroscope ruby gem visit [our website](https://pyroscope.io/docs/ruby/)
