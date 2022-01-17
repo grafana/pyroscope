@@ -70,7 +70,7 @@ What this example will do is run all the code mentioned above and also send some
 
 ![golang_first_slide](https://user-images.githubusercontent.com/23323466/149688998-ca94dc82-f1e5-46fd-9a73-233c1e56d8e5.jpg)
 
-The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `order_car` function. 
+The first step when analyzing a profile outputted from your application, is to take note of the _largest node_ which is where your application is spending the most resources. In this case, it happens to be the `OrderCar` function. 
 
 The benefit of using the Pyroscope package, is that now that we can investigate further as to _why_ the `OrderCar()` function is problematic. Tagging both `region` and `vehicle` allows us to test two good hypotheses:
 - Something is wrong with the `/car` endpoint code
@@ -101,9 +101,10 @@ While the difference _in this case_ is stark enough to see in the comparison vie
 
 ### More use cases
 We have been beta testing this feature with several different companies and some of the ways that we've seen companies tag their performance data:
+- Tagging Kubernetes attributes
 - Tagging controllers
 - Tagging regions
-- Tagging jobs from a redis / sidekiq / rabbitmq queue
+- Tagging jobs from a queue
 - Tagging commits
 - Tagging staging / production environments
 - Tagging different parts of their testing suites
