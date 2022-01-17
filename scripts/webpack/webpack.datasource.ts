@@ -57,12 +57,12 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
 
   let version = 'dev';
   if (process.env.NODE_ENV === 'production') {
-    if (!process.env.PYROSCOPE_PANEL_VERSION) {
+    if (!process.env.PYROSCOPE_DATASOURCE_VERSION) {
       throw new Error(
-        'Environment variable PYROSCOPE_PANEL_VERSION is required'
+        'Environment variable PYROSCOPE_DATASOURCE_VERSION is required'
       );
     }
-    version = process.env.PYROSCOPE_PANEL_VERSION;
+    version = process.env.PYROSCOPE_DATASOURCE_VERSION;
   }
 
   return [
@@ -83,7 +83,7 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
     }),
     new ReplaceInFileWebpackPlugin([
       {
-        dir: 'grafana-plugin/panel/dist',
+        dir: 'grafana-plugin/datasource/dist',
         files: ['plugin.json', 'README.md'],
         rules: [
           {
@@ -192,20 +192,20 @@ const getBaseWebpackConfig: any = async (options) => {
   return {
     mode: options.production ? 'production' : 'development',
     target: 'web',
-    context: path.join(process.cwd(), 'grafana-plugin', 'panel', 'src'),
+    context: path.join(process.cwd(), 'grafana-plugin', 'datasource', 'src'),
     devtool: 'source-map',
     entry: {
       module: path.join(
         process.cwd(),
         'grafana-plugin',
-        'panel',
+        'datasource',
         'src',
         'module.ts'
       ),
     },
     output: {
       filename: '[name].js',
-      path: path.join(process.cwd(), 'grafana-plugin', 'panel', 'dist'),
+      path: path.join(process.cwd(), 'grafana-plugin', 'datasource', 'dist'),
       libraryTarget: 'amd',
       publicPath: '/',
     },
