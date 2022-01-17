@@ -1,6 +1,6 @@
 ## Continuous Profiling for Golang applications
 ### Profiling a Golang Rideshare App with Pyroscope
-![python_example_architecture_05_00](https://user-images.githubusercontent.com/23323466/135728737-0c5e54ca-1e78-4c6d-933c-145f441c96a9.gif)
+![golang_example_architecture_05_1](https://user-images.githubusercontent.com/23323466/149699777-8f73c459-917d-48c5-b2d8-87560a7bfb11.gif)
 
 Note: For documentation on Pyroscope's golang integration visit our website for [golang push mode](https://pyroscope.io/docs/golang/) or [golang pull mode](https://pyroscope.io/docs/golang-pull-mode/)
 ## Background
