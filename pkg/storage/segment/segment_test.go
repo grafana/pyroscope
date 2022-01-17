@@ -215,6 +215,68 @@ var _ = Describe("stree", func() {
 					"0:20",
 				}))
 			})
+
+			It("correctly samples data", func() {
+				// See https://github.com/pyroscope-io/pyroscope/issues/715
+				s := New()
+				st := time.Date(2021, time.December, 1, 0, 0, 0, 0, time.UTC)
+				et := time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+				rp := NewRetentionPolicy().
+					SetAbsolutePeriod(time.Hour * time.Duration(24) * 7)
+
+				c := st
+				for c.Before(et) {
+					e := c.Add(time.Second * time.Duration(10))
+					err := s.Put(c, e, 100, func(int, time.Time, *big.Rat, []Addon) {})
+					Expect(err).ToNot(HaveOccurred())
+					c = e
+				}
+
+				r, err := s.DeleteNodesBefore(rp)
+				Expect(r).To(BeFalse())
+				Expect(err).ToNot(HaveOccurred())
+
+				gSt := time.Date(2022, time.January, 15, 10, 0, 0, 0, time.UTC)
+				gEt := gSt.Add(time.Hour)
+
+				var keys []string
+				s.Get(gSt, gEt, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix()))+":"+r.String())
+				})
+
+				Expect(keys).To(BeEmpty())
+			})
+
+			It("correctly samples data with level retention period", func() {
+				// See https://github.com/pyroscope-io/pyroscope/issues/715
+				s := New()
+				st := time.Date(2021, time.December, 1, 0, 0, 0, 0, time.UTC)
+				et := time.Date(2021, time.December, 2, 0, 0, 0, 0, time.UTC)
+
+				c := st
+				for c.Before(et) {
+					e := c.Add(time.Second * time.Duration(10))
+					err := s.Put(c, e, 100, func(int, time.Time, *big.Rat, []Addon) {})
+					Expect(err).ToNot(HaveOccurred())
+					c = e
+				}
+
+				r, err := s.DeleteNodesBefore(&RetentionPolicy{Levels: map[int]time.Time{0: et}})
+				Expect(r).To(BeFalse())
+				Expect(err).ToNot(HaveOccurred())
+
+				gSt := time.Date(2021, time.December, 1, 10, 0, 0, 0, time.UTC)
+				gEt := gSt.Add(time.Second * 30)
+
+				var keys []string
+				s.Get(gSt, gEt, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix()))+":"+r.String())
+				})
+
+				Expect(keys).To(ConsistOf([]string{
+					"1:1638352800:3/10",
+				}))
+			})
 		})
 	})
 

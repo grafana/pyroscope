@@ -147,7 +147,7 @@ func normalizeTime(t time.Time) time.Time {
 // 	outside              // | | S E            0/1                      0/1
 // 	overlap              // | S | E            <1                       <1
 // 	contain              // S | | E            1/1                      <1
-func (sn *streeNode) get(ctx context.Context, st, et time.Time, cb func(sn *streeNode, relationship *big.Rat)) {
+func (sn *streeNode) get(ctx context.Context, s *Segment, st, et time.Time, cb func(*streeNode, *big.Rat)) {
 	rel := sn.relationship(st, et)
 	matches := sn.present && (rel == contain || rel == match)
 	trace.Logf(ctx, traceCatNodeGet, "D=%d T=%v P=%v M=%v R=%v", sn.depth, sn.time.Unix(), sn.present, matches, rel)
@@ -158,23 +158,22 @@ func (sn *streeNode) get(ctx context.Context, st, et time.Time, cb func(sn *stre
 	if rel == outside {
 		return
 	}
-
-	// inside or overlap
-	if sn.present && sn.isLeaf() {
-		// TODO: I did not test this logic as extensively as I would love to.
-		//   See https://github.com/pyroscope-io/pyroscope/issues/28 for more context and ideas on what to do
-		trace.Log(ctx, traceCatNodeGet, "leaf")
-		cb(sn, sn.overlapRead(st, et))
+	// Inside or outside. Defer to children.
+	trace.Log(ctx, traceCatNodeGet, "drill down")
+	// Whether child nodes are outside the retention period.
+	sampled := st.Before(s.watermarks.levels[sn.depth-1])
+	if !sampled {
+		// Traverse nodes recursively.
+		for _, v := range sn.children {
+			if v != nil {
+				v.get(ctx, s, st, et, cb)
+			}
+		}
 		return
 	}
-
-	// if current node doesn't have a tree present or has children, defer to children
-	trace.Log(ctx, traceCatNodeGet, "drill down")
-	for _, v := range sn.children {
-		if v != nil {
-			v.get(ctx, st, et, cb)
-		}
-	}
+	// Create a sampled tree from the current node.
+	trace.Log(ctx, traceCatNodeGet, "sampled")
+	cb(sn, sn.overlapRead(st, et))
 }
 
 func (sn *streeNode) isLeaf() bool {
@@ -371,7 +370,7 @@ func (s *Segment) GetContext(ctx context.Context, st, et time.Time, cb func(dept
 	}
 	// divider := int(et.Sub(st) / durations[0])
 	v := newVis()
-	s.root.get(ctx, st, et, func(sn *streeNode, r *big.Rat) {
+	s.root.get(ctx, s, st, et, func(sn *streeNode, r *big.Rat) {
 		// TODO: pass m / d from .get() ?
 		v.add(sn, r, true)
 		cb(sn.depth, sn.samples, sn.writes, sn.time, r)
