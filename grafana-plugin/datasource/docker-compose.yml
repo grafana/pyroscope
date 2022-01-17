@@ -1,0 +1,27 @@
+---
+version: '3.9'
+services:
+  grafana:
+    image: grafana/grafana:8.1.1
+    volumes:
+      - ./dist:/var/lib/grafana/plugins/pyroscope-datasource
+      - ./grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=pyroscope-datasource
+      - GF_INSTALL_PLUGINS=https://github.com/pyroscope-io/grafana-panel-plugin/releases/download/v1.1.0/pyroscope-panel-1.1.0.zip;pyroscope-panel
+    ports:
+      - 3000:3000
+
+  pyroscope:
+    image: 'pyroscope/pyroscope:latest'
+    command:
+      - server
+    environment:
+      - PYROSCOPE_LOG_LEVEL=info
+
+  # an app with tags
+  app:
+    build: ../../examples/golang-push/simple
+    environment:
+      - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
