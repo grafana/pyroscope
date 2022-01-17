@@ -109,7 +109,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		res := flamebearer.NewProfile(out, p.maxNodes)
 
 		f, err := ctrl.dir.Open("/standalone.html")
-		//		tmpl, err := ctrl.getTemplate("/standalone.html")
+
 		if err != nil {
 			ctrl.writeInternalServerError(w, err, "could not render standalone page")
 			return
@@ -142,19 +142,6 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//		var buffer bytes.Buffer
-		//		scriptTag := bufio.NewWriter(&buffer)
-
-		//		s := `
-		//    <script type="text/javascript">
-		//      <!-- generate-standalone-flamegraph -->
-		//      try {
-		//        eval('window.flamegraph = {{ .Flamegraph }}');
-		//      } catch(e) {}
-		//    </script>
-		//		`
-		//
-
 		var buffer bytes.Buffer
 		err = tmpl.Execute(&buffer, map[string]string{
 			"Flamegraph": string(flamegraph),
@@ -164,13 +151,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Add("Content-Type", "text/html")
-
-		// regex copied from scripts/generate-sample-config
 		standaloneFlamegraphRegexp := regexp.MustCompile(`(?s)<!--\s*generate-standalone-flamegraph\s*-->`)
-
-		fmt.Println("buffer bytes", string(buffer.Bytes()))
-		fmt.Println("body ", string(body))
 		newContent := standaloneFlamegraphRegexp.ReplaceAll(body, buffer.Bytes())
 
 		if bytes.Equal(body, newContent) {
