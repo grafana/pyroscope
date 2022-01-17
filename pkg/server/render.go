@@ -1,13 +1,17 @@
 package server
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -104,11 +108,19 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	case "html":
 		res := flamebearer.NewProfile(out, p.maxNodes)
 
-		tmpl, err := ctrl.getTemplate("/standalone.html")
+		f, err := ctrl.dir.Open("/standalone.html")
+		//		tmpl, err := ctrl.getTemplate("/standalone.html")
 		if err != nil {
 			ctrl.writeInternalServerError(w, err, "could not render standalone page")
 			return
 		}
+
+		body, err := io.ReadAll(f)
+		if err != nil {
+			ctrl.writeInternalServerError(w, err, "could not render standalone page")
+			return
+		}
+
 		var flamegraph []byte
 		flamegraph, err = json.Marshal(res)
 		if err != nil {
@@ -116,10 +128,57 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Add("Content-Type", "text/html")
-		mustExecute(tmpl, w, map[string]string{
+		tmpl, err := template.New("standalone").Parse(
+			`
+    <script type="text/javascript">
+      try {
+        eval('window.flamegraph = {{ .Flamegraph }}');
+      } catch(e) {}
+    </script>
+			`,
+		)
+		if err != nil {
+			ctrl.writeInternalServerError(w, err, "could not render standalone page")
+			return
+		}
+
+		//		var buffer bytes.Buffer
+		//		scriptTag := bufio.NewWriter(&buffer)
+
+		//		s := `
+		//    <script type="text/javascript">
+		//      <!-- generate-standalone-flamegraph -->
+		//      try {
+		//        eval('window.flamegraph = {{ .Flamegraph }}');
+		//      } catch(e) {}
+		//    </script>
+		//		`
+		//
+
+		var buffer bytes.Buffer
+		err = tmpl.Execute(&buffer, map[string]string{
 			"Flamegraph": string(flamegraph),
 		})
+		if err != nil {
+			ctrl.writeInternalServerError(w, err, "could not render standalone page")
+			return
+		}
+
+		w.Header().Add("Content-Type", "text/html")
+
+		// regex copied from scripts/generate-sample-config
+		standaloneFlamegraphRegexp := regexp.MustCompile(`(?s)<!--\s*generate-standalone-flamegraph\s*-->`)
+
+		fmt.Println("buffer bytes", string(buffer.Bytes()))
+		fmt.Println("body ", string(body))
+		newContent := standaloneFlamegraphRegexp.ReplaceAll(body, buffer.Bytes())
+
+		if bytes.Equal(body, newContent) {
+			ctrl.writeInternalServerError(w, fmt.Errorf("could not apply regex"), "could not render standalone page")
+			return
+		}
+
+		ctrl.writeResponseFile(w, fmt.Sprintf("%v.html", filename), newContent)
 	}
 }
 
