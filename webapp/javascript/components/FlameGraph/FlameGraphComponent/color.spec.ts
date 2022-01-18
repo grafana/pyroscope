@@ -1,3 +1,4 @@
+import Color from 'color';
 import {
   colorBasedOnDiffPercent,
   colorFromPercentage,
@@ -43,9 +44,9 @@ describe('NewDiffColor with white-to-black example palette', () => {
   ])('.NewDiffColor(%i, %i)', (a, expected) => {
     it(`returns ${expected}`, () => {
       const color = NewDiffColor({
-        goodColor: 'white',
-        neutralColor: 'grey',
-        badColor: 'black',
+        goodColor: Color('white'),
+        neutralColor: Color('grey'),
+        badColor: Color('black'),
       });
 
       expect(color(a)).toBe(expected);

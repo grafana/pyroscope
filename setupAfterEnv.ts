@@ -4,6 +4,7 @@ import timezoneMock from 'timezone-mock';
 import { configureToMatchImageSnapshot } from 'jest-image-snapshot';
 import type { MatchImageSnapshotOptions } from 'jest-image-snapshot';
 import nodeFetch from 'node-fetch';
+import 'regenerator-runtime/runtime';
 
 expect.extend({
   toMatchImageSnapshot(received: string, options: MatchImageSnapshotOptions) {
