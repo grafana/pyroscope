@@ -236,6 +236,7 @@ class FlameGraphRenderer extends React.Component {
           isFlamegraphDirty={this.state.isFlamegraphDirty}
           highlightQuery={this.state.highlightQuery}
           handleTableItemClick={this.onTableItemClick}
+          palette={this.state.palette}
         />
       </div>
     );

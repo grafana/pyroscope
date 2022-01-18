@@ -83,12 +83,13 @@ function backgroundImageStyle(a, b, color) {
 // - _: render both diff color
 // - L: only render diff color on the left, if the left is longer than the right (better, green)
 // - R: only render diff color on the right, if the right is longer than the left (worse, red)
-function backgroundImageDiffStyle(a, b, total, color, side) {
+function backgroundImageDiffStyle(palette, a, b, total, color, side) {
   const w = 148;
   const k = w - (Math.min(a, b) / total) * w;
   const kd = w - (Math.max(a, b) / total) * w;
   const clr = color.alpha(1.0);
-  const cld = b < a ? diffColorGreen.alpha(0.8) : diffColorRed.alpha(0.8);
+  const cld =
+    b < a ? palette.goodColor.alpha(0.8) : palette.badColor.alpha(0.8);
 
   if (side === 'L' && a < b) {
     return `
@@ -122,6 +123,7 @@ export default function ProfilerTable({
   fitMode,
   handleTableItemClick,
   highlightQuery,
+  palette,
 }) {
   return (
     <Table
@@ -133,6 +135,7 @@ export default function ProfilerTable({
       fitMode={fitMode}
       highlightQuery={highlightQuery}
       handleTableItemClick={handleTableItemClick}
+      palette={palette}
     />
   );
 }
@@ -168,6 +171,7 @@ function Table({
   fitMode,
   handleTableItemClick,
   highlightQuery,
+  palette,
 }) {
   if (!flamebearer || flamebearer.numTicks === 0) {
     return [];
@@ -212,6 +216,7 @@ function Table({
           fitMode={fitMode}
           handleTableItemClick={handleTableItemClick}
           highlightQuery={highlightQuery}
+          palette={palette}
         />
       </tbody>
     </table>
@@ -227,6 +232,7 @@ const TableBody = React.memo(
     fitMode,
     handleTableItemClick,
     highlightQuery,
+    palette,
   }) => {
     const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
@@ -301,6 +307,7 @@ const TableBody = React.memo(
           {/*   The `style` prop expects a mapping from style properties to values, not a string. */}
           <td
             STYLE={backgroundImageDiffStyle(
+              palette,
               x.selfLeft,
               x.selfRght,
               maxSelf,
@@ -314,6 +321,7 @@ const TableBody = React.memo(
           </td>
           <td
             STYLE={backgroundImageDiffStyle(
+              palette,
               x.selfLeft,
               x.selfRght,
               maxSelf,
@@ -333,6 +341,7 @@ const TableBody = React.memo(
           {nameCell(x, style)}
           <td
             STYLE={backgroundImageDiffStyle(
+              palette,
               x.totalLeft,
               x.totalRght,
               numTicks / 2,
@@ -346,6 +355,7 @@ const TableBody = React.memo(
           </td>
           <td
             STYLE={backgroundImageDiffStyle(
+              palette,
               x.totalLeft,
               x.totalRght,
               numTicks / 2,
@@ -365,6 +375,7 @@ const TableBody = React.memo(
           {nameCell(x, style)}
           <td
             STYLE={backgroundImageDiffStyle(
+              palette,
               x.selfLeft,
               x.selfRght,
               maxSelf,
@@ -377,6 +388,7 @@ const TableBody = React.memo(
           </td>
           <td
             STYLE={backgroundImageDiffStyle(
+              palette,
               x.totalLeft,
               x.totalRght,
               numTicks / 2,
@@ -395,7 +407,9 @@ const TableBody = React.memo(
 
     return sorted.map((x) => {
       const pn = getPackageNameFromStackTrace(spyName, x.name);
-      const color = viewDiff ? defaultColor : colorBasedOnPackageName(pn, 1);
+      const color = viewDiff
+        ? defaultColor
+        : colorBasedOnPackageName(palette, pn);
       const style = {
         backgroundColor: color,
       };
