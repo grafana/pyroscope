@@ -151,7 +151,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 			svc.logger,
 			svc.config.AdhocDataPath,
 			svc.config.MaxNodesRender,
-			svc.config.EnableExperimentalAdhocUI,
+			!svc.config.NoAdhocUI,
 		),
 		Logger:                  svc.logger,
 		MetricsRegisterer:       defaultMetricsRegistry,

@@ -25,7 +25,7 @@ import {
   recalculateSidebar,
 } from '@pyroscope/redux/reducers/ui';
 import { useLocation, NavLink } from 'react-router-dom';
-import { isExperimentalAdhocUIEnabled } from '@utils/features';
+import { isAdhocUIEnabled } from '@utils/features';
 import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
 import basename from '../util/baseurl';
@@ -171,7 +171,7 @@ export default function Sidebar2() {
               <NavLink to={{ pathname: '/comparison-diff', search }} exact />
             </MenuItem>
           </SubMenu>
-          {isExperimentalAdhocUIEnabled && adhoc}
+          {isAdhocUIEnabled && adhoc}
         </Menu>
       </SidebarContent>
       <SidebarFooter>
