@@ -44,7 +44,6 @@ export function colorBasedOnDiffPercent(
   rightPercent: number
 ) {
   const result = diffPercent(leftPercent, rightPercent);
-
   const color = NewDiffColor(palette);
   return color(result);
 }
@@ -52,11 +51,24 @@ export function colorBasedOnDiffPercent(
 // TODO move to a different file
 // difference between 2 percents
 export function diffPercent(leftPercent: number, rightPercent: number) {
+  if (leftPercent === 0) {
+    return 100;
+  }
+
   if (leftPercent === rightPercent) {
     return 0;
   }
   // https://en.wikipedia.org/wiki/Relative_change_and_difference
-  return ((rightPercent - leftPercent) / leftPercent) * 100;
+  const result = ((rightPercent - leftPercent) / leftPercent) * 100;
+
+  if (result > 100) {
+    return 100;
+  }
+  if (result < -100) {
+    return -100;
+  }
+
+  return result;
 }
 
 export function colorFromPercentage(p: number, alpha: number) {
