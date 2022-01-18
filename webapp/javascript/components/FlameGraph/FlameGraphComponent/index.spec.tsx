@@ -5,6 +5,7 @@ import { Maybe } from '@utils/fp';
 import FlamegraphComponent from './index';
 import TestData from './testData';
 import { BAR_HEIGHT } from './constants';
+import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 
 // the leaves have already been tested
 // this is just to guarantee code is compiling
@@ -12,6 +13,7 @@ import { BAR_HEIGHT } from './constants';
 describe('FlamegraphComponent', () => {
   const ExportData = () => <div>ExportData</div>;
 
+  const setPalette = (p: FlamegraphPalette) => {};
   it('renders', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
@@ -30,6 +32,8 @@ describe('FlamegraphComponent', () => {
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
         ExportData={ExportData}
+        palette={DefaultPalette}
+        setPalette={setPalette}
       />
     );
   });
@@ -52,6 +56,8 @@ describe('FlamegraphComponent', () => {
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
         ExportData={ExportData}
+        palette={DefaultPalette}
+        setPalette={setPalette}
       />
     );
 
@@ -85,6 +91,8 @@ describe('FlamegraphComponent', () => {
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
         ExportData={ExportData}
+        palette={DefaultPalette}
+        setPalette={setPalette}
       />
     );
 
@@ -115,6 +123,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -146,6 +156,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -177,6 +189,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -214,6 +228,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -237,6 +253,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={flamebearer}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -266,6 +284,8 @@ describe('FlamegraphComponent', () => {
         isDirty={isDirty}
         flamebearer={TestData.empty}
         ExportData={ExportData}
+        palette={DefaultPalette}
+        setPalette={setPalette}
       />
     );
     screen.getByText(/No profiling data available/);

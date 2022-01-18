@@ -28,7 +28,7 @@ export default function DiffLegend(props: DiffLegendProps) {
           key={v}
           className={styles['flamegraph-legend-item']}
           style={{
-            backgroundColor: color(v),
+            backgroundColor: color(v).rgb().toString(),
           }}
         >
           {v > 0 ? '+' : ''}

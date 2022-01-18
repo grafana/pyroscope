@@ -51,13 +51,14 @@ export function colorBasedOnDiffPercent(
 // TODO move to a different file
 // difference between 2 percents
 export function diffPercent(leftPercent: number, rightPercent: number) {
+  if (leftPercent === rightPercent) {
+    return 0;
+  }
+
   if (leftPercent === 0) {
     return 100;
   }
 
-  if (leftPercent === rightPercent) {
-    return 0;
-  }
   // https://en.wikipedia.org/wiki/Relative_change_and_difference
   const result = ((rightPercent - leftPercent) / leftPercent) * 100;
 

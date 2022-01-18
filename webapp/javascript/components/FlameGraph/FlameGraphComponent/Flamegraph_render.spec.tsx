@@ -3,6 +3,7 @@ import { createCanvas } from 'canvas';
 import { Maybe } from '@utils/fp';
 import TestData from './testData';
 import Flamegraph from './Flamegraph';
+import { DefaultPalette } from './colorPalette';
 
 type focusedNodeType = ConstructorParameters<typeof Flamegraph>[2];
 type zoomType = ConstructorParameters<typeof Flamegraph>[5];
@@ -23,7 +24,8 @@ describe("render group:snapshot'", () => {
       focusedNode,
       fitMode,
       highlightQuery,
-      zoom
+      zoom,
+      DefaultPalette
     );
 
     flame.render();
@@ -38,7 +40,8 @@ describe("render group:snapshot'", () => {
       focusedNode,
       fitMode,
       highlightQuery,
-      zoom
+      zoom,
+      DefaultPalette
     );
 
     flame.render();
@@ -52,7 +55,8 @@ describe("render group:snapshot'", () => {
       focusedNode,
       fitMode,
       highlightQuery,
-      zoom
+      zoom,
+      DefaultPalette
     );
 
     flame.render();
@@ -69,7 +73,8 @@ describe("render group:snapshot'", () => {
       focusedNode,
       fitMode,
       highlightQuery,
-      zoom
+      zoom,
+      DefaultPalette
     );
 
     flame.render();
@@ -86,7 +91,8 @@ describe("render group:snapshot'", () => {
       focusedNode,
       fitMode,
       highlightQuery,
-      zoom
+      zoom,
+      DefaultPalette
     );
 
     flame.render();
@@ -103,7 +109,8 @@ describe("render group:snapshot'", () => {
       focusedNode,
       fitMode,
       highlightQuery,
-      zoom
+      zoom,
+      DefaultPalette
     );
 
     flame.render();
@@ -123,7 +130,8 @@ describe("render group:snapshot'", () => {
       focusedNode,
       fitMode,
       highlightQuery,
-      zoom
+      zoom,
+      DefaultPalette
     );
 
     flame.render();
@@ -141,7 +149,8 @@ describe("render group:snapshot'", () => {
         focusedNode,
         fitMode,
         highlightQuery,
-        zoom
+        zoom,
+        DefaultPalette
       );
 
       flame.render();
@@ -158,7 +167,8 @@ describe("render group:snapshot'", () => {
         focusedNode,
         fitMode,
         highlightQuery,
-        zoom
+        zoom,
+        DefaultPalette
       );
 
       flame.render();
@@ -175,7 +185,8 @@ describe("render group:snapshot'", () => {
         focusedNode,
         fitMode,
         highlightQuery,
-        zoom
+        zoom,
+        DefaultPalette
       );
 
       flame.render();

@@ -1,9 +1,5 @@
 import Color from 'color';
-import {
-  colorBasedOnDiffPercent,
-  colorFromPercentage,
-  NewDiffColor,
-} from './color';
+import { colorBasedOnDiffPercent, NewDiffColor } from './color';
 import { DefaultPalette } from './colorPalette';
 
 describe.each([
@@ -31,6 +27,7 @@ describe('NewDiffColor with white-to-black example palette', () => {
   ])('.NewDiffColor(%i)', (a, expected) => {
     it(`returns ${expected}`, () => {
       const color = NewDiffColor({
+        name: 'my palette',
         goodColor: Color('white'),
         neutralColor: Color('grey'),
         badColor: Color('black'),

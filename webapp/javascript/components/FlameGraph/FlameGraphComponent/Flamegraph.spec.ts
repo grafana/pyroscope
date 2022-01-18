@@ -1,6 +1,7 @@
 import { Maybe, throwUnwrapErr } from '@utils/fp';
 import Flamegraph from './Flamegraph';
 import { BAR_HEIGHT } from './constants';
+import { DefaultPalette } from './colorPalette';
 import TestData from './testData';
 
 jest.mock('./Flamegraph_render');
@@ -31,7 +32,8 @@ describe('Flamegraph', () => {
         focusedNode,
         fitMode,
         highlightQuery,
-        zoom
+        zoom,
+        DefaultPalette
       );
 
       flame.render();
@@ -76,7 +78,8 @@ describe('Flamegraph', () => {
           focusedNode,
           fitMode,
           highlightQuery,
-          zoom
+          zoom,
+          DefaultPalette
         );
 
         flame.render();
@@ -166,7 +169,8 @@ describe('Flamegraph', () => {
             focusedNode,
             fitMode,
             highlightQuery,
-            zoom
+            zoom,
+            DefaultPalette
           );
 
           flame.render();
@@ -246,7 +250,8 @@ describe('Flamegraph', () => {
             focusedNode,
             fitMode,
             highlightQuery,
-            zoom
+            zoom,
+            DefaultPalette
           );
 
           flame.render();
@@ -312,7 +317,8 @@ describe('Flamegraph', () => {
             focusedNode,
             fitMode,
             highlightQuery,
-            zoom
+            zoom,
+            DefaultPalette
           );
 
           flame.render();
@@ -391,7 +397,8 @@ describe('Flamegraph', () => {
             focusedNode,
             fitMode,
             highlightQuery,
-            zoom
+            zoom,
+            DefaultPalette
           );
 
           flame.render();
@@ -473,7 +480,8 @@ describe('Flamegraph', () => {
             focusedNode,
             fitMode,
             highlightQuery,
-            zoom
+            zoom,
+            DefaultPalette
           );
 
           flame.render();
