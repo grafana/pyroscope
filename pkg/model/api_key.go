@@ -7,7 +7,6 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/hashicorp/go-multierror"
-	"gorm.io/gorm"
 )
 
 var (
@@ -26,7 +25,6 @@ type APIKey struct {
 	LastSeenAt *time.Time `gorm:"default:null"`
 
 	CreatedAt time.Time
-	DeletedAt gorm.DeletedAt
 }
 
 func (k APIKey) VerifySignature(t *jwt.Token) bool {

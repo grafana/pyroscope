@@ -204,5 +204,4 @@ func expectAPIKeyMatches(apiKey model.APIKey, params model.CreateAPIKeyParams) {
 	Expect(apiKey.ExpiresAt).To(Equal(params.ExpiresAt))
 	Expect(apiKey.CreatedAt).ToNot(BeZero())
 	Expect(apiKey.LastSeenAt).To(BeZero())
-	Expect(apiKey.DeletedAt).To(BeZero())
 }

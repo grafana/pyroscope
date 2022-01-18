@@ -14,15 +14,6 @@ type UserService struct{ db *gorm.DB }
 
 func NewUserService(db *gorm.DB) UserService { return UserService{db} }
 
-// CreateUser creates a new user entry in the database.
-//
-// Soft deletes are tricky when it comes to unique constraints (we could use
-// "delete token" or partial indexes but that does not work well with ORMs).
-//
-// In order to avoid mess with multiple identical user names/emails (e.g, when
-// handling login), once registered, those cannot be used again, therefore
-// CreateUser will fail with model.ErrUserEmailExists or model.ErrUserNameExists
-// error. Instead, users should be disabled.
 func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserParams) (model.User, error) {
 	if err := params.Validate(); err != nil {
 		return model.User{}, err
@@ -37,8 +28,11 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 	if params.FullName != nil {
 		user.FullName = params.FullName
 	}
-	err := svc.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		_, err := findUserByEmail(tx.Unscoped(), params.Email)
+	return user, svc.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Two separate queries only to avoid plain SQL request with OR
+		// and to simplify error handling (separate for name and email).
+		// Feel free to replace it if you deem it necessary.
+		_, err := findUserByEmail(tx, params.Email)
 		switch {
 		case errors.Is(err, model.ErrUserNotFound):
 		case err == nil:
@@ -46,7 +40,7 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 		default:
 			return err
 		}
-		_, err = findUserByName(tx.Unscoped(), params.Email)
+		_, err = findUserByName(tx, params.Name)
 		switch {
 		case errors.Is(err, model.ErrUserNotFound):
 		case err == nil:
@@ -56,13 +50,12 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 		}
 		return tx.Create(&user).Error
 	})
-	if err != nil {
-		return model.User{}, err
-	}
-	return user, nil
 }
 
 func (svc UserService) FindUserByName(ctx context.Context, name string) (model.User, error) {
+	if err := model.ValidateUserName(name); err != nil {
+		return model.User{}, err
+	}
 	return findUserByName(svc.db.WithContext(ctx), name)
 }
 
@@ -104,11 +97,7 @@ func findUser(tx *gorm.DB, user model.User) (model.User, error) {
 
 func (svc UserService) GetAllUsers(ctx context.Context) ([]model.User, error) {
 	var users []model.User
-	db := svc.db.WithContext(ctx)
-	if err := db.Find(&users).Error; err != nil {
-		return nil, err
-	}
-	return users, nil
+	return users, svc.db.WithContext(ctx).Find(&users).Error
 }
 
 func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model.UpdateUserParams) (model.User, error) {
@@ -116,7 +105,7 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		return model.User{}, err
 	}
 	var updated model.User
-	err := svc.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return updated, svc.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		user, err := findUserByID(tx, id)
 		if err != nil {
 			return err
@@ -171,10 +160,6 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		}
 		return tx.Model(user).Updates(columns).Error
 	})
-	if err != nil {
-		return model.User{}, err
-	}
-	return updated, nil
 }
 
 func (svc UserService) DeleteUserByID(ctx context.Context, id uint) error {

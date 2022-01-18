@@ -7,7 +7,6 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 var (
@@ -34,7 +33,6 @@ type User struct {
 	PasswordChangedAt time.Time
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
-	DeletedAt         gorm.DeletedAt
 }
 
 // TokenUser represents a user info retrieved from the validated JWT token.

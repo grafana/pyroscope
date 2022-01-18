@@ -46,6 +46,18 @@ var _ = Describe("UserService", func() {
 			})
 		})
 
+		Context("when user name is already in use", func() {
+			BeforeEach(func() {
+				params.Email = "another@example.local"
+				_, err = svc.CreateUser(context.Background(), params)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("returns validation error", func() {
+				Expect(model.IsValidationError(err)).To(BeTrue())
+			})
+		})
+
 		Context("when user email is already in use", func() {
 			BeforeEach(func() {
 				_, err = svc.CreateUser(context.Background(), params)
@@ -339,9 +351,9 @@ var _ = Describe("UserService", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
-			It("doesn't allow user with the same email or name to be created", func() {
+			It("allows user with the same email or name to be created", func() {
 				_, err = svc.CreateUser(context.Background(), params[0])
-				Expect(err).To(MatchError(model.ErrUserEmailExists))
+				Expect(err).ToNot(HaveOccurred())
 			})
 		})
 
@@ -381,7 +393,6 @@ func expectUserMatches(user model.User, params model.CreateUserParams) {
 	Expect(user.CreatedAt).ToNot(BeZero())
 	Expect(user.UpdatedAt).ToNot(BeZero())
 	Expect(user.LastSeenAt).To(BeZero())
-	Expect(user.DeletedAt).To(BeZero())
 	Expect(user.PasswordChangedAt).ToNot(BeZero())
 	err := model.VerifyPassword(user.PasswordHash, params.Password)
 	Expect(err).ToNot(HaveOccurred())

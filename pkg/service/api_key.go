@@ -60,7 +60,7 @@ func (svc APIKeyService) FindAPIKeyByName(ctx context.Context, apiKeyName string
 
 func findAPIKeyByName(tx *gorm.DB, apiKeyName string) (model.APIKey, error) {
 	var apiKey model.APIKey
-	r := tx.Where("name = ?", apiKeyName).First(&apiKey)
+	r := tx.Where(model.APIKey{Name: apiKeyName}).First(&apiKey)
 	switch {
 	case r.Error == nil:
 		return apiKey, nil
@@ -73,13 +73,9 @@ func findAPIKeyByName(tx *gorm.DB, apiKeyName string) (model.APIKey, error) {
 
 func (svc APIKeyService) GetAllAPIKeys(ctx context.Context) ([]model.APIKey, error) {
 	var apiKeys []model.APIKey
-	db := svc.db.WithContext(ctx)
-	if err := db.Find(&apiKeys).Error; err != nil {
-		return nil, err
-	}
-	return apiKeys, nil
+	return apiKeys, svc.db.WithContext(ctx).Find(&apiKeys).Error
 }
 
 func (svc APIKeyService) DeleteAPIKeyByID(ctx context.Context, id uint) error {
-	return svc.db.WithContext(ctx).Unscoped().Delete(&model.APIKey{}, id).Error
+	return svc.db.WithContext(ctx).Delete(&model.APIKey{}, id).Error
 }

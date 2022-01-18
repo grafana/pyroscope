@@ -59,10 +59,8 @@ func createUserTableMigration() *gormigrate.Migration {
 		IsDisabled        *bool      `gorm:"not null;default:false"`
 		LastSeenAt        *time.Time `gorm:"default:null"`
 		PasswordChangedAt time.Time
-
-		CreatedAt time.Time
-		UpdatedAt time.Time
-		DeletedAt gorm.DeletedAt
+		CreatedAt         time.Time
+		UpdatedAt         time.Time
 	}
 
 	return &gormigrate.Migration{
@@ -84,9 +82,7 @@ func createAPIKeyTableMigration() *gormigrate.Migration {
 		Role       int        `gorm:"not null;default:null"`
 		ExpiresAt  *time.Time `gorm:"default:null"`
 		LastSeenAt *time.Time `gorm:"default:null"`
-
-		CreatedAt time.Time
-		DeletedAt gorm.DeletedAt
+		CreatedAt  time.Time
 	}
 
 	return &gormigrate.Migration{
