@@ -39,18 +39,22 @@ export const diffColorGreen = Color.rgb(0, 170, 0);
 export const highlightColor = Color('#48CE73');
 
 export function colorBasedOnDiffPercent(
+  palette: FlamegraphPalette,
   leftPercent: number,
-  rightPercent: number,
-  alpha: number
+  rightPercent: number
 ) {
   const result = diffPercent(leftPercent, rightPercent);
 
-  return colorFromPercentage(result, alpha);
+  const color = NewDiffColor(palette);
+  return color(result);
 }
 
 // TODO move to a different file
 // difference between 2 percents
 export function diffPercent(leftPercent: number, rightPercent: number) {
+  if (leftPercent === rightPercent) {
+    return 0;
+  }
   // https://en.wikipedia.org/wiki/Relative_change_and_difference
   return ((rightPercent - leftPercent) / leftPercent) * 100;
 }
@@ -110,11 +114,15 @@ export function getPackageNameFromStackTrace(
   return stackTrace;
 }
 
-export function colorBasedOnPackageName(name: string, a: number) {
+export function colorBasedOnPackageName(
+  palette: FlamegraphPalette,
+  name: string
+) {
   const hash = murmurhash3_32_gc(name);
-  const colorIndex = hash % colors.length;
-  const baseClr = colors[colorIndex];
-  return baseClr.alpha(a);
+  const colorIndex = hash % palette.colors.length;
+  const baseClr = palette.colors[colorIndex];
+
+  return baseClr;
 }
 
 /**
@@ -124,19 +132,21 @@ export function colorBasedOnPackageName(name: string, a: number) {
  */
 export function NewDiffColor(
   props: Omit<FlamegraphPalette, 'colors'>
-): (n: number) => string {
+): (n: number) => Color {
   const { goodColor, neutralColor, badColor } = props;
 
   const color = scaleLinear()
     .domain([-100, 0, 100])
     // TODO types from DefinitelyTyped seem to mismatch
     .range([
-      badColor.rgb().toString(),
-      neutralColor.rgb().toString(),
       goodColor.rgb().toString(),
+      neutralColor.rgb().toString(),
+      badColor.rgb().toString(),
     ] as any);
 
   return (n: number) => {
-    return color(n).toString();
+    // convert to our Color object
+    // since that's what users are expecting to use
+    return Color(color(n).toString());
   };
 }

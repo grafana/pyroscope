@@ -3,6 +3,7 @@ import { Flamebearer } from '@models/flamebearer';
 import { DeepReadonly } from 'ts-essentials';
 import { Maybe } from '@utils/fp';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
+import type { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
 import RenderCanvas from './Flamegraph_render';
@@ -38,7 +39,9 @@ export default class Flamegraph {
      * otherwise it will be greyish.
      */
     private readonly highlightQuery: string,
-    private zoom: Maybe<DeepReadonly<{ i: number; j: number }>>
+    private zoom: Maybe<DeepReadonly<{ i: number; j: number }>>,
+
+    private palette: FlamegraphPalette
   ) {
     // TODO
     // these were only added because storybook is not setting
@@ -82,6 +85,7 @@ export default class Flamegraph {
       focusedNode: this.focusedNode,
       pxPerTick: this.pxPerTick(),
       tickToX: this.tickToX,
+      palette: this.palette,
     };
 
     const { format: viewType } = this.flamebearer;

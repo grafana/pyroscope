@@ -45,6 +45,7 @@ import {
   getPackageNameFromStackTrace,
   highlightColor,
 } from './color';
+import type { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
 import Flamegraph from './Flamegraph';
@@ -70,6 +71,8 @@ type CanvasRendererConfig = Flamebearer & {
   tickToX: (i: number) => number;
 
   pxPerTick: number;
+
+  palette: FlamegraphPalette;
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
@@ -79,6 +82,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   const { units } = props;
   const { rangeMin, rangeMax } = props;
   const { tickToX } = props;
+  const { palette } = props;
 
   const graphWidth = getCanvasWidth(canvas);
   // TODO: why is this needed? otherwise height is all messed up
@@ -243,6 +247,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
         spyName,
         leftTicks,
         rightTicks,
+        palette,
       });
 
       ctx.beginPath();
@@ -336,6 +341,7 @@ type getColorCfg = {
   isHighlighted: boolean;
   names: string[];
   spyName: string;
+  palette: FlamegraphPalette;
 } & addTicks;
 
 function getColor(cfg: getColorCfg) {
@@ -370,16 +376,20 @@ function getColor(cfg: getColorCfg) {
     const leftPercent = ratioToPercent(leftRatio);
     const rightPercent = ratioToPercent(rightRatio);
 
-    return colorBasedOnDiffPercent(leftPercent, rightPercent, a);
+    return colorBasedOnDiffPercent(
+      cfg.palette,
+      leftPercent,
+      rightPercent
+    ).alpha(a);
   }
 
   return colorBasedOnPackageName(
+    cfg.palette,
     getPackageNameFromStackTrace(
       cfg.spyName,
       cfg.names[cfg.level[cfg.j + ff.jName]]
-    ),
-    a
-  );
+    )
+  ).alpha(a);
 }
 
 function nodeIsInQuery(

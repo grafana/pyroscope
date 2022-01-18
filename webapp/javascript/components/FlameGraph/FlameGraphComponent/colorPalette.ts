@@ -46,5 +46,10 @@ export const DefaultPalette: FlamegraphPalette = {
   ],
 };
 
-// TODO create a custom one
-export const ColorBlindPalette: FlamegraphPalette = DefaultPalette;
+export const ColorBlindPalette: FlamegraphPalette = {
+  ...DefaultPalette,
+
+  goodColor: Color('rgb(26,133,255)'),
+  neutralColor: Color.rgb(148, 142, 142),
+  badColor: Color('rgb(220,50,32)'),
+};

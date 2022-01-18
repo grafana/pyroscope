@@ -12,6 +12,10 @@ import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
+import {
+  DefaultPalette,
+  ColorBlindPalette,
+} from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.css';
 
 import ExportData from '../ExportData';
@@ -39,6 +43,9 @@ class FlameGraphRenderer extends React.Component {
       highlightQuery: '',
 
       flamegraphConfigs: this.initialFlamegraphState,
+
+      // TODO make this come from the redux store?
+      palette: DefaultPalette,
     };
 
     // for situations like in grafana we only display the flamegraph
@@ -282,6 +289,12 @@ class FlameGraphRenderer extends React.Component {
           onFocusOnNode={this.onFocusOnNode}
           onReset={this.onReset}
           isDirty={this.isDirty}
+          palette={this.state.palette}
+          setPalette={(p) =>
+            this.setState({
+              palette: p,
+            })
+          }
         />
       ) : null;
 

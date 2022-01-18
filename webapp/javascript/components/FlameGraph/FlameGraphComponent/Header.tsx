@@ -1,15 +1,24 @@
 import React from 'react';
 import { Flamebearer } from '@models/flamebearer';
+import Dropdown, { MenuItem, SubMenu } from '@ui/Dropdown';
 import DiffLegend from './DiffLegend';
 import styles from './Header.module.css';
+import {
+  FlamegraphPalette,
+  DefaultPalette,
+  ColorBlindPalette,
+} from './colorPalette';
 
 interface HeaderProps {
   format: Flamebearer['format'];
   units: Flamebearer['units'];
+
+  palette: FlamegraphPalette;
+  setPalette: (p: FlamegraphPalette) => void;
   ExportData: () => React.ReactElement;
 }
 export default function Header(props: HeaderProps) {
-  const { format, units, ExportData } = props;
+  const { format, units, ExportData, palette, setPalette } = props;
 
   const unitsToFlamegraphTitle = {
     objects: 'amount of objects in RAM per function',
@@ -37,12 +46,12 @@ export default function Header(props: HeaderProps) {
 
       case 'double': {
         return (
-          <div>
+          <>
             <div className={styles.row} role="heading" aria-level={2}>
               Base graph: left - Comparison graph: right
             </div>
-            <DiffLegend />
-          </div>
+            <DiffLegend palette={palette} />
+          </>
         );
       }
 
@@ -53,10 +62,30 @@ export default function Header(props: HeaderProps) {
 
   const title = getTitle();
 
+  const paletteComp =
+    format === 'double' ? (
+      <PaletteDropdown palette={palette} setPalette={setPalette} />
+    ) : null;
+
   return (
     <div className={styles['flamegraph-header']}>
       <div>{title}</div>
-      <ExportData />
+      <div className={styles.buttons}>
+        {paletteComp}
+        <ExportData />
+      </div>
     </div>
+  );
+}
+
+function PaletteDropdown({
+  palette,
+  setPalette,
+}: Pick<HeaderProps, 'palette' | 'setPalette'>) {
+  return (
+    <Dropdown label="Palette" onItemClick={(e) => setPalette(e.value)}>
+      <MenuItem value={DefaultPalette}>Default</MenuItem>
+      <MenuItem value={ColorBlindPalette}>Color Blind</MenuItem>
+    </Dropdown>
   );
 }

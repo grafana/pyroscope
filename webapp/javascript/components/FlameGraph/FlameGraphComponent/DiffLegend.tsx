@@ -1,33 +1,40 @@
 import React from 'react';
 import useResizeObserver from '@react-hook/resize-observer';
-import { colorFromPercentage } from './color';
+import { NewDiffColor } from './color';
+import { FlamegraphPalette } from './colorPalette';
 import styles from './DiffLegend.module.css';
 
-export default function DiffLegend() {
+// TODO
+interface DiffLegendProps {
+  palette: FlamegraphPalette;
+}
+
+export default function DiffLegend(props: DiffLegendProps) {
+  const { palette } = props;
   const legendRef = React.useRef();
   const showMode = useSizeMode(legendRef);
   const values = decideLegend(showMode);
 
+  const color = NewDiffColor(palette);
+
   return (
     <div
-      className={`row ${styles['flamegraph-legend']}`}
       data-testid="flamegraph-legend"
+      className={`${styles['flamegraph-legend']} ${styles['flamegraph-legend-list']}`}
       ref={legendRef}
     >
-      <div className={styles['flamegraph-legend-list']}>
-        {values.map((v) => (
-          <div
-            key={v}
-            className={styles['flamegraph-legend-item']}
-            style={{
-              backgroundColor: colorFromPercentage(v, 0.8).string(),
-            }}
-          >
-            {v > 0 ? '+' : ''}
-            {v}%
-          </div>
-        ))}
-      </div>
+      {values.map((v) => (
+        <div
+          key={v}
+          className={styles['flamegraph-legend-item']}
+          style={{
+            backgroundColor: color(v),
+          }}
+        >
+          {v > 0 ? '+' : ''}
+          {v}%
+        </div>
+      ))}
     </div>
   );
 }
