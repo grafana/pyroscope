@@ -1,5 +1,6 @@
 /* eslint-disable camelcase */
 import Color from 'color';
+import { scaleThreshold, scaleLinear } from 'd3-scale';
 import murmurhash3_32_gc from './murmur3';
 
 const colors = [
@@ -42,6 +43,8 @@ export function colorBasedOnDiffPercent(
   alpha: number
 ) {
   const result = diffPercent(leftPercent, rightPercent);
+
+  console.log({ leftPercent, rightPercent, result });
   return colorFromPercentage(result, alpha);
 }
 
@@ -112,4 +115,27 @@ export function colorBasedOnPackageName(name: string, a: number) {
   const colorIndex = hash % colors.length;
   const baseClr = colors[colorIndex];
   return baseClr.alpha(a);
+}
+
+interface diffColorProps {
+  goodColor: string;
+  neutralColor: string;
+  badColor: string;
+}
+
+/**
+ * NewDiffColor constructs a function that given a number from -100 to 100
+ * it returns the color for that number in a linear scale
+ */
+export function NewDiffColor(props: diffColorProps): (n: number) => string {
+  const { goodColor, neutralColor, badColor } = props;
+
+  const color = scaleLinear()
+    .domain([-100, 0, 100])
+    // TODO types from DefinitelyTyped seem to mismatch
+    .range([badColor, neutralColor, goodColor] as Iterable<number>);
+
+  return (n: number) => {
+    return color(n).toString();
+  };
 }

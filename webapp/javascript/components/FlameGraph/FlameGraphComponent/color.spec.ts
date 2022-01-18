@@ -1,7 +1,7 @@
 import {
-  //  colorBasedOnDiff,
   colorBasedOnDiffPercent,
   colorFromPercentage,
+  NewDiffColor,
 } from './color';
 
 describe.each([
@@ -32,5 +32,23 @@ describe.each([
 ])('.colorBasedOnDiffPercent(%i, %i)', (a, b, expected) => {
   it(`returns ${expected}`, () => {
     expect(colorBasedOnDiffPercent(a, b, 0.8).toString()).toBe(expected);
+  });
+});
+
+describe('NewDiffColor with white-to-black example palette', () => {
+  describe.each([
+    [-100, 'rgb(0, 0, 0)'],
+    [0, 'rgb(128, 128, 128)'],
+    [100, 'rgb(255, 255, 255)'],
+  ])('.NewDiffColor(%i, %i)', (a, expected) => {
+    it(`returns ${expected}`, () => {
+      const color = NewDiffColor({
+        goodColor: 'white',
+        neutralColor: 'grey',
+        badColor: 'black',
+      });
+
+      expect(color(a)).toBe(expected);
+    });
   });
 });
