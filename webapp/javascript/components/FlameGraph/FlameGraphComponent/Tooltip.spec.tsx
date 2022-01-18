@@ -2,7 +2,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 
 import { diffColorRed, diffColorGreen } from './color';
 import { Units } from '../../../util/format';
@@ -25,7 +25,7 @@ describe('Tooltip', () => {
   describe('"single" mode', () => {
     it('renders correctly', () => {
       const xyToData = (x: number, y: number) =>
-        Option.of({
+        Maybe.of({
           format: 'single' as const,
           name: 'function_title',
           total: 10,
@@ -81,7 +81,7 @@ describe('Tooltip', () => {
 
     it("works with a function that hasn't changed", () => {
       const myxyToData = (x: number, y: number) =>
-        Option.of({
+        Maybe.of({
           format: 'double' as const,
           name: 'my_function',
           totalLeft: 100,
@@ -116,7 +116,7 @@ describe('Tooltip', () => {
 
     it('works with a function that has been added', () => {
       const myxyToData = (x: number, y: number) =>
-        Option.of({
+        Maybe.of({
           format: 'double' as const,
           name: 'my_function',
           totalLeft: 0,
@@ -150,7 +150,7 @@ describe('Tooltip', () => {
 
     it('works with a function that has been removed', () => {
       const myxyToData = (x: number, y: number) =>
-        Option.of({
+        Maybe.of({
           format: 'double' as const,
           name: 'my_function',
           totalLeft: 100,
@@ -184,7 +184,7 @@ describe('Tooltip', () => {
 
     it('works with a function that became slower', () => {
       const myxyToData = (x: number, y: number) =>
-        Option.of({
+        Maybe.of({
           format: 'double' as const,
           name: 'my_function',
           totalLeft: 100,
@@ -218,7 +218,7 @@ describe('Tooltip', () => {
 
     it('works with a function that became faster', () => {
       const myxyToData = (x: number, y: number) =>
-        Option.of({
+        Maybe.of({
           format: 'double' as const,
           name: 'my_function',
           totalLeft: 200,

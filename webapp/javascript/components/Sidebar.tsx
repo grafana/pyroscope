@@ -17,16 +17,19 @@ import Sidebar, {
   SubMenu,
   Menu,
 } from '@ui/Sidebar';
+import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
+import {
+  selectSidebarCollapsed,
+  collapseSidebar,
+  uncollapseSidebar,
+  recalculateSidebar,
+} from '@pyroscope/redux/reducers/ui';
 import { useLocation, NavLink } from 'react-router-dom';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
 import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
-
-export interface SidebarProps {
-  initialCollapsed?: boolean;
-}
 
 // TODO: find a better way of doing this?
 function signOut() {
@@ -40,11 +43,11 @@ function signOut() {
   form.submit();
 }
 
-export default function Sidebar2(props: SidebarProps) {
-  const { initialCollapsed } = props;
+export default function Sidebar2() {
+  const collapsed = useAppSelector(selectSidebarCollapsed);
+  const dispatch = useAppDispatch();
 
   const { search, pathname } = useLocation();
-  const [collapsed, setCollapsed] = useState(initialCollapsed);
   const windowWidth = useWindowWidth();
 
   // the component doesn't seem to support setting up an active item
@@ -54,9 +57,8 @@ export default function Sidebar2(props: SidebarProps) {
     return pathname === route;
   };
 
-  useEffect(() => {
-    const c = windowWidth < 1200;
-    setCollapsed(c);
+  React.useLayoutEffect(() => {
+    dispatch(recalculateSidebar());
   }, [windowWidth]);
 
   // TODO
@@ -99,19 +101,21 @@ export default function Sidebar2(props: SidebarProps) {
         Comparison View
         <NavLink to={{ pathname: '/adhoc-comparison', search }} exact />
       </MenuItem>
-      {/*
       <MenuItem
         data-testid="sidebar-adhoc-comparison-diff"
         active={isRouteActive('/adhoc-comparison-diff')}
         icon={<Icon icon={faChartBar} />}
       >
         Diff View
+        <NavLink to={{ pathname: '/adhoc-comparison-diff', search }} exact />
       </MenuItem>
-       */}
     </SubMenu>
   );
 
-  const toggleCollapse = () => setCollapsed(!collapsed);
+  const toggleCollapse = () => {
+    const action = collapsed ? uncollapseSidebar : collapseSidebar;
+    dispatch(action());
+  };
 
   return (
     <Sidebar collapsed={collapsed}>

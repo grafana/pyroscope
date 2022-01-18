@@ -21,46 +21,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
-// TODO: dedup this with the version in scrape package
-type SampleTypeConfig struct {
-	Units       string `json:"units,omitempty"`
-	DisplayName string `json:"display-name,omitempty"`
-
-	// TODO(kolesnikovae): Introduce Kind?
-	//  In Go, we have at least the following combinations:
-
-	//  instant:    Aggregation:avg && !Cumulative && !Sampled
-	//  cumulative: Aggregation:sum && Cumulative  && !Sampled
-	//  delta:      Aggregation:sum && !Cumulative && Sampled
-	Aggregation string `json:"aggregation,omitempty"`
-	Cumulative  bool   `json:"cumulative,omitempty"`
-	Sampled     bool   `json:"sampled,omitempty"`
-}
-
-var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
-	"samples": {
-		DisplayName: "cpu",
-		Units:       "samples",
-		Sampled:     true,
-	},
-	"inuse_objects": {
-		Units:       "objects",
-		Aggregation: "avg",
-	},
-	"alloc_objects": {
-		Units:      "objects",
-		Cumulative: true,
-	},
-	"inuse_space": {
-		Units:       "bytes",
-		Aggregation: "avg",
-	},
-	"alloc_space": {
-		Units:      "bytes",
-		Cumulative: true,
-	},
-}
-
 type ingestHandler struct {
 	log        *logrus.Logger
 	storage    *storage.Storage
@@ -117,9 +77,9 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// TODO: add error handling for all of these
 
 			for _, sampleTypeStr := range profile.SampleTypes() {
-				var t *SampleTypeConfig
+				var t *tree.SampleTypeConfig
 				var ok bool
-				if t, ok = DefaultSampleTypeMapping[sampleTypeStr]; !ok {
+				if t, ok = tree.DefaultSampleTypeMapping[sampleTypeStr]; !ok {
 					continue
 				}
 				var tries map[string]*transporttrie.Trie
@@ -266,7 +226,7 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*storage.PutInp
 func pprofToTries(originalAppName, sampleTypeStr string, pprof *tree.Profile) map[string]*transporttrie.Trie {
 	tries := map[string]*transporttrie.Trie{}
 
-	sampleTypeConfig := DefaultSampleTypeMapping[sampleTypeStr]
+	sampleTypeConfig := tree.DefaultSampleTypeMapping[sampleTypeStr]
 	if sampleTypeConfig == nil {
 		return tries
 	}

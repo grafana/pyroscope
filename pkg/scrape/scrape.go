@@ -30,10 +30,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/bytebufferpool"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/upstream"
 	"github.com/pyroscope-io/pyroscope/pkg/build"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
 var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
@@ -42,8 +42,13 @@ var errBodySizeLimit = errors.New("body size limit exceeded")
 
 // scrapePool manages scrapes for sets of targets.
 type scrapePool struct {
-	upstream upstream.Upstream
+	ingester Ingester
 	logger   logrus.FieldLogger
+
+	// Global metrics shared by all pools.
+	metrics *metrics
+	// Job-specific metrics.
+	poolMetrics *poolMetrics
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -61,9 +66,11 @@ type scrapePool struct {
 	droppedTargets []*Target
 }
 
-func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldLogger) (*scrapePool, error) {
+func newScrapePool(cfg *config.Config, ingester Ingester, logger logrus.FieldLogger, m *metrics) (*scrapePool, error) {
+	m.pools.Inc()
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
+		m.poolsFailed.Inc()
 		return nil, fmt.Errorf("creating HTTP client: %w", err)
 	}
 
@@ -71,25 +78,32 @@ func newScrapePool(cfg *config.Config, u upstream.Upstream, logger logrus.FieldL
 	sp := scrapePool{
 		ctx:           ctx,
 		cancel:        cancel,
-		upstream:      u,
+		logger:        logger,
+		ingester:      ingester,
 		config:        cfg,
 		client:        client,
 		activeTargets: make(map[uint64]*Target),
 		loops:         make(map[uint64]*scrapeLoop),
-		logger:        logger,
+
+		metrics:     m,
+		poolMetrics: m.poolMetrics(cfg.JobName),
 	}
 
 	return &sp, nil
 }
 
 func (sp *scrapePool) newScrapeLoop(s *scraper, i, t time.Duration) *scrapeLoop {
+	// TODO(kolesnikovae): Refactor.
+	d, _ := s.Target.deltaDuration()
 	x := scrapeLoop{
-		scraper:  s,
-		logger:   sp.logger,
-		upstream: sp.upstream,
-		stopped:  make(chan struct{}),
-		interval: i,
-		timeout:  t,
+		scraper:     s,
+		logger:      sp.logger,
+		ingester:    sp.ingester,
+		poolMetrics: sp.poolMetrics,
+		stopped:     make(chan struct{}),
+		delta:       d,
+		interval:    i,
+		timeout:     t,
 	}
 	x.ctx, x.cancel = context.WithCancel(sp.ctx)
 	return &x
@@ -126,10 +140,24 @@ func (sp *scrapePool) stop() {
 		}(l)
 		delete(sp.loops, fp)
 		delete(sp.activeTargets, fp)
+		metricsLabels := []string{sp.config.JobName, l.scraper.Target.profile.Path}
+		sp.metrics.profileSize.DeleteLabelValues(metricsLabels...)
+		sp.metrics.profileSamples.DeleteLabelValues(metricsLabels...)
+		sp.metrics.scrapeDuration.DeleteLabelValues(metricsLabels...)
 	}
 	sp.targetMtx.Unlock()
 	wg.Wait()
 	sp.client.CloseIdleConnections()
+	if sp.config == nil {
+		return
+	}
+	sp.metrics.scrapeIntervalLength.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolReloadIntervalLength.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolSyncIntervalLength.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolSyncs.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolSyncFailed.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.poolTargetsAdded.DeleteLabelValues(sp.config.JobName)
+	sp.metrics.scrapesFailed.DeleteLabelValues(sp.config.JobName)
 }
 
 // reload the scrape pool with the given scrape configuration. The target state is preserved
@@ -137,9 +165,12 @@ func (sp *scrapePool) stop() {
 func (sp *scrapePool) reload(cfg *config.Config) error {
 	sp.mtx.Lock()
 	defer sp.mtx.Unlock()
+	sp.metrics.poolReloads.Inc()
+	start := time.Now()
 
 	client, err := config.NewClientFromConfig(cfg.HTTPClientConfig, cfg.JobName)
 	if err != nil {
+		sp.metrics.poolReloadsFailed.Inc()
 		return fmt.Errorf("creating HTTP client: %w", err)
 	}
 
@@ -159,10 +190,11 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 		wg.Add(1)
 		s := &scraper{
 			Target:        sp.activeTargets[fp],
-			pprofWriter:   newPprofWriter(sp.upstream, sp.activeTargets[fp]),
+			pprofWriter:   newPprofWriter(sp.ingester, sp.activeTargets[fp]),
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
+			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, sp.activeTargets[fp].profile.Path),
 		}
 		n := sp.newScrapeLoop(s, interval, timeout)
 		go func(oldLoop, newLoop *scrapeLoop) {
@@ -176,6 +208,7 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 	sp.targetMtx.Unlock()
 	wg.Wait()
 	oldClient.CloseIdleConnections()
+	sp.poolMetrics.poolReloadIntervalLength.Observe(time.Since(start).Seconds())
 	return nil
 }
 
@@ -184,6 +217,8 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 func (sp *scrapePool) Sync(tgs []*targetgroup.Group) {
 	sp.mtx.Lock()
 	defer sp.mtx.Unlock()
+	start := time.Now()
+
 	sp.targetMtx.Lock()
 	var all []*Target
 	sp.droppedTargets = []*Target{}
@@ -192,6 +227,7 @@ func (sp *scrapePool) Sync(tgs []*targetgroup.Group) {
 		for _, err := range failures {
 			sp.logger.WithError(err).Errorf("creating target")
 		}
+		sp.poolMetrics.poolSyncFailed.Add(float64(len(failures)))
 		for _, t := range targets {
 			if t.Labels().Len() > 0 {
 				all = append(all, t)
@@ -202,6 +238,9 @@ func (sp *scrapePool) Sync(tgs []*targetgroup.Group) {
 	}
 	sp.targetMtx.Unlock()
 	sp.sync(all)
+
+	sp.poolMetrics.poolSyncIntervalLength.Observe(time.Since(start).Seconds())
+	sp.poolMetrics.poolSyncs.Inc()
 }
 
 // revive:disable:confusing-naming private
@@ -236,7 +275,8 @@ func (sp *scrapePool) sync(targets []*Target) {
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
-			pprofWriter:   newPprofWriter(sp.upstream, t),
+			pprofWriter:   newPprofWriter(sp.ingester, t),
+			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, t.profile.Path),
 		}
 
 		l := sp.newScrapeLoop(s, interval, timeout)
@@ -259,6 +299,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 	}
 
 	sp.targetMtx.Unlock()
+	sp.poolMetrics.poolTargetsAdded.Set(float64(len(uniqueLoops)))
 	for _, l := range uniqueLoops {
 		if l != nil {
 			go l.run()
@@ -271,17 +312,17 @@ func (sp *scrapePool) sync(targets []*Target) {
 type scrapeLoop struct {
 	scraper  *scraper
 	logger   logrus.FieldLogger
-	upstream upstream.Upstream
+	ingester Ingester
 
-	parentCtx context.Context
-	ctx       context.Context
-	cancel    func()
-	stopped   chan struct{}
+	poolMetrics *poolMetrics
 
-	forcedErr    error
-	forcedErrMtx sync.Mutex
-	interval     time.Duration
-	timeout      time.Duration
+	ctx     context.Context
+	cancel  func()
+	stopped chan struct{}
+
+	delta    time.Duration
+	interval time.Duration
+	timeout  time.Duration
 }
 
 var bufPool = bytebufferpool.Pool{}
@@ -293,36 +334,96 @@ func (sl *scrapeLoop) run() {
 	case <-sl.ctx.Done():
 		return
 	}
-	sl.scraper.report(sl.scrape)
 	ticker := time.NewTicker(sl.interval)
 	defer ticker.Stop()
 	for {
 		select {
+		default:
 		case <-sl.ctx.Done():
 			return
+		}
+		if !sl.scraper.Target.lastScrape.IsZero() {
+			sl.poolMetrics.scrapeIntervalLength.Observe(time.Since(sl.scraper.Target.lastScrape).Seconds())
+		}
+		sl.scrapeAndReport(sl.scraper.Target)
+		select {
 		case <-ticker.C:
-			sl.scraper.report(sl.scrape)
+		case <-sl.ctx.Done():
+			return
 		}
 	}
 }
 
-func (sl *scrapeLoop) scrape() error {
+func (sl *scrapeLoop) scrapeAndReport(t *Target) {
+	now := time.Now()
+	// There are two possible cases:
+	//  1. "delta" profile that is collected during scrape. In instance,
+	//     Go cpu profile requires "seconds" parameter. Such a profile
+	//     represent a time span since now to now+delta.
+	//  2. Profile is captured immediately. Despite the fact that the
+	//     data represent the current moment, we need to know when it
+	//     was scraped last time.
+	if sl.delta == 0 && t.lastScrape.IsZero() {
+		// Skip this round as we would not figure out time span of the
+		// profile reliably either way.
+		t.lastScrape = now
+		return
+	}
+	// N.B: Although in some cases we can retrieve timings from
+	// the profile itself (using TimeNanos and DurationNanos fields),
+	// there is a big chance that the period will overlap multiple
+	// segment "slots", hereby producing redundant segment nodes and
+	// trees. Therefore, it's better to adhere standard 10s period
+	// that fits segment node size (at level 0).
+	var startTime, endTime time.Time
+	if sl.delta > 0 {
+		startTime = now.Round(sl.delta)
+		endTime = startTime.Add(sl.delta)
+	} else {
+		endTime = now.Round(sl.interval)
+		startTime = endTime.Add(-1 * sl.interval)
+	}
+	err := sl.scrape(startTime, endTime)
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+	if err == nil {
+		t.health = HealthGood
+	} else {
+		t.health = HealthBad
+	}
+	t.lastError = err
+	t.lastScrape = now
+	t.lastScrapeDuration = time.Since(now)
+	sl.scraper.targetMetrics.scrapeDuration.Observe(sl.scraper.Target.lastScrapeDuration.Seconds())
+}
+
+func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 	buf := bufPool.Get()
 	ctx, cancel := context.WithTimeout(sl.ctx, sl.timeout)
 	defer func() {
 		bufPool.Put(buf)
 		cancel()
 	}()
+	sl.poolMetrics.scrapes.Inc()
 	switch err := sl.scraper.scrape(ctx, buf); {
 	case err == nil:
-		return sl.scraper.pprofWriter.writeProfile(buf.Bytes())
 	case errors.Is(err, context.Canceled):
 		return nil
 	default:
+		sl.poolMetrics.scrapesFailed.Inc()
 		sl.logger.WithError(err).WithField("target", sl.scraper.Target.String()).Debug("scrapping failed")
 		sl.scraper.pprofWriter.reset()
 		return err
 	}
+	sl.scraper.targetMetrics.profileSize.Observe(float64(buf.Len()))
+	p := tree.ProfileFromVTPool()
+	defer p.ReturnToVTPool()
+	p.Reset()
+	if err := p.UnmarshalVT(buf.Bytes()); err != nil {
+		return err
+	}
+	sl.scraper.targetMetrics.profileSamples.Observe(float64(len(p.Sample)))
+	return sl.scraper.pprofWriter.writeProfile(startTime, endTime, p)
 }
 
 func (sl *scrapeLoop) stop() {
@@ -340,6 +441,8 @@ type scraper struct {
 
 	buf           *bufio.Reader
 	bodySizeLimit int64
+
+	*targetMetrics
 }
 
 func (s *scraper) scrape(ctx context.Context, w io.Writer) error {

@@ -3,20 +3,6 @@ import React, { useState } from 'react';
 import { ComponentStory, ComponentMeta } from '@storybook/react';
 import Dropdown, { MenuItem, SubMenu } from '@ui/Dropdown';
 
-const Template: ComponentStory<typeof Dropdown> = (args) => (
-  <DropdownSelect {...args} />
-);
-
-export default {
-  title: 'Components/Dropdown',
-  component: Dropdown,
-} as ComponentMeta<typeof Dropdown>;
-
-export const Default = Template.bind({});
-Default.args = {
-  disabled: false,
-};
-
 const DropdownSelect = (args) => {
   const [country, setCountry] = useState(null);
   return (
@@ -56,4 +42,18 @@ export const DropdownWithLotsOfOptions = (args) => {
       </SubMenu>
     </Dropdown>
   );
+};
+
+const Template: ComponentStory<typeof Dropdown> = (args) => (
+  <DropdownSelect {...args} />
+);
+
+export default {
+  title: 'Components/Dropdown',
+  component: Dropdown,
+} as ComponentMeta<typeof Dropdown>;
+
+export const Default = Template.bind({});
+Default.args = {
+  disabled: false,
 };

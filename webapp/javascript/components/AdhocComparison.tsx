@@ -20,7 +20,9 @@ import {
   setAdhocRightFile,
   setAdhocRightProfile,
 } from '../redux/actions';
+import 'react-tabs/style/react-tabs.css';
 import styles from './ComparisonApp.module.css';
+import adhocStyles from './Adhoc.module.scss';
 
 function AdhocComparison(props) {
   const {
@@ -75,12 +77,17 @@ function AdhocComparison(props) {
               </TabList>
               <TabPanel>
                 <FileList
+                  className={adhocStyles.tabPanel}
                   profile={leftProfile}
                   setProfile={setAdhocLeftProfile}
                 />
               </TabPanel>
               <TabPanel>
-                <FileUploader file={leftFile} setFile={setAdhocLeftFile} />
+                <FileUploader
+                  className={adhocStyles.tabPanel}
+                  file={leftFile}
+                  setFile={setAdhocLeftFile}
+                />
               </TabPanel>
             </Tabs>
             {isLeftProfileLoading && (
@@ -106,12 +113,17 @@ function AdhocComparison(props) {
               </TabList>
               <TabPanel>
                 <FileList
+                  className={adhocStyles.tabPanel}
                   profile={rightProfile}
                   setProfile={setAdhocRightProfile}
                 />
               </TabPanel>
               <TabPanel>
-                <FileUploader file={rightFile} setFile={setAdhocRightFile} />
+                <FileUploader
+                  className={adhocStyles.tabPanel}
+                  file={rightFile}
+                  setFile={setAdhocRightFile}
+                />
               </TabPanel>
             </Tabs>
             {isRightProfileLoading && (
@@ -140,11 +152,11 @@ const mapStateToProps = (state) => ({
   ...state.root,
   leftFile: state.root.adhocComparison.left.file,
   leftFlamebearer: state.root.adhocComparison.left.flamebearer,
-  leftProfile: state.root.adhocComparison.left.profile,
+  leftProfile: state.root.adhocShared.left.profile,
   isLeftProfileLoading: state.root.adhocComparison.left.isProfileLoading,
   rightFile: state.root.adhocComparison.right.file,
   rightFlamebearer: state.root.adhocComparison.right.flamebearer,
-  rightProfile: state.root.adhocComparison.right.profile,
+  rightProfile: state.root.adhocShared.right.profile,
   isRightProfileLoading: state.root.adhocComparison.right.isProfileLoading,
 });
 

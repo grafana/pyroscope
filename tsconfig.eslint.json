@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["."],
+  // Since we excluded the test files in the main tsconfig.json
+  // We must renable them by explicitly setting an 'exclude'
+  "exclude": ["node_modules"]
+}

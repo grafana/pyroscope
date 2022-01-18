@@ -189,6 +189,7 @@ var _ = Describe("flags", func() {
 				exampleCommand.SetArgs([]string{
 					"--config=testdata/server.yml",
 					"--log-level=debug",
+					"--adhoc-data-path=", // Override as it's platform dependent.
 				})
 
 				err := exampleCommand.Execute()

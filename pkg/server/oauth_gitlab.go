@@ -11,18 +11,18 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type oauthHanlderGitlab struct {
+type oauthHandlerGitlab struct {
 	oauthBase
 	allowedGroups []string
 }
 
-func newGitlabHandler(cfg config.GitlabOauth, baseURL string, log *logrus.Logger) (*oauthHanlderGitlab, error) {
+func newOauthGitlabHandler(cfg config.GitlabOauth, baseURL string, log *logrus.Logger) (*oauthHandlerGitlab, error) {
 	authURL, err := url.Parse(cfg.AuthURL)
 	if err != nil {
 		return nil, err
 	}
 
-	h := &oauthHanlderGitlab{
+	h := &oauthHandlerGitlab{
 		oauthBase: oauthBase{
 			config: &oauth2.Config{
 				ClientID:     cfg.ClientID,
@@ -51,7 +51,7 @@ type gitlabGroups struct {
 	Path string
 }
 
-func (o oauthHanlderGitlab) userAuth(client *http.Client) (string, error) {
+func (o oauthHandlerGitlab) userAuth(client *http.Client) (string, error) {
 	type userProfileResponse struct {
 		ID        int64
 		Email     string
@@ -91,7 +91,7 @@ func (o oauthHanlderGitlab) userAuth(client *http.Client) (string, error) {
 	return "", errForbidden
 }
 
-func (o oauthHanlderGitlab) fetchGroups(client *http.Client) ([]gitlabGroups, error) {
+func (o oauthHandlerGitlab) fetchGroups(client *http.Client) ([]gitlabGroups, error) {
 	groupsURL := o.apiURL + "/groups"
 	more := true
 	groups := make([]gitlabGroups, 0)
@@ -120,6 +120,6 @@ func (o oauthHanlderGitlab) fetchGroups(client *http.Client) ([]gitlabGroups, er
 	return groups, nil
 }
 
-func (o oauthHanlderGitlab) getOauthBase() oauthBase {
+func (o oauthHandlerGitlab) getOauthBase() oauthBase {
 	return o.oauthBase
 }

@@ -1,4 +1,5 @@
 import { Units } from '@utils/format';
+import { deltaDiffWrapper } from '@utils/flamebearer';
 
 export type Flamebearer = {
   /**
@@ -37,3 +38,54 @@ export type Flamebearer = {
 export type addTicks =
   | { format: 'double'; leftTicks: number; rightTicks: number }
   | { format: 'single' };
+
+interface DecodeFlamebearerProps {
+  flamebearer: Flamebearer;
+  metadata: {
+    format: string;
+    spyName: string;
+    sampleRate: number;
+    units: Units;
+  };
+  leftTicks?: number;
+  rightTicks?: number;
+  version?: number;
+}
+
+// Hopefully these type assertions won't be required once we enable strictNullChecks in the ompiler
+export function decodeFlamebearer({
+  flamebearer,
+  metadata,
+  leftTicks,
+  rightTicks,
+  version,
+}: DecodeFlamebearerProps): Flamebearer {
+  const fb = {
+    ...flamebearer,
+    format: metadata.format,
+    spyName: metadata.spyName,
+    sampleRate: metadata.sampleRate,
+    units: metadata.units,
+  };
+
+  if (fb.format === 'double') {
+    (fb as any).leftTicks = leftTicks;
+    (fb as any).rightTicks = rightTicks;
+  }
+
+  fb.version = version || 0;
+  fb.levels = deltaDiffWrapper(fb.format, fb.levels);
+  return fb as Flamebearer;
+}
+
+export type FlamebearerProfile = {
+  Flamebearer: Flamebearer;
+
+  metadata: {
+    appName: string;
+    startTime: string;
+    endTime: string;
+    query: string;
+    maxNodes: number;
+  };
+};

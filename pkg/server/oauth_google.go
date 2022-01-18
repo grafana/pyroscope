@@ -13,18 +13,18 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type oauthHanlderGoogle struct {
+type oauthHandlerGoogle struct {
 	oauthBase
 	allowedDomains []string
 }
 
-func newGoogleHandler(cfg config.GoogleOauth, baseURL string, log *logrus.Logger) (*oauthHanlderGoogle, error) {
+func newOauthGoogleHandler(cfg config.GoogleOauth, baseURL string, log *logrus.Logger) (*oauthHandlerGoogle, error) {
 	authURL, err := url.Parse(cfg.AuthURL)
 	if err != nil {
 		return nil, err
 	}
 
-	h := &oauthHanlderGoogle{
+	h := &oauthHandlerGoogle{
 		oauthBase: oauthBase{
 			config: &oauth2.Config{
 				ClientID:     cfg.ClientID,
@@ -49,7 +49,7 @@ func newGoogleHandler(cfg config.GoogleOauth, baseURL string, log *logrus.Logger
 	return h, nil
 }
 
-func (o oauthHanlderGoogle) userAuth(client *http.Client) (string, error) {
+func (o oauthHandlerGoogle) userAuth(client *http.Client) (string, error) {
 	type userProfileResponse struct {
 		ID            string
 		Email         string
@@ -90,6 +90,6 @@ func isAllowedDomain(allowedDomains []string, email string) bool {
 	return false
 }
 
-func (o oauthHanlderGoogle) getOauthBase() oauthBase {
+func (o oauthHandlerGoogle) getOauthBase() oauthBase {
 	return o.oauthBase
 }

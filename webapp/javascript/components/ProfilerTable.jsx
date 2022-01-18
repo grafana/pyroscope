@@ -13,6 +13,7 @@ import {
 } from './FlameGraph/FlameGraphComponent/color';
 import { createFF } from '../util/flamebearer';
 import { fitIntoTableCell } from '../util/fitMode';
+import styles from './ProfilerTable.module.scss';
 
 const zero = (v) => v || 0;
 
@@ -119,6 +120,8 @@ export default function ProfilerTable({
   updateSortBy,
   viewDiff,
   fitMode,
+  handleTableItemClick,
+  highlightQuery,
 }) {
   return (
     <Table
@@ -128,6 +131,8 @@ export default function ProfilerTable({
       sortByDirection={sortByDirection}
       viewDiff={viewDiff}
       fitMode={fitMode}
+      highlightQuery={highlightQuery}
+      handleTableItemClick={handleTableItemClick}
     />
   );
 }
@@ -161,6 +166,8 @@ function Table({
   sortByDirection,
   viewDiff,
   fitMode,
+  handleTableItemClick,
+  highlightQuery,
 }) {
   if (!flamebearer || flamebearer.numTicks === 0) {
     return [];
@@ -168,7 +175,10 @@ function Table({
   const tableFormat = !viewDiff ? tableFormatSingle : tableFormatDiff[viewDiff];
 
   return (
-    <table className="flamegraph-table" data-testid="table-view">
+    <table
+      className={`flamegraph-table ${styles.table}`}
+      data-testid="table-view"
+    >
       <thead>
         <tr>
           {tableFormat.map((v, idx) =>
@@ -200,6 +210,8 @@ function Table({
           sortByDirection={sortByDirection}
           viewDiff={viewDiff}
           fitMode={fitMode}
+          handleTableItemClick={handleTableItemClick}
+          highlightQuery={highlightQuery}
         />
       </tbody>
     </table>
@@ -207,7 +219,15 @@ function Table({
 }
 
 const TableBody = React.memo(
-  ({ flamebearer, sortBy, sortByDirection, viewDiff, fitMode }) => {
+  ({
+    flamebearer,
+    sortBy,
+    sortByDirection,
+    viewDiff,
+    fitMode,
+    handleTableItemClick,
+    highlightQuery,
+  }) => {
     const { numTicks, maxSelf, sampleRate, spyName, units } = flamebearer;
 
     const table = generateTable(flamebearer).sort((a, b) => b.total - a.total);
@@ -227,16 +247,25 @@ const TableBody = React.memo(
 
     const formatter = getFormatter(numTicks, sampleRate, units);
 
+    const isRowSelected = (name) => {
+      return name === highlightQuery;
+    };
+
     const nameCell = (x, style) => (
-      <td>
-        <span className="color-reference" style={style} />
-        <div
-          className="symbol-name"
-          title={x.name}
-          style={fitIntoTableCell(fitMode)}
+      <td className={`${isRowSelected(x.name) && styles.rowSelected}`}>
+        <button
+          className="table-item-button"
+          onClick={() => handleTableItemClick(x)}
         >
-          {x.name}
-        </div>
+          <span className="color-reference" style={style} />
+          <div
+            className="symbol-name"
+            title={x.name}
+            style={fitIntoTableCell(fitMode)}
+          >
+            {x.name}
+          </div>
+        </button>
       </td>
     );
 

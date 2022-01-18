@@ -1,6 +1,5 @@
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
-
-const path = require('path');
+import path from 'path';
 
 // TODO:
 export function getStyleLoaders() {
@@ -52,6 +51,10 @@ export function getAlias() {
       __dirname,
       '../../webapp/javascript/redux'
     ),
+    '@pyroscope/services': path.resolve(
+      __dirname,
+      '../../webapp/javascript/services'
+    ),
   };
 }
 
@@ -62,35 +65,42 @@ export function getJsLoader() {
       exclude: /node_modules/,
       use: [
         {
-          loader: 'babel-loader',
+          loader: 'esbuild-loader',
           options: {
-            cacheDirectory: true,
-            babelrc: true,
-
-            plugins: ['@babel/plugin-transform-runtime'],
-            // Note: order is bottom-to-top and/or right-to-left
-            presets: [
-              [
-                '@babel/preset-env',
-                {
-                  targets: {
-                    browsers: 'last 3 versions',
-                  },
-                  useBuiltIns: 'entry',
-                  corejs: 3,
-                  modules: false,
-                },
-              ],
-              [
-                '@babel/preset-typescript',
-                {
-                  allowNamespaces: true,
-                },
-              ],
-              '@babel/preset-react',
-            ],
+            loader: 'tsx', // Or 'ts' if you don't need tsx
+            target: 'es2015',
           },
         },
+        //        {
+        //          loader: 'babel-loader',
+        //          options: {
+        //            cacheDirectory: true,
+        //            babelrc: true,
+        //
+        //            plugins: ['@babel/plugin-transform-runtime'],
+        //            // Note: order is bottom-to-top and/or right-to-left
+        //            presets: [
+        //              [
+        //                '@babel/preset-env',
+        //                {
+        //                  targets: {
+        //                    browsers: 'last 3 versions',
+        //                  },
+        //                  useBuiltIns: 'entry',
+        //                  corejs: 3,
+        //                  modules: false,
+        //                },
+        //              ],
+        //              [
+        //                '@babel/preset-typescript',
+        //                {
+        //                  allowNamespaces: true,
+        //                },
+        //              ],
+        //              '@babel/preset-react',
+        //            ],
+        //          },
+        //        },
       ],
     },
   ];

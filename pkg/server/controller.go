@@ -184,6 +184,12 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 			{"/debug/pprof/profile", pprof.Profile},
 			{"/debug/pprof/symbol", pprof.Symbol},
 			{"/debug/pprof/trace", pprof.Trace},
+			{"/debug/pprof/allocs", pprof.Index},
+			{"/debug/pprof/goroutine", pprof.Index},
+			{"/debug/pprof/heap", pprof.Index},
+			{"/debug/pprof/threadcreate", pprof.Index},
+			{"/debug/pprof/block", pprof.Index},
+			{"/debug/pprof/mutex", pprof.Index},
 		}...)
 	}
 
@@ -210,7 +216,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Google.Enabled {
-		googleHandler, err := newGoogleHandler(ctrl.config.Auth.Google, ctrl.config.BaseURL, ctrl.log)
+		googleHandler, err := newOauthGoogleHandler(ctrl.config.Auth.Google, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +242,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	}
 
 	if ctrl.config.Auth.Gitlab.Enabled {
-		gitlabHandler, err := newGitlabHandler(ctrl.config.Auth.Gitlab, ctrl.config.BaseURL, ctrl.log)
+		gitlabHandler, err := newOauthGitlabHandler(ctrl.config.Auth.Gitlab, ctrl.config.BaseURL, ctrl.log)
 		if err != nil {
 			return nil, err
 		}
@@ -278,7 +284,7 @@ func (ctrl *Controller) Start() error {
 		Addr:           ctrl.config.APIBindAddr,
 		Handler:        handler,
 		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		WriteTimeout:   15 * time.Second,
 		IdleTimeout:    30 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 		ErrorLog:       golog.New(w, "", 0),
@@ -382,7 +388,7 @@ func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 func (*Controller) expectFormats(format string) error {
 	switch format {
-	case "json", "pprof", "collapsed", "":
+	case "json", "pprof", "collapsed", "html", "":
 		return nil
 	default:
 		return errUnknownFormat

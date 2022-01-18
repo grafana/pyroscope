@@ -101,7 +101,8 @@ export function getPackageNameFromStackTrace(
     default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
     dotnetspy: /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/,
     ebpfspy: /^(?<packageName>.+)$/,
-    gospy: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
+    // tested with pyroscope stacktraces here: https://regex101.com/r/99KReq/1
+    gospy: /^(?<packageName>.*?\/.*?\.|.*?\.|.+)(?<functionName>.*)$/,
     phpspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
     pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
     rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,

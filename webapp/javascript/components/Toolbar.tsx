@@ -10,7 +10,7 @@ import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { DebounceInput } from 'react-debounce-input';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import useResizeObserver from '@react-hook/resize-observer';
 import Button from '@ui/Button';
 import { FitModes } from '../util/fitMode';
@@ -59,6 +59,7 @@ interface ProfileHeaderProps {
 
   viewDiff?: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
+  highlightQuery: string;
 
   /** Whether the flamegraph is different from its original state */
   isFlamegraphDirty: boolean;
@@ -72,8 +73,8 @@ interface ProfileHeaderProps {
   /**
    * Refers to the node that has been selected in the flamegraph
    */
-  selectedNode: Option<{ i: number; j: number }>;
-  onFocusOnSubtree: (node: { i: number; j: number }) => void;
+  selectedNode: Maybe<{ i: number; j: number }>;
+  onFocusOnSubtree: (i: number, j: number) => void;
 }
 
 const Toolbar = React.memo(
@@ -81,6 +82,7 @@ const Toolbar = React.memo(
     view,
     viewDiff,
     handleSearchChange,
+    highlightQuery,
     isFlamegraphDirty,
     reset,
     updateFitMode,
@@ -101,6 +103,7 @@ const Toolbar = React.memo(
           <HighlightSearch
             showMode={showMode}
             onHighlightChange={handleSearchChange}
+            highlightQuery={highlightQuery}
           />
           <DiffView
             showMode={showMode}
@@ -136,7 +139,16 @@ const Toolbar = React.memo(
   }
 );
 
-function FocusOnSubtree({ onFocusOnSubtree, selectedNode, showMode }) {
+interface FocusOnSubtreeProps {
+  selectedNode: ProfileHeaderProps['selectedNode'];
+  onFocusOnSubtree: ProfileHeaderProps['onFocusOnSubtree'];
+  showMode: ReturnType<typeof useSizeMode>;
+}
+function FocusOnSubtree({
+  onFocusOnSubtree,
+  selectedNode,
+  showMode,
+}: FocusOnSubtreeProps) {
   let text = '';
   switch (showMode) {
     case 'small': {
@@ -152,16 +164,16 @@ function FocusOnSubtree({ onFocusOnSubtree, selectedNode, showMode }) {
       throw new Error('Wrong mode');
   }
 
-  const f = selectedNode;
-  const onClick = f.isNone()
-    ? () => {}
-    : () => {
-        onFocusOnSubtree(f.get().i, f.get().j);
-      };
+  const onClick = selectedNode.mapOr(
+    () => {},
+    (f) => {
+      return () => onFocusOnSubtree(f.i, f.j);
+    }
+  );
 
   return (
     <Button
-      disabled={!selectedNode.isSome()}
+      disabled={!selectedNode.isJust}
       onClick={onClick}
       icon={faCompressAlt}
     >
@@ -170,7 +182,7 @@ function FocusOnSubtree({ onFocusOnSubtree, selectedNode, showMode }) {
   );
 }
 
-function HighlightSearch({ onHighlightChange, showMode }) {
+function HighlightSearch({ onHighlightChange, showMode, highlightQuery }) {
   return (
     <DebounceInput
       data-testid="flamegraph-search"
@@ -185,6 +197,7 @@ function HighlightSearch({ onHighlightChange, showMode }) {
       onChange={(e) => {
         onHighlightChange(e.target.value);
       }}
+      value={highlightQuery}
     />
   );
 }

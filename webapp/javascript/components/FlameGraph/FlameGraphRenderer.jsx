@@ -7,7 +7,7 @@
 
 import React from 'react';
 import clsx from 'clsx';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
@@ -20,8 +20,8 @@ class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
   // eg localstorage
   initialFlamegraphState = {
-    focusedNode: Option.none(),
-    zoom: Option.none(),
+    focusedNode: Maybe.nothing(),
+    zoom: Maybe.nothing(),
   };
 
   constructor(props) {
@@ -63,20 +63,6 @@ class FlameGraphRenderer extends React.Component {
     this.abortCurrentJSONController();
   }
 
-  updateFitMode = (newFitMode) => {
-    this.setState({
-      fitMode: newFitMode,
-    });
-  };
-
-  updateFlamegraphDirtiness = () => {
-    const isDirty = this.isDirty();
-
-    this.setState({
-      isFlamegraphDirty: isDirty,
-    });
-  };
-
   handleSearchChange = (e) => {
     this.setState({
       highlightQuery: e,
@@ -93,21 +79,9 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateView = (newView) => {
-    this.setState({
-      view: newView,
-    });
-  };
-
-  updateViewDiff = (newView) => {
-    this.setState({
-      viewDiff: newView,
-    });
-  };
-
   onFlamegraphZoom = (bar) => {
     // zooming on the topmost bar is equivalent to resetting to the original state
-    if (bar.isSome() && bar.get().i === 0 && bar.get().j === 0) {
+    if (bar.isJust && bar.value.i === 0 && bar.value.j === 0) {
       this.onReset();
       return;
     }
@@ -134,8 +108,8 @@ class FlameGraphRenderer extends React.Component {
     // reset zoom if we are focusing below the zoom
     // or the same one we were zoomed
     const { zoom } = this.state.flamegraphConfigs;
-    if (zoom.isSome()) {
-      if (zoom.get().i <= i) {
+    if (zoom.isJust) {
+      if (zoom.value.i <= i) {
         flamegraphConfigs = {
           ...flamegraphConfigs,
           zoom: this.initialFlamegraphState.zoom,
@@ -147,9 +121,19 @@ class FlameGraphRenderer extends React.Component {
       ...this.state,
       flamegraphConfigs: {
         ...flamegraphConfigs,
-        focusedNode: Option.some({ i, j }),
+        focusedNode: Maybe.just({ i, j }),
       },
     });
+  };
+
+  // if clicking on the same item, undo the search
+  onTableItemClick = (tableItem) => {
+    let { name } = tableItem;
+
+    if (tableItem.name === this.state.highlightQuery) {
+      name = '';
+    }
+    this.handleSearchChange(name);
   };
 
   updateSortBy = (newSortBy) => {
@@ -162,6 +146,32 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       sortBy: newSortBy,
       sortByDirection: dir,
+    });
+  };
+
+  updateViewDiff = (newView) => {
+    this.setState({
+      viewDiff: newView,
+    });
+  };
+
+  updateView = (newView) => {
+    this.setState({
+      view: newView,
+    });
+  };
+
+  updateFlamegraphDirtiness = () => {
+    const isDirty = this.isDirty();
+
+    this.setState({
+      isFlamegraphDirty: isDirty,
+    });
+  };
+
+  updateFitMode = (newFitMode) => {
+    this.setState({
+      fitMode: newFitMode,
     });
   };
 
@@ -217,6 +227,8 @@ class FlameGraphRenderer extends React.Component {
           viewDiff={this.state.viewDiff}
           fitMode={this.state.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
+          highlightQuery={this.state.highlightQuery}
+          handleTableItemClick={this.onTableItemClick}
         />
       </div>
     );
@@ -230,6 +242,11 @@ class FlameGraphRenderer extends React.Component {
     );
 
     const exportData = () => {
+      // the main idea is to disable exporing that for grafana plugins
+      if (this.props.disableExportData) {
+        return null;
+      }
+
       if (!this.state.flamebearer) {
         return <ExportData />;
       }
@@ -295,6 +312,7 @@ class FlameGraphRenderer extends React.Component {
               fitMode={this.state.fitMode}
               isFlamegraphDirty={this.state.isFlamegraphDirty}
               selectedNode={this.state.flamegraphConfigs.zoom}
+              highlightQuery={this.state.highlightQuery}
               onFocusOnSubtree={(i, j) => {
                 this.onFocusOnNode(i, j);
               }}

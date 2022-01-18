@@ -46,11 +46,14 @@ import {
   REQUEST_ADHOC_RIGHT_PROFILE,
   RECEIVE_ADHOC_RIGHT_PROFILE,
   CANCEL_ADHOC_RIGHT_PROFILE,
+  REQUEST_ADHOC_PROFILE_DIFF,
+  RECEIVE_ADHOC_PROFILE_DIFF,
+  CANCEL_ADHOC_PROFILE_DIFF,
 } from '../actionTypes';
 
 import { deltaDiffWrapper } from '../../util/flamebearer';
 
-const defaultName = window.initialState.appNames.find(
+const defaultName = (window as any).initialState.appNames.find(
   (x) => x !== 'pyroscope.server.cpu'
 );
 
@@ -62,12 +65,14 @@ const initialState = {
   leftUntil: 'now-30m',
   rightUntil: 'now',
   query: `${defaultName || 'pyroscope.server.cpu'}{}`,
-  names: window.initialState.appNames,
+  names: (window as any).initialState.appNames,
   timeline: null,
   single: {
     flamebearer: null,
   },
   comparison: {
+    rawLeft: null,
+    rawRight: null,
     left: {
       flamebearer: null,
     },
@@ -84,19 +89,29 @@ const initialState = {
     flamebearer: null,
     isProfileLoading: false,
   },
+  adhocShared: {
+    left: {
+      profile: null,
+    },
+    right: {
+      profile: null,
+    },
+  },
   adhocComparison: {
     left: {
       file: null,
-      profile: null,
       flamebearer: null,
       isProfileLoading: false,
     },
     right: {
       file: null,
-      profile: null,
       flamebearer: null,
       isProfileLoading: false,
     },
+  },
+  adhocComparisonDiff: {
+    flamebearer: null,
+    isProfileLoading: false,
   },
   isJSONLoading: false,
   maxNodes: 1024,
@@ -434,11 +449,17 @@ export default function (state = initialState, action) {
       } = action);
       return {
         ...state,
+        adhocShared: {
+          ...state.adhocShared,
+          left: {
+            ...state.adhocShared.left,
+            profile: null,
+          },
+        },
         adhocComparison: {
           ...state.adhocComparison,
           left: {
             ...state.adhocComparison.left,
-            profile: null,
             file,
             flamebearer: flamebearer ? decodeFlamebearer(flamebearer) : null,
           },
@@ -450,11 +471,17 @@ export default function (state = initialState, action) {
       } = action);
       return {
         ...state,
+        adhocShared: {
+          ...state.adhocShared,
+          right: {
+            ...state.adhocShared.right,
+            profile: null,
+          },
+        },
         adhocComparison: {
           ...state.adhocComparison,
           right: {
             ...state.adhocComparison.right,
-            profile: null,
             file,
             flamebearer: flamebearer ? decodeFlamebearer(flamebearer) : null,
           },
@@ -525,12 +552,18 @@ export default function (state = initialState, action) {
       } = action);
       return {
         ...state,
+        adhocShared: {
+          ...state.adhocShared,
+          left: {
+            ...state.adhocShared.left,
+            profile,
+          },
+        },
         adhocComparison: {
           ...state.adhocComparison,
           left: {
             ...state.adhocComparison.left,
             file: null,
-            profile,
           },
         },
       };
@@ -577,12 +610,18 @@ export default function (state = initialState, action) {
       } = action);
       return {
         ...state,
+        adhocShared: {
+          ...state.adhocShared,
+          right: {
+            ...state.adhocShared.right,
+            profile,
+          },
+        },
         adhocComparison: {
           ...state.adhocComparison,
           right: {
             ...state.adhocComparison.right,
             file: null,
-            profile,
           },
         },
       };
@@ -621,6 +660,34 @@ export default function (state = initialState, action) {
             ...state.adhocComparison.right,
             isProfileLoading: false,
           },
+        },
+      };
+    case REQUEST_ADHOC_PROFILE_DIFF:
+      return {
+        ...state,
+        adhocComparisonDiff: {
+          ...state.adhocComparisonDiff,
+          isProfileLoading: true,
+        },
+      };
+    case RECEIVE_ADHOC_PROFILE_DIFF:
+      ({
+        payload: { flamebearer },
+      } = action);
+      return {
+        ...state,
+        adhocComparisonDiff: {
+          ...state.adhocComparisonDiff,
+          flamebearer: decodeFlamebearer(flamebearer),
+          isProfileLoading: false,
+        },
+      };
+    case CANCEL_ADHOC_PROFILE_DIFF:
+      return {
+        ...state,
+        adhocComparisonDiff: {
+          ...state.adhocComparisonDiff,
+          isProfileLoading: false,
         },
       };
     default:
