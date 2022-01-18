@@ -46,12 +46,12 @@ func chain(f http.HandlerFunc, middleware ...middleware) http.HandlerFunc {
 func registerUserHandlers(r *mux.Router, s *Services) {
 	h := api.NewUserHandler(s.UserService)
 
-	register(authz.AllowAny, r.PathPrefix("/users").Subrouter(), []route{
+	register(authz.RequireAdminRole, r.PathPrefix("/users").Subrouter(), []route{
 		{"", http.MethodPost, h.CreateUser},
 		{"", http.MethodGet, h.ListUsers},
 	})
 
-	register(authz.AllowAny, r.PathPrefix("/users/{id:[0-9]+}").Subrouter(), []route{
+	register(authz.RequireAdminRole, r.PathPrefix("/users/{id:[0-9]+}").Subrouter(), []route{
 		{"", http.MethodGet, h.GetUser},
 		{"", http.MethodPatch, h.UpdateUser},
 		{"", http.MethodDelete, h.DeleteUser},
@@ -62,7 +62,7 @@ func registerUserHandlers(r *mux.Router, s *Services) {
 	})
 
 	// Endpoints available to all authenticated users.
-	register(authz.Require(authz.AuthenticatedUser), r.PathPrefix("/user").Subrouter(), []route{
+	register(authz.RequireAuthenticatedUser, r.PathPrefix("/user").Subrouter(), []route{
 		{"", http.MethodGet, h.GetAuthenticatedUser},
 		{"", http.MethodPatch, h.UpdateAuthenticatedUser},
 		{"/password", http.MethodPut, h.ChangeAuthenticatedUserPassword},
@@ -72,7 +72,7 @@ func registerUserHandlers(r *mux.Router, s *Services) {
 func registerAPIKeyHandlers(r *mux.Router, s *Services) {
 	h := api.NewAPIKeyHandler(s.APIKeyService)
 
-	register(authz.AllowAny, r.PathPrefix("/keys").Subrouter(), []route{
+	register(authz.RequireAdminRole, r.PathPrefix("/keys").Subrouter(), []route{
 		{"", http.MethodPost, h.CreateAPIKey},
 		{"", http.MethodGet, h.ListAPIKeys},
 	})

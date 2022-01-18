@@ -10,14 +10,15 @@ import (
 )
 
 type APIKeyService struct {
-	db         *gorm.DB
-	signingKey []byte
+	db *gorm.DB
+
+	jwtTokenService JWTTokenService
 }
 
-func NewAPIKeyService(db *gorm.DB, signingKey []byte) APIKeyService {
+func NewAPIKeyService(db *gorm.DB, jwtTokenService JWTTokenService) APIKeyService {
 	return APIKeyService{
-		db:         db,
-		signingKey: signingKey,
+		db:              db,
+		jwtTokenService: jwtTokenService,
 	}
 }
 
@@ -25,7 +26,8 @@ func (svc APIKeyService) CreateAPIKey(ctx context.Context, params model.CreateAP
 	if err := params.Validate(); err != nil {
 		return model.APIKey{}, "", err
 	}
-	token, signature, err := model.SignJWTToken(params.JWTToken(), svc.signingKey)
+	t := svc.jwtTokenService.GenerateAPIKeyToken(params)
+	tokenString, signature, err := svc.jwtTokenService.Sign(t)
 	if err != nil {
 		return model.APIKey{}, "", err
 	}
@@ -49,7 +51,7 @@ func (svc APIKeyService) CreateAPIKey(ctx context.Context, params model.CreateAP
 	if err != nil {
 		return model.APIKey{}, "", err
 	}
-	return apiKey, token, nil
+	return apiKey, tokenString, nil
 }
 
 func (svc APIKeyService) FindAPIKeyByName(ctx context.Context, apiKeyName string) (model.APIKey, error) {

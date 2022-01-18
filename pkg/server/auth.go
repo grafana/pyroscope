@@ -10,9 +10,15 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
+// TODO(kolesnikovae):
+//  - AuthHandler is to be moved to pkg/api.
+//  - Other handler are to be decoupled with Controller and to be moved as well.
+
+//go:generate mockgen -destination mocks/auth.go -package mocks . AuthService
+
 type AuthService interface {
-	APIKeyFromToken(context.Context, string) (model.TokenAPIKey, error)
-	UserFromToken(context.Context, string) (model.User, error)
+	APIKeyFromJWTToken(context.Context, string) (model.TokenAPIKey, error)
+	UserFromJWTToken(context.Context, string) (model.User, error)
 }
 
 type AuthHandler struct {
@@ -63,9 +69,9 @@ func (s AuthHandler) Middleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		// For backward compatibility, on failure we assume the
-		// requester is user and redirect to the login page, which
-		// is not appropriate for API key authentication and may
-		// confuse end users.
+		// requester is user and redirect them to the login page,
+		// which is not appropriate for API key authentication
+		// and may confuse end users.
 		logger.Debug("unauthenticated request")
 		s.loginRedirect(w, r)
 	}
@@ -78,11 +84,12 @@ func (s AuthHandler) Middleware(next http.HandlerFunc) http.HandlerFunc {
 // The method fails if the token is invalid or the user can't be authenticated
 // (e.g. can not be found or is disabled).
 func (s AuthHandler) withUserFromToken(r *http.Request, t string) error {
-	u, err := s.authService.UserFromToken(r.Context(), t)
+	ctx := r.Context()
+	u, err := s.authService.UserFromJWTToken(ctx, t)
 	if err != nil {
 		return err
 	}
-	r = r.WithContext(model.WithUser(r.Context(), u))
+	r = r.WithContext(model.WithUser(ctx, u))
 	return nil
 }
 
@@ -94,11 +101,12 @@ func (s AuthHandler) withUserFromToken(r *http.Request, t string) error {
 // authenticated (e.g. can not be found, expired, or it's signature
 // has changed).
 func (s AuthHandler) withAPIKeyFromToken(r *http.Request, t string) error {
-	k, err := s.authService.APIKeyFromToken(r.Context(), t)
+	ctx := r.Context()
+	k, err := s.authService.APIKeyFromJWTToken(ctx, t)
 	if err != nil {
 		return err
 	}
-	r = r.WithContext(model.WithTokenAPIKey(r.Context(), k))
+	r = r.WithContext(model.WithTokenAPIKey(ctx, k))
 	return nil
 }
 

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/golang-jwt/jwt"
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -36,6 +35,11 @@ type User struct {
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 	DeletedAt         gorm.DeletedAt
+}
+
+// TokenUser represents a user info retrieved from the validated JWT token.
+type TokenUser struct {
+	Name string
 }
 
 type CreateUserParams struct {
@@ -165,26 +169,4 @@ func MustPasswordHash(password string) []byte {
 
 func VerifyPassword(hashed []byte, password string) error {
 	return bcrypt.CompareHashAndPassword(hashed, []byte(password))
-}
-
-// TokenUser represents a user info retrieved from the validated JWT token.
-type TokenUser struct {
-	Name string
-}
-
-const jwtClaimUserName = "name"
-
-// UserFromJWTToken retrieves user info from the given JWT token.
-// 'name' claim must be present and valid, otherwise the function returns
-// false. The function does not validate the token.
-func UserFromJWTToken(t *jwt.Token) (TokenUser, bool) {
-	var user TokenUser
-	m, ok := t.Claims.(jwt.MapClaims)
-	if !ok {
-		return user, false
-	}
-	if user.Name, ok = m[jwtClaimAPIKeyName].(string); !ok {
-		return user, false
-	}
-	return user, true
 }

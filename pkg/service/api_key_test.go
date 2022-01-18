@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/golang-jwt/jwt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -18,9 +17,9 @@ var _ = Describe("APIKeyService", func() {
 	AfterEach(s.AfterEach)
 
 	var svc service.APIKeyService
-	signingKey := []byte("signing-key")
+	jwtTokenService := service.NewJWTTokenService([]byte("signing-key"), 0)
 	BeforeEach(func() {
-		svc = service.NewAPIKeyService(s.DB(), signingKey)
+		svc = service.NewAPIKeyService(s.DB(), jwtTokenService)
 	})
 
 	Describe("API key creation", func() {
@@ -45,11 +44,9 @@ var _ = Describe("APIKeyService", func() {
 			})
 
 			It("creates a valid JWT token", func() {
-				parsed, err := jwt.Parse(token, func(*jwt.Token) (interface{}, error) {
-					return signingKey, nil
-				})
+				parsed, err := jwtTokenService.Parse(token)
 				Expect(err).ToNot(HaveOccurred())
-				_, ok := model.APIKeyFromJWTToken(parsed)
+				_, ok := jwtTokenService.APIKeyFromJWTToken(parsed)
 				Expect(ok).To(BeTrue())
 			})
 		})
@@ -193,7 +190,7 @@ var _ = Describe("APIKeyService", func() {
 })
 
 func testCreateAPIKeyParams() model.CreateAPIKeyParams {
-	expiresAt := time.Date(2021, 12, 10, 4, 14, 0, 0, time.UTC)
+	expiresAt := time.Date(3000, 12, 10, 4, 14, 0, 0, time.UTC)
 	return model.CreateAPIKeyParams{
 		Name:      "johndoe",
 		Role:      model.ReadOnlyRole,
