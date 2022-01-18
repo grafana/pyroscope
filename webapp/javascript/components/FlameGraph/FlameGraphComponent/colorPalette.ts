@@ -2,6 +2,7 @@ import Color from 'color';
 
 // FlamegraphPalette represents
 export interface FlamegraphPalette {
+  name: string;
   goodColor: Color;
   neutralColor: Color;
   badColor: Color;
@@ -10,6 +11,7 @@ export interface FlamegraphPalette {
 }
 
 export const DefaultPalette: FlamegraphPalette = {
+  name: 'Default',
   // green
   goodColor: Color.rgb(0, 170, 0),
   // grey
@@ -49,6 +51,7 @@ export const DefaultPalette: FlamegraphPalette = {
 export const ColorBlindPalette: FlamegraphPalette = {
   ...DefaultPalette,
 
+  name: 'Color Blind',
   goodColor: Color('rgb(26,133,255)'),
   neutralColor: Color.rgb(148, 142, 142),
   badColor: Color('rgb(220,50,32)'),

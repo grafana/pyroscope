@@ -82,10 +82,18 @@ function PaletteDropdown({
   palette,
   setPalette,
 }: Pick<HeaderProps, 'palette' | 'setPalette'>) {
+  const palettes = [DefaultPalette, ColorBlindPalette];
   return (
     <Dropdown label="Palette" onItemClick={(e) => setPalette(e.value)}>
-      <MenuItem value={DefaultPalette}>Default</MenuItem>
-      <MenuItem value={ColorBlindPalette}>Color Blind</MenuItem>
+      {palettes.map((p) => (
+        <MenuItem
+          value={p}
+          key={p.name}
+          className={palette.name === p.name ? 'active' : ''}
+        >
+          {p.name}
+        </MenuItem>
+      ))}
     </Dropdown>
   );
 }
