@@ -171,22 +171,11 @@ func (sn *streeNode) get(ctx context.Context, s *Segment, st, et time.Time, cb f
 		}
 		return
 	}
-	// Create a sampled tree from the current node.
-	trace.Log(ctx, traceCatNodeGet, "sampled")
-	cb(sn, sn.overlapRead(st, et))
-}
-
-func (sn *streeNode) isLeaf() bool {
-	if len(sn.children) == 0 {
-		return true
+	if sn.present {
+		// Create a sampled tree from the current node.
+		trace.Log(ctx, traceCatNodeGet, "sampled")
+		cb(sn, sn.overlapRead(st, et))
 	}
-	var x int
-	for i := range sn.children {
-		if sn.children[i] == nil {
-			x++
-		}
-	}
-	return x == len(sn.children)
 }
 
 // deleteDataBefore returns true if the node should be deleted
