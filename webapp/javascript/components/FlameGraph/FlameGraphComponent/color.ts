@@ -36,18 +36,6 @@ export const diffColorGreen = Color.rgb(0, 170, 0);
 
 export const highlightColor = Color('#48CE73');
 
-// assume: left >= 0 && Math.abs(diff) <= left so diff / left is in [0...1]
-// if left == 0 || Math.abs(diff) > left, we use the color of 100%
-export function colorBasedOnDiff(diff: number, left: number, a: number) {
-  const v =
-    !left || Math.abs(diff) > left
-      ? 200
-      : 200 * Math.sqrt(Math.abs(diff / left));
-  if (diff >= 0) return Color.rgb(200, 200 - v, 200 - v).alpha(a);
-
-  return Color.rgb(200 - v, 200, 200 - v).alpha(a);
-}
-
 export function colorBasedOnDiffPercent(
   leftPercent: number,
   rightPercent: number,
