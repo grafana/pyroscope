@@ -2,6 +2,8 @@
   padding-bottom: 5px;
   display: flex;
   justify-content: space-between;
+
+  align-items: start;
 }
 
 .flamegraph-header > div:first-child {
@@ -17,4 +19,9 @@
   width: 100%;
   display: block;
   text-align: center;
+}
+
+.buttons {
+  display: flex;
+  flex-shrink: 0;
 }

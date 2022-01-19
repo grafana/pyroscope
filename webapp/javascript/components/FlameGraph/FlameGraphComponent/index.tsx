@@ -13,6 +13,7 @@ import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
+import type { FlamegraphPalette } from './colorPalette';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
@@ -32,11 +33,12 @@ interface FlamegraphProps {
   ExportData: () => React.ReactElement;
 
   ['data-testid']?: string;
+  palette: FlamegraphPalette;
+  setPalette: (p: FlamegraphPalette) => void;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>();
-  //  const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
   const flamegraph = useRef<Flamegraph>();
 
   const [rightClickedNode, setRightClickedNode] = React.useState<
@@ -48,6 +50,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
   const { 'data-testid': dataTestId } = props;
+  const { palette, setPalette } = props;
 
   // debounce rendering canvas
   // used for situations like resizing
@@ -162,7 +165,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     [flamegraph]
   );
 
-  React.useEffect(() => {
+  const constructCanvas = () => {
     if (canvasRef.current) {
       const f = new Flamegraph(
         flamebearer,
@@ -170,12 +173,22 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         focusedNode,
         fitMode,
         highlightQuery,
-        zoom
+        zoom,
+        palette
       );
 
       flamegraph.current = f;
-      renderCanvas();
     }
+  };
+
+  React.useEffect(() => {
+    constructCanvas();
+    renderCanvas();
+  }, [palette]);
+
+  React.useEffect(() => {
+    constructCanvas();
+    renderCanvas();
   }, [
     canvasRef.current,
     flamebearer,
@@ -203,6 +216,8 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         format={flamebearer.format}
         units={flamebearer.units}
         ExportData={ExportData}
+        palette={palette}
+        setPalette={setPalette}
       />
 
       {dataUnavailable ? (
