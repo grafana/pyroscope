@@ -52,7 +52,7 @@ export const ColorBlindPalette: FlamegraphPalette = {
   ...DefaultPalette,
 
   name: 'Color Blind',
-  goodColor: Color('rgb(26,133,255)'),
+  goodColor: Color.rgb(26, 133, 255),
   neutralColor: Color.rgb(148, 142, 142),
-  badColor: Color('rgb(220,50,32)'),
+  badColor: Color.rgb(220, 50, 32),
 };

@@ -76,13 +76,10 @@ type CanvasRendererConfig = Flamebearer & {
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
-  const { canvas } = props;
+  const { canvas, fitMode, units, tickToX, levels, palette } = props;
   const { numTicks, sampleRate, pxPerTick } = props;
-  const { fitMode } = props;
-  const { units } = props;
   const { rangeMin, rangeMax } = props;
-  const { tickToX } = props;
-  const { palette } = props;
+  const { focusedNode, zoom } = props;
 
   const graphWidth = getCanvasWidth(canvas);
   // TODO: why is this needed? otherwise height is all messed up
@@ -94,9 +91,6 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
 
   const { format } = props;
   const ff = createFF(format);
-
-  const { levels } = props;
-  const { focusedNode, zoom } = props;
 
   //  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
   const ctx = canvas.getContext('2d');
