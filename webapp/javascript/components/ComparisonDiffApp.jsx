@@ -9,6 +9,7 @@ import TimelineChartWrapper from './TimelineChartWrapper';
 import { buildDiffRenderURL } from '../util/updateRequests';
 import { fetchNames, fetchComparisonDiffAppData } from '../redux/actions';
 import InstructionText from './FlameGraph/InstructionText';
+import ExportData from './ExportData';
 
 function ComparisonDiffApp(props) {
   const { actions, diffRenderURL, diff } = props;
@@ -20,6 +21,9 @@ function ComparisonDiffApp(props) {
     }
     return actions.abortTimelineRequest;
   }, [diffRenderURL]);
+
+  console.log({ diff });
+  const exportData = <ExportData flamebearer={diff.raw} exportJSON exportPNG />;
 
   return (
     <div className="pyroscope-app">
@@ -35,6 +39,8 @@ function ComparisonDiffApp(props) {
             display="both"
             viewType="diff"
             flamebearer={diff.flamebearer}
+            rawFlamegraph={diff}
+            ExportData={exportData}
           >
             <div className="diff-instructions-wrapper">
               <div className="diff-instructions-wrapper-side">

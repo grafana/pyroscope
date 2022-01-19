@@ -242,6 +242,12 @@ class FlameGraphRenderer extends React.Component {
     );
 
     const exportData = () => {
+      // prefer export data from props
+      if (this.props.ExportData) {
+        console.log('exporting data from props');
+        return this.props.ExportData;
+      }
+
       // the main idea is to disable exporing that for grafana plugins
       if (this.props.disableExportData) {
         return null;
@@ -252,11 +258,6 @@ class FlameGraphRenderer extends React.Component {
       }
 
       if (!this.props.rawFlamegraph) {
-        return <ExportData />;
-      }
-
-      // we only want to download single ones
-      if (this.state.flamebearer.format === 'double') {
         return <ExportData />;
       }
 

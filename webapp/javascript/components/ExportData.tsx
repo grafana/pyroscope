@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
 
 import Button from '@ui/Button';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { buildRenderURL } from '@utils/updateRequests';
 
 import clsx from 'clsx';
 import { FlamebearerProfile } from '@models/flamebearer';
 
-interface ExportDataProps {
-  exportFlamebearer?: Flamebearer;
-}
+type ExportDataProps = (
+  | {
+      exportFlamebearer: true;
+      flamebearer: FlamebearerProfile;
+    }
+  | {
+      exportPprof: true;
+      flamebearer: FlamebearerProfile;
+    }
+) & {
+  exportJSON: boolean;
+  exportPNG: boolean;
+};
 function ExportData(props: ExportDataProps) {
-  const { exportFlamebearer } = props;
+  console.log('props', props);
+  const { flamebearer, exportJSON, exportPNG, exportPprof } = props;
   const [toggleMenu, setToggleMenu] = useState(false);
 
   const formattedDate = () => {
@@ -51,7 +61,7 @@ function ExportData(props: ExportDataProps) {
   };
 
   const downloadFlamebearer = function (
-    exportObj: Flamebearer,
+    exportObj: FlamebearerProfile,
     exportName: string
   ) {
     const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
@@ -65,7 +75,7 @@ function ExportData(props: ExportDataProps) {
     downloadAnchorNode.remove();
   };
 
-  const exportPProf = function (flamebearer: FlamebearerProfile) {
+  const exportPProfFunc = function (flamebearer: FlamebearerProfile) {
     const url = `${buildRenderURL({
       from: flamebearer.metadata.startTime,
       until: flamebearer.metadata.endTime,
@@ -89,31 +99,33 @@ function ExportData(props: ExportDataProps) {
       >
         <div className="dropdown-header">Export Flamegraph</div>
         <div>
-          <button
-            className="dropdown-menu-item"
-            onClick={() => exportCanvas('png')}
-            onKeyPress={() => exportCanvas('png')}
-            type="button"
-          >
-            PNG
-          </button>
-          {exportFlamebearer && (
+          {exportPNG && (
+            <button
+              className="dropdown-menu-item"
+              onClick={() => exportCanvas('png')}
+              onKeyPress={() => exportCanvas('png')}
+              type="button"
+            >
+              PNG
+            </button>
+          )}
+          {exportJSON && (
             <button
               className="dropdown-menu-item"
               type="button"
               onClick={() =>
-                downloadFlamebearer(exportFlamebearer, 'pyroscope_export')
+                downloadFlamebearer(flamebearer, 'pyroscope_export')
               }
             >
               JSON
             </button>
           )}
 
-          {exportFlamebearer && (
+          {exportPprof && (
             <button
               className="dropdown-menu-item"
               type="button"
-              onClick={() => exportPProf(exportFlamebearer)}
+              onClick={() => exportPProfFunc(flamebearer)}
             >
               pprof
             </button>

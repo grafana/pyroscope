@@ -357,17 +357,22 @@ export default function (state = initialState, action) {
         ...state,
         isJSONLoading: true,
       };
-    case RECEIVE_COMPARISON_DIFF_APP_DATA:
+    case RECEIVE_COMPARISON_DIFF_APP_DATA: {
       ({
         payload: { data },
       } = action);
       ({ timeline } = data);
+
+      // since we gonna mutate that data, keep a reference to the old one
+      const raw = JSON.parse(JSON.stringify(data));
+
       return {
         ...state,
         timeline: decodeTimelineData(timeline),
-        diff: { flamebearer: decodeFlamebearer(data) },
+        diff: { raw, flamebearer: decodeFlamebearer(data) },
         isJSONLoading: false,
       };
+    }
 
     case REQUEST_TAGS:
       return {
