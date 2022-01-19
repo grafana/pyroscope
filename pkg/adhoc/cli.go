@@ -76,9 +76,9 @@ func Cli(cfg *config.Adhoc, args []string) error {
 	logger.SetReportCaller(false)
 
 	switch cfg.OutputFormat {
-	case "json", "pprof", "collapsed":
+	case "html", "pprof", "collapsed", "none":
 	default:
-		return fmt.Errorf("invalid output format '%s', the only supported output formats are 'json', 'pprof' and 'collapsed'", cfg.OutputFormat)
+		return fmt.Errorf("invalid output format '%s', the only supported output formats are 'html', 'pprof' and 'collapsed'", cfg.OutputFormat)
 	}
 
 	st, err := storage.New(newStorageConfig(cfg), logger, prometheus.DefaultRegisterer)

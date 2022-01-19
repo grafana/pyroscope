@@ -16,7 +16,7 @@ We also simulate running 3 distinct servers in 3 different regions (via [docker-
 
 One of the most useful capabilities of Pyroscope is the ability to tag your data in a way that is meaningful to you. In this case, we have two natural divisions, and so we "tag" our data to represent those:
 - `region`: statically tags the region of the server running the code
-- `vehicle`: dynamically tags the endpoint (similar to how one might tag a controller rails)
+- `vehicle`: dynamically tags the endpoint (similar to how one might tag a controller)
 
 
 ## Tagging static region
@@ -31,7 +31,7 @@ Tagging something static, like the `region`, can be done in the initialization c
 ```
 
 ## Tagging dynamically within functions
-Tagging something more dynamically, like we do for the `vehicle` tag can be done inside our utility `FindNearestVehicle()` function using a `with pyroscope.tag_wrapper()` block
+Tagging something more dynamically, like we do for the `vehicle` tag can be done inside our utility `FindNearestVehicle()` function using `pyroscope.TagWrapper`
 ```
 func FindNearestVehicle(search_radius int64, vehicle string) {
 	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("vehicle", vehicle), func(ctx context.Context) {

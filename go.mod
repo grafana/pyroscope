@@ -68,6 +68,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/objx v0.2.0 // indirect
+	github.com/stretchr/testify v1.7.0
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/tommy351/goldga v0.3.0
 	github.com/twmb/murmur3 v1.1.5

@@ -2,7 +2,7 @@
 // This interfaces serves for when we introduce
 // something more sofisticated than simply booleans
 interface Features {
-  enableExperimentalAdhocUI?: boolean;
+  enableAdhocUI?: boolean;
 }
 
 function hasFeatures(
@@ -18,6 +18,6 @@ function hasFeatures(
 }
 
 // Features
-export const isExperimentalAdhocUIEnabled = hasFeatures(window)
-  ? window.features.enableExperimentalAdhocUI
-  : false;
+export const isAdhocUIEnabled = hasFeatures(window)
+  ? window.features.enableAdhocUI
+  : true;

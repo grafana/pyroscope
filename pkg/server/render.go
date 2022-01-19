@@ -1,17 +1,13 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"regexp"
 	"runtime/debug"
 	"strconv"
 	"sync"
-	"text/template"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -107,59 +103,11 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		ctrl.writeResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	case "html":
 		res := flamebearer.NewProfile(out, p.maxNodes)
-
-		f, err := ctrl.dir.Open("/standalone.html")
-
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render standalone page")
-			return
-		}
-
-		body, err := io.ReadAll(f)
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render standalone page")
-			return
-		}
-
-		var flamegraph []byte
-		flamegraph, err = json.Marshal(res)
-		if err != nil {
+		w.Header().Add("Content-Type", "text/html")
+		if err := flamebearer.FlamebearerToStandaloneHTML(&res, ctrl.dir, w); err != nil {
 			ctrl.writeJSONEncodeError(w, err)
 			return
 		}
-
-		tmpl, err := template.New("standalone").Parse(
-			`
-    <script type="text/javascript">
-      try {
-        eval('window.flamegraph = {{ .Flamegraph }}');
-      } catch(e) {}
-    </script>
-			`,
-		)
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render standalone page")
-			return
-		}
-
-		var buffer bytes.Buffer
-		err = tmpl.Execute(&buffer, map[string]string{
-			"Flamegraph": string(flamegraph),
-		})
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render standalone page")
-			return
-		}
-
-		standaloneFlamegraphRegexp := regexp.MustCompile(`(?s)<!--\s*generate-standalone-flamegraph\s*-->`)
-		newContent := standaloneFlamegraphRegexp.ReplaceAll(body, buffer.Bytes())
-
-		if bytes.Equal(body, newContent) {
-			ctrl.writeInternalServerError(w, fmt.Errorf("could not apply regex"), "could not render standalone page")
-			return
-		}
-
-		ctrl.writeResponseFile(w, fmt.Sprintf("%v.html", filename), newContent)
 	}
 }
 

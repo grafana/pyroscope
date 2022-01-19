@@ -35,7 +35,8 @@ type Adhoc struct {
 
 	// Output configuration
 	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
-	OutputFormat   string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
+	OutputFormat   string `def:"html" desc:"format to export profiling data, supported formats are: html, pprof, collapsed, none" mapstructure:"output-format"`
+	NoJSONOutput   bool   `def:"false" desc:"disables generating native JSON file(s) in pyroscope data directory" mapstructure:"no-joson-output"`
 	DataPath       string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"data-path"`
 
 	// Spy configuration
@@ -135,10 +136,11 @@ type Server struct {
 	TLSCertificateFile string `def:"" desc:"location of TLS Certificate file (.crt)" mapstructure:"tls-certificate-file"`
 	TLSKeyFile         string `def:"" desc:"location of TLS Private key file (.key)" mapstructure:"tls-key-file"`
 
-	AdminSocketPath           string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
-	EnableExperimentalAdmin   bool   `def:"true" deprecated:"true" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
-	EnableExperimentalAdhocUI bool   `def:"false" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
-	AdhocDataPath             string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"adhoc-data-path"`
+	AdminSocketPath         string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
+	EnableExperimentalAdmin bool   `def:"true" deprecated:"true" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
+
+	NoAdhocUI     bool   `def:"false" desc:"disable the adhoc ui interface" mapstructure:"no-adhoc-ui"`
+	AdhocDataPath string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"adhoc-data-path"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 
