@@ -1,4 +1,5 @@
-### Pyroscope Rideshare Example
+## Continuous Profiling for Python applications
+### Profiling a Python Rideshare App with Pyroscope
 ![python_example_architecture_05_00](https://user-images.githubusercontent.com/23323466/135728737-0c5e54ca-1e78-4c6d-933c-145f441c96a9.gif)
 
 #### _Read this in other languages._

@@ -1,3 +1,22 @@
+## [0.7.2](https://github.com/pyroscope-io/pyroscope/compare/v0.7.1...v0.7.2) (2022-01-14)
+
+
+### Features
+
+* adds ability to trace storage.Get ([#731](https://github.com/pyroscope-io/pyroscope/issues/731)) ([9157e5e](https://github.com/pyroscope-io/pyroscope/commit/9157e5ec498a8b1a53c898da300cdbfa47d0fb4e))
+
+
+
+## [0.7.1](https://github.com/pyroscope-io/pyroscope/compare/v0.7.0...v0.7.1) (2022-01-13)
+
+
+### Bug Fixes
+
+* **backend:** skip empty app with GetAppNames() ([#724](https://github.com/pyroscope-io/pyroscope/issues/724)) ([b3fadec](https://github.com/pyroscope-io/pyroscope/commit/b3fadeccee1fc7c865b3564d0ce27663e66cd7f5))
+* **frontend:** don't allow selecting empty apps ([#723](https://github.com/pyroscope-io/pyroscope/issues/723)) ([2378ab5](https://github.com/pyroscope-io/pyroscope/commit/2378ab5cff3e10c1ad9f4b4edc423f16f975a3e4))
+
+
+
 # [0.7.0](https://github.com/pyroscope-io/pyroscope/compare/v0.6.0...v0.7.0) (2022-01-13)
 
 

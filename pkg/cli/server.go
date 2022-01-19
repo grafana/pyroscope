@@ -13,6 +13,7 @@ import (
 
 	// revive:disable:blank-imports register discoverer
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
@@ -151,7 +152,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 			svc.logger,
 			svc.config.AdhocDataPath,
 			svc.config.MaxNodesRender,
-			svc.config.EnableExperimentalAdhocUI,
+			!svc.config.NoAdhocUI,
 		),
 		Logger:                  svc.logger,
 		MetricsRegisterer:       defaultMetricsRegistry,
