@@ -10,8 +10,7 @@ import (
 )
 
 type APIKeyService struct {
-	db *gorm.DB
-
+	db              *gorm.DB
 	jwtTokenService JWTTokenService
 }
 

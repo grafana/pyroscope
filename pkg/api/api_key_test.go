@@ -33,7 +33,7 @@ var _ = Describe("APIKeyHandler", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		m = mocks.NewMockAPIKeyService(ctrl)
-		server = httptest.NewServer(router.New(&router.Services{
+		server = httptest.NewServer(newTestRouter(defaultUserCtx, router.Services{
 			APIKeyService: m,
 		}))
 	})
@@ -55,7 +55,7 @@ var _ = Describe("APIKeyHandler", func() {
 		BeforeEach(func() {
 			// Defaults for all "create API key" scenarios.
 			method = http.MethodPost
-			url = server.URL + "/api/keys"
+			url = server.URL + "/keys"
 
 			// Note that the actual ExpiresAt is populated during the handler execution
 			// and it is relative to time.Now(). Therefore use this mather to evaluate

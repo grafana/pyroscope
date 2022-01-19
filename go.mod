@@ -22,8 +22,8 @@ require (
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/fatih/color v1.10.0
 	github.com/felixge/fgprof v0.9.1
-	github.com/go-gormigrate/gormigrate/v2 v2.0.0
 	github.com/fsnotify/fsnotify v1.4.9
+	github.com/go-gormigrate/gormigrate/v2 v2.0.0
 	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible
 	github.com/golang/mock v1.6.0

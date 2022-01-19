@@ -12,6 +12,9 @@ var (
 	RequireAuthenticatedUser = Require(AuthenticatedUser)
 )
 
+// AllowAny does not verify if a request is authorized.
+func AllowAny(next http.HandlerFunc) http.HandlerFunc { return next.ServeHTTP }
+
 func Require(funcs ...func(r *http.Request) bool) func(next http.HandlerFunc) http.HandlerFunc {
 	if len(funcs) == 0 {
 		panic("authorization method should be specified explicitly")
@@ -29,9 +32,8 @@ func Require(funcs ...func(r *http.Request) bool) func(next http.HandlerFunc) ht
 	}
 }
 
-// AllowAny does not verify if a request is authorized.
-func AllowAny(next http.HandlerFunc) http.HandlerFunc { return next.ServeHTTP }
-
+// Role verifies if the identity (user or API key) associated
+// with the request has the given role.
 func Role(role model.Role) func(r *http.Request) bool {
 	return func(r *http.Request) bool {
 		ctx := r.Context()

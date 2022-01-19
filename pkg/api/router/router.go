@@ -4,14 +4,48 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
 )
 
 type Services struct {
+	api.AuthService
 	api.UserService
 	api.APIKeyService
+}
+
+type Router struct {
+	logger   logrus.FieldLogger
+	redirect http.HandlerFunc
+	*mux.Router
+	Services
+
+	middleware []middleware
+}
+
+func New(logger logrus.FieldLogger, redirect http.HandlerFunc, m *mux.Router, s Services) *Router {
+	return &Router{
+		logger:   logger,
+		redirect: redirect,
+		Router:   m,
+		Services: s,
+	}
+}
+
+type middleware func(http.HandlerFunc) http.HandlerFunc
+
+// Use appends the given middleware to the chain.
+// The handler is to be called in the order it was added.
+func (r *Router) Use(middleware func(next http.HandlerFunc) http.HandlerFunc) *Router {
+	r.middleware = append(r.middleware, middleware)
+	return r
+}
+
+func (r *Router) RegisterHandlers() {
+	r.registerUserHandlers()
+	r.registerAPIKeyHandlers()
 }
 
 type route struct {
@@ -20,64 +54,64 @@ type route struct {
 	handler http.HandlerFunc
 }
 
-func New(s *Services) *mux.Router {
-	r := mux.NewRouter().PathPrefix("/api").Subrouter()
-	registerUserHandlers(r, s)
-	registerAPIKeyHandlers(r, s)
-	return r
-}
-
-type middleware func(http.HandlerFunc) http.HandlerFunc
-
-func register(authorize middleware, r *mux.Router, routes []route, middleware ...middleware) {
+// register registers given routers for the given prefix pattern.
+// Authorization handler must be provided explicitly and put at the
+// end of the middleware chain (invoked last).
+func (r *Router) register(authorize middleware, prefix string, routes ...route) {
+	rr := r.PathPrefix(prefix).Subrouter()
 	for _, x := range routes {
-		r.NewRoute().Path(x.path).Methods(x.method).
-			HandlerFunc(chain(authorize(x.handler), middleware...))
+		h := chain(authorize(x.handler), r.middleware...)
+		rr.NewRoute().Path(x.path).Methods(x.method).
+			HandlerFunc(h)
 	}
 }
 
 func chain(f http.HandlerFunc, middleware ...middleware) http.HandlerFunc {
-	if len(middleware) == 0 {
-		return f
+	if len(middleware) > 0 {
+		return middleware[0](chain(f, middleware[1:cap(middleware)]...))
 	}
-	return middleware[0](chain(f, middleware[1:cap(middleware)]...))
+	return f
 }
 
-func registerUserHandlers(r *mux.Router, s *Services) {
-	h := api.NewUserHandler(s.UserService)
+func (r *Router) registerUserHandlers() *Router {
+	h := api.NewUserHandler(r.UserService)
 
-	register(authz.RequireAdminRole, r.PathPrefix("/users").Subrouter(), []route{
-		{"", http.MethodPost, h.CreateUser},
-		{"", http.MethodGet, h.ListUsers},
-	})
+	r.register(authz.RequireAdminRole, "/users",
+		route{"", http.MethodPost, h.CreateUser},
+		route{"", http.MethodGet, h.ListUsers},
+	)
 
-	register(authz.RequireAdminRole, r.PathPrefix("/users/{id:[0-9]+}").Subrouter(), []route{
-		{"", http.MethodGet, h.GetUser},
-		{"", http.MethodPatch, h.UpdateUser},
-		{"", http.MethodDelete, h.DeleteUser},
-		{"/password", http.MethodPut, h.ChangeUserPassword},
-		{"/disable", http.MethodPut, h.DisableUser},
-		{"/enable", http.MethodPut, h.EnableUser},
-		{"/role", http.MethodPut, h.ChangeUserRole},
-	})
+	r.register(authz.RequireAdminRole, "/users/{id:[0-9]+}",
+		route{"", http.MethodGet, h.GetUser},
+		route{"", http.MethodPatch, h.UpdateUser},
+		route{"", http.MethodDelete, h.DeleteUser},
+		route{"/password", http.MethodPut, h.ChangeUserPassword},
+		route{"/disable", http.MethodPut, h.DisableUser},
+		route{"/enable", http.MethodPut, h.EnableUser},
+		route{"/role", http.MethodPut, h.ChangeUserRole},
+	)
 
 	// Endpoints available to all authenticated users.
-	register(authz.RequireAuthenticatedUser, r.PathPrefix("/user").Subrouter(), []route{
-		{"", http.MethodGet, h.GetAuthenticatedUser},
-		{"", http.MethodPatch, h.UpdateAuthenticatedUser},
-		{"/password", http.MethodPut, h.ChangeAuthenticatedUserPassword},
-	})
+	r.register(authz.RequireAuthenticatedUser, "/user",
+		route{"", http.MethodGet, h.GetAuthenticatedUser},
+		route{"", http.MethodPatch, h.UpdateAuthenticatedUser},
+		route{"/password", http.MethodPut, h.ChangeAuthenticatedUserPassword},
+	)
+
+	return r
 }
 
-func registerAPIKeyHandlers(r *mux.Router, s *Services) {
-	h := api.NewAPIKeyHandler(s.APIKeyService)
+func (r *Router) registerAPIKeyHandlers() *Router {
+	h := api.NewAPIKeyHandler(r.APIKeyService)
 
-	register(authz.RequireAdminRole, r.PathPrefix("/keys").Subrouter(), []route{
-		{"", http.MethodPost, h.CreateAPIKey},
-		{"", http.MethodGet, h.ListAPIKeys},
-	})
+	r.register(authz.RequireAdminRole, "/keys",
+		route{"", http.MethodPost, h.CreateAPIKey},
+		route{"", http.MethodGet, h.ListAPIKeys},
+	)
 
-	register(authz.AllowAny, r.PathPrefix("/keys/{id:[0-9]+}").Subrouter(), []route{
-		{"", http.MethodDelete, h.DeleteAPIKey},
-	})
+	r.register(authz.RequireAdminRole, "/keys/{id:[0-9]+}",
+		route{"", http.MethodDelete, h.DeleteAPIKey},
+	)
+
+	return r
 }

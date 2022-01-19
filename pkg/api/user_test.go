@@ -33,7 +33,7 @@ var _ = Describe("UserHandler", func() {
 	BeforeEach(func() {
 		ctrl = gomock.NewController(GinkgoT())
 		m = mocks.NewMockUserService(ctrl)
-		server = httptest.NewServer(router.New(&router.Services{
+		server = httptest.NewServer(newTestRouter(defaultUserCtx, router.Services{
 			UserService: m,
 		}))
 	})
@@ -54,7 +54,7 @@ var _ = Describe("UserHandler", func() {
 		BeforeEach(func() {
 			// Defaults for all "create user" scenarios.
 			method = http.MethodPost
-			url = server.URL + "/api/users"
+			url = server.URL + "/users"
 
 			expectedParams = model.CreateUserParams{
 				Name:     "johndoe",

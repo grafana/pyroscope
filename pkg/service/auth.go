@@ -10,8 +10,7 @@ import (
 )
 
 type AuthService struct {
-	db *gorm.DB
-
+	db              *gorm.DB
 	userService     UserService
 	apiKeyService   APIKeyService
 	jwtTokenService JWTTokenService
@@ -19,8 +18,7 @@ type AuthService struct {
 
 func NewAuthService(db *gorm.DB, jwtTokenService JWTTokenService) AuthService {
 	return AuthService{
-		db: db,
-
+		db:              db,
 		userService:     NewUserService(db),
 		apiKeyService:   NewAPIKeyService(db, jwtTokenService),
 		jwtTokenService: jwtTokenService,

@@ -16,8 +16,10 @@ import (
 var (
 	ErrRequestBodyRequired    = model.ValidationError{Err: errors.New("request body required")}
 	ErrRequestBodyJSONInvalid = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
-	ErrAuthenticationRequired = model.ValidationError{Err: errors.New("authentication required")}
-	ErrPermissionDenied       = model.ValidationError{Err: errors.New("permission denied")}
+
+	ErrAuthenticationRequired = errors.New("authentication required")
+	ErrCredentialsInvalid     = errors.New("invalid credentials")
+	ErrPermissionDenied       = errors.New("permission denied")
 )
 
 type Errors struct {
@@ -55,6 +57,8 @@ func ErrorCode(w http.ResponseWriter, err error, code int) {
 	case code > 0:
 		w.WriteHeader(code)
 	case errors.Is(err, ErrAuthenticationRequired):
+		w.WriteHeader(http.StatusUnauthorized)
+	case errors.Is(err, ErrCredentialsInvalid):
 		w.WriteHeader(http.StatusUnauthorized)
 	case errors.Is(err, ErrPermissionDenied):
 		w.WriteHeader(http.StatusForbidden)
