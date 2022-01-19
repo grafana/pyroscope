@@ -29,23 +29,25 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 			})
 
 			if token, ok := extractTokenFromAuthHeader(r.Header.Get("Authorization")); ok {
-				if err := withAPIKeyFromToken(authService, r, token); err != nil {
+				ctx, err := withAPIKeyFromToken(authService, r.Context(), token)
+				if err != nil {
 					logger.WithError(err).Debug("invalid api key")
 					Error(w, ErrCredentialsInvalid)
 					return
 				}
-				next.ServeHTTP(w, r)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
 			if c, err := r.Cookie(jwtCookieName); err == nil {
-				if err = withUserFromToken(authService, r, c.Value); err != nil {
+				ctx, err := withUserFromToken(authService, r.Context(), c.Value)
+				if err != nil {
 					logger.WithError(err).Debug("invalid jwt cookie")
 					// Error(w, ErrCredentialsInvalid)
 					loginRedirect(w, r)
 					return
 				}
-				next.ServeHTTP(w, r)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
@@ -66,14 +68,12 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 //
 // The method fails if the token is invalid or the user can't be authenticated
 // (e.g. can not be found or is disabled).
-func withUserFromToken(s AuthService, r *http.Request, t string) error {
-	ctx := r.Context()
+func withUserFromToken(s AuthService, ctx context.Context, t string) (context.Context, error) {
 	u, err := s.UserFromJWTToken(ctx, t)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	r = r.WithContext(model.WithUser(ctx, u))
-	return nil
+	return model.WithUser(ctx, u), nil
 }
 
 // withAPIKeyFromToken retrieves API key for the given token t and
@@ -83,14 +83,12 @@ func withUserFromToken(s AuthService, r *http.Request, t string) error {
 // The method fails if the token is invalid or the API key can't be
 // authenticated (e.g. can not be found, expired, or it's signature
 // has changed).
-func withAPIKeyFromToken(s AuthService, r *http.Request, t string) error {
-	ctx := r.Context()
+func withAPIKeyFromToken(s AuthService, ctx context.Context, t string) (context.Context, error) {
 	k, err := s.APIKeyFromJWTToken(ctx, t)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	r = r.WithContext(model.WithTokenAPIKey(ctx, k))
-	return nil
+	return model.WithTokenAPIKey(ctx, k), nil
 }
 
 const bearer string = "bearer"

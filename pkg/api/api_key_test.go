@@ -26,8 +26,7 @@ var _ = Describe("APIKeyHandler", func() {
 		m      *mocks.MockAPIKeyService
 
 		// Default configuration for all scenarios.
-		method, url    string
-		expectResponse func(code int, in, out string)
+		method, url string
 	)
 
 	BeforeEach(func() {
@@ -80,12 +79,6 @@ var _ = Describe("APIKeyHandler", func() {
 			}
 		})
 
-		JustBeforeEach(func() {
-			// The function is generated just before It, and should be only
-			// called after the mock is set up with mock.EXPECT call.
-			expectResponse = withRequest(method, url)
-		})
-
 		Context("when request is complete and valid", func() {
 			It("responds with created API key", func() {
 				m.EXPECT().
@@ -98,48 +91,42 @@ var _ = Describe("APIKeyHandler", func() {
 						Expect(actual.Role).To(Equal(expectedParams.Role))
 					})
 
-				expectResponse(http.StatusCreated,
-					"api_key/create_request.json",
-					"api_key/create_response.json")
+				expectResponse(newRequest(method, url,
+					"api_key/create_request.json"),
+					"api_key/create_response.json",
+					http.StatusCreated)
 			})
 		})
 
 		Context("when api key ttl is not specified", func() {
 			It("responds with created API key", func() {
+				expectedParams.ExpiresAt = nil
 				expectedAPIKey.ExpiresAt = nil
 
 				m.EXPECT().
-					CreateAPIKey(gomock.Any(), gomock.Any()).
-					Return(expectedAPIKey, expectedJWTToken, nil).
-					Do(func(_ context.Context, actual model.CreateAPIKeyParams) {
-						defer GinkgoRecover()
-						Expect(actual.ExpiresAt).To(BeNil())
-						Expect(actual.Name).To(Equal(expectedParams.Name))
-						Expect(actual.Role).To(Equal(expectedParams.Role))
-					})
+					CreateAPIKey(gomock.Any(), expectedParams).
+					Return(expectedAPIKey, expectedJWTToken, nil)
 
-				expectResponse(http.StatusCreated,
-					"api_key/create_request_wo_ttl.json",
-					"api_key/create_response_wo_ttl.json")
+				expectResponse(newRequest(method, url,
+					"api_key/create_request_wo_ttl.json"),
+					"api_key/create_response_wo_ttl.json",
+					http.StatusCreated)
 			})
 		})
 
 		Context("when the request does not meet requirements", func() {
 			It("returns validation errors", func() {
 				m.EXPECT().
-					CreateAPIKey(gomock.Any(), gomock.Any()).
+					CreateAPIKey(gomock.Any(), model.CreateAPIKeyParams{}).
 					Return(model.APIKey{}, "", &multierror.Error{Errors: []error{
 						model.ErrAPIKeyNameEmpty,
 						model.ErrRoleUnknown,
-					}}).
-					Do(func(_ context.Context, params model.CreateAPIKeyParams) {
-						defer GinkgoRecover()
-						Expect(params).To(BeZero())
-					})
+					}})
 
-				expectResponse(http.StatusBadRequest,
-					"request_empty_object.json",
-					"api_key/create_response_invalid.json")
+				expectResponse(newRequest(method, url,
+					"request_empty_object.json"),
+					"api_key/create_response_invalid.json",
+					http.StatusBadRequest)
 			})
 		})
 	})

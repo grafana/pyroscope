@@ -27,7 +27,10 @@ func TestAPI(t *testing.T) {
 // Mainly used to inject auth info; use defaultUserCtx if not sure.
 type requestContextProvider func(context.Context) context.Context
 
-var defaultUserCtx = ctxWithUser(&model.User{ID: 1, Role: model.AdminRole})
+var (
+	defaultUserCtx = ctxWithUser(&model.User{ID: 1, Role: model.AdminRole})
+	defaultReqCtx  = func(ctx context.Context) context.Context { return ctx }
+)
 
 func ctxWithUser(u *model.User) requestContextProvider {
 	return func(ctx context.Context) context.Context {
@@ -81,32 +84,32 @@ func newTestRouter(rcp requestContextProvider, services router.Services) *router
 	return r
 }
 
-// withRequest returns a function than performs an HTTP request
-// with the body specified, and validates the response code and body.
-//
-// Request and response body ("in" and "out", correspondingly) are
-// specified as a file name relative to the "testdata" directory.
-// Either of "in" and "out" can be an empty string.
-func withRequest(method, url string) func(code int, in, out string) {
-	return func(code int, in, out string) {
-		var reqBody io.Reader
-		if in != "" {
-			reqBody = readFile(in)
-		}
-		req, err := http.NewRequest(method, url, reqBody)
-		Expect(err).ToNot(HaveOccurred())
-		response, err := http.DefaultClient.Do(req)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(response).ToNot(BeNil())
-		Expect(response.StatusCode).To(Equal(code))
-		if out == "" {
-			Expect(readBody(response).String()).To(BeEmpty())
-			return
-		}
-		// It may also make sense to accept the response as a template
-		// and render non-deterministic values.
-		Expect(readBody(response)).To(MatchJSON(readFile(out)))
+// newRequest creates an HTTP request with the body specified specified
+// as a file name relative to the "testdata".
+func newRequest(method, url, body string) *http.Request {
+	var reqBody io.Reader
+	if body != "" {
+		reqBody = readFile(body)
 	}
+	req, err := http.NewRequest(method, url, reqBody)
+	Expect(err).ToNot(HaveOccurred())
+	return req
+}
+
+// expectResponse performs an HTTP request and validates the response
+// code and body which is specified as a file name relative to the "testdata".
+func expectResponse(req *http.Request, body string, code int) {
+	response, err := http.DefaultClient.Do(req)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(response).ToNot(BeNil())
+	Expect(response.StatusCode).To(Equal(code))
+	if body == "" {
+		Expect(readBody(response).String()).To(BeEmpty())
+		return
+	}
+	// It may also make sense to accept the response as a template
+	// and render non-deterministic values.
+	Expect(readBody(response)).To(MatchJSON(readFile(body)))
 }
 
 func readFile(path string) *bytes.Buffer {

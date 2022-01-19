@@ -26,8 +26,7 @@ var _ = Describe("UserHandler", func() {
 		m      *mocks.MockUserService
 
 		// Default configuration for all scenarios.
-		method, url    string
-		expectResponse func(code int, in, out string)
+		method, url string
 	)
 
 	BeforeEach(func() {
@@ -78,12 +77,6 @@ var _ = Describe("UserHandler", func() {
 			}
 		})
 
-		JustBeforeEach(func() {
-			// The function is generated just before It, and should be only
-			// called after the mock is set up with mock.EXPECT call.
-			expectResponse = withRequest(method, url)
-		})
-
 		Context("when request is complete and valid", func() {
 			It("responds with created user", func() {
 				m.EXPECT().
@@ -94,9 +87,10 @@ var _ = Describe("UserHandler", func() {
 						Expect(actual).To(Equal(expectedParams))
 					})
 
-				expectResponse(http.StatusCreated,
-					"user/create_request.json",
-					"user/create_response.json")
+				expectResponse(newRequest(method, url,
+					"user/create_request.json"),
+					"user/create_response.json",
+					http.StatusCreated)
 			})
 		})
 
@@ -113,9 +107,10 @@ var _ = Describe("UserHandler", func() {
 						Expect(actual).To(Equal(expectedParams))
 					})
 
-				expectResponse(http.StatusCreated,
-					"user/create_request_wo_full_name.json",
-					"user/create_response_wo_full_name.json")
+				expectResponse(newRequest(method, url,
+					"user/create_request_wo_full_name.json"),
+					"user/create_response_wo_full_name.json",
+					http.StatusCreated)
 			})
 		})
 
@@ -131,9 +126,10 @@ var _ = Describe("UserHandler", func() {
 						Expect(actual).To(Equal(expectedParams))
 					})
 
-				expectResponse(http.StatusBadRequest,
-					"user/create_request.json",
-					"user/create_response_email_exists.json")
+				expectResponse(newRequest(method, url,
+					"user/create_request.json"),
+					"user/create_response_email_exists.json",
+					http.StatusBadRequest)
 			})
 		})
 
@@ -149,9 +145,10 @@ var _ = Describe("UserHandler", func() {
 						Expect(actual).To(Equal(expectedParams))
 					})
 
-				expectResponse(http.StatusBadRequest,
-					"user/create_request.json",
-					"user/create_response_user_name_exists.json")
+				expectResponse(newRequest(method, url,
+					"user/create_request.json"),
+					"user/create_response_user_name_exists.json",
+					http.StatusBadRequest)
 			})
 		})
 
@@ -170,9 +167,10 @@ var _ = Describe("UserHandler", func() {
 						Expect(user).To(BeZero())
 					})
 
-				expectResponse(http.StatusBadRequest,
-					"request_empty_object.json",
-					"user/create_response_invalid.json")
+				expectResponse(newRequest(method, url,
+					"request_empty_object.json"),
+					"user/create_response_invalid.json",
+					http.StatusBadRequest)
 			})
 		})
 
@@ -182,9 +180,10 @@ var _ = Describe("UserHandler", func() {
 					CreateUser(gomock.Any(), gomock.Any()).
 					Times(0)
 
-				expectResponse(http.StatusBadRequest,
-					"request_malformed_json",
-					"response_malformed_request_body.json")
+				expectResponse(newRequest(method, url,
+					"request_malformed_json"),
+					"response_malformed_request_body.json",
+					http.StatusBadRequest)
 			})
 		})
 
@@ -194,9 +193,10 @@ var _ = Describe("UserHandler", func() {
 					CreateUser(gomock.Any(), gomock.Any()).
 					Times(0)
 
-				expectResponse(http.StatusBadRequest,
-					"", // No request body.
-					"response_empty_request_body.json")
+				expectResponse(newRequest(method, url,
+					""), // No request body.
+					"response_empty_request_body.json",
+					http.StatusBadRequest)
 			})
 		})
 	})
