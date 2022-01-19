@@ -11,6 +11,7 @@ import store from './redux/store';
 import PyroscopeApp from './components/PyroscopeApp';
 import ComparisonApp from './components/ComparisonApp';
 import ComparisonDiffApp from './components/ComparisonDiffApp';
+import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
 import AdhocSingle from './components/AdhocSingle';
 import AdhocComparison from './components/AdhocComparison';
@@ -43,6 +44,9 @@ ReactDOM.render(
           </Route>
           <Route path="/comparison-diff">
             <ComparisonDiffApp />
+          </Route>
+          <Route exact path="/settings">
+            <Settings />
           </Route>
           {isExperimentalAdhocUIEnabled && (
             <Route path="/adhoc-single">
