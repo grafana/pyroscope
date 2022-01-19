@@ -1,14 +1,17 @@
 package flamebearer
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
 	"net/http"
+	"regexp"
+	"text/template"
 )
 
 // FlamebearerToStandaloneHTML converts and writes a flamebearer into HTML
+// TODO cache template creation and whatnot?
 func FlamebearerToStandaloneHTML(fb *FlamebearerProfile, dir http.FileSystem, w io.Writer) error {
 	tmpl, err := getTemplate(dir, "/standalone.html")
 	if err != nil {
@@ -20,13 +23,41 @@ func FlamebearerToStandaloneHTML(fb *FlamebearerProfile, dir http.FileSystem, w 
 		return fmt.Errorf("unable to marshal flameberarer profile: %w", err)
 	}
 
-	if err := tmpl.Execute(w, map[string]string{"Flamegraph": string(flamegraph)}); err != nil {
-		return fmt.Errorf("unable to execupte template: %w", err)
+	scriptTpl, err := template.New("standalone").Parse(
+		`
+<script type="text/javascript">
+	try {
+		eval('window.flamegraph = {{ .Flamegraph }}');
+	} catch(e) {}
+</script>`,
+	)
+	if err != nil {
+		return fmt.Errorf("unable to create template: %w", err)
 	}
+
+	var buffer bytes.Buffer
+	err = scriptTpl.Execute(&buffer, map[string]string{
+		"Flamegraph": string(flamegraph),
+	})
+	if err != nil {
+		return fmt.Errorf("unable to execute template: %w", err)
+	}
+
+	standaloneFlamegraphRegexp := regexp.MustCompile(`(?s)<!--\s*generate-standalone-flamegraph\s*-->`)
+	newContent := standaloneFlamegraphRegexp.ReplaceAll(tmpl, buffer.Bytes())
+	if bytes.Equal(tmpl, newContent) {
+		return fmt.Errorf("script tag could not be applied")
+	}
+
+	_, err = w.Write(newContent)
+	if err != nil {
+		return fmt.Errorf("failed to write html %w", err)
+	}
+
 	return nil
 }
 
-func getTemplate(dir http.FileSystem, path string) (*template.Template, error) {
+func getTemplate(dir http.FileSystem, path string) ([]byte, error) {
 	f, err := dir.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("could not find file %s: %w", path, err)
@@ -37,9 +68,5 @@ func getTemplate(dir http.FileSystem, path string) (*template.Template, error) {
 		return nil, fmt.Errorf("could not read file %s: %w", path, err)
 	}
 
-	tmpl, err := template.New(path).Parse(string(b))
-	if err != nil {
-		return nil, fmt.Errorf("could not parse %s template: %w", path, err)
-	}
-	return tmpl, nil
+	return b, nil
 }
