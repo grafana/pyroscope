@@ -70,7 +70,10 @@ export default function Sidebar2(props: SidebarProps) {
     isRouteActive('/adhoc-single') ||
     isRouteActive('/adhoc-comparison') ||
     isRouteActive('/adhoc-comparison-diff');
-  const isSettingsActive = isRouteActive('/settings');
+  const isSettingsActive =
+    isRouteActive('/settings') ||
+    isRouteActive('/settings/users') ||
+    isRouteActive('/settings/api-keys');
 
   const adhoc = (
     <SubMenu

@@ -45,7 +45,7 @@ ReactDOM.render(
           <Route path="/comparison-diff">
             <ComparisonDiffApp />
           </Route>
-          <Route exact path="/settings">
+          <Route path="/settings">
             <Settings />
           </Route>
           {isExperimentalAdhocUIEnabled && (
