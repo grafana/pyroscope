@@ -188,7 +188,7 @@ function ExportData(props: ExportDataProps) {
             onKeyPress={() => downloadPNG()}
             type="button"
           >
-            Png
+            png
           </button>
         )}
         {exportJSON && (
@@ -197,7 +197,7 @@ function ExportData(props: ExportDataProps) {
             type="button"
             onClick={() => downloadJSON()}
           >
-            JSON
+            json
           </button>
         )}
         {exportPprof && (
@@ -216,7 +216,7 @@ function ExportData(props: ExportDataProps) {
             onClick={() => downloadHTML()}
           >
             {' '}
-            Html
+            html
           </button>
         )}
       </div>
