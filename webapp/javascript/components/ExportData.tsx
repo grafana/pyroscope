@@ -13,17 +13,13 @@ type exportJSON =
       // if we export JSON, we absolutely need
       // the raw flamebearer
       exportJSON: true;
-      exportJSONFn?: () => void;
       flamebearer: RawFlamebearerProfile;
     }
   | { exportJSON?: false };
 
 type exportPprof =
   | {
-      // if we are expoting json, we also need the flamebearer
-      // TODO not really?
       exportPprof: true;
-      exportPProfFunc?: () => void;
       flamebearer: RawFlamebearerProfile;
     }
   | { exportPprof?: false };
@@ -48,7 +44,6 @@ function ExportData(props: ExportDataProps) {
 
     // TODO additional check this won't be needed once we use strictNullChecks
     if (props.exportJSON) {
-      console.log('generating');
       const exportObj = props.flamebearer;
       const exportName = 'pyroscope_export';
 
@@ -65,37 +60,38 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
-  //
-  //  const formattedDate = () => {
-  //    const cd = new Date();
-  //    const d = cd.getDate() < 10 ? `0${cd.getDate()}` : `${cd.getDate()}`;
-  //    const m = cd.getMonth() < 10 ? `0${cd.getMonth()}` : `${cd.getMonth()}`;
-  //    const y = cd.getFullYear();
-  //    return `${d}_${m}_${y}`;
-  //  };
-  //
-  //  // export flamegraph canvas element
-  //  const exportCanvas = (mimeType: 'png') => {
-  //    // TODO use ref
-  //    const canvasElement = document.querySelector(
-  //      '.flamegraph-canvas'
-  //    ) as HTMLCanvasElement;
-  //    const MIME_TYPE = `image/${mimeType}`;
-  //    const imgURL = canvasElement.toDataURL();
-  //    const dlLink = document.createElement('a');
-  //
-  //    dlLink.download = `flamegraph_visual_${formattedDate()}`;
-  //    dlLink.href = imgURL;
-  //    dlLink.dataset.downloadurl = [MIME_TYPE, dlLink.download, dlLink.href].join(
-  //      ':'
-  //    );
-  //
-  //    document.body.appendChild(dlLink);
-  //    dlLink.click();
-  //    document.body.removeChild(dlLink);
-  //    setToggleMenu(!toggleMenu);
-  //  };
-  //
+  // TODO:
+  const formattedDate = () => {
+    const cd = new Date();
+    const d = cd.getDate() < 10 ? `0${cd.getDate()}` : `${cd.getDate()}`;
+    const m = cd.getMonth() < 10 ? `0${cd.getMonth()}` : `${cd.getMonth()}`;
+    const y = cd.getFullYear();
+    return `${d}_${m}_${y}`;
+  };
+
+  const downloadPNG = () => {
+    const mimeType = 'png';
+    // TODO use ref
+    // this won't work for comparison side by side
+    const canvasElement = document.querySelector(
+      '.flamegraph-canvas'
+    ) as HTMLCanvasElement;
+    const MIME_TYPE = `image/${mimeType}`;
+    const imgURL = canvasElement.toDataURL();
+    const dlLink = document.createElement('a');
+
+    dlLink.download = `flamegraph_visual_${formattedDate()}`;
+    dlLink.href = imgURL;
+    dlLink.dataset.downloadurl = [MIME_TYPE, dlLink.download, dlLink.href].join(
+      ':'
+    );
+
+    document.body.appendChild(dlLink);
+    dlLink.click();
+    document.body.removeChild(dlLink);
+    setToggleMenu(!toggleMenu);
+  };
+
   const handleToggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     setToggleMenu(!toggleMenu);
@@ -134,6 +130,16 @@ function ExportData(props: ExportDataProps) {
       <div
         className={clsx({ 'menu-show': toggleMenu, 'menu-hide': !toggleMenu })}
       >
+        {exportPNG && (
+          <button
+            className="dropdown-menu-item"
+            onClick={() => downloadPNG()}
+            onKeyPress={() => downloadPNG()}
+            type="button"
+          >
+            PNG
+          </button>
+        )}
         {exportJSON && (
           <button
             className="dropdown-menu-item"
@@ -155,50 +161,6 @@ function ExportData(props: ExportDataProps) {
       </div>
     </div>
   );
-  //  return (
-  //    <div className="dropdown-container">
-  //      <Button icon={faBars} onClick={handleToggleMenu} />
-  //
-  //      <div
-  //        className={clsx({ 'menu-show': toggleMenu, 'menu-hide': !toggleMenu })}
-  //      >
-  //        <div className="dropdown-header">Export Flamegraph</div>
-  //        <div>
-  //          {exportPNG && (
-  //            <button
-  //              className="dropdown-menu-item"
-  //              onClick={() => exportCanvas('png')}
-  //              onKeyPress={() => exportCanvas('png')}
-  //              type="button"
-  //            >
-  //              PNG
-  //            </button>
-  //          )}
-  //          {exportJSON && (
-  //            <button
-  //              className="dropdown-menu-item"
-  //              type="button"
-  //              onClick={() =>
-  //                downloadFlamebearer(flamebearer, 'pyroscope_export')
-  //              }
-  //            >
-  //              JSON
-  //            </button>
-  //          )}
-  //
-  //          {exportPprof && (
-  //            <button
-  //              className="dropdown-menu-item"
-  //              type="button"
-  //              onClick={() => exportPProfFunc(flamebearer)}
-  //            >
-  //              pprof
-  //            </button>
-  //          )}
-  //        </div>
-  //      </div>
-  //    </div>
-  //    );
 }
 
 export default ExportData;

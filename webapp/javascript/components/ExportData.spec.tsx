@@ -24,6 +24,11 @@ describe('ExportData', () => {
       render(<ExportData exportPprof flamebearer={TestData} />);
       screen.getByRole('button', { name: /pprof/i });
     });
+
+    it('supports a download png button', () => {
+      render(<ExportData exportPNG />);
+      screen.getByRole('button', { name: /png/i });
+    });
   });
 });
 
