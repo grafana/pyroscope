@@ -183,20 +183,35 @@ func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
 	if sn.isAfter(t.AbsoluteTime) && t.Levels == nil {
 		return false, nil
 	}
-	isBefore := t.isBefore(sn)
+	remove := t.isToBeDeleted(sn)
 	for i, v := range sn.children {
 		if v == nil {
 			continue
 		}
+		// Remove nodes recursively, if necessary. deleteNodesBefore returns
+		// ok only when the node (v) is to be deleted, therefore we should
+		// account for the counters change regardless of this.
+		samples, writes := v.samples, v.writes
 		ok, err := v.deleteNodesBefore(t)
 		if err != nil {
 			return false, err
 		}
+		if v.samples != samples || v.writes != writes {
+			sn.samples = sn.samples - samples + v.samples
+			sn.writes = sn.writes - writes + v.writes
+		}
 		if ok {
+			c := sn.children[i]
 			sn.children[i] = nil
+			// If the child node is getting deleted because of the absolute
+			// retention period threshold, parent counters must be updated.
+			if c.isBefore(t.AbsoluteTime) {
+				sn.writes -= c.writes
+				sn.samples -= c.samples
+			}
 		}
 	}
-	return isBefore, nil
+	return remove, nil
 }
 
 func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t time.Time) error) (bool, error) {
@@ -204,8 +219,8 @@ func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t 
 		return false, nil
 	}
 	var err error
-	isBefore := t.isBefore(sn)
-	if isBefore {
+	remove := t.isToBeDeleted(sn)
+	if remove {
 		if err = cb(sn.depth, sn.time); err != nil {
 			return false, err
 		}
@@ -218,7 +233,7 @@ func (sn *streeNode) walkNodesToDelete(t *RetentionPolicy, cb func(depth int, t 
 			return false, err
 		}
 	}
-	return isBefore, nil
+	return remove, nil
 }
 
 type Segment struct {

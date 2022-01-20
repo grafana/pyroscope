@@ -35,7 +35,7 @@ func (r *RetentionPolicy) SetLevelPeriod(level int, period time.Duration) *Reten
 	return r
 }
 
-func (r RetentionPolicy) isBefore(sn *streeNode) bool {
+func (r RetentionPolicy) isToBeDeleted(sn *streeNode) bool {
 	return sn.isBefore(r.AbsoluteTime) || sn.isBefore(r.levelMaxTime(sn.depth))
 }
 

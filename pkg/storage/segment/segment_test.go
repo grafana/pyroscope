@@ -15,6 +15,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
 
+var putNoOp = func(depth int, t time.Time, r *big.Rat, addons []Addon) {}
+
 func doGet(s *Segment, st, et time.Time) []time.Time {
 	res := []time.Time{}
 	s.Get(st, et, func(d int, samples, writes uint64, t time.Time, r *big.Rat) {
@@ -221,8 +223,7 @@ var _ = Describe("stree", func() {
 				s := New()
 				st := time.Date(2021, time.December, 1, 0, 0, 0, 0, time.UTC)
 				et := time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
-				rp := NewRetentionPolicy().
-					SetAbsolutePeriod(time.Hour * time.Duration(24) * 7)
+				rp := &RetentionPolicy{AbsoluteTime: et}
 
 				c := st
 				for c.Before(et) {
@@ -236,8 +237,8 @@ var _ = Describe("stree", func() {
 				Expect(r).To(BeFalse())
 				Expect(err).ToNot(HaveOccurred())
 
-				gSt := time.Date(2022, time.January, 15, 10, 0, 0, 0, time.UTC)
-				gEt := gSt.Add(time.Hour)
+				gSt := st.Add(-time.Hour)
+				gEt := et.Add(time.Hour)
 
 				var keys []string
 				s.Get(gSt, gEt, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
