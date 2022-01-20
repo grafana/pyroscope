@@ -15,6 +15,7 @@ import {
   fetchTimeline,
 } from '../redux/actions';
 import InstructionText from './FlameGraph/InstructionText';
+import ExportData from './ExportData';
 import styles from './ComparisonApp.module.css';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
@@ -61,6 +62,15 @@ function ComparisonApp(props) {
               data-testid="flamegraph-renderer-left"
               display="both"
               rawFlamegraph={rawLeft}
+              ExportData={
+                // Don't export PNG since the exportPng code is broken
+                <ExportData
+                  flamebearer={rawLeft}
+                  exportJSON
+                  exportHTML
+                  exportPprof
+                />
+              }
             >
               <InstructionText viewType="double" viewSide="left" />
               <TimelineChartWrapper
@@ -80,6 +90,15 @@ function ComparisonApp(props) {
               data-testid="flamegraph-renderer-right"
               display="both"
               rawFlamegraph={rawRight}
+              ExportData={
+                // Don't export PNG since the exportPng code is broken
+                <ExportData
+                  flamebearer={rawRight}
+                  exportJSON
+                  exportHTML
+                  exportPprof
+                />
+              }
             >
               <InstructionText viewType="double" viewSide="right" />
               <TimelineChartWrapper

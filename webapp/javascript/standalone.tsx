@@ -63,6 +63,7 @@ function AdhocApp() {
         viewType="single"
         display="both"
         rawFlamegraph={flamegraph}
+        ExportData={<div />}
       />
     </Box>
   );

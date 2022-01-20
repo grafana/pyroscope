@@ -538,6 +538,7 @@ export default function (state = initialState, action) {
       return {
         ...state,
         adhocSingle: {
+          raw: JSON.parse(JSON.stringify(flamebearer)),
           ...state.adhocSingle,
           flamebearer: decodeFlamebearer(flamebearer),
           isProfileLoading: false,
@@ -592,6 +593,7 @@ export default function (state = initialState, action) {
         adhocComparison: {
           ...state.adhocComparison,
           left: {
+            raw: JSON.parse(JSON.stringify(flamebearer)),
             ...state.adhocComparison.left,
             flamebearer: decodeFlamebearer(flamebearer),
             isProfileLoading: false,
@@ -650,6 +652,7 @@ export default function (state = initialState, action) {
         adhocComparison: {
           ...state.adhocComparison,
           right: {
+            raw: JSON.parse(JSON.stringify(flamebearer)),
             ...state.adhocComparison.right,
             flamebearer: decodeFlamebearer(flamebearer),
             isProfileLoading: false,
@@ -683,6 +686,7 @@ export default function (state = initialState, action) {
         ...state,
         adhocComparisonDiff: {
           ...state.adhocComparisonDiff,
+          raw: JSON.parse(JSON.stringify(flamebearer)),
           flamebearer: decodeFlamebearer(flamebearer),
           isProfileLoading: false,
         },

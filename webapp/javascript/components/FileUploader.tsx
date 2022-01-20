@@ -20,6 +20,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
       throw new Error('Only a single file at a time is accepted.');
     }
 
+    console.log(acceptedFiles);
     acceptedFiles.forEach((file) => {
       const reader = new FileReader();
 
@@ -65,7 +66,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
   const { getRootProps, getInputProps } = useDropzone({
     multiple: false,
     onDrop,
-    accept: 'application/json',
+    //    accept: 'application/json',
   });
 
   const onRemove = () => {
