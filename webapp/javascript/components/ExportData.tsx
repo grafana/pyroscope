@@ -9,10 +9,11 @@ import { dateForExportFilename } from '@utils/formatDate';
 import clsx from 'clsx';
 import { RawFlamebearerProfile } from '@models/flamebearer';
 
+// These are modeled individually since each condition may have different values
+// For example, a exportPprof: true may accept a custom export function
+// For cases like grafana
 type exportJSON =
   | {
-      // if we export JSON, we absolutely need
-      // the raw flamebearer
       exportJSON: true;
       flamebearer: RawFlamebearerProfile;
     }
@@ -28,6 +29,7 @@ type exportPprof =
 type exportHTML =
   | {
       exportHTML: true;
+      fetchUrlFunc?: () => string;
       flamebearer: RawFlamebearerProfile;
     }
   | { exportHTML?: false };
@@ -145,19 +147,23 @@ function ExportData(props: ExportDataProps) {
     if (props.exportHTML) {
       const { flamebearer } = props;
 
-      const url = `${buildRenderURL({
-        from: flamebearer.metadata.startTime,
-        until: flamebearer.metadata.endTime,
-        query: flamebearer.metadata.query,
-        maxNodes: flamebearer.metadata.maxNodes,
-      })}&format=html`;
+      const url =
+        typeof props.fetchUrlFunc === 'function'
+          ? props.fetchUrlFunc()
+          : buildRenderURL({
+              from: flamebearer.metadata.startTime,
+              until: flamebearer.metadata.endTime,
+              query: flamebearer.metadata.query,
+              maxNodes: flamebearer.metadata.maxNodes,
+            });
+      const urlWithFormat = `${url}&format=html`;
 
       const dateForFilename = dateForExportFilename(
         flamebearer.metadata.startTime,
         flamebearer.metadata.endTime
       );
       const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute('href', url);
+      downloadAnchorNode.setAttribute('href', urlWithFormat);
       downloadAnchorNode.setAttribute(
         'download',
         `${flamebearer.metadata.appName}_${dateForFilename}.html`

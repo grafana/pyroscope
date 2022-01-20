@@ -22,7 +22,15 @@ function ComparisonDiffApp(props) {
     return actions.abortTimelineRequest;
   }, [diffRenderURL]);
 
-  const exportData = <ExportData flamebearer={diff.raw} exportJSON exportPNG />;
+  const exportData = (
+    <ExportData
+      flamebearer={diff.raw}
+      exportJSON
+      exportPNG
+      exportHTML
+      fetchUrlFunc={() => diffRenderURL}
+    />
+  );
 
   return (
     <div className="pyroscope-app">
