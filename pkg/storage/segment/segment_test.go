@@ -196,6 +196,10 @@ var _ = Describe("stree", func() {
 					"0:10",
 					"0:20",
 				}))
+
+				removed, err := s.DeleteNodesBefore(rp)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(removed).To(BeFalse())
 			})
 
 			It("correctly deletes data completely", func() {
@@ -203,7 +207,7 @@ var _ = Describe("stree", func() {
 				s.Put(testing.SimpleUTime(10), testing.SimpleUTime(19), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 				s.Put(testing.SimpleUTime(20), testing.SimpleUTime(29), 1, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
-				keys := []string{}
+				var keys []string
 				rp := &RetentionPolicy{Levels: map[int]time.Time{0: time.Now(), 1: time.Now()}}
 				r, _ := s.WalkNodesToDelete(rp, func(depth int, t time.Time) error {
 					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix())))
@@ -216,6 +220,10 @@ var _ = Describe("stree", func() {
 					"0:10",
 					"0:20",
 				}))
+
+				removed, err := s.DeleteNodesBefore(rp)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(removed).To(BeTrue())
 			})
 
 			It("correctly samples data", func() {
