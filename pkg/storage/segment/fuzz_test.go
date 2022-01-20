@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/big"
 	"math/rand"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -144,44 +145,68 @@ var _ = Describe("segment", func() {
 				close(done)
 			}, 5)
 		})
-	})
-
-	Context("retention and sampling randomized test", func() {
-		It("works as expected", func() {
-			s := New()
-			r := rand.New(rand.NewSource(7332))
-			w := testSegWriter{
-				n: 10e4,
-				r: r,
-
-				samplesPerWrite:  100,
-				writeTimeSpanSec: 10,
-				startTimeMin:     randInt(1000, 3000),
-				startTimeMax:     randInt(7000, 100000),
-
-				buckets: make([]*bucket, 10),
-			}
-
-			w.write(s)
-
-			for _, b := range w.buckets {
-				removed, err := s.DeleteNodesBefore(&RetentionPolicy{AbsoluteTime: b.time})
-				Expect(err).ToNot(HaveOccurred())
-				// Actually, it is not pre-determined.
-				Expect(removed).To(BeFalse())
-				samples, writes := totalSamplesWrites(s, time.Time{}, testing.SimpleTime(w.startTimeMax*10))
-				Expect(samples).To(Equal(b.samples))
-				Expect(writes).To(Equal(b.writes))
-			}
-
-			st := testing.SimpleTime(w.startTimeMax * 10)
-			samples, writes := totalSamplesWrites(s, st, st.Add(time.Hour))
-			Expect(samples).To(BeZero())
-			Expect(writes).To(BeZero())
+		Context("retention and sampling randomized test", func() {
+			It("works as expected", func() {
+				var (
+					seed = 7332
+					n    = 10
+					wg   sync.WaitGroup
+				)
+				wg.Add(n)
+				for i := 0; i < n; i++ {
+					go func(i int) {
+						defer GinkgoRecover()
+						fuzzDeleteNodesBefore(seed + i)
+						wg.Done()
+					}(i)
+				}
+				wg.Wait()
+			})
 		})
 	})
 })
 
+func fuzzDeleteNodesBefore(seed int) {
+	s := New()
+	r := rand.New(rand.NewSource(int64(seed)))
+	w := testSegWriter{
+		n: 10e3, // Number of writes
+		r: r,
+
+		samplesPerWrite:  100,
+		writeTimeSpanSec: 10,
+		startTimeMin:     randInt(1000, 3000),
+		startTimeMax:     randInt(7000, 100000),
+
+		buckets: make([]*bucket, 10),
+	}
+
+	w.write(s)
+
+	for _, b := range w.buckets {
+		// Delete samples that fall within the time span of the bucket.
+		removed, err := s.DeleteNodesBefore(&RetentionPolicy{AbsoluteTime: b.time})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(removed).To(BeFalse())
+		// Ensure we have removed expected number of samples from the segment.
+		samples, writes := totalSamplesWrites(s, time.Time{}, testing.SimpleTime(w.startTimeMax*10))
+		Expect(samples).To(Equal(b.samples))
+		Expect(writes).To(Equal(b.writes))
+		// Ensure no samples left outside the retention period.
+		samples, writes = totalSamplesWrites(s, b.time, testing.SimpleTime(w.startTimeMax*10))
+		Expect(samples).To(Equal(b.samples))
+		Expect(writes).To(Equal(b.writes))
+	}
+
+	st := testing.SimpleTime(w.startTimeMax * 10)
+	samples, writes := totalSamplesWrites(s, st, st.Add(time.Hour))
+	Expect(samples).To(BeZero())
+	Expect(writes).To(BeZero())
+}
+
+// testSegWriter inserts randomized data into the segment recording the
+// samples distribution by time. Every bucket indicates the number of
+// writes and samples that had been written before the bucket time mark.
 type testSegWriter struct {
 	r *rand.Rand
 	n int
@@ -213,17 +238,17 @@ func randInt(min, max int) int { return rand.Intn(max-min) + min }
 func (f testSegWriter) expectedSamples() int { return f.n * f.samplesPerWrite }
 
 func (f testSegWriter) write(s *Segment) {
-	// Initialize time buckets, if required.
+	// Initialize time buckets, if required: the whole time
+	// span is divided proportionally to the number of buckets.
 	if len(f.buckets) > 0 {
 		step := (f.startTimeMax - f.startTimeMin) / len(f.buckets) * 10
 		for i := 0; i < len(f.buckets); i++ {
 			f.buckets[i] = &bucket{time: testing.SimpleTime(f.startTimeMin + step*i)}
 		}
 	}
-	cb := func(depth int, t time.Time, r *big.Rat, addons []Addon) {}
 	for i := 0; i < f.n; i++ {
 		st, et := f.putStartEndTime()
-		err := s.Put(st, et, uint64(f.samplesPerWrite), cb)
+		err := s.Put(st, et, uint64(f.samplesPerWrite), putNoOp)
 		Expect(err).ToNot(HaveOccurred())
 		for _, b := range f.buckets {
 			if et.After(b.time) {
