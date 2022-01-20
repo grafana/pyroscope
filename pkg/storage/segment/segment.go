@@ -148,22 +148,25 @@ func normalizeTime(t time.Time) time.Time {
 // 	overlap              // | S | E            <1                       <1
 // 	contain              // S | | E            1/1                      <1
 func (sn *streeNode) get(ctx context.Context, s *Segment, st, et time.Time, cb func(*streeNode, *big.Rat)) {
-	rel := sn.relationship(st, et)
-	matches := sn.present && (rel == contain || rel == match)
-	trace.Logf(ctx, traceCatNodeGet, "D=%d T=%v P=%v M=%v R=%v", sn.depth, sn.time.Unix(), sn.present, matches, rel)
-	if matches {
-		cb(sn, big.NewRat(1, 1))
+	r := sn.relationship(st, et)
+	trace.Logf(ctx, traceCatNodeGet, "D=%d T=%v P=%v R=%v", sn.depth, sn.time.Unix(), sn.present, r)
+	switch r {
+	case outside:
 		return
+	case inside, overlap:
+		// Defer to children.
+	case contain, match:
+		if sn.present {
+			cb(sn, big.NewRat(1, 1))
+			return
+		}
 	}
-	if rel == outside {
-		return
-	}
-	// Inside or outside. Defer to children.
+
 	trace.Log(ctx, traceCatNodeGet, "drill down")
 	// Whether child nodes are outside the retention period.
 	if sn.time.Before(s.watermarks.levels[sn.depth-1]) && sn.present {
-		// Create a sampled tree from the current node.
 		trace.Log(ctx, traceCatNodeGet, "sampled")
+		// Create a sampled tree from the current node.
 		cb(sn, sn.overlapRead(st, et))
 		return
 	}
@@ -175,7 +178,7 @@ func (sn *streeNode) get(ctx context.Context, s *Segment, st, et time.Time, cb f
 	}
 }
 
-// deleteDataBefore returns true if the node should be deleted
+// deleteDataBefore returns true if the node should be deleted.
 func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
 	if sn.isAfter(t.AbsoluteTime) && t.Levels == nil {
 		return false, nil
@@ -185,27 +188,12 @@ func (sn *streeNode) deleteNodesBefore(t *RetentionPolicy) (bool, error) {
 		if v == nil {
 			continue
 		}
-		// Remove nodes recursively, if necessary. deleteNodesBefore returns
-		// ok only when the node (v) is to be deleted, therefore we should
-		// account for the counters change regardless of this.
-		samples, writes := v.samples, v.writes
 		ok, err := v.deleteNodesBefore(t)
 		if err != nil {
 			return false, err
 		}
-		if v.samples != samples || v.writes != writes {
-			sn.samples = sn.samples - samples + v.samples
-			sn.writes = sn.writes - writes + v.writes
-		}
 		if ok {
-			c := sn.children[i]
 			sn.children[i] = nil
-			// If the child node is getting deleted because of the absolute
-			// retention period threshold, parent counters must be updated.
-			if c.isBefore(t.AbsoluteTime) {
-				sn.writes -= c.writes
-				sn.samples -= c.samples
-			}
 		}
 	}
 	return remove, nil
