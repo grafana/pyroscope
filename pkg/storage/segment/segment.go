@@ -161,20 +161,17 @@ func (sn *streeNode) get(ctx context.Context, s *Segment, st, et time.Time, cb f
 	// Inside or outside. Defer to children.
 	trace.Log(ctx, traceCatNodeGet, "drill down")
 	// Whether child nodes are outside the retention period.
-	sampled := st.Before(s.watermarks.levels[sn.depth-1])
-	if !sampled {
-		// Traverse nodes recursively.
-		for _, v := range sn.children {
-			if v != nil {
-				v.get(ctx, s, st, et, cb)
-			}
-		}
-		return
-	}
-	if sn.present {
+	if sn.time.Before(s.watermarks.levels[sn.depth-1]) && sn.present {
 		// Create a sampled tree from the current node.
 		trace.Log(ctx, traceCatNodeGet, "sampled")
 		cb(sn, sn.overlapRead(st, et))
+		return
+	}
+	// Traverse nodes recursively.
+	for _, v := range sn.children {
+		if v != nil {
+			v.get(ctx, s, st, et, cb)
+		}
 	}
 }
 
