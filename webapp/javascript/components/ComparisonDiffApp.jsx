@@ -22,7 +22,6 @@ function ComparisonDiffApp(props) {
     return actions.abortTimelineRequest;
   }, [diffRenderURL]);
 
-  console.log({ diff });
   const exportData = <ExportData flamebearer={diff.raw} exportJSON exportPNG />;
 
   return (
