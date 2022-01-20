@@ -145,4 +145,101 @@ var _ = Describe("segment", func() {
 			}, 5)
 		})
 	})
+
+	Context("retention and sampling randomized test", func() {
+		It("works as expected", func() {
+			s := New()
+			r := rand.New(rand.NewSource(7332))
+			w := testSegWriter{
+				n: 10e4,
+				r: r,
+
+				samplesPerWrite:  100,
+				writeTimeSpanSec: 10,
+				startTimeMin:     randInt(1000, 3000),
+				startTimeMax:     randInt(7000, 100000),
+
+				buckets: make([]*bucket, 10),
+			}
+
+			w.write(s)
+
+			for _, b := range w.buckets {
+				removed, err := s.DeleteNodesBefore(&RetentionPolicy{AbsoluteTime: b.time})
+				Expect(err).ToNot(HaveOccurred())
+				// Actually, it is not pre-determined.
+				Expect(removed).To(BeFalse())
+				samples, writes := totalSamplesWrites(s, time.Time{}, testing.SimpleTime(w.startTimeMax*10))
+				Expect(samples).To(Equal(b.samples))
+				Expect(writes).To(Equal(b.writes))
+			}
+
+			st := testing.SimpleTime(w.startTimeMax * 10)
+			samples, writes := totalSamplesWrites(s, st, st.Add(time.Hour))
+			Expect(samples).To(BeZero())
+			Expect(writes).To(BeZero())
+		})
+	})
 })
+
+type testSegWriter struct {
+	r *rand.Rand
+	n int
+
+	samplesPerWrite  int
+	writeTimeSpanSec int
+	expectedWrites   int
+
+	startTimeMin int
+	startTimeMax int
+
+	buckets []*bucket
+}
+
+type bucket struct {
+	time    time.Time
+	samples int
+	writes  int
+}
+
+func (f testSegWriter) putStartEndTime() (st time.Time, et time.Time) {
+	st = testing.SimpleTime(randInt(f.startTimeMin, f.startTimeMax) * 10)
+	et = st.Add(time.Second * time.Duration(f.writeTimeSpanSec))
+	return st, et
+}
+
+func randInt(min, max int) int { return rand.Intn(max-min) + min }
+
+func (f testSegWriter) expectedSamples() int { return f.n * f.samplesPerWrite }
+
+func (f testSegWriter) write(s *Segment) {
+	// Initialize time buckets, if required.
+	if len(f.buckets) > 0 {
+		step := (f.startTimeMax - f.startTimeMin) / len(f.buckets) * 10
+		for i := 0; i < len(f.buckets); i++ {
+			f.buckets[i] = &bucket{time: testing.SimpleTime(f.startTimeMin + step*i)}
+		}
+	}
+	cb := func(depth int, t time.Time, r *big.Rat, addons []Addon) {}
+	for i := 0; i < f.n; i++ {
+		st, et := f.putStartEndTime()
+		err := s.Put(st, et, uint64(f.samplesPerWrite), cb)
+		Expect(err).ToNot(HaveOccurred())
+		for _, b := range f.buckets {
+			if et.After(b.time) {
+				b.samples += f.samplesPerWrite
+				b.writes++
+			}
+		}
+	}
+}
+
+func totalSamplesWrites(s *Segment, st, et time.Time) (samples, writes int) {
+	v := big.NewRat(0, 1)
+	s.Get(st, et, func(depth int, s, w uint64, t time.Time, r *big.Rat) {
+		x := big.NewRat(r.Num().Int64(), r.Denom().Int64())
+		v.Add(v, x.Mul(x, big.NewRat(int64(s), 1)))
+		writes += int(w)
+	})
+	return int(v.Num().Int64()), writes
+}
