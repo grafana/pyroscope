@@ -184,7 +184,7 @@ class TimelineChartWrapper extends React.Component {
         className={styles.wrapper}
         data-testid={this.props['data-testid']}
         id={this.props.id}
-        options={this.state.flotOptions}
+        options={flotOptions}
         viewSide={this.props.viewSide}
         data={flotData}
         width="100%"
