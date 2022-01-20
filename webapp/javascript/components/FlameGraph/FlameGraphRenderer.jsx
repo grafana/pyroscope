@@ -249,29 +249,6 @@ class FlameGraphRenderer extends React.Component {
       this.props.viewSide
     );
 
-    const exportData = () => {
-      // prefer export data from props
-      if (this.props.ExportData) {
-        console.log('exporting data from props');
-        return this.props.ExportData;
-      }
-
-      // the main idea is to disable exporing that for grafana plugins
-      if (this.props.disableExportData) {
-        return null;
-      }
-
-      if (!this.state.flamebearer) {
-        return <ExportData />;
-      }
-
-      if (!this.props.rawFlamegraph) {
-        return <ExportData />;
-      }
-
-      return <ExportData exportFlamebearer={this.props.rawFlamegraph} />;
-    };
-
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
@@ -280,7 +257,7 @@ class FlameGraphRenderer extends React.Component {
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
-          ExportData={exportData}
+          ExportData={() => this.props.ExportData}
           highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}

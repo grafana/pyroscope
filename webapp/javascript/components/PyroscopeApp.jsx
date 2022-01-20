@@ -20,8 +20,6 @@ function PyroscopeApp(props) {
   const { actions, renderURL, single, raw } = props;
   const prevPropsRef = useRef();
 
-  console.log(JSON.stringify(raw));
-
   useEffect(() => {
     if (prevPropsRef.renderURL !== renderURL) {
       actions.fetchPyroscopeAppData(renderURL);
