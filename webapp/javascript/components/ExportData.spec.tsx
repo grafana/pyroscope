@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import ExportData from './ExportData';
+import ExportData, { getFilename } from './ExportData';
 
 describe('ExportData', () => {
   it('fails if theres not a single export mode', () => {
@@ -33,6 +33,40 @@ describe('ExportData', () => {
     it('supports a download html button', () => {
       render(<ExportData exportHTML flamebearer={TestData} />);
       screen.getByRole('button', { name: /html/i });
+    });
+  });
+
+  describe('filename', () => {
+    it('generates a fullname', () => {
+      expect(
+        getFilename(
+          'pyroscope.server.alloc_objects',
+          TestData.metadata.startTime,
+          TestData.metadata.endTime
+        )
+      ).toBe(
+        'pyroscope.server.alloc_objects_2022-01-20_1416-to-2022-01-20_1421'
+      );
+    });
+
+    it('uses the appname if its the only thing available', () => {
+      expect(getFilename('pyroscope.server.alloc_objects')).toBe(
+        'pyroscope.server.alloc_objects'
+      );
+    });
+
+    it('uses the the date if its the only thing available', () => {
+      expect(
+        getFilename(
+          undefined,
+          TestData.metadata.startTime,
+          TestData.metadata.endTime
+        )
+      ).toBe('flamegraph_2022-01-20_1416-to-2022-01-20_1421');
+    });
+
+    it('uses a generic name if nothing is available ', () => {
+      expect(getFilename()).toBe('flamegraph');
     });
   });
 });

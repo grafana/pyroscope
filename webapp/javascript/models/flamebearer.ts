@@ -94,11 +94,14 @@ export interface RawFlamebearerProfile {
   version: number;
 
   metadata: {
-    appName: string;
-    startTime: number;
-    endTime: number;
-    query: string;
-    maxNodes: number;
+    // Optional fields since adhoc may be missing them
+    // they are added on /render and /render-diff response
+    // https://github.com/pyroscope-io/pyroscope/blob/main/pkg/server/render.go#L114-L131
+    appName?: string;
+    startTime?: number;
+    endTime?: number;
+    query?: string;
+    maxNodes?: number;
   };
 
   flamebearer: {

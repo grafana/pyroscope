@@ -63,16 +63,19 @@ function ExportData(props: ExportDataProps) {
 
     // TODO additional check this won't be needed once we use strictNullChecks
     if (props.exportJSON) {
-      const exportObj = props.flamebearer;
-      const exportName = 'pyroscope_export';
+      const { flamebearer } = props;
+      const filename = `${getFilename(
+        flamebearer.metadata.appName,
+        flamebearer.metadata.startTime,
+        flamebearer.metadata.endTime
+      )}.json`;
 
       const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
-        JSON.stringify(exportObj)
+        JSON.stringify(flamebearer)
       )}`;
       const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute('data-testid', 'export-json');
       downloadAnchorNode.setAttribute('href', dataStr);
-      downloadAnchorNode.setAttribute('download', `${exportName}.json`);
+      downloadAnchorNode.setAttribute('download', filename);
       document.body.appendChild(downloadAnchorNode); // required for firefox
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
@@ -91,12 +94,13 @@ function ExportData(props: ExportDataProps) {
       const MIME_TYPE = `image/${mimeType}`;
       const imgURL = canvasElement.toDataURL();
       const dlLink = document.createElement('a');
-      const dateForFilename = dateForExportFilename(
+      const filename = `${getFilename(
+        flamebearer.metadata.appName,
         flamebearer.metadata.startTime,
         flamebearer.metadata.endTime
-      );
+      )}.png`;
 
-      dlLink.download = `${flamebearer.metadata.appName}_${dateForFilename}.${mimeType}`;
+      dlLink.download = filename;
       dlLink.href = imgURL;
       dlLink.dataset.downloadurl = [
         MIME_TYPE,
@@ -157,18 +161,15 @@ function ExportData(props: ExportDataProps) {
               maxNodes: flamebearer.metadata.maxNodes,
             });
       const urlWithFormat = `${url}&format=html`;
-
-      const dateForFilename = dateForExportFilename(
+      const filename = `${getFilename(
+        flamebearer.metadata.appName,
         flamebearer.metadata.startTime,
         flamebearer.metadata.endTime
-      );
+      )}.html`;
+
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute('href', urlWithFormat);
-      downloadAnchorNode.setAttribute(
-        'download',
-        `${flamebearer.metadata.appName}_${dateForFilename}.html`
-      );
-
+      downloadAnchorNode.setAttribute('download', filename);
       document.body.appendChild(downloadAnchorNode); // required for firefox
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
@@ -222,6 +223,37 @@ function ExportData(props: ExportDataProps) {
       </div>
     </div>
   );
+}
+
+export function getFilename(
+  appName?: string,
+  startTime?: number,
+  endTime?: number
+) {
+  //  const appname = flamebearer.metadata.appName;
+  let date: string;
+
+  if (startTime && endTime) {
+    date = dateForExportFilename(startTime, endTime);
+  }
+
+  // both name and date are available
+  if (appName && date) {
+    return [appName, date].join('_');
+  }
+
+  // only fullname
+  if (appName) {
+    return appName;
+  }
+
+  // only date
+  if (date) {
+    return ['flamegraph', date].join('_');
+  }
+
+  // nothing is available, use a generic name
+  return `flamegraph`;
 }
 
 export default ExportData;
