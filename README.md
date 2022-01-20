@@ -148,6 +148,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/Cluas"><img src="https://avatars.githubusercontent.com/u/10056928?v=4" title="Cluas" width="80" height="80"></a>
 <a href="https://github.com/clovis1122"><img src="https://avatars.githubusercontent.com/u/22270042?v=4" title="clovis1122" width="80" height="80"></a>
 <a href="https://github.com/Pranay0302"><img src="https://avatars.githubusercontent.com/u/55592629?v=4" title="Pranay0302" width="80" height="80"></a>
+<a href="https://github.com/linthan"><img src="https://avatars.githubusercontent.com/u/13914829?v=4" title="linthan" width="80" height="80"></a>
 <a href="https://github.com/geoah"><img src="https://avatars.githubusercontent.com/u/88447?v=4" title="geoah" width="80" height="80"></a>
 <a href="https://github.com/juliosaraiva"><img src="https://avatars.githubusercontent.com/u/6595701?v=4" title="juliosaraiva" width="80" height="80"></a>
 <a href="https://github.com/s4kibs4mi"><img src="https://avatars.githubusercontent.com/u/5650785?v=4" title="s4kibs4mi" width="80" height="80"></a>
@@ -163,7 +164,6 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/cwalv"><img src="https://avatars.githubusercontent.com/u/887222?v=4" title="cwalv" width="80" height="80"></a>
 <a href="https://github.com/Dzalevski"><img src="https://avatars.githubusercontent.com/u/9572827?v=4" title="Dzalevski" width="80" height="80"></a>
 <a href="https://github.com/Juneezee"><img src="https://avatars.githubusercontent.com/u/20135478?v=4" title="Juneezee" width="80" height="80"></a>
-<a href="https://github.com/linthan"><img src="https://avatars.githubusercontent.com/u/13914829?v=4" title="linthan" width="80" height="80"></a>
 <a href="https://github.com/Faria-Ejaz"><img src="https://avatars.githubusercontent.com/u/14238844?v=4" title="Faria-Ejaz" width="80" height="80"></a>
 <a href="https://github.com/gabrielzezze"><img src="https://avatars.githubusercontent.com/u/38350130?v=4" title="gabrielzezze" width="80" height="80"></a>
 <a href="https://github.com/yveshield"><img src="https://avatars.githubusercontent.com/u/8733258?v=4" title="yveshield" width="80" height="80"></a>

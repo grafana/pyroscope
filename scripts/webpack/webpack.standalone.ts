@@ -69,6 +69,11 @@ const config = (env, options) => {
         filename: '[name].[hash].css',
       }),
       new HtmlWebpackPlugin({
+        minify: {
+          // We need to keep the comments since go will use a comment
+          // to know what to replace for the flamegraph
+          removeComments: false,
+        },
         filename: path.resolve(
           __dirname,
           `../../webapp/public/standalone.html`
