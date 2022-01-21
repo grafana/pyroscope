@@ -20,24 +20,3 @@
   text-align: center;
   color: rgba(255, 255, 255, 0.66);
 }
-
-.usersTable thead {
-  padding: 15px 0;
-}
-
-.usersTable td {
-  min-width: 50px;
-  padding: 10px 0;
-}
-
-.usersTable tbody {
-  color: rgba(255, 255, 255, 0.66);
-}
-
-.usersTable button {
-  padding: 5px 13px;
-}
-
-.usersTable tbody tr:nth-child(odd) {
-  background-color: rgba(255, 255, 255, 0.03);
-}
