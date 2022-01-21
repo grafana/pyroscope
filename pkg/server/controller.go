@@ -176,6 +176,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	diagnosticSecureRoutes := []route{
 		{"/config", ctrl.configHandler},
 		{"/build", ctrl.buildHandler},
+		{"/debug/storage/export/{db}", ctrl.storage.DebugExport},
 	}
 	if !ctrl.config.DisablePprofEndpoint {
 		diagnosticSecureRoutes = append(diagnosticSecureRoutes, []route{
