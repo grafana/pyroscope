@@ -33,7 +33,10 @@ export const DiffLegendPaletteDropdown = (props) => {
       <MenuRadioGroup value={palette} onChange={(e) => onChange(e.value)}>
         {paletteList.map((p) => (
           <MenuItem key={p.name} value={p}>
-            <DiffLegend palette={p} />
+            <div>
+              <label>{p.name}</label>
+              <DiffLegend palette={p} />
+            </div>
           </MenuItem>
         ))}
       </MenuRadioGroup>
