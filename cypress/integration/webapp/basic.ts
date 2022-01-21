@@ -358,13 +358,16 @@ describe('basic test', () => {
     });
   });
 
-  describe.only('tooltip', () => {
+  describe('tooltip', () => {
     it('it displays a tooltip on hover', () => {
       cy.visit('/?query=pyroscope.server.cpu%7B%7D');
 
       cy.findByTestId('timeline-single').as('timeline');
 
-      cy.get('@timeline').find('.flot-overlay').trigger('mousemove', 20, 20);
+      cy.get('@timeline')
+        .trigger('mouseenter', 20, 20)
+        .find('.flot-overlay')
+        .trigger('mousemove', 20, 20);
       cy.findAllByTestId('timeline-tooltip1').should('be.visible');
 
       cy.get('@timeline').find('.flot-overlay').trigger('mouseout');
@@ -379,7 +382,7 @@ describe('basic test', () => {
       cy.get('@timeline')
         .find('.flot-overlay')
         .as('overlay')
-        .trigger('mouseenter', 0, 0)
+        .trigger('mouseenter', 10, 10)
         .trigger('mousemove', 20, 20);
       cy.findAllByTestId('timeline-tooltip1').should('be.visible');
 
