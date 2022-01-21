@@ -27,20 +27,24 @@ import { format } from 'date-fns';
         return '';
       }
 
-      const d = new Date(date);
+      try {
+        const d = new Date(date);
 
-      const hours = Math.abs(xaxis.max - xaxis.min) / 60 / 60 / 1000;
+        const hours = Math.abs(xaxis.max - xaxis.min) / 60 / 60 / 1000;
 
-      if (hours < 12) {
-        return format(d, 'HH:mm:ss');
-      }
-      if (hours > 12 && hours < 24) {
-        return format(d, 'HH:mm');
-      }
-      if (hours > 24) {
+        if (hours < 12) {
+          return format(d, 'HH:mm:ss');
+        }
+        if (hours > 12 && hours < 24) {
+          return format(d, 'HH:mm');
+        }
+        if (hours > 24) {
+          return format(d, 'MMM do HH:mm');
+        }
         return format(d, 'MMM do HH:mm');
+      } catch (e) {
+        return '???';
       }
-      return format(d, 'MMM do HH:mm');
     }
 
     const onHover = (target, position) => {
@@ -214,7 +218,7 @@ import { format } from 'date-fns';
 
     function shutdown(plot, eventHolder) {
       plot.getPlaceholder().unbind('plothover', onHover);
-      plot.getPlaceholder().unbind('plotselecting', onSelecting);
+      // plot.getPlaceholder().unbind('plotselecting', onSelecting);
       plot.getPlaceholder().unbind('plotselected', onSelected);
       $(eventHolder).unbind('mousemove', onMove);
       $(eventHolder).unbind('mouseout', onLeave);
