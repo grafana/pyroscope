@@ -181,7 +181,29 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ctrl.writeResponseJSON(w, flamebearer.NewCombinedProfile(out, leftOut, rghtOut, p.maxNodes))
+	combined := flamebearer.NewCombinedProfile(out, leftOut, rghtOut, p.maxNodes)
+
+	switch p.format {
+	case "html":
+		w.Header().Add("Content-Type", "text/html")
+		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, ctrl.dir, w); err != nil {
+			ctrl.writeJSONEncodeError(w, err)
+			return
+		}
+
+	case "json":
+		// fallthrough to default, to maintain existing behaviour
+		fallthrough
+	default:
+		var appName string
+		if p.gi.Key != nil {
+			appName = p.gi.Key.AppName()
+		} else if p.gi.Query != nil {
+			appName = p.gi.Query.AppName
+		}
+		res := ctrl.mountRenderResponse(combined, appName, p.gi, p.maxNodes)
+		ctrl.writeResponseJSON(w, res)
+	}
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {

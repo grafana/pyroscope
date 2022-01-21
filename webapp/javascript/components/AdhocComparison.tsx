@@ -23,6 +23,7 @@ import {
 import 'react-tabs/style/react-tabs.css';
 import styles from './ComparisonApp.module.css';
 import adhocStyles from './Adhoc.module.scss';
+import ExportData from './ExportData';
 
 function AdhocComparison(props) {
   const {
@@ -35,6 +36,8 @@ function AdhocComparison(props) {
     rightFile,
     rightFlamebearer,
     rightProfile,
+    leftRaw,
+    rightRaw,
   } = props;
   const {
     setAdhocLeftFile,
@@ -102,6 +105,7 @@ function AdhocComparison(props) {
                 flamebearer={leftFlamebearer}
                 data-testid="flamegraph-renderer-left"
                 display="both"
+                ExportData={<ExportData flamebearer={leftRaw} exportJSON />}
               />
             )}
           </Box>
@@ -138,6 +142,7 @@ function AdhocComparison(props) {
                 flamebearer={rightFlamebearer}
                 data-testid="flamegraph-renderer-right"
                 display="both"
+                ExportData={<ExportData flamebearer={rightRaw} exportJSON />}
               />
             )}
           </Box>
@@ -150,6 +155,8 @@ function AdhocComparison(props) {
 
 const mapStateToProps = (state) => ({
   ...state.root,
+  leftRaw: state.root.adhocComparison.left.raw,
+  rightRaw: state.root.adhocComparison.right.raw,
   leftFile: state.root.adhocComparison.left.file,
   leftFlamebearer: state.root.adhocComparison.left.flamebearer,
   leftProfile: state.root.adhocShared.left.profile,
