@@ -35,7 +35,7 @@ export interface DropdownProps {
   overflow?: MenuProps['overflow'];
   position?: MenuProps['position'];
 
-  menuButton: JSX.Element;
+  menuButton?: JSX.Element;
 }
 
 export default function Dropdown({
