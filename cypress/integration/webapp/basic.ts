@@ -357,4 +357,49 @@ describe('basic test', () => {
       );
     });
   });
+
+  describe.only('tooltip', () => {
+    it('it displays a tooltip on hover', () => {
+      cy.visit('/?query=pyroscope.server.cpu%7B%7D');
+
+      cy.findByTestId('timeline-single').as('timeline');
+
+      cy.get('@timeline').find('.flot-overlay').trigger('mousemove', 20, 20);
+      cy.findAllByTestId('timeline-tooltip1').should('be.visible');
+
+      cy.get('@timeline').find('.flot-overlay').trigger('mouseout');
+      cy.findAllByTestId('timeline-tooltip1').should('not.be.visible');
+    });
+
+    it('it should have one tooltip on short selection', () => {
+      cy.visit('/?query=pyroscope.server.cpu%7B%7D');
+
+      cy.findByTestId('timeline-single').as('timeline');
+
+      cy.get('@timeline')
+        .find('.flot-overlay')
+        .as('overlay')
+        .trigger('mouseenter', 0, 0)
+        .trigger('mousemove', 20, 20);
+      cy.findAllByTestId('timeline-tooltip1').should('be.visible');
+
+      // Make sure we have a single timeline selector
+      cy.get('@overlay')
+        .trigger('mousedown', 300, 50)
+        .trigger('mousemove', 20, 50);
+      cy.findAllByTestId('timeline-tooltip1').should('be.visible');
+      cy.findAllByTestId('timeline-tooltip1').should(($div) => {
+        const text = $div.text();
+        expect(text).to.match(/\d+:\d+:\d+\s+-\s+\d+:\d+:\d+/m);
+      });
+
+      // Divide tooltips
+      cy.get('@overlay').trigger('mousemove', 200, 0);
+      cy.findAllByTestId('timeline-tooltip2').should('be.visible');
+
+      // Join it back (force to avoid error about hidden center)
+      cy.get('@overlay').trigger('mousemove', -200, 0, { force: true });
+      cy.findAllByTestId('timeline-tooltip1').should('be.visible');
+    });
+  });
 });

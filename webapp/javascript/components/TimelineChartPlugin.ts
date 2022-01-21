@@ -156,7 +156,7 @@ import { format } from 'date-fns';
       });
     };
 
-    const onSelecting = () => {
+    const onSelecting = (evt) => {
       // Save selection state
       this.selecting = true;
     };
@@ -166,6 +166,10 @@ import { format } from 'date-fns';
       this.selecting = false;
       this.$tooltip.hide();
       this.$tooltip2.hide();
+    };
+
+    const onMouseUp = () => {
+      this.selecting = false;
     };
 
     const createDomElement = () => {
@@ -180,8 +184,8 @@ import { format } from 'date-fns';
         border: '1px solid #111',
         'white-space': 'nowrap',
       };
-      const $tip = $('<div></div>');
-      const $tip2 = $('<div></div>');
+      const $tip = $('<div data-testid="timeline-tooltip1"></div>');
+      const $tip2 = $('<div data-testid="timeline-tooltip2"></div>');
 
       $tip.appendTo('body').hide();
       $tip2.appendTo('body').hide();
@@ -200,11 +204,12 @@ import { format } from 'date-fns';
 
     function bindEvents(plot, eventHolder) {
       plot.getPlaceholder().bind('plothover', onHover);
-      plot.getPlaceholder().bind('plotselecting', onSelecting);
       plot.getPlaceholder().bind('plotselected', onSelected);
 
       $(eventHolder).bind('mousemove', onMove);
       $(eventHolder).bind('mouseout', onLeave);
+      $(eventHolder).bind('mouseup', onMouseUp);
+      $(eventHolder).bind('mousedown', onSelecting);
     }
 
     function shutdown(plot, eventHolder) {
