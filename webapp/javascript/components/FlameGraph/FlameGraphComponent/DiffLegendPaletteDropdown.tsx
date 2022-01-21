@@ -7,8 +7,6 @@ import {
   ColorBlindPalette,
   DefaultPalette,
   FlamegraphPalette,
-  DefaultPalette,
-  ColorBlindPalette,
 } from './colorPalette';
 import DiffLegend from './DiffLegend';
 import styles from './DiffLegendPaletteDropdown.module.css';
@@ -16,7 +14,7 @@ import styles from './DiffLegendPaletteDropdown.module.css';
 const paletteList = [DefaultPalette, ColorBlindPalette];
 
 export const DiffLegendPaletteDropdown = (props) => {
-  const { palette, onChange } = props;
+  const { palette = DefaultPalette, onChange } = props;
   return (
     <Dropdown
       label="Select a palette"
@@ -24,7 +22,7 @@ export const DiffLegendPaletteDropdown = (props) => {
         <MenuButton
           className={cx(
             // eslint-disable-next-line
-            dropdownStyles.dropdownwMenuButton,
+            dropdownStyles.dropdownMenuButton,
             styles.diffPaletteDropdown
           )}
         >
