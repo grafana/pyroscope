@@ -15,6 +15,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
@@ -39,7 +40,7 @@ var _ = Describe("server", func() {
 					done := make(chan interface{})
 					go func() {
 						defer GinkgoRecover()
-						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+						s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 						Expect(err).ToNot(HaveOccurred())
 						e, _ := exporter.NewExporter(nil, nil)
 						c, _ := New(Config{
