@@ -7,6 +7,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
@@ -81,7 +82,7 @@ func Cli(cfg *config.Adhoc, args []string) error {
 		return fmt.Errorf("invalid output format '%s', the only supported output formats are 'html', 'pprof' and 'collapsed'", cfg.OutputFormat)
 	}
 
-	st, err := storage.New(newStorageConfig(cfg), logger, prometheus.DefaultRegisterer)
+	st, err := storage.New(newStorageConfig(cfg), logger, prometheus.DefaultRegisterer, new(health.Controller))
 	if err != nil {
 		return fmt.Errorf("could not initialize storage: %w", err)
 	}

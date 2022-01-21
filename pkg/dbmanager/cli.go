@@ -10,6 +10,7 @@ import (
 	"github.com/cheggaaa/pb/v3"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent"
@@ -60,7 +61,7 @@ func copyData(dbCfg *config.DbManager, stCfg *storage.Config) error {
 			"src start: %q end: %q, dst start: %q end: %q", srcSt, srcEt, dstSt, dstEt)
 	}
 
-	s, err := storage.New(stCfg, logrus.StandardLogger(), prometheus.DefaultRegisterer)
+	s, err := storage.New(stCfg, logrus.StandardLogger(), prometheus.DefaultRegisterer, new(health.Controller))
 	if err != nil {
 		return err
 	}
