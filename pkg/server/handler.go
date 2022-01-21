@@ -212,6 +212,15 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 		} else if path == "/adhoc-comparison-diff" {
 			ctrl.statsInc("adhoc-comparison-diff")
 			ctrl.renderIndexPage(rw, r)
+		} else if path == "/settings" {
+			ctrl.statsInc("settings")
+			ctrl.renderIndexPage(rw, r)
+		} else if path == "/settings/users" {
+			ctrl.statsInc("settings")
+			ctrl.renderIndexPage(rw, r)
+		} else if path == "/settings/api-keys" {
+			ctrl.statsInc("settings")
+			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)
 		}

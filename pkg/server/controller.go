@@ -169,6 +169,9 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
+		{"/settings", ctrl.indexHandler()},
+		{"/settings/users", ctrl.indexHandler()},
+		{"/settings/api-keys", ctrl.indexHandler()},
 	}
 	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
