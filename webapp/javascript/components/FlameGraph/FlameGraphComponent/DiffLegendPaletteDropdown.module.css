@@ -1,0 +1,10 @@
+.diffPaletteDropdown {
+}
+
+.diffPaletteDropdown > div {
+  margin-bottom: 0px;
+}
+
+.diffPaletteDropdown::after {
+  top: 0px;
+}

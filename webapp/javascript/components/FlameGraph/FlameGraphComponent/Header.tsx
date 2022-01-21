@@ -8,6 +8,7 @@ import {
   DefaultPalette,
   ColorBlindPalette,
 } from './colorPalette';
+import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';
 
 interface HeaderProps {
   format: Flamebearer['format'];
@@ -50,7 +51,10 @@ export default function Header(props: HeaderProps) {
             <div className={styles.row} role="heading" aria-level={2}>
               Base graph: left - Comparison graph: right
             </div>
-            <DiffLegend palette={palette} />
+            <DiffLegendPaletteDropdown
+              palette={palette}
+              onChange={setPalette}
+            />
           </>
         );
       }
@@ -62,38 +66,12 @@ export default function Header(props: HeaderProps) {
 
   const title = getTitle();
 
-  const paletteComp =
-    format === 'double' ? (
-      <PaletteDropdown palette={palette} setPalette={setPalette} />
-    ) : null;
-
   return (
     <div className={styles['flamegraph-header']}>
       <div>{title}</div>
       <div className={styles.buttons}>
-        {paletteComp}
         <ExportData />
       </div>
     </div>
-  );
-}
-
-function PaletteDropdown({
-  palette,
-  setPalette,
-}: Pick<HeaderProps, 'palette' | 'setPalette'>) {
-  const palettes = [DefaultPalette, ColorBlindPalette];
-  return (
-    <Dropdown label="Palette" onItemClick={(e) => setPalette(e.value)}>
-      {palettes.map((p) => (
-        <MenuItem
-          value={p}
-          key={p.name}
-          className={palette.name === p.name ? 'active' : ''}
-        >
-          {p.name}
-        </MenuItem>
-      ))}
-    </Dropdown>
   );
 }

@@ -10,6 +10,11 @@
   width: 100%;
 }
 
+.flamegraph-header button {
+  margin: auto;
+  display: block;
+}
+
 .row {
   display: flex;
   justify-content: center;
