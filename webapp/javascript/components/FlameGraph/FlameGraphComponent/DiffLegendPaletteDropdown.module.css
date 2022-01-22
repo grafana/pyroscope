@@ -8,3 +8,11 @@
 .diffPaletteDropdown::after {
   top: 0px;
 }
+
+.dropdownItem {
+  display: flex;
+}
+
+.dropdownItem svg {
+  margin-left: 1em;
+}

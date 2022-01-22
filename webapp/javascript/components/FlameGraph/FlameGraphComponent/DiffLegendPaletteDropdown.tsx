@@ -9,6 +9,7 @@ import {
   FlamegraphPalette,
 } from './colorPalette';
 import DiffLegend from './DiffLegend';
+import CheckIcon from '../../CheckIcon';
 import styles from './DiffLegendPaletteDropdown.module.css';
 
 const paletteList = [DefaultPalette, ColorBlindPalette];
@@ -29,17 +30,20 @@ export const DiffLegendPaletteDropdown = (props) => {
           <DiffLegend palette={palette} />
         </MenuButton>
       }
+      onItemClick={(e) => onChange(e.value)}
     >
-      <MenuRadioGroup value={palette} onChange={(e) => onChange(e.value)}>
-        {paletteList.map((p) => (
-          <MenuItem key={p.name} value={p}>
-            <div>
-              <label>{p.name}</label>
+      {paletteList.map((p) => (
+        <MenuItem key={p.name} value={p}>
+          <div>
+            <label>{p.name}</label>
+            <div className={styles.dropdownItem}>
               <DiffLegend palette={p} />
+
+              {p === palette ? <CheckIcon /> : null}
             </div>
-          </MenuItem>
-        ))}
-      </MenuRadioGroup>
+          </div>
+        </MenuItem>
+      ))}
     </Dropdown>
   );
 };
