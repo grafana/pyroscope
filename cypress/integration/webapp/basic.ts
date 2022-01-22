@@ -364,10 +364,7 @@ describe('basic test', () => {
 
       cy.findByTestId('timeline-single').as('timeline');
 
-      cy.get('@timeline')
-        .trigger('mouseenter', 20, 20)
-        .find('.flot-overlay')
-        .trigger('mousemove', 20, 20);
+      cy.get('@timeline').find('.flot-overlay').trigger('mouseenter', 'center');
       cy.findAllByTestId('timeline-tooltip1').should('be.visible');
 
       cy.get('@timeline').find('.flot-overlay').trigger('mouseout');
@@ -376,19 +373,19 @@ describe('basic test', () => {
 
     it('it should have one tooltip on short selection', () => {
       cy.visit('/?query=pyroscope.server.cpu%7B%7D');
-
+      cy.findByText('runtime.kevent');
       cy.findByTestId('timeline-single').as('timeline');
 
       cy.get('@timeline')
         .find('.flot-overlay')
         .as('overlay')
-        .trigger('mouseenter', 10, 10)
+        .trigger('mouseover', 1, 1)
         .trigger('mousemove', 20, 20);
       cy.findAllByTestId('timeline-tooltip1').should('be.visible');
 
       // Make sure we have a single timeline selector
       cy.get('@overlay')
-        .trigger('mousedown', 300, 50)
+        .trigger('mousedown', 1, 1)
         .trigger('mousemove', 20, 50);
       cy.findAllByTestId('timeline-tooltip1').should('be.visible');
       cy.findAllByTestId('timeline-tooltip1').should(($div) => {

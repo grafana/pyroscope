@@ -47,9 +47,9 @@ import { format } from 'date-fns';
       }
     }
 
-    const onHover = (target, position) => {
+    const onPlotHover = (target, position) => {
       this.tooltipY = target.currentTarget.getBoundingClientRect().bottom - 28;
-
+      if (!position.x) return;
       if (!this.selecting) {
         this.selectingFrom = {
           label: getFormatLabel(position.x),
@@ -160,16 +160,17 @@ import { format } from 'date-fns';
       });
     };
 
-    const onSelecting = (evt) => {
-      // Save selection state
-      this.selecting = true;
-    };
-
     const onSelected = () => {
       // Clean up selection state and hide tooltips
       this.selecting = false;
       this.$tooltip.hide();
       this.$tooltip2.hide();
+    };
+
+    // Trying to mimic flot.selection.js
+    const onMouseDown = (evt) => {
+      // Save selection state
+      this.selecting = true;
     };
 
     const onMouseUp = () => {
@@ -207,17 +208,17 @@ import { format } from 'date-fns';
     };
 
     function bindEvents(plot, eventHolder) {
-      plot.getPlaceholder().bind('plothover', onHover);
+      plot.getPlaceholder().bind('plothover', onPlotHover);
       plot.getPlaceholder().bind('plotselected', onSelected);
 
       $(eventHolder).bind('mousemove', onMove);
       $(eventHolder).bind('mouseout', onLeave);
       $(eventHolder).bind('mouseup', onMouseUp);
-      $(eventHolder).bind('mousedown', onSelecting);
+      $(eventHolder).bind('mousedown', onMouseDown);
     }
 
     function shutdown(plot, eventHolder) {
-      plot.getPlaceholder().unbind('plothover', onHover);
+      plot.getPlaceholder().unbind('plothover', onPlotHover);
       // plot.getPlaceholder().unbind('plotselecting', onSelecting);
       plot.getPlaceholder().unbind('plotselected', onSelected);
       $(eventHolder).unbind('mousemove', onMove);
