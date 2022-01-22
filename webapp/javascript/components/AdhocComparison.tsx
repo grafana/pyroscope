@@ -75,8 +75,8 @@ function AdhocComparison(props) {
           <Box className={styles.comparisonPane}>
             <Tabs>
               <TabList>
-                <Tab>Pyroscope data</Tab>
                 <Tab>Upload</Tab>
+                <Tab>Pyroscope data</Tab>
               </TabList>
               <TabPanel>
                 <FileUploader

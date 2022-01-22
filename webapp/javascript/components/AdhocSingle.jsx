@@ -44,8 +44,8 @@ function AdhocSingle(props) {
         <Box>
           <Tabs>
             <TabList>
-              <Tab>Pyroscope data</Tab>
               <Tab>Upload</Tab>
+              <Tab>Pyroscope data</Tab>
             </TabList>
             <TabPanel>
               <FileUploader
