@@ -57,6 +57,7 @@ function AdhocComparisonDiff(props) {
                 <Tab>Pyroscope data</Tab>
                 <Tab disabled>Upload</Tab>
               </TabList>
+              <TabPanel />
               <TabPanel>
                 <FileList
                   className={adhocStyles.tabPanel}
@@ -64,7 +65,6 @@ function AdhocComparisonDiff(props) {
                   setProfile={setAdhocLeftProfile}
                 />
               </TabPanel>
-              <TabPanel />
             </Tabs>
           </Box>
           <Box className={styles.comparisonPane}>
@@ -73,6 +73,7 @@ function AdhocComparisonDiff(props) {
                 <Tab>Pyroscope data</Tab>
                 <Tab disabled>Upload</Tab>
               </TabList>
+              <TabPanel />
               <TabPanel>
                 <FileList
                   className={adhocStyles.tabPanel}
@@ -80,7 +81,6 @@ function AdhocComparisonDiff(props) {
                   setProfile={setAdhocRightProfile}
                 />
               </TabPanel>
-              <TabPanel />
             </Tabs>
           </Box>
         </div>

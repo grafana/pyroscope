@@ -48,17 +48,17 @@ function AdhocSingle(props) {
               <Tab>Upload</Tab>
             </TabList>
             <TabPanel>
-              <FileList
-                className={adhocStyles.tabPanel}
-                profile={profile}
-                setProfile={setAdhocProfile}
-              />
-            </TabPanel>
-            <TabPanel>
               <FileUploader
                 className={adhocStyles.tabPanel}
                 file={file}
                 setFile={setAdhocFile}
+              />
+            </TabPanel>
+            <TabPanel>
+              <FileList
+                className={adhocStyles.tabPanel}
+                profile={profile}
+                setProfile={setAdhocProfile}
               />
             </TabPanel>
           </Tabs>
