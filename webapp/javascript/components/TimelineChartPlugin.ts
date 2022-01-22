@@ -213,6 +213,8 @@ import { format } from 'date-fns';
 
       $(eventHolder).bind('mousemove', onMove);
       $(eventHolder).bind('mouseout', onLeave);
+      $(eventHolder).bind('mouseleave', onLeave);
+
       $(eventHolder).bind('mouseup', onMouseUp);
       $(eventHolder).bind('mousedown', onMouseDown);
     }
@@ -223,6 +225,7 @@ import { format } from 'date-fns';
       plot.getPlaceholder().unbind('plotselected', onSelected);
       $(eventHolder).unbind('mousemove', onMove);
       $(eventHolder).unbind('mouseout', onLeave);
+      $(eventHolder).unbind('mouseleave', onLeave);
     }
 
     createDomElement();

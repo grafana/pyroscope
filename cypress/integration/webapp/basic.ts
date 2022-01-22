@@ -360,11 +360,22 @@ describe('basic test', () => {
 
   describe('tooltip', () => {
     it('it displays a tooltip on hover', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+      }).as('render');
+
       cy.visit('/?query=pyroscope.server.cpu%7B%7D');
+      cy.wait('@render');
 
       cy.findByTestId('timeline-single').as('timeline');
+      cy.get('.flot-text .flot-tick-label');
+      cy.get('canvas.flot-overlay');
 
-      cy.get('@timeline').find('.flot-overlay').trigger('mouseenter', 'center');
+      cy.get('@timeline').find('.flot-overlay').as('overlay');
+
+      cy.get('@overlay')
+        .trigger('mouseover', 1, 1)
+        .trigger('mousemove', 20, 20);
       cy.findAllByTestId('timeline-tooltip1').should('be.visible');
 
       cy.get('@timeline').find('.flot-overlay').trigger('mouseout');
@@ -372,13 +383,19 @@ describe('basic test', () => {
     });
 
     it('it should have one tooltip on short selection', () => {
-      cy.visit('/?query=pyroscope.server.cpu%7B%7D');
-      cy.findByText('runtime.kevent');
-      cy.findByTestId('timeline-single').as('timeline');
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+      }).as('render');
 
-      cy.get('@timeline')
-        .find('.flot-overlay')
-        .as('overlay')
+      cy.visit('/?query=pyroscope.server.cpu%7B%7D');
+
+      cy.findByTestId('timeline-single').as('timeline');
+      cy.get('.flot-text .flot-tick-label');
+      cy.get('canvas.flot-overlay');
+
+      cy.get('@timeline').find('.flot-overlay').as('overlay');
+
+      cy.get('@overlay')
         .trigger('mouseover', 1, 1)
         .trigger('mousemove', 20, 20);
       cy.findAllByTestId('timeline-tooltip1').should('be.visible');
