@@ -14,6 +14,7 @@ import {
   fetchPyroscopeAppData,
   abortTimelineRequest,
 } from '../redux/actions';
+import ExportData from './ExportData';
 
 function PyroscopeApp(props) {
   const { actions, renderURL, single, raw } = props;
@@ -42,6 +43,16 @@ function PyroscopeApp(props) {
             viewType="single"
             display="both"
             rawFlamegraph={raw}
+            ExportData={
+              // Don't export PNG since the exportPng code is broken
+              <ExportData
+                flamebearer={raw}
+                exportPNG
+                exportJSON
+                exportPprof
+                exportHTML
+              />
+            }
           />
         </Box>
       </div>

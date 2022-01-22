@@ -29,10 +29,6 @@ export type Flamebearer = {
     | 'pyspy'
     | 'rbspy'
     | string;
-  /**
-   * Format version.
-   */
-  version: number;
 } & addTicks;
 
 export type addTicks =
@@ -58,7 +54,6 @@ export function decodeFlamebearer({
   metadata,
   leftTicks,
   rightTicks,
-  version,
 }: DecodeFlamebearerProps): Flamebearer {
   const fb = {
     ...flamebearer,
@@ -73,13 +68,17 @@ export function decodeFlamebearer({
     (fb as any).rightTicks = rightTicks;
   }
 
-  fb.version = version || 0;
   fb.levels = deltaDiffWrapper(fb.format, fb.levels);
   return fb as Flamebearer;
 }
 
 export type FlamebearerProfile = {
-  Flamebearer: Flamebearer;
+  flamebearer: Flamebearer;
+
+  /**
+   * Format version.
+   */
+  version: number;
 
   metadata: {
     appName: string;
@@ -89,3 +88,36 @@ export type FlamebearerProfile = {
     maxNodes: number;
   };
 };
+
+// RawFlamebearerProfile represents the exact FlamebearerProfile it's gotten from the backend
+export interface RawFlamebearerProfile {
+  version: number;
+
+  metadata: {
+    // Optional fields since adhoc may be missing them
+    // they are added on /render and /render-diff response
+    // https://github.com/pyroscope-io/pyroscope/blob/main/pkg/server/render.go#L114-L131
+    appName?: string;
+    startTime?: number;
+    endTime?: number;
+    query?: string;
+    maxNodes?: number;
+  };
+
+  flamebearer: {
+    /**
+     * List of names
+     */
+    names: string[];
+    /**
+     * List of level
+     *
+     * This is NOT the same as in the flamebearer
+     * that we receive from the server.
+     * As in there are some transformations required
+     * (see deltaDiffWrapper)
+     */
+    levels: number[][];
+    numTicks: number;
+  };
+}

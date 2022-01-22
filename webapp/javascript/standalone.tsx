@@ -56,13 +56,17 @@ const { flamegraph } = window as any;
 function AdhocApp() {
   const flamebearer = decodeFlamebearer(flamegraph);
 
+  const viewType =
+    flamebearer.format === 'single' ? flamebearer.format : 'diff';
+
   return (
     <Box className={styles.container}>
       <FlameGraphRenderer
         flamebearer={flamebearer}
-        viewType="single"
+        viewType={viewType}
         display="both"
         rawFlamegraph={flamegraph}
+        ExportData={null}
       />
     </Box>
   );
