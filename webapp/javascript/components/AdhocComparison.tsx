@@ -112,21 +112,21 @@ function AdhocComparison(props) {
           <Box className={styles.comparisonPane}>
             <Tabs>
               <TabList>
-                <Tab>Pyroscope data</Tab>
                 <Tab>Upload</Tab>
+                <Tab>Pyroscope data</Tab>
               </TabList>
-              <TabPanel>
-                <FileList
-                  className={adhocStyles.tabPanel}
-                  profile={rightProfile}
-                  setProfile={setAdhocRightProfile}
-                />
-              </TabPanel>
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
                   file={rightFile}
                   setFile={setAdhocRightFile}
+                />
+              </TabPanel>
+              <TabPanel>
+                <FileList
+                  className={adhocStyles.tabPanel}
+                  profile={rightProfile}
+                  setProfile={setAdhocRightProfile}
                 />
               </TabPanel>
             </Tabs>
