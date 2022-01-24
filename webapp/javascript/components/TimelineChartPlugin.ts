@@ -75,17 +75,8 @@ import { format } from 'date-fns';
           x: this.selectingFrom.pageX,
           y: this.tooltipY,
         });
-      } else if (
-        (this.selectingTo.pageX - this.selectingFrom.width / 2 >
-          this.selectingFrom.pageX - this.selectingFrom.width &&
-          this.selectingTo.pageX - this.selectingFrom.width / 2 <
-            this.selectingFrom.pageX + this.selectingFrom.width) ||
-        (this.selectingFrom.pageX - this.selectingTo.pageX > 0 &&
-          this.selectingFrom.pageX - this.selectingTo.pageX <
-            this.selectingFrom.width) // Check if tooltips can intersect
-      ) {
+      } else {
         // Render Intersection
-        this.$tooltip2.hide();
         this.$tooltip.html(
           `${getFormatLabel(
             Math.min(this.selectingFrom.x, this.selectingTo.x)
@@ -96,24 +87,7 @@ import { format } from 'date-fns';
         );
 
         // Stick to left selection
-        setTooltipPosition(
-          this.$tooltip,
-          {
-            x: Math.min(this.selectingFrom.pageX, this.selectingTo.pageX),
-            y: this.tooltipY,
-          },
-          false
-        );
-      } else {
-        // No intersection. Display two tooltips
-        this.$tooltip.html(getFormatLabel(this.selectingFrom.x)).show();
-        this.$tooltip2.html(getFormatLabel(this.selectingTo.x)).show();
-
         setTooltipPosition(this.$tooltip, {
-          x: this.selectingFrom.pageX,
-          y: this.tooltipY,
-        });
-        setTooltipPosition(this.$tooltip2, {
           x: this.selectingTo.pageX,
           y: this.tooltipY,
         });
@@ -124,7 +98,6 @@ import { format } from 'date-fns';
       // Save tooltips while selecting
       if (!this.selecting) {
         this.$tooltip.hide();
-        this.$tooltip2.hide();
       }
     };
 
@@ -164,7 +137,6 @@ import { format } from 'date-fns';
       // Clean up selection state and hide tooltips
       this.selecting = false;
       this.$tooltip.hide();
-      this.$tooltip2.hide();
     };
 
     // Trying to mimic flot.selection.js
@@ -190,21 +162,15 @@ import { format } from 'date-fns';
         'white-space': 'nowrap',
       };
       const $tip = $('<div data-testid="timeline-tooltip1"></div>');
-      const $tip2 = $('<div data-testid="timeline-tooltip2"></div>');
 
       $tip.appendTo('body').hide();
-      $tip2.appendTo('body').hide();
       $tip.css({ position: 'absolute', left: 0, top: 0 });
       $tip.css(tooltipStyle);
-      $tip2.css({ position: 'absolute', left: 0, top: 0 });
-      $tip2.css(tooltipStyle);
       this.$tooltip = $tip;
-      this.$tooltip2 = $tip2;
     };
 
     const destroyDomElements = () => {
       this.$tooltip.remove();
-      this.$tooltip2.remove();
     };
 
     function bindEvents(plot, eventHolder) {

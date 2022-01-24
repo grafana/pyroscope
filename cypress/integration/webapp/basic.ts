@@ -409,14 +409,6 @@ describe('basic test', () => {
         const text = $div.text();
         expect(text).to.match(/\d+:\d+:\d+\s+-\s+\d+:\d+:\d+/m);
       });
-
-      // Divide tooltips
-      cy.get('@overlay').trigger('mousemove', 200, 0);
-      cy.findAllByTestId('timeline-tooltip2').should('be.visible');
-
-      // Join it back (force to avoid error about hidden center)
-      cy.get('@overlay').trigger('mousemove', -200, 0, { force: true });
-      cy.findAllByTestId('timeline-tooltip1').should('be.visible');
     });
   });
 });
