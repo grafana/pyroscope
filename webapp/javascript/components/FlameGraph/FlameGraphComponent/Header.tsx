@@ -1,13 +1,7 @@
 import React from 'react';
 import { Flamebearer } from '@models/flamebearer';
-import Dropdown, { MenuItem, SubMenu } from '@ui/Dropdown';
-import DiffLegend from './DiffLegend';
 import styles from './Header.module.css';
-import {
-  FlamegraphPalette,
-  DefaultPalette,
-  ColorBlindPalette,
-} from './colorPalette';
+import { FlamegraphPalette } from './colorPalette';
 import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';
 
 interface HeaderProps {
@@ -33,7 +27,7 @@ export default function Header(props: HeaderProps) {
         return (
           <div>
             <div
-              className={`${styles.row} ${styles['flamegraph-title']}`}
+              className={`${styles.row} ${styles.flamegraphTitle}`}
               role="heading"
               aria-level={2}
             >
@@ -67,7 +61,7 @@ export default function Header(props: HeaderProps) {
   const title = getTitle();
 
   return (
-    <div className={styles['flamegraph-header']}>
+    <div className={styles.flamegraphHeader}>
       <div>{title}</div>
       <div className={styles.buttons}>
         <ExportData />

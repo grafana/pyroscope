@@ -13,7 +13,7 @@ import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
-import type { FlamegraphPalette } from './colorPalette';
+import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
@@ -266,6 +266,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           leftTicks={flamebearer.format === 'double' && flamebearer.leftTicks}
           rightTicks={flamebearer.format === 'double' && flamebearer.rightTicks}
           units={flamebearer.units}
+          palette={DefaultPalette}
         />
       )}
 

@@ -35,7 +35,7 @@ export type TooltipProps = {
   leftTicks: number;
   rightTicks: number;
 
-  palette?: FlamegraphPalette;
+  palette: FlamegraphPalette;
 } & (
   | { format: 'single'; xyToData: xyToDataSingle }
   | {

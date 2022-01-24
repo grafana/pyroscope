@@ -8,8 +8,9 @@ import {
   MenuItem as LibMenuItem,
   MenuButton as LibMenuButton,
   FocusableItem as LibFocusableItem,
-  MenuRadioGroup as LibMenuRadioGroup,
 } from '@szhsin/react-menu';
+
+import cx from 'classnames';
 import styles from './Dropdown.module.scss';
 
 export interface DropdownProps {
@@ -63,7 +64,7 @@ export default function Dropdown({
   return (
     <Menu
       id={id}
-      className={`${className} ${styles.dropdownMenu}`}
+      className={cx(className, styles.dropdownMenu)}
       data-testid={props['data-testid']}
       onItemClick={onItemClick}
       overflow={overflow}
@@ -80,4 +81,3 @@ export const SubMenu = LibSubmenu;
 export const MenuItem = LibMenuItem;
 export const MenuButton = LibMenuButton;
 export const FocusableItem = LibFocusableItem;
-export const MenuRadioGroup = LibMenuRadioGroup;

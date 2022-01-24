@@ -1,13 +1,9 @@
 import React from 'react';
-import Dropdown, { MenuItem, MenuButton, MenuRadioGroup } from '@ui/Dropdown';
+import Dropdown, { MenuItem, MenuButton } from '@ui/Dropdown';
 import Icon from '@ui/Icon';
 import dropdownStyles from '@ui/Dropdown.module.scss';
 import cx from 'classnames';
-import {
-  ColorBlindPalette,
-  DefaultPalette,
-  FlamegraphPalette,
-} from './colorPalette';
+import { ColorBlindPalette, DefaultPalette } from './colorPalette';
 import DiffLegend from './DiffLegend';
 import CheckIcon from '../../CheckIcon';
 import styles from './DiffLegendPaletteDropdown.module.css';

@@ -1,4 +1,4 @@
-.flamegraph-header {
+.flamegraphHeader {
   padding-bottom: 5px;
   display: flex;
   justify-content: space-between;
@@ -6,11 +6,11 @@
   align-items: start;
 }
 
-.flamegraph-header > div:first-child {
+.flamegraphHeader > div:first-child {
   width: 100%;
 }
 
-.flamegraph-header button {
+.flamegraphHeader button {
   margin: auto;
   display: block;
 }
@@ -20,7 +20,7 @@
   justify-content: center;
 }
 
-.flamegraph-title {
+.flamegraphTitle {
   width: 100%;
   display: block;
   text-align: center;
