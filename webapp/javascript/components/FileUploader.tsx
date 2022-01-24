@@ -3,6 +3,8 @@ import React, { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
 import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
+import { faArrowAltCircleUp } from '@fortawesome/free-regular-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Button from '@ui/Button';
 import { addNotification } from '../redux/reducers/notifications';
 import styles from './FileUploader.module.scss';
@@ -74,7 +76,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
 
   return (
     <section className={`${styles.container} ${className}`}>
-      <div {...getRootProps()}>
+      <div {...getRootProps()} className={styles.dragAndDropContainer} >
         <input {...getInputProps()} />
         {file ? (
           <p>
@@ -82,9 +84,17 @@ export default function FileUploader({ file, setFile, className }: Props) {
             click to select a file
           </p>
         ) : (
-          <p>
-            Drag and drop pyroscope JSON files here, or click to select a file
-          </p>
+          <div>
+            <p className={styles.instructionsTextMain}>
+              Drag and drop Flamegraph files here
+            </p>
+            <div className={styles.iconContainer}>
+              <FontAwesomeIcon icon={faArrowAltCircleUp} className={styles.fileUploadIcon} />
+            </div>
+            <p className={styles.instructionsTextSecondary}>
+              Or click to select a file from your device
+            </p>
+          </div>
         )}
       </div>
       {file && (
