@@ -26,15 +26,23 @@ import (
 
 const durThreshold = 30 * time.Millisecond
 
-type mockStatsProvider struct{}
+type mockStatsProvider struct {
+	stats map[string]int
+}
 
-func (mockStatsProvider) Stats() map[string]int { return map[string]int{} }
+func (m *mockStatsProvider) Stats() map[string]int {
+	if m.stats != nil {
+		return m.stats
+	}
+	return map[string]int{}
+}
 
-func (mockStatsProvider) AppsCount() int { return 0 }
+func (*mockStatsProvider) AppsCount() int { return 0 }
 
 var _ = Describe("analytics", func() {
 	gracePeriod = 100 * time.Millisecond
 	uploadFrequency = 200 * time.Millisecond
+	snapshotFrequency = 200 * time.Millisecond
 
 	testing.WithConfig(func(cfg **config.Config) {
 		Describe("NewService", func() {
@@ -66,7 +74,7 @@ var _ = Describe("analytics", func() {
 					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 					Expect(err).ToNot(HaveOccurred())
 
-					analytics := NewService(&(*cfg).Server, s, mockStatsProvider{})
+					analytics := NewService(&(*cfg).Server, s, &mockStatsProvider{})
 
 					startTime := time.Now()
 					go analytics.Start()
@@ -77,6 +85,54 @@ var _ = Describe("analytics", func() {
 						BeTemporally("~", startTime.Add(300*time.Millisecond), durThreshold),
 						BeTemporally("~", startTime.Add(500*time.Millisecond), durThreshold),
 					))
+					close(done)
+				}()
+				Eventually(done, 2).Should(BeClosed())
+			})
+			It("cumilative metrics should persist on service stop", func() {
+				done := make(chan interface{})
+				go func() {
+					defer GinkgoRecover()
+
+					wg := sync.WaitGroup{}
+					v := make(map[string]interface{})
+					myHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						bytes, err := io.ReadAll(r.Body)
+						Expect(err).ToNot(HaveOccurred())
+						err = json.Unmarshal(bytes, &v)
+						Expect(err).ToNot(HaveOccurred())
+						w.WriteHeader(http.StatusOK)
+						wg.Done()
+					})
+
+					httpServer := httptest.NewServer(myHandler)
+					defer httpServer.Close()
+					url = httpServer.URL + "/api/events"
+
+					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+					Expect(err).ToNot(HaveOccurred())
+
+					stats := map[string]int{
+						"diff":       1,
+						"ingest":     1,
+						"comparison": 1,
+					}
+
+					mockProvider := mockStatsProvider{stats: stats}
+
+					for i := 0; i < 2; i = i + 1 {
+						wg.Add(1)
+						analytics := NewService(&(*cfg).Server, s, &mockProvider)
+						go analytics.Start()
+						wg.Wait()
+						analytics.Stop()
+					}
+
+					Expect(v["controller_diff"]).To(BeEquivalentTo(2))
+					Expect(v["controller_ingest"]).To(BeEquivalentTo(2))
+					Expect(v["controller_comparison"]).To(BeEquivalentTo(2))
+					Expect(v["analytics_persistence"]).To(BeTrue())
+
 					close(done)
 				}()
 				Eventually(done, 2).Should(BeClosed())
