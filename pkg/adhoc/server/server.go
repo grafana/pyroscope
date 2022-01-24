@@ -197,19 +197,19 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type converterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
+type ConverterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
 
 func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
 	fname := filepath.Join(s.dataDir, p.Name)
 	ext := filepath.Ext(fname)
-	var converter converterFn
+	var converter ConverterFn
 	switch ext {
 	case ".json":
-		converter = jsonToProfile
+		converter = JSONToProfile
 	case ".pprof":
-		converter = pprofToProfile
+		converter = PprofToProfile
 	case ".txt":
-		converter = collapsedToProfile
+		converter = CollapsedToProfile
 	default:
 		return nil, fmt.Errorf("unsupported file extension %s", ext)
 	}
