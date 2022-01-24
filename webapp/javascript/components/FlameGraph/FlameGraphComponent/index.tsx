@@ -266,7 +266,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           leftTicks={flamebearer.format === 'double' && flamebearer.leftTicks}
           rightTicks={flamebearer.format === 'double' && flamebearer.rightTicks}
           units={flamebearer.units}
-          palette={DefaultPalette}
+          palette={palette}
         />
       )}
 

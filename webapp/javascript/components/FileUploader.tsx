@@ -76,7 +76,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
 
   return (
     <section className={`${styles.container} ${className}`}>
-      <div {...getRootProps()} className={styles.dragAndDropContainer} >
+      <div {...getRootProps()} className={styles.dragAndDropContainer}>
         <input {...getInputProps()} />
         {file ? (
           <p>
@@ -89,7 +89,10 @@ export default function FileUploader({ file, setFile, className }: Props) {
               Drag and drop Flamegraph files here
             </p>
             <div className={styles.iconContainer}>
-              <FontAwesomeIcon icon={faArrowAltCircleUp} className={styles.fileUploadIcon} />
+              <FontAwesomeIcon
+                icon={faArrowAltCircleUp}
+                className={styles.fileUploadIcon}
+              />
             </div>
             <p className={styles.instructionsTextSecondary}>
               Or click to select a file from your device

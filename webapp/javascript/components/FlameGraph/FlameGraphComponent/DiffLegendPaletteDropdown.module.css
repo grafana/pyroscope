@@ -1,5 +1,18 @@
+.diffPaletteDropdown {
+  max-width: 510px;
+  min-width: 292px;
+  width: inherit;
+}
+
+.dropdownWrapper {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+
 .diffPaletteDropdown > div {
   margin-bottom: 0px;
+  display: flex;
 }
 
 .diffPaletteDropdown::after {
@@ -7,6 +20,11 @@
 }
 
 .dropdownItem {
+  width: 100%;
+  display: flex;
+}
+
+.diffPaletteDropdown ::global(.rc-menu-item) {
   display: flex;
 }
 

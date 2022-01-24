@@ -63,15 +63,7 @@ export default function Tooltip(props: TooltipProps) {
   const [style, setStyle] = React.useState<React.CSSProperties>();
   const tooltipEl = React.useRef(null);
 
-  const {
-    numTicks,
-    sampleRate,
-    units,
-    leftTicks,
-    rightTicks,
-    palette = DefaultPalette,
-  } = props;
-
+  const { numTicks, sampleRate, units, leftTicks, rightTicks, palette } = props;
   const onMouseOut = () => {
     setStyle({
       visibility: 'hidden',
