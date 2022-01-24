@@ -109,7 +109,7 @@ var _ = Describe("analytics", func() {
 					defer httpServer.Close()
 					url = httpServer.URL + "/api/events"
 
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 					Expect(err).ToNot(HaveOccurred())
 
 					stats := map[string]int{
