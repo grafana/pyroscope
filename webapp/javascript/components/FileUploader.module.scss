@@ -22,10 +22,25 @@
   border-color: #4d4d4d;
 }
 
-.instructionsTextMain {
-  font-size: 20pt;
+.fileUploadIcon {
+  color: #4d4d4d;
+  font-size: 40px;
   text-align: center;
   vertical-align: middle;
+}
+
+.iconContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.instructionsTextMain {
+  font-size: 16pt;
+  text-align: center;
+  vertical-align: middle;
+  margin: 0 0 10px 0;
 }
 
 .instructionsTextSecondary {
