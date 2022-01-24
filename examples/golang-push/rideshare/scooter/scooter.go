@@ -2,6 +2,6 @@ package scooter
 
 import "rideshare/utility"
 
-func OrderScooter(search_radius int64) {
-	utility.FindNearestVehicle(search_radius, "scooter")
+func OrderScooter(searchRadius int64) {
+	utility.FindNearestVehicle(searchRadius, "scooter")
 }

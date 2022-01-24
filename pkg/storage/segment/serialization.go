@@ -54,38 +54,39 @@ func (s *Segment) Serialize(w io.Writer) error {
 		return nil
 	}
 
-	nodes := []*streeNode{s.root}
-	for len(nodes) > 0 {
-		n := nodes[0]
-		vw.Write(w, uint64(n.depth))
-		vw.Write(w, uint64(n.time.Unix()))
-		vw.Write(w, n.samples)
-		vw.Write(w, n.writes)
-		p := uint64(0)
-		if n.present {
-			p = 1
-		}
-		vw.Write(w, p)
-		nodes = nodes[1:]
-
-		// depth
-		// time
-		// keyInChunks
-		// children
-		l := 0
-		r := []*streeNode{}
-		for _, v := range n.children {
-			if v != nil {
-				l++
-				r = append(r, v)
-			}
-		}
-
-		vw.Write(w, uint64(l))
-		nodes = append(r, nodes...)
-	}
+	s.serialize(w, vw, s.root)
 
 	return s.watermarks.serialize(w)
+}
+
+func (s *Segment) serialize(w io.Writer, vw varint.Writer, n *streeNode) {
+	vw.Write(w, uint64(n.depth))
+	vw.Write(w, uint64(n.time.Unix()))
+	vw.Write(w, n.samples)
+	vw.Write(w, n.writes)
+	p := uint64(0)
+	if n.present {
+		p = 1
+	}
+	vw.Write(w, p)
+
+	// depth
+	// time
+	// keyInChunks
+	// children
+	l := 0
+	for _, v := range n.children {
+		if v != nil {
+			l++
+		}
+	}
+
+	vw.Write(w, uint64(l))
+	for _, v := range n.children {
+		if v != nil {
+			s.serialize(w, vw, v)
+		}
+	}
 }
 
 var errMaxDepth = errors.New("depth is too high")

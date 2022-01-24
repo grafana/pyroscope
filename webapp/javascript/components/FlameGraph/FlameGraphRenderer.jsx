@@ -7,11 +7,15 @@
 
 import React from 'react';
 import clsx from 'clsx';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
+import {
+  DefaultPalette,
+  ColorBlindPalette,
+} from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.css';
 
 import ExportData from '../ExportData';
@@ -20,8 +24,8 @@ class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
   // eg localstorage
   initialFlamegraphState = {
-    focusedNode: Option.none(),
-    zoom: Option.none(),
+    focusedNode: Maybe.nothing(),
+    zoom: Maybe.nothing(),
   };
 
   constructor(props) {
@@ -39,6 +43,9 @@ class FlameGraphRenderer extends React.Component {
       highlightQuery: '',
 
       flamegraphConfigs: this.initialFlamegraphState,
+
+      // TODO make this come from the redux store?
+      palette: DefaultPalette,
     };
 
     // for situations like in grafana we only display the flamegraph
@@ -63,20 +70,6 @@ class FlameGraphRenderer extends React.Component {
     this.abortCurrentJSONController();
   }
 
-  updateFitMode = (newFitMode) => {
-    this.setState({
-      fitMode: newFitMode,
-    });
-  };
-
-  updateFlamegraphDirtiness = () => {
-    const isDirty = this.isDirty();
-
-    this.setState({
-      isFlamegraphDirty: isDirty,
-    });
-  };
-
   handleSearchChange = (e) => {
     this.setState({
       highlightQuery: e,
@@ -93,21 +86,9 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateView = (newView) => {
-    this.setState({
-      view: newView,
-    });
-  };
-
-  updateViewDiff = (newView) => {
-    this.setState({
-      viewDiff: newView,
-    });
-  };
-
   onFlamegraphZoom = (bar) => {
     // zooming on the topmost bar is equivalent to resetting to the original state
-    if (bar.isSome() && bar.get().i === 0 && bar.get().j === 0) {
+    if (bar.isJust && bar.value.i === 0 && bar.value.j === 0) {
       this.onReset();
       return;
     }
@@ -134,8 +115,8 @@ class FlameGraphRenderer extends React.Component {
     // reset zoom if we are focusing below the zoom
     // or the same one we were zoomed
     const { zoom } = this.state.flamegraphConfigs;
-    if (zoom.isSome()) {
-      if (zoom.get().i <= i) {
+    if (zoom.isJust) {
+      if (zoom.value.i <= i) {
         flamegraphConfigs = {
           ...flamegraphConfigs,
           zoom: this.initialFlamegraphState.zoom,
@@ -147,9 +128,19 @@ class FlameGraphRenderer extends React.Component {
       ...this.state,
       flamegraphConfigs: {
         ...flamegraphConfigs,
-        focusedNode: Option.some({ i, j }),
+        focusedNode: Maybe.just({ i, j }),
       },
     });
+  };
+
+  // if clicking on the same item, undo the search
+  onTableItemClick = (tableItem) => {
+    let { name } = tableItem;
+
+    if (tableItem.name === this.state.highlightQuery) {
+      name = '';
+    }
+    this.handleSearchChange(name);
   };
 
   updateSortBy = (newSortBy) => {
@@ -162,6 +153,32 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       sortBy: newSortBy,
       sortByDirection: dir,
+    });
+  };
+
+  updateViewDiff = (newView) => {
+    this.setState({
+      viewDiff: newView,
+    });
+  };
+
+  updateView = (newView) => {
+    this.setState({
+      view: newView,
+    });
+  };
+
+  updateFlamegraphDirtiness = () => {
+    const isDirty = this.isDirty();
+
+    this.setState({
+      isFlamegraphDirty: isDirty,
+    });
+  };
+
+  updateFitMode = (newFitMode) => {
+    this.setState({
+      fitMode: newFitMode,
     });
   };
 
@@ -217,6 +234,9 @@ class FlameGraphRenderer extends React.Component {
           viewDiff={this.state.viewDiff}
           fitMode={this.state.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
+          highlightQuery={this.state.highlightQuery}
+          handleTableItemClick={this.onTableItemClick}
+          palette={this.state.palette}
         />
       </div>
     );
@@ -229,23 +249,6 @@ class FlameGraphRenderer extends React.Component {
       this.props.viewSide
     );
 
-    const exportData = () => {
-      if (!this.state.flamebearer) {
-        return <ExportData />;
-      }
-
-      if (!this.props.rawFlamegraph) {
-        return <ExportData />;
-      }
-
-      // we only want to download single ones
-      if (this.state.flamebearer.format === 'double') {
-        return <ExportData />;
-      }
-
-      return <ExportData exportFlamebearer={this.props.rawFlamegraph} />;
-    };
-
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
@@ -254,7 +257,7 @@ class FlameGraphRenderer extends React.Component {
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
-          ExportData={exportData}
+          ExportData={() => this.props.ExportData}
           highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
@@ -265,6 +268,12 @@ class FlameGraphRenderer extends React.Component {
           onFocusOnNode={this.onFocusOnNode}
           onReset={this.onReset}
           isDirty={this.isDirty}
+          palette={this.state.palette}
+          setPalette={(p) =>
+            this.setState({
+              palette: p,
+            })
+          }
         />
       ) : null;
 
@@ -295,6 +304,7 @@ class FlameGraphRenderer extends React.Component {
               fitMode={this.state.fitMode}
               isFlamegraphDirty={this.state.isFlamegraphDirty}
               selectedNode={this.state.flamegraphConfigs.zoom}
+              highlightQuery={this.state.highlightQuery}
               onFocusOnSubtree={(i, j) => {
                 this.onFocusOnNode(i, j);
               }}

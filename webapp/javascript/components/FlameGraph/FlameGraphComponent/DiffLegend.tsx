@@ -1,33 +1,40 @@
 import React from 'react';
 import useResizeObserver from '@react-hook/resize-observer';
-import { colorFromPercentage } from './color';
+import { NewDiffColor } from './color';
+import { FlamegraphPalette } from './colorPalette';
 import styles from './DiffLegend.module.css';
 
-export default function DiffLegend() {
+// TODO
+interface DiffLegendProps {
+  palette: FlamegraphPalette;
+}
+
+export default function DiffLegend(props: DiffLegendProps) {
+  const { palette } = props;
   const legendRef = React.useRef();
   const showMode = useSizeMode(legendRef);
   const values = decideLegend(showMode);
 
+  const color = NewDiffColor(palette);
+
   return (
     <div
-      className={`row ${styles['flamegraph-legend']}`}
       data-testid="flamegraph-legend"
+      className={`${styles['flamegraph-legend']} ${styles['flamegraph-legend-list']}`}
       ref={legendRef}
     >
-      <div className={styles['flamegraph-legend-list']}>
-        {values.map((v) => (
-          <div
-            key={v}
-            className={styles['flamegraph-legend-item']}
-            style={{
-              backgroundColor: colorFromPercentage(v, 0.8).string(),
-            }}
-          >
-            {v > 0 ? '+' : ''}
-            {v}%
-          </div>
-        ))}
-      </div>
+      {values.map((v) => (
+        <div
+          key={v}
+          className={styles['flamegraph-legend-item']}
+          style={{
+            backgroundColor: color(v).rgb().toString(),
+          }}
+        >
+          {v > 0 ? '+' : ''}
+          {v}%
+        </div>
+      ))}
     </div>
   );
 }
@@ -35,11 +42,11 @@ export default function DiffLegend() {
 function decideLegend(showMode: ReturnType<typeof useSizeMode>) {
   switch (showMode) {
     case 'large': {
-      return [100, 80, 60, 40, 20, 10, 0, -10, -20, -40, -60, -80, -100];
+      return [-100, -80, -60, -40, -20, -10, 0, 10, 20, 40, 60, 80, 100];
     }
 
     case 'small': {
-      return [100, 40, 20, 0, -20, -40, -100];
+      return [-100, -40, -20, 0, 20, 40, 100];
     }
 
     default:

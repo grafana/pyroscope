@@ -27,7 +27,9 @@ func (s *Storage) Put(pi *PutInput) error {
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
-
+	if s.hc.IsOutOfDiskSpace() {
+		return errOutOfSpace
+	}
 	if pi.StartTime.Before(s.retentionPolicy().LowerTimeBoundary()) {
 		return errRetention
 	}

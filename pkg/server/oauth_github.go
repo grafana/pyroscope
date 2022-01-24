@@ -11,18 +11,18 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type oauthHanlderGithub struct {
+type oauthHandlerGithub struct {
 	oauthBase
 	allowedOrganizations []string
 }
 
-func newGithubHandler(cfg config.GithubOauth, baseURL string, log *logrus.Logger) (*oauthHanlderGithub, error) {
+func newGithubHandler(cfg config.GithubOauth, baseURL string, log *logrus.Logger) (*oauthHandlerGithub, error) {
 	authURL, err := url.Parse(cfg.AuthURL)
 	if err != nil {
 		return nil, err
 	}
 
-	h := &oauthHanlderGithub{
+	h := &oauthHandlerGithub{
 		oauthBase: oauthBase{
 			config: &oauth2.Config{
 				ClientID:     cfg.ClientID,
@@ -51,7 +51,7 @@ type githubOrganizations struct {
 	Login string
 }
 
-func (o oauthHanlderGithub) userAuth(client *http.Client) (string, error) {
+func (o oauthHandlerGithub) userAuth(client *http.Client) (string, error) {
 	type userProfileResponse struct {
 		ID        int64
 		Email     string
@@ -91,7 +91,7 @@ func (o oauthHanlderGithub) userAuth(client *http.Client) (string, error) {
 	return "", errForbidden
 }
 
-func (o oauthHanlderGithub) fetchOrganizations(client *http.Client) ([]githubOrganizations, error) {
+func (o oauthHandlerGithub) fetchOrganizations(client *http.Client) ([]githubOrganizations, error) {
 	orgsURL := o.apiURL + "/user/orgs"
 	more := true
 	organizations := make([]githubOrganizations, 0)
@@ -120,6 +120,6 @@ func (o oauthHanlderGithub) fetchOrganizations(client *http.Client) ([]githubOrg
 	return organizations, nil
 }
 
-func (o oauthHanlderGithub) getOauthBase() oauthBase {
+func (o oauthHandlerGithub) getOauthBase() oauthBase {
 	return o.oauthBase
 }

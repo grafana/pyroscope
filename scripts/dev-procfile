@@ -1,2 +1,3 @@
 air: air
 webpack: yarn dev --watch
+webpack-standalone: yarn dev:standalone

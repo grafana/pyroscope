@@ -28,6 +28,7 @@ class TimelineChartWrapper extends React.Component {
         },
         grid: {
           borderWidth: 1,
+          hoverable: true,
         },
         yaxis: {
           show: false,
@@ -157,16 +158,34 @@ class TimelineChartWrapper extends React.Component {
   };
 
   render = () => {
+    // Since profiling data is chuked by 10 seconds slices
+    // it's more user friendly to point a `center` of a data chunk
+    // as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
     const flotData = this.props.timeline
-      ? [this.props.timeline.map((x) => [x[0], x[1] === 0 ? null : x[1] - 1])]
+      ? [
+          this.props.timeline.map((x) => [
+            x[0] + 5000,
+            x[1] === 0 ? null : x[1] - 1,
+          ]),
+        ]
       : [];
+
+    // In case there are few chunks left, then we'd like to add some margins to
+    // both sides making it look more centers
+    const flotOptions = {
+      ...this.state.flotOptions,
+      xaxis: {
+        ...this.state.flotOptions.xaxis,
+        autoscaleMargin: flotData[0] && flotData[0].length > 3 ? null : 0.005,
+      },
+    };
 
     return (
       <TimelineChart
         className={styles.wrapper}
         data-testid={this.props['data-testid']}
         id={this.props.id}
-        options={this.state.flotOptions}
+        options={flotOptions}
         viewSide={this.props.viewSide}
         data={flotData}
         width="100%"

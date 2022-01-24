@@ -46,6 +46,9 @@ import {
   RECEIVE_ADHOC_RIGHT_PROFILE,
   CANCEL_ADHOC_LEFT_PROFILE,
   CANCEL_ADHOC_RIGHT_PROFILE,
+  REQUEST_ADHOC_PROFILE_DIFF,
+  RECEIVE_ADHOC_PROFILE_DIFF,
+  CANCEL_ADHOC_PROFILE_DIFF,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 import { addNotification } from './reducers/notifications';
@@ -187,10 +190,7 @@ export const setAdhocRightFile = (file, flamebearer) => ({
   payload: { file, flamebearer },
 });
 
-export const requestAdhocProfiles = () => ({
-  type: REQUEST_ADHOC_PROFILES,
-  payload: {},
-});
+export const requestAdhocProfiles = () => ({ type: REQUEST_ADHOC_PROFILES });
 
 export const receiveAdhocProfiles = (profiles) => ({
   type: RECEIVE_ADHOC_PROFILES,
@@ -204,10 +204,7 @@ export const setAdhocProfile = (profile) => ({
   payload: { profile },
 });
 
-export const requestAdhocProfile = (profile) => ({
-  type: REQUEST_ADHOC_PROFILE,
-  payload: { profile },
-});
+export const requestAdhocProfile = () => ({ type: REQUEST_ADHOC_PROFILE });
 
 export const receiveAdhocProfile = (flamebearer) => ({
   type: RECEIVE_ADHOC_PROFILE,
@@ -221,9 +218,8 @@ export const setAdhocLeftProfile = (profile) => ({
   payload: { profile },
 });
 
-export const requestAdhocLeftProfile = (profile) => ({
+export const requestAdhocLeftProfile = () => ({
   type: REQUEST_ADHOC_LEFT_PROFILE,
-  payload: { profile },
 });
 
 export const receiveAdhocLeftProfile = (flamebearer) => ({
@@ -240,9 +236,8 @@ export const setAdhocRightProfile = (profile) => ({
   payload: { profile },
 });
 
-export const requestAdhocRightProfile = (profile) => ({
+export const requestAdhocRightProfile = () => ({
   type: REQUEST_ADHOC_RIGHT_PROFILE,
-  payload: { profile },
 });
 
 export const receiveAdhocRightProfile = (flamebearer) => ({
@@ -252,6 +247,19 @@ export const receiveAdhocRightProfile = (flamebearer) => ({
 
 export const cancelAdhocRightProfile = () => ({
   type: CANCEL_ADHOC_RIGHT_PROFILE,
+});
+
+export const requestAdhocProfileDiff = () => ({
+  type: REQUEST_ADHOC_PROFILE_DIFF,
+});
+
+export const receiveAdhocProfileDiff = (flamebearer) => ({
+  type: RECEIVE_ADHOC_PROFILE_DIFF,
+  payload: { flamebearer },
+});
+
+export const cancelAdhocProfileDiff = () => ({
+  type: CANCEL_ADHOC_PROFILE_DIFF,
 });
 
 // ResponseNotOkError refers to when request is not ok
@@ -450,7 +458,7 @@ export function fetchTagValues(query, tag) {
 
     dispatch(requestTagValues(tag));
     return fetch(
-      `/label-values?label=${encodeURIComponent(
+      `./label-values?label=${encodeURIComponent(
         tag
       )}&query=${encodeURIComponent(query)}`
     )
@@ -477,7 +485,7 @@ export function fetchNames() {
     currentNamesController = new AbortController();
 
     dispatch(requestNames());
-    return fetch('/label-values?label=__name__', {
+    return fetch('./label-values?label=__name__', {
       signal: currentNamesController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -496,7 +504,7 @@ export function fetchAdhocProfiles() {
 
     adhocProfilesController = new AbortController();
     dispatch(requestAdhocProfiles());
-    return fetch('/api/adhoc/v1/profiles', {
+    return fetch('./api/adhoc/v1/profiles', {
       signal: adhocProfilesController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -522,8 +530,8 @@ export function fetchAdhocProfile(profile) {
     }
 
     adhocProfileController = new AbortController();
-    dispatch(requestAdhocProfile(profile));
-    return fetch(`/api/adhoc/v1/profile/${profile}`, {
+    dispatch(requestAdhocProfile());
+    return fetch(`./api/adhoc/v1/profile/${profile}`, {
       signal: adhocProfileController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -549,8 +557,8 @@ export function fetchAdhocLeftProfile(profile) {
     }
 
     adhocLeftProfileController = new AbortController();
-    dispatch(requestAdhocLeftProfile(profile));
-    return fetch(`/api/adhoc/v1/profile/${profile}`, {
+    dispatch(requestAdhocLeftProfile());
+    return fetch(`./api/adhoc/v1/profile/${profile}`, {
       signal: adhocLeftProfileController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -576,8 +584,8 @@ export function fetchAdhocRightProfile(profile) {
     }
 
     adhocRightProfileController = new AbortController();
-    dispatch(requestAdhocRightProfile(profile));
-    return fetch(`/api/adhoc/v1/profile/${profile}`, {
+    dispatch(requestAdhocRightProfile());
+    return fetch(`./api/adhoc/v1/profile/${profile}`, {
       signal: adhocRightProfileController.signal,
     })
       .then((response) => handleResponse(dispatch, response))
@@ -591,6 +599,33 @@ export function abortFetchAdhocRightProfile() {
   return () => {
     if (adhocRightProfileController) {
       adhocRightProfileController.abort();
+    }
+  };
+}
+
+let adhocProfileDiffController;
+export function fetchAdhocProfileDiff(left, right) {
+  return (dispatch) => {
+    if (adhocProfileDiffController) {
+      adhocProfileDiffController.abort();
+    }
+
+    adhocProfileDiffController = new AbortController();
+    dispatch(requestAdhocProfileDiff());
+    return fetch(`./api/adhoc/v1/diff/${left}/${right}`, {
+      signal: adhocProfileDiffController.signal,
+    })
+      .then((response) => handleResponse(dispatch, response))
+      .then((data) => dispatch(receiveAdhocProfileDiff(data)))
+      .catch((e) => handleError(dispatch, e))
+      .then(() => dispatch(cancelAdhocProfileDiff()))
+      .finally();
+  };
+}
+export function abortFetchAdhocProfileDiff() {
+  return () => {
+    if (adhocProfileDiffController) {
+      adhocProfileDiffController.abort();
     }
   };
 }

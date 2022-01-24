@@ -2,7 +2,7 @@
 import React from 'react';
 import Box from '@ui/Box';
 import Button from '@ui/Button';
-import { ComponentStory, ComponentMeta } from '@storybook/react';
+import { ComponentMeta } from '@storybook/react';
 
 export default {
   title: 'Components/Box',

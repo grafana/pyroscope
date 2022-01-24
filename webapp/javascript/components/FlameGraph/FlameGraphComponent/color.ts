@@ -1,6 +1,8 @@
 /* eslint-disable camelcase */
 import Color from 'color';
+import { scaleThreshold, scaleLinear } from 'd3-scale';
 import murmurhash3_32_gc from './murmur3';
+import type { FlamegraphPalette } from './colorPalette';
 
 const colors = [
   Color.hsl(24, 69, 60),
@@ -36,32 +38,38 @@ export const diffColorGreen = Color.rgb(0, 170, 0);
 
 export const highlightColor = Color('#48CE73');
 
-// assume: left >= 0 && Math.abs(diff) <= left so diff / left is in [0...1]
-// if left == 0 || Math.abs(diff) > left, we use the color of 100%
-export function colorBasedOnDiff(diff: number, left: number, a: number) {
-  const v =
-    !left || Math.abs(diff) > left
-      ? 200
-      : 200 * Math.sqrt(Math.abs(diff / left));
-  if (diff >= 0) return Color.rgb(200, 200 - v, 200 - v).alpha(a);
-
-  return Color.rgb(200 - v, 200, 200 - v).alpha(a);
-}
-
 export function colorBasedOnDiffPercent(
+  palette: FlamegraphPalette,
   leftPercent: number,
-  rightPercent: number,
-  alpha: number
+  rightPercent: number
 ) {
   const result = diffPercent(leftPercent, rightPercent);
-  return colorFromPercentage(result, alpha);
+  const color = NewDiffColor(palette);
+  return color(result);
 }
 
 // TODO move to a different file
 // difference between 2 percents
 export function diffPercent(leftPercent: number, rightPercent: number) {
+  if (leftPercent === rightPercent) {
+    return 0;
+  }
+
+  if (leftPercent === 0) {
+    return 100;
+  }
+
   // https://en.wikipedia.org/wiki/Relative_change_and_difference
-  return ((rightPercent - leftPercent) / leftPercent) * 100;
+  const result = ((rightPercent - leftPercent) / leftPercent) * 100;
+
+  if (result > 100) {
+    return 100;
+  }
+  if (result < -100) {
+    return -100;
+  }
+
+  return result;
 }
 
 export function colorFromPercentage(p: number, alpha: number) {
@@ -119,9 +127,39 @@ export function getPackageNameFromStackTrace(
   return stackTrace;
 }
 
-export function colorBasedOnPackageName(name: string, a: number) {
+export function colorBasedOnPackageName(
+  palette: FlamegraphPalette,
+  name: string
+) {
   const hash = murmurhash3_32_gc(name);
-  const colorIndex = hash % colors.length;
-  const baseClr = colors[colorIndex];
-  return baseClr.alpha(a);
+  const colorIndex = hash % palette.colors.length;
+  const baseClr = palette.colors[colorIndex];
+
+  return baseClr;
+}
+
+/**
+ * NewDiffColor constructs a function that given a number from -100 to 100
+ * it returns the color for that number in a linear scale
+ * encoded in rgb
+ */
+export function NewDiffColor(
+  props: Omit<FlamegraphPalette, 'colors'>
+): (n: number) => Color {
+  const { goodColor, neutralColor, badColor } = props;
+
+  const color = scaleLinear()
+    .domain([-100, 0, 100])
+    // TODO types from DefinitelyTyped seem to mismatch
+    .range([
+      goodColor.rgb().toString(),
+      neutralColor.rgb().toString(),
+      badColor.rgb().toString(),
+    ] as any);
+
+  return (n: number) => {
+    // convert to our Color object
+    // since that's what users are expecting to use
+    return Color(color(n).toString());
+  };
 }

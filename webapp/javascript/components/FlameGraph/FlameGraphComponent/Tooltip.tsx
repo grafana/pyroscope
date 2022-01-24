@@ -6,18 +6,19 @@ import {
   formatPercent,
   ratioToPercent,
 } from '@utils/format';
-import { Option } from 'prelude-ts';
-import { diffColorRed, diffColorGreen } from './color';
+import { Maybe } from '@utils/fp';
+import type { UnwrapMaybe } from '@utils/fp';
+import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 
 type xyToDataSingle = (
   x: number,
   y: number
-) => Option<{ format: 'single'; name: string; total: number }>;
+) => Maybe<{ format: 'single'; name: string; total: number }>;
 
 type xyToDataDouble = (
   x: number,
   y: number
-) => Option<{
+) => Maybe<{
   format: 'double';
   name: string;
   totalLeft: number;
@@ -33,6 +34,8 @@ export type TooltipProps = {
   numTicks: number;
   leftTicks: number;
   rightTicks: number;
+
+  palette: FlamegraphPalette;
 } & (
   | { format: 'single'; xyToData: xyToDataSingle }
   | {
@@ -60,7 +63,14 @@ export default function Tooltip(props: TooltipProps) {
   const [style, setStyle] = React.useState<React.CSSProperties>();
   const tooltipEl = React.useRef(null);
 
-  const { numTicks, sampleRate, units, leftTicks, rightTicks } = props;
+  const {
+    numTicks,
+    sampleRate,
+    units,
+    leftTicks,
+    rightTicks,
+    palette = DefaultPalette,
+  } = props;
 
   const onMouseOut = () => {
     setStyle({
@@ -87,14 +97,16 @@ export default function Tooltip(props: TooltipProps) {
       };
 
       const opt = xyToData(e.offsetX, e.offsetY);
-      const isNone = opt.isNone();
+      let data: UnwrapMaybe<typeof opt>;
 
-      if (isNone) {
+      // waiting on
+      // https://github.com/true-myth/true-myth/issues/279
+      if (opt.isJust) {
+        data = opt.value;
+      } else {
         onMouseOut();
         return;
       }
-
-      const data = opt.get();
 
       // set the content
       switch (data.format) {
@@ -123,15 +135,18 @@ export default function Tooltip(props: TooltipProps) {
             );
           }
 
-          const d = formatDouble({
-            formatter,
-            sampleRate,
-            totalLeft: data.totalLeft,
-            leftTicks,
-            totalRight: data.totalRight,
-            rightTicks,
-            title: data.name,
-          });
+          const d = formatDouble(
+            {
+              formatter,
+              sampleRate,
+              totalLeft: data.totalLeft,
+              leftTicks,
+              totalRight: data.totalRight,
+              rightTicks,
+              title: data.name,
+            },
+            palette
+          );
 
           setContent({
             title: d.title,
@@ -222,23 +237,26 @@ function formatSingle(
   };
 }
 
-function formatDouble({
-  formatter,
-  sampleRate,
-  totalLeft,
-  leftTicks,
-  totalRight,
-  rightTicks,
-  title,
-}: {
-  formatter: Formatter;
-  sampleRate: number;
-  totalLeft: number;
-  leftTicks: number;
-  totalRight: number;
-  rightTicks: number;
-  title: string;
-}) {
+function formatDouble(
+  {
+    formatter,
+    sampleRate,
+    totalLeft,
+    leftTicks,
+    totalRight,
+    rightTicks,
+    title,
+  }: {
+    formatter: Formatter;
+    sampleRate: number;
+    totalLeft: number;
+    leftTicks: number;
+    totalRight: number;
+    rightTicks: number;
+    title: string;
+  },
+  palette: FlamegraphPalette = DefaultPalette
+) {
   const leftRatio = totalLeft / leftTicks;
   const rightRatio = totalRight / rightTicks;
 
@@ -257,9 +275,9 @@ function formatDouble({
 
   let tooltipDiffColor = '';
   if (totalDiff > 0) {
-    tooltipDiffColor = diffColorRed.rgb().string();
+    tooltipDiffColor = palette.badColor.rgb().string();
   } else if (totalDiff < 0) {
-    tooltipDiffColor = diffColorGreen.rgb().string();
+    tooltipDiffColor = palette.goodColor.rgb().string();
   }
 
   let tooltipDiffText = '';

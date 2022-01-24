@@ -2,12 +2,15 @@ import React from 'react';
 import {
   ClickEvent,
   Menu,
+  MenuProps,
   MenuHeader,
   SubMenu as LibSubmenu,
   MenuItem as LibMenuItem,
   MenuButton as LibMenuButton,
   FocusableItem as LibFocusableItem,
 } from '@szhsin/react-menu';
+
+import cx from 'classnames';
 import styles from './Dropdown.module.scss';
 
 export interface DropdownProps {
@@ -17,6 +20,7 @@ export interface DropdownProps {
   disabled?: boolean;
   ['data-testid']?: string;
   className?: string;
+  menuButtonClassName?: string;
 
   /** Dropdown label */
   label: string;
@@ -28,6 +32,11 @@ export interface DropdownProps {
 
   /** Event that fires when an item is activated*/
   onItemClick?: (event: ClickEvent) => void;
+
+  overflow?: MenuProps['overflow'];
+  position?: MenuProps['position'];
+
+  menuButton?: JSX.Element;
 }
 
 export default function Dropdown({
@@ -38,22 +47,29 @@ export default function Dropdown({
   value,
   label,
   onItemClick,
+  overflow,
+  position,
+  menuButtonClassName = '',
   ...props
 }: DropdownProps) {
+  const menuButtonComponent = props.menuButton || (
+    <MenuButton
+      className={`${styles.dropdownMenuButton} ${menuButtonClassName}`}
+      disabled={disabled}
+    >
+      {value || label}
+    </MenuButton>
+  );
+
   return (
     <Menu
       id={id}
-      className={`${className} ${styles.dropdownMenu}`}
+      className={cx(className, styles.dropdownMenu)}
       data-testid={props['data-testid']}
       onItemClick={onItemClick}
-      menuButton={
-        <MenuButton
-          className={`${styles.dropdownMenuButton}`}
-          disabled={disabled}
-        >
-          {value || label}
-        </MenuButton>
-      }
+      overflow={overflow}
+      position={position}
+      menuButton={menuButtonComponent}
     >
       <MenuHeader>{label}</MenuHeader>
       {children}

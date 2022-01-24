@@ -1,4 +1,8 @@
 // src/myHistory.js
 import { createBrowserHistory } from 'history';
-const history = createBrowserHistory();
+import basename from './baseurl';
+
+const history = createBrowserHistory({
+  basename: basename(),
+});
 export default history;

@@ -1,47 +1,118 @@
+/* eslint-disable react/destructuring-assignment */
 import React, { useState } from 'react';
 
 import Button from '@ui/Button';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
+import { buildRenderURL } from '@utils/updateRequests';
+import { dateForExportFilename } from '@utils/formatDate';
 
 import clsx from 'clsx';
-import { Flamebearer } from '@models/flamebearer';
+import { RawFlamebearerProfile } from '@models/flamebearer';
 
-interface ExportDataProps {
-  exportFlamebearer?: Flamebearer;
-}
+// These are modeled individually since each condition may have different values
+// For example, a exportPprof: true may accept a custom export function
+// For cases like grafana
+type exportJSON =
+  | {
+      exportJSON: true;
+      flamebearer: RawFlamebearerProfile;
+    }
+  | { exportJSON?: false };
+
+type exportPprof =
+  | {
+      exportPprof: true;
+      flamebearer: RawFlamebearerProfile;
+    }
+  | { exportPprof?: false };
+
+type exportHTML =
+  | {
+      exportHTML: true;
+      fetchUrlFunc?: () => string;
+      flamebearer: RawFlamebearerProfile;
+    }
+  | { exportHTML?: false };
+
+type exportPNG =
+  | {
+      exportPNG: true;
+      flamebearer: RawFlamebearerProfile;
+    }
+  | { exportPNG?: false };
+
+type ExportDataProps = exportPprof & exportJSON & exportHTML & exportPNG;
+
 function ExportData(props: ExportDataProps) {
-  const { exportFlamebearer } = props;
+  const {
+    exportPprof = false,
+    exportJSON = false,
+    exportPNG = false,
+    exportHTML = false,
+  } = props;
+  if (!exportPNG && !exportJSON && !exportPprof && !exportHTML) {
+    throw new Error('At least one export button should be enabled');
+  }
+
   const [toggleMenu, setToggleMenu] = useState(false);
 
-  const formattedDate = () => {
-    const cd = new Date();
-    const d = cd.getDate() < 10 ? `0${cd.getDate()}` : `${cd.getDate()}`;
-    const m = cd.getMonth() < 10 ? `0${cd.getMonth()}` : `${cd.getMonth()}`;
-    const y = cd.getFullYear();
-    return `${d}_${m}_${y}`;
+  const downloadJSON = () => {
+    if (!props.exportJSON) {
+      return;
+    }
+
+    // TODO additional check this won't be needed once we use strictNullChecks
+    if (props.exportJSON) {
+      const { flamebearer } = props;
+      const filename = `${getFilename(
+        flamebearer.metadata.appName,
+        flamebearer.metadata.startTime,
+        flamebearer.metadata.endTime
+      )}.json`;
+
+      const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
+        JSON.stringify(flamebearer)
+      )}`;
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute('href', dataStr);
+      downloadAnchorNode.setAttribute('download', filename);
+      document.body.appendChild(downloadAnchorNode); // required for firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
   };
 
-  // export flamegraph canvas element
-  const exportCanvas = (mimeType: 'png') => {
-    // TODO use ref
-    const canvasElement = document.querySelector(
-      '.flamegraph-canvas'
-    ) as HTMLCanvasElement;
-    const MIME_TYPE = `image/${mimeType}`;
-    const imgURL = canvasElement.toDataURL();
-    const dlLink = document.createElement('a');
+  const downloadPNG = () => {
+    if (props.exportPNG) {
+      const { flamebearer } = props;
+      const mimeType = 'png';
+      // TODO use ref
+      // this won't work for comparison side by side
+      const canvasElement = document.querySelector(
+        '.flamegraph-canvas'
+      ) as HTMLCanvasElement;
+      const MIME_TYPE = `image/${mimeType}`;
+      const imgURL = canvasElement.toDataURL();
+      const dlLink = document.createElement('a');
+      const filename = `${getFilename(
+        flamebearer.metadata.appName,
+        flamebearer.metadata.startTime,
+        flamebearer.metadata.endTime
+      )}.png`;
 
-    dlLink.download = `flamegraph_visual_${formattedDate()}`;
-    dlLink.href = imgURL;
-    dlLink.dataset.downloadurl = [MIME_TYPE, dlLink.download, dlLink.href].join(
-      ':'
-    );
+      dlLink.download = filename;
+      dlLink.href = imgURL;
+      dlLink.dataset.downloadurl = [
+        MIME_TYPE,
+        dlLink.download,
+        dlLink.href,
+      ].join(':');
 
-    document.body.appendChild(dlLink);
-    dlLink.click();
-    document.body.removeChild(dlLink);
-    setToggleMenu(!toggleMenu);
+      document.body.appendChild(dlLink);
+      dlLink.click();
+      document.body.removeChild(dlLink);
+      setToggleMenu(!toggleMenu);
+    }
   };
 
   const handleToggleMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -49,53 +120,140 @@ function ExportData(props: ExportDataProps) {
     setToggleMenu(!toggleMenu);
   };
 
-  const downloadFlamebearer = function (
-    exportObj: Flamebearer,
-    exportName: string
-  ) {
-    const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
-      JSON.stringify(exportObj)
-    )}`;
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute('href', dataStr);
-    downloadAnchorNode.setAttribute('download', `${exportName}.json`);
-    document.body.appendChild(downloadAnchorNode); // required for firefox
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+  const downloadPprof = function () {
+    if (!props.exportPprof) {
+      return;
+    }
+
+    if (props.exportPprof) {
+      const { flamebearer } = props;
+
+      // TODO
+      // This build url won't work in the following cases:
+      // * absence of a public server (grafana, standalone)
+      // * diff mode
+      const url = `${buildRenderURL({
+        from: flamebearer.metadata.startTime,
+        until: flamebearer.metadata.endTime,
+        query: flamebearer.metadata.query,
+        maxNodes: flamebearer.metadata.maxNodes,
+      })}&format=pprof`;
+
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute('href', url);
+      document.body.appendChild(downloadAnchorNode); // required for firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
+  };
+
+  const downloadHTML = function () {
+    if (props.exportHTML) {
+      const { flamebearer } = props;
+
+      const url =
+        typeof props.fetchUrlFunc === 'function'
+          ? props.fetchUrlFunc()
+          : buildRenderURL({
+              from: flamebearer.metadata.startTime,
+              until: flamebearer.metadata.endTime,
+              query: flamebearer.metadata.query,
+              maxNodes: flamebearer.metadata.maxNodes,
+            });
+      const urlWithFormat = `${url}&format=html`;
+      const filename = `${getFilename(
+        flamebearer.metadata.appName,
+        flamebearer.metadata.startTime,
+        flamebearer.metadata.endTime
+      )}.html`;
+
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute('href', urlWithFormat);
+      downloadAnchorNode.setAttribute('download', filename);
+      document.body.appendChild(downloadAnchorNode); // required for firefox
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+    }
   };
 
   return (
     <div className="dropdown-container">
       <Button icon={faBars} onClick={handleToggleMenu} />
-
       <div
         className={clsx({ 'menu-show': toggleMenu, 'menu-hide': !toggleMenu })}
       >
-        <div className="dropdown-header">Export Flamegraph</div>
-        <div>
+        {exportPNG && (
           <button
             className="dropdown-menu-item"
-            onClick={() => exportCanvas('png')}
-            onKeyPress={() => exportCanvas('png')}
+            onClick={() => downloadPNG()}
+            onKeyPress={() => downloadPNG()}
             type="button"
           >
-            PNG
+            png
           </button>
-          {exportFlamebearer && (
-            <button
-              className="dropdown-menu-item"
-              type="button"
-              onClick={() =>
-                downloadFlamebearer(exportFlamebearer, 'pyroscope_export')
-              }
-            >
-              JSON
-            </button>
-          )}
-        </div>
+        )}
+        {exportJSON && (
+          <button
+            className="dropdown-menu-item"
+            type="button"
+            onClick={() => downloadJSON()}
+          >
+            json
+          </button>
+        )}
+        {exportPprof && (
+          <button
+            className="dropdown-menu-item"
+            type="button"
+            onClick={() => downloadPprof()}
+          >
+            pprof
+          </button>
+        )}
+        {exportHTML && (
+          <button
+            className="dropdown-menu-item"
+            type="button"
+            onClick={() => downloadHTML()}
+          >
+            {' '}
+            html
+          </button>
+        )}
       </div>
     </div>
   );
+}
+
+export function getFilename(
+  appName?: string,
+  startTime?: number,
+  endTime?: number
+) {
+  //  const appname = flamebearer.metadata.appName;
+  let date: string;
+
+  if (startTime && endTime) {
+    date = dateForExportFilename(startTime, endTime);
+  }
+
+  // both name and date are available
+  if (appName && date) {
+    return [appName, date].join('_');
+  }
+
+  // only fullname
+  if (appName) {
+    return appName;
+  }
+
+  // only date
+  if (date) {
+    return ['flamegraph', date].join('_');
+  }
+
+  // nothing is available, use a generic name
+  return `flamegraph`;
 }
 
 export default ExportData;

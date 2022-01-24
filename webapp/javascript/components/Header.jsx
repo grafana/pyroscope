@@ -13,7 +13,14 @@ import TagsBar from './TagsBar';
 import { fetchNames } from '../redux/actions';
 
 function Header(props) {
-  const { areNamesLoading, isJSONLoading } = props;
+  const { areNamesLoading, isJSONLoading, query } = props;
+
+  // This component initializes using a value frmo the redux store (query)
+  // Which doesn't work well when the 'query' changes in the store (see https://reactjs.org/docs/forms.html#controlled-components)
+  // This is a workaround to force the component to always remount
+  // TODO: move the state from this component into the redux store
+  const tagsBar = <TagsBar key={query} />;
+
   return (
     <>
       <div className="navbar">
@@ -37,7 +44,7 @@ function Header(props) {
         &nbsp;
         <DateRangePicker />
       </div>
-      <TagsBar />
+      {tagsBar}
     </>
   );
 }

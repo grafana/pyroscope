@@ -12,6 +12,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing/load"
 )
@@ -47,7 +48,7 @@ func openStorage(path string) (*storage.Storage, error) {
 		CacheEvictThreshold:   0.02,
 		CacheEvictVolume:      0.10,
 		MaxNodesSerialization: 2048,
-	}), logrus.StandardLogger(), prometheus.NewRegistry())
+	}), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 }
 
 func main() {

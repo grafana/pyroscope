@@ -272,9 +272,9 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	// Add this intermediate layer instead of just exposing as it comes from ctrl.config
 	// Since we may probably want to rename these flags when exposing to the frontend
 	features := struct {
-		EnableExperimentalAdhocUI bool `json:"enableExperimentalAdhocUI"`
+		EnableAdhocUI bool `json:"enableAdhocUI"`
 	}{
-		EnableExperimentalAdhocUI: ctrl.config.EnableExperimentalAdhocUI,
+		EnableAdhocUI: !ctrl.config.NoAdhocUI,
 	}
 	b, err = json.Marshal(features)
 	if err != nil {

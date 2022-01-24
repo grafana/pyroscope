@@ -11,7 +11,9 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v2"
 
-	// revive:disable:blank-imports register kubernetes discoverer
+	// revive:disable:blank-imports register discoverer
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/file"
+	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/http"
 	_ "github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/kubernetes"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
@@ -76,7 +78,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 		done:    make(chan struct{}),
 	}
 
-	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer)
+	diskPressure := health.DiskPressure{
+		Threshold: 512 * bytesize.MB,
+		Path:      c.StoragePath,
+	}
+
+	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
+	svc.storage, err = storage.New(storage.NewConfig(svc.config), svc.logger, prometheus.DefaultRegisterer, svc.healthController)
 	if err != nil {
 		return nil, fmt.Errorf("new storage: %w", err)
 	}
@@ -118,12 +126,6 @@ func newServerService(c *config.Server) (*serverService, error) {
 		return nil, fmt.Errorf("new metric exporter: %w", err)
 	}
 
-	diskPressure := health.DiskPressure{
-		Threshold: 512 * bytesize.MB,
-		Path:      c.StoragePath,
-	}
-
-	svc.healthController = health.NewController(svc.logger, time.Minute, diskPressure)
 	svc.debugReporter = debug.NewReporter(svc.logger, svc.storage, prometheus.DefaultRegisterer)
 	svc.directUpstream = direct.New(svc.storage, metricsExporter)
 	svc.directScrapeUpstream = direct.New(svc.storage, metricsExporter)
@@ -140,14 +142,20 @@ func newServerService(c *config.Server) (*serverService, error) {
 		})
 	}
 
+	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.controller, err = server.New(server.Config{
-		Configuration:           svc.config,
-		Storage:                 svc.storage,
-		MetricsExporter:         metricsExporter,
-		Notifier:                svc.healthController,
-		Adhoc:                   adhocserver.New(svc.logger, svc.config.EnableExperimentalAdhocUI),
+		Configuration:   svc.config,
+		Storage:         svc.storage,
+		MetricsExporter: metricsExporter,
+		Notifier:        svc.healthController,
+		Adhoc: adhocserver.New(
+			svc.logger,
+			svc.config.AdhocDataPath,
+			svc.config.MaxNodesRender,
+			!svc.config.NoAdhocUI,
+		),
 		Logger:                  svc.logger,
-		MetricsRegisterer:       prometheus.DefaultRegisterer,
+		MetricsRegisterer:       defaultMetricsRegistry,
 		ExportedMetricsRegistry: exportedMetricsRegistry,
 	})
 	if err != nil {
@@ -159,7 +167,8 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	svc.scrapeManager = scrape.NewManager(
 		svc.logger.WithField("component", "scrape-manager"),
-		svc.directScrapeUpstream)
+		svc.storage,
+		defaultMetricsRegistry)
 
 	if !c.AnalyticsOptOut {
 		svc.analyticsService = analytics.NewService(c, svc.storage, svc.controller)

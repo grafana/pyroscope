@@ -45,6 +45,7 @@ import {
   getPackageNameFromStackTrace,
   highlightColor,
 } from './color';
+import type { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
 import Flamegraph from './Flamegraph';
@@ -70,15 +71,15 @@ type CanvasRendererConfig = Flamebearer & {
   tickToX: (i: number) => number;
 
   pxPerTick: number;
+
+  palette: FlamegraphPalette;
 };
 
 export default function RenderCanvas(props: CanvasRendererConfig) {
-  const { canvas } = props;
+  const { canvas, fitMode, units, tickToX, levels, palette } = props;
   const { numTicks, sampleRate, pxPerTick } = props;
-  const { fitMode } = props;
-  const { units } = props;
   const { rangeMin, rangeMax } = props;
-  const { tickToX } = props;
+  const { focusedNode, zoom } = props;
 
   const graphWidth = getCanvasWidth(canvas);
   // TODO: why is this needed? otherwise height is all messed up
@@ -91,15 +92,18 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   const { format } = props;
   const ff = createFF(format);
 
-  const { levels } = props;
-  const { focusedNode, zoom } = props;
-
   //  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
   const ctx = canvas.getContext('2d');
-  const selectedLevel = zoom.map((z) => z.i).getOrElse(0);
+  const selectedLevel = zoom.mapOrElse(
+    () => 0,
+    (z) => z.i
+  );
   const formatter = getFormatter(numTicks, sampleRate, units);
-  const isFocused = focusedNode.isSome();
-  const topLevel = focusedNode.map((f) => f.i).getOrElse(0);
+  const isFocused = focusedNode.isJust;
+  const topLevel = focusedNode.mapOrElse(
+    () => 0,
+    (f) => f.i
+  );
 
   const canvasHeight =
     PX_PER_LEVEL * (levels.length - topLevel) + (isFocused ? BAR_HEIGHT : 0);
@@ -127,9 +131,10 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
     ctx.fill();
 
     // TODO show the samples too?
-    const shortName = focusedNode
-      .map((f) => `total (${f.i - 1} level(s) collapsed)`)
-      .getOrElse('total');
+    const shortName = focusedNode.mapOrElse(
+      () => 'total',
+      (f) => `total (${f.i - 1} level(s) collapsed)`
+    );
 
     // Set the font syle
     // It's important to set the font BEFORE calculating 'characterSize'
@@ -221,7 +226,12 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
         j,
         // discount for the levels we skipped
         // otherwise it will dim out all nodes
-        i: i + focusedNode.map((f) => f.i).getOrElse(0),
+        i:
+          i +
+          focusedNode.mapOrElse(
+            () => 0,
+            (f) => f.i
+          ),
         //        i: i + (isFocused ? focusedNode.i : 0),
         names,
         collapsed,
@@ -231,6 +241,7 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
         spyName,
         leftTicks,
         rightTicks,
+        palette,
       });
 
       ctx.beginPath();
@@ -324,6 +335,7 @@ type getColorCfg = {
   isHighlighted: boolean;
   names: string[];
   spyName: string;
+  palette: FlamegraphPalette;
 } & addTicks;
 
 function getColor(cfg: getColorCfg) {
@@ -339,10 +351,10 @@ function getColor(cfg: getColorCfg) {
 
   // We are in a search
   if (cfg.highlightModeOn) {
-    if (cfg.isHighlighted) {
-      return highlightColor;
+    if (!cfg.isHighlighted) {
+      return colorGreyscale(200, 0.66);
     }
-    return colorGreyscale(200, 0.66);
+    // it's a highlighted node, so color it as normally
   }
 
   // Diff mode
@@ -358,16 +370,20 @@ function getColor(cfg: getColorCfg) {
     const leftPercent = ratioToPercent(leftRatio);
     const rightPercent = ratioToPercent(rightRatio);
 
-    return colorBasedOnDiffPercent(leftPercent, rightPercent, a);
+    return colorBasedOnDiffPercent(
+      cfg.palette,
+      leftPercent,
+      rightPercent
+    ).alpha(a);
   }
 
   return colorBasedOnPackageName(
+    cfg.palette,
     getPackageNameFromStackTrace(
       cfg.spyName,
       cfg.names[cfg.level[cfg.j + ff.jName]]
-    ),
-    a
-  );
+    )
+  ).alpha(a);
 }
 
 function nodeIsInQuery(

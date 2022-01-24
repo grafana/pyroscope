@@ -1,10 +1,11 @@
 import React from 'react';
 import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor } from '@testing-library/react';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import FlamegraphComponent from './index';
 import TestData from './testData';
 import { BAR_HEIGHT } from './constants';
+import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 
 // the leaves have already been tested
 // this is just to guarantee code is compiling
@@ -12,6 +13,7 @@ import { BAR_HEIGHT } from './constants';
 describe('FlamegraphComponent', () => {
   const ExportData = () => <div>ExportData</div>;
 
+  const setPalette = (p: FlamegraphPalette) => {};
   it('renders', () => {
     const onZoom = jest.fn();
     const onReset = jest.fn();
@@ -21,8 +23,8 @@ describe('FlamegraphComponent', () => {
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={Option.none()}
-        focusedNode={Option.none()}
+        zoom={Maybe.nothing()}
+        focusedNode={Maybe.nothing()}
         highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
@@ -30,6 +32,8 @@ describe('FlamegraphComponent', () => {
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
         ExportData={ExportData}
+        palette={DefaultPalette}
+        setPalette={setPalette}
       />
     );
   });
@@ -43,8 +47,8 @@ describe('FlamegraphComponent', () => {
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={Option.none()}
-        focusedNode={Option.none()}
+        zoom={Maybe.nothing()}
+        focusedNode={Maybe.nothing()}
         highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
@@ -52,6 +56,8 @@ describe('FlamegraphComponent', () => {
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
         ExportData={ExportData}
+        palette={DefaultPalette}
+        setPalette={setPalette}
       />
     );
 
@@ -76,8 +82,8 @@ describe('FlamegraphComponent', () => {
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={Option.none()}
-        focusedNode={Option.none()}
+        zoom={Maybe.nothing()}
+        focusedNode={Maybe.nothing()}
         highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
@@ -85,6 +91,8 @@ describe('FlamegraphComponent', () => {
         isDirty={isDirty}
         flamebearer={TestData.SimpleTree}
         ExportData={ExportData}
+        palette={DefaultPalette}
+        setPalette={setPalette}
       />
     );
 
@@ -106,8 +114,8 @@ describe('FlamegraphComponent', () => {
       const { rerender } = render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={Option.none()}
-          focusedNode={Option.none()}
+          zoom={Maybe.nothing()}
+          focusedNode={Maybe.nothing()}
           highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
@@ -115,6 +123,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -137,8 +147,8 @@ describe('FlamegraphComponent', () => {
       rerender(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={Option.none()}
-          focusedNode={Option.none()}
+          zoom={Maybe.nothing()}
+          focusedNode={Maybe.nothing()}
           highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
@@ -146,6 +156,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -168,8 +180,8 @@ describe('FlamegraphComponent', () => {
       render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={Option.none()}
-          focusedNode={Option.none()}
+          zoom={Maybe.nothing()}
+          focusedNode={Maybe.nothing()}
           highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
@@ -177,6 +189,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -205,8 +219,8 @@ describe('FlamegraphComponent', () => {
       render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={Option.none()}
-          focusedNode={Option.none()}
+          zoom={Maybe.nothing()}
+          focusedNode={Maybe.nothing()}
           highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
@@ -214,6 +228,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={TestData.SimpleTree}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -228,8 +244,8 @@ describe('FlamegraphComponent', () => {
       render(
         <FlamegraphComponent
           fitMode="HEAD"
-          zoom={Option.none()}
-          focusedNode={Option.none()}
+          zoom={Maybe.nothing()}
+          focusedNode={Maybe.nothing()}
           highlightQuery=""
           onZoom={onZoom}
           onFocusOnNode={onFocusOnNode}
@@ -237,6 +253,8 @@ describe('FlamegraphComponent', () => {
           isDirty={isDirty}
           flamebearer={flamebearer}
           ExportData={ExportData}
+          palette={DefaultPalette}
+          setPalette={setPalette}
         />
       );
 
@@ -257,8 +275,8 @@ describe('FlamegraphComponent', () => {
     render(
       <FlamegraphComponent
         fitMode="HEAD"
-        zoom={Option.none()}
-        focusedNode={Option.none()}
+        zoom={Maybe.nothing()}
+        focusedNode={Maybe.nothing()}
         highlightQuery=""
         onZoom={onZoom}
         onFocusOnNode={onFocusOnNode}
@@ -266,6 +284,8 @@ describe('FlamegraphComponent', () => {
         isDirty={isDirty}
         flamebearer={TestData.empty}
         ExportData={ExportData}
+        palette={DefaultPalette}
+        setPalette={setPalette}
       />
     );
     screen.getByText(/No profiling data available/);

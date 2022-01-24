@@ -1,14 +1,29 @@
+import {
+  persistStore,
+  persistReducer,
+  FLUSH,
+  REHYDRATE,
+  PAUSE,
+  PERSIST,
+  PURGE,
+  REGISTER,
+  createMigrate,
+} from 'redux-persist';
 import thunkMiddleware from 'redux-thunk';
 import { createStore, applyMiddleware } from 'redux';
 import { composeWithDevTools } from 'redux-devtools-extension';
 
 import ReduxQuerySync from 'redux-query-sync';
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import storage from 'redux-persist/lib/storage';
 
 import rootReducer from './reducers';
 import history from '../util/history';
 
 import viewsReducer from './reducers/views';
+import newRootStore from './reducers/newRoot';
+import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
+
 import {
   setLeftFrom,
   setLeftUntil,
@@ -28,17 +43,26 @@ const enhancer = composeWithDevTools(
   // persistState(["from", "until", "labels"]),
 );
 
-const store = configureStore({
-  reducer: {
-    root: rootReducer,
-    views: viewsReducer,
-  },
-  // middleware: [thunkMiddleware],
+const reducer = combineReducers({
+  newRoot: newRootStore,
+  root: rootReducer,
+  views: viewsReducer,
+  ui: persistReducer(uiPersistConfig, uiStore),
 });
 
-const defaultName = window.initialState.appNames.find(
-  (x) => x !== 'pyroscope.server.cpu'
-);
+const store = configureStore({
+  reducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        // Based on this issue: https://github.com/rt2zz/redux-persist/issues/988
+        // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+      },
+    }),
+});
+
+export const persistor = persistStore(store);
 
 ReduxQuerySync({
   store, // your Redux store
@@ -74,7 +98,7 @@ ReduxQuerySync({
       action: setRightUntil,
     },
     query: {
-      defaultValue: `${defaultName || 'pyroscope.server.cpu'}{}`,
+      defaultvalue: '',
       selector: (state) => state.root.query,
       action: setQuery,
     },

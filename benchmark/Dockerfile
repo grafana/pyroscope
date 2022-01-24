@@ -1,3 +1,13 @@
+#                        _                     _
+#                       | |                   | |
+#  _ __  _   _ _ __ ___ | |__   ___ _ __   ___| |__
+# | '_ \| | | | '__/ _ \| '_ \ / _ \ '_ \ / __| '_ \
+# | |_) | |_| | | | (_) | |_) |  __/ | | | (__| | | |
+# | .__/ \__, |_|  \___/|_.__/ \___|_| |_|\___|_| |_|
+# | |     __/ |
+# |_|    |___/
+#
+
 FROM golang:1.16.3 as builder
 
 WORKDIR /go/src/app
@@ -19,6 +29,10 @@ FROM ubuntu:latest
 WORKDIR /var/lib/pyrobench
 
 RUN apt-get update && apt-get install ca-certificates -y && update-ca-certificates
+RUN apt-get update && apt-get install -y curl
+
+RUN curl https://pyroscope-public.s3.amazonaws.com/benchmark/fixtures.tgz | tar -xzv
+
 # Create a group and user
 #RUN addgroup -S pyrobench && adduser -S pyrobench -G pyrobench
 RUN useradd -ms /bin/bash pyrobench

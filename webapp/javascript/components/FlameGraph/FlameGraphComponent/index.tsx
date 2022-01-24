@@ -3,7 +3,7 @@ import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
-import { Option } from 'prelude-ts';
+import { Maybe } from '@utils/fp';
 import debounce from 'lodash.debounce';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
@@ -13,6 +13,7 @@ import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
+import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
@@ -21,7 +22,7 @@ interface FlamegraphProps {
   highlightQuery: ConstructorParameters<typeof Flamegraph>[4];
   zoom: ConstructorParameters<typeof Flamegraph>[5];
 
-  onZoom: (bar: Option<{ i: number; j: number }>) => void;
+  onZoom: (bar: Maybe<{ i: number; j: number }>) => void;
   onFocusOnNode: (i: number, j: number) => void;
 
   onReset: () => void;
@@ -32,22 +33,24 @@ interface FlamegraphProps {
   ExportData: () => React.ReactElement;
 
   ['data-testid']?: string;
+  palette: FlamegraphPalette;
+  setPalette: (p: FlamegraphPalette) => void;
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>();
-  //  const [flamegraph, setFlamegraph] = React.useState<Flamegraph>();
   const flamegraph = useRef<Flamegraph>();
 
-  const [rightClickedNode, setRightClickedNode] = React.useState(
-    Option.none<{ top: number; left: number; width: number }>()
-  );
+  const [rightClickedNode, setRightClickedNode] = React.useState<
+    Maybe<{ top: number; left: number; width: number }>
+  >(Maybe.nothing());
 
   const { flamebearer, focusedNode, fitMode, highlightQuery, zoom } = props;
 
   const { onZoom, onReset, isDirty, onFocusOnNode } = props;
   const { ExportData } = props;
   const { 'data-testid': dataTestId } = props;
+  const { palette, setPalette } = props;
 
   // debounce rendering canvas
   // used for situations like resizing
@@ -76,22 +79,22 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
 
     opt.match({
       // clicked on an invalid node
-      None: () => {},
-      Some: (bar) => {
+      Nothing: () => {},
+      Just: (bar) => {
         zoom.match({
           // there's no existing zoom
           // so just zoom on the clicked node
-          None: () => {
+          Nothing: () => {
             onZoom(opt);
           },
 
           // it's already zoomed
-          Some: (z) => {
+          Just: (z) => {
             // TODO there mya be stale props here...
             // we are clicking on the same node that's zoomed
             if (bar.i === z.i && bar.j === z.j) {
               // undo that zoom
-              onZoom(Option.none());
+              onZoom(Maybe.nothing());
             } else {
               onZoom(opt);
             }
@@ -118,7 +121,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   };
 
   const onContextMenuClose = () => {
-    setRightClickedNode(Option.none());
+    setRightClickedNode(Maybe.nothing());
   };
 
   const onContextMenuOpen = (x: number, y: number) => {
@@ -132,10 +135,14 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
       const bar = flamegraph.current.xyToBar(x, y);
 
       const FocusItem = () => {
-        const hoveredOnValidNode = bar.map(() => true).getOrElse(false);
-        const onClick = bar
-          .map((f) => onFocusOnNode.bind(null, f.i, f.j))
-          .getOrElse(() => {});
+        const hoveredOnValidNode = bar.mapOrElse(
+          () => false,
+          () => true
+        );
+        const onClick = bar.mapOrElse(
+          () => {},
+          (f) => onFocusOnNode.bind(null, f.i, f.j)
+        );
 
         return (
           <MenuItem
@@ -158,7 +165,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
     [flamegraph]
   );
 
-  React.useEffect(() => {
+  const constructCanvas = () => {
     if (canvasRef.current) {
       const f = new Flamegraph(
         flamebearer,
@@ -166,12 +173,22 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         focusedNode,
         fitMode,
         highlightQuery,
-        zoom
+        zoom,
+        palette
       );
 
       flamegraph.current = f;
-      renderCanvas();
     }
+  };
+
+  React.useEffect(() => {
+    constructCanvas();
+    renderCanvas();
+  }, [palette]);
+
+  React.useEffect(() => {
+    constructCanvas();
+    renderCanvas();
   }, [
     canvasRef.current,
     flamebearer,
@@ -199,6 +216,8 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
         format={flamebearer.format}
         units={flamebearer.units}
         ExportData={ExportData}
+        palette={palette}
+        setPalette={setPalette}
       />
 
       {dataUnavailable ? (
@@ -247,6 +266,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           leftTicks={flamebearer.format === 'double' && flamebearer.leftTicks}
           rightTicks={flamebearer.format === 'double' && flamebearer.rightTicks}
           units={flamebearer.units}
+          palette={DefaultPalette}
         />
       )}
 
