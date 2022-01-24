@@ -74,7 +74,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
 
   return (
     <section className={`${styles.container} ${className}`}>
-      <div {...getRootProps()}>
+      <div {...getRootProps()} className={styles.dragAndDropContainer} >
         <input {...getInputProps()} />
         {file ? (
           <p>
@@ -82,9 +82,14 @@ export default function FileUploader({ file, setFile, className }: Props) {
             click to select a file
           </p>
         ) : (
-          <p>
-            Drag and drop pyroscope JSON files here, or click to select a file
-          </p>
+          <div>
+            <p className={styles.instructionsTextMain}>
+              Drag and drop Flamegraph files here
+            </p>
+            <p className={styles.instructionsTextSecondary}>
+              Or click to select a file from your device
+            </p>
+          </div>
         )}
       </div>
       {file && (
