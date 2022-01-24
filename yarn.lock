@@ -3804,6 +3804,13 @@
     jest-diff "^27.0.0"
     pretty-format "^27.0.0"
 
+"@types/jquery@^3.5.13":
+  version "3.5.13"
+  resolved "https://registry.yarnpkg.com/@types/jquery/-/jquery-3.5.13.tgz#5482d3ee325d5862f77a91c09369ae0a5b082bf3"
+  integrity sha512-ZxJrup8nz/ZxcU0vantG+TPdboMhB24jad2uSap50zE7Q9rUeYlCF25kFMSmHR33qoeOgqcdHEp3roaookC0Sg==
+  dependencies:
+    "@types/sizzle" "*"
+
 "@types/js-cookie@^2.2.6":
   version "2.2.7"
   resolved "https://registry.yarnpkg.com/@types/js-cookie/-/js-cookie-2.2.7.tgz#226a9e31680835a6188e887f3988e60c04d3f6a3"
@@ -4011,7 +4018,7 @@
   resolved "https://registry.yarnpkg.com/@types/sinonjs__fake-timers/-/sinonjs__fake-timers-6.0.4.tgz#0ecc1b9259b76598ef01942f547904ce61a6a77d"
   integrity sha512-IFQTJARgMUBF+xVd2b+hIgXWrZEjND3vJtRCvIelcFB5SIXfjV4bOHbHJ0eXKh+0COrBRc8MqteKAz/j88rE0A==
 
-"@types/sizzle@^2.3.2":
+"@types/sizzle@*", "@types/sizzle@^2.3.2":
   version "2.3.3"
   resolved "https://registry.yarnpkg.com/@types/sizzle/-/sizzle-2.3.3.tgz#ff5e2f1902969d305225a047c8a0fd5c915cebef"
   integrity sha512-JYM8x9EGF163bEyhdJBpR2QX1R5naCJHC8ucJylJ3w9/CVBaskdQ8WqBf8MmQrd1kRvp/a4TS8HJ+bxzR7ZJYQ==
@@ -12703,6 +12710,11 @@ joycon@^3.0.1:
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/joycon/-/joycon-3.1.1.tgz#bce8596d6ae808f8b68168f5fc69280996894f03"
   integrity sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==
+
+jquery.flot.tooltip@^0.9.0:
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/jquery.flot.tooltip/-/jquery.flot.tooltip-0.9.0.tgz#ae16bf94b26c2ed9ab4db167bba52dfdb615c1df"
+  integrity sha1-rha/lLJsLtmrTbFnu6Ut/bYVwd8=
 
 jquery@3.1.1, jquery@3.5.1, jquery@^3.1.1:
   version "3.1.1"

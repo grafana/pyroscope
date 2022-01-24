@@ -28,6 +28,7 @@ class TimelineChartWrapper extends React.Component {
         },
         grid: {
           borderWidth: 1,
+          hoverable: true,
         },
         yaxis: {
           show: false,
