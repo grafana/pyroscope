@@ -42,11 +42,11 @@ export default function DiffLegend(props: DiffLegendProps) {
 function decideLegend(showMode: ReturnType<typeof useSizeMode>) {
   switch (showMode) {
     case 'large': {
-      return [100, 80, 60, 40, 20, 10, 0, -10, -20, -40, -60, -80, -100];
+      return [-100, -80, -60, -40, -20, -10, 0, 10, 20, 40, 60, 80, 100];
     }
 
     case 'small': {
-      return [100, 40, 20, 0, -20, -40, -100];
+      return [-100, -40, -20, 0, 20, 40, 100];
     }
 
     default:
