@@ -39,6 +39,47 @@ var (
 	snapshotFrequency = 10 * time.Minute
 )
 
+type Analytics struct {
+	// metadata
+	InstallID            string    `json:"install_id"`
+	RunID                string    `json:"run_id"`
+	Version              string    `json:"version"`
+	GitSHA               string    `json:"git_sha"`
+	BuildTime            string    `json:"build_time"`
+	Timestamp            time.Time `json:"timestamp"`
+	UploadIndex          int       `json:"upload_index"`
+	GOOS                 string    `json:"goos"`
+	GOARCH               string    `json:"goarch"`
+	GoVersion            string    `json:"go_version"`
+	AnalyticsPersistence bool      `json:"analytics_persistence"`
+
+	// gauges
+	MemAlloc         int `json:"mem_alloc"`
+	MemTotalAlloc    int `json:"mem_total_alloc"`
+	MemSys           int `json:"mem_sys"`
+	MemNumGC         int `json:"mem_num_gc"`
+	BadgerMain       int `json:"badger_main"`
+	BadgerTrees      int `json:"badger_trees"`
+	BadgerDicts      int `json:"badger_dicts"`
+	BadgerDimensions int `json:"badger_dimensions"`
+	BadgerSegments   int `json:"badger_segments"`
+	AppsCount        int `json:"apps_count"`
+
+	// counters
+	ControllerIndex      int `json:"controller_index" kind:"cumulative"`
+	ControllerComparison int `json:"controller_comparison" kind:"cumulative"`
+	ControllerDiff       int `json:"controller_diff" kind:"cumulative"`
+	ControllerIngest     int `json:"controller_ingest" kind:"cumulative"`
+	ControllerRender     int `json:"controller_render" kind:"cumulative"`
+	SpyRbspy             int `json:"spy_rbspy" kind:"cumulative"`
+	SpyPyspy             int `json:"spy_pyspy" kind:"cumulative"`
+	SpyGospy             int `json:"spy_gospy" kind:"cumulative"`
+	SpyEbpfspy           int `json:"spy_ebpfspy" kind:"cumulative"`
+	SpyPhpspy            int `json:"spy_phpspy" kind:"cumulative"`
+	SpyDotnetspy         int `json:"spy_dotnetspy" kind:"cumulative"`
+	SpyJavaspy           int `json:"spy_javaspy" kind:"cumulative"`
+}
+
 type StatsProvider interface {
 	Stats() map[string]int
 	AppsCount() int
@@ -49,7 +90,7 @@ func NewService(cfg *config.Server, s *storage.Storage, p StatsProvider) *Servic
 		cfg:  cfg,
 		s:    s,
 		p:    p,
-		base: &storage.Analytics{},
+		base: &Analytics{},
 		httpClient: &http.Client{
 			Transport: &http.Transport{
 				MaxConnsPerHost: 1,
@@ -65,7 +106,7 @@ type Service struct {
 	cfg        *config.Server
 	s          *storage.Storage
 	p          StatsProvider
-	base       *storage.Analytics
+	base       *Analytics
 	httpClient *http.Client
 	uploads    int
 
@@ -75,9 +116,9 @@ type Service struct {
 
 func (s *Service) Start() {
 	defer close(s.done)
-	b, e := s.s.LoadAnalytics()
-	if e == nil {
-		s.base = b
+	err := s.s.LoadAnalytics(s.base)
+	if err != nil {
+		logrus.WithError(err).Error("failed to load analytics data")
 	}
 
 	timer := time.NewTimer(gracePeriod)
@@ -103,8 +144,11 @@ func (s *Service) Start() {
 	}
 }
 
-func (*Service) rebaseAnalytics(base *storage.Analytics, current *storage.Analytics) *storage.Analytics {
-	rebased := &storage.Analytics{}
+// TODO: reflection is always tricky to work with. Maybe long term we should just put all counters
+//   in one map (map[string]int), and put all gauges in another map(map[string]int) and then
+//   for gauges we would override old values and for counters we would sum the values up.
+func (*Service) rebaseAnalytics(base *Analytics, current *Analytics) *Analytics {
+	rebased := &Analytics{}
 	vRebased := reflect.ValueOf(rebased).Elem()
 	vCur := reflect.ValueOf(*current)
 	vBase := reflect.ValueOf(*base)
@@ -132,31 +176,40 @@ func (s *Service) Stop() {
 	<-s.done
 }
 
-func (s *Service) getAnalytics() *storage.Analytics {
+func (s *Service) getAnalytics() *Analytics {
 	var ms runtime.MemStats
 	runtime.ReadMemStats(&ms)
 	du := s.s.DiskUsage()
 
 	controllerStats := s.p.Stats()
 
-	a := &storage.Analytics{
+	a := &Analytics{
+		// metadata
 		InstallID:            s.s.InstallID(),
 		RunID:                uuid.New().String(),
 		Version:              build.Version,
+		GitSHA:               build.GitSHA,
+		BuildTime:            build.Time,
 		Timestamp:            time.Now(),
 		UploadIndex:          s.uploads,
 		GOOS:                 runtime.GOOS,
 		GOARCH:               runtime.GOARCH,
 		GoVersion:            runtime.Version(),
-		MemAlloc:             int(ms.Alloc),
-		MemTotalAlloc:        int(ms.TotalAlloc),
-		MemSys:               int(ms.Sys),
-		MemNumGC:             int(ms.NumGC),
-		BadgerMain:           int(du["main"]),
-		BadgerTrees:          int(du["trees"]),
-		BadgerDicts:          int(du["dicts"]),
-		BadgerDimensions:     int(du["dimensions"]),
-		BadgerSegments:       int(du["segments"]),
+		AnalyticsPersistence: true,
+
+		// gauges
+		MemAlloc:         int(ms.Alloc),
+		MemTotalAlloc:    int(ms.TotalAlloc),
+		MemSys:           int(ms.Sys),
+		MemNumGC:         int(ms.NumGC),
+		BadgerMain:       int(du["main"]),
+		BadgerTrees:      int(du["trees"]),
+		BadgerDicts:      int(du["dicts"]),
+		BadgerDimensions: int(du["dimensions"]),
+		BadgerSegments:   int(du["segments"]),
+		AppsCount:        s.p.AppsCount(),
+
+		// counters
 		ControllerIndex:      controllerStats["index"],
 		ControllerComparison: controllerStats["comparison"],
 		ControllerDiff:       controllerStats["diff"],
@@ -169,7 +222,6 @@ func (s *Service) getAnalytics() *storage.Analytics {
 		SpyPhpspy:            controllerStats["ingest:phpspy"],
 		SpyDotnetspy:         controllerStats["ingest:dotnetspy"],
 		SpyJavaspy:           controllerStats["ingest:javaspy"],
-		AppsCount:            s.p.AppsCount(),
 	}
 	a = s.rebaseAnalytics(s.base, a)
 	return a
