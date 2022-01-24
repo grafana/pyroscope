@@ -118,7 +118,8 @@ func (s *Service) Start() {
 	defer close(s.done)
 	err := s.s.LoadAnalytics(s.base)
 	if err != nil {
-		logrus.WithError(err).Error("failed to load analytics data")
+		// this is not really an error, this will always be !nil on the first run, hence Debug level
+		logrus.WithError(err).Debug("failed to load analytics data")
 	}
 
 	timer := time.NewTimer(gracePeriod)
@@ -148,7 +149,7 @@ func (s *Service) Start() {
 //   in one map (map[string]int), and put all gauges in another map(map[string]int) and then
 //   for gauges we would override old values and for counters we would sum the values up.
 func (*Service) rebaseAnalytics(base *Analytics, current *Analytics) *Analytics {
-	rebased := &Analytics{}
+	rebased := &(*current)
 	vRebased := reflect.ValueOf(rebased).Elem()
 	vCur := reflect.ValueOf(*current)
 	vBase := reflect.ValueOf(*base)

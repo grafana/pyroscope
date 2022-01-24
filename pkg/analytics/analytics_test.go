@@ -131,6 +131,7 @@ var _ = Describe("analytics", func() {
 					Expect(v["controller_diff"]).To(BeEquivalentTo(2))
 					Expect(v["controller_ingest"]).To(BeEquivalentTo(2))
 					Expect(v["controller_comparison"]).To(BeEquivalentTo(2))
+					Expect(v["analytics_persistence"]).To(BeTrue())
 
 					close(done)
 				}()
