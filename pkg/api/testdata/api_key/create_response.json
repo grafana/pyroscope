@@ -1,0 +1,8 @@
+{
+  "id": 1,
+  "name": "some-api-key",
+  "role": "ReadOnly",
+  "key": "jwt-token-string",
+  "expiresAt": "2021-12-10T04:15:00Z",
+  "createdAt": "2021-12-10T04:14:00Z"
+}

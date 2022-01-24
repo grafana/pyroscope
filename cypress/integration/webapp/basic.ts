@@ -8,68 +8,33 @@ describe('basic test', () => {
   });
 
   it('changes app via the application dropdown', () => {
-    const intercept = (name: string) => {
-      cy.intercept(`**/render*query=${name}*`, {
-        fixture: name,
-        times: 1,
-      }).as(name);
-    };
+    const basePath = Cypress.env('basePath') || '';
+    // While the initial values come from the backend
+    // We refresh it here so that we can mock with specific values
+    cy.intercept(`${basePath}**/label-values*`, {
+      fixture: 'appNames.json',
+    }).as('labelValues');
 
-    const tries = 10;
-    function waitUntilNameSelectorExists(name: string) {
-      if (tries <= 0) {
-        throw Error(`application selector ${name} not found within 10 tries`);
-      }
-
-      cy.findByTestId('app-name-selector')
-        .find('option')
-        .then((b) => {
-          let found = false;
-          b.each((i, n) => {
-            if (n.value === name) {
-              found = true;
-            }
-          });
-
-          if (!found) {
-            cy.log(
-              `Refreshing the page since option with ${name} was not found`
-            );
-            // eslint-disable-next-line cypress/no-unnecessary-waiting
-            cy.wait(1000);
-            cy.reload().then(() => waitUntilNameSelectorExists(name));
-          }
-        });
-    }
-
-    const match = (name: string) => {
-      // it's possible that the selector hasn't been populated yet
-      // in that case we need to keep refreshing the page
-      waitUntilNameSelectorExists(name);
-
-      cy.findByTestId('app-name-selector').select(name);
-      cy.wait(`@${name}`);
-      cy.findByTestId('flamegraph-canvas').should('be.visible');
-      // there's a certain delay until the flamegraph is rendered
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
-      cy.wait(500);
-      cy.findByTestId('table-view').matchImageSnapshot(`${name}-table`);
-      cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
-        `${name}-flamegraph`
-      );
-    };
-
-    const names = [
-      'pyroscope.server.alloc_objects',
-      'pyroscope.server.alloc_space',
-      'pyroscope.server.cpu',
-      'pyroscope.server.inuse_objects',
-      'pyroscope.server.inuse_space',
-    ];
-
-    names.forEach(intercept);
     cy.visit('/');
-    names.forEach(match);
+
+    cy.findByLabelText(/Refresh apps/i).click();
+    cy.wait(`@labelValues`);
+
+    cy.get('.navbar').findByRole('button', { expanded: false }).click();
+
+    // For some reason couldn't find the appropriate query
+    cy.findAllByRole('menuitem').then((items) => {
+      items.each((i, item) => {
+        if (item.innerText.includes('pyroscope.server.inuse_space')) {
+          item.click();
+        }
+      });
+    });
+
+    cy.location().then((loc) => {
+      const queryParams = new URLSearchParams(loc.search);
+      expect(queryParams.get('query')).to.eq('pyroscope.server.inuse_space{}');
+    });
   });
 
   it('highlights nodes that match a search query', () => {
@@ -114,7 +79,8 @@ describe('basic test', () => {
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
 
-  it('sorting is working', () => {
+  // TODO make this a unit test
+  it('sorting works', () => {
     /**
      * @param row 'first' | 'last'
      * @param column 'location' | 'self' | 'total'
@@ -142,7 +108,7 @@ describe('basic test', () => {
         .click();
 
     const getCellContent = (row, column) => {
-      const query = `tbody > :nth-child(${row}) > :nth-child(${column.index}) > ${column.selector}`;
+      const query = `tbody > :nth-child(${row}) > :nth-child(${column.index})`;
       return cy
         .findByTestId('table-view')
         .find(query)
@@ -209,6 +175,10 @@ describe('basic test', () => {
   });
 
   describe('tooltip', () => {
+    // on smaller screens component will be collapsed by default
+    beforeEach(() => {
+      cy.viewport(1440, 900);
+    });
     it('works in single view', () => {
       cy.intercept('**/render*', {
         fixture: 'simple-golang-app-cpu.json',

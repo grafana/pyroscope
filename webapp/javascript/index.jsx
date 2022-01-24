@@ -6,7 +6,8 @@ import { Router, BrowserRouter, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Notifications from '@ui/Notifications';
-import store from './redux/store';
+import { PersistGate } from 'redux-persist/integration/react';
+import store, { persistor } from './redux/store';
 
 import PyroscopeApp from './components/PyroscopeApp';
 import ComparisonApp from './components/ComparisonApp';
@@ -15,6 +16,7 @@ import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
 import AdhocSingle from './components/AdhocSingle';
 import AdhocComparison from './components/AdhocComparison';
+import AdhocComparisonDiff from './components/AdhocComparisonDiff';
 import ServerNotifications from './components/ServerNotifications';
 
 import history from './util/history';
@@ -30,38 +32,43 @@ try {
 
 ReactDOM.render(
   <Provider store={store}>
-    <Router history={history}>
-      <ServerNotifications />
-      <Notifications />
-      <div className="app">
-        <Sidebar />
-        <Switch>
-          <Route exact path="/">
-            <PyroscopeApp />
-          </Route>
-          <Route path="/comparison">
-            <ComparisonApp />
-          </Route>
-          <Route path="/comparison-diff">
-            <ComparisonDiffApp />
-          </Route>
-          <Route path="/settings">
-            <Settings />
-          </Route>
-          {isExperimentalAdhocUIEnabled && (
-            <Route path="/adhoc-single">
-              <AdhocSingle />
+    <PersistGate persistor={persistor} loading={null}>
+      <Router history={history}>
+        <ServerNotifications />
+        <Notifications />
+        <div className="app">
+          <Sidebar />
+          <Switch>
+            <Route exact path="/">
+              <PyroscopeApp />
             </Route>
-          )}
-          {isExperimentalAdhocUIEnabled && (
-            <Route path="/adhoc-comparison">
-              <AdhocComparison />
+            <Route path="/comparison">
+              <ComparisonApp />
             </Route>
-          )}
-        </Switch>
-      </div>
-    </Router>
-    {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
+            <Route path="/comparison-diff">
+              <ComparisonDiffApp />
+            </Route>
+            <Route path="/settings">
+              <Settings />
+            </Route>
+            {isExperimentalAdhocUIEnabled && (
+              <>
+                <Route path="/adhoc-single">
+                  <AdhocSingle />
+                </Route>
+                <Route path="/comparison">
+                  <ComparisonApp />
+                </Route>
+                <Route path="/comparison-diff">
+                  <ComparisonDiffApp />
+                </Route>
+              </>
+            )}
+          </Switch>
+        </div>
+      </Router>
+      {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
+    </PersistGate>
   </Provider>,
   document.getElementById('root')
 );

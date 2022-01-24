@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import Button from '@ui/Button';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
+import { buildRenderURL } from '@utils/updateRequests';
 
 import clsx from 'clsx';
-import { Flamebearer } from '@models/flamebearer';
+import { FlamebearerProfile } from '@models/flamebearer';
 
 interface ExportDataProps {
   exportFlamebearer?: Flamebearer;
@@ -64,6 +65,21 @@ function ExportData(props: ExportDataProps) {
     downloadAnchorNode.remove();
   };
 
+  const exportPProf = function (flamebearer: FlamebearerProfile) {
+    const url = `${buildRenderURL({
+      from: flamebearer.metadata.startTime,
+      until: flamebearer.metadata.endTime,
+      query: flamebearer.metadata.query,
+      maxNodes: flamebearer.metadata.maxNodes,
+    })}&format=pprof`;
+
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute('href', url);
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
   return (
     <div className="dropdown-container">
       <Button icon={faBars} onClick={handleToggleMenu} />
@@ -90,6 +106,16 @@ function ExportData(props: ExportDataProps) {
               }
             >
               JSON
+            </button>
+          )}
+
+          {exportFlamebearer && (
+            <button
+              className="dropdown-menu-item"
+              type="button"
+              onClick={() => exportPProf(exportFlamebearer)}
+            >
+              pprof
             </button>
           )}
         </div>

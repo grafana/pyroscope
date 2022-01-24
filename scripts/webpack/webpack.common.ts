@@ -1,44 +1,50 @@
+import webpack from 'webpack';
+import path from 'path';
+import glob from 'glob';
+import fs from 'fs';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import MiniCssExtractPlugin from 'mini-css-extract-plugin';
+import CopyPlugin from 'copy-webpack-plugin';
+import { ESBuildMinifyPlugin } from 'esbuild-loader';
+
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
-const webpack = require('webpack');
-const path = require('path');
-const glob = require('glob');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
-// uncomment if you want to see the webpack bundle analysis
-// const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-//
-
-const fs = require('fs');
+// use a fake hash when running locally
+const LOCAL_HASH = 'local';
 
 const pages = glob
-  .sync('./webapp/templates/*.html')
+  .sync('./webapp/templates/!(standalone).html')
   .map((x) => path.basename(x));
+
 const pagePlugins = pages.map(
   (name) =>
     new HtmlWebpackPlugin({
       filename: path.resolve(__dirname, `../../webapp/public/${name}`),
       template: path.resolve(__dirname, `../../webapp/templates/${name}`),
       inject: false,
-      chunksSortMode: 'none',
-      templateParameters: (compilation, assets, options) => ({
-        extra_metadata: process.env.EXTRA_METADATA
-          ? fs.readFileSync(process.env.EXTRA_METADATA)
-          : '',
-        mode: process.env.NODE_ENV,
-        webpack: compilation.getStats().toJson(),
-        compilation,
-        webpackConfig: compilation.options,
-        htmlWebpackPlugin: {
-          files: assets,
-          options,
-        },
-      }),
+      templateParameters: (compilation) => {
+        // TODO:
+        // ideally we should access via argv
+        // https://webpack.js.org/configuration/mode/
+        const hash =
+          process.env.NODE_ENV === 'production'
+            ? compilation.getStats().toJson().hash
+            : LOCAL_HASH;
+
+        return {
+          extra_metadata: process.env.EXTRA_METADATA
+            ? fs.readFileSync(process.env.EXTRA_METADATA)
+            : '',
+          mode: process.env.NODE_ENV,
+          webpack: {
+            hash,
+          },
+        };
+      },
     })
 );
 
-module.exports = {
+export default {
   target: 'web',
 
   entry: {
@@ -49,7 +55,12 @@ module.exports = {
   output: {
     publicPath: '',
     path: path.resolve(__dirname, '../../webapp/public/assets'),
-    filename: '[name].[hash].js',
+
+    // https://webpack.js.org/guides/build-performance/#avoid-production-specific-tooling
+    filename:
+      process.env.NODE_ENV === 'production'
+        ? '[name].[hash].js'
+        : `[name].${LOCAL_HASH}.js`,
     clean: true,
   },
 
@@ -71,6 +82,15 @@ module.exports = {
 
   watchOptions: {
     ignored: /node_modules/,
+  },
+
+  optimization: {
+    minimizer: [
+      new ESBuildMinifyPlugin({
+        target: 'es2015',
+        css: true,
+      }),
+    ],
   },
 
   module: {
@@ -103,11 +123,10 @@ module.exports = {
     }),
     ...pagePlugins,
     new MiniCssExtractPlugin({
-      filename: '[name].[hash].css',
-    }),
-    new webpack.IgnorePlugin({
-      resourceRegExp: /^\.\/locale$/,
-      contextRegExp: /moment$/,
+      filename:
+        process.env.NODE_ENV === 'production'
+          ? '[name].[hash].css'
+          : `[name].${LOCAL_HASH}.css`,
     }),
     new CopyPlugin({
       patterns: [

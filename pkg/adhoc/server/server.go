@@ -15,7 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
@@ -27,6 +27,7 @@ type profile struct {
 
 type server struct {
 	log      logrus.FieldLogger
+	dataDir  string
 	maxNodes int
 	enabled  bool
 	profiles map[string]profile
@@ -37,9 +38,10 @@ type Server interface {
 	AddRoutes(router *mux.Router) http.HandlerFunc
 }
 
-func New(log logrus.FieldLogger, maxNodes int, enabled bool) Server {
+func New(log logrus.FieldLogger, dataDir string, maxNodes int, enabled bool) Server {
 	return &server{
 		log:      log,
+		dataDir:  dataDir,
 		maxNodes: maxNodes,
 		enabled:  enabled,
 		profiles: make(map[string]profile),
@@ -50,7 +52,7 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 	if s.enabled {
 		r.HandleFunc("/v1/profiles", s.Profiles)
 		r.HandleFunc("/v1/profile/{id:[0-9a-f]+}", s.Profile)
-		r.HandleFunc("/v1/diff/{id1[0-9a-f]+}/{id2[0-9a-f]+}", s.Diff)
+		r.HandleFunc("/v1/diff/{left:[0-9a-f]+}/{right:[0-9a-f]+}", s.Diff)
 	}
 	return r.ServeHTTP
 }
@@ -63,23 +65,29 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 // The profiles are retrieved every time the endpoint is requested,
 // which should be good enough as massive access to this auth endpoint is not expected.
 func (s *server) Profiles(w http.ResponseWriter, _ *http.Request) {
-	dataDir, err := util.EnsureDataDirectory()
-	if err != nil {
+	if err := os.MkdirAll(s.dataDir, os.ModeDir|os.ModePerm); err != nil {
 		s.log.WithError(err).Errorf("Unable to create data directory")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	profiles := make(map[string]profile, 0)
-	err = filepath.Walk(dataDir, func(path string, info fs.FileInfo, err error) error {
+	err := filepath.WalkDir(s.dataDir, func(path string, e fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.Mode().IsRegular() {
-			id := fmt.Sprintf("%x", sha256.Sum256([]byte(info.Name())))
+		if e.IsDir() && path != s.dataDir {
+			return fs.SkipDir
+		}
+		if e.Type().IsRegular() {
+			id := fmt.Sprintf("%x", sha256.Sum256([]byte(e.Name())))
 			if p, ok := profiles[id]; ok {
-				return fmt.Errorf("A hash collision detected between %s and %s, please report it", info.Name(), p.Name)
+				return fmt.Errorf("a hash collision detected between %s and %s, please report it", e.Name(), p.Name)
 			}
-			profiles[id] = profile{ID: id, Name: info.Name(), UpdatedAt: info.ModTime()}
+			info, err := e.Info()
+			if err != nil {
+				return fmt.Errorf("unable to retrieve entry information: %w", err)
+			}
+			profiles[id] = profile{ID: id, Name: e.Name(), UpdatedAt: info.ModTime()}
 		}
 		return nil
 	})
@@ -126,18 +134,73 @@ func (s *server) Profile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// TODO(abeaumont)
-func (*server) Diff(_ http.ResponseWriter, _ *http.Request) {
+// Diff retrieves two different local files identified by their IDs and builds a profile diff.
+func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
+	lid := mux.Vars(r)["left"]
+	rid := mux.Vars(r)["right"]
+	s.mtx.RLock()
+	lp, lok := s.profiles[lid]
+	rp, rok := s.profiles[rid]
+	s.mtx.RUnlock()
+	if !lok {
+		s.log.WithField("id", lid).Warning("Profile does not exist")
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	if !rok {
+		s.log.WithField("id", rid).Warning("Profile does not exist")
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	lfb, err := s.convert(lp)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to process left profile")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	rfb, err := s.convert(rp)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to process right profile")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// TODO(abeaumont): Validate that profiles are comparable
+	// TODO(abeaumont): Simplify profile generation
+	out := &storage.GetOutput{
+		Tree:       nil,
+		Units:      lfb.Metadata.Units,
+		SpyName:    lfb.Metadata.SpyName,
+		SampleRate: lfb.Metadata.SampleRate,
+	}
+	lt, err := profileToTree(*lfb)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to convert profile to tree")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	rt, err := profileToTree(*rfb)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to convert profile to tree")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	lOut := &storage.GetOutput{Tree: lt}
+	rOut := &storage.GetOutput{Tree: rt}
+
+	fb := flamebearer.NewCombinedProfile(out, lOut, rOut, s.maxNodes)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(fb); err != nil {
+		s.log.WithError(err).Error("Unable to encode the profile diff")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 type converterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
 
 func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
-	dataDir, err := util.EnsureDataDirectory()
-	if err != nil {
-		return nil, fmt.Errorf("unable to create data directory: %w", err)
-	}
-	fname := filepath.Join(dataDir, p.Name)
+	fname := filepath.Join(s.dataDir, p.Name)
 	ext := filepath.Ext(fname)
 	var converter converterFn
 	switch ext {

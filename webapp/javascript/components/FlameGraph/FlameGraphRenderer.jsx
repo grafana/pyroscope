@@ -63,20 +63,6 @@ class FlameGraphRenderer extends React.Component {
     this.abortCurrentJSONController();
   }
 
-  updateFitMode = (newFitMode) => {
-    this.setState({
-      fitMode: newFitMode,
-    });
-  };
-
-  updateFlamegraphDirtiness = () => {
-    const isDirty = this.isDirty();
-
-    this.setState({
-      isFlamegraphDirty: isDirty,
-    });
-  };
-
   handleSearchChange = (e) => {
     this.setState({
       highlightQuery: e,
@@ -90,18 +76,6 @@ class FlameGraphRenderer extends React.Component {
         ...this.state.flamegraphConfigs,
         ...this.initialFlamegraphState,
       },
-    });
-  };
-
-  updateView = (newView) => {
-    this.setState({
-      view: newView,
-    });
-  };
-
-  updateViewDiff = (newView) => {
-    this.setState({
-      viewDiff: newView,
     });
   };
 
@@ -152,6 +126,16 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
+  // if clicking on the same item, undo the search
+  onTableItemClick = (tableItem) => {
+    let { name } = tableItem;
+
+    if (tableItem.name === this.state.highlightQuery) {
+      name = '';
+    }
+    this.handleSearchChange(name);
+  };
+
   updateSortBy = (newSortBy) => {
     let dir = this.state.sortByDirection;
     if (this.state.sortBy === newSortBy) {
@@ -162,6 +146,32 @@ class FlameGraphRenderer extends React.Component {
     this.setState({
       sortBy: newSortBy,
       sortByDirection: dir,
+    });
+  };
+
+  updateViewDiff = (newView) => {
+    this.setState({
+      viewDiff: newView,
+    });
+  };
+
+  updateView = (newView) => {
+    this.setState({
+      view: newView,
+    });
+  };
+
+  updateFlamegraphDirtiness = () => {
+    const isDirty = this.isDirty();
+
+    this.setState({
+      isFlamegraphDirty: isDirty,
+    });
+  };
+
+  updateFitMode = (newFitMode) => {
+    this.setState({
+      fitMode: newFitMode,
     });
   };
 
@@ -217,6 +227,8 @@ class FlameGraphRenderer extends React.Component {
           viewDiff={this.state.viewDiff}
           fitMode={this.state.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
+          highlightQuery={this.state.highlightQuery}
+          handleTableItemClick={this.onTableItemClick}
         />
       </div>
     );
@@ -230,6 +242,11 @@ class FlameGraphRenderer extends React.Component {
     );
 
     const exportData = () => {
+      // the main idea is to disable exporing that for grafana plugins
+      if (this.props.disableExportData) {
+        return null;
+      }
+
       if (!this.state.flamebearer) {
         return <ExportData />;
       }
@@ -295,6 +312,7 @@ class FlameGraphRenderer extends React.Component {
               fitMode={this.state.fitMode}
               isFlamegraphDirty={this.state.isFlamegraphDirty}
               selectedNode={this.state.flamegraphConfigs.zoom}
+              highlightQuery={this.state.highlightQuery}
               onFocusOnSubtree={(i, j) => {
                 this.onFocusOnNode(i, j);
               }}

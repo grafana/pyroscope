@@ -2,26 +2,25 @@
 import { add, format } from 'date-fns';
 
 const multiplierMapping = {
-  s: 'second',
-  m: 'minute',
-  h: 'hour',
-  d: 'day',
-  w: 'week',
-  M: 'month',
-  y: 'year',
+  s: 'seconds',
+  m: 'minutes',
+  h: 'hours',
+  d: 'days',
+  w: 'weeks',
+  M: 'months',
+  y: 'years',
 };
 
 export function convertPresetsToDate(from) {
   const { groups } = from.match(/^now-(?<number>\d+)(?<multiplier>\D+)$/);
   const { number, multiplier } = groups;
   let _multiplier = multiplierMapping[multiplier];
-  if (number > 1) {
-    _multiplier += 's';
-  }
+
+  const now = new Date();
 
   const _from =
-    add(new Date(), {
-      [multiplier + 's']: -number,
+    add(now, {
+      [_multiplier]: -number,
     }) / 1000;
 
   return { _from, number, _multiplier };

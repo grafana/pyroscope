@@ -5,7 +5,6 @@ node_modules
 /third_party/*/lib*.a
 /third_party/*/target
 /third_party/phpspy_src
-pkged.go
 .DS_Store
 /Icon*
 /out/
@@ -20,6 +19,7 @@ pkged.go
 vendor/
 benchmark/.env
 benchmark/report
+benchmark/fixtures
 /.env
 # diff output is stored per test
 cypress/snapshots/**/__diff_output__

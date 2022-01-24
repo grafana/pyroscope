@@ -33,9 +33,10 @@ type Adhoc struct {
 	MaxNodesSerialization int           `def:"2048" desc:"max number of nodes used when saving profiles to disk" mapstructure:"max-nodes-serialization"`
 	Duration              time.Duration `def:"0" desc:"duration of the profiling session, which is the whole execution of the profield process by default" mapstructure:"duration"`
 
-	// JSON output configuration
+	// Output configuration
 	MaxNodesRender int    `def:"8192" desc:"max number of nodes used to display data on the frontend" mapstructure:"max-nodes-render"`
 	OutputFormat   string `def:"json" desc:"format to export profiling data, supported formats are: json, pprof, collapsed" mapstructure:"output-format"`
+	DataPath       string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"data-path"`
 
 	// Spy configuration
 	ApplicationName    string `def:"" desc:"application name used when uploading profiling data" mapstructure:"application-name"`
@@ -104,6 +105,8 @@ type Server struct {
 	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start" mapstructure:"cache-evict-threshold"`
 	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run" mapstructure:"cache-evict-volume"`
 
+	Database Database `mapstructure:"database"`
+
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.
 	BadgerNoTruncate     bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any" mapstructure:"badger-no-truncate"`
@@ -137,6 +140,7 @@ type Server struct {
 	AdminSocketPath           string `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket will be created." mapstructure:"admin-socket-path"`
 	EnableExperimentalAdmin   bool   `def:"true" deprecated:"true" desc:"whether to enable the experimental admin interface" mapstructure:"enable-experimental-admin"`
 	EnableExperimentalAdhocUI bool   `def:"false" desc:"whether to enable the experimental adhoc ui interface" mapstructure:"enable-experimental-adhoc-ui"`
+	AdhocDataPath             string `def:"<defaultAdhocDataPath>" desc:"directory where pyroscope stores adhoc profiles" mapstructure:"adhoc-data-path"`
 
 	ScrapeConfigs []*scrape.Config `yaml:"scrape-configs" mapstructure:"-"`
 
@@ -157,12 +161,18 @@ type RetentionLevels struct {
 	Two  time.Duration `name:"2" deprecated:"true" mapstructure:"2"`
 }
 
+// Auth section contains authentication settings.
+//
+// If no auth methods enabled, authorization also does not
+// take effect: anonymous user becomes an admin.
 type Auth struct {
+	SignupEnabled     bool   `json:"-" deprecated:"true" def:"false" desc:"allows users to register themselves with password credentials" mapstructure:"signup-enabled"`
+	SignupDefaultRole string `json:"-" deprecated:"true" def:"member" desc:"specifies which role will be granted to a newly signed up user. Supported roles: admin, member. Defaults to member" mapstructure:"signup-default-role"`
+
 	Google GoogleOauth `mapstructure:"google"`
 	Gitlab GitlabOauth `mapstructure:"gitlab"`
 	Github GithubOauth `mapstructure:"github"`
 
-	// TODO: can we generate these automatically if it's empty?
 	JWTSecret                string `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
 	LoginMaximumLifetimeDays int    `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
 }
@@ -283,4 +293,9 @@ type AdminAppDelete struct {
 	SocketPath string        `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
 	Force      bool          `def:"false" desc:"don't prompt for confirmation of dangerous actions" mapstructure:"force"`
 	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
+}
+
+type Database struct {
+	Type string `def:"sqlite3" desc:"" mapstructure:"type"`
+	URL  string `def:"<installPrefix>/var/lib/pyroscope/pyroscope.db" desc:"" mapstructure:"url"`
 }

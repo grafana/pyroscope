@@ -351,10 +351,10 @@ function getColor(cfg: getColorCfg) {
 
   // We are in a search
   if (cfg.highlightModeOn) {
-    if (cfg.isHighlighted) {
-      return highlightColor;
+    if (!cfg.isHighlighted) {
+      return colorGreyscale(200, 0.66);
     }
-    return colorGreyscale(200, 0.66);
+    // it's a highlighted node, so color it as normally
   }
 
   // Diff mode

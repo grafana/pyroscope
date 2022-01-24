@@ -3,13 +3,13 @@ targetName: pr
 
 queries:
   - name: 'throughput'
-    base: 'rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope:4040"}[5m])'
-    target: 'rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope-main:4040"}[5m])'
+    base: 'rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope-main:4040"}[5m])'
+    target: 'rate(pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope:4040"}[5m])'
     diffThresholdPercent: 5
     biggerIsBetter: true
 
-  - base: 'pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope:4040"}'
-    target: 'pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope-main:4040"}'
+  - base: 'pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope-main:4040"}'
+    target: 'pyroscope_http_request_duration_seconds_count{handler="/ingest", instance="pyroscope:4040"}'
     name: 'total items processed'
     diffThresholdPercent: 5
     biggerIsBetter: true

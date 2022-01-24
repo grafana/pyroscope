@@ -18,7 +18,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Run Webapp Snapshot tests
-        run: UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-snapshots.sh
+        run: UPDATE_SNAPSHOTS=false ./scripts/jest-snapshots/run-snapshots.sh
       # since there are snapshot tests (for the flamegraph)
       # store their diff when it fails, plus the original image
       # to make it easier to compare

@@ -1,7 +1,23 @@
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
+import { configureStore } from '@reduxjs/toolkit';
+import { Provider } from 'react-redux';
+import uiReducer from '@pyroscope/redux/reducers/ui';
+
 import Sidebar from './Sidebar';
+
+// TODO: figure out the types here
+function createStore(preloadedState: any) {
+  const store = configureStore({
+    reducer: {
+      ui: uiReducer,
+    },
+    preloadedState,
+  });
+
+  return store;
+}
 
 describe('Sidebar', () => {
   describe('active routes highlight', () => {
@@ -14,7 +30,18 @@ describe('Sidebar', () => {
         test(`should have menuitem ${b} active`, () => {
           render(
             <MemoryRouter initialEntries={[a]}>
-              <Sidebar initialCollapsed />
+              <Provider
+                store={createStore({
+                  ui: {
+                    sidebar: {
+                      state: 'pristine',
+                      collapsed: true,
+                    },
+                  },
+                })}
+              >
+                <Sidebar />
+              </Provider>
             </MemoryRouter>
           );
 
@@ -27,7 +54,18 @@ describe('Sidebar', () => {
         test(`should have menuitem ${b} active`, () => {
           render(
             <MemoryRouter initialEntries={[a]}>
-              <Sidebar initialCollapsed={false} />
+              <Provider
+                store={createStore({
+                  ui: {
+                    sidebar: {
+                      state: 'pristine',
+                      collapsed: false,
+                    },
+                  },
+                })}
+              >
+                <Sidebar />
+              </Provider>
             </MemoryRouter>
           );
 
