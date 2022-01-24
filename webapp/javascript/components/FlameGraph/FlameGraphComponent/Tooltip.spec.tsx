@@ -7,6 +7,7 @@ import { Maybe } from '@utils/fp';
 import { diffColorRed, diffColorGreen } from './color';
 import { Units } from '../../../util/format';
 import Tooltip, { TooltipProps } from './Tooltip';
+import { DefaultPalette } from './colorPalette';
 
 // Omit<TooltipProps, 'canvasRef'>) wasn't working
 // so for testing let's pass canvasRef = undefined
@@ -41,6 +42,7 @@ describe('Tooltip', () => {
           xyToData={xyToData}
           leftTicks={100}
           rightTicks={100}
+          palette={DefaultPalette}
         />
       );
 
@@ -99,6 +101,7 @@ describe('Tooltip', () => {
           leftTicks={1000}
           rightTicks={1000}
           xyToData={myxyToData}
+          palette={DefaultPalette}
         />
       );
 
@@ -134,6 +137,7 @@ describe('Tooltip', () => {
           leftTicks={1000}
           rightTicks={1000}
           xyToData={myxyToData}
+          palette={DefaultPalette}
         />
       );
       // since we are mocking the result
@@ -168,6 +172,7 @@ describe('Tooltip', () => {
           leftTicks={1000}
           rightTicks={1000}
           xyToData={myxyToData}
+          palette={DefaultPalette}
         />
       );
       // since we are mocking the result
@@ -202,6 +207,7 @@ describe('Tooltip', () => {
           leftTicks={1000}
           rightTicks={1000}
           xyToData={myxyToData}
+          palette={DefaultPalette}
         />
       );
       // since we are mocking the result
@@ -236,6 +242,7 @@ describe('Tooltip', () => {
           leftTicks={1000}
           rightTicks={1000}
           xyToData={myxyToData}
+          palette={DefaultPalette}
         />
       );
       // since we are mocking the result

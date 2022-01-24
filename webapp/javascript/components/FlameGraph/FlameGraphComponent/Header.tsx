@@ -1,13 +1,8 @@
 import React from 'react';
 import { Flamebearer } from '@models/flamebearer';
-import Dropdown, { MenuItem, SubMenu } from '@ui/Dropdown';
-import DiffLegend from './DiffLegend';
 import styles from './Header.module.css';
-import {
-  FlamegraphPalette,
-  DefaultPalette,
-  ColorBlindPalette,
-} from './colorPalette';
+import { FlamegraphPalette } from './colorPalette';
+import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';
 
 interface HeaderProps {
   format: Flamebearer['format'];
@@ -32,7 +27,7 @@ export default function Header(props: HeaderProps) {
         return (
           <div>
             <div
-              className={`${styles.row} ${styles['flamegraph-title']}`}
+              className={`${styles.row} ${styles.flamegraphTitle}`}
               role="heading"
               aria-level={2}
             >
@@ -50,7 +45,10 @@ export default function Header(props: HeaderProps) {
             <div className={styles.row} role="heading" aria-level={2}>
               Base graph: left - Comparison graph: right
             </div>
-            <DiffLegend palette={palette} />
+            <DiffLegendPaletteDropdown
+              palette={palette}
+              onChange={setPalette}
+            />
           </>
         );
       }
@@ -62,38 +60,12 @@ export default function Header(props: HeaderProps) {
 
   const title = getTitle();
 
-  const paletteComp =
-    format === 'double' ? (
-      <PaletteDropdown palette={palette} setPalette={setPalette} />
-    ) : null;
-
   return (
-    <div className={styles['flamegraph-header']}>
+    <div className={styles.flamegraphHeader}>
       <div>{title}</div>
       <div className={styles.buttons}>
-        {paletteComp}
         <ExportData />
       </div>
     </div>
-  );
-}
-
-function PaletteDropdown({
-  palette,
-  setPalette,
-}: Pick<HeaderProps, 'palette' | 'setPalette'>) {
-  const palettes = [DefaultPalette, ColorBlindPalette];
-  return (
-    <Dropdown label="Palette" onItemClick={(e) => setPalette(e.value)}>
-      {palettes.map((p) => (
-        <MenuItem
-          value={p}
-          key={p.name}
-          className={palette.name === p.name ? 'active' : ''}
-        >
-          {p.name}
-        </MenuItem>
-      ))}
-    </Dropdown>
   );
 }

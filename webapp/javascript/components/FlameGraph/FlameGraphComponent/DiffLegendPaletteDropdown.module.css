@@ -1,0 +1,15 @@
+.diffPaletteDropdown > div {
+  margin-bottom: 0px;
+}
+
+.diffPaletteDropdown::after {
+  top: 0px;
+}
+
+.dropdownItem {
+  display: flex;
+}
+
+.dropdownItem svg {
+  margin-left: 1em;
+}
