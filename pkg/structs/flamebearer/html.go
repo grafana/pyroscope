@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"regexp"
 	"text/template"
+
+	"github.com/pyroscope-io/pyroscope/pkg/build"
 )
 
 // FlamebearerToStandaloneHTML converts and writes a flamebearer into HTML
@@ -26,9 +28,8 @@ func FlamebearerToStandaloneHTML(fb *FlamebearerProfile, dir http.FileSystem, w 
 	scriptTpl, err := template.New("standalone").Parse(
 		`
 <script type="text/javascript">
-	try {
-		eval('window.flamegraph = {{ .Flamegraph }}');
-	} catch(e) {}
+	window.flamegraph = {{ .Flamegraph }}
+	window.buildInfo = {{ .BuildInfo }};
 </script>`,
 	)
 	if err != nil {
@@ -38,6 +39,7 @@ func FlamebearerToStandaloneHTML(fb *FlamebearerProfile, dir http.FileSystem, w 
 	var buffer bytes.Buffer
 	err = scriptTpl.Execute(&buffer, map[string]string{
 		"Flamegraph": string(flamegraph),
+		"BuildInfo":  string(build.JSON()),
 	})
 	if err != nil {
 		return fmt.Errorf("unable to execute template: %w", err)
