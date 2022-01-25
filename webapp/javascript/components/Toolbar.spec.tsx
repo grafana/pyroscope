@@ -67,6 +67,7 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={() => {}}
         updateViewDiff={() => {}}
+        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -89,6 +90,7 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={() => {}}
         updateViewDiff={() => {}}
+        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -115,6 +117,7 @@ describe('ProfileHeader', () => {
           view="both"
           display="both"
           viewDiff="diff"
+          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={onReset}
@@ -137,6 +140,7 @@ describe('ProfileHeader', () => {
           view="both"
           display="both"
           viewDiff="diff"
+          renderLogo={false}
           isFlamegraphDirty
           handleSearchChange={() => {}}
           reset={onReset}
@@ -164,6 +168,7 @@ describe('ProfileHeader', () => {
           view="both"
           display="both"
           viewDiff="diff"
+          renderLogo={false}
           isFlamegraphDirty
           handleSearchChange={() => {}}
           reset={onReset}
@@ -190,6 +195,7 @@ describe('ProfileHeader', () => {
           view="both"
           display="both"
           viewDiff="diff"
+          renderLogo={false}
           isFlamegraphDirty
           handleSearchChange={() => {}}
           reset={onReset}
@@ -216,6 +222,7 @@ describe('ProfileHeader', () => {
           view="both"
           display="both"
           viewDiff="diff"
+          renderLogo={false}
           isFlamegraphDirty
           handleSearchChange={onChange}
           reset={() => {}}
@@ -248,6 +255,7 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={() => {}}
         updateViewDiff={() => {}}
+        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -288,6 +296,7 @@ describe('ProfileHeader', () => {
           view="both"
           display="both"
           viewDiff="diff"
+          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={() => {}}
@@ -311,6 +320,7 @@ describe('ProfileHeader', () => {
           view="both"
           display="both"
           viewDiff="diff"
+          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={() => {}}
@@ -337,6 +347,7 @@ describe('ProfileHeader', () => {
           view="both"
           display="both"
           viewDiff="diff"
+          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={() => {}}
@@ -360,6 +371,7 @@ describe('ProfileHeader', () => {
           view="both"
           display="both"
           viewDiff="diff"
+          renderLogo={false}
           isFlamegraphDirty={false}
           handleSearchChange={() => {}}
           reset={() => {}}
@@ -392,6 +404,7 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={() => {}}
         updateViewDiff={updateViewDiff}
+        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
@@ -410,6 +423,7 @@ describe('ProfileHeader', () => {
           fitMode={FitModes.HEAD}
           updateView={() => {}}
           updateViewDiff={() => {}}
+          renderLogo={false}
           isFlamegraphDirty={false}
           selectedNode={Maybe.nothing()}
           onFocusOnSubtree={() => {}}
@@ -494,6 +508,7 @@ describe('ProfileHeader', () => {
         fitMode={FitModes.HEAD}
         updateView={updateView}
         updateViewDiff={() => {}}
+        renderLogo={false}
         isFlamegraphDirty={false}
         selectedNode={Maybe.nothing()}
         onFocusOnSubtree={() => {}}
