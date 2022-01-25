@@ -42,9 +42,6 @@ export default function Header(props: HeaderProps) {
       case 'double': {
         return (
           <>
-            <div className={styles.row} role="heading" aria-level={2}>
-              Base graph: left - Comparison graph: right
-            </div>
             <DiffLegendPaletteDropdown
               palette={palette}
               onChange={setPalette}
