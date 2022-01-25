@@ -259,7 +259,7 @@ describe('FlamegraphComponent', () => {
       );
 
       expect(screen.queryByRole('heading', { level: 2 })).toHaveTextContent(
-        'Base graph: left - Comparison graph: right'
+        '(-) RemovedAdded (+)'
       );
 
       expect(screen.getByTestId('flamegraph-legend')).toBeInTheDocument();
