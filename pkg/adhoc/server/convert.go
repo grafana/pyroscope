@@ -16,7 +16,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
-func JSONToProfile(b []byte, _ string, _ int) (*flamebearer.FlamebearerProfile, error) {
+func JSONToProfileV1(b []byte, _ string, _ int) (*flamebearer.FlamebearerProfile, error) {
 	var profile flamebearer.FlamebearerProfile
 	if err := json.Unmarshal(b, &profile); err != nil {
 		return nil, fmt.Errorf("unable to unmarshall JSON: %w", err)
@@ -24,7 +24,7 @@ func JSONToProfile(b []byte, _ string, _ int) (*flamebearer.FlamebearerProfile, 
 	return &profile, nil
 }
 
-func PprofToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+func PprofToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
 	p, err := convert.ParsePprof(bytes.NewReader(b))
 	if err != nil {
 		return nil, fmt.Errorf("parsing pprof: %w", err)
@@ -56,7 +56,7 @@ func PprofToProfile(b []byte, name string, maxNodes int) (*flamebearer.Flamebear
 	return nil, errors.New("no supported sample type found")
 }
 
-func CollapsedToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+func CollapsedToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
 	t := tree.New()
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		if len(line) == 0 {
