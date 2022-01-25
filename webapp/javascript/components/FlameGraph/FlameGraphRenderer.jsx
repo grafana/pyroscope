@@ -293,6 +293,7 @@ class FlameGraphRenderer extends React.Component {
         <div className="canvas-container">
           {this.shouldShowToolbar() && (
             <Toolbar
+              renderLogo={this.props.renderLogo}
               view={this.state.view}
               viewDiff={this.state.viewDiff}
               display={this.props.display}

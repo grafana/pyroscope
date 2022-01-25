@@ -53,6 +53,22 @@ if (!(window as any).flamegraph) {
 // TODO parse window.flamegraph
 const { flamegraph } = window as any;
 
+// TODO: unify with the one in Footer component
+function buildInfo() {
+  const w = (window as any).buildInfo;
+  return `
+    BUILD INFO:
+    goos: ${w.goos}
+    goarch: ${w.goarch}
+    go_version: ${w.goVersion}
+    version: ${w.version}
+    time: ${w.time}
+    gitSHA: ${w.gitSHA}
+    gitDirty: ${w.gitDirty}
+    embeddedAssets: ${w.useEmbeddedAssets}
+`.replace(/^\s+/gm, '');
+}
+
 function AdhocApp() {
   const flamebearer = decodeFlamebearer(flamegraph);
 
@@ -60,15 +76,24 @@ function AdhocApp() {
     flamebearer.format === 'single' ? flamebearer.format : 'diff';
 
   return (
-    <Box className={styles.container}>
-      <FlameGraphRenderer
-        flamebearer={flamebearer}
-        viewType={viewType}
-        display="both"
-        rawFlamegraph={flamegraph}
-        ExportData={null}
-      />
-    </Box>
+    <div>
+      <Box className={styles.container}>
+        <FlameGraphRenderer
+          renderLogo
+          flamebearer={flamebearer}
+          viewType={viewType}
+          display="both"
+          rawFlamegraph={flamegraph}
+          ExportData={null}
+        />
+      </Box>
+      <div
+        style={{ textAlign: 'center', padding: '30px 0' }}
+        title={buildInfo()}
+      >
+        {`Copyright © 2020 – ${new Date().getFullYear()} Pyroscope, Inc`}
+      </div>
+    </div>
   );
 }
 

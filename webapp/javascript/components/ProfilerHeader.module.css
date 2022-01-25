@@ -31,3 +31,18 @@
 .fit-mode-select {
   margin: 0 8px;
 }
+
+.header-logo {
+  display: inline-block;
+  text-decoration: none;
+  color: #fff;
+  font-size: 1.2em;
+}
+
+.header-logo img {
+  display: inline-block;
+}
+
+.header-logo span {
+  display: inline-block;
+}
