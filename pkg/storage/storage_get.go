@@ -67,6 +67,24 @@ func (s *Storage) GetContext(ctx context.Context, gi *GetInput) (*GetOutput, err
 		return nil, fmt.Errorf("key or query must be specified")
 	}
 
+	// If a query includes 'profile_id' matcher others are ignored.
+	for _, m := range gi.Query.Matchers {
+		if m.Key == segment.ProfileIDLabelName && m.Op == flameql.OpEqual {
+			o := GetOutput{
+				SpyName:    "unknown",
+				Units:      "samples",
+				SampleRate: 100,
+			}
+			k := segment.NewProfileIDKey(gi.Query.AppName, m.Value)
+			if v, ok := s.trees.Lookup(k); ok {
+				o.Tree = v.(*tree.Tree)
+			} else {
+				o.Tree = tree.New()
+			}
+			return &o, nil
+		}
+	}
+
 	s.getTotal.Inc()
 	logger.Debug("storage.Get")
 	trace.Logf(ctx, traceCatGetKey, "%+v", gi)
