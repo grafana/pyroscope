@@ -3,10 +3,12 @@ package adhoc
 import (
 	"fmt"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/pyroscope-io/pyroscope/pkg/analytics"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/sirupsen/logrus"
 
@@ -27,6 +29,21 @@ const (
 	modePush
 	modePull
 )
+
+func (m mode) String() string {
+	switch m {
+	case modeExec:
+		return "exec"
+	case modeConnect:
+		return "connect"
+	case modePush:
+		return "push"
+	case modePull:
+		return "pull"
+	default:
+		return "unknown"
+	}
+}
 
 func Cli(cfg *config.Adhoc, args []string) error {
 	// Determine the mode to use to gather profiling data
@@ -107,8 +124,16 @@ func Cli(cfg *config.Adhoc, args []string) error {
 	}
 
 	t0 := time.Now()
+	status := "success"
 	if err := r.Run(); err != nil {
+		status = "failure"
 		logger.WithError(err).Error("running profiler")
+	}
+
+	wg := sync.WaitGroup{}
+	if !cfg.AnalyticsOptOut {
+		wg.Add(1)
+		go analytics.AdhocReport(m.String()+"-"+status, &wg)
 	}
 
 	newWriter(cfg, st, logger).write(t0, time.Now())
@@ -117,6 +142,7 @@ func Cli(cfg *config.Adhoc, args []string) error {
 	if err := st.Close(); err != nil {
 		logger.WithError(err).Error("storage close")
 	}
+	wg.Wait()
 	return err
 }
 
