@@ -18,36 +18,43 @@ export const DiffLegendPaletteDropdown = (props) => {
   const showMode = useSizeMode(legendRef);
 
   return (
-    <div ref={legendRef} className={styles.dropdownWrapper}>
-      <Dropdown
-        label="Select a palette"
-        menuButton={
-          <MenuButton
-            className={cx(
-              // eslint-disable-next-line
-              dropdownStyles.dropdownMenuButton,
-              styles.diffPaletteDropdown
-            )}
-          >
-            <DiffLegend palette={palette} showMode={showMode} />
-          </MenuButton>
-        }
-        onItemClick={(e) => onChange(e.value)}
-      >
-        {paletteList.map((p) => (
-          <MenuItem key={p.name} value={p}>
-            <div>
-              <label>{p.name}</label>
-              <div className={styles.dropdownItem}>
-                <DiffLegend palette={p} showMode={showMode} />
+    <>
+      <div className={styles.row} role="heading" aria-level={2}>
+        <p style={{ color: palette.goodColor.rgb().string() }}>(-) Removed</p>
+        <p style={{ color: palette.badColor.rgb().string() }}>Added (+)</p>
+      </div>
 
-                {p === palette ? <CheckIcon /> : null}
+      <div ref={legendRef} className={styles.dropdownWrapper}>
+        <Dropdown
+          label="Select a palette"
+          menuButton={
+            <MenuButton
+              className={cx(
+                // eslint-disable-next-line
+                dropdownStyles.dropdownMenuButton,
+                styles.diffPaletteDropdown
+              )}
+            >
+              <DiffLegend palette={palette} showMode={showMode} />
+            </MenuButton>
+          }
+          onItemClick={(e) => onChange(e.value)}
+        >
+          {paletteList.map((p) => (
+            <MenuItem key={p.name} value={p}>
+              <div>
+                <label>{p.name}</label>
+                <div className={styles.dropdownItem}>
+                  <DiffLegend palette={p} showMode={showMode} />
+
+                  {p === palette ? <CheckIcon /> : null}
+                </div>
               </div>
-            </div>
-          </MenuItem>
-        ))}
-      </Dropdown>
-    </div>
+            </MenuItem>
+          ))}
+        </Dropdown>
+      </div>
+    </>
   );
 };
 
