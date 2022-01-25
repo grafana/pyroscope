@@ -1,3 +1,25 @@
+# [0.8.0](https://github.com/pyroscope-io/pyroscope/compare/v0.7.2...v0.8.0) (2022-01-25)
+
+
+### Bug Fixes
+
+* **examples:** adds host pid option to docker-compose eBPF example([#732](https://github.com/pyroscope-io/pyroscope/issues/732)) ([5e8dc83](https://github.com/pyroscope-io/pyroscope/commit/5e8dc8359bb15ce8406c5a2cf4ceb1355a43be00))
+* **frontend:** improves timeline UX by shifting bars 5 seconds forward ([#742](https://github.com/pyroscope-io/pyroscope/issues/742)) ([687219d](https://github.com/pyroscope-io/pyroscope/commit/687219d180224e4fd750dcd697396200f12bcac0))
+* return disk space check ([#751](https://github.com/pyroscope-io/pyroscope/issues/751)) ([0641244](https://github.com/pyroscope-io/pyroscope/commit/0641244e18cdbe29c7044ce95c6e00acbab9b2a7))
+* Update drag and drop styling ([#756](https://github.com/pyroscope-io/pyroscope/issues/756)) ([25ce3b2](https://github.com/pyroscope-io/pyroscope/commit/25ce3b2f52428043d04f152f67fa10fb3b118049))
+
+
+### Features
+
+* add debug storage export endpoint ([#752](https://github.com/pyroscope-io/pyroscope/issues/752)) ([5040fb3](https://github.com/pyroscope-io/pyroscope/commit/5040fb3a3b266eed4843ed4e8e5687dfcbd49189))
+* add http discovery mechanism ([#726](https://github.com/pyroscope-io/pyroscope/issues/726)) ([a941634](https://github.com/pyroscope-io/pyroscope/commit/a94163423e3689979c1ace74fdfdc140d37d9713))
+* added tooltip for timeline selection ([#730](https://github.com/pyroscope-io/pyroscope/issues/730)) ([d226370](https://github.com/pyroscope-io/pyroscope/commit/d226370239293dd14e01c907a471e68c8f915a2b))
+* **frontend:** export comparison diff standalone html ([#749](https://github.com/pyroscope-io/pyroscope/issues/749)) ([697a66c](https://github.com/pyroscope-io/pyroscope/commit/697a66c925178de43d09d051f83a9dc0f39207a9))
+* New diff mode palette selection dropdown ([#754](https://github.com/pyroscope-io/pyroscope/issues/754)) ([dfd8a3d](https://github.com/pyroscope-io/pyroscope/commit/dfd8a3d04900eadead8faf588cfa1d01bbf519b2))
+* output standalone HTML files for adhoc profiles. ([#728](https://github.com/pyroscope-io/pyroscope/issues/728)) ([a4f90ab](https://github.com/pyroscope-io/pyroscope/commit/a4f90ab3cc6f5e4536db2f4fdbcb1d6bee5f790b))
+
+
+
 ## [0.7.2](https://github.com/pyroscope-io/pyroscope/compare/v0.7.1...v0.7.2) (2022-01-14)
 
 
