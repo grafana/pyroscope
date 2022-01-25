@@ -27,6 +27,8 @@ type Config struct {
 }
 
 type Adhoc struct {
+	AnalyticsOptOut bool `def:"false" desc:"disables analytics" mapstructure:"analytics-opt-out"`
+
 	LogLevel  string `def:"info" desc:"log level: debug|info|warn|error" mapstructure:"log-level"`
 	NoLogging bool   `def:"false" desc:"disables logging from pyroscope" mapstructure:"no-logging"`
 
