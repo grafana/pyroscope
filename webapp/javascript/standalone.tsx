@@ -87,10 +87,7 @@ function AdhocApp() {
           ExportData={null}
         />
       </Box>
-      <div
-        style={{ textAlign: 'center', padding: '30px 0' }}
-        title={buildInfo()}
-      >
+      <div className={styles.footer} title={buildInfo()}>
         {`Copyright © 2020 – ${new Date().getFullYear()} Pyroscope, Inc`}
       </div>
     </div>

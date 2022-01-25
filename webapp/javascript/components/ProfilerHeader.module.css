@@ -32,17 +32,17 @@
   margin: 0 8px;
 }
 
-.header-logo {
+.headerLogo {
   display: inline-block;
   text-decoration: none;
   color: #fff;
   font-size: 1.2em;
 }
 
-.header-logo img {
+.headerLogo img {
   display: inline-block;
 }
 
-.header-logo span {
+.headerLogo span {
   display: inline-block;
 }

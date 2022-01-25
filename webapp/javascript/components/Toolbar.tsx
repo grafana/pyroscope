@@ -166,7 +166,7 @@ function svgLogo() {
 function logo() {
   return (
     <a
-      className={styles['header-logo']}
+      className={styles.headerLogo}
       href="https://github.com/pyroscope-io/pyroscope/"
       target="_blank"
       rel="noreferrer"
