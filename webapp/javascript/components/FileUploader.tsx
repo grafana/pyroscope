@@ -79,13 +79,21 @@ export default function FileUploader({ file, setFile, className }: Props) {
       <div {...getRootProps()} className={styles.dragAndDropContainer}>
         <input {...getInputProps()} />
         {file ? (
-          <p>
-            To analyze another file, drag and drop pyroscope JSON files here or
-            click to select a file
-          </p>
+          <div className={styles.subHeadingContainer}>
+            <div className={styles.subHeading}>
+              To analyze another file, drag and drop pyroscope JSON files here
+              or click to select a file
+            </div>
+            <div className={styles.headerMain}> {file.name} </div>
+            <div className={styles.subHeading}>
+              <Button icon={faTrash} onClick={onRemove}>
+                Remove
+              </Button>
+            </div>
+          </div>
         ) : (
           <div>
-            <p className={styles.instructionsTextMain}>
+            <p className={styles.headerMain}>
               Drag and drop Flamegraph files here
             </p>
             <div className={styles.iconContainer}>
@@ -94,21 +102,12 @@ export default function FileUploader({ file, setFile, className }: Props) {
                 className={styles.fileUploadIcon}
               />
             </div>
-            <p className={styles.instructionsTextSecondary}>
-              Or click to select a file from your device
+            <p className={styles.subHeading}>
+              Or click to select a file from your devicess
             </p>
           </div>
         )}
       </div>
-      {file && (
-        <aside>
-          Currently analyzing file {file.name}
-          &nbsp;
-          <Button icon={faTrash} onClick={onRemove}>
-            Remove
-          </Button>
-        </aside>
-      )}
     </section>
   );
 }
