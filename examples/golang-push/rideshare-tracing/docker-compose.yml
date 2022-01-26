@@ -6,7 +6,7 @@ services:
     environment:
       - REGION=us-east-1
     build:
-      context: ""
+      context: ''
 
   us-west-1:
     env_file:
@@ -14,7 +14,7 @@ services:
     environment:
       - REGION=us-west-1
     build:
-      context: ""
+      context: ''
 
   eu-west-1:
     env_file:
@@ -22,7 +22,7 @@ services:
     environment:
       - REGION=eu-west-1
     build:
-      context: ""
+      context: ''
 
   pyroscope:
     image: pyroscope/pyroscope:latest
@@ -34,9 +34,11 @@ services:
       - 'server'
 
   load-generator:
+    env_file:
+      - config.env
     build:
-      context: ""
-      dockerfile: Dockerfile.load-generator
+      context: ''
+      dockerfile: Dockerfile.loadgen
     depends_on:
       - eu-west-1
       - us-west-1

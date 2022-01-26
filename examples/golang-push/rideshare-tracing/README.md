@@ -6,22 +6,24 @@ will be using [Honeycomb.io](https://www.honeycomb.io) observability platform.
 
 To achieve that, we will be using a special label – `profile_id` that is set by the profiler
 dynamically. Our simple application specifies Span ID as a profile ID which establishes
-one-to-one relation between a trace span execution scope and the profiling scope. In practice,
-the scenario can be different: an arbitrary string can be set as a profile ID. The most important
-feature is that profiles with the same ID are merged by storage upon insert.
+one-to-one relation between a trace span execution scope and the profiling scope.
+
+By default, only the root span gets annotated (the first span created locally), this is done to
+circumvent the fact that the profiler records only the time spent on CPU. Otherwise, all the
+children profiles should be merged to get the full representation of the root span profile.
+
+In practice, the scenario can be different: an arbitrary string can be set as a profile ID.
+The most important feature is that profiles with the same ID are merged by storage upon insert.
 
 Pyroscope handles profiles with `profile_id` label in a very specific way and stores them
 separately from others. As a result, such profiles can not be accessed using regular queries
 that aggregate the data: the very idea of identifiers is to ensure request-level granularity.
 
 There are number of limitations:
- - Only Go CPU profiling is fully supported at the moment.
- - Due to the very idea of the sampling profilers, spans shorter than the sample interval may
-   not be captured. For example, Go CPU profiler probes stack traces 100 times per second,
-   meaning that spans shorter than 10ms may not be captured.
- - Spans do not account children, the profiler records only the time spent on CPU. This means
-   that all the children profiles should be merged to get the full representation of the root
-   span profile or profile of the whole trace.
+ 1. Only Go CPU profiling is fully supported at the moment.
+ 2. Due to the very idea of the sampling profilers, spans shorter than the sample interval may
+    not be captured. For example, Go CPU profiler probes stack traces 100 times per second,
+    meaning that spans shorter than 10ms may not be captured.
 
 ### 1. Run the docker-compose file
 
@@ -38,12 +40,15 @@ There are number of limitations:
 
 The newly collected data should be available for querying: Honeycomb allows using various analytical approaches to identify interesting traces.
 
-Notice the `pyroscope.profile.id` span attribute:
+Notice the `pyroscope.profile.id` attribute of the root span. It's also important to note that only __root__ spans have
+profiles: in our case these are `OrderVehicle` and `CarHandler`:
 
-![image](https://user-images.githubusercontent.com/12090599/151026887-cb025a2a-6ee5-4401-a3be-73692427f3c1.png)
+![image](https://user-images.githubusercontent.com/12090599/151227147-70575e5c-e889-4296-8df4-6188b4b550be.png)
 
 ### 3. Access profiling data via [Pyroscope UI](`http://localhost:4040`)
 
 Now you should be able to access span profiles using its value in Pyroscope UI that is configured to listen on [http://localhost:4040](http://localhost:4040):
 
-![image](https://user-images.githubusercontent.com/12090599/151029404-2e17b817-a133-497a-964b-275f40ca23d6.png)
+Also, a profile can be accessed by URL from `pyroscope.profile.url` span attribute.
+
+![image](https://user-images.githubusercontent.com/12090599/151227182-bf09689b-b860-49f5-aebd-9583278125ce.png)

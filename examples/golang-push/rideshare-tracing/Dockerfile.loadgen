@@ -5,9 +5,9 @@ WORKDIR /go/src/app
 COPY . .
 
 RUN go get -d ./
-RUN go build -o main main.go
+RUN go build loadgen.go
 
 RUN adduser --disabled-password --gecos --quiet pyroscope
 USER pyroscope
 
-CMD ["./main"]
+CMD ["./loadgen"]
