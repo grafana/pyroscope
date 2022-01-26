@@ -24,6 +24,7 @@ import (
 type Config struct {
 	AppName                string
 	PyroscopeServerAddress string
+	PyroscopeProfileURL    string
 	HoneycombDataset       string
 	HoneycombAPIKey        string
 	UseDebugTracer         bool
@@ -31,8 +32,8 @@ type Config struct {
 
 func ReadConfig() Config {
 	c := Config{
-		AppName:                "ride-sharing-app",
 		PyroscopeServerAddress: os.Getenv("PYROSCOPE_SERVER_ADDRESS"),
+		PyroscopeProfileURL:    os.Getenv("PYROSCOPE_PROFILE_URL"),
 		HoneycombDataset:       os.Getenv("HONEYCOMB_DATASET"),
 		HoneycombAPIKey:        os.Getenv("HONEYCOMB_API_KEY"),
 		UseDebugTracer:         os.Getenv("DEBUG_TRACER") == "1",
@@ -58,6 +59,17 @@ func ReadConfig() Config {
 		c.PyroscopeServerAddress = u.String()
 	}
 
+	if c.PyroscopeProfileURL == "" {
+		c.PyroscopeProfileURL = c.PyroscopeServerAddress
+	} else {
+		u, err := url.Parse(c.PyroscopeProfileURL)
+		if err != nil {
+			log.Fatalf("Pyroscope server URL is invalid: %v\n", err)
+		}
+		u.RawQuery = ""
+		c.PyroscopeProfileURL = u.String()
+	}
+
 	return c
 }
 
@@ -68,12 +80,15 @@ func TracerProvider(c Config) (tp *sdktrace.TracerProvider, err error) {
 	} else {
 		tp, err = initTracerProviderHoneycomb(c)
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	// Set the Tracer Provider and the W3C Trace Context propagator as globals.
 	// We wrap the tracer provider to also annotate goroutines with Span ID so
 	// that pprof would add corresponding labels to profiling samples.
 	otel.SetTracerProvider(newTracerProfilerProvider(tp,
-		withProfileURLBuilder(defaultProfileURLBuilder(c.PyroscopeServerAddress, c.AppName)),
+		withProfileURLBuilder(defaultProfileURLBuilder(c.PyroscopeProfileURL, c.AppName)),
 		withRootSpanOnly(),
 	))
 
