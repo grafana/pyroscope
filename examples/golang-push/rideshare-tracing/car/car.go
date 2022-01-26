@@ -3,9 +3,9 @@ package car
 import (
 	"context"
 
-	"rideshare/utility"
+	"rideshare/ride"
 )
 
 func OrderCar(ctx context.Context, searchRadius int64) {
-	utility.FindNearestVehicle(ctx, searchRadius, "car")
+	ride.FindNearestVehicle(ctx, searchRadius, "car")
 }
