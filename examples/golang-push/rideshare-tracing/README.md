@@ -20,18 +20,22 @@ separately from others. As a result, such profiles can not be accessed using reg
 that aggregate the data: the very idea of identifiers is to ensure request-level granularity.
 
 There are number of limitations:
- 1. Only Go CPU profiling is fully supported at the moment.
- 2. Due to the very idea of the sampling profilers, spans shorter than the sample interval may
+
+1.  Only Go CPU profiling is fully supported at the moment.
+2.  Due to the very idea of the sampling profilers, spans shorter than the sample interval may
     not be captured. For example, Go CPU profiler probes stack traces 100 times per second,
     meaning that spans shorter than 10ms may not be captured.
 
 ### 1. Run the docker-compose file
 
- - With debug option: traces aren't sent but printed to stdout.
+- With debug option: traces aren't sent but printed to stdout.
+
 ```
 # DEBUG_TRACER=1 docker-compose up --build
 ```
- - Provide with a valid API Key in order to send traces to Honeycomb. Optionally, you can also set `HONEYCOMB_DATASET` variable. Please see `config.env` for details.
+
+- Provide with a valid API Key in order to send traces to Honeycomb. Optionally, you can also set `HONEYCOMB_DATASET` variable. Please see `config.env` for details.
+
 ```
 #  HONEYCOMB_API_KEY={api_key} docker-compose up --build
 ```
@@ -40,7 +44,7 @@ There are number of limitations:
 
 The newly collected data should be available for querying: Honeycomb allows using various analytical approaches to identify interesting traces.
 
-Notice the `pyroscope.profile.id` attribute of the root span. It's also important to note that only __root__ spans have
+Notice the `pyroscope.profile.id` attribute of the root span. It's also important to note that only **root** spans have
 profiles: in our case these are `OrderVehicle` and `CarHandler`:
 
 ![image](https://user-images.githubusercontent.com/12090599/151227147-70575e5c-e889-4296-8df4-6188b4b550be.png)
