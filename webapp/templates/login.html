@@ -20,7 +20,33 @@
     <section class="login-form">
       <div class="welcome-logo"></div>
       <h1 class="welcome-title">Welcome to Pyroscope</h1>
+      <form method="post" url="/users/login">
+        <div class="signin-form">
+          <div>
+            <div><label>Email or username</label></div>
+            <input type="text" name="user" autocapitalize="none" placeholder="email or username" />
+          </div>
+          <div>
+            <div><label>Password</label></div>
+            <input type="password" name="password" aria-label="password input field" autocomplete="current-password"  placeholder="password" />
+          </div>
+          <div>
+            <button type="submit" class="sign-in-button">Log In</button>
+          </div>
+        </div>
+      </form>
       {{if or .GoogleEnabled .GithubEnabled .GitlabEnabled}}
+      <div class="login-page-div">
+        <div>
+            <hr/>
+        </div>
+        <div>or
+        </div>  
+        <div>
+            <hr/>
+        </div>
+      </div>
+
       <p class="login-to-continue">Log in to continue</p>
       <div class="sign-in-buttons">
         {{if .GoogleEnabled}}
