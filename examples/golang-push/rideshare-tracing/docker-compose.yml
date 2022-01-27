@@ -25,10 +25,8 @@ services:
       context: ''
 
   pyroscope:
-    # TODO: after a release uncomment and delete build:
-    # image: '${PYROSCOPE_IMAGE:-pyroscope/pyroscope:latest}'
-    build:
-      context: '../../..'
+    # TODO: after a release replace with the regular repo:
+    image: '${PYROSCOPE_IMAGE:-pyroscope/pyroscope-dev:main}'
     environment:
       - PYROSCOPE_LOG_LEVEL=debug
     ports:
