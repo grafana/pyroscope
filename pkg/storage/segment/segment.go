@@ -156,12 +156,12 @@ func (sn *streeNode) get(ctx context.Context, s *Segment, st, et time.Time, cb f
 	case inside, overlap:
 		// Defer to children.
 	case contain, match:
+		// Take the node as is.
 		if sn.present {
 			cb(sn, big.NewRat(1, 1))
 			return
 		}
 	}
-
 	trace.Log(ctx, traceCatNodeGet, "drill down")
 	// Whether child nodes are outside the retention period.
 	if sn.time.Before(s.watermarks.levels[sn.depth-1]) && sn.present {
@@ -351,7 +351,10 @@ func (s *Segment) GetContext(ctx context.Context, st, et time.Time, cb func(dept
 	defer trace.StartRegion(ctx, traceRegionGet).End()
 	s.m.RLock()
 	defer s.m.RUnlock()
-
+	if st.Before(s.watermarks.absoluteTime) {
+		trace.Logf(ctx, traceCatGet, "start time %s is outside the retention period; set to %s", st, s.watermarks.absoluteTime)
+		st = s.watermarks.absoluteTime
+	}
 	st, et = normalize(st, et)
 	if s.root == nil {
 		trace.Log(ctx, traceCatGet, "empty")

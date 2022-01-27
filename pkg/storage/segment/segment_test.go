@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/big"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -226,65 +227,82 @@ var _ = Describe("stree", func() {
 				Expect(removed).To(BeTrue())
 			})
 
-			It("correctly samples data", func() {
+			Context("Issue 715", func() {
 				// See https://github.com/pyroscope-io/pyroscope/issues/715
-				s := New()
-				st := time.Date(2021, time.December, 1, 0, 0, 0, 0, time.UTC)
-				et := time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
-				rp := &RetentionPolicy{AbsoluteTime: et}
-
-				c := st
-				for c.Before(et) {
-					e := c.Add(time.Second * time.Duration(10))
-					err := s.Put(c, e, 100, func(int, time.Time, *big.Rat, []Addon) {})
+				It("does not return nodes affected by retention policy", func() {
+					b, err := os.Open("testdata/issue_715")
 					Expect(err).ToNot(HaveOccurred())
-					c = e
-				}
+					s, err := Deserialize(b)
+					Expect(err).ToNot(HaveOccurred())
 
-				r, err := s.DeleteNodesBefore(rp)
-				Expect(r).To(BeFalse())
-				Expect(err).ToNot(HaveOccurred())
+					var keys []string
+					st := time.Date(2022, time.January, 12, 9, 40, 0, 0, time.UTC)
+					et := time.Date(2022, time.January, 12, 10, 40, 0, 0, time.UTC)
+					s.Get(st, et, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+						keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix()))+":"+r.String())
+					})
 
-				gSt := st.Add(-time.Hour)
-				gEt := et.Add(time.Hour)
-
-				var keys []string
-				s.Get(gSt, gEt, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix()))+":"+r.String())
+					Expect(keys).To(BeEmpty())
 				})
 
-				Expect(keys).To(BeEmpty())
-			})
+				It("correctly samples data", func() {
+					s := New()
+					st := time.Date(2021, time.December, 1, 0, 0, 0, 0, time.UTC)
+					et := time.Date(2022, time.January, 1, 0, 0, 0, 0, time.UTC)
+					rp := &RetentionPolicy{AbsoluteTime: et}
 
-			It("correctly samples data with level retention period", func() {
-				// See https://github.com/pyroscope-io/pyroscope/issues/715
-				s := New()
-				st := time.Date(2021, time.December, 1, 0, 0, 0, 0, time.UTC)
-				et := time.Date(2021, time.December, 2, 0, 0, 0, 0, time.UTC)
+					c := st
+					for c.Before(et) {
+						e := c.Add(time.Second * time.Duration(10))
+						err := s.Put(c, e, 100, func(int, time.Time, *big.Rat, []Addon) {})
+						Expect(err).ToNot(HaveOccurred())
+						c = e
+					}
 
-				c := st
-				for c.Before(et) {
-					e := c.Add(time.Second * time.Duration(10))
-					err := s.Put(c, e, 100, func(int, time.Time, *big.Rat, []Addon) {})
+					r, err := s.DeleteNodesBefore(rp)
+					Expect(r).To(BeFalse())
 					Expect(err).ToNot(HaveOccurred())
-					c = e
-				}
 
-				r, err := s.DeleteNodesBefore(&RetentionPolicy{Levels: map[int]time.Time{0: et}})
-				Expect(r).To(BeFalse())
-				Expect(err).ToNot(HaveOccurred())
+					gSt := st.Add(-time.Hour)
+					gEt := et.Add(time.Hour)
 
-				gSt := time.Date(2021, time.December, 1, 10, 0, 0, 0, time.UTC)
-				gEt := gSt.Add(time.Second * 30)
+					var keys []string
+					s.Get(gSt, gEt, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+						keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix()))+":"+r.String())
+					})
 
-				var keys []string
-				s.Get(gSt, gEt, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-					keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix()))+":"+r.String())
+					Expect(keys).To(BeEmpty())
 				})
 
-				Expect(keys).To(ConsistOf([]string{
-					"1:1638352800:3/10",
-				}))
+				It("correctly samples data with level retention period", func() {
+					s := New()
+					st := time.Date(2021, time.December, 1, 0, 0, 0, 0, time.UTC)
+					et := time.Date(2021, time.December, 2, 0, 0, 0, 0, time.UTC)
+
+					c := st
+					for c.Before(et) {
+						e := c.Add(time.Second * time.Duration(10))
+						err := s.Put(c, e, 100, func(int, time.Time, *big.Rat, []Addon) {})
+						Expect(err).ToNot(HaveOccurred())
+						c = e
+					}
+
+					r, err := s.DeleteNodesBefore(&RetentionPolicy{Levels: map[int]time.Time{0: et}})
+					Expect(r).To(BeFalse())
+					Expect(err).ToNot(HaveOccurred())
+
+					gSt := time.Date(2021, time.December, 1, 10, 0, 0, 0, time.UTC)
+					gEt := gSt.Add(time.Second * 30)
+
+					var keys []string
+					s.Get(gSt, gEt, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+						keys = append(keys, strconv.Itoa(depth)+":"+strconv.Itoa(int(t.Unix()))+":"+r.String())
+					})
+
+					Expect(keys).To(ConsistOf([]string{
+						"1:1638352800:3/10",
+					}))
+				})
 			})
 		})
 	})
