@@ -9,7 +9,7 @@
   display: flex;
   justify-content: center;
   flex-direction: column;
-  min-height: 120px;
+  min-height: 130px;
   max-height: 295px;
 
   &:hover {
@@ -36,14 +36,21 @@
   flex-direction: column;
 }
 
-.instructionsTextMain {
+.headerMain {
   font-size: 16pt;
   text-align: center;
   vertical-align: middle;
   margin: 0 0 10px 0;
 }
 
-.instructionsTextSecondary {
+.subHeading {
   text-align: center;
   vertical-align: middle;
+}
+
+.subHeadingContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  min-height: 130px;
 }
