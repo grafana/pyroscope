@@ -1,29 +1,27 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import Button from '@ui/Button';
 import Icon from '@ui/Icon';
 
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 
 import { addDays, addHours, formatDistance, formatRelative } from 'date-fns/fp';
+import {
+  reloadApiKeys,
+  selectAPIKeys,
+} from '@pyroscope/redux/reducers/settings';
 import styles from './SettingsTable.module.css';
 
-const sampleKeys = [
-  {
-    id: 0,
-    key: 'd9cca721a735dac4efe709e0f3518373',
-    createdAt: addDays(-5)(new Date()),
-    lastAccess: addHours(-2)(new Date()),
-  },
-  {
-    id: 1,
-    key: '398fefcb5925a718fd0c812bbeb7e101',
-    createdAt: addDays(-50)(new Date()),
-    lastAccess: null,
-  },
-];
-
 const ApiKeys = () => {
-  const keys = sampleKeys;
+  const dispatch = useAppDispatch();
+  const apiKeys = useAppSelector(selectAPIKeys);
+
+  useEffect(() => {
+    if (typeof apiKeys === 'undefined') {
+      dispatch(reloadApiKeys());
+    }
+  });
+
   const now = new Date();
   return (
     <>
@@ -31,29 +29,32 @@ const ApiKeys = () => {
       <table className={styles.settingsTable}>
         <thead>
           <tr>
-            <th>Key</th>
+            <th>Name</th>
+            <th>Role</th>
             <th>Creation date</th>
-            <th>Last access</th>
+            <th>Expiration date</th>
             <th aria-label="Actions" />
           </tr>
         </thead>
         <tbody>
-          {keys.map((key) => (
-            <tr key={key.id}>
-              <td>{key.key}</td>
-              <td>{formatRelative(key.createdAt, now)}</td>
-              <td>
-                {key.lastAccess
-                  ? `${formatDistance(key.lastAccess, now)} ago`
-                  : 'never'}
-              </td>
-              <td align="center">
-                <Button type="submit" kind="default" aria-label="Delete key">
-                  <Icon icon={faTimes} />
-                </Button>
-              </td>
-            </tr>
-          ))}
+          {apiKeys &&
+            apiKeys.map((key) => (
+              <tr key={key.id}>
+                <td>{key.name}</td>
+                <td>{key.role}</td>
+                <td>{formatRelative(key.createdAt, now)}</td>
+                <td title={key.expiresAt}>
+                  {key.expiresAt
+                    ? `in ${formatDistance(key.expiresAt, now)}`
+                    : 'never'}
+                </td>
+                <td align="center">
+                  <Button type="submit" kind="default" aria-label="Delete key">
+                    <Icon icon={faTimes} />
+                  </Button>
+                </td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </>

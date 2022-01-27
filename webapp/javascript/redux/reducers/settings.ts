@@ -1,6 +1,13 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import {
+  createSlice,
+  createAsyncThunk,
+  combineReducers,
+} from '@reduxjs/toolkit';
 import { Users } from '@models/users';
+import { APIKeys } from '@models/apikeys';
+
 import { fetchUsers } from '@pyroscope/services/users';
+import { fetchAPIKeys } from '@pyroscope/services/apiKeys';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 
@@ -8,15 +15,49 @@ interface SettingsRootState {
   // Since the value populated from the server
   // There's no 'loading'
   users:
-    | { type: 'loaded'; data: Users }
-    | { type: 'reloading'; data: Users }
-    | { type: 'failed'; data: Users };
+    | { type: 'loaded'; data?: Users }
+    | { type: 'reloading'; data?: Users }
+    | { type: 'failed'; data?: Users };
+
+  apiKeys:
+    | { type: 'loaded'; data?: APIKeys }
+    | { type: 'reloading'; data?: APIKeys }
+    | { type: 'failed'; data?: APIKeys };
 }
+
+const usersInitialState = { type: 'loaded', data: undefined };
+type usersState = typeof usersInitialState;
+const apiKeysInitialState = { type: 'loaded', data: undefined };
+type apiKeysState = typeof apiKeysInitialState;
 
 // Define the initial state using that type
 const initialState: SettingsRootState = {
-  users: { type: 'loaded', data: (window as any).initialState.users },
+  users: usersInitialState,
+  apiKeys: apiKeysInitialState,
 };
+
+export const reloadApiKeys = createAsyncThunk(
+  'newRoot/reloadAPIKeys',
+  async (foo, thunkAPI) => {
+    const res = await fetchAPIKeys();
+    if (res.isOk) {
+      console.log(res.value);
+      return Promise.resolve(res.value);
+    }
+
+    console.error(res.error.message);
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to load app names',
+        message: res.error.message,
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
 
 export const reloadUsers = createAsyncThunk(
   'newRoot/reloadUsers',
@@ -42,22 +83,47 @@ export const reloadUsers = createAsyncThunk(
 
 export const usersSlice = createSlice({
   name: 'users',
-  initialState,
+  initialState: usersInitialState,
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(reloadUsers.fulfilled, (state, action) => {
-      state.users = { type: 'loaded', data: action.payload };
+      state = { type: 'loaded', data: action.payload };
     });
     builder.addCase(reloadUsers.pending, (state) => {
-      state.users = { type: 'reloading', data: state.users.data };
+      state = { type: 'reloading', data: state.data };
     });
     builder.addCase(reloadUsers.rejected, (state) => {
-      state.users = { type: 'failed', data: state.users.data };
+      state = { type: 'failed', data: state.data };
     });
   },
 });
 
+export const apiKeysSlice = createSlice({
+  name: 'apiKeys',
+  initialState: apiKeysInitialState,
+  reducers: {},
+  extraReducers: (builder) => {
+    builder.addCase(reloadApiKeys.fulfilled, (state, action) => {
+      return { type: 'loaded', data: action.payload };
+    });
+    builder.addCase(reloadApiKeys.pending, (state) => {
+      state = { type: 'reloading', data: state.data };
+    });
+    builder.addCase(reloadUsers.rejected, (state) => {
+      state = { type: 'failed', data: state.data };
+    });
+  },
+});
+
+export const settingsState = (state: RootState) => state.settings;
+
 export const usersState = (state: RootState) => state.settings.users;
 export const selectUsers = (state: RootState) => state.settings.users.data;
 
-export default usersSlice.reducer;
+export const apiKeysState = (state: RootState) => state.settings.apiKeys;
+export const selectAPIKeys = (state: RootState) => state.settings.apiKeys.data;
+
+export default combineReducers({
+  users: usersSlice.reducer,
+  apiKeys: apiKeysSlice.reducer,
+});
