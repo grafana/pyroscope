@@ -6,6 +6,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
@@ -22,6 +23,14 @@ func NewAuthService(db *gorm.DB, jwtTokenService JWTTokenService) AuthService {
 		userService:     NewUserService(db),
 		apiKeyService:   NewAPIKeyService(db, jwtTokenService),
 		jwtTokenService: jwtTokenService,
+	}
+}
+
+func (svc AuthService) GetRouterServices() router.Services {
+	return router.Services{
+		AuthService:   svc,
+		APIKeyService: svc.apiKeyService,
+		UserService:   svc.userService,
 	}
 }
 

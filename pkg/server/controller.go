@@ -27,10 +27,15 @@ import (
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 	"github.com/pyroscope-io/pyroscope/webapp"
+
+	"github.com/pyroscope-io/pyroscope/pkg/api/router"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
+	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 )
 
 const (
@@ -61,7 +66,8 @@ type Controller struct {
 	// Exported metrics.
 	exportedMetrics *prometheus.Registry
 	exporter        storage.MetricsExporter
-
+	sqlstore        *sqlstore.SQLStore
+	auth            *service.AuthService
 	// Adhoc mode
 	adhoc adhocserver.Server
 }
@@ -90,12 +96,29 @@ type Notifier interface {
 }
 
 func New(c Config) (*Controller, error) {
+
 	if c.Configuration.BaseURL != "" {
 		_, err := url.Parse(c.Configuration.BaseURL)
 		if err != nil {
 			return nil, fmt.Errorf("BaseURL is invalid: %w", err)
 		}
 	}
+
+	// TODO(shaleynikov): move this out of here and get path from configuration
+	cSql := &sqlstore.Config{
+		Type: "sqlite3",
+		URL:  "file::memory:?cache=shared",
+	}
+	var err2 error
+	sqlStoreInstance, err2 := sqlstore.Open(cSql)
+	if err2 != nil {
+		return nil, fmt.Errorf("SqlStore initialization failed: %w", err2)
+	}
+
+	authService := service.NewAuthService(
+		sqlStoreInstance.DB(),
+		service.NewJWTTokenService([]byte("signing-key"), 0),
+	)
 
 	ctrl := Controller{
 		config:   c.Configuration,
@@ -105,6 +128,9 @@ func New(c Config) (*Controller, error) {
 		notifier: c.Notifier,
 		stats:    make(map[string]int),
 		appStats: mustNewHLL(),
+		sqlstore: sqlStoreInstance,
+		// Sorry all goes inline as I don't have much time
+		auth: &authService,
 
 		exportedMetrics: c.ExportedMetricsRegistry,
 		metricsMdw: middleware.New(middleware.Config{
@@ -132,6 +158,14 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 		panic(err)
 	}
 	return hll
+}
+
+type requestContextProvider func(context.Context) context.Context
+
+func ctxWithUser(u *model.User) requestContextProvider {
+	return func(ctx context.Context) context.Context {
+		return model.WithUser(ctx, *u)
+	}
 }
 
 func (ctrl *Controller) mux() (http.Handler, error) {
@@ -202,6 +236,35 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
 		{"/healthz", ctrl.healthz},
 	})
+
+	redirect := func(w http.ResponseWriter, r *http.Request) {
+		ctrl.log.WithField("url", r.URL).Debug("redirecting")
+		w.WriteHeader(http.StatusTemporaryRedirect)
+	}
+
+	// And now i'm always admin user #1
+	rcp := ctxWithUser(&model.User{ID: 1, Role: model.AdminRole})
+
+	r2 := router.New(
+		ctrl.log,
+		redirect,
+		r.PathPrefix("/api").Subrouter(),
+		ctrl.auth.GetRouterServices(),
+	)
+
+	// Disabled auth middleware for testing purposes
+	// if services.AuthService != nil {
+	// 	r2.Use(api.AuthMiddleware(ctrl.log, redirect, ctrl.auth))
+	// }
+
+	r2.Use(func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			r = r.WithContext(rcp(r.Context()))
+			next(w, r)
+		}
+	})
+
+	r2.RegisterHandlers()
 
 	return r, nil
 }
