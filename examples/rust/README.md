@@ -1,2 +1,2 @@
-## Continuous Profiling for Golang applications
+## Continuous Profiling for Rust applications
 ### Profiling a Rust Rideshare App with Pyroscope
