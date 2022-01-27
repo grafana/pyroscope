@@ -109,6 +109,21 @@ func (k *Key) SegmentKey() string {
 	return k.Normalized()
 }
 
+const ProfileIDLabelName = "profile_id"
+
+func (k *Key) HasProfileID() bool {
+	v, ok := k.labels[ProfileIDLabelName]
+	return ok && v != ""
+}
+
+func NewProfileIDKey(appName, id string) string {
+	return appName + "{" + id + "}"
+}
+
+func (k *Key) ProfileIDKey() string {
+	return NewProfileIDKey(k.AppName(), k.labels[ProfileIDLabelName])
+}
+
 func TreeKey(k string, depth int, unixTime int64) string {
 	return k + ":" + strconv.Itoa(depth) + ":" + strconv.FormatInt(unixTime, 10)
 }
