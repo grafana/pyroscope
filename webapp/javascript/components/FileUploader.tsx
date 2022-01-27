@@ -106,7 +106,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
               />
             </div>
             <p className={styles.subHeading}>
-              Or click to select a file from your devicess
+              Or click to select a file from your device
             </p>
           </div>
         )}
