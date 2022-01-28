@@ -2,8 +2,6 @@ package tree
 
 import (
 	"encoding/binary"
-	"reflect"
-	"unsafe"
 
 	"github.com/cespare/xxhash/v2"
 )
@@ -106,7 +104,7 @@ func (r *ProfileReader) readTrees(x *Profile, c labelsCache, f Finder) {
 	if len(indexes) == 0 {
 		return
 	}
-	stack := make([][]byte, 0, 16)
+	stack := make([]string, 0, 16)
 	for _, s := range x.Sample {
 		for i := len(s.LocationId) - 1; i >= 0; i-- {
 			// Resolve stack.
@@ -128,21 +126,17 @@ func (r *ProfileReader) readTrees(x *Profile, c labelsCache, f Finder) {
 				if !ok {
 					continue
 				}
-				stack = append(stack, unsafeStrToSlice(x.StringTable[fn.Name]))
+				stack = append(stack, x.StringTable[fn.Name])
 			}
 		}
 		// Insert tree nodes.
 		for i, vi := range indexes {
 			if v := uint64(s.Value[vi]); v != 0 {
-				c.getOrCreate(types[i], s.Label).InsertStack(stack, v)
+				c.getOrCreate(types[i], s.Label).InsertStackString(stack, v)
 			}
 		}
 		stack = stack[:0]
 	}
-}
-
-func unsafeStrToSlice(s string) []byte {
-	return (*[0x7fff0000]byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&s)).Data))[:len(s):len(s)]
 }
 
 // sample type -> labels hash -> entry

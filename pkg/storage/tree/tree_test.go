@@ -202,6 +202,35 @@ var _ = Describe("tree package", func() {
 		})
 	})
 
+	Context("InsertStackString with empty names", func() {
+		tree := New()
+		tree.InsertStackString([]string{"a", ""}, uint64(1))
+		tree.InsertStackString([]string{"a", "b"}, uint64(2))
+		tree.InsertStackString([]string{"", ""}, uint64(4))
+
+		It("properly sets up a tree", func() {
+			Expect(tree.root.ChildrenNodes).To(HaveLen(2))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes).To(HaveLen(1))
+			Expect(tree.root.ChildrenNodes[0].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[0].Total).To(Equal(uint64(4)))
+			Expect(string(tree.root.ChildrenNodes[0].Name)).To(Equal(""))
+			Expect(tree.root.ChildrenNodes[1].ChildrenNodes).To(HaveLen(2))
+			Expect(tree.root.ChildrenNodes[1].Self).To(Equal(uint64(0)))
+			Expect(tree.root.ChildrenNodes[1].Total).To(Equal(uint64(3)))
+			Expect(string(tree.root.ChildrenNodes[1].Name)).To(Equal("a"))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Self).To(Equal(uint64(4)))
+			Expect(tree.root.ChildrenNodes[0].ChildrenNodes[0].Total).To(Equal(uint64(4)))
+			Expect(string(tree.root.ChildrenNodes[0].ChildrenNodes[0].Name)).To(Equal(""))
+			Expect(tree.root.ChildrenNodes[1].ChildrenNodes[0].Self).To(Equal(uint64(1)))
+			Expect(tree.root.ChildrenNodes[1].ChildrenNodes[0].Total).To(Equal(uint64(1)))
+			Expect(string(tree.root.ChildrenNodes[1].ChildrenNodes[0].Name)).To(Equal(""))
+			Expect(tree.root.ChildrenNodes[1].ChildrenNodes[1].Self).To(Equal(uint64(2)))
+			Expect(tree.root.ChildrenNodes[1].ChildrenNodes[1].Total).To(Equal(uint64(2)))
+			Expect(string(tree.root.ChildrenNodes[1].ChildrenNodes[1].Name)).To(Equal("b"))
+			Expect(tree.String()).To(Equal("; 4\na; 1\na;b 2\n"))
+		})
+	})
+
 	Context("Merge", func() {
 		Context("similar trees", func() {
 			treeA := New()

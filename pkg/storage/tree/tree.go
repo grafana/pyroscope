@@ -176,26 +176,32 @@ func (n *treeNode) removeAt(i int) {
 
 func (n *treeNode) insertString(targetLabel string) *treeNode {
 	i, j := 0, len(n.ChildrenNodes)
-	for i < j {
-		m := (i + j) >> 1
-		for k, b := range []byte(targetLabel) {
-			if k >= len(n.ChildrenNodes[m].Name) || b > n.ChildrenNodes[m].Name[k] {
-				// targetLabel > n.ChildrenNodes[m].Name
-				i = m + 1
-				break
-			}
-			if b < n.ChildrenNodes[m].Name[k] {
-				// targetLabel < n.ChildrenNodes[m].Name
-				j = m
-				break
-			}
-			if k == len(targetLabel)-1 {
-				if len(targetLabel) == len(n.ChildrenNodes[m].Name) {
-					// targetLabel == n.ChildrenNodes[m].Name
-					return n.ChildrenNodes[m]
+	if targetLabel == "" {
+		if j > 0 && len(n.ChildrenNodes[0].Name) == 0 {
+			return n.ChildrenNodes[0]
+		}
+	} else {
+		for i < j {
+			m := (i + j) >> 1
+			for k, b := range []byte(targetLabel) {
+				if k >= len(n.ChildrenNodes[m].Name) || b > n.ChildrenNodes[m].Name[k] {
+					// targetLabel > n.ChildrenNodes[m].Name
+					i = m + 1
+					break
 				}
-				// targetLabel < n.ChildrenNodes[m].Name
-				j = m
+				if b < n.ChildrenNodes[m].Name[k] {
+					// targetLabel < n.ChildrenNodes[m].Name
+					j = m
+					break
+				}
+				if k == len(targetLabel)-1 {
+					if len(targetLabel) == len(n.ChildrenNodes[m].Name) {
+						// targetLabel == n.ChildrenNodes[m].Name
+						return n.ChildrenNodes[m]
+					}
+					// targetLabel < n.ChildrenNodes[m].Name
+					j = m
+				}
 			}
 		}
 	}
