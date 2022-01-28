@@ -66,7 +66,7 @@ async fn main() {
     let routes = warp::get().and(root).or(bike).or(scooter).or(car);
 
     // Serve the routes.
-    warp::serve(routes).run(([127, 0, 0, 1], 5000)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], 5000)).await;
 
     // Stop the Pyroscope client.
     agent.stop();
