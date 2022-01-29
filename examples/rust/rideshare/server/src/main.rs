@@ -25,7 +25,7 @@ async fn main() {
     let region = std::env::var("REGION").unwrap_or_else(|_| "us-east-1".to_string());
 
     // Configure Pyroscope client.
-    let mut agent = PyroscopeAgent::builder(server_address, "ride-sharing-rust".to_string())
+    let mut agent = PyroscopeAgent::builder(server_address, "ride-sharing-rust".to_owned())
         .sample_rate(100)
         .tags(&[("region", &region)])
         .build()
@@ -46,19 +46,19 @@ async fn main() {
 
     // Bike Route
     let bike = warp::path("bike").map(|| {
-        orderBike(1);
+        order_bike(1);
         "Bike ordered"
     });
 
     // Scooter Route
     let scooter = warp::path("scooter").map(|| {
-        orderScooter(2);
+        order_scooter(2);
         "Scooter ordered"
     });
 
     // Car Route
     let car = warp::path("car").map(|| {
-        orderCar(3);
+        order_car(3);
         "Car ordered"
     });
 
@@ -72,54 +72,54 @@ async fn main() {
     agent.stop();
 }
 
-fn orderBike(n: u64) {
-    FindNearestVehicule(n, Vehicule::Bike);
+fn order_bike(n: u64) {
+    find_nearest_vehicule(n, Vehicule::Bike);
 }
 
-fn orderScooter(n: u64) {
-    FindNearestVehicule(n, Vehicule::Scooter);
+fn order_scooter(n: u64) {
+    find_nearest_vehicule(n, Vehicule::Scooter);
 }
 
-fn orderCar(n: u64) {
-    FindNearestVehicule(n, Vehicule::Car);
+fn order_car(n: u64) {
+    find_nearest_vehicule(n, Vehicule::Car);
 }
 
-fn FindNearestVehicule(searchRadius: u64, vehicule: Vehicule) {
+fn find_nearest_vehicule(search_radius: u64, vehicule: Vehicule) {
     let mut _i: u64 = 0;
 
     let start_time = std::time::Instant::now();
-    while start_time.elapsed().as_secs() < searchRadius {
+    while start_time.elapsed().as_secs() < search_radius {
         _i += 1;
     }
 
     if vehicule == Vehicule::Car {
-        checkDriverAvailability(searchRadius);
+        check_driver_availability(search_radius);
     }
 }
 
-fn checkDriverAvailability(searchRadius: u64) {
+fn check_driver_availability(search_radius: u64) {
     let mut _i: u64 = 0;
 
     let start_time = std::time::Instant::now();
-    while start_time.elapsed().as_secs() < (searchRadius / 2) {
+    while start_time.elapsed().as_secs() < (search_radius / 2) {
         _i += 1;
     }
     // Every 4 minutes this will artificially create make requests in us-west-1 region slow
     // this is just for demonstration purposes to show how performance impacts show up in the
     // flamegraph
     let time_minutes = Local::now().minute();
-    if std::env::var("REGION").unwrap_or("us-west-1".to_owned()) == "us-west-1"
+    if std::env::var("REGION").unwrap_or_else(|_| "us-west-1".to_owned()) == "us-west-1"
         && (time_minutes * 8 % 4 == 0)
     {
-        mutexLock(searchRadius);
+        mutex_lock(search_radius);
     }
 }
 
-fn mutexLock(n: u64) {
+fn mutex_lock(search_radius: u64) {
     let mut _i: u64 = 0;
 
     let start_time = std::time::Instant::now();
-    while start_time.elapsed().as_secs() < (n * 10) {
+    while start_time.elapsed().as_secs() < (search_radius * 10) {
         _i += 1;
     }
 }
