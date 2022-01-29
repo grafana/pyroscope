@@ -108,3 +108,17 @@ func (mr *MockUserServiceMockRecorder) UpdateUserByID(arg0, arg1, arg2 interface
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserByID", reflect.TypeOf((*MockUserService)(nil).UpdateUserByID), arg0, arg1, arg2)
 }
+
+// UpdateUserPasswordByID mocks base method.
+func (m *MockUserService) UpdateUserPasswordByID(arg0 context.Context, arg1 uint, arg2 model.UpdateUserPasswordParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUserPasswordByID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateUserPasswordByID indicates an expected call of UpdateUserPasswordByID.
+func (mr *MockUserServiceMockRecorder) UpdateUserPasswordByID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUserPasswordByID", reflect.TypeOf((*MockUserService)(nil).UpdateUserPasswordByID), arg0, arg1, arg2)
+}

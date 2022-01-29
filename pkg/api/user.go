@@ -16,6 +16,7 @@ type UserService interface {
 	FindUserByID(context.Context, uint) (model.User, error)
 	GetAllUsers(context.Context) ([]model.User, error)
 	UpdateUserByID(context.Context, uint, model.UpdateUserParams) (model.User, error)
+	UpdateUserPasswordByID(context.Context, uint, model.UpdateUserPasswordParams) error
 	DeleteUserByID(context.Context, uint) error
 }
 
@@ -54,8 +55,13 @@ type updateUserRequest struct {
 	FullName *string `json:"fullName,omitempty"`
 }
 
-type changeUserPasswordRequest struct {
+type resetUserPasswordRequest struct {
 	Password []byte `json:"password"`
+}
+
+type changeUserPasswordRequest struct {
+	OldPassword []byte `json:"oldPassword"`
+	NewPassword []byte `json:"newPassword"`
 }
 
 type changeUserRoleRequest struct {
@@ -164,7 +170,7 @@ func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h UserHandler) changeUserPassword(w http.ResponseWriter, r *http.Request, id uint) {
-	var req changeUserPasswordRequest
+	var req resetUserPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		DecodeError(w, err)
 		return
@@ -233,16 +239,45 @@ func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
-	user := model.MustUserFromContext(r.Context())
+	user, ok := model.UserFromContext(r.Context())
+	if !ok {
+		Error(w, ErrPermissionDenied)
+		return
+	}
+	if !ok {
+		Error(w, ErrPermissionDenied)
+		return
+	}
 	MustJSON(w, userFromModel(user))
 }
 
 func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
-	user := model.MustUserFromContext(r.Context())
+	user, ok := model.UserFromContext(r.Context())
+	if !ok {
+		Error(w, ErrPermissionDenied)
+		return
+	}
 	h.updateUser(w, r, user.ID)
 }
 
 func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *http.Request) {
-	user := model.MustUserFromContext(r.Context())
-	h.changeUserPassword(w, r, user.ID)
+	user, ok := model.UserFromContext(r.Context())
+	if !ok {
+		Error(w, ErrPermissionDenied)
+		return
+	}
+	var req changeUserPasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		DecodeError(w, err)
+		return
+	}
+	params := model.UpdateUserPasswordParams{
+		OldPassword: string(req.OldPassword),
+		NewPassword: string(req.NewPassword),
+	}
+	if err := h.userService.UpdateUserPasswordByID(r.Context(), user.ID, params); err != nil {
+		Error(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

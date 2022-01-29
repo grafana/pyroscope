@@ -48,13 +48,13 @@ var _ = Describe("UserService", func() {
 
 		Context("when user name is already in use", func() {
 			BeforeEach(func() {
-				params.Email = "another@example.local"
 				_, err = svc.CreateUser(context.Background(), params)
 				Expect(err).ToNot(HaveOccurred())
+				params.Email = "another@example.local"
 			})
 
 			It("returns validation error", func() {
-				Expect(model.IsValidationError(err)).To(BeTrue())
+				Expect(err).To(MatchError(model.ErrUserNameExists))
 			})
 		})
 
@@ -65,7 +65,7 @@ var _ = Describe("UserService", func() {
 			})
 
 			It("returns validation error", func() {
-				Expect(model.IsValidationError(err)).To(BeTrue())
+				Expect(err).To(MatchError(model.ErrUserEmailExists))
 			})
 		})
 
@@ -209,7 +209,7 @@ var _ = Describe("UserService", func() {
 				user, err = svc.CreateUser(context.Background(), params[0])
 				Expect(err).ToNot(HaveOccurred())
 				update = model.UpdateUserParams{
-					Name:     model.String("johndoe"),
+					Name:     model.String("not-a-johndoe"),
 					Email:    model.String("john.doe@example.com"),
 					FullName: model.String("John Doe"),
 					Password: model.String("qwerty")}.
@@ -311,6 +311,61 @@ var _ = Describe("UserService", func() {
 
 		Context("when user not found", func() {
 			It("returns ErrUserNotFound error", func() {
+				Expect(err).To(MatchError(model.ErrUserNotFound))
+			})
+		})
+	})
+
+	Describe("user password change", func() {
+		var (
+			userParams = testCreateUserParams()[0]
+
+			params model.UpdateUserPasswordParams
+			user   model.User
+			err    error
+		)
+
+		JustBeforeEach(func() {
+			err = svc.UpdateUserPasswordByID(context.Background(), user.ID, params)
+		})
+
+		Context("when user exists", func() {
+			BeforeEach(func() {
+				user, err = svc.CreateUser(context.Background(), userParams)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			Context("when new password does not meet criteria", func() {
+				It("returns validation error", func() {
+					Expect(model.IsValidationError(err)).To(BeTrue())
+				})
+			})
+
+			Context("when old password does not match", func() {
+				BeforeEach(func() {
+					// params.OldPassword = "invalid"
+					params.NewPassword = "whatever"
+				})
+
+				It("returns ErrInvalidCredentials", func() {
+					Expect(err).To(MatchError(model.ErrInvalidCredentials))
+				})
+			})
+
+			Context("when old password matches", func() {
+				BeforeEach(func() {
+					params.OldPassword = userParams.Password
+					params.NewPassword = "qwerty2"
+				})
+
+				It("returns ErrInvalidCredentials", func() {
+					Expect(err).ToNot(HaveOccurred())
+				})
+			})
+		})
+
+		Context("when user does not exist", func() {
+			It("returns ErrUserNotFound", func() {
 				Expect(err).To(MatchError(model.ErrUserNotFound))
 			})
 		})
