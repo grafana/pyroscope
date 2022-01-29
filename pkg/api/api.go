@@ -18,7 +18,6 @@ var (
 	ErrRequestBodyJSONInvalid = model.ValidationError{Err: errors.New("request body contains malformed JSON")}
 
 	ErrAuthenticationRequired = errors.New("authentication required")
-	ErrCredentialsInvalid     = errors.New("invalid credentials")
 	ErrPermissionDenied       = errors.New("permission denied")
 )
 
@@ -56,9 +55,9 @@ func ErrorCode(w http.ResponseWriter, err error, code int) {
 		return
 	case code > 0:
 		w.WriteHeader(code)
-	case errors.Is(err, ErrAuthenticationRequired):
+	case errors.Is(err, model.ErrInvalidCredentials):
 		w.WriteHeader(http.StatusUnauthorized)
-	case errors.Is(err, ErrCredentialsInvalid):
+	case errors.Is(err, ErrAuthenticationRequired):
 		w.WriteHeader(http.StatusUnauthorized)
 	case errors.Is(err, ErrPermissionDenied):
 		w.WriteHeader(http.StatusForbidden)

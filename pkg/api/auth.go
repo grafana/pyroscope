@@ -15,8 +15,9 @@ const jwtCookieName = "pyroscopeJWT"
 //go:generate mockgen -destination mocks/auth.go -package mocks . AuthService
 
 type AuthService interface {
-	APIKeyFromJWTToken(context.Context, string) (model.TokenAPIKey, error)
-	UserFromJWTToken(context.Context, string) (model.User, error)
+	APIKeyFromJWTToken(ctx context.Context, token string) (model.TokenAPIKey, error)
+	UserFromJWTToken(ctx context.Context, token string) (model.User, error)
+	AuthenticateUser(ctx context.Context, name, password string) (model.User, error)
 }
 
 // AuthMiddleware authenticates requests.
@@ -31,8 +32,8 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 			if token, ok := extractTokenFromAuthHeader(r.Header.Get("Authorization")); ok {
 				ctx, err := withAPIKeyFromToken(authService, r.Context(), token)
 				if err != nil {
-					logger.WithError(err).Debug("invalid api key")
-					Error(w, ErrCredentialsInvalid)
+					logger.WithError(err).Debug("failed to authenticate api key")
+					Error(w, model.ErrInvalidCredentials)
 					return
 				}
 				next.ServeHTTP(w, r.WithContext(ctx))
@@ -42,8 +43,8 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 			if c, err := r.Cookie(jwtCookieName); err == nil {
 				ctx, err := withUserFromToken(authService, r.Context(), c.Value)
 				if err != nil {
-					logger.WithError(err).Debug("invalid jwt cookie")
-					// Error(w, ErrCredentialsInvalid)
+					logger.WithError(err).Debug("failed to authenticate jwt cookie")
+					// Error(w, model.ErrInvalidCredentials)
 					loginRedirect(w, r)
 					return
 				}
