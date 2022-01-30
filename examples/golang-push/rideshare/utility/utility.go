@@ -32,7 +32,7 @@ func checkDriverAvailability(n int64) {
 		i++
 	}
 
-	// Every 4 minutes this will artificially create make requests in us-west-1 region slow
+	// Every other minute this will artificially create make requests in us-west-1 region slow
 	// this is just for demonstration purposes to show how performance impacts show up in the
 	// flamegraph
 	force_mutex_lock := time.Now().Minute()%2 == 0
