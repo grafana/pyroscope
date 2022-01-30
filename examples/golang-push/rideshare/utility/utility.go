@@ -8,13 +8,16 @@ import (
 	"github.com/pyroscope-io/client/pyroscope"
 )
 
+const durationConstant = time.Duration(200 * time.Millisecond)
+
 func mutexLock(n int64) {
 	var i int64 = 0
 
 	// start time is number of seconds since epoch
-	start_time := time.Now().Unix()
+	startTime := time.Now()
 
-	for (time.Now().Unix() - start_time) < n*10 {
+	// This changes the amplitude of cpu bars
+	for time.Since(startTime) < time.Duration(n*30)*durationConstant {
 		i++
 	}
 }
@@ -23,16 +26,16 @@ func checkDriverAvailability(n int64) {
 	var i int64 = 0
 
 	// start time is number of seconds since epoch
-	start_time := time.Now().Unix()
+	startTime := time.Now()
 
-	for (time.Now().Unix() - start_time) < n/2 {
+	for time.Since(startTime) < time.Duration(n)*durationConstant {
 		i++
 	}
 
-	// Every 4 minutes this will artificially create make requests in us-west-1 region slow
+	// Every other minute this will artificially create make requests in us-west-1 region slow
 	// this is just for demonstration purposes to show how performance impacts show up in the
 	// flamegraph
-	force_mutex_lock := time.Now().Minute()*4%8 == 0
+	force_mutex_lock := time.Now().Minute()%2 == 0
 	if os.Getenv("REGION") == "us-west-1" && force_mutex_lock {
 		mutexLock(n)
 	}
@@ -43,8 +46,8 @@ func FindNearestVehicle(searchRadius int64, vehicle string) {
 	pyroscope.TagWrapper(context.Background(), pyroscope.Labels("vehicle", vehicle), func(ctx context.Context) {
 		var i int64 = 0
 
-		start_time := time.Now().Unix()
-		for (time.Now().Unix() - start_time) < searchRadius {
+		startTime := time.Now()
+		for time.Since(startTime) < time.Duration(searchRadius)*durationConstant {
 			i++
 		}
 
