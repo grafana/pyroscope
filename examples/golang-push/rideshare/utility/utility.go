@@ -47,10 +47,6 @@ func FindNearestVehicle(searchRadius int64, vehicle string) {
 		var i int64 = 0
 
 		startTime := time.Now()
-		// startTime := time.Now().Unix()
-		// for (time.Now().Unix() - startTime) < searchRadius {
-		// 	i++
-		// }
 		for time.Since(startTime) < time.Duration(searchRadius)*durationConstant {
 			i++
 		}
