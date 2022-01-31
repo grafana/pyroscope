@@ -16,6 +16,8 @@ const (
 	jwtClaimRole       = "role"
 )
 
+// TODO(kolesnikovae): Move to AuthService.
+
 type JWTTokenService struct {
 	signingKey               []byte
 	userTokenMaxLifetimeDays int

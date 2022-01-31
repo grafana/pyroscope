@@ -23,20 +23,69 @@ import (
 
 func (ctrl *Controller) loginHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := ctrl.getTemplate("/login.html")
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render login page")
-			return
+		switch r.Method {
+		case http.MethodGet:
+			ctrl.loginGet(w)
+		case http.MethodPost:
+			ctrl.loginPost(w, r)
+		default:
+			ctrl.writeInvalidMethodError(w)
 		}
-		mustExecute(tmpl, w, map[string]interface{}{
-			"BasicAuthEnabled":       ctrl.config.Auth.BasicAuth.Enabled,
-			"BasicAuthSignupEnabled": ctrl.config.Auth.BasicAuth.SignupEnabled,
-			"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
-			"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
-			"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
-			"BaseURL":                ctrl.config.BaseURL,
-		})
 	}
+}
+
+func (ctrl *Controller) loginGet(w http.ResponseWriter) {
+	tmpl, err := ctrl.getTemplate("/login.html")
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "could not render login page")
+		return
+	}
+	mustExecute(tmpl, w, map[string]interface{}{
+		"BasicAuthEnabled":       ctrl.config.Auth.BasicAuth.Enabled,
+		"BasicAuthSignupEnabled": ctrl.config.Auth.BasicAuth.SignupEnabled,
+		"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
+		"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
+		"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
+		"BaseURL":                ctrl.config.BaseURL,
+	})
+}
+
+func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
+	cred := struct {
+		Username string `json:"username"`
+		Password []byte `json:"password"`
+	}{}
+	if err := json.NewDecoder(r.Body).Decode(&cred); err != nil {
+		ctrl.log.WithError(err).Error("failed to parse user credentials")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	u, err := ctrl.authService.AuthenticateUser(r.Context(), cred.Username, string(cred.Password))
+	switch {
+	case err == nil:
+		// Generate and sign new JWT token.
+	case errors.Is(err, model.ErrInvalidCredentials):
+		ctrl.log.WithError(err).Error("failed authentication attempt")
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	case model.IsValidationError(err):
+		ctrl.log.WithError(err).Error("invalid authentication request")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	default:
+		// Internal error.
+		ctrl.log.WithError(err).Error("failed to authenticate user")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	token, _, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserToken(u.Name, u.Role))
+	if err != nil {
+		ctrl.log.WithError(err).Error("failed to generate user token")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	createCookie(w, jwtCookieName, token)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func createCookie(w http.ResponseWriter, name, value string) {
