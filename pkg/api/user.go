@@ -35,6 +35,7 @@ type User struct {
 	FullName          *string    `json:"fullName,omitempty"`
 	Role              model.Role `json:"role"`
 	IsDisabled        bool       `json:"isDisabled"`
+	IsExternal        bool       `json:"isExternal"`
 	CreatedAt         time.Time  `json:"createdAt"`
 	UpdatedAt         time.Time  `json:"updatedAt"`
 	LastSeenAt        *time.Time `json:"lastSeenAt,omitempty"`
@@ -76,6 +77,7 @@ func userFromModel(u model.User) User {
 		FullName:          u.FullName,
 		Role:              u.Role,
 		IsDisabled:        model.IsUserDisabled(u),
+		IsExternal:        model.IsUserExternal(u),
 		PasswordChangedAt: u.PasswordChangedAt,
 		LastSeenAt:        u.LastSeenAt,
 		CreatedAt:         u.CreatedAt,

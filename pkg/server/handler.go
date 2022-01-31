@@ -29,11 +29,12 @@ func (ctrl *Controller) loginHandler() http.HandlerFunc {
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
-			"BasicAuth":     true, // TODO(kolesnikovae): use config.
-			"GoogleEnabled": ctrl.config.Auth.Google.Enabled,
-			"GithubEnabled": ctrl.config.Auth.Github.Enabled,
-			"GitlabEnabled": ctrl.config.Auth.Gitlab.Enabled,
-			"BaseURL":       ctrl.config.BaseURL,
+			"BasicAuthEnabled":       ctrl.config.Auth.BasicAuth.Enabled,
+			"BasicAuthSignupEnabled": ctrl.config.Auth.BasicAuth.SignupEnabled,
+			"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
+			"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
+			"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
+			"BaseURL":                ctrl.config.BaseURL,
 		})
 	}
 }
@@ -165,24 +166,27 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 			return
 		}
 
-		name, err := oh.userAuth(client)
+		u, err := oh.userAuth(client)
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "failed to get user auth info", err)
 			return
 		}
 
-		user, err := ctrl.userService.FindUserByName(r.Context(), name)
+		user, err := ctrl.userService.FindUserByName(r.Context(), u.Name)
 		switch {
 		default:
 			ctrl.logErrorAndRedirect(w, r, "failed to find user", err)
 			return
 		case err == nil:
+			// TODO(kolesnikovae): Update found user with the new user info, if applicable.
 		case errors.Is(err, model.ErrUserNotFound):
 			user, err = ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
-				Name: name,
-				Role: model.ReadOnlyRole,
-				// Email:    "", // TODO: from OAuth user details? LDAP? Make optional?
-				// Password: "", // TODO: generate random password?
+				Name:       u.Name,
+				Email:      u.Email,
+				Role:       ctrl.config.Auth.SignupDefaultRole,
+				Password:   model.MustRandomPassword(),
+				IsExternal: true,
+				// TODO(kolesnikovae): Specify the user source (oauth-provider, ldap, etc).
 			})
 			if err != nil {
 				ctrl.logErrorAndRedirect(w, r, "failed to create external user", err)
@@ -206,7 +210,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		}
 
 		mustExecute(tmpl, w, map[string]interface{}{
-			"Name":    name,
+			"Name":    u.Name,
 			"BaseURL": ctrl.config.BaseURL,
 		})
 	}

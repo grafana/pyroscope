@@ -10,23 +10,19 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore/migrations"
 )
 
 type SQLStore struct {
-	config *Config
+	config config.Database
 
 	db  *sql.DB
 	orm *gorm.DB
 }
 
-type Config struct {
-	Type string
-	URL  string
-}
-
-func Open(c *Config) (*SQLStore, error) {
-	s := SQLStore{config: c}
+func Open(c *config.Server) (*SQLStore, error) {
+	s := SQLStore{config: c.Database}
 	var err error
 	switch s.config.Type {
 	case "sqlite3":
@@ -37,7 +33,7 @@ func Open(c *Config) (*SQLStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect database: %w", err)
 	}
-	if err = migrations.Migrate(s.orm); err != nil {
+	if err = migrations.Migrate(s.orm, c); err != nil {
 		return nil, err
 	}
 	return &s, nil
