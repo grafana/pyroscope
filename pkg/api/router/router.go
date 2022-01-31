@@ -25,10 +25,9 @@ type Router struct {
 	middleware []mux.MiddlewareFunc
 }
 
-func New(logger logrus.FieldLogger, redirect http.HandlerFunc, m *mux.Router, s Services) *Router {
+func New(logger logrus.FieldLogger, m *mux.Router, s Services) *Router {
 	return &Router{
 		logger:   logger,
-		redirect: redirect,
 		Router:   m,
 		Services: s,
 	}

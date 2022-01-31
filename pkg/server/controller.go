@@ -23,9 +23,11 @@ import (
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
+	"gorm.io/gorm"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/api"
+	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -50,6 +52,7 @@ type Controller struct {
 	storage    *storage.Storage
 	log        *logrus.Logger
 	httpServer *http.Server
+	db         *gorm.DB
 	notifier   Notifier
 	metricsMdw middleware.Middleware
 	dir        http.FileSystem
@@ -66,6 +69,7 @@ type Controller struct {
 	// Adhoc mode
 	adhoc adhocserver.Server
 
+	// These should be moved to a separate Login handler/service.
 	authService     service.AuthService
 	userService     service.UserService
 	jwtTokenService service.JWTTokenService
@@ -75,6 +79,7 @@ type Config struct {
 	Configuration *config.Server
 	*logrus.Logger
 	*storage.Storage
+	*gorm.DB
 	Notifier
 
 	// The registerer is used for exposing server metrics.
@@ -120,6 +125,7 @@ func New(c Config) (*Controller, error) {
 		}),
 
 		adhoc: c.Adhoc,
+		db:    c.DB,
 	}
 
 	var err error
@@ -176,6 +182,32 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
 	}
 	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
+
+	// For backward compatibility we redirect users on authentication fail.
+	redirect := func(w http.ResponseWriter, r *http.Request) {
+		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+	}
+
+	ctrl.jwtTokenService = service.NewJWTTokenService(
+		[]byte(ctrl.config.Auth.JWTSecret),
+		ctrl.config.Auth.LoginMaximumLifetimeDays)
+
+	apiKeyService := service.NewAPIKeyService(ctrl.db, ctrl.jwtTokenService)
+	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
+	ctrl.userService = service.NewUserService(ctrl.db)
+
+	apiRouter := router.New(ctrl.log, r.PathPrefix("/api").Subrouter(), router.Services{
+		AuthService:   ctrl.authService,
+		UserService:   ctrl.userService,
+		APIKeyService: apiKeyService,
+	})
+
+	// Note that the router uses its own auth middleware: the difference is that
+	// it will respond with 401 if authentication disabled.
+	apiRouter.Use(api.AuthMiddleware(ctrl.log, redirect, ctrl.authService))
+	apiRouter.RegisterHandlers()
+
+	ctrl.addRoutes(r, []route{{"/api", apiRouter.ServeHTTP}}, ctrl.drainMiddleware)
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{

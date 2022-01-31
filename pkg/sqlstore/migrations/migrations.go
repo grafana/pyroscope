@@ -5,8 +5,6 @@ import (
 
 	"github.com/go-gormigrate/gormigrate/v2"
 	"gorm.io/gorm"
-
-	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 
 // Migrate executes all migrations UP that did not run yet.
@@ -43,14 +41,14 @@ import (
 // On the other hand, "the lack of an effective rollback script can be a gating
 // factor in the integration and deployment process" (Database Reliability
 // Engineering by Laine Campbell & Charity Majors).
-func Migrate(db *gorm.DB, c *config.Server) error {
+func Migrate(db *gorm.DB) error {
 	return gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
-		createUserTableMigration(c),
+		createUserTableMigration(),
 		createAPIKeyTableMigration(),
 	}).Migrate()
 }
 
-func createUserTableMigration(c *config.Server) *gormigrate.Migration {
+func createUserTableMigration() *gormigrate.Migration {
 	type user struct {
 		ID                uint       `gorm:"primarykey"`
 		Name              string     `gorm:"type:varchar(255);not null;default:null;index:,unique"`
@@ -65,9 +63,6 @@ func createUserTableMigration(c *config.Server) *gormigrate.Migration {
 		CreatedAt         time.Time
 		UpdatedAt         time.Time
 	}
-
-	// TODO(kolesnikovae): Create admin user.
-
 	return &gormigrate.Migration{
 		ID: "1638496809",
 		Migrate: func(tx *gorm.DB) error {
