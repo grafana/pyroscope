@@ -13,14 +13,14 @@ var (
 )
 
 // AllowAny does not verify if a request is authorized.
-func AllowAny(next http.HandlerFunc) http.HandlerFunc { return next.ServeHTTP }
+func AllowAny(next http.Handler) http.Handler { return next }
 
-func Require(funcs ...func(r *http.Request) bool) func(next http.HandlerFunc) http.HandlerFunc {
+func Require(funcs ...func(r *http.Request) bool) func(next http.Handler) http.Handler {
 	if len(funcs) == 0 {
 		panic("authorization method should be specified explicitly")
 	}
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			for _, fn := range funcs {
 				if !fn(r) {
 					api.Error(w, api.ErrPermissionDenied)
@@ -28,7 +28,7 @@ func Require(funcs ...func(r *http.Request) bool) func(next http.HandlerFunc) ht
 				}
 			}
 			next.ServeHTTP(w, r)
-		}
+		})
 	}
 }
 

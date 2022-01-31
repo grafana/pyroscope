@@ -28,13 +28,14 @@ func NewJWTTokenService(signingKey []byte, userTokenMaxLifetimeDays int) JWTToke
 	}
 }
 
-func (svc JWTTokenService) GenerateUserToken(name string) *jwt.Token {
+func (svc JWTTokenService) GenerateUserToken(name string, role model.Role) *jwt.Token {
 	var exp time.Time
 	if svc.userTokenMaxLifetimeDays > 0 {
 		exp = time.Now().Add(time.Hour * 24 * time.Duration(svc.userTokenMaxLifetimeDays))
 	}
 	return svc.generateToken(exp, jwt.MapClaims{
 		jwtClaimUserName: name,
+		jwtClaimRole:     role.String(),
 	})
 }
 

@@ -15,7 +15,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang-jwt/jwt"
 	gmux "github.com/gorilla/mux"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,16 +25,13 @@ import (
 	"github.com/slok/go-http-metrics/middleware/std"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
+	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
-	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 	"github.com/pyroscope-io/pyroscope/webapp"
-
-	"github.com/pyroscope-io/pyroscope/pkg/api/router"
-	"github.com/pyroscope-io/pyroscope/pkg/service"
-	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 )
 
 const (
@@ -66,10 +62,13 @@ type Controller struct {
 	// Exported metrics.
 	exportedMetrics *prometheus.Registry
 	exporter        storage.MetricsExporter
-	sqlstore        *sqlstore.SQLStore
-	auth            *service.AuthService
+
 	// Adhoc mode
 	adhoc adhocserver.Server
+
+	authService     service.AuthService
+	userService     service.UserService
+	jwtTokenService service.JWTTokenService
 }
 
 type Config struct {
@@ -96,29 +95,12 @@ type Notifier interface {
 }
 
 func New(c Config) (*Controller, error) {
-
 	if c.Configuration.BaseURL != "" {
 		_, err := url.Parse(c.Configuration.BaseURL)
 		if err != nil {
 			return nil, fmt.Errorf("BaseURL is invalid: %w", err)
 		}
 	}
-
-	// TODO(shaleynikov): move this out of here and get path from configuration
-	cSql := &sqlstore.Config{
-		Type: "sqlite3",
-		URL:  "file::memory:?cache=shared",
-	}
-	var err2 error
-	sqlStoreInstance, err2 := sqlstore.Open(cSql)
-	if err2 != nil {
-		return nil, fmt.Errorf("SqlStore initialization failed: %w", err2)
-	}
-
-	authService := service.NewAuthService(
-		sqlStoreInstance.DB(),
-		service.NewJWTTokenService([]byte("signing-key"), 0),
-	)
 
 	ctrl := Controller{
 		config:   c.Configuration,
@@ -128,9 +110,6 @@ func New(c Config) (*Controller, error) {
 		notifier: c.Notifier,
 		stats:    make(map[string]int),
 		appStats: mustNewHLL(),
-		sqlstore: sqlStoreInstance,
-		// Sorry all goes inline as I don't have much time
-		auth: &authService,
 
 		exportedMetrics: c.ExportedMetricsRegistry,
 		metricsMdw: middleware.New(middleware.Config{
@@ -158,14 +137,6 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 		panic(err)
 	}
 	return hll
-}
-
-type requestContextProvider func(context.Context) context.Context
-
-func ctxWithUser(u *model.User) requestContextProvider {
-	return func(ctx context.Context) context.Context {
-		return model.WithUser(ctx, *u)
-	}
 }
 
 func (ctrl *Controller) mux() (http.Handler, error) {
@@ -203,9 +174,6 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
-		{"/settings", ctrl.indexHandler()},
-		{"/settings/users", ctrl.indexHandler()},
-		{"/settings/api-keys", ctrl.indexHandler()},
 	}
 	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
@@ -236,35 +204,6 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
 		{"/healthz", ctrl.healthz},
 	})
-
-	redirect := func(w http.ResponseWriter, r *http.Request) {
-		ctrl.log.WithField("url", r.URL).Debug("redirecting")
-		w.WriteHeader(http.StatusTemporaryRedirect)
-	}
-
-	// And now i'm always admin user #1
-	rcp := ctxWithUser(&model.User{ID: 1, Role: model.AdminRole})
-
-	r2 := router.New(
-		ctrl.log,
-		redirect,
-		r.PathPrefix("/api").Subrouter(),
-		ctrl.auth.GetRouterServices(),
-	)
-
-	// Disabled auth middleware for testing purposes
-	// if services.AuthService != nil {
-	// 	r2.Use(api.AuthMiddleware(ctrl.log, redirect, ctrl.auth))
-	// }
-
-	r2.Use(func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			r = r.WithContext(rcp(r.Context()))
-			next(w, r)
-		}
-	})
-
-	r2.RegisterHandlers()
 
 	return r, nil
 }
@@ -399,7 +338,10 @@ func (ctrl *Controller) trackMetrics(route string) func(next http.HandlerFunc) h
 }
 
 func (ctrl *Controller) isAuthRequired() bool {
-	return ctrl.config.Auth.Google.Enabled || ctrl.config.Auth.Github.Enabled || ctrl.config.Auth.Gitlab.Enabled
+	return ctrl.config.Auth.BasicAuth.Enabled ||
+		ctrl.config.Auth.Google.Enabled ||
+		ctrl.config.Auth.Github.Enabled ||
+		ctrl.config.Auth.Gitlab.Enabled
 }
 
 func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http.Request, urlStr string, status int) {
@@ -418,37 +360,16 @@ func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http
 }
 
 func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	redirect := func(w http.ResponseWriter, r *http.Request) {
+		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+	}
+	m := api.AuthMiddleware(ctrl.log, redirect, ctrl.authService)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !ctrl.isAuthRequired() {
 			next.ServeHTTP(w, r)
 			return
 		}
-
-		// TODO: replace with auth service?
-		jwtCookie, err := r.Cookie(jwtCookieName)
-		if err != nil {
-			ctrl.log.WithFields(logrus.Fields{
-				"url":  r.URL.String(),
-				"host": r.Header.Get("Host"),
-			}).Debug("missing jwt cookie")
-			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-			return
-		}
-
-		_, err = jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
-			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte(ctrl.config.Auth.JWTSecret), nil
-		})
-
-		if err != nil {
-			ctrl.log.WithError(err).Error("invalid jwt token")
-			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-			return
-		}
-
-		next.ServeHTTP(w, r)
+		m(next).ServeHTTP(w, r)
 	}
 }
 

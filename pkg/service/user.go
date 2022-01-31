@@ -162,6 +162,27 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 	})
 }
 
+func (svc UserService) UpdateUserPasswordByID(ctx context.Context, id uint, params model.UpdateUserPasswordParams) error {
+	if err := params.Validate(); err != nil {
+		return err
+	}
+	return svc.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		user, err := findUserByID(tx, id)
+		if err != nil {
+			return err
+		}
+		if err = model.VerifyPassword(user.PasswordHash, params.OldPassword); err != nil {
+			return model.ErrInvalidCredentials
+		}
+		columns := model.User{
+			ID:                id,
+			PasswordHash:      model.MustPasswordHash(params.NewPassword),
+			PasswordChangedAt: time.Now(),
+		}
+		return tx.Model(user).Updates(&columns).Error
+	})
+}
+
 func (svc UserService) DeleteUserByID(ctx context.Context, id uint) error {
 	return svc.db.WithContext(ctx).Delete(&model.User{}, id).Error
 }

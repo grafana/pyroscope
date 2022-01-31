@@ -108,7 +108,7 @@ var _ = Describe("User validation", func() {
 			err    error
 		}
 
-		DescribeTable("CreateUserParams cases",
+		DescribeTable("UpdateUserParams cases",
 			func(c updateUserParamsCase) {
 				expectErrOrNil(c.params.Validate(), c.err)
 			},
@@ -147,6 +147,31 @@ var _ = Describe("User validation", func() {
 					model.ErrUserPasswordEmpty,
 					model.ErrRoleUnknown,
 				}},
+			}),
+		)
+	})
+
+	Describe("UpdateUserPasswordParams", func() {
+		type updateUserPasswordParamsCase struct {
+			params model.UpdateUserPasswordParams
+			err    error
+		}
+
+		DescribeTable("UpdateUserPasswordParams cases",
+			func(c updateUserPasswordParamsCase) {
+				expectErrOrNil(c.params.Validate(), c.err)
+			},
+
+			Entry("valid params", updateUserPasswordParamsCase{
+				params: model.UpdateUserPasswordParams{
+					OldPassword: "",
+					NewPassword: "qwerty",
+				},
+			}),
+
+			Entry("empty new password", updateUserPasswordParamsCase{
+				params: model.UpdateUserPasswordParams{},
+				err:    model.ErrUserPasswordEmpty,
 			}),
 		)
 	})

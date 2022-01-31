@@ -18,6 +18,8 @@ var (
 	ErrUserEmailExists     = ValidationError{errors.New("user with this email already exists")}
 	ErrUserEmailInvalid    = ValidationError{errors.New("user email is invalid")}
 	ErrUserPasswordEmpty   = ValidationError{errors.New("user password can't be empty")}
+	ErrUserDisabled        = ValidationError{errors.New("user disabled")}
+	ErrInvalidCredentials  = ValidationError{errors.New("invalid credentials")}
 )
 
 type User struct {
@@ -115,6 +117,15 @@ func (p UpdateUserParams) Validate() error {
 		err = multierror.Append(err, ErrRoleUnknown)
 	}
 	return err
+}
+
+type UpdateUserPasswordParams struct {
+	OldPassword string
+	NewPassword string
+}
+
+func (p UpdateUserPasswordParams) Validate() error {
+	return ValidatePasswordRequirements(p.NewPassword)
 }
 
 func IsUserDisabled(u User) bool {
