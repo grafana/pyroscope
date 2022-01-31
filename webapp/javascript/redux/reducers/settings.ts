@@ -9,6 +9,8 @@ import { APIKeys } from '@models/apikeys';
 import {
   fetchUsers,
   createUser as createUserAPI,
+  enableUser as enableUserAPI,
+  disableUser as disableUserAPI,
 } from '@pyroscope/services/users';
 import { fetchAPIKeys } from '@pyroscope/services/apiKeys';
 import type { RootState } from '../store';
@@ -72,6 +74,50 @@ export const reloadUsers = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to load users',
+        message: res.error.message,
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
+
+export const enableUser = createAsyncThunk(
+  'newRoot/enableUser',
+  async (user: User, thunkAPI) => {
+    const res = await enableUserAPI(user);
+
+    if (res.isOk) {
+      thunkAPI.dispatch(reloadUsers());
+      return Promise.resolve(true);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to enable a user',
+        message: res.error.message,
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
+
+export const disableUser = createAsyncThunk(
+  'newRoot/disableUser',
+  async (user: User, thunkAPI) => {
+    const res = await disableUserAPI(user);
+
+    if (res.isOk) {
+      thunkAPI.dispatch(reloadUsers());
+      return Promise.resolve(true);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to enable a user',
         message: res.error.message,
       })
     );

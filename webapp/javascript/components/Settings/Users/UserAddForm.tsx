@@ -4,14 +4,14 @@ import Icon from '@ui/Icon';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 import { formatRelative } from 'date-fns';
 import { request } from '@pyroscope/services/base';
-import { reloadUsers } from '@pyroscope/redux/reducers/settings';
+import { reloadUsers, createUser } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { type User } from '../../../models/users';
 import styles from './UserForm.module.css';
 
 export type UserAddProps = User & { password?: string };
 
-function UserAddForm(props) {
+function UserAddForm(props: UserAddProps) {
   const [form, setForm]: [UserAddProps, (value) => void] = useState({});
   const dispatch = useAppDispatch();
 
@@ -22,30 +22,12 @@ function UserAddForm(props) {
   };
 
   const handleFormSubmit = (event) => {
-    console.log('Submitting user');
     const data = {
       ...form,
       role: 'ReadOnly',
       password: btoa(unescape(encodeURIComponent(form.password))),
     };
-    console.log(JSON.stringify(data));
-    fetch('/api/users', {
-      method: 'POST',
-      body: JSON.stringify(data),
-      headers: [
-        ['Content-Type', 'application/json'],
-        ['Accept', 'application/json'],
-      ],
-    })
-      .then((r) => r.json())
-      .then((r) => {
-        console.log(r);
-        return r;
-      })
-      .then(() => {
-        setForm({});
-        dispatch(reloadUsers());
-      });
+    dispatch(createUser(data as User));
   };
 
   return (

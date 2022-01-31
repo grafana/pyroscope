@@ -2,16 +2,18 @@ import React from 'react';
 import Button from '@ui/Button';
 import Icon from '@ui/Icon';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
-import { format, formatRelative } from 'date-fns';
+import { formatRelative } from 'date-fns';
+import cx from 'classnames';
 import { type User } from '../../../models/users';
+import styles from './UserTableItem.module.css';
 
 function UserTableItem(props) {
-  const { user } = props;
-  const { id, fullName, passwordChangedAt, role, updatedAt, email, name } =
+  const { user, onDisable } = props;
+  const { id, isDisabled, fullName, role, updatedAt, email, name } =
     user as User;
 
   return (
-    <tr>
+    <tr className={cx({ [styles.disabled]: isDisabled })}>
       <td>{id}</td>
       <td>{name}</td>
       <td>{email}</td>
@@ -21,7 +23,7 @@ function UserTableItem(props) {
       <td align="center">
         {' '}
         <Button type="submit" kind="default">
-          <Icon icon={faTimes} />
+          <Icon icon={faTimes} onClick={onDisable} />
         </Button>
       </td>
     </tr>

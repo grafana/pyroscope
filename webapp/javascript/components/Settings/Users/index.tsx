@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import Button from '@ui/Button';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import { reloadUsers, selectUsers } from '@pyroscope/redux/reducers/settings';
+import {
+  reloadUsers,
+  selectUsers,
+  enableUser,
+  disableUser,
+} from '@pyroscope/redux/reducers/settings';
 import UserTableItem from './UserTableItem';
 
 import userStyles from './Users.module.css';
@@ -26,13 +31,9 @@ const sampleUsers = [
 function Users() {
   const dispatch = useAppDispatch();
   const users = useAppSelector(selectUsers);
-  console.log('Rendering users');
   useEffect(() => {
-    if (typeof users === 'undefined') {
-      console.log('Reloading users');
-      dispatch(reloadUsers());
-    }
-  });
+    dispatch(reloadUsers());
+  }, [dispatch]);
   const [search, setSearchField] = useState('');
   const displayUsers =
     (users &&
@@ -41,6 +42,15 @@ function Users() {
           JSON.stringify(x).toLowerCase().indexOf(search.toLowerCase()) !== -1
       )) ||
     [];
+
+  const onDisableUser = (user: User) => {
+    if (user.isDisabled) {
+      dispatch(enableUser(user));
+    } else {
+      dispatch(disableUser(user));
+    }
+  };
+
   return (
     <>
       <h2>Users</h2>
@@ -72,7 +82,11 @@ function Users() {
         <tbody>
           {displayUsers.length ? (
             displayUsers.map((user) => (
-              <UserTableItem user={user} key={`userTableItem${user.email}`} />
+              <UserTableItem
+                user={user}
+                key={`userTableItem${user.email}`}
+                onDisable={() => onDisableUser(user)}
+              />
             ))
           ) : (
             <tr>
