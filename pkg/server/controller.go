@@ -15,7 +15,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang-jwt/jwt"
 	gmux "github.com/gorilla/mux"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,7 +25,9 @@ import (
 	"github.com/slok/go-http-metrics/middleware/std"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
+	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
@@ -64,6 +65,10 @@ type Controller struct {
 
 	// Adhoc mode
 	adhoc adhocserver.Server
+
+	authService     service.AuthService
+	userService     service.UserService
+	jwtTokenService service.JWTTokenService
 }
 
 type Config struct {
@@ -333,7 +338,10 @@ func (ctrl *Controller) trackMetrics(route string) func(next http.HandlerFunc) h
 }
 
 func (ctrl *Controller) isAuthRequired() bool {
-	return ctrl.config.Auth.Google.Enabled || ctrl.config.Auth.Github.Enabled || ctrl.config.Auth.Gitlab.Enabled
+	return ctrl.config.Auth.BasicAuth.Enabled ||
+		ctrl.config.Auth.Google.Enabled ||
+		ctrl.config.Auth.Github.Enabled ||
+		ctrl.config.Auth.Gitlab.Enabled
 }
 
 func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http.Request, urlStr string, status int) {
@@ -352,37 +360,16 @@ func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http
 }
 
 func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	redirect := func(w http.ResponseWriter, r *http.Request) {
+		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+	}
+	m := api.AuthMiddleware(ctrl.log, redirect, ctrl.authService)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !ctrl.isAuthRequired() {
 			next.ServeHTTP(w, r)
 			return
 		}
-
-		// TODO: replace with auth service?
-		jwtCookie, err := r.Cookie(jwtCookieName)
-		if err != nil {
-			ctrl.log.WithFields(logrus.Fields{
-				"url":  r.URL.String(),
-				"host": r.Header.Get("Host"),
-			}).Debug("missing jwt cookie")
-			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-			return
-		}
-
-		_, err = jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
-			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte(ctrl.config.Auth.JWTSecret), nil
-		})
-
-		if err != nil {
-			ctrl.log.WithError(err).Error("invalid jwt token")
-			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-			return
-		}
-
-		next.ServeHTTP(w, r)
+		m(next).ServeHTTP(w, r)
 	}
 }
 

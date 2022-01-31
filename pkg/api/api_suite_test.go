@@ -73,11 +73,10 @@ func newTestRouter(rcp requestContextProvider, services router.Services) *router
 		r.Use(api.AuthMiddleware(logger, redirect, r.AuthService))
 	}
 
-	r.Use(func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			r = r.WithContext(rcp(r.Context()))
-			next(w, r)
-		}
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r.WithContext(rcp(r.Context())))
+		})
 	})
 
 	r.RegisterHandlers()

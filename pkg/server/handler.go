@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
@@ -166,9 +168,29 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		name, err := oh.userAuth(client)
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "failed to get user auth info", err)
+			return
 		}
 
-		tk, err := ctrl.newJWTToken(name)
+		user, err := ctrl.userService.FindUserByName(r.Context(), name)
+		switch {
+		default:
+			ctrl.logErrorAndRedirect(w, r, "failed to find user", err)
+			return
+		case err == nil:
+		case errors.Is(err, model.ErrUserNotFound):
+			user, err = ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
+				Name: name,
+				Role: model.ReadOnlyRole,
+				// Email:    "", // TODO: from OAuth user details? LDAP? Make optional?
+				// Password: "", // TODO: generate random password?
+			})
+			if err != nil {
+				ctrl.logErrorAndRedirect(w, r, "failed to create external user", err)
+				return
+			}
+		}
+
+		token, _, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserToken(user.Name, user.Role))
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "signing jwt failed", err)
 			return
@@ -176,10 +198,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 
 		// delete state cookie and add jwt cookie
 		invalidateCookie(w, stateCookieName)
-		createCookie(w, jwtCookieName, tk)
-
-		// TODO: create user if sign up is allowed.
-
+		createCookie(w, jwtCookieName, token)
 		tmpl, err := ctrl.getTemplate("/welcome.html")
 		if err != nil {
 			ctrl.writeInternalServerError(w, err, "could not render welcome page")

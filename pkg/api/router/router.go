@@ -22,7 +22,7 @@ type Router struct {
 	*mux.Router
 	Services
 
-	middleware []middleware
+	middleware []mux.MiddlewareFunc
 }
 
 func New(logger logrus.FieldLogger, redirect http.HandlerFunc, m *mux.Router, s Services) *Router {
@@ -34,11 +34,9 @@ func New(logger logrus.FieldLogger, redirect http.HandlerFunc, m *mux.Router, s 
 	}
 }
 
-type middleware func(http.HandlerFunc) http.HandlerFunc
-
 // Use appends the given middleware to the chain.
 // The handler is to be called in the order it was added.
-func (r *Router) Use(middleware func(next http.HandlerFunc) http.HandlerFunc) *Router {
+func (r *Router) Use(middleware mux.MiddlewareFunc) *Router {
 	r.middleware = append(r.middleware, middleware)
 	return r
 }
@@ -57,16 +55,16 @@ type route struct {
 // register registers given routers for the given prefix pattern.
 // Authorization handler must be provided explicitly and put at the
 // end of the middleware chain (invoked last).
-func (r *Router) register(authorize middleware, prefix string, routes ...route) {
+func (r *Router) register(authorize mux.MiddlewareFunc, prefix string, routes ...route) {
 	rr := r.PathPrefix(prefix).Subrouter()
 	for _, x := range routes {
 		h := chain(authorize(x.handler), r.middleware...)
 		rr.NewRoute().Path(x.path).Methods(x.method).
-			HandlerFunc(h)
+			HandlerFunc(h.ServeHTTP)
 	}
 }
 
-func chain(f http.HandlerFunc, middleware ...middleware) http.HandlerFunc {
+func chain(f http.Handler, middleware ...mux.MiddlewareFunc) http.Handler {
 	if len(middleware) > 0 {
 		return middleware[0](chain(f, middleware[1:cap(middleware)]...))
 	}

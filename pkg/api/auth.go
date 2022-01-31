@@ -21,9 +21,9 @@ type AuthService interface {
 }
 
 // AuthMiddleware authenticates requests.
-func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, authService AuthService) func(next http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
+func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, authService AuthService) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			logger := log.WithFields(logrus.Fields{
 				"remote": r.RemoteAddr,
 				"url":    r.URL.String(),
@@ -59,7 +59,7 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 			logger.Debug("unauthenticated request")
 			// Error(w, ErrAuthenticationRequired)
 			loginRedirect(w, r)
-		}
+		})
 	}
 }
 
