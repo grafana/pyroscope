@@ -11,9 +11,7 @@ import (
 	"os"
 	"strconv"
 	"text/template"
-	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
@@ -21,16 +19,17 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
-func (ctrl *Controller) loginHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			ctrl.loginGet(w)
-		case http.MethodPost:
-			ctrl.loginPost(w, r)
-		default:
-			ctrl.writeInvalidMethodError(w)
-		}
+// TODO(kolesnikovae): This part should be moved from
+//  Controller to a separate handler/service (Login).
+
+func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		ctrl.loginGet(w)
+	case http.MethodPost:
+		ctrl.loginPost(w, r)
+	default:
+		ctrl.writeInvalidMethodError(w)
 	}
 }
 
@@ -51,16 +50,21 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter) {
 }
 
 func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
-	cred := struct {
+	if !ctrl.config.Auth.BasicAuth.Enabled {
+		http.Error(w, "not authorized", http.StatusUnauthorized)
+		return
+	}
+	type loginCredentials struct {
 		Username string `json:"username"`
 		Password []byte `json:"password"`
-	}{}
-	if err := json.NewDecoder(r.Body).Decode(&cred); err != nil {
+	}
+	var req loginCredentials
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ctrl.log.WithError(err).Error("failed to parse user credentials")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	u, err := ctrl.authService.AuthenticateUser(r.Context(), cred.Username, string(cred.Password))
+	u, err := ctrl.authService.AuthenticateUser(r.Context(), req.Username, string(req.Password))
 	switch {
 	case err == nil:
 		// Generate and sign new JWT token.
@@ -86,6 +90,51 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 	}
 	createCookie(w, jwtCookieName, token)
 	w.WriteHeader(http.StatusNoContent)
+	// Redirect should be handled on the client side.
+}
+
+func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
+	if !ctrl.config.Auth.BasicAuth.SignupEnabled {
+		http.Error(w, "not authorized", http.StatusUnauthorized)
+		return
+	}
+	type signupRequest struct {
+		Name     string     `json:"name"`
+		Email    string     `json:"email"`
+		FullName *string    `json:"fullName,omitempty"`
+		Password []byte     `json:"password"`
+		Role     model.Role `json:"role"`
+	}
+	var req signupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ctrl.log.WithError(err).Error("failed to decode signup details")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, err := ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
+		Name:     req.Name,
+		Email:    req.Email,
+		FullName: req.FullName,
+		Password: string(req.Password),
+		Role:     ctrl.config.Auth.SignupDefaultRole,
+	})
+	switch {
+	case err == nil:
+	case model.IsValidationError(err):
+		ctrl.log.WithError(err).Debug("invalid signup details")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	default:
+		ctrl.log.WithError(err).Error("failed to create user")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// TODO(kolesnikovae): We could generate a JWT token and set the cookie
+	//  but it's better to just force user to login. A signup should be
+	//  considered successful only when the user email is confirmed
+	//  (not implemented yet).
+	w.WriteHeader(http.StatusNoContent)
+	// Redirect should be handled on the client side.
 }
 
 func createCookie(w http.ResponseWriter, name, value string) {
@@ -111,15 +160,13 @@ func invalidateCookie(w http.ResponseWriter, name string) {
 	})
 }
 
-func (ctrl *Controller) logoutHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost, http.MethodGet:
-			invalidateCookie(w, jwtCookieName)
-			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-		default:
-			ctrl.writeInvalidMethodError(w)
-		}
+func (ctrl *Controller) logoutHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost, http.MethodGet:
+		invalidateCookie(w, jwtCookieName)
+		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+	default:
+		ctrl.writeInvalidMethodError(w)
 	}
 }
 
@@ -171,20 +218,6 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 			"BaseURL": ctrl.config.BaseURL,
 		})
 	}
-}
-
-func (ctrl *Controller) newJWTToken(name string) (string, error) {
-	claims := jwt.MapClaims{
-		"iat":  time.Now().Unix(),
-		"name": name,
-	}
-
-	if ctrl.config.Auth.LoginMaximumLifetimeDays > 0 {
-		claims["exp"] = time.Now().Add(time.Hour * 24 * time.Duration(ctrl.config.Auth.LoginMaximumLifetimeDays)).Unix()
-	}
-
-	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return jwtToken.SignedString([]byte(ctrl.config.Auth.JWTSecret))
 }
 
 func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, msg string, err error) {

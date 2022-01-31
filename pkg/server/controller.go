@@ -203,7 +203,8 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	})
 
 	// Note that the router uses its own auth middleware: the difference is that
-	// it will respond with 401 if authentication disabled.
+	// it (all its handlers) will respond with 401, if no authentication method
+	// is configured.
 	apiRouter.Use(api.AuthMiddleware(ctrl.log, redirect, ctrl.authService))
 	apiRouter.RegisterHandlers()
 
@@ -248,8 +249,9 @@ func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Re
 
 func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	authRoutes := []route{
-		{"/login", ctrl.loginHandler()},
-		{"/logout", ctrl.logoutHandler()},
+		{"/login", ctrl.loginHandler},
+		{"/logout", ctrl.logoutHandler},
+		{"/signup", ctrl.signupHandler},
 	}
 
 	if ctrl.config.Auth.Google.Enabled {
