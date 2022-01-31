@@ -5,6 +5,9 @@ import (
 
 	"github.com/go-gormigrate/gormigrate/v2"
 	"gorm.io/gorm"
+
+	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 // Migrate executes all migrations UP that did not run yet.
@@ -41,14 +44,14 @@ import (
 // On the other hand, "the lack of an effective rollback script can be a gating
 // factor in the integration and deployment process" (Database Reliability
 // Engineering by Laine Campbell & Charity Majors).
-func Migrate(db *gorm.DB) error {
+func Migrate(db *gorm.DB, c *config.Server) error {
 	return gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
-		createUserTableMigration(),
+		createUserTableMigration(c.Auth.BasicAuth.BuiltinAdminUser),
 		createAPIKeyTableMigration(),
 	}).Migrate()
 }
 
-func createUserTableMigration() *gormigrate.Migration {
+func createUserTableMigration(adminUser config.BuiltinAdminUser) *gormigrate.Migration {
 	type user struct {
 		ID                uint       `gorm:"primarykey"`
 		Name              string     `gorm:"type:varchar(255);not null;default:null;index:,unique"`
@@ -66,7 +69,22 @@ func createUserTableMigration() *gormigrate.Migration {
 	return &gormigrate.Migration{
 		ID: "1638496809",
 		Migrate: func(tx *gorm.DB) error {
-			return tx.AutoMigrate(&user{})
+			if err := tx.AutoMigrate(&user{}); err != nil {
+				return err
+			}
+			if adminUser.Enabled {
+				admin := user{
+					Name:              adminUser.Name,
+					Email:             adminUser.Email,
+					PasswordHash:      model.MustPasswordHash(adminUser.Password),
+					PasswordChangedAt: time.Now(),
+					Role:              int(model.AdminRole),
+				}
+				if err := tx.Create(&admin).Error; err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 		Rollback: func(tx *gorm.DB) error {
 			return tx.Migrator().DropTable(&user{})

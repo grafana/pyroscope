@@ -183,6 +183,7 @@ type BasicAuth struct {
 type BuiltinAdminUser struct {
 	Enabled  bool   `json:"-" deprecated:"true" def:"true" desc:"" mapstructure:"enabled"`
 	Name     string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"name"`
+	Email    string `json:"-" deprecated:"true" def:"nobody@local.domain" desc:"" mapstructure:"email"`
 	Password string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"password"`
 }
 

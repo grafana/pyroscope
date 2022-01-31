@@ -26,7 +26,7 @@ func (s *testSuite) BeforeEach() {
 		c.URL = s.path
 	}
 	var err error
-	s.SQLStore, err = sqlstore.Open(c)
+	s.SQLStore, err = sqlstore.Open(&config.Server{Database: c})
 	Expect(err).ToNot(HaveOccurred())
 }
 

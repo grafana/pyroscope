@@ -143,7 +143,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		})
 	}
 
-	svc.database, err = sqlstore.Open(c.Database)
+	svc.database, err = sqlstore.Open(c)
 	if err != nil {
 		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
 	}

@@ -21,8 +21,8 @@ type SQLStore struct {
 	orm *gorm.DB
 }
 
-func Open(c config.Database) (*SQLStore, error) {
-	s := SQLStore{config: c}
+func Open(c *config.Server) (*SQLStore, error) {
+	s := SQLStore{config: c.Database}
 	var err error
 	switch s.config.Type {
 	case "sqlite3":
@@ -36,7 +36,7 @@ func Open(c config.Database) (*SQLStore, error) {
 	if err = s.Ping(context.Background()); err != nil {
 		return nil, err
 	}
-	if err = migrations.Migrate(s.orm); err != nil {
+	if err = migrations.Migrate(s.orm, c); err != nil {
 		return nil, err
 	}
 	return &s, nil
