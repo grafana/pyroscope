@@ -73,9 +73,7 @@ export default function Sidebar2() {
     isRouteActive('/adhoc-comparison') ||
     isRouteActive('/adhoc-comparison-diff');
   const isSettingsActive =
-    isRouteActive('/settings') ||
-    isRouteActive('/settings/users') ||
-    isRouteActive('/settings/api-keys');
+    isRouteActive('/settings') || isRouteActive('/settings/*');
 
   const adhoc = (
     <SubMenu

@@ -3,10 +3,13 @@ import {
   createAsyncThunk,
   combineReducers,
 } from '@reduxjs/toolkit';
-import { Users } from '@models/users';
+import { Users, type User } from '@models/users';
 import { APIKeys } from '@models/apikeys';
 
-import { fetchUsers } from '@pyroscope/services/users';
+import {
+  fetchUsers,
+  createUser as createUserAPI,
+} from '@pyroscope/services/users';
 import { fetchAPIKeys } from '@pyroscope/services/apiKeys';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
@@ -41,16 +44,13 @@ export const reloadApiKeys = createAsyncThunk(
   async (foo, thunkAPI) => {
     const res = await fetchAPIKeys();
     if (res.isOk) {
-      console.log(res.value);
       return Promise.resolve(res.value);
     }
-
-    console.error(res.error.message);
 
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to load app names',
+        title: 'Failed to load api keys',
         message: res.error.message,
       })
     );
@@ -63,16 +63,39 @@ export const reloadUsers = createAsyncThunk(
   'newRoot/reloadUsers',
   async (foo, thunkAPI) => {
     const res = await fetchUsers();
+
     if (res.isOk) {
       return Promise.resolve(res.value);
     }
 
-    console.error(res.error.message);
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to load users',
+        message: res.error.message,
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
+
+// That's only for debugging purposes ATM
+export const createUser = createAsyncThunk(
+  'newRoot/createUser',
+  async (user: User, thunkAPI) => {
+    const res = await createUserAPI(user);
+
+    thunkAPI.dispatch(reloadUsers());
+
+    if (res.isOk) {
+      return Promise.resolve(true);
+    }
 
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to load app names',
+        title: 'Failed to create new user',
         message: res.error.message,
       })
     );
