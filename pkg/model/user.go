@@ -1,6 +1,7 @@
 package model
 
 import (
+	"crypto/rand"
 	"errors"
 	"time"
 
@@ -17,6 +18,7 @@ var (
 	ErrUserFullNameTooLong = ValidationError{errors.New("user full name must not exceed 255 characters")}
 	ErrUserEmailExists     = ValidationError{errors.New("user with this email already exists")}
 	ErrUserEmailInvalid    = ValidationError{errors.New("user email is invalid")}
+	ErrUserExternal        = ValidationError{errors.New("external users can't be modified")}
 	ErrUserPasswordEmpty   = ValidationError{errors.New("user password can't be empty")}
 	ErrUserDisabled        = ValidationError{errors.New("user disabled")}
 	ErrInvalidCredentials  = ValidationError{errors.New("invalid credentials")}
@@ -30,7 +32,13 @@ type User struct {
 	PasswordHash []byte  `gorm:"type:varchar(255);not null;default:null"`
 	Role         Role    `gorm:"not null;default:null"`
 	IsDisabled   *bool   `gorm:"not null;default:false"`
+	IsExternal   *bool   `gorm:"not null;default:false"`
 
+	// TODO: Add an attribute indicating whether the email is confirmed.
+	// IsEmailConfirmed *bool
+	// TODO: Add an attribute forcing user to change its password.
+	// IsPasswordChangeRequired *bool
+	// TODO: Implemented LastSeenAt updating.
 	LastSeenAt        *time.Time `gorm:"default:null"`
 	PasswordChangedAt time.Time
 	CreatedAt         time.Time
@@ -43,11 +51,12 @@ type TokenUser struct {
 }
 
 type CreateUserParams struct {
-	Name     string
-	Email    string // TODO(kolesnikovae): Make optional?
-	FullName *string
-	Password string
-	Role     Role
+	Name       string
+	Email      string
+	FullName   *string
+	Password   string
+	Role       Role
+	IsExternal bool
 }
 
 func (p CreateUserParams) Validate() error {
@@ -135,6 +144,13 @@ func IsUserDisabled(u User) bool {
 	return *u.IsDisabled
 }
 
+func IsUserExternal(u User) bool {
+	if u.IsExternal == nil {
+		return false
+	}
+	return *u.IsExternal
+}
+
 func ValidateUserName(userName string) error {
 	// TODO(kolesnikovae): restrict allowed chars?
 	if len(userName) == 0 {
@@ -178,4 +194,13 @@ func MustPasswordHash(password string) []byte {
 
 func VerifyPassword(hashed []byte, password string) error {
 	return bcrypt.CompareHashAndPassword(hashed, []byte(password))
+}
+
+func MustRandomPassword() string {
+	// TODO(kolesnikovae): should be compliant with the requirements.
+	p := make([]byte, 32)
+	if _, err := rand.Read(p); err != nil {
+		panic(err)
+	}
+	return string(p)
 }

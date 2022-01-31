@@ -11,9 +11,7 @@ import (
 	"os"
 	"strconv"
 	"text/template"
-	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
@@ -21,21 +19,122 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
-func (ctrl *Controller) loginHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := ctrl.getTemplate("/login.html")
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render login page")
-			return
-		}
-		mustExecute(tmpl, w, map[string]interface{}{
-			"BasicAuth":     true, // TODO(kolesnikovae): use config.
-			"GoogleEnabled": ctrl.config.Auth.Google.Enabled,
-			"GithubEnabled": ctrl.config.Auth.Github.Enabled,
-			"GitlabEnabled": ctrl.config.Auth.Gitlab.Enabled,
-			"BaseURL":       ctrl.config.BaseURL,
-		})
+// TODO(kolesnikovae): This part should be moved from
+//  Controller to a separate handler/service (Login).
+
+func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		ctrl.loginGet(w)
+	case http.MethodPost:
+		ctrl.loginPost(w, r)
+	default:
+		ctrl.writeInvalidMethodError(w)
 	}
+}
+
+func (ctrl *Controller) loginGet(w http.ResponseWriter) {
+	tmpl, err := ctrl.getTemplate("/login.html")
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "could not render login page")
+		return
+	}
+	mustExecute(tmpl, w, map[string]interface{}{
+		"BasicAuthEnabled":       ctrl.config.Auth.BasicAuth.Enabled,
+		"BasicAuthSignupEnabled": ctrl.config.Auth.BasicAuth.SignupEnabled,
+		"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
+		"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
+		"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
+		"BaseURL":                ctrl.config.BaseURL,
+	})
+}
+
+func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
+	if !ctrl.config.Auth.BasicAuth.Enabled {
+		http.Error(w, "not authorized", http.StatusUnauthorized)
+		return
+	}
+	type loginCredentials struct {
+		Username string `json:"username"`
+		Password []byte `json:"password"`
+	}
+	var req loginCredentials
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ctrl.log.WithError(err).Error("failed to parse user credentials")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	u, err := ctrl.authService.AuthenticateUser(r.Context(), req.Username, string(req.Password))
+	switch {
+	case err == nil:
+		// Generate and sign new JWT token.
+	case errors.Is(err, model.ErrInvalidCredentials):
+		ctrl.log.WithError(err).Error("failed authentication attempt")
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	case model.IsValidationError(err):
+		ctrl.log.WithError(err).Error("invalid authentication request")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	default:
+		// Internal error.
+		ctrl.log.WithError(err).Error("failed to authenticate user")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	token, _, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserToken(u.Name, u.Role))
+	if err != nil {
+		ctrl.log.WithError(err).Error("failed to generate user token")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	createCookie(w, jwtCookieName, token)
+	w.WriteHeader(http.StatusNoContent)
+	// Redirect should be handled on the client side.
+}
+
+func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
+	if !ctrl.config.Auth.BasicAuth.SignupEnabled {
+		http.Error(w, "not authorized", http.StatusUnauthorized)
+		return
+	}
+	type signupRequest struct {
+		Name     string     `json:"name"`
+		Email    string     `json:"email"`
+		FullName *string    `json:"fullName,omitempty"`
+		Password []byte     `json:"password"`
+		Role     model.Role `json:"role"`
+	}
+	var req signupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ctrl.log.WithError(err).Error("failed to decode signup details")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, err := ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
+		Name:     req.Name,
+		Email:    req.Email,
+		FullName: req.FullName,
+		Password: string(req.Password),
+		Role:     ctrl.config.Auth.SignupDefaultRole,
+	})
+	switch {
+	case err == nil:
+	case model.IsValidationError(err):
+		ctrl.log.WithError(err).Debug("invalid signup details")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	default:
+		ctrl.log.WithError(err).Error("failed to create user")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// TODO(kolesnikovae): We could generate a JWT token and set the cookie
+	//  but it's better to just force user to login. A signup should be
+	//  considered successful only when the user email is confirmed
+	//  (not implemented yet).
+	w.WriteHeader(http.StatusNoContent)
+	// Redirect should be handled on the client side.
 }
 
 func createCookie(w http.ResponseWriter, name, value string) {
@@ -61,15 +160,13 @@ func invalidateCookie(w http.ResponseWriter, name string) {
 	})
 }
 
-func (ctrl *Controller) logoutHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost, http.MethodGet:
-			invalidateCookie(w, jwtCookieName)
-			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-		default:
-			ctrl.writeInvalidMethodError(w)
-		}
+func (ctrl *Controller) logoutHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost, http.MethodGet:
+		invalidateCookie(w, jwtCookieName)
+		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+	default:
+		ctrl.writeInvalidMethodError(w)
 	}
 }
 
@@ -123,20 +220,6 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	}
 }
 
-func (ctrl *Controller) newJWTToken(name string) (string, error) {
-	claims := jwt.MapClaims{
-		"iat":  time.Now().Unix(),
-		"name": name,
-	}
-
-	if ctrl.config.Auth.LoginMaximumLifetimeDays > 0 {
-		claims["exp"] = time.Now().Add(time.Hour * 24 * time.Duration(ctrl.config.Auth.LoginMaximumLifetimeDays)).Unix()
-	}
-
-	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return jwtToken.SignedString([]byte(ctrl.config.Auth.JWTSecret))
-}
-
 func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, msg string, err error) {
 	if err != nil {
 		ctrl.log.WithError(err).Error(msg)
@@ -165,24 +248,27 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 			return
 		}
 
-		name, err := oh.userAuth(client)
+		u, err := oh.userAuth(client)
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "failed to get user auth info", err)
 			return
 		}
 
-		user, err := ctrl.userService.FindUserByName(r.Context(), name)
+		user, err := ctrl.userService.FindUserByName(r.Context(), u.Name)
 		switch {
 		default:
 			ctrl.logErrorAndRedirect(w, r, "failed to find user", err)
 			return
 		case err == nil:
+			// TODO(kolesnikovae): Update found user with the new user info, if applicable.
 		case errors.Is(err, model.ErrUserNotFound):
 			user, err = ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
-				Name: name,
-				Role: model.ReadOnlyRole,
-				// Email:    "", // TODO: from OAuth user details? LDAP? Make optional?
-				// Password: "", // TODO: generate random password?
+				Name:       u.Name,
+				Email:      u.Email,
+				Role:       ctrl.config.Auth.SignupDefaultRole,
+				Password:   model.MustRandomPassword(),
+				IsExternal: true,
+				// TODO(kolesnikovae): Specify the user source (oauth-provider, ldap, etc).
 			})
 			if err != nil {
 				ctrl.logErrorAndRedirect(w, r, "failed to create external user", err)
@@ -206,7 +292,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		}
 
 		mustExecute(tmpl, w, map[string]interface{}{
-			"Name":    name,
+			"Name":    u.Name,
 			"BaseURL": ctrl.config.BaseURL,
 		})
 	}

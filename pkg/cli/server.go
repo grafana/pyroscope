@@ -28,6 +28,7 @@ import (
 	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
@@ -51,6 +52,7 @@ type serverService struct {
 	adminServer          *admin.Server
 	discoveryManager     *discovery.Manager
 	scrapeManager        *scrape.Manager
+	database             *sqlstore.SQLStore
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -141,6 +143,13 @@ func newServerService(c *config.Server) (*serverService, error) {
 		})
 	}
 
+	svc.database, err = sqlstore.Open(c)
+	if err != nil {
+		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
+	}
+
+	// TODO(kolesnikovae): DB seeding
+
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.controller, err = server.New(server.Config{
 		Configuration:   svc.config,
@@ -156,6 +165,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		Logger:                  svc.logger,
 		MetricsRegisterer:       defaultMetricsRegistry,
 		ExportedMetricsRegistry: exportedMetricsRegistry,
+		DB:                      svc.database.DB(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new server: %w", err)
@@ -272,6 +282,10 @@ func (svc *serverService) stop() {
 	svc.logger.Debug("stopping storage")
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
+	}
+	svc.logger.Debug("closing database")
+	if err := svc.database.Close(); err != nil {
+		svc.logger.WithError(err).Error("database close")
 	}
 	// we stop the http server as the last thing due to:
 	// 1. we may still want to bserve metric values while storage is closing

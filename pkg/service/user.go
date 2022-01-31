@@ -22,6 +22,7 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 		Name:              params.Name,
 		Email:             params.Email,
 		Role:              params.Role,
+		IsExternal:        &params.IsExternal,
 		PasswordHash:      model.MustPasswordHash(params.Password),
 		PasswordChangedAt: time.Now(),
 	}
@@ -120,6 +121,9 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		var columns model.User
 		// If the new email matches the current one, ignore.
 		if params.Email != nil && user.Email != *params.Email {
+			if model.IsUserExternal(user) {
+				return model.ErrUserExternal
+			}
 			// Make sure it is not in use.
 			// Note that we can't rely on the constraint violation error
 			// that should occur: underlying database driver errors are
@@ -136,6 +140,9 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		}
 		// Same for user name.
 		if params.Name != nil && user.Name != *params.Name {
+			if model.IsUserExternal(user) {
+				return model.ErrUserExternal
+			}
 			switch _, err = findUserByName(tx.Unscoped(), *params.Name); {
 			case errors.Is(err, model.ErrUserNotFound):
 				columns.Name = *params.Name
@@ -145,18 +152,14 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 				return err
 			}
 		}
-		if params.FullName != nil {
-			columns.FullName = params.FullName
-		}
+		columns.FullName = params.FullName
+		columns.IsDisabled = params.IsDisabled
 		if params.Role != nil {
 			columns.Role = *params.Role
 		}
 		if params.Password != nil {
 			columns.PasswordHash = model.MustPasswordHash(*params.Password)
 			columns.PasswordChangedAt = time.Now()
-		}
-		if params.IsDisabled != nil {
-			columns.IsDisabled = params.IsDisabled
 		}
 		return tx.Model(user).Updates(columns).Error
 	})

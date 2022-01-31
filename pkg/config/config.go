@@ -9,6 +9,7 @@ package config
 import (
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
@@ -162,10 +163,7 @@ type RetentionLevels struct {
 }
 
 type Auth struct {
-	SignupDefaultRole string `json:"-" deprecated:"true" def:"member" desc:"specifies which role will be granted to a newly signed up user. Supported roles: admin, member. Defaults to member" mapstructure:"signup-default-role"`
-	DisableLoginForm  bool   `json:"-" deprecated:"true" def:"false" mapstructure:"disable-login-form"`
-	DisableLogout     bool   `json:"-" deprecated:"true" mapstructure:"disable-logout"`
-	DisableSignup     bool   `json:"-" deprecated:"true" mapstructure:"disable-signup"`
+	SignupDefaultRole model.Role `json:"-" deprecated:"true" def:"ReadOnly" desc:"specifies which role will be granted to a newly signed up user. Supported roles: Admin, ReadOnly. Defaults to ReadOnly" mapstructure:"signup-default-role"`
 
 	BasicAuth BasicAuth   `mapstructure:"basic-auth"`
 	Google    GoogleOauth `mapstructure:"google"`
@@ -177,7 +175,16 @@ type Auth struct {
 }
 
 type BasicAuth struct {
-	Enabled bool `json:"-" deprecated:"true" def:"false" desc:"enables login-password authentication" mapstructure:"enabled"`
+	Enabled          bool             `json:"-" deprecated:"true" def:"false" desc:"enables login-password authentication" mapstructure:"enabled"`
+	SignupEnabled    bool             `json:"-" deprecated:"true" def:"false" desc:"indicates wither users are allowed to signup using the form" mapstructure:"signup-enabled"`
+	BuiltinAdminUser BuiltinAdminUser `mapstructure:"admin"`
+}
+
+type BuiltinAdminUser struct {
+	Enabled  bool   `json:"-" deprecated:"true" def:"true" desc:"" mapstructure:"enabled"`
+	Name     string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"name"`
+	Email    string `json:"-" deprecated:"true" def:"nobody@local.domain" desc:"" mapstructure:"email"`
+	Password string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"password"`
 }
 
 // TODO: Maybe merge Oauth structs into one (would have to move def and desc tags somewhere else in code)

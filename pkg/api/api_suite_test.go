@@ -65,7 +65,6 @@ func newTestRouter(rcp requestContextProvider, services router.Services) *router
 
 	r := router.New(
 		logger,
-		redirect,
 		mux.NewRouter(),
 		services)
 

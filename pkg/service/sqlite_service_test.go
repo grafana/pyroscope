@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/gomega"
 
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 )
 
@@ -17,7 +18,7 @@ type testSuite struct {
 }
 
 func (s *testSuite) BeforeEach() {
-	c := &sqlstore.Config{
+	c := config.Database{
 		Type: "sqlite3",
 		URL:  "file::memory:?cache=shared",
 	}
@@ -25,7 +26,7 @@ func (s *testSuite) BeforeEach() {
 		c.URL = s.path
 	}
 	var err error
-	s.SQLStore, err = sqlstore.Open(c)
+	s.SQLStore, err = sqlstore.Open(&config.Server{Database: c})
 	Expect(err).ToNot(HaveOccurred())
 }
 

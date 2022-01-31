@@ -15,8 +15,13 @@ import (
 
 var errForbidden = errors.New("access forbidden")
 
+type extUserInfo struct {
+	Name  string
+	Email string
+}
+
 type oauthHandler interface {
-	userAuth(client *http.Client) (string, error)
+	userAuth(client *http.Client) (extUserInfo, error)
 	getOauthBase() oauthBase
 }
 
