@@ -177,6 +177,7 @@ func (h UserHandler) changeUserPassword(w http.ResponseWriter, r *http.Request, 
 		DecodeError(w, err)
 		return
 	}
+	// TODO: Forbid admins resetting own passwords? Only allow changing it via ChangeAuthenticatedUserPassword.
 	params := model.UpdateUserParams{Password: model.String(string(req.Password))}
 	if _, err := h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
 		Error(w, err)
@@ -196,7 +197,7 @@ func (h UserHandler) ChangeUserRole(w http.ResponseWriter, r *http.Request) {
 		DecodeError(w, err)
 		return
 	}
-	// TODO: Check that admin doesn't revoke it's own Admin role?
+	// TODO: Check that admin doesn't revoke its own Admin role?
 	params := model.UpdateUserParams{Role: &req.Role}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
 		Error(w, err)
@@ -219,6 +220,7 @@ func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, dis
 		Error(w, err)
 		return
 	}
+	// TODO: Check that admin doesn't disable themselves?
 	params := model.UpdateUserParams{IsDisabled: &disabled}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
 		Error(w, err)

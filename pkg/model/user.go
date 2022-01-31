@@ -34,6 +34,11 @@ type User struct {
 	IsDisabled   *bool   `gorm:"not null;default:false"`
 	IsExternal   *bool   `gorm:"not null;default:false"`
 
+	// TODO: Add an attribute indicating whether the email is confirmed.
+	// IsEmailConfirmed *bool
+	// TODO: Add an attribute forcing user to change its password.
+	// IsPasswordChangeRequired *bool
+	// TODO: Implemented LastSeenAt updating.
 	LastSeenAt        *time.Time `gorm:"default:null"`
 	PasswordChangedAt time.Time
 	CreatedAt         time.Time
