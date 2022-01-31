@@ -145,7 +145,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 
 	svc.database, err = sqlstore.Open(c.Database)
 	if err != nil {
-		return nil, fmt.Errorf("can't open database: %w", err)
+		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
 	}
 
 	// TODO(kolesnikovae): DB seeding

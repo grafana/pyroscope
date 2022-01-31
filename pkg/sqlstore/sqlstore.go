@@ -33,6 +33,9 @@ func Open(c config.Database) (*SQLStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect database: %w", err)
 	}
+	if err = s.Ping(context.Background()); err != nil {
+		return nil, err
+	}
 	if err = migrations.Migrate(s.orm); err != nil {
 		return nil, err
 	}

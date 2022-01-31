@@ -9,6 +9,7 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/mitchellh/mapstructure"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -182,6 +183,25 @@ func (df *durFlag) Type() string {
 	return t.String()
 }
 
+type roleFlag model.Role
+
+func (rf *roleFlag) String() string {
+	return model.Role(*rf).String()
+}
+
+func (rf *roleFlag) Set(value string) error {
+	d, err := model.ParseRole(value)
+	if err != nil {
+		return err
+	}
+	*rf = roleFlag(d)
+	return nil
+}
+
+func (rf *roleFlag) Type() string {
+	return reflect.TypeOf(model.Role(*rf)).String()
+}
+
 type byteSizeFlag bytesize.ByteSize
 
 func (bs *byteSizeFlag) String() string {
@@ -310,6 +330,21 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 
 			flagSet.Var(val, nameVal, descVal)
 			vpr.SetDefault(nameVal, defaultVal)
+		case reflect.TypeOf(model.InvalidRole):
+			valRole := fieldV.Addr().Interface().(*model.Role)
+			val := (*roleFlag)(valRole)
+
+			var defaultVal model.Role
+			if defaultValStr != "" {
+				var err error
+				defaultVal, err = model.ParseRole(defaultValStr)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+
+			*val = (roleFlag)(defaultVal)
+
 		case reflect.TypeOf(bytesize.Byte):
 			valByteSize := fieldV.Addr().Interface().(*bytesize.ByteSize)
 			val := (*byteSizeFlag)(valByteSize)
