@@ -13,6 +13,27 @@
       href="{{ .BaseURL }}/assets/styles.<%= webpack.hash %>.css"
     />
     <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
+    <script>
+      function signup() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/signup");
+        xhr.setRequestHeader("Accept", "application/json");
+        xhr.setRequestHeader("Content-Type", "application/json");
+  
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4) {
+            if ( xhr.status == 204 ) {
+              location.href='/';
+            }
+          }};
+        xhr.send(JSON.stringify({
+          name: document.getElementById('username').value,
+          email: document.getElementById('email').value,
+          fullName: document.getElementById('fullName').value,
+          password: btoa(unescape(encodeURIComponent(document.getElementById('password').value))),
+        }));
+      }
+    </script>    
   </head>
 
   <body class="login-page">
@@ -25,26 +46,26 @@
         <div class="signup-form">
           <div>
             <div><label>Username</label></div>
-            <input type="text" name="user" autocapitalize="none" placeholder="email or username" />
+            <input type="text" name="username" autocapitalize="none" id="username" placeholder="email or username" />
           </div>
           <div>
             <div><label>Email</label></div>
-            <input type="text" name="email" autocapitalize="none" placeholder="email or username" />
+            <input type="text" name="email" autocapitalize="none" id="email" placeholder="email or username" />
           </div>
           <div>
             <div><label>Full Name</label></div>
-            <input type="text" name="fullName" autocapitalize="none" placeholder="email or username" />
+            <input type="text" name="fullName" autocapitalize="none" id="fullName" placeholder="email or username" />
           </div>
           <div>
             <div><label>Password</label></div>
-            <input type="password" name="password" aria-label="password input field"  placeholder="password" />
+            <input type="password" name="password" aria-label="password input field" id="password" placeholder="password" />
           </div>
           <div>
             <div><label>Password Again</label></div>
             <input type="password" name="password-again" aria-label="password input field"  placeholder="password-again" />
           </div>
           <div>
-            <button type="button" class="sign-up-button">Log In</button>
+            <button type="button" class="sign-up-button" onClick="signup();">Sign Up</button>
           </div>
         </div>
       </form>
