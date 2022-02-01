@@ -21,6 +21,9 @@ func JSONToProfile(b []byte, _ string, _ int) (*flamebearer.FlamebearerProfile, 
 	if err := json.Unmarshal(b, &profile); err != nil {
 		return nil, fmt.Errorf("unable to unmarshall JSON: %w", err)
 	}
+	if err := profile.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid profile: %w", err)
+	}
 	return &profile, nil
 }
 
