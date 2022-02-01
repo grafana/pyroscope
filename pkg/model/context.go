@@ -18,13 +18,13 @@ func UserFromContext(ctx context.Context) (User, bool) {
 	return User{}, false
 }
 
-func WithTokenAPIKey(ctx context.Context, key TokenAPIKey) context.Context {
+func WithTokenAPIKey(ctx context.Context, key APIKeyToken) context.Context {
 	return context.WithValue(ctx, ctxAPIKeyKey, key)
 }
 
-func APIKeyFromContext(ctx context.Context) (TokenAPIKey, bool) {
-	if key, ok := ctx.Value(ctxAPIKeyKey).(TokenAPIKey); ok {
+func APIKeyFromContext(ctx context.Context) (APIKeyToken, bool) {
+	if key, ok := ctx.Value(ctxAPIKeyKey).(APIKeyToken); ok {
 		return key, true
 	}
-	return TokenAPIKey{}, false
+	return APIKeyToken{}, false
 }

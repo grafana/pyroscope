@@ -167,24 +167,6 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	}...)
 	ctrl.addRoutes(r, insecureRoutes, ctrl.drainMiddleware)
 
-	// Protected routes:
-	protectedRoutes := []route{
-		{"/", ctrl.indexHandler()},
-		{"/comparison", ctrl.indexHandler()},
-		{"/comparison-diff", ctrl.indexHandler()},
-		{"/adhoc-single", ctrl.indexHandler()},
-		{"/adhoc-comparison", ctrl.indexHandler()},
-		{"/adhoc-comparison-diff", ctrl.indexHandler()},
-		{"/settings", ctrl.indexHandler()},
-		{"/settings/{page}", ctrl.indexHandler()},
-		{"/render", ctrl.renderHandler},
-		{"/render-diff", ctrl.renderDiffHandler},
-		{"/labels", ctrl.labelsHandler},
-		{"/label-values", ctrl.labelValuesHandler},
-		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
-	}
-	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
-
 	// For backward compatibility we redirect users on authentication fail.
 	redirect := func(w http.ResponseWriter, r *http.Request) {
 		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
@@ -203,6 +185,22 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		UserService:   ctrl.userService,
 		APIKeyService: apiKeyService,
 	})
+
+	// Protected routes:
+	protectedRoutes := []route{
+		{"/", ctrl.indexHandler()},
+		{"/comparison", ctrl.indexHandler()},
+		{"/comparison-diff", ctrl.indexHandler()},
+		{"/adhoc-single", ctrl.indexHandler()},
+		{"/adhoc-comparison", ctrl.indexHandler()},
+		{"/adhoc-comparison-diff", ctrl.indexHandler()},
+		{"/render", ctrl.renderHandler},
+		{"/render-diff", ctrl.renderDiffHandler},
+		{"/labels", ctrl.labelsHandler},
+		{"/label-values", ctrl.labelValuesHandler},
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
+	}
+	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
 	// Note that the router uses its own auth middleware: the difference is that
 	// it (all its handlers) will respond with 401, if no authentication method

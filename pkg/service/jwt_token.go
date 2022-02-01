@@ -72,14 +72,21 @@ func (svc JWTTokenService) UserFromJWTToken(t *jwt.Token) (model.TokenUser, bool
 	if user.Name, ok = m[jwtClaimUserName].(string); !ok {
 		return user, false
 	}
-	return user, true
+	// Parse role.
+	s, ok := m[jwtClaimRole].(string)
+	if !ok {
+		return user, false
+	}
+	var err error
+	user.Role, err = model.ParseRole(s)
+	return user, err == nil
 }
 
 // APIKeyFromJWTToken retrieves API key info from the given JWT token.
 // 'akn' and 'role' claims must be present and valid, otherwise the
 // function returns false. The function does not validate the token.
-func (svc JWTTokenService) APIKeyFromJWTToken(t *jwt.Token) (model.TokenAPIKey, bool) {
-	var apiKey model.TokenAPIKey
+func (svc JWTTokenService) APIKeyFromJWTToken(t *jwt.Token) (model.APIKeyToken, bool) {
+	var apiKey model.APIKeyToken
 	m, ok := t.Claims.(jwt.MapClaims)
 	if !ok {
 		return apiKey, false

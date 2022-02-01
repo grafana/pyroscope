@@ -31,8 +31,8 @@ func (k APIKey) VerifySignature(t *jwt.Token) bool {
 	return subtle.ConstantTimeCompare([]byte(k.Signature), []byte(t.Signature)) == 1
 }
 
-// TokenAPIKey represents an API key retrieved from the validated JWT token.
-type TokenAPIKey struct {
+// APIKeyToken represents an API key retrieved from the validated JWT token.
+type APIKeyToken struct {
 	Name string
 	Role Role
 }

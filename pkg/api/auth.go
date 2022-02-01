@@ -10,12 +10,12 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
-const jwtCookieName = "pyroscopeJWT"
+const JWTCookieName = "pyroscopeJWT"
 
 //go:generate mockgen -destination mocks/auth.go -package mocks . AuthService
 
 type AuthService interface {
-	APIKeyFromJWTToken(ctx context.Context, token string) (model.TokenAPIKey, error)
+	APIKeyTokenFromJWTToken(ctx context.Context, token string) (model.APIKeyToken, error)
 	UserFromJWTToken(ctx context.Context, token string) (model.User, error)
 	AuthenticateUser(ctx context.Context, name, password string) (model.User, error)
 }
@@ -40,7 +40,7 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 				return
 			}
 
-			if c, err := r.Cookie(jwtCookieName); err == nil {
+			if c, err := r.Cookie(JWTCookieName); err == nil {
 				ctx, err := withUserFromToken(authService, r.Context(), c.Value)
 				if err != nil {
 					logger.WithError(err).Debug("failed to authenticate jwt cookie")
@@ -52,13 +52,8 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 				return
 			}
 
-			// For backward compatibility, on failure we assume the
-			// requester is user and redirect them to the login page,
-			// which is not appropriate for API key authentication
-			// and may confuse end users.
 			logger.Debug("unauthenticated request")
-			// Error(w, ErrAuthenticationRequired)
-			loginRedirect(w, r)
+			Error(w, ErrAuthenticationRequired)
 		})
 	}
 }
@@ -85,7 +80,7 @@ func withUserFromToken(s AuthService, ctx context.Context, t string) (context.Co
 // authenticated (e.g. can not be found, expired, or it's signature
 // has changed).
 func withAPIKeyFromToken(s AuthService, ctx context.Context, t string) (context.Context, error) {
-	k, err := s.APIKeyFromJWTToken(ctx, t)
+	k, err := s.APIKeyTokenFromJWTToken(ctx, t)
 	if err != nil {
 		return nil, err
 	}

@@ -48,6 +48,7 @@ type User struct {
 // TokenUser represents a user info retrieved from the validated JWT token.
 type TokenUser struct {
 	Name string
+	Role Role
 }
 
 type CreateUserParams struct {

@@ -47,22 +47,22 @@ func (svc AuthService) AuthenticateUser(ctx context.Context, name string, passwo
 	return user, nil
 }
 
-func (svc AuthService) APIKeyFromJWTToken(ctx context.Context, t string) (model.TokenAPIKey, error) {
+func (svc AuthService) APIKeyTokenFromJWTToken(ctx context.Context, t string) (model.APIKeyToken, error) {
 	token, err := svc.jwtTokenService.Parse(t)
 	if err != nil {
-		return model.TokenAPIKey{}, fmt.Errorf("invalid jwt token: %w", err)
+		return model.APIKeyToken{}, fmt.Errorf("invalid jwt token: %w", err)
 	}
 	keyToken, ok := svc.jwtTokenService.APIKeyFromJWTToken(token)
 	if !ok {
-		return model.TokenAPIKey{}, fmt.Errorf("api key is invalid")
+		return model.APIKeyToken{}, fmt.Errorf("api key is invalid")
 	}
 	// TODO(kolesnikovae): Caching. At least for Agents.
 	apiKey, err := svc.apiKeyService.FindAPIKeyByName(ctx, keyToken.Name)
 	if err != nil {
-		return model.TokenAPIKey{}, err
+		return model.APIKeyToken{}, err
 	}
 	if !apiKey.VerifySignature(token) {
-		return model.TokenAPIKey{}, fmt.Errorf("api key signature mismatch")
+		return model.APIKeyToken{}, fmt.Errorf("api key signature mismatch")
 	}
 	return keyToken, nil
 }
