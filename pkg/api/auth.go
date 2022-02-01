@@ -15,7 +15,7 @@ const JWTCookieName = "pyroscopeJWT"
 //go:generate mockgen -destination mocks/auth.go -package mocks . AuthService
 
 type AuthService interface {
-	APIKeyFromJWTToken(ctx context.Context, token string) (model.TokenAPIKey, error)
+	APIKeyTokenFromJWTToken(ctx context.Context, token string) (model.APIKeyToken, error)
 	UserFromJWTToken(ctx context.Context, token string) (model.User, error)
 	AuthenticateUser(ctx context.Context, name, password string) (model.User, error)
 }
@@ -80,7 +80,7 @@ func withUserFromToken(s AuthService, ctx context.Context, t string) (context.Co
 // authenticated (e.g. can not be found, expired, or it's signature
 // has changed).
 func withAPIKeyFromToken(s AuthService, ctx context.Context, t string) (context.Context, error) {
-	k, err := s.APIKeyFromJWTToken(ctx, t)
+	k, err := s.APIKeyTokenFromJWTToken(ctx, t)
 	if err != nil {
 		return nil, err
 	}

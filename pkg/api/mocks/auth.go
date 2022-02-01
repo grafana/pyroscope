@@ -36,10 +36,10 @@ func (m *MockAuthService) EXPECT() *MockAuthServiceMockRecorder {
 }
 
 // APIKeyFromJWTToken mocks base method.
-func (m *MockAuthService) APIKeyFromJWTToken(arg0 context.Context, arg1 string) (model.TokenAPIKey, error) {
+func (m *MockAuthService) APIKeyTokenFromJWTToken(arg0 context.Context, arg1 string) (model.APIKeyToken, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "APIKeyFromJWTToken", arg0, arg1)
-	ret0, _ := ret[0].(model.TokenAPIKey)
+	ret := m.ctrl.Call(m, "APIKeyTokenFromJWTToken", arg0, arg1)
+	ret0, _ := ret[0].(model.APIKeyToken)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -47,7 +47,7 @@ func (m *MockAuthService) APIKeyFromJWTToken(arg0 context.Context, arg1 string) 
 // APIKeyFromJWTToken indicates an expected call of APIKeyFromJWTToken.
 func (mr *MockAuthServiceMockRecorder) APIKeyFromJWTToken(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "APIKeyFromJWTToken", reflect.TypeOf((*MockAuthService)(nil).APIKeyFromJWTToken), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "APIKeyTokenFromJWTToken", reflect.TypeOf((*MockAuthService)(nil).APIKeyTokenFromJWTToken), arg0, arg1)
 }
 
 // AuthenticateUser mocks base method.

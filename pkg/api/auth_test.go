@@ -42,14 +42,14 @@ var _ = Describe("AuthMiddleware", func() {
 	Describe("request authentication", func() {
 		var (
 			// API key and JWT token string returned by mocked service.
-			expectedAPIKey   model.TokenAPIKey
+			expectedAPIKey   model.APIKeyToken
 			expectedUser     model.User
 			expectedJWTToken string
 		)
 
 		BeforeEach(func() {
 			expectedJWTToken = "some-jwt-token"
-			expectedAPIKey = model.TokenAPIKey{
+			expectedAPIKey = model.APIKeyToken{
 				Name: "test-api-key",
 				Role: model.AdminRole,
 			}

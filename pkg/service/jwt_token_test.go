@@ -56,11 +56,11 @@ var _ = Describe("API key JWT encoding", func() {
 		})
 	})
 
-	Context("when a token is acquired with APIKeyFromJWTToken", func() {
+	Context("when a token is acquired with APIKeyTokenFromJWTToken", func() {
 		It("creates a valid API key if the token is valid", func() {
 			apiKey, ok := svc.APIKeyFromJWTToken(svc.GenerateAPIKeyToken(p))
 			Expect(ok).To(BeTrue())
-			Expect(apiKey).To(Equal(model.TokenAPIKey{
+			Expect(apiKey).To(Equal(model.APIKeyToken{
 				Name: p.Name,
 				Role: p.Role,
 			}))
