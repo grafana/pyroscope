@@ -79,7 +79,7 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	createCookie(w, jwtCookieName, token)
+	ctrl.createCookie(w, jwtCookieName, token)
 	w.WriteHeader(http.StatusNoContent)
 	// Redirect should be handled on the client side.
 }
@@ -128,14 +128,14 @@ func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	// Redirect should be handled on the client side.
 }
 
-func createCookie(w http.ResponseWriter, name, value string) {
+func (ctrl *Controller) createCookie(w http.ResponseWriter, name, value string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Path:     "/",
 		Value:    value,
 		HttpOnly: true,
 		MaxAge:   0,
-		SameSite: http.SameSiteStrictMode,
+		SameSite: ctrl.config.Auth.CookieSameSite,
 	})
 }
 
@@ -146,8 +146,7 @@ func invalidateCookie(w http.ResponseWriter, name string) {
 		Value:    "",
 		HttpOnly: true,
 		// MaxAge -1 request cookie be deleted immediately
-		MaxAge:   -1,
-		SameSite: http.SameSiteStrictMode,
+		MaxAge: -1,
 	})
 }
 
@@ -172,12 +171,12 @@ func generateStateToken(length int) (string, error) {
 
 func (ctrl *Controller) oauthLoginHandler(oh oauthHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		authURL, err := oh.getOauthBase().buildAuthQuery(r, w)
+		authURL, state, err := oh.getOauthBase().buildAuthQuery(r, w)
 		if err != nil {
 			ctrl.log.WithError(err).Error("problem generating state token")
 			return
 		}
-
+		ctrl.createCookie(w, stateCookieName, state)
 		http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
 	}
 }
@@ -275,7 +274,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 
 		// delete state cookie and add jwt cookie
 		invalidateCookie(w, stateCookieName)
-		createCookie(w, jwtCookieName, token)
+		ctrl.createCookie(w, jwtCookieName, token)
 		tmpl, err := ctrl.getTemplate("/welcome.html")
 		if err != nil {
 			ctrl.writeInternalServerError(w, err, "could not render welcome page")

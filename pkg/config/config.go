@@ -7,6 +7,7 @@ package config
 // but using squash seems to keep the prefix in the CLI.
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
@@ -165,19 +166,20 @@ type RetentionLevels struct {
 type Auth struct {
 	SignupDefaultRole model.Role `json:"-" deprecated:"true" def:"ReadOnly" desc:"specifies which role will be granted to a newly signed up user. Supported roles: Admin, ReadOnly. Defaults to ReadOnly" mapstructure:"signup-default-role"`
 
-	BasicAuth BasicAuth   `mapstructure:"basic-auth"`
+	BasicAuth BasicAuth   `mapstructure:"basic"`
 	Google    GoogleOauth `mapstructure:"google"`
 	Gitlab    GitlabOauth `mapstructure:"gitlab"`
 	Github    GithubOauth `mapstructure:"github"`
 
-	JWTSecret                string `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
-	LoginMaximumLifetimeDays int    `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
+	CookieSameSite           http.SameSite `json:"-" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
+	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
+	LoginMaximumLifetimeDays int           `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
 }
 
 type BasicAuth struct {
 	Enabled          bool             `json:"-" deprecated:"true" def:"false" desc:"enables login-password authentication" mapstructure:"enabled"`
-	SignupEnabled    bool             `json:"-" deprecated:"true" def:"false" desc:"indicates wither users are allowed to signup using the form" mapstructure:"signup-enabled"`
-	BuiltinAdminUser BuiltinAdminUser `mapstructure:"admin"`
+	SignupEnabled    bool             `json:"-" deprecated:"true" def:"false" desc:"indicates whether users are allowed to create accounts" mapstructure:"signup-enabled"`
+	BuiltinAdminUser BuiltinAdminUser `json:"-" deprecated:"true" def:"false" mapstructure:"admin"`
 }
 
 type BuiltinAdminUser struct {
