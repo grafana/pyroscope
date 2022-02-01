@@ -268,5 +268,4 @@ var _ = Describe("Checking profile validation", func() {
 			})
 		})
 	})
-
 })
