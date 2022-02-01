@@ -12,6 +12,7 @@ import Users from './Users';
 import ApiKeys from './ApiKeys';
 
 import styles from './Settings.module.css';
+import UserAddForm from './Users/UserAddForm';
 
 function Settings() {
   const { path, url } = useRouteMatch();
@@ -64,6 +65,9 @@ function Settings() {
             </Route>
             <Route exact path={`${path}/users`}>
               <Users />
+            </Route>
+            <Route exact path={`${path}/user-add`}>
+              <UserAddForm />
             </Route>
             <Route exact path={`${path}/api-keys`}>
               <ApiKeys />

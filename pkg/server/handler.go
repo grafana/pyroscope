@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/sirupsen/logrus"
@@ -350,10 +351,7 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 		} else if path == "/settings" {
 			ctrl.statsInc("settings")
 			ctrl.renderIndexPage(rw, r)
-		} else if path == "/settings/users" {
-			ctrl.statsInc("settings")
-			ctrl.renderIndexPage(rw, r)
-		} else if path == "/settings/api-keys" {
+		} else if strings.HasPrefix(path, "/settings") {
 			ctrl.statsInc("settings")
 			ctrl.renderIndexPage(rw, r)
 		} else {

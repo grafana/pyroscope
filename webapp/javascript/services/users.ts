@@ -23,7 +23,9 @@ export async function fetchUsers(): Promise<
 export async function disableUser(
   user: User
 ): Promise<Result<boolean, RequestError | ZodError>> {
-  const response = await request(`/api/users/${user.id}/disable`);
+  const response = await request(`/api/users/${user.id}/disable`, {
+    method: 'PUT',
+  });
 
   if (response.isOk) {
     return Result.ok(true);
@@ -35,7 +37,9 @@ export async function disableUser(
 export async function enableUser(
   user: User
 ): Promise<Result<boolean, RequestError | ZodError>> {
-  const response = await request(`/api/users/${user.id}/enable`);
+  const response = await request(`/api/users/${user.id}/enable`, {
+    method: 'PUT',
+  });
 
   if (response.isOk) {
     return Result.ok(true);

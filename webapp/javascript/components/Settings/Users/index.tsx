@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '@ui/Button';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
@@ -11,29 +12,15 @@ import UserTableItem from './UserTableItem';
 
 import userStyles from './Users.module.css';
 import tableStyles from '../SettingsTable.module.css';
-import UserAddForm from './UserAddForm';
-
-const sampleUsers = [
-  {
-    login: 'SampleUserLogin',
-    name: 'Test User Name',
-    email: 'sampleUserEmail@gmail.com',
-    lastActive: 'never',
-  },
-  {
-    login: 'shaleynikov',
-    name: 'Test User 2 Name',
-    email: 'sampleUser2Email@gmail.com',
-    lastActive: 'yesterday',
-  },
-];
 
 function Users() {
   const dispatch = useAppDispatch();
   const users = useAppSelector(selectUsers);
+
   useEffect(() => {
     dispatch(reloadUsers());
   }, [dispatch]);
+
   const [search, setSearchField] = useState('');
   const displayUsers =
     (users &&
@@ -61,9 +48,11 @@ function Users() {
           value={search}
           onChange={(v) => setSearchField(v.target.value)}
         />
-        <Button type="submit" kind="secondary">
-          Invite
-        </Button>
+        <Link to="/settings/user-add">
+          <Button type="submit" kind="secondary">
+            Invite
+          </Button>
+        </Link>
       </div>
       <table
         className={[userStyles.usersTable, tableStyles.settingsTable].join(' ')}
@@ -97,7 +86,6 @@ function Users() {
           )}
         </tbody>
       </table>
-      <UserAddForm />
     </>
   );
 }

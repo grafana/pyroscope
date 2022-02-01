@@ -1,11 +1,21 @@
 import React from 'react';
 import Button from '@ui/Button';
 import Icon from '@ui/Icon';
-import { faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faTimes, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { formatRelative } from 'date-fns';
 import cx from 'classnames';
 import { type User } from '../../../models/users';
 import styles from './UserTableItem.module.css';
+
+function DisableButton(props) {
+  const { user, onDisable } = props;
+  const icon = user.isDisabled ? faCheck : faTimes;
+  return (
+    <Button type="button" kind="default" onClick={onDisable}>
+      <Icon icon={icon} /> {user.isDisabled ? 'Enable' : 'Disable'}
+    </Button>
+  );
+}
 
 function UserTableItem(props) {
   const { user, onDisable } = props;
@@ -22,9 +32,7 @@ function UserTableItem(props) {
       <td>{formatRelative(updatedAt, new Date())}</td>
       <td align="center">
         {' '}
-        <Button type="submit" kind="default">
-          <Icon icon={faTimes} onClick={onDisable} />
-        </Button>
+        <DisableButton user={user} onDisable={onDisable} />
       </td>
     </tr>
   );
