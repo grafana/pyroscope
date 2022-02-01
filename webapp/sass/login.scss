@@ -160,6 +160,13 @@ body.login-page {
     color: white;
     padding-top: 0.5em;
   }
+
+  & > .error {
+    color: white;
+    background-color: #8a1722;
+    font-weight: bold;
+    padding: 0px 1em 0px 1em;
+  }
 }
 
 .signup-form {

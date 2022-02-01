@@ -117,7 +117,7 @@ export const disableUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to enable a user',
+        title: 'Failed to disable a user',
         message: res.error.message,
       })
     );

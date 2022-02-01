@@ -29,7 +29,7 @@ function Settings() {
                 styles.navLink + (isActive ? ` ${styles.navLinkActive}` : '')
               }
             >
-              <Icon icon={faSlidersH} /> Preferences
+              <Icon icon={faSlidersH} /> Profile
             </NavLink>
           </li>
           <li>

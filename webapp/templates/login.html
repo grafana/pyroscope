@@ -24,12 +24,18 @@
           if (xhr.readyState === 4) {
             if ( xhr.status == 204 ) {
               location.href='/';
+            } else {
+              error(xhr.responseText);
             }
           }};
         xhr.send(JSON.stringify({
           username: document.getElementById('username').value,
           password: btoa(unescape(encodeURIComponent(document.getElementById('password').value))),
         }));
+      }
+
+      function error(string) {
+        document.getElementById('error').innerHTML = string;
       }
     </script>
   </head>
@@ -41,6 +47,7 @@
       <h1 class="welcome-title">Welcome to Pyroscope</h1>
       <form>
         <div class="signin-form">
+          <div class="error" id="error"></div>
           <div>
             <div><label>Email or username</label></div>
             <input type="text" name="user" autocapitalize="none" placeholder="email or username" id="username" />

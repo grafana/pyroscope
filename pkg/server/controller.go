@@ -194,6 +194,8 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/adhoc-single", ctrl.indexHandler()},
 		{"/adhoc-comparison", ctrl.indexHandler()},
 		{"/adhoc-comparison-diff", ctrl.indexHandler()},
+		{"/settings", ctrl.indexHandler()},
+		{"/settings/{page}", ctrl.indexHandler()},
 		{"/render", ctrl.renderHandler},
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},

@@ -32,16 +32,11 @@ import { useWindowWidth } from '@react-hook/window-size';
 import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
 
-// TODO: find a better way of doing this?
 function signOut() {
-  const form = document.createElement('form');
-
-  form.method = 'POST';
-  form.action = `${basename()}/logout`;
-
-  document.body.appendChild(form);
-
-  form.submit();
+  // By visiting /logout we're clearing jwtCookie
+  fetch('/logout').then((d) => {
+    (window as Window).location = '/login';
+  });
 }
 
 export default function Sidebar2() {
