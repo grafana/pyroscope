@@ -7,6 +7,7 @@ import (
 	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 
+	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/mocks"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
@@ -42,6 +43,7 @@ var _ = Describe("AuthMiddleware", func() {
 		var (
 			// API key and JWT token string returned by mocked service.
 			expectedAPIKey   model.TokenAPIKey
+			expectedUser     model.User
 			expectedJWTToken string
 		)
 
@@ -49,6 +51,10 @@ var _ = Describe("AuthMiddleware", func() {
 			expectedJWTToken = "some-jwt-token"
 			expectedAPIKey = model.TokenAPIKey{
 				Name: "test-api-key",
+				Role: model.AdminRole,
+			}
+			expectedUser = model.User{
+				Name: "test-user",
 				Role: model.AdminRole,
 			}
 		})
@@ -89,9 +95,31 @@ var _ = Describe("AuthMiddleware", func() {
 			})
 		})
 
-		// Make sure redirection logic was preserved.
-		Context("when credentials are not provided", func() {
+		Context("when user token is invalid or can not be found", func() {
 			It("redirects request", func() {
+				authServiceMock.EXPECT().
+					UserFromJWTToken(gomock.Any(), expectedJWTToken).
+					Return(expectedUser, model.ErrUserNotFound).
+					Times(1)
+
+				authServiceMock.EXPECT().
+					APIKeyFromJWTToken(gomock.Any(), expectedJWTToken).
+					Times(0)
+
+				apiKeyServiceMock.EXPECT().
+					GetAllAPIKeys(gomock.Any()).
+					Times(0)
+
+				req := newRequest(http.MethodGet, server.URL+"/keys", "")
+				req.AddCookie(&http.Cookie{Name: api.JWTCookieName, Value: expectedJWTToken})
+				expectResponse(req,
+					"", // Empty response body.
+					http.StatusTemporaryRedirect)
+			})
+		})
+
+		Context("when credentials are not provided", func() {
+			It("returns status code Unauthorized", func() {
 				authServiceMock.EXPECT().
 					APIKeyFromJWTToken(gomock.Any(), expectedJWTToken).
 					Return(expectedAPIKey, nil).Times(0)
@@ -99,10 +127,10 @@ var _ = Describe("AuthMiddleware", func() {
 				apiKeyServiceMock.EXPECT().
 					GetAllAPIKeys(gomock.Any()).Times(0)
 
-				expectResponse(newRequest(http.MethodGet, server.URL+"/keys",
-					""), // Empty request body.
-					"", // Empty response.
-					http.StatusTemporaryRedirect)
+				req := newRequest(http.MethodGet, server.URL+"/keys", "")
+				expectResponse(req,
+					"response_authentication_required.json",
+					http.StatusUnauthorized)
 			})
 		})
 	})

@@ -72,7 +72,14 @@ func (svc JWTTokenService) UserFromJWTToken(t *jwt.Token) (model.TokenUser, bool
 	if user.Name, ok = m[jwtClaimUserName].(string); !ok {
 		return user, false
 	}
-	return user, true
+	// Parse role.
+	s, ok := m[jwtClaimRole].(string)
+	if !ok {
+		return user, false
+	}
+	var err error
+	user.Role, err = model.ParseRole(s)
+	return user, err == nil
 }
 
 // APIKeyFromJWTToken retrieves API key info from the given JWT token.
