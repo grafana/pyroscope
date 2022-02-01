@@ -1,6 +1,7 @@
 import { Result } from '@utils/fp';
-import { Users, parse, type User } from '@models/users';
+import { Users, parse, type User, userModel } from '@models/users';
 import type { ZodError } from 'zod';
+import { modelToResult } from '@models/utils';
 import { request } from './base';
 import type { RequestError } from './base';
 
@@ -58,6 +59,17 @@ export async function createUser(
 
   if (response.isOk) {
     return Result.ok(true);
+  }
+
+  return Result.err<false, RequestError>(response.error);
+}
+
+export async function loadCurrentUser(): Promise<
+  Result<User, RequestError | ZodError>
+> {
+  const response = await request(`/api/user`);
+  if (response.isOk) {
+    return modelToResult<User>(userModel, response.value);
   }
 
   return Result.err<false, RequestError>(response.error);

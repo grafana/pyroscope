@@ -12,7 +12,7 @@ import styles from './UserForm.module.css';
 
 export type UserAddProps = User & { password?: string };
 
-function UserAddForm(props: UserAddProps) {
+function UserAddForm() {
   const [form, setForm]: [UserAddProps, (value) => void] = useState({});
   const dispatch = useAppDispatch();
   const history = useHistory();
@@ -23,14 +23,17 @@ function UserAddForm(props: UserAddProps) {
     setForm({ ...form, [name]: value });
   };
 
-  const handleFormSubmit = (event) => {
+  const handleFormSubmit = () => {
     const data = {
       ...form,
       role: 'ReadOnly',
       password: btoa(unescape(encodeURIComponent(form.password))),
     };
-    dispatch(createUser(data as User));
-    history.push('/settings/users');
+    dispatch(createUser(data as User))
+      .unwrap()
+      .then(() => {
+        history.push('/settings/users');
+      });
   };
 
   return (

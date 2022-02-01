@@ -23,6 +23,7 @@ import history from '../util/history';
 import viewsReducer from './reducers/views';
 import newRootStore from './reducers/newRoot';
 import settingsReducer from './reducers/settings';
+import userReducer from './reducers/user';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 import {
@@ -49,6 +50,7 @@ const reducer = combineReducers({
   root: rootReducer,
   views: viewsReducer,
   settings: settingsReducer,
+  user: userReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
 });
 

@@ -142,10 +142,9 @@ export const createUser = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to create new user',
-        message: res.error.message,
+        message: res.error.errors.join(', '),
       })
     );
-
     return Promise.reject(res.error);
   }
 );

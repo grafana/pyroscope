@@ -2,7 +2,15 @@ import { z, ZodError } from 'zod';
 import { Result } from '@utils/fp';
 import { modelToResult } from './utils';
 
-const zDateTime = z.string().transform((value) => Date.parse(value));
+const zDateTime = z.string().transform((value) => {
+  if (typeof value === 'string') {
+    return Date.parse(value);
+  }
+  if (typeof value === 'number') {
+    return new Date(value);
+  }
+  return value;
+});
 
 export const userModel = z.object({
   id: z.number(),
