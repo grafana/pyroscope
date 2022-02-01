@@ -154,7 +154,29 @@ body.login-page {
     }
   }
 
-  button.sign-in-button {
+  button.sign-in-button,
+  button.sign-up-button {
+    background-color: rgb(61, 113, 217);
+    color: white;
+    padding-top: 0.5em;
+  }
+}
+
+.signup-form {
+  padding: 0 3em 0 3em;
+  & > div {
+    text-align: start;
+    padding-top: 0.5em;
+    label {
+      font-weight: bolder;
+    }
+    input {
+      width: 100%;
+    }
+  }
+
+  button.sign-in-button,
+  button.sign-up-button {
     background-color: rgb(61, 113, 217);
     color: white;
     padding-top: 0.5em;

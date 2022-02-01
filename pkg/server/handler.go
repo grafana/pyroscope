@@ -94,6 +94,33 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		ctrl.signupHandlerGet(w)
+	case http.MethodPost:
+		ctrl.signupHandlerPost(w, r)
+	default:
+		ctrl.writeInvalidMethodError(w)
+	}
+}
+
+func (ctrl *Controller) signupHandlerGet(w http.ResponseWriter) {
+	tmpl, err := ctrl.getTemplate("/signup.html")
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "could not render signup page")
+		return
+	}
+	mustExecute(tmpl, w, map[string]interface{}{
+		"BasicAuthEnabled":       ctrl.config.Auth.BasicAuth.Enabled,
+		"BasicAuthSignupEnabled": ctrl.config.Auth.BasicAuth.SignupEnabled,
+		"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
+		"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
+		"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
+		"BaseURL":                ctrl.config.BaseURL,
+	})
+}
+
+func (ctrl *Controller) signupHandlerPost(w http.ResponseWriter, r *http.Request) {
 	if !ctrl.config.Auth.BasicAuth.SignupEnabled {
 		http.Error(w, "not authorized", http.StatusUnauthorized)
 		return
