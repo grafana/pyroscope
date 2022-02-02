@@ -1,6 +1,6 @@
 import { Result } from '@utils/fp';
-import { APIKeys, parse } from '@models/apikeys';
-import type { ZodError } from 'zod';
+import { APIKey, APIKeys, parse, apikeyModel } from '@models/apikeys';
+import { modelToResult } from '@models/utils';
 import { request } from './base';
 import type { RequestError } from './base';
 
@@ -12,14 +12,25 @@ export async function fetchAPIKeys(): Promise<
   Result<APIKeys, RequestError | ZodError>
 > {
   const response = await request('/api/keys');
+  console.log(response.value);
+  if (response.isOk) {
+    return parse(response.value);
+  }
 
-  try {
-    if (response.isOk) {
-      console.log('Parsing', response.value);
-      return parse(response.value);
-    }
-  } catch (e) {
-    console.error(e);
+  return Result.err<APIKeys, RequestError>(response.error);
+}
+
+export async function createAPIKey(
+  data
+): Promise<Result<APIKeys, RequestError | ZodError>> {
+  console.log(data);
+  const response = await request('/api/keys', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+  if (response.isOk) {
+    return modelToResult<APIKey>(apikeyModel, response.value);
   }
 
   return Result.err<APIKeys, RequestError>(response.error);

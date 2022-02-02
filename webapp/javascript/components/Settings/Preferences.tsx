@@ -11,7 +11,7 @@ import {
 } from '@pyroscope/redux/reducers/user';
 import styles from './Preferences.module.css';
 
-function ChangePasswordForm(props) {
+function ChangePasswordForm() {
   const [form, setForm] = useState({ errors: [] });
   const dispatch = useAppDispatch();
 
@@ -28,13 +28,14 @@ function ChangePasswordForm(props) {
     )
       .unwrap()
       .then(
-        () =>
+        () => {
           setForm({
             errors: [],
             oldPassword: '',
             password: '',
             passwordAgain: '',
-          }),
+          });
+        },
         (e) => setForm({ errors: e.errors })
       );
   };
@@ -71,7 +72,7 @@ function ChangePasswordForm(props) {
           <input
             type="password"
             placeholder="Password"
-            name="password-again"
+            name="passwordAgain"
             required
             onChange={handleChange}
           />

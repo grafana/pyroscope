@@ -10,7 +10,7 @@ export const apikeyModel = z.object({
   role: z.string(),
   key: z.optional(z.string()),
   createdAt: zDateTime,
-  expiresAt: zDateTime,
+  expiresAt: z.optional(zDateTime),
 });
 
 export const apikeysModel = z.array(apikeyModel);

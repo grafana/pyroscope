@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
+
+import { faPlus } from '@fortawesome/free-solid-svg-icons';
+
 import Button from '@ui/Button';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
@@ -49,6 +52,16 @@ function Users() {
   return (
     <>
       <h2>Users</h2>
+      <div className={userStyles.actionContainer}>
+        <Button
+          type="submit"
+          kind="secondary"
+          icon={faPlus}
+          onClick={() => history.push('/settings/apikey-add')}
+        >
+          Add User
+        </Button>
+      </div>
       <div className={userStyles.searchContainer}>
         <input
           type="text"
@@ -56,13 +69,6 @@ function Users() {
           value={search}
           onChange={(v) => setSearchField(v.target.value)}
         />
-        <Button
-          type="submit"
-          kind="secondary"
-          onClick={() => history.push('/settings/user-add')}
-        >
-          Add
-        </Button>
       </div>
       <table
         className={[userStyles.usersTable, tableStyles.settingsTable].join(' ')}

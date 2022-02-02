@@ -20,3 +20,7 @@
   text-align: center;
   color: rgba(255, 255, 255, 0.66);
 }
+
+.actionContainer {
+  margin: 10px 0px;
+}

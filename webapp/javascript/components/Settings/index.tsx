@@ -10,10 +10,11 @@ import {
 import cx from 'classnames';
 import Preferences from './Preferences';
 import Users from './Users';
-import ApiKeys from './ApiKeys';
+import ApiKeys from './APIKeys';
 
 import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
+import APIKeyAddForm from './APIKeys/APIKeyAddForm';
 
 function Settings() {
   const { path, url } = useRouteMatch();
@@ -72,6 +73,9 @@ function Settings() {
             </Route>
             <Route exact path={`${path}/api-keys`}>
               <ApiKeys />
+            </Route>
+            <Route exact path={`${path}/api-key-add`}>
+              <APIKeyAddForm />
             </Route>
           </Switch>
         </Box>

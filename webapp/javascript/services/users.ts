@@ -93,7 +93,7 @@ export async function changeMyPassword(
     }),
   });
   if (response.isOk) {
-    return modelToResult<User>(userModel, response.value);
+    return Result.ok(true);
   }
 
   return Result.err<false, RequestError>(response.error);
