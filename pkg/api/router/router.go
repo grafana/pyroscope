@@ -60,6 +60,12 @@ func (r *Router) RegisterUserHandlers() {
 	x.Path("/password").Methods(http.MethodPut).HandlerFunc(h.ChangeAuthenticatedUserPassword)
 }
 
+func (r *Router) RegisterUserStabHandler() {
+	r.Path("/user").Methods(http.MethodGet).HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+}
+
 func (r *Router) RegisterAPIKeyHandlers() {
 	h := api.NewAPIKeyHandler(r.APIKeyService)
 

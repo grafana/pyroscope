@@ -155,9 +155,6 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
 	ctrl.userService = service.NewUserService(ctrl.db)
 
-	// Note that the router uses its own auth middleware: the difference is that
-	// it responds with 401, if no authentication method is configured or credentials
-	// weren't provided.
 	apiRouter := router.New(ctrl.log, r.PathPrefix("/api").Subrouter(), router.Services{
 		APIKeyService: service.NewAPIKeyService(ctrl.db, ctrl.jwtTokenService),
 		AuthService:   ctrl.authService,
@@ -165,8 +162,23 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	})
 
 	apiRouter.Use(ctrl.drainMiddleware)
-	apiRouter.Use(api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService))
-	apiRouter.RegisterHandlers()
+	apiRouter.Use(ctrl.authMiddleware)
+	if ctrl.isAuthRequired() {
+		apiRouter.RegisterUserHandlers()
+		apiRouter.RegisterAPIKeyHandlers()
+		// apiRouter.RegisterLoginHandlers()
+	} else {
+		// TODO(kolesnikovae): A contract with frontend: a stab that reports
+		//   204 on requests to the user profile. By this we let frontend to
+		//   know that auth disabled without accessing /login endpoint (that
+		//   renders html). There should be a better way:
+		//    - just respond with 404.
+		//    - instead, the server should expose another endpoint listing
+		//      all the settings needed for frontend. So UI won't even need
+		//      to request user profile if authentication is not configured.
+		//    - just respond with 404 (register no handler).
+		apiRouter.RegisterUserStabHandler()
+	}
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()
@@ -395,14 +407,10 @@ func (ctrl *Controller) loginRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) authMiddleware(next http.Handler) http.Handler {
-	m := api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !ctrl.isAuthRequired() {
-			next.ServeHTTP(w, r)
-			return
-		}
-		m(next).ServeHTTP(w, r)
-	})
+	if ctrl.isAuthRequired() {
+		return api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService)(next)
+	}
+	return next
 }
 
 func (*Controller) expectFormats(format string) error {
