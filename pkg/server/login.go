@@ -42,7 +42,7 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter) {
 
 func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 	if !ctrl.config.Auth.Basic.Enabled {
-		http.Error(w, "not authorized", http.StatusUnauthorized)
+		ctrl.logErrorAndRedirect(w, r, "basic authentication disabled", nil)
 		return
 	}
 	type loginCredentials struct {
@@ -86,7 +86,7 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 
 func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	if !ctrl.config.Auth.Basic.SignupEnabled {
-		http.Error(w, "not authorized", http.StatusUnauthorized)
+		ctrl.logErrorAndRedirect(w, r, "signup disabled", nil)
 		return
 	}
 	type signupRequest struct {
