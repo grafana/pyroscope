@@ -11,6 +11,7 @@ import {
   createUser as createUserAPI,
   enableUser as enableUserAPI,
   disableUser as disableUserAPI,
+  changeUserRole as changeUserRoleAPI,
 } from '@pyroscope/services/users';
 import { fetchAPIKeys } from '@pyroscope/services/apiKeys';
 import type { RootState } from '../store';
@@ -146,6 +147,27 @@ export const createUser = createAsyncThunk(
       })
     );
     return Promise.reject(res.error);
+  }
+);
+
+export const changeUserRole = createAsyncThunk(
+  'users/changeUserRole',
+  async (action, thunkAPI) => {
+    const { id, role } = action;
+    const res = await changeUserRoleAPI({ id }, role);
+
+    if (res.isOk) {
+      return Promise.resolve(true);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to change users role',
+        message: res.error.message,
+      })
+    );
+    return thunkAPI.rejectWithValue(res.error);
   }
 );
 

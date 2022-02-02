@@ -5,6 +5,7 @@ import {
   combineReducers,
 } from '@reduxjs/toolkit';
 import { Users, type User } from '@models/users';
+import { connect } from 'react-redux';
 
 import {
   loadCurrentUser as loadCurrentUserAPI,
@@ -86,5 +87,9 @@ export const changeMyPassword = createAsyncThunk(
 
 export const currentUserState = (state: RootState) => state.user;
 export const selectCurrentUser = (state: RootState) => state.user.data;
+
+export const withCurrentUser = connect((state: RootState) => ({
+  currentUser: selectCurrentUser(state),
+}));
 
 export default userSlice.reducer;

@@ -6,8 +6,8 @@ import { connect } from 'react-redux';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 
 import {
-  selectCurrentUser,
   changeMyPassword,
+  withCurrentUser,
 } from '@pyroscope/redux/reducers/user';
 import styles from './Preferences.module.css';
 
@@ -138,6 +138,4 @@ function Preferences(props) {
   );
 }
 
-export default connect((state) => ({ currentUser: selectCurrentUser(state) }))(
-  Preferences
-);
+export default withCurrentUser(Preferences);

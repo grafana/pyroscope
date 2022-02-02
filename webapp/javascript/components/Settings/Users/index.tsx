@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import Button from '@ui/Button';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
@@ -8,6 +8,10 @@ import {
   enableUser,
   disableUser,
 } from '@pyroscope/redux/reducers/settings';
+import {
+  selectCurrentUser,
+  withCurrentUser,
+} from '@pyroscope/redux/reducers/user';
 import UserTableItem from './UserTableItem';
 
 import userStyles from './Users.module.css';
@@ -16,12 +20,16 @@ import tableStyles from '../SettingsTable.module.css';
 function Users() {
   const dispatch = useAppDispatch();
   const users = useAppSelector(selectUsers);
+  const currentUser = useAppSelector(selectCurrentUser);
+  const history = useHistory();
+  const [search, setSearchField] = useState('');
 
   useEffect(() => {
     dispatch(reloadUsers());
-  }, [dispatch]);
+  }, []);
 
-  const [search, setSearchField] = useState('');
+  if (!currentUser) return null;
+
   const displayUsers =
     (users &&
       users.filter(
@@ -48,11 +56,13 @@ function Users() {
           value={search}
           onChange={(v) => setSearchField(v.target.value)}
         />
-        <Link to="/settings/user-add">
-          <Button type="submit" kind="secondary">
-            Invite
-          </Button>
-        </Link>
+        <Button
+          type="submit"
+          kind="secondary"
+          onClick={() => history.push('/settings/user-add')}
+        >
+          Add
+        </Button>
       </div>
       <table
         className={[userStyles.usersTable, tableStyles.settingsTable].join(' ')}
@@ -73,6 +83,7 @@ function Users() {
             displayUsers.map((user) => (
               <UserTableItem
                 user={user}
+                isCurrent={user.id === currentUser.id}
                 key={`userTableItem${user.email}`}
                 onDisable={() => onDisableUser(user)}
               />

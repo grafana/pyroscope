@@ -98,3 +98,19 @@ export async function changeMyPassword(
 
   return Result.err<false, RequestError>(response.error);
 }
+
+export async function changeUserRole(
+  user: User,
+  role: string
+): Promise<Result<boolean, RequestError | ZodError>> {
+  const response = await request(`/api/users/${user.id}/role`, {
+    method: 'PUT',
+    body: JSON.stringify({ role }),
+  });
+
+  if (response.isOk) {
+    return Result.ok(true);
+  }
+
+  return Result.err<false, RequestError>(response.error);
+}

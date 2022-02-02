@@ -1,38 +1,88 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Button from '@ui/Button';
 import Icon from '@ui/Icon';
-import { faTimes, faCheck } from '@fortawesome/free-solid-svg-icons';
+import {
+  faTimes,
+  faCheck,
+  faEdit,
+  faTrashAlt,
+  faToggleOff,
+  faToggleOn,
+} from '@fortawesome/free-solid-svg-icons';
 import { formatRelative } from 'date-fns';
 import cx from 'classnames';
+import Dropdown, { MenuItem } from '@ui/Dropdown';
+import {
+  reloadUsers,
+  changeUserRole,
+} from '@pyroscope/redux/reducers/settings';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { type User } from '../../../models/users';
 import styles from './UserTableItem.module.css';
 
 function DisableButton(props) {
   const { user, onDisable } = props;
-  const icon = user.isDisabled ? faCheck : faTimes;
+  const icon = user.isDisabled ? faToggleOff : faToggleOn;
   return (
-    <Button type="button" kind="default" onClick={onDisable}>
-      <Icon icon={icon} /> {user.isDisabled ? 'Enable' : 'Disable'}
+    <Button type="button" kind="secondary" onClick={onDisable}>
+      <Icon icon={icon} onClick={onDisable} />
+    </Button>
+  );
+}
+
+function EditRoleDropdown(props) {
+  const { user } = props;
+  const { role } = user;
+  const dispatch = useAppDispatch();
+  const [status, setStatus] = useState(false);
+
+  const handleEdit = (evt) => {
+    if (evt.value !== user.role) {
+      dispatch(changeUserRole({ id: user.id, role: evt.value }))
+        .unwrap()
+        .then(() => dispatch(reloadUsers()))
+        .then(() => setStatus(true));
+    }
+  };
+
+  return (
+    <div className={styles.role}>
+      <Dropdown label={`Role ${role}`} value={role} onItemClick={handleEdit}>
+        <MenuItem value="Admin">Admin</MenuItem>
+        <MenuItem value="ReadOnly">Readonly</MenuItem>
+      </Dropdown>
+      {status ? <Icon icon={faCheck} /> : null}
+    </div>
+  );
+}
+
+function DeleteButton(props) {
+  return (
+    <Button type="button" kind="secondary">
+      <Icon icon={faTrashAlt} />
     </Button>
   );
 }
 
 function UserTableItem(props) {
-  const { user, onDisable } = props;
+  const { user, onDisable, isCurrent } = props;
   const { id, isDisabled, fullName, role, updatedAt, email, name } =
     user as User;
-
   return (
     <tr className={cx({ [styles.disabled]: isDisabled })}>
       <td>{id}</td>
       <td>{name}</td>
       <td>{email}</td>
       <td>{fullName}</td>
-      <td>{role}</td>
+      <td>{isCurrent ? role : <EditRoleDropdown user={user} />}</td>
       <td>{formatRelative(updatedAt, new Date())}</td>
       <td align="center">
-        {' '}
-        <DisableButton user={user} onDisable={onDisable} />
+        {!isCurrent ? (
+          <div className={styles.actions}>
+            <DisableButton user={user} onDisable={onDisable} />
+            <DeleteButton user={user} onDelete={onDisable} />
+          </div>
+        ) : null}
       </td>
     </tr>
   );
