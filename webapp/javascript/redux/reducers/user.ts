@@ -6,7 +6,10 @@ import {
 } from '@reduxjs/toolkit';
 import { Users, type User } from '@models/users';
 
-import { loadCurrentUser as loadCurrentUserAPI } from '@pyroscope/services/users';
+import {
+  loadCurrentUser as loadCurrentUserAPI,
+  changeMyPassword as changeMyPasswordAPI,
+} from '@pyroscope/services/users';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 
@@ -57,6 +60,29 @@ const userSlice = createSlice({
     });
   },
 });
+
+export const changeMyPassword = createAsyncThunk(
+  'users/changeMyPassword',
+  async (passwords: { oldPassword: string; newPassword: string }, thunkAPI) => {
+    const res = await changeMyPasswordAPI(
+      passwords.oldPassword,
+      passwords.newPassword
+    );
+
+    if (res.isOk) {
+      return Promise.resolve(true);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to change users password',
+        message: res.error.message,
+      })
+    );
+    return thunkAPI.rejectWithValue(res.error);
+  }
+);
 
 export const currentUserState = (state: RootState) => state.user;
 export const selectCurrentUser = (state: RootState) => state.user.data;

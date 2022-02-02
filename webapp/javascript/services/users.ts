@@ -1,5 +1,11 @@
 import { Result } from '@utils/fp';
-import { Users, parse, type User, userModel } from '@models/users';
+import {
+  Users,
+  parse,
+  type User,
+  userModel,
+  passwordEncode,
+} from '@models/users';
 import type { ZodError } from 'zod';
 import { modelToResult } from '@models/utils';
 import { request } from './base';
@@ -68,6 +74,24 @@ export async function loadCurrentUser(): Promise<
   Result<User, RequestError | ZodError>
 > {
   const response = await request(`/api/user`);
+  if (response.isOk) {
+    return modelToResult<User>(userModel, response.value);
+  }
+
+  return Result.err<false, RequestError>(response.error);
+}
+
+export async function changeMyPassword(
+  oldPassword: string,
+  newPassword: string
+): Promise<Result<User, RequestError | ZodError>> {
+  const response = await request(`/api/user/password`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      oldPassword: passwordEncode(oldPassword),
+      newPassword: passwordEncode(newPassword),
+    }),
+  });
   if (response.isOk) {
     return modelToResult<User>(userModel, response.value);
   }

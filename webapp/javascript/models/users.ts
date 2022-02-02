@@ -32,3 +32,5 @@ export type User = z.infer<typeof userModel>;
 export function parse(a: unknown): Result<Users, ZodError> {
   return modelToResult(usersModel, a);
 }
+
+export const passwordEncode = (p) => btoa(unescape(encodeURIComponent(p)));

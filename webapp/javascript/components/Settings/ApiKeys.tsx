@@ -5,7 +5,7 @@ import Icon from '@ui/Icon';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import { faTimes } from '@fortawesome/free-solid-svg-icons';
 
-import { addDays, addHours, formatDistance, formatRelative } from 'date-fns/fp';
+import { formatDistance, formatRelative } from 'date-fns/fp';
 import {
   reloadApiKeys,
   selectAPIKeys,

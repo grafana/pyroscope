@@ -7,7 +7,7 @@ import { formatRelative } from 'date-fns';
 import { request } from '@pyroscope/services/base';
 import { reloadUsers, createUser } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
-import { type User } from '../../../models/users';
+import { passwordEncode, type User } from '../../../models/users';
 import styles from './UserForm.module.css';
 
 export type UserAddProps = User & { password?: string };
@@ -27,7 +27,7 @@ function UserAddForm() {
     const data = {
       ...form,
       role: 'ReadOnly',
-      password: btoa(unescape(encodeURIComponent(form.password))),
+      password: passwordEncode(form.password),
     };
     dispatch(createUser(data as User))
       .unwrap()
