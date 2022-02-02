@@ -166,10 +166,10 @@ type RetentionLevels struct {
 type Auth struct {
 	SignupDefaultRole model.Role `json:"-" deprecated:"true" def:"ReadOnly" desc:"specifies which role will be granted to a newly signed up user. Supported roles: Admin, ReadOnly. Defaults to ReadOnly" mapstructure:"signup-default-role"`
 
-	BasicAuth BasicAuth   `mapstructure:"basic"`
-	Google    GoogleOauth `mapstructure:"google"`
-	Gitlab    GitlabOauth `mapstructure:"gitlab"`
-	Github    GithubOauth `mapstructure:"github"`
+	Basic  BasicAuth   `mapstructure:"basic"`
+	Google GoogleOauth `mapstructure:"google"`
+	Gitlab GitlabOauth `mapstructure:"gitlab"`
+	Github GithubOauth `mapstructure:"github"`
 
 	CookieSameSite           http.SameSite `json:"-" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
 	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`

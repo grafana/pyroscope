@@ -165,7 +165,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	})
 
 	apiRouter.Use(ctrl.drainMiddleware)
-	apiRouter.Use(api.AuthMiddleware(ctrl.log, nil, ctrl.authService))
+	apiRouter.Use(api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService))
 	apiRouter.RegisterHandlers()
 
 	// Routes not protected with auth. Drained at shutdown.
@@ -369,7 +369,7 @@ func (ctrl *Controller) trackMetrics(route string) func(next http.Handler) http.
 }
 
 func (ctrl *Controller) isAuthRequired() bool {
-	return ctrl.config.Auth.BasicAuth.Enabled ||
+	return ctrl.config.Auth.Basic.Enabled ||
 		ctrl.config.Auth.Google.Enabled ||
 		ctrl.config.Auth.Github.Enabled ||
 		ctrl.config.Auth.Gitlab.Enabled
@@ -390,11 +390,12 @@ func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http
 	http.Redirect(w, r, urlStr, status)
 }
 
+func (ctrl *Controller) loginRedirect(w http.ResponseWriter, r *http.Request) {
+	ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+}
+
 func (ctrl *Controller) authMiddleware(next http.Handler) http.Handler {
-	redirect := func(w http.ResponseWriter, r *http.Request) {
-		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-	}
-	m := api.AuthMiddleware(ctrl.log, redirect, ctrl.authService)
+	m := api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !ctrl.isAuthRequired() {
 			next.ServeHTTP(w, r)

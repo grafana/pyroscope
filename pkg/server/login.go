@@ -31,8 +31,8 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter) {
 		return
 	}
 	mustExecute(tmpl, w, map[string]interface{}{
-		"BasicAuthEnabled":       ctrl.config.Auth.BasicAuth.Enabled,
-		"BasicAuthSignupEnabled": ctrl.config.Auth.BasicAuth.SignupEnabled,
+		"BasicAuthEnabled":       ctrl.config.Auth.Basic.Enabled,
+		"BasicAuthSignupEnabled": ctrl.config.Auth.Basic.SignupEnabled,
 		"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
 		"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
 		"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
@@ -41,7 +41,7 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter) {
 }
 
 func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.BasicAuth.Enabled {
+	if !ctrl.config.Auth.Basic.Enabled {
 		http.Error(w, "not authorized", http.StatusUnauthorized)
 		return
 	}
@@ -85,7 +85,7 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.BasicAuth.SignupEnabled {
+	if !ctrl.config.Auth.Basic.SignupEnabled {
 		http.Error(w, "not authorized", http.StatusUnauthorized)
 		return
 	}
@@ -265,7 +265,10 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 				return
 			}
 		}
-
+		if model.IsUserDisabled(user) {
+			ctrl.logErrorAndRedirect(w, r, "user disabled", err)
+			return
+		}
 		token, _, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserToken(user.Name, user.Role))
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "signing jwt failed", err)
