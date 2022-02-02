@@ -7,6 +7,7 @@ import {
   faSlidersH,
   faUserAlt,
 } from '@fortawesome/free-solid-svg-icons';
+import cx from 'classnames';
 import Preferences from './Preferences';
 import Users from './Users';
 import ApiKeys from './ApiKeys';
@@ -27,7 +28,7 @@ function Settings() {
               to={`${url}`}
               exact
               className={(isActive) =>
-                styles.navLink + (isActive ? ` ${styles.navLinkActive}` : '')
+                cx({ [styles.navLink]: true, [styles.navLinkActive]: isActive })
               }
             >
               <Icon icon={faSlidersH} /> Profile
@@ -38,7 +39,7 @@ function Settings() {
               to={`${url}/users`}
               exact
               className={(isActive) =>
-                styles.navLink + (isActive ? ` ${styles.navLinkActive}` : '')
+                cx({ [styles.navLink]: true, [styles.navLinkActive]: isActive })
               }
             >
               <Icon icon={faUserAlt} /> Users
@@ -49,7 +50,7 @@ function Settings() {
               to={`${url}/api-keys`}
               exact
               className={(isActive) =>
-                styles.navLink + (isActive ? ` ${styles.navLinkActive}` : '')
+                cx({ [styles.navLink]: true, [styles.navLinkActive]: isActive })
               }
             >
               <Icon icon={faKey} /> API keys

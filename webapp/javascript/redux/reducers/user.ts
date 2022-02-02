@@ -10,7 +10,6 @@ import { loadCurrentUser as loadCurrentUserAPI } from '@pyroscope/services/users
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 
-
 interface UserRootState {
   type: 'loading' | 'loaded' | 'failed';
   data?: User;
@@ -58,5 +57,8 @@ const userSlice = createSlice({
     });
   },
 });
+
+export const currentUserState = (state: RootState) => state.user;
+export const selectCurrentUser = (state: RootState) => state.user.data;
 
 export default userSlice.reducer;

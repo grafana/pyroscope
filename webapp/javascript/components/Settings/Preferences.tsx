@@ -1,9 +1,16 @@
 import React from 'react';
 import Button from '@ui/Button';
+import { connect } from 'react-redux';
 
+import { useAppSelector } from '@pyroscope/redux/hooks';
+
+import { selectCurrentUser } from '@pyroscope/redux/reducers/user';
 import styles from './Preferences.module.css';
 
-function Preferences() {
+function Preferences(props) {
+  const { currentUser } = props;
+  if (!currentUser) return <></>;
+
   return (
     <>
       <h2>Edit profile</h2>
@@ -12,8 +19,8 @@ function Preferences() {
         <h4>Username</h4>
         <input
           type="text"
-          placeholder="Name"
-          defaultValue=""
+          placeholder="username"
+          value={currentUser.name}
           required
           onChange={() => {}}
         />
@@ -23,8 +30,8 @@ function Preferences() {
         <h4>Full Name</h4>
         <input
           type="text"
-          placeholder="Username"
-          defaultValue=""
+          placeholder="Full Name"
+          value={currentUser.fullName}
           required
           onChange={() => {}}
         />
@@ -35,7 +42,7 @@ function Preferences() {
         <input
           type="text"
           placeholder="email"
-          defaultValue=""
+          value={currentUser.email}
           required
           onChange={() => {}}
         />
@@ -84,4 +91,6 @@ function Preferences() {
   );
 }
 
-export default Preferences;
+export default connect((state) => ({ currentUser: selectCurrentUser(state) }))(
+  Preferences
+);

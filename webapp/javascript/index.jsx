@@ -1,12 +1,13 @@
 import ReactDOM from 'react-dom';
-import React from 'react';
+import React, { useEffect } from 'react';
 
-import { Provider } from 'react-redux';
-import { Router, BrowserRouter, Switch, Route } from 'react-router-dom';
+import { Provider, useDispatch } from 'react-redux';
+import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Notifications from '@ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
+import { loadCurrentUser } from '@pyroscope/redux/reducers/user';
 import store, { persistor } from './redux/store';
 
 import PyroscopeApp from './components/PyroscopeApp';
@@ -30,17 +31,33 @@ try {
   console.error(e);
 }
 
-ReactDOM.render(
-  <Provider store={store}>
-    <PersistGate persistor={persistor} loading={null}>
-      <Router history={history}>
-        <ServerNotifications />
-        <Notifications />
-        <div className="app">
-          <Sidebar />
-          <Switch>
-            <Route exact path="/">
-              <PyroscopeApp />
+function App() {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(loadCurrentUser());
+  }, [dispatch]);
+
+  return (
+    <div className="app">
+      <Sidebar />
+      <Switch>
+        <Route exact path="/">
+          <PyroscopeApp />
+        </Route>
+        <Route path="/comparison">
+          <ComparisonApp />
+        </Route>
+        <Route path="/comparison-diff">
+          <ComparisonDiffApp />
+        </Route>
+        <Route path="/settings">
+          <Settings />
+        </Route>
+        {isExperimentalAdhocUIEnabled && (
+          <>
+            <Route path="/adhoc-single">
+              <AdhocSingle />
             </Route>
             <Route path="/comparison">
               <ComparisonApp />
@@ -48,24 +65,20 @@ ReactDOM.render(
             <Route path="/comparison-diff">
               <ComparisonDiffApp />
             </Route>
-            <Route path="/settings">
-              <Settings />
-            </Route>
-            {isExperimentalAdhocUIEnabled && (
-              <>
-                <Route path="/adhoc-single">
-                  <AdhocSingle />
-                </Route>
-                <Route path="/comparison">
-                  <ComparisonApp />
-                </Route>
-                <Route path="/comparison-diff">
-                  <ComparisonDiffApp />
-                </Route>
-              </>
-            )}
-          </Switch>
-        </div>
+          </>
+        )}
+      </Switch>
+    </div>
+  );
+}
+
+ReactDOM.render(
+  <Provider store={store}>
+    <PersistGate persistor={persistor} loading={null}>
+      <Router history={history}>
+        <ServerNotifications />
+        <Notifications />
+        <App />
       </Router>
       {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
     </PersistGate>
