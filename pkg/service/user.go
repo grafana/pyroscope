@@ -152,6 +152,9 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 				return err
 			}
 		}
+		if params.FullName != nil && model.IsUserExternal(user) {
+			return model.ErrUserExternal
+		}
 		columns.FullName = params.FullName
 		columns.IsDisabled = params.IsDisabled
 		if params.Role != nil {
