@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
@@ -202,6 +203,45 @@ func (rf *roleFlag) Type() string {
 	return reflect.TypeOf(model.Role(*rf)).String()
 }
 
+type sameSiteFlag http.SameSite
+
+func (sf *sameSiteFlag) String() string {
+	switch http.SameSite(*sf) {
+	case http.SameSiteLaxMode:
+		return "Lax"
+	case http.SameSiteStrictMode:
+		return "Strict"
+	default:
+		return "None"
+	}
+}
+
+func (sf *sameSiteFlag) Set(value string) error {
+	v, err := parseSameSite(value)
+	if err != nil {
+		return err
+	}
+	*sf = sameSiteFlag(v)
+	return nil
+}
+
+func parseSameSite(s string) (http.SameSite, error) {
+	switch strings.ToLower(s) {
+	case "lax":
+		return http.SameSiteLaxMode, nil
+	case "strict":
+		return http.SameSiteStrictMode, nil
+	case "none":
+		return http.SameSiteNoneMode, nil
+	default:
+		return http.SameSiteDefaultMode, fmt.Errorf("unknown SameSite ")
+	}
+}
+
+func (sf *sameSiteFlag) Type() string {
+	return reflect.TypeOf(http.SameSite(*sf)).String()
+}
+
 type byteSizeFlag bytesize.ByteSize
 
 func (bs *byteSizeFlag) String() string {
@@ -333,7 +373,6 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 		case reflect.TypeOf(model.InvalidRole):
 			valRole := fieldV.Addr().Interface().(*model.Role)
 			val := (*roleFlag)(valRole)
-
 			var defaultVal model.Role
 			if defaultValStr != "" {
 				var err error
@@ -342,9 +381,19 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
 				}
 			}
-
 			*val = (roleFlag)(defaultVal)
-
+		case reflect.TypeOf(http.SameSiteStrictMode):
+			valP := fieldV.Addr().Interface().(*http.SameSite)
+			val := (*sameSiteFlag)(valP)
+			var defaultVal http.SameSite
+			if defaultValStr != "" {
+				var err error
+				defaultVal, err = parseSameSite(defaultValStr)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			*val = (sameSiteFlag)(defaultVal)
 		case reflect.TypeOf(bytesize.Byte):
 			valByteSize := fieldV.Addr().Interface().(*bytesize.ByteSize)
 			val := (*byteSizeFlag)(valByteSize)

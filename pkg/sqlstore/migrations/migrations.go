@@ -46,7 +46,7 @@ import (
 // Engineering by Laine Campbell & Charity Majors).
 func Migrate(db *gorm.DB, c *config.Server) error {
 	return gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
-		createUserTableMigration(c.Auth.BasicAuth.BuiltinAdminUser),
+		createUserTableMigration(c.Auth.Basic.BuiltinAdminUser),
 		createAPIKeyTableMigration(),
 	}).Migrate()
 }

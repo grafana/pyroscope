@@ -248,10 +248,6 @@ func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request
 		Error(w, ErrPermissionDenied)
 		return
 	}
-	if !ok {
-		Error(w, ErrPermissionDenied)
-		return
-	}
 	MustJSON(w, userFromModel(user))
 }
 

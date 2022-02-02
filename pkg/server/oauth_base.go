@@ -68,11 +68,11 @@ func (o oauthBase) getCallbackURL(host, configCallbackURL string, hasTLS bool) (
 	return fmt.Sprintf("%v://%v%v", schema, host, o.callbackRoute), nil
 }
 
-func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (string, error) {
+func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (string, string, error) {
 	callbackURL, err := o.getCallbackURL(r.Host, o.config.RedirectURL, r.URL.Query().Get("tls") == "true")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		return "", fmt.Errorf("callbackURL parsing failed: %w", err)
+		return "", "", fmt.Errorf("callbackURL parsing failed: %w", err)
 	}
 
 	authURL := *o.authURL
@@ -86,14 +86,12 @@ func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (strin
 	state, err := generateStateToken(16)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return "", fmt.Errorf("problem generating state token: %w", err)
+		return "", "", fmt.Errorf("problem generating state token: %w", err)
 	}
 
-	createCookie(w, stateCookieName, state)
 	parameters.Add("state", state)
 	authURL.RawQuery = parameters.Encode()
-
-	return authURL.String(), nil
+	return authURL.String(), state, nil
 }
 
 func (o oauthBase) generateOauthClient(r *http.Request) (*http.Client, error) {

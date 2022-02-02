@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	gmux "github.com/gorilla/mux"
+	"github.com/gorilla/mux"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -69,7 +69,7 @@ type Controller struct {
 	// Adhoc mode
 	adhoc adhocserver.Server
 
-	// These should be moved to a separate Login handler/service.
+	// TODO: Should be moved to a separate Login handler/service.
 	authService     service.AuthService
 	userService     service.UserService
 	jwtTokenService service.JWTTokenService
@@ -146,7 +146,27 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 }
 
 func (ctrl *Controller) mux() (http.Handler, error) {
-	r := gmux.NewRouter()
+	r := mux.NewRouter()
+
+	ctrl.jwtTokenService = service.NewJWTTokenService(
+		[]byte(ctrl.config.Auth.JWTSecret),
+		ctrl.config.Auth.LoginMaximumLifetimeDays)
+
+	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
+	ctrl.userService = service.NewUserService(ctrl.db)
+
+	// Note that the router uses its own auth middleware: the difference is that
+	// it responds with 401, if no authentication method is configured or credentials
+	// weren't provided.
+	apiRouter := router.New(ctrl.log, r.PathPrefix("/api").Subrouter(), router.Services{
+		APIKeyService: service.NewAPIKeyService(ctrl.db, ctrl.jwtTokenService),
+		AuthService:   ctrl.authService,
+		UserService:   ctrl.userService,
+	})
+
+	apiRouter.Use(ctrl.drainMiddleware)
+	apiRouter.Use(api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService))
+	apiRouter.RegisterHandlers()
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()
@@ -167,25 +187,6 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	}...)
 	ctrl.addRoutes(r, insecureRoutes, ctrl.drainMiddleware)
 
-	// For backward compatibility we redirect users on authentication fail.
-	redirect := func(w http.ResponseWriter, r *http.Request) {
-		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-	}
-
-	ctrl.jwtTokenService = service.NewJWTTokenService(
-		[]byte(ctrl.config.Auth.JWTSecret),
-		ctrl.config.Auth.LoginMaximumLifetimeDays)
-
-	apiKeyService := service.NewAPIKeyService(ctrl.db, ctrl.jwtTokenService)
-	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
-	ctrl.userService = service.NewUserService(ctrl.db)
-
-	apiRouter := router.New(ctrl.log, r.PathPrefix("/api").Subrouter(), router.Services{
-		AuthService:   ctrl.authService,
-		UserService:   ctrl.userService,
-		APIKeyService: apiKeyService,
-	})
-
 	// Protected routes:
 	protectedRoutes := []route{
 		{"/", ctrl.indexHandler()},
@@ -204,13 +205,9 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	}
 	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
 
-	// Note that the router uses its own auth middleware: the difference is that
-	// it (all its handlers) will respond with 401, if no authentication method
-	// is configured.
-	apiRouter.Use(api.AuthMiddleware(ctrl.log, redirect, ctrl.authService))
-	apiRouter.RegisterHandlers()
-
-	ctrl.addRoutes(r, []route{{"/api", apiRouter.ServeHTTP}}, ctrl.drainMiddleware)
+	// TODO(kolesnikovae):
+	//  Refactor: move mux part to pkg/api/router.
+	//  Make prometheus middleware to support gorilla patterns.
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
@@ -357,24 +354,24 @@ func (ctrl *Controller) Drain() {
 	atomic.StoreUint32(&ctrl.drained, 1)
 }
 
-func (ctrl *Controller) drainMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) drainMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if atomic.LoadUint32(&ctrl.drained) > 0 {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		next.ServeHTTP(w, r)
-	}
+	})
 }
 
-func (ctrl *Controller) trackMetrics(route string) func(next http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return std.Handler(route, ctrl.metricsMdw, next).ServeHTTP
+func (ctrl *Controller) trackMetrics(route string) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return std.Handler(route, ctrl.metricsMdw, next)
 	}
 }
 
 func (ctrl *Controller) isAuthRequired() bool {
-	return ctrl.config.Auth.BasicAuth.Enabled ||
+	return ctrl.config.Auth.Basic.Enabled ||
 		ctrl.config.Auth.Google.Enabled ||
 		ctrl.config.Auth.Github.Enabled ||
 		ctrl.config.Auth.Gitlab.Enabled
@@ -395,18 +392,19 @@ func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http
 	http.Redirect(w, r, urlStr, status)
 }
 
-func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	redirect := func(w http.ResponseWriter, r *http.Request) {
-		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-	}
-	m := api.AuthMiddleware(ctrl.log, redirect, ctrl.authService)
-	return func(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) loginRedirect(w http.ResponseWriter, r *http.Request) {
+	ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+}
+
+func (ctrl *Controller) authMiddleware(next http.Handler) http.Handler {
+	m := api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !ctrl.isAuthRequired() {
 			next.ServeHTTP(w, r)
 			return
 		}
 		m(next).ServeHTTP(w, r)
-	}
+	})
 }
 
 func (*Controller) expectFormats(format string) error {
