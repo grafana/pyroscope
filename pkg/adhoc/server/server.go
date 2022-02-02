@@ -205,11 +205,11 @@ func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
 	var converter ConverterFn
 	switch ext {
 	case ".json":
-		converter = JSONToProfile
+		converter = JSONToProfileV1
 	case ".pprof":
-		converter = PprofToProfile
+		converter = PprofToProfileV1
 	case ".txt":
-		converter = CollapsedToProfile
+		converter = CollapsedToProfileV1
 	default:
 		return nil, fmt.Errorf("unsupported file extension %s", ext)
 	}
