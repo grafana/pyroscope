@@ -83,5 +83,8 @@ func (svc AuthService) UserFromJWTToken(ctx context.Context, t string) (model.Us
 	if model.IsUserDisabled(user) {
 		return model.User{}, model.ErrUserDisabled
 	}
+	if user.Role != userToken.Role {
+		return model.User{}, fmt.Errorf("user role has changed")
+	}
 	return user, nil
 }
