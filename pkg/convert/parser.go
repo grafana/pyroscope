@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"strconv"
 
@@ -34,8 +35,9 @@ func ParsePprof(r io.Reader) (*tree.Profile, error) {
 	bufioReader := bufio.NewReader(r)
 	header, err := bufioReader.Peek(2)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to read profile file header: %w", err)
 	}
+
 	if header[0] == gzipMagicBytes[0] && header[1] == gzipMagicBytes[1] {
 		r, err = gzip.NewReader(bufioReader)
 		if err != nil {
@@ -49,10 +51,12 @@ func ParsePprof(r io.Reader) (*tree.Profile, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	profile := &tree.Profile{}
 	if err := proto.Unmarshal(b, profile); err != nil {
 		return nil, err
 	}
+
 	return profile, nil
 }
 
