@@ -10,6 +10,7 @@ import { formatDistance, formatRelative } from 'date-fns/fp';
 import {
   reloadApiKeys,
   selectAPIKeys,
+  deleteAPIKey,
 } from '@pyroscope/redux/reducers/settings';
 import styles from '../SettingsTable.module.css';
 
@@ -21,6 +22,14 @@ const ApiKeys = () => {
   useEffect(() => {
     dispatch(reloadApiKeys());
   }, []);
+
+  const handleDelete = (key) => {
+    dispatch(deleteAPIKey(key))
+      .unwrap()
+      .then(() => {
+        dispatch(reloadApiKeys());
+      });
+  };
 
   const now = new Date();
   return (
@@ -59,7 +68,12 @@ const ApiKeys = () => {
                     : 'never'}
                 </td>
                 <td align="center">
-                  <Button type="submit" kind="default" aria-label="Delete key">
+                  <Button
+                    type="submit"
+                    kind="default"
+                    aria-label="Delete key"
+                    onClick={() => handleDelete(key)}
+                  >
                     <Icon icon={faTimes} />
                   </Button>
                 </td>

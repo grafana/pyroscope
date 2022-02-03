@@ -16,6 +16,7 @@ import {
 import {
   fetchAPIKeys,
   createAPIKey as createAPIKeyAPI,
+  deleteAPIKey as deleteAPIKeyAPI,
 } from '@pyroscope/services/apiKeys';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
@@ -181,6 +182,32 @@ export const createAPIKey = createAsyncThunk(
 
     if (res.isOk) {
       return Promise.resolve(res.value);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to create API key',
+        message: res.error.errors.join(', '),
+      })
+    );
+    return thunkAPI.rejectWithValue(res.error);
+  }
+);
+
+export const deleteAPIKey = createAsyncThunk(
+  'newRoot/deleteAPIKey',
+  async (data, thunkAPI) => {
+    const res = await deleteAPIKeyAPI(data);
+    if (res.isOk) {
+      thunkAPI.dispatch(
+        addNotification({
+          type: 'success',
+          title: 'Key has been deleted',
+          message: `API Key id ${data.id} has been successfully deleted`,
+        })
+      );
+      return Promise.resolve(true);
     }
 
     thunkAPI.dispatch(

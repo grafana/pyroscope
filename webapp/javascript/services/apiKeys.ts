@@ -12,7 +12,6 @@ export async function fetchAPIKeys(): Promise<
   Result<APIKeys, RequestError | ZodError>
 > {
   const response = await request('/api/keys');
-  console.log(response.value);
   if (response.isOk) {
     return parse(response.value);
   }
@@ -23,7 +22,6 @@ export async function fetchAPIKeys(): Promise<
 export async function createAPIKey(
   data
 ): Promise<Result<APIKeys, RequestError | ZodError>> {
-  console.log(data);
   const response = await request('/api/keys', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -31,6 +29,21 @@ export async function createAPIKey(
 
   if (response.isOk) {
     return modelToResult<APIKey>(apikeyModel, response.value);
+  }
+
+  return Result.err<APIKeys, RequestError>(response.error);
+}
+
+export async function deleteAPIKey(
+  data
+): Promise<Result<APIKeys, RequestError | ZodError>> {
+  console.log(data);
+  const response = await request(`/api/${data.id}`, {
+    method: 'DELETE',
+  });
+
+  if (response.isOk) {
+    return Result.ok(true);
   }
 
   return Result.err<APIKeys, RequestError>(response.error);
