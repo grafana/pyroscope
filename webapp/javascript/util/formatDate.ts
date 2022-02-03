@@ -1,21 +1,35 @@
 /* eslint-disable no-underscore-dangle */
 import { add, format } from 'date-fns';
 
-const multiplierMapping = {
-  s: 'seconds',
-  m: 'minutes',
-  h: 'hours',
-  d: 'days',
-  w: 'weeks',
-  M: 'months',
-  y: 'years',
-};
+const multiplierMapping = new Map(
+  Object.entries({
+    s: 'seconds',
+    m: 'minutes',
+    h: 'hours',
+    d: 'days',
+    w: 'weeks',
+    M: 'months',
+    y: 'years',
+  })
+);
 
 export function convertPresetsToDate(from: string) {
-  const { groups } = from.match(/^now-(?<number>\d+)(?<multiplier>\D+)$/);
-  const { number, multiplier } = groups;
-  let _multiplier = multiplierMapping[multiplier];
+  const match = from.match(/^now-(?<number>\d+)(?<multiplier>\D+)$/);
+  if (!match) {
+    throw new Error(`Could not apply regex to '${from}'`);
+  }
 
+  const { groups } = match;
+  if (!groups) {
+    throw new Error(`Could not extract required fields from regex'`);
+  }
+
+  const { number, multiplier } = groups;
+
+  const _multiplier = multiplierMapping.get(multiplier);
+  if (!_multiplier) {
+    throw new Error(`Cant access ${multiplier} from map`);
+  }
   const now = new Date();
 
   const _from =

@@ -38,10 +38,10 @@ function createFF(viewType: 'single' | 'double') {
   }
 }
 
-function deltaDiffWrapper(format, levels) {
+function deltaDiffWrapper(format: 'single' | 'double', levels: number[][]) {
   let mutable_levels = [...levels];
 
-  function deltaDiff(levels, start, step) {
+  function deltaDiff(levels: number[][], start: number, step: number) {
     for (const level of levels) {
       let prev = 0;
       for (let i = start; i < level.length; i += step) {
