@@ -128,6 +128,17 @@ function ExportData(props: ExportDataProps) {
     if (props.exportPprof) {
       const { flamebearer } = props;
 
+      if (
+        !flamebearer.metadata.startTime ||
+        !flamebearer.metadata.endTime ||
+        !flamebearer.metadata.query ||
+        !flamebearer.metadata.maxNodes
+      ) {
+        throw new Error(
+          'Missing one of the required parameters "flamebearer.metadata.startTime", "flamebearer.metadata.endTime", "flamebearer.metadata.query", "flamebearer.metadata.maxNodes"'
+        );
+      }
+
       // TODO
       // This build url won't work in the following cases:
       // * absence of a public server (grafana, standalone)
@@ -150,6 +161,17 @@ function ExportData(props: ExportDataProps) {
   const downloadHTML = function () {
     if (props.exportHTML) {
       const { flamebearer } = props;
+
+      if (
+        !flamebearer.metadata.startTime ||
+        !flamebearer.metadata.endTime ||
+        !flamebearer.metadata.query ||
+        !flamebearer.metadata.maxNodes
+      ) {
+        throw new Error(
+          'Missing one of the required parameters "flamebearer.metadata.startTime", "flamebearer.metadata.endTime", "flamebearer.metadata.query", "flamebearer.metadata.maxNodes"'
+        );
+      }
 
       const url =
         typeof props.fetchUrlFunc === 'function'
@@ -231,10 +253,10 @@ export function getFilename(
   endTime?: number
 ) {
   //  const appname = flamebearer.metadata.appName;
-  let date: string;
+  let date = '';
 
   if (startTime && endTime) {
-    date = dateForExportFilename(startTime, endTime);
+    date = dateForExportFilename(startTime.toString(), endTime.toString());
   }
 
   // both name and date are available
