@@ -74,6 +74,6 @@ func (r *Router) RegisterAPIKeyHandlers() {
 	x.Methods(http.MethodPost).HandlerFunc(h.CreateAPIKey)
 	x.Methods(http.MethodGet).HandlerFunc(h.ListAPIKeys)
 
-	x = r.PathPrefix("/{id:[0-9]+}").Subrouter()
+	x = x.PathPrefix("/{id:[0-9]+}").Subrouter()
 	x.Methods(http.MethodDelete).HandlerFunc(h.DeleteAPIKey)
 }
