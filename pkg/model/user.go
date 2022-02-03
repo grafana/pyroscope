@@ -32,13 +32,24 @@ type User struct {
 	PasswordHash []byte  `gorm:"type:varchar(255);not null;default:null"`
 	Role         Role    `gorm:"not null;default:null"`
 	IsDisabled   *bool   `gorm:"not null;default:false"`
-	IsExternal   *bool   `gorm:"not null;default:false"`
 
-	// TODO: Add an attribute indicating whether the email is confirmed.
+	// IsExternal indicates that the user authenticity is confirmed by
+	// an external authentication provider (such as OAuth) and thus,
+	// only limited attributes of the user can be managed. In fact, only
+	// FullName and Email can be altered by the user, and Role and IsDisabled
+	// can be changed by an administrator. Name should never change.
+	// TODO(kolesnikovae):
+	//  Add an attribute indicating the provider (e.g OAuth/LDAP).
+	//  Can it be a tagged union (sum type)?
+	IsExternal *bool `gorm:"not null;default:false"`
+
+	// TODO(kolesnikovae): Add an attribute indicating whether the email is confirmed.
 	// IsEmailConfirmed *bool
-	// TODO: Add an attribute forcing user to change its password.
+
+	// TODO(kolesnikovae): Add an attribute forcing user to change its password.
 	// IsPasswordChangeRequired *bool
-	// TODO: Implemented LastSeenAt updating.
+
+	// TODO(kolesnikovae): Implemented LastSeenAt updating.
 	LastSeenAt        *time.Time `gorm:"default:null"`
 	PasswordChangedAt time.Time
 	CreatedAt         time.Time
