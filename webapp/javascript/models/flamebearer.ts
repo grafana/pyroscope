@@ -38,7 +38,7 @@ export type addTicks =
 interface DecodeFlamebearerProps {
   flamebearer: Flamebearer;
   metadata: {
-    format: string;
+    format: 'single' | 'double';
     spyName: string;
     sampleRate: number;
     units: Units;

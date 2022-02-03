@@ -1,7 +1,15 @@
+// TODO: figure out the correct types
+
 export function buildRenderURL(
-  state,
-  fromOverride = null,
-  untilOverride = null
+  state: {
+    from: number;
+    until: number;
+    query: string;
+    refreshToken?: string;
+    maxNodes: string | number;
+  },
+  fromOverride?: number,
+  untilOverride?: number
 ) {
   let { from, until, query } = state;
 
@@ -28,25 +36,18 @@ export function buildRenderURL(
 }
 
 // TODO: merge buildRenderURL and buildDiffRenderURL
-export function buildDiffRenderURL(
-  state,
-  {
-    from: fromOverride,
-    until: untilOverride,
-    leftFrom: leftFromOverride,
-    leftUntil: leftUntilOverride,
-    rightFrom: rightFromOverride,
-    rightUntil: rightUntilOverride,
-  } = {}
-) {
+export function buildDiffRenderURL(state: {
+  from: number;
+  until: number;
+  leftFrom: string;
+  leftUntil: string;
+  rightFrom: string;
+  rightUntil: string;
+  refreshToken?: string;
+  maxNodes: string;
+  query: string;
+}) {
   let { from, until, leftFrom, leftUntil, rightFrom, rightUntil } = state;
-  from = fromOverride || from;
-  until = untilOverride || until;
-  leftFrom = leftFromOverride || leftFrom;
-  leftUntil = leftUntilOverride || leftUntil;
-  rightFrom = rightFromOverride || rightFrom;
-  rightUntil = rightUntilOverride || rightUntil;
-
   const urlStr = buildRenderURL(state, from, until);
   const url = new URL(urlStr, location.href);
 
