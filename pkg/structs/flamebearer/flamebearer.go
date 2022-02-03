@@ -1,6 +1,8 @@
 package flamebearer
 
 import (
+	"fmt"
+
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -99,4 +101,47 @@ func newTimeline(timeline *segment.Timeline) *FlamebearerTimelineV1 {
 		DurationDelta: timeline.DurationDeltaNormalized,
 		Watermarks:    timeline.Watermarks,
 	}
+}
+
+func (fb FlamebearerProfile) Validate() error {
+	if fb.Version > 1 {
+		return fmt.Errorf("unsupported version %d", fb.Version)
+	}
+	return fb.FlamebearerProfileV1.Validate()
+}
+
+// Validate the V1 profile.
+// A custom validation is used as the constraints are hard to define in a generic way
+// (e.g. using https://github.com/go-playground/validator)
+func (fb FlamebearerProfileV1) Validate() error {
+	format := tree.Format(fb.Metadata.Format)
+	if format != tree.FormatSingle && format != tree.FormatDouble {
+		return fmt.Errorf("unsupported format %s", format)
+	}
+	if len(fb.Flamebearer.Names) == 0 {
+		return fmt.Errorf("a profile must have at least one symbol name")
+	}
+	if len(fb.Flamebearer.Levels) == 0 {
+		return fmt.Errorf("a profile must have at least one profiling level")
+	}
+	var mod int
+	switch format {
+	case tree.FormatSingle:
+		mod = 4
+	case tree.FormatDouble:
+		mod = 7
+	default: // This shouldn't happen at this point.
+		return fmt.Errorf("unsupported format %s", format)
+	}
+	for _, l := range fb.Flamebearer.Levels {
+		if len(l)%mod != 0 {
+			return fmt.Errorf("a profile level should have a multiple of %d values, but there's a level with %d values", mod, len(l))
+		}
+		for i := mod - 1; i < len(l); i += mod {
+			if l[i] >= len(fb.Flamebearer.Names) {
+				return fmt.Errorf("invalid name index %d, it should be smaller than %d", l[i], len(fb.Flamebearer.Levels))
+			}
+		}
+	}
+	return nil
 }
