@@ -31,7 +31,7 @@ func NewUserHandler(userService UserService) UserHandler {
 type User struct {
 	ID                uint       `json:"id"`
 	Name              string     `json:"name"`
-	Email             string     `json:"email"`
+	Email             *string    `json:"email,omitempty"`
 	FullName          *string    `json:"fullName,omitempty"`
 	Role              model.Role `json:"role"`
 	IsDisabled        bool       `json:"isDisabled"`
@@ -44,7 +44,7 @@ type User struct {
 
 type createUserRequest struct {
 	Name     string     `json:"name"`
-	Email    string     `json:"email"`
+	Email    *string    `json:"email,omitempty"`
 	FullName *string    `json:"fullName,omitempty"`
 	Password []byte     `json:"password"`
 	Role     model.Role `json:"role"`

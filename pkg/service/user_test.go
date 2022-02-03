@@ -46,11 +46,25 @@ var _ = Describe("UserService", func() {
 			})
 		})
 
+		Context("when user email is not provided", func() {
+			BeforeEach(func() {
+				params.Email = nil
+			})
+
+			It("does not return error", func() {
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("returns validation error", func() {
+				expectUserMatches(user, params)
+			})
+		})
+
 		Context("when user name is already in use", func() {
 			BeforeEach(func() {
 				_, err = svc.CreateUser(context.Background(), params)
 				Expect(err).ToNot(HaveOccurred())
-				params.Email = "another@example.local"
+				params.Email = model.String("another@example.local")
 			})
 
 			It("returns validation error", func() {
@@ -101,7 +115,7 @@ var _ = Describe("UserService", func() {
 				})
 
 				By("email", func() {
-					user, err = svc.FindUserByEmail(context.Background(), params.Email)
+					user, err = svc.FindUserByEmail(context.Background(), *params.Email)
 					Expect(err).ToNot(HaveOccurred())
 					expectUserMatches(user, params)
 				})
@@ -122,7 +136,7 @@ var _ = Describe("UserService", func() {
 				})
 
 				By("email", func() {
-					_, err = svc.FindUserByEmail(context.Background(), params.Email)
+					_, err = svc.FindUserByEmail(context.Background(), *params.Email)
 					Expect(err).To(MatchError(model.ErrUserNotFound))
 				})
 
@@ -158,9 +172,9 @@ var _ = Describe("UserService", func() {
 			})
 
 			It("returns all users", func() {
-				user1, err := svc.FindUserByEmail(context.Background(), params[0].Email)
+				user1, err := svc.FindUserByEmail(context.Background(), *params[0].Email)
 				Expect(err).ToNot(HaveOccurred())
-				user2, err := svc.FindUserByEmail(context.Background(), params[1].Email)
+				user2, err := svc.FindUserByEmail(context.Background(), *params[1].Email)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(users).To(ConsistOf(user1, user2))
 			})
@@ -225,7 +239,7 @@ var _ = Describe("UserService", func() {
 				updated, err = svc.FindUserByID(context.Background(), user.ID)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(updated.Name).To(Equal(*update.Name))
-				Expect(updated.Email).To(Equal(*update.Email))
+				Expect(updated.Email).To(Equal(update.Email))
 				Expect(updated.FullName).To(Equal(update.FullName))
 				Expect(updated.Role).To(Equal(*update.Role))
 				Expect(*updated.IsDisabled).To(BeTrue())
@@ -286,7 +300,7 @@ var _ = Describe("UserService", func() {
 				Expect(err).ToNot(HaveOccurred())
 				user2, err = svc.CreateUser(context.Background(), params[1])
 				Expect(err).ToNot(HaveOccurred())
-				update = model.UpdateUserParams{Email: &user2.Email}
+				update = model.UpdateUserParams{Email: user2.Email}
 			})
 
 			It("returns ErrUserEmailExists error", func() {
@@ -424,14 +438,14 @@ func testCreateUserParams() []model.CreateUserParams {
 	return []model.CreateUserParams{
 		{
 			Name:     "johndoe",
-			Email:    "john@example.com",
+			Email:    model.String("john@example.com"),
 			FullName: model.String("John Doe"),
 			Password: "qwerty",
 			Role:     model.ReadOnlyRole,
 		},
 		{
 			Name:     "admin",
-			Email:    "admin@local.domain",
+			Email:    model.String("admin@local.domain"),
 			FullName: model.String("Administrator"),
 			Password: "qwerty",
 			Role:     model.AdminRole,

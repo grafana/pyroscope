@@ -27,7 +27,7 @@ var (
 type User struct {
 	ID           uint    `gorm:"primarykey"`
 	Name         string  `gorm:"type:varchar(255);not null;default:null;index:,unique"`
-	Email        string  `gorm:"type:varchar(255);not null;default:null;index:,unique"`
+	Email        *string `gorm:"type:varchar(255);default:null;index:,unique"`
 	FullName     *string `gorm:"type:varchar(255);default:null"`
 	PasswordHash []byte  `gorm:"type:varchar(255);not null;default:null"`
 	Role         Role    `gorm:"not null;default:null"`
@@ -53,7 +53,7 @@ type TokenUser struct {
 
 type CreateUserParams struct {
 	Name       string
-	Email      string
+	Email      *string
 	FullName   *string
 	Password   string
 	Role       Role
@@ -65,8 +65,10 @@ func (p CreateUserParams) Validate() error {
 	if nameErr := ValidateUserName(p.Name); nameErr != nil {
 		err = multierror.Append(err, nameErr)
 	}
-	if emailErr := ValidateEmail(p.Email); emailErr != nil {
-		err = multierror.Append(err, emailErr)
+	if p.Email != nil {
+		if emailErr := ValidateEmail(*p.Email); emailErr != nil {
+			err = multierror.Append(err, emailErr)
+		}
 	}
 	if p.FullName != nil {
 		if nameErr := ValidateUserFullName(*p.FullName); nameErr != nil {
