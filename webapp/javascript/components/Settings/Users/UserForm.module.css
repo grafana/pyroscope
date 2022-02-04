@@ -1,8 +1,7 @@
 .userForm > div {
   display: flex;
-}
-
-.userForm label {
-  width: 200px;
-  display: inline-block;
+  margin: 10px;
+  flex-direction: column;
+  width: 30%;
+  min-width: 150px;
 }

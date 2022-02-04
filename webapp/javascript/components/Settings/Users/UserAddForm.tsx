@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Button from '@ui/Button';
 import Icon from '@ui/Icon';
 import { useHistory } from 'react-router-dom';
-import { faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faCheck } from '@fortawesome/free-solid-svg-icons';
 import { formatRelative } from 'date-fns';
 import { request } from '@pyroscope/services/base';
 import { reloadUsers, createUser } from '@pyroscope/redux/reducers/settings';
@@ -39,46 +39,50 @@ function UserAddForm() {
   return (
     <>
       <h4>Add User</h4>
-      <div className={styles.userForm}>
-        <div>
-          <label htmlFor="userAddName">Name:</label>{' '}
-          <input
-            id="userAddName"
-            name="name"
-            value={form.name}
-            onChange={handleFormChange}
-          />
+      <form onSubmit={handleFormSubmit}>
+        <div className={styles.userForm}>
+          <div>
+            <h4>Name</h4>
+            <input
+              id="userAddName"
+              name="name"
+              value={form.name}
+              onChange={handleFormChange}
+            />
+          </div>
+          <div>
+            <h4>Email</h4>
+            <input
+              id="userAddEmail"
+              name="email"
+              value={form.email}
+              onChange={handleFormChange}
+            />
+          </div>
+          <div>
+            <h4>Full Name</h4>
+            <input
+              id="userAddFullName"
+              name="fullName"
+              value={form.fullName}
+              onChange={handleFormChange}
+            />
+          </div>
+          <div>
+            <h4>Password</h4>
+            <input
+              id="userAddPassword"
+              name="password"
+              onChange={handleFormChange}
+            />
+          </div>
+          <div>
+            <Button icon={faCheck} type="submit" kind="primary">
+              Add user
+            </Button>
+          </div>
         </div>
-        <div>
-          <label htmlFor="userAddEmail">Email:</label>
-          <input
-            id="userAddEmail"
-            name="email"
-            value={form.email}
-            onChange={handleFormChange}
-          />
-        </div>
-        <div>
-          <label htmlFor="userAddFullName">Full Name:</label>
-          <input
-            id="userAddFullName"
-            name="fullName"
-            value={form.fullName}
-            onChange={handleFormChange}
-          />
-        </div>
-        <div>
-          <label htmlFor="userAddPassword">Password: </label>
-          <input
-            id="userAddPassword"
-            name="password"
-            onChange={handleFormChange}
-          />
-        </div>
-        <div>
-          <button onClick={handleFormSubmit}>Add user</button>
-        </div>
-      </div>
+      </form>
     </>
   );
 }
