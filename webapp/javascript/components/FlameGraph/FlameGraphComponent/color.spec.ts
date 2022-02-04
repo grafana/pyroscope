@@ -1,5 +1,9 @@
 import Color from 'color';
-import { colorBasedOnDiffPercent, NewDiffColor } from './color';
+import {
+  colorBasedOnDiffPercent,
+  NewDiffColor,
+  getPackageNameFromStackTrace,
+} from './color';
 import { DefaultPalette } from './colorPalette';
 
 describe.each([
@@ -34,6 +38,35 @@ describe('NewDiffColor with white-to-black example palette', () => {
       });
 
       expect(color(a).rgb().toString()).toBe(expected);
+    });
+  });
+});
+
+describe.only('getPackageNameFromStackTrace', () => {
+  describe('golang', () => {
+    describe.each([
+      ['bufio.(*Reader).fill', 'bufio.'],
+      ['cmpbody', 'cmpbody'],
+      ['bytes.Compare', 'bytes.'],
+      ['crypto/tls.(*Conn).clientHandshake', 'crypto/tls.'],
+      [
+        'github.com/DataDog/zstd._Cfunc_ZSTD_compress_wrapper',
+        'github.com/DataDog/zstd.',
+      ],
+      [
+        'github.com/dgraph-io/badger/v2.(*DB).calculateSize',
+        'github.com/dgraph-io/badger/v2.',
+      ],
+      [
+        'github.com/dgraph-io/badger/v2/table.(*blockIterator).next',
+        'github.com/dgraph-io/badger/v2/table.',
+      ],
+      ['path/filepath.walk', 'path/filepath.'],
+      ['os.(*File).write', 'os.'],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('gospy', a)).toBe(expected);
+      });
     });
   });
 });
