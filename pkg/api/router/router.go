@@ -38,7 +38,7 @@ func (r *Router) RegisterHandlers() {
 func (r *Router) RegisterUserHandlers() {
 	h := api.NewUserHandler(r.UserService)
 
-	x := r.PathPrefix("/users/v1").Subrouter()
+	x := r.PathPrefix("/users").Subrouter()
 	x.Use(authz.RequireAdminRole)
 	x.Methods(http.MethodPost).HandlerFunc(h.CreateUser)
 	x.Methods(http.MethodGet).HandlerFunc(h.ListUsers)
@@ -53,7 +53,7 @@ func (r *Router) RegisterUserHandlers() {
 	x.Path("/role").Methods(http.MethodPut).HandlerFunc(h.ChangeUserRole)
 
 	// Endpoints available to all authenticated users.
-	x = r.PathPrefix("/user/v1").Subrouter()
+	x = r.PathPrefix("/user").Subrouter()
 	x.Use(authz.RequireAuthenticatedUser)
 	x.Methods(http.MethodGet).HandlerFunc(h.GetAuthenticatedUser)
 	x.Methods(http.MethodPatch).HandlerFunc(h.UpdateAuthenticatedUser)
@@ -63,7 +63,7 @@ func (r *Router) RegisterUserHandlers() {
 func (r *Router) RegisterAPIKeyHandlers() {
 	h := api.NewAPIKeyHandler(r.APIKeyService)
 
-	x := r.PathPrefix("/keys/v1").Subrouter()
+	x := r.PathPrefix("/keys").Subrouter()
 	x.Use(authz.RequireAdminRole)
 	x.Methods(http.MethodPost).HandlerFunc(h.CreateAPIKey)
 	x.Methods(http.MethodGet).HandlerFunc(h.ListAPIKeys)

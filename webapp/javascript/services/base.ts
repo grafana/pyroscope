@@ -30,18 +30,18 @@ function mountURL(req: RequestInfo): string {
 
   if (baseName) {
     if (typeof req === 'string') {
-      return new URL(`${baseName}/${req}/v1`, window.location.href).href;
+      return new URL(`${baseName}/${req}`, window.location.href).href;
     }
 
     // req is an object
-    return new URL(`${baseName}/${req.url}/v1`, window.location.href).href;
+    return new URL(`${baseName}/${req.url}`, window.location.href).href;
   }
 
   // no basename
   if (typeof req === 'string') {
-    return new URL(`${req}/v1`, window.location.href).href;
+    return new URL(`${req}`, window.location.href).href;
   }
-  return new URL(`${req}/v1`, window.location.href).href;
+  return new URL(`${req}`, window.location.href).href;
 }
 
 export function mountRequest(req: RequestInfo): RequestInfo {
