@@ -166,18 +166,6 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	if ctrl.isAuthRequired() {
 		apiRouter.RegisterUserHandlers()
 		apiRouter.RegisterAPIKeyHandlers()
-		// apiRouter.RegisterLoginHandlers()
-	} else {
-		// TODO(kolesnikovae): A contract with frontend: a stab that reports
-		//   204 on requests to the user profile. By this we let frontend to
-		//   know that auth disabled without accessing /login endpoint (that
-		//   renders html). There should be a better way:
-		//    - just respond with 404.
-		//    - instead, the server should expose another endpoint listing
-		//      all the settings needed for frontend. So UI won't even need
-		//      to request user profile if authentication is not configured.
-		//    - just respond with 404 (register no handler).
-		apiRouter.RegisterUserStabHandler()
 	}
 
 	// Routes not protected with auth. Drained at shutdown.
