@@ -45,7 +45,11 @@
     <section class="login-form">
       <div class="welcome-logo"></div>
       <h1 class="welcome-title">Welcome to Pyroscope</h1>
-      {{if .BasicAuthEnabled }}
+
+      {{if or .BasicAuthEnabled .GoogleEnabled .GithubEnabled .GitlabEnabled}}
+      <p class="login-to-continue">Log in to continue</p>
+
+      {{if .BasicAuthEnabled}}
       <form>
         <div class="signin-form">
           <div class="error" id="error"></div>
@@ -63,7 +67,7 @@
         </div>
       </form>
       {{ end }}
-      {{if or .GoogleEnabled .GithubEnabled .GitlabEnabled}}
+
       <div class="login-page-div">
         <div>
             <hr/>
@@ -75,7 +79,6 @@
         </div>
       </div>
 
-      <p class="login-to-continue">Log in to continue</p>
       <div class="sign-in-buttons">
         {{if .GoogleEnabled}}
         <a
@@ -152,7 +155,6 @@
         {{end}}
       </div>
       {{else}}
-      {{ if false }}
       <p class="login-to-continue">
         No authentication methods are set up. Visit
         <a href="https://pyroscope.io/docs/auth-google" target="_blank"
@@ -181,7 +183,6 @@
           <span>Go back to main page</span>
         </a>
       </div>
-      {{ end }}
       {{end}}
 
       {{ if .BasicAuthSignupEnabled }}

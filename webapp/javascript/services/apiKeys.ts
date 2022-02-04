@@ -37,8 +37,7 @@ export async function createAPIKey(
 export async function deleteAPIKey(
   data
 ): Promise<Result<APIKeys, RequestError | ZodError>> {
-  console.log(data);
-  const response = await request(`/api/${data.id}`, {
+  const response = await request(`/api/keys/${data.id}`, {
     method: 'DELETE',
   });
 
