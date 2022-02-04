@@ -45,6 +45,7 @@
     <section class="login-form">
       <div class="welcome-logo"></div>
       <h1 class="welcome-title">Welcome to Pyroscope</h1>
+      {{if .BasicAuthEnabled }}
       <form>
         <div class="signin-form">
           <div class="error" id="error"></div>
@@ -61,6 +62,7 @@
           </div>
         </div>
       </form>
+      {{ end }}
       {{if or .GoogleEnabled .GithubEnabled .GitlabEnabled}}
       <div class="login-page-div">
         <div>
@@ -181,6 +183,10 @@
       </div>
       {{ end }}
       {{end}}
+
+      {{ if .BasicAuthSignupEnabled }}
+        <a href="/signup" class="sign-in-button">Sign up</a> 
+      {{ end }}
     </section>
 
     <script>
