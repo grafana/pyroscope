@@ -3,6 +3,7 @@
 $btn-default-color: #272727; // grey
 $btn-primary-color: #2ecc40; // green
 $btn-secondary-color: #0074d9; // azul
+$btn-danger-color: #dc3545; // red*
 
 $border-color: #4d4d4d;
 
@@ -74,6 +75,24 @@ $dark-text: #222;
   &:disabled {
     border-color: lighten($btn-secondary-color, 20%);
     background-color: lighten($btn-secondary-color, 20%);
+    pointer-events: none;
+  }
+}
+
+.danger {
+  color: $light-text;
+  background-color: $btn-danger-color;
+  border-left-color: $btn-danger-color;
+  border-right-color: $btn-danger-color;
+  border-top-color: $btn-danger-color;
+  border-bottom-color: $btn-danger-color;
+
+  &:hover {
+    background-color: lighten($btn-danger-color, 10%);
+  }
+  &:disabled {
+    border-color: lighten($btn-danger-color, 20%);
+    background-color: lighten($btn-danger-color, 20%);
     pointer-events: none;
   }
 }

@@ -70,7 +70,7 @@ const ApiKeys = () => {
                 <td align="center">
                   <Button
                     type="submit"
-                    kind="default"
+                    kind="danger"
                     aria-label="Delete key"
                     onClick={() => handleDelete(key)}
                   >
