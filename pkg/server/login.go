@@ -122,7 +122,36 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 		ctrl.logErrorAndRedirect(w, r, "signup disabled", nil)
 		return
 	}
-	api.NewUserHandler(ctrl.userService).CreateUser(w, r)
+	type signupRequest struct {
+		Name     string  `json:"name"`
+		Email    *string `json:"email,omitempty"`
+		FullName *string `json:"fullName,omitempty"`
+		Password []byte  `json:"password"`
+	}
+	var req signupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ctrl.log.WithError(err).Debug("failed to parse signup details")
+		api.Error(w, err)
+		return
+	}
+	_, err := ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
+		Name:     req.Name,
+		Email:    req.Email,
+		FullName: req.FullName,
+		Password: string(req.Password),
+		Role:     ctrl.config.Auth.SignupDefaultRole,
+	})
+	switch {
+	case err == nil:
+	case model.IsValidationError(err):
+		ctrl.log.WithError(err).Debug("invalid signup details")
+		api.Error(w, err)
+		return
+	default:
+		ctrl.log.WithError(err).Error("failed to create user")
+		api.Error(w, err)
+		return
+	}
 }
 
 func (ctrl *Controller) createCookie(w http.ResponseWriter, name, value string) {
