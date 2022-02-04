@@ -18,7 +18,7 @@ var (
 	ErrUserFullNameTooLong = ValidationError{errors.New("user full name must not exceed 255 characters")}
 	ErrUserEmailExists     = ValidationError{errors.New("user with this email already exists")}
 	ErrUserEmailInvalid    = ValidationError{errors.New("user email is invalid")}
-	ErrUserExternal        = ValidationError{errors.New("external users can't be modified")}
+	ErrUserExternalChange  = ValidationError{errors.New("external users can't be modified")}
 	ErrUserPasswordEmpty   = ValidationError{errors.New("user password can't be empty")}
 	ErrUserDisabled        = ValidationError{errors.New("user disabled")}
 	ErrInvalidCredentials  = ValidationError{errors.New("invalid credentials")}

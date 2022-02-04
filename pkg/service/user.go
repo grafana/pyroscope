@@ -139,7 +139,7 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		// Same for user name.
 		if params.Name != nil && user.Name != *params.Name {
 			if model.IsUserExternal(user) {
-				return model.ErrUserExternal
+				return model.ErrUserExternalChange
 			}
 			switch _, err = findUserByName(tx.Unscoped(), *params.Name); {
 			case errors.Is(err, model.ErrUserNotFound):
@@ -157,7 +157,7 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		}
 		if params.Password != nil {
 			if model.IsUserExternal(user) {
-				return model.ErrUserExternal
+				return model.ErrUserExternalChange
 			}
 			columns.PasswordHash = model.MustPasswordHash(*params.Password)
 			columns.PasswordChangedAt = time.Now()
