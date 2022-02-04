@@ -44,8 +44,11 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 				ctx, err := withUserFromToken(authService, r.Context(), c.Value)
 				if err != nil {
 					logger.WithError(err).Debug("failed to authenticate jwt cookie")
-					loginRedirect(w, r)
-					// Error(w, model.ErrInvalidCredentials)
+					if loginRedirect != nil {
+						loginRedirect(w, r)
+						return
+					}
+					Error(w, model.ErrInvalidCredentials)
 					return
 				}
 				next.ServeHTTP(w, r.WithContext(ctx))
@@ -53,8 +56,11 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 			}
 
 			logger.Debug("unauthenticated request")
-			loginRedirect(w, r)
-			// Error(w, model.ErrInvalidCredentials)
+			if loginRedirect != nil {
+				loginRedirect(w, r)
+				return
+			}
+			Error(w, model.ErrInvalidCredentials)
 		})
 	}
 }

@@ -106,22 +106,6 @@ func (ctrl *Controller) signupGet(w http.ResponseWriter) {
 	})
 }
 
-func (ctrl *Controller) signupGet(w http.ResponseWriter) {
-	tmpl, err := ctrl.getTemplate("/signup.html")
-	if err != nil {
-		ctrl.writeInternalServerError(w, err, "could not render login page")
-		return
-	}
-	mustExecute(tmpl, w, map[string]interface{}{
-		"BasicAuthEnabled":       ctrl.config.Auth.Basic.Enabled,
-		"BasicAuthSignupEnabled": ctrl.config.Auth.Basic.SignupEnabled,
-		"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
-		"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
-		"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
-		"BaseURL":                ctrl.config.BaseURL,
-	})
-}
-
 func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:

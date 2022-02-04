@@ -162,7 +162,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	})
 
 	apiRouter.Use(ctrl.drainMiddleware)
-	apiRouter.Use(ctrl.authMiddleware)
+	apiRouter.Use(ctrl.authMiddleware(nil))
 	if ctrl.isAuthRequired() {
 		apiRouter.RegisterUserHandlers()
 		apiRouter.RegisterAPIKeyHandlers()
@@ -187,8 +187,12 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	}...)
 	ctrl.addRoutes(r, insecureRoutes, ctrl.drainMiddleware)
 
-	// Protected routes:
-	protectedRoutes := []route{
+	// TODO(kolesnikovae): Refactor after getting rid of handling pages on the backend side.
+	//  Auth middleware should never redirect - the logic should be moved to the client side.
+
+	// Protected pages:
+	// For these routes server responds with 307 and redirects to /login.
+	ctrl.addRoutes(r, []route{
 		{"/", ctrl.indexHandler()},
 		{"/comparison", ctrl.indexHandler()},
 		{"/comparison-diff", ctrl.indexHandler()},
@@ -196,14 +200,19 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/adhoc-comparison", ctrl.indexHandler()},
 		{"/adhoc-comparison-diff", ctrl.indexHandler()},
 		{"/settings", ctrl.indexHandler()},
-		{"/settings/{page}", ctrl.indexHandler()},
+		{"/settings/{page}", ctrl.indexHandler()}},
+		ctrl.drainMiddleware,
+		ctrl.authMiddleware(ctrl.loginRedirect))
+
+	// For these routes server responds with 401.
+	ctrl.addRoutes(r, []route{
 		{"/render", ctrl.renderHandler},
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
-		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
-	}
-	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
+		ctrl.drainMiddleware,
+		ctrl.authMiddleware(nil))
 
 	// TODO(kolesnikovae):
 	//  Refactor: move mux part to pkg/api/router.
@@ -230,7 +239,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		}...)
 	}
 
-	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware)
+	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware(nil))
 	ctrl.addRoutes(r, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
@@ -396,11 +405,13 @@ func (ctrl *Controller) loginRedirect(w http.ResponseWriter, r *http.Request) {
 	ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
 }
 
-func (ctrl *Controller) authMiddleware(next http.Handler) http.Handler {
-	if ctrl.isAuthRequired() {
-		return api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService)(next)
+func (ctrl *Controller) authMiddleware(redirect http.HandlerFunc) mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		if ctrl.isAuthRequired() {
+			return api.AuthMiddleware(ctrl.log, redirect, ctrl.authService)(next)
+		}
+		return next
 	}
-	return next
 }
 
 func (*Controller) expectFormats(format string) error {
