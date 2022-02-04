@@ -146,25 +146,26 @@ describe.only('getPackageNameFromStackTrace', () => {
     });
   });
 
-  describe.only('phpspy', () => {
+  describe('ebpfspy', () => {
     describe.each([
       ['total', 'total'],
-      ['<internal> - sleep', '<internal> - sleep'],
-      // Those were copied from phpspy documentation
-      // and were not tested with pyroscope
-      // So I can't attest to their correctness
-      // https://github.com/adsr/phpspy#example-pgrep-daemon-mode
+      ['entry_SYSCALL_64_after_hwframe', 'entry_SYSCALL_64_after_hwframe'],
+      ['[unknown]', '[unknown]'],
       [
-        'Cache_MemcachedToggleable::get /foo/bar/lib/Cache/MemcachedToggleable.php:26',
-        'Cache_MemcachedToggleable::get /foo/bar/lib/Cache/',
+        'QApplicationPrivate::notify_helper(QObject*, QEvent*)',
+        'QApplicationPrivate::notify_helper(QObject*, QEvent*)',
       ],
       [
-        '/foo/bar/lib/Security/Rule/Engine.php:210',
-        '/foo/bar/lib/Security/Rule/',
+        'v8::internal::(anonymous namespace)::Invoke(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&)',
+        'v8::internal::(anonymous namespace)::Invoke(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&)',
+      ],
+      [
+        'github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).Start.dwrap.3',
+        'github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).Start.dwrap.3',
       ],
     ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
       it(`returns '${expected}'`, () => {
-        expect(getPackageNameFromStackTrace('phpspy', a)).toBe(expected);
+        expect(getPackageNameFromStackTrace('ebpfspy', a)).toBe(expected);
       });
     });
   });
