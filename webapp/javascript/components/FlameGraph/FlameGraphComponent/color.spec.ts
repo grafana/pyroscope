@@ -127,7 +127,7 @@ describe.only('getPackageNameFromStackTrace', () => {
     });
   });
 
-  describe('ruby', () => {
+  describe('rbspy', () => {
     describe.each([
       ['total', 'total'],
       ['webrick/utils.rb:194 - watch', 'webrick/'],
@@ -142,6 +142,29 @@ describe.only('getPackageNameFromStackTrace', () => {
     ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
       it(`returns '${expected}'`, () => {
         expect(getPackageNameFromStackTrace('rbspy', a)).toBe(expected);
+      });
+    });
+  });
+
+  describe.only('phpspy', () => {
+    describe.each([
+      ['total', 'total'],
+      ['<internal> - sleep', '<internal> - sleep'],
+      // Those were copied from phpspy documentation
+      // and were not tested with pyroscope
+      // So I can't attest to their correctness
+      // https://github.com/adsr/phpspy#example-pgrep-daemon-mode
+      [
+        'Cache_MemcachedToggleable::get /foo/bar/lib/Cache/MemcachedToggleable.php:26',
+        'Cache_MemcachedToggleable::get /foo/bar/lib/Cache/',
+      ],
+      [
+        '/foo/bar/lib/Security/Rule/Engine.php:210',
+        '/foo/bar/lib/Security/Rule/',
+      ],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('phpspy', a)).toBe(expected);
       });
     });
   });
