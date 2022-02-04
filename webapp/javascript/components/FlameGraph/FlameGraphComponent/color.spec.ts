@@ -169,4 +169,28 @@ describe.only('getPackageNameFromStackTrace', () => {
       });
     });
   });
+
+  describe('default', () => {
+    describe.each([
+      ['total', 'total'],
+      ['entry_SYSCALL_64_after_hwframe', 'entry_SYSCALL_64_after_hwframe'],
+      ['[unknown]', '[unknown]'],
+      [
+        'QApplicationPrivate::notify_helper(QObject*, QEvent*)',
+        'QApplicationPrivate::notify_helper(QObject*, QEvent*)',
+      ],
+      [
+        'v8::internal::(anonymous namespace)::Invoke(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&)',
+        'v8::internal::(anonymous namespace)::Invoke(v8::internal::Isolate*, v8::internal::(anonymous namespace)::InvokeParams const&)',
+      ],
+      [
+        'github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).Start.dwrap.3',
+        'github.com/pyroscope-io/pyroscope/pkg/agent.(*ProfileSession).Start.dwrap.3',
+      ],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('default', a)).toBe(expected);
+      });
+    });
+  });
 });
