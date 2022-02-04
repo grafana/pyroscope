@@ -152,8 +152,6 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, err)
 		return
 	}
-	// TODO(kolesnikovae): Handle on the frontend side.
-	ctrl.loginRedirect(w, r)
 }
 
 func (ctrl *Controller) createCookie(w http.ResponseWriter, name, value string) {
