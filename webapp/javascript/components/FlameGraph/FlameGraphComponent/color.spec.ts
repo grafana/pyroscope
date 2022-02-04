@@ -42,7 +42,7 @@ describe('NewDiffColor with white-to-black example palette', () => {
   });
 });
 
-describe.only('getPackageNameFromStackTrace', () => {
+describe('getPackageNameFromStackTrace', () => {
   describe('golang', () => {
     describe.each([
       ['bufio.(*Reader).fill', 'bufio.'],
@@ -194,7 +194,7 @@ describe.only('getPackageNameFromStackTrace', () => {
     });
   });
 
-  describe.only('rust', () => {
+  describe('rust', () => {
     describe.each([
       ['total', 'total'],
       ['std::thread::local::LocalKey<T>::with', 'std'],
