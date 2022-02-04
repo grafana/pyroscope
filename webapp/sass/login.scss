@@ -140,3 +140,78 @@ body.login-page {
     background-color: darken(#333, 5%);
   }
 }
+
+.signin-form {
+  padding: 0 3em 0 3em;
+  & > div {
+    text-align: start;
+    padding-top: 0.5em;
+    label {
+      font-weight: bolder;
+    }
+    input {
+      width: 100%;
+    }
+  }
+
+  button.sign-in-button,
+  button.sign-up-button {
+    background-color: rgb(61, 113, 217);
+    color: white;
+    padding-top: 0.5em;
+  }
+
+  & > .error {
+    color: white;
+    background-color: #8a1722;
+    font-weight: bold;
+    padding: 0px 1em 0px 1em;
+  }
+}
+
+.signup-form {
+  padding: 0 3em 0 3em;
+  & > div {
+    text-align: start;
+    padding-top: 0.5em;
+    label {
+      font-weight: bolder;
+    }
+    input {
+      width: 100%;
+    }
+  }
+
+  button.sign-in-button,
+  button.sign-up-button {
+    background-color: rgb(61, 113, 217);
+    color: white;
+    padding-top: 0.5em;
+  }
+}
+
+.login-page-div {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+
+  padding: 0 3em 0 3em;
+
+  & > div {
+    flex: 2;
+    align-content: center;
+  }
+
+  & > div:nth-child(2) {
+    flex: 4;
+  }
+
+  hr {
+    margin: 20px 0px 20px 0px;
+    background-color: white;
+    opacity: 1;
+    box-shadow: none;
+    border-bottom-style: none;
+    border-top-style: 1px solid white;
+  }
+}

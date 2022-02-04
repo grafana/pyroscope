@@ -60,6 +60,7 @@ export default function Dropdown({
         <MenuButton
           className={`${styles.dropdownMenuButton} ${menuButtonClassName}`}
           disabled={disabled}
+          type="button"
         >
           {value || label}
         </MenuButton>

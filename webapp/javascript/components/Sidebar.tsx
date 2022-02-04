@@ -3,6 +3,7 @@ import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
+import { faCog } from '@fortawesome/free-solid-svg-icons';
 import { faSlack } from '@fortawesome/free-brands-svg-icons/faSlack';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
@@ -28,19 +29,15 @@ import { useLocation, NavLink } from 'react-router-dom';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
+import { selectCurrentUser } from '@pyroscope/redux/reducers/user';
 import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
 
-// TODO: find a better way of doing this?
 function signOut() {
-  const form = document.createElement('form');
-
-  form.method = 'POST';
-  form.action = `${basename()}/logout`;
-
-  document.body.appendChild(form);
-
-  form.submit();
+  // By visiting /logout we're clearing jwtCookie
+  fetch('/logout').then((d) => {
+    (window as Window).location = '/login';
+  });
 }
 
 export default function Sidebar2() {
@@ -49,6 +46,8 @@ export default function Sidebar2() {
 
   const { search, pathname } = useLocation();
   const windowWidth = useWindowWidth();
+  const currentUser = useAppSelector(selectCurrentUser);
+  const authEnabled = currentUser && currentUser.role !== 'anonymous';
 
   // the component doesn't seem to support setting up an active item
   // so we must set it up manually
@@ -71,6 +70,8 @@ export default function Sidebar2() {
     isRouteActive('/adhoc-single') ||
     isRouteActive('/adhoc-comparison') ||
     isRouteActive('/adhoc-comparison-diff');
+  const isSettingsActive =
+    isRouteActive('/settings') || isRouteActive('/settings/*');
 
   const adhoc = (
     <SubMenu
@@ -176,6 +177,16 @@ export default function Sidebar2() {
       </SidebarContent>
       <SidebarFooter>
         <Menu iconShape="square">
+          {authEnabled && (
+            <MenuItem
+              data-testid="sidebar-settings"
+              active={isSettingsActive}
+              icon={<Icon icon={faCog} />}
+            >
+              Settings
+              <NavLink to={{ pathname: '/settings', search }} exact />
+            </MenuItem>
+          )}
           <MenuItem icon={<Icon icon={faFileAlt} />}>
             <a
               rel="noreferrer"

@@ -14,9 +14,12 @@
     />
     <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
     <script>
-      function login(e) {
+      function error(string) {
+        document.getElementById('error').innerHTML = string;
+      }      
+      function signup() {
         var xhr = new XMLHttpRequest();
-        xhr.open("POST", "/login");
+        xhr.open("POST", "/signup");
         xhr.setRequestHeader("Accept", "application/json");
         xhr.setRequestHeader("Content-Type", "application/json");
   
@@ -26,23 +29,28 @@
               location.href='/';
             } else {
               try {
-
                 error(JSON.parse(xhr.responseText).errors);
               } catch(e) {
                 error("Unexpected error");
-              }
+              }              
             }
           }};
-        xhr.send(JSON.stringify({
-          username: document.getElementById('username').value,
-          password: btoa(unescape(encodeURIComponent(document.getElementById('password').value))),
-        }));
-      }
+        var data = {          
+          name: document.getElementById('username').value,
+          password: btoa(unescape(encodeURIComponent(document.getElementById('password').value))),          
+        };
 
-      function error(string) {
-        document.getElementById('error').innerHTML = string;
+        if (document.getElementById('email').value) {
+          data['email'] = document.getElementById('email').value;
+        }
+
+        if (document.getElementById('fullName').value) {
+          data['fullName'] = document.getElementById('fullName').value;
+        }
+
+        xhr.send(JSON.stringify(data));
       }
-    </script>
+    </script>    
   </head>
 
   <body class="login-page">
@@ -50,29 +58,36 @@
     <section class="login-form">
       <div class="welcome-logo"></div>
       <h1 class="welcome-title">Welcome to Pyroscope</h1>
-
-      {{if or .BasicAuthEnabled .GoogleEnabled .GithubEnabled .GitlabEnabled}}
-      <p class="login-to-continue">Log in to continue</p>
-
-      {{if .BasicAuthEnabled}}
-      <form onsubmit="login(this); return false;">
-        <div class="signin-form">
-          <div class="error" id="error"></div>
+      <h2 class="welcome-title">Sign up</h1>
+      <form onsubmit="signup(this); return false;">
+        <div class="error" id="error"></div>
+        <div class="signup-form">
           <div>
-            <div><label>Email or username</label></div>
-            <input type="text" name="user" autocapitalize="none" placeholder="email or username" id="username" />
+            <div><label>Username</label></div>
+            <input type="text" name="username" autocapitalize="none" id="username" placeholder="username" />
+          </div>
+          <div>
+            <div><label>Email</label></div>
+            <input type="text" name="email" autocapitalize="none" id="email" placeholder="email" />
+          </div>
+          <div>
+            <div><label>Full Name</label></div>
+            <input type="text" name="fullName" autocapitalize="none" id="fullName" placeholder="Full name" />
           </div>
           <div>
             <div><label>Password</label></div>
-            <input type="password" name="password" aria-label="password input field" id="password" autocomplete="current-password"  placeholder="password" />
+            <input type="password" name="password" aria-label="password input field" id="password" placeholder="password" />
           </div>
           <div>
-            <button type="submit" class="sign-in-button">Log In</button>
+            <div><label>Password Again</label></div>
+            <input type="password" name="password-again" aria-label="password input field"  placeholder="password-again" />
+          </div>
+          <div>
+            <button type="submit" class="sign-up-button">Sign Up</button>
           </div>
         </div>
       </form>
-      {{ end }}
-
+      {{if or .GoogleEnabled .GithubEnabled .GitlabEnabled}}
       <div class="login-page-div">
         <div>
             <hr/>
@@ -84,6 +99,7 @@
         </div>
       </div>
 
+      <p class="login-to-continue">Log in to continue</p>
       <div class="sign-in-buttons">
         {{if .GoogleEnabled}}
         <a
@@ -160,6 +176,7 @@
         {{end}}
       </div>
       {{else}}
+      {{ if false }}
       <p class="login-to-continue">
         No authentication methods are set up. Visit
         <a href="https://pyroscope.io/docs/auth-google" target="_blank"
@@ -188,11 +205,8 @@
           <span>Go back to main page</span>
         </a>
       </div>
-      {{end}}
-
-      {{ if .BasicAuthSignupEnabled }}
-        <a href="/signup" class="sign-in-button">Sign up</a> 
       {{ end }}
+      {{end}}
     </section>
 
     <script>

@@ -30,18 +30,18 @@ function mountURL(req: RequestInfo): string {
 
   if (baseName) {
     if (typeof req === 'string') {
-      return new URL(`${baseName}/${req}`, window.location.href).href;
+      return new URL(`${baseName}/${req}/v1`, window.location.href).href;
     }
 
     // req is an object
-    return new URL(`${baseName}/${req.url}`, window.location.href).href;
+    return new URL(`${baseName}/${req.url}/v1`, window.location.href).href;
   }
 
   // no basename
   if (typeof req === 'string') {
-    return new URL(req, window.location.href).href;
+    return new URL(`${req}/v1`, window.location.href).href;
   }
-  return new URL(req.url, window.location.href).href;
+  return new URL(`${req}/v1`, window.location.href).href;
 }
 
 export function mountRequest(req: RequestInfo): RequestInfo {
@@ -91,6 +91,12 @@ export async function request(
     // We know there's data, so let's check if it's in JSON format
     try {
       const data = JSON.parse(textBody);
+
+      // Check if it's 401 unauthirized error
+      if (response.status === 401) {
+        // TODO: Introduce some kind of interceptor (?)
+        window.location = '/login';
+      }
 
       // We could parse the response
       return Result.err({

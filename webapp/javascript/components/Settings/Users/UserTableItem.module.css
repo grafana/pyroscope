@@ -1,0 +1,23 @@
+.disabled td {
+  text-decoration: line-through;
+}
+
+.role {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.role button {
+  padding-right: 20px !important;
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.actions button {
+  margin: 5px;
+}

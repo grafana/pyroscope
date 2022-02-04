@@ -1,0 +1,16 @@
+.addForm {
+}
+
+.addForm > div {
+  display: flex;
+  margin: 10px 0px;
+  flex-direction: column;
+  width: 30%;
+  min-width: 150px;
+}
+
+.success {
+  background-color: #28a745;
+  color: white;
+  padding: 10px;
+}
