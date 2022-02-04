@@ -70,7 +70,7 @@ describe.only('getPackageNameFromStackTrace', () => {
     });
   });
 
-  describe.only('dotnetspy', () => {
+  describe('pyspy', () => {
     describe.each([
       ['total', 'total'],
       [
@@ -100,6 +100,29 @@ describe.only('getPackageNameFromStackTrace', () => {
     ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
       it(`returns '${expected}'`, () => {
         expect(getPackageNameFromStackTrace('dotnetspy', a)).toBe(expected);
+      });
+    });
+  });
+
+  describe.only('pyspy', () => {
+    describe.each([
+      ['total', 'total'],
+      ['urllib3/response.py:579 - stream', 'urllib3/'],
+      ['requests/models.py:580 - prepare_cookies', 'requests/'],
+      ['logging/__init__.py:1548 - findCaller', 'logging/'],
+      [
+        'jaeger_client/thrift_gen/jaeger/ttypes.py:147 - write',
+        'jaeger_client/thrift_gen/jaeger/',
+      ],
+
+      // TODO: this one looks incorrect, but keeping in the test for now
+      [
+        '\u003cfrozen importlib._bootstrap\u003e:1030 - _gcd_import',
+        '<frozen importlib._bootstrap>:1030 - _gcd_import',
+      ],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('pyspy', a)).toBe(expected);
       });
     });
   });
