@@ -193,4 +193,40 @@ describe.only('getPackageNameFromStackTrace', () => {
       });
     });
   });
+
+  describe.only('rust', () => {
+    describe.each([
+      ['total', 'total'],
+      ['std::thread::local::LocalKey<T>::with', 'std'],
+      [
+        'tokio::runtime::basic_scheduler::CoreGuard::block_on::{{closure}}::{{closure}}::{{closure}}',
+        'tokio',
+      ],
+      [
+        '<core::future::from_generator::GenFuture<T> as core::future::future::Future>::poll',
+        '<core',
+      ],
+      [
+        'reqwest::blocking::client::ClientHandle::new::{{closure}}::{{closure}}',
+        'reqwest',
+      ],
+      ['core::time::Duration::as_secs', 'core'],
+      ['clock_gettime@GLIBC_2.2.5', 'clock_gettime@GLIBC_2.2.5'],
+      [
+        'hyper::proto::h1::dispatch::Dispatcher<D,Bs,I,T>::poll_catch debugger eval code',
+        'hyper',
+      ],
+      ['openssl::ssl::connector::SslConnector::builder', 'openssl'],
+
+      // TODO looks incorrect
+      [
+        '<F as futures_core::future::TryFuture>::try_poll',
+        '<F as futures_core',
+      ],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('pyroscope-rs', a)).toBe(expected);
+      });
+    });
+  });
 });

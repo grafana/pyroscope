@@ -88,6 +88,8 @@ export function getPackageNameFromStackTrace(
     phpspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
     pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
     rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
+    'pyroscope-rs': /^(?<packageName>[^::]+)/,
+    //    'pyroscope-rs': /^(?<packageName>[a-zA-Z0-9]+)(::)?/,
   };
 
   if (stackTrace.length === 0) {
