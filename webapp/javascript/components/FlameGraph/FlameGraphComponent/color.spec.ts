@@ -69,4 +69,38 @@ describe.only('getPackageNameFromStackTrace', () => {
       });
     });
   });
+
+  describe.only('dotnetspy', () => {
+    describe.each([
+      ['total', 'total'],
+      [
+        'System.Private.CoreLib!System.Threading.TimerQueue.FireNextTimers()',
+        'System.Private.CoreLib!System.Threading',
+      ],
+      [
+        'StackExchange.Redis!StackExchange.Redis.ConnectionMultiplexer.OnHeartbeat()',
+        'StackExchange.Redis!StackExchange.Redis',
+      ],
+      [
+        'Microsoft.AspNetCore.Server.Kestrel.Core!Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http.HttpRequestPipeReader.ReadAsync(value class System.Threading.CancellationToken)',
+        'Microsoft.AspNetCore.Server.Kestrel.Core!Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http',
+      ],
+      [
+        'Google.Protobuf!Google.Protobuf.ParsingPrimitivesMessages.ReadRawMessage(value class Google.Protobuf.ParseContext\u0026,class Google.Protobuf.IMessage)',
+        'Google.Protobuf!Google.Protobuf',
+      ],
+      [
+        'Grpc.AspNetCore.Server!Grpc.AspNetCore.Server.Internal.PipeExtensions.ReadSingleMessageAsync(class System.IO.Pipelines.PipeReader,class Grpc.AspNetCore.Server.Internal.HttpContextServerCallContext,class System.Func`2\u003cclass Grpc.Core.DeserializationContext,!!0\u003e)',
+        'Grpc.AspNetCore.Server!Grpc.AspNetCore.Server.Internal',
+      ],
+      [
+        'System.Private.CoreLib!System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1[System.__Canon].GetStateMachineBox(!!0\u0026,class System.Threading.Tasks.Task`1\u003c!0\u003e\u0026)',
+        'System.Private.CoreLib!System.Runtime.CompilerServices.AsyncTaskMethodBuilder`1[System',
+      ],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('dotnetspy', a)).toBe(expected);
+      });
+    });
+  });
 });
