@@ -29,6 +29,7 @@ import { useLocation, NavLink } from 'react-router-dom';
 import { isExperimentalAdhocUIEnabled } from '@utils/features';
 import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
+import { selectCurrentUser } from '@pyroscope/redux/reducers/user';
 import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
 
@@ -45,6 +46,8 @@ export default function Sidebar2() {
 
   const { search, pathname } = useLocation();
   const windowWidth = useWindowWidth();
+  const currentUser = useAppSelector(selectCurrentUser);
+  const authEnabled = currentUser && currentUser.role !== 'anonymous';
 
   // the component doesn't seem to support setting up an active item
   // so we must set it up manually
@@ -174,14 +177,16 @@ export default function Sidebar2() {
       </SidebarContent>
       <SidebarFooter>
         <Menu iconShape="square">
-          <MenuItem
-            data-testid="sidebar-settings"
-            active={isSettingsActive}
-            icon={<Icon icon={faCog} />}
-          >
-            Settings
-            <NavLink to={{ pathname: '/settings', search }} exact />
-          </MenuItem>
+          {authEnabled && (
+            <MenuItem
+              data-testid="sidebar-settings"
+              active={isSettingsActive}
+              icon={<Icon icon={faCog} />}
+            >
+              Settings
+              <NavLink to={{ pathname: '/settings', search }} exact />
+            </MenuItem>
+          )}
           <MenuItem icon={<Icon icon={faFileAlt} />}>
             <a
               rel="noreferrer"

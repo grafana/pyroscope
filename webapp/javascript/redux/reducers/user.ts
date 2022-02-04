@@ -32,6 +32,10 @@ export const loadCurrentUser = createAsyncThunk(
     if (res.isOk) {
       return Promise.resolve(res.value);
     }
+    // By using 404 we assume that auth on server is disabled
+    if (res.error.statusCode === 404) {
+      return Promise.resolve({ id: 0, role: 'anonymous' });
+    }
 
     thunkAPI.dispatch(
       addNotification({
