@@ -185,7 +185,7 @@ type InternalAuth struct {
 type AdminUser struct {
 	Create   bool   `json:"-" deprecated:"true" def:"true" desc:"" mapstructure:"create"`
 	Name     string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"name"`
-	Email    string `json:"-" deprecated:"true" def:"nobody@localhost" desc:"" mapstructure:"email"`
+	Email    string `json:"-" deprecated:"true" def:"nobody@localhost.local" desc:"" mapstructure:"email"`
 	Password string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"password"`
 }
 
