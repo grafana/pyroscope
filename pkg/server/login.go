@@ -84,7 +84,34 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 	// Redirect should be handled on the client side.
 }
 
+func (ctrl *Controller) signupGet(w http.ResponseWriter) {
+	tmpl, err := ctrl.getTemplate("/signup.html")
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "could not render login page")
+		return
+	}
+	mustExecute(tmpl, w, map[string]interface{}{
+		"BasicAuthEnabled":       ctrl.config.Auth.Basic.Enabled,
+		"BasicAuthSignupEnabled": ctrl.config.Auth.Basic.SignupEnabled,
+		"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
+		"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
+		"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
+		"BaseURL":                ctrl.config.BaseURL,
+	})
+}
+
 func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		ctrl.signupGet(w)
+	case http.MethodPost:
+		ctrl.signupPost(w, r)
+	default:
+		ctrl.writeInvalidMethodError(w)
+	}
+}
+
+func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 	if !ctrl.config.Auth.Basic.SignupEnabled {
 		ctrl.logErrorAndRedirect(w, r, "signup disabled", nil)
 		return
