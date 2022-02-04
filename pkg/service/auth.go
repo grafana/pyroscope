@@ -29,6 +29,10 @@ func NewAuthService(db *gorm.DB, jwtTokenService JWTTokenService) AuthService {
 // AuthenticateUser returns User with the given login if its password hash
 // matches the given one. If user cannot be found or the password does not
 // match the function returns ErrInvalidCredentials.
+//
+// External users are not allowed to use password authentication.
+// TODO(kolesnikovae): It's true for "some" authentication providers.
+//  Others may need us to pass through the credentials (e.g. LDAP).
 func (svc AuthService) AuthenticateUser(ctx context.Context, name string, password string) (model.User, error) {
 	user, err := svc.userService.FindUserByName(ctx, name)
 	switch {
@@ -37,6 +41,9 @@ func (svc AuthService) AuthenticateUser(ctx context.Context, name string, passwo
 		return model.User{}, model.ErrInvalidCredentials
 	default:
 		return model.User{}, err
+	}
+	if model.IsUserExternal(user) {
+		return model.User{}, model.ErrUserExternal
 	}
 	if model.IsUserDisabled(user) {
 		return model.User{}, model.ErrUserDisabled
@@ -82,6 +89,9 @@ func (svc AuthService) UserFromJWTToken(ctx context.Context, t string) (model.Us
 	}
 	if model.IsUserDisabled(user) {
 		return model.User{}, model.ErrUserDisabled
+	}
+	if user.Role != userToken.Role {
+		return model.User{}, fmt.Errorf("user role has changed")
 	}
 	return user, nil
 }

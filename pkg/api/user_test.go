@@ -57,7 +57,7 @@ var _ = Describe("UserHandler", func() {
 
 			expectedParams = model.CreateUserParams{
 				Name:     "johndoe",
-				Email:    "john@example.com",
+				Email:    model.String("john@example.com"),
 				FullName: model.String("John Doe"),
 				Password: "qwerty",
 				Role:     model.ReadOnlyRole,

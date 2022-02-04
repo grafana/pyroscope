@@ -31,7 +31,7 @@ func NewUserHandler(userService UserService) UserHandler {
 type User struct {
 	ID                uint       `json:"id"`
 	Name              string     `json:"name"`
-	Email             string     `json:"email"`
+	Email             *string    `json:"email,omitempty"`
 	FullName          *string    `json:"fullName,omitempty"`
 	Role              model.Role `json:"role"`
 	IsDisabled        bool       `json:"isDisabled"`
@@ -44,7 +44,7 @@ type User struct {
 
 type createUserRequest struct {
 	Name     string     `json:"name"`
-	Email    string     `json:"email"`
+	Email    *string    `json:"email,omitempty"`
 	FullName *string    `json:"fullName,omitempty"`
 	Password []byte     `json:"password"`
 	Role     model.Role `json:"role"`
@@ -168,18 +168,17 @@ func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) 
 		Error(w, err)
 		return
 	}
-	h.changeUserPassword(w, r, id)
-}
-
-func (h UserHandler) changeUserPassword(w http.ResponseWriter, r *http.Request, id uint) {
+	if isSameUser(r.Context(), id) {
+		Error(w, ErrPermissionDenied)
+		return
+	}
 	var req resetUserPasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		DecodeError(w, err)
 		return
 	}
-	// TODO: Forbid admins resetting own passwords? Only allow changing it via ChangeAuthenticatedUserPassword.
 	params := model.UpdateUserParams{Password: model.String(string(req.Password))}
-	if _, err := h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
+	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
 		Error(w, err)
 		return
 	}
@@ -192,12 +191,15 @@ func (h UserHandler) ChangeUserRole(w http.ResponseWriter, r *http.Request) {
 		Error(w, err)
 		return
 	}
+	if isSameUser(r.Context(), id) {
+		Error(w, ErrPermissionDenied)
+		return
+	}
 	var req changeUserRoleRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		DecodeError(w, err)
 		return
 	}
-	// TODO: Check that admin doesn't revoke its own Admin role?
 	params := model.UpdateUserParams{Role: &req.Role}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
 		Error(w, err)
@@ -220,7 +222,10 @@ func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, dis
 		Error(w, err)
 		return
 	}
-	// TODO: Check that admin doesn't disable themselves?
+	if isSameUser(r.Context(), id) {
+		Error(w, ErrPermissionDenied)
+		return
+	}
 	params := model.UpdateUserParams{IsDisabled: &disabled}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
 		Error(w, err)
@@ -280,4 +285,12 @@ func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *h
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func isSameUser(ctx context.Context, id uint) bool {
+	user, ok := model.UserFromContext(ctx)
+	if ok {
+		return id == user.ID
+	}
+	return false
 }

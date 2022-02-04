@@ -155,9 +155,6 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
 	ctrl.userService = service.NewUserService(ctrl.db)
 
-	// Note that the router uses its own auth middleware: the difference is that
-	// it responds with 401, if no authentication method is configured or credentials
-	// weren't provided.
 	apiRouter := router.New(ctrl.log, r.PathPrefix("/api").Subrouter(), router.Services{
 		APIKeyService: service.NewAPIKeyService(ctrl.db, ctrl.jwtTokenService),
 		AuthService:   ctrl.authService,
@@ -165,8 +162,11 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	})
 
 	apiRouter.Use(ctrl.drainMiddleware)
-	apiRouter.Use(api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService))
-	apiRouter.RegisterHandlers()
+	apiRouter.Use(ctrl.authMiddleware)
+	if ctrl.isAuthRequired() {
+		apiRouter.RegisterUserHandlers()
+		apiRouter.RegisterAPIKeyHandlers()
+	}
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()
@@ -397,14 +397,10 @@ func (ctrl *Controller) loginRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) authMiddleware(next http.Handler) http.Handler {
-	m := api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !ctrl.isAuthRequired() {
-			next.ServeHTTP(w, r)
-			return
-		}
-		m(next).ServeHTTP(w, r)
-	})
+	if ctrl.isAuthRequired() {
+		return api.AuthMiddleware(ctrl.log, ctrl.loginRedirect, ctrl.authService)(next)
+	}
+	return next
 }
 
 func (*Controller) expectFormats(format string) error {

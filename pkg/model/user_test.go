@@ -59,7 +59,7 @@ var _ = Describe("User validation", func() {
 				params: model.CreateUserParams{
 					Name:     "johndoe",
 					FullName: model.String("John Doe"),
-					Email:    "john@example.com",
+					Email:    model.String("john@example.com"),
 					Password: "qwerty",
 					Role:     model.ReadOnlyRole,
 				},
@@ -71,7 +71,6 @@ var _ = Describe("User validation", func() {
 				},
 				err: &multierror.Error{Errors: []error{
 					model.ErrUserNameTooLong,
-					model.ErrUserEmailInvalid,
 					model.ErrUserPasswordEmpty,
 					model.ErrRoleUnknown,
 				}},
@@ -83,7 +82,6 @@ var _ = Describe("User validation", func() {
 				},
 				err: &multierror.Error{Errors: []error{
 					model.ErrUserNameEmpty,
-					model.ErrUserEmailInvalid,
 					model.ErrUserFullNameTooLong,
 					model.ErrUserPasswordEmpty,
 					model.ErrRoleUnknown,
@@ -94,7 +92,6 @@ var _ = Describe("User validation", func() {
 				params: model.CreateUserParams{},
 				err: &multierror.Error{Errors: []error{
 					model.ErrUserNameEmpty,
-					model.ErrUserEmailInvalid,
 					model.ErrUserPasswordEmpty,
 					model.ErrRoleUnknown,
 				}},

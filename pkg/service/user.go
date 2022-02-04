@@ -30,18 +30,19 @@ func (svc UserService) CreateUser(ctx context.Context, params model.CreateUserPa
 		user.FullName = params.FullName
 	}
 	return user, svc.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		// Two separate queries only to avoid plain SQL request with OR
-		// and to simplify error handling (separate for name and email).
-		// Feel free to replace it if you deem it necessary.
-		_, err := findUserByEmail(tx, params.Email)
-		switch {
-		case errors.Is(err, model.ErrUserNotFound):
-		case err == nil:
-			return model.ErrUserEmailExists
-		default:
-			return err
+		// Two separate queries only to simplify error handling (separate for
+		// name and email). Feel free to replace it if you deem it necessary.
+		if params.Email != nil {
+			_, err := findUserByEmail(tx, params.Email)
+			switch {
+			case errors.Is(err, model.ErrUserNotFound):
+			case err == nil:
+				return model.ErrUserEmailExists
+			default:
+				return err
+			}
 		}
-		_, err = findUserByName(tx, params.Name)
+		_, err := findUserByName(tx, params.Name)
 		switch {
 		case errors.Is(err, model.ErrUserNotFound):
 		case err == nil:
@@ -64,7 +65,7 @@ func (svc UserService) FindUserByEmail(ctx context.Context, email string) (model
 	if err := model.ValidateEmail(email); err != nil {
 		return model.User{}, err
 	}
-	return findUserByEmail(svc.db.WithContext(ctx), email)
+	return findUserByEmail(svc.db.WithContext(ctx), &email)
 }
 
 func (svc UserService) FindUserByID(ctx context.Context, id uint) (model.User, error) {
@@ -75,7 +76,7 @@ func findUserByName(tx *gorm.DB, name string) (model.User, error) {
 	return findUser(tx, model.User{Name: name})
 }
 
-func findUserByEmail(tx *gorm.DB, email string) (model.User, error) {
+func findUserByEmail(tx *gorm.DB, email *string) (model.User, error) {
 	return findUser(tx, model.User{Email: email})
 }
 
@@ -120,18 +121,15 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 		}
 		var columns model.User
 		// If the new email matches the current one, ignore.
-		if params.Email != nil && user.Email != *params.Email {
-			if model.IsUserExternal(user) {
-				return model.ErrUserExternal
-			}
+		if params.Email != nil && user.Email != nil && *user.Email != *params.Email {
 			// Make sure it is not in use.
 			// Note that we can't rely on the constraint violation error
 			// that should occur: underlying database driver errors are
 			// not standardized, but service consumers expect friendly
 			// typed errors.
-			switch _, err = findUserByEmail(tx.Unscoped(), *params.Email); {
+			switch _, err = findUserByEmail(tx.Unscoped(), params.Email); {
 			case errors.Is(err, model.ErrUserNotFound):
-				columns.Email = *params.Email
+				columns.Email = params.Email
 			case err == nil:
 				return model.ErrUserEmailExists
 			default:
@@ -158,6 +156,9 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 			columns.Role = *params.Role
 		}
 		if params.Password != nil {
+			if model.IsUserExternal(user) {
+				return model.ErrUserExternal
+			}
 			columns.PasswordHash = model.MustPasswordHash(*params.Password)
 			columns.PasswordChangedAt = time.Now()
 		}

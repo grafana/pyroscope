@@ -55,7 +55,7 @@ func createUserTableMigration(adminUser config.BuiltinAdminUser) *gormigrate.Mig
 	type user struct {
 		ID                uint       `gorm:"primarykey"`
 		Name              string     `gorm:"type:varchar(255);not null;default:null;index:,unique"`
-		Email             string     `gorm:"type:varchar(255);not null;default:null;index:,unique"`
+		Email             *string    `gorm:"type:varchar(255);default:null;index:,unique"`
 		FullName          *string    `gorm:"type:varchar(255);default:null"`
 		PasswordHash      []byte     `gorm:"type:varchar(255);not null;default:null"`
 		Role              int        `gorm:"not null;default:null"`
@@ -75,7 +75,7 @@ func createUserTableMigration(adminUser config.BuiltinAdminUser) *gormigrate.Mig
 			if adminUser.Enabled {
 				admin := user{
 					Name:              adminUser.Name,
-					Email:             adminUser.Email,
+					Email:             model.String(adminUser.Email),
 					PasswordHash:      model.MustPasswordHash(adminUser.Password),
 					PasswordChangedAt: time.Now(),
 					Role:              int(model.AdminRole),
