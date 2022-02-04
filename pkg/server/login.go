@@ -152,6 +152,8 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, err)
 		return
 	}
+	// TODO(kolesnikovae): Handle on the frontend side.
+	ctrl.loginRedirect(w, r)
 }
 
 func (ctrl *Controller) createCookie(w http.ResponseWriter, name, value string) {
@@ -180,7 +182,7 @@ func (ctrl *Controller) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost, http.MethodGet:
 		invalidateCookie(w, jwtCookieName)
-		ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+		ctrl.loginRedirect(w, r)
 	default:
 		ctrl.writeInvalidMethodError(w)
 	}
