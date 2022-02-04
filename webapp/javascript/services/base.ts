@@ -39,9 +39,9 @@ function mountURL(req: RequestInfo): string {
 
   // no basename
   if (typeof req === 'string') {
-    return new URL(req, window.location.href).href;
+    return new URL(`${req}/v1`, window.location.href).href;
   }
-  return new URL(req.url, window.location.href).href;
+  return new URL(`${req}/v1`, window.location.href).href;
 }
 
 export function mountRequest(req: RequestInfo): RequestInfo {
