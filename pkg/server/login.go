@@ -31,8 +31,8 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter) {
 		return
 	}
 	mustExecute(tmpl, w, map[string]interface{}{
-		"BasicAuthEnabled":       ctrl.config.Auth.Basic.Enabled,
-		"BasicAuthSignupEnabled": ctrl.config.Auth.Basic.SignupEnabled,
+		"BasicAuthEnabled":       ctrl.config.Auth.Internal.Enabled,
+		"BasicAuthSignupEnabled": ctrl.config.Auth.Internal.SignupEnabled,
 		"GoogleEnabled":          ctrl.config.Auth.Google.Enabled,
 		"GithubEnabled":          ctrl.config.Auth.Github.Enabled,
 		"GitlabEnabled":          ctrl.config.Auth.Gitlab.Enabled,
@@ -41,8 +41,8 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter) {
 }
 
 func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.Basic.Enabled {
-		ctrl.logErrorAndRedirect(w, r, "basic authentication disabled", nil)
+	if !ctrl.config.Auth.Internal.Enabled {
+		ctrl.logErrorAndRedirect(w, r, "password authentication disabled", nil)
 		return
 	}
 	type loginCredentials struct {
@@ -85,7 +85,7 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.Basic.SignupEnabled {
+	if !ctrl.config.Auth.Internal.SignupEnabled {
 		ctrl.logErrorAndRedirect(w, r, "signup disabled", nil)
 		return
 	}

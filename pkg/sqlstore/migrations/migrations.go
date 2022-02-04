@@ -46,12 +46,12 @@ import (
 // Engineering by Laine Campbell & Charity Majors).
 func Migrate(db *gorm.DB, c *config.Server) error {
 	return gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{
-		createUserTableMigration(c.Auth.Basic.BuiltinAdminUser),
+		createUserTableMigration(c.Auth.Internal.AdminUser),
 		createAPIKeyTableMigration(),
 	}).Migrate()
 }
 
-func createUserTableMigration(adminUser config.BuiltinAdminUser) *gormigrate.Migration {
+func createUserTableMigration(adminUser config.AdminUser) *gormigrate.Migration {
 	type user struct {
 		ID                uint       `gorm:"primarykey"`
 		Name              string     `gorm:"type:varchar(255);not null;default:null;index:,unique"`
@@ -72,17 +72,14 @@ func createUserTableMigration(adminUser config.BuiltinAdminUser) *gormigrate.Mig
 			if err := tx.AutoMigrate(&user{}); err != nil {
 				return err
 			}
-			if adminUser.Enabled {
-				admin := user{
+			if adminUser.Create {
+				return tx.Create(&user{
 					Name:              adminUser.Name,
 					Email:             model.String(adminUser.Email),
 					PasswordHash:      model.MustPasswordHash(adminUser.Password),
 					PasswordChangedAt: time.Now(),
 					Role:              int(model.AdminRole),
-				}
-				if err := tx.Create(&admin).Error; err != nil {
-					return err
-				}
+				}).Error
 			}
 			return nil
 		},
