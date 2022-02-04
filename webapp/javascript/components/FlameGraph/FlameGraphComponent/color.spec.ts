@@ -104,7 +104,7 @@ describe.only('getPackageNameFromStackTrace', () => {
     });
   });
 
-  describe.only('pyspy', () => {
+  describe('pyspy', () => {
     describe.each([
       ['total', 'total'],
       ['urllib3/response.py:579 - stream', 'urllib3/'],
@@ -123,6 +123,25 @@ describe.only('getPackageNameFromStackTrace', () => {
     ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
       it(`returns '${expected}'`, () => {
         expect(getPackageNameFromStackTrace('pyspy', a)).toBe(expected);
+      });
+    });
+  });
+
+  describe('ruby', () => {
+    describe.each([
+      ['total', 'total'],
+      ['webrick/utils.rb:194 - watch', 'webrick/'],
+      ['webrick/server.rb:190 - block (2 levels) in start', 'webrick/'],
+      [
+        'gems/sinatra-2.0.3/lib/sinatra/base.rb:1537 - start_server',
+        'gems/sinatra-2.0.3/lib/sinatra/',
+      ],
+      ['services/driver/client.rb:34 - get_drivers', 'services/driver/'],
+      ['uri/common.rb:742 - URI', 'uri/'],
+      ['net/protocol.rb:299 - block in write0', 'net/'],
+    ])(`.getPackageNameFromStackTrace('%s')`, (a, expected) => {
+      it(`returns '${expected}'`, () => {
+        expect(getPackageNameFromStackTrace('rbspy', a)).toBe(expected);
       });
     });
   });
