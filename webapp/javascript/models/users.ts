@@ -15,7 +15,7 @@ const zDateTime = z.string().transform((value) => {
 export const userModel = z.object({
   id: z.number(),
   name: z.string(),
-  email: z.string(),
+  email: z.optional(z.string()),
   fullName: z.optional(z.string()),
   role: z.string(),
   isDisabled: z.boolean(),

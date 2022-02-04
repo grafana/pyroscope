@@ -8,6 +8,7 @@ import {
   faUserAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import cx from 'classnames';
+import { withCurrentUser } from '@pyroscope/redux/reducers/user';
 import Preferences from './Preferences';
 import Users from './Users';
 import ApiKeys from './APIKeys';
@@ -16,9 +17,10 @@ import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
 
-function Settings() {
+function Settings(props) {
   const { path, url } = useRouteMatch();
-
+  const { currentUser } = props;
+  const isAdmin = (user) => user && user.role === 'Admin';
   return (
     <div className="pyroscope-app">
       <h1>Settings</h1>
@@ -35,28 +37,38 @@ function Settings() {
               <Icon icon={faSlidersH} /> Profile
             </NavLink>
           </li>
-          <li>
-            <NavLink
-              to={`${url}/users`}
-              exact
-              className={(isActive) =>
-                cx({ [styles.navLink]: true, [styles.navLinkActive]: isActive })
-              }
-            >
-              <Icon icon={faUserAlt} /> Users
-            </NavLink>
-          </li>
-          <li>
-            <NavLink
-              to={`${url}/api-keys`}
-              exact
-              className={(isActive) =>
-                cx({ [styles.navLink]: true, [styles.navLinkActive]: isActive })
-              }
-            >
-              <Icon icon={faKey} /> API keys
-            </NavLink>
-          </li>
+          {isAdmin(currentUser) ? (
+            <>
+              <li>
+                <NavLink
+                  to={`${url}/users`}
+                  exact
+                  className={(isActive) =>
+                    cx({
+                      [styles.navLink]: true,
+                      [styles.navLinkActive]: isActive,
+                    })
+                  }
+                >
+                  <Icon icon={faUserAlt} /> Users
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
+                  to={`${url}/api-keys`}
+                  exact
+                  className={(isActive) =>
+                    cx({
+                      [styles.navLink]: true,
+                      [styles.navLinkActive]: isActive,
+                    })
+                  }
+                >
+                  <Icon icon={faKey} /> API keys
+                </NavLink>
+              </li>
+            </>
+          ) : null}
         </ul>
       </nav>
       <div className="main-wrapper">
@@ -84,4 +96,4 @@ function Settings() {
   );
 }
 
-export default Settings;
+export default withCurrentUser(Settings);

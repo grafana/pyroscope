@@ -11,9 +11,13 @@ import {
 } from '@pyroscope/redux/reducers/user';
 import styles from './Preferences.module.css';
 
-function ChangePasswordForm() {
+function ChangePasswordForm(props) {
+  const { user } = props;
   const [form, setForm] = useState({ errors: [] });
   const dispatch = useAppDispatch();
+  if (user.isExternal) {
+    return null;
+  }
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -105,6 +109,7 @@ function Preferences(props) {
           placeholder="username"
           value={currentUser.name}
           required
+          disabled={currentUser.isExternal}
           onChange={() => {}}
         />
       </div>
@@ -116,6 +121,7 @@ function Preferences(props) {
           placeholder="Full Name"
           value={currentUser.fullName}
           required
+          disabled={currentUser.isExternal}
           onChange={() => {}}
         />
       </div>
@@ -127,6 +133,7 @@ function Preferences(props) {
           placeholder="email"
           value={currentUser.email}
           required
+          disabled={currentUser.isExternal}
           onChange={() => {}}
         />
       </div>
