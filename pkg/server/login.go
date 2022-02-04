@@ -104,7 +104,7 @@ func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_, err := ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
 		Name:     req.Name,
-		Email:    req.Email,
+		Email:    model.String(req.Email),
 		FullName: req.FullName,
 		Password: string(req.Password),
 		Role:     ctrl.config.Auth.SignupDefaultRole,
@@ -254,7 +254,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		case errors.Is(err, model.ErrUserNotFound):
 			user, err = ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
 				Name:       u.Name,
-				Email:      u.Email,
+				Email:      model.String(u.Email),
 				Role:       ctrl.config.Auth.SignupDefaultRole,
 				Password:   model.MustRandomPassword(),
 				IsExternal: true,
