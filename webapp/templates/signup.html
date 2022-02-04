@@ -14,6 +14,9 @@
     />
     <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
     <script>
+      function error(string) {
+        document.getElementById('error').innerHTML = string;
+      }      
       function signup() {
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/signup");
@@ -24,14 +27,28 @@
           if (xhr.readyState === 4) {
             if ( xhr.status == 204 ) {
               location.href='/';
+            } else {
+              try {
+                error(JSON.parse(xhr.responseText).errors);
+              } catch(e) {
+                error("Unexpected error");
+              }              
             }
           }};
-        xhr.send(JSON.stringify({
+        var data = {          
           name: document.getElementById('username').value,
-          email: document.getElementById('email').value,
-          fullName: document.getElementById('fullName').value,
-          password: btoa(unescape(encodeURIComponent(document.getElementById('password').value))),
-        }));
+          password: btoa(unescape(encodeURIComponent(document.getElementById('password').value))),          
+        };
+
+        if (document.getElementById('email').value) {
+          data['email'] = document.getElementById('email').value;
+        }
+
+        if (document.getElementById('fullName').value) {
+          data['fullName'] = document.getElementById('fullName').value;
+        }
+
+        xhr.send(JSON.stringify(data));
       }
     </script>    
   </head>
@@ -42,7 +59,8 @@
       <div class="welcome-logo"></div>
       <h1 class="welcome-title">Welcome to Pyroscope</h1>
       <h2 class="welcome-title">Sign up</h1>
-      <form>
+      <form onsubmit="signup(this); return false;">
+        <div class="error" id="error"></div>
         <div class="signup-form">
           <div>
             <div><label>Username</label></div>
@@ -65,7 +83,7 @@
             <input type="password" name="password-again" aria-label="password input field"  placeholder="password-again" />
           </div>
           <div>
-            <button type="button" class="sign-up-button" onClick="signup();">Sign Up</button>
+            <button type="submit" class="sign-up-button">Sign Up</button>
           </div>
         </div>
       </form>

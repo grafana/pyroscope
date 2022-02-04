@@ -14,7 +14,7 @@
     />
     <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
     <script>
-      function login() {
+      function login(e) {
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/login");
         xhr.setRequestHeader("Accept", "application/json");
@@ -25,7 +25,12 @@
             if ( xhr.status == 204 ) {
               location.href='/';
             } else {
-              error(xhr.responseText);
+              try {
+
+                error(JSON.parse(xhr.responseText).errors);
+              } catch(e) {
+                error("Unexpected error");
+              }
             }
           }};
         xhr.send(JSON.stringify({
@@ -50,7 +55,7 @@
       <p class="login-to-continue">Log in to continue</p>
 
       {{if .BasicAuthEnabled}}
-      <form>
+      <form onsubmit="login(this); return false;">
         <div class="signin-form">
           <div class="error" id="error"></div>
           <div>
@@ -62,7 +67,7 @@
             <input type="password" name="password" aria-label="password input field" id="password" autocomplete="current-password"  placeholder="password" />
           </div>
           <div>
-            <button type="button" class="sign-in-button" onClick="login()">Log In</button>
+            <button type="submit" class="sign-in-button">Log In</button>
           </div>
         </div>
       </form>
