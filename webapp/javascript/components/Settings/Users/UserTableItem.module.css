@@ -8,6 +8,10 @@
   align-items: center;
 }
 
+.role button {
+  padding-right: 20px !important;
+}
+
 .actions {
   display: flex;
   flex-direction: row;

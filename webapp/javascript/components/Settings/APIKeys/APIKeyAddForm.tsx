@@ -29,7 +29,8 @@ function APIKeyAddForm() {
     setForm({ ...form, role: value });
   };
 
-  const handleFormSubmit = (event) => {
+  const handleFormSubmit = (evt) => {
+    evt.preventDefault();
     const data = {
       name: form.name,
       role: form.role,

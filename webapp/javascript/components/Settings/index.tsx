@@ -55,7 +55,7 @@ function Settings(props) {
               </li>
               <li>
                 <NavLink
-                  to={`${url}/api-keys`}
+                  to={`${url}/api-key`}
                   exact
                   className={(isActive) =>
                     cx({
@@ -80,13 +80,13 @@ function Settings(props) {
             <Route exact path={`${path}/users`}>
               <Users />
             </Route>
-            <Route exact path={`${path}/user-add`}>
+            <Route exact path={`${path}/users/add`}>
               <UserAddForm />
             </Route>
-            <Route exact path={`${path}/api-keys`}>
+            <Route exact path={`${path}/api-key`}>
               <ApiKeys />
             </Route>
-            <Route exact path={`${path}/api-key-add`}>
+            <Route exact path={`${path}/api-key/add`}>
               <APIKeyAddForm />
             </Route>
           </Switch>
