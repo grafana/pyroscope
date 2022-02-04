@@ -166,26 +166,26 @@ type RetentionLevels struct {
 type Auth struct {
 	SignupDefaultRole model.Role `json:"-" deprecated:"true" def:"ReadOnly" desc:"specifies which role will be granted to a newly signed up user. Supported roles: Admin, ReadOnly. Defaults to ReadOnly" mapstructure:"signup-default-role"`
 
-	Basic  BasicAuth   `mapstructure:"basic"`
-	Google GoogleOauth `mapstructure:"google"`
-	Gitlab GitlabOauth `mapstructure:"gitlab"`
-	Github GithubOauth `mapstructure:"github"`
+	Internal InternalAuth `mapstructure:"internal"`
+	Google   GoogleOauth  `mapstructure:"google"`
+	Gitlab   GitlabOauth  `mapstructure:"gitlab"`
+	Github   GithubOauth  `mapstructure:"github"`
 
 	CookieSameSite           http.SameSite `json:"-" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
 	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
 	LoginMaximumLifetimeDays int           `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
 }
 
-type BasicAuth struct {
-	Enabled          bool             `json:"-" deprecated:"true" def:"false" desc:"enables login-password authentication" mapstructure:"enabled"`
-	SignupEnabled    bool             `json:"-" deprecated:"true" def:"false" desc:"indicates whether users are allowed to create accounts" mapstructure:"signup-enabled"`
-	BuiltinAdminUser BuiltinAdminUser `json:"-" deprecated:"true" def:"false" mapstructure:"admin"`
+type InternalAuth struct {
+	Enabled       bool      `json:"-" deprecated:"true" def:"false" desc:"enables login-password authentication" mapstructure:"enabled"`
+	SignupEnabled bool      `json:"-" deprecated:"true" def:"false" desc:"indicates whether users are allowed to create accounts" mapstructure:"signup-enabled"`
+	AdminUser     AdminUser `json:"-" deprecated:"true" def:"false" mapstructure:"admin"`
 }
 
-type BuiltinAdminUser struct {
-	Enabled  bool   `json:"-" deprecated:"true" def:"true" desc:"" mapstructure:"enabled"`
+type AdminUser struct {
+	Create   bool   `json:"-" deprecated:"true" def:"true" desc:"" mapstructure:"create"`
 	Name     string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"name"`
-	Email    string `json:"-" deprecated:"true" def:"nobody@local.domain" desc:"" mapstructure:"email"`
+	Email    string `json:"-" deprecated:"true" def:"nobody@localhost" desc:"" mapstructure:"email"`
 	Password string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"password"`
 }
 

@@ -371,7 +371,7 @@ func (ctrl *Controller) trackMetrics(route string) func(next http.Handler) http.
 }
 
 func (ctrl *Controller) isAuthRequired() bool {
-	return ctrl.config.Auth.Basic.Enabled ||
+	return ctrl.config.Auth.Internal.Enabled ||
 		ctrl.config.Auth.Google.Enabled ||
 		ctrl.config.Auth.Github.Enabled ||
 		ctrl.config.Auth.Gitlab.Enabled

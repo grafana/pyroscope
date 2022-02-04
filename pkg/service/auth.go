@@ -43,7 +43,9 @@ func (svc AuthService) AuthenticateUser(ctx context.Context, name string, passwo
 		return model.User{}, err
 	}
 	if model.IsUserExternal(user) {
-		return model.User{}, model.ErrUserExternal
+		// TODO(kolesnikovae): We could be a bit more specific here
+		//  disclosing some info: e.g. tell which auth provider to use.
+		return model.User{}, model.ErrInvalidCredentials
 	}
 	if model.IsUserDisabled(user) {
 		return model.User{}, model.ErrUserDisabled
