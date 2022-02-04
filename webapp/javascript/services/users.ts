@@ -115,3 +115,18 @@ export async function changeUserRole(
 
   return Result.err<false, RequestError>(response.error);
 }
+
+export async function editMyUser(
+  data
+): Promise<Result<boolean, RequestError | ZodError>> {
+  const response = await request(`/api/users`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+  if (response.isOk) {
+    return Result.ok(response.value);
+  }
+
+  return Result.err<false, RequestError>(response.error);
+}

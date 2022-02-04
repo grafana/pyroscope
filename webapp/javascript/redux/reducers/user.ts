@@ -1,15 +1,12 @@
 /* eslint-disable prettier/prettier */
-import {
-  createSlice,
-  createAsyncThunk,
-  combineReducers,
-} from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Users, type User } from '@models/users';
 import { connect } from 'react-redux';
 
 import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
+  editMyUser as editMyUserAPI,
 } from '@pyroscope/services/users';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
@@ -89,11 +86,37 @@ export const changeMyPassword = createAsyncThunk(
   }
 );
 
+export const editMe = createAsyncThunk(
+  'users/editMyUser',
+  async (data, thunkAPI) => {
+    const res = await editMyUserAPI(data);
+
+    if (res.isOk) {
+      return Promise.resolve(res.value);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to change users password',
+        message: res.error.message,
+      })
+    );
+    return thunkAPI.rejectWithValue(res.error);
+  }
+);
+
 export const currentUserState = (state: RootState) => state.user;
 export const selectCurrentUser = (state: RootState) => state.user.data;
 
-export const withCurrentUser = connect((state: RootState) => ({
-  currentUser: selectCurrentUser(state),
-}));
+export const withCurrentUser = (component) =>
+  connect((state: RootState) => ({
+    currentUser: selectCurrentUser(state),
+  }))(function ConditionalRender(props) {
+    if (props.currentUser) {
+      return component(props);
+    }
+    return null;
+  });
 
 export default userSlice.reducer;
