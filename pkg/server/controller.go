@@ -27,8 +27,10 @@ import (
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/api"
+	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
@@ -168,24 +170,29 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		apiRouter.RegisterAPIKeyHandlers()
 	}
 
-	// Routes not protected with auth. Drained at shutdown.
-	insecureRoutes, err := ctrl.getAuthRoutes()
-	if err != nil {
-		return nil, err
-	}
-
 	ingestHandler := NewIngestHandler(ctrl.log, ctrl.storage, ctrl.exporter, func(pi *storage.PutInput) {
 		ctrl.statsInc("ingest")
 		ctrl.statsInc("ingest:" + pi.SpyName)
 		ctrl.appStats.Add(hashString(pi.Key.AppName()))
 	})
 
-	insecureRoutes = append(insecureRoutes, []route{
-		{"/ingest", ingestHandler.ServeHTTP},
+	ctrl.addRoutes(r, []route{
+		{"/ingest", ingestHandler.ServeHTTP}},
+		ctrl.drainMiddleware,
+		ctrl.ingestionAuthMiddleware(),
+		authz.Require(authz.Role(model.AgentRole)))
+
+	// Routes not protected with auth. Drained at shutdown.
+	insecureRoutes, err := ctrl.getAuthRoutes()
+	if err != nil {
+		return nil, err
+	}
+
+	assetsHandler := r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP
+	ctrl.addRoutes(r, append(insecureRoutes, []route{
 		{"/forbidden", ctrl.forbiddenHandler()},
-		{"/assets/", r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP},
-	}...)
-	ctrl.addRoutes(r, insecureRoutes, ctrl.drainMiddleware)
+		{"/assets/", assetsHandler}}...),
+		ctrl.drainMiddleware)
 
 	// TODO(kolesnikovae): Refactor after getting rid of handling pages on the backend side.
 	//  Auth middleware should never redirect - the logic should be moved to the client side.
@@ -218,6 +225,9 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	//  Refactor: move mux part to pkg/api/router.
 	//  Make prometheus middleware to support gorilla patterns.
 
+	// TODO(kolesnikovae):
+	//  Make diagnostic endpoints protection configurable.
+
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
 		{"/config", ctrl.configHandler},
@@ -238,8 +248,8 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 			{"/debug/pprof/mutex", pprof.Index},
 		}...)
 	}
-
 	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware(nil))
+
 	ctrl.addRoutes(r, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
@@ -406,10 +416,24 @@ func (ctrl *Controller) loginRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) authMiddleware(redirect http.HandlerFunc) mux.MiddlewareFunc {
+	if ctrl.isAuthRequired() {
+		return api.AuthMiddleware(ctrl.log, redirect, ctrl.authService)
+	}
 	return func(next http.Handler) http.Handler {
-		if ctrl.isAuthRequired() {
-			return api.AuthMiddleware(ctrl.log, redirect, ctrl.authService)(next)
+		return next
+	}
+}
+
+func (ctrl *Controller) ingestionAuthMiddleware() mux.MiddlewareFunc {
+	if ctrl.config.Auth.Ingestion.Enabled {
+		asConfig := service.CachingAuthServiceConfig{
+			Size: ctrl.config.Auth.Ingestion.CacheSize,
+			TTL:  ctrl.config.Auth.Ingestion.CacheTTL,
 		}
+		as := service.NewCachingAuthService(ctrl.authService, asConfig)
+		return api.AuthMiddleware(ctrl.log, nil, as)
+	}
+	return func(next http.Handler) http.Handler {
 		return next
 	}
 }

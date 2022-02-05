@@ -65,7 +65,6 @@ func (svc AuthService) APIKeyTokenFromJWTToken(ctx context.Context, t string) (m
 	if !ok {
 		return model.APIKeyToken{}, fmt.Errorf("api key is invalid")
 	}
-	// TODO(kolesnikovae): Caching. At least for Agents.
 	apiKey, err := svc.apiKeyService.FindAPIKeyByName(ctx, keyToken.Name)
 	if err != nil {
 		return model.APIKeyToken{}, err
