@@ -171,6 +171,8 @@ type Auth struct {
 	Gitlab   GitlabOauth  `mapstructure:"gitlab"`
 	Github   GithubOauth  `mapstructure:"github"`
 
+	Ingestion IngestionAuth `mapstructure:"ingestion"`
+
 	CookieSameSite           http.SameSite `json:"-" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
 	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
 	LoginMaximumLifetimeDays int           `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
@@ -180,6 +182,12 @@ type InternalAuth struct {
 	Enabled       bool      `json:"-" deprecated:"true" def:"false" desc:"enables login-password authentication" mapstructure:"enabled"`
 	SignupEnabled bool      `json:"-" deprecated:"true" def:"false" desc:"indicates whether users are allowed to create accounts" mapstructure:"signup-enabled"`
 	AdminUser     AdminUser `json:"-" deprecated:"true" def:"false" mapstructure:"admin"`
+}
+
+type IngestionAuth struct {
+	Enabled   bool          `json:"-" deprecated:"true" def:"false" desc:"require authentication for ingestion endpoint" mapstructure:"enabled"`
+	CacheTTL  time.Duration `json:"-" deprecated:"true" def:"1s" mapstructure:"cache-ttl"`
+	CacheSize int           `json:"-" deprecated:"true" def:"1024" mapstructure:"cache-size"`
 }
 
 type AdminUser struct {

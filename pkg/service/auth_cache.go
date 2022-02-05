@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/hashicorp/golang-lru"
@@ -12,45 +11,41 @@ import (
 
 type CachingAuthService struct {
 	AuthService
-	p, n cache
+	cache *cache
 }
 
 type CachingAuthServiceConfig struct {
-	NegativeSize int
-	PositiveSize int
-	NegativeTTL  time.Duration
-	PositiveTTL  time.Duration
+	Size int
+	TTL  time.Duration
 }
 
 func NewCachingAuthService(authService AuthService, c CachingAuthServiceConfig) CachingAuthService {
-	return CachingAuthService{
-		AuthService: authService,
+	cas := CachingAuthService{AuthService: authService}
+	if c.Size > 0 && c.TTL > 0 {
+		cas.cache = newCache(c.Size, c.TTL)
+	}
+	return cas
+}
 
-		p: newCache(c.PositiveSize, c.PositiveTTL),
-		n: newCache(c.NegativeSize, c.NegativeTTL),
+func (svc CachingAuthService) APIKeyTokenFromJWTToken(ctx context.Context, t string) (model.APIKeyToken, error) {
+	if svc.cache != nil {
+		if v, ok := svc.cache.get(t); ok {
+			return v.(model.APIKeyToken), nil
+		}
+	}
+	return svc.AuthService.APIKeyTokenFromJWTToken(ctx, t)
+}
+
+func (svc CachingAuthService) PutAPIKey(t string, k model.APIKeyToken) {
+	if svc.cache != nil {
+		svc.cache.put(t, k)
 	}
 }
 
-func (svc CachingAuthService) PutAPIKey(t string, k model.APIKeyToken) { svc.p.put(t, k) }
-
-func (svc CachingAuthService) InvalidateAPIKey(t string) { svc.n.put(t, nil) }
-
-func (svc CachingAuthService) APIKeyTokenFromJWTToken(ctx context.Context, t string) (model.APIKeyToken, error) {
-	if _, ok := svc.n.get(t); ok {
-		return model.APIKeyToken{}, model.ErrAPIKeyNotFound
+func (svc CachingAuthService) DeleteAPIKey(t string) {
+	if svc.cache != nil {
+		svc.cache.c.Remove(t)
 	}
-	if v, ok := svc.p.get(t); ok {
-		return v.(model.APIKeyToken), nil
-	}
-	v, err := svc.AuthService.APIKeyTokenFromJWTToken(ctx, t)
-	if errors.Is(err, model.ErrAPIKeyNotFound) {
-		svc.n.put(t, nil)
-	}
-	if err != nil {
-		return model.APIKeyToken{}, err
-	}
-	svc.p.put(t, v)
-	return v, nil
 }
 
 // TODO(kolesnikovae): Move to a separate package.
@@ -65,20 +60,20 @@ type cachedItem struct {
 	created time.Time
 }
 
-func newCache(size int, ttl time.Duration) cache {
+func newCache(size int, ttl time.Duration) *cache {
 	c := cache{ttl: ttl}
 	c.c, _ = lru.New(size)
-	return c
+	return &c
 }
 
-func (c cache) put(k string, v interface{}) {
+func (c *cache) put(k string, v interface{}) {
 	c.c.Add(k, cachedItem{
 		created: time.Now(),
 		value:   v,
 	})
 }
 
-func (c cache) get(k string) (interface{}, bool) {
+func (c *cache) get(k string) (interface{}, bool) {
 	x, found := c.c.Get(k)
 	if found {
 		return nil, false

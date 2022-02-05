@@ -27,8 +27,10 @@ import (
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/api"
+	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
@@ -177,7 +179,8 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	ctrl.addRoutes(r, []route{
 		{"/ingest", ingestHandler.ServeHTTP}},
 		ctrl.drainMiddleware,
-		ctrl.ingestionAuthMiddleware())
+		ctrl.ingestionAuthMiddleware(),
+		authz.Require(authz.Role(model.AgentRole)))
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()
@@ -422,18 +425,12 @@ func (ctrl *Controller) authMiddleware(redirect http.HandlerFunc) mux.Middleware
 }
 
 func (ctrl *Controller) ingestionAuthMiddleware() mux.MiddlewareFunc {
-	// TODO(kolesnikovae): Configuration:
-	// auth:
-	//   ingestion:
-	//     enabled: true
-	//     # caching options
-	if ctrl.isAuthRequired() {
-		as := service.NewCachingAuthService(ctrl.authService, service.CachingAuthServiceConfig{
-			NegativeSize: 1 << 10,
-			PositiveSize: 1 << 10,
-			NegativeTTL:  time.Second,
-			PositiveTTL:  time.Second,
-		})
+	if ctrl.config.Auth.Ingestion.Enabled {
+		asConfig := service.CachingAuthServiceConfig{
+			Size: ctrl.config.Auth.Ingestion.CacheSize,
+			TTL:  ctrl.config.Auth.Ingestion.CacheTTL,
+		}
+		as := service.NewCachingAuthService(ctrl.authService, asConfig)
 		return api.AuthMiddleware(ctrl.log, nil, as)
 	}
 	return func(next http.Handler) http.Handler {
