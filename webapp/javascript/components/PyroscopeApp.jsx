@@ -51,6 +51,7 @@ function PyroscopeApp(props) {
                 exportJSON
                 exportPprof
                 exportHTML
+                exportFlamegraphDotCom
               />
             }
           />
