@@ -40,7 +40,7 @@ const ApiKeys = () => {
           type="submit"
           kind="secondary"
           icon={faPlus}
-          onClick={() => history.push('/settings/api-key-add')}
+          onClick={() => history.push('/settings/api-keys/add')}
         >
           Add Key
         </Button>

@@ -57,7 +57,7 @@ function Users() {
           type="submit"
           kind="secondary"
           icon={faPlus}
-          onClick={() => history.push('/settings/user-add')}
+          onClick={() => history.push('/settings/users/add')}
         >
           Add User
         </Button>
