@@ -1,6 +1,5 @@
 /* eslint-disable react/destructuring-assignment */
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
 
 import Button from '@ui/Button';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
@@ -9,7 +8,6 @@ import { dateForExportFilename } from '@utils/formatDate';
 
 import clsx from 'clsx';
 import { RawFlamebearerProfile } from '@models/flamebearer';
-import { addNotification } from '../redux/reducers/notifications';
 
 // These are modeled individually since each condition may have different values
 // For example, a exportPprof: true may accept a custom export function
@@ -60,7 +58,6 @@ type ExportDataProps = exportPprof &
 // handleResponse retrieves the JSON data on success or raises an ResponseNotOKError otherwise
 // TODO: dedup this with the one in actions.js
 function handleResponse(response) {
-  console.log(response, response.ok);
   if (response.ok) {
     return response.json();
   }
@@ -86,8 +83,6 @@ function ExportData(props: ExportDataProps) {
   ) {
     throw new Error('At least one export button should be enabled');
   }
-
-  const dispatch = useDispatch();
 
   const [toggleMenu, setToggleMenu] = useState(false);
 
@@ -156,13 +151,8 @@ function ExportData(props: ExportDataProps) {
           document.body.removeChild(dlLink);
         })
         .catch((e) => {
-          dispatch(
-            addNotification({
-              title: 'Request Failed',
-              message: e.message,
-              type: 'danger',
-            })
-          );
+          console.error(e);
+          // TODO: show error to user via notifications
         })
         .finally();
     }
