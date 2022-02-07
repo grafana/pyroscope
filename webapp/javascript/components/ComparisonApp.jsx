@@ -69,6 +69,7 @@ function ComparisonApp(props) {
                   exportJSON
                   exportHTML
                   exportPprof
+                  exportFlamegraphDotCom
                 />
               }
             >
@@ -97,6 +98,7 @@ function ComparisonApp(props) {
                   exportJSON
                   exportHTML
                   exportPprof
+                  exportFlamegraphDotCom
                 />
               }
             >
