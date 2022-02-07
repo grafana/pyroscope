@@ -1,3 +1,21 @@
+# [0.9.0](https://github.com/pyroscope-io/pyroscope/compare/v0.8.0...v0.9.0) (2022-02-07)
+
+
+### Bug Fixes
+
+* Solve panic on an empty profile ingest ([#793](https://github.com/pyroscope-io/pyroscope/issues/793)) ([2d3a479](https://github.com/pyroscope-io/pyroscope/commit/2d3a479dfb8855c9bf75528bc46ee221a4a02cfe))
+* unsafeStrToSlice panic due to empty string ([#772](https://github.com/pyroscope-io/pyroscope/issues/772)) ([189f775](https://github.com/pyroscope-io/pyroscope/commit/189f7753bae460bb170ae63c72645e6df7b8f2d3))
+
+
+### Features
+
+* add some basic flamebearer validation. ([#785](https://github.com/pyroscope-io/pyroscope/issues/785)) ([bee6483](https://github.com/pyroscope-io/pyroscope/commit/bee6483d88d7381ba778f50c557667f4eb1543eb))
+* experimental tracing integration ([#766](https://github.com/pyroscope-io/pyroscope/issues/766)) ([24af197](https://github.com/pyroscope-io/pyroscope/commit/24af197b37c572425ae7896a0f446709bcdde4f1))
+* **frontend:** add package coloring for rust ([#798](https://github.com/pyroscope-io/pyroscope/issues/798)) ([c687f83](https://github.com/pyroscope-io/pyroscope/commit/c687f8382e0b5c87dcc6fd1ac3ffdd2e11464952))
+* **frontend:** adds ability to export to flamegraph.com ([#799](https://github.com/pyroscope-io/pyroscope/issues/799)) ([a3828bc](https://github.com/pyroscope-io/pyroscope/commit/a3828bc93fdf76478328f5c65c117b7737993e61))
+
+
+
 # [0.8.0](https://github.com/pyroscope-io/pyroscope/compare/v0.7.2...v0.8.0) (2022-01-25)
 
 
