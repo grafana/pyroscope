@@ -1,36 +1,8 @@
 /* eslint-disable camelcase */
 import Color from 'color';
-import { scaleThreshold, scaleLinear } from 'd3-scale';
+import { scaleLinear } from 'd3-scale';
 import murmurhash3_32_gc from './murmur3';
 import type { FlamegraphPalette } from './colorPalette';
-
-const colors = [
-  Color.hsl(24, 69, 60),
-  Color.hsl(34, 65, 65),
-  Color.hsl(194, 52, 61),
-  Color.hsl(163, 45, 55),
-  Color.hsl(211, 48, 60),
-  Color.hsl(246, 40, 65),
-  Color.hsl(305, 63, 79),
-  Color.hsl(47, 100, 73),
-
-  Color.rgb(183, 219, 171),
-  Color.rgb(244, 213, 152),
-  Color.rgb(112, 219, 237),
-  Color.rgb(249, 186, 143),
-  Color.rgb(242, 145, 145),
-  Color.rgb(130, 181, 216),
-  Color.rgb(229, 168, 226),
-  Color.rgb(174, 162, 224),
-  Color.rgb(154, 196, 138),
-  Color.rgb(242, 201, 109),
-  Color.rgb(101, 197, 219),
-  Color.rgb(249, 147, 78),
-  Color.rgb(234, 100, 96),
-  Color.rgb(81, 149, 206),
-  Color.rgb(214, 131, 206),
-  Color.rgb(128, 110, 183),
-];
 
 export const defaultColor = Color.rgb(148, 142, 142);
 export const diffColorRed = Color.rgb(200, 0, 0);
@@ -106,14 +78,18 @@ export function getPackageNameFromStackTrace(
 ) {
   // TODO: actually make sure these make sense and add tests
   const regexpLookup = {
-    default: /^(?<packageName>(.*\/)*)(?<filename>.*)(?<line_info>.*)$/,
     dotnetspy: /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/,
+    // we don't have enough information
+    default: /^(?<packageName>.+)$/,
+    // TODO: come up with a clever heuristic
     ebpfspy: /^(?<packageName>.+)$/,
     // tested with pyroscope stacktraces here: https://regex101.com/r/99KReq/1
     gospy: /^(?<packageName>.*?\/.*?\.|.*?\.|.+)(?<functionName>.*)$/,
     phpspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
     pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
     rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
+    'pyroscope-rs': /^(?<packageName>[^::]+)/,
+    //    'pyroscope-rs': /^(?<packageName>[a-zA-Z0-9]+)(::)?/,
   };
 
   if (stackTrace.length === 0) {
