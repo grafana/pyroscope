@@ -1,5 +1,6 @@
 /* eslint-disable react/destructuring-assignment */
 import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
 
 import Button from '@ui/Button';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
@@ -8,6 +9,7 @@ import { dateForExportFilename } from '@utils/formatDate';
 
 import clsx from 'clsx';
 import { RawFlamebearerProfile } from '@models/flamebearer';
+import { addNotification } from '../redux/reducers/notifications';
 
 // These are modeled individually since each condition may have different values
 // For example, a exportPprof: true may accept a custom export function
@@ -34,6 +36,14 @@ type exportHTML =
     }
   | { exportHTML?: false };
 
+type exportFlamegraphDotCom =
+  | {
+      exportFlamegraphDotCom: true;
+      fetchUrlFunc?: () => string;
+      flamebearer: RawFlamebearerProfile;
+    }
+  | { exportFlamegraphDotCom?: false };
+
 type exportPNG =
   | {
       exportPNG: true;
@@ -41,7 +51,23 @@ type exportPNG =
     }
   | { exportPNG?: false };
 
-type ExportDataProps = exportPprof & exportJSON & exportHTML & exportPNG;
+type ExportDataProps = exportPprof &
+  exportJSON &
+  exportHTML &
+  exportFlamegraphDotCom &
+  exportPNG;
+
+// handleResponse retrieves the JSON data on success or raises an ResponseNotOKError otherwise
+// TODO: dedup this with the one in actions.js
+function handleResponse(response) {
+  console.log(response, response.ok);
+  if (response.ok) {
+    return response.json();
+  }
+  return response.text().then((text) => {
+    throw new Error(`Bad Response with code ${response.status}: ${text}`);
+  });
+}
 
 function ExportData(props: ExportDataProps) {
   const {
@@ -49,10 +75,19 @@ function ExportData(props: ExportDataProps) {
     exportJSON = false,
     exportPNG = false,
     exportHTML = false,
+    exportFlamegraphDotCom = false,
   } = props;
-  if (!exportPNG && !exportJSON && !exportPprof && !exportHTML) {
+  if (
+    !exportPNG &&
+    !exportJSON &&
+    !exportPprof &&
+    !exportHTML &&
+    !exportFlamegraphDotCom
+  ) {
     throw new Error('At least one export button should be enabled');
   }
+
+  const dispatch = useDispatch();
 
   const [toggleMenu, setToggleMenu] = useState(false);
 
@@ -79,6 +114,57 @@ function ExportData(props: ExportDataProps) {
       document.body.appendChild(downloadAnchorNode); // required for firefox
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
+    }
+  };
+
+  const downloadFlamegraphDotCom = () => {
+    if (!props.exportFlamegraphDotCom) {
+      return;
+    }
+
+    // TODO additional check this won't be needed once we use strictNullChecks
+    if (props.exportFlamegraphDotCom) {
+      const { flamebearer } = props;
+
+      const filename = `${getFilename(
+        flamebearer.metadata.appName,
+        flamebearer.metadata.startTime,
+        flamebearer.metadata.endTime
+      )}.png`;
+
+      // we don't upload to flamegraph.com directly due to potential CORS issues
+      fetch('/export', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: filename,
+          profile: btoa(JSON.stringify(flamebearer)),
+          type: 'application/json',
+        }),
+      })
+        .then((response) => handleResponse(response))
+        .then((json) => {
+          const dlLink = document.createElement('a');
+          dlLink.target = '_blank';
+          dlLink.href = json.url;
+
+          document.body.appendChild(dlLink);
+          dlLink.click();
+          document.body.removeChild(dlLink);
+        })
+        .catch((e) => {
+          dispatch(
+            addNotification({
+              title: 'Request Failed',
+              message: e.message,
+              type: 'danger',
+            })
+          );
+        })
+        .finally();
     }
   };
 
@@ -240,6 +326,16 @@ function ExportData(props: ExportDataProps) {
           >
             {' '}
             html
+          </button>
+        )}
+        {exportFlamegraphDotCom && (
+          <button
+            className="dropdown-menu-item"
+            type="button"
+            onClick={() => downloadFlamegraphDotCom()}
+          >
+            {' '}
+            flamegraph.com
           </button>
         )}
       </div>
