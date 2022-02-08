@@ -14,7 +14,7 @@
     />
     <link rel="icon" href="{{ .BaseURL }}/assets/images/favicon.ico" />
     <script>
-      function login(e) {
+      function login() {
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/login");
         xhr.setRequestHeader("Accept", "application/json");
@@ -160,6 +160,7 @@
         {{end}}
       </div>
       {{else}}
+      {{ if false }}
       <p class="login-to-continue">
         No authentication methods are set up. Visit
         <a href="https://pyroscope.io/docs/auth-google" target="_blank"
@@ -188,6 +189,7 @@
           <span>Go back to main page</span>
         </a>
       </div>
+      {{ end }}
       {{end}}
 
       {{ if .BasicAuthSignupEnabled }}

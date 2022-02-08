@@ -92,7 +92,6 @@ export async function changeMyPassword(
       newPassword: passwordEncode(newPassword),
     }),
   });
-
   if (response.isOk) {
     return Result.ok(true);
   }

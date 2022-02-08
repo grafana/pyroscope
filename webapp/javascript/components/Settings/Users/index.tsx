@@ -76,12 +76,12 @@ function Users() {
         <thead>
           <tr>
             <td />
-            <td>Login</td>
-            <td>Email</td>
-            <td>Name</td>
-            <td>Role</td>
-            <td>Updated</td>
-            <td />
+            <th>Login</th>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Updated</th>
+            <th />
           </tr>
         </thead>
         <tbody>

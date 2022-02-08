@@ -40,7 +40,7 @@ const ApiKeys = () => {
           type="submit"
           kind="secondary"
           icon={faPlus}
-          onClick={() => history.push('/settings/api-key/add')}
+          onClick={() => history.push('/settings/api-keys/add')}
         >
           Add Key
         </Button>
@@ -70,7 +70,7 @@ const ApiKeys = () => {
                 <td align="center">
                   <Button
                     type="submit"
-                    kind="default"
+                    kind="danger"
                     aria-label="Delete key"
                     onClick={() => handleDelete(key)}
                   >

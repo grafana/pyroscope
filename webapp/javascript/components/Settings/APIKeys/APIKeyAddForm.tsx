@@ -29,8 +29,7 @@ function APIKeyAddForm() {
     setForm({ ...form, role: value });
   };
 
-  const handleFormSubmit = (evt) => {
-    evt.preventDefault();
+  const handleFormSubmit = (event) => {
     const data = {
       name: form.name,
       role: form.role,
@@ -99,7 +98,7 @@ function APIKeyAddForm() {
               />
             </div>
             <div>
-              <Button icon={faCheck} type="submit" kind="primary">
+              <Button icon={faCheck} type="submit" kind="secondary">
                 Add API Key
               </Button>
             </div>

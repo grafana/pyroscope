@@ -77,7 +77,7 @@ function UserAddForm() {
             />
           </div>
           <div>
-            <Button icon={faCheck} type="submit" kind="primary">
+            <Button icon={faCheck} type="submit" kind="secondary">
               Add user
             </Button>
           </div>
