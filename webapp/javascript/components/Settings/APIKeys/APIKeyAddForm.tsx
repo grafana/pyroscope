@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Button from '@ui/Button';
-import { useHistory } from 'react-router-dom';
-import { faCopy, faCheck, faServer } from '@fortawesome/free-solid-svg-icons';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
+import { faCopy, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { createAPIKey } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { type APIKey } from '@models/apikeys';
 import Dropdown, { MenuItem } from '@ui/Dropdown';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
 
 export type APIKeyAddProps = APIKey;
@@ -13,6 +14,7 @@ export type APIKeyAddProps = APIKey;
 function APIKeyAddForm() {
   const [form, setForm]: [APIKeyAddProps, (value) => void] = useState({
     errors: [],
+    name: '',
     role: 'ReadOnly',
     ttlSeconds: 360000,
   });
@@ -48,6 +50,16 @@ function APIKeyAddForm() {
       );
   };
 
+  const handleKeyCopy = () => {
+    dispatch(
+      addNotification({
+        type: 'success',
+        title: 'Success',
+        message: 'Key has been copied',
+      })
+    );
+  };
+
   return (
     <>
       <h2>Add API Key</h2>
@@ -61,8 +73,10 @@ function APIKeyAddForm() {
               somewhere
             </div>
             <div>
-              <input type="text" value={key} />
-              <Button icon={faCopy} />
+              <input type="text" defaultValue={key} />
+              <CopyToClipboard text={key} onCopy={handleKeyCopy}>
+                <Button icon={faCopy} />
+              </CopyToClipboard>
             </div>
           </div>
         ) : (
