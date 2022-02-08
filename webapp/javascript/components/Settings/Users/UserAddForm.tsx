@@ -38,7 +38,7 @@ function UserAddForm() {
 
   return (
     <>
-      <h4>Add User</h4>
+      <h2>Add User</h2>
       <form onSubmit={handleFormSubmit}>
         <div className={styles.userForm}>
           <div>

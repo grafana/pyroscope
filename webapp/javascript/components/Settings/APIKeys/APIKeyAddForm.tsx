@@ -49,7 +49,7 @@ function APIKeyAddForm() {
 
   return (
     <>
-      <h4>Add API Key</h4>
+      <h2>Add API Key</h2>
 
       <div>{form.errors.join(', ')}</div>
       <form onSubmit={handleFormSubmit}>

@@ -1,4 +1,4 @@
-.userForm > div {
+.userForm > div:not(:last-child) {
   display: flex;
   margin: 10px 0px;
   flex-direction: column;
