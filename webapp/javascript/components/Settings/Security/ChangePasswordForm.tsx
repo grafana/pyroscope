@@ -9,34 +9,44 @@ import styles from './Security.module.css';
 function ChangePasswordForm(props) {
   const { user } = props;
   const [form, setForm] = useState({ errors: [] });
+  const [passwordsMatch, setPasswordsMatch] = useState(true);
   const dispatch = useAppDispatch();
   if (user.isExternal) {
     return null;
   }
+
+  const checkPasswordsMatch = (password: string, passwordAgain: string) => {
+    const match = password === passwordAgain;
+    setPasswordsMatch(match);
+
+    return match;
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const onChangePassword = (form) => {
-    dispatch(
-      changeMyPassword({
-        oldPassword: form.oldPassword,
-        newPassword: form.password,
-      })
-    )
-      .unwrap()
-      .then(
-        () => {
-          setForm({
-            errors: [],
-            oldPassword: '',
-            password: '',
-            passwordAgain: '',
-          });
-        },
-        (e) => setForm({ errors: e.errors })
-      );
+    if (checkPasswordsMatch(form.password, form.passwordAgain)) {
+      dispatch(
+        changeMyPassword({
+          oldPassword: form.oldPassword,
+          newPassword: form.password,
+        })
+      )
+        .unwrap()
+        .then(
+          () => {
+            setForm({
+              errors: [],
+              oldPassword: '',
+              password: '',
+              passwordAgain: '',
+            });
+          },
+          (e) => setForm({ errors: e.errors })
+        );
+    }
   };
 
   return (
@@ -66,6 +76,9 @@ function ChangePasswordForm(props) {
             onChange={handleChange}
           />
         </div>
+        {!passwordsMatch && (
+          <div className={styles.errors}>Passwords must match</div>
+        )}
         <div className={styles.securityInputWrapper}>
           <h4>Confirm new password</h4>
           <input
