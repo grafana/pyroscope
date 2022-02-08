@@ -20,11 +20,13 @@ import {
 } from '../redux/actions';
 import 'react-tabs/style/react-tabs.css';
 import adhocStyles from './Adhoc.module.scss';
+import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
 import ExportData from './ExportData';
 
 function AdhocSingle(props) {
   const { actions, file, profile, flamebearer, isProfileLoading, raw } = props;
   const { setAdhocFile, setAdhocProfile } = actions;
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
 
   useEffect(() => {
     actions.fetchAdhocProfiles();
@@ -72,7 +74,14 @@ function AdhocSingle(props) {
               flamebearer={flamebearer}
               viewType="single"
               display="both"
-              ExportData={<ExportData flamebearer={raw} exportJSON />}
+              ExportData={
+                <ExportData
+                  flamebearer={raw}
+                  exportJSON
+                  exportFlamegraphDotCom
+                  exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
+                />
+              }
             />
           )}
         </Box>

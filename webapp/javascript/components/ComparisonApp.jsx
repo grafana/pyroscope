@@ -16,6 +16,7 @@ import {
 } from '../redux/actions';
 import InstructionText from './FlameGraph/InstructionText';
 import ExportData from './ExportData';
+import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
 import styles from './ComparisonApp.module.css';
 
 // See docs here: https://github.com/flot/flot/blob/master/API.md
@@ -24,6 +25,8 @@ function ComparisonApp(props) {
   const { actions, renderURL, leftRenderURL, rightRenderURL, comparison } =
     props;
   const { rawLeft, rawRight } = comparison;
+  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(rawLeft);
+  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(rawRight);
 
   useEffect(() => {
     actions.fetchComparisonAppData(leftRenderURL, 'left');
@@ -70,6 +73,7 @@ function ComparisonApp(props) {
                   exportHTML
                   exportPprof
                   exportFlamegraphDotCom
+                  exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
                 />
               }
             >
@@ -99,6 +103,7 @@ function ComparisonApp(props) {
                   exportHTML
                   exportPprof
                   exportFlamegraphDotCom
+                  exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
                 />
               }
             >
