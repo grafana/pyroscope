@@ -207,7 +207,8 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/adhoc-comparison", ctrl.indexHandler()},
 		{"/adhoc-comparison-diff", ctrl.indexHandler()},
 		{"/settings", ctrl.indexHandler()},
-		{"/settings/{page}", ctrl.indexHandler()}},
+		{"/settings/{page}", ctrl.indexHandler()},
+		{"/settings/{page}/{subpage}", ctrl.indexHandler()}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.loginRedirect))
 
