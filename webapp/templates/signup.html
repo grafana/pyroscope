@@ -16,7 +16,20 @@
     <script>
       function error(string) {
         document.getElementById('error').innerHTML = string;
-      }      
+      }
+      
+      function login(data) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "/login");
+        xhr.setRequestHeader("Accept", "application/json");
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.onreadystatechange = function () {
+          if ( xhr.readyState === 4 ) {
+            location.href='/';
+          }
+        }
+        xhr.send(JSON.stringify(data));
+      }
       function signup() {
         if (document.getElementById('password').value!==document.getElementById('password-confirm').value) {
           error('Passwords must match');
@@ -30,8 +43,8 @@
   
         xhr.onreadystatechange = function () {
           if (xhr.readyState === 4) {
-            if ( xhr.status == 204 ) {
-              location.href='/';
+            if ( xhr.status == 204 || xhr.status == 200 ) {
+              login({username: data.name, password: data.password});
             } else {
               try {
                 error(JSON.parse(xhr.responseText).errors);
