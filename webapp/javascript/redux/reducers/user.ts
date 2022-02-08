@@ -92,6 +92,7 @@ export const editMe = createAsyncThunk(
     const res = await editMyUserAPI(data);
 
     if (res.isOk) {
+      await thunkAPI.dispatch(loadCurrentUser()).unwrap();
       return Promise.resolve(res.value);
     }
 
