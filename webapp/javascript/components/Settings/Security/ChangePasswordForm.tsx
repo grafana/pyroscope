@@ -59,7 +59,7 @@ function ChangePasswordForm(props) {
           <h4>New password</h4>
           <input
             type="password"
-            placeholder="Password"
+            placeholder="New password"
             defaultValue=""
             name="password"
             required
@@ -67,10 +67,10 @@ function ChangePasswordForm(props) {
           />
         </div>
         <div className={styles.securityInputWrapper}>
-          <h4>New password Again</h4>
+          <h4>Confirm new password</h4>
           <input
             type="password"
-            placeholder="Password"
+            placeholder="New password"
             name="passwordAgain"
             required
             onChange={handleChange}
