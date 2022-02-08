@@ -5,7 +5,6 @@ import {
   faTimes,
   faCheck,
   faEdit,
-  faTrashAlt,
   faToggleOff,
   faToggleOn,
 } from '@fortawesome/free-solid-svg-icons';
@@ -59,7 +58,7 @@ function EditRoleDropdown(props) {
 function DeleteButton(props) {
   return (
     <Button type="button" kind="danger">
-      <Icon icon={faTrashAlt} />
+      <Icon icon={faTimes} />
     </Button>
   );
 }
