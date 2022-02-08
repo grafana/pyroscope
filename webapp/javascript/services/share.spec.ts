@@ -1,8 +1,9 @@
 import { Result } from '@utils/fp';
+import { ZodError } from 'zod';
 import { shareWithFlamegraphDotcom } from './share';
 import { setupServer, rest } from './testUtils';
 // TODO move this testData to somewhere else
-import TestData from '../components/FlameGraph/FlameGraphComponent/testData';
+import TestData from './TestData';
 
 describe('Share', () => {
   let server: ReturnType<typeof setupServer> | null;
@@ -17,23 +18,15 @@ describe('Share', () => {
   describe('shareWithFlamegraphDotcom', () => {
     it('works', async () => {
       server = setupServer(
-        rest.get(`http://localhost/export`, (req, res, ctx) => {
-          // TODO check query params
-          //
-          return res(
-            ctx.status(200),
-
-            ctx.json({
-              url: 'http://myurl.com',
-            })
-          );
+        rest.post(`http://localhost/export`, (req, res, ctx) => {
+          return res(ctx.status(200), ctx.json({ url: 'http://myurl.com' }));
         })
       );
 
       server.listen();
       const res = await shareWithFlamegraphDotcom({
         name: 'myname',
-        flamebearer: TestData.SimpleTree,
+        flamebearer: TestData,
       });
 
       expect(res).toMatchObject(
@@ -41,6 +34,21 @@ describe('Share', () => {
           url: 'http://myurl.com',
         })
       );
+    });
+
+    it('fails if response doesnt contain the key', async () => {
+      server = setupServer(
+        rest.post(`http://localhost/export`, (req, res, ctx) => {
+          return res(ctx.status(200), ctx.json({}));
+        })
+      );
+      server.listen();
+
+      const res = await shareWithFlamegraphDotcom({
+        name: 'myname',
+        flamebearer: TestData,
+      });
+      expect(res.error).toBeInstanceOf(ZodError);
     });
   });
 });

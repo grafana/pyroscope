@@ -21,6 +21,7 @@ export async function shareWithFlamegraphDotcom({
   Result<FlamegraphDotComResponse, RequestError | ZodError>
 > {
   const response = await request('/export', {
+    method: 'POST',
     body: JSON.stringify({
       name,
       // TODO:
