@@ -31,11 +31,6 @@
         xhr.send(JSON.stringify(data));
       }
       function signup() {
-        if (document.getElementById('password').value!==document.getElementById('password-confirm').value) {
-          error('Passwords must match');
-          return
-        }
-
         var xhr = new XMLHttpRequest();
         xhr.open("POST", "/signup");
         xhr.setRequestHeader("Accept", "application/json");
@@ -95,10 +90,6 @@
           <div>
             <div><label>Password</label></div>
             <input type="password" name="password" aria-label="password input field" id="password" placeholder="Password" />
-          </div>
-          <div>
-            <div><label>Password Again</label></div>
-            <input type="password" name="password-again" aria-label="password input field" id="password-confirm" placeholder="Confirm password" />
           </div>
           <div>
             <button type="submit" class="sign-in-button">Sign Up</button>

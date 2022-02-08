@@ -143,6 +143,16 @@ body.login-page {
   }
 }
 
+.sign-in-button-signup {
+  background-color: #333;
+  span {
+    width: 180px;
+  }
+  &:hover {
+    background-color: darken(#333, 5%);
+  }
+}
+
 .signin-form {
   padding: 0 3em 0 3em;
   & > div {

@@ -207,7 +207,9 @@
         </a>
       </div>
       {{ end }} {{end}} {{ if .BasicAuthSignupEnabled }}
-      <a href="/signup" class="sign-in-button">Sign up</a>
+      <div class="sign-in-buttons">
+        <a href="/signup" class="sign-in-button sign-in-button-signup">Sign up</a>
+      </div>
       {{ end }}
     </section>
 

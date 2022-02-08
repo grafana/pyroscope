@@ -51,7 +51,7 @@ function Settings(props) {
                     })
                   }
                 >
-                  <Icon icon={faLock} /> Security
+                  <Icon icon={faLock} /> Change Password
                 </NavLink>
               </li>
               <li>
