@@ -4,12 +4,14 @@ import Box from '@ui/Box';
 import Icon from '@ui/Icon';
 import {
   faKey,
+  faLock,
   faSlidersH,
   faUserAlt,
 } from '@fortawesome/free-solid-svg-icons';
 import cx from 'classnames';
 import { withCurrentUser } from '@pyroscope/redux/reducers/user';
 import Preferences from './Preferences';
+import Security from './Security';
 import Users from './Users';
 import ApiKeys from './APIKeys';
 
@@ -39,6 +41,19 @@ function Settings(props) {
           </li>
           {isAdmin(currentUser) ? (
             <>
+              <li>
+                <NavLink
+                  to={`${url}/security`}
+                  className={(isActive) =>
+                    cx({
+                      [styles.navLink]: true,
+                      [styles.navLinkActive]: isActive,
+                    })
+                  }
+                >
+                  <Icon icon={faLock} /> Security
+                </NavLink>
+              </li>
               <li>
                 <NavLink
                   to={`${url}/users`}
@@ -74,6 +89,9 @@ function Settings(props) {
           <Switch>
             <Route exact path={path}>
               <Preferences />
+            </Route>
+            <Route exact path={`${path}/security`}>
+              <Security />
             </Route>
             <Route exact path={`${path}/users`}>
               <Users />
