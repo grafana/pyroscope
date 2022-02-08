@@ -31,6 +31,7 @@ function Preferences(props) {
           })
         );
       });
+    return false;
   };
 
   const handleFormChange = (event) => {

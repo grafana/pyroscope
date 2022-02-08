@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Button from '@ui/Button';
 import { useHistory } from 'react-router-dom';
-import { faCopy, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faCopy, faCheck, faServer } from '@fortawesome/free-solid-svg-icons';
 import { createAPIKey } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { type APIKey } from '@models/apikeys';
@@ -30,6 +30,7 @@ function APIKeyAddForm() {
   };
 
   const handleFormSubmit = (event) => {
+    event.preventDefault();
     const data = {
       name: form.name,
       role: form.role,
