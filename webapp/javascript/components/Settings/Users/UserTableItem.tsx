@@ -23,7 +23,7 @@ function DisableButton(props) {
   const { user, onDisable } = props;
   const icon = user.isDisabled ? faToggleOff : faToggleOn;
   return (
-    <Button type="button" kind="secondary" onClick={onDisable}>
+    <Button type="button" kind="secondary" onClick={() => onDisable(user)}>
       <Icon icon={icon} onClick={onDisable} />
     </Button>
   );

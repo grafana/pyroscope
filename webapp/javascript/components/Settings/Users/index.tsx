@@ -14,6 +14,7 @@ import {
 } from '@pyroscope/redux/reducers/settings';
 import { selectCurrentUser } from '@pyroscope/redux/reducers/user';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
+import { type User } from '@models/users';
 import UserTableItem from './UserTableItem';
 
 import userStyles from './Users.module.css';
@@ -40,15 +41,35 @@ function Users() {
       )) ||
     [];
 
-  const onDisableUser = (user: User) => {
+  const handleDisableUser = (user: User) => {
     if (user.isDisabled) {
-      dispatch(enableUser(user));
+      dispatch(enableUser(user))
+        .unwrap()
+        .then(() =>
+          dispatch(
+            addNotification({
+              type: 'success',
+              title: 'User has been enabled',
+              message: `User id#${user.id} has been enabled`,
+            })
+          )
+        );
     } else {
-      dispatch(disableUser(user));
+      dispatch(disableUser(user))
+        .unwrap()
+        .then(() =>
+          dispatch(
+            addNotification({
+              type: 'success',
+              title: 'User has been enabled',
+              message: `User id#${user.id} has been enabled`,
+            })
+          )
+        );
     }
   };
 
-  const onDeleteUser = (user: User) => {
+  const handleDeleteUser = (user: User) => {
     dispatch(deleteUser(user))
       .unwrap()
       .then((d) => {
@@ -104,8 +125,8 @@ function Users() {
                 user={user}
                 isCurrent={user.id === currentUser.id}
                 key={`userTableItem${user.id}`}
-                onDisable={() => onDisableUser(user)}
-                onDelete={onDeleteUser}
+                onDisable={handleDisableUser}
+                onDelete={handleDeleteUser}
               />
             ))
           ) : (
