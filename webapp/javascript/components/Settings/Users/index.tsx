@@ -90,7 +90,7 @@ function Users() {
               <UserTableItem
                 user={user}
                 isCurrent={user.id === currentUser.id}
-                key={`userTableItem${user.email}`}
+                key={`userTableItem${user.id}`}
                 onDisable={() => onDisableUser(user)}
               />
             ))
