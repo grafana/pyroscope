@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -12,9 +13,10 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
-	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
+	sm "github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -195,16 +197,20 @@ var _ = Describe("flags", func() {
 				err := exampleCommand.Execute()
 				Expect(err).ToNot(HaveOccurred())
 				Expect(cfg).To(Equal(config.Server{
-					AnalyticsOptOut:           false,
-					Config:                    "testdata/server.yml",
-					LogLevel:                  "debug",
-					BadgerLogLevel:            "error",
-					StoragePath:               "/var/lib/pyroscope",
-					APIBindAddr:               ":4040",
-					BaseURL:                   "",
-					CacheEvictThreshold:       0.25,
-					CacheEvictVolume:          0.33,
-					BadgerNoTruncate:          false,
+					AnalyticsOptOut:     false,
+					Config:              "testdata/server.yml",
+					LogLevel:            "debug",
+					BadgerLogLevel:      "error",
+					StoragePath:         "/var/lib/pyroscope",
+					APIBindAddr:         ":4040",
+					BaseURL:             "",
+					CacheEvictThreshold: 0.25,
+					CacheEvictVolume:    0.33,
+					BadgerNoTruncate:    false,
+					Database: config.Database{
+						Type: "sqlite3",
+						URL:  "",
+					},
 					DisablePprofEndpoint:      false,
 					EnableExperimentalAdmin:   true,
 					EnableExperimentalAdhocUI: false,
@@ -223,6 +229,16 @@ var _ = Describe("flags", func() {
 					CacheSegmentSize:    0,
 					CacheTreeSize:       0,
 					Auth: config.Auth{
+						Internal: config.InternalAuth{
+							Enabled:       false,
+							SignupEnabled: false,
+							AdminUser: config.AdminUser{
+								Create:   true,
+								Name:     "admin",
+								Email:    "admin@localhost.local",
+								Password: "admin",
+							},
+						},
 						Google: config.GoogleOauth{
 							Enabled:        false,
 							ClientID:       "",
@@ -251,8 +267,15 @@ var _ = Describe("flags", func() {
 							TokenURL:             "https://github.com/login/oauth/access_token",
 							AllowedOrganizations: []string{},
 						},
+						Ingestion: config.IngestionAuth{
+							Enabled:   false,
+							CacheTTL:  time.Second,
+							CacheSize: 1024,
+						},
 						JWTSecret:                "",
 						LoginMaximumLifetimeDays: 0,
+						SignupDefaultRole:        model.ReadOnlyRole,
+						CookieSameSite:           http.SameSiteLaxMode,
 					},
 
 					MetricsExportRules: config.MetricsExportRules{
@@ -276,10 +299,10 @@ var _ = Describe("flags", func() {
 							ServiceDiscoveryConfigs: []discovery.Config{
 								discovery.StaticConfig{
 									{
-										Targets: []model.LabelSet{
+										Targets: []sm.LabelSet{
 											{"__address__": "localhost:6060", "__name__": "app"},
 										},
-										Labels: model.LabelSet{"foo": "bar"},
+										Labels: sm.LabelSet{"foo": "bar"},
 										Source: "0",
 									},
 								},

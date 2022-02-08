@@ -176,11 +176,15 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		ctrl.appStats.Add(hashString(pi.Key.AppName()))
 	})
 
+	ingestMiddleware := []mux.MiddlewareFunc{ctrl.drainMiddleware}
+	if ctrl.config.Auth.Ingestion.Enabled {
+		ingestMiddleware = append(ingestMiddleware,
+			ctrl.ingestionAuthMiddleware(),
+			authz.Require(authz.Role(model.AgentRole)))
+	}
 	ctrl.addRoutes(r, []route{
 		{"/ingest", ingestHandler.ServeHTTP}},
-		ctrl.drainMiddleware,
-		ctrl.ingestionAuthMiddleware(),
-		authz.Require(authz.Role(model.AgentRole)))
+		ingestMiddleware...)
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()

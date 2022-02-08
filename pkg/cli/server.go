@@ -28,6 +28,7 @@ import (
 	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
@@ -90,11 +91,17 @@ func newServerService(c *config.Server) (*serverService, error) {
 		}
 	}
 
+	svc.database, err = sqlstore.Open(c)
+	if err != nil {
+		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
+	}
+
 	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
 		socketPath := svc.config.AdminSocketPath
-		adminSvc := admin.NewService(svc.storage)
-		adminCtrl := admin.NewController(svc.logger, adminSvc)
+		adminService := admin.NewService(svc.storage)
+		userService := service.NewUserService(svc.database.DB())
+		adminCtrl := admin.NewController(svc.logger, adminService, userService)
 		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
@@ -142,13 +149,6 @@ func newServerService(c *config.Server) (*serverService, error) {
 			Logger:         logger,
 		})
 	}
-
-	svc.database, err = sqlstore.Open(c)
-	if err != nil {
-		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
-	}
-
-	// TODO(kolesnikovae): DB seeding
 
 	defaultMetricsRegistry := prometheus.DefaultRegisterer
 	svc.controller, err = server.New(server.Config{

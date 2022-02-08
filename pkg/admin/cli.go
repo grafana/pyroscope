@@ -89,6 +89,13 @@ func (c *CLI) DeleteApp(appname string, skipVerification bool) error {
 	return nil
 }
 
+func (c *CLI) ResetUserPassword(username, password string, enable bool) error {
+	if username == "" || password == "" {
+		return fmt.Errorf("username and password are required")
+	}
+	return c.client.ResetUserPassword(username, password, enable)
+}
+
 // CompleteApp returns the list of apps
 // it's meant for cobra's autocompletion
 // TODO use the parameter for fuzzy search?
