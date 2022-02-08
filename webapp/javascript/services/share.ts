@@ -11,7 +11,7 @@ import { request } from './base';
 
 interface shareWithFlamegraphDotcomProps {
   flamebearer: RawFlamebearerProfile;
-  name: string;
+  name?: string;
 }
 
 export async function shareWithFlamegraphDotcom({

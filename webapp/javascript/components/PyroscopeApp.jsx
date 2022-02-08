@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { connect } from 'react-redux';
 import 'react-dom';
-
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
 import FlameGraphRenderer from './FlameGraph';
@@ -15,10 +14,12 @@ import {
   abortTimelineRequest,
 } from '../redux/actions';
 import ExportData from './ExportData';
+import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
 
 function PyroscopeApp(props) {
   const { actions, renderURL, single, raw } = props;
   const prevPropsRef = useRef();
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
 
   useEffect(() => {
     if (prevPropsRef.renderURL !== renderURL) {
@@ -52,6 +53,7 @@ function PyroscopeApp(props) {
                 exportPprof
                 exportHTML
                 exportFlamegraphDotCom
+                exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
               />
             }
           />
