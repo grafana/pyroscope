@@ -129,3 +129,18 @@ export async function editMyUser(
 
   return Result.err<false, RequestError>(response.error);
 }
+
+export async function deleteUser(data: {
+  id: number;
+}): Promise<Result<boolean, RequestError | ZodError>> {
+  const { id } = data;
+  const response = await request(`/api/users/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (response.isOk) {
+    return Result.ok(true);
+  }
+
+  return Result.err<false, RequestError>(response.error);
+}

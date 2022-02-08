@@ -10,11 +10,10 @@ import {
   selectUsers,
   enableUser,
   disableUser,
+  deleteUser,
 } from '@pyroscope/redux/reducers/settings';
-import {
-  selectCurrentUser,
-  withCurrentUser,
-} from '@pyroscope/redux/reducers/user';
+import { selectCurrentUser } from '@pyroscope/redux/reducers/user';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import UserTableItem from './UserTableItem';
 
 import userStyles from './Users.module.css';
@@ -47,6 +46,20 @@ function Users() {
     } else {
       dispatch(disableUser(user));
     }
+  };
+
+  const onDeleteUser = (user: User) => {
+    dispatch(deleteUser(user))
+      .unwrap()
+      .then((d) => {
+        dispatch(
+          addNotification({
+            type: 'success',
+            title: 'User has been deleted',
+            message: `User id#${user.id} has been successfully deleted`,
+          })
+        );
+      });
   };
 
   return (
@@ -92,6 +105,7 @@ function Users() {
                 isCurrent={user.id === currentUser.id}
                 key={`userTableItem${user.id}`}
                 onDisable={() => onDisableUser(user)}
+                onDelete={onDeleteUser}
               />
             ))
           ) : (
