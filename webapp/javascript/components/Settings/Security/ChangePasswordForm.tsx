@@ -4,98 +4,94 @@ import Button from '@ui/Button';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 
 import { changeMyPassword } from '@pyroscope/redux/reducers/user';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import styles from './Security.module.css';
 
 function ChangePasswordForm(props) {
   const { user } = props;
   const [form, setForm] = useState({ errors: [] });
-  const [passwordsMatch, setPasswordsMatch] = useState(true);
   const dispatch = useAppDispatch();
   if (user.isExternal) {
     return null;
   }
 
-  const checkPasswordsMatch = (password: string, passwordAgain: string) => {
-    const match = password === passwordAgain;
-    setPasswordsMatch(match);
-
-    return match;
-  };
-
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const onChangePassword = (form) => {
-    if (checkPasswordsMatch(form.password, form.passwordAgain)) {
-      dispatch(
-        changeMyPassword({
-          oldPassword: form.oldPassword,
-          newPassword: form.password,
-        })
-      )
-        .unwrap()
-        .then(
-          () => {
-            setForm({
-              errors: [],
-              oldPassword: '',
-              password: '',
-              passwordAgain: '',
-            });
-          },
-          (e) => setForm({ errors: e.errors })
-        );
+  const handleFormSubmit = (evt) => {
+    evt.preventDefault();
+    if (form.password !== form.passwordAgain) {
+      return setForm({ errors: ['Passwords must match'] });
     }
+    dispatch(
+      changeMyPassword({
+        oldPassword: form.oldPassword,
+        newPassword: form.password,
+      })
+    )
+      .unwrap()
+      .then(
+        () => {
+          dispatch(
+            addNotification({
+              type: 'success',
+              title: 'Password changed',
+              message: `Password has been successfully changed`,
+            })
+          );
+          setForm({
+            errors: [],
+            oldPassword: '',
+            password: '',
+            passwordAgain: '',
+          });
+        },
+        (e) => setForm({ errors: e.errors })
+      );
+    return false;
   };
 
   return (
     <>
       <h2>Change password</h2>
       <div>
-        <div className={styles.errors}>{form.errors.join(', ')}</div>
-        <div className={styles.securityInputWrapper}>
-          <h4>Old password</h4>
-          <input
-            type="password"
-            placeholder="Password"
-            defaultValue=""
-            name="oldPassword"
-            required
-            onChange={handleChange}
-          />
-        </div>
-        <div className={styles.securityInputWrapper}>
-          <h4>New password</h4>
-          <input
-            type="password"
-            placeholder="New password"
-            defaultValue=""
-            name="password"
-            required
-            onChange={handleChange}
-          />
-        </div>
-        {!passwordsMatch && (
-          <div className={styles.errors}>Passwords must match</div>
-        )}
-        <div className={styles.securityInputWrapper}>
-          <h4>Confirm new password</h4>
-          <input
-            type="password"
-            placeholder="New password"
-            name="passwordAgain"
-            required
-            onChange={handleChange}
-          />
-        </div>
-        <Button
-          type="submit"
-          kind="secondary"
-          onClick={() => onChangePassword(form)}
-        >
-          Save
-        </Button>
+        <form onSubmit={handleFormSubmit}>
+          <div className={styles.errors}>{form.errors.join(', ')}</div>
+          <div className={styles.securityInputWrapper}>
+            <h4>Old password</h4>
+            <input
+              type="password"
+              placeholder="Password"
+              name="oldPassword"
+              required
+              onChange={handleChange}
+            />
+          </div>
+          <div className={styles.securityInputWrapper}>
+            <h4>New password</h4>
+            <input
+              type="password"
+              placeholder="New password"
+              name="password"
+              required
+              onChange={handleChange}
+            />
+          </div>
+          <div className={styles.securityInputWrapper}>
+            <h4>Confirm new password</h4>
+            <input
+              type="password"
+              placeholder="New password"
+              name="passwordAgain"
+              required
+              onChange={handleChange}
+            />
+          </div>
+          <Button type="submit" kind="secondary">
+            Save
+          </Button>
+        </form>
       </div>
     </>
   );
