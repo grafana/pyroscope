@@ -21,6 +21,7 @@ var (
 	ErrUserEmailInvalid    = ValidationError{errors.New("user email is invalid")}
 	ErrUserExternalChange  = ValidationError{errors.New("external users can't be modified")}
 	ErrUserPasswordEmpty   = ValidationError{errors.New("user password can't be empty")}
+	ErrUserPasswordTooLong = ValidationError{errors.New("user password must not exceed 255 characters")}
 	ErrUserPasswordInvalid = ValidationError{errors.New("invalid password")}
 	ErrUserDisabled        = ValidationError{errors.New("user disabled")}
 
@@ -202,6 +203,9 @@ func ValidatePasswordRequirements(p string) error {
 	// TODO(kolesnikovae): should be configurable.
 	if p == "" {
 		return ErrUserPasswordEmpty
+	}
+	if len(p) > 255 {
+		return ErrUserPasswordTooLong
 	}
 	return nil
 }
