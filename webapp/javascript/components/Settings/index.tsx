@@ -23,6 +23,7 @@ function Settings(props) {
   const { path, url } = useRouteMatch();
   const { currentUser } = props;
   const isAdmin = (user) => user && user.role === 'Admin';
+  const isExternal = (user) => user && user.isExternal;
   return (
     <div className="pyroscope-app">
       <h1>Settings</h1>
@@ -39,21 +40,23 @@ function Settings(props) {
               <Icon icon={faSlidersH} /> Profile
             </NavLink>
           </li>
+          {!isExternal(currentUser) && (
+            <li>
+              <NavLink
+                to={`${url}/security`}
+                className={(isActive) =>
+                  cx({
+                    [styles.navLink]: true,
+                    [styles.navLinkActive]: isActive,
+                  })
+                }
+              >
+                <Icon icon={faLock} /> Change Password
+              </NavLink>
+            </li>
+          )}
           {isAdmin(currentUser) ? (
             <>
-              <li>
-                <NavLink
-                  to={`${url}/security`}
-                  className={(isActive) =>
-                    cx({
-                      [styles.navLink]: true,
-                      [styles.navLinkActive]: isActive,
-                    })
-                  }
-                >
-                  <Icon icon={faLock} /> Change Password
-                </NavLink>
-              </li>
               <li>
                 <NavLink
                   to={`${url}/users`}
