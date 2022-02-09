@@ -13,4 +13,9 @@
   background-color: #28a745;
   color: white;
   padding: 10px;
+  margin: 15px 0;
+}
+
+.keyOutput {
+  max-width: 40%;
 }
