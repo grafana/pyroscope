@@ -30,4 +30,32 @@ func IsValidationError(err error) bool {
 	return errors.As(err, &v)
 }
 
+type AuthenticationError struct{ Err error }
+
+func (e AuthenticationError) Error() string { return e.Err.Error() }
+
+func (e AuthenticationError) Unwrap() error { return e.Err }
+
+func IsAuthenticationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var v AuthenticationError
+	return errors.As(err, &v)
+}
+
+type AuthorizationError struct{ Err error }
+
+func (e AuthorizationError) Error() string { return e.Err.Error() }
+
+func (e AuthorizationError) Unwrap() error { return e.Err }
+
+func IsAuthorizationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var v AuthorizationError
+	return errors.As(err, &v)
+}
+
 func String(s string) *string { return &s }

@@ -69,14 +69,12 @@ function APIKeyAddForm() {
         {key ? (
           <div>
             <div className={styles.success}>
-              Key has been successfully added. Click the button below to copy
-              it.
+              Key has been successfully added. Click the button below to copy it
+              to clipboard
             </div>
             <div>
               <CopyToClipboard text={key} onCopy={handleKeyCopy}>
-                <Button icon={faCopy} className={styles.keyOutput}>
-                  {key}
-                </Button>
+                <Button icon={faCopy} className={styles.keyOutput} />
               </CopyToClipboard>
             </div>
           </div>

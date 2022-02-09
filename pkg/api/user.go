@@ -169,7 +169,7 @@ func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		Error(w, ErrPermissionDenied)
+		Error(w, model.ErrPermissionDenied)
 		return
 	}
 	var req resetUserPasswordRequest
@@ -192,7 +192,7 @@ func (h UserHandler) ChangeUserRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		Error(w, ErrPermissionDenied)
+		Error(w, model.ErrPermissionDenied)
 		return
 	}
 	var req changeUserRoleRequest
@@ -223,7 +223,7 @@ func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, dis
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		Error(w, ErrPermissionDenied)
+		Error(w, model.ErrPermissionDenied)
 		return
 	}
 	params := model.UpdateUserParams{IsDisabled: &disabled}
@@ -250,7 +250,7 @@ func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
 	user, ok := model.UserFromContext(r.Context())
 	if !ok {
-		Error(w, ErrPermissionDenied)
+		Error(w, model.ErrPermissionDenied)
 		return
 	}
 	MustJSON(w, userFromModel(user))
@@ -259,7 +259,7 @@ func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request
 func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
 	user, ok := model.UserFromContext(r.Context())
 	if !ok {
-		Error(w, ErrPermissionDenied)
+		Error(w, model.ErrPermissionDenied)
 		return
 	}
 	h.updateUser(w, r, user.ID)
@@ -268,7 +268,7 @@ func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Requ
 func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *http.Request) {
 	user, ok := model.UserFromContext(r.Context())
 	if !ok {
-		Error(w, ErrPermissionDenied)
+		Error(w, model.ErrPermissionDenied)
 		return
 	}
 	var req changeUserPasswordRequest

@@ -173,7 +173,7 @@ type Auth struct {
 
 	Ingestion IngestionAuth `mapstructure:"ingestion"`
 
-	CookieSameSite           http.SameSite `json:"-" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
+	CookieSameSite           http.SameSite `json:"-" name:"cookie-same-site" yaml:"cookie-same-site" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
 	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
 	LoginMaximumLifetimeDays int           `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
 }
@@ -193,7 +193,7 @@ type IngestionAuth struct {
 type AdminUser struct {
 	Create   bool   `json:"-" deprecated:"true" def:"true" desc:"" mapstructure:"create"`
 	Name     string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"name"`
-	Email    string `json:"-" deprecated:"true" def:"nobody@localhost.local" desc:"" mapstructure:"email"`
+	Email    string `json:"-" deprecated:"true" def:"admin@localhost.local" desc:"" mapstructure:"email"`
 	Password string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"password"`
 }
 
@@ -301,9 +301,11 @@ type Connect struct {
 
 // TODO how to abstract this better?
 type Admin struct {
-	AdminAppDelete AdminAppDelete `skip:"true" mapstructure:",squash"`
-	AdminAppGet    AdminAppGet    `skip:"true" mapstructure:",squash"`
+	AdminAppDelete         AdminAppDelete         `skip:"true" mapstructure:",squash"`
+	AdminAppGet            AdminAppGet            `skip:"true" mapstructure:",squash"`
+	AdminUserPasswordReset AdminUserPasswordReset `skip:"true" mapstructure:",squash"`
 }
+
 type AdminAppGet struct {
 	SocketPath string        `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
 	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
@@ -315,7 +317,16 @@ type AdminAppDelete struct {
 	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
 }
 
+type AdminUserPasswordReset struct {
+	SocketPath string        `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
+
+	Username string `desc:"user name (login)" mapstructure:"username"`
+	Password string `desc:"new password" mapstructure:"password"`
+	Enable   bool   `desc:"enable user" mapstructure:"enable"`
+}
+
 type Database struct {
 	Type string `def:"sqlite3" desc:"" mapstructure:"type"`
-	URL  string `def:"<installPrefix>/var/lib/pyroscope/pyroscope.db" desc:"" mapstructure:"url"`
+	URL  string `def:"" desc:"" mapstructure:"url"`
 }

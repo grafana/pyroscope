@@ -61,8 +61,8 @@ function Users() {
           dispatch(
             addNotification({
               type: 'success',
-              title: 'User has been disabled',
-              message: `User id#${user.id} has been disabled`,
+              title: 'User has been enabled',
+              message: `User id#${user.id} has been enabled`,
             })
           )
         );

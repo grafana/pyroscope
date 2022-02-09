@@ -59,6 +59,19 @@ function Settings(props) {
             <>
               <li>
                 <NavLink
+                  to={`${url}/security`}
+                  className={(isActive) =>
+                    cx({
+                      [styles.navLink]: true,
+                      [styles.navLinkActive]: isActive,
+                    })
+                  }
+                >
+                  <Icon icon={faLock} /> Change Password
+                </NavLink>
+              </li>
+              <li>
+                <NavLink
                   to={`${url}/users`}
                   className={(isActive) =>
                     cx({

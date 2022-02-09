@@ -20,9 +20,13 @@ import (
 //  figure out all the necessary info on its own.
 
 func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
+	if !ctrl.config.Auth.Internal.Enabled {
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
-		ctrl.loginGet(w)
+		ctrl.loginGet(w, r)
 	case http.MethodPost:
 		ctrl.loginPost(w, r)
 	default:
@@ -30,7 +34,11 @@ func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ctrl *Controller) loginGet(w http.ResponseWriter) {
+func (ctrl *Controller) loginGet(w http.ResponseWriter, r *http.Request) {
+	if ctrl.isUserAuthenticated(r) {
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
 	tmpl, err := ctrl.getTemplate("/login.html")
 	if err != nil {
 		ctrl.log.WithError(err).Error("could not render login page")
@@ -48,10 +56,6 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter) {
 }
 
 func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.Internal.Enabled {
-		ctrl.logErrorAndRedirect(w, r, "password authentication disabled", nil)
-		return
-	}
 	type loginCredentials struct {
 		Username string `json:"username"`
 		Password []byte `json:"password"`
@@ -85,11 +89,30 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, err)
 		return
 	}
-	ctrl.createCookie(w, jwtCookieName, token)
+	ctrl.createCookie(w, api.JWTCookieName, token)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (ctrl *Controller) signupGet(w http.ResponseWriter) {
+func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
+	if !ctrl.config.Auth.Internal.SignupEnabled {
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		ctrl.signupGet(w, r)
+	case http.MethodPost:
+		ctrl.signupPost(w, r)
+	default:
+		ctrl.writeInvalidMethodError(w)
+	}
+}
+
+func (ctrl *Controller) signupGet(w http.ResponseWriter, r *http.Request) {
+	if ctrl.isUserAuthenticated(r) {
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
 	tmpl, err := ctrl.getTemplate("/signup.html")
 	if err != nil {
 		ctrl.log.WithError(err).Error("could not render signup page")
@@ -106,22 +129,7 @@ func (ctrl *Controller) signupGet(w http.ResponseWriter) {
 	})
 }
 
-func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		ctrl.signupGet(w)
-	case http.MethodPost:
-		ctrl.signupPost(w, r)
-	default:
-		ctrl.writeInvalidMethodError(w)
-	}
-}
-
 func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.Internal.SignupEnabled {
-		ctrl.logErrorAndRedirect(w, r, "signup disabled", nil)
-		return
-	}
 	type signupRequest struct {
 		Name     string  `json:"name"`
 		Email    *string `json:"email,omitempty"`
@@ -154,6 +162,15 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (ctrl *Controller) isUserAuthenticated(r *http.Request) bool {
+	if v, err := r.Cookie(api.JWTCookieName); err == nil {
+		if _, err = ctrl.authService.UserFromJWTToken(r.Context(), v.Value); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 func (ctrl *Controller) createCookie(w http.ResponseWriter, name, value string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
@@ -179,7 +196,7 @@ func invalidateCookie(w http.ResponseWriter, name string) {
 func (ctrl *Controller) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost, http.MethodGet:
-		invalidateCookie(w, jwtCookieName)
+		invalidateCookie(w, api.JWTCookieName)
 		ctrl.loginRedirect(w, r)
 	default:
 		ctrl.writeInvalidMethodError(w)
@@ -303,7 +320,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 
 		// delete state cookie and add jwt cookie
 		invalidateCookie(w, stateCookieName)
-		ctrl.createCookie(w, jwtCookieName, token)
+		ctrl.createCookie(w, api.JWTCookieName, token)
 		tmpl, err := ctrl.getTemplate("/welcome.html")
 		if err != nil {
 			ctrl.writeInternalServerError(w, err, "could not render welcome page")

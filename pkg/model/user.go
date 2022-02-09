@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	ErrUserNotFound        = NotFoundError{errors.New("user not found")}
+	ErrUserNotFound = NotFoundError{errors.New("user not found")}
+
 	ErrUserNameExists      = ValidationError{errors.New("user with this name already exists")}
 	ErrUserNameEmpty       = ValidationError{errors.New("user name can't be empty")}
 	ErrUserNameTooLong     = ValidationError{errors.New("user name must not exceed 255 characters")}
@@ -20,8 +21,15 @@ var (
 	ErrUserEmailInvalid    = ValidationError{errors.New("user email is invalid")}
 	ErrUserExternalChange  = ValidationError{errors.New("external users can't be modified")}
 	ErrUserPasswordEmpty   = ValidationError{errors.New("user password can't be empty")}
+	ErrUserPasswordInvalid = ValidationError{errors.New("invalid password")}
 	ErrUserDisabled        = ValidationError{errors.New("user disabled")}
-	ErrInvalidCredentials  = ValidationError{errors.New("invalid credentials")}
+
+	// ErrInvalidCredentials should be returned when details of the authentication
+	// failure should be hidden (e.g. when user or API key not found).
+	ErrInvalidCredentials = AuthenticationError{errors.New("invalid credentials")}
+	// ErrPermissionDenied should be returned if the actor does not have
+	// sufficient permissions for the action.
+	ErrPermissionDenied = AuthorizationError{errors.New("permission denied")}
 )
 
 type User struct {

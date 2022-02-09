@@ -106,8 +106,27 @@ func (svc UserService) UpdateUserByID(ctx context.Context, id uint, params model
 	if err := params.Validate(); err != nil {
 		return model.User{}, err
 	}
+	return updateUserByID(svc.db.WithContext(ctx), id, params)
+}
+
+func (svc UserService) UpdateUserByName(ctx context.Context, name string, params model.UpdateUserParams) (model.User, error) {
+	if err := model.ValidateUserName(name); err != nil {
+		return model.User{}, err
+	}
+	if err := params.Validate(); err != nil {
+		return model.User{}, err
+	}
+	tx := svc.db.WithContext(ctx)
+	user, err := findUserByName(tx, name)
+	if err != nil {
+		return model.User{}, err
+	}
+	return updateUserByID(tx, user.ID, params)
+}
+
+func updateUserByID(tx *gorm.DB, id uint, params model.UpdateUserParams) (model.User, error) {
 	var updated model.User
-	return updated, svc.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	return updated, tx.Transaction(func(tx *gorm.DB) error {
 		user, err := findUserByID(tx, id)
 		if err != nil {
 			return err
@@ -176,7 +195,7 @@ func (svc UserService) UpdateUserPasswordByID(ctx context.Context, id uint, para
 			return err
 		}
 		if err = model.VerifyPassword(user.PasswordHash, params.OldPassword); err != nil {
-			return model.ErrInvalidCredentials
+			return model.ErrUserPasswordInvalid
 		}
 		columns := model.User{
 			ID:                id,

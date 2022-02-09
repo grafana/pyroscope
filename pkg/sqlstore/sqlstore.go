@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -15,16 +16,16 @@ import (
 )
 
 type SQLStore struct {
-	config config.Database
+	config *config.Server
 
 	db  *sql.DB
 	orm *gorm.DB
 }
 
 func Open(c *config.Server) (*SQLStore, error) {
-	s := SQLStore{config: c.Database}
+	s := SQLStore{config: c}
 	var err error
-	switch s.config.Type {
+	switch s.config.Database.Type {
 	case "sqlite3":
 		err = s.openSQLiteDB()
 	default:
@@ -51,7 +52,11 @@ func (s *SQLStore) Ping(ctx context.Context) error {
 }
 
 func (s *SQLStore) openSQLiteDB() (err error) {
-	s.orm, err = gorm.Open(sqlite.Open(s.config.URL), &gorm.Config{
+	path := filepath.Join(s.config.StoragePath, "pyroscope.sqlite3")
+	if s.config.Database.URL != "" {
+		path = s.config.Database.URL
+	}
+	s.orm, err = gorm.Open(sqlite.Open(path), &gorm.Config{
 		Logger: logger.Discard,
 	})
 	s.db, err = s.orm.DB()
