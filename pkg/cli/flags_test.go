@@ -192,6 +192,7 @@ var _ = Describe("flags", func() {
 					"--config=testdata/server.yml",
 					"--log-level=debug",
 					"--adhoc-data-path=", // Override as it's platform dependent.
+					"--auth.signup-default-role=admin",
 				})
 
 				err := exampleCommand.Execute()
@@ -274,8 +275,8 @@ var _ = Describe("flags", func() {
 						},
 						JWTSecret:                "",
 						LoginMaximumLifetimeDays: 0,
-						SignupDefaultRole:        model.ReadOnlyRole,
-						CookieSameSite:           http.SameSiteLaxMode,
+						SignupDefaultRole:        model.AdminRole,
+						CookieSameSite:           http.SameSiteStrictMode,
 					},
 
 					MetricsExportRules: config.MetricsExportRules{

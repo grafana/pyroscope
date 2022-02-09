@@ -329,7 +329,10 @@ func loadScrapeConfigsFromFile(c *config.Server) error {
 	default:
 		return err
 	}
-	var s config.Server
+	type scrapeConfig struct {
+		ScrapeConfigs []*sc.Config `yaml:"scrape-configs" mapstructure:"-"`
+	}
+	var s scrapeConfig
 	if err = yaml.Unmarshal(b, &s); err != nil {
 		return err
 	}

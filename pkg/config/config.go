@@ -173,7 +173,7 @@ type Auth struct {
 
 	Ingestion IngestionAuth `mapstructure:"ingestion"`
 
-	CookieSameSite           http.SameSite `json:"-" name:"cookie-same-site" yaml:"cookie-same-site" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
+	CookieSameSite           http.SameSite `json:"-" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
 	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
 	LoginMaximumLifetimeDays int           `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
 }

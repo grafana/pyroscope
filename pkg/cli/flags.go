@@ -10,7 +10,6 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/mitchellh/mapstructure"
-	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -18,6 +17,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/adhoc/util"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/duration"
 	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
@@ -111,6 +111,8 @@ func Unmarshal(vpr *viper.Viper, cfg interface{}) error {
 		mapstructure.ComposeDecodeHookFunc(
 			// Function to add a special type for «env. mode»
 			stringToByteSize,
+			stringToSameSite,
+			stringToRole,
 			// Function to support net.IP
 			mapstructure.StringToIPHookFunc(),
 			// Appended by the two default functions
@@ -129,6 +131,28 @@ func stringToByteSize(_, t reflect.Type, data interface{}) (interface{}, error) 
 		return data, nil
 	}
 	return bytesize.Parse(stringData)
+}
+
+func stringToSameSite(_, t reflect.Type, data interface{}) (interface{}, error) {
+	if t != reflect.TypeOf(http.SameSiteStrictMode) {
+		return data, nil
+	}
+	stringData, ok := data.(string)
+	if !ok {
+		return data, nil
+	}
+	return parseSameSite(stringData)
+}
+
+func stringToRole(_, t reflect.Type, data interface{}) (interface{}, error) {
+	if t != reflect.TypeOf(model.AdminRole) {
+		return data, nil
+	}
+	stringData, ok := data.(string)
+	if !ok {
+		return data, nil
+	}
+	return model.ParseRole(stringData)
 }
 
 type options struct {
@@ -325,6 +349,34 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 		}
 
 		switch field.Type {
+		case reflect.TypeOf(model.InvalidRole):
+			valRole := fieldV.Addr().Interface().(*model.Role)
+			val := (*roleFlag)(valRole)
+			var defaultVal model.Role
+			if defaultValStr != "" {
+				var err error
+				defaultVal, err = model.ParseRole(defaultValStr)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			*val = (roleFlag)(defaultVal)
+			flagSet.Var(val, nameVal, descVal)
+			vpr.SetDefault(nameVal, defaultVal)
+		case reflect.TypeOf(http.SameSiteStrictMode):
+			valP := fieldV.Addr().Interface().(*http.SameSite)
+			val := (*sameSiteFlag)(valP)
+			var defaultVal http.SameSite
+			if defaultValStr != "" {
+				var err error
+				defaultVal, err = parseSameSite(defaultValStr)
+				if err != nil {
+					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
+				}
+			}
+			*val = (sameSiteFlag)(defaultVal)
+			flagSet.Var(val, nameVal, descVal)
+			vpr.SetDefault(nameVal, defaultVal)
 		case reflect.TypeOf([]string{}):
 			val := fieldV.Addr().Interface().(*[]string)
 			val2 := (*arrayFlags)(val)
@@ -370,30 +422,6 @@ func visitFields(flagSet *pflag.FlagSet, vpr *viper.Viper, prefix string, t refl
 
 			flagSet.Var(val, nameVal, descVal)
 			vpr.SetDefault(nameVal, defaultVal)
-		case reflect.TypeOf(model.InvalidRole):
-			valRole := fieldV.Addr().Interface().(*model.Role)
-			val := (*roleFlag)(valRole)
-			var defaultVal model.Role
-			if defaultValStr != "" {
-				var err error
-				defaultVal, err = model.ParseRole(defaultValStr)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-			}
-			*val = (roleFlag)(defaultVal)
-		case reflect.TypeOf(http.SameSiteStrictMode):
-			valP := fieldV.Addr().Interface().(*http.SameSite)
-			val := (*sameSiteFlag)(valP)
-			var defaultVal http.SameSite
-			if defaultValStr != "" {
-				var err error
-				defaultVal, err = parseSameSite(defaultValStr)
-				if err != nil {
-					logrus.Fatalf("invalid default value: %q (%s)", defaultValStr, nameVal)
-				}
-			}
-			*val = (sameSiteFlag)(defaultVal)
 		case reflect.TypeOf(bytesize.Byte):
 			valByteSize := fieldV.Addr().Interface().(*bytesize.ByteSize)
 			val := (*byteSizeFlag)(valByteSize)

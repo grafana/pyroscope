@@ -361,8 +361,8 @@ var _ = Describe("UserService", func() {
 					params.NewPassword = "whatever"
 				})
 
-				It("returns ErrInvalidCredentials", func() {
-					Expect(err).To(MatchError(model.ErrInvalidCredentials))
+				It("returns ErrUserPasswordInvalid", func() {
+					Expect(err).To(MatchError(model.ErrUserPasswordInvalid))
 				})
 			})
 
