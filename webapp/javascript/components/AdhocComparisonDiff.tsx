@@ -19,6 +19,7 @@ import {
 import styles from './ComparisonApp.module.css';
 import 'react-tabs/style/react-tabs.css';
 import adhocStyles from './Adhoc.module.scss';
+import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
 import ExportData from './ExportData';
 
 function AdhocComparisonDiff(props) {
@@ -31,6 +32,7 @@ function AdhocComparisonDiff(props) {
     raw,
   } = props;
   const { setAdhocLeftProfile, setAdhocRightProfile } = actions;
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
 
   useEffect(() => {
     actions.fetchAdhocProfiles();
@@ -95,7 +97,14 @@ function AdhocComparisonDiff(props) {
               display="both"
               viewType="diff"
               flamebearer={flamebearer}
-              ExportData={<ExportData flamebearer={raw} exportJSON />}
+              ExportData={
+                <ExportData
+                  flamebearer={raw}
+                  exportJSON
+                  exportFlamegraphDotCom
+                  exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
+                />
+              }
             />
           )}
         </Box>

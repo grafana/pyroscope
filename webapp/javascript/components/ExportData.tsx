@@ -37,7 +37,7 @@ type exportHTML =
 type exportFlamegraphDotCom =
   | {
       exportFlamegraphDotCom: true;
-      fetchUrlFunc?: () => string;
+      exportFlamegraphDotComFn: () => Promise<string | null>;
       flamebearer: RawFlamebearerProfile;
     }
   | { exportFlamegraphDotCom?: false };
@@ -54,17 +54,6 @@ type ExportDataProps = exportPprof &
   exportHTML &
   exportFlamegraphDotCom &
   exportPNG;
-
-// handleResponse retrieves the JSON data on success or raises an ResponseNotOKError otherwise
-// TODO: dedup this with the one in actions.js
-function handleResponse(response) {
-  if (response.ok) {
-    return response.json();
-  }
-  return response.text().then((text) => {
-    throw new Error(`Bad Response with code ${response.status}: ${text}`);
-  });
-}
 
 function ExportData(props: ExportDataProps) {
   const {
@@ -119,42 +108,21 @@ function ExportData(props: ExportDataProps) {
 
     // TODO additional check this won't be needed once we use strictNullChecks
     if (props.exportFlamegraphDotCom) {
-      const { flamebearer } = props;
+      props.exportFlamegraphDotComFn().then((url) => {
+        // there has been an error which should've been handled
+        // so we just ignore it
+        if (!url) {
+          return;
+        }
 
-      const filename = `${getFilename(
-        flamebearer.metadata.appName,
-        flamebearer.metadata.startTime,
-        flamebearer.metadata.endTime
-      )}.png`;
+        const dlLink = document.createElement('a');
+        dlLink.target = '_blank';
+        dlLink.href = url;
 
-      // we don't upload to flamegraph.com directly due to potential CORS issues
-      fetch('/export', {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: filename,
-          profile: btoa(JSON.stringify(flamebearer)),
-          type: 'application/json',
-        }),
-      })
-        .then((response) => handleResponse(response))
-        .then((json) => {
-          const dlLink = document.createElement('a');
-          dlLink.target = '_blank';
-          dlLink.href = json.url;
-
-          document.body.appendChild(dlLink);
-          dlLink.click();
-          document.body.removeChild(dlLink);
-        })
-        .catch((e) => {
-          console.error(e);
-          // TODO: show error to user via notifications
-        })
-        .finally();
+        document.body.appendChild(dlLink);
+        dlLink.click();
+        document.body.removeChild(dlLink);
+      });
     }
   };
 
