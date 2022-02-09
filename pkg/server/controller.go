@@ -39,12 +39,8 @@ import (
 )
 
 const (
-	jwtCookieName              = "pyroscopeJWT"
 	stateCookieName            = "pyroscopeState"
 	gzHTTPCompressionThreshold = 2000
-	oauthGoogle                = iota
-	oauthGithub
-	oauthGitlab
 )
 
 type Controller struct {
