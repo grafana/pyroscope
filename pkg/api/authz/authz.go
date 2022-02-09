@@ -23,7 +23,7 @@ func Require(funcs ...func(r *http.Request) bool) func(next http.Handler) http.H
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			for _, fn := range funcs {
 				if !fn(r) {
-					api.Error(w, api.ErrPermissionDenied)
+					api.Error(w, model.ErrPermissionDenied)
 					return
 				}
 			}

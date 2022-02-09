@@ -195,7 +195,7 @@ func (svc UserService) UpdateUserPasswordByID(ctx context.Context, id uint, para
 			return err
 		}
 		if err = model.VerifyPassword(user.PasswordHash, params.OldPassword); err != nil {
-			return model.ErrInvalidCredentials
+			return model.ErrUserPasswordInvalid
 		}
 		columns := model.User{
 			ID:                id,
