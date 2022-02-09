@@ -10,6 +10,7 @@
 
 .role button {
   padding-right: 20px !important;
+  min-width: 105px;
 }
 
 .actions {

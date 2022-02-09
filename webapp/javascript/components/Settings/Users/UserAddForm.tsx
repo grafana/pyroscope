@@ -7,6 +7,7 @@ import { formatRelative } from 'date-fns';
 import { request } from '@pyroscope/services/base';
 import { reloadUsers, createUser } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import { passwordEncode, type User } from '../../../models/users';
 import styles from './UserForm.module.css';
 
@@ -23,7 +24,8 @@ function UserAddForm() {
     setForm({ ...form, [name]: value });
   };
 
-  const handleFormSubmit = () => {
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
     const data = {
       ...form,
       role: 'ReadOnly',
@@ -32,13 +34,20 @@ function UserAddForm() {
     dispatch(createUser(data as User))
       .unwrap()
       .then(() => {
+        dispatch(
+          addNotification({
+            type: 'success',
+            title: 'User added',
+            message: `User has been successfully added`,
+          })
+        );
         history.push('/settings/users');
       });
   };
 
   return (
     <>
-      <h4>Add User</h4>
+      <h2>Add User</h2>
       <form onSubmit={handleFormSubmit}>
         <div className={styles.userForm}>
           <div>
@@ -77,7 +86,7 @@ function UserAddForm() {
             />
           </div>
           <div>
-            <Button icon={faCheck} type="submit" kind="primary">
+            <Button icon={faCheck} type="submit" kind="secondary">
               Add user
             </Button>
           </div>

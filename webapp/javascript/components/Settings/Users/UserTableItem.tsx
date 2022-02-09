@@ -5,7 +5,6 @@ import {
   faTimes,
   faCheck,
   faEdit,
-  faTrashAlt,
   faToggleOff,
   faToggleOn,
 } from '@fortawesome/free-solid-svg-icons';
@@ -24,7 +23,7 @@ function DisableButton(props) {
   const { user, onDisable } = props;
   const icon = user.isDisabled ? faToggleOff : faToggleOn;
   return (
-    <Button type="button" kind="secondary" onClick={onDisable}>
+    <Button type="button" kind="secondary" onClick={() => onDisable(user)}>
       <Icon icon={icon} onClick={onDisable} />
     </Button>
   );
@@ -57,15 +56,16 @@ function EditRoleDropdown(props) {
 }
 
 function DeleteButton(props) {
+  const { onDelete, user } = props;
   return (
-    <Button type="button" kind="secondary">
-      <Icon icon={faTrashAlt} />
+    <Button type="button" kind="danger" onClick={() => onDelete(user)}>
+      <Icon icon={faTimes} />
     </Button>
   );
 }
 
 function UserTableItem(props) {
-  const { user, onDisable, isCurrent } = props;
+  const { user, onDisable, isCurrent, onDelete } = props;
   const { id, isDisabled, fullName, role, updatedAt, email, name } =
     user as User;
   return (
@@ -80,7 +80,7 @@ function UserTableItem(props) {
         {!isCurrent ? (
           <div className={styles.actions}>
             <DisableButton user={user} onDisable={onDisable} />
-            <DeleteButton user={user} onDelete={onDisable} />
+            <DeleteButton user={user} onDelete={onDelete} />
           </div>
         ) : null}
       </td>

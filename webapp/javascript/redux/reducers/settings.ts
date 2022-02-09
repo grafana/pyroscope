@@ -12,6 +12,7 @@ import {
   enableUser as enableUserAPI,
   disableUser as disableUserAPI,
   changeUserRole as changeUserRoleAPI,
+  deleteUser as deleteUserAPI,
 } from '@pyroscope/services/users';
 import {
   fetchAPIKeys,
@@ -131,7 +132,6 @@ export const disableUser = createAsyncThunk(
   }
 );
 
-// That's only for debugging purposes ATM
 export const createUser = createAsyncThunk(
   'newRoot/createUser',
   async (user: User, thunkAPI) => {
@@ -147,6 +147,28 @@ export const createUser = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to create new user',
+        message: res.error.errors.join(', '),
+      })
+    );
+    return Promise.reject(res.error);
+  }
+);
+
+export const deleteUser = createAsyncThunk(
+  'newRoot/deleteUser',
+  async (user: User, thunkAPI) => {
+    const res = await deleteUserAPI({ id: user.id });
+
+    thunkAPI.dispatch(reloadUsers());
+
+    if (res.isOk) {
+      return Promise.resolve(true);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to delete user',
         message: res.error.errors.join(', '),
       })
     );

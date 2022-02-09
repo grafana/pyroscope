@@ -92,6 +92,7 @@ export const editMe = createAsyncThunk(
     const res = await editMyUserAPI(data);
 
     if (res.isOk) {
+      await thunkAPI.dispatch(loadCurrentUser()).unwrap();
       return Promise.resolve(res.value);
     }
 
@@ -109,6 +110,7 @@ export const editMe = createAsyncThunk(
 export const currentUserState = (state: RootState) => state.user;
 export const selectCurrentUser = (state: RootState) => state.user.data;
 
+// TODO: @shaleynikov extract currentUser HOC
 export const withCurrentUser = (component) =>
   connect((state: RootState) => ({
     currentUser: selectCurrentUser(state),

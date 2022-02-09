@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Button from '@ui/Button';
-import { useHistory } from 'react-router-dom';
+import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { faCopy, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { createAPIKey } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { type APIKey } from '@models/apikeys';
 import Dropdown, { MenuItem } from '@ui/Dropdown';
+import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
 
 export type APIKeyAddProps = APIKey;
@@ -13,6 +14,7 @@ export type APIKeyAddProps = APIKey;
 function APIKeyAddForm() {
   const [form, setForm]: [APIKeyAddProps, (value) => void] = useState({
     errors: [],
+    name: '',
     role: 'ReadOnly',
     ttlSeconds: 360000,
   });
@@ -29,8 +31,8 @@ function APIKeyAddForm() {
     setForm({ ...form, role: value });
   };
 
-  const handleFormSubmit = (evt) => {
-    evt.preventDefault();
+  const handleFormSubmit = (event) => {
+    event.preventDefault();
     const data = {
       name: form.name,
       role: form.role,
@@ -48,9 +50,19 @@ function APIKeyAddForm() {
       );
   };
 
+  const handleKeyCopy = () => {
+    dispatch(
+      addNotification({
+        type: 'success',
+        title: 'Success',
+        message: 'Key has been copied',
+      })
+    );
+  };
+
   return (
     <>
-      <h4>Add API Key</h4>
+      <h2>Add API Key</h2>
 
       <div>{form.errors.join(', ')}</div>
       <form onSubmit={handleFormSubmit}>
@@ -61,8 +73,10 @@ function APIKeyAddForm() {
               somewhere
             </div>
             <div>
-              <input type="text" value={key} />
-              <Button icon={faCopy} />
+              <input type="text" defaultValue={key} />
+              <CopyToClipboard text={key} onCopy={handleKeyCopy}>
+                <Button icon={faCopy} />
+              </CopyToClipboard>
             </div>
           </div>
         ) : (
@@ -99,7 +113,7 @@ function APIKeyAddForm() {
               />
             </div>
             <div>
-              <Button icon={faCheck} type="submit" kind="primary">
+              <Button icon={faCheck} type="submit" kind="secondary">
                 Add API Key
               </Button>
             </div>
