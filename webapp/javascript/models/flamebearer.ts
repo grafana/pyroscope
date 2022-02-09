@@ -1,5 +1,5 @@
-import { Units } from '@utils/format';
-import { deltaDiffWrapper } from '@utils/flamebearer';
+import { Units } from '../util/format';
+import { deltaDiffWrapper } from '../util/flamebearer';
 
 export type Flamebearer = {
   /**

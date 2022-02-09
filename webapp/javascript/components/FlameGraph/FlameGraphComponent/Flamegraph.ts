@@ -1,9 +1,9 @@
-import { createFF } from '@utils/flamebearer';
-import { Flamebearer } from '@models/flamebearer';
 import { DeepReadonly } from 'ts-essentials';
-import { Maybe } from '@utils/fp';
+import { Maybe } from '../../../util/fp';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 import type { FlamegraphPalette } from './colorPalette';
+import { createFF } from '../../../util/flamebearer';
+import { Flamebearer } from '../../../models/flamebearer';
 // there's a dependency cycle here but it should be fine
 /* eslint-disable-next-line import/no-cycle */
 import RenderCanvas from './Flamegraph_render';

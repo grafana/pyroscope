@@ -22,7 +22,7 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
-import { Flamebearer, addTicks } from '@models/flamebearer';
+import { Flamebearer, addTicks } from '../../../models/flamebearer';
 import {
   PX_PER_LEVEL,
   COLLAPSE_THRESHOLD,
