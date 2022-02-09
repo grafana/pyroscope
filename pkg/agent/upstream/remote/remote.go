@@ -125,7 +125,7 @@ func (r *Remote) uploadProfile(j *upstream.UploadJob) error {
 	request.Header.Set("Content-Type", "binary/octet-stream+trie")
 
 	if r.cfg.AuthToken != "" {
-		request.Header.Set("Authorization", "Bearer "+r.cfg.AuthToken)
+		request.Header.Set("Authorization", r.cfg.AuthToken)
 	}
 
 	// do the request and get the response
