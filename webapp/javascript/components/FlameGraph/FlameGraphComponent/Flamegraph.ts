@@ -366,6 +366,10 @@ export default class Flamegraph {
         };
       }
       case 'double': {
+        if (!ff.getBarTotalLeft || !ff.getBarTotalRght) {
+          throw new Error('Missing ff.getBarTotalLeft and ff.getBarTotalRght');
+        }
+
         return {
           format: 'double' as const,
           barTotal: ff.getBarTotal(level, j),
@@ -410,8 +414,6 @@ export default class Flamegraph {
       const data = this.xyToBarData(xyWithinBounds);
 
       return {
-        x: xyWithinBounds.x,
-        y: xyWithinBounds.y,
         i,
         j,
         ...position,

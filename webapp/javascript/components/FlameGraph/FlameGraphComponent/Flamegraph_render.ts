@@ -94,6 +94,10 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
 
   //  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
   const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Missing context');
+  }
+
   const selectedLevel = zoom.mapOrElse(
     () => 0,
     (z) => z.i
@@ -175,7 +179,8 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       const sh = BAR_HEIGHT;
 
       const highlightModeOn =
-        props.highlightQuery && props.highlightQuery.length > 0;
+        !!props.highlightQuery && props.highlightQuery.length > 0;
+
       const isHighlighted = nodeIsInQuery(
         j + ff.jName,
         level,
@@ -214,35 +219,51 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       /*      D r a w   R e c t      */
       /*******************************/
       const { spyName } = props;
-      let leftTicks: number | undefined;
-      let rightTicks: number | undefined;
-      if (format === 'double') {
-        leftTicks = props.leftTicks;
-        rightTicks = props.rightTicks;
-      }
-      const color = getColor({
-        format,
-        level,
-        j,
-        // discount for the levels we skipped
-        // otherwise it will dim out all nodes
-        i:
-          i +
-          focusedNode.mapOrElse(
-            () => 0,
-            (f) => f.i
-          ),
-        //        i: i + (isFocused ? focusedNode.i : 0),
-        names,
-        collapsed,
-        selectedLevel,
-        highlightModeOn,
-        isHighlighted,
-        spyName,
-        leftTicks,
-        rightTicks,
-        palette,
-      });
+      const color =
+        format === 'single'
+          ? getColor({
+              format,
+              level,
+              j,
+              // discount for the levels we skipped
+              // otherwise it will dim out all nodes
+              i:
+                i +
+                focusedNode.mapOrElse(
+                  () => 0,
+                  (f) => f.i
+                ),
+              names,
+              collapsed,
+              selectedLevel,
+              highlightModeOn,
+              isHighlighted,
+              spyName,
+              palette,
+            })
+          : getColorDouble({
+              format: 'double',
+              level,
+              j,
+              // discount for the levels we skipped
+              // otherwise it will dim out all nodes
+              i:
+                i +
+                focusedNode.mapOrElse(
+                  () => 0,
+                  (f) => f.i
+                ),
+              //        i: i + (isFocused ? focusedNode.i : 0),
+              names,
+              collapsed,
+              selectedLevel,
+              highlightModeOn,
+              isHighlighted,
+              spyName,
+              palette,
+              leftTicks: props.leftTicks,
+              rightTicks: props.rightTicks,
+            });
 
       ctx.beginPath();
       ctx.rect(x, y, sw, sh);
@@ -336,7 +357,8 @@ type getColorCfg = {
   names: string[];
   spyName: string;
   palette: FlamegraphPalette;
-} & addTicks;
+  format: 'single';
+};
 
 function getColor(cfg: getColorCfg) {
   const ff = createFF(cfg.format);
@@ -358,24 +380,24 @@ function getColor(cfg: getColorCfg) {
   }
 
   // Diff mode
-  if (cfg.format === 'double') {
-    const { leftRatio, rightRatio } = getRatios(
-      cfg.format,
-      cfg.level,
-      cfg.j,
-      cfg.leftTicks,
-      cfg.rightTicks
-    );
-
-    const leftPercent = ratioToPercent(leftRatio);
-    const rightPercent = ratioToPercent(rightRatio);
-
-    return colorBasedOnDiffPercent(
-      cfg.palette,
-      leftPercent,
-      rightPercent
-    ).alpha(a);
-  }
+  //  if (cfg.format === 'double') {
+  //    const { leftRatio, rightRatio } = getRatios(
+  //      cfg.format,
+  //      cfg.level,
+  //      cfg.j,
+  //      cfg.leftTicks,
+  //      cfg.rightTicks
+  //    );
+  //
+  //    const leftPercent = ratioToPercent(leftRatio);
+  //    const rightPercent = ratioToPercent(rightRatio);
+  //
+  //    return colorBasedOnDiffPercent(
+  //      cfg.palette,
+  //      leftPercent,
+  //      rightPercent
+  //    ).alpha(a);
+  //  }
 
   return colorBasedOnPackageName(
     cfg.palette,
@@ -384,6 +406,40 @@ function getColor(cfg: getColorCfg) {
       cfg.names[cfg.level[cfg.j + ff.jName]]
     )
   ).alpha(a);
+}
+
+function getColorDouble(cfg: {
+  collapsed: boolean;
+  level: number[];
+  j: number;
+  selectedLevel: number;
+  i: number;
+  highlightModeOn: boolean;
+  isHighlighted: boolean;
+  names: string[];
+  spyName: string;
+  palette: FlamegraphPalette;
+  format: 'double';
+  leftTicks: number;
+  rightTicks: number;
+}) {
+  // all above selected level should be dimmed
+  const a = cfg.selectedLevel > cfg.i ? 0.33 : 1;
+
+  const { leftRatio, rightRatio } = getRatios(
+    cfg.format,
+    cfg.level,
+    cfg.j,
+    cfg.leftTicks,
+    cfg.rightTicks
+  );
+
+  const leftPercent = ratioToPercent(leftRatio);
+  const rightPercent = ratioToPercent(rightRatio);
+
+  return colorBasedOnDiffPercent(cfg.palette, leftPercent, rightPercent).alpha(
+    a
+  );
 }
 
 function nodeIsInQuery(

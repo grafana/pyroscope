@@ -2,10 +2,7 @@
 // Which could be represented in a boolean fashion
 // Let's use an Enum in case we want to use new modes,
 // for example a new heuristic based on the language
-export const FitModes = {
-  TAIL: 'TAIL',
-  HEAD: 'HEAD',
-};
+export type FitModes = 'TAIL' | 'HEAD';
 
 const margin = 3;
 
@@ -24,9 +21,15 @@ export function fitToCanvasRect({
   rectWidth,
   fullText,
   shortText,
+}: {
+  mode: FitModes;
+  charSize: number;
+  rectWidth: number;
+  fullText: string;
+  shortText: string;
 }) {
   switch (mode) {
-    case FitModes.TAIL:
+    case 'HEAD':
       // Case 1:
       // content fits rectangle width
       // | rectangle |
@@ -73,7 +76,7 @@ export function fitToCanvasRect({
 
     // Case 3:
     // Normal
-    case FitModes.HEAD:
+    case 'TAIL':
     default:
       return {
         mode,
@@ -89,9 +92,9 @@ export function fitToCanvasRect({
  * or an empty object if not applicable.
  * @param {FitModes} mode - The mode
  */
-export function fitIntoTableCell(mode) {
+export function fitIntoTableCell(mode: FitModes) {
   switch (mode) {
-    case FitModes.TAIL:
+    case 'HEAD':
       return {
         // prints from right to left
         direction: 'rtl',
@@ -99,7 +102,7 @@ export function fitIntoTableCell(mode) {
         textOverflow: 'ellipsis',
       };
 
-    case FitModes.HEAD:
+    case 'TAIL':
     default:
       return {
         overflow: 'hidden',

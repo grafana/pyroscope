@@ -1,7 +1,7 @@
 /* eslint-disable camelcase */
 import Color from 'color';
 import { scaleLinear } from 'd3-scale';
-import murmurhash3_32_gc from './murmur3';
+import murmurhash3_32_gc from '../../../util/murmur3';
 import type { FlamegraphPalette } from './colorPalette';
 
 export const defaultColor = Color.rgb(148, 142, 142);
@@ -95,9 +95,10 @@ export function getPackageNameFromStackTrace(
   if (stackTrace.length === 0) {
     return stackTrace;
   }
-  const regexp = regexpLookup[spyName] || regexpLookup.default;
+
+  const regexp = (regexpLookup as any)[spyName] || regexpLookup.default;
   const fullStackGroups = stackTrace.match(regexp);
-  if (fullStackGroups) {
+  if (fullStackGroups && fullStackGroups.groups) {
     return fullStackGroups.groups.packageName;
   }
   return stackTrace;

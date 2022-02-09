@@ -35,6 +35,10 @@ function createFF(viewType: 'single' | 'double') {
         getBarName: (level: number[], j: number) => level[j + 6],
       };
     }
+
+    default: {
+      throw new Error(`Invalid viewType: '${viewType}'`);
+    }
   }
 }
 

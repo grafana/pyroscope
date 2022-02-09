@@ -24,6 +24,10 @@ function getRatios(
     return { leftRatio: 0, rightRatio: 0 };
   }
 
+  if (!ff.getBarTotalLeft || !ff.getBarTotalRght) {
+    throw new Error(`missing ff.getBarTotalLeft or ff.getBarTotalRght`);
+  }
+
   const leftRatio = ff.getBarTotalLeft(level, j) / leftTicks;
   const rightRatio = ff.getBarTotalRght(level, j) / rightTicks;
 

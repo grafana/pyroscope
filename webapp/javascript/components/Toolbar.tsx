@@ -369,8 +369,8 @@ function FitMode({ fitMode, updateFitMode, showMode }) {
       onChange={(event) => updateFitMode(event.target.value)}
     >
       <option disabled>{texts.header}</option>
-      <option value={FitModes.HEAD}>{texts.head}</option>
-      <option value={FitModes.TAIL}>{texts.tail}</option>
+      <option value="HEAD">{texts.head}</option>
+      <option value="TAIL">{texts.tail}</option>
     </select>
   );
 }
