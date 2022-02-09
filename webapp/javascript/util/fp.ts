@@ -1,5 +1,7 @@
-import { Maybe, Result } from 'true-myth';
-import type { Unwrapped } from 'true-myth/maybe';
+import { Maybe, Unwrapped } from './maybe';
+import { Result } from './result';
+//import { Maybe, Result } from 'true-myth';
+//import type { Unwrapped } from 'true-myth/maybe';
 
 // Should be used in situation where we are absolutely
 // want to throw an exception
