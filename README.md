@@ -150,6 +150,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/linthan"><img src="https://avatars.githubusercontent.com/u/13914829?v=4" title="linthan" width="80" height="80"></a>
 <a href="https://github.com/clovis1122"><img src="https://avatars.githubusercontent.com/u/22270042?v=4" title="clovis1122" width="80" height="80"></a>
 <a href="https://github.com/Pranay0302"><img src="https://avatars.githubusercontent.com/u/55592629?v=4" title="Pranay0302" width="80" height="80"></a>
+<a href="https://github.com/omarabid"><img src="https://avatars.githubusercontent.com/u/909237?v=4" title="omarabid" width="80" height="80"></a>
 <a href="https://github.com/geoah"><img src="https://avatars.githubusercontent.com/u/88447?v=4" title="geoah" width="80" height="80"></a>
 <a href="https://github.com/juliosaraiva"><img src="https://avatars.githubusercontent.com/u/6595701?v=4" title="juliosaraiva" width="80" height="80"></a>
 <a href="https://github.com/s4kibs4mi"><img src="https://avatars.githubusercontent.com/u/5650785?v=4" title="s4kibs4mi" width="80" height="80"></a>
@@ -158,7 +159,6 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/wusphinx"><img src="https://avatars.githubusercontent.com/u/1380777?v=4" title="wusphinx" width="80" height="80"></a>
 <a href="https://github.com/ayeniblessing101"><img src="https://avatars.githubusercontent.com/u/29165344?v=4" title="ayeniblessing101" width="80" height="80"></a>
 <a href="https://github.com/awwalker"><img src="https://avatars.githubusercontent.com/u/11507633?v=4" title="awwalker" width="80" height="80"></a>
-<a href="https://github.com/omarabid"><img src="https://avatars.githubusercontent.com/u/909237?v=4" title="omarabid" width="80" height="80"></a>
 <a href="https://github.com/appleboy"><img src="https://avatars.githubusercontent.com/u/21979?v=4" title="appleboy" width="80" height="80"></a>
 <a href="https://github.com/highb"><img src="https://avatars.githubusercontent.com/u/759848?v=4" title="highb" width="80" height="80"></a>
 <a href="https://github.com/waywardmonkeys"><img src="https://avatars.githubusercontent.com/u/178582?v=4" title="waywardmonkeys" width="80" height="80"></a>
