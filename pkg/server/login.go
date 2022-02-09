@@ -20,6 +20,10 @@ import (
 //  figure out all the necessary info on its own.
 
 func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
+	if !ctrl.config.Auth.Internal.Enabled {
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
 	switch r.Method {
 	case http.MethodGet:
 		ctrl.loginGet(w)
@@ -48,10 +52,6 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter) {
 }
 
 func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.Internal.Enabled {
-		ctrl.logErrorAndRedirect(w, r, "password authentication disabled", nil)
-		return
-	}
 	type loginCredentials struct {
 		Username string `json:"username"`
 		Password []byte `json:"password"`
@@ -89,6 +89,21 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
+	if !ctrl.config.Auth.Internal.SignupEnabled {
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		ctrl.signupGet(w)
+	case http.MethodPost:
+		ctrl.signupPost(w, r)
+	default:
+		ctrl.writeInvalidMethodError(w)
+	}
+}
+
 func (ctrl *Controller) signupGet(w http.ResponseWriter) {
 	tmpl, err := ctrl.getTemplate("/signup.html")
 	if err != nil {
@@ -106,22 +121,7 @@ func (ctrl *Controller) signupGet(w http.ResponseWriter) {
 	})
 }
 
-func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		ctrl.signupGet(w)
-	case http.MethodPost:
-		ctrl.signupPost(w, r)
-	default:
-		ctrl.writeInvalidMethodError(w)
-	}
-}
-
 func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.Internal.SignupEnabled {
-		ctrl.logErrorAndRedirect(w, r, "signup disabled", nil)
-		return
-	}
 	type signupRequest struct {
 		Name     string  `json:"name"`
 		Email    *string `json:"email,omitempty"`
