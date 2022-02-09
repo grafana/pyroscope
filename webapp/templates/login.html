@@ -90,8 +90,9 @@
           </div>
         </div>
       </form>
-      {{ end }}
-
+      
+      {{ end }} {{if and .BasicAuthEnabled (or .GoogleEnabled .GithubEnabled
+      .GitlabEnabled .BasicAuthSignupEnabled)}}
       <div class="login-page-div">
         <div>
           <hr />
@@ -101,6 +102,7 @@
           <hr />
         </div>
       </div>
+      {{end}}
 
       <div class="sign-in-buttons">
         {{if .GoogleEnabled}}

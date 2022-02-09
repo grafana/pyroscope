@@ -69,7 +69,6 @@ function Preferences(props) {
             name="fullName"
             value={form?.fullName}
             required
-            disabled={isEditDisabled}
             onChange={handleFormChange}
           />
         </div>
@@ -82,7 +81,6 @@ function Preferences(props) {
             value={form?.email}
             required
             name="email"
-            disabled={isEditDisabled}
             onChange={handleFormChange}
           />
         </div>

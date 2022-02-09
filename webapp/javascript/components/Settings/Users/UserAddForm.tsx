@@ -14,7 +14,12 @@ import styles from './UserForm.module.css';
 export type UserAddProps = User & { password?: string };
 
 function UserAddForm() {
-  const [form, setForm]: [UserAddProps, (value) => void] = useState({});
+  const [form, setForm]: [UserAddProps, (value) => void] = useState({
+    name: '',
+    email: '',
+    fullName: '',
+    password: '',
+  });
   const dispatch = useAppDispatch();
   const history = useHistory();
 

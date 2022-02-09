@@ -19,6 +19,7 @@ export const userModel = z.object({
   fullName: z.optional(z.string()),
   role: z.string(),
   isDisabled: z.boolean(),
+  isExternal: z.optional(z.boolean()),
   createdAt: zDateTime,
   updatedAt: zDateTime,
   passwordChangedAt: zDateTime,
