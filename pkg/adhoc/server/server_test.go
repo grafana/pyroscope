@@ -544,7 +544,7 @@ var _ = Describe("Server", func() {
 							},
 							// Taken from flamebearer test
 							Flamebearer: flamebearer.FlamebearerV1{
-								Names: []string{"total", "a", "b", "c"},
+								Names: []string{"total", "a", "c", "b"},
 								Levels: [][]int{
 									{0, 3, 0, 0},
 									{0, 3, 0, 1},
@@ -564,7 +564,7 @@ var _ = Describe("Server", func() {
 							},
 							// Taken from flamebearer test
 							Flamebearer: flamebearer.FlamebearerV1{
-								Names: []string{"total", "a", "b", "c"},
+								Names: []string{"total", "a", "c", "b"},
 								Levels: [][]int{
 									{0, 3, 0, 0},
 									{0, 3, 0, 1},
@@ -582,13 +582,13 @@ var _ = Describe("Server", func() {
 					Expect(err).To(Succeed())
 					Expect(fb.Version).To(Equal(uint(1)))
 					Expect(fb.Metadata.Format).To(Equal("double"))
-					Expect(fb.Flamebearer.Names).To(ConsistOf("total", "a", "b", "c"))
+					Expect(fb.Flamebearer.Names).To(Equal([]string{"total", "a", "c", "b"}))
 					Expect(fb.Flamebearer.Levels).To(Equal([][]int{
 						{0, 3, 0, 0, 3, 0, 0},
 						{0, 3, 0, 0, 3, 0, 1},
 						{0, 1, 1, 0, 1, 1, 3, 0, 2, 2, 0, 2, 2, 2},
 					}))
-					Expect(fb.Flamebearer.NumTicks).To(Equal(3))
+					Expect(fb.Flamebearer.NumTicks).To(Equal(6))
 					Expect(fb.Flamebearer.MaxSelf).To(Equal(2))
 					Expect(fb.LeftTicks).To(Equal(3))
 					Expect(fb.RightTicks).To(Equal(3))
