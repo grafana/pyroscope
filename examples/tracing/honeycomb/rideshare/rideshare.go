@@ -41,7 +41,7 @@ func ReadConfig() Config {
 
 	if !c.UseDebugTracer {
 		if c.HoneycombDataset == "" {
-			c.PyroscopeServerAddress = "ExampleDataset"
+			c.HoneycombDataset = "ExampleDataset"
 		}
 		if c.HoneycombAPIKey == "" {
 			log.Fatalln("Honeycomb API key should be provided via HONEYCOMB_API_KEY env variable.")
