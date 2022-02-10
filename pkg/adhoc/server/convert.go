@@ -84,6 +84,32 @@ func CollapsedToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Fla
 	return &profile, nil
 }
 
+// DiffV1 takes two single V1 profiles and generates a diff V1 profile
+func DiffV1(base, diff *flamebearer.FlamebearerProfile, maxNodes int) (flamebearer.FlamebearerProfile, error) {
+	var fb flamebearer.FlamebearerProfile
+	// TODO(abeaumont): Validate that profiles are comparable
+	// TODO(abeaumont): Simplify profile generation
+	out := &storage.GetOutput{
+		Tree:       nil,
+		Units:      base.Metadata.Units,
+		SpyName:    base.Metadata.SpyName,
+		SampleRate: base.Metadata.SampleRate,
+	}
+	bt, err := profileToTree(*base)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convert base profile to tree: %w", err)
+	}
+	dt, err := profileToTree(*diff)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convret diff profile to tree: %w", err)
+	}
+	bOut := &storage.GetOutput{Tree: bt}
+	dOut := &storage.GetOutput{Tree: dt}
+
+	fb = flamebearer.NewCombinedProfile(out, bOut, dOut, maxNodes)
+	return fb, nil
+}
+
 func profileToTree(fb flamebearer.FlamebearerProfile) (*tree.Tree, error) {
 	if fb.Metadata.Format != string(tree.FormatSingle) {
 		return nil, fmt.Errorf("unsupported flamebearer format %s", fb.Metadata.Format)

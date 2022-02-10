@@ -16,7 +16,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
@@ -169,30 +168,12 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO(abeaumont): Validate that profiles are comparable
-	// TODO(abeaumont): Simplify profile generation
-	out := &storage.GetOutput{
-		Tree:       nil,
-		Units:      lfb.Metadata.Units,
-		SpyName:    lfb.Metadata.SpyName,
-		SampleRate: lfb.Metadata.SampleRate,
-	}
-	lt, err := profileToTree(*lfb)
+	fb, err := DiffV1(lfb, rfb, s.maxNodes)
 	if err != nil {
-		s.log.WithError(err).Error("Unable to convert profile to tree")
+		s.log.WithError(err).Error("Unable to generate a diff profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	rt, err := profileToTree(*rfb)
-	if err != nil {
-		s.log.WithError(err).Error("Unable to convert profile to tree")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	lOut := &storage.GetOutput{Tree: lt}
-	rOut := &storage.GetOutput{Tree: rt}
-
-	fb := flamebearer.NewCombinedProfile(out, lOut, rOut, s.maxNodes)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(fb); err != nil {
 		s.log.WithError(err).Error("Unable to encode the profile diff")

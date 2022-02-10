@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
+	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
 var _ = Describe("Server", func() {
@@ -518,14 +519,81 @@ var _ = Describe("Server", func() {
 				})
 			})
 		})
-	})
 
-	Context("with an empty model", func() {
-		var m server.Model
-		It("should return an error", func() {
-			_, err := m.Converter()
-			Expect(err).ToNot(Succeed())
+		Context("with an empty model", func() {
+			var m server.Model
+			It("should return an error", func() {
+				_, err := m.Converter()
+				Expect(err).ToNot(Succeed())
+			})
 		})
 	})
 
+	Describe("Calling DiffV1", func() {
+		Context("with v1 profiles", func() {
+			var base, diff *flamebearer.FlamebearerProfile
+
+			When("Diff is called with valid and equal base and diff profiles", func() {
+				BeforeEach(func() {
+
+					base = &flamebearer.FlamebearerProfile{
+						Version: 1,
+						FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+							Metadata: flamebearer.FlamebearerMetadataV1{
+								Format: "single",
+							},
+							// Taken from flamebearer test
+							Flamebearer: flamebearer.FlamebearerV1{
+								Names: []string{"total", "a", "c", "b"},
+								Levels: [][]int{
+									{0, 3, 0, 0},
+									{0, 3, 0, 1},
+									{0, 1, 1, 3, 0, 2, 2, 2},
+								},
+								NumTicks: 3,
+								MaxSelf:  2,
+							},
+						},
+					}
+
+					diff = &flamebearer.FlamebearerProfile{
+						Version: 1,
+						FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+							Metadata: flamebearer.FlamebearerMetadataV1{
+								Format: "single",
+							},
+							// Taken from flamebearer test
+							Flamebearer: flamebearer.FlamebearerV1{
+								Names: []string{"total", "a", "c", "b"},
+								Levels: [][]int{
+									{0, 3, 0, 0},
+									{0, 3, 0, 1},
+									{0, 1, 1, 3, 0, 2, 2, 2},
+								},
+								NumTicks: 3,
+								MaxSelf:  2,
+							},
+						},
+					}
+				})
+
+				It("returns the diff profile", func() {
+					fb, err := server.DiffV1(base, diff, 1024)
+					Expect(err).To(Succeed())
+					Expect(fb.Version).To(Equal(uint(1)))
+					Expect(fb.Metadata.Format).To(Equal("double"))
+					Expect(fb.Flamebearer.Names).To(Equal([]string{"total", "a", "c", "b"}))
+					Expect(fb.Flamebearer.Levels).To(Equal([][]int{
+						{0, 3, 0, 0, 3, 0, 0},
+						{0, 3, 0, 0, 3, 0, 1},
+						{0, 1, 1, 0, 1, 1, 3, 0, 2, 2, 0, 2, 2, 2},
+					}))
+					Expect(fb.Flamebearer.NumTicks).To(Equal(6))
+					Expect(fb.Flamebearer.MaxSelf).To(Equal(2))
+					Expect(fb.LeftTicks).To(Equal(uint64(3)))
+					Expect(fb.RightTicks).To(Equal(uint64(3)))
+				})
+			})
+		})
+	})
 })
