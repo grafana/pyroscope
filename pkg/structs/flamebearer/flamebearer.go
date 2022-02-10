@@ -10,38 +10,87 @@ import (
 
 //revive:disable:max-public-structs Config structs
 
+// swagger:model
 // FlamebearerProfile is a versioned flambearer based profile.
 // It's the native format both for rendering and file saving (in adhoc mode).
 type FlamebearerProfile struct {
+	// Version of the data format. No version / version zero is an unformalized format.
 	Version uint `json:"version"`
 	FlamebearerProfileV1
 }
 
+// swagger:model
+// FlamebearerProfileV1 defines the v1 of the profile format
 type FlamebearerProfileV1 struct {
-	Flamebearer FlamebearerV1          `json:"flamebearer"`
-	Metadata    FlamebearerMetadataV1  `json:"metadata"`
-	Timeline    *FlamebearerTimelineV1 `json:"timeline"`
-	LeftTicks   uint64                 `json:"leftTicks,omitempty"`
-	RightTicks  uint64                 `json:"rightTicks,omitempty"`
+	// Flamebearer data.
+	// required: true
+	Flamebearer FlamebearerV1 `json:"flamebearer"`
+	// Metadata associated to the profile.
+	// required: true
+	Metadata FlamebearerMetadataV1 `json:"metadata"`
+	// Timeline associated to the profile, used for continuous profiling only.
+	Timeline *FlamebearerTimelineV1 `json:"timeline"`
+	// Number of samples in the left / base profile. Only used in "double" format.
+	LeftTicks uint64 `json:"leftTicks,omitempty"`
+	// Number of samples in the right / diff profile. Only used in "double" format.
+	RightTicks uint64 `json:"rightTicks,omitempty"`
 }
 
+// swagger:model
+// FlamebearerV1 defines the actual profiling data.
 type FlamebearerV1 struct {
-	Names    []string `json:"names"`
-	Levels   [][]int  `json:"levels"`
-	NumTicks int      `json:"numTicks"`
-	MaxSelf  int      `json:"maxSelf"`
+	// Names is the sequence of symbol names.
+	// required: true
+	Names []string `json:"names"`
+	// Levels contains the flamebearer nodes. Each level represents a row in the flamegraph.
+	// For each row / level, there's a sequence of values. These values are grouped in chunks
+	// which size depend on the flamebearer format: 4 for "single", 7 for "double".
+	// For "single" format, each chunk has the following data:
+	//     i+0 = x offset (prefix sum of the level total values), delta encoded.
+	//     i+1 = total samples (including the samples in its children nodes).
+	//     i+2 = self samples (excluding the samples in its children nodes).
+	//     i+3 = index in names array
+	//
+	// For "double" format, each chunk has the following data:
+	//     i+0 = x offset (prefix sum of the level total values), delta encoded, base / left tree.
+	//     i+1 = total samples (including the samples in its children nodes)   , base / left tree.
+	//     i+2 = self samples (excluding the samples in its children nodes)    , base / left tree.
+	//     i+3 = x offset (prefix sum of the level total values), delta encoded, diff / right tree.
+	//     i+4 = total samples (including the samples in its children nodes)   , diff / right tree.
+	//     i+5 = self samples (excluding the samples in its children nodes)    , diff / right tree.
+	//     i+6 = index in the names array
+	//
+	// required: true
+	Levels [][]int `json:"levels"`
+	// Total number of samples.
+	// required: true
+	NumTicks int `json:"numTicks"`
+	// Maximum self value in any node.
+	// required: true
+	MaxSelf int `json:"maxSelf"`
 }
 
 type FlamebearerMetadataV1 struct {
-	Format     string `json:"format"`
-	SpyName    string `json:"spyName"`
+	// Data format. Supported values are "single" and "double" (diff).
+	// required: true
+	Format string `json:"format"`
+	// Name of the spy / profiler used to generate the profile, if any.
+	SpyName string `json:"spyName"`
+	// Sample rate at which the profiler was operating.
 	SampleRate uint32 `json:"sampleRate"`
-	Units      string `json:"units"`
+	// The unit of measurement for the profiled data.
+	Units string `json:"units"`
 }
 
 type FlamebearerTimelineV1 struct {
-	StartTime     int64         `json:"startTime"`
-	Samples       []uint64      `json:"samples"`
+	// Time at which the timeline starts, as a Unix timestamp.
+	// required: true
+	StartTime int64 `json:"startTime"`
+	// A sequence of samples starting at startTime, spaced by durationDelta seconds
+	// required: true
+	Samples []uint64 `json:"samples"`
+	// Time delta between samples, in seconds.
+	// required: true
 	DurationDelta int64         `json:"durationDelta"`
 	Watermarks    map[int]int64 `json:"watermarks"`
 }
