@@ -85,11 +85,13 @@ export function getPackageNameFromStackTrace(
     ebpfspy: /^(?<packageName>.+)$/,
     // tested with pyroscope stacktraces here: https://regex101.com/r/99KReq/1
     gospy: /^(?<packageName>.*?\/.*?\.|.*?\.|.+)(?<functionName>.*)$/,
+    // assume scrape is golang, since that's the only language we support right now
+    scrape: /^(?<packageName>.*?\/.*?\.|.*?\.|.+)(?<functionName>.*)$/,
+
     phpspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
     pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
     rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
     'pyroscope-rs': /^(?<packageName>[^::]+)/,
-    //    'pyroscope-rs': /^(?<packageName>[a-zA-Z0-9]+)(::)?/,
   };
 
   if (stackTrace.length === 0) {
