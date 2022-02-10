@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import Button from '@ui/Button';
 import Icon from '@ui/Icon';
+import confirmDelete from '@ui/Modals/ConfirmDelete';
 
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import { faTimes, faPlus } from '@fortawesome/free-solid-svg-icons';
@@ -23,12 +24,18 @@ const ApiKeys = () => {
     dispatch(reloadApiKeys());
   }, []);
 
-  const handleDelete = (key) => {
+  const onDelete = (key) => {
     dispatch(deleteAPIKey(key))
       .unwrap()
       .then(() => {
         dispatch(reloadApiKeys());
       });
+  };
+
+  const handleDeleteClick = (key) => {
+    confirmDelete('this key', () => {
+      onDelete(key);
+    });
   };
 
   const now = new Date();
@@ -72,7 +79,7 @@ const ApiKeys = () => {
                     type="submit"
                     kind="danger"
                     aria-label="Delete key"
-                    onClick={() => handleDelete(key)}
+                    onClick={() => handleDeleteClick(key)}
                   >
                     <Icon icon={faTimes} />
                   </Button>

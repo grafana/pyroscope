@@ -16,6 +16,7 @@ import {
   changeUserRole,
 } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
+import confirmDelete from '@ui/Modals/ConfirmDelete';
 import { type User } from '../../../models/users';
 import styles from './UserTableItem.module.css';
 
@@ -57,8 +58,15 @@ function EditRoleDropdown(props) {
 
 function DeleteButton(props) {
   const { onDelete, user } = props;
+
+  const handleDeleteClick = () => {
+    confirmDelete('this user', () => {
+      onDelete(user);
+    });
+  };
+
   return (
-    <Button type="button" kind="danger" onClick={() => onDelete(user)}>
+    <Button type="button" kind="danger" onClick={handleDeleteClick}>
       <Icon icon={faTimes} />
     </Button>
   );

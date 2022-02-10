@@ -450,7 +450,7 @@ body,
 // which should occuppy the rest of screen width
 // making it look like it's the body's toolbar!
 .app {
-  height: 100%;
+  height: 100vh;
   display: flex;
 }
 
