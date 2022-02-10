@@ -1,6 +1,7 @@
 import React from 'react';
 import { ControlledMenu, useMenuState } from '@szhsin/react-menu';
 import styles from './ContextMenu.module.scss';
+import '@szhsin/react-menu/dist/index.css';
 
 type xyToMenuItems = (x: number, y: number) => JSX.Element[];
 

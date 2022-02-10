@@ -115,10 +115,12 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
   canvas.height = canvasHeight;
 
   // increase pixel ratio, otherwise it looks bad in high resolution devices
-  if (devicePixelRatio > 1) {
-    canvas.width *= 2;
-    canvas.height *= 2;
-    ctx.scale(2, 2);
+  if (typeof window !== 'undefined') {
+    if (window.devicePixelRatio > 1) {
+      canvas.width *= 2;
+      canvas.height *= 2;
+      ctx.scale(2, 2);
+    }
   }
 
   const { names } = props;

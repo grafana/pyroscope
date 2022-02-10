@@ -1,7 +1,7 @@
 import { DeepReadonly } from 'ts-essentials';
 import { Maybe } from '../../../util/fp';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
-import type { FlamegraphPalette } from './colorPalette';
+import { FlamegraphPalette } from './colorPalette';
 import { createFF } from '../../../util/flamebearer';
 import { Flamebearer } from '../../../models/flamebearer';
 // there's a dependency cycle here but it should be fine
