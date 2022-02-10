@@ -42,7 +42,7 @@ var _ = Describe("FlamebearerProfile", func() {
 				SampleRate: sampleRate,
 				Units:      units,
 			}
-			p := NewProfile(out, maxNodes)
+			p := NewProfile("name", out, maxNodes)
 
 			// Flamebearer
 			Expect(p.Flamebearer.Names).To(ConsistOf("total", "a", "b", "c"))
@@ -55,6 +55,7 @@ var _ = Describe("FlamebearerProfile", func() {
 			Expect(p.Flamebearer.MaxSelf).To(Equal(2))
 
 			// Metadata
+			Expect(p.Metadata.Name).To(Equal("name"))
 			Expect(p.Metadata.Format).To(Equal("single"))
 			Expect(p.Metadata.SpyName).To(Equal(spyName))
 			Expect(p.Metadata.SampleRate).To(Equal(sampleRate))
@@ -100,7 +101,7 @@ var _ = Describe("FlamebearerProfile", func() {
 			}
 			left := &storage.GetOutput{Tree: treeA}
 			right := &storage.GetOutput{Tree: treeB}
-			p := NewCombinedProfile(out, left, right, maxNodes)
+			p := NewCombinedProfile("name", out, left, right, maxNodes)
 
 			// Flamebearer
 			Expect(p.Flamebearer.Names).To(ConsistOf("total", "a", "b", "c"))
@@ -113,6 +114,7 @@ var _ = Describe("FlamebearerProfile", func() {
 			Expect(p.Flamebearer.MaxSelf).To(Equal(8))
 
 			// Metadata
+			Expect(p.Metadata.Name).To(Equal("name"))
 			Expect(p.Metadata.Format).To(Equal("double"))
 			Expect(p.Metadata.SpyName).To(Equal(spyName))
 			Expect(p.Metadata.SampleRate).To(Equal(sampleRate))

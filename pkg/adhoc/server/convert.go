@@ -53,7 +53,7 @@ func PprofToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Flamebe
 			SpyName:    name,
 			SampleRate: sampleRate,
 		}
-		profile := flamebearer.NewProfile(out, maxNodes)
+		profile := flamebearer.NewProfile(name, out, maxNodes)
 		return &profile, nil
 	}
 	return nil, errors.New("no supported sample type found")
@@ -80,12 +80,12 @@ func CollapsedToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Fla
 		SpyName:    name,
 		SampleRate: 100, // We don't have this information, use the default
 	}
-	profile := flamebearer.NewProfile(out, maxNodes)
+	profile := flamebearer.NewProfile(name, out, maxNodes)
 	return &profile, nil
 }
 
 // DiffV1 takes two single V1 profiles and generates a diff V1 profile
-func DiffV1(base, diff *flamebearer.FlamebearerProfile, maxNodes int) (flamebearer.FlamebearerProfile, error) {
+func DiffV1(name string, base, diff *flamebearer.FlamebearerProfile, maxNodes int) (flamebearer.FlamebearerProfile, error) {
 	var fb flamebearer.FlamebearerProfile
 	// TODO(abeaumont): Validate that profiles are comparable
 	// TODO(abeaumont): Simplify profile generation
@@ -106,7 +106,15 @@ func DiffV1(base, diff *flamebearer.FlamebearerProfile, maxNodes int) (flamebear
 	bOut := &storage.GetOutput{Tree: bt}
 	dOut := &storage.GetOutput{Tree: dt}
 
-	fb = flamebearer.NewCombinedProfile(out, bOut, dOut, maxNodes)
+	// If we didn't get an explicit name, try to infer one from base or diff profiles
+	for _, n := range []string{base.Metadata.Name, diff.Metadata.Name} {
+		if name != "" {
+			break
+		}
+		name = n
+	}
+
+	fb = flamebearer.NewCombinedProfile(name, out, bOut, dOut, maxNodes)
 	return fb, nil
 }
 
