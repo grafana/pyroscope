@@ -121,6 +121,10 @@ func flamebearerV1ToTree(fb flamebearer.FlamebearerV1) (*tree.Tree, error) {
 	t := tree.New()
 	deltaDecoding(fb.Levels, 0, 4)
 	for i, l := range fb.Levels {
+		if i == 0 {
+			// Skip the first level: it'll contain the root ("total") node..
+			continue
+		}
 		for j := 0; j < len(l); j += 4 {
 			self := l[j+2]
 			if self > 0 {
@@ -143,12 +147,14 @@ func deltaDecoding(levels [][]int, start, step int) {
 }
 
 func buildStack(fb flamebearer.FlamebearerV1, level, idx int) []string {
-	stack := make([]string, level+1)
-	stack[level] = fb.Names[fb.Levels[level][idx+3]]
+	// The stack will contain names in the range [1, level].
+	// Level 0 is not included as its the root ("total") node.
+	stack := make([]string, level)
+	stack[level-1] = fb.Names[fb.Levels[level][idx+3]]
 	x := fb.Levels[level][idx]
-	for i := level - 1; i >= 0; i-- {
+	for i := level - 1; i > 0; i-- {
 		j := sort.Search(len(fb.Levels[i])/4, func(j int) bool { return fb.Levels[i][j*4] > x }) - 1
-		stack[i] = fb.Names[fb.Levels[i][j*4+3]]
+		stack[i-1] = fb.Names[fb.Levels[i][j*4+3]]
 		x = fb.Levels[i][j*4]
 	}
 	return stack
