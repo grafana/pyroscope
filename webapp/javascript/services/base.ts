@@ -3,7 +3,7 @@ import { Result } from '@utils/fp';
 import basename from '../util/baseurl';
 
 // RequestNotOkError refers to when the Response is not within the 2xx range
-interface RequestNotOkError {
+export interface RequestNotOkError {
   statusCode: number;
   message: string;
 }
@@ -95,7 +95,9 @@ export async function request(
       // Check if it's 401 unauthirized error
       if (response.status === 401) {
         // TODO: Introduce some kind of interceptor (?)
-        window.location = '/login';
+        if (window && window.location) {
+          window.location.href = '/login';
+        }
       }
 
       // We could parse the response

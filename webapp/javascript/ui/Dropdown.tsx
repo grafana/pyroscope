@@ -69,15 +69,7 @@ export default function Dropdown({
       onItemClick={onItemClick}
       overflow={overflow}
       position={position}
-      menuButton={
-        <MenuButton
-          className={`${styles.dropdownMenuButton} ${menuButtonClassName}`}
-          disabled={disabled}
-          type="button"
-        >
-          {value || label}
-        </MenuButton>
-      }
+      menuButton={menuButtonComponent}
     >
       <MenuHeader>{label}</MenuHeader>
       {children}
