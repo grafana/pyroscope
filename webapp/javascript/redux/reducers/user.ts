@@ -114,7 +114,7 @@ export const selectCurrentUser = (state: RootState) => state.user.data;
 export const withCurrentUser = (component) =>
   connect((state: RootState) => ({
     currentUser: selectCurrentUser(state),
-  }))(function ConditionalRender(props) {
+  }))(function ConditionalRender(props: { currentUser: User }) {
     if (props.currentUser) {
       return component(props);
     }

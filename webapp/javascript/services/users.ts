@@ -71,7 +71,7 @@ export async function createUser(
 }
 
 export async function loadCurrentUser(): Promise<
-  Result<User, RequestError | ZodError>
+  Result<User | boolean, RequestError | ZodError>
 > {
   const response = await request(`/api/user`);
   if (response.isOk) {
