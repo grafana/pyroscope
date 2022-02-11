@@ -54,7 +54,7 @@ function App() {
         <Route path="/settings">
           <Settings />
         </Route>
-        {isExperimentalAdhocUIEnabled && (
+        {isAdhocUIEnabled && (
           <>
             <Route path="/adhoc-single">
               <AdhocSingle />
