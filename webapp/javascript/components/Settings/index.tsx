@@ -41,21 +41,6 @@ function Settings(props) {
             </NavLink>
           </li>
           {!isExternal(currentUser) && (
-            <li>
-              <NavLink
-                to={`${url}/security`}
-                className={(isActive) =>
-                  cx({
-                    [styles.navLink]: true,
-                    [styles.navLinkActive]: isActive,
-                  })
-                }
-              >
-                <Icon icon={faLock} /> Change Password
-              </NavLink>
-            </li>
-          )}
-          {isAdmin(currentUser) ? (
             <>
               <li>
                 <NavLink
@@ -70,6 +55,10 @@ function Settings(props) {
                   <Icon icon={faLock} /> Change Password
                 </NavLink>
               </li>
+            </>
+          )}
+          {isAdmin(currentUser) ? (
+            <>
               <li>
                 <NavLink
                   to={`${url}/users`}
