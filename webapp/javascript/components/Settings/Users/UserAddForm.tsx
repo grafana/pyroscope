@@ -87,6 +87,7 @@ function UserAddForm() {
             <input
               id="userAddPassword"
               name="password"
+              type="password"
               onChange={handleFormChange}
             />
           </div>

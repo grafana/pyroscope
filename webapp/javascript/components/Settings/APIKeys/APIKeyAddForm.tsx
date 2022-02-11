@@ -74,7 +74,9 @@ function APIKeyAddForm() {
             </div>
             <div>
               <CopyToClipboard text={key} onCopy={handleKeyCopy}>
-                <Button icon={faCopy} className={styles.keyOutput} />
+                <Button icon={faCopy} className={styles.keyOutput}>
+                  {key}
+                </Button>
               </CopyToClipboard>
             </div>
           </div>
