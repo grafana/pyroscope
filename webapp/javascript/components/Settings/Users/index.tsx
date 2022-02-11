@@ -110,7 +110,7 @@ function Users() {
         <thead>
           <tr>
             <td />
-            <th>Login</th>
+            <th>Username</th>
             <th>Email</th>
             <th>Name</th>
             <th>Role</th>
