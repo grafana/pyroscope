@@ -21,10 +21,15 @@ var (
 	errTooShort = errors.New("profile is too short")
 )
 
+// swagger:model
 type Model struct {
+	// Name of the file in which the profile was saved, if any.
 	Filename string `json:"filename"`
-	Profile  []byte `json:"profile"`
-	Type     string `json:"type"`
+	// base64-encoded data of the profile, in any of the supported formats
+	// (currently supported: pprof, Pyroscope JSON and collapsed).
+	Profile []byte `json:"profile"`
+	// Type of profile, if known (currently supported: pprof, json, collapsed")
+	Type string `json:"type"`
 }
 
 func (m Model) Converter() (ConverterFn, error) {
