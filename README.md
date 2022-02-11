@@ -79,7 +79,7 @@ We also have language-specific examples (using Docker) of how to run the *server
 
 ## Deployment Diagram
 
-![Deployment Diagram](.github/markdown-images/deployment.svg)
+![agent_server_diagram_10](https://user-images.githubusercontent.com/23323466/153685751-0aac3cd6-bbc1-4ab4-8350-8f4dc7f7c193.svg)
 
 ## Documentation
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
