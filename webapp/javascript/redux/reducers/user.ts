@@ -30,7 +30,11 @@ export const loadCurrentUser = createAsyncThunk(
       return Promise.resolve(res.value);
     }
     // By using 404 we assume that auth on server is disabled
-    if (res.error.statusCode === 404) {
+    // TODO: Fix that
+    if (
+      res.isErr &&
+      (res.error as { statusCode: number; message: string }).statusCode === 404
+    ) {
       return Promise.resolve({ id: 0, role: 'anonymous' });
     }
 
