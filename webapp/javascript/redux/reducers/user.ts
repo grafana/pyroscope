@@ -56,7 +56,7 @@ const userSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(loadCurrentUser.fulfilled, (state, action) => {
-      return { type: 'loaded', data: action.payload };
+      return { type: 'loaded', data: action.payload as User };
     });
     builder.addCase(loadCurrentUser.pending, (state) => {
       return { type: 'loading', data: state.data };
