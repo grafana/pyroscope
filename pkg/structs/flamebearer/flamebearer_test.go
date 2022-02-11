@@ -45,7 +45,7 @@ var _ = Describe("FlamebearerProfile", func() {
 			p := NewProfile("name", out, maxNodes)
 
 			// Flamebearer
-			Expect(p.Flamebearer.Names).To(ConsistOf("total", "a", "b", "c"))
+			Expect(p.Flamebearer.Names).To(Equal([]string{"total", "a", "c", "b"}))
 			Expect(p.Flamebearer.Levels).To(Equal([][]int{
 				{0, 3, 0, 0},
 				{0, 3, 0, 1},
@@ -104,7 +104,7 @@ var _ = Describe("FlamebearerProfile", func() {
 			p := NewCombinedProfile("name", out, left, right, maxNodes)
 
 			// Flamebearer
-			Expect(p.Flamebearer.Names).To(ConsistOf("total", "a", "b", "c"))
+			Expect(p.Flamebearer.Names).To(Equal([]string{"total", "a", "c", "b"}))
 			Expect(p.Flamebearer.Levels).To(Equal([][]int{
 				{0, 3, 0, 0, 12, 0, 0},
 				{0, 3, 0, 0, 12, 0, 1},
