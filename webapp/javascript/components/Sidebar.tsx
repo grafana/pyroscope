@@ -29,7 +29,7 @@ import { useLocation, NavLink } from 'react-router-dom';
 import { isAdhocUIEnabled } from '@utils/features';
 import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
-import { selectCurrentUser } from '@pyroscope/redux/reducers/user';
+import { withCurrentUser } from '@pyroscope/redux/reducers/user';
 import basename from '../util/baseurl';
 import styles from './Sidebar.module.css';
 
@@ -40,13 +40,13 @@ function signOut() {
   });
 }
 
-export default function Sidebar2() {
+export function Sidebar2(props) {
   const collapsed = useAppSelector(selectSidebarCollapsed);
   const dispatch = useAppDispatch();
 
   const { search, pathname } = useLocation();
   const windowWidth = useWindowWidth();
-  const currentUser = useAppSelector(selectCurrentUser);
+  const { currentUser } = props;
   const authEnabled = currentUser && currentUser.role !== 'anonymous';
 
   // the component doesn't seem to support setting up an active item
@@ -239,3 +239,5 @@ export default function Sidebar2() {
     </Sidebar>
   );
 }
+
+export default withCurrentUser(Sidebar2);
