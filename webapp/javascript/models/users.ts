@@ -2,9 +2,13 @@ import { z, ZodError } from 'zod';
 import { Result } from '@utils/fp';
 import { modelToResult } from './utils';
 
-const zDateTime = z.string().transform((value) => {
+const zDateTime = z.string().transform((value: string | number | Date) => {
   if (typeof value === 'string') {
-    return Date.parse(value);
+    const date = Date.parse(value);
+    if (Number.isInteger(date)) {
+      return date;
+    }
+    return value;
   }
   if (typeof value === 'number') {
     return new Date(value);

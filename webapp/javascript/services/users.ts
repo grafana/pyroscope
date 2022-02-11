@@ -84,7 +84,7 @@ export async function loadCurrentUser(): Promise<
 export async function changeMyPassword(
   oldPassword: string,
   newPassword: string
-): Promise<Result<User, RequestError | ZodError>> {
+): Promise<Result<User | boolean, RequestError | ZodError>> {
   const response = await request(`/api/user/password`, {
     method: 'PUT',
     body: JSON.stringify({
@@ -116,7 +116,7 @@ export async function changeUserRole(
 }
 
 export async function editMyUser(
-  data
+  data: Partial<User>
 ): Promise<Result<boolean, RequestError | ZodError>> {
   const response = await request(`/api/users`, {
     method: 'PATCH',
@@ -124,7 +124,7 @@ export async function editMyUser(
   });
 
   if (response.isOk) {
-    return Result.ok(response.value);
+    return Result.ok(true);
   }
 
   return Result.err<false, RequestError>(response.error);
