@@ -23,6 +23,8 @@ import {
 import 'react-tabs/style/react-tabs.css';
 import styles from './ComparisonApp.module.css';
 import adhocStyles from './Adhoc.module.scss';
+import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
+import ExportData from './ExportData';
 
 function AdhocComparison(props) {
   const {
@@ -35,6 +37,8 @@ function AdhocComparison(props) {
     rightFile,
     rightFlamebearer,
     rightProfile,
+    leftRaw,
+    rightRaw,
   } = props;
   const {
     setAdhocLeftFile,
@@ -42,6 +46,8 @@ function AdhocComparison(props) {
     setAdhocRightFile,
     setAdhocRightProfile,
   } = actions;
+  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(leftRaw);
+  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(rightRaw);
 
   useEffect(() => {
     actions.fetchAdhocProfiles();
@@ -72,21 +78,21 @@ function AdhocComparison(props) {
           <Box className={styles.comparisonPane}>
             <Tabs>
               <TabList>
-                <Tab>Pyroscope data</Tab>
                 <Tab>Upload</Tab>
+                <Tab>Pyroscope data</Tab>
               </TabList>
-              <TabPanel>
-                <FileList
-                  className={adhocStyles.tabPanel}
-                  profile={leftProfile}
-                  setProfile={setAdhocLeftProfile}
-                />
-              </TabPanel>
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
                   file={leftFile}
                   setFile={setAdhocLeftFile}
+                />
+              </TabPanel>
+              <TabPanel>
+                <FileList
+                  className={adhocStyles.tabPanel}
+                  profile={leftProfile}
+                  setProfile={setAdhocLeftProfile}
                 />
               </TabPanel>
             </Tabs>
@@ -102,27 +108,35 @@ function AdhocComparison(props) {
                 flamebearer={leftFlamebearer}
                 data-testid="flamegraph-renderer-left"
                 display="both"
+                ExportData={
+                  <ExportData
+                    flamebearer={leftRaw}
+                    exportJSON
+                    exportFlamegraphDotCom
+                    exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
+                  />
+                }
               />
             )}
           </Box>
           <Box className={styles.comparisonPane}>
             <Tabs>
               <TabList>
-                <Tab>Pyroscope data</Tab>
                 <Tab>Upload</Tab>
+                <Tab>Pyroscope data</Tab>
               </TabList>
-              <TabPanel>
-                <FileList
-                  className={adhocStyles.tabPanel}
-                  profile={rightProfile}
-                  setProfile={setAdhocRightProfile}
-                />
-              </TabPanel>
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
                   file={rightFile}
                   setFile={setAdhocRightFile}
+                />
+              </TabPanel>
+              <TabPanel>
+                <FileList
+                  className={adhocStyles.tabPanel}
+                  profile={rightProfile}
+                  setProfile={setAdhocRightProfile}
                 />
               </TabPanel>
             </Tabs>
@@ -138,6 +152,14 @@ function AdhocComparison(props) {
                 flamebearer={rightFlamebearer}
                 data-testid="flamegraph-renderer-right"
                 display="both"
+                ExportData={
+                  <ExportData
+                    flamebearer={rightRaw}
+                    exportJSON
+                    exportFlamegraphDotCom
+                    exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
+                  />
+                }
               />
             )}
           </Box>
@@ -150,6 +172,8 @@ function AdhocComparison(props) {
 
 const mapStateToProps = (state) => ({
   ...state.root,
+  leftRaw: state.root.adhocComparison.left.raw,
+  rightRaw: state.root.adhocComparison.right.raw,
   leftFile: state.root.adhocComparison.left.file,
   leftFlamebearer: state.root.adhocComparison.left.flamebearer,
   leftProfile: state.root.adhocShared.left.profile,

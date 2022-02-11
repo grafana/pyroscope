@@ -11,14 +11,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
 var (
-	errRetention = errors.New("could not write because of retention settings")
-	errClosed    = errors.New("storage closed")
+	errRetention  = errors.New("could not write because of retention settings")
+	errOutOfSpace = errors.New("running out of space")
+	errClosed     = errors.New("storage closed")
 )
 
 type Storage struct {
@@ -34,6 +36,8 @@ type Storage struct {
 	trees      *db
 	main       *db
 	labels     *labels.Labels
+
+	hc *health.Controller
 
 	// Maintenance tasks are executed exclusively to avoid competition:
 	// extensive writing during GC is harmful and deteriorates the
@@ -79,7 +83,7 @@ type SampleObserver interface {
 	Observe(k []byte, v int)
 }
 
-func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage, error) {
+func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health.Controller) (*Storage, error) {
 	s := &Storage{
 		config: c,
 		storageOptions: &storageOptions{
@@ -100,6 +104,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 			queueWorkers: runtime.NumCPU(),
 		},
 
+		hc:      hc,
 		logger:  logger,
 		metrics: newMetrics(reg),
 		stop:    make(chan struct{}),

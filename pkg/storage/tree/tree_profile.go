@@ -125,7 +125,7 @@ func (r *ProfileReader) readTrees(x *Profile, c labelsCache, f Finder) {
 			// Therefore iteration goes in reverse order.
 			for j := len(loc.Line) - 1; j >= 0; j-- {
 				fn, ok := f.FindFunction(loc.Line[j].FunctionId)
-				if !ok {
+				if !ok || x.StringTable[fn.Name] == "" {
 					continue
 				}
 				stack = append(stack, unsafeStrToSlice(x.StringTable[fn.Name]))

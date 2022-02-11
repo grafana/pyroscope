@@ -1,15 +1,19 @@
 import React from 'react';
 import { Flamebearer } from '@models/flamebearer';
-import DiffLegend from './DiffLegend';
 import styles from './Header.module.css';
+import { FlamegraphPalette } from './colorPalette';
+import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';
 
 interface HeaderProps {
   format: Flamebearer['format'];
   units: Flamebearer['units'];
+
+  palette: FlamegraphPalette;
+  setPalette: (p: FlamegraphPalette) => void;
   ExportData: () => React.ReactElement;
 }
 export default function Header(props: HeaderProps) {
-  const { format, units, ExportData } = props;
+  const { format, units, ExportData, palette, setPalette } = props;
 
   const unitsToFlamegraphTitle = {
     objects: 'amount of objects in RAM per function',
@@ -23,7 +27,7 @@ export default function Header(props: HeaderProps) {
         return (
           <div>
             <div
-              className={`${styles.row} ${styles['flamegraph-title']}`}
+              className={`${styles.row} ${styles.flamegraphTitle}`}
               role="heading"
               aria-level={2}
             >
@@ -37,12 +41,12 @@ export default function Header(props: HeaderProps) {
 
       case 'double': {
         return (
-          <div>
-            <div className={styles.row} role="heading" aria-level={2}>
-              Base graph: left - Comparison graph: right
-            </div>
-            <DiffLegend />
-          </div>
+          <>
+            <DiffLegendPaletteDropdown
+              palette={palette}
+              onChange={setPalette}
+            />
+          </>
         );
       }
 
@@ -54,9 +58,11 @@ export default function Header(props: HeaderProps) {
   const title = getTitle();
 
   return (
-    <div className={styles['flamegraph-header']}>
+    <div className={styles.flamegraphHeader}>
       <div>{title}</div>
-      <ExportData />
+      <div className={styles.buttons}>
+        <ExportData />
+      </div>
     </div>
   );
 }

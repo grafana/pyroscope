@@ -16,15 +16,18 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
-func jsonToProfile(b []byte, _ string, _ int) (*flamebearer.FlamebearerProfile, error) {
+func JSONToProfileV1(b []byte, _ string, _ int) (*flamebearer.FlamebearerProfile, error) {
 	var profile flamebearer.FlamebearerProfile
 	if err := json.Unmarshal(b, &profile); err != nil {
 		return nil, fmt.Errorf("unable to unmarshall JSON: %w", err)
 	}
+	if err := profile.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid profile: %w", err)
+	}
 	return &profile, nil
 }
 
-func pprofToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+func PprofToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
 	p, err := convert.ParsePprof(bytes.NewReader(b))
 	if err != nil {
 		return nil, fmt.Errorf("parsing pprof: %w", err)
@@ -50,13 +53,13 @@ func pprofToProfile(b []byte, name string, maxNodes int) (*flamebearer.Flamebear
 			SpyName:    name,
 			SampleRate: sampleRate,
 		}
-		profile := flamebearer.NewProfile(out, maxNodes)
+		profile := flamebearer.NewProfile(name, out, maxNodes)
 		return &profile, nil
 	}
 	return nil, errors.New("no supported sample type found")
 }
 
-func collapsedToProfile(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
+func CollapsedToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error) {
 	t := tree.New()
 	for _, line := range bytes.Split(b, []byte("\n")) {
 		if len(line) == 0 {
@@ -77,8 +80,42 @@ func collapsedToProfile(b []byte, name string, maxNodes int) (*flamebearer.Flame
 		SpyName:    name,
 		SampleRate: 100, // We don't have this information, use the default
 	}
-	profile := flamebearer.NewProfile(out, maxNodes)
+	profile := flamebearer.NewProfile(name, out, maxNodes)
 	return &profile, nil
+}
+
+// DiffV1 takes two single V1 profiles and generates a diff V1 profile
+func DiffV1(name string, base, diff *flamebearer.FlamebearerProfile, maxNodes int) (flamebearer.FlamebearerProfile, error) {
+	var fb flamebearer.FlamebearerProfile
+	// TODO(abeaumont): Validate that profiles are comparable
+	// TODO(abeaumont): Simplify profile generation
+	out := &storage.GetOutput{
+		Tree:       nil,
+		Units:      base.Metadata.Units,
+		SpyName:    base.Metadata.SpyName,
+		SampleRate: base.Metadata.SampleRate,
+	}
+	bt, err := profileToTree(*base)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convert base profile to tree: %w", err)
+	}
+	dt, err := profileToTree(*diff)
+	if err != nil {
+		return fb, fmt.Errorf("unable to convret diff profile to tree: %w", err)
+	}
+	bOut := &storage.GetOutput{Tree: bt}
+	dOut := &storage.GetOutput{Tree: dt}
+
+	// If we didn't get an explicit name, try to infer one from base or diff profiles
+	for _, n := range []string{base.Metadata.Name, diff.Metadata.Name} {
+		if name != "" {
+			break
+		}
+		name = n
+	}
+
+	fb = flamebearer.NewCombinedProfile(name, out, bOut, dOut, maxNodes)
+	return fb, nil
 }
 
 func profileToTree(fb flamebearer.FlamebearerProfile) (*tree.Tree, error) {
@@ -92,6 +129,10 @@ func flamebearerV1ToTree(fb flamebearer.FlamebearerV1) (*tree.Tree, error) {
 	t := tree.New()
 	deltaDecoding(fb.Levels, 0, 4)
 	for i, l := range fb.Levels {
+		if i == 0 {
+			// Skip the first level: it'll contain the root ("total") node..
+			continue
+		}
 		for j := 0; j < len(l); j += 4 {
 			self := l[j+2]
 			if self > 0 {
@@ -114,12 +155,14 @@ func deltaDecoding(levels [][]int, start, step int) {
 }
 
 func buildStack(fb flamebearer.FlamebearerV1, level, idx int) []string {
-	stack := make([]string, level+1)
-	stack[level] = fb.Names[fb.Levels[level][idx+3]]
+	// The stack will contain names in the range [1, level].
+	// Level 0 is not included as its the root ("total") node.
+	stack := make([]string, level)
+	stack[level-1] = fb.Names[fb.Levels[level][idx+3]]
 	x := fb.Levels[level][idx]
-	for i := level - 1; i >= 0; i-- {
+	for i := level - 1; i > 0; i-- {
 		j := sort.Search(len(fb.Levels[i])/4, func(j int) bool { return fb.Levels[i][j*4] > x }) - 1
-		stack[i] = fb.Names[fb.Levels[i][j*4+3]]
+		stack[i-1] = fb.Names[fb.Levels[i][j*4+3]]
 		x = fb.Levels[i][j*4]
 	}
 	return stack

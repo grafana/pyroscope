@@ -229,10 +229,12 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	// TODO(kolesnikovae):
 	//  Make diagnostic endpoints protection configurable.
 
+
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
 		{"/config", ctrl.configHandler},
 		{"/build", ctrl.buildHandler},
+		{"/debug/storage/export/{db}", ctrl.storage.DebugExport},
 	}
 	if !ctrl.config.DisablePprofEndpoint {
 		diagnosticSecureRoutes = append(diagnosticSecureRoutes, []route{

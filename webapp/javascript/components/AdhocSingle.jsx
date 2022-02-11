@@ -20,10 +20,13 @@ import {
 } from '../redux/actions';
 import 'react-tabs/style/react-tabs.css';
 import adhocStyles from './Adhoc.module.scss';
+import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
+import ExportData from './ExportData';
 
 function AdhocSingle(props) {
-  const { actions, file, profile, flamebearer, isProfileLoading } = props;
+  const { actions, file, profile, flamebearer, isProfileLoading, raw } = props;
   const { setAdhocFile, setAdhocProfile } = actions;
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
 
   useEffect(() => {
     actions.fetchAdhocProfiles();
@@ -43,21 +46,21 @@ function AdhocSingle(props) {
         <Box>
           <Tabs>
             <TabList>
-              <Tab>Pyroscope data</Tab>
               <Tab>Upload</Tab>
+              <Tab>Pyroscope data</Tab>
             </TabList>
-            <TabPanel>
-              <FileList
-                className={adhocStyles.tabPanel}
-                profile={profile}
-                setProfile={setAdhocProfile}
-              />
-            </TabPanel>
             <TabPanel>
               <FileUploader
                 className={adhocStyles.tabPanel}
                 file={file}
                 setFile={setAdhocFile}
+              />
+            </TabPanel>
+            <TabPanel>
+              <FileList
+                className={adhocStyles.tabPanel}
+                profile={profile}
+                setProfile={setAdhocProfile}
               />
             </TabPanel>
           </Tabs>
@@ -71,6 +74,14 @@ function AdhocSingle(props) {
               flamebearer={flamebearer}
               viewType="single"
               display="both"
+              ExportData={
+                <ExportData
+                  flamebearer={raw}
+                  exportJSON
+                  exportFlamegraphDotCom
+                  exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
+                />
+              }
             />
           )}
         </Box>
@@ -83,6 +94,7 @@ function AdhocSingle(props) {
 const mapStateToProps = (state) => ({
   ...state.root,
   file: state.root.adhocSingle.file,
+  raw: state.root.adhocSingle.raw,
   flamebearer: state.root.adhocSingle.flamebearer,
   profile: state.root.adhocSingle.profile,
   isProfileLoading: state.root.adhocSingle.isProfileLoading,

@@ -8,7 +8,7 @@ import {
 } from '@utils/format';
 import { Maybe } from '@utils/fp';
 import type { UnwrapMaybe } from '@utils/fp';
-import { diffColorRed, diffColorGreen } from './color';
+import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 
 type xyToDataSingle = (
   x: number,
@@ -34,6 +34,8 @@ export type TooltipProps = {
   numTicks: number;
   leftTicks: number;
   rightTicks: number;
+
+  palette: FlamegraphPalette;
 } & (
   | { format: 'single'; xyToData: xyToDataSingle }
   | {
@@ -61,8 +63,7 @@ export default function Tooltip(props: TooltipProps) {
   const [style, setStyle] = React.useState<React.CSSProperties>();
   const tooltipEl = React.useRef(null);
 
-  const { numTicks, sampleRate, units, leftTicks, rightTicks } = props;
-
+  const { numTicks, sampleRate, units, leftTicks, rightTicks, palette } = props;
   const onMouseOut = () => {
     setStyle({
       visibility: 'hidden',
@@ -126,15 +127,18 @@ export default function Tooltip(props: TooltipProps) {
             );
           }
 
-          const d = formatDouble({
-            formatter,
-            sampleRate,
-            totalLeft: data.totalLeft,
-            leftTicks,
-            totalRight: data.totalRight,
-            rightTicks,
-            title: data.name,
-          });
+          const d = formatDouble(
+            {
+              formatter,
+              sampleRate,
+              totalLeft: data.totalLeft,
+              leftTicks,
+              totalRight: data.totalRight,
+              rightTicks,
+              title: data.name,
+            },
+            palette
+          );
 
           setContent({
             title: d.title,
@@ -225,23 +229,26 @@ function formatSingle(
   };
 }
 
-function formatDouble({
-  formatter,
-  sampleRate,
-  totalLeft,
-  leftTicks,
-  totalRight,
-  rightTicks,
-  title,
-}: {
-  formatter: Formatter;
-  sampleRate: number;
-  totalLeft: number;
-  leftTicks: number;
-  totalRight: number;
-  rightTicks: number;
-  title: string;
-}) {
+function formatDouble(
+  {
+    formatter,
+    sampleRate,
+    totalLeft,
+    leftTicks,
+    totalRight,
+    rightTicks,
+    title,
+  }: {
+    formatter: Formatter;
+    sampleRate: number;
+    totalLeft: number;
+    leftTicks: number;
+    totalRight: number;
+    rightTicks: number;
+    title: string;
+  },
+  palette: FlamegraphPalette = DefaultPalette
+) {
   const leftRatio = totalLeft / leftTicks;
   const rightRatio = totalRight / rightTicks;
 
@@ -260,9 +267,9 @@ function formatDouble({
 
   let tooltipDiffColor = '';
   if (totalDiff > 0) {
-    tooltipDiffColor = diffColorRed.rgb().string();
+    tooltipDiffColor = palette.badColor.rgb().string();
   } else if (totalDiff < 0) {
-    tooltipDiffColor = diffColorGreen.rgb().string();
+    tooltipDiffColor = palette.goodColor.rgb().string();
   }
 
   let tooltipDiffText = '';

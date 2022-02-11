@@ -3,6 +3,11 @@ import React, { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
 import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
+
+// Note: I wanted to use https://fontawesome.com/v6.0/icons/arrow-up-from-bracket?s=solid
+// but it is in fontawesome v6 which is in beta and not released yet.
+import { faArrowAltCircleUp } from '@fortawesome/free-regular-svg-icons/faArrowAltCircleUp';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Button from '@ui/Button';
 import { addNotification } from '../redux/reducers/notifications';
 import styles from './FileUploader.module.scss';
@@ -74,28 +79,38 @@ export default function FileUploader({ file, setFile, className }: Props) {
 
   return (
     <section className={`${styles.container} ${className}`}>
-      <div {...getRootProps()}>
+      <div {...getRootProps()} className={styles.dragAndDropContainer}>
         <input {...getInputProps()} />
         {file ? (
-          <p>
-            To analyze another file, drag and drop pyroscope JSON files here or
-            click to select a file
-          </p>
+          <div className={styles.subHeadingContainer}>
+            <div className={styles.subHeading}>
+              To analyze another file, drag and drop pyroscope JSON files here
+              or click to select a file
+            </div>
+            <div className={styles.headerMain}> {file.name} </div>
+            <div className={styles.subHeading}>
+              <Button icon={faTrash} onClick={onRemove}>
+                Remove
+              </Button>
+            </div>
+          </div>
         ) : (
-          <p>
-            Drag and drop pyroscope JSON files here, or click to select a file
-          </p>
+          <div>
+            <p className={styles.headerMain}>
+              Drag and drop Flamegraph files here
+            </p>
+            <div className={styles.iconContainer}>
+              <FontAwesomeIcon
+                icon={faArrowAltCircleUp}
+                className={styles.fileUploadIcon}
+              />
+            </div>
+            <p className={styles.subHeading}>
+              Or click to select a file from your device
+            </p>
+          </div>
         )}
       </div>
-      {file && (
-        <aside>
-          Currently analyzing file {file.name}
-          &nbsp;
-          <Button icon={faTrash} onClick={onRemove}>
-            Remove
-          </Button>
-        </aside>
-      )}
     </section>
   );
 }

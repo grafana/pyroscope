@@ -237,7 +237,7 @@ func (s *Storage) iterateOverAllSegments(cb func(*segment.Key) error) error {
 	for _, r := range dimension.Union(dimensions...) {
 		k, err := segment.ParseKey(string(r))
 		if err != nil {
-			s.logger.WithError(err).Error("failed to parse segment key")
+			s.logger.WithError(err).WithField("key", string(r)).Error("failed to parse segment key")
 			continue
 		}
 		if err = cb(k); err != nil {

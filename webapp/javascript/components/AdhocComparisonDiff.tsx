@@ -19,11 +19,20 @@ import {
 import styles from './ComparisonApp.module.css';
 import 'react-tabs/style/react-tabs.css';
 import adhocStyles from './Adhoc.module.scss';
+import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
+import ExportData from './ExportData';
 
 function AdhocComparisonDiff(props) {
-  const { actions, isProfileLoading, flamebearer, leftProfile, rightProfile } =
-    props;
+  const {
+    actions,
+    isProfileLoading,
+    flamebearer,
+    leftProfile,
+    rightProfile,
+    raw,
+  } = props;
   const { setAdhocLeftProfile, setAdhocRightProfile } = actions;
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
 
   useEffect(() => {
     actions.fetchAdhocProfiles();
@@ -88,6 +97,14 @@ function AdhocComparisonDiff(props) {
               display="both"
               viewType="diff"
               flamebearer={flamebearer}
+              ExportData={
+                <ExportData
+                  flamebearer={raw}
+                  exportJSON
+                  exportFlamegraphDotCom
+                  exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
+                />
+              }
             />
           )}
         </Box>
@@ -99,6 +116,7 @@ function AdhocComparisonDiff(props) {
 
 const mapStateToProps = (state) => ({
   ...state.root,
+  raw: state.root.adhocComparisonDiff.raw,
   flamebearer: state.root.adhocComparisonDiff.flamebearer,
   isProfileLoading: state.root.adhocComparisonDiff.isProfileLoading,
   leftProfile: state.root.adhocShared.left.profile,

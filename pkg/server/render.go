@@ -84,7 +84,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch p.format {
 	case "json":
-		flame := flamebearer.NewProfile(out, p.maxNodes)
+		flame := flamebearer.NewProfile(filename, out, p.maxNodes)
 		res := ctrl.mountRenderResponse(flame, appName, p.gi, p.maxNodes)
 		ctrl.writeResponseJSON(w, res)
 	case "pprof":
@@ -102,24 +102,12 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		collapsed := out.Tree.Collapsed()
 		ctrl.writeResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	case "html":
-		res := flamebearer.NewProfile(out, p.maxNodes)
-
-		tmpl, err := ctrl.getTemplate("/standalone.html")
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render standalone page")
-			return
-		}
-		var flamegraph []byte
-		flamegraph, err = json.Marshal(res)
-		if err != nil {
+		res := flamebearer.NewProfile(filename, out, p.maxNodes)
+		w.Header().Add("Content-Type", "text/html")
+		if err := flamebearer.FlamebearerToStandaloneHTML(&res, ctrl.dir, w); err != nil {
 			ctrl.writeJSONEncodeError(w, err)
 			return
 		}
-
-		w.Header().Add("Content-Type", "text/html")
-		mustExecute(tmpl, w, map[string]string{
-			"Flamegraph": string(flamegraph),
-		})
 	}
 }
 
@@ -193,7 +181,29 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ctrl.writeResponseJSON(w, flamebearer.NewCombinedProfile(out, leftOut, rghtOut, p.maxNodes))
+	var appName string
+	if p.gi.Key != nil {
+		appName = p.gi.Key.AppName()
+	} else if p.gi.Query != nil {
+		appName = p.gi.Query.AppName
+	}
+	combined := flamebearer.NewCombinedProfile(appName, out, leftOut, rghtOut, p.maxNodes)
+
+	switch p.format {
+	case "html":
+		w.Header().Add("Content-Type", "text/html")
+		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, ctrl.dir, w); err != nil {
+			ctrl.writeJSONEncodeError(w, err)
+			return
+		}
+
+	case "json":
+		// fallthrough to default, to maintain existing behaviour
+		fallthrough
+	default:
+		res := ctrl.mountRenderResponse(combined, appName, p.gi, p.maxNodes)
+		ctrl.writeResponseJSON(w, res)
+	}
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {

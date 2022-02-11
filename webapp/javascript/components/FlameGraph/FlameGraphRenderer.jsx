@@ -12,6 +12,10 @@ import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from '../../util/flamebearer';
+import {
+  DefaultPalette,
+  ColorBlindPalette,
+} from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.css';
 
 import ExportData from '../ExportData';
@@ -39,6 +43,9 @@ class FlameGraphRenderer extends React.Component {
       highlightQuery: '',
 
       flamegraphConfigs: this.initialFlamegraphState,
+
+      // TODO make this come from the redux store?
+      palette: DefaultPalette,
     };
 
     // for situations like in grafana we only display the flamegraph
@@ -229,6 +236,7 @@ class FlameGraphRenderer extends React.Component {
           isFlamegraphDirty={this.state.isFlamegraphDirty}
           highlightQuery={this.state.highlightQuery}
           handleTableItemClick={this.onTableItemClick}
+          palette={this.state.palette}
         />
       </div>
     );
@@ -241,28 +249,6 @@ class FlameGraphRenderer extends React.Component {
       this.props.viewSide
     );
 
-    const exportData = () => {
-      // the main idea is to disable exporing that for grafana plugins
-      if (this.props.disableExportData) {
-        return null;
-      }
-
-      if (!this.state.flamebearer) {
-        return <ExportData />;
-      }
-
-      if (!this.props.rawFlamegraph) {
-        return <ExportData />;
-      }
-
-      // we only want to download single ones
-      if (this.state.flamebearer.format === 'double') {
-        return <ExportData />;
-      }
-
-      return <ExportData exportFlamebearer={this.props.rawFlamegraph} />;
-    };
-
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
@@ -271,7 +257,7 @@ class FlameGraphRenderer extends React.Component {
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
-          ExportData={exportData}
+          ExportData={() => this.props.ExportData}
           highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
@@ -282,6 +268,12 @@ class FlameGraphRenderer extends React.Component {
           onFocusOnNode={this.onFocusOnNode}
           onReset={this.onReset}
           isDirty={this.isDirty}
+          palette={this.state.palette}
+          setPalette={(p) =>
+            this.setState({
+              palette: p,
+            })
+          }
         />
       ) : null;
 
@@ -301,6 +293,7 @@ class FlameGraphRenderer extends React.Component {
         <div className="canvas-container">
           {this.shouldShowToolbar() && (
             <Toolbar
+              renderLogo={this.props.renderLogo}
               view={this.state.view}
               viewDiff={this.state.viewDiff}
               display={this.props.display}

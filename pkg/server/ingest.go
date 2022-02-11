@@ -65,16 +65,27 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			var profile *tree.Profile
 			var prevProfile *tree.Profile
+
 			f, _, err := r.FormFile("profile")
-			if err == nil {
-				profile, err = convert.ParsePprof(f)
+			if err != nil {
+				WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while getting profile file")
+				return
 			}
+
+			profile, err = convert.ParsePprof(f)
+			if err != nil {
+				WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while parsing profile file")
+				return
+			}
+
 			f, _, err = r.FormFile("prev_profile")
 			if err == nil {
 				prevProfile, err = convert.ParsePprof(f)
+				if err != nil {
+					WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while parsing prev_profile file")
+					return
+				}
 			}
-
-			// TODO: add error handling for all of these
 
 			for _, sampleTypeStr := range profile.SampleTypes() {
 				var t *tree.SampleTypeConfig

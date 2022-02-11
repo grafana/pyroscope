@@ -98,23 +98,6 @@ describe('E2E Tests', () => {
       .matchImageSnapshot(`e2e-comparison-flamegraph-right`);
   });
 
-  it('tests /comparison-diff view', () => {
-    const params = new URLSearchParams();
-    params.set('query', appName);
-    params.set('from', t0);
-    params.set('until', t4);
-    params.set('leftFrom', t0);
-    params.set('leftUntil', t2);
-    params.set('rightFrom', t2);
-    params.set('rightTo', t4);
-
-    cy.visit(`/comparison-diff?${params.toString()}`);
-
-    cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
-      `e2e-comparison-diff-flamegraph`
-    );
-  });
-
   it('works with standalone view', () => {
     const params = new URLSearchParams();
     params.set('query', appName);
