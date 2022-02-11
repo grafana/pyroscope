@@ -4,7 +4,7 @@ import {
   combineReducers,
 } from '@reduxjs/toolkit';
 import { Users, type User } from '@models/users';
-import { APIKeys } from '@models/apikeys';
+import { APIKey, APIKeys } from '@models/apikeys';
 
 import {
   fetchUsers,
@@ -22,30 +22,27 @@ import {
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 
+type UsersState = {
+  type: 'loaded' | 'reloading' | 'failed';
+  data?: Users;
+};
+
+type APIKeysState = {
+  type: string;
+  data?: APIKeys;
+};
 interface SettingsRootState {
   // Since the value populated from the server
   // There's no 'loading'
-  users:
-    | { type: 'loaded'; data?: Users }
-    | { type: 'reloading'; data?: Users }
-    | { type: 'failed'; data?: Users };
-
-  apiKeys:
-    | { type: 'loaded'; data?: APIKeys }
-    | { type: 'reloading'; data?: APIKeys }
-    | { type: 'failed'; data?: APIKeys };
+  users: UsersState;
+  apiKeys: APIKeysState;
 }
 
-const usersInitialState = { type: 'loaded', data: undefined };
-type usersState = typeof usersInitialState;
-const apiKeysInitialState = { type: 'loaded', data: undefined };
-type apiKeysState = typeof apiKeysInitialState;
-
-// Define the initial state using that type
-const initialState: SettingsRootState = {
-  users: usersInitialState,
-  apiKeys: apiKeysInitialState,
+const usersInitialState = {
+  type: 'loaded',
+  data: undefined,
 };
+const apiKeysInitialState = { type: 'loaded', data: undefined };
 
 export const reloadApiKeys = createAsyncThunk(
   'newRoot/reloadAPIKeys',
@@ -79,8 +76,8 @@ export const reloadUsers = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to load users',
-        message: res.error.message,
+        title: 'Failed',
+        message: 'Failed to load users',
       })
     );
 
@@ -101,8 +98,8 @@ export const enableUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to enable a user',
-        message: res.error.message,
+        title: 'Failed',
+        message: 'Failed to enable a user',
       })
     );
 
@@ -123,8 +120,8 @@ export const disableUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to disable a user',
-        message: res.error.message,
+        title: 'Failed',
+        message: 'Failed to disable a user',
       })
     );
 
@@ -146,8 +143,8 @@ export const createUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to create new user',
-        message: res.error.errors.join(', '),
+        title: 'Failed',
+        message: 'Failed to create new user',
       })
     );
     return Promise.reject(res.error);
@@ -168,8 +165,8 @@ export const deleteUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to delete user',
-        message: res.error.errors.join(', '),
+        title: 'Failed',
+        message: 'Failed to delete user',
       })
     );
     return Promise.reject(res.error);
@@ -178,7 +175,7 @@ export const deleteUser = createAsyncThunk(
 
 export const changeUserRole = createAsyncThunk(
   'users/changeUserRole',
-  async (action, thunkAPI) => {
+  async (action: Partial<User>, thunkAPI) => {
     const { id, role } = action;
     const res = await changeUserRoleAPI({ id }, role);
 
@@ -189,8 +186,8 @@ export const changeUserRole = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to change users role',
-        message: res.error.message,
+        title: 'Failed',
+        message: 'Failed to change users role',
       })
     );
     return thunkAPI.rejectWithValue(res.error);
@@ -219,7 +216,7 @@ export const createAPIKey = createAsyncThunk(
 
 export const deleteAPIKey = createAsyncThunk(
   'newRoot/deleteAPIKey',
-  async (data, thunkAPI) => {
+  async (data: Partial<APIKey>, thunkAPI) => {
     const res = await deleteAPIKeyAPI(data);
     if (res.isOk) {
       thunkAPI.dispatch(
@@ -248,14 +245,14 @@ export const usersSlice = createSlice({
   initialState: usersInitialState,
   reducers: {},
   extraReducers: (builder) => {
-    builder.addCase(reloadUsers.fulfilled, (state, action) => {
+    builder.addCase(reloadUsers.fulfilled, (_, action) => {
       return { type: 'loaded', data: action.payload };
     });
     builder.addCase(reloadUsers.pending, (state) => {
-      state = { type: 'reloading', data: state.data };
+      return { type: 'reloading', data: state.data };
     });
     builder.addCase(reloadUsers.rejected, (state) => {
-      state = { type: 'failed', data: state.data };
+      return { type: 'failed', data: state.data };
     });
   },
 });
@@ -269,10 +266,10 @@ export const apiKeysSlice = createSlice({
       return { type: 'loaded', data: action.payload };
     });
     builder.addCase(reloadApiKeys.pending, (state) => {
-      state = { type: 'reloading', data: state.data };
+      return { type: 'reloading', data: state.data };
     });
     builder.addCase(reloadUsers.rejected, (state) => {
-      state = { type: 'failed', data: state.data };
+      return { type: 'failed', data: state.data };
     });
   },
 });

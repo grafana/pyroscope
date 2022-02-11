@@ -20,8 +20,13 @@ interface ResponseInvalidJSONError {
   data: any;
 }
 
+export interface RequestNotOkWithErrorsList {
+  errors: [string];
+}
+
 export type RequestError =
   | RequestNotOkError
+  | RequestNotOkWithErrorsList
   | RequestIncompleteError
   | ResponseInvalidJSONError;
 

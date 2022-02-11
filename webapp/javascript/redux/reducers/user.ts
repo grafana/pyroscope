@@ -42,7 +42,7 @@ export const loadCurrentUser = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to load current user',
-        message: res.error.message,
+        message: 'Please contact your administrator',
       })
     );
 
@@ -82,8 +82,8 @@ export const changeMyPassword = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to change users password',
-        message: res.error.message,
+        title: 'Failed',
+        message: 'Failed to change users password',
       })
     );
     return thunkAPI.rejectWithValue(res.error);
@@ -92,7 +92,7 @@ export const changeMyPassword = createAsyncThunk(
 
 export const editMe = createAsyncThunk(
   'users/editMyUser',
-  async (data, thunkAPI) => {
+  async (data: Partial<User>, thunkAPI) => {
     const res = await editMyUserAPI(data);
 
     if (res.isOk) {
@@ -103,8 +103,8 @@ export const editMe = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to change users password',
-        message: res.error.message,
+        title: 'Failed',
+        message: 'Failed to edit current user',
       })
     );
     return thunkAPI.rejectWithValue(res.error);
