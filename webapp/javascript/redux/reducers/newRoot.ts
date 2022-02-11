@@ -32,7 +32,7 @@ export const reloadAppNames = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to load app names',
-        message: res.error.toString(),
+        message: 'message' in res.error ? res.error.message : 'Unknown error',
       })
     );
 
