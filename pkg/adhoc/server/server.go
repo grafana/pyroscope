@@ -168,7 +168,15 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fb, err := DiffV1(lfb, rfb, s.maxNodes)
+	// Try to get a name for the profile.
+	var name string
+	for _, n := range []string{lfb.Metadata.Name, rfb.Metadata.Name, lp.Name, rp.Name} {
+		if n != "" {
+			name = n
+			break
+		}
+	}
+	fb, err := DiffV1(name, lfb, rfb, s.maxNodes)
 	if err != nil {
 		s.log.WithError(err).Error("Unable to generate a diff profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)

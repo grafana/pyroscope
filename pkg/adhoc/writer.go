@@ -81,7 +81,7 @@ func (w writer) write(t0, t1 time.Time) error {
 			}
 			defer f.Close()
 
-			res := flamebearer.NewProfile(out, w.maxNodesRender)
+			res := flamebearer.NewProfile(filename, out, w.maxNodesRender)
 			if err := json.NewEncoder(f).Encode(res); err != nil {
 				w.logger.WithError(err).Error("saving JSON file")
 				continue

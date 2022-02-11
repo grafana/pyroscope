@@ -80,6 +80,8 @@ type FlamebearerMetadataV1 struct {
 	SampleRate uint32 `json:"sampleRate"`
 	// The unit of measurement for the profiled data.
 	Units string `json:"units"`
+	// A name that identifies the profile.
+	Name string `json:"name"`
 }
 
 type FlamebearerTimelineV1 struct {
@@ -95,26 +97,26 @@ type FlamebearerTimelineV1 struct {
 	Watermarks    map[int]int64 `json:"watermarks"`
 }
 
-func NewProfile(output *storage.GetOutput, maxNodes int) FlamebearerProfile {
+func NewProfile(name string, output *storage.GetOutput, maxNodes int) FlamebearerProfile {
 	fb := output.Tree.FlamebearerStruct(maxNodes)
 	return FlamebearerProfile{
 		Version: 1,
 		FlamebearerProfileV1: FlamebearerProfileV1{
 			Flamebearer: newFlambearer(fb),
-			Metadata:    newMetadata(fb.Format, output),
+			Metadata:    newMetadata(name, fb.Format, output),
 			Timeline:    newTimeline(output.Timeline),
 		},
 	}
 }
 
-func NewCombinedProfile(output, left, right *storage.GetOutput, maxNodes int) FlamebearerProfile {
+func NewCombinedProfile(name string, output, left, right *storage.GetOutput, maxNodes int) FlamebearerProfile {
 	lt, rt := tree.CombineTree(left.Tree, right.Tree)
 	fb := tree.CombineToFlamebearerStruct(lt, rt, maxNodes)
 	return FlamebearerProfile{
 		Version: 1,
 		FlamebearerProfileV1: FlamebearerProfileV1{
 			Flamebearer: newFlambearer(fb),
-			Metadata:    newMetadata(fb.Format, output),
+			Metadata:    newMetadata(name, fb.Format, output),
 			Timeline:    newTimeline(output.Timeline),
 			LeftTicks:   lt.Samples(),
 			RightTicks:  rt.Samples(),
@@ -131,8 +133,9 @@ func newFlambearer(fb *tree.Flamebearer) FlamebearerV1 {
 	}
 }
 
-func newMetadata(format tree.Format, output *storage.GetOutput) FlamebearerMetadataV1 {
+func newMetadata(name string, format tree.Format, output *storage.GetOutput) FlamebearerMetadataV1 {
 	return FlamebearerMetadataV1{
+		Name:       name,
 		Format:     string(format),
 		SpyName:    output.SpyName,
 		SampleRate: output.SampleRate,
