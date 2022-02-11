@@ -20,10 +20,6 @@ import (
 //  figure out all the necessary info on its own.
 
 func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.Internal.Enabled {
-		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
 	switch r.Method {
 	case http.MethodGet:
 		ctrl.loginGet(w, r)
@@ -35,7 +31,7 @@ func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) loginGet(w http.ResponseWriter, r *http.Request) {
-	if ctrl.isUserAuthenticated(r) {
+	if !ctrl.isLoginFormEnabled(r) {
 		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
@@ -56,6 +52,10 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
+	if !ctrl.isLoginWithPasswordAllowed(r) {
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
 	type loginCredentials struct {
 		Username string `json:"username"`
 		Password []byte `json:"password"`
@@ -94,10 +94,6 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
-	if !ctrl.config.Auth.Internal.SignupEnabled {
-		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
 	switch r.Method {
 	case http.MethodGet:
 		ctrl.signupGet(w, r)
@@ -109,7 +105,7 @@ func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) signupGet(w http.ResponseWriter, r *http.Request) {
-	if ctrl.isUserAuthenticated(r) {
+	if !ctrl.isSignupAllowed(r) {
 		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
@@ -130,6 +126,10 @@ func (ctrl *Controller) signupGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
+	if !ctrl.isSignupAllowed(r) {
+		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
 	type signupRequest struct {
 		Name     string  `json:"name"`
 		Email    *string `json:"email,omitempty"`
@@ -160,6 +160,28 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, err)
 		return
 	}
+}
+
+func (ctrl *Controller) isAuthRequired() bool {
+	return ctrl.config.Auth.Internal.Enabled ||
+		ctrl.config.Auth.Google.Enabled ||
+		ctrl.config.Auth.Github.Enabled ||
+		ctrl.config.Auth.Gitlab.Enabled
+}
+
+func (ctrl *Controller) isLoginFormEnabled(r *http.Request) bool {
+	return !ctrl.isUserAuthenticated(r) && ctrl.isAuthRequired()
+}
+
+func (ctrl *Controller) isLoginWithPasswordAllowed(r *http.Request) bool {
+	return !ctrl.isUserAuthenticated(r) &&
+		ctrl.config.Auth.Internal.Enabled
+}
+
+func (ctrl *Controller) isSignupAllowed(r *http.Request) bool {
+	return !ctrl.isUserAuthenticated(r) &&
+		ctrl.config.Auth.Internal.Enabled &&
+		ctrl.config.Auth.Internal.SignupEnabled
 }
 
 func (ctrl *Controller) isUserAuthenticated(r *http.Request) bool {

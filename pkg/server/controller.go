@@ -390,13 +390,6 @@ func (ctrl *Controller) trackMetrics(route string) func(next http.Handler) http.
 	}
 }
 
-func (ctrl *Controller) isAuthRequired() bool {
-	return ctrl.config.Auth.Internal.Enabled ||
-		ctrl.config.Auth.Google.Enabled ||
-		ctrl.config.Auth.Github.Enabled ||
-		ctrl.config.Auth.Gitlab.Enabled
-}
-
 func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http.Request, urlStr string, status int) {
 	if ctrl.config.BaseURL != "" {
 		// we're modifying the URL here so I'm not memoizing it and instead parsing it all over again to create a new object
