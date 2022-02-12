@@ -135,6 +135,8 @@ type Server struct {
 	CacheSegmentSize    int               `deprecated:"true" mapstructure:"cache-segment-size"`
 	CacheTreeSize       int               `deprecated:"true" mapstructure:"cache-tree-size"`
 
+	CORS CORSConfig `mapstructure:"cors"`
+
 	Auth Auth `mapstructure:"auth"`
 
 	MetricsExportRules MetricsExportRules `yaml:"metrics-export-rules" def:"" desc:"metrics export rules" mapstructure:"metrics-export-rules"`
@@ -178,6 +180,7 @@ type Auth struct {
 	Ingestion IngestionAuth `mapstructure:"ingestion"`
 
 	CookieSameSite           http.SameSite `json:"-" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
+	CookieSecure             bool          `json:"-" deprecated:"true" def:"false" desc:"specifies Secure attribute for JWT token cookie" mapstructure:"cookie-secure"`
 	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
 	LoginMaximumLifetimeDays int           `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
 }
@@ -199,6 +202,13 @@ type AdminUser struct {
 	Name     string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"name"`
 	Email    string `json:"-" deprecated:"true" def:"admin@localhost.local" desc:"" mapstructure:"email"`
 	Password string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"password"`
+}
+
+type CORSConfig struct {
+	AllowedOrigins []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-origins"`
+	AllowedHeaders []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-headers"`
+	AllowedMethods []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-methods"`
+	MaxAge         int      `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"max-age"`
 }
 
 // TODO: Maybe merge Oauth structs into one (would have to move def and desc tags somewhere else in code)

@@ -193,6 +193,11 @@ func (ctrl *Controller) isUserAuthenticated(r *http.Request) bool {
 	return false
 }
 
+func (ctrl *Controller) isCookieSecureRequired() bool {
+	return ctrl.config.Auth.CookieSecure ||
+		ctrl.config.Auth.CookieSameSite == http.SameSiteNoneMode
+}
+
 func (ctrl *Controller) createCookie(w http.ResponseWriter, name, value string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
@@ -201,24 +206,27 @@ func (ctrl *Controller) createCookie(w http.ResponseWriter, name, value string) 
 		HttpOnly: true,
 		MaxAge:   0,
 		SameSite: ctrl.config.Auth.CookieSameSite,
+		Secure:   ctrl.isCookieSecureRequired(),
 	})
 }
 
-func invalidateCookie(w http.ResponseWriter, name string) {
+func (ctrl *Controller) invalidateCookie(w http.ResponseWriter, name string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Path:     "/",
 		Value:    "",
 		HttpOnly: true,
 		// MaxAge -1 request cookie be deleted immediately
-		MaxAge: -1,
+		MaxAge:   -1,
+		SameSite: ctrl.config.Auth.CookieSameSite,
+		Secure:   ctrl.isCookieSecureRequired(),
 	})
 }
 
 func (ctrl *Controller) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost, http.MethodGet:
-		invalidateCookie(w, api.JWTCookieName)
+		ctrl.invalidateCookie(w, api.JWTCookieName)
 		ctrl.loginRedirect(w, r)
 	default:
 		ctrl.writeInvalidMethodError(w)
@@ -281,7 +289,7 @@ func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Reque
 	} else {
 		ctrl.log.Error(msg)
 	}
-	invalidateCookie(w, stateCookieName)
+	ctrl.invalidateCookie(w, stateCookieName)
 	ctrl.redirectPreservingBaseURL(w, r, "/forbidden", http.StatusTemporaryRedirect)
 }
 
@@ -341,7 +349,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		}
 
 		// delete state cookie and add jwt cookie
-		invalidateCookie(w, stateCookieName)
+		ctrl.invalidateCookie(w, stateCookieName)
 		ctrl.createCookie(w, api.JWTCookieName, token)
 		tmpl, err := ctrl.getTemplate("/welcome.html")
 		if err != nil {

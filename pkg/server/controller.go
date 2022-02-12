@@ -15,6 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
@@ -143,7 +144,20 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 	return hll
 }
 
+func (ctrl *Controller) ingestHandler() http.Handler {
+	return NewIngestHandler(ctrl.log, ctrl.storage, ctrl.exporter, func(pi *storage.PutInput) {
+		ctrl.statsInc("ingest")
+		ctrl.statsInc("ingest:" + pi.SpyName)
+		ctrl.appStats.Add(hashString(pi.Key.AppName()))
+	})
+}
+
 func (ctrl *Controller) mux() (http.Handler, error) {
+	// TODO(kolesnikovae):
+	//  - Move mux part to pkg/api/router.
+	//  - Make prometheus middleware to support gorilla patterns.
+	//  - Make diagnostic endpoints protection configurable.
+	//  - Auth middleware should never redirect - the logic should be moved to the client side.
 	r := mux.NewRouter()
 
 	ctrl.jwtTokenService = service.NewJWTTokenService(
@@ -159,28 +173,25 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		UserService:   ctrl.userService,
 	})
 
-	apiRouter.Use(ctrl.drainMiddleware)
-	apiRouter.Use(ctrl.authMiddleware(nil))
+	apiRouter.Use(
+		ctrl.drainMiddleware,
+		ctrl.corsMiddleware(),
+		ctrl.authMiddleware(nil))
+
 	if ctrl.isAuthRequired() {
 		apiRouter.RegisterUserHandlers()
 		apiRouter.RegisterAPIKeyHandlers()
 	}
 
-	ingestHandler := NewIngestHandler(ctrl.log, ctrl.storage, ctrl.exporter, func(pi *storage.PutInput) {
-		ctrl.statsInc("ingest")
-		ctrl.statsInc("ingest:" + pi.SpyName)
-		ctrl.appStats.Add(hashString(pi.Key.AppName()))
-	})
-
-	ingestMiddleware := []mux.MiddlewareFunc{ctrl.drainMiddleware}
+	ingestRouter := r.Path("/ingest").Subrouter()
+	ingestRouter.Use(ctrl.drainMiddleware)
 	if ctrl.config.Auth.Ingestion.Enabled {
-		ingestMiddleware = append(ingestMiddleware,
+		ingestRouter.Use(
 			ctrl.ingestionAuthMiddleware(),
 			authz.Require(authz.Role(model.AgentRole)))
 	}
-	ctrl.addRoutes(r, []route{
-		{"/ingest", ingestHandler.ServeHTTP}},
-		ingestMiddleware...)
+
+	ingestRouter.Methods(http.MethodPost).Handler(ctrl.ingestHandler())
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()
@@ -192,10 +203,8 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 	ctrl.addRoutes(r, append(insecureRoutes, []route{
 		{"/forbidden", ctrl.forbiddenHandler()},
 		{"/assets/", assetsHandler}}...),
-		ctrl.drainMiddleware)
-
-	// TODO(kolesnikovae): Refactor after getting rid of handling pages on the backend side.
-	//  Auth middleware should never redirect - the logic should be moved to the client side.
+		ctrl.drainMiddleware,
+		ctrl.corsMiddleware())
 
 	// Protected pages:
 	// For these routes server responds with 307 and redirects to /login.
@@ -210,6 +219,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/settings/{page}", ctrl.indexHandler()},
 		{"/settings/{page}/{subpage}", ctrl.indexHandler()}},
 		ctrl.drainMiddleware,
+		ctrl.corsMiddleware(),
 		ctrl.authMiddleware(ctrl.loginRedirect))
 
 	// For these routes server responds with 401.
@@ -220,6 +230,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/label-values", ctrl.labelValuesHandler},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
 		ctrl.drainMiddleware,
+		ctrl.corsMiddleware(),
 		ctrl.authMiddleware(nil))
 
 	// TODO(kolesnikovae):
@@ -228,7 +239,6 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 
 	// TODO(kolesnikovae):
 	//  Make diagnostic endpoints protection configurable.
-
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
@@ -370,6 +380,19 @@ func (ctrl *Controller) Stop() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	return ctrl.httpServer.Shutdown(ctx)
+}
+
+func (ctrl *Controller) corsMiddleware() mux.MiddlewareFunc {
+	if len(ctrl.config.CORS.AllowedOrigins) > 0 {
+		return handlers.CORS(
+			handlers.AllowedOrigins(ctrl.config.CORS.AllowedOrigins),
+			handlers.AllowedMethods(ctrl.config.CORS.AllowedMethods),
+			handlers.AllowedHeaders(ctrl.config.CORS.AllowedHeaders),
+			handlers.MaxAge(ctrl.config.CORS.MaxAge))
+	}
+	return func(next http.Handler) http.Handler {
+		return next
+	}
 }
 
 func (ctrl *Controller) Drain() {
