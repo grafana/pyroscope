@@ -29,7 +29,7 @@ export function fitToCanvasRect({
   shortText: string;
 }) {
   switch (mode) {
-    case 'HEAD':
+    case 'TAIL':
       // Case 1:
       // content fits rectangle width
       // | rectangle |
@@ -76,7 +76,7 @@ export function fitToCanvasRect({
 
     // Case 3:
     // Normal
-    case 'TAIL':
+    case 'HEAD':
     default:
       return {
         mode,
@@ -94,7 +94,7 @@ export function fitToCanvasRect({
  */
 export function fitIntoTableCell(mode: FitModes) {
   switch (mode) {
-    case 'HEAD':
+    case 'TAIL':
       return {
         // prints from right to left
         direction: 'rtl',
@@ -102,7 +102,7 @@ export function fitIntoTableCell(mode: FitModes) {
         textOverflow: 'ellipsis',
       };
 
-    case 'TAIL':
+    case 'HEAD':
     default:
       return {
         overflow: 'hidden',
