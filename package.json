@@ -20,6 +20,7 @@
     "build:datasource": "NODE_ENV=production webpack --config scripts/webpack/webpack.datasource.ts",
     "build:standalone": "webpack --config scripts/webpack/webpack.standalone.ts",
     "build:size-limit": "NODE_ENV=production webpack --config scripts/webpack/webpack.size-limit.ts",
+    "build:lib": "NODE_ENV=production webpack --config scripts/webpack/webpack.lib.ts",
     "test": "jest --runInBand",
     "test:ss": "UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-docker.sh",
     "test:ss-check": "./scripts/jest-snapshots/run-docker.sh",

@@ -1,0 +1,7 @@
+{
+  "name": "pyroscope",
+  "version": "0.0.1-%VERSION%",
+  "main": "index.lib.js",
+  "browser": "index.js",
+  "license": "MIT"
+}
