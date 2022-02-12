@@ -9,12 +9,15 @@ import { useAppDispatch } from '@pyroscope/redux/hooks';
 export default async function handleError(
   dispatch: ReturnType<typeof useAppDispatch>,
   message: string,
-  error: RequestError
+  error: ZodError | RequestError
 ): Promise<void> {
   // We log the error in case a tech-savy user wants to debug themselves
   console.error(error);
 
-  let errorMessage = (error as RequestNotOkError).message;
+  let errorMessage;
+  if ('message' in error) {
+    errorMessage = error.message;
+  }
 
   // a ZodError means its format is not what we expect
   if (error instanceof ZodError) {

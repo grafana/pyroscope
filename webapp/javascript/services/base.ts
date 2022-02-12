@@ -97,7 +97,7 @@ export async function request(
     try {
       const data = JSON.parse(textBody);
 
-      // Check if it's 401 unauthirized error
+      // Check if it's 401 unauthorized error
       if (response.status === 401) {
         // TODO: Introduce some kind of interceptor (?)
         if (window && window.location) {
@@ -105,15 +105,20 @@ export async function request(
         }
       }
 
+      // Usually it's a feedback on user's actions
+      if ('errors' in data) {
+        return Result.err<unknown, RequestNotOkWithErrorsList>(data);
+      }
+
       // We could parse the response
-      return Result.err({
+      return Result.err<unknown, RequestNotOkError>({
         statusCode: response.status,
         ...data,
       });
     } catch (e) {
       // We couldn't parse, but there's definitly some data
       // We must handle this case since the go server sometimes responds with plain text
-      return Result.err({
+      return Result.err<unknown, RequestNotOkError>({
         statusCode: response.status,
         message: textBody,
       });

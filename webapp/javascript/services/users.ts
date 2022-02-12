@@ -71,20 +71,20 @@ export async function createUser(
 }
 
 export async function loadCurrentUser(): Promise<
-  Result<User | boolean, RequestError | ZodError>
+  Result<User, RequestError | ZodError>
 > {
   const response = await request(`/api/user`);
   if (response.isOk) {
     return modelToResult<User>(userModel, response.value);
   }
 
-  return Result.err<false, RequestError>(response.error);
+  return Result.err<User, RequestError>(response.error);
 }
 
 export async function changeMyPassword(
   oldPassword: string,
   newPassword: string
-): Promise<Result<User | boolean, RequestError | ZodError>> {
+): Promise<Result<boolean, RequestError | ZodError>> {
   const response = await request(`/api/user/password`, {
     method: 'PUT',
     body: JSON.stringify({
@@ -96,7 +96,7 @@ export async function changeMyPassword(
     return Result.ok(true);
   }
 
-  return Result.err<false, RequestError>(response.error);
+  return Result.err<boolean, RequestError>(response.error);
 }
 
 export async function changeUserRole(
@@ -112,7 +112,7 @@ export async function changeUserRole(
     return Result.ok(true);
   }
 
-  return Result.err<false, RequestError>(response.error);
+  return Result.err<boolean, RequestError>(response.error);
 }
 
 export async function editMyUser(
@@ -127,7 +127,7 @@ export async function editMyUser(
     return Result.ok(true);
   }
 
-  return Result.err<false, RequestError>(response.error);
+  return Result.err<boolean, RequestError>(response.error);
 }
 
 export async function deleteUser(data: {
@@ -142,5 +142,5 @@ export async function deleteUser(data: {
     return Result.ok(true);
   }
 
-  return Result.err<false, RequestError>(response.error);
+  return Result.err<boolean, RequestError>(response.error);
 }
