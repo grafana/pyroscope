@@ -18,6 +18,7 @@ ignore:
   - vendor/
   - examples/dotnet
   - .github/markdown-images
+  - testdata/
 
 rules:
   # checks if file ends in a newline character
