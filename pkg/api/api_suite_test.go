@@ -40,7 +40,7 @@ func ctxWithUser(u *model.User) requestContextProvider {
 
 func ctxWithAPIKey(k *model.APIKeyToken) requestContextProvider {
 	return func(ctx context.Context) context.Context {
-		return model.WithTokenAPIKey(ctx, *k)
+		return model.WithAPIKey(ctx, *k)
 	}
 }
 

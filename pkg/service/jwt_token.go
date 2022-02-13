@@ -2,7 +2,6 @@ package service
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -11,44 +10,30 @@ import (
 )
 
 const (
-	jwtClaimAPIKeyName = "akn"
-	jwtClaimUserName   = "name"
-	jwtClaimRole       = "role"
+	jwtClaimUserName = "name"
+	jwtClaimRole     = "role"
 )
 
-// TODO(kolesnikovae): Move to AuthService.
-
 type JWTTokenService struct {
-	signingKey               []byte
-	userTokenMaxLifetimeDays int
+	signingKey []byte
+	tokenTTL   time.Duration
 }
 
-func NewJWTTokenService(signingKey []byte, userTokenMaxLifetimeDays int) JWTTokenService {
+func NewJWTTokenService(signingKey []byte, tokenTTL time.Duration) JWTTokenService {
 	return JWTTokenService{
-		signingKey:               signingKey,
-		userTokenMaxLifetimeDays: userTokenMaxLifetimeDays,
+		signingKey: signingKey,
+		tokenTTL:   tokenTTL,
 	}
 }
 
-func (svc JWTTokenService) GenerateUserToken(name string, role model.Role) *jwt.Token {
+func (svc JWTTokenService) GenerateUserJWTToken(name string, role model.Role) *jwt.Token {
 	var exp time.Time
-	if svc.userTokenMaxLifetimeDays > 0 {
-		exp = time.Now().Add(time.Hour * 24 * time.Duration(svc.userTokenMaxLifetimeDays))
+	if svc.tokenTTL > 0 {
+		exp = time.Now().Add(svc.tokenTTL)
 	}
 	return generateToken(exp, jwt.MapClaims{
 		jwtClaimUserName: name,
 		jwtClaimRole:     role.String(),
-	})
-}
-
-func (JWTTokenService) GenerateAPIKeyToken(params model.CreateAPIKeyParams) *jwt.Token {
-	var exp time.Time
-	if params.ExpiresAt != nil {
-		exp = *params.ExpiresAt
-	}
-	return generateToken(exp, jwt.MapClaims{
-		jwtClaimAPIKeyName: params.Name,
-		jwtClaimRole:       params.Role.String(),
 	})
 }
 
@@ -82,29 +67,6 @@ func (JWTTokenService) UserFromJWTToken(t *jwt.Token) (model.TokenUser, bool) {
 	return user, err == nil
 }
 
-// APIKeyFromJWTToken retrieves API key info from the given JWT token.
-// 'akn' and 'role' claims must be present and valid, otherwise the
-// function returns false. The function does not validate the token.
-func (JWTTokenService) APIKeyFromJWTToken(t *jwt.Token) (model.APIKeyToken, bool) {
-	var apiKey model.APIKeyToken
-	m, ok := t.Claims.(jwt.MapClaims)
-	if !ok {
-		return apiKey, false
-	}
-	// Make sure the subject is an API Key.
-	if apiKey.Name, ok = m[jwtClaimAPIKeyName].(string); !ok {
-		return apiKey, false
-	}
-	// Parse role.
-	s, ok := m[jwtClaimRole].(string)
-	if !ok {
-		return apiKey, false
-	}
-	var err error
-	apiKey.Role, err = model.ParseRole(s)
-	return apiKey, err == nil
-}
-
 // Parse parses the token and validates it using the signing key.
 func (svc JWTTokenService) Parse(t string) (*jwt.Token, error) {
 	return jwt.Parse(t, func(token *jwt.Token) (interface{}, error) {
@@ -115,13 +77,6 @@ func (svc JWTTokenService) Parse(t string) (*jwt.Token, error) {
 	})
 }
 
-func (svc JWTTokenService) Sign(t *jwt.Token) (jwtToken, signature string, err error) {
-	var sig, sstr string
-	if sstr, err = t.SigningString(); err != nil {
-		return "", "", err
-	}
-	if sig, err = t.Method.Sign(sstr, svc.signingKey); err != nil {
-		return "", "", err
-	}
-	return strings.Join([]string{sstr, sig}, "."), sig, nil
+func (svc JWTTokenService) Sign(t *jwt.Token) (string, error) {
+	return t.SignedString(svc.signingKey)
 }

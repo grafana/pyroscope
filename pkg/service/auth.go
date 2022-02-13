@@ -21,7 +21,7 @@ func NewAuthService(db *gorm.DB, jwtTokenService JWTTokenService) AuthService {
 	return AuthService{
 		db:              db,
 		userService:     NewUserService(db),
-		apiKeyService:   NewAPIKeyService(db, jwtTokenService),
+		apiKeyService:   NewAPIKeyService(db),
 		jwtTokenService: jwtTokenService,
 	}
 }
@@ -56,23 +56,23 @@ func (svc AuthService) AuthenticateUser(ctx context.Context, name string, passwo
 	return user, nil
 }
 
-func (svc AuthService) APIKeyTokenFromJWTToken(ctx context.Context, t string) (model.APIKeyToken, error) {
-	token, err := svc.jwtTokenService.Parse(t)
-	if err != nil {
-		return model.APIKeyToken{}, fmt.Errorf("invalid jwt token: %w", err)
-	}
-	keyToken, ok := svc.jwtTokenService.APIKeyFromJWTToken(token)
-	if !ok {
-		return model.APIKeyToken{}, fmt.Errorf("api key is invalid")
-	}
-	apiKey, err := svc.apiKeyService.FindAPIKeyByName(ctx, keyToken.Name)
+func (svc AuthService) APIKeyFromToken(ctx context.Context, t string) (model.APIKeyToken, error) {
+	id, secret, err := model.DecodeAPIKey(t)
 	if err != nil {
 		return model.APIKeyToken{}, err
 	}
-	if !apiKey.VerifySignature(token) {
-		return model.APIKeyToken{}, fmt.Errorf("api key signature mismatch")
+	apiKey, err := svc.apiKeyService.FindAPIKeyByID(ctx, id)
+	if err != nil {
+		return model.APIKeyToken{}, err
 	}
-	return keyToken, nil
+	if err = apiKey.Verify(secret); err != nil {
+		return model.APIKeyToken{}, err
+	}
+	k := model.APIKeyToken{
+		Name: apiKey.Name,
+		Role: apiKey.Role,
+	}
+	return k, nil
 }
 
 func (svc AuthService) UserFromJWTToken(ctx context.Context, t string) (model.User, error) {

@@ -27,13 +27,13 @@ func NewCachingAuthService(authService AuthService, c CachingAuthServiceConfig) 
 	return cas
 }
 
-func (svc CachingAuthService) APIKeyTokenFromJWTToken(ctx context.Context, t string) (model.APIKeyToken, error) {
+func (svc CachingAuthService) APIKeyFromToken(ctx context.Context, t string) (model.APIKeyToken, error) {
 	if svc.cache != nil {
 		if v, ok := svc.cache.get(t); ok {
 			return v.(model.APIKeyToken), nil
 		}
 	}
-	return svc.AuthService.APIKeyTokenFromJWTToken(ctx, t)
+	return svc.AuthService.APIKeyFromToken(ctx, t)
 }
 
 func (svc CachingAuthService) PutAPIKey(t string, k model.APIKeyToken) {

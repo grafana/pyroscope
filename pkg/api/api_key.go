@@ -42,7 +42,7 @@ type GeneratedAPIKey struct {
 	ID        uint       `json:"id"`
 	Name      string     `json:"name"`
 	Role      model.Role `json:"role"`
-	JWTToken  string     `json:"key"`
+	Key       string     `json:"key"`
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
 }
@@ -88,13 +88,13 @@ func (h APIKeyHandler) CreateAPIKey(w http.ResponseWriter, r *http.Request) {
 		expiresAt := time.Now().Add(time.Duration(req.TTLSeconds) * time.Second)
 		params.ExpiresAt = &expiresAt
 	}
-	apiKey, token, err := h.apiKeyService.CreateAPIKey(r.Context(), params)
+	apiKey, secret, err := h.apiKeyService.CreateAPIKey(r.Context(), params)
 	if err != nil {
 		Error(w, err)
 		return
 	}
 	k := generatedAPIKeyFromModel(apiKey)
-	k.JWTToken = token
+	k.Key = secret
 	w.WriteHeader(http.StatusCreated)
 	MustJSON(w, k)
 }

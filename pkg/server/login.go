@@ -83,7 +83,7 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 		api.Error(w, err)
 		return
 	}
-	token, _, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserToken(u.Name, u.Role))
+	token, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserJWTToken(u.Name, u.Role))
 	if err != nil {
 		ctrl.log.WithError(err).Error("failed to generate user token")
 		api.Error(w, err)
@@ -342,7 +342,7 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 			ctrl.logErrorAndRedirect(w, r, "user disabled", err)
 			return
 		}
-		token, _, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserToken(user.Name, user.Role))
+		token, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserJWTToken(user.Name, user.Role))
 		if err != nil {
 			ctrl.logErrorAndRedirect(w, r, "signing jwt failed", err)
 			return

@@ -3,6 +3,7 @@ package service_test
 import (
 	"time"
 
+	"github.com/golang-jwt/jwt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -12,63 +13,75 @@ import (
 
 var _ = Describe("API key JWT encoding", func() {
 	var (
-		p   model.CreateAPIKeyParams
-		svc service.JWTTokenService
+		userName string
+		userRole model.Role
+		tokenTTL time.Duration
+		svc      service.JWTTokenService
+
+		token  *jwt.Token
+		signed string
+		err    error
+		key    []byte
 	)
 
 	BeforeEach(func() {
-		p = model.CreateAPIKeyParams{
-			Name: "api_key_name",
-			Role: model.AdminRole,
-		}
-
-		svc = service.NewJWTTokenService([]byte("signing-key"), 0)
+		userName = "johndoe"
+		userRole = model.AdminRole
+		key = []byte("signing-key")
+		tokenTTL = 0
 	})
 
-	Context("when a new token is generated for an API key", func() {
-		It("produces a valid JWT token", func() {
-			t := svc.GenerateAPIKeyToken(p)
-			signed, signature, err := svc.Sign(t)
+	JustBeforeEach(func() {
+		svc = service.NewJWTTokenService(key, tokenTTL)
+		token = svc.GenerateUserJWTToken(userName, userRole)
+		signed, err = svc.Sign(token)
+	})
+
+	Context("when a new token is generated for a user", func() {
+		It("does not return error", func() {
 			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("produces a valid JWT token", func() {
 			parsed, parseErr := svc.Parse(signed)
 			Expect(parseErr).ToNot(HaveOccurred())
-			Expect(parsed.Signature).To(Equal(signature))
 			Expect(parsed.Valid).To(BeTrue())
 		})
 	})
 
-	Context("when an invalid JWT token is parsed", func() {
-		It("returns error if token has expired", func() {
-			exp := time.Now().Add(time.Second * -1)
-			p.ExpiresAt = &exp
-			signed, _, err := svc.Sign(svc.GenerateAPIKeyToken(p))
-			Expect(err).ToNot(HaveOccurred())
-			_, err = svc.Parse(signed)
-			Expect(err).To(HaveOccurred())
+	Context("invalid JWT token", func() {
+		Context("when an expired JWT token is parsed", func() {
+			BeforeEach(func() {
+				tokenTTL = time.Millisecond
+			})
+			It("returns error if token has expired", func() {
+				time.Sleep(time.Second)
+				_, err = svc.Parse(signed)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 
-		It("returns error if its signature can not be verified", func() {
-			signed, _, err := svc.Sign(svc.GenerateAPIKeyToken(p))
-			Expect(err).ToNot(HaveOccurred())
-			svc = service.NewJWTTokenService([]byte("invalid"), 0)
-			_, err = svc.Parse(signed)
-			Expect(err).To(HaveOccurred())
+		Context("when a token with invalid signature is parsed", func() {
+			It("returns error if its signature can not be verified", func() {
+				svc = service.NewJWTTokenService([]byte("invalid"), tokenTTL)
+				_, err = svc.Parse(signed)
+				Expect(err).To(HaveOccurred())
+			})
 		})
 	})
 
-	Context("when a token is acquired with APIKeyTokenFromJWTToken", func() {
-		It("creates a valid API key if the token is valid", func() {
-			apiKey, ok := svc.APIKeyFromJWTToken(svc.GenerateAPIKeyToken(p))
+	Context("when a token is acquired with UserFromJWTToken", func() {
+		It("creates a valid user token", func() {
+			user, ok := svc.UserFromJWTToken(svc.GenerateUserJWTToken(userName, userRole))
 			Expect(ok).To(BeTrue())
-			Expect(apiKey).To(Equal(model.APIKeyToken{
-				Name: p.Name,
-				Role: p.Role,
+			Expect(user).To(Equal(model.TokenUser{
+				Name: userName,
+				Role: userRole,
 			}))
 		})
 
-		It("returns false if API key can not be retrieved", func() {
-			p = model.CreateAPIKeyParams{}
-			_, ok := svc.APIKeyFromJWTToken(svc.GenerateAPIKeyToken(p))
+		It("returns false if user token can not be retrieved", func() {
+			_, ok := svc.UserFromJWTToken(svc.GenerateUserJWTToken("", model.InvalidRole))
 			Expect(ok).To(BeFalse())
 		})
 	})

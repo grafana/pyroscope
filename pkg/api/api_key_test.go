@@ -47,8 +47,8 @@ var _ = Describe("APIKeyHandler", func() {
 			// Expected params passed to the mocked API key service.
 			expectedParams model.CreateAPIKeyParams
 			// API key and JWT token string returned by mocked service.
-			expectedAPIKey   model.APIKey
-			expectedJWTToken string
+			expectedAPIKey model.APIKey
+			expectedSecret string
 		)
 
 		BeforeEach(func() {
@@ -62,7 +62,7 @@ var _ = Describe("APIKeyHandler", func() {
 			now := time.Date(2021, 12, 10, 4, 14, 0, 0, time.UTC)
 			expiresAt := now.Add(time.Minute)
 
-			expectedJWTToken = "jwt-token-string"
+			expectedSecret = "secret-string"
 			expectedParams = model.CreateAPIKeyParams{
 				Name:      "some-api-key",
 				Role:      model.ReadOnlyRole,
@@ -83,7 +83,7 @@ var _ = Describe("APIKeyHandler", func() {
 			It("responds with created API key", func() {
 				m.EXPECT().
 					CreateAPIKey(gomock.Any(), gomock.Any()).
-					Return(expectedAPIKey, expectedJWTToken, nil).
+					Return(expectedAPIKey, expectedSecret, nil).
 					Do(func(_ context.Context, actual model.CreateAPIKeyParams) {
 						defer GinkgoRecover()
 						Expect(*actual.ExpiresAt).To(BeTemporally("~", time.Now(), time.Minute))
@@ -105,7 +105,7 @@ var _ = Describe("APIKeyHandler", func() {
 
 				m.EXPECT().
 					CreateAPIKey(gomock.Any(), expectedParams).
-					Return(expectedAPIKey, expectedJWTToken, nil)
+					Return(expectedAPIKey, expectedSecret, nil)
 
 				expectResponse(newRequest(method, url,
 					"api_key/create_request_wo_ttl.json"),

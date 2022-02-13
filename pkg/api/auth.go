@@ -15,7 +15,7 @@ const JWTCookieName = "pyroscopeJWT"
 //go:generate mockgen -destination mocks/auth.go -package mocks . AuthService
 
 type AuthService interface {
-	APIKeyTokenFromJWTToken(ctx context.Context, token string) (model.APIKeyToken, error)
+	APIKeyFromToken(ctx context.Context, token string) (model.APIKeyToken, error)
 	UserFromJWTToken(ctx context.Context, token string) (model.User, error)
 	AuthenticateUser(ctx context.Context, name, password string) (model.User, error)
 }
@@ -71,8 +71,8 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 //
 // The method fails if the token is invalid or the user can't be authenticated
 // (e.g. can not be found or is disabled).
-func withUserFromToken(ctx context.Context, s AuthService, t string) (context.Context, error) {
-	u, err := s.UserFromJWTToken(ctx, t)
+func withUserFromToken(ctx context.Context, as AuthService, t string) (context.Context, error) {
+	u, err := as.UserFromJWTToken(ctx, t)
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +84,13 @@ func withUserFromToken(ctx context.Context, s AuthService, t string) (context.Co
 // from the handler via the `model.APIKeyFromContext` call.
 //
 // The method fails if the token is invalid or the API key can't be
-// authenticated (e.g. can not be found, expired, or it's signature
-// has changed).
-func withAPIKeyFromToken(ctx context.Context, s AuthService, t string) (context.Context, error) {
-	k, err := s.APIKeyTokenFromJWTToken(ctx, t)
+// authenticated (e.g. can not be found or it's expired).
+func withAPIKeyFromToken(ctx context.Context, as AuthService, t string) (context.Context, error) {
+	k, err := as.APIKeyFromToken(ctx, t)
 	if err != nil {
 		return nil, err
 	}
-	return model.WithTokenAPIKey(ctx, k), nil
+	return model.WithAPIKey(ctx, k), nil
 }
 
 const bearer string = "bearer"

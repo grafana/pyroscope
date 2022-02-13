@@ -17,21 +17,20 @@ var _ = Describe("APIKeyService", func() {
 	AfterEach(s.AfterEach)
 
 	var svc service.APIKeyService
-	jwtTokenService := service.NewJWTTokenService([]byte("signing-key"), 0)
 	BeforeEach(func() {
-		svc = service.NewAPIKeyService(s.DB(), jwtTokenService)
+		svc = service.NewAPIKeyService(s.DB())
 	})
 
 	Describe("API key creation", func() {
 		var (
 			params = testCreateAPIKeyParams()
 			apiKey model.APIKey
-			token  string
+			key    string
 			err    error
 		)
 
 		JustBeforeEach(func() {
-			apiKey, token, err = svc.CreateAPIKey(context.Background(), params)
+			apiKey, key, err = svc.CreateAPIKey(context.Background(), params)
 		})
 
 		Context("when a new API key created", func() {
@@ -43,11 +42,11 @@ var _ = Describe("APIKeyService", func() {
 				expectAPIKeyMatches(apiKey, params)
 			})
 
-			It("creates a valid JWT token", func() {
-				parsed, err := jwtTokenService.Parse(token)
+			It("creates a valid secret", func() {
+				id, secret, err := model.DecodeAPIKey(key)
 				Expect(err).ToNot(HaveOccurred())
-				_, ok := jwtTokenService.APIKeyFromJWTToken(parsed)
-				Expect(ok).To(BeTrue())
+				Expect(id).To(Equal(apiKey.ID))
+				Expect(apiKey.Verify(secret)).ToNot(HaveOccurred())
 			})
 		})
 
@@ -75,11 +74,11 @@ var _ = Describe("APIKeyService", func() {
 
 	Describe("API key retrieval", func() {
 		Context("when an existing API key is queried", func() {
-			It("can be found by name", func() {
+			It("can be found by id", func() {
 				params := testCreateAPIKeyParams()
-				_, _, err := svc.CreateAPIKey(context.Background(), params)
+				k, _, err := svc.CreateAPIKey(context.Background(), params)
 				Expect(err).ToNot(HaveOccurred())
-				actual, err := svc.FindAPIKeyByName(context.Background(), params.Name)
+				actual, err := svc.FindAPIKeyByID(context.Background(), k.ID)
 				Expect(err).ToNot(HaveOccurred())
 				expectAPIKeyMatches(actual, params)
 			})
@@ -87,8 +86,7 @@ var _ = Describe("APIKeyService", func() {
 
 		Context("when a non-existing API key is queried", func() {
 			It("returns ErrAPIKeyNotFound error of NotFoundError type", func() {
-				params := testCreateAPIKeyParams()
-				_, err := svc.FindAPIKeyByName(context.Background(), params.Name)
+				_, err := svc.FindAPIKeyByID(context.Background(), 13)
 				Expect(err).To(MatchError(model.ErrAPIKeyNotFound))
 			})
 		})
@@ -120,7 +118,7 @@ var _ = Describe("APIKeyService", func() {
 				Expect(err).ToNot(HaveOccurred())
 			})
 
-			It("returns all users", func() {
+			It("returns all keys", func() {
 				apiKeyA, err := svc.FindAPIKeyByName(context.Background(), params[0].Name)
 				Expect(err).ToNot(HaveOccurred())
 				apiKeyB, err := svc.FindAPIKeyByName(context.Background(), params[1].Name)

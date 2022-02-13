@@ -64,7 +64,7 @@ var _ = Describe("AuthMiddleware", func() {
 		Context("when request has a valid API key in the header", func() {
 			It("authenticates request", func() {
 				authServiceMock.EXPECT().
-					APIKeyFromJWTToken(gomock.Any(), expectedJWTToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Return(expectedAPIKey, nil).
 					Times(1)
 
@@ -83,7 +83,7 @@ var _ = Describe("AuthMiddleware", func() {
 		Context("when request has an invalid API key in the header", func() {
 			It("returns status code Unauthorized", func() {
 				authServiceMock.EXPECT().
-					APIKeyFromJWTToken(gomock.Any(), expectedJWTToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Return(expectedAPIKey, model.ErrAPIKeyNotFound).
 					Times(1)
 
@@ -111,7 +111,7 @@ var _ = Describe("AuthMiddleware", func() {
 					Times(1)
 
 				authServiceMock.EXPECT().
-					APIKeyFromJWTToken(gomock.Any(), expectedJWTToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Times(0)
 
 				apiKeyServiceMock.EXPECT().
@@ -134,7 +134,7 @@ var _ = Describe("AuthMiddleware", func() {
 					Times(1)
 
 				authServiceMock.EXPECT().
-					APIKeyFromJWTToken(gomock.Any(), expectedJWTToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Times(0)
 
 				apiKeyServiceMock.EXPECT().
@@ -152,7 +152,7 @@ var _ = Describe("AuthMiddleware", func() {
 		Context("when credentials are not provided", func() {
 			It("redirects request", func() {
 				authServiceMock.EXPECT().
-					APIKeyFromJWTToken(gomock.Any(), expectedJWTToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Return(expectedAPIKey, nil).
 					Times(0)
 

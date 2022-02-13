@@ -18,7 +18,7 @@ func UserFromContext(ctx context.Context) (User, bool) {
 	return User{}, false
 }
 
-func WithTokenAPIKey(ctx context.Context, key APIKeyToken) context.Context {
+func WithAPIKey(ctx context.Context, key APIKeyToken) context.Context {
 	return context.WithValue(ctx, ctxAPIKeyKey, key)
 }
 

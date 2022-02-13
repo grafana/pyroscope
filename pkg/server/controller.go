@@ -162,13 +162,13 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	ctrl.jwtTokenService = service.NewJWTTokenService(
 		[]byte(ctrl.config.Auth.JWTSecret),
-		ctrl.config.Auth.LoginMaximumLifetimeDays)
+		24*time.Hour*time.Duration(ctrl.config.Auth.LoginMaximumLifetimeDays))
 
 	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
 	ctrl.userService = service.NewUserService(ctrl.db)
 
 	apiRouter := router.New(ctrl.log, r.PathPrefix("/api").Subrouter(), router.Services{
-		APIKeyService: service.NewAPIKeyService(ctrl.db, ctrl.jwtTokenService),
+		APIKeyService: service.NewAPIKeyService(ctrl.db),
 		AuthService:   ctrl.authService,
 		UserService:   ctrl.userService,
 	})
