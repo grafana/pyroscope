@@ -33,7 +33,7 @@ warningCode = 0
   arguments = [4]
 [rule.empty-block]
 [rule.superfluous-else]
-[rule.get-return]
+# [rule.get-return]
 [rule.modifies-parameter]
 [rule.confusing-results]
 [rule.deep-exit]

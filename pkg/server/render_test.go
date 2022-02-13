@@ -82,7 +82,7 @@ var _ = Describe("server", func() {
 				Notifier:                mockNotifier{},
 				Adhoc:                   mockAdhocServer{},
 			})
-			h, _ := c.mux()
+			h, _ := c.serverMux()
 			httpServer = httptest.NewServer(h)
 		})
 		Context("/render", func() {

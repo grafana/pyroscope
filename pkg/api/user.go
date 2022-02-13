@@ -247,7 +247,7 @@ func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
+func (UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
 	user, ok := model.UserFromContext(r.Context())
 	if !ok {
 		Error(w, model.ErrPermissionDenied)

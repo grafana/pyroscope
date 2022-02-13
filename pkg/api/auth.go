@@ -30,7 +30,7 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 			})
 
 			if token, ok := extractTokenFromAuthHeader(r.Header.Get("Authorization")); ok {
-				ctx, err := withAPIKeyFromToken(authService, r.Context(), token)
+				ctx, err := withAPIKeyFromToken(r.Context(), authService, token)
 				if err != nil {
 					logger.WithError(err).Debug("failed to authenticate api key")
 					Error(w, model.ErrInvalidCredentials)
@@ -41,7 +41,7 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 			}
 
 			if c, err := r.Cookie(JWTCookieName); err == nil {
-				ctx, err := withUserFromToken(authService, r.Context(), c.Value)
+				ctx, err := withUserFromToken(r.Context(), authService, c.Value)
 				if err != nil {
 					logger.WithError(err).Debug("failed to authenticate jwt cookie")
 					if loginRedirect != nil {
@@ -71,7 +71,7 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 //
 // The method fails if the token is invalid or the user can't be authenticated
 // (e.g. can not be found or is disabled).
-func withUserFromToken(s AuthService, ctx context.Context, t string) (context.Context, error) {
+func withUserFromToken(ctx context.Context, s AuthService, t string) (context.Context, error) {
 	u, err := s.UserFromJWTToken(ctx, t)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func withUserFromToken(s AuthService, ctx context.Context, t string) (context.Co
 // The method fails if the token is invalid or the API key can't be
 // authenticated (e.g. can not be found, expired, or it's signature
 // has changed).
-func withAPIKeyFromToken(s AuthService, ctx context.Context, t string) (context.Context, error) {
+func withAPIKeyFromToken(ctx context.Context, s AuthService, t string) (context.Context, error) {
 	k, err := s.APIKeyTokenFromJWTToken(ctx, t)
 	if err != nil {
 		return nil, err

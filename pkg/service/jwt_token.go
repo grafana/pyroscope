@@ -35,24 +35,24 @@ func (svc JWTTokenService) GenerateUserToken(name string, role model.Role) *jwt.
 	if svc.userTokenMaxLifetimeDays > 0 {
 		exp = time.Now().Add(time.Hour * 24 * time.Duration(svc.userTokenMaxLifetimeDays))
 	}
-	return svc.generateToken(exp, jwt.MapClaims{
+	return generateToken(exp, jwt.MapClaims{
 		jwtClaimUserName: name,
 		jwtClaimRole:     role.String(),
 	})
 }
 
-func (svc JWTTokenService) GenerateAPIKeyToken(params model.CreateAPIKeyParams) *jwt.Token {
+func (JWTTokenService) GenerateAPIKeyToken(params model.CreateAPIKeyParams) *jwt.Token {
 	var exp time.Time
 	if params.ExpiresAt != nil {
 		exp = *params.ExpiresAt
 	}
-	return svc.generateToken(exp, jwt.MapClaims{
+	return generateToken(exp, jwt.MapClaims{
 		jwtClaimAPIKeyName: params.Name,
 		jwtClaimRole:       params.Role.String(),
 	})
 }
 
-func (svc JWTTokenService) generateToken(exp time.Time, claims jwt.MapClaims) *jwt.Token {
+func generateToken(exp time.Time, claims jwt.MapClaims) *jwt.Token {
 	claims["iat"] = time.Now().Unix()
 	if !exp.IsZero() {
 		claims["exp"] = exp.Unix()
@@ -63,7 +63,7 @@ func (svc JWTTokenService) generateToken(exp time.Time, claims jwt.MapClaims) *j
 // UserFromJWTToken retrieves user info from the given JWT token.
 // 'name' claim must be present and valid, otherwise the function returns
 // false. The function does not validate the token.
-func (svc JWTTokenService) UserFromJWTToken(t *jwt.Token) (model.TokenUser, bool) {
+func (JWTTokenService) UserFromJWTToken(t *jwt.Token) (model.TokenUser, bool) {
 	var user model.TokenUser
 	m, ok := t.Claims.(jwt.MapClaims)
 	if !ok {
@@ -85,7 +85,7 @@ func (svc JWTTokenService) UserFromJWTToken(t *jwt.Token) (model.TokenUser, bool
 // APIKeyFromJWTToken retrieves API key info from the given JWT token.
 // 'akn' and 'role' claims must be present and valid, otherwise the
 // function returns false. The function does not validate the token.
-func (svc JWTTokenService) APIKeyFromJWTToken(t *jwt.Token) (model.APIKeyToken, bool) {
+func (JWTTokenService) APIKeyFromJWTToken(t *jwt.Token) (model.APIKeyToken, bool) {
 	var apiKey model.APIKeyToken
 	m, ok := t.Claims.(jwt.MapClaims)
 	if !ok {

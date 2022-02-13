@@ -10,6 +10,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// revive:disable:max-public-structs domain complexity
+
 var (
 	ErrUserNotFound = NotFoundError{errors.New("user not found")}
 
@@ -114,12 +116,12 @@ type UpdateUserParams struct {
 }
 
 func (p UpdateUserParams) SetRole(r Role) UpdateUserParams {
-	p.Role = &r
+	p.Role = &r // revive:disable:modifies-value-receiver returns by value
 	return p
 }
 
 func (p UpdateUserParams) SetIsDisabled(d bool) UpdateUserParams {
-	p.IsDisabled = &d
+	p.IsDisabled = &d // revive:disable:modifies-value-receiver returns by value
 	return p
 }
 

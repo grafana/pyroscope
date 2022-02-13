@@ -152,7 +152,7 @@ func (ctrl *Controller) ingestHandler() http.Handler {
 	})
 }
 
-func (ctrl *Controller) mux() (http.Handler, error) {
+func (ctrl *Controller) serverMux() (http.Handler, error) {
 	// TODO(kolesnikovae):
 	//  - Move mux part to pkg/api/router.
 	//  - Make prometheus middleware to support gorilla patterns.
@@ -228,6 +228,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
+		{"/export", ctrl.exportHandler},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
 		ctrl.drainMiddleware,
 		ctrl.corsMiddleware(),
@@ -261,8 +262,8 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 			{"/debug/pprof/mutex", pprof.Index},
 		}...)
 	}
-	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware(nil))
 
+	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware(nil))
 	ctrl.addRoutes(r, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
@@ -328,7 +329,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 }
 
 func (ctrl *Controller) getHandler() (http.Handler, error) {
-	handler, err := ctrl.mux()
+	handler, err := ctrl.serverMux()
 	if err != nil {
 		return nil, err
 	}

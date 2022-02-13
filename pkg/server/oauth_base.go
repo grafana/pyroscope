@@ -68,7 +68,7 @@ func (o oauthBase) getCallbackURL(host, configCallbackURL string, hasTLS bool) (
 	return fmt.Sprintf("%v://%v%v", schema, host, o.callbackRoute), nil
 }
 
-func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (string, string, error) {
+func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (redirectURL string, state string, err error) {
 	callbackURL, err := o.getCallbackURL(r.Host, o.config.RedirectURL, r.URL.Query().Get("tls") == "true")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -83,8 +83,7 @@ func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (strin
 	parameters.Add("response_type", "code")
 
 	// generate state token for CSRF protection
-	state, err := generateStateToken(16)
-	if err != nil {
+	if state, err = generateStateToken(16); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return "", "", fmt.Errorf("problem generating state token: %w", err)
 	}
