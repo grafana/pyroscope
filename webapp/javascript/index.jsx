@@ -59,11 +59,11 @@ function App() {
             <Route path="/adhoc-single">
               <AdhocSingle />
             </Route>
-            <Route path="/comparison">
-              <ComparisonApp />
+            <Route path="/adhoc-comparison">
+              <AdhocComparison />
             </Route>
-            <Route path="/comparison-diff">
-              <ComparisonDiffApp />
+            <Route path="/adhoc-comparison-diff">
+              <AdhocComparisonDiff />
             </Route>
           </>
         )}
