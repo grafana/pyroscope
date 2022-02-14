@@ -3,7 +3,6 @@
 @use 'mixins/outline' as *;
 @use 'components/daterangepicker';
 @use 'components/labels';
-@use 'components/exportdata';
 @use 'components/tagsbar';
 @use 'components/button';
 
@@ -12,8 +11,6 @@
 @import '~sanitize.css/typography.css';
 
 @import 'login.scss';
-
-@import '../javascript/components/FlameGraph/FlameGraphComponent/styles.css';
 
 html {
   width: 100vw;

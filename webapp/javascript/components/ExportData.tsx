@@ -8,6 +8,7 @@ import { dateForExportFilename } from '@utils/formatDate';
 
 import clsx from 'clsx';
 import { RawFlamebearerProfile } from '@models/flamebearer';
+import styles from './ExportData.module.scss';
 
 // These are modeled individually since each condition may have different values
 // For example, a exportPprof: true may accept a custom export function
@@ -243,14 +244,12 @@ function ExportData(props: ExportDataProps) {
   };
 
   return (
-    <div className="dropdown-container">
+    <div className={styles.dropdownContainer}>
       <Button icon={faBars} onClick={handleToggleMenu} />
-      <div
-        className={clsx({ 'menu-show': toggleMenu, 'menu-hide': !toggleMenu })}
-      >
+      <div className={toggleMenu ? styles.menuShow : styles.menuHide}>
         {exportPNG && (
           <button
-            className="dropdown-menu-item"
+            className={styles.dropdownMenuItem}
             onClick={() => downloadPNG()}
             onKeyPress={() => downloadPNG()}
             type="button"
@@ -260,7 +259,7 @@ function ExportData(props: ExportDataProps) {
         )}
         {exportJSON && (
           <button
-            className="dropdown-menu-item"
+            className={styles.dropdownMenuItem}
             type="button"
             onClick={() => downloadJSON()}
           >
@@ -269,7 +268,7 @@ function ExportData(props: ExportDataProps) {
         )}
         {exportPprof && (
           <button
-            className="dropdown-menu-item"
+            className={styles.dropdownMenuItem}
             type="button"
             onClick={() => downloadPprof()}
           >
@@ -278,7 +277,7 @@ function ExportData(props: ExportDataProps) {
         )}
         {exportHTML && (
           <button
-            className="dropdown-menu-item"
+            className={styles.dropdownMenuItem}
             type="button"
             onClick={() => downloadHTML()}
           >
@@ -288,7 +287,7 @@ function ExportData(props: ExportDataProps) {
         )}
         {exportFlamegraphDotCom && (
           <button
-            className="dropdown-menu-item"
+            className={styles.dropdownMenuItem}
             type="button"
             onClick={() => downloadFlamegraphDotCom()}
           >
