@@ -83,13 +83,13 @@ export default [
     mode: 'production',
     devtool: 'source-map',
     entry: {
-      app: './webapp/lib/index.node.ts',
+      index: './webapp/lib/index.node.ts',
     },
     output: {
       publicPath: '',
       path: path.resolve(__dirname, '../../dist/lib'),
       libraryTarget: 'commonjs',
-      filename: 'lib.node.js',
+      filename: 'index.node.js',
     },
   },
   {
@@ -98,14 +98,14 @@ export default [
     mode: 'production',
     devtool: 'source-map',
     entry: {
-      app: './webapp/lib/index.ts',
+      index: './webapp/lib/index.ts',
     },
     output: {
       publicPath: '',
       path: path.resolve(__dirname, '../../dist/lib'),
       libraryTarget: 'umd',
       library: 'pyroscope',
-      filename: 'lib.js',
+      filename: 'index.js',
       globalObject: 'this',
     },
 
