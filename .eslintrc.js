@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = {
   plugins: ['prettier', 'css-modules'],
   extends: [
@@ -70,7 +72,7 @@ module.exports = {
   settings: {
     'import/resolver': {
       webpack: {
-        config: 'scripts/webpack/webpack.common.ts',
+        config: path.join(__dirname, 'scripts/webpack/webpack.common.ts'),
       },
     },
   },
