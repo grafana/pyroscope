@@ -42,6 +42,13 @@ jobs:
       - name: Build
         run: PYROSCOPE_LIB_VERSION=${{ steps.prep.outputs.tag }} yarn build:lib
 
-      - run: npm publish  dist/lib --tag=beta
+      - name: Publish (dry-run)
+        run: npm publish dist/lib --tag=beta --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish
+        run: npm publish dist/lib --tag=beta
+        if: ${{ github.ref == 'refs/heads/main' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
