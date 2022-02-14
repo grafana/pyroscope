@@ -68,6 +68,7 @@ function UserTableItem(props) {
   const { user, onDisable, isCurrent, onDelete } = props;
   const { id, isDisabled, fullName, role, updatedAt, email, name } =
     user as User;
+
   return (
     <tr className={cx({ [styles.disabled]: isDisabled })}>
       <td>{id}</td>
@@ -75,7 +76,7 @@ function UserTableItem(props) {
       <td>{email}</td>
       <td>{fullName}</td>
       <td>{isCurrent ? role : <EditRoleDropdown user={user} />}</td>
-      <td>{formatRelative(updatedAt, new Date())}</td>
+      <td>{formatRelative(new Date(updatedAt), new Date())}</td>
       <td align="center">
         {!isCurrent ? (
           <div className={styles.actions}>
