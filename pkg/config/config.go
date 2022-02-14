@@ -7,8 +7,10 @@ package config
 // but using squash seems to keep the prefix in the CLI.
 
 import (
+	"net/http"
 	"time"
 
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
@@ -108,6 +110,8 @@ type Server struct {
 	CacheEvictThreshold float64 `def:"0.25" desc:"percentage of memory at which cache evictions start" mapstructure:"cache-evict-threshold"`
 	CacheEvictVolume    float64 `def:"0.33" desc:"percentage of cache that is evicted per eviction run" mapstructure:"cache-evict-volume"`
 
+	Database Database `mapstructure:"database"`
+
 	// TODO: I don't think a lot of people will change these values.
 	//   I think these should just be constants.
 	BadgerNoTruncate     bool `def:"false" desc:"indicates whether value log files should be truncated to delete corrupt data, if any" mapstructure:"badger-no-truncate"`
@@ -130,6 +134,8 @@ type Server struct {
 	CacheDictionarySize int               `deprecated:"true" mapstructure:"cache-dictonary-size"`
 	CacheSegmentSize    int               `deprecated:"true" mapstructure:"cache-segment-size"`
 	CacheTreeSize       int               `deprecated:"true" mapstructure:"cache-tree-size"`
+
+	CORS CORSConfig `mapstructure:"cors"`
 
 	Auth Auth `mapstructure:"auth"`
 
@@ -164,13 +170,45 @@ type RetentionLevels struct {
 }
 
 type Auth struct {
-	Google GoogleOauth `mapstructure:"google"`
-	Gitlab GitlabOauth `mapstructure:"gitlab"`
-	Github GithubOauth `mapstructure:"github"`
+	SignupDefaultRole model.Role `json:"-" deprecated:"true" def:"ReadOnly" desc:"specifies which role will be granted to a newly signed up user. Supported roles: Admin, ReadOnly. Defaults to ReadOnly" mapstructure:"signup-default-role"`
 
-	// TODO: can we generate these automatically if it's empty?
-	JWTSecret                string `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
-	LoginMaximumLifetimeDays int    `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
+	Internal InternalAuth `mapstructure:"internal"`
+	Google   GoogleOauth  `mapstructure:"google"`
+	Gitlab   GitlabOauth  `mapstructure:"gitlab"`
+	Github   GithubOauth  `mapstructure:"github"`
+
+	Ingestion IngestionAuth `mapstructure:"ingestion"`
+
+	CookieSameSite           http.SameSite `json:"-" deprecated:"true" def:"Lax" desc:"specifies SameSite attribute for JWT token cookie" mapstructure:"cookie-same-site"`
+	CookieSecure             bool          `json:"-" deprecated:"true" def:"false" desc:"specifies Secure attribute for JWT token cookie" mapstructure:"cookie-secure"`
+	JWTSecret                string        `json:"-" deprecated:"true" def:"" desc:"secret used to secure your JWT tokens" mapstructure:"jwt-secret"`
+	LoginMaximumLifetimeDays int           `json:"-" deprecated:"true" def:"0" desc:"amount of days after which user will be logged out. 0 means non-expiring." mapstructure:"login-maximum-lifetime-days"`
+}
+
+type InternalAuth struct {
+	Enabled       bool      `json:"-" deprecated:"true" def:"false" desc:"enables login-password authentication" mapstructure:"enabled"`
+	SignupEnabled bool      `json:"-" deprecated:"true" def:"false" desc:"indicates whether users are allowed to create accounts" mapstructure:"signup-enabled"`
+	AdminUser     AdminUser `json:"-" deprecated:"true" def:"false" mapstructure:"admin"`
+}
+
+type IngestionAuth struct {
+	Enabled   bool          `json:"-" deprecated:"true" def:"false" desc:"require authentication for ingestion endpoint" mapstructure:"enabled"`
+	CacheTTL  time.Duration `json:"-" deprecated:"true" def:"1s" mapstructure:"cache-ttl"`
+	CacheSize int           `json:"-" deprecated:"true" def:"1024" mapstructure:"cache-size"`
+}
+
+type AdminUser struct {
+	Create   bool   `json:"-" deprecated:"true" def:"true" desc:"" mapstructure:"create"`
+	Name     string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"name"`
+	Email    string `json:"-" deprecated:"true" def:"admin@localhost.local" desc:"" mapstructure:"email"`
+	Password string `json:"-" deprecated:"true" def:"admin" desc:"" mapstructure:"password"`
+}
+
+type CORSConfig struct {
+	AllowedOrigins []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-origins"`
+	AllowedHeaders []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-headers"`
+	AllowedMethods []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-methods"`
+	MaxAge         int      `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"max-age"`
 }
 
 // TODO: Maybe merge Oauth structs into one (would have to move def and desc tags somewhere else in code)
@@ -277,9 +315,11 @@ type Connect struct {
 
 // TODO how to abstract this better?
 type Admin struct {
-	AdminAppDelete AdminAppDelete `skip:"true" mapstructure:",squash"`
-	AdminAppGet    AdminAppGet    `skip:"true" mapstructure:",squash"`
+	AdminAppDelete         AdminAppDelete         `skip:"true" mapstructure:",squash"`
+	AdminAppGet            AdminAppGet            `skip:"true" mapstructure:",squash"`
+	AdminUserPasswordReset AdminUserPasswordReset `skip:"true" mapstructure:",squash"`
 }
+
 type AdminAppGet struct {
 	SocketPath string        `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
 	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
@@ -289,4 +329,18 @@ type AdminAppDelete struct {
 	SocketPath string        `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
 	Force      bool          `def:"false" desc:"don't prompt for confirmation of dangerous actions" mapstructure:"force"`
 	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
+}
+
+type AdminUserPasswordReset struct {
+	SocketPath string        `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
+
+	Username string `desc:"user name (login)" mapstructure:"username"`
+	Password string `desc:"new password" mapstructure:"password"`
+	Enable   bool   `desc:"enable user" mapstructure:"enable"`
+}
+
+type Database struct {
+	Type string `def:"sqlite3" desc:"" mapstructure:"type"`
+	URL  string `def:"" desc:"" mapstructure:"url"`
 }

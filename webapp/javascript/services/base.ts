@@ -3,7 +3,7 @@ import { Result } from '@utils/fp';
 import basename from '../util/baseurl';
 
 // RequestNotOkError refers to when the Response is not within the 2xx range
-interface RequestNotOkError {
+export interface RequestNotOkError {
   statusCode: number;
   message: string;
 }
@@ -20,8 +20,13 @@ interface ResponseInvalidJSONError {
   data: any;
 }
 
+export interface RequestNotOkWithErrorsList {
+  errors: [string];
+}
+
 export type RequestError =
   | RequestNotOkError
+  | RequestNotOkWithErrorsList
   | RequestIncompleteError
   | ResponseInvalidJSONError;
 
@@ -39,9 +44,9 @@ function mountURL(req: RequestInfo): string {
 
   // no basename
   if (typeof req === 'string') {
-    return new URL(req, window.location.href).href;
+    return new URL(`${req}`, window.location.href).href;
   }
-  return new URL(req.url, window.location.href).href;
+  return new URL(`${req}`, window.location.href).href;
 }
 
 export function mountRequest(req: RequestInfo): RequestInfo {
@@ -92,15 +97,28 @@ export async function request(
     try {
       const data = JSON.parse(textBody);
 
+      // Check if it's 401 unauthorized error
+      if (response.status === 401) {
+        // TODO: Introduce some kind of interceptor (?)
+        if (window && window.location) {
+          window.location.href = '/login';
+        }
+      }
+
+      // Usually it's a feedback on user's actions
+      if ('errors' in data) {
+        return Result.err<unknown, RequestNotOkWithErrorsList>(data);
+      }
+
       // We could parse the response
-      return Result.err({
+      return Result.err<unknown, RequestNotOkError>({
         statusCode: response.status,
         ...data,
       });
     } catch (e) {
       // We couldn't parse, but there's definitly some data
       // We must handle this case since the go server sometimes responds with plain text
-      return Result.err({
+      return Result.err<unknown, RequestNotOkError>({
         statusCode: response.status,
         message: textBody,
       });

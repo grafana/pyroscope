@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "private": true,
   "name": "pyroscope",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
@@ -187,6 +187,7 @@
     "postcss-preset-env": "^7.0.1",
     "postcss-reporter": "^6.0.1",
     "react": "16.14.0",
+    "react-copy-to-clipboard": "^5.0.4",
     "react-datepicker": "^3.4.1",
     "react-debounce-input": "^3.2.5",
     "react-dev-utils": "^12.0.0",

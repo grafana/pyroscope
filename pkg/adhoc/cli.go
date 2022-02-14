@@ -136,7 +136,9 @@ func Cli(cfg *config.Adhoc, args []string) error {
 		go analytics.AdhocReport(m.String()+"-"+status, &wg)
 	}
 
-	newWriter(cfg, st, logger).write(t0, time.Now())
+	if err := newWriter(cfg, st, logger).write(t0, time.Now()); err != nil {
+		logger.WithError(err).Error("writing profiling data")
+	}
 
 	logger.Debug("stopping storage")
 	if err := st.Close(); err != nil {

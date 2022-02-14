@@ -1,3 +1,23 @@
+# [0.10.0](https://github.com/pyroscope-io/pyroscope/compare/v0.9.0...v0.10.0) (2022-02-14)
+
+
+### Bug Fixes
+
+* **frontend:** fix coloring for pull mode ([#822](https://github.com/pyroscope-io/pyroscope/issues/822)) ([a221400](https://github.com/pyroscope-io/pyroscope/commit/a221400027097ff33864f4cba0ff5bfde78295f1))
+* **frontend:** quickfix for wierd dropdown behaviour ([#832](https://github.com/pyroscope-io/pyroscope/issues/832)) ([c6da525](https://github.com/pyroscope-io/pyroscope/commit/c6da525d30a4271fd5ca74e2c6bf35230042c47e))
+* ignore root node when converting a flamebearer to a tree. ([#812](https://github.com/pyroscope-io/pyroscope/issues/812)) ([7751b15](https://github.com/pyroscope-io/pyroscope/commit/7751b1562194eafa21fc77e3601c4a525250c31c))
+* store "total" in name cache, and make tests more rigurous. ([#821](https://github.com/pyroscope-io/pyroscope/issues/821)) ([e46f2cc](https://github.com/pyroscope-io/pyroscope/commit/e46f2ccc66fbd4b238b5f59629965156e7fe5dbb))
+
+
+### Features
+
+* add an optional name field to the profile data format. ([#826](https://github.com/pyroscope-io/pyroscope/issues/826)) ([26d8177](https://github.com/pyroscope-io/pyroscope/commit/26d817746078ffef2059560552cac0e45495182c))
+* add upload support in adhoc server. ([#801](https://github.com/pyroscope-io/pyroscope/issues/801)) ([8551df1](https://github.com/pyroscope-io/pyroscope/commit/8551df1973f3dfacfda7d2b33055e994e5ffad57))
+* **frontend:** export diff to flamegraph.com ([#808](https://github.com/pyroscope-io/pyroscope/issues/808)) ([a2e47b2](https://github.com/pyroscope-io/pyroscope/commit/a2e47b25646dc8bec386e1d98f9c87503c0ec0d2))
+* identity and access management ([#739](https://github.com/pyroscope-io/pyroscope/issues/739)) ([0ca0d83](https://github.com/pyroscope-io/pyroscope/commit/0ca0d8398cbbc58799e0e53b658c70b8670c6e72)), closes [#770](https://github.com/pyroscope-io/pyroscope/issues/770) [#807](https://github.com/pyroscope-io/pyroscope/issues/807) [#814](https://github.com/pyroscope-io/pyroscope/issues/814)
+
+
+
 # [0.9.0](https://github.com/pyroscope-io/pyroscope/compare/v0.8.0...v0.9.0) (2022-02-07)
 
 
