@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -12,9 +13,10 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	scrape "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
-	"github.com/pyroscope-io/pyroscope/pkg/scrape/model"
+	sm "github.com/pyroscope-io/pyroscope/pkg/scrape/model"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -190,6 +192,7 @@ var _ = Describe("flags", func() {
 					"--config=testdata/server.yml",
 					"--log-level=debug",
 					"--adhoc-data-path=", // Override as it's platform dependent.
+					"--auth.signup-default-role=admin",
 				})
 
 				err := exampleCommand.Execute()
@@ -212,6 +215,10 @@ var _ = Describe("flags", func() {
 					MaxNodesRender:          8192,
 					HideApplications:        []string{},
 					Retention:               0,
+					Database: config.Database{
+						Type: "sqlite3",
+						URL:  "",
+					},
 					RetentionLevels: config.RetentionLevels{
 						Zero: 100 * time.Second,
 						One:  1000 * time.Second,
@@ -222,7 +229,23 @@ var _ = Describe("flags", func() {
 					CacheDictionarySize: 0,
 					CacheSegmentSize:    0,
 					CacheTreeSize:       0,
+					CORS: config.CORSConfig{
+						AllowedOrigins: []string{},
+						AllowedHeaders: []string{},
+						AllowedMethods: []string{},
+						MaxAge:         0,
+					},
 					Auth: config.Auth{
+						Internal: config.InternalAuth{
+							Enabled:       false,
+							SignupEnabled: false,
+							AdminUser: config.AdminUser{
+								Create:   true,
+								Name:     "admin",
+								Email:    "admin@localhost.local",
+								Password: "admin",
+							},
+						},
 						Google: config.GoogleOauth{
 							Enabled:        false,
 							ClientID:       "",
@@ -251,8 +274,15 @@ var _ = Describe("flags", func() {
 							TokenURL:             "https://github.com/login/oauth/access_token",
 							AllowedOrganizations: []string{},
 						},
+						Ingestion: config.IngestionAuth{
+							Enabled:   false,
+							CacheTTL:  time.Second,
+							CacheSize: 1024,
+						},
 						JWTSecret:                "",
 						LoginMaximumLifetimeDays: 0,
+						SignupDefaultRole:        model.AdminRole,
+						CookieSameSite:           http.SameSiteStrictMode,
 					},
 
 					MetricsExportRules: config.MetricsExportRules{
@@ -276,10 +306,10 @@ var _ = Describe("flags", func() {
 							ServiceDiscoveryConfigs: []discovery.Config{
 								discovery.StaticConfig{
 									{
-										Targets: []model.LabelSet{
+										Targets: []sm.LabelSet{
 											{"__address__": "localhost:6060", "__name__": "app"},
 										},
-										Labels: model.LabelSet{"foo": "bar"},
+										Labels: sm.LabelSet{"foo": "bar"},
 										Source: "0",
 									},
 								},

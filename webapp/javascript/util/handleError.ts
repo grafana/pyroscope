@@ -1,4 +1,4 @@
-import type { RequestError } from '@pyroscope/services/base';
+import type { RequestError, RequestNotOkError } from '@pyroscope/services/base';
 import { ZodError } from 'zod';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
@@ -7,14 +7,17 @@ import { useAppDispatch } from '@pyroscope/redux/hooks';
  * handleError handles service errors
  */
 export default async function handleError(
-  dispatch: ReturnType<useAppDispatch>,
+  dispatch: ReturnType<typeof useAppDispatch>,
   message: string,
   error: ZodError | RequestError
 ): Promise<void> {
   // We log the error in case a tech-savy user wants to debug themselves
   console.error(error);
 
-  let errorMessage = error.message;
+  let errorMessage;
+  if ('message' in error) {
+    errorMessage = error.message;
+  }
 
   // a ZodError means its format is not what we expect
   if (error instanceof ZodError) {

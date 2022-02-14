@@ -2,6 +2,7 @@ package admin_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 
 	"github.com/pyroscope-io/pyroscope/pkg/admin"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
 type mockStorage struct {
@@ -27,6 +29,12 @@ func (m mockStorage) GetAppNames() []string {
 
 func (m mockStorage) DeleteApp(appname string) error {
 	return m.deleteResult
+}
+
+type mockUserService struct{}
+
+func (mockUserService) UpdateUserByName(context.Context, string, model.UpdateUserParams) (model.User, error) {
+	return model.User{}, nil
 }
 
 var _ = Describe("controller", func() {
@@ -48,7 +56,7 @@ var _ = Describe("controller", func() {
 			logger, _ := test.NewNullLogger()
 
 			svc := admin.NewService(storage)
-			ctrl := admin.NewController(logger, svc)
+			ctrl := admin.NewController(logger, svc, mockUserService{})
 			httpServer := &admin.UdsHTTPServer{}
 			server, err := admin.NewServer(logger, ctrl, httpServer)
 

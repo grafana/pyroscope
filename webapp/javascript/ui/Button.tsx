@@ -4,7 +4,7 @@ import type { IconDefinition } from '@fortawesome/fontawesome-common-types';
 import styles from './Button.module.scss';
 
 export interface ButtonProps {
-  kind?: 'default' | 'primary' | 'secondary';
+  kind?: 'default' | 'primary' | 'secondary' | 'danger';
   /** Whether the button is disabled or not */
   disabled?: boolean;
   icon?: IconDefinition;
@@ -75,6 +75,10 @@ function getKindStyles(kind: ButtonProps['kind']) {
 
     case 'secondary': {
       return styles.secondary;
+    }
+
+    case 'danger': {
+      return styles.danger;
     }
 
     default: {
