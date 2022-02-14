@@ -1,3 +1,14 @@
+## [0.10.1](https://github.com/pyroscope-io/pyroscope/compare/v0.10.0...v0.10.1) (2022-02-14)
+
+
+### Bug Fixes
+
+* adhoc comparison / diff routes. ([#834](https://github.com/pyroscope-io/pyroscope/issues/834)) ([1ab101c](https://github.com/pyroscope-io/pyroscope/commit/1ab101c20742d55c17b112f6d3eec942e96091bb))
+* **frontend:** safari date-fns fix ([#838](https://github.com/pyroscope-io/pyroscope/issues/838)) ([896b936](https://github.com/pyroscope-io/pyroscope/commit/896b93605bd0b0190838b45a647f4689d93360ab))
+* handle properly writing errors in adhoc mode. ([#833](https://github.com/pyroscope-io/pyroscope/issues/833)) ([8e77b8b](https://github.com/pyroscope-io/pyroscope/commit/8e77b8b627ad654f135a7f8c811bc411369a2518))
+
+
+
 # [0.10.0](https://github.com/pyroscope-io/pyroscope/compare/v0.9.0...v0.10.0) (2022-02-14)
 
 
