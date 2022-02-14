@@ -79,7 +79,7 @@ We also have language-specific examples (using Docker) of how to run the *server
 
 ## Deployment Diagram
 
-![Deployment Diagram](.github/markdown-images/deployment.svg)
+![agent_server_diagram_10](https://user-images.githubusercontent.com/23323466/153685751-0aac3cd6-bbc1-4ab4-8350-8f4dc7f7c193.svg)
 
 ## Documentation
 For more information on how to use Pyroscope with other programming languages, install it on Linux, or use it in production environment, check out our documentation:
@@ -96,14 +96,14 @@ You can download the latest version of pyroscope for macOS, linux and Docker fro
 
 ## Supported Integrations
 
-* [x] Ruby (via `rbspy`)
-* [x] Python (via `py-spy`)
 * [x] Go (via `pprof`)
+* [x] Python (via `py-spy`)
+* [x] Ruby (via `rbspy`)
 * [x] Linux eBPF (via `profile.py` from `bcc-tools`)
-* [x] PHP (via `phpspy`)
-* [x] .NET (via `dotnet trace`)
 * [x] Java (via `async-profiler`)
-* [ ] Rust ([in progress](https://github.com/tikv/pprof-rs/pull/86) via `pprof-rs`)
+* [x] Rust (via `pprof-rs`)
+* [x] .NET (via `dotnet trace`)
+* [x] PHP (via `phpspy`)
 * [ ] Node [(seeking contributors)](https://github.com/pyroscope-io/pyroscope/issues/8)
 
 Let us know what other integrations you want to see in [our issues](https://github.com/pyroscope-io/pyroscope/issues?q=is%3Aissue+is%3Aopen+label%3Anew-profilers) or in [our slack](https://pyroscope.io/slack).
