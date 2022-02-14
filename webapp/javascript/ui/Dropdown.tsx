@@ -56,6 +56,7 @@ export default function Dropdown({
     <MenuButton
       className={`${styles.dropdownMenuButton} ${menuButtonClassName}`}
       disabled={disabled}
+      type="button"
     >
       {value || label}
     </MenuButton>
@@ -79,5 +80,5 @@ export default function Dropdown({
 
 export const SubMenu = LibSubmenu;
 export const MenuItem = LibMenuItem;
-export const MenuButton = LibMenuButton;
+export const MenuButton = LibMenuButton as any;
 export const FocusableItem = LibFocusableItem;
