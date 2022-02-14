@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import Button from '@ui/Button';
 import Icon from '@ui/Icon';
-import {
-  faTimes,
-  faCheck,
-  faEdit,
-  faToggleOff,
-  faToggleOn,
-} from '@fortawesome/free-solid-svg-icons';
+import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
+import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
+import { faToggleOff } from '@fortawesome/free-solid-svg-icons/faToggleOff';
+import { faToggleOn } from '@fortawesome/free-solid-svg-icons/faToggleOn';
+
 import { formatRelative } from 'date-fns';
 import cx from 'classnames';
 import Dropdown, { MenuItem } from '@ui/Dropdown';

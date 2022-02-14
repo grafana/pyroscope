@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Button from '@ui/Button';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
-import { faCopy, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
+import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
 import { createAPIKey } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { type APIKey } from '@models/apikeys';

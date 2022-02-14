@@ -3,7 +3,8 @@ import Button from '@ui/Button';
 import Icon from '@ui/Icon';
 
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import { faTimes, faPlus } from '@fortawesome/free-solid-svg-icons';
+import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
+import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 import { useHistory } from 'react-router-dom';
 
 import { formatDistance, formatRelative } from 'date-fns/fp';

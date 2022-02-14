@@ -2,12 +2,10 @@ import React from 'react';
 import { Switch, Route, useRouteMatch, NavLink } from 'react-router-dom';
 import Box from '@ui/Box';
 import Icon from '@ui/Icon';
-import {
-  faKey,
-  faLock,
-  faSlidersH,
-  faUserAlt,
-} from '@fortawesome/free-solid-svg-icons';
+import { faKey } from '@fortawesome/free-solid-svg-icons/faKey';
+import { faLock } from '@fortawesome/free-solid-svg-icons/faLock';
+import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
+import { faUserAlt } from '@fortawesome/free-solid-svg-icons/faUserAlt';
 import cx from 'classnames';
 import { withCurrentUser } from '@pyroscope/redux/reducers/user';
 import Preferences from './Preferences';
