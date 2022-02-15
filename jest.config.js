@@ -27,7 +27,7 @@ const project = {
   transform: {
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.(css|scss)$': 'jest-css-modules-transform',
-    '\\.svg$': 'svg-jest',
+    '\\.svg$': '<rootDir>/svg-transform.js',
   },
   transformIgnorePatterns: [
     // force us to not transpile these dependencies
