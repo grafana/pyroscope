@@ -99,7 +99,7 @@ export default {
       ...getJsLoader(),
       ...getStyleLoaders(),
       {
-        test: /\.(svg|ico|jpg|jpeg|png|gif|eot|otf|webp|ttf|woff|woff2|cur|ani|pdf)(\?.*)?$/,
+        test: /\.(ico|jpg|jpeg|png|gif|eot|otf|webp|ttf|woff|woff2|cur|ani|pdf)(\?.*)?$/,
         loader: 'file-loader',
 
         // We output files to assets/static/img, where /assets comes from webpack's output dir
@@ -110,6 +110,23 @@ export default {
           publicPath: '../assets/static/img',
           name: '[name].[hash:8].[ext]',
         },
+      },
+      {
+        test: /\.svg$/,
+        use: [
+          { loader: 'babel-loader' },
+          {
+            loader: 'react-svg-loader',
+            options: {
+              svgo: {
+                plugins: [
+                  { convertPathData: { noSpaceAfterFlags: false } },
+                  { removeViewBox: false },
+                ],
+              },
+            },
+          },
+        ],
       },
     ],
   },

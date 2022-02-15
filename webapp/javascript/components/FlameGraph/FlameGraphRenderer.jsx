@@ -260,7 +260,7 @@ class FlameGraphRenderer extends React.Component {
           flamebearer={this.state.flamebearer}
           format={this.parseFormat(this.state.flamebearer.format)}
           view={this.state.view}
-          ExportData={() => this.props.ExportData}
+          ExportData={() => this.props.ExportData || <></>}
           highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           viewType={this.props.viewType}
@@ -327,17 +327,19 @@ class FlameGraphRenderer extends React.Component {
           </div>
         </div>
 
-        <div className={styles.createdBy}>
-          Created by
-          <a
-            href="https://twitter.com/PyroscopeIO"
-            rel="noreferrer"
-            target="_blank"
-          >
-            <PyroscopeLogo width="30" height="30" />
-            @PyroscopeIO
-          </a>
-        </div>
+        {this.props.showPyroscopeLogo && (
+          <div className={styles.createdBy}>
+            Created by
+            <a
+              href="https://twitter.com/PyroscopeIO"
+              rel="noreferrer"
+              target="_blank"
+            >
+              <PyroscopeLogo width="30" height="30" />
+              @PyroscopeIO
+            </a>
+          </div>
+        )}
       </div>
     );
   };
