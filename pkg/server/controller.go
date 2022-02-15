@@ -385,11 +385,16 @@ func (ctrl *Controller) Stop() error {
 
 func (ctrl *Controller) corsMiddleware() mux.MiddlewareFunc {
 	if len(ctrl.config.CORS.AllowedOrigins) > 0 {
-		return handlers.CORS(
+		options := []handlers.CORSOption{
 			handlers.AllowedOrigins(ctrl.config.CORS.AllowedOrigins),
 			handlers.AllowedMethods(ctrl.config.CORS.AllowedMethods),
 			handlers.AllowedHeaders(ctrl.config.CORS.AllowedHeaders),
-			handlers.MaxAge(ctrl.config.CORS.MaxAge))
+			handlers.MaxAge(ctrl.config.CORS.MaxAge),
+		}
+		if ctrl.config.CORS.AllowCredentials {
+			options = append(options, handlers.AllowCredentials())
+		}
+		return handlers.CORS(options...)
 	}
 	return func(next http.Handler) http.Handler {
 		return next

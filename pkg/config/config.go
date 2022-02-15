@@ -205,10 +205,11 @@ type AdminUser struct {
 }
 
 type CORSConfig struct {
-	AllowedOrigins []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-origins"`
-	AllowedHeaders []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-headers"`
-	AllowedMethods []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-methods"`
-	MaxAge         int      `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"max-age"`
+	AllowedOrigins   []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-origins"`
+	AllowedHeaders   []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-headers"`
+	AllowedMethods   []string `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allowed-methods"`
+	AllowCredentials bool     `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"allow-credentials"`
+	MaxAge           int      `json:"-" deprecated:"true" def:"" desc:"" mapstructure:"max-age"`
 }
 
 // TODO: Maybe merge Oauth structs into one (would have to move def and desc tags somewhere else in code)
