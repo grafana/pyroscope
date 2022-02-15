@@ -52,8 +52,6 @@ class FlameGraphRenderer extends React.Component {
     // for situations like in grafana we only display the flamegraph
     // 'both' | 'flamegraph' | 'table'
     this.display = props.display !== undefined ? props.display : 'both';
-
-    console.log(props);
   }
 
   componentDidUpdate(prevProps, prevState) {
