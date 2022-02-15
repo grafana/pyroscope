@@ -42,7 +42,7 @@ describe('FormatDate', () => {
     it('works with "now"', () => {
       // TODO
       // not entirely sure this case is even possible to happen in the code
-      expect(formatAsOBject('now')).toEqual(mockDate);
+      expect(formatAsOBject('now')).toEqual(mockDate.getTime());
     });
 
     it('works with "now-1h"', () => {
@@ -58,12 +58,12 @@ describe('FormatDate', () => {
     });
 
     it('works with "now-1m"', () => {
-      expect(formatAsOBject('now-1m')).toBe(1640090641741);
+      expect(formatAsOBject('now-1m')).toBe(1640090581741);
     });
 
     it('works with absolute timestamps', () => {
       expect(formatAsOBject('1624192489')).toEqual(
-        new Date('2021-06-20T12:34:49.000Z')
+        new Date('2021-06-20T12:34:49.000Z').getTime()
       );
     });
   });
