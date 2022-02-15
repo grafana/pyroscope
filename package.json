@@ -115,7 +115,6 @@
     "monaco-editor-webpack-plugin": "^1.9.0",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
     "prettier": "^2.2.1",
-    "react-svg-loader": "^3.0.3",
     "redux-mock-store": "^1.5.4",
     "regenerator-runtime": "^0.13.9",
     "replace-in-file-webpack-plugin": "^1.0.6",
@@ -220,6 +219,7 @@
     "ts-essentials": "^9.0.0",
     "ts-node": "^10.4.0",
     "url-loader": "^4.1.1",
+    "react-svg-loader": "^3.0.3",
     "webpack-cli": "^4.8.0",
     "zod": "^3.11.6"
   },
