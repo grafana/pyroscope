@@ -17,6 +17,7 @@ import {
   ColorBlindPalette,
 } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.css';
+import PyroscopeLogo from '../../../images/logo-v3-small.svg';
 
 import ExportData from '../ExportData';
 
@@ -51,6 +52,8 @@ class FlameGraphRenderer extends React.Component {
     // for situations like in grafana we only display the flamegraph
     // 'both' | 'flamegraph' | 'table'
     this.display = props.display !== undefined ? props.display : 'both';
+
+    console.log(props);
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -322,6 +325,18 @@ class FlameGraphRenderer extends React.Component {
           >
             {panes.map((pane) => pane)}
           </div>
+        </div>
+
+        <div className={styles.createdBy}>
+          Created by
+          <a
+            href="https://twitter.com/PyroscopeIO"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <PyroscopeLogo width="30" height="30" />
+            @PyroscopeIO
+          </a>
         </div>
       </div>
     );
