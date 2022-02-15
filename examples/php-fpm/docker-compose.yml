@@ -1,0 +1,27 @@
+---
+version: '3.9'
+services:
+  pyroscope:
+    container_name: pyroscope
+    image: 'pyroscope/pyroscope:latest'
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+  nginx:
+    container_name: pyroscope_nginx
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    ports:
+      - 80:80
+
+  php:
+    container_name: pyroscope_php-fpm
+    build:
+      context: .
+      dockerfile: php/Dockerfile
+    cap_add:
+      - SYS_PTRACE
+
+
