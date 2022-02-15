@@ -175,7 +175,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	apiRouter.Use(
 		ctrl.drainMiddleware,
-		ctrl.corsMiddleware(),
 		ctrl.authMiddleware(nil))
 
 	if ctrl.isAuthRequired() {
@@ -203,8 +202,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	ctrl.addRoutes(r, append(insecureRoutes, []route{
 		{"/forbidden", ctrl.forbiddenHandler()},
 		{"/assets/", assetsHandler}}...),
-		ctrl.drainMiddleware,
-		ctrl.corsMiddleware())
+		ctrl.drainMiddleware)
 
 	// Protected pages:
 	// For these routes server responds with 307 and redirects to /login.
@@ -219,7 +217,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/settings/{page}", ctrl.indexHandler()},
 		{"/settings/{page}/{subpage}", ctrl.indexHandler()}},
 		ctrl.drainMiddleware,
-		ctrl.corsMiddleware(),
 		ctrl.authMiddleware(ctrl.loginRedirect))
 
 	// For these routes server responds with 401.
@@ -231,7 +228,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/export", ctrl.exportHandler},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
 		ctrl.drainMiddleware,
-		ctrl.corsMiddleware(),
 		ctrl.authMiddleware(nil))
 
 	// TODO(kolesnikovae):
@@ -339,7 +335,7 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 		return nil, err
 	}
 
-	return gzhttpMiddleware(handler), nil
+	return ctrl.corsMiddleware()(gzhttpMiddleware(handler)), nil
 }
 
 func (ctrl *Controller) Start() error {
@@ -385,11 +381,16 @@ func (ctrl *Controller) Stop() error {
 
 func (ctrl *Controller) corsMiddleware() mux.MiddlewareFunc {
 	if len(ctrl.config.CORS.AllowedOrigins) > 0 {
-		return handlers.CORS(
+		options := []handlers.CORSOption{
 			handlers.AllowedOrigins(ctrl.config.CORS.AllowedOrigins),
 			handlers.AllowedMethods(ctrl.config.CORS.AllowedMethods),
 			handlers.AllowedHeaders(ctrl.config.CORS.AllowedHeaders),
-			handlers.MaxAge(ctrl.config.CORS.MaxAge))
+			handlers.MaxAge(ctrl.config.CORS.MaxAge),
+		}
+		if ctrl.config.CORS.AllowCredentials {
+			options = append(options, handlers.AllowCredentials())
+		}
+		return handlers.CORS(options...)
 	}
 	return func(next http.Handler) http.Handler {
 		return next
