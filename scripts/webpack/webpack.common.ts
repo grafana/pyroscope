@@ -99,7 +99,7 @@ export default {
       ...getJsLoader(),
       ...getStyleLoaders(),
       {
-        test: /\.(ico|jpg|jpeg|png|gif|eot|otf|webp|ttf|woff|woff2|cur|ani|pdf)(\?.*)?$/,
+        test: /\.(svg|ico|jpg|jpeg|png|gif|eot|otf|webp|ttf|woff|woff2|cur|ani|pdf)(\?.*)?$/,
         loader: 'file-loader',
 
         // We output files to assets/static/img, where /assets comes from webpack's output dir
