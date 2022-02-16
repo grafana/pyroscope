@@ -8,14 +8,6 @@ services:
       - '4040:4040'
     command:
       - 'server'
-  nginx:
-    container_name: pyroscope_nginx
-    build:
-      context: .
-      dockerfile: nginx/Dockerfile
-    ports:
-      - 80:80
-
   php:
     container_name: pyroscope_php-fpm
     build:
