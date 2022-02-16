@@ -89,7 +89,12 @@ function UserAddForm() {
             />
           </div>
           <div>
-            <Button icon={faCheck} type="submit" kind="secondary">
+            <Button
+              icon={faCheck}
+              type="submit"
+              kind="secondary"
+              data-testid="settings-useradd"
+            >
               Add user
             </Button>
           </div>

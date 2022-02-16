@@ -92,6 +92,7 @@ function Users() {
           kind="secondary"
           icon={faPlus}
           onClick={() => history.push('/settings/users/add')}
+          data-testid="settings-adduser"
         >
           Add User
         </Button>

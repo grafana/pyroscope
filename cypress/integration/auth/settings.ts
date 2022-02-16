@@ -24,7 +24,7 @@ describe('Settings page', () => {
     cy.visit('/logout');
   });
 
-  it('should be able to see correct settings page', () => {
+  it.only('should be able to see correct settings page', () => {
     cy.visit('/login');
 
     cy.get('input#username').focus().type('admin');
@@ -33,6 +33,31 @@ describe('Settings page', () => {
 
     cy.findByTestId('sidebar-settings').click();
     cy.url().should('contain', '/settings');
+
+    cy.findByTestId('settings-userstab').click();
+
+    cy.url().should('contain', '/settings/users');
+
+    cy.findByTestId('settings-adduser').click();
+    cy.url().should('contain', '/settings/users/add');
+
+    cy.get('#userAddName').type('user');
+    cy.get('#userAddPassword').type('user');
+    cy.get('#userAddEmail').type('user@domain.com');
+    cy.get('#userAddFullName').type('Readonly User');
+    cy.findByTestId('settings-useradd').click();
+
+    cy.url().should('contain', '/settings/users');
+
+    cy.visit('/logout');
+    cy.visit('/login');
+
+    cy.get('input#username').focus().type('user');
+    cy.get('input#password').focus().type('user');
+    cy.get('button.sign-in-button').click();
+
+    // Expect it to be redirected to main page
+    cy.url().should('contain', '/?query=');
 
     cy.visit('/logout');
   });
