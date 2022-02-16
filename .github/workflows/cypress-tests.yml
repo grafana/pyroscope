@@ -40,7 +40,7 @@ jobs:
           build: make e2e-build
           wait-on: http://localhost:4040
           start: make server
-          config-file: webapp/cypress.json
+          config-file: cypress/cypress.json
         env:
           # keep the server quiet
           PYROSCOPE_LOG_LEVEL: error
