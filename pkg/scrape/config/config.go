@@ -26,6 +26,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/relabel"
+	profile "github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
@@ -43,7 +44,7 @@ func DefaultConfig() *Config {
 				Params: url.Values{
 					"seconds": []string{"10"},
 				},
-				SampleTypes: map[string]*SampleTypeConfig{
+				SampleTypes: map[string]*profile.SampleTypeConfig{
 					"samples": {
 						DisplayName: "cpu",
 						Units:       "samples",
@@ -54,7 +55,7 @@ func DefaultConfig() *Config {
 			"mem": {
 				Path:   "/debug/pprof/heap",
 				Params: nil, // url.Values{"gc": []string{"1"}},
-				SampleTypes: map[string]*SampleTypeConfig{
+				SampleTypes: map[string]*profile.SampleTypeConfig{
 					"inuse_objects": {
 						Units:       "objects",
 						Aggregation: "avg",
@@ -118,25 +119,11 @@ type Profile struct {
 	// A set of query parameters with which the target is scraped.
 	Params url.Values `yaml:"params,omitempty"`
 	// SampleTypes contains overrides for pprof sample types.
-	SampleTypes map[string]*SampleTypeConfig `yaml:"sample-types,omitempty"`
+	SampleTypes map[string]*profile.SampleTypeConfig `yaml:"sample-types,omitempty"`
 	// AllSampleTypes specifies whether to parse samples of
 	// types not listed in SampleTypes member.
 	AllSampleTypes bool `yaml:"all-sample-types,omitempty"`
 	// TODO(kolesnikovae): Overrides for interval, timeout, and limits?
-}
-
-type SampleTypeConfig struct {
-	Units       string `yaml:"units,omitempty"`
-	DisplayName string `yaml:"display-name,omitempty"`
-
-	// TODO(kolesnikovae): Introduce Kind?
-	//  In Go, we have at least the following combinations:
-	//  instant:    Aggregation:avg && !Cumulative && !Sampled
-	//  cumulative: Aggregation:sum && Cumulative  && !Sampled
-	//  delta:      Aggregation:sum && !Cumulative && Sampled
-	Aggregation string `yaml:"aggregation,omitempty"`
-	Cumulative  bool   `yaml:"cumulative,omitempty"`
-	Sampled     bool   `yaml:"sampled,omitempty"`
 }
 
 // SetDirectory joins any relative file paths with dir.
