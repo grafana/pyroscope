@@ -100,21 +100,9 @@ func Error(w http.ResponseWriter, logger logrus.FieldLogger, err error) {
 // It does not end the HTTP request; the caller should ensure no further
 // writes are done to w.
 func ErrorCode(w http.ResponseWriter, logger logrus.FieldLogger, err error, code int) {
-	if err == nil {
-		return
-	}
-
-	var e Errors
-	if m := new(multierror.Error); errors.As(err, &m) {
-		m.ErrorFormat = listFormatFunc
-		for _, x := range m.Errors {
-			e.Errors = append(e.Errors, x.Error())
-		}
-	} else {
-		e.Errors = []string{err.Error()}
-	}
-
 	switch {
+	case err == nil:
+		return
 	case code > 0:
 	case model.IsAuthenticationError(err):
 		code = http.StatusUnauthorized
@@ -137,6 +125,16 @@ func ErrorCode(w http.ResponseWriter, logger logrus.FieldLogger, err error, code
 	default:
 		// No response code provided and it can't be determined.
 		code = http.StatusInternalServerError
+	}
+
+	var e Errors
+	if m := new(multierror.Error); errors.As(err, &m) {
+		m.ErrorFormat = listFormatFunc
+		for _, x := range m.Errors {
+			e.Errors = append(e.Errors, x.Error())
+		}
+	} else {
+		e.Errors = []string{err.Error()}
 	}
 
 	w.WriteHeader(code)
