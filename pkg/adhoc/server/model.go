@@ -21,14 +21,21 @@ var (
 	errTooShort = errors.New("profile is too short")
 )
 
+//revive:disable:line-length-limit We want to keep the base64 example in a single line
+
 // swagger:model
 type Model struct {
 	// Name of the file in which the profile was saved, if any.
+	// example: pyroscope.server.cpu-2022-01-23T14:31:43Z.json
 	Filename string `json:"filename"`
 	// base64-encoded data of the profile, in any of the supported formats
 	// (currently supported: pprof, Pyroscope JSON and collapsed).
+	// example: eyJ2ZXJzaW9uIjoxLCJmbGFtZWJlYXJlciI6eyJuYW1lcyI6WyJ0b3RhbCIsImEiLCJjIiwiYiJdLCJsZXZlbHMiOltbMCwzLDAsMF0sWzAsMywwLDFdLFswLDEsMSwzLDAsMiwyLDJdXSwibnVtVGlja3MiOjMsIm1heFNlbGYiOjJ9LCJtZXRhZGF0YSI6eyJmb3JtYXQiOiJzaW5nbGUiLCJzcHlOYW1lIjoic3B5LW5hbWUiLCJzYW1wbGVSYXRlIjoxMCwidW5pdHMiOiJ1bml0cyIsIm5hbWUiOiJuYW1lIn19Cg
+	// required: true
+	// minLength: 2
 	Profile []byte `json:"profile"`
 	// Type of profile, if known (currently supported: pprof, json, collapsed")
+	// example: json
 	Type string `json:"type"`
 }
 
