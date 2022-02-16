@@ -86,3 +86,8 @@ func ConverterToFormat(f ConverterFn) string {
 	}
 	return "unknown"
 }
+
+type diffModel struct {
+	Base flamebearer.FlamebearerProfile `json:"base"`
+	Diff flamebearer.FlamebearerProfile `json:"diff"`
+}
