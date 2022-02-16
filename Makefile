@@ -148,7 +148,7 @@ coverage: ## Runs the test suite with coverage
 
 .PHONY: server
 server: ## Start the Pyroscope Server
-	bin/pyroscope server
+	bin/pyroscope server $(SERVER_ARGS)
 
 .PHONY: install-web-dependencies
 install-web-dependencies: ## Install the web dependencies
