@@ -1,6 +1,6 @@
 FROM php:8.1-fpm-alpine
 
-RUN apk add binutils
+RUN apk add binutils fcgi screen
 
 WORKDIR /var/www/html
 
