@@ -5,6 +5,7 @@ import { useAppDispatch } from '@pyroscope/redux/hooks';
 
 import { changeMyPassword } from '@pyroscope/redux/reducers/user';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
+import StatusMessage from '@ui/StatusMessage';
 import styles from './Security.module.css';
 
 function ChangePasswordForm(props) {
@@ -57,7 +58,7 @@ function ChangePasswordForm(props) {
       <h2>Change password</h2>
       <div>
         <form onSubmit={handleFormSubmit}>
-          <div className={styles.errors}>{form.errors.join(', ')}</div>
+          <StatusMessage type="error">{form.errors.join(', ')}</StatusMessage>
           <div className={styles.securityInputWrapper}>
             <h4>Old password</h4>
             <input

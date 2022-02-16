@@ -6,6 +6,7 @@ import { createAPIKey } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { type APIKey } from '@models/apikeys';
 import Dropdown, { MenuItem } from '@ui/Dropdown';
+import StatusMessage from '@ui/StatusMessage';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
 
@@ -64,14 +65,14 @@ function APIKeyAddForm() {
     <>
       <h2>Add API Key</h2>
 
-      <div>{form.errors.join(', ')}</div>
+      <StatusMessage type="error">{form.errors.join(', ')}</StatusMessage>
       <form onSubmit={handleFormSubmit}>
         {key ? (
           <div>
-            <div className={styles.success}>
-              Key has been successfully added. Click the button below to copy it
-              to clipboard
-            </div>
+            <StatusMessage type="success">
+              Key has been successfully added. Click the button below to copy
+              it.
+            </StatusMessage>
             <div>
               <CopyToClipboard text={key} onCopy={handleKeyCopy}>
                 <Button icon={faCopy} className={styles.keyOutput}>

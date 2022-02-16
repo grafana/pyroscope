@@ -10,6 +10,7 @@ import {
 } from '@pyroscope/redux/reducers/user';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
 
+import StatusMessage from '@ui/StatusMessage';
 import styles from './Preferences.module.css';
 
 function Preferences(props) {
@@ -47,7 +48,7 @@ function Preferences(props) {
     <>
       <h2>Edit profile</h2>
       <form onSubmit={handleFormSubmit}>
-        <div className={styles.errors}>{form.errors}</div>
+        <StatusMessage type="error">{form.errors}</StatusMessage>
         <div className={styles.preferencesInputWrapper}>
           <h4>Username</h4>
           <input
