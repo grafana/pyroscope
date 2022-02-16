@@ -9,7 +9,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/tommy351/goldga"
 )
 
 type mockQuerier struct {
@@ -59,7 +58,7 @@ var _ = Describe("tablereport", func() {
 			report, err := tr.Report(context.Background(), &qc)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(report).To(goldga.Match())
+			Expect(report).To(BeEquivalentTo("## Result\n|             | base name           | target name | diff                | threshold |\n|-------------|------------------------------|----------------------|---------------------|----------------|\n| my name |  1.00 | 1.00  |  0.00 (0.00%) | 5% |\n\n\n\n<details>\n  <summary>Details</summary>\n\n\n| Name     | Description | Query for base name   | Query for target name |\n|----------|-------------|----------------------|----------------------|\n| my name | my description | `query_base` | `query_target`  |\n\n\n</details>\n"))
 		})
 	})
 
@@ -74,7 +73,7 @@ var _ = Describe("tablereport", func() {
 			report, err := tr.Report(context.Background(), &qc)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(report).To(goldga.Match())
+			Expect(report).To(BeEquivalentTo("## Result\n|             | base name           | target name | diff                | threshold |\n|-------------|------------------------------|----------------------|---------------------|----------------|\n| my name |  0.00 | 2.00  |  :green_square: 2.00 (200.00%) | 5% |\n\n\n\n<details>\n  <summary>Details</summary>\n\n\n| Name     | Description | Query for base name   | Query for target name |\n|----------|-------------|----------------------|----------------------|\n| my name | my description | `query_base` | `query_target`  |\n\n\n</details>\n"))
 		})
 	})
 
@@ -89,7 +88,7 @@ var _ = Describe("tablereport", func() {
 			report, err := tr.Report(context.Background(), &qc)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(report).To(goldga.Match())
+			Expect(report).To(BeEquivalentTo("## Result\n|             | base name           | target name | diff                | threshold |\n|-------------|------------------------------|----------------------|---------------------|----------------|\n| my name |  2.00 | 0.00  |  :red_square: -2.00 (-200.00%) | 5% |\n\n\n\n<details>\n  <summary>Details</summary>\n\n\n| Name     | Description | Query for base name   | Query for target name |\n|----------|-------------|----------------------|----------------------|\n| my name | my description | `query_base` | `query_target`  |\n\n\n</details>\n"))
 		})
 	})
 })

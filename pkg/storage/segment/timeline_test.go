@@ -42,25 +42,29 @@ var _ = Describe("timeline", func() {
 			})
 		})
 		Context("one level", func() {
-			It("works as expected", func(done Done) {
-				s := New()
-				s.Put(testing.SimpleTime(0),
-					testing.SimpleTime(9), 2, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-				s.Put(testing.SimpleTime(10),
-					testing.SimpleTime(19), 5, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-				s.Put(testing.SimpleTime(20),
-					testing.SimpleTime(29), 0, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+			It("works as expected", func() {
+				done := make(chan interface{})
+				go func() {
+					s := New()
+					s.Put(testing.SimpleTime(0),
+						testing.SimpleTime(9), 2, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+					s.Put(testing.SimpleTime(10),
+						testing.SimpleTime(19), 5, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+					s.Put(testing.SimpleTime(20),
+						testing.SimpleTime(29), 0, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
-				timeline.PopulateTimeline(s)
-				Expect(timeline.Samples).To(Equal([]uint64{
-					3,
-					6,
-					1,
-					0,
-				}))
+					timeline.PopulateTimeline(s)
+					Expect(timeline.Samples).To(Equal([]uint64{
+						3,
+						6,
+						1,
+						0,
+					}))
 
-				close(done)
-			}, 5)
+					close(done)
+				}()
+				Eventually(done, 5).Should(BeClosed())
+			})
 		})
 		Context("multiple Levels", func() {
 			BeforeEach(func() {
@@ -68,22 +72,26 @@ var _ = Describe("timeline", func() {
 				et = 365 * 24 * 60 * 60
 			})
 
-			It("works as expected", func(done Done) {
-				s := New()
-				s.Put(testing.SimpleTime(0),
-					testing.SimpleTime(9), 2, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-				s.Put(testing.SimpleTime(10),
-					testing.SimpleTime(19), 5, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-				s.Put(testing.SimpleTime(20),
-					testing.SimpleTime(29), 0, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+			It("works as expected", func() {
+				done := make(chan interface{})
+				go func() {
+					s := New()
+					s.Put(testing.SimpleTime(0),
+						testing.SimpleTime(9), 2, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+					s.Put(testing.SimpleTime(10),
+						testing.SimpleTime(19), 5, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+					s.Put(testing.SimpleTime(20),
+						testing.SimpleTime(29), 0, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
-				timeline.PopulateTimeline(s)
-				expected := make([]uint64, 3153)
-				expected[0] = 8
-				Expect(timeline.Samples).To(Equal(expected))
+					timeline.PopulateTimeline(s)
+					expected := make([]uint64, 3153)
+					expected[0] = 8
+					Expect(timeline.Samples).To(Equal(expected))
 
-				close(done)
-			}, 5)
+					close(done)
+				}()
+				Eventually(done, 5).Should(BeClosed())
+			})
 		})
 
 		Context("with threshold", func() {
@@ -92,31 +100,35 @@ var _ = Describe("timeline", func() {
 				et = 365 * 24 * 60 * 60
 			})
 
-			It("removed nodes are down-sampled", func(done Done) {
-				s := New()
-				now := time.Now()
-				s.Put(testing.SimpleTime(0),
-					testing.SimpleTime(9), 2, func(de int, t time.Time, r *big.Rat, a []Addon) {})
-				s.Put(testing.SimpleTime(10),
-					testing.SimpleTime(19), 5, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+			It("removed nodes are down-sampled", func() {
+				done := make(chan interface{})
+				go func() {
+					s := New()
+					now := time.Now()
+					s.Put(testing.SimpleTime(0),
+						testing.SimpleTime(9), 2, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+					s.Put(testing.SimpleTime(10),
+						testing.SimpleTime(19), 5, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
-				// To prevent segment root removal.
-				s.Put(now.Add(-10*time.Second),
-					now, 0, func(de int, t time.Time, r *big.Rat, a []Addon) {})
+					// To prevent segment root removal.
+					s.Put(now.Add(-10*time.Second),
+						now, 0, func(de int, t time.Time, r *big.Rat, a []Addon) {})
 
-				threshold := NewRetentionPolicy().
-					SetLevelPeriod(0, time.Second).
-					SetLevelPeriod(1, time.Minute)
+					threshold := NewRetentionPolicy().
+						SetLevelPeriod(0, time.Second).
+						SetLevelPeriod(1, time.Minute)
 
-				_, err := s.DeleteNodesBefore(threshold)
-				Expect(err).ToNot(HaveOccurred())
-				timeline.PopulateTimeline(s)
-				expected := make([]uint64, 3153)
-				expected[0] = 8
-				Expect(timeline.Samples).To(Equal(expected))
+					_, err := s.DeleteNodesBefore(threshold)
+					Expect(err).ToNot(HaveOccurred())
+					timeline.PopulateTimeline(s)
+					expected := make([]uint64, 3153)
+					expected[0] = 8
+					Expect(timeline.Samples).To(Equal(expected))
 
-				close(done)
-			}, 5)
+					close(done)
+				}()
+				Eventually(done, 5).Should(BeClosed())
+			})
 		})
 	})
 })

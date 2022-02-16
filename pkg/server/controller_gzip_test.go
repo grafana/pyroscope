@@ -21,18 +21,21 @@ import (
 
 const assetAtCompressionThreshold, assetLtCompressionThreshold = "AssetAtCompressionThreshold", "AssetLTCompressionThreshold"
 
+var tempAssetDir *testing.TmpDirectory
+
+var _ = BeforeSuite(func() {
+	tempAssetDir = testing.TmpDirSync()
+	os.Mkdir(filepath.Join(tempAssetDir.Path, "assets"), 0755)
+	os.WriteFile(filepath.Join(tempAssetDir.Path, "assets", assetLtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold-1), 0644)
+	os.WriteFile(filepath.Join(tempAssetDir.Path, "assets", assetAtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold), 0644)
+})
+
+var _ =AfterSuite(func() {
+	tempAssetDir.Close()
+})
+
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
-		var tempAssetDir *testing.TmpDirectory
-		BeforeSuite(func() {
-			tempAssetDir = testing.TmpDirSync()
-			os.Mkdir(filepath.Join(tempAssetDir.Path, "assets"), 0755)
-			os.WriteFile(filepath.Join(tempAssetDir.Path, "assets", assetLtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold-1), 0644)
-			os.WriteFile(filepath.Join(tempAssetDir.Path, "assets", assetAtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold), 0644)
-		})
-		AfterSuite(func() {
-			tempAssetDir.Close()
-		})
 		DescribeTable("compress assets",
 			func(filename string, uncompressed bool) {
 				done := make(chan interface{})
