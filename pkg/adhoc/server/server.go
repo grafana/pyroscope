@@ -56,6 +56,7 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 		r.HandleFunc("/v1/profile/{id:[0-9a-f]+}", s.Profile)
 		r.HandleFunc("/v1/diff/{left:[0-9a-f]+}/{right:[0-9a-f]+}", s.Diff)
 		r.HandleFunc("/v1/upload/", s.Upload)
+		r.HandleFunc("/v1/upload-diff/", s.UploadDiff)
 	}
 	return r.ServeHTTP
 }
@@ -229,6 +230,35 @@ func (s *server) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(fb); err != nil {
+		s.log.WithError(err).Error("Unable to encode the response")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// Upload two single profiles in native JSON format and convert to a diff profile
+func (s *server) UploadDiff(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var m diffModel
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		msg := "Unable to decode the body of the request. " +
+			"A JSON body with a a `base` and a `diff` profile field is expected."
+		s.log.WithError(err).Error(msg)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	r.Body.Close()
+
+	fb, err := DiffV1("", &m.Base, &m.Diff, s.maxNodes)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to generate a diff profile")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(fb); err != nil {
 		s.log.WithError(err).Error("Unable to encode the response")
