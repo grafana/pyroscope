@@ -1,9 +1,9 @@
 import React from 'react';
 import { Units } from '@utils/format';
-import Flamegraph from '../webapp/javascript/components/FlameGraph/FlameGraphRenderer';
+import { FlamegraphRenderer } from '../webapp/lib';
 
 export default {
-  title: 'Flamegraph',
+  title: 'lib/Flamegraph',
 };
 
 const SimpleTree = {
@@ -36,7 +36,7 @@ const SimpleTree = {
 
 export const WithToolbar = () => {
   return (
-    <Flamegraph
+    <FlamegraphRenderer
       flamebearer={SimpleTree}
       display="flamegraph"
       viewType="single"
@@ -46,7 +46,7 @@ export const WithToolbar = () => {
 
 export const WithoutToolbar = () => {
   return (
-    <Flamegraph
+    <FlamegraphRenderer
       flamebearer={SimpleTree}
       viewType="single"
       display="flamegraph"
@@ -58,7 +58,7 @@ export const WithoutToolbar = () => {
 // In this case having the toolbar doesn't make much sense?
 export const TableViewWithoutToolbar = () => {
   return (
-    <Flamegraph
+    <FlamegraphRenderer
       flamebearer={SimpleTree}
       viewType="single"
       display="table"

@@ -1,11 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Button from '@ui/Button';
 import InputField from '@ui/InputField';
 import { useHistory } from 'react-router-dom';
-import { faCheck } from '@fortawesome/free-solid-svg-icons';
-import { formatRelative } from 'date-fns';
-import { request } from '@pyroscope/services/base';
-import { reloadUsers, createUser } from '@pyroscope/redux/reducers/settings';
+import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
+import { createUser } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import { passwordEncode, type User } from '../../../models/users';

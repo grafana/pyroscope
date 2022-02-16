@@ -45,7 +45,23 @@ const common = {
     rules: [
       ...getJsLoader(),
       ...getStyleLoaders(),
-      { test: /\.svg$/, loader: 'svg-inline-loader' },
+      {
+        test: /\.svg$/,
+        use: [
+          { loader: 'babel-loader' },
+          {
+            loader: 'react-svg-loader',
+            options: {
+              svgo: {
+                plugins: [
+                  { convertPathData: { noSpaceAfterFlags: false } },
+                  { removeViewBox: false },
+                ],
+              },
+            },
+          },
+        ],
+      },
     ],
   },
 
@@ -98,7 +114,7 @@ export default [
     mode: 'production',
     devtool: 'source-map',
     entry: {
-      index: './webapp/lib/index.ts',
+      index: './webapp/lib/index.tsx',
     },
     output: {
       publicPath: '',

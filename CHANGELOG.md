@@ -1,3 +1,24 @@
+## [0.10.2](https://github.com/pyroscope-io/pyroscope/compare/v0.10.1...v0.10.2) (2022-02-15)
+
+
+### Bug Fixes
+
+* CORS allow credentials ([#846](https://github.com/pyroscope-io/pyroscope/issues/846)) ([3fef7a5](https://github.com/pyroscope-io/pyroscope/commit/3fef7a5fee7968c566d5fd2b1a7c85a209de815a))
+* **frontend:** move CSS to css modules ([#842](https://github.com/pyroscope-io/pyroscope/issues/842)) ([3aadc13](https://github.com/pyroscope-io/pyroscope/commit/3aadc13749ed484f1167b858ded8aa8e56743c39))
+
+
+
+## [0.10.1](https://github.com/pyroscope-io/pyroscope/compare/v0.10.0...v0.10.1) (2022-02-14)
+
+
+### Bug Fixes
+
+* adhoc comparison / diff routes. ([#834](https://github.com/pyroscope-io/pyroscope/issues/834)) ([1ab101c](https://github.com/pyroscope-io/pyroscope/commit/1ab101c20742d55c17b112f6d3eec942e96091bb))
+* **frontend:** safari date-fns fix ([#838](https://github.com/pyroscope-io/pyroscope/issues/838)) ([896b936](https://github.com/pyroscope-io/pyroscope/commit/896b93605bd0b0190838b45a647f4689d93360ab))
+* handle properly writing errors in adhoc mode. ([#833](https://github.com/pyroscope-io/pyroscope/issues/833)) ([8e77b8b](https://github.com/pyroscope-io/pyroscope/commit/8e77b8b627ad654f135a7f8c811bc411369a2518))
+
+
+
 # [0.10.0](https://github.com/pyroscope-io/pyroscope/compare/v0.9.0...v0.10.0) (2022-02-14)
 
 
