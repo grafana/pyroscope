@@ -15,7 +15,7 @@ const JWTCookieName = "pyroscopeJWT"
 //go:generate mockgen -destination mocks/auth.go -package mocks . AuthService
 
 type AuthService interface {
-	APIKeyFromToken(ctx context.Context, token string) (model.APIKeyToken, error)
+	APIKeyFromToken(ctx context.Context, token string) (model.APIKey, error)
 	UserFromJWTToken(ctx context.Context, token string) (model.User, error)
 	AuthenticateUser(ctx context.Context, name, password string) (model.User, error)
 }
@@ -24,34 +24,30 @@ type AuthService interface {
 func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, authService AuthService) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			logger := log.WithFields(logrus.Fields{
-				"remote": r.RemoteAddr,
-				"url":    r.URL.String(),
-			})
+			logger := Logger(r, log)
 
 			if token, ok := extractTokenFromAuthHeader(r.Header.Get("Authorization")); ok {
-				ctx, err := withAPIKeyFromToken(r.Context(), authService, token)
+				k, err := authService.APIKeyFromToken(r.Context(), token)
 				if err != nil {
-					logger.WithError(err).Debug("failed to authenticate api key")
-					Error(w, model.ErrInvalidCredentials)
+					Error(w, logger, model.AuthenticationError{Err: err})
 					return
 				}
-				next.ServeHTTP(w, r.WithContext(ctx))
+				next.ServeHTTP(w, r.WithContext(model.WithAPIKey(r.Context(), k)))
 				return
 			}
 
 			if c, err := r.Cookie(JWTCookieName); err == nil {
-				ctx, err := withUserFromToken(r.Context(), authService, c.Value)
-				if err != nil {
-					logger.WithError(err).Debug("failed to authenticate jwt cookie")
+				var u model.User
+				if u, err = authService.UserFromJWTToken(r.Context(), c.Value); err != nil {
 					if loginRedirect != nil {
+						logger.WithError(err).Debug("failed to authenticate jwt cookie")
 						loginRedirect(w, r)
 						return
 					}
-					Error(w, model.ErrInvalidCredentials)
+					Error(w, logger, model.AuthenticationError{Err: err})
 					return
 				}
-				next.ServeHTTP(w, r.WithContext(ctx))
+				next.ServeHTTP(w, r.WithContext(model.WithUser(r.Context(), u)))
 				return
 			}
 
@@ -60,37 +56,10 @@ func AuthMiddleware(log logrus.FieldLogger, loginRedirect http.HandlerFunc, auth
 				loginRedirect(w, r)
 				return
 			}
-			Error(w, model.ErrInvalidCredentials)
+
+			Error(w, nil, model.ErrCredentialsInvalid)
 		})
 	}
-}
-
-// withUserFromToken retrieves User of the given token t and enriches the
-// request context. Obtained user can be accessed from the handler
-// via the `model.UserFromContext` call.
-//
-// The method fails if the token is invalid or the user can't be authenticated
-// (e.g. can not be found or is disabled).
-func withUserFromToken(ctx context.Context, as AuthService, t string) (context.Context, error) {
-	u, err := as.UserFromJWTToken(ctx, t)
-	if err != nil {
-		return nil, err
-	}
-	return model.WithUser(ctx, u), nil
-}
-
-// withAPIKeyFromToken retrieves API key for the given token t and
-// enriches the request context. Obtained API key then can be accessed
-// from the handler via the `model.APIKeyFromContext` call.
-//
-// The method fails if the token is invalid or the API key can't be
-// authenticated (e.g. can not be found or it's expired).
-func withAPIKeyFromToken(ctx context.Context, as AuthService, t string) (context.Context, error) {
-	k, err := as.APIKeyFromToken(ctx, t)
-	if err != nil {
-		return nil, err
-	}
-	return model.WithAPIKey(ctx, k), nil
 }
 
 const bearer string = "bearer"
