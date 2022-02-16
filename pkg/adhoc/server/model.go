@@ -21,6 +21,8 @@ var (
 	errTooShort = errors.New("profile is too short")
 )
 
+//revive:disable:line-length-limit We want to keep the base64 example in a single line
+
 // swagger:model
 type Model struct {
 	// Name of the file in which the profile was saved, if any.
