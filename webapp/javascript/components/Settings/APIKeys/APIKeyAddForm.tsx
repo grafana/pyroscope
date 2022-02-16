@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Button from '@ui/Button';
+import InputField from '@ui/InputField';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { faCopy, faCheck } from '@fortawesome/free-solid-svg-icons';
 import { createAPIKey } from '@pyroscope/redux/reducers/settings';
@@ -82,17 +83,16 @@ function APIKeyAddForm() {
             </div>
           </div>
         ) : (
-          <div className={styles.addForm}>
-            <div>
-              <h4>Name</h4>
-              <input
-                id="keyName"
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleFormChange}
-              />
-            </div>
+          <>
+            <InputField
+              label="Name"
+              placeholder="Name"
+              id="keyName"
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={handleFormChange}
+            />
             <div>
               <h4>Role</h4>
               <Dropdown
@@ -105,21 +105,19 @@ function APIKeyAddForm() {
                 <MenuItem value="Agent">Agent</MenuItem>
               </Dropdown>
             </div>
-            <div>
-              <h4>Valid For (seconds):</h4>
-              <input
-                id="keyTTL"
-                name="ttlSeconds"
-                value={form.ttlSeconds}
-                onChange={handleFormChange}
-              />
-            </div>
+            <InputField
+              label="Valid for (seconds):"
+              id="keyTTL"
+              name="ttlSeconds"
+              value={form.ttlSeconds}
+              onChange={handleFormChange}
+            />
             <div>
               <Button icon={faCheck} type="submit" kind="secondary">
                 Add API Key
               </Button>
             </div>
-          </div>
+          </>
         )}
       </form>
     </>

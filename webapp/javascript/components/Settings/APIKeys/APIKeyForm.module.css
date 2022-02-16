@@ -1,14 +1,3 @@
-.addForm {
-}
-
-.addForm > div:not(:last-child) {
-  display: flex;
-  margin: 10px 0px;
-  flex-direction: column;
-  width: 30%;
-  min-width: 150px;
-}
-
 .keyOutput {
   max-width: 40%;
 }
