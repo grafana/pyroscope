@@ -218,7 +218,7 @@ func (ps *ProfileSession) takeSnapshots() {
 						return nil
 					})
 					if err != nil {
-						if !process.Exists(pid) {
+						if pid >= 0 && !process.Exists(pid) {
 							ps.logger.Debugf("error taking snapshot: PID %d: process doesn't exist?", pid)
 							pidsToRemove = append(pidsToRemove, pid)
 						} else {
