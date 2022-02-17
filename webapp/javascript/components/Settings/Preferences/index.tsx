@@ -10,7 +10,8 @@ import {
 } from '@pyroscope/redux/reducers/user';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
 
-import styles from './Preferences.module.css';
+import StatusMessage from '@ui/StatusMessage';
+import InputField from '@ui/InputField';
 
 function Preferences(props) {
   const { currentUser } = props;
@@ -47,43 +48,35 @@ function Preferences(props) {
     <>
       <h2>Edit profile</h2>
       <form onSubmit={handleFormSubmit}>
-        <div className={styles.errors}>{form.errors}</div>
-        <div className={styles.preferencesInputWrapper}>
-          <h4>Username</h4>
-          <input
-            type="text"
-            placeholder="username"
-            value={form?.name}
-            name="name"
-            required
-            disabled={isEditDisabled}
-            onChange={handleFormChange}
-          />
-        </div>
-
-        <div className={styles.preferencesInputWrapper}>
-          <h4>Full Name</h4>
-          <input
-            type="text"
-            placeholder="Full Name"
-            name="fullName"
-            value={form?.fullName}
-            required
-            onChange={handleFormChange}
-          />
-        </div>
-
-        <div className={styles.preferencesInputWrapper}>
-          <h4>Email</h4>
-          <input
-            type="text"
-            placeholder="email"
-            value={form?.email}
-            required
-            name="email"
-            onChange={handleFormChange}
-          />
-        </div>
+        <StatusMessage type="error">{form.errors}</StatusMessage>
+        <InputField
+          label="Username"
+          type="text"
+          placeholder="username"
+          value={form?.name}
+          name="name"
+          required
+          disabled={isEditDisabled}
+          onChange={handleFormChange}
+        />
+        <InputField
+          label="Full Name"
+          type="text"
+          placeholder="Full Name"
+          name="fullName"
+          value={form?.fullName}
+          required
+          onChange={handleFormChange}
+        />
+        <InputField
+          label="Email"
+          type="text"
+          placeholder="email"
+          value={form?.email}
+          required
+          name="email"
+          onChange={handleFormChange}
+        />
         <Button type="submit" kind="secondary">
           Save
         </Button>
