@@ -69,7 +69,8 @@ For more documentation on how to add the Pyroscope agent to your code see the [a
 
 ## Example Code
 We also have language-specific examples (using Docker) of how to run the *server and agent together*
-- [Golang Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang)
+- [Golang Push Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push)
+- [Golang Pull Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang-pull/static)
 - [Python Pip Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/python)
 - [Ruby Gem Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/ruby)
 - [Grafana Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
