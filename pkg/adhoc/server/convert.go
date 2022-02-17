@@ -46,8 +46,9 @@ func PprofToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Flamebe
 			}
 		}
 		t := tree.New()
-		p.Get(stype, func(_labels *spy.Labels, name []byte, val int) {
+		p.Get(stype, func(_labels *spy.Labels, name []byte, val int) error {
 			t.Insert(name, uint64(val))
+			return nil
 		})
 
 		out := &storage.GetOutput{

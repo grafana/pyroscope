@@ -69,7 +69,7 @@ func (c *cache) pprofLabelsToSpyLabels(x *Profile, pprofLabels []*Label) *spy.La
 	return l
 }
 
-func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte, val int)) error {
+func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte, val int) error) error {
 	valueIndex := 0
 	if sampleType != "" {
 		for i, v := range x.SampleType {
@@ -98,7 +98,9 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 		}
 
 		labels := labelsCache.pprofLabelsToSpyLabels(x, s.Label)
-		cb(labels, b.Bytes(), int(s.Value[valueIndex]))
+		if err := cb(labels, b.Bytes(), int(s.Value[valueIndex])); err != nil {
+			return err
+		}
 
 		b.Reset()
 	}

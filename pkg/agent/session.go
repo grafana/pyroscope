@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -194,38 +195,19 @@ func (ps *ProfileSession) takeSnapshots() {
 			for pid, sarr := range ps.spies {
 				for i, s := range sarr {
 					labelsCache := map[string]string{}
-					s.Snapshot(func(labels *spy.Labels, stack []byte, v uint64, err error) {
+					err := s.Snapshot(func(labels *spy.Labels, stack []byte, v uint64) error {
 						appName := ps.appName
 						if labels != nil {
 							if newAppName, ok := labelsCache[labels.ID()]; ok {
 								appName = newAppName
-							} else if newAppName, err := mergeTagsWithAppName(appName, labels.Tags()); err == nil {
+							} else {
+								newAppName, err := mergeTagsWithAppName(appName, labels.Tags())
+								if err != nil {
+									return fmt.Errorf("error setting tags: %w", err)
+								}
 								appName = newAppName
 								labelsCache[labels.ID()] = appName
-							} else {
-								ps.throttler.Run(func(skipped int) {
-									if skipped > 0 {
-										ps.logger.Errorf("error setting tags: %v, %d messages skipped due to throttling", err, skipped)
-									} else {
-										ps.logger.Errorf("error setting tags: %v", err)
-									}
-								})
 							}
-						}
-						if err != nil {
-							if !process.Exists(pid) {
-								ps.logger.Debugf("error taking snapshot: PID %d: process doesn't exist?", pid)
-								pidsToRemove = append(pidsToRemove, pid)
-							} else {
-								ps.throttler.Run(func(skipped int) {
-									if skipped > 0 {
-										ps.logger.Errorf("error taking snapshot: %v, %d messages skipped due to throttling", err, skipped)
-									} else {
-										ps.logger.Errorf("error taking snapshot: %v", err)
-									}
-								})
-							}
-							return
 						}
 						if len(stack) > 0 {
 							if _, ok := ps.tries[appName]; !ok {
@@ -233,7 +215,22 @@ func (ps *ProfileSession) takeSnapshots() {
 							}
 							ps.tries[appName][i].Insert(stack, v, true)
 						}
+						return nil
 					})
+					if err != nil {
+						if !process.Exists(pid) {
+							ps.logger.Debugf("error taking snapshot: PID %d: process doesn't exist?", pid)
+							pidsToRemove = append(pidsToRemove, pid)
+						} else {
+							ps.throttler.Run(func(skipped int) {
+								if skipped > 0 {
+									ps.logger.Errorf("error taking snapshot: %v, %d messages skipped due to throttling", err, skipped)
+								} else {
+									ps.logger.Errorf("error taking snapshot: %v", err)
+								}
+							})
+						}
+					}
 				}
 			}
 			for _, pid := range pidsToRemove {
