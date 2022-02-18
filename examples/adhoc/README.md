@@ -14,6 +14,7 @@ push mode can be used to profile the application without any configuration chang
 # no spy is supported, --push is not needed (but can still be provided):
 pyroscope adhoc go run adhoc-push.go
 ```
+
 #### Python adhoc (using pip package)
 ```
 # pyspy is autodetected, --push is mandatory.
@@ -21,6 +22,12 @@ pyroscope adhoc go run adhoc-push.go
 pyroscope adhoc --push python adhoc-push.py
 ```
 
+### Rust adhoc (using pyroscope crate)
+```
+# no spy is supported, --push is not needed (but can still be provided):
+# TODO: An unreleased version of pyroscope crate is needed for this to work.
+pyroscope adhoc cargo run --manifest-path adhoc-push-rs/Cargo.toml --release
+```
 
 ### Exec mode
 For languages with a supported spy and no other pyroscope integration, this is the easiest way to get profiling data.
