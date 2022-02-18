@@ -15,5 +15,16 @@ services:
       dockerfile: php/Dockerfile
     cap_add:
       - SYS_PTRACE
-
-
+    environment:
+      - EXECUTION_TIMEOUT=0 # 0 equals infinity
+  cgi-client:
+    container_name: pyroscope_cgi_client
+    build:
+      context: .
+      dockerfile: client-cgi/Dockerfile
+    command: cgi-fcgi -bind -connect pyroscope_php-fpm:9000
+    depends_on:
+      - php
+    environment:
+      - SCRIPT_FILENAME=index.php
+      - REQUEST_METHOD=GET
