@@ -1,5 +1,9 @@
 <?php
 
+$timeout = getenv('EXECUTION_TIMEOUT') !== false ? (int)getenv('EXECUTION_TIMEOUT') : 120;
+
+set_time_limit($timeout);
+
 function dummy()
 {
     sleep(1);
