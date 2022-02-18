@@ -65,7 +65,6 @@ function Preferences(props) {
           placeholder="Full Name"
           name="fullName"
           value={form?.fullName}
-          required
           onChange={handleFormChange}
         />
         <InputField
