@@ -10,6 +10,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
   const from = useSelector((state: RootState) => state.root.from);
   const until = useSelector((state: RootState) => state.root.until);
   const [warning, setWarning] = useState(false);
+  const [isFutureDate, setFutureDate] = useState(false);
   const [selectedDate, setSelectedDate] = useState({
     from: formatAsOBject(from),
     until: formatAsOBject(until),
@@ -22,7 +23,7 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
     ) {
       return setWarning(true);
     }
-
+    
     dispatch(
       setDateRange(
         Math.round(selectedDate.from / 1000),
@@ -31,6 +32,15 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
     );
     return setWarning(false);
   };
+
+  const checkFutureDate= (date: Date) => {
+    let dateToday = new Date(Date.now())
+    
+    if(isAfter(date, dateToday)) {
+      return setFutureDate(true)
+    }
+    return setFutureDate(false)
+  }
 
   useEffect(() => {
     setSelectedDate({
@@ -65,6 +75,8 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
           id="datepicker-until"
           selected={selectedDate.until}
           onChange={(date) => {
+            console.log(date);
+            checkFutureDate(date);
             setSelectedDate({ ...selectedDate, until: date });
           }}
           selectsEnd
@@ -76,8 +88,9 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
         />
       </div>
       {warning && <p style={{ color: 'red' }}>Warning: invalid date Range</p>}
+      {isFutureDate && <p style={{ color: 'yellow' }}>Warning: Until can not be a future date</p>}
 
-      <Button type="submit" kind="primary" onClick={() => updateDateRange()}>
+      <Button type="submit" kind="primary" disabled={isFutureDate ? true: false} onClick={() => updateDateRange()}>
         Apply range
       </Button>
     </div>
