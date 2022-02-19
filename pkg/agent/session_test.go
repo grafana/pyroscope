@@ -24,40 +24,45 @@ func (u *upstreamMock) Upload(j *upstream.UploadJob) {
 
 var _ = Describe("agent.Session", func() {
 	Describe("NewSession", func() {
-		It("creates a new session and performs chunking", func(done Done) {
-			u := &upstreamMock{}
-			uploadRate := 200 * time.Millisecond
-			s, _ := NewSession(SessionConfig{
-				Upstream:         u,
-				AppName:          "test-app",
-				ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
-				SpyName:          "debugspy",
-				SampleRate:       100,
-				UploadRate:       uploadRate,
-				Pid:              os.Getpid(),
-				WithSubprocesses: true,
-				Logger:           logrus.StandardLogger(),
-			})
-			now := time.Now()
-			time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
-			err := s.Start()
+		It("creates a new session and performs chunking", func() {
+			done := make(chan interface{})
+			go func() {
+				defer GinkgoRecover()
+				u := &upstreamMock{}
+				uploadRate := 200 * time.Millisecond
+				s, _ := NewSession(SessionConfig{
+					Upstream:         u,
+					AppName:          "test-app",
+					ProfilingTypes:   []spy.ProfileType{spy.ProfileCPU},
+					SpyName:          "debugspy",
+					SampleRate:       100,
+					UploadRate:       uploadRate,
+					Pid:              os.Getpid(),
+					WithSubprocesses: true,
+					Logger:           logrus.StandardLogger(),
+				})
+				now := time.Now()
+				time.Sleep(now.Truncate(uploadRate).Add(uploadRate + 10*time.Millisecond).Sub(now))
+				err := s.Start()
 
-			Expect(err).ToNot(HaveOccurred())
-			time.Sleep(500 * time.Millisecond)
-			s.Stop()
+				Expect(err).ToNot(HaveOccurred())
+				time.Sleep(500 * time.Millisecond)
+				s.Stop()
 
-			Expect(u.uploads).To(HaveLen(3))
-			u.uploads[0].Trie.Iterate(func(name []byte, val uint64) {
-				Expect(val).To(BeNumerically("~", 19, 2))
-			})
-			u.uploads[1].Trie.Iterate(func(name []byte, val uint64) {
-				Expect(val).To(BeNumerically("~", 20, 2))
-			})
-			u.uploads[2].Trie.Iterate(func(name []byte, val uint64) {
-				Expect(val).To(BeNumerically("~", 11, 2))
-			})
-			close(done)
-			Expect(u.uploads[0].Name).To(Equal("test-app.cpu{}"))
+				Expect(u.uploads).To(HaveLen(3))
+				u.uploads[0].Trie.Iterate(func(name []byte, val uint64) {
+					Expect(val).To(BeNumerically("~", 19, 2))
+				})
+				u.uploads[1].Trie.Iterate(func(name []byte, val uint64) {
+					Expect(val).To(BeNumerically("~", 20, 2))
+				})
+				u.uploads[2].Trie.Iterate(func(name []byte, val uint64) {
+					Expect(val).To(BeNumerically("~", 11, 2))
+				})
+				close(done)
+				Expect(u.uploads[0].Name).To(Equal("test-app.cpu{}"))
+			}()
+			Eventually(done, 3).Should(BeClosed())
 		})
 
 		When("tags specified", func() {

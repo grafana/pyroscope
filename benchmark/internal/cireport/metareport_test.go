@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pyroscope-io/goldga"
 )
 
 var _ = Describe("metareport", func() {
@@ -15,7 +16,7 @@ var _ = Describe("metareport", func() {
 		report, err := mr.Report("Server Benchmark", []string{"execution=5m", "seed=4"})
 		Expect(err).ToNot(HaveOccurred())
 
-		Expect(report).To(BeEquivalentTo("## Server Benchmark\n\n<details>\n  <summary>Details</summary>\n\n\n|  Name       | Value      |\n|-------------|------------|\n| `execution` | `5m` |\n| `seed` | `4` |\n</details>\n"))
+		Expect(report).To(goldga.Match())
 	})
 
 	Context("error conditions", func() {
