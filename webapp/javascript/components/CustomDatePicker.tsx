@@ -75,7 +75,6 @@ function CustomDatePicker({ setRange, dispatch, setDateRange }) {
           id="datepicker-until"
           selected={selectedDate.until}
           onChange={(date) => {
-            console.log(date);
             checkFutureDate(date);
             setSelectedDate({ ...selectedDate, until: date });
           }}
