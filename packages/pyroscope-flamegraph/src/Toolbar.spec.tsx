@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Maybe } from '@utils/fp';
 import Toolbar, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './Toolbar';
-import { FitModes } from '../util/fitMode';
+import { FitModes } from './FlameGraph/fitMode';
 
 // since 'react-debounce-input' uses lodash.debounce under the hood
 jest.mock('lodash.debounce', () =>
