@@ -70,6 +70,7 @@ module.exports = {
     project: './tsconfig.eslint.json',
   },
   settings: {
+    'import/internal-regex': '^@pyroscope',
     'import/resolver': {
       webpack: {
         config: path.join(__dirname, 'scripts/webpack/webpack.common.ts'),
