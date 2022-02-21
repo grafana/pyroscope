@@ -40,7 +40,7 @@ jobs:
           echo ::set-output name=tag::${TAG}
 
       - name: Build
-        run: PYROSCOPE_LIB_VERSION=${{ steps.prep.outputs.tag }} yarn lerna build:flamegraph
+        run: PYROSCOPE_LIB_VERSION=${{ steps.prep.outputs.tag }} yarn build:flamegraph
 
       # TODO: use lerna publish
       - name: Publish (dry-run)
