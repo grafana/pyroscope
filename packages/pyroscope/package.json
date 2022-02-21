@@ -1,0 +1,16 @@
+{
+  "name": "pyroscope",
+  "version": "0.0.1",
+  "main": "index.node.js",
+  "browser": "index.js",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "jest"
+  },
+  "peerDependencies": {
+    "react": ">=16.14.0"
+  },
+  "dependencies": {
+    "true-myth": "^5.1.2"
+  }
+}

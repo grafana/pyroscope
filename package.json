@@ -1,7 +1,7 @@
 {
   "author": "Pyroscope Team",
+  "name": "pyroscope-lerna",
   "private": true,
-  "name": "pyroscope",
   "version": "0.10.2",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
@@ -9,6 +9,7 @@
     "url": "https://github.com/pyroscope-io/pyroscope.git"
   },
   "scripts": {
+    "lerna:test": "lerna run test",
     "postinstall": "./scripts/web-postinstall.sh",
     "dev": "webpack --config scripts/webpack/webpack.dev.ts",
     "dev:panel": "NODE_ENV=development webpack --config scripts/webpack/webpack.panel.ts --watch",
@@ -111,6 +112,7 @@
     "jest-canvas-mock": "^2.3.1",
     "jest-css-modules-transform": "^4.3.0",
     "jest-image-snapshot": "^4.5.1",
+    "lerna": "^4.0.0",
     "lint-staged": "^11.1.2",
     "monaco-editor-webpack-plugin": "^1.9.0",
     "optimize-css-assets-webpack-plugin": "^6.0.1",

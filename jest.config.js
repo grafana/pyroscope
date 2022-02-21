@@ -1,14 +1,6 @@
-/** @type {import('ts-jest/dist/types').InitialOptionsTsJest} */
-const globals = {
-  'ts-jest': {
-    diagnostics: {
-      // https://github.com/kulshekhar/ts-jest/issues/1647#issuecomment-832577036
-      pathRegex: /\.(test)\.tsx$/,
-    },
-  },
-};
+const path = require('path');
 
-const project = {
+module.exports = {
   // TypeScript files (.ts, .tsx) will be transformed by ts-jest to CommonJS syntax, and JavaScript files (.js, jsx) will be transformed by babel-jest.
   preset: 'ts-jest/presets/js-with-babel',
   testEnvironment: 'jsdom',
@@ -36,33 +28,11 @@ const project = {
   ],
   globals: {
     'ts-jest': {
-      tsconfig: `tsconfig.test.json`,
+      tsconfig: path.join(__dirname, `tsconfig.test.json`),
       diagnostics: {
         // https://github.com/kulshekhar/ts-jest/issues/1647#issuecomment-832577036
         pathRegex: /\.(test)\.tsx$/,
       },
     },
   },
-};
-
-module.exports = {
-  // https://github.com/kulshekhar/ts-jest/issues/1648#issuecomment-820860089
-  // We create multiple projects so that we can slowly change tsconfig to be more strict
-  // Without affecting existing code
-  projects: [
-    {
-      ...project,
-      globals: {
-        ...project.globals,
-        'ts-jest': {
-          ...project.globals['ts-jest'],
-          tsconfig: 'webapp/javascript/services/tsconfig.json',
-        },
-      },
-      testMatch: ['<rootDir>/webapp/javascript/services/**/*.(spec|test).*'],
-    },
-    {
-      ...project,
-    },
-  ],
 };
