@@ -12,7 +12,7 @@
     "packages/*"
   ],
   "scripts": {
-    "lerna:test": "lerna run test",
+    "bootstrap": "lerna bootstrap",
     "postinstall": "./scripts/web-postinstall.sh",
     "dev": "webpack --config scripts/webpack/webpack.dev.ts",
     "dev:panel": "NODE_ENV=development webpack --config scripts/webpack/webpack.panel.ts --watch",
