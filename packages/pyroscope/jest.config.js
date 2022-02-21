@@ -1,4 +1,5 @@
 module.exports = {
   ...require('../../jest.config'),
-  rootDir: '../..',
+  rootDir: '.',
+  setupFilesAfterEnv: ['<rootDir>/setupAfterEnv.ts'],
 };
