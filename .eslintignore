@@ -5,3 +5,4 @@
 script/webpack/**
 dist
 .eslintrc.js
+webapp/lib/*.spec.*

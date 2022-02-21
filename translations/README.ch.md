@@ -73,7 +73,7 @@ pyroscope server
 
 ## 部署示意图
 
-![Deployment Diagram](../.github/markdown-images/deployment.svg)
+![agent_server_diagram_10](https://user-images.githubusercontent.com/23323466/153685751-0aac3cd6-bbc1-4ab4-8350-8f4dc7f7c193.svg)
 
 ## 下载
 

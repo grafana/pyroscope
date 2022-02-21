@@ -10,3 +10,12 @@
   margin-left: 8px;
   width: 50%;
 }
+
+.createdBy {
+  color: white;
+  text-align: center;
+  margin: 10px 0;
+}
+.createdBy a {
+  color: #199bef !important;
+}

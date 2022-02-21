@@ -9,6 +9,7 @@ import {
 import { Maybe } from '@utils/fp';
 import type { UnwrapMaybe } from '@utils/fp';
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
+import styles from './Tooltip.module.scss';
 
 type xyToDataSingle = (
   x: number,
@@ -183,13 +184,13 @@ export default function Tooltip(props: TooltipProps) {
     <div
       role="tooltip"
       data-testid="flamegraph-tooltip"
-      className="flamegraph-tooltip"
+      className={styles.flamegraphTooltip}
       style={style}
       ref={tooltipEl}
     >
       <div
         data-testid="flamegraph-tooltip-title"
-        className="flamegraph-tooltip-name"
+        className={styles.flamegraphTooltipName}
       >
         {content.title.text}
         <span

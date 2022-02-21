@@ -1,0 +1,30 @@
+.settingsTable {
+  margin: 20px 0;
+  width: 100%;
+}
+
+.settingsTable thead {
+  padding: 15px 0;
+}
+
+.settingsTable th {
+  text-align: left;
+  padding: 10px 20px;
+}
+
+.settingsTable td {
+  min-width: 50px;
+  padding: 10px 20px;
+}
+
+.settingsTable tbody {
+  color: rgba(255, 255, 255, 0.66);
+}
+
+.settingsTable button {
+  padding: 5px 13px;
+}
+
+.settingsTable tbody tr:nth-child(odd) {
+  background-color: rgba(255, 255, 255, 0.03);
+}

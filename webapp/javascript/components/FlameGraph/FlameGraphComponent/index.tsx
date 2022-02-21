@@ -13,7 +13,8 @@ import Tooltip from './Tooltip';
 import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
-import { DefaultPalette, FlamegraphPalette } from './colorPalette';
+import { FlamegraphPalette } from './colorPalette';
+import indexStyles from './styles.module.scss';
 
 interface FlamegraphProps {
   flamebearer: Flamebearer;
@@ -208,7 +209,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   return (
     <div
       data-testid="flamegraph-view"
-      className={clsx('flamegraph-pane', {
+      className={clsx(indexStyles.flamegraphPane, {
         'vertical-orientation': flamebearer.format === 'double',
       })}
     >

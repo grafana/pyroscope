@@ -23,6 +23,7 @@ import {
 import 'react-tabs/style/react-tabs.css';
 import styles from './ComparisonApp.module.css';
 import adhocStyles from './Adhoc.module.scss';
+import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
 import ExportData from './ExportData';
 
 function AdhocComparison(props) {
@@ -45,6 +46,8 @@ function AdhocComparison(props) {
     setAdhocRightFile,
     setAdhocRightProfile,
   } = actions;
+  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(leftRaw);
+  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(rightRaw);
 
   useEffect(() => {
     actions.fetchAdhocProfiles();
@@ -105,7 +108,14 @@ function AdhocComparison(props) {
                 flamebearer={leftFlamebearer}
                 data-testid="flamegraph-renderer-left"
                 display="both"
-                ExportData={<ExportData flamebearer={leftRaw} exportJSON />}
+                ExportData={
+                  <ExportData
+                    flamebearer={leftRaw}
+                    exportJSON
+                    exportFlamegraphDotCom
+                    exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
+                  />
+                }
               />
             )}
           </Box>
@@ -142,7 +152,14 @@ function AdhocComparison(props) {
                 flamebearer={rightFlamebearer}
                 data-testid="flamegraph-renderer-right"
                 display="both"
-                ExportData={<ExportData flamebearer={rightRaw} exportJSON />}
+                ExportData={
+                  <ExportData
+                    flamebearer={rightRaw}
+                    exportJSON
+                    exportFlamegraphDotCom
+                    exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
+                  />
+                }
               />
             )}
           </Box>

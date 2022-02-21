@@ -8,6 +8,7 @@ import { dateForExportFilename } from '@utils/formatDate';
 
 import clsx from 'clsx';
 import { RawFlamebearerProfile } from '@models/flamebearer';
+import styles from './ExportData.module.scss';
 
 // These are modeled individually since each condition may have different values
 // For example, a exportPprof: true may accept a custom export function
@@ -34,6 +35,14 @@ type exportHTML =
     }
   | { exportHTML?: false };
 
+type exportFlamegraphDotCom =
+  | {
+      exportFlamegraphDotCom: true;
+      exportFlamegraphDotComFn: () => Promise<string | null>;
+      flamebearer: RawFlamebearerProfile;
+    }
+  | { exportFlamegraphDotCom?: false };
+
 type exportPNG =
   | {
       exportPNG: true;
@@ -41,7 +50,11 @@ type exportPNG =
     }
   | { exportPNG?: false };
 
-type ExportDataProps = exportPprof & exportJSON & exportHTML & exportPNG;
+type ExportDataProps = exportPprof &
+  exportJSON &
+  exportHTML &
+  exportFlamegraphDotCom &
+  exportPNG;
 
 function ExportData(props: ExportDataProps) {
   const {
@@ -49,8 +62,15 @@ function ExportData(props: ExportDataProps) {
     exportJSON = false,
     exportPNG = false,
     exportHTML = false,
+    exportFlamegraphDotCom = false,
   } = props;
-  if (!exportPNG && !exportJSON && !exportPprof && !exportHTML) {
+  if (
+    !exportPNG &&
+    !exportJSON &&
+    !exportPprof &&
+    !exportHTML &&
+    !exportFlamegraphDotCom
+  ) {
     throw new Error('At least one export button should be enabled');
   }
 
@@ -79,6 +99,31 @@ function ExportData(props: ExportDataProps) {
       document.body.appendChild(downloadAnchorNode); // required for firefox
       downloadAnchorNode.click();
       downloadAnchorNode.remove();
+    }
+  };
+
+  const downloadFlamegraphDotCom = () => {
+    if (!props.exportFlamegraphDotCom) {
+      return;
+    }
+
+    // TODO additional check this won't be needed once we use strictNullChecks
+    if (props.exportFlamegraphDotCom) {
+      props.exportFlamegraphDotComFn().then((url) => {
+        // there has been an error which should've been handled
+        // so we just ignore it
+        if (!url) {
+          return;
+        }
+
+        const dlLink = document.createElement('a');
+        dlLink.target = '_blank';
+        dlLink.href = url;
+
+        document.body.appendChild(dlLink);
+        dlLink.click();
+        document.body.removeChild(dlLink);
+      });
     }
   };
 
@@ -199,14 +244,12 @@ function ExportData(props: ExportDataProps) {
   };
 
   return (
-    <div className="dropdown-container">
+    <div className={styles.dropdownContainer}>
       <Button icon={faBars} onClick={handleToggleMenu} />
-      <div
-        className={clsx({ 'menu-show': toggleMenu, 'menu-hide': !toggleMenu })}
-      >
+      <div className={toggleMenu ? styles.menuShow : styles.menuHide}>
         {exportPNG && (
           <button
-            className="dropdown-menu-item"
+            className={styles.dropdownMenuItem}
             onClick={() => downloadPNG()}
             onKeyPress={() => downloadPNG()}
             type="button"
@@ -216,7 +259,7 @@ function ExportData(props: ExportDataProps) {
         )}
         {exportJSON && (
           <button
-            className="dropdown-menu-item"
+            className={styles.dropdownMenuItem}
             type="button"
             onClick={() => downloadJSON()}
           >
@@ -225,7 +268,7 @@ function ExportData(props: ExportDataProps) {
         )}
         {exportPprof && (
           <button
-            className="dropdown-menu-item"
+            className={styles.dropdownMenuItem}
             type="button"
             onClick={() => downloadPprof()}
           >
@@ -234,12 +277,22 @@ function ExportData(props: ExportDataProps) {
         )}
         {exportHTML && (
           <button
-            className="dropdown-menu-item"
+            className={styles.dropdownMenuItem}
             type="button"
             onClick={() => downloadHTML()}
           >
             {' '}
             html
+          </button>
+        )}
+        {exportFlamegraphDotCom && (
+          <button
+            className={styles.dropdownMenuItem}
+            type="button"
+            onClick={() => downloadFlamegraphDotCom()}
+          >
+            {' '}
+            flamegraph.com
           </button>
         )}
       </div>

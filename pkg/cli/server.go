@@ -29,6 +29,8 @@ import (
 	sc "github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery"
 	"github.com/pyroscope-io/pyroscope/pkg/server"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
+	"github.com/pyroscope-io/pyroscope/pkg/sqlstore"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 	"github.com/pyroscope-io/pyroscope/pkg/util/debug"
@@ -52,6 +54,7 @@ type serverService struct {
 	adminServer          *admin.Server
 	discoveryManager     *discovery.Manager
 	scrapeManager        *scrape.Manager
+	database             *sqlstore.SQLStore
 
 	stopped chan struct{}
 	done    chan struct{}
@@ -95,11 +98,17 @@ func newServerService(c *config.Server) (*serverService, error) {
 		}
 	}
 
+	svc.database, err = sqlstore.Open(c)
+	if err != nil {
+		return nil, fmt.Errorf("can't open database %q: %w", c.Database.URL, err)
+	}
+
 	// this needs to happen after storage is initiated!
 	if svc.config.EnableExperimentalAdmin {
 		socketPath := svc.config.AdminSocketPath
-		adminSvc := admin.NewService(svc.storage)
-		adminCtrl := admin.NewController(svc.logger, adminSvc)
+		adminService := admin.NewService(svc.storage)
+		userService := service.NewUserService(svc.database.DB())
+		adminCtrl := admin.NewController(svc.logger, adminService, userService)
 		httpClient, err := admin.NewHTTPOverUDSClient(socketPath)
 		if err != nil {
 			return nil, fmt.Errorf("admin: %w", err)
@@ -163,6 +172,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		MetricsRegisterer:       defaultMetricsRegistry,
 		ExportedMetricsRegistry: exportedMetricsRegistry,
 		Scrape:                  svc.scrapeManager,
+		DB:                      svc.database.DB(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new server: %w", err)
@@ -275,6 +285,10 @@ func (svc *serverService) stop() {
 	if err := svc.storage.Close(); err != nil {
 		svc.logger.WithError(err).Error("storage close")
 	}
+	svc.logger.Debug("closing database")
+	if err := svc.database.Close(); err != nil {
+		svc.logger.WithError(err).Error("database close")
+	}
 	// we stop the http server as the last thing due to:
 	// 1. we may still want to bserve metric values while storage is closing
 	// 2. we want the /healthz endpoint to still be responding while server is shutting down
@@ -317,7 +331,10 @@ func loadScrapeConfigsFromFile(c *config.Server) error {
 	default:
 		return err
 	}
-	var s config.Server
+	type scrapeConfig struct {
+		ScrapeConfigs []*sc.Config `yaml:"scrape-configs" mapstructure:"-"`
+	}
+	var s scrapeConfig
 	if err = yaml.Unmarshal(b, &s); err != nil {
 		return err
 	}

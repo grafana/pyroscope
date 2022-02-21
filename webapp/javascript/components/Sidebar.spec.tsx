@@ -5,7 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
 import uiReducer from '@pyroscope/redux/reducers/ui';
 
-import Sidebar from './Sidebar';
+import { Sidebar2 } from './Sidebar';
 
 // TODO: figure out the types here
 function createStore(preloadedState: any) {
@@ -20,6 +20,7 @@ function createStore(preloadedState: any) {
 }
 
 describe('Sidebar', () => {
+  const currentUser = { role: 'anonymous' };
   describe('active routes highlight', () => {
     describe.each([
       ['/', 'sidebar-continuous-single'],
@@ -40,7 +41,7 @@ describe('Sidebar', () => {
                   },
                 })}
               >
-                <Sidebar />
+                <Sidebar2 currentUser={currentUser} />
               </Provider>
             </MemoryRouter>
           );
@@ -64,7 +65,7 @@ describe('Sidebar', () => {
                   },
                 })}
               >
-                <Sidebar />
+                <Sidebar2 currentUser={currentUser} />
               </Provider>
             </MemoryRouter>
           );

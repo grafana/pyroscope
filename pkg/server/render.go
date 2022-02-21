@@ -84,7 +84,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch p.format {
 	case "json":
-		flame := flamebearer.NewProfile(out, p.maxNodes)
+		flame := flamebearer.NewProfile(filename, out, p.maxNodes)
 		res := ctrl.mountRenderResponse(flame, appName, p.gi, p.maxNodes)
 		ctrl.writeResponseJSON(w, res)
 	case "pprof":
@@ -102,7 +102,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		collapsed := out.Tree.Collapsed()
 		ctrl.writeResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	case "html":
-		res := flamebearer.NewProfile(out, p.maxNodes)
+		res := flamebearer.NewProfile(filename, out, p.maxNodes)
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&res, ctrl.dir, w); err != nil {
 			ctrl.writeJSONEncodeError(w, err)
@@ -181,7 +181,13 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	combined := flamebearer.NewCombinedProfile(out, leftOut, rghtOut, p.maxNodes)
+	var appName string
+	if p.gi.Key != nil {
+		appName = p.gi.Key.AppName()
+	} else if p.gi.Query != nil {
+		appName = p.gi.Query.AppName
+	}
+	combined := flamebearer.NewCombinedProfile(appName, out, leftOut, rghtOut, p.maxNodes)
 
 	switch p.format {
 	case "html":
@@ -195,12 +201,6 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		// fallthrough to default, to maintain existing behaviour
 		fallthrough
 	default:
-		var appName string
-		if p.gi.Key != nil {
-			appName = p.gi.Key.AppName()
-		} else if p.gi.Query != nil {
-			appName = p.gi.Query.AppName
-		}
 		res := ctrl.mountRenderResponse(combined, appName, p.gi, p.maxNodes)
 		ctrl.writeResponseJSON(w, res)
 	}

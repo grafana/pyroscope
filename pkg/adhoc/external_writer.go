@@ -95,7 +95,7 @@ func (w *externalWriter) write(name string, out *storage.GetOutput) error {
 			return fmt.Errorf("could not write the collapsed file: %w", err)
 		}
 	case "html":
-		fb := flamebearer.NewProfile(out, w.maxNodesRender)
+		fb := flamebearer.NewProfile(filename, out, w.maxNodesRender)
 		if err := flamebearer.FlamebearerToStandaloneHTML(&fb, w.assetsDir, f); err != nil {
 			return fmt.Errorf("could not write the standalone HTML file: %w", err)
 		}

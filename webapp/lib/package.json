@@ -1,0 +1,10 @@
+{
+  "name": "pyroscope",
+  "version": "0.0.1-%VERSION%",
+  "main": "index.node.js",
+  "browser": "index.js",
+  "license": "Apache-2.0",
+  "peerDependencies": {
+    "react": ">=16.14.0"
+  }
+}

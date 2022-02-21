@@ -5,6 +5,14 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[profile.release]
+opt-level=0
+debug = true
+rpath = true 
+lto = false
+debug-assertions = true
+codegen-units = 4
+
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 warp = "0.3"

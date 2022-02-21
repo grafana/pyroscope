@@ -52,6 +52,7 @@ export default class Flamegraph {
     this.canvas = canvas;
     this.highlightQuery = highlightQuery;
     this.ff = createFF(flamebearer.format);
+    this.palette = palette;
 
     // don't allow to have a zoom smaller than the focus
     // since it does not make sense

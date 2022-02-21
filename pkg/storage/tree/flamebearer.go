@@ -53,10 +53,10 @@ func (t *Tree) FlamebearerStruct(maxNodes int) *Flamebearer {
 			var ok bool
 			if i, ok = nameLocationCache[name]; !ok {
 				i = len(res.Names)
-				nameLocationCache[name] = i
 				if i == 0 {
 					name = "total"
 				}
+				nameLocationCache[name] = i
 				res.Names = append(res.Names, name)
 			}
 

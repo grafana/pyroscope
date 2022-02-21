@@ -32,7 +32,13 @@
   "routes": [
     {
       "path": "render",
-      "url": "{{ .JsonData.path }}"
+      "url": "{{ .JsonData.path }}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "content": "Bearer {{ .SecureJsonData.apiKey }}"
+        }
+      ]
     }
   ],
   "dependencies": {

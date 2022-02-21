@@ -15,8 +15,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang-jwt/jwt"
-	gmux "github.com/gorilla/mux"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"github.com/klauspost/compress/gzhttp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -24,10 +24,16 @@ import (
 	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
 	"github.com/slok/go-http-metrics/middleware"
 	"github.com/slok/go-http-metrics/middleware/std"
+	"gorm.io/gorm"
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
+	"github.com/pyroscope-io/pyroscope/pkg/api"
+	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
+	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/model"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
+	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
@@ -37,12 +43,8 @@ import (
 )
 
 const (
-	jwtCookieName              = "pyroscopeJWT"
 	stateCookieName            = "pyroscopeState"
 	gzHTTPCompressionThreshold = 2000
-	oauthGoogle                = iota
-	oauthGithub
-	oauthGitlab
 )
 
 type Controller struct {
@@ -52,6 +54,7 @@ type Controller struct {
 	storage    *storage.Storage
 	log        *logrus.Logger
 	httpServer *http.Server
+	db         *gorm.DB
 	notifier   Notifier
 	metricsMdw middleware.Middleware
 	dir        http.FileSystem
@@ -66,7 +69,13 @@ type Controller struct {
 	exporter        storage.MetricsExporter
 
 	// Adhoc mode
-	adhoc  adhocserver.Server
+	adhoc adhocserver.Server
+
+	// TODO: Should be moved to a separate Login handler/service.
+	authService     service.AuthService
+	userService     service.UserService
+	jwtTokenService service.JWTTokenService
+
 	Scrape *scrape.Manager
 }
 
@@ -74,6 +83,7 @@ type Config struct {
 	Configuration *config.Server
 	*logrus.Logger
 	*storage.Storage
+	*gorm.DB
 	Notifier
 
 	// The registerer is used for exposing server metrics.
@@ -121,6 +131,7 @@ func New(c Config) (*Controller, error) {
 		}),
 
 		adhoc:  c.Adhoc,
+		db:     c.DB,
 		Scrape: c.Scrape,
 	}
 
@@ -141,8 +152,53 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 	return hll
 }
 
-func (ctrl *Controller) mux() (http.Handler, error) {
-	r := gmux.NewRouter()
+func (ctrl *Controller) ingestHandler() http.Handler {
+	return NewIngestHandler(ctrl.log, ctrl.storage, ctrl.exporter, func(pi *storage.PutInput) {
+		ctrl.statsInc("ingest")
+		ctrl.statsInc("ingest:" + pi.SpyName)
+		ctrl.appStats.Add(hashString(pi.Key.AppName()))
+	})
+}
+
+func (ctrl *Controller) serverMux() (http.Handler, error) {
+	// TODO(kolesnikovae):
+	//  - Move mux part to pkg/api/router.
+	//  - Make prometheus middleware to support gorilla patterns.
+	//  - Make diagnostic endpoints protection configurable.
+	//  - Auth middleware should never redirect - the logic should be moved to the client side.
+	r := mux.NewRouter()
+
+	ctrl.jwtTokenService = service.NewJWTTokenService(
+		[]byte(ctrl.config.Auth.JWTSecret),
+		24*time.Hour*time.Duration(ctrl.config.Auth.LoginMaximumLifetimeDays))
+
+	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
+	ctrl.userService = service.NewUserService(ctrl.db)
+
+	apiRouter := router.New(ctrl.log, r.PathPrefix("/api").Subrouter(), router.Services{
+		APIKeyService: service.NewAPIKeyService(ctrl.db),
+		AuthService:   ctrl.authService,
+		UserService:   ctrl.userService,
+	})
+
+	apiRouter.Use(
+		ctrl.drainMiddleware,
+		ctrl.authMiddleware(nil))
+
+	if ctrl.isAuthRequired() {
+		apiRouter.RegisterUserHandlers()
+		apiRouter.RegisterAPIKeyHandlers()
+	}
+
+	ingestRouter := r.Path("/ingest").Subrouter()
+	ingestRouter.Use(ctrl.drainMiddleware)
+	if ctrl.config.Auth.Ingestion.Enabled {
+		ingestRouter.Use(
+			ctrl.ingestionAuthMiddleware(),
+			authz.Require(authz.Role(model.AgentRole)))
+	}
+
+	ingestRouter.Methods(http.MethodPost).Handler(ctrl.ingestHandler())
 
 	// Routes not protected with auth. Drained at shutdown.
 	insecureRoutes, err := ctrl.getAuthRoutes()
@@ -150,21 +206,15 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		return nil, err
 	}
 
-	ingestHandler := NewIngestHandler(ctrl.log, ctrl.storage, ctrl.exporter, func(pi *storage.PutInput) {
-		ctrl.statsInc("ingest")
-		ctrl.statsInc("ingest:" + pi.SpyName)
-		ctrl.appStats.Add(hashString(pi.Key.AppName()))
-	})
-
-	insecureRoutes = append(insecureRoutes, []route{
-		{"/ingest", ingestHandler.ServeHTTP},
+	assetsHandler := r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP
+	ctrl.addRoutes(r, append(insecureRoutes, []route{
 		{"/forbidden", ctrl.forbiddenHandler()},
-		{"/assets/", r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP},
-	}...)
-	ctrl.addRoutes(r, insecureRoutes, ctrl.drainMiddleware)
+		{"/assets/", assetsHandler}}...),
+		ctrl.drainMiddleware)
 
-	// Protected routes:
-	protectedRoutes := []route{
+	// Protected pages:
+	// For these routes server responds with 307 and redirects to /login.
+	ctrl.addRoutes(r, []route{
 		{"/", ctrl.indexHandler()},
 		{"/comparison", ctrl.indexHandler()},
 		{"/comparison-diff", ctrl.indexHandler()},
@@ -172,13 +222,29 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/adhoc-single", ctrl.indexHandler()},
 		{"/adhoc-comparison", ctrl.indexHandler()},
 		{"/adhoc-comparison-diff", ctrl.indexHandler()},
+		{"/settings", ctrl.indexHandler()},
+		{"/settings/{page}", ctrl.indexHandler()},
+		{"/settings/{page}/{subpage}", ctrl.indexHandler()}},
+		ctrl.drainMiddleware,
+		ctrl.authMiddleware(ctrl.loginRedirect))
+
+	// For these routes server responds with 401.
+	ctrl.addRoutes(r, []route{
 		{"/render", ctrl.renderHandler},
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
-		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())},
-	}
-	ctrl.addRoutes(r, protectedRoutes, ctrl.drainMiddleware, ctrl.authMiddleware)
+		{"/export", ctrl.exportHandler},
+		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
+		ctrl.drainMiddleware,
+		ctrl.authMiddleware(nil))
+
+	// TODO(kolesnikovae):
+	//  Refactor: move mux part to pkg/api/router.
+	//  Make prometheus middleware to support gorilla patterns.
+
+	// TODO(kolesnikovae):
+	//  Make diagnostic endpoints protection configurable.
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
@@ -202,7 +268,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		}...)
 	}
 
-	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware)
+	ctrl.addRoutes(r, diagnosticSecureRoutes, ctrl.authMiddleware(nil))
 	ctrl.addRoutes(r, []route{
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
@@ -250,8 +316,9 @@ func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Re
 
 func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	authRoutes := []route{
-		{"/login", ctrl.loginHandler()},
-		{"/logout", ctrl.logoutHandler()},
+		{"/login", ctrl.loginHandler},
+		{"/logout", ctrl.logoutHandler},
+		{"/signup", ctrl.signupHandler},
 	}
 
 	if ctrl.config.Auth.Google.Enabled {
@@ -297,7 +364,7 @@ func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 }
 
 func (ctrl *Controller) getHandler() (http.Handler, error) {
-	handler, err := ctrl.mux()
+	handler, err := ctrl.serverMux()
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +374,7 @@ func (ctrl *Controller) getHandler() (http.Handler, error) {
 		return nil, err
 	}
 
-	return gzhttpMiddleware(handler), nil
+	return ctrl.corsMiddleware()(gzhttpMiddleware(handler)), nil
 }
 
 func (ctrl *Controller) Start() error {
@@ -351,28 +418,42 @@ func (ctrl *Controller) Stop() error {
 	return ctrl.httpServer.Shutdown(ctx)
 }
 
+func (ctrl *Controller) corsMiddleware() mux.MiddlewareFunc {
+	if len(ctrl.config.CORS.AllowedOrigins) > 0 {
+		options := []handlers.CORSOption{
+			handlers.AllowedOrigins(ctrl.config.CORS.AllowedOrigins),
+			handlers.AllowedMethods(ctrl.config.CORS.AllowedMethods),
+			handlers.AllowedHeaders(ctrl.config.CORS.AllowedHeaders),
+			handlers.MaxAge(ctrl.config.CORS.MaxAge),
+		}
+		if ctrl.config.CORS.AllowCredentials {
+			options = append(options, handlers.AllowCredentials())
+		}
+		return handlers.CORS(options...)
+	}
+	return func(next http.Handler) http.Handler {
+		return next
+	}
+}
+
 func (ctrl *Controller) Drain() {
 	atomic.StoreUint32(&ctrl.drained, 1)
 }
 
-func (ctrl *Controller) drainMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) drainMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if atomic.LoadUint32(&ctrl.drained) > 0 {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		next.ServeHTTP(w, r)
-	}
+	})
 }
 
-func (ctrl *Controller) trackMetrics(route string) func(next http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return std.Handler(route, ctrl.metricsMdw, next).ServeHTTP
+func (ctrl *Controller) trackMetrics(route string) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return std.Handler(route, ctrl.metricsMdw, next)
 	}
-}
-
-func (ctrl *Controller) isAuthRequired() bool {
-	return ctrl.config.Auth.Google.Enabled || ctrl.config.Auth.Github.Enabled || ctrl.config.Auth.Gitlab.Enabled
 }
 
 func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http.Request, urlStr string, status int) {
@@ -390,37 +471,30 @@ func (ctrl *Controller) redirectPreservingBaseURL(w http.ResponseWriter, r *http
 	http.Redirect(w, r, urlStr, status)
 }
 
-func (ctrl *Controller) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !ctrl.isAuthRequired() {
-			next.ServeHTTP(w, r)
-			return
+func (ctrl *Controller) loginRedirect(w http.ResponseWriter, r *http.Request) {
+	ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
+}
+
+func (ctrl *Controller) authMiddleware(redirect http.HandlerFunc) mux.MiddlewareFunc {
+	if ctrl.isAuthRequired() {
+		return api.AuthMiddleware(ctrl.log, redirect, ctrl.authService)
+	}
+	return func(next http.Handler) http.Handler {
+		return next
+	}
+}
+
+func (ctrl *Controller) ingestionAuthMiddleware() mux.MiddlewareFunc {
+	if ctrl.config.Auth.Ingestion.Enabled {
+		asConfig := service.CachingAuthServiceConfig{
+			Size: ctrl.config.Auth.Ingestion.CacheSize,
+			TTL:  ctrl.config.Auth.Ingestion.CacheTTL,
 		}
-
-		jwtCookie, err := r.Cookie(jwtCookieName)
-		if err != nil {
-			ctrl.log.WithFields(logrus.Fields{
-				"url":  r.URL.String(),
-				"host": r.Header.Get("Host"),
-			}).Debug("missing jwt cookie")
-			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-			return
-		}
-
-		_, err = jwt.Parse(jwtCookie.Value, func(token *jwt.Token) (interface{}, error) {
-			if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
-			return []byte(ctrl.config.Auth.JWTSecret), nil
-		})
-
-		if err != nil {
-			ctrl.log.WithError(err).Error("invalid jwt token")
-			ctrl.redirectPreservingBaseURL(w, r, "/login", http.StatusTemporaryRedirect)
-			return
-		}
-
-		next.ServeHTTP(w, r)
+		as := service.NewCachingAuthService(ctrl.authService, asConfig)
+		return api.AuthMiddleware(ctrl.log, nil, as)
+	}
+	return func(next http.Handler) http.Handler {
+		return next
 	}
 }
 
