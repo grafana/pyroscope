@@ -27,10 +27,13 @@ import (
 
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 	"github.com/pyroscope-io/pyroscope/webapp"
+
+	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 )
 
 const (
@@ -63,7 +66,8 @@ type Controller struct {
 	exporter        storage.MetricsExporter
 
 	// Adhoc mode
-	adhoc adhocserver.Server
+	adhoc  adhocserver.Server
+	Scrape *scrape.Manager
 }
 
 type Config struct {
@@ -80,6 +84,8 @@ type Config struct {
 	storage.MetricsExporter
 
 	Adhoc adhocserver.Server
+
+	Scrape *scrape.Manager
 }
 
 type Notifier interface {
@@ -114,7 +120,8 @@ func New(c Config) (*Controller, error) {
 			}),
 		}),
 
-		adhoc: c.Adhoc,
+		adhoc:  c.Adhoc,
+		Scrape: c.Scrape,
 	}
 
 	var err error
@@ -161,6 +168,7 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/", ctrl.indexHandler()},
 		{"/comparison", ctrl.indexHandler()},
 		{"/comparison-diff", ctrl.indexHandler()},
+		{"/service-discovery", ctrl.indexHandler()},
 		{"/adhoc-single", ctrl.indexHandler()},
 		{"/adhoc-comparison", ctrl.indexHandler()},
 		{"/adhoc-comparison-diff", ctrl.indexHandler()},
@@ -199,9 +207,39 @@ func (ctrl *Controller) mux() (http.Handler, error) {
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
 		{"/healthz", ctrl.healthz},
+		{"/targets", ctrl.activeTargetsHandler},
 	})
 
 	return r, nil
+}
+
+type TargetsResponse struct {
+	Job                string
+	DiscoveredLabels   labels.Labels
+	Labels             labels.Labels
+	Health             scrape.TargetHealth
+	LastScrape         time.Time
+	LastScrapeDuration int64
+	Url                string
+}
+
+func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, r *http.Request) {
+	targets := ctrl.Scrape.TargetsActive()
+	resp := []TargetsResponse{}
+	for k, v := range targets {
+		for _, t := range v {
+			resp = append(resp, TargetsResponse{
+				Job:                k,
+				DiscoveredLabels:   t.DiscoveredLabels(),
+				Labels:             t.Labels(),
+				Health:             t.Health(),
+				LastScrape:         t.LastScrape(),
+				LastScrapeDuration: t.LastScrapeDuration().Milliseconds(),
+				Url:                t.URL().String(),
+			})
+		}
+	}
+	ctrl.writeResponseJSON(w, resp)
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {

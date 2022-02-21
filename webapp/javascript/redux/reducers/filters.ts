@@ -18,6 +18,7 @@ import {
   SET_RIGHT_UNTIL,
   SET_QUERY,
   RECEIVE_COMPARISON_APP_DATA,
+  RECEIVE_SERVICE_DISCOVERY_APP_DATA,
   RECEIVE_PYROSCOPE_APP_DATA,
   REQUEST_PYROSCOPE_APP_DATA,
   CANCEL_PYROSCOPE_APP_DATA,
@@ -112,6 +113,9 @@ const initialState = {
   adhocComparisonDiff: {
     flamebearer: null,
     isProfileLoading: false,
+  },
+  serviceDiscovery: {
+    data: null,
   },
   isJSONLoading: false,
   maxNodes: 1024,
@@ -325,7 +329,6 @@ export default function (state = initialState, action) {
         default:
           throw new Error(`Invalid viewSide: '${viewSide}'`);
       }
-
       return {
         ...state,
         comparison: {
@@ -336,7 +339,16 @@ export default function (state = initialState, action) {
         },
         isJSONLoading: false,
       };
-
+    case RECEIVE_SERVICE_DISCOVERY_APP_DATA:
+      ({
+        payload: { data },
+      } = action);
+      return {
+        ...state,
+        serviceDiscovery: {
+          data,
+        },
+      };
     case REQUEST_COMPARISON_TIMELINE:
       return {
         ...state,

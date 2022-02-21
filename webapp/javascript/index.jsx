@@ -16,6 +16,7 @@ import Sidebar from './components/Sidebar';
 import AdhocSingle from './components/AdhocSingle';
 import AdhocComparison from './components/AdhocComparison';
 import AdhocComparisonDiff from './components/AdhocComparisonDiff';
+import ServiceDiscoveryApp from './components/ServiceDiscoveryApp';
 import ServerNotifications from './components/ServerNotifications';
 
 import history from './util/history';
@@ -46,6 +47,9 @@ ReactDOM.render(
             </Route>
             <Route path="/comparison-diff">
               <ComparisonDiffApp />
+            </Route>
+            <Route path="/service-discovery">
+              <ServiceDiscoveryApp />
             </Route>
             {isAdhocUIEnabled && (
               <Route path="/adhoc-single">

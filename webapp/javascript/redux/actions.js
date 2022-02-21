@@ -49,6 +49,7 @@ import {
   REQUEST_ADHOC_PROFILE_DIFF,
   RECEIVE_ADHOC_PROFILE_DIFF,
   CANCEL_ADHOC_PROFILE_DIFF,
+  RECEIVE_SERVICE_DISCOVERY_APP_DATA,
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 import { addNotification } from './reducers/notifications';
@@ -128,6 +129,12 @@ export const receiveComparisonAppData = (data, viewSide) => ({
   type: RECEIVE_COMPARISON_APP_DATA,
   payload: { data, viewSide },
 });
+
+export const receiveServiceDiscoveryAppData = (data) => ({
+  type: RECEIVE_SERVICE_DISCOVERY_APP_DATA,
+  payload: { data },
+});
+
 export const cancelComparisonappData = () => ({
   type: CANCEL_COMPARISON_APP_DATA,
 });
@@ -345,6 +352,14 @@ export function abortTimelineRequest() {
     if (currentTimelineController) {
       currentTimelineController.abort();
     }
+  };
+}
+
+export function fetchServiceDiscoveryAppData(url) {
+  return (dispatch) => {
+    return fetch(url)
+      .then((response) => handleResponse(dispatch, response))
+      .then((data) => dispatch(receiveServiceDiscoveryAppData(data)));
   };
 }
 
