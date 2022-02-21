@@ -8,6 +8,9 @@
     "type": "git",
     "url": "https://github.com/pyroscope-io/pyroscope.git"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "lerna:test": "lerna run test",
     "postinstall": "./scripts/web-postinstall.sh",

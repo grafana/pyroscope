@@ -60,9 +60,9 @@ const common = {
     new MiniCssExtractPlugin({}),
     new CopyWebpackPlugin({
       patterns: [
-        { from: path.join('./packages/flamegraph/', 'README.md'), to: '.' },
+        { from: 'README.md', to: '.' },
         {
-          from: path.join('./packages/flamegraph/', 'package.json'),
+          from: 'package.json',
           to: '.',
         },
       ],
@@ -93,7 +93,7 @@ export default [
     mode: 'production',
     devtool: 'source-map',
     entry: {
-      index: './packages/flamegraph/src/index.node.ts',
+      index: './src/index.node.ts',
     },
     output: {
       publicPath: '',
@@ -108,7 +108,7 @@ export default [
     mode: 'production',
     devtool: 'source-map',
     entry: {
-      index: './packages/flamegraph/src/index.tsx',
+      index: './src/index.tsx',
     },
     output: {
       publicPath: '',
