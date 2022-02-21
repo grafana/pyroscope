@@ -1,8 +1,8 @@
 {
   "name": "pyroscope",
   "version": "0.0.1",
-  "main": "index.node.js",
-  "browser": "index.js",
+  "main": "dist/index.node.js",
+  "browser": "dist/index.js",
   "license": "Apache-2.0",
   "scripts": {
     "test": "jest",
