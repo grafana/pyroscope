@@ -3,9 +3,9 @@ package cireport_test
 import (
 	"github.com/pyroscope-io/pyroscope/benchmark/internal/cireport"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/tommy351/goldga"
+	"github.com/pyroscope-io/goldga"
 )
 
 var _ = Describe("metareport", func() {
@@ -15,6 +15,7 @@ var _ = Describe("metareport", func() {
 
 		report, err := mr.Report("Server Benchmark", []string{"execution=5m", "seed=4"})
 		Expect(err).ToNot(HaveOccurred())
+
 		Expect(report).To(goldga.Match())
 	})
 
