@@ -1,0 +1,40 @@
+.dropdownContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdownMenuItem {
+  display: block;
+  padding: 4px 16px;
+  clear: both;
+  font-weight: normal;
+  font-size: 11px;
+  line-height: 20px;
+  color: #222;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  &:hover {
+    background-color: #cccccc;
+  }
+}
+
+.menuShow {
+  display: flex;
+  min-width: 150px;
+  position: absolute;
+  right: 0;
+  z-index: 1000;
+  flex-direction: column;
+  border: 1px solid #e5e5e5;
+  background-color: white;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  color: black;
+}
+
+.menuHide {
+  display: none;
+}
