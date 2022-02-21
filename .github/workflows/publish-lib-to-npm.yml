@@ -31,7 +31,7 @@ jobs:
             ${{ runner.os }}-yarn
 
       - name: Install Webapp dependencies
-        run: yarn install
+        run: yarn bootstrap
 
       - name: Prepare
         id: prep
@@ -40,15 +40,16 @@ jobs:
           echo ::set-output name=tag::${TAG}
 
       - name: Build
-        run: PYROSCOPE_LIB_VERSION=${{ steps.prep.outputs.tag }} yarn build:lib
+        run: PYROSCOPE_LIB_VERSION=${{ steps.prep.outputs.tag }} yarn lerna build:flamegraph
 
+      # TODO: use lerna publish
       - name: Publish (dry-run)
-        run: npm publish dist/lib --tag=beta --dry-run
+        run: npm publish packages/flamegraph/dist --tag=beta --dry-run
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish
-        run: npm publish dist/lib --tag=beta
+        run: npm publish packages/flamegraph/dist --tag=beta
         if: ${{ github.ref == 'refs/heads/main' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
