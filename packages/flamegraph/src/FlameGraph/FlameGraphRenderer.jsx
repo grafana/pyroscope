@@ -11,15 +11,13 @@ import { Maybe } from '@utils/fp';
 import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
-import { createFF } from '../../util/flamebearer';
+import { createFF } from './flamebearer';
 import {
   DefaultPalette,
   ColorBlindPalette,
 } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.css';
-import PyroscopeLogo from '../../../images/logo-v3-small.svg';
-
-import ExportData from '../ExportData';
+import PyroscopeLogo from '../logo-v3-small.svg';
 
 class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state

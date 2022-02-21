@@ -1,8 +1,8 @@
 /* eslint-disable react/react-in-jsx-scope */
 /* eslint-disable react/jsx-props-no-spreading */
 import React from 'react';
-import FlameGraphRenderer from '../../../webapp/javascript/components/FlameGraph/FlameGraphRenderer';
-import Flamegraph from '../../../webapp/javascript/components/FlameGraph/FlameGraphComponent/Flamegraph';
+import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
+import Flamegraph from './FlameGraph/FlameGraphComponent/Flamegraph';
 import ExportData from '../../../webapp/javascript/components/ExportData';
 import { decodeFlamebearer } from '../../../webapp/javascript/models/flamebearer';
 

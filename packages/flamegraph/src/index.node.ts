@@ -1,5 +1,5 @@
 /* eslint-disable import/prefer-default-export */
-import Flamegraph from '../../../webapp/javascript/components/FlameGraph/FlameGraphComponent/Flamegraph';
-import { DefaultPalette } from '../../../webapp/javascript/components/FlameGraph/FlameGraphComponent/colorPalette';
+import Flamegraph from './FlameGraph/FlameGraphComponent/Flamegraph';
+import { DefaultPalette } from './FlameGraph/FlameGraphComponent/colorPalette';
 
 export { Flamegraph, DefaultPalette };
