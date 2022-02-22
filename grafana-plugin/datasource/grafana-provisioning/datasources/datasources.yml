@@ -9,3 +9,5 @@ datasources:
     uid: pyroscope
     jsonData:
       path: http://pyroscope:4040
+    # secureJsonData:
+    #   apiKey: {YOUR_API_KEY}

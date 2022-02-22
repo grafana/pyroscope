@@ -1,3 +1,4 @@
+//go:build debugspy
 // +build debugspy
 
 package debugspy
@@ -23,9 +24,9 @@ func (s *DebugSpy) Stop() error {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *DebugSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
+func (s *DebugSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 	stacktrace := fmt.Sprintf("debug_%d;debug", s.pid)
-	cb(nil, []byte(stacktrace), 1, nil)
+	return cb(nil, []byte(stacktrace), 1)
 }
 
 func init() {

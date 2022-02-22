@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/golang/mock/gomock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
@@ -32,7 +32,6 @@ var _ = Describe("AuthMiddleware", func() {
 		authServiceMock = mocks.NewMockAuthService(ctrl)
 		apiKeyServiceMock = mocks.NewMockAPIKeyService(ctrl)
 		server = httptest.NewServer(newTestRouter(defaultReqCtx, router.Services{
-			Logger:        logrus.StandardLogger(),
 			AuthService:   authServiceMock,
 			APIKeyService: apiKeyServiceMock,
 		}))
@@ -46,14 +45,14 @@ var _ = Describe("AuthMiddleware", func() {
 	Describe("request authentication", func() {
 		var (
 			// API key and JWT token string returned by mocked service.
-			expectedAPIKey model.APIKey
-			expectedUser   model.User
-			expectedToken  string
+			expectedAPIKey   model.APIKeyToken
+			expectedUser     model.User
+			expectedJWTToken string
 		)
 
 		BeforeEach(func() {
-			expectedToken = "some-token"
-			expectedAPIKey = model.APIKey{
+			expectedJWTToken = "some-jwt-token"
+			expectedAPIKey = model.APIKeyToken{
 				Name: "test-api-key",
 				Role: model.AdminRole,
 			}
@@ -66,7 +65,7 @@ var _ = Describe("AuthMiddleware", func() {
 		Context("when request has a valid API key in the header", func() {
 			It("authenticates request", func() {
 				authServiceMock.EXPECT().
-					APIKeyFromToken(gomock.Any(), expectedToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Return(expectedAPIKey, nil).
 					Times(1)
 
@@ -75,7 +74,7 @@ var _ = Describe("AuthMiddleware", func() {
 					Times(1)
 
 				req := newRequest(http.MethodGet, server.URL+"/keys", "")
-				req.Header.Set("Authorization", "Bearer "+expectedToken)
+				req.Header.Set("Authorization", "Bearer "+expectedJWTToken)
 				expectResponse(req,
 					"response_empty_array.json",
 					http.StatusOK)
@@ -85,12 +84,12 @@ var _ = Describe("AuthMiddleware", func() {
 		Context("when request has an invalid API key in the header", func() {
 			It("returns status code Unauthorized", func() {
 				authServiceMock.EXPECT().
-					APIKeyFromToken(gomock.Any(), expectedToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Return(expectedAPIKey, model.ErrAPIKeyNotFound).
 					Times(1)
 
 				authServiceMock.EXPECT().
-					UserFromJWTToken(gomock.Any(), expectedToken).
+					UserFromJWTToken(gomock.Any(), expectedJWTToken).
 					Times(0)
 
 				apiKeyServiceMock.EXPECT().
@@ -98,7 +97,7 @@ var _ = Describe("AuthMiddleware", func() {
 					Times(0)
 
 				req := newRequest(http.MethodGet, server.URL+"/keys", "")
-				req.Header.Set("Authorization", "Bearer "+expectedToken)
+				req.Header.Set("Authorization", "Bearer "+expectedJWTToken)
 				expectResponse(req,
 					"response_invalid_credentials.json",
 					http.StatusUnauthorized)
@@ -108,12 +107,12 @@ var _ = Describe("AuthMiddleware", func() {
 		Context("when request has a valid user token in the cookies", func() {
 			It("authenticates request", func() {
 				authServiceMock.EXPECT().
-					UserFromJWTToken(gomock.Any(), expectedToken).
+					UserFromJWTToken(gomock.Any(), expectedJWTToken).
 					Return(expectedUser, nil).
 					Times(1)
 
 				authServiceMock.EXPECT().
-					APIKeyFromToken(gomock.Any(), expectedToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Times(0)
 
 				apiKeyServiceMock.EXPECT().
@@ -121,7 +120,7 @@ var _ = Describe("AuthMiddleware", func() {
 					Times(1)
 
 				req := newRequest(http.MethodGet, server.URL+"/keys", "")
-				req.AddCookie(&http.Cookie{Name: api.JWTCookieName, Value: expectedToken})
+				req.AddCookie(&http.Cookie{Name: api.JWTCookieName, Value: expectedJWTToken})
 				expectResponse(req,
 					"response_empty_array.json",
 					http.StatusOK)
@@ -131,12 +130,12 @@ var _ = Describe("AuthMiddleware", func() {
 		Context("when user token is invalid or can not be found", func() {
 			It("redirects request", func() {
 				authServiceMock.EXPECT().
-					UserFromJWTToken(gomock.Any(), expectedToken).
+					UserFromJWTToken(gomock.Any(), expectedJWTToken).
 					Return(expectedUser, model.ErrUserNotFound).
 					Times(1)
 
 				authServiceMock.EXPECT().
-					APIKeyFromToken(gomock.Any(), expectedToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Times(0)
 
 				apiKeyServiceMock.EXPECT().
@@ -144,7 +143,7 @@ var _ = Describe("AuthMiddleware", func() {
 					Times(0)
 
 				req := newRequest(http.MethodGet, server.URL+"/keys", "")
-				req.AddCookie(&http.Cookie{Name: api.JWTCookieName, Value: expectedToken})
+				req.AddCookie(&http.Cookie{Name: api.JWTCookieName, Value: expectedJWTToken})
 				expectResponse(req,
 					"", // Empty response body.
 					http.StatusTemporaryRedirect)
@@ -154,12 +153,12 @@ var _ = Describe("AuthMiddleware", func() {
 		Context("when credentials are not provided", func() {
 			It("redirects request", func() {
 				authServiceMock.EXPECT().
-					APIKeyFromToken(gomock.Any(), expectedToken).
+					APIKeyFromToken(gomock.Any(), expectedJWTToken).
 					Return(expectedAPIKey, nil).
 					Times(0)
 
 				authServiceMock.EXPECT().
-					UserFromJWTToken(gomock.Any(), expectedToken).
+					UserFromJWTToken(gomock.Any(), expectedJWTToken).
 					Return(expectedUser, model.ErrUserNotFound).
 					Times(0)
 
