@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 import 'react-dom';
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
-import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
 import Footer from './Footer';
@@ -39,7 +39,7 @@ function PyroscopeApp(props) {
           viewSide="none"
         />
         <Box>
-          <FlameGraphRenderer
+          <FlamegraphRenderer
             flamebearer={single?.flamebearer}
             viewType="single"
             display="both"
