@@ -116,7 +116,6 @@
     "jest-canvas-mock": "^2.3.1",
     "jest-css-modules-transform": "^4.3.0",
     "jest-image-snapshot": "^4.5.1",
-    "lerna": "^4.0.0",
     "lint-staged": "^11.1.2",
     "monaco-editor-webpack-plugin": "^1.9.0",
     "oauth2-mock-server": "^4.3.0",
@@ -226,6 +225,7 @@
     "ts-essentials": "^9.0.0",
     "ts-node": "^10.4.0",
     "url-loader": "^4.1.1",
+    "lerna": "^4.0.0",
     "webpack-cli": "^4.8.0",
     "zod": "^3.11.6"
   },
