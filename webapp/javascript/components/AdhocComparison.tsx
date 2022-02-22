@@ -9,7 +9,7 @@ import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
 import FileList from './FileList';
 import FileUploader from './FileUploader';
-import FlameGraphRenderer from './FlameGraph';
+import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
 import Footer from './Footer';
 import {
   fetchAdhocProfiles,

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
-import FlameGraphRenderer from './FlameGraph';
+import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
 import Header from './Header';
 import Footer from './Footer';
 import TimelineChartWrapper from './TimelineChartWrapper';

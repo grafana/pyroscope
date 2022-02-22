@@ -211,8 +211,12 @@ unused: ## Staticcheck for unused code
 install-dev-tools: ## Install dev tools
 	cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI {} go install {}
 
+.PHONY: web-bootstrap
+web-bootstrap: ## Bootstrap web tools
+	yarn bootstrap
+
 .PHONY: dev
-dev: install-web-dependencies ## Start webpack and pyroscope server. Use this one for working on pyroscope
+dev: web-boostrap ## Start webpack and pyroscope server. Use this one for working on pyroscope
 	goreman -exit-on-error -f scripts/dev-procfile start
 
 .PHONY: godoc

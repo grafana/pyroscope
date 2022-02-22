@@ -8,7 +8,7 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
 import FileList from './FileList';
-import FlameGraphRenderer from './FlameGraph';
+import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
 import Footer from './Footer';
 import {
   fetchAdhocProfiles,

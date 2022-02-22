@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 import 'react-dom';
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
-import FlameGraphRenderer from './FlameGraph';
+import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
 import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
 import Footer from './Footer';
