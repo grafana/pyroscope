@@ -58,15 +58,15 @@ const common = {
 
   plugins: [
     new MiniCssExtractPlugin({}),
-    new CopyWebpackPlugin({
-      patterns: [
-        { from: 'README.md', to: '.' },
-        {
-          from: 'package.json',
-          to: '.',
-        },
-      ],
-    }),
+    //    new CopyWebpackPlugin({
+    //      patterns: [
+    //        { from: 'README.md', to: '.' },
+    //        {
+    //          from: 'package.json',
+    //          to: '.',
+    //        },
+    //      ],
+    //    }),
     //   new ReplaceInFileWebpackPlugin([
     //     {
     //       dir: './dist/lib',

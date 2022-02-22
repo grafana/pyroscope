@@ -11,6 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        if: github.event_name == 'pull_request'
+        # For PRs check the actual commit
+        # https://github.com/actions/checkout/issues/124#issuecomment-586664611
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
 
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v2
@@ -44,7 +50,8 @@ jobs:
 
       # TODO: use lerna publish
       - name: Publish (dry-run)
-        run: npm publish packages/flamegraph/dist --tag=beta --dry-run
+        #        run: npm publish packages/flamegraph/dist --tag=beta --dry-run
+        run: yarn run lerna publish --skip-git --conventional-commits --canary=beta --dist-tag="${{steps.prep.outputs.tag}}" --yes
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
