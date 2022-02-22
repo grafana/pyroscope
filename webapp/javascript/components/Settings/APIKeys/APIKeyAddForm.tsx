@@ -67,14 +67,15 @@ function APIKeyAddForm() {
     <>
       <h2>Add API Key</h2>
 
-      <StatusMessage type="error">{form.errors.join(', ')}</StatusMessage>
+      <StatusMessage type="error" message={form.errors.join(', ')} />
       <form onSubmit={handleFormSubmit}>
         {key ? (
           <div>
-            <StatusMessage type="success">
-              Key has been successfully added. Click the button below to copy
-              it.
-            </StatusMessage>
+            <StatusMessage
+              type="success"
+              message="Key has been successfully added. Click the button below to copy 
+              it."
+            />
             <div>
               <CopyToClipboard text={key} onCopy={handleKeyCopy}>
                 <Button icon={faCopy} className={styles.keyOutput}>

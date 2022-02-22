@@ -4,11 +4,11 @@ import styles from './StatusMessage.module.css';
 
 interface StatusMessageProps {
   type: 'error' | 'success';
-  children: string;
+  message: string;
 }
 
-export default function StatusMessage({ type, children }: StatusMessageProps) {
-  return children ? (
+export default function StatusMessage({ type, message }: StatusMessageProps) {
+  return message ? (
     <div
       className={cx({
         [styles.statusMessage]: true,
@@ -16,7 +16,7 @@ export default function StatusMessage({ type, children }: StatusMessageProps) {
         [styles.success]: type === 'success',
       })}
     >
-      {children}
+      {message}
     </div>
   ) : null;
 }

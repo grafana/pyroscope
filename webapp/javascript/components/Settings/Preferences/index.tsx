@@ -48,7 +48,7 @@ function Preferences(props) {
     <>
       <h2>Edit profile</h2>
       <form onSubmit={handleFormSubmit}>
-        <StatusMessage type="error">{form.errors}</StatusMessage>
+        <StatusMessage type="error" message={form.errors} />
         <InputField
           label="Username"
           type="text"

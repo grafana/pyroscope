@@ -15,5 +15,5 @@ export default {
 export const Statusmessage = Template.bind({});
 Statusmessage.args = {
   type: 'success',
-  children: 'Example message',
+  message: 'Example message',
 };
