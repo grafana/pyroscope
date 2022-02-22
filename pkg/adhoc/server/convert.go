@@ -16,13 +16,16 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
 
-func JSONToProfileV1(b []byte, _ string, _ int) (*flamebearer.FlamebearerProfile, error) {
+func JSONToProfileV1(b []byte, name string, _ int) (*flamebearer.FlamebearerProfile, error) {
 	var profile flamebearer.FlamebearerProfile
 	if err := json.Unmarshal(b, &profile); err != nil {
 		return nil, fmt.Errorf("unable to unmarshall JSON: %w", err)
 	}
 	if err := profile.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid profile: %w", err)
+	}
+	if name != "" {
+		profile.Metadata.Name = name
 	}
 	return &profile, nil
 }
@@ -43,8 +46,9 @@ func PprofToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Flamebe
 			}
 		}
 		t := tree.New()
-		p.Get(stype, func(_labels *spy.Labels, name []byte, val int) {
+		p.Get(stype, func(_labels *spy.Labels, name []byte, val int) error {
 			t.Insert(name, uint64(val))
+			return nil
 		})
 
 		out := &storage.GetOutput{

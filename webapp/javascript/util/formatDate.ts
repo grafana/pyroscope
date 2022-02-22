@@ -44,7 +44,9 @@ export function readableRange(from: string, until: string) {
   const dateFormat = 'yyyy-MM-dd hh:mm a';
   if (/^now-/.test(from) && until === 'now') {
     const { number, _multiplier } = convertPresetsToDate(from);
-    return `Last ${number} ${_multiplier}`;
+    const multiplier =
+      parseInt(number, 10) >= 2 ? _multiplier : _multiplier.slice(0, -1);
+    return `Last ${number} ${multiplier}`;
   }
 
   const d1 = new Date(Math.round(parseInt(from, 10) * 1000));
