@@ -8,21 +8,25 @@ import (
 )
 
 func Benchmark_ProfileReader(b *testing.B) {
-	p, r := readPprofFixture(b, "testdata/heap.pprof")
+	p, err := readPprofFixture("testdata/heap.pb.gz")
+	if err != nil {
+		b.Error(err)
+	}
+	r := NewProfileReader().SampleTypeFilter(AllSampleTypes)
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		r.Reset()
-		if err := r.Read(p, readNoOp); err != nil {
+		if err = r.Read(p, readNoOp); err != nil {
 			b.Error(err)
 		}
 	}
 }
 
-func readPprofFixture(b *testing.B, path string) (*tree.Profile, *ProfileReader) {
+func readPprofFixture(path string) (*tree.Profile, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		b.Error(err)
+		return nil, err
 	}
 	defer func() {
 		_ = f.Close()
@@ -30,10 +34,9 @@ func readPprofFixture(b *testing.B, path string) (*tree.Profile, *ProfileReader)
 
 	var p tree.Profile
 	if err = Decode(f, &p); err != nil {
-		b.Error(err)
+		return nil, err
 	}
-
-	return &p, NewProfileReader().SampleTypeFilter(AllSampleTypes)
+	return &p, nil
 }
 
 func readNoOp(*tree.ValueType, tree.Labels, *tree.Tree) (bool, error) {

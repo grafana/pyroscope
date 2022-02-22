@@ -40,7 +40,7 @@ func DecodePool(r io.Reader, fn func(*tree.Profile) error) error {
 	defer p.ReturnToVTPool()
 	p.Reset()
 	if err := Decode(r, p); err != nil {
-		return nil
+		return err
 	}
 	return fn(p)
 }
