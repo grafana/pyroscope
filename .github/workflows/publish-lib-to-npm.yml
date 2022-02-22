@@ -51,6 +51,9 @@ jobs:
 
       - name: Build
         run: yarn build:flamegraph
+        env:
+          # we want users of this lib to use the pyroscope logo
+          PYROSCOPE_HIDE_LOGO: false
 
       # This step will bump the package.json version, generate a CHANGELOG.md
       # And commit to the repository

@@ -1,7 +1,7 @@
 import path from 'path';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import { ESBuildMinifyPlugin } from 'esbuild-loader';
-import CopyWebpackPlugin from 'copy-webpack-plugin';
+import webpack from 'webpack';
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
 const common = {
@@ -58,31 +58,11 @@ const common = {
 
   plugins: [
     new MiniCssExtractPlugin({}),
-    //    new CopyWebpackPlugin({
-    //      patterns: [
-    //        { from: 'README.md', to: '.' },
-    //        {
-    //          from: 'package.json',
-    //          to: '.',
-    //        },
-    //      ],
-    //    }),
-    //   new ReplaceInFileWebpackPlugin([
-    //     {
-    //       dir: './dist/lib',
-    //       files: ['package.json', 'README.md'],
-    //       rules: [
-    //         {
-    //           search: '%VERSION%',
-    //           replace: version,
-    //         },
-    //         {
-    //           search: '%TODAY%',
-    //           replace: new Date().toISOString().substring(0, 10),
-    //         },
-    //       ],
-    //     },
-    //   ]),
+    new webpack.DefinePlugin({
+      'process.env': {
+        PYROSCOPE_HIDe_LOGO: process.env.PYROSCOPE_HIDE_LOGO,
+      },
+    }),
   ],
 };
 

@@ -5,8 +5,7 @@ import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
 import Flamegraph from './FlameGraph/FlameGraphComponent/Flamegraph';
 
 const overrideProps = {
-  //
-  showPyroscopeLogo: true,
+  showPyroscopeLogo: !process.env.PYROSCOPE_HIDE_LOGO as any, // this is injected by webpack
 };
 
 // TODO: type props
