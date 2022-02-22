@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "bootstrap": "lerna bootstrap",
-    "postinstall": "./scripts/web-postinstall.sh",
+    "postinstall": "lerna bootstrap && yarn run build:flamegraph && ./scripts/web-postinstall.sh",
     "dev": "webpack --config scripts/webpack/webpack.dev.ts",
     "dev:panel": "NODE_ENV=development webpack --config scripts/webpack/webpack.panel.ts --watch",
     "dev:datasource": "NODE_ENV=development webpack --config scripts/webpack/webpack.datasource.ts --watch",
