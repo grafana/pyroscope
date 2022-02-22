@@ -14,7 +14,7 @@ import {
   fetchComparisonAppData,
   fetchTimeline,
 } from '../redux/actions';
-import InstructionText from './FlameGraph/InstructionText';
+import InstructionText from './InstructionText';
 import ExportData from './ExportData';
 import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
 import styles from './ComparisonApp.module.css';

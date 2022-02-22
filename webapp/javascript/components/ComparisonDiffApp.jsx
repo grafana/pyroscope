@@ -8,7 +8,7 @@ import Footer from './Footer';
 import TimelineChartWrapper from './TimelineChartWrapper';
 import { buildDiffRenderURL } from '../util/updateRequests';
 import { fetchNames, fetchComparisonDiffAppData } from '../redux/actions';
-import InstructionText from './FlameGraph/InstructionText';
+import InstructionText from './InstructionText';
 import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
 import ExportData from './ExportData';
 

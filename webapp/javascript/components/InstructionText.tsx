@@ -1,6 +1,6 @@
 import React from 'react';
 
-function InstructionText(props) {
+function InstructionText(props: any) {
   const { viewType, viewSide } = props;
   const instructionsText =
     viewType === 'double' || viewType === 'diff'
