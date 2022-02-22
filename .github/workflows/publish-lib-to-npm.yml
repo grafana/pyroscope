@@ -48,10 +48,19 @@ jobs:
       - name: Build
         run: PYROSCOPE_LIB_VERSION=${{ steps.prep.outputs.tag }} yarn build:flamegraph
 
+      - name: Publish (dry-run)
+        run: npm publish packages/pyroscope-flamegraph --tag=beta --dry-run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       # TODO: use lerna publish
       - name: Publish (dry-run)
         #        run: npm publish packages/flamegraph/dist --tag=beta --dry-run
-        run: yarn run lerna publish --skip-git --conventional-commits --canary=beta --dist-tag="${{steps.prep.outputs.tag}}" --yes
+        run: |
+          yarn config set //registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN
+          # use npm to publish?
+          sed -i 's/yarn/npm/' lerna.json
+          ./node_modules/.bin/lerna publish --skip-git --conventional-commits --canary=beta --dist-tag="${{steps.prep.outputs.tag}}" --yes --no-verify-access
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
