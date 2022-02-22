@@ -24,7 +24,7 @@
     "build:datasource": "NODE_ENV=production webpack --config scripts/webpack/webpack.datasource.ts",
     "build:standalone": "webpack --config scripts/webpack/webpack.standalone.ts",
     "build:size-limit": "NODE_ENV=production webpack --config scripts/webpack/webpack.size-limit.ts",
-    "build:flamegraph": "lerna run build --scope=@pyroscope/flamegraph",
+    "build:flamegraph": "lerna run build --scope=pyroscope",
     "test": "jest --runInBand",
     "test:ss": "UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-docker.sh",
     "test:ss-check": "./scripts/jest-snapshots/run-docker.sh",
