@@ -66,7 +66,6 @@ jobs:
             --canary \
             --preid=${{ github.event.pull_request.number }} \
             --yes \
-            --force-publish \
             --no-verify-access
 
         env:

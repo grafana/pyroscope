@@ -6,6 +6,7 @@ import Flamegraph from './FlameGraph/FlameGraphComponent/Flamegraph';
 import ExportData from './ExportData';
 
 const overrideProps = {
+  //
   showPyroscopeLogo: true,
 };
 
