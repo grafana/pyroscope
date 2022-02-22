@@ -1,4 +1,4 @@
-name: Publish Package to npmjs
+name: Publish Flamegraph package to npmjs
 
 on:
   push:
@@ -10,6 +10,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      #######################
+      #      Checkout      #
+      ######################
+      # For non-pull requests, fetch all tags
+      - uses: actions/checkout@v2
+        if: github.event_name != 'pull_request'
+        with:
+          fetch-depth: 0
+
+      # For pull requests, also checkout out the REAL commit (as opposed to a merge commit with main)
       - uses: actions/checkout@v2
         if: github.event_name == 'pull_request'
         # For PRs check the actual commit
@@ -39,40 +49,44 @@ jobs:
       - name: Install Webapp dependencies
         run: yarn bootstrap
 
-      - name: Prepare
-        id: prep
-        run: |
-          TAG=$(echo $GITHUB_SHA | head -c7)
-          echo ::set-output name=tag::${TAG}
-
       - name: Build
-        run: PYROSCOPE_LIB_VERSION=${{ steps.prep.outputs.tag }} yarn build:flamegraph
+        run: yarn build:flamegraph
 
-      - name: Publish (dry-run)
-        run: npm publish packages/pyroscope-flamegraph --tag=beta --dry-run
+      # This step will bump the package.json version, generate a CHANGELOG.md
+      # And commit to the repository
+      - name: Bump version, generate changelog etc
+        if: github.event_name != 'pull_request'
+        run: |
+          # Copied from https://github.com/pyroscope-io/pyroscope/blob/main/.github/workflows/update-contributors.yml#L23-L28
+          git config --global user.email "dmitry+bot@pyroscope.io"
+          git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
+          yarn run lerna version --conventional-commits --yes
+
+      #####################
+      #      Publish      #
+      #####################
+      #
+      # For main
+      - name: Publish Main
+        if: github.event_name != 'pull_request'
+        run: |
+          yarn run lerna publish \
+          --skip-git \
+          --conventional-commits \
+          --yes \
+          --no-verify-access
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # TODO: use lerna publish
-      - name: Publish (dry-run)
-        #        run: npm publish packages/flamegraph/dist --tag=beta --dry-run
+      - name: Publish Pull Request
+        if: github.event_name == 'pull_request'
         run: |
-          #yarn config set //registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN
-          # use npm to publish?
-          #          sed -i 's/yarn/npm/' lerna.json
-          ./node_modules/.bin/lerna publish \
+          yarn run lerna publish \
             --skip-git \
             --conventional-commits \
             --canary \
             --preid=${{ github.event.pull_request.number }} \
             --yes \
             --no-verify-access
-
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish
-        run: npm publish packages/flamegraph/dist --tag=beta
-        if: ${{ github.ref == 'refs/heads/main' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
