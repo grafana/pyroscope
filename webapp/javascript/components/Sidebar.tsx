@@ -53,7 +53,6 @@ export function Sidebar2(props) {
   // so we must set it up manually
   // https://github.com/azouaoui-med/react-pro-sidebar/issues/84
   const isRouteActive = function (route: string) {
-    console.log(1111);
     if (
       route === '/' ||
       route === '/comparison' ||
