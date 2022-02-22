@@ -60,7 +60,7 @@ const common = {
     new MiniCssExtractPlugin({}),
     new webpack.DefinePlugin({
       'process.env': {
-        PYROSCOPE_HIDe_LOGO: process.env.PYROSCOPE_HIDE_LOGO,
+        PYROSCOPE_HIDE_LOGO: process.env.PYROSCOPE_HIDE_LOGO,
       },
     }),
   ],

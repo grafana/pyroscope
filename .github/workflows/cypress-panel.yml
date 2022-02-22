@@ -27,6 +27,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-yarn
       - run: yarn
+        # when building hide the logo
+        env:
+          PYROSCOPE_HIDE_LOGO: true
+
       - run: yarn build:panel
         env:
           PYROSCOPE_PANEL_VERSION: test
