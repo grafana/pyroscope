@@ -1,5 +1,6 @@
 /* eslint-disable import/prefer-default-export */
-import { createFF } from '@utils/flamebearer';
+import { createFF } from '../../../../../webapp/javascript/util/flamebearer';
+
 // not entirely sure where this should fit
 
 function getRatios(

@@ -1,9 +1,8 @@
 import React, { useCallback, useRef } from 'react';
-import { Flamebearer } from '@models/flamebearer';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
 import useResizeObserver from '@react-hook/resize-observer';
-import { Maybe } from '@utils/fp';
+import { Maybe } from 'true-myth';
 import debounce from 'lodash.debounce';
 import styles from './canvas.module.css';
 import Flamegraph from './Flamegraph';
@@ -14,6 +13,7 @@ import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
+import { Flamebearer } from '../../../../../webapp/javascript/models/flamebearer';
 import indexStyles from './styles.module.scss';
 
 interface FlamegraphProps {

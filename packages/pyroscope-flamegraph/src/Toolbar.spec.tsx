@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Maybe } from '@utils/fp';
+import { Maybe } from 'true-myth';
 import Toolbar, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './Toolbar';
 import { FitModes } from './FlameGraph/fitMode';
 

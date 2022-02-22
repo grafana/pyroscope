@@ -1,5 +1,5 @@
 import React from 'react';
-import { Maybe } from '@utils/fp';
+import { Maybe } from 'true-myth';
 import styles from './ContextMenuHighlight.module.css';
 
 export interface HighlightProps {

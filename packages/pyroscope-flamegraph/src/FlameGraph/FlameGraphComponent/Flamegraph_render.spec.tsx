@@ -1,6 +1,6 @@
 import CanvasConverter from 'canvas-to-buffer';
 import { createCanvas } from 'canvas';
-import { Maybe } from '@utils/fp';
+import { Maybe } from 'true-myth';
 import TestData from './testData';
 import Flamegraph from './Flamegraph';
 import { DefaultPalette } from './colorPalette';

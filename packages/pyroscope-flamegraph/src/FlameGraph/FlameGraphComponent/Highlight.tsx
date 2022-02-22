@@ -1,4 +1,4 @@
-import { Maybe } from '@utils/fp';
+import { Maybe } from 'true-myth';
 import React from 'react';
 import { DeepReadonly } from 'ts-essentials';
 import styles from './Highlight.module.css';

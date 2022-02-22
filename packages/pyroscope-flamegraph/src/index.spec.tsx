@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-//import { Units } from '@utils/format';
+// import { Units } from '@utils/format';
 import { FlamegraphRenderer } from './index';
 
 const SimpleTree = {

@@ -1,7 +1,7 @@
 import React from 'react';
 import userEvent from '@testing-library/user-event';
 import { render, screen, waitFor } from '@testing-library/react';
-import { Maybe } from '@utils/fp';
+import { Maybe } from 'true-myth';
 import FlamegraphComponent from './index';
 import TestData from './testData';
 import { BAR_HEIGHT } from './constants';

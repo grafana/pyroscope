@@ -1,10 +1,13 @@
-import { Maybe, throwUnwrapErr } from '@utils/fp';
+import { Maybe } from 'true-myth';
 import Flamegraph from './Flamegraph';
 import { BAR_HEIGHT } from './constants';
 import { DefaultPalette } from './colorPalette';
 import TestData from './testData';
 
 jest.mock('./Flamegraph_render');
+const throwUnwrapErr = () => {
+  throw new Error('Failed to unwrap');
+};
 
 type focusedNodeType = ConstructorParameters<typeof Flamegraph>[2];
 type zoomType = ConstructorParameters<typeof Flamegraph>[5];

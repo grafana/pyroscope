@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-properties */
 import { numberWithCommas, getFormatter, Units } from './format';
 
 describe('format', () => {

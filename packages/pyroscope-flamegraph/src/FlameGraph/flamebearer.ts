@@ -1,4 +1,6 @@
-/* eslint-disable import/prefer-default-export */
+/* eslint-disable camelcase */
+/* eslint-disable no-restricted-syntax */
+/* eslint-disable no-restricted-properties */
 function createFF(viewType: 'single' | 'double') {
   switch (viewType) {
     case 'single': {
@@ -35,11 +37,14 @@ function createFF(viewType: 'single' | 'double') {
         getBarName: (level: number[], j: number) => level[j + 6],
       };
     }
+    default: {
+      throw new Error('Unsupported type');
+    }
   }
 }
 
 function deltaDiffWrapper(format: 'single' | 'double', levels: number[][]) {
-  let mutable_levels = [...levels];
+  const mutable_levels = [...levels];
 
   function deltaDiff(levels: number[][], start: number, step: number) {
     for (const level of levels) {

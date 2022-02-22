@@ -2,10 +2,10 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Maybe } from '@utils/fp';
+import { Maybe } from 'true-myth';
 
+import { Units } from '../../../../../webapp/javascript/util/format';
 import { diffColorRed, diffColorGreen } from './color';
-import { Units } from '@utils/format';
 import Tooltip, { TooltipProps } from './Tooltip';
 import { DefaultPalette } from './colorPalette';
 

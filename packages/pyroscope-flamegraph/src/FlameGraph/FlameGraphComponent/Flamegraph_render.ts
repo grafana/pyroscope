@@ -22,7 +22,18 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
-import { Flamebearer, addTicks } from '@models/flamebearer';
+import {
+  Flamebearer,
+  addTicks,
+} from '../../../../../webapp/javascript/models/flamebearer';
+import {
+  formatPercent,
+  getFormatter,
+  ratioToPercent,
+} from '../../../../../webapp/javascript/util/format';
+import { fitToCanvasRect } from '../../../../../webapp/javascript/util/fitMode';
+import { createFF } from '../../../../../webapp/javascript/util/flamebearer';
+import { getRatios } from './utils';
 import {
   PX_PER_LEVEL,
   COLLAPSE_THRESHOLD,
@@ -30,16 +41,11 @@ import {
   BAR_HEIGHT,
   GAP,
 } from './constants';
-import { formatPercent, getFormatter, ratioToPercent } from '@utils/format';
-import { fitToCanvasRect } from '@utils/fitMode';
-import { getRatios } from './utils';
-import { createFF } from '@utils/flamebearer';
 import {
   colorBasedOnDiffPercent,
   colorBasedOnPackageName,
   colorGreyscale,
   getPackageNameFromStackTrace,
-  highlightColor,
 } from './color';
 import type { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine

@@ -7,15 +7,12 @@
 
 import React from 'react';
 import clsx from 'clsx';
-import { Maybe } from '@utils/fp';
+import { Maybe } from 'true-myth';
 import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { createFF } from './flamebearer';
-import {
-  DefaultPalette,
-  ColorBlindPalette,
-} from './FlameGraphComponent/colorPalette';
+import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.css';
 import PyroscopeLogo from '../logo-v3-small.svg';
 

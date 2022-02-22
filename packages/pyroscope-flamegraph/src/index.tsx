@@ -3,7 +3,6 @@
 import React from 'react';
 import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
 import Flamegraph from './FlameGraph/FlameGraphComponent/Flamegraph';
-import ExportData from './ExportData';
 
 const overrideProps = {
   //
@@ -15,4 +14,4 @@ const FlamegraphRenderer = (props: any) => {
   return <FlameGraphRenderer {...props} {...overrideProps} />;
 };
 
-export { FlamegraphRenderer, Flamegraph, ExportData };
+export { FlamegraphRenderer, Flamegraph };

@@ -1,6 +1,4 @@
 import React from 'react';
-import clsx from 'clsx';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faAlignLeft } from '@fortawesome/free-solid-svg-icons/faAlignLeft';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
@@ -10,10 +8,9 @@ import { faTable } from '@fortawesome/free-solid-svg-icons/faTable';
 import { faUndo } from '@fortawesome/free-solid-svg-icons/faUndo';
 import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { DebounceInput } from 'react-debounce-input';
-import { Maybe } from '@utils/fp';
+import { Maybe } from 'true-myth';
 import useResizeObserver from '@react-hook/resize-observer';
-import Button from '@ui/Button';
-import { logDOM } from '@testing-library/dom';
+import Button from '../../../webapp/javascript/ui/Button';
 import { FitModes } from './FlameGraph/fitMode';
 import styles from './ProfilerHeader.module.css';
 

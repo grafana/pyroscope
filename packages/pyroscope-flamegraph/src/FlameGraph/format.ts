@@ -1,3 +1,7 @@
+/* eslint-disable max-classes-per-file */
+/* eslint-disable no-plusplus */
+/* eslint-disable eqeqeq */
+/* eslint-disable prefer-destructuring */
 export function numberWithCommas(x: number): string {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
@@ -30,11 +34,13 @@ export function getFormatter(max: number, sampleRate: number, units: Units) {
   }
 }
 
-//// this is a class and not a function because we can save some time by
-////   precalculating divider and suffix and not doing it on each iteration
+// // this is a class and not a function because we can save some time by
+// //   precalculating divider and suffix and not doing it on each iteration
 class DurationFormatter {
   divider = 1;
+
   suffix: string = 'second';
+
   durations: [number, string][] = [
     [60, 'minute'],
     [60, 'hour'],
@@ -42,8 +48,9 @@ class DurationFormatter {
     [30, 'month'],
     [12, 'year'],
   ];
+
   constructor(maxDur: number) {
-    for (var i = 0; i < this.durations.length; i++) {
+    for (let i = 0; i < this.durations.length; i++) {
       if (maxDur >= this.durations[i][0]) {
         this.divider *= this.durations[i][0];
         maxDur /= this.durations[i][0];
@@ -55,7 +62,7 @@ class DurationFormatter {
   }
 
   format(samples: number, sampleRate: number) {
-    let n: any = samples / sampleRate / this.divider;
+    const n: any = samples / sampleRate / this.divider;
     let nStr = n.toFixed(2);
 
     if (n >= 0 && n < 0.01) {
@@ -64,13 +71,15 @@ class DurationFormatter {
       nStr = '< 0.01';
     }
 
-    return `${nStr} ${this.suffix}` + (n == 1 ? '' : 's');
+    return `${nStr} ${this.suffix}${n == 1 ? '' : 's'}`;
   }
 }
 
 export class ObjectsFormatter {
   divider = 1;
+
   suffix = '';
+
   objects: [number, string][] = [
     [1000, 'K'],
     [1000, 'M'],
@@ -78,8 +87,9 @@ export class ObjectsFormatter {
     [1000, 'T'],
     [1000, 'P'],
   ];
+
   constructor(maxObjects: number) {
-    for (var i = 0; i < this.objects.length; i++) {
+    for (let i = 0; i < this.objects.length; i++) {
       if (maxObjects >= this.objects[i][0]) {
         this.divider *= this.objects[i][0];
         maxObjects /= this.objects[i][0];
@@ -93,7 +103,7 @@ export class ObjectsFormatter {
   // TODO:
   // how to indicate that sampleRate doesn't matter?
   format(samples: number, sampleRate: number) {
-    let n = samples / this.divider;
+    const n = samples / this.divider;
     let nStr = n.toFixed(2);
 
     if (n >= 0 && n < 0.01) {
@@ -107,7 +117,9 @@ export class ObjectsFormatter {
 
 export class BytesFormatter {
   divider = 1;
+
   suffix = 'bytes';
+
   bytes: [number, string][] = [
     [1024, 'KB'],
     [1024, 'MB'],
@@ -115,8 +127,9 @@ export class BytesFormatter {
     [1024, 'TB'],
     [1024, 'PB'],
   ];
+
   constructor(maxBytes: number) {
-    for (var i = 0; i < this.bytes.length; i++) {
+    for (let i = 0; i < this.bytes.length; i++) {
       if (maxBytes >= this.bytes[i][0]) {
         this.divider *= this.bytes[i][0];
         maxBytes /= this.bytes[i][0];
@@ -128,7 +141,7 @@ export class BytesFormatter {
   }
 
   format(samples: number, sampleRate: number) {
-    let n = samples / this.divider;
+    const n = samples / this.divider;
     let nStr = n.toFixed(2);
 
     if (n >= 0 && n < 0.01) {
