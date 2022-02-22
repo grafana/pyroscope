@@ -57,10 +57,18 @@ jobs:
       - name: Publish (dry-run)
         #        run: npm publish packages/flamegraph/dist --tag=beta --dry-run
         run: |
-          yarn config set //registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN
+          #yarn config set //registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN
           # use npm to publish?
-          sed -i 's/yarn/npm/' lerna.json
-          ./node_modules/.bin/lerna publish --skip-git --conventional-commits --canary=beta --dist-tag="${{steps.prep.outputs.tag}}" --yes --no-verify-access
+          #          sed -i 's/yarn/npm/' lerna.json
+          ./node_modules/.bin/lerna publish \
+            --skip-git \
+            --conventional-commits \
+            --canary \
+            --preid=${{ github.event.pull_request.number }} \
+            --yes \
+            --force-publish \
+            --no-verify-access
+
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
