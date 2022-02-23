@@ -1,4 +1,4 @@
-name: Publish Package to npmjs
+name: Publish Flamegraph package to npmjs
 
 on:
   push:
@@ -10,7 +10,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      #######################
+      #      Checkout      #
+      ######################
+      # For non-pull requests, fetch all tags
       - uses: actions/checkout@v2
+        if: github.event_name != 'pull_request'
+        with:
+          fetch-depth: 0
+
+      # For pull requests, also checkout out the REAL commit (as opposed to a merge commit with main)
+      - uses: actions/checkout@v2
+        if: github.event_name == 'pull_request'
+        # For PRs check the actual commit
+        # https://github.com/actions/checkout/issues/124#issuecomment-586664611
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
 
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v2
@@ -31,24 +47,47 @@ jobs:
             ${{ runner.os }}-yarn
 
       - name: Install Webapp dependencies
-        run: yarn install
-
-      - name: Prepare
-        id: prep
-        run: |
-          TAG=$(echo $GITHUB_SHA | head -c7)
-          echo ::set-output name=tag::${TAG}
+        run: yarn bootstrap
 
       - name: Build
-        run: PYROSCOPE_LIB_VERSION=${{ steps.prep.outputs.tag }} yarn build:lib
+        run: yarn build:flamegraph
+        env:
+          # we want users of this lib to use the pyroscope logo
+          PYROSCOPE_HIDE_LOGO: false
 
-      - name: Publish (dry-run)
-        run: npm publish dist/lib --tag=beta --dry-run
+      # This step will bump the package.json version, generate a CHANGELOG.md
+      # And commit to the repository
+      - name: Bump version, generate changelog etc
+        if: github.event_name != 'pull_request'
+        run: |
+          # Copied from https://github.com/pyroscope-io/pyroscope/blob/main/.github/workflows/update-contributors.yml#L23-L28
+          git config --global user.email "dmitry+bot@pyroscope.io"
+          git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
+          yarn run lerna version --conventional-commits --yes --no-git-tag-version
+
+      #####################
+      #      Publish      #
+      #####################
+      - name: Publish Main
+        if: github.event_name != 'pull_request'
+        run: |
+          yarn run lerna publish from-package \
+          --skip-git \
+          --conventional-commits \
+          --yes \
+          --no-verify-access
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish
-        run: npm publish dist/lib --tag=beta
-        if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Publish Pull Request
+        if: github.event_name == 'pull_request'
+        run: |
+          yarn run lerna publish \
+            --skip-git \
+            --conventional-commits \
+            --canary \
+            --preid=${{ github.event.pull_request.number }} \
+            --yes \
+            --no-verify-access
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
