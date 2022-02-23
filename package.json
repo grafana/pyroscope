@@ -20,7 +20,7 @@
     "dev:standalone": "webpack --config scripts/webpack/webpack.standalone.ts --watch",
     "build": "yarn run build:standalone && yarn run build:webapp",
     "build:webapp": "NODE_ENV=production webpack --config scripts/webpack/webpack.prod.ts",
-    "build:panel": "NODE_ENV=production webpack --config scripts/webpack/webpack.panel.ts",
+    "build:panel": "lerna run build --scope=@pyroscope/panel-plugin --include-dependencies",
     "build:datasource": "NODE_ENV=production webpack --config scripts/webpack/webpack.datasource.ts",
     "build:standalone": "webpack --config scripts/webpack/webpack.standalone.ts",
     "build:size-limit": "NODE_ENV=production webpack --config scripts/webpack/webpack.size-limit.ts",
