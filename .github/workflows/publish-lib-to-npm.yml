@@ -101,8 +101,6 @@ jobs:
           yarn run lerna publish from-git \
             --skip-git \
             --conventional-commits \
-            --canary \
-            --preid=${{ github.event.pull_request.number }} \
             --yes \
             --no-verify-access \
             --force-publish='*'
