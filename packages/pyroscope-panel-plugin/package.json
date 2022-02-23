@@ -10,7 +10,6 @@
     "dev": "webpack --config ../../scripts/webpack/webpack.panel.ts --watch"
   },
   "dependencies": {
-    "@grafana/toolkit": "^8.3.2",
     "@pyroscope/flamegraph": "^0.0.3-alpha.0"
   }
 }
