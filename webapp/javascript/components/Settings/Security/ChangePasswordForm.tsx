@@ -76,7 +76,7 @@ function ChangePasswordForm(props) {
             onChange={handleChange}
           />
           <InputField
-            label="Conform new password"
+            label="Confirm new password"
             type="password"
             placeholder="New password"
             name="passwordAgain"
