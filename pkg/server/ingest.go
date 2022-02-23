@@ -41,6 +41,9 @@ func NewIngestHandler(log *logrus.Logger, st *storage.Storage, exporter storage.
 
 // revive:disable:cognitive-complexity I don't want to split this into 2 functions just to please the linter
 func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	h.log.Debug("started222")
+
 	pi, err := h.ingestParamsFromRequest(r)
 	if err != nil {
 		WriteError(h.log, w, http.StatusBadRequest, err, "invalid parameter")
@@ -49,6 +52,8 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	format := r.URL.Query().Get("format")
 	contentType := r.Header.Get("Content-Type")
+	h.log.Debug("started")
+
 	inputs := []*storage.PutInput{}
 	cb := h.createParseCallback(pi)
 	switch {
@@ -61,10 +66,13 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case format == "lines":
 		err = convert.ParseIndividualLines(r.Body, cb)
 	case strings.Contains(contentType, "multipart/form-data"):
+		h.log.Debug("parsing ingestion")
+
 		err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
 		if err == nil {
 			var profile *tree.Profile
 			var prevProfile *tree.Profile
+			h.log.Debug("parsed mfd")
 
 			f, _, err := r.FormFile("profile")
 			if err != nil {
@@ -87,6 +95,9 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
+			h.log.Debugf("SampleTypes: %v", profile.SampleTypes())
+			h.log.Errorf("Sample Types: %v", profile.SampleTypes())
+
 			for _, sampleTypeStr := range profile.SampleTypes() {
 				var t *tree.SampleTypeConfig
 				var ok bool
@@ -102,6 +113,8 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if prevProfile != nil {
 					prevTries = pprofToTries(pi.Key.Normalized(), sampleTypeStr, prevProfile)
 				}
+
+				h.log.Debug("FOund tries: %v", len(tries))
 				for trieKey, trie := range tries {
 					// copy of pi
 					input := *pi
@@ -138,6 +151,8 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					inputs = append(inputs, &input)
 				}
 			}
+		} else {
+			h.log.Errorf("Error parsing mfd: %v", err)
 		}
 	default:
 		err = convert.ParseGroups(r.Body, cb)

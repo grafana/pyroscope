@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "jsx": "react",
-    "lib": ["dom", "esnext", "ES2015.Iterable"],
+    "lib": ["es2021", "dom"],
     "module": "commonjs",
     "moduleResolution": "node",
     "esModuleInterop": true,

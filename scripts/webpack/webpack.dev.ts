@@ -2,6 +2,8 @@ import { merge } from 'webpack-merge';
 import LiveReloadPlugin from 'webpack-livereload-plugin';
 import common from './webpack.common';
 
+import '../nodejs-profile';
+
 module.exports = merge(common, {
   devtool: 'eval-source-map',
   mode: 'development',
