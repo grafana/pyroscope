@@ -14,14 +14,7 @@ npm adduser --registry http://localhost:4873
 lerna publish
 ```
 
-Then update `lerna.json` to point to that registry
-
-```json
-  "command": {
-    "publish": {
-      "registry": "http://localhost:4873"
-    }
-  }
-```
+Then in your `lerna publish` command pass the `registry` flag pointing to `verdaccio`,
+for example: `yarn lerna publish --registry=http://localhost:4873`
 
 source: https://github.com/lerna/lerna/issues/51#issuecomment-348256663
