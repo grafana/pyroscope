@@ -13,6 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
 	custom_pprof "github.com/pyroscope-io/pyroscope/pkg/agent/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
@@ -108,13 +110,13 @@ func numGC() uint32 {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
+func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) (errs error) {
 	s.resetMutex.Lock()
 	defer s.resetMutex.Unlock()
 
 	// before the upload rate is reached, no need to read the profile data
 	if !s.reset {
-		return
+		return nil
 	}
 	s.reset = false
 
@@ -124,26 +126,27 @@ func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 		defer func() {
 			// start a new cycle of sample collection
 			if err := startCPUProfile(s.buf, s.sampleRate); err != nil {
-				cb(nil, nil, uint64(0), err)
+				errs = multierror.Append(errs, err)
 			}
 		}()
 
 		// new gzip reader with the read data in buffer
 		r, err := gzip.NewReader(bytes.NewReader(s.buf.Bytes()))
 		if err != nil {
-			cb(nil, nil, uint64(0), fmt.Errorf("new gzip reader: %v", err))
-			return
+			return fmt.Errorf("new gzip reader: %w", err)
 		}
 
 		// parse the read data with pprof format
 		profile, err := convert.ParsePprof(r)
 		if err != nil {
-			cb(nil, nil, uint64(0), fmt.Errorf("parse pprof: %v", err))
-			return
+			return fmt.Errorf("parse pprof: %w", err)
 		}
-		profile.Get("samples", func(labels *spy.Labels, name []byte, val int) {
-			cb(labels, name, uint64(val), nil)
+		err = profile.Get("samples", func(labels *spy.Labels, name []byte, val int) error {
+			return cb(labels, name, uint64(val))
 		})
+		if err != nil {
+			return fmt.Errorf("parsing stack trace: %w", err)
+		}
 	} else {
 		// this is current GC generation
 		currentGCGeneration := numGC()
@@ -159,13 +162,17 @@ func (s *GoSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
 		// if there's no GC run then the profile is gonna be the same
 		//   in such case it does not make sense to upload the same profile twice
 		if currentGCGeneration != s.lastGCGeneration {
-			getHeapProfile(s.buf).Get(string(s.profileType), func(labels *spy.Labels, name []byte, val int) {
-				cb(labels, name, uint64(val), nil)
+			err := getHeapProfile(s.buf).Get(string(s.profileType), func(labels *spy.Labels, name []byte, val int) error {
+				return cb(labels, name, uint64(val))
 			})
 			s.lastGCGeneration = currentGCGeneration
+			if err != nil {
+				return fmt.Errorf("parsing stack trace: %w", err)
+			}
 		}
 	}
 	s.buf.Reset()
+	return nil
 }
 
 func (s *GoSpy) Reset() {

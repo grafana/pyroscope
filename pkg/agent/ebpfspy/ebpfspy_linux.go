@@ -1,3 +1,4 @@
+//go:build ebpfspy
 // +build ebpfspy
 
 // Package ebpfspy provides integration with Linux eBPF. It calls profile.py from BCC tools:
@@ -39,22 +40,25 @@ func (s *EbpfSpy) Stop() error {
 	return nil
 }
 
-func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
+func (s *EbpfSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 	s.resetMutex.Lock()
 	defer s.resetMutex.Unlock()
 
 	if !s.reset {
-		return
+		return nil
 	}
 
 	s.reset = false
-	s.profilingSession.Reset(func(name []byte, v uint64) {
-		cb(nil, name, v, nil)
+	err := s.profilingSession.Reset(func(name []byte, v uint64) error {
+		return cb(nil, name, v)
 	})
+
 	if s.stop {
 		s.stopCh <- struct{}{}
 		s.profilingSession.Stop()
 	}
+
+	return err
 }
 
 func (s *EbpfSpy) Reset() {

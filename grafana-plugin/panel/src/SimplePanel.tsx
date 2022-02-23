@@ -1,9 +1,9 @@
 import React from 'react';
 import { PanelProps } from '@grafana/data';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import { SimpleOptions } from './types';
 // TODO: remove after FlamegraphRenderer is updated to typescript
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-import FlamegraphRenderer from '../../../webapp/javascript/components/FlameGraph/FlameGraphRenderer';
 import styles from './SimplePanel.module.css';
 
 type Props = PanelProps<SimpleOptions>;

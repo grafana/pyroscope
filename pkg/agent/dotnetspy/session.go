@@ -1,3 +1,4 @@
+//go:build dotnetspy
 // +build dotnetspy
 
 package dotnetspy
@@ -6,6 +7,8 @@ import (
 	"context"
 	"io"
 	"time"
+
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/pyroscope-io/dotnetdiag"
 	"github.com/pyroscope-io/dotnetdiag/nettrace"
@@ -113,18 +116,24 @@ func (s *session) start() error {
 
 // flush closes NetTrace stream in order to retrieve samples,
 // and starts a new session, if not in stopped state.
-func (s *session) flush(cb func([]byte, uint64)) error {
+func (s *session) flush(cb func([]byte, uint64) error) error {
 	// Ignore call, if NetTrace session has not been established.
+	var errs error
 	if s.session != nil {
 		_ = s.session.Close()
 		for v := range s.ch {
-			cb(v.name, uint64(v.val))
+			if err := cb(v.name, uint64(v.val)); err != nil {
+				errs = multierror.Append(errs, err)
+			}
 		}
 	}
 	if s.stopped {
-		return nil
+		return errs
 	}
-	return s.start()
+	if err := s.start(); err != nil {
+		errs = multierror.Append(errs, err)
+	}
+	return errs
 }
 
 // stop closes diagnostic session, if it was established, and sets the

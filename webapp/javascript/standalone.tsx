@@ -2,7 +2,8 @@ import ReactDOM from 'react-dom';
 import React from 'react';
 import Box from '@ui/Box';
 import { decodeFlamebearer } from '@models/flamebearer';
-import FlameGraphRenderer from './components/FlameGraph/FlameGraphRenderer';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import '@pyroscope/flamegraph/dist/index.css';
 import styles from './standalone.module.scss';
 
 // just an example
@@ -78,7 +79,7 @@ function AdhocApp() {
   return (
     <div>
       <Box className={styles.container}>
-        <FlameGraphRenderer
+        <FlamegraphRenderer
           renderLogo
           flamebearer={flamebearer}
           viewType={viewType}

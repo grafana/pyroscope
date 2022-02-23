@@ -1,7 +1,7 @@
 package testing
 
 import (
-	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 )
 

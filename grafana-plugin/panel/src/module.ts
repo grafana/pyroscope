@@ -3,7 +3,7 @@ import { PanelPlugin } from '@grafana/data';
 import { loadPluginCss } from '@grafana/runtime';
 import { SimpleOptions } from './types';
 import { SimplePanel } from './SimplePanel';
-import '../../../webapp/sass/profile.scss';
+import '@pyroscope/flamegraph/dist/index.css';
 import './styles.css';
 
 // We don't support light mode yet

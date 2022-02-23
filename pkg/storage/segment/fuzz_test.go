@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -128,21 +128,29 @@ func fuzzTest(testWrites bool, writeSize func() int) {
 var _ = Describe("segment", func() {
 	Context("fuzz tests", func() {
 		Context("writes are 10 second long", func() {
-			It("works as expected", func(done Done) {
-				fuzzTest(true, func() int {
-					return 10
-				})
-				close(done)
-			}, 5)
+			It("works as expected", func() {
+				done := make(chan interface{})
+				go func() {
+					fuzzTest(true, func() int {
+						return 10
+					})
+					close(done)
+				}()
+				Eventually(done, 5).Should(BeClosed())
+			})
 		})
 		Context("writes are different lengths", func() {
-			It("works as expected", func(done Done) {
-				fuzzTest(false, func() int {
-					return 20
-					// return 1 + rand.Intn(10)*10
-				})
-				close(done)
-			}, 5)
+			It("works as expected", func() {
+				done := make(chan interface{})
+				go func() {
+					fuzzTest(false, func() int {
+						return 20
+						// return 1 + rand.Intn(10)*10
+					})
+					close(done)
+				}()
+				Eventually(done, 5).Should(BeClosed())
+			})
 		})
 	})
 })

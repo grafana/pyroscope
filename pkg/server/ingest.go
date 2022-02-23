@@ -260,12 +260,16 @@ func pprofToTries(originalAppName, sampleTypeStr string, pprof *tree.Profile) ma
 	labelsCache := map[string]string{}
 
 	// callbacks := map[*spy.Labels]func([]byte, int){}
-	pprof.Get(sampleTypeStr, func(labels *spy.Labels, name []byte, val int) {
+	pprof.Get(sampleTypeStr, func(labels *spy.Labels, name []byte, val int) error {
 		appName := originalAppName
 		if labels != nil {
 			if newAppName, ok := labelsCache[labels.ID()]; ok {
 				appName = newAppName
-			} else if newAppName, err := mergeTagsWithAppName(appName, labels.Tags()); err == nil {
+			} else {
+				newAppName, err := mergeTagsWithAppName(appName, labels.Tags())
+				if err != nil {
+					return fmt.Errorf("error setting tags: %w", err)
+				}
 				appName = newAppName
 				labelsCache[labels.ID()] = appName
 			}
@@ -274,6 +278,7 @@ func pprofToTries(originalAppName, sampleTypeStr string, pprof *tree.Profile) ma
 			tries[appName] = transporttrie.New()
 		}
 		tries[appName].Insert(name, uint64(val), true)
+		return nil
 	})
 
 	return tries
