@@ -90,9 +90,10 @@ jobs:
           yarn run lerna publish \
             --skip-git \
             --conventional-commits \
-            --canary=beta \
+            --canary \
             --preid=${{ github.event.pull_request.number }} \
             --yes \
-            --no-verify-access
+            --no-verify-access \
+            --force-publish='*'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
