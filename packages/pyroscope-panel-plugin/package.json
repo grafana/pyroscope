@@ -1,7 +1,7 @@
 {
   "name": "@pyroscope/panel-plugin",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1-alpha.0",
   "main": "dist/index.node.js",
   "browser": "dist/index.js",
   "license": "Apache-2.0",
@@ -17,7 +17,7 @@
     "dev": "webpack --config ../../scripts/webpack/webpack.panel.ts --watch"
   },
   "dependencies": {
-    "@pyroscope/flamegraph": "*",
-    "@grafana/toolkit": "^8.3.2"
+    "@grafana/toolkit": "^8.3.2",
+    "@pyroscope/flamegraph": "^0.0.3-alpha.0"
   }
 }
