@@ -98,7 +98,7 @@ jobs:
       - name: Publish Pull Request
         if: github.event_name == 'pull_request'
         run: |
-          yarn run lerna publish --from-git \
+          yarn run lerna publish from-git \
             --skip-git \
             --conventional-commits \
             --canary \
