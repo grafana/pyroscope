@@ -238,7 +238,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           height="0"
           data-testid="flamegraph-canvas"
           data-highlightquery={highlightQuery}
-          className={`flamegraph-canvas ${styles.hover}`}
+          className={clsx('flamegraph-canvas', styles.canvas)}
           ref={canvasRef}
           onClick={onClick}
         />

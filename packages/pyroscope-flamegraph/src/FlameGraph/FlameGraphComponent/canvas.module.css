@@ -1,7 +1,3 @@
-.hover {
-  cursor: pointer;
-}
-
 .error {
   width: 100%;
   height: 100%;
@@ -10,4 +6,9 @@
   align-items: flex-start;
   position: relative;
   padding: 60px 0;
+}
+
+.canvas {
+  width: 100%;
+  cursor: pointer;
 }
