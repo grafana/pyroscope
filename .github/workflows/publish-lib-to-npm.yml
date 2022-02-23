@@ -28,6 +28,11 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
 
+      # pull all tags since they are required when generating locally
+      # https://github.com/lerna/lerna/issues/2542
+      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+        if: github.event_name == 'pull_request'
+
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v2
         with:
@@ -85,7 +90,7 @@ jobs:
           yarn run lerna publish \
             --skip-git \
             --conventional-commits \
-            --canary \
+            --canary=beta \
             --preid=${{ github.event.pull_request.number }} \
             --yes \
             --no-verify-access
