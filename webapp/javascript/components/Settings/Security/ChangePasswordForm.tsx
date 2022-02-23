@@ -58,7 +58,7 @@ function ChangePasswordForm(props) {
       <h2>Change password</h2>
       <div>
         <form onSubmit={handleFormSubmit}>
-          <StatusMessage type="error">{form.errors.join(', ')}</StatusMessage>
+          <StatusMessage type="error" message={form.errors.join(', ')} />
           <InputField
             label="Old password"
             type="password"
