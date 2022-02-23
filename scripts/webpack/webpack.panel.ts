@@ -57,12 +57,7 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
 
   let version = 'dev';
   if (process.env.NODE_ENV === 'production') {
-    if (!process.env.PYROSCOPE_PANEL_VERSION) {
-      throw new Error(
-        'Environment variable PYROSCOPE_PANEL_VERSION is required'
-      );
-    }
-    version = process.env.PYROSCOPE_PANEL_VERSION;
+    version = packageJson.version;
   }
 
   return [

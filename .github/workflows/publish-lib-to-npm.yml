@@ -54,11 +54,16 @@ jobs:
       - name: Install Webapp dependencies
         run: yarn bootstrap
 
-      - name: Build
-        run: yarn build:flamegraph
-        env:
-          # we want users of this lib to use the pyroscope logo
-          PYROSCOPE_HIDE_LOGO: false
+      # This step will bump the package.json version and NOT push to the repository
+      # this is needed since building grafana requires updating the plugin.json file
+      # with the package.json version
+      - name: Bump version, generate changelog etc
+        if: github.event_name == 'pull_request'
+        run: |
+          # Copied from https://github.com/pyroscope-io/pyroscope/blob/main/.github/workflows/update-contributors.yml#L23-L28
+          git config --global user.email "dmitry+bot@pyroscope.io"
+          git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
+          yarn run lerna version --conventional-commits --yes --no-push
 
       # This step will bump the package.json version, generate a CHANGELOG.md
       # And commit to the repository
@@ -69,6 +74,12 @@ jobs:
           git config --global user.email "dmitry+bot@pyroscope.io"
           git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
           yarn run lerna version --conventional-commits --yes
+
+      - name: Build
+        run: yarn build:panel
+        env:
+          # we want users of this lib to use the pyroscope logo
+          PYROSCOPE_HIDE_LOGO: false
 
       #####################
       #      Publish      #
