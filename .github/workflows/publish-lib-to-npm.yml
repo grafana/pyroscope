@@ -43,6 +43,12 @@ jobs:
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn cache dir)"
 
+      - name: Prepare
+        id: prep
+        run: |
+          TAG=$(echo $GITHUB_SHA | head -c7)
+          echo ::set-output name=tag::${TAG}
+
       - uses: actions/cache@v2
         id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
         with:
@@ -63,7 +69,7 @@ jobs:
           # Copied from https://github.com/pyroscope-io/pyroscope/blob/main/.github/workflows/update-contributors.yml#L23-L28
           git config --global user.email "dmitry+bot@pyroscope.io"
           git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
-          yarn run lerna version --conventional-commits --conventional-prerelease --yes --no-push --preid=${{ github.event.pull_request.number }}
+          yarn run lerna version --conventional-commits --conventional-prerelease --yes --no-push --preid=${{ github.event.pull_request.number }}-${{ steps.prep.outputs.tag }}
 
       # This step will bump the package.json version, generate a CHANGELOG.md
       # And commit to the repository
