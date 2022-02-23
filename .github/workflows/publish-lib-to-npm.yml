@@ -63,7 +63,7 @@ jobs:
           # Copied from https://github.com/pyroscope-io/pyroscope/blob/main/.github/workflows/update-contributors.yml#L23-L28
           git config --global user.email "dmitry+bot@pyroscope.io"
           git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
-          yarn run lerna version --conventional-commits --yes --no-git-tag-version
+          yarn run lerna version --conventional-commits --yes
 
       #####################
       #      Publish      #
