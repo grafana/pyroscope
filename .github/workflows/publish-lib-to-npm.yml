@@ -1,4 +1,4 @@
-name: Publish Flamegraph package to npmjs
+name: Publish packages to npmjs
 
 on:
   push:
@@ -81,11 +81,9 @@ jobs:
           git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
           yarn run lerna version --conventional-commits --yes
 
+      # build all packages
       - name: Build
-        run: yarn build:panel
-        env:
-          # we want users of this lib to use the pyroscope logo
-          PYROSCOPE_HIDE_LOGO: false
+        run: yarn run lerna run build
 
       #####################
       #      Publish      #
