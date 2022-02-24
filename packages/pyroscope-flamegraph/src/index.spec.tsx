@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-// import { Units } from '@utils/format';
 import { FlamegraphRenderer } from './index';
 
 const SimpleTree = {
@@ -31,7 +30,7 @@ const SimpleTree = {
   spyName: 'gospy',
 };
 
-describe('Pyroscope Library', () => {
+describe.skip('Pyroscope Library', () => {
   it('should not be possible to override the pyroscope logo using props', () => {
     render(
       <FlamegraphRenderer
