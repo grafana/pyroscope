@@ -28,6 +28,11 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
 
+      # pull all tags since they are required when generating locally
+      # https://github.com/lerna/lerna/issues/2542
+      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+        if: github.event_name == 'pull_request'
+
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v2
         with:
@@ -37,6 +42,12 @@ jobs:
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
         run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - name: Prepare
+        id: prep
+        run: |
+          TAG=$(echo $GITHUB_SHA | head -c7)
+          echo ::set-output name=tag::${TAG}
 
       - uses: actions/cache@v2
         id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
@@ -49,11 +60,16 @@ jobs:
       - name: Install Webapp dependencies
         run: yarn bootstrap
 
-      - name: Build
-        run: yarn build:flamegraph
-        env:
-          # we want users of this lib to use the pyroscope logo
-          PYROSCOPE_HIDE_LOGO: false
+      # This step will bump the package.json version and NOT push to the repository
+      # this is needed since building grafana requires updating the plugin.json file
+      # with the package.json version
+      - name: Bump version, generate changelog etc
+        if: github.event_name == 'pull_request'
+        run: |
+          # Copied from https://github.com/pyroscope-io/pyroscope/blob/main/.github/workflows/update-contributors.yml#L23-L28
+          git config --global user.email "dmitry+bot@pyroscope.io"
+          git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
+          yarn run lerna version --conventional-commits --conventional-prerelease --yes --no-push --preid=${{ github.event.pull_request.number }}-${{ steps.prep.outputs.tag }}
 
       # This step will bump the package.json version, generate a CHANGELOG.md
       # And commit to the repository
@@ -64,6 +80,12 @@ jobs:
           git config --global user.email "dmitry+bot@pyroscope.io"
           git config --global user.name "Pyroscope Bot <dmitry+bot@pyroscope.io>"
           yarn run lerna version --conventional-commits --yes
+
+      - name: Build
+        run: yarn build:panel
+        env:
+          # we want users of this lib to use the pyroscope logo
+          PYROSCOPE_HIDE_LOGO: false
 
       #####################
       #      Publish      #
@@ -82,12 +104,11 @@ jobs:
       - name: Publish Pull Request
         if: github.event_name == 'pull_request'
         run: |
-          yarn run lerna publish \
+          yarn run lerna publish from-git \
             --skip-git \
             --conventional-commits \
-            --canary \
-            --preid=${{ github.event.pull_request.number }} \
             --yes \
-            --no-verify-access
+            --no-verify-access \
+            --force-publish='*'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
