@@ -12,5 +12,7 @@ describe('smoke', () => {
     cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
       'grafana-simple-golang-app-cpu'
     );
+
+    cy.findByTestId('flamegraph-canvas').should('exist');
   });
 });
