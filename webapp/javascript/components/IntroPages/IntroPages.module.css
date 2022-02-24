@@ -53,8 +53,7 @@
 
 .form {
   width: 450px;
-  height: 500px;
-  padding: 50px 0;
+  padding: 50px;
   background-color: rgba(0, 0, 0, 0.6);
   box-shadow: 0 3px 30px 0 rgba(0, 0, 0, 0.3);
   border-radius: 10px;
@@ -62,5 +61,66 @@
   left: 0;
   right: 0;
 
-  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+
+  z-index: 1;
+}
+
+.form > div {
+  width: 100%;
+}
+
+.formHeader {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.logo {
+  width: 100px;
+  height: 100px;
+  background-image: url('../../../images/logo-v3-small.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.button {
+  width: 100%;
+  padding: 0.5em;
+  border-radius: 4px;
+  background-color: rgb(61, 113, 217);
+  color: white;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.2s ease-in;
+}
+
+.buttonDark {
+  background-color: #333;
+}
+
+.button:hover {
+  background-color: rgb(29, 73, 161);
+}
+
+.buttonDark:hover {
+  background-color: rgb(70, 70, 70);
+}
+
+.inputGroup,
+.inputGroup > input {
+  margin: 0;
+  width: 100%;
+}
+
+.inputGroup:last-child {
+  margin-bottom: 15px;
+}
+
+.inputGroup > h4 {
+  margin: 10px 0;
 }
