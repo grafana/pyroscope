@@ -7,6 +7,6 @@
     "dev": "webpack --config ../../scripts/webpack/webpack.panel.ts --watch"
   },
   "dependencies": {
-    "@pyroscope/flamegraph": "^0.0.3"
+    "@pyroscope/flamegraph": "*"
   }
 }
