@@ -65,6 +65,7 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
       patterns: [
         { from: 'README.md', to: '.' },
         { from: 'plugin.json', to: '.' },
+        { from: 'CHANGELOG.md', to: '.' },
         { from: 'LICENSE', to: '.' },
         { from: 'img/**/*', to: '.' },
       ],
