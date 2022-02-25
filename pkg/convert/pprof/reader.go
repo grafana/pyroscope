@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"unsafe"
 
+	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
@@ -101,6 +102,9 @@ func (r *ProfileReader) readTrees(x *tree.Profile, c labelsCache, f tree.Finder)
 		for i, vi := range indexes {
 			if v := uint64(s.Value[vi]); v != 0 {
 				c.getOrCreate(types[i], s.Label).InsertStack(stack, v)
+				if j := labelIndex(x, s.Label, segment.ProfileIDLabelName); j >= 0 {
+					c.getOrCreate(types[i], cutLabel(s.Label, j)).InsertStack(stack, v)
+				}
 			}
 		}
 		stack = stack[:0]
@@ -120,7 +124,7 @@ type labelsCacheEntry struct {
 }
 
 func newCacheEntry(l tree.Labels) *labelsCacheEntry {
-	return &labelsCacheEntry{Tree: tree.New(), Labels: l}
+	return &labelsCacheEntry{Tree: tree.New(), Labels: copyLabels(l)}
 }
 
 func (c labelsCache) getOrCreate(sampleType int64, l tree.Labels) *labelsCacheEntry {
@@ -165,5 +169,42 @@ func (c labelsCache) remove(sampleType int64, h uint64) {
 	delete(p, h)
 	if len(p) == 0 {
 		delete(c, sampleType)
+	}
+}
+
+func labelIndex(p *tree.Profile, labels tree.Labels, key string) int {
+	for i, label := range labels {
+		if n, ok := p.ResolveLabelName(label); ok && n == key {
+			return i
+		}
+	}
+	return -1
+}
+
+func copyLabels(labels tree.Labels) tree.Labels {
+	l := make(tree.Labels, len(labels))
+	for i, v := range labels {
+		l[i] = copyLabel(v)
+	}
+	return l
+}
+
+// cutLabel creates a copy of labels without label i.
+func cutLabel(labels tree.Labels, i int) tree.Labels {
+	c := make(tree.Labels, 0, len(labels)-1)
+	for j, label := range labels {
+		if i != j {
+			c = append(c, copyLabel(label))
+		}
+	}
+	return c
+}
+
+func copyLabel(label *tree.Label) *tree.Label {
+	return &tree.Label{
+		Key:     label.Key,
+		Str:     label.Str,
+		Num:     label.Num,
+		NumUnit: label.NumUnit,
 	}
 }
