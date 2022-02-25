@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import InputField from '@ui/InputField';
 import Divider from '../Divider';
 import styles from '../IntroPages.module.css';
+import inputStyles from '../InputGroup.module.css';
 
 function SignInPage(props) {
   return (
@@ -18,12 +19,12 @@ function SignInPage(props) {
           <InputField
             label="Username"
             placeholder="Username"
-            styling={styles.inputGroup}
+            styling={inputStyles.inputGroup}
           />
           <InputField
             label="Password"
             placeholder="Password"
-            styling={styles.inputGroup}
+            styling={inputStyles.inputGroup}
           />
         </div>
         <button className={styles.button}>Log in</button>
