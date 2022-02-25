@@ -3,27 +3,30 @@ package authz
 import (
 	"net/http"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
 )
 
-var (
-	RequireAdminRole         = Require(Role(model.AdminRole))
-	RequireAuthenticatedUser = Require(AuthenticatedUser)
-)
+type Authorizer struct{ logger logrus.FieldLogger }
 
-// AllowAny does not verify if a request is authorized.
-func AllowAny(next http.Handler) http.Handler { return next }
+func NewAuthorizer(logger logrus.FieldLogger) Authorizer { return Authorizer{logger} }
 
-func Require(funcs ...func(r *http.Request) bool) func(next http.Handler) http.Handler {
-	if len(funcs) == 0 {
-		panic("authorization method should be specified explicitly")
-	}
+func (a Authorizer) RequireAdminRole() func(next http.Handler) http.Handler {
+	return a.Require(Role(model.AdminRole))
+}
+
+func (a Authorizer) RequireAuthenticatedUser() func(next http.Handler) http.Handler {
+	return a.Require(AuthenticatedUser)
+}
+
+func (a Authorizer) Require(funcs ...func(r *http.Request) bool) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			for _, fn := range funcs {
 				if !fn(r) {
-					api.Error(w, model.ErrPermissionDenied)
+					api.HandleError(w, r, a.logger, model.ErrPermissionDenied)
 					return
 				}
 			}

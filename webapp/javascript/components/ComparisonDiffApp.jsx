@@ -2,13 +2,13 @@ import React, { useEffect, useRef } from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
-import FlameGraphRenderer from './FlameGraph';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import Header from './Header';
 import Footer from './Footer';
 import TimelineChartWrapper from './TimelineChartWrapper';
 import { buildDiffRenderURL } from '../util/updateRequests';
 import { fetchNames, fetchComparisonDiffAppData } from '../redux/actions';
-import InstructionText from './FlameGraph/InstructionText';
+import InstructionText from './InstructionText';
 import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
 import ExportData from './ExportData';
 
@@ -46,7 +46,7 @@ function ComparisonDiffApp(props) {
           viewSide="both"
         />
         <Box>
-          <FlameGraphRenderer
+          <FlamegraphRenderer
             display="both"
             viewType="diff"
             flamebearer={diff.flamebearer}
@@ -73,7 +73,7 @@ function ComparisonDiffApp(props) {
                 />
               </div>
             </div>
-          </FlameGraphRenderer>
+          </FlamegraphRenderer>
         </Box>
       </div>
       <Footer />

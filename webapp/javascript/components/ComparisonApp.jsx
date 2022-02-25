@@ -4,7 +4,7 @@ import 'react-dom';
 
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
-import FlameGraphRenderer from './FlameGraph';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import TimelineChartWrapper from './TimelineChartWrapper';
 import Header from './Header';
 import Footer from './Footer';
@@ -14,7 +14,7 @@ import {
   fetchComparisonAppData,
   fetchTimeline,
 } from '../redux/actions';
-import InstructionText from './FlameGraph/InstructionText';
+import InstructionText from './InstructionText';
 import ExportData from './ExportData';
 import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
 import styles from './ComparisonApp.module.css';
@@ -58,7 +58,7 @@ function ComparisonApp(props) {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
-            <FlameGraphRenderer
+            <FlamegraphRenderer
               viewType="double"
               viewSide="left"
               flamebearer={comparison.left.flamebearer}
@@ -84,11 +84,11 @@ function ComparisonApp(props) {
                 data-testid="timeline-left"
                 viewSide="left"
               />
-            </FlameGraphRenderer>
+            </FlamegraphRenderer>
           </Box>
 
           <Box className={styles.comparisonPane}>
-            <FlameGraphRenderer
+            <FlamegraphRenderer
               viewType="double"
               viewSide="right"
               flamebearer={comparison.right.flamebearer}
@@ -114,7 +114,7 @@ function ComparisonApp(props) {
                 data-testid="timeline-right"
                 viewSide="right"
               />
-            </FlameGraphRenderer>
+            </FlamegraphRenderer>
           </Box>
         </div>
       </div>

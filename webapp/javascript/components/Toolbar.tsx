@@ -13,7 +13,6 @@ import { DebounceInput } from 'react-debounce-input';
 import { Maybe } from '@utils/fp';
 import useResizeObserver from '@react-hook/resize-observer';
 import Button from '@ui/Button';
-import { logDOM } from '@testing-library/dom';
 import { FitModes } from '../util/fitMode';
 import styles from './ProfilerHeader.module.css';
 

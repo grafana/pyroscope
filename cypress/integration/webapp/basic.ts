@@ -1,4 +1,4 @@
-import { BAR_HEIGHT } from '../../../webapp/javascript/components/FlameGraph/FlameGraphComponent/constants';
+const BAR_HEIGHT = 21.5;
 
 // / <reference types="cypress" />
 describe('basic test', () => {

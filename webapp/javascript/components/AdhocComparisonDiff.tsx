@@ -7,8 +7,8 @@ import Box from '@ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import FileList from './FileList';
-import FlameGraphRenderer from './FlameGraph';
 import Footer from './Footer';
 import {
   fetchAdhocProfiles,
@@ -93,7 +93,7 @@ function AdhocComparisonDiff(props) {
             </div>
           )}
           {!isProfileLoading && (
-            <FlameGraphRenderer
+            <FlamegraphRenderer
               display="both"
               viewType="diff"
               flamebearer={flamebearer}

@@ -21,14 +21,14 @@ import {
 
 let PLUGIN_ID: string;
 
+const pluginPath = path.join(
+  __dirname,
+  '../../packages/pyroscope-panel-plugin'
+);
+
 const getPluginId = () => {
   if (!PLUGIN_ID) {
-    const pluginJson = require(path.resolve(
-      process.cwd(),
-      'grafana-plugin',
-      'panel',
-      'src/plugin.json'
-    ));
+    const pluginJson = require(path.resolve(pluginPath, 'plugin.json'));
     PLUGIN_ID = pluginJson.id;
   }
   return PLUGIN_ID;
@@ -57,12 +57,7 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
 
   let version = 'dev';
   if (process.env.NODE_ENV === 'production') {
-    if (!process.env.PYROSCOPE_PANEL_VERSION) {
-      throw new Error(
-        'Environment variable PYROSCOPE_PANEL_VERSION is required'
-      );
-    }
-    version = process.env.PYROSCOPE_PANEL_VERSION;
+    version = packageJson.version;
   }
 
   return [
@@ -71,19 +66,19 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
     }),
     new CopyWebpackPlugin({
       patterns: [
-        // If src/README.md exists use it; otherwise the root README
         {
-          from: '../README.md',
+          from: 'README.md',
           to: '.',
         },
         { from: 'plugin.json', to: '.' },
-        { from: '../LICENSE', to: '.' },
+        { from: 'CHANGELOG.md', to: '.' },
+        { from: 'LICENSE', to: '.' },
         { from: 'img/**/*', to: '.' },
       ],
     }),
     new ReplaceInFileWebpackPlugin([
       {
-        dir: 'grafana-plugin/panel/dist',
+        dir: path.join(pluginPath, 'dist'),
         files: ['plugin.json', 'README.md'],
         rules: [
           {
@@ -192,20 +187,33 @@ const getBaseWebpackConfig: any = async (options) => {
   return {
     mode: options.production ? 'production' : 'development',
     target: 'web',
-    context: path.join(process.cwd(), 'grafana-plugin', 'panel', 'src'),
+    //    context: path.join(process.cwd(), 'grafana-plugin', 'panel', 'src'),
+    //context: path.join('packages', 'pyroscope-panel-plugin'),
+    context: pluginPath,
+
     devtool: 'source-map',
     entry: {
       module: path.join(
-        process.cwd(),
-        'grafana-plugin',
-        'panel',
+        pluginPath,
+        //        'packages',
+        //        'pyroscope-panel-plugin',
         'src',
         'module.ts'
       ),
+      //      module: path.join(
+      //        process.cwd(),
+      //        'grafana-plugin',
+      //        'panel',
+      //        'src',
+      //        'module.ts'
+      //      ),
     },
     output: {
       filename: '[name].js',
-      path: path.join(process.cwd(), 'grafana-plugin', 'panel', 'dist'),
+
+      path: path.join(pluginPath, 'dist'),
+      //      path: path.join('packages', 'pyroscope-panel-plugin', 'dist'),
+      //      path: path.join(process.cwd(), 'grafana-plugin', 'panel', 'dist'),
       libraryTarget: 'amd',
       publicPath: '/',
     },
