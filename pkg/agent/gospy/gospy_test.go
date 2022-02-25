@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
@@ -27,8 +27,9 @@ var _ = Describe("analytics", func() {
 				}()
 
 				time.Sleep(50 * time.Millisecond)
-				s.Snapshot(func(labels *spy.Labels, name []byte, samples uint64, err error) {
+				s.Snapshot(func(labels *spy.Labels, name []byte, samples uint64) error {
 					log.Println("name", string(name))
+					return nil
 				})
 				close(done)
 			})

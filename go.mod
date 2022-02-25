@@ -54,13 +54,14 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f
-	github.com/onsi/ginkgo v1.16.2
-	github.com/onsi/gomega v1.12.0
+	github.com/onsi/ginkgo/v2 v2.1.3
+	github.com/onsi/gomega v1.17.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/common v0.32.1
 	github.com/pyroscope-io/client v0.0.0-20211206204731-3fd0a4b8239c
 	github.com/pyroscope-io/dotnetdiag v1.2.1
+	github.com/pyroscope-io/goldga v0.4.2-0.20220218190441-817afcc3a7f1
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rlmcpherson/s3gof3r v0.5.0
 	github.com/shirou/gopsutil v3.21.4+incompatible
@@ -71,7 +72,6 @@ require (
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
-	github.com/tommy351/goldga v0.3.0
 	github.com/twmb/murmur3 v1.1.5
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/wacul/ptr v1.0.0 // indirect

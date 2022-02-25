@@ -3,7 +3,7 @@ package dict_test
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	testing2 "github.com/pyroscope-io/pyroscope/pkg/testing"
 )

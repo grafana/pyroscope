@@ -6,3 +6,4 @@ monitoring/gen/*
 .prettierignore
 coverage
 *.html
+lerna.json

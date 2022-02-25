@@ -30,7 +30,7 @@ type Model struct {
 	Filename string `json:"filename"`
 	// base64-encoded data of the profile, in any of the supported formats
 	// (currently supported: pprof, Pyroscope JSON and collapsed).
-	// example: eyJ2ZXJzaW9uIjoxLCJmbGFtZWJlYXJlciI6eyJuYW1lcyI6WyJ0b3RhbCIsImEiLCJjIiwiYiJdLCJsZXZlbHMiOltbMCwzLDAsMF0sWzAsMywwLDFdLFswLDEsMSwzLDAsMiwyLDJdXSwibnVtVGlja3MiOjMsIm1heFNlbGYiOjJ9LCJtZXRhZGF0YSI6eyJmb3JtYXQiOiJzaW5nbGUiLCJzcHlOYW1lIjoic3B5LW5hbWUiLCJzYW1wbGVSYXRlIjoxMCwidW5pdHMiOiJ1bml0cyIsIm5hbWUiOiJuYW1lIn19Cg
+	// example: eyJ2ZXJzaW9uIjoxLCJmbGFtZWJlYXJlciI6eyJuYW1lcyI6WyJ0b3RhbCIsImEiLCJjIiwiYiJdLCJsZXZlbHMiOltbMCwzLDAsMF0sWzAsMywwLDFdLFswLDEsMSwzLDAsMiwyLDJdXSwibnVtVGlja3MiOjMsIm1heFNlbGYiOjJ9LCJtZXRhZGF0YSI6eyJmb3JtYXQiOiJzaW5nbGUiLCJzcHlOYW1lIjoic3B5LW5hbWUiLCJzYW1wbGVSYXRlIjoxMCwidW5pdHMiOiJzYW1wbGVzIiwibmFtZSI6Im5hbWUifX0=
 	// required: true
 	// minLength: 2
 	Profile []byte `json:"profile"`

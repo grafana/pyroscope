@@ -69,7 +69,8 @@ For more documentation on how to add the Pyroscope agent to your code see the [a
 
 ## Example Code
 We also have language-specific examples (using Docker) of how to run the *server and agent together*
-- [Golang Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang)
+- [Golang Push Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang-push)
+- [Golang Pull Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/golang-pull/static)
 - [Python Pip Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/python)
 - [Ruby Gem Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/ruby)
 - [Grafana Example](https://github.com/pyroscope-io/pyroscope/tree/main/examples/grafana-integration)
@@ -165,6 +166,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/cfbolz"><img src="https://avatars.githubusercontent.com/u/85942?v=4" title="cfbolz" width="80" height="80"></a>
 <a href="https://github.com/cwalv"><img src="https://avatars.githubusercontent.com/u/887222?v=4" title="cwalv" width="80" height="80"></a>
 <a href="https://github.com/Dzalevski"><img src="https://avatars.githubusercontent.com/u/9572827?v=4" title="Dzalevski" width="80" height="80"></a>
+<a href="https://github.com/dhanusaputra"><img src="https://avatars.githubusercontent.com/u/35093673?v=4" title="dhanusaputra" width="80" height="80"></a>
 <a href="https://github.com/Juneezee"><img src="https://avatars.githubusercontent.com/u/20135478?v=4" title="Juneezee" width="80" height="80"></a>
 <a href="https://github.com/Faria-Ejaz"><img src="https://avatars.githubusercontent.com/u/14238844?v=4" title="Faria-Ejaz" width="80" height="80"></a>
 <a href="https://github.com/gabrielzezze"><img src="https://avatars.githubusercontent.com/u/38350130?v=4" title="gabrielzezze" width="80" height="80"></a>
@@ -173,6 +175,7 @@ To start contributing, check out our [Contributing Guide](CONTRIBUTING.md)
 <a href="https://github.com/hlts2"><img src="https://avatars.githubusercontent.com/u/25459661?v=4" title="hlts2" width="80" height="80"></a>
 <a href="https://github.com/johnduhart"><img src="https://avatars.githubusercontent.com/u/113642?v=4" title="johnduhart" width="80" height="80"></a>
 <a href="https://github.com/radixdev"><img src="https://avatars.githubusercontent.com/u/2373546?v=4" title="radixdev" width="80" height="80"></a>
+<a href="https://github.com/louisphn"><img src="https://avatars.githubusercontent.com/u/72560298?v=4" title="louisphn" width="80" height="80"></a>
 <a href="https://github.com/mhansen"><img src="https://avatars.githubusercontent.com/u/105529?v=4" title="mhansen" width="80" height="80"></a>
 <a href="https://github.com/kavu"><img src="https://avatars.githubusercontent.com/u/1994?v=4" title="kavu" width="80" height="80"></a>
 <a href="https://github.com/proggga"><img src="https://avatars.githubusercontent.com/u/12262156?v=4" title="proggga" width="80" height="80"></a>

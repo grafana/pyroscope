@@ -3,7 +3,7 @@ package service_test
 import (
 	"context"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
@@ -372,7 +372,7 @@ var _ = Describe("UserService", func() {
 					params.NewPassword = "qwerty2"
 				})
 
-				It("returns ErrInvalidCredentials", func() {
+				It("returns ErrCredentialsInvalid", func() {
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})

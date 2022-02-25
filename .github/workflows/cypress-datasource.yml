@@ -31,11 +31,11 @@ jobs:
         env:
           PYROSCOPE_DATASOURCE_VERSION: test
       - name: run grafana
-        run: docker-compose -f grafana-plugin/datasource/docker-compose.yml up -d
+        run: docker-compose -f packages/pyroscope-datasource-plugin/docker-compose.yml up -d
       - name: Cypress run
         uses: cypress-io/github-action@v2
         with:
-          config-file: grafana-plugin/datasource/cypress.json
+          config-file: packages/pyroscope-datasource-plugin/cypress.json
           wait-on: http://localhost:3000
           start: make server
         env:

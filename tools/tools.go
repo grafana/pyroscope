@@ -16,7 +16,7 @@ import (
 	_ "github.com/kyoh86/richgo"
 	_ "github.com/mattn/goreman"
 	_ "github.com/mgechev/revive"
-	_ "github.com/onsi/ginkgo/ginkgo"
+	_ "github.com/onsi/ginkgo/v2/ginkgo"
 	_ "golang.org/x/tools/cmd/godoc"
 	_ "honnef.co/go/tools/cmd/staticcheck"
 )

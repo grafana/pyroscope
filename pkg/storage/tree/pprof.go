@@ -4,17 +4,9 @@ import (
 	"time"
 )
 
-// TODO: dedup this with the version in scrape package
 type SampleTypeConfig struct {
 	Units       string `json:"units,omitempty"`
 	DisplayName string `json:"display-name,omitempty"`
-
-	// TODO(kolesnikovae): Introduce Kind?
-	//  In Go, we have at least the following combinations:
-
-	//  instant:    Aggregation:avg && !Cumulative && !Sampled
-	//  cumulative: Aggregation:sum && Cumulative  && !Sampled
-	//  delta:      Aggregation:sum && !Cumulative && Sampled
 	Aggregation string `json:"aggregation,omitempty"`
 	Cumulative  bool   `json:"cumulative,omitempty"`
 	Sampled     bool   `json:"sampled,omitempty"`

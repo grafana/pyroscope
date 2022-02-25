@@ -11,20 +11,20 @@ import (
 )
 
 type Router struct {
-	logger logrus.FieldLogger
 	*mux.Router
 	Services
 }
 
 type Services struct {
+	Logger logrus.FieldLogger
+
 	api.AuthService
 	api.UserService
 	api.APIKeyService
 }
 
-func New(logger logrus.FieldLogger, m *mux.Router, s Services) *Router {
+func New(m *mux.Router, s Services) *Router {
 	return &Router{
-		logger:   logger,
 		Router:   m,
 		Services: s,
 	}
@@ -36,10 +36,11 @@ func (r *Router) RegisterHandlers() {
 }
 
 func (r *Router) RegisterUserHandlers() {
-	h := api.NewUserHandler(r.UserService)
+	h := api.NewUserHandler(r.Logger, r.UserService)
+	authorizer := authz.NewAuthorizer(r.Services.Logger)
 
 	x := r.PathPrefix("/users").Subrouter()
-	x.Use(authz.RequireAdminRole)
+	x.Use(authorizer.RequireAdminRole())
 	x.Methods(http.MethodPost).HandlerFunc(h.CreateUser)
 	x.Methods(http.MethodGet).HandlerFunc(h.ListUsers)
 
@@ -54,17 +55,18 @@ func (r *Router) RegisterUserHandlers() {
 
 	// Endpoints available to all authenticated users.
 	x = r.PathPrefix("/user").Subrouter()
-	x.Use(authz.RequireAuthenticatedUser)
+	x.Use(authorizer.RequireAuthenticatedUser())
 	x.Methods(http.MethodGet).HandlerFunc(h.GetAuthenticatedUser)
 	x.Methods(http.MethodPatch).HandlerFunc(h.UpdateAuthenticatedUser)
 	x.Path("/password").Methods(http.MethodPut).HandlerFunc(h.ChangeAuthenticatedUserPassword)
 }
 
 func (r *Router) RegisterAPIKeyHandlers() {
-	h := api.NewAPIKeyHandler(r.APIKeyService)
+	h := api.NewAPIKeyHandler(r.Logger, r.APIKeyService)
+	authorizer := authz.NewAuthorizer(r.Services.Logger)
 
 	x := r.PathPrefix("/keys").Subrouter()
-	x.Use(authz.RequireAdminRole)
+	x.Use(authorizer.RequireAdminRole())
 	x.Methods(http.MethodPost).HandlerFunc(h.CreateAPIKey)
 	x.Methods(http.MethodGet).HandlerFunc(h.ListAPIKeys)
 

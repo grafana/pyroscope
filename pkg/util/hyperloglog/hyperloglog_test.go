@@ -3,7 +3,7 @@ package hyperloglog_test
 import (
 	"sync"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	wrapper "github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/twmb/murmur3"
