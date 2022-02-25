@@ -216,7 +216,7 @@ web-bootstrap: ## Bootstrap web tools
 	yarn bootstrap
 
 .PHONY: dev
-dev: web-boostrap ## Start webpack and pyroscope server. Use this one for working on pyroscope
+dev: web-bootstrap ## Start webpack and pyroscope server. Use this one for working on pyroscope
 	goreman -exit-on-error -f scripts/dev-procfile start
 
 .PHONY: godoc
