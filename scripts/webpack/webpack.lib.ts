@@ -1,17 +1,8 @@
 import path from 'path';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import { ESBuildMinifyPlugin } from 'esbuild-loader';
-import ReplaceInFileWebpackPlugin from 'replace-in-file-webpack-plugin';
 import CopyWebpackPlugin from 'copy-webpack-plugin';
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
-
-let version = 'dev';
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.PYROSCOPE_LIB_VERSION) {
-    throw new Error('Environment variable PYROSCOPE_LIB_VERSION is required');
-  }
-  version = process.env.PYROSCOPE_LIB_VERSION;
-}
 
 const common = {
   mode: 'production',
@@ -69,26 +60,29 @@ const common = {
     new MiniCssExtractPlugin({}),
     new CopyWebpackPlugin({
       patterns: [
-        { from: path.join('./webapp/lib/', 'README.md'), to: '.' },
-        { from: path.join('./webapp/lib/', 'package.json'), to: '.' },
+        { from: path.join('./packages/flamegraph/', 'README.md'), to: '.' },
+        {
+          from: path.join('./packages/flamegraph/', 'package.json'),
+          to: '.',
+        },
       ],
     }),
-    new ReplaceInFileWebpackPlugin([
-      {
-        dir: './dist/lib',
-        files: ['package.json', 'README.md'],
-        rules: [
-          {
-            search: '%VERSION%',
-            replace: version,
-          },
-          {
-            search: '%TODAY%',
-            replace: new Date().toISOString().substring(0, 10),
-          },
-        ],
-      },
-    ]),
+    //   new ReplaceInFileWebpackPlugin([
+    //     {
+    //       dir: './dist/lib',
+    //       files: ['package.json', 'README.md'],
+    //       rules: [
+    //         {
+    //           search: '%VERSION%',
+    //           replace: version,
+    //         },
+    //         {
+    //           search: '%TODAY%',
+    //           replace: new Date().toISOString().substring(0, 10),
+    //         },
+    //       ],
+    //     },
+    //   ]),
   ],
 };
 
@@ -99,11 +93,11 @@ export default [
     mode: 'production',
     devtool: 'source-map',
     entry: {
-      index: './webapp/lib/index.node.ts',
+      index: './packages/flamegraph/src/index.node.ts',
     },
     output: {
       publicPath: '',
-      path: path.resolve(__dirname, '../../dist/lib'),
+      path: path.resolve(__dirname, '../../packages/flamegraph/dist'),
       libraryTarget: 'commonjs',
       filename: 'index.node.js',
     },
@@ -114,11 +108,11 @@ export default [
     mode: 'production',
     devtool: 'source-map',
     entry: {
-      index: './webapp/lib/index.tsx',
+      index: './packages/flamegraph/src/index.tsx',
     },
     output: {
       publicPath: '',
-      path: path.resolve(__dirname, '../../dist/lib'),
+      path: path.resolve(__dirname, '../../packages/flamegraph/dist'),
       libraryTarget: 'umd',
       library: 'pyroscope',
       filename: 'index.js',

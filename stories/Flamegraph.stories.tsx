@@ -1,9 +1,10 @@
 import React from 'react';
 import { Units } from '@utils/format';
-import { FlamegraphRenderer } from '../webapp/lib';
+// import { FlamegraphRenderer } from '../webapp/lib';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 
 export default {
-  title: 'lib/Flamegraph',
+  title: '@pyroscope/flamegraph',
 };
 
 const SimpleTree = {

@@ -1,33 +1,28 @@
-/** @type {import('ts-jest/dist/types').InitialOptionsTsJest} */
-const globals = {
-  'ts-jest': {
-    diagnostics: {
-      // https://github.com/kulshekhar/ts-jest/issues/1647#issuecomment-832577036
-      pathRegex: /\.(test)\.tsx$/,
-    },
-  },
-};
+const path = require('path');
 
-const project = {
+module.exports = {
   // TypeScript files (.ts, .tsx) will be transformed by ts-jest to CommonJS syntax, and JavaScript files (.js, jsx) will be transformed by babel-jest.
   preset: 'ts-jest/presets/js-with-babel',
   testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/setupAfterEnv.ts'],
+  setupFilesAfterEnv: [path.join(__dirname, 'setupAfterEnv.ts')],
   testMatch: [
     '**/__tests__/**/*.+(ts|tsx|js)',
     '**/?(*.)+(spec|test).+(ts|tsx|js)',
   ],
   moduleNameMapper: {
-    '@utils(.*)$': '<rootDir>/webapp/javascript/util/$1',
-    '@models(.*)$': '<rootDir>/webapp/javascript/models/$1',
-    '@ui(.*)$': '<rootDir>/webapp/javascript/ui/$1',
-    '@pyroscope/redux(.*)$': '<rootDir>/webapp/javascript/redux/$1',
-    '@pyroscope/services(.*)$': '<rootDir>/webapp/javascript/services/$1',
+    '@utils(.*)$': path.join(__dirname, 'webapp/javascript/util/$1'),
+    '@models(.*)$': path.join(__dirname, 'webapp/javascript/models/$1'),
+    '@ui(.*)$': path.join(__dirname, 'webapp/javascript/ui/$1'),
+    '@pyroscope/redux(.*)$': path.join(__dirname, 'webapp/javascript/redux/$1'),
+    '@pyroscope/services(.*)$': path.join(
+      __dirname,
+      'webapp/javascript/services/$1'
+    ),
   },
   transform: {
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',
     '\\.(css|scss)$': 'jest-css-modules-transform',
-    '\\.svg$': '<rootDir>/svg-transform.js',
+    '\\.svg$': path.join(__dirname, 'svg-transform.js'),
   },
   transformIgnorePatterns: [
     // force us to not transpile these dependencies
@@ -36,33 +31,11 @@ const project = {
   ],
   globals: {
     'ts-jest': {
-      tsconfig: `tsconfig.test.json`,
+      tsconfig: path.join(__dirname, `tsconfig.test.json`),
       diagnostics: {
         // https://github.com/kulshekhar/ts-jest/issues/1647#issuecomment-832577036
         pathRegex: /\.(test)\.tsx$/,
       },
     },
   },
-};
-
-module.exports = {
-  // https://github.com/kulshekhar/ts-jest/issues/1648#issuecomment-820860089
-  // We create multiple projects so that we can slowly change tsconfig to be more strict
-  // Without affecting existing code
-  projects: [
-    {
-      ...project,
-      globals: {
-        ...project.globals,
-        'ts-jest': {
-          ...project.globals['ts-jest'],
-          tsconfig: 'webapp/javascript/services/tsconfig.json',
-        },
-      },
-      testMatch: ['<rootDir>/webapp/javascript/services/**/*.(spec|test).*'],
-    },
-    {
-      ...project,
-    },
-  ],
 };

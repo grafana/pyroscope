@@ -5,10 +5,8 @@ import * as webpack from 'webpack';
 
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const util = require('util');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const ReplaceInFileWebpackPlugin = require('replace-in-file-webpack-plugin');
-const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -21,14 +19,14 @@ import {
 
 let PLUGIN_ID: string;
 
+const pluginPath = path.join(
+  __dirname,
+  '../../packages/pyroscope-datasource-plugin'
+);
+
 const getPluginId = () => {
   if (!PLUGIN_ID) {
-    const pluginJson = require(path.resolve(
-      process.cwd(),
-      'grafana-plugin',
-      'datasource',
-      'src/plugin.json'
-    ));
+    const pluginJson = require(path.resolve(pluginPath, 'plugin.json'));
     PLUGIN_ID = pluginJson.id;
   }
   return PLUGIN_ID;
@@ -54,15 +52,9 @@ const getStylesheetPaths = (root: string = process.cwd()) => {
 
 const getCommonPlugins = (options: WebpackConfigurationOptions) => {
   const packageJson = require(path.resolve(process.cwd(), 'package.json'));
-
   let version = 'dev';
   if (process.env.NODE_ENV === 'production') {
-    if (!process.env.PYROSCOPE_DATASOURCE_VERSION) {
-      throw new Error(
-        'Environment variable PYROSCOPE_DATASOURCE_VERSION is required'
-      );
-    }
-    version = process.env.PYROSCOPE_DATASOURCE_VERSION;
+    version = packageJson.version;
   }
 
   return [
@@ -71,19 +63,16 @@ const getCommonPlugins = (options: WebpackConfigurationOptions) => {
     }),
     new CopyWebpackPlugin({
       patterns: [
-        // If src/README.md exists use it; otherwise the root README
-        {
-          from: '../README.md',
-          to: '.',
-        },
+        { from: 'README.md', to: '.' },
         { from: 'plugin.json', to: '.' },
-        { from: '../LICENSE', to: '.' },
+        { from: 'CHANGELOG.md', to: '.' },
+        { from: 'LICENSE', to: '.' },
         { from: 'img/**/*', to: '.' },
       ],
     }),
     new ReplaceInFileWebpackPlugin([
       {
-        dir: 'grafana-plugin/datasource/dist',
+        dir: path.join(pluginPath, 'dist'),
         files: ['plugin.json', 'README.md'],
         rules: [
           {
@@ -192,20 +181,14 @@ const getBaseWebpackConfig: any = async (options) => {
   return {
     mode: options.production ? 'production' : 'development',
     target: 'web',
-    context: path.join(process.cwd(), 'grafana-plugin', 'datasource', 'src'),
+    context: pluginPath,
     devtool: 'source-map',
     entry: {
-      module: path.join(
-        process.cwd(),
-        'grafana-plugin',
-        'datasource',
-        'src',
-        'module.ts'
-      ),
+      module: path.join(pluginPath, 'src', 'module.ts'),
     },
     output: {
       filename: '[name].js',
-      path: path.join(process.cwd(), 'grafana-plugin', 'datasource', 'dist'),
+      path: path.join(pluginPath, 'dist'),
       libraryTarget: 'amd',
       publicPath: '/',
     },

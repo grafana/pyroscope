@@ -1,3 +1,4 @@
+//go:build rbspy
 // +build rbspy
 
 // Package rbspy is a wrapper around this library called rbspy written in Rust
@@ -74,13 +75,12 @@ func (s *RbSpy) Stop() error {
 }
 
 // Snapshot calls callback function with stack-trace or error.
-func (s *RbSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
+func (s *RbSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 	r := C.rbspy_snapshot(C.int(s.pid), s.dataPtr, C.int(bufferLength), s.errorPtr, C.int(bufferLength))
 	if r < 0 {
-		cb(nil, nil, 0, errors.New(string(s.errorBuf[:-r])))
-	} else {
-		cb(nil, s.dataBuf[:r], 1, nil)
+		return errors.New(string(s.errorBuf[:-r]))
 	}
+	return cb(nil, s.dataBuf[:r], 1)
 }
 
 func init() {

@@ -111,8 +111,12 @@ export default {
           name: '[name].[hash:8].[ext]',
         },
       },
+
+      // for SVG used via react
+      // we simply inline them as if they were normal react components
       {
         test: /\.svg$/,
+        issuer: /\.(j|t)sx?$/,
         use: [
           { loader: 'babel-loader' },
           {

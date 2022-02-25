@@ -1,3 +1,4 @@
+//go:build dotnetspy
 // +build dotnetspy
 
 package dotnetspy
@@ -5,7 +6,7 @@ package dotnetspy
 import (
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
