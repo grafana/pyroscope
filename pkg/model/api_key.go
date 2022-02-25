@@ -44,12 +44,6 @@ func (k APIKey) Verify(secret []byte) error {
 	return bcrypt.CompareHashAndPassword(k.Hash, secret)
 }
 
-// APIKeyToken represents an API key retrieved from the provided secret.
-type APIKeyToken struct {
-	Name string
-	Role Role
-}
-
 type CreateAPIKeyParams struct {
 	Name      string
 	Role      Role

@@ -27,9 +27,9 @@ var (
 	ErrUserPasswordInvalid = ValidationError{errors.New("invalid password")}
 	ErrUserDisabled        = ValidationError{errors.New("user disabled")}
 
-	// ErrInvalidCredentials should be returned when details of the authentication
+	// ErrCredentialsInvalid should be returned when details of the authentication
 	// failure should be hidden (e.g. when user or API key not found).
-	ErrInvalidCredentials = AuthenticationError{errors.New("invalid credentials")}
+	ErrCredentialsInvalid = AuthenticationError{errors.New("invalid credentials")}
 	// ErrPermissionDenied should be returned if the actor does not have
 	// sufficient permissions for the action.
 	ErrPermissionDenied = AuthorizationError{errors.New("permission denied")}

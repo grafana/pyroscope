@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
@@ -38,7 +37,7 @@ func ctxWithUser(u *model.User) requestContextProvider {
 	}
 }
 
-func ctxWithAPIKey(k *model.APIKeyToken) requestContextProvider {
+func ctxWithAPIKey(k *model.APIKey) requestContextProvider {
 	return func(ctx context.Context) context.Context {
 		return model.WithAPIKey(ctx, *k)
 	}
@@ -48,9 +47,6 @@ func ctxWithAPIKey(k *model.APIKeyToken) requestContextProvider {
 // It was decided to test the whole flow of the request handling,
 // including routing, authentication, and authorization.
 func newTestRouter(rcp requestContextProvider, services router.Services) *router.Router {
-	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
-
 	// For backward compatibility, the redirect handler is invoked
 	// if no credentials provided, or the user can not be found.
 	// For API key authentication the response code is 401.
@@ -59,17 +55,16 @@ func newTestRouter(rcp requestContextProvider, services router.Services) *router
 	// only responds with a distinct code: that's done for
 	// testing purposes only.
 	redirect := func(w http.ResponseWriter, r *http.Request) {
-		logger.WithField("url", r.URL).Debug("redirecting")
+		services.Logger.WithField("url", r.URL).Debug("redirecting")
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	}
 
 	r := router.New(
-		logger,
 		mux.NewRouter(),
 		services)
 
 	if services.AuthService != nil {
-		r.Use(api.AuthMiddleware(logger, redirect, r.AuthService))
+		r.Use(api.AuthMiddleware(services.Logger, redirect, r.AuthService))
 	}
 
 	r.Use(func(next http.Handler) http.Handler {

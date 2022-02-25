@@ -167,7 +167,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	ctrl.authService = service.NewAuthService(ctrl.db, ctrl.jwtTokenService)
 	ctrl.userService = service.NewUserService(ctrl.db)
 
-	apiRouter := router.New(ctrl.log, r.PathPrefix("/api").Subrouter(), router.Services{
+	apiRouter := router.New(r.PathPrefix("/api").Subrouter(), router.Services{
+		Logger:        ctrl.log,
 		APIKeyService: service.NewAPIKeyService(ctrl.db),
 		AuthService:   ctrl.authService,
 		UserService:   ctrl.userService,
@@ -187,7 +188,10 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	if ctrl.config.Auth.Ingestion.Enabled {
 		ingestRouter.Use(
 			ctrl.ingestionAuthMiddleware(),
-			authz.Require(authz.Role(model.AgentRole)))
+			authz.NewAuthorizer(ctrl.log).Require(
+				authz.Role(model.AdminRole),
+				authz.Role(model.AgentRole),
+			))
 	}
 
 	ingestRouter.Methods(http.MethodPost).Handler(ctrl.ingestHandler())
