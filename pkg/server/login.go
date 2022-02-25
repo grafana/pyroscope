@@ -37,8 +37,7 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, err := ctrl.getTemplate("/login.html")
 	if err != nil {
-		ctrl.log.WithError(err).Error("could not render login page")
-		api.Error(w, err)
+		api.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	mustExecute(tmpl, w, map[string]interface{}{
@@ -63,30 +62,17 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 	var req loginCredentials
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ctrl.log.WithError(err).Error("failed to parse user credentials")
-		api.DecodeError(w, err)
+		api.HandleError(w, r, ctrl.log, api.JSONError{Err: err})
 		return
 	}
 	u, err := ctrl.authService.AuthenticateUser(r.Context(), req.Username, string(req.Password))
-	switch {
-	case err == nil:
-		// Generate and sign new JWT token.
-	case errors.Is(err, model.ErrInvalidCredentials):
-		ctrl.log.WithError(err).Debug("failed authentication attempt")
-		api.Error(w, err)
-		return
-	case model.IsValidationError(err):
-		ctrl.log.WithError(err).Debug("invalid authentication request")
-		api.Error(w, err)
-		return
-	default:
-		ctrl.log.WithError(err).Error("failed to authenticate user")
-		api.Error(w, err)
+	if err != nil {
+		api.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	token, err := ctrl.jwtTokenService.Sign(ctrl.jwtTokenService.GenerateUserJWTToken(u.Name, u.Role))
 	if err != nil {
-		ctrl.log.WithError(err).Error("failed to generate user token")
-		api.Error(w, err)
+		api.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	ctrl.createCookie(w, api.JWTCookieName, token)
@@ -111,8 +97,7 @@ func (ctrl *Controller) signupGet(w http.ResponseWriter, r *http.Request) {
 	}
 	tmpl, err := ctrl.getTemplate("/signup.html")
 	if err != nil {
-		ctrl.log.WithError(err).Error("could not render signup page")
-		api.Error(w, err)
+		api.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	mustExecute(tmpl, w, map[string]interface{}{
@@ -138,8 +123,7 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 	}
 	var req signupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		ctrl.log.WithError(err).Debug("failed to parse signup details")
-		api.Error(w, err)
+		api.HandleError(w, r, ctrl.log, err)
 		return
 	}
 	_, err := ctrl.userService.CreateUser(r.Context(), model.CreateUserParams{
@@ -149,17 +133,7 @@ func (ctrl *Controller) signupPost(w http.ResponseWriter, r *http.Request) {
 		Password: string(req.Password),
 		Role:     ctrl.config.Auth.SignupDefaultRole,
 	})
-	switch {
-	case err == nil:
-	case model.IsValidationError(err):
-		ctrl.log.WithError(err).Debug("invalid signup details")
-		api.Error(w, err)
-		return
-	default:
-		ctrl.log.WithError(err).Error("failed to create user")
-		api.Error(w, err)
-		return
-	}
+	api.HandleError(w, r, ctrl.log, err)
 }
 
 func (ctrl *Controller) isAuthRequired() bool {

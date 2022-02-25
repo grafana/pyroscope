@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,10 +11,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/valyala/bytebufferpool"
 
-	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
-	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -39,7 +39,6 @@ func NewIngestHandler(log *logrus.Logger, st *storage.Storage, exporter storage.
 	}
 }
 
-// revive:disable:cognitive-complexity I don't want to split this into 2 functions just to please the linter
 func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	pi, err := h.ingestParamsFromRequest(r)
 	if err != nil {
@@ -49,7 +48,6 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	format := r.URL.Query().Get("format")
 	contentType := r.Header.Get("Content-Type")
-	inputs := []*storage.PutInput{}
 	cb := h.createParseCallback(pi)
 	switch {
 	case format == "trie", contentType == "binary/octet-stream+trie":
@@ -61,84 +59,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case format == "lines":
 		err = convert.ParseIndividualLines(r.Body, cb)
 	case strings.Contains(contentType, "multipart/form-data"):
-		err := r.ParseMultipartForm(32 << 20) // maxMemory 32MB
-		if err == nil {
-			var profile *tree.Profile
-			var prevProfile *tree.Profile
-
-			f, _, err := r.FormFile("profile")
-			if err != nil {
-				WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while getting profile file")
-				return
-			}
-
-			profile, err = convert.ParsePprof(f)
-			if err != nil {
-				WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while parsing profile file")
-				return
-			}
-
-			f, _, err = r.FormFile("prev_profile")
-			if err == nil {
-				prevProfile, err = convert.ParsePprof(f)
-				if err != nil {
-					WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while parsing prev_profile file")
-					return
-				}
-			}
-
-			for _, sampleTypeStr := range profile.SampleTypes() {
-				var t *tree.SampleTypeConfig
-				var ok bool
-				if t, ok = tree.DefaultSampleTypeMapping[sampleTypeStr]; !ok {
-					continue
-				}
-				var tries map[string]*transporttrie.Trie
-				var prevTries map[string]*transporttrie.Trie
-
-				if profile != nil {
-					tries = pprofToTries(pi.Key.Normalized(), sampleTypeStr, profile)
-				}
-				if prevProfile != nil {
-					prevTries = pprofToTries(pi.Key.Normalized(), sampleTypeStr, prevProfile)
-				}
-				for trieKey, trie := range tries {
-					// copy of pi
-					input := *pi
-
-					suffix := sampleTypeStr
-					if t.DisplayName != "" {
-						suffix = t.DisplayName
-					}
-					// this also clones the key which is important
-					input.Key = ensureKeyHasSuffix(input.Key, "."+suffix)
-
-					sk, _ := segment.ParseKey(trieKey)
-					for k, v := range sk.Labels() {
-						if k != "__name__" {
-							input.Key.Add(k, v)
-						}
-					}
-
-					input.Val = tree.New()
-					resTrie := trie
-					if t.Cumulative {
-						if prevTrie := prevTries[trieKey]; prevTrie != nil {
-							resTrie = trie.Diff(prevTrie)
-						} else {
-							// TODO: error handling
-							continue
-						}
-					}
-					resTrie.Iterate(func(name []byte, val uint64) {
-						input.Val.Insert(name, val)
-					})
-					input.Units = t.Units
-					input.AggregationType = t.Aggregation
-					inputs = append(inputs, &input)
-				}
-			}
-		}
+		err = writePprof(h.storage, pi, r)
 	default:
 		err = convert.ParseGroups(r.Body, cb)
 	}
@@ -148,12 +69,8 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(inputs) == 0 {
-		inputs = append(inputs, pi)
-	}
-
-	for _, input := range inputs {
-		if err = h.storage.Put(input); err != nil {
+	if pi.Val != nil {
+		if err = h.storage.Put(pi); err != nil {
 			WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while ingesting data")
 			return
 		}
@@ -234,77 +151,28 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*storage.PutInp
 	return &pi, nil
 }
 
-func pprofToTries(originalAppName, sampleTypeStr string, pprof *tree.Profile) map[string]*transporttrie.Trie {
-	tries := map[string]*transporttrie.Trie{}
-
-	sampleTypeConfig := tree.DefaultSampleTypeMapping[sampleTypeStr]
-	if sampleTypeConfig == nil {
-		return tries
+func writePprof(s *storage.Storage, pi *storage.PutInput, r *http.Request) error {
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		// maxMemory 32MB
+		return err
 	}
+	w := pprof.NewProfileWriter(s, pi.Key.Labels(), tree.DefaultSampleTypeMapping)
+	if err := writePprofFromForm(r, w, pi, "prev_profile"); err != nil {
+		return err
+	}
+	return writePprofFromForm(r, w, pi, "profile")
+}
 
-	labelsCache := map[string]string{}
-
-	// callbacks := map[*spy.Labels]func([]byte, int){}
-	pprof.Get(sampleTypeStr, func(labels *spy.Labels, name []byte, val int) error {
-		appName := originalAppName
-		if labels != nil {
-			if newAppName, ok := labelsCache[labels.ID()]; ok {
-				appName = newAppName
-			} else {
-				newAppName, err := mergeTagsWithAppName(appName, labels.Tags())
-				if err != nil {
-					return fmt.Errorf("error setting tags: %w", err)
-				}
-				appName = newAppName
-				labelsCache[labels.ID()] = appName
-			}
-		}
-		if _, ok := tries[appName]; !ok {
-			tries[appName] = transporttrie.New()
-		}
-		tries[appName].Insert(name, uint64(val), true)
+func writePprofFromForm(r *http.Request, w *pprof.ProfileWriter, pi *storage.PutInput, name string) error {
+	f, _, err := r.FormFile(name)
+	switch {
+	case err == nil:
+	case errors.Is(err, http.ErrMissingFile):
 		return nil
+	default:
+		return err
+	}
+	return pprof.DecodePool(f, func(p *tree.Profile) error {
+		return w.WriteProfile(pi.StartTime, pi.EndTime, pi.SpyName, p)
 	})
-
-	return tries
-}
-
-func ensureKeyHasSuffix(key *segment.Key, suffix string) *segment.Key {
-	key = key.Clone()
-	key.Add("__name__", ensureStringHasSuffix(key.AppName(), suffix))
-	return key
-}
-
-func ensureStringHasSuffix(s, suffix string) string {
-	if !strings.HasSuffix(s, suffix) {
-		return s + suffix
-	}
-	return s
-}
-
-// mergeTagsWithAppName validates user input and merges explicitly specified
-// tags with tags from app name.
-//
-// App name may be in the full form including tags (app.name{foo=bar,baz=qux}).
-// Returned application name is always short, any tags that were included are
-// moved to tags map. When merged with explicitly provided tags (config/CLI),
-// last take precedence.
-//
-// App name may be an empty string. Tags must not contain reserved keys,
-// the map is modified in place.
-func mergeTagsWithAppName(appName string, tags map[string]string) (string, error) {
-	k, err := segment.ParseKey(appName)
-	if err != nil {
-		return "", err
-	}
-	for tagKey, tagValue := range tags {
-		if flameql.IsTagKeyReserved(tagKey) {
-			continue
-		}
-		if err = flameql.ValidateTagKey(tagKey); err != nil {
-			return "", err
-		}
-		k.Add(tagKey, tagValue)
-	}
-	return k.Normalized(), nil
 }

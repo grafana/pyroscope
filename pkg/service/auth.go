@@ -28,7 +28,7 @@ func NewAuthService(db *gorm.DB, jwtTokenService JWTTokenService) AuthService {
 
 // AuthenticateUser returns User with the given login if its password hash
 // matches the given one. If user cannot be found or the password does not
-// match the function returns ErrInvalidCredentials.
+// match the function returns ErrCredentialsInvalid.
 //
 // External users are not allowed to use password authentication.
 // TODO(kolesnikovae): It's true for "some" authentication providers.
@@ -38,41 +38,37 @@ func (svc AuthService) AuthenticateUser(ctx context.Context, name string, passwo
 	switch {
 	case err == nil:
 	case errors.Is(err, model.ErrUserNotFound):
-		return model.User{}, model.ErrInvalidCredentials
+		return model.User{}, model.ErrCredentialsInvalid
 	default:
 		return model.User{}, err
 	}
 	if model.IsUserExternal(user) {
 		// TODO(kolesnikovae): We could be a bit more specific here
 		//  disclosing some info: e.g. tell which auth provider to use.
-		return model.User{}, model.ErrInvalidCredentials
+		return model.User{}, model.ErrCredentialsInvalid
 	}
 	if model.IsUserDisabled(user) {
 		return model.User{}, model.ErrUserDisabled
 	}
 	if err = model.VerifyPassword(user.PasswordHash, password); err != nil {
-		return model.User{}, model.ErrInvalidCredentials
+		return model.User{}, model.ErrCredentialsInvalid
 	}
 	return user, nil
 }
 
-func (svc AuthService) APIKeyFromToken(ctx context.Context, t string) (model.APIKeyToken, error) {
+func (svc AuthService) APIKeyFromToken(ctx context.Context, t string) (model.APIKey, error) {
 	id, secret, err := model.DecodeAPIKey(t)
 	if err != nil {
-		return model.APIKeyToken{}, err
+		return model.APIKey{}, err
 	}
 	apiKey, err := svc.apiKeyService.FindAPIKeyByID(ctx, id)
 	if err != nil {
-		return model.APIKeyToken{}, err
+		return model.APIKey{}, err
 	}
 	if err = apiKey.Verify(secret); err != nil {
-		return model.APIKeyToken{}, err
+		return model.APIKey{}, err
 	}
-	k := model.APIKeyToken{
-		Name: apiKey.Name,
-		Role: apiKey.Role,
-	}
-	return k, nil
+	return apiKey, nil
 }
 
 func (svc AuthService) UserFromJWTToken(ctx context.Context, t string) (model.User, error) {

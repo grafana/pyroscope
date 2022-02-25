@@ -30,7 +30,7 @@ var _ = BeforeSuite(func() {
 	os.WriteFile(filepath.Join(tempAssetDir.Path, "assets", assetAtCompressionThreshold), make([]byte, gzHTTPCompressionThreshold), 0644)
 })
 
-var _ =AfterSuite(func() {
+var _ = AfterSuite(func() {
 	tempAssetDir.Close()
 })
 

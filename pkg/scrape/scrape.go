@@ -31,6 +31,7 @@ import (
 	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/build"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/config"
 	"github.com/pyroscope-io/pyroscope/pkg/scrape/discovery/targetgroup"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -188,13 +189,14 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 	sp.targetMtx.Lock()
 	for fp, oldLoop := range sp.loops {
 		wg.Add(1)
+		tgt := sp.activeTargets[fp]
 		s := &scraper{
 			Target:        sp.activeTargets[fp],
-			pprofWriter:   newPprofWriter(sp.ingester, sp.activeTargets[fp]),
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
 			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, sp.activeTargets[fp].profile.Path),
+			pprofWriter:   pprof.NewProfileWriter(sp.ingester, tgt.Labels().Map(), tgt.profile.SampleTypes),
 		}
 		n := sp.newScrapeLoop(s, interval, timeout)
 		go func(oldLoop, newLoop *scrapeLoop) {
@@ -275,7 +277,7 @@ func (sp *scrapePool) sync(targets []*Target) {
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
-			pprofWriter:   newPprofWriter(sp.ingester, t),
+			pprofWriter:   pprof.NewProfileWriter(sp.ingester, t.Labels().Map(), t.profile.SampleTypes),
 			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, t.profile.Path),
 		}
 
@@ -408,11 +410,12 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 	switch err := sl.scraper.scrape(ctx, buf); {
 	case err == nil:
 	case errors.Is(err, context.Canceled):
+		sl.scraper.pprofWriter.Reset()
 		return nil
 	default:
 		sl.poolMetrics.scrapesFailed.Inc()
 		sl.logger.WithError(err).WithField("target", sl.scraper.Target.String()).Debug("scrapping failed")
-		sl.scraper.pprofWriter.reset()
+		sl.scraper.pprofWriter.Reset()
 		return err
 	}
 	sl.scraper.targetMetrics.profileSize.Observe(float64(buf.Len()))
@@ -423,7 +426,7 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 		return err
 	}
 	sl.scraper.targetMetrics.profileSamples.Observe(float64(len(p.Sample)))
-	return sl.scraper.pprofWriter.writeProfile(startTime, endTime, p)
+	return sl.scraper.pprofWriter.WriteProfile(startTime, endTime, "scrape", p)
 }
 
 func (sl *scrapeLoop) stop() {
@@ -433,7 +436,7 @@ func (sl *scrapeLoop) stop() {
 
 type scraper struct {
 	*Target
-	*pprofWriter
+	pprofWriter *pprof.ProfileWriter
 
 	client  *http.Client
 	req     *http.Request

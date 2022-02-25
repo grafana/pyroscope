@@ -372,7 +372,7 @@ var _ = Describe("UserService", func() {
 					params.NewPassword = "qwerty2"
 				})
 
-				It("returns ErrInvalidCredentials", func() {
+				It("returns ErrCredentialsInvalid", func() {
 					Expect(err).ToNot(HaveOccurred())
 				})
 			})
