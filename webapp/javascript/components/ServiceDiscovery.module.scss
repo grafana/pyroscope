@@ -1,0 +1,65 @@
+$card-width: 400px;
+$badge-info-background: #8a2be2;
+$badge-healthy-background: #2ecc40;
+$badge-error-background: #dc3545;
+
+.serviceDiscoveryApp {
+  font-size: 12px;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 15px;
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, $card-width);
+    grid-gap: 10px;
+  }
+  .collapsibleHeader {
+    font-size: large;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+  .collapsibleSection {
+    margin: 10px 0;
+    max-width: 100%;
+    overflow: auto;
+  }
+  .target {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    background: black;
+    color: white;
+    padding: 10px;
+    width: $card-width;
+    border-radius: 10px;
+    column-gap: 10px;
+    row-gap: 5px;
+    height: 'fit-content';
+    box-shadow: 5px 5px 15px 5px rgba(255, 255, 255, 0.1);
+  }
+  .buttonGroup {
+    margin-bottom: 10px;
+  }
+  .badge {
+    font-weight: bold;
+    color: white;
+    padding: 3px 5px;
+    border-radius: 5px;
+    font-size: small;
+    margin: 0 2px 5px 2px;
+    display: inline-block;
+    &.info {
+      background: $badge-info-background;
+    }
+    &.healthy {
+      background: $badge-healthy-background;
+    }
+    &.error {
+      background: $badge-error-background;
+    }
+  }
+  .labels {
+    max-height: 120px;
+    overflow: auto;
+  }
+}

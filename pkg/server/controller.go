@@ -250,6 +250,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	diagnosticSecureRoutes := []route{
 		{"/config", ctrl.configHandler},
 		{"/build", ctrl.buildHandler},
+		{"/targets", ctrl.activeTargetsHandler},
 		{"/debug/storage/export/{db}", ctrl.storage.DebugExport},
 	}
 	if !ctrl.config.DisablePprofEndpoint {
@@ -273,35 +274,40 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/metrics", promhttp.Handler().ServeHTTP},
 		{"/exported-metrics", ctrl.exportedMetricsHandler},
 		{"/healthz", ctrl.healthz},
-		{"/targets", ctrl.activeTargetsHandler},
 	})
 
 	return r, nil
 }
 
 type TargetsResponse struct {
-	Job                string
-	DiscoveredLabels   labels.Labels
-	Labels             labels.Labels
-	Health             scrape.TargetHealth
-	LastScrape         time.Time
-	LastScrapeDuration int64
-	Url                string
+	Job                string              `json:"job"`
+	TargetURL          string              `json:"url"`
+	DiscoveredLabels   labels.Labels       `json:"discoveredLabels"`
+	Labels             labels.Labels       `json:"labels"`
+	Health             scrape.TargetHealth `json:"health"`
+	LastScrape         time.Time           `json:"lastScrape"`
+	LastError          string              `json:"lastError"`
+	LastScrapeDuration string              `json:"lastScrapeDuration"`
 }
 
-func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Request) {
 	targets := ctrl.Scrape.TargetsActive()
 	resp := []TargetsResponse{}
 	for k, v := range targets {
 		for _, t := range v {
+			var lastError string
+			if t.LastError() != nil {
+				lastError = t.LastError().Error()
+			}
 			resp = append(resp, TargetsResponse{
 				Job:                k,
+				TargetURL:          t.URL().String(),
 				DiscoveredLabels:   t.DiscoveredLabels(),
 				Labels:             t.Labels(),
 				Health:             t.Health(),
 				LastScrape:         t.LastScrape(),
-				LastScrapeDuration: t.LastScrapeDuration().Milliseconds(),
-				Url:                t.URL().String(),
+				LastError:          lastError,
+				LastScrapeDuration: t.LastScrapeDuration().String(),
 			})
 		}
 	}

@@ -1,205 +1,169 @@
-import React, { useEffect, useState } from 'react';
+import React, { Children, useEffect, useState } from 'react';
 import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
-import { fetchServiceDiscoveryAppData } from '../redux/actions';
+import { Target } from '@models/targets';
+import { useAppDispatch } from '@pyroscope/redux/hooks';
+import { loadTargets } from '@pyroscope/redux/reducers/serviceDiscovery';
+import styles from './ServiceDiscovery.module.scss';
+import Button from '../ui/Button';
 
-type Target = {
-  DiscoveredLabels: Record<string, string>;
-  Labels: Record<string, string>;
-  Job: string;
-  Url: string;
-  GlobalUrl: string;
-  LastError: string;
-  LastScrape: string;
-  LastScrapeDuration: number;
-  Health: string;
+type PropType = {
+  data: Record<string, Target[]>;
 };
 
-const ServiceDiscoveryApp = (props) => {
-  const { actions, data, url } = props;
-  const [groups, setGroups] = useState({});
+const ServiceDiscoveryApp = (props: PropType) => {
+  const { data } = props;
+  const dispatch = useAppDispatch();
+  const [unavailableFilter, setUnavailableFilter] = useState(false);
+  const [expandAll, setExpandAll] = useState(true);
 
   useEffect(() => {
-    actions.fetchServiceDiscoveryAppData(url);
+    dispatch(loadTargets());
   }, []);
 
-  useEffect(() => {
-    if (data) {
-      const acc = data.reduce((acc, next) => {
-        if (!acc[next.Job]) {
-          acc[next.Job] = [];
-        }
-        acc[next.Job].push(next);
-        return acc;
-      }, {});
-      setGroups(acc);
-    }
-  }, [data]);
-
   function getUpCount(targets: Target[]) {
-    return targets.filter((t) => t.Health === 'up').length;
+    return targets.filter((t) => t.health === 'up').length;
   }
   return (
-    <div
-      className="p-2"
-      style={{
-        fontSize: '12px',
-        width: '100%',
-        height: '100%',
-        overflow: 'auto',
-        margin: '0 0 0 20px',
-      }}
-    >
-      {Object.keys(groups).map((group) => (
-        <CollapsibleSection
-          title={`${groups[group][0].Job} (${getUpCount(groups[group])}/${
-            groups[group].length
-          }) up`}
-          collapsed={false}
+    <div className={styles.serviceDiscoveryApp}>
+      <div className={styles.buttonGroup}>
+        <Button
+          kind="secondary"
+          grouped
+          onClick={() => setUnavailableFilter(!unavailableFilter)}
         >
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat( auto-fill, 400px)',
-              gridGap: '10px',
-            }}
-          >
-            {groups[group].map((target) => (
-              /* eslint-disable-next-line react/jsx-props-no-spreading */
-              <Target {...target} />
-            ))}
-          </div>
+          {unavailableFilter ? 'All' : 'Unhealthy'}
+        </Button>
+        <Button
+          kind="secondary"
+          grouped
+          onClick={() => setExpandAll(!expandAll)}
+        >
+          {expandAll ? 'Collapse All' : 'Expand All'}
+        </Button>
+      </div>
+
+      {Object.keys(data).map((job) => (
+        <CollapsibleSection
+          title={`${data[job][0].job} (${getUpCount(data[job])}/${
+            data[job].length
+          }) up`}
+          key={job}
+          open={expandAll}
+        >
+          {data[job].map((target, i) => {
+            /* eslint-disable-next-line react/jsx-props-no-spreading */
+            const targetElem = <Target {...target} key={target.url} />;
+            if (unavailableFilter) {
+              if (target.health !== 'up') {
+                return targetElem;
+              }
+              return null;
+            }
+            return targetElem;
+          })}
         </CollapsibleSection>
       ))}
     </div>
   );
 };
 
+const selectJobs: (state) => Record<string, Target[]> = (state) => {
+  const acc = state.reduce((acc, next) => {
+    if (!acc[next.Job]) {
+      acc[next.Job] = [];
+    }
+    acc[next.Job].push(next);
+    return acc;
+  }, {});
+  return acc;
+};
 const mapStateToProps = (state) => ({
-  data: state.root.serviceDiscovery.data,
-  url: 'targets',
+  data: selectJobs(state.serviceDiscovery.data),
 });
 
-const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      fetchServiceDiscoveryAppData,
-    },
-    dispatch
-  ),
-});
+export default connect(mapStateToProps)(ServiceDiscoveryApp);
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(ServiceDiscoveryApp);
-
-const CollapsibleSection = ({ children, title, collapsed }) => {
-  const [isCollapsed, setCollapsed] = useState(collapsed);
-  return (
-    <div>
-      <h2>
-        <button
-          onClick={() => setCollapsed(!isCollapsed)}
-          style={{ all: 'unset' }}
-        >
-          {title}
-        </button>
-      </h2>
-      <div
-        style={{
-          transition: 'all 500ms',
-          maxHeight: isCollapsed ? '0px' : '2000px',
-          maxWidth: '100%',
-          overflow: 'auto',
-        }}
-      >
-        {children}
+const CollapsibleSection = ({ children, title, open }) => {
+  return Children.count(children.filter((c) => c)) > 0 ? (
+    <details open={open}>
+      <summary className={styles.collapsibleHeader}>{title}</summary>
+      <div className={styles.collapsibleSection}>
+        <div className={styles.grid}>{children}</div>
       </div>
-    </div>
-  );
+    </details>
+  ) : null;
 };
 const Target = ({
-  DiscoveredLabels,
-  Labels,
-  Job,
-  Url,
-  GlobalUrl,
-  LastError,
-  LastScrape,
-  LastScrapeDuration,
-  Health,
+  discoveredLabels,
+  labels,
+  job,
+  url,
+  lastError,
+  lastScrape,
+  lastScrapeDuration,
+  health,
 }: Target) => {
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '80px 1fr',
-        margin: '20px 0',
-        background: 'black',
-        color: 'white',
-        padding: '10px',
-        width: '400px',
-        borderRadius: '10px',
-        columnGap: '10px',
-        rowGap: '5px',
-        height: 'fit-content',
-        boxShadow: '5px 5px 15px 5px rgba(255, 255, 255 ,0.1)',
-      }}
-    >
+    <div className={styles.target}>
       <div className="t-header">Discovered labels</div>
-      <div className="t-value" style={{ maxHeight: '200px', overflow: 'auto' }}>
-        {Object.keys(DiscoveredLabels).map((key) => (
-          <Badge background="blueviolet">{`${key}=${DiscoveredLabels[key]}`}</Badge>
+      <div className={`t-value ${styles.labels}`}>
+        {Object.keys(discoveredLabels).map((key) => (
+          <Badge
+            status={Status.info}
+            key={key}
+          >{`${key}=${discoveredLabels[key]}`}</Badge>
         ))}
       </div>
       <div className="t-header">Labels</div>
-      <div className="t-value">
-        {Object.keys(Labels).map((key) => (
-          <Badge background="blueviolet">{`${key}=${Labels[key]}`}</Badge>
+      <div className={`t-value ${styles.labels}`}>
+        {Object.keys(labels).map((key) => (
+          <Badge
+            status={Status.info}
+            key={key}
+          >{`${key}=${labels[key]}`}</Badge>
         ))}
       </div>
       <div className="t-header">Job</div>
-      <div className="t-value">{Job}</div>
+      <div className="t-value">{job}</div>
       <div className="t-header">Scrape Url</div>
-      <div className="t-value">{Url}</div>
-      <div className="t-header">Global Url</div>
-      <div className="t-value">{GlobalUrl}</div>
+      <div className="t-value">{url}</div>
       <div className="t-header">Last scrape</div>
-      <div className="t-value">{LastScrape}</div>
+      <div className="t-value">{lastScrape}</div>
       <div className="t-header">Last scrape duration</div>
-      <div className="t-value">{LastScrapeDuration}</div>
+      <div className="t-value">{lastScrapeDuration}</div>
       <div className="t-header">Last error</div>
-      <div className="t-value">{LastError}</div>
+      <div className="t-value">{lastError || '-'}</div>
       <div className="t-header">Health</div>
       <div className="t-value">
-        <Badge background="green">{Health}</Badge>
+        <Badge status={health === 'up' ? Status.healthy : Status.error}>
+          {health}
+        </Badge>
       </div>
     </div>
   );
 };
 
-function Badge({
-  children,
-  background,
-}: {
-  children: string;
-  background: string;
-}) {
+enum Status {
+  healthy = 'healthy',
+  info = 'info',
+  error = 'error',
+}
+
+function Badge({ children, status }: { children: string; status: Status }) {
+  function getStatusClass(status) {
+    switch (status) {
+      case Status.healthy:
+        return styles.healthy;
+      case Status.info:
+        return styles.info;
+      case Status.error:
+        return styles.error;
+      default:
+        return styles.info;
+    }
+  }
   return (
-    <span
-      className="t-badge"
-      style={{
-        background,
-        fontWeight: 'bold',
-        color: 'white',
-        padding: '3px 5px',
-        borderRadius: '5px',
-        fontSize: 'small',
-        margin: '0 2px 5px 2px',
-        display: 'inline-block',
-      }}
-    >
+    <span className={`${styles.badge} ${getStatusClass(status)}`}>
       {children}
     </span>
   );

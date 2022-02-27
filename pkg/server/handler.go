@@ -46,6 +46,7 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 			ctrl.renderIndexPage(rw, r)
 		} else if path == "/service-discovery" {
 			ctrl.statsInc("service-discovery")
+			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)
 		}
