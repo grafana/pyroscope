@@ -84,10 +84,10 @@ func (w *ProfileWriter) filterSampleType(s string) bool {
 	return ok
 }
 
-func (w *ProfileWriter) buildName(sampleTypeName string, nameLabels map[string]string) *segment.Key {
+func (w *ProfileWriter) buildName(sampleTypeName string, labels map[string]string) *segment.Key {
 	for k, v := range w.labels {
-		nameLabels[k] = v
+		labels[k] = v
 	}
-	nameLabels["__name__"] += "." + sampleTypeName
-	return segment.NewKey(nameLabels)
+	labels["__name__"] += "." + sampleTypeName
+	return segment.NewKey(labels)
 }

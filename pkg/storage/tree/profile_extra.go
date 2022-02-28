@@ -161,6 +161,13 @@ func (x *Profile) ResolveLabels(l Labels) map[string]string {
 	return m
 }
 
+func (x *Profile) ResolveLabelName(l *Label) (string, bool) {
+	if l.Str > 0 && l.Key < int64(len(x.StringTable)) {
+		return x.StringTable[l.Key], true
+	}
+	return "", false
+}
+
 func (x *Profile) ResolveSampleType(v int64) (*ValueType, bool) {
 	for _, vt := range x.SampleType {
 		if vt.Type == v {
