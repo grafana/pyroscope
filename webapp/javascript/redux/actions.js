@@ -128,7 +128,6 @@ export const receiveComparisonAppData = (data, viewSide) => ({
   type: RECEIVE_COMPARISON_APP_DATA,
   payload: { data, viewSide },
 });
-
 export const cancelComparisonappData = () => ({
   type: CANCEL_COMPARISON_APP_DATA,
 });

@@ -10,6 +10,12 @@ type PropType = {
   data: Record<string, Target[]>;
 };
 
+enum Status {
+  healthy = 'healthy',
+  info = 'info',
+  error = 'error',
+}
+
 const ServiceDiscoveryApp = (props: PropType) => {
   const { data } = props;
   const dispatch = useAppDispatch();
@@ -67,22 +73,6 @@ const ServiceDiscoveryApp = (props: PropType) => {
   );
 };
 
-const selectJobs: (state) => Record<string, Target[]> = (state) => {
-  const acc = state.reduce((acc, next) => {
-    if (!acc[next.Job]) {
-      acc[next.Job] = [];
-    }
-    acc[next.Job].push(next);
-    return acc;
-  }, {});
-  return acc;
-};
-const mapStateToProps = (state) => ({
-  data: selectJobs(state.serviceDiscovery.data),
-});
-
-export default connect(mapStateToProps)(ServiceDiscoveryApp);
-
 const CollapsibleSection = ({ children, title, open }) => {
   return Children.count(children.filter((c) => c)) > 0 ? (
     <details open={open}>
@@ -93,6 +83,7 @@ const CollapsibleSection = ({ children, title, open }) => {
     </details>
   ) : null;
 };
+
 const Target = ({
   discoveredLabels,
   labels,
@@ -143,13 +134,7 @@ const Target = ({
   );
 };
 
-enum Status {
-  healthy = 'healthy',
-  info = 'info',
-  error = 'error',
-}
-
-function Badge({ children, status }: { children: string; status: Status }) {
+const Badge = ({ children, status }: { children: string; status: Status }) => {
   function getStatusClass(status) {
     switch (status) {
       case Status.healthy:
@@ -167,4 +152,21 @@ function Badge({ children, status }: { children: string; status: Status }) {
       {children}
     </span>
   );
-}
+};
+
+const selectJobs: (state) => Record<string, Target[]> = (state) => {
+  const acc = state.reduce((acc, next) => {
+    if (!acc[next.Job]) {
+      acc[next.Job] = [];
+    }
+    acc[next.Job].push(next);
+    return acc;
+  }, {});
+  return acc;
+};
+
+const mapStateToProps = (state) => ({
+  data: selectJobs(state.serviceDiscovery.data),
+});
+
+export default connect(mapStateToProps)(ServiceDiscoveryApp);
