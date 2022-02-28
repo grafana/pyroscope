@@ -104,6 +104,16 @@ type Notifier interface {
 	// TODO(kolesnikovae): we should poll for notifications (or subscribe).
 	NotificationText() string
 }
+type TargetsResponse struct {
+	Job                string              `json:"job"`
+	TargetURL          string              `json:"url"`
+	DiscoveredLabels   labels.Labels       `json:"discoveredLabels"`
+	Labels             labels.Labels       `json:"labels"`
+	Health             scrape.TargetHealth `json:"health"`
+	LastScrape         time.Time           `json:"lastScrape"`
+	LastError          string              `json:"lastError"`
+	LastScrapeDuration string              `json:"lastScrapeDuration"`
+}
 
 func New(c Config) (*Controller, error) {
 	if c.Configuration.BaseURL != "" {
@@ -277,17 +287,6 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	})
 
 	return r, nil
-}
-
-type TargetsResponse struct {
-	Job                string              `json:"job"`
-	TargetURL          string              `json:"url"`
-	DiscoveredLabels   labels.Labels       `json:"discoveredLabels"`
-	Labels             labels.Labels       `json:"labels"`
-	Health             scrape.TargetHealth `json:"health"`
-	LastScrape         time.Time           `json:"lastScrape"`
-	LastError          string              `json:"lastError"`
-	LastScrapeDuration string              `json:"lastScrapeDuration"`
 }
 
 func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Request) {
