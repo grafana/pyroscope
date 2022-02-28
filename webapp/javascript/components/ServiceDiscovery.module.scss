@@ -15,7 +15,7 @@ $badge-error-background: #dc3545;
     grid-gap: 10px;
   }
   .collapsibleHeader {
-    font-size: large;
+    font-size: 16px;
     font-weight: bold;
     margin-bottom: 10px;
   }
@@ -34,20 +34,26 @@ $badge-error-background: #dc3545;
     border-radius: 10px;
     column-gap: 10px;
     row-gap: 5px;
-    height: 'fit-content';
+    height: fit-content;
     box-shadow: 5px 5px 15px 5px rgba(255, 255, 255, 0.1);
+    .heading {
+      user-select: none;
+    }
+    .value {
+      user-select: all;
+    }
   }
   .buttonGroup {
     margin-bottom: 10px;
   }
   .badge {
+    display: inline-block;
     font-weight: bold;
     color: white;
     padding: 3px 5px;
     border-radius: 5px;
-    font-size: small;
     margin: 0 2px 5px 2px;
-    display: inline-block;
+    user-select: all;
     &.info {
       background: $badge-info-background;
     }

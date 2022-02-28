@@ -105,7 +105,7 @@ const Target = ({
 }: Target) => {
   return (
     <div className={styles.target}>
-      <div className="t-header">Discovered labels</div>
+      <div className={styles.heading}>Discovered labels</div>
       <div className={`t-value ${styles.labels}`}>
         {Object.keys(discoveredLabels).map((key) => (
           <Badge
@@ -114,7 +114,7 @@ const Target = ({
           >{`${key}=${discoveredLabels[key]}`}</Badge>
         ))}
       </div>
-      <div className="t-header">Labels</div>
+      <div className={styles.heading}>Labels</div>
       <div className={`t-value ${styles.labels}`}>
         {Object.keys(labels).map((key) => (
           <Badge
@@ -123,18 +123,18 @@ const Target = ({
           >{`${key}=${labels[key]}`}</Badge>
         ))}
       </div>
-      <div className="t-header">Job</div>
-      <div className="t-value">{job}</div>
-      <div className="t-header">Scrape Url</div>
-      <div className="t-value">{url}</div>
-      <div className="t-header">Last scrape</div>
-      <div className="t-value">{lastScrape}</div>
-      <div className="t-header">Last scrape duration</div>
-      <div className="t-value">{lastScrapeDuration}</div>
-      <div className="t-header">Last error</div>
-      <div className="t-value">{lastError || '-'}</div>
-      <div className="t-header">Health</div>
-      <div className="t-value">
+      <div className={styles.heading}>Job</div>
+      <div className={styles.value}>{job}</div>
+      <div className={styles.heading}>Scrape Url</div>
+      <div className={styles.value}>{url}</div>
+      <div className={styles.heading}>Last scrape</div>
+      <div className={styles.value}>{lastScrape}</div>
+      <div className={styles.heading}>Last scrape duration</div>
+      <div className={styles.value}>{lastScrapeDuration}</div>
+      <div className={styles.heading}>Last error</div>
+      <div className={styles.value}>{lastError || '-'}</div>
+      <div className={styles.heading}>Health</div>
+      <div className={styles.value}>
         <Badge status={health === 'up' ? Status.healthy : Status.error}>
           {health}
         </Badge>
