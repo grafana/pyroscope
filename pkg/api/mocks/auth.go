@@ -36,10 +36,10 @@ func (m *MockAuthService) EXPECT() *MockAuthServiceMockRecorder {
 }
 
 // APIKeyFromToken mocks base method.
-func (m *MockAuthService) APIKeyFromToken(arg0 context.Context, arg1 string) (model.APIKeyToken, error) {
+func (m *MockAuthService) APIKeyFromToken(arg0 context.Context, arg1 string) (model.APIKey, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "APIKeyFromToken", arg0, arg1)
-	ret0, _ := ret[0].(model.APIKeyToken)
+	ret0, _ := ret[0].(model.APIKey)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

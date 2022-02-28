@@ -12,19 +12,15 @@ func WithUser(ctx context.Context, user User) context.Context {
 }
 
 func UserFromContext(ctx context.Context) (User, bool) {
-	if user, ok := ctx.Value(ctxUserKey).(User); ok {
-		return user, true
-	}
-	return User{}, false
+	user, ok := ctx.Value(ctxUserKey).(User)
+	return user, ok
 }
 
-func WithAPIKey(ctx context.Context, key APIKeyToken) context.Context {
+func WithAPIKey(ctx context.Context, key APIKey) context.Context {
 	return context.WithValue(ctx, ctxAPIKeyKey, key)
 }
 
-func APIKeyFromContext(ctx context.Context) (APIKeyToken, bool) {
-	if key, ok := ctx.Value(ctxAPIKeyKey).(APIKeyToken); ok {
-		return key, true
-	}
-	return APIKeyToken{}, false
+func APIKeyFromContext(ctx context.Context) (APIKey, bool) {
+	key, ok := ctx.Value(ctxAPIKeyKey).(APIKey)
+	return key, ok
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/sirupsen/logrus"
 )
 
 //go:generate mockgen -destination mocks/user.go -package mocks . UserService
@@ -21,14 +22,18 @@ type UserService interface {
 }
 
 type UserHandler struct {
+	logger      logrus.FieldLogger
 	userService UserService
 }
 
-func NewUserHandler(userService UserService) UserHandler {
-	return UserHandler{userService}
+func NewUserHandler(logger logrus.FieldLogger, userService UserService) UserHandler {
+	return UserHandler{
+		logger:      logger,
+		userService: userService,
+	}
 }
 
-type User struct {
+type user struct {
 	ID                uint       `json:"id"`
 	Name              string     `json:"name"`
 	Email             *string    `json:"email,omitempty"`
@@ -69,8 +74,8 @@ type changeUserRoleRequest struct {
 	Role model.Role `json:"role"`
 }
 
-func userFromModel(u model.User) User {
-	return User{
+func userFromModel(u model.User) user {
+	return user{
 		ID:                u.ID,
 		Name:              u.Name,
 		Email:             u.Email,
@@ -88,7 +93,7 @@ func userFromModel(u model.User) User {
 func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var req createUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		DecodeError(w, err)
+		HandleError(w, r, h.logger, JSONError{Err: err})
 		return
 	}
 	params := model.CreateUserParams{
@@ -98,36 +103,36 @@ func (h UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		Password: string(req.Password),
 		Role:     req.Role,
 	}
-	user, err := h.userService.CreateUser(r.Context(), params)
+	u, err := h.userService.CreateUser(r.Context(), params)
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
-	MustJSON(w, userFromModel(user))
+	MustJSON(w, userFromModel(u))
 }
 
 func (h UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	id, err := idFromRequest(r)
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
-	user, err := h.userService.FindUserByID(r.Context(), id)
+	u, err := h.userService.FindUserByID(r.Context(), id)
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
-	MustJSON(w, userFromModel(user))
+	MustJSON(w, userFromModel(u))
 }
 
 func (h UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	u, err := h.userService.GetAllUsers(r.Context())
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
-	users := make([]User, len(u))
+	users := make([]user, len(u))
 	for i := range u {
 		users[i] = userFromModel(u[i])
 	}
@@ -137,7 +142,7 @@ func (h UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	id, err := idFromRequest(r)
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	h.updateUser(w, r, id)
@@ -146,7 +151,7 @@ func (h UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint) {
 	var req updateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		DecodeError(w, err)
+		HandleError(w, r, h.logger, JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserParams{
@@ -154,32 +159,32 @@ func (h UserHandler) updateUser(w http.ResponseWriter, r *http.Request, id uint)
 		Email:    req.Email,
 		FullName: req.FullName,
 	}
-	user, err := h.userService.UpdateUserByID(r.Context(), id, params)
+	u, err := h.userService.UpdateUserByID(r.Context(), id, params)
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
-	MustJSON(w, userFromModel(user))
+	MustJSON(w, userFromModel(u))
 }
 
 func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) {
 	id, err := idFromRequest(r)
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		Error(w, model.ErrPermissionDenied)
+		HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
 	var req resetUserPasswordRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		DecodeError(w, err)
+		HandleError(w, r, h.logger, JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserParams{Password: model.String(string(req.Password))}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -188,21 +193,21 @@ func (h UserHandler) ChangeUserPassword(w http.ResponseWriter, r *http.Request) 
 func (h UserHandler) ChangeUserRole(w http.ResponseWriter, r *http.Request) {
 	id, err := idFromRequest(r)
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		Error(w, model.ErrPermissionDenied)
+		HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
 	var req changeUserRoleRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		DecodeError(w, err)
+		HandleError(w, r, h.logger, JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserParams{Role: &req.Role}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -219,16 +224,16 @@ func (h UserHandler) EnableUser(w http.ResponseWriter, r *http.Request) {
 func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, disabled bool) {
 	id, err := idFromRequest(r)
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	if isSameUser(r.Context(), id) {
-		Error(w, model.ErrPermissionDenied)
+		HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
 	params := model.UpdateUserParams{IsDisabled: &disabled}
 	if _, err = h.userService.UpdateUserByID(r.Context(), id, params); err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -237,60 +242,59 @@ func (h UserHandler) setUserDisabled(w http.ResponseWriter, r *http.Request, dis
 func (h UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id, err := idFromRequest(r)
 	if err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	if err = h.userService.DeleteUserByID(r.Context(), id); err != nil {
-		Error(w, err)
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
-	user, ok := model.UserFromContext(r.Context())
+func (h UserHandler) GetAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
+	u, ok := model.UserFromContext(r.Context())
 	if !ok {
-		Error(w, model.ErrPermissionDenied)
+		HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
-	MustJSON(w, userFromModel(user))
+	MustJSON(w, userFromModel(u))
 }
 
 func (h UserHandler) UpdateAuthenticatedUser(w http.ResponseWriter, r *http.Request) {
-	user, ok := model.UserFromContext(r.Context())
+	u, ok := model.UserFromContext(r.Context())
 	if !ok {
-		Error(w, model.ErrPermissionDenied)
+		HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
-	h.updateUser(w, r, user.ID)
+	h.updateUser(w, r, u.ID)
 }
 
 func (h UserHandler) ChangeAuthenticatedUserPassword(w http.ResponseWriter, r *http.Request) {
-	user, ok := model.UserFromContext(r.Context())
+	u, ok := model.UserFromContext(r.Context())
 	if !ok {
-		Error(w, model.ErrPermissionDenied)
+		HandleError(w, r, h.logger, model.ErrPermissionDenied)
 		return
 	}
 	var req changeUserPasswordRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		DecodeError(w, err)
+		HandleError(w, r, h.logger, JSONError{Err: err})
 		return
 	}
 	params := model.UpdateUserPasswordParams{
 		OldPassword: string(req.OldPassword),
 		NewPassword: string(req.NewPassword),
 	}
-	if err := h.userService.UpdateUserPasswordByID(r.Context(), user.ID, params); err != nil {
-		Error(w, err)
+	if err := h.userService.UpdateUserPasswordByID(r.Context(), u.ID, params); err != nil {
+		HandleError(w, r, h.logger, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func isSameUser(ctx context.Context, id uint) bool {
-	user, ok := model.UserFromContext(ctx)
-	if ok {
-		return id == user.ID
+	if u, ok := model.UserFromContext(ctx); ok {
+		return id == u.ID
 	}
 	return false
 }

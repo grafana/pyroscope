@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/api/mocks"
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
@@ -33,6 +34,7 @@ var _ = Describe("APIKeyHandler", func() {
 		ctrl = gomock.NewController(GinkgoT())
 		m = mocks.NewMockAPIKeyService(ctrl)
 		server = httptest.NewServer(newTestRouter(defaultUserCtx, router.Services{
+			Logger:        logrus.StandardLogger(),
 			APIKeyService: m,
 		}))
 	})

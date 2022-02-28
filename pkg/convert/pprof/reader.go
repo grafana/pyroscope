@@ -1,11 +1,10 @@
-package tree
+package pprof
 
 import (
-	"encoding/binary"
 	"reflect"
 	"unsafe"
 
-	"github.com/cespare/xxhash/v2"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
 type ProfileReader struct {
@@ -20,11 +19,13 @@ func (r *ProfileReader) SampleTypeFilter(fn func(string) bool) *ProfileReader {
 	return r
 }
 
+func AllSampleTypes(string) bool { return true }
+
 func (r *ProfileReader) Reset() {
 	r.cache = make(labelsCache)
 }
 
-func (r *ProfileReader) Load(sampleType int64, labels Labels) (*Tree, bool) {
+func (r *ProfileReader) Load(sampleType int64, labels tree.Labels) (*tree.Tree, bool) {
 	e, ok := r.cache.get(sampleType, labels.Hash())
 	if !ok {
 		return nil, false
@@ -32,13 +33,13 @@ func (r *ProfileReader) Load(sampleType int64, labels Labels) (*Tree, bool) {
 	return e.Tree, true
 }
 
-func (r *ProfileReader) Read(x *Profile, fn func(vt *ValueType, l Labels, t *Tree) (keep bool, err error)) error {
+func (r *ProfileReader) Read(x *tree.Profile, fn func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error)) error {
 	// Reuse cache if it is empty.
 	c := r.cache
 	if len(r.cache) != 0 || r.cache == nil {
 		c = make(labelsCache)
 	}
-	r.readTrees(x, c, NewFinder(x))
+	r.readTrees(x, c, tree.NewFinder(x))
 	for sampleType, entries := range c {
 		if t, ok := x.ResolveSampleType(sampleType); ok {
 			for h, e := range entries {
@@ -56,43 +57,8 @@ func (r *ProfileReader) Read(x *Profile, fn func(vt *ValueType, l Labels, t *Tre
 	return nil
 }
 
-func (x *Profile) ResolveLabels(l Labels) map[string]string {
-	m := make(map[string]string, len(l))
-	for _, label := range l {
-		if label.Str != 0 {
-			m[x.StringTable[label.Key]] = x.StringTable[label.Str]
-		}
-	}
-	return m
-}
-
-func (x *Profile) ResolveSampleType(v int64) (*ValueType, bool) {
-	for _, vt := range x.SampleType {
-		if vt.Type == v {
-			return vt, true
-		}
-	}
-	return nil, false
-}
-
-type Labels []*Label
-
-func (l Labels) Hash() uint64 {
-	h := xxhash.New()
-	t := make([]byte, 16)
-	for _, x := range l {
-		if x.Str == 0 {
-			continue
-		}
-		binary.LittleEndian.PutUint64(t[0:8], uint64(x.Key))
-		binary.LittleEndian.PutUint64(t[8:16], uint64(x.Str))
-		_, _ = h.Write(t)
-	}
-	return h.Sum64()
-}
-
 // readTrees generates trees from the profile populating c.
-func (r *ProfileReader) readTrees(x *Profile, c labelsCache, f Finder) {
+func (r *ProfileReader) readTrees(x *tree.Profile, c labelsCache, f tree.Finder) {
 	// SampleType value indexes.
 	indexes := make([]int, 0, len(x.SampleType))
 	// Corresponding type IDs used as the main cache keys.
@@ -149,15 +115,15 @@ func unsafeStrToSlice(s string) []byte {
 type labelsCache map[int64]map[uint64]*labelsCacheEntry
 
 type labelsCacheEntry struct {
-	Labels
-	*Tree
+	tree.Labels
+	*tree.Tree
 }
 
-func newCacheEntry(l Labels) *labelsCacheEntry {
-	return &labelsCacheEntry{Tree: New(), Labels: l}
+func newCacheEntry(l tree.Labels) *labelsCacheEntry {
+	return &labelsCacheEntry{Tree: tree.New(), Labels: l}
 }
 
-func (c labelsCache) getOrCreate(sampleType int64, l Labels) *labelsCacheEntry {
+func (c labelsCache) getOrCreate(sampleType int64, l tree.Labels) *labelsCacheEntry {
 	p, ok := c[sampleType]
 	if !ok {
 		e := newCacheEntry(l)
