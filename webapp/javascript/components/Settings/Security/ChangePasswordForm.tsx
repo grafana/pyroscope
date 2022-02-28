@@ -5,7 +5,8 @@ import { useAppDispatch } from '@pyroscope/redux/hooks';
 
 import { changeMyPassword } from '@pyroscope/redux/reducers/user';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
-import styles from './Security.module.css';
+import StatusMessage from '@ui/StatusMessage';
+import InputField from '@ui/InputField';
 
 function ChangePasswordForm(props) {
   const { user } = props;
@@ -57,37 +58,31 @@ function ChangePasswordForm(props) {
       <h2>Change password</h2>
       <div>
         <form onSubmit={handleFormSubmit}>
-          <div className={styles.errors}>{form.errors.join(', ')}</div>
-          <div className={styles.securityInputWrapper}>
-            <h4>Old password</h4>
-            <input
-              type="password"
-              placeholder="Password"
-              name="oldPassword"
-              required
-              onChange={handleChange}
-            />
-          </div>
-          <div className={styles.securityInputWrapper}>
-            <h4>New password</h4>
-            <input
-              type="password"
-              placeholder="New password"
-              name="password"
-              required
-              onChange={handleChange}
-            />
-          </div>
-          <div className={styles.securityInputWrapper}>
-            <h4>Confirm new password</h4>
-            <input
-              type="password"
-              placeholder="New password"
-              name="passwordAgain"
-              required
-              onChange={handleChange}
-            />
-          </div>
+          <StatusMessage type="error" message={form.errors.join(', ')} />
+          <InputField
+            label="Old password"
+            type="password"
+            placeholder="Password"
+            name="oldPassword"
+            required
+            onChange={handleChange}
+          />
+          <InputField
+            label="New password"
+            type="password"
+            placeholder="New password"
+            name="password"
+            required
+            onChange={handleChange}
+          />
+          <InputField
+            label="Confirm new password"
+            type="password"
+            placeholder="New password"
+            name="passwordAgain"
+            required
+            onChange={handleChange}
+          />
           <Button type="submit" kind="secondary">
             Save
           </Button>
