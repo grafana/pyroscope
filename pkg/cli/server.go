@@ -171,7 +171,7 @@ func newServerService(c *config.Server) (*serverService, error) {
 		Logger:                  svc.logger,
 		MetricsRegisterer:       defaultMetricsRegistry,
 		ExportedMetricsRegistry: exportedMetricsRegistry,
-		Scrape:                  svc.scrapeManager,
+		ScrapeManager:           svc.scrapeManager,
 		DB:                      svc.database.DB(),
 	})
 	if err != nil {

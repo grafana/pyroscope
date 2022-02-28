@@ -17,7 +17,6 @@ package discovery
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/sirupsen/logrus"
@@ -68,8 +67,6 @@ func (c *Configs) SetDirectory(dir string) {
 			v.SetDirectory(dir)
 		}
 	}
-	fmt.Println(dir)
-	fmt.Println("hello 3")
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.

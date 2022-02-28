@@ -76,7 +76,7 @@ type Controller struct {
 	userService     service.UserService
 	jwtTokenService service.JWTTokenService
 
-	Scrape *scrape.Manager
+	scrapeManager *scrape.Manager
 }
 
 type Config struct {
@@ -95,7 +95,7 @@ type Config struct {
 
 	Adhoc adhocserver.Server
 
-	Scrape *scrape.Manager
+	ScrapeManager *scrape.Manager
 }
 
 type Notifier interface {
@@ -140,9 +140,9 @@ func New(c Config) (*Controller, error) {
 			}),
 		}),
 
-		adhoc:  c.Adhoc,
-		db:     c.DB,
-		Scrape: c.Scrape,
+		adhoc:         c.Adhoc,
+		db:            c.DB,
+		scrapeManager: c.ScrapeManager,
 	}
 
 	var err error
@@ -290,7 +290,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 }
 
 func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Request) {
-	targets := ctrl.Scrape.TargetsActive()
+	targets := ctrl.scrapeManager.TargetsActive()
 	resp := []TargetsResponse{}
 	for k, v := range targets {
 		for _, t := range v {
