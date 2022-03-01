@@ -24,6 +24,7 @@ import viewsReducer from './reducers/views';
 import newRootStore from './reducers/newRoot';
 import settingsReducer from './reducers/settings';
 import userReducer from './reducers/user';
+import serviceDiscoveryReducer from './reducers/serviceDiscovery';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 import {
@@ -37,8 +38,6 @@ import {
   setQuery,
 } from './actions';
 
-import { parseLabels, encodeLabels } from '../util/key';
-
 const enhancer = composeWithDevTools(
   applyMiddleware(thunkMiddleware)
   // updateUrl(["from", "until", "labels"]),
@@ -51,6 +50,7 @@ const reducer = combineReducers({
   views: viewsReducer,
   settings: settingsReducer,
   user: userReducer,
+  serviceDiscovery: serviceDiscoveryReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
 });
 

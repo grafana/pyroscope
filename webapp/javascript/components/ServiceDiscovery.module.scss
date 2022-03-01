@@ -1,0 +1,92 @@
+$badge-info-background: #007bff;
+$badge-healthy-background: #2ecc40;
+$badge-error-background: #dc3545;
+$target-background: rgba(0, 0, 0, 0.3);
+
+.serviceDiscoveryApp {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 15px;
+
+  .header {
+    margin: 0 0 10px;
+  }
+
+  .collapsibleHeader {
+    font-weight: bold;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .collapsibleSection {
+    margin: 10px 0;
+    max-width: 100%;
+    overflow: auto;
+  }
+  .target {
+    // display: grid;
+    width: 100%;
+    grid-template-columns: 80px 1fr;
+    // background: $target-background;
+    color: white;
+    padding: 10px;
+    border-radius: 10px;
+    column-gap: 10px;
+    row-gap: 5px;
+    height: fit-content;
+    padding: 15px;
+    // box-shadow: 5px 5px 15px 5px rgba(255, 255, 255, 0.1);
+    .tableCell {
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 5px;
+      text-align: left;
+      line-height: 1.25;
+    }
+    th.tableCell {
+      vertical-align: bottom;
+      background-color: rgba(255, 255, 255, 0.05);
+      padding-top: 15px;
+      padding-bottom: 15px;
+    }
+    td.tableCell {
+      vertical-align: top;
+    }
+  }
+  tr:nth-child(2n) td {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .buttonGroup {
+    margin: 10px 0 20px;
+    button {
+      border: none;
+      border-right: 1px solid darken(#007bff, 20%);
+    }
+    button:last-child {
+      border-right: none;
+    }
+  }
+  .badge {
+    font-size: 12px;
+    display: inline-block;
+    font-weight: bold;
+    color: white;
+    padding: 1px 5px;
+    line-height: 1.5;
+    border-radius: 5px;
+    margin-right: 3px;
+    white-space: nowrap;
+    user-select: all;
+    &.info {
+      background: $badge-info-background;
+    }
+    &.healthy {
+      background: $badge-healthy-background;
+    }
+    &.error {
+      background: $badge-error-background;
+    }
+  }
+  .link {
+    color: $badge-info-background;
+  }
+}

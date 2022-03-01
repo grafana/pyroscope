@@ -1,3 +1,27 @@
+# [0.11.0](https://github.com/pyroscope-io/pyroscope/compare/v0.10.2...v0.11.0) (2022-03-01)
+
+
+### Bug Fixes
+
+* correct typo in dev Makefile target's depedency. ([#895](https://github.com/pyroscope-io/pyroscope/issues/895)) ([9ec9c0a](https://github.com/pyroscope-io/pyroscope/commit/9ec9c0ab4b68ca18a03e9f206e866ae56226ef10))
+* disable pyroscope logo ([#890](https://github.com/pyroscope-io/pyroscope/issues/890)) ([0477cff](https://github.com/pyroscope-io/pyroscope/commit/0477cff8565406c330b48c819c0ed16a69653cee))
+* **frontend:** only inline svg if imported via react ([#860](https://github.com/pyroscope-io/pyroscope/issues/860)) ([2f3bdf0](https://github.com/pyroscope-io/pyroscope/commit/2f3bdf0adb278c74819c60b215a41aea4ab417ee))
+* incorrect reads when downsampling ([#737](https://github.com/pyroscope-io/pyroscope/issues/737)) ([9f109ee](https://github.com/pyroscope-io/pyroscope/commit/9f109ee2e878a1eeb097fa7aab86655d2b4d09b1))
+* **panel-plugin:** don't load CSS file since it's loaded using css modules ([#891](https://github.com/pyroscope-io/pyroscope/issues/891)) ([183eaa0](https://github.com/pyroscope-io/pyroscope/commit/183eaa0e0e719d4f1c408195a2f2b5912b5071d3))
+* plural of date picker ([#831](https://github.com/pyroscope-io/pyroscope/issues/831)) ([8bd6eb8](https://github.com/pyroscope-io/pyroscope/commit/8bd6eb840123feb395a77d9077a64215ccf4b286))
+* use the provided name when it's not empty in JSON conversion. ([#861](https://github.com/pyroscope-io/pyroscope/issues/861)) ([d1c4066](https://github.com/pyroscope-io/pyroscope/commit/d1c40660186dea825ede65ef55cb0df84189f30c))
+
+
+### Features
+
+* add an upload diff endpoint for adhoc mode. ([#839](https://github.com/pyroscope-io/pyroscope/issues/839)) ([4a11f7d](https://github.com/pyroscope-io/pyroscope/commit/4a11f7dfd23151beb044a385ea0283142b1a8bd5)), closes [#784](https://github.com/pyroscope-io/pyroscope/issues/784)
+* add pprof profiles multiplexing ([#898](https://github.com/pyroscope-io/pyroscope/issues/898)) ([3e5711c](https://github.com/pyroscope-io/pyroscope/commit/3e5711cfbee2b62a3decb56ff78f0d58ef3a62f5))
+* add support for auth to grafana datasource plugin ([#844](https://github.com/pyroscope-io/pyroscope/issues/844)) ([8712404](https://github.com/pyroscope-io/pyroscope/commit/87124048c194ae27c975ebffd0589ef4241f2601))
+* adds a page with pull-mode targets ([#877](https://github.com/pyroscope-io/pyroscope/issues/877)) ([26c21f2](https://github.com/pyroscope-io/pyroscope/commit/26c21f2d3ecd5b043fe9facdb669dbee7cad6877)), closes [#592](https://github.com/pyroscope-io/pyroscope/issues/592) [#592](https://github.com/pyroscope-io/pyroscope/issues/592)
+* extract various components ([#868](https://github.com/pyroscope-io/pyroscope/issues/868)) ([fb4c2fc](https://github.com/pyroscope-io/pyroscope/commit/fb4c2fcb3dc279407685fea5eab9937f2dca1a81))
+
+
+
 ## [0.10.2](https://github.com/pyroscope-io/pyroscope/compare/v0.10.1...v0.10.2) (2022-02-15)
 
 

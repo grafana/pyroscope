@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "name": "pyroscope-lerna",
   "private": true,
-  "version": "0.10.2",
+  "version": "0.11.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
@@ -220,6 +220,8 @@
     "sass-loader": "^9.0.2",
     "style-loader": "^3.2.1",
     "svg-url-loader": "^7.1.1",
+    "sweetalert2": "^11.4.0",
+    "sweetalert2-react-content": "^4.2.0",
     "timezone-mock": "^1.3.0",
     "true-myth": "^5.1.2",
     "ts-essentials": "^9.0.0",

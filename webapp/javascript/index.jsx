@@ -18,6 +18,7 @@ import Sidebar from './components/Sidebar';
 import AdhocSingle from './components/AdhocSingle';
 import AdhocComparison from './components/AdhocComparison';
 import AdhocComparisonDiff from './components/AdhocComparisonDiff';
+import ServiceDiscoveryApp from './components/ServiceDiscoveryApp';
 import ServerNotifications from './components/ServerNotifications';
 // since this style is practically all pages
 import '@pyroscope/flamegraph/dist/index.css';
@@ -55,6 +56,9 @@ function App() {
         </Route>
         <Route path="/settings">
           <Settings />
+        </Route>
+        <Route path="/service-discovery">
+          <ServiceDiscoveryApp />
         </Route>
         {isAdhocUIEnabled && (
           <>

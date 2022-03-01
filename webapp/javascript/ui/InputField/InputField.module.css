@@ -1,6 +1,6 @@
-.userForm > div:not(:last-child) {
+.inputWrapper {
   display: flex;
-  margin: 10px 0px;
+  margin: 20px 0px;
   flex-direction: column;
   width: 30%;
   min-width: 150px;

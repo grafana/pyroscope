@@ -4,6 +4,7 @@ import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
 import { faFileAlt } from '@fortawesome/free-solid-svg-icons/faFileAlt';
 import { faCog } from '@fortawesome/free-solid-svg-icons/faCog';
+import { faInfoCircle } from '@fortawesome/free-solid-svg-icons/faInfoCircle';
 import { faSlack } from '@fortawesome/free-brands-svg-icons/faSlack';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons/faChevronLeft';
@@ -53,7 +54,11 @@ export function Sidebar2(props) {
   // so we must set it up manually
   // https://github.com/azouaoui-med/react-pro-sidebar/issues/84
   const isRouteActive = function (route: string) {
-    if (route === '/') {
+    if (
+      route === '/' ||
+      route === '/comparison' ||
+      route === '/adhoc-comparison'
+    ) {
       return pathname === route;
     }
 
@@ -190,6 +195,10 @@ export function Sidebar2(props) {
               <NavLink to={{ pathname: '/settings', search }} exact />
             </MenuItem>
           )}
+          <MenuItem icon={<Icon icon={faInfoCircle} />}>
+            Status
+            <NavLink to={{ pathname: '/service-discovery', search }} exact />
+          </MenuItem>
           <MenuItem icon={<Icon icon={faFileAlt} />}>
             <a
               rel="noreferrer"
