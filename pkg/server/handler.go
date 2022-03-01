@@ -44,6 +44,9 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 		} else if strings.HasPrefix(path, "/settings") {
 			ctrl.statsInc("settings")
 			ctrl.renderIndexPage(rw, r)
+		} else if path == "/service-discovery" {
+			ctrl.statsInc("service-discovery")
+			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)
 		}

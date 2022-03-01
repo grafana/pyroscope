@@ -32,11 +32,14 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/api/router"
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/model"
+	"github.com/pyroscope-io/pyroscope/pkg/scrape/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/service"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 	"github.com/pyroscope-io/pyroscope/webapp"
+
+	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 )
 
 const (
@@ -72,6 +75,8 @@ type Controller struct {
 	authService     service.AuthService
 	userService     service.UserService
 	jwtTokenService service.JWTTokenService
+
+	scrapeManager *scrape.Manager
 }
 
 type Config struct {
@@ -89,6 +94,8 @@ type Config struct {
 	storage.MetricsExporter
 
 	Adhoc adhocserver.Server
+
+	ScrapeManager *scrape.Manager
 }
 
 type Notifier interface {
@@ -96,6 +103,16 @@ type Notifier interface {
 	// on index page load. The message should point user to a critical problem.
 	// TODO(kolesnikovae): we should poll for notifications (or subscribe).
 	NotificationText() string
+}
+type TargetsResponse struct {
+	Job                string              `json:"job"`
+	TargetURL          string              `json:"url"`
+	DiscoveredLabels   labels.Labels       `json:"discoveredLabels"`
+	Labels             labels.Labels       `json:"labels"`
+	Health             scrape.TargetHealth `json:"health"`
+	LastScrape         time.Time           `json:"lastScrape"`
+	LastError          string              `json:"lastError"`
+	LastScrapeDuration string              `json:"lastScrapeDuration"`
 }
 
 func New(c Config) (*Controller, error) {
@@ -123,8 +140,9 @@ func New(c Config) (*Controller, error) {
 			}),
 		}),
 
-		adhoc: c.Adhoc,
-		db:    c.DB,
+		adhoc:         c.Adhoc,
+		db:            c.DB,
+		scrapeManager: c.ScrapeManager,
 	}
 
 	var err error
@@ -214,6 +232,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/", ctrl.indexHandler()},
 		{"/comparison", ctrl.indexHandler()},
 		{"/comparison-diff", ctrl.indexHandler()},
+		{"/service-discovery", ctrl.indexHandler()},
 		{"/adhoc-single", ctrl.indexHandler()},
 		{"/adhoc-comparison", ctrl.indexHandler()},
 		{"/adhoc-comparison-diff", ctrl.indexHandler()},
@@ -245,6 +264,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	diagnosticSecureRoutes := []route{
 		{"/config", ctrl.configHandler},
 		{"/build", ctrl.buildHandler},
+		{"/targets", ctrl.activeTargetsHandler},
 		{"/debug/storage/export/{db}", ctrl.storage.DebugExport},
 	}
 	if !ctrl.config.DisablePprofEndpoint {
@@ -271,6 +291,30 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	})
 
 	return r, nil
+}
+
+func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Request) {
+	targets := ctrl.scrapeManager.TargetsActive()
+	resp := []TargetsResponse{}
+	for k, v := range targets {
+		for _, t := range v {
+			var lastError string
+			if t.LastError() != nil {
+				lastError = t.LastError().Error()
+			}
+			resp = append(resp, TargetsResponse{
+				Job:                k,
+				TargetURL:          t.URL().String(),
+				DiscoveredLabels:   t.DiscoveredLabels(),
+				Labels:             t.Labels(),
+				Health:             t.Health(),
+				LastScrape:         t.LastScrape(),
+				LastError:          lastError,
+				LastScrapeDuration: t.LastScrapeDuration().String(),
+			})
+		}
+	}
+	ctrl.writeResponseJSON(w, resp)
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {

@@ -113,6 +113,9 @@ const initialState = {
     flamebearer: null,
     isProfileLoading: false,
   },
+  serviceDiscovery: {
+    data: [],
+  },
   isJSONLoading: false,
   maxNodes: 1024,
   tags: [],
@@ -325,7 +328,6 @@ export default function (state = initialState, action) {
         default:
           throw new Error(`Invalid viewSide: '${viewSide}'`);
       }
-
       return {
         ...state,
         comparison: {
@@ -336,7 +338,6 @@ export default function (state = initialState, action) {
         },
         isJSONLoading: false,
       };
-
     case REQUEST_COMPARISON_TIMELINE:
       return {
         ...state,
