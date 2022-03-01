@@ -3,6 +3,8 @@ import { connect } from 'react-redux';
 import { Target } from '@models/targets';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import { loadTargets } from '@pyroscope/redux/reducers/serviceDiscovery';
+import { formatDistance, parseISO } from 'date-fns';
+import cx from 'classnames';
 import styles from './ServiceDiscovery.module.scss';
 import Button from '../ui/Button';
 
@@ -31,13 +33,14 @@ const ServiceDiscoveryApp = (props: PropType) => {
   }
   return (
     <div className={styles.serviceDiscoveryApp}>
+      <h2 className={styles.header}>Targets</h2>
       <div className={styles.buttonGroup}>
         <Button
           kind="secondary"
           grouped
           onClick={() => setUnavailableFilter(!unavailableFilter)}
         >
-          {unavailableFilter ? 'All' : 'Unhealthy'}
+          {unavailableFilter ? 'Show All' : 'Show Unhealthy Only'}
         </Button>
         <Button
           kind="secondary"
@@ -48,27 +51,48 @@ const ServiceDiscoveryApp = (props: PropType) => {
         </Button>
       </div>
 
-      {Object.keys(data).map((job) => (
-        <CollapsibleSection
-          title={`${data[job][0].job} (${getUpCount(data[job])}/${
-            data[job].length
-          }) up`}
-          key={job}
-          open={expandAll}
-        >
-          {data[job].map((target, i) => {
-            /* eslint-disable-next-line react/jsx-props-no-spreading */
-            const targetElem = <Target {...target} key={target.url} />;
-            if (unavailableFilter) {
-              if (target.health !== 'up') {
-                return targetElem;
+      <div>
+        {Object.keys(data).length === 0 ? (
+          <div>
+            {'No pull-mode targets configured. See '}
+            <a
+              className={styles.link}
+              href="https://pyroscope.io/docs/pull-mode/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              documentation
+            </a>
+            {' for information on how to add targets.'}
+          </div>
+        ) : (
+          Object.keys(data).map((job) => {
+            const children = data[job].map((target, i) => {
+              /* eslint-disable-next-line react/jsx-props-no-spreading */
+              const targetElem = <Target {...target} key={target.url} />;
+              if (unavailableFilter) {
+                if (target.health !== 'up') {
+                  return targetElem;
+                }
+                return null;
               }
-              return null;
-            }
-            return targetElem;
-          })}
-        </CollapsibleSection>
-      ))}
+              return targetElem;
+            });
+
+            return (
+              <CollapsibleSection
+                title={`${data[job][0].job} (${getUpCount(data[job])}/${
+                  data[job].length
+                }) up`}
+                key={job}
+                open={expandAll}
+              >
+                {children}
+              </CollapsibleSection>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 };
@@ -78,16 +102,46 @@ const CollapsibleSection = ({ children, title, open }) => {
     <details open={open}>
       <summary className={styles.collapsibleHeader}>{title}</summary>
       <div className={styles.collapsibleSection}>
-        <div className={styles.grid}>{children}</div>
+        <table className={styles.target}>
+          <thead>
+            <tr>
+              <th className={styles.tableCell} style={{ width: '25%' }}>
+                Scrape URL
+              </th>
+              <th className={styles.tableCell} style={{ width: '10%' }}>
+                Health
+              </th>
+              <th className={styles.tableCell} style={{ width: '10%' }}>
+                Discovered labels
+              </th>
+              <th className={styles.tableCell} style={{ width: '10%' }}>
+                Labels
+              </th>
+              <th className={styles.tableCell} style={{ width: '10%' }}>
+                Last scrape
+              </th>
+              <th className={styles.tableCell} style={{ width: '10%' }}>
+                Scrape duration
+              </th>
+              <th className={styles.tableCell} style={{ width: '25%' }}>
+                Last error
+              </th>
+            </tr>
+          </thead>
+          <tbody>{children}</tbody>
+        </table>
       </div>
     </details>
   ) : null;
 };
 
+function formatDuration(input: string): string {
+  return `${parseFloat(input).toFixed(2)} ${input.match(/[a-zA-Z]+$/)[0]}`;
+}
+
 const Target = ({
   discoveredLabels,
   labels,
-  job,
   url,
   lastError,
   lastScrape,
@@ -95,42 +149,35 @@ const Target = ({
   health,
 }: Target) => {
   return (
-    <div className={styles.target}>
-      <div className={styles.heading}>Discovered labels</div>
-      <div className={`t-value ${styles.labels}`}>
+    <tr>
+      <td className={styles.tableCell}>{url}</td>
+      <td className={styles.tableCell}>
+        <Badge status={health === 'up' ? Status.healthy : Status.error}>
+          {health}
+        </Badge>
+      </td>
+      <td className={styles.tableCell}>
         {Object.keys(discoveredLabels).map((key) => (
           <Badge
             status={Status.info}
             key={key}
           >{`${key}=${discoveredLabels[key]}`}</Badge>
         ))}
-      </div>
-      <div className={styles.heading}>Labels</div>
-      <div className={`t-value ${styles.labels}`}>
+      </td>
+      <td className={styles.tableCell}>
         {Object.keys(labels).map((key) => (
           <Badge
             status={Status.info}
             key={key}
           >{`${key}=${labels[key]}`}</Badge>
         ))}
-      </div>
-      <div className={styles.heading}>Job</div>
-      <div className={styles.value}>{job}</div>
-      <div className={styles.heading}>Scrape Url</div>
-      <div className={styles.value}>{url}</div>
-      <div className={styles.heading}>Last scrape</div>
-      <div className={styles.value}>{lastScrape}</div>
-      <div className={styles.heading}>Last scrape duration</div>
-      <div className={styles.value}>{lastScrapeDuration}</div>
-      <div className={styles.heading}>Last error</div>
-      <div className={styles.value}>{lastError || '-'}</div>
-      <div className={styles.heading}>Health</div>
-      <div className={styles.value}>
-        <Badge status={health === 'up' ? Status.healthy : Status.error}>
-          {health}
-        </Badge>
-      </div>
-    </div>
+      </td>
+      <td className={styles.tableCell} title={lastScrape}>
+        {formatDistance(parseISO(lastScrape), new Date())} ago
+      </td>
+      <td className={styles.tableCell}>{formatDuration(lastScrapeDuration)}</td>
+      <td className={styles.tableCell}>{lastError || '-'}</td>
+    </tr>
   );
 };
 
@@ -148,9 +195,7 @@ const Badge = ({ children, status }: { children: string; status: Status }) => {
     }
   }
   return (
-    <span className={`${styles.badge} ${getStatusClass(status)}`}>
-      {children}
-    </span>
+    <span className={cx(styles.badge, getStatusClass(status))}>{children}</span>
   );
 };
 
