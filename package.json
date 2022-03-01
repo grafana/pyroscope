@@ -2,7 +2,7 @@
   "author": "Pyroscope Team",
   "name": "pyroscope-lerna",
   "private": true,
-  "version": "0.10.2",
+  "version": "0.11.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
