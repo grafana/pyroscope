@@ -16,12 +16,12 @@
 
 .search {
   background: rgba(255, 255, 255, 0.8);
-  color: #333;
+  color: var(--ps-c-gray-light-1);
   transition: background-color ease-out 0.1s;
   margin-right: 8px;
 }
 .search:focus {
-  background: rgba(255, 255, 255, 1);
+  background: var(--ps-c-white);
 }
 
 .search-small {
@@ -35,7 +35,7 @@
 .headerLogo {
   display: inline-block;
   text-decoration: none;
-  color: #fff;
+  color: var(--ps-c-white);
   font-size: 1.2em;
 }
 

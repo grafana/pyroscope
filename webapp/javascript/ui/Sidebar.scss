@@ -34,8 +34,8 @@ $sidebar-collapsed-width: 54px !default;
 // when collapsed, highlight since there's nothing visible
 .pro-sidebar.collapsed .pro-menu-item.active,
 .pro-sidebar.collapsed .pro-sub-menu.pro-menu-item:hover {
-  background: #333;
-  color: #fff;
+  background: var(--ps-c-gray-light-1);
+  color: var(--ps-c-white);
 }
 
 // for some reason it was inheriting a different background
