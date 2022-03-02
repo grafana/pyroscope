@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDownload } from '@fortawesome/free-solid-svg-icons/faDownload';
-import { version } from '../../../package.json';
+import { version } from '../../../../package.json'; // TODO: how to load this better?
 
 const START_YEAR = 2020;
 const PYROSCOPE_VERSION = version;
