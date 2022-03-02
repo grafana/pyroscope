@@ -212,7 +212,7 @@ install-dev-tools: ## Install dev tools
 	cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI {} go install {}
 
 .PHONY: web-bootstrap
-web-bootstrap: install-build-web-dependencies ## Bootstrap web tools
+web-bootstrap:
 	yarn bootstrap
 
 .PHONY: dev
