@@ -197,15 +197,17 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	ingestRouter.Methods(http.MethodPost).Handler(ctrl.ingestHandler())
 
 	// Routes not protected with auth. Drained at shutdown.
-	insecureRoutes, err := ctrl.getAuthRoutes()
+	authRoutes, err := ctrl.getAuthRoutes()
 	if err != nil {
 		return nil, err
 	}
 
+	ctrl.addRoutes(r, authRoutes)
+
 	assetsHandler := r.PathPrefix("/assets/").Handler(http.FileServer(ctrl.dir)).GetHandler().ServeHTTP
-	ctrl.addRoutes(r, append(insecureRoutes, []route{
+	ctrl.addRoutes(r, []route{
 		{"/forbidden", ctrl.forbiddenHandler()},
-		{"/assets/", assetsHandler}}...),
+		{"/assets/", assetsHandler}},
 		ctrl.drainMiddleware)
 
 	// Protected pages:
@@ -281,9 +283,9 @@ func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Re
 
 func (ctrl *Controller) getAuthRoutes() ([]route, error) {
 	authRoutes := []route{
-		{"/login", ctrl.loginHandler},
-		{"/logout", ctrl.logoutHandler},
-		{"/signup", ctrl.signupHandler},
+		{"/login", ctrl.indexHandler()},
+		{"/logout", ctrl.indexHandler()},
+		{"/signup", ctrl.indexHandler()},
 	}
 
 	if ctrl.config.Auth.Google.Enabled {
