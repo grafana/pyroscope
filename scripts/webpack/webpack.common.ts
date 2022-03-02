@@ -9,18 +9,21 @@ import { ESBuildMinifyPlugin } from 'esbuild-loader';
 
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
+const packagePath = path.resolve(__dirname, '../../packages/webapp');
+
 // use a fake hash when running locally
 const LOCAL_HASH = 'local';
 
 const pages = glob
-  .sync('./webapp/templates/!(standalone).html')
+  .sync('./packages/webapp/templates/!(standalone).html')
   .map((x) => path.basename(x));
 
+console.log('pages', pages);
 const pagePlugins = pages.map(
   (name) =>
     new HtmlWebpackPlugin({
-      filename: path.resolve(__dirname, `../../webapp/public/${name}`),
-      template: path.resolve(__dirname, `../../webapp/templates/${name}`),
+      filename: path.resolve(packagePath, `public/${name}`),
+      template: path.resolve(packagePath, `templates/${name}`),
       inject: false,
       templateParameters: (compilation) => {
         // TODO:
@@ -48,13 +51,13 @@ export default {
   target: 'web',
 
   entry: {
-    app: './webapp/javascript/index.jsx',
-    styles: './webapp/sass/profile.scss',
+    app: path.join(packagePath, 'javascript/index.jsx'),
+    styles: path.join(packagePath, 'sass/profile.scss'),
   },
 
   output: {
     publicPath: '',
-    path: path.resolve(__dirname, '../../webapp/public/assets'),
+    path: path.resolve(packagePath, 'public/assets'),
 
     // https://webpack.js.org/guides/build-performance/#avoid-production-specific-tooling
     filename:
@@ -70,7 +73,7 @@ export default {
     modules: [
       'node_modules',
       path.resolve('webapp'),
-      path.resolve('node_modules'),
+      path.resolve(packagePath, 'node_modules'),
     ],
   },
 
@@ -152,7 +155,7 @@ export default {
     new CopyPlugin({
       patterns: [
         {
-          from: 'webapp/images',
+          from: path.join(packagePath, 'images'),
           to: 'images',
         },
       ],

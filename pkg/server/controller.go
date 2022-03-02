@@ -26,6 +26,7 @@ import (
 	"github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
+	"github.com/pyroscope-io/pyroscope/packages/webapp"
 	adhocserver "github.com/pyroscope-io/pyroscope/pkg/adhoc/server"
 	"github.com/pyroscope-io/pyroscope/pkg/api"
 	"github.com/pyroscope-io/pyroscope/pkg/api/authz"
@@ -37,7 +38,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/util/hyperloglog"
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
-	"github.com/pyroscope-io/pyroscope/webapp"
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 )

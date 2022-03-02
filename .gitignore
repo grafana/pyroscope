@@ -1,6 +1,6 @@
 tmp
 node_modules
-/webapp/public
+packages/webapp/public
 /bin
 /third_party/*/lib*.a
 /third_party/*/target

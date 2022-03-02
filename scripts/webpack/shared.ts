@@ -1,6 +1,8 @@
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import path from 'path';
 
+const packagePath = path.resolve(__dirname, '../../packages/webapp');
+
 // TODO:
 export function getStyleLoaders() {
   return [
@@ -44,17 +46,11 @@ export function getAlias() {
     // rc-trigger uses babel-runtime which has internal dependency to core-js@2
     // this alias maps that dependency to core-js@t3
     'core-js/library/fn': 'core-js/stable',
-    '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
-    '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
-    '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
-    '@pyroscope/redux': path.resolve(
-      __dirname,
-      '../../webapp/javascript/redux'
-    ),
-    '@pyroscope/services': path.resolve(
-      __dirname,
-      '../../webapp/javascript/services'
-    ),
+    '@utils': path.resolve(packagePath, 'javascript/util'),
+    '@models': path.resolve(packagePath, 'javascript/models'),
+    '@ui': path.resolve(packagePath, 'javascript/ui'),
+    '@pyroscope/redux': path.resolve(packagePath, 'javascript/redux'),
+    '@pyroscope/services': path.resolve(packagePath, 'javascript/services'),
   };
 }
 
