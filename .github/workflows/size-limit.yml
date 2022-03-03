@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Install Webapp dependencies
+        run: yarn install
       - name: Build
         run: yarn build
       - uses: andresz1/size-limit-action@v1
