@@ -72,7 +72,6 @@ function Preferences(props) {
           type="text"
           placeholder="email"
           value={form?.email}
-          required
           name="email"
           onChange={handleFormChange}
         />
