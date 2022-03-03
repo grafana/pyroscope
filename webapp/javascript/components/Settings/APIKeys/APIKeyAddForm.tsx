@@ -97,6 +97,7 @@ function APIKeyAddForm() {
               name="name"
               value={form.name}
               onChange={handleFormChange}
+              required
             />
             <div>
               <h4>Role</h4>
