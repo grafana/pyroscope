@@ -65,7 +65,11 @@ const config = (env, options) => {
     resolve: {
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.svg'],
       alias: getAlias(),
-      modules: [path.resolve(packagePath), path.resolve('node_modules')],
+      modules: [
+        path.resolve(packagePath),
+        path.resolve(path.join(__dirname, '../../node_modules')),
+        //        path.resolve('node_modules'),
+      ],
     },
     plugins: [
       new MiniCssExtractPlugin({
