@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Maybe } from 'true-myth';
 
-import { Units } from '../../../../../webapp/javascript/util/format';
+import { Units } from '../../../../webapp/javascript/util/format';
 import { diffColorRed, diffColorGreen } from './color';
 import Tooltip, { TooltipProps } from './Tooltip';
 import { DefaultPalette } from './colorPalette';

@@ -1,4 +1,4 @@
-import { Units } from '../../../../../webapp/javascript/util/format';
+import { Units } from '../../../../webapp/javascript/util/format';
 
 const TestData = {
   empty: {

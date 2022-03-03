@@ -10,11 +10,11 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "paths": {
-      "@utils/*": ["./webapp/javascript/util/*"],
-      "@models/*": ["./webapp/javascript/models/*"],
-      "@ui/*": ["./webapp/javascript/ui/*"],
-      "@pyroscope/redux/*": ["./webapp/javascript/redux/*"],
-      "@pyroscope/services/*": ["./webapp/javascript/services/*"]
+      "@utils/*": ["./packages/webapp/javascript/util/*"],
+      "@models/*": ["./packages/webapp/javascript/models/*"],
+      "@ui/*": ["./packages/webapp/javascript/ui/*"],
+      "@pyroscope/redux/*": ["./packages/webapp/javascript/redux/*"],
+      "@pyroscope/services/*": ["./packages/webapp/javascript/services/*"]
     },
     "types": ["node"],
     "plugins": [{ "name": "typescript-plugin-css-modules" }]
@@ -25,10 +25,10 @@
       "module": "CommonJS"
     }
   },
-  "include": ["./webapp/javascript/"],
+  "include": ["./packages/webapp/javascript/"],
   "exclude": [
-    "webapp/javascript/**/*.spec.ts",
-    "webapp/javascript/**/*.spec.tsx",
+    "packages/webapp/javascript/**/*.spec.ts",
+    "packages/webapp/javascript/**/*.spec.tsx",
     "**/node_modules",
     "**/.*/"
   ]

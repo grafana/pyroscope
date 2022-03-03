@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flamebearer } from '../../../../../webapp/javascript/models/flamebearer';
+import { Flamebearer } from '../../../../webapp/javascript/models/flamebearer';
 import styles from './Header.module.css';
 import { FlamegraphPalette } from './colorPalette';
 import { DiffLegendPaletteDropdown } from './DiffLegendPaletteDropdown';
