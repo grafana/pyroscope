@@ -71,7 +71,6 @@ function APIKeyAddForm() {
     <>
       <h2>Add API Key</h2>
 
-      <StatusMessage type="error" message={form.errors.join(', ')} />
       <form onSubmit={handleFormSubmit}>
         {key ? (
           <div>
