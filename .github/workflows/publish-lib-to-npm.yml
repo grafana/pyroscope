@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Don't run for forks
     steps:
       #######################
       #      Checkout      #
@@ -24,9 +25,11 @@ jobs:
         if: github.event_name == 'pull_request'
         # For PRs check the actual commit
         # https://github.com/actions/checkout/issues/124#issuecomment-586664611
+        # https://github.com/actions/checkout/issues/455#issuecomment-792228083
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
 
       # pull all tags since they are required when generating locally
       # https://github.com/lerna/lerna/issues/2542
@@ -100,7 +103,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish Pull Request
-        if: github.event_name == 'pull_request'
+        # Only publish if it comes from the main repo
+        if: github.event_name == 'pull_request' and github.event.pull_request.head.repo.full_name == github.repository
         run: |
           yarn run lerna publish from-git \
             --skip-git \
