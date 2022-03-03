@@ -10,7 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     # Don't run for forks
-    #if: github.event.pull_request.head.repo.full_name == github.repository
     steps:
       #######################
       #      Checkout      #
@@ -105,7 +104,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish Pull Request
-        if: github.event_name == 'pull_request'
+        # Only publish if it comes from the main repo
+        if: github.event_name == 'pull_request' and github.event.pull_request.head.repo.full_name == github.repository
         run: |
           yarn run lerna publish from-git \
             --skip-git \
