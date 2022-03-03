@@ -55,9 +55,10 @@ WORKDIR /opt/pyroscope
 
 COPY scripts ./scripts
 COPY package.json yarn.lock Makefile lerna.json ./
+
+# TODO: only copy packages that are relevant
 COPY packages ./packages
 COPY babel.config.js .eslintrc.js .eslintignore .prettierrc tsconfig.json ./
-COPY webapp ./webapp
 
 # we only need the dependencies required to BUILD the application
 RUN --mount=type=cache,target=/usr/local/share/.cache/yarn/v6 make install-build-web-dependencies

@@ -15,10 +15,11 @@ const packagePath = path.resolve(__dirname, '../../packages/webapp');
 const LOCAL_HASH = 'local';
 
 const pages = glob
-  .sync('./packages/webapp/templates/!(standalone).html')
+  .sync(
+    path.join(__dirname, '../../packages/webapp/templates/!(standalone).html')
+  )
   .map((x) => path.basename(x));
 
-console.log('pages', pages);
 const pagePlugins = pages.map(
   (name) =>
     new HtmlWebpackPlugin({

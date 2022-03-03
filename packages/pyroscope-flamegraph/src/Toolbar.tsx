@@ -10,7 +10,8 @@ import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { DebounceInput } from 'react-debounce-input';
 import { Maybe } from 'true-myth';
 import useResizeObserver from '@react-hook/resize-observer';
-import Button from '../../../webapp/javascript/ui/Button';
+// TODO: don't import directly
+import Button from '../../webapp/javascript/ui/Button';
 import { FitModes } from './FlameGraph/fitMode';
 import styles from './ProfilerHeader.module.css';
 

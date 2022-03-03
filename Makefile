@@ -172,8 +172,6 @@ assets-watch: install-web-dependencies ## deprecated
 
 .PHONY: assets-release
 assets-release: ## Configure the assets for release
-	rm -rf webapp/public/assets
-	rm -rf webapp/public/*.html
 	yarn build
 
 .PHONY: assets-size-build

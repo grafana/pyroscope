@@ -22,17 +22,18 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
+// TODO: don't import directly
 import {
   Flamebearer,
   addTicks,
-} from '../../../../../webapp/javascript/models/flamebearer';
+} from '../../../../webapp/javascript/models/flamebearer';
 import {
   formatPercent,
   getFormatter,
   ratioToPercent,
-} from '../../../../../webapp/javascript/util/format';
-import { fitToCanvasRect } from '../../../../../webapp/javascript/util/fitMode';
-import { createFF } from '../../../../../webapp/javascript/util/flamebearer';
+} from '../../../../webapp/javascript/util/format';
+import { fitToCanvasRect } from '../../../../webapp/javascript/util/fitMode';
+import { createFF } from '../../../../webapp/javascript/util/flamebearer';
 import { getRatios } from './utils';
 import {
   PX_PER_LEVEL,

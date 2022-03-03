@@ -8,7 +8,7 @@ $sidebar-width: 250px !default;
 $sidebar-collapsed-width: 54px !default;
 
 // using @use seems to break the overwrites
-@import 'node_modules/react-pro-sidebar/dist/scss/styles.scss';
+@import '~react-pro-sidebar/dist/scss/styles.scss';
 
 // Disable the wobble effect
 // https://github.com/azouaoui-med/react-pro-sidebar/issues/20#issuecomment-714750330

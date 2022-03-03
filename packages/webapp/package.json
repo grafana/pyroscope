@@ -4,6 +4,13 @@
   "private": true,
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1",
-    "dev": "NODE_ENV=production webpack --config ../../scripts/webpack/webpack.dev.ts --watch"
+    "dev": "webpack --config ../../scripts/webpack/webpack.dev.ts --watch",
+    "clean": "rm -rf webapp/public/assets && rm -rf webapp/public/*.html",
+    "build": "yarn run clean && yarn run build:standalone && yarn run build:webapp",
+    "build:standalone": "echo noop || webpack --config ../../scripts/webpack/webpack.standalone.ts",
+    "build:webapp": "NODE_ENV=production webpack --config ../../scripts/webpack/webpack.prod.ts"
+  },
+  "dependencies": {
+    "@pyroscope/flamegraph": "*"
   }
 }

@@ -5,7 +5,7 @@ import prod from './webpack.prod';
 module.exports = merge(prod, {
   output: {
     publicPath: '',
-    path: path.resolve(__dirname, '../../webapp/public/assets'),
+    path: path.resolve(__dirname, '../../packages/webapp/public/assets'),
 
     // build WITHOUT hash
     // otherwise size-limit won't know what to compare to

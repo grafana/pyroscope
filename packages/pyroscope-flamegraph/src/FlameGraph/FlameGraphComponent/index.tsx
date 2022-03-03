@@ -13,7 +13,7 @@ import ContextMenu from './ContextMenu';
 import { PX_PER_LEVEL } from './constants';
 import Header from './Header';
 import { FlamegraphPalette } from './colorPalette';
-import { Flamebearer } from '../../../../../webapp/javascript/models/flamebearer';
+import { Flamebearer } from '../../../../webapp/javascript/models/flamebearer';
 import indexStyles from './styles.module.scss';
 
 interface FlamegraphProps {
