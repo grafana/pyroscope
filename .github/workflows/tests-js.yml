@@ -36,6 +36,11 @@ jobs:
           name: js coverage
           fail_ci_if_error: false
           verbose: true
+
+      # We need to build the dependencies otherwise linting will fail with errors such as
+      # Unable to resolve path to module '@pyroscope/flamegraph'
+      - name: Build
+        run: yarn build
       - name: Run Webapp lints
         run: yarn lint
       - name: Run Webapp Format check
