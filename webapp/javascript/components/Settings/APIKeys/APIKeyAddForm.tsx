@@ -12,7 +12,11 @@ import StatusMessage from '@ui/StatusMessage';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
 
-export type APIKeyAddProps = APIKey;
+// Extend the API key, but add form validation errors and ttlSeconds
+export interface APIKeyAddProps extends APIKey {
+  errors?: string[];
+  ttlSeconds?: number;
+}
 
 function APIKeyAddForm() {
   const [form, setForm]: [APIKeyAddProps, (value) => void] = useState({
