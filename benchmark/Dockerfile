@@ -16,6 +16,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY ./pkg pkg
+COPY ./packages/webapp packages/webapp
 COPY ./benchmark benchmark
 
 RUN go build -o pyrobench ./benchmark/cmd
