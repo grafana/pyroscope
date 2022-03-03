@@ -1,6 +1,6 @@
-/webapp/public/**
-/webapp/javascript/util/**
-/webapp/__tests__/**
+packages/webapp/public/**
+packages/webapp/javascript/util/**
+packages/webapp/__tests__/**
 /benchmark/**
 scripts/**
 dist
