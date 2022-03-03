@@ -1,4 +1,4 @@
-webapp/public
+packages/webapp/public
 dist
 third_party
 *.md
@@ -7,3 +7,4 @@ monitoring/gen/*
 coverage
 *.html
 lerna.json
+examples/rust/basic/target/
