@@ -31,7 +31,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{github.event.pull_request.head.repo.full_name}}
 
-
       # pull all tags since they are required when generating locally
       # https://github.com/lerna/lerna/issues/2542
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
