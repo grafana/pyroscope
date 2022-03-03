@@ -96,7 +96,7 @@ COPY third_party/rustdeps/rbspy.h /opt/pyroscope/third_party/rustdeps/rbspy.h
 COPY third_party/rustdeps/pyspy.h /opt/pyroscope/third_party/rustdeps/pyspy.h
 COPY third_party/phpspy/phpspy.h /opt/pyroscope/third_party/phpspy/phpspy.h
 COPY --from=phpspy-builder /var/www/html/third_party/phpspy/libphpspy.a /opt/pyroscope/third_party/phpspy/libphpspy.a
-COPY --from=js-builder /opt/pyroscope/packages/webapp/public ./webapp/public
+COPY --from=js-builder /opt/pyroscope/packages/webapp/public ./packages/webapp/public
 COPY Makefile ./
 COPY tools ./tools
 COPY go.mod go.sum ./
