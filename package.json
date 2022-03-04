@@ -14,7 +14,8 @@
   ],
   "scripts": {
     "bootstrap": "lerna bootstrap",
-    "postinstall": "./scripts/web-postinstall.sh",
+    "web-postinstall": "scripts/web-postinstall.js",
+    "postinstall": "yarn run web-postinstall",
     "dev": "yarn run dev:webapp",
     "dev:panel": "NODE_ENV=development webpack --config scripts/webpack/webpack.panel.ts --watch",
     "dev:datasource": "NODE_ENV=development webpack --config scripts/webpack/webpack.datasource.ts --watch",
@@ -166,6 +167,7 @@
     "classnames": "^2.2.6",
     "clsx": "^1.1.1",
     "color": "^3.1.3",
+    "command-exists": "^1.2.9",
     "copy-webpack-plugin": "^6.3.2",
     "css-loader": "^4.0.0",
     "d3": "^7.3.0",
@@ -182,6 +184,7 @@
     "humanize-duration": "^3.25.1",
     "jest-fetch-mock": "^3.0.3",
     "jquery.flot.tooltip": "^0.9.0",
+    "lerna": "^4.0.0",
     "lodash": "^4.17.21",
     "lodash.debounce": "^4.0.8",
     "lodash.defaults": "^4.2.0",
@@ -230,7 +233,6 @@
     "ts-essentials": "^9.0.0",
     "ts-node": "^10.4.0",
     "url-loader": "^4.1.1",
-    "lerna": "^4.0.0",
     "webpack-cli": "^4.8.0",
     "zod": "^3.11.6"
   },
