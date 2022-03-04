@@ -1,5 +1,7 @@
 ---
 auth:
+  signup-default-role: Admin
+
   gitlab:
     enabled: true
     api-url: http://localhost:18080
