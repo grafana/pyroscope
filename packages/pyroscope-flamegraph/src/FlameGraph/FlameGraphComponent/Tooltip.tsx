@@ -7,7 +7,8 @@ import {
   numberWithCommas,
   formatPercent,
   ratioToPercent,
-} from '../../../../../webapp/javascript/util/format';
+} from '../../format/format';
+
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 import styles from './Tooltip.module.scss';
 
