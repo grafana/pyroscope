@@ -21,9 +21,7 @@ export default function murmurhash3_32_gc(key: string, seed = 0) {
   let h1;
   let h1b;
   let c1;
-  let c1b;
   let c2;
-  let c2b;
   let k1;
   let i;
 

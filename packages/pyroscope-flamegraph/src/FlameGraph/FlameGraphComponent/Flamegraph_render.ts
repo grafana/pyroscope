@@ -22,11 +22,7 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
-import { createFF } from '@pyroscope/models';
-import {
-  Flamebearer,
-  addTicks,
-} from '../../../../../webapp/javascript/models/flamebearer';
+import { createFF, Flamebearer } from '@pyroscope/models';
 import {
   formatPercent,
   getFormatter,
@@ -172,8 +168,11 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
 
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];
+    if (!level) {
+      throw new Error(`Could not find level: ${topLevel + i}`);
+    }
+
     for (let j = 0; j < level.length; j += ff.jStep) {
-      const name = getFunctionName(names, j, format, level);
       const barIndex = ff.getBarOffset(level, j);
       const x = tickToX(barIndex);
       const y = i * PX_PER_LEVEL + (isFocused ? BAR_HEIGHT : 0);
@@ -221,8 +220,6 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       /*      D r a w   R e c t      */
       /*******************************/
       const { spyName } = props;
-      let leftTicks: number | undefined;
-      let rightTicks: number | undefined;
 
       const getColor = () => {
         const common = {
@@ -323,7 +320,22 @@ function getFunctionName(
   level: number[]
 ) {
   const ff = createFF(format);
-  const shortName = names[level[j + ff.jName]];
+
+  let l = level[j + ff.jName];
+  if (l === undefined) {
+    l = -1;
+  }
+  const shortName = names[l];
+
+  if (!shortName) {
+    console.warn('Could not find function name for', {
+      j,
+      format,
+      level,
+      names,
+    });
+    return '';
+  }
   return shortName;
 }
 
@@ -359,8 +371,6 @@ type getColorCfg = {
 };
 
 function getColorCommon({
-  selectedLevel,
-  i,
   collapsed,
   highlightModeOn,
   isHighlighted,
@@ -368,9 +378,6 @@ function getColorCommon({
   getColorCfg,
   'selectedLevel' | 'i' | 'collapsed' | 'highlightModeOn' | 'isHighlighted'
 >) {
-  // all above selected level should be dimmed
-  const a = selectedLevel > i ? 0.33 : 1;
-
   // Collapsed
   if (collapsed) {
     return colorGreyscale(200, 0.66);
@@ -397,13 +404,21 @@ function getColorSingle(cfg: getColorCfg) {
   const ff = createFF('single');
 
   const a = cfg.selectedLevel > cfg.i ? 0.33 : 1;
-  return colorBasedOnPackageName(
-    cfg.palette,
-    getPackageNameFromStackTrace(
-      cfg.spyName,
-      cfg.names[cfg.level[cfg.j + ff.jName]]
-    )
-  ).alpha(a);
+
+  // TODO: clean this up
+  let l = cfg.level[cfg.j + ff.jName];
+  if (l === undefined) {
+    console.warn('Could nto find level', {
+      l: cfg.j,
+      jName: ff.jName,
+      level: cfg.level,
+    });
+    l = -1;
+  }
+  const name = cfg.names[l] || '';
+  const packageName = getPackageNameFromStackTrace(cfg.spyName, name) || '';
+
+  return colorBasedOnPackageName(cfg.palette, packageName).alpha(a);
 }
 
 function getColorDouble(
@@ -418,7 +433,6 @@ function getColorDouble(
 
   const a = cfg.selectedLevel > cfg.i ? 0.33 : 1;
   const { leftRatio, rightRatio } = getRatios(
-    'double',
     cfg.level,
     cfg.j,
     cfg.leftTicks,
@@ -439,7 +453,17 @@ function nodeIsInQuery(
   names: string[],
   query: string
 ) {
-  return names[level[index]].indexOf(query) >= 0;
+  const l = level[index];
+  if (!l) {
+    return false;
+  }
+
+  const l2 = names[l];
+  if (!l2) {
+    return false;
+  }
+
+  return l2.indexOf(query) >= 0;
 }
 
 function getCanvasWidth(canvas: HTMLCanvasElement) {

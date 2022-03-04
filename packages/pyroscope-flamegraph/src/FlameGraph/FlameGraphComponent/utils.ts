@@ -2,10 +2,7 @@
 import { doubleFF } from '@pyroscope/models';
 
 // not entirely sure where this should fit
-
 function getRatios(
-  // Just to provide some help, so that people don't run getRatios on viewType 'single'
-  viewType: 'double',
   level: number[],
   j: number,
   leftTicks: number,
