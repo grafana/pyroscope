@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     // TODO: fix the errors
-    //    "strict": true
+    "strict": true
   },
   "include": ["./src/index.tsx"]
 }

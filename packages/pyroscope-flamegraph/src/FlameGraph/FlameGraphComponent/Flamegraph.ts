@@ -1,6 +1,6 @@
 import { DeepReadonly } from 'ts-essentials';
 import { Maybe } from 'true-myth';
-import { createFF, Flamebearer } from '@pyroscope/models';
+import { createFF, Flamebearer, singleFF, doubleFF } from '@pyroscope/models';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 import type { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine
@@ -353,10 +353,10 @@ export default class Flamegraph {
     const { i, j } = this.xyToBarIndex(xy.x, xy.y);
     const level = this.flamebearer.levels[i];
 
-    const { ff } = this;
-
     switch (this.flamebearer.format) {
       case 'single': {
+        const ff = singleFF;
+
         return {
           format: 'single' as const,
           name: this.flamebearer.names[ff.getBarName(level, j)],
@@ -366,6 +366,8 @@ export default class Flamegraph {
         };
       }
       case 'double': {
+        const ff = doubleFF;
+
         return {
           format: 'double' as const,
           barTotal: ff.getBarTotal(level, j),
@@ -410,8 +412,6 @@ export default class Flamegraph {
       const data = this.xyToBarData(xyWithinBounds);
 
       return {
-        x: xyWithinBounds.x,
-        y: xyWithinBounds.y,
         i,
         j,
         ...position,

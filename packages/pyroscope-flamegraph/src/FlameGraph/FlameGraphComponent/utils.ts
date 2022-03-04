@@ -1,5 +1,5 @@
 /* eslint-disable import/prefer-default-export */
-import { createFF } from '@pyroscope/models';
+import { doubleFF } from '@pyroscope/models';
 
 // not entirely sure where this should fit
 
@@ -11,7 +11,7 @@ function getRatios(
   leftTicks: number,
   rightTicks: number
 ) {
-  const ff = createFF(viewType);
+  const ff = doubleFF;
 
   // throw an error
   // since otherwise there's no way to calculate a diff
