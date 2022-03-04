@@ -44,6 +44,7 @@ jobs:
           verbose: true
 
       - name: Run Webapp lints
-        run: yarn lint
+        # Use use --quiet so that it only report errors
+        run: yarn lint --quiet
       - name: Run Webapp Format check
         run: yarn format:check
