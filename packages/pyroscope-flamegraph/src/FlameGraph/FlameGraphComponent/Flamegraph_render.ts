@@ -31,7 +31,7 @@ import {
   getFormatter,
   ratioToPercent,
 } from '../../../../../webapp/javascript/util/format';
-import { fitToCanvasRect } from '../../fitMode/fitMode';
+import { fitToCanvasRect } from '../../../../../webapp/javascript/util/fitMode';
 import { createFF } from '../../../../../webapp/javascript/util/flamebearer';
 import { getRatios } from './utils';
 import {
