@@ -111,7 +111,7 @@ export function getPackageNameFromStackTrace(
   const regexp = spyToRegex(spyName);
   const fullStackGroups = stackTrace.match(regexp);
   if (fullStackGroups && fullStackGroups.groups) {
-    return fullStackGroups.groups.packageName;
+    return fullStackGroups.groups['packageName'];
   }
   return stackTrace;
 }

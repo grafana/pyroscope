@@ -77,6 +77,8 @@ module.exports = {
         ],
       },
     ],
+    // otherwise it conflincts with ts411
+    'dot-notation': 'off',
   },
   env: {
     browser: true,
