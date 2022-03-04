@@ -3,13 +3,13 @@
 
 import React from 'react';
 import clsx from 'clsx';
+import { createFF } from '@pyroscope/models';
 import { getFormatter } from './format/format';
 import {
   colorBasedOnPackageName,
   defaultColor,
   getPackageNameFromStackTrace,
 } from './FlameGraph/FlameGraphComponent/color';
-import { createFF } from './FlameGraph/flamebearer';
 import { fitIntoTableCell } from './fitMode/fitMode';
 import styles from './ProfilerTable.module.scss';
 

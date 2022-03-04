@@ -22,6 +22,7 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
+import { createFF } from '@pyroscope/models';
 import {
   Flamebearer,
   addTicks,
@@ -32,7 +33,6 @@ import {
   ratioToPercent,
 } from '../../format/format';
 import { fitToCanvasRect } from '../../fitMode/fitMode';
-import { createFF } from '../../../../../webapp/javascript/util/flamebearer';
 import { getRatios } from './utils';
 import {
   PX_PER_LEVEL,

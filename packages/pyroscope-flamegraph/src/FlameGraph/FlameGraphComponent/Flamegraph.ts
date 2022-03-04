@@ -1,7 +1,6 @@
 import { DeepReadonly } from 'ts-essentials';
 import { Maybe } from 'true-myth';
-import { createFF } from '../../../../../webapp/javascript/util/flamebearer';
-import { Flamebearer } from '../../../../../webapp/javascript/models/flamebearer';
+import { createFF, Flamebearer } from '@pyroscope/models';
 import { PX_PER_LEVEL, BAR_HEIGHT, COLLAPSE_THRESHOLD } from './constants';
 import type { FlamegraphPalette } from './colorPalette';
 // there's a dependency cycle here but it should be fine

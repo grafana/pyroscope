@@ -1,5 +1,5 @@
 /* eslint-disable import/prefer-default-export */
-import { createFF } from '../../../../../webapp/javascript/util/flamebearer';
+import { createFF } from '@pyroscope/models';
 
 // not entirely sure where this should fit
 
