@@ -3,12 +3,10 @@
 
 import React from 'react';
 import clsx from 'clsx';
-import { getFormatter } from './FlameGraph/format';
+import { getFormatter } from './format/format';
 import {
   colorBasedOnPackageName,
   defaultColor,
-  diffColorGreen,
-  diffColorRed,
   getPackageNameFromStackTrace,
 } from './FlameGraph/FlameGraphComponent/color';
 import { createFF } from './FlameGraph/flamebearer';
