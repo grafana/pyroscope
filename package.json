@@ -21,7 +21,7 @@
     "dev:standalone": "webpack --config scripts/webpack/webpack.standalone.ts --watch",
     "dev:flamegraph": "yarn run lerna run dev --scope=@pyroscope/flamegraph",
     "dev:webapp": "yarn run lerna run dev --scope=@pyroscope/webapp",
-    "build": "yarn run build:standalone && yarn run build:webapp",
+    "build": "yarn run build:webapp",
     "build:webapp": "lerna run build --scope=@pyroscope/webapp --include-dependencies",
     "build:panel": "lerna run build --scope=@pyroscope/panel-plugin --include-dependencies",
     "build:datasource": "lerna run build --scope=@pyroscope/datasource-plugin --include-dependencies",
