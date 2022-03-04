@@ -1,0 +1,16 @@
+{
+  "name": "@pyroscope/webapp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1",
+    "dev": "webpack --config ../scripts/webpack/webpack.dev.ts --watch",
+    "clean": "rm -rf public/assets && rm -rf public/*.html",
+    "build": "yarn run clean && yarn run build:standalone && yarn run build:webapp",
+    "build:standalone": "webpack --config ../scripts/webpack/webpack.standalone.ts",
+    "build:webapp": "NODE_ENV=production webpack --config ../scripts/webpack/webpack.prod.ts"
+  },
+  "dependencies": {
+    "@pyroscope/flamegraph": "*"
+  }
+}

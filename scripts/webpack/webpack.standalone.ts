@@ -5,6 +5,8 @@ import path from 'path';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
+const packagePath = path.resolve(__dirname, '../../webapp');
+
 // Creates a file in webapp/public/standalone.html
 // With js+css+svg embed into the html
 const config = (env, options) => {
@@ -30,8 +32,8 @@ const config = (env, options) => {
     mode: 'production',
     //  devtool: 'eval-source-map',
     entry: {
-      app: './webapp/javascript/standalone.tsx',
-      styles: './webapp/sass/standalone.scss',
+      app: path.join(packagePath, './javascript/standalone.tsx'),
+      styles: path.join(packagePath, './sass/standalone.scss'),
     },
 
     optimization: {
@@ -62,7 +64,11 @@ const config = (env, options) => {
     resolve: {
       extensions: ['.ts', '.tsx', '.js', '.jsx', '.svg'],
       alias: getAlias(),
-      modules: [path.resolve('webapp'), path.resolve('node_modules')],
+      modules: [
+        path.resolve(packagePath),
+        path.resolve(path.join(__dirname, '../../node_modules')),
+        path.resolve('node_modules'),
+      ],
     },
     plugins: [
       new MiniCssExtractPlugin({
@@ -74,14 +80,8 @@ const config = (env, options) => {
           // to know what to replace for the flamegraph
           removeComments: false,
         },
-        filename: path.resolve(
-          __dirname,
-          `../../webapp/public/standalone.html`
-        ),
-        template: path.resolve(
-          __dirname,
-          `../../webapp/templates/standalone.html`
-        ),
+        filename: path.resolve(packagePath, `public/standalone.html`),
+        template: path.resolve(packagePath, `templates/standalone.html`),
       }),
       new InlineChunkHtmlPlugin(HtmlWebpackPlugin, [/.*/]),
       new HTMLInlineCSSWebpackPlugin(),
