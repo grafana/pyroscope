@@ -126,12 +126,15 @@ export default class Flamegraph {
 
     // delay calculation since they may not be set
     const calculatedZoomRange = (zoom: { i: number; j: number }) => {
+      const level = this.flamebearer.levels[zoom.i];
+      if (!level) {
+        throw new Error(`Could not find level: '${zoom.i}'`);
+      }
+
       const zoomMin =
-        ff.getBarOffset(this.flamebearer.levels[zoom.i], zoom.j) /
-        this.flamebearer.numTicks;
+        ff.getBarOffset(level, zoom.j) / this.flamebearer.numTicks;
       const zoomMax =
-        (ff.getBarOffset(this.flamebearer.levels[zoom.i], zoom.j) +
-          ff.getBarTotal(this.flamebearer.levels[zoom.i], zoom.j)) /
+        (ff.getBarOffset(level, zoom.j) + ff.getBarTotal(level, zoom.j)) /
         this.flamebearer.numTicks;
 
       return {
@@ -141,18 +144,17 @@ export default class Flamegraph {
     };
 
     const calculatedFocusRange = (focusedNode: { i: number; j: number }) => {
+      const level = this.flamebearer.levels[focusedNode.i];
+
+      if (!level) {
+        throw new Error(`Could not find level: '${focusedNode.i}'`);
+      }
       const focusMin =
-        ff.getBarOffset(this.flamebearer.levels[focusedNode.i], focusedNode.j) /
-        this.flamebearer.numTicks;
+        ff.getBarOffset(level, focusedNode.j) / this.flamebearer.numTicks;
+
       const focusMax =
-        (ff.getBarOffset(
-          this.flamebearer.levels[focusedNode.i],
-          focusedNode.j
-        ) +
-          ff.getBarTotal(
-            this.flamebearer.levels[focusedNode.i],
-            focusedNode.j
-          )) /
+        (ff.getBarOffset(level, focusedNode.j) +
+          ff.getBarTotal(level, focusedNode.j)) /
         this.flamebearer.numTicks;
 
       return {
@@ -302,7 +304,12 @@ export default class Flamegraph {
     const i = Math.floor(computedY / PX_PER_LEVEL) + compensation;
 
     if (i >= 0 && i < this.flamebearer.levels.length) {
-      const j = this.binarySearchLevel(x, this.flamebearer.levels[i]);
+      const level = this.flamebearer.levels[i];
+      if (!level) {
+        throw new Error(`Could not find level: '${i}'`);
+      }
+
+      const j = this.binarySearchLevel(x, level);
 
       return { i, j };
     }
@@ -332,6 +339,9 @@ export default class Flamegraph {
     );
 
     const level = this.flamebearer.levels[i];
+    if (!level) {
+      throw new Error(`Could not find level: '${i}'`);
+    }
     const posX = Math.max(this.tickToX(ff.getBarOffset(level, j)), 0);
 
     // lower bound is 0
@@ -352,6 +362,9 @@ export default class Flamegraph {
   private xyToBarData = (xy: XYWithinBounds) => {
     const { i, j } = this.xyToBarIndex(xy.x, xy.y);
     const level = this.flamebearer.levels[i];
+    if (!level) {
+      throw new Error(`Could not find level: '${i}'`);
+    }
 
     switch (this.flamebearer.format) {
       case 'single': {
