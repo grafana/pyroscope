@@ -9,7 +9,8 @@ $sidebar-collapsed-width: 54px !default;
 
 // We can't use ~react-pro-sidebar
 // since that's not valid sass syntax, which breaks jest
-@import '../node_modules/react-pro-sidebar/dist/scss/styles.scss';
+//@import '../node_modules/react-pro-sidebar/dist/scss/styles.scss';
+@import '~react-pro-sidebar/dist/scss/styles.scss';
 
 // Disable the wobble effect
 // https://github.com/azouaoui-med/react-pro-sidebar/issues/20#issuecomment-714750330
