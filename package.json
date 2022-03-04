@@ -13,6 +13,7 @@
     "webapp"
   ],
   "scripts": {
+    "start": "lerna-watch @pyroscope/webapp",
     "bootstrap": "lerna bootstrap",
     "web-postinstall": "scripts/web-postinstall.js",
     "postinstall": "yarn run web-postinstall",
@@ -120,6 +121,7 @@
     "jest-canvas-mock": "^2.3.1",
     "jest-css-modules-transform": "^4.3.0",
     "jest-image-snapshot": "^4.5.1",
+    "lerna-watch": "^1.0.0",
     "lint-staged": "^11.1.2",
     "monaco-editor-webpack-plugin": "^1.9.0",
     "oauth2-mock-server": "^4.3.0",

@@ -1,4 +1,3 @@
 air: air
-webpack: yarn dev
+frontend: yarn start
 webpack-standalone: yarn dev:standalone
-flamegraph: yarn dev:flamegraph
