@@ -7,6 +7,7 @@
   "private": true,
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "type-check": "tsc -p tsconfig.json --noEmit",
     "watch": "yarn run build --watch --preserveWatchOutput"
   },
   "peerDependencies": {

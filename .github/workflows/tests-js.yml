@@ -1,4 +1,4 @@
-name: JS Tests
+name: JS Tests/Lint/Type-check
 
 on:
   push:
@@ -43,8 +43,11 @@ jobs:
           fail_ci_if_error: false
           verbose: true
 
-      - name: Run Webapp lints
+      - name: Run Lint
         # Use use --quiet so that it only report errors
         run: yarn lint --quiet
-      - name: Run Webapp Format check
+      - name: Run Format check
         run: yarn format:check
+
+      - name: Run Type check
+        run: yarn type-check
