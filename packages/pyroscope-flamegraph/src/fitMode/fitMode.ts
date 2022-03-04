@@ -7,6 +7,8 @@ export const FitModes = {
   HEAD: 'HEAD',
 };
 
+export type Modes = 'TAIL' | 'HEAD';
+
 const margin = 3;
 
 /**
@@ -18,13 +20,30 @@ const margin = 3;
  * @param {string} fullText - The text that will be first tried.
  * @param {string} shortText - The text that willbe used when fullText can't fit. It's normally a substring of the original text.
  */
+
+interface fitToCanvasRectProps {
+  mode: Modes;
+
+  /** charSize - Size in pixels of an individual character. Assumes it's a monospace font. */
+  charSize: number;
+
+  /** Width in pixels of the rectangle */
+  rectWidth: number;
+
+  /** The text that will be first tried to fit */
+  fullText: string;
+
+  /** The text that willbe used when fullText can't fit. It's normally a substring of the original text. */
+  shortText: string;
+}
+
 export function fitToCanvasRect({
   mode,
   charSize,
   rectWidth,
   fullText,
   shortText,
-}) {
+}: fitToCanvasRectProps) {
   switch (mode) {
     case FitModes.TAIL:
       // Case 1:
@@ -89,7 +108,7 @@ export function fitToCanvasRect({
  * or an empty object if not applicable.
  * @param {FitModes} mode - The mode
  */
-export function fitIntoTableCell(mode) {
+export function fitIntoTableCell(mode: Modes) {
   switch (mode) {
     case FitModes.TAIL:
       return {
