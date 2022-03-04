@@ -4,7 +4,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Maybe } from 'true-myth';
 
-import { Units } from '../../../../../webapp/javascript/util/format';
 import { diffColorRed, diffColorGreen } from './color';
 import Tooltip, { TooltipProps } from './Tooltip';
 import { DefaultPalette } from './colorPalette';
@@ -36,7 +35,7 @@ describe('Tooltip', () => {
         <TestCanvas
           canvasRef={undefined}
           format="single"
-          units={Units.Samples}
+          units="samples"
           numTicks={100}
           sampleRate={100}
           xyToData={xyToData}
@@ -95,7 +94,7 @@ describe('Tooltip', () => {
         <TestCanvas
           canvasRef={undefined}
           format="double"
-          units={Units.Samples}
+          units="samples"
           numTicks={100}
           sampleRate={100}
           leftTicks={1000}
@@ -131,7 +130,7 @@ describe('Tooltip', () => {
         <TestCanvas
           canvasRef={undefined}
           format="double"
-          units={Units.Samples}
+          units="samples"
           numTicks={100}
           sampleRate={100}
           leftTicks={1000}
@@ -166,7 +165,7 @@ describe('Tooltip', () => {
         <TestCanvas
           canvasRef={undefined}
           format="double"
-          units={Units.Samples}
+          units="samples"
           numTicks={100}
           sampleRate={100}
           leftTicks={1000}
@@ -201,7 +200,7 @@ describe('Tooltip', () => {
         <TestCanvas
           canvasRef={undefined}
           format="double"
-          units={Units.Samples}
+          units="samples"
           numTicks={100}
           sampleRate={100}
           leftTicks={1000}
@@ -236,7 +235,7 @@ describe('Tooltip', () => {
         <TestCanvas
           canvasRef={undefined}
           format="double"
-          units={Units.Samples}
+          units="samples"
           numTicks={100}
           sampleRate={100}
           leftTicks={1000}

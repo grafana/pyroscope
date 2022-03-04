@@ -1,10 +1,15 @@
 {
   "name": "@pyroscope/models",
   "version": "0.0.1",
-  "main": "dist/index.node.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "license": "Apache-2.0",
   "private": true,
   "scripts": {
-    "build": "tsc"
+    "build": "tsc -p tsconfig.json",
+    "watch": "yarn run build --watch --preserveWatchOutput"
+  },
+  "peerDependencies": {
+    "zod": "^3.11.6"
   }
 }
