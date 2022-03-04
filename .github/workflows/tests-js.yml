@@ -36,6 +36,11 @@ jobs:
           name: js coverage
           fail_ci_if_error: false
           verbose: true
+
+      # build the application before linting
+      # otherwise it won't be able to resolve dependencies
+      - name: build
+        run: yarn build
       - name: Run Webapp lints
         run: yarn lint
       - name: Run Webapp Format check

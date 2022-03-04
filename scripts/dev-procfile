@@ -1,3 +1,4 @@
 air: air
-webpack: yarn dev --watch
+webpack: yarn dev
 webpack-standalone: yarn dev:standalone
+flamegraph: yarn dev:flamegraph

@@ -232,7 +232,7 @@ export const deleteAPIKey = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed to create API key',
+        title: 'Failed to delete API key',
         message: res.error.errors.join(', '),
       })
     );
