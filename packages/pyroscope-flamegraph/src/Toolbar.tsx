@@ -11,7 +11,8 @@ import { DebounceInput } from 'react-debounce-input';
 import { Maybe } from 'true-myth';
 import useResizeObserver from '@react-hook/resize-observer';
 import Button from '../../../webapp/javascript/ui/Button';
-import { FitModes } from './FlameGraph/fitMode';
+import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
+
 import styles from './ProfilerHeader.module.css';
 
 // arbitrary value
@@ -366,8 +367,8 @@ function FitMode({ fitMode, updateFitMode, showMode }) {
       onChange={(event) => updateFitMode(event.target.value)}
     >
       <option disabled>{texts.header}</option>
-      <option value={FitModes.HEAD}>{texts.head}</option>
-      <option value={FitModes.TAIL}>{texts.tail}</option>
+      <option value={HeadMode}>{texts.head}</option>
+      <option value={TailMode}>{texts.tail}</option>
     </select>
   );
 }

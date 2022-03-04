@@ -12,7 +12,7 @@ import {
   getPackageNameFromStackTrace,
 } from './FlameGraph/FlameGraphComponent/color';
 import { createFF } from './FlameGraph/flamebearer';
-import { fitIntoTableCell } from './FlameGraph/fitMode';
+import { fitIntoTableCell } from './fitMode/fitMode';
 import styles from './ProfilerTable.module.scss';
 
 const zero = (v) => v || 0;
