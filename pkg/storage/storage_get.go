@@ -71,8 +71,10 @@ func (s *Storage) GetContext(ctx context.Context, gi *GetInput) (*GetOutput, err
 	logger.Debug("storage.Get")
 	trace.Logf(ctx, traceCatGetKey, "%+v", gi)
 
+	// For backward compatibility, profiles can be fetched by ID using query.
+	// If a query includes 'profile_id' matcher others are ignored.
 	if gi.Query != nil {
-		// If a query includes 'profile_id' matcher others are ignored.
+		ids := make([]string, 0, len(gi.Query.Matchers))
 		for _, m := range gi.Query.Matchers {
 			if m.Key != segment.ProfileIDLabelName {
 				continue
@@ -80,16 +82,21 @@ func (s *Storage) GetContext(ctx context.Context, gi *GetInput) (*GetOutput, err
 			if m.Op != flameql.OpEqual {
 				return nil, fmt.Errorf("only '=' operator is allowed for %q label", segment.ProfileIDLabelName)
 			}
+			ids = append(ids, m.Value)
+		}
+		if len(ids) > 0 {
 			o := GetOutput{
 				SpyName:    "unknown",
 				Units:      "samples",
 				SampleRate: 100,
+				Tree:       tree.New(),
 			}
-			k := segment.NewProfileIDKey(gi.Query.AppName, m.Value)
-			if v, ok := s.trees.Lookup(k); ok {
-				o.Tree = v.(*tree.Tree)
-			} else {
-				o.Tree = tree.New()
+			err := s.profiles.Fetch(ctx, gi.Query.AppName, ids, func(t *tree.Tree) error {
+				o.Tree.Merge(t)
+				return nil
+			})
+			if err != nil {
+				return nil, err
 			}
 			return &o, nil
 		}

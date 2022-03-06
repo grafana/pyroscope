@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -17,6 +18,11 @@ func (s *Storage) EnforceRetentionPolicy(rp *segment.RetentionPolicy) error {
 
 	// It may make sense running it concurrently with some throttling.
 	s.logger.Debug("enforcing retention policy")
+	if !rp.AbsoluteTime.IsZero() {
+		if err := s.profiles.Truncate(context.TODO(), rp.AbsoluteTime); err != nil {
+			s.logger.WithError(err).Error("failed to truncate profiles storage")
+		}
+	}
 	err := s.iterateOverAllSegments(func(k *segment.Key) error {
 		return s.deleteSegmentData(k, rp)
 	})

@@ -116,12 +116,9 @@ func (k *Key) HasProfileID() bool {
 	return ok && v != ""
 }
 
-func NewProfileIDKey(appName, id string) string {
-	return appName + "{" + id + "}"
-}
-
-func (k *Key) ProfileIDKey() string {
-	return NewProfileIDKey(k.AppName(), k.labels[ProfileIDLabelName])
+func (k *Key) ProfileID() (string, bool) {
+	id, ok := k.labels[ProfileIDLabelName]
+	return id, ok
 }
 
 func TreeKey(k string, depth int, unixTime int64) string {
