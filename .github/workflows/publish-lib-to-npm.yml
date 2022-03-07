@@ -104,7 +104,7 @@ jobs:
 
       - name: Publish Pull Request
         # Only publish if it comes from the main repo
-        if: github.event_name == 'pull_request' and github.event.pull_request.head.repo.full_name == github.repository
+        if: (github.event_name == 'pull_request') && (github.event.pull_request.head.repo.full_name == github.repository)
         run: |
           yarn run lerna publish from-git \
             --skip-git \
