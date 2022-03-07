@@ -71,36 +71,47 @@ export function colorGreyscale(v: number, a: number) {
   return Color.rgb(v, v, v).alpha(a);
 }
 
+// TODO use @pyroscope/models?
+function spyToRegex(spyName: string) {
+  switch (spyName) {
+    case 'dotnetspy':
+      return /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/;
+    // TODO: come up with a clever heuristic
+    case 'ebpfspy':
+      return /^(?<packageName>.+)$/;
+    // tested with pyroscope stacktraces here: https://regex101.com/r/99KReq/1
+    case 'gospy':
+      return /^(?<packageName>.*?\/.*?\.|.*?\.|.+)(?<functionName>.*)$/;
+    // assume scrape is golang, since that's the only language we support right now
+    case 'scrape':
+      return /^(?<packageName>.*?\/.*?\.|.*?\.|.+)(?<functionName>.*)$/;
+    case 'phpspy':
+      return /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/;
+    case 'pyspy':
+      return /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/;
+    case 'rbspy':
+      return /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/;
+    case 'pyroscope-rs':
+      return /^(?<packageName>[^::]+)/;
+
+    // we don't have enough information
+    default:
+      return /^(?<packageName>.+)$/;
+  }
+}
+
 // TODO spy names?
 export function getPackageNameFromStackTrace(
   spyName: string,
   stackTrace: string
 ) {
-  // TODO: actually make sure these make sense and add tests
-  const regexpLookup = {
-    dotnetspy: /^(?<packageName>.+)\.(.+)\.(.+)\(.*\)$/,
-    // we don't have enough information
-    default: /^(?<packageName>.+)$/,
-    // TODO: come up with a clever heuristic
-    ebpfspy: /^(?<packageName>.+)$/,
-    // tested with pyroscope stacktraces here: https://regex101.com/r/99KReq/1
-    gospy: /^(?<packageName>.*?\/.*?\.|.*?\.|.+)(?<functionName>.*)$/,
-    // assume scrape is golang, since that's the only language we support right now
-    scrape: /^(?<packageName>.*?\/.*?\.|.*?\.|.+)(?<functionName>.*)$/,
-
-    phpspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.php+)(?<line_info>.*)$/,
-    pyspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.py+)(?<line_info>.*)$/,
-    rbspy: /^(?<packageName>(.*\/)*)(?<filename>.*\.rb+)(?<line_info>.*)$/,
-    'pyroscope-rs': /^(?<packageName>[^::]+)/,
-  };
-
   if (stackTrace.length === 0) {
     return stackTrace;
   }
-  const regexp = regexpLookup[spyName] || regexpLookup.default;
+  const regexp = spyToRegex(spyName);
   const fullStackGroups = stackTrace.match(regexp);
-  if (fullStackGroups) {
-    return fullStackGroups.groups.packageName;
+  if (fullStackGroups && fullStackGroups.groups) {
+    return fullStackGroups.groups['packageName'];
   }
   return stackTrace;
 }
@@ -112,6 +123,11 @@ export function colorBasedOnPackageName(
   const hash = murmurhash3_32_gc(name);
   const colorIndex = hash % palette.colors.length;
   const baseClr = palette.colors[colorIndex];
+  if (!baseClr) {
+    console.warn('Could not calculate color. Defaulting to the first one');
+    // We assert to Color since the first position is always available
+    return palette.colors[0] as Color;
+  }
 
   return baseClr;
 }

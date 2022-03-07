@@ -1,5 +1,4 @@
-/* eslint-disable no-restricted-properties */
-import { numberWithCommas, getFormatter, Units } from './format';
+import { numberWithCommas, getFormatter } from './format';
 
 describe('format', () => {
   describe.each([
@@ -28,7 +27,7 @@ describe('format', () => {
 
     describe('DurationFormatter', () => {
       it('correctly formats duration when maxdur = 40', () => {
-        const df = getFormatter(80, 2, Units.Samples);
+        const df = getFormatter(80, 2, 'samples');
 
         expect(df.format(0.001, 100)).toBe('< 0.01 seconds');
         expect(df.format(100, 100)).toBe('1.00 second');
@@ -38,7 +37,7 @@ describe('format', () => {
       });
 
       it('correctly formats duration when maxdur = 80', () => {
-        const df = getFormatter(160, 2, Units.Samples);
+        const df = getFormatter(160, 2, 'samples');
 
         expect(df.format(6000, 100)).toBe('1.00 minute');
         expect(df.format(100, 100)).toBe('0.02 minutes');
@@ -99,7 +98,7 @@ describe('format', () => {
           it(`returns ${expected}`, () => {
             // sampleRate is not used
             const sampleRate = NaN;
-            const f = getFormatter(maxObjects, sampleRate, Units.Objects);
+            const f = getFormatter(maxObjects, sampleRate, 'objects');
 
             expect(f.format(samples, sampleRate)).toBe(expected);
           });
@@ -111,15 +110,15 @@ describe('format', () => {
       describe.each([
         [1, -1, '-1.00 bytes'], // TODO is this correct?
         [1024, -1, '< 0.01 KB'],
-        [Math.pow(1024, 2), -1, '< 0.01 MB'],
-        [Math.pow(1024, 3), -1, '< 0.01 GB'],
-        [Math.pow(1024, 4), -1, '< 0.01 TB'],
+        [1024 ** 2, -1, '< 0.01 MB'],
+        [1024 ** 3, -1, '< 0.01 GB'],
+        [1024 ** 4, -1, '< 0.01 TB'],
 
         [1, 1, '1.00 bytes'],
         [1024, 1, '< 0.01 KB'],
-        [Math.pow(1024, 2), 1, '< 0.01 MB'],
-        [Math.pow(1024, 3), 1, '< 0.01 GB'],
-        [Math.pow(1024, 4), 1, '< 0.01 TB'],
+        [1024 ** 2, 1, '< 0.01 MB'],
+        [1024 ** 3, 1, '< 0.01 GB'],
+        [1024 ** 4, 1, '< 0.01 TB'],
 
         // if the tests here feel random, that's because they are
         // input and outputs were reproduced from real data
@@ -133,7 +132,7 @@ describe('format', () => {
           it(`returns ${expected}`, () => {
             // sampleRate is not used
             const sampleRate = NaN;
-            const f = getFormatter(maxObjects, sampleRate, Units.Bytes);
+            const f = getFormatter(maxObjects, sampleRate, 'bytes');
 
             expect(f.format(samples, sampleRate)).toBe(expected);
           });

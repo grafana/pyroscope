@@ -1,7 +1,6 @@
 /* eslint-disable max-classes-per-file */
-/* eslint-disable no-plusplus */
-/* eslint-disable eqeqeq */
-/* eslint-disable prefer-destructuring */
+import { Units } from '@pyroscope/models';
+
 export function numberWithCommas(x: number): string {
   return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
@@ -15,27 +14,22 @@ export function ratioToPercent(ratio: number) {
   return Math.round(10000 * ratio) / 100;
 }
 
-export enum Units {
-  Samples = 'samples',
-  Objects = 'objects',
-  Bytes = 'bytes',
-}
-export function getFormatter(max: number, sampleRate: number, units: Units) {
-  switch (units) {
-    case Units.Samples:
+export function getFormatter(max: number, sampleRate: number, unit: Units) {
+  switch (unit) {
+    case 'samples':
       return new DurationFormatter(max / sampleRate);
-    case Units.Objects:
+    case 'objects':
       return new ObjectsFormatter(max);
-    case Units.Bytes:
+    case 'bytes':
       return new BytesFormatter(max);
     default:
-      //  throw new Error(`Unsupported unit: ${units}`);
+      console.warn(`Unsupported unit: '${unit}'. Defaulting to 'samples'`);
       return new DurationFormatter(max / sampleRate);
   }
 }
 
-// // this is a class and not a function because we can save some time by
-// //   precalculating divider and suffix and not doing it on each iteration
+// this is a class and not a function because we can save some time by
+//   precalculating divider and suffix and not doing it on each iteration
 class DurationFormatter {
   divider = 1;
 
@@ -50,11 +44,19 @@ class DurationFormatter {
   ];
 
   constructor(maxDur: number) {
+    // eslint-disable-next-line no-plusplus
     for (let i = 0; i < this.durations.length; i++) {
-      if (maxDur >= this.durations[i][0]) {
-        this.divider *= this.durations[i][0];
-        maxDur /= this.durations[i][0];
-        this.suffix = this.durations[i][1];
+      const level = this.durations[i];
+      if (!level) {
+        console.warn('Could not calculate level');
+        break;
+      }
+
+      if (maxDur >= level[0]) {
+        this.divider *= level[0];
+        maxDur /= level[0];
+        // eslint-disable-next-line prefer-destructuring
+        this.suffix = level[1];
       } else {
         break;
       }
@@ -62,7 +64,7 @@ class DurationFormatter {
   }
 
   format(samples: number, sampleRate: number) {
-    const n: any = samples / sampleRate / this.divider;
+    const n = samples / sampleRate / this.divider;
     let nStr = n.toFixed(2);
 
     if (n >= 0 && n < 0.01) {
@@ -71,7 +73,7 @@ class DurationFormatter {
       nStr = '< 0.01';
     }
 
-    return `${nStr} ${this.suffix}${n == 1 ? '' : 's'}`;
+    return `${nStr} ${this.suffix}${n === 1 ? '' : 's'}`;
   }
 }
 
@@ -89,11 +91,19 @@ export class ObjectsFormatter {
   ];
 
   constructor(maxObjects: number) {
+    // eslint-disable-next-line no-plusplus
     for (let i = 0; i < this.objects.length; i++) {
-      if (maxObjects >= this.objects[i][0]) {
-        this.divider *= this.objects[i][0];
-        maxObjects /= this.objects[i][0];
-        this.suffix = this.objects[i][1];
+      const level = this.objects[i];
+      if (!level) {
+        console.warn('Could not calculate level');
+        break;
+      }
+
+      if (maxObjects >= level[0]) {
+        this.divider *= level[0];
+        maxObjects /= level[0];
+        // eslint-disable-next-line prefer-destructuring
+        this.suffix = level[1];
       } else {
         break;
       }
@@ -102,7 +112,7 @@ export class ObjectsFormatter {
 
   // TODO:
   // how to indicate that sampleRate doesn't matter?
-  format(samples: number, sampleRate: number) {
+  format(samples: number) {
     const n = samples / this.divider;
     let nStr = n.toFixed(2);
 
@@ -129,18 +139,33 @@ export class BytesFormatter {
   ];
 
   constructor(maxBytes: number) {
+    // eslint-disable-next-line no-plusplus
     for (let i = 0; i < this.bytes.length; i++) {
-      if (maxBytes >= this.bytes[i][0]) {
-        this.divider *= this.bytes[i][0];
-        maxBytes /= this.bytes[i][0];
-        this.suffix = this.bytes[i][1];
+      const level = this.bytes[i];
+      if (!level) {
+        console.warn('Could not calculate level');
+        break;
+      }
+
+      if (maxBytes >= level[0]) {
+        this.divider *= level[0];
+        maxBytes /= level[0];
+
+        // eslint-disable-next-line prefer-destructuring
+        const suffix = level[1];
+        if (!suffix) {
+          console.warn('Could not calculate suffix');
+          this.suffix = '';
+        } else {
+          this.suffix = suffix;
+        }
       } else {
         break;
       }
     }
   }
 
-  format(samples: number, sampleRate: number) {
+  format(samples: number) {
     const n = samples / this.divider;
     let nStr = n.toFixed(2);
 

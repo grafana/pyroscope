@@ -1,4 +1,4 @@
-name: JS Tests
+name: JS Tests/Lint/Type-check
 
 on:
   push:
@@ -27,6 +27,12 @@ jobs:
 
       - name: Install Webapp dependencies
         run: yarn install
+
+      # build the application before testing
+      # otherwise it won't be able to resolve dependencies
+      - name: build
+        run: yarn build
+
       - name: Run Webapp tests
         run: yarn run test --coverage
       - name: Upload codecov coverage
@@ -37,11 +43,11 @@ jobs:
           fail_ci_if_error: false
           verbose: true
 
-      # build the application before linting
-      # otherwise it won't be able to resolve dependencies
-      - name: build
-        run: yarn build
-      - name: Run Webapp lints
-        run: yarn lint
-      - name: Run Webapp Format check
+      - name: Run Lint
+        # Use use --quiet so that it only report errors
+        run: yarn lint --quiet
+      - name: Run Format check
         run: yarn format:check
+
+      - name: Run Type check
+        run: yarn type-check

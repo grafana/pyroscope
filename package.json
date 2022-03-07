@@ -34,6 +34,7 @@
     "test:ss": "UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-docker.sh",
     "test:ss-check": "./scripts/jest-snapshots/run-docker.sh",
     "lint": "eslint ./ --ext .js,.jsx,.ts,.tsx --cache --fix",
+    "type-check": "lerna run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "size-build": "make assets-size-build",

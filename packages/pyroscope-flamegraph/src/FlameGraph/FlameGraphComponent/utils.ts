@@ -1,17 +1,14 @@
 /* eslint-disable import/prefer-default-export */
-import { createFF } from '../../../../../webapp/javascript/util/flamebearer';
+import { doubleFF } from '@pyroscope/models';
 
 // not entirely sure where this should fit
-
 function getRatios(
-  // Just to provide some help, so that people don't run getRatios on viewType 'single'
-  viewType: 'double',
   level: number[],
   j: number,
   leftTicks: number,
   rightTicks: number
 ) {
-  const ff = createFF(viewType);
+  const ff = doubleFF;
 
   // throw an error
   // since otherwise there's no way to calculate a diff

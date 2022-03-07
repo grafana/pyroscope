@@ -22,17 +22,13 @@ THIS SOFTWARE.
 */
 
 /* eslint-disable no-continue */
-import {
-  Flamebearer,
-  addTicks,
-} from '../../../../../webapp/javascript/models/flamebearer';
+import { createFF, Flamebearer } from '@pyroscope/models';
 import {
   formatPercent,
   getFormatter,
   ratioToPercent,
-} from '../../../../../webapp/javascript/util/format';
-import { fitToCanvasRect } from '../../../../../webapp/javascript/util/fitMode';
-import { createFF } from '../../../../../webapp/javascript/util/flamebearer';
+} from '../../format/format';
+import { fitToCanvasRect } from '../../fitMode/fitMode';
 import { getRatios } from './utils';
 import {
   PX_PER_LEVEL,
@@ -96,6 +92,10 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
 
   //  const pxPerTick = graphWidth / numTicks / (rangeMax - rangeMin);
   const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Could not get ctx');
+  }
+
   const selectedLevel = zoom.mapOrElse(
     () => 0,
     (z) => z.i
@@ -168,8 +168,11 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
 
   for (let i = 0; i < levels.length - topLevel; i += 1) {
     const level = levels[topLevel + i];
+    if (!level) {
+      throw new Error(`Could not find level: ${topLevel + i}`);
+    }
+
     for (let j = 0; j < level.length; j += ff.jStep) {
-      const name = getFunctionName(names, j, format, level);
       const barIndex = ff.getBarOffset(level, j);
       const x = tickToX(barIndex);
       const y = i * PX_PER_LEVEL + (isFocused ? BAR_HEIGHT : 0);
@@ -177,7 +180,8 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       const sh = BAR_HEIGHT;
 
       const highlightModeOn =
-        props.highlightQuery && props.highlightQuery.length > 0;
+        !!props.highlightQuery && props.highlightQuery.length > 0;
+
       const isHighlighted = nodeIsInQuery(
         j + ff.jName,
         level,
@@ -216,35 +220,46 @@ export default function RenderCanvas(props: CanvasRendererConfig) {
       /*      D r a w   R e c t      */
       /*******************************/
       const { spyName } = props;
-      let leftTicks: number | undefined;
-      let rightTicks: number | undefined;
-      if (format === 'double') {
-        leftTicks = props.leftTicks;
-        rightTicks = props.rightTicks;
-      }
-      const color = getColor({
-        format,
-        level,
-        j,
-        // discount for the levels we skipped
-        // otherwise it will dim out all nodes
-        i:
-          i +
-          focusedNode.mapOrElse(
-            () => 0,
-            (f) => f.i
-          ),
-        //        i: i + (isFocused ? focusedNode.i : 0),
-        names,
-        collapsed,
-        selectedLevel,
-        highlightModeOn,
-        isHighlighted,
-        spyName,
-        leftTicks,
-        rightTicks,
-        palette,
-      });
+
+      const getColor = () => {
+        const common = {
+          level,
+          j,
+          // discount for the levels we skipped
+          // otherwise it will dim out all nodes
+          i:
+            i +
+            focusedNode.mapOrElse(
+              () => 0,
+              (f) => f.i
+            ),
+          names,
+          collapsed,
+          selectedLevel,
+          highlightModeOn,
+          isHighlighted,
+          spyName,
+          palette,
+        };
+
+        switch (format) {
+          case 'single': {
+            return getColorSingle({ ...common });
+          }
+          case 'double': {
+            return getColorDouble({
+              ...common,
+              leftTicks: props.leftTicks,
+              rightTicks: props.rightTicks,
+            });
+          }
+          default: {
+            throw new Error(`Unsupported format: ${format}`);
+          }
+        }
+      };
+
+      const color = getColor();
 
       ctx.beginPath();
       ctx.rect(x, y, sw, sh);
@@ -305,7 +320,22 @@ function getFunctionName(
   level: number[]
 ) {
   const ff = createFF(format);
-  const shortName = names[level[j + ff.jName]];
+
+  let l = level[j + ff.jName];
+  if (l === undefined) {
+    l = -1;
+  }
+  const shortName = names[l];
+
+  if (!shortName) {
+    console.warn('Could not find function name for', {
+      j,
+      format,
+      level,
+      names,
+    });
+    return '';
+  }
   return shortName;
 }
 
@@ -338,54 +368,83 @@ type getColorCfg = {
   names: string[];
   spyName: string;
   palette: FlamegraphPalette;
-} & addTicks;
+};
 
-function getColor(cfg: getColorCfg) {
-  const ff = createFF(cfg.format);
-
-  // all above selected level should be dimmed
-  const a = cfg.selectedLevel > cfg.i ? 0.33 : 1;
-
+function getColorCommon({
+  collapsed,
+  highlightModeOn,
+  isHighlighted,
+}: Pick<
+  getColorCfg,
+  'selectedLevel' | 'i' | 'collapsed' | 'highlightModeOn' | 'isHighlighted'
+>) {
   // Collapsed
-  if (cfg.collapsed) {
+  if (collapsed) {
     return colorGreyscale(200, 0.66);
   }
 
   // We are in a search
-  if (cfg.highlightModeOn) {
-    if (!cfg.isHighlighted) {
+  if (highlightModeOn) {
+    if (!isHighlighted) {
       return colorGreyscale(200, 0.66);
     }
-    // it's a highlighted node, so color it as normally
   }
 
-  // Diff mode
-  if (cfg.format === 'double') {
-    const { leftRatio, rightRatio } = getRatios(
-      cfg.format,
-      cfg.level,
-      cfg.j,
-      cfg.leftTicks,
-      cfg.rightTicks
-    );
+  return null;
+}
 
-    const leftPercent = ratioToPercent(leftRatio);
-    const rightPercent = ratioToPercent(rightRatio);
+function getColorSingle(cfg: getColorCfg) {
+  const common = getColorCommon(cfg);
 
-    return colorBasedOnDiffPercent(
-      cfg.palette,
-      leftPercent,
-      rightPercent
-    ).alpha(a);
+  // common cases, like highlight
+  if (common) {
+    return common;
   }
 
-  return colorBasedOnPackageName(
-    cfg.palette,
-    getPackageNameFromStackTrace(
-      cfg.spyName,
-      cfg.names[cfg.level[cfg.j + ff.jName]]
-    )
-  ).alpha(a);
+  const ff = createFF('single');
+
+  const a = cfg.selectedLevel > cfg.i ? 0.33 : 1;
+
+  // TODO: clean this up
+  let l = cfg.level[cfg.j + ff.jName];
+  if (l === undefined) {
+    console.warn('Could nto find level', {
+      l: cfg.j,
+      jName: ff.jName,
+      level: cfg.level,
+    });
+    l = -1;
+  }
+  const name = cfg.names[l] || '';
+  const packageName = getPackageNameFromStackTrace(cfg.spyName, name) || '';
+
+  return colorBasedOnPackageName(cfg.palette, packageName).alpha(a);
+}
+
+function getColorDouble(
+  cfg: getColorCfg & { leftTicks: number; rightTicks: number }
+) {
+  const common = getColorCommon(cfg);
+
+  // common cases, like highlight
+  if (common) {
+    return common;
+  }
+
+  const a = cfg.selectedLevel > cfg.i ? 0.33 : 1;
+  const { leftRatio, rightRatio } = getRatios(
+    cfg.level,
+    cfg.j,
+    cfg.leftTicks,
+    cfg.rightTicks
+  );
+
+  const leftPercent = ratioToPercent(leftRatio);
+  const rightPercent = ratioToPercent(rightRatio);
+
+  return colorBasedOnDiffPercent(cfg.palette, leftPercent, rightPercent).alpha(
+    a
+  );
 }
 
 function nodeIsInQuery(
@@ -394,7 +453,17 @@ function nodeIsInQuery(
   names: string[],
   query: string
 ) {
-  return names[level[index]].indexOf(query) >= 0;
+  const l = level[index];
+  if (!l) {
+    return false;
+  }
+
+  const l2 = names[l];
+  if (!l2) {
+    return false;
+  }
+
+  return l2.indexOf(query) >= 0;
 }
 
 function getCanvasWidth(canvas: HTMLCanvasElement) {

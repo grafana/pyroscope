@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Maybe } from 'true-myth';
 import Toolbar, { TOOLBAR_MODE_WIDTH_THRESHOLD } from './Toolbar';
-import { FitModes } from './FlameGraph/fitMode';
+import { HeadMode, TailMode } from './fitMode/fitMode';
 
 // since 'react-debounce-input' uses lodash.debounce under the hood
 jest.mock('lodash.debounce', () =>
@@ -64,7 +64,7 @@ describe('ProfileHeader', () => {
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
-        fitMode={FitModes.HEAD}
+        fitMode={HeadMode}
         updateView={() => {}}
         updateViewDiff={() => {}}
         renderLogo={false}
@@ -87,7 +87,7 @@ describe('ProfileHeader', () => {
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
-        fitMode={FitModes.HEAD}
+        fitMode={HeadMode}
         updateView={() => {}}
         updateViewDiff={() => {}}
         renderLogo={false}
@@ -122,7 +122,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={() => {}}
           reset={onReset}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
@@ -145,7 +145,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={() => {}}
           reset={onReset}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
@@ -173,7 +173,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={() => {}}
           reset={onReset}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
@@ -200,7 +200,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={() => {}}
           reset={onReset}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
@@ -227,7 +227,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={onChange}
           reset={() => {}}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
@@ -252,7 +252,7 @@ describe('ProfileHeader', () => {
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={updateFitMode}
-        fitMode={FitModes.HEAD}
+        fitMode={HeadMode}
         updateView={() => {}}
         updateViewDiff={() => {}}
         renderLogo={false}
@@ -276,7 +276,7 @@ describe('ProfileHeader', () => {
         screen.getByRole('combobox', { name: /fit-mode/ }),
         screen.getByRole('option', { name: /Head/ })
       );
-      expect(updateFitMode).toHaveBeenCalledWith(FitModes.HEAD);
+      expect(updateFitMode).toHaveBeenCalledWith(HeadMode);
     });
 
     it('updates to TAIL first', () => {
@@ -285,7 +285,7 @@ describe('ProfileHeader', () => {
         screen.getByRole('option', { name: /Tail/ })
       );
 
-      expect(updateFitMode).toHaveBeenCalledWith(FitModes.TAIL);
+      expect(updateFitMode).toHaveBeenCalledWith(TailMode);
     });
   });
 
@@ -301,7 +301,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={() => {}}
           reset={() => {}}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
@@ -325,7 +325,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={() => {}}
           reset={() => {}}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           selectedNode={Maybe.just({ i: 999, j: 999 })}
@@ -352,7 +352,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={() => {}}
           reset={() => {}}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
@@ -376,7 +376,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={() => {}}
           reset={() => {}}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           selectedNode={Maybe.nothing()}
@@ -401,7 +401,7 @@ describe('ProfileHeader', () => {
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
-        fitMode={FitModes.HEAD}
+        fitMode={HeadMode}
         updateView={() => {}}
         updateViewDiff={updateViewDiff}
         renderLogo={false}
@@ -420,7 +420,7 @@ describe('ProfileHeader', () => {
           handleSearchChange={() => {}}
           reset={() => {}}
           updateFitMode={() => {}}
-          fitMode={FitModes.HEAD}
+          fitMode={HeadMode}
           updateView={() => {}}
           updateViewDiff={() => {}}
           renderLogo={false}
@@ -505,7 +505,7 @@ describe('ProfileHeader', () => {
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
-        fitMode={FitModes.HEAD}
+        fitMode={HeadMode}
         updateView={updateView}
         updateViewDiff={() => {}}
         renderLogo={false}

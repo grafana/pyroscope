@@ -1,12 +1,10 @@
-import { Units } from '../../../../../webapp/javascript/util/format';
-
 const TestData = {
   empty: {
     names: [],
     levels: [],
     numTicks: 0,
     sampleRate: 0,
-    units: Units.Samples,
+    units: 'samples' as const,
     spyName: '',
     format: 'single' as const,
     version: 0,
@@ -33,7 +31,7 @@ const TestData = {
     ],
 
     rangeMax: 1,
-    units: Units.Samples,
+    units: 'samples' as const,
     fitMode: 'HEAD',
 
     spyName: 'gospy',
@@ -363,7 +361,7 @@ const TestData = {
     maxSelf: 16,
     spyName: 'gospy',
     sampleRate: 100,
-    units: Units.Samples,
+    units: 'samples' as const,
     format: 'single' as const,
     version: 1,
   },
@@ -417,7 +415,7 @@ const TestData = {
     maxSelf: 604,
     spyName: 'gospy',
     sampleRate: 100,
-    units: Units.Samples,
+    units: 'samples' as const,
     format: 'double' as const,
     leftTicks: 991,
     rightTicks: 987,

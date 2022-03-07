@@ -1,5 +1,4 @@
 import { RawFlamebearerProfile } from '@models/flamebearer';
-import { Units } from '@utils/format';
 
 export default {
   flamebearer: {
@@ -21,14 +20,14 @@ export default {
     maxSelf: 771,
     spyName: 'gospy',
     sampleRate: 100,
-    units: 'samples' as Units,
+    units: 'samples',
     format: 'single' as const,
   },
   metadata: {
     format: 'single' as const,
     sampleRate: 100,
     spyName: 'gospy',
-    units: 'samples' as Units,
+    units: 'samples',
   },
   timeline: {
     startTime: 1632335270,

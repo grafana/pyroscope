@@ -1,14 +1,13 @@
-import { fitToCanvasRect, FitModes } from '../javascript/util/fitMode';
+import { fitToCanvasRect } from './fitMode';
 
 describe('fitToCanvasRect', () => {
   describe('HEAD', () => {
     it('always returns fullText', () => {
-      const mode = FitModes.HEAD;
+      const mode = 'HEAD';
       const charSize = 1;
       const rectWidth = 10;
       const fullText = 'full_long_text';
       const shortText = 'short_text';
-      const shortTextWidth = shortText.length * charSize;
 
       expect(
         fitToCanvasRect({
@@ -17,7 +16,6 @@ describe('fitToCanvasRect', () => {
           rectWidth,
           fullText,
           shortText,
-          shortTextWidth,
         })
       ).toMatchObject({
         mode,
@@ -28,13 +26,12 @@ describe('fitToCanvasRect', () => {
   });
 
   describe('TAIL', () => {
+    const mode = 'TAIL';
     it('returns full text if it CAN fit', () => {
-      const mode = FitModes.TAIL;
       const charSize = 1;
       const rectWidth = 99;
       const fullText = 'full_long_text';
       const shortText = 'short_text';
-      const shortTextWidth = shortText.length * charSize;
 
       expect(
         fitToCanvasRect({
@@ -43,7 +40,6 @@ describe('fitToCanvasRect', () => {
           rectWidth,
           fullText,
           shortText,
-          shortTextWidth,
         })
       ).toMatchObject({
         mode,
@@ -53,12 +49,10 @@ describe('fitToCanvasRect', () => {
     });
 
     it('returns short text with if it CAN fit short text', () => {
-      const mode = FitModes.TAIL;
       const charSize = 1;
       const rectWidth = 10;
       const fullText = 'full_long_text';
       const shortText = 'short_text';
-      const shortTextWidth = shortText.length * charSize;
 
       expect(
         fitToCanvasRect({
@@ -67,7 +61,6 @@ describe('fitToCanvasRect', () => {
           rectWidth,
           fullText,
           shortText,
-          shortTextWidth,
         })
       ).toMatchObject({
         mode,
@@ -77,12 +70,10 @@ describe('fitToCanvasRect', () => {
     });
 
     it('returns short text with negative margin BOTH short and long CAN NOT fit', () => {
-      const mode = FitModes.TAIL;
       const charSize = 1;
       const rectWidth = 10;
       const fullText = 'full_long_text'; // 14
       const shortText = 'short_text_'; // 11
-      const shortTextWidth = shortText.length * charSize;
 
       expect(
         fitToCanvasRect({
@@ -91,7 +82,6 @@ describe('fitToCanvasRect', () => {
           rectWidth,
           fullText,
           shortText,
-          shortTextWidth,
         })
       ).toMatchObject({
         mode,

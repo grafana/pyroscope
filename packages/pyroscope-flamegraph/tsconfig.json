@@ -1,3 +1,15 @@
 {
-  "extends": "../../tsconfig.json"
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedParameters": true,
+    "noUnusedLocals": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true
+  },
+  "include": ["./src/index.tsx"]
 }

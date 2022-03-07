@@ -1,11 +1,7 @@
-// Even though there are only 2 values
-// Which could be represented in a boolean fashion
-// Let's use an Enum in case we want to use new modes,
-// for example a new heuristic based on the language
-export const FitModes = {
-  TAIL: 'TAIL',
-  HEAD: 'HEAD',
-};
+export const TailMode = 'TAIL';
+export const HeadMode = 'HEAD';
+
+export type FitModes = typeof TailMode | typeof HeadMode;
 
 const margin = 3;
 
@@ -18,15 +14,32 @@ const margin = 3;
  * @param {string} fullText - The text that will be first tried.
  * @param {string} shortText - The text that willbe used when fullText can't fit. It's normally a substring of the original text.
  */
+
+interface fitToCanvasRectProps {
+  mode: FitModes;
+
+  /** charSize - Size in pixels of an individual character. Assumes it's a monospace font. */
+  charSize: number;
+
+  /** Width in pixels of the rectangle */
+  rectWidth: number;
+
+  /** The text that will be first tried to fit */
+  fullText: string;
+
+  /** The text that willbe used when fullText can't fit. It's normally a substring of the original text. */
+  shortText: string;
+}
+
 export function fitToCanvasRect({
   mode,
   charSize,
   rectWidth,
   fullText,
   shortText,
-}) {
+}: fitToCanvasRectProps) {
   switch (mode) {
-    case FitModes.TAIL:
+    case TailMode:
       // Case 1:
       // content fits rectangle width
       // | rectangle |
@@ -73,7 +86,7 @@ export function fitToCanvasRect({
 
     // Case 3:
     // Normal
-    case FitModes.HEAD:
+    case HeadMode:
     default:
       return {
         mode,
@@ -89,9 +102,9 @@ export function fitToCanvasRect({
  * or an empty object if not applicable.
  * @param {FitModes} mode - The mode
  */
-export function fitIntoTableCell(mode) {
+export function fitIntoTableCell(mode: FitModes) {
   switch (mode) {
-    case FitModes.TAIL:
+    case TailMode:
       return {
         // prints from right to left
         direction: 'rtl',
@@ -99,7 +112,7 @@ export function fitIntoTableCell(mode) {
         textOverflow: 'ellipsis',
       };
 
-    case FitModes.HEAD:
+    case HeadMode:
     default:
       return {
         overflow: 'hidden',

@@ -1,13 +1,14 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
+import { Units } from '@pyroscope/models';
 import type { UnwrapMaybe } from '../../../../../webapp/javascript/util/fp';
 import {
   getFormatter,
-  Units,
   numberWithCommas,
   formatPercent,
   ratioToPercent,
-} from '../../../../../webapp/javascript/util/format';
+} from '../../format/format';
+
 import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 import styles from './Tooltip.module.scss';
 
