@@ -93,21 +93,23 @@ const initialState = {
   },
   adhocShared: {
     left: {
-      profile: null,
+      profile: null as any,
     },
     right: {
-      profile: null,
+      profile: null as any,
     },
   },
   adhocComparison: {
     left: {
-      file: null,
-      flamebearer: null,
+      file: null as any,
+      raw: null as any,
+      flamebearer: null as any,
       isProfileLoading: false,
     },
     right: {
-      file: null,
-      flamebearer: null,
+      file: null as any,
+      raw: null as any,
+      flamebearer: null as any,
       isProfileLoading: false,
     },
   },
@@ -556,6 +558,10 @@ export default function (state = initialState, action) {
           isProfileLoading: false,
         },
       };
+
+    /******************************/
+    /*      Adhoc Comparison      */
+    /******************************/
     case SET_ADHOC_LEFT_PROFILE:
       ({
         payload: { profile },
