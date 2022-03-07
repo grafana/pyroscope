@@ -19,7 +19,7 @@ func (s *Storage) EnforceRetentionPolicy(rp *segment.RetentionPolicy) error {
 	// It may make sense running it concurrently with some throttling.
 	s.logger.Debug("enforcing retention policy")
 	if !rp.AbsoluteTime.IsZero() {
-		if err := s.profiles.Truncate(context.TODO(), rp.AbsoluteTime); err != nil {
+		if err := s.profiles.truncateBefore(context.TODO(), rp.AbsoluteTime); err != nil {
 			s.logger.WithError(err).Error("failed to truncate profiles storage")
 		}
 	}

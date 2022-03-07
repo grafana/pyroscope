@@ -91,7 +91,7 @@ func (s *Storage) GetContext(ctx context.Context, gi *GetInput) (*GetOutput, err
 				SampleRate: 100,
 				Tree:       tree.New(),
 			}
-			err := s.profiles.Fetch(ctx, gi.Query.AppName, ids, func(t *tree.Tree) error {
+			err := s.profiles.fetch(ctx, gi.Query.AppName, ids, func(t *tree.Tree) error {
 				o.Tree.Merge(t)
 				return nil
 			})

@@ -45,7 +45,7 @@ func (s *Storage) Put(pi *PutInput) error {
 	}).Debug("storage.Put")
 
 	if id, ok := pi.Key.ProfileID(); ok {
-		return s.profiles.Insert(pi.Key.AppName(), id, pi.Val, pi.EndTime)
+		return s.profiles.insert(pi.Key.AppName(), id, pi.Val, pi.EndTime)
 	}
 
 	for k, v := range pi.Key.Labels() {

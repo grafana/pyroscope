@@ -3,9 +3,9 @@ package storage
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
@@ -27,35 +27,43 @@ const (
 	profileDataPrefix      prefix = "v:"
 	profileTimestampPrefix prefix = "t:"
 
-	// t:{timestamp}:{profile_id}
-	profileTimestampMinLen = len(profileTimestampPrefix) + 8 + 1
-
 	profilesFormatV1 byte = 1
 )
 
-func profileTimestamp(t time.Time, k []byte) []byte {
-	b := make([]byte, profileTimestampMinLen, 32)
-	b[0], b[1], b[9] = 't', ':', ':'
-	binary.LittleEndian.PutUint64(b[2:], uint64(t.UnixNano()))
-	return append(b, k...)
+// profileKey creates a key in the v:{app_name}:{profile_id} format
+func profileKey(appName, profileID string) []byte {
+	return profileDataPrefix.key(appName + ":" + profileID)
+}
+
+// profileTimestampKey creates a key in the t:{timestamp}:{app_name}:{profile_id} format
+func profileTimestampKey(t time.Time, appName, profileID string) []byte {
+	return profileTimestampPrefix.key(strconv.FormatInt(t.UnixNano(), 10) + ":" + appName + ":" + profileID)
 }
 
 // parseProfileTimestamp returns timestamp and the profile
-// data key, if the given timestamp key is valid.
+// data key (in v:{app_name}:{profile_id} format), if the given timestamp key is valid.
 func parseProfileTimestamp(k []byte) (int64, []byte, bool) {
-	if v, ok := profileTimestampPrefix.trim(k); ok && len(k) > profileTimestampMinLen {
-		return int64(binary.LittleEndian.Uint64(v[:8])), append(profileDataPrefix.bytes(), v[9:]...), true
+	v, ok := profileTimestampPrefix.trim(k)
+	if !ok {
+		return 0, nil, false
 	}
-	return 0, nil, false
+	i := bytes.IndexByte(v, ':')
+	if i < 0 {
+		return 0, nil, false
+	}
+	t, err := strconv.ParseInt(string(v[:i]), 10, 64)
+	if err != nil {
+		return 0, nil, false
+	}
+	return t, append(profileDataPrefix.bytes(), v[i+1:]...), true
 }
 
-func (s profiles) Insert(appName, profileID string, v *tree.Tree, at time.Time) error {
+func (s profiles) insert(appName, profileID string, v *tree.Tree, at time.Time) error {
 	d, err := s.dicts.GetOrCreate(appName)
 	if err != nil {
 		return err
 	}
 	dx := d.(*dict.Dict)
-	k := []byte(profileID)
 	b := bufferPool.Get()
 	defer func() {
 		bufferPool.Put(b)
@@ -63,11 +71,11 @@ func (s profiles) Insert(appName, profileID string, v *tree.Tree, at time.Time) 
 	}()
 
 	return s.db.Update(func(txn *badger.Txn) error {
-		k = profileDataPrefix.key(appName + "." + profileID)
-		if err = txn.Set(profileTimestamp(at, k), nil); err != nil {
+		if err = txn.Set(profileTimestampKey(at, appName, profileID), nil); err != nil {
 			return err
 		}
 
+		k := profileKey(appName, profileID)
 		var item *badger.Item
 		item, err = txn.Get(k)
 		switch {
@@ -85,14 +93,14 @@ func (s profiles) Insert(appName, profileID string, v *tree.Tree, at time.Time) 
 		if err = b.WriteByte(profilesFormatV1); err != nil {
 			return err
 		}
-		if err = v.SerializeTruncate(dx, s.config.maxNodesSerialization, b); err == nil {
-			return txn.Set(k, b.Bytes())
+		if err = v.SerializeTruncate(dx, s.config.maxNodesSerialization, b); err != nil {
+			return err
 		}
-		return err
+		return txn.Set(k, b.Bytes())
 	})
 }
 
-func (s profiles) Fetch(ctx context.Context, appName string, profileIDs []string, fn func(*tree.Tree) error) error {
+func (s profiles) fetch(ctx context.Context, appName string, profileIDs []string, fn func(*tree.Tree) error) error {
 	d, ok := s.dicts.Lookup(appName)
 	if !ok {
 		return nil
@@ -103,7 +111,7 @@ func (s profiles) Fetch(ctx context.Context, appName string, profileIDs []string
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			item, err := txn.Get(profileDataPrefix.key(appName + "." + profileID))
+			item, err := txn.Get(profileKey(appName, profileID))
 			switch {
 			default:
 				return err
@@ -138,17 +146,14 @@ func valueReader(d *dict.Dict, fn func(*tree.Tree) error) func(val []byte) error
 	}
 }
 
-func (s profiles) Truncate(ctx context.Context, before time.Time) error {
-	return truncateBefore(ctx, s.db.DB, before)
-}
-
-func truncateBefore(ctx context.Context, x *badger.DB, before time.Time) (err error) {
+func (s profiles) truncateBefore(ctx context.Context, before time.Time) (err error) {
 	t := before.UnixNano()
-	batch := newWriteBatch(x)
+	batch := s.db.NewWriteBatch()
 	defer func() {
-		err = batch.flush()
+		err = batch.Flush()
 	}()
-	return x.View(func(txn *badger.Txn) error {
+	var c int64
+	return s.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{
 			Prefix: profileTimestampPrefix.bytes(),
 		})
@@ -159,74 +164,27 @@ func truncateBefore(ctx context.Context, x *badger.DB, before time.Time) (err er
 			}
 			k := it.Item().Key()
 			kt, pk, ok := parseProfileTimestamp(k)
-			if !ok || kt > t {
+			if !ok {
 				continue
 			}
-			if err = batch.delete(pk); err != nil {
+			if kt > t {
+				return nil
+			}
+			if c+2 >= s.db.MaxBatchCount() {
+				if err = batch.Flush(); err != nil {
+					return err
+				}
+				batch = s.db.NewWriteBatch()
+				c = 0
+			}
+			if err = batch.Delete(pk); err != nil {
 				return err
 			}
-			if err = batch.delete(k); err != nil {
+			if err = batch.Delete(k); err != nil {
 				return err
 			}
+			c += 2
 		}
 		return nil
 	})
-}
-
-type writeBatch struct {
-	db *badger.DB
-	wb *badger.WriteBatch
-
-	count int
-	size  int
-	err   error
-}
-
-func newWriteBatch(x *badger.DB) *writeBatch { return &writeBatch{wb: x.NewWriteBatch()} }
-
-func (b *writeBatch) flush() error {
-	if b.err != nil {
-		return b.err
-	}
-	if b.size == 0 {
-		return nil
-	}
-	return b.wb.Flush()
-}
-
-func (b *writeBatch) write(k, v []byte) error {
-	if b.size+len(v) >= int(b.db.MaxBatchSize()) || b.count+1 >= int(b.db.MaxBatchCount()) {
-		if err := b.wb.Flush(); err != nil {
-			b.err = err
-			return err
-		}
-		b.wb = b.db.NewWriteBatch()
-		b.size = 0
-		b.count = 0
-	}
-	if err := b.wb.Set(k, v); err != nil {
-		b.err = err
-		return err
-	}
-	b.size += len(v)
-	b.count++
-	return nil
-}
-
-func (b *writeBatch) delete(k []byte) error {
-	if b.count+1 >= int(b.db.MaxBatchCount()) {
-		if err := b.wb.Flush(); err != nil {
-			b.err = err
-			return err
-		}
-		b.wb = b.db.NewWriteBatch()
-		b.size = 0
-		b.count = 0
-	}
-	if err := b.wb.Delete(k); err != nil {
-		b.err = err
-		return err
-	}
-	b.count++
-	return nil
 }

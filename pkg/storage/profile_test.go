@@ -2,13 +2,15 @@ package storage
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -33,8 +35,6 @@ var _ = Describe("MergeProfiles", func() {
 				et := testing.SimpleTime(19)
 
 				k1, _ := segment.ParseKey("app.cpu{profile_id=a}")
-				k2, _ := segment.ParseKey("app.cpu{profile_id=b}")
-
 				Expect(s.Put(&PutInput{
 					StartTime: st,
 					EndTime:   et,
@@ -42,6 +42,7 @@ var _ = Describe("MergeProfiles", func() {
 					Val:       tree,
 				})).ToNot(HaveOccurred())
 
+				k2, _ := segment.ParseKey("app.cpu{profile_id=b}")
 				Expect(s.Put(&PutInput{
 					StartTime: st,
 					EndTime:   et,
@@ -64,6 +65,63 @@ var _ = Describe("MergeProfiles", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
 				Expect(o.Tree.Samples()).To(Equal(uint64(6)))
+			})
+		})
+	})
+})
+
+var _ = Describe("Profiles retention policy", func() {
+	testing.WithConfig(func(cfg **config.Config) {
+		JustBeforeEach(func() {
+			var err error
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
+			Expect(err).ToNot(HaveOccurred())
+		})
+		Context("when time-based retention policy is defined", func() {
+			It("removes profiling data outside the period", func() {
+				defer s.Close()
+
+				tree := tree.New()
+				tree.Insert([]byte("a;b"), uint64(1))
+				tree.Insert([]byte("a;c"), uint64(2))
+
+				k1, _ := segment.ParseKey("app.cpu{profile_id=a}")
+				t1 := time.Now()
+				t2 := t1.Add(10 * time.Second)
+				Expect(s.Put(&PutInput{
+					StartTime: t1,
+					EndTime:   t2,
+					Key:       k1,
+					Val:       tree,
+				})).ToNot(HaveOccurred())
+
+				t3 := t2.Add(10 * time.Second)
+				t4 := t3.Add(10 * time.Second)
+				k2, _ := segment.ParseKey("app.cpu{profile_id=b}")
+				Expect(s.Put(&PutInput{
+					StartTime: t3,
+					EndTime:   t4,
+					Key:       k2,
+					Val:       tree,
+				})).ToNot(HaveOccurred())
+
+				rp := &segment.RetentionPolicy{AbsoluteTime: t3}
+				Expect(s.EnforceRetentionPolicy(rp)).ToNot(HaveOccurred())
+
+				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{
+					AppName:   "app.cpu",
+					ProfileID: []string{"a", "b"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o.Tree).ToNot(BeNil())
+				Expect(o.Tree.Samples()).To(Equal(uint64(3)))
+
+				gi := new(GetInput)
+				gi.Query, _ = flameql.ParseQuery(`app.cpu{profile_id="b"}`)
+				o2, err := s.Get(gi)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(o2.Tree).ToNot(BeNil())
+				Expect(o2.Tree.Samples()).To(Equal(uint64(3)))
 			})
 		})
 	})
