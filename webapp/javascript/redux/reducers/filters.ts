@@ -83,10 +83,12 @@ const initialState = {
   diff: {
     flamebearer: null,
   },
+  // TODO(eh-am): add proper types
   adhocSingle: {
-    file: null,
-    profile: null,
-    flamebearer: null,
+    raw: null as any,
+    file: null as any,
+    profile: null as any,
+    flamebearer: null as any,
     isProfileLoading: false,
   },
   adhocShared: {
@@ -444,6 +446,7 @@ export default function (state = initialState, action) {
       return {
         ...state,
         adhocSingle: {
+          ...state.adhocSingle,
           profile: null,
           file,
           flamebearer: flamebearer ? decodeFlamebearer(flamebearer) : null,
