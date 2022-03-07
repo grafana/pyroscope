@@ -114,7 +114,8 @@ const initialState = {
     },
   },
   adhocComparisonDiff: {
-    flamebearer: null,
+    flamebearer: null as any,
+    raw: null as any,
     isProfileLoading: false,
   },
   serviceDiscovery: {
