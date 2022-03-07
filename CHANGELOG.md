@@ -1,3 +1,12 @@
+## [0.11.1](https://github.com/pyroscope-io/pyroscope/compare/v0.11.0...v0.11.1) (2022-03-07)
+
+
+### Bug Fixes
+
+* agent authorization ([#923](https://github.com/pyroscope-io/pyroscope/issues/923)) ([0bd5c70](https://github.com/pyroscope-io/pyroscope/commit/0bd5c70bab3e93140b5401e53bdebf889623714b))
+
+
+
 # [0.11.0](https://github.com/pyroscope-io/pyroscope/compare/v0.10.2...v0.11.0) (2022-03-01)
 
 
