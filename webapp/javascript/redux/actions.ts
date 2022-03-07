@@ -509,8 +509,10 @@ export function fetchAdhocProfiles() {
     })
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocProfiles(data)))
-      .catch((e) => handleError(dispatch, e))
-      .then(() => dispatch(cancelAdhocProfiles()))
+      .catch((e) => {
+        handleError(dispatch, e);
+        dispatch(cancelAdhocProfiles());
+      })
       .finally();
   };
 }
@@ -536,8 +538,10 @@ export function fetchAdhocProfile(profile) {
     })
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocProfile(data)))
-      .catch((e) => handleError(dispatch, e))
-      .then(() => dispatch(cancelAdhocProfile()))
+      .catch((e) => {
+        handleError(dispatch, e);
+        dispatch(cancelAdhocProfile());
+      })
       .finally();
   };
 }
@@ -563,8 +567,10 @@ export function fetchAdhocLeftProfile(profile) {
     })
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocLeftProfile(data)))
-      .catch((e) => handleError(dispatch, e))
-      .then(() => dispatch(cancelAdhocLeftProfile()))
+      .catch((e) => {
+        handleError(dispatch, e);
+        dispatch(cancelAdhocLeftProfile());
+      })
       .finally();
   };
 }
@@ -590,8 +596,10 @@ export function fetchAdhocRightProfile(profile) {
     })
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocRightProfile(data)))
-      .catch((e) => handleError(dispatch, e))
-      .then(() => dispatch(cancelAdhocRightProfile()))
+      .catch((e) => {
+        handleError(dispatch, e);
+        dispatch(cancelAdhocRightProfile());
+      })
       .finally();
   };
 }
@@ -617,8 +625,10 @@ export function fetchAdhocProfileDiff(left, right) {
     })
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveAdhocProfileDiff(data)))
-      .catch((e) => handleError(dispatch, e))
-      .then(() => dispatch(cancelAdhocProfileDiff()))
+      .catch((e) => {
+        handleError(dispatch, e);
+        dispatch(cancelAdhocProfileDiff());
+      })
       .finally();
   };
 }
