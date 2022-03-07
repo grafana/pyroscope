@@ -94,7 +94,7 @@ export const setMaxNodes = (maxNodes) => ({
   payload: { maxNodes },
 });
 
-export const refresh = (url) => ({ type: REFRESH, payload: { url } });
+export const refresh = () => ({ type: REFRESH });
 
 export const requestTimeline = (url) => ({
   type: REQUEST_COMPARISON_TIMELINE,
@@ -265,7 +265,9 @@ export const cancelAdhocProfileDiff = () => ({
 // ResponseNotOkError refers to when request is not ok
 // ie when status code is not in the 2xx range
 class ResponseNotOkError extends Error {
-  constructor(response, text) {
+  response: any;
+
+  constructor(response: any, text: string) {
     super(`Bad Response with code ${response.status}: ${text}`);
     this.name = 'ResponseNotOkError';
     this.response = response;
@@ -419,7 +421,7 @@ export function fetchComparisonDiffAppData(url) {
       .then((response) => handleResponse(dispatch, response))
       .then((data) => dispatch(receiveComparisonDiffAppData(data)))
       .catch((e) => handleError(dispatch, e))
-      .catch((e) => dispatchNotificationByError(dispatch, e))
+      .catch((e) => handleError(dispatch, e))
       .then(() => dispatch(cancelComparisonDiffAppData()))
       .finally();
   };
