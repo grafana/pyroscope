@@ -35,6 +35,20 @@ func (a Authorizer) Require(funcs ...func(r *http.Request) bool) func(next http.
 	}
 }
 
+func (a Authorizer) RequireOneOf(funcs ...func(r *http.Request) bool) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			for _, fn := range funcs {
+				if fn(r) {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			api.HandleError(w, r, a.logger, model.ErrPermissionDenied)
+		})
+	}
+}
+
 // Role verifies if the identity (user or API key) associated
 // with the request has the given role.
 func Role(role model.Role) func(r *http.Request) bool {

@@ -206,7 +206,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	if ctrl.config.Auth.Ingestion.Enabled {
 		ingestRouter.Use(
 			ctrl.ingestionAuthMiddleware(),
-			authz.NewAuthorizer(ctrl.log).Require(
+			authz.NewAuthorizer(ctrl.log).RequireOneOf(
 				authz.Role(model.AdminRole),
 				authz.Role(model.AgentRole),
 			))
