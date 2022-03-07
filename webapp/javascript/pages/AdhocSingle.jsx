@@ -8,9 +8,9 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import classNames from 'classnames';
-import FileList from './FileList';
-import FileUploader from './FileUploader';
-import Footer from './Footer';
+import FileList from '../components/FileList';
+import FileUploader from '../components/FileUploader';
+import Footer from '../components/Footer';
 
 import {
   fetchAdhocProfiles,
@@ -20,8 +20,8 @@ import {
 } from '../redux/actions';
 import 'react-tabs/style/react-tabs.css';
 import adhocStyles from './Adhoc.module.scss';
-import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
-import ExportData from './ExportData';
+import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+import ExportData from '../components/ExportData';
 
 function AdhocSingle(props) {
   const { actions, file, profile, flamebearer, isProfileLoading, raw } = props;

@@ -4,17 +4,17 @@ import 'react-dom';
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import TimelineChartWrapper from './TimelineChartWrapper';
-import Header from './Header';
-import Footer from './Footer';
+import TimelineChartWrapper from '../components/TimelineChartWrapper';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 import { buildRenderURL } from '../util/updateRequests';
 import {
   fetchNames,
   fetchPyroscopeAppData,
   abortTimelineRequest,
 } from '../redux/actions';
-import ExportData from './ExportData';
-import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
+import ExportData from '../components/ExportData';
+import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
 
 function PyroscopeApp(props) {
   const { actions, renderURL, single, raw } = props;

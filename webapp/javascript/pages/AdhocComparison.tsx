@@ -8,9 +8,9 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import classNames from 'classnames';
-import FileList from './FileList';
-import FileUploader from './FileUploader';
-import Footer from './Footer';
+import FileList from '../components/FileList';
+import FileUploader from '../components/FileUploader';
+import Footer from '../components/Footer';
 import {
   fetchAdhocProfiles,
   fetchAdhocLeftProfile,
@@ -21,10 +21,10 @@ import {
   setAdhocRightProfile,
 } from '../redux/actions';
 import 'react-tabs/style/react-tabs.css';
-import styles from './ComparisonApp.module.css';
 import adhocStyles from './Adhoc.module.scss';
-import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
-import ExportData from './ExportData';
+import adhocComparisonStyles from './AdhocComparison.module.scss';
+import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+import ExportData from '../components/ExportData';
 
 function AdhocComparison(props) {
   const {
@@ -75,7 +75,7 @@ function AdhocComparison(props) {
           className="comparison-container"
           data-testid="comparison-container"
         >
-          <Box className={styles.comparisonPane}>
+          <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs>
               <TabList>
                 <Tab>Upload</Tab>
@@ -119,7 +119,7 @@ function AdhocComparison(props) {
               />
             )}
           </Box>
-          <Box className={styles.comparisonPane}>
+          <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs>
               <TabList>
                 <Tab>Upload</Tab>

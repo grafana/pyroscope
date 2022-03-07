@@ -8,19 +8,19 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import FileList from './FileList';
-import Footer from './Footer';
+import FileList from '../components/FileList';
+import Footer from '../components/Footer';
 import {
   fetchAdhocProfiles,
   fetchAdhocProfileDiff,
   setAdhocLeftProfile,
   setAdhocRightProfile,
 } from '../redux/actions';
-import styles from './ComparisonApp.module.css';
 import 'react-tabs/style/react-tabs.css';
 import adhocStyles from './Adhoc.module.scss';
-import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
-import ExportData from './ExportData';
+import adhocComparisonStyles from './AdhocComparison.module.scss';
+import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+import ExportData from '../components/ExportData';
 
 function AdhocComparisonDiff(props) {
   const {
@@ -53,7 +53,7 @@ function AdhocComparisonDiff(props) {
           className="comparison-container"
           data-testid="comparison-container"
         >
-          <Box className={styles.comparisonPane}>
+          <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs>
               <TabList>
                 <Tab>Pyroscope data</Tab>
@@ -69,7 +69,7 @@ function AdhocComparisonDiff(props) {
               <TabPanel />
             </Tabs>
           </Box>
-          <Box className={styles.comparisonPane}>
+          <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs>
               <TabList>
                 <Tab>Pyroscope data</Tab>
