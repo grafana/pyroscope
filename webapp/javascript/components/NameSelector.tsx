@@ -2,33 +2,33 @@
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState, useEffect } from 'react';
 import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
 import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
 import { appNameToQuery, queryToAppName } from '@utils/query';
 import {
   selectAppNames,
   selectAppNamesState,
   reloadAppNames,
-} from '@pyroscope/redux/reducers/newRoot';
+} from '@pyroscope/redux/reducers/apps';
+import {
+  actions,
+  selectContinuousState,
+} from '@pyroscope/redux/reducers/continuous';
 import LoadingSpinner from '@ui/LoadingSpinner';
 import Button from '@ui/Button';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import Dropdown, { MenuItem, FocusableItem } from '@ui/Dropdown';
-import { setQuery } from '../redux/actions';
 import styles from './NameSelector.module.scss';
 
-const defKey = 'Select an app...';
-
 function NameSelector(props) {
-  const { actions, names, query } = props;
   const appNamesState = useAppSelector(selectAppNamesState);
   const appNames = useAppSelector(selectAppNames);
+  const { query } = useAppSelector(selectContinuousState);
 
   const [filter, setFilter] = useState('');
 
   const selectAppName = (name: string) => {
     const query = appNameToQuery(name);
-    actions.setQuery(query);
+    dispatch(actions.setQuery(query));
   };
 
   const dispatch = useAppDispatch();
@@ -40,7 +40,7 @@ function NameSelector(props) {
       const first = appNames[0];
       if (first) {
         const query = appNameToQuery(first);
-        actions.setQuery(query);
+        dispatch(actions.setQuery(query));
       }
     }
   }, [query]);
@@ -127,12 +127,12 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      setQuery,
-    },
-    dispatch
-  ),
+  // actions: bindActionCreators(
+  //  {
+  //    setQuery,
+  //  },
+  //  dispatch
+  // ),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(NameSelector);

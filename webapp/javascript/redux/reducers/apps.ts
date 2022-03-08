@@ -4,7 +4,7 @@ import { fetchAppNames } from '@pyroscope/services/appNames';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 
-interface NewRootState {
+interface NamesState {
   // Since the value populated from the server
   // There's no 'loading'
   appNames:
@@ -14,13 +14,13 @@ interface NewRootState {
 }
 
 // Define the initial state using that type
-const initialState: NewRootState = {
+const initialState: NamesState = {
   appNames: { type: 'loaded', data: (window as any).initialState.appNames },
 };
 
 export const reloadAppNames = createAsyncThunk(
-  'newRoot/reloadAppNames',
-  async (foo, thunkAPI) => {
+  'names/reloadAppNames',
+  async (_, thunkAPI) => {
     // TODO, retries?
     const res = await fetchAppNames();
 
@@ -40,8 +40,8 @@ export const reloadAppNames = createAsyncThunk(
   }
 );
 
-export const newRootSlice = createSlice({
-  name: 'newRoot',
+export const namesSlice = createSlice({
+  name: 'names',
   initialState,
   reducers: {},
   extraReducers: (builder) => {
@@ -57,7 +57,7 @@ export const newRootSlice = createSlice({
   },
 });
 
-export const selectAppNamesState = (state: RootState) => state.newRoot.appNames;
-export const selectAppNames = (state: RootState) => state.newRoot.appNames.data;
+export const selectAppNamesState = (state: RootState) => state.apps.appNames;
+export const selectAppNames = (state: RootState) => state.apps.appNames.data;
 
-export default newRootSlice.reducer;
+export default namesSlice.reducer;

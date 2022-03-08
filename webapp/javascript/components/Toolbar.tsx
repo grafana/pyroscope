@@ -12,7 +12,7 @@ import TagsBar from './TagsBar';
 
 import { fetchNames } from '../redux/actions';
 
-function Header(props) {
+function Toolbar(props) {
   const { areNamesLoading, isJSONLoading, query } = props;
 
   // This component initializes using a value frmo the redux store (query)
@@ -49,8 +49,4 @@ function Header(props) {
   );
 }
 
-const mapStateToProps = (state) => ({
-  ...state.root,
-});
-
-export default connect(mapStateToProps, { fetchNames })(Header);
+export default Toolbar;

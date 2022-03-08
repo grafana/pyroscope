@@ -3,6 +3,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { renderSingle, RenderOutput } from '../../services/render';
 import { addNotification } from './notifications';
 import { Timeline } from '../../models/timeline';
+import type { RootState } from '../store';
 
 type SingleView =
   | { type: 'pristine' }
@@ -118,12 +119,28 @@ export const continuousSlice = createSlice({
 
     builder.addCase(fetchSingleView.fulfilled, (state, action) => {
       state.singleView = {
-        type: 'loaded',
         ...action.payload,
+        type: 'loaded',
       };
+    });
+
+    builder.addCase(fetchSingleView.rejected, (state, action) => {
+      // if previous state is loaded, let's continue displaying data
+      if (state.singleView.type === 'reloading') {
+        state.singleView = {
+          ...state.singleView,
+          type: 'loaded',
+        };
+      } else {
+        // it failed to load for the first time, so far all effects it's pristine
+        state.singleView = {
+          type: 'pristine',
+        };
+      }
     });
   },
 });
 
+export const selectContinuousState = (state: RootState) => state.continuous;
 export default continuousSlice.reducer;
 export const { actions } = continuousSlice;

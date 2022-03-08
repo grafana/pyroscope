@@ -6,7 +6,7 @@ import Box from '@ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import { fetchSingleView } from '@pyroscope/redux/reducers/continuous';
 import TimelineChartWrapper from '../components/TimelineChartWrapper';
-import Header from '../components/Header';
+import Toolbar from '../components/Toolbar';
 import Footer from '../components/Footer';
 import ExportData from '../components/ExportData';
 import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
@@ -86,7 +86,7 @@ function ContinuousSingleView() {
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
-        <Header />
+        <Toolbar />
         <TimelineChartWrapper
           data-testid="timeline-single"
           id="timeline-chart-single"

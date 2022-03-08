@@ -16,7 +16,7 @@ import rootReducer from './reducers';
 import history from '../util/history';
 
 import viewsReducer from './reducers/views';
-import newRootStore from './reducers/newRoot';
+import appsReducer from './reducers/apps';
 import settingsReducer from './reducers/settings';
 import userReducer from './reducers/user';
 import continuousReducer, {
@@ -26,7 +26,7 @@ import serviceDiscoveryReducer from './reducers/serviceDiscovery';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
 const reducer = combineReducers({
-  newRoot: newRootStore,
+  apps: appsReducer,
   root: rootReducer,
   views: viewsReducer,
   settings: settingsReducer,
