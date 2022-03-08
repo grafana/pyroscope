@@ -15,6 +15,7 @@ import Toolbar from '../Toolbar';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
 import styles from './FlamegraphRenderer.module.css';
 import PyroscopeLogo from '../logo-v3-small.svg';
+import decode from './decode';
 
 class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
@@ -26,6 +27,29 @@ class FlameGraphRenderer extends React.Component {
 
   constructor(props) {
     super();
+
+    // Still support old flamebearer format
+    // But prefer the new 'profile' one
+    const getFlamebearer = () => {
+      if (props.profile && props.flamebearer) {
+        console.warn(
+          "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
+        );
+      }
+
+      if (props.profile) {
+        const profile = decode(props.profile);
+
+        return {
+          ...profile,
+          ...profile.flamebearer,
+          ...profile.metadata,
+        };
+      }
+
+      return props.flamebearer;
+    };
+
     this.state = {
       isFlamegraphDirty: false,
       sortBy: 'self',
@@ -33,7 +57,7 @@ class FlameGraphRenderer extends React.Component {
       view: 'both',
       viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
       fitMode: props.fitMode ? props.fitMode : 'HEAD',
-      flamebearer: props.flamebearer,
+      flamebearer: getFlamebearer(),
 
       // query used in the 'search' checkbox
       highlightQuery: '',

@@ -1,7 +1,6 @@
 import React from 'react';
-import { Units } from '@utils/format';
-// import { FlamegraphRenderer } from '../webapp/lib';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import PyroscopeServerCPU from '../cypress/fixtures/pyroscope.server.cpu.json';
 
 export default {
   title: '@pyroscope/flamegraph',
@@ -29,7 +28,7 @@ const SimpleTree = {
   ],
 
   rangeMax: 1,
-  units: Units.Samples,
+  units: 'samples',
   fitMode: 'HEAD',
 
   spyName: 'gospy',
@@ -63,6 +62,19 @@ export const TableViewWithoutToolbar = () => {
       flamebearer={SimpleTree}
       viewType="single"
       display="table"
+      showToolbar={false}
+    />
+  );
+};
+
+// In this example we use the FlamegraphRenderer component
+// with whatever data we got from the /render endpoint
+export const WithRenderData = () => {
+  return (
+    <FlamegraphRenderer
+      profile={PyroscopeServerCPU}
+      viewType="single"
+      display="flamegraph"
       showToolbar={false}
     />
   );
