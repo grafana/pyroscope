@@ -14,7 +14,7 @@ import { createStore, applyMiddleware } from 'redux';
 import { composeWithDevTools } from 'redux-devtools-extension';
 
 import ReduxQuerySync from 'redux-query-sync';
-import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 import storage from 'redux-persist/lib/storage';
 
 import rootReducer from './reducers';
@@ -24,7 +24,10 @@ import viewsReducer from './reducers/views';
 import newRootStore from './reducers/newRoot';
 import settingsReducer from './reducers/settings';
 import userReducer from './reducers/user';
-import continuousReducer from './reducers/continuous';
+import continuousReducer, {
+  fetchSingleView,
+  actions as continuousActions,
+} from './reducers/continuous';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
@@ -39,12 +42,6 @@ import {
   setQuery,
 } from './actions';
 
-const enhancer = composeWithDevTools(
-  applyMiddleware(thunkMiddleware)
-  // updateUrl(["from", "until", "labels"]),
-  // persistState(["from", "until", "labels"]),
-);
-
 const reducer = combineReducers({
   newRoot: newRootStore,
   root: rootReducer,
@@ -56,16 +53,30 @@ const reducer = combineReducers({
   continuous: continuousReducer,
 });
 
+// Most times we will display a (somewhat) user friendly message toast
+// But it's still useful to have the actual error logged to the console
+export const logErrorMiddleware: Middleware = () => (next) => (action) => {
+  next(action);
+  if (action?.error) {
+    console.error(action.error.message ? action.error.message : action.error);
+    // TODO: it would be nice to have an actual error here
+    //    console.error(action.error.stack);
+  }
+};
+
 const store = configureStore({
   reducer,
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
+  middleware: (getDefaultMiddleware) => [
+    ...getDefaultMiddleware({
       serializableCheck: {
         // Based on this issue: https://github.com/rt2zz/redux-persist/issues/988
         // and this guide https://redux-toolkit.js.org/usage/usage-guide#use-with-redux-persist
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
     }),
+
+    logErrorMiddleware,
+  ],
 });
 
 export const persistor = persistStore(store);
@@ -75,8 +86,9 @@ ReduxQuerySync({
   params: {
     from: {
       defaultValue: 'now-1h',
-      selector: (state) => state.root.from,
-      action: setFrom,
+      selector: (state) => state.continuous.from,
+      //      action: setFrom,
+      action: continuousActions.setFrom,
     },
     until: {
       defaultValue: 'now',
@@ -105,8 +117,8 @@ ReduxQuerySync({
     },
     query: {
       defaultvalue: '',
-      selector: (state) => state.root.query,
-      action: setQuery,
+      selector: (state) => state.continuous.query,
+      action: continuousActions.setQuery,
     },
     maxNodes: {
       defaultValue: '1024',

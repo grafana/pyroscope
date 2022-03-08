@@ -2,8 +2,8 @@
 
 export function buildRenderURL(
   state: {
-    from: number;
-    until: number;
+    from: string;
+    until: string;
     query: string;
     refreshToken?: string;
     maxNodes: string | number;
@@ -37,8 +37,8 @@ export function buildRenderURL(
 
 // TODO: merge buildRenderURL and buildDiffRenderURL
 export function buildDiffRenderURL(state: {
-  from: number;
-  until: number;
+  from: string;
+  until: string;
   leftFrom: string;
   leftUntil: string;
   rightFrom: string;

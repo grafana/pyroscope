@@ -2,7 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { connect } from 'react-redux';
 import 'react-dom';
 
-import { useAppDispatch, useOldRootSelector } from '@pyroscope/redux/hooks';
+import {
+  useAppDispatch,
+  useAppSelector,
+  useOldRootSelector,
+} from '@pyroscope/redux/hooks';
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
@@ -23,49 +27,43 @@ function PyroscopeApp(props) {
   const { actions, renderURL, single, raw } = props;
   const prevPropsRef = useRef();
   const dispatch = useAppDispatch();
-  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
 
-  const { from, until, query, refreshToken, maxNodes } = useOldRootSelector(
-    (state) => state
+  const { from, until, query, refreshToken, maxNodes } = useAppSelector(
+    (state) => state.continuous
   );
 
+  const { singleView } = useAppSelector((state) => state.continuous);
+
   useEffect(() => {
-    console.log('dispatching new request');
-    dispatch(fetchSingleView());
-    //    dispatch(
-    //      fetchSingleView({
-    //        from,
-    //        until,
-    //        query,
-    //        refreshToken,
-    //        maxNodes,
-    //      })
-    //    );
+    if (from && until && query && maxNodes) {
+      dispatch(fetchSingleView());
+    }
   }, [from, until, query, refreshToken, maxNodes]);
 
-  useEffect(() => {
-    if (prevPropsRef.renderURL !== renderURL) {
-      actions.fetchPyroscopeAppData(renderURL);
+  const getRaw = () => {
+    switch (singleView.type) {
+      case 'loaded':
+      case 'reloading': {
+        return singleView.raw;
+      }
+
+      default: {
+        return undefined;
+      }
     }
+  };
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(getRaw());
 
-    return actions.abortTimelineRequest;
-  }, [renderURL]);
-
-  return (
-    <div className="pyroscope-app">
-      <div className="main-wrapper">
-        <Header />
-        <TimelineChartWrapper
-          data-testid="timeline-single"
-          id="timeline-chart-single"
-          viewSide="none"
-        />
-        <Box>
+  const flamegraphRenderer = (() => {
+    switch (singleView.type) {
+      case 'loaded':
+      case 'reloading': {
+        return (
           <FlamegraphRenderer
-            flamebearer={single?.flamebearer}
+            profile={singleView.profile}
             viewType="single"
             display="both"
-            rawFlamegraph={raw}
+            rawFlamegraph={singleView.raw}
             ExportData={
               // Don't export PNG since the exportPng code is broken
               <ExportData
@@ -79,7 +77,25 @@ function PyroscopeApp(props) {
               />
             }
           />
-        </Box>
+        );
+      }
+
+      default: {
+        return 'Loading';
+      }
+    }
+  })();
+
+  return (
+    <div className="pyroscope-app">
+      <div className="main-wrapper">
+        <Header />
+        <TimelineChartWrapper
+          data-testid="timeline-single"
+          id="timeline-chart-single"
+          viewSide="none"
+        />
+        <Box>{flamegraphRenderer}</Box>
       </div>
       <Footer />
     </div>

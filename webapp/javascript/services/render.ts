@@ -15,8 +15,8 @@ export interface RenderOutput {
 }
 
 interface renderSingleProps {
-  from: number;
-  until: number;
+  from: string;
+  until: string;
   query: string;
   refreshToken?: string;
   maxNodes: string | number;
@@ -25,7 +25,8 @@ export async function renderSingle(
   props: renderSingleProps
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
   const url = buildRenderURL(props);
-  const response = await request(url);
+  // TODO
+  const response = await request(`${url}}&format=json`);
 
   if (response.isErr) {
     return Result.err<RenderOutput, RequestError>(response.error);
