@@ -1,6 +1,6 @@
 {
   "name": "@pyroscope/flamegraph",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "main": "dist/index.node.js",
   "browser": "dist/index.js",
   "license": "Apache-2.0",

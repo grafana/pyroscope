@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.1.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.0.6...@pyroscope/flamegraph@0.1.0) (2022-03-08)
+
+
+### Features
+
+* **flamegraph:** support a new profile field ([#929](https://github.com/pyroscope-io/pyroscope/issues/929)) ([95abe2a](https://github.com/pyroscope-io/pyroscope/commit/95abe2ae3dc253a25a03eb19a9378d13b85c8f08))
+
+
+
+
+
 ## [0.0.6](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.0.5...@pyroscope/flamegraph@0.0.6) (2022-03-07)
 
 **Note:** Version bump only for package @pyroscope/flamegraph
