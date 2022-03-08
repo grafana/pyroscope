@@ -2,20 +2,19 @@ import { Profile } from '@pyroscope/models';
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { renderSingle, RenderOutput } from '../../services/render';
 import { addNotification } from './notifications';
+import { Timeline } from '../../models/timeline';
 
 type SingleView =
   | { type: 'pristine' }
   | { type: 'loading' }
   | {
       type: 'loaded';
-      // TODO: type this
-      timeline: any;
+      timeline: Timeline;
       profile: Profile;
     }
   | {
       type: 'reloading';
-      // TODO: type this
-      timeline: any;
+      timeline: Timeline;
       profile: Profile;
     };
 
@@ -121,7 +120,6 @@ export const continuousSlice = createSlice({
       state.singleView = {
         type: 'loaded',
         ...action.payload,
-        timeline: null,
       };
     });
   },

@@ -1,70 +1,96 @@
-/* eslint-disable */
-
+/* eslint-disable react/no-access-state-in-setstate */
+/* eslint-disable react/no-did-update-set-state */
+/* eslint-disable react/destructuring-assignment */
 import React from 'react';
 import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
+import { Timeline } from '@models/timeline';
 import TimelineChart from './TimelineChart';
 import { formatAsOBject } from '../util/formatDate';
 import styles from './TimelineChartWrapper.module.css';
-class TimelineChartWrapper extends React.Component {
-  constructor() {
-    super();
 
-    this.state = {
-      flotOptions: {
-        margin: {
-          top: 0,
-          left: 0,
-          bottom: 0,
-          right: 0,
-        },
-        selection: {
-          mode: 'x',
-        },
-        crosshair: {
-          mode: 'x',
-          color: '#C3170D',
-          lineWidth: '1',
-        },
-        grid: {
-          borderWidth: 1,
-          hoverable: true,
-        },
-        yaxis: {
-          show: false,
-          min: 0,
-        },
-        points: {
-          show: false,
-          radius: 0.1,
-        },
-        lines: {
-          show: false,
-          steps: true,
-          lineWidth: 1.0,
-        },
-        bars: {
-          show: true,
-          fill: true,
-        },
-        xaxis: {
-          mode: 'time',
-          timezone: 'browser',
-          reserveSpace: false,
-        },
-      },
-    };
+type TimelineChartWrapperProps = {
+  /** the id attribute of the element float will use to apply to, it should be unique */
+  id: string;
+  timeline?: Timeline;
+} /** it will use this info to color the markins */ & (
+  | {
+      viewSide: 'left';
+      leftFrom: string;
+      leftUntil: string;
+    }
+  | {
+      viewSide: 'right';
+      rightFrom: string;
+      rightUntil: string;
+    }
+  | { viewSide: 'none' }
+);
+
+const initialState = {
+  flotOptions: {
+    margin: {
+      top: 0,
+      left: 0,
+      bottom: 0,
+      right: 0,
+    },
+    selection: {
+      mode: 'x',
+    },
+    crosshair: {
+      mode: 'x',
+      color: '#C3170D',
+      lineWidth: '1',
+    },
+    grid: {
+      borderWidth: 1,
+      hoverable: true,
+    },
+    yaxis: {
+      show: false,
+      min: 0,
+    },
+    points: {
+      show: false,
+      radius: 0.1,
+    },
+    lines: {
+      show: false,
+      steps: true,
+      lineWidth: 1.0,
+    },
+    bars: {
+      show: true,
+      fill: true,
+    },
+    xaxis: {
+      mode: 'time',
+      timezone: 'browser',
+      reserveSpace: false,
+    },
+  },
+};
+
+class TimelineChartWrapper extends React.Component<
+  TimelineChartWrapperProps,
+  typeof initialState
+> {
+  constructor(props: TimelineChartWrapperProps) {
+    super(props);
+
+    this.state = initialState;
   }
 
   componentDidMount() {
-    let newFlotOptions = this.state.flotOptions;
+    const newFlotOptions = this.state.flotOptions;
     newFlotOptions.grid.markings = this.plotMarkings();
 
     this.setState({ flotOptions: newFlotOptions });
   }
 
   componentDidUpdate(prevProps) {
-    if (this.props.viewSide == 'none') return;
+    if (this.props.viewSide === 'none') return;
 
     if (
       prevProps.leftFrom !== this.props.leftFrom ||
@@ -72,7 +98,7 @@ class TimelineChartWrapper extends React.Component {
       prevProps.rightFrom !== this.props.rightFrom ||
       prevProps.rightUntil !== this.props.rightUntil
     ) {
-      let newFlotOptions = this.state.flotOptions;
+      const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
 
       this.setState({ flotOptions: newFlotOptions });
@@ -80,34 +106,40 @@ class TimelineChartWrapper extends React.Component {
   }
 
   plotMarkings = () => {
-    if (!this.props.viewSide) {
+    const { viewSide } = this.props;
+    if (viewSide === 'none') {
       return null;
     }
 
-    let leftFromInt = new Date(formatAsOBject(this.props.leftFrom)).getTime();
-    let leftUntilInt = new Date(formatAsOBject(this.props.leftUntil)).getTime();
-    let rightFromInt = new Date(formatAsOBject(this.props.rightFrom)).getTime();
-    let rightUntilInt = new Date(
+    // TODO(eh-am): move all these to the parent component
+    const leftFromInt = new Date(formatAsOBject(this.props.leftFrom)).getTime();
+    const leftUntilInt = new Date(
+      formatAsOBject(this.props.leftUntil)
+    ).getTime();
+    const rightFromInt = new Date(
+      formatAsOBject(this.props.rightFrom)
+    ).getTime();
+    const rightUntilInt = new Date(
       formatAsOBject(this.props.rightUntil)
     ).getTime();
 
-    let nonActiveBorder = 0.2;
-    let nonActiveBackground = 0.09;
+    const nonActiveBorder = 0.2;
+    const nonActiveBackground = 0.09;
 
-    let leftMarkings = [
+    const leftMarkings = [
       {
         xaxis: {
           from: leftFromInt,
           to: leftUntilInt,
         },
         color:
-          this.props.viewSide === 'left'
+          viewSide === 'left'
             ? 'rgba(200, 102, 204, 0.35)'
             : `rgba(255, 102, 204, ${nonActiveBackground})`,
       },
       {
         color:
-          this.props.viewSide === 'left'
+          viewSide === 'left'
             ? 'rgba(200, 102, 204, 1)'
             : `rgba(255, 102, 204, ${nonActiveBorder})`,
         lineWidth: 3,
@@ -115,7 +147,7 @@ class TimelineChartWrapper extends React.Component {
       },
       {
         color:
-          this.props.viewSide === 'left'
+          viewSide === 'left'
             ? 'rgba(200, 102, 204, 1)'
             : `rgba(255, 102, 204, ${nonActiveBorder})`,
         lineWidth: 3,
@@ -123,20 +155,20 @@ class TimelineChartWrapper extends React.Component {
       },
     ];
 
-    let rightMarkings = [
+    const rightMarkings = [
       {
         xaxis: {
           from: rightFromInt,
           to: rightUntilInt,
         },
         color:
-          this.props.viewSide === 'right'
+          viewSide === 'right'
             ? 'rgba(19, 152, 246, 0.35)'
             : `rgba(19, 152, 246, ${nonActiveBackground})`,
       },
       {
         color:
-          this.props.viewSide === 'right'
+          viewSide === 'right'
             ? 'rgba(19, 152, 246, 1)'
             : `rgba(19, 152, 246, ${nonActiveBorder})`,
         lineWidth: 3,
@@ -144,7 +176,7 @@ class TimelineChartWrapper extends React.Component {
       },
       {
         color:
-          this.props.viewSide === 'right'
+          viewSide === 'right'
             ? 'rgba(19, 152, 246, 1)'
             : `rgba(19, 152, 246, ${nonActiveBorder})`,
         lineWidth: 3,
@@ -152,18 +184,19 @@ class TimelineChartWrapper extends React.Component {
       },
     ];
 
-    return this.props.viewSide === 'none'
-      ? []
-      : leftMarkings.concat(rightMarkings);
+    return leftMarkings.concat(rightMarkings);
   };
 
   render = () => {
+    const { timeline, id, viewSide } = this.props;
+    const { flotOptions } = this.state;
+
     // Since profiling data is chuked by 10 seconds slices
     // it's more user friendly to point a `center` of a data chunk
     // as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
-    const flotData = this.props.timeline
+    const flotData = timeline
       ? [
-          this.props.timeline.map((x) => [
+          decodeTimelineData(timeline).map((x) => [
             x[0] + 5000,
             x[1] === 0 ? null : x[1] - 1,
           ]),
@@ -172,10 +205,10 @@ class TimelineChartWrapper extends React.Component {
 
     // In case there are few chunks left, then we'd like to add some margins to
     // both sides making it look more centers
-    const flotOptions = {
-      ...this.state.flotOptions,
+    const customFlotOptions = {
+      ...flotOptions,
       xaxis: {
-        ...this.state.flotOptions.xaxis,
+        ...flotOptions.xaxis,
         autoscaleMargin: flotData[0] && flotData[0].length > 3 ? null : 0.005,
       },
     };
@@ -183,10 +216,11 @@ class TimelineChartWrapper extends React.Component {
     return (
       <TimelineChart
         className={styles.wrapper}
+        // eslint-disable-next-line react/destructuring-assignment
         data-testid={this.props['data-testid']}
-        id={this.props.id}
-        options={flotOptions}
-        viewSide={this.props.viewSide}
+        id={id}
+        options={customFlotOptions}
+        viewSide={viewSide}
         data={flotData}
         width="100%"
         height="100px"
@@ -195,10 +229,19 @@ class TimelineChartWrapper extends React.Component {
   };
 }
 
-const mapStateToProps = (state) => ({
-  ...state.root,
-});
+function decodeTimelineData(timelineData: Timeline) {
+  if (!timelineData) {
+    return [];
+  }
+  let time = timelineData.startTime;
+  return timelineData.samples.map((x) => {
+    const res = [time * 1000, x];
+    time += timelineData.durationDelta;
+    return res;
+  });
+}
 
+const mapStateToProps = (state) => ({});
 const mapDispatchToProps = (dispatch) => ({
   actions: bindActionCreators({}, dispatch),
 });

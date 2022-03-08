@@ -1,12 +1,15 @@
 import { Result } from '@utils/fp';
 import { Profile, FlamebearerProfileSchema } from '@pyroscope/models';
+import { z } from 'zod';
 import type { ZodError } from 'zod';
 import type { RequestError } from './base';
 import { request } from './base';
 import { buildRenderURL } from '../util/updateRequests';
+import { Timeline, TimelineSchema } from '../models/timeline';
 
 export interface RenderOutput {
   profile: Profile;
+  timeline: Timeline;
 }
 
 interface renderSingleProps {
@@ -27,12 +30,20 @@ export async function renderSingle(
     return Result.err<RenderOutput, RequestError>(response.error);
   }
 
-  const parsed = FlamebearerProfileSchema.safeParse(response.value);
+  const parsed = FlamebearerProfileSchema.merge(
+    z.object({
+      timeline: TimelineSchema,
+    })
+  ).safeParse(response.value);
+
   if (parsed.success) {
+    // TODO: strip timeline
     const profile = parsed.data;
+    const { timeline } = parsed.data;
 
     return Result.ok({
       profile,
+      timeline,
     });
   }
 

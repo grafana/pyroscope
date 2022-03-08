@@ -51,7 +51,6 @@ function ContinuousSingleView() {
             display="both"
             rawFlamegraph={singleView.profile}
             ExportData={
-              // Don't export PNG since the exportPng code is broken
               <ExportData
                 flamebearer={singleView.profile}
                 exportPNG
@@ -72,6 +71,18 @@ function ContinuousSingleView() {
     }
   })();
 
+  const getTimelineData = () => {
+    switch (singleView.type) {
+      case 'loaded':
+      case 'reloading': {
+        return singleView.timeline;
+      }
+
+      default:
+        return undefined;
+    }
+  };
+
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
@@ -80,6 +91,7 @@ function ContinuousSingleView() {
           data-testid="timeline-single"
           id="timeline-chart-single"
           viewSide="none"
+          timeline={getTimelineData()}
         />
         <Box>{flamegraphRenderer}</Box>
       </div>

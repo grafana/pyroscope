@@ -52,7 +52,6 @@ import {
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 import { addNotification } from './reducers/notifications';
-import { renderSingle } from '../services/render';
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
