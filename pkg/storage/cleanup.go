@@ -11,6 +11,7 @@ import (
 
 // Cleanup removes malformed data from the storage.
 func (s *Storage) Cleanup(ctx context.Context) error {
+	// TODO: must not be called after Close().
 	s.tasksWG.Add(1)
 	defer s.tasksWG.Done()
 	start := time.Now()

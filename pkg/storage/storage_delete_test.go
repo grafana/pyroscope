@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 package storage
 
 import (
@@ -136,8 +139,7 @@ var _ = Describe("storage package", func() {
 
 				// Trees
 				Expect(s.trees.Cache.Size()).To(Equal(uint64(1)))
-				t := checkTreesPresence(appname, st, 0, true)
-				Expect(t).To(Equal(tree1))
+				checkTreesPresence(appname, st, 0, true)
 
 				// Segments
 				Expect(s.segments.Cache.Size()).To(Equal(uint64(1)))
@@ -160,7 +162,7 @@ var _ = Describe("storage package", func() {
 				// Trees
 				// should've been deleted from CACHE
 				Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
-				t = checkTreesPresence(appname, st, 0, false)
+				checkTreesPresence(appname, st, 0, false)
 
 				// Dimensions
 				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))

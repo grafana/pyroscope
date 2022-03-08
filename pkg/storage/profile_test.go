@@ -54,16 +54,16 @@ var _ = Describe("MergeProfiles", func() {
 				})).ToNot(HaveOccurred())
 
 				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{
-					AppName:   "app.cpu",
-					ProfileID: []string{"a"},
+					AppName:  "app.cpu",
+					Profiles: []string{"a"},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
 				Expect(o.Tree.Samples()).To(Equal(uint64(3)))
 
 				o, err = s.MergeProfiles(context.Background(), MergeProfilesInput{
-					AppName:   "app.cpu",
-					ProfileID: []string{"a", "b"},
+					AppName:  "app.cpu",
+					Profiles: []string{"a", "b"},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
@@ -112,8 +112,8 @@ var _ = Describe("Profiles retention policy", func() {
 				Expect(s.EnforceRetentionPolicy(rp)).ToNot(HaveOccurred())
 
 				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{
-					AppName:   "app.cpu",
-					ProfileID: []string{"a", "b"},
+					AppName:  "app.cpu",
+					Profiles: []string{"a", "b"},
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())

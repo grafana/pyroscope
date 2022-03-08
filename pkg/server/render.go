@@ -111,6 +111,71 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type mergeRequest struct {
+	AppName  string   `json:"appName"`
+	Profiles []string `json:"profiles"`
+	MaxNodes int      `json:"maxNodes"`
+}
+
+type mergeResponse struct {
+	flamebearer.FlamebearerProfile
+}
+
+func (ctrl *Controller) mergeHandler(w http.ResponseWriter, r *http.Request) {
+	var req mergeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ctrl.writeInvalidParameterError(w, err)
+		return
+	}
+
+	if req.AppName == "" {
+		ctrl.writeInvalidParameterError(w, fmt.Errorf("application name required"))
+		return
+	}
+	if len(req.Profiles) == 0 {
+		ctrl.writeInvalidParameterError(w, fmt.Errorf("at least one profile ID must be specified"))
+		return
+	}
+	maxNodes := ctrl.config.MaxNodesRender
+	if req.MaxNodes > 0 {
+		maxNodes = req.MaxNodes
+	}
+
+	out, err := ctrl.storage.MergeProfiles(r.Context(), storage.MergeProfilesInput{
+		AppName:  req.AppName,
+		Profiles: req.Profiles,
+	})
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
+		return
+	}
+
+	flame := out.Tree.FlamebearerStruct(maxNodes)
+	resp := mergeResponse{
+		FlamebearerProfile: flamebearer.FlamebearerProfile{
+			Version: 1,
+			FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+				Flamebearer: flamebearer.FlamebearerV1{
+					Names:    flame.Names,
+					Levels:   flame.Levels,
+					NumTicks: flame.NumTicks,
+					MaxSelf:  flame.MaxSelf,
+				},
+				// Hardcoded values for Go.
+				Metadata: flamebearer.FlamebearerMetadataV1{
+					Format:     string(tree.FormatSingle),
+					SpyName:    "unknown",
+					SampleRate: 100,
+					Units:      "samples",
+				},
+			},
+		},
+	}
+
+	ctrl.statsInc("merge")
+	ctrl.writeResponseJSON(w, resp)
+}
+
 // Enhance the flamebearer with a few additional fields the UI requires
 func (*Controller) mountRenderResponse(flame flamebearer.FlamebearerProfile, appName string, gi *storage.GetInput, maxNodes int) RenderResponse {
 	metadata := renderMetadataResponse{

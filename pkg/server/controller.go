@@ -248,6 +248,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/render-diff", ctrl.renderDiffHandler},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
+		{"/merge", ctrl.mergeHandler},
 		{"/export", ctrl.exportHandler},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
 		ctrl.drainMiddleware,
