@@ -3,14 +3,14 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import Header from './Header';
-import Footer from './Footer';
-import TimelineChartWrapper from './TimelineChartWrapper';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+import TimelineChartWrapper from '../components/TimelineChartWrapper';
 import { buildDiffRenderURL } from '../util/updateRequests';
 import { fetchNames, fetchComparisonDiffAppData } from '../redux/actions';
-import InstructionText from './InstructionText';
-import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
-import ExportData from './ExportData';
+import InstructionText from '../components/InstructionText';
+import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+import ExportData from '../components/ExportData';
 
 function ComparisonDiffApp(props) {
   const { actions, diffRenderURL, diff } = props;

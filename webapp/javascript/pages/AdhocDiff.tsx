@@ -1,50 +1,53 @@
 import React, { useEffect } from 'react';
-import { connect } from 'react-redux';
 import 'react-dom';
 
-import { bindActionCreators } from 'redux';
+import { useAppDispatch, useOldRootSelector } from '@pyroscope/redux/hooks';
 import Box from '@ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import FileList from './FileList';
-import Footer from './Footer';
+import FileList from '../components/FileList';
+import Footer from '../components/Footer';
 import {
   fetchAdhocProfiles,
   fetchAdhocProfileDiff,
   setAdhocLeftProfile,
   setAdhocRightProfile,
+  abortFetchAdhocProfileDiff,
+  abortFetchAdhocProfiles,
 } from '../redux/actions';
-import styles from './ComparisonApp.module.css';
 import 'react-tabs/style/react-tabs.css';
 import adhocStyles from './Adhoc.module.scss';
-import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
-import ExportData from './ExportData';
+import adhocComparisonStyles from './AdhocComparison.module.scss';
+import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+import ExportData from '../components/ExportData';
 
-function AdhocComparisonDiff(props) {
-  const {
-    actions,
-    isProfileLoading,
-    flamebearer,
-    leftProfile,
-    rightProfile,
-    raw,
-  } = props;
-  const { setAdhocLeftProfile, setAdhocRightProfile } = actions;
+function AdhocDiff() {
+  const dispatch = useAppDispatch();
+  const { flamebearer, isProfileLoading, raw } = useOldRootSelector(
+    (state) => state.adhocComparisonDiff
+  );
+  const { left: leftShared, right: rightShared } = useOldRootSelector(
+    (state) => state.adhocShared
+  );
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
 
   useEffect(() => {
-    actions.fetchAdhocProfiles();
-    return actions.abortFetchAdhocProfiles;
-  }, []);
+    dispatch(fetchAdhocProfiles());
+    return () => {
+      return dispatch(abortFetchAdhocProfiles());
+    };
+  }, [dispatch]);
 
   useEffect(() => {
-    if (leftProfile && rightProfile) {
-      actions.fetchAdhocProfileDiff(leftProfile, rightProfile);
+    if (leftShared.profile && rightShared.profile) {
+      dispatch(fetchAdhocProfileDiff(leftShared.profile, rightShared.profile));
     }
-    return actions.abortFetchAdhocProfileDiff;
-  }, [leftProfile, rightProfile]);
+    return () => {
+      dispatch(abortFetchAdhocProfileDiff());
+    };
+  }, [dispatch, leftShared.profile, rightShared.profile]);
 
   return (
     <div className="pyroscope-app">
@@ -53,7 +56,7 @@ function AdhocComparisonDiff(props) {
           className="comparison-container"
           data-testid="comparison-container"
         >
-          <Box className={styles.comparisonPane}>
+          <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs>
               <TabList>
                 <Tab>Pyroscope data</Tab>
@@ -62,14 +65,14 @@ function AdhocComparisonDiff(props) {
               <TabPanel>
                 <FileList
                   className={adhocStyles.tabPanel}
-                  profile={leftProfile}
-                  setProfile={setAdhocLeftProfile}
+                  profile={leftShared.profile}
+                  setProfile={(p) => dispatch(setAdhocLeftProfile(p))}
                 />
               </TabPanel>
               <TabPanel />
             </Tabs>
           </Box>
-          <Box className={styles.comparisonPane}>
+          <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs>
               <TabList>
                 <Tab>Pyroscope data</Tab>
@@ -78,8 +81,8 @@ function AdhocComparisonDiff(props) {
               <TabPanel>
                 <FileList
                   className={adhocStyles.tabPanel}
-                  profile={rightProfile}
-                  setProfile={setAdhocRightProfile}
+                  profile={rightShared.profile}
+                  setProfile={(p) => dispatch(setAdhocRightProfile(p))}
                 />
               </TabPanel>
               <TabPanel />
@@ -114,28 +117,4 @@ function AdhocComparisonDiff(props) {
   );
 }
 
-const mapStateToProps = (state) => ({
-  ...state.root,
-  raw: state.root.adhocComparisonDiff.raw,
-  flamebearer: state.root.adhocComparisonDiff.flamebearer,
-  isProfileLoading: state.root.adhocComparisonDiff.isProfileLoading,
-  leftProfile: state.root.adhocShared.left.profile,
-  rightProfile: state.root.adhocShared.right.profile,
-});
-
-const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      fetchAdhocProfiles,
-      fetchAdhocProfileDiff,
-      setAdhocLeftProfile,
-      setAdhocRightProfile,
-    },
-    dispatch
-  ),
-});
-
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(AdhocComparisonDiff);
+export default AdhocDiff;

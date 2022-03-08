@@ -1,16 +1,15 @@
 import React, { useEffect } from 'react';
-import { connect } from 'react-redux';
 import 'react-dom';
 
-import { bindActionCreators } from 'redux';
+import { useAppDispatch, useOldRootSelector } from '@pyroscope/redux/hooks';
 import Box from '@ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import classNames from 'classnames';
-import FileList from './FileList';
-import FileUploader from './FileUploader';
-import Footer from './Footer';
+import FileList from '../components/FileList';
+import FileUploader from '../components/FileUploader';
+import Footer from '../components/Footer';
 import {
   fetchAdhocProfiles,
   fetchAdhocLeftProfile,
@@ -19,54 +18,53 @@ import {
   setAdhocLeftProfile,
   setAdhocRightFile,
   setAdhocRightProfile,
+  abortFetchAdhocLeftProfile,
+  abortFetchAdhocProfiles,
+  abortFetchAdhocRightProfile,
 } from '../redux/actions';
 import 'react-tabs/style/react-tabs.css';
-import styles from './ComparisonApp.module.css';
 import adhocStyles from './Adhoc.module.scss';
-import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
-import ExportData from './ExportData';
+import adhocComparisonStyles from './AdhocComparison.module.scss';
+import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+import ExportData from '../components/ExportData';
 
-function AdhocComparison(props) {
-  const {
-    actions,
-    isLeftProfileLoading,
-    isRightProfileLoading,
-    leftFile,
-    leftFlamebearer,
-    leftProfile,
-    rightFile,
-    rightFlamebearer,
-    rightProfile,
-    leftRaw,
-    rightRaw,
-  } = props;
-  const {
-    setAdhocLeftFile,
-    setAdhocLeftProfile,
-    setAdhocRightFile,
-    setAdhocRightProfile,
-  } = actions;
-  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(leftRaw);
-  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(rightRaw);
+function AdhocComparison() {
+  const dispatch = useAppDispatch();
+
+  const { left, right } = useOldRootSelector((state) => state.adhocComparison);
+  const { left: leftShared, right: rightShared } = useOldRootSelector(
+    (state) => state.adhocShared
+  );
+
+  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(left.raw);
+  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(
+    right.raw
+  );
 
   useEffect(() => {
-    actions.fetchAdhocProfiles();
-    return actions.abortFetchAdhocProfiles;
-  }, []);
+    dispatch(fetchAdhocProfiles());
+    return () => {
+      dispatch(abortFetchAdhocProfiles());
+    };
+  }, [dispatch]);
 
   useEffect(() => {
-    if (leftProfile) {
-      actions.fetchAdhocLeftProfile(leftProfile);
+    if (leftShared.profile) {
+      dispatch(fetchAdhocLeftProfile(leftShared.profile));
     }
-    return actions.abortFetchAdhocLeftProfile;
-  }, [leftProfile]);
+    return () => {
+      dispatch(abortFetchAdhocLeftProfile());
+    };
+  }, [dispatch, leftShared.profile]);
 
   useEffect(() => {
-    if (rightProfile) {
-      actions.fetchAdhocRightProfile(rightProfile);
+    if (rightShared.profile) {
+      dispatch(fetchAdhocRightProfile(rightShared.profile));
     }
-    return actions.abortFetchAdhocRightProfile;
-  }, [rightProfile]);
+    return () => {
+      dispatch(abortFetchAdhocRightProfile());
+    };
+  }, [dispatch, rightShared.profile]);
 
   return (
     <div className="pyroscope-app">
@@ -75,7 +73,7 @@ function AdhocComparison(props) {
           className="comparison-container"
           data-testid="comparison-container"
         >
-          <Box className={styles.comparisonPane}>
+          <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs>
               <TabList>
                 <Tab>Upload</Tab>
@@ -84,33 +82,35 @@ function AdhocComparison(props) {
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
-                  file={leftFile}
-                  setFile={setAdhocLeftFile}
+                  file={left.file}
+                  setFile={(f, flame) => dispatch(setAdhocLeftFile(f, flame))}
                 />
               </TabPanel>
               <TabPanel>
                 <FileList
                   className={adhocStyles.tabPanel}
-                  profile={leftProfile}
-                  setProfile={setAdhocLeftProfile}
+                  profile={leftShared.profile}
+                  setProfile={(p) => {
+                    dispatch(setAdhocLeftProfile(p));
+                  }}
                 />
               </TabPanel>
             </Tabs>
-            {isLeftProfileLoading && (
+            {left.isProfileLoading && (
               <div className={classNames('spinner-container')}>
                 <Spinner color="rgba(255,255,255,0.6)" size="20px" />
               </div>
             )}
-            {!isLeftProfileLoading && (
+            {!left.isProfileLoading && (
               <FlamegraphRenderer
                 viewType="double"
                 viewSide="left"
-                flamebearer={leftFlamebearer}
+                flamebearer={left.flamebearer}
                 data-testid="flamegraph-renderer-left"
                 display="both"
                 ExportData={
                   <ExportData
-                    flamebearer={leftRaw}
+                    flamebearer={left.raw}
                     exportJSON
                     exportFlamegraphDotCom
                     exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
@@ -119,7 +119,8 @@ function AdhocComparison(props) {
               />
             )}
           </Box>
-          <Box className={styles.comparisonPane}>
+          {/* Right side */}
+          <Box className={adhocComparisonStyles.comparisonPane}>
             <Tabs>
               <TabList>
                 <Tab>Upload</Tab>
@@ -128,33 +129,35 @@ function AdhocComparison(props) {
               <TabPanel>
                 <FileUploader
                   className={adhocStyles.tabPanel}
-                  file={rightFile}
-                  setFile={setAdhocRightFile}
+                  file={left.file}
+                  setFile={(f, flame) => dispatch(setAdhocRightFile(f, flame))}
                 />
               </TabPanel>
               <TabPanel>
                 <FileList
                   className={adhocStyles.tabPanel}
-                  profile={rightProfile}
-                  setProfile={setAdhocRightProfile}
+                  profile={rightShared.profile}
+                  setProfile={(p) => {
+                    dispatch(setAdhocRightProfile(p));
+                  }}
                 />
               </TabPanel>
             </Tabs>
-            {isRightProfileLoading && (
+            {right.isProfileLoading && (
               <div className={classNames('spinner-container')}>
                 <Spinner color="rgba(255,255,255,0.6)" size="20px" />
               </div>
             )}
-            {!isRightProfileLoading && (
+            {!right.isProfileLoading && (
               <FlamegraphRenderer
                 viewType="double"
                 viewSide="right"
-                flamebearer={rightFlamebearer}
+                flamebearer={right.flamebearer}
                 data-testid="flamegraph-renderer-right"
                 display="both"
                 ExportData={
                   <ExportData
-                    flamebearer={rightRaw}
+                    flamebearer={right.raw}
                     exportJSON
                     exportFlamegraphDotCom
                     exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
@@ -170,33 +173,4 @@ function AdhocComparison(props) {
   );
 }
 
-const mapStateToProps = (state) => ({
-  ...state.root,
-  leftRaw: state.root.adhocComparison.left.raw,
-  rightRaw: state.root.adhocComparison.right.raw,
-  leftFile: state.root.adhocComparison.left.file,
-  leftFlamebearer: state.root.adhocComparison.left.flamebearer,
-  leftProfile: state.root.adhocShared.left.profile,
-  isLeftProfileLoading: state.root.adhocComparison.left.isProfileLoading,
-  rightFile: state.root.adhocComparison.right.file,
-  rightFlamebearer: state.root.adhocComparison.right.flamebearer,
-  rightProfile: state.root.adhocShared.right.profile,
-  isRightProfileLoading: state.root.adhocComparison.right.isProfileLoading,
-});
-
-const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      fetchAdhocProfiles,
-      fetchAdhocLeftProfile,
-      fetchAdhocRightProfile,
-      setAdhocLeftFile,
-      setAdhocLeftProfile,
-      setAdhocRightFile,
-      setAdhocRightProfile,
-    },
-    dispatch
-  ),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(AdhocComparison);
+export default AdhocComparison;

@@ -83,34 +83,39 @@ const initialState = {
   diff: {
     flamebearer: null,
   },
+  // TODO(eh-am): add proper types
   adhocSingle: {
-    file: null,
-    profile: null,
-    flamebearer: null,
+    raw: null as any,
+    file: null as any,
+    profile: null as any,
+    flamebearer: null as any,
     isProfileLoading: false,
   },
   adhocShared: {
     left: {
-      profile: null,
+      profile: null as any,
     },
     right: {
-      profile: null,
+      profile: null as any,
     },
   },
   adhocComparison: {
     left: {
-      file: null,
-      flamebearer: null,
+      file: null as any,
+      raw: null as any,
+      flamebearer: null as any,
       isProfileLoading: false,
     },
     right: {
-      file: null,
-      flamebearer: null,
+      file: null as any,
+      raw: null as any,
+      flamebearer: null as any,
       isProfileLoading: false,
     },
   },
   adhocComparisonDiff: {
-    flamebearer: null,
+    flamebearer: null as any,
+    raw: null as any,
     isProfileLoading: false,
   },
   serviceDiscovery: {
@@ -444,6 +449,7 @@ export default function (state = initialState, action) {
       return {
         ...state,
         adhocSingle: {
+          ...state.adhocSingle,
           profile: null,
           file,
           flamebearer: flamebearer ? decodeFlamebearer(flamebearer) : null,
@@ -553,6 +559,10 @@ export default function (state = initialState, action) {
           isProfileLoading: false,
         },
       };
+
+    /******************************/
+    /*      Adhoc Comparison      */
+    /******************************/
     case SET_ADHOC_LEFT_PROFILE:
       ({
         payload: { profile },

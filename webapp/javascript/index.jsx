@@ -10,14 +10,14 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { loadCurrentUser } from '@pyroscope/redux/reducers/user';
 import store, { persistor } from './redux/store';
 
-import PyroscopeApp from './components/PyroscopeApp';
-import ComparisonApp from './components/ComparisonApp';
-import ComparisonDiffApp from './components/ComparisonDiffApp';
+import ContinuousSingleView from './pages/ContinuousSingleView';
+import ContinuousComparisonView from './pages/ContinuousComparisonView';
+import ContinuousDiffView from './pages/ContinuousDiffView';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
-import AdhocSingle from './components/AdhocSingle';
-import AdhocComparison from './components/AdhocComparison';
-import AdhocComparisonDiff from './components/AdhocComparisonDiff';
+import AdhocSingle from './pages/AdhocSingle';
+import AdhocComparison from './pages/AdhocComparison';
+import AdhocDiff from './pages/AdhocDiff';
 import ServiceDiscoveryApp from './components/ServiceDiscoveryApp';
 import ServerNotifications from './components/ServerNotifications';
 // since this style is practically all pages
@@ -46,13 +46,13 @@ function App() {
       <Sidebar />
       <Switch>
         <Route exact path="/">
-          <PyroscopeApp />
+          <ContinuousSingleView />
         </Route>
         <Route path="/comparison">
-          <ComparisonApp />
+          <ContinuousComparisonView />
         </Route>
         <Route path="/comparison-diff">
-          <ComparisonDiffApp />
+          <ContinuousDiffView />
         </Route>
         <Route path="/settings">
           <Settings />
@@ -69,7 +69,7 @@ function App() {
               <AdhocComparison />
             </Route>
             <Route path="/adhoc-comparison-diff">
-              <AdhocComparisonDiff />
+              <AdhocDiff />
             </Route>
           </>
         )}

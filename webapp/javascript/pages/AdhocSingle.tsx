@@ -1,44 +1,52 @@
 import React, { useEffect } from 'react';
-import { connect } from 'react-redux';
 import 'react-dom';
 
-import { bindActionCreators } from 'redux';
+import { useAppDispatch, useOldRootSelector } from '@pyroscope/redux/hooks';
 import Box from '@ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import classNames from 'classnames';
-import FileList from './FileList';
-import FileUploader from './FileUploader';
-import Footer from './Footer';
+import FileList from '../components/FileList';
+import FileUploader from '../components/FileUploader';
+import Footer from '../components/Footer';
 
 import {
   fetchAdhocProfiles,
   fetchAdhocProfile,
   setAdhocFile,
   setAdhocProfile,
+  abortFetchAdhocProfiles,
+  abortFetchAdhocProfile,
 } from '../redux/actions';
 import 'react-tabs/style/react-tabs.css';
 import adhocStyles from './Adhoc.module.scss';
-import useExportToFlamegraphDotCom from './exportToFlamegraphDotCom.hook';
-import ExportData from './ExportData';
+import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+import ExportData from '../components/ExportData';
 
-function AdhocSingle(props) {
-  const { actions, file, profile, flamebearer, isProfileLoading, raw } = props;
-  const { setAdhocFile, setAdhocProfile } = actions;
+function AdhocSingle() {
+  const dispatch = useAppDispatch();
+
+  const { file, profile, flamebearer, isProfileLoading, raw } =
+    useOldRootSelector((state) => state.adhocSingle);
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(raw);
 
   useEffect(() => {
-    actions.fetchAdhocProfiles();
-    return actions.abortAdhocFetchProfiles;
-  }, []);
+    dispatch(fetchAdhocProfiles());
+
+    return () => {
+      dispatch(abortFetchAdhocProfiles());
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     if (profile) {
-      actions.fetchAdhocProfile(profile);
+      dispatch(fetchAdhocProfile(profile));
     }
-    return actions.abortAdhocFetchProfile;
-  }, [profile]);
+    return () => {
+      dispatch(abortFetchAdhocProfile());
+    };
+  }, [profile, dispatch]);
 
   return (
     <div className="pyroscope-app">
@@ -53,14 +61,14 @@ function AdhocSingle(props) {
               <FileUploader
                 className={adhocStyles.tabPanel}
                 file={file}
-                setFile={setAdhocFile}
+                setFile={(f, flame) => dispatch(setAdhocFile(f, flame))}
               />
             </TabPanel>
             <TabPanel>
               <FileList
                 className={adhocStyles.tabPanel}
                 profile={profile}
-                setProfile={setAdhocProfile}
+                setProfile={(p) => dispatch(setAdhocProfile(p))}
               />
             </TabPanel>
           </Tabs>
@@ -91,25 +99,4 @@ function AdhocSingle(props) {
   );
 }
 
-const mapStateToProps = (state) => ({
-  ...state.root,
-  file: state.root.adhocSingle.file,
-  raw: state.root.adhocSingle.raw,
-  flamebearer: state.root.adhocSingle.flamebearer,
-  profile: state.root.adhocSingle.profile,
-  isProfileLoading: state.root.adhocSingle.isProfileLoading,
-});
-
-const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      fetchAdhocProfiles,
-      fetchAdhocProfile,
-      setAdhocFile,
-      setAdhocProfile,
-    },
-    dispatch
-  ),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(AdhocSingle);
+export default AdhocSingle;
