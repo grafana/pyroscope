@@ -1,31 +1,17 @@
 import React, { useEffect, useRef } from 'react';
-import { connect } from 'react-redux';
 import 'react-dom';
 
-import {
-  useAppDispatch,
-  useAppSelector,
-  useOldRootSelector,
-} from '@pyroscope/redux/hooks';
-import { bindActionCreators } from 'redux';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import Box from '@ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import { fetchSingleView } from '@pyroscope/redux/reducers/continuous';
 import TimelineChartWrapper from '../components/TimelineChartWrapper';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-import { buildRenderURL } from '../util/updateRequests';
-import {
-  fetchNames,
-  fetchPyroscopeAppData,
-  abortTimelineRequest,
-} from '../redux/actions';
 import ExportData from '../components/ExportData';
 import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
 
-function PyroscopeApp(props) {
-  const { actions, renderURL, single, raw } = props;
-  const prevPropsRef = useRef();
+function ContinuousSingleView() {
   const dispatch = useAppDispatch();
 
   const { from, until, query, refreshToken, maxNodes } = useAppSelector(
@@ -44,7 +30,7 @@ function PyroscopeApp(props) {
     switch (singleView.type) {
       case 'loaded':
       case 'reloading': {
-        return singleView.raw;
+        return singleView.profile;
       }
 
       default: {
@@ -63,11 +49,11 @@ function PyroscopeApp(props) {
             profile={singleView.profile}
             viewType="single"
             display="both"
-            rawFlamegraph={singleView.raw}
+            rawFlamegraph={singleView.profile}
             ExportData={
               // Don't export PNG since the exportPng code is broken
               <ExportData
-                flamebearer={raw}
+                flamebearer={singleView.profile}
                 exportPNG
                 exportJSON
                 exportPprof
@@ -102,20 +88,4 @@ function PyroscopeApp(props) {
   );
 }
 
-const mapStateToProps = (state) => ({
-  ...state.root,
-  renderURL: buildRenderURL(state.root),
-});
-
-const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      fetchPyroscopeAppData,
-      fetchNames,
-      abortTimelineRequest,
-    },
-    dispatch
-  ),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(PyroscopeApp);
+export default ContinuousSingleView;

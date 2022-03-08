@@ -7,15 +7,10 @@ import {
   PERSIST,
   PURGE,
   REGISTER,
-  createMigrate,
 } from 'redux-persist';
-import thunkMiddleware from 'redux-thunk';
-import { createStore, applyMiddleware } from 'redux';
-import { composeWithDevTools } from 'redux-devtools-extension';
 
 import ReduxQuerySync from 'redux-query-sync';
 import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
-import storage from 'redux-persist/lib/storage';
 
 import rootReducer from './reducers';
 import history from '../util/history';
@@ -25,22 +20,10 @@ import newRootStore from './reducers/newRoot';
 import settingsReducer from './reducers/settings';
 import userReducer from './reducers/user';
 import continuousReducer, {
-  fetchSingleView,
   actions as continuousActions,
 } from './reducers/continuous';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
-
-import {
-  setLeftFrom,
-  setLeftUntil,
-  setRightFrom,
-  setRightUntil,
-  setFrom,
-  setUntil,
-  setMaxNodes,
-  setQuery,
-} from './actions';
 
 const reducer = combineReducers({
   newRoot: newRootStore,
@@ -81,39 +64,44 @@ const store = configureStore({
 
 export const persistor = persistStore(store);
 
+// This is a bi-directional sync between the query parameters and the redux store
+// It works as follows:
+// * When URL query changes, It will dispatch the action
+// * When the store changes (the field set in selector), the query param is updated
+// For more info see the implementation at
+// https://github.com/Treora/redux-query-sync/blob/master/src/redux-query-sync.js
 ReduxQuerySync({
-  store, // your Redux store
+  store,
   params: {
     from: {
       defaultValue: 'now-1h',
       selector: (state) => state.continuous.from,
-      //      action: setFrom,
       action: continuousActions.setFrom,
     },
     until: {
       defaultValue: 'now',
-      selector: (state) => state.root.until,
-      action: setUntil,
+      selector: (state) => state.continuous.until,
+      action: continuousActions.setUntil,
     },
     leftFrom: {
       defaultValue: 'now-1h',
-      selector: (state) => state.root.leftFrom,
-      action: setLeftFrom,
+      selector: (state) => state.continuous.leftFrom,
+      action: continuousActions.setLeftFrom,
     },
     leftUntil: {
       defaultValue: 'now-30m',
-      selector: (state) => state.root.leftUntil,
-      action: setLeftUntil,
+      selector: (state) => state.continuous.leftUntil,
+      action: continuousActions.setLeftUntil,
     },
     rightFrom: {
       defaultValue: 'now-30m',
-      selector: (state) => state.root.rightFrom,
-      action: setRightFrom,
+      selector: (state) => state.continuous.rightFrom,
+      action: continuousActions.setRightFrom,
     },
     rightUntil: {
       defaultValue: 'now',
-      selector: (state) => state.root.rightUntil,
-      action: setRightUntil,
+      selector: (state) => state.continuous.rightUntil,
+      action: continuousActions.setRightUntil,
     },
     query: {
       defaultvalue: '',
@@ -122,8 +110,8 @@ ReduxQuerySync({
     },
     maxNodes: {
       defaultValue: '1024',
-      selector: (state) => state.root.maxNodes,
-      action: setMaxNodes,
+      selector: (state) => state.continuous.maxNodes,
+      action: continuousActions.setMaxNodes,
     },
   },
   initialTruth: 'location',

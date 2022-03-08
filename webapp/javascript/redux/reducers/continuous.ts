@@ -8,14 +8,12 @@ type SingleView =
   | { type: 'loading' }
   | {
       type: 'loaded';
-      raw: Profile;
       // TODO: type this
       timeline: any;
       profile: Profile;
     }
   | {
       type: 'reloading';
-      raw: Profile;
       // TODO: type this
       timeline: any;
       profile: Profile;
@@ -80,6 +78,24 @@ export const continuousSlice = createSlice({
     },
     setQuery(state, action: PayloadAction<string>) {
       state.query = action.payload;
+    },
+    setUntil(state, action: PayloadAction<string>) {
+      state.until = action.payload;
+    },
+    setLeftFrom(state, action: PayloadAction<string>) {
+      state.leftFrom = action.payload;
+    },
+    setLeftUntil(state, action: PayloadAction<string>) {
+      state.leftUntil = action.payload;
+    },
+    setRightFrom(state, action: PayloadAction<string>) {
+      state.rightFrom = action.payload;
+    },
+    setRightUntil(state, action: PayloadAction<string>) {
+      state.rightUntil = action.payload;
+    },
+    setMaxNodes(state, action: PayloadAction<string>) {
+      state.maxNodes = action.payload;
     },
   },
   extraReducers: (builder) => {
