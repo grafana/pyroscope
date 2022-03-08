@@ -24,6 +24,7 @@ import viewsReducer from './reducers/views';
 import newRootStore from './reducers/newRoot';
 import settingsReducer from './reducers/settings';
 import userReducer from './reducers/user';
+import continuousReducer from './reducers/continuous';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
 
@@ -52,6 +53,7 @@ const reducer = combineReducers({
   user: userReducer,
   serviceDiscovery: serviceDiscoveryReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
+  continuous: continuousReducer,
 });
 
 const store = configureStore({

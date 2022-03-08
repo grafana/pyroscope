@@ -52,6 +52,7 @@ import {
 } from './actionTypes';
 import { isAbortError } from '../util/abort';
 import { addNotification } from './reducers/notifications';
+import { renderSingle } from '../services/render';
 
 export const setDateRange = (from, until) => ({
   type: SET_DATE_RANGE,
@@ -386,6 +387,24 @@ export function fetchComparisonAppData(url, viewSide) {
       .then((data) => dispatch(receiveComparisonAppData(data, viewSide)))
       .catch((e) => handleError(dispatch, e))
       .then(() => dispatch(cancelComparisonappData()))
+      .finally();
+  };
+}
+
+export function fetchSingleView() {
+  return (dispatch) => {
+    if (currentTimelineController) {
+      currentTimelineController.abort();
+    }
+    currentTimelineController = new AbortController();
+    dispatch(requestPyroscopeAppData(url));
+    return fetch(`${url}&format=json`, {
+      signal: currentTimelineController.signal,
+    })
+      .then((response) => handleResponse(dispatch, response))
+      .then((data) => dispatch(receivePyroscopeAppData(data)))
+      .catch((e) => handleError(dispatch, e))
+      .then(() => dispatch(cancelPyroscopeAppData()))
       .finally();
   };
 }
