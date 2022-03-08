@@ -319,6 +319,7 @@ type Admin struct {
 	AdminAppDelete         AdminAppDelete         `skip:"true" mapstructure:",squash"`
 	AdminAppGet            AdminAppGet            `skip:"true" mapstructure:",squash"`
 	AdminUserPasswordReset AdminUserPasswordReset `skip:"true" mapstructure:",squash"`
+	AdminStorageCleanup    AdminStorageCleanup    `skip:"true" mapstructure:",squash"`
 }
 
 type AdminAppGet struct {
@@ -339,6 +340,11 @@ type AdminUserPasswordReset struct {
 	Username string `desc:"user name (login)" mapstructure:"username"`
 	Password string `desc:"new password" mapstructure:"password"`
 	Enable   bool   `desc:"enable user" mapstructure:"enable"`
+}
+
+type AdminStorageCleanup struct {
+	SocketPath string        `def:"/tmp/pyroscope.sock" desc:"path where the admin server socket was created." mapstructure:"socket-path"`
+	Timeout    time.Duration `def:"30m" desc:"timeout for the server to respond" mapstructure:"timeout"`
 }
 
 type Database struct {

@@ -36,6 +36,12 @@ func (mockUserService) UpdateUserByName(context.Context, string, model.UpdateUse
 	return model.User{}, nil
 }
 
+type mockStorageService struct{}
+
+func (mockStorageService) Cleanup(context.Context) error {
+	return nil
+}
+
 var _ = Describe("controller", func() {
 	Describe("/v1/apps", func() {
 		var svr *admin.Server
@@ -55,7 +61,7 @@ var _ = Describe("controller", func() {
 			logger, _ := test.NewNullLogger()
 
 			svc := admin.NewService(storage)
-			ctrl := admin.NewController(logger, svc, mockUserService{})
+			ctrl := admin.NewController(logger, svc, mockUserService{}, mockStorageService{})
 			httpServer := &admin.UdsHTTPServer{}
 			server, err := admin.NewServer(logger, ctrl, httpServer)
 

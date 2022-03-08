@@ -162,8 +162,8 @@ func (s profiles) truncateBefore(ctx context.Context, before time.Time) (err err
 			if err = ctx.Err(); err != nil {
 				return err
 			}
-			k := it.Item().Key()
-			kt, pk, ok := parseProfileTimestamp(k)
+			item := it.Item()
+			kt, pk, ok := parseProfileTimestamp(item.Key())
 			if !ok {
 				continue
 			}
@@ -180,7 +180,7 @@ func (s profiles) truncateBefore(ctx context.Context, before time.Time) (err err
 			if err = batch.Delete(pk); err != nil {
 				return err
 			}
-			if err = batch.Delete(k); err != nil {
+			if err = batch.Delete(item.KeyCopy(nil)); err != nil {
 				return err
 			}
 			c += 2
