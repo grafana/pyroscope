@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import PyroscopeServerCPU from '../cypress/fixtures/pyroscope.server.cpu.json';
+import SimpleGolangCPU from '../cypress/fixtures/simple-golang-app-cpu.json';
+import Button from '@ui/Button';
 
 export default {
   title: '@pyroscope/flamegraph',
@@ -70,12 +72,19 @@ export const TableViewWithoutToolbar = () => {
 // In this example we use the FlamegraphRenderer component
 // with whatever data we got from the /render endpoint
 export const WithRenderData = () => {
+  const [profile, setProfile] = useState(PyroscopeServerCPU);
   return (
-    <FlamegraphRenderer
-      profile={PyroscopeServerCPU}
-      viewType="single"
-      display="flamegraph"
-      showToolbar={false}
-    />
+    <>
+      <Button onClick={() => setProfile(SimpleGolangCPU)}>Simple Tree</Button>
+      <Button onClick={() => setProfile(PyroscopeServerCPU)}>
+        Complex Tree
+      </Button>
+      <FlamegraphRenderer
+        profile={profile}
+        viewType="single"
+        display="flamegraph"
+        showToolbar={false}
+      />
+    </>
   );
 };

@@ -17,6 +17,28 @@ import styles from './FlamegraphRenderer.module.css';
 import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 
+// Still support old flamebearer format
+// But prefer the new 'profile' one
+function mountFlamebearer(p) {
+  if (p.profile && p.flamebearer) {
+    console.warn(
+      "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
+    );
+  }
+
+  if (p.profile) {
+    const copy = JSON.parse(JSON.stringify(p.profile));
+    const profile = decode(copy);
+
+    return {
+      ...profile,
+      ...profile.flamebearer,
+      ...profile.metadata,
+    };
+  }
+
+  return p.flamebearer;
+}
 class FlameGraphRenderer extends React.Component {
   // TODO: this could come from some other state
   // eg localstorage
@@ -28,28 +50,6 @@ class FlameGraphRenderer extends React.Component {
   constructor(props) {
     super();
 
-    // Still support old flamebearer format
-    // But prefer the new 'profile' one
-    const getFlamebearer = () => {
-      if (props.profile && props.flamebearer) {
-        console.warn(
-          "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
-        );
-      }
-
-      if (props.profile) {
-        const profile = decode(props.profile);
-
-        return {
-          ...profile,
-          ...profile.flamebearer,
-          ...profile.metadata,
-        };
-      }
-
-      return props.flamebearer;
-    };
-
     this.state = {
       isFlamegraphDirty: false,
       sortBy: 'self',
@@ -57,7 +57,7 @@ class FlameGraphRenderer extends React.Component {
       view: 'both',
       viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
       fitMode: props.fitMode ? props.fitMode : 'HEAD',
-      flamebearer: getFlamebearer(),
+      flamebearer: mountFlamebearer(props),
 
       // query used in the 'search' checkbox
       highlightQuery: '',
@@ -74,6 +74,11 @@ class FlameGraphRenderer extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
+    if (prevProps.profile !== this.props.profile) {
+      this.updateFlamebearerData();
+      return;
+    }
+
     const previousFlamebearer = prevProps.flamebearer;
     const actualFlamebearer = this.props.flamebearer;
     if (previousFlamebearer !== actualFlamebearer) {
@@ -216,9 +221,9 @@ class FlameGraphRenderer extends React.Component {
   }
 
   updateFlamebearerData() {
-    this.setState({
-      flamebearer: this.props.flamebearer,
-    });
+    const flamebearer = mountFlamebearer(this.props);
+
+    this.setState({ flamebearer });
   }
 
   parseFormat(format) {
