@@ -3,6 +3,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { renderSingle, RenderOutput } from '../../services/render';
 import { addNotification } from './notifications';
 import { Timeline } from '../../models/timeline';
+import * as tagsService from '../../services/tags';
 import type { RootState } from '../store';
 
 type DataState<T> =
@@ -33,31 +34,29 @@ type SingleView =
       profile: Profile;
     };
 
+// Tags really refer to each application
+// Should we nest them to an application?
 type Tags =
-  | { type: 'pristine' }
-  | { type: 'loading' }
+  | { type: 'pristine'; tags: Record<string, string[]> }
+  | { type: 'loading'; tags: Record<string, string[]> }
   | {
       type: 'loaded';
-      tags: Record<string, string>;
+      tags: Record<string, string[]>;
     }
-  | {
-      type: 'reloading';
-      tags: Record<string, string>;
-    }
-  | { type: 'failed' };
+  | { type: 'failed'; tags: Record<string, string[]> };
 
-type TagsValues =
-  | { type: 'pristine' }
-  | { type: 'loading' }
-  | {
-      type: 'loaded';
-      tags: Record<string, string>;
-    }
-  | {
-      type: 'reloading';
-      tags: Record<string, string>;
-    }
-  | { type: 'failed' };
+// type TagsValues =
+//  | { type: 'pristine' }
+//  | { type: 'loading' }
+//  | {
+//      type: 'loaded';
+//      tags: Record<string, string>;
+//    }
+//  | {
+//      type: 'reloading';
+//      tags: Record<string, string>;
+//    }
+//  | { type: 'failed' };
 
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
@@ -85,7 +84,7 @@ export const fetchSingleView = createAsyncThunk<
 export const fetchTags = createAsyncThunk(
   'continuous/fetchTags',
   async (query: ContinuousState['query'], thunkAPI) => {
-    const res = await fetchTags(query);
+    const res = await tagsService.fetchTags(query);
 
     if (res.isOk) {
       return Promise.resolve(res.value);
@@ -96,6 +95,33 @@ export const fetchTags = createAsyncThunk(
         type: 'danger',
         title: 'Failed',
         message: `Failed to load tags`,
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
+
+export const fetchTagsValues = createAsyncThunk(
+  'continuous/fetchTagsValues',
+  async (
+    payload: { query: ContinuousState['query']; label: string },
+    thunkAPI
+  ) => {
+    const res = await tagsService.fetchLabelValues(
+      payload.label,
+      payload.query
+    );
+
+    if (res.isOk) {
+      return Promise.resolve(res.value);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed',
+        message: `Failed to load tag values`,
       })
     );
 
@@ -116,7 +142,6 @@ interface ContinuousState {
 
   singleView: SingleView;
   tags: Tags;
-  tagsValues: TagsValues;
 }
 
 const initialState: ContinuousState = {
@@ -130,7 +155,7 @@ const initialState: ContinuousState = {
   maxNodes: '1024',
 
   singleView: { type: 'pristine' },
-  tags: { type: 'pristine' },
+  tags: { type: 'pristine', tags: {} },
 };
 
 export const continuousSlice = createSlice({
@@ -212,32 +237,27 @@ export const continuousSlice = createSlice({
     });
 
     builder.addCase(fetchTags.pending, (state) => {
-      switch (state.tags.type) {
-        // if we are fetching but there's already data
-        // it's considered a 'reload'
-        case 'loaded': {
-          state.tags = {
-            ...state.tags,
-            type: 'reloading',
-          };
-          break;
-        }
-
-        default: {
-          state.tags = { type: 'loading' };
-        }
-      }
+      state.tags = {
+        ...state.tags,
+        type: 'loading',
+      };
     });
 
     builder.addCase(fetchTags.fulfilled, (state, action) => {
+      const tags = action.payload.reduce((acc, tag) => {
+        acc[tag] = [];
+        return acc;
+      }, {} as ContinuousState['tags']['tags']);
+
       state.tags = {
         type: 'loaded',
-        tags: action.payload,
+        tags,
       };
     });
 
     builder.addCase(fetchTags.rejected, (state) => {
       state.tags = {
+        ...state.tags,
         type: 'failed',
       };
     });

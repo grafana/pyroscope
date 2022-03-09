@@ -10,7 +10,7 @@ import {
 } from '@pyroscope/redux/reducers/continuous';
 import Dropdown, { SubMenu, MenuItem, FocusableItem } from '@ui/Dropdown';
 import {
-  fetchTags,
+  //  fetchTags,
   fetchTagValues,
   setQuery,
   abortFetchTags,
