@@ -1,5 +1,7 @@
 /* eslint-disable import/prefer-default-export */
 import { Result } from '@utils/fp';
+import type { ZodError } from 'zod';
+import { modelToResult } from '@models/utils';
 import basename from '../util/baseurl';
 
 // RequestNotOkError refers to when the Response is not within the 2xx range
@@ -149,4 +151,20 @@ export async function request(
       data: textBody,
     });
   }
+}
+
+// We have to call it something else otherwise it will conflict with the global "Response"
+type ResponseFromRequest = Awaited<ReturnType<typeof request>>;
+type Schema = Parameters<typeof modelToResult>[0];
+
+// parseResponse parses a response with given schema if the request has not failed
+export function parseResponse<T>(
+  res: ResponseFromRequest,
+  schema: Schema
+): Result<T, RequestError | ZodError> {
+  if (res.isErr) {
+    return Result.err<T, RequestError>(res.error);
+  }
+
+  return modelToResult(schema, res.value) as Result<T, ZodError<any>>;
 }

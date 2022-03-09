@@ -3,8 +3,12 @@ import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 import Button from '@ui/Button';
 import 'react-dom';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import {
+  selectContinuousState,
+  fetchTags,
+} from '@pyroscope/redux/reducers/continuous';
 import Dropdown, { SubMenu, MenuItem, FocusableItem } from '@ui/Dropdown';
-
 import {
   fetchTags,
   fetchTagValues,
@@ -15,14 +19,15 @@ import {
 import '../util/prism';
 import styles from './TagsBar.module.css';
 
-function TagsBar({ query, actions, tags, tagValuesLoading }) {
+function TagsBar({ actions, tags, tagValuesLoading }) {
+  const dispatch = useAppDispatch();
+  const { query } = useAppSelector(selectContinuousState);
+
   const [queryVal, setQuery] = useState(query);
   const [filter, setFilter] = useState({});
 
   useEffect(() => {
-    actions.fetchTags(query);
-
-    return actions.abortFetchTags;
+    dispatch(fetchTags(query));
   }, [query]);
 
   const submitTagsValue = (newValue) => {

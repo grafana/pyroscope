@@ -5,6 +5,20 @@ import { addNotification } from './notifications';
 import { Timeline } from '../../models/timeline';
 import type { RootState } from '../store';
 
+type DataState<T> =
+  | {
+      type: 'pristine';
+    }
+  | { type: 'loading' }
+  | {
+      type: 'loaded';
+      data: T;
+    }
+  | {
+      type: 'reloading';
+      data: T;
+    };
+
 type SingleView =
   | { type: 'pristine' }
   | { type: 'loading' }
@@ -18,6 +32,32 @@ type SingleView =
       timeline: Timeline;
       profile: Profile;
     };
+
+type Tags =
+  | { type: 'pristine' }
+  | { type: 'loading' }
+  | {
+      type: 'loaded';
+      tags: Record<string, string>;
+    }
+  | {
+      type: 'reloading';
+      tags: Record<string, string>;
+    }
+  | { type: 'failed' };
+
+type TagsValues =
+  | { type: 'pristine' }
+  | { type: 'loading' }
+  | {
+      type: 'loaded';
+      tags: Record<string, string>;
+    }
+  | {
+      type: 'reloading';
+      tags: Record<string, string>;
+    }
+  | { type: 'failed' };
 
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
@@ -42,6 +82,27 @@ export const fetchSingleView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
+export const fetchTags = createAsyncThunk(
+  'continuous/fetchTags',
+  async (query: ContinuousState['query'], thunkAPI) => {
+    const res = await fetchTags(query);
+
+    if (res.isOk) {
+      return Promise.resolve(res.value);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed',
+        message: `Failed to load tags`,
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
+
 interface ContinuousState {
   from: string;
   until: string;
@@ -54,6 +115,8 @@ interface ContinuousState {
   refreshToken?: string;
 
   singleView: SingleView;
+  tags: Tags;
+  tagsValues: TagsValues;
 }
 
 const initialState: ContinuousState = {
@@ -67,6 +130,7 @@ const initialState: ContinuousState = {
   maxNodes: '1024',
 
   singleView: { type: 'pristine' },
+  tags: { type: 'pristine' },
 };
 
 export const continuousSlice = createSlice({
@@ -145,6 +209,37 @@ export const continuousSlice = createSlice({
           type: 'pristine',
         };
       }
+    });
+
+    builder.addCase(fetchTags.pending, (state) => {
+      switch (state.tags.type) {
+        // if we are fetching but there's already data
+        // it's considered a 'reload'
+        case 'loaded': {
+          state.tags = {
+            ...state.tags,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.tags = { type: 'loading' };
+        }
+      }
+    });
+
+    builder.addCase(fetchTags.fulfilled, (state, action) => {
+      state.tags = {
+        type: 'loaded',
+        tags: action.payload,
+      };
+    });
+
+    builder.addCase(fetchTags.rejected, (state) => {
+      state.tags = {
+        type: 'failed',
+      };
     });
   },
 });
