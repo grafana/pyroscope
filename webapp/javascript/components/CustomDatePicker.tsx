@@ -1,30 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { isAfter, isSameSecond } from 'date-fns';
-import { useSelector } from 'react-redux';
 import DatePicker from 'react-datepicker';
 import Button from '@ui/Button';
-import { RootState } from '@pyroscope/redux/store';
-import { readableRange, formatAsOBject } from '../util/formatDate';
+import { formatAsOBject } from '../util/formatDate';
 
 interface CustomDatePickerProps {
-  setRange: any;
-  dispatch: any;
-  setDateRange: any;
-
   from: string;
   until: string;
-  onChange: (from: string, until: string) => void;
+  onSubmit: (from: string, until: string) => void;
 }
-function CustomDatePicker({
-  setRange,
-  dispatch,
-  setDateRange,
-  from,
-  until,
-  onChange,
-}: CustomDatePickerProps) {
-  // const from = useSelector((state: RootState) => state.root.from);
-  // const until = useSelector((state: RootState) => state.root.until);
+function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
   const [warning, setWarning] = useState(false);
   const [selectedDate, setSelectedDate] = useState({
     from: formatAsOBject(from),
@@ -39,24 +24,25 @@ function CustomDatePicker({
       return setWarning(true);
     }
 
-    dispatch(
-      setDateRange(
-        Math.round(selectedDate.from / 1000),
-        Math.round(selectedDate.until / 1000)
-      )
+    onSubmit(
+      Math.round(selectedDate.from.getTime() / 1000).toString(),
+      Math.round(selectedDate.until.getTime() / 1000).toString()
     );
     return setWarning(false);
   };
 
+  // Since 'from' and 'until' are the source of truth
+  // Since our component state back when they change
   useEffect(() => {
     setSelectedDate({
       ...selectedDate,
       from: formatAsOBject(from),
       until: formatAsOBject(until),
     });
-
-    setRange(readableRange(from, until));
   }, [from, until]);
+
+  const selectFromAsDate = selectedDate.from;
+  const selectUntilAsDate = selectedDate.until;
 
   return (
     <div className="drp-custom">
@@ -65,13 +51,13 @@ function CustomDatePicker({
         <label htmlFor="datepicker-from">From: </label>
         <DatePicker
           id="datepicker-from"
-          selected={selectedDate.from}
+          selected={selectFromAsDate}
           onChange={(date) => {
             setSelectedDate({ ...selectedDate, from: date });
           }}
           selectsStart
           showTimeSelect
-          startDate={selectedDate.from}
+          startDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
         />
       </div>
@@ -79,15 +65,15 @@ function CustomDatePicker({
         <label htmlFor="datepicker-until">Until: </label>
         <DatePicker
           id="datepicker-until"
-          selected={selectedDate.until}
+          selected={selectUntilAsDate}
           onChange={(date) => {
             setSelectedDate({ ...selectedDate, until: date });
           }}
           selectsEnd
           showTimeSelect
-          startDate={selectedDate.from}
-          endDate={selectedDate.until}
-          minDate={selectedDate.from}
+          startDate={selectFromAsDate}
+          endDate={selectUntilAsDate}
+          minDate={selectFromAsDate}
           dateFormat="yyyy-MM-dd hh:mm aa"
         />
       </div>

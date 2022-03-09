@@ -5,6 +5,7 @@ import {
   setDateRange,
   selectContinuousState,
 } from '@pyroscope/redux/reducers/continuous';
+import cx from 'classnames';
 import Button from '@ui/Button';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import OutsideClickHandler from 'react-outside-click-handler';
@@ -71,6 +72,10 @@ function DateRangePicker() {
     setOpened(false);
   };
 
+  const isPresetSelected = (preset: typeof defaultPresets[0][0]) => {
+    return preset.label === dateToLabel(from, until);
+  };
+
   return (
     <div className={opened ? 'drp-container opened' : 'drp-container'}>
       <OutsideClickHandler onOutsideClick={hideDropdown}>
@@ -86,14 +91,15 @@ function DateRangePicker() {
                   {arr.map((x) => (
                     <button
                       type="button"
-                      className={`drp-preset ${
-                        x.label === range ? 'active' : ''
-                      }`}
+                      className={cx(
+                        'drp-preset',
+                        isPresetSelected(x) && 'active'
+                      )}
                       key={x.label}
                       onClick={() => selectPreset(x)}
                     >
                       {x.label}
-                      {x.label === range ? <CheckIcon /> : false}
+                      {isPresetSelected(x) ? <CheckIcon /> : false}
                     </button>
                   ))}
                 </div>
@@ -103,6 +109,9 @@ function DateRangePicker() {
           <CustomDatePicker
             from={from}
             until={until}
+            onSubmit={(from, until) => {
+              dispatch(setDateRange({ from, until }));
+            }}
             setRange={setRange}
             dispatch={dispatch}
             setDateRange={setDateRange}
