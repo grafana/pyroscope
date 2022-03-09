@@ -1,10 +1,12 @@
 name: Solve conflicts
 
-on:
-  pull_request:
-    types:
-      - synchronize
-      - labeled
+on: workflow_dispatch
+# TODO: when we confirm this works well we should uncomment this
+# on:
+#   pull_request:
+#     types:
+#       - synchronize
+#       - labeled
 
 jobs:
   fix-conflicts:
