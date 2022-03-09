@@ -14,33 +14,43 @@ import {
   setLeftDateRange,
   setRightDateRange,
 } from '../redux/actions';
-import { formatAsOBject } from '../util/formatDate';
 
-class TimelineChart extends ReactFlot {
+interface TimelineChartProps {
+  onSelect: (from: string, until: string) => void;
+  className: string;
+  viewSide: string;
+}
+
+class TimelineChart extends ReactFlot<TimelineChartProps> {
   componentDidMount() {
     this.draw();
 
     $(`#${this.props.id}`).bind('plotselected', (event, ranges) => {
-      if (this.props.viewSide === 'both' || this.props.viewSide === 'none') {
-        this.props.actions.setDateRange(
-          Math.round(ranges.xaxis.from / 1000),
-          Math.round(ranges.xaxis.to / 1000)
-        );
-      } else if (this.props.viewSide === 'left') {
-        this.props.actions.setLeftDateRange(
-          Math.round(ranges.xaxis.from / 1000),
-          Math.round(ranges.xaxis.to / 1000)
-        );
-      } else if (this.props.viewSide === 'right') {
-        this.props.actions.setRightDateRange(
-          Math.round(ranges.xaxis.from / 1000),
-          Math.round(ranges.xaxis.to / 1000)
-        );
-      }
+      this.props.onSelect(
+        Math.round(ranges.xaxis.from / 1000).toString(),
+        Math.round(ranges.xaxis.to / 1000).toString()
+      );
+
+      //      if (this.props.viewSide === 'both' || this.props.viewSide === 'none') {
+      //        this.props.actions.setDateRange(
+      //          Math.round(ranges.xaxis.from / 1000),
+      //          Math.round(ranges.xaxis.to / 1000)
+      //        );
+      //      } else if (this.props.viewSide === 'left') {
+      //        this.props.actions.setLeftDateRange(
+      //          Math.round(ranges.xaxis.from / 1000),
+      //          Math.round(ranges.xaxis.to / 1000)
+      //        );
+      //      } else if (this.props.viewSide === 'right') {
+      //        this.props.actions.setRightDateRange(
+      //          Math.round(ranges.xaxis.from / 1000),
+      //          Math.round(ranges.xaxis.to / 1000)
+      //        );
+      //      }
     });
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate() {
     this.draw();
   }
 

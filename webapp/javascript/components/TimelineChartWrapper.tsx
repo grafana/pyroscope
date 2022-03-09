@@ -13,6 +13,7 @@ type TimelineChartWrapperProps = {
   /** the id attribute of the element float will use to apply to, it should be unique */
   id: string;
   timeline?: Timeline;
+  onSelect: (from: string, until: string) => void;
 } /** it will use this info to color the markins */ & (
   | {
       viewSide: 'left';
@@ -215,6 +216,7 @@ class TimelineChartWrapper extends React.Component<
 
     return (
       <TimelineChart
+        onSelect={this.props.onSelect}
         className={styles.wrapper}
         // eslint-disable-next-line react/destructuring-assignment
         data-testid={this.props['data-testid']}

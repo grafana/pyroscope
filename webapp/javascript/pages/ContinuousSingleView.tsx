@@ -4,7 +4,10 @@ import 'react-dom';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import Box from '@ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import { fetchSingleView } from '@pyroscope/redux/reducers/continuous';
+import {
+  fetchSingleView,
+  setDateRange,
+} from '@pyroscope/redux/reducers/continuous';
 import TimelineChartWrapper from '../components/TimelineChartWrapper';
 import Toolbar from '../components/Toolbar';
 import Footer from '../components/Footer';
@@ -83,6 +86,7 @@ function ContinuousSingleView() {
     }
   };
 
+  console.log('singleViewProfile', singleView);
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
@@ -92,6 +96,7 @@ function ContinuousSingleView() {
           id="timeline-chart-single"
           viewSide="none"
           timeline={getTimelineData()}
+          onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
         />
         <Box>{flamegraphRenderer}</Box>
       </div>

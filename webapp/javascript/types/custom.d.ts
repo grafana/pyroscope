@@ -29,3 +29,28 @@ declare module '*.svg' {
   const content: any;
   export default content;
 }
+
+// Got from https://github.com/rodrigowirth/react-flot/blob/master/src/ReactFlot.d.ts
+declare module 'react-flot' {
+  interface ReactFlotProps {
+    id: string;
+    data: any[];
+    options: object;
+    height: string;
+    width: string;
+  }
+
+  class ReactFlot<CustomProps> extends React.Component<
+    ReactFlotProps & CustomProps,
+    any
+  > {
+    componentDidMount(): void;
+
+    // componentWillReceiveProps(nextProps: any): void;
+
+    draw(event?: any, data?: any): void;
+
+    render(): any;
+  }
+  export = ReactFlot;
+}
