@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
 
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import {
+  setDateRange,
+  selectContinuousState,
+} from '@pyroscope/redux/reducers/continuous';
 import Button from '@ui/Button';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import OutsideClickHandler from 'react-outside-click-handler';
 import CustomDatePicker from './CustomDatePicker';
-import { setDateRange } from '../redux/actions';
 import CheckIcon from './CheckIcon';
+import { readableRange } from '../util/formatDate';
 
 const defaultPresets = [
   [
@@ -31,8 +35,26 @@ const defaultPresets = [
   ],
 ];
 
+function findPreset(from: string, until = 'now') {
+  return defaultPresets
+    .flat()
+    .filter((a) => a.until === until)
+    .find((a) => from === a.from);
+}
+
+function dateToLabel(from: string, until: string) {
+  const preset = findPreset(from, until);
+
+  if (preset) {
+    return preset.label;
+  }
+
+  return readableRange(from, until);
+}
+
 function DateRangePicker() {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
+  const { from, until } = useAppSelector(selectContinuousState);
 
   const [opened, setOpened] = useState(false);
   const [range, setRange] = useState();
@@ -45,7 +67,7 @@ function DateRangePicker() {
     setOpened(false);
   };
   const selectPreset = ({ from, until }) => {
-    dispatch(setDateRange(from, until));
+    dispatch(setDateRange({ from, until }));
     setOpened(false);
   };
 
@@ -53,7 +75,7 @@ function DateRangePicker() {
     <div className={opened ? 'drp-container opened' : 'drp-container'}>
       <OutsideClickHandler onOutsideClick={hideDropdown}>
         <Button icon={faClock} onClick={toggleDropdown}>
-          {range}
+          {dateToLabel(from, until)}
         </Button>
         <div className="drp-dropdown">
           <div className="drp-quick-presets">
@@ -79,6 +101,8 @@ function DateRangePicker() {
             </div>
           </div>
           <CustomDatePicker
+            from={from}
+            until={until}
             setRange={setRange}
             dispatch={dispatch}
             setDateRange={setDateRange}

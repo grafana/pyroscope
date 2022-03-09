@@ -6,9 +6,25 @@ import Button from '@ui/Button';
 import { RootState } from '@pyroscope/redux/store';
 import { readableRange, formatAsOBject } from '../util/formatDate';
 
-function CustomDatePicker({ setRange, dispatch, setDateRange }) {
-  const from = useSelector((state: RootState) => state.root.from);
-  const until = useSelector((state: RootState) => state.root.until);
+interface CustomDatePickerProps {
+  setRange: any;
+  dispatch: any;
+  setDateRange: any;
+
+  from: string;
+  until: string;
+  onChange: (from: string, until: string) => void;
+}
+function CustomDatePicker({
+  setRange,
+  dispatch,
+  setDateRange,
+  from,
+  until,
+  onChange,
+}: CustomDatePickerProps) {
+  // const from = useSelector((state: RootState) => state.root.from);
+  // const until = useSelector((state: RootState) => state.root.until);
   const [warning, setWarning] = useState(false);
   const [selectedDate, setSelectedDate] = useState({
     from: formatAsOBject(from),

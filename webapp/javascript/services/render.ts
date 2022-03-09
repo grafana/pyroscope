@@ -31,9 +31,7 @@ export async function renderSingle(
   }
 
   const parsed = FlamebearerProfileSchema.merge(
-    z.object({
-      timeline: TimelineSchema,
-    })
+    z.object({ timeline: TimelineSchema })
   ).safeParse(response.value);
 
   if (parsed.success) {

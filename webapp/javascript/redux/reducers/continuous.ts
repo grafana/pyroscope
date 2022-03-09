@@ -23,7 +23,7 @@ export const fetchSingleView = createAsyncThunk<
   RenderOutput,
   null,
   { state: { continuous: ContinuousState } }
->('continuous/singleView', async (a, thunkAPI) => {
+>('continuous/singleView', async (_, thunkAPI) => {
   const state = thunkAPI.getState();
   const res = await renderSingle(state.continuous);
 
@@ -97,6 +97,14 @@ export const continuousSlice = createSlice({
     setMaxNodes(state, action: PayloadAction<string>) {
       state.maxNodes = action.payload;
     },
+
+    setDateRange(
+      state,
+      action: PayloadAction<Pick<ContinuousState, 'from' | 'until'>>
+    ) {
+      state.from = action.payload.from;
+      state.until = action.payload.until;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(fetchSingleView.pending, (state) => {
@@ -144,3 +152,4 @@ export const continuousSlice = createSlice({
 export const selectContinuousState = (state: RootState) => state.continuous;
 export default continuousSlice.reducer;
 export const { actions } = continuousSlice;
+export const { setDateRange } = continuousSlice.actions;
