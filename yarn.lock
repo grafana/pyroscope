@@ -5084,6 +5084,13 @@
   dependencies:
     "@types/react" "*"
 
+"@types/react-outside-click-handler@^1.3.1":
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/@types/react-outside-click-handler/-/react-outside-click-handler-1.3.1.tgz#e4772ba550e1a548468203194d2615d8f06acdf9"
+  integrity sha512-0BNan5zIIDyO5k9LFSG+60ZxQ/0wf+LTF9BJx3oOUdOaJlZk6RCe52jRB75mlvLLJx2YLa61+NidOwBfptWMKw==
+  dependencies:
+    "@types/react" "*"
+
 "@types/react-redux@^7.1.20":
   version "7.1.22"
   resolved "https://registry.yarnpkg.com/@types/react-redux/-/react-redux-7.1.22.tgz#0eab76a37ef477cc4b53665aeaf29cb60631b72a"

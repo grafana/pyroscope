@@ -56,9 +56,7 @@ function dateToLabel(from: string, until: string) {
 function DateRangePicker() {
   const dispatch = useAppDispatch();
   const { from, until } = useAppSelector(selectContinuousState);
-
   const [opened, setOpened] = useState(false);
-  const [range, setRange] = useState();
 
   const toggleDropdown = () => {
     setOpened(!opened);
@@ -112,9 +110,6 @@ function DateRangePicker() {
             onSubmit={(from, until) => {
               dispatch(setDateRange({ from, until }));
             }}
-            setRange={setRange}
-            dispatch={dispatch}
-            setDateRange={setDateRange}
           />
         </div>
       </OutsideClickHandler>
