@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.1.0...@pyroscope/flamegraph@0.1.1) (2022-03-09)
+
+
+### Bug Fixes
+
+* **flamegraph:** rerender when 'profile' changes ([#931](https://github.com/pyroscope-io/pyroscope/issues/931)) ([527ae29](https://github.com/pyroscope-io/pyroscope/commit/527ae29222625ec6c74cda270f2add72027ca1e3))
+
+
+
+
+
 # [0.1.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.0.6...@pyroscope/flamegraph@0.1.0) (2022-03-08)
 
 
