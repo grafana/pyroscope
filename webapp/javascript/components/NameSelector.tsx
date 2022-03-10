@@ -1,17 +1,14 @@
 // TODO reenable spreading lint
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState, useEffect } from 'react';
-import { connect } from 'react-redux';
 import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
 import { appNameToQuery, queryToAppName } from '@utils/query';
 import {
+  actions,
+  selectContinuousState,
   selectAppNames,
   selectAppNamesState,
   reloadAppNames,
-} from '@pyroscope/redux/reducers/apps';
-import {
-  actions,
-  selectContinuousState,
 } from '@pyroscope/redux/reducers/continuous';
 import LoadingSpinner from '@ui/LoadingSpinner';
 import Button from '@ui/Button';
@@ -19,31 +16,19 @@ import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import Dropdown, { MenuItem, FocusableItem } from '@ui/Dropdown';
 import styles from './NameSelector.module.scss';
 
-function NameSelector(props) {
+function NameSelector() {
   const appNamesState = useAppSelector(selectAppNamesState);
   const appNames = useAppSelector(selectAppNames);
+  const dispatch = useAppDispatch();
   const { query } = useAppSelector(selectContinuousState);
 
   const [filter, setFilter] = useState('');
 
   const selectAppName = (name: string) => {
     const query = appNameToQuery(name);
+
     dispatch(actions.setQuery(query));
   };
-
-  const dispatch = useAppDispatch();
-
-  // if there's no query set
-  // set the first app as the default (if exists)
-  useEffect(() => {
-    if (!query) {
-      const first = appNames[0];
-      if (first) {
-        const query = appNameToQuery(first);
-        dispatch(actions.setQuery(query));
-      }
-    }
-  }, [query]);
 
   const selectedValue = queryToAppName(query).mapOr('', (q) => {
     if (appNames.indexOf(q) !== -1) {
@@ -121,18 +106,4 @@ function Loading({ type }: ReturnType<typeof selectAppNamesState>) {
     }
   }
 }
-
-const mapStateToProps = (state) => ({
-  ...state.root,
-});
-
-const mapDispatchToProps = (dispatch) => ({
-  // actions: bindActionCreators(
-  //  {
-  //    setQuery,
-  //  },
-  //  dispatch
-  // ),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(NameSelector);
+export default NameSelector;

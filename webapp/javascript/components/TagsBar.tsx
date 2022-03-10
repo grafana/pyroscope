@@ -24,7 +24,9 @@ function TagsBar() {
   // only fetch new tags when the application name changes
   // otherwise changing tags will change the query and trigger a reload
   useEffect(() => {
-    dispatch(fetchTags(query));
+    if (query) {
+      dispatch(fetchTags(query));
+    }
   }, [appName]);
 
   const CustomDropdown = (() => {

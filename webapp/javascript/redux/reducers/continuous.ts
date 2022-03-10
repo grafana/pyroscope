@@ -1,5 +1,8 @@
 import { Profile } from '@pyroscope/models';
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { AppNames } from '@models/appNames';
+import { fetchAppNames } from '@pyroscope/services/appNames';
+import { appNameToQuery } from '@utils/query';
 import { renderSingle, RenderOutput } from '../../services/render';
 import { addNotification } from './notifications';
 import { Timeline } from '../../models/timeline';
@@ -34,6 +37,34 @@ type SingleView =
       profile: Profile;
     };
 
+type ComparisonView =
+  | { type: 'pristine' }
+  | { type: 'loading' }
+  | {
+      type: 'loaded';
+      timeline: Timeline;
+      left: {
+        profile: Profile;
+        timeline: Timeline;
+      };
+      right: {
+        profile: Profile;
+        timeline: Timeline;
+      };
+    }
+  | {
+      type: 'reloading';
+      timeline: Timeline;
+      left: {
+        profile: Profile;
+        timeline: Timeline;
+      };
+      right: {
+        profile: Profile;
+        timeline: Timeline;
+      };
+    };
+
 type TagsData =
   | { type: 'pristine' }
   | { type: 'loading' }
@@ -50,19 +81,6 @@ type Tags =
       tags: Record<string, TagsData>;
     }
   | { type: 'failed'; tags: Record<string, TagsData> };
-
-// type TagsValues =
-//  | { type: 'pristine' }
-//  | { type: 'loading' }
-//  | {
-//      type: 'loaded';
-//      tags: Record<string, string>;
-//    }
-//  | {
-//      type: 'reloading';
-//      tags: Record<string, string>;
-//    }
-//  | { type: 'failed' };
 
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
@@ -86,6 +104,29 @@ export const fetchSingleView = createAsyncThunk<
 
   return Promise.reject(res.error);
 });
+
+// export const fetchSingleView = createAsyncThunk<
+//  RenderOutput,
+//  null,
+//  { state: { continuous: ContinuousState } }
+// >('continuous/singleView', async (_, thunkAPI) => {
+//  const state = thunkAPI.getState();
+//  const res = await renderSingle(state.continuous);
+//
+//  if (res.isOk) {
+//    return Promise.resolve(res.value);
+//  }
+//
+//  thunkAPI.dispatch(
+//    addNotification({
+//      type: 'danger',
+//      title: 'Failed',
+//      message: `Failed to load singleView`,
+//    })
+//  );
+//
+//  return Promise.reject(res.error);
+// });
 
 export const fetchTags = createAsyncThunk(
   'continuous/fetchTags',
@@ -138,6 +179,28 @@ export const fetchTagValues = createAsyncThunk(
   }
 );
 
+export const reloadAppNames = createAsyncThunk(
+  'names/reloadAppNames',
+  async (_, thunkAPI) => {
+    // TODO, retries?
+    const res = await fetchAppNames();
+
+    if (res.isOk) {
+      return Promise.resolve(res.value);
+    }
+
+    thunkAPI.dispatch(
+      addNotification({
+        type: 'danger',
+        title: 'Failed to load app names',
+        message: 'message' in res.error ? res.error.message : 'Unknown error',
+      })
+    );
+
+    return Promise.reject(res.error);
+  }
+);
+
 interface ContinuousState {
   from: string;
   until: string;
@@ -150,7 +213,13 @@ interface ContinuousState {
   refreshToken?: string;
 
   singleView: SingleView;
+  comparisonView: ComparisonView;
   tags: Tags;
+
+  appNames:
+    | { type: 'loaded'; data: AppNames }
+    | { type: 'reloading'; data: AppNames }
+    | { type: 'failed'; data: AppNames };
 }
 
 const initialState: ContinuousState = {
@@ -160,11 +229,13 @@ const initialState: ContinuousState = {
   leftUntil: 'now-30m',
   rightFrom: 'now-30m',
   rightUntil: 'now',
-  query: '',
   maxNodes: '1024',
 
   singleView: { type: 'pristine' },
+  comparisonView: { type: 'pristine' },
   tags: { type: 'pristine', tags: {} },
+  appNames: { type: 'loaded', data: (window as any).initialState.appNames },
+  query: appNameToQuery((window.initialState as any).appNames[0]) ?? '',
 };
 
 export const continuousSlice = createSlice({
@@ -175,6 +246,19 @@ export const continuousSlice = createSlice({
       state.from = action.payload;
     },
     setQuery(state, action: PayloadAction<string>) {
+      // if there's nothing set, pick the first one
+      // this likely happened due to the user visiting the root url
+      if (!action.payload) {
+        const first = state.appNames.data[0];
+        if (first) {
+          state.query = appNameToQuery(first);
+          return;
+        }
+
+        // There's not a first one, so leave it it empty
+        state.query = '';
+        return;
+      }
       state.query = action.payload;
     },
     setUntil(state, action: PayloadAction<string>) {
@@ -296,6 +380,19 @@ export const continuousSlice = createSlice({
         values: action.payload.values,
       };
     });
+
+    /***********************/
+    /*      App Names      */
+    /***********************/
+    builder.addCase(reloadAppNames.fulfilled, (state, action) => {
+      state.appNames = { type: 'loaded', data: action.payload };
+    });
+    builder.addCase(reloadAppNames.pending, (state) => {
+      state.appNames = { type: 'reloading', data: state.appNames.data };
+    });
+    builder.addCase(reloadAppNames.rejected, (state) => {
+      state.appNames = { type: 'failed', data: state.appNames.data };
+    });
   },
 });
 
@@ -312,3 +409,8 @@ export const selectLabels = (state: RootState) => {
 export const selectApplicationName = (state: RootState) => {
   return state.continuous.query.split('{')[0];
 };
+
+export const selectAppNamesState = (state: RootState) =>
+  state.continuous.appNames;
+export const selectAppNames = (state: RootState) =>
+  state.continuous.appNames.data;
