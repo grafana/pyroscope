@@ -16,11 +16,11 @@
   padding: 10px 5px;
   text-decoration: none;
   position: relative;
-  color: rgba(255, 255, 255, 0.66);
+  color: var(--ps-c-white-dark-1);
 }
 
 .navLinkActive {
-  color: rgba(255, 255, 255, 1);
+  color: var(--ps-c-white);
 }
 
 /*Active link underline*/
@@ -33,7 +33,7 @@
   height: 4px;
   bottom: 6px;
   border-radius: 2px;
-  background: rgb(0, 116, 217);
+  background: var(--ps-c-blue);
 }
 
 h1 {

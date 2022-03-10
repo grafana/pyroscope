@@ -3,17 +3,17 @@
 }
 
 .success {
-  color: white;
-  background-color: #28a745;
+  color: var(--ps-c-white);
+  background-color: var(--ps-c-green-success);
   padding: 10px;
   margin: 1em 0;
   padding: 1em;
 }
 
 .error {
-  color: white;
+  color: var(--ps-c-white);
   font-weight: bold;
-  background-color: #8a1722;
+  background-color: var(--ps-c-red-error);
   margin: 1em 0;
   padding: 1em;
 }
