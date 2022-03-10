@@ -44,14 +44,8 @@ func (s *Storage) Put(pi *PutInput) error {
 		"aggregationType": pi.AggregationType,
 	}).Debug("storage.Put")
 
-	if pi.Key.HasProfileID() {
-		k := pi.Key.ProfileIDKey()
-		// Slightly racy, but OK for experiments.
-		if v, ok := s.trees.Lookup(k); ok {
-			pi.Val.Merge(v.(*tree.Tree))
-		}
-		s.trees.Put(k, pi.Val)
-		return nil
+	if id, ok := pi.Key.ProfileID(); ok {
+		return s.profiles.insert(pi.Key.AppName(), id, pi.Val, pi.EndTime)
 	}
 
 	for k, v := range pi.Key.Labels() {

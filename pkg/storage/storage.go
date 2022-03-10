@@ -36,6 +36,7 @@ type Storage struct {
 	trees      *db
 	main       *db
 	labels     *labels.Labels
+	profiles   *profiles
 
 	hc *health.Controller
 
@@ -129,6 +130,16 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		return nil, err
 	}
 
+	pdb, err := s.newBadger("profiles", profileDataPrefix, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.profiles = &profiles{
+		db:     pdb,
+		dicts:  s.dicts,
+		config: s.config,
+	}
+
 	s.labels = labels.New(s.main.DB)
 
 	if err = s.migrate(); err != nil {
@@ -160,7 +171,7 @@ func (s *Storage) Close() error {
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.tasksWG.Wait()
 	s.logger.Debug("storage tasks finished")
-	// Dictionaries DB has to close last because trees depend on it.
+	// Dictionaries DB has to close last because trees and profiles DBs depend on it.
 	s.goDB(func(d *db) {
 		if d != s.dicts {
 			d.close()
@@ -311,12 +322,12 @@ func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
 }
 
 func (s *Storage) databases() []*db {
-	// Order matters.
 	return []*db{
 		s.main,
 		s.dimensions,
 		s.segments,
 		s.dicts,
 		s.trees,
+		s.profiles.db,
 	}
 }

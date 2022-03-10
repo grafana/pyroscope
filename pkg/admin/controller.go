@@ -1,5 +1,7 @@
 package admin
 
+//revive:disable:max-public-structs dependencies
+
 import (
 	"context"
 	"encoding/json"
@@ -15,20 +17,30 @@ import (
 type Controller struct {
 	log *logrus.Logger
 
-	adminService *AdminService
-	userService  UserService
+	adminService   *AdminService
+	userService    UserService
+	storageService StorageService
 }
 
 type UserService interface {
 	UpdateUserByName(ctx context.Context, name string, params model.UpdateUserParams) (model.User, error)
 }
 
-func NewController(log *logrus.Logger, adminService *AdminService, userService UserService) *Controller {
+type StorageService interface {
+	Cleanup(ctx context.Context) error
+}
+
+func NewController(
+	log *logrus.Logger,
+	adminService *AdminService,
+	userService UserService,
+	storageService StorageService) *Controller {
 	return &Controller{
 		log: log,
 
-		adminService: adminService,
-		userService:  userService,
+		adminService:   adminService,
+		userService:    userService,
+		storageService: storageService,
 	}
 }
 
@@ -88,5 +100,11 @@ func (ctrl *Controller) UpdateUserHandler(w http.ResponseWriter, r *http.Request
 	username := mux.Vars(r)["username"]
 	if _, err := ctrl.userService.UpdateUserByName(r.Context(), username, params); err != nil {
 		ctrl.writeError(w, http.StatusInternalServerError, err, fmt.Sprintf("can't update user %s", username))
+	}
+}
+
+func (ctrl *Controller) StorageCleanupHandler(w http.ResponseWriter, r *http.Request) {
+	if err := ctrl.storageService.Cleanup(r.Context()); err != nil {
+		ctrl.writeError(w, http.StatusInternalServerError, err, "failed to clean up storage")
 	}
 }

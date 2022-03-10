@@ -89,6 +89,10 @@ func (c *CLI) DeleteApp(appname string, skipVerification bool) error {
 	return nil
 }
 
+func (c *CLI) CleanupStorage() error {
+	return c.client.CleanupStorage()
+}
+
 func (c *CLI) ResetUserPassword(username, password string, enable bool) error {
 	if username == "" || password == "" {
 		return fmt.Errorf("username and password are required")

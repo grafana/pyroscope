@@ -19,8 +19,9 @@ type Client struct {
 // TODO since this is shared between client/server
 // maybe we could share it?
 const (
-	appsEndpoint  = "http://pyroscope/v1/apps"
-	usersEndpoint = "http://pyroscope/v1/users"
+	appsEndpoint    = "http://pyroscope/v1/apps"
+	usersEndpoint   = "http://pyroscope/v1/users"
+	storageEndpoint = "http://pyroscope/v1/storage"
 )
 
 var (
@@ -104,6 +105,14 @@ func (c *Client) ResetUserPassword(username, password string, enable bool) error
 	}
 
 	req, err := http.NewRequest(http.MethodPatch, usersEndpoint+"/"+username, &b)
+	if err != nil {
+		return fmt.Errorf("error creating request: %w", err)
+	}
+	return c.do(req)
+}
+
+func (c *Client) CleanupStorage() error {
+	req, err := http.NewRequest(http.MethodPut, storageEndpoint+"/cleanup", nil)
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}
