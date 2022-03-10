@@ -221,18 +221,23 @@ export const continuousSlice = createSlice({
       };
     });
 
-    builder.addCase(fetchSingleView.rejected, (state, action) => {
-      // if previous state is loaded, let's continue displaying data
-      if (state.singleView.type === 'reloading') {
-        state.singleView = {
-          ...state.singleView,
-          type: 'loaded',
-        };
-      } else {
-        // it failed to load for the first time, so far all effects it's pristine
-        state.singleView = {
-          type: 'pristine',
-        };
+    builder.addCase(fetchSingleView.rejected, (state) => {
+      switch (state.singleView.type) {
+        // if previous state is loaded, let's continue displaying data
+        case 'reloading': {
+          state.singleView = {
+            ...state.singleView,
+            type: 'loaded',
+          };
+          break;
+        }
+
+        default: {
+          // it failed to load for the first time, so far all effects it's pristine
+          state.singleView = {
+            type: 'pristine',
+          };
+        }
       }
     });
 
@@ -267,4 +272,7 @@ export const continuousSlice = createSlice({
 export const selectContinuousState = (state: RootState) => state.continuous;
 export default continuousSlice.reducer;
 export const { actions } = continuousSlice;
-export const { setDateRange } = continuousSlice.actions;
+export const { setDateRange, setQuery } = continuousSlice.actions;
+export const selectLabelsList = (state: RootState) => {
+  return Object.keys(state.continuous.tags.tags);
+};

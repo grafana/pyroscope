@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 import Button from '@ui/Button';
@@ -7,57 +7,39 @@ import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   selectContinuousState,
   fetchTags,
+  selectLabelsList,
+  setQuery,
 } from '@pyroscope/redux/reducers/continuous';
 import Dropdown, { SubMenu, MenuItem, FocusableItem } from '@ui/Dropdown';
-import {
-  //  fetchTags,
-  fetchTagValues,
-  setQuery,
-  abortFetchTags,
-  abortFetchTagValues,
-} from '../redux/actions';
-import '../util/prism';
+import { fetchTagValues, abortFetchTags } from '../redux/actions';
+import { Prism } from '../util/prism';
 import styles from './TagsBar.module.css';
 
 function TagsBar({ actions, tags, tagValuesLoading }) {
   const dispatch = useAppDispatch();
   const { query } = useAppSelector(selectContinuousState);
+  const labelsList = useAppSelector(selectLabelsList);
 
-  const [queryVal, setQuery] = useState(query);
+  //  const [queryVal, setQuery] = useState(query);
   const [filter, setFilter] = useState({});
 
   useEffect(() => {
     dispatch(fetchTags(query));
   }, [query]);
 
-  const submitTagsValue = (newValue) => {
-    actions.setQuery(newValue);
-  };
-
-  const inputOnChange = (v) => {
-    setQuery(v);
-    window.Prism.highlightElement(
-      document.getElementById('highlighting-content')
-    );
-  };
-
-  useEffect(() => {
-    if (window.Prism) {
-      window.Prism.highlightElement(
-        document.getElementById('highlighting-content')
-      );
-    }
-  }, [queryVal]);
-
-  const loadTagValues = (tag) => {
-    actions.fetchTagValues(query, tag);
-  };
-  useEffect(
-    () =>
-      // since fetchTagValues may be running
-      actions.abortFetchTagValues,
-    []
-  );
+  //  const submitTagsValue = (newValue) => {
+  //    actions.setQuery(newValue);
+  //  };
+  //
+  //  const loadTagValues = (tag) => {
+  //    actions.fetchTagValues(query, tag);
+  //  };
+  //  useEffect(
+  //    () =>
+  //      // since fetchTagValues may be running
+  //      actions.abortFetchTagValues,
+  //    []
+  //  );
 
   const onTagsValueChange = (tagKey, tagValue) => {
     let newQuery;
@@ -74,14 +56,29 @@ function TagsBar({ actions, tags, tagValuesLoading }) {
     actions.setQuery(newQuery);
   };
 
+  const DropdownContents = (() => {
+    if (labelsList.length <= 0) {
+      return <MenuItem>No tags available</MenuItem>;
+    }
+    return null;
+  })();
+
+  return (
+    <div className="tags-bar _rc-menu-container--theme-dark">
+      <Dropdown label="Select Tag">{DropdownContents}</Dropdown>
+      <QueryInput
+        initialQuery={query}
+        onSubmit={(q) => {
+          dispatch(setQuery(q));
+        }}
+      />
+    </div>
+  );
+
   return (
     <div className="tags-bar _rc-menu-container--theme-dark">
       <Dropdown label="Select Tag">
-        {Object.keys(tags).length === 0 ? (
-          <MenuItem>No tags available</MenuItem>
-        ) : (
-          []
-        )}
+        {labelsList.length === 0 ? <MenuItem>No tags available</MenuItem> : []}
         {Object.keys(tags).map((tag) => (
           <SubMenu
             value={tag}
@@ -174,6 +171,57 @@ function TagsBar({ actions, tags, tagValuesLoading }) {
         </Button>
       </form>
     </div>
+  );
+}
+
+interface QueryInputProps {
+  initialQuery: string;
+  onSubmit: (query: string) => void;
+  //  className?: string;
+}
+
+function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
+  const [query, setQuery] = useState(initialQuery);
+  const codeRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (Prism && codeRef.current) {
+      Prism.highlightElement(codeRef.current);
+    }
+  }, [query]);
+
+  return (
+    <form
+      className="tags-query"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit(query);
+      }}
+    >
+      <pre className="tags-highlighted language-promql" aria-hidden="true">
+        <code
+          className="language-promql"
+          id="highlighting-content"
+          ref={codeRef}
+        >
+          {query}
+        </code>
+      </pre>
+      <input
+        className="tags-input"
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <Button
+        type="submit"
+        kind="secondary"
+        grouped
+        className={styles.executeButton}
+      >
+        Execute
+      </Button>
+    </form>
   );
 }
 
