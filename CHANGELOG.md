@@ -1,3 +1,18 @@
+# [0.12.0](https://github.com/pyroscope-io/pyroscope/compare/v0.11.1...v0.12.0) (2022-03-10)
+
+
+### Bug Fixes
+
+* **flamegraph:** rerender when 'profile' changes ([#931](https://github.com/pyroscope-io/pyroscope/issues/931)) ([527ae29](https://github.com/pyroscope-io/pyroscope/commit/527ae29222625ec6c74cda270f2add72027ca1e3))
+
+
+### Features
+
+* add dedicated profiles storage with support for retention policy ([#925](https://github.com/pyroscope-io/pyroscope/issues/925)) ([7c4996e](https://github.com/pyroscope-io/pyroscope/commit/7c4996e2483268c2ce0795202d4edeb3f6219def))
+* **flamegraph:** support a new profile field ([#929](https://github.com/pyroscope-io/pyroscope/issues/929)) ([95abe2a](https://github.com/pyroscope-io/pyroscope/commit/95abe2ae3dc253a25a03eb19a9378d13b85c8f08))
+
+
+
 ## [0.11.1](https://github.com/pyroscope-io/pyroscope/compare/v0.11.0...v0.11.1) (2022-03-07)
 
 
