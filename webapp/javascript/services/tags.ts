@@ -7,6 +7,6 @@ export async function fetchTags(query: string) {
 }
 
 export async function fetchLabelValues(label: string, query: string) {
-  const response = await request(`label-values?lavel=${label}&query=${query}`);
+  const response = await request(`label-values?label=${label}&query=${query}`);
   return parseResponse<TagsValues>(response, TagsValuesSchema);
 }

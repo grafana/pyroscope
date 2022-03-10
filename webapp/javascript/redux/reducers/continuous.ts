@@ -34,16 +34,22 @@ type SingleView =
       profile: Profile;
     };
 
+type TagsData =
+  | { type: 'pristine' }
+  | { type: 'loading' }
+  | { type: 'failed' }
+  | { type: 'loaded'; values: string[] };
+
 // Tags really refer to each application
 // Should we nest them to an application?
 type Tags =
-  | { type: 'pristine'; tags: Record<string, string[]> }
-  | { type: 'loading'; tags: Record<string, string[]> }
+  | { type: 'pristine'; tags: Record<string, TagsData> }
+  | { type: 'loading'; tags: Record<string, TagsData> }
   | {
       type: 'loaded';
-      tags: Record<string, string[]>;
+      tags: Record<string, TagsData>;
     }
-  | { type: 'failed'; tags: Record<string, string[]> };
+  | { type: 'failed'; tags: Record<string, TagsData> };
 
 // type TagsValues =
 //  | { type: 'pristine' }
@@ -102,7 +108,7 @@ export const fetchTags = createAsyncThunk(
   }
 );
 
-export const fetchTagsValues = createAsyncThunk(
+export const fetchTagValues = createAsyncThunk(
   'continuous/fetchTagsValues',
   async (
     payload: { query: ContinuousState['query']; label: string },
@@ -114,7 +120,10 @@ export const fetchTagsValues = createAsyncThunk(
     );
 
     if (res.isOk) {
-      return Promise.resolve(res.value);
+      return Promise.resolve({
+        label: payload.label,
+        values: res.value,
+      });
     }
 
     thunkAPI.dispatch(
@@ -250,7 +259,7 @@ export const continuousSlice = createSlice({
 
     builder.addCase(fetchTags.fulfilled, (state, action) => {
       const tags = action.payload.reduce((acc, tag) => {
-        acc[tag] = [];
+        acc[tag] = { type: 'pristine' };
         return acc;
       }, {} as ContinuousState['tags']['tags']);
 
@@ -266,6 +275,27 @@ export const continuousSlice = createSlice({
         type: 'failed',
       };
     });
+
+    // TODO other cases
+    builder.addCase(fetchTagValues.fulfilled, (state, action) => {
+      if (state.tags.type !== 'loaded') {
+        console.error('Loading tag values for an unloaded tags. Ignoring');
+        return;
+      }
+
+      if (!state.tags.tags[action.payload.label]) {
+        // We are loading tag values for a non existent tag
+        console.error(
+          `Loaded labels values for non existing label: '${action.payload.label}'. Ignoring`
+        );
+        return;
+      }
+
+      state.tags.tags[action.payload.label] = {
+        type: 'loaded',
+        values: action.payload.values,
+      };
+    });
   },
 });
 
@@ -275,4 +305,10 @@ export const { actions } = continuousSlice;
 export const { setDateRange, setQuery } = continuousSlice.actions;
 export const selectLabelsList = (state: RootState) => {
   return Object.keys(state.continuous.tags.tags);
+};
+export const selectLabels = (state: RootState) => {
+  return state.continuous.tags.tags;
+};
+export const selectApplicationName = (state: RootState) => {
+  return state.continuous.query.split('{')[0];
 };
