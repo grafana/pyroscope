@@ -20,7 +20,6 @@ function createStore(preloadedState: any) {
 }
 
 describe('Sidebar', () => {
-  const currentUser = { role: 'anonymous' };
   describe('active routes highlight', () => {
     describe.each([
       ['/', 'sidebar-continuous-single'],
@@ -41,7 +40,7 @@ describe('Sidebar', () => {
                   },
                 })}
               >
-                <Sidebar2 currentUser={currentUser} />
+                <Sidebar2 />
               </Provider>
             </MemoryRouter>
           );
@@ -65,7 +64,7 @@ describe('Sidebar', () => {
                   },
                 })}
               >
-                <Sidebar2 currentUser={currentUser} />
+                <Sidebar2 />
               </Provider>
             </MemoryRouter>
           );

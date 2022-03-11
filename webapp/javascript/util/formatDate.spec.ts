@@ -1,4 +1,5 @@
 import { readableRange, formatAsOBject } from '@utils/formatDate';
+import * as dateFns from 'date-fns';
 import timezoneMock from 'timezone-mock';
 
 describe('FormatDate', () => {
@@ -42,28 +43,29 @@ describe('FormatDate', () => {
     it('works with "now"', () => {
       // TODO
       // not entirely sure this case is even possible to happen in the code
-      expect(formatAsOBject('now')).toEqual(mockDate.getTime());
+      expect(formatAsOBject('now')).toEqual(mockDate);
     });
 
     it('works with "now-1h"', () => {
       const got = formatAsOBject('now-1h');
 
-      expect(got).toBe(1640087041741);
+      expect(got).toEqual(dateFns.subHours(mockDate, 1));
     });
 
     it('works with "now-30m"', () => {
       const got = formatAsOBject('now-30m');
 
-      expect(got).toBe(1640088841741);
+      expect(got).toEqual(dateFns.subMinutes(mockDate, 30));
     });
 
     it('works with "now-1m"', () => {
-      expect(formatAsOBject('now-1m')).toBe(1640090581741);
+      const got = formatAsOBject('now-1m');
+      expect(got).toEqual(dateFns.subMinutes(mockDate, 1));
     });
 
     it('works with absolute timestamps', () => {
       expect(formatAsOBject('1624192489')).toEqual(
-        new Date('2021-06-20T12:34:49.000Z').getTime()
+        new Date('2021-06-20T12:34:49.000Z')
       );
     });
   });

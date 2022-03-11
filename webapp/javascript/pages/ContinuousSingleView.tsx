@@ -25,7 +25,7 @@ function ContinuousSingleView() {
 
   useEffect(() => {
     if (from && until && query && maxNodes) {
-      dispatch(fetchSingleView());
+      dispatch(fetchSingleView(null));
     }
   }, [from, until, query, refreshToken, maxNodes]);
 

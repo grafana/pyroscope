@@ -8,8 +8,8 @@ export function buildRenderURL(
     refreshToken?: string;
     maxNodes: string | number;
   },
-  fromOverride?: number,
-  untilOverride?: number
+  fromOverride?: string,
+  untilOverride?: string
 ) {
   let { from, until, query } = state;
 

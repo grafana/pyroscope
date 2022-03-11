@@ -13,7 +13,8 @@ export const addNotification = createAsyncThunk(
       store.addNotification({
         ...opts,
         onRemoval: () => {
-          resolve(null);
+          // TODO: fix type
+          resolve(null as any);
         },
       });
     });

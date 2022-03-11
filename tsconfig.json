@@ -17,7 +17,10 @@
       "@pyroscope/services/*": ["./webapp/javascript/services/*"]
     },
     "types": ["node"],
-    "plugins": [{ "name": "typescript-plugin-css-modules" }]
+    "plugins": [{ "name": "typescript-plugin-css-modules" }],
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strict": true
   },
   // ts-node is currently only used by webpack
   "ts-node": {

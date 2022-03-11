@@ -8,6 +8,10 @@ import type { RootState } from '../store';
 // See examples on https://github.com/rt2zz/redux-persist/blob/master/docs/migrations.md
 export const migrations = {
   0: (state: PersistedState) => {
+    if (!state) {
+      return {} as PersistedState;
+    }
+
     return { ...state };
   },
 };

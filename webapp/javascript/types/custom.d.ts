@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 // https://github.com/Connormiha/jest-css-modules-transform/issues/33
 declare module '*.module.css' {
   const classes: { [key: string]: string };
@@ -53,4 +54,24 @@ declare module 'react-flot' {
     render(): any;
   }
   export = ReactFlot;
+}
+
+// From https://github.com/chantastic/react-svg-spinner/blob/master/index.d.ts
+declare module 'react-svg-spinner' {
+  import React from 'react';
+
+  type SpinnerProps = {
+    size?: string;
+    width?: string;
+    height?: string;
+    color?: string;
+    thickness?: number;
+    gap?: number;
+    speed?: 'fast' | 'slow' | 'default';
+  };
+
+  // eslint-disable-next-line react/prefer-stateless-function
+  class Spinner extends React.Component<SpinnerProps, any> {}
+
+  export default Spinner;
 }

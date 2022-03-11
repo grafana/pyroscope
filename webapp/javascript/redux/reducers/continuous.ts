@@ -205,12 +205,12 @@ export const fetchInitialComparisonView = createAsyncThunk<
   );
 
   const failures = [
-    timeline.isErr ? timeline : null,
-    leftData.isErr ? leftData : null,
-    rightData.isErr ? rightData : null,
-  ].filter((a) => a);
+    timeline.isErr ? timeline : undefined,
+    leftData.isErr ? leftData : undefined,
+    rightData.isErr ? rightData : undefined,
+  ];
 
-  return Promise.reject(failures.map((a) => a.error));
+  return Promise.reject(failures.map((a) => a?.error));
 });
 
 export const fetchComparisonTimeline = createAsyncThunk<

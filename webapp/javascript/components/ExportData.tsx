@@ -188,8 +188,8 @@ function ExportData(props: ExportDataProps) {
       // * absence of a public server (grafana, standalone)
       // * diff mode
       const url = `${buildRenderURL({
-        from: flamebearer.metadata.startTime,
-        until: flamebearer.metadata.endTime,
+        from: flamebearer.metadata.startTime.toString(),
+        until: flamebearer.metadata.endTime.toString(),
         query: flamebearer.metadata.query,
         maxNodes: flamebearer.metadata.maxNodes,
       })}&format=pprof`;
@@ -221,8 +221,8 @@ function ExportData(props: ExportDataProps) {
         typeof props.fetchUrlFunc === 'function'
           ? props.fetchUrlFunc()
           : buildRenderURL({
-              from: flamebearer.metadata.startTime,
-              until: flamebearer.metadata.endTime,
+              from: flamebearer.metadata.startTime.toString(),
+              until: flamebearer.metadata.endTime.toString(),
               query: flamebearer.metadata.query,
               maxNodes: flamebearer.metadata.maxNodes,
             });

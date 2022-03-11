@@ -30,8 +30,10 @@ import { useLocation, NavLink } from 'react-router-dom';
 import { isAdhocUIEnabled } from '@utils/features';
 import Icon from '@ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
-import { withCurrentUser } from '@pyroscope/redux/reducers/user';
-import basename from '../util/baseurl';
+import {
+  withCurrentUser,
+  selectCurrentUser,
+} from '@pyroscope/redux/reducers/user';
 import styles from './Sidebar.module.css';
 
 function signOut() {
@@ -41,13 +43,13 @@ function signOut() {
   });
 }
 
-export function Sidebar2(props) {
+export function Sidebar2() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
+  const currentUser = useAppSelector(selectCurrentUser);
   const dispatch = useAppDispatch();
 
   const { search, pathname } = useLocation();
   const windowWidth = useWindowWidth();
-  const { currentUser } = props;
   const authEnabled = currentUser && currentUser.role !== 'anonymous';
 
   // the component doesn't seem to support setting up an active item
