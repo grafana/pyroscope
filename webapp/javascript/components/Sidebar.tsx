@@ -228,7 +228,7 @@ export function Sidebar2() {
               Github
             </a>
           </MenuItem>
-          {(window as any).isAuthRequired && (
+          {(window as ShamefulAny).isAuthRequired && (
             <MenuItem
               onClick={() => signOut()}
               icon={<Icon icon={faSignOutAlt} />}

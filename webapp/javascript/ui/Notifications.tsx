@@ -23,7 +23,7 @@ export type NotificationOptions = {
   type: 'success' | 'danger' | 'info';
 
   dismiss?: DismissOptions;
-  onRemoval?: ((id: string, removedBy: any) => void) | undefined;
+  onRemoval?: ((id: string, removedBy: ShamefulAny) => void) | undefined;
 };
 
 export const store = {

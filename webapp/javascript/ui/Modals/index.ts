@@ -10,7 +10,7 @@ type ShowModalParams = {
   title: string;
   confirmButtonText: string;
   danger: boolean;
-  onConfirm: any;
+  onConfirm: ShamefulAny;
 };
 
 const ShowModal = ({

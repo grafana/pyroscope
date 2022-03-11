@@ -50,7 +50,7 @@ export const reloadApiKeys = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to load api keys',
-        message: (res.error as any).message || '',
+        message: (res.error as ShamefulAny).message || '',
       })
     );
 
@@ -202,7 +202,7 @@ export const createAPIKey = createAsyncThunk(
         type: 'danger',
         title: 'Failed to create API key',
         // TODO
-        message: (res.error as any).message || '',
+        message: (res.error as ShamefulAny).message || '',
       })
     );
     return thunkAPI.rejectWithValue(res.error);
@@ -229,7 +229,7 @@ export const deleteAPIKey = createAsyncThunk(
         type: 'danger',
         title: 'Failed to delete API key',
         // TODO
-        message: (res.error as any).message || '',
+        message: (res.error as ShamefulAny).message || '',
       })
     );
     return thunkAPI.rejectWithValue(res.error);

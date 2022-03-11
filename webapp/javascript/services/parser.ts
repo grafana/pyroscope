@@ -16,5 +16,5 @@ export function parseResponse<T>(
     return Result.err<T, RequestError>(res.error);
   }
 
-  return modelToResult(schema, res.value) as Result<T, ZodError<any>>;
+  return modelToResult(schema, res.value) as Result<T, ZodError<ShamefulAny>>;
 }

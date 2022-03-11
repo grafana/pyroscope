@@ -14,7 +14,7 @@ export const addNotification = createAsyncThunk(
         ...opts,
         onRemoval: () => {
           // TODO: fix type
-          resolve(null as any);
+          resolve(null as ShamefulAny);
         },
       });
     });

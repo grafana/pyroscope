@@ -116,9 +116,9 @@ export const cancelAdhocProfileDiff = () => ({
 // ResponseNotOkError refers to when request is not ok
 // ie when status code is not in the 2xx range
 class ResponseNotOkError extends Error {
-  response: any;
+  response: ShamefulAny;
 
-  constructor(response: any, text: string) {
+  constructor(response: ShamefulAny, text: string) {
     super(`Bad Response with code ${response.status}: ${text}`);
     this.name = 'ResponseNotOkError';
     this.response = response;

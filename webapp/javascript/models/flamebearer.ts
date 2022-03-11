@@ -64,8 +64,8 @@ export function decodeFlamebearer({
   };
 
   if (fb.format === 'double') {
-    (fb as any).leftTicks = leftTicks;
-    (fb as any).rightTicks = rightTicks;
+    (fb as ShamefulAny).leftTicks = leftTicks;
+    (fb as ShamefulAny).rightTicks = rightTicks;
   }
 
   fb.levels = deltaDiffWrapper(fb.format, fb.levels);

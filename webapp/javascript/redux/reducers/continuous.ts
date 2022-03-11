@@ -135,8 +135,11 @@ const initialState: ContinuousState = {
     right: { type: 'pristine' },
   },
   tags: { type: 'pristine', tags: {} },
-  appNames: { type: 'loaded', data: (window as any).initialState.appNames },
-  query: appNameToQuery((window as any).initialState.appNames[0]) ?? '',
+  appNames: {
+    type: 'loaded',
+    data: (window as ShamefulAny).initialState.appNames,
+  },
+  query: appNameToQuery((window as ShamefulAny).initialState.appNames[0]) ?? '',
 };
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,

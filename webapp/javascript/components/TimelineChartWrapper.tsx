@@ -43,7 +43,7 @@ type TimelineChartWrapperProps = {
 class TimelineChartWrapper extends React.Component<
   TimelineChartWrapperProps,
   // TODO add type
-  any
+  ShamefulAny
 > {
   constructor(props: TimelineChartWrapperProps) {
     super(props);
@@ -97,7 +97,7 @@ class TimelineChartWrapper extends React.Component<
   }
 
   // TODO: type this correctly
-  componentDidUpdate(prevProps: TimelineChartWrapperProps & any) {
+  componentDidUpdate(prevProps: TimelineChartWrapperProps & ShamefulAny) {
     if (this.props.viewSide === 'none') return;
 
     if (

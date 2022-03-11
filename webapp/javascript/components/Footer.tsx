@@ -11,7 +11,7 @@ function copyrightYears(start: string, end: string) {
   return start === end ? start : `${start} – ${end}`;
 }
 
-const win = window as any;
+const win = window as ShamefulAny;
 
 function buildInfo() {
   return `

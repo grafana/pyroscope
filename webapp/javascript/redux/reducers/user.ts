@@ -116,7 +116,7 @@ export const selectCurrentUser = (state: RootState) => state.user?.data;
 
 // TODO: @shaleynikov extract currentUser HOC
 // TODO(eh-am): get rid of HOC
-export const withCurrentUser = (component: any) =>
+export const withCurrentUser = (component: ShamefulAny) =>
   connect((state: RootState) => ({
     currentUser: selectCurrentUser(state),
   }))(function ConditionalRender(props: { currentUser: User }) {
@@ -124,6 +124,6 @@ export const withCurrentUser = (component: any) =>
       return component(props);
     }
     return null;
-  } as any);
+  } as ShamefulAny);
 
 export default userSlice.reducer;

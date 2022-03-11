@@ -29,37 +29,37 @@ import { deltaDiffWrapper } from '../../util/flamebearer';
 const initialState = {
   // TODO(eh-am): add proper types
   adhocSingle: {
-    raw: null as any,
-    file: null as any,
-    profile: null as any,
-    flamebearer: null as any,
+    raw: null as ShamefulAny,
+    file: null as ShamefulAny,
+    profile: null as ShamefulAny,
+    flamebearer: null as ShamefulAny,
     isProfileLoading: false,
   },
   adhocShared: {
     left: {
-      profile: null as any,
+      profile: null as ShamefulAny,
     },
     right: {
-      profile: null as any,
+      profile: null as ShamefulAny,
     },
   },
   adhocComparison: {
     left: {
-      file: null as any,
-      raw: null as any,
-      flamebearer: null as any,
+      file: null as ShamefulAny,
+      raw: null as ShamefulAny,
+      flamebearer: null as ShamefulAny,
       isProfileLoading: false,
     },
     right: {
-      file: null as any,
-      raw: null as any,
-      flamebearer: null as any,
+      file: null as ShamefulAny,
+      raw: null as ShamefulAny,
+      flamebearer: null as ShamefulAny,
       isProfileLoading: false,
     },
   },
   adhocComparisonDiff: {
-    flamebearer: null as any,
-    raw: null as any,
+    flamebearer: null as ShamefulAny,
+    raw: null as ShamefulAny,
     isProfileLoading: false,
   },
   serviceDiscovery: {

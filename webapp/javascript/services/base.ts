@@ -19,7 +19,7 @@ interface RequestIncompleteError {
 // ResponseInvalidJSONError refers to when the response is not a valid JSON
 interface ResponseInvalidJSONError {
   message: string;
-  data: any;
+  data: ShamefulAny;
 }
 
 export interface RequestNotOkWithErrorsList {
@@ -166,5 +166,5 @@ export function parseResponse<T>(
     return Result.err<T, RequestError>(res.error);
   }
 
-  return modelToResult(schema, res.value) as Result<T, ZodError<any>>;
+  return modelToResult(schema, res.value) as Result<T, ZodError<ShamefulAny>>;
 }

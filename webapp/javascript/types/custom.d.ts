@@ -27,7 +27,7 @@ declare module '*.module.styl' {
 
 // https://stackoverflow.com/a/45887328
 declare module '*.svg' {
-  const content: any;
+  const content: ShamefulAny;
   export default content;
 }
 
@@ -35,7 +35,7 @@ declare module '*.svg' {
 declare module 'react-flot' {
   interface ReactFlotProps {
     id: string;
-    data: any[];
+    data: ShamefulAny[];
     options: object;
     height: string;
     width: string;
@@ -43,15 +43,15 @@ declare module 'react-flot' {
 
   class ReactFlot<CustomProps> extends React.Component<
     ReactFlotProps & CustomProps,
-    any
+    ShamefulAny
   > {
     componentDidMount(): void;
 
     // componentWillReceiveProps(nextProps: any): void;
 
-    draw(event?: any, data?: any): void;
+    draw(event?: ShamefulAny, data?: ShamefulAny): void;
 
-    render(): any;
+    render(): ShamefulAny;
   }
   export = ReactFlot;
 }
@@ -71,7 +71,7 @@ declare module 'react-svg-spinner' {
   };
 
   // eslint-disable-next-line react/prefer-stateless-function
-  class Spinner extends React.Component<SpinnerProps, any> {}
+  class Spinner extends React.Component<SpinnerProps, ShamefulAny> {}
 
   export default Spinner;
 }

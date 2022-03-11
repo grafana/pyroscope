@@ -202,7 +202,7 @@ import { format } from 'date-fns';
     plot.hooks.shutdown.push(shutdown);
   }
 
-  ($ as any).plot.plugins.push({
+  $.plot.plugins.push({
     init,
     options,
     name: 'pyro-tooltip',

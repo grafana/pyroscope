@@ -52,7 +52,7 @@ function NameSelector() {
     >
       {name}
     </MenuItem>
-  )) as any;
+  )) as ShamefulAny;
 
   const noApp =
     appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>;
