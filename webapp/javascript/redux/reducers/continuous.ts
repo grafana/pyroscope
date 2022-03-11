@@ -9,20 +9,6 @@ import { Timeline } from '../../models/timeline';
 import * as tagsService from '../../services/tags';
 import type { RootState } from '../store';
 
-type DataState<T> =
-  | {
-      type: 'pristine';
-    }
-  | { type: 'loading' }
-  | {
-      type: 'loaded';
-      data: T;
-    }
-  | {
-      type: 'reloading';
-      data: T;
-    };
-
 type SingleView =
   | { type: 'pristine' }
   | { type: 'loading' }
@@ -79,34 +65,6 @@ type ComparisonView = {
       };
 };
 
-// type ComparisonView =
-//  | { type: 'pristine' }
-//  | { type: 'loading' }
-//  | {
-//      type: 'loaded';
-//      timeline: Timeline;
-//      left: {
-//        profile: Profile;
-//        timeline: Timeline;
-//      };
-//      right: {
-//        profile: Profile;
-//        timeline: Timeline;
-//      };
-//    }
-//  | {
-//      type: 'reloading';
-//      timeline: Timeline;
-//      left: {
-//        profile: Profile;
-//        timeline: Timeline;
-//      };
-//      right: {
-//        profile: Profile;
-//        timeline: Timeline;
-//      };
-//    };
-
 type DiffView =
   | { type: 'pristine' }
   | { type: 'loading' }
@@ -114,23 +72,11 @@ type DiffView =
       type: 'loaded';
       timeline: Timeline;
       profile: Profile;
-      //      left: {
-      //        timeline: Timeline;
-      //      };
-      //      right: {
-      //        timeline: Timeline;
-      //      };
     }
   | {
       type: 'reloading';
       timeline: Timeline;
       profile: Profile;
-      //      left: {
-      //        timeline: Timeline;
-      //      };
-      //      right: {
-      //        timeline: Timeline;
-      //      };
     };
 
 type TagsData =
@@ -190,7 +136,7 @@ const initialState: ContinuousState = {
   },
   tags: { type: 'pristine', tags: {} },
   appNames: { type: 'loaded', data: (window as any).initialState.appNames },
-  query: appNameToQuery((window.initialState as any).appNames[0]) ?? '',
+  query: appNameToQuery((window as any).initialState.appNames[0]) ?? '',
 };
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
@@ -496,6 +442,10 @@ export const continuousSlice = createSlice({
       state.from = action.payload.from;
       state.until = action.payload.until;
     },
+
+    refresh(state) {
+      state.refreshToken = Math.random().toString();
+    },
   },
   extraReducers: (builder) => {
     /*************************/
@@ -550,9 +500,35 @@ export const continuousSlice = createSlice({
     /*      Comparison View      */
     /*****************************/
     builder.addCase(fetchInitialComparisonView.pending, (state) => {
-      state.comparisonView.timeline = { type: 'loading' };
-      state.comparisonView.left = { type: 'loading' };
-      state.comparisonView.right = { type: 'loading' };
+      state.comparisonView.timeline =
+        state.comparisonView.timeline.type === 'loaded'
+          ? {
+              ...state.comparisonView.timeline,
+              type: 'reloading',
+            }
+          : {
+              type: 'loading',
+            };
+
+      state.comparisonView.left =
+        state.comparisonView.left.type === 'loaded'
+          ? {
+              ...state.comparisonView.left,
+              type: 'reloading',
+            }
+          : {
+              type: 'loading',
+            };
+
+      state.comparisonView.right =
+        state.comparisonView.right.type === 'loaded'
+          ? {
+              ...state.comparisonView.right,
+              type: 'reloading',
+            }
+          : {
+              type: 'loading',
+            };
     });
 
     builder.addCase(fetchInitialComparisonView.fulfilled, (state, action) => {
@@ -640,14 +616,6 @@ export const continuousSlice = createSlice({
     builder.addCase(fetchDiffView.fulfilled, (state, action) => {
       state.diffView = {
         ...action.payload,
-        left: {
-          // for now the timelines are the same
-          timeline: action.payload.timeline,
-        },
-        right: {
-          // for now the timelines are the same
-          timeline: action.payload.timeline,
-        },
         profile: action.payload.profile,
         type: 'loaded',
       };
@@ -756,3 +724,17 @@ export const selectAppNames = (state: RootState) =>
 
 export const selectComparisonState = (state: RootState) =>
   state.continuous.comparisonView;
+
+export const selectIsLoadingData = (state: RootState) => {
+  const loadingStates = ['loading', 'reloading'];
+
+  // TODO: should we check if timelines are being reloaded too?
+  return (
+    loadingStates.includes(state.continuous.singleView.type) ||
+    // Comparison
+    loadingStates.includes(state.continuous.comparisonView.left.type) ||
+    loadingStates.includes(state.continuous.comparisonView.right.type) ||
+    // Diff
+    loadingStates.includes(state.continuous.diffView.type)
+  );
+};

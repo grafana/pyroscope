@@ -22,14 +22,22 @@ import styles from './ContinuousComparison.module.css';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
-  const { from, until, query, leftFrom, rightFrom, leftUntil, rightUntil } =
-    useAppSelector(selectContinuousState);
+  const {
+    from,
+    until,
+    query,
+    refreshToken,
+    leftFrom,
+    rightFrom,
+    leftUntil,
+    rightUntil,
+  } = useAppSelector(selectContinuousState);
 
   const comparisonView = useAppSelector(selectComparisonState);
 
   useEffect(() => {
     dispatch(fetchInitialComparisonView());
-  }, [query]);
+  }, [query, refreshToken]);
 
   // timeline changes
   useEffect(() => {

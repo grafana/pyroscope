@@ -94,7 +94,7 @@ export const setMaxNodes = (maxNodes) => ({
   payload: { maxNodes },
 });
 
-export const refresh = () => ({ type: REFRESH });
+// export const refresh = () => ({ type: REFRESH });
 
 export const requestTimeline = (url) => ({
   type: REQUEST_COMPARISON_TIMELINE,
