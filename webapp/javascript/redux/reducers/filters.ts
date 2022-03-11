@@ -1,33 +1,4 @@
 import {
-  SET_DATE_RANGE,
-  SET_FROM,
-  SET_UNTIL,
-  SET_MAX_NODES,
-  REFRESH,
-  REQUEST_TAGS,
-  RECEIVE_TAGS,
-  REQUEST_TAG_VALUES,
-  RECEIVE_TAG_VALUES,
-  RECEIVE_NAMES,
-  REQUEST_NAMES,
-  SET_LEFT_DATE_RANGE,
-  SET_RIGHT_DATE_RANGE,
-  SET_LEFT_FROM,
-  SET_RIGHT_FROM,
-  SET_LEFT_UNTIL,
-  SET_RIGHT_UNTIL,
-  SET_QUERY,
-  RECEIVE_COMPARISON_APP_DATA,
-  RECEIVE_PYROSCOPE_APP_DATA,
-  REQUEST_PYROSCOPE_APP_DATA,
-  CANCEL_PYROSCOPE_APP_DATA,
-  REQUEST_COMPARISON_APP_DATA,
-  REQUEST_COMPARISON_DIFF_APP_DATA,
-  RECEIVE_COMPARISON_DIFF_APP_DATA,
-  RECEIVE_COMPARISON_TIMELINE,
-  REQUEST_COMPARISON_TIMELINE,
-  CANCEL_COMPARISON_APP_DATA,
-  CANCEL_COMPARISON_DIFF_APP_DATA,
   SET_ADHOC_FILE,
   SET_ADHOC_LEFT_FILE,
   SET_ADHOC_RIGHT_FILE,
@@ -53,36 +24,7 @@ import {
 
 import { deltaDiffWrapper } from '../../util/flamebearer';
 
-const defaultName = (window as any).initialState.appNames.find(
-  (x) => x !== 'pyroscope.server.cpu'
-);
-
 const initialState = {
-  from: 'now-1h',
-  leftFrom: 'now-1h',
-  rightFrom: 'now-30m',
-  until: 'now',
-  leftUntil: 'now-30m',
-  rightUntil: 'now',
-  query: `${defaultName || 'pyroscope.server.cpu'}{}`,
-  names: (window as any).initialState.appNames,
-  timeline: null,
-  single: {
-    flamebearer: null,
-  },
-  comparison: {
-    rawLeft: null,
-    rawRight: null,
-    left: {
-      flamebearer: null,
-    },
-    right: {
-      flamebearer: null,
-    },
-  },
-  diff: {
-    flamebearer: null,
-  },
   // TODO(eh-am): add proper types
   adhocSingle: {
     raw: null as any,
@@ -121,24 +63,7 @@ const initialState = {
   serviceDiscovery: {
     data: [],
   },
-  isJSONLoading: false,
-  maxNodes: 1024,
-  tags: [],
-  profiles: null,
-  areProfilesLoading: false,
 };
-
-function decodeTimelineData(timelineData) {
-  if (!timelineData) {
-    return [];
-  }
-  let time = timelineData.startTime;
-  return timelineData.samples.map((x) => {
-    const res = [time * 1000, x];
-    time += timelineData.durationDelta;
-    return res;
-  });
-}
 
 function decodeFlamebearer({
   flamebearer,
@@ -182,95 +107,6 @@ export default function (state = initialState, action) {
   let viewSide;
 
   switch (type) {
-    case SET_DATE_RANGE:
-      ({
-        payload: { from, until },
-      } = action);
-      return {
-        ...state,
-        from,
-        until,
-      };
-    case SET_FROM:
-      ({
-        payload: { from },
-      } = action);
-      return {
-        ...state,
-        from,
-      };
-    case SET_LEFT_FROM:
-      ({
-        payload: { from },
-      } = action);
-      return {
-        ...state,
-        leftFrom: from,
-      };
-    case SET_RIGHT_FROM:
-      ({
-        payload: { from },
-      } = action);
-      return {
-        ...state,
-        rightFrom: from,
-      };
-    case SET_UNTIL:
-      ({
-        payload: { until },
-      } = action);
-      return {
-        ...state,
-        until,
-      };
-    case SET_LEFT_UNTIL:
-      ({
-        payload: { until },
-      } = action);
-      return {
-        ...state,
-        leftUntil: until,
-      };
-    case SET_RIGHT_UNTIL:
-      ({
-        payload: { until },
-      } = action);
-      return {
-        ...state,
-        rightUntil: until,
-      };
-    case SET_LEFT_DATE_RANGE:
-      ({
-        payload: { from, until },
-      } = action);
-      return {
-        ...state,
-        leftFrom: from,
-        leftUntil: until,
-      };
-    case SET_RIGHT_DATE_RANGE:
-      ({
-        payload: { from, until },
-      } = action);
-      return {
-        ...state,
-        rightFrom: from,
-        rightUntil: until,
-      };
-    case SET_MAX_NODES:
-      ({
-        payload: { maxNodes },
-      } = action);
-      return {
-        ...state,
-        maxNodes,
-      };
-    case REFRESH:
-      return {
-        ...state,
-        refreshToken: Math.random(),
-      };
-
     case SET_ADHOC_FILE:
       ({
         payload: { file, flamebearer },
