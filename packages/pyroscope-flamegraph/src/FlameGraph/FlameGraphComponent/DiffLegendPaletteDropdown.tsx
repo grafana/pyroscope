@@ -15,9 +15,10 @@ import styles from './DiffLegendPaletteDropdown.module.css';
 
 const paletteList = [DefaultPalette, ColorBlindPalette];
 
-export const DiffLegendPaletteDropdown = (props) => {
+// TODO type this
+export const DiffLegendPaletteDropdown = (props: any) => {
   const { palette = DefaultPalette, onChange } = props;
-  const legendRef = React.useRef();
+  const legendRef = React.useRef<HTMLDivElement>(null);
   const showMode = useSizeMode(legendRef);
 
   return (

@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import CanvasConverter from 'canvas-to-buffer';
 import { createCanvas } from 'canvas';
 import { Maybe } from 'true-myth';
