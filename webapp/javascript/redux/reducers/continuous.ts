@@ -3,7 +3,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AppNames } from '@models/appNames';
 import { fetchAppNames } from '@pyroscope/services/appNames';
 import { appNameToQuery } from '@utils/query';
-import { renderSingle, RenderOutput } from '../../services/render';
+import { renderSingle, RenderOutput, renderDiff } from '../../services/render';
 import { addNotification } from './notifications';
 import { Timeline } from '../../models/timeline';
 import * as tagsService from '../../services/tags';
@@ -65,6 +65,32 @@ type ComparisonView =
       };
     };
 
+type DiffView =
+  | { type: 'pristine' }
+  | { type: 'loading' }
+  | {
+      type: 'loaded';
+      timeline: Timeline;
+      profile: Profile;
+      //      left: {
+      //        timeline: Timeline;
+      //      };
+      //      right: {
+      //        timeline: Timeline;
+      //      };
+    }
+  | {
+      type: 'reloading';
+      timeline: Timeline;
+      profile: Profile;
+      //      left: {
+      //        timeline: Timeline;
+      //      };
+      //      right: {
+      //        timeline: Timeline;
+      //      };
+    };
+
 type TagsData =
   | { type: 'pristine' }
   | { type: 'loading' }
@@ -82,6 +108,44 @@ type Tags =
     }
   | { type: 'failed'; tags: Record<string, TagsData> };
 
+interface ContinuousState {
+  from: string;
+  until: string;
+  leftFrom: string;
+  leftUntil: string;
+  rightFrom: string;
+  rightUntil: string;
+  query: string;
+  maxNodes: string;
+  refreshToken?: string;
+
+  singleView: SingleView;
+  diffView: DiffView;
+  comparisonView: ComparisonView;
+  tags: Tags;
+
+  appNames:
+    | { type: 'loaded'; data: AppNames }
+    | { type: 'reloading'; data: AppNames }
+    | { type: 'failed'; data: AppNames };
+}
+
+const initialState: ContinuousState = {
+  from: 'now-1h',
+  until: 'now',
+  leftFrom: 'now-1h',
+  leftUntil: 'now-30m',
+  rightFrom: 'now-30m',
+  rightUntil: 'now',
+  maxNodes: '1024',
+
+  singleView: { type: 'pristine' },
+  diffView: { type: 'pristine' },
+  comparisonView: { type: 'pristine' },
+  tags: { type: 'pristine', tags: {} },
+  appNames: { type: 'loaded', data: (window as any).initialState.appNames },
+  query: appNameToQuery((window.initialState as any).appNames[0]) ?? '',
+};
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
   null,
@@ -105,28 +169,28 @@ export const fetchSingleView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-// export const fetchSingleView = createAsyncThunk<
-//  RenderOutput,
-//  null,
-//  { state: { continuous: ContinuousState } }
-// >('continuous/singleView', async (_, thunkAPI) => {
-//  const state = thunkAPI.getState();
-//  const res = await renderSingle(state.continuous);
-//
-//  if (res.isOk) {
-//    return Promise.resolve(res.value);
-//  }
-//
-//  thunkAPI.dispatch(
-//    addNotification({
-//      type: 'danger',
-//      title: 'Failed',
-//      message: `Failed to load singleView`,
-//    })
-//  );
-//
-//  return Promise.reject(res.error);
-// });
+export const fetchDiffView = createAsyncThunk<
+  RenderOutput,
+  null,
+  { state: { continuous: ContinuousState } }
+>('continuous/diffView', async (_, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const res = await renderDiff(state.continuous);
+
+  if (res.isOk) {
+    return Promise.resolve(res.value);
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed',
+      message: `Failed to load diffView`,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
 
 export const fetchTags = createAsyncThunk(
   'continuous/fetchTags',
@@ -201,49 +265,22 @@ export const reloadAppNames = createAsyncThunk(
   }
 );
 
-interface ContinuousState {
-  from: string;
-  until: string;
-  leftFrom: string;
-  leftUntil: string;
-  rightFrom: string;
-  rightUntil: string;
-  query: string;
-  maxNodes: string;
-  refreshToken?: string;
-
-  singleView: SingleView;
-  comparisonView: ComparisonView;
-  tags: Tags;
-
-  appNames:
-    | { type: 'loaded'; data: AppNames }
-    | { type: 'reloading'; data: AppNames }
-    | { type: 'failed'; data: AppNames };
-}
-
-const initialState: ContinuousState = {
-  from: 'now-1h',
-  until: 'now',
-  leftFrom: 'now-1h',
-  leftUntil: 'now-30m',
-  rightFrom: 'now-30m',
-  rightUntil: 'now',
-  maxNodes: '1024',
-
-  singleView: { type: 'pristine' },
-  comparisonView: { type: 'pristine' },
-  tags: { type: 'pristine', tags: {} },
-  appNames: { type: 'loaded', data: (window as any).initialState.appNames },
-  query: appNameToQuery((window.initialState as any).appNames[0]) ?? '',
-};
-
 export const continuousSlice = createSlice({
   name: 'continuous',
   initialState,
   reducers: {
     setFrom(state, action: PayloadAction<string>) {
       state.from = action.payload;
+    },
+    setUntil(state, action: PayloadAction<string>) {
+      state.until = action.payload;
+    },
+    setFromAndUntil(
+      state,
+      action: PayloadAction<{ from: string; until: string }>
+    ) {
+      state.from = action.payload.from;
+      state.until = action.payload.until;
     },
     setQuery(state, action: PayloadAction<string>) {
       // if there's nothing set, pick the first one
@@ -261,20 +298,25 @@ export const continuousSlice = createSlice({
       }
       state.query = action.payload;
     },
-    setUntil(state, action: PayloadAction<string>) {
-      state.until = action.payload;
-    },
     setLeftFrom(state, action: PayloadAction<string>) {
       state.leftFrom = action.payload;
     },
     setLeftUntil(state, action: PayloadAction<string>) {
       state.leftUntil = action.payload;
     },
+    setLeft(state, action: PayloadAction<{ from: string; until: string }>) {
+      state.leftFrom = action.payload.from;
+      state.leftUntil = action.payload.until;
+    },
     setRightFrom(state, action: PayloadAction<string>) {
       state.rightFrom = action.payload;
     },
     setRightUntil(state, action: PayloadAction<string>) {
       state.rightUntil = action.payload;
+    },
+    setRight(state, action: PayloadAction<{ from: string; until: string }>) {
+      state.rightFrom = action.payload.from;
+      state.rightUntil = action.payload.until;
     },
     setMaxNodes(state, action: PayloadAction<string>) {
       state.maxNodes = action.payload;
@@ -289,6 +331,9 @@ export const continuousSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    /*************************/
+    /*      Single View      */
+    /*************************/
     builder.addCase(fetchSingleView.pending, (state) => {
       switch (state.singleView.type) {
         // if we are fetching but there's already data
@@ -328,6 +373,65 @@ export const continuousSlice = createSlice({
         default: {
           // it failed to load for the first time, so far all effects it's pristine
           state.singleView = {
+            type: 'pristine',
+          };
+        }
+      }
+    });
+
+    /***********************/
+    /*      Diff View      */
+    /***********************/
+    builder.addCase(fetchDiffView.pending, (state) => {
+      switch (state.diffView.type) {
+        // if we are fetching but there's already data
+        // it's considered a 'reload'
+        case 'loaded': {
+          state.diffView = {
+            ...state.diffView,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.diffView = {
+            type: 'loading',
+          };
+        }
+      }
+    });
+
+    builder.addCase(fetchDiffView.fulfilled, (state, action) => {
+      state.diffView = {
+        ...action.payload,
+        left: {
+          // for now the timelines are the same
+          timeline: action.payload.timeline,
+        },
+        right: {
+          // for now the timelines are the same
+          timeline: action.payload.timeline,
+        },
+        profile: action.payload.profile,
+        type: 'loaded',
+      };
+    });
+
+    builder.addCase(fetchDiffView.rejected, (state) => {
+      switch (state.diffView.type) {
+        // if previous state is loaded, let's continue displaying data
+        case 'reloading': {
+          state.diffView = {
+            ...state.diffView,
+            type: 'loaded',
+          };
+          break;
+        }
+
+        default: {
+          // it failed to load for the first time, so far all effects it's pristine
+          state.diffView = {
             type: 'pristine',
           };
         }

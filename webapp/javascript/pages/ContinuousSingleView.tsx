@@ -86,7 +86,6 @@ function ContinuousSingleView() {
     }
   };
 
-  console.log('singleViewProfile', singleView);
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">

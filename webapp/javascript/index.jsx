@@ -52,10 +52,10 @@ function App() {
         <Route path="/comparison">
           <ContinuousComparisonView />
         </Route>
+        */}
         <Route path="/comparison-diff">
           <ContinuousDiffView />
         </Route>
-        */}
         <Route path="/settings">
           <Settings />
         </Route>

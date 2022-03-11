@@ -2,8 +2,6 @@
 /* eslint-disable react/no-did-update-set-state */
 /* eslint-disable react/destructuring-assignment */
 import React from 'react';
-import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
 import { Timeline } from '@models/timeline';
 import TimelineChart from './TimelineChart';
 import { formatAsOBject } from '../util/formatDate';
@@ -19,75 +17,82 @@ type TimelineChartWrapperProps = {
       viewSide: 'left';
       leftFrom: string;
       leftUntil: string;
+
+      rightFrom?: string;
+      rightUntil?: string;
     }
   | {
       viewSide: 'right';
       rightFrom: string;
       rightUntil: string;
+
+      leftFrom?: string;
+      leftUntil?: string;
     }
   | { viewSide: 'none' }
+  | {
+      viewSide: 'both';
+      rightFrom: string;
+      rightUntil: string;
+      leftFrom?: string;
+      leftUntil?: string;
+    }
 );
-
-const initialState = {
-  flotOptions: {
-    margin: {
-      top: 0,
-      left: 0,
-      bottom: 0,
-      right: 0,
-    },
-    selection: {
-      mode: 'x',
-    },
-    crosshair: {
-      mode: 'x',
-      color: '#C3170D',
-      lineWidth: '1',
-    },
-    grid: {
-      borderWidth: 1,
-      hoverable: true,
-    },
-    yaxis: {
-      show: false,
-      min: 0,
-    },
-    points: {
-      show: false,
-      radius: 0.1,
-    },
-    lines: {
-      show: false,
-      steps: true,
-      lineWidth: 1.0,
-    },
-    bars: {
-      show: true,
-      fill: true,
-    },
-    xaxis: {
-      mode: 'time',
-      timezone: 'browser',
-      reserveSpace: false,
-    },
-  },
-};
 
 class TimelineChartWrapper extends React.Component<
   TimelineChartWrapperProps,
-  typeof initialState
+  // TODO add type
+  any
 > {
   constructor(props: TimelineChartWrapperProps) {
     super(props);
 
-    this.state = initialState;
-  }
+    this.state = {
+      flotOptions: {
+        margin: {
+          top: 0,
+          left: 0,
+          bottom: 0,
+          right: 0,
+        },
+        selection: {
+          mode: 'x',
+        },
+        crosshair: {
+          mode: 'x',
+          color: '#C3170D',
+          lineWidth: '1',
+        },
+        grid: {
+          borderWidth: 1,
+          hoverable: true,
+        },
+        yaxis: {
+          show: false,
+          min: 0,
+        },
+        points: {
+          show: false,
+          radius: 0.1,
+        },
+        lines: {
+          show: false,
+          steps: true,
+          lineWidth: 1.0,
+        },
+        bars: {
+          show: true,
+          fill: true,
+        },
+        xaxis: {
+          mode: 'time',
+          timezone: 'browser',
+          reserveSpace: false,
+        },
+      },
+    };
 
-  componentDidMount() {
-    const newFlotOptions = this.state.flotOptions;
-    newFlotOptions.grid.markings = this.plotMarkings();
-
-    this.setState({ flotOptions: newFlotOptions });
+    this.state.flotOptions.grid.markings = this.plotMarkings();
   }
 
   componentDidUpdate(prevProps) {
@@ -101,18 +106,16 @@ class TimelineChartWrapper extends React.Component<
     ) {
       const newFlotOptions = this.state.flotOptions;
       newFlotOptions.grid.markings = this.plotMarkings();
-
       this.setState({ flotOptions: newFlotOptions });
     }
   }
 
   plotMarkings = () => {
     const { viewSide } = this.props;
-    if (viewSide === 'none') {
-      return null;
+    if (viewSide === 'none' || !viewSide) {
+      return [];
     }
 
-    // TODO(eh-am): move all these to the parent component
     const leftFromInt = new Date(formatAsOBject(this.props.leftFrom)).getTime();
     const leftUntilInt = new Date(
       formatAsOBject(this.props.leftUntil)
@@ -243,12 +246,4 @@ function decodeTimelineData(timelineData: Timeline) {
   });
 }
 
-const mapStateToProps = (state) => ({});
-const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators({}, dispatch),
-});
-
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(TimelineChartWrapper);
+export default TimelineChartWrapper;
