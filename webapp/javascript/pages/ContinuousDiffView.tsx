@@ -44,7 +44,7 @@ function ComparisonDiffApp() {
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(getRaw());
 
   useEffect(() => {
-    dispatch(fetchDiffView());
+    dispatch(fetchDiffView(null));
   }, [
     from,
     until,
@@ -57,18 +57,6 @@ function ComparisonDiffApp() {
     rightUntil,
   ]);
 
-  const exportData = (
-    <ExportData
-      flamebearer={getRaw()}
-      exportJSON
-      exportPNG
-      exportHTML
-      //      fetchUrlFunc={() => diffRenderURL}
-      exportFlamegraphDotCom
-      exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
-    />
-  );
-
   const profile = (() => {
     switch (diffView.type) {
       case 'loaded':
@@ -80,6 +68,18 @@ function ComparisonDiffApp() {
         return undefined;
     }
   })();
+
+  const exportData = profile && (
+    <ExportData
+      flamebearer={profile}
+      exportJSON
+      exportPNG
+      exportHTML
+      //      fetchUrlFunc={() => diffRenderURL}
+      exportFlamegraphDotCom
+      exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
+    />
+  );
 
   const getTimelineData = () => {
     switch (diffView.type) {

@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import {
   SET_ADHOC_FILE,
   SET_ADHOC_LEFT_FILE,

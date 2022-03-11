@@ -11,7 +11,7 @@ import RefreshButton from './RefreshButton';
 import NameSelector from './NameSelector';
 import TagsBar from './TagsBar';
 
-function Toolbar(props) {
+function Toolbar() {
   const isLoadingData = useAppSelector(selectIsLoadingData);
 
   // This component initializes using a value frmo the redux store (query)
@@ -39,7 +39,7 @@ function Toolbar(props) {
         &nbsp;
         <DateRangePicker />
       </div>
-      <TagsBar />;
+      <TagsBar />
     </>
   );
 }

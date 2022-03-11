@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import 'react-dom';
 
 import Box from '@ui/Box';
@@ -36,12 +36,12 @@ function ComparisonApp() {
   const comparisonView = useAppSelector(selectComparisonState);
 
   useEffect(() => {
-    dispatch(fetchInitialComparisonView());
+    dispatch(fetchInitialComparisonView(null));
   }, [query, refreshToken]);
 
   // timeline changes
   useEffect(() => {
-    dispatch(fetchComparisonTimeline());
+    dispatch(fetchComparisonTimeline(null));
   }, [from, until]);
 
   // left side changes
@@ -80,11 +80,14 @@ function ComparisonApp() {
     }
   };
 
+  const leftSide = getSide('left');
+  const rightSide = getSide('right');
+
   const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(
-    getSide('left').profile
+    leftSide.profile
   );
   const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(
-    getSide('right').profile
+    leftSide.profile
   );
 
   return (
@@ -112,19 +115,21 @@ function ComparisonApp() {
             <FlamegraphRenderer
               viewType="double"
               viewSide="left"
-              profile={getSide('left').profile}
+              profile={leftSide.profile}
               data-testid="flamegraph-renderer-left"
               display="both"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
-                <ExportData
-                  flamebearer={getSide('left').profile}
-                  exportJSON
-                  exportHTML
-                  exportPprof
-                  exportFlamegraphDotCom
-                  exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
-                />
+                leftSide.profile && (
+                  <ExportData
+                    flamebearer={leftSide.profile}
+                    exportJSON
+                    exportHTML
+                    exportPprof
+                    exportFlamegraphDotCom
+                    exportFlamegraphDotComFn={exportToFlamegraphDotComLeftFn}
+                  />
+                )
               }
             >
               <InstructionText viewType="double" viewSide="left" />
@@ -149,19 +154,21 @@ function ComparisonApp() {
             <FlamegraphRenderer
               viewType="double"
               viewSide="right"
-              profile={getSide('right').profile}
+              profile={rightSide.profile}
               data-testid="flamegraph-renderer-right"
               display="both"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
-                <ExportData
-                  flamebearer={getSide('right').profile}
-                  exportJSON
-                  exportHTML
-                  exportPprof
-                  exportFlamegraphDotCom
-                  exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
-                />
+                rightSide.profile && (
+                  <ExportData
+                    flamebearer={rightSide.profile}
+                    exportJSON
+                    exportHTML
+                    exportPprof
+                    exportFlamegraphDotCom
+                    exportFlamegraphDotComFn={exportToFlamegraphDotComRightFn}
+                  />
+                )
               }
             >
               <InstructionText viewType="double" viewSide="right" />

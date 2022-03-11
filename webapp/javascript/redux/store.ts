@@ -9,6 +9,8 @@ import {
   REGISTER,
 } from 'redux-persist';
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Until we rewrite FlamegraphRenderer in typescript this will do
 import ReduxQuerySync from 'redux-query-sync';
 import { configureStore, combineReducers, Middleware } from '@reduxjs/toolkit';
 
@@ -73,42 +75,42 @@ ReduxQuerySync({
   params: {
     from: {
       defaultValue: 'now-1h',
-      selector: (state) => state.continuous.from,
+      selector: (state: RootState) => state.continuous.from,
       action: continuousActions.setFrom,
     },
     until: {
       defaultValue: 'now',
-      selector: (state) => state.continuous.until,
+      selector: (state: RootState) => state.continuous.until,
       action: continuousActions.setUntil,
     },
     leftFrom: {
       defaultValue: 'now-1h',
-      selector: (state) => state.continuous.leftFrom,
+      selector: (state: RootState) => state.continuous.leftFrom,
       action: continuousActions.setLeftFrom,
     },
     leftUntil: {
       defaultValue: 'now-30m',
-      selector: (state) => state.continuous.leftUntil,
+      selector: (state: RootState) => state.continuous.leftUntil,
       action: continuousActions.setLeftUntil,
     },
     rightFrom: {
       defaultValue: 'now-30m',
-      selector: (state) => state.continuous.rightFrom,
+      selector: (state: RootState) => state.continuous.rightFrom,
       action: continuousActions.setRightFrom,
     },
     rightUntil: {
       defaultValue: 'now',
-      selector: (state) => state.continuous.rightUntil,
+      selector: (state: RootState) => state.continuous.rightUntil,
       action: continuousActions.setRightUntil,
     },
     query: {
       defaultvalue: '',
-      selector: (state) => state.continuous.query,
+      selector: (state: RootState) => state.continuous.query,
       action: continuousActions.setQuery,
     },
     maxNodes: {
       defaultValue: '1024',
-      selector: (state) => state.continuous.maxNodes,
+      selector: (state: RootState) => state.continuous.maxNodes,
       action: continuousActions.setMaxNodes,
     },
   },

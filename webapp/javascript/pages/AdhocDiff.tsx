@@ -7,6 +7,9 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { Profile } from '@pyroscope/models';
 import FileList from '../components/FileList';
 import Footer from '../components/Footer';
 import {
@@ -66,7 +69,7 @@ function AdhocDiff() {
                 <FileList
                   className={adhocStyles.tabPanel}
                   profile={leftShared.profile}
-                  setProfile={(p) => dispatch(setAdhocLeftProfile(p))}
+                  setProfile={(p: Profile) => dispatch(setAdhocLeftProfile(p))}
                 />
               </TabPanel>
               <TabPanel />
@@ -82,7 +85,7 @@ function AdhocDiff() {
                 <FileList
                   className={adhocStyles.tabPanel}
                   profile={rightShared.profile}
-                  setProfile={(p) => dispatch(setAdhocRightProfile(p))}
+                  setProfile={(p: Profile) => dispatch(setAdhocRightProfile(p))}
                 />
               </TabPanel>
               <TabPanel />

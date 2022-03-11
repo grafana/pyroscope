@@ -6,7 +6,10 @@ import Box from '@ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import { Profile } from '@pyroscope/models';
 import classNames from 'classnames';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import FileList from '../components/FileList';
 import FileUploader from '../components/FileUploader';
 import Footer from '../components/Footer';
@@ -68,7 +71,7 @@ function AdhocSingle() {
               <FileList
                 className={adhocStyles.tabPanel}
                 profile={profile}
-                setProfile={(p) => dispatch(setAdhocProfile(p))}
+                setProfile={(p: Profile) => dispatch(setAdhocProfile(p))}
               />
             </TabPanel>
           </Tabs>

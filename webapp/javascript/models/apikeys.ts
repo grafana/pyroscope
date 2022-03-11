@@ -1,6 +1,4 @@
-import { z, ZodError } from 'zod';
-import { Result } from '@utils/fp';
-import { modelToResult } from './utils';
+import { z } from 'zod';
 
 const zDateTime = z.string().transform((value) => Date.parse(value));
 
@@ -13,11 +11,7 @@ export const apikeyModel = z.object({
   expiresAt: z.optional(zDateTime),
 });
 
-export const apikeysModel = z.array(apikeyModel);
+export const apiKeysSchema = z.array(apikeyModel);
 
-export type APIKeys = z.infer<typeof apikeysModel>;
+export type APIKeys = z.infer<typeof apiKeysSchema>;
 export type APIKey = z.infer<typeof apikeyModel>;
-
-export function parse(a: unknown): Result<APIKeys, ZodError> {
-  return modelToResult(apikeysModel, a);
-}

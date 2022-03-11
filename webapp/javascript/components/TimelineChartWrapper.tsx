@@ -116,77 +116,92 @@ class TimelineChartWrapper extends React.Component<
       return [];
     }
 
-    const leftFromInt = new Date(formatAsOBject(this.props.leftFrom)).getTime();
-    const leftUntilInt = new Date(
-      formatAsOBject(this.props.leftUntil)
-    ).getTime();
-    const rightFromInt = new Date(
-      formatAsOBject(this.props.rightFrom)
-    ).getTime();
-    const rightUntilInt = new Date(
-      formatAsOBject(this.props.rightUntil)
-    ).getTime();
-
     const nonActiveBorder = 0.2;
     const nonActiveBackground = 0.09;
 
-    const leftMarkings = [
-      {
-        xaxis: {
-          from: leftFromInt,
-          to: leftUntilInt,
-        },
-        color:
-          viewSide === 'left'
-            ? 'rgba(200, 102, 204, 0.35)'
-            : `rgba(255, 102, 204, ${nonActiveBackground})`,
-      },
-      {
-        color:
-          viewSide === 'left'
-            ? 'rgba(200, 102, 204, 1)'
-            : `rgba(255, 102, 204, ${nonActiveBorder})`,
-        lineWidth: 3,
-        xaxis: { from: leftFromInt, to: leftFromInt },
-      },
-      {
-        color:
-          viewSide === 'left'
-            ? 'rgba(200, 102, 204, 1)'
-            : `rgba(255, 102, 204, ${nonActiveBorder})`,
-        lineWidth: 3,
-        xaxis: { from: leftUntilInt, to: leftUntilInt },
-      },
-    ];
+    const leftMarkings = (() => {
+      if (!this.props.leftFrom || !this.props.leftUntil) {
+        return [];
+      }
 
-    const rightMarkings = [
-      {
-        xaxis: {
-          from: rightFromInt,
-          to: rightUntilInt,
+      const leftFromInt = new Date(
+        formatAsOBject(this.props.leftFrom)
+      ).getTime();
+      const leftUntilInt = new Date(
+        formatAsOBject(this.props.leftUntil)
+      ).getTime();
+
+      return [
+        {
+          xaxis: {
+            from: leftFromInt,
+            to: leftUntilInt,
+          },
+          color:
+            viewSide === 'left'
+              ? 'rgba(200, 102, 204, 0.35)'
+              : `rgba(255, 102, 204, ${nonActiveBackground})`,
         },
-        color:
-          viewSide === 'right'
-            ? 'rgba(19, 152, 246, 0.35)'
-            : `rgba(19, 152, 246, ${nonActiveBackground})`,
-      },
-      {
-        color:
-          viewSide === 'right'
-            ? 'rgba(19, 152, 246, 1)'
-            : `rgba(19, 152, 246, ${nonActiveBorder})`,
-        lineWidth: 3,
-        xaxis: { from: rightFromInt, to: rightFromInt },
-      },
-      {
-        color:
-          viewSide === 'right'
-            ? 'rgba(19, 152, 246, 1)'
-            : `rgba(19, 152, 246, ${nonActiveBorder})`,
-        lineWidth: 3,
-        xaxis: { from: rightUntilInt, to: rightUntilInt },
-      },
-    ];
+        {
+          color:
+            viewSide === 'left'
+              ? 'rgba(200, 102, 204, 1)'
+              : `rgba(255, 102, 204, ${nonActiveBorder})`,
+          lineWidth: 3,
+          xaxis: { from: leftFromInt, to: leftFromInt },
+        },
+        {
+          color:
+            viewSide === 'left'
+              ? 'rgba(200, 102, 204, 1)'
+              : `rgba(255, 102, 204, ${nonActiveBorder})`,
+          lineWidth: 3,
+          xaxis: { from: leftUntilInt, to: leftUntilInt },
+        },
+      ];
+    })();
+
+    const rightMarkings = (() => {
+      if (!this.props.rightUntil || !this.props.rightFrom) {
+        return [];
+      }
+
+      const rightFromInt = new Date(
+        formatAsOBject(this.props.rightFrom)
+      ).getTime();
+      const rightUntilInt = new Date(
+        formatAsOBject(this.props.rightUntil)
+      ).getTime();
+
+      return [
+        {
+          xaxis: {
+            from: rightFromInt,
+            to: rightUntilInt,
+          },
+          color:
+            viewSide === 'right'
+              ? 'rgba(19, 152, 246, 0.35)'
+              : `rgba(19, 152, 246, ${nonActiveBackground})`,
+        },
+        {
+          color:
+            viewSide === 'right'
+              ? 'rgba(19, 152, 246, 1)'
+              : `rgba(19, 152, 246, ${nonActiveBorder})`,
+          lineWidth: 3,
+          xaxis: { from: rightFromInt, to: rightFromInt },
+        },
+        {
+          color:
+            viewSide === 'right'
+              ? 'rgba(19, 152, 246, 1)'
+              : `rgba(19, 152, 246, ${nonActiveBorder})`,
+          lineWidth: 3,
+          xaxis: { from: rightUntilInt, to: rightUntilInt },
+        },
+      ];
+    })();
 
     return leftMarkings.concat(rightMarkings);
   };
