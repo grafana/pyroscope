@@ -37,33 +37,75 @@ type SingleView =
       profile: Profile;
     };
 
-type ComparisonView =
-  | { type: 'pristine' }
-  | { type: 'loading' }
-  | {
-      type: 'loaded';
-      timeline: Timeline;
-      left: {
-        profile: Profile;
-        timeline: Timeline;
+type ComparisonView = {
+  timeline:
+    | { type: 'pristine' }
+    | { type: 'loading' }
+    | {
+        type: 'loaded';
+        data: Timeline;
+      }
+    | {
+        type: 'reloading';
+        data: Timeline;
       };
-      right: {
-        profile: Profile;
+
+  left:
+    | { type: 'pristine' }
+    | { type: 'loading' }
+    | {
+        type: 'loaded';
         timeline: Timeline;
-      };
-    }
-  | {
-      type: 'reloading';
-      timeline: Timeline;
-      left: {
         profile: Profile;
+      }
+    | {
+        type: 'reloading';
         timeline: Timeline;
-      };
-      right: {
         profile: Profile;
-        timeline: Timeline;
       };
-    };
+
+  right:
+    | { type: 'pristine' }
+    | { type: 'loading' }
+    | {
+        type: 'loaded';
+        timeline: Timeline;
+        profile: Profile;
+      }
+    | {
+        type: 'reloading';
+        timeline: Timeline;
+        profile: Profile;
+      };
+};
+
+// type ComparisonView =
+//  | { type: 'pristine' }
+//  | { type: 'loading' }
+//  | {
+//      type: 'loaded';
+//      timeline: Timeline;
+//      left: {
+//        profile: Profile;
+//        timeline: Timeline;
+//      };
+//      right: {
+//        profile: Profile;
+//        timeline: Timeline;
+//      };
+//    }
+//  | {
+//      type: 'reloading';
+//      timeline: Timeline;
+//      left: {
+//        profile: Profile;
+//        timeline: Timeline;
+//      };
+//      right: {
+//        profile: Profile;
+//        timeline: Timeline;
+//      };
+//    };
 
 type DiffView =
   | { type: 'pristine' }
@@ -141,7 +183,11 @@ const initialState: ContinuousState = {
 
   singleView: { type: 'pristine' },
   diffView: { type: 'pristine' },
-  comparisonView: { type: 'pristine' },
+  comparisonView: {
+    timeline: { type: 'pristine' },
+    left: { type: 'pristine' },
+    right: { type: 'pristine' },
+  },
   tags: { type: 'pristine', tags: {} },
   appNames: { type: 'loaded', data: (window as any).initialState.appNames },
   query: appNameToQuery((window.initialState as any).appNames[0]) ?? '',
@@ -163,6 +209,127 @@ export const fetchSingleView = createAsyncThunk<
       type: 'danger',
       title: 'Failed',
       message: `Failed to load singleView`,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchInitialComparisonView = createAsyncThunk<
+  {
+    timeline: RenderOutput['timeline'];
+    left: RenderOutput;
+    right: RenderOutput;
+  },
+  null,
+  { state: { continuous: ContinuousState } }
+>('continuous/initialComparisonView', async (_, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const [timeline, leftData, rightData] = await Promise.all([
+    renderSingle(state.continuous),
+
+    renderSingle({
+      ...state.continuous,
+
+      from: state.continuous.leftFrom,
+      until: state.continuous.leftUntil,
+    }),
+    renderSingle({
+      ...state.continuous,
+
+      from: state.continuous.rightFrom,
+      until: state.continuous.rightUntil,
+    }),
+  ]);
+
+  if (timeline.isOk && leftData.isOk && rightData.isOk) {
+    return Promise.resolve({
+      timeline: timeline.value.timeline,
+      left: leftData.value,
+      right: rightData.value,
+    });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed',
+      message: `Failed to load comparison view`,
+    })
+  );
+
+  const failures = [
+    timeline.isErr ? timeline : null,
+    leftData.isErr ? leftData : null,
+    rightData.isErr ? rightData : null,
+  ].filter((a) => a);
+
+  return Promise.reject(failures.map((a) => a.error));
+});
+
+export const fetchComparisonTimeline = createAsyncThunk<
+  RenderOutput['timeline'],
+  null,
+  { state: { continuous: ContinuousState } }
+>('continuous/fetchComparisonTimeline', async (_, thunkAPI) => {
+  const state = thunkAPI.getState();
+  const res = await renderSingle(state.continuous);
+
+  if (res.isOk) {
+    return Promise.resolve(res.value.timeline);
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed',
+      message: `Failed to load comparison timeline`,
+    })
+  );
+
+  return Promise.reject(res.error);
+});
+
+export const fetchComparisonSide = createAsyncThunk<
+  { side: 'left' | 'right'; data: RenderOutput },
+  { side: 'left' | 'right' },
+  { state: { continuous: ContinuousState } }
+>('continuous/fetchComparisonSide', async ({ side }, thunkAPI) => {
+  const state = thunkAPI.getState();
+
+  const res = await (() => {
+    switch (side) {
+      case 'left': {
+        return renderSingle({
+          ...state.continuous,
+
+          from: state.continuous.leftFrom,
+          until: state.continuous.leftUntil,
+        });
+      }
+      case 'right': {
+        return renderSingle({
+          ...state.continuous,
+
+          from: state.continuous.rightFrom,
+          until: state.continuous.rightUntil,
+        });
+      }
+      default: {
+        throw new Error('Invalid side');
+      }
+    }
+  })();
+
+  if (res.isOk) {
+    return Promise.resolve({ side, data: res.value });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed',
+      message: `Failed to load the ${side} side comparison`,
     })
   );
 
@@ -379,6 +546,74 @@ export const continuousSlice = createSlice({
       }
     });
 
+    /*****************************/
+    /*      Comparison View      */
+    /*****************************/
+    builder.addCase(fetchInitialComparisonView.pending, (state) => {
+      state.comparisonView.timeline = { type: 'loading' };
+      state.comparisonView.left = { type: 'loading' };
+      state.comparisonView.right = { type: 'loading' };
+    });
+
+    builder.addCase(fetchInitialComparisonView.fulfilled, (state, action) => {
+      state.comparisonView.timeline = {
+        type: 'loaded',
+        data: action.payload.timeline,
+      };
+      state.comparisonView.left = {
+        ...action.payload.left,
+        type: 'loaded',
+      };
+      state.comparisonView.right = {
+        ...action.payload.right,
+        type: 'loaded',
+      };
+    });
+
+    builder.addCase(fetchInitialComparisonView.rejected, (state) => {
+      // it failed to load for the first time, so far all effects it's pristine
+      state.comparisonView.timeline = { type: 'pristine' };
+      state.comparisonView.left = { type: 'pristine' };
+      state.comparisonView.right = { type: 'pristine' };
+    });
+
+    builder.addCase(fetchComparisonTimeline.fulfilled, (state, action) => {
+      state.comparisonView = {
+        ...state.comparisonView,
+        timeline: {
+          data: action.payload,
+          type: 'loaded',
+        },
+      };
+    });
+
+    builder.addCase(fetchComparisonSide.pending, (state, action) => {
+      const side = state.comparisonView[action.meta.arg.side];
+      switch (side.type) {
+        case 'loaded': {
+          state.comparisonView[action.meta.arg.side] = {
+            ...side,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.comparisonView[action.meta.arg.side] = {
+            type: 'loading',
+          };
+          break;
+        }
+      }
+    });
+
+    builder.addCase(fetchComparisonSide.fulfilled, (state, action) => {
+      state.comparisonView[action.meta.arg.side] = {
+        ...action.payload.data,
+        type: 'loaded',
+      };
+    });
+
     /***********************/
     /*      Diff View      */
     /***********************/
@@ -518,3 +753,6 @@ export const selectAppNamesState = (state: RootState) =>
   state.continuous.appNames;
 export const selectAppNames = (state: RootState) =>
   state.continuous.appNames.data;
+
+export const selectComparisonState = (state: RootState) =>
+  state.continuous.comparisonView;

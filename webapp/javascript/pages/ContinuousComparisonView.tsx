@@ -1,57 +1,100 @@
 import React, { useEffect, useRef } from 'react';
-import { connect } from 'react-redux';
 import 'react-dom';
 
-import { bindActionCreators } from 'redux';
 import Box from '@ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import TimelineChartWrapper from '../components/TimelineChartWrapper';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import { buildRenderURL } from '../util/updateRequests';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
-  fetchNames,
-  fetchComparisonAppData,
-  fetchTimeline,
-} from '../redux/actions';
+  selectContinuousState,
+  actions,
+  fetchInitialComparisonView,
+  selectComparisonState,
+  fetchComparisonSide,
+  fetchComparisonTimeline,
+} from '@pyroscope/redux/reducers/continuous';
+import TimelineChartWrapper from '../components/TimelineChartWrapper';
+import Toolbar from '../components/Toolbar';
+import Footer from '../components/Footer';
 import InstructionText from '../components/InstructionText';
 import ExportData from '../components/ExportData';
 import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
 import styles from './ContinuousComparison.module.css';
 
-// See docs here: https://github.com/flot/flot/blob/master/API.md
+function ComparisonApp() {
+  const dispatch = useAppDispatch();
+  const { from, until, query, leftFrom, rightFrom, leftUntil, rightUntil } =
+    useAppSelector(selectContinuousState);
 
-function ComparisonApp(props) {
-  const { actions, renderURL, leftRenderURL, rightRenderURL, comparison } =
-    props;
-  const { rawLeft, rawRight } = comparison;
-  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(rawLeft);
-  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(rawRight);
+  const comparisonView = useAppSelector(selectComparisonState);
 
   useEffect(() => {
-    actions.fetchComparisonAppData(leftRenderURL, 'left');
-    return actions.abortTimelineRequest;
-  }, [leftRenderURL]);
+    dispatch(fetchInitialComparisonView());
+  }, [query]);
 
+  // timeline changes
   useEffect(() => {
-    actions.fetchComparisonAppData(rightRenderURL, 'right');
-    return actions.abortTimelineRequest;
-  }, [rightRenderURL]);
+    dispatch(fetchComparisonTimeline());
+  }, [from, until]);
 
+  // left side changes
   useEffect(() => {
-    actions.fetchTimeline(renderURL);
+    dispatch(fetchComparisonSide({ side: 'left' }));
+  }, [leftFrom, leftUntil]);
 
-    return actions.abortTimelineRequest;
-  }, [renderURL]);
+  // right side changes
+  useEffect(() => {
+    dispatch(fetchComparisonSide({ side: 'right' }));
+  }, [rightFrom, rightUntil]);
+
+  const topTimeline = (() => {
+    switch (comparisonView.timeline.type) {
+      case 'loaded':
+      case 'reloading': {
+        return comparisonView.timeline.data;
+      }
+
+      default:
+        return undefined;
+    }
+  })();
+
+  const getSide = (side: 'left' | 'right') => {
+    const s = comparisonView[side];
+
+    switch (s.type) {
+      case 'loaded':
+      case 'reloading': {
+        return s;
+      }
+
+      default:
+        return { timeline: undefined, profile: undefined };
+    }
+  };
+
+  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(
+    getSide('left').profile
+  );
+  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(
+    getSide('right').profile
+  );
 
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
-        <Header />
+        <Toolbar />
         <TimelineChartWrapper
           data-testid="timeline-main"
           id="timeline-chart-double"
           viewSide="both"
+          timeline={topTimeline}
+          leftFrom={leftFrom}
+          leftUntil={leftUntil}
+          rightFrom={rightFrom}
+          rightUntil={rightUntil}
+          onSelect={(from, until) => {
+            dispatch(actions.setFromAndUntil({ from, until }));
+          }}
         />
         <div
           className="comparison-container"
@@ -61,14 +104,13 @@ function ComparisonApp(props) {
             <FlamegraphRenderer
               viewType="double"
               viewSide="left"
-              flamebearer={comparison.left.flamebearer}
+              profile={getSide('left').profile}
               data-testid="flamegraph-renderer-left"
               display="both"
-              rawFlamegraph={rawLeft}
               ExportData={
                 // Don't export PNG since the exportPng code is broken
                 <ExportData
-                  flamebearer={rawLeft}
+                  flamebearer={getSide('left').profile}
                   exportJSON
                   exportHTML
                   exportPprof
@@ -83,6 +125,14 @@ function ComparisonApp(props) {
                 id="timeline-chart-left"
                 data-testid="timeline-left"
                 viewSide="left"
+                timeline={topTimeline}
+                leftFrom={leftFrom}
+                leftUntil={leftUntil}
+                rightFrom={rightFrom}
+                rightUntil={rightUntil}
+                onSelect={(from, until) => {
+                  dispatch(actions.setLeft({ from, until }));
+                }}
               />
             </FlamegraphRenderer>
           </Box>
@@ -91,14 +141,13 @@ function ComparisonApp(props) {
             <FlamegraphRenderer
               viewType="double"
               viewSide="right"
-              flamebearer={comparison.right.flamebearer}
+              profile={getSide('right').profile}
               data-testid="flamegraph-renderer-right"
               display="both"
-              rawFlamegraph={rawRight}
               ExportData={
                 // Don't export PNG since the exportPng code is broken
                 <ExportData
-                  flamebearer={rawRight}
+                  flamebearer={getSide('right').profile}
                   exportJSON
                   exportHTML
                   exportPprof
@@ -113,6 +162,14 @@ function ComparisonApp(props) {
                 id="timeline-chart-right"
                 data-testid="timeline-right"
                 viewSide="right"
+                timeline={topTimeline}
+                leftFrom={leftFrom}
+                leftUntil={leftUntil}
+                rightFrom={rightFrom}
+                rightUntil={rightUntil}
+                onSelect={(from, until) => {
+                  dispatch(actions.setRight({ from, until }));
+                }}
               />
             </FlamegraphRenderer>
           </Box>
@@ -123,30 +180,4 @@ function ComparisonApp(props) {
   );
 }
 
-const mapStateToProps = (state) => ({
-  ...state.root,
-  renderURL: buildRenderURL(state.root),
-  leftRenderURL: buildRenderURL(
-    state.root,
-    state.root.leftFrom,
-    state.root.leftUntil
-  ),
-  rightRenderURL: buildRenderURL(
-    state.root,
-    state.root.rightFrom,
-    state.root.rightUntil
-  ),
-});
-
-const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      fetchComparisonAppData,
-      fetchNames,
-      fetchTimeline,
-    },
-    dispatch
-  ),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(ComparisonApp);
+export default ComparisonApp;

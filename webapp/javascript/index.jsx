@@ -48,11 +48,9 @@ function App() {
         <Route exact path="/">
           <ContinuousSingleView />
         </Route>
-        {/*
         <Route path="/comparison">
           <ContinuousComparisonView />
         </Route>
-        */}
         <Route path="/comparison-diff">
           <ContinuousDiffView />
         </Route>
