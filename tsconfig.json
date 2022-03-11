@@ -20,7 +20,8 @@
     "plugins": [{ "name": "typescript-plugin-css-modules" }],
     "noImplicitAny": true,
     "strictNullChecks": true,
-    "strict": true
+    "strict": true,
+    "resolveJsonModule": true
   },
   // ts-node is currently only used by webpack
   "ts-node": {
@@ -28,7 +29,7 @@
       "module": "CommonJS"
     }
   },
-  "include": ["./webapp/javascript/"],
+  "include": ["./lib", "./webapp/javascript/"],
   "exclude": [
     "webapp/javascript/**/*.spec.ts",
     "webapp/javascript/**/*.spec.tsx",

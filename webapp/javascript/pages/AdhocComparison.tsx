@@ -7,9 +7,9 @@ import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import classNames from 'classnames';
+import { Profile } from '@pyroscope/models';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import { Profile } from '@pyroscope/models';
 import FileList from '../components/FileList';
 import FileUploader from '../components/FileUploader';
 import Footer from '../components/Footer';

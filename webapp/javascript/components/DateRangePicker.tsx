@@ -65,7 +65,7 @@ function DateRangePicker() {
   const hideDropdown = () => {
     setOpened(false);
   };
-  const selectPreset = ({ from, until }) => {
+  const selectPreset = ({ from, until }: { from: string; until: string }) => {
     dispatch(setDateRange({ from, until }));
     setOpened(false);
   };

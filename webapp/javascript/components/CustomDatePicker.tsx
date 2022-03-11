@@ -53,7 +53,9 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           id="datepicker-from"
           selected={selectFromAsDate}
           onChange={(date) => {
-            setSelectedDate({ ...selectedDate, from: date });
+            if (date) {
+              setSelectedDate({ ...selectedDate, from: date });
+            }
           }}
           selectsStart
           showTimeSelect
@@ -67,7 +69,9 @@ function CustomDatePicker({ from, until, onSubmit }: CustomDatePickerProps) {
           id="datepicker-until"
           selected={selectUntilAsDate}
           onChange={(date) => {
-            setSelectedDate({ ...selectedDate, until: date });
+            if (date) {
+              setSelectedDate({ ...selectedDate, until: date });
+            }
           }}
           selectsEnd
           showTimeSelect

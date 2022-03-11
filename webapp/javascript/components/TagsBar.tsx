@@ -158,7 +158,7 @@ function LabelsSubmenu({
   onSelectedLabelValue,
 }: LabelsSubmenuProps) {
   // TODO: type this properly
-  const [filter, setFilter] = useState({});
+  const [filter, setFilter] = useState<Record<string, string>>({});
 
   const GetTagValues = (labelName: string, t: typeof tags[1]) => {
     const { type } = t;

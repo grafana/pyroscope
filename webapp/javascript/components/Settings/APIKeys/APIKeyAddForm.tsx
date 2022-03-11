@@ -19,7 +19,8 @@ export interface APIKeyAddProps extends APIKey {
 }
 
 function APIKeyAddForm() {
-  const [form, setForm]: [APIKeyAddProps, (value) => void] = useState({
+  //  const [form, setForm]: [APIKeyAddProps, (value) => void] = useState({
+  const [form, setForm] = useState<ShamefulAny>({
     errors: [],
     name: '',
     role: 'ReadOnly',
@@ -28,17 +29,17 @@ function APIKeyAddForm() {
   const [key, setKey] = useState(undefined);
   const dispatch = useAppDispatch();
 
-  const handleFormChange = (event) => {
+  const handleFormChange = (event: ShamefulAny) => {
     const { name } = event.target;
     const { value } = event.target;
     setForm({ ...form, [name]: value });
   };
 
-  const handleRoleChange = (value) => {
+  const handleRoleChange = (value: ShamefulAny) => {
     setForm({ ...form, role: value });
   };
 
-  const handleFormSubmit = (event) => {
+  const handleFormSubmit = (event: ShamefulAny) => {
     event.preventDefault();
     const data = {
       name: form.name,
@@ -48,7 +49,7 @@ function APIKeyAddForm() {
     dispatch(createAPIKey(data))
       .unwrap()
       .then(
-        (k) => {
+        (k: ShamefulAny) => {
           setKey(k.key);
         },
         (e) => {

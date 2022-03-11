@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import 'react-dom';
 import React from 'react';
 
@@ -11,6 +13,7 @@ interface TimelineChartProps {
   onSelect: (from: string, until: string) => void;
   className: string;
   viewSide: string;
+  ['data-testid']?: string;
 }
 
 class TimelineChart extends ReactFlot<TimelineChartProps> {

@@ -11,6 +11,7 @@ type TimelineChartWrapperProps = {
   /** the id attribute of the element float will use to apply to, it should be unique */
   id: string;
   timeline?: Timeline;
+  ['data-testid']?: string;
   onSelect: (from: string, until: string) => void;
 } /** it will use this info to color the markins */ & (
   | {
@@ -95,7 +96,8 @@ class TimelineChartWrapper extends React.Component<
     this.state.flotOptions.grid.markings = this.plotMarkings();
   }
 
-  componentDidUpdate(prevProps) {
+  // TODO: type this correctly
+  componentDidUpdate(prevProps: TimelineChartWrapperProps & any) {
     if (this.props.viewSide === 'none') return;
 
     if (
