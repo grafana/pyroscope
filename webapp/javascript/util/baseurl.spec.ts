@@ -7,10 +7,10 @@ function checkSelector(selector: string) {
 }
 describe('baseurl', () => {
   describe('no baseURL meta tag set', () => {
-    it('returns null', () => {
+    it('returns undefined', () => {
       const got = basename();
 
-      expect(got).toBe(null);
+      expect(got).toBe(undefined);
     });
   });
 
@@ -24,10 +24,10 @@ describe('baseurl', () => {
             return {} as HTMLMetaElement;
           });
       });
-      it('returns null', () => {
+      it('returns undefined', () => {
         const got = basename();
 
-        expect(got).toBe(null);
+        expect(got).toBe(undefined);
       });
     });
 
