@@ -5,6 +5,8 @@ const fs = require('fs');
 const FormData = require('form-data');
 const { builtinModules } = require('module');
 
+const INTERVAL = 10000;
+
 let isContinueProfiling = true;
 const serverName = 'http://localhost:4040';
 
@@ -28,7 +30,7 @@ async function uploadProfile(profile) {
 
   // Here we assume it's make dev (or make server) running
   return fetch(
-    `${serverName}/ingest?name=nodej&sampleRate=100&spyName=nodejs`,
+    `${serverName}/ingest?name=nodejs&sampleRate=100&spyName=nodejs`,
     {
       method: 'POST',
       headers: formData.getHeaders(),
@@ -55,11 +57,42 @@ async function start(options) {
       name: options.name,
       lineNumbers: true,
       sourceMapper: sm,
-      durationMillis: 10000, // time in milliseconds for which to collect profile. 10 secods by default
+      durationMillis: INTERVAL, // time in milliseconds for which to collect profile. 10 secods by default
     });
     await uploadProfile(profile);
   }
 }
+
+// Could be false or a function to stop heap profiling
+let isHeapProfilingStarted = false;
+
+async function startHeapProfiling() {
+  const intervalBytes = 1024 * 512;
+  const stackDepth = 32;
+
+  if ( isHeapProfilingStarted ) return false;
+
+  const sm = await pprof.SourceMapper.create([process.cwd()]);
+
+  pprof.heap.start(intervalBytes, stackDepth);
+
+  isHeapProfileStarted = setInterval(async () => {
+    console.log("Collecting heap profile");
+    const profile = pprof.heap.profile(undefined, sm);
+    console.log("Heap profile collected...");
+    await uploadProfile(profile);
+    console.log("Heap profile uploaded...");
+  }, INTERVAL);
+}
+
+function stopHeapProfiling() {
+  if ( isHeapProfilingStarted ) {
+    console.log("Stopping heap profiling")
+    isHeapProfilingStarted();
+    isHeapProfilingStarted = false;
+  }
+}
+
 
 async function stop() {
   isContinueProfiling = false;
@@ -68,4 +101,6 @@ async function stop() {
 module.exports = {
   start,
   stop,
+  startHeapProfiling,
+  stopHeapProfiling,
 };

@@ -24,28 +24,21 @@ const genericSearchHandler = (p: number) => (req: any, res: any) => {
   res.send('Vehicle found');
 };
 
-// function bikeSearchHandler() {
-//     return genericSearchHandler(0.2);
-// }
-function carSearchHandler() {
-  return genericSearchHandler(1);
-}
-
-function scooterSearchHandler() {
-  return genericSearchHandler(0.25);
-}
-
 app.get('/bike', function bikeSearchHandler(req, res) {
   return genericSearchHandler(0.2)(req, res);
 });
-app.get('/car', carSearchHandler());
-app.get('/scooter', scooterSearchHandler());
+app.get('/car', function carSearchHandler(req, res) {
+  return genericSearchHandler(1)(req, res);
+});
+app.get('/scooter', function scooterSearchHandler(req, res) {
+  return genericSearchHandler(0.5)(req, res);
+});
 
 setInterval(() => {
   fetch(`http://localhost:${port}/car`);
 }, 1800);
 
-pyroscope.start({ lineNumbers: true, name: 'region' });
+pyroscope.startHeapProfiling();
 
 app.listen(port, () => {
   console.log(
