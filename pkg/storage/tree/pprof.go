@@ -34,6 +34,16 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 		Units:      "bytes",
 		Cumulative: true,
 	},
+	"sample": {
+		DisplayName: "cpu",
+		Units:       "samples",
+		Sampled:     true,
+	},
+	"wall": {
+		DisplayName: "wall",
+		Units:       "miliseconds",
+		Aggregation: "sum",
+	},
 }
 
 type pprof struct {
