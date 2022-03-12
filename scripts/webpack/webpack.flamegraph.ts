@@ -57,6 +57,7 @@ const common = {
   },
 
   plugins: [
+    //    new BundleAnalyzerPlugin(),
     new MiniCssExtractPlugin({}),
     new webpack.DefinePlugin({
       'process.env': {
@@ -99,9 +100,13 @@ export default [
       globalObject: 'this',
     },
 
+    // These are the libraries we don't want to ship in the bundle
+    // Instead we just assume they will be available
+    // Then we tell our users to install them
     externals: {
       react: 'react',
-      reactDom: 'react-dom',
+      'true-myth': 'commonjs2 true-myth',
+      '@szhsin/react-menu': 'commonjs2 @szhsin/react-menu',
     },
   },
 ];
