@@ -40,7 +40,7 @@ function SignUpPage(props) {
         <button className={styles.button}>Sign in</button>
         <Divider />
 
-        <Link to="/signin" className={cx(styles.button, styles.buttonDark)}>
+        <Link to="/login" className={cx(styles.button, styles.buttonDark)}>
           Go back to main page
         </Link>
       </form>
