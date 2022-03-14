@@ -11,13 +11,20 @@ import {
   selectLabels,
   selectApplicationName,
 } from '@pyroscope/redux/reducers/continuous';
+import { Tags } from '@models/tags';
 import Dropdown, { SubMenu, MenuItem, FocusableItem } from '@ui/Dropdown';
 import { Prism } from '../util/prism';
 import styles from './TagsBar.module.css';
 
-function TagsBar() {
+interface TagsBarProps {
+  onSetQuery: (q: string) => void;
+  query: string;
+  tags: Tags;
+}
+
+function TagsBar({ onSetQuery, query, tags }: TagsBarProps) {
   const dispatch = useAppDispatch();
-  const { query, tags } = useAppSelector(selectContinuousState);
+  //  const { query, tags } = useAppSelector(selectContinuousState);
   const labelsList = useAppSelector(selectLabelsList);
   const appName = useAppSelector(selectApplicationName);
 
@@ -59,7 +66,8 @@ function TagsBar() {
             }}
             onSelectedLabelValue={(label, labelValue) => {
               const newQuery = appendLabelToQuery(query, label, labelValue);
-              dispatch(setQuery(newQuery));
+              onSetQuery(newQuery);
+              //              dispatch(setQuery(newQuery));
             }}
           />
         );
@@ -80,7 +88,8 @@ function TagsBar() {
       <QueryInput
         initialQuery={query}
         onSubmit={(q) => {
-          dispatch(setQuery(q));
+          //          dispatch(setQuery(q));
+          onSetQuery(q);
         }}
       />
     </div>

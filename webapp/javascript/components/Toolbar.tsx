@@ -11,7 +11,12 @@ import RefreshButton from './RefreshButton';
 import NameSelector from './NameSelector';
 import TagsBar from './TagsBar';
 
-function Toolbar() {
+interface ToolbarProps {
+  // TODO: refactor this
+  /* hide tags bar, useful for comparison view */
+  hideTagsBar?: boolean;
+}
+function Toolbar({ hideTagsBar }: ToolbarProps) {
   const isLoadingData = useAppSelector(selectIsLoadingData);
 
   // This component initializes using a value frmo the redux store (query)
@@ -39,7 +44,7 @@ function Toolbar() {
         &nbsp;
         <DateRangePicker />
       </div>
-      <TagsBar />
+      {!hideTagsBar && <TagsBar />}
     </>
   );
 }

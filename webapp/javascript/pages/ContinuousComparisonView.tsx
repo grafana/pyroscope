@@ -18,6 +18,7 @@ import Footer from '../components/Footer';
 import InstructionText from '../components/InstructionText';
 import ExportData from '../components/ExportData';
 import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+import TagsBar from '../components/TagsBar';
 import styles from './ContinuousComparison.module.css';
 
 function ComparisonApp() {
@@ -26,6 +27,8 @@ function ComparisonApp() {
     from,
     until,
     query,
+    leftQuery,
+    rightQuery,
     refreshToken,
     leftFrom,
     rightFrom,
@@ -39,6 +42,16 @@ function ComparisonApp() {
     dispatch(fetchInitialComparisonView(null));
   }, [query, refreshToken]);
 
+  // When the page is first loaded, set a rightQuery if not existent
+  useEffect(() => {
+    if (!rightQuery && query) {
+      dispatch(actions.setRightQuery(query));
+    }
+    if (!leftQuery && query) {
+      dispatch(actions.setLeftQuery(query));
+    }
+  }, []);
+
   // timeline changes
   useEffect(() => {
     dispatch(fetchComparisonTimeline(null));
@@ -46,26 +59,30 @@ function ComparisonApp() {
 
   // left side changes
   useEffect(() => {
-    dispatch(fetchComparisonSide({ side: 'left' }));
-  }, [leftFrom, leftUntil]);
+    if (leftQuery) {
+      dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }));
+    }
+  }, [leftFrom, leftUntil, leftQuery, from, until]);
 
   // right side changes
   useEffect(() => {
-    dispatch(fetchComparisonSide({ side: 'right' }));
-  }, [rightFrom, rightUntil]);
-
-  const topTimeline = (() => {
-    switch (comparisonView.timeline.type) {
-      case 'loaded':
-      case 'reloading': {
-        return comparisonView.timeline.data;
-      }
-
-      default:
-        return undefined;
+    if (rightQuery) {
+      dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }));
     }
-  })();
+  }, [rightFrom, rightUntil, rightQuery, from, until]);
 
+  //  const topTimeline = (() => {
+  //    switch (comparisonView.timeline.type) {
+  //      case 'loaded':
+  //      case 'reloading': {
+  //        return comparisonView.timeline.data;
+  //      }
+  //
+  //      default:
+  //        return undefined;
+  //    }
+  //  })();
+  //
   const getSide = (side: 'left' | 'right') => {
     const s = comparisonView[side];
 
@@ -90,15 +107,28 @@ function ComparisonApp() {
     leftSide.profile
   );
 
+  const leftTimeline = {
+    color: 'rgba(200, 102, 204, 1)',
+    data: leftSide.timeline,
+  };
+
+  const rightTimeline = {
+    color: 'rgba(19, 152, 246, 1)',
+    data: rightSide.timeline,
+  };
+
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
-        <Toolbar />
+        <Toolbar hideTagsBar />
         <TimelineChartWrapper
           data-testid="timeline-main"
           id="timeline-chart-double"
           viewSide="both"
-          timeline={topTimeline}
+          //          timeline={[topTimeline, leftSide.timeline, rightSide.timeline]}
+          //          timeline={[topTimeline, leftSide.timeline, rightSide.timeline]}
+          //          timeline={[leftSide.timeline, rightSide.timeline]}
+          timeline={[leftTimeline, rightTimeline]}
           leftFrom={leftFrom}
           leftUntil={leftUntil}
           rightFrom={rightFrom}
@@ -112,6 +142,13 @@ function ComparisonApp() {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
+            <TagsBar
+              query={leftQuery}
+              tags={[]}
+              onSetQuery={(q) => {
+                dispatch(actions.setLeftQuery(q));
+              }}
+            />
             <FlamegraphRenderer
               viewType="double"
               viewSide="left"
@@ -138,7 +175,15 @@ function ComparisonApp() {
                 id="timeline-chart-left"
                 data-testid="timeline-left"
                 viewSide="left"
-                timeline={topTimeline}
+                //                timeline={[
+                //                  {
+                //                    color: 'rgba(200, 102, 204, 1)',
+                //                    data: leftSide.timeline,
+                //                  },
+                //                ]}
+                timeline={[leftTimeline]}
+                //                color="rgba(200, 102, 204, 1)"
+                //                timeline={[leftSide.timeline, rightSide.timeline]}
                 leftFrom={leftFrom}
                 leftUntil={leftUntil}
                 rightFrom={rightFrom}
@@ -151,6 +196,13 @@ function ComparisonApp() {
           </Box>
 
           <Box className={styles.comparisonPane}>
+            <TagsBar
+              query={rightQuery}
+              tags={[]}
+              onSetQuery={(q) => {
+                dispatch(actions.setRightQuery(q));
+              }}
+            />
             <FlamegraphRenderer
               viewType="double"
               viewSide="right"
@@ -177,7 +229,14 @@ function ComparisonApp() {
                 id="timeline-chart-right"
                 data-testid="timeline-right"
                 viewSide="right"
-                timeline={topTimeline}
+                //                timeline={[leftSide.timeline, rightSide.timeline]}
+                //                timeline={[
+                //                  {
+                //                    data: rightSide.timeline,
+                //                    color: 'rgba(19, 152, 246, 0.35)',
+                //                  },
+                //                ]}
+                timeline={[rightTimeline]}
                 leftFrom={leftFrom}
                 leftUntil={leftUntil}
                 rightFrom={rightFrom}

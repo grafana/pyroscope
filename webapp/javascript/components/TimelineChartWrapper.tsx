@@ -7,11 +7,18 @@ import TimelineChart from './TimelineChart';
 import { formatAsOBject } from '../util/formatDate';
 import styles from './TimelineChartWrapper.module.css';
 
+interface TimelineData {
+  data?: Timeline;
+  color: string;
+}
+
 type TimelineChartWrapperProps = {
   /** the id attribute of the element float will use to apply to, it should be unique */
   id: string;
-  timeline?: Timeline;
+  timeline: TimelineData[];
+  //  timeline?: Timeline[];
   ['data-testid']?: string;
+  color?: string;
   onSelect: (from: string, until: string) => void;
 } /** it will use this info to color the markins */ & (
   | {
@@ -50,6 +57,9 @@ class TimelineChartWrapper extends React.Component<
 
     this.state = {
       flotOptions: {
+        //        legend: {
+        //          show: false,
+        //        },
         margin: {
           top: 0,
           left: 0,
@@ -74,21 +84,32 @@ class TimelineChartWrapper extends React.Component<
         },
         points: {
           show: false,
-          radius: 0.1,
+          //          radius: 0.1,
         },
         lines: {
           show: false,
           steps: true,
-          lineWidth: 1.0,
+          //          lineWidth: 1.0,
         },
         bars: {
           show: true,
-          fill: true,
+          //          barWidth: 0.8,
+          //          barWidth: 0.2,
+          //          align: 'center',
         },
         xaxis: {
           mode: 'time',
           timezone: 'browser',
           reserveSpace: false,
+        },
+        series: {
+          bars: {
+            //            //align: 'center',
+            //            //            fill: 0.7,
+            //            show: true,
+            // barWidth: 0.5,
+            //            //            order: 1,
+          },
         },
       },
     };
@@ -215,24 +236,61 @@ class TimelineChartWrapper extends React.Component<
     // Since profiling data is chuked by 10 seconds slices
     // it's more user friendly to point a `center` of a data chunk
     // as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
-    const flotData = timeline
-      ? [
-          decodeTimelineData(timeline).map((x) => [
-            x[0] + 5000,
-            x[1] === 0 ? null : x[1] - 1,
-          ]),
-        ]
-      : [];
-
+    //    const flotData = timeline
+    //      ? [
+    //          decodeTimelineData(timeline).map((x) => [
+    //            x[0] + 5000,
+    //            x[1] === 0 ? null : x[1] - 1,
+    //          ]),
+    //        ]
+    //      : [];
+    //
     // In case there are few chunks left, then we'd like to add some margins to
     // both sides making it look more centers
     const customFlotOptions = {
       ...flotOptions,
       xaxis: {
         ...flotOptions.xaxis,
-        autoscaleMargin: flotData[0] && flotData[0].length > 3 ? null : 0.005,
+        //        autoscaleMargin: flotData[0] && flotData[0].length > 3 ? null : 0.005,
       },
     };
+
+    // TODO: render something
+    if (!timeline || timeline.filter((a) => !!a).length <= 0) {
+      return null;
+    }
+
+    //    console.log(
+    //      'timeline',
+    //      timeline.map((a) => a.samples)
+    //    );
+
+    // let's only act on explicit data
+    // otherwise the SideBySide plugin may not work properly
+    const filtered = timeline.filter((a) => a?.data?.samples.length > 0);
+
+    const d = filtered.map((a, i) => {
+      return {
+        //        color: this.props.color ? this.props.color : null,
+        color: a.color,
+        bars: {
+          // disable the feature
+          order: filtered.length > 1 ? i + 1 : null,
+
+          // enable this to make it thicker
+          // lineWidth: 15,
+        },
+        // Since profiling data is chuked by 10 seconds slices
+        // it's more user friendly to point a `center` of a data chunk
+        // as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
+        data: a
+          ? decodeTimelineData(a.data).map((x) => [
+              x[0] + 5000,
+              x[1] === 0 ? 0 : x[1] - 1,
+            ])
+          : [[]],
+      };
+    });
 
     return (
       <TimelineChart
@@ -243,7 +301,8 @@ class TimelineChartWrapper extends React.Component<
         id={id}
         options={customFlotOptions}
         viewSide={viewSide}
-        data={flotData}
+        //        data={msData}
+        data={d}
         width="100%"
         height="100px"
       />

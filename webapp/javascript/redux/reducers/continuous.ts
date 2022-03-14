@@ -104,6 +104,8 @@ interface ContinuousState {
   rightFrom: string;
   rightUntil: string;
   query: string;
+  leftQuery?: string;
+  rightQuery?: string;
   maxNodes: string;
   refreshToken?: string;
 
@@ -241,37 +243,67 @@ export const fetchComparisonTimeline = createAsyncThunk<
 
 export const fetchComparisonSide = createAsyncThunk<
   { side: 'left' | 'right'; data: RenderOutput },
-  { side: 'left' | 'right' },
+  { side: 'left' | 'right'; query: string },
   { state: { continuous: ContinuousState } }
->('continuous/fetchComparisonSide', async ({ side }, thunkAPI) => {
+>('continuous/fetchComparisonSide', async ({ side, query }, thunkAPI) => {
   const state = thunkAPI.getState();
 
-  const res = await (() => {
-    switch (side) {
-      case 'left': {
-        return renderSingle({
-          ...state.continuous,
+  // We have to request the data for a given time range, to populate the flamegraph
+  // And also request the timeline for the PARENT time range, to populate the timeline
+  const res = await Promise.all(
+    (() => {
+      switch (side) {
+        case 'left': {
+          return [
+            renderSingle({
+              ...state.continuous,
+              query,
+            }),
+            renderSingle({
+              ...state.continuous,
+              // TODO: what if there's no query? we should return nothing
+              // maybe we should take the query as an action payload
+              //              query: state.continuous.leftQuery || '',
+              query,
 
-          from: state.continuous.leftFrom,
-          until: state.continuous.leftUntil,
-        });
-      }
-      case 'right': {
-        return renderSingle({
-          ...state.continuous,
+              from: state.continuous.leftFrom,
+              until: state.continuous.leftUntil,
+            }),
+          ];
+        }
+        case 'right': {
+          return [
+            renderSingle({
+              ...state.continuous,
+              query,
+              //              query: state.continuous.rightQuery || '',
+            }),
+            renderSingle({
+              ...state.continuous,
 
-          from: state.continuous.rightFrom,
-          until: state.continuous.rightUntil,
-        });
+              // TODO
+              //              query: state.continuous.rightQuery || '',
+              query,
+              from: state.continuous.rightFrom,
+              until: state.continuous.rightUntil,
+            }),
+          ];
+        }
+        default: {
+          throw new Error('Invalid side');
+        }
       }
-      default: {
-        throw new Error('Invalid side');
-      }
-    }
-  })();
+    })()
+  );
 
-  if (res.isOk) {
-    return Promise.resolve({ side, data: res.value });
+  if (res[0].isOk && res[1].isOk) {
+    return Promise.resolve({
+      side,
+      data: {
+        timeline: res[0].value.timeline,
+        profile: res[1].value.profile,
+      },
+    });
   }
 
   thunkAPI.dispatch(
@@ -282,7 +314,7 @@ export const fetchComparisonSide = createAsyncThunk<
     })
   );
 
-  return Promise.reject(res.error);
+  return Promise.reject(res.filter((a) => a.isErr).map((a) => a.error));
 });
 
 export const fetchDiffView = createAsyncThunk<
@@ -413,6 +445,12 @@ export const continuousSlice = createSlice({
         return;
       }
       state.query = action.payload;
+    },
+    setLeftQuery(state, action: PayloadAction<string>) {
+      state.leftQuery = action.payload;
+    },
+    setRightQuery(state, action: PayloadAction<string>) {
+      state.rightQuery = action.payload;
     },
     setLeftFrom(state, action: PayloadAction<string>) {
       state.leftFrom = action.payload;
