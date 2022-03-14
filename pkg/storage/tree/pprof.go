@@ -44,6 +44,14 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 		Units:       "miliseconds",
 		Aggregation: "sum",
 	},
+	"objects": {
+		Units:       "objects",
+		Aggregation: "avg",
+	},
+	"space": {
+		Units:       "bytes",
+		Aggregation: "avg",
+	},
 }
 
 type pprof struct {

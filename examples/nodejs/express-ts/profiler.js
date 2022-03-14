@@ -1,4 +1,4 @@
-/* eslint-disable no-await-in-loop */
+/* eslint-disable */
 const pprof = require('pprof');
 const fetch = require('node-fetch');
 const fs = require('fs');
@@ -9,9 +9,11 @@ const INTERVAL = 10000;
 
 let isContinueProfiling = true;
 const serverName = 'http://localhost:4040';
+let chunk = 0;
 
-async function uploadProfile(profile) {
-  console.log(profile);
+async function uploadProfile(profile, tags) {
+  // TODO: Tag profile here
+
   const buf = await pprof.encode(profile);
 
   // eslint-disable-next-line no-loop-func
@@ -59,40 +61,39 @@ async function start(options) {
       sourceMapper: sm,
       durationMillis: INTERVAL, // time in milliseconds for which to collect profile. 10 secods by default
     });
-    await uploadProfile(profile);
+    await uploadProfile(profile, options.tags);
   }
 }
 
 // Could be false or a function to stop heap profiling
 let isHeapProfilingStarted = false;
 
-async function startHeapProfiling() {
+async function startHeapProfiling({ tags }) {
   const intervalBytes = 1024 * 512;
   const stackDepth = 32;
 
-  if ( isHeapProfilingStarted ) return false;
+  if (isHeapProfilingStarted) return false;
 
   const sm = await pprof.SourceMapper.create([process.cwd()]);
 
   pprof.heap.start(intervalBytes, stackDepth);
 
   isHeapProfileStarted = setInterval(async () => {
-    console.log("Collecting heap profile");
+    console.log('Collecting heap profile');
     const profile = pprof.heap.profile(undefined, sm);
-    console.log("Heap profile collected...");
-    await uploadProfile(profile);
-    console.log("Heap profile uploaded...");
+    console.log('Heap profile collected...');
+    await uploadProfile(profile, options.tags);
+    console.log('Heap profile uploaded...');
   }, INTERVAL);
 }
 
 function stopHeapProfiling() {
-  if ( isHeapProfilingStarted ) {
-    console.log("Stopping heap profiling")
+  if (isHeapProfilingStarted) {
+    console.log('Stopping heap profiling');
     isHeapProfilingStarted();
     isHeapProfilingStarted = false;
   }
 }
-
 
 async function stop() {
   isContinueProfiling = false;
