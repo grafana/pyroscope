@@ -21,8 +21,10 @@
   "peerDependencies": {
     "react": ">=16.14.0"
   },
+  "devDependencies": {
+    "@pyroscope/models": "^0.0.3"
+  },
   "dependencies": {
-    "@pyroscope/models": "^0.0.3",
     "true-myth": "^5.1.2"
   }
 }
