@@ -8,15 +8,17 @@ import { diffColorRed, diffColorGreen } from './color';
 import Tooltip, { TooltipProps } from './Tooltip';
 import { DefaultPalette } from './colorPalette';
 
-// Omit<TooltipProps, 'canvasRef'>) wasn't working
-// so for testing let's pass canvasRef = undefined
-function TestCanvas(props: TooltipProps) {
-  const canvasRef = React.useRef();
+function TestCanvas(props: Omit<TooltipProps, 'canvasRef'>) {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   return (
     <>
       <canvas data-testid="canvas" ref={canvasRef} />
-      <Tooltip data-testid="tooltip" {...props} canvasRef={canvasRef} />
+      <Tooltip
+        data-testid="tooltip"
+        {...(props as TooltipProps)}
+        canvasRef={canvasRef}
+      />
     </>
   );
 }
@@ -33,7 +35,6 @@ describe('Tooltip', () => {
 
       render(
         <TestCanvas
-          canvasRef={undefined}
           format="single"
           units="samples"
           numTicks={100}
@@ -59,7 +60,17 @@ describe('Tooltip', () => {
   });
 
   describe('"double" mode', () => {
-    function assertTooltipContent({ title, diffColor, left, right }) {
+    function assertTooltipContent({
+      title,
+      diffColor,
+      left,
+      right,
+    }: {
+      title: string;
+      diffColor: typeof diffColorRed | undefined;
+      left: string;
+      right: string;
+    }) {
       expect(screen.getByTestId('flamegraph-tooltip-title')).toHaveTextContent(
         title
       );
@@ -92,7 +103,6 @@ describe('Tooltip', () => {
 
       render(
         <TestCanvas
-          canvasRef={undefined}
           format="double"
           units="samples"
           numTicks={100}
@@ -128,7 +138,6 @@ describe('Tooltip', () => {
 
       render(
         <TestCanvas
-          canvasRef={undefined}
           format="double"
           units="samples"
           numTicks={100}
@@ -163,7 +172,6 @@ describe('Tooltip', () => {
 
       render(
         <TestCanvas
-          canvasRef={undefined}
           format="double"
           units="samples"
           numTicks={100}
@@ -198,7 +206,6 @@ describe('Tooltip', () => {
 
       render(
         <TestCanvas
-          canvasRef={undefined}
           format="double"
           units="samples"
           numTicks={100}
@@ -233,7 +240,6 @@ describe('Tooltip', () => {
 
       render(
         <TestCanvas
-          canvasRef={undefined}
           format="double"
           units="samples"
           numTicks={100}

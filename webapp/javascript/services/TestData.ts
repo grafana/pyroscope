@@ -1,6 +1,6 @@
-import { RawFlamebearerProfile } from '@models/flamebearer';
+import { Profile } from '@pyroscope/models';
 
-export default {
+const SimpleGoApp: Profile = {
   flamebearer: {
     names: [
       'total',
@@ -18,10 +18,6 @@ export default {
     ],
     numTicks: 988,
     maxSelf: 771,
-    spyName: 'gospy',
-    sampleRate: 100,
-    units: 'samples',
-    format: 'single' as const,
   },
   metadata: {
     format: 'single' as const,
@@ -29,11 +25,7 @@ export default {
     spyName: 'gospy',
     units: 'samples',
   },
-  timeline: {
-    startTime: 1632335270,
-    samples: [989],
-    durationDelta: 10,
-  },
-
   version: 1,
-} as RawFlamebearerProfile;
+};
+
+export default SimpleGoApp;

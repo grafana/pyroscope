@@ -80,5 +80,5 @@ export default function Dropdown({
 
 export const SubMenu = LibSubmenu;
 export const MenuItem = LibMenuItem;
-export const MenuButton = LibMenuButton as any;
+export const MenuButton = LibMenuButton as ShamefulAny;
 export const FocusableItem = LibFocusableItem;

@@ -10,5 +10,5 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 // Let's use this to have some typing
 export const useOldRootSelector: TypedUseSelectorHook<
   ReturnType<typeof rootReducer>
-> = (fn: (a: ReturnType<typeof rootReducer>) => any) =>
+> = (fn: (a: ReturnType<typeof rootReducer>) => ShamefulAny) =>
   useAppSelector((state) => fn(state.root));

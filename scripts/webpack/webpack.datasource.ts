@@ -1,3 +1,4 @@
+// @ts-nocheck
 /* eslint-disable */
 // ATTENTION
 // all this was copied from grafana-toolkit

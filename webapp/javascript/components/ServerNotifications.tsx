@@ -8,7 +8,7 @@ export default function ServerNotifications() {
   useEffect(() => {
     // the server is supposed to add this
     // to the index.html
-    const { notificationText } = window as any;
+    const { notificationText } = window as ShamefulAny;
 
     if (notificationText) {
       // TODO

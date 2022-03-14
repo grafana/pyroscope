@@ -1,3 +1,4 @@
+import { Target } from '@models/targets';
 import { fetchTargets } from '@pyroscope/services/serviceDiscovery';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { addNotification } from './notifications';
@@ -23,20 +24,26 @@ export const loadTargets = createAsyncThunk(
   }
 );
 
-const initialState = { type: 'loaded', data: [] };
+interface State {
+  type: 'pristine' | 'loading' | 'failed' | 'loaded';
+  data: Target[];
+}
+const initialState: State = { type: 'loaded', data: [] };
+
 export const serviceDiscoverySlice = createSlice({
   name: 'serviceDiscovery',
   initialState,
   reducers: {},
   extraReducers: (builder) => {
-    builder.addCase(loadTargets.fulfilled, (_, action) => {
-      return { type: 'loaded', data: action.payload };
+    builder.addCase(loadTargets.fulfilled, (state, action) => {
+      state = { type: 'loaded', data: action.payload };
     });
+
     builder.addCase(loadTargets.pending, (state) => {
-      return { type: 'reloading', data: state.data };
+      state = { type: 'loading', data: state.data };
     });
     builder.addCase(loadTargets.rejected, (state) => {
-      return { type: 'failed', data: state.data };
+      state = { type: 'failed', data: state.data };
     });
   },
 });

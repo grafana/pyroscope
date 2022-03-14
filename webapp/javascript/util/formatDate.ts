@@ -78,11 +78,11 @@ export function dateForExportFilename(from: string, until: string) {
 export function formatAsOBject(value: string) {
   if (/^now-/.test(value)) {
     const { _from } = convertPresetsToDate(value);
-    return _from * 1000;
+    return new Date(_from * 1000);
   }
   if (value === 'now') {
-    return new Date().getTime();
+    return new Date();
   }
 
-  return new Date(parseInt(value, 10) * 1000).getTime();
+  return new Date(parseInt(value, 10) * 1000);
 }

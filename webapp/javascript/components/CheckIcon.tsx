@@ -1,7 +1,7 @@
 import React from 'react';
 
 // https://www.svgrepo.com/vectors/check/
-export default function CheckIcon({ className } = props) {
+export default function CheckIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}

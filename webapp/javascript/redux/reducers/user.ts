@@ -112,10 +112,11 @@ export const editMe = createAsyncThunk(
 );
 
 export const currentUserState = (state: RootState) => state.user;
-export const selectCurrentUser = (state: RootState) => state.user.data;
+export const selectCurrentUser = (state: RootState) => state.user?.data;
 
 // TODO: @shaleynikov extract currentUser HOC
-export const withCurrentUser = (component) =>
+// TODO(eh-am): get rid of HOC
+export const withCurrentUser = (component: ShamefulAny) =>
   connect((state: RootState) => ({
     currentUser: selectCurrentUser(state),
   }))(function ConditionalRender(props: { currentUser: User }) {
@@ -123,6 +124,6 @@ export const withCurrentUser = (component) =>
       return component(props);
     }
     return null;
-  });
+  } as ShamefulAny);
 
 export default userSlice.reducer;

@@ -11,7 +11,8 @@ import { passwordEncode, type User } from '../../../models/users';
 export type UserAddProps = User & { password?: string };
 
 function UserAddForm() {
-  const [form, setForm]: [UserAddProps, (value) => void] = useState({
+  //  const [form, setForm]: [UserAddProps, (value: ShamefulAny) => void] =
+  const [form, setForm] = useState({
     name: '',
     email: '',
     fullName: '',
@@ -20,20 +21,24 @@ function UserAddForm() {
   const dispatch = useAppDispatch();
   const history = useHistory();
 
-  const handleFormChange = (event) => {
+  const handleFormChange = (event: ShamefulAny) => {
     const { name } = event.target;
     const { value } = event.target;
     setForm({ ...form, [name]: value });
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = (e: ShamefulAny) => {
     e.preventDefault();
+    if (!form.password) {
+      return;
+    }
+
     const data = {
       ...form,
       role: 'ReadOnly',
       password: passwordEncode(form.password),
     };
-    dispatch(createUser(data as User))
+    dispatch(createUser(data as ShamefulAny as User))
       .unwrap()
       .then(() => {
         dispatch(

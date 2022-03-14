@@ -1,7 +1,7 @@
 /* eslint-disable import/prefer-default-export */
 import { Result } from '@utils/fp';
 import type { ZodError } from 'zod';
-import { RawFlamebearerProfile } from '@models/flamebearer';
+import { Profile } from '@pyroscope/models';
 import {
   FlamegraphDotComResponse,
   parse,
@@ -10,7 +10,7 @@ import type { RequestError } from './base';
 import { request } from './base';
 
 interface shareWithFlamegraphDotcomProps {
-  flamebearer: RawFlamebearerProfile;
+  flamebearer: Profile;
   name?: string;
 }
 

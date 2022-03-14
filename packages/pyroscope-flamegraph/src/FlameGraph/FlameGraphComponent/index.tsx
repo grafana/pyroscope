@@ -39,7 +39,7 @@ interface FlamegraphProps {
 }
 
 export default function FlameGraphComponent(props: FlamegraphProps) {
-  const canvasRef = React.useRef<HTMLCanvasElement>();
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const flamegraph = useRef<Flamegraph>();
 
   const [rightClickedNode, setRightClickedNode] = React.useState<
@@ -73,7 +73,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   });
 
   const onClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const opt = flamegraph.current.xyToBar(
+    const opt = getFlamegraph().xyToBar(
       e.nativeEvent.offsetX,
       e.nativeEvent.offsetY
     );
@@ -106,19 +106,19 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   };
 
   const xyToHighlightData = (x: number, y: number) => {
-    const opt = flamegraph.current.xyToBar(x, y);
+    const opt = getFlamegraph().xyToBar(x, y);
 
     return opt.map((bar) => {
       return {
-        left: canvasRef.current.offsetLeft + bar.x,
-        top: canvasRef.current.offsetTop + bar.y,
+        left: getCanvas().offsetLeft + bar.x,
+        top: getCanvas().offsetTop + bar.y,
         width: bar.width,
       };
     });
   };
 
   const xyToTooltipData = (x: number, y: number) => {
-    return flamegraph.current.xyToBar(x, y);
+    return getFlamegraph().xyToBar(x, y);
   };
 
   const onContextMenuClose = () => {
@@ -133,15 +133,16 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   const xyToContextMenuItems = useCallback(
     (x: number, y: number) => {
       const dirty = isDirty();
-      const bar = flamegraph.current.xyToBar(x, y);
+      const bar = getFlamegraph().xyToBar(x, y);
 
       const FocusItem = () => {
         const hoveredOnValidNode = bar.mapOrElse(
           () => false,
           () => true
         );
+
         const onClick = bar.mapOrElse(
-          () => {},
+          () => () => {},
           (f) => onFocusOnNode.bind(null, f.i, f.j)
         );
 
@@ -200,11 +201,26 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   ]);
 
   const renderCanvas = () => {
-    flamegraph.current.render();
+    // eslint-disable-next-line no-unused-expressions
+    flamegraph?.current?.render();
   };
 
   const dataUnavailable =
     !flamebearer || (flamebearer && flamebearer.names.length <= 1);
+
+  const getCanvas = () => {
+    if (!canvasRef.current) {
+      throw new Error('Missing canvas');
+    }
+    return canvasRef.current;
+  };
+
+  const getFlamegraph = () => {
+    if (!flamegraph.current) {
+      throw new Error('Missing canvas');
+    }
+    return flamegraph.current;
+  };
 
   return (
     <div
@@ -243,7 +259,7 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           onClick={onClick}
         />
       </div>
-      {flamegraph && (
+      {flamegraph && canvasRef && (
         <Highlight
           barHeight={PX_PER_LEVEL}
           canvasRef={canvasRef}
@@ -264,14 +280,18 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
           xyToData={xyToTooltipData as any /* TODO */}
           numTicks={flamebearer.numTicks}
           sampleRate={flamebearer.sampleRate}
-          leftTicks={flamebearer.format === 'double' && flamebearer.leftTicks}
-          rightTicks={flamebearer.format === 'double' && flamebearer.rightTicks}
+          leftTicks={
+            flamebearer.format === 'double' ? flamebearer.leftTicks : 0
+          }
+          rightTicks={
+            flamebearer.format === 'double' ? flamebearer.rightTicks : 0
+          }
           units={flamebearer.units}
           palette={palette}
         />
       )}
 
-      {flamegraph && (
+      {flamegraph && canvasRef && (
         <ContextMenu
           canvasRef={canvasRef}
           xyToMenuItems={xyToContextMenuItems}

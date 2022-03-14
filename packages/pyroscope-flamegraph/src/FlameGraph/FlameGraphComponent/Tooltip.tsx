@@ -63,7 +63,7 @@ export default function Tooltip(props: TooltipProps) {
   });
 
   const [style, setStyle] = React.useState<React.CSSProperties>();
-  const tooltipEl = React.useRef(null);
+  const tooltipEl = React.useRef<HTMLDivElement>(null);
 
   const { numTicks, sampleRate, units, leftTicks, rightTicks, palette } = props;
   const onMouseOut = () => {
@@ -77,6 +77,10 @@ export default function Tooltip(props: TooltipProps) {
   const memoizedOnMouseMove = React.useCallback(
     (e: MouseEvent) => {
       const formatter = getFormatter(numTicks, sampleRate, units);
+
+      if (!tooltipEl || !tooltipEl.current) {
+        throw new Error('Missing tooltipElement');
+      }
 
       const left = Math.min(
         e.clientX + 12,
