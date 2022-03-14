@@ -2,7 +2,7 @@ import { Profile } from '@pyroscope/models';
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AppNames } from '@models/appNames';
 import { fetchAppNames } from '@pyroscope/services/appNames';
-import { appNameToQuery } from '@utils/query';
+import { appNameToQuery, queryToAppName } from '@utils/query';
 import { renderSingle, RenderOutput, renderDiff } from '../../services/render';
 import { addNotification } from './notifications';
 import { Timeline } from '../../models/timeline';
@@ -87,7 +87,7 @@ type TagsData =
 
 // Tags really refer to each application
 // Should we nest them to an application?
-type Tags =
+export type TagsState =
   | { type: 'pristine'; tags: Record<string, TagsData> }
   | { type: 'loading'; tags: Record<string, TagsData> }
   | {
@@ -95,6 +95,10 @@ type Tags =
       tags: Record<string, TagsData>;
     }
   | { type: 'failed'; tags: Record<string, TagsData> };
+
+// TODO
+type appName = string;
+type Tags2 = Record<appName, TagsState>;
 
 interface ContinuousState {
   from: string;
@@ -112,7 +116,8 @@ interface ContinuousState {
   singleView: SingleView;
   diffView: DiffView;
   comparisonView: ComparisonView;
-  tags: Tags;
+  tags: TagsState;
+  tags2: Tags2;
 
   appNames:
     | { type: 'loaded'; data: AppNames }
@@ -137,6 +142,7 @@ const initialState: ContinuousState = {
     right: { type: 'pristine' },
   },
   tags: { type: 'pristine', tags: {} },
+  tags2: {},
   appNames: {
     type: 'loaded',
     data: (window as ShamefulAny).initialState.appNames,
@@ -343,10 +349,22 @@ export const fetchDiffView = createAsyncThunk<
 export const fetchTags = createAsyncThunk(
   'continuous/fetchTags',
   async (query: ContinuousState['query'], thunkAPI) => {
+    const appName = queryToAppName(query);
+    if (appName.isNothing) {
+      return Promise.reject(
+        new Error(
+          `Query '${appName}' is not a valid app, and it can't have any tags`
+        )
+      );
+    }
+
     const res = await tagsService.fetchTags(query);
 
     if (res.isOk) {
-      return Promise.resolve(res.value);
+      return Promise.resolve({
+        appName: appName.value,
+        tags: res.value,
+      });
     }
 
     thunkAPI.dispatch(
@@ -367,6 +385,15 @@ export const fetchTagValues = createAsyncThunk(
     payload: { query: ContinuousState['query']; label: string },
     thunkAPI
   ) => {
+    const appName = queryToAppName(payload.query);
+    if (appName.isNothing) {
+      return Promise.reject(
+        new Error(
+          `Query '${appName}' is not a valid app, and it can't have any tags`
+        )
+      );
+    }
+
     const res = await tagsService.fetchLabelValues(
       payload.label,
       payload.query
@@ -374,6 +401,7 @@ export const fetchTagValues = createAsyncThunk(
 
     if (res.isOk) {
       return Promise.resolve({
+        appName: appName.value,
         label: payload.label,
         values: res.value,
       });
@@ -690,7 +718,7 @@ export const continuousSlice = createSlice({
     });
 
     builder.addCase(fetchTags.fulfilled, (state, action) => {
-      const tags = action.payload.reduce((acc, tag) => {
+      const tags = action.payload.tags.reduce((acc, tag) => {
         acc[tag] = { type: 'pristine' };
         return acc;
       }, {} as ContinuousState['tags']['tags']);
@@ -699,6 +727,8 @@ export const continuousSlice = createSlice({
         type: 'loaded',
         tags,
       };
+
+      state.tags2[action.payload.appName] = { type: 'loaded', tags };
     });
 
     builder.addCase(fetchTags.rejected, (state) => {
@@ -710,20 +740,7 @@ export const continuousSlice = createSlice({
 
     // TODO other cases
     builder.addCase(fetchTagValues.fulfilled, (state, action) => {
-      if (state.tags.type !== 'loaded') {
-        console.error('Loading tag values for an unloaded tags. Ignoring');
-        return;
-      }
-
-      if (!state.tags.tags[action.payload.label]) {
-        // We are loading tag values for a non existent tag
-        console.error(
-          `Loaded labels values for non existing label: '${action.payload.label}'. Ignoring`
-        );
-        return;
-      }
-
-      state.tags.tags[action.payload.label] = {
+      state.tags2[action.payload.appName].tags[action.payload.label] = {
         type: 'loaded',
         values: action.payload.values,
       };
@@ -778,4 +795,21 @@ export const selectIsLoadingData = (state: RootState) => {
     // Diff
     loadingStates.includes(state.continuous.diffView.type)
   );
+};
+
+export const selectAppTags = (query?: string) => (state: RootState) => {
+  if (query) {
+    const appName = queryToAppName(query);
+    if (appName.isJust) {
+      if (state.continuous.tags2[appName.value]) {
+        return state.continuous.tags2[appName.value];
+      }
+    }
+  }
+
+  // return a dummy one to make component code simpler
+  return {
+    type: 'pristine',
+    tags: [],
+  };
 };

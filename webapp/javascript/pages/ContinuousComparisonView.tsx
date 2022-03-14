@@ -6,11 +6,12 @@ import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   selectContinuousState,
+  selectAppTags,
   actions,
-  fetchInitialComparisonView,
   selectComparisonState,
   fetchComparisonSide,
-  fetchComparisonTimeline,
+  fetchTags,
+  fetchTagValues,
 } from '@pyroscope/redux/reducers/continuous';
 import TimelineChartWrapper from '../components/TimelineChartWrapper';
 import Toolbar from '../components/Toolbar';
@@ -36,40 +37,53 @@ function ComparisonApp() {
     rightUntil,
   } = useAppSelector(selectContinuousState);
 
+  const leftTags = useAppSelector(selectAppTags(leftQuery));
+  const rightTags = useAppSelector(selectAppTags(rightQuery));
+
   const comparisonView = useAppSelector(selectComparisonState);
 
-  useEffect(() => {
-    dispatch(fetchInitialComparisonView(null));
-  }, [query, refreshToken]);
+  //  useEffect(() => {
+  //    dispatch(fetchInitialComparisonView(null));
+  //  }, [query, refreshToken]);
 
-  // When the page is first loaded, set a rightQuery if not existent
+  // When the application changes, update the queries too
   useEffect(() => {
-    if (!rightQuery && query) {
+    if (query) {
       dispatch(actions.setRightQuery(query));
     }
-    if (!leftQuery && query) {
+    if (query) {
       dispatch(actions.setLeftQuery(query));
     }
-  }, []);
+  }, [query]);
+
+  useEffect(() => {
+    // TODO if the query is the same the request will be made twice
+    if (leftQuery) {
+      dispatch(fetchTags(leftQuery));
+    }
+    if (rightQuery) {
+      dispatch(fetchTags(rightQuery));
+    }
+  }, [leftQuery, rightQuery]);
 
   // timeline changes
-  useEffect(() => {
-    dispatch(fetchComparisonTimeline(null));
-  }, [from, until]);
+  //  useEffect(() => {
+  //    dispatch(fetchComparisonTimeline(null));
+  //  }, [from, until]);
 
   // left side changes
   useEffect(() => {
     if (leftQuery) {
       dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }));
     }
-  }, [leftFrom, leftUntil, leftQuery, from, until]);
+  }, [leftFrom, leftUntil, leftQuery, from, until, refreshToken]);
 
   // right side changes
   useEffect(() => {
     if (rightQuery) {
       dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }));
     }
-  }, [rightFrom, rightUntil, rightQuery, from, until]);
+  }, [rightFrom, rightUntil, rightQuery, from, until, refreshToken]);
 
   //  const topTimeline = (() => {
   //    switch (comparisonView.timeline.type) {
@@ -125,9 +139,6 @@ function ComparisonApp() {
           data-testid="timeline-main"
           id="timeline-chart-double"
           viewSide="both"
-          //          timeline={[topTimeline, leftSide.timeline, rightSide.timeline]}
-          //          timeline={[topTimeline, leftSide.timeline, rightSide.timeline]}
-          //          timeline={[leftSide.timeline, rightSide.timeline]}
           timeline={[leftTimeline, rightTimeline]}
           leftFrom={leftFrom}
           leftUntil={leftUntil}
@@ -143,10 +154,18 @@ function ComparisonApp() {
         >
           <Box className={styles.comparisonPane}>
             <TagsBar
-              query={leftQuery}
-              tags={[]}
+              query={leftQuery || ''}
+              tags={leftTags}
               onSetQuery={(q) => {
                 dispatch(actions.setLeftQuery(q));
+              }}
+              onSelectedLabel={(label, query) => {
+                dispatch(
+                  fetchTagValues({
+                    query,
+                    label,
+                  })
+                );
               }}
             />
             <FlamegraphRenderer
@@ -198,9 +217,17 @@ function ComparisonApp() {
           <Box className={styles.comparisonPane}>
             <TagsBar
               query={rightQuery}
-              tags={[]}
+              tags={rightTags}
               onSetQuery={(q) => {
                 dispatch(actions.setRightQuery(q));
+              }}
+              onSelectedLabel={(label, query) => {
+                dispatch(
+                  fetchTagValues({
+                    query,
+                    label,
+                  })
+                );
               }}
             />
             <FlamegraphRenderer
@@ -229,13 +256,6 @@ function ComparisonApp() {
                 id="timeline-chart-right"
                 data-testid="timeline-right"
                 viewSide="right"
-                //                timeline={[leftSide.timeline, rightSide.timeline]}
-                //                timeline={[
-                //                  {
-                //                    data: rightSide.timeline,
-                //                    color: 'rgba(19, 152, 246, 0.35)',
-                //                  },
-                //                ]}
                 timeline={[rightTimeline]}
                 leftFrom={leftFrom}
                 leftUntil={leftUntil}
