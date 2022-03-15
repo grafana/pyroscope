@@ -81,6 +81,11 @@ export default [
       libraryTarget: 'commonjs',
       filename: 'index.node.js',
     },
+
+    externals: {
+      react: 'react',
+      reactDom: 'react-dom',
+    },
   },
   {
     ...common,
