@@ -99,6 +99,27 @@ export async function logIn({
   return Promise.reject(response.error);
 }
 
+export async function signUp(data: {
+  username: string;
+  password: string;
+  fullName: string;
+  email: string;
+}): Promise<any> {
+  const response = await request(`/signup`, {
+    method: 'POST',
+    body: JSON.stringify({
+      ...data,
+      name: data.username,
+      password: passwordEncode(data.password),
+    }),
+  });
+  if (response.isOk) {
+    return Promise.resolve(response.value);
+  }
+
+  return Promise.reject(response.error);
+}
+
 export async function changeMyPassword(
   oldPassword: string,
   newPassword: string
