@@ -8,6 +8,7 @@ import {
   PURGE,
   REGISTER,
 } from 'redux-persist';
+import { deserializeError } from 'serialize-error';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Until we rewrite FlamegraphRenderer in typescript this will do
@@ -41,9 +42,18 @@ const reducer = combineReducers({
 export const logErrorMiddleware: Middleware = () => (next) => (action) => {
   next(action);
   if (action?.error) {
-    console.error(action.error.message ? action.error.message : action.error);
-    // TODO: it would be nice to have an actual error here
-    //    console.error(action.error.stack);
+    // since redux-toolkit serializes errors
+    // we should deserialize them back
+    // https://github.com/reduxjs/redux-toolkit/blob/db0d7dc20939b62f8c59631cc030575b78642296/packages/toolkit/src/createAsyncThunk.ts#L94
+    try {
+      const deserialized = deserializeError(action.error);
+      console.error(deserialized);
+
+      // TODO: report error to server?
+    } catch (e) {
+      // we failed to deserialize it, which means it may not be a valid Error object
+      console.error(action.error);
+    }
   }
 };
 
