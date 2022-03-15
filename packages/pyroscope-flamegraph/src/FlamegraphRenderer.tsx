@@ -1,7 +1,7 @@
 import React from 'react';
+import { Profile } from '@pyroscope/models';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Until we rewrite FlamegraphRenderer in typescript this will do
-import { Profile } from '@pyroscope/models';
 import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
 
 const overrideProps = {
