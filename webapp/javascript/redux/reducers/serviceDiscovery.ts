@@ -15,8 +15,8 @@ export const loadTargets = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to load targets',
+        title: 'Failed to load targets',
+        message: res.error.message,
       })
     );
 
