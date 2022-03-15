@@ -53,36 +53,39 @@ function App() {
         <Route exact path="/signup">
           <SignUpPage />
         </Route>
+
         <Switch>
-          <Sidebar />
-          <Route exact path="/">
-            <ContinuousSingleView />
-          </Route>
-          <Route path="/comparison">
-            <ContinuousComparisonView />
-          </Route>
-          <Route path="/comparison-diff">
-            <ContinuousDiffView />
-          </Route>
-          <Route path="/settings">
-            <Settings />
-          </Route>
-          <Route path="/service-discovery">
-            <ServiceDiscoveryApp />
-          </Route>
-          {isAdhocUIEnabled && (
-            <>
-              <Route path="/adhoc-single">
-                <AdhocSingle />
-              </Route>
-              <Route path="/adhoc-comparison">
-                <AdhocComparison />
-              </Route>
-              <Route path="/adhoc-comparison-diff">
-                <AdhocDiff />
-              </Route>
-            </>
-          )}
+          <>
+            <Sidebar />
+            <Route exact path="/">
+              <ContinuousSingleView />
+            </Route>
+            <Route path="/comparison">
+              <ContinuousComparisonView />
+            </Route>
+            <Route path="/comparison-diff">
+              <ContinuousDiffView />
+            </Route>
+            <Route path="/settings">
+              <Settings />
+            </Route>
+            <Route path="/service-discovery">
+              <ServiceDiscoveryApp />
+            </Route>
+            {isAdhocUIEnabled && (
+              <>
+                <Route path="/adhoc-single">
+                  <AdhocSingle />
+                </Route>
+                <Route path="/adhoc-comparison">
+                  <AdhocComparison />
+                </Route>
+                <Route path="/adhoc-comparison-diff">
+                  <AdhocDiff />
+                </Route>
+              </>
+            )}
+          </>
         </Switch>
       </Switch>
     </div>

@@ -81,6 +81,24 @@ export async function loadCurrentUser(): Promise<
   return Result.err<User, RequestError>(response.error);
 }
 
+export async function logIn({
+  username,
+  password,
+}: {
+  username: string;
+  password: string;
+}): Promise<any> {
+  const response = await request(`/login`, {
+    method: 'POST',
+    body: JSON.stringify({ username, password: passwordEncode(password) }),
+  });
+  if (response.isOk) {
+    return Promise.resolve(response.value);
+  }
+
+  return Promise.reject(response.error);
+}
+
 export async function changeMyPassword(
   oldPassword: string,
   newPassword: string

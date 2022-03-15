@@ -100,7 +100,12 @@ export async function request(
       // Check if it's 401 unauthorized error
       if (response.status === 401) {
         // TODO: Introduce some kind of interceptor (?)
-        if (window && window.location) {
+        if (
+          window &&
+          window.location &&
+          window.location.pathname !== '/login' &&
+          window.location.pathname !== '/signin'
+        ) {
           window.location.href = '/login';
         }
       }
