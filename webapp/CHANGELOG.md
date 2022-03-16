@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.1.8...@pyroscope/webapp@1.1.9) (2022-03-16)
+
+
+### Bug Fixes
+
+* **frontend:** date range picker styling ([#936](https://github.com/pyroscope-io/pyroscope/issues/936)) ([012eb9f](https://github.com/pyroscope-io/pyroscope/commit/012eb9f1b88b0f490d154c7289089eb136f2d197))
+
+
+
+
+
 ## [1.1.8](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.1.7...@pyroscope/webapp@1.1.8) (2022-03-16)
 
 **Note:** Version bump only for package @pyroscope/webapp
