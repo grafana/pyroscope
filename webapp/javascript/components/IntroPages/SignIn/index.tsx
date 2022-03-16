@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import cx from 'classnames';
 import { Link, useHistory } from 'react-router-dom';
+import cx from 'classnames';
+import Icon from '@ui/Icon';
+import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import InputField from '@ui/InputField';
 import StatusMessage from '@ui/StatusMessage';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
@@ -9,6 +11,7 @@ import {
   loadCurrentUser,
   selectCurrentUser,
 } from '@pyroscope/redux/reducers/user';
+import { GitlabIcon, GoogleIcon } from '@ui/Icons';
 import inputStyles from '../InputGroup.module.css';
 import styles from '../IntroPages.module.css';
 import Divider from '../Divider';
@@ -85,10 +88,32 @@ function SignInPage(props) {
           Log in
         </button>
         <Divider />
+        <div className={cx(styles.buttonContainer)}>
+          <Link
+            to="./auth/google/login"
+            className={cx(styles.button, styles.buttonGoogle)}
+          >
+            <GoogleIcon /> Sign in with Google
+          </Link>
 
-        <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
-          Sign up
-        </Link>
+          <Link
+            to="./auth/github/login"
+            className={cx(styles.button, styles.buttonGithub)}
+          >
+            <Icon icon={faGithub} /> Sign in with GitHub
+          </Link>
+
+          <Link
+            to="./auth/gitlab/login"
+            className={cx(styles.button, styles.buttonGitlab)}
+          >
+            <GitlabIcon /> Sign in with GitLab
+          </Link>
+
+          <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
+            Sign up
+          </Link>
+        </div>
       </form>
     </div>
   );

@@ -96,6 +96,18 @@
   background-size: cover;
 }
 
+.buttonContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.buttonContainer > :not(:last-child) {
+  margin-bottom: 15px;
+}
+
 .button {
   width: 100%;
   padding: 0.5em;
@@ -118,4 +130,28 @@
 
 .buttonDark:hover {
   background-color: var(--ps-c-gray-light-3);
+}
+
+.buttonGithub {
+  background-color: var(--ps-c-gray-light-3);
+}
+
+.buttonGithub:hover {
+  background-color: var(--ps-c-gray-light-1);
+}
+
+.buttonGitlab {
+  background-color: var(--ps-c-orange-light-2);
+}
+
+.buttonGitlab:hover {
+  background-color: var(--ps-c-orange-dark-2);
+}
+
+.buttonGoogle {
+  background-color: var(--ps-c-orange-light-1);
+}
+
+.buttonGoogle:hover {
+  background-color: var(--ps-c-orange-dark-1);
 }
