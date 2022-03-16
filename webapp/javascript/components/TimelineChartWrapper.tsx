@@ -127,6 +127,14 @@ class TimelineChartWrapper extends React.Component<
     this.state.flotOptions.grid.markings = this.plotMarkings();
   }
 
+  componentDidUpdate(prevProps: TimelineChartWrapperProps) {
+    if (prevProps.markings !== this.props.markings) {
+      const newFlotOptions = this.state.flotOptions;
+      newFlotOptions.grid.markings = this.plotMarkings();
+      this.setState({ flotOptions: newFlotOptions });
+    }
+  }
+
   plotMarkings = () => {
     const constructMarking = (m: Marking) => {
       const from = new Date(formatAsOBject(m.from)).getTime();
@@ -174,40 +182,11 @@ class TimelineChartWrapper extends React.Component<
           timelineA.data && timelineA.data.samples.length > 3 ? null : 0.005,
       },
     };
-    customFlotOptions.grid.markings = this.plotMarkings();
 
     // If they are the same, skew the second one slightly so that they are both visible
-    // Skew the second one so that they are visible
     if (areTimelinesTheSame(timelineA, timelineB)) {
-      // TODO: use deep copy
-      const copy = JSON.parse(JSON.stringify(timelineB)) as typeof timelineB;
-
-      if (copy && copy.data) {
-        let min = copy.data.samples[0];
-        let max = copy.data.samples[0];
-
-        for (let i = 0; i < copy.data.samples.length; i += 1) {
-          const b = copy.data.samples[i];
-
-          if (b < min) {
-            min = b;
-          }
-          if (b > max) {
-            max = b;
-          }
-        }
-
-        const height = 100; // px
-        const skew = (max - min) / height;
-        if (copy.data) {
-          copy.data.samples = copy.data.samples.map((a) => {
-            // TODO: figure out by how much to skew
-            return a - skew * 3;
-          });
-        }
-      }
-
-      timelineB = copy;
+      // the factor is completely arbitrary, we use a positive number to skew above
+      timelineB = skewTimeline(timelineB, 4);
     }
 
     const data = [
@@ -232,6 +211,46 @@ class TimelineChartWrapper extends React.Component<
       />
     );
   };
+}
+
+function skewTimeline(
+  timeline: TimelineData | undefined,
+  factor: number
+): TimelineData | undefined {
+  if (!timeline) {
+    return undefined;
+  }
+
+  // TODO: deep copy
+  const copy = JSON.parse(JSON.stringify(timeline)) as typeof timeline;
+
+  if (copy && copy.data) {
+    let min = copy.data.samples[0];
+    let max = copy.data.samples[0];
+
+    for (let i = 0; i < copy.data.samples.length; i += 1) {
+      const b = copy.data.samples[i];
+
+      if (b < min) {
+        min = b;
+      }
+      if (b > max) {
+        max = b;
+      }
+    }
+
+    const height = 100; // px
+    const skew = (max - min) / height;
+
+    if (copy.data) {
+      copy.data.samples = copy.data.samples.map((a) => {
+        // 4 is completely arbitrary, it was eyeballed
+        return a + skew * factor;
+      });
+    }
+  }
+
+  return copy;
 }
 
 function areTimelinesTheSame(
