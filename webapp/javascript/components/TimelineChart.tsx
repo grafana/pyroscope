@@ -13,7 +13,6 @@ import './TimelineChartSideBySidePlugin';
 interface TimelineChartProps {
   onSelect: (from: string, until: string) => void;
   className: string;
-  viewSide: string;
   ['data-testid']?: string;
 }
 

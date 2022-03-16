@@ -122,7 +122,9 @@ function ComparisonApp() {
     leftSide.profile
   );
 
+  // Purple
   const leftColor = Color('rgb(200, 102, 204)');
+  // Blue
   const rightColor = Color('rgb(19, 152, 246)');
 
   const leftTimeline = {
@@ -142,11 +144,9 @@ function ComparisonApp() {
         <TimelineChartWrapper
           data-testid="timeline-main"
           id="timeline-chart-double"
-          viewSide="both"
           format="lines"
-          left={leftTimeline}
-          right={rightTimeline}
-          timeline={[leftTimeline, rightTimeline]}
+          timelineA={leftTimeline}
+          timelineB={rightTimeline}
           onSelect={(from, until) => {
             dispatch(actions.setFromAndUntil({ from, until }));
           }}
@@ -200,23 +200,10 @@ function ComparisonApp() {
                 key="timeline-chart-left"
                 id="timeline-chart-left"
                 data-testid="timeline-left"
-                viewSide="left"
+                timelineA={leftTimeline}
                 markings={{
                   left: { from: leftFrom, to: leftUntil, color: leftColor },
                 }}
-                //                timeline={[
-                //                  {
-                //                    color: 'rgba(200, 102, 204, 1)',
-                //                    data: leftSide.timeline,
-                //                  },
-                //                ]}
-                timeline={[leftTimeline]}
-                //                color="rgba(200, 102, 204, 1)"
-                //                timeline={[leftSide.timeline, rightSide.timeline]}
-                leftFrom={leftFrom}
-                leftUntil={leftUntil}
-                rightFrom={rightFrom}
-                rightUntil={rightUntil}
                 onSelect={(from, until) => {
                   dispatch(actions.setLeft({ from, until }));
                 }}
@@ -265,15 +252,10 @@ function ComparisonApp() {
                 key="timeline-chart-right"
                 id="timeline-chart-right"
                 data-testid="timeline-right"
-                viewSide="right"
+                timelineA={rightTimeline}
                 markings={{
                   right: { from: rightFrom, to: rightUntil, color: rightColor },
                 }}
-                timeline={[rightTimeline]}
-                leftFrom={leftFrom}
-                leftUntil={leftUntil}
-                rightFrom={rightFrom}
-                rightUntil={rightUntil}
                 onSelect={(from, until) => {
                   dispatch(actions.setRight({ from, until }));
                 }}

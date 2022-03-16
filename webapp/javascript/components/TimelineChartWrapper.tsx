@@ -22,47 +22,22 @@ interface Marking {
 type TimelineChartWrapperProps = {
   /** the id attribute of the element float will use to apply to, it should be unique */
   id: string;
-  timeline: TimelineData[];
-  //  timeline?: Timeline[];
+
   ['data-testid']?: string;
-  color?: string;
   onSelect: (from: string, until: string) => void;
   format: 'lines' | 'bars';
 
-  left: TimelineData;
-  right?: TimelineData;
+  /** timelineA refers to the first (and maybe unique) timeline */
+  timelineA: TimelineData;
+  /** timelineB refers to the second timeline, useful for comparison view */
+  timelineB?: TimelineData;
 
   /** refers to the highlighted selection */
   markings?: {
     left?: Marking;
     right?: Marking;
   };
-} /** it will use this info to color the markins */ & (
-  | {
-      viewSide: 'left';
-      leftFrom: string;
-      leftUntil: string;
-
-      rightFrom?: string;
-      rightUntil?: string;
-    }
-  | {
-      viewSide: 'right';
-      rightFrom: string;
-      rightUntil: string;
-
-      leftFrom?: string;
-      leftUntil?: string;
-    }
-  | { viewSide: 'none' }
-  | {
-      viewSide: 'both';
-      rightFrom: string;
-      rightUntil: string;
-      leftFrom?: string;
-      leftUntil?: string;
-    }
-);
+};
 
 class TimelineChartWrapper extends React.Component<
   TimelineChartWrapperProps,
@@ -185,69 +160,44 @@ class TimelineChartWrapper extends React.Component<
   };
 
   render = () => {
-    const { timeline, id, viewSide } = this.props;
     const { flotOptions } = this.state;
+    const { id, timelineA } = this.props;
+    let { timelineB } = this.props;
 
-    // Since profiling data is chuked by 10 seconds slices
-    // it's more user friendly to point a `center` of a data chunk
-    // as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
-    //    const flotData = timeline
-    //      ? [
-    //          decodeTimelineData(timeline).map((x) => [
-    //            x[0] + 5000,
-    //            x[1] === 0 ? null : x[1] - 1,
-    //          ]),
-    //        ]
-    //      : [];
-    //
-    // In case there are few chunks left, then we'd like to add some margins to
-    // both sides making it look more centers
     const customFlotOptions = {
       ...flotOptions,
       xaxis: {
         ...flotOptions.xaxis,
-        //        autoscaleMargin: flotData[0] && flotData[0].length > 3 ? null : 0.005,
+        // In case there are few chunks left, then we'd like to add some margins to
+        // both sides making it look more centers
+        autoscaleMargin:
+          timelineA.data && timelineA.data.samples.length > 3 ? null : 0.005,
       },
     };
     customFlotOptions.grid.markings = this.plotMarkings();
 
-    // TODO: render something
-    if (!timeline || timeline.filter((a) => !!a).length <= 0) {
-      return null;
-    }
-
-    // let's only act on explicit data
-    // otherwise the SideBySide plugin may not work properly
-    const filtered = timeline.filter((a) => a?.data?.samples.length > 0);
-
-    const copy = JSON.parse(JSON.stringify(filtered));
-
     // If they are the same, skew the second one slightly so that they are both visible
     // Skew the second one so that they are visible
-    if (copy.length > 1 && copy[1].data && copy[1].data.samples) {
-      const newSamples = copy[1].data.samples.map((a) => {
-        // TODO: figure out by how much to skew
-        return a - 5;
-      });
+    if (areTimelinesTheSame(timelineA, timelineB)) {
+      // TODO: use deep copy
+      const copy = JSON.parse(JSON.stringify(timelineB)) as typeof timelineB;
 
-      copy[1].data.samples = newSamples;
+      if (copy.data) {
+        copy.data.samples = copy.data.samples.map((a) => {
+          // TODO: figure out by how much to skew
+          return a - 5;
+        });
+      }
+
+      timelineB = copy;
     }
 
-    const d = copy.map((a, i) => {
-      return {
-        //        color: this.props.color ? this.props.color : null,
-        color: a.color,
-        // Since profiling data is chuked by 10 seconds slices
-        // it's more user friendly to point a `center` of a data chunk
-        // as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
-        data: a
-          ? decodeTimelineData(a.data).map((x) => [
-              x[0] + 5000,
-              x[1] === 0 ? 0 : x[1] - 1,
-            ])
-          : [[]],
-      };
-    });
+    const data = [
+      timelineA &&
+        timelineA.data && { ...timelineA, data: centerTimelineData(timelineA) },
+      timelineB &&
+        timelineB.data && { ...timelineB, data: centerTimelineData(timelineB) },
+    ].filter((a) => !!a);
 
     return (
       <TimelineChart
@@ -257,14 +207,53 @@ class TimelineChartWrapper extends React.Component<
         data-testid={this.props['data-testid']}
         id={id}
         options={customFlotOptions}
-        viewSide={viewSide}
-        //        data={msData}
-        data={d}
+        data={data}
+        //        data={d}
         width="100%"
         height="100px"
       />
     );
   };
+}
+
+function areTimelinesTheSame(
+  timelineA: TimelineData,
+  timelineB?: TimelineData
+) {
+  if (!timelineA || !timelineB) {
+    // for all purposes let's consider two empty timelines the same
+    // since we want to transform them
+    return false;
+  }
+  const dataA = timelineA.data;
+  const dataB = timelineB.data;
+
+  if (!dataA || !dataB) {
+    return false;
+  }
+
+  if (dataA.samples.length !== dataB.samples.length) {
+    return false;
+  }
+
+  const add = (acc: number, a: number) => acc + a;
+
+  // TODO: actually check if they are the same
+  // this is a very poor heuristic
+  const sumA = dataA.samples.reduce(add, 0);
+  const sumB = dataB.samples.reduce(add, 0);
+  return sumA === sumB;
+}
+// Since profiling data is chuked by 10 seconds slices
+// it's more user friendly to point a `center` of a data chunk
+// as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
+function centerTimelineData(timeline: TimelineData) {
+  return timeline.data
+    ? decodeTimelineData(timeline.data).map((x) => [
+        x[0] + 5000,
+        x[1] === 0 ? 0 : x[1] - 1,
+      ])
+    : [[]];
 }
 
 function decodeTimelineData(timelineData: Timeline) {
