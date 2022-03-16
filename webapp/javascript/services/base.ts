@@ -104,7 +104,7 @@ export async function request(
           window &&
           window.location &&
           window.location.pathname !== '/login' &&
-          window.location.pathname !== '/signin'
+          window.location.pathname !== '/signup'
         ) {
           window.location.href = '/login';
         }
