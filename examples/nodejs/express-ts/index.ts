@@ -1,8 +1,9 @@
+/* eslint-disable */
+import fetch from 'node-fetch';
 import express from 'express';
 import morgan from 'morgan';
 
-const fetch = require('node-fetch');
-const pyroscope = require('./profiler');
+import Pyroscope from 'pyroscope';
 
 const port = process.env['PORT'] || 3000;
 
@@ -38,7 +39,15 @@ setInterval(() => {
   fetch(`http://localhost:${port}/car`);
 }, 1800);
 
-pyroscope.startHeapProfiling();
+setInterval(() => {
+  fetch(`http://localhost:${port}/bike`);
+}, 633);
+
+setInterval(() => {
+  fetch(`http://localhost:${port}/scooter`);
+}, 1000);
+
+Pyroscope.init();
 
 app.listen(port, () => {
   console.log(
