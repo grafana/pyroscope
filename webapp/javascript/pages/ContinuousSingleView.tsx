@@ -53,6 +53,7 @@ function ContinuousSingleView() {
             viewType="single"
             display="both"
             rawFlamegraph={singleView.profile}
+            getContextItems={getContextItems}
             ExportData={
               <ExportData
                 flamebearer={singleView.profile}
