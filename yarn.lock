@@ -19863,6 +19863,13 @@ send@0.17.2:
     range-parser "~1.2.1"
     statuses "~1.5.0"
 
+serialize-error@^9.1.0:
+  version "9.1.0"
+  resolved "https://registry.yarnpkg.com/serialize-error/-/serialize-error-9.1.0.tgz#cb3ebd0af124b3055c38be758da036914f967662"
+  integrity sha512-mqSMI2maV+Hb4/+DTpz4EzAPoDENirBx3eirEAhIUM00Ms1ZQ84fGempf2ZeYHbW3YLmYfkdGq9Ap3KnZthf+g==
+  dependencies:
+    type-fest "^2.5.3"
+
 serialize-javascript@6.0.0, serialize-javascript@^6.0.0:
   version "6.0.0"
   resolved "https://registry.yarnpkg.com/serialize-javascript/-/serialize-javascript-6.0.0.tgz#efae5d88f45d7924141da8b5c3a7a7e663fefeb8"
@@ -21409,6 +21416,11 @@ trough@^1.0.0:
   resolved "https://registry.yarnpkg.com/true-myth/-/true-myth-5.1.2.tgz#58a425b0aefe57eed279ac2d1b65e567153ea9b0"
   integrity sha512-4A8CVJiDt35EhS2U4DYoU1Kg8nMdqpC4sIc4ktan/nE3T2u5kLd7fJ1ZSQTn5xO/A41IB7DLF8R8xL6l0MPgsQ==
 
+ts-custom-error@^3.2.0:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/ts-custom-error/-/ts-custom-error-3.2.0.tgz#ff8f80a3812bab9dc448536312da52dce1b720fb"
+  integrity sha512-cBvC2QjtvJ9JfWLvstVnI45Y46Y5dMxIaG1TDMGAD/R87hpvqFL+7LhvUDhnRCfOnx/xitollFWWvUKKKhbN0A==
+
 ts-dedent@^2.0.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/ts-dedent/-/ts-dedent-2.2.0.tgz#39e4bd297cd036292ae2394eb3412be63f563bb5"
@@ -21580,6 +21592,11 @@ type-fest@^1.2.2:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-1.4.0.tgz#e9fb813fe3bf1744ec359d55d1affefa76f14be1"
   integrity sha512-yGSza74xk0UG8k+pLh5oeoYirvIiWo5t0/o3zHHAO2tRDiZcxWP7fywNlXhqb6/r6sWvwi+RsyQMWhVLe4BVuA==
+
+type-fest@^2.5.3:
+  version "2.12.0"
+  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-2.12.0.tgz#ce342f58cab9114912f54b493d60ab39c3fc82b6"
+  integrity sha512-Qe5GRT+n/4GoqCNGGVp5Snapg1Omq3V7irBJB3EaKsp7HWDo5Gv2d/67gfNyV+d5EXD+x/RF5l1h4yJ7qNkcGA==
 
 type-is@~1.6.18:
   version "1.6.18"

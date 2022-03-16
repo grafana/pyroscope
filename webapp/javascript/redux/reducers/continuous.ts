@@ -156,8 +156,8 @@ export const fetchSingleView = createAsyncThunk<
   thunkAPI.dispatch(
     addNotification({
       type: 'danger',
-      title: 'Failed',
-      message: `Failed to load singleView`,
+      title: 'Failed to load single view data',
+      message: res.error.message,
     })
   );
 
@@ -199,19 +199,22 @@ export const fetchInitialComparisonView = createAsyncThunk<
     });
   }
 
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: 'Failed',
-      message: `Failed to load comparison view`,
-    })
-  );
-
   const failures = [
     timeline.isErr ? timeline : undefined,
     leftData.isErr ? leftData : undefined,
     rightData.isErr ? rightData : undefined,
   ];
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: 'Failed to load comparison view data',
+      message: '',
+      additionalInfo: failures
+        .map((a) => a?.error.message || '')
+        .filter((a) => !!a),
+    })
+  );
 
   return Promise.reject(failures.map((a) => a?.error));
 });
@@ -231,8 +234,8 @@ export const fetchComparisonTimeline = createAsyncThunk<
   thunkAPI.dispatch(
     addNotification({
       type: 'danger',
-      title: 'Failed',
-      message: `Failed to load comparison timeline`,
+      title: 'Failed to load comparison timeline',
+      message: res.error.message,
     })
   );
 
@@ -277,8 +280,8 @@ export const fetchComparisonSide = createAsyncThunk<
   thunkAPI.dispatch(
     addNotification({
       type: 'danger',
-      title: 'Failed',
-      message: `Failed to load the ${side} side comparison`,
+      title: `Failed to load the ${side} side comparison`,
+      message: res.error.message,
     })
   );
 
@@ -300,8 +303,8 @@ export const fetchDiffView = createAsyncThunk<
   thunkAPI.dispatch(
     addNotification({
       type: 'danger',
-      title: 'Failed',
-      message: `Failed to load diffView`,
+      title: 'Failed to load diff view',
+      message: res.error.message,
     })
   );
 
@@ -320,8 +323,8 @@ export const fetchTags = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: `Failed to load tags`,
+        title: 'Failed to load tags',
+        message: res.error.message,
       })
     );
 
@@ -350,8 +353,8 @@ export const fetchTagValues = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: `Failed to load tag values`,
+        title: 'Failed to load tag values',
+        message: res.error.message,
       })
     );
 
@@ -373,7 +376,7 @@ export const reloadAppNames = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to load app names',
-        message: 'message' in res.error ? res.error.message : 'Unknown error',
+        message: res.error.message,
       })
     );
 
