@@ -182,11 +182,29 @@ class TimelineChartWrapper extends React.Component<
       // TODO: use deep copy
       const copy = JSON.parse(JSON.stringify(timelineB)) as typeof timelineB;
 
-      if (copy.data) {
-        copy.data.samples = copy.data.samples.map((a) => {
-          // TODO: figure out by how much to skew
-          return a - 5;
-        });
+      if (copy && copy.data) {
+        let min = copy.data.samples[0];
+        let max = copy.data.samples[0];
+
+        for (let i = 0; i < copy.data.samples.length; i += 1) {
+          const b = copy.data.samples[i];
+
+          if (b < min) {
+            min = b;
+          }
+          if (b > max) {
+            max = b;
+          }
+        }
+
+        const height = 100; // px
+        const skew = (max - min) / height;
+        if (copy.data) {
+          copy.data.samples = copy.data.samples.map((a) => {
+            // TODO: figure out by how much to skew
+            return a - skew * 3;
+          });
+        }
       }
 
       timelineB = copy;

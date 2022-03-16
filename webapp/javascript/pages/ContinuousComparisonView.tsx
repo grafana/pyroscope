@@ -43,10 +43,6 @@ function ComparisonApp() {
 
   const comparisonView = useAppSelector(selectComparisonState);
 
-  //  useEffect(() => {
-  //    dispatch(fetchInitialComparisonView(null));
-  //  }, [query, refreshToken]);
-
   // When the application changes, update the queries too
   useEffect(() => {
     if (query) {
@@ -67,11 +63,6 @@ function ComparisonApp() {
     }
   }, [leftQuery, rightQuery]);
 
-  // timeline changes
-  //  useEffect(() => {
-  //    dispatch(fetchComparisonTimeline(null));
-  //  }, [from, until]);
-
   // left side changes
   useEffect(() => {
     if (leftQuery) {
@@ -86,18 +77,6 @@ function ComparisonApp() {
     }
   }, [rightFrom, rightUntil, rightQuery, from, until, refreshToken]);
 
-  //  const topTimeline = (() => {
-  //    switch (comparisonView.timeline.type) {
-  //      case 'loaded':
-  //      case 'reloading': {
-  //        return comparisonView.timeline.data;
-  //      }
-  //
-  //      default:
-  //        return undefined;
-  //    }
-  //  })();
-  //
   const getSide = (side: 'left' | 'right') => {
     const s = comparisonView[side];
 
