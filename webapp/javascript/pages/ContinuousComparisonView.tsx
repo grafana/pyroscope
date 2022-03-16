@@ -13,6 +13,7 @@ import {
   fetchTags,
   fetchTagValues,
 } from '@pyroscope/redux/reducers/continuous';
+import Color from 'color';
 import TimelineChartWrapper from '../components/TimelineChartWrapper';
 import Toolbar from '../components/Toolbar';
 import Footer from '../components/Footer';
@@ -121,13 +122,16 @@ function ComparisonApp() {
     leftSide.profile
   );
 
+  const leftColor = Color('rgb(200, 102, 204)');
+  const rightColor = Color('rgb(19, 152, 246)');
+
   const leftTimeline = {
-    color: 'rgba(200, 102, 204, 1)',
+    color: leftColor.rgb().toString(),
     data: leftSide.timeline,
   };
 
   const rightTimeline = {
-    color: 'rgba(19, 152, 246, 1)',
+    color: rightColor.rgb().toString(),
     data: rightSide.timeline,
   };
 
@@ -139,13 +143,16 @@ function ComparisonApp() {
           data-testid="timeline-main"
           id="timeline-chart-double"
           viewSide="both"
+          format="lines"
+          left={leftTimeline}
+          right={rightTimeline}
           timeline={[leftTimeline, rightTimeline]}
-          leftFrom={leftFrom}
-          leftUntil={leftUntil}
-          rightFrom={rightFrom}
-          rightUntil={rightUntil}
           onSelect={(from, until) => {
             dispatch(actions.setFromAndUntil({ from, until }));
+          }}
+          markings={{
+            left: { from: leftFrom, to: leftUntil, color: leftColor },
+            right: { from: rightFrom, to: rightUntil, color: rightColor },
           }}
         />
         <div
@@ -194,6 +201,9 @@ function ComparisonApp() {
                 id="timeline-chart-left"
                 data-testid="timeline-left"
                 viewSide="left"
+                markings={{
+                  left: { from: leftFrom, to: leftUntil, color: leftColor },
+                }}
                 //                timeline={[
                 //                  {
                 //                    color: 'rgba(200, 102, 204, 1)',
@@ -256,6 +266,9 @@ function ComparisonApp() {
                 id="timeline-chart-right"
                 data-testid="timeline-right"
                 viewSide="right"
+                markings={{
+                  right: { from: rightFrom, to: rightUntil, color: rightColor },
+                }}
                 timeline={[rightTimeline]}
                 leftFrom={leftFrom}
                 leftUntil={leftUntil}
