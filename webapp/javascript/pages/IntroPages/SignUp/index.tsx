@@ -72,7 +72,7 @@ function SignUpPage(props) {
             name="username"
             label="Username"
             placeholder="Username"
-            styling={inputStyles.inputGroup}
+            className={inputStyles.inputGroup}
             value={form.username}
             onChange={handleFormChange}
             required
@@ -82,7 +82,7 @@ function SignUpPage(props) {
             name="email"
             label="Email"
             placeholder="Email"
-            styling={inputStyles.inputGroup}
+            className={inputStyles.inputGroup}
             value={form.email}
             onChange={handleFormChange}
             required
@@ -92,7 +92,7 @@ function SignUpPage(props) {
             name="fullName"
             label="Full Name"
             placeholder="Full Name"
-            styling={inputStyles.inputGroup}
+            className={inputStyles.inputGroup}
             value={form.fullName}
             onChange={handleFormChange}
             required
@@ -102,7 +102,7 @@ function SignUpPage(props) {
             name="password"
             label="Password"
             placeholder="Password"
-            styling={inputStyles.inputGroup}
+            className={inputStyles.inputGroup}
             value={form.password}
             onChange={handleFormChange}
             required

@@ -5,16 +5,16 @@ import styles from './InputField.module.css';
 
 interface IInputFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
-  styling?: string;
+  className?: string;
 }
 
 /* eslint-disable react/jsx-props-no-spreading */
-function InputField({ label, styling, ...rest }: IInputFieldProps) {
+function InputField({ label, className, ...rest }: IInputFieldProps) {
   return (
     <div
       className={cx({
         [styles.inputWrapper]: true,
-        [styling]: true,
+        [className]: true,
       })}
     >
       <h4>{label}</h4>

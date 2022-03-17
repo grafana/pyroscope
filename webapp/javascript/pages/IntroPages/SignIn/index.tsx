@@ -73,7 +73,7 @@ function SignInPage(props) {
             name="username"
             label="Username"
             placeholder="Username"
-            styling={inputStyles.inputGroup}
+            className={inputStyles.inputGroup}
             value={form.username}
             onChange={handleFormChange}
             required
@@ -83,7 +83,7 @@ function SignInPage(props) {
             name="password"
             label="Password"
             placeholder="Password"
-            styling={inputStyles.inputGroup}
+            className={inputStyles.inputGroup}
             value={form.password}
             onChange={handleFormChange}
             required
