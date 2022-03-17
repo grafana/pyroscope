@@ -1,6 +1,6 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["./src/index.tsx"],
+  "include": ["./src/index.tsx", "../../webapp/javascript/types", "../../lib"],
   "baseUrl": ".",
   "compilerOptions": {
     "module": "commonjs",
