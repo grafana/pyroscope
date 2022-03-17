@@ -77,7 +77,6 @@ class TimelineChartWrapper extends React.Component<
       },
       points: {
         show: false,
-        //          radius: 0.1,
       },
       lines: {
         show: false,
@@ -187,6 +186,18 @@ class TimelineChartWrapper extends React.Component<
     if (areTimelinesTheSame(timelineA, timelineB)) {
       // the factor is completely arbitrary, we use a positive number to skew above
       timelineB = skewTimeline(timelineB, 4);
+
+      // check if both have a single value
+      // if so, let's use bars
+      // since we can't put a point when there's no data when using points
+      if (timelineB && timelineB.data && timelineB.data.samples.length <= 1) {
+        customFlotOptions.bars.show = true;
+
+        // Also slightly skew to show them side by side
+        timelineB.data.startTime += 0.01;
+      } else {
+        customFlotOptions.bars.show = false;
+      }
     }
 
     const data = [
@@ -244,6 +255,11 @@ function skewTimeline(
 
     if (copy.data) {
       copy.data.samples = copy.data.samples.map((a) => {
+        // We don't want to skew negative values, since users are expecting an absent value
+        if (a <= 0) {
+          return 0;
+        }
+
         // 4 is completely arbitrary, it was eyeballed
         return a + skew * factor;
       });
@@ -284,23 +300,23 @@ function areTimelinesTheSame(
 // Since profiling data is chuked by 10 seconds slices
 // it's more user friendly to point a `center` of a data chunk
 // as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
-function centerTimelineData(timeline: TimelineData) {
-  return timeline.data
-    ? decodeTimelineData(timeline.data).map((x) => [
+function centerTimelineData(timelineData: TimelineData) {
+  return timelineData.data
+    ? decodeTimelineData(timelineData.data).map((x) => [
         x[0] + 5000,
         x[1] === 0 ? 0 : x[1] - 1,
       ])
     : [[]];
 }
 
-function decodeTimelineData(timelineData: Timeline) {
-  if (!timelineData) {
+function decodeTimelineData(timeline: Timeline) {
+  if (!timeline) {
     return [];
   }
-  let time = timelineData.startTime;
-  return timelineData.samples.map((x) => {
+  let time = timeline.startTime;
+  return timeline.samples.map((x) => {
     const res = [time * 1000, x];
-    time += timelineData.durationDelta;
+    time += timeline.durationDelta;
     return res;
   });
 }
