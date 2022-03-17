@@ -311,18 +311,15 @@ function areTimelinesTheSame(
     return false;
   }
 
-  if (dataA.samples.length !== dataB.samples.length) {
-    return false;
-  }
+  // Find the biggest one
+  const biggest = dataA.samples.length > dataB.samples.length ? dataA : dataB;
+  const smallest = dataA.samples.length < dataB.samples.length ? dataA : dataB;
 
-  const add = (acc: number, a: number) => acc + a;
+  const map = new Map(biggest.samples.map((a) => [a, true]));
 
-  // TODO: actually check if they are the same
-  // this is a very poor heuristic
-  const sumA = dataA.samples.reduce(add, 0);
-  const sumB = dataB.samples.reduce(add, 0);
-  return sumA === sumB;
+  return smallest.samples.every((a) => map.has(a));
 }
+
 // Since profiling data is chuked by 10 seconds slices
 // it's more user friendly to point a `center` of a data chunk
 // as a bar rather than starting point, so we add 5 seconds to each chunk to 'center' it
