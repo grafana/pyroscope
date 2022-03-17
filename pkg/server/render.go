@@ -105,7 +105,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		res := flamebearer.NewProfile(filename, out, p.maxNodes)
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&res, ctrl.dir, w); err != nil {
-			ctrl.writeJSONEncodeError(w, err)
+			ctrl.writeEncodeError(w, err)
 			return
 		}
 	}
@@ -258,7 +258,7 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 	case "html":
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, ctrl.dir, w); err != nil {
-			ctrl.writeJSONEncodeError(w, err)
+			ctrl.writeEncodeError(w, err)
 			return
 		}
 

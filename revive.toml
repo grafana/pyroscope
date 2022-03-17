@@ -71,7 +71,7 @@ warningCode = 0
 
 # These are pretty much disabled
 [rule.cognitive-complexity]
-  arguments = [55]
+  arguments = [65]
 
 [rule.cyclomatic]
   arguments = [50]

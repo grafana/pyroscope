@@ -18,6 +18,7 @@ import Sidebar from './components/Sidebar';
 import AdhocSingle from './pages/AdhocSingle';
 import AdhocComparison from './pages/AdhocComparison';
 import AdhocDiff from './pages/AdhocDiff';
+import CurrentConfig from './pages/CurrentConfig';
 import ServiceDiscoveryApp from './components/ServiceDiscoveryApp';
 import ServerNotifications from './components/ServerNotifications';
 // since this style is practically all pages
@@ -61,6 +62,9 @@ function App() {
         </Route>
         <Route path="/service-discovery">
           <ServiceDiscoveryApp />
+        </Route>
+        <Route path="/config">
+          <CurrentConfig />
         </Route>
         {isAdhocUIEnabled && (
           <>

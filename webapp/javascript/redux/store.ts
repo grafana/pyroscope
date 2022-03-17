@@ -26,6 +26,7 @@ import continuousReducer, {
 } from './reducers/continuous';
 import serviceDiscoveryReducer from './reducers/serviceDiscovery';
 import uiStore, { persistConfig as uiPersistConfig } from './reducers/ui';
+import currentConfigReducer from './reducers/currentConfig';
 
 const reducer = combineReducers({
   root: rootReducer,
@@ -33,6 +34,7 @@ const reducer = combineReducers({
   settings: settingsReducer,
   user: userReducer,
   serviceDiscovery: serviceDiscoveryReducer,
+  currentConfig: currentConfigReducer,
   ui: persistReducer(uiPersistConfig, uiStore),
   continuous: continuousReducer,
 });

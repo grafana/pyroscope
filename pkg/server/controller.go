@@ -233,6 +233,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/comparison", ctrl.indexHandler()},
 		{"/comparison-diff", ctrl.indexHandler()},
 		{"/service-discovery", ctrl.indexHandler()},
+		{"/config", ctrl.indexHandler()},
 		{"/adhoc-single", ctrl.indexHandler()},
 		{"/adhoc-comparison", ctrl.indexHandler()},
 		{"/adhoc-comparison-diff", ctrl.indexHandler()},
@@ -263,9 +264,9 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	// Diagnostic secure routes: must be protected but not drained.
 	diagnosticSecureRoutes := []route{
-		{"/config", ctrl.configHandler},
 		{"/build", ctrl.buildHandler},
 		{"/targets", ctrl.activeTargetsHandler},
+		{"/status/config", ctrl.configHandler},
 		{"/debug/storage/export/{db}", ctrl.storage.DebugExport},
 	}
 	if !ctrl.config.DisablePprofEndpoint {
@@ -520,7 +521,7 @@ func (*Controller) expectFormats(format string) error {
 func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(res); err != nil {
-		ctrl.writeJSONEncodeError(w, err)
+		ctrl.writeEncodeError(w, err)
 	}
 }
 
@@ -547,7 +548,7 @@ func (ctrl *Controller) writeInternalServerError(w http.ResponseWriter, err erro
 	ctrl.writeError(w, http.StatusInternalServerError, err, msg)
 }
 
-func (ctrl *Controller) writeJSONEncodeError(w http.ResponseWriter, err error) {
+func (ctrl *Controller) writeEncodeError(w http.ResponseWriter, err error) {
 	ctrl.writeInternalServerError(w, err, "encoding response body")
 }
 

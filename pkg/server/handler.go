@@ -47,6 +47,9 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 		} else if path == "/service-discovery" {
 			ctrl.statsInc("service-discovery")
 			ctrl.renderIndexPage(rw, r)
+		} else if path == "/config" {
+			ctrl.statsInc("config")
+			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)
 		}
@@ -88,7 +91,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	var b []byte
 	b, err = json.Marshal(initialStateObj)
 	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
+		ctrl.writeEncodeError(w, err)
 		return
 	}
 
@@ -113,7 +116,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	}
 	b, err = json.Marshal(features)
 	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
+		ctrl.writeEncodeError(w, err)
 		return
 	}
 	featuresStr := string(b)

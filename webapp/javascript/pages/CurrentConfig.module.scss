@@ -1,0 +1,15 @@
+.currentConfigApp {
+  width: 100%;
+  height: 100%;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  .config {
+    word-break: break-all;
+    overflow: auto;
+    width: 100%;
+  }
+  .header {
+    margin: 0 0 10px;
+  }
+}

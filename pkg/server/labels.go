@@ -23,7 +23,7 @@ func (ctrl *Controller) labelsHandler(w http.ResponseWriter, r *http.Request) {
 
 	b, err := json.Marshal(keys)
 	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
+		ctrl.writeEncodeError(w, err)
 		return
 	}
 	_, _ = w.Write(b)
@@ -53,7 +53,7 @@ func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, r *http.Reques
 
 	b, err := json.Marshal(values)
 	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
+		ctrl.writeEncodeError(w, err)
 		return
 	}
 	_, _ = w.Write(b)
