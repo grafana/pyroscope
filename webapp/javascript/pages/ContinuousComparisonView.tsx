@@ -63,19 +63,29 @@ function ComparisonApp() {
     }
   }, [leftQuery, rightQuery]);
 
-  // left side changes
+  // Every time one of the queries changes, we need to actually refresh BOTH
+  // otherwise one of the timelines will be outdated
   useEffect(() => {
     if (leftQuery) {
       dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }));
     }
-  }, [leftFrom, leftUntil, leftQuery, from, until, refreshToken]);
 
-  // right side changes
-  useEffect(() => {
     if (rightQuery) {
       dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }));
     }
-  }, [rightFrom, rightUntil, rightQuery, from, until, refreshToken]);
+  }, [
+    leftFrom,
+    leftUntil,
+    leftQuery,
+    rightFrom,
+    rightUntil,
+    rightQuery,
+    from,
+    until,
+    refreshToken,
+    from,
+    until,
+  ]);
 
   const getSide = (side: 'left' | 'right') => {
     const s = comparisonView[side];
