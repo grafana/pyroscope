@@ -14,9 +14,11 @@
   "scripts": {
     "test": "jest",
     "build": "yarn build:types && NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts",
-    "build:types": "tsc -p tsconfig.json",
+    "build:types": "tsc -p tsconfig.json --noEmitJs",
+    "build:types:watch": "tsc -p tsconfig.json --noEmitJs",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "watch": "NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts --watch"
+    "dev": "NODE_ENV=production webpack --config ../../scripts/webpack/webpack.flamegraph.ts --watch",
+    "watch": "npm-run-all dev build:types:watch"
   },
   "peerDependencies": {
     "react": ">=16.14.0"
