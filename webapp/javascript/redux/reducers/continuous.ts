@@ -239,7 +239,8 @@ export const fetchComparisonSide = createAsyncThunk<
     addNotification({
       type: 'danger',
       title: `Failed to load the ${side} side comparison`,
-      message: res.error.message,
+      message: '',
+      additionalInfo: [res[0].error.message, res[1].error.message],
     })
   );
 

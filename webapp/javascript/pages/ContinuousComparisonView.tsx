@@ -43,15 +43,23 @@ function ComparisonApp() {
 
   const comparisonView = useAppSelector(selectComparisonState);
 
-  // When the application changes, update the queries too
+  // initially populate the query
   useEffect(() => {
-    if (query) {
+    if (query && !rightQuery) {
       dispatch(actions.setRightQuery(query));
     }
-    if (query) {
+    if (query && !leftQuery) {
       dispatch(actions.setLeftQuery(query));
     }
   }, [query]);
+  //  useEffect(() => {
+  //    if (query) {
+  //      dispatch(actions.setRightQuery(query));
+  //    }
+  //    if (query) {
+  //      dispatch(actions.setLeftQuery(query));
+  //    }
+  //  }, [query]);
 
   useEffect(() => {
     // TODO if the query is the same the request will be made twice
@@ -119,7 +127,14 @@ function ComparisonApp() {
   return (
     <div className="pyroscope-app">
       <div className="main-wrapper">
-        <Toolbar hideTagsBar />
+        <Toolbar
+          hideTagsBar
+          onSelectedName={(query) => {
+            dispatch(actions.setRightQuery(query));
+            dispatch(actions.setLeftQuery(query));
+            dispatch(actions.setQuery(query));
+          }}
+        />
         <TimelineChartWrapper
           data-testid="timeline-main"
           id="timeline-chart-double"

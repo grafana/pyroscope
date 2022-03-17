@@ -16,7 +16,11 @@ import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
 import Dropdown, { MenuItem, FocusableItem } from '@ui/Dropdown';
 import styles from './NameSelector.module.scss';
 
-function NameSelector() {
+interface NameSelectorProps {
+  /** allows to overwrite what to happen when a name is selected, by default it dispatches 'actions.setQuery' */
+  onSelectedName?: (name: string) => void;
+}
+function NameSelector({ onSelectedName }: NameSelectorProps) {
   const appNamesState = useAppSelector(selectAppNamesState);
   const appNames = useAppSelector(selectAppNames);
   const dispatch = useAppDispatch();
@@ -27,7 +31,11 @@ function NameSelector() {
   const selectAppName = (name: string) => {
     const query = appNameToQuery(name);
 
-    dispatch(actions.setQuery(query));
+    if (onSelectedName) {
+      onSelectedName(query);
+    } else {
+      dispatch(actions.setQuery(query));
+    }
   };
 
   const selectedValue = queryToAppName(query).mapOr('', (q) => {

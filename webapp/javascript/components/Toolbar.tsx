@@ -21,8 +21,10 @@ interface ToolbarProps {
   // TODO: refactor this
   /* hide tags bar, useful for comparison view */
   hideTagsBar?: boolean;
+  /** allows to overwrite what to happen when a name is selected, by default it dispatches 'actions.setQuery' */
+  onSelectedName?: (name: string) => void;
 }
-function Toolbar({ hideTagsBar }: ToolbarProps) {
+function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
   const dispatch = useAppDispatch();
   const isLoadingData = useAppSelector(selectIsLoadingData);
   const { query } = useAppSelector((state) => state.continuous);
@@ -36,7 +38,7 @@ function Toolbar({ hideTagsBar }: ToolbarProps) {
     <>
       <div className="navbar">
         <div className={classNames('labels')}>
-          <NameSelector />
+          <NameSelector onSelectedName={onSelectedName} />
         </div>
         <div className="navbar-space-filler" />
         <div

@@ -207,7 +207,10 @@ class TimelineChartWrapper extends React.Component<
 
     const data = [
       timelineA &&
-        timelineA.data && { ...timelineA, data: centerTimelineData(timelineA) },
+        timelineA.data && {
+          ...timelineA,
+          data: centerTimelineData(timelineA),
+        },
       timelineB &&
         timelineB.data && { ...timelineB, data: centerTimelineData(timelineB) },
     ].filter((a) => !!a);
