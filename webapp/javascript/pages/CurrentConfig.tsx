@@ -20,14 +20,26 @@ function CurrentConfig(props: PropType) {
   }, []);
 
   function copyConfigToClipboard() {
-    navigator.clipboard.writeText(config);
-    dispatch(
-      addNotification({
-        type: 'success',
-        title: 'Success',
-        message: `The configuration has been copied`,
-      })
-    );
+    navigator.clipboard
+      .writeText(config)
+      .then(() =>
+        dispatch(
+          addNotification({
+            type: 'success',
+            title: 'Success',
+            message: 'The configuration was copied to clipboard',
+          })
+        )
+      )
+      .catch(() =>
+        dispatch(
+          addNotification({
+            type: 'danger',
+            title: 'Failed',
+            message: 'Failed to copy configuration to clipboard',
+          })
+        )
+      );
   }
   return (
     <div className={styles.currentConfigApp}>
