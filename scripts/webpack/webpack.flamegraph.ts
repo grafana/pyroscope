@@ -6,7 +6,12 @@ import { getAlias, getJsLoader, getStyleLoaders } from './shared';
 
 const common = {
   mode: 'production',
-  devtool: 'source-map',
+  // Had to disable sourcemaps due to it sometimes failing while building
+  // devtool: 'source-map',
+  // 33.29 ERROR in ../packages/pyroscope-flamegraph/dist/index.css (../node_modules/css-loader/dist/cjs.js!../packages/pyroscope-flamegraph/dist/index.css)
+  // 33.29 Module build failed (from ../node_modules/css-loader/dist/cjs.js):
+  // 33.29 SyntaxError: Unexpected token d in JSON at position 18904
+  // 33.29     at JSON.parse (<anonymous>)
 
   resolve: {
     extensions: ['.ts', '.tsx', '.es6', '.js', '.jsx', '.json', '.svg'],
