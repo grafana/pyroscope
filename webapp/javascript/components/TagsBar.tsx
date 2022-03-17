@@ -134,7 +134,7 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
 
 interface LabelsSubmenuProps {
   query: string;
-  labels: ReturnType<typeof selectLabels>;
+  labels: TagsState['tags'];
   onSelectedLabel: (tag: string) => void;
   onSelectedLabelValue: (label: string, labelValue: string) => void;
 }
