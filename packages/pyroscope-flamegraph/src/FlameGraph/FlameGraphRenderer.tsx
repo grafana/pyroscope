@@ -42,7 +42,18 @@ function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
     return p.flamebearer;
   }
 
-  throw new Error("either 'profile' or 'flamebearer' must be set");
+  // people may send us both values as undefined
+  // but we still have to render something
+  const noop: Flamebearer = {
+    format: 'single',
+    names: [],
+    units: '',
+    levels: [[]],
+    spyName: '',
+    numTicks: 0,
+    sampleRate: 0,
+  };
+  return noop;
 }
 
 // Refers to a node in the flamegraph
@@ -56,7 +67,7 @@ interface FlamegraphRendererProps {
   viewType?: 'diff' | 'single' | 'double';
   // TODO: make this conditional
   viewSide?: 'left' | 'right';
-  view: 'both';
+  view?: 'both' | 'table' | 'icicle';
   fitMode?: 'HEAD';
   showToolbar?: boolean;
 
@@ -65,7 +76,7 @@ interface FlamegraphRendererProps {
   showPyroscopeLogo?: boolean;
   renderLogo?: boolean;
 
-  ExportData: React.ReactElement;
+  ExportData?: React.ReactElement | JSX.Element | JSX.Element[] | null;
 }
 
 interface FlamegraphRendererState {
@@ -106,7 +117,7 @@ class FlameGraphRenderer extends React.Component<
       isFlamegraphDirty: false,
       sortBy: 'self',
       sortByDirection: 'desc',
-      view: 'both',
+      view: this.props.view ? this.props.view : 'both',
       viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
       fitMode: props.fitMode ? props.fitMode : 'HEAD',
       flamebearer: mountFlamebearer(props),
