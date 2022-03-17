@@ -10,7 +10,7 @@ import styles from './TimelineChartWrapper.module.css';
 
 interface TimelineData {
   data?: Timeline;
-  color: string;
+  color?: Color;
 }
 
 interface Marking {

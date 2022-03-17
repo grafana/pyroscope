@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import 'react-dom';
 
 import Spinner from 'react-svg-spinner';
 
-import { useAppSelector } from '@pyroscope/redux/hooks';
-import { selectIsLoadingData } from '@pyroscope/redux/reducers/continuous';
+import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import {
+  selectIsLoadingData,
+  selectAppTags,
+  actions,
+  fetchTags,
+  fetchTagValues,
+} from '@pyroscope/redux/reducers/continuous';
 import classNames from 'classnames';
 import DateRangePicker from './DateRangePicker';
 import RefreshButton from './RefreshButton';
@@ -17,13 +23,14 @@ interface ToolbarProps {
   hideTagsBar?: boolean;
 }
 function Toolbar({ hideTagsBar }: ToolbarProps) {
+  const dispatch = useAppDispatch();
   const isLoadingData = useAppSelector(selectIsLoadingData);
+  const { query } = useAppSelector((state) => state.continuous);
+  const tags = useAppSelector(selectAppTags(query));
 
-  // This component initializes using a value frmo the redux store (query)
-  // Which doesn't work well when the 'query' changes in the store (see https://reactjs.org/docs/forms.html#controlled-components)
-  // This is a workaround to force the component to always remount
-  // TODO: move the state from this component into the redux store
-  //  const tagsBar = <TagsBar key={query} />;
+  useEffect(() => {
+    dispatch(fetchTags(query));
+  }, [query]);
 
   return (
     <>
@@ -44,7 +51,23 @@ function Toolbar({ hideTagsBar }: ToolbarProps) {
         &nbsp;
         <DateRangePicker />
       </div>
-      {!hideTagsBar && <TagsBar />}
+      {!hideTagsBar && (
+        <TagsBar
+          query={query}
+          tags={tags}
+          onSetQuery={(q) => {
+            dispatch(actions.setQuery(q));
+          }}
+          onSelectedLabel={(label, query) => {
+            dispatch(
+              fetchTagValues({
+                query,
+                label,
+              })
+            );
+          }}
+        />
+      )}
     </>
   );
 }

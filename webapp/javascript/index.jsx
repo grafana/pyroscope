@@ -47,10 +47,6 @@ function App() {
     <div className="app">
       <Sidebar />
       <Switch>
-        <Route path="/">
-          <ContinuousComparisonView />
-        </Route>
-
         <Route exact path="/">
           <ContinuousSingleView />
         </Route>
