@@ -1,27 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import cx from 'classnames';
 import { Link, useHistory } from 'react-router-dom';
+import cx from 'classnames';
+import Icon from '@ui/Icon';
+import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
 import InputField from '@ui/InputField';
 import StatusMessage from '@ui/StatusMessage';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import { signUp, logIn } from '@pyroscope/services/users';
+import { logIn } from '@pyroscope/services/users';
 import {
   loadCurrentUser,
   selectCurrentUser,
 } from '@pyroscope/redux/reducers/user';
+import { GitlabIcon, GoogleIcon } from '../Icons';
+import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';
 import styles from '../IntroPages.module.css';
-import Divider from '../Divider';
+import buttonStyles from './buttons.module.css';
 
-function SignUpPage(props) {
+function SignInPage(props) {
   const history = useHistory();
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectCurrentUser);
   const [form, setForm] = useState({
     username: '',
     password: '',
-    fullName: '',
-    email: '',
     errors: [],
   });
 
@@ -34,14 +36,17 @@ function SignUpPage(props) {
   async function handleSubmit(event) {
     event.preventDefault();
     try {
-      const { username, password, fullName, email } = {
+      const { username, password } = {
         ...form,
       };
 
-      await signUp({ username, password, fullName, email });
-      await logIn({ username, password });
+      const res = await logIn({ username, password });
+      if (res.isOk) {
+        dispatch(loadCurrentUser());
+        return;
+      }
 
-      dispatch(loadCurrentUser());
+      throw res.error;
     } catch (e) {
       setForm({ ...form, errors: e.errors || [e.message] });
     }
@@ -59,7 +64,7 @@ function SignUpPage(props) {
         <div className={styles.formHeader}>
           <div className={styles.logo} />
           <h1>Welcome to Pyroscope</h1>
-          <h3>Sign up</h3>
+          <h3>Log in to continue</h3>
         </div>
         <div>
           <StatusMessage type="error" message={form.errors?.join(', ')} />
@@ -70,26 +75,6 @@ function SignUpPage(props) {
             placeholder="Username"
             styling={inputStyles.inputGroup}
             value={form.username}
-            onChange={handleFormChange}
-            required
-          />
-          <InputField
-            type="email"
-            name="email"
-            label="Email"
-            placeholder="Email"
-            styling={inputStyles.inputGroup}
-            value={form.email}
-            onChange={handleFormChange}
-            required
-          />
-          <InputField
-            type="text"
-            name="fullName"
-            label="Full Name"
-            placeholder="Full Name"
-            styling={inputStyles.inputGroup}
-            value={form.fullName}
             onChange={handleFormChange}
             required
           />
@@ -105,16 +90,38 @@ function SignUpPage(props) {
           />
         </div>
         <button className={styles.button} type="submit">
-          Sign up
+          Log in
         </button>
         <Divider />
+        <div className={cx(buttonStyles.buttonContainer)}>
+          <Link
+            to="./auth/google/login"
+            className={cx(styles.button, buttonStyles.buttonGoogle)}
+          >
+            <GoogleIcon /> Sign in with Google
+          </Link>
 
-        <Link to="/login" className={cx(styles.button, styles.buttonDark)}>
-          Go back to main page
-        </Link>
+          <Link
+            to="./auth/github/login"
+            className={cx(styles.button, buttonStyles.buttonGithub)}
+          >
+            <Icon icon={faGithub} /> Sign in with GitHub
+          </Link>
+
+          <Link
+            to="./auth/gitlab/login"
+            className={cx(styles.button, buttonStyles.buttonGitlab)}
+          >
+            <GitlabIcon /> Sign in with GitLab
+          </Link>
+
+          <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
+            Sign up
+          </Link>
+        </div>
       </form>
     </div>
   );
 }
 
-export default SignUpPage;
+export default SignInPage;

@@ -23,8 +23,8 @@ import ServerNotifications from './components/ServerNotifications';
 // since this style is practically all pages
 import '@pyroscope/flamegraph/dist/index.css';
 
-import SignInPage from './components/IntroPages/SignIn';
-import SignUpPage from './components/IntroPages/SignUp';
+import SignInPage from './pages/IntroPages/SignIn';
+import SignUpPage from './pages/IntroPages/SignUp';
 
 import history from './util/history';
 

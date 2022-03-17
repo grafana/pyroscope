@@ -1,28 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useHistory } from 'react-router-dom';
 import cx from 'classnames';
-import Icon from '@ui/Icon';
-import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
+import { Link, useHistory } from 'react-router-dom';
 import InputField from '@ui/InputField';
 import StatusMessage from '@ui/StatusMessage';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import { logIn } from '@pyroscope/services/users';
+import { signUp, logIn } from '@pyroscope/services/users';
 import {
   loadCurrentUser,
   selectCurrentUser,
 } from '@pyroscope/redux/reducers/user';
-import { GitlabIcon, GoogleIcon } from '@ui/Icons';
 import inputStyles from '../InputGroup.module.css';
 import styles from '../IntroPages.module.css';
 import Divider from '../Divider';
 
-function SignInPage(props) {
+function SignUpPage(props) {
   const history = useHistory();
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectCurrentUser);
   const [form, setForm] = useState({
     username: '',
     password: '',
+    fullName: '',
+    email: '',
     errors: [],
   });
 
@@ -35,13 +34,18 @@ function SignInPage(props) {
   async function handleSubmit(event) {
     event.preventDefault();
     try {
-      const { username, password } = {
+      const { username, password, fullName, email } = {
         ...form,
       };
 
-      await logIn({ username, password });
+      const res = await signUp({ username, password, fullName, email });
+      if (res.isOk) {
+        await logIn({ username, password });
+        dispatch(loadCurrentUser());
+        return;
+      }
 
-      dispatch(loadCurrentUser());
+      throw res.error;
     } catch (e) {
       setForm({ ...form, errors: e.errors || [e.message] });
     }
@@ -59,7 +63,7 @@ function SignInPage(props) {
         <div className={styles.formHeader}>
           <div className={styles.logo} />
           <h1>Welcome to Pyroscope</h1>
-          <h3>Log in to continue</h3>
+          <h3>Sign up</h3>
         </div>
         <div>
           <StatusMessage type="error" message={form.errors?.join(', ')} />
@@ -70,6 +74,26 @@ function SignInPage(props) {
             placeholder="Username"
             styling={inputStyles.inputGroup}
             value={form.username}
+            onChange={handleFormChange}
+            required
+          />
+          <InputField
+            type="email"
+            name="email"
+            label="Email"
+            placeholder="Email"
+            styling={inputStyles.inputGroup}
+            value={form.email}
+            onChange={handleFormChange}
+            required
+          />
+          <InputField
+            type="text"
+            name="fullName"
+            label="Full Name"
+            placeholder="Full Name"
+            styling={inputStyles.inputGroup}
+            value={form.fullName}
             onChange={handleFormChange}
             required
           />
@@ -85,38 +109,16 @@ function SignInPage(props) {
           />
         </div>
         <button className={styles.button} type="submit">
-          Log in
+          Sign up
         </button>
         <Divider />
-        <div className={cx(styles.buttonContainer)}>
-          <Link
-            to="./auth/google/login"
-            className={cx(styles.button, styles.buttonGoogle)}
-          >
-            <GoogleIcon /> Sign in with Google
-          </Link>
 
-          <Link
-            to="./auth/github/login"
-            className={cx(styles.button, styles.buttonGithub)}
-          >
-            <Icon icon={faGithub} /> Sign in with GitHub
-          </Link>
-
-          <Link
-            to="./auth/gitlab/login"
-            className={cx(styles.button, styles.buttonGitlab)}
-          >
-            <GitlabIcon /> Sign in with GitLab
-          </Link>
-
-          <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
-            Sign up
-          </Link>
-        </div>
+        <Link to="/login" className={cx(styles.button, styles.buttonDark)}>
+          Go back to main page
+        </Link>
       </form>
     </div>
   );
 }
 
-export default SignInPage;
+export default SignUpPage;

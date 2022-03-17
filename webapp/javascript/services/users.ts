@@ -87,16 +87,16 @@ export async function logIn({
 }: {
   username: string;
   password: string;
-}): Promise<any> {
+}): Promise<Result<unknown, RequestError | ZodError>> {
   const response = await request(`/login`, {
     method: 'POST',
     body: JSON.stringify({ username, password: passwordEncode(password) }),
   });
   if (response.isOk) {
-    return Promise.resolve(response.value);
+    return Result.ok(true);
   }
 
-  return Promise.reject(response.error);
+  return Result.err<boolean, RequestError>(response.error);
 }
 
 export async function signUp(data: {
@@ -104,7 +104,7 @@ export async function signUp(data: {
   password: string;
   fullName: string;
   email: string;
-}): Promise<any> {
+}): Promise<Result<unknown, RequestError | ZodError>> {
   const response = await request(`/signup`, {
     method: 'POST',
     body: JSON.stringify({
@@ -114,10 +114,10 @@ export async function signUp(data: {
     }),
   });
   if (response.isOk) {
-    return Promise.resolve(response.value);
+    return Result.ok(true);
   }
 
-  return Promise.reject(response.error);
+  return Result.err<boolean, RequestError>(response.error);
 }
 
 export async function changeMyPassword(
