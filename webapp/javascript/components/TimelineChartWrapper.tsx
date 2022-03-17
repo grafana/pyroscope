@@ -184,8 +184,13 @@ class TimelineChartWrapper extends React.Component<
           timelineA.data && timelineA.data.samples.length > 3 ? null : 0.005,
       },
     };
+
     // Since this may be overwritten, we always need to set it up correctly
-    customFlotOptions.bars.show = false;
+    if (timelineA && timelineB) {
+      customFlotOptions.bars.show = false;
+    } else {
+      customFlotOptions.bars.show = true;
+    }
 
     // If they are the same, skew the second one slightly so that they are both visible
     if (areTimelinesTheSame(timelineA, timelineB)) {
