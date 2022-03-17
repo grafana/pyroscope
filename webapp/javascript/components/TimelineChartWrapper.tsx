@@ -195,7 +195,7 @@ class TimelineChartWrapper extends React.Component<
     // If they are the same, skew the second one slightly so that they are both visible
     if (areTimelinesTheSame(timelineA, timelineB)) {
       // the factor is completely arbitrary, we use a positive number to skew above
-      timelineB = skewTimeline(timelineB, 15);
+      timelineB = skewTimeline(timelineB, 4);
     }
 
     if (isSingleDatapoint(timelineA, timelineB)) {
