@@ -631,9 +631,8 @@ export const selectAppTags = (query?: string) => (state: RootState) => {
     }
   }
 
-  // return a dummy one to make component code simpler
   return {
     type: 'pristine',
-    tags: [],
-  };
+    tags: {},
+  } as TagsState;
 };

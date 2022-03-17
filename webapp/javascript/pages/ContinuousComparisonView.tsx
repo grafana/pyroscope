@@ -192,7 +192,7 @@ function ComparisonApp() {
 
           <Box className={styles.comparisonPane}>
             <TagsBar
-              query={rightQuery}
+              query={rightQuery || ''}
               tags={rightTags}
               onSetQuery={(q) => {
                 dispatch(actions.setRightQuery(q));

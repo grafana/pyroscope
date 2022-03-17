@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Button from '@ui/Button';
 import 'react-dom';
-import { selectLabels, TagsState } from '@pyroscope/redux/reducers/continuous';
+import { TagsState } from '@pyroscope/redux/reducers/continuous';
 import Dropdown, { SubMenu, MenuItem, FocusableItem } from '@ui/Dropdown';
 import { Prism } from '../util/prism';
 import styles from './TagsBar.module.css';
