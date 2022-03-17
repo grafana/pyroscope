@@ -43,7 +43,7 @@ function ComparisonApp() {
 
   const comparisonView = useAppSelector(selectComparisonState);
 
-  // initially populate the query
+  // initially populate the queries
   useEffect(() => {
     if (query && !rightQuery) {
       dispatch(actions.setRightQuery(query));
@@ -52,14 +52,6 @@ function ComparisonApp() {
       dispatch(actions.setLeftQuery(query));
     }
   }, [query]);
-  //  useEffect(() => {
-  //    if (query) {
-  //      dispatch(actions.setRightQuery(query));
-  //    }
-  //    if (query) {
-  //      dispatch(actions.setLeftQuery(query));
-  //    }
-  //  }, [query]);
 
   useEffect(() => {
     // TODO if the query is the same the request will be made twice
