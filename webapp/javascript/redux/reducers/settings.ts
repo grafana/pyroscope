@@ -50,7 +50,7 @@ export const reloadApiKeys = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to load api keys',
-        message: (res.error as ShamefulAny).message || '',
+        message: res.error.message,
       })
     );
 
@@ -70,8 +70,8 @@ export const reloadUsers = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to load users',
+        title: 'Failed to load users',
+        message: res.error.message,
       })
     );
 
@@ -92,8 +92,8 @@ export const enableUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to enable a user',
+        title: 'Failed to enable a user',
+        message: res.error.message,
       })
     );
 
@@ -114,8 +114,8 @@ export const disableUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to disable a user',
+        title: 'Failed to disable a user',
+        message: res.error.message,
       })
     );
 
@@ -137,8 +137,8 @@ export const createUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to create new user',
+        title: 'Failed to create new user',
+        message: res.error.message,
       })
     );
     return Promise.reject(res.error);
@@ -159,8 +159,8 @@ export const deleteUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to delete user',
+        title: 'Failed to delete user',
+        message: res.error.message,
       })
     );
     return Promise.reject(res.error);
@@ -180,8 +180,8 @@ export const changeUserRole = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to change users role',
+        title: 'Failed to change users role',
+        message: res.error.message,
       })
     );
     return thunkAPI.rejectWithValue(res.error);
@@ -201,8 +201,7 @@ export const createAPIKey = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to create API key',
-        // TODO
-        message: (res.error as ShamefulAny).message || '',
+        message: res.error.message,
       })
     );
     return thunkAPI.rejectWithValue(res.error);
@@ -228,8 +227,7 @@ export const deleteAPIKey = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to delete API key',
-        // TODO
-        message: (res.error as ShamefulAny).message || '',
+        message: res.error.message,
       })
     );
     return thunkAPI.rejectWithValue(res.error);
