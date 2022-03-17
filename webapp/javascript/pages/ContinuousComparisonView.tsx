@@ -107,12 +107,12 @@ function ComparisonApp() {
   const rightColor = Color('rgb(19, 152, 246)');
 
   const leftTimeline = {
-    color: leftColor.rgb(),
+    color: leftColor.rgb().toString(),
     data: leftSide.timeline,
   };
 
   const rightTimeline = {
-    color: rightColor.rgb(),
+    color: rightColor.rgb().toString(),
     data: rightSide.timeline,
   };
 

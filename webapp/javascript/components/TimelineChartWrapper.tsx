@@ -10,7 +10,7 @@ import styles from './TimelineChartWrapper.module.css';
 
 interface TimelineData {
   data?: Timeline;
-  color?: Color;
+  color?: string;
 }
 
 interface Marking {
@@ -169,7 +169,10 @@ class TimelineChartWrapper extends React.Component<
   render = () => {
     const { flotOptions } = this.state;
     const { id, timelineA } = this.props;
-    let { timelineB } = this.props;
+    // TODO deep copy
+    let timelineB = this.props.timelineB
+      ? JSON.parse(JSON.stringify(this.props.timelineB))
+      : undefined;
 
     const customFlotOptions = {
       ...flotOptions,
@@ -181,12 +184,16 @@ class TimelineChartWrapper extends React.Component<
           timelineA.data && timelineA.data.samples.length > 3 ? null : 0.005,
       },
     };
+    // Since this may be overwritten, we always need to set it up correctly
+    customFlotOptions.bars.show = false;
 
     // If they are the same, skew the second one slightly so that they are both visible
     if (areTimelinesTheSame(timelineA, timelineB)) {
       // the factor is completely arbitrary, we use a positive number to skew above
-      timelineB = skewTimeline(timelineB, 4);
+      timelineB = skewTimeline(timelineB, 15);
+    }
 
+    if (isSingleDatapoint(timelineA, timelineB)) {
       // check if both have a single value
       // if so, let's use bars
       // since we can't put a point when there's no data when using points
@@ -195,8 +202,6 @@ class TimelineChartWrapper extends React.Component<
 
         // Also slightly skew to show them side by side
         timelineB.data.startTime += 0.01;
-      } else {
-        customFlotOptions.bars.show = false;
       }
     }
 
@@ -222,6 +227,19 @@ class TimelineChartWrapper extends React.Component<
       />
     );
   };
+}
+
+function isSingleDatapoint(timelineA: TimelineData, timelineB?: TimelineData) {
+  const aIsSingle = timelineA.data && timelineA.data.samples.length <= 1;
+  if (!aIsSingle) {
+    return false;
+  }
+
+  if (timelineB && timelineB.data) {
+    return timelineB.data.samples.length <= 1;
+  }
+
+  return true;
 }
 
 function skewTimeline(
