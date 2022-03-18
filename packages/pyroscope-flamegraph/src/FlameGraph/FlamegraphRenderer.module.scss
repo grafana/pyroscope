@@ -28,3 +28,17 @@
   /* reverse, since by default the table is on the left in the DOM */
   flex-direction: column-reverse;
 }
+
+.panesWrapper {
+  //  margin: 0 -$pane-width;
+  display: flex;
+}
+
+.tablePane {
+  flex: 1;
+}
+
+// TODO: do this in the react side?
+.hidden {
+  display: none;
+}

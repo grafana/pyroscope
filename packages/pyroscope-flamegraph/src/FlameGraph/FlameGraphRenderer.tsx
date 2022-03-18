@@ -15,7 +15,7 @@ import Graph from './FlameGraphComponent';
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
-import styles from './FlamegraphRenderer.module.css';
+import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
@@ -299,9 +299,9 @@ class FlameGraphRenderer extends React.Component<
       <div
         key="table-pane"
         className={clsx(
-          'pane',
+          styles.tablePane,
           {
-            hidden:
+            [styles.hidden]:
               !this.state.flamebearer ||
               this.state.flamebearer.names.length <= 1,
           },
@@ -364,12 +364,8 @@ class FlameGraphRenderer extends React.Component<
     const panes = decidePanesOrder(this.state.view, flameGraphPane, tablePane);
 
     return (
-      <div
-        className={clsx('canvas-renderer', {
-          //          double: this.props.viewType === 'double',
-        })}
-      >
-        <div className="canvas-container">
+      <div>
+        <div>
           {this.shouldShowToolbar() && (
             <Toolbar
               renderLogo={this.props.renderLogo || false}
@@ -397,7 +393,7 @@ class FlameGraphRenderer extends React.Component<
                 ? styles.vertical
                 : styles.horizontal,
               styles[this.state.panesOrientation],
-              'flamegraph-container panes-wrapper'
+              styles.panesWrapper
             )}`}
           >
             {panes.map((pane) => pane)}
