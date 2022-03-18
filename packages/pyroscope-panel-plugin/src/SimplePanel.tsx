@@ -22,8 +22,7 @@ export const SimplePanel: React.FC<Props> = ({ options, data }) => {
       <FlamegraphRenderer
         flamebearer={flamebearer}
         ExportData={<div />}
-        display="flamegraph"
-        viewType="single"
+        onlyDisplay="flamegraph"
         showToolbar={options.showToolbar}
       />
     </div>
