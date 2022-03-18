@@ -318,7 +318,7 @@ describe.only('positions', () => {
   describe('Allow changing visualization mode', () => {
     it('should allow changing view when "onlyDisplay" is not set', () => {
       const { getByTestId, queryByRole } = render(
-        <FlamegraphRenderer profile={RawProfile} viewType="single" />
+        <FlamegraphRenderer profile={RawProfile} />
       );
 
       expect(getByTestId('table-view')).toBeInTheDocument();
@@ -328,11 +328,7 @@ describe.only('positions', () => {
 
     it('should restrict changing view when "onlyDisplay" is set', () => {
       const { getByTestId, queryByRole } = render(
-        <FlamegraphRenderer
-          profile={RawProfile}
-          viewType="single"
-          onlyDisplay="both"
-        />
+        <FlamegraphRenderer profile={RawProfile} onlyDisplay="both" />
       );
 
       expect(getByTestId('table-view')).toBeInTheDocument();
@@ -343,11 +339,7 @@ describe.only('positions', () => {
 
   it('should display only the flamegraph when specified', () => {
     const { getByTestId, queryByTestId } = render(
-      <FlamegraphRenderer
-        profile={RawProfile}
-        onlyDisplay="flamegraph"
-        viewType="single"
-      />
+      <FlamegraphRenderer profile={RawProfile} onlyDisplay="flamegraph" />
     );
 
     expect(queryByTestId('table-view')).not.toBeInTheDocument();
@@ -356,35 +348,18 @@ describe.only('positions', () => {
 
   it('should display only the table when specified', () => {
     const { getByTestId, queryByTestId } = render(
-      <FlamegraphRenderer
-        profile={RawProfile}
-        onlyDisplay="table"
-        viewType="single"
-      />
+      <FlamegraphRenderer profile={RawProfile} onlyDisplay="table" />
     );
 
     expect(getByTestId('table-view')).toBeInTheDocument();
     expect(queryByTestId('flamegraph-view')).not.toBeInTheDocument();
   });
 });
-// it('should work', () => {
-//  render(
-//    <FlamegraphRenderer
-//      flamebearer={SimpleTree}
-//      display="flamegraph"
-//      viewType="single"
-//      showPyroscopeLogo={false}
-//    />
-//  );
-// });
-//
-// it('should work with raw profile from /render endpoint', () => {
-//  render(
-//    <FlamegraphRenderer
-//      profile={RawProfile}
-//      display="flamegraph"
-//      viewType="single"
-//      showPyroscopeLogo={false}
-//    />
-//  );
-// });
+
+it('should work', () => {
+  render(<FlamegraphRenderer flamebearer={SimpleTree as any} />);
+});
+
+it('should work with raw profile from /render endpoint', () => {
+  render(<FlamegraphRenderer profile={RawProfile} />);
+});
