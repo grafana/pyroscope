@@ -249,6 +249,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
       >
         <select
           aria-label="view"
+          name="view"
         >
           <option
             value="table"
@@ -261,7 +262,7 @@ exports[`ProfileHeader shifts between visualization modes 2`] = `
             Both
           </option>
           <option
-            value="icicle"
+            value="flamegraph"
           >
             Flame
           </option>

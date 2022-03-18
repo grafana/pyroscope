@@ -74,6 +74,7 @@ interface FlamegraphRendererProps {
 
   showToolbar?: boolean;
 
+  /** @deprecated  prefer Profile */
   flamebearer?: Flamebearer;
   profile?: Profile;
   showPyroscopeLogo?: boolean;
@@ -107,8 +108,6 @@ class FlameGraphRenderer extends React.Component<
   FlamegraphRendererProps,
   FlamegraphRendererState
 > {
-  // TODO: this could come from some other state
-  // eg localstorage
   initialFlamegraphState = {
     focusedNode: Maybe.nothing<Node>(),
     zoom: Maybe.nothing<Node>(),
@@ -161,8 +160,6 @@ class FlameGraphRenderer extends React.Component<
       this.updateFlamegraphDirtiness();
     }
   }
-
-  componentWillUnmount() {}
 
   handleSearchChange = (e: string) => {
     this.setState({
@@ -346,7 +343,6 @@ class FlameGraphRenderer extends React.Component<
           key="flamegraph-pane"
           // data-testid={flamegraphDataTestId}
           flamebearer={this.state.flamebearer}
-          //          ExportData={() => this.props.ExportData || <></>}
           ExportData={this.props.ExportData || <></>}
           highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
