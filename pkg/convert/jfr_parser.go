@@ -39,7 +39,6 @@ func ParseJFR(r io.Reader, cb func(name []byte, val int), pi *storage.PutInput) 
 				}
 			case *parser.ActiveSetting:
 				as := e.(*parser.ActiveSetting)
-				fmt.Println(as.Name, as.Value)
 				if as.Name == "event" {
 					event = as.Value
 				}
