@@ -12,7 +12,7 @@ describe('pages', () => {
     cy.findByTestId('timeline-single');
   });
 
-  it('loads /comparison correctly', () => {
+  it.only('loads /comparison correctly', () => {
     cy.intercept('**/render*from=1633024298&until=1633024302*', {
       fixture: 'simple-golang-app-cpu.json',
       times: 1,
@@ -40,8 +40,8 @@ describe('pages', () => {
     cy.findByTestId('timeline-left');
     cy.findByTestId('timeline-right');
 
-    cy.findByTestId('flamegraph-comparison-left');
-    cy.findByTestId('flamegraph-comparison-right');
+    // There should be 2 canvas there
+    cy.findAllByTestId('flamegraph-canvas').should('have.length', 2);
   });
 
   it('loads /comparison-diff correctly', () => {
@@ -61,6 +61,6 @@ describe('pages', () => {
     cy.findByTestId('timeline-left');
     cy.findByTestId('timeline-right');
 
-    cy.findByTestId('flamegraph-diff');
+    cy.findByTestId('flamegraph-canvas');
   });
 });
