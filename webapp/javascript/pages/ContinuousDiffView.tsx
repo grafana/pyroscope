@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import Box from '@ui/Box';
 import {
@@ -111,12 +111,7 @@ function ComparisonDiffApp() {
           }}
         />
         <Box>
-          <FlamegraphRenderer
-            display="both"
-            viewType="diff"
-            profile={profile}
-            ExportData={exportData}
-          >
+          <FlamegraphRenderer profile={profile} ExportData={exportData}>
             <div className="diff-instructions-wrapper">
               <div className="diff-instructions-wrapper-side">
                 <InstructionText viewType="diff" viewSide="left" />

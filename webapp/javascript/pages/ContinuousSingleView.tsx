@@ -50,9 +50,6 @@ function ContinuousSingleView() {
         return (
           <FlamegraphRenderer
             profile={singleView.profile}
-            viewType="single"
-            display="both"
-            rawFlamegraph={singleView.profile}
             ExportData={
               <ExportData
                 flamebearer={singleView.profile}

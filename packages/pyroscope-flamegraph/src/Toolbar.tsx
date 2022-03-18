@@ -410,6 +410,7 @@ function DiffView({
 
   const Select = (
     <select
+      name="viewDiff"
       aria-label="view-diff"
       value={viewDiff}
       onChange={(e) => {

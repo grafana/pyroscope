@@ -252,12 +252,8 @@ $pane-width: 6px;
   font-size: 12px;
 }
 
-.flamegraph-table,
-.flamegraph-canvas {
-  width: 100%;
-}
-
 .flamegraph-table {
+  width: 100%;
   font-size: 14px;
 
   th,
