@@ -8,7 +8,7 @@
 }
 .flamegraphContainer > *:nth-child(2) {
   margin-left: 8px;
-  width: 50%;
+  /*  width: 50%; */
 }
 
 .createdBy {
@@ -25,5 +25,6 @@
 }
 
 .vertical {
-  flex-direction: column;
+  /* reverse, since by default the table is on the left in the DOM */
+  flex-direction: column-reverse;
 }
