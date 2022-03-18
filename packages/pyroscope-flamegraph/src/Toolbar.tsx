@@ -12,6 +12,7 @@ import { Maybe } from 'true-myth';
 import useResizeObserver from '@react-hook/resize-observer';
 import Button from '../../../webapp/javascript/ui/Button';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
+import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 
 import styles from './ProfilerHeader.module.css';
 
@@ -51,10 +52,10 @@ const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
 };
 
 interface ProfileHeaderProps {
-  view: 'both' | 'icicle' | 'table';
+  view: ViewTypes;
   // what's being displayed
   // this is needed since the toolbar may show different items depending what is being displayed
-  display: 'flamegraph' | 'table' | 'both';
+  //  display: 'flamegraph' | 'table' | 'both';
 
   viewDiff?: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
@@ -67,7 +68,7 @@ interface ProfileHeaderProps {
 
   updateFitMode: (f: FitModes) => void;
   fitMode: FitModes;
-  updateView: (s: 'both' | 'icicle' | 'table') => void;
+  updateView: (s: ViewTypes) => void;
   updateViewDiff: (s: 'diff' | 'total' | 'self') => void;
 
   /**
@@ -187,7 +188,6 @@ const Toolbar = React.memo(
     fitMode,
     updateView,
     updateViewDiff,
-    display,
     selectedNode,
     onFocusOnSubtree,
   }: ProfileHeaderProps) => {
@@ -224,13 +224,11 @@ const Toolbar = React.memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
-          {display === 'both' && (
-            <ViewSection
-              showMode={showMode}
-              view={view}
-              updateView={updateView}
-            />
-          )}
+          <ViewSection
+            showMode={showMode}
+            view={view}
+            updateView={updateView}
+          />
         </div>
       </div>
     );
@@ -501,7 +499,7 @@ function ViewSection({
     >
       <option value="table">Table</option>
       <option value="both">Both</option>
-      <option value="icicle">Flame</option>
+      <option value="flamegraph">Flame</option>
     </select>
   );
 
@@ -534,7 +532,7 @@ function ViewSection({
         grouped
         kind={kindByState('icicle')}
         icon={faIcicles}
-        onClick={() => updateView('icicle')}
+        onClick={() => updateView('flamegraph')}
       >
         Flamegraph
       </Button>

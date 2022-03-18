@@ -254,10 +254,10 @@ const RawProfile = {
     watermarks: {},
   },
   metadata: {
-    format: 'single',
-    spyName: 'gospy',
+    format: 'single' as const,
+    spyName: 'gospy' as const,
     sampleRate: 100,
-    units: 'samples',
+    units: 'samples' as const,
     name: 'pyroscope.server.cpu 2022-03-08T17:27:23Z',
     appName: 'pyroscope.server.cpu',
     startTime: 1646760443,
@@ -295,41 +295,75 @@ const SimpleTree = {
   spyName: 'gospy',
 };
 
-describe.skip('Pyroscope Library', () => {
-  it('should not be possible to override the pyroscope logo using props', () => {
-    render(
+// describe.skip('Pyroscope Library', () => {
+//  it('should not be possible to override the pyroscope logo using props', () => {
+//    render(
+//      <FlamegraphRenderer
+//        flamebearer={SimpleTree}
+//        display="flamegraph"
+//        viewType="single"
+//        showPyroscopeLogo={false}
+//      />
+//    );
+//
+//    expect(
+//      screen.getByRole('link', { name: /pyroscope/i })
+//    ).toBeInTheDocument();
+//  });
+// });
+//
+//
+// TODO a test saying going over rendering an empty flamegraph
+describe.only('positions', () => {
+  it('should display both flamegraph and table by default', () => {
+    const { getByTestId } = render(
+      <FlamegraphRenderer profile={RawProfile} viewType="single" />
+    );
+
+    expect(getByTestId('table-view')).toBeInTheDocument();
+    expect(getByTestId('flamegraph-view')).toBeInTheDocument();
+  });
+
+  it('should display only the flamegraph when specified', () => {
+    const { getByTestId, queryByTestId } = render(
       <FlamegraphRenderer
-        flamebearer={SimpleTree}
-        display="flamegraph"
+        profile={RawProfile}
+        view="flamegraph"
         viewType="single"
-        showPyroscopeLogo={false}
       />
     );
 
-    expect(
-      screen.getByRole('link', { name: /pyroscope/i })
-    ).toBeInTheDocument();
+    expect(queryByTestId('table-view')).not.toBeInTheDocument();
+    expect(getByTestId('flamegraph-view')).toBeInTheDocument();
+  });
+
+  it('should display only the table when specified', () => {
+    const { getByTestId, queryByTestId } = render(
+      <FlamegraphRenderer profile={RawProfile} view="table" viewType="single" />
+    );
+
+    expect(getByTestId('table-view')).toBeInTheDocument();
+    expect(queryByTestId('flamegraph-view')).not.toBeInTheDocument();
   });
 });
-
-it('should work', () => {
-  render(
-    <FlamegraphRenderer
-      flamebearer={SimpleTree}
-      display="flamegraph"
-      viewType="single"
-      showPyroscopeLogo={false}
-    />
-  );
-});
-
-it('should work with raw profile from /render endpoint', () => {
-  render(
-    <FlamegraphRenderer
-      profile={RawProfile}
-      display="flamegraph"
-      viewType="single"
-      showPyroscopeLogo={false}
-    />
-  );
-});
+// it('should work', () => {
+//  render(
+//    <FlamegraphRenderer
+//      flamebearer={SimpleTree}
+//      display="flamegraph"
+//      viewType="single"
+//      showPyroscopeLogo={false}
+//    />
+//  );
+// });
+//
+// it('should work with raw profile from /render endpoint', () => {
+//  render(
+//    <FlamegraphRenderer
+//      profile={RawProfile}
+//      display="flamegraph"
+//      viewType="single"
+//      showPyroscopeLogo={false}
+//    />
+//  );
+// });

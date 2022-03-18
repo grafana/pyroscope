@@ -10,6 +10,8 @@ import clsx from 'clsx';
 import { Maybe } from 'true-myth';
 import { Flamebearer, Profile } from '@pyroscope/models';
 import Graph from './FlameGraphComponent';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
@@ -17,6 +19,7 @@ import styles from './FlamegraphRenderer.module.css';
 import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
 import { FitModes } from '../fitMode/fitMode';
+import { ViewTypes } from './FlameGraphComponent/viewTypes';
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
@@ -63,11 +66,11 @@ interface Node {
 }
 
 interface FlamegraphRendererProps {
-  display: 'both';
+  // display: 'both' | 'flamegraph' | 'table';
   viewType?: 'diff' | 'single' | 'double';
   // TODO: make this conditional
   viewSide?: 'left' | 'right';
-  view?: 'both' | 'table' | 'icicle';
+  view?: ViewTypes;
   fitMode?: 'HEAD';
   showToolbar?: boolean;
 
@@ -76,14 +79,16 @@ interface FlamegraphRendererProps {
   showPyroscopeLogo?: boolean;
   renderLogo?: boolean;
 
-  ExportData?: React.ReactElement | JSX.Element | JSX.Element[] | null;
+  ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
 }
 
 interface FlamegraphRendererState {
   isFlamegraphDirty: boolean;
   sortBy: 'self' | 'total' | 'selfDiff' | 'totalDiff';
   sortByDirection: 'desc' | 'asc';
-  view: 'both' | 'table' | 'icicle';
+
+  view: NonNullable<FlamegraphRendererProps['view']>;
+  //  view: 'both' | 'table' | 'icicle';
   viewDiff?: 'diff' | 'total' | 'self';
   fitMode: 'HEAD' | 'TAIL';
   flamebearer: FlamegraphRendererProps['flamebearer'];
@@ -108,7 +113,7 @@ class FlameGraphRenderer extends React.Component<
     zoom: Maybe.nothing<Node>(),
   };
 
-  display = 'both';
+  //  display = 'both';
 
   constructor(props: FlamegraphRendererProps) {
     super(props);
@@ -133,7 +138,7 @@ class FlameGraphRenderer extends React.Component<
 
     // for situations like in grafana we only display the flamegraph
     // 'both' | 'flamegraph' | 'table'
-    this.display = props.display !== undefined ? props.display : 'both';
+    // this.display = props.display ? props.display : 'both';
   }
 
   componentDidUpdate(
@@ -252,7 +257,7 @@ class FlameGraphRenderer extends React.Component<
     });
   };
 
-  updateView = (newView: 'table' | 'both' | 'icicle') => {
+  updateView = (newView: ViewTypes) => {
     this.setState({
       view: newView,
     });
@@ -298,7 +303,7 @@ class FlameGraphRenderer extends React.Component<
         key="table-pane"
         className={clsx('pane', {
           hidden:
-            this.state.view === 'icicle' ||
+            this.state.view === 'flamegraph' ||
             !this.state.flamebearer ||
             this.state.flamebearer.names.length <= 1,
           'vertical-orientation': this.props.viewType === 'double',
@@ -335,7 +340,8 @@ class FlameGraphRenderer extends React.Component<
           key="flamegraph-pane"
           data-testid={flamegraphDataTestId}
           flamebearer={this.state.flamebearer}
-          ExportData={() => this.props.ExportData || <></>}
+          //          ExportData={() => this.props.ExportData || <></>}
+          ExportData={this.props.ExportData || <></>}
           highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
           zoom={this.state.flamegraphConfigs.zoom}
@@ -355,7 +361,7 @@ class FlameGraphRenderer extends React.Component<
 
     const panes = decidePanesOrder(
       this.props.viewType,
-      this.display,
+      this.state.view,
       flameGraphPane,
       tablePane
     );
@@ -372,7 +378,7 @@ class FlameGraphRenderer extends React.Component<
               renderLogo={this.props.renderLogo || false}
               view={this.state.view}
               viewDiff={this.state.viewDiff}
-              display={this.props.display}
+              //              display={this.props.display}
               handleSearchChange={this.handleSearchChange}
               reset={this.onReset}
               updateView={this.updateView}
@@ -420,11 +426,11 @@ class FlameGraphRenderer extends React.Component<
 
 function decidePanesOrder(
   viewType: FlamegraphRendererProps['viewType'],
-  display: FlameGraphRenderer['display'],
+  view: FlamegraphRendererState['view'],
   flamegraphPane: JSX.Element | null,
   tablePane: JSX.Element
 ) {
-  switch (display) {
+  switch (view) {
     case 'table': {
       return [tablePane];
     }
