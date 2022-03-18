@@ -19,3 +19,11 @@
 .createdBy a {
   color: #199bef !important;
 }
+
+.horizontal {
+  flex-direction: row;
+}
+
+.vertical {
+  flex-direction: column;
+}
