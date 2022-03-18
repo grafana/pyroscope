@@ -1,8 +1,8 @@
-import ShowModal from '.';
+import ShowModal from '@ui/Modals';
 
 function confirmDelete(object: string, onConfirm: () => void) {
   ShowModal({
-    title: `Are you sure you want to delete ${object}`,
+    title: `Are you sure you want to delete ${object}?`,
     confirmButtonText: 'Delete',
     danger: true,
     onConfirm,

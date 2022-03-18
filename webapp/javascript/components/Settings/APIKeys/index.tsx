@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import Button from '@ui/Button';
 import Icon from '@ui/Icon';
-import confirmDelete from '@ui/Modals/ConfirmDelete';
 
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
@@ -14,6 +13,7 @@ import {
   selectAPIKeys,
   deleteAPIKey,
 } from '@pyroscope/redux/reducers/settings';
+import confirmDelete from '../../ConfirmDelete';
 import styles from '../SettingsTable.module.css';
 
 const ApiKeys = () => {

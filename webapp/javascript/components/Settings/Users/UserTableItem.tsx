@@ -14,7 +14,7 @@ import {
   changeUserRole,
 } from '@pyroscope/redux/reducers/settings';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
-import confirmDelete from '@ui/Modals/ConfirmDelete';
+import confirmDelete from '../../ConfirmDelete';
 import { type User } from '../../../models/users';
 import styles from './UserTableItem.module.css';
 
