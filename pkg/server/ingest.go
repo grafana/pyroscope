@@ -58,6 +58,8 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		err = convert.ParseTreeNoDict(r.Body, cb)
 	case format == "lines":
 		err = convert.ParseIndividualLines(r.Body, cb)
+	case format == "jfr":
+		err = convert.ParseJFR(r.Body, cb, pi)
 	case strings.Contains(contentType, "multipart/form-data"):
 		err = writePprof(h.storage, pi, r)
 	default:
