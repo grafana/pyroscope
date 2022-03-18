@@ -315,20 +315,37 @@ const SimpleTree = {
 //
 // TODO a test saying going over rendering an empty flamegraph
 describe.only('positions', () => {
-  it('should display both flamegraph and table by default', () => {
-    const { getByTestId } = render(
-      <FlamegraphRenderer profile={RawProfile} viewType="single" />
-    );
+  describe('Allow changing visualization mode', () => {
+    it('should allow changing view when "onlyDisplay" is not set', () => {
+      const { getByTestId, queryByRole } = render(
+        <FlamegraphRenderer profile={RawProfile} viewType="single" />
+      );
 
-    expect(getByTestId('table-view')).toBeInTheDocument();
-    expect(getByTestId('flamegraph-view')).toBeInTheDocument();
+      expect(getByTestId('table-view')).toBeInTheDocument();
+      expect(getByTestId('flamegraph-view')).toBeInTheDocument();
+      expect(queryByRole('combobox', { name: 'view' })).toBeInTheDocument();
+    });
+
+    it('should restrict changing view when "onlyDisplay" is set', () => {
+      const { getByTestId, queryByRole } = render(
+        <FlamegraphRenderer
+          profile={RawProfile}
+          viewType="single"
+          onlyDisplay="both"
+        />
+      );
+
+      expect(getByTestId('table-view')).toBeInTheDocument();
+      expect(getByTestId('flamegraph-view')).toBeInTheDocument();
+      expect(queryByRole('combobox', { name: 'view' })).not.toBeInTheDocument();
+    });
   });
 
   it('should display only the flamegraph when specified', () => {
     const { getByTestId, queryByTestId } = render(
       <FlamegraphRenderer
         profile={RawProfile}
-        view="flamegraph"
+        onlyDisplay="flamegraph"
         viewType="single"
       />
     );
@@ -339,7 +356,11 @@ describe.only('positions', () => {
 
   it('should display only the table when specified', () => {
     const { getByTestId, queryByTestId } = render(
-      <FlamegraphRenderer profile={RawProfile} view="table" viewType="single" />
+      <FlamegraphRenderer
+        profile={RawProfile}
+        onlyDisplay="table"
+        viewType="single"
+      />
     );
 
     expect(getByTestId('table-view')).toBeInTheDocument();

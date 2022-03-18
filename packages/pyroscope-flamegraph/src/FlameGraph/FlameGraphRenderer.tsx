@@ -66,11 +66,11 @@ interface Node {
 }
 
 interface FlamegraphRendererProps {
-  // display: 'both' | 'flamegraph' | 'table';
+  /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
+  onlyDisplay?: ViewTypes;
   viewType?: 'diff' | 'single' | 'double';
   // TODO: make this conditional
   viewSide?: 'left' | 'right';
-  view?: ViewTypes;
   fitMode?: 'HEAD';
   showToolbar?: boolean;
 
@@ -87,7 +87,7 @@ interface FlamegraphRendererState {
   sortBy: 'self' | 'total' | 'selfDiff' | 'totalDiff';
   sortByDirection: 'desc' | 'asc';
 
-  view: NonNullable<FlamegraphRendererProps['view']>;
+  view: NonNullable<FlamegraphRendererProps['onlyDisplay']>;
   //  view: 'both' | 'table' | 'icicle';
   viewDiff?: 'diff' | 'total' | 'self';
   fitMode: 'HEAD' | 'TAIL';
@@ -122,7 +122,7 @@ class FlameGraphRenderer extends React.Component<
       isFlamegraphDirty: false,
       sortBy: 'self',
       sortByDirection: 'desc',
-      view: this.props.view ? this.props.view : 'both',
+      view: this.props.onlyDisplay ? this.props.onlyDisplay : 'both',
       viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
       fitMode: props.fitMode ? props.fitMode : 'HEAD',
       flamebearer: mountFlamebearer(props),
@@ -376,6 +376,7 @@ class FlameGraphRenderer extends React.Component<
           {this.shouldShowToolbar() && (
             <Toolbar
               renderLogo={this.props.renderLogo || false}
+              disableChangingDisplay={!!this.props.onlyDisplay}
               view={this.state.view}
               viewDiff={this.state.viewDiff}
               //              display={this.props.display}

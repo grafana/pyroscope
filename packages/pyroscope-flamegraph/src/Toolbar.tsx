@@ -53,10 +53,7 @@ const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
 
 interface ProfileHeaderProps {
   view: ViewTypes;
-  // what's being displayed
-  // this is needed since the toolbar may show different items depending what is being displayed
-  //  display: 'flamegraph' | 'table' | 'both';
-
+  disableChangingDisplay?: boolean;
   viewDiff?: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
   highlightQuery: string;
@@ -190,6 +187,7 @@ const Toolbar = React.memo(
     updateViewDiff,
     selectedNode,
     onFocusOnSubtree,
+    disableChangingDisplay = false,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
@@ -224,11 +222,13 @@ const Toolbar = React.memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
-          <ViewSection
-            showMode={showMode}
-            view={view}
-            updateView={updateView}
-          />
+          {!disableChangingDisplay && (
+            <ViewSection
+              showMode={showMode}
+              view={view}
+              updateView={updateView}
+            />
+          )}
         </div>
       </div>
     );
@@ -492,6 +492,7 @@ function ViewSection({
   const Select = (
     <select
       aria-label="view"
+      name="view"
       value={view}
       onChange={(e) => {
         updateView(e.target.value as typeof view);
@@ -503,7 +504,7 @@ function ViewSection({
     </select>
   );
 
-  const kindByState = (name: string) => {
+  const kindByState = (name: ViewTypes) => {
     if (view === name) {
       return 'primary';
     }
@@ -530,7 +531,7 @@ function ViewSection({
       </Button>
       <Button
         grouped
-        kind={kindByState('icicle')}
+        kind={kindByState('flamegraph')}
         icon={faIcicles}
         onClick={() => updateView('flamegraph')}
       >
