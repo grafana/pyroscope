@@ -1,11 +1,12 @@
 import { useAppDispatch } from '@pyroscope/redux/hooks';
-import React, { useEffect } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { loadCurrentConfig } from '@pyroscope/redux/reducers/currentConfig';
 import { connect } from 'react-redux';
 import Button from '@ui/Button';
 import { addNotification } from '@pyroscope/redux/reducers/notifications';
 import { RootState } from '@pyroscope/redux/store';
 import styles from './CurrentConfig.module.scss';
+import { Prism } from '../util/prism';
 
 type PropType = {
   config: string;
@@ -13,11 +14,18 @@ type PropType = {
 
 function CurrentConfig(props: PropType) {
   const { config } = props;
+  const codeRef = useRef(null);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
     dispatch(loadCurrentConfig());
   }, []);
+
+  useEffect(() => {
+    if (config && codeRef.current) {
+      Prism.highlightElement(codeRef.current);
+    }
+  }, [config]);
 
   function copyConfigToClipboard() {
     navigator.clipboard
@@ -49,7 +57,11 @@ function CurrentConfig(props: PropType) {
           Copy to clipboard
         </Button>
       </div>
-      <pre className={styles.config}>{config}</pre>
+      <pre className={styles.config}>
+        <code ref={codeRef} className="language-yaml">
+          {config}
+        </code>
+      </pre>
     </div>
   );
 }

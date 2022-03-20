@@ -5,9 +5,12 @@
   display: flex;
   flex-direction: column;
   .config {
-    word-break: break-all;
-    overflow: auto;
-    width: 100%;
+    padding: 10px 0;
+    code {
+      background: none;
+      border: none;
+      box-shadow: none;
+    }
   }
   .header {
     margin: 0 0 10px;

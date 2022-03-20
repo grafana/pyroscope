@@ -1,4 +1,5 @@
 import Prism from 'prismjs';
+import 'prismjs/components/prism-yaml';
 
 export { Prism };
 /* PrismJS 1.24.1
