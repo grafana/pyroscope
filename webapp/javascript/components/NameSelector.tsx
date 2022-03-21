@@ -1,6 +1,6 @@
 // TODO reenable spreading lint
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
 import { appNameToQuery, queryToAppName } from '@utils/query';
 import {
@@ -13,7 +13,7 @@ import {
 import LoadingSpinner from '@ui/LoadingSpinner';
 import Button from '@ui/Button';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-import Dropdown, { MenuItem, FocusableItem } from '@ui/Dropdown';
+import Dropdown, { MenuItem, FocusableItem, MenuGroup } from '@ui/Dropdown';
 import styles from './NameSelector.module.scss';
 
 function NameSelector() {
@@ -54,8 +54,9 @@ function NameSelector() {
     </MenuItem>
   )) as ShamefulAny;
 
-  const noApp =
-    appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>;
+  const noApp = (
+    appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>
+  ) as JSX.Element;
 
   return (
     <div className={styles.container}>
@@ -80,8 +81,7 @@ function NameSelector() {
             />
           )}
         </FocusableItem>
-
-        {options}
+        <MenuGroup takeOverflow>{options}</MenuGroup>
       </Dropdown>
       <Button
         aria-label="Refresh Apps"

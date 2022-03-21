@@ -11,7 +11,12 @@ import {
   selectLabels,
   selectApplicationName,
 } from '@pyroscope/redux/reducers/continuous';
-import Dropdown, { SubMenu, MenuItem, FocusableItem } from '@ui/Dropdown';
+import Dropdown, {
+  SubMenu,
+  MenuItem,
+  FocusableItem,
+  MenuGroup,
+} from '@ui/Dropdown';
 import { Prism } from '../util/prism';
 import styles from './TagsBar.module.css';
 
@@ -248,7 +253,7 @@ function LabelsSubmenu({
         )}
       >
         {GetFilter(tag)}
-        {GetTagValues(tag, tagValues)}
+        <MenuGroup takeOverflow>{GetTagValues(tag, tagValues)}</MenuGroup>
       </SubMenu>
     );
   });
