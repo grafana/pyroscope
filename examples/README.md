@@ -14,4 +14,4 @@ If you are familiar with profiling and flame graphs, then you'll be happy to kno
 There are two main components that allow Pyroscope to run smoothly and quickly:
 ## Pyroscope agent
 Every .01 seconds, the Pyroscope agent wraps around your Python, Ruby, or Go application to poll the stacktrace and calculate which function is consuming your CPU resources. 
-![pyroscope_diagram_with_logo](../.github/markdown-images/deployment.svg)
+![agent_server_diagram_10](https://user-images.githubusercontent.com/23323466/153685751-0aac3cd6-bbc1-4ab4-8350-8f4dc7f7c193.svg)

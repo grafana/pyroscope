@@ -1,7 +1,7 @@
 package flamebearer
 
 import (
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -42,10 +42,10 @@ var _ = Describe("FlamebearerProfile", func() {
 				SampleRate: sampleRate,
 				Units:      units,
 			}
-			p := NewProfile(out, maxNodes)
+			p := NewProfile("name", out, maxNodes)
 
 			// Flamebearer
-			Expect(p.Flamebearer.Names).To(ConsistOf("total", "a", "b", "c"))
+			Expect(p.Flamebearer.Names).To(Equal([]string{"total", "a", "c", "b"}))
 			Expect(p.Flamebearer.Levels).To(Equal([][]int{
 				{0, 3, 0, 0},
 				{0, 3, 0, 1},
@@ -55,6 +55,7 @@ var _ = Describe("FlamebearerProfile", func() {
 			Expect(p.Flamebearer.MaxSelf).To(Equal(2))
 
 			// Metadata
+			Expect(p.Metadata.Name).To(Equal("name"))
 			Expect(p.Metadata.Format).To(Equal("single"))
 			Expect(p.Metadata.SpyName).To(Equal(spyName))
 			Expect(p.Metadata.SampleRate).To(Equal(sampleRate))
@@ -69,6 +70,9 @@ var _ = Describe("FlamebearerProfile", func() {
 			// Ticks
 			Expect(p.LeftTicks).To(BeZero())
 			Expect(p.RightTicks).To(BeZero())
+
+			// Validate
+			Expect(p.Validate()).To(BeNil())
 		})
 	})
 
@@ -97,10 +101,10 @@ var _ = Describe("FlamebearerProfile", func() {
 			}
 			left := &storage.GetOutput{Tree: treeA}
 			right := &storage.GetOutput{Tree: treeB}
-			p := NewCombinedProfile(out, left, right, maxNodes)
+			p := NewCombinedProfile("name", out, left, right, maxNodes)
 
 			// Flamebearer
-			Expect(p.Flamebearer.Names).To(ConsistOf("total", "a", "b", "c"))
+			Expect(p.Flamebearer.Names).To(Equal([]string{"total", "a", "c", "b"}))
 			Expect(p.Flamebearer.Levels).To(Equal([][]int{
 				{0, 3, 0, 0, 12, 0, 0},
 				{0, 3, 0, 0, 12, 0, 1},
@@ -110,6 +114,7 @@ var _ = Describe("FlamebearerProfile", func() {
 			Expect(p.Flamebearer.MaxSelf).To(Equal(8))
 
 			// Metadata
+			Expect(p.Metadata.Name).To(Equal("name"))
 			Expect(p.Metadata.Format).To(Equal("double"))
 			Expect(p.Metadata.SpyName).To(Equal(spyName))
 			Expect(p.Metadata.SampleRate).To(Equal(sampleRate))
@@ -124,6 +129,145 @@ var _ = Describe("FlamebearerProfile", func() {
 			// Ticks
 			Expect(p.LeftTicks).To(Equal(uint64(3)))
 			Expect(p.RightTicks).To(Equal(uint64(12)))
+
+			// Validate
+			Expect(p.Validate()).To(BeNil())
+		})
+	})
+})
+
+var _ = Describe("Checking profile validation", func() {
+	When("the version is invalid", func() {
+		var fb FlamebearerProfile
+		BeforeEach(func() {
+			fb.Version = 2
+		})
+
+		Context("and we validate the profile", func() {
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(MatchError("unsupported version 2"))
+			})
+		})
+	})
+
+	When("the format is unsupported", func() {
+		var fb FlamebearerProfile
+
+		Context("and we validate the profile", func() {
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(MatchError("unsupported format "))
+			})
+		})
+	})
+
+	When("there are no names", func() {
+		var fb FlamebearerProfile
+		BeforeEach(func() {
+			fb.Metadata.Format = "single"
+		})
+
+		Context("and we validate the profile", func() {
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(MatchError("a profile must have at least one symbol name"))
+			})
+		})
+	})
+
+	When("there are no levels", func() {
+		var fb FlamebearerProfile
+		BeforeEach(func() {
+			fb.Metadata.Format = "single"
+			fb.Flamebearer.Names = []string{"name"}
+		})
+
+		Context("and we validate the profile", func() {
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(MatchError("a profile must have at least one profiling level"))
+			})
+		})
+	})
+
+	When("the level size is invalid for the profile format", func() {
+		Context("and we validate a single profile", func() {
+			var fb FlamebearerProfile
+			BeforeEach(func() {
+				fb.Metadata.Format = "single"
+				fb.Flamebearer.Names = []string{"name"}
+				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0, 0, 0, 0}}
+			})
+
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(MatchError("a profile level should have a multiple of 4 values, but there's a level with 7 values"))
+			})
+		})
+
+		Context("and we validate a double profile", func() {
+			var fb FlamebearerProfile
+			BeforeEach(func() {
+				fb.Metadata.Format = "double"
+				fb.Flamebearer.Names = []string{"name"}
+				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0}}
+			})
+
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(MatchError("a profile level should have a multiple of 7 values, but there's a level with 4 values"))
+			})
+		})
+	})
+
+	When("the name index is invalid", func() {
+		Context("and we validate a single profile", func() {
+			var fb FlamebearerProfile
+			BeforeEach(func() {
+				fb.Metadata.Format = "single"
+				fb.Flamebearer.Names = []string{"name"}
+				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 1}}
+			})
+
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(MatchError("invalid name index 1, it should be smaller than 1"))
+			})
+		})
+
+		Context("and we validate a double profile", func() {
+			var fb FlamebearerProfile
+			BeforeEach(func() {
+				fb.Metadata.Format = "double"
+				fb.Flamebearer.Names = []string{"name"}
+				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0, 0, 0, 1}}
+			})
+
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(MatchError("invalid name index 1, it should be smaller than 1"))
+			})
+		})
+	})
+
+	When("everything is valid", func() {
+		Context("and we validate a single profile", func() {
+			var fb FlamebearerProfile
+			BeforeEach(func() {
+				fb.Metadata.Format = "single"
+				fb.Flamebearer.Names = []string{"name"}
+				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0}}
+			})
+
+			It("returns no error", func() {
+				Expect(fb.Validate()).To(BeNil())
+			})
+		})
+
+		Context("and we validate a double profile", func() {
+			var fb FlamebearerProfile
+			BeforeEach(func() {
+				fb.Metadata.Format = "double"
+				fb.Flamebearer.Names = []string{"name"}
+				fb.Flamebearer.Levels = [][]int{{0, 0, 0, 0, 0, 0, 0}}
+			})
+
+			It("returns an error", func() {
+				Expect(fb.Validate()).To(BeNil())
+			})
 		})
 	})
 })

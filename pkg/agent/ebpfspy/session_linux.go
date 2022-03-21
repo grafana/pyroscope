@@ -1,3 +1,4 @@
+//go:build ebpfspy
 // +build ebpfspy
 
 // Package ebpfspy provides integration with Linux eBPF.
@@ -5,11 +6,14 @@ package ebpfspy
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
 	"github.com/pyroscope-io/pyroscope/pkg/util/file"
@@ -28,6 +32,8 @@ type session struct {
 
 	stopMutex sync.Mutex
 	stop      bool
+
+	stderr io.ReadCloser
 }
 
 const helpURL = "https://github.com/iovisor/bcc/blob/master/INSTALL.md"
@@ -69,6 +75,10 @@ func (s *session) Start() error {
 	if err != nil {
 		return err
 	}
+	s.stderr, err = s.cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
 
 	s.ch = make(chan line)
 
@@ -87,22 +97,33 @@ func (s *session) Start() error {
 	return err
 }
 
-func (s *session) Reset(cb func([]byte, uint64)) error {
+func (s *session) Reset(cb func([]byte, uint64) error) error {
+	var errs error
 	s.cmd.Process.Signal(syscall.SIGINT)
-
-	for v := range s.ch {
-		cb(v.name, uint64(v.val))
+	stderr, err := io.ReadAll(s.stderr)
+	if err != nil {
+		errs = multierror.Append(errs, err)
 	}
-	s.cmd.Wait()
+
+	if err := s.cmd.Wait(); err != nil {
+		errs = multierror.Append(errs, fmt.Errorf("%s: %w", stderr, err))
+	}
+	for v := range s.ch {
+		if err := cb(v.name, uint64(v.val)); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
 
 	s.stopMutex.Lock()
 	defer s.stopMutex.Unlock()
 
 	if s.stop {
-		return nil
-	} else {
-		return s.Start()
+		return errs
 	}
+	if err := s.Start(); err != nil {
+		errs = multierror.Append(errs, err)
+	}
+	return errs
 }
 
 func (s *session) Stop() error {

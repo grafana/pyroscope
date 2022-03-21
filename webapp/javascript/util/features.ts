@@ -2,14 +2,14 @@
 // This interfaces serves for when we introduce
 // something more sofisticated than simply booleans
 interface Features {
-  enableExperimentalAdhocUI?: boolean;
+  enableAdhocUI?: boolean;
 }
 
 function hasFeatures(
   window: unknown
 ): window is typeof window & { features: Features } {
   if (typeof window === 'object') {
-    if (window.hasOwnProperty('features')) {
+    if (window && window.hasOwnProperty('features')) {
       return true;
     }
   }
@@ -18,6 +18,6 @@ function hasFeatures(
 }
 
 // Features
-export const isExperimentalAdhocUIEnabled = hasFeatures(window)
-  ? window.features.enableExperimentalAdhocUI
-  : false;
+export const isAdhocUIEnabled = hasFeatures(window)
+  ? window.features.enableAdhocUI
+  : true;

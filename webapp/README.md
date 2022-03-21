@@ -47,3 +47,11 @@ For example, acessing http://locahlost:4040/forbidden won't work
 To be able to access it, update the variable `pages` in `scripts/webpack.common.ts` to allow building all pages when in dev mode.
 
 Beware, this will make the (local) build slower.
+
+# Investigating webpack speed
+Run with `--progress=profile` to get more info.
+
+for example `yarn dev --progress=profile`
+
+
+Another interesting flag is `--json`, which you can then analyze on https://chrisbateman.github.io/webpack-visualizer/

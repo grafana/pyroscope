@@ -44,4 +44,21 @@ describe('AppNames', () => {
       ])
     );
   });
+
+  it('ignores apps with invalid names', async () => {
+    server = setupServer(
+      rest.get(`http://localhost/label-values`, (req, res, ctx) => {
+        return res(
+          ctx.status(200),
+
+          ctx.json(['app1', 'app2', ' ', ''])
+        );
+      })
+    );
+
+    server.listen();
+    const res = await fetchAppNames();
+
+    expect(res).toMatchObject(Result.ok(['app1', 'app2']));
+  });
 });

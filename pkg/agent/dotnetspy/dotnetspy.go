@@ -1,3 +1,4 @@
+//go:build dotnetspy
 // +build dotnetspy
 
 package dotnetspy
@@ -29,12 +30,12 @@ func (s *DotnetSpy) Reset() {
 	s.reset = true
 }
 
-func (s *DotnetSpy) Snapshot(cb func(*spy.Labels, []byte, uint64, error)) {
+func (s *DotnetSpy) Snapshot(cb func(*spy.Labels, []byte, uint64) error) error {
 	if !s.reset {
-		return
+		return nil
 	}
 	s.reset = false
-	_ = s.session.flush(func(name []byte, v uint64) {
-		cb(nil, name, v, nil)
+	return s.session.flush(func(name []byte, v uint64) error {
+		return cb(nil, name, v)
 	})
 }

@@ -7,13 +7,14 @@ import (
 	"net/http/httptest"
 	"runtime"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/exporter"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
@@ -27,7 +28,7 @@ var _ = Describe("server", func() {
 					defer GinkgoRecover()
 
 					(*cfg).Server.APIBindAddr = ":10044"
-					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+					s, err := storage.New(storage.NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 					Expect(err).ToNot(HaveOccurred())
 					e, _ := exporter.NewExporter(nil, nil)
 					c, _ := New(Config{
@@ -40,7 +41,7 @@ var _ = Describe("server", func() {
 						Notifier:                mockNotifier{},
 						Adhoc:                   mockAdhocServer{},
 					})
-					h, _ := c.mux()
+					h, _ := c.serverMux()
 					httpServer := httptest.NewServer(h)
 					defer httpServer.Close()
 

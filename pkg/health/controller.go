@@ -103,3 +103,14 @@ func (c *Controller) NotificationText() string {
 	}
 	return ""
 }
+
+func (c *Controller) IsOutOfDiskSpace() bool {
+	c.m.RLock()
+	defer c.m.RUnlock()
+	for i := range c.conditions {
+		if _, ok := c.conditions[i].(DiskPressure); ok && c.current[i].Status > Healthy {
+			return true
+		}
+	}
+	return false
+}

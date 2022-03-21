@@ -1,0 +1,7 @@
+.inputWrapper {
+  display: flex;
+  margin: 20px 0px;
+  flex-direction: column;
+  width: 30%;
+  min-width: 150px;
+}

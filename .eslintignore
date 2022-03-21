@@ -2,6 +2,10 @@
 /webapp/javascript/util/**
 /webapp/__tests__/**
 /benchmark/**
-script/webpack/**
+scripts/**
 dist
 .eslintrc.js
+stories
+setupAfterEnv.ts
+jest.config.js
+cypress

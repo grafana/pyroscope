@@ -1,18 +1,56 @@
 .container {
   // same color as canvas-container
-  background-color: #212124;
+  background-color: var(--ps-c-gray);
   // same border as canvas-container
-  border: 1px solid #141414;
+  border: 1px solid var(--ps-c-gray-dark-2);
 
   padding: 5px;
   margin: 5px;
   display: flex;
   justify-content: center;
   flex-direction: column;
-  min-height: 120px;
+  min-height: 130px;
   max-height: 295px;
 
   &:hover {
     cursor: pointer;
   }
+}
+
+.dragAndDropContainer {
+  border: dashed;
+  border-color: var(--ps-c-gray-light-3);
+}
+
+.fileUploadIcon {
+  color: var(--ps-c-gray-light-3);
+  font-size: 40px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.iconContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.headerMain {
+  font-size: 16pt;
+  text-align: center;
+  vertical-align: middle;
+  margin: 0 0 10px 0;
+}
+
+.subHeading {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.subHeadingContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  min-height: 130px;
 }

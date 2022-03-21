@@ -27,7 +27,9 @@ func (s *Storage) Put(pi *PutInput) error {
 	// TODO: This is a pretty broad lock. We should find a way to make these locks more selective.
 	s.putMutex.Lock()
 	defer s.putMutex.Unlock()
-
+	if s.hc.IsOutOfDiskSpace() {
+		return errOutOfSpace
+	}
 	if pi.StartTime.Before(s.retentionPolicy().LowerTimeBoundary()) {
 		return errRetention
 	}
@@ -41,6 +43,10 @@ func (s *Storage) Put(pi *PutInput) error {
 		"units":           pi.Units,
 		"aggregationType": pi.AggregationType,
 	}).Debug("storage.Put")
+
+	if id, ok := pi.Key.ProfileID(); ok {
+		return s.profiles.insert(pi.Key.AppName(), id, pi.Val, pi.EndTime)
+	}
 
 	for k, v := range pi.Key.Labels() {
 		s.labels.Put(k, v)

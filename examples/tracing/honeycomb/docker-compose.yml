@@ -1,0 +1,46 @@
+version: '3.9'
+services:
+  us-east-1:
+    env_file:
+      - config.env
+    environment:
+      - REGION=us-east-1
+    build:
+      context: ''
+
+  us-west-1:
+    env_file:
+      - config.env
+    environment:
+      - REGION=us-west-1
+    build:
+      context: ''
+
+  eu-west-1:
+    env_file:
+      - config.env
+    environment:
+      - REGION=eu-west-1
+    build:
+      context: ''
+
+  pyroscope:
+    # TODO: after a release replace with the regular repo:
+    image: '${PYROSCOPE_IMAGE:-pyroscope/pyroscope-dev:main}'
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+
+  load-generator:
+    env_file:
+      - config.env
+    build:
+      context: ''
+      dockerfile: Dockerfile.loadgen
+    depends_on:
+      - eu-west-1
+      - us-west-1
+      - us-east-1

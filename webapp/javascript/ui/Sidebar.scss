@@ -7,8 +7,10 @@ $submenu-bg-color-collapsed: #212124;
 $sidebar-width: 250px !default;
 $sidebar-collapsed-width: 54px !default;
 
-// using @use seems to break the overwrites
-@import 'node_modules/react-pro-sidebar/dist/scss/styles.scss';
+// We can't use ~react-pro-sidebar
+// since that's not valid sass syntax, which breaks jest
+//@import '../node_modules/react-pro-sidebar/dist/scss/styles.scss';
+@import '~react-pro-sidebar/dist/scss/styles.scss';
 
 // Disable the wobble effect
 // https://github.com/azouaoui-med/react-pro-sidebar/issues/20#issuecomment-714750330
@@ -32,9 +34,10 @@ $sidebar-collapsed-width: 54px !default;
 .pro-sidebar .pro-menu .pro-menu-item.active:not(.pro-sub-menu),
 .pro-sidebar .pro-menu .pro-menu-item > .pro-inner-item:hover,
 // when collapsed, highlight since there's nothing visible
-.pro-sidebar.collapsed .pro-menu-item.active, {
-  background: #333;
-  color: #fff;
+.pro-sidebar.collapsed .pro-menu-item.active,
+.pro-sidebar.collapsed .pro-sub-menu.pro-menu-item:hover {
+  background: var(--ps-c-gray-light-1);
+  color: var(--ps-c-white);
 }
 
 // for some reason it was inheriting a different background

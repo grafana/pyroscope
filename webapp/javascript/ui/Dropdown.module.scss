@@ -1,6 +1,6 @@
 @use '../../sass/variables.scss' as *;
 
-@import '../../../node_modules/@szhsin/react-menu/dist/index.css';
+@import '@szhsin/react-menu/dist/index.css';
 
 .dropdownMenu {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.33);

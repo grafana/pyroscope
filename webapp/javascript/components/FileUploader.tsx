@@ -3,13 +3,22 @@ import React, { useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
 import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
+
+// Note: I wanted to use https://fontawesome.com/v6.0/icons/arrow-up-from-bracket?s=solid
+// but it is in fontawesome v6 which is in beta and not released yet.
+import { faArrowAltCircleUp } from '@fortawesome/free-regular-svg-icons/faArrowAltCircleUp';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import Button from '@ui/Button';
 import { addNotification } from '../redux/reducers/notifications';
 import styles from './FileUploader.module.scss';
 
 interface Props {
   file: File;
-  setFile: (file: File, flamebearer: Record<string, unknown>) => void;
+  setFile: (
+    file: File | null,
+    flamebearer: Record<string, unknown> | null
+  ) => void;
+
   className?: string;
 }
 export default function FileUploader({ file, setFile, className }: Props) {
@@ -20,7 +29,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
       throw new Error('Only a single file at a time is accepted.');
     }
 
-    acceptedFiles.forEach((file) => {
+    acceptedFiles.forEach((file: ShamefulAny) => {
       const reader = new FileReader();
 
       reader.onabort = () => console.log('file reading was aborted');
@@ -31,11 +40,17 @@ export default function FileUploader({ file, setFile, className }: Props) {
         if (typeof binaryStr === 'string') {
           throw new Error('Expecting file in binary format but got a string');
         }
+        if (binaryStr === null) {
+          throw new Error('Expecting file in binary format but got null');
+        }
 
         try {
           // ArrayBuffer -> JSON
           const s = JSON.parse(
-            String.fromCharCode.apply(null, new Uint8Array(binaryStr))
+            String.fromCharCode.apply(
+              null,
+              new Uint8Array(binaryStr) as ShamefulAny
+            )
           );
           // Only check for flamebearer fields, the rest of the file format is checked on decoding.
           const fields = ['names', 'levels', 'numTicks', 'maxSelf'];
@@ -46,7 +61,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
               );
           });
           setFile(file, s);
-        } catch (e) {
+        } catch (e: ShamefulAny) {
           dispatch(
             addNotification({
               message: e.message,
@@ -74,28 +89,38 @@ export default function FileUploader({ file, setFile, className }: Props) {
 
   return (
     <section className={`${styles.container} ${className}`}>
-      <div {...getRootProps()}>
+      <div {...getRootProps()} className={styles.dragAndDropContainer}>
         <input {...getInputProps()} />
         {file ? (
-          <p>
-            To analyze another file, drag and drop pyroscope JSON files here or
-            click to select a file
-          </p>
+          <div className={styles.subHeadingContainer}>
+            <div className={styles.subHeading}>
+              To analyze another file, drag and drop pyroscope JSON files here
+              or click to select a file
+            </div>
+            <div className={styles.headerMain}> {file.name} </div>
+            <div className={styles.subHeading}>
+              <Button icon={faTrash} onClick={onRemove}>
+                Remove
+              </Button>
+            </div>
+          </div>
         ) : (
-          <p>
-            Drag and drop pyroscope JSON files here, or click to select a file
-          </p>
+          <div>
+            <p className={styles.headerMain}>
+              Drag and drop Flamegraph files here
+            </p>
+            <div className={styles.iconContainer}>
+              <FontAwesomeIcon
+                icon={faArrowAltCircleUp}
+                className={styles.fileUploadIcon}
+              />
+            </div>
+            <p className={styles.subHeading}>
+              Or click to select a file from your device
+            </p>
+          </div>
         )}
       </div>
-      {file && (
-        <aside>
-          Currently analyzing file {file.name}
-          &nbsp;
-          <Button icon={faTrash} onClick={onRemove}>
-            Remove
-          </Button>
-        </aside>
-      )}
     </section>
   );
 }

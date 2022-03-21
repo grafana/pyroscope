@@ -11,14 +11,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
 var (
-	errRetention = errors.New("could not write because of retention settings")
-	errClosed    = errors.New("storage closed")
+	errRetention  = errors.New("could not write because of retention settings")
+	errOutOfSpace = errors.New("running out of space")
+	errClosed     = errors.New("storage closed")
 )
 
 type Storage struct {
@@ -34,6 +36,9 @@ type Storage struct {
 	trees      *db
 	main       *db
 	labels     *labels.Labels
+	profiles   *profiles
+
+	hc *health.Controller
 
 	// Maintenance tasks are executed exclusively to avoid competition:
 	// extensive writing during GC is harmful and deteriorates the
@@ -79,7 +84,7 @@ type SampleObserver interface {
 	Observe(k []byte, v int)
 }
 
-func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage, error) {
+func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health.Controller) (*Storage, error) {
 	s := &Storage{
 		config: c,
 		storageOptions: &storageOptions{
@@ -100,6 +105,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 			queueWorkers: runtime.NumCPU(),
 		},
 
+		hc:      hc,
 		logger:  logger,
 		metrics: newMetrics(reg),
 		stop:    make(chan struct{}),
@@ -122,6 +128,16 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 	}
 	if s.trees, err = s.newBadger("trees", treePrefix, treeCodec{s}); err != nil {
 		return nil, err
+	}
+
+	pdb, err := s.newBadger("profiles", profileDataPrefix, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.profiles = &profiles{
+		db:     pdb,
+		dicts:  s.dicts,
+		config: s.config,
 	}
 
 	s.labels = labels.New(s.main.DB)
@@ -155,7 +171,7 @@ func (s *Storage) Close() error {
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.tasksWG.Wait()
 	s.logger.Debug("storage tasks finished")
-	// Dictionaries DB has to close last because trees depend on it.
+	// Dictionaries DB has to close last because trees and profiles DBs depend on it.
 	s.goDB(func(d *db) {
 		if d != s.dicts {
 			d.close()
@@ -306,12 +322,12 @@ func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
 }
 
 func (s *Storage) databases() []*db {
-	// Order matters.
 	return []*db{
 		s.main,
 		s.dimensions,
 		s.segments,
 		s.dicts,
 		s.trees,
+		s.profiles.db,
 	}
 }

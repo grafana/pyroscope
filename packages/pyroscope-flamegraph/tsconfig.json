@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": ["./src/index.tsx"],
+  "baseUrl": ".",
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "noImplicitAny": false,
+    "removeComments": true,
+    "noLib": false,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "target": "es6",
+    "sourceMap": true,
+    "lib": ["es6", "dom"],
+    "outDir": "./dist"
+  }
+}

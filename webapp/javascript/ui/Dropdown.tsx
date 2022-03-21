@@ -9,6 +9,8 @@ import {
   MenuButton as LibMenuButton,
   FocusableItem as LibFocusableItem,
 } from '@szhsin/react-menu';
+
+import cx from 'classnames';
 import styles from './Dropdown.module.scss';
 
 export interface DropdownProps {
@@ -33,6 +35,8 @@ export interface DropdownProps {
 
   overflow?: MenuProps['overflow'];
   position?: MenuProps['position'];
+
+  menuButton?: JSX.Element;
 }
 
 export default function Dropdown({
@@ -48,22 +52,25 @@ export default function Dropdown({
   menuButtonClassName = '',
   ...props
 }: DropdownProps) {
+  const menuButtonComponent = props.menuButton || (
+    <MenuButton
+      className={`${styles.dropdownMenuButton} ${menuButtonClassName}`}
+      disabled={disabled}
+      type="button"
+    >
+      {value || label}
+    </MenuButton>
+  );
+
   return (
     <Menu
       id={id}
-      className={`${className} ${styles.dropdownMenu}`}
+      className={cx(className, styles.dropdownMenu)}
       data-testid={props['data-testid']}
       onItemClick={onItemClick}
       overflow={overflow}
       position={position}
-      menuButton={
-        <MenuButton
-          className={`${styles.dropdownMenuButton} ${menuButtonClassName}`}
-          disabled={disabled}
-        >
-          {value || label}
-        </MenuButton>
-      }
+      menuButton={menuButtonComponent}
     >
       <MenuHeader>{label}</MenuHeader>
       {children}
@@ -73,5 +80,5 @@ export default function Dropdown({
 
 export const SubMenu = LibSubmenu;
 export const MenuItem = LibMenuItem;
-export const MenuButton = LibMenuButton;
+export const MenuButton = LibMenuButton as ShamefulAny;
 export const FocusableItem = LibFocusableItem;

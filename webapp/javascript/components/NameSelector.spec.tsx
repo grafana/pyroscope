@@ -1,8 +1,8 @@
 import React from 'react';
 import { Provider } from 'react-redux';
-import { render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
-import { newRootSlice } from '@pyroscope/redux/reducers/newRoot';
+import { continuousSlice } from '@pyroscope/redux/reducers/continuous';
 import { Result } from '@utils/fp';
 import * as appNames from '@pyroscope/services/appNames';
 import NameSelector from './NameSelector';
@@ -10,15 +10,15 @@ import NameSelector from './NameSelector';
 jest.mock('@pyroscope/services/appNames');
 
 function render(
-  ui,
+  ui: any,
   {
     store = configureStore({
-      reducer: { newRoot: newRootSlice.reducer },
+      reducer: { continuous: continuousSlice.reducer },
     }),
     ...renderOptions
   } = {}
 ) {
-  function Wrapper({ children }) {
+  function Wrapper({ children }: any) {
     return <Provider store={store}>{children}</Provider>;
   }
   return rtlRender(ui, { wrapper: Wrapper, ...renderOptions });
@@ -50,9 +50,4 @@ describe('NameSelector', () => {
       .click();
     screen.getByRole('menuitem', { name: 'myapp' });
   });
-
-  //  it('sets the first available app as the default', () => {
-  //    (appNames as any).fetchAppNames.mockResolvedValueOnce(Result.ok(['myapp']));
-  //    render(<NameSelector />);
-  //  })
 });

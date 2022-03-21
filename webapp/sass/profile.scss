@@ -3,7 +3,6 @@
 @use 'mixins/outline' as *;
 @use 'components/daterangepicker';
 @use 'components/labels';
-@use 'components/exportdata';
 @use 'components/tagsbar';
 @use 'components/button';
 
@@ -13,7 +12,8 @@
 
 @import 'login.scss';
 
-@import '../javascript/components/FlameGraph/FlameGraphComponent/styles.css';
+//global color variables
+@import './variables.css';
 
 html {
   width: 100vw;
@@ -23,8 +23,8 @@ body {
   font: 400 16px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica,
     Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
 
-  background-color: $bg-color;
-  color: white;
+  background-color: var(--ps-c-gray-dark-1);
+  color: var(--ps-c-white);
 }
 
 pre,
@@ -36,9 +36,9 @@ tt {
 
 tt {
   border-radius: 3px;
-  border: 1px solid #aaa;
+  border: 1px solidver(--ps-gray-light-4);
   padding: 2px 4px;
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: var(--ps-c-white-dark-2);
 }
 
 .navbar {
@@ -255,7 +255,7 @@ $pane-width: 6px;
 }
 
 .right-instructions-text {
-  color: rgba(19, 152, 246, 1);
+  color: var(--ps-c-blue-light-2);
   font-size: 12px;
 }
 
@@ -272,8 +272,8 @@ $pane-width: 6px;
     text-align: right;
     padding: 0px 10px;
 
-    border-left: 1px solid #333;
-    border-bottom: 1px solid #333;
+    border-left: 1px solid var(--ps-c-gray-light-1);
+    border-bottom: 1px solid var(--ps-c-gray-light-1);
     width: 150px;
     min-width: 150px;
     max-width: 150px;
@@ -286,24 +286,24 @@ $pane-width: 6px;
     .sort-arrow {
       display: inline-block;
       border: 5px solid transparent;
-      border-top-color: rgba(255, 255, 255, 0.1);
+      border-top-color: var(--ps-c-white-dark-2);
       top: 3px;
       position: relative;
       margin-left: 7px;
       &.asc {
         border-top-color: transparent;
-        border-bottom-color: white;
+        border-bottom-color: var(--ps-c-white);
         top: -2px;
       }
       &.desc {
-        border-top-color: white;
+        border-top-color: var(--ps-c-white);
         top: 3px;
       }
     }
 
     span {
       // mix-blend-mode: exclusion;
-      text-shadow: 0 0 2px rgba(0, 0, 0, 0.33);
+      text-shadow: 0 0 2px var(--ps-c-black-lighter);
     }
 
     &:first-child {
@@ -336,7 +336,7 @@ $pane-width: 6px;
   }
   tr th,
   tr:nth-child(2n) td {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--ps-c-white-dark-3);
   }
 
   td {
@@ -412,7 +412,7 @@ $pane-width: 6px;
     // flex-grow: 1;
   }
   a {
-    color: white;
+    color: var(--ps-c-white);
     text-decoration: none;
     &:hover span {
       text-decoration: underline;
@@ -424,11 +424,11 @@ $pane-width: 6px;
 .footer {
   .navbar-link {
     a {
-      color: white;
+      color: var(--ps-c-white);
       text-decoration: none;
       font-weight: 500;
       &:hover {
-        color: #fff;
+        color: var(--ps-c-white);
         cursor: pointer;
       }
     }
@@ -450,7 +450,7 @@ body,
 // which should occuppy the rest of screen width
 // making it look like it's the body's toolbar!
 .app {
-  height: 100%;
+  height: 100vh;
   display: flex;
 }
 
@@ -521,14 +521,13 @@ body,
   .btn {
     padding-left: 12px;
     padding-right: 12px;
-    $active-color: #2ecc40;
     &.active {
-      background-color: $active-color;
+      background-color: var(--ps-c-green);
       color: #222;
-      border-left-color: $active-color;
-      border-right-color: $active-color;
-      border-top-color: $active-color;
-      border-bottom-color: $active-color;
+      border-left-color: var(--ps-c-green);
+      border-right-color: var(--ps-c-green);
+      border-top-color: var(--ps-c-green);
+      border-bottom-color: var(--ps-c-green);
     }
   }
 
