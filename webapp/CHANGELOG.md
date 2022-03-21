@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.2.0...@pyroscope/webapp@1.3.0) (2022-03-21)
+
+
+### Features
+
+* **webapp:** allow comparing distinct queries/tags ([#942](https://github.com/pyroscope-io/pyroscope/issues/942)) ([4d1307c](https://github.com/pyroscope-io/pyroscope/commit/4d1307c3751b263d88430977f2d87473c8ee280e))
+
+
+
+
+
 # [1.2.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.1.10...@pyroscope/webapp@1.2.0) (2022-03-21)
 
 
