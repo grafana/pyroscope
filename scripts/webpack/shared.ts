@@ -23,7 +23,6 @@ export function getStyleLoaders() {
         {
           loader: 'postcss-loader',
           options: {
-            //            sourceMap: true,
             config: { path: __dirname },
           },
         },
