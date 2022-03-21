@@ -60,7 +60,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case format == "lines":
 		err = convert.ParseIndividualLines(r.Body, cb)
 	case format == "jfr":
-		err = jfr.ParseJFR(r.Body, cb, pi)
+		err = jfr.ParseJFR(r.Body, h.storage, pi)
 	case strings.Contains(contentType, "multipart/form-data"):
 		err = writePprof(h.storage, pi, r)
 	default:
