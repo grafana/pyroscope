@@ -13,6 +13,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
 	"github.com/pyroscope-io/pyroscope/pkg/convert"
+	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
 	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -58,6 +59,8 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		err = convert.ParseTreeNoDict(r.Body, cb)
 	case format == "lines":
 		err = convert.ParseIndividualLines(r.Body, cb)
+	case format == "jfr":
+		err = jfr.ParseJFR(r.Body, cb, pi)
 	case strings.Contains(contentType, "multipart/form-data"):
 		err = writePprof(h.storage, pi, r)
 	default:

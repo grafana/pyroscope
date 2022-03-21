@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.2.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.1.10...@pyroscope/webapp@1.2.0) (2022-03-21)
+
+
+### Features
+
+* **webapp:** make search in app/tags selector bar sticky ([#950](https://github.com/pyroscope-io/pyroscope/issues/950)) ([c13ad6a](https://github.com/pyroscope-io/pyroscope/commit/c13ad6af04bdc96bbd980a0d89f8da07681fd321))
+
+
+
+
+
+## [1.1.10](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.1.9...@pyroscope/webapp@1.1.10) (2022-03-18)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.1.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.1.8...@pyroscope/webapp@1.1.9) (2022-03-16)
 
 
