@@ -54,8 +54,9 @@ function NameSelector() {
     </MenuItem>
   )) as ShamefulAny;
 
-  const noApp =
-    appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>;
+  const noApp = (
+    appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>
+  ) as JSX.Element;
 
   return (
     <div className={styles.container}>
