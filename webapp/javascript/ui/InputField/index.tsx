@@ -14,7 +14,7 @@ function InputField({ label, className, ...rest }: IInputFieldProps) {
     <div
       className={cx({
         [styles.inputWrapper]: true,
-        [className]: true,
+        [className]: !!className,
       })}
     >
       <h4>{label}</h4>

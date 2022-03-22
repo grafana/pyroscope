@@ -46,7 +46,7 @@ function SignUpPage() {
       }
 
       throw res.error;
-    } catch (e) {
+    } catch (e: any) {
       setForm({ ...form, errors: e.errors || [e.message] });
     }
   }
