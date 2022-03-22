@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.2.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.1.3...@pyroscope/flamegraph@0.2.0) (2022-03-15)
+
+
+### Features
+
+* **flamegraph:** publish FlamegraphRenderer for nodejs ([#944](https://github.com/pyroscope-io/pyroscope/issues/944)) ([c2a5631](https://github.com/pyroscope-io/pyroscope/commit/c2a56310e4b36bc6823d5f9debe6e7ac07c6b877))
+
+
+
+
+
+## [0.1.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.1.2...@pyroscope/flamegraph@0.1.3) (2022-03-14)
+
+**Note:** Version bump only for package @pyroscope/flamegraph
+
+
+
+
+
 ## [0.1.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.1.1...@pyroscope/flamegraph@0.1.2) (2022-03-14)
 
 **Note:** Version bump only for package @pyroscope/flamegraph

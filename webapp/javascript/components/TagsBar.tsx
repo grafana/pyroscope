@@ -1,34 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Button from '@ui/Button';
 import 'react-dom';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import {
-  selectContinuousState,
-  fetchTags,
-  selectLabelsList,
-  setQuery,
-  fetchTagValues,
-  selectLabels,
-  selectApplicationName,
-} from '@pyroscope/redux/reducers/continuous';
-import Dropdown, { SubMenu, MenuItem, FocusableItem } from '@ui/Dropdown';
+import { TagsState } from '@pyroscope/redux/reducers/continuous';
+import Dropdown, {
+  SubMenu,
+  MenuItem,
+  FocusableItem,
+  MenuGroup,
+} from '@ui/Dropdown';
 import { Prism } from '../util/prism';
 import styles from './TagsBar.module.css';
 
-function TagsBar() {
-  const dispatch = useAppDispatch();
-  const { query, tags } = useAppSelector(selectContinuousState);
-  const labelsList = useAppSelector(selectLabelsList);
-  const appName = useAppSelector(selectApplicationName);
+interface TagsBarProps {
+  onSetQuery: (q: string) => void;
+  onSelectedLabel: (label: string, query: string) => void;
+  query: string;
+  tags: TagsState;
+}
 
-  // only fetch new tags when the application name changes
-  // otherwise changing tags will change the query and trigger a reload
-  useEffect(() => {
-    if (query) {
-      dispatch(fetchTags(query));
-    }
-  }, [appName]);
-
+function TagsBar({ onSetQuery, query, tags, onSelectedLabel }: TagsBarProps) {
   const CustomDropdown = (() => {
     const noTagsAvailable = (
       <Dropdown label="Select Tag">
@@ -36,7 +26,7 @@ function TagsBar() {
       </Dropdown>
     );
 
-    if (labelsList.length <= 0) {
+    if (tags?.type === 'loaded' && Object.keys(tags?.tags || {}).length <= 0) {
       return noTagsAvailable;
     }
 
@@ -55,11 +45,14 @@ function TagsBar() {
             query={query}
             labels={tags.tags}
             onSelectedLabel={(label) => {
-              dispatch(fetchTagValues({ query, label }));
+              // if nothing changed there's no point bubbling up
+              if (!tags.tags[label] || tags.tags[label].type !== 'loaded') {
+                onSelectedLabel(label, query);
+              }
             }}
             onSelectedLabelValue={(label, labelValue) => {
               const newQuery = appendLabelToQuery(query, label, labelValue);
-              dispatch(setQuery(newQuery));
+              onSetQuery(newQuery);
             }}
           />
         );
@@ -80,7 +73,7 @@ function TagsBar() {
       <QueryInput
         initialQuery={query}
         onSubmit={(q) => {
-          dispatch(setQuery(q));
+          onSetQuery(q);
         }}
       />
     </div>
@@ -146,7 +139,7 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
 
 interface LabelsSubmenuProps {
   query: string;
-  labels: ReturnType<typeof selectLabels>;
+  labels: TagsState['tags'];
   onSelectedLabel: (tag: string) => void;
   onSelectedLabelValue: (label: string, labelValue: string) => void;
 }
@@ -248,7 +241,7 @@ function LabelsSubmenu({
         )}
       >
         {GetFilter(tag)}
-        {GetTagValues(tag, tagValues)}
+        <MenuGroup takeOverflow>{GetTagValues(tag, tagValues)}</MenuGroup>
       </SubMenu>
     );
   });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import 'react-dom';
 
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
@@ -74,15 +74,20 @@ function ContinuousSingleView() {
     }
   })();
 
-  const getTimelineData = () => {
+  const getTimeline = () => {
     switch (singleView.type) {
       case 'loaded':
       case 'reloading': {
-        return singleView.timeline;
+        return {
+          data: singleView.timeline,
+        };
       }
 
-      default:
-        return undefined;
+      default: {
+        return {
+          data: undefined,
+        };
+      }
     }
   };
 
@@ -93,8 +98,7 @@ function ContinuousSingleView() {
         <TimelineChartWrapper
           data-testid="timeline-single"
           id="timeline-chart-single"
-          viewSide="none"
-          timeline={getTimelineData()}
+          timelineA={getTimeline()}
           onSelect={(from, until) => dispatch(setDateRange({ from, until }))}
         />
         <Box>{flamegraphRenderer}</Box>
