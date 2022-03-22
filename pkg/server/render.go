@@ -84,7 +84,7 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch p.format {
 	case "json":
-		flame := flamebearer.NewProfile(out, p.maxNodes)
+		flame := flamebearer.NewProfile(filename, out, p.maxNodes)
 		res := ctrl.mountRenderResponse(flame, appName, p.gi, p.maxNodes)
 		ctrl.writeResponseJSON(w, res)
 	case "pprof":
@@ -102,25 +102,78 @@ func (ctrl *Controller) renderHandler(w http.ResponseWriter, r *http.Request) {
 		collapsed := out.Tree.Collapsed()
 		ctrl.writeResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	case "html":
-		res := flamebearer.NewProfile(out, p.maxNodes)
-
-		tmpl, err := ctrl.getTemplate("/standalone.html")
-		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render standalone page")
-			return
-		}
-		var flamegraph []byte
-		flamegraph, err = json.Marshal(res)
-		if err != nil {
+		res := flamebearer.NewProfile(filename, out, p.maxNodes)
+		w.Header().Add("Content-Type", "text/html")
+		if err := flamebearer.FlamebearerToStandaloneHTML(&res, ctrl.dir, w); err != nil {
 			ctrl.writeJSONEncodeError(w, err)
 			return
 		}
-
-		w.Header().Add("Content-Type", "text/html")
-		mustExecute(tmpl, w, map[string]string{
-			"Flamegraph": string(flamegraph),
-		})
 	}
+}
+
+type mergeRequest struct {
+	AppName  string   `json:"appName"`
+	Profiles []string `json:"profiles"`
+	MaxNodes int      `json:"maxNodes"`
+}
+
+type mergeResponse struct {
+	flamebearer.FlamebearerProfile
+}
+
+func (ctrl *Controller) mergeHandler(w http.ResponseWriter, r *http.Request) {
+	var req mergeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ctrl.writeInvalidParameterError(w, err)
+		return
+	}
+
+	if req.AppName == "" {
+		ctrl.writeInvalidParameterError(w, fmt.Errorf("application name required"))
+		return
+	}
+	if len(req.Profiles) == 0 {
+		ctrl.writeInvalidParameterError(w, fmt.Errorf("at least one profile ID must be specified"))
+		return
+	}
+	maxNodes := ctrl.config.MaxNodesRender
+	if req.MaxNodes > 0 {
+		maxNodes = req.MaxNodes
+	}
+
+	out, err := ctrl.storage.MergeProfiles(r.Context(), storage.MergeProfilesInput{
+		AppName:  req.AppName,
+		Profiles: req.Profiles,
+	})
+	if err != nil {
+		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
+		return
+	}
+
+	flame := out.Tree.FlamebearerStruct(maxNodes)
+	resp := mergeResponse{
+		FlamebearerProfile: flamebearer.FlamebearerProfile{
+			Version: 1,
+			FlamebearerProfileV1: flamebearer.FlamebearerProfileV1{
+				Flamebearer: flamebearer.FlamebearerV1{
+					Names:    flame.Names,
+					Levels:   flame.Levels,
+					NumTicks: flame.NumTicks,
+					MaxSelf:  flame.MaxSelf,
+				},
+				// Hardcoded values for Go.
+				Metadata: flamebearer.FlamebearerMetadataV1{
+					Format:     string(tree.FormatSingle),
+					SpyName:    "unknown",
+					SampleRate: 100,
+					Units:      "samples",
+				},
+			},
+		},
+	}
+
+	ctrl.statsInc("merge")
+	ctrl.writeResponseJSON(w, resp)
 }
 
 // Enhance the flamebearer with a few additional fields the UI requires
@@ -193,7 +246,29 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	ctrl.writeResponseJSON(w, flamebearer.NewCombinedProfile(out, leftOut, rghtOut, p.maxNodes))
+	var appName string
+	if p.gi.Key != nil {
+		appName = p.gi.Key.AppName()
+	} else if p.gi.Query != nil {
+		appName = p.gi.Query.AppName
+	}
+	combined := flamebearer.NewCombinedProfile(appName, out, leftOut, rghtOut, p.maxNodes)
+
+	switch p.format {
+	case "html":
+		w.Header().Add("Content-Type", "text/html")
+		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, ctrl.dir, w); err != nil {
+			ctrl.writeJSONEncodeError(w, err)
+			return
+		}
+
+	case "json":
+		// fallthrough to default, to maintain existing behaviour
+		fallthrough
+	default:
+		res := ctrl.mountRenderResponse(combined, appName, p.gi, p.maxNodes)
+		ctrl.writeResponseJSON(w, res)
+	}
 }
 
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {

@@ -28,6 +28,8 @@ func newAdminCmd(cfg *config.Admin) *cobra.Command {
 
 	// admin
 	cmd.AddCommand(newAdminAppCmd(cfg))
+	cmd.AddCommand(newAdminUserCmd(cfg))
+	cmd.AddCommand(newAdminStorageCmd(cfg))
 
 	return cmd
 }
@@ -105,6 +107,83 @@ func newAdminAppDeleteCmd(cfg *config.AdminAppDelete) *cobra.Command {
 			}
 
 			return cli.DeleteApp(arg[0], cfg.Force)
+		}),
+	}
+
+	cli.PopulateFlagSet(cfg, cmd.Flags(), vpr)
+	return cmd
+}
+
+func newAdminUserCmd(cfg *config.Admin) *cobra.Command {
+	vpr := newViper()
+
+	var cmd *cobra.Command
+	cmd = &cobra.Command{
+		Use:   "user",
+		Short: "manage users",
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
+			printUsageMessage(cmd)
+			return nil
+		}),
+	}
+
+	cmd.AddCommand(newAdminPasswordResetCmd(&cfg.AdminUserPasswordReset))
+
+	return cmd
+}
+
+func newAdminPasswordResetCmd(cfg *config.AdminUserPasswordReset) *cobra.Command {
+	vpr := newViper()
+	cmd := &cobra.Command{
+		Use:   "reset-password [flags]",
+		Short: "reset user password",
+		Args:  cobra.NoArgs,
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, arg []string) error {
+			ac, err := admin.NewCLI(cfg.SocketPath, cfg.Timeout)
+			if err != nil {
+				return err
+			}
+			if err = ac.ResetUserPassword(cfg.Username, cfg.Password, cfg.Enable); err != nil {
+				return err
+			}
+			fmt.Println("Password for user", cfg.Username, "has been reset successfully.")
+			return nil
+		}),
+	}
+
+	cli.PopulateFlagSet(cfg, cmd.Flags(), vpr)
+	return cmd
+}
+
+func newAdminStorageCmd(cfg *config.Admin) *cobra.Command {
+	vpr := newViper()
+
+	var cmd *cobra.Command
+	cmd = &cobra.Command{
+		Use:   "storage",
+		Short: "",
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, _ []string) error {
+			printUsageMessage(cmd)
+			return nil
+		}),
+	}
+
+	cmd.AddCommand(newAdminStorageCleanupCmd(&cfg.AdminStorageCleanup))
+	return cmd
+}
+
+func newAdminStorageCleanupCmd(cfg *config.AdminStorageCleanup) *cobra.Command {
+	vpr := newViper()
+	cmd := &cobra.Command{
+		Use:   "cleanup",
+		Short: "remove malformed data",
+		Args:  cobra.NoArgs,
+		RunE: cli.CreateCmdRunFn(cfg, vpr, func(_ *cobra.Command, arg []string) error {
+			ac, err := admin.NewCLI(cfg.SocketPath, cfg.Timeout)
+			if err != nil {
+				return err
+			}
+			return ac.CleanupStorage()
 		}),
 	}
 

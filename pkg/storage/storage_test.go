@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/mem"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -301,7 +302,7 @@ var _ = Describe("storage package", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 		})
 		suite()
@@ -311,7 +312,7 @@ var _ = Describe("storage package", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 		})
 		suite()
@@ -323,7 +324,7 @@ var _ = Describe("persistence", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 		})
 		Context("persist data between restarts", func() {
@@ -360,7 +361,7 @@ var _ = Describe("persistence", func() {
 				Expect(o.Tree.String()).To(Equal(tree.String()))
 				Expect(s.Close()).ToNot(HaveOccurred())
 
-				s2, err := New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+				s2, err := New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 				Expect(err).ToNot(HaveOccurred())
 
 				o2, err := s2.Get(&GetInput{
@@ -542,7 +543,7 @@ var _ = Describe("querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 			setup()
 		})
@@ -553,7 +554,7 @@ var _ = Describe("querying", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 			setup()
 		})
@@ -621,7 +622,7 @@ var _ = Describe("CollectGarbage", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 		})
 		suite()
@@ -631,7 +632,7 @@ var _ = Describe("CollectGarbage", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server).WithInMemory(), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 		})
 		suite()
@@ -642,7 +643,7 @@ var _ = Describe("Getters", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 		})
 

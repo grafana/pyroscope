@@ -1,4 +1,4 @@
-import { BAR_HEIGHT } from '../../../webapp/javascript/components/FlameGraph/FlameGraphComponent/constants';
+const BAR_HEIGHT = 21.5;
 
 // / <reference types="cypress" />
 describe('basic test', () => {
@@ -355,6 +355,60 @@ describe('basic test', () => {
         'aria-disabled',
         'true'
       );
+    });
+  });
+
+  describe('tooltip', () => {
+    it('it displays a tooltip on hover', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+      }).as('render');
+
+      cy.visit('/?query=pyroscope.server.cpu%7B%7D');
+      cy.wait('@render');
+
+      cy.findByTestId('timeline-single').as('timeline');
+      cy.get('.flot-text .flot-tick-label');
+      cy.get('canvas.flot-overlay');
+
+      cy.get('@timeline').find('.flot-overlay').as('overlay');
+
+      cy.get('@overlay')
+        .trigger('mouseover', 1, 1)
+        .trigger('mousemove', 20, 20);
+      cy.findAllByTestId('timeline-tooltip1').should('be.visible');
+
+      cy.get('@timeline').find('.flot-overlay').trigger('mouseout');
+      cy.findAllByTestId('timeline-tooltip1').should('not.be.visible');
+    });
+
+    it('it should have one tooltip on short selection', () => {
+      cy.intercept('**/render*', {
+        fixture: 'simple-golang-app-cpu.json',
+      }).as('render');
+
+      cy.visit('/?query=pyroscope.server.cpu%7B%7D');
+
+      cy.findByTestId('timeline-single').as('timeline');
+      cy.get('.flot-text .flot-tick-label');
+      cy.get('canvas.flot-overlay');
+
+      cy.get('@timeline').find('.flot-overlay').as('overlay');
+
+      cy.get('@overlay')
+        .trigger('mouseover', 1, 1)
+        .trigger('mousemove', 20, 20);
+      cy.findAllByTestId('timeline-tooltip1').should('be.visible');
+
+      // Make sure we have a single timeline selector
+      cy.get('@overlay')
+        .trigger('mousedown', 1, 1)
+        .trigger('mousemove', 20, 50);
+      cy.findAllByTestId('timeline-tooltip1').should('be.visible');
+      cy.findAllByTestId('timeline-tooltip1').should(($div) => {
+        const text = $div.text();
+        expect(text).to.match(/\d+:\d+:\d+\s+-\s+\d+:\d+:\d+/m);
+      });
     });
   });
 });

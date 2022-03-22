@@ -1,22 +1,29 @@
 import ReactDOM from 'react-dom';
-import React from 'react';
+import React, { useEffect } from 'react';
 
-import { Provider } from 'react-redux';
-import { Router, BrowserRouter, Switch, Route } from 'react-router-dom';
+import { Provider, useDispatch } from 'react-redux';
+import { Router, Switch, Route } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
-import { isExperimentalAdhocUIEnabled } from '@utils/features';
+import { isAdhocUIEnabled } from '@utils/features';
 import Notifications from '@ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
+import { loadCurrentUser } from '@pyroscope/redux/reducers/user';
 import store, { persistor } from './redux/store';
 
-import PyroscopeApp from './components/PyroscopeApp';
-import ComparisonApp from './components/ComparisonApp';
-import ComparisonDiffApp from './components/ComparisonDiffApp';
+import ContinuousSingleView from './pages/ContinuousSingleView';
+import ContinuousComparisonView from './pages/ContinuousComparisonView';
+import ContinuousDiffView from './pages/ContinuousDiffView';
+import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
-import AdhocSingle from './components/AdhocSingle';
-import AdhocComparison from './components/AdhocComparison';
-import AdhocComparisonDiff from './components/AdhocComparisonDiff';
+import AdhocSingle from './pages/AdhocSingle';
+import AdhocComparison from './pages/AdhocComparison';
+import AdhocDiff from './pages/AdhocDiff';
+import ServiceDiscoveryApp from './components/ServiceDiscoveryApp';
 import ServerNotifications from './components/ServerNotifications';
+// since this style is practically all pages
+import '@pyroscope/flamegraph/dist/index.css';
+// global css variables
+// import './variables.css';
 
 import history from './util/history';
 
@@ -29,41 +36,57 @@ try {
   console.error(e);
 }
 
+function App() {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(loadCurrentUser());
+  }, [dispatch]);
+
+  return (
+    <div className="app">
+      <Sidebar />
+      <Switch>
+        <Route exact path="/">
+          <ContinuousSingleView />
+        </Route>
+        <Route path="/comparison">
+          <ContinuousComparisonView />
+        </Route>
+        <Route path="/comparison-diff">
+          <ContinuousDiffView />
+        </Route>
+        <Route path="/settings">
+          <Settings />
+        </Route>
+        <Route path="/service-discovery">
+          <ServiceDiscoveryApp />
+        </Route>
+        {isAdhocUIEnabled && (
+          <>
+            <Route path="/adhoc-single">
+              <AdhocSingle />
+            </Route>
+            <Route path="/adhoc-comparison">
+              <AdhocComparison />
+            </Route>
+            <Route path="/adhoc-comparison-diff">
+              <AdhocDiff />
+            </Route>
+          </>
+        )}
+      </Switch>
+    </div>
+  );
+}
+
 ReactDOM.render(
   <Provider store={store}>
     <PersistGate persistor={persistor} loading={null}>
       <Router history={history}>
         <ServerNotifications />
         <Notifications />
-        <div className="app">
-          <Sidebar />
-          <Switch>
-            <Route exact path="/">
-              <PyroscopeApp />
-            </Route>
-            <Route path="/comparison">
-              <ComparisonApp />
-            </Route>
-            <Route path="/comparison-diff">
-              <ComparisonDiffApp />
-            </Route>
-            {isExperimentalAdhocUIEnabled && (
-              <Route path="/adhoc-single">
-                <AdhocSingle />
-              </Route>
-            )}
-            {isExperimentalAdhocUIEnabled && (
-              <Route path="/adhoc-comparison">
-                <AdhocComparison />
-              </Route>
-            )}
-            {isExperimentalAdhocUIEnabled && (
-              <Route path="/adhoc-comparison-diff">
-                <AdhocComparisonDiff />
-              </Route>
-            )}
-          </Switch>
-        </div>
+        <App />
       </Router>
       {showFps ? <FPSStats left="auto" top="auto" bottom={2} right={2} /> : ''}
     </PersistGate>

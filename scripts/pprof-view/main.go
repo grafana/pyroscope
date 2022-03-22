@@ -3,8 +3,8 @@ package main
 import (
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
@@ -33,5 +33,5 @@ func main() {
 		panic(err)
 	}
 
-	log.Println(string(b))
+	_, _ = fmt.Fprintln(os.Stdout, string(b))
 }

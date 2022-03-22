@@ -6,12 +6,13 @@ package storage
 import (
 	"time"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	"github.com/pyroscope-io/pyroscope/pkg/config"
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dict"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
@@ -25,7 +26,7 @@ var _ = Describe("storage package", func() {
 	testing.WithConfig(func(cfg **config.Config) {
 		JustBeforeEach(func() {
 			var err error
-			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry())
+			s, err = New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 			Expect(err).ToNot(HaveOccurred())
 		})
 	})
@@ -138,8 +139,7 @@ var _ = Describe("storage package", func() {
 
 				// Trees
 				Expect(s.trees.Cache.Size()).To(Equal(uint64(1)))
-				t := checkTreesPresence(appname, st, 0, true)
-				Expect(t).To(Equal(tree1))
+				checkTreesPresence(appname, st, 0, true)
 
 				// Segments
 				Expect(s.segments.Cache.Size()).To(Equal(uint64(1)))
@@ -162,7 +162,7 @@ var _ = Describe("storage package", func() {
 				// Trees
 				// should've been deleted from CACHE
 				Expect(s.trees.Cache.Size()).To(Equal(uint64(0)))
-				t = checkTreesPresence(appname, st, 0, false)
+				checkTreesPresence(appname, st, 0, false)
 
 				// Dimensions
 				Expect(s.dimensions.Cache.Size()).To(Equal(uint64(0)))

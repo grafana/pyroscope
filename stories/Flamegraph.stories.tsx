@@ -1,9 +1,11 @@
-import React from 'react';
-import { Units } from '@utils/format';
-import Flamegraph from '../webapp/javascript/components/FlameGraph/FlameGraphRenderer';
+import React, { useState } from 'react';
+import { FlamegraphRenderer } from '@pyroscope/flamegraph';
+import PyroscopeServerCPU from '../cypress/fixtures/pyroscope.server.cpu.json';
+import SimpleGolangCPU from '../cypress/fixtures/simple-golang-app-cpu.json';
+import Button from '@ui/Button';
 
 export default {
-  title: 'Flamegraph',
+  title: '@pyroscope/flamegraph',
 };
 
 const SimpleTree = {
@@ -28,7 +30,7 @@ const SimpleTree = {
   ],
 
   rangeMax: 1,
-  units: Units.Samples,
+  units: 'samples',
   fitMode: 'HEAD',
 
   spyName: 'gospy',
@@ -36,7 +38,7 @@ const SimpleTree = {
 
 export const WithToolbar = () => {
   return (
-    <Flamegraph
+    <FlamegraphRenderer
       flamebearer={SimpleTree}
       display="flamegraph"
       viewType="single"
@@ -46,7 +48,7 @@ export const WithToolbar = () => {
 
 export const WithoutToolbar = () => {
   return (
-    <Flamegraph
+    <FlamegraphRenderer
       flamebearer={SimpleTree}
       viewType="single"
       display="flamegraph"
@@ -58,11 +60,31 @@ export const WithoutToolbar = () => {
 // In this case having the toolbar doesn't make much sense?
 export const TableViewWithoutToolbar = () => {
   return (
-    <Flamegraph
+    <FlamegraphRenderer
       flamebearer={SimpleTree}
       viewType="single"
       display="table"
       showToolbar={false}
     />
+  );
+};
+
+// In this example we use the FlamegraphRenderer component
+// with whatever data we got from the /render endpoint
+export const WithRenderData = () => {
+  const [profile, setProfile] = useState(PyroscopeServerCPU);
+  return (
+    <>
+      <Button onClick={() => setProfile(SimpleGolangCPU)}>Simple Tree</Button>
+      <Button onClick={() => setProfile(PyroscopeServerCPU)}>
+        Complex Tree
+      </Button>
+      <FlamegraphRenderer
+        profile={profile}
+        viewType="single"
+        display="flamegraph"
+        showToolbar={false}
+      />
+    </>
   );
 };

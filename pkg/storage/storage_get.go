@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"runtime/trace"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -31,9 +33,22 @@ type GetOutput struct {
 	Units      string
 }
 
-const averageAggregationType = "average"
+const (
+	averageAggregationType = "average"
+
+	traceTaskGet        = "storage.Get"
+	traceCatGetKey      = traceTaskGet
+	traceCatGetCallback = traceTaskGet + ".Callback"
+)
 
 func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
+	return s.GetContext(context.Background(), gi)
+}
+
+func (s *Storage) GetContext(ctx context.Context, gi *GetInput) (*GetOutput, error) {
+	var t *trace.Task
+	ctx, t = trace.NewTask(ctx, traceTaskGet)
+	defer t.End()
 	logger := logrus.WithFields(logrus.Fields{
 		"startTime": gi.StartTime.String(),
 		"endTime":   gi.EndTime.String(),
@@ -54,6 +69,38 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 
 	s.getTotal.Inc()
 	logger.Debug("storage.Get")
+	trace.Logf(ctx, traceCatGetKey, "%+v", gi)
+
+	// For backward compatibility, profiles can be fetched by ID using query.
+	// If a query includes 'profile_id' matcher others are ignored.
+	if gi.Query != nil {
+		ids := make([]string, 0, len(gi.Query.Matchers))
+		for _, m := range gi.Query.Matchers {
+			if m.Key != segment.ProfileIDLabelName {
+				continue
+			}
+			if m.Op != flameql.OpEqual {
+				return nil, fmt.Errorf("only '=' operator is allowed for %q label", segment.ProfileIDLabelName)
+			}
+			ids = append(ids, m.Value)
+		}
+		if len(ids) > 0 {
+			o := GetOutput{
+				SpyName:    "unknown",
+				Units:      "samples",
+				SampleRate: 100,
+				Tree:       tree.New(),
+			}
+			err := s.profiles.fetch(ctx, gi.Query.AppName, ids, func(t *tree.Tree) error {
+				o.Tree.Merge(t)
+				return nil
+			})
+			if err != nil {
+				return nil, err
+			}
+			return &o, nil
+		}
+	}
 
 	var (
 		resultTrie  *tree.Tree
@@ -85,8 +132,12 @@ func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
 		timeline.PopulateTimeline(st)
 		lastSegment = st
 
-		st.Get(gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
-			if res, ok = s.trees.Lookup(parsedKey.TreeKey(depth, t)); ok {
+		trace.Logf(ctx, traceCatGetCallback, "segment_key=%s", key)
+		st.GetContext(ctx, gi.StartTime, gi.EndTime, func(depth int, samples, writes uint64, t time.Time, r *big.Rat) {
+			tk := parsedKey.TreeKey(depth, t)
+			res, ok = s.trees.Lookup(tk)
+			trace.Logf(ctx, traceCatGetCallback, "tree_found=%v time=%d r=%v", ok, t.Unix(), r)
+			if ok {
 				x := res.(*tree.Tree).Clone(r)
 				writesTotal += writes
 				if resultTrie == nil {
@@ -203,7 +254,11 @@ func (s *Storage) GetAppNames() []string {
 	appNames := make([]string, 0)
 
 	s.GetValues("__name__", func(v string) bool {
-		appNames = append(appNames, v)
+		if strings.TrimSpace(v) != "" {
+			// skip empty app names
+			appNames = append(appNames, v)
+		}
+
 		return true
 	})
 

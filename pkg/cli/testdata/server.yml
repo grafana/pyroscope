@@ -19,3 +19,7 @@ scrape-configs:
           - localhost:6060
         labels:
           foo: bar
+
+auth:
+  signup-default-role: admin
+  cookie-same-site: strict

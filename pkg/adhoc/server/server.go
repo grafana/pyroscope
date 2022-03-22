@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -15,9 +16,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 )
+
+const maxBodySize = 5242880 // 5MB
 
 type profile struct {
 	ID        string    `json:"id"`
@@ -53,6 +55,8 @@ func (s *server) AddRoutes(r *mux.Router) http.HandlerFunc {
 		r.HandleFunc("/v1/profiles", s.Profiles)
 		r.HandleFunc("/v1/profile/{id:[0-9a-f]+}", s.Profile)
 		r.HandleFunc("/v1/diff/{left:[0-9a-f]+}/{right:[0-9a-f]+}", s.Diff)
+		r.HandleFunc("/v1/upload/", s.Upload)
+		r.HandleFunc("/v1/upload-diff/", s.UploadDiff)
 	}
 	return r.ServeHTTP
 }
@@ -165,30 +169,20 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO(abeaumont): Validate that profiles are comparable
-	// TODO(abeaumont): Simplify profile generation
-	out := &storage.GetOutput{
-		Tree:       nil,
-		Units:      lfb.Metadata.Units,
-		SpyName:    lfb.Metadata.SpyName,
-		SampleRate: lfb.Metadata.SampleRate,
+	// Try to get a name for the profile.
+	var name string
+	for _, n := range []string{lfb.Metadata.Name, rfb.Metadata.Name, lp.Name, rp.Name} {
+		if n != "" {
+			name = n
+			break
+		}
 	}
-	lt, err := profileToTree(*lfb)
+	fb, err := DiffV1(name, lfb, rfb, s.maxNodes)
 	if err != nil {
-		s.log.WithError(err).Error("Unable to convert profile to tree")
+		s.log.WithError(err).Error("Unable to generate a diff profile")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	rt, err := profileToTree(*rfb)
-	if err != nil {
-		s.log.WithError(err).Error("Unable to convert profile to tree")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	lOut := &storage.GetOutput{Tree: lt}
-	rOut := &storage.GetOutput{Tree: rt}
-
-	fb := flamebearer.NewCombinedProfile(out, lOut, rOut, s.maxNodes)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(fb); err != nil {
 		s.log.WithError(err).Error("Unable to encode the profile diff")
@@ -197,22 +191,84 @@ func (s *server) Diff(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type converterFn func(b []byte, name string, maxNodes int) (*flamebearer.FlamebearerProfile, error)
+// Upload a profile in any of the supported formats and convert it to pyroscope internal format.
+func (s *server) Upload(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var m Model
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		msg := "Unable to decode the body of the request. " +
+			"A JSON body with a base64 encoded `profile`, " +
+			"an optional string `filename`, and an optional string `type` is expected."
+		s.log.WithError(err).Error(msg)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	r.Body.Close()
+	converter, err := m.Converter()
+	if err != nil {
+		msg := "Unable to detect the profile format based on the type, " +
+			"the filename and its contents. Currently supported formats are " +
+			"pprof's protobuf profile, pyroscope's JSON format and collapsed formats."
+		s.log.WithError(err).Error(msg)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if converter == nil {
+		msg := "Unable to detect the profile format based on the type, " +
+			"the filename and its contents. Currently supported formats are " +
+			"pprof's protobuf profile, pyroscope's JSON format and collapsed formats."
+		s.log.WithError(err).Error(msg)
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+		return
+	}
+	fb, err := converter(m.Profile, m.Filename, s.maxNodes)
+	if err != nil {
+		msg := "Unable to convert the profile to our internal format. " +
+			"The profile was detected as " + ConverterToFormat(converter)
+		s.log.WithError(err).Error(msg)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(fb); err != nil {
+		s.log.WithError(err).Error("Unable to encode the response")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// Upload two single profiles in native JSON format and convert to a diff profile
+func (s *server) UploadDiff(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodySize)
+
+	var m diffModel
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		msg := "Unable to decode the body of the request. " +
+			"A JSON body with a a `base` and a `diff` profile field is expected."
+		s.log.WithError(err).Error(msg)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	r.Body.Close()
+
+	fb, err := DiffV1("", &m.Base, &m.Diff, s.maxNodes)
+	if err != nil {
+		s.log.WithError(err).Error("Unable to generate a diff profile")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(fb); err != nil {
+		s.log.WithError(err).Error("Unable to encode the response")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
 
 func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
 	fname := filepath.Join(s.dataDir, p.Name)
-	ext := filepath.Ext(fname)
-	var converter converterFn
-	switch ext {
-	case ".json":
-		converter = jsonToProfile
-	case ".pprof":
-		converter = pprofToProfile
-	case ".txt":
-		converter = collapsedToProfile
-	default:
-		return nil, fmt.Errorf("unsupported file extension %s", ext)
-	}
 	f, err := os.Open(fname)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open profile: %w", err)
@@ -221,6 +277,17 @@ func (s *server) convert(p profile) (*flamebearer.FlamebearerProfile, error) {
 	b, err := io.ReadAll(f)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read profile: %w", err)
+	}
+	m := Model{
+		Filename: fname,
+		Profile:  b,
+	}
+	converter, err := m.Converter()
+	if err != nil {
+		return nil, fmt.Errorf("unable to handle the profile format: %w", err)
+	}
+	if converter == nil {
+		return nil, errors.New("unsupported profile format")
 	}
 	return converter(b, p.Name, s.maxNodes)
 }

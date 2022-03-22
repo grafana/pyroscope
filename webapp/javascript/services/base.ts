@@ -1,29 +1,49 @@
+/* eslint-disable max-classes-per-file */
 /* eslint-disable import/prefer-default-export */
 import { Result } from '@utils/fp';
+import type { ZodError } from 'zod';
+import { modelToResult } from '@models/utils';
+import { CustomError } from 'ts-custom-error';
 import basename from '../util/baseurl';
 
 // RequestNotOkError refers to when the Response is not within the 2xx range
-interface RequestNotOkError {
-  statusCode: number;
-  message: string;
+export class RequestNotOkError extends CustomError {
+  public constructor(public code: number, public description: string) {
+    super(
+      `Request failed with statusCode: '${code}' and description: '${description}'`
+    );
+  }
 }
 
 // RequestError refers to when the request is not completed
 // For example CORS errors or timeouts
-interface RequestIncompleteError {
-  message: string;
+// or simply the address is wrong
+export class RequestIncompleteError extends CustomError {
+  public constructor(public description: string) {
+    super(`Request failed to be completed. Description: '${description}'`);
+  }
 }
 
-// ResponseInvalidJSONError refers to when the response is not a valid JSON
-interface ResponseInvalidJSONError {
-  message: string;
-  data: any;
+// When the server returns a list of errors
+export class RequestNotOkWithErrorsList extends CustomError {
+  public constructor(public code: number, public errors: string[]) {
+    super(`Server returned with multiple errors: ${errors.join(', ')}`);
+  }
+}
+
+export class ResponseOkNotInJSONFormat extends CustomError {
+  public constructor(public code: number, public body: string) {
+    super(
+      `Server returned with code: '${code}'. The body that could not be parsed contains '${body}'`
+    );
+  }
 }
 
 export type RequestError =
   | RequestNotOkError
+  | RequestNotOkWithErrorsList
   | RequestIncompleteError
-  | ResponseInvalidJSONError;
+  | ResponseOkNotInJSONFormat;
 
 function mountURL(req: RequestInfo): string {
   const baseName = basename();
@@ -39,9 +59,9 @@ function mountURL(req: RequestInfo): string {
 
   // no basename
   if (typeof req === 'string') {
-    return new URL(req, window.location.href).href;
+    return new URL(`${req}`, window.location.href).href;
   }
-  return new URL(req.url, window.location.href).href;
+  return new URL(`${req}`, window.location.href).href;
 }
 
 export function mountRequest(req: RequestInfo): RequestInfo {
@@ -67,14 +87,12 @@ export async function request(
     response = await fetch(req, config);
   } catch (e) {
     // 'e' is unknown, but most cases it should be an Error
-    let message = 'Server failed to respond;';
+    let message = '';
     if (e instanceof Error) {
       message = e.message;
     }
 
-    return Result.err({
-      message,
-    });
+    return Result.err(new RequestIncompleteError(message));
   }
 
   if (!response.ok) {
@@ -82,28 +100,52 @@ export async function request(
 
     // There's nothing in the body, so let's use a default message
     if (!textBody || !textBody.length) {
-      return Result.err({
-        statusCode: response.status,
-        message: 'Request failed',
-      });
+      return Result.err(
+        new RequestNotOkError(response.status, 'No description available')
+      );
     }
 
     // We know there's data, so let's check if it's in JSON format
     try {
       const data = JSON.parse(textBody);
 
-      // We could parse the response
-      return Result.err({
-        statusCode: response.status,
-        ...data,
-      });
+      // Check if it's 401 unauthorized error
+      if (response.status === 401) {
+        // TODO: Introduce some kind of interceptor (?)
+        if (window && window.location) {
+          window.location.href = '/login';
+        }
+      }
+
+      // Usually it's a feedback on user's actions like form validation
+      if ('errors' in data && Array.isArray(data.errors)) {
+        return Result.err(
+          new RequestNotOkWithErrorsList(response.status, data.errors)
+        );
+      }
+
+      // Error message may come in an 'error' field
+      if ('error' in data && typeof data.error === 'string') {
+        return Result.err(new RequestNotOkError(response.status, data.error));
+      }
+
+      // Error message may come in an 'message' field
+      if ('message' in data && typeof data.message === 'string') {
+        return Result.err(new RequestNotOkError(response.status, data.message));
+      }
+
+      return Result.err(
+        new RequestNotOkError(
+          response.status,
+          `Could not identify an error message. Payload is ${JSON.stringify(
+            data
+          )}`
+        )
+      );
     } catch (e) {
       // We couldn't parse, but there's definitly some data
       // We must handle this case since the go server sometimes responds with plain text
-      return Result.err({
-        statusCode: response.status,
-        message: textBody,
-      });
+      return Result.err(new RequestNotOkError(response.status, textBody));
     }
   }
 
@@ -125,10 +167,22 @@ export async function request(
     return Result.ok(data);
   } catch (e) {
     // We couldn't parse, but there's definitly some data
-    return Result.err({
-      statusCode: response.status,
-      message: 'Failed to parse JSON',
-      data: textBody,
-    });
+    return Result.err(new ResponseOkNotInJSONFormat(response.status, textBody));
   }
+}
+
+// We have to call it something else otherwise it will conflict with the global "Response"
+type ResponseFromRequest = Awaited<ReturnType<typeof request>>;
+type Schema = Parameters<typeof modelToResult>[0];
+
+// parseResponse parses a response with given schema if the request has not failed
+export function parseResponse<T>(
+  res: ResponseFromRequest,
+  schema: Schema
+): Result<T, RequestError | ZodError> {
+  if (res.isErr) {
+    return Result.err<T, RequestError>(res.error);
+  }
+
+  return modelToResult(schema, res.value) as Result<T, ZodError<ShamefulAny>>;
 }

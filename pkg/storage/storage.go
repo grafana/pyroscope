@@ -11,14 +11,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
+	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/labels"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/util/bytesize"
 )
 
 var (
-	errRetention = errors.New("could not write because of retention settings")
-	errClosed    = errors.New("storage closed")
+	errRetention  = errors.New("could not write because of retention settings")
+	errOutOfSpace = errors.New("running out of space")
+	errClosed     = errors.New("storage closed")
 )
 
 type Storage struct {
@@ -34,14 +36,12 @@ type Storage struct {
 	trees      *db
 	main       *db
 	labels     *labels.Labels
+	profiles   *profiles
 
-	// Maintenance tasks are executed exclusively to avoid competition:
-	// extensive writing during GC is harmful and deteriorates the
-	// overall performance. Same for write back, eviction, and retention
-	// tasks.
-	tasksMutex sync.Mutex
-	tasksWG    sync.WaitGroup
-	stop       chan struct{}
+	hc *health.Controller
+
+	tasksWG sync.WaitGroup
+	stop    chan struct{}
 
 	queueWorkersWG sync.WaitGroup
 	queue          chan *PutInput
@@ -79,7 +79,7 @@ type SampleObserver interface {
 	Observe(k []byte, v int)
 }
 
-func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage, error) {
+func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health.Controller) (*Storage, error) {
 	s := &Storage{
 		config: c,
 		storageOptions: &storageOptions{
@@ -100,6 +100,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 			queueWorkers: runtime.NumCPU(),
 		},
 
+		hc:      hc,
 		logger:  logger,
 		metrics: newMetrics(reg),
 		stop:    make(chan struct{}),
@@ -124,13 +125,23 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 		return nil, err
 	}
 
+	pdb, err := s.newBadger("profiles", profileDataPrefix, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.profiles = &profiles{
+		db:     pdb,
+		dicts:  s.dicts,
+		config: s.config,
+	}
+
 	s.labels = labels.New(s.main.DB)
 
 	if err = s.migrate(); err != nil {
 		return nil, err
 	}
 
-	s.maintenanceTask(s.writeBackTaskInterval, s.writeBackTask)
+	s.periodicTask(s.writeBackTaskInterval, s.writeBackTask)
 	s.startQueueWorkers()
 
 	if !s.config.inMemory {
@@ -140,8 +151,8 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer) (*Storage,
 			return nil, err
 		}
 
-		s.maintenanceTask(s.evictionTaskInterval, s.evictionTask(memTotal))
-		s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
+		s.periodicTask(s.evictionTaskInterval, s.evictionTask(memTotal))
+		s.periodicTask(s.retentionTaskInterval, s.retentionTask)
 		s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
 	}
 
@@ -155,7 +166,7 @@ func (s *Storage) Close() error {
 	s.logger.Debug("waiting for storage tasks to finish")
 	s.tasksWG.Wait()
 	s.logger.Debug("storage tasks finished")
-	// Dictionaries DB has to close last because trees depend on it.
+	// Dictionaries DB has to close last because trees and profiles DBs depend on it.
 	s.goDB(func(d *db) {
 		if d != s.dicts {
 			d.close()
@@ -195,15 +206,6 @@ func (s *Storage) goDB(f func(*db)) {
 		}(d)
 	}
 	wg.Wait()
-}
-
-// maintenanceTask periodically runs f exclusively.
-func (s *Storage) maintenanceTask(interval time.Duration, f func()) {
-	s.periodicTask(interval, func() {
-		s.tasksMutex.Lock()
-		defer s.tasksMutex.Unlock()
-		f()
-	})
 }
 
 func (s *Storage) periodicTask(interval time.Duration, f func()) {
@@ -306,12 +308,12 @@ func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
 }
 
 func (s *Storage) databases() []*db {
-	// Order matters.
 	return []*db{
 		s.main,
 		s.dimensions,
 		s.segments,
 		s.dicts,
 		s.trees,
+		s.profiles.db,
 	}
 }

@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = {
   plugins: ['prettier', 'css-modules'],
   extends: [
@@ -58,6 +60,25 @@ module.exports = {
     ],
     'spaced-comment': [2, 'always', { exceptions: ['*'] }],
     'react/require-default-props': 'off',
+
+    'import/no-extraneous-dependencies': [
+      'error',
+      {
+        devDependencies: [
+          '**/*.spec.jsx',
+          '**/*.spec.ts',
+          '**/*.spec.tsx',
+          '**/*.stories.tsx',
+        ],
+        packageDir: [
+          // TODO compute this dynamically
+          path.resolve(__dirname, 'packages/pyroscope-flamegraph'),
+          process.cwd(),
+        ],
+      },
+    ],
+    // otherwise it conflincts with ts411
+    'dot-notation': 'off',
   },
   env: {
     browser: true,
@@ -68,9 +89,13 @@ module.exports = {
     project: './tsconfig.eslint.json',
   },
   settings: {
+    'import/internal-regex': '^@pyroscope',
     'import/resolver': {
+      'eslint-import-resolver-lerna': {
+        packages: path.resolve(__dirname, 'packages'),
+      },
       webpack: {
-        config: 'scripts/webpack/webpack.common.ts',
+        config: path.join(__dirname, 'scripts/webpack/webpack.common.ts'),
       },
     },
   },

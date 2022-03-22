@@ -1,0 +1,63 @@
+version: '3.9'
+
+services:
+  jaeger:
+    image: 'jaegertracing/all-in-one:1.31'
+    ports:
+      - '6831:6831/udp'
+      - '16686:16686'
+      - '14268:14268'
+
+  pyroscope:
+    image: '${PYROSCOPE_IMAGE:-pyroscope/pyroscope-dev:main}'
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+
+  grafana:
+    image: grafana/grafana:8.1.1
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+    environment:
+      - 'GF_INSTALL_PLUGINS=pyroscope-datasource,pyroscope-panel'
+    ports:
+      - '3000:3000'
+
+  us-east-1:
+    env_file:
+      - config.env
+    environment:
+      - REGION=us-east-1
+    build:
+      context: ''
+
+  us-west-1:
+    env_file:
+      - config.env
+    environment:
+      - REGION=us-west-1
+    build:
+      context: ''
+
+  eu-west-1:
+    env_file:
+      - config.env
+    environment:
+      - REGION=eu-west-1
+    build:
+      context: ''
+
+  load-generator:
+    env_file:
+      - config.env
+    build:
+      context: ''
+      dockerfile: Dockerfile.loadgen
+    depends_on:
+      - eu-west-1
+      - us-west-1
+      - us-east-1

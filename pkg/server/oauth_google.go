@@ -49,7 +49,7 @@ func newOauthGoogleHandler(cfg config.GoogleOauth, baseURL string, log *logrus.L
 	return h, nil
 }
 
-func (o oauthHandlerGoogle) userAuth(client *http.Client) (string, error) {
+func (o oauthHandlerGoogle) userAuth(client *http.Client) (extUserInfo, error) {
 	type userProfileResponse struct {
 		ID            string
 		Email         string
@@ -59,25 +59,28 @@ func (o oauthHandlerGoogle) userAuth(client *http.Client) (string, error) {
 
 	resp, err := client.Get(o.apiURL + "/userinfo")
 	if err != nil {
-		return "", fmt.Errorf("failed to get oauth user info: %w", err)
+		return extUserInfo{}, fmt.Errorf("failed to get oauth user info: %w", err)
 	}
 	defer resp.Body.Close()
 
 	var userProfile userProfileResponse
 	err = json.NewDecoder(resp.Body).Decode(&userProfile)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode user profile response: %w", err)
+		return extUserInfo{}, fmt.Errorf("failed to decode user profile response: %w", err)
 	}
-
+	u := extUserInfo{
+		Name:  userProfile.Email,
+		Email: userProfile.Email,
+	}
 	if userProfile.Email == "" {
-		return "", errors.New("user email is empty")
+		return extUserInfo{}, errors.New("user email is empty")
 	}
 
 	if len(o.allowedDomains) == 0 || (len(o.allowedDomains) > 0 && isAllowedDomain(o.allowedDomains, userProfile.Email)) {
-		return userProfile.Email, nil
+		return u, nil
 	}
 
-	return "", errForbidden
+	return extUserInfo{}, errForbidden
 }
 
 func isAllowedDomain(allowedDomains []string, email string) bool {

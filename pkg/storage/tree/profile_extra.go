@@ -3,8 +3,10 @@ package tree
 // These functions are kept separately as profile.pb.go is a generated file
 
 import (
+	"encoding/binary"
 	"sort"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/pyroscope-io/pyroscope/pkg/agent/spy"
 	"github.com/valyala/bytebufferpool"
 )
@@ -69,7 +71,7 @@ func (c *cache) pprofLabelsToSpyLabels(x *Profile, pprofLabels []*Label) *spy.La
 	return l
 }
 
-func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte, val int)) error {
+func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte, val int) error) error {
 	valueIndex := 0
 	if sampleType != "" {
 		for i, v := range x.SampleType {
@@ -98,7 +100,9 @@ func (x *Profile) Get(sampleType string, cb func(labels *spy.Labels, name []byte
 		}
 
 		labels := labelsCache.pprofLabelsToSpyLabels(x, s.Label)
-		cb(labels, b.Bytes(), int(s.Value[valueIndex]))
+		if err := cb(labels, b.Bytes(), int(s.Value[valueIndex])); err != nil {
+			return err
+		}
 
 		b.Reset()
 	}
@@ -145,4 +149,46 @@ func FindFunction(x *Profile, fid uint64) (*Function, bool) {
 		}
 	}
 	return nil, false
+}
+
+func (x *Profile) ResolveLabels(l Labels) map[string]string {
+	m := make(map[string]string, len(l))
+	for _, label := range l {
+		if label.Str != 0 {
+			m[x.StringTable[label.Key]] = x.StringTable[label.Str]
+		}
+	}
+	return m
+}
+
+func (x *Profile) ResolveLabelName(l *Label) (string, bool) {
+	if l.Str > 0 && l.Key < int64(len(x.StringTable)) {
+		return x.StringTable[l.Key], true
+	}
+	return "", false
+}
+
+func (x *Profile) ResolveSampleType(v int64) (*ValueType, bool) {
+	for _, vt := range x.SampleType {
+		if vt.Type == v {
+			return vt, true
+		}
+	}
+	return nil, false
+}
+
+type Labels []*Label
+
+func (l Labels) Hash() uint64 {
+	h := xxhash.New()
+	t := make([]byte, 16)
+	for _, x := range l {
+		if x.Str == 0 {
+			continue
+		}
+		binary.LittleEndian.PutUint64(t[0:8], uint64(x.Key))
+		binary.LittleEndian.PutUint64(t[8:16], uint64(x.Str))
+		_, _ = h.Write(t)
+	}
+	return h.Sum64()
 }

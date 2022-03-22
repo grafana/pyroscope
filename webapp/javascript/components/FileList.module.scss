@@ -10,8 +10,8 @@ $tdHeight: 25px;
 
 .rowSelected {
   cursor: pointer;
-  background: #54d964;
-  color: black;
+  background: var(--ps-c-green-light-1);
+  color: var(--ps-c-black);
 }
 
 .profilesTable {
@@ -21,7 +21,7 @@ $tdHeight: 25px;
   tbody tr:not(.rowSelected) {
     &:hover {
       cursor: pointer;
-      color: rgba(255, 255, 255, 1);
+      color: var(--ps-c-white);
       background: $btn-hover-color;
     }
   }
@@ -31,15 +31,15 @@ $tdHeight: 25px;
     text-align: right;
     padding: 0px 10px;
 
-    border-left: 1px solid #333;
-    border-bottom: 1px solid #333;
+    border-left: 1px solid var(--ps-c-gray-light-1);
+    border-bottom: 1px solid var(--ps-c-gray-light-1);
     width: 400px;
     min-width: 400px;
     max-width: 400px;
 
     span {
       // mix-blend-mode: exclusion;
-      text-shadow: 0 0 2px rgba(0, 0, 0, 0.33);
+      text-shadow: 0 0 2px var(--ps-c-black-lighter);
     }
 
     &:first-child {
@@ -59,7 +59,7 @@ $tdHeight: 25px;
   }
   tr th,
   tr:nth-child(2n) td {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--ps-c-white-dark-3);
   }
 
   td {

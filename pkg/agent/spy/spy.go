@@ -7,7 +7,7 @@ import (
 
 type Spy interface {
 	Stop() error
-	Snapshot(cb func(*Labels, []byte, uint64, error))
+	Snapshot(cb func(*Labels, []byte, uint64) error) error
 }
 
 type Resettable interface {

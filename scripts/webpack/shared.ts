@@ -18,20 +18,18 @@ export function getStyleLoaders() {
           options: {
             importLoaders: 2,
             url: true,
-            sourceMap: true,
           },
         },
         {
           loader: 'postcss-loader',
           options: {
-            sourceMap: true,
             config: { path: __dirname },
           },
         },
         {
           loader: 'sass-loader',
           options: {
-            sourceMap: true,
+            //           sourceMap: true,
           },
         },
       ],

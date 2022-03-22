@@ -15,8 +15,13 @@ import (
 
 var errForbidden = errors.New("access forbidden")
 
+type extUserInfo struct {
+	Name  string
+	Email string
+}
+
 type oauthHandler interface {
-	userAuth(client *http.Client) (string, error)
+	userAuth(client *http.Client) (extUserInfo, error)
 	getOauthBase() oauthBase
 }
 
@@ -63,11 +68,11 @@ func (o oauthBase) getCallbackURL(host, configCallbackURL string, hasTLS bool) (
 	return fmt.Sprintf("%v://%v%v", schema, host, o.callbackRoute), nil
 }
 
-func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (string, error) {
+func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (redirectURL string, state string, err error) {
 	callbackURL, err := o.getCallbackURL(r.Host, o.config.RedirectURL, r.URL.Query().Get("tls") == "true")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		return "", fmt.Errorf("callbackURL parsing failed: %w", err)
+		return "", "", fmt.Errorf("callbackURL parsing failed: %w", err)
 	}
 
 	authURL := *o.authURL
@@ -78,17 +83,14 @@ func (o oauthBase) buildAuthQuery(r *http.Request, w http.ResponseWriter) (strin
 	parameters.Add("response_type", "code")
 
 	// generate state token for CSRF protection
-	state, err := generateStateToken(16)
-	if err != nil {
+	if state, err = generateStateToken(16); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return "", fmt.Errorf("problem generating state token: %w", err)
+		return "", "", fmt.Errorf("problem generating state token: %w", err)
 	}
 
-	createCookie(w, stateCookieName, state)
 	parameters.Add("state", state)
 	authURL.RawQuery = parameters.Encode()
-
-	return authURL.String(), nil
+	return authURL.String(), state, nil
 }
 
 func (o oauthBase) generateOauthClient(r *http.Request) (*http.Client, error) {

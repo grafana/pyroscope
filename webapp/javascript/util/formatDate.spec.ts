@@ -1,4 +1,5 @@
 import { readableRange, formatAsOBject } from '@utils/formatDate';
+import * as dateFns from 'date-fns';
 import timezoneMock from 'timezone-mock';
 
 describe('FormatDate', () => {
@@ -16,7 +17,7 @@ describe('FormatDate', () => {
       ['now-6M', 'now', 'Last 6 months'],
       ['now-1y', 'now', 'Last 1 year'],
       ['now-2y', 'now', 'Last 2 years'],
-      [1624278889, 1640090089, '2021-06-21 12:34 PM - 2021-12-21 12:34 PM'],
+      ['1624278889', '1640090089', '2021-06-21 12:34 PM - 2021-12-21 12:34 PM'],
     ];
 
     test.each(cases)(
@@ -28,27 +29,38 @@ describe('FormatDate', () => {
   });
 
   describe('formatAsOBject', () => {
+    const mockDate = new Date('2021-12-21T12:44:01.741Z');
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(mockDate.getTime());
+    });
+
     afterEach(() => {
       jest.restoreAllMocks();
+
+      jest.useRealTimers();
     });
 
     it('works with "now"', () => {
-      const mockDate = new Date();
-      jest
-        .spyOn(global, 'Date')
-        .mockImplementation(() => mockDate as unknown as string);
+      // TODO
+      // not entirely sure this case is even possible to happen in the code
+      expect(formatAsOBject('now')).toEqual(mockDate);
+    });
 
-      expect(formatAsOBject('now')).toBe(mockDate);
+    it('works with "now-1h"', () => {
+      const got = formatAsOBject('now-1h');
+
+      expect(got).toEqual(dateFns.subHours(mockDate, 1));
+    });
+
+    it('works with "now-30m"', () => {
+      const got = formatAsOBject('now-30m');
+
+      expect(got).toEqual(dateFns.subMinutes(mockDate, 30));
     });
 
     it('works with "now-1m"', () => {
-      const mockDate = new Date('2021-12-21T12:44:01.741Z');
-
-      jest
-        .spyOn(global, 'Date')
-        .mockImplementation(() => mockDate as unknown as string);
-
-      expect(formatAsOBject('now-1m')).toBe(1640090641741);
+      const got = formatAsOBject('now-1m');
+      expect(got).toEqual(dateFns.subMinutes(mockDate, 1));
     });
 
     it('works with absolute timestamps', () => {

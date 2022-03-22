@@ -156,15 +156,19 @@ install-web-dependencies: ## Install the web dependencies
 
 .PHONY: install-build-web-dependencies
 install-build-web-dependencies: ## Install web dependencies only necessary for a build
-	NODE_ENV=production yarn install --frozen-lockfile
+	NODE_ENV=production yarn install --frozen-lockfile --ignore-engines
 
 .PHONY: assets
-assets: install-web-dependencies ## Configure the assets
-	yarn dev
+assets: install-web-dependencies ## deprecated
+	@echo "This command is deprecated, please use `make dev` to develop locally"
+	exit 1
+	# yarn dev
 
 .PHONY: assets-watch
-assets-watch: install-web-dependencies ## Configure the assets with live reloading
-	yarn dev -- --watch
+assets-watch: install-web-dependencies ## deprecated
+	@echo "This command is deprecated, please use `make dev` to develop locally"
+	exit 1
+	# yarn dev -- --watch
 
 .PHONY: assets-release
 assets-release: ## Configure the assets for release
@@ -207,8 +211,12 @@ unused: ## Staticcheck for unused code
 install-dev-tools: ## Install dev tools
 	cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI {} go install {}
 
+.PHONY: web-bootstrap
+web-bootstrap:
+	yarn bootstrap
+
 .PHONY: dev
-dev: ## dev
+dev: web-bootstrap ## Start webpack and pyroscope server. Use this one for working on pyroscope
 	goreman -exit-on-error -f scripts/dev-procfile start
 
 .PHONY: godoc

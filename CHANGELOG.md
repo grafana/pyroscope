@@ -1,3 +1,169 @@
+# [0.13.0](https://github.com/pyroscope-io/pyroscope/compare/v0.12.0...v0.13.0) (2022-03-22)
+
+
+### Bug Fixes
+
+* allow cache eviction and write-back while purging storage ([#962](https://github.com/pyroscope-io/pyroscope/issues/962)) ([cad1afc](https://github.com/pyroscope-io/pyroscope/commit/cad1afc81530a689a2803593e51b04e9854a6958))
+* **frontend:** date range picker styling ([#936](https://github.com/pyroscope-io/pyroscope/issues/936)) ([012eb9f](https://github.com/pyroscope-io/pyroscope/commit/012eb9f1b88b0f490d154c7289089eb136f2d197))
+
+
+### Features
+
+* **flamegraph:** publish FlamegraphRenderer for nodejs ([#944](https://github.com/pyroscope-io/pyroscope/issues/944)) ([c2a5631](https://github.com/pyroscope-io/pyroscope/commit/c2a56310e4b36bc6823d5f9debe6e7ac07c6b877))
+* **ingestion:** initial support for JFR format ingestion. ([#954](https://github.com/pyroscope-io/pyroscope/issues/954)) ([25f96a4](https://github.com/pyroscope-io/pyroscope/commit/25f96a4248651179225fabe63088e39245ced997))
+* **webapp:** allow comparing distinct queries/tags ([#942](https://github.com/pyroscope-io/pyroscope/issues/942)) ([4d1307c](https://github.com/pyroscope-io/pyroscope/commit/4d1307c3751b263d88430977f2d87473c8ee280e))
+* **webapp:** make search in app/tags selector bar sticky ([#950](https://github.com/pyroscope-io/pyroscope/issues/950)) ([c13ad6a](https://github.com/pyroscope-io/pyroscope/commit/c13ad6af04bdc96bbd980a0d89f8da07681fd321))
+
+
+
+# [0.12.0](https://github.com/pyroscope-io/pyroscope/compare/v0.11.1...v0.12.0) (2022-03-10)
+
+
+### Bug Fixes
+
+* **flamegraph:** rerender when 'profile' changes ([#931](https://github.com/pyroscope-io/pyroscope/issues/931)) ([527ae29](https://github.com/pyroscope-io/pyroscope/commit/527ae29222625ec6c74cda270f2add72027ca1e3))
+
+
+### Features
+
+* add dedicated profiles storage with support for retention policy ([#925](https://github.com/pyroscope-io/pyroscope/issues/925)) ([7c4996e](https://github.com/pyroscope-io/pyroscope/commit/7c4996e2483268c2ce0795202d4edeb3f6219def))
+* **flamegraph:** support a new profile field ([#929](https://github.com/pyroscope-io/pyroscope/issues/929)) ([95abe2a](https://github.com/pyroscope-io/pyroscope/commit/95abe2ae3dc253a25a03eb19a9378d13b85c8f08))
+
+
+
+## [0.11.1](https://github.com/pyroscope-io/pyroscope/compare/v0.11.0...v0.11.1) (2022-03-07)
+
+
+### Bug Fixes
+
+* agent authorization ([#923](https://github.com/pyroscope-io/pyroscope/issues/923)) ([0bd5c70](https://github.com/pyroscope-io/pyroscope/commit/0bd5c70bab3e93140b5401e53bdebf889623714b))
+
+
+
+# [0.11.0](https://github.com/pyroscope-io/pyroscope/compare/v0.10.2...v0.11.0) (2022-03-01)
+
+
+### Bug Fixes
+
+* correct typo in dev Makefile target's depedency. ([#895](https://github.com/pyroscope-io/pyroscope/issues/895)) ([9ec9c0a](https://github.com/pyroscope-io/pyroscope/commit/9ec9c0ab4b68ca18a03e9f206e866ae56226ef10))
+* disable pyroscope logo ([#890](https://github.com/pyroscope-io/pyroscope/issues/890)) ([0477cff](https://github.com/pyroscope-io/pyroscope/commit/0477cff8565406c330b48c819c0ed16a69653cee))
+* **frontend:** only inline svg if imported via react ([#860](https://github.com/pyroscope-io/pyroscope/issues/860)) ([2f3bdf0](https://github.com/pyroscope-io/pyroscope/commit/2f3bdf0adb278c74819c60b215a41aea4ab417ee))
+* incorrect reads when downsampling ([#737](https://github.com/pyroscope-io/pyroscope/issues/737)) ([9f109ee](https://github.com/pyroscope-io/pyroscope/commit/9f109ee2e878a1eeb097fa7aab86655d2b4d09b1))
+* **panel-plugin:** don't load CSS file since it's loaded using css modules ([#891](https://github.com/pyroscope-io/pyroscope/issues/891)) ([183eaa0](https://github.com/pyroscope-io/pyroscope/commit/183eaa0e0e719d4f1c408195a2f2b5912b5071d3))
+* plural of date picker ([#831](https://github.com/pyroscope-io/pyroscope/issues/831)) ([8bd6eb8](https://github.com/pyroscope-io/pyroscope/commit/8bd6eb840123feb395a77d9077a64215ccf4b286))
+* use the provided name when it's not empty in JSON conversion. ([#861](https://github.com/pyroscope-io/pyroscope/issues/861)) ([d1c4066](https://github.com/pyroscope-io/pyroscope/commit/d1c40660186dea825ede65ef55cb0df84189f30c))
+
+
+### Features
+
+* add an upload diff endpoint for adhoc mode. ([#839](https://github.com/pyroscope-io/pyroscope/issues/839)) ([4a11f7d](https://github.com/pyroscope-io/pyroscope/commit/4a11f7dfd23151beb044a385ea0283142b1a8bd5)), closes [#784](https://github.com/pyroscope-io/pyroscope/issues/784)
+* add pprof profiles multiplexing ([#898](https://github.com/pyroscope-io/pyroscope/issues/898)) ([3e5711c](https://github.com/pyroscope-io/pyroscope/commit/3e5711cfbee2b62a3decb56ff78f0d58ef3a62f5))
+* add support for auth to grafana datasource plugin ([#844](https://github.com/pyroscope-io/pyroscope/issues/844)) ([8712404](https://github.com/pyroscope-io/pyroscope/commit/87124048c194ae27c975ebffd0589ef4241f2601))
+* adds a page with pull-mode targets ([#877](https://github.com/pyroscope-io/pyroscope/issues/877)) ([26c21f2](https://github.com/pyroscope-io/pyroscope/commit/26c21f2d3ecd5b043fe9facdb669dbee7cad6877)), closes [#592](https://github.com/pyroscope-io/pyroscope/issues/592) [#592](https://github.com/pyroscope-io/pyroscope/issues/592)
+* extract various components ([#868](https://github.com/pyroscope-io/pyroscope/issues/868)) ([fb4c2fc](https://github.com/pyroscope-io/pyroscope/commit/fb4c2fcb3dc279407685fea5eab9937f2dca1a81))
+
+
+
+## [0.10.2](https://github.com/pyroscope-io/pyroscope/compare/v0.10.1...v0.10.2) (2022-02-15)
+
+
+### Bug Fixes
+
+* CORS allow credentials ([#846](https://github.com/pyroscope-io/pyroscope/issues/846)) ([3fef7a5](https://github.com/pyroscope-io/pyroscope/commit/3fef7a5fee7968c566d5fd2b1a7c85a209de815a))
+* **frontend:** move CSS to css modules ([#842](https://github.com/pyroscope-io/pyroscope/issues/842)) ([3aadc13](https://github.com/pyroscope-io/pyroscope/commit/3aadc13749ed484f1167b858ded8aa8e56743c39))
+
+
+
+## [0.10.1](https://github.com/pyroscope-io/pyroscope/compare/v0.10.0...v0.10.1) (2022-02-14)
+
+
+### Bug Fixes
+
+* adhoc comparison / diff routes. ([#834](https://github.com/pyroscope-io/pyroscope/issues/834)) ([1ab101c](https://github.com/pyroscope-io/pyroscope/commit/1ab101c20742d55c17b112f6d3eec942e96091bb))
+* **frontend:** safari date-fns fix ([#838](https://github.com/pyroscope-io/pyroscope/issues/838)) ([896b936](https://github.com/pyroscope-io/pyroscope/commit/896b93605bd0b0190838b45a647f4689d93360ab))
+* handle properly writing errors in adhoc mode. ([#833](https://github.com/pyroscope-io/pyroscope/issues/833)) ([8e77b8b](https://github.com/pyroscope-io/pyroscope/commit/8e77b8b627ad654f135a7f8c811bc411369a2518))
+
+
+
+# [0.10.0](https://github.com/pyroscope-io/pyroscope/compare/v0.9.0...v0.10.0) (2022-02-14)
+
+
+### Bug Fixes
+
+* **frontend:** fix coloring for pull mode ([#822](https://github.com/pyroscope-io/pyroscope/issues/822)) ([a221400](https://github.com/pyroscope-io/pyroscope/commit/a221400027097ff33864f4cba0ff5bfde78295f1))
+* **frontend:** quickfix for wierd dropdown behaviour ([#832](https://github.com/pyroscope-io/pyroscope/issues/832)) ([c6da525](https://github.com/pyroscope-io/pyroscope/commit/c6da525d30a4271fd5ca74e2c6bf35230042c47e))
+* ignore root node when converting a flamebearer to a tree. ([#812](https://github.com/pyroscope-io/pyroscope/issues/812)) ([7751b15](https://github.com/pyroscope-io/pyroscope/commit/7751b1562194eafa21fc77e3601c4a525250c31c))
+* store "total" in name cache, and make tests more rigurous. ([#821](https://github.com/pyroscope-io/pyroscope/issues/821)) ([e46f2cc](https://github.com/pyroscope-io/pyroscope/commit/e46f2ccc66fbd4b238b5f59629965156e7fe5dbb))
+
+
+### Features
+
+* add an optional name field to the profile data format. ([#826](https://github.com/pyroscope-io/pyroscope/issues/826)) ([26d8177](https://github.com/pyroscope-io/pyroscope/commit/26d817746078ffef2059560552cac0e45495182c))
+* add upload support in adhoc server. ([#801](https://github.com/pyroscope-io/pyroscope/issues/801)) ([8551df1](https://github.com/pyroscope-io/pyroscope/commit/8551df1973f3dfacfda7d2b33055e994e5ffad57))
+* **frontend:** export diff to flamegraph.com ([#808](https://github.com/pyroscope-io/pyroscope/issues/808)) ([a2e47b2](https://github.com/pyroscope-io/pyroscope/commit/a2e47b25646dc8bec386e1d98f9c87503c0ec0d2))
+* identity and access management ([#739](https://github.com/pyroscope-io/pyroscope/issues/739)) ([0ca0d83](https://github.com/pyroscope-io/pyroscope/commit/0ca0d8398cbbc58799e0e53b658c70b8670c6e72)), closes [#770](https://github.com/pyroscope-io/pyroscope/issues/770) [#807](https://github.com/pyroscope-io/pyroscope/issues/807) [#814](https://github.com/pyroscope-io/pyroscope/issues/814)
+
+
+
+# [0.9.0](https://github.com/pyroscope-io/pyroscope/compare/v0.8.0...v0.9.0) (2022-02-07)
+
+
+### Bug Fixes
+
+* Solve panic on an empty profile ingest ([#793](https://github.com/pyroscope-io/pyroscope/issues/793)) ([2d3a479](https://github.com/pyroscope-io/pyroscope/commit/2d3a479dfb8855c9bf75528bc46ee221a4a02cfe))
+* unsafeStrToSlice panic due to empty string ([#772](https://github.com/pyroscope-io/pyroscope/issues/772)) ([189f775](https://github.com/pyroscope-io/pyroscope/commit/189f7753bae460bb170ae63c72645e6df7b8f2d3))
+
+
+### Features
+
+* add some basic flamebearer validation. ([#785](https://github.com/pyroscope-io/pyroscope/issues/785)) ([bee6483](https://github.com/pyroscope-io/pyroscope/commit/bee6483d88d7381ba778f50c557667f4eb1543eb))
+* experimental tracing integration ([#766](https://github.com/pyroscope-io/pyroscope/issues/766)) ([24af197](https://github.com/pyroscope-io/pyroscope/commit/24af197b37c572425ae7896a0f446709bcdde4f1))
+* **frontend:** add package coloring for rust ([#798](https://github.com/pyroscope-io/pyroscope/issues/798)) ([c687f83](https://github.com/pyroscope-io/pyroscope/commit/c687f8382e0b5c87dcc6fd1ac3ffdd2e11464952))
+* **frontend:** adds ability to export to flamegraph.com ([#799](https://github.com/pyroscope-io/pyroscope/issues/799)) ([a3828bc](https://github.com/pyroscope-io/pyroscope/commit/a3828bc93fdf76478328f5c65c117b7737993e61))
+
+
+
+# [0.8.0](https://github.com/pyroscope-io/pyroscope/compare/v0.7.2...v0.8.0) (2022-01-25)
+
+
+### Bug Fixes
+
+* **examples:** adds host pid option to docker-compose eBPF example([#732](https://github.com/pyroscope-io/pyroscope/issues/732)) ([5e8dc83](https://github.com/pyroscope-io/pyroscope/commit/5e8dc8359bb15ce8406c5a2cf4ceb1355a43be00))
+* **frontend:** improves timeline UX by shifting bars 5 seconds forward ([#742](https://github.com/pyroscope-io/pyroscope/issues/742)) ([687219d](https://github.com/pyroscope-io/pyroscope/commit/687219d180224e4fd750dcd697396200f12bcac0))
+* return disk space check ([#751](https://github.com/pyroscope-io/pyroscope/issues/751)) ([0641244](https://github.com/pyroscope-io/pyroscope/commit/0641244e18cdbe29c7044ce95c6e00acbab9b2a7))
+* Update drag and drop styling ([#756](https://github.com/pyroscope-io/pyroscope/issues/756)) ([25ce3b2](https://github.com/pyroscope-io/pyroscope/commit/25ce3b2f52428043d04f152f67fa10fb3b118049))
+
+
+### Features
+
+* add debug storage export endpoint ([#752](https://github.com/pyroscope-io/pyroscope/issues/752)) ([5040fb3](https://github.com/pyroscope-io/pyroscope/commit/5040fb3a3b266eed4843ed4e8e5687dfcbd49189))
+* add http discovery mechanism ([#726](https://github.com/pyroscope-io/pyroscope/issues/726)) ([a941634](https://github.com/pyroscope-io/pyroscope/commit/a94163423e3689979c1ace74fdfdc140d37d9713))
+* added tooltip for timeline selection ([#730](https://github.com/pyroscope-io/pyroscope/issues/730)) ([d226370](https://github.com/pyroscope-io/pyroscope/commit/d226370239293dd14e01c907a471e68c8f915a2b))
+* **frontend:** export comparison diff standalone html ([#749](https://github.com/pyroscope-io/pyroscope/issues/749)) ([697a66c](https://github.com/pyroscope-io/pyroscope/commit/697a66c925178de43d09d051f83a9dc0f39207a9))
+* New diff mode palette selection dropdown ([#754](https://github.com/pyroscope-io/pyroscope/issues/754)) ([dfd8a3d](https://github.com/pyroscope-io/pyroscope/commit/dfd8a3d04900eadead8faf588cfa1d01bbf519b2))
+* output standalone HTML files for adhoc profiles. ([#728](https://github.com/pyroscope-io/pyroscope/issues/728)) ([a4f90ab](https://github.com/pyroscope-io/pyroscope/commit/a4f90ab3cc6f5e4536db2f4fdbcb1d6bee5f790b))
+
+
+
+## [0.7.2](https://github.com/pyroscope-io/pyroscope/compare/v0.7.1...v0.7.2) (2022-01-14)
+
+
+### Features
+
+* adds ability to trace storage.Get ([#731](https://github.com/pyroscope-io/pyroscope/issues/731)) ([9157e5e](https://github.com/pyroscope-io/pyroscope/commit/9157e5ec498a8b1a53c898da300cdbfa47d0fb4e))
+
+
+
+## [0.7.1](https://github.com/pyroscope-io/pyroscope/compare/v0.7.0...v0.7.1) (2022-01-13)
+
+
+### Bug Fixes
+
+* **backend:** skip empty app with GetAppNames() ([#724](https://github.com/pyroscope-io/pyroscope/issues/724)) ([b3fadec](https://github.com/pyroscope-io/pyroscope/commit/b3fadeccee1fc7c865b3564d0ce27663e66cd7f5))
+* **frontend:** don't allow selecting empty apps ([#723](https://github.com/pyroscope-io/pyroscope/issues/723)) ([2378ab5](https://github.com/pyroscope-io/pyroscope/commit/2378ab5cff3e10c1ad9f4b4edc423f16f975a3e4))
+
+
+
 # [0.7.0](https://github.com/pyroscope-io/pyroscope/compare/v0.6.0...v0.7.0) (2022-01-13)
 
 
