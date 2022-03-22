@@ -263,8 +263,6 @@ func (ctrl *Controller) renderDiffHandler2(w http.ResponseWriter, r *http.Reques
 	}
 
 	// TODO: do this concurrently
-	// Left Tree
-	// TODO: why do we need to pass this?
 	leftOut, leftErr := ctrl.loadTree(&params.Left, params.Left.StartTime, params.Left.EndTime)
 	if leftErr != nil {
 		panic("TODO")
@@ -272,6 +270,20 @@ func (ctrl *Controller) renderDiffHandler2(w http.ResponseWriter, r *http.Reques
 	rightOut, rightErr := ctrl.loadTree(&params.Right, params.Right.StartTime, params.Right.EndTime)
 	if rightErr != nil {
 		panic("TODO")
+	}
+
+	// Some basic validations
+	// TODO: unify this with convert.DiffV1
+	// Maybe put that in the constructor? (flamebearer.NewCombinedProfile)
+	if leftOut.SampleRate != rightOut.SampleRate {
+		msg := fmt.Sprintf("left sample rate (%d) does not match right sample rate (%d)", leftOut.SampleRate, rightOut.SampleRate)
+		ctrl.writeInvalidParameterError(w, errors.New(msg))
+		return
+	}
+	if leftOut.Units != rightOut.Units {
+		msg := fmt.Sprintf("left units (%s) does not match right units (%s)", leftOut.Units, rightOut.Units)
+		ctrl.writeInvalidParameterError(w, errors.New(msg))
+		return
 	}
 
 	// It seems Out is used for the timeline
@@ -292,8 +304,6 @@ func (ctrl *Controller) renderDiffHandler2(w http.ResponseWriter, r *http.Reques
 		// fallthrough to default, to maintain existing behaviour
 		fallthrough
 	default:
-		// TODO: mount a gi
-		//		res := ctrl.mountRenderResponse(combined, "diff", leftOut, p.MaxNodes)
 		ctrl.writeResponseJSON(w, combined)
 	}
 }
