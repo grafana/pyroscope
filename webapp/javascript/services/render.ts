@@ -49,22 +49,33 @@ export async function renderSingle(
 }
 
 interface renderDiffProps {
-  from: string;
-  until: string;
-  query: string;
-  refreshToken?: string;
-  maxNodes: string;
   leftFrom: string;
   leftUntil: string;
+  leftQuery: string;
+  refreshToken?: string;
+  maxNodes: string;
+  rightQuery: string;
   rightFrom: string;
   rightUntil: string;
 }
 export async function renderDiff(
   props: renderDiffProps
 ): Promise<Result<RenderOutput, RequestError | ZodError>> {
-  const url = buildDiffRenderURL(props);
+  //  const url = buildDiffRenderURL(props);
   // TODO
-  const response = await request(`${url}}&format=json`);
+  //
+
+  const params = new URLSearchParams({
+    leftQuery: props.leftQuery,
+    leftFrom: props.leftFrom,
+    leftUntil: props.leftUntil,
+    rightQuery: props.rightQuery,
+    rightFrom: props.rightFrom,
+    rightUntil: props.rightUntil,
+    format: 'json',
+  });
+
+  const response = await request(`/render-diff?${params}`);
 
   if (response.isErr) {
     return Result.err<RenderOutput, RequestError>(response.error);

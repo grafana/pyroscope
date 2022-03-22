@@ -67,6 +67,8 @@ type DiffView =
       profile: Profile;
     };
 
+type DiffView2 = ComparisonView;
+
 type TagsData =
   | { type: 'pristine' }
   | { type: 'loading' }
@@ -103,6 +105,7 @@ interface ContinuousState {
 
   singleView: SingleView;
   diffView: DiffView;
+  diffView2: DiffView2;
   comparisonView: ComparisonView;
   tags: Tags;
 
@@ -124,6 +127,10 @@ const initialState: ContinuousState = {
   singleView: { type: 'pristine' },
   diffView: { type: 'pristine' },
   comparisonView: {
+    left: { type: 'pristine' },
+    right: { type: 'pristine' },
+  },
+  diffView2: {
     left: { type: 'pristine' },
     right: { type: 'pristine' },
   },
@@ -236,11 +243,21 @@ export const fetchComparisonSide = createAsyncThunk<
 
 export const fetchDiffView = createAsyncThunk<
   RenderOutput,
-  null,
+  {
+    leftQuery: string;
+    leftFrom: string;
+    leftUntil: string;
+    rightQuery: string;
+    rightFrom: string;
+    rightUntil: string;
+  },
   { state: { continuous: ContinuousState } }
->('continuous/diffView', async (_, thunkAPI) => {
+>('continuous/diffView', async (params, thunkAPI) => {
   const state = thunkAPI.getState();
-  const res = await renderDiff(state.continuous);
+  const res = await renderDiff({
+    ...params,
+    maxNodes: state.continuous.maxNodes,
+  });
 
   if (res.isOk) {
     return Promise.resolve(res.value);

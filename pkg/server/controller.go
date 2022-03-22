@@ -245,7 +245,7 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 	// For these routes server responds with 401.
 	ctrl.addRoutes(r, []route{
 		{"/render", ctrl.renderHandler},
-		{"/render-diff", ctrl.renderDiffHandler},
+		{"/render-diff", ctrl.renderDiffHandler2},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
 		{"/merge", ctrl.mergeHandler},
