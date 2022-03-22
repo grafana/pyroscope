@@ -205,8 +205,6 @@ function ComparisonDiffApp() {
         <Box>
           <div className="diff-instructions-wrapper">
             <div className="diff-instructions-wrapper-side">
-              <InstructionText viewType="diff" viewSide="left" />
-
               <TagsBar
                 query={leftQuery || ''}
                 tags={leftTags}
@@ -222,6 +220,7 @@ function ComparisonDiffApp() {
                   );
                 }}
               />
+              <InstructionText viewType="diff" viewSide="left" />
               <TimelineChartWrapper
                 data-testid="timeline-left"
                 key="timeline-chart-left"
@@ -236,8 +235,6 @@ function ComparisonDiffApp() {
               />
             </div>
             <div className="diff-instructions-wrapper-side">
-              <InstructionText viewType="diff" viewSide="right" />
-
               <TagsBar
                 query={rightQuery || ''}
                 tags={rightTags}
@@ -253,6 +250,7 @@ function ComparisonDiffApp() {
                   );
                 }}
               />
+              <InstructionText viewType="diff" viewSide="right" />
               <TimelineChartWrapper
                 data-testid="timeline-right"
                 key="timeline-chart-right"
