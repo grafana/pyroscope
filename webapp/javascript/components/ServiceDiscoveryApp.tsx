@@ -97,8 +97,8 @@ const ServiceDiscoveryApp = (props: PropType) => {
   );
 };
 
-const CollapsibleSection = ({ children, title, open }) => {
-  return Children.count(children.filter((c) => c)) > 0 ? (
+const CollapsibleSection = ({ children, title, open }: ShamefulAny) => {
+  return Children.count(children.filter((c: ShamefulAny) => c)) > 0 ? (
     <details open={open}>
       <summary className={styles.collapsibleHeader}>{title}</summary>
       <div className={styles.collapsibleSection}>
@@ -136,7 +136,9 @@ const CollapsibleSection = ({ children, title, open }) => {
 };
 
 function formatDuration(input: string): string {
-  return `${parseFloat(input).toFixed(2)} ${input.match(/[a-zA-Z]+$/)[0]}`;
+  const a = input.match(/[a-zA-Z]+$/);
+  const b = a ? a[0] : '';
+  return `${parseFloat(input).toFixed(2)} ${b}`;
 }
 
 const Target = ({
@@ -182,7 +184,7 @@ const Target = ({
 };
 
 const Badge = ({ children, status }: { children: string; status: Status }) => {
-  function getStatusClass(status) {
+  function getStatusClass(status: ShamefulAny) {
     switch (status) {
       case Status.healthy:
         return styles.healthy;
@@ -199,8 +201,10 @@ const Badge = ({ children, status }: { children: string; status: Status }) => {
   );
 };
 
-const selectJobs: (state) => Record<string, Target[]> = (state) => {
-  const acc = state.reduce((acc, next) => {
+const selectJobs: (state: ShamefulAny) => Record<string, Target[]> = (
+  state
+) => {
+  const acc = state.reduce((acc: ShamefulAny, next: ShamefulAny) => {
     if (!acc[next.Job]) {
       acc[next.Job] = [];
     }
@@ -210,7 +214,7 @@ const selectJobs: (state) => Record<string, Target[]> = (state) => {
   return acc;
 };
 
-const mapStateToProps = (state) => ({
+const mapStateToProps = (state: ShamefulAny) => ({
   data: selectJobs(state.serviceDiscovery.data),
 });
 

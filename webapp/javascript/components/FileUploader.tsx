@@ -14,7 +14,11 @@ import styles from './FileUploader.module.scss';
 
 interface Props {
   file: File;
-  setFile: (file: File, flamebearer: Record<string, unknown>) => void;
+  setFile: (
+    file: File | null,
+    flamebearer: Record<string, unknown> | null
+  ) => void;
+
   className?: string;
 }
 export default function FileUploader({ file, setFile, className }: Props) {
@@ -25,7 +29,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
       throw new Error('Only a single file at a time is accepted.');
     }
 
-    acceptedFiles.forEach((file) => {
+    acceptedFiles.forEach((file: ShamefulAny) => {
       const reader = new FileReader();
 
       reader.onabort = () => console.log('file reading was aborted');
@@ -36,11 +40,17 @@ export default function FileUploader({ file, setFile, className }: Props) {
         if (typeof binaryStr === 'string') {
           throw new Error('Expecting file in binary format but got a string');
         }
+        if (binaryStr === null) {
+          throw new Error('Expecting file in binary format but got null');
+        }
 
         try {
           // ArrayBuffer -> JSON
           const s = JSON.parse(
-            String.fromCharCode.apply(null, new Uint8Array(binaryStr))
+            String.fromCharCode.apply(
+              null,
+              new Uint8Array(binaryStr) as ShamefulAny
+            )
           );
           // Only check for flamebearer fields, the rest of the file format is checked on decoding.
           const fields = ['names', 'levels', 'numTicks', 'maxSelf'];
@@ -51,7 +61,7 @@ export default function FileUploader({ file, setFile, className }: Props) {
               );
           });
           setFile(file, s);
-        } catch (e) {
+        } catch (e: ShamefulAny) {
           dispatch(
             addNotification({
               message: e.message,

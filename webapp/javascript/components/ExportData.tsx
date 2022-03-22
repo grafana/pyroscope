@@ -5,9 +5,8 @@ import Button from '@ui/Button';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { buildRenderURL } from '@utils/updateRequests';
 import { dateForExportFilename } from '@utils/formatDate';
+import { Profile } from '@pyroscope/models';
 
-import clsx from 'clsx';
-import { RawFlamebearerProfile } from '@models/flamebearer';
 import styles from './ExportData.module.scss';
 
 // These are modeled individually since each condition may have different values
@@ -16,14 +15,14 @@ import styles from './ExportData.module.scss';
 type exportJSON =
   | {
       exportJSON: true;
-      flamebearer: RawFlamebearerProfile;
+      flamebearer: Profile;
     }
   | { exportJSON?: false };
 
 type exportPprof =
   | {
       exportPprof: true;
-      flamebearer: RawFlamebearerProfile;
+      flamebearer: Profile;
     }
   | { exportPprof?: false };
 
@@ -31,7 +30,7 @@ type exportHTML =
   | {
       exportHTML: true;
       fetchUrlFunc?: () => string;
-      flamebearer: RawFlamebearerProfile;
+      flamebearer: Profile;
     }
   | { exportHTML?: false };
 
@@ -39,14 +38,14 @@ type exportFlamegraphDotCom =
   | {
       exportFlamegraphDotCom: true;
       exportFlamegraphDotComFn: () => Promise<string | null>;
-      flamebearer: RawFlamebearerProfile;
+      flamebearer: Profile;
     }
   | { exportFlamegraphDotCom?: false };
 
 type exportPNG =
   | {
       exportPNG: true;
-      flamebearer: RawFlamebearerProfile;
+      flamebearer: Profile;
     }
   | { exportPNG?: false };
 
@@ -189,8 +188,8 @@ function ExportData(props: ExportDataProps) {
       // * absence of a public server (grafana, standalone)
       // * diff mode
       const url = `${buildRenderURL({
-        from: flamebearer.metadata.startTime,
-        until: flamebearer.metadata.endTime,
+        from: flamebearer.metadata.startTime.toString(),
+        until: flamebearer.metadata.endTime.toString(),
         query: flamebearer.metadata.query,
         maxNodes: flamebearer.metadata.maxNodes,
       })}&format=pprof`;
@@ -222,8 +221,8 @@ function ExportData(props: ExportDataProps) {
         typeof props.fetchUrlFunc === 'function'
           ? props.fetchUrlFunc()
           : buildRenderURL({
-              from: flamebearer.metadata.startTime,
-              until: flamebearer.metadata.endTime,
+              from: flamebearer.metadata.startTime.toString(),
+              until: flamebearer.metadata.endTime.toString(),
               query: flamebearer.metadata.query,
               maxNodes: flamebearer.metadata.maxNodes,
             });

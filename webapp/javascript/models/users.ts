@@ -38,4 +38,5 @@ export function parse(a: unknown): Result<Users, ZodError> {
   return modelToResult(usersModel, a);
 }
 
-export const passwordEncode = (p) => btoa(unescape(encodeURIComponent(p)));
+export const passwordEncode = (p: string) =>
+  btoa(unescape(encodeURIComponent(p)));

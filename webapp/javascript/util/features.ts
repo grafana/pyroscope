@@ -9,7 +9,7 @@ function hasFeatures(
   window: unknown
 ): window is typeof window & { features: Features } {
   if (typeof window === 'object') {
-    if (window.hasOwnProperty('features')) {
+    if (window && window.hasOwnProperty('features')) {
       return true;
     }
   }

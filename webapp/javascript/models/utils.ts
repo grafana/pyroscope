@@ -13,7 +13,7 @@ export function modelToResult<T>(
 
   // TODO check why this is failing
   if (!result.success) {
-    return Result.err((result as any).error);
+    return Result.err((result as ShamefulAny).error);
   }
 
   return Result.ok(result.data);

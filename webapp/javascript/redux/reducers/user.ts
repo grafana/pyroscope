@@ -31,10 +31,7 @@ export const loadCurrentUser = createAsyncThunk(
     }
     // By using 404 we assume that auth on server is disabled
     // TODO: Fix that
-    if (
-      res.isErr &&
-      (res.error as { statusCode: number; message: string }).statusCode === 404
-    ) {
+    if ('code' in res.error && res.error.code === 404) {
       return Promise.resolve({ id: 0, role: 'anonymous' });
     }
 
@@ -112,10 +109,11 @@ export const editMe = createAsyncThunk(
 );
 
 export const currentUserState = (state: RootState) => state.user;
-export const selectCurrentUser = (state: RootState) => state.user.data;
+export const selectCurrentUser = (state: RootState) => state.user?.data;
 
 // TODO: @shaleynikov extract currentUser HOC
-export const withCurrentUser = (component) =>
+// TODO(eh-am): get rid of HOC
+export const withCurrentUser = (component: ShamefulAny) =>
   connect((state: RootState) => ({
     currentUser: selectCurrentUser(state),
   }))(function ConditionalRender(props: { currentUser: User }) {
@@ -123,6 +121,6 @@ export const withCurrentUser = (component) =>
       return component(props);
     }
     return null;
-  });
+  } as ShamefulAny);
 
 export default userSlice.reducer;

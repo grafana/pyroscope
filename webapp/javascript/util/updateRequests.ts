@@ -2,14 +2,14 @@
 
 export function buildRenderURL(
   state: {
-    from: number;
-    until: number;
+    from: string;
+    until: string;
     query: string;
     refreshToken?: string;
     maxNodes: string | number;
   },
-  fromOverride?: number,
-  untilOverride?: number
+  fromOverride?: string,
+  untilOverride?: string
 ) {
   let { from, until, query } = state;
 
@@ -37,8 +37,8 @@ export function buildRenderURL(
 
 // TODO: merge buildRenderURL and buildDiffRenderURL
 export function buildDiffRenderURL(state: {
-  from: number;
-  until: number;
+  from: string;
+  until: string;
   leftFrom: string;
   leftUntil: string;
   rightFrom: string;

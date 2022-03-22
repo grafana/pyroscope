@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import React from 'react';
 import { Switch, Route, useRouteMatch, NavLink } from 'react-router-dom';
 import Box from '@ui/Box';
@@ -8,6 +10,7 @@ import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
 import { faUserAlt } from '@fortawesome/free-solid-svg-icons/faUserAlt';
 import cx from 'classnames';
 import { withCurrentUser } from '@pyroscope/redux/reducers/user';
+import { User } from '@models/users';
 import Preferences from './Preferences';
 import Security from './Security';
 import Users from './Users';
@@ -17,11 +20,11 @@ import styles from './Settings.module.css';
 import UserAddForm from './Users/UserAddForm';
 import APIKeyAddForm from './APIKeys/APIKeyAddForm';
 
-function Settings(props) {
+function Settings(props: ShamefulAny) {
   const { path, url } = useRouteMatch();
   const { currentUser } = props;
-  const isAdmin = (user) => user && user.role === 'Admin';
-  const isExternal = (user) => user && user.isExternal;
+  const isAdmin = (user: User) => user && user.role === 'Admin';
+  const isExternal = (user: User) => user && user.isExternal;
   return (
     <div className="pyroscope-app">
       <h1>Settings</h1>
@@ -93,7 +96,7 @@ function Settings(props) {
             <Route exact path={path}>
               <Preferences />
             </Route>
-            <Route exact path={`${path}/security`}>
+            <Route path={`${path}/security`}>
               <Security />
             </Route>
             <Route exact path={`${path}/users`}>

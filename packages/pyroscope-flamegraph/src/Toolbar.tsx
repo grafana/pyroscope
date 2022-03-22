@@ -191,7 +191,7 @@ const Toolbar = React.memo(
     selectedNode,
     onFocusOnSubtree,
   }: ProfileHeaderProps) => {
-    const toolbarRef = React.useRef();
+    const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
 
     return (
@@ -280,7 +280,15 @@ function FocusOnSubtree({
   );
 }
 
-function HighlightSearch({ onHighlightChange, showMode, highlightQuery }) {
+function HighlightSearch({
+  onHighlightChange,
+  showMode,
+  highlightQuery,
+}: {
+  showMode: ReturnType<typeof useSizeMode>;
+  onHighlightChange: ProfileHeaderProps['handleSearchChange'];
+  highlightQuery: ProfileHeaderProps['highlightQuery'];
+}) {
   return (
     <DebounceInput
       data-testid="flamegraph-search"
@@ -300,7 +308,15 @@ function HighlightSearch({ onHighlightChange, showMode, highlightQuery }) {
   );
 }
 
-function ResetView({ isFlamegraphDirty, reset, showMode }) {
+function ResetView({
+  isFlamegraphDirty,
+  reset,
+  showMode,
+}: {
+  showMode: ReturnType<typeof useSizeMode>;
+  isFlamegraphDirty: ProfileHeaderProps['isFlamegraphDirty'];
+  reset: ProfileHeaderProps['reset'];
+}) {
   let text = '';
   switch (showMode) {
     case 'small': {
@@ -330,7 +346,15 @@ function ResetView({ isFlamegraphDirty, reset, showMode }) {
   );
 }
 
-function FitMode({ fitMode, updateFitMode, showMode }) {
+function FitMode({
+  fitMode,
+  updateFitMode,
+  showMode,
+}: {
+  showMode: ReturnType<typeof useSizeMode>;
+  fitMode: ProfileHeaderProps['fitMode'];
+  updateFitMode: ProfileHeaderProps['updateFitMode'];
+}) {
   let texts = {
     header: '',
     head: '',
@@ -364,7 +388,7 @@ function FitMode({ fitMode, updateFitMode, showMode }) {
       aria-label="fit-mode"
       className={styles['fit-mode-select']}
       value={fitMode}
-      onChange={(event) => updateFitMode(event.target.value)}
+      onChange={(event) => updateFitMode(event.target.value as typeof fitMode)}
     >
       <option disabled>{texts.header}</option>
       <option value={HeadMode}>{texts.head}</option>
@@ -373,7 +397,15 @@ function FitMode({ fitMode, updateFitMode, showMode }) {
   );
 }
 
-function DiffView({ viewDiff, updateViewDiff, showMode }) {
+function DiffView({
+  viewDiff,
+  updateViewDiff,
+  showMode,
+}: {
+  showMode: ReturnType<typeof useSizeMode>;
+  updateViewDiff: ProfileHeaderProps['updateViewDiff'];
+  viewDiff: ProfileHeaderProps['viewDiff'];
+}) {
   if (!viewDiff) {
     return null;
   }
@@ -383,7 +415,7 @@ function DiffView({ viewDiff, updateViewDiff, showMode }) {
       aria-label="view-diff"
       value={viewDiff}
       onChange={(e) => {
-        updateViewDiff(e.target.value);
+        updateViewDiff(e.target.value as typeof viewDiff);
       }}
     >
       <option value="self">Self</option>
@@ -450,13 +482,21 @@ function DiffView({ viewDiff, updateViewDiff, showMode }) {
   );
 }
 
-function ViewSection({ view, updateView, showMode }) {
+function ViewSection({
+  view,
+  updateView,
+  showMode,
+}: {
+  showMode: ReturnType<typeof useSizeMode>;
+  updateView: ProfileHeaderProps['updateView'];
+  view: ProfileHeaderProps['view'];
+}) {
   const Select = (
     <select
       aria-label="view"
       value={view}
       onChange={(e) => {
-        updateView(e.target.value);
+        updateView(e.target.value as typeof view);
       }}
     >
       <option value="table">Table</option>

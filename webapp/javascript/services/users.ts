@@ -139,10 +139,10 @@ export async function changeMyPassword(
 }
 
 export async function changeUserRole(
-  user: User,
+  userId: number,
   role: string
 ): Promise<Result<boolean, RequestError | ZodError>> {
-  const response = await request(`/api/users/${user.id}/role`, {
+  const response = await request(`/api/users/${userId}/role`, {
     method: 'PUT',
     body: JSON.stringify({ role }),
   });

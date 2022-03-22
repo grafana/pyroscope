@@ -20,11 +20,36 @@ const defaultParams: Partial<ReactNotificationOptions> = {
 export type NotificationOptions = {
   title?: string;
   message: string;
+  additionalInfo?: string[];
   type: 'success' | 'danger' | 'info';
 
   dismiss?: DismissOptions;
-  onRemoval?: ((id: string, removedBy: any) => void) | undefined;
+  onRemoval?: ((id: string, removedBy: ShamefulAny) => void) | undefined;
 };
+
+function Message({
+  message,
+  additionalInfo,
+}: {
+  message: string;
+  additionalInfo?: string[];
+}) {
+  return (
+    <div>
+      {message}
+      <br />
+      <br />
+      <small>
+        {additionalInfo && 'Additional info:'}
+
+        {additionalInfo &&
+          additionalInfo.map((a) => {
+            return <div>{a}</div>;
+          })}
+      </small>
+    </div>
+  );
+}
 
 export const store = {
   addNotification({
@@ -33,6 +58,7 @@ export const store = {
     type,
     dismiss,
     onRemoval,
+    additionalInfo,
   }: NotificationOptions) {
     dismiss = dismiss || {
       duration: 5000,
@@ -42,7 +68,7 @@ export const store = {
     libStore.addNotification({
       ...defaultParams,
       title,
-      message,
+      message: <Message message={message} additionalInfo={additionalInfo} />,
       type,
       dismiss,
       onRemoval,
