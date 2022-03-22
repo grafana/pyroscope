@@ -16,6 +16,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
+//revive:disable-next-line:cognitive-complexity to be refactored
 func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	fs := http.FileServer(ctrl.dir)
 	return func(rw http.ResponseWriter, r *http.Request) {
