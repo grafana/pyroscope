@@ -510,6 +510,7 @@ export const continuousSlice = createSlice({
       switch (state.diffView.type) {
         // if we are fetching but there's already data
         // it's considered a 'reload'
+        case 'reloading':
         case 'loaded': {
           state.diffView = {
             ...state.diffView,

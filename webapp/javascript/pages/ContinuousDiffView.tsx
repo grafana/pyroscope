@@ -66,20 +66,6 @@ function ComparisonDiffApp() {
   };
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(getRaw());
 
-  useEffect(() => {
-    dispatch(fetchDiffView(null));
-  }, [
-    from,
-    until,
-    query,
-    refreshToken,
-    maxNodes,
-    rightFrom,
-    leftFrom,
-    leftUntil,
-    rightUntil,
-  ]);
-
   const profile = (() => {
     switch (diffView.type) {
       case 'loaded':
@@ -128,6 +114,7 @@ function ComparisonDiffApp() {
     refreshToken,
     from,
     until,
+    maxNodes,
   ]);
 
   const getSide = (side: 'left' | 'right') => {
