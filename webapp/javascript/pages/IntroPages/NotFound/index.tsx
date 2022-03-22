@@ -3,7 +3,7 @@ import cx from 'classnames';
 import { Link } from 'react-router-dom';
 import styles from '../IntroPages.module.css';
 
-function NotFoundPage(props) {
+function NotFoundPage() {
   return (
     <div className={styles.loginWrapper}>
       <div className={styles.form}>

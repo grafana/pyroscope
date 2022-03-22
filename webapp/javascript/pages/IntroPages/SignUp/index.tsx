@@ -13,7 +13,7 @@ import inputStyles from '../InputGroup.module.css';
 import styles from '../IntroPages.module.css';
 import Divider from '../Divider';
 
-function SignUpPage(props) {
+function SignUpPage() {
   const history = useHistory();
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectCurrentUser);
@@ -25,13 +25,13 @@ function SignUpPage(props) {
     errors: [],
   });
 
-  const handleFormChange = (event) => {
+  const handleFormChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = event.target;
     const { value } = event.target;
     setForm({ ...form, [name]: value });
   };
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
       const { username, password, fullName, email } = {
@@ -51,6 +51,7 @@ function SignUpPage(props) {
     }
   }
 
+  // redirect when current user gets or is already set
   useEffect(() => {
     if (currentUser) {
       history.push('/');

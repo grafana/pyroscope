@@ -17,7 +17,7 @@ import inputStyles from '../InputGroup.module.css';
 import styles from '../IntroPages.module.css';
 import buttonStyles from './buttons.module.css';
 
-function SignInPage(props) {
+function SignInPage() {
   const history = useHistory();
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectCurrentUser);
@@ -27,13 +27,13 @@ function SignInPage(props) {
     errors: [],
   });
 
-  const handleFormChange = (event) => {
+  const handleFormChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = event.target;
     const { value } = event.target;
     setForm({ ...form, [name]: value });
   };
 
-  async function handleSubmit(event) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
       const { username, password } = {

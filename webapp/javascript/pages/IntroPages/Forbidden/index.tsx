@@ -3,7 +3,7 @@ import cx from 'classnames';
 import { Link } from 'react-router-dom';
 import styles from '../IntroPages.module.css';
 
-function ForbiddenPage(props) {
+function ForbiddenPage() {
   return (
     <div className={styles.loginWrapper}>
       <div className={styles.form}>
