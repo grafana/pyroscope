@@ -24,18 +24,6 @@ type SingleView =
     };
 
 type ComparisonView = {
-  timeline:
-    | { type: 'pristine' }
-    | { type: 'loading' }
-    | {
-        type: 'loaded';
-        data: Timeline;
-      }
-    | {
-        type: 'reloading';
-        data: Timeline;
-      };
-
   left:
     | { type: 'pristine' }
     | { type: 'loading' }
@@ -136,7 +124,6 @@ const initialState: ContinuousState = {
   singleView: { type: 'pristine' },
   diffView: { type: 'pristine' },
   comparisonView: {
-    timeline: { type: 'pristine' },
     left: { type: 'pristine' },
     right: { type: 'pristine' },
   },
