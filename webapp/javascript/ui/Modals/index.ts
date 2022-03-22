@@ -1,4 +1,4 @@
-import Swal, { SweetAlertOptions } from 'sweetalert2';
+import Swal, { SweetAlertInput, SweetAlertOptions } from 'sweetalert2';
 
 const defaultParams: Partial<SweetAlertOptions> = {
   showCancelButton: true,
@@ -6,11 +6,15 @@ const defaultParams: Partial<SweetAlertOptions> = {
   backdrop: true,
 };
 
-type ShowModalParams = {
+export type ShowModalParams = {
   title: string;
   confirmButtonText: string;
-  danger: boolean;
+  danger?: boolean;
   onConfirm: ShamefulAny;
+  input?: SweetAlertInput;
+  inputLabel?: string;
+  inputPlaceholder?: string;
+  passResultValueToConfirmHandler?: boolean;
 };
 
 const ShowModal = ({
@@ -18,14 +22,25 @@ const ShowModal = ({
   confirmButtonText,
   danger,
   onConfirm,
+  input,
+  inputLabel,
+  inputPlaceholder,
+  passResultValueToConfirmHandler,
 }: ShowModalParams) => {
   Swal.fire({
     title,
     confirmButtonText,
+    input,
+    inputLabel,
+    inputPlaceholder,
     confirmButtonColor: danger ? '#dc3545' : '#0074d9',
     ...defaultParams,
-  }).then((result) => {
-    if (result.isConfirmed) {
+  }).then(({ isConfirmed, value }) => {
+    if (isConfirmed) {
+      if (passResultValueToConfirmHandler) {
+        onConfirm(value);
+        return;
+      }
       onConfirm();
     }
   });

@@ -6,6 +6,7 @@ import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
 import { buildRenderURL } from '@utils/updateRequests';
 import { dateForExportFilename } from '@utils/formatDate';
 import { Profile } from '@pyroscope/models';
+import showModalWithInput from './Modals/ModalWithInput';
 
 import styles from './ExportData.module.scss';
 
@@ -37,7 +38,7 @@ type exportHTML =
 type exportFlamegraphDotCom =
   | {
       exportFlamegraphDotCom: true;
-      exportFlamegraphDotComFn: () => Promise<string | null>;
+      exportFlamegraphDotComFn: (name?: string) => Promise<string | null>;
       flamebearer: Profile;
     }
   | { exportFlamegraphDotCom?: false };
@@ -75,7 +76,7 @@ function ExportData(props: ExportDataProps) {
 
   const [toggleMenu, setToggleMenu] = useState(false);
 
-  const downloadJSON = () => {
+  const downloadJSON = (exportName: string) => {
     if (!props.exportJSON) {
       return;
     }
@@ -83,11 +84,13 @@ function ExportData(props: ExportDataProps) {
     // TODO additional check this won't be needed once we use strictNullChecks
     if (props.exportJSON) {
       const { flamebearer } = props;
-      const filename = `${getFilename(
-        flamebearer.metadata.appName,
-        flamebearer.metadata.startTime,
-        flamebearer.metadata.endTime
-      )}.json`;
+      const filename = exportName
+        ? `${exportName}.json`
+        : `${getFilename(
+            flamebearer.metadata.appName,
+            flamebearer.metadata.startTime,
+            flamebearer.metadata.endTime
+          )}.json`;
 
       const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
         JSON.stringify(flamebearer)
@@ -101,14 +104,14 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
-  const downloadFlamegraphDotCom = () => {
+  const downloadFlamegraphDotCom = (exportName: string) => {
     if (!props.exportFlamegraphDotCom) {
       return;
     }
 
     // TODO additional check this won't be needed once we use strictNullChecks
     if (props.exportFlamegraphDotCom) {
-      props.exportFlamegraphDotComFn().then((url) => {
+      props.exportFlamegraphDotComFn(exportName).then((url) => {
         // there has been an error which should've been handled
         // so we just ignore it
         if (!url) {
@@ -126,7 +129,7 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
-  const downloadPNG = () => {
+  const downloadPNG = (exportName: string) => {
     if (props.exportPNG) {
       const { flamebearer } = props;
       const mimeType = 'png';
@@ -138,11 +141,13 @@ function ExportData(props: ExportDataProps) {
       const MIME_TYPE = `image/${mimeType}`;
       const imgURL = canvasElement.toDataURL();
       const dlLink = document.createElement('a');
-      const filename = `${getFilename(
-        flamebearer.metadata.appName,
-        flamebearer.metadata.startTime,
-        flamebearer.metadata.endTime
-      )}.png`;
+      const filename = exportName
+        ? `${getFilename(exportName)}.png`
+        : `${getFilename(
+            flamebearer.metadata.appName,
+            flamebearer.metadata.startTime,
+            flamebearer.metadata.endTime
+          )}.png`;
 
       dlLink.download = filename;
       dlLink.href = imgURL;
@@ -202,7 +207,7 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
-  const downloadHTML = function () {
+  const downloadHTML = function (exportName: string) {
     if (props.exportHTML) {
       const { flamebearer } = props;
 
@@ -227,11 +232,13 @@ function ExportData(props: ExportDataProps) {
               maxNodes: flamebearer.metadata.maxNodes,
             });
       const urlWithFormat = `${url}&format=html`;
-      const filename = `${getFilename(
-        flamebearer.metadata.appName,
-        flamebearer.metadata.startTime,
-        flamebearer.metadata.endTime
-      )}.html`;
+      const filename = exportName
+        ? `${exportName}.html`
+        : `${getFilename(
+            flamebearer.metadata.appName,
+            flamebearer.metadata.startTime,
+            flamebearer.metadata.endTime
+          )}.html`;
 
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute('href', urlWithFormat);
@@ -242,6 +249,20 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
+  const exportWithCustomName = async (
+    onConfirm: (exportName: string) => void
+  ) => {
+    showModalWithInput({
+      title: 'Enter export name',
+      confirmButtonText: 'Export',
+      input: 'text',
+      inputLabel: 'or levae the input empty for default name',
+      inputPlaceholder: 'Export name',
+      passResultValueToConfirmHandler: true,
+      onConfirm,
+    });
+  };
+
   return (
     <div className={styles.dropdownContainer}>
       <Button icon={faBars} onClick={handleToggleMenu} />
@@ -249,8 +270,8 @@ function ExportData(props: ExportDataProps) {
         {exportPNG && (
           <button
             className={styles.dropdownMenuItem}
-            onClick={() => downloadPNG()}
-            onKeyPress={() => downloadPNG()}
+            onClick={() => exportWithCustomName(downloadPNG)}
+            onKeyPress={() => exportWithCustomName(downloadPNG)}
             type="button"
           >
             png
@@ -260,7 +281,7 @@ function ExportData(props: ExportDataProps) {
           <button
             className={styles.dropdownMenuItem}
             type="button"
-            onClick={() => downloadJSON()}
+            onClick={() => exportWithCustomName(downloadJSON)}
           >
             json
           </button>
@@ -278,7 +299,7 @@ function ExportData(props: ExportDataProps) {
           <button
             className={styles.dropdownMenuItem}
             type="button"
-            onClick={() => downloadHTML()}
+            onClick={() => exportWithCustomName(downloadHTML)}
           >
             {' '}
             html
@@ -288,7 +309,7 @@ function ExportData(props: ExportDataProps) {
           <button
             className={styles.dropdownMenuItem}
             type="button"
-            onClick={() => downloadFlamegraphDotCom()}
+            onClick={() => exportWithCustomName(downloadFlamegraphDotCom)}
           >
             {' '}
             flamegraph.com

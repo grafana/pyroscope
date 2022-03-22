@@ -13,7 +13,7 @@ import {
   selectAPIKeys,
   deleteAPIKey,
 } from '@pyroscope/redux/reducers/settings';
-import confirmDelete from '../../ConfirmDelete';
+import confirmDelete from '../../Modals/ConfirmDelete';
 import styles from '../SettingsTable.module.css';
 
 const ApiKeys = () => {
