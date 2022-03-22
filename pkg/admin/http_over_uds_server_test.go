@@ -76,7 +76,7 @@ var _ = Describe("HTTP Over UDS", func() {
 		})
 
 		When("that socket is still responding", func() {
-			FIt("should error", func() {
+			It("should error", func() {
 				By("creating server 1 and running it")
 				server, err := admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 				Expect(err).ToNot(HaveOccurred())
