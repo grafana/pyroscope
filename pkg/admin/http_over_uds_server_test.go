@@ -76,7 +76,7 @@ var _ = Describe("HTTP Over UDS", func() {
 		})
 
 		When("that socket is still responding", func() {
-			It("should error", func() {
+			FIt("should error", func() {
 				By("creating server 1 and running it")
 				server, err := admin.NewUdsHTTPServer(socketAddr, createHttpClientWithFastTimeout(socketAddr))
 				Expect(err).ToNot(HaveOccurred())
@@ -85,7 +85,8 @@ var _ = Describe("HTTP Over UDS", func() {
 					server.Start(http.NewServeMux())
 				}()
 
-				waitUntilServerIsReady(socketAddr)
+				By("validating server 1 is responding")
+				Expect(waitUntilServerIsReady(socketAddr)).ToNot(HaveOccurred())
 
 				// create server 2
 				By("creating server 2")
@@ -122,7 +123,7 @@ var _ = Describe("HTTP Over UDS", func() {
 })
 
 func waitUntilServerIsReady(socketAddr string) error {
-	const MaxReadinessRetries = 5
+	const MaxReadinessRetries = 30 // 3 seconds
 
 	client := createHttpClientWithFastTimeout(socketAddr)
 	retries := 0
@@ -132,13 +133,14 @@ func waitUntilServerIsReady(socketAddr string) error {
 
 		// all good?
 		if err == nil {
+			time.Sleep(time.Millisecond * 100)
 			return nil
 		}
 		if retries >= MaxReadinessRetries {
 			break
 		}
 
-		time.Sleep(time.Millisecond * 300)
+		time.Sleep(time.Millisecond * 100)
 		retries++
 	}
 
