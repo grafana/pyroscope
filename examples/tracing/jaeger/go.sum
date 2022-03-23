@@ -23,6 +23,8 @@ github.com/pyroscope-io/otelpyroscope v0.1.1-0.20220323004007-dcbd45cd4ab8 h1:Xp
 github.com/pyroscope-io/otelpyroscope v0.1.1-0.20220323004007-dcbd45cd4ab8/go.mod h1:Pjgu/PeVua81wS40W4sJ7GaS2mjGUZ7bhUAA1X+8lZ8=
 github.com/pyroscope-io/otelpyroscope v0.1.1-0.20220323012158-956214c9e344 h1:UWvDlQXYc7EqKC6kzumNVV5/ZzCjr1vJQgwCJMwG4x4=
 github.com/pyroscope-io/otelpyroscope v0.1.1-0.20220323012158-956214c9e344/go.mod h1:Pjgu/PeVua81wS40W4sJ7GaS2mjGUZ7bhUAA1X+8lZ8=
+github.com/pyroscope-io/otelpyroscope v0.2.0 h1:cxTJyvs1HNajjBzuPtkorZUw28Jye/wflIMVuFRz8ls=
+github.com/pyroscope-io/otelpyroscope v0.2.0/go.mod h1:Pjgu/PeVua81wS40W4sJ7GaS2mjGUZ7bhUAA1X+8lZ8=
 github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/stretchr/objx v0.1.0 h1:4G4v2dO3VZwixGIRoQ5Lfboy6nUhCyYzaqnIAPPhYs4=
