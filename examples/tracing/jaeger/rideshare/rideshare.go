@@ -22,6 +22,7 @@ type Config struct {
 	PyroscopeProfileURL    string
 	JaegerEndpoint         string
 	UseDebugTracer         bool
+	Tags                   map[string]string
 }
 
 func ReadConfig() Config {
@@ -30,6 +31,9 @@ func ReadConfig() Config {
 		PyroscopeProfileURL:    os.Getenv("PYROSCOPE_PROFILE_URL"),
 		JaegerEndpoint:         os.Getenv("JAEGER_ENDPOINT"),
 		UseDebugTracer:         os.Getenv("DEBUG_TRACER") == "1",
+		Tags: map[string]string{
+			"region": os.Getenv("REGION"),
+		},
 	}
 
 	if c.JaegerEndpoint == "" {
@@ -76,8 +80,13 @@ func TracerProvider(c Config) (tp *sdktrace.TracerProvider, err error) {
 	// We wrap the tracer provider to also annotate goroutines with Span ID so
 	// that pprof would add corresponding labels to profiling samples.
 	otel.SetTracerProvider(otelpyroscope.NewTracerProvider(tp,
-		otelpyroscope.WithDefaultProfileURLBuilder(c.PyroscopeProfileURL, c.AppName),
+		otelpyroscope.WithAppName(c.AppName),
 		otelpyroscope.WithRootSpanOnly(true),
+		otelpyroscope.WithAddSpanName(true),
+		otelpyroscope.WithPyroscopeURL(c.PyroscopeProfileURL),
+		otelpyroscope.WithProfileBaselineLabels(c.Tags),
+		otelpyroscope.WithProfileBaselineURL(true),
+		otelpyroscope.WithProfileURL(true),
 	))
 
 	// Register the trace context and baggage propagators so data is propagated across services/processes.
@@ -94,9 +103,7 @@ func Profiler(c Config) (*pyroscope.Profiler, error) {
 		ApplicationName: c.AppName,
 		ServerAddress:   c.PyroscopeServerAddress,
 		Logger:          pyroscope.StandardLogger,
-		// In this scenario, labels should be set at tracing level:
-		// Pyroscope won't store the labels other than profile_id.
-		// Tags: map[string]string{"region": os.Getenv("REGION")},
+		Tags:            c.Tags,
 	})
 }
 

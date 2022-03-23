@@ -42,16 +42,17 @@ func checkDriverAvailability(ctx context.Context, n int64) {
 	// this is just for demonstration purposes to show how performance impacts show
 	// up in the flamegraph.
 	if region == "us-west-1" && time.Now().Minute()*4%8 == 0 {
-		burnCPU(n * 10)
+		burnCPU(n * 2)
 	}
 
 	logger.Info("vehicle found")
 }
 
 func burnCPU(n int64) {
-	var i int64 = 0
-	st := time.Now().Unix()
-	for (time.Now().Unix() - st) < n {
-		i++
+	var v int
+	for i := int64(0); i < n*2; i++ {
+		for j := 0; j < 1<<30; j++ {
+			v++
+		}
 	}
 }
