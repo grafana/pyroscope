@@ -60,6 +60,7 @@ describe('ProfileHeader', () => {
     const { asFragment, rerender } = render(
       <Toolbar
         view="both"
+        viewDiff="diff"
         flamegraphType="single"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -83,6 +84,7 @@ describe('ProfileHeader', () => {
     rerender(
       <Toolbar
         view="both"
+        viewDiff="diff"
         flamegraphType="single"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -502,6 +504,8 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
+        viewDiff="diff"
+        flamegraphType="single"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
