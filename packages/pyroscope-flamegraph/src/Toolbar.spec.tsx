@@ -399,7 +399,7 @@ describe('ProfileHeader', () => {
       <Toolbar
         view="both"
         viewDiff="diff"
-        flamegraphType="single"
+        flamegraphType="double"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
