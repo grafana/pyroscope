@@ -60,7 +60,6 @@ describe('ProfileHeader', () => {
     const { asFragment, rerender } = render(
       <Toolbar
         view="both"
-        display="both"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
@@ -83,7 +82,6 @@ describe('ProfileHeader', () => {
     rerender(
       <Toolbar
         view="both"
-        display="both"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
@@ -115,7 +113,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          display="both"
           viewDiff="diff"
           renderLogo={false}
           isFlamegraphDirty={false}
@@ -138,7 +135,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          display="both"
           viewDiff="diff"
           renderLogo={false}
           isFlamegraphDirty
@@ -166,7 +162,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          display="both"
           viewDiff="diff"
           renderLogo={false}
           isFlamegraphDirty
@@ -193,7 +188,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          display="both"
           viewDiff="diff"
           renderLogo={false}
           isFlamegraphDirty
@@ -220,7 +214,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          display="both"
           viewDiff="diff"
           renderLogo={false}
           isFlamegraphDirty
@@ -247,7 +240,6 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
-        display="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -294,7 +286,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          display="both"
           viewDiff="diff"
           renderLogo={false}
           isFlamegraphDirty={false}
@@ -318,7 +309,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          display="both"
           viewDiff="diff"
           renderLogo={false}
           isFlamegraphDirty={false}
@@ -345,7 +335,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          display="both"
           viewDiff="diff"
           renderLogo={false}
           isFlamegraphDirty={false}
@@ -369,7 +358,6 @@ describe('ProfileHeader', () => {
       const component = (
         <Toolbar
           view="both"
-          display="both"
           viewDiff="diff"
           renderLogo={false}
           isFlamegraphDirty={false}
@@ -396,7 +384,6 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
-        display="both"
         viewDiff="diff"
         handleSearchChange={() => {}}
         reset={() => {}}
@@ -416,7 +403,6 @@ describe('ProfileHeader', () => {
       render(
         <Toolbar
           view="both"
-          display="both"
           handleSearchChange={() => {}}
           reset={() => {}}
           updateFitMode={() => {}}
@@ -501,7 +487,6 @@ describe('ProfileHeader', () => {
     const component = (
       <Toolbar
         view="both"
-        display="both"
         handleSearchChange={() => {}}
         reset={() => {}}
         updateFitMode={() => {}}
@@ -533,7 +518,7 @@ describe('ProfileHeader', () => {
 
       it('changes to Flamegraph view', () => {
         screen.getByRole('button', { name: /Flamegraph/ }).click();
-        expect(updateView).toHaveBeenCalledWith('icicle');
+        expect(updateView).toHaveBeenCalledWith('flamegraph');
       });
 
       it('changes to Both view', () => {
@@ -565,7 +550,7 @@ describe('ProfileHeader', () => {
           screen.getByRole('combobox', { name: /view/ }),
           screen.getByRole('option', { name: /Flame/ })
         );
-        expect(updateView).toHaveBeenCalledWith('icicle');
+        expect(updateView).toHaveBeenCalledWith('flamegraph');
       });
 
       it('changes to Both view', () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import Box from '@ui/Box';
 import {

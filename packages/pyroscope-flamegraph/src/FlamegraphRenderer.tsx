@@ -1,7 +1,4 @@
 import React from 'react';
-import { Profile } from '@pyroscope/models';
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Until we rewrite FlamegraphRenderer in typescript this will do
 import FlameGraphRenderer from './FlameGraph/FlameGraphRenderer';
 
 const overrideProps = {
@@ -9,9 +6,11 @@ const overrideProps = {
   showPyroscopeLogo: false,
 };
 
-export type FlamegraphRendererProps = {
-  profile: Profile;
-} & any;
+export type FlamegraphRendererProps = Omit<
+  FlameGraphRenderer['props'],
+  'showPyroscopeLogo'
+>;
+
 // TODO: type props
 export const FlamegraphRenderer = (props: FlamegraphRendererProps) => {
   // eslint-disable-next-line react/jsx-props-no-spreading

@@ -11,7 +11,7 @@ import { DefaultPalette, FlamegraphPalette } from './colorPalette';
 // this is just to guarantee code is compiling
 // and the callbacks are being called correctly
 describe('FlamegraphComponent', () => {
-  const ExportData = () => <div>ExportData</div>;
+  const ExportData = <div>ExportData</div>;
 
   const setPalette = (p: FlamegraphPalette) => {};
   it('renders', () => {

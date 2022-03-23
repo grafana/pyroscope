@@ -29,7 +29,10 @@ export type Flamebearer = {
     | 'pyspy'
     | 'rbspy'
     | string;
-} & addTicks;
+  format: 'double' | 'single';
+  leftTicks?: number;
+  rightTicks?: number;
+};
 
 export type addTicks =
   | { format: 'double'; leftTicks: number; rightTicks: number }

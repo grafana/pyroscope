@@ -55,6 +55,7 @@ WORKDIR /opt/pyroscope
 
 COPY scripts ./scripts
 COPY package.json yarn.lock Makefile lerna.json ./
+COPY lib ./lib
 COPY packages ./packages
 COPY babel.config.js .eslintrc.js .eslintignore .prettierrc tsconfig.json ./
 COPY webapp ./webapp

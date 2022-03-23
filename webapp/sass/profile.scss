@@ -191,42 +191,35 @@ body {
 
 $pane-width: 6px;
 
-.panes-wrapper {
-  //  margin: 0 -$pane-width;
-  display: flex;
-
-  &.vertical-orientation {
-    flex-direction: column;
-    flex: 1;
-  }
-
-  .pane {
-    flex: 1;
-    //  margin: 0 $pane-width;
-    width: 50%;
-
-    .flamegraph-header {
-      padding-bottom: 5px;
-      display: flex;
-      justify-content: space-between;
-
-      .row {
-        display: flex;
-        justify-content: center;
-      }
-    }
-
-    &.vertical-orientation {
-      width: 100%;
-      //padding: 10px;
-    }
-
-    &.hidden {
-      display: none;
-    }
-  }
-}
-
+//.panes-wrapper {
+//
+//  .pane {
+////    flex: 1;
+//    //  margin: 0 $pane-width;
+//    //width: 50%;
+//
+////    .flamegraph-header {
+////      padding-bottom: 5px;
+////      display: flex;
+////      justify-content: space-between;
+////
+////      .row {
+////        display: flex;
+////        justify-content: center;
+////      }
+////    }
+//
+////    &.vertical-orientation {
+////      width: 100%;
+////      //padding: 10px;
+////    }
+//
+//    &.hidden {
+//      display: none;
+//    }
+//  }
+//}
+//
 .diff-instructions-wrapper {
   display: flex;
   gap: 15px;
@@ -259,12 +252,8 @@ $pane-width: 6px;
   font-size: 12px;
 }
 
-.flamegraph-table,
-.flamegraph-canvas {
-  width: 100%;
-}
-
 .flamegraph-table {
+  width: 100%;
   font-size: 14px;
 
   th,

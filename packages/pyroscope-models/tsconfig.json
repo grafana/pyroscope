@@ -14,5 +14,6 @@
     "lib": ["es6"],
     "outDir": "./dist"
   },
-  "include": ["./src/index.ts"]
+  "include": ["**/*.ts"],
+  "exclude": ["dist", "**/*.spec.ts"]
 }

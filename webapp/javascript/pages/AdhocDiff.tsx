@@ -100,8 +100,6 @@ function AdhocDiff() {
           )}
           {!isProfileLoading && (
             <FlamegraphRenderer
-              display="both"
-              viewType="diff"
               flamebearer={flamebearer}
               ExportData={
                 <ExportData

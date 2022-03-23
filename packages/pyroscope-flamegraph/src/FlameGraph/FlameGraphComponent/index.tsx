@@ -29,9 +29,7 @@ interface FlamegraphProps {
   onReset: () => void;
   isDirty: () => boolean;
 
-  // the reason this is exposed as a parameter
-  // is to not have to connect to the redux store from here
-  ExportData: () => React.ReactElement;
+  ExportData?: React.ComponentProps<typeof Header>['ExportData'];
 
   ['data-testid']?: string;
   palette: FlamegraphPalette;

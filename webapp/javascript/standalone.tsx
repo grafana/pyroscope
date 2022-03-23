@@ -33,21 +33,15 @@ function buildInfo() {
 `.replace(/^\s+/gm, '');
 }
 
-function AdhocApp() {
+function StandaloneApp() {
   const flamebearer = decodeFlamebearer(flamegraph);
-
-  const viewType =
-    flamebearer.format === 'single' ? flamebearer.format : 'diff';
 
   return (
     <div>
       <Box className={styles.container}>
         <FlamegraphRenderer
           renderLogo
-          flamebearer={flamebearer}
-          viewType={viewType}
-          display="both"
-          rawFlamegraph={flamegraph}
+          flamebearer={flamebearer as any}
           ExportData={null}
         />
       </Box>
@@ -59,7 +53,7 @@ function AdhocApp() {
 }
 
 function run() {
-  ReactDOM.render(<AdhocApp />, document.getElementById('root'));
+  ReactDOM.render(<StandaloneApp />, document.getElementById('root'));
 }
 
 // Since InlineChunkHtmlPlugin adds scripts to the head

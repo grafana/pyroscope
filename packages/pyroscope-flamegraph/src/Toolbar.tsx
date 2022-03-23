@@ -12,6 +12,7 @@ import { Maybe } from 'true-myth';
 import useResizeObserver from '@react-hook/resize-observer';
 import Button from '../../../webapp/javascript/ui/Button';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
+import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 
 import styles from './ProfilerHeader.module.css';
 
@@ -51,11 +52,8 @@ const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
 };
 
 interface ProfileHeaderProps {
-  view: 'both' | 'icicle' | 'table';
-  // what's being displayed
-  // this is needed since the toolbar may show different items depending what is being displayed
-  display: 'flamegraph' | 'table' | 'both';
-
+  view: ViewTypes;
+  disableChangingDisplay?: boolean;
   viewDiff?: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
   highlightQuery: string;
@@ -67,7 +65,7 @@ interface ProfileHeaderProps {
 
   updateFitMode: (f: FitModes) => void;
   fitMode: FitModes;
-  updateView: (s: 'both' | 'icicle' | 'table') => void;
+  updateView: (s: ViewTypes) => void;
   updateViewDiff: (s: 'diff' | 'total' | 'self') => void;
 
   /**
@@ -187,9 +185,9 @@ const Toolbar = React.memo(
     fitMode,
     updateView,
     updateViewDiff,
-    display,
     selectedNode,
     onFocusOnSubtree,
+    disableChangingDisplay = false,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
     const showMode = useSizeMode(toolbarRef);
@@ -224,7 +222,7 @@ const Toolbar = React.memo(
             selectedNode={selectedNode}
             onFocusOnSubtree={onFocusOnSubtree}
           />
-          {display === 'both' && (
+          {!disableChangingDisplay && (
             <ViewSection
               showMode={showMode}
               view={view}
@@ -412,6 +410,7 @@ function DiffView({
 
   const Select = (
     <select
+      name="viewDiff"
       aria-label="view-diff"
       value={viewDiff}
       onChange={(e) => {
@@ -494,6 +493,7 @@ function ViewSection({
   const Select = (
     <select
       aria-label="view"
+      name="view"
       value={view}
       onChange={(e) => {
         updateView(e.target.value as typeof view);
@@ -501,11 +501,11 @@ function ViewSection({
     >
       <option value="table">Table</option>
       <option value="both">Both</option>
-      <option value="icicle">Flame</option>
+      <option value="flamegraph">Flame</option>
     </select>
   );
 
-  const kindByState = (name: string) => {
+  const kindByState = (name: ViewTypes) => {
     if (view === name) {
       return 'primary';
     }
@@ -532,9 +532,9 @@ function ViewSection({
       </Button>
       <Button
         grouped
-        kind={kindByState('icicle')}
+        kind={kindByState('flamegraph')}
         icon={faIcicles}
-        onClick={() => updateView('icicle')}
+        onClick={() => updateView('flamegraph')}
       >
         Flamegraph
       </Button>
