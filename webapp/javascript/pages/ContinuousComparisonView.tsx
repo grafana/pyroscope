@@ -172,11 +172,9 @@ function ComparisonApp() {
               }}
             />
             <FlamegraphRenderer
-              viewType="double"
-              viewSide="left"
+              panesOrientation="vertical"
               profile={leftSide.profile}
               data-testid="flamegraph-renderer-left"
-              display="both"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
                 leftSide.profile && (
@@ -224,11 +222,9 @@ function ComparisonApp() {
               }}
             />
             <FlamegraphRenderer
-              viewType="double"
-              viewSide="right"
               profile={rightSide.profile}
               data-testid="flamegraph-renderer-right"
-              display="both"
+              panesOrientation="vertical"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
                 rightSide.profile && (

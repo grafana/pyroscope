@@ -60,22 +60,22 @@ describe('basic test', () => {
     // mock data since the first preselected application
     // could have no data
     cy.intercept('**/render*', {
-      fixture: 'render.json',
+      fixture: 'simple-golang-app-cpu.json',
       times: 1,
     }).as('render1');
 
     cy.visit('/');
 
-    cy.findByRole('combobox', { name: /view/ }).select('Table');
+    cy.findByRole('combobox', { name: 'view' }).select('Table');
     cy.findByTestId('table-view').should('be.visible');
     cy.findByTestId('flamegraph-view').should('not.exist');
 
-    cy.findByRole('combobox', { name: /view/ }).select('Both');
+    cy.findByRole('combobox', { name: 'view' }).select('Both');
     cy.findByTestId('table-view').should('be.visible');
     cy.findByTestId('flamegraph-view').should('be.visible');
 
-    cy.findByRole('combobox', { name: /view/ }).select('Flame');
-    cy.findByTestId('table-view').should('not.be.visible');
+    cy.findByRole('combobox', { name: 'view' }).select('Flame');
+    cy.findByTestId('table-view').should('not.exist');
     cy.findByTestId('flamegraph-view').should('be.visible');
   });
 
