@@ -256,11 +256,8 @@ const TableBody = React.memo(
     };
 
     const nameCell = (x, style) => (
-      <td className={`${isRowSelected(x.name) && styles.rowSelected}`}>
-        <button
-          className="table-item-button"
-          onClick={() => handleTableItemClick(x)}
-        >
+      <td>
+        <button className="table-item-button">
           <span className="color-reference" style={style} />
           <div
             className="symbol-name"
@@ -275,7 +272,11 @@ const TableBody = React.memo(
 
     const renderRow = !viewDiff ? (
       (x, color, style) => (
-        <tr key={x.name + renderID}>
+        <tr
+          key={x.name + renderID}
+          onClick={() => handleTableItemClick(x)}
+          className={`${isRowSelected(x.name) && styles.rowSelected}`}
+        >
           {nameCell(x, style)}
           <td style={backgroundImageStyle(x.self, maxSelf, color)}>
             {/* <span>{ formatPercent(x.self / numTicks) }</span>
@@ -299,7 +300,11 @@ const TableBody = React.memo(
       )
     ) : viewDiff === 'self' ? (
       (x, color, style) => (
-        <tr key={x.name + renderID}>
+        <tr
+          key={x.name + renderID}
+          onClick={() => handleTableItemClick(x)}
+          className={`${isRowSelected(x.name) && styles.rowSelected}`}
+        >
           {nameCell(x, style)}
           {/* NOTE: it seems React does not understand multiple backgrounds, have to workaround:  */}
           {/*   The `style` prop expects a mapping from style properties to values, not a string. */}
@@ -335,7 +340,11 @@ const TableBody = React.memo(
       )
     ) : viewDiff === 'total' ? (
       (x, color, style) => (
-        <tr key={x.name + renderID}>
+        <tr
+          key={x.name + renderID}
+          onClick={() => handleTableItemClick(x)}
+          className={`${isRowSelected(x.name) && styles.rowSelected}`}
+        >
           {nameCell(x, style)}
           <td
             STYLE={backgroundImageDiffStyle(
@@ -369,7 +378,11 @@ const TableBody = React.memo(
       )
     ) : viewDiff === 'diff' ? (
       (x, color, style) => (
-        <tr key={x.name + renderID}>
+        <tr
+          key={x.name + renderID}
+          onClick={() => handleTableItemClick(x)}
+          className={`${isRowSelected(x.name) && styles.rowSelected}`}
+        >
           {nameCell(x, style)}
           <td
             STYLE={backgroundImageDiffStyle(
