@@ -110,14 +110,12 @@ func NewProfile(name string, output *storage.GetOutput, maxNodes int) Flamebeare
 	}
 }
 
-func NewCombinedProfile(name string, output, left, right *storage.GetOutput, maxNodes int) (FlamebearerProfile, error) {
-	if left.SampleRate != right.SampleRate {
-		// if one of them is empty, it still makes sense merging the profiles
-		if left.SampleRate != 0 && right.SampleRate != 0 {
-			msg := fmt.Sprintf("left sample rate (%d) does not match right sample rate (%d)", left.SampleRate, right.SampleRate)
-			return FlamebearerProfile{}, errors.New(msg)
-		}
-	}
+func isEmpty(t *storage.GetOutput) bool {
+	// TODO: improve heuristic
+	return t.SampleRate == 0
+}
+
+func NewCombinedProfile(name string, left, right *storage.GetOutput, maxNodes int) (FlamebearerProfile, error) {
 	if left.Units != right.Units {
 		// if one of them is empty, it still makes sense merging the profiles
 		if left.Units != "" && right.Units != "" {
@@ -126,14 +124,39 @@ func NewCombinedProfile(name string, output, left, right *storage.GetOutput, max
 		}
 	}
 
+	if left.SampleRate != right.SampleRate {
+		// if one of them is empty, it still makes sense merging the profiles
+		if left.SampleRate != 0 && right.SampleRate != 0 {
+			msg := fmt.Sprintf("left sample rate (%d) does not match right sample rate (%d)", left.SampleRate, right.SampleRate)
+			return FlamebearerProfile{}, errors.New(msg)
+		}
+	}
+
+	// If both are empty
+	//	if isEmpty(left) && isEmpty(right) {
+	//
+	//	}
+
+	// Figure out the non empty one, since we will use its attributes
+	// Notice that this does not handle when both are empty, since there's nothing todo
+	nonEmptyOne := left
+	if isEmpty(left) {
+		nonEmptyOne = right
+	}
+	// TODO: improve this heuristic
+
+	// If none are empty, it should work just fine
+	// If just one of them is empty, we use the parameters from the second one
+	// If both are empty, don't do anything
+
 	lt, rt := tree.CombineTree(left.Tree, right.Tree)
 	fb := tree.CombineToFlamebearerStruct(lt, rt, maxNodes)
 	return FlamebearerProfile{
 		Version: 1,
 		FlamebearerProfileV1: FlamebearerProfileV1{
 			Flamebearer: newFlambearer(fb),
-			Metadata:    newMetadata(name, fb.Format, output),
-			Timeline:    newTimeline(output.Timeline),
+			Metadata:    newMetadata(name, fb.Format, nonEmptyOne),
+			Timeline:    nil,
 			LeftTicks:   lt.Samples(),
 			RightTicks:  rt.Samples(),
 		},
