@@ -132,22 +132,12 @@ func NewCombinedProfile(name string, left, right *storage.GetOutput, maxNodes in
 		}
 	}
 
-	// If both are empty
-	//	if isEmpty(left) && isEmpty(right) {
-	//
-	//	}
-
 	// Figure out the non empty one, since we will use its attributes
 	// Notice that this does not handle when both are empty, since there's nothing todo
 	nonEmptyOne := left
 	if isEmpty(left) {
 		nonEmptyOne = right
 	}
-	// TODO: improve this heuristic
-
-	// If none are empty, it should work just fine
-	// If just one of them is empty, we use the parameters from the second one
-	// If both are empty, don't do anything
 
 	lt, rt := tree.CombineTree(left.Tree, right.Tree)
 	fb := tree.CombineToFlamebearerStruct(lt, rt, maxNodes)
