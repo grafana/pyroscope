@@ -78,7 +78,7 @@ var _ = Describe("FlamebearerProfile", func() {
 
 })
 
-var _ = FDescribe("Diff", func() {
+var _ = Describe("Diff", func() {
 	var treeA *tree.Tree
 	var treeB *tree.Tree
 
