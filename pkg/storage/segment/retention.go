@@ -9,6 +9,8 @@ type RetentionPolicy struct {
 
 	AbsoluteTime time.Time
 	Levels       map[int]time.Time
+
+	ExemplarsRetentionTime time.Time
 }
 
 func NewRetentionPolicy() *RetentionPolicy {
@@ -27,11 +29,28 @@ func (r *RetentionPolicy) SetAbsolutePeriod(period time.Duration) *RetentionPoli
 	return r
 }
 
+func (r *RetentionPolicy) SetExemplarsRetentionPeriod(period time.Duration) *RetentionPolicy {
+	r.ExemplarsRetentionTime = r.periodToTime(period)
+	return r
+}
+
 func (r *RetentionPolicy) SetLevelPeriod(level int, period time.Duration) *RetentionPolicy {
 	if r.Levels == nil {
 		r.Levels = make(map[int]time.Time)
 	}
 	r.Levels[level] = r.periodToTime(period)
+	return r
+}
+
+func (r *RetentionPolicy) SetLevels(levels ...time.Duration) *RetentionPolicy {
+	if r.Levels == nil {
+		r.Levels = make(map[int]time.Time)
+	}
+	for level, period := range levels {
+		if period != 0 {
+			r.Levels[level] = r.periodToTime(period)
+		}
+	}
 	return r
 }
 
