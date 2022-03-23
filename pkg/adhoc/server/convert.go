@@ -118,8 +118,7 @@ func DiffV1(name string, base, diff *flamebearer.FlamebearerProfile, maxNodes in
 		name = n
 	}
 
-	fb = flamebearer.NewCombinedProfile(name, out, bOut, dOut, maxNodes)
-	return fb, nil
+	return flamebearer.NewCombinedProfile(name, out, bOut, dOut, maxNodes)
 }
 
 func profileToTree(fb flamebearer.FlamebearerProfile) (*tree.Tree, error) {

@@ -1,6 +1,7 @@
 package flamebearer
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
@@ -109,7 +110,22 @@ func NewProfile(name string, output *storage.GetOutput, maxNodes int) Flamebeare
 	}
 }
 
-func NewCombinedProfile(name string, output, left, right *storage.GetOutput, maxNodes int) FlamebearerProfile {
+func NewCombinedProfile(name string, output, left, right *storage.GetOutput, maxNodes int) (FlamebearerProfile, error) {
+	if left.SampleRate != right.SampleRate {
+		// if one of them is empty, it still makes sense merging the profiles
+		if left.SampleRate != 0 && right.SampleRate != 0 {
+			msg := fmt.Sprintf("left sample rate (%d) does not match right sample rate (%d)", left.SampleRate, right.SampleRate)
+			return FlamebearerProfile{}, errors.New(msg)
+		}
+	}
+	if left.Units != right.Units {
+		// if one of them is empty, it still makes sense merging the profiles
+		if left.Units != "" && right.Units != "" {
+			msg := fmt.Sprintf("left units (%s) does not match right units (%s)", left.Units, right.Units)
+			return FlamebearerProfile{}, errors.New(msg)
+		}
+	}
+
 	lt, rt := tree.CombineTree(left.Tree, right.Tree)
 	fb := tree.CombineToFlamebearerStruct(lt, rt, maxNodes)
 	return FlamebearerProfile{
@@ -121,7 +137,7 @@ func NewCombinedProfile(name string, output, left, right *storage.GetOutput, max
 			LeftTicks:   lt.Samples(),
 			RightTicks:  rt.Samples(),
 		},
-	}
+	}, nil
 }
 
 func newFlambearer(fb *tree.Flamebearer) FlamebearerV1 {
