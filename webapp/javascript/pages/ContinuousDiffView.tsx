@@ -29,34 +29,17 @@ function ComparisonDiffApp() {
     rightFrom,
     leftUntil,
     rightUntil,
-
     leftQuery,
     rightQuery,
   } = useAppSelector(selectContinuousState);
 
-  const { leftTimeline, rightTimeline } = useTimelines();
-  const { leftTags, rightTags } = useTags({
-    leftQuery,
-    rightQuery,
-  });
-
   usePopulateLeftRightQuery();
+  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
+  const { leftTimeline, rightTimeline } = useTimelines();
 
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
-    'profile' in diffView ? diffView.profile : undefined
+    diffView.profile
   );
-
-  const profile = (() => {
-    switch (diffView.type) {
-      case 'loaded':
-      case 'reloading': {
-        return diffView.profile;
-      }
-      default:
-        // the component is allowed to render without any data
-        return undefined;
-    }
-  })();
 
   useEffect(() => {
     if (rightQuery && leftQuery) {
@@ -83,13 +66,12 @@ function ComparisonDiffApp() {
     maxNodes,
   ]);
 
-  const exportData = profile && (
+  const exportData = diffView.profile && (
     <ExportData
-      flamebearer={profile}
+      flamebearer={diffView.profile}
       exportJSON
       exportPNG
       exportHTML
-      //      fetchUrlFunc={() => diffRenderURL}
       exportFlamegraphDotCom
       exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
     />
@@ -130,12 +112,7 @@ function ComparisonDiffApp() {
                   dispatch(actions.setLeftQuery(q));
                 }}
                 onSelectedLabel={(label, query) => {
-                  dispatch(
-                    fetchTagValues({
-                      query,
-                      label,
-                    })
-                  );
+                  dispatch(fetchTagValues({ query, label }));
                 }}
               />
               <InstructionText viewType="diff" viewSide="left" />
@@ -160,12 +137,7 @@ function ComparisonDiffApp() {
                   dispatch(actions.setRightQuery(q));
                 }}
                 onSelectedLabel={(label, query) => {
-                  dispatch(
-                    fetchTagValues({
-                      query,
-                      label,
-                    })
-                  );
+                  dispatch(fetchTagValues({ query, label }));
                 }}
               />
               <InstructionText viewType="diff" viewSide="right" />
@@ -178,16 +150,15 @@ function ComparisonDiffApp() {
                   dispatch(actions.setRight({ from, until }));
                 }}
                 markings={{
-                  right: {
-                    from: rightFrom,
-                    to: rightUntil,
-                    color: rightColor,
-                  },
+                  right: { from: rightFrom, to: rightUntil, color: rightColor },
                 }}
               />
             </div>
           </div>
-          <FlamegraphRenderer profile={profile} ExportData={exportData} />
+          <FlamegraphRenderer
+            profile={diffView.profile}
+            ExportData={exportData}
+          />
         </Box>
       </div>
       <Footer />

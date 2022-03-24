@@ -30,10 +30,7 @@ function ComparisonApp() {
 
   usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
-  const { leftTags, rightTags } = useTags({
-    leftQuery,
-    rightQuery,
-  });
+  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
   const { leftTimeline, rightTimeline } = useTimelines();
 
   useEffect(() => {
@@ -48,29 +45,11 @@ function ComparisonApp() {
     }
   }, [rightFrom, rightUntil, rightQuery]);
 
-  const getSide = (side: 'left' | 'right') => {
-    const s = comparisonView[side];
-
-    switch (s.type) {
-      case 'loaded':
-      case 'reloading': {
-        return s;
-      }
-
-      default:
-        return { timeline: undefined, profile: undefined };
-    }
-  };
-
-  const leftSide = getSide('left');
-  const rightSide = getSide('right');
-
-  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(
-    leftSide.profile
-  );
-  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(
-    leftSide.profile
-  );
+  const leftSide = comparisonView.left.profile;
+  const rightSide = comparisonView.right.profile;
+  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(leftSide);
+  const exportToFlamegraphDotComRightFn =
+    useExportToFlamegraphDotCom(rightSide);
 
   return (
     <div className="pyroscope-app">
@@ -109,23 +88,18 @@ function ComparisonApp() {
                 dispatch(actions.setLeftQuery(q));
               }}
               onSelectedLabel={(label, query) => {
-                dispatch(
-                  fetchTagValues({
-                    query,
-                    label,
-                  })
-                );
+                dispatch(fetchTagValues({ query, label }));
               }}
             />
             <FlamegraphRenderer
               panesOrientation="vertical"
-              profile={leftSide.profile}
+              profile={leftSide}
               data-testid="flamegraph-renderer-left"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
-                leftSide.profile && (
+                leftSide && (
                   <ExportData
-                    flamebearer={leftSide.profile}
+                    flamebearer={leftSide}
                     exportJSON
                     exportHTML
                     exportPprof
@@ -159,23 +133,18 @@ function ComparisonApp() {
                 dispatch(actions.setRightQuery(q));
               }}
               onSelectedLabel={(label, query) => {
-                dispatch(
-                  fetchTagValues({
-                    query,
-                    label,
-                  })
-                );
+                dispatch(fetchTagValues({ query, label }));
               }}
             />
             <FlamegraphRenderer
-              profile={rightSide.profile}
+              profile={rightSide}
               data-testid="flamegraph-renderer-right"
               panesOrientation="vertical"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
-                rightSide.profile && (
+                rightSide && (
                   <ExportData
-                    flamebearer={rightSide.profile}
+                    flamebearer={rightSide}
                     exportJSON
                     exportHTML
                     exportPprof

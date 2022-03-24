@@ -15,43 +15,23 @@ import * as tagsService from '../../services/tags';
 import type { RootState } from '../store';
 
 type SingleView =
-  | { type: 'pristine' }
-  | { type: 'loading' }
-  | {
-      type: 'loaded';
-      timeline: Timeline;
-      profile: Profile;
-    }
-  | {
-      type: 'reloading';
-      timeline: Timeline;
-      profile: Profile;
-    };
+  | { type: 'pristine'; profile?: Profile }
+  | { type: 'loading'; profile?: Profile }
+  | { type: 'loaded'; timeline: Timeline; profile: Profile }
+  | { type: 'reloading'; timeline: Timeline; profile: Profile };
 
 type ComparisonView = {
   left:
-    | { type: 'pristine' }
-    | { type: 'loading' }
-    | {
-        type: 'loaded';
-        profile: Profile;
-      }
-    | {
-        type: 'reloading';
-        profile: Profile;
-      };
+    | { type: 'pristine'; profile?: Profile }
+    | { type: 'loading'; profile?: Profile }
+    | { type: 'loaded'; profile: Profile }
+    | { type: 'reloading'; profile: Profile };
 
   right:
-    | { type: 'pristine' }
-    | { type: 'loading' }
-    | {
-        type: 'loaded';
-        profile: Profile;
-      }
-    | {
-        type: 'reloading';
-        profile: Profile;
-      };
+    | { type: 'pristine'; profile?: Profile }
+    | { type: 'loading'; profile?: Profile }
+    | { type: 'loaded'; profile: Profile }
+    | { type: 'reloading'; profile: Profile };
 };
 
 type TimelineState =
@@ -61,16 +41,10 @@ type TimelineState =
   | { type: 'failed'; timeline: Timeline };
 
 type DiffView =
-  | { type: 'pristine' }
-  | { type: 'loading' }
-  | {
-      type: 'loaded';
-      profile: Profile;
-    }
-  | {
-      type: 'reloading';
-      profile: Profile;
-    };
+  | { type: 'pristine'; profile?: Profile }
+  | { type: 'loading'; profile?: Profile }
+  | { type: 'loaded'; profile: Profile }
+  | { type: 'reloading'; profile: Profile };
 
 type DiffView2 = ComparisonView;
 
