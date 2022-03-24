@@ -93,7 +93,7 @@ interface FlamegraphRendererState {
 
   viewDiff: 'diff' | 'total' | 'self';
   fitMode: 'HEAD' | 'TAIL';
-  flamebearer: FlamegraphRendererProps['flamebearer'];
+  flamebearer: NonNullable<FlamegraphRendererProps['flamebearer']>;
   highlightQuery: string;
 
   flamegraphConfigs: {
@@ -370,6 +370,7 @@ class FlameGraphRenderer extends React.Component<
             <Toolbar
               renderLogo={this.props.renderLogo || false}
               disableChangingDisplay={!!this.props.onlyDisplay}
+              flamegraphType={this.state.flamebearer.format}
               view={this.state.view}
               viewDiff={this.state.viewDiff}
               handleSearchChange={this.handleSearchChange}
