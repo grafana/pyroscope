@@ -14,41 +14,61 @@ const defaultParams: Partial<SweetAlertOptions> = {
     confirmButton: styles.button,
     denyButton: styles.button,
     cancelButton: styles.button,
+    validationMessage: styles.validationMessage,
+  },
+  inputAttributes: {
+    required: 'true',
   },
 };
 
 export type ShowModalParams = {
   title: string;
   confirmButtonText: string;
-  danger?: boolean;
-  onConfirm: ShamefulAny;
+  type: 'danger' | 'normal';
+  onConfirm?: ShamefulAny;
   input?: SweetAlertInput;
+  inputValue?: string;
   inputLabel?: string;
   inputPlaceholder?: string;
+  validationMessage?: string;
 };
 
-const ShowModal = ({
+const ShowModal = async ({
   title,
   confirmButtonText,
-  danger,
+  type,
   onConfirm,
   input,
+  inputValue,
   inputLabel,
   inputPlaceholder,
+  validationMessage,
 }: ShowModalParams) => {
-  Swal.fire({
+  const { isConfirmed, value } = await Swal.fire({
     title,
     confirmButtonText,
     input,
     inputLabel,
     inputPlaceholder,
-    confirmButtonColor: danger ? '#dc3545' : '#0074d9',
+    inputValue,
+    validationMessage,
+    confirmButtonColor: getButtonStyleFromType(type),
     ...defaultParams,
-  }).then(({ isConfirmed, value }) => {
-    if (isConfirmed) {
-      onConfirm(value);
-    }
   });
+
+  if (isConfirmed) {
+    onConfirm(value);
+  }
+
+  return value;
 };
+
+function getButtonStyleFromType(type: 'danger' | 'normal') {
+  if (type === 'danger') {
+    return '#dc3545'; // red
+  }
+
+  return '#0074d9'; // blue
+}
 
 export default ShowModal;

@@ -4,7 +4,7 @@ function confirmDelete(object: string, onConfirm: () => void) {
   ShowModal({
     title: `Are you sure you want to delete ${object}?`,
     confirmButtonText: 'Delete',
-    danger: true,
+    type: 'danger',
     onConfirm,
   });
 }

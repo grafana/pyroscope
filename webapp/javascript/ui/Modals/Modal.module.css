@@ -27,3 +27,9 @@
   box-shadow: none;
   border: 1px solid var(--ps-c-gray-light-3);
 }
+
+.validationMessage {
+  color: var(--ps-c-white);
+  font-weight: bold;
+  background-color: var(--ps-c-red-error);
+}

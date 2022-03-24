@@ -76,7 +76,7 @@ function ExportData(props: ExportDataProps) {
 
   const [toggleMenu, setToggleMenu] = useState(false);
 
-  const downloadJSON = (exportName: string) => {
+  const downloadJSON = async () => {
     if (!props.exportJSON) {
       return;
     }
@@ -84,13 +84,18 @@ function ExportData(props: ExportDataProps) {
     // TODO additional check this won't be needed once we use strictNullChecks
     if (props.exportJSON) {
       const { flamebearer } = props;
-      const filename = exportName
-        ? `${exportName}.json`
-        : `${getFilename(
-            flamebearer.metadata.appName,
-            flamebearer.metadata.startTime,
-            flamebearer.metadata.endTime
-          )}.json`;
+
+      const defaultExportName = getFilename(
+        flamebearer.metadata.appName,
+        flamebearer.metadata.startTime,
+        flamebearer.metadata.endTime
+      );
+      // get user input from modal
+      const customExportName = await getCustomExportName(defaultExportName);
+      // return if user cancels the modal
+      if (!customExportName) return;
+
+      const filename = `${customExportName}.json`;
 
       const dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
         JSON.stringify(flamebearer)
@@ -104,14 +109,26 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
-  const downloadFlamegraphDotCom = (exportName: string) => {
+  const downloadFlamegraphDotCom = async () => {
     if (!props.exportFlamegraphDotCom) {
       return;
     }
 
     // TODO additional check this won't be needed once we use strictNullChecks
     if (props.exportFlamegraphDotCom) {
-      props.exportFlamegraphDotComFn(exportName).then((url) => {
+      const { flamebearer } = props;
+
+      const defaultExportName = getFilename(
+        flamebearer.metadata.appName,
+        flamebearer.metadata.startTime,
+        flamebearer.metadata.endTime
+      );
+      // get user input from modal
+      const customExportName = await getCustomExportName(defaultExportName);
+      // return if user cancels the modal
+      if (!customExportName) return;
+
+      props.exportFlamegraphDotComFn(customExportName).then((url) => {
         // there has been an error which should've been handled
         // so we just ignore it
         if (!url) {
@@ -129,9 +146,22 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
-  const downloadPNG = (exportName: string) => {
+  const downloadPNG = async () => {
     if (props.exportPNG) {
       const { flamebearer } = props;
+
+      const defaultExportName = getFilename(
+        flamebearer.metadata.appName,
+        flamebearer.metadata.startTime,
+        flamebearer.metadata.endTime
+      );
+      // get user input from modal
+      const customExportName = await getCustomExportName(defaultExportName);
+      // return if user cancels the modal
+      if (!customExportName) return;
+
+      const filename = `${customExportName}.png`;
+
       const mimeType = 'png';
       // TODO use ref
       // this won't work for comparison side by side
@@ -141,13 +171,6 @@ function ExportData(props: ExportDataProps) {
       const MIME_TYPE = `image/${mimeType}`;
       const imgURL = canvasElement.toDataURL();
       const dlLink = document.createElement('a');
-      const filename = exportName
-        ? `${getFilename(exportName)}.png`
-        : `${getFilename(
-            flamebearer.metadata.appName,
-            flamebearer.metadata.startTime,
-            flamebearer.metadata.endTime
-          )}.png`;
 
       dlLink.download = filename;
       dlLink.href = imgURL;
@@ -207,7 +230,7 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
-  const downloadHTML = function (exportName: string) {
+  const downloadHTML = async function () {
     if (props.exportHTML) {
       const { flamebearer } = props;
 
@@ -232,13 +255,18 @@ function ExportData(props: ExportDataProps) {
               maxNodes: flamebearer.metadata.maxNodes,
             });
       const urlWithFormat = `${url}&format=html`;
-      const filename = exportName
-        ? `${exportName}.html`
-        : `${getFilename(
-            flamebearer.metadata.appName,
-            flamebearer.metadata.startTime,
-            flamebearer.metadata.endTime
-          )}.html`;
+
+      const defaultExportName = getFilename(
+        flamebearer.metadata.appName,
+        flamebearer.metadata.startTime,
+        flamebearer.metadata.endTime
+      );
+      // get user input from modal
+      const customExportName = await getCustomExportName(defaultExportName);
+      // return if user cancels the modal
+      if (!customExportName) return;
+
+      const filename = `${customExportName}.html`;
 
       const downloadAnchorNode = document.createElement('a');
       downloadAnchorNode.setAttribute('href', urlWithFormat);
@@ -249,18 +277,18 @@ function ExportData(props: ExportDataProps) {
     }
   };
 
-  const exportWithCustomName = async (
-    onConfirm: (exportName: string) => void
-  ) => {
-    showModalWithInput({
+  async function getCustomExportName(defaultExportName: string) {
+    return showModalWithInput({
       title: 'Enter export name',
       confirmButtonText: 'Export',
       input: 'text',
-      inputLabel: 'or levae the input empty for default name',
+      inputValue: defaultExportName,
       inputPlaceholder: 'Export name',
-      onConfirm,
+      type: 'normal',
+      validationMessage: 'Name must not be empty',
+      onConfirm: (value: any) => value,
     });
-  };
+  }
 
   return (
     <div className={styles.dropdownContainer}>
@@ -269,8 +297,8 @@ function ExportData(props: ExportDataProps) {
         {exportPNG && (
           <button
             className={styles.dropdownMenuItem}
-            onClick={() => exportWithCustomName(downloadPNG)}
-            onKeyPress={() => exportWithCustomName(downloadPNG)}
+            onClick={downloadPNG}
+            onKeyPress={downloadPNG}
             type="button"
           >
             png
@@ -280,7 +308,7 @@ function ExportData(props: ExportDataProps) {
           <button
             className={styles.dropdownMenuItem}
             type="button"
-            onClick={() => exportWithCustomName(downloadJSON)}
+            onClick={downloadJSON}
           >
             json
           </button>
@@ -289,7 +317,7 @@ function ExportData(props: ExportDataProps) {
           <button
             className={styles.dropdownMenuItem}
             type="button"
-            onClick={() => downloadPprof()}
+            onClick={downloadPprof}
           >
             pprof
           </button>
@@ -298,7 +326,7 @@ function ExportData(props: ExportDataProps) {
           <button
             className={styles.dropdownMenuItem}
             type="button"
-            onClick={() => exportWithCustomName(downloadHTML)}
+            onClick={downloadHTML}
           >
             {' '}
             html
@@ -308,7 +336,7 @@ function ExportData(props: ExportDataProps) {
           <button
             className={styles.dropdownMenuItem}
             type="button"
-            onClick={() => exportWithCustomName(downloadFlamegraphDotCom)}
+            onClick={downloadFlamegraphDotCom}
           >
             {' '}
             flamegraph.com

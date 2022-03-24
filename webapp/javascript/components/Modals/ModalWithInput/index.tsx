@@ -4,14 +4,16 @@ type ModalWithInputParams = Pick<
   ShowModalParams,
   | 'title'
   | 'input'
-  | 'inputLabel'
   | 'inputPlaceholder'
   | 'confirmButtonText'
   | 'onConfirm'
+  | 'inputValue'
+  | 'type'
+  | 'validationMessage'
 >;
 
-function showModalWithInput(params: ModalWithInputParams) {
-  ShowModal({
+async function showModalWithInput(params: ModalWithInputParams) {
+  return ShowModal({
     ...params,
   });
 }
