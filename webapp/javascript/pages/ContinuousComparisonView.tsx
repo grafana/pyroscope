@@ -24,6 +24,7 @@ import ExportData from '../components/ExportData';
 import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
 import TagsBar from '../components/TagsBar';
 import styles from './ContinuousComparison.module.css';
+import useTags from '../hooks/tags.hook';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
@@ -42,9 +43,11 @@ function ComparisonApp() {
   } = useAppSelector(selectContinuousState);
 
   const timelines = useAppSelector(selectTimelineSidesData);
-  const leftTags = useAppSelector(selectAppTags(leftQuery));
-  const rightTags = useAppSelector(selectAppTags(rightQuery));
   const comparisonView = useAppSelector(selectComparisonState);
+  const { leftTags, rightTags } = useTags({
+    leftQuery,
+    rightQuery,
+  });
 
   // initially populate the queries
   useEffect(() => {
@@ -121,11 +124,6 @@ function ComparisonApp() {
     color: rightColor.rgb().toString(),
     data: timelines.right,
   };
-
-  console.log({
-    leftTimeline,
-    rightTimeline,
-  });
 
   return (
     <div className="pyroscope-app">

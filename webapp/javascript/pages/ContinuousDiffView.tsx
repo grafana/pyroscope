@@ -5,7 +5,6 @@ import {
   fetchDiffView,
   selectContinuousState,
   actions,
-  selectAppTags,
   fetchTagValues,
   fetchSideTimelines,
   selectTimelineSidesData,
@@ -19,6 +18,7 @@ import InstructionText from '../components/InstructionText';
 import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
 import ExportData from '../components/ExportData';
 import TagsBar from '../components/TagsBar';
+import useTags from '../hooks/tags.hook';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -39,8 +39,10 @@ function ComparisonDiffApp() {
   } = useAppSelector(selectContinuousState);
 
   const timelines = useAppSelector(selectTimelineSidesData);
-  const leftTags = useAppSelector(selectAppTags(leftQuery));
-  const rightTags = useAppSelector(selectAppTags(rightQuery));
+  const { leftTags, rightTags } = useTags({
+    leftQuery,
+    rightQuery,
+  });
 
   // initially populate the queries
   useEffect(() => {
