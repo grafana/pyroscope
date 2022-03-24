@@ -231,42 +231,6 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	return ctrl.expectFormats(p.format)
 }
 
-func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams, rP *RenderDiffParams) error {
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(rP); err != nil {
-		return err
-	}
-
-	p.gi = new(storage.GetInput)
-	switch {
-	case rP.Name == nil && rP.Query == nil:
-		return fmt.Errorf("'query' or 'name' parameter is required")
-	case rP.Name != nil:
-		sk, err := segment.ParseKey(*rP.Name)
-		if err != nil {
-			return fmt.Errorf("name: parsing storage key: %w", err)
-		}
-		p.gi.Key = sk
-	case rP.Query != nil:
-		qry, err := flameql.ParseQuery(*rP.Query)
-		if err != nil {
-			return fmt.Errorf("query: %w", err)
-		}
-		p.gi.Query = qry
-	}
-
-	p.maxNodes = ctrl.config.MaxNodesRender
-	if rP.MaxNodes != nil && *rP.MaxNodes > 0 {
-		p.maxNodes = *rP.MaxNodes
-	}
-
-	p.gi.StartTime = attime.Parse(rP.From)
-	p.gi.EndTime = attime.Parse(rP.Until)
-	p.format = rP.Format
-
-	return ctrl.expectFormats(p.format)
-}
-
 func parseRenderRangeParams(r *http.Request, from, until string) (startTime, endTime time.Time, ok bool) {
 	switch r.Method {
 	case http.MethodGet:
@@ -327,20 +291,6 @@ func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.T
 		return &storage.GetOutput{Tree: tree.New()}, nil
 	}
 	return out, nil
-}
-
-type RenderDiffParams struct {
-	Name  *string `json:"name,omitempty"`
-	Query *string `json:"query,omitempty"`
-
-	From  string `json:"from"`
-	Until string `json:"until"`
-
-	Format   string `json:"format"`
-	MaxNodes *int   `json:"maxNodes,omitempty"`
-
-	Left  RenderTreeParams `json:"leftParams"`
-	Right RenderTreeParams `json:"rightParams"`
 }
 
 type RenderTreeParams struct {

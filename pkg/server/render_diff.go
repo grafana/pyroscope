@@ -12,16 +12,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
-type DiffParams struct {
-	Left  storage.GetInput
-	Right storage.GetInput
-
-	Format   string
-	MaxNodes int
-}
-
 // RenderDiffParams refers to the params accepted by the /render-diff endpoint
-type RenderDiffParams2 struct {
+type RenderDiffParams struct {
 	LeftQuery string `json:"leftQuery"`
 	LeftFrom  string `json:"leftFrom"`
 	LeftUntil string `json:"leftUntil"`
@@ -34,9 +26,16 @@ type RenderDiffParams2 struct {
 	MaxNodes *int   `json:"maxNodes,omitempty"`
 }
 
-// parseQueryParams parses query params into a GetInput
+type diffParams struct {
+	Left  storage.GetInput
+	Right storage.GetInput
 
-func (ctrl *Controller) parseDiffParams(r *http.Request, p *DiffParams) (err error) {
+	Format   string
+	MaxNodes int
+}
+
+// parseDiffQueryParams parses query params into a diffParams
+func (ctrl *Controller) parseDiffQueryParams(r *http.Request, p *diffParams) (err error) {
 	parseDiffQueryParams := func(r *http.Request, prefix string) (gi storage.GetInput, err error) {
 		v := r.URL.Query()
 		getWithPrefix := func(param string) string {
@@ -78,13 +77,11 @@ func (ctrl *Controller) parseDiffParams(r *http.Request, p *DiffParams) (err err
 }
 
 func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
-	var (
-		params DiffParams
-	)
+	var params diffParams
 
 	switch r.Method {
 	case http.MethodGet:
-		if err := ctrl.parseDiffParams(r, &params); err != nil {
+		if err := ctrl.parseDiffQueryParams(r, &params); err != nil {
 			ctrl.writeInvalidParameterError(w, err)
 			return
 		}
