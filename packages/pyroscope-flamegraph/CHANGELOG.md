@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.2.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.2.1...@pyroscope/flamegraph@0.2.2) (2022-03-24)
+
+
+### Bug Fixes
+
+* **flamegraph:** only show diff options when in diff mode ([#972](https://github.com/pyroscope-io/pyroscope/issues/972)) ([625d4de](https://github.com/pyroscope-io/pyroscope/commit/625d4de340bc576f72b42f9db26605d02bc86c51))
+
+
+
+
+
 ## [0.2.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/flamegraph@0.2.0...@pyroscope/flamegraph@0.2.1) (2022-03-23)
 
 
