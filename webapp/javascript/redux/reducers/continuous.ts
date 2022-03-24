@@ -59,16 +59,10 @@ type ComparisonView = {
 };
 
 type TimelineState =
-  | { type: 'pristine' }
-  | { type: 'loading' }
-  | {
-      type: 'loaded';
-      timeline: Timeline;
-    }
-  | {
-      type: 'reloading';
-      timeline: Timeline;
-    };
+  | { type: 'pristine'; timeline: Timeline }
+  | { type: 'loading'; timeline: Timeline }
+  | { type: 'loaded'; timeline: Timeline }
+  | { type: 'failed'; timeline: Timeline };
 
 type DiffView =
   | { type: 'pristine' }
@@ -161,8 +155,22 @@ const initialState: ContinuousState = {
   },
   query: appNameToQuery((window as ShamefulAny).initialState.appNames[0]) ?? '',
 
-  left: { type: 'pristine' },
-  right: { type: 'pristine' },
+  left: {
+    type: 'pristine',
+    timeline: {
+      startTime: 0,
+      samples: [],
+      durationDelta: 0,
+    },
+  },
+  right: {
+    type: 'pristine',
+    timeline: {
+      startTime: 0,
+      samples: [],
+      durationDelta: 0,
+    },
+  },
 };
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
@@ -185,6 +193,50 @@ export const fetchSingleView = createAsyncThunk<
   );
 
   return Promise.reject(res.error);
+});
+
+export const fetchSideTimelines = createAsyncThunk<
+  { left: Timeline; right: Timeline },
+  null,
+  // { query: string; from: string; until: string },
+  { state: { continuous: ContinuousState } }
+>('continuous/fetchSideTimelines', async (_, thunkAPI) => {
+  const state = thunkAPI.getState();
+
+  const res = await Promise.all([
+    await renderSingle({
+      query: state.continuous.leftQuery || '',
+      from: state.continuous.from,
+      until: state.continuous.until,
+      maxNodes: state.continuous.maxNodes,
+      refreshToken: state.continuous.refreshToken,
+    }),
+    await renderSingle({
+      query: state.continuous.rightQuery || '',
+      from: state.continuous.from,
+      until: state.continuous.until,
+      maxNodes: state.continuous.maxNodes,
+      refreshToken: state.continuous.refreshToken,
+    }),
+  ]);
+
+  if (res[0].isOk && res[1].isOk) {
+    return Promise.resolve({
+      left: res[0].value.timeline,
+      right: res[1].value.timeline,
+    });
+  }
+
+  thunkAPI.dispatch(
+    addNotification({
+      type: 'danger',
+      title: `Failed to load the timelines`,
+      message: '',
+      additionalInfo: [res[0].error.message, res[1].error.message],
+    })
+  );
+
+  return Promise.reject(res.filter((a) => a.isErr).map((a) => a.error));
 });
 
 export const fetchComparisonSide = createAsyncThunk<
@@ -526,45 +578,32 @@ export const continuousSlice = createSlice({
       };
     });
 
+    /*****************************/
+    /*      Timeline Sides       */
+    /*****************************/
+    builder.addCase(fetchSideTimelines.pending, (state) => {
+      state.left = { ...state.left, type: 'loading' };
+      state.right = { ...state.right, type: 'loading' };
+    });
+    builder.addCase(fetchSideTimelines.fulfilled, (state, action) => {
+      state.left = {
+        type: 'loaded',
+        timeline: action.payload.left,
+      };
+      state.right = {
+        type: 'loaded',
+        timeline: action.payload.right,
+      };
+    });
+    builder.addCase(fetchSideTimelines.rejected, (state) => {
+      state.left = { ...state.left, type: 'failed' };
+      state.right = { ...state.right, type: 'failed' };
+    });
+
     /***********************/
     /*      Diff View      */
     /***********************/
     builder.addCase(fetchDiffView.pending, (state) => {
-      // TODO: simplify this
-      switch (state.left.type) {
-        case 'reloading':
-        case 'loaded': {
-          state.left = {
-            ...state.left,
-            type: 'reloading',
-          };
-          break;
-        }
-
-        default: {
-          state.left = {
-            type: 'loading',
-          };
-        }
-      }
-
-      switch (state.right.type) {
-        case 'reloading':
-        case 'loaded': {
-          state.right = {
-            ...state.right,
-            type: 'reloading',
-          };
-          break;
-        }
-
-        default: {
-          state.right = {
-            type: 'loading',
-          };
-        }
-      }
-
       switch (state.diffView.type) {
         // if we are fetching but there's already data
         // it's considered a 'reload'
@@ -692,7 +731,10 @@ export const selectIsLoadingData = (state: RootState) => {
     loadingStates.includes(state.continuous.comparisonView.left.type) ||
     loadingStates.includes(state.continuous.comparisonView.right.type) ||
     // Diff
-    loadingStates.includes(state.continuous.diffView.type)
+    loadingStates.includes(state.continuous.diffView.type) ||
+    // Timeline Sides
+    loadingStates.includes(state.continuous.left.type) ||
+    loadingStates.includes(state.continuous.right.type)
   );
 };
 
@@ -710,4 +752,11 @@ export const selectAppTags = (query?: string) => (state: RootState) => {
     type: 'pristine',
     tags: {},
   } as TagsState;
+};
+
+export const selectTimelineSidesData = (state: RootState) => {
+  return {
+    left: state.continuous.left.timeline,
+    right: state.continuous.right.timeline,
+  };
 };

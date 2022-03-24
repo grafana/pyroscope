@@ -174,6 +174,10 @@ class TimelineChartWrapper extends React.Component<
       ? JSON.parse(JSON.stringify(this.props.timelineB))
       : undefined;
 
+    console.log({
+      timelineA,
+      timelineB,
+    });
     const customFlotOptions = {
       ...flotOptions,
       xaxis: {

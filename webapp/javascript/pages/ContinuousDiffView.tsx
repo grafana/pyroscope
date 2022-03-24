@@ -8,7 +8,8 @@ import {
   selectAppTags,
   fetchTagValues,
   selectComparisonState,
-  fetchComparisonSide,
+  fetchSideTimelines,
+  selectTimelineSidesData,
 } from '@pyroscope/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import Color from 'color';
@@ -38,9 +39,9 @@ function ComparisonDiffApp() {
     rightQuery,
   } = useAppSelector(selectContinuousState);
 
+  const timelines = useAppSelector(selectTimelineSidesData);
   const leftTags = useAppSelector(selectAppTags(leftQuery));
   const rightTags = useAppSelector(selectAppTags(rightQuery));
-  const comparisonView = useAppSelector(selectComparisonState);
 
   // initially populate the queries
   useEffect(() => {
@@ -52,19 +53,9 @@ function ComparisonDiffApp() {
     }
   }, [query]);
 
-  const getRaw = () => {
-    switch (diffView.type) {
-      case 'loaded':
-      case 'reloading': {
-        return diffView.profile;
-      }
-
-      default: {
-        return undefined;
-      }
-    }
-  };
-  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(getRaw());
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
+    'profile' in diffView ? diffView.profile : undefined
+  );
 
   const profile = (() => {
     switch (diffView.type) {
@@ -81,13 +72,7 @@ function ComparisonDiffApp() {
   // Every time one of the queries changes, we need to actually refresh BOTH
   // otherwise one of the timelines will be outdated
   useEffect(() => {
-    if (leftQuery) {
-      dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }));
-    }
-
-    if (rightQuery) {
-      dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }));
-    }
+    dispatch(fetchSideTimelines(null));
 
     if (rightQuery && leftQuery) {
       dispatch(
@@ -117,22 +102,8 @@ function ComparisonDiffApp() {
     maxNodes,
   ]);
 
-  const getSide = (side: 'left' | 'right') => {
-    const s = comparisonView[side];
-
-    switch (s.type) {
-      case 'loaded':
-      case 'reloading': {
-        return s;
-      }
-
-      default:
-        return { timeline: undefined, profile: undefined };
-    }
-  };
-
-  const leftSide = getSide('left');
-  const rightSide = getSide('right');
+  //  const leftSide = getSide('left');
+  //  const rightSide = getSide('right');
   const exportData = profile && (
     <ExportData
       flamebearer={profile}
@@ -145,23 +116,6 @@ function ComparisonDiffApp() {
     />
   );
 
-  const getTimeline = () => {
-    switch (diffView.type) {
-      case 'loaded':
-      case 'reloading': {
-        return {
-          data: diffView.timeline,
-        };
-      }
-
-      default: {
-        return {
-          data: undefined,
-        };
-      }
-    }
-  };
-
   // Purple
   const leftColor = Color('rgb(200, 102, 204)');
   // Blue
@@ -169,12 +123,12 @@ function ComparisonDiffApp() {
 
   const leftTimeline = {
     color: leftColor.rgb().toString(),
-    data: leftSide.timeline,
+    data: timelines.left,
   };
 
   const rightTimeline = {
     color: rightColor.rgb().toString(),
-    data: rightSide.timeline,
+    data: timelines.right,
   };
 
   return (
