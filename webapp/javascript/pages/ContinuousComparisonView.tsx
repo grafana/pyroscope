@@ -12,6 +12,8 @@ import {
   fetchComparisonSide,
   fetchTags,
   fetchTagValues,
+  selectTimelineSidesData,
+  fetchSideTimelines,
 } from '@pyroscope/redux/reducers/continuous';
 import Color from 'color';
 import TimelineChartWrapper from '../components/TimelineChartWrapper';
@@ -36,8 +38,10 @@ function ComparisonApp() {
     rightFrom,
     leftUntil,
     rightUntil,
+    maxNodes,
   } = useAppSelector(selectContinuousState);
 
+  const timelines = useAppSelector(selectTimelineSidesData);
   const leftTags = useAppSelector(selectAppTags(leftQuery));
   const rightTags = useAppSelector(selectAppTags(rightQuery));
 
@@ -80,12 +84,13 @@ function ComparisonApp() {
     rightFrom,
     rightUntil,
     rightQuery,
-    from,
-    until,
     refreshToken,
-    from,
-    until,
   ]);
+
+  // Only reload timelines when an item that affects a timeline has changed
+  useEffect(() => {
+    dispatch(fetchSideTimelines(null));
+  }, [from, until, refreshToken, maxNodes, leftQuery, rightQuery]);
 
   const getSide = (side: 'left' | 'right') => {
     const s = comparisonView[side];
@@ -118,13 +123,18 @@ function ComparisonApp() {
 
   const leftTimeline = {
     color: leftColor.rgb().toString(),
-    data: leftSide.timeline,
+    data: timelines.left,
   };
 
   const rightTimeline = {
     color: rightColor.rgb().toString(),
-    data: rightSide.timeline,
+    data: timelines.right,
   };
+
+  console.log({
+    leftTimeline,
+    rightTimeline,
+  });
 
   return (
     <div className="pyroscope-app">
