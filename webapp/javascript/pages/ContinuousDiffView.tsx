@@ -7,7 +7,6 @@ import {
   actions,
   selectAppTags,
   fetchTagValues,
-  selectComparisonState,
   fetchSideTimelines,
   selectTimelineSidesData,
 } from '@pyroscope/redux/reducers/continuous';
@@ -69,11 +68,12 @@ function ComparisonDiffApp() {
     }
   })();
 
-  // Every time one of the queries changes, we need to actually refresh BOTH
-  // otherwise one of the timelines will be outdated
+  // Only reload timelines when an item that affects a timeline has changed
   useEffect(() => {
     dispatch(fetchSideTimelines(null));
+  }, [from, until, refreshToken, maxNodes, leftQuery, rightQuery]);
 
+  useEffect(() => {
     if (rightQuery && leftQuery) {
       dispatch(
         fetchDiffView({
@@ -94,16 +94,10 @@ function ComparisonDiffApp() {
     rightFrom,
     rightUntil,
     rightQuery,
-    from,
-    until,
     refreshToken,
-    from,
-    until,
     maxNodes,
   ]);
 
-  //  const leftSide = getSide('left');
-  //  const rightSide = getSide('right');
   const exportData = profile && (
     <ExportData
       flamebearer={profile}
@@ -223,12 +217,7 @@ function ComparisonDiffApp() {
               />
             </div>
           </div>
-          <FlamegraphRenderer
-            display="both"
-            viewType="diff"
-            profile={profile}
-            ExportData={exportData}
-          />
+          <FlamegraphRenderer profile={profile} ExportData={exportData} />
         </Box>
       </div>
       <Footer />
