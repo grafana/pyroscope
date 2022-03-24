@@ -3,7 +3,12 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AppNames } from '@models/appNames';
 import { fetchAppNames } from '@pyroscope/services/appNames';
 import { appNameToQuery, queryToAppName } from '@utils/query';
-import { renderSingle, RenderOutput, renderDiff } from '../../services/render';
+import {
+  renderSingle,
+  RenderOutput,
+  renderDiff,
+  RenderDiffResponse,
+} from '../../services/render';
 import { addNotification } from './notifications';
 import { Timeline } from '../../models/timeline';
 import * as tagsService from '../../services/tags';
@@ -53,17 +58,27 @@ type ComparisonView = {
       };
 };
 
-type DiffView =
+type TimelineState =
   | { type: 'pristine' }
   | { type: 'loading' }
   | {
       type: 'loaded';
       timeline: Timeline;
-      profile: Profile;
     }
   | {
       type: 'reloading';
       timeline: Timeline;
+    };
+
+type DiffView =
+  | { type: 'pristine' }
+  | { type: 'loading' }
+  | {
+      type: 'loaded';
+      profile: Profile;
+    }
+  | {
+      type: 'reloading';
       profile: Profile;
     };
 
@@ -113,6 +128,11 @@ interface ContinuousState {
     | { type: 'loaded'; data: AppNames }
     | { type: 'reloading'; data: AppNames }
     | { type: 'failed'; data: AppNames };
+
+  // Since both comparison and diff use the same timeline
+  // Makes sense storing them separately
+  left: TimelineState;
+  right: TimelineState;
 }
 
 const initialState: ContinuousState = {
@@ -140,6 +160,9 @@ const initialState: ContinuousState = {
     data: (window as ShamefulAny).initialState.appNames,
   },
   query: appNameToQuery((window as ShamefulAny).initialState.appNames[0]) ?? '',
+
+  left: { type: 'pristine' },
+  right: { type: 'pristine' },
 };
 export const fetchSingleView = createAsyncThunk<
   RenderOutput,
@@ -242,7 +265,7 @@ export const fetchComparisonSide = createAsyncThunk<
 });
 
 export const fetchDiffView = createAsyncThunk<
-  RenderOutput,
+  { profile: RenderDiffResponse },
   {
     leftQuery: string;
     leftFrom: string;
@@ -260,7 +283,7 @@ export const fetchDiffView = createAsyncThunk<
   });
 
   if (res.isOk) {
-    return Promise.resolve(res.value);
+    return Promise.resolve({ profile: res.value });
   }
 
   thunkAPI.dispatch(
@@ -507,6 +530,41 @@ export const continuousSlice = createSlice({
     /*      Diff View      */
     /***********************/
     builder.addCase(fetchDiffView.pending, (state) => {
+      // TODO: simplify this
+      switch (state.left.type) {
+        case 'reloading':
+        case 'loaded': {
+          state.left = {
+            ...state.left,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.left = {
+            type: 'loading',
+          };
+        }
+      }
+
+      switch (state.right.type) {
+        case 'reloading':
+        case 'loaded': {
+          state.right = {
+            ...state.right,
+            type: 'reloading',
+          };
+          break;
+        }
+
+        default: {
+          state.right = {
+            type: 'loading',
+          };
+        }
+      }
+
       switch (state.diffView.type) {
         // if we are fetching but there's already data
         // it's considered a 'reload'
@@ -528,6 +586,17 @@ export const continuousSlice = createSlice({
     });
 
     builder.addCase(fetchDiffView.fulfilled, (state, action) => {
+      // TODO: unify this with comparison
+      //      state.left = {
+      //        type: 'loaded',
+      //        timeline: action.payload.left.timeline,
+      //      };
+      //
+      //      state.right = {
+      //        type: 'loaded',
+      //        timeline: action.payload.left.timeline,
+      //      };
+
       state.diffView = {
         ...action.payload,
         profile: action.payload.profile,
@@ -535,25 +604,25 @@ export const continuousSlice = createSlice({
       };
     });
 
-    builder.addCase(fetchDiffView.rejected, (state) => {
-      switch (state.diffView.type) {
-        // if previous state is loaded, let's continue displaying data
-        case 'reloading': {
-          state.diffView = {
-            ...state.diffView,
-            type: 'loaded',
-          };
-          break;
-        }
-
-        default: {
-          // it failed to load for the first time, so far all effects it's pristine
-          state.diffView = {
-            type: 'pristine',
-          };
-        }
-      }
-    });
+    //    builder.addCase(fetchDiffView.rejected, (state) => {
+    //      switch (state.diffView.type) {
+    //        // if previous state is loaded, let's continue displaying data
+    //        case 'reloading': {
+    //          state.diffView = {
+    //            ...state.diffView,
+    //            type: 'loaded',
+    //          };
+    //          break;
+    //        }
+    //
+    //        default: {
+    //          // it failed to load for the first time, so far all effects it's pristine
+    //          state.diffView = {
+    //            type: 'pristine',
+    //          };
+    //        }
+    //      }
+    //    });
 
     // TODO:
     builder.addCase(fetchTags.pending, (state) => {});

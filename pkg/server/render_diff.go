@@ -28,13 +28,7 @@ type RenderDiffParams struct {
 
 // RenderDiffResponse refers to the response of the renderDiffHandler
 type RenderDiffResponse struct {
-	Left  timelineSide `json:"left"`
-	Right timelineSide `json:"right"`
-
-	Diff *flamebearer.FlamebearerProfile `json:"diff"`
-}
-type timelineSide struct {
-	Timeline *flamebearer.FlamebearerTimelineV1 `json:"timeline"`
+	*flamebearer.FlamebearerProfile
 }
 
 type diffParams struct {
@@ -133,18 +127,7 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		// fallthrough to default, to maintain existing behaviour
 		fallthrough
 	default:
-		res := RenderDiffResponse{
-			Left: timelineSide{
-				Timeline: flamebearer.NewTimeline(leftOut.Timeline),
-			},
-			Right: timelineSide{
-				Timeline: flamebearer.NewTimeline(rightOut.Timeline),
-			},
-
-			Diff: &combined,
-		}
-
-		//		ctrl.writeResponseJSON(w, combined)
+		res := RenderDiffResponse{&combined}
 		ctrl.writeResponseJSON(w, res)
 	}
 }

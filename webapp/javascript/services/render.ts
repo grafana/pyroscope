@@ -1,9 +1,5 @@
 import { Result } from '@utils/fp';
-import {
-  Profile,
-  FlamebearerProfileSchema,
-  TimelineSchema,
-} from '@pyroscope/models';
+import { Profile, FlamebearerProfileSchema } from '@pyroscope/models';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
 import type { RequestError } from './base';
@@ -52,11 +48,7 @@ export async function renderSingle(
   return Result.err(parsed.error);
 }
 
-const RenderDiffResponseSchema = z.object({
-  left: z.object({ timeline: TimelineSchema }),
-  right: z.object({ timeline: TimelineSchema }),
-  diff: FlamebearerProfileSchema,
-});
+export type RenderDiffResponse = z.infer<typeof FlamebearerProfileSchema>;
 
 interface renderDiffProps {
   leftFrom: string;
@@ -80,8 +72,8 @@ export async function renderDiff(props: renderDiffProps) {
   });
 
   const response = await request(`/render-diff?${params}`);
-  return parseResponse<z.infer<typeof RenderDiffResponseSchema>>(
+  return parseResponse<z.infer<typeof FlamebearerProfileSchema>>(
     response,
-    RenderDiffResponseSchema
+    FlamebearerProfileSchema
   );
 }
