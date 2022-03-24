@@ -99,8 +99,18 @@ func DiffV1(name string, base, diff *flamebearer.FlamebearerProfile, maxNodes in
 	if err != nil {
 		return fb, fmt.Errorf("unable to convret diff profile to tree: %w", err)
 	}
-	bOut := &storage.GetOutput{Tree: bt}
-	dOut := &storage.GetOutput{Tree: dt}
+	bOut := &storage.GetOutput{
+		Units:      base.Metadata.Units,
+		SampleRate: base.Metadata.SampleRate,
+		SpyName:    base.Metadata.SpyName,
+		Tree:       bt,
+	}
+	dOut := &storage.GetOutput{
+		Units:      diff.Metadata.Units,
+		SampleRate: diff.Metadata.SampleRate,
+		SpyName:    diff.Metadata.SpyName,
+		Tree:       dt,
+	}
 
 	// If we didn't get an explicit name, try to infer one from base or diff profiles
 	for _, n := range []string{base.Metadata.Name, diff.Metadata.Name} {

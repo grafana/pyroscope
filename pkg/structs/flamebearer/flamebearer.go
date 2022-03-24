@@ -110,11 +110,6 @@ func NewProfile(name string, output *storage.GetOutput, maxNodes int) Flamebeare
 	}
 }
 
-func isEmpty(t *storage.GetOutput) bool {
-	// TODO: improve heuristic
-	return t.SampleRate == 0
-}
-
 func NewCombinedProfile(name string, left, right *storage.GetOutput, maxNodes int) (FlamebearerProfile, error) {
 	if left.Units != right.Units {
 		// if one of them is empty, it still makes sense merging the profiles
@@ -225,4 +220,9 @@ func (fb FlamebearerProfileV1) Validate() error {
 		}
 	}
 	return nil
+}
+
+func isEmpty(t *storage.GetOutput) bool {
+	// TODO: improve heuristic
+	return t.SampleRate == 0
 }
