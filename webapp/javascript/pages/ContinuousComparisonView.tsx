@@ -44,7 +44,6 @@ function ComparisonApp() {
   const timelines = useAppSelector(selectTimelineSidesData);
   const leftTags = useAppSelector(selectAppTags(leftQuery));
   const rightTags = useAppSelector(selectAppTags(rightQuery));
-
   const comparisonView = useAppSelector(selectComparisonState);
 
   // initially populate the queries
@@ -67,25 +66,17 @@ function ComparisonApp() {
     }
   }, [leftQuery, rightQuery]);
 
-  // Every time one of the queries changes, we need to actually refresh BOTH
-  // otherwise one of the timelines will be outdated
   useEffect(() => {
     if (leftQuery) {
       dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }));
     }
+  }, [leftFrom, leftUntil, leftQuery]);
 
+  useEffect(() => {
     if (rightQuery) {
       dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }));
     }
-  }, [
-    leftFrom,
-    leftUntil,
-    leftQuery,
-    rightFrom,
-    rightUntil,
-    rightQuery,
-    refreshToken,
-  ]);
+  }, [rightFrom, rightUntil, rightQuery]);
 
   // Only reload timelines when an item that affects a timeline has changed
   useEffect(() => {

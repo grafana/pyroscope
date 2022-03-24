@@ -121,8 +121,8 @@ interface ContinuousState {
 
   // Since both comparison and diff use the same timeline
   // Makes sense storing them separately
-  left: TimelineState;
-  right: TimelineState;
+  leftTimeline: TimelineState;
+  rightTimeline: TimelineState;
 }
 
 const initialState: ContinuousState = {
@@ -151,7 +151,7 @@ const initialState: ContinuousState = {
   },
   query: appNameToQuery((window as ShamefulAny).initialState.appNames[0]) ?? '',
 
-  left: {
+  leftTimeline: {
     type: 'pristine',
     timeline: {
       startTime: 0,
@@ -159,7 +159,7 @@ const initialState: ContinuousState = {
       durationDelta: 0,
     },
   },
-  right: {
+  rightTimeline: {
     type: 'pristine',
     timeline: {
       startTime: 0,
@@ -574,22 +574,22 @@ export const continuousSlice = createSlice({
     /*      Timeline Sides       */
     /*****************************/
     builder.addCase(fetchSideTimelines.pending, (state) => {
-      state.left = { ...state.left, type: 'loading' };
-      state.right = { ...state.right, type: 'loading' };
+      state.leftTimeline = { ...state.leftTimeline, type: 'loading' };
+      state.rightTimeline = { ...state.rightTimeline, type: 'loading' };
     });
     builder.addCase(fetchSideTimelines.fulfilled, (state, action) => {
-      state.left = {
+      state.leftTimeline = {
         type: 'loaded',
         timeline: action.payload.left,
       };
-      state.right = {
+      state.rightTimeline = {
         type: 'loaded',
         timeline: action.payload.right,
       };
     });
     builder.addCase(fetchSideTimelines.rejected, (state) => {
-      state.left = { ...state.left, type: 'failed' };
-      state.right = { ...state.right, type: 'failed' };
+      state.leftTimeline = { ...state.leftTimeline, type: 'failed' };
+      state.rightTimeline = { ...state.rightTimeline, type: 'failed' };
     });
 
     /***********************/
@@ -694,8 +694,8 @@ export const selectIsLoadingData = (state: RootState) => {
     // Diff
     loadingStates.includes(state.continuous.diffView.type) ||
     // Timeline Sides
-    loadingStates.includes(state.continuous.left.type) ||
-    loadingStates.includes(state.continuous.right.type)
+    loadingStates.includes(state.continuous.leftTimeline.type) ||
+    loadingStates.includes(state.continuous.rightTimeline.type)
   );
 };
 
@@ -717,7 +717,7 @@ export const selectAppTags = (query?: string) => (state: RootState) => {
 
 export const selectTimelineSidesData = (state: RootState) => {
   return {
-    left: state.continuous.left.timeline,
-    right: state.continuous.right.timeline,
+    left: state.continuous.leftTimeline.timeline,
+    right: state.continuous.rightTimeline.timeline,
   };
 };
