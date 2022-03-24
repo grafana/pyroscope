@@ -71,7 +71,7 @@ function ComparisonDiffApp() {
       flamebearer={diffView.profile}
       exportJSON
       exportPNG
-      exportHTML
+      //      exportHTML
       exportFlamegraphDotCom
       exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
     />
