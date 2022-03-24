@@ -17,8 +17,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pyroscope-io/client v0.2.0 h1:zZnwMFv+EHA1Yz5fUveJ4KCdRsCmsVuyfzFIKi6SlDg=
 github.com/pyroscope-io/client v0.2.0/go.mod h1:zRdQXIGxy0H2QbKEkCmZBR6KOLLIFYLWsdzVI0MRm2E=
-github.com/pyroscope-io/otelpyroscope v0.1.0 h1:LDRYGrFhQUZT7rbJ1PCMOL0TGjNk/SNJbh3Ri7l8OFg=
-github.com/pyroscope-io/otelpyroscope v0.1.0/go.mod h1:Pjgu/PeVua81wS40W4sJ7GaS2mjGUZ7bhUAA1X+8lZ8=
+github.com/pyroscope-io/otelpyroscope v0.2.0 h1:cxTJyvs1HNajjBzuPtkorZUw28Jye/wflIMVuFRz8ls=
+github.com/pyroscope-io/otelpyroscope v0.2.0/go.mod h1:Pjgu/PeVua81wS40W4sJ7GaS2mjGUZ7bhUAA1X+8lZ8=
 github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/stretchr/objx v0.1.0 h1:4G4v2dO3VZwixGIRoQ5Lfboy6nUhCyYzaqnIAPPhYs4=

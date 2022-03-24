@@ -54,7 +54,8 @@ const useSizeMode = (target: React.RefObject<HTMLDivElement>) => {
 interface ProfileHeaderProps {
   view: ViewTypes;
   disableChangingDisplay?: boolean;
-  viewDiff?: 'diff' | 'total' | 'self';
+  flamegraphType: 'single' | 'double';
+  viewDiff: 'diff' | 'total' | 'self';
   handleSearchChange: (s: string) => void;
   highlightQuery: string;
   renderLogo: boolean;
@@ -187,6 +188,7 @@ const Toolbar = React.memo(
     updateViewDiff,
     selectedNode,
     onFocusOnSubtree,
+    flamegraphType,
     disableChangingDisplay = false,
   }: ProfileHeaderProps) => {
     const toolbarRef = React.useRef<HTMLDivElement>(null);
@@ -201,11 +203,13 @@ const Toolbar = React.memo(
             onHighlightChange={handleSearchChange}
             highlightQuery={highlightQuery}
           />
-          <DiffView
-            showMode={showMode}
-            viewDiff={viewDiff}
-            updateViewDiff={updateViewDiff}
-          />
+          {flamegraphType === 'double' && (
+            <DiffView
+              showMode={showMode}
+              viewDiff={viewDiff}
+              updateViewDiff={updateViewDiff}
+            />
+          )}
           <div className={styles['space-filler']} />
           <FitMode
             showMode={showMode}
