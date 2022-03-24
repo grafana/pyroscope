@@ -12,7 +12,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
-// RenderDiffParams refers to the params accepted by the /render-diff endpoint
+// RenderDiffParams refers to the params accepted by the renderDiffHandler
 type RenderDiffParams struct {
 	LeftQuery string `json:"leftQuery"`
 	LeftFrom  string `json:"leftFrom"`
@@ -24,6 +24,17 @@ type RenderDiffParams struct {
 
 	Format   string `json:"format"`
 	MaxNodes *int   `json:"maxNodes,omitempty"`
+}
+
+// RenderDiffResponse refers to the response of the renderDiffHandler
+type RenderDiffResponse struct {
+	Left  timelineSide `json:"left"`
+	Right timelineSide `json:"right"`
+
+	Diff *flamebearer.FlamebearerProfile `json:"diff"`
+}
+type timelineSide struct {
+	Timeline *flamebearer.FlamebearerTimelineV1 `json:"timeline"`
 }
 
 type diffParams struct {
@@ -122,6 +133,18 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		// fallthrough to default, to maintain existing behaviour
 		fallthrough
 	default:
-		ctrl.writeResponseJSON(w, combined)
+		res := RenderDiffResponse{
+			Left: timelineSide{
+				Timeline: flamebearer.NewTimeline(leftOut.Timeline),
+			},
+			Right: timelineSide{
+				Timeline: flamebearer.NewTimeline(rightOut.Timeline),
+			},
+
+			Diff: &combined,
+		}
+
+		//		ctrl.writeResponseJSON(w, combined)
+		ctrl.writeResponseJSON(w, res)
 	}
 }

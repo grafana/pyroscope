@@ -1,9 +1,13 @@
 import { Result } from '@utils/fp';
-import { Profile, FlamebearerProfileSchema } from '@pyroscope/models';
+import {
+  Profile,
+  FlamebearerProfileSchema,
+  TimelineSchema,
+} from '@pyroscope/models';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
 import type { RequestError } from './base';
-import { request } from './base';
+import { request, parseResponse } from './base';
 import { buildRenderURL, buildDiffRenderURL } from '../util/updateRequests';
 import { Timeline, TimelineSchema } from '../models/timeline';
 
@@ -48,6 +52,12 @@ export async function renderSingle(
   return Result.err(parsed.error);
 }
 
+const RenderDiffResponseSchema = z.object({
+  left: z.object({ timeline: TimelineSchema }),
+  right: z.object({ timeline: TimelineSchema }),
+  diff: FlamebearerProfileSchema,
+});
+
 interface renderDiffProps {
   leftFrom: string;
   leftUntil: string;
@@ -58,13 +68,7 @@ interface renderDiffProps {
   rightFrom: string;
   rightUntil: string;
 }
-export async function renderDiff(
-  props: renderDiffProps
-): Promise<Result<RenderOutput, RequestError | ZodError>> {
-  //  const url = buildDiffRenderURL(props);
-  // TODO
-  //
-
+export async function renderDiff(props: renderDiffProps) {
   const params = new URLSearchParams({
     leftQuery: props.leftQuery,
     leftFrom: props.leftFrom,
@@ -76,25 +80,8 @@ export async function renderDiff(
   });
 
   const response = await request(`/render-diff?${params}`);
-
-  if (response.isErr) {
-    return Result.err<RenderOutput, RequestError>(response.error);
-  }
-
-  const parsed = FlamebearerProfileSchema.merge(
-    z.object({ timeline: TimelineSchema })
-  ).safeParse(response.value);
-
-  if (parsed.success) {
-    // TODO: strip timeline
-    const profile = parsed.data;
-    const { timeline } = parsed.data;
-
-    return Result.ok({
-      profile,
-      timeline,
-    });
-  }
-
-  return Result.err(parsed.error);
+  return parseResponse<z.infer<typeof RenderDiffResponseSchema>>(
+    response,
+    RenderDiffResponseSchema
+  );
 }

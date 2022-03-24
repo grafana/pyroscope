@@ -105,7 +105,7 @@ func NewProfile(name string, output *storage.GetOutput, maxNodes int) Flamebeare
 		FlamebearerProfileV1: FlamebearerProfileV1{
 			Flamebearer: newFlambearer(fb),
 			Metadata:    newMetadata(name, fb.Format, output),
-			Timeline:    newTimeline(output.Timeline),
+			Timeline:    NewTimeline(output.Timeline),
 		},
 	}
 }
@@ -167,7 +167,7 @@ func newMetadata(name string, format tree.Format, output *storage.GetOutput) Fla
 	}
 }
 
-func newTimeline(timeline *segment.Timeline) *FlamebearerTimelineV1 {
+func NewTimeline(timeline *segment.Timeline) *FlamebearerTimelineV1 {
 	if timeline == nil {
 		return nil
 	}
