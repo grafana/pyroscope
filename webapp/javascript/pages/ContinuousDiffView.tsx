@@ -6,11 +6,8 @@ import {
   selectContinuousState,
   actions,
   fetchTagValues,
-  fetchSideTimelines,
-  selectTimelineSidesData,
 } from '@pyroscope/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import Color from 'color';
 import Toolbar from '../components/Toolbar';
 import Footer from '../components/Footer';
 import TimelineChartWrapper from '../components/TimelineChartWrapper';
@@ -19,14 +16,13 @@ import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.
 import ExportData from '../components/ExportData';
 import TagsBar from '../components/TagsBar';
 import useTags from '../hooks/tags.hook';
+import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
+import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
   const {
     diffView,
-    from,
-    until,
-    query,
     refreshToken,
     maxNodes,
     leftFrom,
@@ -38,21 +34,13 @@ function ComparisonDiffApp() {
     rightQuery,
   } = useAppSelector(selectContinuousState);
 
-  const timelines = useAppSelector(selectTimelineSidesData);
+  const { leftTimeline, rightTimeline } = useTimelines();
   const { leftTags, rightTags } = useTags({
     leftQuery,
     rightQuery,
   });
 
-  // initially populate the queries
-  useEffect(() => {
-    if (query && !rightQuery) {
-      dispatch(actions.setRightQuery(query));
-    }
-    if (query && !leftQuery) {
-      dispatch(actions.setLeftQuery(query));
-    }
-  }, [query]);
+  usePopulateLeftRightQuery();
 
   const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
     'profile' in diffView ? diffView.profile : undefined
@@ -69,11 +57,6 @@ function ComparisonDiffApp() {
         return undefined;
     }
   })();
-
-  // Only reload timelines when an item that affects a timeline has changed
-  useEffect(() => {
-    dispatch(fetchSideTimelines(null));
-  }, [from, until, refreshToken, maxNodes, leftQuery, rightQuery]);
 
   useEffect(() => {
     if (rightQuery && leftQuery) {
@@ -111,21 +94,6 @@ function ComparisonDiffApp() {
       exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
     />
   );
-
-  // Purple
-  const leftColor = Color('rgb(200, 102, 204)');
-  // Blue
-  const rightColor = Color('rgb(19, 152, 246)');
-
-  const leftTimeline = {
-    color: leftColor.rgb().toString(),
-    data: timelines.left,
-  };
-
-  const rightTimeline = {
-    color: rightColor.rgb().toString(),
-    data: timelines.right,
-  };
 
   return (
     <div className="pyroscope-app">

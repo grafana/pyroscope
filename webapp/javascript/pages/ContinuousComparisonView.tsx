@@ -6,16 +6,11 @@ import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
 import {
   selectContinuousState,
-  selectAppTags,
   actions,
   selectComparisonState,
   fetchComparisonSide,
-  fetchTags,
   fetchTagValues,
-  selectTimelineSidesData,
-  fetchSideTimelines,
 } from '@pyroscope/redux/reducers/continuous';
-import Color from 'color';
 import TimelineChartWrapper from '../components/TimelineChartWrapper';
 import Toolbar from '../components/Toolbar';
 import Footer from '../components/Footer';
@@ -25,49 +20,21 @@ import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.
 import TagsBar from '../components/TagsBar';
 import styles from './ContinuousComparison.module.css';
 import useTags from '../hooks/tags.hook';
+import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
+import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
-  const {
-    from,
-    until,
-    query,
-    leftQuery,
-    rightQuery,
-    refreshToken,
-    leftFrom,
-    rightFrom,
-    leftUntil,
-    rightUntil,
-    maxNodes,
-  } = useAppSelector(selectContinuousState);
+  const { leftQuery, rightQuery, leftFrom, rightFrom, leftUntil, rightUntil } =
+    useAppSelector(selectContinuousState);
 
-  const timelines = useAppSelector(selectTimelineSidesData);
+  usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
   const { leftTags, rightTags } = useTags({
     leftQuery,
     rightQuery,
   });
-
-  // initially populate the queries
-  useEffect(() => {
-    if (query && !rightQuery) {
-      dispatch(actions.setRightQuery(query));
-    }
-    if (query && !leftQuery) {
-      dispatch(actions.setLeftQuery(query));
-    }
-  }, [query]);
-
-  useEffect(() => {
-    // TODO if the query is the same the request will be made twice
-    if (leftQuery) {
-      dispatch(fetchTags(leftQuery));
-    }
-    if (rightQuery) {
-      dispatch(fetchTags(rightQuery));
-    }
-  }, [leftQuery, rightQuery]);
+  const { leftTimeline, rightTimeline } = useTimelines();
 
   useEffect(() => {
     if (leftQuery) {
@@ -80,11 +47,6 @@ function ComparisonApp() {
       dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }));
     }
   }, [rightFrom, rightUntil, rightQuery]);
-
-  // Only reload timelines when an item that affects a timeline has changed
-  useEffect(() => {
-    dispatch(fetchSideTimelines(null));
-  }, [from, until, refreshToken, maxNodes, leftQuery, rightQuery]);
 
   const getSide = (side: 'left' | 'right') => {
     const s = comparisonView[side];
@@ -109,21 +71,6 @@ function ComparisonApp() {
   const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(
     leftSide.profile
   );
-
-  // Purple
-  const leftColor = Color('rgb(200, 102, 204)');
-  // Blue
-  const rightColor = Color('rgb(19, 152, 246)');
-
-  const leftTimeline = {
-    color: leftColor.rgb().toString(),
-    data: timelines.left,
-  };
-
-  const rightTimeline = {
-    color: rightColor.rgb().toString(),
-    data: timelines.right,
-  };
 
   return (
     <div className="pyroscope-app">
