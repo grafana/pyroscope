@@ -258,7 +258,6 @@ function ExportData(props: ExportDataProps) {
       input: 'text',
       inputLabel: 'or levae the input empty for default name',
       inputPlaceholder: 'Export name',
-      passResultValueToConfirmHandler: true,
       onConfirm,
     });
   };

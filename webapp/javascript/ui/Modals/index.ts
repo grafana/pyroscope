@@ -1,9 +1,20 @@
 import Swal, { SweetAlertInput, SweetAlertOptions } from 'sweetalert2';
 
+import styles from './Modal.module.css';
+
 const defaultParams: Partial<SweetAlertOptions> = {
   showCancelButton: true,
   allowOutsideClick: true,
   backdrop: true,
+  focusConfirm: false,
+  customClass: {
+    popup: styles.popup,
+    title: styles.title,
+    input: styles.input,
+    confirmButton: styles.button,
+    denyButton: styles.button,
+    cancelButton: styles.button,
+  },
 };
 
 export type ShowModalParams = {
@@ -14,7 +25,6 @@ export type ShowModalParams = {
   input?: SweetAlertInput;
   inputLabel?: string;
   inputPlaceholder?: string;
-  passResultValueToConfirmHandler?: boolean;
 };
 
 const ShowModal = ({
@@ -25,7 +35,6 @@ const ShowModal = ({
   input,
   inputLabel,
   inputPlaceholder,
-  passResultValueToConfirmHandler,
 }: ShowModalParams) => {
   Swal.fire({
     title,
@@ -37,11 +46,7 @@ const ShowModal = ({
     ...defaultParams,
   }).then(({ isConfirmed, value }) => {
     if (isConfirmed) {
-      if (passResultValueToConfirmHandler) {
-        onConfirm(value);
-        return;
-      }
-      onConfirm();
+      onConfirm(value);
     }
   });
 };

@@ -8,7 +8,6 @@ type ModalWithInputParams = Pick<
   | 'inputPlaceholder'
   | 'confirmButtonText'
   | 'onConfirm'
-  | 'passResultValueToConfirmHandler'
 >;
 
 function showModalWithInput(params: ModalWithInputParams) {

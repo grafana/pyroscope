@@ -1,0 +1,29 @@
+.popup {
+  background-color: var(--ps-c-gray);
+}
+
+.popup label {
+  color: var(--ps-c-white);
+}
+
+.popup button.button:focus {
+  box-shadow: none;
+}
+
+.title {
+  color: var(--ps-c-white);
+}
+
+.input {
+  outline: none;
+  color: var(--ps-c-white);
+  background-color: var(--ps-c-gray-light-2);
+  border: 1px solid var(--ps-c-gray-light-3);
+  border-radius: 4px;
+}
+
+.input:focus {
+  outline: none;
+  box-shadow: none;
+  border: 1px solid var(--ps-c-gray-light-3);
+}
