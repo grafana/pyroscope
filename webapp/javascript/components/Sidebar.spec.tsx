@@ -3,7 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
-import uiReducer from '@pyroscope/redux/reducers/ui';
+import uiReducer from '@webapp/redux/reducers/ui';
 
 import { Sidebar2 } from './Sidebar';
 

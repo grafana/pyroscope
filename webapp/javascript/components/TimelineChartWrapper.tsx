@@ -2,10 +2,10 @@
 /* eslint-disable react/no-did-update-set-state */
 /* eslint-disable react/destructuring-assignment */
 import React from 'react';
-import { Timeline } from '@models/timeline';
+import { Timeline } from '@webapp/models/timeline';
 import Color from 'color';
+import { formatAsOBject } from '@webapp/util/formatDate';
 import TimelineChart from './TimelineChart';
-import { formatAsOBject } from '../util/formatDate';
 import styles from './TimelineChartWrapper.module.css';
 
 interface TimelineData {

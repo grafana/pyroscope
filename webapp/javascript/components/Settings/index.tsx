@@ -2,15 +2,15 @@
 // @ts-nocheck
 import React from 'react';
 import { Switch, Route, useRouteMatch, NavLink } from 'react-router-dom';
-import Box from '@ui/Box';
-import Icon from '@ui/Icon';
+import Box from '@webapp/ui/Box';
+import Icon from '@webapp/ui/Icon';
 import { faKey } from '@fortawesome/free-solid-svg-icons/faKey';
 import { faLock } from '@fortawesome/free-solid-svg-icons/faLock';
 import { faSlidersH } from '@fortawesome/free-solid-svg-icons/faSlidersH';
 import { faUserAlt } from '@fortawesome/free-solid-svg-icons/faUserAlt';
 import cx from 'classnames';
-import { withCurrentUser } from '@pyroscope/redux/reducers/user';
-import { User } from '@models/users';
+import { withCurrentUser } from '@webapp/redux/reducers/user';
+import { User } from '@webapp/models/users';
 import Preferences from './Preferences';
 import Security from './Security';
 import Users from './Users';

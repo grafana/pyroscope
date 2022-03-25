@@ -1,12 +1,12 @@
 import React, { Children, useEffect, useState } from 'react';
 import { connect } from 'react-redux';
-import { Target } from '@models/targets';
-import { useAppDispatch } from '@pyroscope/redux/hooks';
-import { loadTargets } from '@pyroscope/redux/reducers/serviceDiscovery';
+import { Target } from '@webapp/models/targets';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import { loadTargets } from '@webapp/redux/reducers/serviceDiscovery';
 import { formatDistance, parseISO } from 'date-fns';
 import cx from 'classnames';
+import Button from '@webapp/ui/Button';
 import styles from './ServiceDiscovery.module.scss';
-import Button from '../ui/Button';
 
 type PropType = {
   data: Record<string, Target[]>;

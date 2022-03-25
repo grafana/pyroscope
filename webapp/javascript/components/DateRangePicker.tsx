@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   setDateRange,
   selectContinuousState,
-} from '@pyroscope/redux/reducers/continuous';
+} from '@webapp/redux/reducers/continuous';
 import cx from 'classnames';
-import Button from '@ui/Button';
+import Button from '@webapp/ui/Button';
+import { readableRange } from '@webapp/util/formatDate';
 import { faClock } from '@fortawesome/free-solid-svg-icons/faClock';
 import OutsideClickHandler from 'react-outside-click-handler';
 import CustomDatePicker from './CustomDatePicker';
 import CheckIcon from './CheckIcon';
-import { readableRange } from '../util/formatDate';
 
 const defaultPresets = [
   [
