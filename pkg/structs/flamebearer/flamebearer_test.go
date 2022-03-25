@@ -75,7 +75,6 @@ var _ = Describe("FlamebearerProfile", func() {
 			Expect(p.Validate()).To(BeNil())
 		})
 	})
-
 })
 
 var _ = Describe("Diff", func() {
