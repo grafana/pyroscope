@@ -1,11 +1,14 @@
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import { Profile, FlamebearerProfileSchema } from '@pyroscope/models';
 import { z } from 'zod';
 import type { ZodError } from 'zod';
+import {
+  buildRenderURL,
+  buildDiffRenderURL,
+} from '@webapp/util/updateRequests';
+import { Timeline, TimelineSchema } from '@webapp/models/timeline';
 import type { RequestError } from './base';
 import { request } from './base';
-import { buildRenderURL, buildDiffRenderURL } from '../util/updateRequests';
-import { Timeline, TimelineSchema } from '../models/timeline';
 
 export interface RenderOutput {
   profile: Profile;

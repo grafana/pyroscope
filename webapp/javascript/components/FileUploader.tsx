@@ -8,8 +8,8 @@ import { faTrash } from '@fortawesome/free-solid-svg-icons/faTrash';
 // but it is in fontawesome v6 which is in beta and not released yet.
 import { faArrowAltCircleUp } from '@fortawesome/free-regular-svg-icons/faArrowAltCircleUp';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import Button from '@ui/Button';
-import { addNotification } from '../redux/reducers/notifications';
+import Button from '@webapp/ui/Button';
+import { addNotification } from '@webapp/redux/reducers/notifications';
 import styles from './FileUploader.module.scss';
 
 interface Props {

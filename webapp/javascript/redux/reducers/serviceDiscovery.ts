@@ -1,5 +1,5 @@
-import { Target } from '@models/targets';
-import { fetchTargets } from '@pyroscope/services/serviceDiscovery';
+import { Target } from '@webapp/models/targets';
+import { fetchTargets } from '@webapp/services/serviceDiscovery';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { addNotification } from './notifications';
 

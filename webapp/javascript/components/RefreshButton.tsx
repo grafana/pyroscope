@@ -1,9 +1,9 @@
 import React from 'react';
-import Button from '@ui/Button';
+import Button from '@webapp/ui/Button';
 
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-import { useAppDispatch } from '@pyroscope/redux/hooks';
-import { actions } from '@pyroscope/redux/reducers/continuous';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import { actions } from '@webapp/redux/reducers/continuous';
 
 function RefreshButton() {
   const dispatch = useAppDispatch();

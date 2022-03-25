@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import Button from '@ui/Button';
-import InputField from '@ui/InputField';
+import Button from '@webapp/ui/Button';
+import InputField from '@webapp/ui/InputField';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
-import { createAPIKey } from '@pyroscope/redux/reducers/settings';
-import { useAppDispatch } from '@pyroscope/redux/hooks';
-import { type APIKey } from '@models/apikeys';
-import Dropdown, { MenuItem } from '@ui/Dropdown';
-import StatusMessage from '@ui/StatusMessage';
-import { addNotification } from '@pyroscope/redux/reducers/notifications';
+import { createAPIKey } from '@webapp/redux/reducers/settings';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import { type APIKey } from '@webapp/models/apikeys';
+import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
+import StatusMessage from '@webapp/ui/StatusMessage';
+import { addNotification } from '@webapp/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
 
 // Extend the API key, but add form validation errors and ttlSeconds

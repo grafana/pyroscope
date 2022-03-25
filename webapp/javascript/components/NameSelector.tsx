@@ -1,19 +1,23 @@
 // TODO reenable spreading lint
 /* eslint-disable react/jsx-props-no-spreading */
 import React, { useState } from 'react';
-import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
-import { appNameToQuery, queryToAppName } from '@utils/query';
+import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
+import { appNameToQuery, queryToAppName } from '@webapp/util/query';
 import {
   actions,
   selectContinuousState,
   selectAppNames,
   selectAppNamesState,
   reloadAppNames,
-} from '@pyroscope/redux/reducers/continuous';
-import LoadingSpinner from '@ui/LoadingSpinner';
-import Button from '@ui/Button';
+} from '@webapp/redux/reducers/continuous';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import Button from '@webapp/ui/Button';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-import Dropdown, { MenuItem, FocusableItem, MenuGroup } from '@ui/Dropdown';
+import Dropdown, {
+  MenuItem,
+  FocusableItem,
+  MenuGroup,
+} from '@webapp/ui/Dropdown';
 import styles from './NameSelector.module.scss';
 
 interface NameSelectorProps {

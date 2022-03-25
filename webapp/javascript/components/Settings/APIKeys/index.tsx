@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import Button from '@ui/Button';
-import Icon from '@ui/Icon';
+import Button from '@webapp/ui/Button';
+import Icon from '@webapp/ui/Icon';
 
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 import { useHistory } from 'react-router-dom';
@@ -12,8 +12,8 @@ import {
   reloadApiKeys,
   selectAPIKeys,
   deleteAPIKey,
-} from '@pyroscope/redux/reducers/settings';
-import confirmDelete from '../../ConfirmDelete';
+} from '@webapp/redux/reducers/settings';
+import confirmDelete from '@webapp/components/ConfirmDelete';
 import styles from '../SettingsTable.module.css';
 
 const ApiKeys = () => {

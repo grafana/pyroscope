@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import Box from '@ui/Box';
+import Box from '@webapp/ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   selectContinuousState,
   selectAppTags,
@@ -12,15 +12,15 @@ import {
   fetchComparisonSide,
   fetchTags,
   fetchTagValues,
-} from '@pyroscope/redux/reducers/continuous';
+} from '@webapp/redux/reducers/continuous';
 import Color from 'color';
-import TimelineChartWrapper from '../components/TimelineChartWrapper';
-import Toolbar from '../components/Toolbar';
-import Footer from '../components/Footer';
-import InstructionText from '../components/InstructionText';
-import ExportData from '../components/ExportData';
-import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
-import TagsBar from '../components/TagsBar';
+import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
+import Toolbar from '@webapp/components/Toolbar';
+import Footer from '@webapp/components/Footer';
+import InstructionText from '@webapp/components/InstructionText';
+import ExportData from '@webapp/components/ExportData';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import TagsBar from '@webapp/components/TagsBar';
 import styles from './ContinuousComparison.module.css';
 
 function ComparisonApp() {

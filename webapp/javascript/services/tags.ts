@@ -1,4 +1,9 @@
-import { Tags, TagsValuesSchema, TagsValues, TagsSchema } from '@models/tags';
+import {
+  Tags,
+  TagsValuesSchema,
+  TagsValues,
+  TagsSchema,
+} from '@webapp/models/tags';
 import { request, parseResponse } from './base';
 
 export async function fetchTags(query: string) {
