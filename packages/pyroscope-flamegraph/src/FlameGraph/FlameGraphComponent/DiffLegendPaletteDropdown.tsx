@@ -8,7 +8,7 @@ import CheckIcon from './CheckIcon';
 // eslint-disable-next-line
 import Dropdown, { MenuItem, MenuButton } from '@webapp/ui/Dropdown';
 // eslint-disable-next-line
-import dropdownStyles from '@webapp/javascript/ui/Dropdown.module.scss';
+import dropdownStyles from '@webapp/ui/Dropdown.module.scss';
 
 import styles from './DiffLegendPaletteDropdown.module.css';
 
