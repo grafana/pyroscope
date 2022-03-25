@@ -11,14 +11,14 @@ module.exports = {
   ],
   moduleNameMapper: {
     '@webapp(.*)$': path.join(__dirname, 'webapp/javascript/$1'),
-    '@utils(.*)$': path.join(__dirname, 'webapp/javascript/util/$1'),
-    '@models(.*)$': path.join(__dirname, 'webapp/javascript/models/$1'),
-    '@ui(.*)$': path.join(__dirname, 'webapp/javascript/ui/$1'),
-    '@pyroscope/redux(.*)$': path.join(__dirname, 'webapp/javascript/redux/$1'),
-    '@pyroscope/services(.*)$': path.join(
-      __dirname,
-      'webapp/javascript/services/$1'
-    ),
+    //    '@utils(.*)$': path.join(__dirname, 'webapp/javascript/util/$1'),
+    //    '@models(.*)$': path.join(__dirname, 'webapp/javascript/models/$1'),
+    //    '@ui(.*)$': path.join(__dirname, 'webapp/javascript/ui/$1'),
+    //    '@pyroscope/redux(.*)$': path.join(__dirname, 'webapp/javascript/redux/$1'),
+    //    '@pyroscope/services(.*)$': path.join(
+    //      __dirname,
+    //      'webapp/javascript/services/$1'
+    //    ),
   },
   transform: {
     '\\.module\\.(css|scss)$': 'jest-css-modules-transform',

@@ -43,17 +43,6 @@ export function getAlias() {
     // this alias maps that dependency to core-js@t3
     'core-js/library/fn': 'core-js/stable',
     '@webapp': path.resolve(__dirname, '../../webapp/javascript'),
-    '@utils': path.resolve(__dirname, '../../webapp/javascript/util'),
-    '@models': path.resolve(__dirname, '../../webapp/javascript/models'),
-    '@ui': path.resolve(__dirname, '../../webapp/javascript/ui'),
-    '@pyroscope/redux': path.resolve(
-      __dirname,
-      '../../webapp/javascript/redux'
-    ),
-    '@pyroscope/services': path.resolve(
-      __dirname,
-      '../../webapp/javascript/services'
-    ),
   };
 }
 

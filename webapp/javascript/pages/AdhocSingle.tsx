@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import { useAppDispatch, useOldRootSelector } from '@pyroscope/redux/hooks';
+import { useAppDispatch, useOldRootSelector } from '@webapp/redux/hooks';
 import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
