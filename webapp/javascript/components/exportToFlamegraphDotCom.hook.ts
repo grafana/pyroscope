@@ -3,7 +3,7 @@ import { shareWithFlamegraphDotcom } from '@pyroscope/services/share';
 import { useAppDispatch } from '@pyroscope/redux/hooks';
 import handleError from '../util/handleError';
 
-export default function useExportToFlamegraphDotCom(flamebearer: Profile) {
+export default function useExportToFlamegraphDotCom(flamebearer?: Profile) {
   const dispatch = useAppDispatch();
 
   return async (name?: string) => {
