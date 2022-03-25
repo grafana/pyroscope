@@ -1,7 +1,7 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
 import { Units } from '@pyroscope/models';
-import type { UnwrapMaybe } from '../../../../../webapp/javascript/util/fp';
+import type { Unwrapped } from 'true-myth/maybe';
 import {
   getFormatter,
   numberWithCommas,
@@ -95,7 +95,7 @@ export default function Tooltip(props: TooltipProps) {
       };
 
       const opt = xyToData(e.offsetX, e.offsetY);
-      let data: UnwrapMaybe<typeof opt>;
+      let data: Unwrapped<typeof opt>;
 
       // waiting on
       // https://github.com/true-myth/true-myth/issues/279

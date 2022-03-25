@@ -1,7 +1,7 @@
 const path = require('path');
 
 module.exports = {
-  plugins: ['prettier', 'css-modules'],
+  plugins: ['prettier', 'css-modules', 'import'],
   extends: [
     'airbnb-typescript-prettier',
     'plugin:cypress/recommended',
@@ -79,6 +79,9 @@ module.exports = {
     ],
     // otherwise it conflincts with ts411
     'dot-notation': 'off',
+
+    // disable relative imports to force people to use '@webapp'
+    'import/no-relative-packages': 'error',
   },
   env: {
     browser: true,
