@@ -1,4 +1,4 @@
-import ShowModal from '@ui/Modals';
+import ShowModal from '@webapp/ui/Modals';
 
 function confirmDelete(object: string, onConfirm: () => void) {
   ShowModal({

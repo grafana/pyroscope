@@ -1,7 +1,7 @@
 /* eslint-disable import/prefer-default-export */
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { store } from '@ui/Notifications';
-import type { NotificationOptions } from '@ui/Notifications';
+import { store } from '@webapp/ui/Notifications';
+import type { NotificationOptions } from '@webapp/ui/Notifications';
 
 export const addNotification = createAsyncThunk(
   'notifications/add',

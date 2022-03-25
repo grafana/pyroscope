@@ -1,4 +1,4 @@
-import { Maybe } from '@utils/fp';
+import { Maybe } from '@webapp/util/fp';
 
 export function appNameToQuery(appName: string) {
   return `${appName}{}`;

@@ -1,4 +1,4 @@
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import { fetchAppNames } from './appNames';
 import { setupServer, rest } from './testUtils';
 

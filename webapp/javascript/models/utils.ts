@@ -1,5 +1,5 @@
 import type { ZodError, ZodType } from 'zod';
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 
 /**
  * modelToResult converts a (most likely) zod model into a Result

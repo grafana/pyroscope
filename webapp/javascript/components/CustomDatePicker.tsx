@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { isAfter, isSameSecond } from 'date-fns';
 import DatePicker from 'react-datepicker';
-import Button from '@ui/Button';
+import Button from '@webapp/ui/Button';
 import { formatAsOBject } from '@webapp/util/formatDate';
 
 interface CustomDatePickerProps {
