@@ -10,6 +10,7 @@ module.exports = {
     '**/?(*.)+(spec|test).+(ts|tsx|js)',
   ],
   moduleNameMapper: {
+    '@webapp(.*)$': path.join(__dirname, 'webapp/javascript/$1'),
     '@utils(.*)$': path.join(__dirname, 'webapp/javascript/util/$1'),
     '@models(.*)$': path.join(__dirname, 'webapp/javascript/models/$1'),
     '@ui(.*)$': path.join(__dirname, 'webapp/javascript/ui/$1'),

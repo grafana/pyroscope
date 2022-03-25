@@ -10,6 +10,7 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "paths": {
+      "@webapp/*": ["./webapp/javascript/*"],
       "@utils/*": ["./webapp/javascript/util/*"],
       "@models/*": ["./webapp/javascript/models/*"],
       "@ui/*": ["./webapp/javascript/ui/*"],

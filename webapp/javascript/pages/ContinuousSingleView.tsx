@@ -1,18 +1,18 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import Box from '@ui/Box';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import Box from '@webapp/ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import {
   fetchSingleView,
   setDateRange,
-} from '@pyroscope/redux/reducers/continuous';
-import TimelineChartWrapper from '../components/TimelineChartWrapper';
-import Toolbar from '../components/Toolbar';
-import Footer from '../components/Footer';
-import ExportData from '../components/ExportData';
-import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+} from '@webapp/redux/reducers/continuous';
+import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
+import Toolbar from '@webapp/components/Toolbar';
+import Footer from '@webapp/components/Footer';
+import ExportData from '@webapp/components/ExportData';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 
 function ContinuousSingleView() {
   const dispatch = useAppDispatch();
