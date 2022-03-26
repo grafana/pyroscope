@@ -14,10 +14,11 @@ type Config struct {
 	cacheEvictThreshold   float64
 	cacheEvictVolume      float64
 	maxNodesSerialization int
-	retention             time.Duration
 	hideApplications      []string
-	retentionLevels       config.RetentionLevels
 	inMemory              bool
+	retention             time.Duration
+	retentionExemplars    time.Duration
+	retentionLevels       config.RetentionLevels
 }
 
 // NewConfig returns a new storage config from a server config
@@ -34,6 +35,7 @@ func NewConfig(server *config.Server) *Config {
 		cacheEvictVolume:      server.CacheEvictVolume,
 		maxNodesSerialization: server.MaxNodesSerialization,
 		retention:             server.Retention,
+		retentionExemplars:    server.ExemplarsRetention,
 		retentionLevels:       server.RetentionLevels,
 		hideApplications:      server.HideApplications,
 		inMemory:              false,
