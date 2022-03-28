@@ -3,8 +3,8 @@ import {
   createAsyncThunk,
   combineReducers,
 } from '@reduxjs/toolkit';
-import { Users, type User } from '@models/users';
-import { APIKey, APIKeys } from '@models/apikeys';
+import { Users, type User } from '@webapp/models/users';
+import { APIKey, APIKeys } from '@webapp/models/apikeys';
 
 import {
   fetchUsers,
@@ -13,12 +13,12 @@ import {
   disableUser as disableUserAPI,
   changeUserRole as changeUserRoleAPI,
   deleteUser as deleteUserAPI,
-} from '@pyroscope/services/users';
+} from '@webapp/services/users';
 import {
   fetchAPIKeys,
   createAPIKey as createAPIKeyAPI,
   deleteAPIKey as deleteAPIKeyAPI,
-} from '@pyroscope/services/apiKeys';
+} from '@webapp/services/apiKeys';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 

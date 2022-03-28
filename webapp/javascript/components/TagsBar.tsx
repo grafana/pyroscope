@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Button from '@ui/Button';
+import Button from '@webapp/ui/Button';
 import 'react-dom';
-import { TagsState } from '@pyroscope/redux/reducers/continuous';
+import { TagsState } from '@webapp/redux/reducers/continuous';
 import Dropdown, {
   SubMenu,
   MenuItem,
   FocusableItem,
   MenuGroup,
-} from '@ui/Dropdown';
-import { Prism } from '../util/prism';
+} from '@webapp/ui/Dropdown';
+import { Prism } from '@webapp/util/prism';
 import styles from './TagsBar.module.css';
 
 interface TagsBarProps {

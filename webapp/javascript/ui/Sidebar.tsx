@@ -11,7 +11,7 @@ import {
   MenuItemProps,
   SubMenuProps,
 } from 'react-pro-sidebar';
-import { IconProps } from '@ui/Icon';
+import { IconProps } from '@webapp/ui/Icon';
 
 import styles from './Sidebar.module.css';
 import './Sidebar.scss';

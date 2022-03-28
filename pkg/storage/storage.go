@@ -293,18 +293,13 @@ func (s *Storage) retentionTask() {
 }
 
 func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
-	rp := segment.NewRetentionPolicy().SetAbsolutePeriod(s.config.retention)
-	levels := []time.Duration{
-		s.config.retentionLevels.Zero,
-		s.config.retentionLevels.One,
-		s.config.retentionLevels.Two,
-	}
-	for i, p := range levels {
-		if p != 0 {
-			rp.SetLevelPeriod(i, p)
-		}
-	}
-	return rp
+	return segment.NewRetentionPolicy().
+		SetAbsolutePeriod(s.config.retention).
+		SetExemplarsRetentionPeriod(s.config.retentionExemplars).
+		SetLevels(
+			s.config.retentionLevels.Zero,
+			s.config.retentionLevels.One,
+			s.config.retentionLevels.Two)
 }
 
 func (s *Storage) databases() []*db {

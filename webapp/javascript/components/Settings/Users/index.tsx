@@ -3,18 +3,18 @@ import { useHistory } from 'react-router-dom';
 
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 
-import Button from '@ui/Button';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import Button from '@webapp/ui/Button';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   reloadUsers,
   selectUsers,
   enableUser,
   disableUser,
   deleteUser,
-} from '@pyroscope/redux/reducers/settings';
-import { selectCurrentUser } from '@pyroscope/redux/reducers/user';
-import { addNotification } from '@pyroscope/redux/reducers/notifications';
-import { type User } from '@models/users';
+} from '@webapp/redux/reducers/settings';
+import { selectCurrentUser } from '@webapp/redux/reducers/user';
+import { addNotification } from '@webapp/redux/reducers/notifications';
+import { type User } from '@webapp/models/users';
 import UserTableItem from './UserTableItem';
 
 import userStyles from './Users.module.css';

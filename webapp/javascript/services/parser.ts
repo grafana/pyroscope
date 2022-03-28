@@ -1,6 +1,6 @@
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import type { ZodError } from 'zod';
-import { modelToResult } from '@models/utils';
+import { modelToResult } from '@webapp/models/utils';
 import { request, RequestError } from './base';
 
 type Response = Awaited<ReturnType<typeof request>>;

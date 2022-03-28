@@ -10,7 +10,9 @@ import { faCompressAlt } from '@fortawesome/free-solid-svg-icons/faCompressAlt';
 import { DebounceInput } from 'react-debounce-input';
 import { Maybe } from 'true-myth';
 import useResizeObserver from '@react-hook/resize-observer';
-import Button from '../../../webapp/javascript/ui/Button';
+// until ui is moved to its own package this should do it
+// eslint-disable-next-line import/no-extraneous-dependencies
+import Button from '@webapp/ui/Button';
 import { FitModes, HeadMode, TailMode } from './fitMode/fitMode';
 import { ViewTypes } from './FlameGraph/FlameGraphComponent/viewTypes';
 

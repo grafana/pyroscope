@@ -115,7 +115,7 @@ var _ = Describe("Profiles retention policy", func() {
 					Val:       tree,
 				})).ToNot(HaveOccurred())
 
-				rp := &segment.RetentionPolicy{AbsoluteTime: t3}
+				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
 				Expect(s.EnforceRetentionPolicy(rp)).ToNot(HaveOccurred())
 
 				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{

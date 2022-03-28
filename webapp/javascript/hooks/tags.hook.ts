@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import { selectAppTags, fetchTags } from '@pyroscope/redux/reducers/continuous';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import { selectAppTags, fetchTags } from '@webapp/redux/reducers/continuous';
 
 // useTags handle loading tags when query changes
 export default function useTags({

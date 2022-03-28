@@ -1,7 +1,7 @@
-import type { RequestError, RequestNotOkError } from '@pyroscope/services/base';
+import type { RequestError, RequestNotOkError } from '@webapp/services/base';
 import { ZodError } from 'zod';
-import { addNotification } from '@pyroscope/redux/reducers/notifications';
-import { useAppDispatch } from '@pyroscope/redux/hooks';
+import { addNotification } from '@webapp/redux/reducers/notifications';
+import { useAppDispatch } from '@webapp/redux/hooks';
 
 /**
  * handleError handles service errors

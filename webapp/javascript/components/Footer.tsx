@@ -2,6 +2,7 @@ import React from 'react';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDownload } from '@fortawesome/free-solid-svg-icons/faDownload';
+// eslint-disable-next-line import/no-relative-packages
 import { version } from '../../../package.json';
 
 const START_YEAR = '2020';

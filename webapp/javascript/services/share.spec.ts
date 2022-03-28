@@ -1,4 +1,4 @@
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import { ZodError } from 'zod';
 import { shareWithFlamegraphDotcom } from './share';
 import { setupServer, rest } from './testUtils';

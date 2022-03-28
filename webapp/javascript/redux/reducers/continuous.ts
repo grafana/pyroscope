@@ -1,18 +1,18 @@
 import { Profile } from '@pyroscope/models';
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AppNames } from '@models/appNames';
-import { fetchAppNames } from '@pyroscope/services/appNames';
-import { appNameToQuery, queryToAppName } from '@utils/query';
+import { AppNames } from '@webapp/models/appNames';
+import { fetchAppNames } from '@webapp/services/appNames';
+import { appNameToQuery, queryToAppName } from '@webapp/util/query';
 import {
   renderSingle,
   RenderOutput,
   renderDiff,
   RenderDiffResponse,
-} from '../../services/render';
-import { addNotification } from './notifications';
-import { Timeline } from '../../models/timeline';
-import * as tagsService from '../../services/tags';
+} from '@webapp/services/render';
+import { Timeline } from '@webapp/models/timeline';
+import * as tagsService from '@webapp/services/tags';
 import type { RootState } from '../store';
+import { addNotification } from './notifications';
 
 type SingleView =
   | { type: 'pristine'; profile?: Profile }

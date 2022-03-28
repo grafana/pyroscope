@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import Button from '@ui/Button';
-import Icon from '@ui/Icon';
+import Button from '@webapp/ui/Button';
+import Icon from '@webapp/ui/Icon';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
 import { faToggleOff } from '@fortawesome/free-solid-svg-icons/faToggleOff';
@@ -8,14 +8,11 @@ import { faToggleOn } from '@fortawesome/free-solid-svg-icons/faToggleOn';
 
 import { formatRelative } from 'date-fns';
 import cx from 'classnames';
-import Dropdown, { MenuItem } from '@ui/Dropdown';
-import {
-  reloadUsers,
-  changeUserRole,
-} from '@pyroscope/redux/reducers/settings';
-import { useAppDispatch } from '@pyroscope/redux/hooks';
-import confirmDelete from '../../ConfirmDelete';
-import { type User } from '../../../models/users';
+import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
+import { reloadUsers, changeUserRole } from '@webapp/redux/reducers/settings';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import confirmDelete from '@webapp/components/ConfirmDelete';
+import { type User } from '@webapp/models/users';
 import styles from './UserTableItem.module.css';
 
 function DisableButton(props: ShamefulAny) {

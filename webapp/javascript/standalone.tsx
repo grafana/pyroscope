@@ -1,7 +1,7 @@
 import ReactDOM from 'react-dom';
 import React from 'react';
-import Box from '@ui/Box';
-import { decodeFlamebearer } from '@models/flamebearer';
+import Box from '@webapp/ui/Box';
+import { decodeFlamebearer } from '@webapp/models/flamebearer';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import '@pyroscope/flamegraph/dist/index.css';
 import styles from './standalone.module.scss';

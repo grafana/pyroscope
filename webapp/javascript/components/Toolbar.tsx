@@ -3,14 +3,14 @@ import 'react-dom';
 
 import Spinner from 'react-svg-spinner';
 
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   selectIsLoadingData,
   selectAppTags,
   actions,
   fetchTags,
   fetchTagValues,
-} from '@pyroscope/redux/reducers/continuous';
+} from '@webapp/redux/reducers/continuous';
 import classNames from 'classnames';
 import DateRangePicker from './DateRangePicker';
 import RefreshButton from './RefreshButton';

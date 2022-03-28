@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import {
   actions,
   selectContinuousState,
-} from '@pyroscope/redux/reducers/continuous';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+} from '@webapp/redux/reducers/continuous';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 
 // usePopulateLeftRightQuery populates the left and right queries using the main query
 export default function usePopulateLeftRightQuery() {
