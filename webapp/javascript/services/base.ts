@@ -1,10 +1,10 @@
 /* eslint-disable max-classes-per-file */
 /* eslint-disable import/prefer-default-export */
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import type { ZodError } from 'zod';
-import { modelToResult } from '@models/utils';
+import { modelToResult } from '@webapp/models/utils';
 import { CustomError } from 'ts-custom-error';
-import basename from '../util/baseurl';
+import basename from '@webapp/util/baseurl';
 
 // RequestNotOkError refers to when the Response is not within the 2xx range
 export class RequestNotOkError extends CustomError {

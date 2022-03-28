@@ -1,4 +1,4 @@
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import { z, ZodError } from 'zod';
 import { modelToResult } from './utils';
 

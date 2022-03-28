@@ -1,5 +1,5 @@
-import { Result } from '@utils/fp';
-import { Target, parse } from '@models/targets';
+import { Result } from '@webapp/util/fp';
+import { Target, parse } from '@webapp/models/targets';
 import type { ZodError } from 'zod';
 import { request } from './base';
 import type { RequestError } from './base';

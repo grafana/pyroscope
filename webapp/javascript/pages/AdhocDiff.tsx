@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import { useAppDispatch, useOldRootSelector } from '@pyroscope/redux/hooks';
-import Box from '@ui/Box';
+import { useAppDispatch, useOldRootSelector } from '@webapp/redux/hooks';
+import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import classNames from 'classnames';
@@ -10,8 +10,8 @@ import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import { Profile } from '@pyroscope/models';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import FileList from '../components/FileList';
-import Footer from '../components/Footer';
+import FileList from '@webapp/components/FileList';
+import Footer from '@webapp/components/Footer';
 import {
   fetchAdhocProfiles,
   fetchAdhocProfileDiff,
@@ -19,12 +19,12 @@ import {
   setAdhocRightProfile,
   abortFetchAdhocProfileDiff,
   abortFetchAdhocProfiles,
-} from '../redux/actions';
+} from '@webapp/redux/actions';
 import 'react-tabs/style/react-tabs.css';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import ExportData from '@webapp/components/ExportData';
 import adhocStyles from './Adhoc.module.scss';
 import adhocComparisonStyles from './AdhocComparison.module.scss';
-import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
-import ExportData from '../components/ExportData';
 
 function AdhocDiff() {
   const dispatch = useAppDispatch();
@@ -100,8 +100,6 @@ function AdhocDiff() {
           )}
           {!isProfileLoading && (
             <FlamegraphRenderer
-              display="both"
-              viewType="diff"
               flamebearer={flamebearer}
               ExportData={
                 <ExportData

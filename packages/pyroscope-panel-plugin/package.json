@@ -1,12 +1,12 @@
 {
   "name": "@pyroscope/panel-plugin",
-  "version": "1.2.9",
+  "version": "1.2.12",
   "scripts": {
     "test": "jest",
     "build": "NODE_ENV=production webpack --config ../../scripts/webpack/webpack.panel.ts",
     "dev": "webpack --config ../../scripts/webpack/webpack.panel.ts --watch"
   },
   "dependencies": {
-    "@pyroscope/flamegraph": "^0.2.0"
+    "@pyroscope/flamegraph": "^0.2.3"
   }
 }

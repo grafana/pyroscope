@@ -8,7 +8,7 @@
 }
 .flamegraphContainer > *:nth-child(2) {
   margin-left: 8px;
-  width: 50%;
+  /*  width: 50%; */
 }
 
 .createdBy {
@@ -18,4 +18,27 @@
 }
 .createdBy a {
   color: #199bef !important;
+}
+
+.horizontal {
+  flex-direction: row;
+}
+
+.vertical {
+  /* reverse, since by default the table is on the left in the DOM */
+  flex-direction: column-reverse;
+}
+
+.panesWrapper {
+  //  margin: 0 -$pane-width;
+  display: flex;
+}
+
+.tablePane {
+  flex: 1;
+}
+
+// TODO: do this in the react side?
+.hidden {
+  display: none;
 }

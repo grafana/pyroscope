@@ -1,5 +1,5 @@
 import { Units } from '@pyroscope/models';
-import { deltaDiffWrapper } from '@utils/flamebearer';
+import { deltaDiffWrapper } from '@webapp/util/flamebearer';
 
 export type Flamebearer = {
   /**
@@ -29,7 +29,10 @@ export type Flamebearer = {
     | 'pyspy'
     | 'rbspy'
     | string;
-} & addTicks;
+  format: 'double' | 'single';
+  leftTicks?: number;
+  rightTicks?: number;
+};
 
 export type addTicks =
   | { format: 'double'; leftTicks: number; rightTicks: number }

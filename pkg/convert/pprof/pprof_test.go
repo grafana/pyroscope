@@ -80,3 +80,52 @@ var _ = Describe("pprof profile_id multiplexing", func() {
 		Expect(expectedTotal - actualTotal).To(Equal(expectedDiff))
 	})
 })
+
+var _ = Describe("custom pprof parsing", func() {
+	It("parses data correctly", func() {
+		p, err := readPprofFixture("testdata/heap-js.pprof")
+		Expect(err).ToNot(HaveOccurred())
+
+		ingester := new(mockIngester)
+		spyName := "spy-name"
+		now := time.Now()
+		start := now
+		end := now.Add(10 * time.Second)
+		labels := map[string]string{
+			"__name__": "app",
+			"foo":      "bar",
+		}
+
+		w := NewProfileWriter(ingester, labels, map[string]*tree.SampleTypeConfig{
+			"objects": {
+				Units:       "objects",
+				Aggregation: "avg",
+			},
+			"space": {
+				Units:       "bytes",
+				Aggregation: "avg",
+			},
+		})
+
+		err = w.WriteProfile(start, end, spyName, p)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(ingester.actual).To(HaveLen(2))
+
+		input := ingester.actual[0]
+		Expect(input.SpyName).To(Equal(spyName))
+		Expect(input.StartTime).To(Equal(start))
+		Expect(input.EndTime).To(Equal(end))
+		Expect(input.Val.Samples()).To(Equal(uint64(66148)))
+		Expect(input.Key.Normalized()).To(Equal("app.objects{foo=bar}"))
+		Expect(input.Val.String()).To(ContainSubstring("parserOnHeadersComplete;parserOnIncoming 2428"))
+
+		input = ingester.actual[1]
+		Expect(input.SpyName).To(Equal(spyName))
+		Expect(input.StartTime).To(Equal(start))
+		Expect(input.EndTime).To(Equal(end))
+		Expect(input.Val.Samples()).To(Equal(uint64(6388384)))
+		Expect(input.Key.Normalized()).To(Equal("app.space{foo=bar}"))
+		Expect(input.Val.String()).To(ContainSubstring("parserOnHeadersComplete;parserOnIncoming 524448"))
+	})
+})

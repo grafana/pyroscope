@@ -10,11 +10,7 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "paths": {
-      "@utils/*": ["./webapp/javascript/util/*"],
-      "@models/*": ["./webapp/javascript/models/*"],
-      "@ui/*": ["./webapp/javascript/ui/*"],
-      "@pyroscope/redux/*": ["./webapp/javascript/redux/*"],
-      "@pyroscope/services/*": ["./webapp/javascript/services/*"]
+      "@webapp/*": ["./webapp/javascript/*"]
     },
     "types": ["node"],
     "plugins": [{ "name": "typescript-plugin-css-modules" }],

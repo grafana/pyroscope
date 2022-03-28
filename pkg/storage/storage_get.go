@@ -86,7 +86,7 @@ func (s *Storage) GetContext(ctx context.Context, gi *GetInput) (*GetOutput, err
 		}
 		if len(ids) > 0 {
 			o := GetOutput{
-				SpyName:    "unknown",
+				SpyName:    "gospy",
 				Units:      "samples",
 				SampleRate: 100,
 				Tree:       tree.New(),

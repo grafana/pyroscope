@@ -28,6 +28,8 @@ func Decode(r io.Reader, p *tree.Profile) error {
 		}
 		r = gzipr
 		defer gzipr.Close()
+	} else {
+		r = br
 	}
 	if _, err = io.Copy(buf, r); err != nil {
 		return err

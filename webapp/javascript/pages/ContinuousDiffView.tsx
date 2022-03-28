@@ -1,18 +1,19 @@
-import React, { useEffect, useRef } from 'react';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import Box from '@ui/Box';
+import React, { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import Box from '@webapp/ui/Box';
 import {
   fetchDiffView,
   selectContinuousState,
   actions,
-} from '@pyroscope/redux/reducers/continuous';
+} from '@webapp/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import Toolbar from '../components/Toolbar';
-import Footer from '../components/Footer';
-import TimelineChartWrapper from '../components/TimelineChartWrapper';
-import InstructionText from '../components/InstructionText';
-import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
-import ExportData from '../components/ExportData';
+import Color from 'color';
+import Toolbar from '@webapp/components/Toolbar';
+import Footer from '@webapp/components/Footer';
+import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
+import InstructionText from '@webapp/components/InstructionText';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import ExportData from '@webapp/components/ExportData';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
@@ -80,18 +81,27 @@ function ComparisonDiffApp() {
       exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
     />
   );
-
-  const getTimelineData = () => {
+  const getTimeline = () => {
     switch (diffView.type) {
       case 'loaded':
       case 'reloading': {
-        return diffView.timeline;
+        return {
+          data: diffView.timeline,
+        };
       }
 
-      default:
-        return undefined;
+      default: {
+        return {
+          data: undefined,
+        };
+      }
     }
   };
+
+  // Purple
+  const leftColor = Color('rgb(200, 102, 204)');
+  // Blue
+  const rightColor = Color('rgb(19, 152, 246)');
 
   return (
     <div className="pyroscope-app">
@@ -100,23 +110,17 @@ function ComparisonDiffApp() {
         <TimelineChartWrapper
           data-testid="timeline-main"
           id="timeline-chart-diff"
-          viewSide="both"
-          timeline={getTimelineData()}
-          leftFrom={leftFrom}
-          leftUntil={leftUntil}
-          rightFrom={rightFrom}
-          rightUntil={rightUntil}
+          timelineA={getTimeline()}
           onSelect={(from, until) => {
             dispatch(actions.setFromAndUntil({ from, until }));
           }}
+          markings={{
+            left: { from: leftFrom, to: leftUntil, color: leftColor },
+            right: { from: rightFrom, to: rightUntil, color: rightColor },
+          }}
         />
         <Box>
-          <FlamegraphRenderer
-            display="both"
-            viewType="diff"
-            profile={profile}
-            ExportData={exportData}
-          >
+          <FlamegraphRenderer profile={profile} ExportData={exportData}>
             <div className="diff-instructions-wrapper">
               <div className="diff-instructions-wrapper-side">
                 <InstructionText viewType="diff" viewSide="left" />
@@ -125,14 +129,12 @@ function ComparisonDiffApp() {
                   data-testid="timeline-left"
                   key="timeline-chart-left"
                   id="timeline-chart-left"
-                  viewSide="left"
-                  timeline={getTimelineData()}
-                  leftFrom={leftFrom}
-                  leftUntil={leftUntil}
-                  rightFrom={rightFrom}
-                  rightUntil={rightUntil}
+                  timelineA={getTimeline()}
                   onSelect={(from, until) => {
                     dispatch(actions.setLeft({ from, until }));
+                  }}
+                  markings={{
+                    left: { from: leftFrom, to: leftUntil, color: leftColor },
                   }}
                 />
               </div>
@@ -143,14 +145,16 @@ function ComparisonDiffApp() {
                   data-testid="timeline-right"
                   key="timeline-chart-right"
                   id="timeline-chart-right"
-                  viewSide="right"
-                  leftFrom={leftFrom}
-                  leftUntil={leftUntil}
-                  rightFrom={rightFrom}
-                  rightUntil={rightUntil}
-                  timeline={getTimelineData()}
+                  timelineA={getTimeline()}
                   onSelect={(from, until) => {
                     dispatch(actions.setRight({ from, until }));
+                  }}
+                  markings={{
+                    right: {
+                      from: rightFrom,
+                      to: rightUntil,
+                      color: rightColor,
+                    },
                   }}
                 />
               </div>

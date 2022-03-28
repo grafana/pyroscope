@@ -1,6 +1,6 @@
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import type { ZodError } from 'zod';
-import { APIKeys, apikeyModel, apiKeysSchema } from '@models/apikeys';
+import { APIKeys, apikeyModel, apiKeysSchema } from '@webapp/models/apikeys';
 import { request, parseResponse } from './base';
 import type { RequestError } from './base';
 

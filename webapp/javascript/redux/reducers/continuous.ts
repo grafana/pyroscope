@@ -1,13 +1,17 @@
 import { Profile } from '@pyroscope/models';
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AppNames } from '@models/appNames';
-import { fetchAppNames } from '@pyroscope/services/appNames';
-import { appNameToQuery } from '@utils/query';
-import { renderSingle, RenderOutput, renderDiff } from '../../services/render';
-import { addNotification } from './notifications';
-import { Timeline } from '../../models/timeline';
-import * as tagsService from '../../services/tags';
+import { AppNames } from '@webapp/models/appNames';
+import { fetchAppNames } from '@webapp/services/appNames';
+import { appNameToQuery, queryToAppName } from '@webapp/util/query';
+import {
+  renderSingle,
+  RenderOutput,
+  renderDiff,
+} from '@webapp/services/render';
+import { Timeline } from '@webapp/models/timeline';
+import * as tagsService from '@webapp/services/tags';
 import type { RootState } from '../store';
+import { addNotification } from './notifications';
 
 type SingleView =
   | { type: 'pristine' }
@@ -87,7 +91,7 @@ type TagsData =
 
 // Tags really refer to each application
 // Should we nest them to an application?
-type Tags =
+export type TagsState =
   | { type: 'pristine'; tags: Record<string, TagsData> }
   | { type: 'loading'; tags: Record<string, TagsData> }
   | {
@@ -95,6 +99,10 @@ type Tags =
       tags: Record<string, TagsData>;
     }
   | { type: 'failed'; tags: Record<string, TagsData> };
+
+// TODO
+type appName = string;
+type Tags = Record<appName, TagsState>;
 
 interface ContinuousState {
   from: string;
@@ -104,6 +112,8 @@ interface ContinuousState {
   rightFrom: string;
   rightUntil: string;
   query: string;
+  leftQuery?: string;
+  rightQuery?: string;
   maxNodes: string;
   refreshToken?: string;
 
@@ -134,7 +144,7 @@ const initialState: ContinuousState = {
     left: { type: 'pristine' },
     right: { type: 'pristine' },
   },
-  tags: { type: 'pristine', tags: {} },
+  tags: {},
   appNames: {
     type: 'loaded',
     data: (window as ShamefulAny).initialState.appNames,
@@ -164,128 +174,81 @@ export const fetchSingleView = createAsyncThunk<
   return Promise.reject(res.error);
 });
 
-export const fetchInitialComparisonView = createAsyncThunk<
-  {
-    timeline: RenderOutput['timeline'];
-    left: RenderOutput;
-    right: RenderOutput;
-  },
-  null,
-  { state: { continuous: ContinuousState } }
->('continuous/initialComparisonView', async (_, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const [timeline, leftData, rightData] = await Promise.all([
-    renderSingle(state.continuous),
-
-    renderSingle({
-      ...state.continuous,
-
-      from: state.continuous.leftFrom,
-      until: state.continuous.leftUntil,
-    }),
-    renderSingle({
-      ...state.continuous,
-
-      from: state.continuous.rightFrom,
-      until: state.continuous.rightUntil,
-    }),
-  ]);
-
-  if (timeline.isOk && leftData.isOk && rightData.isOk) {
-    return Promise.resolve({
-      timeline: timeline.value.timeline,
-      left: leftData.value,
-      right: rightData.value,
-    });
-  }
-
-  const failures = [
-    timeline.isErr ? timeline : undefined,
-    leftData.isErr ? leftData : undefined,
-    rightData.isErr ? rightData : undefined,
-  ];
-
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: 'Failed to load comparison view data',
-      message: '',
-      additionalInfo: failures
-        .map((a) => a?.error.message || '')
-        .filter((a) => !!a),
-    })
-  );
-
-  return Promise.reject(failures.map((a) => a?.error));
-});
-
-export const fetchComparisonTimeline = createAsyncThunk<
-  RenderOutput['timeline'],
-  null,
-  { state: { continuous: ContinuousState } }
->('continuous/fetchComparisonTimeline', async (_, thunkAPI) => {
-  const state = thunkAPI.getState();
-  const res = await renderSingle(state.continuous);
-
-  if (res.isOk) {
-    return Promise.resolve(res.value.timeline);
-  }
-
-  thunkAPI.dispatch(
-    addNotification({
-      type: 'danger',
-      title: 'Failed to load comparison timeline',
-      message: res.error.message,
-    })
-  );
-
-  return Promise.reject(res.error);
-});
-
 export const fetchComparisonSide = createAsyncThunk<
   { side: 'left' | 'right'; data: RenderOutput },
-  { side: 'left' | 'right' },
+  { side: 'left' | 'right'; query: string },
   { state: { continuous: ContinuousState } }
->('continuous/fetchComparisonSide', async ({ side }, thunkAPI) => {
+>('continuous/fetchComparisonSide', async ({ side, query }, thunkAPI) => {
   const state = thunkAPI.getState();
 
-  const res = await (() => {
-    switch (side) {
-      case 'left': {
-        return renderSingle({
-          ...state.continuous,
+  // We have to request the data for a given time range, to populate the flamegraph
+  // And also request the timeline for the PARENT time range, to populate the timeline
+  const res = await Promise.all(
+    (() => {
+      switch (side) {
+        case 'left': {
+          return [
+            renderSingle({
+              ...state.continuous,
+              query,
+            }),
+            renderSingle({
+              ...state.continuous,
+              // TODO: what if there's no query? we should return nothing
+              // maybe we should take the query as an action payload
+              //              query: state.continuous.leftQuery || '',
+              query,
 
-          from: state.continuous.leftFrom,
-          until: state.continuous.leftUntil,
-        });
-      }
-      case 'right': {
-        return renderSingle({
-          ...state.continuous,
+              from: state.continuous.leftFrom,
+              until: state.continuous.leftUntil,
+            }),
+          ];
+        }
+        case 'right': {
+          return [
+            renderSingle({
+              ...state.continuous,
+              query,
+              //              query: state.continuous.rightQuery || '',
+            }),
+            renderSingle({
+              ...state.continuous,
 
-          from: state.continuous.rightFrom,
-          until: state.continuous.rightUntil,
-        });
+              // TODO
+              //              query: state.continuous.rightQuery || '',
+              query,
+              from: state.continuous.rightFrom,
+              until: state.continuous.rightUntil,
+            }),
+          ];
+        }
+        default: {
+          throw new Error('Invalid side');
+        }
       }
-      default: {
-        throw new Error('Invalid side');
-      }
-    }
-  })();
+    })()
+  );
 
-  if (res.isOk) {
-    return Promise.resolve({ side, data: res.value });
+  if (res[0].isOk && res[1].isOk) {
+    return Promise.resolve({
+      side,
+      data: {
+        timeline: res[0].value.timeline,
+        profile: res[1].value.profile,
+      },
+    });
   }
 
   thunkAPI.dispatch(
     addNotification({
       type: 'danger',
       title: `Failed to load the ${side} side comparison`,
-      message: res.error.message,
+      message: '',
+      additionalInfo: [res[0].error.message, res[1].error.message],
     })
   );
 
-  return Promise.reject(res.error);
+  return Promise.reject(res.filter((a) => a.isErr).map((a) => a.error));
 });
 
 export const fetchDiffView = createAsyncThunk<
@@ -314,10 +277,22 @@ export const fetchDiffView = createAsyncThunk<
 export const fetchTags = createAsyncThunk(
   'continuous/fetchTags',
   async (query: ContinuousState['query'], thunkAPI) => {
+    const appName = queryToAppName(query);
+    if (appName.isNothing) {
+      return Promise.reject(
+        new Error(
+          `Query '${appName}' is not a valid app, and it can't have any tags`
+        )
+      );
+    }
+
     const res = await tagsService.fetchTags(query);
 
     if (res.isOk) {
-      return Promise.resolve(res.value);
+      return Promise.resolve({
+        appName: appName.value,
+        tags: res.value,
+      });
     }
 
     thunkAPI.dispatch(
@@ -338,6 +313,15 @@ export const fetchTagValues = createAsyncThunk(
     payload: { query: ContinuousState['query']; label: string },
     thunkAPI
   ) => {
+    const appName = queryToAppName(payload.query);
+    if (appName.isNothing) {
+      return Promise.reject(
+        new Error(
+          `Query '${appName}' is not a valid app, and it can't have any tags`
+        )
+      );
+    }
+
     const res = await tagsService.fetchLabelValues(
       payload.label,
       payload.query
@@ -345,6 +329,7 @@ export const fetchTagValues = createAsyncThunk(
 
     if (res.isOk) {
       return Promise.resolve({
+        appName: appName.value,
         label: payload.label,
         values: res.value,
       });
@@ -416,6 +401,12 @@ export const continuousSlice = createSlice({
         return;
       }
       state.query = action.payload;
+    },
+    setLeftQuery(state, action: PayloadAction<string>) {
+      state.leftQuery = action.payload;
+    },
+    setRightQuery(state, action: PayloadAction<string>) {
+      state.rightQuery = action.payload;
     },
     setLeftFrom(state, action: PayloadAction<string>) {
       state.leftFrom = action.payload;
@@ -505,90 +496,6 @@ export const continuousSlice = createSlice({
     /*****************************/
     /*      Comparison View      */
     /*****************************/
-    builder.addCase(fetchInitialComparisonView.pending, (state) => {
-      state.comparisonView.timeline =
-        state.comparisonView.timeline.type === 'loaded'
-          ? {
-              ...state.comparisonView.timeline,
-              type: 'reloading',
-            }
-          : {
-              type: 'loading',
-            };
-
-      state.comparisonView.left =
-        state.comparisonView.left.type === 'loaded'
-          ? {
-              ...state.comparisonView.left,
-              type: 'reloading',
-            }
-          : {
-              type: 'loading',
-            };
-
-      state.comparisonView.right =
-        state.comparisonView.right.type === 'loaded'
-          ? {
-              ...state.comparisonView.right,
-              type: 'reloading',
-            }
-          : {
-              type: 'loading',
-            };
-    });
-
-    builder.addCase(fetchInitialComparisonView.fulfilled, (state, action) => {
-      state.comparisonView.timeline = {
-        type: 'loaded',
-        data: action.payload.timeline,
-      };
-      state.comparisonView.left = {
-        ...action.payload.left,
-        type: 'loaded',
-      };
-      state.comparisonView.right = {
-        ...action.payload.right,
-        type: 'loaded',
-      };
-    });
-
-    builder.addCase(fetchInitialComparisonView.rejected, (state) => {
-      // it failed to load for the first time, so far all effects it's pristine
-      state.comparisonView.timeline = { type: 'pristine' };
-      state.comparisonView.left = { type: 'pristine' };
-      state.comparisonView.right = { type: 'pristine' };
-    });
-
-    builder.addCase(fetchComparisonTimeline.fulfilled, (state, action) => {
-      state.comparisonView = {
-        ...state.comparisonView,
-        timeline: {
-          data: action.payload,
-          type: 'loaded',
-        },
-      };
-    });
-
-    builder.addCase(fetchComparisonSide.pending, (state, action) => {
-      const side = state.comparisonView[action.meta.arg.side];
-      switch (side.type) {
-        case 'loaded': {
-          state.comparisonView[action.meta.arg.side] = {
-            ...side,
-            type: 'reloading',
-          };
-          break;
-        }
-
-        default: {
-          state.comparisonView[action.meta.arg.side] = {
-            type: 'loading',
-          };
-          break;
-        }
-      }
-    });
-
     builder.addCase(fetchComparisonSide.fulfilled, (state, action) => {
       state.comparisonView[action.meta.arg.side] = {
         ...action.payload.data,
@@ -647,48 +554,28 @@ export const continuousSlice = createSlice({
       }
     });
 
-    builder.addCase(fetchTags.pending, (state) => {
-      state.tags = {
-        ...state.tags,
-        type: 'loading',
-      };
-    });
+    // TODO:
+    builder.addCase(fetchTags.pending, (state) => {});
 
     builder.addCase(fetchTags.fulfilled, (state, action) => {
-      const tags = action.payload.reduce((acc, tag) => {
+      // convert each
+      const tags = action.payload.tags.reduce((acc, tag) => {
         acc[tag] = { type: 'pristine' };
         return acc;
-      }, {} as ContinuousState['tags']['tags']);
+      }, {} as TagsState['tags']);
 
-      state.tags = {
+      state.tags[action.payload.appName] = {
         type: 'loaded',
         tags,
       };
     });
 
-    builder.addCase(fetchTags.rejected, (state) => {
-      state.tags = {
-        ...state.tags,
-        type: 'failed',
-      };
-    });
+    // TODO
+    builder.addCase(fetchTags.rejected, (state) => {});
 
     // TODO other cases
     builder.addCase(fetchTagValues.fulfilled, (state, action) => {
-      if (state.tags.type !== 'loaded') {
-        console.error('Loading tag values for an unloaded tags. Ignoring');
-        return;
-      }
-
-      if (!state.tags.tags[action.payload.label]) {
-        // We are loading tag values for a non existent tag
-        console.error(
-          `Loaded labels values for non existing label: '${action.payload.label}'. Ignoring`
-        );
-        return;
-      }
-
-      state.tags.tags[action.payload.label] = {
+      state.tags[action.payload.appName].tags[action.payload.label] = {
         type: 'loaded',
         values: action.payload.values,
       };
@@ -713,12 +600,6 @@ export const selectContinuousState = (state: RootState) => state.continuous;
 export default continuousSlice.reducer;
 export const { actions } = continuousSlice;
 export const { setDateRange, setQuery } = continuousSlice.actions;
-export const selectLabelsList = (state: RootState) => {
-  return Object.keys(state.continuous.tags.tags);
-};
-export const selectLabels = (state: RootState) => {
-  return state.continuous.tags.tags;
-};
 export const selectApplicationName = (state: RootState) => {
   return state.continuous.query.split('{')[0];
 };
@@ -743,4 +624,20 @@ export const selectIsLoadingData = (state: RootState) => {
     // Diff
     loadingStates.includes(state.continuous.diffView.type)
   );
+};
+
+export const selectAppTags = (query?: string) => (state: RootState) => {
+  if (query) {
+    const appName = queryToAppName(query);
+    if (appName.isJust) {
+      if (state.continuous.tags[appName.value]) {
+        return state.continuous.tags[appName.value];
+      }
+    }
+  }
+
+  return {
+    type: 'pristine',
+    tags: {},
+  } as TagsState;
 };
