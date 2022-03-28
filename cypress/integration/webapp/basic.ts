@@ -272,7 +272,7 @@ describe('basic test', () => {
         .should('not.be.visible');
     });
 
-    it.only('works in diff view', () => {
+    it('works in diff view', () => {
       cy.intercept('**/render*', {
         fixture: 'simple-golang-app-cpu-diff.json',
         times: 3,
@@ -282,6 +282,8 @@ describe('basic test', () => {
         '/comparison-diff?query=testapp%7B%7D&rightQuery=testapp%7B%7D&leftQuery=testapp%7B%7D&leftFrom=1&leftUntil=1&rightFrom=1&rightUntil=1&from=now-5m'
       );
 
+      cy.wait('@render');
+      cy.wait('@render');
       cy.wait('@render');
 
       // This test has a race condition, since it does not wait for the canvas to be rendered
