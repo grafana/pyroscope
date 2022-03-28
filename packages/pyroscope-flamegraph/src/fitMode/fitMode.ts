@@ -5,16 +5,6 @@ export type FitModes = typeof TailMode | typeof HeadMode;
 
 const margin = 3;
 
-/**
- * Returns a text and margin left used to write text into a canvas rectangle
- *
- * @param {FitModes} mode -
- * @param {number} charSize - Size in pixels of an individual character. Assumes it's a monospace font.
- * @param {number} rectWidth - Width in pixels of the rectangle
- * @param {string} fullText - The text that will be first tried.
- * @param {string} shortText - The text that willbe used when fullText can't fit. It's normally a substring of the original text.
- */
-
 interface fitToCanvasRectProps {
   mode: FitModes;
 
