@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 import express from 'express';
 import morgan from 'morgan';
 
-import Pyroscope from 'pyroscope';
+import Pyroscope from '@pyroscope/nodejs';
 
 const port = process.env['PORT'] || 3000;
 
