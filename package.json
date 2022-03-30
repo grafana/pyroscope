@@ -1,6 +1,6 @@
 {
   "author": "Pyroscope Team",
-  "name": "pyroscope-lerna",
+  "name": "pyroscope-oss",
   "private": true,
   "version": "0.13.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
