@@ -22,7 +22,7 @@ import (
 func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		ctrl.loginGet(w, r)
+		ctrl.indexHandler()(w, r)
 	case http.MethodPost:
 		ctrl.loginPost(w, r)
 	default:
@@ -82,7 +82,7 @@ func (ctrl *Controller) loginPost(w http.ResponseWriter, r *http.Request) {
 func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		ctrl.signupGet(w, r)
+		ctrl.indexHandler()(w, r)
 	case http.MethodPost:
 		ctrl.signupPost(w, r)
 	default:

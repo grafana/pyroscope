@@ -16,6 +16,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/updates"
 )
 
+//revive:disable-next-line:cognitive-complexity to be refactored
 func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	fs := http.FileServer(ctrl.dir)
 	return func(rw http.ResponseWriter, r *http.Request) {
@@ -46,6 +47,8 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 			ctrl.renderIndexPage(rw, r)
 		} else if path == "/service-discovery" {
 			ctrl.statsInc("service-discovery")
+			ctrl.renderIndexPage(rw, r)
+		} else if path == "/login" || path == "/signup" {
 			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)

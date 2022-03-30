@@ -22,8 +22,9 @@ import ServiceDiscoveryApp from './components/ServiceDiscoveryApp';
 import ServerNotifications from './components/ServerNotifications';
 // since this style is practically all pages
 import '@pyroscope/flamegraph/dist/index.css';
-// global css variables
-// import './variables.css';
+
+import SignInPage from './pages/IntroPages/SignIn';
+import SignUpPage from './pages/IntroPages/SignUp';
 
 import history from './util/history';
 
@@ -45,36 +46,47 @@ function App() {
 
   return (
     <div className="app">
-      <Sidebar />
       <Switch>
-        <Route exact path="/">
-          <ContinuousSingleView />
+        <Route exact path="/login">
+          <SignInPage />
         </Route>
-        <Route path="/comparison">
-          <ContinuousComparisonView />
+        <Route exact path="/signup">
+          <SignUpPage />
         </Route>
-        <Route path="/comparison-diff">
-          <ContinuousDiffView />
-        </Route>
-        <Route path="/settings">
-          <Settings />
-        </Route>
-        <Route path="/service-discovery">
-          <ServiceDiscoveryApp />
-        </Route>
-        {isAdhocUIEnabled && (
+
+        <Switch>
           <>
-            <Route path="/adhoc-single">
-              <AdhocSingle />
+            <Sidebar />
+            <Route exact path="/">
+              <ContinuousSingleView />
             </Route>
-            <Route path="/adhoc-comparison">
-              <AdhocComparison />
+            <Route path="/comparison">
+              <ContinuousComparisonView />
             </Route>
-            <Route path="/adhoc-comparison-diff">
-              <AdhocDiff />
+            <Route path="/comparison-diff">
+              <ContinuousDiffView />
             </Route>
+            <Route path="/settings">
+              <Settings />
+            </Route>
+            <Route path="/service-discovery">
+              <ServiceDiscoveryApp />
+            </Route>
+            {isAdhocUIEnabled && (
+              <>
+                <Route path="/adhoc-single">
+                  <AdhocSingle />
+                </Route>
+                <Route path="/adhoc-comparison">
+                  <AdhocComparison />
+                </Route>
+                <Route path="/adhoc-comparison-diff">
+                  <AdhocDiff />
+                </Route>
+              </>
+            )}
           </>
-        )}
+        </Switch>
       </Switch>
     </div>
   );
