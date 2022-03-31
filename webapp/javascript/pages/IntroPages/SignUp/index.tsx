@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import cx from 'classnames';
 import { Link, useHistory } from 'react-router-dom';
-import InputField from '@ui/InputField';
-import StatusMessage from '@ui/StatusMessage';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import { signUp, logIn } from '@pyroscope/services/users';
+import InputField from '@webapp/ui/InputField';
+import StatusMessage from '@webapp/ui/StatusMessage';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import { signUp, logIn } from '@webapp/services/users';
 import {
   loadCurrentUser,
   selectCurrentUser,
-} from '@pyroscope/redux/reducers/user';
+} from '@webapp/redux/reducers/user';
 import inputStyles from '../InputGroup.module.css';
 import styles from '../IntroPages.module.css';
 import Divider from '../Divider';
