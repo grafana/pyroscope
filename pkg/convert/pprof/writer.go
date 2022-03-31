@@ -63,7 +63,11 @@ func (w *ProfileWriter) WriteProfile(startTime, endTime time.Time, spyName strin
 		}
 		pi.AggregationType = sampleTypeConfig.Aggregation
 		if sampleTypeConfig.Sampled && p.Period > 0 {
-			pi.SampleRate = uint32(time.Second / time.Duration(p.Period))
+			sampleUnit := time.Nanosecond
+			if p.StringTable[p.PeriodType.Unit] == "microseconds" {
+				sampleUnit = time.Microsecond
+			}
+			pi.SampleRate = uint32(time.Second / (sampleUnit * time.Duration(p.Period)))
 		}
 		if sampleTypeConfig.DisplayName != "" {
 			sampleType = sampleTypeConfig.DisplayName

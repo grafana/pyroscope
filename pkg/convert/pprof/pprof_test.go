@@ -39,6 +39,7 @@ var _ = Describe("pprof parsing", func() {
 		Expect(input.SpyName).To(Equal(spyName))
 		Expect(input.StartTime).To(Equal(start))
 		Expect(input.EndTime).To(Equal(end))
+		Expect(input.SampleRate).To(Equal(uint32(100)))
 		Expect(input.Val.Samples()).To(Equal(uint64(47)))
 		Expect(input.Key.Normalized()).To(Equal("app.cpu{foo=bar}"))
 		Expect(input.Val.String()).To(ContainSubstring("runtime.main;main.main;main.slowFunction;main.work 1"))
