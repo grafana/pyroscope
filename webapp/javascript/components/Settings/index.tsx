@@ -37,6 +37,7 @@ function Settings(props: ShamefulAny) {
               className={(isActive) =>
                 cx({ [styles.navLink]: true, [styles.navLinkActive]: isActive })
               }
+              data-testid="settings-profiletab"
             >
               <Icon icon={faSlidersH} /> Profile
             </NavLink>
@@ -52,6 +53,7 @@ function Settings(props: ShamefulAny) {
                       [styles.navLinkActive]: isActive,
                     })
                   }
+                  data-testid="settings-changepasswordtab"
                 >
                   <Icon icon={faLock} /> Change Password
                 </NavLink>
@@ -69,6 +71,7 @@ function Settings(props: ShamefulAny) {
                       [styles.navLinkActive]: isActive,
                     })
                   }
+                  data-testid="settings-userstab"
                 >
                   <Icon icon={faUserAlt} /> Users
                 </NavLink>
@@ -82,6 +85,7 @@ function Settings(props: ShamefulAny) {
                       [styles.navLinkActive]: isActive,
                     })
                   }
+                  data-testid="settings-apikeystab"
                 >
                   <Icon icon={faKey} /> API keys
                 </NavLink>
