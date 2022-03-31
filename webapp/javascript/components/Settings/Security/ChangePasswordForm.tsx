@@ -1,26 +1,26 @@
 import React, { useState } from 'react';
-import Button from '@ui/Button';
+import Button from '@webapp/ui/Button';
 
-import { useAppDispatch } from '@pyroscope/redux/hooks';
+import { useAppDispatch } from '@webapp/redux/hooks';
 
-import { changeMyPassword } from '@pyroscope/redux/reducers/user';
-import { addNotification } from '@pyroscope/redux/reducers/notifications';
-import StatusMessage from '@ui/StatusMessage';
-import InputField from '@ui/InputField';
+import { changeMyPassword } from '@webapp/redux/reducers/user';
+import { addNotification } from '@webapp/redux/reducers/notifications';
+import StatusMessage from '@webapp/ui/StatusMessage';
+import InputField from '@webapp/ui/InputField';
 
-function ChangePasswordForm(props) {
+function ChangePasswordForm(props: ShamefulAny) {
   const { user } = props;
-  const [form, setForm] = useState({ errors: [] });
+  const [form, setForm] = useState<ShamefulAny>({ errors: [] });
   const dispatch = useAppDispatch();
   if (user.isExternal) {
     return null;
   }
 
-  const handleChange = (e) => {
+  const handleChange = (e: ShamefulAny) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleFormSubmit = (evt) => {
+  const handleFormSubmit = (evt: ShamefulAny) => {
     evt.preventDefault();
     if (form.password !== form.passwordAgain) {
       return setForm({ errors: ['Passwords must match'] });

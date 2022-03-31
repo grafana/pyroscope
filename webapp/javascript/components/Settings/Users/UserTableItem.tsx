@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import Button from '@ui/Button';
-import Icon from '@ui/Icon';
+import Button from '@webapp/ui/Button';
+import Icon from '@webapp/ui/Icon';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
 import { faToggleOff } from '@fortawesome/free-solid-svg-icons/faToggleOff';
@@ -8,17 +8,14 @@ import { faToggleOn } from '@fortawesome/free-solid-svg-icons/faToggleOn';
 
 import { formatRelative } from 'date-fns';
 import cx from 'classnames';
-import Dropdown, { MenuItem } from '@ui/Dropdown';
-import {
-  reloadUsers,
-  changeUserRole,
-} from '@pyroscope/redux/reducers/settings';
-import { useAppDispatch } from '@pyroscope/redux/hooks';
-import confirmDelete from '@ui/Modals/ConfirmDelete';
-import { type User } from '../../../models/users';
+import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
+import { reloadUsers, changeUserRole } from '@webapp/redux/reducers/settings';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import confirmDelete from '@webapp/components/ConfirmDelete';
+import { type User } from '@webapp/models/users';
 import styles from './UserTableItem.module.css';
 
-function DisableButton(props) {
+function DisableButton(props: ShamefulAny) {
   const { user, onDisable } = props;
   const icon = user.isDisabled ? faToggleOff : faToggleOn;
   return (
@@ -28,13 +25,14 @@ function DisableButton(props) {
   );
 }
 
-function EditRoleDropdown(props) {
+// TODO: type this correctly
+function EditRoleDropdown(props: ShamefulAny) {
   const { user } = props;
   const { role } = user;
   const dispatch = useAppDispatch();
   const [status, setStatus] = useState(false);
 
-  const handleEdit = (evt) => {
+  const handleEdit = (evt: ShamefulAny) => {
     if (evt.value !== user.role) {
       dispatch(changeUserRole({ id: user.id, role: evt.value }))
         .unwrap()
@@ -54,7 +52,7 @@ function EditRoleDropdown(props) {
   );
 }
 
-function DeleteButton(props) {
+function DeleteButton(props: ShamefulAny) {
   const { onDelete, user } = props;
 
   const handleDeleteClick = () => {
@@ -70,7 +68,7 @@ function DeleteButton(props) {
   );
 }
 
-function UserTableItem(props) {
+function UserTableItem(props: ShamefulAny) {
   const { user, onDisable, isCurrent, onDelete } = props;
   const { id, isDisabled, fullName, role, updatedAt, email, name } =
     user as User;

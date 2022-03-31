@@ -22,7 +22,7 @@ describe('API tests', () => {
   it('tests /render-diff endpoint', () => {
     cy.request(
       'GET',
-      '/render-diff?from=now-5m&until=now&query=pyroscope.server.alloc_objects{}&max-nodes=1024&leftFrom=now-1h&leftUntil=now-30m&rightFrom=now-30m&rightUntil=now&format=json'
+      'http://localhost:4040/comparison-diff?query=pyroscope.server.cpu%7B%7D&rightQuery=pyroscope.server.cpu%7B%7D&leftQuery=pyroscope.server.cpu%7B%7D&leftFrom=1648154123&leftUntil=1648154128&rightFrom=1648154123&rightUntil=1648154129&from=1648154091&until=1648154131'
     );
   });
 });

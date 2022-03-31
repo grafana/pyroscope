@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
@@ -12,27 +13,24 @@ import (
 )
 
 func (s *Storage) EnforceRetentionPolicy(rp *segment.RetentionPolicy) error {
-	if rp.LowerTimeBoundary().IsZero() {
-		return nil
-	}
-
-	// It may make sense running it concurrently with some throttling.
 	s.logger.Debug("enforcing retention policy")
 	if !rp.AbsoluteTime.IsZero() {
-		if err := s.profiles.truncateBefore(context.TODO(), rp.AbsoluteTime); err != nil {
-			s.logger.WithError(err).Error("failed to truncate profiles storage")
+		// It may make sense running it concurrently with some throttling.
+		err := s.iterateOverAllSegments(func(k *segment.Key) error {
+			return s.deleteSegmentData(k, rp)
+		})
+		if errors.Is(err, errClosed) {
+			s.logger.Info("enforcing canceled")
+			return nil
+		}
+		return err
+	}
+	if !rp.ExemplarsRetentionTime.IsZero() {
+		if err := s.profiles.truncateBefore(context.TODO(), rp.ExemplarsRetentionTime); err != nil {
+			return fmt.Errorf("failed to truncate profiles storage: %w", err)
 		}
 	}
-	err := s.iterateOverAllSegments(func(k *segment.Key) error {
-		return s.deleteSegmentData(k, rp)
-	})
-
-	if errors.Is(err, errClosed) {
-		s.logger.Info("enforcing canceled")
-		err = nil
-	}
-
-	return err
+	return nil
 }
 
 func (s *Storage) deleteSegmentData(k *segment.Key, rp *segment.RetentionPolicy) error {

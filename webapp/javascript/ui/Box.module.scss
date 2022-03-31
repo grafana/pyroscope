@@ -1,6 +1,6 @@
 .box {
-  background-color: #212124;
-  border: 1px solid #141414;
+  background-color: var(--ps-c-gray);
+  border: 1px solid var(--ps-c-gray-dark-2);
   border-radius: 4px;
 
   display: inline-block;

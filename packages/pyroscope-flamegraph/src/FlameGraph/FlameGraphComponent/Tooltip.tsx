@@ -1,7 +1,7 @@
 import React from 'react';
 import { Maybe } from 'true-myth';
 import { Units } from '@pyroscope/models';
-import type { UnwrapMaybe } from '../../../../../webapp/javascript/util/fp';
+import type { Unwrapped } from 'true-myth/maybe';
 import {
   getFormatter,
   numberWithCommas,
@@ -63,7 +63,7 @@ export default function Tooltip(props: TooltipProps) {
   });
 
   const [style, setStyle] = React.useState<React.CSSProperties>();
-  const tooltipEl = React.useRef(null);
+  const tooltipEl = React.useRef<HTMLDivElement>(null);
 
   const { numTicks, sampleRate, units, leftTicks, rightTicks, palette } = props;
   const onMouseOut = () => {
@@ -78,6 +78,10 @@ export default function Tooltip(props: TooltipProps) {
     (e: MouseEvent) => {
       const formatter = getFormatter(numTicks, sampleRate, units);
 
+      if (!tooltipEl || !tooltipEl.current) {
+        throw new Error('Missing tooltipElement');
+      }
+
       const left = Math.min(
         e.clientX + 12,
         window.innerWidth - tooltipEl.current.clientWidth - 20
@@ -91,7 +95,7 @@ export default function Tooltip(props: TooltipProps) {
       };
 
       const opt = xyToData(e.offsetX, e.offsetY);
-      let data: UnwrapMaybe<typeof opt>;
+      let data: Unwrapped<typeof opt>;
 
       // waiting on
       // https://github.com/true-myth/true-myth/issues/279

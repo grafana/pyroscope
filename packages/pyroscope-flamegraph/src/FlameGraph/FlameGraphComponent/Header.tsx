@@ -10,15 +10,20 @@ interface HeaderProps {
 
   palette: FlamegraphPalette;
   setPalette: (p: FlamegraphPalette) => void;
-  ExportData: () => React.ReactElement;
+  //  ExportData: React.ReactElement | JSX.Element | JSX.Element[] | null;
+  //  ExportData: JSX.Element | null;
+  //  ExportData: React.ElementType | null;
+  //  ExportData?: JSX.Element;
+  ExportData?: React.ReactNode;
 }
 export default function Header(props: HeaderProps) {
-  const { format, units, ExportData, palette, setPalette } = props;
+  const { format, units, ExportData = <></>, palette, setPalette } = props;
 
   const unitsToFlamegraphTitle = {
     objects: 'amount of objects in RAM per function',
     bytes: 'amount of RAM per function',
     samples: 'CPU time per function',
+    '': '',
   };
 
   const getTitle = () => {
@@ -60,9 +65,7 @@ export default function Header(props: HeaderProps) {
   return (
     <div className={styles.flamegraphHeader}>
       <div>{title}</div>
-      <div className={styles.buttons}>
-        <ExportData />
-      </div>
+      {ExportData ? <div className={styles.buttons}>{ExportData}</div> : <></>}
     </div>
   );
 }

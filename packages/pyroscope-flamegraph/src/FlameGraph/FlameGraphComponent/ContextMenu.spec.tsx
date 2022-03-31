@@ -6,10 +6,10 @@ import userEvent from '@testing-library/user-event';
 
 import ContextMenu, { ContextMenuProps } from './ContextMenu';
 
-const { queryByRole, queryAllByRole } = screen;
+const { queryByRole, queryAllByRole, getByRole } = screen;
 
 function TestCanvas(props: Omit<ContextMenuProps, 'canvasRef'>) {
-  const canvasRef = React.useRef();
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   return (
     <>
@@ -52,7 +52,7 @@ describe('ContextMenu', () => {
     expect(queryByRole('menu')).toBeVisible();
     expect(queryAllByRole('menuitem')).toHaveLength(1);
 
-    userEvent.click(queryByRole('menuitem'));
+    userEvent.click(getByRole('menuitem'));
     expect(hasBeenClicked).toBe(true);
   });
 

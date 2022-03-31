@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { faWindowMaximize } from '@fortawesome/free-regular-svg-icons';
 import { faChartBar } from '@fortawesome/free-solid-svg-icons/faChartBar';
 import { faColumns } from '@fortawesome/free-solid-svg-icons/faColumns';
@@ -18,20 +18,22 @@ import Sidebar, {
   SidebarContent,
   SubMenu,
   Menu,
-} from '@ui/Sidebar';
-import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
+} from '@webapp/ui/Sidebar';
+import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import {
   selectSidebarCollapsed,
   collapseSidebar,
   uncollapseSidebar,
   recalculateSidebar,
-} from '@pyroscope/redux/reducers/ui';
+} from '@webapp/redux/reducers/ui';
 import { useLocation, NavLink } from 'react-router-dom';
-import { isAdhocUIEnabled } from '@utils/features';
-import Icon from '@ui/Icon';
+import { isAdhocUIEnabled } from '@webapp/util/features';
+import Icon from '@webapp/ui/Icon';
 import { useWindowWidth } from '@react-hook/window-size';
-import { withCurrentUser } from '@pyroscope/redux/reducers/user';
-import basename from '../util/baseurl';
+import {
+  withCurrentUser,
+  selectCurrentUser,
+} from '@webapp/redux/reducers/user';
 import styles from './Sidebar.module.css';
 
 function signOut() {
@@ -41,13 +43,13 @@ function signOut() {
   });
 }
 
-export function Sidebar2(props) {
+export function Sidebar2() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
+  const currentUser = useAppSelector(selectCurrentUser);
   const dispatch = useAppDispatch();
 
   const { search, pathname } = useLocation();
   const windowWidth = useWindowWidth();
-  const { currentUser } = props;
   const authEnabled = currentUser && currentUser.role !== 'anonymous';
 
   // the component doesn't seem to support setting up an active item
@@ -226,7 +228,7 @@ export function Sidebar2(props) {
               Github
             </a>
           </MenuItem>
-          {(window as any).isAuthRequired && (
+          {(window as ShamefulAny).isAuthRequired && (
             <MenuItem
               onClick={() => signOut()}
               icon={<Icon icon={faSignOutAlt} />}

@@ -1,5 +1,13 @@
-import { Result } from '@utils/fp';
-import { request, mountRequest } from './base';
+import { Result } from '@webapp/util/fp';
+import { ZodError } from 'zod';
+import {
+  request,
+  mountRequest,
+  RequestNotOkError,
+  RequestNotOkWithErrorsList,
+  ResponseOkNotInJSONFormat,
+  RequestIncompleteError,
+} from './base';
 import { setupServer, rest } from './testUtils';
 import basename from '../util/baseurl';
 
@@ -46,11 +54,9 @@ describe('Base HTTP', () => {
       server.listen();
       const res = await request('/test');
 
-      expect(res).toMatchObject(
-        Result.err({
-          message: 'Failed to parse JSON',
-          data: 'bla',
-        })
+      expect(res.error).toBeInstanceOf(ResponseOkNotInJSONFormat);
+      expect(res.error.message).toBe(
+        "Server returned with code: '200'. The body that could not be parsed contains 'bla'"
       );
     });
   });
@@ -59,11 +65,9 @@ describe('Base HTTP', () => {
     it('fails', async () => {
       const res = await request('/test');
 
-      expect(res).toMatchObject(
-        Result.err({
-          message:
-            'request to http://localhost/test failed, reason: connect ECONNREFUSED 127.0.0.1:80',
-        })
+      expect(res.error).toBeInstanceOf(RequestIncompleteError);
+      expect(res.error.message).toBe(
+        "Request failed to be completed. Description: 'request to http://localhost/test failed, reason: connect ECONNREFUSED 127.0.0.1:80'"
       );
     });
   });
@@ -90,29 +94,95 @@ describe('Base HTTP', () => {
 
       const res = await request('/test');
 
-      expect(res).toMatchObject(
-        Result.err({
-          statusCode: 500,
-          message: 'Request failed',
-        })
+      expect(res.error).toBeInstanceOf(RequestNotOkError);
+      expect(res.error.message).toBe(
+        "Request failed with statusCode: '500' and description: 'No description available'"
       );
     });
 
-    it(`Returns the body when there's a body in JSON format`, async () => {
+    it(`Returns an error list if available`, async () => {
       server = setupServer(
         rest.get(`http://localhost/test`, (req, res, ctx) => {
-          return res(ctx.status(500), ctx.json({ message: 'server error' }));
+          return res(
+            ctx.status(500),
+            ctx.json({
+              errors: ['error1', 'error2'],
+            })
+          );
         })
       );
       server.listen();
 
       const res = await request('/test');
 
-      expect(res).toMatchObject(
-        Result.err({
-          statusCode: 500,
-          message: 'server error',
+      expect(res.error).toBeInstanceOf(RequestNotOkWithErrorsList);
+      expect(res.error.message).toBe(
+        'Server returned with multiple errors: error1, error2'
+      );
+    });
+
+    it(`Returns an error message if available`, async () => {
+      server = setupServer(
+        rest.get(`http://localhost/test`, (req, res, ctx) => {
+          return res(
+            ctx.status(500),
+            ctx.json({
+              error: 'error',
+            })
+          );
         })
+      );
+      server.listen();
+
+      const res = await request('/test');
+
+      expect(res.error).toBeInstanceOf(RequestNotOkError);
+      expect(res.error.message).toBe(
+        "Request failed with statusCode: '500' and description: 'error'"
+      );
+    });
+
+    it(`Returns an error message if available`, async () => {
+      server = setupServer(
+        rest.get(`http://localhost/test`, (req, res, ctx) => {
+          return res(
+            ctx.status(500),
+            ctx.json({
+              message: 'error',
+            })
+          );
+        })
+      );
+      server.listen();
+
+      const res = await request('/test');
+
+      expect(res.error).toBeInstanceOf(RequestNotOkError);
+      expect(res.error.message).toBe(
+        "Request failed with statusCode: '500' and description: 'error'"
+      );
+    });
+
+    it(`Returns a bunch of data`, async () => {
+      server = setupServer(
+        rest.get(`http://localhost/test`, (req, res, ctx) => {
+          return res(
+            ctx.status(500),
+            ctx.json({
+              foo: 'foo',
+              bar: 'bar',
+            })
+          );
+        })
+      );
+      server.listen();
+
+      const res = await request('/test');
+
+      expect(res.error).toBeInstanceOf(RequestNotOkError);
+      expect(res.error.message).toBe(
+        // eslint-disable-next-line no-useless-escape
+        `Request failed with statusCode: '500' and description: 'Could not identify an error message. Payload is {\"foo\":\"foo\",\"bar\":\"bar\"}'`
       );
     });
 
@@ -126,11 +196,9 @@ describe('Base HTTP', () => {
 
       const res = await request('/test');
 
-      expect(res).toMatchObject(
-        Result.err({
-          statusCode: 500,
-          message: 'text error',
-        })
+      expect(res.error).toBeInstanceOf(RequestNotOkError);
+      expect(res.error.message).toBe(
+        "Request failed with statusCode: '500' and description: 'text error'"
       );
     });
   });

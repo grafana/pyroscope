@@ -1,49 +1,46 @@
 // TODO reenable spreading lint
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useState, useEffect } from 'react';
-import { connect } from 'react-redux';
-import { bindActionCreators } from 'redux';
-import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
-import { appNameToQuery, queryToAppName } from '@utils/query';
+import React, { useState } from 'react';
+import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
+import { appNameToQuery, queryToAppName } from '@webapp/util/query';
 import {
+  actions,
+  selectContinuousState,
   selectAppNames,
   selectAppNamesState,
   reloadAppNames,
-} from '@pyroscope/redux/reducers/newRoot';
-import LoadingSpinner from '@ui/LoadingSpinner';
-import Button from '@ui/Button';
+} from '@webapp/redux/reducers/continuous';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import Button from '@webapp/ui/Button';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-import Dropdown, { MenuItem, FocusableItem } from '@ui/Dropdown';
-import { setQuery } from '../redux/actions';
+import Dropdown, {
+  MenuItem,
+  FocusableItem,
+  MenuGroup,
+} from '@webapp/ui/Dropdown';
 import styles from './NameSelector.module.scss';
 
-const defKey = 'Select an app...';
-
-function NameSelector(props) {
-  const { actions, names, query } = props;
+interface NameSelectorProps {
+  /** allows to overwrite what to happen when a name is selected, by default it dispatches 'actions.setQuery' */
+  onSelectedName?: (name: string) => void;
+}
+function NameSelector({ onSelectedName }: NameSelectorProps) {
   const appNamesState = useAppSelector(selectAppNamesState);
   const appNames = useAppSelector(selectAppNames);
+  const dispatch = useAppDispatch();
+  const { query } = useAppSelector(selectContinuousState);
 
   const [filter, setFilter] = useState('');
 
   const selectAppName = (name: string) => {
     const query = appNameToQuery(name);
-    actions.setQuery(query);
-  };
 
-  const dispatch = useAppDispatch();
-
-  // if there's no query set
-  // set the first app as the default (if exists)
-  useEffect(() => {
-    if (!query) {
-      const first = appNames[0];
-      if (first) {
-        const query = appNameToQuery(first);
-        actions.setQuery(query);
-      }
+    if (onSelectedName) {
+      onSelectedName(query);
+    } else {
+      dispatch(actions.setQuery(query));
     }
-  }, [query]);
+  };
 
   const selectedValue = queryToAppName(query).mapOr('', (q) => {
     if (appNames.indexOf(q) !== -1) {
@@ -67,10 +64,11 @@ function NameSelector(props) {
     >
       {name}
     </MenuItem>
-  )) as any;
+  )) as ShamefulAny;
 
-  const noApp =
-    appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>;
+  const noApp = (
+    appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>
+  ) as JSX.Element;
 
   return (
     <div className={styles.container}>
@@ -95,8 +93,7 @@ function NameSelector(props) {
             />
           )}
         </FocusableItem>
-
-        {options}
+        <MenuGroup takeOverflow>{options}</MenuGroup>
       </Dropdown>
       <Button
         aria-label="Refresh Apps"
@@ -121,18 +118,4 @@ function Loading({ type }: ReturnType<typeof selectAppNamesState>) {
     }
   }
 }
-
-const mapStateToProps = (state) => ({
-  ...state.root,
-});
-
-const mapDispatchToProps = (dispatch) => ({
-  actions: bindActionCreators(
-    {
-      setQuery,
-    },
-    dispatch
-  ),
-});
-
-export default connect(mapStateToProps, mapDispatchToProps)(NameSelector);
+export default NameSelector;

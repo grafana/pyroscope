@@ -254,10 +254,10 @@ const RawProfile = {
     watermarks: {},
   },
   metadata: {
-    format: 'single',
-    spyName: 'gospy',
+    format: 'single' as const,
+    spyName: 'gospy' as const,
     sampleRate: 100,
-    units: 'samples',
+    units: 'samples' as const,
     name: 'pyroscope.server.cpu 2022-03-08T17:27:23Z',
     appName: 'pyroscope.server.cpu',
     startTime: 1646760443,
@@ -295,41 +295,71 @@ const SimpleTree = {
   spyName: 'gospy',
 };
 
-describe.skip('Pyroscope Library', () => {
-  it('should not be possible to override the pyroscope logo using props', () => {
-    render(
-      <FlamegraphRenderer
-        flamebearer={SimpleTree}
-        display="flamegraph"
-        viewType="single"
-        showPyroscopeLogo={false}
-      />
+// describe.skip('Pyroscope Library', () => {
+//  it('should not be possible to override the pyroscope logo using props', () => {
+//    render(
+//      <FlamegraphRenderer
+//        flamebearer={SimpleTree}
+//        display="flamegraph"
+//        viewType="single"
+//        showPyroscopeLogo={false}
+//      />
+//    );
+//
+//    expect(
+//      screen.getByRole('link', { name: /pyroscope/i })
+//    ).toBeInTheDocument();
+//  });
+// });
+//
+//
+// TODO a test saying going over rendering an empty flamegraph
+describe.only('positions', () => {
+  describe('Allow changing visualization mode', () => {
+    it('should allow changing view when "onlyDisplay" is not set', () => {
+      const { getByTestId, queryByRole } = render(
+        <FlamegraphRenderer profile={RawProfile} />
+      );
+
+      expect(getByTestId('table-view')).toBeInTheDocument();
+      expect(getByTestId('flamegraph-view')).toBeInTheDocument();
+      expect(queryByRole('combobox', { name: 'view' })).toBeInTheDocument();
+    });
+
+    it('should restrict changing view when "onlyDisplay" is set', () => {
+      const { getByTestId, queryByRole } = render(
+        <FlamegraphRenderer profile={RawProfile} onlyDisplay="both" />
+      );
+
+      expect(getByTestId('table-view')).toBeInTheDocument();
+      expect(getByTestId('flamegraph-view')).toBeInTheDocument();
+      expect(queryByRole('combobox', { name: 'view' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('should display only the flamegraph when specified', () => {
+    const { getByTestId, queryByTestId } = render(
+      <FlamegraphRenderer profile={RawProfile} onlyDisplay="flamegraph" />
     );
 
-    expect(
-      screen.getByRole('link', { name: /pyroscope/i })
-    ).toBeInTheDocument();
+    expect(queryByTestId('table-view')).not.toBeInTheDocument();
+    expect(getByTestId('flamegraph-view')).toBeInTheDocument();
+  });
+
+  it('should display only the table when specified', () => {
+    const { getByTestId, queryByTestId } = render(
+      <FlamegraphRenderer profile={RawProfile} onlyDisplay="table" />
+    );
+
+    expect(getByTestId('table-view')).toBeInTheDocument();
+    expect(queryByTestId('flamegraph-view')).not.toBeInTheDocument();
   });
 });
 
 it('should work', () => {
-  render(
-    <FlamegraphRenderer
-      flamebearer={SimpleTree}
-      display="flamegraph"
-      viewType="single"
-      showPyroscopeLogo={false}
-    />
-  );
+  render(<FlamegraphRenderer flamebearer={SimpleTree as any} />);
 });
 
 it('should work with raw profile from /render endpoint', () => {
-  render(
-    <FlamegraphRenderer
-      profile={RawProfile}
-      display="flamegraph"
-      viewType="single"
-      showPyroscopeLogo={false}
-    />
-  );
+  render(<FlamegraphRenderer profile={RawProfile} />);
 });

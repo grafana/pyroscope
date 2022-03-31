@@ -3,8 +3,8 @@ import {
   createAsyncThunk,
   combineReducers,
 } from '@reduxjs/toolkit';
-import { Users, type User } from '@models/users';
-import { APIKey, APIKeys } from '@models/apikeys';
+import { Users, type User } from '@webapp/models/users';
+import { APIKey, APIKeys } from '@webapp/models/apikeys';
 
 import {
   fetchUsers,
@@ -13,40 +13,34 @@ import {
   disableUser as disableUserAPI,
   changeUserRole as changeUserRoleAPI,
   deleteUser as deleteUserAPI,
-} from '@pyroscope/services/users';
+} from '@webapp/services/users';
 import {
   fetchAPIKeys,
   createAPIKey as createAPIKeyAPI,
   deleteAPIKey as deleteAPIKeyAPI,
-} from '@pyroscope/services/apiKeys';
+} from '@webapp/services/apiKeys';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 
 type UsersState = {
-  type: 'loaded' | 'reloading' | 'failed';
+  type: 'pristine' | 'loading' | 'loaded' | 'failed';
   data?: Users;
 };
 
-type APIKeysState = {
-  type: string;
-  data?: APIKeys;
-};
-interface SettingsRootState {
-  // Since the value populated from the server
-  // There's no 'loading'
-  users: UsersState;
-  apiKeys: APIKeysState;
-}
-
-const usersInitialState = {
-  type: 'loaded',
+const usersInitialState: UsersState = {
+  type: 'pristine',
   data: undefined,
 };
-const apiKeysInitialState = { type: 'loaded', data: undefined };
+
+type ApiKeysState = {
+  type: 'pristine' | 'loading' | 'loaded' | 'failed';
+  data?: APIKeys;
+};
+const apiKeysInitialState: ApiKeysState = { type: 'pristine', data: undefined };
 
 export const reloadApiKeys = createAsyncThunk(
   'newRoot/reloadAPIKeys',
-  async (foo, thunkAPI) => {
+  async (_, thunkAPI) => {
     const res = await fetchAPIKeys();
     if (res.isOk) {
       return Promise.resolve(res.value);
@@ -66,7 +60,7 @@ export const reloadApiKeys = createAsyncThunk(
 
 export const reloadUsers = createAsyncThunk(
   'newRoot/reloadUsers',
-  async (foo, thunkAPI) => {
+  async (_, thunkAPI) => {
     const res = await fetchUsers();
 
     if (res.isOk) {
@@ -76,8 +70,8 @@ export const reloadUsers = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to load users',
+        title: 'Failed to load users',
+        message: res.error.message,
       })
     );
 
@@ -98,8 +92,8 @@ export const enableUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to enable a user',
+        title: 'Failed to enable a user',
+        message: res.error.message,
       })
     );
 
@@ -120,8 +114,8 @@ export const disableUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to disable a user',
+        title: 'Failed to disable a user',
+        message: res.error.message,
       })
     );
 
@@ -143,8 +137,8 @@ export const createUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to create new user',
+        title: 'Failed to create new user',
+        message: res.error.message,
       })
     );
     return Promise.reject(res.error);
@@ -165,8 +159,8 @@ export const deleteUser = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to delete user',
+        title: 'Failed to delete user',
+        message: res.error.message,
       })
     );
     return Promise.reject(res.error);
@@ -175,9 +169,9 @@ export const deleteUser = createAsyncThunk(
 
 export const changeUserRole = createAsyncThunk(
   'users/changeUserRole',
-  async (action: Partial<User>, thunkAPI) => {
+  async (action: Pick<User, 'id' | 'role'>, thunkAPI) => {
     const { id, role } = action;
-    const res = await changeUserRoleAPI({ id }, role);
+    const res = await changeUserRoleAPI(id, role);
 
     if (res.isOk) {
       return Promise.resolve(true);
@@ -186,8 +180,8 @@ export const changeUserRole = createAsyncThunk(
     thunkAPI.dispatch(
       addNotification({
         type: 'danger',
-        title: 'Failed',
-        message: 'Failed to change users role',
+        title: 'Failed to change users role',
+        message: res.error.message,
       })
     );
     return thunkAPI.rejectWithValue(res.error);
@@ -196,7 +190,7 @@ export const changeUserRole = createAsyncThunk(
 
 export const createAPIKey = createAsyncThunk(
   'newRoot/createAPIKey',
-  async (data, thunkAPI) => {
+  async (data: Parameters<typeof createAPIKeyAPI>[0], thunkAPI) => {
     const res = await createAPIKeyAPI(data);
 
     if (res.isOk) {
@@ -207,7 +201,7 @@ export const createAPIKey = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to create API key',
-        message: res.error.errors.join(', '),
+        message: res.error.message,
       })
     );
     return thunkAPI.rejectWithValue(res.error);
@@ -216,7 +210,7 @@ export const createAPIKey = createAsyncThunk(
 
 export const deleteAPIKey = createAsyncThunk(
   'newRoot/deleteAPIKey',
-  async (data: Partial<APIKey>, thunkAPI) => {
+  async (data: Pick<APIKey, 'id'>, thunkAPI) => {
     const res = await deleteAPIKeyAPI(data);
     if (res.isOk) {
       thunkAPI.dispatch(
@@ -233,7 +227,7 @@ export const deleteAPIKey = createAsyncThunk(
       addNotification({
         type: 'danger',
         title: 'Failed to delete API key',
-        message: res.error.errors.join(', '),
+        message: res.error.message,
       })
     );
     return thunkAPI.rejectWithValue(res.error);
@@ -245,14 +239,15 @@ export const usersSlice = createSlice({
   initialState: usersInitialState,
   reducers: {},
   extraReducers: (builder) => {
-    builder.addCase(reloadUsers.fulfilled, (_, action) => {
-      return { type: 'loaded', data: action.payload };
+    builder.addCase(reloadUsers.fulfilled, (state, action) => {
+      state = { type: 'loaded', data: action.payload };
     });
+
     builder.addCase(reloadUsers.pending, (state) => {
-      return { type: 'reloading', data: state.data };
+      state = { type: 'loading', data: state.data };
     });
     builder.addCase(reloadUsers.rejected, (state) => {
-      return { type: 'failed', data: state.data };
+      state = { type: 'failed', data: state.data };
     });
   },
 });
@@ -262,13 +257,13 @@ export const apiKeysSlice = createSlice({
   initialState: apiKeysInitialState,
   reducers: {},
   extraReducers: (builder) => {
-    builder.addCase(reloadApiKeys.fulfilled, (state, action) => {
+    builder.addCase(reloadApiKeys.fulfilled, (_, action) => {
       return { type: 'loaded', data: action.payload };
     });
     builder.addCase(reloadApiKeys.pending, (state) => {
-      return { type: 'reloading', data: state.data };
+      return { type: 'loading', data: state.data };
     });
-    builder.addCase(reloadUsers.rejected, (state) => {
+    builder.addCase(reloadApiKeys.rejected, (state) => {
       return { type: 'failed', data: state.data };
     });
   },

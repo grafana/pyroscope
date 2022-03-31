@@ -5,5 +5,11 @@
   ],
   "useWorkspaces": true,
   "npmClient": "yarn",
-  "version": "independent"
+  "version": "independent",
+  "command": {
+    "version": {
+      "ignoreChanges": ["*.md"],
+      "message": "chore(release): publish"
+    }
+  }
 }

@@ -91,14 +91,6 @@ func CollapsedToProfileV1(b []byte, name string, maxNodes int) (*flamebearer.Fla
 // DiffV1 takes two single V1 profiles and generates a diff V1 profile
 func DiffV1(name string, base, diff *flamebearer.FlamebearerProfile, maxNodes int) (flamebearer.FlamebearerProfile, error) {
 	var fb flamebearer.FlamebearerProfile
-	// TODO(abeaumont): Validate that profiles are comparable
-	// TODO(abeaumont): Simplify profile generation
-	out := &storage.GetOutput{
-		Tree:       nil,
-		Units:      base.Metadata.Units,
-		SpyName:    base.Metadata.SpyName,
-		SampleRate: base.Metadata.SampleRate,
-	}
 	bt, err := profileToTree(*base)
 	if err != nil {
 		return fb, fmt.Errorf("unable to convert base profile to tree: %w", err)
@@ -107,8 +99,18 @@ func DiffV1(name string, base, diff *flamebearer.FlamebearerProfile, maxNodes in
 	if err != nil {
 		return fb, fmt.Errorf("unable to convret diff profile to tree: %w", err)
 	}
-	bOut := &storage.GetOutput{Tree: bt}
-	dOut := &storage.GetOutput{Tree: dt}
+	bOut := &storage.GetOutput{
+		Units:      base.Metadata.Units,
+		SampleRate: base.Metadata.SampleRate,
+		SpyName:    base.Metadata.SpyName,
+		Tree:       bt,
+	}
+	dOut := &storage.GetOutput{
+		Units:      diff.Metadata.Units,
+		SampleRate: diff.Metadata.SampleRate,
+		SpyName:    diff.Metadata.SpyName,
+		Tree:       dt,
+	}
 
 	// If we didn't get an explicit name, try to infer one from base or diff profiles
 	for _, n := range []string{base.Metadata.Name, diff.Metadata.Name} {
@@ -118,8 +120,7 @@ func DiffV1(name string, base, diff *flamebearer.FlamebearerProfile, maxNodes in
 		name = n
 	}
 
-	fb = flamebearer.NewCombinedProfile(name, out, bOut, dOut, maxNodes)
-	return fb, nil
+	return flamebearer.NewCombinedProfile(name, bOut, dOut, maxNodes)
 }
 
 func profileToTree(fb flamebearer.FlamebearerProfile) (*tree.Tree, error) {

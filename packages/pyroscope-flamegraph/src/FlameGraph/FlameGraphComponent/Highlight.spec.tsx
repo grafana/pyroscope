@@ -7,12 +7,12 @@ import { Maybe } from 'true-myth';
 import Highlight, { HighlightProps } from './Highlight';
 
 function TestComponent(props: Omit<HighlightProps, 'canvasRef'>) {
-  const canvasRef = React.useRef();
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   return (
     <>
       <canvas data-testid="canvas" ref={canvasRef} />
-      <Highlight canvasRef={canvasRef} {...props} />
+      {canvasRef && <Highlight canvasRef={canvasRef} {...props} />}
     </>
   );
 }

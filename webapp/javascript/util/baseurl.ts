@@ -6,13 +6,13 @@ function basename() {
   ) as HTMLMetaElement;
 
   if (!baseURLMetaTag) {
-    return null;
+    return undefined;
   }
 
   const baseURL = baseURLMetaTag.content;
 
   if (!baseURL) {
-    return null;
+    return undefined;
   }
   const url = new URL(baseURL, window.location.href);
   return url.pathname;

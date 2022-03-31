@@ -1,9 +1,8 @@
 import React, { useEffect } from 'react';
-import Button from '@ui/Button';
-import Icon from '@ui/Icon';
-import confirmDelete from '@ui/Modals/ConfirmDelete';
+import Button from '@webapp/ui/Button';
+import Icon from '@webapp/ui/Icon';
 
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import { faTimes } from '@fortawesome/free-solid-svg-icons/faTimes';
 import { faPlus } from '@fortawesome/free-solid-svg-icons/faPlus';
 import { useHistory } from 'react-router-dom';
@@ -13,7 +12,8 @@ import {
   reloadApiKeys,
   selectAPIKeys,
   deleteAPIKey,
-} from '@pyroscope/redux/reducers/settings';
+} from '@webapp/redux/reducers/settings';
+import confirmDelete from '@webapp/components/ConfirmDelete';
 import styles from '../SettingsTable.module.css';
 
 const ApiKeys = () => {
@@ -25,7 +25,7 @@ const ApiKeys = () => {
     dispatch(reloadApiKeys());
   }, []);
 
-  const onDelete = (key) => {
+  const onDelete = (key: ShamefulAny) => {
     dispatch(deleteAPIKey(key))
       .unwrap()
       .then(() => {
@@ -33,7 +33,7 @@ const ApiKeys = () => {
       });
   };
 
-  const handleDeleteClick = (key) => {
+  const handleDeleteClick = (key: ShamefulAny) => {
     confirmDelete('this key', () => {
       onDelete(key);
     });
@@ -70,7 +70,7 @@ const ApiKeys = () => {
                 <td>{key.name}</td>
                 <td>{key.role}</td>
                 <td>{formatRelative(key.createdAt, now)}</td>
-                <td title={key.expiresAt}>
+                <td title={key?.expiresAt?.toString()}>
                   {key.expiresAt
                     ? `in ${formatDistance(key.expiresAt, now)}`
                     : 'never'}

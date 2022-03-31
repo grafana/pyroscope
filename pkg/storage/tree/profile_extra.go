@@ -179,9 +179,14 @@ func (x *Profile) ResolveSampleType(v int64) (*ValueType, bool) {
 
 type Labels []*Label
 
+func (l Labels) Len() int           { return len(l) }
+func (l Labels) Less(i, j int) bool { return l[i].Key < l[j].Key }
+func (l Labels) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+
 func (l Labels) Hash() uint64 {
 	h := xxhash.New()
 	t := make([]byte, 16)
+	sort.Sort(l)
 	for _, x := range l {
 		if x.Str == 0 {
 			continue

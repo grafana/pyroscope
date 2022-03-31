@@ -1,3 +1,21 @@
+# [0.13.0](https://github.com/pyroscope-io/pyroscope/compare/v0.12.0...v0.13.0) (2022-03-22)
+
+
+### Bug Fixes
+
+* allow cache eviction and write-back while purging storage ([#962](https://github.com/pyroscope-io/pyroscope/issues/962)) ([cad1afc](https://github.com/pyroscope-io/pyroscope/commit/cad1afc81530a689a2803593e51b04e9854a6958))
+* **frontend:** date range picker styling ([#936](https://github.com/pyroscope-io/pyroscope/issues/936)) ([012eb9f](https://github.com/pyroscope-io/pyroscope/commit/012eb9f1b88b0f490d154c7289089eb136f2d197))
+
+
+### Features
+
+* **flamegraph:** publish FlamegraphRenderer for nodejs ([#944](https://github.com/pyroscope-io/pyroscope/issues/944)) ([c2a5631](https://github.com/pyroscope-io/pyroscope/commit/c2a56310e4b36bc6823d5f9debe6e7ac07c6b877))
+* **ingestion:** initial support for JFR format ingestion. ([#954](https://github.com/pyroscope-io/pyroscope/issues/954)) ([25f96a4](https://github.com/pyroscope-io/pyroscope/commit/25f96a4248651179225fabe63088e39245ced997))
+* **webapp:** allow comparing distinct queries/tags ([#942](https://github.com/pyroscope-io/pyroscope/issues/942)) ([4d1307c](https://github.com/pyroscope-io/pyroscope/commit/4d1307c3751b263d88430977f2d87473c8ee280e))
+* **webapp:** make search in app/tags selector bar sticky ([#950](https://github.com/pyroscope-io/pyroscope/issues/950)) ([c13ad6a](https://github.com/pyroscope-io/pyroscope/commit/c13ad6af04bdc96bbd980a0d89f8da07681fd321))
+
+
+
 # [0.12.0](https://github.com/pyroscope-io/pyroscope/compare/v0.11.1...v0.12.0) (2022-03-10)
 
 

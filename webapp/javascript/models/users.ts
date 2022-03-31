@@ -1,5 +1,5 @@
 import { z, ZodError } from 'zod';
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import { modelToResult } from './utils';
 
 const zDateTime = z.string().transform((value: string | number | Date) => {
@@ -38,4 +38,5 @@ export function parse(a: unknown): Result<Users, ZodError> {
   return modelToResult(usersModel, a);
 }
 
-export const passwordEncode = (p) => btoa(unescape(encodeURIComponent(p)));
+export const passwordEncode = (p: string) =>
+  btoa(unescape(encodeURIComponent(p)));

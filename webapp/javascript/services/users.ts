@@ -1,13 +1,13 @@
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import {
   Users,
   parse,
   type User,
   userModel,
   passwordEncode,
-} from '@models/users';
+} from '@webapp/models/users';
 import type { ZodError } from 'zod';
-import { modelToResult } from '@models/utils';
+import { modelToResult } from '@webapp/models/utils';
 import { request } from './base';
 import type { RequestError } from './base';
 
@@ -100,10 +100,10 @@ export async function changeMyPassword(
 }
 
 export async function changeUserRole(
-  user: User,
+  userId: number,
   role: string
 ): Promise<Result<boolean, RequestError | ZodError>> {
-  const response = await request(`/api/users/${user.id}/role`, {
+  const response = await request(`/api/users/${userId}/role`, {
     method: 'PUT',
     body: JSON.stringify({ role }),
   });

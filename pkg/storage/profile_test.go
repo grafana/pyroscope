@@ -45,6 +45,13 @@ var _ = Describe("MergeProfiles", func() {
 					Val:       tree,
 				})).ToNot(HaveOccurred())
 
+				Expect(s.Put(&PutInput{
+					StartTime: st,
+					EndTime:   et,
+					Key:       k1,
+					Val:       tree,
+				})).ToNot(HaveOccurred())
+
 				k2, _ := segment.ParseKey("app.cpu{profile_id=b}")
 				Expect(s.Put(&PutInput{
 					StartTime: st,
@@ -59,7 +66,7 @@ var _ = Describe("MergeProfiles", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
-				Expect(o.Tree.Samples()).To(Equal(uint64(3)))
+				Expect(o.Tree.Samples()).To(Equal(uint64(6)))
 
 				o, err = s.MergeProfiles(context.Background(), MergeProfilesInput{
 					AppName:  "app.cpu",
@@ -67,7 +74,7 @@ var _ = Describe("MergeProfiles", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o.Tree).ToNot(BeNil())
-				Expect(o.Tree.Samples()).To(Equal(uint64(6)))
+				Expect(o.Tree.Samples()).To(Equal(uint64(9)))
 			})
 		})
 	})
@@ -108,7 +115,7 @@ var _ = Describe("Profiles retention policy", func() {
 					Val:       tree,
 				})).ToNot(HaveOccurred())
 
-				rp := &segment.RetentionPolicy{AbsoluteTime: t3}
+				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
 				Expect(s.EnforceRetentionPolicy(rp)).ToNot(HaveOccurred())
 
 				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{

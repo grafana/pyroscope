@@ -111,6 +111,7 @@ jobs:
             --conventional-commits \
             --yes \
             --no-verify-access \
-            --force-publish='*'
+            --force-publish='*' \
+            --canary
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

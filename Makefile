@@ -144,7 +144,7 @@ test: ## Runs the test suite
 
 .PHONY: coverage
 coverage: ## Runs the test suite with coverage
-	go test -tags debugspy -coverprofile=coverage -covermode=atomic $(shell go list ./... | grep -v /examples/)
+	go test -race -tags debugspy -coverprofile=coverage -covermode=atomic $(shell go list ./... | grep -v /examples/)
 
 .PHONY: server
 server: ## Start the Pyroscope Server

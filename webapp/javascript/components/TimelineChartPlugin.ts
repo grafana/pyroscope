@@ -1,3 +1,5 @@
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-nocheck
 import { format } from 'date-fns';
 
 (function ($) {
@@ -200,7 +202,7 @@ import { format } from 'date-fns';
     plot.hooks.shutdown.push(shutdown);
   }
 
-  ($ as any).plot.plugins.push({
+  $.plot.plugins.push({
     init,
     options,
     name: 'pyro-tooltip',

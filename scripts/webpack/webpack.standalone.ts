@@ -1,3 +1,4 @@
+// @ts-nocheck
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import InlineChunkHtmlPlugin from 'react-dev-utils/InlineChunkHtmlPlugin';
 import HTMLInlineCSSWebpackPlugin from 'html-inline-css-webpack-plugin';

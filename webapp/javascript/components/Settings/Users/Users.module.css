@@ -18,7 +18,7 @@
 
 .usersTableEmptyMessage {
   text-align: center;
-  color: rgba(255, 255, 255, 0.66);
+  color: var(--ps-c-white-dark-1);
 }
 
 .actionContainer {

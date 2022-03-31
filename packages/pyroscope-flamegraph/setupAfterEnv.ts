@@ -1,12 +1,10 @@
 import '@testing-library/jest-dom';
 import 'jest-canvas-mock';
-import timezoneMock from 'timezone-mock';
 import { configureToMatchImageSnapshot } from 'jest-image-snapshot';
 import type { MatchImageSnapshotOptions } from 'jest-image-snapshot';
-import nodeFetch from 'node-fetch';
 import 'regenerator-runtime/runtime';
 
-console.log('extending expect');
+// TODO: maybe we don't need this file?
 expect.extend({
   toMatchImageSnapshot(received: string, options: MatchImageSnapshotOptions) {
     // If these checks pass, assume we're in a JSDOM environment with the 'canvas' package.

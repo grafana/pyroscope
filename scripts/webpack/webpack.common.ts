@@ -1,3 +1,4 @@
+// @ts-nocheck
 import webpack from 'webpack';
 import path from 'path';
 import glob from 'glob';

@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import Button from '@ui/Button';
-import InputField from '@ui/InputField';
+import Button from '@webapp/ui/Button';
+import InputField from '@webapp/ui/InputField';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 import { faCopy } from '@fortawesome/free-solid-svg-icons/faCopy';
 import { faCheck } from '@fortawesome/free-solid-svg-icons/faCheck';
-import { createAPIKey } from '@pyroscope/redux/reducers/settings';
-import { useAppDispatch } from '@pyroscope/redux/hooks';
-import { type APIKey } from '@models/apikeys';
-import Dropdown, { MenuItem } from '@ui/Dropdown';
-import StatusMessage from '@ui/StatusMessage';
-import { addNotification } from '@pyroscope/redux/reducers/notifications';
+import { createAPIKey } from '@webapp/redux/reducers/settings';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import { type APIKey } from '@webapp/models/apikeys';
+import Dropdown, { MenuItem } from '@webapp/ui/Dropdown';
+import StatusMessage from '@webapp/ui/StatusMessage';
+import { addNotification } from '@webapp/redux/reducers/notifications';
 import styles from './APIKeyForm.module.css';
 
 // Extend the API key, but add form validation errors and ttlSeconds
@@ -19,7 +19,8 @@ export interface APIKeyAddProps extends APIKey {
 }
 
 function APIKeyAddForm() {
-  const [form, setForm]: [APIKeyAddProps, (value) => void] = useState({
+  //  const [form, setForm]: [APIKeyAddProps, (value) => void] = useState({
+  const [form, setForm] = useState<ShamefulAny>({
     errors: [],
     name: '',
     role: 'ReadOnly',
@@ -28,17 +29,17 @@ function APIKeyAddForm() {
   const [key, setKey] = useState(undefined);
   const dispatch = useAppDispatch();
 
-  const handleFormChange = (event) => {
+  const handleFormChange = (event: ShamefulAny) => {
     const { name } = event.target;
     const { value } = event.target;
     setForm({ ...form, [name]: value });
   };
 
-  const handleRoleChange = (value) => {
+  const handleRoleChange = (value: ShamefulAny) => {
     setForm({ ...form, role: value });
   };
 
-  const handleFormSubmit = (event) => {
+  const handleFormSubmit = (event: ShamefulAny) => {
     event.preventDefault();
     const data = {
       name: form.name,
@@ -48,7 +49,7 @@ function APIKeyAddForm() {
     dispatch(createAPIKey(data))
       .unwrap()
       .then(
-        (k) => {
+        (k: ShamefulAny) => {
           setKey(k.key);
         },
         (e) => {

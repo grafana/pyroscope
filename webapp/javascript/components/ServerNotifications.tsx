@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { addNotification } from '../redux/reducers/notifications';
+import { addNotification } from '@webapp/redux/reducers/notifications';
 
 export default function ServerNotifications() {
   const dispatch = useDispatch();
@@ -8,7 +8,7 @@ export default function ServerNotifications() {
   useEffect(() => {
     // the server is supposed to add this
     // to the index.html
-    const { notificationText } = window as any;
+    const { notificationText } = window as ShamefulAny;
 
     if (notificationText) {
       // TODO

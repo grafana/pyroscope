@@ -1,5 +1,5 @@
 import { Units } from '@pyroscope/models';
-import { deltaDiffWrapper } from '@utils/flamebearer';
+import { deltaDiffWrapper } from '@webapp/util/flamebearer';
 
 export type Flamebearer = {
   /**
@@ -29,7 +29,10 @@ export type Flamebearer = {
     | 'pyspy'
     | 'rbspy'
     | string;
-} & addTicks;
+  format: 'double' | 'single';
+  leftTicks?: number;
+  rightTicks?: number;
+};
 
 export type addTicks =
   | { format: 'double'; leftTicks: number; rightTicks: number }
@@ -64,8 +67,8 @@ export function decodeFlamebearer({
   };
 
   if (fb.format === 'double') {
-    (fb as any).leftTicks = leftTicks;
-    (fb as any).rightTicks = rightTicks;
+    (fb as ShamefulAny).leftTicks = leftTicks;
+    (fb as ShamefulAny).rightTicks = rightTicks;
   }
 
   fb.levels = deltaDiffWrapper(fb.format, fb.levels);

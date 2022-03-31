@@ -16,8 +16,8 @@
     position: relative;
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
-    background-color: #272727;
-    border: 1px solid #4d4d4d;
+    background-color: var(--ps-c-gray-light-2);
+    border: 1px solid var(--ps-c-gray-light-3);
     height: 100%;
     display: flex;
     align-items: center;
@@ -29,8 +29,8 @@
     border-top-right-radius: 0px;
     border-bottom-right-radius: 0px;
     border-right: none;
-    caret-color: #fff;
-    color: rgba(0, 0, 0, 0);
+    caret-color: var(--ps-c-white);
+    color: var(--ps-c-gray-light-3);
     // color: red;
     letter-spacing: 0;
     font-family: arial;
@@ -40,8 +40,8 @@
     flex-grow: 1;
     border-top-left-radius: 0px;
     border-bottom-left-radius: 0px;
-    caret-color: #fff;
-    background-color: #0074d9;
+    caret-color: var(--ps-c-white);
+    background-color: var(--ps-c-blue);
     border-color: darken(#0074d9, 10%);
     letter-spacing: 0;
     font-family: arial;
