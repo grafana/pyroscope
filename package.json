@@ -61,8 +61,7 @@
     "lint-staged": "lint-staged",
     "size": "yarn build && size-limit",
     "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook",
-    "grafana-e2e": "grafana-e2e"
+    "build-storybook": "build-storybook"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
@@ -163,9 +162,8 @@
     "@fortawesome/free-solid-svg-icons": "~5.14.0",
     "@fortawesome/react-fontawesome": "~0.1.11",
     "@grafana/data": "^8.3.1",
-    "@grafana/e2e": "^8.3.2",
-    "@grafana/runtime": "^8.3.1",
     "@grafana/ui": "^8.3.1",
+    "@grafana/runtime": "^8.3.1",
     "@react-hook/resize-observer": "^1.2.4",
     "@react-hook/window-size": "^3.0.7",
     "@reduxjs/toolkit": "^1.6.2",
