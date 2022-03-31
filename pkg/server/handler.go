@@ -123,14 +123,19 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 
 	w.Header().Add("Content-Type", "text/html")
 	mustExecute(tmpl, w, map[string]string{
-		"InitialState":      initialStateStr,
-		"BuildInfo":         build.JSON(),
-		"LatestVersionInfo": updates.LatestVersionJSON(),
-		"ExtraMetadata":     extraMetadataStr,
-		"BaseURL":           ctrl.config.BaseURL,
-		"NotificationText":  ctrl.notifier.NotificationText(),
-		"IsAuthRequired":    strconv.FormatBool(ctrl.isAuthRequired()),
-		"Features":          featuresStr,
+		"InitialState":           initialStateStr,
+		"BuildInfo":              build.JSON(),
+		"LatestVersionInfo":      updates.LatestVersionJSON(),
+		"ExtraMetadata":          extraMetadataStr,
+		"BaseURL":                ctrl.config.BaseURL,
+		"NotificationText":       ctrl.notifier.NotificationText(),
+		"IsAuthRequired":         strconv.FormatBool(ctrl.isAuthRequired()),
+		"Features":               featuresStr,
+		"BasicAuthEnabled":       strconv.FormatBool(ctrl.config.Auth.Internal.Enabled),
+		"BasicAuthSignupEnabled": strconv.FormatBool(ctrl.config.Auth.Internal.SignupEnabled),
+		"GoogleEnabled":          strconv.FormatBool(ctrl.config.Auth.Google.Enabled),
+		"GithubEnabled":          strconv.FormatBool(ctrl.config.Auth.Github.Enabled),
+		"GitlabEnabled":          strconv.FormatBool(ctrl.config.Auth.Gitlab.Enabled),
 	})
 }
 
