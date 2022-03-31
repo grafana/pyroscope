@@ -2,8 +2,8 @@
 @use '../mixins/outline' as *;
 
 // DatePicker Component styles
-@import '../../node_modules/react-datepicker/dist/react-datepicker.css';
-@import '../../node_modules/react-datepicker/dist/react-datepicker-cssmodules.css';
+@import '~react-datepicker/dist/react-datepicker.css';
+@import '~react-datepicker/dist/react-datepicker-cssmodules.css';
 
 .drp-button {
   white-space: nowrap;
