@@ -29,7 +29,7 @@ describe('Settings page', () => {
 
     cy.get('input#username').focus().type('admin');
     cy.get('input#password').focus().type('admin');
-    cy.get('button.sign-in-button').click();
+    cy.findByTestId('sign-in-button').click();
 
     cy.findByTestId('sidebar-settings').click();
     cy.url().should('contain', '/settings');
@@ -54,7 +54,7 @@ describe('Settings page', () => {
 
     cy.get('input#username').focus().type('user');
     cy.get('input#password').focus().type('user');
-    cy.get('button.sign-in-button').click();
+    cy.findByTestId('sign-in-button').click();
 
     // Expect it to be redirected to main page
     cy.url().should('contain', '/?query=');
