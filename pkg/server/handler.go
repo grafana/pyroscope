@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"text/template"
 
@@ -60,6 +59,19 @@ type indexPageJSON struct {
 	AppNames []string `json:"appNames"`
 }
 
+type indexPageFeaturesJSON struct {
+	EnableAdhocUI bool `json:"enableAdhocUI"`
+}
+
+type indexPageAuthJSON struct {
+	IsRequired                bool `json:"isRequired"`
+	InternalAuthEnabled       bool `json:"internalEnabled"`
+	InternalAuthSignupEnabled bool `json:"internalSignupEnabled"`
+	GoogleEnabled             bool `json:"googleEnabled"`
+	GithubEnabled             bool `json:"githubEnabled"`
+	GitlabEnabled             bool `json:"gitlabEnabled"`
+}
+
 func (ctrl *Controller) getTemplate(path string) (*template.Template, error) {
 	f, err := ctrl.dir.Open(path)
 	if err != nil {
@@ -109,33 +121,39 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	// Feature Flags
 	// Add this intermediate layer instead of just exposing as it comes from ctrl.config
 	// Since we may probably want to rename these flags when exposing to the frontend
-	features := struct {
-		EnableAdhocUI bool `json:"enableAdhocUI"`
-	}{
+	features := indexPageFeaturesJSON{
 		EnableAdhocUI: !ctrl.config.NoAdhocUI,
 	}
-	b, err = json.Marshal(features)
-	if err != nil {
+	if b, err = json.Marshal(features); err != nil {
 		ctrl.writeJSONEncodeError(w, err)
 		return
 	}
 	featuresStr := string(b)
 
+	auth := indexPageAuthJSON{
+		IsRequired:                ctrl.isAuthRequired(),
+		InternalAuthEnabled:       ctrl.config.Auth.Internal.Enabled,
+		InternalAuthSignupEnabled: ctrl.config.Auth.Internal.SignupEnabled,
+		GoogleEnabled:             ctrl.config.Auth.Google.Enabled,
+		GithubEnabled:             ctrl.config.Auth.Github.Enabled,
+		GitlabEnabled:             ctrl.config.Auth.Gitlab.Enabled,
+	}
+	if b, err = json.Marshal(auth); err != nil {
+		ctrl.writeJSONEncodeError(w, err)
+		return
+	}
+	authStr := string(b)
+
 	w.Header().Add("Content-Type", "text/html")
 	mustExecute(tmpl, w, map[string]string{
-		"InitialState":           initialStateStr,
-		"BuildInfo":              build.JSON(),
-		"LatestVersionInfo":      updates.LatestVersionJSON(),
-		"ExtraMetadata":          extraMetadataStr,
-		"BaseURL":                ctrl.config.BaseURL,
-		"NotificationText":       ctrl.notifier.NotificationText(),
-		"IsAuthRequired":         strconv.FormatBool(ctrl.isAuthRequired()),
-		"Features":               featuresStr,
-		"BasicAuthEnabled":       strconv.FormatBool(ctrl.config.Auth.Internal.Enabled),
-		"BasicAuthSignupEnabled": strconv.FormatBool(ctrl.config.Auth.Internal.SignupEnabled),
-		"GoogleEnabled":          strconv.FormatBool(ctrl.config.Auth.Google.Enabled),
-		"GithubEnabled":          strconv.FormatBool(ctrl.config.Auth.Github.Enabled),
-		"GitlabEnabled":          strconv.FormatBool(ctrl.config.Auth.Gitlab.Enabled),
+		"InitialState":      initialStateStr,
+		"BuildInfo":         build.JSON(),
+		"LatestVersionInfo": updates.LatestVersionJSON(),
+		"ExtraMetadata":     extraMetadataStr,
+		"BaseURL":           ctrl.config.BaseURL,
+		"NotificationText":  ctrl.notifier.NotificationText(),
+		"Features":          featuresStr,
+		"Auth":              authStr,
 	})
 }
 
