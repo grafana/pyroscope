@@ -75,6 +75,70 @@ var _ = Describe("FlamebearerProfile", func() {
 			Expect(p.Validate()).To(BeNil())
 		})
 	})
+})
+
+var _ = Describe("Diff", func() {
+	var treeA *tree.Tree
+	var treeB *tree.Tree
+
+	BeforeEach(func() {
+		treeA = tree.New()
+		treeA.Insert([]byte("a;b"), uint64(1))
+		treeA.Insert([]byte("a;c"), uint64(2))
+		treeB = tree.New()
+		treeB.Insert([]byte("a;b"), uint64(4))
+		treeB.Insert([]byte("a;c"), uint64(8))
+	})
+
+	Context("sampleRate does not match", func() {
+		When("they are both set", func() {
+			It("returns an error", func() {
+				left := &storage.GetOutput{Tree: treeA, SampleRate: 100}
+				right := &storage.GetOutput{Tree: treeB, SampleRate: 101}
+
+				_, err := NewCombinedProfile("name", left, right, maxNodes)
+				Expect(err).To(MatchError("left sample rate (100) does not match right sample rate (101)"))
+			})
+		})
+
+		When("one of them is empty", func() {
+			It("does not return an error", func() {
+				left := &storage.GetOutput{Tree: treeA, SampleRate: 0}
+				right := &storage.GetOutput{Tree: treeB, SampleRate: 100}
+
+				_, err := NewCombinedProfile("name", left, right, maxNodes)
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = NewCombinedProfile("name", right, left, maxNodes)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+	})
+
+	Context("units does not match", func() {
+		When("they are both set", func() {
+			It("returns an error", func() {
+				left := &storage.GetOutput{Tree: treeA, SampleRate: sampleRate, Units: "unitA"}
+				right := &storage.GetOutput{Tree: treeB, SampleRate: sampleRate, Units: "unitB"}
+
+				_, err := NewCombinedProfile("name", left, right, maxNodes)
+				Expect(err).To(MatchError("left units (unitA) does not match right units (unitB)"))
+			})
+		})
+
+		When("one of them is empty", func() {
+			It("does not return an error", func() {
+				left := &storage.GetOutput{Tree: treeA, SampleRate: sampleRate}
+				right := &storage.GetOutput{Tree: treeB, SampleRate: sampleRate, Units: "unitB"}
+
+				_, err := NewCombinedProfile("name", left, right, maxNodes)
+				Expect(err).ToNot(HaveOccurred())
+
+				_, err = NewCombinedProfile("name", right, left, maxNodes)
+				Expect(err).ToNot(HaveOccurred())
+			})
+		})
+	})
 
 	Context("diff", func() {
 		It("sets all attributes correctly", func() {
@@ -86,22 +150,10 @@ var _ = Describe("FlamebearerProfile", func() {
 			treeB.Insert([]byte("a;b"), uint64(4))
 			treeB.Insert([]byte("a;c"), uint64(8))
 
-			timeline := &segment.Timeline{
-				StartTime:               startTime,
-				Samples:                 samples,
-				DurationDeltaNormalized: durationDelta,
-				Watermarks:              watermarks,
-			}
-
-			out := &storage.GetOutput{
-				Timeline:   timeline,
-				SpyName:    spyName,
-				SampleRate: sampleRate,
-				Units:      units,
-			}
-			left := &storage.GetOutput{Tree: treeA}
-			right := &storage.GetOutput{Tree: treeB}
-			p := NewCombinedProfile("name", out, left, right, maxNodes)
+			left := &storage.GetOutput{Tree: treeA, SampleRate: sampleRate, Units: units}
+			right := &storage.GetOutput{Tree: treeB, SampleRate: sampleRate, Units: units}
+			p, err := NewCombinedProfile("name", left, right, maxNodes)
+			Expect(err).ToNot(HaveOccurred())
 
 			// Flamebearer
 			Expect(p.Flamebearer.Names).To(Equal([]string{"total", "a", "c", "b"}))
@@ -116,15 +168,12 @@ var _ = Describe("FlamebearerProfile", func() {
 			// Metadata
 			Expect(p.Metadata.Name).To(Equal("name"))
 			Expect(p.Metadata.Format).To(Equal("double"))
-			Expect(p.Metadata.SpyName).To(Equal(spyName))
+			Expect(p.Metadata.SpyName).To(Equal(""))
 			Expect(p.Metadata.SampleRate).To(Equal(sampleRate))
 			Expect(p.Metadata.Units).To(Equal(units))
 
 			// Timeline
-			Expect(p.Timeline.StartTime).To(Equal(startTime))
-			Expect(p.Timeline.Samples).To(Equal(samples))
-			Expect(p.Timeline.DurationDelta).To(Equal(durationDelta))
-			Expect(p.Timeline.Watermarks).To(Equal(watermarks))
+			Expect(p.Timeline).To(BeNil())
 
 			// Ticks
 			Expect(p.LeftTicks).To(Equal(uint64(3)))

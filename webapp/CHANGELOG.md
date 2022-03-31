@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.4.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.3.3...@pyroscope/webapp@1.4.0) (2022-03-28)
+
+
+### Features
+
+* **webapp:** diff arbitrary apps ([#967](https://github.com/pyroscope-io/pyroscope/issues/967)) ([f7e66f1](https://github.com/pyroscope-io/pyroscope/commit/f7e66f1082bb5e1ae2851b0f37f56f46ed43e5e1))
+
+
+
+
+
 ## [1.3.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.3.2...@pyroscope/webapp@1.3.3) (2022-03-25)
 
 **Note:** Version bump only for package @pyroscope/webapp
