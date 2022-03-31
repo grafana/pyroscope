@@ -159,7 +159,11 @@ func writePprof(s *storage.Storage, pi *storage.PutInput, r *http.Request) error
 		// maxMemory 32MB
 		return err
 	}
-	w := pprof.NewProfileWriter(s, pi.Key.Labels(), tree.DefaultSampleTypeMapping)
+	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
+		SampleTypes: tree.DefaultSampleTypeMapping,
+		Labels:      pi.Key.Labels(),
+		SpyName:     pi.SpyName,
+	})
 	if err := writePprofFromForm(r, w, pi, "prev_profile"); err != nil {
 		return err
 	}
@@ -176,6 +180,6 @@ func writePprofFromForm(r *http.Request, w *pprof.ProfileWriter, pi *storage.Put
 		return err
 	}
 	return pprof.DecodePool(f, func(p *tree.Profile) error {
-		return w.WriteProfile(pi.StartTime, pi.EndTime, pi.SpyName, p)
+		return w.WriteProfile(pi.StartTime, pi.EndTime, p)
 	})
 }

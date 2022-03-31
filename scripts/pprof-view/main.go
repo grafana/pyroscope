@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// You can also parse pprof with a config:
-	//   go run scripts/pprof-view/main.go -- -path heap.pb.gz -type mem -config ./scripts/pprof-view/pprof-config.yaml
+	//   go run scripts/pprof-view/main.go -path heap.pb.gz -type mem -config ./scripts/pprof-view/pprof-config.yaml
 	// If config is not specified, the default one is used (see tree.DefaultSampleTypeMapping).
 	var (
 		configPath  string
@@ -83,8 +83,13 @@ func printProfiles(w io.Writer, pprofPath, configPath, profileType string) error
 	}
 
 	x := new(ingester)
-	pw := pprof.NewProfileWriter(x, nil, c)
-	if err = pw.WriteProfile(time.Time{}, time.Time{}, "", p); err != nil {
+	pw := pprof.NewProfileWriter(x, pprof.ProfileWriterConfig{
+		SampleTypes: c,
+		SpyName:     "spy-name",
+		Labels:      nil,
+	})
+
+	if err = pw.WriteProfile(time.Time{}, time.Time{}, p); err != nil {
 		return fmt.Errorf("parsing pprof: %w", err)
 	}
 
@@ -95,6 +100,7 @@ func printProfiles(w io.Writer, pprofPath, configPath, profileType string) error
 		_, _ = fmt.Fprintln(w, "\tAggregation:", profile.AggregationType)
 		_, _ = fmt.Fprintln(w, "\tUnits:", profile.Units)
 		_, _ = fmt.Fprintln(w, "\tTotal:", profile.Val.Samples())
+		_, _ = fmt.Fprintln(w, "\tSample rate:", profile.SampleRate)
 		_, _ = fmt.Fprintf(w, "\n%s\n", profile.Val)
 	}
 
