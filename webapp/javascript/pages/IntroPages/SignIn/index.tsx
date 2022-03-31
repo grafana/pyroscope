@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import cx from 'classnames';
-import Icon from '@ui/Icon';
+import Icon from '@webapp/ui/Icon';
 import { faGithub } from '@fortawesome/free-brands-svg-icons/faGithub';
-import InputField from '@ui/InputField';
-import StatusMessage from '@ui/StatusMessage';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import { logIn } from '@pyroscope/services/users';
+import InputField from '@webapp/ui/InputField';
+import StatusMessage from '@webapp/ui/StatusMessage';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import { logIn } from '@webapp/services/users';
 import {
   loadCurrentUser,
   selectCurrentUser,
-} from '@pyroscope/redux/reducers/user';
+} from '@webapp/redux/reducers/user';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';
