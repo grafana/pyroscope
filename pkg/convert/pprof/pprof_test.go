@@ -1,6 +1,7 @@
 package pprof
 
 import (
+	"sort"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -109,8 +110,10 @@ var _ = Describe("custom pprof parsing", func() {
 
 		err = w.WriteProfile(start, end, spyName, p)
 		Expect(err).ToNot(HaveOccurred())
-
 		Expect(ingester.actual).To(HaveLen(2))
+		sort.Slice(ingester.actual, func(i, j int) bool {
+			return ingester.actual[i].Key.Normalized() < ingester.actual[j].Key.Normalized()
+		})
 
 		input := ingester.actual[0]
 		Expect(input.SpyName).To(Equal(spyName))
