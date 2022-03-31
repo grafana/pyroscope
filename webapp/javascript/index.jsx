@@ -2,12 +2,13 @@ import ReactDOM from 'react-dom';
 import React, { useEffect } from 'react';
 
 import { Provider, useDispatch } from 'react-redux';
-import { Router, Switch, Route } from 'react-router-dom';
+import { Router, Switch, Route, Redirect } from 'react-router-dom';
 import FPSStats from 'react-fps-stats';
 import { isAdhocUIEnabled } from '@webapp/util/features';
 import Notifications from '@webapp/ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
 import { loadCurrentUser } from '@webapp/redux/reducers/user';
+import { isInternalSignupEnabled } from '@webapp/util/authParams';
 import store, { persistor } from './redux/store';
 
 import ContinuousSingleView from './pages/ContinuousSingleView';
@@ -50,8 +51,9 @@ function App() {
         <Route exact path="/login">
           <SignInPage />
         </Route>
+
         <Route exact path="/signup">
-          <SignUpPage />
+          {isInternalSignupEnabled ? <SignUpPage /> : <Redirect to="/login" />}
         </Route>
 
         <Switch>

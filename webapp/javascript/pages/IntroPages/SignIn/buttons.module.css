@@ -33,3 +33,7 @@
 .buttonGoogle:hover {
   background-color: var(--ps-c-orange-dark-1);
 }
+
+.linkHighlight {
+  color: var(--ps-c-blue);
+}

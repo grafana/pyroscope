@@ -11,6 +11,14 @@ import {
   loadCurrentUser,
   selectCurrentUser,
 } from '@webapp/redux/reducers/user';
+import {
+  isAuthRequired,
+  isInternalAuthEnabled,
+  isInternalSignupEnabled,
+  isGoogleAuthEnabled,
+  isGithubAuthEnabled,
+  isGitlabAuthEnabled,
+} from '@webapp/util/authParams';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';
@@ -64,66 +72,106 @@ function SignInPage() {
         <div className={styles.formHeader}>
           <div className={styles.logo} />
           <h1>Welcome to Pyroscope</h1>
-          <h3>Log in to continue</h3>
+          {(isInternalAuthEnabled ||
+            isGoogleAuthEnabled ||
+            isGithubAuthEnabled ||
+            isGitlabAuthEnabled) && <h3>Log in to continue</h3>}
         </div>
-        <div>
-          <StatusMessage type="error" message={form.errors?.join(', ')} />
-          <InputField
-            id="username"
-            type="text"
-            name="username"
-            label="Username"
-            placeholder="Username"
-            className={inputStyles.inputGroup}
-            value={form.username}
-            onChange={handleFormChange}
-            required
-          />
-          <InputField
-            id="password"
-            type="password"
-            name="password"
-            label="Password"
-            placeholder="Password"
-            className={inputStyles.inputGroup}
-            value={form.password}
-            onChange={handleFormChange}
-            required
-          />
-        </div>
-        <button
-          className={styles.button}
-          data-testid="sign-in-button"
-          type="submit"
-        >
-          Log in
-        </button>
-        <Divider />
+        {isInternalAuthEnabled && (
+          <>
+            <div>
+              <StatusMessage type="error" message={form.errors?.join(', ')} />
+              <InputField
+                id="username"
+                type="text"
+                name="username"
+                label="Username"
+                placeholder="Username"
+                className={inputStyles.inputGroup}
+                value={form.username}
+                onChange={handleFormChange}
+                required
+              />
+              <InputField
+                id="password"
+                type="password"
+                name="password"
+                label="Password"
+                placeholder="Password"
+                className={inputStyles.inputGroup}
+                value={form.password}
+                onChange={handleFormChange}
+                required
+              />
+            </div>
+            <button
+              className={styles.button}
+              data-testid="sign-in-button"
+              type="submit"
+            >
+              Log in
+            </button>
+          </>
+        )}
+        {isInternalAuthEnabled &&
+        (isGitlabAuthEnabled ||
+          isGoogleAuthEnabled ||
+          isGithubAuthEnabled ||
+          isInternalSignupEnabled) ? (
+          <Divider />
+        ) : null}
         <div className={cx(buttonStyles.buttonContainer)}>
-          <Link
-            to="./auth/google/login"
-            className={cx(styles.button, buttonStyles.buttonGoogle)}
-          >
-            <GoogleIcon /> Sign in with Google
-          </Link>
+          {isGoogleAuthEnabled && (
+            <Link
+              to="./auth/google/login"
+              className={cx(styles.button, buttonStyles.buttonGoogle)}
+            >
+              <GoogleIcon /> Sign in with Google
+            </Link>
+          )}
 
-          <Link
-            to="./auth/github/login"
-            className={cx(styles.button, buttonStyles.buttonGithub)}
-          >
-            <Icon icon={faGithub} /> Sign in with GitHub
-          </Link>
+          {isGithubAuthEnabled && (
+            <Link
+              to="./auth/github/login"
+              className={cx(styles.button, buttonStyles.buttonGithub)}
+            >
+              <Icon icon={faGithub} /> Sign in with GitHub
+            </Link>
+          )}
 
-          <Link
-            to="./auth/gitlab/login"
-            className={cx(styles.button, buttonStyles.buttonGitlab)}
-          >
-            <GitlabIcon /> Sign in with GitLab
-          </Link>
+          {isGitlabAuthEnabled && (
+            <Link
+              to="./auth/gitlab/login"
+              className={cx(styles.button, buttonStyles.buttonGitlab)}
+            >
+              <GitlabIcon /> Sign in with GitLab
+            </Link>
+          )}
 
-          <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
-            Sign up
-          </Link>
+          {isInternalSignupEnabled && (
+            <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
+              Sign up
+            </Link>
+          )}
+
+          {isInternalAuthEnabled ||
+          isGitlabAuthEnabled ||
+          isGoogleAuthEnabled ||
+          isGithubAuthEnabled ||
+          isInternalSignupEnabled ? null : (
+            <h3>
+              No authentication methods are set up. Visit{' '}
+              <a
+                className={buttonStyles.linkHighlight}
+                href="https://pyroscope.io/docs/auth-overview"
+                target="_blank"
+                rel="noreferrer"
+              >
+                documentation
+              </a>{' '}
+              for more information on how to set it up.
+            </h3>
+          )}
         </div>
       </form>
     </div>

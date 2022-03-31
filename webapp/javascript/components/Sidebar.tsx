@@ -34,6 +34,7 @@ import {
   withCurrentUser,
   selectCurrentUser,
 } from '@webapp/redux/reducers/user';
+import { isAuthRequired } from '@webapp/util/authParams';
 import styles from './Sidebar.module.css';
 
 function signOut() {
@@ -228,7 +229,7 @@ export function Sidebar2() {
               Github
             </a>
           </MenuItem>
-          {(window as ShamefulAny).isAuthRequired && (
+          {isAuthRequired && (
             <MenuItem
               onClick={() => signOut()}
               icon={<Icon icon={faSignOutAlt} />}
