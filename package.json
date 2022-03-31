@@ -1,6 +1,6 @@
 {
   "author": "Pyroscope Team",
-  "name": "pyroscope",
+  "name": "pyroscope-lerna",
   "private": true,
   "version": "0.13.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
@@ -222,7 +222,7 @@
     "react-flot": "^1.3.0",
     "react-fps-stats": "^0.1.3",
     "react-modal": "^3.12.1",
-    "react-notifications-component": "~3.1.0",
+    "react-notifications-component": "~3.2.0",
     "react-outside-click-handler": "^1.3.0",
     "react-pro-sidebar": "^0.7.1",
     "react-redux": "^7.2.1",

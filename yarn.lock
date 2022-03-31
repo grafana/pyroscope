@@ -18656,10 +18656,10 @@ react-modal@^3.12.1:
     react-lifecycles-compat "^3.0.0"
     warning "^4.0.3"
 
-react-notifications-component@~3.1.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/react-notifications-component/-/react-notifications-component-3.1.0.tgz#c676b7897a3fb10c554b69dba25fe2a9da6170e2"
-  integrity sha512-qq+zgqVIa2zhlw+RvO2QSPk7xHLvZWTHl9VKRO56sMUef/UrcUTqOswL0DSJtRIpZYZhclquQUfDxD6H2w8aWA==
+react-notifications-component@~3.2.0:
+  version "3.2.10"
+  resolved "https://registry.yarnpkg.com/react-notifications-component/-/react-notifications-component-3.2.10.tgz#314824c37e71c36d22b56044845f3df428db7261"
+  integrity sha512-fnkiYH5/oHcmDqv7X37hPBLTcnllfTiEYmdWsM+9KMkBV+hGiTf/wD55otRgzuib4q1fu6YsI4WFtIsVY2klcA==
 
 react-onclickoutside@^6.12.0:
   version "6.12.1"
