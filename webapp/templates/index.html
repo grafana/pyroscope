@@ -31,13 +31,13 @@
       window.buildInfo = {{ .BuildInfo }};
     </script>
     <script type="text/javascript">
-      window.isAuthRequired = {{ .IsAuthRequired }};
-    </script>
-    <script type="text/javascript">
       window.latestVersionInfo = {{ .LatestVersionInfo }};
     </script>
     <script type="text/javascript">
       window.features = {{ .Features }};
+    </script>
+    <script type="text/javascript">
+      window.auth = {{ .Auth }};
     </script>
     <script
       src="{{ .BaseURL }}/assets/app.<%= webpack.hash %>.js"
