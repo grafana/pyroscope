@@ -1,4 +1,4 @@
-import ShowModal, { ShowModalParams } from '@ui/Modals';
+import ShowModal, { ShowModalParams } from '@webapp/ui/Modals';
 
 type ModalWithInputParams = Pick<
   ShowModalParams,
