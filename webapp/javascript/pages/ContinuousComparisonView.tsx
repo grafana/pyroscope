@@ -6,14 +6,11 @@ import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   selectContinuousState,
-  selectAppTags,
   actions,
   selectComparisonState,
   fetchComparisonSide,
-  fetchTags,
   fetchTagValues,
 } from '@webapp/redux/reducers/continuous';
-import Color from 'color';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
 import Footer from '@webapp/components/Footer';
@@ -22,109 +19,37 @@ import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
 import TagsBar from '@webapp/components/TagsBar';
 import styles from './ContinuousComparison.module.css';
+import useTags from '../hooks/tags.hook';
+import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
+import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
-  const {
-    from,
-    until,
-    query,
-    leftQuery,
-    rightQuery,
-    refreshToken,
-    leftFrom,
-    rightFrom,
-    leftUntil,
-    rightUntil,
-  } = useAppSelector(selectContinuousState);
+  const { leftQuery, rightQuery, leftFrom, rightFrom, leftUntil, rightUntil } =
+    useAppSelector(selectContinuousState);
 
-  const leftTags = useAppSelector(selectAppTags(leftQuery));
-  const rightTags = useAppSelector(selectAppTags(rightQuery));
-
+  usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
+  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
+  const { leftTimeline, rightTimeline } = useTimelines();
 
-  // initially populate the queries
-  useEffect(() => {
-    if (query && !rightQuery) {
-      dispatch(actions.setRightQuery(query));
-    }
-    if (query && !leftQuery) {
-      dispatch(actions.setLeftQuery(query));
-    }
-  }, [query]);
-
-  useEffect(() => {
-    // TODO if the query is the same the request will be made twice
-    if (leftQuery) {
-      dispatch(fetchTags(leftQuery));
-    }
-    if (rightQuery) {
-      dispatch(fetchTags(rightQuery));
-    }
-  }, [leftQuery, rightQuery]);
-
-  // Every time one of the queries changes, we need to actually refresh BOTH
-  // otherwise one of the timelines will be outdated
   useEffect(() => {
     if (leftQuery) {
       dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }));
     }
+  }, [leftFrom, leftUntil, leftQuery]);
 
+  useEffect(() => {
     if (rightQuery) {
       dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }));
     }
-  }, [
-    leftFrom,
-    leftUntil,
-    leftQuery,
-    rightFrom,
-    rightUntil,
-    rightQuery,
-    from,
-    until,
-    refreshToken,
-    from,
-    until,
-  ]);
+  }, [rightFrom, rightUntil, rightQuery]);
 
-  const getSide = (side: 'left' | 'right') => {
-    const s = comparisonView[side];
-
-    switch (s.type) {
-      case 'loaded':
-      case 'reloading': {
-        return s;
-      }
-
-      default:
-        return { timeline: undefined, profile: undefined };
-    }
-  };
-
-  const leftSide = getSide('left');
-  const rightSide = getSide('right');
-
-  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(
-    leftSide.profile
-  );
-  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(
-    leftSide.profile
-  );
-
-  // Purple
-  const leftColor = Color('rgb(200, 102, 204)');
-  // Blue
-  const rightColor = Color('rgb(19, 152, 246)');
-
-  const leftTimeline = {
-    color: leftColor.rgb().toString(),
-    data: leftSide.timeline,
-  };
-
-  const rightTimeline = {
-    color: rightColor.rgb().toString(),
-    data: rightSide.timeline,
-  };
+  const leftSide = comparisonView.left.profile;
+  const rightSide = comparisonView.right.profile;
+  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(leftSide);
+  const exportToFlamegraphDotComRightFn =
+    useExportToFlamegraphDotCom(rightSide);
 
   return (
     <div className="pyroscope-app">
@@ -163,23 +88,18 @@ function ComparisonApp() {
                 dispatch(actions.setLeftQuery(q));
               }}
               onSelectedLabel={(label, query) => {
-                dispatch(
-                  fetchTagValues({
-                    query,
-                    label,
-                  })
-                );
+                dispatch(fetchTagValues({ query, label }));
               }}
             />
             <FlamegraphRenderer
               panesOrientation="vertical"
-              profile={leftSide.profile}
+              profile={leftSide}
               data-testid="flamegraph-renderer-left"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
-                leftSide.profile && (
+                leftSide && (
                   <ExportData
-                    flamebearer={leftSide.profile}
+                    flamebearer={leftSide}
                     exportJSON
                     exportHTML
                     exportPprof
@@ -213,23 +133,18 @@ function ComparisonApp() {
                 dispatch(actions.setRightQuery(q));
               }}
               onSelectedLabel={(label, query) => {
-                dispatch(
-                  fetchTagValues({
-                    query,
-                    label,
-                  })
-                );
+                dispatch(fetchTagValues({ query, label }));
               }}
             />
             <FlamegraphRenderer
-              profile={rightSide.profile}
+              profile={rightSide}
               data-testid="flamegraph-renderer-right"
               panesOrientation="vertical"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
-                rightSide.profile && (
+                rightSide && (
                   <ExportData
-                    flamebearer={rightSide.profile}
+                    flamebearer={rightSide}
                     exportJSON
                     exportHTML
                     exportPprof

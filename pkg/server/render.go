@@ -195,82 +195,6 @@ func (*Controller) mountRenderResponse(flame flamebearer.FlamebearerProfile, app
 	return renderResponse
 }
 
-func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
-	var (
-		p  renderParams
-		rP RenderDiffParams
-
-		leftStartParam string
-		leftEndParam   string
-		rghtStartParam string
-		rghtEndParam   string
-	)
-
-	switch r.Method {
-	case http.MethodGet:
-		if err := ctrl.renderParametersFromRequest(r, &p); err != nil {
-			ctrl.writeInvalidParameterError(w, err)
-			return
-		}
-		leftStartParam, leftEndParam = "leftFrom", "leftUntil"
-		rghtStartParam, rghtEndParam = "rightFrom", "rightUntil"
-
-	case http.MethodPost:
-		if err := ctrl.renderParametersFromRequestBody(r, &p, &rP); err != nil {
-			ctrl.writeInvalidParameterError(w, err)
-			return
-		}
-		leftStartParam, leftEndParam = rP.Left.From, rP.Left.Until
-		rghtStartParam, rghtEndParam = rP.Right.From, rP.Right.Until
-
-	default:
-		ctrl.writeInvalidMethodError(w)
-		return
-	}
-
-	leftStartTime, leftEndTime, leftOK := parseRenderRangeParams(r, leftStartParam, leftEndParam)
-	rghtStartTime, rghtEndTime, rghtOK := parseRenderRangeParams(r, rghtStartParam, rghtEndParam)
-	if !leftOK || !rghtOK {
-		ctrl.writeInvalidParameterError(w, errTimeParamsAreRequired)
-		return
-	}
-
-	out, leftOut, rghtOut, err := ctrl.loadTreeConcurrently(p.gi, p.gi.StartTime, p.gi.EndTime, leftStartTime, leftEndTime, rghtStartTime, rghtEndTime)
-	if err != nil {
-		ctrl.writeInternalServerError(w, err, "failed to retrieve data")
-		return
-	}
-	// TODO: handle properly, see ctrl.renderHandler
-	if out == nil {
-		ctrl.writeInternalServerError(w, errNoData, "failed to retrieve data")
-		return
-	}
-
-	var appName string
-	if p.gi.Key != nil {
-		appName = p.gi.Key.AppName()
-	} else if p.gi.Query != nil {
-		appName = p.gi.Query.AppName
-	}
-	combined := flamebearer.NewCombinedProfile(appName, out, leftOut, rghtOut, p.maxNodes)
-
-	switch p.format {
-	case "html":
-		w.Header().Add("Content-Type", "text/html")
-		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, ctrl.dir, w); err != nil {
-			ctrl.writeJSONEncodeError(w, err)
-			return
-		}
-
-	case "json":
-		// fallthrough to default, to maintain existing behaviour
-		fallthrough
-	default:
-		res := ctrl.mountRenderResponse(combined, appName, p.gi, p.maxNodes)
-		ctrl.writeResponseJSON(w, res)
-	}
-}
-
 func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderParams) error {
 	v := r.URL.Query()
 	p.gi = new(storage.GetInput)
@@ -303,42 +227,6 @@ func (ctrl *Controller) renderParametersFromRequest(r *http.Request, p *renderPa
 	p.gi.StartTime = attime.Parse(v.Get("from"))
 	p.gi.EndTime = attime.Parse(v.Get("until"))
 	p.format = v.Get("format")
-
-	return ctrl.expectFormats(p.format)
-}
-
-func (ctrl *Controller) renderParametersFromRequestBody(r *http.Request, p *renderParams, rP *RenderDiffParams) error {
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(rP); err != nil {
-		return err
-	}
-
-	p.gi = new(storage.GetInput)
-	switch {
-	case rP.Name == nil && rP.Query == nil:
-		return fmt.Errorf("'query' or 'name' parameter is required")
-	case rP.Name != nil:
-		sk, err := segment.ParseKey(*rP.Name)
-		if err != nil {
-			return fmt.Errorf("name: parsing storage key: %w", err)
-		}
-		p.gi.Key = sk
-	case rP.Query != nil:
-		qry, err := flameql.ParseQuery(*rP.Query)
-		if err != nil {
-			return fmt.Errorf("query: %w", err)
-		}
-		p.gi.Query = qry
-	}
-
-	p.maxNodes = ctrl.config.MaxNodesRender
-	if rP.MaxNodes != nil && *rP.MaxNodes > 0 {
-		p.maxNodes = *rP.MaxNodes
-	}
-
-	p.gi.StartTime = attime.Parse(rP.From)
-	p.gi.EndTime = attime.Parse(rP.Until)
-	p.format = rP.Format
 
 	return ctrl.expectFormats(p.format)
 }
@@ -403,20 +291,6 @@ func (ctrl *Controller) loadTree(gi *storage.GetInput, startTime, endTime time.T
 		return &storage.GetOutput{Tree: tree.New()}, nil
 	}
 	return out, nil
-}
-
-type RenderDiffParams struct {
-	Name  *string `json:"name,omitempty"`
-	Query *string `json:"query,omitempty"`
-
-	From  string `json:"from"`
-	Until string `json:"until"`
-
-	Format   string `json:"format"`
-	MaxNodes *int   `json:"maxNodes,omitempty"`
-
-	Left  RenderTreeParams `json:"leftParams"`
-	Right RenderTreeParams `json:"rightParams"`
 }
 
 type RenderTreeParams struct {
