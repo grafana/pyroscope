@@ -1,5 +1,7 @@
 package storage
 
+//revive:disable:max-public-structs TODO: we will refactor this later
+
 import "context"
 
 type Putter interface {
@@ -32,6 +34,7 @@ type AppNameGetter interface {
 	GetAppNames() []string
 }
 
+// Other functions from storage.Storage:
 // type Backend interface {
 // 	Put(pi *PutInput) error
 // 	Get(gi *GetInput) (*GetOutput, error)

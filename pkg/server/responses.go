@@ -15,7 +15,7 @@ func WriteResponseJSON(log *logrus.Logger, w http.ResponseWriter, res interface{
 	}
 }
 
-func WriteResponseFile(log *logrus.Logger, w http.ResponseWriter, filename string, content []byte) {
+func WriteResponseFile(_ *logrus.Logger, w http.ResponseWriter, filename string, content []byte) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(content)

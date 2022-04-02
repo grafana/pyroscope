@@ -12,18 +12,18 @@ func (ctrl *Controller) labelsHandler() http.HandlerFunc {
 	return NewLabelsHandler(ctrl.log, ctrl.storage).ServeHTTP
 }
 
-func NewLabelsHandler(log *logrus.Logger, storage storage.LabelsGetter) http.HandlerFunc {
+func NewLabelsHandler(log *logrus.Logger, s storage.LabelsGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("query")
 
 		keys := make([]string, 0)
 		if query != "" {
-			storage.GetKeysByQuery(query, func(k string) bool {
+			s.GetKeysByQuery(query, func(k string) bool {
 				keys = append(keys, k)
 				return true
 			})
 		} else {
-			storage.GetKeys(func(k string) bool {
+			s.GetKeys(func(k string) bool {
 				keys = append(keys, k)
 				return true
 			})

@@ -41,6 +41,8 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 )
 
+//revive:disable:max-public-structs TODO: we will refactor this later
+
 const (
 	stateCookieName            = "pyroscopeState"
 	gzHTTPCompressionThreshold = 2000

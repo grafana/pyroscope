@@ -12,7 +12,7 @@ func (ctrl *Controller) labelValuesHandler() http.HandlerFunc {
 	return NewLabelValuesHandler(ctrl.log, ctrl.storage)
 }
 
-func NewLabelValuesHandler(log *logrus.Logger, storage storage.LabelValuesGetter) http.HandlerFunc {
+func NewLabelValuesHandler(log *logrus.Logger, s storage.LabelValuesGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		labelName := r.URL.Query().Get("label")
 		query := r.URL.Query().Get("query")
@@ -24,12 +24,12 @@ func NewLabelValuesHandler(log *logrus.Logger, storage storage.LabelValuesGetter
 
 		values := make([]string, 0)
 		if query != "" {
-			storage.GetValuesByQuery(labelName, query, func(v string) bool {
+			s.GetValuesByQuery(labelName, query, func(v string) bool {
 				values = append(values, v)
 				return true
 			})
 		} else {
-			storage.GetValues(labelName, func(v string) bool {
+			s.GetValues(labelName, func(v string) bool {
 				values = append(values, v)
 				return true
 			})

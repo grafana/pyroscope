@@ -45,6 +45,7 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	return NewIndexHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.notifier, cfg).ServeHTTP
 }
 
+//revive:disable:argument-limit TODO: we will refactor this later
 func NewIndexHandler(log *logrus.Logger, s storage.AppNameGetter, dir http.FileSystem, stats StatsReceiver, notifier Notifier, cfg *IndexHandlerConfig) http.Handler {
 	fs := http.FileServer(dir)
 	return &IndexHandler{
