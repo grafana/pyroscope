@@ -12,7 +12,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-func ParseJFR(r io.Reader, s *storage.Storage, pi *storage.PutInput) (err error) {
+func ParseJFR(r io.Reader, s storage.Putter, pi *storage.PutInput) (err error) {
 	chunks, err := parser.Parse(r)
 	if err != nil {
 		return fmt.Errorf("unable to parse JFR format: %w", err)

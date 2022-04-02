@@ -21,31 +21,31 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if path == "/" {
-			ctrl.statsInc("index")
+			ctrl.StatsInc("index")
 			ctrl.renderIndexPage(rw, r)
 		} else if path == "/comparison" {
-			ctrl.statsInc("comparison")
+			ctrl.StatsInc("comparison")
 			ctrl.renderIndexPage(rw, r)
 		} else if path == "/comparison-diff" {
-			ctrl.statsInc("diff")
+			ctrl.StatsInc("diff")
 			ctrl.renderIndexPage(rw, r)
 		} else if path == "/adhoc-single" {
-			ctrl.statsInc("adhoc-index")
+			ctrl.StatsInc("adhoc-index")
 			ctrl.renderIndexPage(rw, r)
 		} else if path == "/adhoc-comparison" {
-			ctrl.statsInc("adhoc-comparison")
+			ctrl.StatsInc("adhoc-comparison")
 			ctrl.renderIndexPage(rw, r)
 		} else if path == "/adhoc-comparison-diff" {
-			ctrl.statsInc("adhoc-comparison-diff")
+			ctrl.StatsInc("adhoc-comparison-diff")
 			ctrl.renderIndexPage(rw, r)
 		} else if path == "/settings" {
-			ctrl.statsInc("settings")
+			ctrl.StatsInc("settings")
 			ctrl.renderIndexPage(rw, r)
 		} else if strings.HasPrefix(path, "/settings") {
-			ctrl.statsInc("settings")
+			ctrl.StatsInc("settings")
 			ctrl.renderIndexPage(rw, r)
 		} else if path == "/service-discovery" {
-			ctrl.statsInc("service-discovery")
+			ctrl.StatsInc("service-discovery")
 			ctrl.renderIndexPage(rw, r)
 		} else {
 			fs.ServeHTTP(rw, r)

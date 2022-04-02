@@ -22,15 +22,20 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
+type IngestStorage interface {
+	storage.Putter
+	storage.Enqueuer
+}
+
 type ingestHandler struct {
 	log        *logrus.Logger
-	storage    *storage.Storage
+	storage    IngestStorage
 	exporter   storage.MetricsExporter
 	bufferPool *bytebufferpool.Pool
 	onSuccess  func(pi *storage.PutInput)
 }
 
-func NewIngestHandler(log *logrus.Logger, st *storage.Storage, exporter storage.MetricsExporter, onSuccess func(pi *storage.PutInput)) http.Handler {
+func NewIngestHandler(log *logrus.Logger, st IngestStorage, exporter storage.MetricsExporter, onSuccess func(pi *storage.PutInput)) http.Handler {
 	return ingestHandler{
 		log:        log,
 		storage:    st,
@@ -154,7 +159,7 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*storage.PutInp
 	return &pi, nil
 }
 
-func writePprof(s *storage.Storage, pi *storage.PutInput, r *http.Request) error {
+func writePprof(s IngestStorage, pi *storage.PutInput, r *http.Request) error {
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		// maxMemory 32MB
 		return err

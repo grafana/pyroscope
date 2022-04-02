@@ -1,15 +1,21 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/pyroscope-io/pyroscope/pkg/flameql"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/structs/flamebearer"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
+	"github.com/sirupsen/logrus"
 )
 
 // RenderDiffParams refers to the params accepted by the renderDiffHandler
@@ -40,7 +46,7 @@ type diffParams struct {
 }
 
 // parseDiffQueryParams parses query params into a diffParams
-func (ctrl *Controller) parseDiffQueryParams(r *http.Request, p *diffParams) (err error) {
+func (rh *RenderDiffHandler) parseDiffQueryParams(r *http.Request, p *diffParams) (err error) {
 	parseDiffQueryParams := func(r *http.Request, prefix string) (gi storage.GetInput, err error) {
 		v := r.URL.Query()
 		getWithPrefix := func(param string) string {
@@ -72,54 +78,76 @@ func (ctrl *Controller) parseDiffQueryParams(r *http.Request, p *diffParams) (er
 
 	// Parse the common fields
 	v := r.URL.Query()
-	p.MaxNodes = ctrl.config.MaxNodesRender
+	p.MaxNodes = rh.maxNodesDefault
 	if mn, err := strconv.Atoi(v.Get("max-nodes")); err == nil && mn > 0 {
 		p.MaxNodes = mn
 	}
 
 	p.Format = v.Get("format")
-	return ctrl.expectFormats(p.Format)
+	return expectFormats(p.Format)
 }
 
-func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request) {
+func (ctrl *Controller) renderDiffHandler() http.Handler {
+	return NewRenderDiffHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender)
+}
+
+type RenderDiffHandler struct {
+	log             *logrus.Logger
+	storage         storage.Getter
+	dir             http.FileSystem
+	stats           StatsReceiver
+	maxNodesDefault int
+}
+
+func NewRenderDiffHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int) *RenderDiffHandler {
+	return &RenderDiffHandler{
+		log:             l,
+		storage:         s,
+		dir:             dir,
+		stats:           stats,
+		maxNodesDefault: maxNodesDefault,
+	}
+}
+
+func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var params diffParams
 
 	switch r.Method {
 	case http.MethodGet:
-		if err := ctrl.parseDiffQueryParams(r, &params); err != nil {
-			ctrl.writeInvalidParameterError(w, err)
+		if err := rh.parseDiffQueryParams(r, &params); err != nil {
+			rh.writeInvalidParameterError(w, err)
 			return
 		}
 	default:
-		ctrl.writeInvalidMethodError(w)
+		rh.writeInvalidMethodError(w)
 		return
 	}
 
 	// Load Both trees
 	// TODO: do this concurrently
-	leftOut, err := ctrl.loadTree(&params.Left, params.Left.StartTime, params.Left.EndTime)
+	leftOut, err := rh.loadTree(&params.Left, params.Left.StartTime, params.Left.EndTime)
 	if err != nil {
-		ctrl.writeInvalidParameterError(w, fmt.Errorf("%q: %+w", "could not load 'left' tree", err))
+		rh.writeInvalidParameterError(w, fmt.Errorf("%q: %+w", "could not load 'left' tree", err))
 		return
 	}
 
-	rightOut, err := ctrl.loadTree(&params.Right, params.Right.StartTime, params.Right.EndTime)
+	rightOut, err := rh.loadTree(&params.Right, params.Right.StartTime, params.Right.EndTime)
 	if err != nil {
-		ctrl.writeInvalidParameterError(w, fmt.Errorf("%q: %+w", "could not load 'right' tree", err))
+		rh.writeInvalidParameterError(w, fmt.Errorf("%q: %+w", "could not load 'right' tree", err))
 		return
 	}
 
 	combined, err := flamebearer.NewCombinedProfile("diff", leftOut, rightOut, params.MaxNodes)
 	if err != nil {
-		ctrl.writeInvalidParameterError(w, err)
+		rh.writeInvalidParameterError(w, err)
 		return
 	}
 
 	switch params.Format {
 	case "html":
 		w.Header().Add("Content-Type", "text/html")
-		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, ctrl.dir, w); err != nil {
-			ctrl.writeJSONEncodeError(w, err)
+		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, rh.dir, w); err != nil {
+			rh.writeJSONEncodeError(w, err)
 			return
 		}
 
@@ -128,6 +156,94 @@ func (ctrl *Controller) renderDiffHandler(w http.ResponseWriter, r *http.Request
 		fallthrough
 	default:
 		res := RenderDiffResponse{&combined}
-		ctrl.writeResponseJSON(w, res)
+		rh.writeResponseJSON(w, res)
 	}
+}
+
+//revive:disable-next-line:argument-limit 7 parameters here is fine
+func (rh *RenderDiffHandler) loadTreeConcurrently(
+	gi *storage.GetInput,
+	treeStartTime, treeEndTime time.Time,
+	leftStartTime, leftEndTime time.Time,
+	rghtStartTime, rghtEndTime time.Time,
+) (treeOut, leftOut, rghtOut *storage.GetOutput, _ error) {
+	var treeErr, leftErr, rghtErr error
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() { defer wg.Done(); treeOut, treeErr = rh.loadTree(gi, treeStartTime, treeEndTime) }()
+	go func() { defer wg.Done(); leftOut, leftErr = rh.loadTree(gi, leftStartTime, leftEndTime) }()
+	go func() { defer wg.Done(); rghtOut, rghtErr = rh.loadTree(gi, rghtStartTime, rghtEndTime) }()
+	wg.Wait()
+
+	for _, err := range []error{treeErr, leftErr, rghtErr} {
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	return treeOut, leftOut, rghtOut, nil
+}
+
+func (rh *RenderDiffHandler) loadTree(gi *storage.GetInput, startTime, endTime time.Time) (_ *storage.GetOutput, _err error) {
+	defer func() {
+		rerr := recover()
+		if rerr != nil {
+			_err = fmt.Errorf("panic: %v", rerr)
+			rh.log.WithFields(logrus.Fields{
+				"recover": rerr,
+				"stack":   string(debug.Stack()),
+			}).Error("loadTree: recovered from panic")
+		}
+	}()
+
+	_gi := *gi // clone the struct
+	_gi.StartTime, _gi.EndTime = startTime, endTime
+	out, err := rh.storage.Get(&_gi)
+	if err != nil {
+		return nil, err
+	}
+	if out == nil {
+		// TODO: handle properly
+		return &storage.GetOutput{Tree: tree.New()}, nil
+	}
+	return out, nil
+}
+
+// TODO: remove this
+
+func (rh *RenderDiffHandler) writeResponseJSON(w http.ResponseWriter, res interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		rh.writeJSONEncodeError(w, err)
+	}
+}
+
+func (*RenderDiffHandler) writeResponseFile(w http.ResponseWriter, filename string, content []byte) {
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Write(content)
+	w.(http.Flusher).Flush()
+}
+
+func (rh *RenderDiffHandler) writeError(w http.ResponseWriter, code int, err error, msg string) {
+	WriteError(rh.log, w, code, err, msg)
+}
+
+func (rh *RenderDiffHandler) writeInvalidMethodError(w http.ResponseWriter) {
+	WriteErrorMessage(rh.log, w, http.StatusMethodNotAllowed, "method not allowed")
+}
+
+func (rh *RenderDiffHandler) writeInvalidParameterError(w http.ResponseWriter, err error) {
+	rh.writeError(w, http.StatusBadRequest, err, "invalid parameter")
+}
+
+func (rh *RenderDiffHandler) writeInternalServerError(w http.ResponseWriter, err error, msg string) {
+	rh.writeError(w, http.StatusInternalServerError, err, msg)
+}
+
+func (rh *RenderDiffHandler) writeJSONEncodeError(w http.ResponseWriter, err error) {
+	rh.writeInternalServerError(w, err, "encoding response body")
+}
+
+func (rh *RenderDiffHandler) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
+	WriteErrorMessage(rh.log, w, code, msg)
 }

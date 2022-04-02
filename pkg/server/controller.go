@@ -164,8 +164,8 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 
 func (ctrl *Controller) ingestHandler() http.Handler {
 	return NewIngestHandler(ctrl.log, ctrl.storage, ctrl.exporter, func(pi *storage.PutInput) {
-		ctrl.statsInc("ingest")
-		ctrl.statsInc("ingest:" + pi.SpyName)
+		ctrl.StatsInc("ingest")
+		ctrl.StatsInc("ingest:" + pi.SpyName)
 		ctrl.appStats.Add(hashString(pi.Key.AppName()))
 	})
 }
@@ -244,11 +244,11 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	// For these routes server responds with 401.
 	ctrl.addRoutes(r, []route{
-		{"/render", ctrl.renderHandler},
-		{"/render-diff", ctrl.renderDiffHandler},
+		{"/render", ctrl.renderHandler().ServeHTTP},
+		{"/render-diff", ctrl.renderDiffHandler().ServeHTTP},
 		{"/labels", ctrl.labelsHandler},
 		{"/label-values", ctrl.labelValuesHandler},
-		{"/merge", ctrl.mergeHandler},
+		{"/merge", ctrl.mergeHandler().ServeHTTP},
 		{"/export", ctrl.exportHandler},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
 		ctrl.drainMiddleware,
@@ -508,7 +508,7 @@ func (ctrl *Controller) ingestionAuthMiddleware() mux.MiddlewareFunc {
 	}
 }
 
-func (*Controller) expectFormats(format string) error {
+func expectFormats(format string) error {
 	switch format {
 	case "json", "pprof", "collapsed", "html", "":
 		return nil
