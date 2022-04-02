@@ -3,7 +3,6 @@ package server
 import (
 	"compress/gzip"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	golog "log"
@@ -96,6 +95,10 @@ type Config struct {
 	Adhoc adhocserver.Server
 
 	ScrapeManager *scrape.Manager
+}
+
+type StatsReceiver interface {
+	StatsInc(name string)
 }
 
 type Notifier interface {
@@ -220,28 +223,29 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	// Protected pages:
 	// For these routes server responds with 307 and redirects to /login.
+	ih := ctrl.indexHandler()
 	ctrl.addRoutes(r, []route{
-		{"/", ctrl.indexHandler()},
-		{"/comparison", ctrl.indexHandler()},
-		{"/comparison-diff", ctrl.indexHandler()},
-		{"/service-discovery", ctrl.indexHandler()},
-		{"/adhoc-single", ctrl.indexHandler()},
-		{"/adhoc-comparison", ctrl.indexHandler()},
-		{"/adhoc-comparison-diff", ctrl.indexHandler()},
-		{"/settings", ctrl.indexHandler()},
-		{"/settings/{page}", ctrl.indexHandler()},
-		{"/settings/{page}/{subpage}", ctrl.indexHandler()}},
+		{"/", ih},
+		{"/comparison", ih},
+		{"/comparison-diff", ih},
+		{"/service-discovery", ih},
+		{"/adhoc-single", ih},
+		{"/adhoc-comparison", ih},
+		{"/adhoc-comparison-diff", ih},
+		{"/settings", ih},
+		{"/settings/{page}", ih},
+		{"/settings/{page}/{subpage}", ih}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.loginRedirect))
 
 	// For these routes server responds with 401.
 	ctrl.addRoutes(r, []route{
-		{"/render", ctrl.renderHandler().ServeHTTP},
-		{"/render-diff", ctrl.renderDiffHandler().ServeHTTP},
-		{"/labels", ctrl.labelsHandler},
-		{"/label-values", ctrl.labelValuesHandler},
-		{"/merge", ctrl.mergeHandler().ServeHTTP},
-		{"/export", ctrl.exportHandler},
+		{"/render", ctrl.renderHandler()},
+		{"/render-diff", ctrl.renderDiffHandler()},
+		{"/merge", ctrl.mergeHandler()},
+		{"/labels", ctrl.labelsHandler()},
+		{"/label-values", ctrl.labelValuesHandler()},
+		{"/export", ctrl.exportHandler()},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
@@ -507,50 +511,4 @@ func expectFormats(format string) error {
 	default:
 		return errUnknownFormat
 	}
-}
-
-func WriteResponseJSON(log *logrus.Logger, w http.ResponseWriter, res interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		WriteJSONEncodeError(log, w, err)
-	}
-}
-
-func WriteResponseFile(log *logrus.Logger, w http.ResponseWriter, filename string, content []byte) {
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(content)
-	w.(http.Flusher).Flush()
-}
-
-func WriteInvalidMethodError(log *logrus.Logger, w http.ResponseWriter) {
-	WriteErrorMessage(log, w, http.StatusMethodNotAllowed, "method not allowed")
-}
-
-func WriteInvalidParameterError(log *logrus.Logger, w http.ResponseWriter, err error) {
-	WriteError(log, w, http.StatusBadRequest, err, "invalid parameter")
-}
-
-func WriteInternalServerError(log *logrus.Logger, w http.ResponseWriter, err error, msg string) {
-	WriteError(log, w, http.StatusInternalServerError, err, msg)
-}
-
-func WriteJSONEncodeError(log *logrus.Logger, w http.ResponseWriter, err error) {
-	WriteInternalServerError(log, w, err, "encoding response body")
-}
-
-func WriteError(log *logrus.Logger, w http.ResponseWriter, code int, err error, msg string) {
-	log.WithError(err).Error(msg)
-	writeMessage(w, code, "%s: %q", msg, err)
-}
-
-func WriteErrorMessage(log *logrus.Logger, w http.ResponseWriter, code int, msg string) {
-	log.Error(msg)
-	writeMessage(w, code, msg)
-}
-
-func writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
-	w.WriteHeader(code)
-	_, _ = fmt.Fprintf(w, format, args...)
-	_, _ = fmt.Fprintln(w)
 }

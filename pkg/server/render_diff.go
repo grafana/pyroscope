@@ -86,8 +86,8 @@ func (rh *RenderDiffHandler) parseDiffQueryParams(r *http.Request, p *diffParams
 	return expectFormats(p.Format)
 }
 
-func (ctrl *Controller) renderDiffHandler() http.Handler {
-	return NewRenderDiffHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender)
+func (ctrl *Controller) renderDiffHandler() http.HandlerFunc {
+	return NewRenderDiffHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender).ServeHTTP
 }
 
 type RenderDiffHandler struct {

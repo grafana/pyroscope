@@ -19,8 +19,8 @@ type MergeHandler struct {
 	maxNodesDefault int
 }
 
-func (ctrl *Controller) mergeHandler() http.Handler {
-	return NewMergeHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender)
+func (ctrl *Controller) mergeHandler() http.HandlerFunc {
+	return NewMergeHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender).ServeHTTP
 }
 
 func NewMergeHandler(l *logrus.Logger, s storage.Merger, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int) *MergeHandler {

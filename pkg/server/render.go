@@ -49,10 +49,6 @@ type RenderResponse struct {
 	Metadata renderMetadataResponse `json:"metadata"`
 }
 
-type StatsReceiver interface {
-	StatsInc(name string)
-}
-
 type RenderHandler struct {
 	log             *logrus.Logger
 	storage         storage.Getter
@@ -61,8 +57,8 @@ type RenderHandler struct {
 	maxNodesDefault int
 }
 
-func (ctrl *Controller) renderHandler() http.Handler {
-	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender)
+func (ctrl *Controller) renderHandler() http.HandlerFunc {
+	return NewRenderHandler(ctrl.log, ctrl.storage, ctrl.dir, ctrl, ctrl.config.MaxNodesRender).ServeHTTP
 }
 
 func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, stats StatsReceiver, maxNodesDefault int) *RenderHandler {
