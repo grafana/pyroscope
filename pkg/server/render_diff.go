@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"runtime/debug"
@@ -115,11 +114,11 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		if err := rh.parseDiffQueryParams(r, &params); err != nil {
-			rh.writeInvalidParameterError(w, err)
+			WriteInvalidParameterError(rh.log, w, err)
 			return
 		}
 	default:
-		rh.writeInvalidMethodError(w)
+		WriteInvalidMethodError(rh.log, w)
 		return
 	}
 
@@ -127,19 +126,19 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: do this concurrently
 	leftOut, err := rh.loadTree(&params.Left, params.Left.StartTime, params.Left.EndTime)
 	if err != nil {
-		rh.writeInvalidParameterError(w, fmt.Errorf("%q: %+w", "could not load 'left' tree", err))
+		WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'left' tree", err))
 		return
 	}
 
 	rightOut, err := rh.loadTree(&params.Right, params.Right.StartTime, params.Right.EndTime)
 	if err != nil {
-		rh.writeInvalidParameterError(w, fmt.Errorf("%q: %+w", "could not load 'right' tree", err))
+		WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'right' tree", err))
 		return
 	}
 
 	combined, err := flamebearer.NewCombinedProfile("diff", leftOut, rightOut, params.MaxNodes)
 	if err != nil {
-		rh.writeInvalidParameterError(w, err)
+		WriteInvalidParameterError(rh.log, w, err)
 		return
 	}
 
@@ -147,7 +146,7 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "html":
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&combined, rh.dir, w); err != nil {
-			rh.writeJSONEncodeError(w, err)
+			WriteJSONEncodeError(rh.log, w, err)
 			return
 		}
 
@@ -156,7 +155,7 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		fallthrough
 	default:
 		res := RenderDiffResponse{&combined}
-		rh.writeResponseJSON(w, res)
+		WriteResponseJSON(rh.log, w, res)
 	}
 }
 
@@ -206,44 +205,4 @@ func (rh *RenderDiffHandler) loadTree(gi *storage.GetInput, startTime, endTime t
 		return &storage.GetOutput{Tree: tree.New()}, nil
 	}
 	return out, nil
-}
-
-// TODO: remove this
-
-func (rh *RenderDiffHandler) writeResponseJSON(w http.ResponseWriter, res interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		rh.writeJSONEncodeError(w, err)
-	}
-}
-
-func (*RenderDiffHandler) writeResponseFile(w http.ResponseWriter, filename string, content []byte) {
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(content)
-	w.(http.Flusher).Flush()
-}
-
-func (rh *RenderDiffHandler) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	WriteError(rh.log, w, code, err, msg)
-}
-
-func (rh *RenderDiffHandler) writeInvalidMethodError(w http.ResponseWriter) {
-	WriteErrorMessage(rh.log, w, http.StatusMethodNotAllowed, "method not allowed")
-}
-
-func (rh *RenderDiffHandler) writeInvalidParameterError(w http.ResponseWriter, err error) {
-	rh.writeError(w, http.StatusBadRequest, err, "invalid parameter")
-}
-
-func (rh *RenderDiffHandler) writeInternalServerError(w http.ResponseWriter, err error, msg string) {
-	rh.writeError(w, http.StatusInternalServerError, err, msg)
-}
-
-func (rh *RenderDiffHandler) writeJSONEncodeError(w http.ResponseWriter, err error) {
-	rh.writeInternalServerError(w, err, "encoding response body")
-}
-
-func (rh *RenderDiffHandler) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
-	WriteErrorMessage(rh.log, w, code, msg)
 }

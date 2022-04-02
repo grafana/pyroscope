@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -79,12 +78,12 @@ func NewRenderHandler(l *logrus.Logger, s storage.Getter, dir http.FileSystem, s
 func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var p renderParams
 	if err := rh.renderParametersFromRequest(r, &p); err != nil {
-		rh.writeInvalidParameterError(w, err)
+		WriteInvalidParameterError(rh.log, w, err)
 		return
 	}
 
 	if err := expectFormats(p.format); err != nil {
-		rh.writeInvalidParameterError(w, errUnknownFormat)
+		WriteInvalidParameterError(rh.log, w, errUnknownFormat)
 		return
 	}
 
@@ -98,7 +97,7 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("%v %v", appName, p.gi.StartTime.UTC().Format(time.RFC3339))
 	rh.stats.StatsInc("render")
 	if err != nil {
-		rh.writeInternalServerError(w, err, "failed to retrieve data")
+		WriteInternalServerError(rh.log, w, err, "failed to retrieve data")
 		return
 	}
 	// TODO: handle properly
@@ -110,7 +109,7 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "json":
 		flame := flamebearer.NewProfile(filename, out, p.maxNodes)
 		res := rh.mountRenderResponse(flame, appName, p.gi, p.maxNodes)
-		rh.writeResponseJSON(w, res)
+		WriteResponseJSON(rh.log, w, res)
 	case "pprof":
 		pprof := out.Tree.Pprof(&tree.PprofMetadata{
 			Unit:      out.Units,
@@ -118,18 +117,18 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		})
 		out, err := proto.Marshal(pprof)
 		if err == nil {
-			rh.writeResponseFile(w, fmt.Sprintf("%v.pprof", filename), out)
+			WriteResponseFile(rh.log, w, fmt.Sprintf("%v.pprof", filename), out)
 		} else {
-			rh.writeInternalServerError(w, err, "failed to serialize data")
+			WriteInternalServerError(rh.log, w, err, "failed to serialize data")
 		}
 	case "collapsed":
 		collapsed := out.Tree.Collapsed()
-		rh.writeResponseFile(w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
+		WriteResponseFile(rh.log, w, fmt.Sprintf("%v.collapsed.txt", filename), []byte(collapsed))
 	case "html":
 		res := flamebearer.NewProfile(filename, out, p.maxNodes)
 		w.Header().Add("Content-Type", "text/html")
 		if err := flamebearer.FlamebearerToStandaloneHTML(&res, rh.dir, w); err != nil {
-			rh.writeJSONEncodeError(w, err)
+			WriteJSONEncodeError(rh.log, w, err)
 			return
 		}
 	}
@@ -217,44 +216,4 @@ func parseRenderRangeParams(r *http.Request, from, until string) (startTime, end
 type RenderTreeParams struct {
 	From  string `json:"from"`
 	Until string `json:"until"`
-}
-
-// TODO: remove this
-
-func (rh *RenderHandler) writeResponseJSON(w http.ResponseWriter, res interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		rh.writeJSONEncodeError(w, err)
-	}
-}
-
-func (*RenderHandler) writeResponseFile(w http.ResponseWriter, filename string, content []byte) {
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(content)
-	w.(http.Flusher).Flush()
-}
-
-func (rh *RenderHandler) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	WriteError(rh.log, w, code, err, msg)
-}
-
-func (rh *RenderHandler) writeInvalidMethodError(w http.ResponseWriter) {
-	WriteErrorMessage(rh.log, w, http.StatusMethodNotAllowed, "method not allowed")
-}
-
-func (rh *RenderHandler) writeInvalidParameterError(w http.ResponseWriter, err error) {
-	rh.writeError(w, http.StatusBadRequest, err, "invalid parameter")
-}
-
-func (rh *RenderHandler) writeInternalServerError(w http.ResponseWriter, err error, msg string) {
-	rh.writeError(w, http.StatusInternalServerError, err, msg)
-}
-
-func (rh *RenderHandler) writeJSONEncodeError(w http.ResponseWriter, err error) {
-	rh.writeInternalServerError(w, err, "encoding response body")
-}
-
-func (rh *RenderHandler) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
-	WriteErrorMessage(rh.log, w, code, msg)
 }

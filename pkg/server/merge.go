@@ -36,16 +36,16 @@ func NewMergeHandler(l *logrus.Logger, s storage.Merger, dir http.FileSystem, st
 func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req mergeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		mh.writeInvalidParameterError(w, err)
+		WriteInvalidParameterError(mh.log, w, err)
 		return
 	}
 
 	if req.AppName == "" {
-		mh.writeInvalidParameterError(w, fmt.Errorf("application name required"))
+		WriteInvalidParameterError(mh.log, w, fmt.Errorf("application name required"))
 		return
 	}
 	if len(req.Profiles) == 0 {
-		mh.writeInvalidParameterError(w, fmt.Errorf("at least one profile ID must be specified"))
+		WriteInvalidParameterError(mh.log, w, fmt.Errorf("at least one profile ID must be specified"))
 		return
 	}
 	maxNodes := mh.maxNodesDefault
@@ -58,7 +58,7 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Profiles: req.Profiles,
 	})
 	if err != nil {
-		mh.writeInternalServerError(w, err, "failed to retrieve data")
+		WriteInternalServerError(mh.log, w, err, "failed to retrieve data")
 		return
 	}
 
@@ -85,45 +85,5 @@ func (mh *MergeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mh.stats.StatsInc("merge")
-	mh.writeResponseJSON(w, resp)
-}
-
-// TODO: remove this
-
-func (mh *MergeHandler) writeResponseJSON(w http.ResponseWriter, res interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		mh.writeJSONEncodeError(w, err)
-	}
-}
-
-func (*MergeHandler) writeResponseFile(w http.ResponseWriter, filename string, content []byte) {
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(content)
-	w.(http.Flusher).Flush()
-}
-
-func (mh *MergeHandler) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	WriteError(mh.log, w, code, err, msg)
-}
-
-func (mh *MergeHandler) writeInvalidMethodError(w http.ResponseWriter) {
-	WriteErrorMessage(mh.log, w, http.StatusMethodNotAllowed, "method not allowed")
-}
-
-func (mh *MergeHandler) writeInvalidParameterError(w http.ResponseWriter, err error) {
-	mh.writeError(w, http.StatusBadRequest, err, "invalid parameter")
-}
-
-func (mh *MergeHandler) writeInternalServerError(w http.ResponseWriter, err error, msg string) {
-	mh.writeError(w, http.StatusInternalServerError, err, msg)
-}
-
-func (mh *MergeHandler) writeJSONEncodeError(w http.ResponseWriter, err error) {
-	mh.writeInternalServerError(w, err, "encoding response body")
-}
-
-func (mh *MergeHandler) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
-	WriteErrorMessage(mh.log, w, code, msg)
+	WriteResponseJSON(mh.log, w, resp)
 }

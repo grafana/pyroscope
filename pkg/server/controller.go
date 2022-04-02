@@ -307,7 +307,7 @@ func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Requ
 			})
 		}
 	}
-	ctrl.writeResponseJSON(w, resp)
+	WriteResponseJSON(ctrl.log, w, resp)
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {
@@ -509,14 +509,14 @@ func expectFormats(format string) error {
 	}
 }
 
-func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}) {
+func WriteResponseJSON(log *logrus.Logger, w http.ResponseWriter, res interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(res); err != nil {
-		WriteJSONEncodeError(ctrl.log, w, err)
+		WriteJSONEncodeError(log, w, err)
 	}
 }
 
-func (*Controller) writeResponseFile(w http.ResponseWriter, filename string, content []byte) {
+func WriteResponseFile(log *logrus.Logger, w http.ResponseWriter, filename string, content []byte) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(content)
