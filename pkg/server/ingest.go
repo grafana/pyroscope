@@ -35,6 +35,14 @@ type ingestHandler struct {
 	onSuccess  func(pi *storage.PutInput)
 }
 
+func (ctrl *Controller) ingestHandler() http.Handler {
+	return NewIngestHandler(ctrl.log, ctrl.storage, ctrl.exporter, func(pi *storage.PutInput) {
+		ctrl.StatsInc("ingest")
+		ctrl.StatsInc("ingest:" + pi.SpyName)
+		ctrl.appStats.Add(hashString(pi.Key.AppName()))
+	})
+}
+
 func NewIngestHandler(log *logrus.Logger, st IngestStorage, exporter storage.MetricsExporter, onSuccess func(pi *storage.PutInput)) http.Handler {
 	return ingestHandler{
 		log:        log,

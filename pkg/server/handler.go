@@ -78,7 +78,7 @@ func (ctrl *Controller) getTemplate(path string) (*template.Template, error) {
 func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) {
 	tmpl, err := ctrl.getTemplate("/index.html")
 	if err != nil {
-		ctrl.writeInternalServerError(w, err, "could not render index page")
+		WriteInternalServerError(ctrl.log, w, err, "could not render index page")
 		return
 	}
 
@@ -88,7 +88,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	var b []byte
 	b, err = json.Marshal(initialStateObj)
 	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
+		WriteJSONEncodeError(ctrl.log, w, err)
 		return
 	}
 
@@ -113,7 +113,7 @@ func (ctrl *Controller) renderIndexPage(w http.ResponseWriter, _ *http.Request) 
 	}
 	b, err = json.Marshal(features)
 	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
+		WriteJSONEncodeError(ctrl.log, w, err)
 		return
 	}
 	featuresStr := string(b)

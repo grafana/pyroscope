@@ -15,7 +15,7 @@ type Payload struct {
 func (ctrl *Controller) exportHandler(w http.ResponseWriter, r *http.Request) {
 	resp, err := http.Post("https://flamegraph.com/api/upload/v1", "application/json", r.Body)
 	if err != nil {
-		ctrl.writeError(w, 500, err, fmt.Sprintf("could not upload profile: %v", err))
+		WriteError(ctrl.log, w, 500, err, fmt.Sprintf("could not upload profile: %v", err))
 		return
 	}
 	defer resp.Body.Close()
