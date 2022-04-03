@@ -2,6 +2,7 @@
 package parser
 
 import (
+	"context"
 	"io"
 	"mime/multipart"
 	"strings"
@@ -69,7 +70,7 @@ func (p *Parser) createParseCallback(pi *storage.PutInput) func([]byte, int) {
 }
 
 // Put takes parser.PutInput, turns it into storage.PutIntput and enqueues it for a write
-func (p *Parser) Put(in *PutInput) (err error, pErr error) {
+func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) {
 	pi := &storage.PutInput{
 		StartTime:       in.StartTime,
 		EndTime:         in.EndTime,
@@ -90,9 +91,9 @@ func (p *Parser) Put(in *PutInput) (err error, pErr error) {
 	case in.Format == "lines":
 		err = convert.ParseIndividualLines(in.Body, cb)
 	case in.Format == "jfr":
-		err = jfr.ParseJFR(in.Body, p.storage, pi)
+		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
-		err = writePprof(p.storage, in)
+		err = writePprof(ctx, p.storage, in)
 	default:
 		err = convert.ParseGroups(in.Body, cb)
 	}
@@ -104,12 +105,12 @@ func (p *Parser) Put(in *PutInput) (err error, pErr error) {
 	// with some formats we write directly to storage (e.g look at "multipart/form-data" above)
 	// TODO(petethepig): this is unintuitive and error prone, need to refactor at some point
 	if pi.Val != nil {
-		pErr = p.storage.Put(pi)
+		pErr = p.storage.Put(ctx, pi)
 	}
 	return err, pErr
 }
 
-func writePprof(s ParserStorage, pi *PutInput) error {
+func writePprof(ctx context.Context, s ParserStorage, pi *PutInput) error {
 	// maxMemory 32MB
 	form, err := multipart.NewReader(pi.Body, pi.MultipartBoundary).ReadForm(32 << 20)
 
@@ -117,13 +118,13 @@ func writePprof(s ParserStorage, pi *PutInput) error {
 		return err
 	}
 	w := pprof.NewProfileWriter(s, pi.Key.Labels(), tree.DefaultSampleTypeMapping)
-	if err := writePprofFromForm(form, w, pi, "prev_profile"); err != nil {
+	if err := writePprofFromForm(ctx, form, w, pi, "prev_profile"); err != nil {
 		return err
 	}
-	return writePprofFromForm(form, w, pi, "profile")
+	return writePprofFromForm(ctx, form, w, pi, "profile")
 }
 
-func writePprofFromForm(form *multipart.Form, w *pprof.ProfileWriter, pi *PutInput, name string) error {
+func writePprofFromForm(ctx context.Context, form *multipart.Form, w *pprof.ProfileWriter, pi *PutInput, name string) error {
 	files, ok := form.File[name]
 	if !ok || len(files) == 0 {
 		return nil
@@ -133,6 +134,6 @@ func writePprofFromForm(form *multipart.Form, w *pprof.ProfileWriter, pi *PutInp
 		return err
 	}
 	return pprof.DecodePool(f, func(p *tree.Profile) error {
-		return w.WriteProfile(pi.StartTime, pi.EndTime, pi.SpyName, p)
+		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, pi.SpyName, p)
 	})
 }

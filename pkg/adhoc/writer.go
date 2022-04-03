@@ -1,6 +1,7 @@
 package adhoc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -46,7 +47,7 @@ func (w writer) write(t0, t1 time.Time) error {
 	defer ew.close() // It's fine to call this multiple times
 
 	profiles := 0
-	for _, name := range w.storage.GetAppNames() {
+	for _, name := range w.storage.GetAppNames(context.TODO()) {
 		skey, err := segment.ParseKey(name)
 		if err != nil {
 			w.logger.WithError(err).Error("parsing storage key")
@@ -57,7 +58,7 @@ func (w writer) write(t0, t1 time.Time) error {
 			EndTime:   t1,
 			Key:       skey,
 		}
-		out, err := w.storage.Get(gi)
+		out, err := w.storage.Get(context.TODO(), gi)
 		if err != nil {
 			w.logger.WithError(err).Error("retrieving storage key")
 			continue

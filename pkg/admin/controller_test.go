@@ -22,11 +22,11 @@ type mockStorage struct {
 	deleteResult      error
 }
 
-func (m mockStorage) GetAppNames() []string {
+func (m mockStorage) GetAppNames(ctx context.Context) []string {
 	return m.getAppNamesResult
 }
 
-func (m mockStorage) DeleteApp(appname string) error {
+func (m mockStorage) DeleteApp(ctx context.Context, appname string) error {
 	return m.deleteResult
 }
 

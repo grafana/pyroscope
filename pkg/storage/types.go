@@ -5,15 +5,15 @@ package storage
 import "context"
 
 type Putter interface {
-	Put(pi *PutInput) error
+	Put(ctx context.Context, pi *PutInput) error
 }
 
 type Getter interface {
-	Get(gi *GetInput) (*GetOutput, error)
+	Get(ctx context.Context, gi *GetInput) (*GetOutput, error)
 }
 
 type Enqueuer interface {
-	Enqueue(input *PutInput)
+	Enqueue(ctx context.Context, input *PutInput)
 }
 
 type Merger interface {
@@ -21,33 +21,33 @@ type Merger interface {
 }
 
 type LabelsGetter interface {
-	GetKeys(cb func(string) bool)
-	GetKeysByQuery(query string, cb func(_k string) bool) error
+	GetKeys(ctx context.Context, cb func(string) bool)
+	GetKeysByQuery(ctx context.Context, query string, cb func(_k string) bool) error
 }
 
 type LabelValuesGetter interface {
-	GetValues(key string, cb func(v string) bool)
-	GetValuesByQuery(label string, query string, cb func(v string) bool) error
+	GetValues(ctx context.Context, key string, cb func(v string) bool)
+	GetValuesByQuery(ctx context.Context, label string, query string, cb func(v string) bool) error
 }
 
 type AppNameGetter interface {
-	GetAppNames() []string
+	GetAppNames(ctx context.Context) []string
 }
 
 // Other functions from storage.Storage:
 // type Backend interface {
-// 	Put(pi *PutInput) error
-// 	Get(gi *GetInput) (*GetOutput, error)
+// 	Put(ctx context.Context, pi *PutInput) error
+// 	Get(ctx context.Context, gi *GetInput) (*GetOutput, error)
 
-// 	Enqueue(input *PutInput)
+// 	Enqueue(ctx context.Context, input *PutInput)
 
-// 	GetAppNames() []string
-// 	GetKeys(cb func(string) bool)
-// 	GetKeysByQuery(query string, cb func(_k string) bool) error
-// 	GetValues(key string, cb func(v string) bool)
-// 	GetValuesByQuery(label string, query string, cb func(v string) bool) error
-// 	DebugExport(w http.ResponseWriter, r *http.Request)
+// 	GetAppNames(ctx context.Context, ) []string
+// 	GetKeys(ctx context.Context, cb func(string) bool)
+// 	GetKeysByQuery(ctx context.Context, query string, cb func(_k string) bool) error
+// 	GetValues(ctx context.Context, key string, cb func(v string) bool)
+// 	GetValuesByQuery(ctx context.Context, label string, query string, cb func(v string) bool) error
+// 	DebugExport(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
-// 	Delete(di *DeleteInput) error
-// 	DeleteApp(appname string) error
+// 	Delete(ctx context.Context, di *DeleteInput) error
+// 	DeleteApp(ctx context.Context, appname string) error
 // }

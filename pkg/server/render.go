@@ -83,7 +83,7 @@ func (rh *RenderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := rh.storage.Get(p.gi)
+	out, err := rh.storage.Get(r.Context(), p.gi)
 	var appName string
 	if p.gi.Key != nil {
 		appName = p.gi.Key.AppName()

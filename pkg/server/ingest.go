@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"mime"
 	"net/http"
@@ -16,7 +17,7 @@ import (
 )
 
 type Parser interface {
-	Put(*parser.PutInput) (error, error)
+	Put(context.Context, *parser.PutInput) (error, error)
 }
 
 type ingestHandler struct {
@@ -51,7 +52,7 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// this method returns two errors to distinguish between parsing and ingestion errors
 	// TODO(petethepig): maybe there's a more idiomatic way to do this?
-	err, ingestErr := h.parser.Put(pi)
+	err, ingestErr := h.parser.Put(r.Context(), pi)
 
 	if err != nil {
 		WriteError(h.log, w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")

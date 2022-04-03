@@ -1,13 +1,19 @@
 package storage
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 )
 
-func (s *Storage) Enqueue(input *PutInput) {
+type putInputWithCtx struct {
+	pi  *PutInput
+	ctx context.Context
+}
+
+func (s *Storage) Enqueue(ctx context.Context, input *PutInput) {
 	select {
-	case s.queue <- input:
+	case s.queue <- &putInputWithCtx{input, ctx}:
 	case <-s.stop:
 	default:
 		s.logger.WithField("key", input.Key).Error("storage queue is full, dropping a profile")
@@ -26,8 +32,8 @@ func (s *Storage) runQueueWorker() {
 	for {
 		select {
 		case input := <-s.queue:
-			if err := s.safePut(input); err != nil {
-				s.logger.WithField("key", input.Key).WithError(err).Error("error happened while ingesting data")
+			if err := s.safePut(input.ctx, input.pi); err != nil {
+				s.logger.WithField("key", input.pi.Key).WithError(err).Error("error happened while ingesting data")
 			}
 		case <-s.stop:
 			return
@@ -35,11 +41,12 @@ func (s *Storage) runQueueWorker() {
 	}
 }
 
-func (s *Storage) safePut(input *PutInput) (err error) {
+func (s *Storage) safePut(ctx context.Context, input *PutInput) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("panic recovered: %v; %v", r, string(debug.Stack()))
 		}
 	}()
-	return s.Put(input)
+	// TODO(petethepig): not sure if retaining context is a good practice
+	return s.Put(ctx, input)
 }

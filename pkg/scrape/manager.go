@@ -16,6 +16,7 @@
 package scrape
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -48,7 +49,7 @@ type Manager struct {
 }
 
 type Ingester interface {
-	Enqueue(*storage.PutInput)
+	Enqueue(context.Context, *storage.PutInput)
 }
 
 // NewManager is the Manager constructor
