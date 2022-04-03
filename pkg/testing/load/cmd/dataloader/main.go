@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -67,7 +68,7 @@ func main() {
 	}
 
 	c.WriteFn = func(input *storage.PutInput) {
-		if err = x.Put(input); err != nil {
+		if err = x.Put(context.TODO(), input); err != nil {
 			fmt.Println(err)
 		}
 	}

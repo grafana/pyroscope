@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -87,7 +88,7 @@ var _ = Describe("server", func() {
 						Expect(res.StatusCode).To(Equal(200))
 
 						sk, _ := segment.ParseKey(name)
-						gOut, err := s.Get(&storage.GetInput{
+						gOut, err := s.Get(context.TODO(), &storage.GetInput{
 							StartTime: st,
 							EndTime:   et,
 							Key:       sk,

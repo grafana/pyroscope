@@ -1,6 +1,7 @@
 package pprof
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -13,7 +14,9 @@ import (
 
 type mockIngester struct{ actual []*storage.PutInput }
 
-func (m *mockIngester) Enqueue(p *storage.PutInput) { m.actual = append(m.actual, p) }
+func (m *mockIngester) Enqueue(_ context.Context, p *storage.PutInput) {
+	m.actual = append(m.actual, p)
+}
 
 var _ = Describe("pprof parsing", func() {
 	It("parses data correctly", func() {
@@ -31,7 +34,7 @@ var _ = Describe("pprof parsing", func() {
 		}
 
 		w := NewProfileWriter(ingester, labels, tree.DefaultSampleTypeMapping)
-		err = w.WriteProfile(start, end, spyName, p)
+		err = w.WriteProfile(context.TODO(), start, end, spyName, p)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(ingester.actual).To(HaveLen(1))
@@ -61,7 +64,7 @@ var _ = Describe("pprof profile_id multiplexing", func() {
 		}
 
 		w := NewProfileWriter(ingester, labels, tree.DefaultSampleTypeMapping)
-		err = w.WriteProfile(start, end, spyName, p)
+		err = w.WriteProfile(context.TODO(), start, end, spyName, p)
 		Expect(err).ToNot(HaveOccurred())
 
 		var actualTotal uint64
@@ -108,7 +111,7 @@ var _ = Describe("custom pprof parsing", func() {
 			},
 		})
 
-		err = w.WriteProfile(start, end, spyName, p)
+		err = w.WriteProfile(context.TODO(), start, end, spyName, p)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ingester.actual).To(HaveLen(2))
 		sort.Slice(ingester.actual, func(i, j int) bool {

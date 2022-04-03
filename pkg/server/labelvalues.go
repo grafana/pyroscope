@@ -14,6 +14,7 @@ func (ctrl *Controller) labelValuesHandler() http.HandlerFunc {
 
 func NewLabelValuesHandler(log *logrus.Logger, s storage.LabelValuesGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		labelName := r.URL.Query().Get("label")
 		query := r.URL.Query().Get("query")
 
@@ -24,12 +25,12 @@ func NewLabelValuesHandler(log *logrus.Logger, s storage.LabelValuesGetter) http
 
 		values := make([]string, 0)
 		if query != "" {
-			s.GetValuesByQuery(labelName, query, func(v string) bool {
+			s.GetValuesByQuery(ctx, labelName, query, func(v string) bool {
 				values = append(values, v)
 				return true
 			})
 		} else {
-			s.GetValues(labelName, func(v string) bool {
+			s.GetValues(ctx, labelName, func(v string) bool {
 				values = append(values, v)
 				return true
 			})

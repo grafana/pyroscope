@@ -14,16 +14,17 @@ func (ctrl *Controller) labelsHandler() http.HandlerFunc {
 
 func NewLabelsHandler(log *logrus.Logger, s storage.LabelsGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		query := r.URL.Query().Get("query")
 
 		keys := make([]string, 0)
 		if query != "" {
-			s.GetKeysByQuery(query, func(k string) bool {
+			s.GetKeysByQuery(ctx, query, func(k string) bool {
 				keys = append(keys, k)
 				return true
 			})
 		} else {
-			s.GetKeys(func(k string) bool {
+			s.GetKeys(ctx, func(k string) bool {
 				keys = append(keys, k)
 				return true
 			})

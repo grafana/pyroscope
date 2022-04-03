@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"runtime/debug"
@@ -110,6 +111,7 @@ func NewRenderDiffHandler(l *logrus.Logger, s storage.Getter, dir http.FileSyste
 
 func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var params diffParams
+	ctx := r.Context()
 
 	switch r.Method {
 	case http.MethodGet:
@@ -124,13 +126,13 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Load Both trees
 	// TODO: do this concurrently
-	leftOut, err := rh.loadTree(&params.Left, params.Left.StartTime, params.Left.EndTime)
+	leftOut, err := rh.loadTree(ctx, &params.Left, params.Left.StartTime, params.Left.EndTime)
 	if err != nil {
 		WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'left' tree", err))
 		return
 	}
 
-	rightOut, err := rh.loadTree(&params.Right, params.Right.StartTime, params.Right.EndTime)
+	rightOut, err := rh.loadTree(ctx, &params.Right, params.Right.StartTime, params.Right.EndTime)
 	if err != nil {
 		WriteInvalidParameterError(rh.log, w, fmt.Errorf("%q: %+w", "could not load 'right' tree", err))
 		return
@@ -161,6 +163,7 @@ func (rh *RenderDiffHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 //revive:disable-next-line:argument-limit 7 parameters here is fine
 func (rh *RenderDiffHandler) loadTreeConcurrently(
+	ctx context.Context,
 	gi *storage.GetInput,
 	treeStartTime, treeEndTime time.Time,
 	leftStartTime, leftEndTime time.Time,
@@ -169,9 +172,9 @@ func (rh *RenderDiffHandler) loadTreeConcurrently(
 	var treeErr, leftErr, rghtErr error
 	var wg sync.WaitGroup
 	wg.Add(3)
-	go func() { defer wg.Done(); treeOut, treeErr = rh.loadTree(gi, treeStartTime, treeEndTime) }()
-	go func() { defer wg.Done(); leftOut, leftErr = rh.loadTree(gi, leftStartTime, leftEndTime) }()
-	go func() { defer wg.Done(); rghtOut, rghtErr = rh.loadTree(gi, rghtStartTime, rghtEndTime) }()
+	go func() { defer wg.Done(); treeOut, treeErr = rh.loadTree(ctx, gi, treeStartTime, treeEndTime) }()
+	go func() { defer wg.Done(); leftOut, leftErr = rh.loadTree(ctx, gi, leftStartTime, leftEndTime) }()
+	go func() { defer wg.Done(); rghtOut, rghtErr = rh.loadTree(ctx, gi, rghtStartTime, rghtEndTime) }()
 	wg.Wait()
 
 	for _, err := range []error{treeErr, leftErr, rghtErr} {
@@ -182,7 +185,7 @@ func (rh *RenderDiffHandler) loadTreeConcurrently(
 	return treeOut, leftOut, rghtOut, nil
 }
 
-func (rh *RenderDiffHandler) loadTree(gi *storage.GetInput, startTime, endTime time.Time) (_ *storage.GetOutput, _err error) {
+func (rh *RenderDiffHandler) loadTree(ctx context.Context, gi *storage.GetInput, startTime, endTime time.Time) (_ *storage.GetOutput, _err error) {
 	defer func() {
 		rerr := recover()
 		if rerr != nil {
@@ -196,7 +199,7 @@ func (rh *RenderDiffHandler) loadTree(gi *storage.GetInput, startTime, endTime t
 
 	_gi := *gi // clone the struct
 	_gi.StartTime, _gi.EndTime = startTime, endTime
-	out, err := rh.storage.Get(&_gi)
+	out, err := rh.storage.Get(ctx, &_gi)
 	if err != nil {
 		return nil, err
 	}
