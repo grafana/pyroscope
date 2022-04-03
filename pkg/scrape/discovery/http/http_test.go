@@ -185,7 +185,7 @@ func TestSourceDisappeared(t *testing.T) {
 		{
 			responses: []string{
 				`[{"labels": {"k": "1"}, "targets": ["127.0.0.1"],"application":"test"}]`,
-				`[{"labels": {"k": "1"}, "targets": ["127.0.0.1"],"application":"test"}, 
+				`[{"labels": {"k": "1"}, "targets": ["127.0.0.1"],"application":"test"},
 				 {"labels": {"k": "2"}, "targets": ["127.0.0.1"],"application":"test1"}]`,
 			},
 			expectedTargets: [][]*targetgroup.Group{
@@ -293,7 +293,7 @@ func TestSourceDisappeared(t *testing.T) {
 		},
 		{
 			responses: []string{
-				`[{"labels": {"k": "1"}, "targets": ["127.0.0.1"], "application":"test1"}, 
+				`[{"labels": {"k": "1"}, "targets": ["127.0.0.1"], "application":"test1"},
 				 {"labels": {"k": "2"}, "targets": ["127.0.0.1"],"application":"test2"},
 				  {"labels": {"k": "3"}, "targets": ["127.0.0.1"],"application":"test3"}]`,
 				`[{"labels": {"k": "1"}, "targets": ["127.0.0.1"],"application":"test1"}]`,
