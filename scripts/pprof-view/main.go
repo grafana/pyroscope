@@ -63,7 +63,7 @@ func dumpJSON(w io.Writer) error {
 
 type ingester struct{ actual []*storage.PutInput }
 
-func (m *ingester) Enqueue(ctx context.Context, p *storage.PutInput) { m.actual = append(m.actual, p) }
+func (m *ingester) Enqueue(_ context.Context, p *storage.PutInput) { m.actual = append(m.actual, p) }
 
 func printProfiles(w io.Writer, pprofPath, configPath, profileType string) error {
 	c := tree.DefaultSampleTypeMapping

@@ -11,10 +11,10 @@ import (
 )
 
 //revive:disable-next-line:get-return callback is used
-func (s *Storage) GetKeys(ctx context.Context, cb func(string) bool) { s.labels.GetKeys(cb) }
+func (s *Storage) GetKeys(_ context.Context, cb func(string) bool) { s.labels.GetKeys(cb) }
 
 //revive:disable-next-line:get-return callback is used
-func (s *Storage) GetValues(ctx context.Context, key string, cb func(v string) bool) {
+func (s *Storage) GetValues(_ context.Context, key string, cb func(v string) bool) {
 	s.labels.GetValues(key, func(v string) bool {
 		if key != "__name__" || !slices.StringContains(s.config.hideApplications, v) {
 			return cb(v)
@@ -23,7 +23,7 @@ func (s *Storage) GetValues(ctx context.Context, key string, cb func(v string) b
 	})
 }
 
-func (s *Storage) GetKeysByQuery(ctx context.Context, query string, cb func(_k string) bool) error {
+func (s *Storage) GetKeysByQuery(_ context.Context, query string, cb func(_k string) bool) error {
 	parsedQuery, err := flameql.ParseQuery(query)
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func (s *Storage) GetKeysByQuery(ctx context.Context, query string, cb func(_k s
 	return nil
 }
 
-func (s *Storage) GetValuesByQuery(ctx context.Context, label string, query string, cb func(v string) bool) error {
+func (s *Storage) GetValuesByQuery(_ context.Context, label string, query string, cb func(v string) bool) error {
 	parsedQuery, err := flameql.ParseQuery(query)
 	if err != nil {
 		return err
