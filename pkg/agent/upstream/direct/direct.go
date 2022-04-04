@@ -1,6 +1,7 @@
 package direct
 
 import (
+	"context"
 	"runtime/debug"
 	"sync"
 
@@ -80,7 +81,7 @@ func (u *Direct) uploadProfile(j *upstream.UploadJob) {
 	}
 
 	j.Trie.Iterate(cb)
-	if err = u.storage.Put(pi); err != nil {
+	if err = u.storage.Put(context.TODO(), pi); err != nil {
 		logrus.WithError(err).Error("failed to store a local profile")
 	}
 }

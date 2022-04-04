@@ -49,7 +49,7 @@ var _ = Describe("storage package", func() {
 					et2 := testing.SimpleTime(30)
 					key, _ := segment.ParseKey("foo")
 
-					s.Put(&PutInput{
+					s.Put(context.TODO(), &PutInput{
 						StartTime:  st,
 						EndTime:    et,
 						Key:        key,
@@ -58,8 +58,8 @@ var _ = Describe("storage package", func() {
 						SampleRate: 100,
 					})
 
-					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
-					gOut, err := s.Get(&GetInput{
+					Expect(s.Delete(context.TODO(), &DeleteInput{key})).ToNot(HaveOccurred())
+					gOut, err := s.Get(context.TODO(), &GetInput{
 						StartTime: st2,
 						EndTime:   et2,
 						Key:       key,
@@ -84,7 +84,7 @@ var _ = Describe("storage package", func() {
 					et2 := testing.SimpleTime(30)
 					key, _ := segment.ParseKey("foo")
 
-					s.Put(&PutInput{
+					s.Put(context.TODO(), &PutInput{
 						StartTime:  st,
 						EndTime:    et,
 						Key:        key,
@@ -93,7 +93,7 @@ var _ = Describe("storage package", func() {
 						SampleRate: 100,
 					})
 
-					s.Put(&PutInput{
+					s.Put(context.TODO(), &PutInput{
 						StartTime:  st,
 						EndTime:    et,
 						Key:        key,
@@ -102,13 +102,13 @@ var _ = Describe("storage package", func() {
 						SampleRate: 100,
 					})
 
-					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
-					s.GetValues("__name__", func(v string) bool {
+					Expect(s.Delete(context.TODO(), &DeleteInput{key})).ToNot(HaveOccurred())
+					s.GetValues(context.TODO(), "__name__", func(v string) bool {
 						Fail("app name label was not removed")
 						return false
 					})
 
-					gOut, err := s.Get(&GetInput{
+					gOut, err := s.Get(context.TODO(), &GetInput{
 						StartTime: st2,
 						EndTime:   et2,
 						Key:       key,
@@ -133,7 +133,7 @@ var _ = Describe("storage package", func() {
 					et2 := testing.SimpleTime(30)
 					key, _ := segment.ParseKey("foo")
 
-					err := s.Put(&PutInput{
+					err := s.Put(context.TODO(), &PutInput{
 						StartTime:  st,
 						EndTime:    et,
 						Key:        key,
@@ -143,8 +143,8 @@ var _ = Describe("storage package", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 
-					Expect(s.Delete(&DeleteInput{key})).ToNot(HaveOccurred())
-					s.Put(&PutInput{
+					Expect(s.Delete(context.TODO(), &DeleteInput{key})).ToNot(HaveOccurred())
+					s.Put(context.TODO(), &PutInput{
 						StartTime:  st,
 						EndTime:    et,
 						Key:        key,
@@ -153,7 +153,7 @@ var _ = Describe("storage package", func() {
 						SampleRate: 100,
 					})
 
-					gOut, err := s.Get(&GetInput{
+					gOut, err := s.Get(context.TODO(), &GetInput{
 						StartTime: st2,
 						EndTime:   et2,
 						Key:       key,
@@ -182,7 +182,7 @@ var _ = Describe("storage package", func() {
 						tree.Insert([]byte(k), uint64(i+1))
 
 						key, _ := segment.ParseKey("tree_key" + strconv.Itoa(i+1))
-						err := s.Put(&PutInput{
+						err := s.Put(context.TODO(), &PutInput{
 							Key:        key,
 							Val:        tree,
 							SpyName:    "testspy",
@@ -204,7 +204,7 @@ var _ = Describe("storage package", func() {
 					et2 := testing.SimpleTime(30)
 					key, _ := segment.ParseKey("foo")
 
-					err := s.Put(&PutInput{
+					err := s.Put(context.TODO(), &PutInput{
 						StartTime:  st,
 						EndTime:    et,
 						Key:        key,
@@ -214,7 +214,7 @@ var _ = Describe("storage package", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 
-					o, err := s.Get(&GetInput{
+					o, err := s.Get(context.TODO(), &GetInput{
 						StartTime: st2,
 						EndTime:   et2,
 						Key:       key,
@@ -237,7 +237,7 @@ var _ = Describe("storage package", func() {
 					et2 := testing.SimpleTime(30)
 					key, _ := segment.ParseKey("foo")
 
-					err := s.Put(&PutInput{
+					err := s.Put(context.TODO(), &PutInput{
 						StartTime:  st,
 						EndTime:    et,
 						Key:        key,
@@ -247,7 +247,7 @@ var _ = Describe("storage package", func() {
 					})
 					Expect(err).ToNot(HaveOccurred())
 
-					o, err := s.Get(&GetInput{
+					o, err := s.Get(context.TODO(), &GetInput{
 						StartTime: st2,
 						EndTime:   et2,
 						Key:       key,
@@ -273,7 +273,7 @@ var _ = Describe("storage package", func() {
 						tree.Insert([]byte(k), uint64(i+1))
 
 						key, _ := segment.ParseKey("tree_key" + strconv.Itoa(i+1))
-						err := s.Put(&PutInput{
+						err := s.Put(context.TODO(), &PutInput{
 							Key:        key,
 							Val:        tree,
 							SpyName:    "testspy",
@@ -340,7 +340,7 @@ var _ = Describe("persistence", func() {
 				appKey, _ := segment.ParseKey("foo")
 				key, _ := segment.ParseKey("foo{tag=value}")
 
-				err := s.Put(&PutInput{
+				err := s.Put(context.TODO(), &PutInput{
 					StartTime:  st,
 					EndTime:    et,
 					Key:        key,
@@ -350,7 +350,7 @@ var _ = Describe("persistence", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				o, err := s.Get(&GetInput{
+				o, err := s.Get(context.TODO(), &GetInput{
 					StartTime: st2,
 					EndTime:   et2,
 					Key:       appKey,
@@ -364,7 +364,7 @@ var _ = Describe("persistence", func() {
 				s2, err := New(NewConfig(&(*cfg).Server), logrus.StandardLogger(), prometheus.NewRegistry(), new(health.Controller))
 				Expect(err).ToNot(HaveOccurred())
 
-				o2, err := s2.Get(&GetInput{
+				o2, err := s2.Get(context.TODO(), &GetInput{
 					StartTime: st2,
 					EndTime:   et2,
 					Key:       appKey,
@@ -393,7 +393,7 @@ var _ = Describe("querying", func() {
 			et := testing.SimpleTime(19)
 			key, err := segment.ParseKey(k)
 			Expect(err).ToNot(HaveOccurred())
-			err = s.Put(&PutInput{
+			err = s.Put(context.TODO(), &PutInput{
 				StartTime:  st,
 				EndTime:    et,
 				Key:        key,
@@ -410,7 +410,7 @@ var _ = Describe("querying", func() {
 			It("get returns result with query", func() {
 				qry, err := flameql.ParseQuery(`app.name{foo="bar"}`)
 				Expect(err).ToNot(HaveOccurred())
-				output, err := s.Get(&GetInput{
+				output, err := s.Get(context.TODO(), &GetInput{
 					StartTime: time.Time{},
 					EndTime:   maxTime,
 					Query:     qry,
@@ -425,7 +425,7 @@ var _ = Describe("querying", func() {
 			It("get returns a particular tree for a fully qualified key", func() {
 				k, err := segment.ParseKey(`app.name{foo=bar,baz=qux}`)
 				Expect(err).ToNot(HaveOccurred())
-				output, err := s.Get(&GetInput{
+				output, err := s.Get(context.TODO(), &GetInput{
 					StartTime: time.Time{},
 					EndTime:   maxTime,
 					Key:       k,
@@ -440,7 +440,7 @@ var _ = Describe("querying", func() {
 			It("get returns all results for a key containing only app name", func() {
 				k, err := segment.ParseKey(`app.name`)
 				Expect(err).ToNot(HaveOccurred())
-				output, err := s.Get(&GetInput{
+				output, err := s.Get(context.TODO(), &GetInput{
 					StartTime: time.Time{},
 					EndTime:   maxTime,
 					Key:       k,
@@ -572,7 +572,7 @@ var _ = Describe("CollectGarbage", func() {
 				tree.Insert([]byte("a;c"), uint64(2))
 				now := time.Now()
 
-				err := s.Put(&PutInput{
+				err := s.Put(context.TODO(), &PutInput{
 					StartTime:  now.Add(-3 * time.Hour),
 					EndTime:    now.Add(-3 * time.Hour).Add(time.Second * 10),
 					Key:        key,
@@ -582,7 +582,7 @@ var _ = Describe("CollectGarbage", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				err = s.Put(&PutInput{
+				err = s.Put(context.TODO(), &PutInput{
 					StartTime:  now.Add(-time.Minute),
 					EndTime:    now.Add(-time.Minute).Add(time.Second * 10),
 					Key:        key,
@@ -595,7 +595,7 @@ var _ = Describe("CollectGarbage", func() {
 				err = s.EnforceRetentionPolicy(segment.NewRetentionPolicy().SetAbsolutePeriod(time.Hour))
 				Expect(err).ToNot(HaveOccurred())
 
-				o, err := s.Get(&GetInput{
+				o, err := s.Get(context.TODO(), &GetInput{
 					StartTime: now.Add(-3 * time.Hour),
 					EndTime:   now.Add(-3 * time.Hour).Add(time.Second * 10),
 					Key:       key,
@@ -604,7 +604,7 @@ var _ = Describe("CollectGarbage", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(o).To(BeNil())
 
-				o, err = s.Get(&GetInput{
+				o, err = s.Get(context.TODO(), &GetInput{
 					StartTime: now.Add(-time.Minute),
 					EndTime:   now.Add(-time.Minute).Add(time.Second * 10),
 					Key:       key,
@@ -655,7 +655,7 @@ var _ = Describe("Getters", func() {
 			et := testing.SimpleTime(19)
 			key, _ := segment.ParseKey("foo")
 
-			s.Put(&PutInput{
+			s.Put(context.TODO(), &PutInput{
 				StartTime:  st,
 				EndTime:    et,
 				Key:        key,
@@ -665,7 +665,7 @@ var _ = Describe("Getters", func() {
 			})
 
 			want := []string{"foo"}
-			Expect(s.GetAppNames()).To(Equal(
+			Expect(s.GetAppNames(context.TODO())).To(Equal(
 				want,
 			))
 			Expect(s.Close()).ToNot(HaveOccurred())

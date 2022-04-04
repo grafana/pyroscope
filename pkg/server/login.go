@@ -26,7 +26,7 @@ func (ctrl *Controller) loginHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		ctrl.loginPost(w, r)
 	default:
-		ctrl.writeInvalidMethodError(w)
+		WriteInvalidMethodError(ctrl.log, w)
 	}
 }
 
@@ -35,7 +35,7 @@ func (ctrl *Controller) loginGet(w http.ResponseWriter, r *http.Request) {
 		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	tmpl, err := ctrl.getTemplate("/login.html")
+	tmpl, err := getTemplate(ctrl.dir, "/login.html")
 	if err != nil {
 		api.HandleError(w, r, ctrl.log, err)
 		return
@@ -86,7 +86,7 @@ func (ctrl *Controller) signupHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		ctrl.signupPost(w, r)
 	default:
-		ctrl.writeInvalidMethodError(w)
+		WriteInvalidMethodError(ctrl.log, w)
 	}
 }
 
@@ -95,7 +95,7 @@ func (ctrl *Controller) signupGet(w http.ResponseWriter, r *http.Request) {
 		ctrl.redirectPreservingBaseURL(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
-	tmpl, err := ctrl.getTemplate("/signup.html")
+	tmpl, err := getTemplate(ctrl.dir, "/signup.html")
 	if err != nil {
 		api.HandleError(w, r, ctrl.log, err)
 		return
@@ -203,7 +203,7 @@ func (ctrl *Controller) logoutHandler(w http.ResponseWriter, r *http.Request) {
 		ctrl.invalidateCookie(w, api.JWTCookieName)
 		ctrl.loginRedirect(w, r)
 	default:
-		ctrl.writeInvalidMethodError(w)
+		WriteInvalidMethodError(ctrl.log, w)
 	}
 }
 
@@ -232,9 +232,9 @@ func (ctrl *Controller) oauthLoginHandler(oh oauthHandler) http.HandlerFunc {
 // this is done so that the state cookie would be send back from browser
 func (ctrl *Controller) callbackHandler(redirectPath string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := ctrl.getTemplate("/redirect.html")
+		tmpl, err := getTemplate(ctrl.dir, "/redirect.html")
 		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render redirect page")
+			WriteInternalServerError(ctrl.log, w, err, "could not render redirect page")
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
@@ -246,9 +246,9 @@ func (ctrl *Controller) callbackHandler(redirectPath string) http.HandlerFunc {
 
 func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := ctrl.getTemplate("/forbidden.html")
+		tmpl, err := getTemplate(ctrl.dir, "/forbidden.html")
 		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render forbidden page")
+			WriteInternalServerError(ctrl.log, w, err, "could not render forbidden page")
 			return
 		}
 		mustExecute(tmpl, w, map[string]interface{}{
@@ -325,9 +325,9 @@ func (ctrl *Controller) callbackRedirectHandler(oh oauthHandler) http.HandlerFun
 		// delete state cookie and add jwt cookie
 		ctrl.invalidateCookie(w, stateCookieName)
 		ctrl.createCookie(w, api.JWTCookieName, token)
-		tmpl, err := ctrl.getTemplate("/welcome.html")
+		tmpl, err := getTemplate(ctrl.dir, "/welcome.html")
 		if err != nil {
-			ctrl.writeInternalServerError(w, err, "could not render welcome page")
+			WriteInternalServerError(ctrl.log, w, err, "could not render welcome page")
 			return
 		}
 

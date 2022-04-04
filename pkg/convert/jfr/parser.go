@@ -1,6 +1,7 @@
 package jfr
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -12,7 +13,7 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 )
 
-func ParseJFR(r io.Reader, s *storage.Storage, pi *storage.PutInput) (err error) {
+func ParseJFR(ctx context.Context, r io.Reader, s storage.Putter, pi *storage.PutInput) (err error) {
 	chunks, err := parser.Parse(r)
 	if err != nil {
 		return fmt.Errorf("unable to parse JFR format: %w", err)
@@ -61,7 +62,7 @@ func ParseJFR(r io.Reader, s *storage.Storage, pi *storage.PutInput) (err error)
 			pi.Val = cpu
 			pi.Units = "samples"
 			pi.AggregationType = "sum"
-			if putErr := s.Put(pi); err != nil {
+			if putErr := s.Put(ctx, pi); err != nil {
 				err = multierror.Append(err, putErr)
 			}
 		}
@@ -71,7 +72,7 @@ func ParseJFR(r io.Reader, s *storage.Storage, pi *storage.PutInput) (err error)
 			pi.Val = inTLABObjects
 			pi.Units = "objects"
 			pi.AggregationType = "sum"
-			if putErr := s.Put(pi); err != nil {
+			if putErr := s.Put(ctx, pi); err != nil {
 				err = multierror.Append(err, putErr)
 			}
 			labels["__name__"] = prefix + ".alloc_in_new_tlab_bytes"
@@ -79,7 +80,7 @@ func ParseJFR(r io.Reader, s *storage.Storage, pi *storage.PutInput) (err error)
 			pi.Val = inTLABObjects
 			pi.Units = "bytes"
 			pi.AggregationType = "sum"
-			if putErr := s.Put(pi); err != nil {
+			if putErr := s.Put(ctx, pi); err != nil {
 				err = multierror.Append(err, putErr)
 			}
 			labels["__name__"] = prefix + ".alloc_outside_tlab_objects"
@@ -87,7 +88,7 @@ func ParseJFR(r io.Reader, s *storage.Storage, pi *storage.PutInput) (err error)
 			pi.Val = inTLABObjects
 			pi.Units = "objects"
 			pi.AggregationType = "sum"
-			if putErr := s.Put(pi); err != nil {
+			if putErr := s.Put(ctx, pi); err != nil {
 				err = multierror.Append(err, putErr)
 			}
 			labels["__name__"] = prefix + ".alloc_outside_tlab_bytes"
@@ -95,7 +96,7 @@ func ParseJFR(r io.Reader, s *storage.Storage, pi *storage.PutInput) (err error)
 			pi.Val = inTLABObjects
 			pi.Units = "bytes"
 			pi.AggregationType = "sum"
-			if putErr := s.Put(pi); err != nil {
+			if putErr := s.Put(ctx, pi); err != nil {
 				err = multierror.Append(err, putErr)
 			}
 		}
