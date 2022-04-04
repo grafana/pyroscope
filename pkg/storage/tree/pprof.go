@@ -39,18 +39,13 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 		Units:       "samples",
 		Sampled:     true,
 	},
-	"wall": {
-		DisplayName: "wall",
-		Units:       "miliseconds",
-		Aggregation: "sum",
-	},
 	"objects": {
-		Units:       "objects",
-		Aggregation: "avg",
+		Units:      "objects",
+		Cumulative: true,
 	},
 	"space": {
-		Units:       "bytes",
-		Aggregation: "avg",
+		Units:      "bytes",
+		Cumulative: true,
 	},
 }
 

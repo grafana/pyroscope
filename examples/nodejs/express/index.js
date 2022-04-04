@@ -33,26 +33,26 @@ function scooterSearchHandler() {
   return genericSearchHandler(0.25);
 }
 
-Pyroscope.init();
+Pyroscope.init({ autoStart: false, server: 'http://pyroscope:4040' });
+Pyroscope.startCpuProfiling();
 
 app.get('/bike', function bikeSearchHandler(req, res) {
-  return genericSearchHandler(0.2)(req, res);
+  return genericSearchHandler(0.5)(req, res);
 });
 app.get('/car', carSearchHandler());
 app.get('/scooter', scooterSearchHandler());
 
-
-setInterval(() => {
-  fetch(`http://localhost:${port}/car`);
-}, 1800);
+// setInterval(() => {
+//   fetch(`http://localhost:${port}/car`);
+// }, 1800);
 
 setInterval(() => {
   fetch(`http://localhost:${port}/bike`);
-}, 633);
+}, 5000);
 
-setInterval(() => {
-  fetch(`http://localhost:${port}/scooter`);
-}, 1000);
+// setInterval(() => {
+//   fetch(`http://localhost:${port}/scooter`);
+// }, 1000);
 
 app.listen(port, () => {
   console.log(
