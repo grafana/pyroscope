@@ -20,7 +20,7 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 	},
 	"inuse_objects": {
 		Units:       "objects",
-		Aggregation: "avg",
+		Aggregation: "average",
 	},
 	"alloc_objects": {
 		Units:      "objects",
@@ -28,7 +28,7 @@ var DefaultSampleTypeMapping = map[string]*SampleTypeConfig{
 	},
 	"inuse_space": {
 		Units:       "bytes",
-		Aggregation: "avg",
+		Aggregation: "average",
 	},
 	"alloc_space": {
 		Units:      "bytes",

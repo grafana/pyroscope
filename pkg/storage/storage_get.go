@@ -118,7 +118,8 @@ func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 		}
 
 		st := res.(*segment.Segment)
-		if st.AggregationType() == averageAggregationType {
+		switch st.AggregationType() {
+		case averageAggregationType, "avg":
 			aggregationType = averageAggregationType
 		}
 
