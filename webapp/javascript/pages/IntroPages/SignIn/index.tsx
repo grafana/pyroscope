@@ -91,11 +91,7 @@ function SignInPage() {
             required
           />
         </div>
-        <button
-          className={styles.button}
-          data-testid="sign-in-button"
-          type="submit"
-        >
+        <button className={styles.button} type="submit">
           Log in
         </button>
         <Divider />
