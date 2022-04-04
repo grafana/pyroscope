@@ -257,6 +257,19 @@ func (ctrl *Controller) forbiddenHandler() http.HandlerFunc {
 	}
 }
 
+func (ctrl *Controller) notfoundHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := getTemplate(ctrl.dir, "/404.html")
+		if err != nil {
+			WriteInternalServerError(ctrl.log, w, err, "could not render forbidden page")
+			return
+		}
+		mustExecute(tmpl, w, map[string]interface{}{
+			"BaseURL": ctrl.config.BaseURL,
+		})
+	}
+}
+
 func (ctrl *Controller) logErrorAndRedirect(w http.ResponseWriter, r *http.Request, msg string, err error) {
 	if err != nil {
 		ctrl.log.WithError(err).Error(msg)
