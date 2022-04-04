@@ -34,6 +34,10 @@ export const loadCurrentUser = createAsyncThunk(
     if ('code' in res.error && res.error.code === 404) {
       return Promise.resolve({ id: 0, role: 'anonymous' });
     }
+    // Suppress 401 error on login screen
+    if ('code' in res.error && window?.location?.pathname === '/login') {
+      return Promise.reject(res.error);
+    }
 
     thunkAPI.dispatch(
       addNotification({

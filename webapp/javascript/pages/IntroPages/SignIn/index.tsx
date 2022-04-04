@@ -69,6 +69,7 @@ function SignInPage() {
         <div>
           <StatusMessage type="error" message={form.errors?.join(', ')} />
           <InputField
+            id="username"
             type="text"
             name="username"
             label="Username"
@@ -79,6 +80,7 @@ function SignInPage() {
             required
           />
           <InputField
+            id="password"
             type="password"
             name="password"
             label="Password"
@@ -89,7 +91,11 @@ function SignInPage() {
             required
           />
         </div>
-        <button className={styles.button} type="submit">
+        <button
+          className={styles.button}
+          data-testid="sign-in-button"
+          type="submit"
+        >
           Log in
         </button>
         <Divider />
