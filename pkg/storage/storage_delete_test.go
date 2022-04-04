@@ -4,6 +4,7 @@
 package storage
 
 import (
+	"context"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -86,7 +87,7 @@ var _ = Describe("storage package", func() {
 
 		checkLabelsPresence := func(appname string, presence bool) {
 			// this indirectly calls s.labels
-			appnames := s.GetAppNames()
+			appnames := s.GetAppNames(context.TODO())
 
 			// linear scan should be fast enough here
 			found := false
@@ -114,7 +115,7 @@ var _ = Describe("storage package", func() {
 				st := testing.SimpleTime(10)
 				et := testing.SimpleTime(19)
 				key, _ := segment.ParseKey(appname)
-				err := s.Put(&PutInput{
+				err := s.Put(context.TODO(), &PutInput{
 					StartTime:  st,
 					EndTime:    et,
 					Key:        key,
@@ -156,7 +157,7 @@ var _ = Describe("storage package", func() {
 				/*************************/
 				/*  D e l e t e   a p p  */
 				/*************************/
-				err = s.DeleteApp(appname)
+				err = s.DeleteApp(context.TODO(), appname)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Trees
@@ -200,7 +201,7 @@ var _ = Describe("storage package", func() {
 				et := testing.SimpleTime(19)
 				for _, l := range labels {
 					key, _ := segment.ParseKey(appname + l)
-					err := s.Put(&PutInput{
+					err := s.Put(context.TODO(), &PutInput{
 						StartTime:  st,
 						EndTime:    et,
 						Key:        key,
@@ -246,7 +247,7 @@ var _ = Describe("storage package", func() {
 				/*  D e l e t e   a p p  */
 				/*************************/
 				By("deleting the app")
-				err := s.DeleteApp(appname)
+				err := s.DeleteApp(context.TODO(), appname)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("checking trees were deleted")
@@ -296,7 +297,7 @@ var _ = Describe("storage package", func() {
 					et := testing.SimpleTime(19)
 					for _, l := range labels {
 						key, _ := segment.ParseKey(appname + l)
-						err := s.Put(&PutInput{
+						err := s.Put(context.TODO(), &PutInput{
 							StartTime:  st,
 							EndTime:    et,
 							Key:        key,
@@ -351,7 +352,7 @@ var _ = Describe("storage package", func() {
 				/*  D e l e t e   a p p  */
 				/*************************/
 				By("deleting the app")
-				err := s.DeleteApp(app1name)
+				err := s.DeleteApp(context.TODO(), app1name)
 				Expect(err).ToNot(HaveOccurred())
 
 				By("checking trees were deleted")
@@ -427,7 +428,7 @@ var _ = Describe("storage package", func() {
 			et := testing.SimpleTime(19)
 			for _, l := range labels {
 				key, _ := segment.ParseKey(appname + l)
-				err := s.Put(&PutInput{
+				err := s.Put(context.TODO(), &PutInput{
 					StartTime:  st,
 					EndTime:    et,
 					Key:        key,
@@ -473,7 +474,7 @@ var _ = Describe("storage package", func() {
 			/*  D e l e t e   a p p  */
 			/*************************/
 			By("deleting the app")
-			err := s.DeleteApp("random.app")
+			err := s.DeleteApp(context.TODO(), "random.app")
 			Expect(err).ToNot(HaveOccurred())
 
 			// nothing should have happened

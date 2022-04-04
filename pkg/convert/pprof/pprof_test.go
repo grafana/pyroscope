@@ -1,6 +1,7 @@
 package pprof
 
 import (
+	"context"
 	"sort"
 	"time"
 
@@ -13,7 +14,9 @@ import (
 
 type mockIngester struct{ actual []*storage.PutInput }
 
-func (m *mockIngester) Enqueue(p *storage.PutInput) { m.actual = append(m.actual, p) }
+func (m *mockIngester) Enqueue(_ context.Context, p *storage.PutInput) {
+	m.actual = append(m.actual, p)
+}
 
 var _ = Describe("pprof parsing", func() {
 	Context("Go", func() {
@@ -37,7 +40,7 @@ var _ = Describe("pprof parsing", func() {
 				SpyName:     spyName,
 			})
 
-			err = w.WriteProfile(start, end, p)
+			err = w.WriteProfile(context.TODO(), start, end, p)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(ingester.actual).To(HaveLen(1))
@@ -73,7 +76,7 @@ var _ = Describe("pprof parsing", func() {
 				SpyName:     spyName,
 			})
 
-			err = w.WriteProfile(start, end, p)
+			err = w.WriteProfile(context.TODO(), start, end, p)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(ingester.actual).To(HaveLen(1))
@@ -114,7 +117,7 @@ var _ = Describe("pprof parsing", func() {
 				SpyName:     spyName,
 			})
 
-			err = w.WriteProfile(start, end, p)
+			err = w.WriteProfile(context.TODO(), start, end, p)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ingester.actual).To(HaveLen(2))
 			sort.Slice(ingester.actual, func(i, j int) bool {

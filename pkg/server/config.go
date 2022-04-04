@@ -8,7 +8,7 @@ import (
 func (ctrl *Controller) configHandler(w http.ResponseWriter, _ *http.Request) {
 	configBytes, err := json.MarshalIndent(ctrl.config, "", "  ")
 	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
+		WriteJSONEncodeError(ctrl.log, w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

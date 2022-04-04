@@ -1,6 +1,7 @@
 package pprof
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type Ingester interface {
-	Enqueue(*storage.PutInput)
+	Enqueue(context.Context, *storage.PutInput)
 }
 
 type ProfileWriter struct {
@@ -41,7 +42,7 @@ func NewProfileWriter(ingester Ingester, config ProfileWriterConfig) *ProfileWri
 
 func (w *ProfileWriter) Reset() { w.r.Reset() }
 
-func (w *ProfileWriter) WriteProfile(startTime, endTime time.Time, p *tree.Profile) error {
+func (w *ProfileWriter) WriteProfile(ctx context.Context, startTime, endTime time.Time, p *tree.Profile) error {
 	return w.r.Read(p, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
 		if vt.Type >= int64(len(p.StringTable)) {
 			return false, fmt.Errorf("sample value type is invalid")
@@ -82,7 +83,7 @@ func (w *ProfileWriter) WriteProfile(startTime, endTime time.Time, p *tree.Profi
 			pi.Units = p.StringTable[vt.Unit]
 		}
 		pi.Key = w.buildName(sampleType, p.ResolveLabels(l))
-		w.ingester.Enqueue(&pi)
+		w.ingester.Enqueue(ctx, &pi)
 		return sampleTypeConfig.Cumulative, nil
 	})
 }

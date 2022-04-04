@@ -436,7 +436,7 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 		return err
 	}
 	sl.scraper.targetMetrics.profileSamples.Observe(float64(len(p.Sample)))
-	return sl.scraper.pprofWriter.WriteProfile(startTime, endTime, p)
+	return sl.scraper.pprofWriter.WriteProfile(ctx, startTime, endTime, p)
 }
 
 func (sl *scrapeLoop) stop() {

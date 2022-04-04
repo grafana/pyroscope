@@ -10,7 +10,7 @@ func (hs hashString) Sum64() uint64 {
 	return murmur3.SeedSum64(seed, []byte(hs))
 }
 
-func (ctrl *Controller) statsInc(name string) {
+func (ctrl *Controller) StatsInc(name string) {
 	ctrl.statsMutex.Lock()
 	defer ctrl.statsMutex.Unlock()
 

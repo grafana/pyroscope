@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"runtime/trace"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -15,7 +13,6 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/dimension"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/util/slices"
 )
 
 type GetInput struct {
@@ -41,11 +38,7 @@ const (
 	traceCatGetCallback = traceTaskGet + ".Callback"
 )
 
-func (s *Storage) Get(gi *GetInput) (*GetOutput, error) {
-	return s.GetContext(context.Background(), gi)
-}
-
-func (s *Storage) GetContext(ctx context.Context, gi *GetInput) (*GetOutput, error) {
+func (s *Storage) Get(ctx context.Context, gi *GetInput) (*GetOutput, error) {
 	var t *trace.Task
 	ctx, t = trace.NewTask(ctx, traceTaskGet)
 	defer t.End()
@@ -61,7 +54,7 @@ func (s *Storage) GetContext(ctx context.Context, gi *GetInput) (*GetOutput, err
 		dimensionKeys = s.dimensionKeysByKey(gi.Key)
 	case gi.Query != nil:
 		logger = logger.WithField("query", gi.Query)
-		dimensionKeys = s.dimensionKeysByQuery(gi.Query)
+		dimensionKeys = s.dimensionKeysByQuery(ctx, gi.Query)
 	default:
 		// Should never happen.
 		return nil, fmt.Errorf("key or query must be specified")
@@ -166,105 +159,6 @@ func (s *Storage) GetContext(ctx context.Context, gi *GetInput) (*GetOutput, err
 	}, nil
 }
 
-//revive:disable-next-line:get-return callback is used
-func (s *Storage) GetKeys(cb func(string) bool) { s.labels.GetKeys(cb) }
-
-//revive:disable-next-line:get-return callback is used
-func (s *Storage) GetValues(key string, cb func(v string) bool) {
-	s.labels.GetValues(key, func(v string) bool {
-		if key != "__name__" || !slices.StringContains(s.config.hideApplications, v) {
-			return cb(v)
-		}
-		return true
-	})
-}
-
-func (s *Storage) GetKeysByQuery(query string, cb func(_k string) bool) error {
-	parsedQuery, err := flameql.ParseQuery(query)
-	if err != nil {
-		return err
-	}
-
-	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
-	if err != nil {
-		return err
-	}
-	dimensionKeys := s.dimensionKeysByKey(segmentKey)
-
-	resultSet := map[string]bool{}
-	for _, dk := range dimensionKeys() {
-		dkParsed, _ := segment.ParseKey(string(dk))
-		if dkParsed.AppName() == parsedQuery.AppName {
-			for k := range dkParsed.Labels() {
-				resultSet[k] = true
-			}
-		}
-	}
-
-	resultList := []string{}
-	for v := range resultSet {
-		resultList = append(resultList, v)
-	}
-
-	sort.Strings(resultList)
-	for _, v := range resultList {
-		if !cb(v) {
-			break
-		}
-	}
-	return nil
-}
-
-func (s *Storage) GetValuesByQuery(label string, query string, cb func(v string) bool) error {
-	parsedQuery, err := flameql.ParseQuery(query)
-	if err != nil {
-		return err
-	}
-
-	segmentKey, err := segment.ParseKey(parsedQuery.AppName + "{}")
-	if err != nil {
-		return err
-	}
-	dimensionKeys := s.dimensionKeysByKey(segmentKey)
-
-	resultSet := map[string]bool{}
-	for _, dk := range dimensionKeys() {
-		dkParsed, _ := segment.ParseKey(string(dk))
-		if v, ok := dkParsed.Labels()[label]; ok {
-			resultSet[v] = true
-		}
-	}
-
-	resultList := []string{}
-	for v := range resultSet {
-		resultList = append(resultList, v)
-	}
-
-	sort.Strings(resultList)
-	for _, v := range resultList {
-		if !cb(v) {
-			break
-		}
-	}
-	return nil
-}
-
-// GetAppNames returns the list of all app's names
-func (s *Storage) GetAppNames() []string {
-	appNames := make([]string, 0)
-
-	s.GetValues("__name__", func(v string) bool {
-		if strings.TrimSpace(v) != "" {
-			// skip empty app names
-			appNames = append(appNames, v)
-		}
-
-		return true
-	})
-
-	return appNames
-}
-
 func (s *Storage) execQuery(_ context.Context, qry *flameql.Query) []dimension.Key {
 	app, found := s.lookupAppDimension(qry.AppName)
 	if !found {
@@ -312,8 +206,8 @@ func (s *Storage) execQuery(_ context.Context, qry *flameql.Query) []dimension.K
 		&dimension.Dimension{Keys: dimension.Union(n...)})
 }
 
-func (s *Storage) dimensionKeysByQuery(qry *flameql.Query) func() []dimension.Key {
-	return func() []dimension.Key { return s.execQuery(context.TODO(), qry) }
+func (s *Storage) dimensionKeysByQuery(ctx context.Context, qry *flameql.Query) func() []dimension.Key {
+	return func() []dimension.Key { return s.execQuery(ctx, qry) }
 }
 
 func (s *Storage) dimensionKeysByKey(key *segment.Key) func() []dimension.Key {
