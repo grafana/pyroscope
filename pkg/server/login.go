@@ -264,6 +264,7 @@ func (ctrl *Controller) notfoundHandler() http.HandlerFunc {
 			WriteInternalServerError(ctrl.log, w, err, "could not render forbidden page")
 			return
 		}
+		w.WriteHeader(http.StatusNotFound)
 		mustExecute(tmpl, w, map[string]interface{}{
 			"BaseURL": ctrl.config.BaseURL,
 		})
