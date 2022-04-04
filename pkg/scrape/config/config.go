@@ -58,7 +58,7 @@ func DefaultConfig() *Config {
 				SampleTypes: map[string]*profile.SampleTypeConfig{
 					"inuse_objects": {
 						Units:       "objects",
-						Aggregation: "avg",
+						Aggregation: "average",
 					},
 					"alloc_objects": {
 						Units:      "objects",
@@ -66,7 +66,7 @@ func DefaultConfig() *Config {
 					},
 					"inuse_space": {
 						Units:       "bytes",
-						Aggregation: "avg",
+						Aggregation: "average",
 					},
 					"alloc_space": {
 						Units:      "bytes",

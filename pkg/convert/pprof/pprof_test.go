@@ -103,11 +103,11 @@ var _ = Describe("custom pprof parsing", func() {
 		w := NewProfileWriter(ingester, labels, map[string]*tree.SampleTypeConfig{
 			"objects": {
 				Units:       "objects",
-				Aggregation: "avg",
+				Aggregation: "average",
 			},
 			"space": {
 				Units:       "bytes",
-				Aggregation: "avg",
+				Aggregation: "average",
 			},
 		})
 
