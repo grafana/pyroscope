@@ -62,28 +62,15 @@ func NewIndexHandler(log *logrus.Logger, s storage.AppNameGetter, dir http.FileS
 func (ih *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ih.stats.StatsInc("index")
 	path := r.URL.Path
-	if path == "/" {
+	switch path {
+	case "/", "/comparison", "/comparison-diff", "/adhoc-single", "/adhoc-comparison", "/adhoc-comparison-diff", "/settings", "/service-discovery", "/login", "/signup":
 		ih.renderIndexPage(w, r)
-	} else if path == "/comparison" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/comparison-diff" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/adhoc-single" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/adhoc-comparison" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/adhoc-comparison-diff" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/settings" {
-		ih.renderIndexPage(w, r)
-	} else if strings.HasPrefix(path, "/settings") {
-		ih.renderIndexPage(w, r)
-	} else if path == "/service-discovery" {
-		ih.renderIndexPage(w, r)
-	} else if path == "/login" || path == "/signup" {
-		ih.renderIndexPage(w, r)
-	} else {
-		ih.fs.ServeHTTP(w, r)
+	default:
+		if strings.HasPrefix(path, "/settings") {
+			ih.renderIndexPage(w, r)
+		} else {
+			ih.fs.ServeHTTP(w, r)
+		}
 	}
 }
 
