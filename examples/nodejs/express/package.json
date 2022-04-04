@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@pyroscope/nodejs": "file:../../../../pyroscope-nodejs",
+    "@pyroscope/nodejs": "github:pyroscope-io/pyroscope-nodejs",
     "express": "^4.17.3",
     "morgan": "^1.10.0",
     "pprof": "^3.2.0"
