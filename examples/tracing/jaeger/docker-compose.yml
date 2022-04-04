@@ -11,9 +11,12 @@ services:
   pyroscope:
     image: '${PYROSCOPE_IMAGE:-pyroscope/pyroscope-dev:main}'
     environment:
+      - PYROSCOPE_CONFIG=/pyroscope.yaml
       - PYROSCOPE_LOG_LEVEL=debug
     ports:
       - '4040:4040'
+    volumes:
+      - ./pyroscope.yaml:/pyroscope.yaml
     command:
       - 'server'
 
