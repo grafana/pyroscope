@@ -291,6 +291,8 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 		{"/healthz", ctrl.healthz},
 	})
 
+	r.NotFoundHandler = ctrl.notfoundHandler()
+
 	return r, nil
 }
 
