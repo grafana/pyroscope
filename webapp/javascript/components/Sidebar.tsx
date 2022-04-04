@@ -251,4 +251,5 @@ export function Sidebar2() {
   );
 }
 
-export default withCurrentUser(Sidebar2);
+// export default withCurrentUser(Sidebar2);
+export default Sidebar2;

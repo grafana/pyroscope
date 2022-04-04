@@ -4,7 +4,7 @@ import ReactNotification, {
   ReactNotificationOptions,
   DismissOptions,
 } from 'react-notifications-component';
-import 'react-notifications-component/dist/theme.css';
+import 'react-notifications-component/dist/scss/notification.scss';
 
 export default function Notifications() {
   return <ReactNotification />;
