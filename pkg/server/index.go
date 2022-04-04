@@ -80,6 +80,8 @@ func (ih *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ih.renderIndexPage(w, r)
 	} else if path == "/service-discovery" {
 		ih.renderIndexPage(w, r)
+	} else if path == "/login" || path == "/signup" {
+		ih.renderIndexPage(w, r)
 	} else {
 		ih.fs.ServeHTTP(w, r)
 	}
