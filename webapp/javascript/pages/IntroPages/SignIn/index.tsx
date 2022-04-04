@@ -91,7 +91,11 @@ function SignInPage() {
             required
           />
         </div>
-        <button className={styles.button} type="submit">
+        <button
+          className={cx(styles.button, 'sign-in-button')}
+          data-testid="sign-in-button"
+          type="submit"
+        >
           Log in
         </button>
         <Divider />

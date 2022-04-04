@@ -39,21 +39,6 @@
     <script type="text/javascript">
       window.features = {{ .Features }};
     </script>
-    <script type="text/javascript">
-      window.basicAuthEnabled = {{ .BasicAuthEnabled }};
-    </script>
-    <script type="text/javascript">
-      window.basicAuthSignupEnabled = {{ .BasicAuthSignupEnabled }};
-    </script>
-    <script type="text/javascript">
-      window.googleEnabled = {{ .GoogleEnabled }};
-    </script>
-    <script type="text/javascript">
-      window.githubEnabled = {{ .GithubEnabled }};
-    </script>
-    <script type="text/javascript">
-      window.gitlabEnabled = {{ .GitlabEnabled }};
-    </script>
     <script
       src="{{ .BaseURL }}/assets/app.<%= webpack.hash %>.js"
       type="text/javascript"
