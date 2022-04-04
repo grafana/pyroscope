@@ -40,7 +40,7 @@ var _ = Describe("pprof parsing", func() {
 				SpyName:     spyName,
 			})
 
-			err = w.WriteProfile(context.TODO(), start, end, p)
+			err = w.WriteProfile(context.Background(), start, end, p)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(ingester.actual).To(HaveLen(1))
@@ -76,7 +76,7 @@ var _ = Describe("pprof parsing", func() {
 				SpyName:     spyName,
 			})
 
-			err = w.WriteProfile(context.TODO(), start, end, p)
+			err = w.WriteProfile(context.Background(), start, end, p)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(ingester.actual).To(HaveLen(1))
@@ -117,7 +117,7 @@ var _ = Describe("pprof parsing", func() {
 				SpyName:     spyName,
 			})
 
-			err = w.WriteProfile(context.TODO(), start, end, p)
+			err = w.WriteProfile(context.Background(), start, end, p)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(ingester.actual).To(HaveLen(2))
 			sort.Slice(ingester.actual, func(i, j int) bool {
@@ -164,7 +164,7 @@ var _ = Describe("pprof profile_id multiplexing", func() {
 			SpyName:     spyName,
 		})
 
-		err = w.WriteProfile(start, end, p)
+		err = w.WriteProfile(context.Background(), start, end, p)
 		Expect(err).ToNot(HaveOccurred())
 
 		var actualTotal uint64
