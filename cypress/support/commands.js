@@ -47,3 +47,21 @@ Cypress.Commands.overwrite(
     }
   }
 );
+
+// cy.findByTestId('my-container').get('waitForFlamegraphToRender')
+// or
+// cy.waitForFlamegraphToRender()
+Cypress.Commands.add(
+  'waitForFlamegraphToRender',
+  { prevSubject: 'optional' },
+  ($element) => {
+    // it's important to use find/get since the caller requires a DOM element
+    if ($element) {
+      return cy
+        .wrap($element)
+        .find('[data-testid="flamegraph-canvas"][data-state="rendered"]');
+    }
+
+    return cy.get('[data-testid="flamegraph-canvas"][data-state="rendered"]');
+  }
+);

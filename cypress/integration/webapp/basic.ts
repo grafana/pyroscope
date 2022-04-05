@@ -46,12 +46,9 @@ describe('basic test', () => {
 
     cy.findByTestId('flamegraph-search').type('main');
 
-    // if we take a screenshot right away, the canvas may not have been re-renderer yet
-    // therefore we also assert for this attribute
-    // which cypress will retry a few times if necessary
-    cy.findByTestId('flamegraph-canvas').get('[data-highlightquery="main"]');
+    cy.waitForFlamegraphToRender().get('[data-highlightquery="main"]');
 
-    cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
+    cy.waitForFlamegraphToRender().matchImageSnapshot(
       'simple-golang-app-cpu-highlight'
     );
   });
@@ -168,7 +165,7 @@ describe('basic test', () => {
     cy.visit('/');
 
     cy.findByTestId('reset-view').should('not.be.enabled');
-    cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
+    cy.waitForFlamegraphToRender().click(0, BAR_HEIGHT * 2);
     cy.findByTestId('reset-view').should('be.visible');
     cy.findByTestId('reset-view').click();
     cy.findByTestId('reset-view').should('not.be.enabled');
@@ -188,7 +185,7 @@ describe('basic test', () => {
 
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
 
-      cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
+      cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-tooltip').should('be.visible');
 
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
@@ -197,7 +194,7 @@ describe('basic test', () => {
         '100%, 988 samples, 9.88 seconds'
       );
 
-      cy.findByTestId('flamegraph-canvas').trigger('mouseout');
+      cy.waitForFlamegraphToRender().trigger('mouseout');
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
     });
 
@@ -226,13 +223,12 @@ describe('basic test', () => {
       cy.wait('@render-left');
 
       // flamegraph 1 (the left one)
+      cy.log('left flamegraph');
       findFlamegraph(1)
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
 
-      findFlamegraph(1)
-        .findByTestId('flamegraph-canvas')
-        .trigger('mousemove', 0, 0);
+      findFlamegraph(1).waitForFlamegraphToRender().trigger('mousemove', 0, 0);
 
       findFlamegraph(1).findByTestId('flamegraph-tooltip').should('be.visible');
 
@@ -243,19 +239,22 @@ describe('basic test', () => {
         .findByTestId('flamegraph-tooltip-body')
         .should('have.text', '100%, 991 samples, 9.91 seconds');
 
-      findFlamegraph(1).findByTestId('flamegraph-canvas').trigger('mouseout');
+      findFlamegraph(1).waitForFlamegraphToRender().trigger('mousemove', 0, 0);
+      findFlamegraph(1).waitForFlamegraphToRender().trigger('mouseout');
+
       findFlamegraph(1)
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
 
       // flamegraph 2 (right one)
+      cy.log('right flamegraph');
       findFlamegraph(2)
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
 
-      findFlamegraph(2)
-        .findByTestId('flamegraph-canvas')
-        .trigger('mousemove', 0, 0);
+      findFlamegraph(2).waitForFlamegraphToRender().trigger('mousemove', 0, 0, {
+        force: true,
+      });
 
       findFlamegraph(2).findByTestId('flamegraph-tooltip').should('be.visible');
 
@@ -266,7 +265,9 @@ describe('basic test', () => {
         .findByTestId('flamegraph-tooltip-body')
         .should('have.text', '100%, 988 samples, 9.88 seconds');
 
-      findFlamegraph(2).findByTestId('flamegraph-canvas').trigger('mouseout');
+      findFlamegraph(2)
+        .waitForFlamegraphToRender()
+        .trigger('mouseout', { force: true });
       findFlamegraph(2)
         .findByTestId('flamegraph-tooltip')
         .should('not.be.visible');
@@ -288,7 +289,7 @@ describe('basic test', () => {
 
       // This test has a race condition, since it does not wait for the canvas to be rendered
       cy.findByTestId('flamegraph-tooltip').should('not.be.visible');
-      cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
+      cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-tooltip').should('be.visible');
 
       cy.findByTestId('flamegraph-tooltip-title').should('have.text', 'total');
@@ -318,7 +319,7 @@ describe('basic test', () => {
 
       cy.findByTestId('flamegraph-highlight').should('not.be.visible');
 
-      cy.findByTestId('flamegraph-canvas').trigger('mousemove', 0, 0);
+      cy.waitForFlamegraphToRender().trigger('mousemove', 0, 0);
       cy.findByTestId('flamegraph-highlight').should('be.visible');
     });
   });
@@ -333,7 +334,7 @@ describe('basic test', () => {
       cy.visit('/');
 
       // until we focus on a specific, it should not be enabled
-      cy.findByTestId('flamegraph-canvas').rightclick();
+      cy.waitForFlamegraphToRender().rightclick();
       cy.findByRole('menuitem', { name: /Reset View/ }).should(
         'have.attr',
         'aria-disabled',
@@ -341,8 +342,8 @@ describe('basic test', () => {
       );
 
       // click on the second item
-      cy.findByTestId('flamegraph-canvas').click(0, BAR_HEIGHT * 2);
-      cy.findByTestId('flamegraph-canvas').rightclick();
+      cy.waitForFlamegraphToRender().click(0, BAR_HEIGHT * 2);
+      cy.waitForFlamegraphToRender().rightclick();
       cy.findByRole('menuitem', { name: /Reset View/ }).should(
         'not.have.attr',
         'aria-disabled'
@@ -351,7 +352,7 @@ describe('basic test', () => {
       // TODO assert that it was indeed reset?
 
       // should be disabled again
-      cy.findByTestId('flamegraph-canvas').rightclick();
+      cy.waitForFlamegraphToRender().rightclick();
       cy.findByRole('menuitem', { name: /Reset View/ }).should(
         'have.attr',
         'aria-disabled',
