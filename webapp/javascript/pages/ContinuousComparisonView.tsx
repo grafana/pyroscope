@@ -13,7 +13,6 @@ import {
 } from '@webapp/redux/reducers/continuous';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import Toolbar from '@webapp/components/Toolbar';
-import Footer from '@webapp/components/Footer';
 import InstructionText from '@webapp/components/InstructionText';
 import ExportData from '@webapp/components/ExportData';
 import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
@@ -52,7 +51,7 @@ function ComparisonApp() {
     useExportToFlamegraphDotCom(rightSide);
 
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar
@@ -171,7 +170,6 @@ function ComparisonApp() {
           </Box>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }
