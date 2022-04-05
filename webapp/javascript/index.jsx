@@ -25,6 +25,7 @@ import '@pyroscope/flamegraph/dist/index.css';
 
 import SignInPage from './pages/IntroPages/SignIn';
 import SignUpPage from './pages/IntroPages/SignUp';
+import NotFound from './pages/IntroPages/NotFound';
 
 import history from './util/history';
 
@@ -37,15 +38,9 @@ try {
   console.error(e);
 }
 
-function App() {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    dispatch(loadCurrentUser());
-  }, [dispatch]);
-
-  return (
-    <div className="app">
+const createRoutes = (isAdhocUIEnabled) => {
+  if (isAdhocUIEnabled) {
+    return (
       <Switch>
         <Route exact path="/login">
           <SignInPage />
@@ -53,43 +48,88 @@ function App() {
         <Route exact path="/signup">
           <SignUpPage />
         </Route>
-
-        <Switch>
-          <>
-            <Sidebar />
-            <Route exact path="/">
-              <ContinuousSingleView />
-            </Route>
-            <Route path="/comparison">
-              <ContinuousComparisonView />
-            </Route>
-            <Route path="/comparison-diff">
-              <ContinuousDiffView />
-            </Route>
-            <Route path="/settings">
-              <Settings />
-            </Route>
-            <Route path="/service-discovery">
-              <ServiceDiscoveryApp />
-            </Route>
-            {isAdhocUIEnabled && (
-              <>
-                <Route path="/adhoc-single">
-                  <AdhocSingle />
-                </Route>
-                <Route path="/adhoc-comparison">
-                  <AdhocComparison />
-                </Route>
-                <Route path="/adhoc-comparison-diff">
-                  <AdhocDiff />
-                </Route>
-              </>
-            )}
-          </>
-        </Switch>
+        <Route exact path="/">
+          <Sidebar />
+          <ContinuousSingleView />
+        </Route>
+        <Route exact path="/comparison">
+          <Sidebar />
+          <ContinuousComparisonView />
+        </Route>
+        <Route exact path="/comparison-diff">
+          <Sidebar />
+          <ContinuousDiffView />
+        </Route>
+        <Route exact path="/settings">
+          <Sidebar />
+          <Settings />
+        </Route>
+        <Route exact path="/service-discovery">
+          <Sidebar />
+          <ServiceDiscoveryApp />
+        </Route>
+        <Route path="/adhoc-single">
+          <AdhocSingle />
+        </Route>
+        <Route path="/adhoc-comparison">
+          <AdhocComparison />
+        </Route>
+        <Route path="/adhoc-comparison-diff">
+          <AdhocDiff />
+        </Route>
+        <Route path="*" exact>
+          <NotFound />
+        </Route>
       </Switch>
-    </div>
+    );
+  }
+
+  return (
+    <Switch>
+      <Route exact path="/login">
+        <SignInPage />
+      </Route>
+      <Route exact path="/signup">
+        <SignUpPage />
+      </Route>
+      <Route exact path="/">
+        <Sidebar />
+        <ContinuousSingleView />
+      </Route>
+      <Route exact path="/comparison">
+        <Sidebar />
+        <ContinuousComparisonView />
+      </Route>
+      <Route exact path="/comparison-diff">
+        <Sidebar />
+        <ContinuousDiffView />
+      </Route>
+      <Route exact path="/settings">
+        <Sidebar />
+        <Settings />
+      </Route>
+      <Route exact path="/service-discovery">
+        <Sidebar />
+        <ServiceDiscoveryApp />
+      </Route>
+
+      <Route path="*" exact>
+        <NotFound />
+      </Route>
+    </Switch>
   );
+};
+
+function App() {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    if (window.isAuthRequired) {
+      dispatch(loadCurrentUser());
+    }
+  }, [dispatch]);
+
+  return <div className="app">{createRoutes()}</div>;
 }
 
 ReactDOM.render(
