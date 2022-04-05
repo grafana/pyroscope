@@ -104,7 +104,7 @@ const createRoutes = (isAdhocUIEnabled) => {
         <Sidebar />
         <ContinuousDiffView />
       </Route>
-      <Route exact path="/settings">
+      <Route path="/settings">
         <Sidebar />
         <Settings />
       </Route>
