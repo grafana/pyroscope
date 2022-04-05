@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -61,17 +60,7 @@ func NewIndexHandler(log *logrus.Logger, s storage.AppNameGetter, dir http.FileS
 
 func (ih *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ih.stats.StatsInc("index")
-	path := r.URL.Path
-	switch path {
-	case "/", "/comparison", "/comparison-diff", "/adhoc-single", "/adhoc-comparison", "/adhoc-comparison-diff", "/settings", "/service-discovery", "/login", "/signup":
-		ih.renderIndexPage(w, r)
-	default:
-		if strings.HasPrefix(path, "/settings") {
-			ih.renderIndexPage(w, r)
-		} else {
-			ih.fs.ServeHTTP(w, r)
-		}
-	}
+	ih.renderIndexPage(w, r)
 }
 
 type indexPageJSON struct {
