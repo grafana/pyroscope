@@ -3,7 +3,6 @@ package server
 import (
 	"compress/gzip"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	golog "log"
@@ -41,6 +40,8 @@ import (
 
 	"github.com/pyroscope-io/pyroscope/pkg/scrape"
 )
+
+//revive:disable:max-public-structs TODO: we will refactor this later
 
 const (
 	stateCookieName            = "pyroscopeState"
@@ -96,6 +97,10 @@ type Config struct {
 	Adhoc adhocserver.Server
 
 	ScrapeManager *scrape.Manager
+}
+
+type StatsReceiver interface {
+	StatsInc(name string)
 }
 
 type Notifier interface {
@@ -162,14 +167,6 @@ func mustNewHLL() *hyperloglog.HyperLogLogPlus {
 	return hll
 }
 
-func (ctrl *Controller) ingestHandler() http.Handler {
-	return NewIngestHandler(ctrl.log, ctrl.storage, ctrl.exporter, func(pi *storage.PutInput) {
-		ctrl.statsInc("ingest")
-		ctrl.statsInc("ingest:" + pi.SpyName)
-		ctrl.appStats.Add(hashString(pi.Key.AppName()))
-	})
-}
-
 func (ctrl *Controller) serverMux() (http.Handler, error) {
 	// TODO(kolesnikovae):
 	//  - Move mux part to pkg/api/router.
@@ -228,28 +225,29 @@ func (ctrl *Controller) serverMux() (http.Handler, error) {
 
 	// Protected pages:
 	// For these routes server responds with 307 and redirects to /login.
+	ih := ctrl.indexHandler()
 	ctrl.addRoutes(r, []route{
-		{"/", ctrl.indexHandler()},
-		{"/comparison", ctrl.indexHandler()},
-		{"/comparison-diff", ctrl.indexHandler()},
-		{"/service-discovery", ctrl.indexHandler()},
-		{"/adhoc-single", ctrl.indexHandler()},
-		{"/adhoc-comparison", ctrl.indexHandler()},
-		{"/adhoc-comparison-diff", ctrl.indexHandler()},
-		{"/settings", ctrl.indexHandler()},
-		{"/settings/{page}", ctrl.indexHandler()},
-		{"/settings/{page}/{subpage}", ctrl.indexHandler()}},
+		{"/", ih},
+		{"/comparison", ih},
+		{"/comparison-diff", ih},
+		{"/service-discovery", ih},
+		{"/adhoc-single", ih},
+		{"/adhoc-comparison", ih},
+		{"/adhoc-comparison-diff", ih},
+		{"/settings", ih},
+		{"/settings/{page}", ih},
+		{"/settings/{page}/{subpage}", ih}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(ctrl.loginRedirect))
 
 	// For these routes server responds with 401.
 	ctrl.addRoutes(r, []route{
-		{"/render", ctrl.renderHandler},
-		{"/render-diff", ctrl.renderDiffHandler},
-		{"/labels", ctrl.labelsHandler},
-		{"/label-values", ctrl.labelValuesHandler},
-		{"/merge", ctrl.mergeHandler},
-		{"/export", ctrl.exportHandler},
+		{"/render", ctrl.renderHandler()},
+		{"/render-diff", ctrl.renderDiffHandler()},
+		{"/merge", ctrl.mergeHandler()},
+		{"/labels", ctrl.labelsHandler()},
+		{"/label-values", ctrl.labelValuesHandler()},
+		{"/export", ctrl.exportHandler()},
 		{"/api/adhoc", ctrl.adhoc.AddRoutes(r.PathPrefix("/api/adhoc").Subrouter())}},
 		ctrl.drainMiddleware,
 		ctrl.authMiddleware(nil))
@@ -315,7 +313,7 @@ func (ctrl *Controller) activeTargetsHandler(w http.ResponseWriter, _ *http.Requ
 			})
 		}
 	}
-	ctrl.writeResponseJSON(w, resp)
+	WriteResponseJSON(ctrl.log, w, resp)
 }
 
 func (ctrl *Controller) exportedMetricsHandler(w http.ResponseWriter, r *http.Request) {
@@ -508,65 +506,11 @@ func (ctrl *Controller) ingestionAuthMiddleware() mux.MiddlewareFunc {
 	}
 }
 
-func (*Controller) expectFormats(format string) error {
+func expectFormats(format string) error {
 	switch format {
 	case "json", "pprof", "collapsed", "html", "":
 		return nil
 	default:
 		return errUnknownFormat
 	}
-}
-
-func (ctrl *Controller) writeResponseJSON(w http.ResponseWriter, res interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		ctrl.writeJSONEncodeError(w, err)
-	}
-}
-
-func (*Controller) writeResponseFile(w http.ResponseWriter, filename string, content []byte) {
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%v", filename))
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(content)
-	w.(http.Flusher).Flush()
-}
-
-func (ctrl *Controller) writeError(w http.ResponseWriter, code int, err error, msg string) {
-	WriteError(ctrl.log, w, code, err, msg)
-}
-
-func (ctrl *Controller) writeInvalidMethodError(w http.ResponseWriter) {
-	WriteErrorMessage(ctrl.log, w, http.StatusMethodNotAllowed, "method not allowed")
-}
-
-func (ctrl *Controller) writeInvalidParameterError(w http.ResponseWriter, err error) {
-	ctrl.writeError(w, http.StatusBadRequest, err, "invalid parameter")
-}
-
-func (ctrl *Controller) writeInternalServerError(w http.ResponseWriter, err error, msg string) {
-	ctrl.writeError(w, http.StatusInternalServerError, err, msg)
-}
-
-func (ctrl *Controller) writeJSONEncodeError(w http.ResponseWriter, err error) {
-	ctrl.writeInternalServerError(w, err, "encoding response body")
-}
-
-func (ctrl *Controller) writeErrorMessage(w http.ResponseWriter, code int, msg string) {
-	WriteErrorMessage(ctrl.log, w, code, msg)
-}
-
-func WriteError(log *logrus.Logger, w http.ResponseWriter, code int, err error, msg string) {
-	log.WithError(err).Error(msg)
-	writeMessage(w, code, "%s: %q", msg, err)
-}
-
-func WriteErrorMessage(log *logrus.Logger, w http.ResponseWriter, code int, msg string) {
-	log.Error(msg)
-	writeMessage(w, code, msg)
-}
-
-func writeMessage(w http.ResponseWriter, code int, format string, args ...interface{}) {
-	w.WriteHeader(code)
-	_, _ = fmt.Fprintf(w, format, args...)
-	_, _ = fmt.Fprintln(w)
 }

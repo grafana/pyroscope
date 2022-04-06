@@ -3,58 +3,38 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/sirupsen/logrus"
 )
 
-func (ctrl *Controller) labelsHandler(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("query")
-
-	keys := make([]string, 0)
-	if query != "" {
-		ctrl.storage.GetKeysByQuery(query, func(k string) bool {
-			keys = append(keys, k)
-			return true
-		})
-	} else {
-		ctrl.storage.GetKeys(func(k string) bool {
-			keys = append(keys, k)
-			return true
-		})
-	}
-
-	b, err := json.Marshal(keys)
-	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
-		return
-	}
-	_, _ = w.Write(b)
+func (ctrl *Controller) labelsHandler() http.HandlerFunc {
+	return NewLabelsHandler(ctrl.log, ctrl.storage).ServeHTTP
 }
 
-func (ctrl *Controller) labelValuesHandler(w http.ResponseWriter, r *http.Request) {
-	labelName := r.URL.Query().Get("label")
-	query := r.URL.Query().Get("query")
+func NewLabelsHandler(log *logrus.Logger, s storage.LabelsGetter) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		query := r.URL.Query().Get("query")
 
-	if labelName == "" {
-		ctrl.writeInvalidParameterError(w, errLabelIsRequired)
-		return
-	}
+		keys := make([]string, 0)
+		if query != "" {
+			s.GetKeysByQuery(ctx, query, func(k string) bool {
+				keys = append(keys, k)
+				return true
+			})
+		} else {
+			s.GetKeys(ctx, func(k string) bool {
+				keys = append(keys, k)
+				return true
+			})
+		}
 
-	values := make([]string, 0)
-	if query != "" {
-		ctrl.storage.GetValuesByQuery(labelName, query, func(v string) bool {
-			values = append(values, v)
-			return true
-		})
-	} else {
-		ctrl.storage.GetValues(labelName, func(v string) bool {
-			values = append(values, v)
-			return true
-		})
+		b, err := json.Marshal(keys)
+		if err != nil {
+			WriteJSONEncodeError(log, w, err)
+			return
+		}
+		_, _ = w.Write(b)
 	}
-
-	b, err := json.Marshal(values)
-	if err != nil {
-		ctrl.writeJSONEncodeError(w, err)
-		return
-	}
-	_, _ = w.Write(b)
 }

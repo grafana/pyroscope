@@ -44,7 +44,7 @@ type Storage struct {
 	stop    chan struct{}
 
 	queueWorkersWG sync.WaitGroup
-	queue          chan *PutInput
+	queue          chan *putInputWithCtx
 
 	putMutex sync.Mutex
 }
@@ -106,7 +106,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		stop:    make(chan struct{}),
 	}
 
-	s.queue = make(chan *PutInput, s.queueLen)
+	s.queue = make(chan *putInputWithCtx, s.queueLen)
 
 	var err error
 	if s.main, err = s.newBadger("main", "", nil); err != nil {

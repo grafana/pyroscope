@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -62,7 +63,7 @@ func dumpJSON(w io.Writer) error {
 
 type ingester struct{ actual []*storage.PutInput }
 
-func (m *ingester) Enqueue(p *storage.PutInput) { m.actual = append(m.actual, p) }
+func (m *ingester) Enqueue(_ context.Context, p *storage.PutInput) { m.actual = append(m.actual, p) }
 
 func printProfiles(w io.Writer, pprofPath, configPath, profileType string) error {
 	c := tree.DefaultSampleTypeMapping
@@ -84,7 +85,7 @@ func printProfiles(w io.Writer, pprofPath, configPath, profileType string) error
 
 	x := new(ingester)
 	pw := pprof.NewProfileWriter(x, nil, c)
-	if err = pw.WriteProfile(time.Time{}, time.Time{}, "", p); err != nil {
+	if err = pw.WriteProfile(context.TODO(), time.Time{}, time.Time{}, "", p); err != nil {
 		return fmt.Errorf("parsing pprof: %w", err)
 	}
 

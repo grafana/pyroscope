@@ -1,42 +1,45 @@
 package server
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	"mime"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/valyala/bytebufferpool"
 
 	"github.com/pyroscope-io/pyroscope/pkg/agent/types"
-	"github.com/pyroscope-io/pyroscope/pkg/convert"
-	"github.com/pyroscope-io/pyroscope/pkg/convert/jfr"
-	"github.com/pyroscope-io/pyroscope/pkg/convert/pprof"
-	"github.com/pyroscope-io/pyroscope/pkg/storage"
+	"github.com/pyroscope-io/pyroscope/pkg/parser"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
-	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
-	"github.com/pyroscope-io/pyroscope/pkg/structs/transporttrie"
 	"github.com/pyroscope-io/pyroscope/pkg/util/attime"
 )
 
-type ingestHandler struct {
-	log        *logrus.Logger
-	storage    *storage.Storage
-	exporter   storage.MetricsExporter
-	bufferPool *bytebufferpool.Pool
-	onSuccess  func(pi *storage.PutInput)
+type Parser interface {
+	Put(context.Context, *parser.PutInput) (error, error)
 }
 
-func NewIngestHandler(log *logrus.Logger, st *storage.Storage, exporter storage.MetricsExporter, onSuccess func(pi *storage.PutInput)) http.Handler {
+type ingestHandler struct {
+	log       *logrus.Logger
+	parser    Parser
+	onSuccess func(pi *parser.PutInput)
+}
+
+func (ctrl *Controller) ingestHandler() http.Handler {
+	p := parser.New(ctrl.log, ctrl.storage, ctrl.exporter)
+	return NewIngestHandler(ctrl.log, p, func(pi *parser.PutInput) {
+		ctrl.StatsInc("ingest")
+		ctrl.StatsInc("ingest:" + pi.SpyName)
+		ctrl.appStats.Add(hashString(pi.Key.AppName()))
+	})
+}
+
+func NewIngestHandler(log *logrus.Logger, p Parser, onSuccess func(pi *parser.PutInput)) http.Handler {
 	return ingestHandler{
-		log:        log,
-		storage:    st,
-		exporter:   exporter,
-		bufferPool: &bytebufferpool.Pool{},
-		onSuccess:  onSuccess,
+		log:       log,
+		parser:    p,
+		onSuccess: onSuccess,
 	}
 }
 
@@ -47,61 +50,34 @@ func (h ingestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	format := r.URL.Query().Get("format")
-	contentType := r.Header.Get("Content-Type")
-	cb := h.createParseCallback(pi)
-	switch {
-	case format == "trie", contentType == "binary/octet-stream+trie":
-		tmpBuf := h.bufferPool.Get()
-		defer h.bufferPool.Put(tmpBuf)
-		err = transporttrie.IterateRaw(r.Body, tmpBuf.B, cb)
-	case format == "tree", contentType == "binary/octet-stream+tree":
-		err = convert.ParseTreeNoDict(r.Body, cb)
-	case format == "lines":
-		err = convert.ParseIndividualLines(r.Body, cb)
-	case format == "jfr":
-		err = jfr.ParseJFR(r.Body, h.storage, pi)
-	case strings.Contains(contentType, "multipart/form-data"):
-		err = writePprof(h.storage, pi, r)
-	default:
-		err = convert.ParseGroups(r.Body, cb)
-	}
+	// this method returns two errors to distinguish between parsing and ingestion errors
+	// TODO(petethepig): maybe there's a more idiomatic way to do this?
+	err, ingestErr := h.parser.Put(r.Context(), pi)
 
 	if err != nil {
 		WriteError(h.log, w, http.StatusUnprocessableEntity, err, "error happened while parsing request body")
 		return
 	}
 
-	if pi.Val != nil {
-		if err = h.storage.Put(pi); err != nil {
-			WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while ingesting data")
-			return
-		}
+	if ingestErr != nil {
+		WriteError(h.log, w, http.StatusInternalServerError, err, "error happened while ingesting data")
+		return
 	}
 
 	h.onSuccess(pi)
 }
 
-// revive:enable:cognitive-complexity
-func (h ingestHandler) createParseCallback(pi *storage.PutInput) func([]byte, int) {
-	pi.Val = tree.New()
-	cb := pi.Val.InsertInt
-	o, ok := h.exporter.Evaluate(pi)
-	if !ok {
-		return cb
-	}
-	return func(k []byte, v int) {
-		o.Observe(k, v)
-		cb(k, v)
-	}
-}
-
-func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*storage.PutInput, error) {
+func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*parser.PutInput, error) {
 	var (
 		q   = r.URL.Query()
-		pi  storage.PutInput
+		pi  parser.PutInput
 		err error
 	)
+
+	pi.Format = q.Get("format")
+	pi.ContentType = r.Header.Get("Content-Type")
+	pi.Body = r.Body
+	pi.MultipartBoundary = boundaryFromRequest(r)
 
 	pi.Key, err = segment.ParseKey(q.Get("name"))
 	if err != nil {
@@ -154,28 +130,18 @@ func (h ingestHandler) ingestParamsFromRequest(r *http.Request) (*storage.PutInp
 	return &pi, nil
 }
 
-func writePprof(s *storage.Storage, pi *storage.PutInput, r *http.Request) error {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		// maxMemory 32MB
-		return err
+func boundaryFromRequest(r *http.Request) string {
+	v := r.Header.Get("Content-Type")
+	if v == "" {
+		return ""
 	}
-	w := pprof.NewProfileWriter(s, pi.Key.Labels(), tree.DefaultSampleTypeMapping)
-	if err := writePprofFromForm(r, w, pi, "prev_profile"); err != nil {
-		return err
+	d, params, err := mime.ParseMediaType(v)
+	if err != nil || !(d == "multipart/form-data") {
+		return ""
 	}
-	return writePprofFromForm(r, w, pi, "profile")
-}
-
-func writePprofFromForm(r *http.Request, w *pprof.ProfileWriter, pi *storage.PutInput, name string) error {
-	f, _, err := r.FormFile(name)
-	switch {
-	case err == nil:
-	case errors.Is(err, http.ErrMissingFile):
-		return nil
-	default:
-		return err
+	boundary, ok := params["boundary"]
+	if !ok {
+		return ""
 	}
-	return pprof.DecodePool(f, func(p *tree.Profile) error {
-		return w.WriteProfile(pi.StartTime, pi.EndTime, pi.SpyName, p)
-	})
+	return boundary
 }
