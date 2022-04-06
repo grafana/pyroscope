@@ -2,6 +2,7 @@
 /* eslint-disable react/no-did-update-set-state */
 /* eslint-disable react/destructuring-assignment */
 import React from 'react';
+import clsx from 'clsx';
 import { Timeline } from '@webapp/models/timeline';
 import Color from 'color';
 import { formatAsOBject } from '@webapp/util/formatDate';
@@ -174,6 +175,18 @@ class TimelineChartWrapper extends React.Component<
       ? JSON.parse(JSON.stringify(this.props.timelineB))
       : undefined;
 
+    const data = [
+      timelineA &&
+        timelineA.data && {
+          ...timelineA,
+          data: centerTimelineData(timelineA),
+        },
+      timelineB &&
+        timelineB.data && { ...timelineB, data: centerTimelineData(timelineB) },
+    ].filter((a) => !!a);
+
+    const selectionDisabled = data.every((item) => !item.data.length);
+
     const customFlotOptions = {
       ...flotOptions,
       xaxis: {
@@ -182,6 +195,10 @@ class TimelineChartWrapper extends React.Component<
         // both sides making it look more centers
         autoscaleMargin:
           timelineA.data && timelineA.data.samples.length > 3 ? null : 0.005,
+      },
+      selection: {
+        ...flotOptions.selection,
+        disabled: selectionDisabled,
       },
     };
 
@@ -210,20 +227,12 @@ class TimelineChartWrapper extends React.Component<
       }
     }
 
-    const data = [
-      timelineA &&
-        timelineA.data && {
-          ...timelineA,
-          data: centerTimelineData(timelineA),
-        },
-      timelineB &&
-        timelineB.data && { ...timelineB, data: centerTimelineData(timelineB) },
-    ].filter((a) => !!a);
-
     return (
       <TimelineChart
         onSelect={this.props.onSelect}
-        className={styles.wrapper}
+        className={clsx(styles.wrapper, {
+          [styles.selection_disabled]: selectionDisabled,
+        })}
         // eslint-disable-next-line react/destructuring-assignment
         data-testid={this.props['data-testid']}
         id={id}

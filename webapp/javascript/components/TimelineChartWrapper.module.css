@@ -1,3 +1,7 @@
 .wrapper {
   overflow: hidden;
 }
+
+.selection_disabled {
+  cursor: not-allowed !important;
+}
