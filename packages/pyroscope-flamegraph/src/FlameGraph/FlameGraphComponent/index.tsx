@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-expressions */
 import React, { useCallback, useRef } from 'react';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
@@ -199,8 +200,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   ]);
 
   const renderCanvas = () => {
-    // eslint-disable-next-line no-unused-expressions
+    canvasRef?.current?.setAttribute('data-state', 'rendering');
     flamegraph?.current?.render();
+    canvasRef?.current?.setAttribute('data-state', 'rendered');
   };
 
   const dataUnavailable =

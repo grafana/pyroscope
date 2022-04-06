@@ -64,9 +64,7 @@ describe('E2E Tests', () => {
 
     cy.visit(`/?${params.toString()}`);
 
-    cy.findByTestId('flamegraph-canvas').matchImageSnapshot(
-      `e2e-single-flamegraph`
-    );
+    cy.waitForFlamegraphToRender().matchImageSnapshot(`e2e-single-flamegraph`);
   });
 
   it('tests /comparison view', () => {
@@ -89,12 +87,12 @@ describe('E2E Tests', () => {
 
     // flamegraph 1 (the left one)
     findFlamegraph(1)
-      .findByTestId('flamegraph-canvas')
+      .waitForFlamegraphToRender()
       .matchImageSnapshot(`e2e-comparison-flamegraph-left`);
 
     // flamegraph 2 (the right one)
     findFlamegraph(2)
-      .findByTestId('flamegraph-canvas')
+      .waitForFlamegraphToRender()
       .matchImageSnapshot(`e2e-comparison-flamegraph-right`);
   });
 
