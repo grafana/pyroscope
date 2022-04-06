@@ -8,6 +8,7 @@ import { isAdhocUIEnabled } from '@webapp/util/features';
 import Notifications from '@webapp/ui/Notifications';
 import { PersistGate } from 'redux-persist/integration/react';
 import { loadCurrentUser } from '@webapp/redux/reducers/user';
+import Footer from '@webapp/components/Footer';
 import store, { persistor } from './redux/store';
 
 import ContinuousSingleView from './pages/ContinuousSingleView';
@@ -46,36 +47,39 @@ function App() {
   return (
     <div className="app">
       <Sidebar />
-      <Switch>
-        <Route exact path="/">
-          <ContinuousSingleView />
-        </Route>
-        <Route path="/comparison">
-          <ContinuousComparisonView />
-        </Route>
-        <Route path="/comparison-diff">
-          <ContinuousDiffView />
-        </Route>
-        <Route path="/settings">
-          <Settings />
-        </Route>
-        <Route path="/service-discovery">
-          <ServiceDiscoveryApp />
-        </Route>
-        {isAdhocUIEnabled && (
-          <>
-            <Route path="/adhoc-single">
-              <AdhocSingle />
-            </Route>
-            <Route path="/adhoc-comparison">
-              <AdhocComparison />
-            </Route>
-            <Route path="/adhoc-comparison-diff">
-              <AdhocDiff />
-            </Route>
-          </>
-        )}
-      </Switch>
+      <div className="pyroscope-app">
+        <Switch>
+          <Route exact path="/">
+            <ContinuousSingleView />
+          </Route>
+          <Route path="/comparison">
+            <ContinuousComparisonView />
+          </Route>
+          <Route path="/comparison-diff">
+            <ContinuousDiffView />
+          </Route>
+          <Route path="/settings">
+            <Settings />
+          </Route>
+          <Route path="/service-discovery">
+            <ServiceDiscoveryApp />
+          </Route>
+          {isAdhocUIEnabled && (
+            <>
+              <Route path="/adhoc-single">
+                <AdhocSingle />
+              </Route>
+              <Route path="/adhoc-comparison">
+                <AdhocComparison />
+              </Route>
+              <Route path="/adhoc-comparison-diff">
+                <AdhocDiff />
+              </Route>
+            </>
+          )}
+        </Switch>
+        <Footer />
+      </div>
     </div>
   );
 }

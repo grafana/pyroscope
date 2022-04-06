@@ -121,9 +121,10 @@ const initialState: ContinuousState = {
   tags: {},
   appNames: {
     type: 'loaded',
-    data: (window as ShamefulAny).initialState.appNames,
+    data: (window as ShamefulAny).initialState?.appNames || [],
   },
-  query: appNameToQuery((window as ShamefulAny).initialState.appNames[0]) ?? '',
+  query:
+    appNameToQuery((window as ShamefulAny).initialState?.appNames[0]) ?? '',
 
   leftTimeline: {
     type: 'pristine',

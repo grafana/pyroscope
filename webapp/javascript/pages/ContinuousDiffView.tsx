@@ -15,7 +15,6 @@ import useTimelines, {
 } from '@webapp/hooks/timeline.hook';
 import useTags from '@webapp/hooks/tags.hook';
 import Toolbar from '@webapp/components/Toolbar';
-import Footer from '@webapp/components/Footer';
 import TagsBar from '@webapp/components/TagsBar';
 import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
 import InstructionText from '@webapp/components/InstructionText';
@@ -82,7 +81,7 @@ function ComparisonDiffApp() {
   );
 
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
         <Toolbar
           hideTagsBar
@@ -165,7 +164,6 @@ function ComparisonDiffApp() {
           />
         </Box>
       </div>
-      <Footer />
     </div>
   );
 }

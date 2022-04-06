@@ -68,8 +68,10 @@ const ServiceDiscoveryApp = (props: PropType) => {
         ) : (
           Object.keys(data).map((job) => {
             const children = data[job].map((target, i) => {
-              /* eslint-disable-next-line react/jsx-props-no-spreading */
-              const targetElem = <Target {...target} key={target.url} />;
+              const targetElem = (
+                /* eslint-disable-next-line react/jsx-props-no-spreading */
+                <TargetComponent {...target} key={target.url} />
+              );
               if (unavailableFilter) {
                 if (target.health !== 'up') {
                   return targetElem;
@@ -141,7 +143,7 @@ function formatDuration(input: string): string {
   return `${parseFloat(input).toFixed(2)} ${b}`;
 }
 
-const Target = ({
+const TargetComponent = ({
   discoveredLabels,
   labels,
   url,
