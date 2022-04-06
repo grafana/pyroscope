@@ -121,5 +121,4 @@ function Settings(props: ShamefulAny) {
     </div>
   );
 }
-
 export default withCurrentUser(Settings);

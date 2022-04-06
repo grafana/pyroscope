@@ -1,13 +1,14 @@
 /* eslint-disable prettier/prettier */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Users, type User } from '@webapp/models/users';
-import { connect } from 'react-redux';
+import { connect, useSelector } from 'react-redux';
 
 import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
   editMyUser as editMyUserAPI,
 } from '@webapp/services/users';
+import { useState } from 'react';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 
@@ -121,10 +122,12 @@ export const withCurrentUser = (component: ShamefulAny) =>
   connect((state: RootState) => ({
     currentUser: selectCurrentUser(state),
   }))(function ConditionalRender(props: { currentUser: User }) {
-    if (props.currentUser) {
+    if (props.currentUser || !(window as ShamefulAny).isAuthRequired) {
       return component(props);
     }
     return null;
   } as ShamefulAny);
+
+export const useCurrentUser = () => useSelector(selectCurrentUser);
 
 export default userSlice.reducer;

@@ -50,12 +50,14 @@ export function Sidebar2() {
 
   const { search, pathname } = useLocation();
   const windowWidth = useWindowWidth();
-  const authEnabled = currentUser && currentUser.role !== 'anonymous';
+  // @todo: use `features` here
+  const authEnabled = (window as ShamefulAny).isAuthRequired;
 
   // the component doesn't seem to support setting up an active item
   // so we must set it up manually
   // https://github.com/azouaoui-med/react-pro-sidebar/issues/84
   const isRouteActive = function (route: string) {
+    console.log(route);
     if (
       route === '/' ||
       route === '/comparison' ||
@@ -251,4 +253,4 @@ export function Sidebar2() {
   );
 }
 
-export default withCurrentUser(Sidebar2);
+export default Sidebar2;
