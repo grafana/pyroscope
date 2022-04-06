@@ -14,6 +14,7 @@ import store, { persistor } from './redux/store';
 import ContinuousSingleView from './pages/ContinuousSingleView';
 import ContinuousComparisonView from './pages/ContinuousComparisonView';
 import ContinuousDiffView from './pages/ContinuousDiffView';
+import Continuous from './components/Continuous';
 import Settings from './components/Settings';
 import Sidebar from './components/Sidebar';
 import AdhocSingle from './pages/AdhocSingle';
@@ -50,13 +51,19 @@ function App() {
       <div className="pyroscope-app">
         <Switch>
           <Route exact path="/">
-            <ContinuousSingleView />
+            <Continuous>
+              <ContinuousSingleView />
+            </Continuous>
           </Route>
           <Route path="/comparison">
-            <ContinuousComparisonView />
+            <Continuous>
+              <ContinuousComparisonView />
+            </Continuous>
           </Route>
           <Route path="/comparison-diff">
-            <ContinuousDiffView />
+            <Continuous>
+              <ContinuousDiffView />
+            </Continuous>
           </Route>
           <Route path="/settings">
             <Settings />

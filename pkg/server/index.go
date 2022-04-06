@@ -85,10 +85,6 @@ func (ih *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type indexPageJSON struct {
-	AppNames []string `json:"appNames"`
-}
-
 func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := getTemplate(ih.dir, "/index.html")
 	if err != nil {
@@ -96,17 +92,12 @@ func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	initialStateObj := indexPageJSON{}
-	initialStateObj.AppNames = ih.storage.GetAppNames(r.Context())
-
 	var b []byte
-	b, err = json.Marshal(initialStateObj)
 	if err != nil {
 		WriteJSONEncodeError(ih.log, w, err)
 		return
 	}
 
-	initialStateStr := string(b)
 	var extraMetadataStr string
 	extraMetadataPath := os.Getenv("PYROSCOPE_EXTRA_METADATA")
 	if extraMetadataPath != "" {
@@ -129,7 +120,6 @@ func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, r *http.Request) 
 
 	w.Header().Add("Content-Type", "text/html")
 	mustExecute(tmpl, w, map[string]string{
-		"InitialState":      initialStateStr,
 		"BuildInfo":         build.JSON(),
 		"LatestVersionInfo": updates.LatestVersionJSON(),
 		"ExtraMetadata":     extraMetadataStr,
