@@ -31,7 +31,9 @@ function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
   const tags = useAppSelector(selectAppTags(query));
 
   useEffect(() => {
-    dispatch(fetchTags(query));
+    if (query) {
+      dispatch(fetchTags(query));
+    }
   }, [query]);
 
   return (
