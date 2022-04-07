@@ -85,7 +85,7 @@ func (ih *IndexHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, r *http.Request) {
+func (ih *IndexHandler) renderIndexPage(w http.ResponseWriter, _ *http.Request) {
 	tmpl, err := getTemplate(ih.dir, "/index.html")
 	if err != nil {
 		WriteInternalServerError(ih.log, w, err, "could not render index page")
