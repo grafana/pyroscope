@@ -10,6 +10,7 @@ import {
   actions,
   fetchTags,
   fetchTagValues,
+  selectQueries,
 } from '@webapp/redux/reducers/continuous';
 import { Query } from '@webapp/models/query';
 import classNames from 'classnames';
@@ -28,7 +29,7 @@ interface ToolbarProps {
 function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
   const dispatch = useAppDispatch();
   const isLoadingData = useAppSelector(selectIsLoadingData);
-  const { query } = useAppSelector((state) => state.continuous);
+  const { query } = useAppSelector(selectQueries);
   const tags = useAppSelector(selectAppTags(query));
 
   useEffect(() => {

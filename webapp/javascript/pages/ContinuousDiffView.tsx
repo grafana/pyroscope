@@ -6,6 +6,7 @@ import {
   selectContinuousState,
   actions,
   fetchTagValues,
+  selectQueries,
 } from '@webapp/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
 import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook';
@@ -31,9 +32,8 @@ function ComparisonDiffApp() {
     rightFrom,
     leftUntil,
     rightUntil,
-    leftQuery,
-    rightQuery,
   } = useAppSelector(selectContinuousState);
+  const { leftQuery, rightQuery } = useAppSelector(selectQueries);
 
   usePopulateLeftRightQuery();
   const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
@@ -109,7 +109,7 @@ function ComparisonDiffApp() {
           <div className="diff-instructions-wrapper">
             <div className="diff-instructions-wrapper-side">
               <TagsBar
-                query={leftQuery || ''}
+                query={leftQuery}
                 tags={leftTags}
                 onSetQuery={(q) => {
                   dispatch(actions.setLeftQuery(q));
@@ -134,7 +134,7 @@ function ComparisonDiffApp() {
             </div>
             <div className="diff-instructions-wrapper-side">
               <TagsBar
-                query={rightQuery || ''}
+                query={rightQuery}
                 tags={rightTags}
                 onSetQuery={(q) => {
                   dispatch(actions.setRightQuery(q));

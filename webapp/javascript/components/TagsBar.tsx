@@ -14,8 +14,8 @@ import styles from './TagsBar.module.css';
 
 interface TagsBarProps {
   onSetQuery: (q: Query) => void;
-  onSelectedLabel: (label: string, query: string) => void;
-  query: string;
+  onSelectedLabel: (label: string, query: Query) => void;
+  query: Query;
   tags: TagsState;
 }
 
@@ -82,7 +82,7 @@ function TagsBar({ onSetQuery, query, tags, onSelectedLabel }: TagsBarProps) {
 }
 
 interface QueryInputProps {
-  initialQuery: string;
+  initialQuery: Query;
   onSubmit: (query: string) => void;
 }
 
@@ -123,7 +123,7 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
         className="tags-input"
         type="text"
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(e) => setQuery(brandQuery(e.target.value))}
       />
       <Button
         type="submit"
@@ -138,7 +138,7 @@ function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {
 }
 
 interface LabelsSubmenuProps {
-  query: string;
+  query: Query;
   labels: TagsState['tags'];
   onSelectedLabel: (tag: string) => void;
   onSelectedLabelValue: (label: string, labelValue: string) => void;

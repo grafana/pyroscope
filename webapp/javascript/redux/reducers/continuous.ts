@@ -1,9 +1,8 @@
 import { Profile } from '@pyroscope/models';
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AppNames } from '@webapp/models/appNames';
-import { Query, brandQuery } from '@webapp/models/query';
+import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import { fetchAppNames } from '@webapp/services/appNames';
-import { appNameToQuery, queryToAppName } from '@webapp/util/query';
 import {
   renderSingle,
   RenderOutput,
@@ -298,7 +297,7 @@ export const fetchDiffView = createAsyncThunk<
 
 export const fetchTags = createAsyncThunk(
   'continuous/fetchTags',
-  async (query: ContinuousState['query'], thunkAPI) => {
+  async (query: Query, thunkAPI) => {
     const appName = queryToAppName(query);
     if (appName.isNothing) {
       return Promise.reject(
@@ -331,10 +330,7 @@ export const fetchTags = createAsyncThunk(
 
 export const fetchTagValues = createAsyncThunk(
   'continuous/fetchTagsValues',
-  async (
-    payload: { query: ContinuousState['query']; label: string },
-    thunkAPI
-  ) => {
+  async (payload: { query: Query; label: string }, thunkAPI) => {
     const appName = queryToAppName(payload.query);
     if (appName.isNothing) {
       return Promise.reject(
@@ -409,19 +405,6 @@ export const continuousSlice = createSlice({
       state.until = action.payload.until;
     },
     setQuery(state, action: PayloadAction<Query>) {
-      // if there's nothing set, pick the first one
-      // this likely happened due to the user visiting the root url
-      if (!action.payload) {
-        const first = state.appNames.data[0];
-        if (first) {
-          state.query = appNameToQuery(first);
-          return;
-        }
-
-        // There's not a first one, so leave it it empty
-        state.query = '';
-        return;
-      }
       state.query = action.payload;
     },
     setLeftQuery(state, action: PayloadAction<Query>) {
@@ -675,7 +658,7 @@ export const selectIsLoadingData = (state: RootState) => {
   );
 };
 
-export const selectAppTags = (query?: string) => (state: RootState) => {
+export const selectAppTags = (query?: Query) => (state: RootState) => {
   if (query) {
     const appName = queryToAppName(query);
     if (appName.isJust) {
@@ -700,10 +683,8 @@ export const selectTimelineSidesData = (state: RootState) => {
 
 export const selectQueries = (state: RootState) => {
   return {
-    leftQuery:
-      state.continuous.leftQuery && brandQuery(state.continuous.leftQuery),
-    rightQuery:
-      state.continuous.rightQuery && brandQuery(state.continuous.rightQuery),
+    leftQuery: brandQuery(state.continuous.leftQuery || ''),
+    rightQuery: brandQuery(state.continuous.rightQuery || ''),
     query: brandQuery(state.continuous.query),
   };
 };
