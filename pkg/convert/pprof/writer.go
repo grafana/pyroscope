@@ -15,18 +15,26 @@ type Ingester interface {
 }
 
 type ProfileWriter struct {
-	ingester Ingester
-	labels   map[string]string
-	config   map[string]*tree.SampleTypeConfig
+	ingester    Ingester
+	spyName     string
+	labels      map[string]string
+	sampleTypes map[string]*tree.SampleTypeConfig
 
 	r *ProfileReader
 }
 
-func NewProfileWriter(ingester Ingester, labels map[string]string, config map[string]*tree.SampleTypeConfig) *ProfileWriter {
+type ProfileWriterConfig struct {
+	SpyName     string
+	Labels      map[string]string
+	SampleTypes map[string]*tree.SampleTypeConfig
+}
+
+func NewProfileWriter(ingester Ingester, config ProfileWriterConfig) *ProfileWriter {
 	w := ProfileWriter{
-		ingester: ingester,
-		labels:   labels,
-		config:   config,
+		ingester:    ingester,
+		spyName:     config.SpyName,
+		labels:      config.Labels,
+		sampleTypes: config.SampleTypes,
 	}
 	w.r = NewProfileReader().SampleTypeFilter(w.filterSampleType)
 	return &w
@@ -34,20 +42,20 @@ func NewProfileWriter(ingester Ingester, labels map[string]string, config map[st
 
 func (w *ProfileWriter) Reset() { w.r.Reset() }
 
-func (w *ProfileWriter) WriteProfile(ctx context.Context, startTime, endTime time.Time, spyName string, p *tree.Profile) error {
+func (w *ProfileWriter) WriteProfile(ctx context.Context, startTime, endTime time.Time, p *tree.Profile) error {
 	return w.r.Read(p, func(vt *tree.ValueType, l tree.Labels, t *tree.Tree) (keep bool, err error) {
 		if vt.Type >= int64(len(p.StringTable)) {
 			return false, fmt.Errorf("sample value type is invalid")
 		}
 		sampleType := p.StringTable[vt.Type]
-		sampleTypeConfig, ok := w.config[sampleType]
+		sampleTypeConfig, ok := w.sampleTypes[sampleType]
 		if !ok {
 			return false, fmt.Errorf("sample value type is unknown")
 		}
 		pi := storage.PutInput{
 			StartTime: startTime,
 			EndTime:   endTime,
-			SpyName:   spyName,
+			SpyName:   w.spyName,
 			Val:       t,
 		}
 		// Cumulative profiles require two consecutive samples,
@@ -63,8 +71,8 @@ func (w *ProfileWriter) WriteProfile(ctx context.Context, startTime, endTime tim
 			pi.Val = prev.Diff(t)
 		}
 		pi.AggregationType = sampleTypeConfig.Aggregation
-		if sampleTypeConfig.Sampled && p.Period > 0 {
-			pi.SampleRate = uint32(time.Second / time.Duration(p.Period))
+		if sampleTypeConfig.Sampled {
+			pi.SampleRate = sampleRate(p)
 		}
 		if sampleTypeConfig.DisplayName != "" {
 			sampleType = sampleTypeConfig.DisplayName
@@ -80,8 +88,24 @@ func (w *ProfileWriter) WriteProfile(ctx context.Context, startTime, endTime tim
 	})
 }
 
+func sampleRate(p *tree.Profile) uint32 {
+	if p.Period <= 0 || p.PeriodType == nil {
+		return 0
+	}
+	sampleUnit := time.Nanosecond
+	switch p.StringTable[p.PeriodType.Unit] {
+	case "microseconds":
+		sampleUnit = time.Microsecond
+	case "milliseconds":
+		sampleUnit = time.Millisecond
+	case "seconds":
+		sampleUnit = time.Second
+	}
+	return uint32(time.Second / (sampleUnit * time.Duration(p.Period)))
+}
+
 func (w *ProfileWriter) filterSampleType(s string) bool {
-	_, ok := w.config[s]
+	_, ok := w.sampleTypes[s]
 	return ok
 }
 

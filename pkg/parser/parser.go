@@ -113,12 +113,15 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 func writePprof(ctx context.Context, s ParserStorage, pi *PutInput) error {
 	// maxMemory 32MB
 	form, err := multipart.NewReader(pi.Body, pi.MultipartBoundary).ReadForm(32 << 20)
-
 	if err != nil {
 		return err
 	}
-	w := pprof.NewProfileWriter(s, pi.Key.Labels(), tree.DefaultSampleTypeMapping)
-	if err := writePprofFromForm(ctx, form, w, pi, "prev_profile"); err != nil {
+	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
+		SampleTypes: tree.DefaultSampleTypeMapping,
+		Labels:      pi.Key.Labels(),
+		SpyName:     pi.SpyName,
+	})
+	if err = writePprofFromForm(ctx, form, w, pi, "prev_profile"); err != nil {
 		return err
 	}
 	return writePprofFromForm(ctx, form, w, pi, "profile")
@@ -134,6 +137,6 @@ func writePprofFromForm(ctx context.Context, form *multipart.Form, w *pprof.Prof
 		return err
 	}
 	return pprof.DecodePool(f, func(p *tree.Profile) error {
-		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, pi.SpyName, p)
+		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
 	})
 }
