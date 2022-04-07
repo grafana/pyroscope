@@ -630,7 +630,11 @@ export default continuousSlice.reducer;
 export const { actions } = continuousSlice;
 export const { setDateRange, setQuery } = continuousSlice.actions;
 export const selectApplicationName = (state: RootState) => {
-  return state.continuous.query.split('{')[0];
+  const { query } = selectQueries(state);
+
+  const appName = queryToAppName(query);
+
+  return appName.map((q) => q.split('{')[0]).unwrapOrElse(() => '');
 };
 
 export const selectAppNamesState = (state: RootState) =>
