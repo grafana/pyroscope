@@ -200,18 +200,22 @@ var _ = Describe("custom pprof parsing", func() {
 			"foo":      "bar",
 		}
 
-		w := NewProfileWriter(ingester, labels, map[string]*tree.SampleTypeConfig{
-			"objects": {
-				Units:       "objects",
-				Aggregation: "average",
+		w := NewProfileWriter(ingester, ProfileWriterConfig{
+			SampleTypes: map[string]*tree.SampleTypeConfig{
+				"objects": {
+					Units:       "objects",
+					Aggregation: "average",
+				},
+				"space": {
+					Units:       "bytes",
+					Aggregation: "average",
+				},
 			},
-			"space": {
-				Units:       "bytes",
-				Aggregation: "average",
-			},
+			Labels:  labels,
+			SpyName: spyName,
 		})
 
-		err = w.WriteProfile(context.TODO(), start, end, spyName, p)
+		err = w.WriteProfile(context.TODO(), start, end, p)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ingester.actual).To(HaveLen(2))
 		sort.Slice(ingester.actual, func(i, j int) bool {
