@@ -1,0 +1,12 @@
+---
+log-level: debug
+no-self-profiling: true
+scrape-configs:
+  - job-name: testing
+    enabled-profiles: [cpu]
+    static-configs:
+      - application: nodejs
+        targets:
+          - nodejs:3000
+        labels:
+          env: dev

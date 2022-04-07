@@ -1,0 +1,17 @@
+version: '3.9'
+services:
+  nodejs:
+    build:
+      context: .
+
+  pyroscope:
+    container_name: pyroscope
+    image: pyroscope/pyroscope
+    environment:
+      - PYROSCOPE_LOG_LEVEL=debug
+    ports:
+      - '4040:4040'
+    command:
+      - 'server'
+    volumes:
+      - ./server.yml:/etc/pyroscope/server.yml
