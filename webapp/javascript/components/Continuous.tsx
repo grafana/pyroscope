@@ -6,7 +6,7 @@ import {
   setQuery,
   selectApplicationName,
 } from '@webapp/redux/reducers/continuous';
-import { appNameToQuery } from '@webapp/util/query';
+import { queryFromAppName } from '@webapp/models/query';
 
 export default function Continuous({
   children,
@@ -21,11 +21,11 @@ export default function Continuous({
     async function loadAppNames() {
       if (appNames.length <= 0) {
         // Load application names
-        const names = await dispatch(reloadAppNames());
+        const names = await dispatch(reloadAppNames()).unwrap();
 
         // Pick the first one if there's nothing selected
-        if (!selectedAppName && names.payload.length > 0) {
-          dispatch(setQuery(appNameToQuery(names.payload[0])));
+        if (!selectedAppName && names.length > 0) {
+          dispatch(setQuery(queryFromAppName(names[0])));
         }
       }
     }

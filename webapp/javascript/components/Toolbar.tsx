@@ -11,6 +11,7 @@ import {
   fetchTags,
   fetchTagValues,
 } from '@webapp/redux/reducers/continuous';
+import { Query } from '@webapp/models/query';
 import classNames from 'classnames';
 import DateRangePicker from './DateRangePicker';
 import RefreshButton from './RefreshButton';
@@ -22,7 +23,7 @@ interface ToolbarProps {
   /* hide tags bar, useful for comparison view */
   hideTagsBar?: boolean;
   /** allows to overwrite what to happen when a name is selected, by default it dispatches 'actions.setQuery' */
-  onSelectedName?: (name: string) => void;
+  onSelectedName?: (name: Query) => void;
 }
 function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
   const dispatch = useAppDispatch();

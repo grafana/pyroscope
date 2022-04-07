@@ -9,10 +9,11 @@ import Dropdown, {
   MenuGroup,
 } from '@webapp/ui/Dropdown';
 import { Prism } from '@webapp/util/prism';
+import { Query, brandQuery } from '@webapp/models/query';
 import styles from './TagsBar.module.css';
 
 interface TagsBarProps {
-  onSetQuery: (q: string) => void;
+  onSetQuery: (q: Query) => void;
   onSelectedLabel: (label: string, query: string) => void;
   query: string;
   tags: TagsState;
@@ -52,7 +53,7 @@ function TagsBar({ onSetQuery, query, tags, onSelectedLabel }: TagsBarProps) {
             }}
             onSelectedLabelValue={(label, labelValue) => {
               const newQuery = appendLabelToQuery(query, label, labelValue);
-              onSetQuery(newQuery);
+              onSetQuery(brandQuery(newQuery));
             }}
           />
         );
@@ -73,7 +74,7 @@ function TagsBar({ onSetQuery, query, tags, onSelectedLabel }: TagsBarProps) {
       <QueryInput
         initialQuery={query}
         onSubmit={(q) => {
-          onSetQuery(q);
+          onSetQuery(brandQuery(q));
         }}
       />
     </div>
@@ -83,7 +84,6 @@ function TagsBar({ onSetQuery, query, tags, onSelectedLabel }: TagsBarProps) {
 interface QueryInputProps {
   initialQuery: string;
   onSubmit: (query: string) => void;
-  //  className?: string;
 }
 
 function QueryInput({ initialQuery, onSubmit }: QueryInputProps) {

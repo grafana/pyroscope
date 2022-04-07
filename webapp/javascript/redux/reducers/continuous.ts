@@ -1,6 +1,7 @@
 import { Profile } from '@pyroscope/models';
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AppNames } from '@webapp/models/appNames';
+import { Query, brandQuery } from '@webapp/models/query';
 import { fetchAppNames } from '@webapp/services/appNames';
 import { appNameToQuery, queryToAppName } from '@webapp/util/query';
 import {
@@ -407,7 +408,7 @@ export const continuousSlice = createSlice({
       state.from = action.payload.from;
       state.until = action.payload.until;
     },
-    setQuery(state, action: PayloadAction<string>) {
+    setQuery(state, action: PayloadAction<Query>) {
       // if there's nothing set, pick the first one
       // this likely happened due to the user visiting the root url
       if (!action.payload) {
@@ -423,10 +424,10 @@ export const continuousSlice = createSlice({
       }
       state.query = action.payload;
     },
-    setLeftQuery(state, action: PayloadAction<string>) {
+    setLeftQuery(state, action: PayloadAction<Query>) {
       state.leftQuery = action.payload;
     },
-    setRightQuery(state, action: PayloadAction<string>) {
+    setRightQuery(state, action: PayloadAction<Query>) {
       state.rightQuery = action.payload;
     },
     setLeftFrom(state, action: PayloadAction<string>) {
@@ -694,5 +695,15 @@ export const selectTimelineSidesData = (state: RootState) => {
   return {
     left: state.continuous.leftTimeline.timeline,
     right: state.continuous.rightTimeline.timeline,
+  };
+};
+
+export const selectQueries = (state: RootState) => {
+  return {
+    leftQuery:
+      state.continuous.leftQuery && brandQuery(state.continuous.leftQuery),
+    rightQuery:
+      state.continuous.rightQuery && brandQuery(state.continuous.rightQuery),
+    query: brandQuery(state.continuous.query),
   };
 };
