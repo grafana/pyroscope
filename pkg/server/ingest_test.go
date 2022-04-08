@@ -224,11 +224,11 @@ var _ = Describe("server", func() {
 					expectedTree = "runtime.main;main.main;main.slowFunction;main.work 1\nruntime.mcall;runtime.park_m;runtime.schedule;runtime.findrunnable;runtime.netpoll;runtime.kevent 25\nruntime.mcall;runtime.park_m;runtime.schedule;runtime.findrunnable;runtime.netpollBreak;runtime.write;runtime.write1 1\nruntime.mcall;runtime.park_m;runtime.schedule;runtime.findrunnable;runtime.stopm;runtime.mPark;runtime.notesleep;runtime.semasleep;runtime.pthread_cond_wait 16\nruntime.mcall;runtime.park_m;runtime.schedule;runtime.resetspinning;runtime.wakep;runtime.startm;runtime.notewakeup;runtime.semawakeup;runtime.pthread_cond_signal 3\nruntime.mcall;runtime.park_m;runtime.resetForSleep;runtime.resettimer;runtime.modtimer;runtime.wakeNetPoller;runtime.wakep;runtime.startm;runtime.notewakeup;runtime.semawakeup;runtime.pthread_cond_signal 1\n"
 				})
 
-				Context("default format", func() {
+				Context("default sample type config", func() {
 					ItCorrectlyParsesIncomingData()
 				})
 
-				Context("default format", func() {
+				Context("custom sample type config", func() {
 					BeforeEach(func() {
 						var w *multipart.Writer
 						w, buf = pprofFormFromFile("../convert/testdata/cpu.pprof", map[string]*tree.SampleTypeConfig{
