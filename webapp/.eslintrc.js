@@ -9,7 +9,7 @@ module.exports = {
     'import/no-extraneous-dependencies': [
       'error',
       {
-        packageDir: [process.cwd(), path.resolve(__dirname, '../../')],
+        packageDir: [process.cwd(), path.resolve(__dirname, '../')],
       },
     ],
     // since we use immutablejs in the reducer
