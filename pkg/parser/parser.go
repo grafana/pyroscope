@@ -3,6 +3,7 @@ package parser
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"mime/multipart"
 	"strings"
@@ -116,8 +117,17 @@ func writePprof(ctx context.Context, s ParserStorage, pi *PutInput) error {
 	if err != nil {
 		return err
 	}
+
+	sampleTypesConfig, err := parseSampleTypesConfig(form)
+	if err != nil {
+		return err
+	}
+	if sampleTypesConfig == nil {
+		sampleTypesConfig = tree.DefaultSampleTypeMapping
+	}
+
 	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
-		SampleTypes: tree.DefaultSampleTypeMapping,
+		SampleTypes: sampleTypesConfig,
 		Labels:      pi.Key.Labels(),
 		SpyName:     pi.SpyName,
 	})
@@ -128,15 +138,45 @@ func writePprof(ctx context.Context, s ParserStorage, pi *PutInput) error {
 }
 
 func writePprofFromForm(ctx context.Context, form *multipart.Form, w *pprof.ProfileWriter, pi *PutInput, name string) error {
-	files, ok := form.File[name]
-	if !ok || len(files) == 0 {
-		return nil
-	}
-	f, err := files[0].Open()
+	r, err := formField(form, name)
 	if err != nil {
 		return err
 	}
-	return pprof.DecodePool(f, func(p *tree.Profile) error {
+	if r == nil {
+		return nil
+	}
+	return pprof.DecodePool(r, func(p *tree.Profile) error {
 		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
 	})
+}
+
+func formField(form *multipart.Form, name string) (io.Reader, error) {
+	files, ok := form.File[name]
+	if !ok || len(files) == 0 {
+		return nil, nil
+	}
+	f, err := files[0].Open()
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeConfig, error) {
+	r, err := formField(form, "sample_type_config")
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		return nil, nil
+	}
+
+	d := json.NewDecoder(r)
+
+	var config map[string]*tree.SampleTypeConfig
+	err = d.Decode(&config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }

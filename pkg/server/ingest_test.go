@@ -3,11 +3,15 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -19,8 +23,30 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
+
+func pprofFormFromFile(name string, cfg map[string]*tree.SampleTypeConfig) (*multipart.Writer, *bytes.Buffer) {
+	b, err := ioutil.ReadFile(name)
+	Expect(err).ToNot(HaveOccurred())
+	bw := &bytes.Buffer{}
+	w := multipart.NewWriter(bw)
+	fw, err := w.CreateFormFile("profile", "profile.pprof")
+	Expect(err).ToNot(HaveOccurred())
+	_, err = fw.Write(b)
+	Expect(err).ToNot(HaveOccurred())
+	if cfg != nil {
+		jsonb, err := json.Marshal(cfg)
+		Expect(err).ToNot(HaveOccurred())
+		jw, err := w.CreateFormFile("sample_type_config", "sample_type_config.json")
+		_, err = jw.Write(jsonb)
+		Expect(err).ToNot(HaveOccurred())
+	}
+	err = w.Close()
+	Expect(err).ToNot(HaveOccurred())
+	return w, bw
+}
 
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
@@ -33,6 +59,10 @@ var _ = Describe("server", func() {
 			var format string
 			var contentType string
 			var name string
+			var sleepDur time.Duration
+			var expectedKey string
+			headers := map[string]string{}
+			expectedTree := "foo;bar 2\nfoo;baz 3\n"
 
 			// this is an example of Shared Example pattern
 			//   see https://onsi.github.io/ginkgo/#shared-example-patterns
@@ -81,21 +111,29 @@ var _ = Describe("server", func() {
 						if contentType == "" {
 							contentType = "text/plain"
 						}
+						for k, v := range headers {
+							req.Header.Set(k, v)
+						}
 						req.Header.Set("Content-Type", contentType)
 
 						res, err := http.DefaultClient.Do(req)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(res.StatusCode).To(Equal(200))
 
-						sk, _ := segment.ParseKey(name)
+						if expectedKey == "" {
+							expectedKey = name
+						}
+						sk, _ := segment.ParseKey(expectedKey)
+						time.Sleep(sleepDur)
 						gOut, err := s.Get(context.TODO(), &storage.GetInput{
 							StartTime: st,
 							EndTime:   et,
 							Key:       sk,
 						})
+						Expect(gOut).ToNot(BeNil())
 						Expect(err).ToNot(HaveOccurred())
 						Expect(gOut.Tree).ToNot(BeNil())
-						Expect(gOut.Tree.String()).To(Equal("foo;bar 2\nfoo;baz 3\n"))
+						Expect(gOut.Tree.String()).To(Equal(expectedTree))
 
 						close(done)
 					}()
@@ -172,6 +210,39 @@ var _ = Describe("server", func() {
 				})
 
 				ItCorrectlyParsesIncomingData()
+			})
+
+			Context("pprof", func() {
+				BeforeEach(func() {
+					var w *multipart.Writer
+					w, buf = pprofFormFromFile("../convert/testdata/cpu.pprof", nil)
+					format = ""
+					sleepDur = 100 * time.Millisecond // prof data is not updated immediately
+					contentType = w.FormDataContentType()
+					name = "test.app{foo=bar,baz=qux}"
+					expectedKey = "test.app.cpu{foo=bar,baz=qux}"
+					expectedTree = "runtime.main;main.main;main.slowFunction;main.work 1\nruntime.mcall;runtime.park_m;runtime.schedule;runtime.findrunnable;runtime.netpoll;runtime.kevent 25\nruntime.mcall;runtime.park_m;runtime.schedule;runtime.findrunnable;runtime.netpollBreak;runtime.write;runtime.write1 1\nruntime.mcall;runtime.park_m;runtime.schedule;runtime.findrunnable;runtime.stopm;runtime.mPark;runtime.notesleep;runtime.semasleep;runtime.pthread_cond_wait 16\nruntime.mcall;runtime.park_m;runtime.schedule;runtime.resetspinning;runtime.wakep;runtime.startm;runtime.notewakeup;runtime.semawakeup;runtime.pthread_cond_signal 3\nruntime.mcall;runtime.park_m;runtime.resetForSleep;runtime.resettimer;runtime.modtimer;runtime.wakeNetPoller;runtime.wakep;runtime.startm;runtime.notewakeup;runtime.semawakeup;runtime.pthread_cond_signal 1\n"
+				})
+
+				Context("default format", func() {
+					ItCorrectlyParsesIncomingData()
+				})
+
+				Context("default format", func() {
+					BeforeEach(func() {
+						var w *multipart.Writer
+						w, buf = pprofFormFromFile("../convert/testdata/cpu.pprof", map[string]*tree.SampleTypeConfig{
+							"samples": {
+								Units:       "samples",
+								DisplayName: "customName",
+							},
+						})
+						contentType = w.FormDataContentType()
+						expectedKey = "test.app.customName{foo=bar,baz=qux}"
+					})
+
+					ItCorrectlyParsesIncomingData()
+				})
 			})
 		})
 	})
