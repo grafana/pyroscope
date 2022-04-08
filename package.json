@@ -161,8 +161,6 @@
     "@fortawesome/free-regular-svg-icons": "~5.15.2",
     "@fortawesome/free-solid-svg-icons": "~5.14.0",
     "@fortawesome/react-fontawesome": "~0.1.11",
-    "@grafana/data": "^8.3.1",
-    "@grafana/runtime": "^8.3.1",
     "@grafana/ui": "^8.3.1",
     "@react-hook/resize-observer": "^1.2.4",
     "@react-hook/window-size": "^3.0.7",
