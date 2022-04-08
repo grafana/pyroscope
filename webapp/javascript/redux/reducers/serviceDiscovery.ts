@@ -2,6 +2,7 @@ import { Target } from '@webapp/models/targets';
 import { fetchTargets } from '@webapp/services/serviceDiscovery';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { addNotification } from './notifications';
+import type { RootState } from '../store';
 
 export const loadTargets = createAsyncThunk(
   'serviceDiscovery/loadTargets',
@@ -36,16 +37,21 @@ export const serviceDiscoverySlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder.addCase(loadTargets.fulfilled, (state, action) => {
-      state = { type: 'loaded', data: action.payload };
+      state.data = action.payload;
+      state.type = 'loaded';
     });
 
     builder.addCase(loadTargets.pending, (state) => {
-      state = { type: 'loading', data: state.data };
+      state.type = 'loading';
     });
     builder.addCase(loadTargets.rejected, (state) => {
-      state = { type: 'failed', data: state.data };
+      state.type = 'failed';
     });
   },
 });
 
 export default serviceDiscoverySlice.reducer;
+
+export function selectTargetsData(s: RootState) {
+  return s.serviceDiscovery.data;
+}

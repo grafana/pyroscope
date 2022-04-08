@@ -198,7 +198,7 @@ export function SidebarComponent() {
             </MenuItem>
           )}
           <MenuItem icon={<Icon icon={faInfoCircle} />}>
-            Status
+            Scrape Targets
             <NavLink to={{ pathname: '/service-discovery', search }} exact />
           </MenuItem>
           <MenuItem icon={<Icon icon={faFileAlt} />}>

@@ -1,16 +1,14 @@
 import React, { Children, useEffect, useState } from 'react';
-import { connect } from 'react-redux';
 import { Target } from '@webapp/models/targets';
-import { useAppDispatch } from '@webapp/redux/hooks';
-import { loadTargets } from '@webapp/redux/reducers/serviceDiscovery';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import {
+  loadTargets,
+  selectTargetsData,
+} from '@webapp/redux/reducers/serviceDiscovery';
 import { formatDistance, parseISO } from 'date-fns';
 import cx from 'classnames';
 import Button from '@webapp/ui/Button';
 import styles from './ServiceDiscovery.module.scss';
-
-type PropType = {
-  data: Record<string, Target[]>;
-};
 
 enum Status {
   healthy = 'healthy',
@@ -18,8 +16,8 @@ enum Status {
   error = 'error',
 }
 
-const ServiceDiscoveryApp = (props: PropType) => {
-  const { data } = props;
+const ServiceDiscoveryApp = () => {
+  const data = targetsToMap(useAppSelector(selectTargetsData));
   const dispatch = useAppDispatch();
   const [unavailableFilter, setUnavailableFilter] = useState(false);
   const [expandAll, setExpandAll] = useState(true);
@@ -31,6 +29,7 @@ const ServiceDiscoveryApp = (props: PropType) => {
   function getUpCount(targets: Target[]) {
     return targets.filter((t) => t.health === 'up').length;
   }
+
   return (
     <div className={styles.serviceDiscoveryApp}>
       <h2 className={styles.header}>Targets</h2>
@@ -203,21 +202,16 @@ const Badge = ({ children, status }: { children: string; status: Status }) => {
   );
 };
 
-const selectJobs: (state: ShamefulAny) => Record<string, Target[]> = (
-  state
-) => {
-  const acc = state.reduce((acc: ShamefulAny, next: ShamefulAny) => {
-    if (!acc[next.Job]) {
-      acc[next.Job] = [];
+type TargetRecord = Record<string, Target[]>;
+const targetsToMap: (state: Target[]) => TargetRecord = (state) => {
+  const acc = state.reduce((acc: TargetRecord, next: Target) => {
+    if (!acc[next.job]) {
+      acc[next.job] = [];
     }
-    acc[next.Job].push(next);
+    acc[next.job].push(next);
     return acc;
-  }, {});
+  }, {} as TargetRecord);
   return acc;
 };
 
-const mapStateToProps = (state: ShamefulAny) => ({
-  data: selectJobs(state.serviceDiscovery.data),
-});
-
-export default connect(mapStateToProps)(ServiceDiscoveryApp);
+export default ServiceDiscoveryApp;
