@@ -33,10 +33,11 @@ function NameSelector({ onSelectedName }: NameSelectorProps) {
   const [filter, setFilter] = useState('');
 
   const selectAppName = (name: string) => {
+    const query = queryFromAppName(name);
     if (onSelectedName) {
-      onSelectedName(queryFromAppName(query));
+      onSelectedName(query);
     } else {
-      dispatch(actions.setQuery(queryFromAppName(name)));
+      dispatch(actions.setQuery(query));
     }
   };
 
