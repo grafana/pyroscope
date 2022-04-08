@@ -3,6 +3,7 @@ package parser
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"mime/multipart"
 	"strings"
@@ -92,8 +93,10 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 		err = convert.ParseIndividualLines(in.Body, cb)
 	case in.Format == "jfr":
 		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi)
+	case in.Format == "pprof":
+		err = writePprofFromBody(ctx, p.storage, in)
 	case strings.Contains(in.ContentType, "multipart/form-data"):
-		err = writePprof(ctx, p.storage, in)
+		err = writePprofFromForm(ctx, p.storage, in)
 	default:
 		err = convert.ParseGroups(in.Body, cb)
 	}
@@ -110,33 +113,82 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 	return err, pErr
 }
 
-func writePprof(ctx context.Context, s ParserStorage, pi *PutInput) error {
-	// maxMemory 32MB
-	form, err := multipart.NewReader(pi.Body, pi.MultipartBoundary).ReadForm(32 << 20)
-	if err != nil {
-		return err
-	}
+func writePprofFromBody(ctx context.Context, s ParserStorage, pi *PutInput) error {
 	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
 		SampleTypes: tree.DefaultSampleTypeMapping,
 		Labels:      pi.Key.Labels(),
 		SpyName:     pi.SpyName,
 	})
-	if err = writePprofFromForm(ctx, form, w, pi, "prev_profile"); err != nil {
-		return err
-	}
-	return writePprofFromForm(ctx, form, w, pi, "profile")
+	return pprof.DecodePool(pi.Body, func(p *tree.Profile) error {
+		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
+	})
 }
-
-func writePprofFromForm(ctx context.Context, form *multipart.Form, w *pprof.ProfileWriter, pi *PutInput, name string) error {
-	files, ok := form.File[name]
-	if !ok || len(files) == 0 {
-		return nil
-	}
-	f, err := files[0].Open()
+func writePprofFromForm(ctx context.Context, s ParserStorage, pi *PutInput) error {
+	// maxMemory 32MB
+	form, err := multipart.NewReader(pi.Body, pi.MultipartBoundary).ReadForm(32 << 20)
 	if err != nil {
 		return err
 	}
-	return pprof.DecodePool(f, func(p *tree.Profile) error {
+
+	sampleTypesConfig, err := parseSampleTypesConfig(form)
+	if err != nil {
+		return err
+	}
+	if sampleTypesConfig == nil {
+		sampleTypesConfig = tree.DefaultSampleTypeMapping
+	}
+
+	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
+		SampleTypes: sampleTypesConfig,
+		Labels:      pi.Key.Labels(),
+		SpyName:     pi.SpyName,
+	})
+	if err = writePprofFromFormField(ctx, form, w, pi, "prev_profile"); err != nil {
+		return err
+	}
+	return writePprofFromFormField(ctx, form, w, pi, "profile")
+}
+
+func writePprofFromFormField(ctx context.Context, form *multipart.Form, w *pprof.ProfileWriter, pi *PutInput, name string) error {
+	r, err := formField(form, name)
+	if err != nil {
+		return err
+	}
+	if r == nil {
+		return nil
+	}
+	return pprof.DecodePool(r, func(p *tree.Profile) error {
 		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
 	})
+}
+
+func formField(form *multipart.Form, name string) (io.Reader, error) {
+	files, ok := form.File[name]
+	if !ok || len(files) == 0 {
+		return nil, nil
+	}
+	f, err := files[0].Open()
+	if err != nil {
+		return nil, err
+	}
+	return f, nil
+}
+
+func parseSampleTypesConfig(form *multipart.Form) (map[string]*tree.SampleTypeConfig, error) {
+	r, err := formField(form, "sample_type_config")
+	if err != nil {
+		return nil, err
+	}
+	if r == nil {
+		return nil, nil
+	}
+
+	d := json.NewDecoder(r)
+
+	var config map[string]*tree.SampleTypeConfig
+	err = d.Decode(&config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }
