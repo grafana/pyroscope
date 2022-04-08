@@ -1,19 +1,10 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["./src/index.tsx", "../../lib"],
-  "baseUrl": ".",
+  "include": ["../../lib", "./src"],
   "compilerOptions": {
-    "resolveJsonModule": false,
-    "module": "commonjs",
-    "declaration": true,
-    "noImplicitAny": false,
-    "removeComments": true,
-    "noLib": false,
-    "emitDecoratorMetadata": true,
-    "experimentalDecorators": true,
-    "target": "es6",
-    "sourceMap": true,
-    "lib": ["es6", "dom"],
-    "outDir": "./dist"
+    "baseUrl": ".",
+    "paths": {
+      "@webapp/*": ["../webapp/javascript/*"]
+    }
   }
 }

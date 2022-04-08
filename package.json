@@ -34,6 +34,7 @@
     "test:ss": "UPDATE_SNAPSHOTS=true ./scripts/jest-snapshots/run-docker.sh",
     "test:ss-check": "./scripts/jest-snapshots/run-docker.sh",
     "lint": "lerna run lint",
+    "lint:quiet": "lerna run lint -- --quiet",
     "type-check": "lerna run type-check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
