@@ -1,8 +1,8 @@
 import { Profile } from '@pyroscope/models';
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AppNames } from '@webapp/models/appNames';
+import { Query, brandQuery, queryToAppName } from '@webapp/models/query';
 import { fetchAppNames } from '@webapp/services/appNames';
-import { appNameToQuery, queryToAppName } from '@webapp/util/query';
 import {
   renderSingle,
   RenderOutput,
@@ -121,10 +121,10 @@ const initialState: ContinuousState = {
   tags: {},
   appNames: {
     type: 'loaded',
-    data: (window as ShamefulAny).initialState?.appNames || [],
+    data: [],
   },
-  query:
-    appNameToQuery((window as ShamefulAny).initialState?.appNames[0]) ?? '',
+
+  query: '',
 
   leftTimeline: {
     type: 'pristine',
@@ -297,7 +297,7 @@ export const fetchDiffView = createAsyncThunk<
 
 export const fetchTags = createAsyncThunk(
   'continuous/fetchTags',
-  async (query: ContinuousState['query'], thunkAPI) => {
+  async (query: Query, thunkAPI) => {
     const appName = queryToAppName(query);
     if (appName.isNothing) {
       return Promise.reject(
@@ -330,10 +330,7 @@ export const fetchTags = createAsyncThunk(
 
 export const fetchTagValues = createAsyncThunk(
   'continuous/fetchTagsValues',
-  async (
-    payload: { query: ContinuousState['query']; label: string },
-    thunkAPI
-  ) => {
+  async (payload: { query: Query; label: string }, thunkAPI) => {
     const appName = queryToAppName(payload.query);
     if (appName.isNothing) {
       return Promise.reject(
@@ -407,26 +404,13 @@ export const continuousSlice = createSlice({
       state.from = action.payload.from;
       state.until = action.payload.until;
     },
-    setQuery(state, action: PayloadAction<string>) {
-      // if there's nothing set, pick the first one
-      // this likely happened due to the user visiting the root url
-      if (!action.payload) {
-        const first = state.appNames.data[0];
-        if (first) {
-          state.query = appNameToQuery(first);
-          return;
-        }
-
-        // There's not a first one, so leave it it empty
-        state.query = '';
-        return;
-      }
+    setQuery(state, action: PayloadAction<Query>) {
       state.query = action.payload;
     },
-    setLeftQuery(state, action: PayloadAction<string>) {
+    setLeftQuery(state, action: PayloadAction<Query>) {
       state.leftQuery = action.payload;
     },
-    setRightQuery(state, action: PayloadAction<string>) {
+    setRightQuery(state, action: PayloadAction<Query>) {
       state.rightQuery = action.payload;
     },
     setLeftFrom(state, action: PayloadAction<string>) {
@@ -646,7 +630,11 @@ export default continuousSlice.reducer;
 export const { actions } = continuousSlice;
 export const { setDateRange, setQuery } = continuousSlice.actions;
 export const selectApplicationName = (state: RootState) => {
-  return state.continuous.query.split('{')[0];
+  const { query } = selectQueries(state);
+
+  const appName = queryToAppName(query);
+
+  return appName.map((q) => q.split('{')[0]).unwrapOrElse(() => '');
 };
 
 export const selectAppNamesState = (state: RootState) =>
@@ -674,7 +662,7 @@ export const selectIsLoadingData = (state: RootState) => {
   );
 };
 
-export const selectAppTags = (query?: string) => (state: RootState) => {
+export const selectAppTags = (query?: Query) => (state: RootState) => {
   if (query) {
     const appName = queryToAppName(query);
     if (appName.isJust) {
@@ -694,5 +682,13 @@ export const selectTimelineSidesData = (state: RootState) => {
   return {
     left: state.continuous.leftTimeline.timeline,
     right: state.continuous.rightTimeline.timeline,
+  };
+};
+
+export const selectQueries = (state: RootState) => {
+  return {
+    leftQuery: brandQuery(state.continuous.leftQuery || ''),
+    rightQuery: brandQuery(state.continuous.rightQuery || ''),
+    query: brandQuery(state.continuous.query),
   };
 };
