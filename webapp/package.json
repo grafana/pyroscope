@@ -5,6 +5,7 @@
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1",
     "dev": "webpack --config ../scripts/webpack/webpack.dev.ts --watch",
+    "lint": "echo 'noop'",
     "clean": "rm -rf public/assets && rm -rf public/*.html",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "build": "yarn run clean && yarn run build:standalone && yarn run build:webapp",
