@@ -28,13 +28,15 @@ func ParseJFR(ctx context.Context, r io.Reader, s storage.Putter, pi *storage.Pu
 }
 
 func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.PutInput) (err error) {
-	var event, alloc string
+	var event, alloc, lock string
 	cpu := tree.New()
 	wall := tree.New()
 	inTLABObjects := tree.New()
 	inTLABBytes := tree.New()
 	outTLABObjects := tree.New()
 	outTLABBytes := tree.New()
+	lockSamples := tree.New()
+	lockDuration := tree.New()
 	for _, e := range c.Events {
 		switch e.(type) {
 		case *parser.ExecutionSample:
@@ -57,6 +59,18 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 				outTLABObjects.InsertStackString(fs, 1)
 				outTLABBytes.InsertStackString(fs, uint64(oa.AllocationSize))
 			}
+		case *parser.JavaMonitorEnter:
+			jme := e.(*parser.JavaMonitorEnter)
+			if fs := frames(jme.StackTrace); fs != nil {
+				lockSamples.InsertStackString(fs, 1)
+				lockDuration.InsertStackString(fs, uint64(jme.Duration))
+			}
+		case *parser.ThreadPark:
+			tp := e.(*parser.ThreadPark)
+			if fs := frames(tp.StackTrace); fs != nil {
+				lockSamples.InsertStackString(fs, 1)
+				lockDuration.InsertStackString(fs, uint64(tp.Duration))
+			}
 		case *parser.ActiveSetting:
 			as := e.(*parser.ActiveSetting)
 			switch as.Name {
@@ -64,6 +78,8 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 				event = as.Value
 			case "alloc":
 				alloc = as.Value
+			case "lock":
+				lock = as.Value
 			}
 		}
 	}
@@ -122,6 +138,24 @@ func parse(ctx context.Context, c parser.Chunk, s storage.Putter, pi *storage.Pu
 		pi.Key = segment.NewKey(labels)
 		pi.Val = inTLABObjects
 		pi.Units = "bytes"
+		pi.AggregationType = "sum"
+		if putErr := s.Put(ctx, pi); err != nil {
+			err = multierror.Append(err, putErr)
+		}
+	}
+	if lock != "" {
+		labels["__name__"] = prefix + ".lock_samples"
+		pi.Key = segment.NewKey(labels)
+		pi.Val = lockSamples
+		pi.Units = "samples"
+		pi.AggregationType = "sum"
+		if putErr := s.Put(ctx, pi); err != nil {
+			err = multierror.Append(err, putErr)
+		}
+		labels["__name__"] = prefix + ".lock_nanoseconds"
+		pi.Key = segment.NewKey(labels)
+		pi.Val = lockDuration
+		pi.Units = "nanoseconds"
 		pi.AggregationType = "sum"
 		if putErr := s.Put(ctx, pi); err != nil {
 			err = multierror.Append(err, putErr)
