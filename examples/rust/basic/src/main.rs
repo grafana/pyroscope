@@ -1,13 +1,19 @@
 use pyroscope::PyroscopeAgent;
+use pyroscope_pprofrs::{Pprof, PprofConfig};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Configure Backend
+    let pprof_config = PprofConfig::new().sample_rate(100);
+    let pprof_backend = Pprof::new(pprof_config);
+
+    // Create Pyroscope Agent
     let mut agent = PyroscopeAgent::builder("http://localhost:4040", "rust-app")
-        .sample_rate(100)
-        .tags(&[("Hostname", "pyroscope")])
+        .backend(pprof_backend)
+        .tags(vec![("Hostname", "pyroscope")])
         .build()?;
 
     // Start Agent
-    agent.start();
+    agent.start()?;
 
     // Add tag
     agent.add_tags(&[("Batch", "first")])?;
@@ -30,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     agent.remove_tags(&["Batch"])?;
 
     // Stop Agent
-    agent.stop();
+    agent.stop()?;
     Ok(())
 }
 
