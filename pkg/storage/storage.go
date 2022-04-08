@@ -40,8 +40,13 @@ type Storage struct {
 
 	hc *health.Controller
 
-	tasksWG sync.WaitGroup
-	stop    chan struct{}
+	// Maintenance tasks are executed exclusively to avoid competition:
+	// extensive writing during GC is harmful and deteriorates the
+	// overall performance. Same for write back, eviction, and retention
+	// tasks.
+	tasksMutex sync.Mutex
+	tasksWG    sync.WaitGroup
+	stop       chan struct{}
 
 	queueWorkersWG sync.WaitGroup
 	queue          chan *putInputWithCtx
@@ -141,7 +146,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		return nil, err
 	}
 
-	s.periodicTask(s.writeBackTaskInterval, s.writeBackTask)
+	s.maintenanceTask(s.writeBackTaskInterval, s.writeBackTask)
 	s.startQueueWorkers()
 
 	if !s.config.inMemory {
@@ -151,8 +156,8 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 			return nil, err
 		}
 
-		s.periodicTask(s.evictionTaskInterval, s.evictionTask(memTotal))
-		s.periodicTask(s.retentionTaskInterval, s.retentionTask)
+		s.maintenanceTask(s.evictionTaskInterval, s.evictionTask(memTotal))
+		s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
 		s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
 	}
 
@@ -206,6 +211,15 @@ func (s *Storage) goDB(f func(*db)) {
 		}(d)
 	}
 	wg.Wait()
+}
+
+// maintenanceTask periodically runs f exclusively.
+func (s *Storage) maintenanceTask(interval time.Duration, f func()) {
+	s.periodicTask(interval, func() {
+		s.tasksMutex.Lock()
+		defer s.tasksMutex.Unlock()
+		f()
+	})
 }
 
 func (s *Storage) periodicTask(interval time.Duration, f func()) {
