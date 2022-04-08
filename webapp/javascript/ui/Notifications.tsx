@@ -36,17 +36,16 @@ function Message({
 }) {
   return (
     <div>
-      {message}
-      <br />
-      <br />
-      <small>
-        {additionalInfo && 'Additional info:'}
+      {message && <p>{message}</p>}
+      {additionalInfo && <h4>Additional Info:</h4>}
 
-        {additionalInfo &&
-          additionalInfo.map((a) => {
-            return <div>{a}</div>;
+      {additionalInfo && (
+        <ul>
+          {additionalInfo.map((a) => {
+            return <li>{a}</li>;
           })}
-      </small>
+        </ul>
+      )}
     </div>
   );
 }
