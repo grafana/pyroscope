@@ -114,4 +114,5 @@ module.exports = {
       },
     },
   ],
+  ignorePatterns: ['dist'],
 };
