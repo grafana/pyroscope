@@ -93,7 +93,7 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 		err = convert.ParseIndividualLines(in.Body, cb)
 	case in.Format == "jfr":
 		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi)
-	case strings.Contains(in.ContentType, "multipart/form-data"):
+	case in.Format == "pprof", strings.Contains(in.ContentType, "multipart/form-data"):
 		err = writePprof(ctx, p.storage, in)
 	default:
 		err = convert.ParseGroups(in.Body, cb)

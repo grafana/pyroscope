@@ -230,11 +230,18 @@ var _ = Describe("server", func() {
 					expectedTree = readTestdataFile("./testdata/pprof-string.txt")
 				})
 
-				Context("default sample type config", func() {
+				Context("default sample type config", func() { // this is used in integrations
 					ItCorrectlyParsesIncomingData()
 				})
 
-				Context("custom sample type config", func() {
+				Context("pprof format instead of content Type", func() { // this is described in docs
+					BeforeEach(func() {
+						format = "pprof"
+					})
+					ItCorrectlyParsesIncomingData()
+				})
+
+				Context("custom sample type config", func() { // this is also described in docs
 					BeforeEach(func() {
 						var w *multipart.Writer
 						w, buf = pprofFormFromFile("../convert/testdata/cpu.pprof", map[string]*tree.SampleTypeConfig{
