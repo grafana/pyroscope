@@ -123,7 +123,6 @@ func writePprofFromBody(ctx context.Context, s ParserStorage, pi *PutInput) erro
 		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
 	})
 }
-
 func writePprofFromForm(ctx context.Context, s ParserStorage, pi *PutInput) error {
 	// maxMemory 32MB
 	form, err := multipart.NewReader(pi.Body, pi.MultipartBoundary).ReadForm(32 << 20)
