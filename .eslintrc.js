@@ -88,9 +88,9 @@ module.exports = {
     //    node: true,
     jquery: true,
   },
-  parserOptions: {
-    project: './tsconfig.eslint.json',
-  },
+  //  parserOptions: {
+  //    project: './tsconfig.eslint.json',
+  //  },
   settings: {
     'import/internal-regex': '^@pyroscope',
     'import/resolver': {
@@ -114,5 +114,11 @@ module.exports = {
       },
     },
   ],
-  ignorePatterns: ['dist'],
+  ignorePatterns: ['dist', 'public'],
+  globals: {
+    ShamefulAny: true,
+  },
+  parserOptions: {
+    project: ['./tsconfig.json'],
+  },
 };
