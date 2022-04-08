@@ -93,8 +93,10 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 		err = convert.ParseIndividualLines(in.Body, cb)
 	case in.Format == "jfr":
 		err = jfr.ParseJFR(ctx, in.Body, p.storage, pi)
-	case in.Format == "pprof", strings.Contains(in.ContentType, "multipart/form-data"):
-		err = writePprof(ctx, p.storage, in)
+	case in.Format == "pprof":
+		err = writePprofFromBody(ctx, p.storage, in)
+	case strings.Contains(in.ContentType, "multipart/form-data"):
+		err = writePprofFromForm(ctx, p.storage, in)
 	default:
 		err = convert.ParseGroups(in.Body, cb)
 	}
@@ -111,7 +113,18 @@ func (p *Parser) Put(ctx context.Context, in *PutInput) (err error, pErr error) 
 	return err, pErr
 }
 
-func writePprof(ctx context.Context, s ParserStorage, pi *PutInput) error {
+func writePprofFromBody(ctx context.Context, s ParserStorage, pi *PutInput) error {
+	w := pprof.NewProfileWriter(s, pprof.ProfileWriterConfig{
+		SampleTypes: tree.DefaultSampleTypeMapping,
+		Labels:      pi.Key.Labels(),
+		SpyName:     pi.SpyName,
+	})
+	return pprof.DecodePool(pi.Body, func(p *tree.Profile) error {
+		return w.WriteProfile(ctx, pi.StartTime, pi.EndTime, p)
+	})
+}
+
+func writePprofFromForm(ctx context.Context, s ParserStorage, pi *PutInput) error {
 	// maxMemory 32MB
 	form, err := multipart.NewReader(pi.Body, pi.MultipartBoundary).ReadForm(32 << 20)
 	if err != nil {
@@ -131,13 +144,13 @@ func writePprof(ctx context.Context, s ParserStorage, pi *PutInput) error {
 		Labels:      pi.Key.Labels(),
 		SpyName:     pi.SpyName,
 	})
-	if err = writePprofFromForm(ctx, form, w, pi, "prev_profile"); err != nil {
+	if err = writePprofFromFormField(ctx, form, w, pi, "prev_profile"); err != nil {
 		return err
 	}
-	return writePprofFromForm(ctx, form, w, pi, "profile")
+	return writePprofFromFormField(ctx, form, w, pi, "profile")
 }
 
-func writePprofFromForm(ctx context.Context, form *multipart.Form, w *pprof.ProfileWriter, pi *PutInput, name string) error {
+func writePprofFromFormField(ctx context.Context, form *multipart.Form, w *pprof.ProfileWriter, pi *PutInput, name string) error {
 	r, err := formField(form, name)
 	if err != nil {
 		return err

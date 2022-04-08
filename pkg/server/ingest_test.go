@@ -220,23 +220,27 @@ var _ = Describe("server", func() {
 
 			Context("pprof", func() {
 				BeforeEach(func() {
-					var w *multipart.Writer
-					w, buf = pprofFormFromFile("../convert/testdata/cpu.pprof", nil)
 					format = ""
-					sleepDur = 100 * time.Millisecond // prof data is not updated immediately
-					contentType = w.FormDataContentType()
+					sleepDur = 100 * time.Millisecond // prof data is not updated immediately with pprof
 					name = "test.app{foo=bar,baz=qux}"
 					expectedKey = "test.app.cpu{foo=bar,baz=qux}"
 					expectedTree = readTestdataFile("./testdata/pprof-string.txt")
 				})
 
 				Context("default sample type config", func() { // this is used in integrations
+					BeforeEach(func() {
+						var w *multipart.Writer
+						w, buf = pprofFormFromFile("../convert/testdata/cpu.pprof", nil)
+						contentType = w.FormDataContentType()
+					})
+
 					ItCorrectlyParsesIncomingData()
 				})
 
 				Context("pprof format instead of content Type", func() { // this is described in docs
 					BeforeEach(func() {
 						format = "pprof"
+						buf = bytes.NewBuffer([]byte(readTestdataFile("../convert/testdata/cpu.pprof")))
 					})
 					ItCorrectlyParsesIncomingData()
 				})
