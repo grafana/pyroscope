@@ -14,9 +14,12 @@ module.exports = {
   ],
 
   rules: {
-    // https://github.com/import-js/eslint-plugin-import/issues/1174
-    'import/no-extraneous-dependencies': 'off',
-    // since we use immutablejs in the reducer
-    'no-param-reassign': 'off',
+    // https://github.com/import-js/eslint-plugin-import/issues/1650
+    'import/no-extraneous-dependencies': [
+      'error',
+      {
+        packageDir: [process.cwd(), path.resolve(__dirname, '../../')],
+      },
+    ],
   },
 };

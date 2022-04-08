@@ -5,8 +5,13 @@ module.exports = {
   ignorePatterns: ['public', 'javascript/util', '*.spec.*', '.eslintrc.js'],
 
   rules: {
-    // https://github.com/import-js/eslint-plugin-import/issues/1174
-    'import/no-extraneous-dependencies': 'off',
+    // https://github.com/import-js/eslint-plugin-import/issues/1650
+    'import/no-extraneous-dependencies': [
+      'error',
+      {
+        packageDir: [process.cwd(), path.resolve(__dirname, '../../')],
+      },
+    ],
     // since we use immutablejs in the reducer
     'no-param-reassign': 'off',
   },
