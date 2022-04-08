@@ -592,7 +592,8 @@ var _ = Describe("CollectGarbage", func() {
 				})
 				Expect(err).ToNot(HaveOccurred())
 
-				err = s.EnforceRetentionPolicy(segment.NewRetentionPolicy().SetAbsolutePeriod(time.Hour))
+				rp := segment.NewRetentionPolicy().SetAbsolutePeriod(time.Hour)
+				err = s.enforceRetentionPolicy(context.Background(), rp)
 				Expect(err).ToNot(HaveOccurred())
 
 				o, err := s.Get(context.TODO(), &GetInput{

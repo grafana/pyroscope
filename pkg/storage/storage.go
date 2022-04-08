@@ -3,6 +3,7 @@ package storage
 // revive:disable:max-public-structs complex package
 
 import (
+	"context"
 	"errors"
 	"runtime"
 	"sync"
@@ -36,7 +37,7 @@ type Storage struct {
 	trees      *db
 	main       *db
 	labels     *labels.Labels
-	profiles   *profiles
+	exemplars  *exemplars
 
 	hc *health.Controller
 
@@ -130,14 +131,15 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		return nil, err
 	}
 
-	pdb, err := s.newBadger("profiles", profileDataPrefix, nil)
+	pdb, err := s.newBadger("profiles", exemplarDataPrefix, nil)
 	if err != nil {
 		return nil, err
 	}
-	s.profiles = &profiles{
-		db:     pdb,
-		dicts:  s.dicts,
-		config: s.config,
+	s.exemplars = &exemplars{
+		db:      pdb,
+		dicts:   s.dicts,
+		config:  s.config,
+		metrics: s.metrics,
 	}
 
 	s.labels = labels.New(s.main.DB)
@@ -146,7 +148,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		return nil, err
 	}
 
-	s.maintenanceTask(s.writeBackTaskInterval, s.writeBackTask)
+	s.periodicTask(s.writeBackTaskInterval, s.writeBackTask)
 	s.startQueueWorkers()
 
 	if !s.config.inMemory {
@@ -156,7 +158,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 			return nil, err
 		}
 
-		s.maintenanceTask(s.evictionTaskInterval, s.evictionTask(memTotal))
+		s.periodicTask(s.evictionTaskInterval, s.evictionTask(memTotal))
 		s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
 		s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
 	}
@@ -301,12 +303,27 @@ func (s *Storage) updateMetricsTask() {
 func (s *Storage) retentionTask() {
 	timer := prometheus.NewTimer(prometheus.ObserverFunc(s.metrics.retentionTaskDuration.Observe))
 	defer timer.ObserveDuration()
-	if err := s.EnforceRetentionPolicy(s.retentionPolicy()); err != nil {
-		s.logger.WithError(err).Error("failed to enforce retention policy")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-s.stop:
+			cancel()
+		}
+	}()
+
+	if err := s.EnforceRetentionPolicy(ctx); err != nil {
+		s.logger.WithError(err).Error("retention task failed")
 	}
 }
 
 func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
+	exemplarsRetention := s.config.retentionExemplars
+	if exemplarsRetention == 0 {
+		exemplarsRetention = s.config.retention
+	}
 	return segment.NewRetentionPolicy().
 		SetAbsolutePeriod(s.config.retention).
 		SetExemplarsRetentionPeriod(s.config.retentionExemplars).
@@ -323,6 +340,6 @@ func (s *Storage) databases() []*db {
 		s.segments,
 		s.dicts,
 		s.trees,
-		s.profiles.db,
+		s.exemplars.db,
 	}
 }

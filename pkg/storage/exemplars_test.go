@@ -116,7 +116,7 @@ var _ = Describe("Profiles retention policy", func() {
 				})).ToNot(HaveOccurred())
 
 				rp := &segment.RetentionPolicy{ExemplarsRetentionTime: t3}
-				Expect(s.EnforceRetentionPolicy(rp)).ToNot(HaveOccurred())
+				Expect(s.enforceRetentionPolicy(context.Background(), rp)).ToNot(HaveOccurred())
 
 				o, err := s.MergeProfiles(context.Background(), MergeProfilesInput{
 					AppName:  "app.cpu",

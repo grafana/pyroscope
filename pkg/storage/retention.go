@@ -12,28 +12,42 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
 )
 
-func (s *Storage) EnforceRetentionPolicy(rp *segment.RetentionPolicy) error {
-	s.logger.Debug("enforcing retention policy")
-	if !rp.AbsoluteTime.IsZero() {
-		// It may make sense running it concurrently with some throttling.
-		err := s.iterateOverAllSegments(func(k *segment.Key) error {
-			return s.deleteSegmentData(k, rp)
-		})
-		if errors.Is(err, errClosed) {
-			s.logger.Info("enforcing canceled")
-			return nil
-		}
+const defaultBatchSize = 1 << 10 // 1K items
+
+func (s *Storage) EnforceRetentionPolicy(ctx context.Context) error {
+	err := s.enforceRetentionPolicy(ctx, s.retentionPolicy())
+	switch {
+	case err == nil:
+	case errors.Is(ctx.Err(), context.Canceled):
+		s.logger.Warn("enforcing retention policy canceled")
+	default:
 		return err
-	}
-	if !rp.ExemplarsRetentionTime.IsZero() {
-		if err := s.profiles.truncateBefore(context.TODO(), rp.ExemplarsRetentionTime); err != nil {
-			return fmt.Errorf("failed to truncate profiles storage: %w", err)
-		}
 	}
 	return nil
 }
 
-func (s *Storage) deleteSegmentData(k *segment.Key, rp *segment.RetentionPolicy) error {
+func (s *Storage) enforceRetentionPolicy(ctx context.Context, rp *segment.RetentionPolicy) error {
+	if !rp.AbsoluteTime.IsZero() {
+		s.logger.Info("enforcing retention policy")
+		err := s.iterateOverAllSegments(func(k *segment.Key) error {
+			return s.deleteSegmentData(ctx, k, rp)
+		})
+		if err != nil {
+			return fmt.Errorf("failed to enforce retention policy: %w", err)
+		}
+	}
+
+	if !rp.ExemplarsRetentionTime.IsZero() {
+		s.logger.Info("enforcing exemplars retention policy")
+		if err := s.exemplars.truncateBefore(ctx, rp.ExemplarsRetentionTime); err != nil {
+			return fmt.Errorf("failed to enforce exemplars retention policy: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *Storage) deleteSegmentData(ctx context.Context, k *segment.Key, rp *segment.RetentionPolicy) error {
 	sk := k.SegmentKey()
 	cached, ok := s.segments.Lookup(sk)
 	if !ok {
@@ -75,8 +89,8 @@ func (s *Storage) deleteSegmentData(k *segment.Key, rp *segment.RetentionPolicy)
 		return s.deleteSegmentAndRelatedData(k)
 	}
 
-	var removed int64
-	batchSize := s.trees.MaxBatchCount()
+	var removed int
+	batchSize := defaultBatchSize
 	batch := s.trees.NewWriteBatch()
 	defer func() {
 		batch.Cancel()
@@ -95,8 +109,14 @@ func (s *Storage) deleteSegmentData(k *segment.Key, rp *segment.RetentionPolicy)
 		// It is not possible to make size estimation without reading
 		// the item. Therefore, the call does not report reclaimed space.
 		if removed++; removed%batchSize == 0 {
-			if batch, err = s.flushTreeBatch(batch); err != nil {
+			if err = batch.Flush(); err != nil {
 				return err
+			}
+			select {
+			default:
+				batch = s.trees.NewWriteBatch()
+			case <-ctx.Done():
+				return ctx.Err()
 			}
 		}
 	}
