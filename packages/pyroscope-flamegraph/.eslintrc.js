@@ -8,6 +8,9 @@ module.exports = {
     'setupAfterEnv.ts',
     '*.spec.*',
     '.eslintrc.js',
+    // This file is not actually bundled
+    // TODO move it to ./testFixtures or something
+    'src/FlameGraph/FlameGraphComponent/testData.ts',
   ],
 
   rules: {

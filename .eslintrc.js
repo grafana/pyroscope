@@ -116,6 +116,7 @@ module.exports = {
   ],
   ignorePatterns: ['dist', 'public'],
   globals: {
+    // see ./lib/alias.d.ts
     ShamefulAny: true,
   },
   parserOptions: {
