@@ -41,6 +41,8 @@ var UserAgent = fmt.Sprintf("Pyroscope/%s", build.Version)
 
 var errBodySizeLimit = errors.New("body size limit exceeded")
 
+const spyName = "scrape"
+
 // scrapePool manages scrapes for sets of targets.
 type scrapePool struct {
 	ingester Ingester
@@ -196,7 +198,11 @@ func (sp *scrapePool) reload(cfg *config.Config) error {
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
 			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, sp.activeTargets[fp].profile.Path),
-			pprofWriter:   pprof.NewProfileWriter(sp.ingester, tgt.Labels().Map(), tgt.profile.SampleTypes),
+			pprofWriter: pprof.NewProfileWriter(sp.ingester, pprof.ProfileWriterConfig{
+				SampleTypes: tgt.profile.SampleTypes,
+				Labels:      tgt.Labels().Map(),
+				SpyName:     spyName,
+			}),
 		}
 		n := sp.newScrapeLoop(s, interval, timeout)
 		go func(oldLoop, newLoop *scrapeLoop) {
@@ -277,8 +283,12 @@ func (sp *scrapePool) sync(targets []*Target) {
 			client:        sp.client,
 			timeout:       timeout,
 			bodySizeLimit: bodySizeLimit,
-			pprofWriter:   pprof.NewProfileWriter(sp.ingester, t.Labels().Map(), t.profile.SampleTypes),
 			targetMetrics: sp.metrics.targetMetrics(sp.config.JobName, t.profile.Path),
+			pprofWriter: pprof.NewProfileWriter(sp.ingester, pprof.ProfileWriterConfig{
+				SampleTypes: t.profile.SampleTypes,
+				Labels:      t.Labels().Map(),
+				SpyName:     spyName,
+			}),
 		}
 
 		l := sp.newScrapeLoop(s, interval, timeout)
@@ -426,7 +436,7 @@ func (sl *scrapeLoop) scrape(startTime, endTime time.Time) error {
 		return err
 	}
 	sl.scraper.targetMetrics.profileSamples.Observe(float64(len(p.Sample)))
-	return sl.scraper.pprofWriter.WriteProfile(startTime, endTime, "scrape", p)
+	return sl.scraper.pprofWriter.WriteProfile(ctx, startTime, endTime, p)
 }
 
 func (sl *scrapeLoop) stop() {

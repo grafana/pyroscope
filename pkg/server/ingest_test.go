@@ -2,11 +2,16 @@ package server
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,8 +23,36 @@ import (
 	"github.com/pyroscope-io/pyroscope/pkg/health"
 	"github.com/pyroscope-io/pyroscope/pkg/storage"
 	"github.com/pyroscope-io/pyroscope/pkg/storage/segment"
+	"github.com/pyroscope-io/pyroscope/pkg/storage/tree"
 	"github.com/pyroscope-io/pyroscope/pkg/testing"
 )
+
+func readTestdataFile(name string) string {
+	f, err := ioutil.ReadFile(name)
+	Expect(err).ToNot(HaveOccurred())
+	return string(f)
+}
+
+func pprofFormFromFile(name string, cfg map[string]*tree.SampleTypeConfig) (*multipart.Writer, *bytes.Buffer) {
+	b, err := ioutil.ReadFile(name)
+	Expect(err).ToNot(HaveOccurred())
+	bw := &bytes.Buffer{}
+	w := multipart.NewWriter(bw)
+	fw, err := w.CreateFormFile("profile", "profile.pprof")
+	Expect(err).ToNot(HaveOccurred())
+	_, err = fw.Write(b)
+	Expect(err).ToNot(HaveOccurred())
+	if cfg != nil {
+		jsonb, err := json.Marshal(cfg)
+		Expect(err).ToNot(HaveOccurred())
+		jw, err := w.CreateFormFile("sample_type_config", "sample_type_config.json")
+		_, err = jw.Write(jsonb)
+		Expect(err).ToNot(HaveOccurred())
+	}
+	err = w.Close()
+	Expect(err).ToNot(HaveOccurred())
+	return w, bw
+}
 
 var _ = Describe("server", func() {
 	testing.WithConfig(func(cfg **config.Config) {
@@ -32,6 +65,10 @@ var _ = Describe("server", func() {
 			var format string
 			var contentType string
 			var name string
+			var sleepDur time.Duration
+			var expectedKey string
+			headers := map[string]string{}
+			expectedTree := "foo;bar 2\nfoo;baz 3\n"
 
 			// this is an example of Shared Example pattern
 			//   see https://onsi.github.io/ginkgo/#shared-example-patterns
@@ -80,21 +117,29 @@ var _ = Describe("server", func() {
 						if contentType == "" {
 							contentType = "text/plain"
 						}
+						for k, v := range headers {
+							req.Header.Set(k, v)
+						}
 						req.Header.Set("Content-Type", contentType)
 
 						res, err := http.DefaultClient.Do(req)
 						Expect(err).ToNot(HaveOccurred())
 						Expect(res.StatusCode).To(Equal(200))
 
-						sk, _ := segment.ParseKey(name)
-						gOut, err := s.Get(&storage.GetInput{
+						if expectedKey == "" {
+							expectedKey = name
+						}
+						sk, _ := segment.ParseKey(expectedKey)
+						time.Sleep(sleepDur)
+						gOut, err := s.Get(context.TODO(), &storage.GetInput{
 							StartTime: st,
 							EndTime:   et,
 							Key:       sk,
 						})
+						Expect(gOut).ToNot(BeNil())
 						Expect(err).ToNot(HaveOccurred())
 						Expect(gOut.Tree).ToNot(BeNil())
-						Expect(gOut.Tree.String()).To(Equal("foo;bar 2\nfoo;baz 3\n"))
+						Expect(gOut.Tree.String()).To(Equal(expectedTree))
 
 						close(done)
 					}()
@@ -171,6 +216,50 @@ var _ = Describe("server", func() {
 				})
 
 				ItCorrectlyParsesIncomingData()
+			})
+
+			Context("pprof", func() {
+				BeforeEach(func() {
+					format = ""
+					sleepDur = 100 * time.Millisecond // prof data is not updated immediately with pprof
+					name = "test.app{foo=bar,baz=qux}"
+					expectedKey = "test.app.cpu{foo=bar,baz=qux}"
+					expectedTree = readTestdataFile("./testdata/pprof-string.txt")
+				})
+
+				Context("default sample type config", func() { // this is used in integrations
+					BeforeEach(func() {
+						var w *multipart.Writer
+						w, buf = pprofFormFromFile("../convert/testdata/cpu.pprof", nil)
+						contentType = w.FormDataContentType()
+					})
+
+					ItCorrectlyParsesIncomingData()
+				})
+
+				Context("pprof format instead of content Type", func() { // this is described in docs
+					BeforeEach(func() {
+						format = "pprof"
+						buf = bytes.NewBuffer([]byte(readTestdataFile("../convert/testdata/cpu.pprof")))
+					})
+					ItCorrectlyParsesIncomingData()
+				})
+
+				Context("custom sample type config", func() { // this is also described in docs
+					BeforeEach(func() {
+						var w *multipart.Writer
+						w, buf = pprofFormFromFile("../convert/testdata/cpu.pprof", map[string]*tree.SampleTypeConfig{
+							"samples": {
+								Units:       "samples",
+								DisplayName: "customName",
+							},
+						})
+						contentType = w.FormDataContentType()
+						expectedKey = "test.app.customName{foo=bar,baz=qux}"
+					})
+
+					ItCorrectlyParsesIncomingData()
+				})
 			})
 		})
 	})

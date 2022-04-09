@@ -1,8 +1,9 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["./src/index.tsx"],
+  "include": ["./src/index.tsx", "../../lib"],
   "baseUrl": ".",
   "compilerOptions": {
+    "resolveJsonModule": false,
     "module": "commonjs",
     "declaration": true,
     "noImplicitAny": false,

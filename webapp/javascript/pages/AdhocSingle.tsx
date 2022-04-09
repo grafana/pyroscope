@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import { useAppDispatch, useOldRootSelector } from '@pyroscope/redux/hooks';
-import Box from '@ui/Box';
+import { useAppDispatch, useOldRootSelector } from '@webapp/redux/hooks';
+import Box from '@webapp/ui/Box';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import Spinner from 'react-svg-spinner';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
@@ -10,9 +10,8 @@ import { Profile } from '@pyroscope/models';
 import classNames from 'classnames';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import FileList from '../components/FileList';
-import FileUploader from '../components/FileUploader';
-import Footer from '../components/Footer';
+import FileList from '@webapp/components/FileList';
+import FileUploader from '@webapp/components/FileUploader';
 
 import {
   fetchAdhocProfiles,
@@ -21,11 +20,11 @@ import {
   setAdhocProfile,
   abortFetchAdhocProfiles,
   abortFetchAdhocProfile,
-} from '../redux/actions';
+} from '@webapp/redux/actions';
 import 'react-tabs/style/react-tabs.css';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import ExportData from '@webapp/components/ExportData';
 import adhocStyles from './Adhoc.module.scss';
-import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
-import ExportData from '../components/ExportData';
 
 function AdhocSingle() {
   const dispatch = useAppDispatch();
@@ -52,7 +51,7 @@ function AdhocSingle() {
   }, [profile, dispatch]);
 
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
         <Box>
           <Tabs>
@@ -83,8 +82,6 @@ function AdhocSingle() {
           {!isProfileLoading && (
             <FlamegraphRenderer
               flamebearer={flamebearer}
-              viewType="single"
-              display="both"
               ExportData={
                 <ExportData
                   flamebearer={raw}
@@ -97,7 +94,6 @@ function AdhocSingle() {
           )}
         </Box>
       </div>
-      <Footer />
     </div>
   );
 }

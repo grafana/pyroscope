@@ -1,12 +1,14 @@
 package admin
 
+import "context"
+
 type AdminService struct {
 	storage Storage
 }
 
 type Storage interface {
-	GetAppNames() []string
-	DeleteApp(appname string) error
+	GetAppNames(context.Context) []string
+	DeleteApp(ctx context.Context, appname string) error
 }
 
 func NewService(v Storage) *AdminService {
@@ -18,9 +20,9 @@ func NewService(v Storage) *AdminService {
 }
 
 func (m *AdminService) GetApps() (appNames []string) {
-	return m.storage.GetAppNames()
+	return m.storage.GetAppNames(context.TODO())
 }
 
 func (m *AdminService) DeleteApp(appname string) error {
-	return m.storage.DeleteApp(appname)
+	return m.storage.DeleteApp(context.TODO(), appname)
 }

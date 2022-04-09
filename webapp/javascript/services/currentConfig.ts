@@ -1,5 +1,8 @@
-import { Result } from '@utils/fp';
-import { CurrentConfig, CurrentConfigSchema } from '@models/currentConfig';
+import { Result } from '@webapp/util/fp';
+import {
+  CurrentConfig,
+  CurrentConfigSchema,
+} from '@webapp/models/currentConfig';
 import { ZodError } from 'zod';
 import { request, parseResponse, RequestError } from './base';
 

@@ -1,7 +1,13 @@
+/* eslint-disable import/first */
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import 'react-dom';
 import React from 'react';
+import jquery from 'jquery';
+
+// https://github.com/facebook/create-react-app/issues/4281
+window.jQuery = jquery;
+window.$ = jquery;
 
 import ReactFlot from 'react-flot';
 import 'react-flot/flot/jquery.flot.time.min';
@@ -12,7 +18,6 @@ import './TimelineChartPlugin';
 interface TimelineChartProps {
   onSelect: (from: string, until: string) => void;
   className: string;
-  viewSide: string;
   ['data-testid']?: string;
 }
 

@@ -1,13 +1,13 @@
 /* eslint-disable prettier/prettier */
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { Users, type User } from '@models/users';
+import { Users, type User } from '@webapp/models/users';
 import { connect } from 'react-redux';
 
 import {
   loadCurrentUser as loadCurrentUserAPI,
   changeMyPassword as changeMyPasswordAPI,
   editMyUser as editMyUserAPI,
-} from '@pyroscope/services/users';
+} from '@webapp/services/users';
 import type { RootState } from '../store';
 import { addNotification } from './notifications';
 

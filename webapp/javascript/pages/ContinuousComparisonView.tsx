@@ -1,110 +1,81 @@
 import React, { useEffect } from 'react';
 import 'react-dom';
 
-import Box from '@ui/Box';
+import Box from '@webapp/ui/Box';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
 import {
   selectContinuousState,
   actions,
-  fetchInitialComparisonView,
   selectComparisonState,
   fetchComparisonSide,
-  fetchComparisonTimeline,
-} from '@pyroscope/redux/reducers/continuous';
-import TimelineChartWrapper from '../components/TimelineChartWrapper';
-import Toolbar from '../components/Toolbar';
-import Footer from '../components/Footer';
-import InstructionText from '../components/InstructionText';
-import ExportData from '../components/ExportData';
-import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
+  fetchTagValues,
+  selectQueries,
+} from '@webapp/redux/reducers/continuous';
+import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
+import Toolbar from '@webapp/components/Toolbar';
+import InstructionText from '@webapp/components/InstructionText';
+import ExportData from '@webapp/components/ExportData';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import TagsBar from '@webapp/components/TagsBar';
 import styles from './ContinuousComparison.module.css';
+import useTags from '../hooks/tags.hook';
+import useTimelines, { leftColor, rightColor } from '../hooks/timeline.hook';
+import usePopulateLeftRightQuery from '../hooks/populateLeftRightQuery.hook';
 
 function ComparisonApp() {
   const dispatch = useAppDispatch();
-  const {
-    from,
-    until,
-    query,
-    refreshToken,
-    leftFrom,
-    rightFrom,
-    leftUntil,
-    rightUntil,
-  } = useAppSelector(selectContinuousState);
+  const { leftFrom, rightFrom, leftUntil, rightUntil } = useAppSelector(
+    selectContinuousState
+  );
+  const { leftQuery, rightQuery } = useAppSelector(selectQueries);
 
+  usePopulateLeftRightQuery();
   const comparisonView = useAppSelector(selectComparisonState);
+  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
+  const { leftTimeline, rightTimeline } = useTimelines();
 
   useEffect(() => {
-    dispatch(fetchInitialComparisonView(null));
-  }, [query, refreshToken]);
-
-  // timeline changes
-  useEffect(() => {
-    dispatch(fetchComparisonTimeline(null));
-  }, [from, until]);
-
-  // left side changes
-  useEffect(() => {
-    dispatch(fetchComparisonSide({ side: 'left' }));
-  }, [leftFrom, leftUntil]);
-
-  // right side changes
-  useEffect(() => {
-    dispatch(fetchComparisonSide({ side: 'right' }));
-  }, [rightFrom, rightUntil]);
-
-  const topTimeline = (() => {
-    switch (comparisonView.timeline.type) {
-      case 'loaded':
-      case 'reloading': {
-        return comparisonView.timeline.data;
-      }
-
-      default:
-        return undefined;
+    if (leftQuery) {
+      dispatch(fetchComparisonSide({ side: 'left', query: leftQuery }));
     }
-  })();
+  }, [leftFrom, leftUntil, leftQuery]);
 
-  const getSide = (side: 'left' | 'right') => {
-    const s = comparisonView[side];
-
-    switch (s.type) {
-      case 'loaded':
-      case 'reloading': {
-        return s;
-      }
-
-      default:
-        return { timeline: undefined, profile: undefined };
+  useEffect(() => {
+    if (rightQuery) {
+      dispatch(fetchComparisonSide({ side: 'right', query: rightQuery }));
     }
-  };
+  }, [rightFrom, rightUntil, rightQuery]);
 
-  const leftSide = getSide('left');
-  const rightSide = getSide('right');
-
-  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(
-    leftSide.profile
-  );
-  const exportToFlamegraphDotComRightFn = useExportToFlamegraphDotCom(
-    leftSide.profile
-  );
+  const leftSide = comparisonView.left.profile;
+  const rightSide = comparisonView.right.profile;
+  const exportToFlamegraphDotComLeftFn = useExportToFlamegraphDotCom(leftSide);
+  const exportToFlamegraphDotComRightFn =
+    useExportToFlamegraphDotCom(rightSide);
 
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
-        <Toolbar />
+        <Toolbar
+          hideTagsBar
+          onSelectedName={(query) => {
+            dispatch(actions.setRightQuery(query));
+            dispatch(actions.setLeftQuery(query));
+            dispatch(actions.setQuery(query));
+          }}
+        />
         <TimelineChartWrapper
           data-testid="timeline-main"
           id="timeline-chart-double"
-          viewSide="both"
-          timeline={topTimeline}
-          leftFrom={leftFrom}
-          leftUntil={leftUntil}
-          rightFrom={rightFrom}
-          rightUntil={rightUntil}
+          format="lines"
+          timelineA={leftTimeline}
+          timelineB={rightTimeline}
           onSelect={(from, until) => {
             dispatch(actions.setFromAndUntil({ from, until }));
+          }}
+          markings={{
+            left: { from: leftFrom, to: leftUntil, color: leftColor },
+            right: { from: rightFrom, to: rightUntil, color: rightColor },
           }}
         />
         <div
@@ -112,17 +83,25 @@ function ComparisonApp() {
           data-testid="comparison-container"
         >
           <Box className={styles.comparisonPane}>
+            <TagsBar
+              query={leftQuery}
+              tags={leftTags}
+              onSetQuery={(q) => {
+                dispatch(actions.setLeftQuery(q));
+              }}
+              onSelectedLabel={(label, query) => {
+                dispatch(fetchTagValues({ query, label }));
+              }}
+            />
             <FlamegraphRenderer
-              viewType="double"
-              viewSide="left"
-              profile={leftSide.profile}
+              panesOrientation="vertical"
+              profile={leftSide}
               data-testid="flamegraph-renderer-left"
-              display="both"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
-                leftSide.profile && (
+                leftSide && (
                   <ExportData
-                    flamebearer={leftSide.profile}
+                    flamebearer={leftSide}
                     exportJSON
                     exportHTML
                     exportPprof
@@ -137,12 +116,10 @@ function ComparisonApp() {
                 key="timeline-chart-left"
                 id="timeline-chart-left"
                 data-testid="timeline-left"
-                viewSide="left"
-                timeline={topTimeline}
-                leftFrom={leftFrom}
-                leftUntil={leftUntil}
-                rightFrom={rightFrom}
-                rightUntil={rightUntil}
+                timelineA={leftTimeline}
+                markings={{
+                  left: { from: leftFrom, to: leftUntil, color: leftColor },
+                }}
                 onSelect={(from, until) => {
                   dispatch(actions.setLeft({ from, until }));
                 }}
@@ -151,17 +128,25 @@ function ComparisonApp() {
           </Box>
 
           <Box className={styles.comparisonPane}>
+            <TagsBar
+              query={rightQuery}
+              tags={rightTags}
+              onSetQuery={(q) => {
+                dispatch(actions.setRightQuery(q));
+              }}
+              onSelectedLabel={(label, query) => {
+                dispatch(fetchTagValues({ query, label }));
+              }}
+            />
             <FlamegraphRenderer
-              viewType="double"
-              viewSide="right"
-              profile={rightSide.profile}
+              profile={rightSide}
               data-testid="flamegraph-renderer-right"
-              display="both"
+              panesOrientation="vertical"
               ExportData={
                 // Don't export PNG since the exportPng code is broken
-                rightSide.profile && (
+                rightSide && (
                   <ExportData
-                    flamebearer={rightSide.profile}
+                    flamebearer={rightSide}
                     exportJSON
                     exportHTML
                     exportPprof
@@ -176,12 +161,10 @@ function ComparisonApp() {
                 key="timeline-chart-right"
                 id="timeline-chart-right"
                 data-testid="timeline-right"
-                viewSide="right"
-                timeline={topTimeline}
-                leftFrom={leftFrom}
-                leftUntil={leftUntil}
-                rightFrom={rightFrom}
-                rightUntil={rightUntil}
+                timelineA={rightTimeline}
+                markings={{
+                  right: { from: rightFrom, to: rightUntil, color: rightColor },
+                }}
                 onSelect={(from, until) => {
                   dispatch(actions.setRight({ from, until }));
                 }}
@@ -190,7 +173,6 @@ function ComparisonApp() {
           </Box>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }

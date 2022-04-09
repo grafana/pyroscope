@@ -1,33 +1,44 @@
 // TODO reenable spreading lint
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useState, useEffect } from 'react';
-import { useAppSelector, useAppDispatch } from '@pyroscope/redux/hooks';
-import { appNameToQuery, queryToAppName } from '@utils/query';
+import React, { useState } from 'react';
+import { useAppSelector, useAppDispatch } from '@webapp/redux/hooks';
 import {
   actions,
-  selectContinuousState,
   selectAppNames,
   selectAppNamesState,
   reloadAppNames,
-} from '@pyroscope/redux/reducers/continuous';
-import LoadingSpinner from '@ui/LoadingSpinner';
-import Button from '@ui/Button';
+  selectQueries,
+} from '@webapp/redux/reducers/continuous';
+import LoadingSpinner from '@webapp/ui/LoadingSpinner';
+import Button from '@webapp/ui/Button';
 import { faSyncAlt } from '@fortawesome/free-solid-svg-icons/faSyncAlt';
-import Dropdown, { MenuItem, FocusableItem } from '@ui/Dropdown';
+import Dropdown, {
+  MenuItem,
+  FocusableItem,
+  MenuGroup,
+} from '@webapp/ui/Dropdown';
+import { queryFromAppName, queryToAppName, Query } from '@webapp/models/query';
 import styles from './NameSelector.module.scss';
 
-function NameSelector() {
+interface NameSelectorProps {
+  /** allows to overwrite what to happen when a name is selected, by default it dispatches 'actions.setQuery' */
+  onSelectedName?: (name: Query) => void;
+}
+function NameSelector({ onSelectedName }: NameSelectorProps) {
   const appNamesState = useAppSelector(selectAppNamesState);
   const appNames = useAppSelector(selectAppNames);
   const dispatch = useAppDispatch();
-  const { query } = useAppSelector(selectContinuousState);
+  const { query } = useAppSelector(selectQueries);
 
   const [filter, setFilter] = useState('');
 
   const selectAppName = (name: string) => {
-    const query = appNameToQuery(name);
-
-    dispatch(actions.setQuery(query));
+    const query = queryFromAppName(name);
+    if (onSelectedName) {
+      onSelectedName(query);
+    } else {
+      dispatch(actions.setQuery(query));
+    }
   };
 
   const selectedValue = queryToAppName(query).mapOr('', (q) => {
@@ -54,8 +65,9 @@ function NameSelector() {
     </MenuItem>
   )) as ShamefulAny;
 
-  const noApp =
-    appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>;
+  const noApp = (
+    appNames.length > 0 ? null : <MenuItem>No App available</MenuItem>
+  ) as JSX.Element;
 
   return (
     <div className={styles.container}>
@@ -80,8 +92,7 @@ function NameSelector() {
             />
           )}
         </FocusableItem>
-
-        {options}
+        <MenuGroup takeOverflow>{options}</MenuGroup>
       </Dropdown>
       <Button
         aria-label="Refresh Apps"

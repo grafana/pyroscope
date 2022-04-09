@@ -1,3 +1,43 @@
+# [0.14.0](https://github.com/pyroscope-io/pyroscope/compare/v0.13.0...v0.14.0) (2022-04-08)
+
+
+### Bug Fixes
+
+* flaky pprof test ([#990](https://github.com/pyroscope-io/pyroscope/issues/990)) ([044ee75](https://github.com/pyroscope-io/pyroscope/commit/044ee751479145e5d3dca2531df365f13733ac5c))
+* **flamegraph:** clicking on anywhere on a row selects that row ([#969](https://github.com/pyroscope-io/pyroscope/issues/969)) ([ee84788](https://github.com/pyroscope-io/pyroscope/commit/ee8478812743e1381818e769706df83506ed6f53))
+* **flamegraph:** only show diff options when in diff mode ([#972](https://github.com/pyroscope-io/pyroscope/issues/972)) ([625d4de](https://github.com/pyroscope-io/pyroscope/commit/625d4de340bc576f72b42f9db26605d02bc86c51))
+* **pprof:** calculate sample rate based on the profile units ([#992](https://github.com/pyroscope-io/pyroscope/issues/992)) ([c458556](https://github.com/pyroscope-io/pyroscope/commit/c45855676a4f5d1f98ce1e0d1217755b0417f9c9))
+* **pull-mode:** aggregation is always sum ([#1001](https://github.com/pyroscope-io/pyroscope/issues/1001)) ([b11d044](https://github.com/pyroscope-io/pyroscope/commit/b11d04447b072d82e7a12684c96650b67407fa99))
+* **server:** always returns timeline even if there's not data ([#1012](https://github.com/pyroscope-io/pyroscope/issues/1012)) ([0ecfe03](https://github.com/pyroscope-io/pyroscope/commit/0ecfe0352a8338e9e7d841879cbf7742e6329ed1))
+
+
+### Features
+
+* **ingestion:** add support for memory allocation events in JFR. ([#961](https://github.com/pyroscope-io/pyroscope/issues/961)) ([312cd8c](https://github.com/pyroscope-io/pyroscope/commit/312cd8ca62cbaeefbaba7845439c8e63b6ecc7ca))
+* **jfr:** Split wall events into both CPU and Wall profile types. ([#1002](https://github.com/pyroscope-io/pyroscope/issues/1002)) ([06dabcf](https://github.com/pyroscope-io/pyroscope/commit/06dabcfa51718e0d7bbda0dc62472652f2f6aed9))
+* separate retention policy for exemplars ([#971](https://github.com/pyroscope-io/pyroscope/issues/971)) ([06d14cf](https://github.com/pyroscope-io/pyroscope/commit/06d14cf7d3a073fe454ed0e7c3e5c55bc2ca4e9d))
+* **webapp:** diff arbitrary apps ([#967](https://github.com/pyroscope-io/pyroscope/issues/967)) ([f7e66f1](https://github.com/pyroscope-io/pyroscope/commit/f7e66f1082bb5e1ae2851b0f37f56f46ed43e5e1))
+
+
+
+# [0.13.0](https://github.com/pyroscope-io/pyroscope/compare/v0.12.0...v0.13.0) (2022-03-22)
+
+
+### Bug Fixes
+
+* allow cache eviction and write-back while purging storage ([#962](https://github.com/pyroscope-io/pyroscope/issues/962)) ([cad1afc](https://github.com/pyroscope-io/pyroscope/commit/cad1afc81530a689a2803593e51b04e9854a6958))
+* **frontend:** date range picker styling ([#936](https://github.com/pyroscope-io/pyroscope/issues/936)) ([012eb9f](https://github.com/pyroscope-io/pyroscope/commit/012eb9f1b88b0f490d154c7289089eb136f2d197))
+
+
+### Features
+
+* **flamegraph:** publish FlamegraphRenderer for nodejs ([#944](https://github.com/pyroscope-io/pyroscope/issues/944)) ([c2a5631](https://github.com/pyroscope-io/pyroscope/commit/c2a56310e4b36bc6823d5f9debe6e7ac07c6b877))
+* **ingestion:** initial support for JFR format ingestion. ([#954](https://github.com/pyroscope-io/pyroscope/issues/954)) ([25f96a4](https://github.com/pyroscope-io/pyroscope/commit/25f96a4248651179225fabe63088e39245ced997))
+* **webapp:** allow comparing distinct queries/tags ([#942](https://github.com/pyroscope-io/pyroscope/issues/942)) ([4d1307c](https://github.com/pyroscope-io/pyroscope/commit/4d1307c3751b263d88430977f2d87473c8ee280e))
+* **webapp:** make search in app/tags selector bar sticky ([#950](https://github.com/pyroscope-io/pyroscope/issues/950)) ([c13ad6a](https://github.com/pyroscope-io/pyroscope/commit/c13ad6af04bdc96bbd980a0d89f8da07681fd321))
+
+
+
 # [0.12.0](https://github.com/pyroscope-io/pyroscope/compare/v0.11.1...v0.12.0) (2022-03-10)
 
 

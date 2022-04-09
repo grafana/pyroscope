@@ -1,8 +1,8 @@
 {
   "author": "Pyroscope Team",
-  "name": "pyroscope-lerna",
+  "name": "pyroscope-oss",
   "private": true,
-  "version": "0.12.0",
+  "version": "0.14.0",
   "main": "webapp/javascript/components/FlameGraph/FlameGraphComponent/index.jsx",
   "repository": {
     "type": "git",
@@ -61,8 +61,7 @@
     "lint-staged": "lint-staged",
     "size": "yarn build && size-limit",
     "storybook": "start-storybook -p 6006",
-    "build-storybook": "build-storybook",
-    "grafana-e2e": "grafana-e2e"
+    "build-storybook": "build-storybook"
   },
   "devDependencies": {
     "@babel/core": "7.8.4",
@@ -118,7 +117,7 @@
     "eslint-import-resolver-lerna": "^2.0.0",
     "eslint-plugin-css-modules": "^2.11.0",
     "eslint-plugin-cypress": "^2.12.1",
-    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-jest": "^25.3.4",
     "eslint-plugin-jsx-a11y": "^6.4.1",
     "eslint-plugin-prettier": "^3.3.1",
@@ -133,6 +132,7 @@
     "lerna-watch": "^1.0.0",
     "lint-staged": "^11.1.2",
     "monaco-editor-webpack-plugin": "^1.9.0",
+    "npm-run-all": "^4.1.5",
     "oauth2-mock-server": "^4.3.0",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
     "prettier": "^2.2.1",
@@ -144,7 +144,7 @@
     "ts-jest": "^27.0.5",
     "typescript": "^4.5.2",
     "typescript-plugin-css-modules": "^3.4.0",
-    "webpack": "^5.64.0",
+    "webpack": "~5.71.0",
     "webpack-bundle-analyzer": "^4.4.2",
     "webpack-livereload-plugin": "^3.0.2",
     "webpack-merge": "^5.0.9",
@@ -162,7 +162,6 @@
     "@fortawesome/free-solid-svg-icons": "~5.14.0",
     "@fortawesome/react-fontawesome": "~0.1.11",
     "@grafana/data": "^8.3.1",
-    "@grafana/e2e": "^8.3.2",
     "@grafana/runtime": "^8.3.1",
     "@grafana/ui": "^8.3.1",
     "@react-hook/resize-observer": "^1.2.4",
@@ -196,6 +195,7 @@
     "html-webpack-plugin": "^5.5.0",
     "humanize-duration": "^3.25.1",
     "jest-fetch-mock": "^3.0.3",
+    "jquery": "3.6.0",
     "jquery.flot.tooltip": "^0.9.0",
     "lerna": "^4.0.0",
     "lodash": "^4.17.21",
@@ -249,7 +249,7 @@
     "ts-essentials": "^9.0.0",
     "ts-node": "^10.4.0",
     "url-loader": "^4.1.1",
-    "webpack-cli": "^4.8.0",
+    "webpack-cli": "~4.9.2",
     "zod": "^3.11.6"
   },
   "engines": {
@@ -264,6 +264,6 @@
   "resolutions": {
     "react": "16.14.0",
     "react-dom": "16.14.0",
-    "jquery": "3.1.1"
+    "jquery": "3.6.0"
   }
 }

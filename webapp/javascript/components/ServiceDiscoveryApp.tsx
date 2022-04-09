@@ -1,12 +1,12 @@
 import React, { Children, useEffect, useState } from 'react';
 import { connect } from 'react-redux';
-import { Target } from '@models/targets';
-import { useAppDispatch } from '@pyroscope/redux/hooks';
-import { loadTargets } from '@pyroscope/redux/reducers/serviceDiscovery';
+import { Target } from '@webapp/models/targets';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import { loadTargets } from '@webapp/redux/reducers/serviceDiscovery';
 import { formatDistance, parseISO } from 'date-fns';
 import cx from 'classnames';
+import Button from '@webapp/ui/Button';
 import styles from './ServiceDiscovery.module.scss';
-import Button from '../ui/Button';
 
 type PropType = {
   data: Record<string, Target[]>;
@@ -68,8 +68,10 @@ const ServiceDiscoveryApp = (props: PropType) => {
         ) : (
           Object.keys(data).map((job) => {
             const children = data[job].map((target, i) => {
-              /* eslint-disable-next-line react/jsx-props-no-spreading */
-              const targetElem = <Target {...target} key={target.url} />;
+              const targetElem = (
+                /* eslint-disable-next-line react/jsx-props-no-spreading */
+                <TargetComponent {...target} key={target.url} />
+              );
               if (unavailableFilter) {
                 if (target.health !== 'up') {
                   return targetElem;
@@ -141,7 +143,7 @@ function formatDuration(input: string): string {
   return `${parseFloat(input).toFixed(2)} ${b}`;
 }
 
-const Target = ({
+const TargetComponent = ({
   discoveredLabels,
   labels,
   url,

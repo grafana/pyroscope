@@ -1,7 +1,7 @@
 import { Profile } from '@pyroscope/models';
-import { shareWithFlamegraphDotcom } from '@pyroscope/services/share';
-import { useAppDispatch } from '@pyroscope/redux/hooks';
-import handleError from '../util/handleError';
+import { shareWithFlamegraphDotcom } from '@webapp/services/share';
+import { useAppDispatch } from '@webapp/redux/hooks';
+import handleError from '@webapp/util/handleError';
 
 export default function useExportToFlamegraphDotCom(flamebearer?: Profile) {
   const dispatch = useAppDispatch();

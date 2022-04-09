@@ -40,16 +40,11 @@ type Storage struct {
 
 	hc *health.Controller
 
-	// Maintenance tasks are executed exclusively to avoid competition:
-	// extensive writing during GC is harmful and deteriorates the
-	// overall performance. Same for write back, eviction, and retention
-	// tasks.
-	tasksMutex sync.Mutex
-	tasksWG    sync.WaitGroup
-	stop       chan struct{}
+	tasksWG sync.WaitGroup
+	stop    chan struct{}
 
 	queueWorkersWG sync.WaitGroup
-	queue          chan *PutInput
+	queue          chan *putInputWithCtx
 
 	putMutex sync.Mutex
 }
@@ -111,7 +106,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		stop:    make(chan struct{}),
 	}
 
-	s.queue = make(chan *PutInput, s.queueLen)
+	s.queue = make(chan *putInputWithCtx, s.queueLen)
 
 	var err error
 	if s.main, err = s.newBadger("main", "", nil); err != nil {
@@ -146,7 +141,7 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 		return nil, err
 	}
 
-	s.maintenanceTask(s.writeBackTaskInterval, s.writeBackTask)
+	s.periodicTask(s.writeBackTaskInterval, s.writeBackTask)
 	s.startQueueWorkers()
 
 	if !s.config.inMemory {
@@ -156,8 +151,8 @@ func New(c *Config, logger *logrus.Logger, reg prometheus.Registerer, hc *health
 			return nil, err
 		}
 
-		s.maintenanceTask(s.evictionTaskInterval, s.evictionTask(memTotal))
-		s.maintenanceTask(s.retentionTaskInterval, s.retentionTask)
+		s.periodicTask(s.evictionTaskInterval, s.evictionTask(memTotal))
+		s.periodicTask(s.retentionTaskInterval, s.retentionTask)
 		s.periodicTask(s.metricsUpdateTaskInterval, s.updateMetricsTask)
 	}
 
@@ -211,15 +206,6 @@ func (s *Storage) goDB(f func(*db)) {
 		}(d)
 	}
 	wg.Wait()
-}
-
-// maintenanceTask periodically runs f exclusively.
-func (s *Storage) maintenanceTask(interval time.Duration, f func()) {
-	s.periodicTask(interval, func() {
-		s.tasksMutex.Lock()
-		defer s.tasksMutex.Unlock()
-		f()
-	})
 }
 
 func (s *Storage) periodicTask(interval time.Duration, f func()) {
@@ -307,18 +293,13 @@ func (s *Storage) retentionTask() {
 }
 
 func (s *Storage) retentionPolicy() *segment.RetentionPolicy {
-	rp := segment.NewRetentionPolicy().SetAbsolutePeriod(s.config.retention)
-	levels := []time.Duration{
-		s.config.retentionLevels.Zero,
-		s.config.retentionLevels.One,
-		s.config.retentionLevels.Two,
-	}
-	for i, p := range levels {
-		if p != 0 {
-			rp.SetLevelPeriod(i, p)
-		}
-	}
-	return rp
+	return segment.NewRetentionPolicy().
+		SetAbsolutePeriod(s.config.retention).
+		SetExemplarsRetentionPeriod(s.config.retentionExemplars).
+		SetLevels(
+			s.config.retentionLevels.Zero,
+			s.config.retentionLevels.One,
+			s.config.retentionLevels.Two)
 }
 
 func (s *Storage) databases() []*db {

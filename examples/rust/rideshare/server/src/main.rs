@@ -1,5 +1,6 @@
 use chrono::prelude::*;
 use pyroscope::PyroscopeAgent;
+use pyroscope_pprofrs::{Pprof, PprofConfig};
 use warp::Filter;
 
 // Vehicule enum
@@ -11,7 +12,7 @@ enum Vehicule {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Force rustc to display the log messages in the console.
     std::env::set_var("RUST_LOG", "trace");
 
@@ -24,15 +25,19 @@ async fn main() {
     // Get Region from environment variable.
     let region = std::env::var("REGION").unwrap_or_else(|_| "us-east-1".to_string());
 
+    // Configure Backend
+    let pprof_config = PprofConfig::new().sample_rate(100);
+    let pprof_backend = Pprof::new(pprof_config);
+
     // Configure Pyroscope client.
     let mut agent = PyroscopeAgent::builder(server_address, "ride-sharing-rust".to_owned())
-        .sample_rate(100)
-        .tags(&[("region", &region)])
+        .backend(pprof_backend)
+        .tags(vec![("region", &region)])
         .build()
         .unwrap();
 
     // Start the Pyroscope client.
-    agent.start();
+    agent.start()?;
 
     // Root Route
     let root = warp::path::end().map(|| {
@@ -69,7 +74,9 @@ async fn main() {
     warp::serve(routes).run(([0, 0, 0, 0], 5000)).await;
 
     // Stop the Pyroscope client.
-    agent.stop();
+    agent.stop()?;
+
+    Ok(())
 }
 
 fn order_bike(n: u64) {

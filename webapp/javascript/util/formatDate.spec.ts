@@ -1,4 +1,4 @@
-import { readableRange, formatAsOBject } from '@utils/formatDate';
+import { readableRange, formatAsOBject } from '@webapp/util/formatDate';
 import * as dateFns from 'date-fns';
 import timezoneMock from 'timezone-mock';
 

@@ -1,5 +1,5 @@
 import { z, ZodError } from 'zod';
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import { modelToResult } from './utils';
 
 const zDateTime = z.string().transform((value: string | number | Date) => {

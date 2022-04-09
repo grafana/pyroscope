@@ -1,5 +1,5 @@
-import { CurrentConfig } from '@models/currentConfig';
-import { fetchCurrentConfig } from '@pyroscope/services/currentConfig';
+import { CurrentConfig } from '@webapp/models/currentConfig';
+import { fetchCurrentConfig } from '@webapp/services/currentConfig';
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { addNotification } from './notifications';
 

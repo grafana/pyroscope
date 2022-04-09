@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-expressions */
 import React, { useCallback, useRef } from 'react';
 import clsx from 'clsx';
 import { MenuItem } from '@szhsin/react-menu';
@@ -29,9 +30,7 @@ interface FlamegraphProps {
   onReset: () => void;
   isDirty: () => boolean;
 
-  // the reason this is exposed as a parameter
-  // is to not have to connect to the redux store from here
-  ExportData: () => React.ReactElement;
+  ExportData?: React.ComponentProps<typeof Header>['ExportData'];
 
   ['data-testid']?: string;
   palette: FlamegraphPalette;
@@ -201,8 +200,9 @@ export default function FlameGraphComponent(props: FlamegraphProps) {
   ]);
 
   const renderCanvas = () => {
-    // eslint-disable-next-line no-unused-expressions
+    canvasRef?.current?.setAttribute('data-state', 'rendering');
     flamegraph?.current?.render();
+    canvasRef?.current?.setAttribute('data-state', 'rendered');
   };
 
   const dataUnavailable =

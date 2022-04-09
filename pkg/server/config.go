@@ -11,11 +11,11 @@ type configResponse struct {
 func (ctrl *Controller) configHandler(w http.ResponseWriter, _ *http.Request) {
 	configBytes, err := ctrl.config.MarshalYAML()
 	if err != nil {
-		ctrl.writeEncodeError(w, err)
+		WriteJSONEncodeError(ctrl.log, w, err)
 		return
 	}
 	resp := configResponse{
 		Yaml: string(configBytes),
 	}
-	ctrl.writeResponseJSON(w, resp)
+	WriteResponseJSON(ctrl.log, w, resp)
 }

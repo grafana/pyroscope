@@ -1,13 +1,13 @@
-import { Result } from '@utils/fp';
+import { Result } from '@webapp/util/fp';
 import {
   Users,
   parse,
   type User,
   userModel,
   passwordEncode,
-} from '@models/users';
+} from '@webapp/models/users';
 import type { ZodError } from 'zod';
-import { modelToResult } from '@models/utils';
+import { modelToResult } from '@webapp/models/utils';
 import { request } from './base';
 import type { RequestError } from './base';
 

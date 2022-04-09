@@ -1,30 +1,48 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import 'react-dom';
 
 import Spinner from 'react-svg-spinner';
 
-import { useAppSelector } from '@pyroscope/redux/hooks';
-import { selectIsLoadingData } from '@pyroscope/redux/reducers/continuous';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import {
+  selectIsLoadingData,
+  selectAppTags,
+  actions,
+  fetchTags,
+  fetchTagValues,
+  selectQueries,
+} from '@webapp/redux/reducers/continuous';
+import { Query } from '@webapp/models/query';
 import classNames from 'classnames';
 import DateRangePicker from './DateRangePicker';
 import RefreshButton from './RefreshButton';
 import NameSelector from './NameSelector';
 import TagsBar from './TagsBar';
 
-function Toolbar() {
+interface ToolbarProps {
+  // TODO: refactor this
+  /* hide tags bar, useful for comparison view */
+  hideTagsBar?: boolean;
+  /** allows to overwrite what to happen when a name is selected, by default it dispatches 'actions.setQuery' */
+  onSelectedName?: (name: Query) => void;
+}
+function Toolbar({ hideTagsBar, onSelectedName }: ToolbarProps) {
+  const dispatch = useAppDispatch();
   const isLoadingData = useAppSelector(selectIsLoadingData);
+  const { query } = useAppSelector(selectQueries);
+  const tags = useAppSelector(selectAppTags(query));
 
-  // This component initializes using a value frmo the redux store (query)
-  // Which doesn't work well when the 'query' changes in the store (see https://reactjs.org/docs/forms.html#controlled-components)
-  // This is a workaround to force the component to always remount
-  // TODO: move the state from this component into the redux store
-  //  const tagsBar = <TagsBar key={query} />;
+  useEffect(() => {
+    if (query) {
+      dispatch(fetchTags(query));
+    }
+  }, [query]);
 
   return (
     <>
       <div className="navbar">
         <div className={classNames('labels')}>
-          <NameSelector />
+          <NameSelector onSelectedName={onSelectedName} />
         </div>
         <div className="navbar-space-filler" />
         <div
@@ -39,7 +57,23 @@ function Toolbar() {
         &nbsp;
         <DateRangePicker />
       </div>
-      <TagsBar />
+      {!hideTagsBar && (
+        <TagsBar
+          query={query}
+          tags={tags}
+          onSetQuery={(q) => {
+            dispatch(actions.setQuery(q));
+          }}
+          onSelectedLabel={(label, query) => {
+            dispatch(
+              fetchTagValues({
+                query,
+                label,
+              })
+            );
+          }}
+        />
+      )}
     </>
   );
 }

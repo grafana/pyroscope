@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { addNotification } from '../redux/reducers/notifications';
+import { addNotification } from '@webapp/redux/reducers/notifications';
 
 export default function ServerNotifications() {
   const dispatch = useDispatch();

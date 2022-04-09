@@ -2,12 +2,12 @@ import React from 'react';
 import { Provider } from 'react-redux';
 import { render as rtlRender, screen } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
-import { continuousSlice } from '@pyroscope/redux/reducers/continuous';
-import { Result } from '@utils/fp';
-import * as appNames from '@pyroscope/services/appNames';
+import { continuousSlice } from '@webapp/redux/reducers/continuous';
+import { Result } from '@webapp/util/fp';
+import * as appNames from '@webapp/services/appNames';
 import NameSelector from './NameSelector';
 
-jest.mock('@pyroscope/services/appNames');
+jest.mock('@webapp/services/appNames');
 
 function render(
   ui: any,

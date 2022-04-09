@@ -1,10 +1,10 @@
 /* eslint-disable react/destructuring-assignment */
 import React, { useState } from 'react';
 
-import Button from '@ui/Button';
+import Button from '@webapp/ui/Button';
 import { faBars } from '@fortawesome/free-solid-svg-icons/faBars';
-import { buildRenderURL } from '@utils/updateRequests';
-import { dateForExportFilename } from '@utils/formatDate';
+import { buildRenderURL } from '@webapp/util/updateRequests';
+import { dateForExportFilename } from '@webapp/util/formatDate';
 import { Profile } from '@pyroscope/models';
 
 import styles from './ExportData.module.scss';

@@ -123,8 +123,9 @@ type Server struct {
 	// currently only used in our demo app
 	HideApplications []string `def:"" desc:"please don't use, this will soon be deprecated" yaml:"hide-applications" mapstructure:"hide-applications"`
 
-	Retention       time.Duration   `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" yaml:"retention" mapstructure:"retention"`
-	RetentionLevels RetentionLevels `def:"" desc:"specifies how long the profiling data stored per aggregation level. Disabled by default" yaml:"retention-levels" mapstructure:"retention-levels"`
+	Retention          time.Duration   `def:"" desc:"sets the maximum amount of time the profiling data is stored for. Data before this threshold is deleted. Disabled by default" yaml:"retention" mapstructure:"retention"`
+	ExemplarsRetention time.Duration   `def:"" desc:"sets the maximum amount of time profile exemplars are stored for. Data before this threshold is deleted. Disabled by default" yaml:"exemplars-retention" mapstructure:"exemplars-retention"`
+	RetentionLevels    RetentionLevels `def:"" desc:"specifies how long the profiling data stored per aggregation level. Disabled by default" yaml:"retention-levels" mapstructure:"retention-levels"`
 
 	// Deprecated fields. They can be set (for backwards compatibility) but have no effect
 	// TODO: we should print some warning messages when people try to use these

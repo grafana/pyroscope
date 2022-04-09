@@ -83,11 +83,14 @@ func (s profiles) insert(appName, profileID string, v *tree.Tree, at time.Time) 
 			return err
 		case errors.Is(err, badger.ErrKeyNotFound):
 		case err == nil:
-			return item.Value(valueReader(dx, func(t *tree.Tree) error {
+			err = item.Value(valueReader(dx, func(t *tree.Tree) error {
 				t.Merge(v)
 				v = t
 				return nil
 			}))
+			if err != nil {
+				return err
+			}
 		}
 
 		if err = b.WriteByte(profilesFormatV1); err != nil {

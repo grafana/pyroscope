@@ -1,6 +1,7 @@
 package dbmanager
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -106,7 +107,7 @@ loop:
 		}
 
 		srct2 := srct.Add(resolution)
-		gOut, err := s.Get(&storage.GetInput{
+		gOut, err := s.Get(context.TODO(), &storage.GetInput{
 			StartTime: srct,
 			EndTime:   srct2,
 			Key:       sk,
@@ -119,7 +120,7 @@ loop:
 			dstt := srct.Add(durDiff)
 			dstt2 := dstt.Add(resolution)
 
-			err = s.Put(&storage.PutInput{
+			err = s.Put(context.TODO(), &storage.PutInput{
 				StartTime:  dstt,
 				EndTime:    dstt2,
 				Key:        sk,

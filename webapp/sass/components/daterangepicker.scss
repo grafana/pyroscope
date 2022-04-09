@@ -2,8 +2,8 @@
 @use '../mixins/outline' as *;
 
 // DatePicker Component styles
-@import '../../node_modules/react-datepicker/dist/react-datepicker.css';
-@import '../../node_modules/react-datepicker/dist/react-datepicker-cssmodules.css';
+@import '~react-datepicker/dist/react-datepicker.css';
+@import '~react-datepicker/dist/react-datepicker-cssmodules.css';
 
 .drp-button {
   white-space: nowrap;
@@ -33,7 +33,8 @@
     box-shadow: 0 5px 20px var(--ps-c-black);
     border-radius: 4px;
 
-    z-index: 1;
+    // 2 so that it's above the '.tags-bar .tags-highlighted' element
+    z-index: 2;
   }
 
   h4:nth-child(1),

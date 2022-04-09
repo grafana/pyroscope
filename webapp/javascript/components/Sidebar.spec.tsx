@@ -3,9 +3,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
-import uiReducer from '@pyroscope/redux/reducers/ui';
+import uiReducer from '@webapp/redux/reducers/ui';
 
-import { Sidebar2 } from './Sidebar';
+import { SidebarComponent } from './Sidebar';
 
 // TODO: figure out the types here
 function createStore(preloadedState: any) {
@@ -40,7 +40,7 @@ describe('Sidebar', () => {
                   },
                 })}
               >
-                <Sidebar2 />
+                <SidebarComponent />
               </Provider>
             </MemoryRouter>
           );
@@ -64,7 +64,7 @@ describe('Sidebar', () => {
                   },
                 })}
               >
-                <Sidebar2 />
+                <SidebarComponent />
               </Provider>
             </MemoryRouter>
           );

@@ -8,18 +8,22 @@
 import React from 'react';
 import clsx from 'clsx';
 import { Maybe } from 'true-myth';
-import { createFF } from '@pyroscope/models';
+import { Flamebearer, Profile } from '@pyroscope/models';
 import Graph from './FlameGraphComponent';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: let's move this to typescript some time in the future
 import ProfilerTable from '../ProfilerTable';
 import Toolbar from '../Toolbar';
 import { DefaultPalette } from './FlameGraphComponent/colorPalette';
-import styles from './FlamegraphRenderer.module.css';
+import styles from './FlamegraphRenderer.module.scss';
 import PyroscopeLogo from '../logo-v3-small.svg';
 import decode from './decode';
+import { FitModes } from '../fitMode/fitMode';
+import { ViewTypes } from './FlameGraphComponent/viewTypes';
 
 // Still support old flamebearer format
 // But prefer the new 'profile' one
-function mountFlamebearer(p) {
+function mountFlamebearer(p: { profile?: Profile; flamebearer?: Flamebearer }) {
   if (p.profile && p.flamebearer) {
     console.warn(
       "'profile' and 'flamebearer' properties are mutually exclusible. Preferring profile."
@@ -34,30 +38,97 @@ function mountFlamebearer(p) {
       ...profile,
       ...profile.flamebearer,
       ...profile.metadata,
-    };
+    } as Flamebearer;
   }
 
-  return p.flamebearer;
+  if (p.flamebearer) {
+    return p.flamebearer;
+  }
+
+  // people may send us both values as undefined
+  // but we still have to render something
+  const noop: Flamebearer = {
+    format: 'single',
+    names: [],
+    units: '',
+    levels: [[]],
+    spyName: '',
+    numTicks: 0,
+    sampleRate: 0,
+  };
+  return noop;
 }
-class FlameGraphRenderer extends React.Component {
-  // TODO: this could come from some other state
-  // eg localstorage
-  initialFlamegraphState = {
-    focusedNode: Maybe.nothing(),
-    zoom: Maybe.nothing(),
+
+// Refers to a node in the flamegraph
+interface Node {
+  i: number;
+  j: number;
+}
+
+interface FlamegraphRendererProps {
+  /** in case you ONLY want to display a specific visualization mode. It will also disable the dropdown that allows you to change mode. */
+  onlyDisplay?: ViewTypes;
+
+  /** whether to display the panes (table and flamegraph) side by side ('horizontal') or one on top of the other ('vertical') */
+  panesOrientation?: 'horizontal' | 'vertical';
+
+  showToolbar?: boolean;
+
+  /** @deprecated  prefer Profile */
+  flamebearer?: Flamebearer;
+  profile?: Profile;
+  showPyroscopeLogo?: boolean;
+  renderLogo?: boolean;
+
+  ExportData?: React.ComponentProps<typeof Graph>['ExportData'];
+}
+
+interface FlamegraphRendererState {
+  isFlamegraphDirty: boolean;
+  sortBy: 'self' | 'total' | 'selfDiff' | 'totalDiff';
+  sortByDirection: 'desc' | 'asc';
+
+  view: NonNullable<FlamegraphRendererProps['onlyDisplay']>;
+  panesOrientation: NonNullable<FlamegraphRendererProps['panesOrientation']>;
+
+  viewDiff: 'diff' | 'total' | 'self';
+  fitMode: 'HEAD' | 'TAIL';
+  flamebearer: NonNullable<FlamegraphRendererProps['flamebearer']>;
+  highlightQuery: string;
+
+  flamegraphConfigs: {
+    focusedNode: Maybe<Node>;
+    zoom: Maybe<Node>;
   };
 
-  constructor(props) {
-    super();
+  palette: typeof DefaultPalette;
+}
+
+class FlameGraphRenderer extends React.Component<
+  FlamegraphRendererProps,
+  FlamegraphRendererState
+> {
+  initialFlamegraphState = {
+    focusedNode: Maybe.nothing<Node>(),
+    zoom: Maybe.nothing<Node>(),
+  };
+
+  constructor(props: FlamegraphRendererProps) {
+    super(props);
 
     this.state = {
       isFlamegraphDirty: false,
       sortBy: 'self',
       sortByDirection: 'desc',
-      view: 'both',
-      viewDiff: props.viewType === 'diff' ? 'diff' : undefined,
-      fitMode: props.fitMode ? props.fitMode : 'HEAD',
+      view: this.props.onlyDisplay ? this.props.onlyDisplay : 'both',
+      viewDiff: 'diff',
+      fitMode: 'HEAD',
       flamebearer: mountFlamebearer(props),
+
+      // Default to horizontal since it's the most common case
+      panesOrientation: props.panesOrientation
+        ? props.panesOrientation
+        : 'horizontal',
 
       // query used in the 'search' checkbox
       highlightQuery: '',
@@ -67,13 +138,12 @@ class FlameGraphRenderer extends React.Component {
       // TODO make this come from the redux store?
       palette: DefaultPalette,
     };
-
-    // for situations like in grafana we only display the flamegraph
-    // 'both' | 'flamegraph' | 'table'
-    this.display = props.display !== undefined ? props.display : 'both';
   }
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(
+    prevProps: FlamegraphRendererProps,
+    prevState: FlamegraphRendererState
+  ) {
     if (prevProps.profile !== this.props.profile) {
       this.updateFlamebearerData();
       return;
@@ -91,11 +161,7 @@ class FlameGraphRenderer extends React.Component {
     }
   }
 
-  componentWillUnmount() {
-    this.abortCurrentJSONController();
-  }
-
-  handleSearchChange = (e) => {
+  handleSearchChange = (e: string) => {
     this.setState({
       highlightQuery: e,
     });
@@ -111,7 +177,7 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  onFlamegraphZoom = (bar) => {
+  onFlamegraphZoom = (bar: Maybe<Node>) => {
     // zooming on the topmost bar is equivalent to resetting to the original state
     if (bar.isJust && bar.value.i === 0 && bar.value.j === 0) {
       this.onReset();
@@ -129,7 +195,7 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  onFocusOnNode = (i, j) => {
+  onFocusOnNode = (i: number, j: number) => {
     if (i === 0 && j === 0) {
       this.onReset();
       return;
@@ -159,7 +225,7 @@ class FlameGraphRenderer extends React.Component {
   };
 
   // if clicking on the same item, undo the search
-  onTableItemClick = (tableItem) => {
+  onTableItemClick = (tableItem: { name: string }) => {
     let { name } = tableItem;
 
     if (tableItem.name === this.state.highlightQuery) {
@@ -168,7 +234,7 @@ class FlameGraphRenderer extends React.Component {
     this.handleSearchChange(name);
   };
 
-  updateSortBy = (newSortBy) => {
+  updateSortBy = (newSortBy: FlamegraphRendererState['sortBy']) => {
     let dir = this.state.sortByDirection;
     if (this.state.sortBy === newSortBy) {
       dir = dir === 'asc' ? 'desc' : 'asc';
@@ -181,13 +247,14 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateViewDiff = (newView) => {
+  // This in fact seems refers to the diff table
+  updateViewDiff = (newView: 'total' | 'self' | 'diff') => {
     this.setState({
       viewDiff: newView,
     });
   };
 
-  updateView = (newView) => {
+  updateView = (newView: ViewTypes) => {
     this.setState({
       view: newView,
     });
@@ -201,7 +268,7 @@ class FlameGraphRenderer extends React.Component {
     });
   };
 
-  updateFitMode = (newFitMode) => {
+  updateFitMode = (newFitMode: FitModes) => {
     this.setState({
       fitMode: newFitMode,
     });
@@ -226,28 +293,22 @@ class FlameGraphRenderer extends React.Component {
     this.setState({ flamebearer });
   }
 
-  parseFormat(format) {
-    return createFF(format || this.state.format);
-  }
-
-  abortCurrentJSONController() {
-    if (this.currentJSONController) {
-      this.currentJSONController.abort();
-    }
-  }
-
   render = () => {
     // This is necessary because the order switches depending on single vs comparison view
     const tablePane = (
       <div
         key="table-pane"
-        className={clsx('pane', {
-          hidden:
-            this.state.view === 'icicle' ||
-            !this.state.flamebearer ||
-            this.state.flamebearer.names.length <= 1,
-          'vertical-orientation': this.props.viewType === 'double',
-        })}
+        className={clsx(
+          styles.tablePane,
+          {
+            [styles.hidden]:
+              !this.state.flamebearer ||
+              this.state.flamebearer.names.length <= 1,
+          },
+          this.state.panesOrientation === 'vertical'
+            ? styles.vertical
+            : styles.horizontal
+        )}
       >
         <ProfilerTable
           data-testid="table-view"
@@ -256,7 +317,9 @@ class FlameGraphRenderer extends React.Component {
           sortBy={this.state.sortBy}
           updateSortBy={this.updateSortBy}
           view={this.state.view}
-          viewDiff={this.state.viewDiff}
+          viewDiff={
+            this.state.flamebearer?.format === 'double' && this.state.viewDiff
+          }
           fitMode={this.state.fitMode}
           isFlamegraphDirty={this.state.isFlamegraphDirty}
           highlightQuery={this.state.highlightQuery}
@@ -269,26 +332,22 @@ class FlameGraphRenderer extends React.Component {
       this.state.view !== 'table' ||
       (this.state.flamebearer && this.state.flamebearer.names.length <= 1);
 
-    const flamegraphDataTestId = figureFlamegraphDataTestId(
-      this.props.viewType,
-      this.props.viewSide
-    );
+    //    const flamegraphDataTestId = figureFlamegraphDataTestId(
+    //      this.props.viewType,
+    //      this.props.viewSide
+    //    );
 
     const flameGraphPane =
       this.state.flamebearer && dataExists ? (
         <Graph
           key="flamegraph-pane"
-          data-testid={flamegraphDataTestId}
+          // data-testid={flamegraphDataTestId}
           flamebearer={this.state.flamebearer}
-          format={this.parseFormat(this.state.flamebearer.format)}
-          view={this.state.view}
-          ExportData={() => this.props.ExportData || <></>}
+          ExportData={this.props.ExportData || <></>}
           highlightQuery={this.state.highlightQuery}
           fitMode={this.state.fitMode}
-          viewType={this.props.viewType}
           zoom={this.state.flamegraphConfigs.zoom}
           focusedNode={this.state.flamegraphConfigs.focusedNode}
-          label={this.props.query}
           onZoom={this.onFlamegraphZoom}
           onFocusOnNode={this.onFocusOnNode}
           onReset={this.onReset}
@@ -302,26 +361,18 @@ class FlameGraphRenderer extends React.Component {
         />
       ) : null;
 
-    const panes = decidePanesOrder(
-      this.props.viewType,
-      this.display,
-      flameGraphPane,
-      tablePane
-    );
+    const panes = decidePanesOrder(this.state.view, flameGraphPane, tablePane);
 
     return (
-      <div
-        className={clsx('canvas-renderer', {
-          double: this.props.viewType === 'double',
-        })}
-      >
-        <div className="canvas-container">
+      <div>
+        <div>
           {this.shouldShowToolbar() && (
             <Toolbar
-              renderLogo={this.props.renderLogo}
+              renderLogo={this.props.renderLogo || false}
+              disableChangingDisplay={!!this.props.onlyDisplay}
+              flamegraphType={this.state.flamebearer.format}
               view={this.state.view}
               viewDiff={this.state.viewDiff}
-              display={this.props.display}
               handleSearchChange={this.handleSearchChange}
               reset={this.onReset}
               updateView={this.updateView}
@@ -339,10 +390,11 @@ class FlameGraphRenderer extends React.Component {
           {this.props.children}
           <div
             className={`${styles.flamegraphContainer} ${clsx(
-              'flamegraph-container panes-wrapper',
-              {
-                'vertical-orientation': this.props.viewType === 'double',
-              }
+              this.state.panesOrientation === 'vertical'
+                ? styles.vertical
+                : styles.horizontal,
+              styles[this.state.panesOrientation],
+              styles.panesWrapper
             )}`}
           >
             {panes.map((pane) => pane)}
@@ -367,8 +419,12 @@ class FlameGraphRenderer extends React.Component {
   };
 }
 
-function decidePanesOrder(viewType, display, flamegraphPane, tablePane) {
-  switch (display) {
+function decidePanesOrder(
+  view: FlamegraphRendererState['view'],
+  flamegraphPane: JSX.Element | null,
+  tablePane: JSX.Element
+) {
+  switch (view) {
     case 'table': {
       return [tablePane];
     }
@@ -376,32 +432,12 @@ function decidePanesOrder(viewType, display, flamegraphPane, tablePane) {
       return [flamegraphPane];
     }
 
-    case 'both':
+    case 'both': {
+      return [tablePane, flamegraphPane];
+    }
     default: {
-      switch (viewType) {
-        case 'double':
-          return [flamegraphPane, tablePane];
-        default:
-          return [tablePane, flamegraphPane];
-      }
+      throw new Error(`Invalid view '${view}'`);
     }
-  }
-}
-
-function figureFlamegraphDataTestId(viewType, viewSide) {
-  switch (viewType) {
-    case 'single': {
-      return `flamegraph-single`;
-    }
-    case 'double': {
-      return `flamegraph-comparison-${viewSide}`;
-    }
-    case 'diff': {
-      return `flamegraph-diff`;
-    }
-
-    default:
-      throw new Error(`Unsupported viewType: ${viewType}`);
   }
 }
 

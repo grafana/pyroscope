@@ -1,26 +1,31 @@
-import React, { useEffect, useRef } from 'react';
-import { useAppDispatch, useAppSelector } from '@pyroscope/redux/hooks';
-import Box from '@ui/Box';
+import React, { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '@webapp/redux/hooks';
+import Box from '@webapp/ui/Box';
 import {
   fetchDiffView,
   selectContinuousState,
   actions,
-} from '@pyroscope/redux/reducers/continuous';
+  fetchTagValues,
+  selectQueries,
+} from '@webapp/redux/reducers/continuous';
 import { FlamegraphRenderer } from '@pyroscope/flamegraph';
-import Toolbar from '../components/Toolbar';
-import Footer from '../components/Footer';
-import TimelineChartWrapper from '../components/TimelineChartWrapper';
-import InstructionText from '../components/InstructionText';
-import useExportToFlamegraphDotCom from '../components/exportToFlamegraphDotCom.hook';
-import ExportData from '../components/ExportData';
+import usePopulateLeftRightQuery from '@webapp/hooks/populateLeftRightQuery.hook';
+import useTimelines, {
+  leftColor,
+  rightColor,
+} from '@webapp/hooks/timeline.hook';
+import useTags from '@webapp/hooks/tags.hook';
+import Toolbar from '@webapp/components/Toolbar';
+import TagsBar from '@webapp/components/TagsBar';
+import TimelineChartWrapper from '@webapp/components/TimelineChartWrapper';
+import InstructionText from '@webapp/components/InstructionText';
+import useExportToFlamegraphDotCom from '@webapp/components/exportToFlamegraphDotCom.hook';
+import ExportData from '@webapp/components/ExportData';
 
 function ComparisonDiffApp() {
   const dispatch = useAppDispatch();
   const {
     diffView,
-    from,
-    until,
-    query,
     refreshToken,
     maxNodes,
     leftFrom,
@@ -28,137 +33,137 @@ function ComparisonDiffApp() {
     leftUntil,
     rightUntil,
   } = useAppSelector(selectContinuousState);
+  const { leftQuery, rightQuery } = useAppSelector(selectQueries);
 
-  const getRaw = () => {
-    switch (diffView.type) {
-      case 'loaded':
-      case 'reloading': {
-        return diffView.profile;
-      }
+  usePopulateLeftRightQuery();
+  const { leftTags, rightTags } = useTags({ leftQuery, rightQuery });
+  const { leftTimeline, rightTimeline } = useTimelines();
 
-      default: {
-        return undefined;
-      }
-    }
-  };
-  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(getRaw());
+  const exportToFlamegraphDotComFn = useExportToFlamegraphDotCom(
+    diffView.profile
+  );
 
   useEffect(() => {
-    dispatch(fetchDiffView(null));
+    if (rightQuery && leftQuery) {
+      dispatch(
+        fetchDiffView({
+          leftQuery,
+          leftFrom,
+          leftUntil,
+
+          rightQuery,
+          rightFrom,
+          rightUntil,
+        })
+      );
+    }
   }, [
-    from,
-    until,
-    query,
-    refreshToken,
-    maxNodes,
-    rightFrom,
     leftFrom,
     leftUntil,
+    leftQuery,
+    rightFrom,
     rightUntil,
+    rightQuery,
+    refreshToken,
+    maxNodes,
   ]);
 
-  const profile = (() => {
-    switch (diffView.type) {
-      case 'loaded':
-      case 'reloading': {
-        return diffView.profile;
-      }
-      default:
-        // the component is allowed to render without any data
-        return undefined;
-    }
-  })();
-
-  const exportData = profile && (
+  const exportData = diffView.profile && (
     <ExportData
-      flamebearer={profile}
+      flamebearer={diffView.profile}
       exportJSON
       exportPNG
-      exportHTML
-      //      fetchUrlFunc={() => diffRenderURL}
+      // disable this until we fix it
+      //      exportHTML
       exportFlamegraphDotCom
       exportFlamegraphDotComFn={exportToFlamegraphDotComFn}
     />
   );
 
-  const getTimelineData = () => {
-    switch (diffView.type) {
-      case 'loaded':
-      case 'reloading': {
-        return diffView.timeline;
-      }
-
-      default:
-        return undefined;
-    }
-  };
-
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
-        <Toolbar />
+        <Toolbar
+          hideTagsBar
+          onSelectedName={(query) => {
+            dispatch(actions.setRightQuery(query));
+            dispatch(actions.setLeftQuery(query));
+            dispatch(actions.setQuery(query));
+          }}
+        />
         <TimelineChartWrapper
           data-testid="timeline-main"
           id="timeline-chart-diff"
-          viewSide="both"
-          timeline={getTimelineData()}
-          leftFrom={leftFrom}
-          leftUntil={leftUntil}
-          rightFrom={rightFrom}
-          rightUntil={rightUntil}
+          format="lines"
+          timelineA={leftTimeline}
+          timelineB={rightTimeline}
           onSelect={(from, until) => {
             dispatch(actions.setFromAndUntil({ from, until }));
           }}
+          markings={{
+            left: { from: leftFrom, to: leftUntil, color: leftColor },
+            right: { from: rightFrom, to: rightUntil, color: rightColor },
+          }}
         />
         <Box>
-          <FlamegraphRenderer
-            display="both"
-            viewType="diff"
-            profile={profile}
-            ExportData={exportData}
-          >
-            <div className="diff-instructions-wrapper">
-              <div className="diff-instructions-wrapper-side">
-                <InstructionText viewType="diff" viewSide="left" />
-
-                <TimelineChartWrapper
-                  data-testid="timeline-left"
-                  key="timeline-chart-left"
-                  id="timeline-chart-left"
-                  viewSide="left"
-                  timeline={getTimelineData()}
-                  leftFrom={leftFrom}
-                  leftUntil={leftUntil}
-                  rightFrom={rightFrom}
-                  rightUntil={rightUntil}
-                  onSelect={(from, until) => {
-                    dispatch(actions.setLeft({ from, until }));
-                  }}
-                />
-              </div>
-              <div className="diff-instructions-wrapper-side">
-                <InstructionText viewType="diff" viewSide="right" />
-
-                <TimelineChartWrapper
-                  data-testid="timeline-right"
-                  key="timeline-chart-right"
-                  id="timeline-chart-right"
-                  viewSide="right"
-                  leftFrom={leftFrom}
-                  leftUntil={leftUntil}
-                  rightFrom={rightFrom}
-                  rightUntil={rightUntil}
-                  timeline={getTimelineData()}
-                  onSelect={(from, until) => {
-                    dispatch(actions.setRight({ from, until }));
-                  }}
-                />
-              </div>
+          <div className="diff-instructions-wrapper">
+            <div className="diff-instructions-wrapper-side">
+              <TagsBar
+                query={leftQuery}
+                tags={leftTags}
+                onSetQuery={(q) => {
+                  dispatch(actions.setLeftQuery(q));
+                }}
+                onSelectedLabel={(label, query) => {
+                  dispatch(fetchTagValues({ query, label }));
+                }}
+              />
+              <InstructionText viewType="diff" viewSide="left" />
+              <TimelineChartWrapper
+                data-testid="timeline-left"
+                key="timeline-chart-left"
+                id="timeline-chart-left"
+                timelineA={leftTimeline}
+                onSelect={(from, until) => {
+                  dispatch(actions.setLeft({ from, until }));
+                }}
+                markings={{
+                  left: { from: leftFrom, to: leftUntil, color: leftColor },
+                }}
+              />
             </div>
-          </FlamegraphRenderer>
+            <div className="diff-instructions-wrapper-side">
+              <TagsBar
+                query={rightQuery}
+                tags={rightTags}
+                onSetQuery={(q) => {
+                  dispatch(actions.setRightQuery(q));
+                }}
+                onSelectedLabel={(label, query) => {
+                  dispatch(fetchTagValues({ query, label }));
+                }}
+              />
+              <InstructionText viewType="diff" viewSide="right" />
+              <TimelineChartWrapper
+                data-testid="timeline-right"
+                key="timeline-chart-right"
+                id="timeline-chart-right"
+                timelineA={rightTimeline}
+                onSelect={(from, until) => {
+                  dispatch(actions.setRight({ from, until }));
+                }}
+                markings={{
+                  right: { from: rightFrom, to: rightUntil, color: rightColor },
+                }}
+              />
+            </div>
+          </div>
+          <FlamegraphRenderer
+            profile={diffView.profile}
+            ExportData={exportData}
+          />
         </Box>
       </div>
-      <Footer />
     </div>
   );
 }

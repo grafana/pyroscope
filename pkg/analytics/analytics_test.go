@@ -1,5 +1,5 @@
-//go:build !windows
-// +build !windows
+//go:build !windows && !race
+// +build !windows,!race
 
 package analytics
 

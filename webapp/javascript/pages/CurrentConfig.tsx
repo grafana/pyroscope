@@ -1,10 +1,10 @@
-import { useAppDispatch } from '@pyroscope/redux/hooks';
+import { useAppDispatch } from '@webapp/redux/hooks';
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
-import { loadCurrentConfig } from '@pyroscope/redux/reducers/currentConfig';
+import { loadCurrentConfig } from '@webapp/redux/reducers/currentConfig';
 import { connect } from 'react-redux';
-import Button from '@ui/Button';
-import { addNotification } from '@pyroscope/redux/reducers/notifications';
-import { RootState } from '@pyroscope/redux/store';
+import Button from '@webapp/ui/Button';
+import { addNotification } from '@webapp/redux/reducers/notifications';
+import { RootState } from '@webapp/redux/store';
 import styles from './CurrentConfig.module.scss';
 import { Prism } from '../util/prism';
 

@@ -1,6 +1,6 @@
 import { z, ZodError } from 'zod';
-import { Result } from '@utils/fp';
-import { modelToResult } from '@models/utils';
+import { Result } from '@webapp/util/fp';
+import { modelToResult } from '@webapp/models/utils';
 
 const fooModel = z.array(z.string());
 

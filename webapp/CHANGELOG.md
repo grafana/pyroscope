@@ -3,6 +3,103 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.4.4](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.3...@pyroscope/webapp@1.4.4) (2022-04-08)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.4.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.2...@pyroscope/webapp@1.4.3) (2022-04-08)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.4.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.1...@pyroscope/webapp@1.4.2) (2022-04-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.4.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.4.0...@pyroscope/webapp@1.4.1) (2022-04-06)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.4.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.3.3...@pyroscope/webapp@1.4.0) (2022-03-28)
+
+
+### Features
+
+* **webapp:** diff arbitrary apps ([#967](https://github.com/pyroscope-io/pyroscope/issues/967)) ([f7e66f1](https://github.com/pyroscope-io/pyroscope/commit/f7e66f1082bb5e1ae2851b0f37f56f46ed43e5e1))
+
+
+
+
+
+## [1.3.3](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.3.2...@pyroscope/webapp@1.3.3) (2022-03-25)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.3.2](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.3.1...@pyroscope/webapp@1.3.2) (2022-03-24)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+## [1.3.1](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.3.0...@pyroscope/webapp@1.3.1) (2022-03-23)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
+# [1.3.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.2.0...@pyroscope/webapp@1.3.0) (2022-03-21)
+
+
+### Features
+
+* **webapp:** allow comparing distinct queries/tags ([#942](https://github.com/pyroscope-io/pyroscope/issues/942)) ([4d1307c](https://github.com/pyroscope-io/pyroscope/commit/4d1307c3751b263d88430977f2d87473c8ee280e))
+
+
+
+
+
+# [1.2.0](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.1.10...@pyroscope/webapp@1.2.0) (2022-03-21)
+
+
+### Features
+
+* **webapp:** make search in app/tags selector bar sticky ([#950](https://github.com/pyroscope-io/pyroscope/issues/950)) ([c13ad6a](https://github.com/pyroscope-io/pyroscope/commit/c13ad6af04bdc96bbd980a0d89f8da07681fd321))
+
+
+
+
+
+## [1.1.10](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.1.9...@pyroscope/webapp@1.1.10) (2022-03-18)
+
+**Note:** Version bump only for package @pyroscope/webapp
+
+
+
+
+
 ## [1.1.9](https://github.com/pyroscope-io/pyroscope/compare/@pyroscope/webapp@1.1.8...@pyroscope/webapp@1.1.9) (2022-03-16)
 
 

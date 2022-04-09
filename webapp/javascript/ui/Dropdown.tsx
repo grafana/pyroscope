@@ -8,6 +8,7 @@ import {
   MenuItem as LibMenuItem,
   MenuButton as LibMenuButton,
   FocusableItem as LibFocusableItem,
+  MenuGroup as LibMenuGroup,
 } from '@szhsin/react-menu';
 
 import cx from 'classnames';
@@ -82,3 +83,4 @@ export const SubMenu = LibSubmenu;
 export const MenuItem = LibMenuItem;
 export const MenuButton = LibMenuButton as ShamefulAny;
 export const FocusableItem = LibFocusableItem;
+export const MenuGroup = LibMenuGroup;
