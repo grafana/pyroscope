@@ -22,7 +22,7 @@ function isValidAppName(appName: string) {
 export async function fetchAppNames(
   props?: FetchAppNamesProps
 ): Promise<Result<AppNames, RequestError | ZodError>> {
-  const response = await request('label-values?label=__name__');
+  const response = await request('/label-values?label=__name__');
 
   if (response.isOk) {
     return parse(response.value).map((values) => values.filter(isValidAppName));

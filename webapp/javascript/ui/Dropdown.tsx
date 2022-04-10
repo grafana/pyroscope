@@ -37,6 +37,11 @@ export interface DropdownProps {
   overflow?: MenuProps['overflow'];
   position?: MenuProps['position'];
   direction?: MenuProps['direction'];
+  align?: MenuProps['align'];
+  viewScroll?: MenuProps['viewScroll'];
+  arrow?: MenuProps['arrow'];
+  offsetX?: MenuProps['offsetX'];
+  offsetY?: MenuProps['offsetY'];
 
   menuButton?: JSX.Element;
 }
@@ -52,6 +57,11 @@ export default function Dropdown({
   overflow,
   position,
   direction,
+  align,
+  viewScroll,
+  arrow,
+  offsetX,
+  offsetY,
   menuButtonClassName = '',
   ...props
 }: DropdownProps) {
@@ -74,6 +84,11 @@ export default function Dropdown({
       overflow={overflow}
       position={position}
       direction={direction}
+      align={align}
+      viewScroll={viewScroll}
+      arrow={arrow}
+      offsetX={offsetX}
+      offsetY={offsetY}
       menuButton={menuButtonComponent}
     >
       <MenuHeader>{label}</MenuHeader>
