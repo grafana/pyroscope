@@ -43,7 +43,7 @@ function signOut() {
   });
 }
 
-export function Sidebar2() {
+export function SidebarComponent() {
   const collapsed = useAppSelector(selectSidebarCollapsed);
   const currentUser = useAppSelector(selectCurrentUser);
   const dispatch = useAppDispatch();

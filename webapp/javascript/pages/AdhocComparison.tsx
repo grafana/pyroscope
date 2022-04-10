@@ -12,7 +12,6 @@ import { Profile } from '@pyroscope/models';
 // @ts-ignore
 import FileList from '@webapp/components/FileList';
 import FileUploader from '@webapp/components/FileUploader';
-import Footer from '@webapp/components/Footer';
 import {
   fetchAdhocProfiles,
   fetchAdhocLeftProfile,
@@ -70,7 +69,7 @@ function AdhocComparison() {
   }, [dispatch, rightShared.profile]);
 
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
         <div
           className="comparison-container"
@@ -165,7 +164,6 @@ function AdhocComparison() {
           </Box>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }

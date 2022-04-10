@@ -12,7 +12,6 @@ import classNames from 'classnames';
 // @ts-ignore
 import FileList from '@webapp/components/FileList';
 import FileUploader from '@webapp/components/FileUploader';
-import Footer from '@webapp/components/Footer';
 
 import {
   fetchAdhocProfiles,
@@ -52,7 +51,7 @@ function AdhocSingle() {
   }, [profile, dispatch]);
 
   return (
-    <div className="pyroscope-app">
+    <div>
       <div className="main-wrapper">
         <Box>
           <Tabs>
@@ -95,7 +94,6 @@ function AdhocSingle() {
           )}
         </Box>
       </div>
-      <Footer />
     </div>
   );
 }
