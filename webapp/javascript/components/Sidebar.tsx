@@ -253,4 +253,4 @@ export function SidebarComponent() {
   );
 }
 
-export default Sidebar2;
+export default SidebarComponent;

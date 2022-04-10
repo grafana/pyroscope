@@ -11,6 +11,11 @@ import {
   loadCurrentUser,
   selectCurrentUser,
 } from '@webapp/redux/reducers/user';
+import {
+  isGithubEnabled,
+  isGitlabEnabled,
+  isGoogleEnabled,
+} from '@webapp/util/features';
 import { GitlabIcon, GoogleIcon } from '../Icons';
 import Divider from '../Divider';
 import inputStyles from '../InputGroup.module.css';
@@ -100,26 +105,38 @@ function SignInPage() {
         </button>
         <Divider />
         <div className={cx(buttonStyles.buttonContainer)}>
-          <Link
-            to="./auth/google/login"
-            className={cx(styles.button, buttonStyles.buttonGoogle)}
-          >
-            <GoogleIcon /> Sign in with Google
-          </Link>
+          {isGitlabEnabled ||
+            isGithubEnabled ||
+            (isGoogleEnabled && (
+              <>
+                {isGoogleEnabled && (
+                  <a
+                    href="./auth/google/login"
+                    className={cx(styles.button, buttonStyles.buttonGoogle)}
+                  >
+                    <GoogleIcon /> Sign in with Google
+                  </a>
+                )}
 
-          <Link
-            to="./auth/github/login"
-            className={cx(styles.button, buttonStyles.buttonGithub)}
-          >
-            <Icon icon={faGithub} /> Sign in with GitHub
-          </Link>
+                {isGithubEnabled && (
+                  <a
+                    href="./auth/github/login"
+                    className={cx(styles.button, buttonStyles.buttonGithub)}
+                  >
+                    <Icon icon={faGithub} /> Sign in with GitHub
+                  </a>
+                )}
 
-          <Link
-            to="./auth/gitlab/login"
-            className={cx(styles.button, buttonStyles.buttonGitlab)}
-          >
-            <GitlabIcon /> Sign in with GitLab
-          </Link>
+                {isGitlabEnabled && (
+                  <a
+                    href="./auth/gitlab/login"
+                    className={cx(styles.button, buttonStyles.buttonGitlab)}
+                  >
+                    <GitlabIcon /> Sign in with GitLab
+                  </a>
+                )}
+              </>
+            ))}
 
           <Link to="/signup" className={cx(styles.button, styles.buttonDark)}>
             Sign up

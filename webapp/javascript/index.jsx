@@ -41,14 +41,6 @@ try {
 }
 
 function App() {
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    if (window.isAuthRequired) {
-      dispatch(loadCurrentUser());
-    }
-  }, [dispatch]);
-
   return (
     <div className="app">
       <Sidebar />
@@ -81,19 +73,20 @@ function App() {
           <Route path="/service-discovery">
             <ServiceDiscoveryApp />
           </Route>
-          {isAdhocUIEnabled && (
-            <>
-              <Route path="/adhoc-single">
-                <AdhocSingle />
-              </Route>
-              <Route path="/adhoc-comparison">
-                <AdhocComparison />
-              </Route>
-              <Route path="/adhoc-comparison-diff">
-                <AdhocDiff />
-              </Route>
-            </>
-          )}
+          {isAdhocUIEnabled && [
+            <Route path="/adhoc-single">
+              <AdhocSingle />
+            </Route>,
+            <Route path="/adhoc-comparison">
+              <AdhocComparison />
+            </Route>,
+            <Route path="/adhoc-comparison-diff">
+              <AdhocDiff />
+            </Route>,
+          ]}
+          <Route path="*" exact>
+            <NotFound />
+          </Route>
         </Switch>
         <Footer />
       </div>

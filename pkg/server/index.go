@@ -15,6 +15,9 @@ import (
 
 type Flags struct {
 	EnableAdhocUI bool `json:"enableAdhocUI"`
+	GoogleEnabled bool `json:"googleEnabled"`
+	GitlabEnabled bool `json:"gitlabEnabled"`
+	GithubEnabled bool `json:"githubEnabled"`
 }
 
 type IndexHandlerConfig struct {
@@ -37,6 +40,9 @@ func (ctrl *Controller) indexHandler() http.HandlerFunc {
 	cfg := &IndexHandlerConfig{
 		Flags: Flags{
 			EnableAdhocUI: !ctrl.config.NoAdhocUI,
+			GoogleEnabled: ctrl.config.Auth.Google.Enabled,
+			GitlabEnabled: ctrl.config.Auth.Gitlab.Enabled,
+			GithubEnabled: ctrl.config.Auth.Github.Enabled,
 		},
 		IsAuthRequired: ctrl.isAuthRequired(),
 		BaseURL:        ctrl.config.BaseURL,

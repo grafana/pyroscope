@@ -7,6 +7,7 @@ import {
   selectApplicationName,
 } from '@webapp/redux/reducers/continuous';
 import { queryFromAppName } from '@webapp/models/query';
+import { loadCurrentUser } from '@webapp/redux/reducers/user';
 
 export default function Continuous({
   children,
@@ -16,6 +17,12 @@ export default function Continuous({
   const dispatch = useAppDispatch();
   const appNames = useAppSelector(selectAppNames);
   const selectedAppName = useAppSelector(selectApplicationName);
+
+  useEffect(() => {
+    if ((window as ShamefulAny).isAuthRequired) {
+      dispatch(loadCurrentUser());
+    }
+  }, [dispatch]);
 
   useEffect(() => {
     async function loadAppNames() {
